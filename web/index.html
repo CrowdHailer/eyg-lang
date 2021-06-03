@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local</title>
+  </head>
+  <body>
+    <h1>Local dev</h1>
+    <script>
+      document.onclick = async function () {
+        let port = await navigator.serial.requestPort({ filters: [] });
+        console.log(port);
+        let opened = await port.open({ baudRate: 9600 });
+        console.log(opened);
+        const reader = port.readable.getReader();
+
+        // Listen to data coming from the serial device.
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            // Allow the serial port to be closed later.
+            reader.releaseLock();
+            break;
+          }
+          // value is a Uint8Array.
+          console.log(value);
+        }
+      };
+    </script>
+  </body>
+</html>

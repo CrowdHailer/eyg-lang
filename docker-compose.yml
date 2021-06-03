@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  tunnel:
+    build:
+      context: ./tunnel
+      dockerfile: Dockerfile
+    volumes:
+      - ./tunnel/config:/etc/nginx
+      - ./web:/var/www/html
+    network_mode: host
