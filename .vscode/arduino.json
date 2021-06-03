@@ -1,0 +1,6 @@
+{
+    "configuration": "cpu=atmega2560",
+    "board": "arduino:avr:mega",
+    "sketch": "blinky.ino",
+    "port": "/dev/ttyACM0"
+}
