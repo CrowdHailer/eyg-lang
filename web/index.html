@@ -5,6 +5,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Local</title>
+    <script>
+      var exports = {};
+    </script>
     <script src="https://unpkg.com/web-serial-polyfill@1.0.10/dist/serial.js"></script>
   </head>
   <body>
@@ -12,6 +15,8 @@
     <button onclick="handleConnect(event)">Connect to Serial</button>
     <div id="logContainer"></div>
     <script>
+      console.log(exports);
+      const serial = exports.serial;
       const logContainer = document.getElementById("logContainer");
 
       function log(string) {
@@ -65,7 +70,7 @@
 
       async function connect() {
         try {
-          let port = await navigator.serial.requestPort({ filters: [] });
+          let port = await serial.requestPort({ filters: [] });
           window.x = port;
           console.log(port);
           log("Connected to serial port: " + JSON.stringify(port.getInfo()));
