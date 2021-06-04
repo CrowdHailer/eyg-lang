@@ -11,12 +11,18 @@
     <script src="https://unpkg.com/web-serial-polyfill@1.0.10/dist/serial.js"></script>
   </head>
   <body>
-    <h1>Local dev</h1>
+    <h1>Local dev <span id="recordingStatus"></span></h1>
     <button onclick="handleConnect(event)">Connect to Serial</button>
+    <button onclick="handleChooseCamera(event)">Choose Camera</button>
+    <button onclick="recordCamera(event)">Record 5sec</button>
+    <video id="preview" width="200px" autoplay></video>
+    <br />
+
+    <!-- <video id="recording" width="160" height="120" controls></video> -->
+    <div id="recordingsContainer" class="border:1px solid black"></div>
     <div id="logContainer"></div>
     <script>
-      console.log(exports);
-      const serial = exports.serial;
+      const serial = navigator.serial || exports.serial;
       const logContainer = document.getElementById("logContainer");
 
       function log(string) {
@@ -24,6 +30,64 @@
         line.innerText = string;
         logContainer.append(line);
       }
+
+      const recordingStatus = document.getElementById("recordingStatus");
+      const recordingsContainer = document.getElementById(
+        "recordingsContainer"
+      );
+
+      const preview = document.getElementById("preview");
+      // const recording = document.getElementById("recording");
+      let cameraStream;
+      async function handleChooseCamera() {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        preview.srcObject = stream;
+        await new Promise((resolve) => (preview.onplaying = resolve));
+        cameraStream = stream;
+        log(stream);
+      }
+
+      async function recordCamera() {
+        let recordedChunks = await startRecording(
+          preview.captureStream(),
+          5000
+        );
+        let recordedBlob = new Blob(recordedChunks, { type: "video/webm" });
+        let recording = document.createElement("video");
+        recording.controls = true;
+        recording.width = 240;
+        recording.src = URL.createObjectURL(recordedBlob);
+        console.log(recording);
+        recordingsContainer.append(recording);
+      }
+
+      function wait(delayInMS) {
+        return new Promise((resolve) => setTimeout(resolve, delayInMS));
+      }
+
+      function startRecording(stream, lengthInMS) {
+        let recorder = new MediaRecorder(stream);
+        let data = [];
+
+        recorder.ondataavailable = (event) => data.push(event.data);
+        recorder.start();
+        log(recorder.state + " for " + lengthInMS / 1000 + " seconds...");
+
+        let stopped = new Promise((resolve, reject) => {
+          recorder.onstop = resolve;
+          recorder.onerror = (event) => reject(event.name);
+        });
+
+        let recorded = wait(lengthInMS).then(
+          () => recorder.state == "recording" && recorder.stop()
+        );
+
+        return Promise.all([stopped, recorded]).then(() => data);
+      }
+
+      let isAlreadyrecording = false;
 
       async function handleConnect(event) {
         event.preventDefault();
@@ -56,7 +120,20 @@
                 if (count === 1) {
                   // No linebreak
                 } else {
-                  log(lines[count - 2] + "cm");
+                  const distance = parseInt(lines[count - 2]);
+                  if (distance < 20 && isAlreadyrecording === false) {
+                    isAlreadyrecording = true;
+                    recordingStatus.innerText = "recording";
+                    log(distance + "cm");
+                    // setTimeout(() => {
+                    (async function (params) {
+                      await recordCamera();
+                      isAlreadyrecording = false;
+                      recordingStatus.innerText = "";
+                      log("done recording");
+                    })();
+                    // }, 10000);
+                  }
                   buffer = lines[count - 1];
                 }
               }
