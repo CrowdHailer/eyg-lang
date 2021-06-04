@@ -1,6 +1,6 @@
 {
     "configuration": "cpu=atmega2560",
     "board": "arduino:avr:mega",
-    "sketch": "blinky.ino",
+    "sketch": "range_trigger/range_trigger.ino",
     "port": "/dev/ttyACM0"
 }

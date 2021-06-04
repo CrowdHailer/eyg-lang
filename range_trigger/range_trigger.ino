@@ -34,14 +34,15 @@ void setup()
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(BUZZ_PIN, OUTPUT);
   Serial.begin(9600);
+  Serial.println("Hello");
 }
 
 // the loop function runs over and over again forever
 void loop()
 {
   a = sr04.Distance();
-  Serial.print(a);
-  Serial.println(" cm");
+  // Serial.print(a);
+  Serial.println(a);
   if (a < 50)
   {
     digitalWrite(LED_BUILTIN, HIGH);
@@ -53,5 +54,5 @@ void loop()
     digitalWrite(BUZZ_PIN, LOW);
   }
 
-  delay(10);
+  delay(1000);
 }

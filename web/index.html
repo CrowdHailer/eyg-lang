@@ -5,29 +5,78 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Local</title>
+    <script src="https://unpkg.com/web-serial-polyfill@1.0.10/dist/serial.js"></script>
   </head>
   <body>
     <h1>Local dev</h1>
+    <button onclick="handleConnect(event)">Connect to Serial</button>
+    <div id="logContainer"></div>
     <script>
-      document.onclick = async function () {
-        let port = await navigator.serial.requestPort({ filters: [] });
-        console.log(port);
-        let opened = await port.open({ baudRate: 9600 });
-        console.log(opened);
-        const reader = port.readable.getReader();
+      const logContainer = document.getElementById("logContainer");
 
-        // Listen to data coming from the serial device.
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            // Allow the serial port to be closed later.
-            reader.releaseLock();
-            break;
+      function log(string) {
+        const line = document.createElement("p");
+        line.innerText = string;
+        logContainer.append(line);
+      }
+
+      async function handleConnect(event) {
+        event.preventDefault();
+        const port = await connect();
+
+        event.target.innerText = "Connected";
+        event.target.disabled = true;
+
+        while (port.readable) {
+          const textDecoder = new TextDecoderStream();
+          const readableStreamClosed = port.readable.pipeTo(
+            textDecoder.writable
+          );
+          const reader = textDecoder.readable.getReader();
+
+          let buffer = "";
+
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) {
+                // Allow the serial port to be closed later.
+                reader.releaseLock();
+                break;
+              }
+              if (value) {
+                buffer += value;
+                const lines = buffer.split(/\r?\n/);
+                const count = lines.length;
+                if (count === 1) {
+                  // No linebreak
+                } else {
+                  log(lines[count - 2] + "cm");
+                  buffer = lines[count - 1];
+                }
+              }
+            }
+          } catch (error) {
+            console.log(error);
+            // TODO: Handle non-fatal read error.
           }
-          // value is a Uint8Array.
-          console.log(value);
         }
-      };
+      }
+
+      async function connect() {
+        try {
+          let port = await navigator.serial.requestPort({ filters: [] });
+          window.x = port;
+          console.log(port);
+          log("Connected to serial port: " + JSON.stringify(port.getInfo()));
+          // returns undefined
+          await port.open({ baudRate: 9600 });
+          log("Serial port opened");
+          return port;
+        } catch (error) {
+          log(error);
+        }
+      }
     </script>
   </body>
 </html>

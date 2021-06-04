@@ -6,6 +6,7 @@ services:
       context: ./tunnel
       dockerfile: Dockerfile
     volumes:
+      # TODO COPY config instead of mounting
       - ./tunnel/config:/etc/nginx
       - ./web:/var/www/html
     network_mode: host

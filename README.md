@@ -10,7 +10,7 @@ Connecting to the real world.
 ## Tunnel
 
 - [Get ip](https://www.google.com/search?q=what+is+my+ip+address)
-  - `86.132.139.177` June 3, 2020
+  - `86.132.139.177` June 3, 2020, not static
 - Log in to router to foward 80/443
   - BT routers have admin IP of `192.168.1.254`
 - Add A record for domain to IP
@@ -19,6 +19,6 @@ Connecting to the real world.
   - `nginx -t && nginx -s reload`
   - Fetch a let's encrypt certificate.
     - https://www.nginx.com/blog/using-free-ssltls-certificates-from-lets-encrypt-with-nginx/
-    - `certbot --nginx -d example.com`
+    - `nginx -s reload` then `certbot --nginx -d example.com`
 
 https://askubuntu.com/questions/630053/make-domain-name-point-to-home-server
