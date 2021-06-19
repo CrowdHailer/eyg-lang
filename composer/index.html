@@ -8,5 +8,17 @@
   </head>
   <body>
     <h1>Spotless code platform</h1>
+    <script>
+      (async function () {
+        let str = `
+        export function main() {
+          return 1 + 2;
+        }`;
+        let module = await import(
+          URL.createObjectURL(new Blob([str], { type: "text/javascript" }))
+        );
+        console.log(module.main());
+      })();
+    </script>
   </body>
 </html>
