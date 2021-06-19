@@ -1,0 +1,4 @@
+[build]
+  base = "composer/"
+  publish = "build/"
+  command = "cp index.html build"
