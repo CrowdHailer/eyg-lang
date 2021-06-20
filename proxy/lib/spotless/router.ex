@@ -18,7 +18,7 @@ defmodule Spotless.Router do
         Raxx.response(:ok)
         |> Raxx.set_header("content-type", "application/json")
         |> Raxx.set_body(
-          Jason.encode(%{
+          Jason.encode!(%{
             method: method,
             raw_path: path,
             query: query,
