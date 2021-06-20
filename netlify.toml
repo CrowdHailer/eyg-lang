@@ -8,8 +8,8 @@
   ./gleam compile-package --src src --out build/gen --name spotless --target javascript
   """
 [[redirects]]
-  from = "/api"
-  to = "https://spotless-run.herokuapp.com/"
+  from = "/api/*"
+  to = "https://spotless-run.herokuapp.com/:splat"
   status = 200
   force = true
   headers = {X-From = "Netlify"}
