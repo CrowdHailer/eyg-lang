@@ -7,3 +7,9 @@
   wget -c https://github.com/gleam-lang/gleam/releases/download/v0.16.0/gleam-v0.16.0-linux-amd64.tar.gz -O - | tar -xz -C . &&
   ./gleam compile-package --src src --out build/gen --name spotless --target javascript
   """
+[[redirects]]
+  from = "/api"
+  to = "https://spotless-run.herokuapp.com/"
+  status = 200
+  force = true
+  headers = {X-From = "Netlify"}
