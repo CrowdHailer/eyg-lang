@@ -34,7 +34,7 @@ defmodule Spotless.Router do
   end
 
   def handle_request(%Raxx.Request{path: ["response", response_id], body: body}, _) do
-      case :global.whereis_name({Spotless.Response, client_id}) do
+      case :global.whereis_name({Spotless.Response, response_id}) do
           pid when is_pid(pid) ->
             send(pid, {:response, body})
 
