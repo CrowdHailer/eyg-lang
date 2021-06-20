@@ -1,0 +1,6 @@
+%{
+  "ace": {:hex, :ace, "0.19.0", "3557a53235fdebe59b7f645d3770b68c8dbd969ed45db86cc52c9e0625e11e80", [:mix], [{:hpack, "~> 0.2.3", [hex: :hpack_erl, repo: "hexpm", optional: false]}, {:raxx, "~> 0.17.0 or ~> 0.18.0 or ~> 1.0", [hex: :raxx, repo: "hexpm", optional: false]}], "hexpm", "97823e32203a29aa2a9ee4c6825113fa09f4b57b61e989982fe5f8429d39b71d"},
+  "hpack": {:hex, :hpack_erl, "0.2.3", "17670f83ff984ae6cd74b1c456edde906d27ff013740ee4d9efaa4f1bf999633", [:rebar3], [], "hexpm", "06f580167c4b8b8a6429040df36cc93bba6d571faeaec1b28816523379cbb23a"},
+  "raxx": {:hex, :raxx, "1.1.0", "d6a03143a91f8092c0be1ec555075c76c8d680601236de706f020d17abcf8b16", [:mix], [], "hexpm", "58fdc4b62127890dfe7129a7e372b624411a7623f688bde9e98ff2af3fd9cb46"},
+  "server_sent_event": {:hex, :server_sent_event, "1.0.0", "23646a67d1c165ed718017c08f8646334758d8fcebfca0b12a4c648bf0235c08", [:mix], [{:raxx, "~> 1.0", [hex: :raxx, repo: "hexpm", optional: false]}], "hexpm", "17f7956495fcc98243cd0b3100a0ea0e79c1262585df93d30abb397bf95428cf"},
+}
