@@ -12,7 +12,8 @@ defmodule Spotless.Router do
 
     receive do
       {:request, forwarded} ->
-        %Raxx.Request{method: method, raw_path: path, query: query, headers: headers, body: body} = forwarded
+        %Raxx.Request{method: method, raw_path: path, query: query, headers: headers, body: body} =
+          forwarded
 
         Raxx.response(:ok)
         |> Raxx.set_header("content-type", "application/json")
@@ -32,17 +33,23 @@ defmodule Spotless.Router do
   end
 
   def handle_request(request, _) do
-    case String.split(Raxx.request_host(request)) do
+    case String.split(Raxx.request_host(request), ".") do
       [client_id, "spotless", "run"] when client_id != "api" ->
-        pid = :global.whereis_name({Spotless.Client, client_id})
-        send(pid, {:request, request})
+        case :global.whereis_name({Spotless.Client, client_id}) do
+          pid when is_pid(pid) ->
+            send(pid, {:request, request})
 
-        Raxx.response(:ok)
-        |> Raxx.set_body("I've forwarded it")
-        _ ->
+            Raxx.response(:ok)
+            |> Raxx.set_body("I've forwarded it")
+
+          :undefined ->
+            Raxx.response(:ok)
+            |> Raxx.set_body("no pid found")
+        end
+
+      _ ->
         Raxx.response(:ok)
         |> Raxx.set_body("I've not forward it " <> Raxx.request_host(request))
-
     end
   end
 
