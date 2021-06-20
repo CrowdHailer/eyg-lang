@@ -42,6 +42,10 @@
           if (response.status === 200) {
             let data = await response.json();
             console.log(data);
+            fetch("https://spotless.run/api/response/" + data.response_id, {
+              method: "POST",
+              body: "hello client",
+            });
           }
         }
       })();
