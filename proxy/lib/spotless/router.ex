@@ -22,7 +22,7 @@ defmodule Spotless.Router do
             method: method,
             raw_path: path,
             query: query,
-            headers: headers,
+            headers: Enum.into(headers, %{}),
             body: body
           })
         )
