@@ -39,6 +39,10 @@ defmodule Spotless.Router do
 
         Raxx.response(:ok)
         |> Raxx.set_body("I've forwarded it")
+        _ ->
+        Raxx.response(:ok)
+        |> Raxx.set_body("I've not forward it " <> Raxx.request_host(request))
+
     end
   end
 

@@ -37,7 +37,7 @@
       (async function () {
         while (true) {
           let response = await fetch(
-            "http://api.spotless.run/request/" + clientId
+            "http://spotless.run/api/request/" + clientId
           );
           if (response.status === 200) {
             let data = await response.json();
