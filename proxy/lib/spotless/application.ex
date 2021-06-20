@@ -1,4 +1,3 @@
-
 defmodule Spotless.Application do
   @moduledoc false
 
@@ -9,10 +8,11 @@ defmodule Spotless.Application do
     IO.inspect(port)
 
     children = [
-        %{
-            id: Ace,
-            start: {Ace.HTTP.Service, :start_link, [{Spotless.Router, nil}, [port: port, cleartext: true]]}
-        }
+      %{
+        id: Ace,
+        start:
+          {Ace.HTTP.Service, :start_link, [{Spotless.Router, nil}, [port: port, cleartext: true]]}
+      }
     ]
 
     opts = [strategy: :one_for_one, name: Spotless.Supervisor]

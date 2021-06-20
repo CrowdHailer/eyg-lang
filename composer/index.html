@@ -31,6 +31,20 @@
         console.log(module.main());
       })();
       // https://2ality.com/2019/10/eval-via-import.html
+
+      const clientId = "1234";
+
+      (async function () {
+        while (true) {
+          let response = await fetch(
+            "http://api.spotless.run/request/" + clientId
+          );
+          if (response.status === 200) {
+            let data = await response.json();
+            console.log(data);
+          }
+        }
+      })();
     </script>
   </body>
 </html>
