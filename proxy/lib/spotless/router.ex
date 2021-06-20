@@ -11,13 +11,24 @@ defmodule Spotless.Router do
     :yes = :global.re_register_name({Spotless.Client, client_id}, self())
 
     receive do
-      {:request, value} ->
-        IO.inspect(value)
-        # code
-    end
+      {:request, forwarded} ->
+        %Raxx.Request{method: method, raw_path: path, query: query, headers: headers, body: body} = forwarded
 
-    Raxx.response(:ok)
-    |> Raxx.set_body("got response")
+        Raxx.response(:ok)
+        |> Raxx.set_header("content-type", "application/json")
+        |> Raxx.set_body(
+          Jason.encode(%{
+            method: method,
+            raw_path: path,
+            query: query,
+            headers: headers,
+            body: body
+          })
+        )
+    after
+      25_000 ->
+        Raxx.response(:no_content)
+    end
   end
 
   def handle_request(request, _) do
@@ -28,16 +39,8 @@ defmodule Spotless.Router do
 
         Raxx.response(:ok)
         |> Raxx.set_body("I've forwarded it")
-
-    #   other ->
-    #     IO.inspect(other)
     end
   end
-
-  # just hardcode the spotless domain
-
-  # connect event source
-  # reregister name
 
   # need two long polls but the second will wipe out the first
   # debugging see how often it happens

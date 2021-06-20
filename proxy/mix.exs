@@ -21,7 +21,8 @@ defmodule Spotless.MixProject do
   defp deps do
     [
       {:ace, "~> 0.19.0"},
-      {:server_sent_event, "~> 1.0"}
+      {:server_sent_event, "~> 1.0"},
+      {:jason, "~> 1.2"}
     ]
   end
 end
