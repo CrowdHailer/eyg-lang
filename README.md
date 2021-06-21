@@ -1,8 +1,26 @@
 # Spotless
 
-Ultimate developer experience
+Serverless, literally! Run server code in your client.
 
-## Architecture
+Start a server application as simply as creating an `index.html` for a client application.
+
+## Features
+
+- [x] Custom subdomain for proxying requests to the client
+- [x] Execute clients custom logic to handle request
+- [ ] Rerun requests against the latest version of the code
+- [ ] log statements appear in the output
+- [ ] Compile Gleam code in the browser. [#1141](https://github.com/gleam-lang/gleam/issues/1141)
+- [ ] Isomorphic Gleam for client and server.
+- [ ] More examples
+- [ ] The ability to import modules
+- [ ] Have server state
+  - [ ] Simple map state
+  - [ ] In browser SQL implementation
+- [ ] Deployment options
+- [ ] Other application architectures, see appendix.
+
+## Appendix: Other Architectures
 
 Should not be tied to a single application type. could be:
 

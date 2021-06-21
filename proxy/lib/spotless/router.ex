@@ -1,6 +1,5 @@
 defmodule Spotless.Router do
   use Raxx.SimpleServer
-  # @sse_mime_type ServerSentEvent.mime_type()
 
   def handle_request(%Raxx.Request{path: ["register"]}, _) do
     Raxx.response(:ok)
@@ -75,7 +74,6 @@ defmodule Spotless.Router do
     end
   end
 
-  # need two long polls but the second will wipe out the first
   # debugging see how often it happens
   # no buffer
 
