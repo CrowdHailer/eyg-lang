@@ -7,6 +7,8 @@ defmodule Spotless.MixProject do
       version: "0.1.0",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
+      erlc_paths: ["src", "gen"],
+      compilers: [:gleam | Mix.compilers()],
       deps: deps()
     ]
   end
@@ -20,9 +22,10 @@ defmodule Spotless.MixProject do
 
   defp deps do
     [
+      {:mix_gleam, "~> 0.1.0"},
+      {:gleam_stdlib, "~> 0.16.0"},
       {:ace, "~> 0.19.0"},
-      {:server_sent_event, "~> 1.0"},
-      {:jason, "~> 1.2"}
+      {:jason, "~> 1.2"},
     ]
   end
 end

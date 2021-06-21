@@ -5,13 +5,13 @@ volumes:
   deps:
   gen:
 services:
-  spotless:
+  proxy:
     build:
-      context: .
+      context: proxy
       dockerfile: Dockerfile
     working_dir: /opt/app
     volumes:
-      - .:/opt/app
+      - ./proxy:/opt/app
       - _build:/opt/app/_build
       - deps:/opt/app/deps
       # NOTE Issue Gleam shouldn't delete gen directory.
@@ -19,4 +19,3 @@ services:
     network_mode: host
     environment:
       PORT: 8080
-      ENVIRONMENT: local
