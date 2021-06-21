@@ -58,7 +58,7 @@ defmodule Spotless.Router do
 
             receive do
               {:response, client_response} ->
-                %{"status" => status, body: body} = Jason.decode!(client_response)
+                %{"status" => status, "body" => body} = Jason.decode!(client_response)
 
                 Raxx.response(status)
                 |> Raxx.set_body(body)
