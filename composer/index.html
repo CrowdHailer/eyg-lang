@@ -82,7 +82,7 @@
             let { status, body } = await mod.handle(data);
             fetch("https://spotless.run/api/response/" + data.response_id, {
               method: "POST",
-              body: JSON.encode(status, body),
+              body: JSON.stringify(status, body),
             });
           }
         }
