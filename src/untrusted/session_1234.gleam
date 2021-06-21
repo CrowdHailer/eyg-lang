@@ -1,1 +1,0 @@
-pub fn inc(x) { x + 1}
