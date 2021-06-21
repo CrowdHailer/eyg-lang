@@ -34,17 +34,17 @@ defmodule Spotless.Router do
   end
 
   def handle_request(%Raxx.Request{path: ["response", response_id], body: body}, _) do
-      case :global.whereis_name({Spotless.Response, response_id}) do
-          pid when is_pid(pid) ->
-            send(pid, {:response, body})
+    case :global.whereis_name({Spotless.Response, response_id}) do
+      pid when is_pid(pid) ->
+        send(pid, {:response, body})
 
-            Raxx.response(:ok)
-            |> Raxx.set_body("I've replied")
+        Raxx.response(:ok)
+        |> Raxx.set_body("I've replied")
 
-          :undefined ->
-            Raxx.response(:ok)
-            |> Raxx.set_body("no pid found")
-        end
+      :undefined ->
+        Raxx.response(:ok)
+        |> Raxx.set_body("no pid found")
+    end
   end
 
   def handle_request(request, _) do
@@ -57,11 +57,12 @@ defmodule Spotless.Router do
             send(pid, {:request, request, response_id})
 
             receive do
-                {:response, body} ->
-            Raxx.response(:ok)
-            |> Raxx.set_body(body)
+              {:response, client_response} ->
+                %{"status" => status, body: body} = Jason.decode!(client_response)
+
+                Raxx.response(status)
+                |> Raxx.set_body(body)
             end
-            
 
           :undefined ->
             Raxx.response(:ok)
@@ -93,7 +94,6 @@ defmodule Spotless.Router do
     <<id::binary-6, _::binary>> = Base.encode32(:crypto.strong_rand_bytes(5))
     id
   end
-
 
   def response_id do
     Base.encode32(:crypto.strong_rand_bytes(5))

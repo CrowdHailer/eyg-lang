@@ -17,7 +17,7 @@
     <script type="module" id="log">
       export function handle(request) {
         console.log(request);
-        return "hello from client";
+        return { status: 200, body: "hello from client" };
       }
     </script>
     <div class="shadow bg-blue-100 m-4 max-w-md border p-2">
@@ -25,6 +25,7 @@
       <div id="editor"></div>
       foot
     </div>
+    <div>After</div>
     <script>
       const clientId = makeid(6);
       const domainLink = document.getElementById("domain");
@@ -39,7 +40,12 @@
         raw = code;
         dirty = true;
       });
-      flask.updateCode(document.getElementById("log").innerText);
+      flask.updateCode(
+        document
+          .getElementById("log")
+          .innerText.trim()
+          .replaceAll(/\n\s{6}/g, "\n")
+      );
 
       // push to backend
       // read response
@@ -73,10 +79,10 @@
           if (fetched.status === 200) {
             let data = await fetched.json();
             let mod = await getModule();
-            let userResponse = await mod.handle(data);
+            let { status, body } = await mod.handle(data);
             fetch("https://spotless.run/api/response/" + data.response_id, {
               method: "POST",
-              body: userResponse,
+              body: JSON.encode(status, body),
             });
           }
         }
