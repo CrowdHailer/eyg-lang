@@ -5,12 +5,42 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spotless</title>
+    <script src="https://unpkg.com/codeflask/build/codeflask.min.js"></script>
+    <link
+      href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <h1>Spotless code platform</h1>
+    <div>domain: <a id="domain" target="_blank"></a></div>
+    <script type="module" id="log">
+      export function handle(request) {
+        console.log(request);
+        return "hello from client";
+      }
+    </script>
+    <div class="shadow bg-blue-100 m-4 max-w-md border p-2">
+      editor
+      <div id="editor"></div>
+      foot
+    </div>
     <script>
-      // compile
-      // pull from text box
+      const clientId = makeid(6);
+      const domainLink = document.getElementById("domain");
+      const domain = clientId + ".spotless.run";
+      domainLink.innerText = domain;
+      domainLink.href = "http://" + domain;
+
+      let raw, dirty, module;
+
+      const flask = new CodeFlask("#editor", { language: "js" });
+      flask.onUpdate((code) => {
+        raw = code;
+        dirty = true;
+      });
+      flask.updateCode(document.getElementById("log").innerText);
+
       // push to backend
       // read response
       // main takes string and has an imput box
@@ -20,35 +50,50 @@
 
       // Review exorcism
 
-      (async function () {
-        let str = `
-        export function main() {
-          return 1 + 2;
-        }`;
-        let module = await import(
+      async function compile() {
+        return await import(
           URL.createObjectURL(new Blob([str], { type: "text/javascript" }))
         );
-        console.log(module.main());
-      })();
+      }
+
+      async function getModule() {
+        if (dirty) {
+          module = await compile();
+          dirty = false;
+        }
+        return module;
+      }
       // https://2ality.com/2019/10/eval-via-import.html
 
-      const clientId = "1234";
-
-      (async function () {
+      async function pullRequest() {
         while (true) {
-          let response = await fetch(
+          let fetched = await fetch(
             "https://spotless.run/api/request/" + clientId
           );
-          if (response.status === 200) {
-            let data = await response.json();
-            console.log(data);
+          if (fetched.status === 200) {
+            let data = await fetched.json();
+            let mod = await getModule();
+            let userResponse = await mod.handle(fetched);
             fetch("https://spotless.run/api/response/" + data.response_id, {
               method: "POST",
-              body: "hello client",
+              body: userResponse,
             });
           }
         }
-      })();
+      }
+
+      function makeid(length) {
+        var result = "";
+        // Base32 letter set
+        var characters = "abcdefghijklmnopqrstuvwxyz234567";
+        var charactersLength = characters.length;
+        for (var i = 0; i < length; i++) {
+          result += characters.charAt(
+            Math.floor(Math.random() * charactersLength)
+          );
+        }
+        return result;
+      }
     </script>
   </body>
 </html>
