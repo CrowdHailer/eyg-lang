@@ -30,6 +30,7 @@ defmodule Spotless.Router do
       25_000 ->
         Raxx.response(:no_content)
     end
+    |> Raxx.set_header("access-control-allow-origin", "http://localhost:5000")
   end
 
   def handle_request(%Raxx.Request{path: ["response", response_id], body: body}, _) do
@@ -44,12 +45,25 @@ defmodule Spotless.Router do
         Raxx.response(:ok)
         |> Raxx.set_body("no pid found")
     end
+        |> Raxx.set_header("access-control-allow-origin", "http://localhost:5000")
+
   end
 
   def handle_request(request, _) do
-    case String.split(Raxx.request_host(request), ".") do
-      [client_id, "spotless", "run"] when client_id != "api" ->
-        case :global.whereis_name({Spotless.Client, client_id}) do
+    case {String.split(Raxx.request_host(request), "."), request.path} do
+      {[client_id, "spotless", "run"], _} when client_id != "api" ->
+        forward_request(client_id, request)
+
+      {["localhost"], [client_id | rest]} -> 
+        forward_request(client_id, %Raxx.Request{request | path: rest})
+      _ ->
+        Raxx.response(:ok)
+        |> Raxx.set_body("I've not forward it " <> Raxx.request_host(request))
+    end
+  end
+
+  def forward_request(client_id, request) do
+    case :global.whereis_name({Spotless.Client, client_id}) do
           pid when is_pid(pid) ->
             response_id = response_id()
             :yes = :global.re_register_name({Spotless.Response, response_id}, self())
@@ -67,11 +81,6 @@ defmodule Spotless.Router do
             Raxx.response(:ok)
             |> Raxx.set_body("no pid found")
         end
-
-      _ ->
-        Raxx.response(:ok)
-        |> Raxx.set_body("I've not forward it " <> Raxx.request_host(request))
-    end
   end
 
   # debugging see how often it happens

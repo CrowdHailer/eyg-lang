@@ -1,10 +1,20 @@
 version: "3"
 
 volumes:
+  composer_node_modules:
   _build:
   deps:
   gen:
 services:
+  composer:
+    build:
+      context: composer
+      dockerfile: Dockerfile
+    working_dir: "/opt/app"
+    volumes:
+      - ./composer:/opt/app
+    network_mode: host
+    command: "sirv . --dev --host 0.0.0.0"
   proxy:
     build:
       context: proxy
