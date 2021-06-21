@@ -65,7 +65,7 @@
       }
       // https://2ality.com/2019/10/eval-via-import.html
 
-      async function pullRequest() {
+      async function pullRequests() {
         while (true) {
           let fetched = await fetch(
             "https://spotless.run/api/request/" + clientId
@@ -94,6 +94,7 @@
         }
         return result;
       }
+      pullRequests();
     </script>
   </body>
 </html>
