@@ -73,7 +73,7 @@
           if (fetched.status === 200) {
             let data = await fetched.json();
             let mod = await getModule();
-            let userResponse = await mod.handle(fetched);
+            let userResponse = await mod.handle(data);
             fetch("https://spotless.run/api/response/" + data.response_id, {
               method: "POST",
               body: userResponse,
