@@ -36,7 +36,21 @@
     <script>
       const clientId = makeid(6);
       const domainLink = document.getElementById("domain");
-      const domain = clientId + ".spotless.run";
+
+      const { api, domain } = (function name() {
+        if (window.location.hostname === "localhost") {
+          return {
+            domain: "localhost:8080/" + clientId,
+            api: "http://localhost:8080",
+          };
+        } else {
+          return {
+            domain: clientId + ".spotless.run",
+            api: "https://spotless.run/api",
+          };
+        }
+      })();
+
       domainLink.innerText = domain;
       domainLink.href = "http://" + domain;
 
@@ -90,15 +104,13 @@
 
       async function pullRequests() {
         while (true) {
-          let fetched = await fetch(
-            "https://spotless.run/api/request/" + clientId
-          );
+          let fetched = await fetch(api + "/request/" + clientId);
           if (fetched.status === 200) {
             let data = await fetched.json();
             let mod = await getModule();
             let { status, body } = await mod.handle(data);
             logRequest(data, { status, body });
-            fetch("https://spotless.run/api/response/" + data.response_id, {
+            fetch(api + "/response/" + data.response_id, {
               method: "POST",
               body: JSON.stringify({ status, body }),
             });

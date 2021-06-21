@@ -1,17 +1,27 @@
 version: "3"
 
 volumes:
+  composer_node_modules:
   _build:
   deps:
   gen:
 services:
-  spotless:
+  composer:
     build:
-      context: .
+      context: composer
+      dockerfile: Dockerfile
+    working_dir: "/opt/app"
+    volumes:
+      - ./composer:/opt/app
+    network_mode: host
+    command: "sirv . --dev --host 0.0.0.0"
+  proxy:
+    build:
+      context: proxy
       dockerfile: Dockerfile
     working_dir: /opt/app
     volumes:
-      - .:/opt/app
+      - ./proxy:/opt/app
       - _build:/opt/app/_build
       - deps:/opt/app/deps
       # NOTE Issue Gleam shouldn't delete gen directory.
@@ -19,4 +29,3 @@ services:
     network_mode: host
     environment:
       PORT: 8080
-      ENVIRONMENT: local
