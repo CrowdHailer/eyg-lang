@@ -52,7 +52,7 @@
 
       async function compile() {
         return await import(
-          URL.createObjectURL(new Blob([str], { type: "text/javascript" }))
+          URL.createObjectURL(new Blob([code], { type: "text/javascript" }))
         );
       }
 
