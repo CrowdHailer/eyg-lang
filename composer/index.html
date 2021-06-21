@@ -62,7 +62,7 @@
           any = true;
         }
         let logLine = document.createElement("div");
-        let content = `${request.method} ${request.path} - ${response.status} ${response.body.length}`;
+        let content = `${request.method} ${request.path} - ${response.status} ${response.body.length}bytes`;
         logLine.innerText = content;
         requestLog.append(logLine);
       }

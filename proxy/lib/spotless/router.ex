@@ -20,7 +20,7 @@ defmodule Spotless.Router do
         |> Raxx.set_body(
           Jason.encode!(%{
             method: method,
-            raw_path: path,
+            path: path,
             query: query,
             headers: Enum.into(headers, %{}),
             body: body,
