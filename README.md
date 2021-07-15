@@ -34,6 +34,8 @@ requests
 })
 ```
 
+[See more use cases below](#use-cases)
+
 ## Relational Algebra
 - [Here is the explaination](http://www.cbcb.umd.edu/confcour/Spring2014/CMSC424/Relational_algebra.pdf) of the algebra I followed for the following section.
 - similar https://my.eng.utah.edu/~cs5530/Lectures/relational-algebra-cs.pdf
@@ -209,3 +211,67 @@ This has interesting consequences when trying to save a new value of the databas
 
 **This projects goal is only querying not updating.**
 How relations come into existance is a concern of the layer below, for example the can be in memory using `relation.row` or read from an immutable event log like Datomic or Mentat.
+
+## Use Cases
+
+- Stripe Sigma
+  - https://stripe.com/sigma
+  - Like baremetrics https://news.ycombinator.com/item?id=14463385
+- Join data with DB's like what3words
+- Query terrafom https://github.com/mazen160/tfquery
+- Query and transform for filesystems to make a static site generator
+- Query processes shell command https://www.osquery.io/
+- CSVkit working with data in csv files
+- Query an RSS feed
+- Query an email inbox
+- Is it best to dump to a file sytem and use that?
+- Need code to generate schema, mix task before compile can it be done with .exs or easier in rust. How is integrity checking done in diesel or in a database with disc
+- If there are too many database is the correct abstraction tools to make datastorage? CRDT guarantees etc.
+
+## Random
+
+- Read [Against SQL](https://news.ycombinator.com/item?id=27791539)
+- Look at [Edgedb](https://www.edgedb.com/)
+- How much nicer can row types make things
+  - Are row types the same as the environment a Gleam program executes in.
+- Is it possible to guarantee totallity, with arbitrary map this needs totallity checking
+- Do we want typed length binaries. `BitString(Succ(Succ(Zero)))` Does this demand dependant types.
+  ```rs
+  let number: Int8 = <<0>>
+  let binary: Binary(Succ(Zero)) = socket.read(socket, <<0>>)
+  ```
+- Is a type check for update in place useful for writing back changes, do we even do that if this is only on the read side.
+- Can we build relations from a partially ordered set i.e. CRDT's rather than single order like datomic.
+- Does this cross over with ETL (extract transform load) or (filter/map/reduce) loads? Would Gen stage be useful.
+- Relations look a lot like iterators, anything useful with monads.
+  ```rs
+  bind user = users
+  bind membership = memberships
+  bind team = teams
+
+  case membership {
+      Membership(user_id, team_id) if user_id == user.id && team_id == team.id ->
+        Some(user.name, team.name)
+      _ ->
+        None()
+  }
+  ```
+- Is there a relational algebra for partitioning, needed for HTTP responses which should be 1 for one with requests. Or is HTTP a layer below safe queries.
+- Are relations on stream the same as observables that I experimented with for binding Gleam into Svelte
+- What's the type construct that lets you remember that you have a subset of an enums varients
+- Visualising SQL https://www.doc.ic.ac.uk/~pjm/teaching/student_projects/gc106_report.pdf
+- Don't we all want to use sql on the front end https://news.ycombinator.com/item?id=26822884
+  - Is this what the love letter to datomic and datascript was talking about
+  - If your relations are only a view on a lower datamodel you are not exposing an internal API
+  - organised like blitz this could be managed by the compiler
+
+
+
+#### Other names
+
+- Sanity = Eyg minimal language
+- Calm = built
+- Insight/Knowhow/Knowledge
+- TypedRelationalAlgebra = Tra
+- Durable/Robust/History/Permanance/Forever
+- Tactile = built
