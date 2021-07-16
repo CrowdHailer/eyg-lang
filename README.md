@@ -232,9 +232,11 @@ How relations come into existance is a concern of the layer below, for example t
 
 - Read [Against SQL](https://news.ycombinator.com/item?id=27791539)
 - Look at [Edgedb](https://www.edgedb.com/)
-- How much nicer can row types make things
-  - Are row types the same as the environment a Gleam program executes in.
+- Read [Give me /events not webhooks](https://news.ycombinator.com/item?id=27823109)
+- How much nicer can row types make things?
+  - Are row types the same as the environment a Gleam program executes in?
 - Is it possible to guarantee totallity, with arbitrary map this needs totallity checking
+- Does relation algebra reduce the space to be considered for exhaustiveness checking?
 - Do we want typed length binaries. `BitString(Succ(Succ(Zero)))` Does this demand dependant types.
   ```rs
   let number: Int8 = <<0>>
@@ -264,7 +266,9 @@ How relations come into existance is a concern of the layer below, for example t
   - Is this what the love letter to datomic and datascript was talking about
   - If your relations are only a view on a lower datamodel you are not exposing an internal API
   - organised like blitz this could be managed by the compiler
-
+- How many programs require **linear types** 
+  - Does a table of sockets make sense?
+  - Are linear types always for some physical reality, can we always handle the usecase by waiting for a constrained return
 
 
 #### Other names
