@@ -1,0 +1,4 @@
+name = "language"
+tool = "gleam"
+version = "0.1.0"
+description = "A Gleam library"
