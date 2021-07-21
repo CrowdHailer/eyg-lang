@@ -64,6 +64,25 @@ fn argument_types(arguments, state, typed) {
   }
 }
 
+fn unify(left, right) {
+  case left, right {
+    l, r if l == r -> Ok(Nil)
+  }
+}
+
+// Have zip functionality
+// Do we need to back trace with all the substitutions? or does calling infer at the right points get the value out that we need?
+
+fn unify_all(lefts, rights) { 
+  case lefts, rights {
+    [], [] -> Ok(Nil)
+    [left, ..lefts], [right, ..rights] -> {
+      assert Ok(Nil) = unify(left, right)
+      unify_all(lefts, rights)
+    }
+  }
+ }
+
 fn infer(node, state) {
   let State(environment, ..) = state
   case node {
@@ -85,6 +104,8 @@ fn infer(node, state) {
       case function_type {
         Linked(FunctionType(expected_arguments, return)) -> {
           try actual_arguments = argument_types(arguments, state, [])
+          unify_all(expected_arguments, actual_arguments)
+          assert expected_arguments = actual_arguments
           case expected_arguments == actual_arguments {
             True -> Ok(return)
             False -> Error(Nil)
@@ -102,10 +123,27 @@ pub fn hello_world_test() {
   assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
   assert Error(Nil) = infer(Var(name: "foo"), initial)
   let ast = Function(arguments: ["x"], body: Var(name: "x"))
-  assert Ok(Linked(FunctionType(arguments: [Unbound(1)], return: Unbound(1)))) = infer(ast, initial)
+  assert Ok(Linked(FunctionType(arguments: [Unbound(1)], return: Unbound(1)))) =
+    infer(ast, initial)
 
   let binary_fn = Function(arguments: [], body: Binary)
-  let ast = Let(name: "my_fn", value: binary_fn, in: Call(function: Var("my_fn"), arguments: []))
+  let ast =
+    Let(
+      name: "my_fn",
+      value: binary_fn,
+      in: Call(function: Var("my_fn"), arguments: []),
+    )
+  assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
+
+  let ast =
+    Let(
+      name: "bin",
+      value: Binary,
+      in: Call(
+        function: Function(arguments: ["x"], body: Var(name: "x")),
+        arguments: [Var(name: "bin")],
+      ),
+    )
   assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
 
   Nil
