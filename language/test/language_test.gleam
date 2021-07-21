@@ -8,6 +8,7 @@ type Type {
 
 type TypeVariable {
   Unbound(Int)
+  // called Named in JS guide
   Linked(Type)
 }
 
@@ -24,6 +25,7 @@ type Expression {
   Tuple
   // arguments are names only
   Function(arguments: List(String), body: Expression)
+  Call(function: Expression, arguments: List(Expression))
 }
 
 // Be careful not to confuse substitutions with environments. 
@@ -52,6 +54,16 @@ fn push_arguments(arguments, typed, state) {
   }
 }
 
+fn argument_types(arguments, state, typed) {
+  case arguments {
+    [] -> Ok(typed)
+    [argument, ..rest] -> {
+      try argument_type = infer(argument, state)
+      argument_types(rest, state, [argument_type, ..typed])
+    }
+  }
+}
+
 fn infer(node, state) {
   let State(environment, ..) = state
   case node {
@@ -68,6 +80,18 @@ fn infer(node, state) {
       try return = infer(body, state)
       Ok(Linked(FunctionType(arguments: typed_arguments, return: return)))
     }
+    Call(function, arguments) -> {
+      try function_type = infer(function, state)
+      case function_type {
+        Linked(FunctionType(expected_arguments, return)) -> {
+          try actual_arguments = argument_types(arguments, state, [])
+          case expected_arguments == actual_arguments {
+            True -> Ok(return)
+            False -> Error(Nil)
+          }
+        }
+      }
+    }
   }
 }
 
@@ -79,5 +103,10 @@ pub fn hello_world_test() {
   assert Error(Nil) = infer(Var(name: "foo"), initial)
   let ast = Function(arguments: ["x"], body: Var(name: "x"))
   assert Ok(Linked(FunctionType(arguments: [Unbound(1)], return: Unbound(1)))) = infer(ast, initial)
+
+  let binary_fn = Function(arguments: [], body: Binary)
+  let ast = Let(name: "my_fn", value: binary_fn, in: Call(function: Var("my_fn"), arguments: []))
+  assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
+
   Nil
 }
