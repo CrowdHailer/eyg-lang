@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
 
@@ -54,6 +55,11 @@ fn typer() {
   Typer([], 1)
 }
 
+fn generate_type_var(typer) {
+  let Typer(next_type_var: var, ..) = typer
+  #(Variable(var), Typer(..typer, next_type_var: var + 1))
+}
+
 fn push_variable(environment, name, type_) {
   [#(name, type_), ..environment]
 }
@@ -65,62 +71,45 @@ fn fetch_variable(environment, name) {
   }
 }
 
-// fn find_in_env(state, name) {
-//   let State(environment, ..) = state
-//   do_find_in_env(environment, name)
-// }
-// fn do_find_in_env(environment, name) {
-//   case environment {
-//     [] -> Error(Nil)
-//     [#(key, given), .._] if key == name -> Ok(given)
-//     [_, ..rest] -> do_find_in_env(rest, name)
-//   }
-// }
-// fn push_arguments(
-//   arguments,
-//   typed: List(#(Type, String)),
-//   state,
-// ) -> #(List(#(Type, String)), State) {
-//   case arguments {
-//     [] -> #(typed, state)
-//     [#(Nil, name), ..rest] -> {
-//       let State(environment, substitutions, type_variable_counter) = state
-//       let type_variable_counter = type_variable_counter + 1
-//       let type_variable = Variable(type_variable_counter)
-//       let environment = [#(name, type_variable), ..environment]
-//       let typed = [#(type_variable, name), ..typed]
-//       let state = State(environment, substitutions, type_variable_counter)
-//       push_arguments(rest, typed, state)
-//     }
-//   }
-// }
-// fn unify_function_arguments(for, with, state) {
-//     let State(substitutions: substitutions, ..) = state
-//   case for, with {
-//     [return_type], [] -> Ok(#(return_type, substitutions))
-//     [t1, ..for], [tree, ..with] -> {
-//       try #(t2, _expression, _sub) = infer(tree, state)
-//       io.debug(t1)
-//       io.debug(t2)
-//       try substitutions = unify(t1, t2)
-//       let state = State(..state, substitutions: substitutions)
-//       unify_function_arguments(for, with, state)
-//     }
-//   }
-// }
-// // Just bind and see what happens
-// fn unify(t1, t2) {
-//     case t1, t2 {
-//         Variable(i), Constructor(_, _) ->  Ok([t2])
-//     }
-// }
-// fn typed_arguments_remove_name(remaining, accumulator) {
-//   case remaining {
-//     [] -> accumulator
-//     [#(typed, _name), ..rest] ->
-//       typed_arguments_remove_name(rest, [typed, ..accumulator])
-//   }
-// }
+fn push_arguments(untyped, environment, typer) {
+  // TODO check double names
+  let #(typed, typer) = do_argument_typing(untyped, [], typer)
+  let environment = do_push_arguments(typed, environment)
+  #(typed, environment, typer)
+}
+
+fn do_push_arguments(typed, environment) {
+  case typed {
+    [] -> environment
+    [#(type_, name), ..rest] ->
+      do_push_arguments(rest, [#(name, type_), ..environment])
+  }
+}
+
+fn do_argument_typing(arguments, typed, typer) {
+  case arguments {
+    [] -> #(list.reverse(typed), typer)
+    [#(Nil, name), ..rest] -> {
+      let #(type_, typer) = generate_type_var(typer)
+      let typed = [#(type_, name), ..typed]
+      do_argument_typing(rest, typed, typer)
+    }
+  }
+}
+
+fn do_typed_arguments_remove_name(
+  remaining: List(#(Type, String)),
+  accumulator: List(Type),
+) -> List(Type) {
+  case remaining {
+    [] -> list.reverse(accumulator)
+    [x, ..rest] -> {
+      let #(typed, _name) = x
+      do_typed_arguments_remove_name(rest, [typed, ..accumulator])
+    }
+  }
+}
+
 pub fn infer(untyped) {
   try #(type_, tree, typer) = do_infer(untyped, [], typer())
   let Typer(substitutions: substitutions, ..) = typer
@@ -142,32 +131,71 @@ fn do_infer(untyped, environment, typer) {
       try var_type = fetch_variable(environment, name)
       Ok(#(var_type, Var(name), typer))
     }
+    Function(with, in) -> {
+      // There's no lets in arguments that escape the environment so keep reusing initial environment
+      let #(typed_with, environment, typer) =
+        push_arguments(with, environment, typer)
+      try #(in_type, in_tree, typer) = do_infer(in, environment, typer)
+      let typed_with: List(#(Type, String)) = typed_with
+      let constructor_arguments =
+        do_typed_arguments_remove_name(typed_with, [in_type])
+      let type_ = Constructor("Function", constructor_arguments)
+      let tree = Function(typed_with, #(in_type, in_tree))
+      Ok(#(type_, tree, typer))
+    }
+    // N eed to understand generics but could every typed ast have a variable
+    Call(function, with) -> {
+      try #(f_type, f_tree, typer) = do_infer(function, environment, typer)
+      let #(return_type, typer) = generate_type_var(typer)
+      // TODO args
+      try typer = unify(f_type, Constructor("Function", [return_type]), typer)
+      io.debug(typer)
+      // todo("ooo")
+      let type_ = return_type
+      let tree = Call(#(f_type, f_tree), [])
+            Ok(#(type_, tree, typer))
+
+    }
   }
-  //     Function(arguments, body) -> {
-  //       let #(typed_arguments, state) = push_arguments(arguments, [], state)
-  //       try #(return_type, tree, _) = infer(body, state)
-  //       let body = #(return_type, tree)
-  //       let constructor_arguments: List(Type) =
-  //         typed_arguments_remove_name(typed_arguments, [return_type])
-  //       Ok(#(
-  //         Constructor("Function", constructor_arguments),
-  //         Function(typed_arguments, body), [],
-  //       ))
-  //     }
-  //     // Call(with) Function(for)
-  //     Call(function, with) -> {
-  //       try #(function_type, _, _) = infer(function, state)
-  //       case function_type {
-  //         Constructor("Function", for) -> {
-  //             // return substitutions
-  //           try #(return_type, substitutions) = unify_function_arguments(for, with, state)
-  //           Ok(#(return_type, Tuple, substitutions))
-  //         }
-  //       }
-  //     }
-  //     // Ok(return_type)
-  //     Var(name) -> {
-  //       try var_type = find_in_env(state, name)
-  //       Ok(#(var_type, Var(name), []))
-  //     }
+}
+
+fn unify(t1, t2, typer) {
+  case t1, t2 {
+    t1, t2 if t1 == t2 -> Ok(typer)
+    Variable(i), any -> unify_variable(i, any, typer)
+       any, Variable(i) -> unify_variable(i, any, typer)
+    Constructor(n1, args1), Constructor(n2, args2) -> {
+      case n1 == n2 {
+        True -> unify_all(args1, args2, typer)
+
+      }
+    }
+  }
+}
+
+fn unify_variable(i, any, typer) {
+  let Typer(substitutions: substitutions, ..) = typer
+  case list.key_find(substitutions, i) {
+    Ok(replacement) -> unify(replacement, any, typer)
+    Error(Nil) -> case any {
+      Variable(j) -> todo("check in substitution")
+      // TODO occurs check
+      Constructor(_, _) -> {
+
+        let substitutions = [#(i, any), ..substitutions]
+        let typer = Typer(..typer, substitutions: substitutions)
+        Ok(typer)
+      }
+    }
+  }
+}
+
+fn unify_all(t1s, t2s, typer) {
+  case t1s, t2s {
+    [], [] -> Ok(typer)
+    [t1, ..t1s], [t2, ..t2s] -> {
+      try typer = unify(t1, t2, typer)
+      unify_all(t1s, t2s, typer)
+    }
+  }
 }
