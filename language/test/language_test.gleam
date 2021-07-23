@@ -72,8 +72,7 @@ fn unify(left, right) {
 
 // Have zip functionality
 // Do we need to back trace with all the substitutions? or does calling infer at the right points get the value out that we need?
-
-fn unify_all(lefts, rights) { 
+fn unify_all(lefts, rights) {
   case lefts, rights {
     [], [] -> Ok(Nil)
     [left, ..lefts], [right, ..rights] -> {
@@ -81,7 +80,7 @@ fn unify_all(lefts, rights) {
       unify_all(lefts, rights)
     }
   }
- }
+}
 
 fn infer(node, state) {
   let State(environment, ..) = state
@@ -115,36 +114,32 @@ fn infer(node, state) {
     }
   }
 }
-
 // Constructor
-pub fn hello_world_test() {
-  let initial = State([], 0)
-  let ast = Let(name: "foo", value: Binary, in: Var(name: "foo"))
-  assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
-  assert Error(Nil) = infer(Var(name: "foo"), initial)
-  let ast = Function(arguments: ["x"], body: Var(name: "x"))
-  assert Ok(Linked(FunctionType(arguments: [Unbound(1)], return: Unbound(1)))) =
-    infer(ast, initial)
-
-  let binary_fn = Function(arguments: [], body: Binary)
-  let ast =
-    Let(
-      name: "my_fn",
-      value: binary_fn,
-      in: Call(function: Var("my_fn"), arguments: []),
-    )
-  assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
-
-  let ast =
-    Let(
-      name: "bin",
-      value: Binary,
-      in: Call(
-        function: Function(arguments: ["x"], body: Var(name: "x")),
-        arguments: [Var(name: "bin")],
-      ),
-    )
-  assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
-
-  Nil
-}
+// pub fn hello_world_test() {
+//   let initial = State([], 0)
+//   let ast = Let(name: "foo", value: Binary, in: Var(name: "foo"))
+//   assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
+//   assert Error(Nil) = infer(Var(name: "foo"), initial)
+//   let ast = Function(arguments: ["x"], body: Var(name: "x"))
+//   assert Ok(Linked(FunctionType(arguments: [Unbound(1)], return: Unbound(1)))) =
+//     infer(ast, initial)
+//   let binary_fn = Function(arguments: [], body: Binary)
+//   let ast =
+//     Let(
+//       name: "my_fn",
+//       value: binary_fn,
+//       in: Call(function: Var("my_fn"), arguments: []),
+//     )
+//   assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
+//   let ast =
+//     Let(
+//       name: "bin",
+//       value: Binary,
+//       in: Call(
+//         function: Function(arguments: ["x"], body: Var(name: "x")),
+//         arguments: [Var(name: "bin")],
+//       ),
+//     )
+//   assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
+//   Nil
+// }

@@ -1,37 +1,14 @@
-type Expression(e) {
+import option.{None, Option, Some}
+
+// Use opaque type to keep in type information
+pub type Expression(t) {
   // Pattern is name in Let
-  Let(name: String, value: e, in: e)
+  Let(name: String, value: #(t, Expression(t)), in: #(t, Expression(t)))
   Var(name: String)
   Binary
   Case
   Tuple
   // arguments are names only
-  Function(arguments: List(String), body: e)
-  Call(function: e, arguments: List(e))
+  Function(arguments: List(#(t, String)), body: #(t, Expression(t)))
+  Call(function: #(t, Expression(t)), arguments: List(#(t, Expression(t))))
 }
-
-type Node(t) {
-    Node(t, Expression(Node(t)))
-}
-
-type Option(a){
-    Some(a)
-    None
-}
-
-fn extract_annotation(parsed) {
-    case parsed {
-        Let(name, value, in) -> Node(None, Let(name, extract_annotation(value), extract_annotation(in)))
-        Var(name) -> Node(None, Var(name))
-        Binary -> Node(Some("binary"), Binary)
-    }
-}
-
-// Everything is record constructors
-fn main() { 
-  let parsed = Let(name: "foo", value: Binary, in: Let(name: "foo", value: Binary, in: Var("foo")))
-  extract_annotation(parsed)
-}
-
-
-
