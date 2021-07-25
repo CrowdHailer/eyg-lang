@@ -48,3 +48,14 @@ pub fn infer_call_with_arguments_test() {
 }
 
 // infer with wrong call arguments
+pub fn generic_functions_test() {
+  let identity = function([#(Nil, "x")], var("x"))
+  let untyped =
+    let_(
+      "id",
+      identity,
+      let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary( )])),
+    )
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
+  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+}

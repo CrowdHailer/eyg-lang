@@ -41,6 +41,10 @@ pub type Type {
   Variable(Int)
 }
 
+pub type PolyType {
+  PolyType(forall: List(Int), type_: Type)
+}
+
 // A linear type on substitutions would ensure passed around
 // TODO merge substitutions, need to keep passing next var in typer
 // type checker state
@@ -82,7 +86,7 @@ fn do_push_arguments(typed, environment) {
   case typed {
     [] -> environment
     [#(type_, name), ..rest] ->
-      do_push_arguments(rest, [#(name, type_), ..environment])
+      do_push_arguments(rest, [#(name, PolyType([], type_)), ..environment])
   }
 }
 
@@ -116,19 +120,44 @@ pub fn infer(untyped) {
   Ok(#(type_, tree, substitutions))
 }
 
+fn free_type_vars_in_type(type_) {
+  case type_ {
+    Constructor("Function", [Variable(x), Variable(y)]) if x == y -> [y]
+    _ -> []
+  }
+}
+
+fn instantiate(poly_type, typer) {
+  case poly_type {
+    PolyType([], type_) -> #(type_, typer)
+    PolyType([v], Constructor("Function", [Variable(x), Variable(y)])) if x == v && y == v -> {
+      let #(type_var, typer) = generate_type_var(typer)
+      #(Constructor("Function", [type_var, type_var]), typer)
+    }
+  }
+  // let PolyType(forall, var_type)
+}
+
 fn do_infer(untyped, environment, typer) {
   let #(Nil, expression) = untyped
   case expression {
     Binary -> Ok(#(Constructor("Binary", []), Binary, typer))
     Let(name: name, value: value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, environment, typer)
-      let environment = push_variable(environment, name, value_type)
+      // TODO remove free variables that all already in the environment as they might get bound later
+      // Can I convince myself that all generalisable variables must be above the typer current counter
+      // Yes because the environment is passed in and not used again.
+      // call this fn generalise when called here.
+      let forall = free_type_vars_in_type(value_type)
+      let environment =
+        push_variable(environment, name, PolyType(forall, value_type))
       try #(next_type, next_tree, typer) = do_infer(next, environment, typer)
       let tree = Let(name, #(value_type, value_tree), #(next_type, next_tree))
       Ok(#(next_type, tree, typer))
     }
     Var(name) -> {
-      try var_type = fetch_variable(environment, name)
+      try poly_type = fetch_variable(environment, name)
+      let #(var_type, typer) = instantiate(poly_type, typer)
       Ok(#(var_type, Var(name), typer))
     }
     Function(with, in) -> {
@@ -152,10 +181,7 @@ fn do_infer(untyped, environment, typer) {
       try typer =
         unify(
           f_type,
-          Constructor(
-            "Function",
-            append_only_the_type(with_typed, return_type),
-          ),
+          Constructor("Function", append_only_the_type(with_typed, return_type)),
           typer,
         )
       let type_ = return_type
@@ -206,8 +232,6 @@ fn unify(t1, t2, typer) {
 
 fn unify_variable(i, any, typer) {
   let Typer(substitutions: substitutions, ..) = typer
-  io.debug(substitutions)
-  io.debug(any)
   case list.key_find(substitutions, i) {
     Ok(replacement) -> unify(replacement, any, typer)
     Error(Nil) ->
