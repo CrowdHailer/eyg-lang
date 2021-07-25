@@ -55,10 +55,6 @@ type Typer {
     substitutions: List(#(Int, Type)), next_type_var: Int)
 }
 
-fn typer() {
-  Typer([], 1)
-}
-
 fn generate_type_var(typer) {
   let Typer(next_type_var: var, ..) = typer
   #(Variable(var), Typer(..typer, next_type_var: var + 1))
@@ -114,8 +110,47 @@ fn do_typed_arguments_remove_name(
   }
 }
 
+fn typer() {
+  Typer([], 1)
+}
+
 pub fn infer(untyped) {
-  try #(type_, tree, typer) = do_infer(untyped, [], typer())
+  let environment = [
+    #(
+      "True",
+      PolyType([], Constructor("Function", [Constructor("Boolean", [])])),
+    ),
+    #(
+      "False",
+      PolyType([], Constructor("Function", [Constructor("Boolean", [])])),
+    ),
+    #(
+      "None",
+      PolyType(
+        [1],
+        Constructor("Function", [Constructor("Option", [Variable(1)])]),
+      ),
+    ),
+    #(
+      "Some",
+      PolyType(
+        [1],
+        Constructor("Function", [Variable(1), Constructor("Option", [Variable(1)])]),
+      ),
+    ),
+    #(
+      "equal",
+      PolyType(
+        [1],
+        Constructor(
+          "Function",
+          [Variable(1), Variable(1), Constructor("Boolean", [])],
+        ),
+      ),
+    ),
+  ]
+  let typer = typer()
+  try #(type_, tree, typer) = do_infer(untyped, environment, typer)
   let Typer(substitutions: substitutions, ..) = typer
   Ok(#(type_, tree, substitutions))
 }
@@ -130,9 +165,31 @@ fn free_type_vars_in_type(type_) {
 fn instantiate(poly_type, typer) {
   case poly_type {
     PolyType([], type_) -> #(type_, typer)
+    // None
+    PolyType(
+      [v],
+      Constructor("Function", [Constructor("Option", [Variable(x)])]),
+    ) if v == x -> {
+      let #(type_var, typer) = generate_type_var(typer)
+      #(Constructor("Function", [Constructor("Option", [type_var])]), typer)
+    }
+    // Some
+    PolyType(
+      [v],
+      Constructor("Function", [Variable(x), Constructor("Option", [Variable(y)])]),
+    ) if v == x && v == y -> {
+      let #(type_var, typer) = generate_type_var(typer)
+      #(Constructor("Function", [type_var, Constructor("Option", [type_var])]), typer)
+    }
+    // signle arg function
     PolyType([v], Constructor("Function", [Variable(x), Variable(y)])) if x == v && y == v -> {
       let #(type_var, typer) = generate_type_var(typer)
       #(Constructor("Function", [type_var, type_var]), typer)
+    }
+    // equal
+    PolyType([v], Constructor("Function", [Variable(x), Variable(y), Constructor("Boolean", [])])) if x == v && y == v -> {
+      let #(type_var, typer) = generate_type_var(typer)
+      #(Constructor("Function", [type_var, type_var, Constructor("Boolean", [])]), typer)
     }
   }
   // let PolyType(forall, var_type)
@@ -143,11 +200,11 @@ fn do_infer(untyped, environment, typer) {
   case expression {
     Binary -> Ok(#(Constructor("Binary", []), Binary, typer))
     Let(name: name, value: value, in: next) -> {
-      try #(value_type, value_tree, typer) = do_infer(value, environment, typer)
       // TODO remove free variables that all already in the environment as they might get bound later
       // Can I convince myself that all generalisable variables must be above the typer current counter
       // Yes because the environment is passed in and not used again.
       // call this fn generalise when called here.
+      try #(value_type, value_tree, typer) = do_infer(value, environment, typer)
       let forall = free_type_vars_in_type(value_type)
       let environment =
         push_variable(environment, name, PolyType(forall, value_type))
@@ -185,7 +242,7 @@ fn do_infer(untyped, environment, typer) {
           typer,
         )
       let type_ = return_type
-      let tree = Call(#(f_type, f_tree), [])
+      let tree = Call(#(f_type, f_tree), with_typed)
       Ok(#(type_, tree, typer))
     }
   }

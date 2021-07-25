@@ -54,8 +54,39 @@ pub fn generic_functions_test() {
     let_(
       "id",
       identity,
-      let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary( )])),
+      let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary()])),
     )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
   let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+}
+
+// Custom record types. Does lambda calculus not go there, because functions are enough
+// tuple vs rows only rows needed in spread sheets.
+// Constructor("Foo")
+// Bool{
+//   True
+//   False
+// }
+// "Some" = PolyType(
+//   forall: [1], 
+//   Constructor("Function", [Variable(1), Constructor("Option", [Variable(1)])]))
+pub fn simple_custom_type_test() {
+  // let untyped = newtype(
+  //   "Boolean", 
+  //   [constructor("True", []), constructor("False", [])],
+  //   call(var("True"), [])
+  // )
+  let untyped = call(var("True"), [])
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
+  let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
+
+  // let untyped = call(var("None"), [])
+  // let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
+  // let Constructor("Option", [_]) = ast.resolve_type(type_, substitutions)
+
+  let untyped = call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
+  |> io.debug()
+  let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
+
 }
