@@ -38,17 +38,13 @@ pub fn infer_identity_function_test() {
 pub fn infer_call_test() {
   let untyped = call(function([], binary()), [])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
-  io.debug(tree)
-  io.debug(substitutions)
-  let Variable(1) = type_
-  // This is the resolving of the variable
-  // lookup needs to be recursive
-  let Ok(Constructor("Binary", [])) = list.key_find(substitutions, 1)
+  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
 }
-// pub fn infer_call_with_arguments_test() {
-//   let ast = #(
-//     Nil,
-//     Call(#(Nil, Function([#(Nil, "x")], #(Nil, Var("x")))), [#(Nil, Binary)]),
-//   )
-//   let Ok(#(Constructor("Binary", []), _, _)) = infer(ast, initial)
-// }
+
+pub fn infer_call_with_arguments_test() {
+  let untyped = call(function([#(Nil, "x")], var("x")), [binary()])
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
+  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+}
+
+// infer with wrong call arguments
