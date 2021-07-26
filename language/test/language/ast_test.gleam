@@ -32,7 +32,8 @@ pub fn compile_error_for_missing_var_test() {
 pub fn infer_identity_function_test() {
   let untyped = function([#(Nil, "x")], var("x"))
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
-  let Constructor("Function", [Variable(1), Variable(1)]) = type_
+  let Constructor("Function", [Variable(a), Variable(b)]) = type_
+  let True = a == b
 }
 
 pub fn infer_call_test() {
@@ -83,10 +84,8 @@ pub fn simple_custom_type_test() {
   // let untyped = call(var("None"), [])
   // let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
   // let Constructor("Option", [_]) = ast.resolve_type(type_, substitutions)
-
-  let untyped = call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
+  let untyped =
+    call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped)
-  |> io.debug()
   let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
-
 }

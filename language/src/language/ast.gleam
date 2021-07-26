@@ -111,7 +111,8 @@ fn do_typed_arguments_remove_name(
 }
 
 fn typer() {
-  Typer([], 1)
+  Typer([], 10)
+  // The new types aren't scoped. if one returns a variable from the env if could clash with parameterised one.
 }
 
 pub fn infer(untyped) {
@@ -135,7 +136,10 @@ pub fn infer(untyped) {
       "Some",
       PolyType(
         [1],
-        Constructor("Function", [Variable(1), Constructor("Option", [Variable(1)])]),
+        Constructor(
+          "Function",
+          [Variable(1), Constructor("Option", [Variable(1)])],
+        ),
       ),
     ),
     #(
@@ -163,36 +167,34 @@ fn free_type_vars_in_type(type_) {
 }
 
 fn instantiate(poly_type, typer) {
-  case poly_type {
-    PolyType([], type_) -> #(type_, typer)
-    // None
-    PolyType(
-      [v],
-      Constructor("Function", [Constructor("Option", [Variable(x)])]),
-    ) if v == x -> {
+  let PolyType(forall, type_) = poly_type
+  do_instantiate(forall, type_, typer)
+}
+
+fn do_instantiate(forall, type_, typer) {
+  case forall {
+    [] -> #(type_, typer)
+    [i, ..rest] -> {
       let #(type_var, typer) = generate_type_var(typer)
-      #(Constructor("Function", [Constructor("Option", [type_var])]), typer)
-    }
-    // Some
-    PolyType(
-      [v],
-      Constructor("Function", [Variable(x), Constructor("Option", [Variable(y)])]),
-    ) if v == x && v == y -> {
-      let #(type_var, typer) = generate_type_var(typer)
-      #(Constructor("Function", [type_var, Constructor("Option", [type_var])]), typer)
-    }
-    // signle arg function
-    PolyType([v], Constructor("Function", [Variable(x), Variable(y)])) if x == v && y == v -> {
-      let #(type_var, typer) = generate_type_var(typer)
-      #(Constructor("Function", [type_var, type_var]), typer)
-    }
-    // equal
-    PolyType([v], Constructor("Function", [Variable(x), Variable(y), Constructor("Boolean", [])])) if x == v && y == v -> {
-      let #(type_var, typer) = generate_type_var(typer)
-      #(Constructor("Function", [type_var, type_var, Constructor("Boolean", [])]), typer)
+      let Constructor(name, arguments) = type_
+      let arguments = do_replace_variables(arguments, Variable(i), type_var, [])
+      let type_ = Constructor(name, arguments)
+      do_instantiate(rest, type_, typer)
     }
   }
-  // let PolyType(forall, var_type)
+}
+
+fn do_replace_variables(arguments, old, new, accumulator) {
+  case arguments {
+    [] -> list.reverse(accumulator)
+    [argument, ..rest] -> {
+      let replacement = case argument == old {
+        True -> new
+        False -> argument
+      }
+      do_replace_variables(rest, old, new, [replacement, ..accumulator])
+    }
+  }
 }
 
 fn do_infer(untyped, environment, typer) {
