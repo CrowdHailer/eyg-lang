@@ -8,7 +8,8 @@ pub type Expression(t) {
   Let(name: String, value: #(t, Expression(t)), in: #(t, Expression(t)))
   Var(name: String)
   Binary
-  Case
+  // List constructors/patterns
+  Case(subject: #(t, Expression(t)), clauses: List(#(String, #(t, Expression(t)))))
   Tuple
   // arguments are names only
   Function(arguments: List(#(t, String)), body: #(t, Expression(t)))
@@ -115,44 +116,72 @@ fn typer() {
   // The new types aren't scoped. if one returns a variable from the env if could clash with parameterised one.
 }
 
+fn newtype(type_name, params, constructors) -> List(#(String, PolyType)) {
+  map(
+    constructors,
+    fn(constructor) {
+      let #(fn_name, arguments) = constructor
+      // Constructor when instantiate will be unifiying to a concrete type
+      let new_type = Constructor(type_name, map(params, Variable))
+      #(
+        fn_name,
+        PolyType(
+          forall: params,
+          type_: Constructor("Function", append(arguments, [new_type])),
+        ),
+      )
+    },
+  )
+}
+
+fn append(first: List(a), second: List(a)) -> List(a) {
+  do_append(list.reverse(first), second)
+}
+
+fn do_append(remaining, accumulator) {
+  case remaining {
+    [] -> accumulator
+    [item, ..rest] -> do_append(rest, [item, ..accumulator])
+  }
+}
+
+// Polymorphic functions in Gleam not working without annotation
+fn test() {
+  map([[1, 2], [3, 4]], fn(sublist) { map(sublist, fn(i) { i + 1 }) })
+}
+
+fn map(input: List(a), func: fn(a) -> b) -> List(b) {
+  do_map(input, func, [])
+}
+
+fn do_map(remaining, func, accumulator) {
+  case remaining {
+    [] -> list.reverse(accumulator)
+    [item, ..remaining] -> do_map(remaining, func, [func(item), ..accumulator])
+  }
+}
+
 pub fn infer(untyped) {
-  let environment = [
-    #(
-      "True",
-      PolyType([], Constructor("Function", [Constructor("Boolean", [])])),
-    ),
-    #(
-      "False",
-      PolyType([], Constructor("Function", [Constructor("Boolean", [])])),
-    ),
-    #(
-      "None",
-      PolyType(
-        [1],
-        Constructor("Function", [Constructor("Option", [Variable(1)])]),
+  let environment =
+    append(
+      newtype("Boolean", [], [#("True", []), #("False", [])]),
+      append(
+        newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])]),
+        [
+          #(
+            "equal",
+            PolyType(
+              [1],
+              Constructor(
+                "Function",
+                [Variable(1), Variable(1), Constructor("Boolean", [])],
+              ),
+            ),
+          ),
+        ],
       ),
-    ),
-    #(
-      "Some",
-      PolyType(
-        [1],
-        Constructor(
-          "Function",
-          [Variable(1), Constructor("Option", [Variable(1)])],
-        ),
-      ),
-    ),
-    #(
-      "equal",
-      PolyType(
-        [1],
-        Constructor(
-          "Function",
-          [Variable(1), Variable(1), Constructor("Boolean", [])],
-        ),
-      ),
-    ),
-  ]
+    )
+    // TODO case
   let typer = typer()
   try #(type_, tree, typer) = do_infer(untyped, environment, typer)
   let Typer(substitutions: substitutions, ..) = typer
@@ -219,6 +248,16 @@ fn do_infer(untyped, environment, typer) {
       let #(var_type, typer) = instantiate(poly_type, typer)
       Ok(#(var_type, Var(name), typer))
     }
+    // can do silly things like define a function in case subject and use in clause.
+    // This would need generalising
+    // Case(subject, clauses) -> {
+    //   try #(subject_type, subject_tree, typer) = do_infer(subject, environment, typer)
+    //   // Just name works for True False
+    //   let [#(name, then)] = clauses
+    //   // add name to environment 
+    //   try #(then_type, then_tree, typer) = do_infer(then, environment, typer)
+      
+    // }
     Function(with, in) -> {
       // There's no lets in arguments that escape the environment so keep reusing initial environment
       let #(typed_with, environment, typer) =
@@ -236,6 +275,7 @@ fn do_infer(untyped, environment, typer) {
       try #(f_type, f_tree, typer) = do_infer(function, environment, typer)
       try #(with_typed, typer) =
         do_infer_call_args(with, environment, typer, [])
+    // Think generating the return type is needed for handling recursive.
       let #(return_type, typer) = generate_type_var(typer)
       try typer =
         unify(
