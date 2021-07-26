@@ -1,4 +1,5 @@
-import gleam/io
+// NOTE io module doesn't work in JS land
+// import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
 
@@ -74,9 +75,9 @@ fn fetch_variable(environment, name) {
 
 fn push_arguments(untyped, environment, typer) {
   // TODO check double names
-  let #(typed, typer) = do_argument_typing(untyped, [], typer)
+  let #(typed, typer1) = do_argument_typing(untyped, [], typer)
   let environment = do_push_arguments(typed, environment)
-  #(typed, environment, typer)
+  #(typed, environment, typer1)
 }
 
 fn do_push_arguments(typed, environment) {
@@ -87,13 +88,13 @@ fn do_push_arguments(typed, environment) {
   }
 }
 
-fn do_argument_typing(arguments, typed, typer) {
-  case arguments {
+fn do_argument_typing(call_arguments, typed, typer) {
+  case call_arguments {
     [] -> #(list.reverse(typed), typer)
     [#(Nil, name), ..rest] -> {
-      let #(type_, typer) = generate_type_var(typer)
+      let #(type_, typer1) = generate_type_var(typer)
       let typed = [#(type_, name), ..typed]
-      do_argument_typing(rest, typed, typer)
+      do_argument_typing(rest, typed, typer1)
     }
   }
 }
@@ -120,14 +121,14 @@ fn newtype(type_name, params, constructors) -> List(#(String, PolyType)) {
   map(
     constructors,
     fn(constructor) {
-      let #(fn_name, arguments) = constructor
+      let #(fn_name, constructor_arguments) = constructor
       // Constructor when instantiate will be unifiying to a concrete type
       let new_type = Constructor(type_name, map(params, Variable))
       #(
         fn_name,
         PolyType(
           forall: params,
-          type_: Constructor("Function", append(arguments, [new_type])),
+          type_: Constructor("Function", append(constructor_arguments, [new_type])),
         ),
       )
     },
@@ -205,16 +206,16 @@ fn do_instantiate(forall, type_, typer) {
     [] -> #(type_, typer)
     [i, ..rest] -> {
       let #(type_var, typer) = generate_type_var(typer)
-      let Constructor(name, arguments) = type_
-      let arguments = do_replace_variables(arguments, Variable(i), type_var, [])
-      let type_ = Constructor(name, arguments)
+      let Constructor(name, constructor_arguments) = type_
+      let constructor_arguments = do_replace_variables(constructor_arguments, Variable(i), type_var, [])
+      let type_ = Constructor(name, constructor_arguments)
       do_instantiate(rest, type_, typer)
     }
   }
 }
 
-fn do_replace_variables(arguments, old, new, accumulator) {
-  case arguments {
+fn do_replace_variables(constructor_arguments, old, new, accumulator) {
+  case constructor_arguments {
     [] -> list.reverse(accumulator)
     [argument, ..rest] -> {
       let replacement = case argument == old {
@@ -245,8 +246,8 @@ fn do_infer(untyped, environment, typer) {
     }
     Var(name) -> {
       try poly_type = fetch_variable(environment, name)
-      let #(var_type, typer) = instantiate(poly_type, typer)
-      Ok(#(var_type, Var(name), typer))
+      let #(var_type, typer1) = instantiate(poly_type, typer)
+      Ok(#(var_type, Var(name), typer1))
     }
     // can do silly things like define a function in case subject and use in clause.
     // This would need generalising
@@ -260,28 +261,28 @@ fn do_infer(untyped, environment, typer) {
     // }
     Function(with, in) -> {
       // There's no lets in arguments that escape the environment so keep reusing initial environment
-      let #(typed_with, environment, typer) =
+      let #(typed_with, environmenttt, typer1) =
         push_arguments(with, environment, typer)
-      try #(in_type, in_tree, typer) = do_infer(in, environment, typer)
+      try #(in_type, in_tree, typer2) = do_infer(in, environmenttt, typer1)
       let typed_with: List(#(Type, String)) = typed_with
       let constructor_arguments =
         do_typed_arguments_remove_name(typed_with, [in_type])
       let type_ = Constructor("Function", constructor_arguments)
       let tree = Function(typed_with, #(in_type, in_tree))
-      Ok(#(type_, tree, typer))
+      Ok(#(type_, tree, typer2))
     }
     // N eed to understand generics but could every typed ast have a variable
     Call(function, with) -> {
-      try #(f_type, f_tree, typer) = do_infer(function, environment, typer)
-      try #(with_typed, typer) =
-        do_infer_call_args(with, environment, typer, [])
+      try #(f_type, f_tree, typer1) = do_infer(function, environment, typer)
+      try #(with_typed, typer2) =
+        do_infer_call_args(with, environment, typer1, [])
     // Think generating the return type is needed for handling recursive.
-      let #(return_type, typer) = generate_type_var(typer)
+      let #(return_type, typer3) = generate_type_var(typer2)
       try typer =
         unify(
           f_type,
           Constructor("Function", append_only_the_type(with_typed, return_type)),
-          typer,
+          typer3,
         )
       let type_ = return_type
       let tree = Call(#(f_type, f_tree), with_typed)
@@ -302,15 +303,15 @@ fn do_append_only_the_type(remaining, accumulator) {
   }
 }
 
-fn do_infer_call_args(arguments, environment, typer, accumulator) {
-  case arguments {
+fn do_infer_call_args(call_arguments, environment, typer, accumulator) {
+  case call_arguments {
     [] -> Ok(#(list.reverse(accumulator), typer))
     [untyped, ..rest] -> {
-      try #(type_, tree, typer) = do_infer(untyped, environment, typer)
+      try #(type_, tree, typer1) = do_infer(untyped, environment, typer)
       do_infer_call_args(
         rest,
         environment,
-        typer,
+        typer1,
         [#(type_, tree), ..accumulator],
       )
     }
