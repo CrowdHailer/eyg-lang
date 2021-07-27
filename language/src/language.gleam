@@ -11,11 +11,11 @@ pub fn lists() {
       ],
     )
 
-  
+
   todo("finish lists")
 }
 
 pub fn compiler() {
   let_("unify", function([#(Nil, "t1"), #(Nil, "t2")], var("t1")), var("unify"))
-  |> ast.infer()
+  |> ast.infer([])
 }

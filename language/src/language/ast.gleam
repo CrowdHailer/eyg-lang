@@ -131,22 +131,11 @@ pub fn newtype(type_name, params, constructors) -> List(#(String, PolyType)) {
         fn_name,
         PolyType(
           forall: params,
-          type_: Constructor("Function", append(arguments, [new_type])),
+          type_: Constructor("Function", list.append(arguments, [new_type])),
         ),
       )
     },
   )
-}
-
-fn append(first: List(a), second: List(a)) -> List(a) {
-  do_append(list.reverse(first), second)
-}
-
-fn do_append(remaining, accumulator) {
-  case remaining {
-    [] -> accumulator
-    [item, ..rest] -> do_append(rest, [item, ..accumulator])
-  }
 }
 
 // Polymorphic functions in Gleam not working without annotation
@@ -165,26 +154,7 @@ fn do_map(remaining, func, accumulator) {
   }
 }
 
-pub fn infer(untyped) {
-  let environment =
-    append(
-      newtype("Boolean", [], [#("True", []), #("False", [])]),
-      append(
-        newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])]),
-        [
-          #(
-            "equal",
-            PolyType(
-              [1],
-              Constructor(
-                "Function",
-                [Variable(1), Variable(1), Constructor("Boolean", [])],
-              ),
-            ),
-          ),
-        ],
-      ),
-    )
+pub fn infer(untyped, environment) {
   // TODO case
   let typer = typer()
   try #(type_, tree, typer) = do_infer(untyped, environment, typer)
