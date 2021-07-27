@@ -32,7 +32,7 @@ pub fn binary() {
 }
 
 pub fn function(for, in) {
-  #(Nil, Function(for, in))
+  #(Nil, Function(map(for, fn(name) { #(Nil, name) }), in))
 }
 
 pub fn call(function, with) {

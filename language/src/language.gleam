@@ -11,11 +11,12 @@ pub fn lists() {
       ],
     )
 
+  // let untyped = let_("do_reverse", function([]))
 
   todo("finish lists")
 }
 
 pub fn compiler() {
-  let_("unify", function([#(Nil, "t1"), #(Nil, "t2")], var("t1")), var("unify"))
+  let_("unify", function(["t1", "t2"], var("t1")), var("unify"))
   |> ast.infer([])
 }

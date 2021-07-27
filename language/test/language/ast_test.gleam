@@ -30,7 +30,7 @@ pub fn compile_error_for_missing_var_test() {
 }
 
 pub fn infer_identity_function_test() {
-  let untyped = function([#(Nil, "x")], var("x"))
+  let untyped = function(["x"], var("x"))
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, [])
   let Constructor("Function", [Variable(a), Variable(b)]) = type_
   let True = a == b
@@ -43,14 +43,14 @@ pub fn infer_call_test() {
 }
 
 pub fn infer_call_with_arguments_test() {
-  let untyped = call(function([#(Nil, "x")], var("x")), [binary()])
+  let untyped = call(function(["x"], var("x")), [binary()])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, [])
   let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
 }
 
 // infer with wrong call arguments
 pub fn generic_functions_test() {
-  let identity = function([#(Nil, "x")], var("x"))
+  let identity = function(["x"], var("x"))
   let untyped =
     let_(
       "id",
