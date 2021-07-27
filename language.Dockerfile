@@ -1,4 +1,4 @@
-FROM rust:1.53.0
+FROM rust:1.53.0 AS build
 
 ENV SHA="39db5f59df41f7e61aefa1971c910c21b082725e"
 RUN set -xe \
@@ -12,3 +12,11 @@ RUN set -xe \
 
 WORKDIR /opt/app
 RUN cargo install watchexec-cli
+
+FROM elixir:1.12.2
+# FROM node:16.5.0
+
+COPY --from=build /usr/local/cargo/bin/gleam /bin
+RUN gleam --version
+
+CMD ["gleam"]

@@ -9,7 +9,10 @@ pub type Expression(t) {
   Var(name: String)
   Binary
   // List constructors/patterns
-  Case(subject: #(t, Expression(t)), clauses: List(#(String, #(t, Expression(t)))))
+  Case(
+    subject: #(t, Expression(t)),
+    clauses: List(#(String, #(t, Expression(t)))),
+  )
   Tuple
   // arguments are names only
   Function(arguments: List(#(t, String)), body: #(t, Expression(t)))
@@ -44,6 +47,7 @@ pub type Type {
 
 pub type PolyType {
   PolyType(forall: List(Int), type_: Type)
+  RowType(forall: Int, rows: List(#(String, Type)))
 }
 
 // A linear type on substitutions would ensure passed around
@@ -116,7 +120,7 @@ fn typer() {
   // The new types aren't scoped. if one returns a variable from the env if could clash with parameterised one.
 }
 
-fn newtype(type_name, params, constructors) -> List(#(String, PolyType)) {
+pub fn newtype(type_name, params, constructors) -> List(#(String, PolyType)) {
   map(
     constructors,
     fn(constructor) {
@@ -181,7 +185,7 @@ pub fn infer(untyped) {
         ],
       ),
     )
-    // TODO case
+  // TODO case
   let typer = typer()
   try #(type_, tree, typer) = do_infer(untyped, environment, typer)
   let Typer(substitutions: substitutions, ..) = typer
@@ -248,6 +252,7 @@ fn do_infer(untyped, environment, typer) {
       let #(var_type, typer) = instantiate(poly_type, typer)
       Ok(#(var_type, Var(name), typer))
     }
+
     // can do silly things like define a function in case subject and use in clause.
     // This would need generalising
     // Case(subject, clauses) -> {
@@ -256,7 +261,6 @@ fn do_infer(untyped, environment, typer) {
     //   let [#(name, then)] = clauses
     //   // add name to environment 
     //   try #(then_type, then_tree, typer) = do_infer(then, environment, typer)
-      
     // }
     Function(with, in) -> {
       // There's no lets in arguments that escape the environment so keep reusing initial environment
@@ -275,7 +279,7 @@ fn do_infer(untyped, environment, typer) {
       try #(f_type, f_tree, typer) = do_infer(function, environment, typer)
       try #(with_typed, typer) =
         do_infer_call_args(with, environment, typer, [])
-    // Think generating the return type is needed for handling recursive.
+      // Think generating the return type is needed for handling recursive.
       let #(return_type, typer) = generate_type_var(typer)
       try typer =
         unify(
@@ -327,8 +331,29 @@ fn unify(t1, t2, typer) {
         True -> unify_all(args1, args2, typer)
       }
   }
+  // Row(fields, variable), Row(fields, variable) ->
+  // case do_shared(left, right, [], []) {
+  //   #([], []) -> unify(l_var, r_var)
+  //   #(only_left, only_right) -> {
+  //     // Need to exit on the case of empy onlyleft and right
+  //     // new_var
+  //     try unify(Row(only_right, new_var), l_var, typer)
+  //     try unify(Row(only_left, new_var), r_var, typer)
+  //   }
+  // }
 }
 
+// do_shared(left, right, shared, only_left) {
+//   case left {
+//     [] -> list.reverse(only_left), right, shared
+//     [#(name, l_type), ..rest] -> case list.key_pop(right, name) {
+//       Ok(r_type) -> todo("unify left and right") 
+//       Error(Nil) -> do_shared(rest, right_but_popped, shared, [#(name, l_type), ..only_left])
+//     }
+//   }
+// }
+// TODO exhausive on guards.
+// Pattern is Var(String) || Destructure || RowLookup (Does row lookup work for cases I don't think my types support union on rows.)
 fn unify_variable(i, any, typer) {
   let Typer(substitutions: substitutions, ..) = typer
   case list.key_find(substitutions, i) {

@@ -114,6 +114,7 @@ fn infer(node, state) {
     }
   }
 }
+
 // Constructor
 // pub fn hello_world_test() {
 //   let initial = State([], 0)
@@ -143,3 +144,7 @@ fn infer(node, state) {
 //   assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
 //   Nil
 // }
+pub fn run_compiler_test() {
+  let Ok(_) = language.lists()
+  let Ok(_) = language.compiler()
+}

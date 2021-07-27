@@ -1,6 +1,5 @@
-// Don't call this just io module messes up predefined modules
-
 if erlang {
+  // Don't call this just io module messes up predefined modules
   external type DoNotLeak
 
   external fn erl_print(String, List(a)) -> DoNotLeak =
