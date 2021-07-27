@@ -2,6 +2,13 @@ import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
 
+pub type Pattern {
+  // TODO make nested but not to begin with
+  Destructure(String, List(String))
+  // This should be var but is also a var in expression
+  Name(String)
+}
+
 // Use opaque type to keep in type information
 pub type Expression(t) {
   // Pattern is name in Let
@@ -11,7 +18,7 @@ pub type Expression(t) {
   // List constructors/patterns
   Case(
     subject: #(t, Expression(t)),
-    clauses: List(#(String, #(t, Expression(t)))),
+    clauses: List(#(Pattern, #(t, Expression(t)))),
   )
   Tuple
   // arguments are names only
@@ -19,6 +26,7 @@ pub type Expression(t) {
   Call(function: #(t, Expression(t)), arguments: List(#(t, Expression(t))))
 }
 
+// Call this builder
 pub fn let_(name, value, in) {
   #(Nil, Let(name, value, in))
 }
@@ -29,6 +37,10 @@ pub fn var(name) {
 
 pub fn binary() {
   #(Nil, Binary)
+}
+
+pub fn case_(subject, clauses) {
+  #(Nil, Case(subject, clauses))
 }
 
 pub fn function(for, in) {
@@ -225,13 +237,46 @@ fn do_infer(untyped, environment, typer) {
 
     // can do silly things like define a function in case subject and use in clause.
     // This would need generalising
-    // Case(subject, clauses) -> {
-    //   try #(subject_type, subject_tree, typer) = do_infer(subject, environment, typer)
+    // TODO recursion
+    Case(subject, clauses) ->
+      case clauses {
+        [first, second, ..rest] -> {
+          let rest = [second, ..rest]
+          try #(subject_type, subject_tree, typer) =
+            do_infer(subject, environment, typer)
+          let #(first_pattern, first_then) = first
+          let Destructure("Some", with) = first_pattern
+          let #(typed_with, environment, typer) =
+            // This map is because arguments untyped
+            push_arguments(
+              map(with, fn(name) { #(Nil, name) }),
+              environment,
+              typer,
+            )
+          try #(first_type, first_tree, typer) =
+            do_infer(first_then, environment, typer)
+          list.try_fold(
+            rest,
+            typer,
+            fn(element, typer) {
+              let #(pattern, then) = element
+              let #(environment, typer) =
+                bind_pattern(pattern, subject_type, typer)
+              try #(then_type, then_tree, typer) =
+                do_infer(then, environment, typer)
+              unify(then_type, first_type)
+              todo("finish fold, then DO RECURSION")
+            },
+          )
+          let tree = Case(#(subject_type, subject_tree), [])
+          Ok(#(first_type, tree, typer))
+        }
+        _ -> todo("Must be at least two clauses")
+      }
     //   // Just name works for True False
     //   let [#(name, then)] = clauses
     //   // add name to environment 
     //   try #(then_type, then_tree, typer) = do_infer(then, environment, typer)
-    // }
     Function(with, in) -> {
       // There's no lets in arguments that escape the environment so keep reusing initial environment
       let #(typed_with, environment, typer) =

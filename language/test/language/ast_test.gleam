@@ -1,7 +1,9 @@
 import gleam/io
 import gleam/list
-import language/ast.{binary, call, function, let_, var, newtype}
-import language/ast.{Binary, Constructor, Let, Var, Variable, PolyType}
+import language/ast.{binary, call, case_, function, let_, newtype, var}
+import language/ast.{
+  Binary, Constructor, Destructure, Let, Name, PolyType, Var, Variable,
+}
 
 // Literals
 pub fn infer_literal_binary_test() {
@@ -63,14 +65,6 @@ pub fn generic_functions_test() {
 
 // Custom record types. Does lambda calculus not go there, because functions are enough
 // tuple vs rows only rows needed in spread sheets.
-// Constructor("Foo")
-// Bool{
-//   True
-//   False
-// }
-// "Some" = PolyType(
-//   forall: [1], 
-//   Constructor("Function", [Variable(1), Constructor("Option", [Variable(1)])]))
 pub fn simple_custom_type_test() {
   let environment =
     list.append(
@@ -100,6 +94,38 @@ pub fn simple_custom_type_test() {
   // let Constructor("Option", [_]) = ast.resolve_type(type_, substitutions)
   let untyped =
     call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, environment)
+  let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
+}
+
+pub fn case_test() {
+  let environment =
+    list.append(
+      newtype("Boolean", [], [#("True", []), #("False", [])]),
+      list.append(
+        newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])]),
+        [
+          #(
+            "equal",
+            PolyType(
+              [1],
+              Constructor(
+                "Function",
+                [Variable(1), Variable(1), Constructor("Boolean", [])],
+              ),
+            ),
+          ),
+        ],
+      ),
+    )
+  let untyped =
+    case_(
+      call(var("None"), []),
+      [
+        #(Destructure("Some", ["value"]), var("value")),
+        #(Destructure("None", []), binary()),
+      ],
+    )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, environment)
   let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
 }

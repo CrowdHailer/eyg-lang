@@ -17,7 +17,6 @@ fn do_reverse(remaining, accumulator) {
   }
 }
 
-
 pub fn append(first: List(a), second: List(a)) -> List(a) {
   do_append(reverse(first), second)
 }

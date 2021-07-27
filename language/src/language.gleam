@@ -1,4 +1,7 @@
-import language/ast.{Constructor, Variable, function, let_, newtype, var}
+import language/ast.{
+  Constructor, Destructure, Name, Variable, call, case_, function, let_, newtype,
+  var,
+}
 
 pub fn lists() {
   let environment =
@@ -11,9 +14,33 @@ pub fn lists() {
       ],
     )
 
-  // let untyped = let_("do_reverse", function([]))
+  let untyped =
+    let_(
+      "do_reverse",
+      function(
+        ["remaining", "reversed"],
+        case_(
+          var("remaining"),
+          [
+            // Need recursion 
+            #(
+              Destructure("Cons", ["next", "remaining"]),
+              call(
+                var("do_reverse"),
+                [
+                  var("remaining"),
+                  call(var("Cons"), [var("next"), var("reversed")]),
+                ],
+              ),
+            ),
+            #(Destructure("Nil", []), var("todo")),
+          ],
+        ),
+      ),
+      var("todo"),
+    )
 
-  todo("finish lists")
+  let Ok(_) = ast.infer(untyped, environment)
 }
 
 pub fn compiler() {
