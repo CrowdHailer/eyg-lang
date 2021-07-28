@@ -151,48 +151,40 @@ fn do_replace_variables(arguments, old, new, accumulator) {
   }
 }
 
-fn bind_pattern(pattern, value_type, scope, typer: Typer) {
+fn bind_pattern(pattern, type_, scope, typer) {
   case pattern {
     Name(name) -> {
       //       TODO remove free variables that all already in the environment as they might get bound later
       // Can I convince myself that all generalisable variables must be above the typer current counter
       // Yes because the environment is passed in and not used again.
       // call this fn generalise when called here.
-      let forall = free_type_vars_in_type(value_type)
-      let scope = scope.set_variable(scope, name, PolyType(forall, value_type))
+      let forall = free_type_vars_in_type(type_)
+      let scope = scope.set_variable(scope, name, PolyType(forall, type_))
       Ok(#(scope, typer))
     }
     Destructure(constructor, with) ->
       // TODO unify constructor
       case constructor, with {
-        "Some", [_] -> {
-          let #(parameter_type, typer) = generate_type_var(typer)
-          try typer =
-            unify(Constructor("Option", [parameter_type]), value_type, typer)
-          Ok(#(scope, typer))
-        }
-        "None", [] -> {
-          let #(parameter_type, typer) = generate_type_var(typer)
-          try typer =
-            unify(Constructor("Option", [parameter_type]), value_type, typer)
-          Ok(#(scope, typer))
-        }
-        "User", [first_assignment] -> {
-          let expected = Constructor("User", [])
-          let has = value_type
-          try typer = unify(has, expected, typer)
-          // look up arg types from variant to get Constructor("Binary", [])
-          let first_type = Constructor("Binary", [])
-          let scope =
-            do_push_arguments([#(first_type, first_assignment)], scope)
+        "Function", _ -> todo("Can;t destructure function")
+        constructor, assignments -> {
+          try #(type_name, [], arguments) = scope.get_constructor(scope, constructor)
+          // instantiate arguments via parameters
+          // [v1] [String, v1]
+          // unify type_name and parameters I think we need an instantiated version of parameters too
+          // instantiate(params, params ++ arguements)
+          try typer = unify(type_, Constructor(type_name, []), typer)
+          io.debug("------------")
+          // TODO map error
+          let Ok(zipped) = list.zip(arguments, assignments)
+          let scope = do_push_arguments(zipped, scope)
+          io.debug(arguments)
+          io.debug(assignments)
+          // let scope =
+          //   do_push_arguments([#(first_type, first_assignment)], scope)
           Ok(#(scope, typer))
         }
       }
   }
-  // let #(typed_with, environment, typer) =
-  //   // This map is because arguments untyped
-  //   push_arguments(map(with, fn(name) { #(Nil, name) }), environment, typer)
-  // Ok(#(environment, typer))
 }
 
 fn do_match_remaining_clauses(rest, state) {

@@ -46,3 +46,16 @@ pub fn fold(input: List(a), initial: b, func: fn(a, b) -> b) -> b {
     [item, ..rest] -> fold(rest, func(item, initial), func)
   }
 }
+
+
+pub fn zip(left: List(a), right: List(b)) -> Result(List(#(a, b)), Nil) {
+  do_zip(left, right, [])
+}
+
+fn do_zip(left, right, acc) {
+  case left, right {
+    [], [] -> Ok(reverse(acc))
+    [a, ..left], [b, ..right] -> do_zip(left, right, [#(a, b), ..acc])
+    _, _ -> Error(Nil)
+  }
+}
