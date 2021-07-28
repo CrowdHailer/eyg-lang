@@ -6,13 +6,14 @@ pub type Pattern {
   // TODO make nested but not to begin with
   Destructure(String, List(String))
   // This should be var but is also a var in expression
+  // Assignment To
   Name(String)
 }
 
 // Use opaque type to keep in type information
 pub type Expression(t) {
   // Pattern is name in Let
-  Let(name: String, value: #(t, Expression(t)), in: #(t, Expression(t)))
+  Let(pattern: Pattern, value: #(t, Expression(t)), in: #(t, Expression(t)))
   Var(name: String)
   Binary
   // List constructors/patterns
@@ -28,7 +29,11 @@ pub type Expression(t) {
 
 // Call this builder
 pub fn let_(name, value, in) {
-  #(Nil, Let(name, value, in))
+  #(Nil, Let(Name(name), value, in))
+}
+
+pub fn destructure(constructor, arguments, value, in) {
+  #(Nil, Let(Destructure(constructor, arguments), value, in))
 }
 
 pub fn var(name) {
@@ -212,37 +217,71 @@ fn do_replace_variables(arguments, old, new, accumulator) {
   }
 }
 
-fn bind_pattern(pattern, value_type, environment, typer) {
+fn bind_pattern(pattern, value_type, environment, typer: Typer) {
   case pattern {
     Name(name) -> {
+      //       TODO remove free variables that all already in the environment as they might get bound later
+      // Can I convince myself that all generalisable variables must be above the typer current counter
+      // Yes because the environment is passed in and not used again.
+      // call this fn generalise when called here.
       let forall = free_type_vars_in_type(value_type)
       let environment =
         push_variable(environment, name, PolyType(forall, value_type))
-      #(environment, typer)
+      Ok(#(environment, typer))
     }
-    Destructure(constructor, with) -> {
+    Destructure(constructor, with) ->
       // TODO unify constructor
-      io.debug(constructor)
-      let #(typed_with, environment, typer) =
-        // This map is because arguments untyped
-        push_arguments(map(with, fn(name) { #(Nil, name) }), environment, typer)
-      #(environment, typer)
-    }
+      case constructor, with {
+        "Some", [_] -> {
+          let #(parameter_type, typer) = generate_type_var(typer)
+          try typer =
+            unify(Constructor("Option", [parameter_type]), value_type, typer)
+          Ok(#(environment, typer))
+        }
+        "None", [] -> {
+          let #(parameter_type, typer) = generate_type_var(typer)
+          try typer =
+            unify(Constructor("Option", [parameter_type]), value_type, typer)
+          Ok(#(environment, typer))
+        }
+        "User", [first_assignment] -> {
+          let expected = Constructor("User", [])
+          let has = value_type
+          try typer = unify(has, expected, typer)
+          // look up arg types from variant to get Constructor("Binary", [])
+          let first_type = Constructor("Binary", [])
+          let environment =
+            do_push_arguments([#(first_type, first_assignment)], environment)
+          Ok(#(environment, typer))
+        }
+      }
   }
+  // let #(typed_with, environment, typer) =
+  //   // This map is because arguments untyped
+  //   push_arguments(map(with, fn(name) { #(Nil, name) }), environment, typer)
+  // Ok(#(environment, typer))
 }
 
 fn do_match_remaining_clauses(rest, state) {
   let #(subject_type, first_type, typed_clauses, environment, typer) = state
   case rest {
-    [] -> Ok(#(list.reverse(typed_clauses),  typer))
+    [] -> Ok(#(list.reverse(typed_clauses), typer))
     [clause, ..rest] -> {
       let #(pattern, then) = clause
-      let #(inner_env, typer) =
+      try #(inner_env, typer) =
         bind_pattern(pattern, subject_type, environment, typer)
-      try #(type_, tree, typer) =
-        do_infer(then, inner_env, typer)
+      try #(type_, tree, typer) = do_infer(then, inner_env, typer)
       try typer = unify(type_, first_type, typer)
-      do_match_remaining_clauses(rest, #(subject_type, first_type, [#(pattern, #(type_, tree)), ..typed_clauses], environment, typer))
+      do_match_remaining_clauses(
+        rest,
+        #(
+          subject_type,
+          first_type,
+          [#(pattern, #(type_, tree)), ..typed_clauses],
+          environment,
+          typer,
+        ),
+      )
     }
   }
 }
@@ -251,17 +290,16 @@ fn do_infer(untyped, environment, typer) {
   let #(Nil, expression) = untyped
   case expression {
     Binary -> Ok(#(Constructor("Binary", []), Binary, typer))
-    Let(name: name, value: value, in: next) -> {
-      // TODO remove free variables that all already in the environment as they might get bound later
-      // Can I convince myself that all generalisable variables must be above the typer current counter
-      // Yes because the environment is passed in and not used again.
-      // call this fn generalise when called here.
+    Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, environment, typer)
-      let forall = free_type_vars_in_type(value_type)
-      let environment =
-        push_variable(environment, name, PolyType(forall, value_type))
+      // state consisting of env and typer
+      try #(environment, typer) =
+        bind_pattern(pattern, value_type, environment, typer)
+      io.debug("=====")
+      io.debug(environment)
       try #(next_type, next_tree, typer) = do_infer(next, environment, typer)
-      let tree = Let(name, #(value_type, value_tree), #(next_type, next_tree))
+      let tree =
+        Let(pattern, #(value_type, value_tree), #(next_type, next_tree))
       Ok(#(next_type, tree, typer))
     }
     Var(name) -> {
@@ -280,12 +318,20 @@ fn do_infer(untyped, environment, typer) {
           try #(subject_type, subject_tree, typer) =
             do_infer(subject, environment, typer)
           let #(first_pattern, first_then) = first
-          let #(first_env, typer) =
+          try #(first_env, typer) =
             bind_pattern(first_pattern, subject_type, environment, typer)
           try #(first_type, first_tree, typer) =
             do_infer(first_then, first_env, typer)
-          try #(clauses, typer) = do_match_remaining_clauses(rest, #(subject_type, first_type, [], environment, typer))
-          let tree = Case(#(subject_type, subject_tree), [#(first_pattern, #(first_type, first_tree)), ..clauses])
+          try #(clauses, typer) =
+            do_match_remaining_clauses(
+              rest,
+              #(subject_type, first_type, [], environment, typer),
+            )
+          let tree =
+            Case(
+              #(subject_type, subject_tree),
+              [#(first_pattern, #(first_type, first_tree)), ..clauses],
+            )
           Ok(#(first_type, tree, typer))
         }
         _ -> todo("Must be at least two clauses")
@@ -294,8 +340,14 @@ fn do_infer(untyped, environment, typer) {
       // There's no lets in arguments that escape the environment so keep reusing initial environment
       let #(typed_with, environment, typer) =
         push_arguments(with, environment, typer)
+      // Only use unkown return type when in recursive fn. should always be unified with something otherwise void.
+      // try unifying with never
+      let #(unknown_return_type, typer) = generate_type_var(typer)
+      let constructor_arguments =
+        do_typed_arguments_remove_name(typed_with, [unknown_return_type])
+      let recur_type = Constructor("Function", constructor_arguments)
+      let environment = do_push_arguments([#(recur_type, "self")], environment)
       try #(in_type, in_tree, typer) = do_infer(in, environment, typer)
-      let typed_with: List(#(Type, String)) = typed_with
       let constructor_arguments =
         do_typed_arguments_remove_name(typed_with, [in_type])
       let type_ = Constructor("Function", constructor_arguments)
@@ -354,10 +406,19 @@ fn unify(t1, t2, typer) {
     t1, t2 if t1 == t2 -> Ok(typer)
     Variable(i), any -> unify_variable(i, any, typer)
     any, Variable(i) -> unify_variable(i, any, typer)
-    Constructor(n1, args1), Constructor(n2, args2) ->
+    Constructor(n1, args1), Constructor(n2, args2) -> {
+      io.debug(typer)
+      io.debug(t1)
+      io.debug(t2)
       case n1 == n2 {
         True -> unify_all(args1, args2, typer)
+        False -> {
+          io.debug(n1)
+          io.debug(n2)
+          Error("mismatched constructors")
+        }
       }
+    }
   }
   // Row(fields, variable), Row(fields, variable) ->
   // case do_shared(left, right, [], []) {
