@@ -2,7 +2,9 @@ import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
 import language/scope
-import language/type_.{Constructor, PolyType, Type, Variable, Typer, unify, generate_type_var}
+import language/type_.{
+  Constructor, PolyType, Type, Typer, Variable, generate_type_var, unify,
+}
 
 pub type Pattern {
   // TODO make nested but not to begin with
@@ -166,13 +168,20 @@ fn bind_pattern(pattern, type_, scope, typer) {
       case constructor, with {
         "Function", _ -> todo("Can;t destructure function")
         constructor, assignments -> {
-          try #(type_name, parameters, arguments) = scope.get_constructor(scope, constructor)
-          let #(replacements, typer) = generate_replacement_vars(parameters, [], typer)
-          let replaced_arguments = replace_variables(arguments, replacements, [])
-          let type_params = list.map(replacements, fn(pair){ 
-            let #(_, variable) = pair
-            variable
-          })
+          try #(type_name, parameters, arguments) =
+            scope.get_constructor(scope, constructor)
+          let #(replacements, typer) =
+            generate_replacement_vars(parameters, [], typer)
+          let replaced_arguments =
+            replace_variables(arguments, replacements, [])
+          let type_params =
+            list.map(
+              replacements,
+              fn(pair) {
+                let #(_, variable) = pair
+                variable
+              },
+            )
           try typer = unify(type_, Constructor(type_name, type_params), typer)
           let Ok(zipped) = list.zip(replaced_arguments, assignments)
           let scope = do_push_arguments(zipped, scope)
@@ -182,24 +191,33 @@ fn bind_pattern(pattern, type_, scope, typer) {
   }
 }
 
-fn generate_replacement_vars(parameterised, replacements, typer) -> #(List(#(Int, Type)), Typer) {
+fn generate_replacement_vars(
+  parameterised,
+  replacements,
+  typer,
+) -> #(List(#(Int, Type)), Typer) {
   case parameterised {
     [] -> #(list.reverse(replacements), typer)
     [i, ..parameterised] -> {
       let #(var, typer) = generate_type_var(typer)
-      generate_replacement_vars(parameterised, [#(i, var), ..replacements], typer)
+      generate_replacement_vars(
+        parameterised,
+        [#(i, var), ..replacements],
+        typer,
+      )
     }
   }
 }
 
-fn replace_variables(arguments, replacements, acc) { 
+fn replace_variables(arguments, replacements, acc) {
   case arguments {
-    [] -> list.reverse(acc) 
+    [] -> list.reverse(acc)
     [Variable(p), ..arguments] -> {
       let Ok(new_var) = list.key_find(replacements, p)
       replace_variables(arguments, replacements, [new_var, ..acc])
     }
-    [argument, ..arguments] -> replace_variables(arguments, replacements, [argument, ..arguments])
+    [argument, ..arguments] ->
+      replace_variables(arguments, replacements, [argument, ..arguments])
   }
 }
 
@@ -281,12 +299,15 @@ fn do_infer(untyped, scope, typer) {
       // try unifying with never
       let #(unknown_return_type, typer) = generate_type_var(typer)
       let constructor_arguments =
-        do_typed_arguments_remove_name(typed_with, [unknown_return_type])
+        do_typed_arguments_remove_name(typed_with, [])
+        |> list.append([unknown_return_type])
       let recur_type = Constructor("Function", constructor_arguments)
+      
       let scope = do_push_arguments([#(recur_type, "self")], scope)
       try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
       let constructor_arguments =
-        do_typed_arguments_remove_name(typed_with, [in_type])
+        do_typed_arguments_remove_name(typed_with, [])
+        |> list.append([in_type])
       let type_ = Constructor("Function", constructor_arguments)
       let tree = Function(typed_with, #(in_type, in_tree))
       Ok(#(type_, tree, typer))
@@ -336,5 +357,3 @@ fn do_infer_call_args(arguments, environment, typer, accumulator) {
     }
   }
 }
-
-

@@ -107,45 +107,30 @@ pub fn case_test() {
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
   let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
 }
-// pub fn recursion_test() {
-//     let environment =
-//     list.append(
-//       newtype("Boolean", [], [#("True", []), #("False", [])]),
-//       list.append(
-//         newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])]),
-//         [
-//           #(
-//             "equal",
-//             PolyType(
-//               [1],
-//               Constructor(
-//                 "Function",
-//                 [Variable(1), Variable(1), Constructor("Boolean", [])],
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     )
-//   let untyped =
-//     function(["x"], case_(
-//       var("x"),
-//       [
-//         #(Destructure("Some", ["value"]), call(var("self"), [call(var("None"), [])])),
-//         #(Destructure("None", []), binary()),
-//       ],
-//     ))
-//     // recur as a keyword same as clojure
-//   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, environment)
-//   let Constructor("Function", [input, return]) = type_.resolve_type(type_, substitutions)
-//   io.debug(input)
-//   io.debug(return)
-//   io.debug(tree)
-//   io.debug(substitutions)
-//   let 1 = 0
-// }
-// assignment
 
+pub fn recursion_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+  let untyped =
+    function(
+      ["x"],
+      case_(
+        var("x"),
+        [
+          #(
+            Destructure("Some", ["value"]),
+            call(var("self"), [call(var("None"), [])]),
+          ),
+          #(Destructure("None", []), binary()),
+        ],
+      ),
+    )
+  // recur as a keyword same as clojure
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
+  let Constructor("Function", [input, return]) =
+    type_.resolve_type(type_, substitutions)
+}
 
 pub fn destructure_test() {
   let scope =

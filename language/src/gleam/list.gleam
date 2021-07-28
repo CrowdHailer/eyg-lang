@@ -47,7 +47,6 @@ pub fn fold(input: List(a), initial: b, func: fn(a, b) -> b) -> b {
   }
 }
 
-
 pub fn zip(left: List(a), right: List(b)) -> Result(List(#(a, b)), Nil) {
   do_zip(left, right, [])
 }

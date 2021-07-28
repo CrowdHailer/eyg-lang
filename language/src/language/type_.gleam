@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+
 // TODO name typer
 pub type Type {
   Constructor(String, List(Type))
@@ -9,8 +10,8 @@ pub type Type {
 pub type PolyType {
   PolyType(forall: List(Int), type_: Type)
 }
-//   RowType(forall: Int, rows: List(#(String, Type)))
 
+//   RowType(forall: Int, rows: List(#(String, Type)))
 // A linear type on substitutions would ensure passed around
 // TODO merge substitutions, need to keep passing next var in typer
 // type checker state
@@ -27,21 +28,15 @@ pub fn generate_type_var(typer) {
   #(Variable(var), Typer(..typer, next_type_var: var + 1))
 }
 
-
 pub fn unify(t1, t2, typer) {
   case t1, t2 {
     t1, t2 if t1 == t2 -> Ok(typer)
     Variable(i), any -> unify_variable(i, any, typer)
     any, Variable(i) -> unify_variable(i, any, typer)
     Constructor(n1, args1), Constructor(n2, args2) -> {
-      io.debug(typer)
-      io.debug(t1)
-      io.debug(t2)
       case n1 == n2 {
         True -> unify_all(args1, args2, typer)
         False -> {
-          io.debug(n1)
-          io.debug(n2)
           Error("mismatched constructors")
         }
       }

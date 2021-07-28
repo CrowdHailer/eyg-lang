@@ -32,9 +32,9 @@ pub fn set_variable(scope, label, type_) {
 }
 
 pub fn newtype(scope, type_name, params, constructors) {
-    let Scope(types: types, ..) = scope
-    let types = [#(type_name, params, constructors), ..types]
-    let scope = Scope(..scope, types: types)
+  let Scope(types: types, ..) = scope
+  let types = [#(type_name, params, constructors), ..types]
+  let scope = Scope(..scope, types: types)
   list.fold(
     constructors,
     scope,
@@ -64,20 +64,18 @@ pub fn get_variable(scope, label) {
 }
 
 pub fn get_constructor(scope, constructor) {
-    let Scope(types: types, ..) = scope
-    do_get_constructor(types, constructor)
+  let Scope(types: types, ..) = scope
+  do_get_constructor(types, constructor)
 }
 
 fn do_get_constructor(types, constructor) {
-    case types {
-        [#(type_name, params, variants), ..types] -> {
-            case list.key_find(variants, constructor) {
-                Ok(arguments) -> Ok(#(type_name, params, arguments))
-                Error(Nil) -> do_get_constructor(types, constructor)
-            }
-        }
-
-    }
+  case types {
+    [#(type_name, params, variants), ..types] ->
+      case list.key_find(variants, constructor) {
+        Ok(arguments) -> Ok(#(type_name, params, arguments))
+        Error(Nil) -> do_get_constructor(types, constructor)
+      }
+  }
 }
 
 // fn generalise_type(type_, typer) {
