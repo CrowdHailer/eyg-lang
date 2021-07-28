@@ -1,12 +1,14 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
+import language/scope
+import language/type_.{Constructor, PolyType, Type, Variable}
 
 pub type Pattern {
   // TODO make nested but not to begin with
   Destructure(String, List(String))
   // This should be var but is also a var in expression
-  // Assignment To
+  // Assignment To Label
   Name(String)
 }
 
@@ -49,32 +51,22 @@ pub fn case_(subject, clauses) {
 }
 
 pub fn function(for, in) {
-  #(Nil, Function(map(for, fn(name) { #(Nil, name) }), in))
+  #(Nil, Function(list.map(for, fn(name) { #(Nil, name) }), in))
 }
 
 pub fn call(function, with) {
   #(Nil, Call(function, with))
 }
 
-// Typed
-pub type Type {
-  Constructor(String, List(Type))
-  Variable(Int)
-}
-
-pub type PolyType {
-  PolyType(forall: List(Int), type_: Type)
-  RowType(forall: Int, rows: List(#(String, Type)))
-}
-
 // A linear type on substitutions would ensure passed around
 // TODO merge substitutions, need to keep passing next var in typer
 // type checker state
 type Typer {
-  Typer(// tracking names to types
-    // environment: List(#(String, Type)),
+  Typer(
     // typer passed as globally acumulating set, env is scoped
-    substitutions: List(#(Int, Type)), next_type_var: Int)
+    substitutions: List(#(Int, Type)),
+    next_type_var: Int,
+  )
 }
 
 fn generate_type_var(typer) {
@@ -82,29 +74,21 @@ fn generate_type_var(typer) {
   #(Variable(var), Typer(..typer, next_type_var: var + 1))
 }
 
-fn push_variable(environment, name, type_) {
-  [#(name, type_), ..environment]
-}
-
-fn fetch_variable(environment, name) {
-  case list.key_find(environment, name) {
-    Ok(value) -> Ok(value)
-    Error(Nil) -> Error("Variable not in environment")
-  }
-}
-
-fn push_arguments(untyped, environment, typer) {
+fn push_arguments(untyped, scope, typer) {
   // TODO check double names
   let #(typed, typer) = do_argument_typing(untyped, [], typer)
-  let environment = do_push_arguments(typed, environment)
-  #(typed, environment, typer)
+  let scope = do_push_arguments(typed, scope)
+  #(typed, scope, typer)
 }
 
-fn do_push_arguments(typed, environment) {
+fn do_push_arguments(typed, scope) {
   case typed {
-    [] -> environment
+    [] -> scope
     [#(type_, name), ..rest] ->
-      do_push_arguments(rest, [#(name, PolyType([], type_)), ..environment])
+      do_push_arguments(
+        rest,
+        scope.set_variable(scope, name, PolyType([], type_)),
+      )
   }
 }
 
@@ -135,40 +119,6 @@ fn do_typed_arguments_remove_name(
 fn typer() {
   Typer([], 10)
   // The new types aren't scoped. if one returns a variable from the env if could clash with parameterised one.
-}
-
-pub fn newtype(type_name, params, constructors) -> List(#(String, PolyType)) {
-  map(
-    constructors,
-    fn(constructor) {
-      let #(fn_name, arguments) = constructor
-      // Constructor when instantiate will be unifiying to a concrete type
-      let new_type = Constructor(type_name, map(params, Variable))
-      #(
-        fn_name,
-        PolyType(
-          forall: params,
-          type_: Constructor("Function", list.append(arguments, [new_type])),
-        ),
-      )
-    },
-  )
-}
-
-// Polymorphic functions in Gleam not working without annotation
-fn test() {
-  map([[1, 2], [3, 4]], fn(sublist) { map(sublist, fn(i) { i + 1 }) })
-}
-
-fn map(input: List(a), func: fn(a) -> b) -> List(b) {
-  do_map(input, func, [])
-}
-
-fn do_map(remaining, func, accumulator) {
-  case remaining {
-    [] -> list.reverse(accumulator)
-    [item, ..remaining] -> do_map(remaining, func, [func(item), ..accumulator])
-  }
 }
 
 pub fn infer(untyped, environment) {
@@ -217,7 +167,7 @@ fn do_replace_variables(arguments, old, new, accumulator) {
   }
 }
 
-fn bind_pattern(pattern, value_type, environment, typer: Typer) {
+fn bind_pattern(pattern, value_type, scope, typer: Typer) {
   case pattern {
     Name(name) -> {
       //       TODO remove free variables that all already in the environment as they might get bound later
@@ -225,9 +175,8 @@ fn bind_pattern(pattern, value_type, environment, typer: Typer) {
       // Yes because the environment is passed in and not used again.
       // call this fn generalise when called here.
       let forall = free_type_vars_in_type(value_type)
-      let environment =
-        push_variable(environment, name, PolyType(forall, value_type))
-      Ok(#(environment, typer))
+      let scope = scope.set_variable(scope, name, PolyType(forall, value_type))
+      Ok(#(scope, typer))
     }
     Destructure(constructor, with) ->
       // TODO unify constructor
@@ -236,13 +185,13 @@ fn bind_pattern(pattern, value_type, environment, typer: Typer) {
           let #(parameter_type, typer) = generate_type_var(typer)
           try typer =
             unify(Constructor("Option", [parameter_type]), value_type, typer)
-          Ok(#(environment, typer))
+          Ok(#(scope, typer))
         }
         "None", [] -> {
           let #(parameter_type, typer) = generate_type_var(typer)
           try typer =
             unify(Constructor("Option", [parameter_type]), value_type, typer)
-          Ok(#(environment, typer))
+          Ok(#(scope, typer))
         }
         "User", [first_assignment] -> {
           let expected = Constructor("User", [])
@@ -250,9 +199,9 @@ fn bind_pattern(pattern, value_type, environment, typer: Typer) {
           try typer = unify(has, expected, typer)
           // look up arg types from variant to get Constructor("Binary", [])
           let first_type = Constructor("Binary", [])
-          let environment =
-            do_push_arguments([#(first_type, first_assignment)], environment)
-          Ok(#(environment, typer))
+          let scope =
+            do_push_arguments([#(first_type, first_assignment)], scope)
+          Ok(#(scope, typer))
         }
       }
   }
@@ -286,24 +235,21 @@ fn do_match_remaining_clauses(rest, state) {
   }
 }
 
-fn do_infer(untyped, environment, typer) {
+fn do_infer(untyped, scope, typer) {
   let #(Nil, expression) = untyped
   case expression {
     Binary -> Ok(#(Constructor("Binary", []), Binary, typer))
     Let(pattern, value, in: next) -> {
-      try #(value_type, value_tree, typer) = do_infer(value, environment, typer)
+      try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
       // state consisting of env and typer
-      try #(environment, typer) =
-        bind_pattern(pattern, value_type, environment, typer)
-      io.debug("=====")
-      io.debug(environment)
-      try #(next_type, next_tree, typer) = do_infer(next, environment, typer)
+      try #(scope, typer) = bind_pattern(pattern, value_type, scope, typer)
+      try #(next_type, next_tree, typer) = do_infer(next, scope, typer)
       let tree =
         Let(pattern, #(value_type, value_tree), #(next_type, next_tree))
       Ok(#(next_type, tree, typer))
     }
     Var(name) -> {
-      try poly_type = fetch_variable(environment, name)
+      try poly_type = scope.get_variable(scope, name)
       let #(var_type, typer) = instantiate(poly_type, typer)
       Ok(#(var_type, Var(name), typer))
     }
@@ -316,16 +262,16 @@ fn do_infer(untyped, environment, typer) {
         [first, second, ..rest] -> {
           let rest = [second, ..rest]
           try #(subject_type, subject_tree, typer) =
-            do_infer(subject, environment, typer)
+            do_infer(subject, scope, typer)
           let #(first_pattern, first_then) = first
           try #(first_env, typer) =
-            bind_pattern(first_pattern, subject_type, environment, typer)
+            bind_pattern(first_pattern, subject_type, scope, typer)
           try #(first_type, first_tree, typer) =
             do_infer(first_then, first_env, typer)
           try #(clauses, typer) =
             do_match_remaining_clauses(
               rest,
-              #(subject_type, first_type, [], environment, typer),
+              #(subject_type, first_type, [], scope, typer),
             )
           let tree =
             Case(
@@ -337,17 +283,16 @@ fn do_infer(untyped, environment, typer) {
         _ -> todo("Must be at least two clauses")
       }
     Function(with, in) -> {
-      // There's no lets in arguments that escape the environment so keep reusing initial environment
-      let #(typed_with, environment, typer) =
-        push_arguments(with, environment, typer)
+      // There's no lets in arguments that escape the scope so keep reusing initial scope
+      let #(typed_with, scope, typer) = push_arguments(with, scope, typer)
       // Only use unkown return type when in recursive fn. should always be unified with something otherwise void.
       // try unifying with never
       let #(unknown_return_type, typer) = generate_type_var(typer)
       let constructor_arguments =
         do_typed_arguments_remove_name(typed_with, [unknown_return_type])
       let recur_type = Constructor("Function", constructor_arguments)
-      let environment = do_push_arguments([#(recur_type, "self")], environment)
-      try #(in_type, in_tree, typer) = do_infer(in, environment, typer)
+      let scope = do_push_arguments([#(recur_type, "self")], scope)
+      try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
       let constructor_arguments =
         do_typed_arguments_remove_name(typed_with, [in_type])
       let type_ = Constructor("Function", constructor_arguments)
@@ -356,9 +301,8 @@ fn do_infer(untyped, environment, typer) {
     }
     // N eed to understand generics but could every typed ast have a variable
     Call(function, with) -> {
-      try #(f_type, f_tree, typer) = do_infer(function, environment, typer)
-      try #(with_typed, typer) =
-        do_infer_call_args(with, environment, typer, [])
+      try #(f_type, f_tree, typer) = do_infer(function, scope, typer)
+      try #(with_typed, typer) = do_infer_call_args(with, scope, typer, [])
       // Think generating the return type is needed for handling recursive.
       let #(return_type, typer) = generate_type_var(typer)
       try typer =
