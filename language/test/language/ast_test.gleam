@@ -91,37 +91,22 @@ pub fn simple_custom_type_test() {
   let Constructor("Boolean", []) = type_.resolve_type(type_, substitutions)
 }
 
-// pub fn case_test() {
-//   let environment =
-//     list.append(
-//       newtype("Boolean", [], [#("True", []), #("False", [])]),
-//       list.append(
-//         newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])]),
-//         [
-//           #(
-//             "equal",
-//             PolyType(
-//               [1],
-//               Constructor(
-//                 "Function",
-//                 [Variable(1), Variable(1), Constructor("Boolean", [])],
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     )
-//   let untyped =
-//     case_(
-//       call(var("None"), []),
-//       [
-//         #(Destructure("Some", ["value"]), var("value")),
-//         #(Destructure("None", []), binary()),
-//       ],
-//     )
-//   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, environment)
-//   let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
-// }
+pub fn case_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+
+  let untyped =
+    case_(
+      call(var("None"), []),
+      [
+        #(Destructure("Some", ["value"]), var("value")),
+        #(Destructure("None", []), binary()),
+      ],
+    )
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
+  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
+}
 // pub fn recursion_test() {
 //     let environment =
 //     list.append(
@@ -160,6 +145,8 @@ pub fn simple_custom_type_test() {
 //   let 1 = 0
 // }
 // assignment
+
+
 pub fn destructure_test() {
   let scope =
     scope.new()

@@ -163,27 +163,43 @@ fn bind_pattern(pattern, type_, scope, typer) {
       Ok(#(scope, typer))
     }
     Destructure(constructor, with) ->
-      // TODO unify constructor
       case constructor, with {
         "Function", _ -> todo("Can;t destructure function")
         constructor, assignments -> {
-          try #(type_name, [], arguments) = scope.get_constructor(scope, constructor)
-          // instantiate arguments via parameters
-          // [v1] [String, v1]
-          // unify type_name and parameters I think we need an instantiated version of parameters too
-          // instantiate(params, params ++ arguements)
-          try typer = unify(type_, Constructor(type_name, []), typer)
-          io.debug("------------")
-          // TODO map error
-          let Ok(zipped) = list.zip(arguments, assignments)
+          try #(type_name, parameters, arguments) = scope.get_constructor(scope, constructor)
+          let #(replacements, typer) = generate_replacement_vars(parameters, [], typer)
+          let replaced_arguments = replace_variables(arguments, replacements, [])
+          let type_params = list.map(replacements, fn(pair){ 
+            let #(_, variable) = pair
+            variable
+          })
+          try typer = unify(type_, Constructor(type_name, type_params), typer)
+          let Ok(zipped) = list.zip(replaced_arguments, assignments)
           let scope = do_push_arguments(zipped, scope)
-          io.debug(arguments)
-          io.debug(assignments)
-          // let scope =
-          //   do_push_arguments([#(first_type, first_assignment)], scope)
           Ok(#(scope, typer))
         }
       }
+  }
+}
+
+fn generate_replacement_vars(parameterised, replacements, typer) -> #(List(#(Int, Type)), Typer) {
+  case parameterised {
+    [] -> #(list.reverse(replacements), typer)
+    [i, ..parameterised] -> {
+      let #(var, typer) = generate_type_var(typer)
+      generate_replacement_vars(parameterised, [#(i, var), ..replacements], typer)
+    }
+  }
+}
+
+fn replace_variables(arguments, replacements, acc) { 
+  case arguments {
+    [] -> list.reverse(acc) 
+    [Variable(p), ..arguments] -> {
+      let Ok(new_var) = list.key_find(replacements, p)
+      replace_variables(arguments, replacements, [new_var, ..acc])
+    }
+    [argument, ..arguments] -> replace_variables(arguments, replacements, [argument, ..arguments])
   }
 }
 
