@@ -25,10 +25,8 @@ pub fn new() {
   Scope([], [])
 }
 
-// set_variable vs assign
 pub fn set_variable(scope, label, type_) {
   let Scope(variables: variables, ..) = scope
-  //   todo generalize
   let variables = [#(label, type_), ..variables]
   Scope(..scope, variables: variables)
 }

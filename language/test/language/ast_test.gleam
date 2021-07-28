@@ -41,13 +41,13 @@ pub fn infer_identity_function_test() {
 pub fn infer_call_test() {
   let untyped = call(function([], binary()), [])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
-  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
 }
 
 pub fn infer_call_with_arguments_test() {
   let untyped = call(function(["x"], var("x")), [binary()])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
-  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
 }
 
 // infer with wrong call arguments
@@ -60,7 +60,7 @@ pub fn generic_functions_test() {
       let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary()])),
     )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
-  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
 }
 
 // Custom record types. Does lambda calculus not go there, because functions are enough
@@ -83,12 +83,12 @@ pub fn simple_custom_type_test() {
 
   let untyped = call(var("True"), [])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
+  let Constructor("Boolean", []) = type_.resolve_type(type_, substitutions)
 
   let untyped =
     call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
+  let Constructor("Boolean", []) = type_.resolve_type(type_, substitutions)
 }
 
 // pub fn case_test() {
@@ -120,7 +120,7 @@ pub fn simple_custom_type_test() {
 //       ],
 //     )
 //   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, environment)
-//   let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+//   let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
 // }
 // pub fn recursion_test() {
 //     let environment =
@@ -152,7 +152,7 @@ pub fn simple_custom_type_test() {
 //     ))
 //     // recur as a keyword same as clojure
 //   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, environment)
-//   let Constructor("Function", [input, return]) = ast.resolve_type(type_, substitutions)
+//   let Constructor("Function", [input, return]) = type_.resolve_type(type_, substitutions)
 //   io.debug(input)
 //   io.debug(return)
 //   io.debug(tree)
@@ -173,5 +173,5 @@ pub fn destructure_test() {
       var("first_name"),
     )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
+  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
 }
