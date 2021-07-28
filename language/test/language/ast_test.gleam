@@ -108,6 +108,32 @@ pub fn case_test() {
   let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
 }
 
+pub fn case_with_function_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+
+  let untyped =
+    function(
+      ["x"],
+      case_(
+        var("x"),
+        [
+          #(Destructure("Some", ["value"]), var("value")),
+          #(Destructure("None", []), binary()),
+        ],
+      ),
+    )
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
+  let Constructor(
+    "Function",
+    [
+      Constructor("Option", [Constructor("Binary", [])]),
+      Constructor("Binary", []),
+    ],
+  ) = type_.resolve_type(type_, substitutions)
+}
+
 pub fn recursion_test() {
   let scope =
     scope.new()

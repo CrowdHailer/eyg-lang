@@ -216,8 +216,12 @@ fn replace_variables(arguments, replacements, acc) {
       let Ok(new_var) = list.key_find(replacements, p)
       replace_variables(arguments, replacements, [new_var, ..acc])
     }
-    [argument, ..arguments] ->
-      replace_variables(arguments, replacements, [argument, ..arguments])
+    [Constructor(name, inner), ..arguments] ->
+      replace_variables(
+        arguments,
+        replacements,
+        [Constructor(name, replace_variables(inner, replacements, [])), ..acc],
+      )
   }
 }
 
@@ -302,7 +306,6 @@ fn do_infer(untyped, scope, typer) {
         do_typed_arguments_remove_name(typed_with, [])
         |> list.append([unknown_return_type])
       let recur_type = Constructor("Function", constructor_arguments)
-      
       let scope = do_push_arguments([#(recur_type, "self")], scope)
       try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
       let constructor_arguments =

@@ -33,14 +33,11 @@ pub fn unify(t1, t2, typer) {
     t1, t2 if t1 == t2 -> Ok(typer)
     Variable(i), any -> unify_variable(i, any, typer)
     any, Variable(i) -> unify_variable(i, any, typer)
-    Constructor(n1, args1), Constructor(n2, args2) -> {
+    Constructor(n1, args1), Constructor(n2, args2) ->
       case n1 == n2 {
         True -> unify_all(args1, args2, typer)
-        False -> {
-          Error("mismatched constructors")
-        }
+        False -> Error("mismatched constructors")
       }
-    }
   }
   // Row(fields, variable), Row(fields, variable) ->
   // case do_shared(left, right, [], []) {
@@ -102,7 +99,9 @@ fn unify_all(t1s, t2s, typer) {
 
 pub fn resolve_type(type_, substitutions) {
   case type_ {
-    Constructor(name, args) -> type_
+    Constructor(name, args) -> {
+        Constructor(name, list.map(args, resolve_type(_, substitutions)))
+    }
     Variable(i) ->
       case list.key_find(substitutions, i) {
         Ok(Variable(j) as substitution) if i != j ->

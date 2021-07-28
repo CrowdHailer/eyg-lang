@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import language/type_.{Constructor, PolyType, Type, Variable}
 
@@ -59,7 +60,10 @@ pub fn get_variable(scope, label) {
   let Scope(variables: variables, ..) = scope
   case list.key_find(variables, label) {
     Ok(value) -> Ok(value)
-    Error(Nil) -> Error("Variable not in environment")
+    Error(Nil) -> {
+      io.debug(label)
+      Error("Variable not in environment")
+    }
   }
 }
 
