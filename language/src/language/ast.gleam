@@ -212,6 +212,41 @@ fn do_replace_variables(arguments, old, new, accumulator) {
   }
 }
 
+fn bind_pattern(pattern, value_type, environment, typer) {
+  case pattern {
+    Name(name) -> {
+      let forall = free_type_vars_in_type(value_type)
+      let environment =
+        push_variable(environment, name, PolyType(forall, value_type))
+      #(environment, typer)
+    }
+    Destructure(constructor, with) -> {
+      // TODO unify constructor
+      io.debug(constructor)
+      let #(typed_with, environment, typer) =
+        // This map is because arguments untyped
+        push_arguments(map(with, fn(name) { #(Nil, name) }), environment, typer)
+      #(environment, typer)
+    }
+  }
+}
+
+fn do_match_remaining_clauses(rest, state) {
+  let #(subject_type, first_type, typed_clauses, environment, typer) = state
+  case rest {
+    [] -> Ok(#(list.reverse(typed_clauses),  typer))
+    [clause, ..rest] -> {
+      let #(pattern, then) = clause
+      let #(inner_env, typer) =
+        bind_pattern(pattern, subject_type, environment, typer)
+      try #(type_, tree, typer) =
+        do_infer(then, inner_env, typer)
+      try typer = unify(type_, first_type, typer)
+      do_match_remaining_clauses(rest, #(subject_type, first_type, [#(pattern, #(type_, tree)), ..typed_clauses], environment, typer))
+    }
+  }
+}
+
 fn do_infer(untyped, environment, typer) {
   let #(Nil, expression) = untyped
   case expression {
@@ -245,38 +280,16 @@ fn do_infer(untyped, environment, typer) {
           try #(subject_type, subject_tree, typer) =
             do_infer(subject, environment, typer)
           let #(first_pattern, first_then) = first
-          let Destructure("Some", with) = first_pattern
-          let #(typed_with, environment, typer) =
-            // This map is because arguments untyped
-            push_arguments(
-              map(with, fn(name) { #(Nil, name) }),
-              environment,
-              typer,
-            )
+          let #(first_env, typer) =
+            bind_pattern(first_pattern, subject_type, environment, typer)
           try #(first_type, first_tree, typer) =
-            do_infer(first_then, environment, typer)
-          list.try_fold(
-            rest,
-            typer,
-            fn(element, typer) {
-              let #(pattern, then) = element
-              let #(environment, typer) =
-                bind_pattern(pattern, subject_type, typer)
-              try #(then_type, then_tree, typer) =
-                do_infer(then, environment, typer)
-              unify(then_type, first_type)
-              todo("finish fold, then DO RECURSION")
-            },
-          )
-          let tree = Case(#(subject_type, subject_tree), [])
+            do_infer(first_then, first_env, typer)
+          try #(clauses, typer) = do_match_remaining_clauses(rest, #(subject_type, first_type, [], environment, typer))
+          let tree = Case(#(subject_type, subject_tree), [#(first_pattern, #(first_type, first_tree)), ..clauses])
           Ok(#(first_type, tree, typer))
         }
         _ -> todo("Must be at least two clauses")
       }
-    //   // Just name works for True False
-    //   let [#(name, then)] = clauses
-    //   // add name to environment 
-    //   try #(then_type, then_tree, typer) = do_infer(then, environment, typer)
     Function(with, in) -> {
       // There's no lets in arguments that escape the environment so keep reusing initial environment
       let #(typed_with, environment, typer) =

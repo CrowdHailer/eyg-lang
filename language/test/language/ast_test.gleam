@@ -127,5 +127,5 @@ pub fn case_test() {
       ],
     )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, environment)
-  let Constructor("Boolean", []) = ast.resolve_type(type_, substitutions)
+  let Constructor("Binary", []) = ast.resolve_type(type_, substitutions)
 }
