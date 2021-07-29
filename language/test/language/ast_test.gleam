@@ -70,17 +70,7 @@ pub fn simple_custom_type_test() {
     scope.new()
     |> scope.newtype("Boolean", [], [#("True", []), #("False", [])])
     |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
-    |> scope.set_variable(
-      "equal",
-      PolyType(
-        [1],
-        Constructor(
-          "Function",
-          [Variable(1), Variable(1), Constructor("Boolean", [])],
-        ),
-      ),
-    )
-
+    |> with_equal()
   let untyped = call(var("True"), [])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
   let Constructor("Boolean", []) = type_.resolve_type(type_, substitutions)
@@ -89,6 +79,20 @@ pub fn simple_custom_type_test() {
     call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
   let Constructor("Boolean", []) = type_.resolve_type(type_, substitutions)
+}
+
+fn with_equal(scope) {
+  scope.set_variable(
+    scope,
+    "equal",
+    PolyType(
+      [1],
+      Constructor(
+        "Function",
+        [Variable(1), Variable(1), Constructor("Boolean", [])],
+      ),
+    ),
+  )
 }
 
 pub fn case_test() {
@@ -106,6 +110,17 @@ pub fn case_test() {
     )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
   let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
+}
+
+pub fn unify_types_in_fn_args_test() {
+  let scope =
+    scope.new()
+    |> with_equal()
+
+  let untyped = function(["x", "y"], call(var("equal"), [var("x"), var("y")]))
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
+  let Constructor("Function", [t, u, Constructor("Boolean", [])]) = type_.resolve_type(type_, substitutions)
+  let True = t == u
 }
 
 pub fn case_with_function_test() {

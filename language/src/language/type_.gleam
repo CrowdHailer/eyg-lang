@@ -99,9 +99,8 @@ fn unify_all(t1s, t2s, typer) {
 
 pub fn resolve_type(type_, substitutions) {
   case type_ {
-    Constructor(name, args) -> {
-        Constructor(name, list.map(args, resolve_type(_, substitutions)))
-    }
+    Constructor(name, args) ->
+      Constructor(name, list.map(args, resolve_type(_, substitutions)))
     Variable(i) ->
       case list.key_find(substitutions, i) {
         Ok(Variable(j) as substitution) if i != j ->

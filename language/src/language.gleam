@@ -39,8 +39,7 @@ pub fn lists() {
     )
   //   var("todo"),
   // )
-  let Ok(#(type_, tree, substitutions)) =
-    ast.infer(untyped, scope)
+  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
   let Constructor("Function", [a, b, o]) =
     type_.resolve_type(type_, substitutions)
     |> io.debug()

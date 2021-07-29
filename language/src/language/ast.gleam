@@ -311,6 +311,7 @@ fn do_infer(untyped, scope, typer) {
       let constructor_arguments =
         do_typed_arguments_remove_name(typed_with, [])
         |> list.append([in_type])
+      try typer = unify(unknown_return_type, in_type, typer)
       let type_ = Constructor("Function", constructor_arguments)
       let tree = Function(typed_with, #(in_type, in_tree))
       Ok(#(type_, tree, typer))
