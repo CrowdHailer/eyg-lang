@@ -78,6 +78,8 @@ fn instantiate(poly_type, typer) {
 }
 
 // separate type of var mono and var poly
+// TODO need tests here, can we reuse resolve. probably can call in on the substitutions but we need the typer counter to keep increasing
+// can't have the unification in main typer as it will undo the generalisation
 fn do_instantiate(forall, type_, typer) {
   // let typer = list.fold(forall, typer, fn(i, typer) {
   //   let #(r, typer) = generate_type_var(typer)

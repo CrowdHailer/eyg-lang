@@ -144,7 +144,7 @@ fn infer(node, state) {
 //   Nil
 // }
 // TODO
-// pub fn run_compiler_test() {
-//   let Ok(_) = language.lists()
-//   // let Ok(_) = language.compiler()
-// }
+pub fn run_compiler_test() {
+  let Ok(_) = language.lists()
+  // let Ok(_) = language.compiler()
+}

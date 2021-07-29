@@ -12,21 +12,18 @@ pub fn lists() {
       [1],
       [#("Cons", [Variable(1), Data("List", [Variable(1)])]), #("Nil", [])],
     )
-  let untyped = // let_(
-    //   "do_reverse",
+  let untyped =
     function(
       ["remaining", "reversed"],
       case_(
         var("remaining"),
         [
-          // Need recursion 
           #(
             Destructure("Cons", ["next", "remaining"]),
             call(
               var("self"),
               [
                 var("remaining"),
-                // Test unioning cons
                 call(var("Cons"), [var("next"), var("reversed")]),
               ],
             ),
@@ -35,18 +32,10 @@ pub fn lists() {
         ],
       ),
     )
-  //   var("todo"),
-  // )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Function([a, b], o) =
+  let Function([Data("List", [a]), Data("List", [b])], Data("List", [r])) =
     type_.resolve_type(type_, substitutions)
-    |> io.debug()
-  // let Constructor("List", [t]) = type_.resolve_type(a, substitutions)
-  // TODO all variables should be equal
-  let 1 = 0
+  let True = a == r
+  let True = b == r
   Ok(Nil)
 }
-// pub fn compiler() {
-//   let_("unify", function(["t1", "t2"], var("t1")), var("unify"))
-//   |> ast.infer([])
-// }
