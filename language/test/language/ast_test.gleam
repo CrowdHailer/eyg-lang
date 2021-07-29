@@ -198,5 +198,6 @@ pub fn generalising_restricted_by_scope_test() {
   // make match is a fn type that should Not be generalised
   // isolated let etc can there be a whole that get's the scope
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
-  let Data("Binary", []) = type_.resolve_type(type_, typer)
+  let Function([Data("Binary", [])], Data("Boolean", [])) =
+    type_.resolve_type(type_, typer)
 }

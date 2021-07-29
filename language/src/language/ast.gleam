@@ -79,6 +79,15 @@ fn instantiate(poly_type, typer) {
 
 // separate type of var mono and var poly
 fn do_instantiate(forall, type_, typer) {
+  // let typer = list.fold(forall, typer, fn(i, typer) {
+  //   let #(r, typer) = generate_type_var(typer)
+  //   // Two variables should always unify
+  //   let Ok(typer) = unify(Variable(i), r, typer)
+  //   typer
+  //   |> io.debug()
+  // })
+  // // Need replacement that doesn't bind into the main list of sub
+  // #(type_.resolve_type(_type, typer), typer)
   case forall {
     [] -> #(type_, typer)
     [i, ..rest] -> {
@@ -92,10 +101,7 @@ fn do_instantiate(forall, type_, typer) {
         Function(arguments, return) -> {
           let old = Variable(i)
           let arguments = do_replace_variables(arguments, old, type_var, [])
-          let return = case return == old {
-            True -> type_var
-            False -> return
-          }
+          let return = replace_variable(return, old, type_var)
           Function(arguments, return)
         }
       }
@@ -108,12 +114,23 @@ fn do_replace_variables(arguments, old, new, accumulator) {
   case arguments {
     [] -> list.reverse(accumulator)
     [argument, ..rest] -> {
-      let replacement = case argument == old {
-        True -> new
-        False -> argument
-      }
+      let replacement = replace_variable(argument, old, new)
       do_replace_variables(rest, old, new, [replacement, ..accumulator])
     }
+  }
+}
+
+fn replace_variable(argument, old, new) {
+  case argument {
+    var if var == old -> new
+    Variable(_) -> argument
+    Data(name, arguments) ->
+      Data(name, do_replace_variables(arguments, old, new, []))
+    Function(arguments, return) ->
+      Function(
+        do_replace_variables(arguments, old, new, []),
+        replace_variable(return, old, new),
+      )
   }
 }
 
