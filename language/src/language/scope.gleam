@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import language/type_.{Constructor, PolyType, Type, Variable}
+import language/type_.{Data, Function, PolyType, Type, Variable}
 
 // pub type Type {
 //   Function(arguments: List(Type), return: Type)
@@ -42,14 +42,11 @@ pub fn newtype(scope, type_name, params, constructors) {
     fn(constructor, scope) {
       let #(fn_name, arguments) = constructor
       // Constructor when instantiate will be unifiying to a concrete type
-      let new_type = Constructor(type_name, list.map(params, Variable))
+      let new_type = Data(type_name, list.map(params, Variable))
       set_variable(
         scope,
         fn_name,
-        PolyType(
-          forall: params,
-          type_: Constructor("Function", list.append(arguments, [new_type])),
-        ),
+        PolyType(forall: params, type_: Function(arguments, new_type)),
       )
     },
   )

@@ -1,7 +1,5 @@
 import gleam/list
-import language/ast.{
-  Assignment, Binary, Call, Case, Destructure, Function, Let, Var,
-}
+import language/ast.{Assignment, Binary, Call, Case, Destructure, Fn, Let, Var}
 
 pub fn let_(name, value, in) {
   #(Nil, Let(Assignment(name), value, in))
@@ -24,7 +22,7 @@ pub fn case_(subject, clauses) {
 }
 
 pub fn function(for, in) {
-  #(Nil, Function(list.map(for, fn(name) { #(Nil, name) }), in))
+  #(Nil, Fn(list.map(for, fn(name) { #(Nil, name) }), in))
 }
 
 pub fn call(function, with) {

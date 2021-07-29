@@ -2,7 +2,7 @@ import gleam/io
 import language/ast.{Destructure}
 import language/ast/builder.{call, case_, function, let_, var}
 import language/scope
-import language/type_.{Constructor, Variable}
+import language/type_.{Data, Function, Variable}
 
 pub fn lists() {
   let scope =
@@ -10,10 +10,7 @@ pub fn lists() {
     |> scope.newtype(
       "List",
       [1],
-      [
-        #("Cons", [Variable(1), Constructor("List", [Variable(1)])]),
-        #("Nil", []),
-      ],
+      [#("Cons", [Variable(1), Data("List", [Variable(1)])]), #("Nil", [])],
     )
   let untyped = // let_(
     //   "do_reverse",
@@ -41,7 +38,7 @@ pub fn lists() {
   //   var("todo"),
   // )
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Function", [a, b, o]) =
+  let Function([a, b], o) =
     type_.resolve_type(type_, substitutions)
     |> io.debug()
   // let Constructor("List", [t]) = type_.resolve_type(a, substitutions)

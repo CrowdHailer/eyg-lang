@@ -1,9 +1,11 @@
+// TODO name typer
 import gleam/io
 import gleam/list
 
-// TODO name typer
 pub type Type {
-  Constructor(String, List(Type))
+  // called data in Haskell, When list is empty it is an Atomic type
+  Data(String, List(Type))
+  Function(List(Type), Type)
   Variable(Int)
 }
 
@@ -23,6 +25,10 @@ pub type Typer {
   )
 }
 
+pub fn checker() {
+  Typer([], 10)
+}
+
 pub fn generate_type_var(typer) {
   let Typer(next_type_var: var, ..) = typer
   #(Variable(var), Typer(..typer, next_type_var: var + 1))
@@ -33,11 +39,17 @@ pub fn unify(t1, t2, typer) {
     t1, t2 if t1 == t2 -> Ok(typer)
     Variable(i), any -> unify_variable(i, any, typer)
     any, Variable(i) -> unify_variable(i, any, typer)
-    Constructor(n1, args1), Constructor(n2, args2) ->
+    Data(n1, args1), Data(n2, args2) ->
       case n1 == n2 {
         True -> unify_all(args1, args2, typer)
         False -> Error("mismatched constructors")
       }
+    Function(args1, return1), Function(args2, return2) -> {
+      try typer = unify_all(args1, args2, typer)
+      unify(return1, return2, typer)
+    }
+    Data(_, _), Function(_, _) | Function(_, _), Data(_, _) ->
+      Error("can't unift data and function")
   }
   // Row(fields, variable), Row(fields, variable) ->
   // case do_shared(left, right, [], []) {
@@ -78,7 +90,7 @@ fn unify_variable(i, any, typer) {
             }
           }
         // TODO occurs check
-        Constructor(_, _) -> {
+        _ -> {
           let substitutions = [#(i, any), ..substitutions]
           let typer = Typer(..typer, substitutions: substitutions)
           Ok(typer)
@@ -97,16 +109,22 @@ fn unify_all(t1s, t2s, typer) {
   }
 }
 
-pub fn resolve_type(type_, substitutions) {
+pub fn resolve_type(type_, typer) {
+  let Typer(substitutions: substitutions, ..) = typer
+
   case type_ {
-    Constructor(name, args) ->
-      Constructor(name, list.map(args, resolve_type(_, substitutions)))
+    Data(name, arguments) ->
+      Data(name, list.map(arguments, resolve_type(_, typer)))
+    Function(arguments, return) ->
+      Function(
+        list.map(arguments, resolve_type(_, typer)),
+        resolve_type(return, typer),
+      )
     Variable(i) ->
       case list.key_find(substitutions, i) {
         Ok(Variable(j) as substitution) if i != j ->
-          resolve_type(substitution, substitutions)
-        Ok(Constructor(_, _) as substitution) ->
-          resolve_type(substitution, substitutions)
+          resolve_type(substitution, typer)
+        Ok(Data(_, _) as substitution) -> resolve_type(substitution, typer)
         _ -> type_
       }
   }

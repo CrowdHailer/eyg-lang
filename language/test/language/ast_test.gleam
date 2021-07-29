@@ -4,27 +4,27 @@ import language/ast/builder.{
   binary, call, case_, destructure, function, let_, var,
 }
 import language/ast.{Assignment, Binary, Destructure, Let, Var}
-import language/type_.{Constructor, PolyType, Variable}
+import language/type_.{Data, Function, PolyType, Variable}
 import language/scope
 
 // Literals
 pub fn infer_literal_binary_test() {
   let untyped = binary()
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
   // seems not to be ok as assert
-  let Constructor("Binary", []) = type_
+  let Data("Binary", []) = type_
 }
 
 // assignments
 pub fn infer_type_constructor_for_var_test() {
   let untyped = let_("foo", binary(), var("foo"))
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
   // seems not to be ok as assert
-  let Constructor("Binary", []) = type_
+  let Data("Binary", []) = type_
   let Let(
     Assignment("foo"),
-    #(Constructor("Binary", []), Binary),
-    #(Constructor("Binary", []), Var("foo")),
+    #(Data("Binary", []), Binary),
+    #(Data("Binary", []), Var("foo")),
   ) = tree
 }
 
@@ -35,21 +35,21 @@ pub fn compile_error_for_missing_var_test() {
 
 pub fn infer_identity_function_test() {
   let untyped = function(["x"], var("x"))
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
-  let Constructor("Function", [Variable(a), Variable(b)]) = type_
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Function([Variable(a)], Variable(b)) = type_.resolve_type(type_, typer)
   let True = a == b
 }
 
 pub fn infer_call_test() {
   let untyped = call(function([], binary()), [])
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
-  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
 pub fn infer_call_with_arguments_test() {
   let untyped = call(function(["x"], var("x")), [binary()])
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
-  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
 // infer with wrong call arguments
@@ -61,8 +61,9 @@ pub fn generic_functions_test() {
       identity,
       let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary()])),
     )
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope.new())
-  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
+
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
 // Custom record types. Does lambda calculus not go there, because functions are enough
@@ -74,26 +75,20 @@ pub fn simple_custom_type_test() {
     |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
     |> with_equal()
   let untyped = call(var("True"), [])
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Boolean", []) = type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Data("Boolean", []) = type_.resolve_type(type_, typer)
 
   let untyped =
     call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Boolean", []) = type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Data("Boolean", []) = type_.resolve_type(type_, typer)
 }
 
 fn with_equal(scope) {
   scope.set_variable(
     scope,
     "equal",
-    PolyType(
-      [1],
-      Constructor(
-        "Function",
-        [Variable(1), Variable(1), Constructor("Boolean", [])],
-      ),
-    ),
+    PolyType([1], Function([Variable(1), Variable(1)], Data("Boolean", []))),
   )
 }
 
@@ -110,8 +105,8 @@ pub fn case_test() {
         #(Destructure("None", []), binary()),
       ],
     )
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
 pub fn unify_types_in_fn_args_test() {
@@ -120,9 +115,8 @@ pub fn unify_types_in_fn_args_test() {
     |> with_equal()
 
   let untyped = function(["x", "y"], call(var("equal"), [var("x"), var("y")]))
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Function", [t, u, Constructor("Boolean", [])]) =
-    type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Function([t, u], Data("Boolean", [])) = type_.resolve_type(type_, typer)
   let True = t == u
 }
 
@@ -142,14 +136,9 @@ pub fn case_with_function_test() {
         ],
       ),
     )
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor(
-    "Function",
-    [
-      Constructor("Option", [Constructor("Binary", [])]),
-      Constructor("Binary", []),
-    ],
-  ) = type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Function([Data("Option", [Data("Binary", [])])], Data("Binary", [])) =
+    type_.resolve_type(type_, typer)
 }
 
 pub fn recursion_test() {
@@ -171,15 +160,14 @@ pub fn recursion_test() {
       ),
     )
   // recur as a keyword same as clojure
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Function", [input, return]) =
-    type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Function([input], return) = type_.resolve_type(type_, typer)
 }
 
 pub fn destructure_test() {
   let scope =
     scope.new()
-    |> scope.newtype("User", [], [#("User", [Constructor("Binary", [])])])
+    |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
 
   let untyped =
     destructure(
@@ -188,6 +176,6 @@ pub fn destructure_test() {
       call(var("User"), [binary()]),
       var("first_name"),
     )
-  let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Binary", []) = type_.resolve_type(type_, substitutions)
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Data("Binary", []) = type_.resolve_type(type_, typer)
 }

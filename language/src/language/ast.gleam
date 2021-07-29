@@ -3,7 +3,7 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import language/scope
 import language/type_.{
-  Constructor, PolyType, Type, Typer, Variable, generate_type_var, unify,
+  Data, Function, PolyType, Type, Typer, Variable, generate_type_var, unify,
 }
 
 /// Type destructure used for let and case statements
@@ -21,7 +21,8 @@ pub type Expression(t) {
     subject: #(t, Expression(t)),
     clauses: List(#(Pattern, #(t, Expression(t)))),
   )
-  Function(arguments: List(#(t, String)), body: #(t, Expression(t)))
+  // Clashes with Function Type, maybe call Anonymous, Lambda
+  Fn(arguments: List(#(t, String)), body: #(t, Expression(t)))
   Call(function: #(t, Expression(t)), arguments: List(#(t, Expression(t))))
 }
 
@@ -67,26 +68,23 @@ fn do_typed_arguments_remove_name(
   }
 }
 
-fn typer() {
-  Typer([], 10)
-}
-
 pub fn infer(untyped, environment) {
-  let typer = typer()
-  try #(type_, tree, typer) = do_infer(untyped, environment, typer)
-  let Typer(substitutions: substitutions, ..) = typer
-  Ok(#(type_, tree, substitutions))
+  do_infer(untyped, environment, type_.checker())
 }
 
 //       TODO remove free variables that all already in the environment as they might get bound later
 // Can I convince myself that all generalisable variables must be above the typer current counter
 // Yes because the environment is passed in and not used again.
 // call this fn generalise when called here.
-fn free_type_vars_in_type(type_) {
-  case type_ {
-    Constructor("Function", [Variable(x), Variable(y)]) if x == y -> [y]
-    _ -> []
+fn generalise(type_, typer) {
+  let type_ = type_.resolve_type(type_, typer)
+  let forall = case type_ {
+    Function([Variable(x)], Variable(y)) if x == y -> [y]
+    // data is already generalised
+    Data(_, _) -> []
+    Variable(_) -> []
   }
+  PolyType(forall, type_)
 }
 
 fn instantiate(poly_type, typer) {
@@ -94,14 +92,28 @@ fn instantiate(poly_type, typer) {
   do_instantiate(forall, type_, typer)
 }
 
+// separate type of var mono and var poly
 fn do_instantiate(forall, type_, typer) {
   case forall {
     [] -> #(type_, typer)
     [i, ..rest] -> {
       let #(type_var, typer) = generate_type_var(typer)
-      let Constructor(name, arguments) = type_
-      let arguments = do_replace_variables(arguments, Variable(i), type_var, [])
-      let type_ = Constructor(name, arguments)
+      let type_ = case type_ {
+        Data(name, arguments) -> {
+          let arguments =
+            do_replace_variables(arguments, Variable(i), type_var, [])
+          Data(name, arguments)
+        }
+        Function(arguments, return) -> {
+          let old = Variable(i)
+          let arguments = do_replace_variables(arguments, old, type_var, [])
+          let return = case return == old {
+            True -> type_var
+            False -> return
+          }
+          Function(arguments, return)
+        }
+      }
       do_instantiate(rest, type_, typer)
     }
   }
@@ -123,8 +135,7 @@ fn do_replace_variables(arguments, old, new, accumulator) {
 fn bind_pattern(pattern, type_, scope, typer) {
   case pattern {
     Assignment(name) -> {
-      let forall = free_type_vars_in_type(type_)
-      let scope = scope.set_variable(scope, name, PolyType(forall, type_))
+      let scope = scope.set_variable(scope, name, generalise(type_, typer))
       Ok(#(scope, typer))
     }
     Destructure(constructor, with) ->
@@ -145,7 +156,7 @@ fn bind_pattern(pattern, type_, scope, typer) {
                 variable
               },
             )
-          try typer = unify(type_, Constructor(type_name, type_params), typer)
+          try typer = unify(type_, Data(type_name, type_params), typer)
           let Ok(zipped) = list.zip(replaced_arguments, assignments)
           let scope = do_push_arguments(zipped, scope)
           Ok(#(scope, typer))
@@ -179,11 +190,11 @@ fn replace_variables(arguments, replacements, acc) {
       let Ok(new_var) = list.key_find(replacements, p)
       replace_variables(arguments, replacements, [new_var, ..acc])
     }
-    [Constructor(name, inner), ..arguments] ->
+    [Data(name, inner), ..arguments] ->
       replace_variables(
         arguments,
         replacements,
-        [Constructor(name, replace_variables(inner, replacements, [])), ..acc],
+        [Data(name, replace_variables(inner, replacements, [])), ..acc],
       )
   }
 }
@@ -215,7 +226,7 @@ fn do_match_remaining_clauses(rest, state) {
 fn do_infer(untyped, scope, typer) {
   let #(Nil, expression) = untyped
   case expression {
-    Binary -> Ok(#(Constructor("Binary", []), Binary, typer))
+    Binary -> Ok(#(Data("Binary", []), Binary, typer))
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
       try #(scope, typer) = bind_pattern(pattern, value_type, scope, typer)
@@ -258,36 +269,30 @@ fn do_infer(untyped, scope, typer) {
         }
         _ -> todo("Must be at least two clauses")
       }
-    Function(with, in) -> {
-      // There's no lets in arguments that escape the scope so keep reusing initial scope
+    Fn(with, in) -> {
       let #(typed_with, scope, typer) = push_arguments(with, scope, typer)
-      // Only use unkown return type when in recursive fn. should always be unified with something otherwise void.
-      // try unifying with never
-      let #(unknown_return_type, typer) = generate_type_var(typer)
-      let constructor_arguments =
-        do_typed_arguments_remove_name(typed_with, [])
-        |> list.append([unknown_return_type])
-      let recur_type = Constructor("Function", constructor_arguments)
-      let scope = do_push_arguments([#(recur_type, "self")], scope)
+      let arguments = do_typed_arguments_remove_name(typed_with, [])
+      let #(return_type, typer) = generate_type_var(typer)
+      let type_ = Function(arguments, return_type)
+      let scope = do_push_arguments([#(type_, "self")], scope)
       try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
-      let constructor_arguments =
-        do_typed_arguments_remove_name(typed_with, [])
-        |> list.append([in_type])
-      try typer = unify(unknown_return_type, in_type, typer)
-      let type_ = Constructor("Function", constructor_arguments)
-      let tree = Function(typed_with, #(in_type, in_tree))
+      try typer = unify(return_type, in_type, typer)
+      let tree = Fn(typed_with, #(in_type, in_tree))
       Ok(#(type_, tree, typer))
     }
     // N eed to understand generics but could every typed ast have a variable
     Call(function, with) -> {
       try #(f_type, f_tree, typer) = do_infer(function, scope, typer)
+      io.debug(scope)
+      io.debug(f_type)
+      io.debug("f-type")
       try #(with_typed, typer) = do_infer_call_args(with, scope, typer, [])
       // Think generating the return type is needed for handling recursive.
       let #(return_type, typer) = generate_type_var(typer)
       try typer =
         unify(
           f_type,
-          Constructor("Function", append_only_the_type(with_typed, return_type)),
+          Function(do_append_only_the_type(with_typed, []), return_type),
           typer,
         )
       let type_ = return_type
