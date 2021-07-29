@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import language/ast.{binary, call, case_, destructure, function, let_, var}
+import language/ast/builder.{binary, call, case_, destructure, function, let_, var}
 import language/ast.{Binary, Destructure, Let, Name, Var}
 import language/type_.{Constructor, PolyType, Variable}
 import language/scope
