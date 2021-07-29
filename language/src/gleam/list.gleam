@@ -1,3 +1,12 @@
+// This should probably be contains
+pub fn find(list: List(a), search: a) -> Result(a, Nil) {
+  case list {
+    [] -> Error(Nil)
+    [value, .._] if value == search -> Ok(value)
+    [_, ..rest] -> find(rest, search)
+  }
+}
+
 pub fn key_find(list: List(#(a, b)), search: a) -> Result(b, Nil) {
   case list {
     [] -> Error(Nil)

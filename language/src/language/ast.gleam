@@ -72,21 +72,6 @@ pub fn infer(untyped, environment) {
   do_infer(untyped, environment, type_.checker())
 }
 
-//       TODO remove free variables that all already in the environment as they might get bound later
-// Can I convince myself that all generalisable variables must be above the typer current counter
-// Yes because the environment is passed in and not used again.
-// call this fn generalise when called here.
-fn generalise(type_, typer) {
-  let type_ = type_.resolve_type(type_, typer)
-  let forall = case type_ {
-    Function([Variable(x)], Variable(y)) if x == y -> [y]
-    // data is already generalised
-    Data(_, _) -> []
-    Variable(_) -> []
-  }
-  PolyType(forall, type_)
-}
-
 fn instantiate(poly_type, typer) {
   let PolyType(forall, type_) = poly_type
   do_instantiate(forall, type_, typer)
@@ -134,8 +119,16 @@ fn do_replace_variables(arguments, old, new, accumulator) {
 
 fn bind_pattern(pattern, type_, scope, typer) {
   case pattern {
+    // Some mish mash of resolving needed at the right time.
+    // quantified variables should never be accessed again because the should always get instantiated out.
+    // Try moving the set stuff into the scope module
+    // Polytype is also called a generic type
     Assignment(name) -> {
-      let scope = scope.set_variable(scope, name, generalise(type_, typer))
+      let type_ = type_.resolve_type(type_, typer)
+      let excluded: List(Int) = scope.free_variables(scope)
+      let poly_type =
+        PolyType(type_.generalised_by(type_, excluded, typer), type_)
+      let scope = scope.set_variable(scope, name, poly_type)
       Ok(#(scope, typer))
     }
     Destructure(constructor, with) ->
@@ -240,10 +233,6 @@ fn do_infer(untyped, scope, typer) {
       let #(var_type, typer) = instantiate(poly_type, typer)
       Ok(#(var_type, Var(name), typer))
     }
-
-    // can do silly things like define a function in case subject and use in clause.
-    // This would need generalising
-    // TODO recursion
     Case(subject, clauses) ->
       case clauses {
         [first, second, ..rest] -> {
@@ -280,40 +269,29 @@ fn do_infer(untyped, scope, typer) {
       let tree = Fn(typed_with, #(in_type, in_tree))
       Ok(#(type_, tree, typer))
     }
-    // N eed to understand generics but could every typed ast have a variable
     Call(function, with) -> {
       try #(f_type, f_tree, typer) = do_infer(function, scope, typer)
-      io.debug(scope)
-      io.debug(f_type)
-      io.debug("f-type")
-      try #(with_typed, typer) = do_infer_call_args(with, scope, typer, [])
-      // Think generating the return type is needed for handling recursive.
+      try #(with, typer) = do_infer_call_args(with, scope, typer, [])
       let #(return_type, typer) = generate_type_var(typer)
       try typer =
         unify(
           f_type,
-          Function(do_append_only_the_type(with_typed, []), return_type),
+          Function(
+            list.map(with, fn(x: #(Type, Expression(Type))) { x.0 }),
+            return_type,
+          ),
           typer,
         )
       let type_ = return_type
-      let tree = Call(#(f_type, f_tree), with_typed)
+      let tree = Call(#(f_type, f_tree), with)
       Ok(#(type_, tree, typer))
     }
   }
 }
 
-pub fn append_only_the_type(before, new) {
-  do_append_only_the_type(list.reverse(before), [new])
-}
-
-fn do_append_only_the_type(remaining, accumulator) {
-  case remaining {
-    [] -> accumulator
-    [#(type_, tree), ..rest] ->
-      do_append_only_the_type(rest, [type_, ..accumulator])
-  }
-}
-
+// TODO extract and test generalize and instantiate
+// Test not poly when equals string
+// occurs in
 fn do_infer_call_args(arguments, environment, typer, accumulator) {
   case arguments {
     [] -> Ok(#(list.reverse(accumulator), typer))

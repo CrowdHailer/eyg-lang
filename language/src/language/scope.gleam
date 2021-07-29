@@ -32,6 +32,20 @@ pub fn set_variable(scope, label, type_) {
   Scope(..scope, variables: variables)
 }
 
+// Free vars in forall are those vars that are free
+// in the type minus those bound by quantifiers
+pub fn free_variables(scope) {
+  let Scope(variables: variables, ..) = scope
+  list.map(
+    variables,
+    fn(entry) {
+      let #(_name, poly) = entry
+      type_.free_variables(poly)
+    },
+  )
+  |> list.fold([], fn(more, acc) { list.append(more, acc) })
+}
+
 pub fn newtype(scope, type_name, params, constructors) {
   let Scope(types: types, ..) = scope
   let types = [#(type_name, params, constructors), ..types]

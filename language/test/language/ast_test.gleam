@@ -179,3 +179,24 @@ pub fn destructure_test() {
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
+
+pub fn generalising_restricted_by_scope_test() {
+  let scope =
+    scope.new()
+    |> with_equal()
+  let untyped =
+    // make matcher function
+    let_(
+      "make_match",
+      function(
+        ["text"],
+        function(["x"], call(var("equal"), [var("text"), var("x")])),
+      ),
+      call(var("make_match"), [binary()]),
+    )
+
+  // make match is a fn type that should Not be generalised
+  // isolated let etc can there be a whole that get's the scope
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Data("Binary", []) = type_.resolve_type(type_, typer)
+}

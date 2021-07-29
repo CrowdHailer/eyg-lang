@@ -29,6 +29,74 @@ pub fn checker() {
   Typer([], 10)
 }
 
+// Need to understand the concept of free variables better.
+pub fn free_variables(poly) {
+  case poly {
+    PolyType([], Variable(i)) -> [i]
+    PolyType([], Data(_, _)) -> []
+    PolyType(quantified, Function(arguments, return)) ->
+      extract_free_variables(quantified, [return, ..list.reverse(arguments)])
+  }
+}
+
+fn extract_free_variables(quantified, variables) {
+  list.fold(
+    variables,
+    [],
+    fn(argument, free) {
+      case argument {
+        Variable(x) ->
+          case list.find(quantified, x) {
+            Ok(_) -> free
+            Error(Nil) -> push_new(x, free)
+          }
+        Data(_name, inner) ->
+          extract_free_variables(quantified, inner)
+          |> list.fold(free, push_new)
+        Function(arguments, return) ->
+          extract_free_variables(quantified, [return, ..arguments])
+          |> list.fold(free, push_new)
+      }
+    },
+  )
+}
+
+fn push_new(item, set) {
+  case list.find(set, item) {
+    Ok(_) -> set
+    Error(Nil) -> [item, ..set]
+  }
+}
+
+// TODO remove free variables that all already in the environment as they might get bound later
+// Can I convince myself that all generalisable variables must be above the typer current counter
+// Yes because the environment is passed in and not used again.
+// call this fn generalise when called here.
+pub fn generalised_by(type_, excluded, typer) {
+  let type_ = resolve_type(type_, typer)
+  let forall = case type_ {
+    Function(arguments, return) -> do_generalize(arguments, excluded, [])
+    // data is already generalised
+    Data(_, _) -> []
+    Variable(_) -> []
+  }
+  forall
+}
+
+fn do_generalize(arguments, excluded, parameters) {
+  case arguments {
+    [] -> list.reverse(parameters)
+    [Variable(i), ..arguments] -> {
+      let parameters = case list.find(parameters, i) {
+        Ok(_) -> parameters
+        Error(Nil) -> [i, ..parameters]
+      }
+      do_generalize(arguments, excluded, parameters)
+    }
+    [concrete, ..arguments] -> do_generalize(arguments, excluded, parameters)
+  }
+}
+
 pub fn generate_type_var(typer) {
   let Typer(next_type_var: var, ..) = typer
   #(Variable(var), Typer(..typer, next_type_var: var + 1))
@@ -122,10 +190,9 @@ pub fn resolve_type(type_, typer) {
       )
     Variable(i) ->
       case list.key_find(substitutions, i) {
-        Ok(Variable(j) as substitution) if i != j ->
-          resolve_type(substitution, typer)
-        Ok(Data(_, _) as substitution) -> resolve_type(substitution, typer)
-        _ -> type_
+        Ok(Variable(j)) if i == j -> type_
+        Error(Nil) -> type_
+        Ok(substitution) -> resolve_type(substitution, typer)
       }
   }
 }
