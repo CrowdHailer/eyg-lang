@@ -12,6 +12,9 @@ pub fn lists() {
       [1],
       [#("Cons", [Variable(1), Data("List", [Variable(1)])]), #("Nil", [])],
     )
+  // call this reverse and test fns separatly
+  // Can I type check variables in PolyType vs MonoType. probably not easily if iterating one at a time.
+  // Although go through each arg if Poly in quantified new i if not same i
   let untyped =
     function(
       ["remaining", "reversed"],
