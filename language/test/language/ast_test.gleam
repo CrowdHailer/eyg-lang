@@ -1,7 +1,9 @@
 import gleam/io
 import gleam/list
-import language/ast/builder.{binary, call, case_, destructure, function, let_, var}
-import language/ast.{Binary, Destructure, Let, Name, Var}
+import language/ast/builder.{
+  binary, call, case_, destructure, function, let_, var,
+}
+import language/ast.{Assignment, Binary, Destructure, Let, Var}
 import language/type_.{Constructor, PolyType, Variable}
 import language/scope
 
@@ -20,7 +22,7 @@ pub fn infer_type_constructor_for_var_test() {
   // seems not to be ok as assert
   let Constructor("Binary", []) = type_
   let Let(
-    Name("foo"),
+    Assignment("foo"),
     #(Constructor("Binary", []), Binary),
     #(Constructor("Binary", []), Var("foo")),
   ) = tree
@@ -119,7 +121,8 @@ pub fn unify_types_in_fn_args_test() {
 
   let untyped = function(["x", "y"], call(var("equal"), [var("x"), var("y")]))
   let Ok(#(type_, tree, substitutions)) = ast.infer(untyped, scope)
-  let Constructor("Function", [t, u, Constructor("Boolean", [])]) = type_.resolve_type(type_, substitutions)
+  let Constructor("Function", [t, u, Constructor("Boolean", [])]) =
+    type_.resolve_type(type_, substitutions)
   let True = t == u
 }
 

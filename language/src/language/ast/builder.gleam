@@ -1,8 +1,10 @@
 import gleam/list
-import language/ast.{Let, Var, Binary, Case, Function, Call, Destructure, Name}
+import language/ast.{
+  Assignment, Binary, Call, Case, Destructure, Function, Let, Var,
+}
 
 pub fn let_(name, value, in) {
-  #(Nil, Let(Name(name), value, in))
+  #(Nil, Let(Assignment(name), value, in))
 }
 
 pub fn destructure(constructor, arguments, value, in) {

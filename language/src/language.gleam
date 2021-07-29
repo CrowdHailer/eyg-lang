@@ -1,5 +1,5 @@
 import gleam/io
-import language/ast.{Destructure, }
+import language/ast.{Destructure}
 import language/ast/builder.{call, case_, function, let_, var}
 import language/scope
 import language/type_.{Constructor, Variable}

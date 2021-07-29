@@ -6,27 +6,21 @@ import language/type_.{
   Constructor, PolyType, Type, Typer, Variable, generate_type_var, unify,
 }
 
+/// Type destructure used for let and case statements
 pub type Pattern {
-  // TODO make nested but not to begin with
   Destructure(String, List(String))
-  // This should be var but is also a var in expression
-  // Assignment To Label
-  Name(String)
+  Assignment(String)
 }
 
-// Use opaque type to keep in type information
+/// Expression tree with type information
 pub type Expression(t) {
-  // Pattern is name in Let
   Let(pattern: Pattern, value: #(t, Expression(t)), in: #(t, Expression(t)))
   Var(name: String)
   Binary
-  // List constructors/patterns
   Case(
     subject: #(t, Expression(t)),
     clauses: List(#(Pattern, #(t, Expression(t)))),
   )
-  Tuple
-  // arguments are names only
   Function(arguments: List(#(t, String)), body: #(t, Expression(t)))
   Call(function: #(t, Expression(t)), arguments: List(#(t, Expression(t))))
 }
@@ -75,17 +69,19 @@ fn do_typed_arguments_remove_name(
 
 fn typer() {
   Typer([], 10)
-  // The new types aren't scoped. if one returns a variable from the env if could clash with parameterised one.
 }
 
 pub fn infer(untyped, environment) {
-  // TODO case
   let typer = typer()
   try #(type_, tree, typer) = do_infer(untyped, environment, typer)
   let Typer(substitutions: substitutions, ..) = typer
   Ok(#(type_, tree, substitutions))
 }
 
+//       TODO remove free variables that all already in the environment as they might get bound later
+// Can I convince myself that all generalisable variables must be above the typer current counter
+// Yes because the environment is passed in and not used again.
+// call this fn generalise when called here.
 fn free_type_vars_in_type(type_) {
   case type_ {
     Constructor("Function", [Variable(x), Variable(y)]) if x == y -> [y]
@@ -126,11 +122,7 @@ fn do_replace_variables(arguments, old, new, accumulator) {
 
 fn bind_pattern(pattern, type_, scope, typer) {
   case pattern {
-    Name(name) -> {
-      //       TODO remove free variables that all already in the environment as they might get bound later
-      // Can I convince myself that all generalisable variables must be above the typer current counter
-      // Yes because the environment is passed in and not used again.
-      // call this fn generalise when called here.
+    Assignment(name) -> {
       let forall = free_type_vars_in_type(type_)
       let scope = scope.set_variable(scope, name, PolyType(forall, type_))
       Ok(#(scope, typer))
@@ -226,7 +218,6 @@ fn do_infer(untyped, scope, typer) {
     Binary -> Ok(#(Constructor("Binary", []), Binary, typer))
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
-      // state consisting of env and typer
       try #(scope, typer) = bind_pattern(pattern, value_type, scope, typer)
       try #(next_type, next_tree, typer) = do_infer(next, scope, typer)
       let tree =
