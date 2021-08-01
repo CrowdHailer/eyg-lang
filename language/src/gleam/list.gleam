@@ -26,6 +26,10 @@ fn do_reverse(remaining, accumulator) {
   }
 }
 
+pub fn length(list: List(a)) -> Int {
+  fold(list, 0, fn(_, count) { count + 1 })
+}
+
 pub fn append(first: List(a), second: List(a)) -> List(a) {
   do_append(reverse(first), second)
 }
@@ -56,14 +60,29 @@ pub fn fold(input: List(a), initial: b, func: fn(a, b) -> b) -> b {
   }
 }
 
-pub fn zip(left: List(a), right: List(b)) -> Result(List(#(a, b)), Nil) {
-  do_zip(left, right, [])
+pub fn try_fold(
+  input: List(a),
+  initial: b,
+  func: fn(a, b) -> Result(b, c),
+) -> Result(b, c) {
+  case input {
+    [] -> Ok(initial)
+    [item, ..rest] -> {
+      try item = func(item, initial)
+      try_fold(rest, item, func)
+    }
+  }
 }
 
-fn do_zip(left, right, acc) {
+pub fn zip(left: List(a), right: List(b)) -> Result(List(#(a, b)), #(Int, Int)) {
+  do_zip(left, right, [], 0)
+}
+
+fn do_zip(left, right, acc, count) {
   case left, right {
     [], [] -> Ok(reverse(acc))
-    [a, ..left], [b, ..right] -> do_zip(left, right, [#(a, b), ..acc])
-    _, _ -> Error(Nil)
+    [a, ..left], [b, ..right] ->
+      do_zip(left, right, [#(a, b), ..acc], count + 1)
+    left, right -> Error(#(count + length(left), count + length(right)))
   }
 }

@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import language/type_.{UnknownVariable}
 import language/type_.{Data, Function, PolyType, Type, Variable}
 
 // pub type Type {
@@ -71,10 +72,7 @@ pub fn get_variable(scope, label) {
   let Scope(variables: variables, ..) = scope
   case list.key_find(variables, label) {
     Ok(value) -> Ok(value)
-    Error(Nil) -> {
-      io.debug(label)
-      Error(todo("Variable not in environment"))
-    }
+    Error(Nil) -> Error(UnknownVariable(label))
   }
 }
 
@@ -85,6 +83,8 @@ pub fn get_constructor(scope, constructor) {
 
 fn do_get_constructor(types, constructor) {
   case types {
+    // Although in this case it's an unknown constructor
+    [] -> Error(UnknownVariable(constructor))
     [#(type_name, params, variants), ..types] ->
       case list.key_find(variants, constructor) {
         Ok(arguments) -> Ok(#(type_name, params, arguments))
@@ -92,14 +92,6 @@ fn do_get_constructor(types, constructor) {
       }
   }
 }
-
-// fn generalise_type(type_, typer) {
-//   case type_ {
-//     Function(arguments, return) -> todo("some")
-//   }
-//   // App(_) -> 
-//   // Variable(_) -> []
-// }
 fn instantiate() {
   todo
 }

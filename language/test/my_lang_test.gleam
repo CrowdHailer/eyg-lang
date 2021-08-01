@@ -10,8 +10,8 @@ pub fn list_test() {
   let True = a == r
 
   let Ok(#(type_, tree, substitutions)) = ast.infer(list.module(), list.types())
-//   let Function([Data("List", [a])], Data("List", [r])) =
-//     type_.resolve_type(type_, substitutions)
-//   let True = a == r
+  //   let Function([Data("List", [a])], Data("List", [r])) =
+  //     type_.resolve_type(type_, substitutions)
+  //   let True = a == r
   Ok(Nil)
 }

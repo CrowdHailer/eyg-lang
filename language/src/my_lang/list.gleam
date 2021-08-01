@@ -68,11 +68,10 @@ pub fn map() {
                 ],
               ),
             ),
-                    #(
+            #(
               Destructure("Nil", []),
               call(var("reverse"), [var("accumulator")]),
             ),
-
           ],
         ),
       ),

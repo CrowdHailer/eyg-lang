@@ -2,6 +2,13 @@
 import gleam/io
 import gleam/list
 
+// import language/type_.{IncorrectArity}
+pub type Failure {
+  IncorrectArity(expected: Int, given: Int)
+  UnknownVariable(name: String)
+  CouldNotUnify(expected: Type, given: Type)
+}
+
 pub type Type {
   // called data in Haskell, When list is empty it is an Atomic type
   Data(String, List(Type))
@@ -102,13 +109,6 @@ pub fn generate_type_var(typer) {
   #(Variable(var), Typer(..typer, next_type_var: var + 1))
 }
 
-pub type UnificationFailure {
-  UnificationFailure(
-    expected: String,
-    found: String
-  )
-}
-
 pub fn unify(t1, t2, typer) {
   case t1, t2 {
     t1, t2 if t1 == t2 -> Ok(typer)
@@ -116,24 +116,42 @@ pub fn unify(t1, t2, typer) {
     any, Variable(i) -> unify_variable(i, any, typer)
     Data(n1, args1), Data(n2, args2) ->
       case n1 == n2 {
-        True -> unify_all(args1, args2, typer)
-        False -> {
-          // stack on names too
-          // io.debug(t1)
-          // io.debug(t2)
-          Error(UnificationFailure(expected: n2, found: n1))}
+        True -> {
+          try pairs = case list.zip(args1, args2) {
+            Ok(pairs) -> Ok(pairs)
+            Error(#(expected, given)) ->
+              Error(IncorrectArity(expected: expected, given: given))
+          }
+          list.try_fold(
+            pairs,
+            typer,
+            fn(pair, typer) {
+              let #(arg1, arg2) = pair
+              unify(arg1, arg2, typer)
+            },
+          )
+        }
+        False -> Error(CouldNotUnify(expected: t2, given: t1))
       }
     Function(args1, return1), Function(args2, return2) -> {
-      try typer = unify_all(args1, args2, typer)
+      try pairs = case list.zip(args1, args2) {
+        Ok(pairs) -> Ok(pairs)
+        Error(#(expected, given)) ->
+          Error(IncorrectArity(expected: expected, given: given))
+      }
+      try typer =
+        list.try_fold(
+          pairs,
+          typer,
+          fn(pair, typer) {
+            let #(arg1, arg2) = pair
+            unify(arg1, arg2, typer)
+          },
+        )
       unify(return1, return2, typer)
     }
-    Data(name, _), Function(_, _) -> {
-      Error(UnificationFailure(expected: "Function", found: name))
-    }
-    Function(_, _), Data(name, _) -> {
-      Error(UnificationFailure(expected: name, found: "Function"))
-
-    }
+    Data(_, _), Function(_, _) -> Error(CouldNotUnify(expected: t2, given: t1))
+    Function(_, _), Data(_, _) -> Error(CouldNotUnify(expected: t2, given: t1))
   }
   // Row(fields, variable), Row(fields, variable) ->
   // case do_shared(left, right, [], []) {
@@ -180,19 +198,6 @@ fn unify_variable(i, any, typer) {
           Ok(typer)
         }
       }
-  }
-}
-
-fn unify_all(t1s, t2s, typer) {
-  case t1s, t2s {
-    [], [] -> Ok(typer)
-    [t1, ..t1s], [t2, ..t2s] -> {
-      try typer = unify(t1, t2, typer)
-      unify_all(t1s, t2s, typer)
-    }
-    [], _ ->  Error(UnificationFailure(expected: "More arguments", found: "None"))
-
-    _, [] -> Error(UnificationFailure(expected: "Less arguments", found: "more"))
   }
 }
 

@@ -3,7 +3,8 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import language/scope
 import language/type_.{
-  Data, Function, PolyType, Type, Typer, Variable, generate_type_var, unify,
+  Data, Function, IncorrectArity, PolyType, Type, Typer, Variable, generate_type_var,
+  unify,
 }
 
 /// Type destructure used for let and case statements
@@ -154,8 +155,11 @@ fn bind_pattern(pattern, type_, scope, typer) {
       case constructor, with {
         "Function", _ -> todo("Can;t destructure function")
         constructor, assignments -> {
+          io.debug("asssssssss")
+          io.debug(assignments)
           try #(type_name, parameters, arguments) =
             scope.get_constructor(scope, constructor)
+          io.debug("----------------")
           let #(replacements, typer) =
             generate_replacement_vars(parameters, [], typer)
           let replaced_arguments =
@@ -169,9 +173,14 @@ fn bind_pattern(pattern, type_, scope, typer) {
               },
             )
           try typer = unify(type_, Data(type_name, type_params), typer)
-          let Ok(zipped) = list.zip(replaced_arguments, assignments)
-          let scope = do_push_arguments(zipped, scope)
-          Ok(#(scope, typer))
+          case list.zip(replaced_arguments, assignments) {
+            Ok(zipped) -> {
+              let scope = do_push_arguments(zipped, scope)
+              Ok(#(scope, typer))
+            }
+            Error(#(expected, given)) ->
+              Error(IncorrectArity(expected: expected, given: given))
+          }
         }
       }
   }
