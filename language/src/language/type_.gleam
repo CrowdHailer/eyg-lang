@@ -102,6 +102,13 @@ pub fn generate_type_var(typer) {
   #(Variable(var), Typer(..typer, next_type_var: var + 1))
 }
 
+pub type UnificationFailure {
+  UnificationFailure(
+    expected: String,
+    found: String
+  )
+}
+
 pub fn unify(t1, t2, typer) {
   case t1, t2 {
     t1, t2 if t1 == t2 -> Ok(typer)
@@ -110,16 +117,22 @@ pub fn unify(t1, t2, typer) {
     Data(n1, args1), Data(n2, args2) ->
       case n1 == n2 {
         True -> unify_all(args1, args2, typer)
-        False -> Error("mismatched constructors")
+        False -> {
+          // stack on names too
+          // io.debug(t1)
+          // io.debug(t2)
+          Error(UnificationFailure(expected: n2, found: n1))}
       }
     Function(args1, return1), Function(args2, return2) -> {
       try typer = unify_all(args1, args2, typer)
       unify(return1, return2, typer)
     }
-    Data(_, _), Function(_, _) | Function(_, _), Data(_, _) -> {
-      io.debug(t1)
-      io.debug(t2)
-      Error("can't unift data and function")
+    Data(name, _), Function(_, _) -> {
+      Error(UnificationFailure(expected: "Function", found: name))
+    }
+    Function(_, _), Data(name, _) -> {
+      Error(UnificationFailure(expected: name, found: "Function"))
+
     }
   }
   // Row(fields, variable), Row(fields, variable) ->
@@ -177,6 +190,9 @@ fn unify_all(t1s, t2s, typer) {
       try typer = unify(t1, t2, typer)
       unify_all(t1s, t2s, typer)
     }
+    [], _ ->  Error(UnificationFailure(expected: "More arguments", found: "None"))
+
+    _, [] -> Error(UnificationFailure(expected: "Less arguments", found: "more"))
   }
 }
 

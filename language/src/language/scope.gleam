@@ -73,7 +73,7 @@ pub fn get_variable(scope, label) {
     Ok(value) -> Ok(value)
     Error(Nil) -> {
       io.debug(label)
-      Error("Variable not in environment")
+      Error(todo("Variable not in environment"))
     }
   }
 }

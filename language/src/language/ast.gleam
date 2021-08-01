@@ -292,6 +292,11 @@ fn do_infer(untyped, scope, typer) {
       try #(f_type, f_tree, typer) = do_infer(function, scope, typer)
       try #(with, typer) = do_infer_call_args(with, scope, typer, [])
       let #(return_type, typer) = generate_type_var(typer)
+      // expected function found blah
+      // io.debug(expected found)
+      // Pass situation to unification. caseclause function call argument/variable
+      // I think we can leave the situation in the AST module, types maybe just need some metadata on the position
+      // Big things, better errors and eval functionality.
       try typer =
         unify(
           f_type,

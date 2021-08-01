@@ -85,8 +85,9 @@ pub fn simple_custom_type_test() {
 }
 
 fn with_equal(scope) {
-  scope.set_variable(
-    scope,
+  scope
+  |> scope.newtype("Boolean", [], [#("True", []), #("False", [])])
+  |> scope.set_variable(
     "equal",
     PolyType([1], Function([Variable(1), Variable(1)], Data("Boolean", []))),
   )
@@ -200,4 +201,24 @@ pub fn generalising_restricted_by_scope_test() {
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Function([Data("Binary", [])], Data("Boolean", [])) =
     type_.resolve_type(type_, typer)
+}
+
+pub fn call_error_messages_test() {
+  let scope =
+    scope.new()
+    |> with_equal()
+
+  // let too_many_args = call(var("equal"), [binary(), binary(), binary()])
+  // let Error("too many args to unify")= ast.infer(too_many_args, scope)
+
+  // let too_many_args = call(var("equal"), [binary()])
+  // let Error("too few args to unify")= ast.infer(too_many_args, scope)
+  
+  
+
+  let too_many_args = call(var("equal"), [binary(), call(var("True"), [])])
+  let Ok(_)= ast.infer(too_many_args, scope)
+
+  io.debug(#("hell", 1))
+  let 1 = 0
 }

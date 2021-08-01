@@ -81,7 +81,7 @@ pub fn map() {
   )
 }
 
-// zip needs tuple
+// zip needs tuple and result
 // returning a module needs tuple or pair or row
 fn with(named, final) {
   list.reverse(named)
