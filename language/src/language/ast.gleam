@@ -27,6 +27,7 @@ pub type Expression(t) {
   Call(function: #(t, Expression(t)), arguments: List(#(t, Expression(t))))
 }
 
+// TODO remove all this gunk at the top
 fn push_arguments(untyped, scope, typer) {
   // TODO check double names
   let #(typed, typer) = do_argument_typing(untyped, [], typer)
@@ -155,11 +156,8 @@ fn bind_pattern(pattern, type_, scope, typer) {
       case constructor, with {
         "Function", _ -> todo("Can;t destructure function")
         constructor, assignments -> {
-          io.debug("asssssssss")
-          io.debug(assignments)
           try #(type_name, parameters, arguments) =
             scope.get_constructor(scope, constructor)
-          io.debug("----------------")
           let #(replacements, typer) =
             generate_replacement_vars(parameters, [], typer)
           let replaced_arguments =

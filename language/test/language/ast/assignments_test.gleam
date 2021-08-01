@@ -1,6 +1,6 @@
 import language/ast/builder.{binary, call, destructure, let_, var}
 import language/ast
-import language/type_.{IncorrectArity, UnknownVariable}
+import language/type_.{CouldNotUnify, IncorrectArity, UnknownVariable}
 import language/scope
 import language/type_.{Data}
 import language/ast/support
@@ -45,4 +45,17 @@ pub fn incorrect_destructure_arity_test() {
 
   let untyped = destructure("User", [], call(var("User"), [binary()]), binary())
   let Error(IncorrectArity(expected: 1, given: 0)) = ast.infer(untyped, scope)
+}
+
+pub fn incorrect_destructure_type_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
+    |> support.with_equal()
+
+  let untyped = destructure("True", [], call(var("User"), [binary()]), binary())
+  let Error(CouldNotUnify(
+    expected: Data("Boolean", []),
+    given: Data("User", []),
+  )) = ast.infer(untyped, scope)
 }
