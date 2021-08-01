@@ -143,8 +143,3 @@ fn infer(node, state) {
 //   assert Ok(Linked(UserType("Binary"))) = infer(ast, initial)
 //   Nil
 // }
-// TODO
-pub fn run_compiler_test() {
-  let Ok(_) = language.lists()
-  // let Ok(_) = language.compiler()
-}

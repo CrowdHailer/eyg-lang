@@ -116,8 +116,11 @@ pub fn unify(t1, t2, typer) {
       try typer = unify_all(args1, args2, typer)
       unify(return1, return2, typer)
     }
-    Data(_, _), Function(_, _) | Function(_, _), Data(_, _) ->
+    Data(_, _), Function(_, _) | Function(_, _), Data(_, _) -> {
+      io.debug(t1)
+      io.debug(t2)
       Error("can't unift data and function")
+    }
   }
   // Row(fields, variable), Row(fields, variable) ->
   // case do_shared(left, right, [], []) {
