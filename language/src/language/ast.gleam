@@ -100,66 +100,21 @@ fn bind(pattern, expected, scope, typer) {
     }
     Destructure(constructor, with) -> {
       let situation = ValueDestructuring(constructor)
-      try #(type_name, parameters, arguments) =
-        with_situation(scope.get_constructor(scope, constructor), situation)
-      let #(replacements, typer) =
-        generate_replacement_vars(parameters, [], typer)
-      let replaced_arguments = replace_variables(arguments, replacements, [])
-      let type_params =
-        list.map(
-          replacements,
-          fn(pair) {
-            let #(_, variable) = pair
-            variable
-          },
-        )
-      try typer =
-        unify(Data(type_name, type_params), expected, typer, situation)
-      case list.zip(replaced_arguments, with) {
-        Ok(zipped) -> {
-          let scope = do_push_arguments(zipped, scope)
-          Ok(#(scope, typer))
+      try poly_type =
+        scope.get_variable(scope, constructor)
+        |> with_situation(VarLookup)
+      let #(type_, typer) = type_.instantiate(poly_type, typer)
+      let Function(arguments, return) = type_
+      try typer = unify(return, expected, typer, situation)
+      try scope =
+        case list.zip(arguments, with) {
+          Ok(zipped) -> Ok(set_arguments(scope, zipped, typer))
+          Error(#(expected, given)) ->
+            Error(IncorrectArity(expected: expected, given: given))
         }
-        Error(#(expected, given)) ->
-          Error(IncorrectArity(expected: expected, given: given))
-      }
-      |> with_situation(situation)
+        |> with_situation(situation)
+      Ok(#(scope, typer))
     }
-  }
-}
-
-// This can probably get moved to scope somewhere
-fn generate_replacement_vars(
-  parameterised,
-  replacements,
-  typer,
-) -> #(List(#(Int, Type)), Typer) {
-  case parameterised {
-    [] -> #(list.reverse(replacements), typer)
-    [i, ..parameterised] -> {
-      let #(var, typer) = generate_type_var(typer)
-      generate_replacement_vars(
-        parameterised,
-        [#(i, var), ..replacements],
-        typer,
-      )
-    }
-  }
-}
-
-fn replace_variables(arguments, replacements, acc) {
-  case arguments {
-    [] -> list.reverse(acc)
-    [Variable(p), ..arguments] -> {
-      let Ok(new_var) = list.key_find(replacements, p)
-      replace_variables(arguments, replacements, [new_var, ..acc])
-    }
-    [Data(name, inner), ..arguments] ->
-      replace_variables(
-        arguments,
-        replacements,
-        [Data(name, replace_variables(inner, replacements, [])), ..acc],
-      )
   }
 }
 
