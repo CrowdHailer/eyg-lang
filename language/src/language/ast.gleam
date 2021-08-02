@@ -64,7 +64,7 @@ fn set_arguments(scope, arguments, typer) {
   )
 }
 
-fn bind_pattern(pattern, type_, scope, typer) {
+fn bind(pattern, type_, scope, typer) {
   case pattern {
     Assignment(name) -> {
       let scope = set_variable(scope, name, type_, typer)
@@ -136,30 +136,6 @@ fn replace_variables(arguments, replacements, acc) {
   }
 }
 
-fn do_match_remaining_clauses(rest, state) {
-  let #(subject_type, first_type, typed_clauses, environment, typer) = state
-  case rest {
-    [] -> Ok(#(list.reverse(typed_clauses), typer))
-    [clause, ..rest] -> {
-      let #(pattern, then) = clause
-      try #(inner_env, typer) =
-        bind_pattern(pattern, subject_type, environment, typer)
-      try #(type_, tree, typer) = do_infer(then, inner_env, typer)
-      try typer = unify(type_, first_type, typer)
-      do_match_remaining_clauses(
-        rest,
-        #(
-          subject_type,
-          first_type,
-          [#(pattern, #(type_, tree)), ..typed_clauses],
-          environment,
-          typer,
-        ),
-      )
-    }
-  }
-}
-
 fn type_arguments(arguments, typer) {
   do_type_arguments(arguments, [], typer)
 }
@@ -195,7 +171,7 @@ fn do_infer(untyped, scope, typer) {
     Binary -> Ok(#(Data("Binary", []), Binary, typer))
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
-      try #(scope, typer) = bind_pattern(pattern, value_type, scope, typer)
+      try #(scope, typer) = bind(pattern, value_type, scope, typer)
       try #(next_type, next_tree, typer) = do_infer(next, scope, typer)
       let tree =
         Let(pattern, #(value_type, value_tree), #(next_type, next_tree))
@@ -206,31 +182,33 @@ fn do_infer(untyped, scope, typer) {
       let #(var_type, typer) = type_.instantiate(poly_type, typer)
       Ok(#(var_type, Var(name), typer))
     }
-    Case(subject, clauses) ->
+    Case(subject, clauses) -> {
       case clauses {
-        [first, second, ..rest] -> {
-          let rest = [second, ..rest]
-          try #(subject_type, subject_tree, typer) =
-            do_infer(subject, scope, typer)
-          let #(first_pattern, first_then) = first
-          try #(first_env, typer) =
-            bind_pattern(first_pattern, subject_type, scope, typer)
-          try #(first_type, first_tree, typer) =
-            do_infer(first_then, first_env, typer)
-          try #(clauses, typer) =
-            do_match_remaining_clauses(
-              rest,
-              #(subject_type, first_type, [], scope, typer),
-            )
-          let tree =
-            Case(
-              #(subject_type, subject_tree),
-              [#(first_pattern, #(first_type, first_tree)), ..clauses],
-            )
-          Ok(#(first_type, tree, typer))
-        }
+        [_first, _second, ..rest] -> Ok(Nil)
         _ -> todo("Must be at least two clauses")
       }
+      try #(subject_type, subject_tree, typer) = do_infer(subject, scope, typer)
+      let subject = #(subject_type, subject_tree)
+      let #(return_type, typer) = generate_type_var(typer)
+      try #(accumulator, typer) =
+        list.try_fold(
+          clauses,
+          #([], typer),
+          fn(clause, state) {
+            let #(accumulator, typer) = state
+            let #(pattern, then) = clause
+            try #(scope, typer) = bind(pattern, subject_type, scope, typer)
+            try #(type_, tree, typer) = do_infer(then, scope, typer)
+            try typer = unify(type_, return_type, typer)
+            let clause = #(pattern, #(type_, tree))
+            let accumulator = [clause, ..accumulator]
+            Ok(#(accumulator, typer))
+          },
+        )
+      let clauses = list.reverse(accumulator)
+      let tree = Case(subject, clauses)
+      Ok(#(return_type, tree, typer))
+    }
     Fn(for, in) -> {
       let #(for, typer) = type_arguments(for, typer)
       let scope = set_arguments(scope, for, typer)
@@ -247,15 +225,12 @@ fn do_infer(untyped, scope, typer) {
       try #(f_type, f_tree, typer) = do_infer(function, scope, typer)
       try #(with, typer) = infer_arguments(with, scope, typer)
       let #(return_type, typer) = generate_type_var(typer)
-      try typer =
-        unify(
-          f_type,
-          Function(
-            list.map(with, fn(x: #(Type, Expression(Type))) { x.0 }),
-            return_type,
-          ),
-          typer,
+      let expected =
+        Function(
+          list.map(with, fn(x: #(Type, Expression(Type))) { x.0 }),
+          return_type,
         )
+      try typer = unify(f_type, expected, typer)
       let type_ = return_type
       let tree = Call(#(f_type, f_tree), with)
       Ok(#(type_, tree, typer))
