@@ -3,7 +3,9 @@ import gleam/list
 import language/ast/builder.{
   binary, call, case_, destructure, function, let_, var,
 }
-import language/ast.{Assignment, Binary, Destructure, Let, Var}
+import language/ast.{
+  Assignment, Binary, Destructure, Let, ValueDestructuring, Var,
+}
 import language/type_.{CouldNotUnify, Data, Function, PolyType, Variable}
 import language/scope
 import language/ast/support
@@ -64,10 +66,11 @@ pub fn distructure_incorrect_type_test() {
         #(Destructure("None", []), binary()),
       ],
     )
-  let Error(CouldNotUnify(
-    expected: Data("Boolean", []),
-    given: Data("Option", [_]),
-  )) = ast.infer(untyped, scope)
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+
+  let CouldNotUnify(expected: Data("Boolean", []), given: Data("Option", [_])) =
+    failure
+  let ValueDestructuring("Some") = situation
 }
 
 pub fn clause_return_missmatch_test() {
@@ -84,10 +87,9 @@ pub fn clause_return_missmatch_test() {
         #(Destructure("False", []), binary()),
       ],
     )
-  let Error(CouldNotUnify(
-    expected: Data("Boolean", []),
-    given: Data("Binary", []),
-  )) = ast.infer(untyped, scope)
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let CouldNotUnify(expected: Data("Boolean", []), given: Data("Binary", [])) =
+    failure
 }
 
 pub fn mismatched_pattern_test() {
@@ -97,18 +99,19 @@ pub fn mismatched_pattern_test() {
     |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
 
   let untyped =
-    function(["x"],
-    case_(
-      var("x"),
-      [
-        #(Destructure("True", []), binary()),
-        #(Destructure("None", []), binary()),
-      ],
-    ))
-  let Error(CouldNotUnify(
-    expected: Data("Boolean", []),
-    given: Data("Option", [_]),
-  )) = ast.infer(untyped, scope)
+    function(
+      ["x"],
+      case_(
+        var("x"),
+        [
+          #(Destructure("True", []), binary()),
+          #(Destructure("None", []), binary()),
+        ],
+      ),
+    )
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let CouldNotUnify(expected: Data("Boolean", []), given: Data("Option", [_])) =
+    failure
 }
 
 pub fn unify_types_in_fn_args_test() {

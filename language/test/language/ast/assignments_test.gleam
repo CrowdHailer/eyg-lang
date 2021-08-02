@@ -1,5 +1,5 @@
 import language/ast/builder.{binary, call, destructure, let_, var}
-import language/ast
+import language/ast.{ValueDestructuring}
 import language/type_.{CouldNotUnify, IncorrectArity, UnknownVariable}
 import language/scope
 import language/type_.{Data}
@@ -14,7 +14,9 @@ pub fn infer_type_constructor_for_var_test() {
 
 pub fn missing_var_test() {
   let untyped = var("bar")
-  let Error(UnknownVariable("bar")) = ast.infer(untyped, scope.new())
+  let Error(#(failure, situation)) = ast.infer(untyped, scope.new())
+
+  let UnknownVariable("bar") = failure
 }
 
 pub fn destructure_test() {
@@ -35,7 +37,8 @@ pub fn destructure_test() {
 
 pub fn unknown_constructor_test() {
   let untyped = destructure("True", [], binary(), binary())
-  let Error(UnknownVariable("True")) = ast.infer(untyped, scope.new())
+  let Error(#(UnknownVariable("True"), _situation)) =
+    ast.infer(untyped, scope.new())
 }
 
 pub fn incorrect_destructure_arity_test() {
@@ -44,7 +47,9 @@ pub fn incorrect_destructure_arity_test() {
     |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
 
   let untyped = destructure("User", [], call(var("User"), [binary()]), binary())
-  let Error(IncorrectArity(expected: 1, given: 0)) = ast.infer(untyped, scope)
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let IncorrectArity(expected: 1, given: 0) = failure
+  let ValueDestructuring("User") = situation
 }
 
 pub fn incorrect_destructure_type_test() {
@@ -54,8 +59,8 @@ pub fn incorrect_destructure_type_test() {
     |> support.with_equal()
 
   let untyped = destructure("True", [], call(var("User"), [binary()]), binary())
-  let Error(CouldNotUnify(
-    expected: Data("User", []),
-    given: Data("Boolean", []),
-  )) = ast.infer(untyped, scope)
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let CouldNotUnify(expected: Data("User", []), given: Data("Boolean", [])) =
+    failure
+  let ValueDestructuring("True") = situation
 }

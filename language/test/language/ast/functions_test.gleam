@@ -1,6 +1,6 @@
 import gleam/io
 import language/ast/builder.{binary, call, case_, function, let_, var}
-import language/ast.{Destructure}
+import language/ast.{Destructure, FunctionCall}
 import language/type_.{CouldNotUnify, IncorrectArity}
 import language/scope
 import language/type_.{Data, Function, Variable}
@@ -22,7 +22,6 @@ pub fn infer_call_test() {
 pub fn infer_call_with_arguments_test() {
   let untyped = call(function(["x"], var("x")), [binary()])
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
-  io.debug(typer)
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
@@ -92,17 +91,20 @@ pub fn incorrect_arity_test() {
   // Test that number of args is the first error
   let too_many_args =
     call(var("equal"), [call(var("True"), []), binary(), binary()])
-  let Error(IncorrectArity(expected: 2, given: 3)) =
-    ast.infer(too_many_args, scope)
+  let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
+  let IncorrectArity(expected: 2, given: 3) = failure
+  let FunctionCall = situation
 
   let too_few_args = call(var("equal"), [binary()])
-  let Error(IncorrectArity(expected: 2, given: 1)) =
-    ast.infer(too_few_args, scope)
+  let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
+  let IncorrectArity(expected: 2, given: 1) = failure
+  let FunctionCall = situation
 
   // Test for data constructors
   let too_many_args = call(var("True"), [binary()])
-  let Error(IncorrectArity(expected: 0, given: 1)) =
-    ast.infer(too_many_args, scope)
+  let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
+  let IncorrectArity(expected: 0, given: 1) = failure
+  let FunctionCall = situation
 }
 
 pub fn call_argument_mistype_test() {
@@ -111,8 +113,8 @@ pub fn call_argument_mistype_test() {
     |> support.with_equal()
 
   let too_few_args = call(var("equal"), [binary(), call(var("True"), [])])
-  let Error(CouldNotUnify(
-    expected: Data("Binary", []),
-    given: Data("Boolean", []),
-  )) = ast.infer(too_few_args, scope)
+  let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
+  let CouldNotUnify(expected: Data("Binary", []), given: Data("Boolean", [])) =
+    failure
+  let FunctionCall = situation
 }

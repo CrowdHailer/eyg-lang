@@ -4,7 +4,6 @@ import gleam/option.{None, Option, Some}
 import language/scope
 import language/type_.{
   Data, Function, IncorrectArity, PolyType, Type, Typer, Variable, generate_type_var,
-  unify,
 }
 
 /// Type destructure used for let and case statements
@@ -25,6 +24,35 @@ pub type Expression(t) {
   // Clashes with Function Type, maybe call Anonymous, Lambda
   Fn(arguments: List(#(t, String)), body: #(t, Expression(t)))
   Call(function: #(t, Expression(t)), arguments: List(#(t, Expression(t))))
+}
+
+pub type UnifySituation {
+  // let a = foo
+  // a is expected to match the type of foo becuase foo gets calculate first
+  // works well in cases where previous pattern specifies type of destructure.
+  ValueDestructuring(constructor: String)
+  CaseClause
+  // Never happens without annotation
+  ReturnAnnotation
+  FunctionCall
+  // Not a unify situation unless env is row type 
+  VarLookup
+}
+
+fn unify(given, expected, typer, situation) {
+  type_.unify(given, expected, typer)
+  |> with_situation(situation)
+}
+
+// NEEDS ANNOTATION
+fn with_situation(
+  result: Result(a, b),
+  situation: UnifySituation,
+) -> Result(a, #(b, UnifySituation)) {
+  case result {
+    Ok(typer) -> Ok(typer)
+    Error(failure) -> Error(#(failure, situation))
+  }
 }
 
 fn do_push_arguments(typed, scope) {
@@ -64,9 +92,6 @@ fn set_arguments(scope, arguments, typer) {
   )
 }
 
-// let a = foo
-// a is expected to match the type of foo becuase foo gets calculate first
-// works well in cases where previous pattern specifies type of destructure.
 fn bind(pattern, expected, scope, typer) {
   case pattern {
     Assignment(name) -> {
@@ -74,8 +99,9 @@ fn bind(pattern, expected, scope, typer) {
       Ok(#(scope, typer))
     }
     Destructure(constructor, with) -> {
+      let situation = ValueDestructuring(constructor)
       try #(type_name, parameters, arguments) =
-        scope.get_constructor(scope, constructor)
+        with_situation(scope.get_constructor(scope, constructor), situation)
       let #(replacements, typer) =
         generate_replacement_vars(parameters, [], typer)
       let replaced_arguments = replace_variables(arguments, replacements, [])
@@ -87,7 +113,8 @@ fn bind(pattern, expected, scope, typer) {
             variable
           },
         )
-      try typer = unify(Data(type_name, type_params), expected, typer)
+      try typer =
+        unify(Data(type_name, type_params), expected, typer, situation)
       case list.zip(replaced_arguments, with) {
         Ok(zipped) -> {
           let scope = do_push_arguments(zipped, scope)
@@ -96,6 +123,7 @@ fn bind(pattern, expected, scope, typer) {
         Error(#(expected, given)) ->
           Error(IncorrectArity(expected: expected, given: given))
       }
+      |> with_situation(situation)
     }
   }
 }
@@ -177,7 +205,9 @@ fn do_infer(untyped, scope, typer) {
       Ok(#(next_type, tree, typer))
     }
     Var(name) -> {
-      try poly_type = scope.get_variable(scope, name)
+      try poly_type =
+        scope.get_variable(scope, name)
+        |> with_situation(VarLookup)
       let #(var_type, typer) = type_.instantiate(poly_type, typer)
       Ok(#(var_type, Var(name), typer))
     }
@@ -198,7 +228,7 @@ fn do_infer(untyped, scope, typer) {
             let #(pattern, then) = clause
             try #(scope, typer) = bind(pattern, subject_type, scope, typer)
             try #(type_, tree, typer) = do_infer(then, scope, typer)
-            try typer = unify(type_, return_type, typer)
+            try typer = unify(type_, return_type, typer, CaseClause)
             let clause = #(pattern, #(type_, tree))
             let accumulator = [clause, ..accumulator]
             Ok(#(accumulator, typer))
@@ -216,7 +246,7 @@ fn do_infer(untyped, scope, typer) {
       let type_ = Function(argument_types, return_type)
       let scope = set_variable(scope, "self", type_, typer)
       try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
-      try typer = unify(return_type, in_type, typer)
+      try typer = unify(return_type, in_type, typer, ReturnAnnotation)
       let tree = Fn(for, #(in_type, in_tree))
       Ok(#(type_, tree, typer))
     }
@@ -230,7 +260,7 @@ fn do_infer(untyped, scope, typer) {
           list.map(with, fn(x: #(Type, Expression(Type))) { x.0 }),
           return_type,
         )
-      try typer = unify(given, f_type, typer)
+      try typer = unify(given, f_type, typer, FunctionCall)
       let type_ = return_type
       let tree = Call(#(f_type, f_tree), with)
       Ok(#(type_, tree, typer))
