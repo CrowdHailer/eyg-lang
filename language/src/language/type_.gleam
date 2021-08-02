@@ -36,6 +36,11 @@ pub fn checker() {
   Typer([], 10)
 }
 
+pub fn generate_type_var(typer) {
+  let Typer(next_type_var: var, ..) = typer
+  #(Variable(var), Typer(..typer, next_type_var: var + 1))
+}
+
 // Need to understand the concept of free variables better.
 pub fn free_variables(poly) {
   case poly {
@@ -104,9 +109,68 @@ fn do_generalize(arguments, excluded, parameters) {
   }
 }
 
-pub fn generate_type_var(typer) {
-  let Typer(next_type_var: var, ..) = typer
-  #(Variable(var), Typer(..typer, next_type_var: var + 1))
+pub fn instantiate(poly_type, typer) {
+  let PolyType(forall, type_) = poly_type
+  do_instantiate(forall, type_, typer)
+}
+
+// separate type of var mono and var poly
+// TODO need tests here, can we reuse resolve. probably can call in on the substitutions but we need the typer counter to keep increasing
+// can't have the unification in main typer as it will undo the generalisation
+fn do_instantiate(forall, type_, typer) {
+  // let typer = list.fold(forall, typer, fn(i, typer) {
+  //   let #(r, typer) = generate_type_var(typer)
+  //   // Two variables should always unify
+  //   let Ok(typer) = unify(Variable(i), r, typer)
+  //   typer
+  //   |> io.debug()
+  // })
+  // // Need replacement that doesn't bind into the main list of sub
+  // #(type_.resolve_type(_type, typer), typer)
+  case forall {
+    [] -> #(type_, typer)
+    [i, ..rest] -> {
+      let #(type_var, typer) = generate_type_var(typer)
+      let type_ = case type_ {
+        Data(name, arguments) -> {
+          let arguments =
+            do_replace_variables(arguments, Variable(i), type_var, [])
+          Data(name, arguments)
+        }
+        Function(arguments, return) -> {
+          let old = Variable(i)
+          let arguments = do_replace_variables(arguments, old, type_var, [])
+          let return = replace_variable(return, old, type_var)
+          Function(arguments, return)
+        }
+      }
+      do_instantiate(rest, type_, typer)
+    }
+  }
+}
+
+fn do_replace_variables(arguments, old, new, accumulator) {
+  case arguments {
+    [] -> list.reverse(accumulator)
+    [argument, ..rest] -> {
+      let replacement = replace_variable(argument, old, new)
+      do_replace_variables(rest, old, new, [replacement, ..accumulator])
+    }
+  }
+}
+
+fn replace_variable(argument, old, new) {
+  case argument {
+    var if var == old -> new
+    Variable(_) -> argument
+    Data(name, arguments) ->
+      Data(name, do_replace_variables(arguments, old, new, []))
+    Function(arguments, return) ->
+      Function(
+        do_replace_variables(arguments, old, new, []),
+        replace_variable(return, old, new),
+      )
+  }
 }
 
 pub fn unify(t1, t2, typer) {

@@ -4,7 +4,7 @@ import language/ast/builder.{
   binary, call, case_, destructure, function, let_, var,
 }
 import language/ast.{Assignment, Binary, Destructure, Let, Var}
-import language/type_.{Data, Function, PolyType, Variable, CouldNotUnify}
+import language/type_.{CouldNotUnify, Data, Function, PolyType, Variable}
 import language/scope
 import language/ast/support
 
@@ -64,7 +64,10 @@ pub fn distructure_incorrect_type_test() {
         #(Destructure("None", []), binary()),
       ],
     )
-  let Error(CouldNotUnify(expected: Data("Boolean", []), given: Data("Option", [_]))) = ast.infer(untyped, scope)
+  let Error(CouldNotUnify(
+    expected: Data("Boolean", []),
+    given: Data("Option", [_]),
+  )) = ast.infer(untyped, scope)
 }
 
 pub fn clause_missmatch_test() {
@@ -84,8 +87,11 @@ pub fn clause_missmatch_test() {
         ],
       ),
     )
-    // TODO need to rewrite through this as expected
-  let Error(CouldNotUnify(expected: Data("Option", [_]), given: Data("Boolean", []))) = ast.infer(untyped, scope)
+  // TODO need to rewrite through this as expected
+  let Error(CouldNotUnify(
+    expected: Data("Option", [_]),
+    given: Data("Boolean", []),
+  )) = ast.infer(untyped, scope)
 }
 
 pub fn unify_types_in_fn_args_test() {
@@ -117,50 +123,5 @@ pub fn case_with_function_test() {
     )
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Function([Data("Option", [Data("Binary", [])])], Data("Binary", [])) =
-    type_.resolve_type(type_, typer)
-}
-
-pub fn recursion_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
-  let untyped =
-    function(
-      ["x"],
-      case_(
-        var("x"),
-        [
-          #(
-            Destructure("Some", ["value"]),
-            call(var("self"), [call(var("None"), [])]),
-          ),
-          #(Destructure("None", []), binary()),
-        ],
-      ),
-    )
-  // recur as a keyword same as clojure
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
-  let Function([input], return) = type_.resolve_type(type_, typer)
-}
-
-pub fn generalising_restricted_by_scope_test() {
-  let scope =
-    scope.new()
-    |> support.with_equal()
-  let untyped =
-    // make matcher function
-    let_(
-      "make_match",
-      function(
-        ["text"],
-        function(["x"], call(var("equal"), [var("text"), var("x")])),
-      ),
-      call(var("make_match"), [binary()]),
-    )
-
-  // make match is a fn type that should Not be generalised
-  // isolated let etc can there be a whole that get's the scope
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
-  let Function([Data("Binary", [])], Data("Boolean", [])) =
     type_.resolve_type(type_, typer)
 }
