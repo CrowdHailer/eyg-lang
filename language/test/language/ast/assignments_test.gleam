@@ -55,7 +55,7 @@ pub fn incorrect_destructure_type_test() {
 
   let untyped = destructure("True", [], call(var("User"), [binary()]), binary())
   let Error(CouldNotUnify(
-    expected: Data("Boolean", []),
-    given: Data("User", []),
+    expected: Data("User", []),
+    given: Data("Boolean", []),
   )) = ast.infer(untyped, scope)
 }

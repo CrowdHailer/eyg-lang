@@ -70,27 +70,44 @@ pub fn distructure_incorrect_type_test() {
   )) = ast.infer(untyped, scope)
 }
 
-pub fn clause_missmatch_test() {
+pub fn clause_return_missmatch_test() {
   let scope =
     scope.new()
     |> support.with_equal()
     |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
 
   let untyped =
-    function(
-      ["x"],
-      case_(
-        var("x"),
-        [
-          #(Destructure("Some", ["value"]), var("value")),
-          #(Destructure("True", []), binary()),
-        ],
-      ),
+    case_(
+      call(var("True"), []),
+      [
+        #(Destructure("True", []), call(var("False"), [])),
+        #(Destructure("False", []), binary()),
+      ],
     )
-  // TODO need to rewrite through this as expected
   let Error(CouldNotUnify(
-    expected: Data("Option", [_]),
-    given: Data("Boolean", []),
+    expected: Data("Boolean", []),
+    given: Data("Binary", []),
+  )) = ast.infer(untyped, scope)
+}
+
+pub fn mismatched_pattern_test() {
+  let scope =
+    scope.new()
+    |> support.with_equal()
+    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+
+  let untyped =
+    function(["x"],
+    case_(
+      var("x"),
+      [
+        #(Destructure("True", []), binary()),
+        #(Destructure("None", []), binary()),
+      ],
+    ))
+  let Error(CouldNotUnify(
+    expected: Data("Boolean", []),
+    given: Data("Option", [_]),
   )) = ast.infer(untyped, scope)
 }
 

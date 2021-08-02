@@ -64,10 +64,13 @@ fn set_arguments(scope, arguments, typer) {
   )
 }
 
-fn bind(pattern, type_, scope, typer) {
+// let a = foo
+// a is expected to match the type of foo becuase foo gets calculate first
+// works well in cases where previous pattern specifies type of destructure.
+fn bind(pattern, expected, scope, typer) {
   case pattern {
     Assignment(name) -> {
-      let scope = set_variable(scope, name, type_, typer)
+      let scope = set_variable(scope, name, expected, typer)
       Ok(#(scope, typer))
     }
     Destructure(constructor, with) -> {
@@ -84,7 +87,7 @@ fn bind(pattern, type_, scope, typer) {
             variable
           },
         )
-      try typer = unify(type_, Data(type_name, type_params), typer)
+      try typer = unify(Data(type_name, type_params), expected, typer)
       case list.zip(replaced_arguments, with) {
         Ok(zipped) -> {
           let scope = do_push_arguments(zipped, scope)
@@ -221,12 +224,13 @@ fn do_infer(untyped, scope, typer) {
       try #(f_type, f_tree, typer) = do_infer(function, scope, typer)
       try #(with, typer) = infer_arguments(with, scope, typer)
       let #(return_type, typer) = generate_type_var(typer)
-      let expected =
+      // because given 3 args
+      let given =
         Function(
           list.map(with, fn(x: #(Type, Expression(Type))) { x.0 }),
           return_type,
         )
-      try typer = unify(f_type, expected, typer)
+      try typer = unify(given, f_type, typer)
       let type_ = return_type
       let tree = Call(#(f_type, f_tree), with)
       Ok(#(type_, tree, typer))

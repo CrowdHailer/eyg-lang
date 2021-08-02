@@ -123,7 +123,6 @@ fn do_instantiate(forall, type_, typer) {
   //   // Two variables should always unify
   //   let Ok(typer) = unify(Variable(i), r, typer)
   //   typer
-  //   |> io.debug()
   // })
   // // Need replacement that doesn't bind into the main list of sub
   // #(type_.resolve_type(_type, typer), typer)
@@ -173,49 +172,48 @@ fn replace_variable(argument, old, new) {
   }
 }
 
-pub fn unify(t1, t2, typer) {
-  case t1, t2 {
-    t1, t2 if t1 == t2 -> Ok(typer)
-    Variable(i), any -> unify_variable(i, any, typer)
-    any, Variable(i) -> unify_variable(i, any, typer)
-    Data(n1, args1), Data(n2, args2) ->
-      case n1 == n2 {
-        True -> {
-          try pairs = case list.zip(args1, args2) {
-            Ok(pairs) -> Ok(pairs)
-            Error(#(expected, given)) ->
-              Error(IncorrectArity(expected: expected, given: given))
-          }
-          list.try_fold(
-            pairs,
-            typer,
-            fn(pair, typer) {
-              let #(arg1, arg2) = pair
-              unify(arg1, arg2, typer)
-            },
-          )
-        }
-        False -> Error(CouldNotUnify(expected: t2, given: t1))
-      }
-    Function(args1, return1), Function(args2, return2) -> {
-      try pairs = case list.zip(args1, args2) {
-        Ok(pairs) -> Ok(pairs)
-        Error(#(expected, given)) ->
-          Error(IncorrectArity(expected: expected, given: given))
-      }
-      try typer =
-        list.try_fold(
-          pairs,
-          typer,
-          fn(pair, typer) {
-            let #(arg1, arg2) = pair
-            unify(arg1, arg2, typer)
-          },
-        )
-      unify(return1, return2, typer)
+fn unify_pair(pair, typer) {
+  let #(given, expected) = pair
+  unify(given, expected, typer)
+}
+
+fn zip_args(given, expected) {
+  case list.zip(given, expected) {
+    Ok(pairs) -> Ok(pairs)
+    Error(#(given, expected)) ->
+      Error(IncorrectArity(expected: expected, given: given))
+  }
+}
+
+pub fn unify(given, expected, typer) {
+  let given = resolve_type(given, typer)
+  let expected = resolve_type(expected, typer)
+  let Typer(substitutions: substitutions, ..) = typer
+
+  case given, expected {
+    given, expected if given == expected -> Ok(typer)
+    Variable(i), any -> {
+      let substitutions = [#(i, any), ..substitutions]
+      Ok(Typer(..typer, substitutions: substitutions))
     }
-    Data(_, _), Function(_, _) -> Error(CouldNotUnify(expected: t2, given: t1))
-    Function(_, _), Data(_, _) -> Error(CouldNotUnify(expected: t2, given: t1))
+    any, Variable(j) -> {
+      let substitutions = [#(j, any), ..substitutions]
+      Ok(Typer(..typer, substitutions: substitutions))
+    }
+    Data(given_name, given_args), Data(expected_name, expected_args) ->
+      case given_name == expected_name {
+        True -> {
+          try pairs = zip_args(given_args, expected_args)
+          list.try_fold(pairs, typer, unify_pair)
+        }
+        False -> Error(CouldNotUnify(expected: expected, given: given))
+      }
+    Function(given_args, given_return), Function(expected_args, expected_return) -> {
+      try pairs = zip_args(given_args, expected_args)
+      try typer = list.try_fold(pairs, typer, unify_pair)
+      unify(given_return, expected_return, typer)
+    }
+    _, _ -> Error(CouldNotUnify(expected: expected, given: given))
   }
   // Row(fields, variable), Row(fields, variable) ->
   // case do_shared(left, right, [], []) {
@@ -240,31 +238,6 @@ pub fn unify(t1, t2, typer) {
 // }
 // TODO exhausive on guards.
 // Pattern is Var(String) || Destructure || RowLookup (Does row lookup work for cases I don't think my types support union on rows.)
-fn unify_variable(i, any, typer) {
-  let Typer(substitutions: substitutions, ..) = typer
-  case list.key_find(substitutions, i) {
-    Ok(replacement) -> unify(replacement, any, typer)
-    Error(Nil) ->
-      case any {
-        Variable(j) ->
-          case list.key_find(substitutions, i) {
-            Ok(replacement) -> unify(replacement, any, typer)
-            _ -> {
-              let substitutions = [#(i, any), ..substitutions]
-              let typer = Typer(..typer, substitutions: substitutions)
-              Ok(typer)
-            }
-          }
-        // TODO occurs check
-        _ -> {
-          let substitutions = [#(i, any), ..substitutions]
-          let typer = Typer(..typer, substitutions: substitutions)
-          Ok(typer)
-        }
-      }
-  }
-}
-
 pub fn resolve_type(type_, typer) {
   let Typer(substitutions: substitutions, ..) = typer
 
