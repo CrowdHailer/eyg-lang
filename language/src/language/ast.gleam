@@ -70,38 +70,34 @@ fn bind(pattern, type_, scope, typer) {
       let scope = set_variable(scope, name, type_, typer)
       Ok(#(scope, typer))
     }
-    Destructure(constructor, with) ->
-      case constructor, with {
-        "Function", _ -> todo("Can;t destructure function")
-        constructor, assignments -> {
-          try #(type_name, parameters, arguments) =
-            scope.get_constructor(scope, constructor)
-          let #(replacements, typer) =
-            generate_replacement_vars(parameters, [], typer)
-          let replaced_arguments =
-            replace_variables(arguments, replacements, [])
-          let type_params =
-            list.map(
-              replacements,
-              fn(pair) {
-                let #(_, variable) = pair
-                variable
-              },
-            )
-          try typer = unify(type_, Data(type_name, type_params), typer)
-          case list.zip(replaced_arguments, assignments) {
-            Ok(zipped) -> {
-              let scope = do_push_arguments(zipped, scope)
-              Ok(#(scope, typer))
-            }
-            Error(#(expected, given)) ->
-              Error(IncorrectArity(expected: expected, given: given))
-          }
+    Destructure(constructor, with) -> {
+      try #(type_name, parameters, arguments) =
+        scope.get_constructor(scope, constructor)
+      let #(replacements, typer) =
+        generate_replacement_vars(parameters, [], typer)
+      let replaced_arguments = replace_variables(arguments, replacements, [])
+      let type_params =
+        list.map(
+          replacements,
+          fn(pair) {
+            let #(_, variable) = pair
+            variable
+          },
+        )
+      try typer = unify(type_, Data(type_name, type_params), typer)
+      case list.zip(replaced_arguments, with) {
+        Ok(zipped) -> {
+          let scope = do_push_arguments(zipped, scope)
+          Ok(#(scope, typer))
         }
+        Error(#(expected, given)) ->
+          Error(IncorrectArity(expected: expected, given: given))
       }
+    }
   }
 }
 
+// This can probably get moved to scope somewhere
 fn generate_replacement_vars(
   parameterised,
   replacements,
