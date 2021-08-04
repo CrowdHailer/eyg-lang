@@ -3,7 +3,7 @@ import gleam/list
 import language/ast.{Destructure}
 import language/ast/builder.{call, case_, function, let_, var}
 import language/scope
-import language/type_.{Data, Function, Variable}
+import language/type_.{Data, Variable}
 
 pub fn types() {
   scope.new()

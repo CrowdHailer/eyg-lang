@@ -78,7 +78,7 @@ pub fn get_variable(scope, label) {
 
 pub fn get_varients(scope, type_name) {
   let Scope(types: types, ..) = scope
-  let Ok(#(params, constructors)) = list.key_find(types, type_name)
+  let Ok(#(_params, constructors)) = list.key_find(types, type_name)
   list.map(
     constructors,
     fn(constructor) {

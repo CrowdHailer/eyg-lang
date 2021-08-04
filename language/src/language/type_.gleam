@@ -89,7 +89,7 @@ fn push_new(item, set) {
 pub fn generalised_by(type_, excluded, typer) {
   let type_ = resolve_type(type_, typer)
   let forall = case type_ {
-    Function(arguments, return) -> do_generalize(arguments, excluded, [])
+    Function(arguments, _return) -> do_generalize(arguments, excluded, [])
     // data is already generalised
     Data(_, _) -> []
     Variable(_) -> []
@@ -107,7 +107,7 @@ fn do_generalize(arguments, excluded, parameters) {
       }
       do_generalize(arguments, excluded, parameters)
     }
-    [concrete, ..arguments] -> do_generalize(arguments, excluded, parameters)
+    [_concrete, ..arguments] -> do_generalize(arguments, excluded, parameters)
   }
 }
 

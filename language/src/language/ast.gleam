@@ -1,9 +1,8 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None, Option, Some}
 import language/scope
 import language/type_.{
-  Data, Function, IncorrectArity, PolyType, Type, Typer, UnhandledVarients, Variable, RedundantClause,
+  Data, Function, IncorrectArity, PolyType, Type, UnhandledVarients, RedundantClause,
   generate_type_var,
 }
 
@@ -191,7 +190,8 @@ fn do_infer(untyped, scope, typer) {
     }
     Case(subject, clauses) -> {
       case clauses {
-        [_first, _second, ..rest] -> Ok(Nil)
+        [_first, _second, .._rest] -> Ok(Nil)
+        // Fist can't be an assignment otherwise the type doesn't get infered to a datatype
         _ -> todo("Must be at least two clauses")
       }
       try #(subject_type, subject_tree, typer) = do_infer(subject, scope, typer)
