@@ -3,7 +3,8 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import language/scope
 import language/type_.{
-  Data, Function, IncorrectArity, PolyType, Type, Typer, Variable, generate_type_var,
+  Data, Function, IncorrectArity, PolyType, Type, Typer, UnhandledVarients, Variable, RedundantClause,
+  generate_type_var,
 }
 
 /// Type destructure used for let and case statements
@@ -92,11 +93,16 @@ fn set_arguments(scope, arguments, typer) {
   )
 }
 
+pub type Handles {
+  All
+  Single(String)
+}
+
 fn bind(pattern, expected, scope, typer) {
   case pattern {
     Assignment(name) -> {
       let scope = set_variable(scope, name, expected, typer)
-      Ok(#(scope, typer))
+      Ok(#(All, scope, typer))
     }
     Destructure(constructor, with) -> {
       let situation = ValueDestructuring(constructor)
@@ -104,6 +110,7 @@ fn bind(pattern, expected, scope, typer) {
         scope.get_variable(scope, constructor)
         |> with_situation(VarLookup)
       let #(type_, typer) = type_.instantiate(poly_type, typer)
+      // TODO a get constructor should work here see notes in type
       let Function(arguments, return) = type_
       try typer = unify(return, expected, typer, situation)
       try scope =
@@ -113,7 +120,7 @@ fn bind(pattern, expected, scope, typer) {
             Error(IncorrectArity(expected: expected, given: given))
         }
         |> with_situation(situation)
-      Ok(#(scope, typer))
+      Ok(#(Single(constructor), scope, typer))
     }
   }
 }
@@ -153,7 +160,23 @@ fn do_infer(untyped, scope, typer) {
     Binary -> Ok(#(Data("Binary", []), Binary, typer))
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
-      try #(scope, typer) = bind(pattern, value_type, scope, typer)
+      try #(handles, scope, typer) = bind(pattern, value_type, scope, typer)
+      try _ = case handles {
+        All -> Ok(Nil)
+        Single(constructor) -> {
+          let Data(type_name, _params) = type_.resolve_type(value_type, typer)
+          let varients = scope.get_varients(scope, type_name)
+          assert Ok(remaining) = list.pop(varients, constructor)
+          case remaining {
+            [] -> Ok(Nil)
+            _ ->
+              Error(#(
+                UnhandledVarients(remaining),
+                ValueDestructuring(constructor),
+              ))
+          }
+        }
+      }
       try #(next_type, next_tree, typer) = do_infer(next, scope, typer)
       let tree =
         Let(pattern, #(value_type, value_tree), #(next_type, next_tree))
@@ -174,21 +197,48 @@ fn do_infer(untyped, scope, typer) {
       try #(subject_type, subject_tree, typer) = do_infer(subject, scope, typer)
       let subject = #(subject_type, subject_tree)
       let #(return_type, typer) = generate_type_var(typer)
-      try #(accumulator, typer) =
+      try #(accumulator, typer, Ok(remaining)) =
         list.try_fold(
           clauses,
-          #([], typer),
+          // Uses Error(Nil) for not yet looked up remaining
+           #([], typer, Error(Nil)),
           fn(clause, state) {
-            let #(accumulator, typer) = state
+            let #(accumulator, typer, remaining) = state
             let #(pattern, then) = clause
-            try #(scope, typer) = bind(pattern, subject_type, scope, typer)
+            try #(handles, scope, typer) = bind(pattern, subject_type, scope, typer)
+
+            let remaining = case remaining {
+              Error(Nil) -> {
+                let Data(type_name, _params) = type_.resolve_type(subject_type, typer)
+                scope.get_varients(scope, type_name)
+              }
+              Ok(remaining) -> remaining
+            }
+
+            try remaining = case remaining, handles {
+              [], All -> Error(#(RedundantClause("_"), CaseClause))
+              _, All -> Ok([])
+              remaining, Single(varient) -> case list.pop(remaining, varient) {
+                Ok(remaining) -> Ok(remaining)
+                Error(Nil) -> Error(#(RedundantClause(varient), CaseClause))
+              }
+            }
+                        
+            // counting handled doesnt track the case True | False | variable
+            // state would switch from [True,  False] to All
+            // Would need to track state as List(Constructors) + Rest
+
             try #(type_, tree, typer) = do_infer(then, scope, typer)
             try typer = unify(type_, return_type, typer, CaseClause)
             let clause = #(pattern, #(type_, tree))
             let accumulator = [clause, ..accumulator]
-            Ok(#(accumulator, typer))
+            Ok(#(accumulator, typer, Ok(remaining)))
           },
         )
+      try _ = case remaining {
+        [] -> Ok(Nil)
+        remaining -> Error(#(UnhandledVarients(remaining), CaseClause))
+      }
       let clauses = list.reverse(accumulator)
       let tree = Case(subject, clauses)
       Ok(#(return_type, tree, typer))

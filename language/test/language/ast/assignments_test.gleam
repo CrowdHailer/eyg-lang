@@ -1,6 +1,8 @@
-import language/ast/builder.{binary, call, destructure, let_, var}
-import language/ast.{ValueDestructuring}
-import language/type_.{CouldNotUnify, IncorrectArity, UnknownVariable}
+import language/ast/builder.{binary, call, destructure, let_, var, function, case_}
+import language/ast.{ValueDestructuring, Destructure, CaseClause, Assignment}
+import language/type_.{
+  CouldNotUnify, IncorrectArity, UnhandledVarients, UnknownVariable, RedundantClause,
+}
 import language/scope
 import language/type_.{Data}
 import language/ast/support
@@ -63,4 +65,106 @@ pub fn incorrect_destructure_type_test() {
   let CouldNotUnify(expected: Data("User", []), given: Data("Boolean", [])) =
     failure
   let ValueDestructuring("True") = situation
+}
+
+pub fn multvariant_let_error_test() {
+  let scope =
+    scope.new()
+    |> support.with_equal()
+  let untyped =
+    destructure("True", [], call(var("equal"), [binary(), binary()]), binary())
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let UnhandledVarients(["False"]) = failure
+  let ValueDestructuring("True") = situation
+}
+
+pub fn missing_case_error_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+
+  let untyped =
+    function(
+      ["x"],
+      case_(
+        var("x"),
+        [
+          #(Destructure("A", []), binary()),
+          #(Destructure("B", []), binary()),
+        ],
+      ),
+    )
+
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let UnhandledVarients(["C"]) = failure
+  let CaseClause = situation
+}
+
+
+pub fn duplicate_case_error_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+
+  let untyped =
+    function(
+      ["x"],
+      case_(
+        var("x"),
+        [
+          #(Destructure("A", []), binary()),
+          #(Destructure("A", []), binary()),
+        ],
+      ),
+    )
+
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let RedundantClause("A") = failure
+  let CaseClause = situation
+}
+
+pub fn following_catch_all_error_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+
+  let untyped =
+    function(
+      ["x"],
+      case_(
+        var("x"),
+        [
+          #(Destructure("A", []), binary()),
+          #(Assignment("foo"), binary()),
+          #(Destructure("B", []), binary()),
+        ],
+      ),
+    )
+
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let RedundantClause("B") = failure
+  let CaseClause = situation
+}
+
+pub fn duplicate_catch_all_error_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+
+  let untyped =
+    function(
+      ["x"],
+      case_(
+        var("x"),
+        [
+          #(Destructure("A", []), binary()),
+          #(Assignment("foo"), binary()),
+          #(Assignment("bar"), binary()),
+        ],
+      ),
+    )
+
+  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let RedundantClause("_") = failure
+  let CaseClause = situation
 }

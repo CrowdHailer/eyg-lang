@@ -34,6 +34,7 @@ pub fn append(first: List(a), second: List(a)) -> List(a) {
   do_append(reverse(first), second)
 }
 
+// same as do reverse??
 fn do_append(remaining, accumulator) {
   case remaining {
     [] -> accumulator
@@ -84,5 +85,17 @@ fn do_zip(left, right, acc, count) {
     [a, ..left], [b, ..right] ->
       do_zip(left, right, [#(a, b), ..acc], count + 1)
     left, right -> Error(#(count + length(left), count + length(right)))
+  }
+}
+
+pub fn pop(list, value) {
+  do_pop(list, value, [])
+}
+
+fn do_pop(list, value, accumulator) {
+  case list {
+    [] -> Error(Nil)
+    [next, ..list] if next == value -> Ok(do_append(accumulator, list))
+    [next, ..list] -> do_pop(list, value, [next, ..accumulator])
   }
 }

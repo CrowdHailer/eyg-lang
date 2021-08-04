@@ -18,7 +18,7 @@ pub opaque type Scope {
     // forall a, Some(a) -> Option(a)
     // #(name, parameters, constructors(name, arguments))
     // This is a polytype for n-things
-    types: List(#(String, List(Int), List(#(String, List(Type))))),
+    types: List(#(String, #(List(Int), List(#(String, List(Type)))))),
   )
 }
 
@@ -49,7 +49,7 @@ pub fn free_variables(scope) {
 
 pub fn newtype(scope, type_name, params, constructors) {
   let Scope(types: types, ..) = scope
-  let types = [#(type_name, params, constructors), ..types]
+  let types = [#(type_name, #(params, constructors)), ..types]
   let scope = Scope(..scope, types: types)
   list.fold(
     constructors,
@@ -76,23 +76,29 @@ pub fn get_variable(scope, label) {
   }
 }
 
-pub fn get_constructor(scope, constructor) {
+pub fn get_varients(scope, type_name) {
   let Scope(types: types, ..) = scope
-  do_get_constructor(types, constructor)
+  let Ok(#(params, constructors)) = list.key_find(types, type_name)
+  list.map(
+    constructors,
+    fn(constructor) {
+      let #(fn_name, _args) = constructor
+      fn_name
+    },
+  )
 }
-
-fn do_get_constructor(types, constructor) {
-  case types {
-    // Although in this case it's an unknown constructor
-    [] -> Error(UnknownVariable(constructor))
-    [#(type_name, params, variants), ..types] ->
-      case list.key_find(variants, constructor) {
-        Ok(arguments) -> Ok(#(type_name, params, arguments))
-        Error(Nil) -> do_get_constructor(types, constructor)
-      }
-  }
-}
-
-fn instantiate() {
-  todo
-}
+// pub fn get_constructor(scope, constructor) {
+//   let Scope(types: types, ..) = scope
+//   do_get_constructor(types, constructor)
+// }
+// fn do_get_constructor(types, constructor) {
+//   case types {
+//     // Although in this case it's an unknown constructor
+//     [] -> Error(UnknownVariable(constructor))
+//     [#(type_name, params, variants), ..types] ->
+//       case list.key_find(variants, constructor) {
+//         Ok(arguments) -> Ok(#(type_name, params, arguments))
+//         Error(Nil) -> do_get_constructor(types, constructor)
+//       }
+//   }
+// }

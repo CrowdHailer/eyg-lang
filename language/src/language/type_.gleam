@@ -7,6 +7,8 @@ pub type Failure {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(name: String)
   CouldNotUnify(expected: Type, given: Type)
+  UnhandledVarients(remaining: List(String))
+  RedundantClause(match: String)
 }
 
 pub type Type {
@@ -148,6 +150,9 @@ fn do_instantiate(forall, type_, typer) {
   }
 }
 
+// ^^ case on type_ first then call replace(params, arguments, typer)
+// params, instantiate all[Data(type_name, params), ..arguments]
+// easiest might be to look up constructor and instantiate a fn.
 fn do_replace_variables(arguments, old, new, accumulator) {
   case arguments {
     [] -> list.reverse(accumulator)
