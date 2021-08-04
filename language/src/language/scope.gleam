@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/list
-import language/type_.{UnknownVariable}
-import language/type_.{Data, Function, PolyType, Type, Variable}
+import language/type_.{UnknownVariable, Data, Function, PolyType, Type, Variable}
 
 // pub type Type {
 //   Function(arguments: List(Type), return: Type)
@@ -47,24 +46,51 @@ pub fn free_variables(scope) {
   |> list.fold([], fn(more, acc) { list.append(more, acc) })
 }
 
+external fn log(a) -> Nil = "" "console.log"
+
 pub fn newtype(scope, type_name, params, constructors) {
   let Scope(types: types, ..) = scope
   let types = [#(type_name, #(params, constructors)), ..types]
   let scope = Scope(..scope, types: types)
-  list.fold(
-    constructors,
-    scope,
-    fn(constructor, scope) {
-      let #(fn_name, arguments) = constructor
-      // Constructor when instantiate will be unifiying to a concrete type
+  // There is a bug in this fold implementation in JS
+  // let x = list.fold(
+  //   constructors,
+  //   scope,
+  //   fn(constructor, scope) {
+  //     log("--------")
+  //     log(scope)
+  //     let #(fn_name, arguments) = constructor
+  //     // Constructor when instantiate will be unifiying to a concrete type
+  //     let new_type = Data(type_name, list.map(params, Variable))
+  //     let n = set_variable(
+  //       scope,
+  //       fn_name,
+  //       PolyType(forall: params, type_: Function(arguments, new_type)),
+  //     )
+  //     log(n)
+  //     log(constructor)
+  //     log("--========")
+  //     n
+  //   },
+  // )
+  // log("end")
+  // x
+  add_constructors(scope, constructors, type_name, params)
+}
+
+fn add_constructors(scope, constructors, type_name, params) {
+  case constructors {
+    [] -> scope
+    [#(fn_name, arguments), ..rest] -> {
       let new_type = Data(type_name, list.map(params, Variable))
-      set_variable(
+      let scope = set_variable(
         scope,
         fn_name,
         PolyType(forall: params, type_: Function(arguments, new_type)),
       )
-    },
-  )
+      add_constructors(scope,rest, type_name, params)
+    }
+  }
 }
 
 // assign and lookup
@@ -102,3 +128,17 @@ pub fn get_varients(scope, type_name) {
 //       }
 //   }
 // }
+
+pub fn with_equal(scope) {
+  scope
+  |> newtype("Boolean", [], [#("True", []), #("False", [])])
+  |> set_variable(
+    "equal",
+    PolyType([1], Function([Variable(1), Variable(1)], Data("Boolean", []))),
+  )
+}
+
+pub fn with_foo(scope) {
+  scope
+  |> newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+}

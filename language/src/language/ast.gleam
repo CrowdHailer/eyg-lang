@@ -190,7 +190,7 @@ fn do_infer(untyped, scope, typer) {
     }
     Case(subject, clauses) -> {
       case clauses {
-        [_first, _second, .._rest] -> Ok(Nil)
+        [_first, _second, .._rest] -> Nil
         // Fist can't be an assignment otherwise the type doesn't get infered to a datatype
         _ -> todo("Must be at least two clauses")
       }
@@ -206,6 +206,9 @@ fn do_infer(untyped, scope, typer) {
             let #(accumulator, typer, remaining) = state
             let #(pattern, then) = clause
             try #(handles, scope, typer) = bind(pattern, subject_type, scope, typer)
+
+            try #(type_, tree, typer) = do_infer(then, scope, typer)
+            try typer = unify(type_, return_type, typer, CaseClause)
 
             let remaining = case remaining {
               Error(Nil) -> {
@@ -228,8 +231,6 @@ fn do_infer(untyped, scope, typer) {
             // state would switch from [True,  False] to All
             // Would need to track state as List(Constructors) + Rest
 
-            try #(type_, tree, typer) = do_infer(then, scope, typer)
-            try typer = unify(type_, return_type, typer, CaseClause)
             let clause = #(pattern, #(type_, tree))
             let accumulator = [clause, ..accumulator]
             Ok(#(accumulator, typer, Ok(remaining)))

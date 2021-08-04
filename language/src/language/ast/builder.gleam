@@ -21,6 +21,14 @@ pub fn case_(subject, clauses) {
   #(Nil, Case(subject, clauses))
 }
 
+pub fn clause(constructor, arguments, then) {
+  #(Destructure(constructor, arguments), then)
+}
+
+pub fn rest(label, then) {
+  #(Assignment(label), then)
+}
+
 pub fn function(for, in) {
   #(Nil, Fn(list.map(for, fn(name) { #(Nil, name) }), in))
 }
