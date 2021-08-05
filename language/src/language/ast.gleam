@@ -62,16 +62,6 @@ fn with_situation(
   }
 }
 
-fn do_push_arguments(typed, scope) {
-  case typed {
-    [] -> scope
-    [#(type_, name), ..rest] -> {
-      let #(scope, _todo) = scope.set_variable(scope, name, PolyType([], type_))
-      do_push_arguments(rest, scope)
-    }
-  }
-}
-
 pub fn infer(untyped, environment) {
   do_infer(untyped, environment, type_.checker())
 }
@@ -117,7 +107,9 @@ fn bind(pattern, expected, scope, typer) {
     }
     Destructure(constructor, with) -> {
       let situation = ValueDestructuring(constructor)
-      try #(poly_type, _todo_ignore_count) =
+      // TODO this needs to be getting a proper constructor
+      // Fix euqal to 1 to ensure constructor not overwritten
+      try #(poly_type, 1) =
         scope.get_variable(scope, constructor)
         |> with_situation(VarLookup)
       let #(type_, typer) = type_.instantiate(poly_type, typer)
@@ -270,6 +262,7 @@ fn do_infer(untyped, scope, typer) {
       let #(return_type, typer) = generate_type_var(typer)
       let argument_types = list.map(for, fn(a: #(Type, String)) { a.0 })
       let type_ = Function(argument_types, return_type)
+      // TODO tail optimise recursive functions
       let #(scope, _todo_number) = set_variable(scope, "self", type_, typer)
       try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
       try typer = unify(return_type, in_type, typer, ReturnAnnotation)

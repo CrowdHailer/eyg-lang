@@ -125,3 +125,5 @@ fn aside() {
   Error(Nil)
 }
 // TODO email to ask about other language front ends. Is there a long form place to ask discord program lang questions
+// pass in constructor functions, made when making types. 
+// program is going to render a call function that doesn't exist. 

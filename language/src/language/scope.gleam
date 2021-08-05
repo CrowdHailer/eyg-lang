@@ -100,7 +100,7 @@ fn add_constructors(scope, constructors, type_name, params) {
     [] -> scope
     [#(fn_name, arguments), ..rest] -> {
       let new_type = Data(type_name, list.map(params, Variable))
-      let #(scope, #(_label, _todo_clamp_as_one)) =
+      let #(scope, #(_label, 1)) =
         set_variable(
           scope,
           fn_name,
