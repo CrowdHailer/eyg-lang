@@ -3,7 +3,7 @@ import gleam/list
 import language/scope
 import language/type_.{
   Data, Function, IncorrectArity, PolyType, RedundantClause, Type, UnhandledVarients,
-  generate_type_var,
+  Variable, generate_type_var,
 }
 
 /// Type destructure used for let and case statements
@@ -12,8 +12,25 @@ pub type Pattern(l) {
   Assignment(l)
 }
 
+// data("boolean::Boolean", [], [
+//   constructor("True", [])
+//   constructor("False", [])
+// ])
+// data("option::Result", [1], [
+//   constructor("Ok", [variable(1)])
+//   constructor("Error", [])
+// ])
+// data2("result::Result", fn(success, error) {
+//   constructor("Ok", [Data("string::String", []), success])
+// }, )
 /// Expression tree with type information
 pub type Expression(t, l) {
+  NewData(
+    name: String,
+    parameters: List(Int),
+    constructors: List(#(l, List(Type))),
+    in: #(t, Expression(t, l)),
+  )
   Let(
     pattern: Pattern(l),
     value: #(t, Expression(t, l)),
@@ -114,6 +131,7 @@ fn bind(pattern, expected, scope, typer) {
         |> with_situation(VarLookup)
       let #(type_, typer) = type_.instantiate(poly_type, typer)
       // TODO a get constructor should work here see notes in type
+      io.debug(constructor)
       let Function(arguments, return) = type_
       try typer = unify(return, expected, typer, situation)
       try #(scope, with) =
@@ -132,6 +150,7 @@ fn bind(pattern, expected, scope, typer) {
             quantified_label
           },
         )
+        |> io.debug()
       Ok(#(Destructure(constructor, with), Single(constructor), scope, typer))
     }
   }
@@ -166,9 +185,47 @@ fn do_infer_arguments(arguments, accumulator, scope, typer) {
   }
 }
 
+fn add_constructors(scope, constructors, type_name, params, accumulator) {
+  case constructors {
+    [] -> #(scope, list.reverse(accumulator))
+    [#(label, arguments), ..rest] -> {
+      let new_type = Data(type_name, list.map(params, Variable))
+      let poly_type =
+        PolyType(forall: params, type_: Function(arguments, new_type))
+      let #(scope, label) = scope.set_variable(scope, label, poly_type)
+      add_constructors(
+        scope,
+        rest,
+        type_name,
+        params,
+        [#(label, arguments), ..accumulator],
+      )
+    }
+  }
+}
+
 fn do_infer(untyped, scope, typer) {
   let #(Nil, expression) = untyped
   case expression {
+    NewData(type_name, parameters, constructors, in) -> {
+      let #(scope, arguments) =
+        add_constructors(scope, constructors, type_name, parameters, [])
+      let Ok(typer) =
+        type_.register_type(
+          typer,
+          type_name,
+          list.map(
+            constructors,
+            fn(constructor) {
+              let #(name, _) = constructor
+              name
+            },
+          ),
+        )
+      try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
+      let tree = NewData(type_name, parameters, arguments, #(in_type, in_tree))
+      Ok(#(in_type, tree, typer))
+    }
     Binary(content) -> Ok(#(Data("Binary", []), Binary(content), typer))
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
@@ -178,7 +235,7 @@ fn do_infer(untyped, scope, typer) {
         All -> Ok(Nil)
         Single(constructor) -> {
           let Data(type_name, _params) = type_.resolve_type(value_type, typer)
-          let varients = scope.get_varients(scope, type_name)
+          let Ok(varients) = type_.get_varients(typer, type_name)
           assert Ok(remaining) = list.pop(varients, constructor)
           case remaining {
             [] -> Ok(Nil)
@@ -227,7 +284,8 @@ fn do_infer(untyped, scope, typer) {
               Error(Nil) -> {
                 let Data(type_name, _params) =
                   type_.resolve_type(subject_type, typer)
-                scope.get_varients(scope, type_name)
+                let Ok(varients) = type_.get_varients(typer, type_name)
+                varients
               }
               Ok(remaining) -> remaining
             }

@@ -1,5 +1,15 @@
 import gleam/list
-import language/ast.{Assignment, Binary, Call, Case, Destructure, Fn, Let, Var}
+import language/ast.{
+  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Var,
+}
+
+pub fn varient(name, params, constructors, in) {
+  #(Nil, NewData(name, params, constructors, in))
+}
+
+pub fn constructor(name, arguments) {
+  #(name, arguments)
+}
 
 pub fn let_(name, value, in) {
   #(Nil, Let(Assignment(name), value, in))

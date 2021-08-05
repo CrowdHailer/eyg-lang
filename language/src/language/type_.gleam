@@ -2,7 +2,6 @@
 import gleam/io
 import gleam/list
 
-// import language/type_.{IncorrectArity}
 pub type Failure {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(name: String)
@@ -31,11 +30,26 @@ pub type Typer {
     // typer passed as globally acumulating set, env is scoped
     substitutions: List(#(Int, Type)),
     next_type_var: Int,
+    named: List(#(String, List(String))),
   )
 }
 
 pub fn checker() {
-  Typer([], 10)
+  Typer([], 10, [])
+}
+
+pub fn get_varients(typer, type_name) {
+  let Typer(named: named, ..) = typer
+  list.key_find(named, type_name)
+}
+
+pub fn register_type(typer, type_name, constructors) {
+  let Typer(named: named, ..) = typer
+  let named = case list.key_find(named, type_name) {
+    Ok(_) -> todo("Handle the error when redefining a type")
+    Error(Nil) -> [#(type_name, constructors), ..named]
+  }
+  Ok(Typer(..typer, named: named))
 }
 
 pub fn generate_type_var(typer) {

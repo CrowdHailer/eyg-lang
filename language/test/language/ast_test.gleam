@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/list
 import language/ast/builder.{
-  binary, call, case_, destructure, function, let_, var,
+  binary, call, case_, constructor, destructure, function, let_, var, varient,
 }
 import language/ast.{
   Assignment, Binary, Destructure, Let, ValueDestructuring, Var,
@@ -23,34 +23,34 @@ pub fn infer_literal_binary_test() {
 pub fn simple_custom_type_test() {
   let scope =
     scope.new()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
-    |> support.with_equal()
-  let untyped = call(var("True"), [])
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
-  let Data("Boolean", []) = type_.resolve_type(type_, typer)
+    |> scope.with_equal()
 
   let untyped =
-    call(
-      var("equal"),
-      [call(var("None"), []), call(var("Some"), [binary("abc")])],
+    varient(
+      "option::Option",
+      [1],
+      [constructor("Some", [Variable(1)]), constructor("None", [])],
+      call(
+        var("equal"),
+        [call(var("None"), []), call(var("Some"), [binary("abc")])],
+      ),
     )
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Data("Boolean", []) = type_.resolve_type(type_, typer)
 }
 
 pub fn case_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+  let scope = scope.new()
 
   let untyped =
-    case_(
+    support.with_option(case_(
       call(var("None"), []),
       [
         #(Destructure("Some", ["value"]), var("value")),
         #(Destructure("None", []), binary("abc")),
       ],
-    )
+    ))
+
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
@@ -58,17 +58,17 @@ pub fn case_test() {
 pub fn distructure_incorrect_type_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+    |> scope.with_equal()
 
   let untyped =
-    case_(
+    support.with_boolean(support.with_option(case_(
       call(var("True"), []),
       [
         #(Destructure("Some", ["value"]), var("value")),
         #(Destructure("None", []), binary("abc")),
       ],
-    )
+    )))
+
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
 
   let CouldNotUnify(expected: Data("Boolean", []), given: Data("Option", [_])) =
@@ -79,17 +79,16 @@ pub fn distructure_incorrect_type_test() {
 pub fn clause_return_missmatch_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+    |> scope.with_equal()
 
   let untyped =
-    case_(
+    support.with_boolean(case_(
       call(var("True"), []),
       [
         #(Destructure("True", []), call(var("False"), [])),
         #(Destructure("False", []), binary("abc")),
       ],
-    )
+    ))
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let CouldNotUnify(expected: Data("Boolean", []), given: Data("Binary", [])) =
     failure
@@ -98,11 +97,10 @@ pub fn clause_return_missmatch_test() {
 pub fn mismatched_pattern_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+    |> scope.with_equal()
 
   let untyped =
-    function(
+    support.with_boolean(support.with_option(function(
       ["x"],
       case_(
         var("x"),
@@ -111,7 +109,7 @@ pub fn mismatched_pattern_test() {
           #(Destructure("None", []), binary("abc")),
         ],
       ),
-    )
+    )))
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let CouldNotUnify(expected: Data("Boolean", []), given: Data("Option", [_])) =
     failure
@@ -120,7 +118,7 @@ pub fn mismatched_pattern_test() {
 pub fn unify_types_in_fn_args_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
+    |> scope.with_equal()
 
   let untyped = function(["x", "y"], call(var("equal"), [var("x"), var("y")]))
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
@@ -129,12 +127,10 @@ pub fn unify_types_in_fn_args_test() {
 }
 
 pub fn case_with_function_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+  let scope = scope.new()
 
   let untyped =
-    function(
+    support.with_option(function(
       ["x"],
       case_(
         var("x"),
@@ -143,7 +139,7 @@ pub fn case_with_function_test() {
           #(Destructure("None", []), binary("abc")),
         ],
       ),
-    )
+    ))
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Function([Data("Option", [Data("Binary", [])])], Data("Binary", [])) =
     type_.resolve_type(type_, typer)

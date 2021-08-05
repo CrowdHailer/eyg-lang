@@ -1,19 +1,11 @@
 import gleam/io
 import gleam/list
 import language/ast.{Destructure}
-import language/ast/builder.{call, case_, function, let_, var}
+import language/ast/builder.{
+  call, case_, constructor, function, let_, var, varient,
+}
 import language/scope
 import language/type_.{Data, Variable}
-
-pub fn types() {
-  scope.new()
-  |> scope.newtype(
-    "List",
-    [1],
-    [#("Cons", [Variable(1), Data("List", [Variable(1)])]), #("Nil", [])],
-  )
-  |> scope.newtype("Pair", [1, 2], [#("Pair", [Variable(1), Variable(2)])])
-}
 
 pub fn reverse() {
   let_(
@@ -95,6 +87,15 @@ fn with(named, final) {
 
 // Module typer needs to go accross everywhere
 pub fn module() {
+  //   pub fn types() {
+  //   scope.new()
+  //   |> scope.newtype(
+  //     "List",
+  //     [1],
+  //     [#("Cons", [Variable(1), Data("List", [Variable(1)])]), #("Nil", [])],
+  //   )
+  //   |> scope.newtype("Pair", [1, 2], [#("Pair", [Variable(1), Variable(2)])])
+  // }
   with(
     [#("reverse", reverse()), #("map", map())],
     call(var("Pair"), [var("reverse"), var("map")]),

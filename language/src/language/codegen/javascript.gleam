@@ -1,6 +1,8 @@
 import gleam/io
 import gleam/list
-import language/ast.{Assignment, Binary, Call, Case, Destructure, Fn, Let, Var}
+import language/ast.{
+  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Var,
+}
 
 pub fn int_to_string(int) {
   do_to_string(int)
@@ -91,6 +93,23 @@ fn render_destructure(args) {
 
 pub fn render(typed, in_tail) {
   case typed {
+    #(_, NewData(type_name, params, constructors, in)) ->
+      list.map(
+        constructors,
+        fn(constructor) {
+          let #(label, arguments) = constructor
+          // names are unique within the checked type
+          let #(name, _) = label
+          concat([
+            "let ",
+            render_label(label),
+            " = ((...args) => Object.assign({ type: \"",
+            name,
+            "\" }, args));",
+          ])
+        },
+      )
+      |> list.append(render(in, in_tail))
     #(_, Let(pattern, value, in)) -> {
       let value = render(value, False)
       let value = case pattern {

@@ -1,5 +1,7 @@
 import gleam/io
-import language/ast/builder.{binary, call, case_, function, let_, var}
+import language/ast/builder.{
+  binary, call, case_, constructor, function, let_, var, varient,
+}
 import language/ast.{Destructure, FunctionCall}
 import language/type_.{CouldNotUnify, IncorrectArity}
 import language/scope
@@ -43,11 +45,10 @@ pub fn generic_functions_test() {
 }
 
 pub fn recursion_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Option", [1], [#("None", []), #("Some", [Variable(1)])])
+  let scope = scope.new()
+
   let untyped =
-    function(
+    support.with_option(function(
       ["x"],
       case_(
         var("x"),
@@ -59,7 +60,7 @@ pub fn recursion_test() {
           #(Destructure("None", []), binary("abc")),
         ],
       ),
-    )
+    ))
   // recur as a keyword same as clojure
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Function([input], return) = type_.resolve_type(type_, typer)
@@ -68,7 +69,8 @@ pub fn recursion_test() {
 pub fn generalising_restricted_by_scope_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
+    |> scope.with_equal()
+
   let untyped =
     // make matcher function
     let_(
@@ -90,22 +92,25 @@ pub fn generalising_restricted_by_scope_test() {
 pub fn incorrect_arity_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
+    |> scope.with_equal()
 
   // Test that number of args is the first error
   let too_many_args =
-    call(var("equal"), [call(var("True"), []), binary("abc"), binary("abc")])
+    support.with_boolean(call(
+      var("equal"),
+      [call(var("True"), []), binary("abc"), binary("abc")],
+    ))
   let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
   let IncorrectArity(expected: 2, given: 3) = failure
   let FunctionCall = situation
 
-  let too_few_args = call(var("equal"), [binary("abc")])
+  let too_few_args = support.with_boolean(call(var("equal"), [binary("abc")]))
   let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
   let IncorrectArity(expected: 2, given: 1) = failure
   let FunctionCall = situation
 
   // Test for data constructors
-  let too_many_args = call(var("True"), [binary("abc")])
+  let too_many_args = support.with_boolean(call(var("True"), [binary("abc")]))
   let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
   let IncorrectArity(expected: 0, given: 1) = failure
   let FunctionCall = situation
@@ -114,9 +119,13 @@ pub fn incorrect_arity_test() {
 pub fn call_argument_mistype_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
+    |> scope.with_equal()
 
-  let too_few_args = call(var("equal"), [binary("abc"), call(var("True"), [])])
+  let too_few_args =
+    support.with_boolean(call(
+      var("equal"),
+      [binary("abc"), call(var("True"), [])],
+    ))
   let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
   let CouldNotUnify(expected: Data("Binary", []), given: Data("Boolean", [])) =
     failure

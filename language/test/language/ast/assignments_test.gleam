@@ -1,5 +1,5 @@
 import language/ast/builder.{
-  binary, call, case_, destructure, function, let_, var,
+  binary, call, case_, constructor, destructure, function, let_, var, varient,
 }
 import language/ast.{Assignment, CaseClause, Destructure, ValueDestructuring}
 import language/type_.{
@@ -24,16 +24,19 @@ pub fn missing_var_test() {
 }
 
 pub fn destructure_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
+  let scope = scope.new()
 
   let untyped =
-    destructure(
+    varient(
       "User",
-      ["first_name"],
-      call(var("User"), [binary("abc")]),
-      var("first_name"),
+      [],
+      [constructor("User", [Data("Binary", [])])],
+      destructure(
+        "User",
+        ["first_name"],
+        call(var("User"), [binary("abc")]),
+        var("first_name"),
+      ),
     )
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Data("Binary", []) = type_.resolve_type(type_, typer)
@@ -46,12 +49,15 @@ pub fn unknown_constructor_test() {
 }
 
 pub fn incorrect_destructure_arity_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
+  let scope = scope.new()
 
   let untyped =
-    destructure("User", [], call(var("User"), [binary("abc")]), binary("abc"))
+    varient(
+      "User",
+      [],
+      [constructor("User", [Data("Binary", [])])],
+      destructure("User", [], call(var("User"), [binary("abc")]), binary("abc")),
+    )
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let IncorrectArity(expected: 1, given: 0) = failure
   let ValueDestructuring("User") = situation
@@ -60,11 +66,16 @@ pub fn incorrect_destructure_arity_test() {
 pub fn incorrect_destructure_type_test() {
   let scope =
     scope.new()
-    |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
-    |> support.with_equal()
+    |> scope.with_equal()
 
   let untyped =
-    destructure("True", [], call(var("User"), [binary("abc")]), binary("abc"))
+    support.with_boolean(varient(
+      "User",
+      [],
+      [constructor("User", [Data("Binary", [])])],
+      destructure("True", [], call(var("User"), [binary("abc")]), binary("abc")),
+    ))
+
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let CouldNotUnify(expected: Data("User", []), given: Data("Boolean", [])) =
     failure
@@ -74,33 +85,38 @@ pub fn incorrect_destructure_type_test() {
 pub fn multvariant_let_error_test() {
   let scope =
     scope.new()
-    |> support.with_equal()
+    |> scope.with_equal()
+
   let untyped =
-    destructure(
+    support.with_boolean(destructure(
       "True",
       [],
       call(var("equal"), [binary("abc"), binary("abc")]),
       binary("abc"),
-    )
+    ))
+
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let UnhandledVarients(["False"]) = failure
   let ValueDestructuring("True") = situation
 }
 
 pub fn missing_case_error_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+  let scope = scope.new()
 
   let untyped =
-    function(
-      ["x"],
-      case_(
-        var("x"),
-        [
-          #(Destructure("A", []), binary("abc")),
-          #(Destructure("B", []), binary("abc")),
-        ],
+    varient(
+      "Foo",
+      [],
+      [constructor("A", []), constructor("B", []), constructor("C", [])],
+      function(
+        ["x"],
+        case_(
+          var("x"),
+          [
+            #(Destructure("A", []), binary("abc")),
+            #(Destructure("B", []), binary("abc")),
+          ],
+        ),
       ),
     )
 
@@ -110,19 +126,22 @@ pub fn missing_case_error_test() {
 }
 
 pub fn duplicate_case_error_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+  let scope = scope.new()
 
   let untyped =
-    function(
-      ["x"],
-      case_(
-        var("x"),
-        [
-          #(Destructure("A", []), binary("abc")),
-          #(Destructure("A", []), binary("abc")),
-        ],
+    varient(
+      "Foo",
+      [],
+      [constructor("A", []), constructor("B", []), constructor("C", [])],
+      function(
+        ["x"],
+        case_(
+          var("x"),
+          [
+            #(Destructure("A", []), binary("abc")),
+            #(Destructure("A", []), binary("abc")),
+          ],
+        ),
       ),
     )
 
@@ -132,20 +151,23 @@ pub fn duplicate_case_error_test() {
 }
 
 pub fn following_catch_all_error_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+  let scope = scope.new()
 
   let untyped =
-    function(
-      ["x"],
-      case_(
-        var("x"),
-        [
-          #(Destructure("A", []), binary("abc")),
-          #(Assignment("foo"), binary("abc")),
-          #(Destructure("B", []), binary("abc")),
-        ],
+    varient(
+      "Foo",
+      [],
+      [constructor("A", []), constructor("B", []), constructor("C", [])],
+      function(
+        ["x"],
+        case_(
+          var("x"),
+          [
+            #(Destructure("A", []), binary("abc")),
+            #(Assignment("foo"), binary("abc")),
+            #(Destructure("B", []), binary("abc")),
+          ],
+        ),
       ),
     )
 
@@ -155,20 +177,23 @@ pub fn following_catch_all_error_test() {
 }
 
 pub fn duplicate_catch_all_error_test() {
-  let scope =
-    scope.new()
-    |> scope.newtype("Foo", [], [#("A", []), #("B", []), #("C", [])])
+  let scope = scope.new()
 
   let untyped =
-    function(
-      ["x"],
-      case_(
-        var("x"),
-        [
-          #(Destructure("A", []), binary("abc")),
-          #(Assignment("foo"), binary("abc")),
-          #(Assignment("bar"), binary("abc")),
-        ],
+    varient(
+      "Foo",
+      [],
+      [constructor("A", []), constructor("B", []), constructor("C", [])],
+      function(
+        ["x"],
+        case_(
+          var("x"),
+          [
+            #(Destructure("A", []), binary("abc")),
+            #(Assignment("foo"), binary("abc")),
+            #(Assignment("bar"), binary("abc")),
+          ],
+        ),
       ),
     )
 
