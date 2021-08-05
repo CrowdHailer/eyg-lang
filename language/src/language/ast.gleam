@@ -7,23 +7,30 @@ import language/type_.{
 }
 
 /// Type destructure used for let and case statements
-pub type Pattern {
-  Destructure(String, List(String))
-  Assignment(String)
+pub type Pattern(l) {
+  Destructure(String, List(l))
+  Assignment(l)
 }
 
 /// Expression tree with type information
-pub type Expression(t) {
-  Let(pattern: Pattern, value: #(t, Expression(t)), in: #(t, Expression(t)))
-  Var(name: String)
+pub type Expression(t, l) {
+  Let(
+    pattern: Pattern(l),
+    value: #(t, Expression(t, l)),
+    in: #(t, Expression(t, l)),
+  )
+  Var(label: l)
   Binary(content: String)
   Case(
-    subject: #(t, Expression(t)),
-    clauses: List(#(Pattern, #(t, Expression(t)))),
+    subject: #(t, Expression(t, l)),
+    clauses: List(#(Pattern(l), #(t, Expression(t, l)))),
   )
   // Clashes with Function Type, maybe call Anonymous, Lambda
-  Fn(arguments: List(#(t, String)), body: #(t, Expression(t)))
-  Call(function: #(t, Expression(t)), arguments: List(#(t, Expression(t))))
+  Fn(arguments: List(#(t, String)), body: #(t, Expression(t, l)))
+  Call(
+    function: #(t, Expression(t, l)),
+    arguments: List(#(t, Expression(t, l))),
+  )
 }
 
 pub type UnifySituation {
@@ -58,11 +65,10 @@ fn with_situation(
 fn do_push_arguments(typed, scope) {
   case typed {
     [] -> scope
-    [#(type_, name), ..rest] ->
-      do_push_arguments(
-        rest,
-        scope.set_variable(scope, name, PolyType([], type_)),
-      )
+    [#(type_, name), ..rest] -> {
+      let #(scope, _todo) = scope.set_variable(scope, name, PolyType([], type_))
+      do_push_arguments(rest, scope)
+    }
   }
 }
 
@@ -82,14 +88,18 @@ fn set_variable(scope, label, type_, typer) {
 }
 
 fn set_arguments(scope, arguments, typer) {
-  list.fold(
-    arguments,
-    scope,
-    fn(item, scope) {
-      let #(type_, name) = item
-      set_variable(scope, name, type_, typer)
-    },
-  )
+  let #(scope, reversed) =
+    list.fold(
+      arguments,
+      #(scope, []),
+      fn(item, state) {
+        let #(scope, accumulator) = state
+        let #(type_, name) = item
+        let #(scope, quantified_label) = set_variable(scope, name, type_, typer)
+        #(scope, [quantified_label, ..accumulator])
+      },
+    )
+  #(scope, list.reverse(reversed))
 }
 
 pub type Handles {
@@ -99,27 +109,29 @@ pub type Handles {
 
 fn bind(pattern, expected, scope, typer) {
   case pattern {
-    Assignment(name) -> {
-      let scope = set_variable(scope, name, expected, typer)
-      Ok(#(All, scope, typer))
+    Assignment(label) -> {
+      let #(scope, quantified_label) =
+        set_variable(scope, label, expected, typer)
+      let pattern = Assignment(quantified_label)
+      Ok(#(pattern, All, scope, typer))
     }
     Destructure(constructor, with) -> {
       let situation = ValueDestructuring(constructor)
-      try poly_type =
+      try #(poly_type, _todo_ignore_count) =
         scope.get_variable(scope, constructor)
         |> with_situation(VarLookup)
       let #(type_, typer) = type_.instantiate(poly_type, typer)
       // TODO a get constructor should work here see notes in type
       let Function(arguments, return) = type_
       try typer = unify(return, expected, typer, situation)
-      try scope =
+      try #(scope, with) =
         case list.zip(arguments, with) {
           Ok(zipped) -> Ok(set_arguments(scope, zipped, typer))
           Error(#(expected, given)) ->
             Error(IncorrectArity(expected: expected, given: given))
         }
         |> with_situation(situation)
-      Ok(#(Single(constructor), scope, typer))
+      Ok(#(Destructure(constructor, with), Single(constructor), scope, typer))
     }
   }
 }
@@ -159,7 +171,8 @@ fn do_infer(untyped, scope, typer) {
     Binary(content) -> Ok(#(Data("Binary", []), Binary(content), typer))
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
-      try #(handles, scope, typer) = bind(pattern, value_type, scope, typer)
+      try #(pattern, handles, scope, typer) =
+        bind(pattern, value_type, scope, typer)
       try _ = case handles {
         All -> Ok(Nil)
         Single(constructor) -> {
@@ -182,11 +195,11 @@ fn do_infer(untyped, scope, typer) {
       Ok(#(next_type, tree, typer))
     }
     Var(name) -> {
-      try poly_type =
+      try #(poly_type, count) =
         scope.get_variable(scope, name)
         |> with_situation(VarLookup)
       let #(var_type, typer) = type_.instantiate(poly_type, typer)
-      Ok(#(var_type, Var(name), typer))
+      Ok(#(var_type, Var(#(name, count)), typer))
     }
     Case(subject, clauses) -> {
       case clauses {
@@ -205,7 +218,7 @@ fn do_infer(untyped, scope, typer) {
           fn(clause, state) {
             let #(accumulator, typer, remaining) = state
             let #(pattern, then) = clause
-            try #(handles, scope, typer) =
+            try #(pattern, handles, scope, typer) =
               bind(pattern, subject_type, scope, typer)
             try #(type_, tree, typer) = do_infer(then, scope, typer)
             try typer = unify(type_, return_type, typer, CaseClause)
@@ -244,11 +257,11 @@ fn do_infer(untyped, scope, typer) {
     }
     Fn(for, in) -> {
       let #(for, typer) = type_arguments(for, typer)
-      let scope = set_arguments(scope, for, typer)
+      let #(scope, _todo_numbered) = set_arguments(scope, for, typer)
       let #(return_type, typer) = generate_type_var(typer)
       let argument_types = list.map(for, fn(a: #(Type, String)) { a.0 })
       let type_ = Function(argument_types, return_type)
-      let scope = set_variable(scope, "self", type_, typer)
+      let #(scope, _todo_number) = set_variable(scope, "self", type_, typer)
       try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
       try typer = unify(return_type, in_type, typer, ReturnAnnotation)
       let tree = Fn(for, #(in_type, in_tree))
@@ -261,7 +274,10 @@ fn do_infer(untyped, scope, typer) {
       // because given 3 args
       let given =
         Function(
-          list.map(with, fn(x: #(Type, Expression(Type))) { x.0 }),
+          list.map(
+            with,
+            fn(x: #(Type, Expression(Type, #(String, Int)))) { x.0 },
+          ),
           return_type,
         )
       try typer = unify(given, f_type, typer, FunctionCall)

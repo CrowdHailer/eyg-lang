@@ -1,16 +1,71 @@
+import gleam/io
+import gleam/list
 import language/ast.{Assignment, Binary, Call, Case, Destructure, Fn, Let, Var}
+
+pub fn int_to_string(int) {
+  do_to_string(int)
+}
+
+if erlang {
+  external fn do_to_string(Int) -> String =
+    "erlang" "integer_to_binary"
+}
+
+if javascript {
+  external fn do_to_string(Int) -> String =
+    "../gleam_stdlib.js" "to_string"
+}
 
 pub fn render(typed) {
   case typed {
-    #(_, Let(Assignment(label), value, in)) -> [
-      concat(["let ", label, " = ", iife(value), ";"]),
-      ..render(in),
+    #(_, Let(pattern, value, in)) -> [
+      concat(["let ", render_pattern(pattern), " = ", iife(value), ";"]),
+      ..render(in)
     ]
-    #(_, Var(name)) -> [name]
+    #(_, Var(#(label, count))) -> [concat([label, "$", int_to_string(count)])]
     // TODO escape
     #(_, Binary(content)) -> [concat(["\"", content, "\""])]
-    #(_, Fn(args, _)) -> [concat(["return (", "func", ")"])]
-    #(_, Call(_, _)) -> ["return call"]
+    #(_, Fn(args, _)) -> {
+      let args_string = list.map(args, fn(quantified_label) {
+        let #(label, count) = quantified_label
+        concat([label, "$", int_to_string(count), ", "])
+      })
+      |> concat()
+      [args_string]
+    }
+    #(_, Call(function, with)) -> {
+      let [last, ..previous] = list.reverse(render(function))
+
+      let args_string = list.map(with, render)
+      |> list.fold([], fn(argument, previous) {
+        case argument {
+          [single] ->  [", ", single, ..previous] 
+        }
+      })
+      |> list.reverse()
+      |> concat()
+
+      let last = concat([last, "(", args_string, ")"])
+      list.reverse([last, ..previous])
+    }
+  }
+}
+
+fn render_pattern(pattern) {
+  case pattern {
+    Assignment(#(label, count)) -> concat([label, "$", int_to_string(count)])
+    Destructure(_name, args) -> {
+      let arg_string =
+        list.map(
+          args,
+          fn(arg) {
+            let #(name, count) = arg
+            concat([name, "$", int_to_string(count), ", "])
+          },
+        )
+        |> concat()
+      concat(["[", arg_string, "]"])
+    }
   }
 }
 
@@ -27,9 +82,9 @@ pub fn render(typed) {
 // return lines then indent in parent
 fn iife(term) {
   case render(term) {
-      [single] -> single
+    [single] -> single
   }
-//   concat(["(() => { \n", "TODO term", "\n})()"])
+  //   concat(["(() => { \n", "TODO term", "\n})()"])
 }
 
 if javascript {
