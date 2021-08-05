@@ -26,10 +26,26 @@ pub fn new() {
   Scope([], [])
 }
 
+fn count_keys(list, key) {
+  list.fold(
+    list,
+    0,
+    fn(pair, count) {
+      case pair {
+        #(k, _) if k == key -> count + 1
+        _ -> count
+      }
+    },
+  )
+}
+
 pub fn set_variable(scope, label, type_) {
   let Scope(variables: variables, ..) = scope
   let variables = [#(label, type_), ..variables]
-  Scope(..scope, variables: variables)
+  #(
+    Scope(..scope, variables: variables),
+    #(label, count_keys(variables, label)),
+  )
 }
 
 // Free vars in forall are those vars that are free
@@ -84,7 +100,7 @@ fn add_constructors(scope, constructors, type_name, params) {
     [] -> scope
     [#(fn_name, arguments), ..rest] -> {
       let new_type = Data(type_name, list.map(params, Variable))
-      let scope =
+      let #(scope, #(_label, 1)) =
         set_variable(
           scope,
           fn_name,
@@ -99,7 +115,7 @@ fn add_constructors(scope, constructors, type_name, params) {
 pub fn get_variable(scope, label) {
   let Scope(variables: variables, ..) = scope
   case list.key_find(variables, label) {
-    Ok(value) -> Ok(value)
+    Ok(value) -> Ok(#(value, count_keys(variables, label)))
     Error(Nil) -> Error(UnknownVariable(label))
   }
 }
