@@ -18,7 +18,7 @@ flask.updateCode("call(\n\
     clause('False', list([]), var_(\"x\")),\n\
     clause('True', list([]), var_(\"x\"))\n\
   ]))),\n\
-  list([binary()])\n\
+  list([binary("abc")])\n\
 )");
 
 const prelude =

@@ -12,7 +12,7 @@ import language/ast/support
 
 // Literals
 pub fn infer_literal_binary_test() {
-  let untyped = binary()
+  let untyped = binary("abc")
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
   // seems not to be ok as assert
   let Data("Binary", []) = type_
@@ -30,7 +30,7 @@ pub fn simple_custom_type_test() {
   let Data("Boolean", []) = type_.resolve_type(type_, typer)
 
   let untyped =
-    call(var("equal"), [call(var("None"), []), call(var("Some"), [binary()])])
+    call(var("equal"), [call(var("None"), []), call(var("Some"), [binary("abc")])])
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Data("Boolean", []) = type_.resolve_type(type_, typer)
 }
@@ -45,7 +45,7 @@ pub fn case_test() {
       call(var("None"), []),
       [
         #(Destructure("Some", ["value"]), var("value")),
-        #(Destructure("None", []), binary()),
+        #(Destructure("None", []), binary("abc")),
       ],
     )
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
@@ -63,7 +63,7 @@ pub fn distructure_incorrect_type_test() {
       call(var("True"), []),
       [
         #(Destructure("Some", ["value"]), var("value")),
-        #(Destructure("None", []), binary()),
+        #(Destructure("None", []), binary("abc")),
       ],
     )
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
@@ -84,7 +84,7 @@ pub fn clause_return_missmatch_test() {
       call(var("True"), []),
       [
         #(Destructure("True", []), call(var("False"), [])),
-        #(Destructure("False", []), binary()),
+        #(Destructure("False", []), binary("abc")),
       ],
     )
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
@@ -104,8 +104,8 @@ pub fn mismatched_pattern_test() {
       case_(
         var("x"),
         [
-          #(Destructure("True", []), binary()),
-          #(Destructure("None", []), binary()),
+          #(Destructure("True", []), binary("abc")),
+          #(Destructure("None", []), binary("abc")),
         ],
       ),
     )
@@ -137,7 +137,7 @@ pub fn case_with_function_test() {
         var("x"),
         [
           #(Destructure("Some", ["value"]), var("value")),
-          #(Destructure("None", []), binary()),
+          #(Destructure("None", []), binary("abc")),
         ],
       ),
     )

@@ -14,13 +14,13 @@ pub fn infer_identity_function_test() {
 }
 
 pub fn infer_call_test() {
-  let untyped = call(function([], binary()), [])
+  let untyped = call(function([], binary("abc")), [])
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
 pub fn infer_call_with_arguments_test() {
-  let untyped = call(function(["x"], var("x")), [binary()])
+  let untyped = call(function(["x"], var("x")), [binary("abc")])
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
@@ -31,7 +31,7 @@ pub fn generic_functions_test() {
     let_(
       "id",
       identity,
-      let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary()])),
+      let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary("abc")])),
     )
 
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
@@ -52,7 +52,7 @@ pub fn recursion_test() {
             Destructure("Some", ["value"]),
             call(var("self"), [call(var("None"), [])]),
           ),
-          #(Destructure("None", []), binary()),
+          #(Destructure("None", []), binary("abc")),
         ],
       ),
     )
@@ -73,7 +73,7 @@ pub fn generalising_restricted_by_scope_test() {
         ["text"],
         function(["x"], call(var("equal"), [var("text"), var("x")])),
       ),
-      call(var("make_match"), [binary()]),
+      call(var("make_match"), [binary("abc")]),
     )
 
   // make match is a fn type that should Not be generalised
@@ -90,18 +90,18 @@ pub fn incorrect_arity_test() {
 
   // Test that number of args is the first error
   let too_many_args =
-    call(var("equal"), [call(var("True"), []), binary(), binary()])
+    call(var("equal"), [call(var("True"), []), binary("abc"), binary("abc")])
   let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
   let IncorrectArity(expected: 2, given: 3) = failure
   let FunctionCall = situation
 
-  let too_few_args = call(var("equal"), [binary()])
+  let too_few_args = call(var("equal"), [binary("abc")])
   let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
   let IncorrectArity(expected: 2, given: 1) = failure
   let FunctionCall = situation
 
   // Test for data constructors
-  let too_many_args = call(var("True"), [binary()])
+  let too_many_args = call(var("True"), [binary("abc")])
   let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
   let IncorrectArity(expected: 0, given: 1) = failure
   let FunctionCall = situation
@@ -112,7 +112,7 @@ pub fn call_argument_mistype_test() {
     scope.new()
     |> support.with_equal()
 
-  let too_few_args = call(var("equal"), [binary(), call(var("True"), [])])
+  let too_few_args = call(var("equal"), [binary("abc"), call(var("True"), [])])
   let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
   let CouldNotUnify(expected: Data("Binary", []), given: Data("Boolean", [])) =
     failure

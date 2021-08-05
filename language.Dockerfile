@@ -13,8 +13,8 @@ RUN set -xe \
 WORKDIR /opt/app
 RUN cargo install watchexec-cli
 
-# FROM elixir:1.12.2
-FROM node:16.5.0
+FROM elixir:1.12.2
+# FROM node:16.5.0
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin

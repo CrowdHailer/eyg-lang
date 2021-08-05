@@ -16,7 +16,7 @@ pub type Pattern {
 pub type Expression(t) {
   Let(pattern: Pattern, value: #(t, Expression(t)), in: #(t, Expression(t)))
   Var(name: String)
-  Binary
+  Binary(content: String)
   Case(
     subject: #(t, Expression(t)),
     clauses: List(#(Pattern, #(t, Expression(t)))),
@@ -156,7 +156,7 @@ fn do_infer_arguments(arguments, accumulator, scope, typer) {
 fn do_infer(untyped, scope, typer) {
   let #(Nil, expression) = untyped
   case expression {
-    Binary -> Ok(#(Data("Binary", []), Binary, typer))
+    Binary(content) -> Ok(#(Data("Binary", []), Binary(content), typer))
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
       try #(handles, scope, typer) = bind(pattern, value_type, scope, typer)
@@ -278,7 +278,8 @@ pub fn render(typed: #(Type, Expression(Type))) {
   log(typed.1)
   case typed {
     #(_, Let(Assignment(label), value, in)) -> join(["let ", label, " = ", iife(value), ";\n", render(in)])
-    #(_, Binary) -> "Noice" 
+    // TODO escape
+    #(_, Binary(content)) -> join(["\"", content, "\""]) 
     #(_, Fn(args, _)) -> join(["return (", "func", ")"])
     #(_, Call(_, _)) -> "return call"
   }

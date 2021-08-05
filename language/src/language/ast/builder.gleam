@@ -13,8 +13,8 @@ pub fn var(name) {
   #(Nil, Var(name))
 }
 
-pub fn binary() {
-  #(Nil, Binary)
+pub fn binary(content) {
+  #(Nil, Binary(content))
 }
 
 pub fn case_(subject, clauses) {
