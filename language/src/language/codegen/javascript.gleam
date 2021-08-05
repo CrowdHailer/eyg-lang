@@ -197,7 +197,7 @@ if javascript {
   external fn log(a) -> Nil =
     "" "console.log"
 
-  external fn concat(List(String), String) -> String =
+  external fn concat(List(String)) -> String =
     "" "window.concatList"
 }
 

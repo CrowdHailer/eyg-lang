@@ -116,3 +116,12 @@ pub fn multiline_function_test() {
   let "  return equal$1(b$1, \"other\");" = l3
   let "});" = l4
 }
+
+// TODO do construction
+
+fn aside() {
+  let x = Ok
+  try a = x(2)
+  Error(Nil)
+}
+// TODO email to ask about other language front ends. Is there a long form place to ask discord program lang questions
