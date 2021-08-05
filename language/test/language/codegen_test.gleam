@@ -1,6 +1,6 @@
 import language/codegen/javascript
 import language/ast/builder.{
-  binary, call, case_, destructure, function, let_, var,
+  binary, call, case_, clause, destructure, function, let_, rest, var,
 }
 import language/type_.{Data}
 import language/ast
@@ -22,25 +22,40 @@ pub fn variable_assignment_test() {
   let "foo$2" = l3
 }
 
-// TODO how are functions parsed around
-// pub fn let_destructure_test() {
-//   let scope =
-//     scope.new()
-//     |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
-//   let untyped =
-//     destructure(
-//       "User",
-//       ["first_name"],
-//       call(var("User"), [binary("abc")]),
-//       var("first_name"),
-//     )
-//   let js = compile(untyped, scope)
-//   let [l1, l2] = js
-//   let "let foo$1 = \"My First Value\";" = l1
-//   let "let foo$2 = foo$1;" = l2
-// }
-// 
-// TODO test multiline in let value
+pub fn let_destructure_test() {
+  let scope =
+    scope.new()
+    |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
+  let untyped =
+    destructure(
+      "User",
+      ["first_name"],
+      call(var("User"), [binary("abc")]),
+      var("first_name"),
+    )
+  let js = compile(untyped, scope)
+  let [l1, l2] = js
+  let "let [first_name$1, ] = User$1(\"abc\", );" = l1
+  let "first_name$1" = l2
+}
+
+pub fn case_with_boolean_test() {
+  let scope =
+    scope.new()
+    |> with_equal
+  let untyped =
+    function(
+      ["bool"],
+      case_(
+        var("bool"),
+        [clause("True", [], binary("hello")), rest("ping", binary("bye!"))],
+      ),
+    )
+  let js = compile(untyped, scope)
+  let [l1] = js
+  let "equal$1(\"foo\", \"bar\", )" = l1
+}
+
 pub fn simple_function_call_test() {
   let scope =
     scope.new()
@@ -86,7 +101,7 @@ pub fn multiline_function_test() {
       var("test"),
     )
   let js = compile(untyped, scope)
-  let [l1, l2, l3, l4] = js
+  let [l1, l2, l3, l4, l5] = js
   let "let test$1 = ((a$1, b$1, ) => {" = l1
   let "  let a$2 = equal$1(a$1, \"blah\", );" = l2
   let "  return equal$1(b$1, \"other\", );" = l3

@@ -16,27 +16,93 @@ if javascript {
     "../gleam_stdlib.js" "to_string"
 }
 
+fn map_first(list, func) {
+  let [first, ..rest] = list
+  [func(first), ..rest]
+}
+
+fn map_last(list, func) {
+  list
+  |> list.reverse()
+  |> map_first(func)
+  |> list.reverse()
+}
+
+fn indent(lines) {
+  list.map(lines, fn(line) { concat(["  ", line]) })
+}
+
+fn wrap(pre, lines, post) {
+  lines
+  |> map_first(fn(first) { concat([pre, first]) })
+  |> map_last(fn(last) { concat([last, post]) })
+}
+
+fn squash(a, b) {
+  let [join, ..rest] = b
+  map_last(a, fn(last) { concat([last, join]) })
+  |> list.append(rest)
+}
+
 pub fn render(typed, in_tail) {
   case typed {
-    #(_, Let(pattern, value, in)) ->
-      case render(value, False) {
-        [value] -> [
-          concat(["let ", render_pattern(pattern), " = ", value, ";"]),
-          ..render(in, in_tail)
-        ]
-        [first, ..rest] -> {
-          let [last, ..middle] = list.reverse(rest)
-          let last = concat([last, ";"])
-          let rest = list.reverse([last, ..middle])
-          let first = concat(["let ", render_pattern(pattern), " = ", first])
-          // I think this could be done as one case if take map first then map last
-          [first, ..rest]
-        }
-      }
+    #(_, Let(pattern, value, in)) -> {
+      let value = render(value, False)
+      // simplify with wrap(pre, post)
+      let value =
+        map_first(
+          value,
+          fn(first) { concat(["let ", render_pattern(pattern), " = ", first]) },
+        )
+      let value = map_last(value, fn(last) { concat([last, ";"]) })
+      list.append(value, render(in, in_tail))
+    }
     #(_, Var(#(label, count))) -> [
+      // simplify with wrap as tail
       concat([render_return(in_tail), label, "$", int_to_string(count)]),
     ]
+    #(_, Case(subject, clauses)) -> {
+      let #(lines, _) =
+        list.fold(
+          clauses,
+          #([], True),
+          fn(clause, state) {
+            let #(accumulator, first) = state
+            let pre = case first {
+              True -> "if"
+              False -> "} else if"
+            }
+            let #(pattern, then) = clause
+            let [l1, l2] = case pattern {
+              Destructure(name, args) -> [
+                concat([pre, " (subject.type == \"", name, "\") {"]),
+                concat([
+                  "  let ",
+                  render_pattern(pattern),
+                  " = Object.values(subject)",
+                ]),
+              ]
+              Assignment(#(label, count)) -> [
+                "else {",
+                concat(["  let ", label, " = subject;"]),
+              ]
+            }
+            #(
+              list.append(accumulator, [l1, l2, ..indent(render(then, True))]),
+              False,
+            )
+          },
+        )
+      // ["((subject) => {", ..lines]
+      // |> list.append(["})(thing)"])
+      let lines =
+        ["((subject) => {", ..lines]
+        |> list.append(["}})"])
+      let subject = wrap("(", render(subject, False), ")")
+      squash(lines, subject)
+    }
     // TODO escape
+    // TODO render in tail
     #(_, Binary(content)) -> [concat(["\"", content, "\""])]
     #(_, Fn(args, in)) -> {
       let args_string =
@@ -52,6 +118,7 @@ pub fn render(typed, in_tail) {
       case render(in, True) {
         [single] -> [concat([start, " ", single, " })"])]
         lines ->
+          // todo simplify with indent
           [start, ..list.map(lines, fn(line) { concat(["  ", line]) })]
           |> list.append(["}"])
       }
@@ -70,13 +137,20 @@ pub fn render(typed, in_tail) {
         )
         |> list.reverse()
         |> concat()
-      let last = concat([last, "(", args_string, ")", case in_tail {
-        True -> ";"
-        False -> ""
-      }])
+      let last =
+        concat([
+          last,
+          "(",
+          args_string,
+          ")",
+          case in_tail {
+            True -> ";"
+            False -> ""
+          },
+        ])
       let [first, ..rest] = list.reverse([last, ..previous])
       let first = concat([render_return(in_tail), first])
-      [first, .. rest]
+      [first, ..rest]
     }
   }
 }
