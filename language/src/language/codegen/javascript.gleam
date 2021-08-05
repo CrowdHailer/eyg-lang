@@ -44,6 +44,18 @@ fn squash(a, b) {
   |> list.append(rest)
 }
 
+fn render_label(quantified_label) {
+  let #(label, count) = quantified_label
+  concat([label, "$", int_to_string(count)])
+}
+
+fn wrap_return(lines, in_tail) {
+  case in_tail {
+    True -> wrap("return ", lines, ";")
+    False -> lines
+  }
+}
+
 pub fn render(typed, in_tail) {
   case typed {
     #(_, Let(pattern, value, in)) -> {
@@ -57,10 +69,7 @@ pub fn render(typed, in_tail) {
       let value = map_last(value, fn(last) { concat([last, ";"]) })
       list.append(value, render(in, in_tail))
     }
-    #(_, Var(#(label, count))) -> [
-      // simplify with wrap as tail
-      concat([render_return(in_tail), label, "$", int_to_string(count)]),
-    ]
+    #(_, Var(label)) -> wrap_return([render_label(label)], in_tail)
     #(_, Case(subject, clauses)) -> {
       let #(lines, _) =
         list.fold(
@@ -83,7 +92,7 @@ pub fn render(typed, in_tail) {
                 ]),
               ]
               Assignment(#(label, count)) -> [
-                "else {",
+                "} else {",
                 concat(["  let ", label, " = subject;"]),
               ]
             }
@@ -100,10 +109,13 @@ pub fn render(typed, in_tail) {
         |> list.append(["}})"])
       let subject = wrap("(", render(subject, False), ")")
       squash(lines, subject)
+      |> wrap_return(in_tail)
     }
     // TODO escape
     // TODO render in tail
-    #(_, Binary(content)) -> [concat(["\"", content, "\""])]
+    #(_, Binary(content)) -> 
+      wrap_return([concat(["\"", content, "\""])], in_tail)
+    
     #(_, Fn(args, in)) -> {
       let args_string =
         list.map(
@@ -120,7 +132,7 @@ pub fn render(typed, in_tail) {
         lines ->
           // todo simplify with indent
           [start, ..list.map(lines, fn(line) { concat(["  ", line]) })]
-          |> list.append(["}"])
+          |> list.append(["})"])
       }
     }
     #(_, Call(function, with)) -> {
