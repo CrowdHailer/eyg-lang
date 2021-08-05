@@ -56,17 +56,53 @@ fn wrap_return(lines, in_tail) {
   }
 }
 
+fn intersperse(list, delimeter) {
+  case list {
+    [] -> []
+    [one, ..rest] -> do_intersperse(rest, delimeter, [one])
+  }
+}
+
+fn do_intersperse(list, delimeter, accumulator) {
+  case list {
+    [] -> list.reverse(accumulator)
+    [item, ..list] ->
+      do_intersperse(list, delimeter, [item, delimeter, ..accumulator])
+  }
+}
+
+fn strip_type(typed) {
+  let #(_, tree) = typed
+  tree
+}
+
+fn render_destructure(args) {
+  list.map(args, render_label)
+  |> fn(args) {
+    case args {
+      [] -> [""]
+      args -> args
+    }
+  }
+  |> intersperse(", ")
+  |> wrap("[", _, "]")
+  |> concat()
+}
+
 pub fn render(typed, in_tail) {
   case typed {
     #(_, Let(pattern, value, in)) -> {
       let value = render(value, False)
-      // simplify with wrap(pre, post)
-      let value =
-        map_first(
-          value,
-          fn(first) { concat(["let ", render_pattern(pattern), " = ", first]) },
-        )
-      let value = map_last(value, fn(last) { concat([last, ";"]) })
+      let value = case pattern {
+        Assignment(label) -> {
+          let assignment = concat(["let ", render_label(label), " = "])
+          wrap(assignment, value, ";")
+        }
+        Destructure(_name, args) -> {
+          let assignment = concat(["let ", render_destructure(args), " = "])
+          wrap(assignment, wrap("Object.values(", value, ")"), ";")
+        }
+      }
       list.append(value, render(in, in_tail))
     }
     #(_, Var(label)) -> wrap_return([render_label(label)], in_tail)
@@ -87,7 +123,7 @@ pub fn render(typed, in_tail) {
                 concat([pre, " (subject.type == \"", name, "\") {"]),
                 concat([
                   "  let ",
-                  render_pattern(pattern),
+                  render_destructure(args),
                   " = Object.values(subject)",
                 ]),
               ]
@@ -102,8 +138,6 @@ pub fn render(typed, in_tail) {
             )
           },
         )
-      // ["((subject) => {", ..lines]
-      // |> list.append(["})(thing)"])
       let lines =
         ["((subject) => {", ..lines]
         |> list.append(["}})"])
@@ -112,57 +146,42 @@ pub fn render(typed, in_tail) {
       |> wrap_return(in_tail)
     }
     // TODO escape
-    // TODO render in tail
-    #(_, Binary(content)) -> 
+    #(_, Binary(content)) ->
       wrap_return([concat(["\"", content, "\""])], in_tail)
-    
+
     #(_, Fn(args, in)) -> {
+      let args = list.map(args, strip_type)
       let args_string =
-        list.map(
-          args,
-          fn(quantified_label) {
-            let #(_type, #(label, count)) = quantified_label
-            concat([label, "$", int_to_string(count), ", "])
-          },
-        )
+        list.map(args, render_label)
+        |> intersperse(", ")
+        // |> wrap("(", _, ")")
         |> concat()
       let start = concat(["((", args_string, ") => {"])
       case render(in, True) {
         [single] -> [concat([start, " ", single, " })"])]
         lines ->
-          // todo simplify with indent
-          [start, ..list.map(lines, fn(line) { concat(["  ", line]) })]
+          [start, ..indent(lines)]
           |> list.append(["})"])
       }
     }
     #(_, Call(function, with)) -> {
-      let [last, ..previous] = list.reverse(render(function, False))
-      let args_string =
-        list.map(with, render(_, False))
-        |> list.fold(
-          [],
-          fn(argument, previous) {
-            case argument {
-              [single] -> [", ", single, ..previous]
-            }
+      let function = render(function, False)
+      let with = list.map(with, render(_, False))
+      let with =
+        list.map(
+          with,
+          fn(lines) {
+            let [single] = lines
+            single
           },
         )
-        |> list.reverse()
+      let args_string =
+        with
+        |> intersperse(", ")
+        |> wrap("(", _, ")")
         |> concat()
-      let last =
-        concat([
-          last,
-          "(",
-          args_string,
-          ")",
-          case in_tail {
-            True -> ";"
-            False -> ""
-          },
-        ])
-      let [first, ..rest] = list.reverse([last, ..previous])
-      let first = concat([render_return(in_tail), first])
-      [first, ..rest]
+      squash(function, [args_string])
+      |> wrap_return(in_tail)
     }
   }
 }
@@ -174,42 +193,7 @@ fn render_return(in_tail) {
   }
 }
 
-fn render_pattern(pattern) {
-  case pattern {
-    Assignment(#(label, count)) -> concat([label, "$", int_to_string(count)])
-    Destructure(_name, args) -> {
-      let arg_string =
-        list.map(
-          args,
-          fn(arg) {
-            let #(name, count) = arg
-            concat([name, "$", int_to_string(count), ", "])
-          },
-        )
-        |> concat()
-      concat(["[", arg_string, "]"])
-    }
-  }
-}
-
 if javascript {
-  // rust has wrap_expression for maybe iife
-  // let v$1 = v$0
-  // let v$2 = "hello"
-  // let v$3 = function(arg$1, arg$2) { don't need to wrap }
-  // let v$4 = (($subject) => {
-  // Needs to handle nested subjectes in cases or maybe not because v$3 will still be in scope
-  // })(v$3)
-  // fn concat(list, separator) {
-  //   array_concat(array(list), separator)
-  // }
-  // return lines then indent in parent
-  // fn iife(term) {
-  //   case render(term, True) {
-  //     [single] -> single
-  //   }
-  //   //   concat(["(() => { \n", "TODO term", "\n})()"])
-  // }
   external fn log(a) -> Nil =
     "" "console.log"
 

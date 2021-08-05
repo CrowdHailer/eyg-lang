@@ -35,7 +35,7 @@ pub fn let_destructure_test() {
     )
   let js = compile(untyped, scope)
   let [l1, l2] = js
-  let "let [first_name$1, ] = User$1(\"abc\", );" = l1
+  let "let [first_name$1] = Object.values(User$1(\"abc\"));" = l1
   let "first_name$1" = l2
 }
 
@@ -53,7 +53,7 @@ pub fn case_with_boolean_test() {
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5, l6, l7, l8, l9, l10] = js
-  let "((bool$1, ) => {" = l1
+  let "((bool$1) => {" = l1
   let "  return ((subject) => {" = l2
   let "  if (subject.type == \"True\") {" = l3
   let "    let [] = Object.values(subject)" = l4
@@ -72,7 +72,7 @@ pub fn simple_function_call_test() {
   let untyped = call(var("equal"), [binary("foo"), binary("bar")])
   let js = compile(untyped, scope)
   let [l1] = js
-  let "equal$1(\"foo\", \"bar\", )" = l1
+  let "equal$1(\"foo\", \"bar\")" = l1
 }
 
 pub fn oneline_function_test() {
@@ -80,7 +80,7 @@ pub fn oneline_function_test() {
   let untyped = let_("x", function(["x"], var("x")), var("x"))
   let js = compile(untyped, scope)
   let [l1, l2] = js
-  let "let x$1 = ((x$1, ) => { return x$1; });" = l1
+  let "let x$1 = ((x$1) => { return x$1; });" = l1
   let "x$1" = l2
 }
 
@@ -89,7 +89,7 @@ pub fn call_oneline_function_test() {
   let untyped = call(function(["x"], var("x")), [binary("hello")])
   let js = compile(untyped, scope)
   let [l1] = js
-  let "((x$1, ) => { return x$1; })(\"hello\", )" = l1
+  let "((x$1) => { return x$1; })(\"hello\")" = l1
 }
 
 pub fn multiline_function_test() {
@@ -111,8 +111,8 @@ pub fn multiline_function_test() {
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5] = js
-  let "let test$1 = ((a$1, b$1, ) => {" = l1
-  let "  let a$2 = equal$1(a$1, \"blah\", );" = l2
-  let "  return equal$1(b$1, \"other\", );" = l3
+  let "let test$1 = ((a$1, b$1) => {" = l1
+  let "  let a$2 = equal$1(a$1, \"blah\");" = l2
+  let "  return equal$1(b$1, \"other\");" = l3
   let "});" = l4
 }
