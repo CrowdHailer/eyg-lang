@@ -26,7 +26,7 @@ pub type Expression(t, l) {
     clauses: List(#(Pattern(l), #(t, Expression(t, l)))),
   )
   // Clashes with Function Type, maybe call Anonymous, Lambda
-  Fn(arguments: List(#(t, String)), body: #(t, Expression(t, l)))
+  Fn(arguments: List(#(t, l)), body: #(t, Expression(t, l)))
   Call(
     function: #(t, Expression(t, l)),
     arguments: List(#(t, Expression(t, l))),
@@ -96,7 +96,7 @@ fn set_arguments(scope, arguments, typer) {
         let #(scope, accumulator) = state
         let #(type_, name) = item
         let #(scope, quantified_label) = set_variable(scope, name, type_, typer)
-        #(scope, [quantified_label, ..accumulator])
+        #(scope, [#(type_, quantified_label), ..accumulator])
       },
     )
   #(scope, list.reverse(reversed))
@@ -131,6 +131,15 @@ fn bind(pattern, expected, scope, typer) {
             Error(IncorrectArity(expected: expected, given: given))
         }
         |> with_situation(situation)
+      // maybe the destructure should take types
+      let with =
+        list.map(
+          with,
+          fn(typed) {
+            let #(_, quantified_label) = typed
+            quantified_label
+          },
+        )
       Ok(#(Destructure(constructor, with), Single(constructor), scope, typer))
     }
   }
@@ -257,14 +266,14 @@ fn do_infer(untyped, scope, typer) {
     }
     Fn(for, in) -> {
       let #(for, typer) = type_arguments(for, typer)
-      let #(scope, _todo_numbered) = set_arguments(scope, for, typer)
+      let #(scope, quantified_for) = set_arguments(scope, for, typer)
       let #(return_type, typer) = generate_type_var(typer)
       let argument_types = list.map(for, fn(a: #(Type, String)) { a.0 })
       let type_ = Function(argument_types, return_type)
       let #(scope, _todo_number) = set_variable(scope, "self", type_, typer)
       try #(in_type, in_tree, typer) = do_infer(in, scope, typer)
       try typer = unify(return_type, in_type, typer, ReturnAnnotation)
-      let tree = Fn(for, #(in_type, in_tree))
+      let tree = Fn(quantified_for, #(in_type, in_tree))
       Ok(#(type_, tree, typer))
     }
     Call(function, with) -> {
