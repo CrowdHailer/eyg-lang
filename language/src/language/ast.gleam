@@ -2,7 +2,7 @@ import gleam/io
 import gleam/list
 import language/scope
 import language/type_.{
-  Data, Function, IncorrectArity, PolyType, Type, UnhandledVarients, RedundantClause,
+  Data, Function, IncorrectArity, PolyType, RedundantClause, Type, UnhandledVarients,
   generate_type_var,
 }
 
@@ -201,36 +201,34 @@ fn do_infer(untyped, scope, typer) {
         list.try_fold(
           clauses,
           // Uses Error(Nil) for not yet looked up remaining
-           #([], typer, Error(Nil)),
+          #([], typer, Error(Nil)),
           fn(clause, state) {
             let #(accumulator, typer, remaining) = state
             let #(pattern, then) = clause
-            try #(handles, scope, typer) = bind(pattern, subject_type, scope, typer)
-
+            try #(handles, scope, typer) =
+              bind(pattern, subject_type, scope, typer)
             try #(type_, tree, typer) = do_infer(then, scope, typer)
             try typer = unify(type_, return_type, typer, CaseClause)
-
             let remaining = case remaining {
               Error(Nil) -> {
-                let Data(type_name, _params) = type_.resolve_type(subject_type, typer)
+                let Data(type_name, _params) =
+                  type_.resolve_type(subject_type, typer)
                 scope.get_varients(scope, type_name)
               }
               Ok(remaining) -> remaining
             }
-
             try remaining = case remaining, handles {
               [], All -> Error(#(RedundantClause("_"), CaseClause))
               _, All -> Ok([])
-              remaining, Single(varient) -> case list.pop(remaining, varient) {
-                Ok(remaining) -> Ok(remaining)
-                Error(Nil) -> Error(#(RedundantClause(varient), CaseClause))
-              }
+              remaining, Single(varient) ->
+                case list.pop(remaining, varient) {
+                  Ok(remaining) -> Ok(remaining)
+                  Error(Nil) -> Error(#(RedundantClause(varient), CaseClause))
+                }
             }
-                        
             // counting handled doesnt track the case True | False | variable
             // state would switch from [True,  False] to All
             // Would need to track state as List(Constructors) + Rest
-
             let clause = #(pattern, #(type_, tree))
             let accumulator = [clause, ..accumulator]
             Ok(#(accumulator, typer, Ok(remaining)))
@@ -273,49 +271,3 @@ fn do_infer(untyped, scope, typer) {
     }
   }
 }
-
-pub fn render(typed: #(Type, Expression(Type))) { 
-  log(typed.1)
-  case typed {
-    #(_, Let(Assignment(label), value, in)) -> join(["let ", label, " = ", iife(value), ";\n", render(in)])
-    // TODO escape
-    #(_, Binary(content)) -> join(["\"", content, "\""]) 
-    #(_, Fn(args, _)) -> join(["return (", "func", ")"])
-    #(_, Call(_, _)) -> "return call"
-  }
-}
-
-// rust has wrap_expression for maybe iife
-// let v$1 = v$0
-// let v$2 = "hello"
-// let v$3 = function(arg$1, arg$2) { don't need to wrap }
-// let v$4 = (($subject) => {
-  // Needs to handle nested subjectes in cases or maybe not because v$3 will still be in scope
-
-// })(v$3)
-// fn concat(list, separator) {
-//   array_concat(array(list), separator)
-// }
-// return lines then indent in parent
-
-external fn log(a) -> Nil = "" "console.log"
-fn iife(term) {
-  join(["(() => { \n", render(term), "\n})()"])
-}
-
-fn join(parts) {
-  concat(parts, "")
-}
-external fn concat(List(String), String) -> String = "" "window.concatList"
-
-
-
-// external type Array(a)
-// external fn array_concat(Array(String), String) -> String = "" "Array.prototype.join.call"
-
-
-// external type A(a)
-// external fn array(List(a)) -> A(a) = "helpers.js" "array"
-// fn main() {
-//   array([])
-// }

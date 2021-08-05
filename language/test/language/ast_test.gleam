@@ -30,7 +30,10 @@ pub fn simple_custom_type_test() {
   let Data("Boolean", []) = type_.resolve_type(type_, typer)
 
   let untyped =
-    call(var("equal"), [call(var("None"), []), call(var("Some"), [binary("abc")])])
+    call(
+      var("equal"),
+      [call(var("None"), []), call(var("Some"), [binary("abc")])],
+    )
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
   let Data("Boolean", []) = type_.resolve_type(type_, typer)
 }

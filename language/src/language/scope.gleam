@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import language/type_.{UnknownVariable, Data, Function, PolyType, Type, Variable}
+import language/type_.{Data, Function, PolyType, Type, UnknownVariable, Variable}
 
 // pub type Type {
 //   Function(arguments: List(Type), return: Type)
@@ -46,7 +46,8 @@ pub fn free_variables(scope) {
   |> list.fold([], fn(more, acc) { list.append(more, acc) })
 }
 
-external fn log(a) -> Nil = "" "console.log"
+external fn log(a) -> Nil =
+  "" "console.log"
 
 pub fn newtype(scope, type_name, params, constructors) {
   let Scope(types: types, ..) = scope
@@ -83,12 +84,13 @@ fn add_constructors(scope, constructors, type_name, params) {
     [] -> scope
     [#(fn_name, arguments), ..rest] -> {
       let new_type = Data(type_name, list.map(params, Variable))
-      let scope = set_variable(
-        scope,
-        fn_name,
-        PolyType(forall: params, type_: Function(arguments, new_type)),
-      )
-      add_constructors(scope,rest, type_name, params)
+      let scope =
+        set_variable(
+          scope,
+          fn_name,
+          PolyType(forall: params, type_: Function(arguments, new_type)),
+        )
+      add_constructors(scope, rest, type_name, params)
     }
   }
 }
@@ -113,6 +115,7 @@ pub fn get_varients(scope, type_name) {
     },
   )
 }
+
 // pub fn get_constructor(scope, constructor) {
 //   let Scope(types: types, ..) = scope
 //   do_get_constructor(types, constructor)
@@ -128,7 +131,6 @@ pub fn get_varients(scope, type_name) {
 //       }
 //   }
 // }
-
 pub fn with_equal(scope) {
   scope
   |> newtype("Boolean", [], [#("True", []), #("False", [])])

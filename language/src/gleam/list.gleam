@@ -54,7 +54,9 @@ fn do_map(remaining, func, accumulator) {
   }
 }
 
-external fn log(a) -> Nil = "" "console.log"
+external fn log(a) -> Nil =
+  "" "console.log"
+
 pub fn fold(input: List(a), initial: b, func: fn(a, b) -> b) -> b {
   case input {
     [] -> initial

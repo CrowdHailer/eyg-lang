@@ -31,7 +31,11 @@ pub fn generic_functions_test() {
     let_(
       "id",
       identity,
-      let_("temp", call(var("id"), [var("id")]), call(var("temp"), [binary("abc")])),
+      let_(
+        "temp",
+        call(var("id"), [var("id")]),
+        call(var("temp"), [binary("abc")]),
+      ),
     )
 
   let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())

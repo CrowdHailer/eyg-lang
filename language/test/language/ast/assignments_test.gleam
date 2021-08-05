@@ -1,7 +1,9 @@
-import language/ast/builder.{binary, call, destructure, let_, var, function, case_}
-import language/ast.{ValueDestructuring, Destructure, CaseClause, Assignment}
+import language/ast/builder.{
+  binary, call, case_, destructure, function, let_, var,
+}
+import language/ast.{Assignment, CaseClause, Destructure, ValueDestructuring}
 import language/type_.{
-  CouldNotUnify, IncorrectArity, UnhandledVarients, UnknownVariable, RedundantClause,
+  CouldNotUnify, IncorrectArity, RedundantClause, UnhandledVarients, UnknownVariable,
 }
 import language/scope
 import language/type_.{Data}
@@ -48,7 +50,8 @@ pub fn incorrect_destructure_arity_test() {
     scope.new()
     |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
 
-  let untyped = destructure("User", [], call(var("User"), [binary("abc")]), binary("abc"))
+  let untyped =
+    destructure("User", [], call(var("User"), [binary("abc")]), binary("abc"))
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let IncorrectArity(expected: 1, given: 0) = failure
   let ValueDestructuring("User") = situation
@@ -60,7 +63,8 @@ pub fn incorrect_destructure_type_test() {
     |> scope.newtype("User", [], [#("User", [Data("Binary", [])])])
     |> support.with_equal()
 
-  let untyped = destructure("True", [], call(var("User"), [binary("abc")]), binary("abc"))
+  let untyped =
+    destructure("True", [], call(var("User"), [binary("abc")]), binary("abc"))
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let CouldNotUnify(expected: Data("User", []), given: Data("Boolean", [])) =
     failure
@@ -72,7 +76,12 @@ pub fn multvariant_let_error_test() {
     scope.new()
     |> support.with_equal()
   let untyped =
-    destructure("True", [], call(var("equal"), [binary("abc"), binary("abc")]), binary("abc"))
+    destructure(
+      "True",
+      [],
+      call(var("equal"), [binary("abc"), binary("abc")]),
+      binary("abc"),
+    )
   let Error(#(failure, situation)) = ast.infer(untyped, scope)
   let UnhandledVarients(["False"]) = failure
   let ValueDestructuring("True") = situation
@@ -99,7 +108,6 @@ pub fn missing_case_error_test() {
   let UnhandledVarients(["C"]) = failure
   let CaseClause = situation
 }
-
 
 pub fn duplicate_case_error_test() {
   let scope =
