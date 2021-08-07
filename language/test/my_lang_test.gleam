@@ -37,4 +37,4 @@ pub fn list_test() {
 //   return x + main(1);
 // }
 // look at generated Gleam
-// TODO JS recursion
+// TODO JS recursion, Do we want a key word for tail call optimisation only.

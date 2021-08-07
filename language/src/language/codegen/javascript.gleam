@@ -197,6 +197,7 @@ pub fn render(typed, in_tail) {
             )
           },
         )
+        // TODO wrap subject
       let lines =
         ["((subject) => {", ..lines]
         |> list.append(["}})"])
@@ -263,6 +264,7 @@ pub fn render(typed, in_tail) {
             let #(name, value) = row
             case render(value, False) {
               [single] -> concat([name, ": ", single])
+      // TODO wrap values
               _ -> todo("multiple lines in row construction arguments")
             }
           },
@@ -294,6 +296,7 @@ pub fn render(typed, in_tail) {
     #(_, Call(function, with)) -> {
       let function = render(function, False)
       let with = list.map(with, render(_, False))
+      // TODO wrap values
       let with =
         list.map(
           with,
