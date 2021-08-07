@@ -1,3 +1,4 @@
+import gleam/io
 import language/codegen/javascript
 import language/ast/builder.{
   binary, call, case_, clause, constructor, destructure, destructure_row, destructure_tuple,
@@ -21,6 +22,30 @@ pub fn variable_assignment_test() {
   let "let foo$1 = \"My First Value\";" = l1
   let "let foo$2 = foo$1;" = l2
   let "foo$2" = l3
+}
+
+pub fn nested_assignment_test() {
+  let scope =
+    scope.new()
+    |> scope.with_equal()
+
+  let untyped =
+    let_(
+      "match",
+      let_(
+        "tmp",
+        binary("TMP!"),
+        call(var("equal"), [var("tmp"), binary("test")]),
+      ),
+      var("match"),
+    )
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5] = js
+  let "let match$1 = (() => {" = l1
+  let "  let tmp$1 = \"TMP!\";" = l2
+  let "  return equal$1(tmp$1, \"test\");" = l3
+  let "})();" = l4
+  let "match$1" = l5
 }
 
 pub fn let_destructure_test() {
@@ -53,6 +78,35 @@ pub fn tuple_assignment_test() {
   let [l1, l2] = js
   let "let pair$1 = [\"abc\", \"xyz\"];" = l1
   let "pair$1" = l2
+}
+
+pub fn nested_tuple_assignment_test() {
+  let scope =
+    scope.new()
+    |> scope.with_equal()
+  let untyped =
+    let_(
+      "pair",
+      tuple_([
+        let_(
+          "tmp",
+          binary("TMP!"),
+          call(var("equal"), [var("tmp"), binary("test")]),
+        ),
+        binary("xyz"),
+      ]),
+      var("pair"),
+    )
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5, l6, l7, l8] = js
+  let "let pair$1 = [" = l1
+  let "  (() => {" = l2
+  let "    let tmp$1 = \"TMP!\";" = l3
+  let "    return equal$1(tmp$1, \"test\");" = l4
+  let "  })()," = l5
+  let "  \"xyz\"," = l6
+  let "];" = l7
+  let "pair$1" = l8
 }
 
 pub fn tuple_destructure_test() {

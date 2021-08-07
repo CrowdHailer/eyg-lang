@@ -99,3 +99,14 @@ fn do_pop(list, value, accumulator) {
     [next, ..list] -> do_pop(list, value, [next, ..accumulator])
   }
 }
+
+fn do_flatten(lists: List(List(a)), acc: List(a)) -> List(a) {
+  case lists {
+    [] -> acc
+    [l, ..rest] -> do_flatten(rest, append(acc, l))
+  }
+}
+
+pub fn flatten(lists: List(List(a))) -> List(a) {
+  do_flatten(lists, [])
+}

@@ -39,9 +39,7 @@ fn indent(lines) {
 
 fn wrap(pre, lines, post) {
   case lines {
-    [] -> {
-      [concat([pre, post])]
-    }
+    [] -> [concat([pre, post])]
     _ ->
       lines
       |> map_first(fn(first) { concat([pre, first]) })
@@ -100,6 +98,19 @@ fn render_destructure(args) {
   |> concat()
 }
 
+fn maybe_wrap_expression(expression) {
+  case expression {
+    // let is always at least two lines
+    #(_, Let(_, _, _)) -> {
+      let rendered = render(expression, True)
+      ["(() => {"]
+      |> list.append(indent(rendered))
+      |> list.append(["})()"])
+    }
+    _ -> render(expression, False)
+  }
+}
+
 pub fn render(typed, in_tail) {
   case typed {
     #(_, NewData(type_name, params, constructors, in)) ->
@@ -120,7 +131,7 @@ pub fn render(typed, in_tail) {
       )
       |> list.append(render(in, in_tail))
     #(_, Let(pattern, value, in)) -> {
-      let value = render(value, False)
+      let value = maybe_wrap_expression(value)
       let value = case pattern {
         Assignment(label) -> {
           let assignment = concat(["let ", render_label(label), " = "])
@@ -198,23 +209,51 @@ pub fn render(typed, in_tail) {
       wrap_return([concat(["\"", content, "\""])], in_tail)
     #(_, Tuple(values)) -> {
       // same mapping as in call
-      let values = list.map(values, render(_, False))
+      let values = list.map(values, maybe_wrap_expression)
       let values =
-        list.map(
+        list.fold(
           values,
-          fn(lines) {
-            case lines {
-              [single] -> single
-              _ -> todo("multiple lines in constructing tuple")
+          Ok([]),
+          fn(lines, state) {
+            case state {
+              Ok(singles) ->
+                case lines {
+                  [single] -> Ok([single, ..singles])
+                  multi -> {
+                    let lines: List(String) = lines
+                    let previous: List(List(String)) =
+                      list.map(singles, fn(s) { [s] })
+                    Error([multi, ..previous])
+                  }
+                }
+              Error(multis) -> Error([lines, ..multis])
             }
           },
         )
-      let values_string =
-        values
-        |> intersperse(", ")
-        |> wrap("[", _, "]")
-        |> concat()
-      wrap_return([values_string], in_tail)
+      let values_string = case values {
+        Ok(singles) -> {
+          let values_string =
+            singles
+            |> list.reverse()
+            |> intersperse(", ")
+            |> wrap("[", _, "]")
+            |> concat()
+          wrap_return([values_string], in_tail)
+        }
+        Error(multis) -> {
+          let lines =
+            multis
+            |> list.reverse()
+            |> list.map(wrap("", _, ","))
+            |> list.flatten()
+            |> indent()
+          let lines =
+            ["["]
+            |> list.append(lines)
+            |> list.append(["]"])
+          wrap_return(lines, in_tail)
+        }
+      }
     }
     #(_, Row(rows)) -> {
       let pairs =
@@ -249,6 +288,8 @@ pub fn render(typed, in_tail) {
           [start, ..indent(lines)]
           |> list.append(["})"])
       }
+      // TODO function returns function test test for return wrapping
+      |> wrap_return(in_tail)
     }
     #(_, Call(function, with)) -> {
       let function = render(function, False)

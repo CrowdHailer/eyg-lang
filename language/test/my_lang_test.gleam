@@ -17,14 +17,24 @@ pub fn list_test() {
   let True = a == b
   let True = b == c
   // TODO tests
-  javascript.render(#(type_, tree), True)
+  javascript.render(#(type_, tree), False)
   |> javascript.intersperse("\n")
   |> javascript.concat()
-//   |> io.print()
-//   let 1 = 2
+  |> io.print()
+  // let 1 = 2
   Ok(Nil)
 }
-
 // TODO fix nested let
 // or put the objects on the row, need then as variables for map to use reverse
+// "use strict";
+// function main() {
+//   let x = (() => {
+//     let a = 2;
+//     return a + 1;
+//   })();
+// }
+// function main(x) {
+//   return x + main(1);
+// }
 // look at generated Gleam
+// TODO JS recursion
