@@ -67,7 +67,7 @@ fn wrap_return(lines, in_tail) {
   }
 }
 
-fn intersperse(list, delimeter) {
+pub fn intersperse(list, delimeter) {
   case list {
     [] -> []
     [one, ..rest] -> do_intersperse(rest, delimeter, [one])
@@ -172,7 +172,7 @@ pub fn render(typed, in_tail) {
                 concat([
                   "  let ",
                   render_destructure(args),
-                  " = Object.values(subject)",
+                  " = Object.values(subject);",
                 ]),
               ]
               Assignment(#(label, count)) -> [
@@ -223,7 +223,7 @@ pub fn render(typed, in_tail) {
           fn(row) {
             let #(name, value) = row
             case render(value, False) {
-              [single] -> concat([name, ":", single])
+              [single] -> concat([name, ": ", single])
               _ -> todo("multiple lines in row construction arguments")
             }
           },

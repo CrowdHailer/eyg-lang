@@ -75,7 +75,7 @@ pub fn row_assignment_test() {
     )
   let js = compile(untyped, scope.new())
   let [l1, l2] = js
-  let "let user$1 = {first_name:\"Bob\", family_name:\"Ross\"};" = l1
+  let "let user$1 = {first_name: \"Bob\", family_name: \"Ross\"};" = l1
   let "user$1" = l2
 }
 
@@ -117,7 +117,7 @@ pub fn case_with_boolean_test() {
   let "((bool$1) => {" = l3
   let "  return ((subject) => {" = l4
   let "  if (subject.type == \"True\") {" = l5
-  let "    let [] = Object.values(subject)" = l6
+  let "    let [] = Object.values(subject);" = l6
   let "    return \"hello\";" = l7
   let "  } else {" = l8
   let "    let ping = subject;" = l9
