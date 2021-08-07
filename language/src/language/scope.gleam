@@ -46,9 +46,6 @@ pub fn free_variables(scope) {
   |> list.fold([], fn(more, acc) { list.append(more, acc) })
 }
 
-external fn log(a) -> Nil =
-  "" "console.log"
-
 // assign and lookup
 pub fn get_variable(scope, label) {
   let Scope(variables: variables) = scope

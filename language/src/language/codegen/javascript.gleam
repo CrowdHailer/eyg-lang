@@ -268,9 +268,6 @@ fn render_return(in_tail) {
 }
 
 if javascript {
-  external fn log(a) -> Nil =
-    "" "console.log"
-
   external fn concat(List(String)) -> String =
     "" "window.concatList"
 }
