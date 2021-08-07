@@ -1,6 +1,7 @@
 // TODO name typer
 import gleam/io
 import gleam/list
+import gleam/option.{Option}
 
 pub type Failure {
   IncorrectArity(expected: Int, given: Int)
@@ -15,7 +16,9 @@ pub type Type {
   // Nominal
   Data(String, List(Type))
   // If Nominal types are also Data Types maybe a Tuple should be as well.
+  // We will Need tuple to be a List when Data holds only one. Other nice improvement is a single tree
   // Tuple(List(Type))
+  Row(rows: List(#(String, Type)), rest: Option(Type))
   Function(List(Type), Type)
   Variable(Int)
 }
@@ -111,6 +114,7 @@ pub fn generalised_by(type_, excluded, typer) {
     Data(_, _) -> []
     // same for tuple??? wait for failing test
     // Tuple(_) -> []
+    Row(_, _) -> []
     Variable(_) -> []
   }
   forall
@@ -269,6 +273,17 @@ pub fn resolve_type(type_, typer) {
     Data(name, arguments) ->
       Data(name, list.map(arguments, resolve_type(_, typer)))
     // Tuple(values) -> Tuple(list.map(values, resolve_type(_, typer)))
+    Row(rows, rest) ->
+      Row(
+        list.map(
+          rows,
+          fn(row) {
+            let #(name, type_) = row
+            #(name, resolve_type(type_, typer))
+          },
+        ),
+        rest,
+      )
     Function(arguments, return) ->
       Function(
         list.map(arguments, resolve_type(_, typer)),

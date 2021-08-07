@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/option.{None, Some}
 import language/scope
 import language/type_.{
   Data, Function, IncorrectArity, PolyType, RedundantClause, Type, UnhandledVarients,
@@ -10,6 +11,7 @@ import language/type_.{
 pub type Pattern(l) {
   Destructure(String, List(l))
   TuplePattern(List(l))
+  RowPattern(List(#(String, l)))
   Assignment(l)
 }
 
@@ -40,6 +42,7 @@ pub type Expression(t, l) {
   Var(label: l)
   Binary(content: String)
   Tuple(values: List(#(t, Expression(t, l))))
+  Row(rows: List(#(String, #(t, Expression(t, l)))))
   Case(
     subject: #(t, Expression(t, l)),
     clauses: List(#(Pattern(l), #(t, Expression(t, l)))),
@@ -155,8 +158,55 @@ fn bind(pattern, expected, scope, typer) {
         )
       let type_ =
         Data("Tuple", list.map(with, fn(x: #(#(String, Int), Type)) { x.1 }))
+      try typer = unify(type_, expected, typer, situation)
       let assignments = list.map(with, fn(x: #(#(String, Int), Type)) { x.0 })
       Ok(#(TuplePattern(assignments), All, scope, typer))
+    }
+    RowPattern(rows) -> {
+      let situation = ValueDestructuring("Row")
+      let #(typer, reversed) =
+        list.fold(
+          rows,
+          #(typer, []),
+          fn(item, state) {
+            let #(typer, accumulator) = state
+            let #(row_name, label) = item
+            let #(tvar, typer) = generate_type_var(typer)
+            let accumulator = [#(label, #(row_name, tvar)), ..accumulator]
+            #(typer, accumulator)
+          },
+        )
+      let #(scope, row) =
+        list.fold(
+          reversed,
+          #(scope, []),
+          fn(item, state) {
+            let #(scope, accumulator) = state
+            let #(label, #(row_name, type_)) = item
+            let #(scope, label) = set_variable(scope, label, type_, typer)
+            let accumulator = [
+              #(#(row_name, label), #(row_name, type_)),
+              ..accumulator
+            ]
+            #(scope, accumulator)
+          },
+        )
+      let #(remaining_row, typer) = generate_type_var(typer)
+      let type_ =
+        type_.Row(
+          list.map(
+            row,
+            fn(x: #(#(String, #(String, Int)), #(String, Type))) { x.1 },
+          ),
+          Some(remaining_row),
+        )
+      try typer = unify(type_, expected, typer, situation)
+      let assignments =
+        list.map(
+          row,
+          fn(x: #(#(String, #(String, Int)), #(String, Type))) { x.0 },
+        )
+      Ok(#(RowPattern(assignments), All, scope, typer))
     }
     Destructure(constructor, with) -> {
       let situation = ValueDestructuring(constructor)
@@ -263,6 +313,7 @@ fn do_infer(untyped, scope, typer) {
       Ok(#(in_type, tree, typer))
     }
     Binary(content) -> Ok(#(Data("Binary", []), Binary(content), typer))
+    // rename to elemeents to elements vs rows have values
     Tuple(values) -> {
       try #(reversed, typer) =
         list.try_fold(
@@ -285,6 +336,33 @@ fn do_infer(untyped, scope, typer) {
           },
         )
       Ok(#(Data("Tuple", value_types), Tuple(subexpressions), typer))
+    }
+    Row(rows) -> {
+      try #(reversed, typer) =
+        list.try_fold(
+          rows,
+          #([], typer),
+          fn(row, state) {
+            let #(accumulator, typer) = state
+            let #(name, value) = row
+            try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
+            let accumulator = [
+              #(name, #(value_type, value_tree)),
+              ..accumulator
+            ]
+            Ok(#(accumulator, typer))
+          },
+        )
+      let subexpressions = list.reverse(reversed)
+      let row_types =
+        list.map(
+          subexpressions,
+          fn(s) {
+            let #(name, #(type_, _)) = s
+            #(name, type_)
+          },
+        )
+      Ok(#(type_.Row(row_types, None), Row(subexpressions), typer))
     }
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)

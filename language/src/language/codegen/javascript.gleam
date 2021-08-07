@@ -1,8 +1,8 @@
 import gleam/io
 import gleam/list
 import language/ast.{
-  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Tuple, TuplePattern,
-  Var,
+  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Row, RowPattern,
+  Tuple, TuplePattern, Var,
 }
 
 pub fn int_to_string(int) {
@@ -123,6 +123,21 @@ pub fn render(typed, in_tail) {
             concat(["let ", render_destructure(assignments), " = "])
           wrap(assignment, value, ";")
         }
+        RowPattern(rows) -> {
+          let assignment =
+            list.map(
+              rows,
+              fn(row) {
+                let #(row_name, label) = row
+                concat([row_name, ": ", render_label(label)])
+              },
+            )
+            |> intersperse(", ")
+            |> wrap("{", _, "}")
+            |> concat()
+          let assignment = concat(["let ", assignment, " = "])
+          wrap(assignment, value, ";")
+        }
         Destructure(_name, args) -> {
           let assignment = concat(["let ", render_destructure(args), " = "])
           wrap(assignment, wrap("Object.values(", value, ")"), ";")
@@ -190,6 +205,23 @@ pub fn render(typed, in_tail) {
         |> wrap("[", _, "]")
         |> concat()
       wrap_return([values_string], in_tail)
+    }
+    #(_, Row(rows)) -> {
+      let pairs =
+        list.map(
+          rows,
+          fn(row) {
+            let #(name, value) = row
+            let [single] = render(value, False)
+            concat([name, ":", single])
+          },
+        )
+      let pairs_string =
+        pairs
+        |> intersperse(", ")
+        |> wrap("{", _, "}")
+        |> concat()
+      wrap_return([pairs_string], in_tail)
     }
     #(_, Fn(args, in)) -> {
       let args = list.map(args, strip_type)

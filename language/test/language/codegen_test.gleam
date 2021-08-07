@@ -1,7 +1,7 @@
 import language/codegen/javascript
 import language/ast/builder.{
-  binary, call, case_, clause, constructor, destructure, destructure_tuple, function,
-  let_, rest, tuple_, var, varient,
+  binary, call, case_, clause, constructor, destructure, destructure_row, destructure_tuple,
+  function, let_, rest, row, tuple_, var, varient,
 }
 import language/type_.{Data}
 import language/ast
@@ -62,6 +62,37 @@ pub fn tuple_destructure_test() {
   let [l1, l2, l3, l4] = js
   let "((pair$1) => {" = l1
   let "  let [a$1, b$1] = pair$1;" = l2
+  let "  return a$1;" = l3
+  let "})" = l4
+}
+
+pub fn row_assignment_test() {
+  let untyped =
+    let_(
+      "user",
+      row([#("first_name", binary("Bob")), #("family_name", binary("Ross"))]),
+      var("user"),
+    )
+  let js = compile(untyped, scope.new())
+  let [l1, l2] = js
+  let "let user$1 = {first_name:\"Bob\", family_name:\"Ross\"};" = l1
+  let "user$1" = l2
+}
+
+pub fn row_destructure_test() {
+  let untyped =
+    function(
+      ["user"],
+      destructure_row(
+        [#("first_name", "a"), #("family_name", "b")],
+        var("user"),
+        var("a"),
+      ),
+    )
+  let js = compile(untyped, scope.new())
+  let [l1, l2, l3, l4] = js
+  let "((user$1) => {" = l1
+  let "  let {first_name: a$1, family_name: b$1} = user$1;" = l2
   let "  return a$1;" = l3
   let "})" = l4
 }

@@ -1,6 +1,7 @@
 import gleam/io
+import gleam/option.{Some}
 import language/ast/builder.{
-  binary, call, case_, constructor, function, let_, var, varient,
+  binary, call, case_, constructor, destructure_row, function, let_, var, varient,
 }
 import language/ast.{Destructure, FunctionCall}
 import language/type_.{CouldNotUnify, IncorrectArity}
@@ -130,4 +131,28 @@ pub fn call_argument_mistype_test() {
   let CouldNotUnify(expected: Data("Binary", []), given: Data("Boolean", [])) =
     failure
   let FunctionCall = situation
+}
+
+pub fn infer_row_type_test() {
+  let scope =
+    scope.new()
+    |> scope.with_equal()
+
+  let untyped =
+    function(
+      ["user"],
+      destructure_row(
+        [#("name", "name")],
+        var("user"),
+        call(var("equal"), [var("name"), binary("Bob")]),
+      ),
+    )
+
+  // make match is a fn type that should Not be generalised
+  // isolated let etc can there be a whole that get's the scope
+  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Function(
+    [type_.Row([#("name", Data("Binary", []))], Some(x))],
+    Data("Boolean", []),
+  ) = type_.resolve_type(type_, typer)
 }

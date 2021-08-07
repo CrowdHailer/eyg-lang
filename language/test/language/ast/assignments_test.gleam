@@ -1,12 +1,14 @@
+import gleam/option.{None}
 import language/ast/builder.{
-  binary, call, case_, constructor, destructure, function, let_, tuple_, var, varient,
+  binary, call, case_, constructor, destructure, function, let_, row, tuple_, var,
+  varient,
 }
 import language/ast.{Assignment, CaseClause, Destructure, ValueDestructuring}
 import language/type_.{
   CouldNotUnify, IncorrectArity, RedundantClause, UnhandledVarients, UnknownVariable,
 }
 import language/scope
-import language/type_.{Data}
+import language/type_.{Data, Row}
 import language/ast/support
 
 pub fn infer_type_constructor_for_var_test() {
@@ -21,6 +23,13 @@ pub fn infer_type_constructor_for_tuple_test() {
   let Ok(#(type_, _, _)) = ast.infer(untyped, scope.new())
   // seems not to be ok as assert
   let Data("Tuple", [Data("Binary", []), Data("Tuple", [])]) = type_
+}
+
+pub fn infer_type_constructor_for_row_test() {
+  let untyped = let_("user", row([#("name", binary("aaa"))]), var("user"))
+  let Ok(#(type_, _, _)) = ast.infer(untyped, scope.new())
+  // seems not to be ok as assert
+  let Row([#("name", Data("Binary", []))], None) = type_
 }
 
 pub fn missing_var_test() {
