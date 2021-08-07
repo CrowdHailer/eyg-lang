@@ -9,6 +9,7 @@ import language/type_.{
 /// Type destructure used for let and case statements
 pub type Pattern(l) {
   Destructure(String, List(l))
+  TuplePattern(List(l))
   Assignment(l)
 }
 
@@ -38,6 +39,7 @@ pub type Expression(t, l) {
   )
   Var(label: l)
   Binary(content: String)
+  Tuple(values: List(#(t, Expression(t, l))))
   Case(
     subject: #(t, Expression(t, l)),
     clauses: List(#(Pattern(l), #(t, Expression(t, l)))),
@@ -114,6 +116,10 @@ pub type Handles {
   Single(String)
 }
 
+// TODO this makes  invalid erl somehow
+// fn test(x) {
+//   [..x]
+// }
 fn bind(pattern, expected, scope, typer) {
   case pattern {
     Assignment(label) -> {
@@ -121,6 +127,36 @@ fn bind(pattern, expected, scope, typer) {
         set_variable(scope, label, expected, typer)
       let pattern = Assignment(quantified_label)
       Ok(#(pattern, All, scope, typer))
+    }
+    TuplePattern(with) -> {
+      let situation = ValueDestructuring("Tuple")
+      let #(typer, reversed) =
+        list.fold(
+          with,
+          #(typer, []),
+          fn(label, state) {
+            let #(typer, accumulator) = state
+            let #(tvar, typer) = generate_type_var(typer)
+            let accumulator = [#(label, tvar), ..accumulator]
+            #(typer, accumulator)
+          },
+        )
+      let #(scope, with) =
+        list.fold(
+          reversed,
+          #(scope, []),
+          fn(item, state) {
+            let #(scope, accumulator) = state
+            let #(label, type_) = item
+            let #(scope, label) = set_variable(scope, label, type_, typer)
+            let accumulator = [#(label, type_), ..accumulator]
+            #(scope, accumulator)
+          },
+        )
+      let type_ =
+        type_.Tuple(list.map(with, fn(x: #(#(String, Int), Type)) { x.1 }))
+      let assignments = list.map(with, fn(x: #(#(String, Int), Type)) { x.0 })
+      Ok(#(TuplePattern(assignments), All, scope, typer))
     }
     Destructure(constructor, with) -> {
       let situation = ValueDestructuring(constructor)
@@ -227,6 +263,29 @@ fn do_infer(untyped, scope, typer) {
       Ok(#(in_type, tree, typer))
     }
     Binary(content) -> Ok(#(Data("Binary", []), Binary(content), typer))
+    Tuple(values) -> {
+      try #(reversed, typer) =
+        list.try_fold(
+          values,
+          #([], typer),
+          fn(value, state) {
+            let #(accumulator, typer) = state
+            try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
+            let accumulator = [#(value_type, value_tree), ..accumulator]
+            Ok(#(accumulator, typer))
+          },
+        )
+      let subexpressions = list.reverse(reversed)
+      let value_types =
+        list.map(
+          subexpressions,
+          fn(s) {
+            let #(type_, _) = s
+            type_
+          },
+        )
+      Ok(#(type_.Tuple(value_types), Tuple(subexpressions), typer))
+    }
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
       try #(pattern, handles, scope, typer) =

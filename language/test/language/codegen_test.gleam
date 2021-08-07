@@ -1,7 +1,7 @@
 import language/codegen/javascript
 import language/ast/builder.{
-  binary, call, case_, clause, constructor, destructure, function, let_, rest, var,
-  varient,
+  binary, call, case_, clause, constructor, destructure, destructure_tuple, function,
+  let_, rest, tuple_, var, varient,
 }
 import language/type_.{Data}
 import language/ast
@@ -46,6 +46,27 @@ pub fn let_destructure_test() {
   let "first_name$1" = l3
 }
 
+pub fn tuple_assignment_test() {
+  let untyped =
+    let_("pair", tuple_([binary("abc"), binary("xyz")]), var("pair"))
+  let js = compile(untyped, scope.new())
+  let [l1, l2] = js
+  let "let pair$1 = [\"abc\", \"xyz\"];" = l1
+  let "pair$1" = l2
+}
+
+pub fn tuple_destructure_test() {
+  let untyped =
+    function(["pair"], destructure_tuple(["a", "b"], var("pair"), var("a")))
+  let js = compile(untyped, scope.new())
+  let [l1, l2, l3, l4] = js
+  let "((pair$1) => {" = l1
+  let "  let [a$1, b$1] = pair$1;" = l2
+  let "  return a$1;" = l3
+  let "})" = l4
+}
+
+// Don't need to to a case expression for tuples
 pub fn case_with_boolean_test() {
   let scope = scope.new()
   let untyped =

@@ -1,5 +1,5 @@
 import language/ast/builder.{
-  binary, call, case_, constructor, destructure, function, let_, var, varient,
+  binary, call, case_, constructor, destructure, function, let_, tuple_, var, varient,
 }
 import language/ast.{Assignment, CaseClause, Destructure, ValueDestructuring}
 import language/type_.{
@@ -14,6 +14,13 @@ pub fn infer_type_constructor_for_var_test() {
   let Ok(#(type_, _, _)) = ast.infer(untyped, scope.new())
   // seems not to be ok as assert
   let Data("Binary", []) = type_
+}
+
+pub fn infer_type_constructor_for_tuple_test() {
+  let untyped = let_("foo", tuple_([binary("aaa"), tuple_([])]), var("foo"))
+  let Ok(#(type_, _, _)) = ast.infer(untyped, scope.new())
+  // seems not to be ok as assert
+  let type_.Tuple([Data("Binary", []), type_.Tuple([])]) = type_
 }
 
 pub fn missing_var_test() {

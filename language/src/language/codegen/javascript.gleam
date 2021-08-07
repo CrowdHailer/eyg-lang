@@ -1,7 +1,8 @@
 import gleam/io
 import gleam/list
 import language/ast.{
-  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Var,
+  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Tuple, TuplePattern,
+  Var,
 }
 
 pub fn int_to_string(int) {
@@ -117,6 +118,11 @@ pub fn render(typed, in_tail) {
           let assignment = concat(["let ", render_label(label), " = "])
           wrap(assignment, value, ";")
         }
+        TuplePattern(assignments) -> {
+          let assignment =
+            concat(["let ", render_destructure(assignments), " = "])
+          wrap(assignment, value, ";")
+        }
         Destructure(_name, args) -> {
           let assignment = concat(["let ", render_destructure(args), " = "])
           wrap(assignment, wrap("Object.values(", value, ")"), ";")
@@ -167,7 +173,24 @@ pub fn render(typed, in_tail) {
     // TODO escape
     #(_, Binary(content)) ->
       wrap_return([concat(["\"", content, "\""])], in_tail)
-
+    #(_, Tuple(values)) -> {
+      // same mapping as in call
+      let values = list.map(values, render(_, False))
+      let values =
+        list.map(
+          values,
+          fn(lines) {
+            let [single] = lines
+            single
+          },
+        )
+      let values_string =
+        values
+        |> intersperse(", ")
+        |> wrap("[", _, "]")
+        |> concat()
+      wrap_return([values_string], in_tail)
+    }
     #(_, Fn(args, in)) -> {
       let args = list.map(args, strip_type)
       let args_string =

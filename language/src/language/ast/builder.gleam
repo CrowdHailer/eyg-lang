@@ -1,6 +1,7 @@
 import gleam/list
 import language/ast.{
-  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Var,
+  Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Tuple, TuplePattern,
+  Var,
 }
 
 pub fn varient(name, params, constructors, in) {
@@ -17,6 +18,18 @@ pub fn let_(name, value, in) {
 
 pub fn destructure(constructor, arguments, value, in) {
   #(Nil, Let(Destructure(constructor, arguments), value, in))
+}
+
+pub fn destructure_tuple(
+  assignments,
+  value: #(Nil, ast.Expression(Nil, String)),
+  in,
+) {
+  #(Nil, Let(TuplePattern(assignments), value, in))
+}
+
+pub fn tuple_(values) {
+  #(Nil, Tuple(values))
 }
 
 pub fn var(name) {
