@@ -20,7 +20,7 @@ pub fn infer_type_constructor_for_tuple_test() {
   let untyped = let_("foo", tuple_([binary("aaa"), tuple_([])]), var("foo"))
   let Ok(#(type_, _, _)) = ast.infer(untyped, scope.new())
   // seems not to be ok as assert
-  let type_.Tuple([Data("Binary", []), type_.Tuple([])]) = type_
+  let Data("Tuple", [Data("Binary", []), Data("Tuple", [])]) = type_
 }
 
 pub fn missing_var_test() {

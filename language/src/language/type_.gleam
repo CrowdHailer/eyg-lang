@@ -15,7 +15,7 @@ pub type Type {
   // Nominal
   Data(String, List(Type))
   // If Nominal types are also Data Types maybe a Tuple should be as well.
-  Tuple(List(Type))
+  // Tuple(List(Type))
   Function(List(Type), Type)
   Variable(Int)
 }
@@ -110,7 +110,7 @@ pub fn generalised_by(type_, excluded, typer) {
     // data is already generalised
     Data(_, _) -> []
     // same for tuple??? wait for failing test
-    Tuple(_) -> []
+    // Tuple(_) -> []
     Variable(_) -> []
   }
   forall
@@ -268,7 +268,7 @@ pub fn resolve_type(type_, typer) {
   case type_ {
     Data(name, arguments) ->
       Data(name, list.map(arguments, resolve_type(_, typer)))
-    Tuple(values) -> Tuple(list.map(values, resolve_type(_, typer)))
+    // Tuple(values) -> Tuple(list.map(values, resolve_type(_, typer)))
     Function(arguments, return) ->
       Function(
         list.map(arguments, resolve_type(_, typer)),

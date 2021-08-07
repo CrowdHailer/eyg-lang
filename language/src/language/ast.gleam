@@ -154,7 +154,7 @@ fn bind(pattern, expected, scope, typer) {
           },
         )
       let type_ =
-        type_.Tuple(list.map(with, fn(x: #(#(String, Int), Type)) { x.1 }))
+        Data("Tuple", list.map(with, fn(x: #(#(String, Int), Type)) { x.1 }))
       let assignments = list.map(with, fn(x: #(#(String, Int), Type)) { x.0 })
       Ok(#(TuplePattern(assignments), All, scope, typer))
     }
@@ -284,7 +284,7 @@ fn do_infer(untyped, scope, typer) {
             type_
           },
         )
-      Ok(#(type_.Tuple(value_types), Tuple(subexpressions), typer))
+      Ok(#(Data("Tuple", value_types), Tuple(subexpressions), typer))
     }
     Let(pattern, value, in: next) -> {
       try #(value_type, value_tree, typer) = do_infer(value, scope, typer)
