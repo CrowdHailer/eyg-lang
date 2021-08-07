@@ -11,6 +11,18 @@ if erlang {
   }
 }
 
+pub fn print(string: String) -> Nil {
+  do_print(string)
+}
+
+if erlang {
+  fn do_print(string: String) -> Nil {
+    erl_print(string, [])
+    Nil
+  }
+}
+
+
 if javascript {
   external type DoNotLeak
 

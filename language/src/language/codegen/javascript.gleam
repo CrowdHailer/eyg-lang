@@ -20,8 +20,10 @@ if javascript {
 }
 
 fn map_first(list, func) {
-  let [first, ..rest] = list
-  [func(first), ..rest]
+  case list {
+    [first, ..rest] -> [func(first), ..rest]
+    _ -> todo("map first didn't do anything")
+  }
 }
 
 fn map_last(list, func) {
@@ -36,9 +38,15 @@ fn indent(lines) {
 }
 
 fn wrap(pre, lines, post) {
-  lines
-  |> map_first(fn(first) { concat([pre, first]) })
-  |> map_last(fn(last) { concat([last, post]) })
+  case lines {
+    [] -> {
+      [concat([pre, post])]
+    }
+    _ ->
+      lines
+      |> map_first(fn(first) { concat([pre, first]) })
+      |> map_last(fn(last) { concat([last, post]) })
+  }
 }
 
 fn squash(a, b) {
@@ -195,8 +203,10 @@ pub fn render(typed, in_tail) {
         list.map(
           values,
           fn(lines) {
-            let [single] = lines
-            single
+            case lines {
+              [single] -> single
+              _ -> todo("multiple lines in constructing tuple")
+            }
           },
         )
       let values_string =
@@ -212,8 +222,10 @@ pub fn render(typed, in_tail) {
           rows,
           fn(row) {
             let #(name, value) = row
-            let [single] = render(value, False)
-            concat([name, ":", single])
+            case render(value, False) {
+              [single] -> concat([name, ":", single])
+              _ -> todo("multiple lines in row construction arguments")
+            }
           },
         )
       let pairs_string =
@@ -245,8 +257,10 @@ pub fn render(typed, in_tail) {
         list.map(
           with,
           fn(lines) {
-            let [single] = lines
-            single
+            case lines {
+              [single] -> single
+              _ -> todo("multiple lines in call arguments")
+            }
           },
         )
       let args_string =
@@ -268,12 +282,12 @@ fn render_return(in_tail) {
 }
 
 if javascript {
-  external fn concat(List(String)) -> String =
+  pub external fn concat(List(String)) -> String =
     "" "window.concatList"
 }
 
 if erlang {
-  external fn concat(List(String)) -> String =
+  pub external fn concat(List(String)) -> String =
     "unicode" "characters_to_binary"
 }
 // external type Array(a)

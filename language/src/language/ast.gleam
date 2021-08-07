@@ -217,7 +217,6 @@ fn bind(pattern, expected, scope, typer) {
         |> with_situation(VarLookup)
       let #(type_, typer) = type_.instantiate(poly_type, typer)
       // TODO a get constructor should work here see notes in type
-      io.debug(constructor)
       let Function(arguments, return) = type_
       try typer = unify(return, expected, typer, situation)
       try #(scope, with) =
@@ -236,7 +235,6 @@ fn bind(pattern, expected, scope, typer) {
             quantified_label
           },
         )
-        |> io.debug()
       Ok(#(Destructure(constructor, with), Single(constructor), scope, typer))
     }
   }
