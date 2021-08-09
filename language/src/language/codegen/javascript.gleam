@@ -99,10 +99,10 @@ fn render_destructure(args) {
   |> concat()
 }
 
-fn maybe_wrap_expression(expression) {
+pub fn maybe_wrap_expression(expression) {
   case expression {
     // let is always at least two lines
-    #(_, Let(_, _, _)) -> {
+    #(_, Let(_, _, _)) | #(_, NewData(_,_,_,_)) -> {
       let rendered = render(expression, True)
       ["(() => {"]
       |> list.append(indent(rendered))

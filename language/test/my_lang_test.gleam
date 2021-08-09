@@ -10,19 +10,19 @@ import my_lang/list
 pub fn list_test() {
   let Ok(#(type_, tree, substitutions)) = ast.infer(list.module(), scope.new())
   let Row(exports, None) = type_.resolve_type(type_, substitutions)
-  try Function(
+  let Ok(Function(
     [Variable(a), Data("list::List", [Variable(b)])],
     Data("list::List", [Variable(c)]),
-  ) = gleam_list.key_find(exports, "Cons")
+  )) = gleam_list.key_find(exports, "Cons")
   let True = a == b
   let True = b == c
   // TODO tests
-  javascript.render(#(type_, tree), False)
+  javascript.maybe_wrap_expression(#(type_, tree))
   |> javascript.intersperse("\n")
   |> javascript.concat()
   // |> io.print()
   // let 1 = 2
-  Ok(Nil)
+  // Ok(Nil)
 }
 // function main(x) {
 //   return x + main(1);
