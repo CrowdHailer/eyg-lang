@@ -48,7 +48,8 @@ pub fn get_varients(typer, type_name) {
   list.key_find(named, type_name)
 }
 
-pub fn register_type(typer, type_name, constructors) {
+// TODO remove once return type known
+pub fn register_type(typer, type_name, constructors) -> Result(Typer, Nil) {
   let Typer(named: named, ..) = typer
   let named = case list.key_find(named, type_name) {
     Ok(_) -> todo("Handle the error when redefining a type")
@@ -105,7 +106,7 @@ fn push_new(item, set) {
 // Can I convince myself that all generalisable variables must be above the typer current counter
 // Yes because the environment is passed in and not used again.
 // call this fn generalise when called here.
-pub fn generalised_by(type_, excluded, typer) {
+pub fn generalised_by(type_, excluded, typer) -> List(Int) {
   let type_ = resolve_type(type_, typer)
   let forall = case type_ {
     Function(arguments, _return) -> do_generalize(arguments, excluded, [])

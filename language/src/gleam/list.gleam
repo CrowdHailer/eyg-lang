@@ -88,7 +88,7 @@ fn do_zip(left, right, acc, count) {
   }
 }
 
-pub fn pop(list, value) {
+pub fn pop(list: List(a), value: a) -> Result(List(a), Nil) {
   do_pop(list, value, [])
 }
 

@@ -4,6 +4,7 @@ import language/ast.{
   Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Row, RowPattern,
   Tuple, TuplePattern, Var,
 }
+import language/type_.{Type}
 
 pub fn int_to_string(int) {
   do_to_string(int)
@@ -65,7 +66,7 @@ fn wrap_return(lines, in_tail) {
   }
 }
 
-pub fn intersperse(list, delimeter) {
+pub fn intersperse(list: List(a), delimeter: a) -> List(a) {
   case list {
     [] -> []
     [one, ..rest] -> do_intersperse(rest, delimeter, [one])
@@ -158,7 +159,8 @@ fn wrap_single_or_multiline(terms, delimeter, before, after) {
   }
 }
 
-pub fn render(typed, in_tail) {
+// Needs to define the type of first element in the typed tuple as it is never defined and that causes a compiler bug
+pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
   case typed {
     #(_, NewData(type_name, params, constructors, in)) ->
       list.map(
