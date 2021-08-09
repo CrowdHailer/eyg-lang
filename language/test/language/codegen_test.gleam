@@ -133,6 +133,35 @@ pub fn row_assignment_test() {
   let "user$1" = l2
 }
 
+pub fn nested_row_assignment_test() {
+  let scope =
+    scope.new()
+    |> scope.with_equal()
+  let untyped =
+    row([
+      #(
+        "first_name",
+        let_(
+          "tmp",
+          binary("TMP!"),
+          call(var("equal"), [var("tmp"), binary("test")]),
+        ),
+      ),
+        #("last_name", binary("xyz")),
+    ])
+
+  let js = compile(untyped, scope)
+  io.print(javascript.concat(js))
+  let [l1, l2, l3, l4, l5, l6, l7] = js
+  let "{" = l1
+  let "  first_name: (() => {" = l2
+  let "    let tmp$1 = \"TMP!\";" = l3
+  let "    return equal$1(tmp$1, \"test\");" = l4
+  let "  })()," = l5
+  let "  last_name: \"xyz\"," = l6
+  let "}" = l7
+}
+
 pub fn row_destructure_test() {
   let untyped =
     function(
@@ -178,6 +207,34 @@ pub fn case_with_boolean_test() {
   let "    return \"bye!\";" = l10
   let "  }})(bool$1);" = l11
   let "})" = l12
+}
+
+pub fn case_with_multiline_subject_test() {
+  let scope =
+    scope.new()
+    |> scope.with_equal()
+  let untyped =
+    support.with_boolean(case_(
+      let_("x", binary("a"), call(var("equal"), [var("x"), binary("b")])),
+      [clause("True", [], binary("hello")), rest("ping", binary("bye!"))],
+    ))
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12, l13] = js
+  let "let True$1 = ((...args) => Object.assign({ type: \"True\" }, args));" =
+    l1
+  let "let False$1 = ((...args) => Object.assign({ type: \"False\" }, args));" =
+    l2
+  let "((subject) => {" = l3
+  let "if (subject.type == \"True\") {" = l4
+  let "  let [] = Object.values(subject);" = l5
+  let "  return \"hello\";" = l6
+  let "} else {" = l7
+  let "  let ping = subject;" = l8
+  let "  return \"bye!\";" = l9
+  let "}})((() => {" = l10
+  let "  let x$1 = \"a\";" = l11
+  let "  return equal$1(x$1, \"b\");" = l12
+  let "})())" = l13
 }
 
 pub fn simple_function_call_test() {

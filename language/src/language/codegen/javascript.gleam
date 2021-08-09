@@ -111,6 +111,53 @@ fn maybe_wrap_expression(expression) {
   }
 }
 
+fn wrap_single_or_multiline(terms, delimeter, before, after) {
+  let grouped =
+    list.fold(
+      terms,
+      Ok([]),
+      fn(lines, state) {
+        case state {
+          Ok(singles) ->
+            case lines {
+              [single] -> Ok([single, ..singles])
+              multi -> {
+                let lines: List(String) = lines
+                let previous: List(List(String)) =
+                  list.map(singles, fn(s) { [s] })
+                Error([multi, ..previous])
+              }
+            }
+          Error(multis) -> Error([lines, ..multis])
+        }
+      },
+    )
+  case grouped {
+    Ok(singles) -> {
+      let values_string =
+        singles
+        |> list.reverse()
+        |> intersperse(concat([delimeter, " "]))
+        |> wrap(before, _, after)
+        |> concat()
+      [values_string]
+    }
+    Error(multis) -> {
+      let lines =
+        multis
+        |> list.reverse()
+        |> list.map(wrap("", _, delimeter))
+        |> list.flatten()
+        |> indent()
+      let lines =
+        [before]
+        |> list.append(lines)
+        |> list.append([after])
+      lines
+    }
+  }
+}
+
 pub fn render(typed, in_tail) {
   case typed {
     #(_, NewData(type_name, params, constructors, in)) ->
@@ -197,84 +244,30 @@ pub fn render(typed, in_tail) {
             )
           },
         )
-        // TODO wrap subject
       let lines =
         ["((subject) => {", ..lines]
         |> list.append(["}})"])
-      let subject = wrap("(", render(subject, False), ")")
+      let subject = wrap("(", maybe_wrap_expression(subject), ")")
       squash(lines, subject)
       |> wrap_return(in_tail)
     }
     // TODO escape
     #(_, Binary(content)) ->
       wrap_return([concat(["\"", content, "\""])], in_tail)
-    #(_, Tuple(values)) -> {
-      // same mapping as in call
-      let values = list.map(values, maybe_wrap_expression)
-      let values =
-        list.fold(
-          values,
-          Ok([]),
-          fn(lines, state) {
-            case state {
-              Ok(singles) ->
-                case lines {
-                  [single] -> Ok([single, ..singles])
-                  multi -> {
-                    let lines: List(String) = lines
-                    let previous: List(List(String)) =
-                      list.map(singles, fn(s) { [s] })
-                    Error([multi, ..previous])
-                  }
-                }
-              Error(multis) -> Error([lines, ..multis])
-            }
-          },
-        )
-      let values_string = case values {
-        Ok(singles) -> {
-          let values_string =
-            singles
-            |> list.reverse()
-            |> intersperse(", ")
-            |> wrap("[", _, "]")
-            |> concat()
-          wrap_return([values_string], in_tail)
-        }
-        Error(multis) -> {
-          let lines =
-            multis
-            |> list.reverse()
-            |> list.map(wrap("", _, ","))
-            |> list.flatten()
-            |> indent()
-          let lines =
-            ["["]
-            |> list.append(lines)
-            |> list.append(["]"])
-          wrap_return(lines, in_tail)
-        }
-      }
-    }
+    #(_, Tuple(values)) ->
+      list.map(values, maybe_wrap_expression)
+      |> wrap_single_or_multiline(",", "[", "]")
+      |> wrap_return(in_tail)
     #(_, Row(rows)) -> {
-      let pairs =
         list.map(
           rows,
           fn(row) {
             let #(name, value) = row
-            case render(value, False) {
-              [single] -> concat([name, ": ", single])
-      // TODO wrap values
-              _ -> todo("multiple lines in row construction arguments")
-            }
+            wrap(concat([name, ": "]), maybe_wrap_expression(value), "")
           },
         )
-      let pairs_string =
-        pairs
-        |> intersperse(", ")
-        |> wrap("{", _, "}")
-        |> concat()
-      wrap_return([pairs_string], in_tail)
+      |> wrap_single_or_multiline(",", "{", "}")
+      |> wrap_return(in_tail)
     }
     #(_, Fn(args, in)) -> {
       let args = list.map(args, strip_type)
