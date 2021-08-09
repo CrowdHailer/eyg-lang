@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/string
 import language/ast.{
   Assignment, Binary, Call, Case, Destructure, Fn, Let, NewData, Row, RowPattern,
   Tuple, TuplePattern, Var,
@@ -35,29 +36,29 @@ fn map_last(list, func) {
 }
 
 fn indent(lines) {
-  list.map(lines, fn(line) { concat(["  ", line]) })
+  list.map(lines, fn(line) { string.concat(["  ", line]) })
 }
 
 fn wrap(pre, lines, post) {
   case lines {
-    [] -> [concat([pre, post])]
+    [] -> [string.concat([pre, post])]
     _ ->
       lines
-      |> map_first(fn(first) { concat([pre, first]) })
-      |> map_last(fn(last) { concat([last, post]) })
+      |> map_first(fn(first) { string.concat([pre, first]) })
+      |> map_last(fn(last) { string.concat([last, post]) })
   }
 }
 
 fn squash(a, b) {
   let [join, ..rest] = b
-  map_last(a, fn(last) { concat([last, join]) })
+  map_last(a, fn(last) { string.concat([last, join]) })
   |> list.append(rest)
 }
 
 fn render_label(quantified_label) {
   case quantified_label {
     #("self", _) -> "self"
-    #(label, count) -> concat([label, "$", int_to_string(count)])
+    #(label, count) -> string.concat([label, "$", int_to_string(count)])
   }
 }
 
@@ -65,21 +66,6 @@ fn wrap_return(lines, in_tail) {
   case in_tail {
     True -> wrap("return ", lines, ";")
     False -> lines
-  }
-}
-
-pub fn intersperse(list: List(a), delimeter: a) -> List(a) {
-  case list {
-    [] -> []
-    [one, ..rest] -> do_intersperse(rest, delimeter, [one])
-  }
-}
-
-fn do_intersperse(list, delimeter, accumulator) {
-  case list {
-    [] -> list.reverse(accumulator)
-    [item, ..list] ->
-      do_intersperse(list, delimeter, [item, delimeter, ..accumulator])
   }
 }
 
@@ -96,9 +82,9 @@ fn render_destructure(args) {
       args -> args
     }
   }
-  |> intersperse(", ")
+  |> list.intersperse(", ")
   |> wrap("[", _, "]")
-  |> concat()
+  |> string.concat()
 }
 
 pub fn maybe_wrap_expression(expression) {
@@ -138,9 +124,9 @@ fn wrap_single_or_multiline(terms, delimeter, before, after) {
       let values_string =
         singles
         |> list.reverse()
-        |> intersperse(concat([delimeter, " "]))
+        |> list.intersperse(string.concat([delimeter, " "]))
         |> wrap(before, _, after)
-        |> concat()
+        |> string.concat()
       [values_string]
     }
     Error(multis) -> {
@@ -169,7 +155,7 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
           let #(label, _arguments) = constructor
           // names are unique within the checked type
           let #(name, _) = label
-          concat([
+          string.concat([
             "let ",
             render_label(label),
             " = ((...args) => Object.assign({ type: \"",
@@ -183,12 +169,12 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
       let value = maybe_wrap_expression(value)
       let value = case pattern {
         Assignment(label) -> {
-          let assignment = concat(["let ", render_label(label), " = "])
+          let assignment = string.concat(["let ", render_label(label), " = "])
           wrap(assignment, value, ";")
         }
         TuplePattern(assignments) -> {
           let assignment =
-            concat(["let ", render_destructure(assignments), " = "])
+            string.concat(["let ", render_destructure(assignments), " = "])
           wrap(assignment, value, ";")
         }
         RowPattern(rows) -> {
@@ -197,17 +183,18 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
               rows,
               fn(row) {
                 let #(row_name, label) = row
-                concat([row_name, ": ", render_label(label)])
+                string.concat([row_name, ": ", render_label(label)])
               },
             )
-            |> intersperse(", ")
+            |> list.intersperse(", ")
             |> wrap("{", _, "}")
-            |> concat()
-          let assignment = concat(["let ", assignment, " = "])
+            |> string.concat()
+          let assignment = string.concat(["let ", assignment, " = "])
           wrap(assignment, value, ";")
         }
         Destructure(_name, args) -> {
-          let assignment = concat(["let ", render_destructure(args), " = "])
+          let assignment =
+            string.concat(["let ", render_destructure(args), " = "])
           wrap(assignment, wrap("Object.values(", value, ")"), ";")
         }
       }
@@ -228,8 +215,8 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
             let #(pattern, then) = clause
             let [l1, l2] = case pattern {
               Destructure(name, args) -> [
-                concat([pre, " (subject.type == \"", name, "\") {"]),
-                concat([
+                string.concat([pre, " (subject.type == \"", name, "\") {"]),
+                string.concat([
                   "  let ",
                   render_destructure(args),
                   " = Object.values(subject);",
@@ -237,7 +224,7 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
               ]
               Assignment(label) -> [
                 "} else {",
-                concat(["  let ", render_label(label), " = subject;"]),
+                string.concat(["  let ", render_label(label), " = subject;"]),
               ]
             }
             #(
@@ -255,7 +242,7 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
     }
     // TODO escape
     #(_, Binary(content)) ->
-      wrap_return([concat(["\"", content, "\""])], in_tail)
+      wrap_return([string.concat(["\"", content, "\""])], in_tail)
     #(_, Tuple(values)) ->
       list.map(values, maybe_wrap_expression)
       |> wrap_single_or_multiline(",", "[", "]")
@@ -265,7 +252,7 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
         rows,
         fn(row) {
           let #(name, value) = row
-          wrap(concat([name, ": "]), maybe_wrap_expression(value), "")
+          wrap(string.concat([name, ": "]), maybe_wrap_expression(value), "")
         },
       )
       |> wrap_single_or_multiline(",", "{", "}")
@@ -274,11 +261,11 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
       let args = list.map(args, strip_type)
       let args_string =
         list.map(args, render_label)
-        |> intersperse(", ")
-        |> concat()
-      let start = concat(["(function self(", args_string, ") {"])
+        |> list.intersperse(", ")
+        |> string.concat()
+      let start = string.concat(["(function self(", args_string, ") {"])
       case render(in, True) {
-        [single] -> [concat([start, " ", single, " })"])]
+        [single] -> [string.concat([start, " ", single, " })"])]
         lines ->
           [start, ..indent(lines)]
           |> list.append(["})"])
@@ -293,14 +280,4 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
       |> wrap_return(in_tail)
     }
   }
-}
-
-if javascript {
-  pub external fn concat(List(String)) -> String =
-    "../../helpers.js" "concat"
-}
-
-if erlang {
-  pub external fn concat(List(String)) -> String =
-    "unicode" "characters_to_binary"
 }

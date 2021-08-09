@@ -1,10 +1,11 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import language/scope
 import language/type_.{
-  Data, Function, IncorrectArity, PolyType, RedundantClause, Type, UnhandledVarients,
-  Variable, generate_type_var,
+  CouldNotUnify, Data, Function, IncorrectArity, PolyType, RedundantClause, Type,
+  UnhandledVarients, UnknownVariable, Variable, generate_type_var,
 }
 
 /// Type destructure used for let and case statements
@@ -60,6 +61,35 @@ pub type UnifySituation {
 fn unify(given, expected, typer, situation) {
   type_.unify(given, expected, typer)
   |> with_situation(situation)
+}
+
+pub fn failure_to_string(info) {
+  case info {
+    #(UnhandledVarients(remaining), CaseClause) ->
+      string.concat([
+        "Unhandled Varients in case statement: ",
+        ..list.intersperse(remaining, ", ")
+      ])
+    #(UnknownVariable(label), _) -> string.concat(["Unknown variable: ", label])
+    #(CouldNotUnify(expected: excluded, given: given), FunctionCall) ->
+      "Could not unify arguments for function call"
+    #(IncorrectArity(expected: expected, given: given), FunctionCall) ->
+      "Incorrect number of arguments given to function call"
+    #(
+      IncorrectArity(expected: expected, given: given),
+      ValueDestructuring(term),
+    ) ->
+      string.concat([
+        "Incorrect number of arguments given when destructuring ",
+        term,
+      ])
+    #(RedundantClause(match), CaseClause) ->
+      string.concat(["Redundant clause for '", match, "' in case expression"])
+    _ -> {
+      io.debug(info)
+      "Unhandled Error"
+    }
+  }
 }
 
 // NEEDS ANNOTATION

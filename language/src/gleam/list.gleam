@@ -110,3 +110,18 @@ fn do_flatten(lists: List(List(a)), acc: List(a)) -> List(a) {
 pub fn flatten(lists: List(List(a))) -> List(a) {
   do_flatten(lists, [])
 }
+
+pub fn intersperse(list: List(a), delimeter: a) -> List(a) {
+  case list {
+    [] -> []
+    [one, ..rest] -> do_intersperse(rest, delimeter, [one])
+  }
+}
+
+fn do_intersperse(list, delimeter, accumulator) {
+  case list {
+    [] -> reverse(accumulator)
+    [item, ..list] ->
+      do_intersperse(list, delimeter, [item, delimeter, ..accumulator])
+  }
+}
