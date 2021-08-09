@@ -147,7 +147,7 @@ pub fn nested_row_assignment_test() {
           call(var("equal"), [var("tmp"), binary("test")]),
         ),
       ),
-        #("last_name", binary("xyz")),
+      #("last_name", binary("xyz")),
     ])
 
   let js = compile(untyped, scope)
@@ -290,11 +290,18 @@ pub fn multiline_function_test() {
   let "});" = l4
 }
 
-// TODO do construction
-fn aside() {
-  let x = Ok
-  try a = x(2)
-  Error(Nil)
+pub fn multiline_call_function_test() {
+  let scope = scope.new()
+  let untyped =
+    call(function(["x"], var("x")), [let_("tmp", binary("hello"), var("tmp"))])
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5, l6] = js
+  let "((x$1) => { return x$1; })(" = l1
+  let "  (() => {" = l2
+  let "    let tmp$1 = \"hello\";" = l3
+  let "    return tmp$1;" = l4
+  let "  })()," = l5
+  let ")" = l6
 }
 // TODO email to ask about other language front ends. Is there a long form place to ask discord program lang questions
 // pass in constructor functions, made when making types. 

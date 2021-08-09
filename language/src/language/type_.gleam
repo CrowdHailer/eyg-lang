@@ -29,7 +29,6 @@ pub type PolyType {
 
 //   RowType(forall: Int, rows: List(#(String, Type)))
 // A linear type on substitutions would ensure passed around
-// TODO merge substitutions, need to keep passing next var in typer
 // type checker state
 pub type Typer {
   Typer(
@@ -264,7 +263,6 @@ pub fn unify(given, expected, typer) {
 //     }
 //   }
 // }
-// TODO exhausive on guards.
 // Pattern is Var(String) || Destructure || RowLookup (Does row lookup work for cases I don't think my types support union on rows.)
 pub fn resolve_type(type_, typer) {
   let Typer(substitutions: substitutions, ..) = typer

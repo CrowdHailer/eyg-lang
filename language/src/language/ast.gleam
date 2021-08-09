@@ -15,17 +15,6 @@ pub type Pattern(l) {
   Assignment(l)
 }
 
-// data("boolean::Boolean", [], [
-//   constructor("True", [])
-//   constructor("False", [])
-// ])
-// data("option::Result", [1], [
-//   constructor("Ok", [variable(1)])
-//   constructor("Error", [])
-// ])
-// data2("result::Result", fn(success, error) {
-//   constructor("Ok", [Data("string::String", []), success])
-// }, )
 /// Expression tree with type information
 pub type Expression(t, l) {
   NewData(
@@ -119,10 +108,6 @@ pub type Handles {
   Single(String)
 }
 
-// TODO this makes  invalid erl somehow
-// fn test(x) {
-//   [..x]
-// }
 fn bind(pattern, expected, scope, typer) {
   case pattern {
     Assignment(label) -> {

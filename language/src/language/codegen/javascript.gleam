@@ -258,23 +258,21 @@ pub fn render(typed, in_tail) {
       list.map(values, maybe_wrap_expression)
       |> wrap_single_or_multiline(",", "[", "]")
       |> wrap_return(in_tail)
-    #(_, Row(rows)) -> {
-        list.map(
-          rows,
-          fn(row) {
-            let #(name, value) = row
-            wrap(concat([name, ": "]), maybe_wrap_expression(value), "")
-          },
-        )
+    #(_, Row(rows)) ->
+      list.map(
+        rows,
+        fn(row) {
+          let #(name, value) = row
+          wrap(concat([name, ": "]), maybe_wrap_expression(value), "")
+        },
+      )
       |> wrap_single_or_multiline(",", "{", "}")
       |> wrap_return(in_tail)
-    }
     #(_, Fn(args, in)) -> {
       let args = list.map(args, strip_type)
       let args_string =
         list.map(args, render_label)
         |> intersperse(", ")
-        // |> wrap("(", _, ")")
         |> concat()
       let start = concat(["((", args_string, ") => {"])
       case render(in, True) {
@@ -283,38 +281,15 @@ pub fn render(typed, in_tail) {
           [start, ..indent(lines)]
           |> list.append(["})"])
       }
-      // TODO function returns function test test for return wrapping
       |> wrap_return(in_tail)
     }
     #(_, Call(function, with)) -> {
       let function = render(function, False)
-      let with = list.map(with, render(_, False))
-      // TODO wrap values
-      let with =
-        list.map(
-          with,
-          fn(lines) {
-            case lines {
-              [single] -> single
-              _ -> todo("multiple lines in call arguments")
-            }
-          },
-        )
-      let args_string =
-        with
-        |> intersperse(", ")
-        |> wrap("(", _, ")")
-        |> concat()
-      squash(function, [args_string])
+      let with = list.map(with, maybe_wrap_expression)
+      let args_string = wrap_single_or_multiline(with, ",", "(", ")")
+      squash(function, args_string)
       |> wrap_return(in_tail)
     }
-  }
-}
-
-fn render_return(in_tail) {
-  case in_tail {
-    True -> "return "
-    False -> ""
   }
 }
 
