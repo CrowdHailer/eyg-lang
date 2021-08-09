@@ -20,6 +20,7 @@ pub fn list_test() {
   javascript.maybe_wrap_expression(#(type_, tree))
   |> javascript.intersperse("\n")
   |> javascript.concat()
+  // |> io.debug()
   // |> io.print()
   // let 1 = 2
   // Ok(Nil)

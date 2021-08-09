@@ -114,7 +114,7 @@ pub fn tuple_destructure_test() {
     function(["pair"], destructure_tuple(["a", "b"], var("pair"), var("a")))
   let js = compile(untyped, scope.new())
   let [l1, l2, l3, l4] = js
-  let "((pair$1) => {" = l1
+  let "(function self(pair$1) {" = l1
   let "  let [a$1, b$1] = pair$1;" = l2
   let "  return a$1;" = l3
   let "})" = l4
@@ -174,7 +174,7 @@ pub fn row_destructure_test() {
     )
   let js = compile(untyped, scope.new())
   let [l1, l2, l3, l4] = js
-  let "((user$1) => {" = l1
+  let "(function self(user$1) {" = l1
   let "  let {first_name: a$1, family_name: b$1} = user$1;" = l2
   let "  return a$1;" = l3
   let "})" = l4
@@ -197,7 +197,7 @@ pub fn case_with_boolean_test() {
     l1
   let "let False$1 = ((...args) => Object.assign({ type: \"False\" }, args));" =
     l2
-  let "((bool$1) => {" = l3
+  let "(function self(bool$1) {" = l3
   let "  return ((subject) => {" = l4
   let "  if (subject.type == \"True\") {" = l5
   let "    let [] = Object.values(subject);" = l6
@@ -252,7 +252,7 @@ pub fn oneline_function_test() {
   let untyped = let_("x", function(["x"], var("x")), var("x"))
   let js = compile(untyped, scope)
   let [l1, l2] = js
-  let "let x$1 = ((x$1) => { return x$1; });" = l1
+  let "let x$1 = (function self(x$1) { return x$1; });" = l1
   let "x$1" = l2
 }
 
@@ -261,7 +261,7 @@ pub fn call_oneline_function_test() {
   let untyped = call(function(["x"], var("x")), [binary("hello")])
   let js = compile(untyped, scope)
   let [l1] = js
-  let "((x$1) => { return x$1; })(\"hello\")" = l1
+  let "(function self(x$1) { return x$1; })(\"hello\")" = l1
 }
 
 pub fn multiline_function_test() {
@@ -284,7 +284,7 @@ pub fn multiline_function_test() {
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5] = js
-  let "let test$1 = ((a$1, b$1) => {" = l1
+  let "let test$1 = (function self(a$1, b$1) {" = l1
   let "  let a$2 = equal$1(a$1, \"blah\");" = l2
   let "  return equal$1(b$1, \"other\");" = l3
   let "});" = l4
@@ -296,7 +296,7 @@ pub fn multiline_call_function_test() {
     call(function(["x"], var("x")), [let_("tmp", binary("hello"), var("tmp"))])
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5, l6] = js
-  let "((x$1) => { return x$1; })(" = l1
+  let "(function self(x$1) { return x$1; })(" = l1
   let "  (() => {" = l2
   let "    let tmp$1 = \"hello\";" = l3
   let "    return tmp$1;" = l4

@@ -26,7 +26,7 @@ if javascript {
   external type DoNotLeak
 
   external fn console_log(term: anything) -> DoNotLeak =
-    "" "window.console.log"
+    "" "console.log"
 
   pub fn debug(term: anything) -> anything {
     console_log(term)

@@ -55,8 +55,10 @@ fn squash(a, b) {
 }
 
 fn render_label(quantified_label) {
-  let #(label, count) = quantified_label
-  concat([label, "$", int_to_string(count)])
+  case quantified_label {
+    #("self", _) -> "self"
+    #(label, count) -> concat([label, "$", int_to_string(count)])
+  }
 }
 
 fn wrap_return(lines, in_tail) {
@@ -102,7 +104,7 @@ fn render_destructure(args) {
 pub fn maybe_wrap_expression(expression) {
   case expression {
     // let is always at least two lines
-    #(_, Let(_, _, _)) | #(_, NewData(_,_,_,_)) -> {
+    #(_, Let(_, _, _)) | #(_, NewData(_, _, _, _)) -> {
       let rendered = render(expression, True)
       ["(() => {"]
       |> list.append(indent(rendered))
@@ -274,7 +276,7 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
         list.map(args, render_label)
         |> intersperse(", ")
         |> concat()
-      let start = concat(["((", args_string, ") => {"])
+      let start = concat(["(function self(", args_string, ") {"])
       case render(in, True) {
         [single] -> [concat([start, " ", single, " })"])]
         lines ->
