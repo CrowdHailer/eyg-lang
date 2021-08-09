@@ -5,10 +5,9 @@ import language/ast/builder.{
 }
 import language/ast.{Assignment, CaseClause, Destructure, ValueDestructuring}
 import language/type_.{
-  CouldNotUnify, IncorrectArity, RedundantClause, UnhandledVarients, UnknownVariable,
+  CouldNotUnify, Data, IncorrectArity, RedundantClause, Row, UnhandledVarients, UnknownVariable,
 }
 import language/scope
-import language/type_.{Data, Row}
 import language/ast/support
 
 pub fn infer_type_constructor_for_var_test() {

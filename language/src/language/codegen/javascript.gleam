@@ -17,7 +17,7 @@ if erlang {
 
 if javascript {
   external fn do_to_string(Int) -> String =
-    "../gleam_stdlib.js" "to_string"
+    "" "Number.prototype.toString.call"
 }
 
 fn map_first(list, func) {
@@ -123,8 +123,7 @@ fn wrap_single_or_multiline(terms, delimeter, before, after) {
             case lines {
               [single] -> Ok([single, ..singles])
               multi -> {
-                let previous =
-                  list.map(singles, fn(s) { [s] })
+                let previous = list.map(singles, fn(s) { [s] })
                 Error([multi, ..previous])
               }
             }
@@ -296,17 +295,10 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
 
 if javascript {
   pub external fn concat(List(String)) -> String =
-    "" "window.concatList"
+    "../../helpers.js" "concat"
 }
 
 if erlang {
   pub external fn concat(List(String)) -> String =
     "unicode" "characters_to_binary"
 }
-// external type Array(a)
-// external fn array_concat(Array(String), String) -> String = "" "Array.prototype.join.call"
-// external type A(a)
-// external fn array(List(a)) -> A(a) = "helpers.js" "array"
-// fn main() {
-//   array([])
-// }

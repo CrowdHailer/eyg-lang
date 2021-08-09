@@ -4,9 +4,8 @@ import language/ast/builder.{
   binary, call, case_, constructor, destructure_row, function, let_, var, varient,
 }
 import language/ast.{Destructure, FunctionCall}
-import language/type_.{CouldNotUnify, IncorrectArity}
+import language/type_.{CouldNotUnify, Data, Function, IncorrectArity, Variable}
 import language/scope
-import language/type_.{Data, Function, Variable}
 import language/ast/support
 
 pub fn infer_identity_function_test() {

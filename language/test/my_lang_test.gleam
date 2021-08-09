@@ -20,7 +20,7 @@ pub fn list_test() {
   javascript.render(#(type_, tree), False)
   |> javascript.intersperse("\n")
   |> javascript.concat()
-  |> io.print()
+  // |> io.print()
   // let 1 = 2
   Ok(Nil)
 }

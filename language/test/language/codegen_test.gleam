@@ -151,7 +151,7 @@ pub fn nested_row_assignment_test() {
     ])
 
   let js = compile(untyped, scope)
-  io.print(javascript.concat(js))
+  // io.print(javascript.concat(js))
   let [l1, l2, l3, l4, l5, l6, l7] = js
   let "{" = l1
   let "  first_name: (() => {" = l2
