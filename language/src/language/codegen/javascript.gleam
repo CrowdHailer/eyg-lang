@@ -123,8 +123,7 @@ fn wrap_single_or_multiline(terms, delimeter, before, after) {
             case lines {
               [single] -> Ok([single, ..singles])
               multi -> {
-                let lines: List(String) = lines
-                let previous: List(List(String)) =
+                let previous =
                   list.map(singles, fn(s) { [s] })
                 Error([multi, ..previous])
               }
@@ -162,11 +161,11 @@ fn wrap_single_or_multiline(terms, delimeter, before, after) {
 // Needs to define the type of first element in the typed tuple as it is never defined and that causes a compiler bug
 pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
   case typed {
-    #(_, NewData(type_name, params, constructors, in)) ->
+    #(_, NewData(_type_name, _params, constructors, in)) ->
       list.map(
         constructors,
         fn(constructor) {
-          let #(label, arguments) = constructor
+          let #(label, _arguments) = constructor
           // names are unique within the checked type
           let #(name, _) = label
           concat([
@@ -235,9 +234,9 @@ pub fn render(typed: #(Type, ast.Expression(Type, #(String, Int))), in_tail) {
                   " = Object.values(subject);",
                 ]),
               ]
-              Assignment(#(label, count)) -> [
+              Assignment(label) -> [
                 "} else {",
-                concat(["  let ", label, " = subject;"]),
+                concat(["  let ", render_label(label), " = subject;"]),
               ]
             }
             #(

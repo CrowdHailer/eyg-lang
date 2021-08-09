@@ -80,15 +80,19 @@ pub fn module() {
       constructor("Cons", [Variable(1), Data("list::List", [Variable(1)])]),
       constructor("Nil", []),
     ],
-    let_("reverse", reverse(), // let_(
-      //   "map",
-      //   map(),
-      row([
-        #("Cons", var("Cons")),
-        #("Nil", var("Nil")),
-        #("reverse", var("reverse")),
-      ])),
+    let_(
+      "reverse",
+      reverse(),
+      let_(
+        "map",
+        map(),
+        row([
+          #("Cons", var("Cons")),
+          #("Nil", var("Nil")),
+          #("reverse", var("reverse")),
+          #("map", var("map")),
+        ]),
+      ),
+    ),
   )
-  // #("map", var("map")),
-  // ),
 }

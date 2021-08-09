@@ -203,7 +203,7 @@ pub fn case_with_boolean_test() {
   let "    let [] = Object.values(subject);" = l6
   let "    return \"hello\";" = l7
   let "  } else {" = l8
-  let "    let ping = subject;" = l9
+  let "    let ping$1 = subject;" = l9
   let "    return \"bye!\";" = l10
   let "  }})(bool$1);" = l11
   let "})" = l12
@@ -229,7 +229,7 @@ pub fn case_with_multiline_subject_test() {
   let "  let [] = Object.values(subject);" = l5
   let "  return \"hello\";" = l6
   let "} else {" = l7
-  let "  let ping = subject;" = l8
+  let "  let ping$1 = subject;" = l8
   let "  return \"bye!\";" = l9
   let "}})((() => {" = l10
   let "  let x$1 = \"a\";" = l11

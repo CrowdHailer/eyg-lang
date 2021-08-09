@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import language/type_.{Data, Function, PolyType, Type, UnknownVariable, Variable}
+import language/type_.{Data, Function, PolyType, UnknownVariable, Variable}
 
 pub opaque type Scope {
   Scope(variables: List(#(String, PolyType)))
