@@ -8,7 +8,6 @@ const flask = new CodeFlask("#editor", { language: "js" });
 flask.onUpdate((code) => {
   raw = code;
   dirty = true;
-  console.log("update");
   compile();
 });
 flask.updateCode("varient(\"Foo\", [], list([\n\
