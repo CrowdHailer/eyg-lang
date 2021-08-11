@@ -55,6 +55,35 @@ async function main() {
     assert.deepStrictEqual(reverse(l1), l2)
   })()
 
+  process.stdout.write("\n\n## EYG\n\n");
+
+  await (async () => {
+    const source = await import("../gen/javascript/eyg/module.js")
+    let should = {
+      equal$1: (a, b) => {
+        if ($deepEqual(a, b)) {
+          return null
+        } else {
+          console.log(a, " VS ", b)
+          throw "values are not equal"
+        }
+      }
+    }
+
+    const module = eval(source.compiled());
+    for (let fnName of Object.keys(module)) {
+      if (!fnName.endsWith("_test")) continue;
+      try {
+        module[fnName]();
+        process.stdout.write("✨");
+        passes++;
+      } catch (error) {
+        process.stdout.write(`❌ ${fnName}: ${error}\n  `);
+        failures++;
+      }
+    }
+  })()
+
   console.log(`
 ${passes + failures} tests
 ${passes} passes
@@ -63,3 +92,26 @@ ${failures} failures`);
 }
 
 main();
+
+function $deepEqual(x, y) {
+  if ($isObject(x) && $isObject(y)) {
+    const kx = Object.keys(x);
+    const ky = Object.keys(x);
+    if (kx.length != ky.length) {
+      return false;
+    }
+    for (const k of kx) {
+      const a = x[k];
+      const b = y[k];
+      if (!$deepEqual(a, b)) {
+        return false
+      }
+    }
+    return true;
+  } else {
+    return x === y;
+  }
+}
+function $isObject(object) {
+  return object != null && typeof object === 'object';
+}
