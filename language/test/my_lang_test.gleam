@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/option.{None}
 import gleam/list as gleam_list
+import gleam/string
 import language/ast
 import language/codegen/javascript
 import language/type_.{Data, Function, Row, Variable}
@@ -18,8 +19,8 @@ pub fn list_test() {
   let True = b == c
   // TODO tests
   javascript.maybe_wrap_expression(#(type_, tree))
-  |> javascript.intersperse("\n")
-  |> javascript.concat()
+  |> gleam_list.intersperse("\n")
+  |> string.concat()
   // |> io.debug()
   // |> io.print()
   // let 1 = 2
