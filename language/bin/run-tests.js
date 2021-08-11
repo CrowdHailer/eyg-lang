@@ -67,6 +67,14 @@ async function main() {
           console.log(a, " VS ", b)
           throw "values are not equal"
         }
+      },
+      not_equal$1: (a, b) => {
+        if ($deepEqual(a, b)) {
+          console.log(a, " AND ", b)
+          throw "values are equal"
+        } else {
+          return null
+        }
       }
     }
     function equal$1(a, b) {
@@ -79,13 +87,19 @@ async function main() {
     function zero$1() {
       return 0
     }
+    function inc$1(x) {
+      return x + 1
+    }
 
 
     const module = eval(source.compiled());
     for (let fnName of Object.keys(module)) {
       if (!fnName.endsWith("_test")) continue;
       try {
-        module[fnName]();
+        let result = module[fnName]();
+        if (result) {
+          console.log(result)
+        }
         process.stdout.write("✨");
         passes++;
       } catch (error) {
