@@ -69,6 +69,17 @@ async function main() {
         }
       }
     }
+    function equal$1(a, b) {
+      if ($deepEqual(a, b)) {
+        return {type: "True"}
+      } else {
+        return {type: "False"}
+      }  
+    }
+    function zero$1() {
+      return 0
+    }
+
 
     const module = eval(source.compiled());
     for (let fnName of Object.keys(module)) {

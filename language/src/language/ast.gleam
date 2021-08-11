@@ -71,8 +71,15 @@ pub fn failure_to_string(info) {
         ..list.intersperse(remaining, ", ")
       ])
     #(UnknownVariable(label), _) -> string.concat(["Unknown variable: ", label])
-    #(CouldNotUnify(expected: excluded, given: given), FunctionCall) ->
-      "Could not unify arguments for function call"
+    #(
+      CouldNotUnify(expected: Function(_, _), given: Function(_, _)),
+      FunctionCall,
+    ) -> "Could not unify arguments for function call"
+    #(CouldNotUnify(expected: expected, given: Function(_, _)), FunctionCall) -> {
+      io.debug(expected)
+      "Unable to call as Type is not a function"
+    }
+
     #(IncorrectArity(expected: expected, given: given), FunctionCall) ->
       "Incorrect number of arguments given to function call"
     #(

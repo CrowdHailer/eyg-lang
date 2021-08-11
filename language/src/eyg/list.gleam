@@ -2,7 +2,7 @@ import gleam/io
 import gleam/list
 import language/ast.{Destructure}
 import language/ast/builder.{
-  call, case_, constructor, function, let_, row, var, varient,
+  call, case_, constructor, function, let_, row, tuple_, var, varient,
 }
 import language/scope
 import language/type_.{Data, Variable}
@@ -92,6 +92,27 @@ pub fn module() {
           #("reverse", var("reverse")),
           #("map", var("map")),
         ]),
+      ),
+    ),
+  )
+}
+
+pub fn return_tuple() {
+  // Nominal/Named
+  varient(
+    "List",
+    [1],
+    [
+      constructor("Cons", [Variable(1), Data("List", [Variable(1)])]),
+      constructor("Nil", []),
+    ],
+    let_(
+      "reverse",
+      reverse(),
+      let_(
+        "map",
+        map(),
+        tuple_([var("Cons"), var("Nil"), var("reverse"), var("map")]),
       ),
     ),
   )

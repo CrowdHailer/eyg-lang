@@ -6,7 +6,7 @@ import language/ast
 import language/codegen/javascript
 import language/type_.{Data, Function, Row, Variable}
 import language/scope
-import my_lang/list
+import eyg/list
 
 pub fn list_test() {
   let Ok(#(type_, tree, substitutions)) = ast.infer(list.module(), scope.new())
