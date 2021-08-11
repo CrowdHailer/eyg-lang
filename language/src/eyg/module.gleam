@@ -65,14 +65,17 @@ fn monotype() {
                   #(
                     Nominal("Unbound", ["i"]),
                     case_(
-                      call(var("list$key_find"), [var("i")]),
+                      call(
+                        var("list$key_find"),
+                        [var("substitutions"), var("i")],
+                      ),
                       [
                         #(Nominal("Ok", ["value"]), var("value")),
                         #(Nominal("Error", ["_"]), var("type")),
                       ],
                     ),
                   ),
-                  #(Var("rest"), unimplemented()),
+                  #(Var("rest"), unimplemented("resolving type")),
                 ],
               ),
             ),
@@ -92,6 +95,7 @@ fn monotype() {
                   Var("expected"),
                   call(var("resolve"), [var("expected"), var("checker")]),
                 ),
+                #(Tuple(["names", "next", "substitutions"]), var("checker")),
               ],
               case_(
                 call(var("equal"), [var("given"), var("expected")]),
@@ -102,8 +106,25 @@ fn monotype() {
                     case_(
                       var("given"),
                       [
-                        #(Nominal("Unbound", ["i"]), unimplemented()),
-                        #(Var("rest"), unimplemented()),
+                        #(
+                          Nominal("Unbound", ["i"]),
+                          let_(
+                            "substitutions",
+                            call(
+                              var("list$Cons"),
+                              [
+                                tuple_([var("i"), var("expected")]),
+                                var("substitutions"),
+                              ],
+                            ),
+                            tuple_([
+                              var("names"),
+                              var("next"),
+                              var("substitutions"),
+                            ]),
+                          ),
+                        ),
+                        #(Var("rest"), unimplemented("unify function")),
                       ],
                     ),
                   ),
@@ -135,7 +156,10 @@ fn monotype() {
                   call(var("unify"), [var("t1"), var("t2"), var("checker")]),
                 ),
               ],
-              var("checker"),
+              call(
+                var("should.equal"),
+                [call(var("resolve"), [var("t1"), var("checker")]), var("t2")],
+              ),
             ),
           ),
         ),
@@ -151,22 +175,27 @@ fn module() {
     "Boolean",
     [],
     [variant("True", []), variant("False", [])],
-    destructure_tuple(
-      ["list$Cons", "list$Nil", "list$reverse", "list$map"],
-      eyg_list.return_tuple(),
+    name(
+      "Result",
+      [1, 2],
+      [variant("Ok", [Variable(1)]), variant("Error", [Variable(2)])],
       destructure_tuple(
-        ["unify_test"],
-        monotype(),
-        row([
-          test(
-            "hello_world",
-            call(
-              var("should.equal"),
-              [binary("Hello, World!"), binary("Hello, World!")],
+        ["list$Cons", "list$Nil", "list$reverse", "list$map", "list$key_find"],
+        eyg_list.return_tuple(),
+        destructure_tuple(
+          ["unify_test"],
+          monotype(),
+          row([
+            test(
+              "hello_world",
+              call(
+                var("should.equal"),
+                [binary("Hello, World!"), binary("Hello, World!")],
+              ),
             ),
-          ),
-          named_test("unify_test"),
-        ]),
+            named_test("unify_test"),
+          ]),
+        ),
       ),
     ),
   )
@@ -202,8 +231,8 @@ fn empty() {
   call(var("list$Nil"), [])
 }
 
-fn unimplemented() {
-  call(var("unimplemented"), [])
+fn unimplemented(message) {
+  call(var("unimplemented"), [binary(message)])
 }
 
 pub fn compiled() {
@@ -239,7 +268,7 @@ pub fn compiled() {
     scope
     |> scope.set_variable(
       "unimplemented",
-      PolyType([1], Function([], Variable(1))),
+      PolyType([1], Function([Data("Binary", [])], Variable(1))),
     )
 
   case ast.infer(module(), scope) {

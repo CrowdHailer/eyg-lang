@@ -90,6 +90,10 @@ async function main() {
     function inc$1(x) {
       return x + 1
     }
+    function unimplemented$1(message) {
+      throw "UNIMPLEMENTED: " + message
+    }
+
 
 
     const module = eval(source.compiled());
@@ -98,7 +102,7 @@ async function main() {
       try {
         let result = module[fnName]();
         if (result) {
-          console.log(result)
+          console.log(JSON.stringify(result))
         }
         process.stdout.write("✨");
         passes++;

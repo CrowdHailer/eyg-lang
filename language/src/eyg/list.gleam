@@ -2,7 +2,8 @@ import gleam/io
 import gleam/list
 import language/ast.{Destructure}
 import language/ast/builder.{
-  call, case_, constructor, function, let_, row, tuple_, var, varient,
+  binary, call, case_, constructor, destructure_tuple, function, let_, row, tuple_,
+  var, varient,
 }
 import language/scope
 import language/type_.{Data, Variable}
@@ -69,6 +70,35 @@ fn map() {
   )
 }
 
+fn key_find() {
+  function(
+    ["list", "search"],
+    case_(
+      var("list"),
+      [
+        #(
+          Destructure("Cons", ["next", "list"]),
+          destructure_tuple(
+            ["key", "value"],
+            var("next"),
+            case_(
+              call(var("equal"), [var("key"), var("search")]),
+              [
+                #(Destructure("True", []), call(var("Ok"), [var("value")])),
+                #(
+                  Destructure("False", []),
+                  call(var("self"), [var("list"), var("key")]),
+                ),
+              ],
+            ),
+          ),
+        ),
+        #(Destructure("Nil", []), call(var("Error"), [call(var("Nil"), [])])),
+      ],
+    ),
+  )
+}
+
 // zip needs tuple and result
 // Module typer needs to go accross everywhere
 pub fn module() {
@@ -112,7 +142,17 @@ pub fn return_tuple() {
       let_(
         "map",
         map(),
-        tuple_([var("Cons"), var("Nil"), var("reverse"), var("map")]),
+        let_(
+          "key_find",
+          key_find(),
+          tuple_([
+            var("Cons"),
+            var("Nil"),
+            var("reverse"),
+            var("map"),
+            var("key_find"),
+          ]),
+        ),
       ),
     ),
   )
