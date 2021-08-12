@@ -191,7 +191,7 @@ fn result(then) {
 fn module() {
   result(destructure_tuple(
     list.map(eyg_list.exports(), fn(f) { string.concat(["list$", f]) }),
-    eyg_list.return_tuple(),
+    eyg_list.code(),
     destructure_tuple(
       ["unify_variables_test", "unify_data_test"],
       monotype(),
@@ -221,6 +221,10 @@ fn unimplemented(message) {
 }
 
 pub fn compiled() {
+  compile(module())
+}
+
+pub fn compile(module) {
   // This can be built atop equal
   assert #(scope, #("should.equal", 1)) =
     scope.new()
@@ -256,7 +260,7 @@ pub fn compiled() {
       PolyType([1], Function([Data("Binary", [])], Variable(1))),
     )
 
-  case ast.infer(module(), scope) {
+  case ast.infer(module, scope) {
     Ok(#(type_, tree, _substitutions)) ->
       javascript.maybe_wrap_expression(#(type_, tree))
       |> list.intersperse("\n")

@@ -1,8 +1,9 @@
 import gleam/io
 import gleam/list
+import gleam/string
 import language/ast.{Assignment as Var, Destructure}
 import language/ast/builder.{
-  call, case_, constructor, destructure_tuple, tuple_, varient,
+  binary, call, case_, constructor as variant, destructure_tuple, row, tuple_, varient as name,
 }
 import language/scope
 import language/type_.{Data, Variable}
@@ -38,6 +39,15 @@ fn reverse() {
     ["input"],
     [],
     call(var("move_all"), [var("input"), call(var("Nil"), [])]),
+  )
+}
+
+fn append() {
+  fun(
+    "append",
+    ["first", "second"],
+    [#(Var("reversed"), label_call("reverse", ["first"]))],
+    label_call("move_all", ["reversed", "second"]),
   )
 }
 
@@ -106,21 +116,70 @@ fn key_find() {
 }
 
 pub fn exports() {
-  ["Cons", "Nil", "reverse", "map", "key_find"]
+  ["Cons", "Nil", "reverse", "append", "map", "key_find"]
 }
 
-pub fn return_tuple() {
+fn boolean(then) {
+  name("Boolean", [], [variant("True", []), variant("False", [])], then)
+}
+
+fn result(then) {
+  boolean(name(
+    "Result",
+    [1, 2],
+    [variant("Ok", [Variable(1)]), variant("Error", [Variable(2)])],
+    then,
+  ))
+}
+
+pub fn code() {
   // Nominal/Named
-  varient(
+  name(
     "List",
     [1],
     [
-      constructor("Cons", [Variable(1), Data("List", [Variable(1)])]),
-      constructor("Nil", []),
+      variant("Cons", [Variable(1), Data("List", [Variable(1)])]),
+      variant("Nil", []),
     ],
     seq(
-      [move_all(), reverse(), do_map(), map(), key_find()],
+      [move_all(), reverse(), append(), do_map(), map(), key_find()],
       tuple_(vars(exports())),
     ),
+  )
+}
+
+pub fn load(then) {
+  result(destructure_tuple(
+    list.map(exports(), fn(f) { string.concat(["list$", f]) }),
+    code(),
+    then,
+  ))
+}
+
+pub fn tests() {
+  let all_tests = [
+    test(
+      "reverse",
+      [#(Var("in"), to_list([binary("1"), binary("2"), binary("3")]))],
+      label_call("list$reverse", ["in"]),
+    ),
+  ]
+  let labels =
+    list.map(
+      all_tests,
+      fn(t) {
+        let #(Var(label), _) = t
+        #(label, var(label))
+      },
+    )
+  // todo this should be a row
+  load(seq(all_tests, row(labels)))
+}
+
+pub fn to_list(values) {
+  list.fold(
+    list.reverse(values),
+    label_call("list$Nil", []),
+    fn(value, previous) { call(var("list$Cons"), [value, previous]) },
   )
 }

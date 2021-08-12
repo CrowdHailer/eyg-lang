@@ -50,48 +50,33 @@ async function main() {
 
   process.stdout.write("\n\n## EYG\n\n");
 
+  const main = await import("../gen/javascript/eyg/module.js")
   await (async () => {
-    const source = await import("../gen/javascript/eyg/module.js")
-    let should = {
-      equal$1: (a, b) => {
-        if ($deepEqual(a, b)) {
-          return null
-        } else {
-          console.log(a, " VS ", b)
-          throw "values are not equal"
+    const source = await import("../gen/javascript/eyg/list.js")
+    const code = main.compile(source.tests())
+    fs.writeFileSync('./tmp/eyg_lists.js', code)
+    const module = run(code)
+    for (let fnName of Object.keys(module)) {
+      if (!fnName.endsWith("_test")) continue;
+      try {
+        let result = module[fnName]();
+        if (result) {
+          console.log(JSON.stringify(result))
         }
-      },
-      not_equal$1: (a, b) => {
-        if ($deepEqual(a, b)) {
-          console.log(a, " AND ", b)
-          throw "values are equal"
-        } else {
-          return null
-        }
+        process.stdout.write("✨");
+        passes++;
+      } catch (error) {
+        process.stdout.write(`❌ ${fnName}: ${error}\n  `);
+        failures++;
       }
     }
-    function equal$1(a, b) {
-      if ($deepEqual(a, b)) {
-        return {type: "True"}
-      } else {
-        return {type: "False"}
-      }  
-    }
-    function zero$1() {
-      return 0
-    }
-    function inc$1(x) {
-      return x + 1
-    }
-    function unimplemented$1(message) {
-      throw "UNIMPLEMENTED: " + message
-    }
-
-
-    // TODO put console output in an array.
-    const code = source.compiled()
+  })()
+  
+  await (async () => {
+    const code = main.compiled()
     fs.writeFileSync('./tmp/eyg.js', code)
-    const module = eval(code);
+    
+    const module = run(code)
     for (let fnName of Object.keys(module)) {
       if (!fnName.endsWith("_test")) continue;
       try {
@@ -138,4 +123,47 @@ function $deepEqual(x, y) {
 }
 function $isObject(object) {
   return object != null && typeof object === 'object';
+}
+
+
+function run(code) {
+  let should = {
+    equal$1: (a, b) => {
+      if ($deepEqual(a, b)) {
+        return null
+      } else {
+        console.log(a, " VS ", b)
+        throw "values are not equal"
+      }
+    },
+    not_equal$1: (a, b) => {
+      if ($deepEqual(a, b)) {
+        console.log(a, " AND ", b)
+        throw "values are equal"
+      } else {
+        return null
+      }
+    }
+  }
+  function equal$1(a, b) {
+    if ($deepEqual(a, b)) {
+      return {type: "True"}
+    } else {
+      return {type: "False"}
+    }  
+  }
+  function zero$1() {
+    return 0
+  }
+  function inc$1(x) {
+    return x + 1
+  }
+  function unimplemented$1(message) {
+    throw "UNIMPLEMENTED: " + message
+  }
+
+
+  // TODO put console output in an array.
+
+  return eval(code);
 }
