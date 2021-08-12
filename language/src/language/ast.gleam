@@ -80,10 +80,10 @@ pub fn failure_to_string(info) {
       "Unable to call as Type is not a function"
     }
 
-    #(IncorrectArity(expected: expected, given: given), FunctionCall(_)) ->
+    #(IncorrectArity(expected: _expected, given: _given), FunctionCall(_)) ->
       "Incorrect number of arguments given to function call"
     #(
-      IncorrectArity(expected: expected, given: given),
+      IncorrectArity(expected: _expected, given: _given),
       ValueDestructuring(term),
     ) ->
       string.concat([
@@ -501,7 +501,7 @@ fn do_infer(untyped, scope, typer) {
       // Think I need some printy things
       // TODO render nice variables if that's the situation
       case scope.get_variable(scope, "Tuple") {
-        Ok(#(PolyType(type_: t, ..), _count)) -> Nil
+        Ok(#(PolyType(type_: _, ..), _count)) -> Nil
         _ -> Nil
       }
       try typer = unify(given, f_type, typer, FunctionCall(function))

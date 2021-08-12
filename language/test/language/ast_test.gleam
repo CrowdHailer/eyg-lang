@@ -1,19 +1,17 @@
 import gleam/io
 import gleam/list
 import language/ast/builder.{
-  binary, call, case_, constructor, destructure, function, let_, var, varient,
+  binary, call, case_, constructor, function, var, varient,
 }
-import language/ast.{
-  Assignment, Binary, Destructure, Let, ValueDestructuring, Var,
-}
-import language/type_.{CouldNotUnify, Data, Function, PolyType, Variable}
+import language/ast.{Destructure, ValueDestructuring}
+import language/type_.{CouldNotUnify, Data, Function, Variable}
 import language/scope
 import language/ast/support
 
 // Literals
 pub fn infer_literal_binary_test() {
   let untyped = binary("abc")
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Ok(#(type_, _tree, _typer)) = ast.infer(untyped, scope.new())
   // seems not to be ok as assert
   let Data("Binary", []) = type_
 }
@@ -35,7 +33,7 @@ pub fn simple_custom_type_test() {
         [call(var("None"), []), call(var("Some"), [binary("abc")])],
       ),
     )
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
   let Data("Boolean", []) = type_.resolve_type(type_, typer)
 }
 
@@ -51,7 +49,7 @@ pub fn case_test() {
       ],
     ))
 
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
@@ -89,7 +87,7 @@ pub fn clause_return_missmatch_test() {
         #(Destructure("False", []), binary("abc")),
       ],
     ))
-  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let Error(#(failure, _situation)) = ast.infer(untyped, scope)
   let CouldNotUnify(expected: Data("Boolean", []), given: Data("Binary", [])) =
     failure
 }
@@ -110,7 +108,7 @@ pub fn mismatched_pattern_test() {
         ],
       ),
     )))
-  let Error(#(failure, situation)) = ast.infer(untyped, scope)
+  let Error(#(failure, _situation)) = ast.infer(untyped, scope)
   let CouldNotUnify(expected: Data("Boolean", []), given: Data("Option", [_])) =
     failure
 }
@@ -121,7 +119,7 @@ pub fn unify_types_in_fn_args_test() {
     |> scope.with_equal()
 
   let untyped = function(["x", "y"], call(var("equal"), [var("x"), var("y")]))
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
   let Function([t, u], Data("Boolean", [])) = type_.resolve_type(type_, typer)
   let True = t == u
 }
@@ -140,7 +138,7 @@ pub fn case_with_function_test() {
         ],
       ),
     ))
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
   let Function([Data("Option", [Data("Binary", [])])], Data("Binary", [])) =
     type_.resolve_type(type_, typer)
 }

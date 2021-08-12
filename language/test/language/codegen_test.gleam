@@ -10,7 +10,7 @@ import language/scope
 import language/ast/support
 
 fn compile(untyped, scope) {
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, tree, _typer)) = ast.infer(untyped, scope)
   javascript.render(#(type_, tree), False)
 }
 
@@ -288,6 +288,7 @@ pub fn multiline_function_test() {
   let "  let a$2 = equal$1(a$1, \"blah\");" = l2
   let "  return equal$1(b$1, \"other\");" = l3
   let "});" = l4
+  let "test$1" = l5
 }
 
 pub fn multiline_call_function_test() {

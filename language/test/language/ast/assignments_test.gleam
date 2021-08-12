@@ -33,7 +33,7 @@ pub fn infer_type_constructor_for_row_test() {
 
 pub fn missing_var_test() {
   let untyped = var("bar")
-  let Error(#(failure, situation)) = ast.infer(untyped, scope.new())
+  let Error(#(failure, _situation)) = ast.infer(untyped, scope.new())
 
   let UnknownVariable("bar") = failure
 }
@@ -53,7 +53,7 @@ pub fn destructure_test() {
         var("first_name"),
       ),
     )
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 

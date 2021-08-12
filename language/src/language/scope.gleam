@@ -26,10 +26,7 @@ fn count_keys(list, key) {
 pub fn set_variable(scope, label, type_) {
   let Scope(variables: variables) = scope
   let variables = [#(label, type_), ..variables]
-  #(
-    Scope(..scope, variables: variables),
-    #(label, count_keys(variables, label)),
-  )
+  #(Scope(variables: variables), #(label, count_keys(variables, label)))
 }
 
 // Free vars in forall are those vars that are free

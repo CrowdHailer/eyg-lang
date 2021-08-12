@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/option.{Some}
 import language/ast/builder.{
-  binary, call, case_, constructor, destructure_row, function, let_, var, varient,
+  binary, call, case_, destructure_row, function, let_, var,
 }
 import language/ast.{Destructure, FunctionCall}
 import language/type_.{CouldNotUnify, Data, Function, IncorrectArity, Variable}
@@ -10,20 +10,20 @@ import language/ast/support
 
 pub fn infer_identity_function_test() {
   let untyped = function(["x"], var("x"))
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope.new())
   let Function([Variable(a)], Variable(b)) = type_.resolve_type(type_, typer)
   let True = a == b
 }
 
 pub fn infer_call_test() {
   let untyped = call(function([], binary("abc")), [])
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope.new())
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
 pub fn infer_call_with_arguments_test() {
   let untyped = call(function(["x"], var("x")), [binary("abc")])
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope.new())
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
@@ -40,7 +40,7 @@ pub fn generic_functions_test() {
       ),
     )
 
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope.new())
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope.new())
   let Data("Binary", []) = type_.resolve_type(type_, typer)
 }
 
@@ -62,8 +62,8 @@ pub fn recursion_test() {
       ),
     ))
   // recur as a keyword same as clojure
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
-  let Function([input], return) = type_.resolve_type(type_, typer)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
+  let Function([_input], _return) = type_.resolve_type(type_, typer)
 }
 
 pub fn generalising_restricted_by_scope_test() {
@@ -84,7 +84,7 @@ pub fn generalising_restricted_by_scope_test() {
 
   // make match is a fn type that should Not be generalised
   // isolated let etc can there be a whole that get's the scope
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
   let Function([Data("Binary", [])], Data("Boolean", [])) =
     type_.resolve_type(type_, typer)
 }
@@ -149,9 +149,9 @@ pub fn infer_row_type_test() {
 
   // make match is a fn type that should Not be generalised
   // isolated let etc can there be a whole that get's the scope
-  let Ok(#(type_, tree, typer)) = ast.infer(untyped, scope)
+  let Ok(#(type_, _tree, typer)) = ast.infer(untyped, scope)
   let Function(
-    [type_.Row([#("name", Data("Binary", []))], Some(x))],
+    [type_.Row([#("name", Data("Binary", []))], Some(_))],
     Data("Boolean", []),
   ) = type_.resolve_type(type_, typer)
 }

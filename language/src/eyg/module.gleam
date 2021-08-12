@@ -311,7 +311,7 @@ pub fn compiled() {
     )
 
   case ast.infer(module(), scope) {
-    Ok(#(type_, tree, substitutions)) ->
+    Ok(#(type_, tree, _substitutions)) ->
       javascript.maybe_wrap_expression(#(type_, tree))
       |> list.intersperse("\n")
       |> string.concat()

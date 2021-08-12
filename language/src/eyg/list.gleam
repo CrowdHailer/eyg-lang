@@ -2,8 +2,8 @@ import gleam/io
 import gleam/list
 import language/ast.{Destructure}
 import language/ast/builder.{
-  binary, call, case_, constructor, destructure_tuple, function, let_, row, tuple_,
-  var, varient,
+  call, case_, constructor, destructure_tuple, function, let_, row, tuple_, var,
+  varient,
 }
 import language/scope
 import language/type_.{Data, Variable}

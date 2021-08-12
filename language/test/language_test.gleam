@@ -21,8 +21,8 @@ type Expression {
   Let(name: String, value: Expression, in: Expression)
   Var(name: String)
   Binary
-  Case
-  Tuple
+  // Case
+  // Tuple
   // arguments are names only
   Function(arguments: List(String), body: Expression)
   Call(function: Expression, arguments: List(Expression))
@@ -103,7 +103,7 @@ fn infer(node, state) {
       case function_type {
         Linked(FunctionType(expected_arguments, return)) -> {
           try actual_arguments = argument_types(arguments, state, [])
-          unify_all(expected_arguments, actual_arguments)
+          try _ = unify_all(expected_arguments, actual_arguments)
           assert expected_arguments = actual_arguments
           case expected_arguments == actual_arguments {
             True -> Ok(return)
