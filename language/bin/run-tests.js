@@ -1,6 +1,7 @@
 import assert from "assert";
 import { opendir } from "fs/promises";
 const dir = "gen/javascript/language/";
+import fs from 'fs';
 
 async function main() {
   console.log("Running tests...");
@@ -95,8 +96,10 @@ async function main() {
     }
 
 
-
-    const module = eval(source.compiled());
+    // TODO put console output in an array.
+    const code = source.compiled()
+    fs.writeFileSync('./tmp/eyg.js', code)
+    const module = eval(code);
     for (let fnName of Object.keys(module)) {
       if (!fnName.endsWith("_test")) continue;
       try {

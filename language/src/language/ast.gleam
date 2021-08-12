@@ -53,7 +53,7 @@ pub type UnifySituation {
   CaseClause
   // Never happens without annotation
   ReturnAnnotation
-  FunctionCall
+  FunctionCall(#(Nil, Expression(Nil, String)))
   // Not a unify situation unless env is row type 
   VarLookup
 }
@@ -73,14 +73,14 @@ pub fn failure_to_string(info) {
     #(UnknownVariable(label), _) -> string.concat(["Unknown variable: ", label])
     #(
       CouldNotUnify(expected: Function(_, _), given: Function(_, _)),
-      FunctionCall,
+      FunctionCall(_),
     ) -> "Could not unify arguments for function call"
-    #(CouldNotUnify(expected: expected, given: Function(_, _)), FunctionCall) -> {
+    #(CouldNotUnify(expected: expected, given: Function(_, _)), FunctionCall(_)) -> {
       io.debug(expected)
       "Unable to call as Type is not a function"
     }
 
-    #(IncorrectArity(expected: expected, given: given), FunctionCall) ->
+    #(IncorrectArity(expected: expected, given: given), FunctionCall(_)) ->
       "Incorrect number of arguments given to function call"
     #(
       IncorrectArity(expected: expected, given: given),
@@ -92,8 +92,9 @@ pub fn failure_to_string(info) {
       ])
     #(RedundantClause(match), CaseClause) ->
       string.concat(["Redundant clause for '", match, "' in case expression"])
-    _ -> {
-      io.debug(info)
+    #(error, situation) -> {
+      io.debug(error)
+      io.debug(situation)
       "Unhandled Error"
     }
   }
@@ -497,7 +498,13 @@ fn do_infer(untyped, scope, typer) {
           ),
           return_type,
         )
-      try typer = unify(given, f_type, typer, FunctionCall)
+      // Think I need some printy things
+      // TODO render nice variables if that's the situation
+      case scope.get_variable(scope, "Tuple") {
+        Ok(#(PolyType(type_: t, ..), _count)) -> Nil
+        _ -> Nil
+      }
+      try typer = unify(given, f_type, typer, FunctionCall(function))
       let type_ = return_type
       let tree = Call(#(f_type, f_tree), with)
       Ok(#(type_, tree, typer))

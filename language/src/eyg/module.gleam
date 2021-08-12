@@ -19,8 +19,9 @@ fn monotype() {
     "eyg_ir_type_Type",
     [],
     [
-      variant("Nominal", [Data("String", []), Data("eyg_ir_type_Type", [])]),
+      variant("Nominal", [Data("Binary", []), Data("eyg_ir_type_Type", [])]),
       variant("Tuple", [Data("List", [Data("eyg_ir_type_Type", [])])]),
+      //   variant("Tuple", [Data("Int", [])]),
       variant("Row", [Data("List", [Data("eyg_ir_type_Type", [])])]),
       variant(
         "Function",
@@ -134,7 +135,7 @@ fn monotype() {
           ),
         ),
         #(
-          Var("unify_test"),
+          Var("unify_variables_test"),
           function(
             [],
             seq(
@@ -163,42 +164,80 @@ fn monotype() {
             ),
           ),
         ),
+        #(
+          Var("unify_data_test"),
+          function(
+            [],
+            seq(
+              [
+                #(
+                  Tuple(["t1", "checker"]),
+                  call(var("next_unbound"), [var("checker")]),
+                ),
+              ],
+              // #(
+              //   Var("my_tuple_type"),
+              //   call(var("Tuple"), [call(var("list$Nil"), [])]),
+              // ),
+              // #(
+              //   Var("checker"),
+              //   call(
+              //     var("unify"),
+              //     [var("my_tuple_type"), var("t1"), var("checker")],
+              //   ),
+              // ),
+              // #(
+              //   Var("x"),
+              //   call(
+              //     var("Nominal"),
+              //     [binary("jel"), call(var("Row"), [empty()])],
+              //   ),
+              // ),
+              //   binary("WAAT"),
+              var("checker"),
+            ),
+          ),
+        ),
       ],
-      tuple_([var("unify_test")]),
+      tuple_([var("unify_variables_test"), var("unify_data_test")]),
     ),
   )
 }
 
+fn boolean(then) {
+  name("Boolean", [], [variant("True", []), variant("False", [])], then)
+}
+
+fn result(then) {
+  boolean(name(
+    "Result",
+    [1, 2],
+    [variant("Ok", [Variable(1)]), variant("Error", [Variable(2)])],
+    then,
+  ))
+}
+
 // variant with a is the correct spelling
 fn module() {
-  name(
-    "Boolean",
-    [],
-    [variant("True", []), variant("False", [])],
-    name(
-      "Result",
-      [1, 2],
-      [variant("Ok", [Variable(1)]), variant("Error", [Variable(2)])],
-      destructure_tuple(
-        ["list$Cons", "list$Nil", "list$reverse", "list$map", "list$key_find"],
-        eyg_list.return_tuple(),
-        destructure_tuple(
-          ["unify_test"],
-          monotype(),
-          row([
-            test(
-              "hello_world",
-              call(
-                var("should.equal"),
-                [binary("Hello, World!"), binary("Hello, World!")],
-              ),
-            ),
-            named_test("unify_test"),
-          ]),
+  result(destructure_tuple(
+    ["list$Cons", "list$Nil", "list$reverse", "list$map", "list$key_find"],
+    eyg_list.return_tuple(),
+    destructure_tuple(
+      ["unify_variables_test", "unify_data_test"],
+      monotype(),
+      row([
+        test(
+          "hello_world",
+          call(
+            var("should.equal"),
+            [binary("Hello, World!"), binary("Hello, World!")],
+          ),
         ),
-      ),
+        named_test("unify_variables_test"),
+        named_test("unify_data_test"),
+      ]),
     ),
-  )
+  ))
 }
 
 fn named_test(name) {

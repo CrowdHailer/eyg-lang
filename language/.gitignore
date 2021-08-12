@@ -19,3 +19,4 @@ gen
 log
 logs
 rebar3.crashdump
+tmp

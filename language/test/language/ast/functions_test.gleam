@@ -102,18 +102,18 @@ pub fn incorrect_arity_test() {
     ))
   let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
   let IncorrectArity(expected: 2, given: 3) = failure
-  let FunctionCall = situation
+  let FunctionCall(_) = situation
 
   let too_few_args = support.with_boolean(call(var("equal"), [binary("abc")]))
   let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
   let IncorrectArity(expected: 2, given: 1) = failure
-  let FunctionCall = situation
+  let FunctionCall(_) = situation
 
   // Test for data constructors
   let too_many_args = support.with_boolean(call(var("True"), [binary("abc")]))
   let Error(#(failure, situation)) = ast.infer(too_many_args, scope)
   let IncorrectArity(expected: 0, given: 1) = failure
-  let FunctionCall = situation
+  let FunctionCall(_) = situation
 }
 
 pub fn call_argument_mistype_test() {
@@ -129,7 +129,7 @@ pub fn call_argument_mistype_test() {
   let Error(#(failure, situation)) = ast.infer(too_few_args, scope)
   let CouldNotUnify(expected: Data("Binary", []), given: Data("Boolean", [])) =
     failure
-  let FunctionCall = situation
+  let FunctionCall(_) = situation
 }
 
 pub fn infer_row_type_test() {
