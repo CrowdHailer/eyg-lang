@@ -16,6 +16,7 @@ pub type Pattern(l) {
   Assignment(l)
 }
 
+// term is expression and pattern
 /// Expression tree with type information
 pub type Expression(t, l) {
   NewData(

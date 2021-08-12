@@ -9,25 +9,34 @@ import language/scope
 import language/type_.{Data, Variable}
 import eyg/helpers.{fun, label_call, seq, test, var, vars}
 
+// (fun move_all (from to)
+//   match(from
+//     ((Cons next from) (recur from (cons next to)))
+//     ((Nil) to)
+//   )
+// )
+// fn move_all(from, to) {
+//   case from {
+//     Cons(next, from) -> self(from, to)
+//     Nil() -> to
+//   }
+// }
 fn move_all() {
   fun(
     "move_all",
-    ["remaining", "reversed"],
+    ["from", "to"],
     [],
     case_(
-      var("remaining"),
+      var("from"),
       [
         #(
-          Destructure("Cons", ["next", "remaining"]),
+          Destructure("Cons", ["next", "from"]),
           call(
             var("self"),
-            [
-              var("remaining"),
-              call(var("Cons"), [var("next"), var("reversed")]),
-            ],
+            [var("from"), call(var("Cons"), [var("next"), var("to")])],
           ),
         ),
-        #(Destructure("Nil", []), var("reversed")),
+        #(Destructure("Nil", []), var("to")),
       ],
     ),
   )
