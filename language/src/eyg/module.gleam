@@ -9,9 +9,10 @@ import language/ast.{
 import language/scope
 import language/ast/builder.{
   binary, call, constructor as variant, destructure_tuple, function, let_, row, tuple_,
-  var, varient as name,
+  varient as name,
 }
 import eyg/list as eyg_list
+import eyg/helpers.{fun, label_call, seq, test, var, vars}
 
 // probably just call type
 fn monotype() {
@@ -36,50 +37,36 @@ fn monotype() {
       [
         // names, next substitutions
         #(Var("checker"), tuple_([empty(), zero(), empty()])),
-        #(
-          Var("next_unbound"),
-          function(
-            ["checker"],
-            seq(
-              [
-                #(Tuple(["names", "next", "substitutions"]), var("checker")),
-                #(Var("type"), call(var("Unbound"), [var("next")])),
-                #(Var("next"), call(var("inc"), [var("next")])),
-                #(
-                  Var("checker"),
-                  tuple_([var("names"), var("next"), var("substitutions")]),
-                ),
-              ],
-              tuple_([var("type"), var("checker")]),
-            ),
-          ),
+        fun(
+          "next_unbound",
+          ["checker"],
+          [
+            #(Tuple(["names", "next", "substitutions"]), var("checker")),
+            #(Var("type"), label_call("Unbound", ["next"])),
+            #(Var("next"), label_call("inc", ["next"])),
+            #(Var("checker"), tuple_(vars(["names", "next", "substitutions"]))),
+          ],
+          tuple_([var("type"), var("checker")]),
         ),
-        #(
-          Var("resolve"),
-          function(
-            ["type", "checker"],
-            seq(
-              [#(Tuple(["names", "next", "substitutions"]), var("checker"))],
-              case_(
-                var("type"),
-                [
-                  #(
-                    Nominal("Unbound", ["i"]),
-                    case_(
-                      call(
-                        var("list$key_find"),
-                        [var("substitutions"), var("i")],
-                      ),
-                      [
-                        #(Nominal("Ok", ["value"]), var("value")),
-                        #(Nominal("Error", ["_"]), var("type")),
-                      ],
-                    ),
-                  ),
-                  #(Var("rest"), unimplemented("resolving type")),
-                ],
+        fun(
+          "resolve",
+          ["type", "checker"],
+          [#(Tuple(["names", "next", "substitutions"]), var("checker"))],
+          case_(
+            var("type"),
+            [
+              #(
+                Nominal("Unbound", ["i"]),
+                case_(
+                  label_call("list$key_find", ["substitutions", "i"]),
+                  [
+                    #(Nominal("Ok", ["value"]), var("value")),
+                    #(Nominal("Error", ["_"]), var("type")),
+                  ],
+                ),
               ),
-            ),
+              #(Var("rest"), unimplemented("resolving type")),
+            ],
           ),
         ),
         #(
@@ -134,34 +121,17 @@ fn monotype() {
             ),
           ),
         ),
-        #(
-          Var("unify_variables_test"),
-          function(
-            [],
-            seq(
-              [
-                #(
-                  Tuple(["t1", "checker"]),
-                  call(var("next_unbound"), [var("checker")]),
-                ),
-                #(
-                  Tuple(["t2", "checker"]),
-                  call(var("next_unbound"), [var("checker")]),
-                ),
-                #(
-                  Var("_"),
-                  call(var("should.not_equal"), [var("t1"), var("t2")]),
-                ),
-                #(
-                  Var("checker"),
-                  call(var("unify"), [var("t1"), var("t2"), var("checker")]),
-                ),
-              ],
-              call(
-                var("should.equal"),
-                [call(var("resolve"), [var("t1"), var("checker")]), var("t2")],
-              ),
-            ),
+        test(
+          "unify_variables",
+          [
+            #(Tuple(["t1", "checker"]), label_call("next_unbound", ["checker"])),
+            #(Tuple(["t2", "checker"]), label_call("next_unbound", ["checker"])),
+            #(Var("_"), label_call("should.not_equal", ["t1", "t2"])),
+            #(Var("checker"), label_call("unify", ["t1", "t2", "checker"])),
+          ],
+          call(
+            var("should.equal"),
+            [label_call("resolve", ["t1", "checker"]), var("t2")],
           ),
         ),
         #(
@@ -220,42 +190,18 @@ fn result(then) {
 // variant with a is the correct spelling
 fn module() {
   result(destructure_tuple(
-    ["list$Cons", "list$Nil", "list$reverse", "list$map", "list$key_find"],
+    list.map(eyg_list.exports(), fn(f) { string.concat(["list$", f]) }),
     eyg_list.return_tuple(),
     destructure_tuple(
       ["unify_variables_test", "unify_data_test"],
       monotype(),
-      row([
-        test(
-          "hello_world",
-          call(
-            var("should.equal"),
-            [binary("Hello, World!"), binary("Hello, World!")],
-          ),
-        ),
-        named_test("unify_variables_test"),
-        named_test("unify_data_test"),
-      ]),
+      row([named_test("unify_variables_test"), named_test("unify_data_test")]),
     ),
   ))
 }
 
 fn named_test(name) {
   #(name, var(name))
-}
-
-fn test(name, body) {
-  #(string.concat([name, "_test"]), function([], body))
-}
-
-fn seq(matches, last) {
-  case matches {
-    [] -> last
-    [#(pattern, value), ..matches] -> #(
-      Nil,
-      ast.Let(pattern, value, seq(matches, last)),
-    )
-  }
 }
 
 pub fn case_(subject, clauses) {

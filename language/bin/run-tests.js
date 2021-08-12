@@ -48,14 +48,6 @@ async function main() {
     }
   }
 
-  await (async () => {
-    const module = await import("../gen/javascript/my_lang_test.js")
-    const {Cons, Nil, reverse, map} = eval(module.list_test());
-    let l1 = Cons(1, Cons(2, Nil()))
-    let l2 = Cons(2, Cons(1, Nil()))
-    assert.deepStrictEqual(reverse(l1), l2)
-  })()
-
   process.stdout.write("\n\n## EYG\n\n");
 
   await (async () => {
