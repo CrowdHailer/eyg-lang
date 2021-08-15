@@ -23,3 +23,9 @@ pub fn infer_binary_test() {
   assert monotype.Binary = type_
 }
 
+pub fn infer_row_test() {
+  let typer = init()
+  let untyped = ast.Row([#("foo", ast.Tuple([]))])
+  let Ok(#(type_, _typer)) = infer(untyped, typer)
+  assert monotype.Row([#("foo", monotype.Tuple([]))]) = type_
+}
