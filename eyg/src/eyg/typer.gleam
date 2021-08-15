@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/option.{None, Some}
 import eyg/ast.{Binary, Let, Row, Tuple, Variable}
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -18,6 +19,7 @@ pub type Reason {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(label: String)
   UnmatchedTypes(expected: monotype.Monotype, given: monotype.Monotype)
+  MissingFields(expected: List(#(String, monotype.Monotype)))
 }
 
 // UnhandledVarients(remaining: List(String))
@@ -29,7 +31,7 @@ pub fn init(variables) {
 fn next_unbound(state) {
   let State(next_unbound: i, ..) = state
   let state = State(..state, next_unbound: i + 1)
-  #(monotype.Unbound(i), state)
+  #(i, state)
 }
 
 pub fn resolve(type_, typer) {
@@ -42,7 +44,34 @@ pub fn resolve(type_, typer) {
         Ok(substitution) -> resolve(substitution, typer)
       }
     monotype.Binary -> monotype.Binary
+    monotype.Tuple(elements) -> {
+      let elements = list.map(elements, resolve(_, typer))
+      monotype.Tuple(elements)
+    }
+    monotype.Row(fields, rest) -> {
+      let resolved_fields =
+        list.map(
+          fields,
+          fn(field) {
+            let #(name, type_) = field
+            #(name, resolve(type_, typer))
+          },
+        )
+      case rest {
+        None -> monotype.Row(resolved_fields, None)
+        Some(i) ->
+          case resolve(monotype.Unbound(i), typer) {
+            monotype.Unbound(j) -> monotype.Row(resolved_fields, Some(j))
+            monotype.Row(inner, rest) ->
+              monotype.Row(list.append(resolved_fields, inner), rest)
+          }
+      }
+    }
   }
+  // _ -> {
+  //   io.debug(type_)
+  //   todo("resolvyy")
+  // }
 }
 
 fn unify_pair(pair, typer) {
@@ -52,6 +81,11 @@ fn unify_pair(pair, typer) {
 
 // monotype function??
 fn unify(expected, given, typer) {
+  let expected = resolve(expected, typer)
+  let given = resolve(given, typer)
+  // io.debug(given)
+  // io.debug(resolve(given, typer))
+  // io.debug("-==")
   // I wonder if lazily calling resolve is a problem for rows.
   // TODO resolve
   case expected, given {
@@ -70,8 +104,57 @@ fn unify(expected, given, typer) {
       let substitutions = [#(i, any), ..substitutions]
       Ok(State(..typer, substitutions: substitutions))
     }
-
+    monotype.Row(expected, expected_extra), monotype.Row(given, given_extra) -> {
+      let #(expected, given, shared) = group_shared(expected, given)
+      let #(x, typer) = next_unbound(typer)
+      try typer = case given, expected_extra {
+        [], _ -> Ok(typer)
+        only, Some(i) -> {
+          let State(substitutions: substitutions, ..) = typer
+          let substitutions = [
+            #(i, monotype.Row(only, Some(x))),
+            ..substitutions
+          ]
+          Ok(State(..typer, substitutions: substitutions))
+        }
+        only, None -> Error(MissingFields(only))
+      }
+      try typer = case expected, given_extra {
+        [], _ -> Ok(typer)
+        only, Some(i) -> {
+          let State(substitutions: substitutions, ..) = typer
+          let substitutions = [
+            #(i, monotype.Row(only, Some(x))),
+            ..substitutions
+          ]
+          Ok(State(..typer, substitutions: substitutions))
+        }
+        only, None -> Error(MissingFields(only))
+      }
+      list.try_fold(shared, typer, unify_pair)
+    }
     expected, given -> Error(UnmatchedTypes(expected, given))
+  }
+}
+
+fn group_shared(left, right) {
+  do_group_shared(left, right, [], [])
+}
+
+fn do_group_shared(left, right, only_left, shared) {
+  case left {
+    [] -> #(list.reverse(only_left), right, list.reverse(shared))
+    [#(k, left_value), ..left] ->
+      case list.key_pop(right, k) {
+        Ok(#(right_value, right)) -> {
+          let shared = [#(left_value, right_value), ..shared]
+          do_group_shared(left, right, only_left, shared)
+        }
+        Error(Nil) -> {
+          let only_left = [#(k, left_value), ..only_left]
+          do_group_shared(left, right, only_left, shared)
+        }
+      }
   }
 }
 
@@ -94,6 +177,8 @@ fn set_variable(label, monotype, state) {
 // assignment/patterns
 fn match_pattern(pattern, value, typer) {
   try #(given, typer) = infer(value, typer)
+  // io.debug(given)
+  // io.debug(resolve(given, typer))
   case pattern {
     pattern.Variable(label) -> Ok(set_variable(label, given, typer))
     pattern.Tuple(elements) -> {
@@ -102,12 +187,30 @@ fn match_pattern(pattern, value, typer) {
           elements,
           typer,
           fn(label, typer) {
-            let #(type_var, typer) = next_unbound(typer)
+            let #(x, typer) = next_unbound(typer)
+            let type_var = monotype.Unbound(x)
             let typer = set_variable(label, type_var, typer)
             #(type_var, typer)
           },
         )
       let expected = monotype.Tuple(types)
+      unify(expected, given, typer)
+    }
+    pattern.Row(fields) -> {
+      let #(typed_fields, typer) =
+        list.map_state(
+          fields,
+          typer,
+          fn(field, typer) {
+            let #(name, label) = field
+            let #(x, typer) = next_unbound(typer)
+            let type_var = monotype.Unbound(x)
+            let typer = set_variable(label, type_var, typer)
+            #(#(name, type_var), typer)
+          },
+        )
+      let #(x, typer) = next_unbound(typer)
+      let expected = monotype.Row(typed_fields, Some(x))
       unify(expected, given, typer)
     }
   }
@@ -132,7 +235,7 @@ pub fn infer(
     }
     Row(fields) -> {
       try #(types, typer) = list.try_map_state(fields, typer, infer_field)
-      Ok(#(monotype.Row(types), typer))
+      Ok(#(monotype.Row(types, None), typer))
     }
     Variable(label) -> {
       try type_ = get_variable(label, typer)

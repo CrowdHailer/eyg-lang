@@ -1,3 +1,4 @@
+import gleam/option.{None}
 import eyg/ast
 import eyg/typer.{infer, init}
 import eyg/typer/monotype
@@ -28,7 +29,7 @@ pub fn infer_row_test() {
   let typer = init([])
   let untyped = ast.Row([#("foo", ast.Tuple([]))])
   let Ok(#(type_, _typer)) = infer(untyped, typer)
-  assert monotype.Row([#("foo", monotype.Tuple([]))]) = type_
+  assert monotype.Row([#("foo", monotype.Tuple([]))], None) = type_
 }
 
 pub fn missing_variable_test() {

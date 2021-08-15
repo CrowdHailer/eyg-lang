@@ -100,6 +100,18 @@ fn do_pop(list, value, accumulator) {
   }
 }
 
+pub fn key_pop(list: List(#(k, v)), key: k) -> Result(#(v, List(#(k, v))), Nil) {
+  do_key_pop(list, key, [])
+}
+
+fn do_key_pop(list, key, accumulator) {
+  case list {
+    [] -> Error(Nil)
+    [#(k, v), ..list] if k == key -> Ok(#(v, do_append(accumulator, list)))
+    [next, ..list] -> do_key_pop(list, key, [next, ..accumulator])
+  }
+}
+
 fn do_flatten(lists: List(List(a)), acc: List(a)) -> List(a) {
   case lists {
     [] -> acc
