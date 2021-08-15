@@ -1,5 +1,6 @@
 import gleam/list
-import eyg/ast.{Binary, Row, Tuple, Variable}
+import eyg/ast.{Binary, Let, Row, Tuple, Variable}
+import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype
 
@@ -20,11 +21,27 @@ pub fn init(variables) {
   State(variables)
 }
 
+// scope functions
 fn get_variable(label, state) {
   let State(variables) = state
   case list.key_find(variables, label) {
     Ok(polytype) -> Ok(polytype.instantiate(polytype))
     Error(Nil) -> Error(UnknownVariable(label))
+  }
+}
+
+fn set_variable(label, monotype, state) {
+  let polytype = polytype.generalise(monotype)
+  let State(variables) = state
+  let variables = [#(label, polytype), ..variables]
+  State(variables)
+}
+
+// assignment/patterns
+fn match_pattern(pattern, value, typer) {
+  try #(type_, typer) = infer(value, typer)
+  case pattern {
+    pattern.Variable(label) -> Ok(set_variable(label, type_, typer))
   }
 }
 
@@ -52,6 +69,10 @@ pub fn infer(
     Variable(label) -> {
       try type_ = get_variable(label, typer)
       Ok(#(type_, typer))
+    }
+    Let(pattern, value, then) -> {
+      try typer = match_pattern(pattern, value, typer)
+      infer(then, typer)
     }
   }
 }

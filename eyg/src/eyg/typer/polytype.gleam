@@ -9,3 +9,8 @@ pub fn instantiate(polytype) {
   let Polytype([], monotype) = polytype
   monotype
 }
+
+pub fn generalise(monotype) {
+  // TODO generalise fns
+  Polytype([], monotype)
+}
