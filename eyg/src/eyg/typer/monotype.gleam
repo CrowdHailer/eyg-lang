@@ -1,3 +1,4 @@
 pub type Monotype {
-  Tuple(List(Monotype))
+  Binary
+  Tuple(elements: List(Monotype))
 }

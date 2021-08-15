@@ -1,3 +1,4 @@
 pub type Node {
-  Tuple(List(Node))
+  Binary(value: String)
+  Tuple(elements: List(Node))
 }

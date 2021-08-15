@@ -15,3 +15,11 @@ pub fn infer_type_of_nested_tuple_test() {
   let Ok(#(type_, _typer)) = infer(untyped, typer)
   assert monotype.Tuple([monotype.Tuple([])]) = type_
 }
+
+pub fn infer_binary_test() {
+  let typer = init()
+  let untyped = ast.Binary("Hello")
+  let Ok(#(type_, _typer)) = infer(untyped, typer)
+  assert monotype.Binary = type_
+}
+
