@@ -44,6 +44,3 @@ pub fn infer_variable_test() {
   assert Ok(#(type_, _typer)) = infer(untyped, typer)
   assert monotype.Tuple([]) = type_
 }
-// abstraction test
-// application test
-// let/bind/assignment/pattern_test

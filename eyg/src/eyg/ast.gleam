@@ -8,4 +8,5 @@ pub type Node {
   Let(pattern: Pattern, value: Node, then: Node)
   Function(for: String, body: Node)
   Call(function: Node, with: Node)
+  Constructor(named: String, variant: String)
 }

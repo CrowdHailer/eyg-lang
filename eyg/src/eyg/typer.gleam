@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
-import eyg/ast.{Binary, Call, Function, Let, Row, Tuple, Variable}
+import eyg/ast.{Binary, Call, Constructor, Function, Let, Row, Tuple, Variable}
 import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype
@@ -72,11 +72,9 @@ pub fn resolve(type_, typer) {
       let to = resolve(to, typer)
       monotype.Function(from, to)
     }
+    monotype.Nominal(name, parameters) ->
+      monotype.Nominal(name, list.map(parameters, resolve(_, typer)))
   }
-  // _ -> {
-  //   io.debug(type_)
-  //   todo("resolvyy")
-  // }
 }
 
 fn unify_pair(pair, typer) {
@@ -139,11 +137,14 @@ fn unify(expected, given, typer) {
       given_from,
       given_return,
     ) -> {
+      io.debug("all the way in")
+      io.debug(expected_return)
+      io.debug(given_return)
+      io.debug("------!!!")
       try typer = unify(expected_from, given_from, typer)
       unify(expected_return, given_return, typer)
+      |> io.debug()
     }
-
-    // TODO need resolve Binary to Binary
     expected, given -> Error(UnmatchedTypes(expected, given))
   }
 }
@@ -173,7 +174,7 @@ fn do_group_shared(left, right, only_left, shared) {
 fn get_variable(label, state) {
   let State(variables: variables, ..) = state
   case list.key_find(variables, label) {
-    Ok(polytype) -> Ok(polytype.instantiate(polytype))
+    Ok(polytype) -> Ok(polytype.instantiate(polytype, state))
     Error(Nil) -> Error(UnknownVariable(label))
   }
 }
@@ -232,6 +233,19 @@ fn infer_field(field, typer) {
   Ok(#(#(name, type_), typer))
 }
 
+pub fn nominal() {
+  [
+    #(
+      "Boolean",
+      #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
+    ),
+    #(
+      "Option",
+      #([1], [#("Some", monotype.Unbound(1)), #("None", monotype.Tuple([]))]),
+    ),
+  ]
+}
+
 pub fn infer(
   tree: ast.Node,
   typer: State,
@@ -246,6 +260,29 @@ pub fn infer(
       try #(types, typer) = list.try_map_state(fields, typer, infer_field)
       Ok(#(monotype.Row(types, None), typer))
     }
+    Constructor(named, variant) ->
+      case list.key_find(nominal(), named) {
+        Ok(#(parameters, variants)) ->
+          case list.key_find(variants, variant) {
+            Ok(argument) -> {
+              let p =
+                polytype.Polytype(
+                  parameters,
+                  monotype.Function(
+                    argument,
+                    monotype.Nominal(
+                      named,
+                      list.map(parameters, monotype.Unbound),
+                    ),
+                  ),
+                )
+              let m = polytype.instantiate(p, typer)
+              io.debug("-----")
+              io.debug(m)
+              Ok(#(m, typer))
+            }
+          }
+      }
     Variable(label) -> {
       try type_ = get_variable(label, typer)
       Ok(#(type_, typer))
@@ -268,6 +305,8 @@ pub fn infer(
       let return_type = monotype.Unbound(x)
       try typer =
         unify(function_type, monotype.Function(with_type, return_type), typer)
+      io.debug("in call")
+      io.debug(typer)
       Ok(#(return_type, typer))
     }
   }
