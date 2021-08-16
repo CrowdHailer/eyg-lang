@@ -7,14 +7,6 @@ import eyg/typer/monotype
 import eyg/typer/polytype
 
 // Context/typer
-pub type State {
-  State(
-    variables: List(#(String, polytype.Polytype)),
-    next_unbound: Int,
-    substitutions: List(#(Int, monotype.Monotype)),
-  )
-}
-
 pub type Reason {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(label: String)
@@ -26,28 +18,18 @@ pub type Reason {
 
 // UnhandledVarients(remaining: List(String))
 // RedundantClause(match: String)
-pub fn init(variables) {
-  State(variables, 0, [])
-}
-
-fn next_unbound(state) {
-  let State(next_unbound: i, ..) = state
-  let state = State(..state, next_unbound: i + 1)
-  #(i, state)
-}
-
-pub fn resolve(type_, typer) {
-  let State(substitutions: substitutions, ..) = typer
+pub fn resolve(type_, unification) {
+  let monotype.Unification(substitutions: substitutions, ..) = unification
   case type_ {
     monotype.Unbound(i) ->
       case list.key_find(substitutions, i) {
         Ok(monotype.Unbound(j)) if i == j -> type_
         Error(Nil) -> type_
-        Ok(substitution) -> resolve(substitution, typer)
+        Ok(substitution) -> resolve(substitution, unification)
       }
     monotype.Binary -> monotype.Binary
     monotype.Tuple(elements) -> {
-      let elements = list.map(elements, resolve(_, typer))
+      let elements = list.map(elements, resolve(_, unification))
       monotype.Tuple(elements)
     }
     monotype.Row(fields, rest) -> {
@@ -56,13 +38,13 @@ pub fn resolve(type_, typer) {
           fields,
           fn(field) {
             let #(name, type_) = field
-            #(name, resolve(type_, typer))
+            #(name, resolve(type_, unification))
           },
         )
       case rest {
         None -> monotype.Row(resolved_fields, None)
         Some(i) ->
-          case resolve(monotype.Unbound(i), typer) {
+          case resolve(monotype.Unbound(i), unification) {
             monotype.Unbound(j) -> monotype.Row(resolved_fields, Some(j))
             monotype.Row(inner, rest) ->
               monotype.Row(list.append(resolved_fields, inner), rest)
@@ -70,77 +52,65 @@ pub fn resolve(type_, typer) {
       }
     }
     monotype.Function(from, to) -> {
-      let from = resolve(from, typer)
-      let to = resolve(to, typer)
+      let from = resolve(from, unification)
+      let to = resolve(to, unification)
       monotype.Function(from, to)
     }
     monotype.Nominal(name, parameters) ->
-      monotype.Nominal(name, list.map(parameters, resolve(_, typer)))
+      monotype.Nominal(name, list.map(parameters, resolve(_, unification)))
   }
 }
 
-fn unify_pair(pair, typer) {
+fn add_substitution(variable, resolves, unification) {
+  // let State(unification: unification, ..) = state
+  let monotype.Unification(substitutions: substitutions, ..) = unification
+  let substitutions = [#(variable, resolves), ..substitutions]
+  let unification =
+    monotype.Unification(..unification, substitutions: substitutions)
+  // State(..state, unification: unification)
+}
+
+fn unify_pair(pair, checker) {
   let #(expected, given) = pair
-  unify(expected, given, typer)
+  unify(expected, given, checker)
 }
 
 // monotype function??
-fn unify(expected, given, typer) {
-  let expected = resolve(expected, typer)
-  let given = resolve(given, typer)
+fn unify(expected, given, checker) {
+  let expected = resolve(expected, checker)
+  let given = resolve(given, checker)
   case expected, given {
-    monotype.Binary, monotype.Binary -> Ok(typer)
+    monotype.Binary, monotype.Binary -> Ok(checker)
     monotype.Tuple(expected), monotype.Tuple(given) ->
       case list.zip(expected, given) {
         Error(#(expected, given)) -> Error(IncorrectArity(expected, given))
-        Ok(pairs) -> list.try_fold(pairs, typer, unify_pair)
+        Ok(pairs) -> list.try_fold(pairs, checker, unify_pair)
       }
-    monotype.Unbound(i), any -> {
-      let State(substitutions: substitutions, ..) = typer
-      let substitutions = [#(i, any), ..substitutions]
-      Ok(State(..typer, substitutions: substitutions))
-    }
-    any, monotype.Unbound(i) -> {
-      let State(substitutions: substitutions, ..) = typer
-      let substitutions = [#(i, any), ..substitutions]
-      Ok(State(..typer, substitutions: substitutions))
-    }
+    monotype.Unbound(i), any -> Ok(add_substitution(i, any, checker))
+    any, monotype.Unbound(i) -> Ok(add_substitution(i, any, checker))
     monotype.Row(expected, expected_extra), monotype.Row(given, given_extra) -> {
       let #(expected, given, shared) = group_shared(expected, given)
-      let #(x, typer) = next_unbound(typer)
-      try typer = case given, expected_extra {
-        [], _ -> Ok(typer)
-        only, Some(i) -> {
-          // TODO add substitution fn, could check i not been in subsitution before.
-          let State(substitutions: substitutions, ..) = typer
-          let substitutions = [
-            #(i, monotype.Row(only, Some(x))),
-            ..substitutions
-          ]
-          Ok(State(..typer, substitutions: substitutions))
-        }
+      let #(x, checker) = monotype.next_unbound(checker)
+      try checker = case given, expected_extra {
+        [], _ -> Ok(checker)
+        only, Some(i) ->
+          Ok(add_substitution(i, monotype.Row(only, Some(x)), checker))
         only, None -> Error(MissingFields(only))
       }
-      try typer = case expected, given_extra {
-        [], _ -> Ok(typer)
-        only, Some(i) -> {
-          let State(substitutions: substitutions, ..) = typer
-          let substitutions = [
-            #(i, monotype.Row(only, Some(x))),
-            ..substitutions
-          ]
-          Ok(State(..typer, substitutions: substitutions))
-        }
+      try checker = case expected, given_extra {
+        [], _ -> Ok(checker)
+        only, Some(i) ->
+          Ok(add_substitution(i, monotype.Row(only, Some(x)), checker))
         only, None -> Error(MissingFields(only))
       }
-      list.try_fold(shared, typer, unify_pair)
+      list.try_fold(shared, checker, unify_pair)
     }
     monotype.Function(expected_from, expected_return), monotype.Function(
       given_from,
       given_return,
     ) -> {
-      try typer = unify(expected_from, given_from, typer)
-      unify(expected_return, given_return, typer)
+      try checker = unify(expected_from, given_from, checker)
+      unify(expected_return, given_return, checker)
     }
     expected, given -> Error(UnmatchedTypes(expected, given))
   }
@@ -168,66 +138,69 @@ fn do_group_shared(left, right, only_left, shared) {
 }
 
 // scope functions
-fn get_variable(label, state) {
-  let State(variables: variables, ..) = state
-  case list.key_find(variables, label) {
-    Ok(polytype) -> Ok(polytype.instantiate(polytype, state))
+fn get_variable(label, scope, checker) {
+  case list.key_find(scope, label) {
+    Ok(polytype) -> Ok(polytype.instantiate(polytype, checker))
     Error(Nil) -> Error(UnknownVariable(label))
   }
 }
 
-fn set_variable(label, monotype, state) {
+fn set_variable(label, monotype, scope, checker) {
   let polytype = polytype.generalise(monotype)
-  let State(variables: variables, ..) = state
-  let variables = [#(label, polytype), ..variables]
-  State(..state, variables: variables)
+  let scope = [#(label, polytype), ..scope]
+  #(scope, checker)
 }
 
 // assignment/patterns
-fn match_pattern(pattern, value, typer) {
-  try #(given, typer) = infer(value, typer)
+fn match_pattern(pattern, given, scope, checker) {
   case pattern {
-    pattern.Variable(label) -> Ok(set_variable(label, given, typer))
+    pattern.Variable(label) -> Ok(set_variable(label, given, scope, checker))
     pattern.Tuple(elements) -> {
-      let #(types, typer) =
+      let #(types, #(scope, checker)) =
         list.map_state(
           elements,
-          typer,
-          fn(label, typer) {
-            let #(x, typer) = next_unbound(typer)
+          #(scope, checker),
+          fn(label, state) {
+            let #(scope, checker) = state
+            let #(x, checker) = monotype.next_unbound(checker)
             let type_var = monotype.Unbound(x)
-            let typer = set_variable(label, type_var, typer)
-            #(type_var, typer)
+            let #(scope, checker) =
+              set_variable(label, type_var, scope, checker)
+            #(type_var, #(scope, checker))
           },
         )
       let expected = monotype.Tuple(types)
-      unify(expected, given, typer)
+      try checker = unify(expected, given, checker)
+      Ok(#(scope, checker))
     }
     pattern.Row(fields) -> {
-      let #(typed_fields, typer) =
+      let #(typed_fields, #(scope, checker)) =
         list.map_state(
           fields,
-          typer,
-          fn(field, typer) {
+          #(scope, checker),
+          fn(field, state) {
+            let #(scope, checker) = state
             let #(name, label) = field
-            let #(x, typer) = next_unbound(typer)
+            let #(x, checker) = monotype.next_unbound(checker)
             let type_var = monotype.Unbound(x)
-            let typer = set_variable(label, type_var, typer)
-            #(#(name, type_var), typer)
+            let #(scope, checker) =
+              set_variable(label, type_var, scope, checker)
+            #(#(name, type_var), #(scope, checker))
           },
         )
-      let #(x, typer) = next_unbound(typer)
+      let #(x, checker) = monotype.next_unbound(checker)
       let expected = monotype.Row(typed_fields, Some(x))
-      unify(expected, given, typer)
+      try checker = unify(expected, given, checker)
+      Ok(#(scope, checker))
     }
   }
 }
 
 // inference fns
-fn infer_field(field, typer) {
+fn infer_field(field, scope, checker) {
   let #(name, tree) = field
-  try #(type_, typer) = infer(tree, typer)
-  Ok(#(#(name, type_), typer))
+  try #(type_, checker) = do_infer(tree, scope, checker)
+  Ok(#(#(name, type_), checker))
 }
 
 pub fn nominal() {
@@ -243,19 +216,35 @@ pub fn nominal() {
   ]
 }
 
-pub fn infer(
+pub fn infer(tree, scope) {
+  try #(type_, checker) = do_infer(tree, scope, monotype.checker())
+  Ok(resolve(type_, checker))
+}
+
+fn do_infer(
   tree: ast.Node,
-  typer: State,
-) -> Result(#(monotype.Monotype, State), Reason) {
+  scope: List(#(String, polytype.Polytype)),
+  checker: monotype.Unification,
+) -> Result(#(monotype.Monotype, monotype.Unification), Reason) {
   case tree {
-    Binary(_) -> Ok(#(monotype.Binary, typer))
+    Binary(_) -> Ok(#(monotype.Binary, checker))
     Tuple(elements) -> {
-      try #(types, typer) = list.try_map_state(elements, typer, infer)
-      Ok(#(monotype.Tuple(types), typer))
+      try #(types, checker) =
+        list.try_map_state(
+          elements,
+          checker,
+          fn(e, checker) { do_infer(e, scope, checker) },
+        )
+      Ok(#(monotype.Tuple(types), checker))
     }
     Row(fields) -> {
-      try #(types, typer) = list.try_map_state(fields, typer, infer_field)
-      Ok(#(monotype.Row(types, None), typer))
+      try #(types, checker) =
+        list.try_map_state(
+          fields,
+          checker,
+          fn(field, checker) { infer_field(field, scope, checker) },
+        )
+      Ok(#(monotype.Row(types, None), checker))
     }
     Constructor(named, variant) ->
       case list.key_find(nominal(), named) {
@@ -273,36 +262,37 @@ pub fn infer(
                     ),
                   ),
                 )
-              let m = polytype.instantiate(p, typer)
-              Ok(#(m, typer))
+              let #(monotype, checker) = polytype.instantiate(p, checker)
+              Ok(#(monotype, checker))
             }
             Error(Nil) -> Error(UnknownVariant(variant, named))
           }
         Error(Nil) -> Error(UnknownType(named))
       }
     Variable(label) -> {
-      try type_ = get_variable(label, typer)
-      Ok(#(type_, typer))
+      try #(type_, checker) = get_variable(label, scope, checker)
+      Ok(#(type_, checker))
     }
     Let(pattern, value, then) -> {
-      try typer = match_pattern(pattern, value, typer)
-      infer(then, typer)
+      try #(value_type, checker) = do_infer(value, scope, checker)
+      try #(scope, checker) = match_pattern(pattern, value_type, scope, checker)
+      do_infer(then, scope, checker)
     }
     Function(label, body) -> {
-      let #(x, typer) = next_unbound(typer)
+      let #(x, checker) = monotype.next_unbound(checker)
       let type_var = monotype.Unbound(x)
-      let typer = set_variable(label, type_var, typer)
-      try #(return, typer) = infer(body, typer)
-      Ok(#(monotype.Function(type_var, return), typer))
+      let #(scope, checker) = set_variable(label, type_var, scope, checker)
+      try #(return, checker) = do_infer(body, scope, checker)
+      Ok(#(monotype.Function(type_var, return), checker))
     }
     Call(function, with) -> {
-      try #(function_type, typer) = infer(function, typer)
-      try #(with_type, typer) = infer(with, typer)
-      let #(x, typer) = next_unbound(typer)
+      try #(function_type, checker) = do_infer(function, scope, checker)
+      try #(with_type, checker) = do_infer(with, scope, checker)
+      let #(x, checker) = monotype.next_unbound(checker)
       let return_type = monotype.Unbound(x)
-      try typer =
-        unify(function_type, monotype.Function(with_type, return_type), typer)
-      Ok(#(return_type, typer))
+      try checker =
+        unify(function_type, monotype.Function(with_type, return_type), checker)
+      Ok(#(return_type, checker))
     }
   }
 }

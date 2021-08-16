@@ -1,44 +1,43 @@
 import gleam/io
 import eyg/ast
 import eyg/ast/pattern
-import eyg/typer.{infer, init, resolve}
+import eyg/typer.{infer}
 import eyg/typer/monotype
 import eyg/typer/polytype
 
 pub fn infer_variant_test() {
-  let typer = init([])
+  let scope = []
   let untyped = ast.Call(ast.Constructor("Boolean", "True"), ast.Tuple([]))
-  let Ok(#(type_, typer)) = infer(untyped, typer)
-  assert monotype.Nominal("Boolean", []) = resolve(type_, typer)
+  let Ok(type_) = infer(untyped, scope)
+  assert monotype.Nominal("Boolean", []) = type_
 }
 
 pub fn infer_concrete_parameterised_variant_test() {
-  let typer = init([])
+  let scope = []
   //   Think we might always put in tuple in my language
   let untyped = ast.Call(ast.Constructor("Option", "Some"), ast.Binary("value"))
-  let Ok(#(type_, typer)) = infer(untyped, typer)
-  assert monotype.Nominal("Option", [monotype.Binary]) = resolve(type_, typer)
+  let Ok(type_) = infer(untyped, scope)
+  assert monotype.Nominal("Option", [monotype.Binary]) = type_
 }
 
 pub fn infer_unspecified_parameterised_variant_test() {
-  let typer = init([])
+  let scope = []
   let untyped = ast.Call(ast.Constructor("Option", "None"), ast.Tuple([]))
-  let Ok(#(type_, typer)) = infer(untyped, typer)
-  assert monotype.Nominal("Option", [monotype.Unbound(_)]) =
-    resolve(type_, typer)
+  let Ok(type_) = infer(untyped, scope)
+  assert monotype.Nominal("Option", [monotype.Unbound(_)]) = type_
 }
 
 pub fn unknown_named_type_test() {
-  let typer = init([])
+  let scope = []
   let untyped = ast.Call(ast.Constructor("Foo", "X"), ast.Tuple([]))
-  let Error(reason) = infer(untyped, typer)
+  let Error(reason) = infer(untyped, scope)
   assert typer.UnknownType("Foo") = reason
 }
 
 pub fn unknown_variant_test() {
-  let typer = init([])
+  let scope = []
   let untyped = ast.Call(ast.Constructor("Boolean", "Perhaps"), ast.Tuple([]))
-  let Error(reason) = infer(untyped, typer)
+  let Error(reason) = infer(untyped, scope)
   assert typer.UnknownVariant("Perhaps", "Boolean") = reason
 }
 // TODO creating duplicate name

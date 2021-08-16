@@ -16,10 +16,11 @@ pub fn instantiate(polytype, typer) {
 
 fn do_instantiate(forall, monotype, typer) {
   case forall {
-    [] -> monotype
-    [variable, ..rest] -> {
-      let dummy = 1111
-      replace_variable(monotype, variable, dummy)
+    [] -> #(monotype, typer)
+    [variable, ..forall] -> {
+      let #(replacement, typer) = monotype.next_unbound(typer)
+      let monotype = replace_variable(monotype, variable, replacement)
+      do_instantiate(forall, monotype, typer)
     }
   }
 }
