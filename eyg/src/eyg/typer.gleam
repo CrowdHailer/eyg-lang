@@ -20,6 +20,8 @@ pub type Reason {
   UnknownVariable(label: String)
   UnmatchedTypes(expected: monotype.Monotype, given: monotype.Monotype)
   MissingFields(expected: List(#(String, monotype.Monotype)))
+  UnknownType(name: String)
+  UnknownVariant(variant: String, in: String)
 }
 
 // UnhandledVarients(remaining: List(String))
@@ -137,13 +139,8 @@ fn unify(expected, given, typer) {
       given_from,
       given_return,
     ) -> {
-      io.debug("all the way in")
-      io.debug(expected_return)
-      io.debug(given_return)
-      io.debug("------!!!")
       try typer = unify(expected_from, given_from, typer)
       unify(expected_return, given_return, typer)
-      |> io.debug()
     }
     expected, given -> Error(UnmatchedTypes(expected, given))
   }
@@ -277,11 +274,11 @@ pub fn infer(
                   ),
                 )
               let m = polytype.instantiate(p, typer)
-              io.debug("-----")
-              io.debug(m)
               Ok(#(m, typer))
             }
+            Error(Nil) -> Error(UnknownVariant(variant, named))
           }
+        Error(Nil) -> Error(UnknownType(named))
       }
     Variable(label) -> {
       try type_ = get_variable(label, typer)
@@ -305,8 +302,6 @@ pub fn infer(
       let return_type = monotype.Unbound(x)
       try typer =
         unify(function_type, monotype.Function(with_type, return_type), typer)
-      io.debug("in call")
-      io.debug(typer)
       Ok(#(return_type, typer))
     }
   }
