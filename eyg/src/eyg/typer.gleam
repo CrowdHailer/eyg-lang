@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
-import eyg/ast.{Binary, Let, Row, Tuple, Variable}
+import eyg/ast.{Binary, Function, Let, Row, Tuple, Variable}
 import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype
@@ -66,6 +66,11 @@ pub fn resolve(type_, typer) {
               monotype.Row(list.append(resolved_fields, inner), rest)
           }
       }
+    }
+    monotype.Function(from, to) -> {
+      let from = resolve(from, typer)
+      let to = resolve(to, typer)
+      monotype.Function(from, to)
     }
   }
   // _ -> {
@@ -239,6 +244,13 @@ pub fn infer(
     Let(pattern, value, then) -> {
       try typer = match_pattern(pattern, value, typer)
       infer(then, typer)
+    }
+    Function(label, body) -> {
+      let #(x, typer) = next_unbound(typer)
+      let type_var = monotype.Unbound(x)
+      let typer = set_variable(label, type_var, typer)
+      try #(return, typer) = infer(body, typer)
+      Ok(#(monotype.Function(type_var, return), typer))
     }
   }
 }

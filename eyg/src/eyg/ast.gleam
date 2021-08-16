@@ -6,4 +6,5 @@ pub type Node {
   Row(fields: List(#(String, Node)))
   Variable(label: String)
   Let(pattern: Pattern, value: Node, then: Node)
+  Function(for: String, body: Node)
 }
