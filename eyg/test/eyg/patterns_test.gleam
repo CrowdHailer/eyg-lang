@@ -73,7 +73,7 @@ pub fn growing_row_pattern_test() {
   assert #("bar", _) = b
 }
 
-pub fn mismatched_row_test() {
+pub fn matched_row_test() {
   let typer = init([#("x", polytype.Polytype([], monotype.Unbound(-1)))])
   let untyped =
     ast.Let(

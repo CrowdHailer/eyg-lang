@@ -83,11 +83,6 @@ fn unify_pair(pair, typer) {
 fn unify(expected, given, typer) {
   let expected = resolve(expected, typer)
   let given = resolve(given, typer)
-  // io.debug(given)
-  // io.debug(resolve(given, typer))
-  // io.debug("-==")
-  // I wonder if lazily calling resolve is a problem for rows.
-  // TODO resolve
   case expected, given {
     monotype.Tuple(expected), monotype.Tuple(given) ->
       case list.zip(expected, given) {
@@ -110,6 +105,7 @@ fn unify(expected, given, typer) {
       try typer = case given, expected_extra {
         [], _ -> Ok(typer)
         only, Some(i) -> {
+          // TODO add substitution fn, could check i not been in subsitution before.
           let State(substitutions: substitutions, ..) = typer
           let substitutions = [
             #(i, monotype.Row(only, Some(x))),
@@ -133,6 +129,7 @@ fn unify(expected, given, typer) {
       }
       list.try_fold(shared, typer, unify_pair)
     }
+    // TODO need resolve Binary to Binary
     expected, given -> Error(UnmatchedTypes(expected, given))
   }
 }
@@ -177,8 +174,6 @@ fn set_variable(label, monotype, state) {
 // assignment/patterns
 fn match_pattern(pattern, value, typer) {
   try #(given, typer) = infer(value, typer)
-  // io.debug(given)
-  // io.debug(resolve(given, typer))
   case pattern {
     pattern.Variable(label) -> Ok(set_variable(label, given, typer))
     pattern.Tuple(elements) -> {
