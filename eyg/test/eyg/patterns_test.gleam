@@ -1,9 +1,9 @@
 import gleam/io
 import eyg/ast
 import eyg/ast/pattern
-import eyg/typer.{infer, init, resolve}
-import eyg/typer/monotype
-import eyg/typer/polytype
+import eyg/typer.{infer, init}
+import eyg/typer/monotype.{resolve}
+import eyg/typer/polytype.{State}
 
 pub fn assignment_test() {
   let typer = init([])
@@ -23,7 +23,8 @@ pub fn tuple_pattern_test() {
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   //   could always resolve within infer fn
-  assert monotype.Binary = resolve(type_, typer)
+  let State(substitutions: substitutions, ..) = typer
+  assert monotype.Binary = resolve(type_, substitutions)
 }
 
 pub fn incorrect_tuple_size_test() {
@@ -48,7 +49,8 @@ pub fn matching_row_test() {
       ast.Variable("a"),
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
-  assert monotype.Binary = resolve(type_, typer)
+  let State(substitutions: substitutions, ..) = typer
+  assert monotype.Binary = resolve(type_, substitutions)
 }
 
 pub fn growing_row_pattern_test() {
@@ -65,10 +67,11 @@ pub fn growing_row_pattern_test() {
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
 
+  let State(substitutions: substitutions, ..) = typer
   assert monotype.Tuple([monotype.Unbound(i), monotype.Unbound(j)]) =
-    resolve(type_, typer)
+    resolve(type_, substitutions)
   assert True = i != j
-  assert monotype.Row([a, b], _) = resolve(monotype.Unbound(-1), typer)
+  assert monotype.Row([a, b], _) = resolve(monotype.Unbound(-1), substitutions)
   assert #("foo", _) = a
   assert #("bar", _) = b
 }
@@ -87,11 +90,12 @@ pub fn matched_row_test() {
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
 
+  let State(substitutions: substitutions, ..) = typer
   assert monotype.Tuple([monotype.Unbound(i), monotype.Unbound(j)]) =
-    resolve(type_, typer)
+    resolve(type_, substitutions)
   // Tests that the row fields are being resolve
   assert True = i == j
-  assert monotype.Row([a], _) = resolve(monotype.Unbound(-1), typer)
+  assert monotype.Row([a], _) = resolve(monotype.Unbound(-1), substitutions)
   assert #("foo", _) = a
 }
 

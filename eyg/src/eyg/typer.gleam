@@ -20,51 +20,6 @@ pub fn init(variables) {
   State(variables, 0, [])
 }
 
-pub fn resolve(type_, typer) {
-  let State(substitutions: substitutions, ..) = typer
-  case type_ {
-    monotype.Unbound(i) ->
-      case list.key_find(substitutions, i) {
-        Ok(monotype.Unbound(j)) if i == j -> type_
-        Error(Nil) -> type_
-        Ok(substitution) -> resolve(substitution, typer)
-      }
-    monotype.Binary -> monotype.Binary
-    monotype.Tuple(elements) -> {
-      let elements = list.map(elements, resolve(_, typer))
-      monotype.Tuple(elements)
-    }
-    monotype.Row(fields, rest) -> {
-      let resolved_fields =
-        list.map(
-          fields,
-          fn(field) {
-            let #(name, type_) = field
-            #(name, resolve(type_, typer))
-          },
-        )
-      case rest {
-        None -> monotype.Row(resolved_fields, None)
-        Some(i) ->
-          case resolve(monotype.Unbound(i), typer) {
-            monotype.Unbound(j) -> monotype.Row(resolved_fields, Some(j))
-            monotype.Row(inner, rest) ->
-              monotype.Row(list.append(resolved_fields, inner), rest)
-          }
-      }
-    }
-    monotype.Function(from, to) -> {
-      let from = resolve(from, typer)
-      let to = resolve(to, typer)
-      monotype.Function(from, to)
-    }
-  }
-  // _ -> {
-  //   io.debug(type_)
-  //   todo("resolvyy")
-  // }
-}
-
 fn add_substitution(variable, resolves, typer) {
   let State(substitutions: substitutions, ..) = typer
   let substitutions = [#(variable, resolves), ..substitutions]
@@ -77,9 +32,11 @@ fn unify_pair(pair, typer) {
 }
 
 // monotype function??
+// This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
 fn unify(expected, given, typer) {
-  let expected = resolve(expected, typer)
-  let given = resolve(given, typer)
+  let State(substitutions: substitutions, ..) = typer
+  let expected = monotype.resolve(expected, substitutions)
+  let given = monotype.resolve(given, substitutions)
   case expected, given {
     monotype.Binary, monotype.Binary -> Ok(typer)
     monotype.Tuple(expected), monotype.Tuple(given) ->
@@ -113,8 +70,6 @@ fn unify(expected, given, typer) {
       try typer = unify(expected_from, given_from, typer)
       unify(expected_return, given_return, typer)
     }
-
-    // TODO need resolve Binary to Binary
     expected, given -> Error(UnmatchedTypes(expected, given))
   }
 }

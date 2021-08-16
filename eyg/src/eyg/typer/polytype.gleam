@@ -21,6 +21,8 @@ pub type Polytype {
   Polytype(forall: List(Int), monotype: Monotype)
 }
 
+// take in an i for the offset
+// is there a name for the unification/constraints
 pub fn instantiate(polytype, typer) {
   let Polytype(forall, monotype) = polytype
   do_instantiate(forall, monotype, typer)
