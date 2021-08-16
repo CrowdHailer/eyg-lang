@@ -4,17 +4,9 @@ import gleam/option.{None, Some}
 import eyg/ast.{Binary, Call, Function, Let, Row, Tuple, Variable}
 import eyg/ast/pattern
 import eyg/typer/monotype
-import eyg/typer/polytype
+import eyg/typer/polytype.{State}
 
 // Context/typer
-pub type State {
-  State(
-    variables: List(#(String, polytype.Polytype)),
-    next_unbound: Int,
-    substitutions: List(#(Int, monotype.Monotype)),
-  )
-}
-
 pub type Reason {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(label: String)
@@ -26,12 +18,6 @@ pub type Reason {
 // RedundantClause(match: String)
 pub fn init(variables) {
   State(variables, 0, [])
-}
-
-fn next_unbound(state) {
-  let State(next_unbound: i, ..) = state
-  let state = State(..state, next_unbound: i + 1)
-  #(i, state)
 }
 
 pub fn resolve(type_, typer) {
@@ -107,7 +93,7 @@ fn unify(expected, given, typer) {
     }
     monotype.Row(expected, expected_extra), monotype.Row(given, given_extra) -> {
       let #(expected, given, shared) = group_shared(expected, given)
-      let #(x, typer) = next_unbound(typer)
+      let #(x, typer) = polytype.next_unbound(typer)
       try typer = case given, expected_extra {
         [], _ -> Ok(typer)
         only, Some(i) -> {
@@ -173,7 +159,7 @@ fn do_group_shared(left, right, only_left, shared) {
 fn get_variable(label, state) {
   let State(variables: variables, ..) = state
   case list.key_find(variables, label) {
-    Ok(polytype) -> Ok(polytype.instantiate(polytype))
+    Ok(polytype) -> Ok(polytype.instantiate(polytype, state))
     Error(Nil) -> Error(UnknownVariable(label))
   }
 }
@@ -196,7 +182,7 @@ fn match_pattern(pattern, value, typer) {
           elements,
           typer,
           fn(label, typer) {
-            let #(x, typer) = next_unbound(typer)
+            let #(x, typer) = polytype.next_unbound(typer)
             let type_var = monotype.Unbound(x)
             let typer = set_variable(label, type_var, typer)
             #(type_var, typer)
@@ -212,13 +198,13 @@ fn match_pattern(pattern, value, typer) {
           typer,
           fn(field, typer) {
             let #(name, label) = field
-            let #(x, typer) = next_unbound(typer)
+            let #(x, typer) = polytype.next_unbound(typer)
             let type_var = monotype.Unbound(x)
             let typer = set_variable(label, type_var, typer)
             #(#(name, type_var), typer)
           },
         )
-      let #(x, typer) = next_unbound(typer)
+      let #(x, typer) = polytype.next_unbound(typer)
       let expected = monotype.Row(typed_fields, Some(x))
       unify(expected, given, typer)
     }
@@ -247,7 +233,7 @@ pub fn infer(
       Ok(#(monotype.Row(types, None), typer))
     }
     Variable(label) -> {
-      try type_ = get_variable(label, typer)
+      try #(type_, typer) = get_variable(label, typer)
       Ok(#(type_, typer))
     }
     Let(pattern, value, then) -> {
@@ -255,7 +241,7 @@ pub fn infer(
       infer(then, typer)
     }
     Function(label, body) -> {
-      let #(x, typer) = next_unbound(typer)
+      let #(x, typer) = polytype.next_unbound(typer)
       let type_var = monotype.Unbound(x)
       let typer = set_variable(label, type_var, typer)
       try #(return, typer) = infer(body, typer)
@@ -264,7 +250,7 @@ pub fn infer(
     Call(function, with) -> {
       try #(function_type, typer) = infer(function, typer)
       try #(with_type, typer) = infer(with, typer)
-      let #(x, typer) = next_unbound(typer)
+      let #(x, typer) = polytype.next_unbound(typer)
       let return_type = monotype.Unbound(x)
       try typer =
         unify(function_type, monotype.Function(with_type, return_type), typer)
