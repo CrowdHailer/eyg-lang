@@ -7,4 +7,5 @@ pub type Node {
   Variable(label: String)
   Let(pattern: Pattern, value: Node, then: Node)
   Function(for: String, body: Node)
+  Call(function: Node, with: Node)
 }

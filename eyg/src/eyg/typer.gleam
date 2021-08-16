@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
-import eyg/ast.{Binary, Function, Let, Row, Tuple, Variable}
+import eyg/ast.{Binary, Call, Function, Let, Row, Tuple, Variable}
 import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype
@@ -89,6 +89,7 @@ fn unify(expected, given, typer) {
   let expected = resolve(expected, typer)
   let given = resolve(given, typer)
   case expected, given {
+    monotype.Binary, monotype.Binary -> Ok(typer)
     monotype.Tuple(expected), monotype.Tuple(given) ->
       case list.zip(expected, given) {
         Error(#(expected, given)) -> Error(IncorrectArity(expected, given))
@@ -134,6 +135,14 @@ fn unify(expected, given, typer) {
       }
       list.try_fold(shared, typer, unify_pair)
     }
+    monotype.Function(expected_from, expected_return), monotype.Function(
+      given_from,
+      given_return,
+    ) -> {
+      try typer = unify(expected_from, given_from, typer)
+      unify(expected_return, given_return, typer)
+    }
+
     // TODO need resolve Binary to Binary
     expected, given -> Error(UnmatchedTypes(expected, given))
   }
@@ -251,6 +260,15 @@ pub fn infer(
       let typer = set_variable(label, type_var, typer)
       try #(return, typer) = infer(body, typer)
       Ok(#(monotype.Function(type_var, return), typer))
+    }
+    Call(function, with) -> {
+      try #(function_type, typer) = infer(function, typer)
+      try #(with_type, typer) = infer(with, typer)
+      let #(x, typer) = next_unbound(typer)
+      let return_type = monotype.Unbound(x)
+      try typer =
+        unify(function_type, monotype.Function(with_type, return_type), typer)
+      Ok(#(return_type, typer))
     }
   }
 }
