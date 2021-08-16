@@ -105,8 +105,9 @@ fn get_variable(label, state) {
 }
 
 fn set_variable(label, monotype, state) {
-  let polytype = polytype.generalise(monotype)
-  let State(variables: variables, ..) = state
+  let State(variables: variables, substitutions: substitutions, ..) = state
+  let polytype =
+    polytype.generalise(monotype.resolve(monotype, substitutions), state)
   let variables = [#(label, polytype), ..variables]
   State(..state, variables: variables)
 }
@@ -165,6 +166,7 @@ pub fn infer(
   case tree {
     Binary(_) -> Ok(#(monotype.Binary, typer))
     Tuple(elements) -> {
+      // infer_with_scope(s)
       try #(types, typer) = list.try_map_state(elements, typer, infer)
       Ok(#(monotype.Tuple(types), typer))
     }
@@ -183,8 +185,11 @@ pub fn infer(
     Function(label, body) -> {
       let #(x, typer) = polytype.next_unbound(typer)
       let type_var = monotype.Unbound(x)
+      // TODO remove this nesting when we(if?) separate typer and scope
+      let State(variables: variables, ..) = typer
       let typer = set_variable(label, type_var, typer)
       try #(return, typer) = infer(body, typer)
+      let typer = State(..typer, variables: variables)
       Ok(#(monotype.Function(type_var, return), typer))
     }
     Call(function, with) -> {

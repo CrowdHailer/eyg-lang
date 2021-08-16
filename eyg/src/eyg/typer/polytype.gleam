@@ -1,4 +1,5 @@
-import gleam/option.{Some}
+import gleam/io
+import gleam/option.{None, Some}
 import gleam/list
 import eyg/typer/monotype.{Binary, Function, Monotype, Row, Tuple, Unbound}
 
@@ -68,7 +69,99 @@ fn replace_variable(monotype, x, y) {
   }
 }
 
-pub fn generalise(monotype) {
-  // TODO generalise fns
-  Polytype([], monotype)
+// maybe scope builds atop polytype
+// MUST BE resolved first
+pub fn generalise(monotype, state) {
+  case monotype {
+    Function(_from, _to) -> {
+      let State(variables: variables, ..) = state
+      let in_type = free_variables_in_monotype(monotype)
+      let in_scope = free_variables_in_scope(variables)
+      Polytype(difference(in_type, in_scope), monotype)
+    }
+    _ -> Polytype([], monotype)
+  }
+}
+
+fn free_variables_in_scope(variables) {
+  list.fold(
+    variables,
+    [],
+    fn(variable, free) {
+      let #(label, polytype) = variable
+      free_variables_in_polytype(polytype)
+      |> union(free)
+    },
+  )
+}
+
+fn free_variables_in_polytype(polytype) {
+  let Polytype(quantified, monotype) = polytype
+  free_variables_in_monotype(monotype)
+  |> difference(quantified)
+}
+
+fn free_variables_in_monotype(monotype) {
+  case monotype {
+    Binary -> []
+    Tuple(elements) ->
+      list.fold(
+        elements,
+        [],
+        fn(element, accumulator) {
+          union(free_variables_in_monotype(element), accumulator)
+        },
+      )
+    Row(fields, extra) -> {
+      let in_fields =
+        list.fold(
+          fields,
+          [],
+          fn(field, accumulator) {
+            let #(_name, value) = field
+            union(free_variables_in_monotype(value), accumulator)
+          },
+        )
+      case extra {
+        Some(i) -> push_new(i, in_fields)
+        None -> in_fields
+      }
+    }
+
+    Function(from, to) ->
+      union(free_variables_in_monotype(from), free_variables_in_monotype(to))
+    Unbound(i) -> [i]
+  }
+}
+
+fn difference(items: List(a), excluded: List(a)) -> List(a) {
+  do_difference(items, excluded, [])
+}
+
+fn do_difference(items, excluded, accumulator) {
+  case items {
+    [] -> list.reverse(accumulator)
+    [next, ..items] ->
+      case list.find(excluded, next) {
+        Ok(_) -> do_difference(items, excluded, accumulator)
+        Error(_) -> push_new(next, accumulator)
+      }
+  }
+}
+
+fn union(new: List(a), existing: List(a)) -> List(a) {
+  case new {
+    [] -> existing
+    [next, ..new] -> {
+      let existing = push_new(next, existing)
+      union(new, existing)
+    }
+  }
+}
+
+fn push_new(item: a, set: List(a)) -> List(a) {
+  case list.find(set, item) {
+    Ok(_) -> set
+    Error(Nil) -> [item, ..set]
+  }
 }

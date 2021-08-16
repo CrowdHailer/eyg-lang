@@ -67,3 +67,21 @@ pub fn call_with_incorrect_argument_test() {
     )
   let Error(typer.IncorrectArity(0, 1)) = infer(untyped, typer)
 }
+
+pub fn reuse_generic_function_test() {
+  let typer = init([])
+  let untyped =
+    ast.Let(
+      pattern.Variable("id"),
+      ast.Function("x", ast.Variable("x")),
+      ast.Tuple([
+        ast.Call(ast.Variable("id"), ast.Tuple([])),
+        ast.Call(ast.Variable("id"), ast.Binary("")),
+      ]),
+    )
+  let Ok(#(type_, typer)) = infer(untyped, typer)
+  let State(substitutions: substitutions, ..) = typer
+
+  let monotype.Tuple([monotype.Tuple([]), monotype.Binary]) =
+    resolve(type_, substitutions)
+}
