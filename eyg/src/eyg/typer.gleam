@@ -65,6 +65,12 @@ pub fn resolve(type_, typer) {
   // }
 }
 
+fn add_substitution(variable, resolves, typer) {
+  let State(substitutions: substitutions, ..) = typer
+  let substitutions = [#(variable, resolves), ..substitutions]
+  State(..typer, substitutions: substitutions)
+}
+
 fn unify_pair(pair, typer) {
   let #(expected, given) = pair
   unify(expected, given, typer)
@@ -81,42 +87,21 @@ fn unify(expected, given, typer) {
         Error(#(expected, given)) -> Error(IncorrectArity(expected, given))
         Ok(pairs) -> list.try_fold(pairs, typer, unify_pair)
       }
-    monotype.Unbound(i), any -> {
-      let State(substitutions: substitutions, ..) = typer
-      let substitutions = [#(i, any), ..substitutions]
-      Ok(State(..typer, substitutions: substitutions))
-    }
-    any, monotype.Unbound(i) -> {
-      let State(substitutions: substitutions, ..) = typer
-      let substitutions = [#(i, any), ..substitutions]
-      Ok(State(..typer, substitutions: substitutions))
-    }
+    monotype.Unbound(i), any -> Ok(add_substitution(i, any, typer))
+    any, monotype.Unbound(i) -> Ok(add_substitution(i, any, typer))
     monotype.Row(expected, expected_extra), monotype.Row(given, given_extra) -> {
       let #(expected, given, shared) = group_shared(expected, given)
       let #(x, typer) = polytype.next_unbound(typer)
       try typer = case given, expected_extra {
         [], _ -> Ok(typer)
-        only, Some(i) -> {
-          // TODO add substitution fn, could check i not been in subsitution before.
-          let State(substitutions: substitutions, ..) = typer
-          let substitutions = [
-            #(i, monotype.Row(only, Some(x))),
-            ..substitutions
-          ]
-          Ok(State(..typer, substitutions: substitutions))
-        }
+        only, Some(i) ->
+          Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
         only, None -> Error(MissingFields(only))
       }
       try typer = case expected, given_extra {
         [], _ -> Ok(typer)
-        only, Some(i) -> {
-          let State(substitutions: substitutions, ..) = typer
-          let substitutions = [
-            #(i, monotype.Row(only, Some(x))),
-            ..substitutions
-          ]
-          Ok(State(..typer, substitutions: substitutions))
-        }
+        only, Some(i) ->
+          Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
         only, None -> Error(MissingFields(only))
       }
       list.try_fold(shared, typer, unify_pair)
