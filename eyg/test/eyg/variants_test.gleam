@@ -106,8 +106,9 @@ pub fn mismatched_inner_type_test() {
       ast.Call(ast.Constructor("Boolean", "True"), ast.Binary("")),
     )
   let Error(reason) = infer(untyped, typer)
-  assert reason = typer.UnmatchedTypes(monotype.Tuple([]), monotype.Binary)
+  assert typer.UnmatchedTypes(monotype.Tuple([]), monotype.Binary) = reason
 }
+
 // TODO pattern destructure OR case
 // sum types don't need to be nominal, Homever there are very helpful to label the alternatives and some degree of nominal typing is useful for global look up
 // pub fn true(x) {
@@ -123,3 +124,86 @@ pub fn mismatched_inner_type_test() {
 //   }
 //   let r = bool(fn (_) {"hello"}, fn (_) {"world"})
 // }
+pub fn case_test() {
+  let typer =
+    init([
+      // TODO need a set variable option
+      #(
+        "x",
+        polytype.Polytype([], monotype.Nominal("Option", [monotype.Binary])),
+      ),
+    ])
+  let untyped =
+    ast.Name(
+      #(
+        "Option",
+        #([1], [#("Some", monotype.Unbound(1)), #("None", monotype.Tuple([]))]),
+      ),
+      ast.Case(
+        "Option",
+        ast.Variable("x"),
+        [
+          #("Some", "x", ast.Variable("x")),
+          #("None", "_", ast.Binary("default")),
+        ],
+      ),
+    )
+  let Ok(#(type_, typer)) = infer(untyped, typer)
+  let State(substitutions: substitutions, ..) = typer
+  assert monotype.Binary = monotype.resolve(type_, substitutions)
+}
+
+pub fn case_of_unknown_type_test() {
+  let typer = init([])
+  let untyped = ast.Case("Foo", ast.Variable("x"), [])
+  let Error(reason) = infer(untyped, typer)
+  assert typer.UnknownType("Foo") = reason
+}
+
+pub fn missmatched_case_subject_test() {
+  let typer = init([])
+  let untyped =
+    ast.Name(
+      #(
+        "Option",
+        #([1], [#("Some", monotype.Unbound(1)), #("None", monotype.Tuple([]))]),
+      ),
+      ast.Case("Option", ast.Binary(""), []),
+    )
+  let Error(reason) = infer(untyped, typer)
+  assert typer.UnmatchedTypes(
+    monotype.Nominal("Option", [monotype.Unbound(_)]),
+    monotype.Binary,
+  ) = reason
+}
+
+pub fn missmatched_nominal_case_subject_test() {
+  let typer = init([])
+  let untyped =
+    ast.Name(
+      #(
+        "Boolean",
+        #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
+      ),
+      ast.Name(
+        #(
+          "Option",
+          #(
+            [1],
+            [#("Some", monotype.Unbound(1)), #("None", monotype.Tuple([]))],
+          ),
+        ),
+        ast.Case(
+          "Option",
+          ast.Call(ast.Constructor("Boolean", "True"), ast.Tuple([])),
+          [],
+        ),
+      ),
+    )
+  let Error(reason) = infer(untyped, typer)
+  assert typer.UnmatchedTypes(
+    monotype.Nominal("Option", [monotype.Unbound(_)]),
+    monotype.Nominal("Boolean", []),
+  ) = reason
+}
+// TODO missmatched parameters length -> not sure how that can ever happen if the name has been accepted

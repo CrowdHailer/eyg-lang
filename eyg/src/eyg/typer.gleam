@@ -2,7 +2,7 @@ import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import eyg/ast.{
-  Binary, Call, Constructor, Function, Let, Name, Row, Tuple, Variable,
+  Binary, Call, Case, Constructor, Function, Let, Name, Row, Tuple, Variable,
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -68,6 +68,20 @@ fn unify(expected, given, typer) {
         only, None -> Error(MissingFields(only))
       }
       list.try_fold(shared, typer, unify_pair)
+    }
+    monotype.Nominal(expected_name, expected_parameters), monotype.Nominal(
+      given_name,
+      given_parameters,
+    ) -> {
+      try _ = case expected_name == given_name {
+        True -> Ok(Nil)
+        False -> Error(UnmatchedTypes(expected, given))
+      }
+      case list.zip(expected_parameters, given_parameters) {
+        Error(#(_expected, _given)) ->
+          todo("I don't think we should ever fail here")
+        Ok(pairs) -> list.try_fold(pairs, typer, unify_pair)
+      }
     }
     monotype.Function(expected_from, expected_return), monotype.Function(
       given_from,
@@ -244,5 +258,63 @@ pub fn infer(
         Error(Nil) -> Error(UnknownType(named))
       }
     }
+    Case(named, subject, clauses) -> {
+      let State(nominal: nominal, ..) = typer
+      case list.key_find(nominal, named) {
+        // Think the old version errored by instantiating everytime
+        Ok(#(parameters, variants)) -> {
+          let #(replacements, typer) =
+            list.map_state(
+              parameters,
+              typer,
+              fn(parameter, typer) {
+                let #(replacement, typer) = polytype.next_unbound(typer)
+                let pair = #(parameter, replacement)
+                #(pair, typer)
+              },
+            )
+          let expected =
+            pair_replace(
+              replacements,
+              monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
+            )
+          try #(subject_type, typer) = infer(subject, typer)
+          try typer = unify(expected, subject_type, typer)
+          let #(x, typer) = polytype.next_unbound(typer)
+          let return_type = monotype.Unbound(x)
+          let State(variables: variables, ..) = typer
+          // put variants in here
+          try #(_, typer) =
+            list.try_map_state(
+              clauses,
+              typer,
+              fn(clause, typer) {
+                let #(variant, variable, then) = clause
+                assert Ok(argument) = list.key_find(variants, variant)
+                let argument = pair_replace(replacements, argument)
+                // reset scope variables
+                let typer = State(..typer, variables: variables)
+                let typer = set_variable(variable, argument, typer)
+                try #(type_, typer) = infer(then, typer)
+                try typer = unify(return_type, type_, typer)
+                Ok(#(Nil, typer))
+              },
+            )
+          Ok(#(return_type, typer))
+        }
+        Error(Nil) -> Error(UnknownType(named))
+      }
+    }
   }
+}
+
+fn pair_replace(replacements, monotype) {
+  list.fold(
+    replacements,
+    monotype,
+    fn(pair, monotype) {
+      let #(x, y) = pair
+      polytype.replace_variable(monotype, x, y)
+    },
+  )
 }

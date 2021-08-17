@@ -43,7 +43,7 @@ fn do_instantiate(forall, monotype, typer) {
   }
 }
 
-fn replace_variable(monotype, x, y) {
+pub fn replace_variable(monotype, x, y) {
   case monotype {
     Binary -> Binary
     Tuple(elements) -> Tuple(list.map(elements, replace_variable(_, x, y)))
