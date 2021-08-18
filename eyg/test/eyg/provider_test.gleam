@@ -8,15 +8,14 @@ import eyg/typer/monotype.{resolve}
 import eyg/typer/polytype.{State}
 
 // TODO need to handle generalisation step in functions, I think might be all right BUT monomorphization would help.
-
 // usecases 
 // read file to string at compile time maybe a SQL query https://github.com/gleam-lang/suggestions/issues/125
 // Type checked template library https://github.com/gleam-lang/suggestions/issues/118
 // projection and joins for records/spreadsheets
 // type safe SQL https://github.com/gleam-lang/suggestions/issues/31
-
-
 // At the moment the provider is written in Gleam and is programatically part of the compiler
+// This is not a problem, works with the language as a library approach.
+// End users might be writing there own helper functions for filter/map or rows/dataframes but they are unlikely to be writing there own providers.
 fn env_provider(_config, hole) {
   case hole {
     monotype.Row(fields, _) ->
@@ -33,6 +32,7 @@ fn env_provider(_config, hole) {
 }
 
 // TODO js return type is not correct in let
+// The id in the provider should be generated. I'm using 999 as it's bigger than any unbound variable.
 pub fn config_test() {
   let typer =
     init(
@@ -56,6 +56,7 @@ pub fn config_test() {
 // Format
 // Templates
 // Hole TODO Unimplemented
+// Render with units/currencies Can access the phantom type
 // Object.entries(process.env) returns array of tuples
 fn with_equal(previous) {
   [

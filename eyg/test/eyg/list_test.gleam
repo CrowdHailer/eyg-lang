@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 
 fn add_one(acc) {
@@ -19,4 +20,15 @@ pub fn try_fold_test() {
       },
     )
   let 4 = acc
+}
+
+pub fn inc(x) {
+  let total = x + 1
+}
+
+pub fn let_test() {
+  let 2 =
+    inc(1)
+    |> io.debug()
+  Nil
 }
