@@ -208,40 +208,24 @@ pub fn render(tree, state) {
       squash(switch, subject)
       |> wrap_return(state)
     }
-    Provider(id) -> {
+    Provider(id, func) -> {
       let #(a, b, typer) = state
       let State(substitutions: substitutions, ..) = typer
-      case monotype.resolve(monotype.Unbound(id), substitutions) {
-        monotype.Row(fields, _) -> {
-          let tree =
-            ast.Row(list.map(
-              fields,
-              fn(field) {
-                case field {
-                  #(name, monotype.Binary) -> #(name, ast.Binary(name))
-                  #(name, _) -> {
-                    io.debug("unknown type")
-                    #(name, ast.Binary(name))
-                  }
-                }
-              },
-            ))
-          case typer.infer(tree, typer) {
-            Ok(#(type_, typer)) ->
-              case typer.unify(type_, monotype.Unbound(id), typer) {
-                Ok(typer) -> {
-                  let state = #(a, b, typer)
-                  render(tree, state)
-                }
-                Error(reason) -> {
-                  io.debug(reason)
-                  todo("could not unify")
-                }
-              }
-            _ -> todo("could not infer")
+      let hole = monotype.resolve(monotype.Unbound(id), substitutions)
+      let tree = func(hole)
+      case typer.infer(tree, typer) {
+        Ok(#(type_, typer)) ->
+          case typer.unify(type_, monotype.Unbound(id), typer) {
+            Ok(typer) -> {
+              let state = #(a, b, typer)
+              render(tree, state)
+            }
+            Error(reason) -> {
+              io.debug(reason)
+              todo("could not unify")
+            }
           }
-        }
-        _ -> todo("cant provide")
+        _ -> todo("could not infer")
       }
     }
   }

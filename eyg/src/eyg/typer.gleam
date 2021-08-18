@@ -327,7 +327,8 @@ pub fn infer(
         Error(Nil) -> Error(UnknownType(named))
       }
     }
-    Provider(id) -> Ok(#(monotype.Unbound(id), typer))
+    // Can't call the generator here because we don't know what the type will resolve to yet.
+    Provider(id, _generator) -> Ok(#(monotype.Unbound(id), typer))
   }
 }
 
