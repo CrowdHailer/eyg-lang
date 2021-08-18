@@ -76,27 +76,6 @@ pub fn nested_assignment_test() {
   let "match$1" = l5
 }
 
-// pub fn let_destructure_test() {
-//   let scope = init([])
-//   let untyped =
-//     varient(
-//       "User",
-//       [],
-//       [constructor("User", [monotype.Binary()])],
-//       destructure(
-//         "User",
-//         ["first_name"],
-//         ast.Call(ast.Variable("User"), [ast.Binary("abc")]),
-//         ast.Variable("first_name"),
-//       ),
-//     )
-//   let js = compile(untyped, scope)
-//   let [l1, l2, l3] = js
-//   let "let User$1 = ((...args) => Object.assign({ type: \"User\" }, args));" =
-//     l1
-//   let "let [first_name$1] = Object.values(User$1(\"abc\"));" = l2
-//   let "first_name$1" = l3
-// }
 pub fn tuple_term_test() {
   let untyped = ast.Tuple([ast.Binary("abc"), ast.Binary("xyz")])
   let js = compile(untyped, init([]))
@@ -215,71 +194,6 @@ pub fn row_destructure_test() {
   let "[]" = l2
 }
 
-// // Don't need to to a case expression for tuples
-// pub fn case_with_boolean_test() {
-//   let scope = init([])
-//   let untyped =
-//     support.with_boolean(function(
-//       ["bool"],
-//       case_(
-//         ast.Variable("bool"),
-//         [
-//           clause("True", [], ast.Binary("hello")),
-//           rest("ping", ast.Binary("bye!")),
-//         ],
-//       ),
-//     ))
-//   let js = compile(untyped, scope)
-//   let [l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12] = js
-//   let "let True$1 = ((...args) => Object.assign({ type: \"True\" }, args));" =
-//     l1
-//   let "let False$1 = ((...args) => Object.assign({ type: \"False\" }, args));" =
-//     l2
-//   let "(function self(bool$1) {" = l3
-//   let "  return ((subject) => {" = l4
-//   let "  if (subject.type == \"True\") {" = l5
-//   let "    let [] = Object.values(subject);" = l6
-//   let "    return \"hello\";" = l7
-//   let "  } else {" = l8
-//   let "    let ping$1 = subject;" = l9
-//   let "    return \"bye!\";" = l10
-//   let "  }})(bool$1);" = l11
-//   let "})" = l12
-// }
-// pub fn case_with_multiline_subject_test() {
-//   let scope =
-//     init([])
-//     |> scope.with_equal()
-//   let untyped =
-//     support.with_boolean(case_(
-//       ast.Let(
-//         pattern.Variable("x"),
-//         ast.Binary("a"),
-//         ast.Call(ast.Variable("equal"), [ast.Variable("x"), ast.Binary("b")]),
-//       ),
-//       [
-//         clause("True", [], ast.Binary("hello")),
-//         rest("ping", ast.Binary("bye!")),
-//       ],
-//     ))
-//   let js = compile(untyped, scope)
-//   let [l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12, l13] = js
-//   let "let True$1 = ((...args) => Object.assign({ type: \"True\" }, args));" =
-//     l1
-//   let "let False$1 = ((...args) => Object.assign({ type: \"False\" }, args));" =
-//     l2
-//   let "((subject) => {" = l3
-//   let "if (subject.type == \"True\") {" = l4
-//   let "  let [] = Object.values(subject);" = l5
-//   let "  return \"hello\";" = l6
-//   let "} else {" = l7
-//   let "  let ping$1 = subject;" = l8
-//   let "  return \"bye!\";" = l9
-//   let "}})((() => {" = l10
-//   let "  let x$1 = \"a\";" = l11
-//   let "  return equal$1(x$1, \"b\");" = l12
-//   let "})())" = l13
-// }
 pub fn simple_function_call_test() {
   let scope =
     init(
@@ -383,5 +297,82 @@ pub fn multiline_call_function_test() {
   let "  })()," = l5
   let ")" = l6
 }
+
 // // TODO email to ask about other language front ends. Is there a long form place to ask discord program lang questions
 // // program is going to render a call function that doesn't exist. 
+pub fn nominal_term_test() {
+  let scope = init([])
+  let untyped =
+    ast.Name(
+      #(
+        "Option",
+        #(
+          [1],
+          [
+            #("Some", monotype.Tuple([monotype.Unbound(1)])),
+            #("None", monotype.Tuple([])),
+          ],
+        ),
+      ),
+      ast.Call(
+        ast.Constructor("Option", "Some"),
+        ast.Tuple([ast.Binary("value")]),
+      ),
+    )
+  let js = compile(untyped, scope)
+  let [l1] = js
+  let "(function (inner) { return {variant: \"Some\", inner} })(\"value\")" = l1
+}
+
+// Don't need multiline test as that is the same as multiline call
+// If we want to avoid immediatly invokin function then would need the test and a special case in codegen
+pub fn case_with_boolean_test() {
+  let scope =
+    init([
+      #(
+        "x",
+        polytype.Polytype([], monotype.Nominal("Option", [monotype.Binary])),
+      ),
+    ])
+  let untyped =
+    ast.Name(
+      #(
+        "Option",
+        #(
+          [1],
+          [
+            #("Some", monotype.Tuple([monotype.Unbound(1)])),
+            #("None", monotype.Tuple([])),
+          ],
+        ),
+      ),
+      ast.Case(
+        "Option",
+        ast.Variable("x"),
+        [
+          #(
+            "Some",
+            "$",
+            ast.Let(
+              pattern.Tuple(["value"]),
+              ast.Variable("$"),
+              ast.Variable("value"),
+            ),
+          ),
+          #(
+            "None",
+            "$",
+            ast.Let(pattern.Tuple([]), ast.Variable("$"), ast.Binary("other")),
+          ),
+        ],
+      ),
+    )
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5, l6] = js
+  let "(({variant, inner: $}) => { switch (variant) {" = l1
+  let "  case \"Some\": let [value$1] = $;" = l2
+  let "    return value$1;" = l3
+  let "  case \"None\": let [] = $;" = l4
+  let "    return \"other\";" = l5
+  let "}})(x)" = l6
+}

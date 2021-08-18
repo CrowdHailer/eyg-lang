@@ -2,7 +2,9 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/string
-import eyg/ast.{Binary, Call, Function, Let, Name, Row, Tuple, Variable}
+import eyg/ast.{
+  Binary, Call, Case, Constructor, Function, Let, Name, Row, Tuple, Variable,
+}
 import eyg/ast/pattern
 import eyg/codegen/utilities.{
   indent, join, squash, wrap_lines, wrap_single_or_multiline,
@@ -174,9 +176,34 @@ pub fn render(tree, state) {
       squash(function, args_string)
       |> wrap_return(state)
     }
-    _ -> {
-      io.debug(tree)
-      todo("render this node")
+
+    Name(_name, then) -> render(then, state)
+    Constructor(_named, variant) -> [
+      join(["(function (inner) { return {variant: \"", variant, "\", inner} })"]),
+    ]
+    Case(_name, subject, clauses) -> {
+      let clauses =
+        list.map(
+          clauses,
+          fn(clause) {
+            let #(
+              variant,
+              "$",
+              Let(pattern.Tuple(_assigns), Variable("$"), _) as then,
+            ) = clause
+            // Using render here relies on a variable of $ not being set
+            let [first, ..rest] = render(then, in_tail(True, state))
+            [join(["case \"", variant, "\": ", first]), ..indent(rest)]
+          },
+        )
+        // could use subject and subject.inner in arbitrary let statements
+      let switch =
+        ["(({variant, inner: $}) => { switch (variant) {"]
+        |> list.append(indent(list.flatten(clauses)))
+        |> list.append(["}})"])
+      let subject = wrap_lines("(", maybe_wrap_expression(subject, state), ")")
+      squash(switch, subject)
+      |> wrap_return(state)
     }
   }
 }
