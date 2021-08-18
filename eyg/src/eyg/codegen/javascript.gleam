@@ -116,6 +116,27 @@ pub fn render(tree, state) {
           let assignment = join(["let ", destructure, " = "])
           #(wrap_lines(assignment, value, ";"), state)
         }
+        pattern.Row(fields) -> {
+          let #(fields, state) =
+            list.map_state(
+              fields,
+              state,
+              fn(field, state) {
+                let #(row_name, label) = field
+                let state = with_assignment(label, state)
+                let field = join([row_name, ": ", render_label(label, state)])
+                #(field, state)
+              },
+            )
+          let destructure =
+            fields
+            |> list.intersperse(", ")
+            // wrap_lines not a good name here
+            |> wrap_lines("{", _, "}")
+            |> join()
+          let assignment = join(["let ", destructure, " = "])
+          #(wrap_lines(assignment, value, ";"), state)
+        }
       }
       list.append(assignment, render(then, state))
     }

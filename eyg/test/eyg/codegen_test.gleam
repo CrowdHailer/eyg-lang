@@ -200,23 +200,24 @@ pub fn multiline_row_assignment_test() {
   let "  last_name: \"xyz\"," = l6
   let "}" = l7
 }
-// pub fn row_destructure_test() {
-//   let untyped =
-//     function(
-//       ["user"],
-//       destructure_row(
-//         [#("first_name", "a"), #("family_name", "b")],
-//         ast.Variable("user"),
-//         ast.Variable("a"),
-//       ),
-//     )
-//   let js = compile(untyped, init([]))
-//   let [l1, l2, l3, l4] = js
-//   let "(function self(user$1) {" = l1
-//   let "  let {first_name: a$1, family_name: b$1} = user$1;" = l2
-//   let "  return a$1;" = l3
-//   let "})" = l4
-// }
+
+pub fn row_destructure_test() {
+  let untyped =
+    ast.Let(
+      pattern.Row([#("first_name", "a"), #("family_name", "b")]),
+      ast.Variable("user"),
+      ast.Tuple([]),
+    )
+  let js =
+    compile(
+      untyped,
+      init([#("user", polytype.Polytype([], monotype.Unbound(-1)))]),
+    )
+  let [l1, l2] =
+    js
+  let "let {first_name: a$1, family_name: b$1} = user;" = l1
+  let "[]" = l2
+}
 // // Don't need to to a case expression for tuples
 // pub fn case_with_boolean_test() {
 //   let scope = init([])
