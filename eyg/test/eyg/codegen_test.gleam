@@ -2,10 +2,18 @@ import gleam/io
 import eyg/codegen/javascript
 import eyg/ast
 import eyg/ast/pattern
+import eyg/typer/monotype
+import eyg/typer/polytype
 import eyg/typer.{infer, init}
 
 fn compile(untyped, scope) {
-  let Ok(_) = infer(untyped, scope)
+  case infer(untyped, scope) {
+    Ok(_) -> Nil
+    Error(reason) -> {
+      io.debug(reason)
+      todo("failed to compile")
+    }
+  }
   javascript.render(untyped, #(False, []))
 }
 
@@ -25,31 +33,52 @@ pub fn variable_assignment_test() {
   let "let foo$2 = foo$1;" = l2
   let "foo$2" = l3
 }
-// pub fn nested_assignment_test() {
-//   let scope =
-//     init([])
-//     |> scope.with_equal()
-//   let untyped =
-//     ast.Let(
-//       "match",
-//       ast.Let(
-//         "tmp",
-//         ast.Binary("TMP!"),
-//         ast.Call(
-//           ast.Variable("equal"),
-//           [ast.Variable("tmp"), ast.Binary("test")],
-//         ),
-//       ),
-//       ast.Variable("match"),
-//     )
-//   let js = compile(untyped, scope)
-//   let [l1, l2, l3, l4, l5] = js
-//   let "let match$1 = (() => {" = l1
-//   let "  let tmp$1 = \"TMP!\";" = l2
-//   let "  return equal$1(tmp$1, \"test\");" = l3
-//   let "})();" = l4
-//   let "match$1" = l5
-// }
+
+fn with_equal(previous) {
+  [
+    #(
+      "equal",
+      polytype.Polytype(
+        [1],
+        monotype.Function(
+          monotype.Tuple([monotype.Unbound(1), monotype.Unbound(1)]),
+          monotype.Nominal("Boolean", []),
+        ),
+      ),
+    ),
+    ..previous
+  ]
+}
+
+pub fn nested_assignment_test() {
+  let scope =
+    init(
+      []
+      |> with_equal(),
+    )
+
+  let untyped =
+    ast.Let(
+      pattern.Variable("match"),
+      ast.Let(
+        pattern.Variable("tmp"),
+        ast.Binary("TMP!"),
+        ast.Call(
+          ast.Variable("equal"),
+          ast.Tuple([ast.Variable("tmp"), ast.Binary("test")]),
+        ),
+      ),
+      ast.Variable("match"),
+    )
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5] = js
+  let "let match$1 = (() => {" = l1
+  let "  let tmp$1 = \"TMP!\";" = l2
+  let "  return equal(tmp$1, \"test\");" = l3
+  let "})();" = l4
+  let "match$1" = l5
+}
+
 // pub fn let_destructure_test() {
 //   let scope = init([])
 //   let untyped =
@@ -71,62 +100,63 @@ pub fn variable_assignment_test() {
 //   let "let [first_name$1] = Object.values(User$1(\"abc\"));" = l2
 //   let "first_name$1" = l3
 // }
-// pub fn tuple_assignment_test() {
-//   let untyped =
-//     ast.Let(
-//       pattern.Variable("pair"),
-//       ast.Tuple([ast.Binary("abc"), ast.Binary("xyz")]),
-//       ast.Variable("pair"),
-//     )
-//   let js = compile(untyped, init([]))
-//   let [l1, l2] = js
-//   let "let pair$1 = [\"abc\", \"xyz\"];" = l1
-//   let "pair$1" = l2
-// }
-// pub fn nested_tuple_assignment_test() {
-//   let scope =
-//     init([])
-//     |> scope.with_equal()
-//   let untyped =
-//     ast.Let(
-//       "pair",
-//       ast.Tuple([
-//         ast.Let(
-//           "tmp",
-//           ast.Binary("TMP!"),
-//           ast.Call(
-//             ast.Variable("equal"),
-//             [ast.Variable("tmp"), ast.Binary("test")],
-//           ),
-//         ),
-//         ast.Binary("xyz"),
-//       ]),
-//       ast.Variable("pair"),
-//     )
-//   let js = compile(untyped, scope)
-//   let [l1, l2, l3, l4, l5, l6, l7, l8] = js
-//   let "let pair$1 = [" = l1
-//   let "  (() => {" = l2
-//   let "    let tmp$1 = \"TMP!\";" = l3
-//   let "    return equal$1(tmp$1, \"test\");" = l4
-//   let "  })()," = l5
-//   let "  \"xyz\"," = l6
-//   let "];" = l7
-//   let "pair$1" = l8
-// }
-// pub fn tuple_destructure_test() {
-//   let untyped =
-//     function(
-//       ["pair"],
-//       destructure_tuple(["a", "b"], ast.Variable("pair"), ast.Variable("a")),
-//     )
-//   let js = compile(untyped, init([]))
-//   let [l1, l2, l3, l4] = js
-//   let "(function self(pair$1) {" = l1
-//   let "  let [a$1, b$1] = pair$1;" = l2
-//   let "  return a$1;" = l3
-//   let "})" = l4
-// }
+pub fn tuple_term_test() {
+  let untyped = ast.Tuple([ast.Binary("abc"), ast.Binary("xyz")])
+  let js = compile(untyped, init([]))
+  let [l1] = js
+  let "[\"abc\", \"xyz\"]" = l1
+}
+
+pub fn multiline_tuple_assignment_test() {
+  let scope =
+    init(
+      []
+      |> with_equal(),
+    )
+  let untyped =
+    ast.Tuple([
+      ast.Let(
+        pattern.Variable("tmp"),
+        ast.Binary("TMP!"),
+        ast.Call(
+          ast.Variable("equal"),
+          ast.Tuple([ast.Variable("tmp"), ast.Binary("test")]),
+        ),
+      ),
+      ast.Binary("xyz"),
+    ])
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5, l6, l7] = js
+  let "[" = l1
+  let "  (() => {" = l2
+  let "    let tmp$1 = \"TMP!\";" = l3
+  let "    return equal(tmp$1, \"test\");" = l4
+  let "  })()," = l5
+  let "  \"xyz\"," = l6
+  let "]" = l7
+}
+
+pub fn tuple_destructure_test() {
+  let untyped =
+    ast.Let(pattern.Tuple(["a", "b"]), ast.Variable("pair"), ast.Tuple([]))
+
+  let js =
+    compile(
+      untyped,
+      init([
+        #(
+          "pair",
+          polytype.Polytype(
+            [],
+            monotype.Tuple([monotype.Binary, monotype.Binary]),
+          ),
+        ),
+      ]),
+    )
+  let [l1, l2] = js
+  let "let [a$1, b$1] = pair;" = l1
+  let "[]" = l2
+}
 // pub fn row_assignment_test() {
 //   let untyped =
 //     ast.Let(

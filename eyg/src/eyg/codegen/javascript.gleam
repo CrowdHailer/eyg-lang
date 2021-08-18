@@ -2,9 +2,11 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/string
-import eyg/ast.{Binary, Let, Name, Variable}
+import eyg/ast.{Binary, Call, Function, Let, Name, Tuple, Variable}
 import eyg/ast/pattern
-import eyg/codegen/utilities.{indent, wrap_lines}
+import eyg/codegen/utilities.{
+  indent, join, squash, wrap_lines, wrap_single_or_multiline,
+}
 
 pub fn maybe_wrap_expression(expression, state) {
   case expression {
@@ -53,17 +55,15 @@ fn count_label(state, label) {
   )
 }
 
-fn join(parts) {
-  list.fold(parts, "", fn(next, buffer) { string.concat(buffer, next) })
-}
-
 fn render_label(label, state) {
   case label {
     "self" -> "self"
-    label -> {
-      let count = count_label(state, label)
-      join([label, "$", int.to_string(count)])
-    }
+    label ->
+      case count_label(state, label) {
+        // if not previously rendered must be an external thing
+        0 -> label
+        count -> join([label, "$", int.to_string(count)])
+      }
   }
 }
 
@@ -71,6 +71,10 @@ pub fn render(tree, state) {
   case tree {
     // TODO escape
     Binary(content) -> wrap_return([join(["\"", content, "\""])], state)
+    Tuple(elements) ->
+      list.map(elements, maybe_wrap_expression(_, state))
+      |> wrap_single_or_multiline(",", "[", "]")
+      |> wrap_return(state)
     Let(pattern, value, then) -> {
       let value = maybe_wrap_expression(value, state)
       let #(assignment, state) = case pattern {
@@ -79,10 +83,37 @@ pub fn render(tree, state) {
           let assignment = join(["let ", render_label(label, state), " = "])
           #(wrap_lines(assignment, value, ";"), state)
         }
+        pattern.Tuple(elements) -> {
+          let #(elements, state) =
+            list.map_state(
+              elements,
+              state,
+              fn(label, state) {
+                let state = with_assignment(label, state)
+                #(render_label(label, state), state)
+              },
+            )
+          let destructure =
+            elements
+            |> list.intersperse(", ")
+            // wrap_lines not a good name here
+            |> wrap_lines("[", _, "]")
+            |> join()
+          let assignment = join(["let ", destructure, " = "])
+          #(wrap_lines(assignment, value, ";"), state)
+        }
       }
       list.append(assignment, render(then, state))
     }
     Variable(label) -> wrap_return([render_label(label, state)], state)
+    Call(function, with) -> {
+      assert Tuple(with) = with
+      let function = render(function, in_tail(False, state))
+      let with = list.map(with, maybe_wrap_expression(_, state))
+      let args_string = wrap_single_or_multiline(with, ",", "(", ")")
+      squash(function, args_string)
+      |> wrap_return(state)
+    }
     _ -> {
       io.debug(tree)
       todo("render this node")
