@@ -2,7 +2,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/string
-import eyg/ast.{Binary, Call, Function, Let, Name, Tuple, Variable}
+import eyg/ast.{Binary, Call, Function, Let, Name, Row, Tuple, Variable}
 import eyg/ast/pattern
 import eyg/codegen/utilities.{
   indent, join, squash, wrap_lines, wrap_single_or_multiline,
@@ -74,6 +74,20 @@ pub fn render(tree, state) {
     Tuple(elements) ->
       list.map(elements, maybe_wrap_expression(_, state))
       |> wrap_single_or_multiline(",", "[", "]")
+      |> wrap_return(state)
+    Row(fields) ->
+      list.map(
+        fields,
+        fn(field) {
+          let #(name, value) = field
+          wrap_lines(
+            string.concat(name, ": "),
+            maybe_wrap_expression(value, state),
+            "",
+          )
+        },
+      )
+      |> wrap_single_or_multiline(",", "{", "}")
       |> wrap_return(state)
     Let(pattern, value, then) -> {
       let value = maybe_wrap_expression(value, state)

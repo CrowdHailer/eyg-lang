@@ -157,51 +157,49 @@ pub fn tuple_destructure_test() {
   let "let [a$1, b$1] = pair;" = l1
   let "[]" = l2
 }
-// pub fn row_assignment_test() {
-//   let untyped =
-//     ast.Let(
-//       "user",
-//       row([
-//         #("first_name", ast.Binary("Bob")),
-//         #("family_name", ast.Binary("Ross")),
-//       ]),
-//       ast.Variable("user"),
-//     )
-//   let js = compile(untyped, init([]))
-//   let [l1, l2] = js
-//   let "let user$1 = {first_name: \"Bob\", family_name: \"Ross\"};" = l1
-//   let "user$1" = l2
-// }
-// pub fn nested_row_assignment_test() {
-//   let scope =
-//     init([])
-//     |> scope.with_equal()
-//   let untyped =
-//     row([
-//       #(
-//         "first_name",
-//         ast.Let(
-//           "tmp",
-//           ast.Binary("TMP!"),
-//           ast.Call(
-//             ast.Variable("equal"),
-//             [ast.Variable("tmp"), ast.Binary("test")],
-//           ),
-//         ),
-//       ),
-//       #("last_name", ast.Binary("xyz")),
-//     ])
-//   let js = compile(untyped, scope)
-//   // io.print(javascript.concat(js))
-//   let [l1, l2, l3, l4, l5, l6, l7] = js
-//   let "{" = l1
-//   let "  first_name: (() => {" = l2
-//   let "    let tmp$1 = \"TMP!\";" = l3
-//   let "    return equal$1(tmp$1, \"test\");" = l4
-//   let "  })()," = l5
-//   let "  last_name: \"xyz\"," = l6
-//   let "}" = l7
-// }
+
+pub fn row_assignment_test() {
+  let untyped =
+    ast.Row([
+      #("first_name", ast.Binary("Bob")),
+      #("family_name", ast.Binary("Ross")),
+    ])
+  let js = compile(untyped, init([]))
+  let [l1] = js
+  let "{first_name: \"Bob\", family_name: \"Ross\"}" = l1
+}
+
+pub fn multiline_row_assignment_test() {
+  let scope =
+    init(
+      []
+      |> with_equal(),
+    )
+  let untyped =
+    ast.Row([
+      #(
+        "first_name",
+        ast.Let(
+          pattern.Variable("tmp"),
+          ast.Binary("TMP!"),
+          ast.Call(
+            ast.Variable("equal"),
+            ast.Tuple([ast.Variable("tmp"), ast.Binary("test")]),
+          ),
+        ),
+      ),
+      #("last_name", ast.Binary("xyz")),
+    ])
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5, l6, l7] = js
+  let "{" = l1
+  let "  first_name: (() => {" = l2
+  let "    let tmp$1 = \"TMP!\";" = l3
+  let "    return equal(tmp$1, \"test\");" = l4
+  let "  })()," = l5
+  let "  last_name: \"xyz\"," = l6
+  let "}" = l7
+}
 // pub fn row_destructure_test() {
 //   let untyped =
 //     function(
