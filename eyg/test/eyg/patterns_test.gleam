@@ -17,8 +17,8 @@ pub fn tuple_pattern_test() {
   let typer = init([])
   let untyped =
     ast.Let(
-      pattern.Tuple(["a"]),
-      ast.Tuple([ast.Binary("")]),
+      pattern.Tuple(["a", "b"]),
+      ast.Tuple([ast.Binary(""), ast.Tuple([])]),
       ast.Variable("a"),
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)

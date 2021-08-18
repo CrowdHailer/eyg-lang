@@ -142,11 +142,12 @@ fn match_pattern(pattern, value, typer) {
         list.map_state(
           elements,
           typer,
-          fn(label, typer) {
-            let #(x, typer) = polytype.next_unbound(typer)
+          // Don't call typer as there is a bug
+          fn(label, t) {
+            let #(x, t) = polytype.next_unbound(t)
             let type_var = monotype.Unbound(x)
-            let typer = set_variable(label, type_var, typer)
-            #(type_var, typer)
+            let t = set_variable(label, type_var, t)
+            #(type_var, t)
           },
         )
       let expected = monotype.Tuple(types)
@@ -157,12 +158,12 @@ fn match_pattern(pattern, value, typer) {
         list.map_state(
           fields,
           typer,
-          fn(field, typer) {
+          fn(field, t) {
             let #(name, label) = field
-            let #(x, typer) = polytype.next_unbound(typer)
+            let #(x, t) = polytype.next_unbound(t)
             let type_var = monotype.Unbound(x)
-            let typer = set_variable(label, type_var, typer)
-            #(#(name, type_var), typer)
+            let t = set_variable(label, type_var, t)
+            #(#(name, type_var), t)
           },
         )
       let #(x, typer) = polytype.next_unbound(typer)
