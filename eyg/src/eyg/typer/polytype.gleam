@@ -1,7 +1,9 @@
 import gleam/io
 import gleam/option.{None, Some}
 import gleam/list
-import eyg/typer/monotype.{Binary, Function, Monotype, Row, Tuple, Unbound}
+import eyg/typer/monotype.{
+  Binary, Function, Monotype, Nominal, Row, Tuple, Unbound,
+}
 
 // TODO break up scope typer
 pub type State {
@@ -9,6 +11,7 @@ pub type State {
     variables: List(#(String, Polytype)),
     next_unbound: Int,
     substitutions: List(#(Int, Monotype)),
+    nominal: List(#(String, #(List(Int), List(#(String, monotype.Monotype))))),
   )
 }
 
@@ -40,7 +43,7 @@ fn do_instantiate(forall, monotype, typer) {
   }
 }
 
-fn replace_variable(monotype, x, y) {
+pub fn replace_variable(monotype, x, y) {
   case monotype {
     Binary -> Binary
     Tuple(elements) -> Tuple(list.map(elements, replace_variable(_, x, y)))
@@ -59,6 +62,8 @@ fn replace_variable(monotype, x, y) {
       }
       Row(fields, rest)
     }
+    Nominal(name, elements) ->
+      Nominal(name, list.map(elements, replace_variable(_, x, y)))
     Function(from, to) ->
       Function(replace_variable(from, x, y), replace_variable(to, x, y))
     Unbound(i) ->
@@ -88,7 +93,7 @@ fn free_variables_in_scope(variables) {
     variables,
     [],
     fn(variable, free) {
-      let #(label, polytype) = variable
+      let #(_label, polytype) = variable
       free_variables_in_polytype(polytype)
       |> union(free)
     },

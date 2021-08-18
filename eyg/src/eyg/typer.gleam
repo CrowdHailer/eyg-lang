@@ -1,7 +1,9 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
-import eyg/ast.{Binary, Call, Function, Let, Row, Tuple, Variable}
+import eyg/ast.{
+  Binary, Call, Case, Constructor, Function, Let, Name, Row, Tuple, Variable,
+}
 import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype.{State}
@@ -12,12 +14,15 @@ pub type Reason {
   UnknownVariable(label: String)
   UnmatchedTypes(expected: monotype.Monotype, given: monotype.Monotype)
   MissingFields(expected: List(#(String, monotype.Monotype)))
+  UnknownType(name: String)
+  UnknownVariant(variant: String, in: String)
+  DuplicateType(name: String)
 }
 
 // UnhandledVarients(remaining: List(String))
 // RedundantClause(match: String)
 pub fn init(variables) {
-  State(variables, 0, [])
+  State(variables, 0, [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -33,6 +38,7 @@ fn unify_pair(pair, typer) {
 
 // monotype function??
 // This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
+// next unbound inside mono can be integer and unbound(i) outside
 fn unify(expected, given, typer) {
   let State(substitutions: substitutions, ..) = typer
   let expected = monotype.resolve(expected, substitutions)
@@ -62,6 +68,20 @@ fn unify(expected, given, typer) {
         only, None -> Error(MissingFields(only))
       }
       list.try_fold(shared, typer, unify_pair)
+    }
+    monotype.Nominal(expected_name, expected_parameters), monotype.Nominal(
+      given_name,
+      given_parameters,
+    ) -> {
+      try _ = case expected_name == given_name {
+        True -> Ok(Nil)
+        False -> Error(UnmatchedTypes(expected, given))
+      }
+      case list.zip(expected_parameters, given_parameters) {
+        Error(#(_expected, _given)) ->
+          todo("I don't think we should ever fail here")
+        Ok(pairs) -> list.try_fold(pairs, typer, unify_pair)
+      }
     }
     monotype.Function(expected_from, expected_return), monotype.Function(
       given_from,
@@ -109,7 +129,7 @@ fn set_variable(label, monotype, state) {
   let polytype =
     polytype.generalise(monotype.resolve(monotype, substitutions), state)
   let variables = [#(label, polytype), ..variables]
-  State(..state, variables: variables)
+  State(..state, variables: variables, substitutions: substitutions)
 }
 
 // assignment/patterns
@@ -201,5 +221,99 @@ pub fn infer(
         unify(function_type, monotype.Function(with_type, return_type), typer)
       Ok(#(return_type, typer))
     }
+    Name(new_type, then) -> {
+      let #(named, _construction) = new_type
+      let State(nominal: nominal, ..) = typer
+      case list.key_find(nominal, named) {
+        Error(Nil) -> {
+          let typer = State(..typer, nominal: [new_type, ..nominal])
+          infer(then, typer)
+        }
+        Ok(_) -> Error(DuplicateType(named))
+      }
+    }
+    Constructor(named, variant) -> {
+      let State(nominal: nominal, ..) = typer
+      case list.key_find(nominal, named) {
+        Ok(#(parameters, variants)) ->
+          case list.key_find(variants, variant) {
+            Ok(argument) -> {
+              // The could be generated in the name phase
+              let polytype =
+                polytype.Polytype(
+                  parameters,
+                  monotype.Function(
+                    argument,
+                    monotype.Nominal(
+                      named,
+                      list.map(parameters, monotype.Unbound),
+                    ),
+                  ),
+                )
+              let #(monotype, typer) = polytype.instantiate(polytype, typer)
+              Ok(#(monotype, typer))
+            }
+            Error(Nil) -> Error(UnknownVariant(variant, named))
+          }
+        Error(Nil) -> Error(UnknownType(named))
+      }
+    }
+    Case(named, subject, clauses) -> {
+      let State(nominal: nominal, ..) = typer
+      case list.key_find(nominal, named) {
+        // Think the old version errored by instantiating everytime
+        Ok(#(parameters, variants)) -> {
+          let #(replacements, typer) =
+            list.map_state(
+              parameters,
+              typer,
+              fn(parameter, typer) {
+                let #(replacement, typer) = polytype.next_unbound(typer)
+                let pair = #(parameter, replacement)
+                #(pair, typer)
+              },
+            )
+          let expected =
+            pair_replace(
+              replacements,
+              monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
+            )
+          try #(subject_type, typer) = infer(subject, typer)
+          try typer = unify(expected, subject_type, typer)
+          let #(x, typer) = polytype.next_unbound(typer)
+          let return_type = monotype.Unbound(x)
+          let State(variables: variables, ..) = typer
+          try typer =
+            list.try_fold(
+              clauses,
+              typer,
+              // This is an error caused when the name typer is used.
+              fn(clause, t) {
+                let #(variant, variable, then) = clause
+                assert Ok(argument) = list.key_find(variants, variant)
+                let argument = pair_replace(replacements, argument)
+                // reset scope variables
+                let t = State(..t, variables: variables)
+                let t = set_variable(variable, argument, t)
+                try #(type_, t) = infer(then, t)
+                unify(return_type, type_, t)
+              },
+            )
+          Ok(#(return_type, typer))
+        }
+        Error(Nil) -> Error(UnknownType(named))
+      }
+    }
   }
+}
+
+fn pair_replace(replacements, monotype) {
+  list.fold(
+    replacements,
+    monotype,
+    fn(pair, monotype) {
+      let #(x, y) = pair
+      polytype.replace_variable(monotype, x, y)
+    },
+  )
 }

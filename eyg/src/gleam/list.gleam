@@ -1,3 +1,5 @@
+import gleam/io
+
 // This should probably be contains
 pub fn find(list: List(a), search: a) -> Result(a, Nil) {
   case list {
