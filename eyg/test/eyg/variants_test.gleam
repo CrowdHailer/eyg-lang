@@ -231,4 +231,24 @@ pub fn missmatched_nominal_case_subject_test() {
     monotype.Nominal("Boolean", []),
   ) = reason
 }
+
 // TODO missmatched parameters length -> not sure how that can ever happen if the name has been accepted
+pub fn unknown_variant_in_clause_test() {
+  let typer =
+    init([#("x", polytype.Polytype([], monotype.Nominal("Boolean", [])))])
+  let untyped =
+    ast.Name(
+      #(
+        "Boolean",
+        #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
+      ),
+      ast.Case(
+        "Boolean",
+        ast.Variable("x"),
+        [#("Perhaps", "_", ast.Binary("value"))],
+      ),
+    )
+  let Error(reason) = infer(untyped, typer)
+  assert typer.UnknownVariant("Perhaps", "Boolean") = reason
+}
+// clause after catch all and duplicate catch all, we don't have catch all

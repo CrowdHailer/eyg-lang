@@ -290,7 +290,10 @@ pub fn infer(
               // This is an error caused when the name typer is used.
               fn(clause, t) {
                 let #(variant, variable, then) = clause
-                assert Ok(argument) = list.key_find(variants, variant)
+                try argument = case list.key_find(variants, variant) {
+                  Ok(argument) -> Ok(argument)
+                  Error(Nil) -> Error(UnknownVariant(variant, named))
+                }
                 let argument = pair_replace(replacements, argument)
                 // reset scope variables
                 let t = State(..t, variables: variables)
