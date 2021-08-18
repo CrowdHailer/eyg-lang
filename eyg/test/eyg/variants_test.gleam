@@ -251,4 +251,45 @@ pub fn unknown_variant_in_clause_test() {
   let Error(reason) = infer(untyped, typer)
   assert typer.UnknownVariant("Perhaps", "Boolean") = reason
 }
+
+pub fn duplicate_clause_test() {
+  let typer =
+    init([#("x", polytype.Polytype([], monotype.Nominal("Boolean", [])))])
+  let untyped =
+    ast.Name(
+      #(
+        "Boolean",
+        #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
+      ),
+      ast.Case(
+        "Boolean",
+        ast.Variable("x"),
+        [
+          #("True", "_", ast.Binary("value")),
+          #("True", "_", ast.Binary("repeated")),
+        ],
+      ),
+    )
+  let Error(reason) = infer(untyped, typer)
+  assert typer.RedundantClause("True") = reason
+}
+
+pub fn unhandled_variants_test() {
+  let typer =
+    init([#("x", polytype.Polytype([], monotype.Nominal("Boolean", [])))])
+  let untyped =
+    ast.Name(
+      #(
+        "Boolean",
+        #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
+      ),
+      ast.Case(
+        "Boolean",
+        ast.Variable("x"),
+        [#("True", "_", ast.Binary("value"))],
+      ),
+    )
+  let Error(reason) = infer(untyped, typer)
+  assert typer.UnhandledVariants(["False"]) = reason
+}
 // clause after catch all and duplicate catch all, we don't have catch all

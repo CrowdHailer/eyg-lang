@@ -17,10 +17,10 @@ pub type Reason {
   UnknownType(name: String)
   UnknownVariant(variant: String, in: String)
   DuplicateType(name: String)
+  RedundantClause(match: String)
+  UnhandledVariants(remaining: List(String))
 }
 
-// UnhandledVarients(remaining: List(String))
-// RedundantClause(match: String)
 pub fn init(variables) {
   State(variables, 0, [], [])
 }
@@ -283,26 +283,45 @@ pub fn infer(
           let #(x, typer) = polytype.next_unbound(typer)
           let return_type = monotype.Unbound(x)
           let State(variables: variables, ..) = typer
-          try typer =
+          try #(unhandled, typer) =
             list.try_fold(
               clauses,
-              typer,
+              #(variants, typer),
               // This is an error caused when the name typer is used.
-              fn(clause, t) {
+              fn(clause, state) {
+                let #(remaining, t) = state
                 let #(variant, variable, then) = clause
-                try argument = case list.key_find(variants, variant) {
-                  Ok(argument) -> Ok(argument)
-                  Error(Nil) -> Error(UnknownVariant(variant, named))
+                try #(argument, remaining) = case list.key_pop(
+                  remaining,
+                  variant,
+                ) {
+                  Ok(value) -> Ok(value)
+                  Error(Nil) ->
+                    case list.key_find(variants, variant) {
+                      Ok(_) -> Error(RedundantClause(variant))
+                      Error(Nil) -> Error(UnknownVariant(variant, named))
+                    }
                 }
                 let argument = pair_replace(replacements, argument)
                 // reset scope variables
                 let t = State(..t, variables: variables)
                 let t = set_variable(variable, argument, t)
                 try #(type_, t) = infer(then, t)
-                unify(return_type, type_, t)
+                try t = unify(return_type, type_, t)
+                Ok(#(remaining, t))
               },
             )
-          Ok(#(return_type, typer))
+          case unhandled {
+            [] -> Ok(#(return_type, typer))
+            _ ->
+              Error(UnhandledVariants(list.map(
+                unhandled,
+                fn(variant) {
+                  let #(variant, _) = variant
+                  variant
+                },
+              )))
+          }
         }
         Error(Nil) -> Error(UnknownType(named))
       }
