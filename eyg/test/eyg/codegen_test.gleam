@@ -17,9 +17,6 @@ fn compile(untyped, scope) {
   javascript.render(untyped, #(False, []))
 }
 
-external fn stringify(a) -> String =
-  "" "JSON.stringify"
-
 pub fn variable_assignment_test() {
   let untyped =
     ast.Let(
@@ -213,11 +210,11 @@ pub fn row_destructure_test() {
       untyped,
       init([#("user", polytype.Polytype([], monotype.Unbound(-1)))]),
     )
-  let [l1, l2] =
-    js
+  let [l1, l2] = js
   let "let {first_name: a$1, family_name: b$1} = user;" = l1
   let "[]" = l2
 }
+
 // // Don't need to to a case expression for tuples
 // pub fn case_with_boolean_test() {
 //   let scope = init([])
@@ -283,89 +280,108 @@ pub fn row_destructure_test() {
 //   let "  return equal$1(x$1, \"b\");" = l12
 //   let "})())" = l13
 // }
-// pub fn simple_function_call_test() {
-//   let scope =
-//     init([])
-//     |> scope.with_equal()
-//   let untyped =
-//     ast.Call(ast.Variable("equal"), [ast.Binary("foo"), ast.Binary("bar")])
-//   let js = compile(untyped, scope)
-//   let [l1] = js
-//   let "equal$1(\"foo\", \"bar\")" = l1
-// }
-// pub fn oneline_function_test() {
-//   let scope = init([])
-//   let untyped =
-//     ast.Let(
-//       pattern.Variable("x"),
-//       function(["x"], ast.Variable("x")),
-//       ast.Variable("x"),
-//     )
-//   let js = compile(untyped, scope)
-//   let [l1, l2] = js
-//   let "let x$1 = (function self(x$1) { return x$1; });" = l1
-//   let "x$1" = l2
-// }
-// pub fn call_oneline_function_test() {
-//   let scope = init([])
-//   let untyped =
-//     ast.Call(function(["x"], ast.Variable("x")), [ast.Binary("hello")])
-//   let js = compile(untyped, scope)
-//   let [l1] = js
-//   let "(function self(x$1) { return x$1; })(\"hello\")" = l1
-// }
-// pub fn multiline_function_test() {
-//   let scope =
-//     init([])
-//     |> scope.with_equal()
-//   let untyped =
-//     ast.Let(
-//       "test",
-//       function(
-//         ["a", "b"],
-//         ast.Let(
-//           "a",
-//           ast.Call(
-//             ast.Variable("equal"),
-//             [ast.Variable("a"), ast.Binary("blah")],
-//           ),
-//           ast.Call(
-//             ast.Variable("equal"),
-//             [ast.Variable("b"), ast.Binary("other")],
-//           ),
-//         ),
-//       ),
-//       ast.Variable("test"),
-//     )
-//   let js = compile(untyped, scope)
-//   let [l1, l2, l3, l4, l5] = js
-//   let "let test$1 = (function self(a$1, b$1) {" = l1
-//   let "  let a$2 = equal$1(a$1, \"blah\");" = l2
-//   let "  return equal$1(b$1, \"other\");" = l3
-//   let "});" = l4
-//   let "test$1" = l5
-// }
-// pub fn multiline_call_function_test() {
-//   let scope = init([])
-//   let untyped =
-//     ast.Call(
-//       function(["x"], ast.Variable("x")),
-//       [
-//         ast.Let(
-//           pattern.Variable("tmp"),
-//           ast.Binary("hello"),
-//           ast.Variable("tmp"),
-//         ),
-//       ],
-//     )
-//   let js = compile(untyped, scope)
-//   let [l1, l2, l3, l4, l5, l6] = js
-//   let "(function self(x$1) { return x$1; })(" = l1
-//   let "  (() => {" = l2
-//   let "    let tmp$1 = \"hello\";" = l3
-//   let "    return tmp$1;" = l4
-//   let "  })()," = l5
-//   let ")" = l6
-// }
+pub fn simple_function_call_test() {
+  let scope =
+    init(
+      []
+      |> with_equal(),
+    )
+
+  let untyped =
+    ast.Call(
+      ast.Variable("equal"),
+      ast.Tuple([ast.Binary("foo"), ast.Binary("bar")]),
+    )
+  let js = compile(untyped, scope)
+  let [l1] = js
+  let "equal(\"foo\", \"bar\")" = l1
+}
+
+pub fn oneline_function_test() {
+  let scope = init([])
+  let untyped =
+    ast.Function(
+      "$",
+      ast.Let(pattern.Tuple(["x"]), ast.Variable("$"), ast.Variable("x")),
+    )
+  let js = compile(untyped, scope)
+  let [l1] = js
+  let "(function self(x$1) { return x$1; })" = l1
+}
+
+pub fn call_oneline_function_test() {
+  let scope = init([])
+  let untyped =
+    ast.Call(
+      ast.Function(
+        "$",
+        ast.Let(pattern.Tuple(["x"]), ast.Variable("$"), ast.Variable("x")),
+      ),
+      ast.Tuple([ast.Binary("hello")]),
+    )
+  let js = compile(untyped, scope)
+  let [l1] = js
+  let "(function self(x$1) { return x$1; })(\"hello\")" = l1
+}
+
+pub fn multiline_function_test() {
+  let scope =
+    init(
+      []
+      |> with_equal(),
+    )
+
+  let untyped =
+    ast.Function(
+      "$",
+      ast.Let(
+        pattern.Tuple(["a", "b"]),
+        ast.Variable("$"),
+        ast.Let(
+          pattern.Variable("a"),
+          ast.Call(
+            ast.Variable("equal"),
+            ast.Tuple([ast.Variable("a"), ast.Binary("blah")]),
+          ),
+          ast.Call(
+            ast.Variable("equal"),
+            ast.Tuple([ast.Variable("b"), ast.Binary("other")]),
+          ),
+        ),
+      ),
+    )
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4] = js
+  let "(function self(a$1, b$1) {" = l1
+  let "  let a$2 = equal(a$1, \"blah\");" = l2
+  let "  return equal(b$1, \"other\");" = l3
+  let "})" = l4
+}
+
+pub fn multiline_call_function_test() {
+  let scope = init([])
+  let untyped =
+    ast.Call(
+      ast.Function(
+        "$",
+        ast.Let(pattern.Tuple(["x"]), ast.Variable("$"), ast.Variable("x")),
+      ),
+      ast.Tuple([
+        ast.Let(
+          pattern.Variable("tmp"),
+          ast.Binary("hello"),
+          ast.Variable("tmp"),
+        ),
+      ]),
+    )
+  let js = compile(untyped, scope)
+  let [l1, l2, l3, l4, l5, l6] = js
+  let "(function self(x$1) { return x$1; })(" = l1
+  let "  (() => {" = l2
+  let "    let tmp$1 = \"hello\";" = l3
+  let "    return tmp$1;" = l4
+  let "  })()," = l5
+  let ")" = l6
+}
 // // TODO email to ask about other language front ends. Is there a long form place to ask discord program lang questions
 // // program is going to render a call function that doesn't exist. 

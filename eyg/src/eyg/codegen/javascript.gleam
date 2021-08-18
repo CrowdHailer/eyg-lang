@@ -141,6 +141,31 @@ pub fn render(tree, state) {
       list.append(assignment, render(then, state))
     }
     Variable(label) -> wrap_return([render_label(label, state)], state)
+    Function(for, body) -> {
+      assert "$" = for
+      assert Let(pattern.Tuple(for), ast.Variable("$"), body) = body
+      let #(for, state) =
+        list.map_state(
+          for,
+          state,
+          fn(label, state) {
+            let state = with_assignment(label, state)
+            #(render_label(label, state), state)
+          },
+        )
+      let args_string =
+        for
+        |> list.intersperse(", ")
+        |> join()
+      let start = join(["(function self(", args_string, ") {"])
+      case render(body, in_tail(True, state)) {
+        [single] -> [join([start, " ", single, " })"])]
+        lines ->
+          [start, ..indent(lines)]
+          |> list.append(["})"])
+      }
+      |> wrap_return(state)
+    }
     Call(function, with) -> {
       assert Tuple(with) = with
       let function = render(function, in_tail(False, state))
