@@ -2,7 +2,7 @@ import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import eyg/ast.{
-  Binary, Call, Case, Constructor, Function, Let, Name, Row, Tuple, Variable,
+  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable,
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -39,7 +39,7 @@ fn unify_pair(pair, typer) {
 // monotype function??
 // This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
 // next unbound inside mono can be integer and unbound(i) outside
-fn unify(expected, given, typer) {
+pub fn unify(expected, given, typer) {
   let State(substitutions: substitutions, ..) = typer
   let expected = monotype.resolve(expected, substitutions)
   let given = monotype.resolve(given, substitutions)
@@ -327,6 +327,7 @@ pub fn infer(
         Error(Nil) -> Error(UnknownType(named))
       }
     }
+    Provider(id) -> Ok(#(monotype.Unbound(id), typer))
   }
 }
 
