@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
 

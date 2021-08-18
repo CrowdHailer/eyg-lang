@@ -127,7 +127,7 @@ pub fn mismatched_inner_type_test() {
 pub fn case_test() {
   let typer =
     init([
-      // TODO need a set variable option
+      // TODO need a set variable option so that we have have free variables in the env
       #(
         "x",
         polytype.Polytype([], monotype.Nominal("Option", [monotype.Binary])),
@@ -151,6 +151,31 @@ pub fn case_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
   assert monotype.Binary = monotype.resolve(type_, substitutions)
+}
+
+pub fn mismatched_return_in_case_test() {
+  let typer =
+    init([
+      // TODO need a set variable option so that we have have free variables in the env
+      #(
+        "x",
+        polytype.Polytype([], monotype.Nominal("Option", [monotype.Binary])),
+      ),
+    ])
+  let untyped =
+    ast.Name(
+      #(
+        "Option",
+        #([1], [#("Some", monotype.Unbound(1)), #("None", monotype.Tuple([]))]),
+      ),
+      ast.Case(
+        "Option",
+        ast.Variable("x"),
+        [#("Some", "z", ast.Variable("z")), #("None", "_", ast.Tuple([]))],
+      ),
+    )
+  let Error(reason) = infer(untyped, typer)
+  assert typer.UnmatchedTypes(monotype.Binary, monotype.Tuple([])) = reason
 }
 
 pub fn case_of_unknown_type_test() {
