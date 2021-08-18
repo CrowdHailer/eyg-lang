@@ -13,7 +13,7 @@ pub fn try_fold_test() {
     list.try_fold(
       [Nil, Nil, Nil, Nil],
       acc,
-      fn(item, acc) {
+      fn(_item, acc) {
         try #(acc) = add_one(acc)
         Ok(acc)
       },

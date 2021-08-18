@@ -283,38 +283,20 @@ pub fn infer(
           let #(x, typer) = polytype.next_unbound(typer)
           let return_type = monotype.Unbound(x)
           let State(variables: variables, ..) = typer
-          // put variants in here
-          try typer = // match_clauses(
-            //   clauses,
-            //   variants,
-            //   variables,
-            //   replacements,
-            //   return_type,
-            //   typer,
-            // )
-            // TODO message about this alternative
+          try typer =
             list.try_fold(
               clauses,
               typer,
               // This is an error caused when the name typer is used.
-              fn(clause, typer: State) {
-                io.debug("start")
-                io.debug(monotype.resolve(return_type, typer.substitutions))
-                io.debug("endstart")
+              fn(clause, t) {
                 let #(variant, variable, then) = clause
                 assert Ok(argument) = list.key_find(variants, variant)
                 let argument = pair_replace(replacements, argument)
                 // reset scope variables
-                let typer = State(..typer, variables: variables)
-                let typer = set_variable(variable, argument, typer)
-                try #(type_, typer) = infer(then, typer)
-                // io.debug(x)
-                // io.debug(monotype.resolve(type_, typer.substitutions))
-                try typer = unify(return_type, type_, typer)
-                io.debug("-------")
-                io.debug(monotype.resolve(return_type, typer.substitutions))
-                io.debug("-------")
-                Ok(typer)
+                let t = State(..t, variables: variables)
+                let t = set_variable(variable, argument, t)
+                try #(type_, t) = infer(then, t)
+                unify(return_type, type_, t)
               },
             )
           Ok(#(return_type, typer))
@@ -325,28 +307,6 @@ pub fn infer(
   }
 }
 
-// fn match_clauses(clauses, variants, variables, replacements, return_type, typer) {
-//   case clauses {
-//     [] -> Ok(typer)
-//     [#(variant, variable, then), ..clauses] -> {
-//       assert Ok(argument) = list.key_find(variants, variant)
-//       let argument = pair_replace(replacements, argument)
-//       // reset scope variables
-//       let typer = State(..typer, variables: variables)
-//       let typer = set_variable(variable, argument, typer)
-//       try #(type_, typer) = infer(then, typer)
-//       try typer = unify(return_type, type_, typer)
-//       match_clauses(
-//         clauses,
-//         variants,
-//         variables,
-//         replacements,
-//         return_type,
-//         typer,
-//       )
-//     }
-//   }
-// }
 fn pair_replace(replacements, monotype) {
   list.fold(
     replacements,
