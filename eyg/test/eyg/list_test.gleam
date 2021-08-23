@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 
 fn add_one(acc) {

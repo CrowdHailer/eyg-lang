@@ -133,6 +133,15 @@ fn free_variables_in_monotype(monotype) {
       }
     }
 
+    Nominal(_name, of) ->
+      list.fold(
+        of,
+        [],
+        fn(inner, accumulator) {
+          union(free_variables_in_monotype(inner), accumulator)
+        },
+      )
+
     Function(from, to) ->
       union(free_variables_in_monotype(from), free_variables_in_monotype(to))
     Unbound(i) -> [i]

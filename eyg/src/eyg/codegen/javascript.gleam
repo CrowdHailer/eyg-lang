@@ -3,9 +3,12 @@ import gleam/int
 import gleam/list
 import gleam/string
 import eyg/ast.{
-  Binary, Call, Case, Constructor, Function, Let, Name, Row, Tuple, Variable,
+  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable,
 }
 import eyg/ast/pattern
+import eyg/typer/monotype
+import eyg/typer/polytype.{State}
+import eyg/typer
 import eyg/codegen/utilities.{
   indent, join, squash, wrap_lines, wrap_single_or_multiline,
 }
@@ -23,7 +26,7 @@ pub fn maybe_wrap_expression(expression, state) {
 }
 
 fn wrap_return(lines, state) {
-  let #(in_tail, _) = state
+  let #(in_tail, _, _) = state
 
   case in_tail {
     True -> wrap_lines("return ", lines, ";")
@@ -32,18 +35,18 @@ fn wrap_return(lines, state) {
 }
 
 pub fn in_tail(in_tail, state) {
-  let #(_, scope) = state
-  #(in_tail, scope)
+  let #(_, scope, typer) = state
+  #(in_tail, scope, typer)
 }
 
 fn with_assignment(label, state) {
-  let #(in_tail, scope) = state
+  let #(in_tail, scope, typer) = state
   let scope = [label, ..scope]
-  #(in_tail, scope)
+  #(in_tail, scope, typer)
 }
 
 fn count_label(state, label) {
-  let #(_, scope) = state
+  let #(_, scope, _) = state
 
   list.fold(
     scope,
@@ -179,7 +182,12 @@ pub fn render(tree, state) {
 
     Name(_name, then) -> render(then, state)
     Constructor(_named, variant) -> [
-      join(["(function (inner) { return {variant: \"", variant, "\", inner} })"]),
+      // ...inner working on assuption ALWAYS called with tuple
+      join([
+        "(function (...inner) { return {variant: \"",
+        variant,
+        "\", inner} })",
+      ]),
     ]
     Case(_name, subject, clauses) -> {
       let clauses =
@@ -196,7 +204,7 @@ pub fn render(tree, state) {
             [join(["case \"", variant, "\": ", first]), ..indent(rest)]
           },
         )
-        // could use subject and subject.inner in arbitrary let statements
+      // could use subject and subject.inner in arbitrary let statements
       let switch =
         ["(({variant, inner: $}) => { switch (variant) {"]
         |> list.append(indent(list.flatten(clauses)))
@@ -204,6 +212,26 @@ pub fn render(tree, state) {
       let subject = wrap_lines("(", maybe_wrap_expression(subject, state), ")")
       squash(switch, subject)
       |> wrap_return(state)
+    }
+    Provider(id, func) -> {
+      let #(a, b, typer) = state
+      let State(substitutions: substitutions, ..) = typer
+      let hole = monotype.resolve(monotype.Unbound(id), substitutions)
+      let tree = func(hole)
+      case typer.infer(tree, typer) {
+        Ok(#(type_, typer)) ->
+          case typer.unify(type_, monotype.Unbound(id), typer) {
+            Ok(typer) -> {
+              let state = #(a, b, typer)
+              render(tree, state)
+            }
+            Error(reason) -> {
+              io.debug(reason)
+              todo("could not unify")
+            }
+          }
+        _ -> todo("could not infer")
+      }
     }
   }
 }

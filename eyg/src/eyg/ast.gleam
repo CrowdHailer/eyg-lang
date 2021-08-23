@@ -15,4 +15,5 @@ pub type Node {
   )
   Constructor(named: String, variant: String)
   Case(named: String, value: Node, clauses: List(#(String, String, Node)))
+  Provider(id: Int, generator: fn(monotype.Monotype) -> Node)
 }

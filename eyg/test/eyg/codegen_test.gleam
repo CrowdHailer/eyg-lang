@@ -8,13 +8,12 @@ import eyg/typer.{infer, init}
 
 fn compile(untyped, scope) {
   case infer(untyped, scope) {
-    Ok(_) -> Nil
+    Ok(#(_, typer)) -> javascript.render(untyped, #(False, [], typer))
     Error(reason) -> {
       io.debug(reason)
       todo("failed to compile")
     }
   }
-  javascript.render(untyped, #(False, []))
 }
 
 pub fn variable_assignment_test() {
@@ -321,7 +320,8 @@ pub fn nominal_term_test() {
     )
   let js = compile(untyped, scope)
   let [l1] = js
-  let "(function (inner) { return {variant: \"Some\", inner} })(\"value\")" = l1
+  let "(function (...inner) { return {variant: \"Some\", inner} })(\"value\")" =
+    l1
 }
 
 // Don't need multiline test as that is the same as multiline call
