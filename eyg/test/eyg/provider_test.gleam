@@ -50,7 +50,6 @@ pub fn config_test() {
     )
   let Ok(#(_, typer)) = infer(untyped, typer)
   javascript.render(untyped, #(False, [], typer))
-  |> io.debug
 }
 
 // Format

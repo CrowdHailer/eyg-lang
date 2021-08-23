@@ -182,7 +182,12 @@ pub fn render(tree, state) {
 
     Name(_name, then) -> render(then, state)
     Constructor(_named, variant) -> [
-      join(["(function (inner) { return {variant: \"", variant, "\", inner} })"]),
+      // ...inner working on assuption ALWAYS called with tuple
+      join([
+        "(function (...inner) { return {variant: \"",
+        variant,
+        "\", inner} })",
+      ]),
     ]
     Case(_name, subject, clauses) -> {
       let clauses =

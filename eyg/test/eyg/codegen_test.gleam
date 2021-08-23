@@ -320,7 +320,8 @@ pub fn nominal_term_test() {
     )
   let js = compile(untyped, scope)
   let [l1] = js
-  let "(function (inner) { return {variant: \"Some\", inner} })(\"value\")" = l1
+  let "(function (...inner) { return {variant: \"Some\", inner} })(\"value\")" =
+    l1
 }
 
 // Don't need multiline test as that is the same as multiline call

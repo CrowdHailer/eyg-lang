@@ -134,7 +134,10 @@ fn set_variable(label, monotype, state) {
 
 // assignment/patterns
 fn match_pattern(pattern, value, typer) {
+  // TODO remove this nesting when we(if?) separate typer and scope
+  let State(variables: variables, ..) = typer
   try #(given, typer) = infer(value, typer)
+  let typer = State(..typer, variables: variables)
   case pattern {
     pattern.Variable(label) -> Ok(set_variable(label, given, typer))
     pattern.Tuple(elements) -> {
