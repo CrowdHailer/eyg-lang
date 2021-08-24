@@ -1,5 +1,9 @@
 <script>
-	let name = 'world';
+  import Expression from "./components/Expression.svelte";
+  import * as boolean from "./gen/standard/boolean";
+  let tree = boolean.code();
 </script>
 
-<h1>Hello {name}!</h1>
+<div class="bg-black text-white pl-4 py-4">
+  <Expression {tree} />
+</div>

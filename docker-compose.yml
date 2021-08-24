@@ -8,7 +8,7 @@ services:
     volumes:
       - .:/opt/app
     network_mode: host
-    command: "watchexec --exts gleam -- gleam compile-package --src egy/src --out editor/src --name editor --target javascript"
+    command: "watchexec --exts gleam -- gleam compile-package --src eyg/src --out editor/src/gen --name editor --target javascript"
 
   language:
     build:
