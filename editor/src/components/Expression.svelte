@@ -9,26 +9,53 @@
   import Case from "./Case.svelte";
 
   export let tree;
+  export let update_tree;
+  export let path;
+  export let count;
 </script>
 
+<!-- [{(path || []).concat([count]).join(",")}] -->
 {#if tree.type == "Name"}
-  <Name type={tree.type_} then={tree.then} />
+  <Name {update_tree} {path} {count} type={tree.type_} then={tree.then} />
 {:else if tree.type == "Let"}
-  <Let pattern={tree.pattern} value={tree.value} then={tree.then} />
+  <Let
+    {update_tree}
+    {path}
+    {count}
+    pattern={tree.pattern}
+    value={tree.value}
+    then={tree.then}
+  />
 {:else if tree.type == "Call"}<Call
+    {update_tree}
+    {path}
+    {count}
     function_={tree.function}
     with_={tree.with}
   />
 {:else if tree.type == "Constructor"}
-  <Constructor named={tree.named} variant={tree.variant} />
+  <Constructor
+    {update_tree}
+    {path}
+    {count}
+    named={tree.named}
+    variant={tree.variant}
+  />
 {:else if tree.type == "Row"}
-  <Row fields={tree.fields} />
+  <Row {update_tree} {path} {count} fields={tree.fields} />
 {:else if tree.type == "Variable"}
-  <Variable label={tree.label} />
+  <Variable {update_tree} {path} {count} label={tree.label} />
 {:else if tree.type == "Function"}
-  <Function for={tree.for} body={tree.body} />
+  <Function {update_tree} {path} {count} for_={tree.for} body={tree.body} />
 {:else if tree.type == "Case"}
-  <Case named={tree.named} value={tree.value} clauses={tree.clauses} />
+  <Case
+    {update_tree}
+    {path}
+    {count}
+    named={tree.named}
+    value={tree.value}
+    clauses={tree.clauses}
+  />
 {:else}
   foo
   {JSON.stringify(tree)}

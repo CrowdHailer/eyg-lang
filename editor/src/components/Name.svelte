@@ -2,6 +2,9 @@
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
 
+  export let update_tree;
+  export let path;
+  export let count;
   export let type;
   export let then;
   let named, params, variants;
@@ -21,4 +24,4 @@
   {/each}
 </Indent>
 &rbrace;
-<Expression tree={then} />
+<Expression {path} count={count + 1} tree={then} {update_tree} />

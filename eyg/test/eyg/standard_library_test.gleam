@@ -47,6 +47,5 @@ pub fn standard_library_test() {
       ),
     ]),
   )
-  |> io.debug()
   |> run
 }
