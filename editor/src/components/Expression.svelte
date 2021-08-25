@@ -7,6 +7,7 @@
   import Variable from "./Variable.svelte";
   import Function from "./Function.svelte";
   import Case from "./Case.svelte";
+  import Binary from "./Binary.svelte";
 
   export let tree;
   export let update_tree;
@@ -17,6 +18,8 @@
 <!-- [{(path || []).concat([count]).join(",")}] -->
 {#if tree.type == "Name"}
   <Name {update_tree} {path} {count} type={tree.type_} then={tree.then} />
+{:else if tree.type == "Binary"}
+  <Binary {update_tree} {path} {count} value={tree.value} />
 {:else if tree.type == "Let"}
   <Let
     {update_tree}
