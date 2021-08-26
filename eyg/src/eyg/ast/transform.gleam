@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import eyg/ast
+
 fn do_index_map(
   list: List(a),
   fun: fn(Int, a) -> b,
@@ -49,8 +50,7 @@ pub fn replace_node(
         //     value,
         //     replace_node(then, [index - 1, ..rest], replacement),
         //   )
-        ast.Name(type_, then) if index == 0 && rest == [] ->
-          replacement
+        ast.Name(type_, then) if index == 0 && rest == [] -> replacement
         ast.Name(type_, then) if index == 1 ->
           ast.Name(type_, replace_node(then, rest, replacement))
         ast.Name(type_, then) if index > 1 ->
@@ -59,14 +59,15 @@ pub fn replace_node(
           ast.Tuple(index_map(
             elements,
             fn(i, x) {
-                let i = i - 1 
+              let i = i - 1
               case i == index {
                 True -> replacement
                 False -> x
               }
             },
           ))
-        ast.Call(func, with) if index == 0 -> ast.Call(replace_node(func, rest, replacement), with) 
+        ast.Call(func, with) if index == 0 ->
+          ast.Call(replace_node(func, rest, replacement), with)
         _ -> {
           io.debug(tree)
           io.debug(path)

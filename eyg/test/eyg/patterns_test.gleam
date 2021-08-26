@@ -30,14 +30,16 @@ pub fn tuple_pattern_test() {
 pub fn incorrect_tuple_size_test() {
   let typer = init([])
   let untyped = ast.Let(pattern.Tuple(["a"]), ast.Tuple([]), ast.Variable("a"))
-  let Error(typer.IncorrectArity(1, 0)) = infer(untyped, typer)
+  let Error(#(typer.IncorrectArity(1, 0), _state)) = infer(untyped, typer)
 }
 
 pub fn not_a_tuple_test() {
   let typer = init([])
   let untyped = ast.Let(pattern.Tuple(["a"]), ast.Binary(""), ast.Variable("a"))
-  let Error(typer.UnmatchedTypes(monotype.Tuple([_]), monotype.Binary)) =
-    infer(untyped, typer)
+  let Error(#(
+    typer.UnmatchedTypes(monotype.Tuple([_]), monotype.Binary),
+    _state,
+  )) = infer(untyped, typer)
 }
 
 pub fn matching_row_test() {
@@ -103,7 +105,7 @@ pub fn missing_row_test() {
   let typer = init([])
   let untyped =
     ast.Let(pattern.Row([#("foo", "a")]), ast.Row([]), ast.Variable("a"))
-  let Error(typer.MissingFields(extra)) = infer(untyped, typer)
+  let Error(#(typer.MissingFields(extra), _state)) = infer(untyped, typer)
   let [#("foo", _)] = extra
 }
 // Have resolved as a type wrapper

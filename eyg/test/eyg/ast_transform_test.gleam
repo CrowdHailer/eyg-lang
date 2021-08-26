@@ -2,7 +2,7 @@ import gleam/list
 import gleam/io
 import eyg/codegen/javascript
 import eyg/ast
-import eyg/ast/transform.{remove_node}
+import eyg/ast/transform.{replace_node}
 import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype
@@ -10,8 +10,6 @@ import eyg/typer/polytype
 fn hole() {
   ast.Provider(999, fn(x) { todo })
 }
-
-
 
 pub fn replace_node_test() {
   let original =

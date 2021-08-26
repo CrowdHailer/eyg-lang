@@ -5,7 +5,7 @@ import eyg/typer/monotype.{Binary, Function, Tuple, Unbound}
 
 // TODO move
 fn init(variables) {
-  polytype.State(variables, 0, [], [])
+  polytype.State(variables, 0, [], [], [])
 }
 
 pub fn instantiate_term_test() {

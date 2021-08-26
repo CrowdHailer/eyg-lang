@@ -65,7 +65,7 @@ pub fn call_with_incorrect_argument_test() {
       ),
       ast.Tuple([ast.Binary("extra argument")]),
     )
-  let Error(typer.IncorrectArity(0, 1)) = infer(untyped, typer)
+  let Error(#(typer.IncorrectArity(0, 1), _state)) = infer(untyped, typer)
 }
 
 pub fn reuse_generic_function_test() {

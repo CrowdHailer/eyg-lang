@@ -22,7 +22,7 @@ pub type Reason {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [])
+  State(variables, 0, [], [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -47,7 +47,8 @@ pub fn unify(expected, given, typer) {
     monotype.Binary, monotype.Binary -> Ok(typer)
     monotype.Tuple(expected), monotype.Tuple(given) ->
       case list.zip(expected, given) {
-        Error(#(expected, given)) -> Error(IncorrectArity(expected, given))
+        Error(#(expected, given)) ->
+          Error(#(IncorrectArity(expected, given), typer))
         Ok(pairs) -> list.try_fold(pairs, typer, unify_pair)
       }
     monotype.Unbound(i), any -> Ok(add_substitution(i, any, typer))
@@ -59,13 +60,13 @@ pub fn unify(expected, given, typer) {
         [], _ -> Ok(typer)
         only, Some(i) ->
           Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
-        only, None -> Error(MissingFields(only))
+        only, None -> Error(#(MissingFields(only), typer))
       }
       try typer = case expected, given_extra {
         [], _ -> Ok(typer)
         only, Some(i) ->
           Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
-        only, None -> Error(MissingFields(only))
+        only, None -> Error(#(MissingFields(only), typer))
       }
       list.try_fold(shared, typer, unify_pair)
     }
@@ -75,7 +76,7 @@ pub fn unify(expected, given, typer) {
     ) -> {
       try _ = case expected_name == given_name {
         True -> Ok(Nil)
-        False -> Error(UnmatchedTypes(expected, given))
+        False -> Error(#(UnmatchedTypes(expected, given), typer))
       }
       case list.zip(expected_parameters, given_parameters) {
         Error(#(_expected, _given)) ->
@@ -90,7 +91,7 @@ pub fn unify(expected, given, typer) {
       try typer = unify(expected_from, given_from, typer)
       unify(expected_return, given_return, typer)
     }
-    expected, given -> Error(UnmatchedTypes(expected, given))
+    expected, given -> Error(#(UnmatchedTypes(expected, given), typer))
   }
 }
 
@@ -120,7 +121,7 @@ fn get_variable(label, state) {
   let State(variables: variables, ..) = state
   case list.key_find(variables, label) {
     Ok(polytype) -> Ok(polytype.instantiate(polytype, state))
-    Error(Nil) -> Error(UnknownVariable(label))
+    Error(Nil) -> Error(#(UnknownVariable(label), state))
   }
 }
 
@@ -183,10 +184,23 @@ fn infer_field(field, typer) {
   Ok(#(#(name, type_), typer))
 }
 
+fn step_in_location(typer) {
+  let State(location: location, ..) = typer
+  State(..typer, location: list.append(location, [0]))
+}
+
+fn step_on_location(typer) {
+  let State(location: location, ..) = typer
+  let [current, ..rest] = list.reverse(location)
+  let location = list.reverse([current + 1, ..rest])
+  State(..typer, location: location)
+}
+
 pub fn infer(
   tree: ast.Node,
   typer: State,
-) -> Result(#(monotype.Monotype, State), Reason) {
+) -> Result(#(monotype.Monotype, State), #(Reason, State)) {
+  // return all context so more info can be added later
   case tree {
     Binary(_) -> Ok(#(monotype.Binary, typer))
     Tuple(elements) -> {
@@ -233,7 +247,7 @@ pub fn infer(
           let typer = State(..typer, nominal: [new_type, ..nominal])
           infer(then, typer)
         }
-        Ok(_) -> Error(DuplicateType(named))
+        Ok(_) -> Error(#(DuplicateType(named), typer))
       }
     }
     Constructor(named, variant) -> {
@@ -257,9 +271,9 @@ pub fn infer(
               let #(monotype, typer) = polytype.instantiate(polytype, typer)
               Ok(#(monotype, typer))
             }
-            Error(Nil) -> Error(UnknownVariant(variant, named))
+            Error(Nil) -> Error(#(UnknownVariant(variant, named), typer))
           }
-        Error(Nil) -> Error(UnknownType(named))
+        Error(Nil) -> Error(#(UnknownType(named), typer))
       }
     }
     Case(named, subject, clauses) -> {
@@ -302,8 +316,9 @@ pub fn infer(
                   Ok(value) -> Ok(value)
                   Error(Nil) ->
                     case list.key_find(variants, variant) {
-                      Ok(_) -> Error(RedundantClause(variant))
-                      Error(Nil) -> Error(UnknownVariant(variant, named))
+                      Ok(_) -> Error(#(RedundantClause(variant), typer))
+                      Error(Nil) ->
+                        Error(#(UnknownVariant(variant, named), typer))
                     }
                 }
                 let argument = pair_replace(replacements, argument)
@@ -318,16 +333,19 @@ pub fn infer(
           case unhandled {
             [] -> Ok(#(return_type, typer))
             _ ->
-              Error(UnhandledVariants(list.map(
-                unhandled,
-                fn(variant) {
-                  let #(variant, _) = variant
-                  variant
-                },
-              )))
+              Error(#(
+                UnhandledVariants(list.map(
+                  unhandled,
+                  fn(variant) {
+                    let #(variant, _) = variant
+                    variant
+                  },
+                )),
+                typer,
+              ))
           }
         }
-        Error(Nil) -> Error(UnknownType(named))
+        Error(Nil) -> Error(#(UnknownType(named), typer))
       }
     }
     // Can't call the generator here because we don't know what the type will resolve to yet.

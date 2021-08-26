@@ -35,7 +35,7 @@ pub fn infer_row_test() {
 pub fn missing_variable_test() {
   let typer = init([])
   let untyped = ast.Variable("foo")
-  assert Error(typer.UnknownVariable("foo")) = infer(untyped, typer)
+  assert Error(#(typer.UnknownVariable("foo"), _state)) = infer(untyped, typer)
 }
 
 pub fn infer_variable_test() {

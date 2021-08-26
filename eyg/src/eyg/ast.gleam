@@ -26,7 +26,7 @@ pub fn let_(pattern, value, then) {
   Let(pattern, value, then)
 }
 
-pub fn constructor(named, variant){
+pub fn constructor(named, variant) {
   Constructor(named, variant)
 }
 

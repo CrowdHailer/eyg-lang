@@ -57,7 +57,7 @@ pub fn infer_unspecified_parameterised_variant_test() {
 pub fn unknown_named_type_test() {
   let typer = init([])
   let untyped = ast.Call(ast.Constructor("Foo", "X"), ast.Tuple([]))
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnknownType("Foo") = reason
 }
 
@@ -71,7 +71,7 @@ pub fn unknown_variant_test() {
       ),
       ast.Call(ast.Constructor("Boolean", "Perhaps"), ast.Tuple([])),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnknownVariant("Perhaps", "Boolean") = reason
 }
 
@@ -91,7 +91,7 @@ pub fn duplicate_variant_test() {
         ast.Binary(""),
       ),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.DuplicateType("Boolean") = reason
 }
 
@@ -105,7 +105,7 @@ pub fn mismatched_inner_type_test() {
       ),
       ast.Call(ast.Constructor("Boolean", "True"), ast.Binary("")),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnmatchedTypes(monotype.Tuple([]), monotype.Binary) = reason
 }
 
@@ -174,14 +174,14 @@ pub fn mismatched_return_in_case_test() {
         [#("Some", "z", ast.Variable("z")), #("None", "_", ast.Tuple([]))],
       ),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnmatchedTypes(monotype.Binary, monotype.Tuple([])) = reason
 }
 
 pub fn case_of_unknown_type_test() {
   let typer = init([])
   let untyped = ast.Case("Foo", ast.Variable("x"), [])
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnknownType("Foo") = reason
 }
 
@@ -195,7 +195,7 @@ pub fn missmatched_case_subject_test() {
       ),
       ast.Case("Option", ast.Binary(""), []),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnmatchedTypes(
     monotype.Nominal("Option", [monotype.Unbound(_)]),
     monotype.Binary,
@@ -225,7 +225,7 @@ pub fn missmatched_nominal_case_subject_test() {
         ),
       ),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnmatchedTypes(
     monotype.Nominal("Option", [monotype.Unbound(_)]),
     monotype.Nominal("Boolean", []),
@@ -248,7 +248,7 @@ pub fn unknown_variant_in_clause_test() {
         [#("Perhaps", "_", ast.Binary("value"))],
       ),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnknownVariant("Perhaps", "Boolean") = reason
 }
 
@@ -270,7 +270,7 @@ pub fn duplicate_clause_test() {
         ],
       ),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.RedundantClause("True") = reason
 }
 
@@ -289,7 +289,7 @@ pub fn unhandled_variants_test() {
         [#("True", "_", ast.Binary("value"))],
       ),
     )
-  let Error(reason) = infer(untyped, typer)
+  let Error(#(reason, _state)) = infer(untyped, typer)
   assert typer.UnhandledVariants(["False"]) = reason
 }
 // clause after catch all and duplicate catch all, we don't have catch all
