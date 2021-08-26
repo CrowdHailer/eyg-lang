@@ -13,4 +13,7 @@
   }
 </script>
 
-<TermInput initial={variant} on:change={handleVariantChange} />
+<TermInput initial={named} on:change={console.log} />::<TermInput
+  initial={variant}
+  on:change={handleVariantChange}
+/>

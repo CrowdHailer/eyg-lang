@@ -10,6 +10,17 @@
   export let count;
   export let type;
   export let then;
+  export let error;
+  let valueError, thenError;
+  $: if (error && error[0].length !== 0) {
+    let [first, ...rest] = error[0];
+    if (first === 0) {
+      valueError = [rest, error[1]];
+    } else {
+      thenError = [[first - 1, ...rest], error[1]];
+    }
+  }
+
   let named, params, variants;
   $: named = type[0];
   $: params = type[1][0];
@@ -54,4 +65,10 @@
     </div>
   {/each}
 </Indent>
-<Expression {path} count={count + 1} tree={then} {update_tree} />
+<Expression
+  {path}
+  count={count + 1}
+  tree={then}
+  {update_tree}
+  error={thenError}
+/>

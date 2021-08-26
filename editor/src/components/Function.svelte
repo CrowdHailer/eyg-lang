@@ -13,8 +13,7 @@
   export let count;
 </script>
 
-({arguments_.join(", ")}) <strong>=></strong> &lbrace;
+({arguments_.join(", ")}) <strong>=></strong>
 <Indent>
   <Expression tree={main} path={path.concat(count)} count={0} {update_tree} />
 </Indent>
-&rbrace;

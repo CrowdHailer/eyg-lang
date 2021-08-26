@@ -7,13 +7,19 @@
   import { List } from "./gen/gleam";
 
   let result = "Ok";
-  let message;
+  let error;
 
   function update_tree(path, replacement) {
     tree = replace_node(tree, List.fromArray(path), replacement);
     let output = infer(tree, init(List.fromArray([])));
     result = output.type;
-    message = output[0];
+    if (result == "Error") {
+      let message = output[0][0];
+      let location = output[0][1].location.toArray();
+      error = [location, message];
+    } else {
+      error = undefined;
+    }
   }
 </script>
 
@@ -23,8 +29,8 @@
 <div
   class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white text-indigo-00"
 >
-  <Expression {tree} path={[]} count={0} {update_tree} />
+  <Expression {tree} path={[]} count={0} {update_tree} {error} />
 </div>
 {#if result == "Error"}
-  {JSON.stringify(message)}
+  {JSON.stringify(error)}
 {/if}

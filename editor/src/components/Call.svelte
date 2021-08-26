@@ -5,6 +5,18 @@
   export let update_tree;
   export let path;
   export let count;
+  export let error;
+
+  let func_error;
+  $: if (error && error[0].length !== 0) {
+    let [first, ...rest] = error[0];
+    if (first === 0) {
+      func_error = [rest, error[1]];
+      console.log(rest);
+    } else {
+      console.log("TODO error in args");
+    }
+  }
 </script>
 
 <Expression
@@ -12,4 +24,5 @@
   path={path.concat(count)}
   count={0}
   {update_tree}
+  error={func_error}
 />()

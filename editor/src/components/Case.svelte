@@ -10,7 +10,7 @@
 </script>
 
 <span class="text-yellow-400" title={named}>case</span>
-<Expression tree={value} path={path?.concat(count)} count={0} {update_tree} /> &lbrace;
+<Expression tree={value} path={path?.concat(count)} count={0} {update_tree} />
 <Indent>
   {#each clauses.toArray() as [variant, _variable, then], i}
     {variant}({then.pattern.elements.toArray().join(", ")})
@@ -23,4 +23,3 @@
     /><br />
   {/each}
 </Indent>
-&rbrace;

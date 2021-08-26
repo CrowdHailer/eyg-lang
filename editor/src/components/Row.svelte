@@ -7,8 +7,6 @@
   export let count;
 </script>
 
-&lbrace; <br />
-
 <Indent>
   {#each fields.toArray() as [label, value], i}
     <span class="text-gray-400">{label}</span><span class="text-gray-500"
@@ -22,4 +20,3 @@
     /><br />
   {/each}
 </Indent>
-&rbrace;

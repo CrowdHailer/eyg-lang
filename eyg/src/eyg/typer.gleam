@@ -22,7 +22,7 @@ pub type Reason {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [], [])
+  State(variables, 0, [], [], [0])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -181,7 +181,8 @@ fn match_pattern(pattern, value, typer) {
 fn infer_field(field, typer) {
   let #(name, tree) = field
   try #(type_, typer) = infer(tree, typer)
-  Ok(#(#(name, type_), typer))
+  // NOTE this assumes infer_field always used in a list.map context
+  Ok(#(#(name, type_), step_on_location(typer)))
 }
 
 fn step_in_location(typer) {
@@ -205,10 +206,23 @@ pub fn infer(
     Binary(_) -> Ok(#(monotype.Binary, typer))
     Tuple(elements) -> {
       // infer_with_scope(s)
-      try #(types, typer) = list.try_map_state(elements, typer, infer)
+      let typer = step_in_location(typer)
+      // t can't be typer, compiler bug
+      try #(types, typer) =
+        list.try_map_state(
+          elements,
+          typer,
+          fn(element, t) {
+            try #(type_, t) = infer(element, t)
+            let t = step_on_location(t)
+            Ok(#(type_, t))
+          },
+        )
       Ok(#(monotype.Tuple(types), typer))
     }
     Row(fields) -> {
+            let typer = step_in_location(typer)
+
       try #(types, typer) = list.try_map_state(fields, typer, infer_field)
       Ok(#(monotype.Row(types, None), typer))
     }
@@ -217,22 +231,29 @@ pub fn infer(
       Ok(#(type_, typer))
     }
     Let(pattern, value, then) -> {
-      try typer = match_pattern(pattern, value, typer)
+      let State(location: location, ..) = typer
+      try typer = match_pattern(pattern, value, step_in_location(typer))
+      // same rule as scope needs reseting
+      let typer = step_on_location(State(..typer, location: location))
       infer(then, typer)
     }
     Function(label, body) -> {
       let #(x, typer) = polytype.next_unbound(typer)
       let type_var = monotype.Unbound(x)
       // TODO remove this nesting when we(if?) separate typer and scope
-      let State(variables: variables, ..) = typer
+      let State(variables: variables, location: location, ..) = typer
       let typer = set_variable(label, type_var, typer)
-      try #(return, typer) = infer(body, typer)
-      let typer = State(..typer, variables: variables)
+      try #(return, typer) = infer(body, step_in_location(typer))
+      let typer = State(..typer, variables: variables, location: location)
       Ok(#(monotype.Function(type_var, return), typer))
     }
     Call(function, with) -> {
-      try #(function_type, typer) = infer(function, typer)
-      try #(with_type, typer) = infer(with, typer)
+      let State(location: location, ..) = typer
+      try #(function_type, typer) = infer(function, step_in_location(typer))
+      let typer = State(..typer, location: location)
+      try #(with_type, typer) =
+        infer(with, step_in_location(step_on_location(typer)))
+      let typer = State(..typer, location: location)
       let #(x, typer) = polytype.next_unbound(typer)
       let return_type = monotype.Unbound(x)
       try typer =
@@ -240,12 +261,13 @@ pub fn infer(
       Ok(#(return_type, typer))
     }
     Name(new_type, then) -> {
+      // let typer = step_in_location(typer)
       let #(named, _construction) = new_type
       let State(nominal: nominal, ..) = typer
       case list.key_find(nominal, named) {
         Error(Nil) -> {
           let typer = State(..typer, nominal: [new_type, ..nominal])
-          infer(then, typer)
+          infer(then, step_on_location(typer))
         }
         Ok(_) -> Error(#(DuplicateType(named), typer))
       }
@@ -277,7 +299,8 @@ pub fn infer(
       }
     }
     Case(named, subject, clauses) -> {
-      let State(nominal: nominal, ..) = typer
+      let State(nominal: nominal, location: location, ..) = typer
+      io.debug(location)
       case list.key_find(nominal, named) {
         // Think the old version errored by instantiating everytime
         Ok(#(parameters, variants)) -> {
@@ -296,7 +319,10 @@ pub fn infer(
               replacements,
               monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
             )
+          let State(location: location, ..) = typer
+          let typer = step_in_location(typer)
           try #(subject_type, typer) = infer(subject, typer)
+          // Maybe this unify should be typed at the location of the whole case
           try typer = unify(expected, subject_type, typer)
           let #(x, typer) = polytype.next_unbound(typer)
           let return_type = monotype.Unbound(x)
@@ -307,6 +333,8 @@ pub fn infer(
               #(variants, typer),
               // This is an error caused when the name typer is used.
               fn(clause, state) {
+                // Step on earlier because 0 index is subject
+                let typer = step_on_location(typer)
                 let #(remaining, t) = state
                 let #(variant, variable, then) = clause
                 try #(argument, remaining) = case list.key_pop(
@@ -341,7 +369,7 @@ pub fn infer(
                     variant
                   },
                 )),
-                typer,
+                State(..typer, location: location),
               ))
           }
         }
