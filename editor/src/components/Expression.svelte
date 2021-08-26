@@ -17,6 +17,8 @@
   let errorMessage;
   $: if (error && error[0].length === 0) {
     errorMessage = error[1];
+  } else {
+    errorMessage = undefined;
   }
 </script>
 

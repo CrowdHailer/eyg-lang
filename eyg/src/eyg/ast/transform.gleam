@@ -44,12 +44,12 @@ pub fn replace_node(
           ast.Let(pattern, replace_node(value, rest, replacement), then)
         ast.Let(pattern, value, then) if index == 1 ->
           ast.Let(pattern, value, replace_node(then, rest, replacement))
-        // ast.Let(pattern, value, then) ->
-        //   ast.Let(
-        //     pattern,
-        //     value,
-        //     replace_node(then, [index - 1, ..rest], replacement),
-        //   )
+        ast.Let(pattern, value, then) ->
+          ast.Let(
+            pattern,
+            value,
+            replace_node(then, [index - 1, ..rest], replacement),
+          )
         ast.Name(type_, then) if index == 0 && rest == [] -> replacement
         ast.Name(type_, then) if index == 1 ->
           ast.Name(type_, replace_node(then, rest, replacement))
@@ -68,6 +68,17 @@ pub fn replace_node(
           ))
         ast.Call(func, with) if index == 0 ->
           ast.Call(replace_node(func, rest, replacement), with)
+        ast.Case(type_, subject, clauses) if index == 0 ->  
+
+          ast.Case(type_, replace_node(subject, rest, replacement), clauses)
+        ast.Case(type_, subject, clauses) if index > 0 ->  {
+          io.debug(index)
+          let pre = list.take(clauses, index - 1)
+          let [#(variant, variable, node), ..post] = list.drop(clauses, index - 1)
+          let node = replace_node(node, rest, replacement)
+          let clauses = list.append(pre, [#(variant, variable, node), ..post])
+          ast.Case(type_, subject, clauses)
+        }
         _ -> {
           io.debug(tree)
           io.debug(path)
@@ -75,4 +86,28 @@ pub fn replace_node(
         }
       }
   }
+}
+
+pub fn change_type_name(type_, new_name) {
+  let #(type_name, #(params, variants)) = type_
+  #(new_name, #(params, variants))
+}
+
+pub fn change_variant(type_, index, new_name) {
+  let #(type_name, #(params, variants)) = type_
+  let pre = list.take(variants, index)
+  let [variant, ..post] = list.drop(variants, index)
+  let #(_name, arguments) = variant
+  let variant = #(new_name, arguments)
+  let variants = list.append(pre, [variant, ..post])
+  #(type_name, #(params, variants))
+}
+
+pub fn add_variant(type_, after, new_name) {
+  let #(type_name, #(params, variants)) = type_
+  let pre = list.take(variants, after + 1)
+  let post = list.drop(variants, after + 1)
+  let variant = #("_", ast.Tuple([]))
+  let variants = list.append(pre, [variant, ..post])
+  #(type_name, #(params, variants))
 }

@@ -9,16 +9,17 @@
   $: multiline = string.includes("<br>");
 </script>
 
-<!-- auto enter to newline -->
-{#if multiline}
-  <span class="text-green-200">"""</span>
-  <Indent>
-    <!-- Make display block -->
-    <div class="text-green-200" contenteditable="" bind:innerHTML={string} />
-  </Indent>
-  <span class="text-green-200">"""</span>
-{:else}
-  <span class="text-green-200"
-    >"<span contenteditable="" bind:innerHTML={string} />"</span
-  >
-{/if}
+<span class="text-green-200"
+  >{#if multiline}
+    """
+  {:else}
+    "{/if}<span
+    class={multiline ? "block" : "inline"}
+    contenteditable=""
+    bind:innerHTML={string}
+  />{#if multiline}
+    """
+  {:else}
+    "
+  {/if}</span
+>

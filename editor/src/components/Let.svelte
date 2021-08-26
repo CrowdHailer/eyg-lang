@@ -21,9 +21,14 @@
         rest = rest.slice(1);
       }
       valueError = [rest, error[1]];
+      thenError = undefined;
     } else {
       thenError = [[first - 1, ...rest], error[1]];
+      valueError = undefined;
     }
+  } else {
+    thenError = undefined;
+    valueError = undefined;
   }
 
   function removeLet(path) {

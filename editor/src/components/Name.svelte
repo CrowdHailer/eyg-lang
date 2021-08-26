@@ -3,7 +3,11 @@
   import Indent from "./Indent.svelte";
   import TermInput from "./TermInput.svelte";
   import * as Ast from "../gen/eyg/ast";
-  import { List } from "../gen/gleam";
+  import {
+    change_type_name,
+    change_variant,
+    add_variant,
+  } from "../gen/eyg/ast/transform";
 
   export let update_tree;
   export let path;
@@ -16,55 +20,84 @@
     let [first, ...rest] = error[0];
     if (first === 0) {
       valueError = [rest, error[1]];
+      thenError = undefined;
     } else {
       thenError = [[first - 1, ...rest], error[1]];
+      valueError = undefined;
     }
+  } else {
+    thenError = undefined;
+    valueError = undefined;
   }
 
   let named, params, variants;
   $: named = type[0];
-  $: params = type[1][0];
+  $: params = type[1][0].toArray();
   $: variants = type[1][1].toArray();
 
   function handleNameChange({ detail: { content: newName } }) {
     let point = path.concat(count);
-    update_tree(point, Ast.name(newName, params, type[1][1], then));
+    let node = Ast.name(change_type_name(type, newName), then);
+    update_tree(point, node);
   }
-  function handleVariantChange({ detail: { content: newName } }) {
-    console.log(newName);
+  function handleVariantChange({ detail: { content: newName } }, i) {
+    let point = path.concat(count);
+    let node = Ast.name(change_variant(type, i, newName), then);
+    update_tree(point, node);
   }
   function handleVariantEnter(event, i) {
     let point = path.concat(count);
-    let before = variants.slice(0, i + 1);
-    let after = variants.slice(i + 1);
-    let newVariants = List.fromArray([
-      ...before,
-      ["_", Ast.tuple_(List.fromArray([]))],
-      ...after,
-    ]);
-    update_tree(point, Ast.name(named, params, newVariants, then));
+    console.log("t", type, "--", add_variant(type, i, "_"));
+    let node = Ast.name(add_variant(type, i, "_"), then);
+    console.log(node);
+    update_tree(point, node);
   }
+
+  const mappings = {};
+  const letters = ["a", "b", "c", "d"];
+  let textParams = [];
+  $: textParams = params.map((i) => {
+    let size = Object.values(mappings).length;
+    let letter = letters[size];
+    mappings[i] = letter;
+    return letter;
+  });
 </script>
 
-<span class="text-yellow-400">type</span>
-<TermInput initial={named} on:change={handleNameChange} /><span
-  class="text-gray-600">(</span
-><span class="text-gray-600">)</span>
-<Indent>
-  {#each variants as [variant, { elements }], index}
-    <div>
-      <TermInput
-        initial={variant}
-        on:change={handleVariantChange}
-        on:enter={(event) => {
-          handleVariantEnter(event, index);
-        }}
-      /><span class="text-gray-600">(</span><TermInput
-        initial={elements.toArray().join(", ")}
-      /><span class="text-gray-600">)</span>
-    </div>
-  {/each}
-</Indent>
+<p>
+  <span class="text-yellow-400">type</span>
+  <TermInput initial={named} on:change={handleNameChange} /><span
+    class="text-gray-600">(</span
+  ><span class="text-blue-700">{textParams.join(", ")}</span><span
+    class="text-gray-600">)</span
+  >
+  <Indent>
+    {#each variants as [variant, { elements }], index}
+      <div>
+        <TermInput
+          initial={variant}
+          on:change={(event) => {
+            handleVariantChange(event, index);
+          }}
+          on:enter={(event) => {
+            handleVariantEnter(event, index);
+          }}
+        /><span class="text-gray-600">(</span><TermInput
+          initial={elements
+            .toArray()
+            .map(({ type, ...rest }) => {
+              if (type === "Unbound") {
+                return mappings[rest.i];
+              } else {
+                return "TODO";
+              }
+            })
+            .join(", ")}
+        /><span class="text-gray-600">)</span>
+      </div>
+    {/each}
+  </Indent>
+</p>
 <Expression
   {path}
   count={count + 1}

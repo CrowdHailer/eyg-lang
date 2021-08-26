@@ -177,3 +177,45 @@ fn do_map_state(list, state, func, accumulator) {
     }
   }
 }
+
+pub fn drop(from list: List(a), up_to n: Int) -> List(a) {
+  case n <= 0 {
+    True -> list
+    False ->
+      case list {
+        [] -> []
+        [_, ..xs] -> drop(xs, n - 1)
+      }
+  }
+}
+
+fn do_take(list: List(a), n: Int, acc: List(a)) -> List(a) {
+  case n <= 0 {
+    True -> reverse(acc)
+    False ->
+      case list {
+        [] -> reverse(acc)
+        [x, ..xs] -> do_take(xs, n - 1, [x, ..acc])
+      }
+  }
+}
+
+/// Returns a list containing the first given number of elements from the given
+/// list.
+///
+/// If the element has less than the number of elements then the full list is
+/// returned.
+///
+/// This function runs in linear time but does not copy the list.
+///
+/// ## Examples
+///
+///    > take([1, 2, 3, 4], 2)
+///    [1, 2]
+///
+///    > take([1, 2, 3, 4], 9)
+///    [1, 2, 3, 4]
+///
+pub fn take(from list: List(a), up_to n: Int) -> List(a) {
+  do_take(list, n, [])
+}

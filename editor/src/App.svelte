@@ -1,7 +1,7 @@
 <script>
   import Expression from "./components/Expression.svelte";
-  import * as boolean from "./gen/standard/boolean";
-  let tree = boolean.code();
+  import * as example from "./gen/standard/example";
+  let tree = example.code();
   import { replace_node } from "./gen/eyg/ast/transform";
   import { infer, init } from "./gen/eyg/typer";
   import { List } from "./gen/gleam";

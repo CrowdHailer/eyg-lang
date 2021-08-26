@@ -221,8 +221,7 @@ pub fn infer(
       Ok(#(monotype.Tuple(types), typer))
     }
     Row(fields) -> {
-            let typer = step_in_location(typer)
-
+      let typer = step_in_location(typer)
       try #(types, typer) = list.try_map_state(fields, typer, infer_field)
       Ok(#(monotype.Row(types, None), typer))
     }

@@ -18,8 +18,8 @@ pub type Node {
   Provider(id: Int, generator: fn(monotype.Monotype) -> Node)
 }
 
-pub fn name(named, params, variants, then) {
-  Name(#(named, #(params, variants)), then)
+pub fn name(type_, then) {
+  Name(type_, then)
 }
 
 pub fn let_(pattern, value, then) {

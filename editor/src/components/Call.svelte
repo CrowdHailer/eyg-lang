@@ -12,10 +12,12 @@
     let [first, ...rest] = error[0];
     if (first === 0) {
       func_error = [rest, error[1]];
-      console.log(rest);
     } else {
+      func_error = undefined;
       console.log("TODO error in args");
     }
+  } else {
+    func_error = undefined;
   }
 </script>
 
