@@ -17,3 +17,19 @@ pub type Node {
   Case(named: String, value: Node, clauses: List(#(String, String, Node)))
   Provider(id: Int, generator: fn(monotype.Monotype) -> Node)
 }
+
+pub fn name(named, params, variants, then) {
+  Name(#(named, #(params, variants)), then)
+}
+
+pub fn let_(pattern, value, then) {
+  Let(pattern, value, then)
+}
+
+pub fn constructor(named, variant){
+  Constructor(named, variant)
+}
+
+pub fn tuple_(elements) {
+  Tuple(elements)
+}

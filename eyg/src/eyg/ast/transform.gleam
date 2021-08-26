@@ -49,8 +49,8 @@ pub fn replace_node(
         //     value,
         //     replace_node(then, [index - 1, ..rest], replacement),
         //   )
-          //       ast.Name(type_, then) if index == 0 ->
-          // ast.Name(pattern, replace_node(value, rest, replacement), then)
+        ast.Name(type_, then) if index == 0 && rest == [] ->
+          replacement
         ast.Name(type_, then) if index == 1 ->
           ast.Name(type_, replace_node(then, rest, replacement))
         ast.Name(type_, then) if index > 1 ->
@@ -66,6 +66,7 @@ pub fn replace_node(
               }
             },
           ))
+        ast.Call(func, with) if index == 0 -> ast.Call(replace_node(func, rest, replacement), with) 
         _ -> {
           io.debug(tree)
           io.debug(path)

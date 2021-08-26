@@ -17,7 +17,12 @@
   }
 </script>
 
-<div class="bg-black text-white pl-4 py-4">
+<header class="max-w-4xl mx-auto pb-2 pt-6">
+  <h1 class="text-2xl">Editor</h1>
+</header>
+<div
+  class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white text-indigo-00"
+>
   <Expression {tree} path={[]} count={0} {update_tree} />
 </div>
 {#if result == "Error"}
