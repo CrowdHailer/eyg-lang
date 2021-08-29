@@ -15,7 +15,7 @@ import eyg/codegen/utilities.{
 
 pub fn maybe_wrap_expression(expression, state) {
   case expression {
-    Let(_, _, _) | Name(_, _) -> {
+    #(_, Let(_, _, _)) | #(_, Name(_, _)) -> {
       let rendered = render(expression, in_tail(True, state))
       ["(() => {"]
       |> list.append(indent(rendered))
@@ -73,6 +73,7 @@ fn render_label(label, state) {
 }
 
 pub fn render(tree, state) {
+  let #(_, tree) = tree
   case tree {
     // TODO escape
     Binary(content) -> wrap_return([join(["\"", content, "\""])], state)
@@ -148,7 +149,7 @@ pub fn render(tree, state) {
     Variable(label) -> wrap_return([render_label(label, state)], state)
     Function(for, body) -> {
       assert "$" = for
-      assert Let(pattern.Tuple(for), ast.Variable("$"), body) = body
+      assert #(_, Let(pattern.Tuple(for), #(_, ast.Variable("$")), body)) = body
       let #(for, state) =
         list.map_state(
           for,
@@ -172,7 +173,7 @@ pub fn render(tree, state) {
       |> wrap_return(state)
     }
     Call(function, with) -> {
-      assert Tuple(with) = with
+      assert #(_, Tuple(with)) = with
       let function = render(function, in_tail(False, state))
       let with = list.map(with, maybe_wrap_expression(_, state))
       let args_string = wrap_single_or_multiline(with, ",", "(", ")")
@@ -197,7 +198,7 @@ pub fn render(tree, state) {
             let #(
               variant,
               "$",
-              Let(pattern.Tuple(_assigns), Variable("$"), _) as then,
+              #(_, Let(pattern.Tuple(_assigns), #(_, Variable("$")), _)) as then,
             ) = clause
             // Using render here relies on a variable of $ not being set
             let [first, ..rest] = render(then, in_tail(True, state))

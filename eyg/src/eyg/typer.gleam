@@ -198,10 +198,11 @@ fn step_on_location(typer) {
 }
 
 pub fn infer(
-  tree: ast.Node,
+  tree: ast.Expression(Nil),
   typer: State,
 ) -> Result(#(monotype.Monotype, State), #(Reason, State)) {
   // return all context so more info can be added later
+  let #(Nil, tree) = tree
   case tree {
     Binary(_) -> Ok(#(monotype.Binary, typer))
     Tuple(elements) -> {

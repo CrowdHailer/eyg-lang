@@ -19,12 +19,12 @@ import eyg/typer/polytype.{State}
 fn env_provider(_config, hole) {
   case hole {
     monotype.Row(fields, _) ->
-      ast.Row(list.map(
+      ast.row(list.map(
         fields,
         fn(field) {
           case field {
-            #(name, monotype.Binary) -> #(name, ast.Binary(name))
-            #(name, _) -> #(name, ast.Binary(name))
+            #(name, monotype.Binary) -> #(name, ast.binary(name))
+            #(name, _) -> #(name, ast.binary(name))
           }
         },
       ))
@@ -40,12 +40,12 @@ pub fn config_test() {
       |> with_equal(),
     )
   let untyped =
-    ast.Let(
+    ast.let_(
       pattern.Row([#("foo", "foo"), #("bar", "bar")]),
-      ast.Provider(999, env_provider("", _)),
-      ast.Call(
-        ast.Variable("equal"),
-        ast.Tuple([ast.Variable("foo"), ast.Binary("secret")]),
+      ast.provider(999, env_provider("", _)),
+      ast.call(
+        ast.variable("equal"),
+        ast.tuple_([ast.variable("foo"), ast.binary("secret")]),
       ),
     )
   let Ok(#(_, typer)) = infer(untyped, typer)

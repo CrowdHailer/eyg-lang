@@ -4,30 +4,30 @@ import eyg/typer/monotype
 import standard/builders.{clause, function}
 
 pub fn code() {
-  ast.Name(
+  ast.name(
     #(
       "Boolean",
       #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
     ),
-    ast.Let(
+    ast.let_(
       pattern.Variable("True"),
-      ast.Call(ast.Constructor("Boolean", "True"), ast.Tuple([])),
-      ast.Let(
+      ast.call(ast.constructor("Boolean", "True"), ast.tuple_([])),
+      ast.let_(
         pattern.Variable("False"),
-        ast.Call(ast.Constructor("Boolean", "False"), ast.Tuple([])),
-        ast.Row([
-          #("True", ast.Variable("True")),
-          #("False", ast.Variable("False")),
+        ast.call(ast.constructor("Boolean", "False"), ast.tuple_([])),
+        ast.row([
+          #("True", ast.variable("True")),
+          #("False", ast.variable("False")),
           #(
             "and",
             function(
               ["left", "right"],
-              ast.Case(
+              ast.case_(
                 "Boolean",
-                ast.Variable("left"),
+                ast.variable("left"),
                 [
-                  clause("True", [], ast.Variable("right")),
-                  clause("False", [], ast.Variable("False")),
+                  clause("True", [], ast.variable("right")),
+                  clause("False", [], ast.variable("False")),
                 ],
               ),
             ),
@@ -36,12 +36,12 @@ pub fn code() {
             "or",
             function(
               ["left", "right"],
-              ast.Case(
+              ast.case_(
                 "Boolean",
-                ast.Variable("left"),
+                ast.variable("left"),
                 [
-                  clause("True", [], ast.Variable("True")),
-                  clause("False", [], ast.Variable("right")),
+                  clause("True", [], ast.variable("True")),
+                  clause("False", [], ast.variable("right")),
                 ],
               ),
             ),
@@ -53,44 +53,44 @@ pub fn code() {
 }
 
 pub fn test() {
-  ast.Let(
+  ast.let_(
     pattern.Row([
       #("and", "and"),
       #("or", "or"),
       #("True", "True"),
       #("False", "False"),
     ]),
-    ast.Variable("boolean"),
-    ast.Let(
+    ast.variable("boolean"),
+    ast.let_(
       pattern.Variable("should$equal"),
       function(
         ["given", "expected"],
-        ast.Case(
+        ast.case_(
           "Boolean",
-          ast.Call(
-            ast.Variable("equal"),
-            ast.Tuple([ast.Variable("given"), ast.Variable("expected")]),
+          ast.call(
+            ast.variable("equal"),
+            ast.tuple_([ast.variable("given"), ast.variable("expected")]),
           ),
           [
-            clause("True", [], ast.Tuple([])),
+            clause("True", [], ast.tuple_([])),
             clause(
               "False",
               [],
-              ast.Call(
-                ast.Variable("hole"),
-                ast.Tuple([ast.Binary("Should equal")]),
+              ast.call(
+                ast.variable("hole"),
+                ast.tuple_([ast.binary("Should equal")]),
               ),
             ),
           ],
         ),
       ),
-      ast.Call(
-        ast.Variable("should$equal"),
-        ast.Tuple([
-          ast.Variable("True"),
-          ast.Call(
-            ast.Variable("and"),
-            ast.Tuple([ast.Variable("True"), ast.Variable("True")]),
+      ast.call(
+        ast.variable("should$equal"),
+        ast.tuple_([
+          ast.variable("True"),
+          ast.call(
+            ast.variable("and"),
+            ast.tuple_([ast.variable("True"), ast.variable("True")]),
           ),
         ]),
       ),

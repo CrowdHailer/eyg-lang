@@ -30,10 +30,10 @@ pub fn index_map(list: List(a), with fun: fn(Int, a) -> b) -> List(b) {
 }
 
 pub fn replace_node(
-  tree: ast.Node,
+  tree: ast.Expression(a),
   path: List(Int),
-  replacement: ast.Node,
-) -> ast.Node {
+  replacement: ast.Expression(a),
+) -> ast.Expression(a) {
   case path {
     [] -> replacement
     [index, ..rest] ->

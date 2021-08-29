@@ -18,10 +18,10 @@ fn compile(untyped, scope) {
 
 pub fn variable_assignment_test() {
   let untyped =
-    ast.Let(
+    ast.let_(
       pattern.Variable("foo"),
-      ast.Binary("My First Value"),
-      ast.Let(pattern.Variable("foo"), ast.Variable("foo"), ast.Variable("foo")),
+      ast.binary("My First Value"),
+      ast.let_(pattern.Variable("foo"), ast.variable("foo"), ast.variable("foo")),
     )
   let js = compile(untyped, init([]))
   let [l1, l2, l3] = js
@@ -54,17 +54,17 @@ pub fn nested_assignment_test() {
     )
 
   let untyped =
-    ast.Let(
+    ast.let_(
       pattern.Variable("match"),
-      ast.Let(
+      ast.let_(
         pattern.Variable("tmp"),
-        ast.Binary("TMP!"),
-        ast.Call(
-          ast.Variable("equal"),
-          ast.Tuple([ast.Variable("tmp"), ast.Binary("test")]),
+        ast.binary("TMP!"),
+        ast.call(
+          ast.variable("equal"),
+          ast.tuple_([ast.variable("tmp"), ast.binary("test")]),
         ),
       ),
-      ast.Variable("match"),
+      ast.variable("match"),
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5] = js
@@ -76,7 +76,7 @@ pub fn nested_assignment_test() {
 }
 
 pub fn tuple_term_test() {
-  let untyped = ast.Tuple([ast.Binary("abc"), ast.Binary("xyz")])
+  let untyped = ast.tuple_([ast.binary("abc"), ast.binary("xyz")])
   let js = compile(untyped, init([]))
   let [l1] = js
   let "[\"abc\", \"xyz\"]" = l1
@@ -89,16 +89,16 @@ pub fn multiline_tuple_assignment_test() {
       |> with_equal(),
     )
   let untyped =
-    ast.Tuple([
-      ast.Let(
+    ast.tuple_([
+      ast.let_(
         pattern.Variable("tmp"),
-        ast.Binary("TMP!"),
-        ast.Call(
-          ast.Variable("equal"),
-          ast.Tuple([ast.Variable("tmp"), ast.Binary("test")]),
+        ast.binary("TMP!"),
+        ast.call(
+          ast.variable("equal"),
+          ast.tuple_([ast.variable("tmp"), ast.binary("test")]),
         ),
       ),
-      ast.Binary("xyz"),
+      ast.binary("xyz"),
     ])
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5, l6, l7] = js
@@ -113,7 +113,7 @@ pub fn multiline_tuple_assignment_test() {
 
 pub fn tuple_destructure_test() {
   let untyped =
-    ast.Let(pattern.Tuple(["a", "b"]), ast.Variable("pair"), ast.Tuple([]))
+    ast.let_(pattern.Tuple(["a", "b"]), ast.variable("pair"), ast.tuple_([]))
 
   let js =
     compile(
@@ -135,9 +135,9 @@ pub fn tuple_destructure_test() {
 
 pub fn row_assignment_test() {
   let untyped =
-    ast.Row([
-      #("first_name", ast.Binary("Bob")),
-      #("family_name", ast.Binary("Ross")),
+    ast.row([
+      #("first_name", ast.binary("Bob")),
+      #("family_name", ast.binary("Ross")),
     ])
   let js = compile(untyped, init([]))
   let [l1] = js
@@ -151,19 +151,19 @@ pub fn multiline_row_assignment_test() {
       |> with_equal(),
     )
   let untyped =
-    ast.Row([
+    ast.row([
       #(
         "first_name",
-        ast.Let(
+        ast.let_(
           pattern.Variable("tmp"),
-          ast.Binary("TMP!"),
-          ast.Call(
-            ast.Variable("equal"),
-            ast.Tuple([ast.Variable("tmp"), ast.Binary("test")]),
+          ast.binary("TMP!"),
+          ast.call(
+            ast.variable("equal"),
+            ast.tuple_([ast.variable("tmp"), ast.binary("test")]),
           ),
         ),
       ),
-      #("last_name", ast.Binary("xyz")),
+      #("last_name", ast.binary("xyz")),
     ])
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5, l6, l7] = js
@@ -178,10 +178,10 @@ pub fn multiline_row_assignment_test() {
 
 pub fn row_destructure_test() {
   let untyped =
-    ast.Let(
+    ast.let_(
       pattern.Row([#("first_name", "a"), #("family_name", "b")]),
-      ast.Variable("user"),
-      ast.Tuple([]),
+      ast.variable("user"),
+      ast.tuple_([]),
     )
   let js =
     compile(
@@ -201,9 +201,9 @@ pub fn simple_function_call_test() {
     )
 
   let untyped =
-    ast.Call(
-      ast.Variable("equal"),
-      ast.Tuple([ast.Binary("foo"), ast.Binary("bar")]),
+    ast.call(
+      ast.variable("equal"),
+      ast.tuple_([ast.binary("foo"), ast.binary("bar")]),
     )
   let js = compile(untyped, scope)
   let [l1] = js
@@ -213,9 +213,9 @@ pub fn simple_function_call_test() {
 pub fn oneline_function_test() {
   let scope = init([])
   let untyped =
-    ast.Function(
+    ast.function(
       "$",
-      ast.Let(pattern.Tuple(["x"]), ast.Variable("$"), ast.Variable("x")),
+      ast.let_(pattern.Tuple(["x"]), ast.variable("$"), ast.variable("x")),
     )
   let js = compile(untyped, scope)
   let [l1] = js
@@ -225,12 +225,12 @@ pub fn oneline_function_test() {
 pub fn call_oneline_function_test() {
   let scope = init([])
   let untyped =
-    ast.Call(
-      ast.Function(
+    ast.call(
+      ast.function(
         "$",
-        ast.Let(pattern.Tuple(["x"]), ast.Variable("$"), ast.Variable("x")),
+        ast.let_(pattern.Tuple(["x"]), ast.variable("$"), ast.variable("x")),
       ),
-      ast.Tuple([ast.Binary("hello")]),
+      ast.tuple_([ast.binary("hello")]),
     )
   let js = compile(untyped, scope)
   let [l1] = js
@@ -245,20 +245,20 @@ pub fn multiline_function_test() {
     )
 
   let untyped =
-    ast.Function(
+    ast.function(
       "$",
-      ast.Let(
+      ast.let_(
         pattern.Tuple(["a", "b"]),
-        ast.Variable("$"),
-        ast.Let(
+        ast.variable("$"),
+        ast.let_(
           pattern.Variable("a"),
-          ast.Call(
-            ast.Variable("equal"),
-            ast.Tuple([ast.Variable("a"), ast.Binary("blah")]),
+          ast.call(
+            ast.variable("equal"),
+            ast.tuple_([ast.variable("a"), ast.binary("blah")]),
           ),
-          ast.Call(
-            ast.Variable("equal"),
-            ast.Tuple([ast.Variable("b"), ast.Binary("other")]),
+          ast.call(
+            ast.variable("equal"),
+            ast.tuple_([ast.variable("b"), ast.binary("other")]),
           ),
         ),
       ),
@@ -274,16 +274,16 @@ pub fn multiline_function_test() {
 pub fn multiline_call_function_test() {
   let scope = init([])
   let untyped =
-    ast.Call(
-      ast.Function(
+    ast.call(
+      ast.function(
         "$",
-        ast.Let(pattern.Tuple(["x"]), ast.Variable("$"), ast.Variable("x")),
+        ast.let_(pattern.Tuple(["x"]), ast.variable("$"), ast.variable("x")),
       ),
-      ast.Tuple([
-        ast.Let(
+      ast.tuple_([
+        ast.let_(
           pattern.Variable("tmp"),
-          ast.Binary("hello"),
-          ast.Variable("tmp"),
+          ast.binary("hello"),
+          ast.variable("tmp"),
         ),
       ]),
     )
@@ -302,7 +302,7 @@ pub fn multiline_call_function_test() {
 pub fn nominal_term_test() {
   let scope = init([])
   let untyped =
-    ast.Name(
+    ast.name(
       #(
         "Option",
         #(
@@ -313,9 +313,9 @@ pub fn nominal_term_test() {
           ],
         ),
       ),
-      ast.Call(
-        ast.Constructor("Option", "Some"),
-        ast.Tuple([ast.Binary("value")]),
+      ast.call(
+        ast.constructor("Option", "Some"),
+        ast.tuple_([ast.binary("value")]),
       ),
     )
   let js = compile(untyped, scope)
@@ -335,7 +335,7 @@ pub fn case_with_boolean_test() {
       ),
     ])
   let untyped =
-    ast.Name(
+    ast.name(
       #(
         "Option",
         #(
@@ -346,23 +346,23 @@ pub fn case_with_boolean_test() {
           ],
         ),
       ),
-      ast.Case(
+      ast.case_(
         "Option",
-        ast.Variable("x"),
+        ast.variable("x"),
         [
           #(
             "Some",
             "$",
-            ast.Let(
+            ast.let_(
               pattern.Tuple(["value"]),
-              ast.Variable("$"),
-              ast.Variable("value"),
+              ast.variable("$"),
+              ast.variable("value"),
             ),
           ),
           #(
             "None",
             "$",
-            ast.Let(pattern.Tuple([]), ast.Variable("$"), ast.Binary("other")),
+            ast.let_(pattern.Tuple([]), ast.variable("$"), ast.binary("other")),
           ),
         ],
       ),

@@ -4,13 +4,13 @@ import eyg/typer/monotype
 import standard/builders.{clause, function}
 
 pub fn code() {
-  ast.Let(pattern.Variable("main"), ast.Provider(999,fn(_type){todo}),
-  ast.Name(
+  ast.let_(pattern.Variable("main"), ast.provider(999,fn(_type){todo}),
+  ast.name(
     #(
       "Boolean",
       #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
     ),
-    ast.Name(
+    ast.name(
       #(
         "Option",
         #(
@@ -21,27 +21,27 @@ pub fn code() {
           ],
         ),
       ),
-      ast.Let(
+      ast.let_(
         pattern.Variable("t"),
-        ast.Call(ast.Constructor("Boolean", "True"), ast.Tuple([])),
-        ast.Let(
+        ast.call(ast.constructor("Boolean", "True"), ast.tuple_([])),
+        ast.let_(
           pattern.Variable("and"),
           function(
             ["left", "right"],
-            ast.Case(
+            ast.case_(
               "Boolean",
-              ast.Variable("left"),
+              ast.variable("left"),
               [
-                clause("True", [], ast.Variable("right")),
+                clause("True", [], ast.variable("right")),
                 clause(
                   "False",
                   [],
-                  ast.Call(ast.Constructor("Boolean", "False"), ast.Tuple([])),
+                  ast.call(ast.constructor("Boolean", "False"), ast.tuple_([])),
                 ),
               ],
             ),
           ),
-          ast.Binary("banana"),
+          ast.binary("banana"),
         ),
       ),
     ),
