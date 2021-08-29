@@ -4,6 +4,7 @@ import eyg/typer/monotype
 import standard/builders.{clause, function}
 
 pub fn code() {
+  ast.Let(pattern.Variable("main"), ast.Provider(999,fn(_type){todo}),
   ast.Name(
     #(
       "Boolean",
@@ -44,51 +45,6 @@ pub fn code() {
         ),
       ),
     ),
-  )
+  ))
 }
 
-pub fn test() {
-  ast.Let(
-    pattern.Row([
-      #("and", "and"),
-      #("or", "or"),
-      #("True", "True"),
-      #("False", "False"),
-    ]),
-    ast.Variable("boolean"),
-    ast.Let(
-      pattern.Variable("should$equal"),
-      function(
-        ["given", "expected"],
-        ast.Case(
-          "Boolean",
-          ast.Call(
-            ast.Variable("equal"),
-            ast.Tuple([ast.Variable("given"), ast.Variable("expected")]),
-          ),
-          [
-            clause("True", [], ast.Tuple([])),
-            clause(
-              "False",
-              [],
-              ast.Call(
-                ast.Variable("hole"),
-                ast.Tuple([ast.Binary("Should equal")]),
-              ),
-            ),
-          ],
-        ),
-      ),
-      ast.Call(
-        ast.Variable("should$equal"),
-        ast.Tuple([
-          ast.Variable("True"),
-          ast.Call(
-            ast.Variable("and"),
-            ast.Tuple([ast.Variable("True"), ast.Variable("True")]),
-          ),
-        ]),
-      ),
-    ),
-  )
-}

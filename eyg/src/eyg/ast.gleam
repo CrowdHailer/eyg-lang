@@ -18,6 +18,10 @@ pub type Node {
   Provider(id: Int, generator: fn(monotype.Monotype) -> Node)
 }
 
+pub fn binary(value) {
+  Binary(value)
+}
+
 pub fn name(type_, then) {
   Name(type_, then)
 }

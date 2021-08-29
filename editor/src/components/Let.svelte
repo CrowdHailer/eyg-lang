@@ -35,11 +35,15 @@
     update_tree(path, then);
   }
   function handleLabelChange({ detail: { content: newLabel } }) {
-    let point = path.concat(count);
-    update_tree(
-      point,
-      Ast.let_({ type: "Variable", label: newLabel }, value, then)
-    );
+    console.log("changing");
+    if (newLabel != pattern.label) {
+      let point = path.concat(count);
+      update_tree(
+        point,
+        Ast.let_({ type: "Variable", label: newLabel }, value, then)
+      );
+    } else {
+    }
   }
 </script>
 

@@ -8,6 +8,7 @@
   import Function from "./Function.svelte";
   import Case from "./Case.svelte";
   import Binary from "./Binary.svelte";
+  import Provider from "./Provider.svelte";
 
   export let tree;
   export let update_tree;
@@ -83,6 +84,15 @@
     named={tree.named}
     value={tree.value}
     clauses={tree.clauses}
+  />
+{:else if tree.type == "Provider"}
+  <Provider
+    {update_tree}
+    {path}
+    {count}
+    {error}
+    id={tree.id}
+    generator={tree.generator}
   />
 {:else}
   foo
