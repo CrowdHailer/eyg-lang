@@ -12,11 +12,11 @@
 
   export let expression;
   let [metadata, tree] = expression;
-  console.log(metadata.type_);
-  console.log(tree);
+
   export let update_tree;
 </script>
 
+{metadata.path.toArray()}
 {#if tree.type == "Name"}
   <Name {update_tree} type={tree.type_} then={tree.then} />
 {:else if tree.type == "Binary"}

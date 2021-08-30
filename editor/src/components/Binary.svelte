@@ -2,8 +2,7 @@
   import Indent from "./Indent.svelte";
   export let value;
   export let update_tree;
-  export let path;
-  export let count;
+
   let string = value;
   let multiline = false;
   $: multiline = string.includes("<br>");

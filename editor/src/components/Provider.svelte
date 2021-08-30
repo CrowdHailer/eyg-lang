@@ -1,7 +1,6 @@
 <script>
   export let generator;
-  export let path;
-  export let count;
+
   export let update_tree;
   import * as Ast from "../gen/eyg/ast";
 

@@ -7,10 +7,9 @@
   import { List } from "./gen/gleam";
   let result = infer(example.code(), init(List.fromArray([])));
   let [expression, tree] = result[0];
-  // let result = "Ok";
-  let error;
 
   function update_tree(path, replacement) {
+    console.log(path, replacement);
     // expression = replace_node(expression, List.fromArray(path), replacement);
     // let output = infer(expression, init(List.fromArray([])));
     // result = output.type;
@@ -30,5 +29,5 @@
 <div
   class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white text-indigo-00"
 >
-  <Expression {expression} {update_tree} {error} />
+  <Expression {expression} {update_tree} />
 </div>

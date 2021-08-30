@@ -22,7 +22,7 @@ pub type Reason {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [], [0])
+  State(variables, 0, [], [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -178,19 +178,12 @@ fn infer_field(field, typer) {
   let #(name, tree) = field
   try #(type_, typer) = infer(tree, typer)
   // NOTE this assumes infer_field always used in a list.map context
-  Ok(#(#(name, type_), step_on_location(typer)))
+  Ok(#(#(name, type_), append_path(typer, 999)))
 }
 
-fn step_in_location(typer) {
+fn append_path(typer, i) {
   let State(location: location, ..) = typer
-  State(..typer, location: list.append(location, [0]))
-}
-
-fn step_on_location(typer) {
-  let State(location: location, ..) = typer
-  let [current, ..rest] = list.reverse(location)
-  let location = list.reverse([current + 1, ..rest])
-  State(..typer, location: location)
+  State(..typer, location: list.append(location, [i]))
 }
 
 pub type Metadata {
@@ -217,16 +210,18 @@ pub fn infer(
       ))
     Tuple(elements) -> {
       // infer_with_scope(s)
-      let typer = step_in_location(typer)
       // t can't be typer, compiler bug
-      try #(trees, typer) =
+      let State(location: path, ..) = typer
+      try #(trees, #(typer, _)) =
         list.try_map_state(
           elements,
-          typer,
-          fn(element, t) {
+          #(typer, 0),
+          fn(element, state) {
+            let #(t, i) = state
+            let p = list.append(path, [i])
+            let t = State(..t, location: p)
             try #(type_, t) = infer(element, t)
-            let t = step_on_location(t)
-            Ok(#(type_, t))
+            Ok(#(type_, #(t, i + 1)))
           },
         )
       let types = list.map(trees, get_type)
@@ -235,7 +230,6 @@ pub fn infer(
       Ok(#(#(metadata, Tuple(trees)), typer))
     }
     Row(fields) -> {
-      let typer = step_in_location(typer)
       try #(trees, typer) = list.try_map_state(fields, typer, infer_field)
       let types =
         list.map(
@@ -258,13 +252,13 @@ pub fn infer(
       let State(location: location, ..) = typer
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, ..) = typer
-      try #(value, typer) = infer(value, typer)
+      try #(value, typer) = infer(value, append_path(typer, 0))
       let given = get_type(value)
       let typer = State(..typer, variables: variables)
-      try typer = match_pattern(pattern, given, step_in_location(typer))
+      try typer = match_pattern(pattern, given, typer)
       // same rule as scope needs reseting
-      let typer = step_on_location(State(..typer, location: location))
-      try #(then, typer) = infer(then, typer)
+      let typer = State(..typer, location: location)
+      try #(then, typer) = infer(then, append_path(typer, 1))
       let metadata = Metadata(path: path, type_: get_type(then))
       let tree = Let(pattern, value, then)
       Ok(#(#(metadata, tree), typer))
@@ -275,7 +269,7 @@ pub fn infer(
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, location: location, ..) = typer
       let typer = set_variable(label, type_var, typer)
-      try #(return, typer) = infer(body, step_in_location(typer))
+      try #(return, typer) = infer(body, append_path(typer, 0))
       let #(Metadata(type_: return_type, ..), _) = return
       let typer = State(..typer, variables: variables, location: location)
       let type_ = monotype.Function(type_var, return_type)
@@ -284,11 +278,10 @@ pub fn infer(
     }
     Call(function, with) -> {
       let State(location: location, ..) = typer
-      try #(function, typer) = infer(function, step_in_location(typer))
+      try #(function, typer) = infer(function, append_path(typer, 0))
       let #(Metadata(type_: function_type, ..), _) = function
       let typer = State(..typer, location: location)
-      try #(with, typer) =
-        infer(with, step_in_location(step_on_location(typer)))
+      try #(with, typer) = infer(with, append_path(typer, 1))
       let #(Metadata(type_: with_type, ..), _) = with
       let typer = State(..typer, location: location)
       let #(x, typer) = polytype.next_unbound(typer)
@@ -299,13 +292,12 @@ pub fn infer(
       Ok(#(#(metadata, Call(function, with)), typer))
     }
     Name(new_type, then) -> {
-      // let typer = step_in_location(typer)
       let #(named, _construction) = new_type
       let State(nominal: nominal, ..) = typer
       case list.key_find(nominal, named) {
         Error(Nil) -> {
           let typer = State(..typer, nominal: [new_type, ..nominal])
-          infer(then, step_on_location(typer))
+          infer(then, append_path(typer, 0))
         }
         Ok(_) -> Error(#(DuplicateType(named), typer))
       }
@@ -358,7 +350,6 @@ pub fn infer(
               monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
             )
           let State(location: location, ..) = typer
-          let typer = step_in_location(typer)
           try #(subject, typer) = infer(subject, typer)
           let #(Metadata(type_: subject_type, ..), _) = subject
           // Maybe this unify should be typed at the location of the whole case
@@ -371,9 +362,8 @@ pub fn infer(
               clauses,
               #(variants, typer),
               // This is an error caused when the name typer is used.
-              fn(clause, state) {
-                // Step on earlier because 0 index is subject
-                let typer = step_on_location(typer)
+              fn(clause, state) { // Step on earlier because 0 index is subject
+                // let typer = step_on_location(typer)
                 let #(remaining, t) = state
                 let #(variant, variable, then) = clause
                 try #(argument, remaining) = case list.key_pop(
@@ -396,8 +386,7 @@ pub fn infer(
                 let clause = #(variant, variable, then)
                 let #(Metadata(type_: then_type, ..), _) = then
                 try t = unify(return_type, then_type, t)
-                Ok(#(clause, #(remaining, t)))
-              },
+                Ok(#(clause, #(remaining, t))) },
             )
           case unhandled {
             [] -> {
