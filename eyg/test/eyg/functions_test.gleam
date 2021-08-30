@@ -38,7 +38,7 @@ pub fn call_function_test() {
         "x",
         ast.let_(pattern.Tuple([]), ast.variable("x"), ast.binary("")),
       ),
-      ast.tuple([]),
+      ast.tuple_([]),
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
@@ -48,7 +48,7 @@ pub fn call_function_test() {
 
 pub fn call_generic_test() {
   let typer = init([])
-  let untyped = ast.call(ast.function("x", ast.variable("x")), ast.tuple([]))
+  let untyped = ast.call(ast.function("x", ast.variable("x")), ast.tuple_([]))
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
@@ -63,7 +63,7 @@ pub fn call_with_incorrect_argument_test() {
         "x",
         ast.let_(pattern.Tuple([]), ast.variable("x"), ast.binary("")),
       ),
-      ast.tuple([ast.binary("extra argument")]),
+      ast.tuple_([ast.binary("extra argument")]),
     )
   let Error(#(typer.IncorrectArity(0, 1), _state)) = infer(untyped, typer)
 }
@@ -74,8 +74,8 @@ pub fn reuse_generic_function_test() {
     ast.let_(
       pattern.Variable("id"),
       ast.function("x", ast.variable("x")),
-      ast.tuple([
-        ast.call(ast.variable("id"), ast.tuple([])),
+      ast.tuple_([
+        ast.call(ast.variable("id"), ast.tuple_([])),
         ast.call(ast.variable("id"), ast.binary("")),
       ]),
     )

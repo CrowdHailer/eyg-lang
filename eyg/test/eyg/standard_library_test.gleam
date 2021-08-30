@@ -14,7 +14,7 @@ external fn run(String) -> a =
 // Can start on the row macros for joining
 pub fn standard_library_test() {
   let untyped =
-    ast.Let(pattern.Variable("boolean"), boolean.code(), boolean.test())
+    ast.let_(pattern.Variable("boolean"), boolean.code(), boolean.test())
   compile(
     untyped,
     init([

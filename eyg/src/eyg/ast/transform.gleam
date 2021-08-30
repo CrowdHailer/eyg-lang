@@ -30,33 +30,34 @@ pub fn index_map(list: List(a), with fun: fn(Int, a) -> b) -> List(b) {
 }
 
 pub fn replace_node(
-  tree: ast.Expression(a),
+  tree: ast.Expression(Nil),
   path: List(Int),
-  replacement: ast.Expression(a),
-) -> ast.Expression(a) {
+  replacement: ast.Expression(Nil),
+) -> ast.Expression(Nil) {
+  let #(_, tree) = tree
   case path {
     [] -> replacement
     [index, ..rest] ->
       case tree {
         ast.Function(var, body) if index == 0 ->
-          ast.Function(var, replace_node(body, rest, replacement))
+          ast.function(var, replace_node(body, rest, replacement))
         ast.Let(pattern, value, then) if index == 0 ->
-          ast.Let(pattern, replace_node(value, rest, replacement), then)
+          ast.let_(pattern, replace_node(value, rest, replacement), then)
         ast.Let(pattern, value, then) if index == 1 ->
-          ast.Let(pattern, value, replace_node(then, rest, replacement))
+          ast.let_(pattern, value, replace_node(then, rest, replacement))
         ast.Let(pattern, value, then) ->
-          ast.Let(
+          ast.let_(
             pattern,
             value,
             replace_node(then, [index - 1, ..rest], replacement),
           )
         ast.Name(type_, then) if index == 0 && rest == [] -> replacement
         ast.Name(type_, then) if index == 1 ->
-          ast.Name(type_, replace_node(then, rest, replacement))
+          ast.name(type_, replace_node(then, rest, replacement))
         ast.Name(type_, then) if index > 1 ->
-          ast.Name(type_, replace_node(then, [index - 1, ..rest], replacement))
+          ast.name(type_, replace_node(then, [index - 1, ..rest], replacement))
         ast.Tuple(elements) ->
-          ast.Tuple(index_map(
+          ast.tuple_(index_map(
             elements,
             fn(i, x) {
               let i = i - 1
@@ -67,17 +68,17 @@ pub fn replace_node(
             },
           ))
         ast.Call(func, with) if index == 0 ->
-          ast.Call(replace_node(func, rest, replacement), with)
+          ast.call(replace_node(func, rest, replacement), with)
         ast.Case(type_, subject, clauses) if index == 0 ->  
 
-          ast.Case(type_, replace_node(subject, rest, replacement), clauses)
+          ast.case_(type_, replace_node(subject, rest, replacement), clauses)
         ast.Case(type_, subject, clauses) if index > 0 ->  {
           io.debug(index)
           let pre = list.take(clauses, index - 1)
           let [#(variant, variable, node), ..post] = list.drop(clauses, index - 1)
           let node = replace_node(node, rest, replacement)
           let clauses = list.append(pre, [#(variant, variable, node), ..post])
-          ast.Case(type_, subject, clauses)
+          ast.case_(type_, subject, clauses)
         }
         _ -> {
           io.debug(tree)
