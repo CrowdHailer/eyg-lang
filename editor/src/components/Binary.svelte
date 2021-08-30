@@ -8,7 +8,7 @@
   $: multiline = string.includes("<br>");
 </script>
 
-<span class="text-green-200"
+<span class="text-green-400"
   >{#if multiline}
     """
   {:else}

@@ -11,7 +11,9 @@
   import Provider from "./Provider.svelte";
 
   export let expression;
-  let [metadata, tree] = expression;
+  let metadata, tree;
+  $: metadata = expression[0];
+  $: tree = expression[1];
 
   export let update_tree;
 </script>
@@ -49,7 +51,7 @@
     clauses={tree.clauses}
   />
 {:else if tree.type == "Provider"}
-  <Provider {update_tree} id={tree.id} generator={tree.generator} />
+  <Provider {metadata} {update_tree} id={tree.id} generator={tree.generator} />
 {:else}
   foo
   {JSON.stringify(tree)}

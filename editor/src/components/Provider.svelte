@@ -1,6 +1,6 @@
 <script>
   export let generator;
-
+  export let metadata;
   export let update_tree;
   import * as Ast from "../gen/eyg/ast";
 
@@ -14,8 +14,7 @@
       event.preventDefault();
       console.warn(inputType, "not supported for ???");
     } else if (data === '"') {
-      let point = path;
-      update_tree(point, Ast.binary(""));
+      update_tree(metadata.path, Ast.binary(""));
     } else if (data === "=") {
       event.preventDefault();
       console.log("assignment");
@@ -38,6 +37,8 @@
   bind:innerHTML={string}
   bind:this={span}
 />
+<span>{JSON.stringify(metadata.type_)}</span>
+<span>{JSON.stringify(metadata.path.toArray())}</span>
 
 <style>
   /* span:empty::before {
