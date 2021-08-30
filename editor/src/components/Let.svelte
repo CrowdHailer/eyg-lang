@@ -30,6 +30,6 @@
     <TermInput initial={pattern.label} on:change={handleLabelChange} />
   {:else if pattern.type == ""}
     bb{:else}{pattern}{/if} =
-  <Expression expression={value} {update_tree} />
+  <Expression expression={value} {update_tree} on:pinpoint on:depoint />
 </p>
-<Expression expression={then} {update_tree} />
+<Expression expression={then} {update_tree} on:pinpoint on:depoint />

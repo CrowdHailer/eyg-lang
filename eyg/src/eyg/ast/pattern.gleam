@@ -7,3 +7,7 @@ pub type Pattern {
 pub fn tuple_(elements) {
   Tuple(elements)
 }
+
+pub fn variable(label)  {
+  Variable(label)
+}

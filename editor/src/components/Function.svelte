@@ -8,11 +8,10 @@
   let arguments_;
   $: arguments_ = body[1].pattern.elements.toArray();
   let main = body[1].then;
-  console.log(main);
   export let update_tree;
 </script>
 
 ({arguments_.join(", ")}) <strong>=></strong>
 <Indent>
-  <Expression expression={main} {update_tree} />
+  <Expression expression={main} {update_tree} on:pinpoint on:depoint />
 </Indent>

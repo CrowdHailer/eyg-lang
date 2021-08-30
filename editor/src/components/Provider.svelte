@@ -1,5 +1,9 @@
 <script>
+  import { createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
+
   export let generator;
+  export let id;
   export let metadata;
   export let update_tree;
   import * as Ast from "../gen/eyg/ast";
@@ -26,8 +30,16 @@
   }
   let string;
 
-  let span;
-  $: window.span = span;
+  // scope should include equal
+  function handleFocus() {
+    dispatch("pinpoint", {
+      metadata,
+      node: "Provider",
+    });
+  }
+  function handleBlur() {
+    dispatch("depoint", {});
+  }
 </script>
 
 <span
@@ -35,11 +47,12 @@
   contenteditable=""
   on:beforeinput={activate}
   bind:innerHTML={string}
-  bind:this={span}
+  on:focus={handleFocus}
+  on:blur={handleBlur}
 />
-<span>{JSON.stringify(metadata.type_)}</span>
-<span>{JSON.stringify(metadata.path.toArray())}</span>
 
+<!-- <span>{JSON.stringify(metadata.type_)}</span>
+<span>{JSON.stringify(metadata.path.toArray())}</span> -->
 <style>
   /* span:empty::before {
     content: "hole";
