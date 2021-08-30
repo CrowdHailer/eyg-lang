@@ -14,7 +14,11 @@ pub type Node(m) {
     then: Expression(m),
   )
   Constructor(named: String, variant: String)
-  Case(named: String, value: Expression(m), clauses: List(#(String, String, Expression(m))))
+  Case(
+    named: String,
+    value: Expression(m),
+    clauses: List(#(String, String, Expression(m))),
+  )
   Provider(id: Int, generator: fn(monotype.Monotype) -> Expression(m))
 }
 

@@ -22,7 +22,7 @@ pub type Reason {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [], [0])
+  State(variables, 0, [], [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -137,7 +137,8 @@ fn set_variable(label, monotype, state) {
 fn match_pattern(pattern, value, typer) {
   // TODO remove this nesting when we(if?) separate typer and scope
   let State(variables: variables, ..) = typer
-  try #(given, typer) = infer(value, typer)
+  try #(metadata, typer) = infer(value, typer)
+  let #(Metadata(type_: given, ..), _) = metadata
   let typer = State(..typer, variables: variables)
   case pattern {
     pattern.Variable(label) -> Ok(set_variable(label, given, typer))
@@ -197,19 +198,28 @@ fn step_on_location(typer) {
   State(..typer, location: location)
 }
 
+pub type Metadata {
+  Metadata(path: List(Int), type_: monotype.Monotype)
+}
+
 pub fn infer(
   tree: ast.Expression(Nil),
   typer: State,
-) -> Result(#(monotype.Monotype, State), #(Reason, State)) {
+) -> Result(#(ast.Expression(Metadata), State), #(Reason, State)) {
   // return all context so more info can be added later
   let #(Nil, tree) = tree
+  let State(location: path, ..) = typer
   case tree {
-    Binary(_) -> Ok(#(monotype.Binary, typer))
+    Binary(value) ->
+      Ok(#(
+        #(Metadata(path: path, type_: monotype.Binary), Binary(value)),
+        typer,
+      ))
     Tuple(elements) -> {
       // infer_with_scope(s)
       let typer = step_in_location(typer)
       // t can't be typer, compiler bug
-      try #(types, typer) =
+      try #(trees, typer) =
         list.try_map_state(
           elements,
           typer,
@@ -219,16 +229,37 @@ pub fn infer(
             Ok(#(type_, t))
           },
         )
-      Ok(#(monotype.Tuple(types), typer))
+      let types =
+        list.map(
+          trees,
+          fn(tree) {
+            let #(Metadata(type_: type_, ..), _) = tree
+            type_
+          },
+        )
+      let type_ = monotype.Tuple(types)
+      let metadata = Metadata(path: path, type_: type_)
+      Ok(#(#(metadata, Tuple(trees)), typer))
     }
     Row(fields) -> {
       let typer = step_in_location(typer)
-      try #(types, typer) = list.try_map_state(fields, typer, infer_field)
-      Ok(#(monotype.Row(types, None), typer))
+      try #(trees, typer) = list.try_map_state(fields, typer, infer_field)
+      let types =
+        list.map(
+          trees,
+          fn(tree) {
+            let #(name, #(Metadata(type_: type_, ..), _)) = tree
+            #(name, type_)
+          },
+        )
+      let type_ = monotype.Row(types, None)
+      let metadata = Metadata(path: path, type_: type_)
+      Ok(#(#(metadata, Row(trees)), typer))
     }
+
     Variable(label) -> {
       try #(type_, typer) = get_variable(label, typer)
-      Ok(#(type_, typer))
+      Ok(#(#(Metadata(path: path, type_: type_), Variable(label)), typer))
     }
     Let(pattern, value, then) -> {
       let State(location: location, ..) = typer
@@ -244,21 +275,27 @@ pub fn infer(
       let State(variables: variables, location: location, ..) = typer
       let typer = set_variable(label, type_var, typer)
       try #(return, typer) = infer(body, step_in_location(typer))
+      let #(Metadata(type_: return_type, ..), _) = return
       let typer = State(..typer, variables: variables, location: location)
-      Ok(#(monotype.Function(type_var, return), typer))
+      let type_ = monotype.Function(type_var, return_type)
+      let metadata = Metadata(path: path, type_: type_)
+      Ok(#(#(metadata, Function(label, return)), typer))
     }
     Call(function, with) -> {
       let State(location: location, ..) = typer
-      try #(function_type, typer) = infer(function, step_in_location(typer))
+      try #(function, typer) = infer(function, step_in_location(typer))
+      let #(Metadata(type_: function_type, ..), _) = function
       let typer = State(..typer, location: location)
-      try #(with_type, typer) =
+      try #(with, typer) =
         infer(with, step_in_location(step_on_location(typer)))
+      let #(Metadata(type_: with_type, ..), _) = with
       let typer = State(..typer, location: location)
       let #(x, typer) = polytype.next_unbound(typer)
       let return_type = monotype.Unbound(x)
       try typer =
         unify(function_type, monotype.Function(with_type, return_type), typer)
-      Ok(#(return_type, typer))
+      let metadata = Metadata(path: path, type_: return_type)
+      Ok(#(#(metadata, Call(function, with)), typer))
     }
     Name(new_type, then) -> {
       // let typer = step_in_location(typer)

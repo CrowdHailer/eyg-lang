@@ -29,13 +29,15 @@ pub fn tuple_pattern_test() {
 
 pub fn incorrect_tuple_size_test() {
   let typer = init([])
-  let untyped = ast.let_(pattern.Tuple(["a"]), ast.tuple_([]), ast.variable("a"))
+  let untyped =
+    ast.let_(pattern.Tuple(["a"]), ast.tuple_([]), ast.variable("a"))
   let Error(#(typer.IncorrectArity(1, 0), _state)) = infer(untyped, typer)
 }
 
 pub fn not_a_tuple_test() {
   let typer = init([])
-  let untyped = ast.let_(pattern.Tuple(["a"]), ast.binary(""), ast.variable("a"))
+  let untyped =
+    ast.let_(pattern.Tuple(["a"]), ast.binary(""), ast.variable("a"))
   let Error(#(
     typer.UnmatchedTypes(monotype.Tuple([_]), monotype.Binary),
     _state,

@@ -4,47 +4,52 @@ import eyg/typer/monotype
 import standard/builders.{clause, function}
 
 pub fn code() {
-  ast.let_(pattern.Variable("main"), ast.provider(999,fn(_type){todo}),
-  ast.name(
-    #(
-      "Boolean",
-      #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
-    ),
+  ast.let_(
+    pattern.Variable("main"),
+    ast.provider(999, fn(_type) { todo }),
     ast.name(
       #(
-        "Option",
-        #(
-          [1],
-          [
-            #("Some", monotype.Tuple([monotype.Unbound(1)])),
-            #("None", monotype.Tuple([])),
-          ],
-        ),
+        "Boolean",
+        #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
       ),
-      ast.let_(
-        pattern.Variable("t"),
-        ast.call(ast.constructor("Boolean", "True"), ast.tuple_([])),
-        ast.let_(
-          pattern.Variable("and"),
-          function(
-            ["left", "right"],
-            ast.case_(
-              "Boolean",
-              ast.variable("left"),
-              [
-                clause("True", [], ast.variable("right")),
-                clause(
-                  "False",
-                  [],
-                  ast.call(ast.constructor("Boolean", "False"), ast.tuple_([])),
-                ),
-              ],
-            ),
+      ast.name(
+        #(
+          "Option",
+          #(
+            [1],
+            [
+              #("Some", monotype.Tuple([monotype.Unbound(1)])),
+              #("None", monotype.Tuple([])),
+            ],
           ),
-          ast.binary("banana"),
+        ),
+        ast.let_(
+          pattern.Variable("t"),
+          ast.call(ast.constructor("Boolean", "True"), ast.tuple_([])),
+          ast.let_(
+            pattern.Variable("and"),
+            function(
+              ["left", "right"],
+              ast.case_(
+                "Boolean",
+                ast.variable("left"),
+                [
+                  clause("True", [], ast.variable("right")),
+                  clause(
+                    "False",
+                    [],
+                    ast.call(
+                      ast.constructor("Boolean", "False"),
+                      ast.tuple_([]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ast.binary("banana"),
+          ),
         ),
       ),
     ),
-  ))
+  )
 }
-

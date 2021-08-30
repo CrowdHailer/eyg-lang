@@ -21,7 +21,11 @@ pub fn variable_assignment_test() {
     ast.let_(
       pattern.Variable("foo"),
       ast.binary("My First Value"),
-      ast.let_(pattern.Variable("foo"), ast.variable("foo"), ast.variable("foo")),
+      ast.let_(
+        pattern.Variable("foo"),
+        ast.variable("foo"),
+        ast.variable("foo"),
+      ),
     )
   let js = compile(untyped, init([]))
   let [l1, l2, l3] = js

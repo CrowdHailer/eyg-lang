@@ -69,13 +69,13 @@ pub fn replace_node(
           ))
         ast.Call(func, with) if index == 0 ->
           ast.call(replace_node(func, rest, replacement), with)
-        ast.Case(type_, subject, clauses) if index == 0 ->  
-
+        ast.Case(type_, subject, clauses) if index == 0 ->
           ast.case_(type_, replace_node(subject, rest, replacement), clauses)
-        ast.Case(type_, subject, clauses) if index > 0 ->  {
+        ast.Case(type_, subject, clauses) if index > 0 -> {
           io.debug(index)
           let pre = list.take(clauses, index - 1)
-          let [#(variant, variable, node), ..post] = list.drop(clauses, index - 1)
+          let [#(variant, variable, node), ..post] =
+            list.drop(clauses, index - 1)
           let node = replace_node(node, rest, replacement)
           let clauses = list.append(pre, [#(variant, variable, node), ..post])
           ast.case_(type_, subject, clauses)
