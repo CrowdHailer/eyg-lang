@@ -19,7 +19,7 @@ pub type Node(m) {
     value: Expression(m),
     clauses: List(#(String, String, Expression(m))),
   )
-  Provider(id: Int, generator: fn(monotype.Monotype) -> Expression(m))
+  Provider(id: Int, generator: fn(monotype.Monotype) -> Expression(Nil))
 }
 
 // m for metadata

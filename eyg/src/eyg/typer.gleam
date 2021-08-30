@@ -328,7 +328,8 @@ pub fn infer(
                   ),
                 )
               let #(monotype, typer) = polytype.instantiate(polytype, typer)
-              Ok(#(monotype, typer))
+              let metadata = Metadata(path: path, type_: monotype)
+              Ok(#(#(metadata, Constructor(named, variant)), typer))
             }
             Error(Nil) -> Error(#(UnknownVariant(variant, named), typer))
           }
@@ -337,7 +338,6 @@ pub fn infer(
     }
     Case(named, subject, clauses) -> {
       let State(nominal: nominal, location: location, ..) = typer
-      io.debug(location)
       case list.key_find(nominal, named) {
         // Think the old version errored by instantiating everytime
         Ok(#(parameters, variants)) -> {
@@ -358,14 +358,15 @@ pub fn infer(
             )
           let State(location: location, ..) = typer
           let typer = step_in_location(typer)
-          try #(subject_type, typer) = infer(subject, typer)
+          try #(subject, typer) = infer(subject, typer)
+          let #(Metadata(type_: subject_type, ..), _) = subject
           // Maybe this unify should be typed at the location of the whole case
           try typer = unify(expected, subject_type, typer)
           let #(x, typer) = polytype.next_unbound(typer)
           let return_type = monotype.Unbound(x)
           let State(variables: variables, ..) = typer
-          try #(unhandled, typer) =
-            list.try_fold(
+          try #(clauses, #(unhandled, typer)) =
+            list.try_map_state(
               clauses,
               #(variants, typer),
               // This is an error caused when the name typer is used.
@@ -390,13 +391,19 @@ pub fn infer(
                 // reset scope variables
                 let t = State(..t, variables: variables)
                 let t = set_variable(variable, argument, t)
-                try #(type_, t) = infer(then, t)
-                try t = unify(return_type, type_, t)
-                Ok(#(remaining, t))
+                try #(then, t) = infer(then, t)
+                let clause = #(variant, variable, then)
+                let #(Metadata(type_: then_type, ..), _) = then
+                try t = unify(return_type, then_type, t)
+                Ok(#(clause, #(remaining, t)))
               },
             )
           case unhandled {
-            [] -> Ok(#(return_type, typer))
+            [] -> {
+              let metadata = Metadata(path: path, type_: return_type)
+              let tree = Case(named, subject, clauses)
+              Ok(#(#(metadata, tree), typer))
+            }
             _ ->
               Error(#(
                 UnhandledVariants(list.map(
@@ -414,7 +421,11 @@ pub fn infer(
       }
     }
     // Can't call the generator here because we don't know what the type will resolve to yet.
-    Provider(id, _generator) -> Ok(#(monotype.Unbound(id), typer))
+    Provider(id, generator) -> {
+      let type_ = monotype.Unbound(id)
+      let metadata = Metadata(path: path, type_: type_)
+      Ok(#(#(metadata, Provider(id, generator)), typer))
+    }
   }
 }
 
