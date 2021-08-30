@@ -1,7 +1,7 @@
 import gleam/io
 import eyg/ast
 import eyg/ast/pattern
-import eyg/typer.{infer, init}
+import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype.{resolve}
 import eyg/typer/polytype.{State}
 
@@ -16,7 +16,7 @@ pub fn typed_function_test() {
   let State(substitutions: substitutions, ..) = typer
 
   let monotype.Function(monotype.Tuple([]), monotype.Binary) =
-    resolve(type_, substitutions)
+    resolve(get_type(type_), substitutions)
 }
 
 pub fn generic_function_test() {
@@ -26,7 +26,7 @@ pub fn generic_function_test() {
   let State(substitutions: substitutions, ..) = typer
 
   let monotype.Function(monotype.Unbound(a), monotype.Unbound(b)) =
-    resolve(type_, substitutions)
+    resolve(get_type(type_), substitutions)
   let True = a == b
 }
 
@@ -43,7 +43,7 @@ pub fn call_function_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
-  let monotype.Binary = resolve(type_, substitutions)
+  let monotype.Binary = resolve(get_type(type_), substitutions)
 }
 
 pub fn call_generic_test() {
@@ -52,7 +52,7 @@ pub fn call_generic_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
-  let monotype.Tuple([]) = resolve(type_, substitutions)
+  let monotype.Tuple([]) = resolve(get_type(type_), substitutions)
 }
 
 pub fn call_with_incorrect_argument_test() {
@@ -83,5 +83,5 @@ pub fn reuse_generic_function_test() {
   let State(substitutions: substitutions, ..) = typer
 
   let monotype.Tuple([monotype.Tuple([]), monotype.Binary]) =
-    resolve(type_, substitutions)
+    resolve(get_type(type_), substitutions)
 }

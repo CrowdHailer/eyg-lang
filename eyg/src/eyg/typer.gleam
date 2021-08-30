@@ -22,7 +22,7 @@ pub type Reason {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [], [])
+  State(variables, 0, [], [], [0])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -200,6 +200,11 @@ fn step_on_location(typer) {
 
 pub type Metadata {
   Metadata(path: List(Int), type_: monotype.Monotype)
+}
+
+pub fn get_type(tree: ast.Expression(Metadata)) -> monotype.Monotype {
+  let #(Metadata(type_: type_, ..), _) = tree
+  type_
 }
 
 pub fn infer(
