@@ -7,29 +7,6 @@
   export let value;
   export let then;
   export let update_tree;
-  export let path;
-  export let count;
-  export let error;
-  let valueError, thenError;
-  $: if (error && error[0].length !== 0) {
-    let [first, ...rest] = error[0];
-    if (first === 0) {
-      if (value.type == "Let") {
-        // do nothing,
-      } else {
-        // There is an extra zero for being the tail in a let chain
-        rest = rest.slice(1);
-      }
-      valueError = [rest, error[1]];
-      thenError = undefined;
-    } else {
-      thenError = [[first - 1, ...rest], error[1]];
-      valueError = undefined;
-    }
-  } else {
-    thenError = undefined;
-    valueError = undefined;
-  }
 
   function removeLet(path) {
     update_tree(path, then);
@@ -48,25 +25,11 @@
 </script>
 
 <p>
-  <span class="text-yellow-400" on:click={() => removeLet(path.concat(count))}
-    >let</span
-  >
+  <span class="text-yellow-400">let</span>
   {#if pattern.type == "Variable"}
     <TermInput initial={pattern.label} on:change={handleLabelChange} />
   {:else if pattern.type == ""}
     bb{:else}{pattern}{/if} =
-  <Expression
-    tree={value}
-    {update_tree}
-    path={path?.concat(count)}
-    count={0}
-    error={valueError}
-  />
+  <Expression expression={value} {update_tree} />
 </p>
-<Expression
-  tree={then}
-  {path}
-  count={count + 1}
-  {update_tree}
-  error={thenError}
-/>
+<Expression expression={then} {update_tree} />

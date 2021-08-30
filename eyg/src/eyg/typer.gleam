@@ -134,12 +134,7 @@ fn set_variable(label, monotype, state) {
 }
 
 // assignment/patterns
-fn match_pattern(pattern, value, typer) {
-  // TODO remove this nesting when we(if?) separate typer and scope
-  let State(variables: variables, ..) = typer
-  try #(metadata, typer) = infer(value, typer)
-  let #(Metadata(type_: given, ..), _) = metadata
-  let typer = State(..typer, variables: variables)
+fn match_pattern(pattern, given, typer) {
   case pattern {
     pattern.Variable(label) -> Ok(set_variable(label, given, typer))
     pattern.Tuple(elements) -> {
@@ -261,10 +256,18 @@ pub fn infer(
     }
     Let(pattern, value, then) -> {
       let State(location: location, ..) = typer
-      try typer = match_pattern(pattern, value, step_in_location(typer))
+      // TODO remove this nesting when we(if?) separate typer and scope
+      let State(variables: variables, ..) = typer
+      try #(value, typer) = infer(value, typer)
+      let given = get_type(value)
+      let typer = State(..typer, variables: variables)
+      try typer = match_pattern(pattern, given, step_in_location(typer))
       // same rule as scope needs reseting
       let typer = step_on_location(State(..typer, location: location))
-      infer(then, typer)
+      try #(then, typer) = infer(then, typer)
+      let metadata = Metadata(path: path, type_: get_type(then))
+      let tree = Let(pattern, value, then)
+      Ok(#(#(metadata, tree), typer))
     }
     Function(label, body) -> {
       let #(x, typer) = polytype.next_unbound(typer)
