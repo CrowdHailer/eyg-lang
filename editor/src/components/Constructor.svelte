@@ -5,8 +5,7 @@
   export let named;
   export let variant;
   export let update_tree;
-  export let path;
-  export let count;
+
   function handleVariantChange({ detail: { content: newVariant } }) {
     let point = path.concat([count]);
     update_tree(point, Ast.constructor(named, newVariant));

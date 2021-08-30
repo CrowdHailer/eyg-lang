@@ -297,7 +297,10 @@ pub fn infer(
       case list.key_find(nominal, named) {
         Error(Nil) -> {
           let typer = State(..typer, nominal: [new_type, ..nominal])
-          infer(then, append_path(typer, 0))
+          try #(then, typer) = infer(then, append_path(typer, 0))
+          let metadata = Metadata(path: path, type_: get_type(then))
+          let tree = Name(new_type, then)
+          Ok(#(#(metadata, tree), typer))
         }
         Ok(_) -> Error(#(DuplicateType(named), typer))
       }
