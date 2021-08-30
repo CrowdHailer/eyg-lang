@@ -8,6 +8,6 @@ pub fn tuple_(elements) {
   Tuple(elements)
 }
 
-pub fn variable(label)  {
+pub fn variable(label) {
   Variable(label)
 }

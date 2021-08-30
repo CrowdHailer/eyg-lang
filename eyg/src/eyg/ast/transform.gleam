@@ -45,30 +45,39 @@ pub fn replace_node(
           ast.let_(pattern, replace_node(value, rest, replacement), then)
         ast.Let(pattern, value, then) if index == 1 ->
           ast.let_(pattern, value, replace_node(then, rest, replacement))
-        ast.Let(pattern, value, then) ->
-          ast.let_(
-            pattern,
-            value,
-            replace_node(then, [index - 1, ..rest], replacement),
-          )
-        ast.Name(type_, then) if index == 0 && rest == [] -> replacement
-        ast.Name(type_, then) if index == 1 ->
+        ast.Name(type_, then) if index == 0 ->
           ast.name(type_, replace_node(then, rest, replacement))
-        ast.Name(type_, then) if index > 1 ->
-          ast.name(type_, replace_node(then, [index - 1, ..rest], replacement))
         ast.Tuple(elements) ->
           ast.tuple_(index_map(
             elements,
-            fn(i, x) {
+            fn(i, element) {
+              // i-1 compiler bug
               let i = i - 1
               case i == index {
-                True -> replacement
-                False -> x
+                True -> replace_node(element, rest, replacement)
+                False -> element
+              }
+            },
+          ))
+        ast.Row(fields) ->
+          ast.row(index_map(
+            fields,
+            fn(i, field) {
+              // i-1 compiler bug
+              let i = i - 1
+              case i == index {
+                True -> {
+                  let #(name, exp) = field
+                  #(name, replace_node(exp, rest, replacement))
+                }
+                False -> field
               }
             },
           ))
         ast.Call(func, with) if index == 0 ->
           ast.call(replace_node(func, rest, replacement), with)
+        ast.Call(func, with) if index == 1 ->
+          ast.call(func, replace_node(with, rest, replacement))
         ast.Case(type_, subject, clauses) if index == 0 ->
           ast.case_(type_, replace_node(subject, rest, replacement), clauses)
         ast.Case(type_, subject, clauses) if index > 0 -> {

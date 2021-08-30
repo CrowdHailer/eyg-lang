@@ -17,6 +17,10 @@
   $: tree = expression[1];
 
   export let update_tree;
+  // can't expand pinpoint event with tree becaus it bubbles up through all expressions
+  // function handlePinpoint({ detail }) {
+  //   let detail = Object.assign({}, detail, { tree });
+  // }
 </script>
 
 <!-- {metadata.path.toArray()} -->
@@ -31,7 +35,7 @@
 {:else if tree.type == "Tuple"}
   <Tuple {update_tree} elements={tree.elements} on:pinpoint on:depoint />
 {:else if tree.type == "Binary"}
-  <Binary {update_tree} value={tree.value} on:pinpoint on:depoint />
+  <Binary {update_tree} value={tree.value} {metadata} on:pinpoint on:depoint />
 {:else if tree.type == "Let"}
   <Let
     {update_tree}

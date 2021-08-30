@@ -22,24 +22,27 @@
     // replace node needs to use untyped because infer fn assumes nil metadata
     untyped = replace_node(untyped, path, replacement);
   }
-  let path;
+  let metadata;
+  let current;
   let expired = false;
   function handlePinpoint({ detail }) {
-    const { metadata, node, current } = detail;
+    // const { metadata, node, current } = detail;
     expired = false;
-    path = metadata.path;
+    metadata = detail.metadata;
+    current = detail.current;
   }
-  function handleDepoint({}) {
+  function handleDepoint({ detail }) {
+    current = detail.current;
+
     expired = true;
     // bluring immediatly closes the menu so it cant be clicked on.
     setTimeout(() => {
       if (expired) {
-        path = undefined;
+        metadata = undefined;
       }
       console.log(expired);
     }, 0);
   }
-  let current = Ast.provider(() => {}, 999);
 </script>
 
 <header class="max-w-4xl mx-auto pb-2 pt-6">
@@ -55,7 +58,7 @@
     on:depoint={handleDepoint}
   />
 
-  {#if path !== undefined}
+  {#if metadata !== undefined}
     <nav
       class="mt-4"
       on:focusin={() => {
@@ -66,31 +69,53 @@
       <button
         class="hover:bg-gray-200 py-1 px-2 border rounded"
         on:click={() => {
+          console.log(current, "current");
+
           update_tree(
-            path,
-            Ast.let_(Pattern.variable("new"), current, current)
+            metadata.path,
+            Ast.let_(
+              Pattern.variable("new"),
+              current,
+              Ast.provider(function () {
+                alert("provider");
+              }, 999)
+            )
           );
-          path = undefined;
+          metadata = undefined;
         }}>Let</button
       >
       <button
         class="hover:bg-gray-200 py-1 px-2 border rounded"
         on:click={() => {
-          update_tree(path, Ast.function$(List.fromArray(["arg1"]), current));
-          path = undefined;
+          update_tree(
+            metadata.path,
+            Ast.function$(List.fromArray(["arg1"]), current)
+          );
+          metadata = undefined;
         }}>Function</button
       >
       <button
         class="hover:bg-gray-200 py-1 px-2 border rounded"
-        on:click={() => update_tree(path, Ast.binary(""))}>Binary</button
+        on:click={() => {
+          update_tree(metadata.path, Ast.binary(""));
+          metadata = undefined;
+        }}>Binary</button
       >
       <button
         class="hover:bg-gray-200 py-1 px-2 border rounded"
         on:click={() =>
-          update_tree(path, Ast.tuple_(List.fromArray([current])))}
+          update_tree(metadata.path, Ast.tuple_(List.fromArray([current])))}
         >Tuple</button
       >
+      <hr />
+      {#each metadata.scope.toArray() as [key]}
+        <button
+          class="hover:bg-gray-200 py-1 px-2 border rounded"
+          on:click={() => update_tree(metadata.path, Ast.variable(key))}
+          >{key}</button
+        >
+      {/each}
     </nav>
-    {JSON.stringify(path?.toArray())}
+    {JSON.stringify(metadata.path?.toArray())}
   {/if}
 </div>

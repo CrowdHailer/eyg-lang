@@ -35,10 +35,15 @@
     dispatch("pinpoint", {
       metadata,
       node: "Provider",
+      current: Ast.provider(generator, id),
     });
   }
   function handleBlur() {
-    dispatch("depoint", {});
+    dispatch("depoint", {
+      metadata,
+      node: "Provider",
+      current: Ast.provider(generator, id),
+    });
   }
 </script>
 
