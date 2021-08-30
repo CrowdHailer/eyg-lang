@@ -234,14 +234,7 @@ pub fn infer(
             Ok(#(type_, t))
           },
         )
-      let types =
-        list.map(
-          trees,
-          fn(tree) {
-            let #(Metadata(type_: type_, ..), _) = tree
-            type_
-          },
-        )
+      let types = list.map(trees, get_type)
       let type_ = monotype.Tuple(types)
       let metadata = Metadata(path: path, type_: type_)
       Ok(#(#(metadata, Tuple(trees)), typer))
@@ -252,8 +245,8 @@ pub fn infer(
       let types =
         list.map(
           trees,
-          fn(tree) {
-            let #(name, #(Metadata(type_: type_, ..), _)) = tree
+          fn(tree_with_other_name) {
+            let #(name, #(Metadata(type_: type_, ..), _)) = tree_with_other_name
             #(name, type_)
           },
         )
