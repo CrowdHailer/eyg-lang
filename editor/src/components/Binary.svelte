@@ -39,6 +39,7 @@
     """
   {:else}
     "{/if}<span
+    id="p{metadata.path.toArray().join(',')}"
     class={multiline ? "block" : "inline"}
     contenteditable=""
     on:focus={handleFocus}

@@ -26,6 +26,7 @@
 <!-- {metadata.path.toArray()} -->
 {#if tree.type == "Name"}
   <Name
+    {metadata}
     {update_tree}
     type={tree.type_}
     then={tree.then}
@@ -33,11 +34,18 @@
     on:depoint
   />
 {:else if tree.type == "Tuple"}
-  <Tuple {update_tree} elements={tree.elements} on:pinpoint on:depoint />
+  <Tuple
+    {metadata}
+    {update_tree}
+    elements={tree.elements}
+    on:pinpoint
+    on:depoint
+  />
 {:else if tree.type == "Binary"}
-  <Binary {update_tree} value={tree.value} {metadata} on:pinpoint on:depoint />
+  <Binary {metadata} {update_tree} value={tree.value} on:pinpoint on:depoint />
 {:else if tree.type == "Let"}
   <Let
+    {metadata}
     {update_tree}
     pattern={tree.pattern}
     value={tree.value}
@@ -63,7 +71,13 @@
 {:else if tree.type == "Row"}
   <Row {update_tree} fields={tree.fields} on:pinpoint on:depoint />
 {:else if tree.type == "Variable"}
-  <Variable {update_tree} label={tree.label} on:pinpoint on:depoint />
+  <Variable
+    {metadata}
+    {update_tree}
+    label={tree.label}
+    on:pinpoint
+    on:depoint
+  />
 {:else if tree.type == "Function"}
   <Function
     {update_tree}

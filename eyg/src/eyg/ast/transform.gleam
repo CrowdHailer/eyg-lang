@@ -98,6 +98,10 @@ pub fn replace_node(
   }
 }
 
+pub fn new_type_name(name: String, then: ast.Expression(Nil)) -> ast.Expression(Nil) {
+  ast.name(#(name, #([], [])), then)
+}
+
 pub fn change_type_name(type_, new_name) {
   let #(type_name, #(params, variants)) = type_
   #(new_name, #(params, variants))
@@ -117,7 +121,7 @@ pub fn add_variant(type_, after, new_name) {
   let #(type_name, #(params, variants)) = type_
   let pre = list.take(variants, after + 1)
   let post = list.drop(variants, after + 1)
-  let variant = #("_", ast.Tuple([]))
+  let variant = #(new_name, ast.Tuple([]))
   let variants = list.append(pre, [variant, ..post])
   #(type_name, #(params, variants))
 }

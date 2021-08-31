@@ -1,4 +1,6 @@
 <script>
+  import { tick } from "svelte";
+
   import Expression from "./components/Expression.svelte";
   import * as example from "./gen/standard/example";
 
@@ -7,6 +9,7 @@
   import * as AstBare from "./gen/eyg/ast";
   import * as Builders from "./gen/standard/builders";
   const Ast = Object.assign({}, AstBare, Builders);
+  import * as Transform from "./gen/eyg/ast/transform";
   import * as Pattern from "./gen/eyg/ast/pattern";
   import { List } from "./gen/gleam";
   // let untyped = example.code();
@@ -16,11 +19,19 @@
   let result;
   let expression;
   $: result = infer(untyped, init(List.fromArray([])));
+  $: console.log(result);
   $: expression = result[0][0];
 
-  function update_tree(path, replacement) {
+  async function update_tree(path, replacement) {
     // replace node needs to use untyped because infer fn assumes nil metadata
     untyped = replace_node(untyped, path, replacement);
+    await tick();
+    let pathId = "p" + path.toArray().join(",");
+    let element = document.getElementById(pathId);
+    element.focus();
+    // setTimeout(function () {
+    //   element.setSelectionRange(0, 100);
+    // }, 100);
   }
   let metadata;
   let current;
@@ -66,6 +77,15 @@
         expired = false;
       }}
     >
+      <button
+        class="hover:bg-gray-200 py-1 px-2 border rounded"
+        on:click={async () => {
+          let replacement = Transform.new_type_name("", current);
+          let p = metadata.path;
+          update_tree(p, replacement);
+          metadata = undefined;
+        }}>Type</button
+      >
       <button
         class="hover:bg-gray-200 py-1 px-2 border rounded"
         on:click={() => {
@@ -119,3 +139,4 @@
     {JSON.stringify(metadata.path?.toArray())}
   {/if}
 </div>
+{JSON.stringify(untyped)}

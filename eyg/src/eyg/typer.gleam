@@ -204,7 +204,7 @@ pub fn infer(
   typer: State,
 ) -> Result(#(ast.Expression(Metadata), State), #(Reason, State)) {
   // return all context so more info can be added later
-  let #(Nil, tree) = tree
+  let #(_, tree) = tree
   let State(location: path, ..) = typer
   case tree {
     Binary(value) ->

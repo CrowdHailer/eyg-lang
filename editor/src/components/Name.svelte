@@ -9,6 +9,7 @@
     add_variant,
   } from "../gen/eyg/ast/transform";
 
+  export let metadata;
   export let update_tree;
 
   export let type;
@@ -20,9 +21,8 @@
   $: variants = type[1][1].toArray();
 
   function handleNameChange({ detail: { content: newName } }) {
-    let point = path.concat(count);
     let node = Ast.name(change_type_name(type, newName), then);
-    update_tree(point, node);
+    update_tree(metadata.path, node);
   }
   function handleVariantChange({ detail: { content: newName } }, i) {
     let point = path.concat(count);
@@ -46,15 +46,24 @@
     mappings[i] = letter;
     return letter;
   });
+  let newContent = "";
+  function handleBlur(event) {
+    let variant = event.target.innerHTML.replace("<br>", "");
+    newContent = "";
+    let node = Ast.name(add_variant(type, variants.length, variant), then);
+    update_tree(metadata.path, node);
+  }
 </script>
 
 <p>
   <span class="text-yellow-400">type</span>
-  <TermInput initial={named} on:change={handleNameChange} /><span
-    class="text-gray-600">(</span
-  ><span class="text-blue-700">{textParams.join(", ")}</span><span
-    class="text-gray-600">)</span
-  >
+  <TermInput
+    initial={named}
+    on:change={handleNameChange}
+    path={metadata.path}
+  /><span class="text-gray-600">(</span><span class="text-blue-700"
+    >{textParams.join(", ")}</span
+  ><span class="text-gray-600">)</span>
   <Indent>
     {#each variants as [variant, { elements }], index}
       <div>
@@ -80,6 +89,12 @@
         /><span class="text-gray-600">)</span>
       </div>
     {/each}
+    <span
+      class="outline-none"
+      contenteditable=""
+      bind:innerHTML={newContent}
+      on:blur={handleBlur}
+    />
   </Indent>
 </p>
-<Expression expression={then} {update_tree} />
+<Expression expression={then} {update_tree} on:pinpoint on:depoint />
