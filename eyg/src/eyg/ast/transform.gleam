@@ -98,7 +98,10 @@ pub fn replace_node(
   }
 }
 
-pub fn new_type_name(name: String, then: ast.Expression(Nil)) -> ast.Expression(Nil) {
+pub fn new_type_name(
+  name: String,
+  then: ast.Expression(Nil),
+) -> ast.Expression(Nil) {
   ast.name(#(name, #([], [])), then)
 }
 

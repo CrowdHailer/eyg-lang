@@ -220,7 +220,7 @@ pub fn render(tree, state) {
       let hole = monotype.resolve(monotype.Unbound(id), substitutions)
       let tree = func(hole)
       case typer.infer(tree, typer) {
-        Ok(#(#(typer.Metadata(type_: type_, ..), _), typer)) ->
+        Ok(#(#(typer.Metadata(type_: Ok(type_), ..), _), typer)) ->
           case typer.unify(type_, monotype.Unbound(id), typer) {
             Ok(typer) -> {
               let state = #(a, b, typer)

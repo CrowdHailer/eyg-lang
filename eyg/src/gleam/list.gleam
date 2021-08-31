@@ -219,3 +219,49 @@ fn do_take(list: List(a), n: Int, acc: List(a)) -> List(a) {
 pub fn take(from list: List(a), up_to n: Int) -> List(a) {
   do_take(list, n, [])
 }
+
+fn do_try_map(
+  list: List(a),
+  fun: fn(a) -> Result(b, e),
+  acc: List(b),
+) -> Result(List(b), e) {
+  case list {
+    [] -> Ok(reverse(acc))
+    [x, ..xs] ->
+      case fun(x) {
+        Ok(y) -> do_try_map(xs, fun, [y, ..acc])
+        Error(error) -> Error(error)
+      }
+  }
+}
+
+/// Takes a function that returns a Result applies it to each element in a
+/// given list in tern.
+///
+/// If the function returns `Ok(new_value)` for all elements in the list then a
+/// list of the new values is returned.
+///
+/// If the function returns `Error(reason)` for any of the elements then it is
+/// returned immediately. None of the elements in the list are processed after
+/// one returns an `Error`.
+///
+/// ## Examples
+///
+///    > try_map([1, 2, 3], fn(x) { Ok(x + 2) })
+///    Ok([3, 4, 5])
+///
+///    > try_map([1, 2, 3], fn(_) { Error(0) })
+///    Error(0)
+///
+///    > try_map([[1], [2, 3]], head)
+///    Ok([1, 2])
+///
+///    > try_map([[1], [], [2]], head)
+///    Error(Nil)
+///
+pub fn try_map(
+  over list: List(a),
+  with fun: fn(a) -> Result(b, e),
+) -> Result(List(b), e) {
+  do_try_map(list, fun, [])
+}

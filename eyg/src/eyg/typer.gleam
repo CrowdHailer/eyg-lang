@@ -189,12 +189,14 @@ fn append_path(typer, i) {
 pub type Metadata {
   Metadata(
     path: List(Int),
-    type_: monotype.Monotype,
+    type_: Result(monotype.Monotype, Reason),
     scope: List(#(String, polytype.Polytype)),
   )
 }
 
-pub fn get_type(tree: ast.Expression(Metadata)) -> monotype.Monotype {
+pub fn get_type(
+  tree: ast.Expression(Metadata),
+) -> Result(monotype.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
 }
@@ -206,11 +208,17 @@ pub fn infer(
   // return all context so more info can be added later
   let #(_, tree) = tree
   let State(location: path, ..) = typer
+  // Todo use function that takes type into meta
+  let meta = Metadata(path: path, type_: _, scope: typer.variables)
   case tree {
     Binary(value) ->
       Ok(#(
         #(
-          Metadata(path: path, type_: monotype.Binary, scope: typer.variables),
+          Metadata(
+            path: path,
+            type_: Ok(monotype.Binary),
+            scope: typer.variables,
+          ),
           Binary(value),
         ),
         typer,
@@ -231,9 +239,11 @@ pub fn infer(
             Ok(#(type_, #(t, i + 1)))
           },
         )
-      let types = list.map(trees, get_type)
+      // TODO type should always be ok that it's tuples
+      let Ok(types) = list.try_map(trees, get_type)
       let type_ = monotype.Tuple(types)
-      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      let metadata =
+        Metadata(path: path, type_: Ok(type_), scope: typer.variables)
       Ok(#(#(metadata, Tuple(trees)), typer))
     }
     Row(fields) -> {
@@ -242,31 +252,47 @@ pub fn infer(
         list.map(
           trees,
           fn(tree_with_other_name) {
-            let #(name, #(Metadata(type_: type_, ..), _)) = tree_with_other_name
+            let #(name, #(Metadata(type_: Ok(type_), ..), _)) =
+              tree_with_other_name
             #(name, type_)
           },
         )
       let type_ = monotype.Row(types, None)
-      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      let metadata =
+        Metadata(path: path, type_: Ok(type_), scope: typer.variables)
       Ok(#(#(metadata, Row(trees)), typer))
     }
 
-    Variable(label) -> {
-      try #(type_, typer) = get_variable(label, typer)
-      Ok(#(
-        #(
-          Metadata(path: path, type_: type_, scope: typer.variables),
-          Variable(label),
-        ),
-        typer,
-      ))
-    }
+    Variable(label) ->
+      case get_variable(label, typer) {
+        Ok(#(type_, typer)) ->
+          Ok(#(
+            #(
+              Metadata(path: path, type_: Ok(type_), scope: typer.variables),
+              Variable(label),
+            ),
+            typer,
+          ))
+        Error(#(reason, _)) -> Ok(#(
+            #(
+              Metadata(path: path, type_: Error(reason), scope: typer.variables),
+              Variable(label),
+            ),
+            typer,
+          ))
+      }
     Let(pattern, value, then) -> {
       let State(location: location, ..) = typer
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, ..) = typer
       try #(value, typer) = infer(value, append_path(typer, 0))
-      let given = get_type(value)
+      let #(given, typer) = case get_type(value) {
+        Ok(given) -> #(given, typer)
+        Error(_) -> {
+          let #(x, typer) = polytype.next_unbound(typer)
+          #(monotype.Unbound(x), typer)
+        }
+      }
       let typer = State(..typer, variables: variables)
       try typer = match_pattern(pattern, given, typer)
       // same rule as scope needs reseting
@@ -285,8 +311,11 @@ pub fn infer(
       let typer = set_variable(label, type_var, typer)
       try #(return, typer) = infer(body, append_path(typer, 0))
       let typer = State(..typer, variables: variables, location: location)
-      let type_ = monotype.Function(type_var, get_type(return))
-      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      // There are ALOT more type variables if handling all the errors.
+      let Ok(return_type) = get_type(return)
+      let type_ = monotype.Function(type_var, return_type)
+      let metadata =
+        Metadata(path: path, type_: Ok(type_), scope: typer.variables)
       Ok(#(#(metadata, Function(label, return)), typer))
     }
     Call(function, with) -> {
@@ -297,14 +326,12 @@ pub fn infer(
       let typer = State(..typer, location: location)
       let #(x, typer) = polytype.next_unbound(typer)
       let return_type = monotype.Unbound(x)
-      try typer =
-        unify(
-          get_type(function),
-          monotype.Function(get_type(with), return_type),
-          typer,
-        )
+      let Ok(ftype) = get_type(function)
+      // TODO unify error should always work
+      let Ok(with_type) = get_type(with)
+      try typer = unify(ftype, monotype.Function(with_type, return_type), typer)
       let metadata =
-        Metadata(path: path, type_: return_type, scope: typer.variables)
+        Metadata(path: path, type_: Ok(return_type), scope: typer.variables)
       Ok(#(#(metadata, Call(function, with)), typer))
     }
     Name(new_type, then) -> {
@@ -342,7 +369,11 @@ pub fn infer(
                 )
               let #(monotype, typer) = polytype.instantiate(polytype, typer)
               let metadata =
-                Metadata(path: path, type_: monotype, scope: typer.variables)
+                Metadata(
+                  path: path,
+                  type_: Ok(monotype),
+                  scope: typer.variables,
+                )
               Ok(#(#(metadata, Constructor(named, variant)), typer))
             }
             Error(Nil) -> Error(#(UnknownVariant(variant, named), typer))
@@ -373,7 +404,8 @@ pub fn infer(
           let State(location: location, ..) = typer
           try #(subject, typer) = infer(subject, typer)
           // Maybe this unify should be typed at the location of the whole case
-          try typer = unify(expected, get_type(subject), typer)
+          let Ok(subject_type) = get_type(subject)
+          try typer = unify(expected, subject_type, typer)
           let #(x, typer) = polytype.next_unbound(typer)
           let return_type = monotype.Unbound(x)
           let State(variables: variables, ..) = typer
@@ -404,13 +436,18 @@ pub fn infer(
                 let t = set_variable(variable, argument, t)
                 try #(then, t) = infer(then, t)
                 let clause = #(variant, variable, then)
-                try t = unify(return_type, get_type(then), t)
+                let Ok(then_type) = get_type(then)
+                try t = unify(return_type, then_type, t)
                 Ok(#(clause, #(remaining, t))) },
             )
           case unhandled {
             [] -> {
               let metadata =
-                Metadata(path: path, type_: return_type, scope: typer.variables)
+                Metadata(
+                  path: path,
+                  type_: Ok(return_type),
+                  scope: typer.variables,
+                )
               let tree = Case(named, subject, clauses)
               Ok(#(#(metadata, tree), typer))
             }
@@ -433,7 +470,8 @@ pub fn infer(
     // Can't call the generator here because we don't know what the type will resolve to yet.
     Provider(id, generator) -> {
       let type_ = monotype.Unbound(id)
-      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      let metadata =
+        Metadata(path: path, type_: Ok(type_), scope: typer.variables)
       Ok(#(#(metadata, Provider(id, generator)), typer))
     }
   }
