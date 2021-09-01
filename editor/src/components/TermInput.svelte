@@ -45,7 +45,7 @@
 <style>
   span:empty {
     display: inline-block;
-    min-width: 1em;
+    /* min-width: 1em; */
   }
   span:empty:focus {
     background-color: lightgrey;

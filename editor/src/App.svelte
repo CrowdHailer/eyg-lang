@@ -13,9 +13,7 @@
   import * as Pattern from "./gen/eyg/ast/pattern";
   import { List } from "./gen/gleam";
   // let untyped = example.code();
-  let untyped = Ast.provider(function () {
-    alert("provider");
-  }, 999);
+  let untyped = Ast.hole();
   let result;
   let expression;
   $: result = infer(untyped, init(List.fromArray([])));
@@ -25,10 +23,10 @@
   async function update_tree(path, replacement) {
     // replace node needs to use untyped because infer fn assumes nil metadata
     untyped = replace_node(untyped, path, replacement);
-    await tick();
-    let pathId = "p" + path.toArray().join(",");
-    let element = document.getElementById(pathId);
-    element.focus();
+    // await tick();
+    // let pathId = "p" + path.toArray().join(",");
+    // let element = document.getElementById(pathId);
+    // element.focus();
     // setTimeout(function () {
     //   element.setSelectionRange(0, 100);
     // }, 100);

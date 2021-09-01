@@ -1,5 +1,7 @@
+import gleam/list
 import eyg/ast/pattern.{Pattern}
 import eyg/typer/monotype
+import eyg/ast/provider
 
 pub type Node(m) {
   Binary(value: String)
@@ -69,3 +71,19 @@ pub fn variable(label) {
 pub fn provider(constructor, id) {
   #(Nil, Provider(constructor, id))
 }
+
+pub fn hole() {
+  provider(1111, provider.generate_hole)
+}
+
+pub fn is_hole(generator) {
+  generator == provider.generate_hole
+}
+
+pub fn append_path(path, i) {
+  list.append(path, [i])
+}
+
+// pub fn path_to_id(path: List(Int)) -> String {
+
+// }
