@@ -53,7 +53,13 @@
         let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), Ast.hole());
         update_tree(path, newNode);
         thenFocus(path);
-      } else {
+      } else if (content.trim().replace(" ", "_")) {
+        event.preventDefault();
+        let label = content.trim().replace(" ", "_");
+        let path = metadata.path;
+        let newNode = Ast.variable(label);
+        update_tree(path, newNode);
+        thenFocus(path);
       }
     } else if (event.key === '"') {
       event.preventDefault();
@@ -62,8 +68,8 @@
       update_tree(path, newNode);
       thenFocus(path);
     } else if (event.key === "=") {
-      let pattern = content.trim().replace(" ", "_");
       event.preventDefault();
+      let pattern = content.trim().replace(" ", "_");
       let path = metadata.path;
       let newNode = Ast.let_(Pattern.variable(pattern), Ast.hole(), Ast.hole());
       update_tree(path, newNode);
@@ -91,6 +97,16 @@
   on:keydown={handleKeydown}
   on:blur={handleBlur}
 />
+<div>
+  {#each metadata.scope.toArray() as [key]}
+    <button
+      class="hover:bg-gray-200 py-1 px-2 border rounded"
+      on:click={() =>
+        update_tree(metadata.path, Ast.variable(key)) &&
+        thenFocus(metadata.path)}>{key}</button
+    >
+  {/each}
+</div>
 
 <!-- <span>{JSON.stringify(metadata.type_)}</span>
 <span>{JSON.stringify(metadata.path.toArray())}</span> -->
@@ -102,5 +118,14 @@
   span {
     display: inline-block;
     min-width: 1em;
+  }
+  /* span + div {
+    display: none;
+  } */
+  span + div:focus-within {
+    display: block;
+  }
+  span:focus + div {
+    display: block;
   }
 </style>

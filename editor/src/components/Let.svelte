@@ -1,4 +1,5 @@
 <script>
+  import { tick } from "svelte";
   import Expression from "./Expression.svelte";
   import TermInput from "./TermInput.svelte";
   import * as Ast from "../gen/eyg/ast";
@@ -18,6 +19,19 @@
     } else {
     }
   }
+  function thenFocus(path) {
+    tick().then(() => {
+      let pathId = "p" + path.toArray().join(",");
+      let element = document.getElementById(pathId);
+      element.focus();
+    });
+  }
+  function handleDelete(child) {
+    let childPath = Ast.append_path(metadata.path, child);
+    update_tree(childPath, Ast.hole());
+    console.log(childPath, "cp");
+    thenFocus(childPath);
+  }
 </script>
 
 <p>
@@ -30,6 +44,18 @@
     />
   {:else if pattern.type == ""}
     bb{:else}{pattern}{/if} =
-  <Expression expression={value} {update_tree} on:pinpoint on:depoint />
+  <Expression
+    expression={value}
+    {update_tree}
+    on:pinpoint
+    on:depoint
+    on:delete={() => handleDelete(0)}
+  />
 </p>
-<Expression expression={then} {update_tree} on:pinpoint on:depoint />
+<Expression
+  expression={then}
+  {update_tree}
+  on:pinpoint
+  on:depoint
+  on:delete={() => handleDelete(1)}
+/>

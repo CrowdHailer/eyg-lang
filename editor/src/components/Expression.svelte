@@ -54,6 +54,7 @@
     on:depoint
   />
 {:else if tree.type == "Call"}<Call
+    {metadata}
     {update_tree}
     function_={tree.function}
     with_={tree.with}
@@ -75,6 +76,7 @@
     {metadata}
     {update_tree}
     label={tree.label}
+    on:delete
     on:pinpoint
     on:depoint
   />

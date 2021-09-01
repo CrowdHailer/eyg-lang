@@ -10,6 +10,14 @@
   export let elements;
   export let update_tree;
 
+  function do_update() {
+    let newElement = transform.occupy(content, key);
+    let elements = transform.replaceAt(elements, index);
+    let newNode = tuple;
+  }
+
+  // Transform var to hole how do we handle getting rid
+
   // function handleNewElement({detail: {content: }}) {
   //   console.log(params);
   // }
@@ -30,7 +38,13 @@
         let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), Ast.hole());
         update_tree(path, newNode);
         thenFocus(path);
-      } else {
+      } else if (content.trim().replace(" ", "_")) {
+        event.preventDefault();
+        let label = content.trim().replace(" ", "_");
+        let path = metadata.path;
+        let newNode = Ast.variable(label);
+        update_tree(path, newNode);
+        thenFocus(path);
       }
     } else if (event.key === '"') {
       event.preventDefault();
