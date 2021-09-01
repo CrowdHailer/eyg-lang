@@ -83,7 +83,5 @@ pub fn is_hole(generator) {
 pub fn append_path(path, i) {
   list.append(path, [i])
 }
-
 // pub fn path_to_id(path: List(Int)) -> String {
-
 // }

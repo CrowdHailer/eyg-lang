@@ -10,7 +10,7 @@ pub fn assignment_test() {
   let untyped =
     ast.let_(pattern.Variable("foo"), ast.tuple_([]), ast.variable("foo"))
   let Ok(#(type_, _typer)) = infer(untyped, typer)
-  assert monotype.Tuple([]) = get_type(type_)
+  assert Ok(monotype.Tuple([])) = get_type(type_)
 }
 
 pub fn tuple_pattern_test() {
@@ -24,7 +24,8 @@ pub fn tuple_pattern_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   //   could always resolve within infer fn
   let State(substitutions: substitutions, ..) = typer
-  assert monotype.Binary = resolve(get_type(type_), substitutions)
+  let Ok(type_) = get_type(type_)
+  assert monotype.Binary = resolve(type_, substitutions)
 }
 
 pub fn incorrect_tuple_size_test() {
@@ -54,7 +55,8 @@ pub fn matching_row_test() {
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
-  assert monotype.Binary = resolve(get_type(type_), substitutions)
+  let Ok(type_) = get_type(type_)
+  assert monotype.Binary = resolve(type_, substitutions)
 }
 
 pub fn growing_row_pattern_test() {
@@ -72,8 +74,10 @@ pub fn growing_row_pattern_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
 
   let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = get_type(type_)
+
   assert monotype.Tuple([monotype.Unbound(i), monotype.Unbound(j)]) =
-    resolve(get_type(type_), substitutions)
+    resolve(type_, substitutions)
   assert True = i != j
   assert monotype.Row([a, b], _) = resolve(monotype.Unbound(-1), substitutions)
   assert #("foo", _) = a
@@ -95,8 +99,10 @@ pub fn matched_row_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
 
   let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = get_type(type_)
+
   assert monotype.Tuple([monotype.Unbound(i), monotype.Unbound(j)]) =
-    resolve(get_type(type_), substitutions)
+    resolve(type_, substitutions)
   // Tests that the row fields are being resolve
   assert True = i == j
   assert monotype.Row([a], _) = resolve(monotype.Unbound(-1), substitutions)

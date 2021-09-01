@@ -273,7 +273,8 @@ pub fn infer(
             ),
             typer,
           ))
-        Error(#(reason, _)) -> Ok(#(
+        Error(#(reason, _)) ->
+          Ok(#(
             #(
               Metadata(path: path, type_: Error(reason), scope: typer.variables),
               Variable(label),

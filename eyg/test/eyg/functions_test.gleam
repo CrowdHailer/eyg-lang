@@ -15,8 +15,10 @@ pub fn typed_function_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
+  let Ok(type_) = get_type(type_)
+
   let monotype.Function(monotype.Tuple([]), monotype.Binary) =
-    resolve(get_type(type_), substitutions)
+    resolve(type_, substitutions)
 }
 
 pub fn generic_function_test() {
@@ -25,8 +27,10 @@ pub fn generic_function_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
+  let Ok(type_) = get_type(type_)
+
   let monotype.Function(monotype.Unbound(a), monotype.Unbound(b)) =
-    resolve(get_type(type_), substitutions)
+    resolve(type_, substitutions)
   let True = a == b
 }
 
@@ -43,7 +47,9 @@ pub fn call_function_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
-  let monotype.Binary = resolve(get_type(type_), substitutions)
+  let Ok(type_) = get_type(type_)
+
+  let monotype.Binary = resolve(type_, substitutions)
 }
 
 pub fn call_generic_test() {
@@ -52,7 +58,9 @@ pub fn call_generic_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
-  let monotype.Tuple([]) = resolve(get_type(type_), substitutions)
+  let Ok(type_) = get_type(type_)
+
+  let monotype.Tuple([]) = resolve(type_, substitutions)
 }
 
 pub fn call_with_incorrect_argument_test() {
@@ -82,6 +90,8 @@ pub fn reuse_generic_function_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
+  let Ok(type_) = get_type(type_)
+
   let monotype.Tuple([monotype.Tuple([]), monotype.Binary]) =
-    resolve(get_type(type_), substitutions)
+    resolve(type_, substitutions)
 }

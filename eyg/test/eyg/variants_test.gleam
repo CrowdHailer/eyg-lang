@@ -18,8 +18,9 @@ pub fn infer_variant_test() {
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
+  let Ok(type_) = get_type(type_)
   assert monotype.Nominal("Boolean", []) =
-    monotype.resolve(get_type(type_), substitutions)
+    monotype.resolve(type_, substitutions)
 }
 
 pub fn infer_concrete_parameterised_variant_test() {
@@ -34,8 +35,9 @@ pub fn infer_concrete_parameterised_variant_test() {
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = get_type(type_)
   assert monotype.Nominal("Option", [monotype.Binary]) =
-    monotype.resolve(get_type(type_), substitutions)
+    monotype.resolve(type_, substitutions)
 }
 
 pub fn infer_unspecified_parameterised_variant_test() {
@@ -50,8 +52,9 @@ pub fn infer_unspecified_parameterised_variant_test() {
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = get_type(type_)
   assert monotype.Nominal("Option", [monotype.Unbound(_)]) =
-    monotype.resolve(get_type(type_), substitutions)
+    monotype.resolve(type_, substitutions)
 }
 
 pub fn unknown_named_type_test() {
@@ -150,7 +153,9 @@ pub fn case_test() {
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
-  assert monotype.Binary = monotype.resolve(get_type(type_), substitutions)
+  let Ok(type_) = get_type(type_)
+
+  assert monotype.Binary = monotype.resolve(type_, substitutions)
 }
 
 pub fn mismatched_return_in_case_test() {
