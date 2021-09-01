@@ -136,4 +136,4 @@
     {JSON.stringify(metadata.path?.toArray())}
   {/if}
 </div>
-<!-- {JSON.stringify(untyped)} -->
+{JSON.stringify(untyped)}

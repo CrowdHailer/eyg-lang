@@ -82,6 +82,7 @@
   />
 {:else if tree.type == "Function"}
   <Function
+    {metadata}
     {update_tree}
     for_={tree.for}
     body={tree.body}

@@ -16,7 +16,7 @@
     tick().then(() => {
       let pathId = "p" + path.toArray().join(",");
       let element = document.getElementById(pathId);
-      element.focus();
+      element?.focus();
     });
   }
 
@@ -51,7 +51,7 @@
 
   function insertFunction() {
     let path = metadata.path;
-    let newNode = Ast.function$(List.fromArray([""]), Ast.hole());
+    let newNode = Ast.function$(List.fromArray([]), Ast.hole());
     update_tree(path, newNode);
     thenFocus(path);
   }
