@@ -10,9 +10,17 @@
   let main;
   $: arguments_ = body[1].pattern.elements.toArray();
   $: main = body[1].then;
+
+  let newContent = "";
+  function handleKeydown() {}
 </script>
 
-({arguments_.join(", ")}) <strong>=></strong>
+({arguments_.join(", ")}<span
+  class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
+  contenteditable=""
+  bind:textContent={newContent}
+  on:keydown={handleKeydown}
+/>) <strong>=></strong>
 <Indent>
   <Expression expression={main} {update_tree} on:pinpoint on:depoint />
 </Indent>

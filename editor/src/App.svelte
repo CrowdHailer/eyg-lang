@@ -17,7 +17,6 @@
   let result;
   let expression;
   $: result = infer(untyped, init(List.fromArray([])));
-  $: console.log(result);
   $: expression = result[0][0];
 
   async function update_tree(path, replacement) {
@@ -67,7 +66,7 @@
     on:depoint={handleDepoint}
   />
 
-  {#if metadata !== undefined}
+  {#if false}
     <nav
       class="mt-4"
       on:focusin={() => {
@@ -137,4 +136,4 @@
     {JSON.stringify(metadata.path?.toArray())}
   {/if}
 </div>
-{JSON.stringify(untyped)}
+<!-- {JSON.stringify(untyped)} -->
