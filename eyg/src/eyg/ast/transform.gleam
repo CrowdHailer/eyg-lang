@@ -48,17 +48,27 @@ pub fn replace_node(
         ast.Name(type_, then) if index == 0 ->
           ast.name(type_, replace_node(then, rest, replacement))
         ast.Tuple(elements) ->
-          ast.tuple_(index_map(
-            elements,
-            fn(i, element) {
-              // i-1 compiler bug
-              let i = i - 1
-              case i == index {
-                True -> replace_node(element, rest, replacement)
-                False -> element
-              }
-            },
-          ))
+        case list.length(elements) {
+           l if l == index -> {
+             io.debug(l)
+             let elements = list.append(elements, [replacement])
+             ast.tuple_(elements)
+           }
+           l if index < l -> {
+              ast.tuple_(index_map(
+                elements,
+                fn(i, element) {
+                  // i-1 compiler bug
+                  let i = i - 1
+                  case i == index {
+                    True -> replace_node(element, rest, replacement)
+                    False -> element
+                  }
+                },
+              ))
+
+           }
+        }
         ast.Row(fields) ->
           ast.row(index_map(
             fields,

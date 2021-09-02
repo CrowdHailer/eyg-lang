@@ -13,24 +13,13 @@
   let string = value;
   let multiline = false;
   $: multiline = string.includes("<br>");
-  function handleFocus() {
-    dispatch("pinpoint", {
-      metadata,
-      node: "Binary",
-      current: binary(value),
-    });
-  }
+  function handleFocus() {}
   function handleBlur() {
     if (value == string) {
       console.log("no change");
     } else {
       update_tree(metadata.path, binary(string));
     }
-    dispatch("depoint", {
-      metadata,
-      node: "Binary",
-      current: binary(value),
-    });
   }
 </script>
 

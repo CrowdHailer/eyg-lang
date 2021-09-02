@@ -9,6 +9,7 @@
 
   export let metadata;
   export let update_tree;
+  export let required = false;
 
   let content;
 
@@ -88,6 +89,7 @@
 </script>
 
 <span
+  class:required
   class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
   id={metadata.path ? "p" + metadata.path.toArray().join(",") : ""}
   contenteditable=""
@@ -143,6 +145,8 @@
 <style>
   span {
     display: inline-block;
+  }
+  span.required {
     min-width: 1em;
   }
 </style>

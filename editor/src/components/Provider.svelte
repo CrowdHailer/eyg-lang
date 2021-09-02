@@ -7,7 +7,7 @@
 </script>
 
 {#if Ast.is_hole(generator)}
-  <Hole {metadata} {update_tree} />
+  <Hole {metadata} {update_tree} required={true} />
 {:else}
   TODO provider
 {/if}
