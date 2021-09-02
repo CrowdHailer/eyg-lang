@@ -60,7 +60,7 @@
     clauses={tree.clauses}
   />
 {:else if tree.type == "Provider"}
-  <Provider {metadata} {update_tree} id={tree.id} generator={tree.generator} />
+  <Provider {metadata} {update_tree} generator={tree.generator} />
 {:else}
   foo
   {JSON.stringify(tree)}

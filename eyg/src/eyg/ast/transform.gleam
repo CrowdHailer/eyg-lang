@@ -47,27 +47,18 @@ pub fn replace_node(
           ast.let_(pattern, value, replace_node(then, rest, replacement))
         ast.Name(type_, then) if index == 0 ->
           ast.name(type_, replace_node(then, rest, replacement))
-        ast.Tuple(elements) ->
-        case list.length(elements) {
-           l if l == index -> {
-             io.debug(l)
-             let elements = list.append(elements, [replacement])
-             ast.tuple_(elements)
-           }
-           l if index < l -> {
-              ast.tuple_(index_map(
-                elements,
-                fn(i, element) {
-                  // i-1 compiler bug
-                  let i = i - 1
-                  case i == index {
-                    True -> replace_node(element, rest, replacement)
-                    False -> element
-                  }
-                },
-              ))
-
-           }
+        ast.Tuple(elements) ->{
+          let pre = list.take(elements, index)
+          let post = list.drop(elements, index + 1)
+          let inner = case replacement {
+            #(_, ast.Provider(generator: generator, ..)) -> case ast.is_hole(generator) {
+              True -> [] 
+              False -> [replacement]
+            } 
+            _ -> [replacement]
+          }
+          let elements = list.flatten([pre, inner, post])
+          ast.tuple_(elements)
         }
         ast.Row(fields) ->
           ast.row(index_map(

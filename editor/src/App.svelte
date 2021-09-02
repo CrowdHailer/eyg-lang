@@ -17,7 +17,6 @@
   let result;
   let expression;
   $: result = infer(untyped, init(List.fromArray([])));
-  $: console.log(result);
   $: expression = result[0][0];
 
   async function update_tree(path, replacement) {

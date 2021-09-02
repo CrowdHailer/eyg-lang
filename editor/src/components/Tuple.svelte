@@ -15,4 +15,4 @@
     path: Ast.append_path(metadata.path, elements.toArray().length),
   })}
   {update_tree}
-/>
+/>]
