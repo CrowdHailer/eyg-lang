@@ -5,6 +5,10 @@ pub fn function(args, body) {
   ast.function("$", ast.let_(pattern.tuple_(args), ast.variable("$"), body))
 }
 
+pub fn call(func, with_) {
+  ast.call(func, ast.tuple_(with_))
+}
+
 pub fn args_body(body) {
   let #(_, ast.Let(pattern.Tuple(args), #(_, ast.Variable("$")), body)) = body
   #(args, body)

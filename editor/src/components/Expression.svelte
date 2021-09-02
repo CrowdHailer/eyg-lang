@@ -21,6 +21,9 @@
   // function handlePinpoint({ detail }) {
   //   let detail = Object.assign({}, detail, { tree });
   // }
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher();
 </script>
 
 <!-- {metadata.path.toArray()} -->
@@ -60,7 +63,12 @@
     clauses={tree.clauses}
   />
 {:else if tree.type == "Provider"}
-  <Provider {metadata} {update_tree} generator={tree.generator} />
+  <Provider
+    {metadata}
+    {update_tree}
+    generator={tree.generator}
+    on:deletebackwards
+  />
 {:else}
   foo
   {JSON.stringify(tree)}

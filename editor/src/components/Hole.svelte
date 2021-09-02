@@ -1,5 +1,6 @@
 <script>
-  import { tick } from "svelte";
+  import { tick, createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
   import { List } from "../gen/gleam";
 
   import * as AstBare from "../gen/eyg/ast";
@@ -80,6 +81,9 @@
     } else if (event.key === "[") {
       event.preventDefault();
       insertTuple();
+    } else if (event.key === "Backspace" && content === "") {
+      console.log("deleting up");
+      dispatch("deletebackwards", {});
     }
   }
   let nodeFocused = false;

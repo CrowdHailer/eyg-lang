@@ -72,6 +72,12 @@ fn render_label(label, state) {
   }
 }
 
+pub fn render_to_string(expression, typer) {
+  render(expression, #(False, [], typer))
+  |> list.intersperse("\n")
+  |> string.join()
+}
+
 pub fn render(tree, state) {
   let #(_, tree) = tree
   case tree {

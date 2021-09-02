@@ -74,12 +74,16 @@ pub fn provider(constructor, id) {
   #(Nil, Provider(constructor, id))
 }
 
+fn generate_hole(_) {
+  binary("TODO this is no imlplemented")
+}
+
 pub fn hole() {
-  provider(1111, provider.generate_hole)
+  provider(1111, generate_hole)
 }
 
 pub fn is_hole(generator) {
-  generator == provider.generate_hole
+  generator == generate_hole
 }
 
 pub fn append_path(path, i) {

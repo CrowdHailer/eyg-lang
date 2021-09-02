@@ -350,10 +350,19 @@ pub fn infer(
       let Ok(ftype) = get_type(function)
       // TODO unify error should always work
       let Ok(with_type) = get_type(with)
-      try typer = unify(ftype, monotype.Function(with_type, return_type), typer)
-      let metadata =
-        Metadata(path: path, type_: Ok(return_type), scope: typer.variables)
-      Ok(#(#(metadata, Call(function, with)), typer))
+      case unify(ftype, monotype.Function(with_type, return_type), typer) {
+        Ok(typer) -> {
+          let metadata =
+            Metadata(path: path, type_: Ok(return_type), scope: typer.variables)
+          Ok(#(#(metadata, Call(function, with)), typer))
+        }
+        Error(#(reason, typer)) -> {
+          let metadata =
+            Metadata(path: path, type_: Error(reason), scope: typer.variables)
+          Ok(#(#(metadata, Call(function, with)), typer))
+        }
+
+      }
     }
     Name(new_type, then) -> {
       let #(named, _construction) = new_type

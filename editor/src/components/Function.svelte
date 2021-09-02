@@ -27,11 +27,16 @@
     if (arg) {
       let path = metadata.path;
       let newNode = Ast.function$(List.fromArray([...arguments_, arg]), main);
-      console.log(newNode);
       update_tree(path, newNode);
       // thenFocus(path);
       newContent = "";
     }
+  }
+
+  function handleDeletebackwards(_event) {
+    let path = metadata.path;
+    update_tree(path, Ast.hole());
+    thenFocus(path);
   }
 </script>
 
@@ -43,7 +48,11 @@
   on:blur={handleBlur}
 />) <strong>=></strong>
 <Indent>
-  <Expression expression={main} {update_tree} />
+  <Expression
+    expression={main}
+    {update_tree}
+    on:deletebackwards={handleDeletebackwards}
+  />
 </Indent>
 
 <style>
