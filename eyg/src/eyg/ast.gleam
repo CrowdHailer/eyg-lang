@@ -1,4 +1,6 @@
+import gleam/int
 import gleam/list
+import gleam/string
 import eyg/ast/pattern.{Pattern}
 import eyg/typer/monotype
 import eyg/ast/provider
@@ -83,5 +85,9 @@ pub fn is_hole(generator) {
 pub fn append_path(path, i) {
   list.append(path, [i])
 }
-// pub fn path_to_id(path: List(Int)) -> String {
-// }
+pub fn path_to_id(path: List(Int)) -> String {
+  let coordinates = path
+  |> list.map(int.to_string)
+  |> list.intersperse(",")
+  string.join(["p", ..coordinates])
+}

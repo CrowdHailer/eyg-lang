@@ -10,7 +10,7 @@ import eyg/typer/monotype
 import eyg/typer/polytype.{State}
 import eyg/typer
 import eyg/codegen/utilities.{
-  indent, join, squash, wrap_lines, wrap_single_or_multiline,
+  indent, squash, wrap_lines, wrap_single_or_multiline,
 }
 
 pub fn maybe_wrap_expression(expression, state) {
@@ -67,7 +67,7 @@ fn render_label(label, state) {
       case count_label(state, label) {
         // if not previously rendered must be an external thing
         0 -> label
-        count -> join([label, "$", int.to_string(count)])
+        count -> string.join([label, "$", int.to_string(count)])
       }
   }
 }
@@ -76,7 +76,7 @@ pub fn render(tree, state) {
   let #(_, tree) = tree
   case tree {
     // TODO escape
-    Binary(content) -> wrap_return([join(["\"", content, "\""])], state)
+    Binary(content) -> wrap_return([string.join(["\"", content, "\""])], state)
     Tuple(elements) ->
       list.map(elements, maybe_wrap_expression(_, state))
       |> wrap_single_or_multiline(",", "[", "]")
@@ -100,7 +100,7 @@ pub fn render(tree, state) {
       let #(assignment, state) = case pattern {
         pattern.Variable(label) -> {
           let state = with_assignment(label, state)
-          let assignment = join(["let ", render_label(label, state), " = "])
+          let assignment = string.join(["let ", render_label(label, state), " = "])
           #(wrap_lines(assignment, value, ";"), state)
         }
         pattern.Tuple(elements) -> {
@@ -118,8 +118,8 @@ pub fn render(tree, state) {
             |> list.intersperse(", ")
             // wrap_lines not a good name here
             |> wrap_lines("[", _, "]")
-            |> join()
-          let assignment = join(["let ", destructure, " = "])
+            |> string.join()
+          let assignment = string.join(["let ", destructure, " = "])
           #(wrap_lines(assignment, value, ";"), state)
         }
         pattern.Row(fields) -> {
@@ -130,7 +130,7 @@ pub fn render(tree, state) {
               fn(field, state) {
                 let #(row_name, label) = field
                 let state = with_assignment(label, state)
-                let field = join([row_name, ": ", render_label(label, state)])
+                let field = string.join([row_name, ": ", render_label(label, state)])
                 #(field, state)
               },
             )
@@ -139,8 +139,8 @@ pub fn render(tree, state) {
             |> list.intersperse(", ")
             // wrap_lines not a good name here
             |> wrap_lines("{", _, "}")
-            |> join()
-          let assignment = join(["let ", destructure, " = "])
+            |> string.join()
+          let assignment = string.join(["let ", destructure, " = "])
           #(wrap_lines(assignment, value, ";"), state)
         }
       }
@@ -162,10 +162,10 @@ pub fn render(tree, state) {
       let args_string =
         for
         |> list.intersperse(", ")
-        |> join()
-      let start = join(["(function self(", args_string, ") {"])
+        |> string.join()
+      let start = string.join(["(function self(", args_string, ") {"])
       case render(body, in_tail(True, state)) {
-        [single] -> [join([start, " ", single, " })"])]
+        [single] -> [string.join([start, " ", single, " })"])]
         lines ->
           [start, ..indent(lines)]
           |> list.append(["})"])
@@ -184,7 +184,7 @@ pub fn render(tree, state) {
     Name(_name, then) -> render(then, state)
     Constructor(_named, variant) -> [
       // ...inner working on assuption ALWAYS called with tuple
-      join([
+      string.join([
         "(function (...inner) { return {variant: \"",
         variant,
         "\", inner} })",
@@ -202,7 +202,7 @@ pub fn render(tree, state) {
             ) = clause
             // Using render here relies on a variable of $ not being set
             let [first, ..rest] = render(then, in_tail(True, state))
-            [join(["case \"", variant, "\": ", first]), ..indent(rest)]
+            [string.join(["case \"", variant, "\": ", first]), ..indent(rest)]
           },
         )
       // could use subject and subject.inner in arbitrary let statements
