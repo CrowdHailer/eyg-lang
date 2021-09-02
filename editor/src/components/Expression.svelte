@@ -25,24 +25,11 @@
 
 <!-- {metadata.path.toArray()} -->
 {#if tree.type == "Name"}
-  <Name
-    {metadata}
-    {update_tree}
-    type={tree.type_}
-    then={tree.then}
-    on:pinpoint
-    on:depoint
-  />
+  <Name {metadata} {update_tree} type={tree.type_} then={tree.then} />
 {:else if tree.type == "Tuple"}
-  <Tuple
-    {metadata}
-    {update_tree}
-    elements={tree.elements}
-    on:pinpoint
-    on:depoint
-  />
+  <Tuple {metadata} {update_tree} elements={tree.elements} />
 {:else if tree.type == "Binary"}
-  <Binary {metadata} {update_tree} value={tree.value} on:pinpoint on:depoint />
+  <Binary {metadata} {update_tree} value={tree.value} />
 {:else if tree.type == "Let"}
   <Let
     {metadata}
@@ -50,45 +37,21 @@
     pattern={tree.pattern}
     value={tree.value}
     then={tree.then}
-    on:pinpoint
-    on:depoint
   />
 {:else if tree.type == "Call"}<Call
     {metadata}
     {update_tree}
     function_={tree.function}
     with_={tree.with}
-    on:pinpoint
-    on:depoint
   />
 {:else if tree.type == "Constructor"}
-  <Constructor
-    {update_tree}
-    named={tree.named}
-    variant={tree.variant}
-    on:pinpoint
-    on:depoint
-  />
+  <Constructor {update_tree} named={tree.named} variant={tree.variant} />
 {:else if tree.type == "Row"}
-  <Row {update_tree} fields={tree.fields} on:pinpoint on:depoint />
+  <Row {update_tree} fields={tree.fields} />
 {:else if tree.type == "Variable"}
-  <Variable
-    {metadata}
-    {update_tree}
-    label={tree.label}
-    on:delete
-    on:pinpoint
-    on:depoint
-  />
+  <Variable {metadata} {update_tree} label={tree.label} on:delete />
 {:else if tree.type == "Function"}
-  <Function
-    {metadata}
-    {update_tree}
-    for_={tree.for}
-    body={tree.body}
-    on:pinpoint
-    on:depoint
-  />
+  <Function {metadata} {update_tree} for_={tree.for} body={tree.body} />
 {:else if tree.type == "Case"}
   <Case
     {update_tree}
@@ -97,14 +60,7 @@
     clauses={tree.clauses}
   />
 {:else if tree.type == "Provider"}
-  <Provider
-    {metadata}
-    {update_tree}
-    id={tree.id}
-    generator={tree.generator}
-    on:pinpoint
-    on:depoint
-  />
+  <Provider {metadata} {update_tree} id={tree.id} generator={tree.generator} />
 {:else}
   foo
   {JSON.stringify(tree)}

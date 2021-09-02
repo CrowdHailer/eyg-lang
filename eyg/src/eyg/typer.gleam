@@ -295,14 +295,34 @@ pub fn infer(
         }
       }
       let typer = State(..typer, variables: variables)
-      try typer = match_pattern(pattern, given, typer)
-      // same rule as scope needs reseting
-      let typer = State(..typer, location: location)
-      try #(then, typer) = infer(then, append_path(typer, 1))
-      let metadata =
-        Metadata(path: path, type_: get_type(then), scope: typer.variables)
-      let tree = Let(pattern, value, then)
-      Ok(#(#(metadata, tree), typer))
+      case match_pattern(pattern, given, typer) {
+        Ok(typer) -> {
+          // same rule as scope needs reseting
+          let typer = State(..typer, location: location)
+          try #(then, typer) = infer(then, append_path(typer, 1))
+          let #(then_type, typer) = case get_type(then) {
+            Ok(t) -> #(t, typer) 
+            Error(_) -> {
+              let #(x, typer) = polytype.next_unbound(typer)
+              #(monotype.Unbound(x), typer)
+            }
+          }
+          let metadata =
+            Metadata(path: path, type_: Ok(then_type), scope: typer.variables)
+          let tree = Let(pattern, value, then)
+          Ok(#(#(metadata, tree), typer))
+        }
+        Error(#(reason, typer)) -> {
+          // all the variables in the pattern should be added to scope
+          let typer = State(..typer, location: location)
+          try #(then, typer) = infer(then, append_path(typer, 1))
+          let metadata =
+            Metadata(path: path, type_: Error(reason), scope: typer.variables)
+          let tree = Let(pattern, value, then)
+          Ok(#(#(metadata, tree), typer))
+
+        }
+      }
     }
     Function(label, body) -> {
       let #(x, typer) = polytype.next_unbound(typer)

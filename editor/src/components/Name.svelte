@@ -97,4 +97,4 @@
     />
   </Indent>
 </p>
-<Expression expression={then} {update_tree} on:pinpoint on:depoint />
+<Expression expression={then} {update_tree} />

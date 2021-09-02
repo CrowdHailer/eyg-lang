@@ -72,12 +72,7 @@
 </script>
 
 [{#each elements.toArray() as element, i}
-  <Expression
-    expression={element}
-    {update_tree}
-    on:pinpoint
-    on:depoint
-  />,&nbsp;
+  <Expression expression={element} {update_tree} />,&nbsp;
 {/each}
 <span
   class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"

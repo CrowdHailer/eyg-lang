@@ -43,7 +43,7 @@
   on:blur={handleBlur}
 />) <strong>=></strong>
 <Indent>
-  <Expression expression={main} {update_tree} on:pinpoint on:depoint />
+  <Expression expression={main} {update_tree} />
 </Indent>
 
 <style>

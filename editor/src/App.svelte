@@ -17,6 +17,7 @@
   let result;
   let expression;
   $: result = infer(untyped, init(List.fromArray([])));
+  $: console.log(result);
   $: expression = result[0][0];
 
   async function update_tree(path, replacement) {
@@ -59,12 +60,7 @@
 <div
   class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white text-indigo-00"
 >
-  <Expression
-    {expression}
-    {update_tree}
-    on:pinpoint={handlePinpoint}
-    on:depoint={handleDepoint}
-  />
+  <Expression {expression} {update_tree} />
 
   {#if false}
     <nav

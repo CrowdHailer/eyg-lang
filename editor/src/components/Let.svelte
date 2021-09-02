@@ -100,15 +100,12 @@
   <Expression
     expression={value}
     {update_tree}
-    on:pinpoint
-    on:depoint
     on:delete={() => handleDelete(0)}
   />
+  {#if metadata.type_.type == "Error"}
+    <div class=" bg-red-100 border-t-2 border-red-300 py-1 px-4">
+      {JSON.stringify(metadata.type_[0])}
+    </div>
+  {/if}
 </p>
-<Expression
-  expression={then}
-  {update_tree}
-  on:pinpoint
-  on:depoint
-  on:delete={() => handleDelete(1)}
-/>
+<Expression expression={then} {update_tree} on:delete={() => handleDelete(1)} />
