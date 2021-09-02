@@ -106,7 +106,8 @@ pub fn render(tree, state) {
       let #(assignment, state) = case pattern {
         pattern.Variable(label) -> {
           let state = with_assignment(label, state)
-          let assignment = string.join(["let ", render_label(label, state), " = "])
+          let assignment =
+            string.join(["let ", render_label(label, state), " = "])
           #(wrap_lines(assignment, value, ";"), state)
         }
         pattern.Tuple(elements) -> {
@@ -136,7 +137,8 @@ pub fn render(tree, state) {
               fn(field, state) {
                 let #(row_name, label) = field
                 let state = with_assignment(label, state)
-                let field = string.join([row_name, ": ", render_label(label, state)])
+                let field =
+                  string.join([row_name, ": ", render_label(label, state)])
                 #(field, state)
               },
             )

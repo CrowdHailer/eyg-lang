@@ -18,8 +18,6 @@ pub fn wrap_lines(pre, lines, post) {
   }
 }
 
-
-
 pub fn squash(a, b) {
   let [pre, ..a] = list.reverse(a)
   let [post, ..b] = b

@@ -301,7 +301,7 @@ pub fn infer(
           let typer = State(..typer, location: location)
           try #(then, typer) = infer(then, append_path(typer, 1))
           let #(then_type, typer) = case get_type(then) {
-            Ok(t) -> #(t, typer) 
+            Ok(t) -> #(t, typer)
             Error(_) -> {
               let #(x, typer) = polytype.next_unbound(typer)
               #(monotype.Unbound(x), typer)
@@ -320,7 +320,6 @@ pub fn infer(
             Metadata(path: path, type_: Error(reason), scope: typer.variables)
           let tree = Let(pattern, value, then)
           Ok(#(#(metadata, tree), typer))
-
         }
       }
     }
@@ -361,7 +360,6 @@ pub fn infer(
             Metadata(path: path, type_: Error(reason), scope: typer.variables)
           Ok(#(#(metadata, Call(function, with)), typer))
         }
-
       }
     }
     Name(new_type, then) -> {
