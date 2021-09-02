@@ -11,13 +11,14 @@ import standard/boolean
 
 pub fn compile(untyped, scope) {
   case infer(untyped, scope) {
-    Ok(#(_, typer)) ->
+    #(_, typer) ->
       javascript.maybe_wrap_expression(untyped, #(False, [], typer))
       |> list.intersperse("\n")
       |> string.join()
-    Error(reason) -> {
-      io.debug(reason)
-      todo("failed to compile")
-    }
   }
+  // TODO handle failure case
+  // Error(reason) -> {
+  //   io.debug(reason)
+  //   todo("failed to compile")
+  // }
 }

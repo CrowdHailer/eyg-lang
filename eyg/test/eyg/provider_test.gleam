@@ -48,7 +48,7 @@ pub fn config_test() {
         ast.tuple_([ast.variable("foo"), ast.binary("secret")]),
       ),
     )
-  let Ok(#(_, typer)) = infer(untyped, typer)
+  let #(_, typer) = infer(untyped, typer)
   javascript.render(untyped, #(False, [], typer))
 }
 

@@ -8,12 +8,13 @@ import eyg/typer.{infer, init}
 
 fn compile(untyped, scope) {
   case infer(untyped, scope) {
-    Ok(#(_, typer)) -> javascript.render(untyped, #(False, [], typer))
-    Error(reason) -> {
-      io.debug(reason)
-      todo("failed to compile")
-    }
+    #(_, typer) -> javascript.render(untyped, #(False, [], typer))
   }
+  // TODO handle case where inference has errors
+  // Error(reason) -> {
+  //   io.debug(reason)
+  //   todo("failed to compile")
+  // }
 }
 
 pub fn variable_assignment_test() {
