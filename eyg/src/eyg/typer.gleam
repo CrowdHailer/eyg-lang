@@ -195,6 +195,10 @@ fn do_unify(expected, given, typer) {
   }
 }
 
+fn pairs_first(pair: #(a, b)) -> a {
+  pair.0
+}
+
 fn pairs_second(pair: #(a, b)) -> b {
   pair.1
 }
@@ -368,127 +372,96 @@ pub fn infer(
       let expression = #(meta(type_), Constructor(named, variant))
       #(expression, typer)
     }
-    // Case(named, subject, clauses) -> {
-    //   let State(nominal: nominal, location: location, variables: variables, ..) =
-    //     typer
-    //   let #(subject, typer) = infer(subject, typer)
-    //   let typer = State(..typer, location: location, variables: variables)
-    //   let #(x, typer) = polytype.next_unbound(typer)
-    //   let return_type = monotype.Unbound(x)
-    //   let #(clauses, typer) =
-    //     list.map_state(
-    //       clauses,
-    //       typer,
-    //       fn(clause, t) {
-    //         let #(variant, variable, then) = clause
-    //         let t = State(..t, location: location, variables: variables)
-    //         let #(x, t) = polytype.next_unbound(t)
-    //         let argument_type = monotype.Unbound(x)
-    //         let t = set_variable(variable, argument_type, t)
-    //         let #(then, t) = infer(then, t)
-    //         let maybe_typer =
-    //           case get_type(then) {
-    //             Ok(then_type) -> unify(return_type, then_type, t)
-    //             _ -> Ok(t)
-    //           }
-    //           |> io.debug
-    //         io.debug("doooooooooo")
-    //         io.debug(return_type)
-    //         case maybe_typer {
-    //           Ok(t) -> {
-    //             let clause = #(variant, variable, then)
-    //             #(clause, t)
-    //           }
-    //           Error(reason) -> {
-    //             io.debug(reason)
-    //             todo("handle mismatched clause")
-    //           }
-    //         }
-    //       },
-    //     )
-    //   let #(type_, typer) = case list.key_find(nominal, named) {
-    //     Error(Nil) -> #(Error(UnknownType(named)), typer)
-    //     Ok(#(parameters, variants)) -> {
-    //       let #(replacements, typer) =
-    //         list.map_state(
-    //           parameters,
-    //           typer,
-    //           fn(parameter, tttj) {
-    //             let #(replacement, tttj) = polytype.next_unbound(tttj)
-    //             let pair = #(parameter, replacement)
-    //             #(pair, tttj)
-    //           },
-    //         )
-    //       let expected =
-    //         pair_replace(
-    //           replacements,
-    //           monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
-    //         )
-    //       case get_type(subject) {
-    //         Ok(subject_type) ->
-    //           case unify(expected, subject_type, typer) {
-    //             Ok(typer) -> {
-    //               ""
-    //               // list.map_state(clauses, typer, fn(clause, typer))
-    //               #(Ok(return_type), typer)
-    //             }
-    //           }
-    //       }
-    //     }
-    //   }
-    //   // Error(reason) -> Error(reason)
-    //   let tree = Case(named, subject, clauses)
-    //   #(#(meta(type_), tree), typer)
-    // }
-    // //     // Think the old version errored by instantiating everytime
-    // //       let State(location: location, ..) = typer
-    // //       try typer = 
-    // //       let State(variables: variables, ..) = typer
-    // //       try #(clauses, #(unhandled, typer)) =
-    // //         list.try_map_state(
-    // //           clauses,
-    // //           #(variants, typer),
-    // //           // This is an error caused when the name typer is used.
-    // //           fn(clause, state) { // Step on earlier because 0 index is subject
-    // //             // let typer = step_on_location(typer)
-    // //             let #(remaining, t) = state
-    // //             try #(argument, remaining) = case list.key_pop(
-    // //               remaining,
-    // //               variant,
-    // //             ) {
-    // //               Ok(value) -> Ok(value)
-    // //               Error(Nil) ->
-    // //                 case list.key_find(variants, variant) {
-    // //                   Ok(_) -> Error(#(RedundantClause(variant), typer))
-    // //                   Error(Nil) ->
-    // //                     Error(#(UnknownVariant(variant, named), typer))
-    // //                 }
-    // //             }
-    // //             let argument = pair_replace(replacements, argument)
-    // //             // reset scope variables
-    // //             Ok(#(clause, #(remaining, t))) },
-    // //         )
-    // //       case unhandled {
-    // //         [] -> {
-    // //           let tree = Case(named, subject, clauses)
-    // //           #(#(meta(Ok(return_type)), tree), typer)
-    // //         }
-    // //       }
-    // //     }
-    // //   }
-    // // }
-    // // _ ->
-    // //   Error(#(
-    // //     UnhandledVariants(list.map(
-    // //       unhandled,
-    // //       fn(variant) {
-    // //         let #(variant, _) = variant
-    // //         variant
-    // //       },
-    // //     )),
-    // //     State(..typer, location: location),
-    // //   ))
-    // // Can't call the generator here because we don't know what the type will resolve to yet.
+    Case(named, subject, clauses) -> {
+      let State(nominal: nominal, ..) = typer
+      let #(expected_subject, typer, variants) = case list.key_find(
+        nominal,
+        named,
+      ) {
+        Error(Nil) -> #(Error(UnknownType(named)), typer, [])
+        Ok(#(parameters, variants)) -> {
+          let #(replacements, typer) =
+            list.map_state(
+              parameters,
+              typer,
+              fn(p, t) {
+                let #(x, t) = polytype.next_unbound(t)
+                #(#(p, x), t)
+              },
+            )
+          let expected_subject =
+            monotype.Nominal(named, list.map(parameters, monotype.Unbound))
+            |> pair_replace(replacements, _)
+          let variants =
+            list.map(
+              variants,
+              fn(variant) {
+                let #(name, type_) = variant
+                #(name, pair_replace(replacements, type_))
+              },
+            )
+          #(Ok(expected_subject), typer, variants)
+        }
+      }
+      let State(location: location, variables: variables, ..) = typer
+      let #(stype, typer) = case expected_subject {
+        Ok(type_) -> #(type_, typer)
+        Error(_) -> {
+          let #(x, typer) = polytype.next_unbound(typer)
+          let type_ = monotype.Unbound(x)
+          #(type_, typer)
+        }
+      }
+      let #(subject, typer) = infer(subject, stype, typer)
+      let #(clauses, #(unhandled, typer)) =
+        list.map_state(
+          clauses,
+          #(variants, typer),
+          fn(clause, s) {
+            let #(remaining, t) = s
+            let #(variant, variable, then) = clause
+            // TODO append path with i, are we even using the path if metdata local?
+            let t = State(..t, location: location, variables: variables)
+            case list.key_pop(remaining, variant) {
+              Ok(#(type_, remaining)) -> {
+                let t = set_variable(#(variable, type_), t)
+                let #(then, t) = infer(then, expected, t)
+                let clause = #(variant, variable, then)
+                #(clause, #(remaining, t))
+              }
+              // If I want to show for several branches I need to store multi errors, cant to that on metadata a is.
+              Error(_) -> {
+                let #(x, t) = polytype.next_unbound(t)
+                let type_ = monotype.Unbound(x)
+                let #(then, t) = infer(then, expected, t)
+                let #(metadata, tree) = then
+                let metadata =
+                  Metadata(
+                    ..metadata,
+                    type_: case list.key_find(variants, variant) {
+                      Error(_) -> Error(UnknownVariant(variant, named))
+                      Ok(_) -> Error(RedundantClause(variant))
+                    },
+                  )
+                let then = #(metadata, tree)
+                let clause = #(variant, variable, then)
+                #(clause, #(remaining, t))
+              }
+            }
+          },
+        )
+      let tree = Case(named, subject, clauses)
+      let type_ = case expected_subject {
+        Error(reason) -> Error(reason)
+        Ok(_) ->
+          case unhandled {
+            // The errors in subject type in to be presented BUT if no error return expected tye
+            [] -> Ok(expected)
+            _ -> Error(UnhandledVariants(list.map(unhandled, pairs_first)))
+          }
+      }
+      #(#(meta(type_), tree), typer)
+    }
     Provider(generator) -> {
       let expression = #(meta(Ok(expected)), Provider(generator))
       #(expression, typer)
