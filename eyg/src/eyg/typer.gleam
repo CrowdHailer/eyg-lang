@@ -322,178 +322,178 @@ pub fn infer(
       let expression = #(meta(Ok(expected)), Call(function, with))
       #(expression, typer)
     }
+    // Name(new_type, then) -> {
+    //   let #(named, _construction) = new_type
+    //   let State(nominal: nominal, ..) = typer
+    //   let #(add_name, typer) = case list.key_find(nominal, named) {
+    //     Error(Nil) -> {
+    //       let typer = State(..typer, nominal: [new_type, ..nominal])
+    //       #(Ok(Nil), typer)
+    //     }
+    //     Ok(_) -> #(Error(DuplicateType(named)), typer)
+    //   }
+    //   let #(then, typer) = infer(then, append_path(typer, 0))
+    //   let tree = Name(new_type, then)
+    //   let type_ = case add_name {
+    //     Ok(Nil) -> get_type(then)
+    //     Error(reason) -> Error(reason)
+    //   }
+    //   #(#(meta(type_), tree), typer)
+    // }
+    // Constructor(named, variant) -> {
+    //   let State(nominal: nominal, ..) = typer
+    //   let #(type_, typer) = case list.key_find(nominal, named) {
+    //     Error(Nil) -> #(Error(UnknownType(named)), typer)
+    //     Ok(#(parameters, variants)) ->
+    //       case list.key_find(variants, variant) {
+    //         Error(Nil) -> #(Error(UnknownVariant(variant, named)), typer)
+    //         Ok(argument) -> {
+    //           // The could be generated in the name phase
+    //           let polytype =
+    //             polytype.Polytype(
+    //               parameters,
+    //               monotype.Function(
+    //                 argument,
+    //                 monotype.Nominal(
+    //                   named,
+    //                   list.map(parameters, monotype.Unbound),
+    //                 ),
+    //               ),
+    //             )
+    //           let #(monotype, typer) = polytype.instantiate(polytype, typer)
+    //           #(Ok(monotype), typer)
+    //         }
+    //       }
+    //   }
+    //   let tree = #(meta(type_), Constructor(named, variant))
+    //   #(tree, typer)
+    // }
+    // Case(named, subject, clauses) -> {
+    //   let State(nominal: nominal, location: location, variables: variables, ..) =
+    //     typer
+    //   let #(subject, typer) = infer(subject, typer)
+    //   let typer = State(..typer, location: location, variables: variables)
+    //   let #(x, typer) = polytype.next_unbound(typer)
+    //   let return_type = monotype.Unbound(x)
+    //   let #(clauses, typer) =
+    //     list.map_state(
+    //       clauses,
+    //       typer,
+    //       fn(clause, t) {
+    //         let #(variant, variable, then) = clause
+    //         let t = State(..t, location: location, variables: variables)
+    //         let #(x, t) = polytype.next_unbound(t)
+    //         let argument_type = monotype.Unbound(x)
+    //         let t = set_variable(variable, argument_type, t)
+    //         let #(then, t) = infer(then, t)
+    //         let maybe_typer =
+    //           case get_type(then) {
+    //             Ok(then_type) -> unify(return_type, then_type, t)
+    //             _ -> Ok(t)
+    //           }
+    //           |> io.debug
+    //         io.debug("doooooooooo")
+    //         io.debug(return_type)
+    //         case maybe_typer {
+    //           Ok(t) -> {
+    //             let clause = #(variant, variable, then)
+    //             #(clause, t)
+    //           }
+    //           Error(reason) -> {
+    //             io.debug(reason)
+    //             todo("handle mismatched clause")
+    //           }
+    //         }
+    //       },
+    //     )
+    //   let #(type_, typer) = case list.key_find(nominal, named) {
+    //     Error(Nil) -> #(Error(UnknownType(named)), typer)
+    //     Ok(#(parameters, variants)) -> {
+    //       let #(replacements, typer) =
+    //         list.map_state(
+    //           parameters,
+    //           typer,
+    //           fn(parameter, tttj) {
+    //             let #(replacement, tttj) = polytype.next_unbound(tttj)
+    //             let pair = #(parameter, replacement)
+    //             #(pair, tttj)
+    //           },
+    //         )
+    //       let expected =
+    //         pair_replace(
+    //           replacements,
+    //           monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
+    //         )
+    //       case get_type(subject) {
+    //         Ok(subject_type) ->
+    //           case unify(expected, subject_type, typer) {
+    //             Ok(typer) -> {
+    //               ""
+    //               // list.map_state(clauses, typer, fn(clause, typer))
+    //               #(Ok(return_type), typer)
+    //             }
+    //           }
+    //       }
+    //     }
+    //   }
+    //   // Error(reason) -> Error(reason)
+    //   let tree = Case(named, subject, clauses)
+    //   #(#(meta(type_), tree), typer)
+    // }
+    // //     // Think the old version errored by instantiating everytime
+    // //       let State(location: location, ..) = typer
+    // //       try typer = 
+    // //       let State(variables: variables, ..) = typer
+    // //       try #(clauses, #(unhandled, typer)) =
+    // //         list.try_map_state(
+    // //           clauses,
+    // //           #(variants, typer),
+    // //           // This is an error caused when the name typer is used.
+    // //           fn(clause, state) { // Step on earlier because 0 index is subject
+    // //             // let typer = step_on_location(typer)
+    // //             let #(remaining, t) = state
+    // //             try #(argument, remaining) = case list.key_pop(
+    // //               remaining,
+    // //               variant,
+    // //             ) {
+    // //               Ok(value) -> Ok(value)
+    // //               Error(Nil) ->
+    // //                 case list.key_find(variants, variant) {
+    // //                   Ok(_) -> Error(#(RedundantClause(variant), typer))
+    // //                   Error(Nil) ->
+    // //                     Error(#(UnknownVariant(variant, named), typer))
+    // //                 }
+    // //             }
+    // //             let argument = pair_replace(replacements, argument)
+    // //             // reset scope variables
+    // //             Ok(#(clause, #(remaining, t))) },
+    // //         )
+    // //       case unhandled {
+    // //         [] -> {
+    // //           let tree = Case(named, subject, clauses)
+    // //           #(#(meta(Ok(return_type)), tree), typer)
+    // //         }
+    // //       }
+    // //     }
+    // //   }
+    // // }
+    // // _ ->
+    // //   Error(#(
+    // //     UnhandledVariants(list.map(
+    // //       unhandled,
+    // //       fn(variant) {
+    // //         let #(variant, _) = variant
+    // //         variant
+    // //       },
+    // //     )),
+    // //     State(..typer, location: location),
+    // //   ))
+    // // Can't call the generator here because we don't know what the type will resolve to yet.
+    Provider(generator) -> {
+      let expression = #(meta(Ok(expected)), Provider(generator))
+      #(expression, typer)
+    }
   }
-  // Name(new_type, then) -> {
-  //   let #(named, _construction) = new_type
-  //   let State(nominal: nominal, ..) = typer
-  //   let #(add_name, typer) = case list.key_find(nominal, named) {
-  //     Error(Nil) -> {
-  //       let typer = State(..typer, nominal: [new_type, ..nominal])
-  //       #(Ok(Nil), typer)
-  //     }
-  //     Ok(_) -> #(Error(DuplicateType(named)), typer)
-  //   }
-  //   let #(then, typer) = infer(then, append_path(typer, 0))
-  //   let tree = Name(new_type, then)
-  //   let type_ = case add_name {
-  //     Ok(Nil) -> get_type(then)
-  //     Error(reason) -> Error(reason)
-  //   }
-  //   #(#(meta(type_), tree), typer)
-  // }
-  // Constructor(named, variant) -> {
-  //   let State(nominal: nominal, ..) = typer
-  //   let #(type_, typer) = case list.key_find(nominal, named) {
-  //     Error(Nil) -> #(Error(UnknownType(named)), typer)
-  //     Ok(#(parameters, variants)) ->
-  //       case list.key_find(variants, variant) {
-  //         Error(Nil) -> #(Error(UnknownVariant(variant, named)), typer)
-  //         Ok(argument) -> {
-  //           // The could be generated in the name phase
-  //           let polytype =
-  //             polytype.Polytype(
-  //               parameters,
-  //               monotype.Function(
-  //                 argument,
-  //                 monotype.Nominal(
-  //                   named,
-  //                   list.map(parameters, monotype.Unbound),
-  //                 ),
-  //               ),
-  //             )
-  //           let #(monotype, typer) = polytype.instantiate(polytype, typer)
-  //           #(Ok(monotype), typer)
-  //         }
-  //       }
-  //   }
-  //   let tree = #(meta(type_), Constructor(named, variant))
-  //   #(tree, typer)
-  // }
-  // Case(named, subject, clauses) -> {
-  //   let State(nominal: nominal, location: location, variables: variables, ..) =
-  //     typer
-  //   let #(subject, typer) = infer(subject, typer)
-  //   let typer = State(..typer, location: location, variables: variables)
-  //   let #(x, typer) = polytype.next_unbound(typer)
-  //   let return_type = monotype.Unbound(x)
-  //   let #(clauses, typer) =
-  //     list.map_state(
-  //       clauses,
-  //       typer,
-  //       fn(clause, t) {
-  //         let #(variant, variable, then) = clause
-  //         let t = State(..t, location: location, variables: variables)
-  //         let #(x, t) = polytype.next_unbound(t)
-  //         let argument_type = monotype.Unbound(x)
-  //         let t = set_variable(variable, argument_type, t)
-  //         let #(then, t) = infer(then, t)
-  //         let maybe_typer =
-  //           case get_type(then) {
-  //             Ok(then_type) -> unify(return_type, then_type, t)
-  //             _ -> Ok(t)
-  //           }
-  //           |> io.debug
-  //         io.debug("doooooooooo")
-  //         io.debug(return_type)
-  //         case maybe_typer {
-  //           Ok(t) -> {
-  //             let clause = #(variant, variable, then)
-  //             #(clause, t)
-  //           }
-  //           Error(reason) -> {
-  //             io.debug(reason)
-  //             todo("handle mismatched clause")
-  //           }
-  //         }
-  //       },
-  //     )
-  //   let #(type_, typer) = case list.key_find(nominal, named) {
-  //     Error(Nil) -> #(Error(UnknownType(named)), typer)
-  //     Ok(#(parameters, variants)) -> {
-  //       let #(replacements, typer) =
-  //         list.map_state(
-  //           parameters,
-  //           typer,
-  //           fn(parameter, tttj) {
-  //             let #(replacement, tttj) = polytype.next_unbound(tttj)
-  //             let pair = #(parameter, replacement)
-  //             #(pair, tttj)
-  //           },
-  //         )
-  //       let expected =
-  //         pair_replace(
-  //           replacements,
-  //           monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
-  //         )
-  //       case get_type(subject) {
-  //         Ok(subject_type) ->
-  //           case unify(expected, subject_type, typer) {
-  //             Ok(typer) -> {
-  //               ""
-  //               // list.map_state(clauses, typer, fn(clause, typer))
-  //               #(Ok(return_type), typer)
-  //             }
-  //           }
-  //       }
-  //     }
-  //   }
-  //   // Error(reason) -> Error(reason)
-  //   let tree = Case(named, subject, clauses)
-  //   #(#(meta(type_), tree), typer)
-  // }
-  // //     // Think the old version errored by instantiating everytime
-  // //       let State(location: location, ..) = typer
-  // //       try typer = 
-  // //       let State(variables: variables, ..) = typer
-  // //       try #(clauses, #(unhandled, typer)) =
-  // //         list.try_map_state(
-  // //           clauses,
-  // //           #(variants, typer),
-  // //           // This is an error caused when the name typer is used.
-  // //           fn(clause, state) { // Step on earlier because 0 index is subject
-  // //             // let typer = step_on_location(typer)
-  // //             let #(remaining, t) = state
-  // //             try #(argument, remaining) = case list.key_pop(
-  // //               remaining,
-  // //               variant,
-  // //             ) {
-  // //               Ok(value) -> Ok(value)
-  // //               Error(Nil) ->
-  // //                 case list.key_find(variants, variant) {
-  // //                   Ok(_) -> Error(#(RedundantClause(variant), typer))
-  // //                   Error(Nil) ->
-  // //                     Error(#(UnknownVariant(variant, named), typer))
-  // //                 }
-  // //             }
-  // //             let argument = pair_replace(replacements, argument)
-  // //             // reset scope variables
-  // //             Ok(#(clause, #(remaining, t))) },
-  // //         )
-  // //       case unhandled {
-  // //         [] -> {
-  // //           let tree = Case(named, subject, clauses)
-  // //           #(#(meta(Ok(return_type)), tree), typer)
-  // //         }
-  // //       }
-  // //     }
-  // //   }
-  // // }
-  // // _ ->
-  // //   Error(#(
-  // //     UnhandledVariants(list.map(
-  // //       unhandled,
-  // //       fn(variant) {
-  // //         let #(variant, _) = variant
-  // //         variant
-  // //       },
-  // //     )),
-  // //     State(..typer, location: location),
-  // //   ))
-  // // Can't call the generator here because we don't know what the type will resolve to yet.
-  // Provider(id, generator) -> {
-  //   let type_ = monotype.Unbound(id)
-  //   #(#(meta(Ok(type_)), Provider(id, generator)), typer)
-  // }
 }
 
 fn pair_replace(replacements, monotype) {

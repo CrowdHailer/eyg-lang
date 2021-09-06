@@ -78,8 +78,8 @@ pub fn render_to_string(expression, typer) {
   |> string.join()
 }
 
-pub fn render(tree, state) {
-  let #(_, tree) = tree
+pub fn render(tree: ast.Expression(typer.Metadata), state) {
+  let #(context, tree) = tree
   case tree {
     // TODO escape
     Binary(content) -> wrap_return([string.join(["\"", content, "\""])], state)
@@ -222,23 +222,14 @@ pub fn render(tree, state) {
       squash(switch, subject)
       |> wrap_return(state)
     }
-    Provider(id, func) -> {
+    Provider(func) -> {
+      let typer.Metadata(type_: Ok(expected), ..) = context
       let #(a, b, typer) = state
       let State(substitutions: substitutions, ..) = typer
-      let hole = monotype.resolve(monotype.Unbound(id), substitutions)
-      let tree = func(hole)
-      case typer.infer(tree, todo("Need expected value"), typer) {
-        #(#(typer.Metadata(type_: Ok(type_), ..), _), typer) ->
-          case typer.unify(type_, monotype.Unbound(id), typer) {
-            Ok(typer) -> {
-              let state = #(a, b, typer)
-              render(tree, state)
-            }
-            Error(reason) -> {
-              io.debug(reason)
-              todo("could not unify")
-            }
-          }
+      let expected = monotype.resolve(expected, substitutions)
+      let tree = func(expected)
+      case typer.infer(tree, expected, typer) {
+        #(typed, typer) -> render(typed, state)
         _ -> todo("could not infer")
       }
     }
