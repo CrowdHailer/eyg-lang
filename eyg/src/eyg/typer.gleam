@@ -126,7 +126,8 @@ fn get_variable(label, state) {
   }
 }
 
-fn set_variable(label, monotype, state) {
+fn set_variable(variable, state) {
+  let #(label, monotype) = variable
   let State(variables: variables, substitutions: substitutions, ..) = state
   let polytype =
     polytype.generalise(monotype.resolve(monotype, substitutions), state)
@@ -134,42 +135,36 @@ fn set_variable(label, monotype, state) {
   State(..state, variables: variables, substitutions: substitutions)
 }
 
-// assignment/patterns
-fn match_pattern(pattern, given, typer) {
+fn pattern_type(pattern, typer) {
   case pattern {
-    pattern.Variable(label) -> Ok(set_variable(label, given, typer))
+    pattern.Variable(label) -> {
+      let #(x, typer) = polytype.next_unbound(typer)
+      let type_var = monotype.Unbound(x)
+      #(type_var, [#(label, type_var)], typer)
+    }
     pattern.Tuple(elements) -> {
-      let #(types, typer) =
-        list.map_state(
-          elements,
-          typer,
-          // Don't call typer as there is a bug
-          fn(label, t) {
-            let #(x, t) = polytype.next_unbound(t)
-            let type_var = monotype.Unbound(x)
-            let t = set_variable(label, type_var, t)
-            #(type_var, t)
-          },
-        )
-      let expected = monotype.Tuple(types)
-      unify(expected, given, typer)
+      let #(elements, typer) = list.map_state(elements, typer, with_unbound)
+      let expected = monotype.Tuple(list.map(elements, pairs_second))
+      #(expected, elements, typer)
     }
     pattern.Row(fields) -> {
-      let #(typed_fields, typer) =
-        list.map_state(
-          fields,
-          typer,
-          fn(field, t) {
-            let #(name, label) = field
-            let #(x, t) = polytype.next_unbound(t)
-            let type_var = monotype.Unbound(x)
-            let t = set_variable(label, type_var, t)
-            #(#(name, type_var), t)
-          },
-        )
-      let #(x, typer) = polytype.next_unbound(typer)
-      let expected = monotype.Row(typed_fields, Some(x))
-      unify(expected, given, typer)
+      //   let #(typed_fields, typer) =
+      //     list.map_state(
+      //       fields,
+      //       typer,
+      //       fn(field, t) {
+      //         let #(name, label) = field
+      //         let #(x, t) = polytype.next_unbound(t)
+      //         let type_var = monotype.Unbound(x)
+      //         let t = set_variable(label, type_var, t)
+      //         #(#(name, type_var), t)
+      //       },
+      //     )
+      //   let #(x, typer) = polytype.next_unbound(typer)
+      //   let expected = monotype.Row(typed_fields, Some(x))
+      //   unify(expected, given, typer)
+      1
+      todo
     }
   }
 }
@@ -213,7 +208,7 @@ fn pairs_second(pair: #(a, b)) -> b {
   pair.1
 }
 
-fn with_unbound(thing, typer) {
+fn with_unbound(thing: a, typer) -> #(#(a, monotype.Monotype), State) {
   let #(x, typer) = polytype.next_unbound(typer)
   let type_ = monotype.Unbound(x)
   #(#(thing, type_), typer)
@@ -293,44 +288,21 @@ pub fn infer(
       let expression = #(meta(type_), Variable(label))
       #(expression, typer)
     }
+    Let(pattern, value, then) -> {
+      let State(variables: variables, location: location, ..) = typer
+      let #(expected_value, bound_variables, typer) =
+        pattern_type(pattern, typer)
+      // TODO remove this nesting when we(if?) separate typer and scope
+      let #(value, typer) = infer(value, expected_value, append_path(typer, 0))
+      let typer = State(..typer, variables: variables)
+      let typer = list.fold(bound_variables, typer, set_variable)
+      let typer = append_path(typer, 1)
+      let #(then, typer) = infer(then, expected, append_path(typer, 1))
+      // Let is always OK the error is on the term inside
+      let expression = #(meta(Ok(expected)), Let(pattern, value, then))
+      #(expression, typer)
+    }
   }
-  // Let(pattern, value, then) -> {
-  //   let State(location: location, ..) = typer
-  //   // TODO remove this nesting when we(if?) separate typer and scope
-  //   let State(variables: variables, ..) = typer
-  //   let #(value, typer) = infer(value, append_path(typer, 0))
-  //   let #(given, typer) = case get_type(value) {
-  //     Ok(given) -> #(given, typer)
-  //     Error(_) -> {
-  //       let #(x, typer) = polytype.next_unbound(typer)
-  //       #(monotype.Unbound(x), typer)
-  //     }
-  //   }
-  //   let typer = State(..typer, variables: variables)
-  //   case match_pattern(pattern, given, typer) {
-  //     Ok(typer) -> {
-  //       // same rule as scope needs reseting
-  //       let typer = State(..typer, location: location)
-  //       let #(then, typer) = infer(then, append_path(typer, 1))
-  //       let #(then_type, typer) = case get_type(then) {
-  //         Ok(t) -> #(t, typer)
-  //         Error(_) -> {
-  //           let #(x, typer) = polytype.next_unbound(typer)
-  //           #(monotype.Unbound(x), typer)
-  //         }
-  //       }
-  //       let tree = Let(pattern, value, then)
-  //       #(#(meta(Ok(then_type)), tree), typer)
-  //     }
-  //     Error(#(reason, typer)) -> {
-  //       // all the variables in the pattern should be added to scope TODO
-  //       let typer = State(..typer, location: location)
-  //       let #(then, typer) = infer(then, append_path(typer, 1))
-  //       let tree = Let(pattern, value, then)
-  //       #(#(meta(Error(reason)), tree), typer)
-  //     }
-  //   }
-  // }
   // Function(label, body) -> {
   //   let #(x, typer) = polytype.next_unbound(typer)
   //   let type_var = monotype.Unbound(x)
