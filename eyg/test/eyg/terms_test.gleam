@@ -87,21 +87,5 @@ pub fn unexpected_field_type_test() {
   assert Ok(t.Row([#("foo", t.Binary)], None)) = get_type(typed)
   assert #(_context, ast.Row([#("foo", child)])) = typed
   assert Error(reason) = get_type(child)
-  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) =
+  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }
-// pub fn missing_variable_test() {
-//   let typer = init([])
-//   let untyped = ast.variable("foo")
-//   let #(typed, _state) = infer(untyped, typer)
-//   let Error(reason) = get_type(typed)
-//   assert typer.UnknownVariable("foo") = reason
-// }
-// pub fn infer_variable_test() {
-//   let typer = init([#("foo", polytype.Polytype([], t.Tuple([])))])
-//   let untyped = ast.variable("foo")
-//   assert #(type_, _typer) = infer(untyped, typer)
-//   assert Ok(t.Tuple([])) = get_type(type_)
-// }
-// // abstraction test
-// // application test
-// // let/bind/assignment/pattern_test

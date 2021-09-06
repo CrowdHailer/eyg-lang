@@ -284,24 +284,16 @@ pub fn infer(
       let expression = #(meta(type_), Row(fields))
       #(expression, typer)
     }
+    Variable(label) -> {
+      // Returns typer because of instantiation, 
+      let #(type_, typer) = case get_variable(label, typer) {
+        Ok(#(given, typer)) -> do_unify(expected, given, typer)
+        Error(#(reason, _)) -> #(Error(reason), typer)
+      }
+      let expression = #(meta(type_), Variable(label))
+      #(expression, typer)
+    }
   }
-  //   let #(trees, typer) = list.map_state(fields, typer, infer_field)
-  //   let types =
-  //     list.map(
-  //       trees,
-  //       fn(tree_with_other_name) {
-  //         let #(name, #(Metadata(type_: Ok(type_), ..), _)) =
-  //           tree_with_other_name
-  //         #(name, type_)
-  //       },
-  //     )
-  //   let type_ = monotype.Row(types, None)
-  //   #(#(meta(Ok(type_)), Row(trees)), typer)
-  // Variable(label) ->
-  //   case get_variable(label, typer) {
-  //     Ok(#(type_, typer)) -> #(#(meta(Ok(type_)), Variable(label)), typer)
-  //     Error(#(reason, _)) -> #(#(meta(Error(reason)), Variable(label)), typer)
-  //   }
   // Let(pattern, value, then) -> {
   //   let State(location: location, ..) = typer
   //   // TODO remove this nesting when we(if?) separate typer and scope

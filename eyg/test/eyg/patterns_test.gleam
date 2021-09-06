@@ -1,17 +1,33 @@
+import gleam/io
+import eyg/ast
+import eyg/ast/pattern
+import eyg/typer.{get_type, infer, init}
+import eyg/typer/monotype as t
+import eyg/typer/polytype.{State}
 
-// import gleam/io
-// import eyg/ast
-// import eyg/ast/pattern
-// import eyg/typer.{get_type, infer, init}
-// import eyg/typer/monotype.{resolve}
-// import eyg/typer/polytype.{State}
-// pub fn assignment_test() {
-//   let typer = init([])
-//   let untyped =
-//     ast.let_(pattern.Variable("foo"), ast.tuple_([]), ast.variable("foo"))
-//   let #(typed, _typer) = infer(untyped, typer)
-//   assert Ok(monotype.Tuple([])) = get_type(typed)
-// }
+// This is proablbly better called assignment tests, unless it grows too big and patterns should be separate
+pub fn variable_of_expected_type_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Tuple([])))])
+  let untyped = ast.variable("foo")
+  assert #(typed, _typer) = infer(untyped, t.Tuple([]), typer)
+  assert Ok(t.Tuple([])) = get_type(typed)
+}
+
+pub fn variable_of_unexpected_type_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Tuple([])))])
+  let untyped = ast.variable("foo")
+  assert #(typed, _typer) = infer(untyped, t.Binary, typer)
+  assert Error(reason) = get_type(typed)
+  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+}
+
+pub fn missing_variable_test() {
+  let typer = init([])
+  let untyped = ast.variable("foo")
+  let #(typed, _state) = infer(untyped, t.Binary, typer)
+  let Error(reason) = get_type(typed)
+  assert typer.UnknownVariable("foo") = reason
+}
 // pub fn tuple_pattern_test() {
 //   let typer = init([])
 //   let untyped =
