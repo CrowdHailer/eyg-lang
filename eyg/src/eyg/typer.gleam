@@ -148,23 +148,20 @@ fn pattern_type(pattern, typer) {
       #(expected, elements, typer)
     }
     pattern.Row(fields) -> {
-      //   let #(typed_fields, typer) =
-      //     list.map_state(
-      //       fields,
-      //       typer,
-      //       fn(field, t) {
-      //         let #(name, label) = field
-      //         let #(x, t) = polytype.next_unbound(t)
-      //         let type_var = monotype.Unbound(x)
-      //         let t = set_variable(label, type_var, t)
-      //         #(#(name, type_var), t)
-      //       },
-      //     )
-      //   let #(x, typer) = polytype.next_unbound(typer)
-      //   let expected = monotype.Row(typed_fields, Some(x))
-      //   unify(expected, given, typer)
-      1
-      todo
+      let #(fields, typer) = list.map_state(fields, typer, with_unbound)
+      let extract_field_types = fn(named_field) {
+        let #(#(name, _assignment), type_) = named_field
+        #(name, type_)
+      }
+      let #(x, typer) = polytype.next_unbound(typer)
+      let expected =
+        monotype.Row(list.map(fields, extract_field_types), Some(x))
+      let extract_scope_variables = fn(x) {
+        let #(#(_name, assignment), type_) = x
+        #(assignment, type_)
+      }
+      let variables = list.map(fields, extract_scope_variables)
+      #(expected, variables, typer)
     }
   }
 }
