@@ -13,7 +13,6 @@ external fn run(String) -> a =
 
 // Can start on the row macros for joining
 pub fn standard_library_test() {
-  todo("skip")
   let untyped =
     ast.let_(pattern.Variable("boolean"), boolean.code(), boolean.test())
   compile(
