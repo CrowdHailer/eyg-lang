@@ -14,6 +14,7 @@ pub type Reason {
   UnknownVariable(label: String)
   UnmatchedTypes(expected: monotype.Monotype, given: monotype.Monotype)
   MissingFields(expected: List(#(String, monotype.Monotype)))
+  UnexpectedFields(expected: List(#(String, monotype.Monotype)))
   UnknownType(name: String)
   UnknownVariant(variant: String, in: String)
   DuplicateType(name: String)
@@ -60,7 +61,7 @@ pub fn unify(expected, given, typer) {
         [], _ -> Ok(typer)
         only, Some(i) ->
           Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
-        only, None -> Error(#(MissingFields(only), typer))
+        only, None -> Error(#(UnexpectedFields(only), typer))
       }
       try typer = case expected, given_extra {
         [], _ -> Ok(typer)
@@ -208,6 +209,16 @@ fn do_unify(expected, given, typer) {
   }
 }
 
+fn pairs_second(pair: #(a, b)) -> b {
+  pair.1
+}
+
+fn with_unbound(thing, typer) {
+  let #(x, typer) = polytype.next_unbound(typer)
+  let type_ = monotype.Unbound(x)
+  #(#(thing, type_), typer)
+}
+
 pub fn infer(
   expression: ast.Expression(Nil),
   expected: monotype.Monotype,
@@ -216,7 +227,6 @@ pub fn infer(
   // return all context so more info can be added later
   let #(_, tree) = expression
   let State(location: path, ..) = typer
-  // TODO use function that takes type into meta
   let meta = Metadata(path: path, type_: _, scope: typer.variables)
   case tree {
     Binary(value) -> {
@@ -224,26 +234,9 @@ pub fn infer(
       let expression = #(meta(type_), Binary(value))
       #(expression, typer)
     }
-    // list.zip_state(as, t, fn(as) )
     Tuple(elements) -> {
-      let #(pairs, typer) =
-        list.map_state(
-          elements,
-          typer,
-          fn(element, t) {
-            let #(x, t) = polytype.next_unbound(t)
-            let element_type = monotype.Unbound(x)
-            #(#(element, element_type), t)
-          },
-        )
-      let given =
-        monotype.Tuple(list.map(
-          pairs,
-          fn(p) {
-            let #(_, type_) = p
-            type_
-          },
-        ))
+      let #(pairs, typer) = list.map_state(elements, typer, with_unbound)
+      let given = monotype.Tuple(list.map(pairs, pairs_second))
       let #(type_, typer) = do_unify(expected, given, typer)
       // decided I want to match on top level first
       let #(elements, #(typer, _)) =
@@ -261,8 +254,37 @@ pub fn infer(
       let expression = #(meta(type_), Tuple(elements))
       #(expression, typer)
     }
+    Row(fields) -> {
+      let #(pairs, typer) = list.map_state(fields, typer, with_unbound)
+      let given =
+        monotype.Row(
+          list.map(
+            pairs,
+            fn(pair) {
+              let #(#(name, _value), type_) = pair
+              #(name, type_)
+            },
+          ),
+          None,
+        )
+      // TODO don't think returning type_ needed
+      let #(type_, typer) = do_unify(expected, given, typer)
+      let #(fields, #(typer, _)) =
+        list.map_state(
+          pairs,
+          #(typer, 0),
+          fn(pair, stz) {
+            let #(tz, i) = stz
+            let #(#(name, value), expected) = pair
+            let tz = State(..tz, location: ast.append_path(path, i))
+            let #(value, tz) = infer(value, expected, tz)
+            #(#(name, value), #(tz, i + 1))
+          },
+        )
+      let expression = #(meta(type_), Row(fields))
+      #(expression, typer)
+    }
   }
-  // Row(fields) -> {
   //   let #(trees, typer) = list.map_state(fields, typer, infer_field)
   //   let types =
   //     list.map(
@@ -275,7 +297,6 @@ pub fn infer(
   //     )
   //   let type_ = monotype.Row(types, None)
   //   #(#(meta(Ok(type_)), Row(trees)), typer)
-  // }
   // Variable(label) ->
   //   case get_variable(label, typer) {
   //     Ok(#(type_, typer)) -> #(#(meta(Ok(type_)), Variable(label)), typer)
