@@ -322,52 +322,52 @@ pub fn infer(
       let expression = #(meta(Ok(expected)), Call(function, with))
       #(expression, typer)
     }
-    // Name(new_type, then) -> {
-    //   let #(named, _construction) = new_type
-    //   let State(nominal: nominal, ..) = typer
-    //   let #(add_name, typer) = case list.key_find(nominal, named) {
-    //     Error(Nil) -> {
-    //       let typer = State(..typer, nominal: [new_type, ..nominal])
-    //       #(Ok(Nil), typer)
-    //     }
-    //     Ok(_) -> #(Error(DuplicateType(named)), typer)
-    //   }
-    //   let #(then, typer) = infer(then, append_path(typer, 0))
-    //   let tree = Name(new_type, then)
-    //   let type_ = case add_name {
-    //     Ok(Nil) -> get_type(then)
-    //     Error(reason) -> Error(reason)
-    //   }
-    //   #(#(meta(type_), tree), typer)
-    // }
-    // Constructor(named, variant) -> {
-    //   let State(nominal: nominal, ..) = typer
-    //   let #(type_, typer) = case list.key_find(nominal, named) {
-    //     Error(Nil) -> #(Error(UnknownType(named)), typer)
-    //     Ok(#(parameters, variants)) ->
-    //       case list.key_find(variants, variant) {
-    //         Error(Nil) -> #(Error(UnknownVariant(variant, named)), typer)
-    //         Ok(argument) -> {
-    //           // The could be generated in the name phase
-    //           let polytype =
-    //             polytype.Polytype(
-    //               parameters,
-    //               monotype.Function(
-    //                 argument,
-    //                 monotype.Nominal(
-    //                   named,
-    //                   list.map(parameters, monotype.Unbound),
-    //                 ),
-    //               ),
-    //             )
-    //           let #(monotype, typer) = polytype.instantiate(polytype, typer)
-    //           #(Ok(monotype), typer)
-    //         }
-    //       }
-    //   }
-    //   let tree = #(meta(type_), Constructor(named, variant))
-    //   #(tree, typer)
-    // }
+    Name(new_type, then) -> {
+      let #(named, _construction) = new_type
+      let State(nominal: nominal, ..) = typer
+      let #(add_name, typer) = case list.key_find(nominal, named) {
+        Error(Nil) -> {
+          let typer = State(..typer, nominal: [new_type, ..nominal])
+          #(Ok(Nil), typer)
+        }
+        Ok(_) -> #(Error(DuplicateType(named)), typer)
+      }
+      let #(then, typer) = infer(then, expected, append_path(typer, 0))
+      let tree = Name(new_type, then)
+      let type_ = case add_name {
+        Ok(Nil) -> Ok(expected)
+        Error(reason) -> Error(reason)
+      }
+      #(#(meta(type_), tree), typer)
+    }
+    Constructor(named, variant) -> {
+      let State(nominal: nominal, ..) = typer
+      let #(type_, typer) = case list.key_find(nominal, named) {
+        Error(Nil) -> #(Error(UnknownType(named)), typer)
+        Ok(#(parameters, variants)) ->
+          case list.key_find(variants, variant) {
+            Error(Nil) -> #(Error(UnknownVariant(variant, named)), typer)
+            Ok(argument) -> {
+              // The could be generated in the name phase
+              let polytype =
+                polytype.Polytype(
+                  parameters,
+                  monotype.Function(
+                    argument,
+                    monotype.Nominal(
+                      named,
+                      list.map(parameters, monotype.Unbound),
+                    ),
+                  ),
+                )
+              let #(given, typer) = polytype.instantiate(polytype, typer)
+              do_unify(expected, given, typer)
+            }
+          }
+      }
+      let expression = #(meta(type_), Constructor(named, variant))
+      #(expression, typer)
+    }
     // Case(named, subject, clauses) -> {
     //   let State(nominal: nominal, location: location, variables: variables, ..) =
     //     typer
