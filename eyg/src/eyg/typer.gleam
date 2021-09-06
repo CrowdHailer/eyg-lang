@@ -167,12 +167,6 @@ fn pattern_type(pattern, typer) {
 }
 
 // inference fns
-// fn infer_field(field, typer) {
-//   let #(name, tree) = field
-//   let #(type_, typer) = infer(tree, typer)
-//   // NOTE this assumes infer_field always used in a list.map context TODO remove 999
-//   #(#(name, type_), append_path(typer, 999))
-// }
 fn append_path(typer, i) {
   let State(location: location, ..) = typer
   State(..typer, location: list.append(location, [i]))
@@ -299,50 +293,36 @@ pub fn infer(
       let expression = #(meta(Ok(expected)), Let(pattern, value, then))
       #(expression, typer)
     }
+    Function(label, body) -> {
+      let #(x, typer) = polytype.next_unbound(typer)
+      let arg_type = monotype.Unbound(x)
+      let #(y, typer) = polytype.next_unbound(typer)
+      let return_type = monotype.Unbound(y)
+      let given = monotype.Function(arg_type, return_type)
+      let #(type_, typer) = do_unify(expected, given, typer)
+      // TODO remove this nesting when we(if?) separate typer and scope
+      let State(variables: variables, location: location, ..) = typer
+      let typer = set_variable(#(label, arg_type), typer)
+      let #(return, typer) = infer(body, return_type, append_path(typer, 0))
+      let typer = State(..typer, variables: variables, location: location)
+      // There are ALOT more type variables if handling all the errors.
+      #(#(meta(type_), Function(label, return)), typer)
+    }
+    Call(function, with) -> {
+      let State(location: location, ..) = typer
+      let #(x, typer) = polytype.next_unbound(typer)
+      let arg_type = monotype.Unbound(x)
+      let expected_function = monotype.Function(arg_type, expected)
+      let #(function, typer) =
+        infer(function, expected_function, append_path(typer, 0))
+      let typer = State(..typer, location: location)
+      let #(with, typer) = infer(with, arg_type, append_path(typer, 1))
+      let typer = State(..typer, location: location)
+      // Type is always! OK at this level
+      let expression = #(meta(Ok(expected)), Call(function, with))
+      #(expression, typer)
+    }
   }
-  // Function(label, body) -> {
-  //   let #(x, typer) = polytype.next_unbound(typer)
-  //   let type_var = monotype.Unbound(x)
-  //   // TODO remove this nesting when we(if?) separate typer and scope
-  //   let State(variables: variables, location: location, ..) = typer
-  //   let typer = set_variable(label, type_var, typer)
-  //   let #(return, typer) = infer(body, append_path(typer, 0))
-  //   let typer = State(..typer, variables: variables, location: location)
-  //   // There are ALOT more type variables if handling all the errors.
-  //   let Ok(return_type) = get_type(return)
-  //   let type_ = monotype.Function(type_var, return_type)
-  //   #(#(meta(Ok(type_)), Function(label, return)), typer)
-  // }
-  // Call(function, with) -> {
-  //   let State(location: location, ..) = typer
-  //   let #(function, typer) = infer(function, append_path(typer, 0))
-  //   let typer = State(..typer, location: location)
-  //   let #(with, typer) = infer(with, append_path(typer, 1))
-  //   let typer = State(..typer, location: location)
-  //   let #(x, typer) = polytype.next_unbound(typer)
-  //   let return_type = monotype.Unbound(x)
-  //   let #(ftype, typer) = case get_type(function) {
-  //     Ok(type_) -> #(type_, typer)
-  //     Error(_) -> {
-  //       let #(x, typer) = polytype.next_unbound(typer)
-  //       #(monotype.Unbound(x), typer)
-  //     }
-  //   }
-  //   let #(with_type, typer) = case get_type(with) {
-  //     Ok(type_) -> #(type_, typer)
-  //     Error(_) -> {
-  //       let #(x, typer) = polytype.next_unbound(typer)
-  //       #(monotype.Unbound(x), typer)
-  //     }
-  //   }
-  //   case unify(ftype, monotype.Function(with_type, return_type), typer) {
-  //     Ok(typer) -> #(#(meta(Ok(return_type)), Call(function, with)), typer)
-  //     Error(#(reason, typer)) -> #(
-  //       #(meta(Error(reason)), Call(function, with)),
-  //       typer,
-  //     )
-  //   }
-  // }
   // Name(new_type, then) -> {
   //   let #(named, _construction) = new_type
   //   let State(nominal: nominal, ..) = typer
