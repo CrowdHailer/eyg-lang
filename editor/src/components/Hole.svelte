@@ -7,6 +7,7 @@
   import * as AstBare from "../gen/eyg/ast";
   import * as Builders from "../gen/standard/builders";
   const Ast = Object.assign({}, AstBare, Builders);
+  import * as Provider from "../gen/eyg/ast/provider";
   import * as Pattern from "../gen/eyg/ast/pattern";
 
   export let metadata;
@@ -66,9 +67,11 @@
   }
 
   function insertProvider(content) {
+    let path = metadata.path;
     let name = content.trim().replace(" ", "_");
-    // String to key can be done in gleam
-    // same for triming
+    let newNode = Provider.from_name(name);
+    update_tree(path, newNode);
+    thenFocus(path);
   }
   // scope should include equal
   //   Need keydown for tab to work

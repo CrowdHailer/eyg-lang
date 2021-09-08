@@ -52,7 +52,7 @@ pub fn replace_node(
           let pre = list.take(elements, index)
           let post = list.drop(elements, index + 1)
           let inner = case replacement {
-            #(_, expression.Provider(generator: generator)) ->
+            #(_, expression.Provider(config: _config, generator: generator)) ->
               case ast.is_hole(generator) {
                 True -> []
                 False -> [replacement]

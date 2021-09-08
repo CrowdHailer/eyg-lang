@@ -5,7 +5,6 @@ import eyg/typer/monotype
 import eyg/ast/provider
 import eyg/ast/expression
 
-
 pub fn binary(value) {
   #(Nil, expression.Binary(value))
 }
@@ -46,16 +45,16 @@ pub fn variable(label) {
   #(Nil, expression.Variable(label))
 }
 
-pub fn provider(generator) {
-  #(Nil, expression.Provider(generator))
+pub fn provider(config, generator) {
+  #(Nil, expression.Provider(config, generator))
 }
 
-fn generate_hole(_) {
+fn generate_hole(_config, _type) {
   binary("TODO this is no implemented")
 }
 
 pub fn hole() {
-  provider(generate_hole)
+  provider("", generate_hole)
 }
 
 pub fn is_hole(generator) {

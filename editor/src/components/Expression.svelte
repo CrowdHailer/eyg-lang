@@ -62,6 +62,7 @@
   <Provider
     {metadata}
     {update_tree}
+    config={tree.config}
     generator={tree.generator}
     on:deletebackwards
   />

@@ -1,7 +1,6 @@
 import eyg/typer/monotype
 import eyg/ast/pattern.{Pattern}
 
-
 pub type Node(m) {
   Binary(value: String)
   Tuple(elements: List(Expression(m)))
@@ -20,7 +19,10 @@ pub type Node(m) {
     value: Expression(m),
     clauses: List(#(String, String, Expression(m))),
   )
-  Provider(generator: fn(monotype.Monotype) -> Expression(Nil))
+  Provider(
+    config: String,
+    generator: fn(String, monotype.Monotype) -> Expression(Nil),
+  )
 }
 
 // m for metadata

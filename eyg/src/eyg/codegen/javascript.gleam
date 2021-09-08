@@ -3,7 +3,8 @@ import gleam/int
 import gleam/list
 import gleam/string
 import eyg/ast/expression.{
-  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable, Expression
+  Binary, Call, Case, Constructor, Expression, Function, Let, Name, Provider, Row,
+  Tuple, Variable,
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -222,12 +223,12 @@ pub fn render(tree: Expression(typer.Metadata), state) {
       squash(switch, subject)
       |> wrap_return(state)
     }
-    Provider(func) -> {
+    Provider(config, func) -> {
       let typer.Metadata(type_: Ok(expected), ..) = context
       let #(a, b, typer) = state
       let State(substitutions: substitutions, ..) = typer
       let expected = monotype.resolve(expected, substitutions)
-      let tree = func(expected)
+      let tree = func(config, expected)
       case typer.infer(tree, expected, typer) {
         #(typed, typer) -> render(typed, state)
         _ -> todo("could not infer")

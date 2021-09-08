@@ -3,7 +3,8 @@ import gleam/list
 import gleam/option.{None, Some}
 import eyg/ast
 import eyg/ast/expression.{
-  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable, Expression
+  Binary, Call, Case, Constructor, Expression, Function, Let, Name, Provider, Row,
+  Tuple, Variable,
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -181,9 +182,7 @@ pub type Metadata {
   )
 }
 
-pub fn get_type(
-  tree: Expression(Metadata),
-) -> Result(monotype.Monotype, Reason) {
+pub fn get_type(tree: Expression(Metadata)) -> Result(monotype.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
 }
@@ -469,8 +468,8 @@ pub fn infer(
       }
       #(#(meta(type_), tree), typer)
     }
-    Provider(generator) -> {
-      let expression = #(meta(Ok(expected)), Provider(generator))
+    Provider(config, generator) -> {
+      let expression = #(meta(Ok(expected)), Provider(config, generator))
       #(expression, typer)
     }
   }

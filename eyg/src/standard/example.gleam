@@ -6,7 +6,7 @@ import standard/builders.{clause, function}
 pub fn code() {
   ast.let_(
     pattern.Variable("main"),
-    ast.provider(fn(_type) { todo }),
+    ast.provider("", fn(_config, _type) { todo }),
     ast.name(
       #(
         "Boolean",
