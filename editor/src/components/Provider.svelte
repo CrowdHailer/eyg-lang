@@ -18,12 +18,17 @@
 {#if Ast.is_hole(generator)}
   <Hole {metadata} {update_tree} required={true} on:deletebackwards />
 {:else}
-  format&lt;"<span
-    class="outline-none"
-    contenteditable=""
-    bind:textContent={config}
-    id={Ast.path_to_id(metadata.path)}
-    on:blur={handleBlur}
-  />"&gt;
+  <span
+    class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+    tabindex="0"
+  >
+    format&lt;"<span
+      class="outline-none"
+      contenteditable=""
+      bind:textContent={config}
+      id={Ast.path_to_id(metadata.path)}
+      on:blur={handleBlur}
+    />"&gt;
+  </span>
 {/if}
 <ErrorNotice type_={metadata.type_} />
