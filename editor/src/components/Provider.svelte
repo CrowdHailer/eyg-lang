@@ -1,4 +1,5 @@
 <script>
+  import ErrorNotice from "./ErrorNotice.svelte";
   import Hole from "./Hole.svelte";
   import * as Ast from "../gen/eyg/ast";
   export let metadata;
@@ -11,3 +12,4 @@
 {:else}
   TODO provider
 {/if}
+<ErrorNotice type_={metadata.type_} />

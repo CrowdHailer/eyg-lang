@@ -1,6 +1,8 @@
 <script>
+  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
+  export let metadata;
   export let fields;
   export let update_tree;
 </script>

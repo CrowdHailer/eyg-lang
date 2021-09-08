@@ -1,4 +1,5 @@
 <script>
+  import ErrorNotice from "./ErrorNotice.svelte";
   import { tick } from "svelte";
   import Expression from "./Expression.svelte";
   import TermInput from "./TermInput.svelte";
@@ -102,10 +103,6 @@
     {update_tree}
     on:delete={() => handleDelete(0)}
   />
-  {#if metadata.type_.type == "Error"}
-    <div class=" bg-red-100 border-t-2 border-red-300 py-1 px-4">
-      {JSON.stringify(metadata.type_[0])}
-    </div>
-  {/if}
+  <ErrorNotice type_={metadata.type_} />
 </p>
 <Expression expression={then} {update_tree} on:delete={() => handleDelete(1)} />

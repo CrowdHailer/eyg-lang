@@ -1,6 +1,7 @@
 <script>
   import { tick, createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
+  import ErrorNotice from "./ErrorNotice.svelte";
   import { List } from "../gen/gleam";
 
   import * as AstBare from "../gen/eyg/ast";
@@ -173,6 +174,7 @@
     on:blur={tryBlur}>Tuple</button
   >
 </div>
+<ErrorNotice type_={metadata.type_} />
 
 <style>
   span {

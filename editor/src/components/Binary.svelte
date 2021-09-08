@@ -1,4 +1,5 @@
 <script>
+  import ErrorNotice from "./ErrorNotice.svelte";
   import { tick } from "svelte";
   import * as Ast from "../gen/eyg/ast";
   export let metadata;
@@ -50,3 +51,4 @@
     "
   {/if}</span
 >
+<ErrorNotice type_={metadata.type_} />

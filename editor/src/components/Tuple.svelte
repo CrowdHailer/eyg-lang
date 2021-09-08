@@ -1,4 +1,5 @@
 <script>
+  import ErrorNotice from "./ErrorNotice.svelte";
   import { tick } from "svelte";
   import Expression from "./Expression.svelte";
   import * as Ast from "../gen/eyg/ast";
@@ -35,3 +36,4 @@
   {update_tree}
   on:deletebackwards={handleDeletebackwards}
 />]
+<ErrorNotice type_={metadata.type_} />

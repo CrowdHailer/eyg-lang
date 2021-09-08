@@ -2,7 +2,7 @@
   import { tick, createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
 
-  import TermInput from "./TermInput.svelte";
+  import ErrorNotice from "./ErrorNotice.svelte";
   import * as AstBare from "../gen/eyg/ast";
   import * as Builders from "../gen/standard/builders";
   import { List } from "../gen/gleam";
@@ -56,8 +56,4 @@
   on:keydown={handleKeydown}
   on:blur={handleBlur}
 />
-{#if metadata.type_.type == "Error"}
-  <div class=" bg-red-100 border-t-2 border-red-300 py-1 px-4">
-    Unknown variable {label}
-  </div>
-{/if}
+<ErrorNotice type_={metadata.type_} />

@@ -1,4 +1,5 @@
 <script>
+  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import TermInput from "./TermInput.svelte";
@@ -98,3 +99,4 @@
   </Indent>
 </p>
 <Expression expression={then} {update_tree} />
+<ErrorNotice type_={metadata.type_} />

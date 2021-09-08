@@ -17,10 +17,6 @@
   $: tree = expression[1];
 
   export let update_tree;
-  // can't expand pinpoint event with tree becaus it bubbles up through all expressions
-  // function handlePinpoint({ detail }) {
-  //   let detail = Object.assign({}, detail, { tree });
-  // }
   import { createEventDispatcher } from "svelte";
 
   const dispatch = createEventDispatcher();
@@ -73,8 +69,3 @@
   foo
   {JSON.stringify(tree)}
 {/if}
-<!-- {#if errorMessage}
-  <div class="absolute bg-red-100 border-t-2 border-red-300 py-1 px-4">
-    {JSON.stringify(errorMessage)}
-  </div>
-{/if} -->

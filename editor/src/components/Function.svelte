@@ -1,4 +1,5 @@
 <script>
+  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import * as AstBare from "../gen/eyg/ast";
@@ -16,7 +17,6 @@
   let main;
   $: (() => {
     let [a, b] = Ast.args_body(body);
-    console.log(a);
     arguments_ = a.toArray();
     main = b;
   })();
@@ -54,6 +54,7 @@
     on:deletebackwards={handleDeletebackwards}
   />
 </Indent>
+<ErrorNotice type_={metadata.type_} />
 
 <style>
   span:focus::before {
