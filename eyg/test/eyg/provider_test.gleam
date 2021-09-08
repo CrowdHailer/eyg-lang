@@ -42,14 +42,14 @@ pub fn config_test() {
   let untyped =
     ast.let_(
       pattern.Row([#("foo", "foo"), #("bar", "bar")]),
-      ast.provider(999, env_provider("", _)),
+      ast.provider(env_provider("", _)),
       ast.call(
         ast.variable("equal"),
         ast.tuple_([ast.variable("foo"), ast.binary("secret")]),
       ),
     )
-  let #(_, typer) = infer(untyped, typer)
-  javascript.render(untyped, #(False, [], typer))
+  let #(typed, typer) = infer(untyped, monotype.Unbound(-1), typer)
+  javascript.render(typed, #(False, [], typer))
 }
 
 // Format

@@ -14,6 +14,7 @@ pub type Reason {
   UnknownVariable(label: String)
   UnmatchedTypes(expected: monotype.Monotype, given: monotype.Monotype)
   MissingFields(expected: List(#(String, monotype.Monotype)))
+  UnexpectedFields(expected: List(#(String, monotype.Monotype)))
   UnknownType(name: String)
   UnknownVariant(variant: String, in: String)
   DuplicateType(name: String)
@@ -60,7 +61,7 @@ pub fn unify(expected, given, typer) {
         [], _ -> Ok(typer)
         only, Some(i) ->
           Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
-        only, None -> Error(#(MissingFields(only), typer))
+        only, None -> Error(#(UnexpectedFields(only), typer))
       }
       try typer = case expected, given_extra {
         [], _ -> Ok(typer)
@@ -125,7 +126,8 @@ fn get_variable(label, state) {
   }
 }
 
-fn set_variable(label, monotype, state) {
+fn set_variable(variable, state) {
+  let #(label, monotype) = variable
   let State(variables: variables, substitutions: substitutions, ..) = state
   let polytype =
     polytype.generalise(monotype.resolve(monotype, substitutions), state)
@@ -133,54 +135,38 @@ fn set_variable(label, monotype, state) {
   State(..state, variables: variables, substitutions: substitutions)
 }
 
-// assignment/patterns
-fn match_pattern(pattern, given, typer) {
+fn pattern_type(pattern, typer) {
   case pattern {
-    pattern.Variable(label) -> Ok(set_variable(label, given, typer))
+    pattern.Variable(label) -> {
+      let #(x, typer) = polytype.next_unbound(typer)
+      let type_var = monotype.Unbound(x)
+      #(type_var, [#(label, type_var)], typer)
+    }
     pattern.Tuple(elements) -> {
-      let #(types, typer) =
-        list.map_state(
-          elements,
-          typer,
-          // Don't call typer as there is a bug
-          fn(label, t) {
-            let #(x, t) = polytype.next_unbound(t)
-            let type_var = monotype.Unbound(x)
-            let t = set_variable(label, type_var, t)
-            #(type_var, t)
-          },
-        )
-      let expected = monotype.Tuple(types)
-      unify(expected, given, typer)
+      let #(elements, typer) = list.map_state(elements, typer, with_unbound)
+      let expected = monotype.Tuple(list.map(elements, pairs_second))
+      #(expected, elements, typer)
     }
     pattern.Row(fields) -> {
-      let #(typed_fields, typer) =
-        list.map_state(
-          fields,
-          typer,
-          fn(field, t) {
-            let #(name, label) = field
-            let #(x, t) = polytype.next_unbound(t)
-            let type_var = monotype.Unbound(x)
-            let t = set_variable(label, type_var, t)
-            #(#(name, type_var), t)
-          },
-        )
+      let #(fields, typer) = list.map_state(fields, typer, with_unbound)
+      let extract_field_types = fn(named_field) {
+        let #(#(name, _assignment), type_) = named_field
+        #(name, type_)
+      }
       let #(x, typer) = polytype.next_unbound(typer)
-      let expected = monotype.Row(typed_fields, Some(x))
-      unify(expected, given, typer)
+      let expected =
+        monotype.Row(list.map(fields, extract_field_types), Some(x))
+      let extract_scope_variables = fn(x) {
+        let #(#(_name, assignment), type_) = x
+        #(assignment, type_)
+      }
+      let variables = list.map(fields, extract_scope_variables)
+      #(expected, variables, typer)
     }
   }
 }
 
 // inference fns
-fn infer_field(field, typer) {
-  let #(name, tree) = field
-  let #(type_, typer) = infer(tree, typer)
-  // NOTE this assumes infer_field always used in a list.map context TODO remove 999
-  #(#(name, type_), append_path(typer, 999))
-}
-
 fn append_path(typer, i) {
   let State(location: location, ..) = typer
   State(..typer, location: list.append(location, [i]))
@@ -201,137 +187,144 @@ pub fn get_type(
   type_
 }
 
+fn do_unify(expected, given, typer) {
+  case unify(expected, given, typer) {
+    Ok(typer) -> #(Ok(expected), typer)
+    // Don't think typer needs returning from unify?
+    Error(#(reason, typer)) -> #(Error(reason), typer)
+  }
+}
+
+fn pairs_first(pair: #(a, b)) -> a {
+  pair.0
+}
+
+fn pairs_second(pair: #(a, b)) -> b {
+  pair.1
+}
+
+fn with_unbound(thing: a, typer) -> #(#(a, monotype.Monotype), State) {
+  let #(x, typer) = polytype.next_unbound(typer)
+  let type_ = monotype.Unbound(x)
+  #(#(thing, type_), typer)
+}
+
 pub fn infer(
-  tree: ast.Expression(Nil),
+  expression: ast.Expression(Nil),
+  expected: monotype.Monotype,
   typer: State,
 ) -> #(ast.Expression(Metadata), State) {
   // return all context so more info can be added later
-  let #(_, tree) = tree
+  let #(_, tree) = expression
   let State(location: path, ..) = typer
-  // TODO use function that takes type into meta
   let meta = Metadata(path: path, type_: _, scope: typer.variables)
   case tree {
     Binary(value) -> {
-      let tree = #(meta(Ok(monotype.Binary)), Binary(value))
-      #(tree, typer)
+      let #(type_, typer) = do_unify(expected, monotype.Binary, typer)
+      let expression = #(meta(type_), Binary(value))
+      #(expression, typer)
     }
     Tuple(elements) -> {
-      // infer_with_scope(s)
-      // t can't be typer, compiler bug
-      let #(trees, #(typer, _)) =
+      let #(pairs, typer) = list.map_state(elements, typer, with_unbound)
+      let given = monotype.Tuple(list.map(pairs, pairs_second))
+      let #(type_, typer) = do_unify(expected, given, typer)
+      // decided I want to match on top level first
+      let #(elements, #(typer, _)) =
         list.map_state(
-          elements,
+          pairs,
           #(typer, 0),
-          fn(element, state) {
-            let #(t, i) = state
-            let t = State(..t, location: ast.append_path(path, i))
-            let #(type_, t) = infer(element, t)
-            #(type_, #(t, i + 1))
+          fn(pair, stz) {
+            let #(tz, i) = stz
+            let #(element, expected) = pair
+            let tz = State(..tz, location: ast.append_path(path, i))
+            let #(element, tz) = infer(element, expected, tz)
+            #(element, #(tz, i + 1))
           },
         )
-      // TODO type should always be ok that it's tuples, need new unboun
-      let Ok(types) = list.try_map(trees, get_type)
-      let type_ = monotype.Tuple(types)
-      #(#(meta(Ok(type_)), Tuple(trees)), typer)
+      let expression = #(meta(type_), Tuple(elements))
+      #(expression, typer)
     }
     Row(fields) -> {
-      let #(trees, typer) = list.map_state(fields, typer, infer_field)
-      let types =
-        list.map(
-          trees,
-          fn(tree_with_other_name) {
-            let #(name, #(Metadata(type_: Ok(type_), ..), _)) =
-              tree_with_other_name
-            #(name, type_)
+      let #(pairs, typer) = list.map_state(fields, typer, with_unbound)
+      let given =
+        monotype.Row(
+          list.map(
+            pairs,
+            fn(pair) {
+              let #(#(name, _value), type_) = pair
+              #(name, type_)
+            },
+          ),
+          None,
+        )
+      // TODO don't think returning type_ needed
+      let #(type_, typer) = do_unify(expected, given, typer)
+      let #(fields, #(typer, _)) =
+        list.map_state(
+          pairs,
+          #(typer, 0),
+          fn(pair, stz) {
+            let #(tz, i) = stz
+            let #(#(name, value), expected) = pair
+            let tz = State(..tz, location: ast.append_path(path, i))
+            let #(value, tz) = infer(value, expected, tz)
+            #(#(name, value), #(tz, i + 1))
           },
         )
-      let type_ = monotype.Row(types, None)
-      #(#(meta(Ok(type_)), Row(trees)), typer)
+      let expression = #(meta(type_), Row(fields))
+      #(expression, typer)
     }
-    Variable(label) ->
-      case get_variable(label, typer) {
-        Ok(#(type_, typer)) -> #(#(meta(Ok(type_)), Variable(label)), typer)
-        Error(#(reason, _)) -> #(#(meta(Error(reason)), Variable(label)), typer)
+    Variable(label) -> {
+      // Returns typer because of instantiation, 
+      let #(type_, typer) = case get_variable(label, typer) {
+        Ok(#(given, typer)) -> do_unify(expected, given, typer)
+        Error(#(reason, _)) -> #(Error(reason), typer)
       }
+      let expression = #(meta(type_), Variable(label))
+      #(expression, typer)
+    }
     Let(pattern, value, then) -> {
-      let State(location: location, ..) = typer
+      let State(variables: variables, location: location, ..) = typer
+      let #(expected_value, bound_variables, typer) =
+        pattern_type(pattern, typer)
       // TODO remove this nesting when we(if?) separate typer and scope
-      let State(variables: variables, ..) = typer
-      let #(value, typer) = infer(value, append_path(typer, 0))
-      let #(given, typer) = case get_type(value) {
-        Ok(given) -> #(given, typer)
-        Error(_) -> {
-          let #(x, typer) = polytype.next_unbound(typer)
-          #(monotype.Unbound(x), typer)
-        }
-      }
+      let #(value, typer) = infer(value, expected_value, append_path(typer, 0))
       let typer = State(..typer, variables: variables)
-      case match_pattern(pattern, given, typer) {
-        Ok(typer) -> {
-          // same rule as scope needs reseting
-          let typer = State(..typer, location: location)
-          let #(then, typer) = infer(then, append_path(typer, 1))
-          let #(then_type, typer) = case get_type(then) {
-            Ok(t) -> #(t, typer)
-            Error(_) -> {
-              let #(x, typer) = polytype.next_unbound(typer)
-              #(monotype.Unbound(x), typer)
-            }
-          }
-          let tree = Let(pattern, value, then)
-          #(#(meta(Ok(then_type)), tree), typer)
-        }
-        Error(#(reason, typer)) -> {
-          // all the variables in the pattern should be added to scope TODO
-          let typer = State(..typer, location: location)
-          let #(then, typer) = infer(then, append_path(typer, 1))
-          let tree = Let(pattern, value, then)
-          #(#(meta(Error(reason)), tree), typer)
-        }
-      }
+      let typer = list.fold(bound_variables, typer, set_variable)
+      let typer = append_path(typer, 1)
+      let #(then, typer) = infer(then, expected, append_path(typer, 1))
+      // Let is always OK the error is on the term inside
+      let expression = #(meta(Ok(expected)), Let(pattern, value, then))
+      #(expression, typer)
     }
     Function(label, body) -> {
       let #(x, typer) = polytype.next_unbound(typer)
-      let type_var = monotype.Unbound(x)
+      let arg_type = monotype.Unbound(x)
+      let #(y, typer) = polytype.next_unbound(typer)
+      let return_type = monotype.Unbound(y)
+      let given = monotype.Function(arg_type, return_type)
+      let #(type_, typer) = do_unify(expected, given, typer)
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, location: location, ..) = typer
-      let typer = set_variable(label, type_var, typer)
-      let #(return, typer) = infer(body, append_path(typer, 0))
+      let typer = set_variable(#(label, arg_type), typer)
+      let #(return, typer) = infer(body, return_type, append_path(typer, 0))
       let typer = State(..typer, variables: variables, location: location)
       // There are ALOT more type variables if handling all the errors.
-      let Ok(return_type) = get_type(return)
-      let type_ = monotype.Function(type_var, return_type)
-      #(#(meta(Ok(type_)), Function(label, return)), typer)
+      #(#(meta(type_), Function(label, return)), typer)
     }
     Call(function, with) -> {
       let State(location: location, ..) = typer
-      let #(function, typer) = infer(function, append_path(typer, 0))
-      let typer = State(..typer, location: location)
-      let #(with, typer) = infer(with, append_path(typer, 1))
-      let typer = State(..typer, location: location)
       let #(x, typer) = polytype.next_unbound(typer)
-      let return_type = monotype.Unbound(x)
-      let #(ftype, typer) = case get_type(function) {
-        Ok(type_) -> #(type_, typer)
-        Error(_) -> {
-          let #(x, typer) = polytype.next_unbound(typer)
-          #(monotype.Unbound(x), typer)
-        }
-      }
-      let #(with_type, typer) = case get_type(with) {
-        Ok(type_) -> #(type_, typer)
-        Error(_) -> {
-          let #(x, typer) = polytype.next_unbound(typer)
-          #(monotype.Unbound(x), typer)
-        }
-      }
-      case unify(ftype, monotype.Function(with_type, return_type), typer) {
-        Ok(typer) -> #(#(meta(Ok(return_type)), Call(function, with)), typer)
-        Error(#(reason, typer)) -> #(
-          #(meta(Error(reason)), Call(function, with)),
-          typer,
-        )
-      }
+      let arg_type = monotype.Unbound(x)
+      let expected_function = monotype.Function(arg_type, expected)
+      let #(function, typer) =
+        infer(function, expected_function, append_path(typer, 0))
+      let typer = State(..typer, location: location)
+      let #(with, typer) = infer(with, arg_type, append_path(typer, 1))
+      let typer = State(..typer, location: location)
+      // Type is always! OK at this level
+      let expression = #(meta(Ok(expected)), Call(function, with))
+      #(expression, typer)
     }
     Name(new_type, then) -> {
       let #(named, _construction) = new_type
@@ -343,10 +336,10 @@ pub fn infer(
         }
         Ok(_) -> #(Error(DuplicateType(named)), typer)
       }
-      let #(then, typer) = infer(then, append_path(typer, 0))
+      let #(then, typer) = infer(then, expected, append_path(typer, 0))
       let tree = Name(new_type, then)
       let type_ = case add_name {
-        Ok(Nil) -> get_type(then)
+        Ok(Nil) -> Ok(expected)
         Error(reason) -> Error(reason)
       }
       #(#(meta(type_), tree), typer)
@@ -371,140 +364,107 @@ pub fn infer(
                     ),
                   ),
                 )
-              let #(monotype, typer) = polytype.instantiate(polytype, typer)
-              #(Ok(monotype), typer)
+              let #(given, typer) = polytype.instantiate(polytype, typer)
+              do_unify(expected, given, typer)
             }
           }
       }
-      let tree = #(meta(type_), Constructor(named, variant))
-      #(tree, typer)
+      let expression = #(meta(type_), Constructor(named, variant))
+      #(expression, typer)
     }
-
     Case(named, subject, clauses) -> {
-      let State(nominal: nominal, location: location, variables: variables, ..) =
-        typer
-      let #(subject, typer) = infer(subject, typer)
-      let typer = State(..typer, location: location, variables: variables)
-      let #(x, typer) = polytype.next_unbound(typer)
-      let return_type = monotype.Unbound(x)
-      let #(clauses, typer) =
-        list.map_state(
-          clauses,
-          typer,
-          fn(clause, t) {
-            let #(variant, variable, then) = clause
-            let t = State(..t, location: location, variables: variables)
-            let #(x, t) = polytype.next_unbound(t)
-            let argument_type = monotype.Unbound(x)
-            let t = set_variable(variable, argument_type, t)
-            let #(then, t) = infer(then, t)
-            let maybe_typer =
-              case get_type(then) {
-                Ok(then_type) -> unify(return_type, then_type, t)
-                _ -> Ok(t)
-              }
-              |> io.debug
-            io.debug("doooooooooo")
-            io.debug(return_type)
-            case maybe_typer {
-              Ok(t) -> {
-                let clause = #(variant, variable, then)
-                #(clause, t)
-              }
-              Error(reason) -> {
-                io.debug(reason)
-                todo("handle mismatched clause")
-              }
-            }
-          },
-        )
-      let #(type_, typer) = case list.key_find(nominal, named) {
-        Error(Nil) -> #(Error(UnknownType(named)), typer)
+      let State(nominal: nominal, ..) = typer
+      let #(expected_subject, typer, variants) = case list.key_find(
+        nominal,
+        named,
+      ) {
+        Error(Nil) -> #(Error(UnknownType(named)), typer, [])
         Ok(#(parameters, variants)) -> {
           let #(replacements, typer) =
             list.map_state(
               parameters,
               typer,
-              fn(parameter, tttj) {
-                let #(replacement, tttj) = polytype.next_unbound(tttj)
-                let pair = #(parameter, replacement)
-                #(pair, tttj)
+              fn(p, t) {
+                let #(x, t) = polytype.next_unbound(t)
+                #(#(p, x), t)
               },
             )
-          let expected =
-            pair_replace(
-              replacements,
-              monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
+          let expected_subject =
+            monotype.Nominal(named, list.map(parameters, monotype.Unbound))
+            |> pair_replace(replacements, _)
+          let variants =
+            list.map(
+              variants,
+              fn(variant) {
+                let #(name, type_) = variant
+                #(name, pair_replace(replacements, type_))
+              },
             )
-          case get_type(subject) {
-            Ok(subject_type) ->
-              case unify(expected, subject_type, typer) {
-                Ok(typer) -> {
-                  ""
-                  // list.map_state(clauses, typer, fn(clause, typer))
-                  #(Ok(return_type), typer)
-                }
-              }
-          }
+          #(Ok(expected_subject), typer, variants)
         }
       }
-      // Error(reason) -> Error(reason)
+      let State(location: location, variables: variables, ..) = typer
+      let #(stype, typer) = case expected_subject {
+        Ok(type_) -> #(type_, typer)
+        Error(_) -> {
+          let #(x, typer) = polytype.next_unbound(typer)
+          let type_ = monotype.Unbound(x)
+          #(type_, typer)
+        }
+      }
+      let #(subject, typer) = infer(subject, stype, typer)
+      let #(clauses, #(unhandled, typer)) =
+        list.map_state(
+          clauses,
+          #(variants, typer),
+          fn(clause, s) {
+            let #(remaining, t) = s
+            let #(variant, variable, then) = clause
+            // TODO append path with i, are we even using the path if metdata local?
+            let t = State(..t, location: location, variables: variables)
+            case list.key_pop(remaining, variant) {
+              Ok(#(type_, remaining)) -> {
+                let t = set_variable(#(variable, type_), t)
+                let #(then, t) = infer(then, expected, t)
+                let clause = #(variant, variable, then)
+                #(clause, #(remaining, t))
+              }
+              // If I want to show for several branches I need to store multi errors, cant to that on metadata a is.
+              Error(_) -> {
+                let #(x, t) = polytype.next_unbound(t)
+                let type_ = monotype.Unbound(x)
+                let #(then, t) = infer(then, expected, t)
+                let #(metadata, tree) = then
+                let metadata =
+                  Metadata(
+                    ..metadata,
+                    type_: case list.key_find(variants, variant) {
+                      Error(_) -> Error(UnknownVariant(variant, named))
+                      Ok(_) -> Error(RedundantClause(variant))
+                    },
+                  )
+                let then = #(metadata, tree)
+                let clause = #(variant, variable, then)
+                #(clause, #(remaining, t))
+              }
+            }
+          },
+        )
       let tree = Case(named, subject, clauses)
+      let type_ = case expected_subject {
+        Error(reason) -> Error(reason)
+        Ok(_) ->
+          case unhandled {
+            // The errors in subject type in to be presented BUT if no error return expected tye
+            [] -> Ok(expected)
+            _ -> Error(UnhandledVariants(list.map(unhandled, pairs_first)))
+          }
+      }
       #(#(meta(type_), tree), typer)
     }
-
-    //     // Think the old version errored by instantiating everytime
-    //       let State(location: location, ..) = typer
-    //       try typer = 
-    //       let State(variables: variables, ..) = typer
-    //       try #(clauses, #(unhandled, typer)) =
-    //         list.try_map_state(
-    //           clauses,
-    //           #(variants, typer),
-    //           // This is an error caused when the name typer is used.
-    //           fn(clause, state) { // Step on earlier because 0 index is subject
-    //             // let typer = step_on_location(typer)
-    //             let #(remaining, t) = state
-    //             try #(argument, remaining) = case list.key_pop(
-    //               remaining,
-    //               variant,
-    //             ) {
-    //               Ok(value) -> Ok(value)
-    //               Error(Nil) ->
-    //                 case list.key_find(variants, variant) {
-    //                   Ok(_) -> Error(#(RedundantClause(variant), typer))
-    //                   Error(Nil) ->
-    //                     Error(#(UnknownVariant(variant, named), typer))
-    //                 }
-    //             }
-    //             let argument = pair_replace(replacements, argument)
-    //             // reset scope variables
-    //             Ok(#(clause, #(remaining, t))) },
-    //         )
-    //       case unhandled {
-    //         [] -> {
-    //           let tree = Case(named, subject, clauses)
-    //           #(#(meta(Ok(return_type)), tree), typer)
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
-    // _ ->
-    //   Error(#(
-    //     UnhandledVariants(list.map(
-    //       unhandled,
-    //       fn(variant) {
-    //         let #(variant, _) = variant
-    //         variant
-    //       },
-    //     )),
-    //     State(..typer, location: location),
-    //   ))
-    // Can't call the generator here because we don't know what the type will resolve to yet.
-    Provider(id, generator) -> {
-      let type_ = monotype.Unbound(id)
-      #(#(meta(Ok(type_)), Provider(id, generator)), typer)
+    Provider(generator) -> {
+      let expression = #(meta(Ok(expected)), Provider(generator))
+      #(expression, typer)
     }
   }
 }

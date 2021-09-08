@@ -23,7 +23,7 @@ pub type Node(m) {
     value: Expression(m),
     clauses: List(#(String, String, Expression(m))),
   )
-  Provider(id: Int, generator: fn(monotype.Monotype) -> Expression(Nil))
+  Provider(generator: fn(monotype.Monotype) -> Expression(Nil))
 }
 
 // m for metadata
@@ -70,8 +70,8 @@ pub fn variable(label) {
   #(Nil, Variable(label))
 }
 
-pub fn provider(constructor, id) {
-  #(Nil, Provider(constructor, id))
+pub fn provider(generator) {
+  #(Nil, Provider(generator))
 }
 
 fn generate_hole(_) {
@@ -79,7 +79,7 @@ fn generate_hole(_) {
 }
 
 pub fn hole() {
-  provider(1111, generate_hole)
+  provider(generate_hole)
 }
 
 pub fn is_hole(generator) {

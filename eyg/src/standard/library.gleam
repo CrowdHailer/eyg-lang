@@ -10,9 +10,9 @@ import eyg/codegen/utilities
 import standard/boolean
 
 pub fn compile(untyped, scope) {
-  case infer(untyped, scope) {
-    #(_, typer) ->
-      javascript.maybe_wrap_expression(untyped, #(False, [], typer))
+  case infer(untyped, monotype.Unbound(-1), scope) {
+    #(typed, typer) ->
+      javascript.maybe_wrap_expression(typed, #(False, [], typer))
       |> list.intersperse("\n")
       |> string.join()
   }

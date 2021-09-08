@@ -7,14 +7,8 @@ import eyg/typer/polytype
 import eyg/typer.{infer, init}
 
 fn compile(untyped, scope) {
-  case infer(untyped, scope) {
-    #(_, typer) -> javascript.render(untyped, #(False, [], typer))
-  }
-  // TODO handle case where inference has errors
-  // Error(reason) -> {
-  //   io.debug(reason)
-  //   todo("failed to compile")
-  // }
+  let #(typed, typer) = infer(untyped, monotype.Unbound(-1), scope)
+  javascript.render(typed, #(False, [], typer))
 }
 
 pub fn variable_assignment_test() {
@@ -57,7 +51,6 @@ pub fn nested_assignment_test() {
       []
       |> with_equal(),
     )
-
   let untyped =
     ast.let_(
       pattern.Variable("match"),
@@ -119,7 +112,6 @@ pub fn multiline_tuple_assignment_test() {
 pub fn tuple_destructure_test() {
   let untyped =
     ast.let_(pattern.Tuple(["a", "b"]), ast.variable("pair"), ast.tuple_([]))
-
   let js =
     compile(
       untyped,
@@ -204,7 +196,6 @@ pub fn simple_function_call_test() {
       []
       |> with_equal(),
     )
-
   let untyped =
     ast.call(
       ast.variable("equal"),
@@ -248,7 +239,6 @@ pub fn multiline_function_test() {
       []
       |> with_equal(),
     )
-
   let untyped =
     ast.function(
       "$",
@@ -329,8 +319,8 @@ pub fn nominal_term_test() {
     l1
 }
 
-// Don't need multiline test as that is the same as multiline call
-// If we want to avoid immediatly invokin function then would need the test and a special case in codegen
+// // Don't need multiline test as that is the same as multiline call
+// // If we want to avoid immediatly invokin function then would need the test and a special case in codegen
 pub fn case_with_boolean_test() {
   let scope =
     init([

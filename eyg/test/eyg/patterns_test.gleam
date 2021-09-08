@@ -1,122 +1,147 @@
 import gleam/io
+import gleam/option.{None, Some}
 import eyg/ast
 import eyg/ast/pattern
 import eyg/typer.{get_type, infer, init}
-import eyg/typer/monotype.{resolve}
+import eyg/typer/monotype as t
 import eyg/typer/polytype.{State}
 
-pub fn assignment_test() {
+// This is proablbly better called assignment tests, unless it grows too big and patterns should be separate
+pub fn variable_of_expected_type_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Tuple([])))])
+  let untyped = ast.variable("foo")
+  assert #(typed, _typer) = infer(untyped, t.Tuple([]), typer)
+  assert Ok(t.Tuple([])) = get_type(typed)
+}
+
+pub fn variable_of_unexpected_type_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Tuple([])))])
+  let untyped = ast.variable("foo")
+  assert #(typed, _typer) = infer(untyped, t.Binary, typer)
+  assert Error(reason) = get_type(typed)
+  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+}
+
+pub fn missing_variable_test() {
+  let typer = init([])
+  let untyped = ast.variable("foo")
+  let #(typed, _state) = infer(untyped, t.Binary, typer)
+  let Error(reason) = get_type(typed)
+  assert typer.UnknownVariable("foo") = reason
+}
+
+// assignment
+pub fn expected_assignment_test() {
   let typer = init([])
   let untyped =
     ast.let_(pattern.Variable("foo"), ast.tuple_([]), ast.variable("foo"))
-  let #(typed, _typer) = infer(untyped, typer)
-  assert Ok(monotype.Tuple([])) = get_type(typed)
+  let #(typed, _typer) = infer(untyped, t.Tuple([]), typer)
+  assert Ok(t.Tuple([])) = get_type(typed)
 }
 
-pub fn tuple_pattern_test() {
+pub fn unexpected_then_type_test() {
   let typer = init([])
   let untyped =
-    ast.let_(
-      pattern.Tuple(["a", "b"]),
-      ast.tuple_([ast.binary(""), ast.tuple_([])]),
-      ast.variable("a"),
-    )
-  let #(typed, typer) = infer(untyped, typer)
-  //   could always resolve within infer fn
+    ast.let_(pattern.Variable("foo"), ast.binary("wrong"), ast.variable("foo"))
+  let #(typed, _typer) = infer(untyped, t.Tuple([]), typer)
+  //   Should the error be on the inner
+  assert Ok(t.Tuple([])) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, _value, then)) = typed
+  assert Error(reason) = get_type(then)
+  assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
+}
+
+pub fn matched_expected_tuple_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Tuple([t.Binary])))])
+  let untyped =
+    ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
+  let #(typed, typer) = infer(untyped, t.Binary, typer)
+  let Ok(t.Binary) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, value, _then)) = typed
   let State(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  assert monotype.Binary = resolve(type_, substitutions)
+  let Ok(type_) = get_type(value)
+  let t.Tuple([t.Binary]) = t.resolve(type_, substitutions)
 }
 
-pub fn incorrect_tuple_size_test() {
-  let typer = init([])
+pub fn expected_a_tuple_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Binary))])
+
   let untyped =
-    ast.let_(pattern.Tuple(["a"]), ast.tuple_([]), ast.variable("a"))
-  let #(typed, _state) = infer(untyped, typer)
-  let Error(reason) = get_type(typed)
+    ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
+  let #(typed, _state) = infer(untyped, t.Binary, typer)
+  let Ok(t.Binary) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, value, _then)) = typed
+  let Error(reason) = get_type(value)
+  let typer.UnmatchedTypes(t.Tuple([_]), t.Binary) = reason
+}
+
+pub fn unexpected_tuple_size_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Tuple([])))])
+
+  let untyped =
+    ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
+  let #(typed, _state) = infer(untyped, t.Binary, typer)
+  let Ok(t.Binary) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, value, _then)) = typed
+  let Error(reason) = get_type(value)
   let typer.IncorrectArity(1, 0) = reason
 }
 
-pub fn not_a_tuple_test() {
-  let typer = init([])
-  let untyped =
-    ast.let_(pattern.Tuple(["a"]), ast.binary(""), ast.variable("a"))
-  let #(typed, _state) = infer(untyped, typer)
-  let Error(reason) = get_type(typed)
-  let typer.UnmatchedTypes(monotype.Tuple([_]), monotype.Binary) = reason
-}
+pub fn matched_expected_row_test() {
+  let typer =
+    init([#("foo", polytype.Polytype([], t.Row([#("k", t.Binary)], None)))])
 
-pub fn matching_row_test() {
-  let typer = init([])
   let untyped =
-    ast.let_(
-      pattern.Row([#("foo", "a")]),
-      ast.row([#("foo", ast.binary(""))]),
-      ast.variable("a"),
-    )
-  let #(typed, typer) = infer(untyped, typer)
+    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+  let #(typed, typer) = infer(untyped, t.Binary, typer)
+  let Ok(t.Binary) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, value, _then)) = typed
   let State(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  assert monotype.Binary = resolve(type_, substitutions)
+  let Ok(type_) = get_type(value)
+  let t.Row([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
 }
 
-pub fn growing_row_pattern_test() {
-  let typer = init([#("x", polytype.Polytype([], monotype.Unbound(-1)))])
+pub fn expected_a_row_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Binary))])
+
   let untyped =
-    ast.let_(
-      pattern.Row([#("foo", "a")]),
-      ast.variable("x"),
-      ast.let_(
-        pattern.Row([#("bar", "b")]),
-        ast.variable("x"),
-        ast.tuple_([ast.variable("a"), ast.variable("b")]),
+    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+  let #(typed, typer) = infer(untyped, t.Binary, typer)
+  let Ok(t.Binary) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, value, _then)) = typed
+  let State(substitutions: substitutions, ..) = typer
+  let Error(reason) = get_type(value)
+  let typer.UnmatchedTypes(t.Row(_, _), t.Binary) = reason
+}
+
+pub fn matched_expected_row_with_additional_fields_test() {
+  let typer =
+    init([
+      #(
+        "foo",
+        polytype.Polytype([], t.Row([#("k", t.Binary), #("j", t.Binary)], None)),
       ),
-    )
-  let #(typed, typer) = infer(untyped, typer)
+    ])
 
-  let State(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-
-  assert monotype.Tuple([monotype.Unbound(i), monotype.Unbound(j)]) =
-    resolve(type_, substitutions)
-  assert True = i != j
-  assert monotype.Row([a, b], _) = resolve(monotype.Unbound(-1), substitutions)
-  assert #("foo", _) = a
-  assert #("bar", _) = b
-}
-
-pub fn matched_row_test() {
-  let typer = init([#("x", polytype.Polytype([], monotype.Unbound(-1)))])
   let untyped =
-    ast.let_(
-      pattern.Row([#("foo", "a")]),
-      ast.variable("x"),
-      ast.let_(
-        pattern.Row([#("foo", "b")]),
-        ast.variable("x"),
-        ast.tuple_([ast.variable("a"), ast.variable("b")]),
-      ),
-    )
-  let #(typed, typer) = infer(untyped, typer)
-
+    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+  let #(typed, typer) = infer(untyped, t.Binary, typer)
+  let Ok(t.Binary) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, value, _then)) = typed
   let State(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-
-  assert monotype.Tuple([monotype.Unbound(i), monotype.Unbound(j)]) =
-    resolve(type_, substitutions)
-  // Tests that the row fields are being resolve
-  assert True = i == j
-  assert monotype.Row([a], _) = resolve(monotype.Unbound(-1), substitutions)
-  assert #("foo", _) = a
+  let Ok(type_) = get_type(value)
+  let t.Row([#("k", t.Binary), _], _) = t.resolve(type_, substitutions)
 }
 
-pub fn missing_row_test() {
-  let typer = init([])
+pub fn grow_expected_fields_in_row_test() {
+  let typer = init([#("foo", polytype.Polytype([], t.Row([], Some(-1))))])
+
   let untyped =
-    ast.let_(pattern.Row([#("foo", "a")]), ast.row([]), ast.variable("a"))
-  let #(typed, _state) = infer(untyped, typer)
-  let Error(reason) = get_type(typed)
-  let typer.MissingFields(extra) = reason
-  let [#("foo", _)] = extra
+    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+  let #(typed, typer) = infer(untyped, t.Binary, typer)
+  let Ok(t.Binary) = get_type(typed)
+  assert #(_context, ast.Let(_pattern, value, _then)) = typed
+  let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = get_type(value)
+  let t.Row([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
 }
-// Have resolved as a type wrapper
