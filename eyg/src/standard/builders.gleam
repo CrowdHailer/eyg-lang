@@ -1,4 +1,5 @@
 import eyg/ast
+import eyg/ast/expression.{Let, Tuple, Variable}
 import eyg/ast/pattern
 
 pub fn function(args, body) {
@@ -10,7 +11,7 @@ pub fn call(func, with_) {
 }
 
 pub fn args_body(body) {
-  let #(_, ast.Let(pattern.Tuple(args), #(_, ast.Variable("$")), body)) = body
+  let #(_, Let(pattern.Tuple(args), #(_, Variable("$")), body)) = body
   #(args, body)
 }
 

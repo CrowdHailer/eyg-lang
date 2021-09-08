@@ -16,20 +16,7 @@ import eyg/typer/polytype.{State}
 // At the moment the provider is written in Gleam and is programatically part of the compiler
 // This is not a problem, works with the language as a library approach.
 // End users might be writing there own helper functions for filter/map or rows/dataframes but they are unlikely to be writing there own providers.
-fn env_provider(_config, hole) {
-  case hole {
-    monotype.Row(fields, _) ->
-      ast.row(list.map(
-        fields,
-        fn(field) {
-          case field {
-            #(name, monotype.Binary) -> #(name, ast.binary(name))
-            #(name, _) -> #(name, ast.binary(name))
-          }
-        },
-      ))
-  }
-}
+
 
 // TODO js return type is not correct in let
 // The id in the provider should be generated. I'm using 999 as it's bigger than any unbound variable.

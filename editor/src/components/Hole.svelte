@@ -64,6 +64,12 @@
     update_tree(path, newNode);
     thenFocus(path);
   }
+
+  function insertProvider(content) {
+    let name = content.trim().replace(" ", "_");
+    // String to key can be done in gleam
+    // same for triming
+  }
   // scope should include equal
   //   Need keydown for tab to work
   function handleKeydown(event) {
@@ -99,6 +105,9 @@
     } else if (event.key === "{") {
       event.preventDefault();
       insertRow();
+    } else if (event.key === "<") {
+      event.preventDefault();
+      insertProvider(content);
     } else if (event.key === "Backspace" && content === "") {
       console.log("deleting up");
       dispatch("deletebackwards", {});

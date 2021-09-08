@@ -2,8 +2,8 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/string
-import eyg/ast.{
-  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable,
+import eyg/ast/expression.{
+  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable, Expression
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -78,7 +78,7 @@ pub fn render_to_string(expression, typer) {
   |> string.join()
 }
 
-pub fn render(tree: ast.Expression(typer.Metadata), state) {
+pub fn render(tree: Expression(typer.Metadata), state) {
   let #(context, tree) = tree
   case tree {
     // TODO escape
@@ -157,7 +157,7 @@ pub fn render(tree: ast.Expression(typer.Metadata), state) {
     Variable(label) -> wrap_return([render_label(label, state)], state)
     Function(for, body) -> {
       assert "$" = for
-      assert #(_, Let(pattern.Tuple(for), #(_, ast.Variable("$")), body)) = body
+      assert #(_, Let(pattern.Tuple(for), #(_, Variable("$")), body)) = body
       let #(for, state) =
         list.map_state(
           for,

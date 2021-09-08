@@ -1,8 +1,9 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
-import eyg/ast.{
-  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable,
+import eyg/ast
+import eyg/ast/expression.{
+  Binary, Call, Case, Constructor, Function, Let, Name, Provider, Row, Tuple, Variable, Expression
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -181,7 +182,7 @@ pub type Metadata {
 }
 
 pub fn get_type(
-  tree: ast.Expression(Metadata),
+  tree: Expression(Metadata),
 ) -> Result(monotype.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
@@ -217,10 +218,10 @@ pub fn infer_unconstrained(expression) {
 }
 
 pub fn infer(
-  expression: ast.Expression(Nil),
+  expression: Expression(Nil),
   expected: monotype.Monotype,
   typer: State,
-) -> #(ast.Expression(Metadata), State) {
+) -> #(Expression(Metadata), State) {
   // return all context so more info can be added later
   let #(_, tree) = expression
   let State(location: path, ..) = typer

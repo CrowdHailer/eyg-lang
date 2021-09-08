@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import eyg/ast
+import eyg/ast/expression
 
 fn do_index_map(
   list: List(a),
@@ -30,28 +31,28 @@ pub fn index_map(list: List(a), with fun: fn(Int, a) -> b) -> List(b) {
 }
 
 pub fn replace_node(
-  tree: ast.Expression(Nil),
+  tree: expression.Expression(Nil),
   path: List(Int),
-  replacement: ast.Expression(Nil),
-) -> ast.Expression(Nil) {
+  replacement: expression.Expression(Nil),
+) -> expression.Expression(Nil) {
   let #(_, tree) = tree
   case path {
     [] -> replacement
     [index, ..rest] ->
       case tree {
-        ast.Function(var, body) if index == 0 ->
+        expression.Function(var, body) if index == 0 ->
           ast.function(var, replace_node(body, rest, replacement))
-        ast.Let(pattern, value, then) if index == 0 ->
+        expression.Let(pattern, value, then) if index == 0 ->
           ast.let_(pattern, replace_node(value, rest, replacement), then)
-        ast.Let(pattern, value, then) if index == 1 ->
+        expression.Let(pattern, value, then) if index == 1 ->
           ast.let_(pattern, value, replace_node(then, rest, replacement))
-        ast.Name(type_, then) if index == 0 ->
+        expression.Name(type_, then) if index == 0 ->
           ast.name(type_, replace_node(then, rest, replacement))
-        ast.Tuple(elements) -> {
+        expression.Tuple(elements) -> {
           let pre = list.take(elements, index)
           let post = list.drop(elements, index + 1)
           let inner = case replacement {
-            #(_, ast.Provider(generator: generator)) ->
+            #(_, expression.Provider(generator: generator)) ->
               case ast.is_hole(generator) {
                 True -> []
                 False -> [replacement]
@@ -61,7 +62,7 @@ pub fn replace_node(
           let elements = list.flatten([pre, inner, post])
           ast.tuple_(elements)
         }
-        ast.Row(fields) ->
+        expression.Row(fields) ->
           ast.row(index_map(
             fields,
             fn(i, field) {
@@ -76,13 +77,13 @@ pub fn replace_node(
               }
             },
           ))
-        ast.Call(func, with) if index == 0 ->
+        expression.Call(func, with) if index == 0 ->
           ast.call(replace_node(func, rest, replacement), with)
-        ast.Call(func, with) if index == 1 ->
+        expression.Call(func, with) if index == 1 ->
           ast.call(func, replace_node(with, rest, replacement))
-        ast.Case(type_, subject, clauses) if index == 0 ->
+        expression.Case(type_, subject, clauses) if index == 0 ->
           ast.case_(type_, replace_node(subject, rest, replacement), clauses)
-        ast.Case(type_, subject, clauses) if index > 0 -> {
+        expression.Case(type_, subject, clauses) if index > 0 -> {
           io.debug(index)
           let pre = list.take(clauses, index - 1)
           let [#(variant, variable, node), ..post] =
@@ -102,8 +103,8 @@ pub fn replace_node(
 
 pub fn new_type_name(
   name: String,
-  then: ast.Expression(Nil),
-) -> ast.Expression(Nil) {
+  then: expression.Expression(Nil),
+) -> expression.Expression(Nil) {
   ast.name(#(name, #([], [])), then)
 }
 
@@ -126,7 +127,7 @@ pub fn add_variant(type_, after, new_name) {
   let #(type_name, #(params, variants)) = type_
   let pre = list.take(variants, after + 1)
   let post = list.drop(variants, after + 1)
-  let variant = #(new_name, ast.Tuple([]))
+  let variant = #(new_name, expression.Tuple([]))
   let variants = list.append(pre, [variant, ..post])
   #(type_name, #(params, variants))
 }
