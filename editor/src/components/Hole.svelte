@@ -51,6 +51,12 @@
     update_tree(path, newNode);
     thenFocus(Ast.append_path(path, 0));
   }
+  function insertRow() {
+    let path = metadata.path;
+    let newNode = Ast.row(List.fromArray([]));
+    update_tree(path, newNode);
+    thenFocus(Ast.append_path(path, 0));
+  }
 
   function insertFunction() {
     let path = metadata.path;
@@ -62,10 +68,7 @@
   //   Need keydown for tab to work
   function handleKeydown(event) {
     if (event.key === "Tab") {
-      if (content === "l") {
-        event.preventDefault();
-        insertLet();
-      } else if (content.trim().replace(" ", "_")) {
+      if (content.trim().replace(" ", "_")) {
         event.preventDefault();
         insertVariable(content);
       }
@@ -79,9 +82,23 @@
       let newNode = Ast.let_(Pattern.variable(pattern), Ast.hole(), Ast.hole());
       update_tree(path, newNode);
       thenFocus(Ast.append_path(path, 0));
+    } else if (event.key === "(") {
+      event.preventDefault();
+      let pattern = content.trim().replace(" ", "_");
+      let path = metadata.path;
+      if (pattern) {
+        let newNode = Ast.call(Ast.variable(pattern), List.fromArray([]));
+        update_tree(path, newNode);
+        thenFocus(Ast.append_path(path, 1));
+      } else {
+        insertFunction();
+      }
     } else if (event.key === "[") {
       event.preventDefault();
       insertTuple();
+    } else if (event.key === "{") {
+      event.preventDefault();
+      insertRow();
     } else if (event.key === "Backspace" && content === "") {
       console.log("deleting up");
       dispatch("deletebackwards", {});
@@ -172,6 +189,12 @@
     on:click={insertTuple}
     on:focus={focusHelp}
     on:blur={tryBlur}>Tuple</button
+  >
+  <button
+    class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
+    on:click={insertRow}
+    on:focus={focusHelp}
+    on:blur={tryBlur}>Row</button
   >
 </div>
 <ErrorNotice type_={metadata.type_} />

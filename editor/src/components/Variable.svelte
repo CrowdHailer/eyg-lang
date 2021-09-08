@@ -1,7 +1,5 @@
 <script>
-  import { tick, createEventDispatcher } from "svelte";
-  const dispatch = createEventDispatcher();
-
+  import { tick } from "svelte";
   import ErrorNotice from "./ErrorNotice.svelte";
   import * as AstBare from "../gen/eyg/ast";
   import * as Builders from "../gen/standard/builders";
@@ -24,7 +22,8 @@
   function handleBlur(event) {
     if (content.trim() === "") {
       event.preventDefault();
-      dispatch("delete", {});
+      update_tree(metadata.path, Ast.hole());
+      thenFocus(metadata.path);
     } else if (content !== label) {
       let node = Ast.variable(content);
       update_tree(metadata.path, node);
@@ -52,6 +51,7 @@
   class="outline-none text-blue-500"
   id={metadata.path ? "p" + metadata.path.toArray().join(",") : ""}
   contenteditable=""
+  style="min-width: 1em; display:inline-block"
   bind:innerHTML={content}
   on:keydown={handleKeydown}
   on:blur={handleBlur}

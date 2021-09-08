@@ -14,6 +14,7 @@
   $: (() => {
     let temp = Typer.infer_unconstrained(untyped);
     expression = temp[0];
+    console.log(expression);
     let typer = temp[1];
     output = Codegen.render_to_string(expression, typer);
   })();

@@ -15,3 +15,4 @@
     <Expression expression={value} {update_tree} /><br />
   {/each}
 </Indent>
+<ErrorNotice type_={metadata.type_} />

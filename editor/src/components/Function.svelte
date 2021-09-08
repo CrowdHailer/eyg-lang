@@ -40,7 +40,6 @@
   }
 </script>
 
-<!-- {JSON.stringify(arguments_)} -->
 ({arguments_.join(", ")}<span
   class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
   contenteditable=""
@@ -57,7 +56,7 @@
 <ErrorNotice type_={metadata.type_} />
 
 <style>
-  span:focus::before {
+  span:focus::after {
     content: ", ";
   }
 </style>

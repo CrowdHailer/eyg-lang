@@ -77,7 +77,7 @@
   <span class="text-yellow-400">let</span>
   {#if Pattern.is_variable(pattern)}
     <span
-      class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
+      class="border-b border-white min-w-10 outline-none focus:border-gray-900 focus:border-2 required"
       id={Ast.path_to_id(metadata.path)}
       contenteditable=""
       bind:textContent={newContent}
@@ -106,3 +106,12 @@
   <ErrorNotice type_={metadata.type_} />
 </p>
 <Expression expression={then} {update_tree} on:delete={() => handleDelete(1)} />
+
+<style>
+  span.required {
+    display: inline-block;
+  }
+  span:empty.required {
+    min-width: 1em;
+  }
+</style>

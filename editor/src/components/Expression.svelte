@@ -46,7 +46,7 @@
 {:else if tree.type == "Constructor"}
   <Constructor {update_tree} named={tree.named} variant={tree.variant} />
 {:else if tree.type == "Row"}
-  <Row {update_tree} fields={tree.fields} />
+  <Row {metadata} {update_tree} fields={tree.fields} />
 {:else if tree.type == "Variable"}
   <Variable {metadata} {update_tree} label={tree.label} on:delete />
 {:else if tree.type == "Function"}
