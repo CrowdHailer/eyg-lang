@@ -5,11 +5,11 @@
 
   export let named;
   export let variant;
-  export let update_tree;
+  export let global;
 
   function handleVariantChange({ detail: { content: newVariant } }) {
     let point = path.concat([count]);
-    update_tree(point, Ast.constructor(named, newVariant));
+    global.update_tree(point, Ast.constructor(named, newVariant));
   }
 </script>
 

@@ -8,7 +8,7 @@
   const Ast = Object.assign({}, AstBare, Builders);
 
   export let metadata;
-  export let update_tree;
+  export let global;
   // export let for_;
   export let body;
   // always tuple
@@ -27,7 +27,7 @@
     if (arg) {
       let path = metadata.path;
       let newNode = Ast.function$(List.fromArray([...arguments_, arg]), main);
-      update_tree(path, newNode);
+      global.update_tree(path, newNode);
       // thenFocus(path);
       newContent = "";
     }
@@ -35,7 +35,7 @@
 
   function handleDeletebackwards(_event) {
     let path = metadata.path;
-    update_tree(path, Ast.hole());
+    global.update_tree(path, Ast.hole());
     thenFocus(path);
   }
 </script>
@@ -49,7 +49,7 @@
 <Indent>
   <Expression
     expression={main}
-    {update_tree}
+    {global}
     on:deletebackwards={handleDeletebackwards}
   />
 </Indent>

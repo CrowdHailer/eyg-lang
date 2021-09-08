@@ -11,7 +11,7 @@
   import * as Pattern from "../gen/eyg/ast/pattern";
 
   export let metadata;
-  export let update_tree;
+  export let global;
   export let required = false;
 
   let content;
@@ -27,7 +27,7 @@
   function insertLet() {
     let path = metadata.path;
     let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), Ast.hole());
-    update_tree(path, newNode);
+    global.update_tree(path, newNode);
     thenFocus(path);
   }
 
@@ -35,34 +35,34 @@
     label = label.trim().replace(" ", "_");
     let path = metadata.path;
     let newNode = Ast.variable(label);
-    update_tree(path, newNode);
+    global.update_tree(path, newNode);
     thenFocus(path);
   }
 
   function insertBinary() {
     let path = metadata.path;
     let newNode = Ast.binary("");
-    update_tree(path, newNode);
+    global.update_tree(path, newNode);
     thenFocus(path);
   }
 
   function insertTuple() {
     let path = metadata.path;
     let newNode = Ast.tuple_(List.fromArray([]));
-    update_tree(path, newNode);
+    global.update_tree(path, newNode);
     thenFocus(Ast.append_path(path, 0));
   }
   function insertRow() {
     let path = metadata.path;
     let newNode = Ast.row(List.fromArray([]));
-    update_tree(path, newNode);
+    global.update_tree(path, newNode);
     thenFocus(Ast.append_path(path, 0));
   }
 
   function insertFunction() {
     let path = metadata.path;
     let newNode = Ast.function$(List.fromArray([]), Ast.hole());
-    update_tree(path, newNode);
+    global.update_tree(path, newNode);
     thenFocus(path);
   }
 
@@ -70,7 +70,7 @@
     let path = metadata.path;
     let name = content.trim().replace(" ", "_");
     let newNode = Provider.from_name(name);
-    update_tree(path, newNode);
+    global.update_tree(path, newNode);
     thenFocus(path);
   }
   // scope should include equal
@@ -89,7 +89,7 @@
       let pattern = content.trim().replace(" ", "_");
       let path = metadata.path;
       let newNode = Ast.let_(Pattern.variable(pattern), Ast.hole(), Ast.hole());
-      update_tree(path, newNode);
+      global.update_tree(path, newNode);
       thenFocus(Ast.append_path(path, 0));
     } else if (event.key === "(") {
       event.preventDefault();
@@ -97,7 +97,7 @@
       let path = metadata.path;
       if (pattern) {
         let newNode = Ast.call(Ast.variable(pattern), List.fromArray([]));
-        update_tree(path, newNode);
+        global.update_tree(path, newNode);
         thenFocus(Ast.append_path(path, 1));
       } else {
         insertFunction();
@@ -160,11 +160,7 @@
     }, 0);
   }}
 />
-<div
-  class:hidden={!active}
-  class="my-1 py-1 -mx-2 px-2 bg-yellow-50"
-  bind:this={helpBox}
->
+<div class:hidden={!active} class="my-1 py-1 bg-yellow-50" bind:this={helpBox}>
   <span>variables: </span>
   {#each metadata.scope.toArray() as [key]}
     {#if key !== "" && key !== "$"}

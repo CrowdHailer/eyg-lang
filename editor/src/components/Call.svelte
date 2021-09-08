@@ -4,11 +4,11 @@
   export let metadata;
   export let function_;
   export let with_;
-  export let update_tree;
+  export let global;
 </script>
 
-<Expression expression={function_} {update_tree} />(<Expression
+<Expression expression={function_} {global} />(<Expression
   expression={with_}
-  {update_tree}
+  {global}
 />)
 <ErrorNotice type_={metadata.type_} />

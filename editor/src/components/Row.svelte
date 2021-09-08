@@ -4,7 +4,7 @@
   import Indent from "./Indent.svelte";
   export let metadata;
   export let fields;
-  export let update_tree;
+  export let global;
 </script>
 
 <Indent>
@@ -12,7 +12,7 @@
     <span class="text-gray-400">{label}</span><span class="text-gray-500"
       >:</span
     >
-    <Expression expression={value} {update_tree} /><br />
+    <Expression expression={value} {global} /><br />
   {/each}
 </Indent>
 <ErrorNotice type_={metadata.type_} />

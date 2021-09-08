@@ -11,11 +11,11 @@
   export let pattern;
   export let value;
   export let then;
-  export let update_tree;
+  export let global;
 
   function handleLabelChange(newLabel) {
     if (newLabel != pattern.label) {
-      update_tree(
+      global.update_tree(
         metadata.path,
         Ast.let_(Pattern.variable(newLabel), value, then)
       );
@@ -31,10 +31,11 @@
   }
   function handleDelete(child) {
     let childPath = Ast.append_path(metadata.path, child);
-    update_tree(childPath, Ast.hole());
+    global.update_tree(childPath, Ast.hole());
     thenFocus(childPath);
   }
-  let newContent = pattern.label;
+  let newContent;
+  // $: newContent = pattern.label;
   let modified = false;
   function handleBlur() {
     if (!modified) {
@@ -45,7 +46,7 @@
   function handleKeydown(event) {
     if (event.key === "[") {
       pattern;
-      update_tree(
+      global.update_tree(
         metadata.path,
         Ast.let_(Pattern.tuple_(List.fromArray([])), value, then)
       );
@@ -66,14 +67,30 @@
     if (newLabel) {
       let newPattern = Pattern.replace_element(pattern, i, newLabel);
       let newNode = Ast.let_(newPattern, value, then);
-      update_tree(metadata.path, newNode);
+      global.update_tree(metadata.path, newNode);
       thenFocus(metadata.path, "e" + (i + 1));
+    } else {
+    }
+  }
+
+  function handleShortcut(event) {
+    if (event.ctrlKey) {
+      if (event.shiftKey) {
+        if (event.key === "Enter") {
+          let current = Ast.let_(pattern, value, then);
+          let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), current);
+          global.update_tree(metadata.path, newNode);
+          thenFocus(metadata.path);
+        } else {
+        }
+      } else {
+      }
     } else {
     }
   }
 </script>
 
-<p>
+<p on:keydown={handleShortcut}>
   <span class="text-yellow-400">let</span>
   {#if Pattern.is_variable(pattern)}
     <span
@@ -82,8 +99,8 @@
       contenteditable=""
       bind:textContent={newContent}
       on:keydown={handleKeydown}
-      on:blur={handleBlur}
-    />
+      on:blur={handleBlur}>{pattern.label}</span
+    >
   {:else if Pattern.is_tuple(pattern)}
     [{#each elements as _element, i}
       <span
@@ -98,14 +115,10 @@
     {/each}
     ]
   {:else}{pattern}{/if} =
-  <Expression
-    expression={value}
-    {update_tree}
-    on:delete={() => handleDelete(0)}
-  />
+  <Expression expression={value} {global} on:delete={() => handleDelete(0)} />
   <ErrorNotice type_={metadata.type_} />
 </p>
-<Expression expression={then} {update_tree} on:delete={() => handleDelete(1)} />
+<Expression expression={then} {global} on:delete={() => handleDelete(1)} />
 
 <style>
   span.required {

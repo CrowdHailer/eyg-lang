@@ -6,7 +6,7 @@
   import Hole from "./Hole.svelte";
   export let metadata;
   export let elements;
-  export let update_tree;
+  export let global;
 
   function thenFocus(path) {
     tick().then(() => {
@@ -20,20 +20,20 @@
     if (len) {
       thenFocus(Ast.append_path(len - 1));
     } else {
-      update_tree(metadata.path, Ast.hole());
+      global.update_tree(metadata.path, Ast.hole());
       thenFocus(metadata.path);
     }
   }
 </script>
 
 [{#each elements.toArray() as element, i}
-  <Expression expression={element} {update_tree} />,&nbsp;
+  <Expression expression={element} {global} />,&nbsp;
 {/each}
 <Hole
   metadata={Object.assign({}, metadata, {
     path: Ast.append_path(metadata.path, elements.toArray().length),
   })}
-  {update_tree}
+  {global}
   on:deletebackwards={handleDeletebackwards}
 />]
 <ErrorNotice type_={metadata.type_} />

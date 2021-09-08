@@ -7,18 +7,18 @@
   export let named;
   export let value;
   export let clauses;
-  export let update_tree;
+  export let global;
 </script>
 
 <span class="text-yellow-400" title={named}
   >case <TermInput initial={named} /></span
 >
-<Expression expression={value} {update_tree} />
+<Expression expression={value} {global} />
 <ErrorNotice type_={metadata.type_} />
 <Indent>
   {#each clauses.toArray() as [variant, _variable, then], i}
     {variant}({then[1].pattern.elements.toArray().join(", ")})
     <span class="font-bold">=></span>
-    <Expression expression={then[1].then} {update_tree} /><br />
+    <Expression expression={then[1].then} {global} /><br />
   {/each}
 </Indent>

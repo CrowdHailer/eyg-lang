@@ -3,7 +3,7 @@
   import { tick } from "svelte";
   import * as Ast from "../gen/eyg/ast";
   export let metadata;
-  export let update_tree;
+  export let global;
   export let value;
 
   function thenFocus(path) {
@@ -22,13 +22,16 @@
   $: multiline = string.includes("<br>");
   function handleBlur() {
     if (value !== string) {
-      update_tree(metadata.path, Ast.binary(string.replace("<br>", "\n")));
+      global.update_tree(
+        metadata.path,
+        Ast.binary(string.replace("<br>", "\n"))
+      );
     }
   }
   // keypress is deprecated
   function handleKeydown({ key }) {
     if ((key === "Delete" || key === "Backspace") && string === "") {
-      update_tree(metadata.path, Ast.hole());
+      global.update_tree(metadata.path, Ast.hole());
       thenFocus(metadata.path);
     }
   }

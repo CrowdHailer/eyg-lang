@@ -11,11 +11,12 @@
   let untyped = Ast.hole();
   let expression;
   let output;
+  let typer;
   $: (() => {
     let temp = Typer.infer_unconstrained(untyped);
     expression = temp[0];
     // console.log(expression);
-    let typer = temp[1];
+    typer = temp[1];
     try {
       output = Codegen.render_to_string(expression, typer);
     } catch (error) {
@@ -32,8 +33,8 @@
 <header class="max-w-4xl mx-auto pb-2 pt-6">
   <h1 class="text-2xl">Editor</h1>
 </header>
-<div class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white">
-  <Expression {expression} {update_tree} />
+<div class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative">
+  <Expression {expression} global={{ update_tree, typer }} />
   <pre class="my-2 bg-gray-100 p-1">
     {output}
   </pre>
