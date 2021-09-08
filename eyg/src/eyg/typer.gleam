@@ -22,7 +22,7 @@ pub type Reason {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [], [0])
+  State(variables, 0, [], [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -134,11 +134,7 @@ fn set_variable(label, monotype, state) {
 }
 
 // assignment/patterns
-fn match_pattern(pattern, value, typer) {
-  // TODO remove this nesting when we(if?) separate typer and scope
-  let State(variables: variables, ..) = typer
-  try #(given, typer) = infer(value, typer)
-  let typer = State(..typer, variables: variables)
+fn match_pattern(pattern, given, typer) {
   case pattern {
     pattern.Variable(label) -> Ok(set_variable(label, given, typer))
     pattern.Tuple(elements) -> {
@@ -182,59 +178,104 @@ fn infer_field(field, typer) {
   let #(name, tree) = field
   try #(type_, typer) = infer(tree, typer)
   // NOTE this assumes infer_field always used in a list.map context
-  Ok(#(#(name, type_), step_on_location(typer)))
+  Ok(#(#(name, type_), append_path(typer, 999)))
 }
 
-fn step_in_location(typer) {
+fn append_path(typer, i) {
   let State(location: location, ..) = typer
-  State(..typer, location: list.append(location, [0]))
+  State(..typer, location: list.append(location, [i]))
 }
 
-fn step_on_location(typer) {
-  let State(location: location, ..) = typer
-  let [current, ..rest] = list.reverse(location)
-  let location = list.reverse([current + 1, ..rest])
-  State(..typer, location: location)
+pub type Metadata {
+  Metadata(
+    path: List(Int),
+    type_: monotype.Monotype,
+    scope: List(#(String, polytype.Polytype)),
+  )
+}
+
+pub fn get_type(tree: ast.Expression(Metadata)) -> monotype.Monotype {
+  let #(Metadata(type_: type_, ..), _) = tree
+  type_
 }
 
 pub fn infer(
-  tree: ast.Node,
+  tree: ast.Expression(Nil),
   typer: State,
-) -> Result(#(monotype.Monotype, State), #(Reason, State)) {
+) -> Result(#(ast.Expression(Metadata), State), #(Reason, State)) {
   // return all context so more info can be added later
+  let #(Nil, tree) = tree
+  let State(location: path, ..) = typer
   case tree {
-    Binary(_) -> Ok(#(monotype.Binary, typer))
+    Binary(value) ->
+      Ok(#(
+        #(
+          Metadata(path: path, type_: monotype.Binary, scope: typer.variables),
+          Binary(value),
+        ),
+        typer,
+      ))
     Tuple(elements) -> {
       // infer_with_scope(s)
-      let typer = step_in_location(typer)
       // t can't be typer, compiler bug
-      try #(types, typer) =
+      let State(location: path, ..) = typer
+      try #(trees, #(typer, _)) =
         list.try_map_state(
           elements,
-          typer,
-          fn(element, t) {
+          #(typer, 0),
+          fn(element, state) {
+            let #(t, i) = state
+            let p = list.append(path, [i])
+            let t = State(..t, location: p)
             try #(type_, t) = infer(element, t)
-            let t = step_on_location(t)
-            Ok(#(type_, t))
+            Ok(#(type_, #(t, i + 1)))
           },
         )
-      Ok(#(monotype.Tuple(types), typer))
+      let types = list.map(trees, get_type)
+      let type_ = monotype.Tuple(types)
+      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      Ok(#(#(metadata, Tuple(trees)), typer))
     }
     Row(fields) -> {
-      let typer = step_in_location(typer)
-      try #(types, typer) = list.try_map_state(fields, typer, infer_field)
-      Ok(#(monotype.Row(types, None), typer))
+      try #(trees, typer) = list.try_map_state(fields, typer, infer_field)
+      let types =
+        list.map(
+          trees,
+          fn(tree_with_other_name) {
+            let #(name, #(Metadata(type_: type_, ..), _)) = tree_with_other_name
+            #(name, type_)
+          },
+        )
+      let type_ = monotype.Row(types, None)
+      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      Ok(#(#(metadata, Row(trees)), typer))
     }
+
     Variable(label) -> {
       try #(type_, typer) = get_variable(label, typer)
-      Ok(#(type_, typer))
+      Ok(#(
+        #(
+          Metadata(path: path, type_: type_, scope: typer.variables),
+          Variable(label),
+        ),
+        typer,
+      ))
     }
     Let(pattern, value, then) -> {
       let State(location: location, ..) = typer
-      try typer = match_pattern(pattern, value, step_in_location(typer))
+      // TODO remove this nesting when we(if?) separate typer and scope
+      let State(variables: variables, ..) = typer
+      try #(value, typer) = infer(value, append_path(typer, 0))
+      let given = get_type(value)
+      let typer = State(..typer, variables: variables)
+      try typer = match_pattern(pattern, given, typer)
       // same rule as scope needs reseting
-      let typer = step_on_location(State(..typer, location: location))
-      infer(then, typer)
+      let typer = State(..typer, location: location)
+      try #(then, typer) = infer(then, append_path(typer, 1))
+      let metadata =
+        Metadata(path: path, type_: get_type(then), scope: typer.variables)
+      let tree = Let(pattern, value, then)
+      Ok(#(#(metadata, tree), typer))
     }
     Function(label, body) -> {
       let #(x, typer) = polytype.next_unbound(typer)
@@ -242,31 +283,41 @@ pub fn infer(
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, location: location, ..) = typer
       let typer = set_variable(label, type_var, typer)
-      try #(return, typer) = infer(body, step_in_location(typer))
+      try #(return, typer) = infer(body, append_path(typer, 0))
       let typer = State(..typer, variables: variables, location: location)
-      Ok(#(monotype.Function(type_var, return), typer))
+      let type_ = monotype.Function(type_var, get_type(return))
+      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      Ok(#(#(metadata, Function(label, return)), typer))
     }
     Call(function, with) -> {
       let State(location: location, ..) = typer
-      try #(function_type, typer) = infer(function, step_in_location(typer))
+      try #(function, typer) = infer(function, append_path(typer, 0))
       let typer = State(..typer, location: location)
-      try #(with_type, typer) =
-        infer(with, step_in_location(step_on_location(typer)))
+      try #(with, typer) = infer(with, append_path(typer, 1))
       let typer = State(..typer, location: location)
       let #(x, typer) = polytype.next_unbound(typer)
       let return_type = monotype.Unbound(x)
       try typer =
-        unify(function_type, monotype.Function(with_type, return_type), typer)
-      Ok(#(return_type, typer))
+        unify(
+          get_type(function),
+          monotype.Function(get_type(with), return_type),
+          typer,
+        )
+      let metadata =
+        Metadata(path: path, type_: return_type, scope: typer.variables)
+      Ok(#(#(metadata, Call(function, with)), typer))
     }
     Name(new_type, then) -> {
-      // let typer = step_in_location(typer)
       let #(named, _construction) = new_type
       let State(nominal: nominal, ..) = typer
       case list.key_find(nominal, named) {
         Error(Nil) -> {
           let typer = State(..typer, nominal: [new_type, ..nominal])
-          infer(then, step_on_location(typer))
+          try #(then, typer) = infer(then, append_path(typer, 0))
+          let metadata =
+            Metadata(path: path, type_: get_type(then), scope: typer.variables)
+          let tree = Name(new_type, then)
+          Ok(#(#(metadata, tree), typer))
         }
         Ok(_) -> Error(#(DuplicateType(named), typer))
       }
@@ -290,7 +341,9 @@ pub fn infer(
                   ),
                 )
               let #(monotype, typer) = polytype.instantiate(polytype, typer)
-              Ok(#(monotype, typer))
+              let metadata =
+                Metadata(path: path, type_: monotype, scope: typer.variables)
+              Ok(#(#(metadata, Constructor(named, variant)), typer))
             }
             Error(Nil) -> Error(#(UnknownVariant(variant, named), typer))
           }
@@ -299,7 +352,6 @@ pub fn infer(
     }
     Case(named, subject, clauses) -> {
       let State(nominal: nominal, location: location, ..) = typer
-      io.debug(location)
       case list.key_find(nominal, named) {
         // Think the old version errored by instantiating everytime
         Ok(#(parameters, variants)) -> {
@@ -319,21 +371,19 @@ pub fn infer(
               monotype.Nominal(named, list.map(parameters, monotype.Unbound)),
             )
           let State(location: location, ..) = typer
-          let typer = step_in_location(typer)
-          try #(subject_type, typer) = infer(subject, typer)
+          try #(subject, typer) = infer(subject, typer)
           // Maybe this unify should be typed at the location of the whole case
-          try typer = unify(expected, subject_type, typer)
+          try typer = unify(expected, get_type(subject), typer)
           let #(x, typer) = polytype.next_unbound(typer)
           let return_type = monotype.Unbound(x)
           let State(variables: variables, ..) = typer
-          try #(unhandled, typer) =
-            list.try_fold(
+          try #(clauses, #(unhandled, typer)) =
+            list.try_map_state(
               clauses,
               #(variants, typer),
               // This is an error caused when the name typer is used.
-              fn(clause, state) {
-                // Step on earlier because 0 index is subject
-                let typer = step_on_location(typer)
+              fn(clause, state) { // Step on earlier because 0 index is subject
+                // let typer = step_on_location(typer)
                 let #(remaining, t) = state
                 let #(variant, variable, then) = clause
                 try #(argument, remaining) = case list.key_pop(
@@ -352,13 +402,18 @@ pub fn infer(
                 // reset scope variables
                 let t = State(..t, variables: variables)
                 let t = set_variable(variable, argument, t)
-                try #(type_, t) = infer(then, t)
-                try t = unify(return_type, type_, t)
-                Ok(#(remaining, t))
-              },
+                try #(then, t) = infer(then, t)
+                let clause = #(variant, variable, then)
+                try t = unify(return_type, get_type(then), t)
+                Ok(#(clause, #(remaining, t))) },
             )
           case unhandled {
-            [] -> Ok(#(return_type, typer))
+            [] -> {
+              let metadata =
+                Metadata(path: path, type_: return_type, scope: typer.variables)
+              let tree = Case(named, subject, clauses)
+              Ok(#(#(metadata, tree), typer))
+            }
             _ ->
               Error(#(
                 UnhandledVariants(list.map(
@@ -376,7 +431,11 @@ pub fn infer(
       }
     }
     // Can't call the generator here because we don't know what the type will resolve to yet.
-    Provider(id, _generator) -> Ok(#(monotype.Unbound(id), typer))
+    Provider(id, generator) -> {
+      let type_ = monotype.Unbound(id)
+      let metadata = Metadata(path: path, type_: type_, scope: typer.variables)
+      Ok(#(#(metadata, Provider(id, generator)), typer))
+    }
   }
 }
 

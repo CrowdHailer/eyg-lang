@@ -9,97 +9,91 @@
   import Case from "./Case.svelte";
   import Binary from "./Binary.svelte";
   import Provider from "./Provider.svelte";
+  import Tuple from "./Tuple.svelte";
 
-  export let tree;
+  export let expression;
+  let metadata, tree;
+  $: metadata = expression[0];
+  $: tree = expression[1];
+
   export let update_tree;
-  export let path;
-  export let count;
-  export let error;
-  let errorMessage;
-  $: if (error && error[0].length === 0) {
-    errorMessage = error[1];
-  } else {
-    errorMessage = undefined;
-  }
+  // can't expand pinpoint event with tree becaus it bubbles up through all expressions
+  // function handlePinpoint({ detail }) {
+  //   let detail = Object.assign({}, detail, { tree });
+  // }
 </script>
 
-<!-- [{(path || []).concat([count]).join(",")}] -->
+<!-- {metadata.path.toArray()} -->
 {#if tree.type == "Name"}
   <Name
     {update_tree}
-    {path}
-    {count}
-    {error}
     type={tree.type_}
     then={tree.then}
+    on:pinpoint
+    on:depoint
   />
+{:else if tree.type == "Tuple"}
+  <Tuple {update_tree} elements={tree.elements} on:pinpoint on:depoint />
 {:else if tree.type == "Binary"}
-  <Binary {update_tree} {path} {count} {error} value={tree.value} />
+  <Binary {update_tree} value={tree.value} {metadata} on:pinpoint on:depoint />
 {:else if tree.type == "Let"}
   <Let
     {update_tree}
-    {path}
-    {count}
-    {error}
     pattern={tree.pattern}
     value={tree.value}
     then={tree.then}
+    on:pinpoint
+    on:depoint
   />
 {:else if tree.type == "Call"}<Call
     {update_tree}
-    {path}
-    {count}
-    {error}
     function_={tree.function}
     with_={tree.with}
+    on:pinpoint
+    on:depoint
   />
 {:else if tree.type == "Constructor"}
   <Constructor
     {update_tree}
-    {path}
-    {count}
-    {error}
     named={tree.named}
     variant={tree.variant}
+    on:pinpoint
+    on:depoint
   />
 {:else if tree.type == "Row"}
-  <Row {update_tree} {path} {count} {error} fields={tree.fields} />
+  <Row {update_tree} fields={tree.fields} on:pinpoint on:depoint />
 {:else if tree.type == "Variable"}
-  <Variable {update_tree} {path} {count} {error} label={tree.label} />
+  <Variable {update_tree} label={tree.label} on:pinpoint on:depoint />
 {:else if tree.type == "Function"}
   <Function
     {update_tree}
-    {path}
-    {count}
-    {error}
     for_={tree.for}
     body={tree.body}
+    on:pinpoint
+    on:depoint
   />
 {:else if tree.type == "Case"}
   <Case
     {update_tree}
-    {path}
-    {count}
-    {error}
     named={tree.named}
     value={tree.value}
     clauses={tree.clauses}
   />
 {:else if tree.type == "Provider"}
   <Provider
+    {metadata}
     {update_tree}
-    {path}
-    {count}
-    {error}
     id={tree.id}
     generator={tree.generator}
+    on:pinpoint
+    on:depoint
   />
 {:else}
   foo
   {JSON.stringify(tree)}
 {/if}
-{#if errorMessage}
+<!-- {#if errorMessage}
   <div class="absolute bg-red-100 border-t-2 border-red-300 py-1 px-4">
     {JSON.stringify(errorMessage)}
   </div>
-{/if}
+{/if} -->

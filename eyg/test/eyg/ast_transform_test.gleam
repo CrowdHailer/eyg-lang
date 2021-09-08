@@ -8,22 +8,22 @@ import eyg/typer/monotype
 import eyg/typer/polytype
 
 fn hole() {
-  ast.Provider(999, fn(x) { todo })
+  ast.provider(999, fn(x) { todo })
 }
 
 pub fn replace_node_test() {
   let original =
-    ast.Function("$", ast.Let(pattern.Variable("x"), ast.Binary(""), hole()))
+    ast.function("$", ast.let_(pattern.Variable("x"), ast.binary(""), hole()))
   let path = [0, 0]
-  replace_node(original, path, ast.Binary("new"))
+  replace_node(original, path, ast.binary("new"))
 
   let path = [0, 1]
-  replace_node(original, path, ast.Binary("new"))
+  replace_node(original, path, ast.binary("new"))
 
   let tuple =
-    ast.Tuple([ast.Variable("x"), ast.Variable("y"), ast.Variable("z")])
+    ast.tuple_([ast.variable("x"), ast.variable("y"), ast.variable("z")])
   let path = [1]
-  replace_node(tuple, path, ast.Binary("new"))
+  replace_node(tuple, path, ast.binary("new"))
   |> io.debug()
 }
 // rename fn is replace node with new args

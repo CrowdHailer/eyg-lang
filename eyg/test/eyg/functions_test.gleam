@@ -1,69 +1,69 @@
 import gleam/io
 import eyg/ast
 import eyg/ast/pattern
-import eyg/typer.{infer, init}
+import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype.{resolve}
 import eyg/typer/polytype.{State}
 
 pub fn typed_function_test() {
   let typer = init([])
   let untyped =
-    ast.Function(
+    ast.function(
       "x",
-      ast.Let(pattern.Tuple([]), ast.Variable("x"), ast.Binary("")),
+      ast.let_(pattern.Tuple([]), ast.variable("x"), ast.binary("")),
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
   let monotype.Function(monotype.Tuple([]), monotype.Binary) =
-    resolve(type_, substitutions)
+    resolve(get_type(type_), substitutions)
 }
 
 pub fn generic_function_test() {
   let typer = init([])
-  let untyped = ast.Function("x", ast.Variable("x"))
+  let untyped = ast.function("x", ast.variable("x"))
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
   let monotype.Function(monotype.Unbound(a), monotype.Unbound(b)) =
-    resolve(type_, substitutions)
+    resolve(get_type(type_), substitutions)
   let True = a == b
 }
 
 pub fn call_function_test() {
   let typer = init([])
   let untyped =
-    ast.Call(
-      ast.Function(
+    ast.call(
+      ast.function(
         "x",
-        ast.Let(pattern.Tuple([]), ast.Variable("x"), ast.Binary("")),
+        ast.let_(pattern.Tuple([]), ast.variable("x"), ast.binary("")),
       ),
-      ast.Tuple([]),
+      ast.tuple_([]),
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
-  let monotype.Binary = resolve(type_, substitutions)
+  let monotype.Binary = resolve(get_type(type_), substitutions)
 }
 
 pub fn call_generic_test() {
   let typer = init([])
-  let untyped = ast.Call(ast.Function("x", ast.Variable("x")), ast.Tuple([]))
+  let untyped = ast.call(ast.function("x", ast.variable("x")), ast.tuple_([]))
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
-  let monotype.Tuple([]) = resolve(type_, substitutions)
+  let monotype.Tuple([]) = resolve(get_type(type_), substitutions)
 }
 
 pub fn call_with_incorrect_argument_test() {
   let typer = init([])
   let untyped =
-    ast.Call(
-      ast.Function(
+    ast.call(
+      ast.function(
         "x",
-        ast.Let(pattern.Tuple([]), ast.Variable("x"), ast.Binary("")),
+        ast.let_(pattern.Tuple([]), ast.variable("x"), ast.binary("")),
       ),
-      ast.Tuple([ast.Binary("extra argument")]),
+      ast.tuple_([ast.binary("extra argument")]),
     )
   let Error(#(typer.IncorrectArity(0, 1), _state)) = infer(untyped, typer)
 }
@@ -71,17 +71,17 @@ pub fn call_with_incorrect_argument_test() {
 pub fn reuse_generic_function_test() {
   let typer = init([])
   let untyped =
-    ast.Let(
+    ast.let_(
       pattern.Variable("id"),
-      ast.Function("x", ast.Variable("x")),
-      ast.Tuple([
-        ast.Call(ast.Variable("id"), ast.Tuple([])),
-        ast.Call(ast.Variable("id"), ast.Binary("")),
+      ast.function("x", ast.variable("x")),
+      ast.tuple_([
+        ast.call(ast.variable("id"), ast.tuple_([])),
+        ast.call(ast.variable("id"), ast.binary("")),
       ]),
     )
   let Ok(#(type_, typer)) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
   let monotype.Tuple([monotype.Tuple([]), monotype.Binary]) =
-    resolve(type_, substitutions)
+    resolve(get_type(type_), substitutions)
 }

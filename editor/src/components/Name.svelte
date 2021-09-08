@@ -10,25 +10,9 @@
   } from "../gen/eyg/ast/transform";
 
   export let update_tree;
-  export let path;
-  export let count;
+
   export let type;
   export let then;
-  export let error;
-  let valueError, thenError;
-  $: if (error && error[0].length !== 0) {
-    let [first, ...rest] = error[0];
-    if (first === 0) {
-      valueError = [rest, error[1]];
-      thenError = undefined;
-    } else {
-      thenError = [[first - 1, ...rest], error[1]];
-      valueError = undefined;
-    }
-  } else {
-    thenError = undefined;
-    valueError = undefined;
-  }
 
   let named, params, variants;
   $: named = type[0];
@@ -98,10 +82,4 @@
     {/each}
   </Indent>
 </p>
-<Expression
-  {path}
-  count={count + 1}
-  tree={then}
-  {update_tree}
-  error={thenError}
-/>
+<Expression expression={then} {update_tree} />
