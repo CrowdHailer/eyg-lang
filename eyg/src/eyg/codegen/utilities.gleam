@@ -18,10 +18,6 @@ pub fn wrap_lines(pre, lines, post) {
   }
 }
 
-pub fn join(parts) {
-  list.fold(parts, "", fn(next, buffer) { string.concat(buffer, next) })
-}
-
 pub fn squash(a, b) {
   let [pre, ..a] = list.reverse(a)
   let [post, ..b] = b
@@ -54,7 +50,7 @@ pub fn wrap_single_or_multiline(terms, delimeter, before, after) {
         |> list.reverse()
         |> list.intersperse(string.concat(delimeter, " "))
         |> wrap_lines(before, _, after)
-        |> join()
+        |> string.join()
       [values_string]
     }
     Error(multis) -> {

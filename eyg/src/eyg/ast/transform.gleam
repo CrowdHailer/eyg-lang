@@ -47,18 +47,20 @@ pub fn replace_node(
           ast.let_(pattern, value, replace_node(then, rest, replacement))
         ast.Name(type_, then) if index == 0 ->
           ast.name(type_, replace_node(then, rest, replacement))
-        ast.Tuple(elements) ->
-          ast.tuple_(index_map(
-            elements,
-            fn(i, element) {
-              // i-1 compiler bug
-              let i = i - 1
-              case i == index {
-                True -> replace_node(element, rest, replacement)
-                False -> element
+        ast.Tuple(elements) -> {
+          let pre = list.take(elements, index)
+          let post = list.drop(elements, index + 1)
+          let inner = case replacement {
+            #(_, ast.Provider(generator: generator, ..)) ->
+              case ast.is_hole(generator) {
+                True -> []
+                False -> [replacement]
               }
-            },
-          ))
+            _ -> [replacement]
+          }
+          let elements = list.flatten([pre, inner, post])
+          ast.tuple_(elements)
+        }
         ast.Row(fields) ->
           ast.row(index_map(
             fields,
@@ -98,6 +100,13 @@ pub fn replace_node(
   }
 }
 
+pub fn new_type_name(
+  name: String,
+  then: ast.Expression(Nil),
+) -> ast.Expression(Nil) {
+  ast.name(#(name, #([], [])), then)
+}
+
 pub fn change_type_name(type_, new_name) {
   let #(type_name, #(params, variants)) = type_
   #(new_name, #(params, variants))
@@ -117,7 +126,7 @@ pub fn add_variant(type_, after, new_name) {
   let #(type_name, #(params, variants)) = type_
   let pre = list.take(variants, after + 1)
   let post = list.drop(variants, after + 1)
-  let variant = #("_", ast.Tuple([]))
+  let variant = #(new_name, ast.Tuple([]))
   let variants = list.append(pre, [variant, ..post])
   #(type_name, #(params, variants))
 }

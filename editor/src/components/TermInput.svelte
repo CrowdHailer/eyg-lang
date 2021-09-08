@@ -3,6 +3,7 @@
   const dispatch = createEventDispatcher();
 
   export let initial;
+  export let path;
   let content;
   $: content = initial;
   // onbeforeinput is best but complicated with all the different input types
@@ -33,8 +34,20 @@
 </script>
 
 <span
+  class="outline-none"
+  id={path ? "p" + path.toArray().join(",") : ""}
   contenteditable=""
   bind:innerHTML={content}
   on:input={handleInput}
   on:blur={handleBlur}
 />
+
+<style>
+  span:empty {
+    display: inline-block;
+    /* min-width: 1em; */
+  }
+  span:empty:focus {
+    background-color: lightgrey;
+  }
+</style>

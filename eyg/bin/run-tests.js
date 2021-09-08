@@ -16,7 +16,7 @@ async function main() {
     let module = await import(path);
 
     for (let fnName of Object.keys(module)) {
-      if (!fnName.endsWith("_test")) continue;
+      if (!fnName.endsWith("mismatched_return_in_case_test")) continue;
       try {
         module[fnName]();
         process.stdout.write("✨");

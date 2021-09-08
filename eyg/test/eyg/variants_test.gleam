@@ -15,11 +15,12 @@ pub fn infer_variant_test() {
       ),
       ast.call(ast.constructor("Boolean", "True"), ast.tuple_([])),
     )
-  let Ok(#(type_, typer)) = infer(untyped, typer)
+  let #(type_, typer) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
 
+  let Ok(type_) = get_type(type_)
   assert monotype.Nominal("Boolean", []) =
-    monotype.resolve(get_type(type_), substitutions)
+    monotype.resolve(type_, substitutions)
 }
 
 pub fn infer_concrete_parameterised_variant_test() {
@@ -32,10 +33,11 @@ pub fn infer_concrete_parameterised_variant_test() {
       ),
       ast.call(ast.constructor("Option", "Some"), ast.binary("value")),
     )
-  let Ok(#(type_, typer)) = infer(untyped, typer)
+  let #(type_, typer) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = get_type(type_)
   assert monotype.Nominal("Option", [monotype.Binary]) =
-    monotype.resolve(get_type(type_), substitutions)
+    monotype.resolve(type_, substitutions)
 }
 
 pub fn infer_unspecified_parameterised_variant_test() {
@@ -48,16 +50,18 @@ pub fn infer_unspecified_parameterised_variant_test() {
       ),
       ast.call(ast.constructor("Option", "None"), ast.tuple_([])),
     )
-  let Ok(#(type_, typer)) = infer(untyped, typer)
+  let #(type_, typer) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = get_type(type_)
   assert monotype.Nominal("Option", [monotype.Unbound(_)]) =
-    monotype.resolve(get_type(type_), substitutions)
+    monotype.resolve(type_, substitutions)
 }
 
 pub fn unknown_named_type_test() {
   let typer = init([])
-  let untyped = ast.call(ast.constructor("Foo", "X"), ast.tuple_([]))
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let untyped = ast.constructor("Foo", "X")
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnknownType("Foo") = reason
 }
 
@@ -69,9 +73,10 @@ pub fn unknown_variant_test() {
         "Boolean",
         #([], [#("True", monotype.Tuple([])), #("False", monotype.Tuple([]))]),
       ),
-      ast.call(ast.constructor("Boolean", "Perhaps"), ast.tuple_([])),
+      ast.constructor("Boolean", "Perhaps"),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnknownVariant("Perhaps", "Boolean") = reason
 }
 
@@ -91,7 +96,8 @@ pub fn duplicate_variant_test() {
         ast.binary(""),
       ),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.DuplicateType("Boolean") = reason
 }
 
@@ -105,7 +111,8 @@ pub fn mismatched_inner_type_test() {
       ),
       ast.call(ast.constructor("Boolean", "True"), ast.binary("")),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnmatchedTypes(monotype.Tuple([]), monotype.Binary) = reason
 }
 
@@ -148,9 +155,13 @@ pub fn case_test() {
         ],
       ),
     )
-  let Ok(#(type_, typer)) = infer(untyped, typer)
+  let #(typed, typer) = infer(untyped, typer)
   let State(substitutions: substitutions, ..) = typer
-  assert monotype.Binary = monotype.resolve(get_type(type_), substitutions)
+  let Ok(type_) = get_type(typed)
+
+  assert monotype.Binary =
+    monotype.resolve(type_, substitutions)
+    |> io.debug()
 }
 
 pub fn mismatched_return_in_case_test() {
@@ -174,14 +185,16 @@ pub fn mismatched_return_in_case_test() {
         [#("Some", "z", ast.variable("z")), #("None", "_", ast.tuple_([]))],
       ),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnmatchedTypes(monotype.Binary, monotype.Tuple([])) = reason
 }
 
 pub fn case_of_unknown_type_test() {
   let typer = init([])
   let untyped = ast.case_("Foo", ast.variable("x"), [])
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnknownType("Foo") = reason
 }
 
@@ -195,7 +208,8 @@ pub fn missmatched_case_subject_test() {
       ),
       ast.case_("Option", ast.binary(""), []),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnmatchedTypes(
     monotype.Nominal("Option", [monotype.Unbound(_)]),
     monotype.Binary,
@@ -225,7 +239,8 @@ pub fn missmatched_nominal_case_subject_test() {
         ),
       ),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnmatchedTypes(
     monotype.Nominal("Option", [monotype.Unbound(_)]),
     monotype.Nominal("Boolean", []),
@@ -248,7 +263,8 @@ pub fn unknown_variant_in_clause_test() {
         [#("Perhaps", "_", ast.binary("value"))],
       ),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnknownVariant("Perhaps", "Boolean") = reason
 }
 
@@ -270,7 +286,8 @@ pub fn duplicate_clause_test() {
         ],
       ),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.RedundantClause("True") = reason
 }
 
@@ -289,7 +306,8 @@ pub fn unhandled_variants_test() {
         [#("True", "_", ast.binary("value"))],
       ),
     )
-  let Error(#(reason, _state)) = infer(untyped, typer)
+  let #(typed, _state) = infer(untyped, typer)
+  let Error(reason) = get_type(typed)
   assert typer.UnhandledVariants(["False"]) = reason
 }
 // clause after catch all and duplicate catch all, we don't have catch all

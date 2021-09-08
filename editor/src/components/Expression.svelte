@@ -21,57 +21,40 @@
   // function handlePinpoint({ detail }) {
   //   let detail = Object.assign({}, detail, { tree });
   // }
+  import { createEventDispatcher } from "svelte";
+
+  const dispatch = createEventDispatcher();
 </script>
 
 <!-- {metadata.path.toArray()} -->
 {#if tree.type == "Name"}
-  <Name
-    {update_tree}
-    type={tree.type_}
-    then={tree.then}
-    on:pinpoint
-    on:depoint
-  />
+  <Name {metadata} {update_tree} type={tree.type_} then={tree.then} />
 {:else if tree.type == "Tuple"}
-  <Tuple {update_tree} elements={tree.elements} on:pinpoint on:depoint />
+  <Tuple {metadata} {update_tree} elements={tree.elements} />
 {:else if tree.type == "Binary"}
-  <Binary {update_tree} value={tree.value} {metadata} on:pinpoint on:depoint />
+  <Binary {metadata} {update_tree} value={tree.value} />
 {:else if tree.type == "Let"}
   <Let
+    {metadata}
     {update_tree}
     pattern={tree.pattern}
     value={tree.value}
     then={tree.then}
-    on:pinpoint
-    on:depoint
   />
 {:else if tree.type == "Call"}<Call
+    {metadata}
     {update_tree}
     function_={tree.function}
     with_={tree.with}
-    on:pinpoint
-    on:depoint
   />
 {:else if tree.type == "Constructor"}
-  <Constructor
-    {update_tree}
-    named={tree.named}
-    variant={tree.variant}
-    on:pinpoint
-    on:depoint
-  />
+  <Constructor {update_tree} named={tree.named} variant={tree.variant} />
 {:else if tree.type == "Row"}
-  <Row {update_tree} fields={tree.fields} on:pinpoint on:depoint />
+  <Row {update_tree} fields={tree.fields} />
 {:else if tree.type == "Variable"}
-  <Variable {update_tree} label={tree.label} on:pinpoint on:depoint />
+  <Variable {metadata} {update_tree} label={tree.label} on:delete />
 {:else if tree.type == "Function"}
-  <Function
-    {update_tree}
-    for_={tree.for}
-    body={tree.body}
-    on:pinpoint
-    on:depoint
-  />
+  <Function {metadata} {update_tree} for_={tree.for} body={tree.body} />
 {:else if tree.type == "Case"}
   <Case
     {update_tree}
@@ -83,10 +66,8 @@
   <Provider
     {metadata}
     {update_tree}
-    id={tree.id}
     generator={tree.generator}
-    on:pinpoint
-    on:depoint
+    on:deletebackwards
   />
 {:else}
   foo
