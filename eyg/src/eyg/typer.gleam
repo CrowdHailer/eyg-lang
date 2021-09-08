@@ -209,6 +209,13 @@ fn with_unbound(thing: a, typer) -> #(#(a, monotype.Monotype), State) {
   #(#(thing, type_), typer)
 }
 
+pub fn infer_unconstrained(expression) {
+  let typer = init([])
+  let #(x, typer) = polytype.next_unbound(typer)
+  let expected = monotype.Unbound(x)
+  infer(expression, expected, typer)
+}
+
 pub fn infer(
   expression: ast.Expression(Nil),
   expected: monotype.Monotype,
@@ -289,9 +296,8 @@ pub fn infer(
         pattern_type(pattern, typer)
       // TODO remove this nesting when we(if?) separate typer and scope
       let #(value, typer) = infer(value, expected_value, append_path(typer, 0))
-      let typer = State(..typer, variables: variables)
+      let typer = State(..typer, variables: variables, location: location)
       let typer = list.fold(bound_variables, typer, set_variable)
-      let typer = append_path(typer, 1)
       let #(then, typer) = infer(then, expected, append_path(typer, 1))
       // Let is always OK the error is on the term inside
       let expression = #(meta(Ok(expected)), Let(pattern, value, then))

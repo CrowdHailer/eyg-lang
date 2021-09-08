@@ -90,6 +90,30 @@
   let helpFocused = false;
   let active = false;
   $: active = nodeFocused || helpFocused;
+
+  function isDescendant(parent, child) {
+    var node = child.parentNode;
+    while (node != null) {
+      if (node == parent) {
+        return true;
+      }
+      node = node.parentNode;
+    }
+    return false;
+  }
+
+  let helpBox;
+  function focusHelp() {
+    helpFocused = true;
+  }
+  function tryBlur() {
+    // blurout didn't work
+    setTimeout(() => {
+      if (!isDescendant(helpBox, window.document.activeElement)) {
+        helpFocused = false;
+      }
+    }, 0);
+  }
 </script>
 
 <span
@@ -100,29 +124,25 @@
   bind:textContent={content}
   on:keydown={handleKeydown}
   on:focus={() => (nodeFocused = true)}
-  on:blur={() =>
+  on:blur={() => {
     setTimeout(() => {
       nodeFocused = false;
-    }, 0)}
+    }, 0);
+  }}
 />
 <div
   class:hidden={!active}
   class="my-1 py-1 -mx-2 px-2 bg-yellow-50"
-  on:focusin={() => console.log((helpFocused = true))}
-  on:blurout={() => {
-    console.log("vlur our");
-
-    setTimeout(() => {
-      helpFocused = false;
-    }, 0);
-  }}
+  bind:this={helpBox}
 >
   <span>variables: </span>
   {#each metadata.scope.toArray() as [key]}
     {#if key !== "" && key !== "$"}
       <button
         class="hover:bg-gray-200 px-1 outline-none focus:border-gray-500 border-b-2 border-gray-100"
-        on:click={() => insertVariable(key)}>{key}</button
+        on:click={() => insertVariable(key)}
+        on:focus={focusHelp}
+        on:blur={tryBlur}>{key}</button
       >
     {/if}
   {/each}
@@ -130,19 +150,27 @@
   <span>elements:</span>
   <button
     class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertLet}>Let</button
+    on:click={insertLet}
+    on:focus={focusHelp}
+    on:blur={tryBlur}>Let</button
   >
   <button
     class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertFunction}>Function</button
+    on:click={insertFunction}
+    on:focus={focusHelp}
+    on:blur={tryBlur}>Function</button
   >
   <button
     class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertBinary}>Binary</button
+    on:click={insertBinary}
+    on:focus={focusHelp}
+    on:blur={tryBlur}>Binary</button
   >
   <button
     class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertTuple}>Tuple</button
+    on:click={insertTuple}
+    on:focus={focusHelp}
+    on:blur={tryBlur}>Tuple</button
   >
 </div>
 

@@ -1,7 +1,7 @@
 <script>
   import Expression from "./components/Expression.svelte";
   import { replace_node } from "./gen/eyg/ast/transform";
-  import { infer, init } from "./gen/eyg/typer";
+  import * as Typer from "./gen/eyg/typer";
   import * as Codegen from "./gen/eyg/codegen/javascript";
   import * as AstBare from "./gen/eyg/ast";
   import * as Builders from "./gen/standard/builders";
@@ -9,15 +9,14 @@
   import { List } from "./gen/gleam";
   // let untyped = example.code();
   let untyped = Ast.hole();
-  let result;
   let expression;
-  $: result = infer(untyped, init(List.fromArray([])));
-  $: if (result.type == "Error") {
-    console.warn("Failed to type");
-  }
-  $: expression = result[0][0];
-  $: typer = result[0][1];
-  $: output = Codegen.render_to_string(expression, typer);
+  let output;
+  $: (() => {
+    let temp = Typer.infer_unconstrained(untyped);
+    expression = temp[0];
+    let typer = temp[1];
+    output = Codegen.render_to_string(expression, typer);
+  })();
 
   async function update_tree(path, replacement) {
     // replace node needs to use untyped because infer fn assumes nil metadata
@@ -36,4 +35,3 @@
     {output}
   </pre>
 </div>
-<!-- {JSON.stringify(untyped)} -->
