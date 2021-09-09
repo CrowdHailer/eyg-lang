@@ -5,6 +5,7 @@
   import * as Builders from "../gen/standard/builders";
   import { List } from "../gen/gleam";
   const Ast = Object.assign({}, AstBare, Builders);
+  import { resolve, how_many_args } from "../gen/eyg/typer/monotype";
 
   export let metadata;
   export let label;
@@ -29,10 +30,17 @@
       global.update_tree(metadata.path, node);
     }
   }
+  let letters = ["a", "b", "c", "d", "e"].map(Ast.variable);
   function handleKeydown(event) {
     if (event.key === "(") {
       event.preventDefault();
-      let node = Ast.call(Ast.variable(content), List.fromArray([]));
+      let argCount = how_many_args(
+        resolve(metadata.type_["0"], global.typer.substitutions)
+      );
+      let node = Ast.call(
+        Ast.variable(content),
+        List.fromArray(letters.slice(0, argCount))
+      );
       global.update_tree(metadata.path, node);
       thenFocus(Ast.append_path(metadata.path, 1));
     } else if (

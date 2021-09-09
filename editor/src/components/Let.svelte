@@ -73,24 +73,46 @@
     }
   }
 
+  let container;
+  // can't be set to null
+  let tabindex = "-1";
   function handleShortcut(event) {
     if (event.ctrlKey) {
-      if (event.shiftKey) {
-        if (event.key === "Enter") {
-          let current = Ast.let_(pattern, value, then);
-          let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), current);
-          global.update_tree(metadata.path, newNode);
-          thenFocus(metadata.path);
+      if (event.shiftKey && event.key === "Enter") {
+        let current = Ast.let_(pattern, value, then);
+        let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), current);
+        global.update_tree(metadata.path, newNode);
+        thenFocus(metadata.path);
+        // Note shift key will probably also be down
+      } else if (event.key === "+") {
+        if (tabindex === "0") {
+          tabindex = -1;
         } else {
+          event.preventDefault();
+          event.stopPropagation();
+          tabindex = "0";
+          container.focus();
         }
       } else {
       }
+    } else if ((tabindex = "0" && event.key === "Delete")) {
+      global.update_tree(metadata.path, then);
+      thenFocus(metadata.path);
     } else {
     }
   }
+  function handleBlurContainer(event) {
+    tabindex = -1;
+  }
 </script>
 
-<p on:keydown={handleShortcut}>
+<p
+  on:keydown={handleShortcut}
+  {tabindex}
+  class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+  bind:this={container}
+  on:blur={handleBlurContainer}
+>
   <span class="text-yellow-400">let</span>
   {#if Pattern.is_variable(pattern)}
     <span

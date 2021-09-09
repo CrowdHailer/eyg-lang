@@ -9,6 +9,7 @@
   const Ast = Object.assign({}, AstBare, Builders);
   import * as Provider from "../gen/eyg/ast/provider";
   import * as Pattern from "../gen/eyg/ast/pattern";
+  import { key_find } from "../gen/gleam/list";
 
   export let metadata;
   export let global;
@@ -36,6 +37,7 @@
     let path = metadata.path;
     let newNode = Ast.variable(label);
     global.update_tree(path, newNode);
+    content = "";
     thenFocus(path);
   }
 
@@ -76,7 +78,8 @@
   // scope should include equal
   //   Need keydown for tab to work
   function handleKeydown(event) {
-    if (event.key === "Tab") {
+    // tab moves to variable selection
+    if (event.key === "Tab" && variables.length === 0) {
       if (content.trim().replace(" ", "_")) {
         event.preventDefault();
         insertVariable(content);
@@ -144,6 +147,12 @@
       }
     }, 0);
   }
+
+  let variables = [];
+  $: variables = metadata.scope
+    .toArray()
+    .filter(([k]) => content && k.startsWith(content))
+    .filter(([k]) => k !== "" && k !== "$");
 </script>
 
 <span
@@ -160,20 +169,22 @@
     }, 0);
   }}
 />
-<div class:hidden={!active} class="my-1 py-1 bg-yellow-50" bind:this={helpBox}>
+<div
+  class:hidden={!active || !variables.length}
+  class="my-1 py-1 bg-yellow-50"
+  bind:this={helpBox}
+>
   <span>variables: </span>
-  {#each metadata.scope.toArray() as [key]}
-    {#if key !== "" && key !== "$"}
-      <button
-        class="hover:bg-gray-200 px-1 outline-none focus:border-gray-500 border-b-2 border-gray-100"
-        on:click={() => insertVariable(key)}
-        on:focus={focusHelp}
-        on:blur={tryBlur}>{key}</button
-      >
-    {/if}
+  {#each variables as [key]}
+    <button
+      class="hover:bg-gray-200 px-1 outline-none focus:border-gray-500 border-b-2 border-gray-100"
+      on:click={() => insertVariable(key)}
+      on:focus={focusHelp}
+      on:blur={tryBlur}>{key}</button
+    >
   {/each}
-  <br />
-  <span>elements:</span>
+  <!-- <br /> -->
+  <!-- <span>elements:</span>
   <button
     class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
     on:click={insertLet}
@@ -203,15 +214,18 @@
     on:click={insertRow}
     on:focus={focusHelp}
     on:blur={tryBlur}>Row</button
-  >
+  > -->
 </div>
 <ErrorNotice type_={metadata.type_} />
 
 <style>
-  span {
-    display: inline-block;
-  }
   span.required {
+    display: inline-block;
     min-width: 1em;
+  }
+  span:not(.required):not(:first-child):focus::before {
+    min-width: 1em;
+
+    content: ", ";
   }
 </style>

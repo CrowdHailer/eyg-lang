@@ -210,7 +210,19 @@ fn with_unbound(thing: a, typer) -> #(#(a, monotype.Monotype), State) {
 }
 
 pub fn infer_unconstrained(expression) {
-  let typer = init([])
+  let typer =
+    init([
+      #(
+        "equal",
+        polytype.Polytype(
+          [1],
+          monotype.Function(
+            monotype.Tuple([monotype.Unbound(1), monotype.Unbound(1)]),
+            monotype.Nominal("Boolean", []),
+          ),
+        ),
+      ),
+    ])
   let #(x, typer) = polytype.next_unbound(typer)
   let expected = monotype.Unbound(x)
   infer(expression, expected, typer)

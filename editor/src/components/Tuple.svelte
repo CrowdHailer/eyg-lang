@@ -24,16 +24,42 @@
       thenFocus(metadata.path);
     }
   }
+  let container;
+  let tabindex = "-1";
+  function handleKeydown(event) {
+    if (event.ctrlKey && event.key === "+") {
+      if (tabindex === "0") {
+        tabindex = "-1";
+        console.log("bubble");
+      } else {
+        event.preventDefault();
+        event.stopPropagation();
+        tabindex = "0";
+        container.focus();
+      }
+    } else {
+    }
+  }
+  function handleBlur(event) {
+    tabindex = "-1";
+  }
 </script>
 
-[{#each elements.toArray() as element, i}
-  <Expression expression={element} {global} />,&nbsp;
-{/each}
-<Hole
-  metadata={Object.assign({}, metadata, {
-    path: Ast.append_path(metadata.path, elements.toArray().length),
-  })}
-  {global}
-  on:deletebackwards={handleDeletebackwards}
-/>]
+<span
+  {tabindex}
+  on:keydown={handleKeydown}
+  class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+  bind:this={container}
+  on:blur={handleBlur}
+  >[{#each elements.toArray() as element, i}{#if i !== 0},&nbsp;{/if}<Expression
+      expression={element}
+      {global}
+    />{/each}<Hole
+    metadata={Object.assign({}, metadata, {
+      path: Ast.append_path(metadata.path, elements.toArray().length),
+    })}
+    {global}
+    on:deletebackwards={handleDeletebackwards}
+  />]</span
+>
 <ErrorNotice type_={metadata.type_} />
