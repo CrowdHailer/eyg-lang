@@ -2,6 +2,7 @@ import gleam/io
 import gleam/list
 import eyg/ast
 import eyg/ast/pattern
+import eyg/ast/provider
 import eyg/codegen/javascript
 import eyg/typer.{infer, init}
 import eyg/typer/monotype.{resolve}
@@ -27,7 +28,7 @@ pub fn config_test() {
   let untyped =
     ast.let_(
       pattern.Row([#("foo", "foo"), #("bar", "bar")]),
-      ast.provider(env_provider("", _)),
+      ast.provider("", provider.env_provider),
       ast.call(
         ast.variable("equal"),
         ast.tuple_([ast.variable("foo"), ast.binary("secret")]),

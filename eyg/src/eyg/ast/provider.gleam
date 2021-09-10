@@ -7,7 +7,7 @@ import eyg/ast/expression.{
 import eyg/typer/monotype as t
 import eyg/ast/pattern
 
-fn env_provider(_config, hole) {
+pub fn env_provider(_config, hole) {
   case hole {
     t.Row(fields, _) -> #(
       Nil,

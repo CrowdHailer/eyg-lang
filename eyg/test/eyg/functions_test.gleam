@@ -1,5 +1,6 @@
 import gleam/io
 import eyg/ast
+import eyg/ast/expression
 import eyg/ast/pattern
 import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype as t
@@ -65,7 +66,7 @@ pub fn call_with_incorrect_argument_test() {
       ast.tuple_([ast.binary("extra argument")]),
     )
   let #(typed, _state) = infer(untyped, t.Tuple([]), typer)
-  let #(_context, ast.Call(_func, with)) = typed
+  let #(_context, expression.Call(_func, with)) = typed
   let Error(reason) = get_type(with)
   let typer.IncorrectArity(0, 1) = reason
 }

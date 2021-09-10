@@ -10,7 +10,7 @@ if javascript {
     "" "String.prototype.split.call"
 
   external fn array_to_list(Array(x)) -> List(x) =
-    "../gleam" "toList"
+    "../gleam.js" "toList"
 }
 
 pub fn split(string, pattern) {

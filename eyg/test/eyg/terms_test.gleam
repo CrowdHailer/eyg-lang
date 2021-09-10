@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/option.{None}
 import eyg/ast
+import eyg/ast/expression
 import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -47,7 +48,7 @@ pub fn unexpected_tuple_element_type_test() {
   let untyped = ast.tuple_([ast.binary("Yo")])
   let #(typed, _typer) = infer(untyped, t.Tuple([t.Tuple([])]), typer)
   assert Ok(t.Tuple([t.Tuple([])])) = get_type(typed)
-  assert #(_context, ast.Tuple([child])) = typed
+  assert #(_context, expression.Tuple([child])) = typed
   assert Error(reason) = get_type(child)
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
@@ -85,7 +86,7 @@ pub fn unexpected_field_type_test() {
   let #(typed, _typer) =
     infer(untyped, t.Row([#("foo", t.Binary)], None), typer)
   assert Ok(t.Row([#("foo", t.Binary)], None)) = get_type(typed)
-  assert #(_context, ast.Row([#("foo", child)])) = typed
+  assert #(_context, expression.Row([#("foo", child)])) = typed
   assert Error(reason) = get_type(child)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }

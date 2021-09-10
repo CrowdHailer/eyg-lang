@@ -8,7 +8,7 @@ import eyg/typer/monotype
 import eyg/typer/polytype
 
 fn hole() {
-  ast.provider(fn(x) { todo })
+  ast.provider("", fn(x, y) { todo })
 }
 
 pub fn replace_node_test() {
