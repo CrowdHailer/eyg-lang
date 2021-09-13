@@ -1,6 +1,6 @@
 FROM rust:1.54.0 AS build
 
-ENV SHA="ad10cf34838de18f6830af203bff127727d69cf8"
+ENV SHA="v0.17.0-rc1"
 RUN set -xe \
         && curl -fSL -o gleam-src.tar.gz "https://github.com/gleam-lang/gleam/archive/${SHA}.tar.gz" \
         && mkdir -p /usr/src/gleam-src \
