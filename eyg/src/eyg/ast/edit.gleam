@@ -9,6 +9,7 @@ pub type Path =
 
 pub type Action {
   WrapTuple
+  Clear
 }
 
 pub type Edit {
@@ -23,12 +24,22 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
   let Edit(action, path) = edit
   case action {
     WrapTuple -> wrap_tuple(tree, path)
+    Clear -> clear(tree, path)
   }
 }
 
 fn wrap_tuple(tree: Expression(Nil), path: Path) {
   let updated = map_node(tree, path, fn(node) { ast.tuple_([node]) })
   #(updated, ast.append_path(path, 0))
+}
+
+fn clear(tree, path) {
+  let updated = map_node(tree, path, fn(_) { ast.hole() })
+  #(updated, path)
+}
+
+pub fn clear_action() -> Option(Action) {
+  Some(Clear)
 }
 
 pub fn shotcut_for_binary(string, control_pressed) -> Option(Action) {

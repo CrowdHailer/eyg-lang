@@ -9,14 +9,6 @@
   export let global;
   export let value;
 
-  function thenFocus(path) {
-    tick().then(() => {
-      let pathId = "p" + path.toArray().join(",");
-      let element = document.getElementById(pathId);
-      element?.focus();
-    });
-  }
-
   let string = value;
   $: if (string === "<br>") {
     string = "";
@@ -34,18 +26,18 @@
   // keypress is deprecated
   function handleKeydown(event) {
     const { key, ctrlKey } = event;
+    let action;
     if ((key === "Delete" || key === "Backspace") && string === "") {
-      global.update_tree(metadata.path, Ast.hole());
-      thenFocus(metadata.path);
+      action = Edit.clear_action();
     } else {
-      let action = Edit.shotcut_for_binary(key, ctrlKey);
-      Option.map(action, (action) => {
-        let edit = Edit.edit(action, metadata.path);
-        event.preventDefault();
-        event.stopPropagation();
-        dispatch("edit", edit);
-      });
+      action = Edit.shotcut_for_binary(key, ctrlKey);
     }
+    Option.map(action, (action) => {
+      let edit = Edit.edit(action, metadata.path);
+      event.preventDefault();
+      event.stopPropagation();
+      dispatch("edit", edit);
+    });
   }
 </script>
 
