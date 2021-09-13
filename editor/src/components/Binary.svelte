@@ -9,7 +9,8 @@
   export let global;
   export let value;
 
-  let string = value;
+  let string;
+  $: string = value;
   $: if (string === "<br>") {
     string = "";
   }
