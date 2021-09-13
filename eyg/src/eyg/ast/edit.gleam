@@ -89,6 +89,7 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
     InsertLine(direction) ->
       case direct {
         Above -> insert_line_above(tree, path)
+        // TODO insert Below
       }
   }
 }
