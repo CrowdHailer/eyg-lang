@@ -47,7 +47,6 @@
     const updated = Edit.apply_edit(untyped, edit);
     untyped = updated[0];
     thenFocus(updated[1]);
-    console.log("applyies", updated[1]);
   }
 </script>
 

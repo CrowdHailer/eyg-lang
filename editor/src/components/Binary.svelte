@@ -1,6 +1,6 @@
 <script>
   import ErrorNotice from "./ErrorNotice.svelte";
-  import { tick, createEventDispatcher } from "svelte";
+  import { createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
   import * as Ast from "../gen/eyg/ast";
   import * as Edit from "../gen/eyg/ast/edit";
@@ -39,6 +39,7 @@
       dispatch("edit", edit);
     });
   }
+  // Move up and move down can wait till we catch a let statement
 </script>
 
 <span class="text-green-400"
