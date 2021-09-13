@@ -53,6 +53,7 @@
   on:blur={handleBlur}
   >[{#each elements.toArray() as element, i}{#if i !== 0},&nbsp;{/if}<Expression
       expression={element}
+      on:edit
       {global}
     />{/each}<Hole
     metadata={Object.assign({}, metadata, {

@@ -52,7 +52,7 @@ pub fn resolve(type_, substitutions) {
   }
 }
 
-pub fn how_many_args(type_)  {
+pub fn how_many_args(type_) {
   case type_ {
     Function(Tuple(elements), _) -> list.length(elements)
     _ -> 0

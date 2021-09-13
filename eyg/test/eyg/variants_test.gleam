@@ -94,7 +94,10 @@ pub fn mismatched_inner_type_test() {
     )
   let #(typed, _state) = infer(untyped, t.Unbound(-1), typer)
   let Ok(_) = get_type(typed)
-  let #(_context, expression.Name(_type, #(_context, expression.Call(_func, with)))) = typed
+  let #(
+    _context,
+    expression.Name(_type, #(_context, expression.Call(_func, with))),
+  ) = typed
   let Error(reason) = get_type(with)
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
@@ -155,8 +158,13 @@ pub fn mismatched_return_in_case_test() {
     )
   let #(typed, _state) = infer(untyped, t.Binary, typer)
   assert Ok(_) = get_type(typed)
-  let #(_, expression.Name(_, #(_, expression.Case(_, _subject, [#(_, _, c1), #(_, _, c2)])))) =
-    typed
+  let #(
+    _,
+    expression.Name(
+      _,
+      #(_, expression.Case(_, _subject, [#(_, _, c1), #(_, _, c2)])),
+    ),
+  ) = typed
   let Error(reason) = get_type(c1)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
   let Error(reason) = get_type(c2)
@@ -180,7 +188,8 @@ pub fn unexpected_case_subject_test() {
     )
   let #(typed, _state) = infer(untyped, t.Unbound(-1), typer)
   let Ok(_) = get_type(typed)
-  let #(_, expression.Name(_, #(_, expression.Case(_, subject, _clauses)))) = typed
+  let #(_, expression.Name(_, #(_, expression.Case(_, subject, _clauses)))) =
+    typed
   let Error(reason) = get_type(subject)
   assert typer.UnmatchedTypes(t.Nominal("Option", [t.Unbound(_)]), t.Binary) =
     reason
@@ -199,7 +208,8 @@ pub fn unknown_variant_in_clause_test() {
       ),
     )
   let #(typed, _state) = infer(untyped, t.Unbound(-1), typer)
-  let #(_, expression.Name(_, #(_, expression.Case(_, _subject, [#(_, _, c)])))) = typed
+  let #(_, expression.Name(_, #(_, expression.Case(_, _subject, [#(_, _, c)])))) =
+    typed
   let Error(reason) = get_type(c)
   assert typer.UnknownVariant("Perhaps", "Boolean") = reason
 }
@@ -219,8 +229,13 @@ pub fn duplicate_clause_test() {
       ),
     )
   let #(typed, _state) = infer(untyped, t.Unbound(-1), typer)
-  let #(_, expression.Name(_, #(_, expression.Case(_, _subject, [#(_, _, c1), #(_, _, c2)])))) =
-    typed
+  let #(
+    _,
+    expression.Name(
+      _,
+      #(_, expression.Case(_, _subject, [#(_, _, c1), #(_, _, c2)])),
+    ),
+  ) = typed
   let Error(reason) = get_type(c2)
   assert typer.RedundantClause("True") = reason
 }
