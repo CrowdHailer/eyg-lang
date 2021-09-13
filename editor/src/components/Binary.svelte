@@ -25,6 +25,7 @@
     }
   }
   // keypress is deprecated
+  // TODO Make sure to handle the updated string before handling the shortcut
   function handleKeydown(event) {
     const { key, ctrlKey } = event;
     let action;
