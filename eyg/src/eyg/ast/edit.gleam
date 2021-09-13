@@ -16,6 +16,7 @@ pub type Action {
   WrapTuple
   Clear
   InsertSpace(Horizontal)
+  Reorder(Horizontal)
 }
 
 pub type Edit {
@@ -35,14 +36,15 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
       let Some(#(_tuple, tuple_path)) = parent_tuple(tree, path)
       let [cursor, .._] = list.drop(path, list.length(tuple_path))
       let cursor = case direction {
-          Left -> cursor
-          Right -> cursor + 1
+        Left -> cursor
+        Right -> cursor + 1
       }
       let updated =
         map_node(
           tree,
           tuple_path,
           fn(node) {
+            //   replace node to not need assert
             assert #(_, Tuple(elements)) = node
             let pre = list.take(elements, cursor)
             let post = list.drop(elements, cursor)
@@ -50,6 +52,17 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
             ast.tuple_(elements)
           },
         )
+      #(updated, ast.append_path(tuple_path, cursor))
+    }
+    Reorder(direction) -> {
+      let Some(#(#(_, Tuple(elements)), tuple_path)) = parent_tuple(tree, path)
+    //   TODO fix cursor
+      let [cursor, .._] = list.drop(path, list.length(tuple_path))
+      let pre = list.take(elements, cursor)
+      let [me, neighbour, ..post] = list.drop(elements, cursor)
+      let updated = map_node(tree, tuple_path, fn(_) {
+        ast.tuple_(list.append(pre, [neighbour, me, ..post]))
+      }) 
       #(updated, ast.append_path(tuple_path, cursor))
     }
   }
@@ -75,6 +88,8 @@ pub fn shotcut_for_binary(string, control_pressed) -> Option(Action) {
     "Delete", True | "Backspace", True -> Some(Clear)
     "H", True -> Some(InsertSpace(Left))
     "L", True -> Some(InsertSpace(Right))
+    "h", True -> Some(Reorder(Left))
+    "l", True -> Some(Reorder(Right))
     _, _ -> None
   }
 }
