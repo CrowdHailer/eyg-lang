@@ -1,4 +1,6 @@
 <script>
+  import { tick } from "svelte";
+
   import Expression from "./components/Expression.svelte";
   import { replace_node } from "./gen/eyg/ast/transform";
   import * as Typer from "./gen/eyg/typer";
@@ -7,6 +9,8 @@
   import * as Builders from "./gen/standard/builders";
   const Ast = Object.assign({}, AstBare, Builders);
   import { List } from "./gen/gleam";
+  import * as Edit from "./gen/eyg/ast/edit";
+
   // let untyped = example.code();
   let untyped = Ast.hole();
   let expression;
@@ -24,9 +28,26 @@
     }
   })();
 
+  function thenFocus(path) {
+    tick().then(() => {
+      let pathId = "p" + path.toArray().join(",");
+      let element = document.getElementById(pathId);
+      element?.focus();
+    });
+  }
+
   async function update_tree(path, replacement) {
     // replace node needs to use untyped because infer fn assumes nil metadata
     untyped = replace_node(untyped, path, replacement);
+  }
+
+  function handleEdit(event) {
+    const { detail: edit } = event;
+    // console.log(edit, "TOP");
+    const updated = Edit.apply_edit(untyped, edit);
+    untyped = updated[0];
+    thenFocus(updated[1]);
+    console.log("applyies", updated[1]);
   }
 </script>
 
@@ -34,7 +55,11 @@
   <h1 class="text-2xl">Editor</h1>
 </header>
 <div class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative">
-  <Expression {expression} global={{ update_tree, typer }} />
+  <Expression
+    {expression}
+    global={{ update_tree, typer }}
+    on:edit={handleEdit}
+  />
   <pre class="my-2 bg-gray-100 p-1">
     {output}
   </pre>

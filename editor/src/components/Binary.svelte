@@ -1,7 +1,10 @@
 <script>
   import ErrorNotice from "./ErrorNotice.svelte";
-  import { tick } from "svelte";
+  import { tick, createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
   import * as Ast from "../gen/eyg/ast";
+  import * as Edit from "../gen/eyg/ast/edit";
+  import * as Option from "../gen/gleam/option";
   export let metadata;
   export let global;
   export let value;
@@ -29,10 +32,19 @@
     }
   }
   // keypress is deprecated
-  function handleKeydown({ key }) {
+  function handleKeydown(event) {
+    const { key, ctrlKey } = event;
     if ((key === "Delete" || key === "Backspace") && string === "") {
       global.update_tree(metadata.path, Ast.hole());
       thenFocus(metadata.path);
+    } else {
+      let action = Edit.shotcut_for_binary(key, ctrlKey);
+      Option.map(action, (action) => {
+        let edit = Edit.edit(action, metadata.path);
+        event.preventDefault();
+        event.stopPropagation();
+        dispatch("edit", edit);
+      });
     }
   }
 </script>
