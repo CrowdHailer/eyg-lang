@@ -2,6 +2,7 @@ import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
 import eyg/ast
+import eyg/ast/pattern
 import eyg/ast/expression.{Binary, Call, Expression, Function, Let, Tuple}
 
 pub type Path =
@@ -12,11 +13,19 @@ pub type Horizontal {
   Right
 }
 
+pub type Vertical {
+  Above
+  Below
+}
+
 pub type Action {
   WrapTuple
   Clear
   InsertSpace(Horizontal)
+  InsertLine(Vertical)
+  //   Reorder = Drag horizontal
   Reorder(Horizontal)
+  DragLine(Vertical)
 }
 
 pub type Edit {
@@ -56,15 +65,31 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
     }
     Reorder(direction) -> {
       let Some(#(#(_, Tuple(elements)), tuple_path)) = parent_tuple(tree, path)
-    //   TODO fix cursor
-      let [cursor, .._] = list.drop(path, list.length(tuple_path))
-      let pre = list.take(elements, cursor)
-      let [me, neighbour, ..post] = list.drop(elements, cursor)
-      let updated = map_node(tree, tuple_path, fn(_) {
-        ast.tuple_(list.append(pre, [neighbour, me, ..post]))
-      }) 
-      #(updated, ast.append_path(tuple_path, cursor))
+      let [cursor, ..rest] = list.drop(path, list.length(tuple_path))
+      let #(cursor, after) = case direction {
+        Left -> #(cursor - 1, cursor - 1)
+        Right -> #(cursor, cursor + 1)
+      }
+      let l = list.length(elements) - 2
+      case cursor {
+        c if c >= 0 && c <= l -> {
+          let pre = list.take(elements, cursor)
+          let [me, neighbour, ..post] = list.drop(elements, cursor)
+          let updated =
+            map_node(
+              tree,
+              tuple_path,
+              fn(_) { ast.tuple_(list.append(pre, [neighbour, me, ..post])) },
+            )
+          #(updated, ast.append_path(tuple_path, after))
+        }
+        _ -> #(tree, tuple_path)
+      }
     }
+    InsertLine(direction) ->
+      case direct {
+        Above -> insert_line_above(tree, path)
+      }
   }
 }
 
@@ -78,6 +103,23 @@ fn clear(tree, path) {
   #(updated, path)
 }
 
+fn insert_line_above(tree, path) {
+  case get_node(tree, path) {
+    #(_, Let(pattern, value, then)) -> {
+      let updated = ast.let_(pattern.Variable(""), ast.hole(), tree)
+      #(updated, path)
+    }
+    _ ->
+      case path {
+        [] -> #(ast.let_(pattern.Variable(""), ast.hole(), tree), [])
+        _ -> {
+          let parent_path = list.drop(path, list.length(path))
+          insert_line_above(tree, parent_path)
+        }
+      }
+  }
+}
+
 pub fn clear_action() -> Option(Action) {
   Some(Clear)
 }
@@ -88,6 +130,8 @@ pub fn shotcut_for_binary(string, control_pressed) -> Option(Action) {
     "Delete", True | "Backspace", True -> Some(Clear)
     "H", True -> Some(InsertSpace(Left))
     "L", True -> Some(InsertSpace(Right))
+    "J", True -> Some(InsertLine(Above))
+    "K", True -> Some(InsertLine(Below))
     "h", True -> Some(Reorder(Left))
     "l", True -> Some(Reorder(Right))
     _, _ -> None
