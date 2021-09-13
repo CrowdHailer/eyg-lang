@@ -137,10 +137,20 @@
     {/each}
     ]
   {:else}{pattern}{/if} =
-  <Expression expression={value} {global} on:delete={() => handleDelete(0)} />
+  <Expression
+    expression={value}
+    on:edit
+    {global}
+    on:delete={() => handleDelete(0)}
+  />
   <ErrorNotice type_={metadata.type_} />
 </p>
-<Expression expression={then} {global} on:delete={() => handleDelete(1)} />
+<Expression
+  expression={then}
+  on:edit
+  {global}
+  on:delete={() => handleDelete(1)}
+/>
 
 <style>
   span.required {
