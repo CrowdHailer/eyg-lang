@@ -3,8 +3,9 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import eyg/ast
 import eyg/ast/pattern
+import eyg/ast/provider
 import standard/builders
-import eyg/ast/expression.{Binary, Call, Expression, Function, Let, Tuple}
+import eyg/ast/expression.{Binary, Call, Expression, Function, Let, Tuple, Provider}
 
 pub type Path =
   List(Int)
@@ -21,6 +22,7 @@ pub type Vertical {
 
 pub type Action {
   SelectParent
+  ReplaceExpression(Expression(Nil))
   WrapTuple
   WrapAssignment
   WrapFunction
@@ -51,6 +53,7 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
       }
       #(tree, path)
     }
+    ReplaceExpression(expression) -> #(map_node(tree, path, fn(_) {expression}), path)
     WrapTuple -> wrap_tuple(tree, path)
     WrapAssignment -> wrap_assignment(tree, path)
     WrapFunction -> wrap_function(tree, path)
@@ -157,8 +160,19 @@ fn unwrap(tree: Expression(Nil), path: Path) {
 }
 
 fn clear(tree, path) {
-  let updated = map_node(tree, path, fn(_) { ast.hole() })
-  #(updated, path)
+  let current = get_node(tree, path)
+  case current {
+    #(_, Provider("", _)) -> case parent_path(path) {
+      None -> #(tree, path)
+      Some(#(path, index)) -> {
+        case get_node(tree, path) {
+          #(_, Tuple(elements)) -> #(ast.tuple_(list.append(list.take(elements, index), list.drop(elements, index + 1))), path)
+          _ -> #(map_node(tree, path, fn(_) { ast.hole() }), path)
+        }
+      } 
+    }
+    _ -> #(map_node(tree, path, fn(_) { ast.hole() }), path)
+  }
 }
 
 fn insert_line_above(tree, path, last_index) {
@@ -192,6 +206,32 @@ pub fn clear_action() -> Option(Action) {
   Some(Clear)
 }
 
+pub fn replace_with_variable_action(label, path) -> Edit {
+  Edit(ReplaceExpression(ast.variable(label)), path)
+  }
+
+pub fn shotcut_for_blank(buffer, key, control_pressed) -> Option(Action) {
+  case key, control_pressed {
+    // maybe a is select all and s for select but ctrl s is definetly save
+    "a", True -> Some(SelectParent)
+    "\"", _ -> Some(ReplaceExpression(ast.binary(buffer)))
+    "[", _ -> Some(WrapTuple)
+    "=", _ -> Some(ReplaceExpression(ast.let_(pattern.Variable(buffer), ast.hole(), ast.hole())))
+    ">", _ -> Some(WrapFunction)
+    "(", _ -> Some(ReplaceExpression(ast.call(ast.variable(buffer), ast.hole())))
+    "<", _ -> Some(ReplaceExpression(provider.from_name(buffer)))
+    "u", True -> Some(Unwrap)
+    "Delete", _ | "Backspace", _ -> Some(Clear)
+    // "H", True -> Some(InsertSpace(Left))
+    // "L", True -> Some(InsertSpace(Right))
+    "J", True -> Some(InsertLine(Above))
+    "K", True -> Some(InsertLine(Below))
+    "h", True -> Some(Reorder(Left))
+    "l", True -> Some(Reorder(Right))
+    _, _ -> None
+  }
+}
+
 pub fn shotcut_for_binary(string, control_pressed) -> Option(Action) {
   case string, control_pressed {
     // maybe a is select all and s for select but ctrl s is definetly save
@@ -216,9 +256,11 @@ pub fn shotcut_for_tuple(string, control_pressed) -> Option(Action) {
     // maybe a is select all and s for select but ctrl s is definetly save
     "a", _ -> Some(SelectParent)
     // "[", True -> Some(WrapTuple)
-    // "=", True -> Some(WrapAssignment)
-    // "u", True -> Some(Unwrap)
-    // "Delete", True | "Backspace", True -> Some(Clear)
+    "=", True -> Some(WrapAssignment)
+    // TODO this doesn't work in a function
+    "u", True -> Some(Unwrap)
+    "Delete", True | "Backspace", True -> Some(Clear)
+    // TODO insert a path into an empty tuple it'self
     // "H", True -> Some(InsertSpace(Left))
     // "L", True -> Some(InsertSpace(Right))
     // "J", True -> Some(InsertLine(Above))

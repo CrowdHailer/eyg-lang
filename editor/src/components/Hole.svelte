@@ -1,123 +1,29 @@
 <script>
-  import { tick, createEventDispatcher } from "svelte";
+  import { createEventDispatcher } from "svelte";
   const dispatch = createEventDispatcher();
   import ErrorNotice from "./ErrorNotice.svelte";
-  import { List } from "../gen/gleam";
 
   import * as AstBare from "../gen/eyg/ast";
   import * as Builders from "../gen/standard/builders";
   const Ast = Object.assign({}, AstBare, Builders);
-  import * as Provider from "../gen/eyg/ast/provider";
-  import * as Pattern from "../gen/eyg/ast/pattern";
-  import { key_find } from "../gen/gleam/list";
+  import * as Edit from "../gen/eyg/ast/edit";
+  import * as Option from "../gen/gleam/option";
 
   export let metadata;
   export let global;
   export let required = false;
 
   let content;
-
-  function thenFocus(path) {
-    tick().then(() => {
-      let pathId = "p" + path.toArray().join(",");
-      let element = document.getElementById(pathId);
-      element?.focus();
-    });
-  }
-
-  function insertLet() {
-    let path = metadata.path;
-    let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), Ast.hole());
-    global.update_tree(path, newNode);
-    thenFocus(path);
-  }
-
-  function insertVariable(label) {
-    label = label.trim().replace(" ", "_");
-    let path = metadata.path;
-    let newNode = Ast.variable(label);
-    global.update_tree(path, newNode);
-    content = "";
-    thenFocus(path);
-  }
-
-  function insertBinary() {
-    let path = metadata.path;
-    let newNode = Ast.binary("");
-    global.update_tree(path, newNode);
-    thenFocus(path);
-  }
-
-  function insertTuple() {
-    let path = metadata.path;
-    let newNode = Ast.tuple_(List.fromArray([]));
-    global.update_tree(path, newNode);
-    thenFocus(Ast.append_path(path, 0));
-  }
-  function insertRow() {
-    let path = metadata.path;
-    let newNode = Ast.row(List.fromArray([]));
-    global.update_tree(path, newNode);
-    thenFocus(Ast.append_path(path, 0));
-  }
-
-  function insertFunction() {
-    let path = metadata.path;
-    let newNode = Ast.function$(List.fromArray([]), Ast.hole());
-    global.update_tree(path, newNode);
-    thenFocus(path);
-  }
-
-  function insertProvider(content) {
-    let path = metadata.path;
-    let name = content.trim().replace(" ", "_");
-    let newNode = Provider.from_name(name);
-    global.update_tree(path, newNode);
-    thenFocus(path);
-  }
-  // scope should include equal
-  //   Need keydown for tab to work
   function handleKeydown(event) {
-    // tab moves to variable selection
-    if (event.key === "Tab" && variables.length === 0) {
-      if (content.trim().replace(" ", "_")) {
-        event.preventDefault();
-        insertVariable(content);
-      }
-    } else if (event.key === '"') {
+    const { key, ctrlKey } = event;
+    let action = Edit.shotcut_for_blank(content, key, ctrlKey);
+    Option.map(action, (action) => {
+      let edit = Edit.edit(action, metadata.path);
       event.preventDefault();
-      insertBinary();
-    } else if (event.key === "=") {
-      event.preventDefault();
-      let pattern = content.trim().replace(" ", "_");
-      let path = metadata.path;
-      let newNode = Ast.let_(Pattern.variable(pattern), Ast.hole(), Ast.hole());
-      global.update_tree(path, newNode);
-      thenFocus(Ast.append_path(path, 0));
-    } else if (event.key === "(") {
-      event.preventDefault();
-      let pattern = content.trim().replace(" ", "_");
-      let path = metadata.path;
-      if (pattern) {
-        let newNode = Ast.call(Ast.variable(pattern), List.fromArray([]));
-        global.update_tree(path, newNode);
-        thenFocus(Ast.append_path(path, 1));
-      } else {
-        insertFunction();
-      }
-    } else if (event.key === "[") {
-      event.preventDefault();
-      insertTuple();
-    } else if (event.key === "{") {
-      event.preventDefault();
-      insertRow();
-    } else if (event.key === "<") {
-      event.preventDefault();
-      insertProvider(content);
-    } else if (event.key === "Backspace" && content === "") {
-      console.log("deleting up");
-      dispatch("deletebackwards", {});
-    }
+      event.stopPropagation();
+      dispatch("edit", edit);
+    });
+    event.stopPropagation();
   }
   let nodeFocused = false;
   let helpFocused = false;
@@ -178,43 +84,12 @@
   {#each variables as [key]}
     <button
       class="hover:bg-gray-200 px-1 outline-none focus:border-gray-500 border-b-2 border-gray-100"
-      on:click={() => insertVariable(key)}
+      on:click={() =>
+        dispatch("edit", Edit.replace_with_variable_action(key, metadata.path))}
       on:focus={focusHelp}
       on:blur={tryBlur}>{key}</button
     >
   {/each}
-  <!-- <br /> -->
-  <!-- <span>elements:</span>
-  <button
-    class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertLet}
-    on:focus={focusHelp}
-    on:blur={tryBlur}>Let</button
-  >
-  <button
-    class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertFunction}
-    on:focus={focusHelp}
-    on:blur={tryBlur}>Function</button
-  >
-  <button
-    class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertBinary}
-    on:focus={focusHelp}
-    on:blur={tryBlur}>Binary</button
-  >
-  <button
-    class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertTuple}
-    on:focus={focusHelp}
-    on:blur={tryBlur}>Tuple</button
-  >
-  <button
-    class="hover:bg-gray-200 px-1 font-bold outline-none focus:border-gray-500 border-b-2 border-gray-100"
-    on:click={insertRow}
-    on:focus={focusHelp}
-    on:blur={tryBlur}>Row</button
-  > -->
 </div>
 <ErrorNotice type_={metadata.type_} />
 

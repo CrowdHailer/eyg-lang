@@ -35,6 +35,12 @@
       action = Edit.shotcut_for_binary(key, ctrlKey);
     }
     Option.map(action, (action) => {
+      if (value !== string) {
+        global.update_tree(
+          metadata.path,
+          Ast.binary(string.replace("<br>", "\n"))
+        );
+      }
       let edit = Edit.edit(action, metadata.path);
       event.preventDefault();
       event.stopPropagation();
@@ -48,8 +54,7 @@
 <span class="text-green-400"
   >{#if multiline}
     """
-  {:else}
-    "{/if}<span
+  {:else}"{/if}<span
     id="p{metadata.path.toArray().join(',')}"
     class="{multiline ? 'block' : 'inline'} outline-none"
     contenteditable=""
@@ -58,8 +63,5 @@
     bind:innerHTML={string}
   />{#if multiline}
     """
-  {:else}
-    "
-  {/if}</span
->
-<ErrorNotice type_={metadata.type_} />
+  {:else}"{/if}</span
+><ErrorNotice type_={metadata.type_} />
