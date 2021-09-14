@@ -51,6 +51,7 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
         Some(#(path, index)) -> path
         None -> path
       }
+      io.debug(path)
       #(tree, path)
     }
     ReplaceExpression(expression) -> #(map_node(tree, path, fn(_) {expression}), path)
@@ -171,6 +172,7 @@ fn clear(tree, path) {
         }
       } 
     }
+    #(_, Let(_, _, then)) -> #(then, path)
     _ -> #(map_node(tree, path, fn(_) { ast.hole() }), path)
   }
 }
@@ -247,6 +249,25 @@ pub fn shotcut_for_binary(string, control_pressed) -> Option(Action) {
     "K", True -> Some(InsertLine(Below))
     "h", True -> Some(Reorder(Left))
     "l", True -> Some(Reorder(Right))
+    _, _ -> None
+  }
+}
+
+pub fn shotcut_for_let(string, control_pressed) -> Option(Action) {
+  case string, control_pressed {
+    // maybe a is select all and s for select but ctrl s is definetly save
+    "a", True -> Some(SelectParent)
+    // "[", True -> Some(WrapTuple)
+    // "=", True -> Some(WrapAssignment)
+    // ">", True -> Some(WrapFunction)
+    // "u", True -> Some(Unwrap)
+    "Delete", _ | "Backspace", _ -> Some(Clear)
+    // "H", True -> Some(InsertSpace(Left))
+    // "L", True -> Some(InsertSpace(Right))
+    "J", _ -> Some(InsertLine(Above))
+    "K", _ -> Some(InsertLine(Below))
+    // "h", True -> Some(Reorder(Left))
+    // "l", True -> Some(Reorder(Right))
     _, _ -> None
   }
 }

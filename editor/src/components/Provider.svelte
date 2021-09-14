@@ -56,7 +56,7 @@
 </script>
 
 {#if Ast.is_hole(generator)}
-  <Hole {metadata} on:edit {global} required={true} on:deletebackwards />
+  <Hole {metadata} on:edit {global} required={true} />
 {:else}
   <span
     bind:this={self}

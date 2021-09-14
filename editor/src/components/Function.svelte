@@ -32,12 +32,6 @@
       newContent = "";
     }
   }
-
-  function handleDeletebackwards(_event) {
-    let path = metadata.path;
-    global.update_tree(path, Ast.hole());
-    thenFocus(path);
-  }
 </script>
 
 ({arguments_.join(", ")}<span
@@ -47,12 +41,7 @@
   on:blur={handleBlur}
 />) <strong>=></strong>
 <Indent>
-  <Expression
-    expression={main}
-    on:edit
-    {global}
-    on:deletebackwards={handleDeletebackwards}
-  />
+  <Expression expression={main} on:edit {global} />
 </Indent>
 <ErrorNotice type_={metadata.type_} />
 
