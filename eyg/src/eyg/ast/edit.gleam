@@ -20,6 +20,7 @@ pub type Vertical {
 
 pub type Action {
   WrapTuple
+  WrapAssignment
   Clear
   InsertSpace(Horizontal)
   InsertLine(Vertical)
@@ -40,6 +41,7 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
   let Edit(action, path) = edit
   case action {
     WrapTuple -> wrap_tuple(tree, path)
+    WrapAssignment -> wrap_assignment(tree, path)
     Clear -> clear(tree, path)
     InsertSpace(direction) -> {
       let Some(#(_tuple, tuple_path)) = parent_tuple(tree, path)
@@ -87,16 +89,40 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
       }
     }
     InsertLine(direction) ->
-      case direct {
+      case direction {
         Above -> insert_line_above(tree, path)
-        // TODO insert Below
       }
+  }
+  // TODO insert Below
+}
+
+fn parent_path(path) {
+  case list.length(path) {
+    0 -> None
+    length if length > 1 -> Some(list.take(path, length - 1))
   }
 }
 
 fn wrap_tuple(tree: Expression(Nil), path: Path) {
   let updated = map_node(tree, path, fn(node) { ast.tuple_([node]) })
   #(updated, ast.append_path(path, 0))
+}
+
+fn wrap_assignment(tree: Expression(Nil), path: Path) {
+  let updated = case parent_path(path) {
+    None -> ast.let_(pattern.Variable(""), tree, ast.hole())
+    Some(parent_path) ->
+      case get_node(tree, parent_path) {
+        #(_, Let(_, _, _)) -> tree
+        _ ->
+          map_node(
+            tree,
+            path,
+            fn(node) { ast.let_(pattern.Variable(""), node, ast.hole()) },
+          )
+      }
+  }
+  #(updated, path)
 }
 
 fn clear(tree, path) {
@@ -128,6 +154,7 @@ pub fn clear_action() -> Option(Action) {
 pub fn shotcut_for_binary(string, control_pressed) -> Option(Action) {
   case string, control_pressed {
     "[", True -> Some(WrapTuple)
+    "=", True -> Some(WrapAssignment)
     "Delete", True | "Backspace", True -> Some(Clear)
     "H", True -> Some(InsertSpace(Left))
     "L", True -> Some(InsertSpace(Right))
