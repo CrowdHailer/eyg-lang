@@ -1,6 +1,5 @@
 <script>
   import ErrorNotice from "./ErrorNotice.svelte";
-  import { tick } from "svelte";
   import Expression from "./Expression.svelte";
   import * as Ast from "../gen/eyg/ast";
   import * as Edit from "../gen/eyg/ast/edit";
@@ -12,22 +11,6 @@
   export let elements;
   export let global;
 
-  function thenFocus(path) {
-    tick().then(() => {
-      let pathId = "p" + path.toArray().join(",");
-      let element = document.getElementById(pathId);
-      element?.focus();
-    });
-  }
-  function handleDeletebackwards(_event) {
-    let len = elements.toArray().length;
-    if (len) {
-      thenFocus(Ast.append_path(len - 1));
-    } else {
-      global.update_tree(metadata.path, Ast.hole());
-      thenFocus(metadata.path);
-    }
-  }
   function handleKeydown(event) {
     const { key, ctrlKey } = event;
     let action;
@@ -51,12 +34,11 @@
       expression={element}
       on:edit
       {global}
-    />{/each}<Hole
-    metadata={Object.assign({}, metadata, {
-      path: Ast.append_path(metadata.path, elements.toArray().length),
-    })}
-    {global}
-    on:deletebackwards={handleDeletebackwards}
-  />]</span
+    />{:else}<Hole
+      metadata={Object.assign({}, metadata, {
+        path: Ast.append_path(metadata.path, elements.toArray().length),
+      })}
+      {global}
+    />{/each}]</span
 >
 <ErrorNotice type_={metadata.type_} />
