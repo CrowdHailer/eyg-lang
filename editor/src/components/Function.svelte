@@ -49,6 +49,7 @@
 <Indent>
   <Expression
     expression={main}
+    on:edit
     {global}
     on:deletebackwards={handleDeletebackwards}
   />

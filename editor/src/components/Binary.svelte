@@ -40,6 +40,7 @@
       event.stopPropagation();
       dispatch("edit", edit);
     });
+    event.stopPropagation();
   }
   // Move up and move down can wait till we catch a let statement
 </script>
