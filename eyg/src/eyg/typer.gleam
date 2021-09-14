@@ -315,20 +315,19 @@ pub fn infer(
       let expression = #(meta(Ok(expected)), Let(pattern, value, then))
       #(expression, typer)
     }
-    Function(label, body) -> {
-      let #(x, typer) = polytype.next_unbound(typer)
-      let arg_type = monotype.Unbound(x)
+    Function(pattern, body) -> {
+      let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
       let #(y, typer) = polytype.next_unbound(typer)
       let return_type = monotype.Unbound(y)
       let given = monotype.Function(arg_type, return_type)
       let #(type_, typer) = do_unify(expected, given, typer)
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, location: location, ..) = typer
-      let typer = set_variable(#(label, arg_type), typer)
+      let typer = list.fold(bound_variables, typer, set_variable)
       let #(return, typer) = infer(body, return_type, append_path(typer, 0))
       let typer = State(..typer, variables: variables, location: location)
       // There are ALOT more type variables if handling all the errors.
-      #(#(meta(type_), Function(label, return)), typer)
+      #(#(meta(type_), Function(pattern, return)), typer)
     }
     Call(function, with) -> {
       let State(location: location, ..) = typer
