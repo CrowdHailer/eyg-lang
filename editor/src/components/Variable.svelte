@@ -57,7 +57,7 @@
 
 <span
   class="outline-none text-blue-500"
-  id={metadata.path ? "p" + metadata.path.toArray().join(",") : ""}
+  id={Ast.path_to_id(metadata.path)}
   contenteditable=""
   bind:innerHTML={content}
   on:keydown={handleKeydown}

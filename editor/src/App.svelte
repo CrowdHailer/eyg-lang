@@ -29,8 +29,7 @@
 
   function thenFocus(path) {
     tick().then(() => {
-      let pathId = "p" + path.toArray().join(",");
-      let element = document.getElementById(pathId);
+      let element = document.getElementById(Ast.path_to_id(path));
       console.log(pathId);
       element?.focus();
     });

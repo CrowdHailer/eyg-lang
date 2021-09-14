@@ -64,7 +64,7 @@
 <span
   class:required
   class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
-  id={metadata.path ? "p" + metadata.path.toArray().join(",") : ""}
+  id={Ast.path_to_id(metadata.path)}
   contenteditable=""
   bind:textContent={content}
   on:keydown={handleKeydown}
