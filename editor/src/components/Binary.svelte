@@ -57,11 +57,9 @@
   {:else}"{/if}<span
     id="p{metadata.path.toArray().join(',')}"
     class="{multiline ? 'block' : 'inline'} outline-none"
-    contenteditable=""
     on:blur={handleBlur}
-    on:keydown={handleKeydown}
-    bind:innerHTML={string}
-  />{#if multiline}
+    on:keydown={handleKeydown}>{string}</span
+  >{#if multiline}
     """
   {:else}"{/if}</span
 ><ErrorNotice type_={metadata.type_} />

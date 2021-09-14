@@ -7,6 +7,7 @@
   const Ast = Object.assign({}, AstBare, Builders);
   import { resolve, how_many_args } from "../gen/eyg/typer/monotype";
 
+  export let position;
   export let metadata;
   export let label;
   export let global;
@@ -59,6 +60,7 @@
   class="outline-none text-blue-500"
   id={Ast.path_to_id(metadata.path)}
   contenteditable=""
+  data-position={"p" + position.join(",")}
   bind:innerHTML={content}
   on:keydown={handleKeydown}
   on:blur={handleBlur}

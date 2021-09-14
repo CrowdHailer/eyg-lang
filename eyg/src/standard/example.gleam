@@ -3,10 +3,30 @@ import eyg/ast/pattern
 import eyg/typer/monotype
 import standard/builders.{clause}
 
+pub fn simple() {
+  ast.let_(
+    pattern.Variable("main"),
+    ast.function(
+      pattern.Tuple([]),
+      ast.let_(
+        pattern.Variable("a"),
+        ast.binary("A"),
+        ast.let_(
+          pattern.Variable("b"),
+          ast.binary("B"),
+          ast.tuple_([ast.variable("a"), ast.variable("b")]),
+        ),
+      ),
+    ),
+    ast.call(ast.variable("main"), ast.tuple_([])),
+  )
+}
+
 pub fn code() {
   ast.let_(
     pattern.Variable("main"),
-    ast.provider("", fn(_config, _type) { todo }),
+    ast.binary("bob"),
+    // ast.provider("", fn(_config, _type) { todo }),
     ast.name(
       #(
         "Boolean",

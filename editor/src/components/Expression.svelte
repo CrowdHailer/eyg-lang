@@ -12,6 +12,7 @@
   import Provider from "./Provider.svelte";
   import Tuple from "./Tuple.svelte";
 
+  export let position;
   export let expression;
   let metadata, tree;
   $: metadata = expression[0];
@@ -25,13 +26,21 @@
 
 <!-- {metadata.path.toArray()} -->
 {#if tree instanceof Expression.Name}
-  <Name {metadata} on:edit {global} type={tree.type_} then={tree.then} />
+  <Name
+    {position}
+    {metadata}
+    on:edit
+    {global}
+    type={tree.type_}
+    then={tree.then}
+  />
 {:else if tree instanceof Expression.Tuple}
-  <Tuple {metadata} on:edit {global} elements={tree.elements} />
+  <Tuple {position} {metadata} on:edit {global} elements={tree.elements} />
 {:else if tree instanceof Expression.Binary}
-  <Binary {metadata} on:edit {global} value={tree.value} />
+  <Binary {position} {metadata} on:edit {global} value={tree.value} />
 {:else if tree instanceof Expression.Let}
   <Let
+    {position}
     {metadata}
     on:edit
     {global}
@@ -40,6 +49,7 @@
     then={tree.then}
   />
 {:else if tree instanceof Expression.Call}<Call
+    {position}
     {metadata}
     on:edit
     {global}
@@ -51,9 +61,17 @@
 {:else if tree instanceof Expression.Row}
   <Row {metadata} on:edit {global} fields={tree.fields} />
 {:else if tree instanceof Expression.Variable}
-  <Variable {metadata} on:edit {global} label={tree.label} on:delete />
+  <Variable
+    {position}
+    {metadata}
+    on:edit
+    {global}
+    label={tree.label}
+    on:delete
+  />
 {:else if tree instanceof Expression.Function}
   <Function
+    {position}
     {metadata}
     on:edit
     {global}
