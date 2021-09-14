@@ -22,7 +22,7 @@ async function main() {
         process.stdout.write("✨");
         passes++;
       } catch (error) {
-        process.stdout.write(`❌ ${fnName}: ${error}\n${error.stack}\n  `);
+        process.stdout.write(`❌ ${fnName}: ${JSON.stringify(error)}\n${error.stack}\n  `);
         failures++;
       }
     }

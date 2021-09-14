@@ -10,7 +10,6 @@
   const Ast = Object.assign({}, AstBare, Builders);
   import { List } from "./gen/gleam";
   import * as Edit from "./gen/eyg/ast/edit";
-
   // let untyped = example.code();
   let untyped = Ast.hole();
   let expression;
@@ -63,3 +62,4 @@
     {output}
   </pre>
 </div>
+{JSON.stringify(untyped)}

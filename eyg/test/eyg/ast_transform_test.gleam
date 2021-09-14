@@ -24,6 +24,5 @@ pub fn replace_node_test() {
     ast.tuple_([ast.variable("x"), ast.variable("y"), ast.variable("z")])
   let path = [1]
   replace_node(tuple, path, ast.binary("new"))
-  |> io.debug()
 }
 // rename fn is replace node with new args
