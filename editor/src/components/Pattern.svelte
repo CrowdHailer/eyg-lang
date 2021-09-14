@@ -1,17 +1,13 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
   import { tick } from "svelte";
-  import Expression from "./Expression.svelte";
-  import TermInput from "./TermInput.svelte";
   import * as Ast from "../gen/eyg/ast";
   import * as Pattern from "../gen/eyg/ast/pattern";
   import { List } from "../gen/gleam";
 
   export let metadata;
   export let pattern;
-  export let value;
-  export let then;
   export let global;
+  console.log(global);
 
   function handleLabelChange(newLabel) {
     if (newLabel != pattern.label) {
@@ -35,7 +31,7 @@
     thenFocus(childPath);
   }
   let newContent;
-  // $: newContent = pattern.label;
+  $: newContent = pattern.label;
   let modified = false;
   function handleBlur() {
     if (!modified) {
@@ -74,7 +70,12 @@
   }
 </script>
 
+<!-- Bubble everything to the top does an onchange event bubble -->
+
 {#if Pattern.is_variable(pattern)}
+  <!-- add a p0 on the end of the id tree -->
+  <!-- bubble event out from here -->
+  <!-- Think more about tope level everything BUT that means we need to capture key presses for editing variables and binary -->
   <span
     class="border-b border-white min-w-10 outline-none focus:border-gray-900 focus:border-2 required"
     contenteditable=""
@@ -95,7 +96,7 @@
     {/if}
   {/each}
   ]
-{:else}{pattern}{/if}
+{:else}{JSON.stringify(pattern)}{/if}
 
 <style>
   span.required {

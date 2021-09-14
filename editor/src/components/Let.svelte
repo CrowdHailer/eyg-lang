@@ -34,7 +34,7 @@
   on:keydown={handleKeydown}
 >
   <span class="text-yellow-400">let</span>
-  <Pattern {pattern} />
+  <Pattern {pattern} {metadata} {global} />
   =
   <Expression expression={value} on:edit {global} />
   <ErrorNotice type_={metadata.type_} />

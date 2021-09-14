@@ -53,7 +53,13 @@
 {:else if tree instanceof Expression.Variable}
   <Variable {metadata} on:edit {global} label={tree.label} on:delete />
 {:else if tree instanceof Expression.Function}
-  <Function {metadata} on:edit {global} for_={tree.for} body={tree.body} />
+  <Function
+    {metadata}
+    on:edit
+    {global}
+    pattern={tree.pattern}
+    body={tree.body}
+  />
 {:else if tree instanceof Expression.Case}
   <Case
     on:edit
