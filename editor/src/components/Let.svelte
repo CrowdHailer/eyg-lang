@@ -1,11 +1,12 @@
 <script>
   import ErrorNotice from "./ErrorNotice.svelte";
-  import { tick } from "svelte";
+  import { createEventDispatcher } from "svelte";
+  const dispatch = createEventDispatcher();
   import Expression from "./Expression.svelte";
-  import TermInput from "./TermInput.svelte";
   import * as Ast from "../gen/eyg/ast";
-  import * as Pattern from "../gen/eyg/ast/pattern";
-  import { List } from "../gen/gleam";
+  import * as Edit from "../gen/eyg/ast/edit";
+  import * as Option from "../gen/gleam/option";
+  import Pattern from "./Pattern.svelte";
 
   export let metadata;
   export let pattern;
@@ -13,150 +14,29 @@
   export let then;
   export let global;
 
-  function handleLabelChange(newLabel) {
-    if (newLabel != pattern.label) {
-      global.update_tree(
-        metadata.path,
-        Ast.let_(Pattern.variable(newLabel), value, then)
-      );
-    } else {
-    }
-  }
-  function thenFocus(path, rest) {
-    tick().then(() => {
-      let pathId = "p" + path.toArray().join(",") + (rest || "");
-      let element = document.getElementById(pathId);
-      element.focus();
-    });
-  }
-  function handleDelete(child) {
-    let childPath = Ast.append_path(metadata.path, child);
-    global.update_tree(childPath, Ast.hole());
-    thenFocus(childPath);
-  }
-  let newContent;
-  // $: newContent = pattern.label;
-  let modified = false;
-  function handleBlur() {
-    if (!modified) {
-      handleLabelChange(newContent);
-    }
-  }
-
   function handleKeydown(event) {
-    if (event.key === "[") {
-      pattern;
-      global.update_tree(
-        metadata.path,
-        Ast.let_(Pattern.tuple_(List.fromArray([])), value, then)
-      );
+    const { key, ctrlKey } = event;
+    let action = Edit.shotcut_for_let(key, ctrlKey);
+    Option.map(action, (action) => {
+      let edit = Edit.edit(action, metadata.path);
       event.preventDefault();
-      modified = true;
-      thenFocus(metadata.path, "e" + 0);
-    } else if (event.key === "{") {
-    } else {
-    }
-  }
-  let elements = [];
-  $: elements = pattern?.elements?.toArray()?.concat("");
-  let updatedElements = elements;
-
-  function handleBlurElement(event, i, newLabel) {
-    // TODO trim in Gleam
-    newLabel = newLabel.trim().replace(" ", "_");
-    if (newLabel) {
-      let newPattern = Pattern.replace_element(pattern, i, newLabel);
-      let newNode = Ast.let_(newPattern, value, then);
-      global.update_tree(metadata.path, newNode);
-      thenFocus(metadata.path, "e" + (i + 1));
-    } else {
-    }
-  }
-
-  let container;
-  // can't be set to null
-  let tabindex = "-1";
-  function handleShortcut(event) {
-    if (event.ctrlKey) {
-      if (event.shiftKey && event.key === "Enter") {
-        let current = Ast.let_(pattern, value, then);
-        let newNode = Ast.let_(Pattern.variable(""), Ast.hole(), current);
-        global.update_tree(metadata.path, newNode);
-        thenFocus(metadata.path);
-        // Note shift key will probably also be down
-      } else if (event.key === "+") {
-        if (tabindex === "0") {
-          tabindex = -1;
-        } else {
-          event.preventDefault();
-          event.stopPropagation();
-          tabindex = "0";
-          container.focus();
-        }
-      } else {
-      }
-    } else if ((tabindex = "0" && event.key === "Delete")) {
-      global.update_tree(metadata.path, then);
-      thenFocus(metadata.path);
-    } else {
-    }
-  }
-  function handleBlurContainer(event) {
-    tabindex = -1;
+      event.stopPropagation();
+      dispatch("edit", edit);
+    });
+    event.stopPropagation();
   }
 </script>
 
 <p
-  on:keydown={handleShortcut}
-  {tabindex}
+  tabindex="-1"
+  id={Ast.path_to_id(metadata.path)}
   class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
-  bind:this={container}
-  on:blur={handleBlurContainer}
+  on:keydown={handleKeydown}
 >
   <span class="text-yellow-400">let</span>
-  {#if Pattern.is_variable(pattern)}
-    <span
-      class="border-b border-white min-w-10 outline-none focus:border-gray-900 focus:border-2 required"
-      id={Ast.path_to_id(metadata.path)}
-      contenteditable=""
-      bind:textContent={newContent}
-      on:keydown={handleKeydown}
-      on:blur={handleBlur}>{pattern.label}</span
-    >
-  {:else if Pattern.is_tuple(pattern)}
-    [{#each elements as _element, i}
-      <span
-        class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
-        id={Ast.path_to_id(metadata.path) + "e" + i}
-        contenteditable=""
-        bind:textContent={updatedElements[i]}
-        on:blur={(e) => handleBlurElement(e, i, updatedElements[i])}
-      />{#if i < elements.length - 1}
-        ,
-      {/if}
-    {/each}
-    ]
-  {:else}{pattern}{/if} =
-  <Expression
-    expression={value}
-    on:edit
-    {global}
-    on:delete={() => handleDelete(0)}
-  />
+  <Pattern {pattern} />
+  =
+  <Expression expression={value} on:edit {global} />
   <ErrorNotice type_={metadata.type_} />
 </p>
-<Expression
-  expression={then}
-  on:edit
-  {global}
-  on:delete={() => handleDelete(1)}
-/>
-
-<style>
-  span.required {
-    display: inline-block;
-  }
-  span:empty.required {
-    min-width: 1em;
-  }
-</style>
+<Expression expression={then} on:edit {global} />

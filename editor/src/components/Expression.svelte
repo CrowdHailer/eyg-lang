@@ -69,7 +69,6 @@
     {global}
     config={tree.config}
     generator={tree.generator}
-    on:deletebackwards
   />
 {:else}
   {JSON.stringify(tree)}

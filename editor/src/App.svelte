@@ -31,6 +31,7 @@
     tick().then(() => {
       let pathId = "p" + path.toArray().join(",");
       let element = document.getElementById(pathId);
+      console.log(pathId);
       element?.focus();
     });
   }
