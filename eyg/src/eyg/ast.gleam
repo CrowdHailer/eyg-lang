@@ -70,5 +70,5 @@ pub fn path_to_id(path: List(Int)) -> String {
     path
     |> list.map(int.to_string)
     |> list.intersperse(",")
-  string.join(["p", ..coordinates])
+  string.join(["e", ..coordinates])
 }

@@ -13,13 +13,12 @@
   export let config;
   export let generator;
 
-  function thenFocus(path) {
-    tick().then(() => {
-      let pathId = "p" + path.toArray().join(",");
-      let element = document.getElementById(pathId);
-      element?.focus();
-    });
-  }
+  // function thenFocus(path) {
+  //   tick().then(() => {
+  //     let element = document.getElementById(pathId);
+  //     element?.focus();
+  //   });
+  // }
 
   function handleBlur() {
     let path = metadata.path;

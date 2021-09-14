@@ -35,7 +35,7 @@
 
 <span
   class="outline-none"
-  id={path ? "p" + path.toArray().join(",") : ""}
+  id="TODO not needed"
   contenteditable=""
   bind:innerHTML={content}
   on:input={handleInput}
