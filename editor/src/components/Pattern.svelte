@@ -4,6 +4,7 @@
   import * as Pattern from "../gen/eyg/ast/pattern";
   import { List } from "../gen/gleam";
 
+  export let position;
   export let metadata;
   export let pattern;
   export let global;
@@ -77,25 +78,26 @@
   <!-- bubble event out from here -->
   <!-- Think more about tope level everything BUT that means we need to capture key presses for editing variables and binary -->
   <span
+    tabindex="-1"
+    data-position={"p" + position.join(",")}
     class="border-b border-white min-w-10 outline-none focus:border-gray-900 focus:border-2 required"
-    contenteditable=""
-    bind:textContent={newContent}
-    on:keydown={handleKeydown}
     on:blur={handleBlur}>{pattern.label}</span
   >
 {:else if Pattern.is_tuple(pattern)}
-  [{#each elements as _element, i}
-    <span
-      class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
-      id={Ast.path_to_id(metadata.path) + "e" + i}
-      contenteditable=""
-      bind:textContent={updatedElements[i]}
-      on:blur={(e) => handleBlurElement(e, i, updatedElements[i])}
-    />{#if i < elements.length - 1}
-      ,
-    {/if}
-  {/each}
-  ]
+  <span
+    tabindex="-1"
+    data-position={"p" + position.join(",")}
+    class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+    >[{#each elements as element, i}<span
+        tabindex="-1"
+        class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
+        data-position={"p" + position.concat(i).join(",")}
+        id={Ast.path_to_id(metadata.path) + "e" + i}>{element}</span
+      >{#if i < elements.length - 1}
+        ,
+      {/if}
+    {/each}]</span
+  >
 {:else}{JSON.stringify(pattern)}{/if}
 
 <style>

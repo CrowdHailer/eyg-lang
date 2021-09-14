@@ -10,8 +10,12 @@
   const Ast = Object.assign({}, AstBare, Builders);
   import { List } from "./gen/gleam";
   import * as Edit from "./gen/eyg/ast/edit";
-  // let untyped = example.code();
-  let untyped = Ast.hole();
+  import * as Editor from "./gen/eyg/ast/editor";
+  import * as example from "./gen/standard/example";
+  let untyped = example.simple();
+  console.log("foo");
+  console.log(untyped);
+  // let untyped = Ast.hole();
   let expression;
   let output;
   let typer;
@@ -35,30 +39,70 @@
   }
 
   async function update_tree(path, replacement) {
+    console.warn("do nothing");
     // replace node needs to use untyped because infer fn assumes nil metadata
-    untyped = replace_node(untyped, path, replacement);
+    // untyped = replace_node(untyped, path, replacement);
   }
 
   function handleEdit(event) {
-    const { detail: edit } = event;
-    // console.log(edit, "TOP");
-    const updated = Edit.apply_edit(untyped, edit);
-    untyped = updated[0];
-    thenFocus(updated[1]);
+    console.warn("not needed");
+    // const { detail: edit } = event;
+    // // console.log(edit, "TOP");
+    // const updated = Edit.apply_edit(untyped, edit);
+    // untyped = updated[0];
+    // thenFocus(updated[1]);
+  }
+
+  function targetToPosition(target) {
+    return target
+      .closest("[data-position^=p]")
+      .dataset.position.slice(1)
+      .split(",")
+      .filter((x) => x.length)
+      .map((x) => parseInt(x));
+  }
+
+  function handleFocusin(event) {
+    console.log(event.target);
+    console.log(targetToPosition(event.target));
+  }
+
+  function handleKeydown(event) {
+    console.log("sdowwn");
+    let { key, ctrlKey } = event;
+    let position = List.fromArray(targetToPosition(event.target));
+    let [a, b] = Editor.handle_keydown(expression, position, key);
+    untyped = a;
+    // stringify in the gleam code
+    position = "p" + b.toArray().join(",");
+    tick().then(() => {
+      let after = document.querySelector("[data-position='" + position + "']");
+      console.log(after);
+      after.focus();
+    });
   }
 </script>
 
 <header class="max-w-4xl mx-auto pb-2 pt-6">
   <h1 class="text-2xl">Editor</h1>
 </header>
-<div class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative">
+<div
+  class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative"
+  on:click={handleFocusin}
+  on:keypress={handleKeydown}
+>
   <Expression
     {expression}
     global={{ update_tree, typer }}
+    position={[]}
     on:edit={handleEdit}
   />
-  <pre class="my-2 bg-gray-100 p-1">
+  <!-- <pre class="my-2 bg-gray-100 p-1">
     {output}
+  </pre> -->
+</div>
+<div class="max-w-4xl mx-auto px-10 py-6">
+  <pre>
+    {JSON.stringify(untyped, null, 2)}
   </pre>
 </div>
-{JSON.stringify(untyped)}
