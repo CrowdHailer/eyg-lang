@@ -5,7 +5,9 @@ import eyg/ast
 import eyg/ast/pattern
 import eyg/ast/provider
 import standard/builders
-import eyg/ast/expression.{Binary, Call, Expression, Function, Let, Tuple, Provider}
+import eyg/ast/expression.{
+  Binary, Call, Expression, Function, Let, Provider, Tuple,
+}
 
 pub type Path =
   List(Int)
@@ -54,7 +56,10 @@ pub fn apply_edit(tree, edit) -> #(Expression(Nil), Path) {
       io.debug(path)
       #(tree, path)
     }
-    ReplaceExpression(expression) -> #(map_node(tree, path, fn(_) {expression}), path)
+    ReplaceExpression(expression) -> #(
+      map_node(tree, path, fn(_) { expression }),
+      path,
+    )
     WrapTuple -> wrap_tuple(tree, path)
     WrapAssignment -> wrap_assignment(tree, path)
     WrapFunction -> wrap_function(tree, path)
@@ -143,7 +148,8 @@ fn wrap_assignment(tree: Expression(Nil), path: Path) {
 }
 
 fn wrap_function(tree: Expression(Nil), path: Path) {
-  let updated = map_node(tree, path, fn(node) { builders.function([], node) })
+  let updated =
+    map_node(tree, path, fn(node) { ast.function(pattern.Tuple([]), node) })
   // Nested append because of the tuple in the the built ast
   let new_path = ast.append_path(ast.append_path(path, 0), 1)
   #(updated, new_path)
@@ -163,15 +169,21 @@ fn unwrap(tree: Expression(Nil), path: Path) {
 fn clear(tree, path) {
   let current = get_node(tree, path)
   case current {
-    #(_, Provider("", _)) -> case parent_path(path) {
-      None -> #(tree, path)
-      Some(#(path, index)) -> {
-        case get_node(tree, path) {
-          #(_, Tuple(elements)) -> #(ast.tuple_(list.append(list.take(elements, index), list.drop(elements, index + 1))), path)
-          _ -> #(map_node(tree, path, fn(_) { ast.hole() }), path)
-        }
-      } 
-    }
+    #(_, Provider("", _)) ->
+      case parent_path(path) {
+        None -> #(tree, path)
+        Some(#(path, index)) ->
+          case get_node(tree, path) {
+            #(_, Tuple(elements)) -> #(
+              ast.tuple_(list.append(
+                list.take(elements, index),
+                list.drop(elements, index + 1),
+              )),
+              path,
+            )
+            _ -> #(map_node(tree, path, fn(_) { ast.hole() }), path)
+          }
+      }
     #(_, Let(_, _, then)) -> #(then, path)
     _ -> #(map_node(tree, path, fn(_) { ast.hole() }), path)
   }
@@ -210,7 +222,7 @@ pub fn clear_action() -> Option(Action) {
 
 pub fn replace_with_variable_action(label, path) -> Edit {
   Edit(ReplaceExpression(ast.variable(label)), path)
-  }
+}
 
 pub fn shotcut_for_blank(buffer, key, control_pressed) -> Option(Action) {
   case key, control_pressed {
@@ -218,9 +230,15 @@ pub fn shotcut_for_blank(buffer, key, control_pressed) -> Option(Action) {
     "a", True -> Some(SelectParent)
     "\"", _ -> Some(ReplaceExpression(ast.binary(buffer)))
     "[", _ -> Some(WrapTuple)
-    "=", _ -> Some(ReplaceExpression(ast.let_(pattern.Variable(buffer), ast.hole(), ast.hole())))
+    "=", _ ->
+      Some(ReplaceExpression(ast.let_(
+        pattern.Variable(buffer),
+        ast.hole(),
+        ast.hole(),
+      )))
     ">", _ -> Some(WrapFunction)
-    "(", _ -> Some(ReplaceExpression(ast.call(ast.variable(buffer), ast.hole())))
+    "(", _ ->
+      Some(ReplaceExpression(ast.call(ast.variable(buffer), ast.hole())))
     "<", _ -> Some(ReplaceExpression(provider.from_name(buffer)))
     "u", True -> Some(Unwrap)
     "Delete", _ | "Backspace", _ -> Some(Clear)

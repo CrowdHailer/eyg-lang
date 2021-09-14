@@ -157,8 +157,7 @@ pub fn render(tree: Expression(typer.Metadata), state) {
     }
     Variable(label) -> wrap_return([render_label(label, state)], state)
     Function(for, body) -> {
-      assert "$" = for
-      assert #(_, Let(pattern.Tuple(for), #(_, Variable("$")), body)) = body
+      assert pattern.Tuple(for) = for
       let #(for, state) =
         list.map_state(
           for,

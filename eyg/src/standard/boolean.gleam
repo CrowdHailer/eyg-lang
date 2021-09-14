@@ -1,7 +1,7 @@
 import eyg/ast
 import eyg/ast/pattern
 import eyg/typer/monotype
-import standard/builders.{clause, function}
+import standard/builders.{clause}
 
 pub fn code() {
   ast.name(
@@ -20,8 +20,8 @@ pub fn code() {
           #("False", ast.variable("False")),
           #(
             "and",
-            function(
-              ["left", "right"],
+            ast.function(
+              pattern.Tuple(["left", "right"]),
               ast.case_(
                 "Boolean",
                 ast.variable("left"),
@@ -34,8 +34,8 @@ pub fn code() {
           ),
           #(
             "or",
-            function(
-              ["left", "right"],
+            ast.function(
+              pattern.Tuple(["left", "right"]),
               ast.case_(
                 "Boolean",
                 ast.variable("left"),
@@ -63,8 +63,8 @@ pub fn test() {
     ast.variable("boolean"),
     ast.let_(
       pattern.Variable("should$equal"),
-      function(
-        ["given", "expected"],
+      ast.function(
+        pattern.Tuple(["given", "expected"]),
         ast.case_(
           "Boolean",
           ast.call(

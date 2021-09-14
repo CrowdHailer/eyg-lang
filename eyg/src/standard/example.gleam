@@ -1,7 +1,7 @@
 import eyg/ast
 import eyg/ast/pattern
 import eyg/typer/monotype
-import standard/builders.{clause, function}
+import standard/builders.{clause}
 
 pub fn code() {
   ast.let_(
@@ -28,8 +28,8 @@ pub fn code() {
           ast.call(ast.constructor("Boolean", "True"), ast.tuple_([])),
           ast.let_(
             pattern.Variable("and"),
-            function(
-              ["left", "right"],
+            ast.function(
+              pattern.Tuple(["left", "right"]),
               ast.case_(
                 "Boolean",
                 ast.variable("left"),

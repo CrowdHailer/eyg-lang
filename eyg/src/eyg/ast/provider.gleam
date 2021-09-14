@@ -26,13 +26,7 @@ pub fn env_provider(_config, hole) {
 
 fn format(config, hole) {
   case string.split(config, "{0}") {
-    [x] -> #(
-      Nil,
-      Function(
-        "$",
-        #(Nil, Let(pattern.Tuple([]), #(Nil, Variable("$")), #(Nil, Binary(x)))),
-      ),
-    )
+    [x] -> #(Nil, Function(pattern.Tuple([]), #(Nil, Binary(x))))
     parts -> {
       let parts = list.map(parts, Binary)
       let parts = list.intersperse(parts, Variable("r0"))
@@ -40,19 +34,12 @@ fn format(config, hole) {
       #(
         Nil,
         Function(
-          "$",
+          pattern.Tuple(["r0"]),
           #(
             Nil,
-            Let(
-              pattern.Tuple(["r0"]),
-              #(Nil, Variable("$")),
-              #(
-                Nil,
-                Call(
-                  #(Nil, Variable("String.prototype.concat.call")),
-                  #(Nil, Tuple(parts)),
-                ),
-              ),
+            Call(
+              #(Nil, Variable("String.prototype.concat.call")),
+              #(Nil, Tuple(parts)),
             ),
           ),
         ),
