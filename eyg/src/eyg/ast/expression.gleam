@@ -7,7 +7,7 @@ pub type Node(m) {
   Row(fields: List(#(String, Expression(m))))
   Variable(label: String)
   Let(pattern: Pattern, value: Expression(m), then: Expression(m))
-  Function(for: Pattern, body: Expression(m))
+  Function(pattern: Pattern, body: Expression(m))
   Call(function: Expression(m), with: Expression(m))
   Name(
     type_: #(String, #(List(Int), List(#(String, monotype.Monotype)))),
