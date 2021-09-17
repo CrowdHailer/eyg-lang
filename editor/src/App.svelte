@@ -29,12 +29,6 @@
     }
   })();
 
-  async function update_tree(path, replacement) {
-    console.warn("do nothing");
-    // replace node needs to use untyped because infer fn assumes nil metadata
-    // untyped = replace_node(untyped, path, replacement);
-  }
-
   function targetToPosition(target) {
     return target
       .closest("[data-position^=p]")
@@ -79,7 +73,7 @@
 >
   <Expression
     {expression}
-    global={{ update_tree, typer }}
+    global={{ typer }}
     on:contentedited={handleContentedited}
     position={[]}
   />

@@ -24,7 +24,6 @@
   function handleBlur() {
     let path = metadata.path;
     let newNode = Ast.provider(config, generator);
-    global.update_tree(path, newNode);
     // thenFocus(path);
   }
 
@@ -38,7 +37,6 @@
         let node = Ast.provider(config, generator);
         let path = metadata.path;
         let newNode = Ast.call(node, List.fromArray([]));
-        global.update_tree(path, newNode);
         thenFocus(Ast.append_path(path), 1);
       } else if (event.key == "=") {
         event.preventDefault();
@@ -46,7 +44,6 @@
         let node = Ast.provider(config, generator);
         let path = metadata.path;
         let newNode = Ast.let_(Pattern.variable(""), node, Ast.hole());
-        global.update_tree(path, newNode);
         thenFocus(path);
       } else {
       }

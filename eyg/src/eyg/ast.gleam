@@ -64,4 +64,3 @@ pub fn is_hole(generator) {
 pub fn append_path(path, i) {
   list.append(path, [i])
 }
-

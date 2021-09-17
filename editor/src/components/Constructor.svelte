@@ -9,7 +9,6 @@
 
   function handleVariantChange({ detail: { content: newVariant } }) {
     let point = path.concat([count]);
-    global.update_tree(point, Ast.constructor(named, newVariant));
   }
 </script>
 
