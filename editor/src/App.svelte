@@ -67,7 +67,7 @@
   function handleKeydown(event) {
     let { key, ctrlKey } = event;
     let position = List.fromArray(targetToPosition(event.target));
-    let [a, b] = Editor.handle_keydown(expression, position, key);
+    let [a, b] = Editor.handle_keydown(expression, position, key, typer);
     untyped = a;
     // stringify in the gleam code
     position = "p" + b.toArray().join(",");

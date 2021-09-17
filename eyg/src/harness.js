@@ -52,3 +52,7 @@ function deepEqual(x, y) {
   
     return eval(code);
   }
+
+  export function identity(x) {
+    return x
+  }
