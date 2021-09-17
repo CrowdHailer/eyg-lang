@@ -42,5 +42,4 @@
       })}
       {global}
     />{/each}]</span
->
-<ErrorNotice type_={metadata.type_} />
+><ErrorNotice type_={metadata.type_} />
