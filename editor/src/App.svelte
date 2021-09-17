@@ -13,8 +13,6 @@
   import * as Editor from "./gen/eyg/ast/editor";
   import * as example from "./gen/standard/example";
   let untyped = example.simple();
-  console.log("foo");
-  console.log(untyped);
   // let untyped = Ast.hole();
   let expression;
   let output;
@@ -63,12 +61,10 @@
   }
 
   function handleFocusin(event) {
-    console.log(event.target);
-    console.log(targetToPosition(event.target));
+    targetToPosition(event.target);
   }
 
   function handleKeydown(event) {
-    console.log("sdowwn");
     let { key, ctrlKey } = event;
     let position = List.fromArray(targetToPosition(event.target));
     let [a, b] = Editor.handle_keydown(expression, position, key);

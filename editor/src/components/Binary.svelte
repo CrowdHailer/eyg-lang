@@ -5,6 +5,7 @@
   import * as Ast from "../gen/eyg/ast";
   import * as Edit from "../gen/eyg/ast/edit";
   import * as Option from "../gen/gleam/option";
+  export let position;
   export let metadata;
   export let global;
   export let value;
@@ -51,7 +52,10 @@
   // Move up and move down can wait till we catch a let statement
 </script>
 
-<span class="text-green-400"
+<span
+  class="text-green-400 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+  tabindex="-1"
+  data-position={"p" + position.join(",")}
   >{#if multiline}
     """
   {:else}"{/if}<span

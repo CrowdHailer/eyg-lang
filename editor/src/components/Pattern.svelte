@@ -8,7 +8,6 @@
   export let metadata;
   export let pattern;
   export let global;
-  console.log(global);
 
   function handleLabelChange(newLabel) {
     if (newLabel != pattern.label) {
