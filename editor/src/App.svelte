@@ -29,26 +29,10 @@
     }
   })();
 
-  function thenFocus(path) {
-    tick().then(() => {
-      let element = document.getElementById(Ast.path_to_id(path));
-      element?.focus();
-    });
-  }
-
   async function update_tree(path, replacement) {
     console.warn("do nothing");
     // replace node needs to use untyped because infer fn assumes nil metadata
     // untyped = replace_node(untyped, path, replacement);
-  }
-
-  function handleEdit(event) {
-    console.warn("not needed");
-    // const { detail: edit } = event;
-    // // console.log(edit, "TOP");
-    // const updated = Edit.apply_edit(untyped, edit);
-    // untyped = updated[0];
-    // thenFocus(updated[1]);
   }
 
   function targetToPosition(target) {
@@ -87,12 +71,7 @@
   on:click={handleFocusin}
   on:keypress={handleKeydown}
 >
-  <Expression
-    {expression}
-    global={{ update_tree, typer }}
-    position={[]}
-    on:edit={handleEdit}
-  />
+  <Expression {expression} global={{ update_tree, typer }} position={[]} />
   <!-- <pre class="my-2 bg-gray-100 p-1">
     {output}
   </pre> -->
