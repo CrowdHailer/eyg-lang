@@ -37,6 +37,7 @@
       on:edit
       {global}
     />{:else}<Hole
+      {position}
       metadata={Object.assign({}, metadata, {
         path: Ast.append_path(metadata.path, elements.toArray().length),
       })}

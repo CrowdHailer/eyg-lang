@@ -9,6 +9,7 @@
   import * as Edit from "../gen/eyg/ast/edit";
   import * as Option from "../gen/gleam/option";
 
+  export let position;
   export let metadata;
   export let global;
   export let required = false;
@@ -62,6 +63,8 @@
 </script>
 
 <span
+  tabindex="-1"
+  data-position={"p" + position.join(",")}
   class:required
   class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
   id={Ast.path_to_id(metadata.path)}

@@ -13,6 +13,7 @@ pub type Element {
 
 // t -> wrap tuple
 // u -> unwrap
+// d -> delete
 pub fn handle_keydown(tree, position, key) {
   case key {
     "a" -> {
@@ -33,6 +34,7 @@ pub fn handle_keydown(tree, position, key) {
     }
     "t" -> wrap_tuple(tree, position)
     "u" -> unwrap(tree, position)
+    "d" -> delete(tree, position)
     _ -> {
       1
       todo("doesn't do anything")
@@ -80,6 +82,15 @@ fn unwrap(tree, position) {
       }
     }
   }
+}
+
+fn delete(tree, position) {
+  let replacement = case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, then))) -> then
+    Expression(_) -> ast.hole()
+  }
+  let modified = replace_node(tree, position, replacement)
+  #(modified, position)
 }
 
 fn parent_path(path) {
