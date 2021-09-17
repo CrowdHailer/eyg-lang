@@ -61,6 +61,12 @@
       after.focus();
     });
   }
+
+  function handleContentedited({ detail: { position, content } }) {
+    let [a, b] = Editor.handle_contentedited(expression, position, content);
+    console.log(a);
+    untyped = a;
+  }
 </script>
 
 <header class="max-w-4xl mx-auto pb-2 pt-6">
@@ -69,9 +75,14 @@
 <div
   class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative"
   on:click={handleFocusin}
-  on:keypress={handleKeydown}
+  on:keydown={handleKeydown}
 >
-  <Expression {expression} global={{ update_tree, typer }} position={[]} />
+  <Expression
+    {expression}
+    global={{ update_tree, typer }}
+    on:contentedited={handleContentedited}
+    position={[]}
+  />
   <!-- <pre class="my-2 bg-gray-100 p-1">
     {output}
   </pre> -->

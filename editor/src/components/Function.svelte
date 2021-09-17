@@ -22,6 +22,7 @@
     expression={body}
     on:edit
     {global}
+    on:contentedited
     position={position.concat(1)}
   />
 </Indent>
