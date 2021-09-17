@@ -88,6 +88,7 @@
   />
 {:else if tree instanceof Expression.Provider}
   <Provider
+    {position}
     {metadata}
     on:edit
     {global}

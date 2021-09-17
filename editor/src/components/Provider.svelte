@@ -8,6 +8,7 @@
   import * as Pattern from "../gen/eyg/ast/pattern";
   import { resolve } from "../gen/eyg/typer/monotype";
   import { List } from "../gen/gleam";
+  export let position;
   export let metadata;
   export let global;
   export let config;
@@ -55,7 +56,7 @@
 </script>
 
 {#if Ast.is_hole(generator)}
-  <Hole {metadata} on:edit {global} required={true} />
+  <Hole {position} {metadata} on:edit {global} required={true} />
 {:else}
   <span
     bind:this={self}
