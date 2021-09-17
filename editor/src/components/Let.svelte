@@ -18,9 +18,25 @@
   data-position={"p" + position.join(",")}
 >
   <span class="text-yellow-400">let</span>
-  <Pattern {pattern} {metadata} {global} position={position.concat(0)} />
+  <Pattern
+    {pattern}
+    {metadata}
+    {global}
+    on:contentedited
+    position={position.concat(0)}
+  />
   =
-  <Expression expression={value} {global} position={position.concat(1)} />
+  <Expression
+    expression={value}
+    {global}
+    on:contentedited
+    position={position.concat(1)}
+  />
   <ErrorNotice type_={metadata.type_} />
 </p>
-<Expression expression={then} {global} position={position.concat(2)} />
+<Expression
+  expression={then}
+  {global}
+  on:contentedited
+  position={position.concat(2)}
+/>

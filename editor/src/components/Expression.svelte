@@ -27,6 +27,7 @@
 <!-- {metadata.path.toArray()} -->
 {#if tree instanceof Expression.Name}
   <Name
+    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -35,11 +36,26 @@
     then={tree.then}
   />
 {:else if tree instanceof Expression.Tuple}
-  <Tuple {position} {metadata} on:edit {global} elements={tree.elements} />
+  <Tuple
+    on:contentedited
+    {position}
+    {metadata}
+    on:edit
+    {global}
+    elements={tree.elements}
+  />
 {:else if tree instanceof Expression.Binary}
-  <Binary {position} {metadata} on:edit {global} value={tree.value} />
+  <Binary
+    on:contentedited
+    {position}
+    {metadata}
+    on:edit
+    {global}
+    value={tree.value}
+  />
 {:else if tree instanceof Expression.Let}
   <Let
+    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -49,6 +65,7 @@
     then={tree.then}
   />
 {:else if tree instanceof Expression.Call}<Call
+    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -62,6 +79,7 @@
   <Row {metadata} on:edit {global} fields={tree.fields} />
 {:else if tree instanceof Expression.Variable}
   <Variable
+    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -71,6 +89,7 @@
   />
 {:else if tree instanceof Expression.Function}
   <Function
+    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -88,6 +107,7 @@
   />
 {:else if tree instanceof Expression.Provider}
   <Provider
+    on:contentedited
     {position}
     {metadata}
     on:edit

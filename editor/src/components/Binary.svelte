@@ -1,69 +1,100 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
   import { createEventDispatcher } from "svelte";
+  import { List } from "../gen/gleam";
   const dispatch = createEventDispatcher();
-  import * as Ast from "../gen/eyg/ast";
-  import * as Edit from "../gen/eyg/ast/edit";
-  import * as Option from "../gen/gleam/option";
+  import ErrorNotice from "./ErrorNotice.svelte";
   export let position;
   export let metadata;
   export let global;
   export let value;
 
-  let string;
-  $: string = value;
-  $: if (string === "<br>") {
-    string = "";
-  }
+  let updated;
+  $: updated = value;
   let multiline = false;
-  $: multiline = string.includes("<br>");
-  function handleBlur() {
-    if (value !== string) {
-      global.update_tree(
-        metadata.path,
-        Ast.binary(string.replace("<br>", "\n"))
-      );
+  let active = false;
+  let self;
+
+  function handleBlur(event) {
+    if (active) {
+      active = false;
+      self.focus();
+      dispatch("contentedited", {
+        position: List.fromArray(position),
+        content: updated,
+      });
     }
   }
+
+  function handleInput(event) {
+    updated = event.target.innerHTML;
+
+    // cant use {@html keeps moving cusor to beginning}
+    // Needs to handle any case that only ends in new line needs to not render updated because that
+    // if (updated === "<br>") {
+    //   value = "";
+    // }
+    // whitespace pre change br to \n
+    multiline = updated.includes("\n");
+  }
+
   // keypress is deprecated
-  // TODO Make sure to handle the updated string before handling the shortcut
   function handleKeydown(event) {
-    const { key, ctrlKey } = event;
-    let action;
-    if ((key === "Delete" || key === "Backspace") && string === "") {
-      action = Edit.clear_action();
-    } else {
-      action = Edit.shotcut_for_binary(key, ctrlKey);
-    }
-    Option.map(action, (action) => {
-      if (value !== string) {
-        global.update_tree(
-          metadata.path,
-          Ast.binary(string.replace("<br>", "\n"))
-        );
+    const { key } = event;
+    if (active) {
+      if (key === "Escape") {
+        self.blur();
+      } else {
       }
-      let edit = Edit.edit(action, metadata.path);
-      event.preventDefault();
       event.stopPropagation();
-      dispatch("edit", edit);
-    });
-    event.stopPropagation();
+    } else {
+      if (key === "i") {
+        active = true;
+        var range = document.createRange();
+        var sel = window.getSelection();
+
+        // https://stackoverflow.com/questions/6249095/how-to-set-caretcursor-position-in-contenteditable-element-div
+        var node = self.childNodes[0];
+        range.setStart(node, node.length);
+        range.collapse(true);
+
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+      }
+      event.preventDefault();
+    }
   }
-  // Move up and move down can wait till we catch a let statement
 </script>
 
+<!-- Text areas don't resize as wanted, onchange doesn't work on contenteditable -->
+<!-- Need to turn contenteditable on and off to no have cursor but cant use bind:innerHTML if contenteditable is dynamic -->
 <span
-  class="text-green-400 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+  class="text-green-400 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded inline-block"
+  class:multiline
   tabindex="-1"
   data-position={"p" + position.join(",")}
-  >{#if multiline}
-    """
-  {:else}"{/if}<span
-    id="p{metadata.path.toArray().join(',')}"
-    class="{multiline ? 'block' : 'inline'} outline-none"
-    on:blur={handleBlur}
-    on:keydown={handleKeydown}>{string}</span
-  >{#if multiline}
-    """
-  {:else}"{/if}</span
+  contenteditable={active}
+  bind:this={self}
+  on:blur={handleBlur}
+  on:input={handleInput}
+  on:keydown={handleKeydown}>{value}</span
 ><ErrorNotice type_={metadata.type_} />
+
+<style>
+  span {
+    white-space: pre;
+  }
+  span::before {
+    content: '"';
+  }
+  span::after {
+    content: '"';
+  }
+  /* https://stackoverflow.com/questions/9062988/newline-character-sequence-in-css-content-property */
+  span.multiline::before {
+    content: '"""\00000a';
+  }
+  span.multiline::after {
+    content: '"""';
+  }
+</style>
