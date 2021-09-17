@@ -57,14 +57,10 @@
 </script>
 
 <span
-  class="outline-none text-blue-500"
-  id={Ast.path_to_id(metadata.path)}
-  contenteditable=""
-  data-position={"p" + position.join(",")}
-  bind:innerHTML={content}
-  on:keydown={handleKeydown}
-  on:blur={handleBlur}
-/><ErrorNotice type_={metadata.type_} />
+  class="outline-none text-blue-500 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+  tabindex="-1"
+  data-position={"p" + position.join(",")}>{label}</span
+><ErrorNotice type_={metadata.type_} />
 
 <style>
   span:empty {

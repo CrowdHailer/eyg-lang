@@ -61,23 +61,31 @@ fn wrap_tuple(tree, position) {
 fn unwrap(tree, position) {
   case parent_path(position) {
     None -> #(tree, position)
-    Some(#(position, index)) -> {
-      let parent = get_element(tree, position)
+    Some(#(parent_position, index)) -> {
+      let parent = get_element(tree, parent_position)
       case parent {
         Expression(#(_, e.Tuple(elements))) -> {
           let [replacement, .._] = list.drop(elements, index)
-          let modified = replace_node(tree, position, replacement)
-          #(modified, position)
+          let modified = replace_node(tree, parent_position, replacement)
+          #(modified, parent_position)
+        }
+        Expression(#(_, e.Call(func, with))) -> {
+          let replacement = case index {
+            0 -> func
+            1 -> with
+          }
+          let modified = replace_node(tree, parent_position, replacement)
+          #(modified, parent_position)
         }
         Expression(_) -> unwrap(tree, position)
         Pattern(p.Tuple(elements)) -> {
           let [label, .._] = list.drop(elements, index)
-          assert Some(#(position, _)) = parent_path(position)
+          assert Some(#(parent_position, _)) = parent_path(parent_position)
           assert Expression(#(_, e.Let(_, value, then))) =
-            get_element(tree, position)
+            get_element(tree, parent_position)
           let new = ast.let_(p.Variable(label), value, then)
-          let modified = replace_node(tree, position, new)
-          #(modified, list.append(position, [0]))
+          let modified = replace_node(tree, parent_position, new)
+          #(modified, list.append(parent_position, [0]))
         }
       }
     }
