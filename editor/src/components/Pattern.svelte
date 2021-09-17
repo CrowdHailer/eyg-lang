@@ -90,8 +90,7 @@
     >[{#each elements as element, i}<span
         tabindex="-1"
         class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
-        data-position={"p" + position.concat(i).join(",")}
-        id={Ast.path_to_id(metadata.path) + "e" + i}>{element}</span
+        data-position={"p" + position.concat(i).join(",")}>{element}</span
       >{#if i < elements.length - 1}
         ,
       {/if}

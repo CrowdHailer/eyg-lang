@@ -14,7 +14,6 @@
 
 <p
   tabindex="-1"
-  id={Ast.path_to_id(metadata.path)}
   class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
   data-position={"p" + position.join(",")}
 >

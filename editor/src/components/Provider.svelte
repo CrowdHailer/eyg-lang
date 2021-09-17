@@ -68,7 +68,6 @@
       class="outline-none"
       contenteditable=""
       bind:textContent={config}
-      id={Ast.path_to_id(metadata.path)}
       on:blur={handleBlur}
     />"&gt;</span
   >{/if}<ErrorNotice type_={metadata.type_} />
