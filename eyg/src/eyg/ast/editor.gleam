@@ -4,36 +4,50 @@ import gleam/option.{None, Some}
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/typer.{Metadata}
+import eyg/typer/monotype
+import eyg/typer/polytype.{State}
 
 pub type Element {
-  Expression(e.Expression(Nil))
+  Expression(e.Expression(Metadata))
   Pattern(p.Pattern)
   PatternElement(Int, String)
 }
 
+// TODO write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
+external fn untype(e.Expression(a)) -> e.Expression(Nil) =
+  "../../harness.js" "identity"
+
 // t -> wrap tuple
 // u -> unwrap
+// c -> call/apply
 // d -> delete
-pub fn handle_keydown(tree, position, key) {
+pub fn handle_keydown(
+  tree: e.Expression(Metadata),
+  position,
+  key,
+  typer,
+) -> #(e.Expression(Nil), List(Int)) {
   case key {
     "a" -> {
       let path = case parent_path(position) {
         Some(#(p, _)) -> p
         None -> []
       }
-      #(tree, path)
+      #(untype(tree), path)
     }
-    "s" -> #(tree, ast.append_path(position, 0))
+    "s" -> #(untype(tree), ast.append_path(position, 0))
     "h" -> {
       let [index, ..rest] = list.reverse(position)
-      #(tree, list.reverse([index - 1, ..rest]))
+      #(untype(tree), list.reverse([index - 1, ..rest]))
     }
     "l" -> {
       let [index, ..rest] = list.reverse(position)
-      #(tree, list.reverse([index + 1, ..rest]))
+      #(untype(tree), list.reverse([index + 1, ..rest]))
     }
     "t" -> wrap_tuple(tree, position)
     "u" -> unwrap(tree, position)
+    "c" -> call(tree, position, typer)
     "d" -> delete(tree, position)
     _ -> {
       1
@@ -47,11 +61,11 @@ fn wrap_tuple(tree, position) {
   // TODO don't wrap multi line terms
   let modified = case target {
     Expression(expression) ->
-      replace_node(tree, position, ast.tuple_([expression]))
+      replace_node(tree, position, ast.tuple_([untype(expression)]))
     Pattern(p.Variable(label)) -> {
       assert Some(#(path, _)) = parent_path(position)
       assert Expression(#(_, e.Let(_, value, then))) = get_element(tree, path)
-      let new = ast.let_(p.Tuple([label]), value, then)
+      let new = ast.let_(p.Tuple([label]), untype(value), untype(then))
       replace_node(tree, path, new)
     }
   }
@@ -60,13 +74,14 @@ fn wrap_tuple(tree, position) {
 
 fn unwrap(tree, position) {
   case parent_path(position) {
-    None -> #(tree, position)
+    None -> #(untype(tree), position)
     Some(#(parent_position, index)) -> {
       let parent = get_element(tree, parent_position)
       case parent {
         Expression(#(_, e.Tuple(elements))) -> {
           let [replacement, .._] = list.drop(elements, index)
-          let modified = replace_node(tree, parent_position, replacement)
+          let modified =
+            replace_node(tree, parent_position, untype(replacement))
           #(modified, parent_position)
         }
         Expression(#(_, e.Call(func, with))) -> {
@@ -74,7 +89,8 @@ fn unwrap(tree, position) {
             0 -> func
             1 -> with
           }
-          let modified = replace_node(tree, parent_position, replacement)
+          let modified =
+            replace_node(tree, parent_position, untype(replacement))
           #(modified, parent_position)
         }
         Expression(_) -> unwrap(tree, position)
@@ -83,7 +99,7 @@ fn unwrap(tree, position) {
           assert Some(#(parent_position, _)) = parent_path(parent_position)
           assert Expression(#(_, e.Let(_, value, then))) =
             get_element(tree, parent_position)
-          let new = ast.let_(p.Variable(label), value, then)
+          let new = ast.let_(p.Variable(label), untype(value), untype(then))
           let modified = replace_node(tree, parent_position, new)
           #(modified, list.append(parent_position, [0]))
         }
@@ -92,9 +108,21 @@ fn unwrap(tree, position) {
   }
 }
 
+fn call(tree, position, typer) {
+  let Expression(expression) = get_element(tree, position)
+  let #(Metadata(type_: type_, ..), _node) = expression
+  let State(substitutions: substitutions, ..) = typer
+  let Ok(type_) = type_
+  let arg_count = monotype.how_many_args(monotype.resolve(type_, substitutions))
+  // TODO arg count
+  let new = ast.call(untype(expression), ast.tuple_([]))
+  let modified = replace_node(tree, position, new)
+  #(modified, list.append(position, [1, 0]))
+}
+
 fn delete(tree, position) {
   let replacement = case get_element(tree, position) {
-    Expression(#(_, e.Let(_, _, then))) -> then
+    Expression(#(_, e.Let(_, _, then))) -> untype(then)
     Expression(_) -> ast.hole()
   }
   let modified = replace_node(tree, position, replacement)
@@ -135,39 +163,43 @@ pub fn get_element(tree, position) {
 }
 
 pub fn replace_node(
-  tree: e.Expression(Nil),
+  tree: e.Expression(a),
   path: List(Int),
   replacement: e.Expression(Nil),
 ) -> e.Expression(Nil) {
+  let tree = untype(tree)
   map_node(tree, path, fn(_) { replacement })
 }
 
 pub fn map_node(
-  tree: e.Expression(Nil),
+  tree: e.Expression(a),
   path: List(Int),
-  mapper: fn(e.Expression(Nil)) -> e.Expression(Nil),
+  mapper: fn(e.Expression(a)) -> e.Expression(Nil),
 ) -> e.Expression(Nil) {
   let #(_, node) = tree
   io.debug(node)
   case node, path {
     _, [] -> mapper(tree)
     e.Tuple(elements), [index, ..rest] -> {
-      let pre = list.take(elements, index)
+      let pre =
+        list.take(elements, index)
+        |> list.map(untype)
       let [current, ..post] = list.drop(elements, index)
+      let post = list.map(post, untype)
       let updated = map_node(current, rest, mapper)
       let elements = list.flatten([pre, [updated], post])
       ast.tuple_(elements)
     }
     e.Let(pattern, value, then), [1, ..rest] ->
-      ast.let_(pattern, map_node(value, rest, mapper), then)
+      ast.let_(pattern, map_node(value, rest, mapper), untype(then))
     e.Let(pattern, value, then), [2, ..rest] ->
-      ast.let_(pattern, value, map_node(then, rest, mapper))
+      ast.let_(pattern, untype(value), map_node(then, rest, mapper))
     e.Function(pattern, body), [1, ..rest] ->
       ast.function(pattern, map_node(body, rest, mapper))
     e.Call(func, with), [0, ..rest] ->
-      ast.call(map_node(func, rest, mapper), with)
+      ast.call(map_node(func, rest, mapper), untype(with))
     e.Call(func, with), [1, ..rest] ->
-      ast.call(func, map_node(with, rest, mapper))
+      ast.call(untype(func), map_node(with, rest, mapper))
 
     _, _ -> {
       io.debug(node)
