@@ -18,6 +18,8 @@ pub type Element {
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
 
+// j -> move down
+// k -> move up
 // t -> wrap tuple
 // u -> unwrap
 // c -> call/apply
@@ -41,6 +43,8 @@ pub fn handle_keydown(
       let [index, ..rest] = list.reverse(position)
       #(untype(tree), list.reverse([index - 1, ..rest]))
     }
+    "j" -> move_down(tree, position)
+    "k" -> todo
     "l" -> {
       let [index, ..rest] = list.reverse(position)
       #(untype(tree), list.reverse([index + 1, ..rest]))
@@ -56,13 +60,63 @@ pub fn handle_keydown(
   }
 }
 
-pub fn handle_contentedited(tree, position, content) -> #(e.Expression(Nil), List(Int)) {
+pub fn handle_contentedited(
+  tree,
+  position,
+  content,
+) -> #(e.Expression(Nil), List(Int)) {
   let target = get_element(tree, position)
   case target {
     Expression(#(_, e.Binary(_))) -> {
       let modified = replace_node(tree, position, ast.binary(content))
       #(modified, position)
-    } 
+    }
+  }
+}
+
+// TODO handle moving into blocks
+fn move_down(tree, position) {
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, _))) -> #(
+      untype(tree),
+      ast.append_path(position, 2),
+    )
+    _ ->
+      case parent_let(tree, position) {
+        None -> #(untype(tree), position)
+        Some(#(position, 0)) | Some(#(position, 1)) -> #(
+          untype(tree),
+          ast.append_path(position, 2),
+        )
+        Some(#(position, 2)) ->
+          case block_container(tree, position) {
+            // Select whole bottom line
+            None -> #(untype(tree), ast.append_path(position, 2))
+            Some(position) -> move_down(tree, position)
+          }
+      }
+  }
+}
+
+fn parent_let(tree, position) {
+  case parent_path(position) {
+    None -> None
+    Some(#(position, index)) ->
+      case get_element(tree, position) {
+        Expression(#(_, e.Let(_, _, _))) -> Some(#(position, index))
+        _ -> parent_let(tree, position)
+      }
+  }
+}
+
+fn block_container(tree, position) {
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, _))) ->
+      case parent_path(position) {
+        None -> None
+        Some(#(position, _)) -> block_container(tree, position)
+      }
+    Expression(expression) -> Some(position)
   }
 }
 

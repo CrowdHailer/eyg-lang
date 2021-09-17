@@ -23,19 +23,16 @@
 
   function handleNameChange({ detail: { content: newName } }) {
     let node = Ast.name(change_type_name(type, newName), then);
-    global.update_tree(metadata.path, node);
   }
   function handleVariantChange({ detail: { content: newName } }, i) {
     let point = path.concat(count);
     let node = Ast.name(change_variant(type, i, newName), then);
-    global.update_tree(point, node);
   }
   function handleVariantEnter(event, i) {
     let point = path.concat(count);
     console.log("t", type, "--", add_variant(type, i, "_"));
     let node = Ast.name(add_variant(type, i, "_"), then);
     console.log(node);
-    global.update_tree(point, node);
   }
 
   const mappings = {};
@@ -52,7 +49,6 @@
     let variant = event.target.innerHTML.replace("<br>", "");
     newContent = "";
     let node = Ast.name(add_variant(type, variants.length, variant), then);
-    global.update_tree(metadata.path, node);
   }
 </script>
 
