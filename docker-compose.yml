@@ -13,7 +13,7 @@ services:
     # can't have port here because need to start two services
     command: "watchexec --exts gleam -- sh build_eyg"
   editor_frontend:
-    image: node:16.5.0
+    image: node:16.13.0
     working_dir: /opt/app/editor
     volumes:
       - .:/opt/app
