@@ -3,6 +3,7 @@ Getting more from data
 
 ![Connecting the dots](https://pbs.twimg.com/media/CbbJaG0XEAAOsoW?format=jpg&name=medium)
 
+For latest see [NOTES](NOTES.md)
 # 1. Combining Relational Algebra with Hindley Milner style type checking.
 **Note:** All examples are in [Gleam](https://gleam.run/), as I think it is the simplest language that has the guarantees I want to experiment with.
 
@@ -70,7 +71,7 @@ let adults = users
 
 Called `project` in relational algebra it is `SELECT` in SQL.
 In both these cases it is only a filtering of an entry to a subset of keys.
-Not a programatically complete map. 
+Not a programatically complete map.
 
 However, in SQL you can add operators in your statement to do more than just reduce keys.
 ```sql
@@ -132,7 +133,7 @@ let posts_and_authors = relation.product(users, posts)
 |> relation.filter(fn(r) {
     let #(u, p) = r
     u.id == p.author_id
-}) 
+})
 
 // or with filter_map for new record.
 let posts_and_authors = relation.product(users, posts)
@@ -142,7 +143,7 @@ let posts_and_authors = relation.product(users, posts)
         True -> Some(#(u.name, p.title))
         False -> None
     }
-}) 
+})
 ```
 
 For shorthand there are `join` and `join_map` functions.
@@ -170,7 +171,7 @@ These can be represented by a reduce over a collection.
 In SQL there is AVG,MIN,MAX,SUM,COUNT (Similar set of ready made operators in Excel).
 The operators are explicitly part of the language so they can be calculated efficiently.
 A general purpose reduce is consistent with aggregation and is at worse inefficient, and can not be paralelised.
-A pairwise op can be used if it is important to paralelise the workload, 
+A pairwise op can be used if it is important to paralelise the workload,
 but only works when the aggregate type is the same as the row type.
 ```rs
 let total = relation.reduce(orders, fn(order, total) { order.amount + total }, 0)
@@ -186,7 +187,7 @@ let total = orders
 // insert
 let bob = relation.row(User(name: "Bob", age: 25))
 let users = users
-|> relation.app(bob) 
+|> relation.app(bob)
 
 // update
 let users = users
@@ -266,7 +267,7 @@ How relations come into existance is a concern of the layer below, for example t
   - Is this what the love letter to datomic and datascript was talking about
   - If your relations are only a view on a lower datamodel you are not exposing an internal API
   - organised like blitz this could be managed by the compiler
-- How many programs require **linear types** 
+- How many programs require **linear types**
   - Does a table of sockets make sense?
   - Are linear types always for some physical reality, can we always handle the usecase by waiting for a constrained return
 

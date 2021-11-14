@@ -7,7 +7,7 @@ services:
       dockerfile: language.Dockerfile
     volumes:
       - .:/opt/app
-    network_mode: host
+    # network_mode: host
     command: "watchexec --exts gleam -- sh build_eyg"
 
   language:
