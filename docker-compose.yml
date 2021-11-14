@@ -5,10 +5,22 @@ services:
     build:
       context: .
       dockerfile: language.Dockerfile
+    working_dir: /opt/app
     volumes:
       - .:/opt/app
+    # network_mode unavailable on mac
     # network_mode: host
+    # can't have port here because need to start two services
     command: "watchexec --exts gleam -- sh build_eyg"
+  editor_frontend:
+    image: node:16.5.0
+    working_dir: /opt/app/editor
+    volumes:
+      - .:/opt/app
+      # Need to use -p 5000:5000 for access via localhost
+    ports:
+      - "5000:5000"
+    command: "npm run dev"
 
   language:
     build:
