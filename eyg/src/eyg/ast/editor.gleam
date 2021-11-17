@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
@@ -22,21 +23,26 @@ pub fn handle_keydown(
   tree: e.Expression(Metadata),
   position,
   key,
+  ctrl_key,
   typer,
 ) -> #(e.Expression(Nil), List(Int)) {
-  case key {
-    "a" -> increase_selection(tree, position)
-    "s" -> decrease_selection(tree, position)
-    "h" -> move_left(tree, position)
-    "l" -> move_right(tree, position)
-    "j" -> move_down(tree, position)
-    "k" -> move_up(tree, position)
-    "t" -> wrap_tuple(tree, position)
-    "u" -> unwrap(tree, position)
-    "c" -> call(tree, position, typer)
-    "d" -> delete(tree, position)
-    _ -> {
-      io.debug("No edit action for this key")
+  case key, ctrl_key {
+    "a", False -> increase_selection(tree, position)
+    "s", False -> decrease_selection(tree, position)
+    "h", False -> move_left(tree, position)
+    "l", False -> move_right(tree, position)
+    "j", False -> move_down(tree, position)
+    "k", False -> move_up(tree, position)
+    "t", False -> wrap_tuple(tree, position)
+    "u", False -> unwrap(tree, position)
+    "c", False -> call(tree, position, typer)
+    "d", False -> delete(tree, position)
+    "Control", _ | "Shift", _ | "Alt", _ | "Meta", _ -> #(
+      untype(tree),
+      position,
+    )
+    _, _ -> {
+      io.debug(string.join(["No edit action for key: ", key]))
       #(untype(tree), position)
     }
   }
