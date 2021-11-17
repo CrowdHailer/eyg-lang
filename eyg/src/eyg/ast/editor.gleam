@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{None, Option, Some}
 import gleam/string
 import eyg/ast
 import eyg/ast/expression as e
@@ -33,6 +33,8 @@ pub fn handle_keydown(
     "l", False -> move_right(tree, position)
     "j", False -> move_down(tree, position)
     "k", False -> move_up(tree, position)
+    "H", False -> space_left(tree, position)
+    "L", False -> space_right(tree, position)
     "t", False -> wrap_tuple(tree, position)
     "u", False -> unwrap(tree, position)
     "c", False -> call(tree, position, typer)
@@ -150,6 +152,57 @@ fn move_down(tree, position) {
             None -> #(untype(tree), ast.append_path(position, 2))
             Some(position) -> move_down(tree, position)
           }
+      }
+  }
+}
+
+// TODO If already a space don't go again
+// TODO implement for patterns
+fn space_left(tree, position) {
+  case closest(tree, position, match_tuple) {
+    None -> #(untype(tree), position)
+    Some(#(position, cursor, elements)) -> {
+      let pre = list.take(elements, cursor)
+      let post = list.drop(elements, cursor)
+      let elements = list.flatten([pre, [ast.hole()], post])
+      let new = ast.tuple_(elements)
+      #(replace_node(tree, position, new), ast.append_path(position, cursor))
+    }
+  }
+}
+
+fn space_right(tree, position) {
+  case closest(tree, position, match_tuple) {
+    None -> #(untype(tree), position)
+    Some(#(position, cursor, elements)) -> {
+      let cursor = cursor + 1
+      let pre = list.take(elements, cursor)
+      let post = list.drop(elements, cursor)
+      let elements = list.flatten([pre, [ast.hole()], post])
+      let new = ast.tuple_(elements)
+      #(replace_node(tree, position, new), ast.append_path(position, cursor))
+    }
+  }
+}
+
+fn match_tuple(target) {
+  case target {
+    Expression(#(_, e.Tuple(elements))) -> Ok(list.map(elements, untype))
+    _ -> Error(Nil)
+  }
+}
+
+fn closest(
+  tree,
+  position,
+  search: fn(Element) -> Result(t, Nil),
+) -> Option(#(List(Int), Int, t)) {
+  case parent_path(position) {
+    None -> None
+    Some(#(position, index)) ->
+      case search(get_element(tree, position)) {
+        Ok(x) -> Some(#(position, index, x))
+        Error(_) -> closest(tree, position, search)
       }
   }
 }

@@ -20,6 +20,9 @@ Very small subset of actions working
 - [x] Upgrade gleam
 - [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had
+- [ ] Insert Above/Below
+- [ ] Put values in Blanks, auto complete
+- [ ] Tab (Space) to Blanks/Errors
 - [ ] Handle errors, maybe not because gleam shouldn't error
 - [ ] Test lambda calculus enums.
 - [ ] Pin type, click and bump constraints to top
