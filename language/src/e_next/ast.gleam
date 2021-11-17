@@ -1,7 +1,7 @@
+
 // import gleam/option.{None, Option, Some}
 // import gleam/string
 // import gleam/list
-
 // // Sum type is variant
 // // product type is tuple
 // // Record has fields consisting of name x
@@ -15,7 +15,6 @@
 //   // If I put in Term for nesting
 //   Tuple(List(t))
 // }
-
 // //   Tuple(List(Expression(l, t)))
 // //   
 // // Named taking a Type mean needs empty tuple for None True False etc
@@ -29,7 +28,6 @@
 //   // a -> b nearer HM 
 //   Function
 // }
-
 // pub type Node(l, t) {
 //   // Let rule in HM
 //   Case(
@@ -45,10 +43,8 @@
 //   //   Abstraction rule
 //   Fn
 // }
-
 // pub type Expression(l, t) =
 //   #(t, Node(l, t))
-
 // fn bind(pattern, subject, context) {
 //   case pattern {
 //     Var(label) -> {
@@ -59,11 +55,9 @@
 //     Variant(variant, _) -> todo
 //   }
 // }
-
 // pub type Checker {
 //   Checker(next_unbound: Int, scope: List(Int))
 // }
-
 // // fn try_map_state(
 // //   list: List(a),
 // //   initial: s,
@@ -88,7 +82,6 @@
 // ) -> #(List(b), s) {
 //   do_map_state(list, initial, func, [])
 // }
-
 // fn do_map_state(list, state, func, accumulator) {
 //   case list {
 //     [] -> #(list.reverse(accumulator), state)
@@ -99,7 +92,6 @@
 //     }
 //   }
 // }
-
 // // Start testing with tuple and then row
 // // put pattern type_ and ast in different folders. 
 // // scope is part of type_

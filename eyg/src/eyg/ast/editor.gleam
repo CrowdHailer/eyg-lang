@@ -18,12 +18,6 @@ pub type Element {
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
 
-// j -> move down
-// k -> move up
-// t -> wrap tuple
-// u -> unwrap
-// c -> call/apply
-// d -> delete
 pub fn handle_keydown(
   tree: e.Expression(Metadata),
   position,
@@ -31,31 +25,19 @@ pub fn handle_keydown(
   typer,
 ) -> #(e.Expression(Nil), List(Int)) {
   case key {
-    "a" -> {
-      let path = case parent_path(position) {
-        Some(#(p, _)) -> p
-        None -> []
-      }
-      #(untype(tree), path)
-    }
-    "s" -> #(untype(tree), ast.append_path(position, 0))
-    "h" -> {
-      let [index, ..rest] = list.reverse(position)
-      #(untype(tree), list.reverse([index - 1, ..rest]))
-    }
+    "a" -> increase_selection(tree, position)
+    "s" -> decrease_selection(tree, position)
+    "h" -> move_left(tree, position)
+    "l" -> move_right(tree, position)
     "j" -> move_down(tree, position)
-    "k" -> todo
-    "l" -> {
-      let [index, ..rest] = list.reverse(position)
-      #(untype(tree), list.reverse([index + 1, ..rest]))
-    }
+    "k" -> move_up(tree, position)
     "t" -> wrap_tuple(tree, position)
     "u" -> unwrap(tree, position)
     "c" -> call(tree, position, typer)
     "d" -> delete(tree, position)
     _ -> {
-      1
-      todo("doesn't do anything")
+      io.debug("No edit action for this key")
+      #(untype(tree), position)
     }
   }
 }
@@ -71,6 +53,74 @@ pub fn handle_contentedited(
       let modified = replace_node(tree, position, ast.binary(content))
       #(modified, position)
     }
+  }
+}
+
+fn increase_selection(tree, position) {
+  let position = case parent_path(position) {
+    Some(#(position, _)) -> position
+    None -> []
+  }
+  #(untype(tree), position)
+}
+
+fn decrease_selection(tree, position) {
+  #(untype(tree), ast.append_path(position, 0))
+}
+
+fn move_left(tree, position) {
+  let position = case list.reverse(position) {
+    [] -> {
+      io.debug("cannot move left from root note")
+      position
+    }
+    [0, .._] -> {
+      io.debug("cannot move any further left")
+      position
+    }
+    [index, ..rest] -> list.reverse([index - 1, ..rest])
+  }
+  #(untype(tree), position)
+}
+
+fn move_right(tree, position) {
+  let position = case list.reverse(position) {
+    [] -> {
+      io.debug("cannot move right from root note")
+      position
+    }
+    [index, ..rest] -> list.reverse([index + 1, ..rest])
+  }
+  #(untype(tree), position)
+}
+
+// TODO not very sure how this works
+fn move_up(tree, position) {
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, _))) -> {
+      io.debug("leeet")
+      let path = case parent_path(position) {
+        Some(#(p, _)) -> p
+        None -> position
+      }
+      io.debug(position)
+      io.debug(path)
+      #(untype(tree), position)
+    }
+    _ ->
+      case parent_let(tree, position) {
+        None -> #(untype(tree), position)
+        Some(#(position, 0)) | Some(#(position, 1)) -> #(
+          untype(tree),
+          ast.append_path(position, 2),
+        )
+        Some(#(position, 2)) ->
+          case block_container(tree, position) {
+            // Select whole bottom line
+            None -> #(untype(tree), ast.append_path(position, 2))
+            Some(position) -> move_down(tree, position)
+          }
+      }
   }
 }
 
