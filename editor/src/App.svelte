@@ -47,12 +47,15 @@
     let position = List.fromArray(targetToPosition(event.target));
     let [a, b] = Editor.handle_keydown(expression, position, key, typer);
     untyped = a;
-    // stringify in the gleam code
+    // TODO stringify in the gleam code
     position = "p" + b.toArray().join(",");
     tick().then(() => {
       let after = document.querySelector("[data-position='" + position + "']");
-      console.log(after);
-      after.focus();
+      if (after) {
+        after.focus();
+      } else {
+        console.log("Action had no effect, was not able to focus cursor")
+      }
     });
   }
 
