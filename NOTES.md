@@ -22,7 +22,7 @@ Very small subset of actions working
 - [ ] Reimplement Edit actions that we have had
 - [x] Insert Above/Below
 - [x] Drag left right
-- [ ] Drag up/down
+- [x] Drag up/down
 - [ ] It should be possible to focus/unfocus on a blank
 - [ ] Need a pattern blank
 - [ ] Put values in Blanks, auto complete
