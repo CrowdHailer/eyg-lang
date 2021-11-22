@@ -39,6 +39,10 @@ pub fn handle_keydown(
     "K", False -> space_above(tree, position)
     "h", True -> drag_left(tree, position)
     "l", True -> drag_right(tree, position)
+    "j", True -> drag_down(tree, position)
+    "k", True -> drag_up(tree, position)
+    // equal
+    // row
     "t", False -> wrap_tuple(tree, position)
     "u", False -> unwrap(tree, position)
     "c", False -> call(tree, position, typer)
@@ -266,6 +270,47 @@ fn drag_right(tree, position) {
             ast.append_path(position, cursor + 1),
           )
         }
+      }
+  }
+}
+
+fn drag_down(tree, position) {
+  case closest(tree, position, match_let) {
+    None -> #(untype(tree), position)
+    Some(#(path, 2, #(pattern, value, then))) -> // leave as is, can't drag past un assigned
+    #(untype(tree), position)
+    Some(#(path, _, #(pattern, value, #(_, e.Let(p_after, v_after, then))))) -> {
+      let new = ast.let_(p_after, v_after, ast.let_(pattern, value, then))
+      #(
+        replace_node(tree, path, new),
+        ast.append_path(ast.append_path(path, 2), 0),
+      )
+    }
+    _ -> #(untype(tree), position)
+  }
+}
+
+fn drag_up(tree, original) {
+  case closest(tree, original, match_let) {
+    None -> #(untype(tree), original)
+    Some(#(position, 2, #(pattern, value, then))) -> // leave as is, would meet a 0/1 node first if dragable.
+    #(untype(tree), original)
+    Some(#(position, _, #(pattern, value, then))) ->
+      case parent_path(position) {
+        None -> #(untype(tree), original)
+        Some(#(position, _)) ->
+          case get_element(tree, position) {
+            Expression(#(_, e.Let(p_before, v_before, _))) -> {
+              let new =
+                ast.let_(
+                  pattern,
+                  untype(value),
+                  ast.let_(p_before, untype(v_before), then),
+                )
+              #(replace_node(tree, position, new), ast.append_path(position, 0))
+            }
+            _ -> #(untype(tree), original)
+          }
       }
   }
 }
