@@ -41,7 +41,7 @@ pub fn handle_keydown(
     "l", True -> drag_right(tree, position)
     "j", True -> drag_down(tree, position)
     "k", True -> drag_up(tree, position)
-    // equal
+    "e", False -> wrap_assignment(tree, position)
     // row
     "t", False -> wrap_tuple(tree, position)
     "u", False -> unwrap(tree, position)
@@ -359,6 +359,23 @@ fn block_container(tree, position) {
         Some(#(position, _)) -> block_container(tree, position)
       }
     Expression(expression) -> Some(position)
+  }
+}
+
+fn wrap_assignment(tree, position) {
+  // TODO if already on a let this comes up with a two but it shouldn't
+  case closest(tree, position, match_let) {
+    None -> #(ast.let_(p.Variable(""), untype(tree), ast.hole()), [0])
+    // I don't support let in let yet
+    Some(#(position, 2, #(pattern, value, then))) -> {
+      let new =
+        ast.let_(pattern, value, ast.let_(p.Variable(""), then, ast.hole()))
+      #(
+        replace_node(tree, position, new),
+        ast.append_path(ast.append_path(position, 2), 0),
+      )
+    }
+    _ -> #(untype(tree), position)
   }
 }
 
