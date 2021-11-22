@@ -21,6 +21,7 @@ Very small subset of actions working
 - [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had
 - [ ] Insert Above/Below
+- [ ] Need a pattern blank
 - [ ] Put values in Blanks, auto complete
 - [ ] Tab (Space) to Blanks/Errors
 - [ ] Handle errors, maybe not because gleam shouldn't error
