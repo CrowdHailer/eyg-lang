@@ -20,9 +20,12 @@ Very small subset of actions working
 - [x] Upgrade gleam
 - [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had
-- [ ] Insert Above/Below
+- [x] Insert Above/Below
+- [ ] It should be possible to focus/unfocus on a blank
 - [ ] Need a pattern blank
 - [ ] Put values in Blanks, auto complete
+- [ ] increase selection doesn't work on tuple elements
+- [ ] delete should work on the blanks to clear any preset.
 - [ ] Tab (Space) to Blanks/Errors
 - [ ] Handle errors, maybe not because gleam shouldn't error
 - [ ] Test lambda calculus enums.

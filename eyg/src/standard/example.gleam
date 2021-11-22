@@ -10,7 +10,7 @@ pub fn simple() {
       pattern.Tuple([]),
       ast.let_(
         pattern.Variable("a"),
-        ast.binary("A"),
+        ast.tuple_([ast.binary("A"), ast.binary("B")]),
         ast.let_(
           pattern.Variable("b"),
           ast.binary("B"),
