@@ -1,5 +1,8 @@
 version: "3"
 
+volumes:
+  # Use shared volume that does not get mounted on host to speed up on mac O(100x) improvement
+  gen:
 services:
   editor:
     build:
@@ -8,6 +11,7 @@ services:
     working_dir: /opt/app
     volumes:
       - .:/opt/app
+      - gen:/opt/app/editor/src/gen
     # network_mode unavailable on mac
     # network_mode: host
     # can't have port here because need to start two services
@@ -17,6 +21,7 @@ services:
     working_dir: /opt/app/editor
     volumes:
       - .:/opt/app
+      - gen:/opt/app/editor/src/gen
       # Need to use -p 5000:5000 for access via localhost
     ports:
       - "5000:5000"
