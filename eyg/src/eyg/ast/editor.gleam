@@ -81,7 +81,13 @@ fn increase_selection(tree, position) {
 }
 
 fn decrease_selection(tree, position) {
-  #(untype(tree), ast.append_path(position, 0))
+  case get_element(tree, position) {
+    Expression(#(_, e.Tuple([]))) -> {
+      let new = ast.tuple_([ast.hole()])
+      #(replace_node(tree, position, new), ast.append_path(position, 0))
+    }
+    _ -> #(untype(tree), ast.append_path(position, 0))
+  }
 }
 
 fn move_left(tree, position) {

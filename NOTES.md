@@ -21,12 +21,14 @@ Very small subset of actions working
 - [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had, then close PR's in order and with explination as they are good.
 - [ ] insert space/drag in patterns
-- [ ] down on an empty tuple should create a blank
+- [ ] create a binary
+- [x] down on an empty tuple should create a blank
 - [x] dd for delete that removes something from a tuple, difference in clear and delete
-- [ ] wrapping blank in tuple should be empty, unless we have type information
+- [x] wrapping blank in tuple should be empty, unless we have type information
 - [x] Insert Above/Below
 - [x] Drag left right
 - [x] Drag up/down
+- [ ] rename hole as blank
 - [ ] It should be possible to focus/unfocus on a blank
 - [ ] Need a pattern blank
 - [ ] Put values in Blanks, auto complete
