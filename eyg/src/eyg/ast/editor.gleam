@@ -35,6 +35,8 @@ pub fn handle_keydown(
     "k", False -> move_up(tree, position)
     "H", False -> space_left(tree, position)
     "L", False -> space_right(tree, position)
+    "J", False -> space_below(tree, position)
+    "K", False -> space_above(tree, position)
     "t", False -> wrap_tuple(tree, position)
     "u", False -> unwrap(tree, position)
     "c", False -> call(tree, position, typer)
@@ -185,9 +187,57 @@ fn space_right(tree, position) {
   }
 }
 
+fn space_below(tree, position) {
+  case closest(tree, position, match_let) {
+    None -> #(ast.let_(p.Variable(""), untype(tree), ast.hole()), [2])
+    Some(#(path, 2, #(pattern, value, then))) -> {
+      let new =
+        ast.let_(pattern, value, ast.let_(p.Variable(""), then, ast.hole()))
+      #(
+        replace_node(tree, path, new),
+        ast.append_path(ast.append_path(path, 2), 2),
+      )
+    }
+    Some(#(path, _, #(pattern, value, then))) -> {
+      let new =
+        ast.let_(pattern, value, ast.let_(p.Variable(""), ast.hole(), then))
+      #(
+        replace_node(tree, path, new),
+        ast.append_path(ast.append_path(path, 2), 0),
+      )
+    }
+  }
+}
+
+fn space_above(tree, position) {
+  case closest(tree, position, match_let) {
+    None -> #(ast.let_(p.Variable(""), ast.hole(), untype(tree)), [0])
+    Some(#(path, 2, #(pattern, value, then))) -> {
+      let new =
+        ast.let_(pattern, value, ast.let_(p.Variable(""), ast.hole(), then))
+      #(
+        replace_node(tree, path, new),
+        ast.append_path(ast.append_path(path, 2), 0),
+      )
+    }
+    Some(#(path, _, #(pattern, value, then))) -> {
+      let new =
+        ast.let_(p.Variable(""), ast.hole(), ast.let_(pattern, value, then))
+      #(replace_node(tree, path, new), ast.append_path(path, 0))
+    }
+  }
+}
+
 fn match_tuple(target) {
   case target {
     Expression(#(_, e.Tuple(elements))) -> Ok(list.map(elements, untype))
+    _ -> Error(Nil)
+  }
+}
+
+fn match_let(target) {
+  case target {
+    Expression(#(_, e.Let(p, v, t))) -> Ok(#(p, untype(v), untype(t)))
     _ -> Error(Nil)
   }
 }
@@ -208,13 +258,9 @@ fn closest(
 }
 
 fn parent_let(tree, position) {
-  case parent_path(position) {
+  case closest(tree, position, match_let) {
+    Some(#(path, cursor, _)) -> Some(#(path, cursor))
     None -> None
-    Some(#(position, index)) ->
-      case get_element(tree, position) {
-        Expression(#(_, e.Let(_, _, _))) -> Some(#(position, index))
-        _ -> parent_let(tree, position)
-      }
   }
 }
 
