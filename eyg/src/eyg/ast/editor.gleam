@@ -382,17 +382,23 @@ fn wrap_assignment(tree, position) {
 fn wrap_tuple(tree, position) {
   let target = get_element(tree, position)
   // TODO don't wrap multi line terms
-  let modified = case target {
-    Expression(expression) ->
-      replace_node(tree, position, ast.tuple_([untype(expression)]))
+  let hole_func = ast.generate_hole
+  case target {
+    Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
+      let new = ast.tuple_([])
+      #(replace_node(tree, position, new), position)
+    }
+    Expression(expression) -> {
+      let new = ast.tuple_([untype(expression)])
+      #(replace_node(tree, position, new), ast.append_path(position, 0))
+    }
     Pattern(p.Variable(label)) -> {
       assert Some(#(path, _)) = parent_path(position)
       assert Expression(#(_, e.Let(_, value, then))) = get_element(tree, path)
       let new = ast.let_(p.Tuple([label]), untype(value), untype(then))
-      replace_node(tree, path, new)
+      #(replace_node(tree, position, new), ast.append_path(position, 0))
     }
   }
-  #(modified, ast.append_path(position, 0))
 }
 
 fn unwrap(tree, position) {
