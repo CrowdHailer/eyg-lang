@@ -5,7 +5,6 @@
   import ErrorNotice from "./ErrorNotice.svelte";
   export let position;
   export let metadata;
-  export let global;
   export let value;
 
   let updated;
@@ -59,9 +58,9 @@
 
         sel.removeAllRanges();
         sel.addRange(range);
+        event.preventDefault();
       } else {
       }
-      event.preventDefault();
     }
   }
 </script>

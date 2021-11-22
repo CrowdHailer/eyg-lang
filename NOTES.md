@@ -21,10 +21,11 @@ Very small subset of actions working
 - [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had
 - [x] Insert Above/Below
+- [x] Drag left right
+- [ ] Drag up/down
 - [ ] It should be possible to focus/unfocus on a blank
 - [ ] Need a pattern blank
 - [ ] Put values in Blanks, auto complete
-- [ ] increase selection doesn't work on tuple elements
 - [ ] delete should work on the blanks to clear any preset.
 - [ ] Tab (Space) to Blanks/Errors
 - [ ] Handle errors, maybe not because gleam shouldn't error
@@ -32,6 +33,7 @@ Very small subset of actions working
 - [ ] Pin type, click and bump constraints to top
 - [ ] Show available edit options
 - [ ] Format tuples/records without any brackets
+- [ ] remove old ast elements
   ```
   let a, b = x
   foo a, b => c, d
