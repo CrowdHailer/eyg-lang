@@ -37,6 +37,8 @@ pub fn handle_keydown(
     "L", False -> space_right(tree, position)
     "J", False -> space_below(tree, position)
     "K", False -> space_above(tree, position)
+    "h", True -> drag_left(tree, position)
+    "l", True -> drag_right(tree, position)
     "t", False -> wrap_tuple(tree, position)
     "u", False -> unwrap(tree, position)
     "c", False -> call(tree, position, typer)
@@ -225,6 +227,46 @@ fn space_above(tree, position) {
         ast.let_(p.Variable(""), ast.hole(), ast.let_(pattern, value, then))
       #(replace_node(tree, path, new), ast.append_path(path, 0))
     }
+  }
+}
+
+fn drag_left(tree, position) {
+  case closest(tree, position, match_tuple) {
+    None -> #(untype(tree), position)
+    Some(#(position, cursor, elements)) ->
+      case cursor > 0 {
+        False -> #(untype(tree), ast.append_path(position, 0))
+        True -> {
+          let pre = list.take(elements, cursor - 1)
+          let [me, neighbour, ..post] = list.drop(elements, cursor - 1)
+          let elements = list.flatten([pre, [neighbour, me], post])
+          let new = ast.tuple_(elements)
+          #(
+            replace_node(tree, position, new),
+            ast.append_path(position, cursor - 1),
+          )
+        }
+      }
+  }
+}
+
+fn drag_right(tree, position) {
+  case closest(tree, position, match_tuple) {
+    None -> #(untype(tree), position)
+    Some(#(position, cursor, elements)) ->
+      case cursor + 1 < list.length(elements) {
+        False -> #(untype(tree), ast.append_path(position, cursor))
+        True -> {
+          let pre = list.take(elements, cursor)
+          let [me, neighbour, ..post] = list.drop(elements, cursor)
+          let elements = list.flatten([pre, [neighbour, me], post])
+          let new = ast.tuple_(elements)
+          #(
+            replace_node(tree, position, new),
+            ast.append_path(position, cursor + 1),
+          )
+        }
+      }
   }
 }
 
