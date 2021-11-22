@@ -49,7 +49,7 @@ pub fn provider(config, generator) {
   #(Nil, expression.Provider(config, generator))
 }
 
-fn generate_hole(_config, _type) {
+pub fn generate_hole(_config, _type) {
   binary("TODO this is no implemented")
 }
 
@@ -57,6 +57,7 @@ pub fn hole() {
   provider("", generate_hole)
 }
 
+// can't use this in guards
 pub fn is_hole(generator) {
   generator == generate_hole
 }
