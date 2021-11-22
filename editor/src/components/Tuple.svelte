@@ -1,8 +1,6 @@
 <script>
   import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
-  import * as Ast from "../gen/eyg/ast";
-  import Hole from "./Hole.svelte";
   export let position;
   export let metadata;
   export let elements;
@@ -17,12 +15,6 @@
       position={position.concat(i)}
       expression={element}
       on:edit
-      {global}
-    />{:else}<Hole
-      {position}
-      metadata={Object.assign({}, metadata, {
-        path: Ast.append_path(metadata.path, elements.toArray().length),
-      })}
       {global}
     />{/each}]</span
 ><ErrorNotice type_={metadata.type_} />

@@ -444,12 +444,30 @@ fn call(tree, position, typer) {
 }
 
 fn delete(tree, position) {
+  let hole_func = ast.generate_hole
   let replacement = case get_element(tree, position) {
-    Expression(#(_, e.Let(_, _, then))) -> untype(then)
-    Expression(_) -> ast.hole()
+    Expression(#(_, e.Let(_, _, then))) -> #(
+      replace_node(tree, position, untype(then)),
+      position,
+    )
+    Expression(#(_, e.Provider(_, g))) if g == hole_func ->
+      case parent_path(position) {
+        Some(#(p_path, cursor)) ->
+          case get_element(tree, p_path) {
+            Expression(#(_, e.Tuple(elements))) -> {
+              let pre = list.take(elements, cursor)
+              let post = list.drop(elements, cursor + 1)
+              let elements =
+                list.append(pre, post)
+                |> list.map(untype)
+              #(replace_node(tree, p_path, ast.tuple_(elements)), p_path)
+            }
+            _ -> #(untype(tree), position)
+          }
+        None -> #(untype(tree), position)
+      }
+    Expression(_) -> #(replace_node(tree, position, ast.hole()), position)
   }
-  let modified = replace_node(tree, position, replacement)
-  #(modified, position)
 }
 
 fn parent_path(path) {

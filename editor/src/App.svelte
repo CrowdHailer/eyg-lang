@@ -2,14 +2,12 @@
   import { tick } from "svelte";
 
   import Expression from "./components/Expression.svelte";
-  import { replace_node } from "./gen/eyg/ast/transform";
   import * as Typer from "./gen/eyg/typer";
   import * as Codegen from "./gen/eyg/codegen/javascript";
   import * as AstBare from "./gen/eyg/ast";
   import * as Builders from "./gen/standard/builders";
   const Ast = Object.assign({}, AstBare, Builders);
   import { List } from "./gen/gleam";
-  import * as Edit from "./gen/eyg/ast/edit";
   import * as Editor from "./gen/eyg/ast/editor";
   import * as example from "./gen/standard/example";
   let untyped = example.simple();
