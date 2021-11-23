@@ -1,6 +1,7 @@
 import gleam/list
 
 pub type Pattern {
+  Discard
   Variable(label: String)
   Tuple(elements: List(String))
   Row(fields: List(#(String, String)))
@@ -8,6 +9,13 @@ pub type Pattern {
 
 pub fn variable(label) {
   Variable(label)
+}
+
+pub fn is_discard(pattern) {
+  case pattern {
+    Discard -> True
+    _ -> False
+  }
 }
 
 pub fn is_variable(pattern) {
