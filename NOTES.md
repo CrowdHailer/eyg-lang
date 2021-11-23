@@ -23,13 +23,14 @@ Need to replace lot's of tuple references with tuple or pattern
 - [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had, then close PR's in order and with explination as they are good.
 - [ ] insert space/drag in patterns
-- [ ] create a binary
+- [x] create a binary
 - [x] down on an empty tuple should create a blank
 - [x] dd for delete that removes something from a tuple, difference in clear and delete
 - [x] wrapping blank in tuple should be empty, unless we have type information
 - [x] Insert Above/Below
 - [x] Drag left right
 - [x] Drag up/down
+- [ ] create function
 - [ ] Record types
 - [ ] rename hole as blank
 - [ ] It should be possible to focus/unfocus on a blank

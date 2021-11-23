@@ -41,9 +41,10 @@ pub fn handle_keydown(
     "l", True -> drag_right(tree, position)
     "j", True -> drag_down(tree, position)
     "k", True -> drag_up(tree, position)
-    "e", False -> wrap_assignment(tree, position)
     // row
+    "b", False -> create_binary(tree, position)
     "t", False -> wrap_tuple(tree, position)
+    "e", False -> wrap_assignment(tree, position)
     "u", False -> unwrap(tree, position)
     "c", False -> call(tree, position, typer)
     "d", False -> delete(tree, position)
@@ -388,6 +389,18 @@ fn wrap_assignment(tree, position) {
         replace_node(tree, position, new),
         ast.append_path(ast.append_path(position, 2), 0),
       )
+    }
+    _ -> #(untype(tree), position)
+  }
+}
+
+fn create_binary(tree, position) {
+  let hole_func = ast.generate_hole
+
+  case get_element(tree, position) {
+    Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
+      let new = ast.binary("")
+      #(replace_node(tree, position, new), position)
     }
     _ -> #(untype(tree), position)
   }
