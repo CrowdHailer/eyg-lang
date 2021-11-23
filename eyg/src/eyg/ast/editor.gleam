@@ -168,8 +168,8 @@ fn move_down(tree, position) {
   }
 }
 
-// TODO If already a space don't go again
-// TODO implement for patterns
+// Considered doing nothing in the case that the target element was already blank
+// Decided against to keep code simpler
 fn space_left(tree, position) {
   case closest(tree, position, match_tuple) {
     None -> #(untype(tree), position)
@@ -183,7 +183,7 @@ fn space_left(tree, position) {
     Some(#(position, cursor, TuplePattern(elements))) -> {
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor)
-      let elements = list.flatten([pre, ["BLK"], post])
+      let elements = list.flatten([pre, ["LFT"], post])
       let new = p.Tuple(elements)
       #(replace_pattern(tree, position, new), ast.append_path(position, cursor))
     }
@@ -200,6 +200,14 @@ fn space_right(tree, position) {
       let elements = list.flatten([pre, [ast.hole()], post])
       let new = ast.tuple_(elements)
       #(replace_node(tree, position, new), ast.append_path(position, cursor))
+    }
+    Some(#(position, cursor, TuplePattern(elements))) -> {
+      let cursor = cursor + 1
+      let pre = list.take(elements, cursor)
+      let post = list.drop(elements, cursor)
+      let elements = list.flatten([pre, ["RGT"], post])
+      let new = p.Tuple(elements)
+      #(replace_pattern(tree, position, new), ast.append_path(position, cursor))
     }
   }
 }
@@ -259,6 +267,16 @@ fn drag_left(tree, position) {
                 ast.append_path(position, cursor - 1),
               )
             }
+            TuplePattern(elements) -> {
+              let pre = list.take(elements, cursor - 1)
+              let [me, neighbour, ..post] = list.drop(elements, cursor - 1)
+              let elements = list.flatten([pre, [neighbour, me], post])
+              let new = p.Tuple(elements)
+              #(
+                replace_pattern(tree, position, new),
+                ast.append_path(position, cursor - 1),
+              )
+            }
           }
       }
   }
@@ -277,6 +295,20 @@ fn drag_right(tree, position) {
           let new = ast.tuple_(elements)
           #(
             replace_node(tree, position, new),
+            ast.append_path(position, cursor + 1),
+          )
+        }
+      }
+    Some(#(position, cursor, TuplePattern(elements))) ->
+      case cursor + 1 < list.length(elements) {
+        False -> #(untype(tree), ast.append_path(position, cursor))
+        True -> {
+          let pre = list.take(elements, cursor)
+          let [me, neighbour, ..post] = list.drop(elements, cursor)
+          let elements = list.flatten([pre, [neighbour, me], post])
+          let new = p.Tuple(elements)
+          #(
+            replace_pattern(tree, position, new),
             ast.append_path(position, cursor + 1),
           )
         }
@@ -516,6 +548,20 @@ fn delete(tree, position) {
       }
     Expression(_) -> #(replace_node(tree, position, ast.hole()), position)
     Pattern(_) -> #(replace_pattern(tree, position, p.Discard), position)
+    PatternElement(cursor, _) -> {
+      let Some(#(pattern_position, _)) = parent_path(position)
+      let Pattern(p.Tuple(elements)) = get_element(tree, pattern_position)
+      let elements =
+        list.append(
+          list.take(elements, cursor),
+          list.drop(elements, cursor + 1),
+        )
+      let position = case cursor > 0 {
+        True -> ast.append_path(pattern_position, cursor - 1)
+        False -> pattern_position
+      }
+      #(replace_pattern(tree, pattern_position, p.Tuple(elements)), position)
+    }
   }
 }
 
@@ -551,12 +597,18 @@ pub fn get_element(tree, position) {
     }
     #(_, e.Let(pattern, _, _)), [0] -> Pattern(pattern)
     #(_, e.Let(p.Tuple(elements), _, _)), [0, i] -> {
+      // l.at and this should be an error instead
       let [element, .._] = list.drop(elements, i)
       PatternElement(i, element)
     }
     #(_, e.Let(_, value, _)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(_, _, then)), [2, ..rest] -> get_element(then, rest)
     #(_, e.Function(pattern, _)), [0] -> Pattern(pattern)
+    #(_, e.Function(p.Tuple(elements), _)), [0, i] -> {
+      // l.at and this should be an error instead
+      let [element, .._] = list.drop(elements, i)
+      PatternElement(i, element)
+    }
     #(_, e.Function(_, body)), [1, ..rest] -> get_element(body, rest)
     #(_, e.Call(func, _)), [0, ..rest] -> get_element(func, rest)
     #(_, e.Call(_, with)), [1, ..rest] -> get_element(with, rest)
