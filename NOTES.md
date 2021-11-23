@@ -34,6 +34,7 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Drag up/down
 - [x] create function
 - [ ] Fix saving changes to strings
+- [ ] Need Blanks in tuple patterns, could just be option types
 - [ ] Record types
 - [ ] rename hole as blank
 - [ ] It should be possible to focus/unfocus on a blank
