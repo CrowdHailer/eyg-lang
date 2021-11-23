@@ -45,6 +45,7 @@ pub fn handle_keydown(
     "b", False -> create_binary(tree, position)
     "t", False -> wrap_tuple(tree, position)
     "e", False -> wrap_assignment(tree, position)
+    "f", False -> wrap_function(tree, position)
     "u", False -> unwrap(tree, position)
     "c", False -> call(tree, position, typer)
     "d", False -> delete(tree, position)
@@ -429,6 +430,16 @@ fn wrap_tuple(tree, position) {
         ast.append_path(position, 0),
       )
     }
+  }
+}
+
+fn wrap_function(tree, position) {
+  case get_element(tree, position) {
+    Expression(expression) -> {
+      let new = ast.function(p.Discard, untype(expression))
+      #(replace_node(tree, position, new), ast.append_path(position, 0))
+    }
+    _ -> #(untype(tree), position)
   }
 }
 
