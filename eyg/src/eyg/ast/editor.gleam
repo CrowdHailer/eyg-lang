@@ -122,32 +122,24 @@ fn move_right(tree, position) {
 
 // TODO not very sure how this works
 fn move_up(tree, position) {
-  case get_element(tree, position) {
-    Expression(#(_, e.Let(_, _, _))) -> {
-      io.debug("leeet")
-      let path = case parent_path(position) {
+  let position = case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, _))) ->
+      case parent_path(position) {
         Some(#(p, _)) -> p
         None -> position
       }
-      io.debug(position)
-      io.debug(path)
-      #(untype(tree), position)
-    }
     _ ->
       case parent_let(tree, position) {
-        None -> #(untype(tree), position)
-        Some(#(position, 0)) | Some(#(position, 1)) -> #(
-          untype(tree),
-          ast.append_path(position, 2),
-        )
-        Some(#(position, 2)) ->
-          case block_container(tree, position) {
-            // Select whole bottom line
-            None -> #(untype(tree), ast.append_path(position, 2))
-            Some(position) -> move_down(tree, position)
+        None -> position
+        Some(#(p, 0)) | Some(#(p, 1)) ->
+          case parent_path(p) {
+            Some(#(p, _)) -> p
+            None -> p
           }
+        Some(#(p, 2)) -> p
       }
   }
+  #(untype(tree), position)
 }
 
 // TODO handle moving into blocks
