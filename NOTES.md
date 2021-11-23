@@ -20,9 +20,11 @@ Very small subset of actions working
 Need to replace lot's of tuple references with tuple or pattern
 
 - [x] Upgrade gleam
-- [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had, then close PR's in order and with explination as they are good.
-- [ ] insert space/drag in patterns
+- [ ] Put variables in Blanks, auto complete
+- [ ] Tab (Space) to Blanks/Errors
+- [ ] Load/Save files
+- [x] insert space/drag in patterns
 - [x] create a binary
 - [x] down on an empty tuple should create a blank
 - [x] dd for delete that removes something from a tuple, difference in clear and delete
@@ -35,10 +37,8 @@ Need to replace lot's of tuple references with tuple or pattern
 - [ ] Record types
 - [ ] rename hole as blank
 - [ ] It should be possible to focus/unfocus on a blank
-- [ ] Need a pattern blank
-- [ ] Put values in Blanks, auto complete
+- [x] Need a pattern blank
 - [ ] delete should work on the blanks to clear any preset.
-- [ ] Tab (Space) to Blanks/Errors
 - [ ] Handle errors, maybe not because gleam shouldn't error
 - [ ] Test lambda calculus enums.
 - [ ] Pin type, click and bump constraints to top
