@@ -30,7 +30,8 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Insert Above/Below
 - [x] Drag left right
 - [x] Drag up/down
-- [ ] create function
+- [x] create function
+- [ ] Fix saving changes to strings
 - [ ] Record types
 - [ ] rename hole as blank
 - [ ] It should be possible to focus/unfocus on a blank
