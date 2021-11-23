@@ -452,16 +452,15 @@ fn wrap_tuple(tree, position) {
       let new = ast.tuple_([untype(expression)])
       #(replace_node(tree, position, new), ast.append_path(position, 0))
     }
-    Pattern(p.Variable(label)) -> {
-      assert Some(#(assignment_position, _)) = parent_path(position)
-      assert Expression(#(_, e.Let(_, value, then))) =
-        get_element(tree, assignment_position)
-      let new = ast.let_(p.Tuple([label]), untype(value), untype(then))
-      #(
-        replace_node(tree, assignment_position, new),
-        ast.append_path(position, 0),
-      )
-    }
+    Pattern(p.Variable(label)) -> #(
+      replace_pattern(tree, position, p.Tuple([label])),
+      ast.append_path(position, 0),
+    )
+    Pattern(p.Discard) -> #(
+      replace_pattern(tree, position, p.Tuple([])),
+      position,
+    )
+    PatternElement(_, _) | Pattern(_) -> #(untype(tree), position)
   }
 }
 
