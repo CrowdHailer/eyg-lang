@@ -139,6 +139,11 @@ fn set_variable(variable, state) {
 
 fn pattern_type(pattern, typer) {
   case pattern {
+    pattern.Discard -> {
+      let #(x, typer) = polytype.next_unbound(typer)
+      let type_var = monotype.Unbound(x)
+      #(type_var, [], typer)
+    }
     pattern.Variable(label) -> {
       let #(x, typer) = polytype.next_unbound(typer)
       let type_var = monotype.Unbound(x)
@@ -294,7 +299,7 @@ pub fn infer(
       #(expression, typer)
     }
     Variable(label) -> {
-      // Returns typer because of instantiation, 
+      // Returns typer because of instantiation,
       let #(type_, typer) = case get_variable(label, typer) {
         Ok(#(given, typer)) -> do_unify(expected, given, typer)
         Error(#(reason, _)) -> #(Error(reason), typer)

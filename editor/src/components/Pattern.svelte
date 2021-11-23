@@ -12,7 +12,14 @@
 
 <!-- Bubble everything to the top does an onchange event bubble -->
 
-{#if Pattern.is_variable(pattern)}
+{#if Pattern.is_discard(pattern)}
+  <span
+    tabindex="-1"
+    data-position={"p" + position.join(",")}
+    class="border-2 border-white focus:border-indigo-300 outline-none rounded"
+    >_</span
+  >
+{:else if Pattern.is_variable(pattern)}
   <!-- add a p0 on the end of the id tree -->
   <!-- bubble event out from here -->
   <!-- Think more about tope level everything BUT that means we need to capture key presses for editing variables and binary -->

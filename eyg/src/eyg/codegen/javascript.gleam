@@ -105,6 +105,12 @@ pub fn render(tree: Expression(typer.Metadata), state) {
     Let(pattern, value, then) -> {
       let value = maybe_wrap_expression(value, state)
       let #(assignment, state) = case pattern {
+        pattern.Discard -> {
+          // Don't add any labelled variables into scope
+          // let state = with_assignment(label, state)
+          let assignment = string.join(["let ", "_", " = "])
+          #(wrap_lines(assignment, value, ";"), state)
+        }
         pattern.Variable(label) -> {
           let state = with_assignment(label, state)
           let assignment =

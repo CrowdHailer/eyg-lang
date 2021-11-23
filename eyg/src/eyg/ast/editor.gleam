@@ -86,6 +86,10 @@ fn decrease_selection(tree, position) {
       let new = ast.tuple_([ast.hole()])
       #(replace_node(tree, position, new), ast.append_path(position, 0))
     }
+    Pattern(p.Tuple([])) -> #(
+      replace_pattern(tree, position, p.Tuple(["BLK"])),
+      ast.append_path(position, 0),
+    )
     _ -> #(untype(tree), ast.append_path(position, 0))
   }
 }
@@ -175,12 +179,19 @@ fn move_down(tree, position) {
 fn space_left(tree, position) {
   case closest(tree, position, match_tuple) {
     None -> #(untype(tree), position)
-    Some(#(position, cursor, elements)) -> {
+    Some(#(position, cursor, TupleExpression(elements))) -> {
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor)
       let elements = list.flatten([pre, [ast.hole()], post])
       let new = ast.tuple_(elements)
       #(replace_node(tree, position, new), ast.append_path(position, cursor))
+    }
+    Some(#(position, cursor, TuplePattern(elements))) -> {
+      let pre = list.take(elements, cursor)
+      let post = list.drop(elements, cursor)
+      let elements = list.flatten([pre, ["BLK"], post])
+      let new = p.Tuple(elements)
+      #(replace_pattern(tree, position, new), ast.append_path(position, cursor))
     }
   }
 }
@@ -188,7 +199,7 @@ fn space_left(tree, position) {
 fn space_right(tree, position) {
   case closest(tree, position, match_tuple) {
     None -> #(untype(tree), position)
-    Some(#(position, cursor, elements)) -> {
+    Some(#(position, cursor, TupleExpression(elements))) -> {
       let cursor = cursor + 1
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor)
@@ -201,18 +212,16 @@ fn space_right(tree, position) {
 
 fn space_below(tree, position) {
   case closest(tree, position, match_let) {
-    None -> #(ast.let_(p.Variable(""), untype(tree), ast.hole()), [2])
+    None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [2])
     Some(#(path, 2, #(pattern, value, then))) -> {
-      let new =
-        ast.let_(pattern, value, ast.let_(p.Variable(""), then, ast.hole()))
+      let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
       #(
         replace_node(tree, path, new),
         ast.append_path(ast.append_path(path, 2), 2),
       )
     }
     Some(#(path, _, #(pattern, value, then))) -> {
-      let new =
-        ast.let_(pattern, value, ast.let_(p.Variable(""), ast.hole(), then))
+      let new = ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
       #(
         replace_node(tree, path, new),
         ast.append_path(ast.append_path(path, 2), 0),
@@ -223,18 +232,16 @@ fn space_below(tree, position) {
 
 fn space_above(tree, position) {
   case closest(tree, position, match_let) {
-    None -> #(ast.let_(p.Variable(""), ast.hole(), untype(tree)), [0])
+    None -> #(ast.let_(p.Discard, ast.hole(), untype(tree)), [0])
     Some(#(path, 2, #(pattern, value, then))) -> {
-      let new =
-        ast.let_(pattern, value, ast.let_(p.Variable(""), ast.hole(), then))
+      let new = ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
       #(
         replace_node(tree, path, new),
         ast.append_path(ast.append_path(path, 2), 0),
       )
     }
     Some(#(path, _, #(pattern, value, then))) -> {
-      let new =
-        ast.let_(p.Variable(""), ast.hole(), ast.let_(pattern, value, then))
+      let new = ast.let_(p.Discard, ast.hole(), ast.let_(pattern, value, then))
       #(replace_node(tree, path, new), ast.append_path(path, 0))
     }
   }
@@ -243,19 +250,22 @@ fn space_above(tree, position) {
 fn drag_left(tree, position) {
   case closest(tree, position, match_tuple) {
     None -> #(untype(tree), position)
-    Some(#(position, cursor, elements)) ->
+    Some(#(position, cursor, match)) ->
       case cursor > 0 {
         False -> #(untype(tree), ast.append_path(position, 0))
-        True -> {
-          let pre = list.take(elements, cursor - 1)
-          let [me, neighbour, ..post] = list.drop(elements, cursor - 1)
-          let elements = list.flatten([pre, [neighbour, me], post])
-          let new = ast.tuple_(elements)
-          #(
-            replace_node(tree, position, new),
-            ast.append_path(position, cursor - 1),
-          )
-        }
+        True ->
+          case match {
+            TupleExpression(elements) -> {
+              let pre = list.take(elements, cursor - 1)
+              let [me, neighbour, ..post] = list.drop(elements, cursor - 1)
+              let elements = list.flatten([pre, [neighbour, me], post])
+              let new = ast.tuple_(elements)
+              #(
+                replace_node(tree, position, new),
+                ast.append_path(position, cursor - 1),
+              )
+            }
+          }
       }
   }
 }
@@ -263,7 +273,7 @@ fn drag_left(tree, position) {
 fn drag_right(tree, position) {
   case closest(tree, position, match_tuple) {
     None -> #(untype(tree), position)
-    Some(#(position, cursor, elements)) ->
+    Some(#(position, cursor, TupleExpression(elements))) ->
       case cursor + 1 < list.length(elements) {
         False -> #(untype(tree), ast.append_path(position, cursor))
         True -> {
@@ -321,9 +331,16 @@ fn drag_up(tree, original) {
   }
 }
 
-fn match_tuple(target) {
+type TupleMatch {
+  TupleExpression(elements: List(e.Expression(Nil)))
+  TuplePattern(elements: List(String))
+}
+
+fn match_tuple(target) -> Result(TupleMatch, Nil) {
   case target {
-    Expression(#(_, e.Tuple(elements))) -> Ok(list.map(elements, untype))
+    Expression(#(_, e.Tuple(elements))) ->
+      Ok(TupleExpression(list.map(elements, untype)))
+    Pattern(p.Tuple(elements)) -> Ok(TuplePattern(elements))
     _ -> Error(Nil)
   }
 }
@@ -371,11 +388,10 @@ fn block_container(tree, position) {
 fn wrap_assignment(tree, position) {
   // TODO if already on a let this comes up with a two but it shouldn't
   case closest(tree, position, match_let) {
-    None -> #(ast.let_(p.Variable(""), untype(tree), ast.hole()), [0])
+    None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [0])
     // I don't support let in let yet
     Some(#(position, 2, #(pattern, value, then))) -> {
-      let new =
-        ast.let_(pattern, value, ast.let_(p.Variable(""), then, ast.hole()))
+      let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
       #(
         replace_node(tree, position, new),
         ast.append_path(ast.append_path(position, 2), 0),
@@ -399,10 +415,14 @@ fn wrap_tuple(tree, position) {
       #(replace_node(tree, position, new), ast.append_path(position, 0))
     }
     Pattern(p.Variable(label)) -> {
-      assert Some(#(path, _)) = parent_path(position)
-      assert Expression(#(_, e.Let(_, value, then))) = get_element(tree, path)
+      assert Some(#(assignment_position, _)) = parent_path(position)
+      assert Expression(#(_, e.Let(_, value, then))) =
+        get_element(tree, assignment_position)
       let new = ast.let_(p.Tuple([label]), untype(value), untype(then))
-      #(replace_node(tree, position, new), ast.append_path(position, 0))
+      #(
+        replace_node(tree, assignment_position, new),
+        ast.append_path(position, 0),
+      )
     }
   }
 }
@@ -479,6 +499,23 @@ fn delete(tree, position) {
         None -> #(untype(tree), position)
       }
     Expression(_) -> #(replace_node(tree, position, ast.hole()), position)
+    Pattern(_) -> #(replace_pattern(tree, position, p.Discard), position)
+  }
+}
+
+fn replace_pattern(tree, position, pattern) {
+  // while we don't have arbitrary nesting in patterns don't update replace node, instead
+  // manually step up once
+  let Some(#(let_position, 0)) = parent_path(position)
+  case get_element(tree, let_position) {
+    Expression(#(_, e.Let(_, value, then))) -> {
+      let new = ast.let_(pattern, untype(value), untype(then))
+      replace_node(tree, let_position, new)
+    }
+    Expression(#(_, e.Function(_, body))) -> {
+      let new = ast.function(pattern, untype(body))
+      replace_node(tree, let_position, new)
+    }
   }
 }
 
@@ -530,7 +567,6 @@ pub fn map_node(
   mapper: fn(e.Expression(a)) -> e.Expression(Nil),
 ) -> e.Expression(Nil) {
   let #(_, node) = tree
-  io.debug(node)
   case node, path {
     _, [] -> mapper(tree)
     e.Tuple(elements), [index, ..rest] -> {

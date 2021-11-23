@@ -17,6 +17,8 @@ language/public are basically dead directories
 Editor replaces edit actions and starts from key press so that the JS is not expected to handle creatin actions.
 Very small subset of actions working
 
+Need to replace lot's of tuple references with tuple or pattern
+
 - [x] Upgrade gleam
 - [ ] Load/Save files
 - [ ] Reimplement Edit actions that we have had, then close PR's in order and with explination as they are good.
@@ -28,6 +30,7 @@ Very small subset of actions working
 - [x] Insert Above/Below
 - [x] Drag left right
 - [x] Drag up/down
+- [ ] Record types
 - [ ] rename hole as blank
 - [ ] It should be possible to focus/unfocus on a blank
 - [ ] Need a pattern blank
