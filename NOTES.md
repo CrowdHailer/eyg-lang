@@ -6,7 +6,7 @@ This is only editor code and copies the eyg code only once.
 2. Run a terminal for the editor image, cd in to the editor directory and run npm run dev.
 This also starts a server, need port 5000 mapped
 `docker-compose run -p 5000:5000 editor_frontend npm run dev`
-3.
+3. run tests in eyg folder with `./bin/test` VERY slow with mounted volume on mac
 
 Note network mode host is not supported on mac.
 
@@ -20,9 +20,10 @@ Very small subset of actions working
 Need to replace lot's of tuple references with tuple or pattern
 
 - [x] Upgrade gleam
-- [ ] Reimplement Edit actions that we have had, then close PR's in order and with explination as they are good.
+- [ ] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [ ] Put variables in Blanks, auto complete
 - [ ] Tab (Space) to Blanks/Errors
+- [ ] Fix tests
 - [ ] Load/Save files
 - [x] insert space/drag in patterns
 - [x] create a binary
@@ -33,6 +34,7 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Drag left right
 - [x] Drag up/down
 - [x] create function
+- [ ] holes can be printed as `todo` Red, pattern discard is underscore. all blanks should have a value.
 - [ ] Fix saving changes to strings
 - [ ] Need Blanks in tuple patterns, could just be option types
 - [ ] Record types

@@ -162,8 +162,8 @@ pub fn render(tree: Expression(typer.Metadata), state) {
       list.append(assignment, render(then, state))
     }
     Variable(label) -> wrap_return([render_label(label, state)], state)
-    Function(for, body) -> {
-      assert pattern.Tuple(for) = for
+    Function(pattern.Tuple(for), body) -> {
+      // assert  = for
       let #(for, state) =
         list.map_state(
           for,
@@ -186,6 +186,8 @@ pub fn render(tree: Expression(typer.Metadata), state) {
       }
       |> wrap_return(state)
     }
+    Function(pattern.Row(_), body) -> // todo
+    ["TODO"]
     Call(function, with) -> {
       assert #(_, Tuple(with)) = with
       let function = render(function, in_tail(False, state))

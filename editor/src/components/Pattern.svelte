@@ -34,16 +34,27 @@
     tabindex="-1"
     data-position={"p" + position.join(",")}
     class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
-    >[{#each pattern.elements.toArray() as element, i}<span
+    >{#each pattern.elements.toArray() as element, i}<span
         tabindex="-1"
         class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
         data-position={"p" + position.concat(i).join(",")}>{element}</span
       >{#if i < pattern.elements.length - 1}
         ,
       {/if}
-    {/each}]</span
+    {/each}</span
   >
-{:else}{JSON.stringify(pattern)}{/if}
+{:else}<span
+tabindex="-1"
+data-position={"p" + position.join(",")}
+class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+>{#each pattern.fields.toArray() as [label, variable], i}<span
+    tabindex="-1"
+    class=""
+    data-position={"p" + position.concat(i).join(",")}><span class="text-purple-600">{label}</span>: <span class="text-blue-500">{variable}</span></span
+  >{#if i < pattern.fields.toArray().length - 1}
+    ,
+  {/if}{/each}</span
+>{/if}
 
 <style>
   span.required {

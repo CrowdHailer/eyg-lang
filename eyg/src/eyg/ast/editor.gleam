@@ -15,6 +15,10 @@ pub type Element {
   PatternElement(Int, String)
 }
 
+pub fn multiline(fields) {
+  list.length(fields) > 1
+}
+
 // TODO write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
