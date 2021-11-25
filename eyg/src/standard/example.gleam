@@ -20,6 +20,19 @@ pub fn boolean() {
         ast.call(ast.variable("F"), ast.tuple_([])),
       ),
     ),
+    #(
+      "and",
+      ast.function(
+        pattern.Tuple(["a", "b"]),
+        ast.call(
+          ast.variable("a"),
+          ast.row([
+            #("True", ast.function(pattern.Tuple([]), ast.variable("b"))),
+            #("False", ast.function(pattern.Tuple([]), ast.variable("False"))),
+          ]),
+        ),
+      ),
+    ),
   ])
 }
 

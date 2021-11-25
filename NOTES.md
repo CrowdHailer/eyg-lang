@@ -19,6 +19,8 @@ Very small subset of actions working
 
 Need to replace lot's of tuple references with tuple or pattern
 
+- Tuples need brackets to show tuples in tuples
+
 - [x] Upgrade gleam
 - [ ] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [ ] Put variables in Blanks, auto complete
