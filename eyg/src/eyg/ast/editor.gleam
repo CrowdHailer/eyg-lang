@@ -598,6 +598,10 @@ pub fn get_element(tree, position) {
       let [child, .._] = list.drop(elements, i)
       get_element(child, rest)
     }
+    #(_, e.Row(fields)), [i, ..rest] -> {
+      let [#(_, child), .._] = list.drop(fields, i)
+      get_element(child, rest)
+    }
     #(_, e.Let(pattern, _, _)), [0] -> Pattern(pattern)
     #(_, e.Let(p.Tuple(elements), _, _)), [0, i] -> {
       // l.at and this should be an error instead
@@ -649,6 +653,26 @@ pub fn map_node(
       let updated = map_node(current, rest, mapper)
       let elements = list.flatten([pre, [updated], post])
       ast.tuple_(elements)
+    }
+    e.Row(fields), [index, ..rest] -> {
+      let pre =
+        list.take(fields, index)
+        |> list.map(fn(x) {
+          let #(k, v) = x
+          #(k, untype(v))
+        })
+      let [#(k, current), ..post] = list.drop(fields, index)
+      let post =
+        list.map(
+          post,
+          fn(x) {
+            let #(k, v) = x
+            #(k, untype(v))
+          },
+        )
+      let updated = map_node(current, rest, mapper)
+      let fields = list.flatten([pre, [#(k, updated)], post])
+      ast.row(fields)
     }
     e.Let(pattern, value, then), [1, ..rest] ->
       ast.let_(pattern, map_node(value, rest, mapper), untype(then))

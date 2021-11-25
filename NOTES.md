@@ -20,6 +20,7 @@ Very small subset of actions working
 Need to replace lot's of tuple references with tuple or pattern
 
 - Tuples need brackets to show tuples in tuples
+- Finishing up the autocomplete. Was previously a hack based on the presentation of the blank. Best to bump to top level and put in a sticky container.
 
 - [x] Upgrade gleam
 - [ ] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
@@ -36,10 +37,11 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Drag left right
 - [x] Drag up/down
 - [x] create function
+- [ ] insert before after on records requires a path to the record element
 - [ ] holes can be printed as `todo` Red, pattern discard is underscore. all blanks should have a value.
 - [ ] Fix saving changes to strings
 - [ ] Need Blanks in tuple patterns, could just be option types
-- [ ] Record types
+- [x] Record types
 - [ ] rename hole as blank
 - [ ] It should be possible to focus/unfocus on a blank
 - [x] Need a pattern blank
