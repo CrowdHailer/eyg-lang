@@ -3,6 +3,7 @@ version: "3"
 volumes:
   # Use shared volume that does not get mounted on host to speed up on mac O(100x) improvement
   gen:
+  eyg_gen:
 services:
   editor:
     build:
@@ -12,6 +13,7 @@ services:
     volumes:
       - .:/opt/app
       - gen:/opt/app/editor/src/gen
+      - eyg_gen:/opt/app/eyg/gen
     # network_mode unavailable on mac
     # network_mode: host
     # can't have port here because need to start two services
