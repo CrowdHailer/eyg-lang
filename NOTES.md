@@ -17,10 +17,10 @@ Need to replace lot's of tuple references with tuple or pattern
 - Tuples need brackets to show tuples in tuples
 
 - [x] Upgrade gleam
-- [ ] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
+- [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [ ] Put variables in Blanks, auto complete
 - [ ] Tab (Space) to Blanks/Errors
-- [ ] Fix tests
+- [x] Fix tests
 - [ ] Load/Save files
 - [x] insert space/drag in patterns
 - [x] create a binary
