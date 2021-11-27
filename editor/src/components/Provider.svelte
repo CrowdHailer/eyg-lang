@@ -1,6 +1,5 @@
 <script>
   import { tick } from "svelte";
-  import ErrorNotice from "./ErrorNotice.svelte";
   import Hole from "./Hole.svelte";
   import * as AstBare from "../gen/eyg/ast";
   import * as Builders from "../gen/standard/builders";
@@ -67,4 +66,4 @@
       bind:textContent={config}
       on:blur={handleBlur}
     />"&gt;</span
-  >{/if}<ErrorNotice type_={metadata.type_} />
+  >{/if}

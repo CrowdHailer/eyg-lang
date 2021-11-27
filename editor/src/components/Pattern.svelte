@@ -1,8 +1,5 @@
 <script>
-  import { tick } from "svelte";
-  import * as Ast from "../gen/eyg/ast";
   import * as Pattern from "../gen/eyg/ast/pattern";
-  import { List } from "../gen/gleam";
 
   export let position;
   export let metadata;

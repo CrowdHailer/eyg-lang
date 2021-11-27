@@ -1,5 +1,4 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
   export let position;
   export let metadata;
@@ -14,5 +13,4 @@
     {global}
     position={position.concat(0)}
   />(<Expression expression={with_} {global} position={position.concat(1)} />)
-  <ErrorNotice type_={metadata.type_} />
 </span>

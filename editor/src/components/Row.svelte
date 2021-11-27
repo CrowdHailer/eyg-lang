@@ -1,5 +1,4 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import * as Editor from "../gen/eyg/ast/editor";
@@ -24,4 +23,3 @@
     <Expression position={position.concat(i)} expression={value} {global} />{#if i < fields.toArray().length - 1},{/if}{#if multiline}<br />{/if}
   {/each}
 </Indent></span>
-<ErrorNotice type_={metadata.type_} />

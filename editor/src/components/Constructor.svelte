@@ -1,7 +1,5 @@
 <script>
   import TermInput from "./TermInput.svelte";
-  import * as Ast from "../gen/eyg/ast";
-  import ErrorNotice from "./ErrorNotice.svelte";
 
   export let named;
   export let variant;
@@ -16,4 +14,3 @@
   initial={variant}
   on:change={handleVariantChange}
 />
-<ErrorNotice type_={metadata.type_} />

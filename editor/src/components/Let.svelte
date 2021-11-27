@@ -1,7 +1,5 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
-  import * as Ast from "../gen/eyg/ast";
   import Pattern from "./Pattern.svelte";
 
   export let position;
@@ -30,7 +28,6 @@
     {global}
     position={position.concat(1)}
   />
-  <ErrorNotice type_={metadata.type_} />
 </p>
 <Expression
   expression={then}
