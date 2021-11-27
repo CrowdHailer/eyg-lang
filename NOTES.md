@@ -10,17 +10,11 @@ This also starts a server, need port 5000 mapped
 
 Note network mode host is not supported on mac.
 
-There are some tests in the Eyg repo
-
 language/public are basically dead directories
-
-Editor replaces edit actions and starts from key press so that the JS is not expected to handle creatin actions.
-Very small subset of actions working
 
 Need to replace lot's of tuple references with tuple or pattern
 
 - Tuples need brackets to show tuples in tuples
-- Finishing up the autocomplete. Was previously a hack based on the presentation of the blank. Best to bump to top level and put in a sticky container.
 
 - [x] Upgrade gleam
 - [ ] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
