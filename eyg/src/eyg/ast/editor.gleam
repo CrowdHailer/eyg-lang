@@ -49,12 +49,30 @@ pub fn is_select(editor) {
   }
 }
 
+// target_scope
 pub fn in_scope(editor) {
   let Editor(tree: tree, position: position, ..) = editor
   case get_element(tree, position) {
     Expression(#(metadata, _)) ->
       list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
     _ -> []
+  }
+}
+
+// target_type
+pub fn target_type(editor) {
+  let Editor(tree: tree, typer: typer, position: position, ..) = editor
+  case get_element(tree, position) {
+    Expression(#(metadata, _)) ->
+      // TODO on let type information should be type of value
+      // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
+      case metadata.type_ {
+        Ok(t) ->
+          monotype.resolve(t, typer.substitutions)
+          |> monotype.to_string()
+        Error(reason) -> typer.reason_to_string(reason)
+      }
+    _ -> ""
   }
 }
 
@@ -106,9 +124,6 @@ pub fn handle_keydown(editor, key, ctrl_key) {
         None -> #(tree, typer)
         Some(untyped) -> typer.infer_unconstrained(untyped)
       }
-      let #(type_, scope) = get_target_info(typed, position, typer)
-      // TODO make render with internal state private
-      let generated = javascript.render_to_string(typed, typer)
       Editor(
         ..editor,
         tree: typed,
@@ -147,26 +162,6 @@ pub fn multiline(fields) {
 // TODO write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
-
-// TODO remove
-fn get_target_info(typed, position, typer: State) {
-  case get_element(typed, position) {
-    Expression(#(metadata, _)) -> {
-      // TODO on let type information should be type of value
-      // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
-      let type_ = case metadata.type_ {
-        Ok(t) ->
-          monotype.resolve(t, typer.substitutions)
-          |> monotype.to_string()
-        Error(reason) -> typer.reason_to_string(reason)
-      }
-      let scope =
-        list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
-      #(type_, scope)
-    }
-    _ -> #("Unknown", [])
-  }
-}
 
 fn handle_transformation(
   tree: e.Expression(Metadata),

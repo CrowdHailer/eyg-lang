@@ -73,8 +73,7 @@
   <!-- but we need to capture key strokes on buttons -->
   <div class="sticky bottom-0 bg-white py-2">
     {#if Editor.is_command(editor)}
-    <!-- TODO show type information -->
-    <!-- <p>type: {type}</p> -->
+    <p>type: {Editor.target_type(editor)}</p>
 
     <p>{editor.position.toArray().join(",")}</p>
     {:else if Editor.is_draft(editor)}
