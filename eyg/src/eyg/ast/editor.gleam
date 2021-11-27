@@ -55,6 +55,16 @@ fn get_target_info(typed, position, typer: State) {
   }
 }
 
+pub fn place_variable(tree, position, label) {
+  let untyped = replace_node(tree, position, ast.variable(label))
+  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  let #(type_, scope) = get_target_info(typed, position, typer)
+
+  // TODO make render with internal state private
+  let generated = javascript.render_to_string(typed, typer)
+  Editor(typed, typer, position, type_, scope, generated)
+}
+
 pub fn handle_focus(typed, position, typer) {
   get_target_info(typed, position, typer)
 }
