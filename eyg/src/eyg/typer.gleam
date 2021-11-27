@@ -1,6 +1,8 @@
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import eyg/ast
 import eyg/ast/expression.{
   Binary, Call, Expression, Function, Let, Provider, Row, Tuple, Variable,
@@ -16,25 +18,27 @@ pub type Reason {
   UnmatchedTypes(expected: monotype.Monotype, given: monotype.Monotype)
   MissingFields(expected: List(#(String, monotype.Monotype)))
   UnexpectedFields(expected: List(#(String, monotype.Monotype)))
-  UnknownType(name: String)
-  UnknownVariant(variant: String, in: String)
-  DuplicateType(name: String)
-  RedundantClause(match: String)
-  UnhandledVariants(remaining: List(String))
 }
 
 pub fn reason_to_string(reason) {
   case reason {
-    IncorrectArity(expected, given) -> "incorrectarity"
-    UnknownVariable(label) -> "unknownvariable"
-    UnmatchedTypes(expected, given) -> "unmatchedtypes"
+    IncorrectArity(expected, given) ->
+      string.join([
+        "Incorrect Arity expected ",
+        int.to_string(expected),
+        " given ",
+        int.to_string(given),
+      ])
+    UnknownVariable(label) -> string.join(["Unknown variable: \"", label, "\""])
+    UnmatchedTypes(expected, given) ->
+      string.join([
+        "Unmatched types expected ",
+        monotype.to_string(expected),
+        " given ",
+        monotype.to_string(given),
+      ])
     MissingFields(expected) -> "missingfields"
     UnexpectedFields(expected) -> "unexpectedfields"
-    UnknownType(name) -> "unknowntype"
-    UnknownVariant(variant, in) -> "unknownvariant"
-    DuplicateType(name) -> "duplicatetype"
-    RedundantClause(match) -> "redundantclause"
-    UnhandledVariants(remaining) -> "unhandledvariants"
   }
 }
 

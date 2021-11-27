@@ -49,7 +49,6 @@ pub fn is_select(editor) {
   }
 }
 
-// target_scope
 pub fn in_scope(editor) {
   let Editor(tree: tree, position: position, ..) = editor
   case get_element(tree, position) {
@@ -59,20 +58,25 @@ pub fn in_scope(editor) {
   }
 }
 
-// target_type
+fn expression_type(expression: e.Expression(Metadata), typer: polytype.State) {
+  let #(metadata, _) = expression
+  case metadata.type_ {
+    Ok(t) -> #(
+      False,
+      monotype.resolve(t, typer.substitutions)
+      |> monotype.to_string(),
+    )
+    Error(reason) -> #(True, typer.reason_to_string(reason))
+  }
+}
+
 pub fn target_type(editor) {
   let Editor(tree: tree, typer: typer, position: position, ..) = editor
+  // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
   case get_element(tree, position) {
-    Expression(#(metadata, _)) ->
-      // TODO on let type information should be type of value
-      // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
-      case metadata.type_ {
-        Ok(t) ->
-          monotype.resolve(t, typer.substitutions)
-          |> monotype.to_string()
-        Error(reason) -> typer.reason_to_string(reason)
-      }
-    _ -> ""
+    Expression(#(_, e.Let(_, value, _))) -> expression_type(value, typer)
+    Expression(expression) -> expression_type(expression, typer)
+    _ -> #(False, "")
   }
 }
 

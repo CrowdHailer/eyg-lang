@@ -70,7 +70,11 @@
   />
   <div class="sticky bottom-0 bg-white py-2">
     {#if Editor.is_command(editor)}
-    <p>type: {Editor.target_type(editor)}</p>
+    {#if Editor.target_type(editor)[0]}
+      <p class="bg-red-500 rounded p-1 text-white">{Editor.target_type(editor)[1]}</p>
+      {:else}
+      <p>type: {Editor.target_type(editor)[1]}</p>
+    {/if}
     {:else if Editor.is_draft(editor)}
     <input
       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
