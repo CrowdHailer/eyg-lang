@@ -202,6 +202,13 @@ pub type Metadata {
   )
 }
 
+pub fn is_error(metadata) {
+  case metadata {
+    Metadata(type_: Error(_), ..) -> True
+    _ -> False
+  }
+}
+
 pub fn get_type(tree: Expression(Metadata)) -> Result(monotype.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_

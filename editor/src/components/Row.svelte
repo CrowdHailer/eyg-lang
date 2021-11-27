@@ -2,6 +2,7 @@
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import * as Editor from "../gen/eyg/ast/editor";
+  import * as Typer from "../gen/eyg/typer";
 
   export let position;
   export let metadata;
@@ -10,12 +11,15 @@
 
   let multiline = false;
   multiline = Editor.multiline(fields)
+  let error = false
+  $: error = Typer.is_error(metadata)
 </script>
 
 <span
   tabindex="-1"
   data-position={"p" + position.join(",")}
-  class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"><Indent {multiline}>
+  class="border-2 border-white focus:border-indigo-300 outline-none rounded"
+  class:border-red-500={error}><Indent {multiline}>
   {#each fields.toArray() as [label, value], i}
     <span class="text-purple-600">{label}</span><span class="text-gray-500"
       >:</span
