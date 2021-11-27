@@ -1,13 +1,10 @@
 <script>
   import * as Expression from "../gen/eyg/ast/expression";
   import Let from "./Let.svelte";
-  import Name from "./Name.svelte";
   import Call from "./Call.svelte";
-  import Constructor from "./Constructor.svelte";
   import Row from "./Row.svelte";
   import Variable from "./Variable.svelte";
   import Function from "./Function.svelte";
-  import Case from "./Case.svelte";
   import Binary from "./Binary.svelte";
   import Provider from "./Provider.svelte";
   import Tuple from "./Tuple.svelte";
@@ -22,16 +19,8 @@
 </script>
 
 <!-- {metadata.path.toArray()} -->
-{#if tree instanceof Expression.Name}
-  <Name
-    {position}
-    {metadata}
-    on:edit
-    {global}
-    type={tree.type_}
-    then={tree.then}
-  />
-{:else if tree instanceof Expression.Tuple}
+
+{#if tree instanceof Expression.Tuple}
   <Tuple
     {position}
     {metadata}
@@ -65,8 +54,6 @@
     function_={tree.function}
     with_={tree.with}
   />
-{:else if tree instanceof Expression.Constructor}
-  <Constructor on:edit {global} named={tree.named} variant={tree.variant} />
 {:else if tree instanceof Expression.Row}
   <Row
   {position}
@@ -93,14 +80,7 @@
     pattern={tree.pattern}
     body={tree.body}
   />
-{:else if tree instanceof Expression.Case}
-  <Case
-    on:edit
-    {global}
-    named={tree.named}
-    value={tree.value}
-    clauses={tree.clauses}
-  />
+
 {:else if tree instanceof Expression.Provider}
   <Provider
     {position}

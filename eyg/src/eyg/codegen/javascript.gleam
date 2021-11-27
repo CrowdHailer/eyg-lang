@@ -3,8 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/string
 import eyg/ast/expression.{
-  Binary, Call, Case, Constructor, Expression, Function, Let, Name, Provider, Row,
-  Tuple, Variable,
+  Binary, Call, Expression, Function, Let, Provider, Row, Tuple, Variable,
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -16,7 +15,7 @@ import eyg/codegen/utilities.{
 
 pub fn maybe_wrap_expression(expression, state) {
   case expression {
-    #(_, Let(_, _, _)) | #(_, Name(_, _)) -> {
+    #(_, Let(_, _, _)) -> {
       let rendered = render(expression, in_tail(True, state))
       ["(() => {"]
       |> list.append(indent(rendered))
@@ -196,40 +195,6 @@ pub fn render(tree: Expression(typer.Metadata), state) {
       |> wrap_return(state)
     }
     Call(function, #(_, Row(with))) -> ["Big row todo"]
-
-    Name(_name, then) -> render(then, state)
-    Constructor(_named, variant) -> [
-      // ...inner working on assuption ALWAYS called with tuple
-      string.join([
-        "(function (...inner) { return {variant: \"",
-        variant,
-        "\", inner} })",
-      ]),
-    ]
-    Case(_name, subject, clauses) -> {
-      let clauses =
-        list.map(
-          clauses,
-          fn(clause) {
-            let #(
-              variant,
-              "$",
-              #(_, Let(pattern.Tuple(_assigns), #(_, Variable("$")), _)) as then,
-            ) = clause
-            // Using render here relies on a variable of $ not being set
-            let [first, ..rest] = render(then, in_tail(True, state))
-            [string.join(["case \"", variant, "\": ", first]), ..indent(rest)]
-          },
-        )
-      // could use subject and subject.inner in arbitrary let statements
-      let switch =
-        ["(({variant, inner: $}) => { switch (variant) {"]
-        |> list.append(indent(list.flatten(clauses)))
-        |> list.append(["}})"])
-      let subject = wrap_lines("(", maybe_wrap_expression(subject, state), ")")
-      squash(switch, subject)
-      |> wrap_return(state)
-    }
     Provider(config, func) -> {
       let typer.Metadata(type_: Ok(expected), ..) = context
       let #(a, b, typer) = state

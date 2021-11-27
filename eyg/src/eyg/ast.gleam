@@ -9,10 +9,6 @@ pub fn binary(value) {
   #(Nil, expression.Binary(value))
 }
 
-pub fn name(type_, then) {
-  #(Nil, expression.Name(type_, then))
-}
-
 pub fn call(function, with) {
   #(Nil, expression.Call(function, with))
 }
@@ -23,14 +19,6 @@ pub fn function(for, body) {
 
 pub fn let_(pattern, value, then) {
   #(Nil, expression.Let(pattern, value, then))
-}
-
-pub fn case_(named, subject, clauses) {
-  #(Nil, expression.Case(named, subject, clauses))
-}
-
-pub fn constructor(named, variant) {
-  #(Nil, expression.Constructor(named, variant))
 }
 
 pub fn tuple_(elements) {

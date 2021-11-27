@@ -8,7 +8,6 @@ pub type Monotype {
   Binary
   Tuple(elements: List(Monotype))
   Row(fields: List(#(String, Monotype)), extra: Option(Int))
-  Nominal(name: String, of: List(Monotype))
   Function(from: Monotype, to: Monotype)
   Unbound(i: Int)
 }
@@ -69,8 +68,6 @@ pub fn resolve(type_, substitutions) {
           }
       }
     }
-    Nominal(name, parameters) ->
-      Nominal(name, list.map(parameters, resolve(_, substitutions)))
     Function(from, to) -> {
       let from = resolve(from, substitutions)
       let to = resolve(to, substitutions)
