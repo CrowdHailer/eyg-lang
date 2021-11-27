@@ -22,14 +22,12 @@
     {pattern}
     {metadata}
     {global}
-    on:contentedited
     position={position.concat(0)}
   />
   =
   <Expression
     expression={value}
     {global}
-    on:contentedited
     position={position.concat(1)}
   />
   <ErrorNotice type_={metadata.type_} />
@@ -37,6 +35,5 @@
 <Expression
   expression={then}
   {global}
-  on:contentedited
   position={position.concat(2)}
 />

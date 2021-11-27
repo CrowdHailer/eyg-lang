@@ -60,11 +60,6 @@
     });
   }
 
-  function handleContentedited({ detail: { position, content } }) {
-    let [a, b] = Editor.handle_contentedited(expression, position, content);
-    console.log(a);
-    untyped = a;
-  }
 </script>
 
 <header class="max-w-4xl mx-auto pb-2 pt-6">
@@ -78,7 +73,6 @@
   <Expression
     {expression}
     global={{ typer }}
-    on:contentedited={handleContentedited}
     position={[]}
   />
   <!-- <pre class="my-2 bg-gray-100 p-1">
