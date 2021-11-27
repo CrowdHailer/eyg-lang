@@ -2,96 +2,83 @@
   import { tick } from "svelte";
 
   import Expression from "./components/Expression.svelte";
-  import * as Typer from "./gen/eyg/typer";
-  import * as AstBare from "./gen/eyg/ast";
-  import * as Builders from "./gen/standard/builders";
-  const Ast = Object.assign({}, AstBare, Builders);
-  import { List } from "./gen/gleam";
   import * as Editor from "./gen/eyg/ast/editor";
-  import * as example from "./gen/standard/example";
-  let [expression, typer] = Typer.infer_unconstrained(example.simple());
-  let position = []
-  let type = "";
-  let scope;
-  let generated;
+  let editor = Editor.init()
 
-
-  function targetToPosition(target) {
-    let array = target
-    .closest("[data-position^=p]")
-    .dataset.position.slice(1)
-    .split(",")
-    .filter((x) => x.length)
-    .map((x) => parseInt(x));
-    return List.fromArray(array)
+  function eventToTarget(event) {
+    let element = event.target
+    return element
+    .closest("[data-editor]")
+    .dataset.editor
   }
 
-  function handleFocusin(event) {
-    console.log("Focusin");
-    position = targetToPosition(event.target);
-    let [a, b] = Editor.handle_focus(expression, position, typer)
-    type = a;
-    scope = b
+  function updateFocus(editor) {
+    tick().then(() => {
+      console.log("then");
+      if (Editor.is_draft(editor)) {
+        console.log("focus");
+        document.getElementById("draft").focus()
+      } else {
+        // TODO stringify in the gleam code
+        let pString = "p:" + editor.position.toArray().join(",");
+
+        let after = document.querySelector("[data-editor='" + pString + "']");
+        if (after) {
+          after.focus();
+        } else {
+          console.error("Action had no effect, was not able to focus cursor")
+        }
+      }
+    });
   }
 
-  function handleKeydown(event) {
+  function handleClick(event) {
+    console.log("click");
+
+    editor = Editor.handle_click(editor, eventToTarget(event))
+    updateFocus(editor)
+  }
+
+    function handleKeydown(event) {
     if (event.metaKey) {
       return true
     }
-    let { key, ctrlKey } = event;
-    // TODO check that this is
-    let p = targetToPosition(event.target);
-    if (p.toArray().join() != position.toArray().join()) {
-      console.log(p, position);
-      throw "BADDDDD position"
-    }
-    if (!position) {
-      console.log(event);
-    }
-    // TODO keep editor state around
-    let state = Editor.handle_keydown(expression, position, key, ctrlKey, typer);
-    expression = state.tree
-    typer = state.typer
-    console.log("positin", state.position.toArray().join(","));
-    position = state.position
-    type = state.type_
-    scope = state.scope
-    generated = state.generated
-    // TODO stringify in the gleam code
-    let pString = "p" + position.toArray().join(",");
-    tick().then(() => {
-      let after = document.querySelector("[data-position='" + pString + "']");
-      if (after) {
-        after.focus();
-      } else {
-        console.error("Action had no effect, was not able to focus cursor")
-      }
-    });
+
+    editor = Editor.handle_keydown(editor, event.key, event.ctrlKey);
+    updateFocus(editor)
   }
 
-  function handleVariableClick(event) {
-    event.stopPropagation()
-    let label = event.target.closest("[data-variable]").dataset.variable
-    console.log(label)
-    console.log(position.toArray())
-    let state = Editor.place_variable(expression, position, label)
-    expression = state.tree
-    typer = state.typer
-    position = state.position
-    type = state.type_
-    scope = state.scope
-    generated = state.generated
-    // TODO stringify in the gleam code
-    let pString = "p" + position.toArray().join(",");
-    tick().then(() => {
-      let after = document.querySelector("[data-position='" + pString + "']");
-      if (after) {
-        after.focus();
-      } else {
-        console.error("Action had no effect, was not able to focus cursor")
-      }
-    });
+  function handleChange(event) {
+    console.log("change");
+    editor = Editor.handle_change(editor, event.target.value)
+    updateFocus(editor)
   }
+
+
+
+  // function handleVariableClick(event) {
+  //   event.stopPropagation()
+  //   let label = event.target.closest("[data-variable]").dataset.variable
+  //   console.log(label)
+  //   console.log(position.toArray())
+  //   let state = Editor.place_variable(expression, position, label)
+  //   expression = state.tree
+  //   typer = state.typer
+  //   position = state.position
+  //   type = state.type_
+  //   scope = state.scope
+  //   generated = state.generated
+  //   // TODO stringify in the gleam code
+  //   let pString = "p:" + position.toArray().join(",");
+  //   tick().then(() => {
+  //     let after = document.querySelector("[data-editor='" + pString + "']");
+  //     if (after) {
+  //       after.focus();
+  //     } else {
+  //       console.error("Action had no effect, was not able to focus cursor")
+  //     }
+  //   });
+  // }
 
 </script>
 
@@ -100,31 +87,41 @@
 </header>
 <div
   class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative"
-  on:click={handleFocusin}
+  on:click={handleClick}
   on:keydown={handleKeydown}
 >
   <Expression
-    {expression}
-    global={{ typer }}
+    expression={editor.tree}
+    global={{ typer: editor.typer }}
     position={[]}
   />
   <!-- Have handle focusin global because we control everything onvce focus. -->
   <!-- but we need to capture key strokes on buttons -->
   <div class="sticky bottom-0 bg-white py-2">
-    {#if position.toArray}
+    {#if Editor.is_command(editor)}
 
-    <p>{position.toArray().join(",")}</p>
+    <p>{editor.position.toArray().join(",")}</p>
+    {:else if Editor.is_draft(editor)}
+    <input
+      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+      id="draft"
+      type="text"
+      value={editor.mode.content}
+      on:click={(e) => e.stopPropagation()}
+      on:keydown={(e) => e.stopPropagation()}
+      on:change={handleChange}
+      >
     {/if}
-    <p>type: {type}</p>
+    <!-- <p>type: {type}</p>
     <nav on:click={handleVariableClick}>variables:
       {#if scope}
       {#each scope.toArray() as v}
         <button data-variable={v} class="m-1 p-1 bg-blue-100 rounded">{v}</button>
       {/each}
       {/if}
-    </nav>
+    </nav> -->
   </div>
 </div>
-<pre class="max-w-4xl mx-auto my-2 bg-gray-100 p-1">
+<!-- <pre class="max-w-4xl mx-auto my-2 bg-gray-100 p-1">
   {generated}
-</pre>
+</pre> -->

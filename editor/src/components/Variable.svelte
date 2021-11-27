@@ -15,7 +15,7 @@
   class="outline-none text-blue-500 border-2 border-white focus:border-indigo-300 outline-none rounded"
   class:border-red-500={error}
   tabindex="-1"
-  data-position={"p" + position.join(",")}>{label}</span
+  data-editor={"p:" + position.join(",")}>{label}</span
 >
 
 <style>
