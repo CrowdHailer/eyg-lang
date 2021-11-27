@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
+import gleam/string
 
 pub type Monotype {
   Binary
@@ -9,6 +10,16 @@ pub type Monotype {
   Nominal(name: String, of: List(Monotype))
   Function(from: Monotype, to: Monotype)
   Unbound(i: Int)
+}
+
+pub fn to_string(monotype) {
+  case monotype {
+    Binary -> "Binary"
+    Tuple(elements) -> string.concat("Tuple", "TODO")
+    Row(fields, _) -> string.concat("Row", "TODO")
+    Function(_, _) -> string.concat("Function()", "TODO")
+    Unbound(_) -> string.concat("a", "")
+  }
 }
 
 pub fn resolve(type_, substitutions) {

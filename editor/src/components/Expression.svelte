@@ -68,7 +68,7 @@
 {:else if tree instanceof Expression.Constructor}
   <Constructor on:edit {global} named={tree.named} variant={tree.variant} />
 {:else if tree instanceof Expression.Row}
-  <Ro
+  <Row
   {position}
   {metadata}
   on:edit
