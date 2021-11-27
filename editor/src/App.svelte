@@ -68,8 +68,15 @@
     position={[]}
   />
   <div class="sticky bottom-0 bg-white py-2">
-    <p>{type}</p>
-    <p>{JSON.stringify(scope)}</p>
+    <p>type: {type}</p>
+    <nav>variables:
+      {#if scope}
+
+      {#each scope.toArray() as v}
+        <span class="m-1 p-1 bg-blue-100 rounded">{v}</span>
+      {/each}
+      {/if}
+    </nav>
   </div>
 </div>
 <pre class="max-w-4xl mx-auto my-2 bg-gray-100 p-1">

@@ -1,20 +1,9 @@
 <script>
-
-  import * as AstBare from "../gen/eyg/ast";
-  import * as Builders from "../gen/standard/builders";
-  const Ast = Object.assign({}, AstBare, Builders);
-
   export let position;
   export let metadata;
   export let global;
 </script>
 
-<div class="border-2 border-red-400">
-
-  {#each metadata.scope.toArray() as [n]}
-  <span>{n}</span>
-  {/each}
-</div>
 <span
   class="border-2 border-gray-300 focus:border-indigo-300 outline-none rounded inline-block"
   tabindex="-1"
