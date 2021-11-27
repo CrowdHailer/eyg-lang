@@ -1,5 +1,4 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
   export let position;
   export let metadata;

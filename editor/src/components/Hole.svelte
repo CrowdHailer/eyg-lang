@@ -1,5 +1,4 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
 
   import * as AstBare from "../gen/eyg/ast";
   import * as Builders from "../gen/standard/builders";
@@ -20,10 +19,8 @@
   class="border-2 border-gray-300 focus:border-indigo-300 outline-none rounded inline-block"
   tabindex="-1"
   data-position={"p" + position.join(",")}
-  on:keydown={handleKeydown}
 ></span>
 
-<ErrorNotice type_={metadata.type_} />
 
 <style>
   span:empty {

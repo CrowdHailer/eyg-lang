@@ -1,5 +1,4 @@
 <script>
-  import ErrorNotice from "./ErrorNotice.svelte";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import Pattern from "./Pattern.svelte";
@@ -25,4 +24,3 @@
     position={position.concat(1)}
   />
 </Indent>
-<ErrorNotice type_={metadata.type_} />
