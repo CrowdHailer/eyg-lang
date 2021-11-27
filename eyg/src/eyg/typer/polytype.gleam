@@ -1,9 +1,7 @@
 import gleam/io
 import gleam/option.{None, Some}
 import gleam/list
-import eyg/typer/monotype.{
-  Binary, Function, Monotype, Nominal, Row, Tuple, Unbound,
-}
+import eyg/typer/monotype.{Binary, Function, Monotype, Row, Tuple, Unbound}
 
 // TODO break up scope typer
 pub type State {
@@ -63,8 +61,6 @@ pub fn replace_variable(monotype, x, y) {
       }
       Row(fields, rest)
     }
-    Nominal(name, elements) ->
-      Nominal(name, list.map(elements, replace_variable(_, x, y)))
     Function(from, to) ->
       Function(replace_variable(from, x, y), replace_variable(to, x, y))
     Unbound(i) ->
@@ -133,15 +129,6 @@ fn free_variables_in_monotype(monotype) {
         None -> in_fields
       }
     }
-
-    Nominal(_name, of) ->
-      list.fold(
-        of,
-        [],
-        fn(inner, accumulator) {
-          union(free_variables_in_monotype(inner), accumulator)
-        },
-      )
 
     Function(from, to) ->
       union(free_variables_in_monotype(from), free_variables_in_monotype(to))

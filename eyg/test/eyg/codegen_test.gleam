@@ -37,7 +37,8 @@ fn with_equal(previous) {
         [1],
         monotype.Function(
           monotype.Tuple([monotype.Unbound(1), monotype.Unbound(1)]),
-          monotype.Nominal("Boolean", []),
+          // TODO really needs fixing
+          monotype.Tuple([]),
         ),
       ),
     ),
@@ -276,84 +277,4 @@ pub fn multiline_call_function_test() {
   let "    return tmp$1;" = l4
   let "  })()," = l5
   let ")" = l6
-}
-
-// // TODO email to ask about other language front ends. Is there a long form place to ask discord program lang questions
-// // program is going to render a call function that doesn't exist. 
-pub fn nominal_term_test() {
-  let scope = init([])
-  let untyped =
-    ast.name(
-      #(
-        "Option",
-        #(
-          [1],
-          [
-            #("Some", monotype.Tuple([monotype.Unbound(1)])),
-            #("None", monotype.Tuple([])),
-          ],
-        ),
-      ),
-      ast.call(
-        ast.constructor("Option", "Some"),
-        ast.tuple_([ast.binary("value")]),
-      ),
-    )
-  let js = compile(untyped, scope)
-  let [l1] = js
-  let "(function (...inner) { return {variant: \"Some\", inner} })(\"value\")" =
-    l1
-}
-
-// // Don't need multiline test as that is the same as multiline call
-// // If we want to avoid immediatly invokin function then would need the test and a special case in codegen
-pub fn case_with_boolean_test() {
-  let scope =
-    init([
-      #(
-        "x",
-        polytype.Polytype([], monotype.Nominal("Option", [monotype.Binary])),
-      ),
-    ])
-  let untyped =
-    ast.name(
-      #(
-        "Option",
-        #(
-          [1],
-          [
-            #("Some", monotype.Tuple([monotype.Unbound(1)])),
-            #("None", monotype.Tuple([])),
-          ],
-        ),
-      ),
-      ast.case_(
-        "Option",
-        ast.variable("x"),
-        [
-          #(
-            "Some",
-            "$",
-            ast.let_(
-              pattern.Tuple(["value"]),
-              ast.variable("$"),
-              ast.variable("value"),
-            ),
-          ),
-          #(
-            "None",
-            "$",
-            ast.let_(pattern.Tuple([]), ast.variable("$"), ast.binary("other")),
-          ),
-        ],
-      ),
-    )
-  let js = compile(untyped, scope)
-  let [l1, l2, l3, l4, l5, l6] = js
-  let "(({variant, inner: $}) => { switch (variant) {" = l1
-  let "  case \"Some\": let [value$1] = $;" = l2
-  let "    return value$1;" = l3
-  let "  case \"None\": let [] = $;" = l4
-  let "    return \"other\";" = l5
-  let "}})(x)" = l6
 }

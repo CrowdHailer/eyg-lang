@@ -7,7 +7,6 @@ import eyg/typer/monotype
 import eyg/typer.{infer, init}
 import eyg/codegen/javascript
 import eyg/codegen/utilities
-import standard/boolean
 
 pub fn compile(untyped, scope) {
   case infer(untyped, monotype.Unbound(-1), scope) {
