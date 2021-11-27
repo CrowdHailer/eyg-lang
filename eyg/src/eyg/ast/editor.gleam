@@ -49,6 +49,15 @@ pub fn is_select(editor) {
   }
 }
 
+pub fn in_scope(editor) {
+  let Editor(tree: tree, position: position, ..) = editor
+  case get_element(tree, position) {
+    Expression(#(metadata, _)) ->
+      list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
+    _ -> []
+  }
+}
+
 pub fn init() {
   let untyped = example.simple()
   let position = []
@@ -74,20 +83,42 @@ pub fn handle_click(editor: Editor, target) {
         }
       }
     }
+    ["v", label] -> {
+      let untyped =
+        replace_node(editor.tree, editor.position, ast.variable(label))
+      let #(typed, typer) = typer.infer_unconstrained(untyped)
+      Editor(..editor, tree: typed, typer: typer, mode: Command)
+    }
+
+    _ -> todo("Error: never should have this as a click option")
   }
 }
 
 pub fn handle_keydown(editor, key, ctrl_key) {
   // TODO stop replying on typer
   // i needs to switch to compose mode
-  let Editor(tree: tree, typer: typer, position: position, ..) = editor
-  let #(untyped, position) =
-    handle_transformation(tree, position, key, ctrl_key, typer)
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
-  let #(type_, scope) = get_target_info(typed, position, typer)
-  // TODO make render with internal state private
-  let generated = javascript.render_to_string(typed, typer)
-  Editor(..editor, tree: typed, typer: typer, position: position)
+  let Editor(tree: tree, typer: typer, position: position, mode: mode) = editor
+  case mode {
+    Command -> {
+      let #(untyped, position, mode) =
+        handle_transformation(tree, position, key, ctrl_key, typer)
+      let #(typed, typer) = case untyped {
+        None -> #(tree, typer)
+        Some(untyped) -> typer.infer_unconstrained(untyped)
+      }
+      let #(type_, scope) = get_target_info(typed, position, typer)
+      // TODO make render with internal state private
+      let generated = javascript.render_to_string(typed, typer)
+      Editor(
+        ..editor,
+        tree: typed,
+        typer: typer,
+        position: position,
+        mode: mode,
+      )
+    }
+    Draft(_) -> todo("handle draft mode")
+  }
 }
 
 pub fn handle_change(editor, content) {
@@ -137,53 +168,60 @@ fn get_target_info(typed, position, typer: State) {
   }
 }
 
-// pub fn place_variable(tree, position, label) {
-//   let untyped = replace_node(tree, position, ast.variable(label))
-//   let #(typed, typer) = typer.infer_unconstrained(untyped)
-//   let #(type_, scope) = get_target_info(typed, position, typer)
-//   // TODO make render with internal state private
-//   let generated = javascript.render_to_string(typed, typer)
-//   Editor(typed, typer, position, type_, scope, generated)
-// }
 fn handle_transformation(
   tree: e.Expression(Metadata),
   position,
   key,
   ctrl_key,
   typer,
-) -> #(e.Expression(Nil), List(Int)) {
+) -> #(Option(e.Expression(Nil)), List(Int), Mode) {
   case key, ctrl_key {
-    "a", False -> increase_selection(tree, position)
-    "s", False -> decrease_selection(tree, position)
-    "h", False -> move_left(tree, position)
-    "l", False -> move_right(tree, position)
-    "j", False -> move_down(tree, position)
-    "k", False -> move_up(tree, position)
-    "H", False -> space_left(tree, position)
-    "L", False -> space_right(tree, position)
-    "J", False -> space_below(tree, position)
-    "K", False -> space_above(tree, position)
-    "h", True -> drag_left(tree, position)
-    "l", True -> drag_right(tree, position)
-    "j", True -> drag_down(tree, position)
-    "k", True -> drag_up(tree, position)
+    // move
+    "a", False -> navigation(increase_selection(tree, position))
+    "s", False -> command(decrease_selection(tree, position))
+    "h", False -> navigation(move_left(tree, position))
+    "l", False -> navigation(move_right(tree, position))
+    "j", False -> navigation(move_down(tree, position))
+    "k", False -> navigation(move_up(tree, position))
+    // transform
+    "H", False -> command(space_left(tree, position))
+    "L", False -> command(space_right(tree, position))
+    "J", False -> command(space_below(tree, position))
+    "K", False -> command(space_above(tree, position))
+    "h", True -> command(drag_left(tree, position))
+    "l", True -> command(drag_right(tree, position))
+    "j", True -> command(drag_down(tree, position))
+    "k", True -> command(drag_up(tree, position))
     // row
-    "b", False -> create_binary(tree, position)
-    "t", False -> wrap_tuple(tree, position)
-    "e", False -> wrap_assignment(tree, position)
-    "f", False -> wrap_function(tree, position)
-    "u", False -> unwrap(tree, position)
-    "c", False -> call(tree, position, typer)
+    "b", False -> command(create_binary(tree, position))
+    "t", False -> command(wrap_tuple(tree, position))
+    "e", False -> command(wrap_assignment(tree, position))
+    "f", False -> command(wrap_function(tree, position))
+    "u", False -> command(unwrap(tree, position))
+    "c", False -> command(call(tree, position, typer))
     "d", False -> delete(tree, position)
+    // modes
+    "i", False -> draft(tree, position)
+    // Fallback
     "Control", _ | "Shift", _ | "Alt", _ | "Meta", _ -> #(
-      untype(tree),
+      None,
       position,
+      Command,
     )
     _, _ -> {
       io.debug(string.join(["No edit action for key: ", key]))
-      #(untype(tree), position)
+      #(None, position, Command)
     }
   }
+}
+
+fn navigation(position) {
+  #(None, position, Command)
+}
+
+fn command(result) {
+  let #(tree, position) = result
+  #(Some(tree), position, Command)
 }
 
 fn increase_selection(tree, position) {
@@ -191,7 +229,6 @@ fn increase_selection(tree, position) {
     Some(#(position, _)) -> position
     None -> []
   }
-  #(untype(tree), position)
 }
 
 fn decrease_selection(tree, position) {
@@ -209,7 +246,7 @@ fn decrease_selection(tree, position) {
 }
 
 fn move_left(tree, position) {
-  let position = case list.reverse(position) {
+  case list.reverse(position) {
     [] -> {
       io.debug("cannot move left from root note")
       position
@@ -220,23 +257,21 @@ fn move_left(tree, position) {
     }
     [index, ..rest] -> list.reverse([index - 1, ..rest])
   }
-  #(untype(tree), position)
 }
 
 fn move_right(tree, position) {
-  let position = case list.reverse(position) {
+  case list.reverse(position) {
     [] -> {
       io.debug("cannot move right from root note")
       position
     }
     [index, ..rest] -> list.reverse([index + 1, ..rest])
   }
-  #(untype(tree), position)
 }
 
 // TODO not very sure how this works
 fn move_up(tree, position) {
-  let position = case get_element(tree, position) {
+  case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, _))) ->
       case parent_path(position) {
         Some(#(p, _)) -> p
@@ -253,27 +288,22 @@ fn move_up(tree, position) {
         Some(#(p, 2)) -> p
       }
   }
-  #(untype(tree), position)
 }
 
 // TODO handle moving into blocks
 fn move_down(tree, position) {
   case get_element(tree, position) {
-    Expression(#(_, e.Let(_, _, _))) -> #(
-      untype(tree),
-      ast.append_path(position, 2),
-    )
+    Expression(#(_, e.Let(_, _, _))) -> ast.append_path(position, 2)
+
     _ ->
       case parent_let(tree, position) {
-        None -> #(untype(tree), position)
-        Some(#(position, 0)) | Some(#(position, 1)) -> #(
-          untype(tree),
-          ast.append_path(position, 2),
-        )
+        None -> position
+        Some(#(position, 0)) | Some(#(position, 1)) ->
+          ast.append_path(position, 2)
         Some(#(position, 2)) ->
           case block_container(tree, position) {
             // Select whole bottom line
-            None -> #(untype(tree), ast.append_path(position, 2))
+            None -> ast.append_path(position, 2)
             Some(position) -> move_down(tree, position)
           }
       }
@@ -636,10 +666,11 @@ fn call(tree, position, typer) {
 
 fn delete(tree, position) {
   let hole_func = ast.generate_hole
-  let replacement = case get_element(tree, position) {
+  case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, then))) -> #(
-      replace_node(tree, position, untype(then)),
+      Some(replace_node(tree, position, untype(then))),
       position,
+      Select([]),
     )
     Expression(#(_, e.Provider(_, g))) if g == hole_func ->
       case parent_path(position) {
@@ -651,14 +682,26 @@ fn delete(tree, position) {
               let elements =
                 list.append(pre, post)
                 |> list.map(untype)
-              #(replace_node(tree, p_path, ast.tuple_(elements)), p_path)
+              #(
+                Some(replace_node(tree, p_path, ast.tuple_(elements))),
+                p_path,
+                Select([]),
+              )
             }
-            _ -> #(untype(tree), position)
+            _ -> #(None, position, Select([]))
           }
-        None -> #(untype(tree), position)
+        None -> #(None, position, Select([]))
       }
-    Expression(_) -> #(replace_node(tree, position, ast.hole()), position)
-    Pattern(_) -> #(replace_pattern(tree, position, p.Discard), position)
+    Expression(_) -> #(
+      Some(replace_node(tree, position, ast.hole())),
+      position,
+      Select([]),
+    )
+    Pattern(_) -> #(
+      Some(replace_pattern(tree, position, p.Discard)),
+      position,
+      Select([]),
+    )
     PatternElement(cursor, _) -> {
       let Some(#(pattern_position, _)) = parent_path(position)
       let Pattern(p.Tuple(elements)) = get_element(tree, pattern_position)
@@ -671,8 +714,19 @@ fn delete(tree, position) {
         True -> ast.append_path(pattern_position, cursor - 1)
         False -> pattern_position
       }
-      #(replace_pattern(tree, pattern_position, p.Tuple(elements)), position)
+      #(
+        Some(replace_pattern(tree, pattern_position, p.Tuple(elements))),
+        position,
+        Select([]),
+      )
     }
+  }
+}
+
+fn draft(tree, position) {
+  case get_element(tree, position) {
+    Expression(#(_, e.Binary(content))) -> #(None, position, Draft(content))
+    _ -> todo("can't i on this element")
   }
 }
 

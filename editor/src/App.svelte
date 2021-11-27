@@ -44,6 +44,7 @@
       return true
     }
 
+    event.preventDefault()
     editor = Editor.handle_keydown(editor, event.key, event.ctrlKey);
     updateFocus(editor)
   }
@@ -53,33 +54,6 @@
     editor = Editor.handle_change(editor, event.target.value)
     updateFocus(editor)
   }
-
-
-
-  // function handleVariableClick(event) {
-  //   event.stopPropagation()
-  //   let label = event.target.closest("[data-variable]").dataset.variable
-  //   console.log(label)
-  //   console.log(position.toArray())
-  //   let state = Editor.place_variable(expression, position, label)
-  //   expression = state.tree
-  //   typer = state.typer
-  //   position = state.position
-  //   type = state.type_
-  //   scope = state.scope
-  //   generated = state.generated
-  //   // TODO stringify in the gleam code
-  //   let pString = "p:" + position.toArray().join(",");
-  //   tick().then(() => {
-  //     let after = document.querySelector("[data-editor='" + pString + "']");
-  //     if (after) {
-  //       after.focus();
-  //     } else {
-  //       console.error("Action had no effect, was not able to focus cursor")
-  //     }
-  //   });
-  // }
-
 </script>
 
 <header class="max-w-4xl mx-auto pb-2 pt-6">
@@ -99,6 +73,8 @@
   <!-- but we need to capture key strokes on buttons -->
   <div class="sticky bottom-0 bg-white py-2">
     {#if Editor.is_command(editor)}
+    <!-- TODO show type information -->
+    <!-- <p>type: {type}</p> -->
 
     <p>{editor.position.toArray().join(",")}</p>
     {:else if Editor.is_draft(editor)}
@@ -111,15 +87,13 @@
       on:keydown={(e) => e.stopPropagation()}
       on:change={handleChange}
       >
+    {:else if Editor.is_select(editor)}
+      <nav>variables:
+        {#each Editor.in_scope(editor).toArray() as v}
+          <button data-editor="v:{v}" class="m-1 p-1 bg-blue-100 rounded">{v}</button>
+        {/each}
+      </nav>
     {/if}
-    <!-- <p>type: {type}</p>
-    <nav on:click={handleVariableClick}>variables:
-      {#if scope}
-      {#each scope.toArray() as v}
-        <button data-variable={v} class="m-1 p-1 bg-blue-100 rounded">{v}</button>
-      {/each}
-      {/if}
-    </nav> -->
   </div>
 </div>
 <!-- <pre class="max-w-4xl mx-auto my-2 bg-gray-100 p-1">
