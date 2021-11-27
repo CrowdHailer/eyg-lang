@@ -113,13 +113,11 @@ pub fn handle_click(editor: Editor, target) {
 }
 
 pub fn handle_keydown(editor, key, ctrl_key) {
-  // TODO stop replying on typer
-  // i needs to switch to compose mode
   let Editor(tree: tree, typer: typer, position: position, mode: mode) = editor
   case mode {
     Command -> {
       let #(untyped, position, mode) =
-        handle_transformation(tree, position, key, ctrl_key, typer)
+        handle_transformation(tree, position, key, ctrl_key)
       let #(typed, typer) = case untyped {
         None -> #(tree, typer)
         Some(untyped) -> typer.infer_unconstrained(untyped)
@@ -168,7 +166,6 @@ fn handle_transformation(
   position,
   key,
   ctrl_key,
-  typer,
 ) -> #(Option(e.Expression(Nil)), List(Int), Mode) {
   case key, ctrl_key {
     // move
@@ -194,7 +191,7 @@ fn handle_transformation(
     "f", False -> command(wrap_function(tree, position))
     "u", False -> command(unwrap(tree, position))
     // don't wrap in anything if modifies everything
-    "c", False -> call(tree, position, typer)
+    "c", False -> call(tree, position)
     "d", False -> delete(tree, position)
     // modes
     "i", False -> draft(tree, position)
@@ -667,7 +664,7 @@ fn unwrap(tree, position) {
   }
 }
 
-fn call(tree, position, typer) {
+fn call(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(expression) -> {
