@@ -173,7 +173,7 @@ fn handle_transformation(
   case key, ctrl_key {
     // move
     "a", False -> navigation(increase_selection(tree, position))
-    "s", False -> command(decrease_selection(tree, position))
+    "s", False -> decrease_selection(tree, position)
     "h", False -> navigation(move_left(tree, position))
     "l", False -> navigation(move_right(tree, position))
     "j", False -> navigation(move_down(tree, position))
@@ -231,13 +231,32 @@ fn decrease_selection(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
-      #(replace_node(tree, position, new), ast.append_path(position, 0))
+      #(
+        Some(replace_node(tree, position, new)),
+        ast.append_path(position, 0),
+        Command,
+      )
     }
-    Pattern(p.Tuple([])) -> #(
-      replace_pattern(tree, position, p.Tuple(["BLK"])),
-      ast.append_path(position, 0),
+    Expression(#(_, e.Row([]))) -> {
+      let new = ast.row([#("ss", ast.hole())])
+      #(
+        Some(replace_node(tree, position, new)),
+        ast.append_path(position, 0),
+        Command,
+      )
+    }
+    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
+      None,
+      position,
+      Command,
     )
-    _ -> #(untype(tree), ast.append_path(position, 0))
+    Expression(_) -> #(None, ast.append_path(position, 0), Command)
+    Pattern(p.Tuple([])) -> #(
+      Some(replace_pattern(tree, position, p.Tuple(["BLK"]))),
+      ast.append_path(position, 0),
+      Command,
+    )
+    _ -> #(None, position, Command)
   }
 }
 
