@@ -16,16 +16,20 @@
 
 
   function targetToPosition(target) {
-    return target
+    let array = target
     .closest("[data-position^=p]")
     .dataset.position.slice(1)
     .split(",")
     .filter((x) => x.length)
     .map((x) => parseInt(x));
+    return List.fromArray(array)
   }
 
   function handleFocusin(event) {
-    targetToPosition(event.target);
+    let position = targetToPosition(event.target);
+    let [a, b] = Editor.handle_focus(expression, position, typer)
+    type = a;
+    scope = b
   }
 
   function handleKeydown(event) {
@@ -33,7 +37,7 @@
       return true
     }
     let { key, ctrlKey } = event;
-    let position = List.fromArray(targetToPosition(event.target));
+    let position = targetToPosition(event.target);
     let state = Editor.handle_keydown(expression, position, key, ctrlKey, typer);
     expression = state.tree
     typer = state.typer
