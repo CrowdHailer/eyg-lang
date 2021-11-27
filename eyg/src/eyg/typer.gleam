@@ -24,6 +24,21 @@ pub type Reason {
   UnhandledVariants(remaining: List(String))
 }
 
+pub fn reason_to_string(reason) {
+  case reason {
+    IncorrectArity(expected, given) -> "incorrectarity"
+    UnknownVariable(label) -> "unknownvariable"
+    UnmatchedTypes(expected, given) -> "unmatchedtypes"
+    MissingFields(expected) -> "missingfields"
+    UnexpectedFields(expected) -> "unexpectedfields"
+    UnknownType(name) -> "unknowntype"
+    UnknownVariant(variant, in) -> "unknownvariant"
+    DuplicateType(name) -> "duplicatetype"
+    RedundantClause(match) -> "redundantclause"
+    UnhandledVariants(remaining) -> "unhandledvariants"
+  }
+}
+
 pub fn init(variables) {
   State(variables, 0, [], [], [])
 }

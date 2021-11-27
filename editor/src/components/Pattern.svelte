@@ -31,14 +31,14 @@
     tabindex="-1"
     data-position={"p" + position.join(",")}
     class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
-    >{#each pattern.elements.toArray() as element, i}<span
+    >[{#each pattern.elements.toArray() as element, i}<span
         tabindex="-1"
         class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
         data-position={"p" + position.concat(i).join(",")}>{element}</span
       >{#if i < pattern.elements.length - 1}
         ,
       {/if}
-    {/each}</span
+    {/each}]</span
   >
 {:else}<span
 tabindex="-1"

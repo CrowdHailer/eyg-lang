@@ -54,8 +54,8 @@ pub fn handle_keydown(
         Ok(t) ->
           monotype.resolve(t, typer.substitutions)
           |> monotype.to_string()
+        Error(reason) -> typer.reason_to_string(reason)
       }
-      io.debug(type_)
       let scope =
         list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
       #(type_, scope)
@@ -65,8 +65,6 @@ pub fn handle_keydown(
 
   // TODO make render with internal state private
   let generated = javascript.render_to_string(typed, typer)
-  // generated = "foo"
-  io.debug(generated)
   Editor(typed, typer, position, type_, scope, generated)
 }
 
