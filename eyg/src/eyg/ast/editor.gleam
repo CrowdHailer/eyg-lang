@@ -8,6 +8,7 @@ import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
 import eyg/typer/monotype
 import eyg/typer/polytype.{State}
+import eyg/codegen/javascript
 
 pub type Element {
   Expression(e.Expression(Metadata))
@@ -23,7 +24,53 @@ pub fn multiline(fields) {
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
 
+pub type Editor {
+  Editor(
+    tree: e.Expression(Metadata),
+    typer: State,
+    // TODO make string?
+    position: List(Int),
+    type_: String,
+    scope: List(String),
+    generated: String,
+  )
+}
+
 pub fn handle_keydown(
+  tree: e.Expression(Metadata),
+  position,
+  key,
+  ctrl_key,
+  typer,
+) {
+  let #(untyped, position) =
+    handle_transformation(tree, position, key, ctrl_key, typer)
+  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  let #(type_, scope) = case get_element(typed, position) {
+    Expression(#(metadata, _)) -> {
+      // TODO on let type information should be type of value
+      // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
+      let type_ = case metadata.type_ {
+        Ok(t) ->
+          monotype.resolve(t, typer.substitutions)
+          |> monotype.to_string()
+      }
+      io.debug(type_)
+      let scope =
+        list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
+      #(type_, scope)
+    }
+    _ -> #("Unknown", [])
+  }
+
+  // TODO make render with internal state private
+  let generated = javascript.render_to_string(typed, typer)
+  // generated = "foo"
+  io.debug(generated)
+  Editor(typed, typer, position, type_, scope, generated)
+}
+
+fn handle_transformation(
   tree: e.Expression(Metadata),
   position,
   key,

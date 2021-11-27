@@ -16,4 +16,4 @@
       on:edit
       {global}
     />{/each}</span
-><ErrorNotice type_={metadata.type_} />
+>

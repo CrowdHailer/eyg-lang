@@ -188,14 +188,14 @@ pub fn render(tree: Expression(typer.Metadata), state) {
     }
     Function(pattern.Row(_), body) -> // todo
     ["TODO"]
-    Call(function, with) -> {
-      assert #(_, Tuple(with)) = with
+    Call(function, #(_, Tuple(with))) -> {
       let function = render(function, in_tail(False, state))
       let with = list.map(with, maybe_wrap_expression(_, state))
       let args_string = wrap_single_or_multiline(with, ",", "(", ")")
       squash(function, args_string)
       |> wrap_return(state)
     }
+    Call(function, #(_, Row(with))) -> ["Big row todo"]
 
     Name(_name, then) -> render(then, state)
     Constructor(_named, variant) -> [
