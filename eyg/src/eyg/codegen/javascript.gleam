@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/int
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import eyg/ast/expression.{
   Binary, Call, Expression, Function, Let, Provider, Row, Tuple, Variable,
@@ -122,8 +123,12 @@ pub fn render(tree: Expression(typer.Metadata), state) {
               elements,
               state,
               fn(label, state) {
-                let state = with_assignment(label, state)
-                #(render_label(label, state), state)
+                let label2 = case label {
+                  Some(l) -> l
+                  None -> "_"
+                }
+                let state = with_assignment(label2, state)
+                #(render_label(label2, state), state)
               },
             )
           let destructure =
@@ -168,8 +173,12 @@ pub fn render(tree: Expression(typer.Metadata), state) {
           for,
           state,
           fn(label, state) {
-            let state = with_assignment(label, state)
-            #(render_label(label, state), state)
+            let label2 = case label {
+              Some(l) -> l
+              None -> "_"
+            }
+            let state = with_assignment(label2, state)
+            #(render_label(label2, state), state)
           },
         )
       let args_string =

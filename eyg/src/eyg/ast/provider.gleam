@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/option.{Some}
 import gleam/string
 import eyg/ast/expression.{
   Binary, Call, Function, Let, Node, Provider, Row, Tuple, Variable,
@@ -34,7 +35,7 @@ fn format(config, hole) {
       #(
         Nil,
         Function(
-          pattern.Tuple(["r0"]),
+          pattern.Tuple([Some("r0")]),
           #(
             Nil,
             Call(

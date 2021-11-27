@@ -1,3 +1,4 @@
+import gleam/option.{Some}
 import eyg/ast
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -23,7 +24,7 @@ pub fn boolean() {
     #(
       "and",
       ast.function(
-        pattern.Tuple(["a", "b"]),
+        pattern.Tuple([Some("a"), Some("b")]),
         ast.call(
           ast.variable("a"),
           ast.row([

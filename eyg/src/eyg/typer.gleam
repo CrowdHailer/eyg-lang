@@ -141,6 +141,15 @@ fn set_variable(variable, state) {
   State(..state, variables: variables, substitutions: substitutions)
 }
 
+fn ones_with_real_keys(elements, done) {
+  case elements {
+    [] -> list.reverse(done)
+    [#(None, _), ..rest] -> ones_with_real_keys(rest, done)
+    [#(Some(label), monotype), ..rest] ->
+      ones_with_real_keys(rest, [#(label, monotype), ..done])
+  }
+}
+
 fn pattern_type(pattern, typer) {
   case pattern {
     pattern.Discard -> {
@@ -156,6 +165,7 @@ fn pattern_type(pattern, typer) {
     pattern.Tuple(elements) -> {
       let #(elements, typer) = list.map_state(elements, typer, with_unbound)
       let expected = monotype.Tuple(list.map(elements, pairs_second))
+      let elements = ones_with_real_keys(elements, [])
       #(expected, elements, typer)
     }
     pattern.Row(fields) -> {

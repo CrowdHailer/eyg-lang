@@ -154,7 +154,7 @@ pub fn handle_change(editor, content) {
 pub type Element {
   Expression(e.Expression(Metadata))
   Pattern(p.Pattern)
-  PatternElement(Int, String)
+  PatternElement(Int, Option(String))
 }
 
 pub fn multiline(fields) {
@@ -253,7 +253,7 @@ fn decrease_selection(tree, position) {
     )
     Expression(_) -> #(None, ast.append_path(position, 0), Command)
     Pattern(p.Tuple([])) -> #(
-      Some(replace_pattern(tree, position, p.Tuple(["BLK"]))),
+      Some(replace_pattern(tree, position, p.Tuple([None]))),
       ast.append_path(position, 0),
       Command,
     )
@@ -341,7 +341,7 @@ fn space_left(tree, position) {
     Some(#(position, cursor, TuplePattern(elements))) -> {
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor)
-      let elements = list.flatten([pre, ["LFT"], post])
+      let elements = list.flatten([pre, [None], post])
       let new = p.Tuple(elements)
       #(replace_pattern(tree, position, new), ast.append_path(position, cursor))
     }
@@ -363,7 +363,7 @@ fn space_right(tree, position) {
       let cursor = cursor + 1
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor)
-      let elements = list.flatten([pre, ["RGT"], post])
+      let elements = list.flatten([pre, [None], post])
       let new = p.Tuple(elements)
       #(replace_pattern(tree, position, new), ast.append_path(position, cursor))
     }
@@ -517,7 +517,7 @@ fn drag_up(tree, original) {
 
 type TupleMatch {
   TupleExpression(elements: List(e.Expression(Nil)))
-  TuplePattern(elements: List(String))
+  TuplePattern(elements: List(Option(String)))
 }
 
 fn match_tuple(target) -> Result(TupleMatch, Nil) {
@@ -611,7 +611,7 @@ fn wrap_tuple(tree, position) {
       #(replace_node(tree, position, new), ast.append_path(position, 0))
     }
     Pattern(p.Variable(label)) -> #(
-      replace_pattern(tree, position, p.Tuple([label])),
+      replace_pattern(tree, position, p.Tuple([Some(label)])),
       ast.append_path(position, 0),
     )
     Pattern(p.Discard) -> #(
@@ -659,7 +659,11 @@ fn unwrap(tree, position) {
           assert Some(#(parent_position, _)) = parent_path(parent_position)
           assert Expression(#(_, e.Let(_, value, then))) =
             get_element(tree, parent_position)
-          let new = ast.let_(p.Variable(label), untype(value), untype(then))
+          let pattern = case label {
+            Some(label) -> p.Variable(label)
+            None -> p.Discard
+          }
+          let new = ast.let_(pattern, untype(value), untype(then))
           let modified = replace_node(tree, parent_position, new)
           #(modified, list.append(parent_position, [0]))
         }

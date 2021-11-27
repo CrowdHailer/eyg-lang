@@ -1,9 +1,10 @@
 import gleam/list
+import gleam/option.{Option}
 
 pub type Pattern {
   Discard
   Variable(label: String)
-  Tuple(elements: List(String))
+  Tuple(elements: List(Option(String)))
   Row(fields: List(#(String, String)))
 }
 

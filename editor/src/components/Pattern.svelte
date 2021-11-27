@@ -33,7 +33,7 @@
     >[{#each pattern.elements.toArray() as element, i}<span
         tabindex="-1"
         class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
-        data-editor={"p:" + position.concat(i).join(",")}>{element}</span
+        data-editor={"p:" + position.concat(i).join(",")}>{element[0] || "_"}</span
       >{#if i < pattern.elements.length - 1}
         ,
       {/if}
