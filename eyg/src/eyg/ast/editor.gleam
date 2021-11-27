@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
@@ -9,6 +10,98 @@ import eyg/typer.{Metadata}
 import eyg/typer/monotype
 import eyg/typer/polytype.{State}
 import eyg/codegen/javascript
+import standard/example
+
+pub type Mode {
+  Command
+  Draft(content: String)
+  Select(options: List(String))
+}
+
+pub type Editor {
+  Editor(
+    tree: e.Expression(Metadata),
+    typer: State,
+    // position exist even in draft and select mode, it's where things get placed
+    position: List(Int),
+    mode: Mode,
+  )
+}
+
+pub fn is_command(editor) {
+  case editor {
+    Editor(mode: Command, ..) -> True
+    _ -> False
+  }
+}
+
+pub fn is_draft(editor) {
+  case editor {
+    Editor(mode: Draft(_), ..) -> True
+    _ -> False
+  }
+}
+
+pub fn is_select(editor) {
+  case editor {
+    Editor(mode: Select(_), ..) -> True
+    _ -> False
+  }
+}
+
+pub fn init() {
+  let untyped = example.simple()
+  let position = []
+  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  let mode = Command
+  Editor(typed, typer, position, mode)
+}
+
+pub fn handle_click(editor: Editor, target) {
+  case string.split(target, ":") {
+    ["p", rest] -> {
+      let position =
+        string.split(rest, ",")
+        |> list.map(int.parse)
+      case get_element(editor.tree, position) {
+        Expression(#(_, e.Binary(content))) -> {
+          let mode = Draft(content)
+          Editor(..editor, position: position, mode: mode)
+        }
+        _ -> {
+          let mode = Command
+          Editor(..editor, position: position, mode: mode)
+        }
+      }
+    }
+  }
+}
+
+pub fn handle_keydown(editor, key, ctrl_key) {
+  // TODO stop replying on typer
+  // i needs to switch to compose mode
+  let Editor(tree: tree, typer: typer, position: position, ..) = editor
+  let #(untyped, position) =
+    handle_transformation(tree, position, key, ctrl_key, typer)
+  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  let #(type_, scope) = get_target_info(typed, position, typer)
+  // TODO make render with internal state private
+  let generated = javascript.render_to_string(typed, typer)
+  Editor(..editor, tree: typed, typer: typer, position: position)
+}
+
+pub fn handle_change(editor, content) {
+  let Editor(tree: tree, position: position, ..) = editor
+  case get_element(tree, position) {
+    Expression(#(_, e.Binary(_))) -> {
+      let new = ast.binary(content)
+      let untyped = replace_node(tree, position, new)
+      let #(typed, typer) = typer.infer_unconstrained(untyped)
+      Editor(..editor, tree: typed, typer: typer, mode: Command)
+    }
+    _ -> todo("change isn't handled on this element")
+  }
+}
 
 pub type Element {
   Expression(e.Expression(Metadata))
@@ -24,18 +117,7 @@ pub fn multiline(fields) {
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
 
-pub type Editor {
-  Editor(
-    tree: e.Expression(Metadata),
-    typer: State,
-    // TODO make string?
-    position: List(Int),
-    type_: String,
-    scope: List(String),
-    generated: String,
-  )
-}
-
+// TODO remove
 fn get_target_info(typed, position, typer: State) {
   case get_element(typed, position) {
     Expression(#(metadata, _)) -> {
@@ -55,37 +137,14 @@ fn get_target_info(typed, position, typer: State) {
   }
 }
 
-pub fn place_variable(tree, position, label) {
-  let untyped = replace_node(tree, position, ast.variable(label))
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
-  let #(type_, scope) = get_target_info(typed, position, typer)
-
-  // TODO make render with internal state private
-  let generated = javascript.render_to_string(typed, typer)
-  Editor(typed, typer, position, type_, scope, generated)
-}
-
-pub fn handle_focus(typed, position, typer) {
-  get_target_info(typed, position, typer)
-}
-
-pub fn handle_keydown(
-  tree: e.Expression(Metadata),
-  position,
-  key,
-  ctrl_key,
-  typer,
-) {
-  let #(untyped, position) =
-    handle_transformation(tree, position, key, ctrl_key, typer)
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
-  let #(type_, scope) = get_target_info(typed, position, typer)
-
-  // TODO make render with internal state private
-  let generated = javascript.render_to_string(typed, typer)
-  Editor(typed, typer, position, type_, scope, generated)
-}
-
+// pub fn place_variable(tree, position, label) {
+//   let untyped = replace_node(tree, position, ast.variable(label))
+//   let #(typed, typer) = typer.infer_unconstrained(untyped)
+//   let #(type_, scope) = get_target_info(typed, position, typer)
+//   // TODO make render with internal state private
+//   let generated = javascript.render_to_string(typed, typer)
+//   Editor(typed, typer, position, type_, scope, generated)
+// }
 fn handle_transformation(
   tree: e.Expression(Metadata),
   position,

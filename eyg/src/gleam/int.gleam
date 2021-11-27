@@ -10,4 +10,7 @@ if erlang {
 if javascript {
   external fn do_to_string(Int) -> String =
     "" "Number.prototype.toString.call"
+
+  pub external fn parse(String) -> Int =
+    "" "parseInt"
 }

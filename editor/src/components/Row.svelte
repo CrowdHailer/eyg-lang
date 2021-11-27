@@ -17,7 +17,7 @@
 
 <span
   tabindex="-1"
-  data-position={"p" + position.join(",")}
+  data-editor={"p:" + position.join(",")}
   class="border-2 border-white focus:border-indigo-300 outline-none rounded"
   class:border-red-500={error}><Indent {multiline}>
   {#each fields.toArray() as [label, value], i}

@@ -7,7 +7,7 @@
 <span
   class="border-2 border-gray-300 focus:border-indigo-300 outline-none rounded inline-block"
   tabindex="-1"
-  data-position={"p" + position.join(",")}
+  data-editor={"p:" + position.join(",")}
 ></span>
 
 

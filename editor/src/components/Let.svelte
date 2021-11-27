@@ -13,7 +13,7 @@
 <p
   tabindex="-1"
   class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
-  data-position={"p" + position.join(",")}
+  data-editor={"p:" + position.join(",")}
 >
   <span class="text-yellow-400">let</span>
   <Pattern

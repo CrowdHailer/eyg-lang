@@ -14,7 +14,7 @@
 <strong
   class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
   tabindex="-1"
-  data-position={"p" + position.join(",")}>=></strong
+  data-editor={"p:" + position.join(",")}>=></strong
 >
 <Indent>
   <Expression

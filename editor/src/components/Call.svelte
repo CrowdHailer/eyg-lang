@@ -7,7 +7,7 @@
   export let global;
 </script>
 
-<span tabindex="-1" data-position={"p" + position.join(",")}>
+<span tabindex="-1" data-editor={"p:" + position.join(",")}>
   <Expression
     expression={function_}
     {global}
