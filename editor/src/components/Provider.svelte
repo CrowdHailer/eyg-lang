@@ -6,10 +6,11 @@
   export let position;
   export let metadata;
   export let generator;
+  export let config;
 </script>
 
 {#if Ast.is_hole(generator)}
-  <Hole {position} {metadata} required={true} />
+  <Hole {position} {metadata} />
 {:else}
-  Todo
+  --{config}--
 {/if}

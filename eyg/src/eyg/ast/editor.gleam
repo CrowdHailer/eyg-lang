@@ -193,7 +193,8 @@ fn handle_transformation(
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
     "u", False -> command(unwrap(tree, position))
-    "c", False -> command(call(tree, position, typer))
+    // don't wrap in anything if modifies everything
+    "c", False -> call(tree, position, typer)
     "d", False -> delete(tree, position)
     // modes
     "i", False -> draft(tree, position)
@@ -648,15 +649,15 @@ fn unwrap(tree, position) {
 }
 
 fn call(tree, position, typer) {
-  let Expression(expression) = get_element(tree, position)
-  let #(Metadata(type_: type_, ..), _node) = expression
-  let State(substitutions: substitutions, ..) = typer
-  let Ok(type_) = type_
-  let arg_count = monotype.how_many_args(monotype.resolve(type_, substitutions))
-  // TODO arg count
-  let new = ast.call(untype(expression), ast.tuple_([]))
-  let modified = replace_node(tree, position, new)
-  #(modified, list.append(position, [1, 0]))
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
+    Expression(expression) -> {
+      let new = ast.call(untype(expression), ast.hole())
+      let modified = replace_node(tree, position, new)
+      #(Some(modified), list.append(position, [1]), Command)
+    }
+    _ -> #(None, position, Command)
+  }
 }
 
 fn delete(tree, position) {
