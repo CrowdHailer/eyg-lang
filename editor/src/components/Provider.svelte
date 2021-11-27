@@ -9,7 +9,7 @@
 </script>
 
 {#if Ast.is_hole(generator)}
-  <Hole {position} {metadata} on:edit  required={true} />
+  <Hole {position} {metadata} required={true} />
 {:else}
   Todo
 {/if}

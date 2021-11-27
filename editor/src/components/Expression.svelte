@@ -20,21 +20,18 @@
   <Tuple
     {position}
     {metadata}
-    on:edit
     elements={tree.elements}
   />
 {:else if tree instanceof Expression.Binary}
   <Binary
     {position}
     {metadata}
-    on:edit
     value={tree.value}
   />
 {:else if tree instanceof Expression.Let}
   <Let
     {position}
     {metadata}
-    on:edit
     pattern={tree.pattern}
     value={tree.value}
     then={tree.then}
@@ -42,7 +39,6 @@
 {:else if tree instanceof Expression.Call}<Call
     {position}
     {metadata}
-    on:edit
     function_={tree.function}
     with_={tree.with}
   />
@@ -50,14 +46,12 @@
   <Row
   {position}
   {metadata}
-  on:edit
   fields={tree.fields}
   />
 {:else if tree instanceof Expression.Variable}
   <Variable
     {position}
     {metadata}
-    on:edit
     label={tree.label}
     on:delete
   />
@@ -65,7 +59,6 @@
   <Function
     {position}
     {metadata}
-    on:edit
     pattern={tree.pattern}
     body={tree.body}
   />
@@ -74,7 +67,6 @@
   <Provider
     {position}
     {metadata}
-    on:edit
     config={tree.config}
     generator={tree.generator}
   />

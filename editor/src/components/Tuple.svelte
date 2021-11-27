@@ -17,6 +17,5 @@
   >[{#each elements.toArray() as element, i}{#if i !== 0},&nbsp;{/if}<Expression
       position={position.concat(i)}
       expression={element}
-      on:edit
     />{/each}]</span
 >

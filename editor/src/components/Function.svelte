@@ -18,7 +18,6 @@
 <Indent>
   <Expression
     expression={body}
-    on:edit
     position={position.concat(1)}
   />
 </Indent>
