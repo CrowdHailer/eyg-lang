@@ -36,17 +36,8 @@ pub type Editor {
   )
 }
 
-pub fn handle_keydown(
-  tree: e.Expression(Metadata),
-  position,
-  key,
-  ctrl_key,
-  typer,
-) {
-  let #(untyped, position) =
-    handle_transformation(tree, position, key, ctrl_key, typer)
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
-  let #(type_, scope) = case get_element(typed, position) {
+fn get_target_info(typed, position, typer: State) {
+  case get_element(typed, position) {
     Expression(#(metadata, _)) -> {
       // TODO on let type information should be type of value
       // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
@@ -62,6 +53,23 @@ pub fn handle_keydown(
     }
     _ -> #("Unknown", [])
   }
+}
+
+pub fn handle_focus(typed, position, typer) {
+  get_target_info(typed, position, typer)
+}
+
+pub fn handle_keydown(
+  tree: e.Expression(Metadata),
+  position,
+  key,
+  ctrl_key,
+  typer,
+) {
+  let #(untyped, position) =
+    handle_transformation(tree, position, key, ctrl_key, typer)
+  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  let #(type_, scope) = get_target_info(typed, position, typer)
 
   // TODO make render with internal state private
   let generated = javascript.render_to_string(typed, typer)
