@@ -10,6 +10,7 @@
 
   let multiline = false;
   multiline = Editor.multiline(fields)
+
   let error = false
   $: error = Typer.is_error(metadata)
 </script>

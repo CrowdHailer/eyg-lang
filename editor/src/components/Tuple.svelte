@@ -5,6 +5,7 @@
   export let position;
   export let metadata;
   export let elements;
+
   let error = false
   $: error = Typer.is_error(metadata)
 </script>
