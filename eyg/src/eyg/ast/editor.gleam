@@ -64,20 +64,6 @@ pub fn handle_keydown(
   }
 }
 
-pub fn handle_contentedited(
-  tree,
-  position,
-  content,
-) -> #(e.Expression(Nil), List(Int)) {
-  let target = get_element(tree, position)
-  case target {
-    Expression(#(_, e.Binary(_))) -> {
-      let modified = replace_node(tree, position, ast.binary(content))
-      #(modified, position)
-    }
-  }
-}
-
 fn increase_selection(tree, position) {
   let position = case parent_path(position) {
     Some(#(position, _)) -> position

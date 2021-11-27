@@ -19,15 +19,11 @@
   $: tree = expression[1];
 
   export let global;
-  import { createEventDispatcher } from "svelte";
-
-  const dispatch = createEventDispatcher();
 </script>
 
 <!-- {metadata.path.toArray()} -->
 {#if tree instanceof Expression.Name}
   <Name
-    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -37,7 +33,6 @@
   />
 {:else if tree instanceof Expression.Tuple}
   <Tuple
-    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -46,7 +41,6 @@
   />
 {:else if tree instanceof Expression.Binary}
   <Binary
-    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -55,7 +49,6 @@
   />
 {:else if tree instanceof Expression.Let}
   <Let
-    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -65,7 +58,6 @@
     then={tree.then}
   />
 {:else if tree instanceof Expression.Call}<Call
-    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -76,8 +68,7 @@
 {:else if tree instanceof Expression.Constructor}
   <Constructor on:edit {global} named={tree.named} variant={tree.variant} />
 {:else if tree instanceof Expression.Row}
-  <Row
-  on:contentedited
+  <Ro
   {position}
   {metadata}
   on:edit
@@ -86,7 +77,6 @@
   />
 {:else if tree instanceof Expression.Variable}
   <Variable
-    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -96,7 +86,6 @@
   />
 {:else if tree instanceof Expression.Function}
   <Function
-    on:contentedited
     {position}
     {metadata}
     on:edit
@@ -114,7 +103,6 @@
   />
 {:else if tree instanceof Expression.Provider}
   <Provider
-    on:contentedited
     {position}
     {metadata}
     on:edit
