@@ -10,6 +10,7 @@
   import * as Editor from "./gen/eyg/ast/editor";
   import * as example from "./gen/standard/example";
   let [expression, typer] = Typer.infer_unconstrained(example.simple());
+  let position = []
   let type = "";
   let scope;
   let generated;
@@ -26,7 +27,8 @@
   }
 
   function handleFocusin(event) {
-    let position = targetToPosition(event.target);
+    console.log("Focusin");
+    position = targetToPosition(event.target);
     let [a, b] = Editor.handle_focus(expression, position, typer)
     type = a;
     scope = b
@@ -37,17 +39,52 @@
       return true
     }
     let { key, ctrlKey } = event;
-    let position = targetToPosition(event.target);
+    // TODO check that this is
+    let p = targetToPosition(event.target);
+    if (p.toArray().join() != position.toArray().join()) {
+      console.log(p, position);
+      throw "BADDDDD position"
+    }
+    if (!position) {
+      console.log(event);
+    }
+    // TODO keep editor state around
     let state = Editor.handle_keydown(expression, position, key, ctrlKey, typer);
     expression = state.tree
     typer = state.typer
+    console.log("positin", state.position.toArray().join(","));
+    position = state.position
     type = state.type_
     scope = state.scope
     generated = state.generated
     // TODO stringify in the gleam code
-    position = "p" + state.position.toArray().join(",");
+    let pString = "p" + position.toArray().join(",");
     tick().then(() => {
-      let after = document.querySelector("[data-position='" + position + "']");
+      let after = document.querySelector("[data-position='" + pString + "']");
+      if (after) {
+        after.focus();
+      } else {
+        console.error("Action had no effect, was not able to focus cursor")
+      }
+    });
+  }
+
+  function handleVariableClick(event) {
+    event.stopPropagation()
+    let label = event.target.closest("[data-variable]").dataset.variable
+    console.log(label)
+    console.log(position.toArray())
+    let state = Editor.place_variable(expression, position, label)
+    expression = state.tree
+    typer = state.typer
+    position = state.position
+    type = state.type_
+    scope = state.scope
+    generated = state.generated
+    // TODO stringify in the gleam code
+    let pString = "p" + position.toArray().join(",");
+    tick().then(() => {
+      let after = document.querySelector("[data-position='" + pString + "']");
       if (after) {
         after.focus();
       } else {
@@ -71,13 +108,18 @@
     global={{ typer }}
     position={[]}
   />
+  <!-- Have handle focusin global because we control everything onvce focus. -->
+  <!-- but we need to capture key strokes on buttons -->
   <div class="sticky bottom-0 bg-white py-2">
-    <p>type: {type}</p>
-    <nav>variables:
-      {#if scope}
+    {#if position.toArray}
 
+    <p>{position.toArray().join(",")}</p>
+    {/if}
+    <p>type: {type}</p>
+    <nav on:click={handleVariableClick}>variables:
+      {#if scope}
       {#each scope.toArray() as v}
-        <span class="m-1 p-1 bg-blue-100 rounded">{v}</span>
+        <button data-variable={v} class="m-1 p-1 bg-blue-100 rounded">{v}</button>
       {/each}
       {/if}
     </nav>
