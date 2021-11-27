@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
@@ -12,13 +13,28 @@ pub type Monotype {
   Unbound(i: Int)
 }
 
+fn row_to_string(row) {
+  let #(label, type_) = row
+  string.join([label, ": ", to_string(type_)])
+}
+
 pub fn to_string(monotype) {
   case monotype {
     Binary -> "Binary"
-    Tuple(elements) -> string.concat("Tuple", "TODO")
-    Row(fields, _) -> string.concat("Row", "TODO")
-    Function(_, _) -> string.concat("Function()", "TODO")
-    Unbound(_) -> string.concat("a", "")
+    Tuple(elements) ->
+      string.join([
+        "(",
+        string.join(list.intersperse(list.map(elements, to_string), ", ")),
+        ")",
+      ])
+    Row(fields, _) ->
+      string.join([
+        "{",
+        string.join(list.intersperse(list.map(fields, row_to_string), ", ")),
+        "}",
+      ])
+    Function(from, to) -> string.join([to_string(from), " -> ", to_string(to)])
+    Unbound(i) -> int.to_string(i)
   }
 }
 
