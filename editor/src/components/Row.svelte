@@ -7,7 +7,6 @@
   export let position;
   export let metadata;
   export let fields;
-  export let global;
 
   let multiline = false;
   multiline = Editor.multiline(fields)
@@ -24,6 +23,6 @@
     <span class="text-purple-600">{label}</span><span class="text-gray-500"
       >:</span
     >
-    <Expression position={position.concat(i)} expression={value} {global} />{#if i < fields.toArray().length - 1},{/if}{#if multiline}<br />{/if}
+    <Expression position={position.concat(i)} expression={value} />{#if i < fields.toArray().length - 1},{/if}{#if multiline}<br />{/if}
   {/each}
 </Indent></span>

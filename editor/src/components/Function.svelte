@@ -5,12 +5,11 @@
 
   export let position;
   export let metadata;
-  export let global;
   export let pattern;
   export let body;
 </script>
 
-(<Pattern {pattern} {metadata} {global} position={position.concat(0)} />)
+(<Pattern {pattern} {metadata} position={position.concat(0)} />)
 <strong
   class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
   tabindex="-1"
@@ -20,7 +19,6 @@
   <Expression
     expression={body}
     on:edit
-    {global}
     position={position.concat(1)}
   />
 </Indent>

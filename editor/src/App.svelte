@@ -66,16 +66,11 @@
 >
   <Expression
     expression={editor.tree}
-    global={{ typer: editor.typer }}
     position={[]}
   />
-  <!-- Have handle focusin global because we control everything onvce focus. -->
-  <!-- but we need to capture key strokes on buttons -->
   <div class="sticky bottom-0 bg-white py-2">
     {#if Editor.is_command(editor)}
     <p>type: {Editor.target_type(editor)}</p>
-
-    <p>{editor.position.toArray().join(",")}</p>
     {:else if Editor.is_draft(editor)}
     <input
       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"

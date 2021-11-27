@@ -1,7 +1,6 @@
 <script>
   export let position;
   export let metadata;
-  export let global;
 </script>
 
 <span

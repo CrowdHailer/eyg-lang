@@ -5,7 +5,6 @@
   export let position;
   export let metadata;
   export let elements;
-  export let global;
   let error = false
   $: error = Typer.is_error(metadata)
 </script>
@@ -19,6 +18,5 @@
       position={position.concat(i)}
       expression={element}
       on:edit
-      {global}
     />{/each}]</span
 >

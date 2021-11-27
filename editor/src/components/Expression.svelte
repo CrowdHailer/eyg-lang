@@ -14,18 +14,13 @@
   let metadata, tree;
   $: metadata = expression[0];
   $: tree = expression[1];
-
-  export let global;
 </script>
-
-<!-- {metadata.path.toArray()} -->
 
 {#if tree instanceof Expression.Tuple}
   <Tuple
     {position}
     {metadata}
     on:edit
-    {global}
     elements={tree.elements}
   />
 {:else if tree instanceof Expression.Binary}
@@ -33,7 +28,6 @@
     {position}
     {metadata}
     on:edit
-    {global}
     value={tree.value}
   />
 {:else if tree instanceof Expression.Let}
@@ -41,7 +35,6 @@
     {position}
     {metadata}
     on:edit
-    {global}
     pattern={tree.pattern}
     value={tree.value}
     then={tree.then}
@@ -50,7 +43,6 @@
     {position}
     {metadata}
     on:edit
-    {global}
     function_={tree.function}
     with_={tree.with}
   />
@@ -59,7 +51,6 @@
   {position}
   {metadata}
   on:edit
-  {global}
   fields={tree.fields}
   />
 {:else if tree instanceof Expression.Variable}
@@ -67,7 +58,6 @@
     {position}
     {metadata}
     on:edit
-    {global}
     label={tree.label}
     on:delete
   />
@@ -76,7 +66,6 @@
     {position}
     {metadata}
     on:edit
-    {global}
     pattern={tree.pattern}
     body={tree.body}
   />
@@ -86,7 +75,6 @@
     {position}
     {metadata}
     on:edit
-    {global}
     config={tree.config}
     generator={tree.generator}
   />

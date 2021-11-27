@@ -7,7 +7,6 @@
   export let pattern;
   export let value;
   export let then;
-  export let global;
 </script>
 
 <p
@@ -19,18 +18,15 @@
   <Pattern
     {pattern}
     {metadata}
-    {global}
     position={position.concat(0)}
   />
   =
   <Expression
     expression={value}
-    {global}
     position={position.concat(1)}
   />
 </p>
 <Expression
   expression={then}
-  {global}
   position={position.concat(2)}
 />

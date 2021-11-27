@@ -4,7 +4,6 @@
   export let position;
   export let metadata;
   export let pattern;
-  export let global;
 </script>
 
 <!-- Bubble everything to the top does an onchange event bubble -->
