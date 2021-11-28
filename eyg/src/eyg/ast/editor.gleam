@@ -273,29 +273,25 @@ fn decrease_selection(tree, position) {
 }
 
 fn move_left(tree, position) {
-  case list.reverse(position) {
-    [] -> {
-      io.debug("cannot move left from root note")
-      position
-    }
-    [0, .._] -> {
-      io.debug("cannot move any further left")
-      position
-    }
-    [index, ..rest] -> list.reverse([index - 1, ..rest])
+  case parent_path(position) {
+    None -> position
+    Some(#(parent, 0)) -> position
+    Some(#(parent, cursor)) ->
+      case get_element(tree, parent), cursor {
+        Expression(#(_, e.Let(_, _, _))), 2 -> position
+        _, _ -> ast.append_path(parent, cursor - 1)
+      }
   }
 }
 
 fn move_right(tree, position) {
   case parent_path(position) {
-    None -> {
-      io.debug("cannot move right from root note")
-      position
-    }
+    None -> position
     Some(#(parent, cursor)) -> {
       let max = case get_element(tree, parent) {
         // parent can't be Binary or var
         Expression(#(_, e.Tuple(elements))) -> list.length(elements) - 1
+        Expression(#(_, e.Row(fields))) -> list.length(fields) - 1
         // Let, Function, Call all have two elements 0 & 1
         Expression(_) -> 1
         Pattern(p.Tuple(elements)) -> list.length(elements) - 1
