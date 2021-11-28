@@ -14,9 +14,7 @@
 
   function updateFocus(editor) {
     tick().then(() => {
-      console.log("then");
       if (Editor.is_draft(editor)) {
-        console.log("focus");
         document.getElementById("draft").focus()
       } else {
         // TODO stringify in the gleam code
@@ -33,13 +31,11 @@
   }
 
   function handleClick(event) {
-    console.log("click");
-
     editor = Editor.handle_click(editor, eventToTarget(event))
     updateFocus(editor)
   }
 
-    function handleKeydown(event) {
+  function handleKeydown(event) {
     if (event.metaKey) {
       return true
     }
@@ -49,8 +45,21 @@
     updateFocus(editor)
   }
 
+  function handleDraftKeydown(event) {
+    if (event.metaKey) {
+      return true
+    }
+    if (event.key == "Escape" || event.key == "Tab") {
+      event.preventDefault()
+      editor = Editor.handle_change(editor, event.target.value)
+      // need update focus to switch back to code tree.
+      // code:1,2,3 might be better that position
+      updateFocus(editor)
+    }
+    event.stopPropagation()
+  }
+
   function handleChange(event) {
-    console.log("change");
     editor = Editor.handle_change(editor, event.target.value)
     updateFocus(editor)
   }
@@ -82,7 +91,7 @@
       type="text"
       value={editor.mode.content}
       on:click={(e) => e.stopPropagation()}
-      on:keydown={(e) => e.stopPropagation()}
+      on:keydown={handleDraftKeydown}
       on:change={handleChange}
       >
     {:else if Editor.is_select(editor)}
