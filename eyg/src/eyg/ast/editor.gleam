@@ -711,7 +711,7 @@ fn delete(tree, position) {
               #(
                 Some(replace_node(tree, p_path, ast.tuple_(elements))),
                 p_path,
-                Select([]),
+                Command,
               )
             }
             _ -> #(None, position, Select([]))
@@ -726,24 +726,29 @@ fn delete(tree, position) {
     Pattern(_) -> #(
       Some(replace_pattern(tree, position, p.Discard)),
       position,
-      Select([]),
+      Command,
     )
-    PatternElement(cursor, _) -> {
+    PatternElement(cursor, el) -> {
       let Some(#(pattern_position, _)) = parent_path(position)
       let Pattern(p.Tuple(elements)) = get_element(tree, pattern_position)
-      let elements =
-        list.append(
-          list.take(elements, cursor),
-          list.drop(elements, cursor + 1),
-        )
-      let position = case cursor > 0 {
-        True -> ast.append_path(pattern_position, cursor - 1)
-        False -> pattern_position
+      let pre = list.take(elements, cursor)
+      let post = list.drop(elements, cursor + 1)
+      let insert = case el {
+        None -> []
+        Some(_) -> [None]
+      }
+      let elements = list.flatten([pre, insert, post])
+      let position = case list.length(elements) > 0, cursor > 0 && list.length(
+        insert,
+      ) == 0 {
+        False, _ -> pattern_position
+        _, True -> ast.append_path(pattern_position, cursor - 1)
+        _, False -> ast.append_path(pattern_position, cursor)
       }
       #(
         Some(replace_pattern(tree, pattern_position, p.Tuple(elements))),
         position,
-        Select([]),
+        Command,
       )
     }
   }
