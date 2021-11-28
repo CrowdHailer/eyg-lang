@@ -195,7 +195,6 @@ fn append_path(typer, i) {
 
 pub type Metadata {
   Metadata(
-    path: List(Int),
     type_: Result(monotype.Monotype, Reason),
     scope: List(#(String, polytype.Polytype)),
   )
@@ -260,7 +259,7 @@ pub fn infer(
   // return all context so more info can be added later
   let #(_, tree) = expression
   let State(location: path, ..) = typer
-  let meta = Metadata(path: path, type_: _, scope: typer.variables)
+  let meta = Metadata(type_: _, scope: typer.variables)
   case tree {
     Binary(value) -> {
       let #(type_, typer) = do_unify(expected, monotype.Binary, typer)
