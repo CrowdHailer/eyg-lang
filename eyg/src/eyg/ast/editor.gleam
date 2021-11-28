@@ -408,7 +408,7 @@ fn space_right(tree, position) {
       #(
         Some(replace_node(tree, position, new)),
         ast.append_path(position, cursor),
-        Command,
+        Select(""),
       )
     }
     Some(#(position, cursor, RowExpression(fields))) -> {
@@ -432,7 +432,7 @@ fn space_right(tree, position) {
       #(
         Some(replace_pattern(tree, position, new)),
         ast.append_path(position, cursor),
-        Command,
+        Draft(""),
       )
     }
   }
