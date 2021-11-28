@@ -229,34 +229,29 @@ fn increase_selection(tree, position) {
 }
 
 fn decrease_selection(tree, position) {
+  let inner = ast.append_path(position, 0)
   case get_element(tree, position) {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
-      #(
-        Some(replace_node(tree, position, new)),
-        ast.append_path(position, 0),
-        Command,
-      )
+      #(Some(replace_node(tree, position, new)), inner, Command)
     }
+    // TODO option of having a virtual node when you move down
     Expression(#(_, e.Row([]))) -> {
       let new = ast.row([#("ss", ast.hole())])
-      #(
-        Some(replace_node(tree, position, new)),
-        ast.append_path(position, 0),
-        Command,
-      )
+      #(Some(replace_node(tree, position, new)), inner, Command)
     }
     Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
       None,
       position,
       Command,
     )
-    Expression(_) -> #(None, ast.append_path(position, 0), Command)
+    Expression(_) -> #(None, inner, Command)
     Pattern(p.Tuple([])) -> #(
       Some(replace_pattern(tree, position, p.Tuple([None]))),
-      ast.append_path(position, 0),
+      inner,
       Command,
     )
+    Pattern(p.Tuple(_)) | Pattern(p.Row(_)) -> #(None, inner, Command)
     _ -> #(None, position, Command)
   }
 }
