@@ -136,6 +136,11 @@ pub fn handle_keydown(editor, key, ctrl_key) {
       )
     }
     Draft(_) -> todo("handle draft mode")
+    Select(_) ->
+      case key {
+        "Escape" -> Editor(..editor, mode: Command)
+        _ -> todo("handle selection refinement")
+      }
   }
 }
 
