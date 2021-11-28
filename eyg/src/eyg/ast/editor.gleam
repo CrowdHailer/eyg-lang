@@ -215,6 +215,7 @@ fn handle_transformation(
     "d", False -> delete(tree, position)
     // modes
     "i", False -> draft(tree, position)
+    "v", False -> variable(tree, position)
     // Fallback
     "Control", _ | "Shift", _ | "Alt", _ | "Meta", _ -> #(
       None,
@@ -249,7 +250,7 @@ fn decrease_selection(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
-      #(Some(replace_node(tree, position, new)), inner, Command)
+      #(Some(replace_node(tree, position, new)), inner, Select([]))
     }
     // TODO option of having a virtual node when you move down
     Expression(#(_, e.Row([]))) -> {
@@ -265,7 +266,7 @@ fn decrease_selection(tree, position) {
     Pattern(p.Tuple([])) -> #(
       Some(replace_pattern(tree, position, p.Tuple([None]))),
       inner,
-      Command,
+      Draft(""),
     )
     Pattern(p.Tuple(_)) | Pattern(p.Row(_)) -> #(None, inner, Command)
     _ -> #(None, position, Command)
@@ -774,6 +775,15 @@ fn draft(tree, position) {
     Pattern(p.Variable(label)) -> #(None, position, Draft(label))
     PatternElement(_, None) -> #(None, position, Draft(""))
     PatternElement(_, Some(label)) -> #(None, position, Draft(label))
+    _ -> #(None, position, Command)
+  }
+}
+
+fn variable(tree, position) {
+  case get_element(tree, position) {
+    // Confusing to replace a whole Let at once.
+    Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
+    Expression(_) -> #(None, position, Select([]))
     _ -> #(None, position, Command)
   }
 }
