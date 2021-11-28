@@ -340,6 +340,9 @@ fn move_right(tree, position) {
         Expression(_) -> 1
         RowField(_, _) -> 1
         Pattern(p.Tuple(elements)) -> list.length(elements) - 1
+        Pattern(p.Row(fields)) -> list.length(fields) - 1
+        // patternkey/value can't be parents
+        PatternField(_, _) -> 1
       }
       case cursor < max {
         True -> ast.append_path(parent, cursor + 1)
