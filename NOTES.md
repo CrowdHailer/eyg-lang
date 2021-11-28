@@ -30,8 +30,8 @@ Need to replace lot's of tuple references with tuple or pattern
 - [ ] list all errors in program
 - [ ] Load/Save files
 - [ ] Copy/paste
-- [ ] remove tab index, use position in editor
-- [ ] pretty print missing fields error
+- [ ] remove tabindex = -1, use position in editor
+- [x] pretty print missing fields error
 - [x] insert space/drag in patterns
 - [x] create a binary
 - [x] down on an empty tuple should create a blank

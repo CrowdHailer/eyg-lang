@@ -37,7 +37,15 @@ pub fn reason_to_string(reason) {
         " given ",
         monotype.to_string(given),
       ])
-    MissingFields(expected) -> "missingfields"
+    MissingFields(expected) ->
+      // TODO add type information
+      [
+        "Missing fields:",
+        ..list.map(expected, fn(x: #(String, monotype.Monotype)) { x.0 })
+        |> list.intersperse(", ")
+      ]
+      |> string.join
+
     UnexpectedFields(expected) -> "unexpectedfields"
   }
 }
