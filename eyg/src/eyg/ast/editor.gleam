@@ -90,6 +90,7 @@ pub fn init() {
 
 pub fn handle_click(editor: Editor, target) {
   case string.split(target, ":") {
+    ["root"] -> Editor(..editor, position: [], mode: Command)
     ["p", rest] -> {
       let position =
         string.split(rest, ",")

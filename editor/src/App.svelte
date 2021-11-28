@@ -54,6 +54,7 @@
       editor = Editor.handle_change(editor, event.target.value)
       // need update focus to switch back to code tree.
       // code:1,2,3 might be better that position
+      // I think prevent default prevents change being fired
       updateFocus(editor)
     }
     event.stopPropagation()
@@ -70,6 +71,7 @@
 </header>
 <div
   class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative"
+  data-editor="root"
   on:click={handleClick}
   on:keydown={handleKeydown}
 >
