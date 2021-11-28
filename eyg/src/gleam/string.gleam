@@ -11,6 +11,9 @@ if javascript {
 
   external fn array_to_list(Array(x)) -> List(x) =
     "../gleam.js" "toList"
+
+  pub external fn starts_with(String, String) -> Bool =
+    "" "String.prototype.startsWith.call"
 }
 
 pub fn split(string, pattern) {

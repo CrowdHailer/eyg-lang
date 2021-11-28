@@ -15,7 +15,7 @@ import standard/example
 pub type Mode {
   Command
   Draft(content: String)
-  Select(options: List(String))
+  Select(filter: String)
 }
 
 pub type Editor {
@@ -50,10 +50,11 @@ pub fn is_select(editor) {
 }
 
 pub fn in_scope(editor) {
-  let Editor(tree: tree, position: position, ..) = editor
+  let Editor(tree: tree, position: position, mode: Select(filter), ..) = editor
   case get_element(tree, position) {
     Expression(#(metadata, _)) ->
       list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
+      |> list.filter(string.starts_with(_, filter))
     _ -> []
   }
 }
@@ -250,7 +251,7 @@ fn decrease_selection(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
-      #(Some(replace_node(tree, position, new)), inner, Select([]))
+      #(Some(replace_node(tree, position, new)), inner, Select(""))
     }
     // TODO option of having a virtual node when you move down
     Expression(#(_, e.Row([]))) -> {
@@ -710,7 +711,7 @@ fn delete(tree, position) {
     Expression(#(_, e.Let(_, _, then))) -> #(
       Some(replace_node(tree, position, untype(then))),
       position,
-      Select([]),
+      Select(""),
     )
     Expression(#(_, e.Provider(_, g))) if g == hole_func ->
       case parent_path(position) {
@@ -728,14 +729,14 @@ fn delete(tree, position) {
                 Command,
               )
             }
-            _ -> #(None, position, Select([]))
+            _ -> #(None, position, Select(""))
           }
-        None -> #(None, position, Select([]))
+        None -> #(None, position, Select(""))
       }
     Expression(_) -> #(
       Some(replace_node(tree, position, ast.hole())),
       position,
-      Select([]),
+      Select(""),
     )
     Pattern(_) -> #(
       Some(replace_pattern(tree, position, p.Discard)),
@@ -783,7 +784,7 @@ fn variable(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
-    Expression(_) -> #(None, position, Select([]))
+    Expression(_) -> #(None, position, Select(""))
     _ -> #(None, position, Command)
   }
 }

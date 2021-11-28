@@ -16,7 +16,9 @@
     tick().then(() => {
       if (Editor.is_draft(editor)) {
         document.getElementById("draft").focus()
-      } else {
+      } else if(Editor.is_select(editor)) {
+        document.getElementById("filter").focus()
+      } else if(Editor.is_command(editor)) {
         // TODO stringify in the gleam code
         let pString = "p:" + editor.position.toArray().join(",");
 
@@ -49,6 +51,7 @@
     if (event.metaKey) {
       return true
     }
+    // maybe escape should be cancel not commit
     if (event.key == "Escape" || event.key == "Tab") {
       event.preventDefault()
       editor = Editor.handle_change(editor, event.target.value)
@@ -56,6 +59,21 @@
       // code:1,2,3 might be better that position
       // I think prevent default prevents change being fired
       updateFocus(editor)
+    }
+    event.stopPropagation()
+  }
+
+  function handleSelectKeydown(event) {
+    if (event.metaKey || event.key == "Escape") {
+      return true
+    }
+    if (event.key == "Enter" || event.key == " ") {
+      let variable = Editor.in_scope(editor).toArray()[0]
+      if (variable) {
+        editor = Editor.handle_click(editor, "v:" + variable)
+      }
+      updateFocus(editor)
+      event.preventDefault()
     }
     event.stopPropagation()
   }
@@ -97,11 +115,23 @@
       on:change={handleChange}
       >
     {:else if Editor.is_select(editor)}
-      <nav>variables:
-        {#each Editor.in_scope(editor).toArray() as v}
-          <button data-editor="v:{v}" class="m-1 p-1 bg-blue-100 rounded">{v}</button>
-        {/each}
-      </nav>
+      <div
+        on:keydown={handleSelectKeydown}>
+        <input
+          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          id="filter"
+          on:click={(e) => e.stopPropagation()}
+          type="text"
+          bind:value={editor.mode.filter}>
+        <nav>variables:
+          {#each Editor.in_scope(editor).toArray() as v,i}
+            <button
+              class="m-1 p-1 bg-blue-100 rounded border-black"
+              class:border={i == 0}
+              data-editor="v:{v}" >{v}</button>
+          {/each}
+        </nav>
+      </div>
     {/if}
   </div>
 </div>

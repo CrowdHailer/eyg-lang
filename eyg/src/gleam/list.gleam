@@ -265,3 +265,31 @@ pub fn try_map(
 ) -> Result(List(b), e) {
   do_try_map(list, fun, [])
 }
+
+fn do_filter(list: List(a), fun: fn(a) -> Bool, acc: List(a)) -> List(a) {
+  case list {
+    [] -> reverse(acc)
+    [x, ..xs] -> {
+      let new_acc = case fun(x) {
+        True -> [x, ..acc]
+        False -> acc
+      }
+      do_filter(xs, fun, new_acc)
+    }
+  }
+}
+
+/// Returns a new list containing only the elements from the first list for
+/// which the given functions returns `True`.
+///
+/// ## Examples
+///
+///    > filter([2, 4, 6, 1], fn(x) { x > 2 })
+///    [4, 6]
+///
+///    > filter([2, 4, 6, 1], fn(x) { x > 6 })
+///    []
+///
+pub fn filter(list: List(a), for predicate: fn(a) -> Bool) -> List(a) {
+  do_filter(list, predicate, [])
+}
