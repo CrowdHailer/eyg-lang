@@ -176,6 +176,26 @@ pub fn handle_change(editor, content) {
       let fields = list.flatten([pre, [#(content, untype(value))], post])
       replace_node(tree, record_position, ast.row(fields))
     }
+    PatternKey(i, _) -> {
+      let Some(#(field_position, _)) = parent_path(position)
+      let Some(#(pattern_position, _)) = parent_path(field_position)
+      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      // TODO map at
+      let pre = list.take(fields, i)
+      let [#(_, label), ..post] = list.drop(fields, i)
+      let fields = list.flatten([pre, [#(content, label)], post])
+      replace_pattern(tree, pattern_position, p.Row(fields))
+    }
+    PatternFieldBind(i, _) -> {
+      let Some(#(field_position, _)) = parent_path(position)
+      let Some(#(pattern_position, _)) = parent_path(field_position)
+      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      // TODO map at
+      let pre = list.take(fields, i)
+      let [#(key, _), ..post] = list.drop(fields, i)
+      let fields = list.flatten([pre, [#(key, content)], post])
+      replace_pattern(tree, pattern_position, p.Row(fields))
+    }
 
     _ -> todo("change isn't handled on this element")
   }
@@ -861,6 +881,8 @@ fn draft(tree, position) {
     PatternElement(_, None) -> #(None, position, Draft(""))
     PatternElement(_, Some(label)) -> #(None, position, Draft(label))
     RowKey(_, key) -> #(None, position, Draft(key))
+    PatternKey(_, key) -> #(None, position, Draft(key))
+    PatternFieldBind(_, label) -> #(None, position, Draft(label))
     _ -> #(None, position, Command)
   }
 }
@@ -926,6 +948,16 @@ pub fn get_element(tree, position) {
       // l.at and this should be an error instead
       let [field, .._] = list.drop(fields, i)
       PatternField(i, field)
+    }
+    #(_, e.Let(p.Row(fields), _, _)), [0, i, 0] -> {
+      // l.at and this should be an error instead
+      let [#(key, _), .._] = list.drop(fields, i)
+      PatternKey(i, key)
+    }
+    #(_, e.Let(p.Row(fields), _, _)), [0, i, 1] -> {
+      // l.at and this should be an error instead
+      let [#(_, bind), .._] = list.drop(fields, i)
+      PatternFieldBind(i, bind)
     }
     #(_, e.Let(_, value, _)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(_, _, then)), [2, ..rest] -> get_element(then, rest)
