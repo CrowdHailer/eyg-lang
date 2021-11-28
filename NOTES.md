@@ -18,7 +18,7 @@ Need to replace lot's of tuple references with tuple or pattern
 
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
-- [ ] Put variables in Blanks, auto complete
+- [x] Put variables in Blanks, auto complete
 - [ ] Tab (Space) to Blanks/Errors
 - [x] Fix tests
 - [ ] Load/Save files
@@ -33,13 +33,13 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] create function
 - [ ] insert before after on records requires a path to the record element
 - [ ] holes can be printed as `todo` Red, pattern discard is underscore. all blanks should have a value.
-- [ ] Fix saving changes to strings
-- [ ] Need Blanks in tuple patterns, could just be option types
+- [x] Fix saving changes to strings
+- [x] Need Blanks in tuple patterns, could just be option types
 - [x] Record types
 - [ ] rename hole as blank
-- [ ] It should be possible to focus/unfocus on a blank
+- [x] It should be possible to focus/unfocus on a blank
 - [x] Need a pattern blank
-- [ ] delete should work on the blanks to clear any preset.
+- [x] delete should work on the blanks to clear any preset.
 - [ ] Handle errors, maybe not because gleam shouldn't error
 - [ ] Test lambda calculus enums.
 - [ ] Pin type, click and bump constraints to top
