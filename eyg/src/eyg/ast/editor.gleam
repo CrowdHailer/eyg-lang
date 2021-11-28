@@ -140,15 +140,25 @@ pub fn handle_keydown(editor, key, ctrl_key) {
 
 pub fn handle_change(editor, content) {
   let Editor(tree: tree, position: position, ..) = editor
-  case get_element(tree, position) {
+  let untyped = case get_element(tree, position) {
     Expression(#(_, e.Binary(_))) -> {
       let new = ast.binary(content)
-      let untyped = replace_node(tree, position, new)
-      let #(typed, typer) = typer.infer_unconstrained(untyped)
-      Editor(..editor, tree: typed, typer: typer, mode: Command)
+      replace_node(tree, position, new)
+    }
+    Pattern(p.Discard) | Pattern(p.Variable(_)) ->
+      replace_pattern(tree, position, p.Variable(content))
+    PatternElement(i, _) -> {
+      let Some(#(pattern_position, _)) = parent_path(position)
+      let Pattern(p.Tuple(elements)) = get_element(tree, pattern_position)
+      let pre = list.take(elements, i)
+      let [_, ..post] = list.drop(elements, i)
+      let elements = list.flatten([pre, [Some(content)], post])
+      replace_pattern(tree, pattern_position, p.Tuple(elements))
     }
     _ -> todo("change isn't handled on this element")
   }
+  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
 
 pub type Element {
@@ -741,7 +751,11 @@ fn delete(tree, position) {
 fn draft(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Binary(content))) -> #(None, position, Draft(content))
-    _ -> todo("can't i on this element")
+    Pattern(p.Discard) -> #(None, position, Draft(""))
+    Pattern(p.Variable(label)) -> #(None, position, Draft(label))
+    PatternElement(_, None) -> #(None, position, Draft(""))
+    PatternElement(_, Some(label)) -> #(None, position, Draft(label))
+    _ -> #(None, position, Command)
   }
 }
 
