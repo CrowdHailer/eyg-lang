@@ -185,10 +185,13 @@ pub fn handle_change(editor, content) {
 
 pub type Element {
   Expression(e.Expression(Metadata))
-  Pattern(p.Pattern)
-  PatternElement(Int, Option(String))
   RowField(Int, #(String, e.Expression(Metadata)))
   RowKey(Int, String)
+  Pattern(p.Pattern)
+  PatternElement(Int, Option(String))
+  PatternField(Int, #(String, String))
+  PatternKey(Int, String)
+  PatternFieldBind(Int, String)
 }
 
 pub fn multiline(fields) {
@@ -298,7 +301,17 @@ fn decrease_selection(tree, position) {
       inner,
       Draft(""),
     )
-    Pattern(p.Tuple(_)) | Pattern(p.Row(_)) -> #(None, inner, Command)
+    Pattern(p.Row([])) -> #(
+      Some(replace_pattern(tree, position, p.Row([#("", "")]))),
+      ast.append_path(inner, 0),
+      Draft(""),
+    )
+
+    Pattern(p.Tuple(_)) | Pattern(p.Row(_)) | PatternField(_, _) -> #(
+      None,
+      inner,
+      Command,
+    )
     _ -> #(None, position, Command)
   }
 }
@@ -906,11 +919,11 @@ pub fn get_element(tree, position) {
       let [element, .._] = list.drop(elements, i)
       PatternElement(i, element)
     }
-    #(_, e.Let(p.Row(fields), _, _)), [0, i] ->
+    #(_, e.Let(p.Row(fields), _, _)), [0, i] -> {
       // l.at and this should be an error instead
-      // let [element, .._] = list.drop(elements, i)
-      // PatternElement(i, element)
-      todo("new row element")
+      let [field, .._] = list.drop(fields, i)
+      PatternField(i, field)
+    }
     #(_, e.Let(_, value, _)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(_, _, then)), [2, ..rest] -> get_element(then, rest)
     #(_, e.Function(pattern, _)), [0] -> Pattern(pattern)

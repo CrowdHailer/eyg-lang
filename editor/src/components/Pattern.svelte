@@ -43,13 +43,21 @@
 tabindex="-1"
 data-editor={"p:" + position.join(",")}
 class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
->{#each pattern.fields.toArray() as [label, variable], i}<span
+>&lbrace;{#each pattern.fields.toArray() as [label, variable], i}<span
     tabindex="-1"
     class=""
-    data-editor={":" + position.concat(i).join(",")}><span class="text-purple-600">{label}</span>: <span class="text-blue-500">{variable}</span></span
+    data-editor={"p:" + position.concat(i).join(",")}><span
+      class="text-purple-600 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100"
+      tabindex="-1"
+      data-editor={"p:" + position.concat(i, 0).join(",")}
+      >{label}</span>: <span
+        class="text-blue-500 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100"
+        tabindex="-1"
+        data-editor={"p:" + position.concat(i, 1).join(",")}
+        >{variable}</span></span
   >{#if i < pattern.fields.toArray().length - 1}
     ,
-  {/if}{/each}</span
+  {/if}{/each}&rbrace;</span
 >{/if}
 
 <style>
