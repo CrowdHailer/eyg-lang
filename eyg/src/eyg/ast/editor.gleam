@@ -287,12 +287,24 @@ fn move_left(tree, position) {
 }
 
 fn move_right(tree, position) {
-  case list.reverse(position) {
-    [] -> {
+  case parent_path(position) {
+    None -> {
       io.debug("cannot move right from root note")
       position
     }
-    [index, ..rest] -> list.reverse([index + 1, ..rest])
+    Some(#(parent, cursor)) -> {
+      let max = case get_element(tree, parent) {
+        // parent can't be Binary or var
+        Expression(#(_, e.Tuple(elements))) -> list.length(elements) - 1
+        // Let, Function, Call all have two elements 0 & 1
+        Expression(_) -> 1
+        Pattern(p.Tuple(elements)) -> list.length(elements) - 1
+      }
+      case cursor < max {
+        True -> ast.append_path(parent, cursor + 1)
+        False -> position
+      }
+    }
   }
 }
 
