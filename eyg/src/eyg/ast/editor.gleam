@@ -162,6 +162,21 @@ pub fn handle_change(editor, content) {
       let elements = list.flatten([pre, [Some(content)], post])
       replace_pattern(tree, pattern_position, p.Tuple(elements))
     }
+    RowKey(i, _) -> {
+      let Some(#(field_position, _)) = parent_path(position)
+      let Some(#(record_position, _)) = parent_path(field_position)
+      let Expression(#(_, e.Row(fields))) = get_element(tree, record_position)
+      let pre =
+        list.take(fields, i)
+        |> list.map(untype_field)
+      let [#(_, value), ..post] = list.drop(fields, i)
+      let post =
+        post
+        |> list.map(untype_field)
+      let fields = list.flatten([pre, [#(content, untype(value))], post])
+      replace_node(tree, record_position, ast.row(fields))
+    }
+
     _ -> todo("change isn't handled on this element")
   }
   let #(typed, typer) = typer.infer_unconstrained(untyped)
@@ -172,6 +187,8 @@ pub type Element {
   Expression(e.Expression(Metadata))
   Pattern(p.Pattern)
   PatternElement(Int, Option(String))
+  RowField(Int, #(String, e.Expression(Metadata)))
+  RowKey(Int, String)
 }
 
 pub fn multiline(fields) {
@@ -182,7 +199,9 @@ pub fn multiline(fields) {
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
 
-pub fn untype_field(field) {
+pub fn untype_field(
+  field: #(String, e.Expression(a)),
+) -> #(String, e.Expression(Nil)) {
   let #(label, value) = field
   #(label, untype(value))
 }
@@ -203,7 +222,7 @@ fn handle_transformation(
     "k", False -> navigation(move_up(tree, position))
     // transform
     "H", False -> command(space_left(tree, position))
-    "L", False -> command(space_right(tree, position))
+    "L", False -> space_right(tree, position)
     "J", False -> command(space_below(tree, position))
     "K", False -> command(space_above(tree, position))
     "h", True -> command(drag_left(tree, position))
@@ -253,7 +272,8 @@ fn increase_selection(tree, position) {
 
 fn decrease_selection(tree, position) {
   let inner = ast.append_path(position, 0)
-  case get_element(tree, position) {
+  case get_element(tree, position)
+  |> io.debug {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
       #(Some(replace_node(tree, position, new)), inner, Select(""))
@@ -269,6 +289,7 @@ fn decrease_selection(tree, position) {
       Command,
     )
     Expression(_) -> #(None, inner, Command)
+    RowField(_, _) -> #(None, inner, Command)
     Pattern(p.Tuple([])) -> #(
       Some(replace_pattern(tree, position, p.Tuple([None]))),
       inner,
@@ -301,6 +322,7 @@ fn move_right(tree, position) {
         Expression(#(_, e.Row(fields))) -> list.length(fields) - 1
         // Let, Function, Call all have two elements 0 & 1
         Expression(_) -> 1
+        RowField(_, _) -> 1
         Pattern(p.Tuple(elements)) -> list.length(elements) - 1
       }
       case cursor < max {
@@ -376,14 +398,30 @@ fn space_left(tree, position) {
 
 fn space_right(tree, position) {
   case closest(tree, position, match_compound) {
-    None -> #(untype(tree), position)
+    None -> #(None, position, Command)
     Some(#(position, cursor, TupleExpression(elements))) -> {
       let cursor = cursor + 1
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor)
       let elements = list.flatten([pre, [ast.hole()], post])
       let new = ast.tuple_(elements)
-      #(replace_node(tree, position, new), ast.append_path(position, cursor))
+      #(
+        Some(replace_node(tree, position, new)),
+        ast.append_path(position, cursor),
+        Command,
+      )
+    }
+    Some(#(position, cursor, RowExpression(fields))) -> {
+      let cursor = cursor + 1
+      let pre = list.take(fields, cursor)
+      let post = list.drop(fields, cursor)
+      let fields = list.flatten([pre, [#("", ast.hole())], post])
+      let new = ast.row(fields)
+      #(
+        Some(replace_node(tree, position, new)),
+        ast.append_path(ast.append_path(position, cursor), 0),
+        Draft(""),
+      )
     }
     Some(#(position, cursor, TuplePattern(elements))) -> {
       let cursor = cursor + 1
@@ -391,7 +429,11 @@ fn space_right(tree, position) {
       let post = list.drop(elements, cursor)
       let elements = list.flatten([pre, [None], post])
       let new = p.Tuple(elements)
-      #(replace_pattern(tree, position, new), ast.append_path(position, cursor))
+      #(
+        Some(replace_pattern(tree, position, new)),
+        ast.append_path(position, cursor),
+        Command,
+      )
     }
   }
 }
@@ -814,6 +856,7 @@ fn draft(tree, position) {
     Pattern(p.Variable(label)) -> #(None, position, Draft(label))
     PatternElement(_, None) -> #(None, position, Draft(""))
     PatternElement(_, Some(label)) -> #(None, position, Draft(label))
+    RowKey(_, key) -> #(None, position, Draft(key))
     _ -> #(None, position, Command)
   }
 }
@@ -857,7 +900,18 @@ pub fn get_element(tree, position) {
       let [child, .._] = list.drop(elements, i)
       get_element(child, rest)
     }
-    #(_, e.Row(fields)), [i, ..rest] -> {
+    #(_, e.Row(fields)), [i] -> {
+      let [field, .._] = list.drop(fields, i)
+      RowField(i, field)
+    }
+    #(_, e.Row(fields)), [i, 0] -> {
+      let [#(key, _), .._] = list.drop(fields, i)
+      RowKey(i, key)
+    }
+    #(_, e.Row(fields)), [i, 1, ..rest] -> {
+      io.debug("fff")
+      io.debug(rest)
+      io.debug(i)
       let [#(_, child), .._] = list.drop(fields, i)
       get_element(child, rest)
     }
@@ -918,7 +972,7 @@ pub fn map_node(
       let elements = list.flatten([pre, [updated], post])
       ast.tuple_(elements)
     }
-    e.Row(fields), [index, ..rest] -> {
+    e.Row(fields), [index, 1, ..rest] -> {
       let pre =
         list.take(fields, index)
         |> list.map(untype_field)
