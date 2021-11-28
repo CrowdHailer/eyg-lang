@@ -221,7 +221,7 @@ fn handle_transformation(
     "j", False -> navigation(move_down(tree, position))
     "k", False -> navigation(move_up(tree, position))
     // transform
-    "H", False -> command(space_left(tree, position))
+    "H", False -> space_left(tree, position)
     "L", False -> space_right(tree, position)
     "J", False -> command(space_below(tree, position))
     "K", False -> command(space_above(tree, position))
@@ -272,16 +272,19 @@ fn increase_selection(tree, position) {
 
 fn decrease_selection(tree, position) {
   let inner = ast.append_path(position, 0)
-  case get_element(tree, position)
-  |> io.debug {
+  case get_element(tree, position) {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
       #(Some(replace_node(tree, position, new)), inner, Select(""))
     }
     // TODO option of having a virtual node when you move down
     Expression(#(_, e.Row([]))) -> {
-      let new = ast.row([#("ss", ast.hole())])
-      #(Some(replace_node(tree, position, new)), inner, Command)
+      let new = ast.row([#("", ast.hole())])
+      #(
+        Some(replace_node(tree, position, new)),
+        ast.append_path(inner, 0),
+        Draft(""),
+      )
     }
     Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
       None,
@@ -374,37 +377,28 @@ fn move_down(tree, position) {
   }
 }
 
+fn insert_at(items, cursor, new) {
+  let pre = list.take(items, cursor)
+  let post = list.drop(items, cursor)
+  list.flatten([pre, [new], post])
+}
+
 // Considered doing nothing in the case that the target element was already blank
 // Decided against to keep code simpler
 fn space_left(tree, position) {
-  case closest(tree, position, match_compound) {
-    None -> #(untype(tree), position)
-    Some(#(position, cursor, TupleExpression(elements))) -> {
-      let pre = list.take(elements, cursor)
-      let post = list.drop(elements, cursor)
-      let elements = list.flatten([pre, [ast.hole()], post])
-      let new = ast.tuple_(elements)
-      #(replace_node(tree, position, new), ast.append_path(position, cursor))
-    }
-    Some(#(position, cursor, TuplePattern(elements))) -> {
-      let pre = list.take(elements, cursor)
-      let post = list.drop(elements, cursor)
-      let elements = list.flatten([pre, [None], post])
-      let new = p.Tuple(elements)
-      #(replace_pattern(tree, position, new), ast.append_path(position, cursor))
-    }
-  }
+  insert_space(tree, position, 0)
 }
 
 fn space_right(tree, position) {
+  insert_space(tree, position, 1)
+}
+
+fn insert_space(tree, position, offset) {
   case closest(tree, position, match_compound) {
     None -> #(None, position, Command)
     Some(#(position, cursor, TupleExpression(elements))) -> {
-      let cursor = cursor + 1
-      let pre = list.take(elements, cursor)
-      let post = list.drop(elements, cursor)
-      let elements = list.flatten([pre, [ast.hole()], post])
-      let new = ast.tuple_(elements)
+      let cursor = cursor + offset
+      let new = ast.tuple_(insert_at(elements, cursor, ast.hole()))
       #(
         Some(replace_node(tree, position, new)),
         ast.append_path(position, cursor),
@@ -412,11 +406,8 @@ fn space_right(tree, position) {
       )
     }
     Some(#(position, cursor, RowExpression(fields))) -> {
-      let cursor = cursor + 1
-      let pre = list.take(fields, cursor)
-      let post = list.drop(fields, cursor)
-      let fields = list.flatten([pre, [#("", ast.hole())], post])
-      let new = ast.row(fields)
+      let cursor = cursor + offset
+      let new = ast.row(insert_at(fields, cursor, #("", ast.hole())))
       #(
         Some(replace_node(tree, position, new)),
         ast.append_path(ast.append_path(position, cursor), 0),
@@ -424,11 +415,8 @@ fn space_right(tree, position) {
       )
     }
     Some(#(position, cursor, TuplePattern(elements))) -> {
-      let cursor = cursor + 1
-      let pre = list.take(elements, cursor)
-      let post = list.drop(elements, cursor)
-      let elements = list.flatten([pre, [None], post])
-      let new = p.Tuple(elements)
+      let cursor = cursor + offset
+      let new = p.Tuple(insert_at(elements, cursor, None))
       #(
         Some(replace_pattern(tree, position, new)),
         ast.append_path(position, cursor),
@@ -909,9 +897,6 @@ pub fn get_element(tree, position) {
       RowKey(i, key)
     }
     #(_, e.Row(fields)), [i, 1, ..rest] -> {
-      io.debug("fff")
-      io.debug(rest)
-      io.debug(i)
       let [#(_, child), .._] = list.drop(fields, i)
       get_element(child, rest)
     }
