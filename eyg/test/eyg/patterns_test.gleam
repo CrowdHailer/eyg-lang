@@ -55,7 +55,7 @@ pub fn unexpected_then_type_test() {
 pub fn matched_expected_tuple_test() {
   let typer = init([#("foo", polytype.Polytype([], t.Tuple([t.Binary])))])
   let untyped =
-    ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
+    ast.let_(pattern.Tuple([Some("a")]), ast.variable("foo"), ast.variable("a"))
   let #(typed, typer) = infer(untyped, t.Binary, typer)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
@@ -68,7 +68,7 @@ pub fn expected_a_tuple_test() {
   let typer = init([#("foo", polytype.Polytype([], t.Binary))])
 
   let untyped =
-    ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
+    ast.let_(pattern.Tuple([Some("a")]), ast.variable("foo"), ast.variable("a"))
   let #(typed, _state) = infer(untyped, t.Binary, typer)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
@@ -80,7 +80,7 @@ pub fn unexpected_tuple_size_test() {
   let typer = init([#("foo", polytype.Polytype([], t.Tuple([])))])
 
   let untyped =
-    ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
+    ast.let_(pattern.Tuple([Some("a")]), ast.variable("foo"), ast.variable("a"))
   let #(typed, _state) = infer(untyped, t.Binary, typer)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed

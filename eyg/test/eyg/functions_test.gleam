@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/option.{Some}
 import eyg/ast
 import eyg/ast/expression
 import eyg/ast/pattern
@@ -40,7 +41,7 @@ pub fn call_generic_test() {
   let typer = init([])
   let untyped =
     ast.call(
-      ast.function(pattern.Tuple(["x"]), ast.variable("x")),
+      ast.function(pattern.Tuple([Some("x")]), ast.variable("x")),
       ast.tuple_([]),
     )
   let #(typed, typer) = infer(untyped, t.Tuple([]), typer)
@@ -67,7 +68,7 @@ pub fn reuse_generic_function_test() {
   let untyped =
     ast.let_(
       pattern.Variable("id"),
-      ast.function(pattern.Tuple(["x"]), ast.variable("x")),
+      ast.function(pattern.Tuple([Some("x")]), ast.variable("x")),
       ast.tuple_([
         ast.call(ast.variable("id"), ast.tuple_([])),
         ast.call(ast.variable("id"), ast.binary("")),

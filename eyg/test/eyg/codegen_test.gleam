@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/option.{Some}
 import eyg/codegen/javascript
 import eyg/ast
 import eyg/ast/pattern
@@ -112,7 +113,11 @@ pub fn multiline_tuple_assignment_test() {
 
 pub fn tuple_destructure_test() {
   let untyped =
-    ast.let_(pattern.Tuple(["a", "b"]), ast.variable("pair"), ast.tuple_([]))
+    ast.let_(
+      pattern.Tuple([Some("a"), Some("b")]),
+      ast.variable("pair"),
+      ast.tuple_([]),
+    )
   let js =
     compile(
       untyped,
@@ -209,7 +214,7 @@ pub fn simple_function_call_test() {
 
 pub fn oneline_function_test() {
   let scope = init([])
-  let untyped = ast.function(pattern.Tuple(["x"]), ast.variable("x"))
+  let untyped = ast.function(pattern.Tuple([Some("x")]), ast.variable("x"))
   let js = compile(untyped, scope)
   let [l1] = js
   let "(function self(x$1) { return x$1; })" = l1
@@ -219,7 +224,7 @@ pub fn call_oneline_function_test() {
   let scope = init([])
   let untyped =
     ast.call(
-      ast.function(pattern.Tuple(["x"]), ast.variable("x")),
+      ast.function(pattern.Tuple([Some("x")]), ast.variable("x")),
       ast.tuple_([ast.binary("hello")]),
     )
   let js = compile(untyped, scope)
@@ -235,7 +240,7 @@ pub fn multiline_function_test() {
     )
   let untyped =
     ast.function(
-      pattern.Tuple(["a", "b"]),
+      pattern.Tuple([Some("a"), Some("b")]),
       ast.let_(
         pattern.Variable("a"),
         ast.call(
@@ -260,7 +265,7 @@ pub fn multiline_call_function_test() {
   let scope = init([])
   let untyped =
     ast.call(
-      ast.function(pattern.Tuple(["x"]), ast.variable("x")),
+      ast.function(pattern.Tuple([Some("x")]), ast.variable("x")),
       ast.tuple_([
         ast.let_(
           pattern.Variable("tmp"),
