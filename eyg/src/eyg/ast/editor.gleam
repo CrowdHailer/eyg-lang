@@ -861,6 +861,7 @@ fn delete(tree, position) {
     PatternElement(cursor, el) -> {
       let Some(#(pattern_position, _)) = parent_path(position)
       let Pattern(p.Tuple(elements)) = get_element(tree, pattern_position)
+      // insert at can take a list
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor + 1)
       let insert = case el {

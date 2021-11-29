@@ -5,41 +5,53 @@ import eyg/typer/monotype
 import standard/builders.{clause}
 
 pub fn boolean() {
-  ast.row([
-    #("Doc", ast.binary("Doc")),
-    #(
-      "True",
-      ast.function(
-        pattern.Row([#("True", "T")]),
-        ast.call(ast.variable("T"), ast.tuple_([])),
-      ),
-    ),
-    #(
-      "False",
-      ast.function(
-        pattern.Row([#("False", "F")]),
-        ast.call(ast.variable("F"), ast.tuple_([])),
-      ),
-    ),
-    #(
-      "and",
-      ast.function(
-        pattern.Tuple([Some("a"), Some("b")]),
-        ast.call(
-          ast.variable("a"),
-          ast.row([
-            #("True", ast.function(pattern.Tuple([]), ast.variable("b"))),
-            #("False", ast.function(pattern.Tuple([]), ast.variable("False"))),
-          ]),
+  ast.call(
+    ast.function(
+      pattern.Tuple([]),
+      ast.let_(
+        pattern.Variable("True"),
+        ast.function(
+          pattern.Row([#("True", "T")]),
+          ast.call(ast.variable("T"), ast.tuple_([])),
+        ),
+        ast.let_(
+          pattern.Variable("False"),
+          ast.function(
+            pattern.Row([#("False", "F")]),
+            ast.call(ast.variable("F"), ast.tuple_([])),
+          ),
+          ast.let_(
+            pattern.Variable("and"),
+            ast.function(
+              pattern.Tuple([Some("a"), Some("b")]),
+              ast.call(
+                ast.variable("a"),
+                ast.row([
+                  #("True", ast.function(pattern.Tuple([]), ast.variable("b"))),
+                  #(
+                    "False",
+                    ast.function(pattern.Tuple([]), ast.variable("False")),
+                  ),
+                ]),
+              ),
+            ),
+            ast.row([
+              #("Doc", ast.binary("Doc")),
+              #("True", ast.variable("True")),
+              #("False", ast.variable("False")),
+              #("and", ast.variable("and")),
+            ]),
+          ),
         ),
       ),
     ),
-  ])
+    ast.tuple_([]),
+  )
 }
 
 pub fn simple() {
   ast.let_(
-    pattern.Row([#("True", "True"), #("False", "False")]),
+    pattern.Variable("boolean"),
     boolean(),
     ast.let_(
       pattern.Variable("main"),
