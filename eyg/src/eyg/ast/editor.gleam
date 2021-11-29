@@ -256,7 +256,7 @@ fn handle_transformation(
     "k", True -> command(drag_up(tree, position))
     "b", False -> command(create_binary(tree, position))
     "t", False -> command(wrap_tuple(tree, position))
-    "r", False -> command(wrap_row(tree, position))
+    "r", False -> wrap_row(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
     "u", False -> command(unwrap(tree, position))
@@ -739,22 +739,28 @@ fn wrap_row(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
       let new = ast.row([])
-      #(replace_node(tree, position, new), position)
+      #(Some(replace_node(tree, position, new)), position, Command)
     }
     Expression(expression) -> {
       let new = ast.row([#("", untype(expression))])
-      #(replace_node(tree, position, new), ast.append_path(position, 0))
+      #(
+        Some(replace_node(tree, position, new)),
+        ast.append_path(ast.append_path(position, 0), 0),
+        Draft(""),
+      )
     }
     Pattern(p.Variable(label)) -> #(
-      replace_pattern(tree, position, p.Row([#(label, label)])),
-      ast.append_path(position, 0),
+      Some(replace_pattern(tree, position, p.Row([#("", label)]))),
+      ast.append_path(ast.append_path(position, 0), 0),
+      Draft(""),
     )
     Pattern(p.Discard) -> #(
-      replace_pattern(tree, position, p.Row([])),
+      Some(replace_pattern(tree, position, p.Row([]))),
       position,
+      Command,
     )
     // TODO should be None not untype
-    PatternElement(_, _) | Pattern(_) -> #(untype(tree), position)
+    PatternElement(_, _) | Pattern(_) -> #(None, position, Command)
   }
 }
 
@@ -896,6 +902,8 @@ fn delete(tree, position) {
         Command,
       )
     }
+
+    _ -> todo("delete row elements")
   }
 }
 
