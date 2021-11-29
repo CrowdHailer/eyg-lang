@@ -768,29 +768,43 @@ fn wrap_function(tree, position) {
   }
 }
 
+// not very useful because we have to path all 3 elements out
+// fn parent_element(tree, position) {
+//   case parent_path(position) {
+//     None -> None
+//     Some(#(parent_position, index)) ->
+//   }
+//  }
 fn unwrap(tree, position) {
   case parent_path(position) {
     None -> #(untype(tree), position)
     Some(#(parent_position, index)) -> {
       let parent = get_element(tree, parent_position)
-      case parent {
-        Expression(#(_, e.Tuple(elements))) -> {
+      case parent, index {
+        Expression(#(_, e.Tuple(elements))), _ -> {
           let [replacement, .._] = list.drop(elements, index)
           let modified =
             replace_node(tree, parent_position, untype(replacement))
           #(modified, parent_position)
         }
-        Expression(#(_, e.Call(func, with))) -> {
-          let replacement = case index {
-            0 -> func
-            1 -> with
-          }
-          let modified =
-            replace_node(tree, parent_position, untype(replacement))
+        Expression(#(_, e.Call(func, _))), 0 -> {
+          let modified = replace_node(tree, parent_position, untype(func))
           #(modified, parent_position)
         }
-        Expression(_) -> unwrap(tree, position)
-        Pattern(p.Tuple(elements)) -> {
+        Expression(#(_, e.Call(_, with))), 1 -> {
+          let modified = replace_node(tree, parent_position, untype(with))
+          #(modified, parent_position)
+        }
+        Expression(#(_, e.Let(_, value, _))), 1 -> {
+          let modified = replace_node(tree, parent_position, untype(value))
+          #(modified, parent_position)
+        }
+        Expression(#(_, e.Function(_, body))), 1 -> {
+          let modified = replace_node(tree, parent_position, untype(body))
+          #(modified, parent_position)
+        }
+        Expression(_), _ -> unwrap(tree, position)
+        Pattern(p.Tuple(elements)), _ -> {
           let [label, .._] = list.drop(elements, index)
           assert Some(#(parent_position, _)) = parent_path(parent_position)
           assert Expression(#(_, e.Let(_, value, then))) =
@@ -826,7 +840,7 @@ fn delete(tree, position) {
     Expression(#(_, e.Let(_, _, then))) -> #(
       Some(replace_node(tree, position, untype(then))),
       position,
-      Select(""),
+      Command,
     )
     Expression(#(_, e.Provider(_, g))) if g == hole_func ->
       case parent_path(position) {
