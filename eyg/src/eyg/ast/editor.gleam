@@ -978,6 +978,21 @@ pub fn get_element(tree, position) {
       let [element, .._] = list.drop(elements, i)
       PatternElement(i, element)
     }
+    #(_, e.Function(p.Row(fields), _)), [0, i] -> {
+      // l.at and this should be an error instead
+      let [field, .._] = list.drop(fields, i)
+      PatternField(i, field)
+    }
+    #(_, e.Function(p.Row(fields), _)), [0, i, 0] -> {
+      // l.at and this should be an error instead
+      let [#(key, _), .._] = list.drop(fields, i)
+      PatternKey(i, key)
+    }
+    #(_, e.Function(p.Row(fields), _)), [0, i, 1] -> {
+      // l.at and this should be an error instead
+      let [#(_, bind), .._] = list.drop(fields, i)
+      PatternFieldBind(i, bind)
+    }
     #(_, e.Function(_, body)), [1, ..rest] -> get_element(body, rest)
     #(_, e.Call(func, _)), [0, ..rest] -> get_element(func, rest)
     #(_, e.Call(_, with)), [1, ..rest] -> get_element(with, rest)
