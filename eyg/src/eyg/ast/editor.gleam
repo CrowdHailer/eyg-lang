@@ -461,6 +461,15 @@ fn insert_space(tree, position, offset) {
         Draft(""),
       )
     }
+    Some(#(position, cursor, RowPattern(fields))) -> {
+      let cursor = cursor + offset
+      let new = p.Row(insert_at(fields, cursor, #("", "")))
+      #(
+        Some(replace_pattern(tree, position, new)),
+        ast.append_path(ast.append_path(position, cursor), 0),
+        Draft(""),
+      )
+    }
   }
 }
 
