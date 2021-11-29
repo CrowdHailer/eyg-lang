@@ -19,7 +19,7 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete
-- [ ] Drag record fields left and right
+- [x] Drag record fields left and right
 - [ ] Record rest of fields variable
 - [ ] empty pattern turns into discard, in which case what is the point of an empty field
 - [ ] Put path of expression in metadata, not part of ast library, maybe we transform and add active error fields?
