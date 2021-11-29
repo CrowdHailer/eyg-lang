@@ -19,9 +19,19 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete
+- [x] Drag record fields left and right
+- [ ] Record rest of fields variable
+- [ ] empty pattern turns into discard, in which case what is the point of an empty field
+- [ ] Put path of expression in metadata, not part of ast library, maybe we transform and add active error fields?
+- [ ] io.inspect needs debug/inspect call, using reflect API
 - [ ] Tab (Space) to Blanks/Errors
 - [x] Fix tests
+- [ ] example should use lets in binary module, call variable binary module.
+- [ ] list all errors in program
 - [ ] Load/Save files
+- [ ] Copy/paste
+- [ ] remove tabindex = -1, use position in editor
+- [x] pretty print missing fields error
 - [x] insert space/drag in patterns
 - [x] create a binary
 - [x] down on an empty tuple should create a blank
@@ -31,7 +41,7 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Drag left right
 - [x] Drag up/down
 - [x] create function
-- [ ] insert before after on records requires a path to the record element
+- [x] insert before after on records requires a path to the record element
 - [ ] holes can be printed as `todo` Red, pattern discard is underscore. all blanks should have a value.
 - [x] Fix saving changes to strings
 - [x] Need Blanks in tuple patterns, could just be option types
@@ -51,3 +61,7 @@ Need to replace lot's of tuple references with tuple or pattern
   foo a, b => c, d
   a, for singletuple
   ```
+
+Later
+
+Function returning a function for compiletime process

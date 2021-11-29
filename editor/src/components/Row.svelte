@@ -21,9 +21,18 @@
   class="border-2 border-white focus:border-indigo-300 outline-none rounded"
   class:border-red-500={error}><Indent {multiline}>
   {#each fields.toArray() as [label, value], i}
-    <span class="text-purple-600">{label}</span><span class="text-gray-500"
-      >:</span
-    >
-    <Expression position={position.concat(i)} expression={value} />{#if i < fields.toArray().length - 1},{/if}{#if multiline}<br />{/if}
+    <span
+      tabindex="-1"
+      class="text-purple-600 border-2 border-white focus:border-indigo-300 outline-none rounded"
+      data-editor={"p:" + position.concat(i).join(",")}>
+      <span
+        tabindex="-1"
+        class="text-purple-600 border-2 border-white focus:border-indigo-300 outline-none rounded"
+        data-editor={"p:" + position.concat(i, 0).join(",")}
+        >{label}</span><span class="text-gray-500"
+        >:</span
+      >
+      <Expression position={position.concat(i, 1)} expression={value} />{#if i < fields.toArray().length - 1},{/if}{#if multiline}<br />{/if}
+    </span>
   {/each}
 </Indent></span>
