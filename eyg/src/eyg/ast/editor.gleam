@@ -52,9 +52,11 @@ pub fn is_select(editor) {
 pub fn in_scope(editor) {
   let Editor(tree: tree, position: position, mode: Select(filter), ..) = editor
   case get_element(tree, position) {
-    Expression(#(metadata, _)) ->
+    Expression(#(metadata, _)) -> {
+      let Metadata(scope: scope, ..) = metadata
       list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
       |> list.filter(string.starts_with(_, filter))
+    }
     _ -> []
   }
 }
@@ -203,9 +205,9 @@ pub fn handle_change(editor, content) {
   Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
 
-pub type Element {
-  Expression(e.Expression(Metadata))
-  RowField(Int, #(String, e.Expression(Metadata)))
+pub type Element(a) {
+  Expression(e.Expression(a))
+  RowField(Int, #(String, e.Expression(a)))
   RowKey(Int, String)
   Pattern(p.Pattern)
   PatternElement(Int, Option(String))
@@ -499,35 +501,51 @@ fn space_above(tree, position) {
   }
 }
 
+fn swap_pair(items, at) {
+  let pre = list.take(items, at)
+  let after = list.drop(items, at)
+  case 0 <= at, after {
+    True, [a, b, ..post] -> Ok(list.flatten([pre, [b, a], post]))
+    _, _ -> Error(Nil)
+  }
+}
+
+fn swap_elements(match, at) {
+  case match {
+    TupleExpression(elements) -> {
+      try elements = swap_pair(elements, at)
+      Ok(Expression(ast.tuple_(elements)))
+    }
+    TuplePattern(elements) -> {
+      try elements = swap_pair(elements, at)
+      Ok(Pattern(p.Tuple(elements)))
+    }
+    RowExpression(fields) -> {
+      try fields = swap_pair(fields, at)
+      Ok(Expression(ast.row(fields)))
+    }
+    RowPattern(fields) -> {
+      try fields = swap_pair(fields, at)
+      Ok(Pattern(p.Row(fields)))
+    }
+  }
+}
+
+// TODO I think draging nested items needs the full backtrace path
 fn drag_left(tree, position) {
   case closest(tree, position, match_compound) {
     None -> #(untype(tree), position)
-    Some(#(position, cursor, match)) ->
-      case cursor > 0 {
-        False -> #(untype(tree), ast.append_path(position, 0))
-        True ->
-          case match {
-            TupleExpression(elements) -> {
-              let pre = list.take(elements, cursor - 1)
-              let [me, neighbour, ..post] = list.drop(elements, cursor - 1)
-              let elements = list.flatten([pre, [neighbour, me], post])
-              let new = ast.tuple_(elements)
-              #(
-                replace_node(tree, position, new),
-                ast.append_path(position, cursor - 1),
-              )
-            }
-            TuplePattern(elements) -> {
-              let pre = list.take(elements, cursor - 1)
-              let [me, neighbour, ..post] = list.drop(elements, cursor - 1)
-              let elements = list.flatten([pre, [neighbour, me], post])
-              let new = p.Tuple(elements)
-              #(
-                replace_pattern(tree, position, new),
-                ast.append_path(position, cursor - 1),
-              )
-            }
-          }
+    Some(#(parent_position, cursor, match)) ->
+      case swap_elements(match, cursor - 1) {
+        Ok(Expression(new)) -> #(
+          replace_node(tree, parent_position, new),
+          ast.append_path(parent_position, cursor - 1),
+        )
+        Ok(Pattern(new)) -> #(
+          replace_pattern(tree, parent_position, new),
+          ast.append_path(parent_position, cursor - 1),
+        )
+        Error(Nil) -> #(untype(tree), position)
       }
   }
 }
@@ -535,33 +553,17 @@ fn drag_left(tree, position) {
 fn drag_right(tree, position) {
   case closest(tree, position, match_compound) {
     None -> #(untype(tree), position)
-    Some(#(position, cursor, TupleExpression(elements))) ->
-      case cursor + 1 < list.length(elements) {
-        False -> #(untype(tree), ast.append_path(position, cursor))
-        True -> {
-          let pre = list.take(elements, cursor)
-          let [me, neighbour, ..post] = list.drop(elements, cursor)
-          let elements = list.flatten([pre, [neighbour, me], post])
-          let new = ast.tuple_(elements)
-          #(
-            replace_node(tree, position, new),
-            ast.append_path(position, cursor + 1),
-          )
-        }
-      }
-    Some(#(position, cursor, TuplePattern(elements))) ->
-      case cursor + 1 < list.length(elements) {
-        False -> #(untype(tree), ast.append_path(position, cursor))
-        True -> {
-          let pre = list.take(elements, cursor)
-          let [me, neighbour, ..post] = list.drop(elements, cursor)
-          let elements = list.flatten([pre, [neighbour, me], post])
-          let new = p.Tuple(elements)
-          #(
-            replace_pattern(tree, position, new),
-            ast.append_path(position, cursor + 1),
-          )
-        }
+    Some(#(parent_position, cursor, match)) ->
+      case swap_elements(match, cursor) {
+        Ok(Expression(new)) -> #(
+          replace_node(tree, parent_position, new),
+          ast.append_path(parent_position, cursor + 1),
+        )
+        Ok(Pattern(new)) -> #(
+          replace_pattern(tree, parent_position, new),
+          ast.append_path(parent_position, cursor + 1),
+        )
+        Error(Nil) -> #(untype(tree), position)
       }
   }
 }
@@ -638,7 +640,7 @@ fn match_let(target) {
 fn closest(
   tree,
   position,
-  search: fn(Element) -> Result(t, Nil),
+  search: fn(Element(Metadata)) -> Result(t, Nil),
 ) -> Option(#(List(Int), Int, t)) {
   case parent_path(position) {
     None -> None
