@@ -49,6 +49,7 @@ pub fn boolean() {
   )
 }
 
+// TODO recursive type definition also need to reread about type being the same or contained within.
 pub fn simple() {
   ast.let_(
     pattern.Variable("boolean"),
@@ -58,16 +59,13 @@ pub fn simple() {
       ast.function(
         pattern.Tuple([]),
         ast.let_(
-          pattern.Variable("a"),
-          ast.tuple_([ast.binary("A"), ast.binary("B")]),
+          pattern.Row([#("True", "t"), #("False", "f"), #("and", "&")]),
+          ast.variable("boolean"),
           ast.let_(
             pattern.Variable("b"),
-            ast.binary("B"),
-            ast.let_(
-              pattern.Variable("c"),
-              ast.row([#("foo", ast.binary("FOO"))]),
-              ast.tuple_([ast.variable("a"), ast.variable("b")]),
-            ),
+            ast.call(ast.variable("&"), ast.tuple_([])),
+            // ast.tuple_([ast.variable("t"), ast.variable("t")]),
+            ast.hole(),
           ),
         ),
       ),

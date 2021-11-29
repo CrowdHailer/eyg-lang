@@ -860,6 +860,22 @@ fn delete(tree, position) {
                 |> list.map(untype)
               #(
                 Some(replace_node(tree, p_path, ast.tuple_(elements))),
+                // TODO go to right path
+                p_path,
+                Command,
+              )
+            }
+            RowField(_, _) -> {
+              let Some(#(record_position, _)) = parent_path(p_path)
+              let Expression(#(_, e.Row(fields))) =
+                get_element(tree, record_position)
+              let pre = list.take(fields, cursor)
+              let post = list.drop(fields, cursor + 1)
+              let fields =
+                list.append(pre, post)
+                |> list.map(untype_field)
+              #(
+                Some(replace_node(tree, record_position, ast.row(fields))),
                 p_path,
                 Command,
               )
@@ -902,8 +918,72 @@ fn delete(tree, position) {
         Command,
       )
     }
-
-    _ -> todo("delete row elements")
+    RowField(_, _) -> {
+      let Some(#(row_position, cursor)) = parent_path(position)
+      let Expression(#(_, e.Row(fields))) =
+        get_element(tree, row_position)
+        |> io.debug
+      let pre = list.take(fields, cursor)
+      let post = list.drop(fields, cursor + 1)
+      let fields =
+        list.append(pre, post)
+        |> list.map(untype_field)
+      // TODO fix cursor
+      #(
+        // TODO rename as replace_expression
+        Some(replace_node(tree, row_position, ast.row(fields))),
+        row_position,
+        Command,
+      )
+    }
+    // TODO need a cursor to the right place position
+    RowKey(_, _) -> {
+      let Some(#(field_position, cursor)) = parent_path(position)
+      let Some(#(row_position, cursor)) = parent_path(field_position)
+      let Expression(#(_, e.Row(fields))) =
+        get_element(tree, row_position)
+        |> io.debug
+      let pre = list.take(fields, cursor)
+      let post = list.drop(fields, cursor + 1)
+      let fields =
+        list.append(pre, post)
+        |> list.map(untype_field)
+      // TODO fix cursor
+      #(
+        // TODO rename as replace_expression
+        Some(replace_node(tree, row_position, ast.row(fields))),
+        row_position,
+        Command,
+      )
+    }
+    PatternField(_, _) -> {
+      let Some(#(pattern_position, cursor)) = parent_path(position)
+      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      let pre = list.take(fields, cursor)
+      let post = list.drop(fields, cursor + 1)
+      let fields = list.append(pre, post)
+      // TODO fix cursor
+      #(
+        Some(replace_pattern(tree, pattern_position, p.Row(fields))),
+        pattern_position,
+        Command,
+      )
+    }
+    PatternKey(_, _) | PatternFieldBind(_, _) -> {
+      let Some(#(field_position, _)) = parent_path(position)
+      let Some(#(pattern_position, cursor)) = parent_path(field_position)
+      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      let pre = list.take(fields, cursor)
+      let post = list.drop(fields, cursor + 1)
+      let fields = list.append(pre, post)
+      // TODO fix cursor
+      #(
+        Some(replace_pattern(tree, pattern_position, p.Row(fields))),
+        pattern_position,
+        Command,
+      )
+    }
+    _ -> todo("deleteee")
   }
 }
 
