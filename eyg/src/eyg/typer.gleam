@@ -65,6 +65,37 @@ fn unify_pair(pair, typer) {
   unify(expected, given, typer)
 }
 
+fn occurs_in(a, b) {
+  case a {
+    monotype.Unbound(i) ->
+      case do_occurs_in(i, b) {
+        True -> {
+          io.debug(a)
+          io.debug(b)
+          // TODO this very doesn't work
+          // todo("Foo")
+          True
+        }
+        False -> False
+      }
+    _ -> False
+  }
+}
+
+fn do_occurs_in(i, b) {
+  case b {
+    monotype.Unbound(j) if i == j -> True
+    monotype.Unbound(_) -> False
+    monotype.Binary -> False
+    monotype.Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
+    monotype.Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
+    monotype.Row(fields, _) ->
+      fields
+      |> list.map(fn(x: #(String, monotype.Monotype)) { x.1 })
+      |> list.any(do_occurs_in(i, _))
+  }
+}
+
 // monotype function??
 // This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
 // next unbound inside mono can be integer and unbound(i) outside
@@ -72,41 +103,49 @@ pub fn unify(expected, given, typer) {
   let State(substitutions: substitutions, ..) = typer
   let expected = monotype.resolve(expected, substitutions)
   let given = monotype.resolve(given, substitutions)
-  case expected, given {
-    monotype.Binary, monotype.Binary -> Ok(typer)
-    monotype.Tuple(expected), monotype.Tuple(given) ->
-      case list.zip(expected, given) {
-        Error(#(expected, given)) ->
-          Error(#(IncorrectArity(expected, given), typer))
-        Ok(pairs) -> list.try_fold(pairs, typer, unify_pair)
+
+  case occurs_in(expected, given) || occurs_in(given, expected) {
+    True -> Ok(typer)
+    False ->
+      // io.debug("-----")
+      // io.debug(expected)
+      // io.debug(given)
+      case expected, given {
+        monotype.Binary, monotype.Binary -> Ok(typer)
+        monotype.Tuple(expected), monotype.Tuple(given) ->
+          case list.zip(expected, given) {
+            Error(#(expected, given)) ->
+              Error(#(IncorrectArity(expected, given), typer))
+            Ok(pairs) -> list.try_fold(pairs, typer, unify_pair)
+          }
+        monotype.Unbound(i), any -> Ok(add_substitution(i, any, typer))
+        any, monotype.Unbound(i) -> Ok(add_substitution(i, any, typer))
+        monotype.Row(expected, expected_extra), monotype.Row(given, given_extra) -> {
+          let #(expected, given, shared) = group_shared(expected, given)
+          let #(x, typer) = polytype.next_unbound(typer)
+          try typer = case given, expected_extra {
+            [], _ -> Ok(typer)
+            only, Some(i) ->
+              Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
+            only, None -> Error(#(UnexpectedFields(only), typer))
+          }
+          try typer = case expected, given_extra {
+            [], _ -> Ok(typer)
+            only, Some(i) ->
+              Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
+            only, None -> Error(#(MissingFields(only), typer))
+          }
+          list.try_fold(shared, typer, unify_pair)
+        }
+        monotype.Function(expected_from, expected_return), monotype.Function(
+          given_from,
+          given_return,
+        ) -> {
+          try typer = unify(expected_from, given_from, typer)
+          unify(expected_return, given_return, typer)
+        }
+        expected, given -> Error(#(UnmatchedTypes(expected, given), typer))
       }
-    monotype.Unbound(i), any -> Ok(add_substitution(i, any, typer))
-    any, monotype.Unbound(i) -> Ok(add_substitution(i, any, typer))
-    monotype.Row(expected, expected_extra), monotype.Row(given, given_extra) -> {
-      let #(expected, given, shared) = group_shared(expected, given)
-      let #(x, typer) = polytype.next_unbound(typer)
-      try typer = case given, expected_extra {
-        [], _ -> Ok(typer)
-        only, Some(i) ->
-          Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
-        only, None -> Error(#(UnexpectedFields(only), typer))
-      }
-      try typer = case expected, given_extra {
-        [], _ -> Ok(typer)
-        only, Some(i) ->
-          Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
-        only, None -> Error(#(MissingFields(only), typer))
-      }
-      list.try_fold(shared, typer, unify_pair)
-    }
-    monotype.Function(expected_from, expected_return), monotype.Function(
-      given_from,
-      given_return,
-    ) -> {
-      try typer = unify(expected_from, given_from, typer)
-      unify(expected_return, given_return, typer)
-    }
-    expected, given -> Error(#(UnmatchedTypes(expected, given), typer))
   }
 }
 
@@ -355,6 +394,8 @@ pub fn infer(
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, location: location, ..) = typer
       let typer = list.fold(bound_variables, typer, set_variable)
+      // TODO test or remove
+      let typer = set_variable(#("self", given), typer)
       let #(return, typer) = infer(body, return_type, append_path(typer, 0))
       let typer = State(..typer, variables: variables, location: location)
       // There are ALOT more type variables if handling all the errors.

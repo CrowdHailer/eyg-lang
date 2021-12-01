@@ -293,3 +293,50 @@ fn do_filter(list: List(a), fun: fn(a) -> Bool, acc: List(a)) -> List(a) {
 pub fn filter(list: List(a), for predicate: fn(a) -> Bool) -> List(a) {
   do_filter(list, predicate, [])
 }
+
+/// Returns True if the given function returns True for all the elements in
+/// the given list. If the function returns False for any of the elements it
+/// immediately returns False without checking the rest of the list.
+///
+/// ## Examples
+///
+///    > all([], fn(x) { x > 3 })
+///    True
+///
+///    > all([4, 5], fn(x) { x > 3 })
+///    True
+///
+///    > all([4, 3], fn(x) { x > 3 })
+///    False
+///
+pub fn all(in list: List(a), satisfying predicate: fn(a) -> Bool) -> Bool {
+  case list {
+    [] -> True
+    [x, ..rest] -> predicate(x) && all(rest, predicate)
+  }
+}
+
+/// Returns True if the given function returns True for any the elements in
+/// the given list. If the function returns True for any of the elements it
+/// immediately returns True without checking the rest of the list.
+///
+/// ## Examples
+///
+///    > any([], fn(x) { x > 3 })
+///    False
+///
+///    > any([4, 5], fn(x) { x > 3 })
+///    True
+///
+///    > any([4, 3], fn(x) { x > 4 })
+///    False
+///
+///    > any([3, 4], fn(x) { x > 3 })
+///    True
+///
+pub fn any(in list: List(a), satisfying predicate: fn(a) -> Bool) -> Bool {
+  case list {
+    [] -> False
+    [x, ..rest] -> predicate(x) || any(rest, predicate)
+  }
+}
