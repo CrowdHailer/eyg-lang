@@ -36,8 +36,7 @@
         data-editor={"p:" + position.concat(i).join(",")}>{element[0] || "_"}</span
       >{#if i < pattern.elements.toArray().length - 1}
         ,
-      {/if}
-    {/each}]</span
+      {/if}{/each}]</span
   >
 {:else}<span
 tabindex="-1"

@@ -20,10 +20,12 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete
 - [x] Drag record fields left and right
+- [ ] Test lambda calculus enums.
+- [ ] dot syntax sugar
+- [ ] hard coded providers
 - [ ] Put path of expression in metadata, not part of ast library, maybe we transform and add active error fields?
 - [ ] remove tabindex = -1, use position in editor
 - [ ] Tab (Space) to Blanks/Errors
-- [ ] Test lambda calculus enums.
 - [x] Fix tests
 - [x] example should use lets in binary module, call variable binary module.
 - [ ] Record rest of fields variable

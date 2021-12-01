@@ -32,7 +32,7 @@
         >{label}</span><span class="text-gray-500"
         >:</span
       >
-      <Expression position={position.concat(i, 1)} expression={value} />{#if i < fields.toArray().length - 1},{/if}{#if multiline}<br />{/if}
     </span>
+    <Expression position={position.concat(i, 1)} expression={value} />{#if i < fields.toArray().length - 1},{#if multiline}<br />{/if}{/if}
   {/each}
 </Indent></span>

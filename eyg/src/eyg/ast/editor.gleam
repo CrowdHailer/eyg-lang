@@ -220,6 +220,13 @@ pub fn multiline(fields) {
   list.length(fields) > 1
 }
 
+pub fn is_multiexpression(expression) {
+  case expression {
+    #(_, e.Let(_, _, _)) -> True
+    _ -> False
+  }
+}
+
 // TODO write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
