@@ -374,17 +374,48 @@ pub fn infer(
     }
     Let(pattern, value, then) -> {
       let State(variables: variables, location: location, ..) = typer
-      let #(expected_value, bound_variables, typer) =
-        pattern_type(pattern, typer)
-      // TODO remove this nesting when we(if?) separate typer and scope
-      let #(value, typer) = infer(value, expected_value, append_path(typer, 0))
-      let typer = State(..typer, variables: variables, location: location)
-      let typer = list.fold(bound_variables, typer, set_variable)
+      let #(value, typer) = case pattern, value {
+        pattern.Variable(label), #(_, Function(pattern, body)) -> {
+          let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
+          let #(y, typer) = polytype.next_unbound(typer)
+          let return_type = monotype.Unbound(y)
+          let given = monotype.Function(arg_type, return_type)
+          // expected is value of let here don't unify that
+          // let #(type_, typer) = do_unify(expected, given, typer)
+          let State(variables: variables, location: location, ..) = typer
+          let typer = list.fold(bound_variables, typer, set_variable)
+          let typer = set_variable(#(label, given), typer)
+          let #(return, typer) = infer(body, return_type, append_path(typer, 0))
+          // io.debug("---------------")
+          // let [#("f", x), .._] = typer.variables
+          // io.debug(x.monotype)
+          // // let True = x == given
+          // io.debug(monotype.resolve(x.monotype, typer.substitutions))
+          // io.debug("===========")
+          // io.debug(monotype.resolve(given, typer.substitutions))
+          let typer = State(..typer, variables: variables, location: location)
+          // Set again after clearing out in the middle
+          let typer = set_variable(#(label, given), typer)
+          // There are ALOT more type variables if handling all the errors.
+          #(#(meta(Ok(given)), Function(pattern, return)), typer)
+        }
+        _, _ -> {
+          let #(expected_value, bound_variables, typer) =
+            pattern_type(pattern, typer)
+          // TODO remove this nesting when we(if?) separate typer and scope
+          let #(value, typer) =
+            infer(value, expected_value, append_path(typer, 0))
+          let typer = State(..typer, variables: variables, location: location)
+          let typer = list.fold(bound_variables, typer, set_variable)
+          #(value, typer)
+        }
+      }
       let #(then, typer) = infer(then, expected, append_path(typer, 1))
       // Let is always OK the error is on the term inside
       let expression = #(meta(Ok(expected)), Let(pattern, value, then))
       #(expression, typer)
     }
+
     Function(pattern, body) -> {
       let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
       let #(y, typer) = polytype.next_unbound(typer)
@@ -394,8 +425,6 @@ pub fn infer(
       // TODO remove this nesting when we(if?) separate typer and scope
       let State(variables: variables, location: location, ..) = typer
       let typer = list.fold(bound_variables, typer, set_variable)
-      // TODO test or remove
-      let typer = set_variable(#("self", given), typer)
       let #(return, typer) = infer(body, return_type, append_path(typer, 0))
       let typer = State(..typer, variables: variables, location: location)
       // There are ALOT more type variables if handling all the errors.

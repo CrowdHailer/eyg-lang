@@ -80,51 +80,39 @@ pub fn reuse_generic_function_test() {
   let t.Tuple([t.Tuple([]), t.Binary]) = resolve(type_, substitutions)
 }
 
+//https://cs.stackexchange.com/questions/101152/let-rec-recursive-expression-static-typing-rule
+//https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system recursive definitions
+//https://boxbase.org/entries/2018/mar/5/hindley-milner/
+// https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-2-f39c33ca9513
+// https://ahnfelt.medium.com/type-inference-by-example-part-7-31e1d1d05f56
 pub fn recursive_type_test() {
-  let typer = init([])
-  let untyped = // ast.function(
-    //   pattern.Variable("f"),
-    //   ast.call(
-    //     ast.variable("self"),
-    //     ast.call(ast.variable("f"), ast.tuple_([])),
-    //   ),
-    // )
+  let typer =
+    init([
+      #(
+        "add",
+        polytype.Polytype(
+          [],
+          monotype.Function(
+            monotype.Tuple([monotype.Binary, monotype.Binary]),
+            monotype.Binary,
+          ),
+        ),
+      ),
+    ])
+  let untyped =
     ast.let_(
-      pattern.Variable("Cons"),
+      pattern.Variable("f"),
       ast.function(
-        pattern.Tuple([Some("head"), Some("tail")]),
-        ast.function(
-          pattern.Row([#("Cons", "then")]),
-          ast.call(
-            ast.variable("then"),
-            ast.tuple_([ast.variable("head"), ast.variable("tail")]),
-          ),
+        pattern.Variable("x"),
+        ast.call(
+          ast.variable("add"),
+          ast.tuple_([
+            ast.binary("."),
+            ast.call(ast.variable("f"), ast.variable("x")),
+          ]),
         ),
       ),
-      ast.let_(
-        pattern.Variable("Nil"),
-        ast.function(
-          pattern.Row([#("Nil", "then")]),
-          ast.call(ast.variable("then"), ast.tuple_([])),
-        ),
-        ast.let_(
-          pattern.Variable("reverse"),
-          ast.function(
-            pattern.Tuple([Some("remaining"), Some("accumulator")]),
-            ast.call(
-              ast.variable("remaining"),
-              ast.row([
-                #("Cons", ast.call(ast.variable("Cons"), ast.tuple_([]))),
-                #(
-                  "Nin",
-                  ast.function(pattern.Tuple([]), ast.variable("remaining")),
-                ),
-              ]),
-            ),
-          ),
-          ast.variable("reverse"),
-        ),
-      ),
+      ast.variable("f"),
     )
 
   let #(typed, typer) = infer(untyped, t.Unbound(-1), typer)
