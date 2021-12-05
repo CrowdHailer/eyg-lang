@@ -94,8 +94,9 @@
   on:click={handleClick}
   on:keydown={handleKeydown}
 >
+  {editor.position.toArray()}
   <Expression
-    expression={editor.tree}
+    expression={Editor.present(editor)}
     position={[]}
   />
   <div class="sticky bottom-0 bg-white py-2">

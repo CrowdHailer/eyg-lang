@@ -84,7 +84,7 @@ pub fn target_type(editor) {
 }
 
 pub fn init() {
-  let untyped = example.simple()
+  let untyped = example.minimal()
   let position = []
   let #(typed, typer) = typer.infer_unconstrained(untyped)
   let mode = Command
@@ -1263,11 +1263,73 @@ type Sugar {
 // only Let/Function collapse
 // Row is multi line or not
 // Goal is to keep selection outlined And a collapse fn
-type Present {
-  Present(selected: Bool, collapsed: Bool, errored: Bool, sugar: Option(Sugar))
+pub type Display {
+  Display(path: List(Int), inner: Option(List(Int)), errored: Bool)
 }
-// fn present(ast, inner) {
-//   case ast, inner {
-//     #(_, e.Binary(_), Some([])) ->
-//   }
+
+pub fn present(editor) {
+  let Editor(tree: tree, position: position, ..) = editor
+  do_present(tree, [], position)
+}
+
+// collapsed: Bool, errored: Bool, sugar: Option(Sugar)
+// selection needs to be optional
+fn do_present(ast, path, editor: Editor) -> e.Expression(Display) {
+  // Get Node would be a good change to make first
+  let #(Metadata(type_: type_, ..), expression) = ast
+  let errored = case type_ {
+    Ok(_) -> False
+    Error(_) -> True
+  }
+  // let display = Display(path, selected, errored)
+  case selected, k, inner {
+    Some([x, ..rest]) -> #(False, Some(x), Some(rest))
+    Some([]) -> #(True, None, None)
+    None -> #(False, None, None)
+  }
+  case expression {
+    e.Binary(content) -> #(display, e.Binary(content))
+    e.Let(pattern, value, then) -> {
+      // case k inner.
+      let value = do_present(value, ast.append_path(path, 1), editor)
+      let then = do_present(then, ast.append_path(path, 2), editor)
+      // Needs a do present on the pattern part of the tree
+      #(display, e.Let(pattern, value, then))
+    }
+    e.Variable(label) -> #(display, e.Variable(label))
+  }
+  // #(_, e.Binary(_), Some([])) ->
+}
+// I don't think any of this beats ast/path.root() in the editor
+// passing selection down the tree though the cases for if key and 2 then inner looks the same as above
+// Meta data in pattern is good but does the type ness really make sense.
+// display meta data in the patterns is an option that I can really evaluate.
+// pub fn present(editor) {
+//   let Editor(tree: tree, position: position, ..) = editor
+//   do_present(tree, position, editor)
 // }
+// // collapsed: Bool, errored: Bool, sugar: Option(Sugar)
+// // selection needs to be optional
+// fn do_present(ast, path, editor: Editor) -> e.Expression(Display) {
+//   // Get Node would be a good change to make first
+//   let #(Metadata(type_: type_, ..), expression) = ast
+//   let selected = path == editor.position
+//   let errored = case type_ {
+//     Ok(_) -> False
+//     Error(_) -> True
+//   }
+//   let display = Display(path, selected, errored)
+//   case expression {
+//     e.Binary(content) -> #(display, e.Binary(content))
+//     e.Let(pattern, value, then) -> {
+//       let value = do_present(value, ast.append_path(path, 1), editor)
+//       let then = do_present(then, ast.append_path(path, 2), editor)
+//       // Needs a do present on the pattern part of the tree
+//       #(display, e.Let(pattern, value, then))
+//     }
+//     e.Variable(label) -> #(display, e.Variable(label))
+//   }
+//   // #(_, e.Binary(_), Some([])) ->
+// }
+// Presenting the metadata is sorta a pain through the tree BUT does svelte land work any better
+// metada can have rest

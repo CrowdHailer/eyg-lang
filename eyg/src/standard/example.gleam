@@ -98,6 +98,10 @@ pub fn list() {
   )
 }
 
+pub fn minimal() {
+  ast.let_(pattern.Variable("foo"), ast.binary("Hello"), ast.variable("foo"))
+}
+
 // TODO recursive type definition also need to reread about type being the same or contained within.
 pub fn simple() {
   ast.let_(
