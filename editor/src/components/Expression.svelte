@@ -26,7 +26,11 @@ import Pattern from "./Pattern.svelte";
   data-editor={"p:" + position.join(",")}
 >
   <span class="text-gray-500">data</span>
-  <span class="text-blue-800">{tree.pattern.label}</span>
+  <span
+    tabindex="-1"
+    class="border-2 border-white focus:border-indigo-300 outline-none rounded text-blue-800"
+    data-editor={"p:" + position.concat(0).join(",")}
+  >{tree.pattern.label}</span>
 
 </p>
 

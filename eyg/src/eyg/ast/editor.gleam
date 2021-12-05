@@ -273,6 +273,9 @@ fn handle_transformation(
     // modes
     "i", False -> draft(tree, position)
     "v", False -> variable(tree, position)
+    // sugar
+    // TOD call name in the print
+    "n", False -> insert_named(tree, position)
     // Fallback
     "Control", _ | "Shift", _ | "Alt", _ | "Meta", _ -> #(
       None,
@@ -1033,6 +1036,32 @@ fn variable(tree, position) {
     Expression(_) -> #(None, position, Select(""))
     _ -> #(None, position, Command)
   }
+}
+
+fn insert_named(tree, position) {
+  case get_element(tree, position) {
+    // Confusing to replace a whole Let at once.
+    // TODO maybe the value should only be a hole
+    Expression(#(_, e.Let(p.Discard, _, then))) -> {
+      let new =
+        ast.let_(
+          p.Variable("Foo"),
+          ast.function(
+            p.Row([#("Foo", "then")]),
+            ast.call(ast.variable("then"), ast.tuple_([])),
+          ),
+          untype(then),
+        )
+      #(
+        // TODO rename as replace_expression
+        Some(replace_node(tree, position, new)),
+        ast.append_path(position, 0),
+        Draft("Foo"),
+      )
+    }
+  }
+  // Expression(_) -> #(None, position, Select(""))
+  // _ -> #(None, position, Command)
 }
 
 fn replace_pattern(tree, position, pattern) {
