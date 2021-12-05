@@ -22,17 +22,17 @@
   <span
     tabindex="-1"
     data-editor={"p:" + position.join(",")}
-    class="border-b border-white min-w-10 outline-none focus:border-gray-900 focus:border-2 required text-blue-500"
+    class="border-2 border-white min-w-10 outline-none focus:border-indigo-300 rounded focus:border-2 required text-blue-500"
     >{pattern.label}</span
   >
 {:else if Pattern.is_tuple(pattern)}
   <span
     tabindex="-1"
     data-editor={"p:" + position.join(",")}
-    class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
+    class="border-2 border-white focus:border-indigo-300 outline-none rounded"
     >[{#each pattern.elements.toArray() as element, i}<span
         tabindex="-1"
-        class="min-w-10 outline-none focus:border-gray-900 focus:border-2 text-blue-500"
+        class="min-w-10 outline-none border-2 border-white focus:border-indigo-300 rounded text-blue-500"
         data-editor={"p:" + position.concat(i).join(",")}>{element[0] || "_"}</span
       >{#if i < pattern.elements.toArray().length - 1}
         ,
