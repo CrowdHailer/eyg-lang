@@ -95,9 +95,13 @@ pub fn handle_click(editor: Editor, target) {
   case string.split(target, ":") {
     ["root"] -> Editor(..editor, position: [], mode: Command)
     ["p", rest] -> {
-      let position =
-        string.split(rest, ",")
-        |> list.map(int.parse)
+      let position = case rest {
+        "" -> []
+        _ ->
+          // todo empty string makes unparsable as int list
+          string.split(rest, ",")
+          |> list.map(int.parse)
+      }
       case get_element(editor.tree, position) {
         Expression(#(_, e.Binary(content))) -> {
           let mode = Draft(content)
