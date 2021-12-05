@@ -154,11 +154,11 @@ pub fn handle_change(editor, content) {
       let new = ast.binary(content)
       replace_node(tree, position, new)
     }
-    Pattern(p.Discard) | Pattern(p.Variable(_)) ->
+    Pattern(p.Discard, _) | Pattern(p.Variable(_), _) ->
       replace_pattern(tree, position, p.Variable(content))
     PatternElement(i, _) -> {
       let Some(#(pattern_position, _)) = parent_path(position)
-      let Pattern(p.Tuple(elements)) = get_element(tree, pattern_position)
+      let Pattern(p.Tuple(elements), _) = get_element(tree, pattern_position)
       let pre = list.take(elements, i)
       let [_, ..post] = list.drop(elements, i)
       let elements = list.flatten([pre, [Some(content)], post])
@@ -181,7 +181,7 @@ pub fn handle_change(editor, content) {
     PatternKey(i, _) -> {
       let Some(#(field_position, _)) = parent_path(position)
       let Some(#(pattern_position, _)) = parent_path(field_position)
-      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
       // TODO map at
       let pre = list.take(fields, i)
       let [#(_, label), ..post] = list.drop(fields, i)
@@ -191,7 +191,7 @@ pub fn handle_change(editor, content) {
     PatternFieldBind(i, _) -> {
       let Some(#(field_position, _)) = parent_path(position)
       let Some(#(pattern_position, _)) = parent_path(field_position)
-      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
       // TODO map at
       let pre = list.take(fields, i)
       let [#(key, _), ..post] = list.drop(fields, i)
@@ -209,7 +209,7 @@ pub type Element(a) {
   Expression(e.Expression(a))
   RowField(Int, #(String, e.Expression(a)))
   RowKey(Int, String)
-  Pattern(p.Pattern)
+  Pattern(p.Pattern, e.Expression(a))
   PatternElement(Int, Option(String))
   PatternField(Int, #(String, String))
   PatternKey(Int, String)
@@ -328,18 +328,18 @@ fn decrease_selection(tree, position) {
     )
     Expression(_) -> #(None, inner, Command)
     RowField(_, _) -> #(None, inner, Command)
-    Pattern(p.Tuple([])) -> #(
+    Pattern(p.Tuple([]), _) -> #(
       Some(replace_pattern(tree, position, p.Tuple([None]))),
       inner,
       Draft(""),
     )
-    Pattern(p.Row([])) -> #(
+    Pattern(p.Row([]), _) -> #(
       Some(replace_pattern(tree, position, p.Row([#("", "")]))),
       ast.append_path(inner, 0),
       Draft(""),
     )
 
-    Pattern(p.Tuple(_)) | Pattern(p.Row(_)) | PatternField(_, _) -> #(
+    Pattern(p.Tuple(_), _) | Pattern(p.Row(_), _) | PatternField(_, _) -> #(
       None,
       inner,
       Command,
@@ -371,8 +371,8 @@ fn move_right(tree, position) {
         // Let, Function, Call all have two elements 0 & 1
         Expression(_) -> 1
         RowField(_, _) -> 1
-        Pattern(p.Tuple(elements)) -> list.length(elements) - 1
-        Pattern(p.Row(fields)) -> list.length(fields) - 1
+        Pattern(p.Tuple(elements), _) -> list.length(elements) - 1
+        Pattern(p.Row(fields), _) -> list.length(fields) - 1
         // patternkey/value can't be parents
         PatternField(_, _) -> 1
       }
@@ -537,7 +537,7 @@ fn swap_elements(match, at) {
     }
     TuplePattern(elements) -> {
       try elements = swap_pair(elements, at)
-      Ok(Pattern(p.Tuple(elements)))
+      Ok(Pattern(p.Tuple(elements), todo))
     }
     RowExpression(fields) -> {
       try fields = swap_pair(fields, at)
@@ -545,7 +545,7 @@ fn swap_elements(match, at) {
     }
     RowPattern(fields) -> {
       try fields = swap_pair(fields, at)
-      Ok(Pattern(p.Row(fields)))
+      Ok(Pattern(p.Row(fields), todo))
     }
   }
 }
@@ -560,7 +560,7 @@ fn drag_left(tree, position) {
           replace_node(tree, parent_position, new),
           ast.append_path(parent_position, cursor - 1),
         )
-        Ok(Pattern(new)) -> #(
+        Ok(Pattern(new, _)) -> #(
           replace_pattern(tree, parent_position, new),
           ast.append_path(parent_position, cursor - 1),
         )
@@ -578,7 +578,7 @@ fn drag_right(tree, position) {
           replace_node(tree, parent_position, new),
           ast.append_path(parent_position, cursor + 1),
         )
-        Ok(Pattern(new)) -> #(
+        Ok(Pattern(new, _)) -> #(
           replace_pattern(tree, parent_position, new),
           ast.append_path(parent_position, cursor + 1),
         )
@@ -642,8 +642,8 @@ fn match_compound(target) -> Result(TupleMatch, Nil) {
       Ok(TupleExpression(list.map(elements, untype)))
     Expression(#(_, e.Row(fields))) ->
       Ok(RowExpression(list.map(fields, untype_field)))
-    Pattern(p.Tuple(elements)) -> Ok(TuplePattern(elements))
-    Pattern(p.Row(fields)) -> Ok(RowPattern(fields))
+    Pattern(p.Tuple(elements), _) -> Ok(TuplePattern(elements))
+    Pattern(p.Row(fields), _) -> Ok(RowPattern(fields))
 
     _ -> Error(Nil)
   }
@@ -748,16 +748,16 @@ fn wrap_tuple(tree, position) {
       let new = ast.tuple_([untype(expression)])
       #(replace_node(tree, position, new), ast.append_path(position, 0))
     }
-    Pattern(p.Variable(label)) -> #(
+    Pattern(p.Variable(label), _) -> #(
       replace_pattern(tree, position, p.Tuple([Some(label)])),
       ast.append_path(position, 0),
     )
-    Pattern(p.Discard) -> #(
+    Pattern(p.Discard, _) -> #(
       replace_pattern(tree, position, p.Tuple([])),
       position,
     )
     // TODO should be None not untype
-    PatternElement(_, _) | Pattern(_) -> #(untype(tree), position)
+    PatternElement(_, _) | Pattern(_, _) -> #(untype(tree), position)
   }
 }
 
@@ -777,18 +777,18 @@ fn wrap_row(tree, position) {
         Draft(""),
       )
     }
-    Pattern(p.Variable(label)) -> #(
+    Pattern(p.Variable(label), _) -> #(
       Some(replace_pattern(tree, position, p.Row([#("", label)]))),
       ast.append_path(ast.append_path(position, 0), 0),
       Draft(""),
     )
-    Pattern(p.Discard) -> #(
+    Pattern(p.Discard, _) -> #(
       Some(replace_pattern(tree, position, p.Row([]))),
       position,
       Command,
     )
     // TODO should be None not untype
-    PatternElement(_, _) | Pattern(_) -> #(None, position, Command)
+    PatternElement(_, _) | Pattern(_, _) -> #(None, position, Command)
   }
 }
 
@@ -838,7 +838,7 @@ fn unwrap(tree, position) {
           #(modified, parent_position)
         }
         Expression(_), _ -> unwrap(tree, position)
-        Pattern(p.Tuple(elements)), _ -> {
+        Pattern(p.Tuple(elements), _), _ -> {
           let [label, .._] = list.drop(elements, index)
           assert Some(#(parent_position, _)) = parent_path(parent_position)
           assert Expression(#(_, e.Let(_, value, then))) =
@@ -917,14 +917,14 @@ fn delete(tree, position) {
       position,
       Select(""),
     )
-    Pattern(_) -> #(
+    Pattern(_, _) -> #(
       Some(replace_pattern(tree, position, p.Discard)),
       position,
       Command,
     )
     PatternElement(cursor, el) -> {
       let Some(#(pattern_position, _)) = parent_path(position)
-      let Pattern(p.Tuple(elements)) = get_element(tree, pattern_position)
+      let Pattern(p.Tuple(elements), _) = get_element(tree, pattern_position)
       // insert at can take a list
       let pre = list.take(elements, cursor)
       let post = list.drop(elements, cursor + 1)
@@ -986,7 +986,7 @@ fn delete(tree, position) {
     }
     PatternField(_, _) -> {
       let Some(#(pattern_position, cursor)) = parent_path(position)
-      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
       let pre = list.take(fields, cursor)
       let post = list.drop(fields, cursor + 1)
       let fields = list.append(pre, post)
@@ -1000,7 +1000,7 @@ fn delete(tree, position) {
     PatternKey(_, _) | PatternFieldBind(_, _) -> {
       let Some(#(field_position, _)) = parent_path(position)
       let Some(#(pattern_position, cursor)) = parent_path(field_position)
-      let Pattern(p.Row(fields)) = get_element(tree, pattern_position)
+      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
       let pre = list.take(fields, cursor)
       let post = list.drop(fields, cursor + 1)
       let fields = list.append(pre, post)
@@ -1018,8 +1018,8 @@ fn delete(tree, position) {
 fn draft(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Binary(content))) -> #(None, position, Draft(content))
-    Pattern(p.Discard) -> #(None, position, Draft(""))
-    Pattern(p.Variable(label)) -> #(None, position, Draft(label))
+    Pattern(p.Discard, _) -> #(None, position, Draft(""))
+    Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
     PatternElement(_, None) -> #(None, position, Draft(""))
     PatternElement(_, Some(label)) -> #(None, position, Draft(label))
     RowKey(_, key) -> #(None, position, Draft(key))
@@ -1106,7 +1106,7 @@ pub fn get_element(tree, position) {
       let [#(_, child), .._] = list.drop(fields, i)
       get_element(child, rest)
     }
-    #(_, e.Let(pattern, _, _)), [0] -> Pattern(pattern)
+    #(_, e.Let(pattern, _, _)), [0] -> Pattern(pattern, tree)
     #(_, e.Let(p.Tuple(elements), _, _)), [0, i] -> {
       // l.at and this should be an error instead
       let [element, .._] = list.drop(elements, i)
@@ -1129,7 +1129,7 @@ pub fn get_element(tree, position) {
     }
     #(_, e.Let(_, value, _)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(_, _, then)), [2, ..rest] -> get_element(then, rest)
-    #(_, e.Function(pattern, _)), [0] -> Pattern(pattern)
+    #(_, e.Function(pattern, _)), [0] -> Pattern(pattern, tree)
     #(_, e.Function(p.Tuple(elements), _)), [0, i] -> {
       // l.at and this should be an error instead
       let [element, .._] = list.drop(elements, i)
