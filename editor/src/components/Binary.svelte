@@ -6,6 +6,9 @@
 
   let error = false
   $: error = Typer.is_error(metadata)
+
+  // Have global again. editor is global all the state belongs in it
+  // mapping to the presentation will check that the cursors not gone awry
 </script>
 
 <span
@@ -16,6 +19,7 @@
   >{value}</span
 >
 
+<!--  -->
 <style>
   span {
     white-space: pre;

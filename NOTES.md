@@ -15,6 +15,19 @@ language/public are basically dead directories
 Need to replace lot's of tuple references with tuple or pattern
 
 - Tuples need brackets to show tuples in tuples
+- Deliberatly don't have mutliline strings they come from files etc
+
+m for metadata
+call this AST, node -> Expression get_element -> get_node position -> path p:1,2 -> code:1,2 ast.
+tree consists of an expression + metadata
+editor sugar pulled out separately
+rename position -> path everywhere (location) a path through an ast returns a thing/node
+rename editor.position -> focus or selection target pick aim selection seems to make most sense with the focus being elsewhere
+turn off all the editor sugar as a button
+Getelement Pattern should have only the express, and an indication it is the pattern
+getelement should be get_node get_code??
+ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
+ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.

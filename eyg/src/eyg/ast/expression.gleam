@@ -15,6 +15,5 @@ pub type Node(m) {
   )
 }
 
-// m for metadata
 pub type Expression(m) =
   #(m, Node(m))

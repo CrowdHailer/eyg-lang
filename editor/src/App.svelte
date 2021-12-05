@@ -19,15 +19,16 @@
       } else if(Editor.is_select(editor)) {
         document.getElementById("filter").focus()
       } else if(Editor.is_command(editor)) {
+        console.log("cloc");
         // TODO stringify in the gleam code
-        let pString = "p:" + editor.position.toArray().join(",");
+        // let pString = "p:" + editor.position.toArray().join(",");
 
-        let after = document.querySelector("[data-editor='" + pString + "']");
-        if (after) {
-          after.focus();
-        } else {
-          console.error("Action had no effect, was not able to focus cursor")
-        }
+        // let after = document.querySelector("[data-editor='" + pString + "']");
+        // if (after) {
+        //   after.focus();
+        // } else {
+        //   console.error("Action had no effect, was not able to focus cursor")
+        // }
       }
     });
   }

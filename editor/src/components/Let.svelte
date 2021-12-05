@@ -19,8 +19,7 @@
 </script>
 
 <p
-  tabindex="-1"
-  class="border-2 border-white focus:border-indigo-300 outline-none rounded"
+  class="border-2 border-white outline-none rounded"
   class:border-red-500={error}
   data-editor={"p:" + position.join(",")}
 >
