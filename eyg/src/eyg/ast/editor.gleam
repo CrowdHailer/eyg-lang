@@ -154,8 +154,30 @@ pub fn handle_change(editor, content) {
       let new = ast.binary(content)
       replace_node(tree, position, new)
     }
+    Pattern(
+      p.Variable(l1),
+      #(
+        _,
+        e.Let(
+          _alreadymatchedpattern,
+          #(_, e.Function(p.Row([#(l2, "then")]), body)),
+          then,
+        ),
+      ),
+    ) if l1 == l2 -> {
+      let Some(#(parent_position, _)) = parent_path(position)
+      let new =
+        ast.let_(
+          p.Variable(content),
+          ast.function(p.Row([#(content, "then")]), untype(body)),
+          untype(then),
+        )
+      replace_node(tree, parent_position, new)
+    }
+    // TODO step in needs to make the unit named type a parameterised named type
     Pattern(p.Discard, _) | Pattern(p.Variable(_), _) ->
       replace_pattern(tree, position, p.Variable(content))
+    // Putting stuff in the pattern Element works
     PatternElement(i, _) -> {
       let Some(#(pattern_position, _)) = parent_path(position)
       let Pattern(p.Tuple(elements), _) = get_element(tree, pattern_position)
