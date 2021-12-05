@@ -686,6 +686,16 @@ fn block_container(tree, position) {
   }
 }
 
+// fn match_let(target) {
+//   case target {
+//     Expression(#(_, e.Let(p, v, t))) -> Ok(#(p, untype(v), untype(t)))
+//     _ -> Error(Nil)
+//   }
+// }
+// TODO or we should wrap once we get to the first not compond. i.e. don't but let in tuple/row
+// binary variable provider cannot be parents
+// let function should contain lets
+// call can but shouldn't??
 fn wrap_assignment(tree, position) {
   // TODO if already on a let this comes up with a two but it shouldn't
   case closest(tree, position, match_let) {
@@ -693,6 +703,14 @@ fn wrap_assignment(tree, position) {
     // I don't support let in let yet
     Some(#(position, 2, #(pattern, value, then))) -> {
       let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
+      #(
+        replace_node(tree, position, new),
+        ast.append_path(ast.append_path(position, 2), 0),
+      )
+    }
+    // Only need this case because we don't have dot access, but I use it for the boolean and list modules
+    Some(#(position, 1, #(pattern, value, then))) -> {
+      let new = ast.let_(pattern, ast.let_(p.Discard, value, ast.hole()), then)
       #(
         replace_node(tree, position, new),
         ast.append_path(ast.append_path(position, 2), 0),

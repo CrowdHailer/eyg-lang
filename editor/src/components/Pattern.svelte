@@ -22,7 +22,7 @@
   <span
     tabindex="-1"
     data-editor={"p:" + position.join(",")}
-    class="border-b border-white min-w-10 outline-none focus:border-gray-900 focus:border-2 required"
+    class="border-b border-white min-w-10 outline-none focus:border-gray-900 focus:border-2 required text-blue-500"
     >{pattern.label}</span
   >
 {:else if Pattern.is_tuple(pattern)}
@@ -32,7 +32,7 @@
     class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outline-none rounded"
     >[{#each pattern.elements.toArray() as element, i}<span
         tabindex="-1"
-        class="border-b border-gray-300 min-w-10 outline-none focus:border-gray-900 focus:border-2"
+        class="min-w-10 outline-none focus:border-gray-900 focus:border-2 text-blue-500"
         data-editor={"p:" + position.concat(i).join(",")}>{element[0] || "_"}</span
       >{#if i < pattern.elements.toArray().length - 1}
         ,
@@ -46,7 +46,7 @@ class="border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100 outl
     tabindex="-1"
     class=""
     data-editor={"p:" + position.concat(i).join(",")}><span
-      class="text-purple-600 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100"
+      class="text-gray-600 border-2 border-indigo-300 border-opacity-0 focus:border-opacity-100"
       tabindex="-1"
       data-editor={"p:" + position.concat(i, 0).join(",")}
       >{label}</span>: <span

@@ -19,11 +19,11 @@
 </script>
 
 <Pattern {pattern} {metadata} position={position.concat(0)} />
-<strong
+<span
   class="border-2 border-white focus:border-indigo-300 outline-none rounded"
   class:border-red-500={error}
   tabindex="-1"
-  data-editor={"p:" + position.join(",")}>=></strong
+  data-editor={"p:" + position.join(",")}>=></span
 >
 {#if multiline}
 <Indent>

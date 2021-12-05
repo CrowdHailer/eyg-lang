@@ -23,11 +23,11 @@
   {#each fields.toArray() as [label, value], i}
     <span
       tabindex="-1"
-      class="text-purple-600 border-2 border-white focus:border-indigo-300 outline-none rounded"
+      class="text-gray-500 border-2 border-white focus:border-indigo-300 outline-none rounded"
       data-editor={"p:" + position.concat(i).join(",")}>
       <span
         tabindex="-1"
-        class="text-purple-600 border-2 border-white focus:border-indigo-300 outline-none rounded"
+        class="text-gray-500 border-2 border-white focus:border-indigo-300 outline-none rounded"
         data-editor={"p:" + position.concat(i, 0).join(",")}
         >{label}</span><span class="text-gray-500"
         >:</span

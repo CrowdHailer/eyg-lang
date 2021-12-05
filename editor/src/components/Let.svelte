@@ -24,13 +24,15 @@
   class:border-red-500={error}
   data-editor={"p:" + position.join(",")}
 >
-  <span class="text-yellow-400">let</span>
+  <span class="text-gray-500">let</span>
   <Pattern
     {pattern}
     {metadata}
     position={position.concat(0)}
   />
+  {#if !value[1].body}
   =
+  {/if}
   {#if multiline}
   <Indent>
     <Expression
