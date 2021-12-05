@@ -49,7 +49,7 @@ Need to replace lot's of tuple references with tuple or pattern
 - [x] Fix saving changes to strings
 - [x] Need Blanks in tuple patterns, could just be option types
 - [x] Record types
-- [ ] rename hole as blank
+- [ ] rename hole as blank, typed hole in literature
 - [x] It should be possible to focus/unfocus on a blank
 - [x] Need a pattern blank
 - [x] delete should work on the blanks to clear any preset.

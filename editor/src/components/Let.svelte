@@ -1,6 +1,8 @@
 <script>
   import Expression from "./Expression.svelte";
   import Pattern from "./Pattern.svelte";
+  import * as Editor from "../gen/eyg/ast/editor";
+  import Indent from "./Indent.svelte";
   import * as Typer from "../gen/eyg/typer";
 
   export let position;
@@ -11,6 +13,9 @@
 
   let error = false
   $: error = Typer.is_error(metadata)
+
+  let multiline = false;
+  multiline = Editor.is_multiexpression(value)
 </script>
 
 <p
@@ -26,10 +31,19 @@
     position={position.concat(0)}
   />
   =
+  {#if multiline}
+  <Indent>
+    <Expression
+      expression={value}
+      position={position.concat(1)}
+    />
+  </Indent>
+  {:else}
   <Expression
     expression={value}
     position={position.concat(1)}
   />
+  {/if}
 </p>
 <Expression
   expression={then}
