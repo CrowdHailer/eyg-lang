@@ -11,7 +11,7 @@
   export let then;
 
   let multiline = false;
-  multiline = Display.is_multiexpression(value)
+  multiline = Display.is_multiexpression(value);
 </script>
 
 <p
@@ -21,25 +21,16 @@
   data-editor={Display.marker(metadata)}
 >
   <span class="text-gray-500">let</span>
-  <Pattern
-    {pattern}
-    {metadata}
-  />
+  <Pattern {pattern} {metadata} />
   {#if !value[1].body}
-  =
+    =
   {/if}
   {#if multiline}
-  <Indent>
-    <Expression
-      expression={value}
-    />
-  </Indent>
+    <Indent>
+      <Expression expression={value} />
+    </Indent>
   {:else}
-  <Expression
-    expression={value}
-  />
+    <Expression expression={value} />
   {/if}
 </p>
-<Expression
-  expression={then}
-/>
+<Expression expression={then} />

@@ -9,8 +9,7 @@
   class="text-green-400 border-2 border-transparent outline-none rounded inline-block"
   class:border-red-500={metadata.errored && !Display.is_target(metadata)}
   class:border-indigo-300={Display.is_target(metadata)}
-  data-editor={Display.marker(metadata)}
-  >{value}</span
+  data-editor={Display.marker(metadata)}>{value}</span
 >
 
 <style>
@@ -23,5 +22,4 @@
   span::after {
     content: '"';
   }
-
 </style>

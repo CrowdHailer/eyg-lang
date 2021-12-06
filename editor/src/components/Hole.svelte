@@ -5,12 +5,11 @@
 </script>
 
 <span
-class="border-2 border-transparent outline-none rounded inline-block"
-class:border-red-500={metadata.errored && !Display.is_target(metadata)}
-class:border-indigo-300={Display.is_target(metadata)}
-data-editor={Display.marker(metadata)}
-></span>
-
+  class="border-2 border-transparent outline-none rounded inline-block"
+  class:border-red-500={metadata.errored && !Display.is_target(metadata)}
+  class:border-indigo-300={Display.is_target(metadata)}
+  data-editor={Display.marker(metadata)}
+/>
 
 <style>
   span:empty {
@@ -21,9 +20,9 @@ data-editor={Display.marker(metadata)}
     white-space: pre;
   }
   span::before {
-    content: ' ';
+    content: " ";
   }
   span::after {
-    content: ' ';
+    content: " ";
   }
 </style>

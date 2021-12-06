@@ -9,7 +9,7 @@
   export let body;
 
   let multiline = false;
-  multiline = Display.is_multiexpression(body)
+  multiline = Display.is_multiexpression(body);
 </script>
 
 <Pattern {pattern} {metadata} />
@@ -20,13 +20,9 @@
   data-editor={Display.marker(metadata)}>=></span
 >
 {#if multiline}
-<Indent>
-  <Expression
-    expression={body}
-  />
-</Indent>
-  {:else}
-  <Expression
-  expression={body}
-/>
+  <Indent>
+    <Expression expression={body} />
+  </Indent>
+{:else}
+  <Expression expression={body} />
 {/if}

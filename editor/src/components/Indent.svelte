@@ -1,5 +1,5 @@
 <script>
-  export let multiline = true
+  export let multiline = true;
 </script>
 
 <span class="text-gray-600">&lbrace;</span>
