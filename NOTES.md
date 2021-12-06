@@ -36,23 +36,25 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete
 - [x] Drag record fields left and right
-- [ ] handle editor loosing focus -> Later not that important
-- [ ] Test lambda calculus enums.
-- [ ] Step in on Tagged Unit -> Tagged Tuple
-- [ ] Syntax sugar for rows where name = variable like js shorthand
-- [ ] dot syntax sugar
+- [ ] implement a harness.js as a big thing that does equal, equal is possible for what we have but might need external types
+      show the input, have the function run onClick. name the harness browser or some such
+- [ ] RUN THE PROGRAMS. create an advent of code page.
+- [ ] Load/Save files
 - [ ] hard coded providers
-- [ ] hightlight specific error as the cursor moved over it. Is cursor a bettor name for selection in the editor page
-- [ ] Put path of expression in metadata, not part of ast library, maybe we transform and add active error fields?
-- [ ] remove tabindex = -1, use position in editor
-- [ ] Tab (Space) to Blanks/Errors
+- [ ] Step in on Tagged Unit -> Tagged Tuple
+- [ ] Pin type, click and bump constraints to top
+- [ ] hightlight specific error in top list as the cursor moved over it. Is cursor a bettor name for selection in the editor page
+- [ ] Tab (Space) to Blanks/Errors (nice but not adding new capabilities)
+- [ ] link from listed error to code point, this needs typer and editor to have same understanding of path.
+- [x] remove tabindex = -1, use position in editor
+- [ ] Syntax sugar for rows where name = variable like js shorthand (nice not functional)
+- [ ] dot syntax sugar (nice not functional)
 - [x] Fix tests
 - [x] example should use lets in binary module, call variable binary module.
 - [ ] Record rest of fields variable
-- [ ] empty pattern turns into discard, in which case what is the point of an empty field
+- [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
 - [ ] io.inspect needs debug/inspect call, using reflect API
-- [ ] list all errors in program
-- [ ] Load/Save files
+- [x] list all errors in program
 - [ ] Copy/paste
 - [x] pretty print missing fields error
 - [x] insert space/drag in patterns
@@ -65,7 +67,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Drag up/down
 - [x] create function
 - [x] insert before after on records requires a path to the record element
-- [ ] holes can be printed as `todo` Red, pattern discard is underscore. all blanks should have a value.
+- [x] holes can be printed as `todo` Red, pattern discard is underscore. all blanks should have a value.
 - [x] Fix saving changes to strings
 - [x] Need Blanks in tuple patterns, could just be option types
 - [x] Record types
@@ -74,9 +76,10 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Need a pattern blank
 - [x] delete should work on the blanks to clear any preset.
 - [ ] Handle errors, maybe not because gleam shouldn't error
-- [ ] Pin type, click and bump constraints to top
 - [ ] Show available edit options
 - [ ] rename p:1,2 to code:1,2 or ast
+- [ ] handle editor loosing focus -> Later not that important
+- [ ] Test lambda calculus enums.
 - [x] Format tuples/records without any brackets (doesn't work because of nested tuples)
   ```
   let a, b = x
