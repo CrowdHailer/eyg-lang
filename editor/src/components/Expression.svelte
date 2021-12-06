@@ -1,4 +1,5 @@
 <script>
+  import * as Gleam from "../gen/gleam";
   import * as Expression from "../gen/eyg/ast/expression";
   import * as Sugar from "../gen/eyg/ast/sugar";
 
@@ -10,51 +11,17 @@
   import Binary from "./Binary.svelte";
   import Provider from "./Provider.svelte";
   import Tuple from "./Tuple.svelte";
+  import SugarExpression from "./Sugar.svelte";
 
   export let expression;
-  let metadata, tree;
+  let metadata, tree, sugar;
   $: metadata = expression[0];
   $: tree = expression[1];
+  $: sugar = Sugar.match(tree)
 </script>
 
-<!-- TODO instance of sugar, instance of is my case result -->
-<!-- if is_ok(sugar) sugar[0 ] -->
-{#if Sugar.is_variant(tree)}
-<p
-  tabindex="-1"
-  class="border-2 border-transparent focus:border-indigo-300 outline-none rounded"
-  data-editor={"p:" + metadata.position.toArray().join(",")}
->
-  <span class="text-gray-500">data</span>
-  <span
-    tabindex="-1"
-    class="border-2 border-transparent focus:border-indigo-300 outline-none rounded text-blue-800"
-    data-editor={"p:" + metadata.position.toArray().concat(0).join(",")}
-  >{tree.pattern.label}</span>
-
-</p>
-
-<svelte:self
-  expression={tree.then}
-  position={metadata.position.toArray().concat(2)}
-/>
-
-{:else if Sugar.is_data_variant(tree)}
-<p
-  tabindex="-1"
-  class="border-2 border-transparent focus:border-indigo-300 outline-none rounded"
-  data-editor={"p:" + metadata.position.toArray().join(",")}
->
-  <span class="text-gray-500">data</span>
-  <span class="text-blue-800">{tree.pattern.label}</span>({Object.keys(tree.value[1].pattern.elements)})
-
-</p>
-
-<svelte:self
-  expression={tree.then}
-  position={metadata.position.toArray().concat(2)}
-/>
-
+{#if sugar instanceof Gleam.Ok}
+<SugarExpression {metadata} sugar={sugar[0]}></SugarExpression>
 {:else if tree instanceof Expression.Tuple}
   <Tuple
     {metadata}

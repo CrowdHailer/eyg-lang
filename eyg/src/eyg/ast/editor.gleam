@@ -1245,25 +1245,6 @@ pub fn map_node(
   }
 }
 
-// Svelte has clever memoization that makes this less sensible
-type Sugar {
-  Named
-  ParameterisedName
-  DotAccess
-  Case
-  Try
-  FunctionDef
-}
-
-// Or we just make our own
-// Let
-// Var
-// LetLine
-// LetMultiline
-// DotAccess but it's all going to have selected etc
-// pattern meta data
-// only Let/Function collapse
-// Row is multi line or not
 // Goal is to keep selection outlined And a collapse fn
 // exhibit show present
 // fn do_present(

@@ -1,28 +1,20 @@
+import gleam/list
+import gleam/option.{None, Some}
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/typer
 
-pub fn match(tree) {
-  Ok([])
-  Error
+pub type Element {
+  UnitVariant(label: String, then: e.Expression(typer.Metadata))
+  TupleVariant(
+    label: String,
+    parameters: List(String),
+    then: e.Expression(typer.Metadata),
+  )
 }
 
-// Dot syntax should need no special handling in the handle change
-// extend sugar to dot syntax
-// add expression information to pattern and pattern values. this will allow doing some is_sugar on the resulting expression
 // by convention change the highest level key i.e. name in pattern follows through to name in calls.
-// investigate keyboard short cut to use create these patterns
-// things like rows in case I think we can do a down function that suggests the next un chosed key name actually this won't happen that often
-// for example list reverse doesn't know that it's a list until you have both cases defined
-// is_unit_variant
-// is_tuple_variant
-// is_row_variant
-// row variant always beause variables always have a name
-// Do an is_sugar and return the enum
-// put dot access in the example
-// check updating
-// Does this go along side remove the tabindex= -1 I don't think so.
-// change type -> tagged tag name in syntax
-pub fn is_variant(tree) {
+pub fn match(tree) {
   case tree {
     e.Let(
       p.Variable(n1),
@@ -33,20 +25,14 @@ pub fn is_variant(tree) {
           #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple([])))),
         ),
       ),
-      _then,
-    ) if n1 == n2 -> True
-    _ -> False
-  }
-}
-
-pub fn is_data_variant(tree) {
-  case tree {
+      then,
+    ) if n1 == n2 -> Ok(UnitVariant(n1, then))
     e.Let(
       p.Variable(n1),
       #(
         _,
         e.Function(
-          p.Tuple(_),
+          p.Tuple(elements),
           #(
             _,
             e.Function(
@@ -56,8 +42,21 @@ pub fn is_data_variant(tree) {
           ),
         ),
       ),
-      _then,
-    ) if n1 == n2 -> True
-    _ -> False
+      then,
+    ) if n1 == n2 -> {
+      let parameters =
+        list.fold(
+          elements,
+          [],
+          fn(e, acc) {
+            case e {
+              Some(p) -> [p, ..acc]
+              None -> acc
+            }
+          },
+        )
+      Ok(TupleVariant(n1, parameters, then))
+    }
+    _ -> Error(Nil)
   }
 }

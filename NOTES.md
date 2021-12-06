@@ -36,6 +36,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Put variables in Blanks, auto complete
 - [x] Drag record fields left and right
 - [ ] Test lambda calculus enums.
+- [ ] Down on Tagged Unit -> Tagged Tuple
 - [ ] dot syntax sugar
 - [ ] hard coded providers
 - [ ] Put path of expression in metadata, not part of ast library, maybe we transform and add active error fields?
