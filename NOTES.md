@@ -17,6 +17,7 @@ Need to replace lot's of tuple references with tuple or pattern
 - Tuples need brackets to show tuples in tuples
 - Deliberatly don't have mutliline strings they come from files etc
 - Need to keep focus on editor root to pick up key press
+- Escape in draft mode should be cancel changes not commit changes
 
 m for metadata
 call this AST, node -> Expression get_element -> get_node position -> path p:1,2 -> code:1,2 ast.
@@ -70,6 +71,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] Handle errors, maybe not because gleam shouldn't error
 - [ ] Pin type, click and bump constraints to top
 - [ ] Show available edit options
+- [ ] rename p:1,2 to code:1,2 or ast
 - [x] Format tuples/records without any brackets (doesn't work because of nested tuples)
   ```
   let a, b = x
