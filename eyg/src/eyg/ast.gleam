@@ -38,7 +38,9 @@ pub fn provider(config, generator) {
 }
 
 pub fn generate_hole(_config, _type) {
-  binary("TODO this is no implemented")
+  binary(
+    "this is assumed to never be called, just a flag for implementing holes as a provider",
+  )
 }
 
 pub fn hole() {

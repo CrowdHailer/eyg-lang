@@ -2,12 +2,10 @@
   import * as Display from "../gen/eyg/editor/display";
   import * as Pattern from "../gen/eyg/ast/pattern";
 
-  // metadata is expression metadata
+  // Note this is expression metadata the display objects in this file are metadata of type Display
   export let metadata;
   export let pattern;
 
-  // TODOpattern metadata is the answer here really.
-  // TODO do we think about calling this pattern metadata all the way down
   let display = Display.display_pattern(metadata, pattern)
   $: display = Display.display_pattern(metadata, pattern)
 </script>
