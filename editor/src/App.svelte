@@ -73,8 +73,9 @@
 <header class="max-w-4xl mx-auto pb-2 pt-6">
   <h1 class="text-2xl">Editor</h1>
 </header>
+
 <div
-  class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative outline-none"
+  class="max-w-4xl mx-auto rounded px-10 py-6 bg-white relative outline-none"
   tabindex="-1"
   data-editor="root"
   on:click={handleClick}
@@ -126,3 +127,8 @@
 <!-- <pre class="max-w-4xl mx-auto my-2 bg-gray-100 p-1">
   {generated}
 </pre> -->
+<aside class="absolute top-0 right-0 p-2 border-l-4 border-red-700 bg-white">
+  {#each editor.typer.inconsistencies.toArray() as reason}
+    <p>{reason}</p>
+  {/each}
+</aside>

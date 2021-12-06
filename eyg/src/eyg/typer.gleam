@@ -52,7 +52,7 @@ pub fn reason_to_string(reason) {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [])
+  State(variables, 0, [], [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -264,7 +264,12 @@ fn do_unify(expected, given, typer) {
   case unify(expected, given, typer) {
     Ok(typer) -> #(Ok(expected), typer)
     // Don't think typer needs returning from unify?
-    Error(#(reason, typer)) -> #(Error(reason), typer)
+    Error(#(reason, typer)) -> {
+      let State(inconsistencies: inconsistencies, ..) = typer
+      let inconsistencies = [reason_to_string(reason), ..typer.inconsistencies]
+      let typer = State(..typer, inconsistencies: inconsistencies)
+      #(Error(reason), typer)
+    }
   }
 }
 
@@ -368,7 +373,15 @@ pub fn infer(
       // Returns typer because of instantiation,
       let #(type_, typer) = case get_variable(label, typer) {
         Ok(#(given, typer)) -> do_unify(expected, given, typer)
-        Error(#(reason, _)) -> #(Error(reason), typer)
+        Error(#(reason, _)) -> {
+          let State(inconsistencies: inconsistencies, ..) = typer
+          let inconsistencies = [
+            reason_to_string(reason),
+            ..typer.inconsistencies
+          ]
+          let typer = State(..typer, inconsistencies: inconsistencies)
+          #(Error(reason), typer)
+        }
       }
       let expression = #(meta(type_), Variable(label))
       #(expression, typer)

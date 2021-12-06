@@ -9,7 +9,10 @@ pub type State {
     variables: List(#(String, Polytype)),
     next_unbound: Int,
     substitutions: List(#(Int, Monotype)),
+    // location should be ast paths. does it reset same way as scope
     location: List(Int),
+    // CAN'T hold onto typer.Reason circular dependency
+    inconsistencies: List(String),
   )
 }
 

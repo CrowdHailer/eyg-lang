@@ -42,6 +42,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] Syntax sugar for rows where name = variable like js shorthand
 - [ ] dot syntax sugar
 - [ ] hard coded providers
+- [ ] hightlight specific error as the cursor moved over it. Is cursor a bettor name for selection in the editor page
 - [ ] Put path of expression in metadata, not part of ast library, maybe we transform and add active error fields?
 - [ ] remove tabindex = -1, use position in editor
 - [ ] Tab (Space) to Blanks/Errors
