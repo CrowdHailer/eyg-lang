@@ -51,7 +51,3 @@ pub fn hole() {
 pub fn is_hole(generator) {
   generator == generate_hole
 }
-
-pub fn append_path(path, i) {
-  list.append(path, [i])
-}

@@ -70,8 +70,7 @@ pub fn display(tree, position, selection, editor) {
     e.Binary(content) -> #(metadata, e.Binary(content))
     e.Tuple(elements) -> {
       let display_element = fn(index, element) {
-        //   ast&path.child
-        let position = list.append(position, [index])
+        let position = path.append(position, index)
         let selection = child_selection(selection, index)
         display(element, position, selection, editor)
       }
@@ -94,14 +93,14 @@ pub fn display(tree, position, selection, editor) {
       let value =
         display(
           value,
-          list.append(position, [1]),
+          path.append(position, 1),
           child_selection(selection, 1),
           editor,
         )
       let then =
         display(
           then,
-          list.append(position, [2]),
+          path.append(position, 2),
           child_selection(selection, 2),
           editor,
         )
@@ -111,7 +110,7 @@ pub fn display(tree, position, selection, editor) {
       let to =
         display(
           to,
-          list.append(position, [1]),
+          path.append(position, 1),
           child_selection(selection, 1),
           editor,
         )
@@ -121,14 +120,14 @@ pub fn display(tree, position, selection, editor) {
       let function =
         display(
           function,
-          list.append(position, [0]),
+          path.append(position, 0),
           child_selection(selection, 0),
           editor,
         )
       let with =
         display(
           with,
-          list.append(position, [1]),
+          path.append(position, 1),
           child_selection(selection, 1),
           editor,
         )
@@ -148,7 +147,7 @@ pub fn display_pattern(metadata, pattern) {
   let Display(position: position, selection: selection, ..) = metadata
   //   ast&path.child
   //   is always 0 but that's a coincidence of fn and let
-  let position = list.append(position, [0])
+  let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
   let display = Display(position, selection, False)
 }
@@ -160,7 +159,7 @@ pub fn display_pattern_elements(display, elements) {
   list.index_map(
     elements,
     fn(i, e) {
-      let position = list.append(position, [i])
+      let position = path.append(position, i)
       let selection = child_selection(selection, i)
       let value = case e {
         Some(label) -> label
@@ -176,11 +175,11 @@ pub fn display_pattern_fields(display, fields) {
   list.index_map(
     fields,
     fn(i, f) {
-      let position = list.append(position, [i])
+      let position = path.append(position, i)
       let selection = child_selection(selection, i)
-      let label_position = list.append(position, [0])
+      let label_position = path.append(position, 0)
       let label_selection = child_selection(selection, 0)
-      let value_position = list.append(position, [1])
+      let value_position = path.append(position, 1)
       let value_selection = child_selection(selection, 1)
       let #(label, bind) = f
       #(
@@ -199,9 +198,9 @@ pub fn display_expression_fields(display, fields) {
   list.index_map(
     fields,
     fn(i, f) {
-      let position = list.append(position, [i])
+      let position = path.append(position, i)
       let selection = child_selection(selection, i)
-      let label_position = list.append(position, [0])
+      let label_position = path.append(position, 0)
       let label_selection = child_selection(selection, 0)
       let #(label, value) = f
       #(

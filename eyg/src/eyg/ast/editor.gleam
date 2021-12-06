@@ -328,7 +328,7 @@ fn increase_selection(tree, position) {
 }
 
 fn decrease_selection(tree, position) {
-  let inner = ast.append_path(position, 0)
+  let inner = path.append(position, 0)
   case get_element(tree, position) {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
@@ -339,7 +339,7 @@ fn decrease_selection(tree, position) {
       let new = ast.row([#("", ast.hole())])
       #(
         Some(replace_node(tree, position, new)),
-        ast.append_path(inner, 0),
+        path.append(inner, 0),
         Draft(""),
       )
     }
@@ -357,7 +357,7 @@ fn decrease_selection(tree, position) {
     )
     Pattern(p.Row([]), _) -> #(
       Some(replace_pattern(tree, position, p.Row([#("", "")]))),
-      ast.append_path(inner, 0),
+      path.append(inner, 0),
       Draft(""),
     )
 
@@ -377,7 +377,7 @@ fn move_left(tree, position) {
     Some(#(parent, cursor)) ->
       case get_element(tree, parent), cursor {
         Expression(#(_, e.Let(_, _, _))), 2 -> position
-        _, _ -> ast.append_path(parent, cursor - 1)
+        _, _ -> path.append(parent, cursor - 1)
       }
   }
 }
@@ -399,7 +399,7 @@ fn move_right(tree, position) {
         PatternField(_, _) -> 1
       }
       case cursor < max {
-        True -> ast.append_path(parent, cursor + 1)
+        True -> path.append(parent, cursor + 1)
         False -> position
       }
     }
@@ -430,17 +430,16 @@ fn move_up(tree, position) {
 // TODO handle moving into blocks
 fn move_down(tree, position) {
   case get_element(tree, position) {
-    Expression(#(_, e.Let(_, _, _))) -> ast.append_path(position, 2)
+    Expression(#(_, e.Let(_, _, _))) -> path.append(position, 2)
 
     _ ->
       case parent_let(tree, position) {
         None -> position
-        Some(#(position, 0)) | Some(#(position, 1)) ->
-          ast.append_path(position, 2)
+        Some(#(position, 0)) | Some(#(position, 1)) -> path.append(position, 2)
         Some(#(position, 2)) ->
           case block_container(tree, position) {
             // Select whole bottom line
-            None -> ast.append_path(position, 2)
+            None -> path.append(position, 2)
             Some(position) -> move_down(tree, position)
           }
       }
@@ -471,7 +470,7 @@ fn insert_space(tree, position, offset) {
       let new = ast.tuple_(insert_at(elements, cursor, ast.hole()))
       #(
         Some(replace_node(tree, position, new)),
-        ast.append_path(position, cursor),
+        path.append(position, cursor),
         Select(""),
       )
     }
@@ -480,7 +479,7 @@ fn insert_space(tree, position, offset) {
       let new = ast.row(insert_at(fields, cursor, #("", ast.hole())))
       #(
         Some(replace_node(tree, position, new)),
-        ast.append_path(ast.append_path(position, cursor), 0),
+        path.append(path.append(position, cursor), 0),
         Draft(""),
       )
     }
@@ -489,7 +488,7 @@ fn insert_space(tree, position, offset) {
       let new = p.Tuple(insert_at(elements, cursor, None))
       #(
         Some(replace_pattern(tree, position, new)),
-        ast.append_path(position, cursor),
+        path.append(position, cursor),
         Draft(""),
       )
     }
@@ -498,7 +497,7 @@ fn insert_space(tree, position, offset) {
       let new = p.Row(insert_at(fields, cursor, #("", "")))
       #(
         Some(replace_pattern(tree, position, new)),
-        ast.append_path(ast.append_path(position, cursor), 0),
+        path.append(path.append(position, cursor), 0),
         Draft(""),
       )
     }
@@ -510,17 +509,11 @@ fn space_below(tree, position) {
     None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [2])
     Some(#(path, 2, #(pattern, value, then))) -> {
       let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
-      #(
-        replace_node(tree, path, new),
-        ast.append_path(ast.append_path(path, 2), 2),
-      )
+      #(replace_node(tree, path, new), path.append(path.append(path, 2), 2))
     }
     Some(#(path, _, #(pattern, value, then))) -> {
       let new = ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
-      #(
-        replace_node(tree, path, new),
-        ast.append_path(ast.append_path(path, 2), 0),
-      )
+      #(replace_node(tree, path, new), path.append(path.append(path, 2), 0))
     }
   }
 }
@@ -530,14 +523,11 @@ fn space_above(tree, position) {
     None -> #(ast.let_(p.Discard, ast.hole(), untype(tree)), [0])
     Some(#(path, 2, #(pattern, value, then))) -> {
       let new = ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
-      #(
-        replace_node(tree, path, new),
-        ast.append_path(ast.append_path(path, 2), 0),
-      )
+      #(replace_node(tree, path, new), path.append(path.append(path, 2), 0))
     }
     Some(#(path, _, #(pattern, value, then))) -> {
       let new = ast.let_(p.Discard, ast.hole(), ast.let_(pattern, value, then))
-      #(replace_node(tree, path, new), ast.append_path(path, 0))
+      #(replace_node(tree, path, new), path.append(path, 0))
     }
   }
 }
@@ -580,11 +570,11 @@ fn drag_left(tree, position) {
       case swap_elements(match, cursor - 1) {
         Ok(Expression(new)) -> #(
           replace_node(tree, parent_position, new),
-          ast.append_path(parent_position, cursor - 1),
+          path.append(parent_position, cursor - 1),
         )
         Ok(Pattern(new, _)) -> #(
           replace_pattern(tree, parent_position, new),
-          ast.append_path(parent_position, cursor - 1),
+          path.append(parent_position, cursor - 1),
         )
         Error(Nil) -> #(untype(tree), position)
       }
@@ -598,11 +588,11 @@ fn drag_right(tree, position) {
       case swap_elements(match, cursor) {
         Ok(Expression(new)) -> #(
           replace_node(tree, parent_position, new),
-          ast.append_path(parent_position, cursor + 1),
+          path.append(parent_position, cursor + 1),
         )
         Ok(Pattern(new, _)) -> #(
           replace_pattern(tree, parent_position, new),
-          ast.append_path(parent_position, cursor + 1),
+          path.append(parent_position, cursor + 1),
         )
         Error(Nil) -> #(untype(tree), position)
       }
@@ -616,10 +606,7 @@ fn drag_down(tree, position) {
     #(untype(tree), position)
     Some(#(path, _, #(pattern, value, #(_, e.Let(p_after, v_after, then))))) -> {
       let new = ast.let_(p_after, v_after, ast.let_(pattern, value, then))
-      #(
-        replace_node(tree, path, new),
-        ast.append_path(ast.append_path(path, 2), 0),
-      )
+      #(replace_node(tree, path, new), path.append(path.append(path, 2), 0))
     }
     _ -> #(untype(tree), position)
   }
@@ -642,7 +629,7 @@ fn drag_up(tree, original) {
                   untype(value),
                   ast.let_(p_before, untype(v_before), then),
                 )
-              #(replace_node(tree, position, new), ast.append_path(position, 0))
+              #(replace_node(tree, position, new), path.append(position, 0))
             }
             _ -> #(untype(tree), original)
           }
@@ -719,7 +706,7 @@ fn wrap_assignment(tree, position) {
       let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
       #(
         replace_node(tree, position, new),
-        ast.append_path(ast.append_path(position, 2), 0),
+        path.append(path.append(position, 2), 0),
       )
     }
     // Only need this case because we don't have dot access, but I use it for the boolean and list modules
@@ -727,7 +714,7 @@ fn wrap_assignment(tree, position) {
       let new = ast.let_(pattern, ast.let_(p.Discard, value, ast.hole()), then)
       #(
         replace_node(tree, position, new),
-        ast.append_path(ast.append_path(position, 2), 0),
+        path.append(path.append(position, 2), 0),
       )
     }
     _ -> #(untype(tree), position)
@@ -757,11 +744,11 @@ fn wrap_tuple(tree, position) {
     }
     Expression(expression) -> {
       let new = ast.tuple_([untype(expression)])
-      #(replace_node(tree, position, new), ast.append_path(position, 0))
+      #(replace_node(tree, position, new), path.append(position, 0))
     }
     Pattern(p.Variable(label), _) -> #(
       replace_pattern(tree, position, p.Tuple([Some(label)])),
-      ast.append_path(position, 0),
+      path.append(position, 0),
     )
     Pattern(p.Discard, _) -> #(
       replace_pattern(tree, position, p.Tuple([])),
@@ -784,13 +771,13 @@ fn wrap_row(tree, position) {
       let new = ast.row([#("", untype(expression))])
       #(
         Some(replace_node(tree, position, new)),
-        ast.append_path(ast.append_path(position, 0), 0),
+        path.append(path.append(position, 0), 0),
         Draft(""),
       )
     }
     Pattern(p.Variable(label), _) -> #(
       Some(replace_pattern(tree, position, p.Row([#("", label)]))),
-      ast.append_path(ast.append_path(position, 0), 0),
+      path.append(path.append(position, 0), 0),
       Draft(""),
     )
     Pattern(p.Discard, _) -> #(
@@ -807,7 +794,7 @@ fn wrap_function(tree, position) {
   case get_element(tree, position) {
     Expression(expression) -> {
       let new = ast.function(p.Discard, untype(expression))
-      #(replace_node(tree, position, new), ast.append_path(position, 0))
+      #(replace_node(tree, position, new), path.append(position, 0))
     }
     _ -> #(untype(tree), position)
   }
@@ -948,8 +935,8 @@ fn delete(tree, position) {
         insert,
       ) == 0 {
         False, _ -> pattern_position
-        _, True -> ast.append_path(pattern_position, cursor - 1)
-        _, False -> ast.append_path(pattern_position, cursor)
+        _, True -> path.append(pattern_position, cursor - 1)
+        _, False -> path.append(pattern_position, cursor)
       }
       #(
         Some(replace_pattern(tree, pattern_position, p.Tuple(elements))),
@@ -1066,7 +1053,7 @@ fn insert_named(tree, position) {
       #(
         // TODO rename as replace_expression
         Some(replace_node(tree, position, new)),
-        ast.append_path(position, 0),
+        path.append(position, 0),
         Draft("Foo"),
       )
     }

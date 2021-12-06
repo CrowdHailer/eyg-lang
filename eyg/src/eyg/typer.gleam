@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import eyg/ast
+import eyg/ast/path
 import eyg/ast/expression.{
   Binary, Call, Expression, Function, Let, Provider, Row, Tuple, Variable,
 }
@@ -237,7 +238,7 @@ fn pattern_type(pattern, typer) {
 // inference fns
 fn append_path(typer, i) {
   let State(location: location, ..) = typer
-  State(..typer, location: list.append(location, [i]))
+  State(..typer, location: path.append(location, i))
 }
 
 pub type Metadata {
@@ -325,7 +326,7 @@ pub fn infer(
           fn(pair, stz) {
             let #(tz, i) = stz
             let #(element, expected) = pair
-            let tz = State(..tz, location: ast.append_path(path, i))
+            let tz = State(..tz, location: path.append(path, i))
             let #(element, tz) = infer(element, expected, tz)
             #(element, #(tz, i + 1))
           },
@@ -355,7 +356,7 @@ pub fn infer(
           fn(pair, stz) {
             let #(tz, i) = stz
             let #(#(name, value), expected) = pair
-            let tz = State(..tz, location: ast.append_path(path, i))
+            let tz = State(..tz, location: path.append(path, i))
             let #(value, tz) = infer(value, expected, tz)
             #(#(name, value), #(tz, i + 1))
           },
