@@ -52,7 +52,7 @@ pub fn reason_to_string(reason) {
 }
 
 pub fn init(variables) {
-  State(variables, 0, [], [], [])
+  State(variables, 0, [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {

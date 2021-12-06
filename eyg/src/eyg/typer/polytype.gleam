@@ -9,7 +9,6 @@ pub type State {
     variables: List(#(String, Polytype)),
     next_unbound: Int,
     substitutions: List(#(Int, Monotype)),
-    nominal: List(#(String, #(List(Int), List(#(String, monotype.Monotype))))),
     location: List(Int),
   )
 }
