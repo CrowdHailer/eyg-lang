@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
 import eyg/ast
+import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
@@ -23,8 +24,7 @@ pub type Editor {
   Editor(
     tree: e.Expression(Metadata),
     typer: State,
-    // position exist even in draft and select mode, it's where things get placed
-    position: List(Int),
+    selection: Option(List(Int)),
     mode: Mode,
   )
 }
@@ -51,14 +51,19 @@ pub fn is_select(editor) {
 }
 
 pub fn in_scope(editor) {
-  let Editor(tree: tree, position: position, mode: Select(filter), ..) = editor
-  case get_element(tree, position) {
-    Expression(#(metadata, _)) -> {
-      let Metadata(scope: scope, ..) = metadata
-      list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
-      |> list.filter(string.starts_with(_, filter))
-    }
-    _ -> []
+  let Editor(tree: tree, selection: selection, mode: Select(filter), ..) =
+    editor
+  case selection {
+    Some(path) ->
+      case get_element(tree, path) {
+        Expression(#(metadata, _)) -> {
+          let Metadata(scope: scope, ..) = metadata
+          list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
+          |> list.filter(string.starts_with(_, filter))
+        }
+        _ -> []
+      }
+    None -> []
   }
 }
 
@@ -74,49 +79,48 @@ fn expression_type(expression: e.Expression(Metadata), typer: polytype.State) {
   }
 }
 
+// returns bool if error
 pub fn target_type(editor) {
-  let Editor(tree: tree, typer: typer, position: position, ..) = editor
+  let Editor(tree: tree, typer: typer, selection: selection, ..) = editor
   // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
-  case get_element(tree, position) {
-    Expression(#(_, e.Let(_, value, _))) -> expression_type(value, typer)
-    Expression(expression) -> expression_type(expression, typer)
-    _ -> #(False, "")
+  case selection {
+    Some(path) ->
+      case get_element(tree, path) {
+        Expression(#(_, e.Let(_, value, _))) -> expression_type(value, typer)
+        Expression(expression) -> expression_type(expression, typer)
+        _ -> #(False, "")
+      }
+    None -> #(False, "")
   }
 }
 
 pub fn init() {
   let untyped = example.simple()
-  let position = []
   let #(typed, typer) = typer.infer_unconstrained(untyped)
   let mode = Command
-  Editor(typed, typer, position, mode)
+  Editor(typed, typer, None, mode)
 }
 
 pub fn handle_click(editor: Editor, target) {
   case string.split(target, ":") {
-    ["root"] -> Editor(..editor, position: [], mode: Command)
+    ["root"] -> Editor(..editor, selection: Some([]), mode: Command)
     ["p", rest] -> {
-      let position = case rest {
+      let path = case rest {
         "" -> []
         _ ->
           // empty string makes unparsable as int list
           string.split(rest, ",")
           |> list.map(int.parse)
       }
-      case get_element(editor.tree, position) {
-        Expression(#(_, e.Binary(content))) -> {
-          let mode = Draft(content)
-          Editor(..editor, position: position, mode: mode)
-        }
-        _ -> {
-          let mode = Command
-          Editor(..editor, position: position, mode: mode)
-        }
+      let mode = case get_element(editor.tree, path) {
+        Expression(#(_, e.Binary(content))) -> Draft(content)
+        _ -> Command
       }
+      Editor(..editor, selection: Some(path), mode: mode)
     }
     ["v", label] -> {
-      let untyped =
-        replace_node(editor.tree, editor.position, ast.variable(label))
+      let Some(path) = editor.selection
+      let untyped = replace_node(editor.tree, path, ast.variable(label))
       let #(typed, typer) = typer.infer_unconstrained(untyped)
       Editor(..editor, tree: typed, typer: typer, mode: Command)
     }
@@ -126,11 +130,13 @@ pub fn handle_click(editor: Editor, target) {
 }
 
 pub fn handle_keydown(editor, key, ctrl_key) {
-  let Editor(tree: tree, typer: typer, position: position, mode: mode) = editor
+  let Editor(tree: tree, typer: typer, selection: selection, mode: mode) =
+    editor
+  let Some(path) = selection
   case mode {
     Command -> {
-      let #(untyped, position, mode) =
-        handle_transformation(tree, position, key, ctrl_key)
+      let #(untyped, path, mode) =
+        handle_transformation(tree, path, key, ctrl_key)
       let #(typed, typer) = case untyped {
         None -> #(tree, typer)
         Some(untyped) -> typer.infer_unconstrained(untyped)
@@ -139,7 +145,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
         ..editor,
         tree: typed,
         typer: typer,
-        position: position,
+        selection: Some(path),
         mode: mode,
       )
     }
@@ -153,7 +159,8 @@ pub fn handle_keydown(editor, key, ctrl_key) {
 }
 
 pub fn handle_change(editor, content) {
-  let Editor(tree: tree, position: position, ..) = editor
+  let Editor(tree: tree, selection: selection, ..) = editor
+  let Some(position) = selection
   let untyped = case get_element(tree, position) {
     Expression(#(_, e.Binary(_))) -> {
       let new = ast.binary(content)
@@ -1222,9 +1229,10 @@ pub fn map_node(
 }
 
 pub fn display(editor) {
-  let Editor(tree: tree, position: selection, ..) = editor
-  // TODO use path.root
-  // TODO editor rename to selection and make optional
-  // TODO handle editor loosing focus -> Later not that important
-  display.display(tree, [], display.Above(selection), editor)
+  let Editor(tree: tree, selection: selection, ..) = editor
+  let selection = case selection {
+    Some(path) -> display.Above(path)
+    None -> display.Neither
+  }
+  display.display(tree, path.root(), selection, editor)
 }

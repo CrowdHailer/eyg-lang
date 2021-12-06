@@ -36,6 +36,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete
 - [x] Drag record fields left and right
+- [ ] handle editor loosing focus -> Later not that important
 - [ ] Test lambda calculus enums.
 - [ ] Step in on Tagged Unit -> Tagged Tuple
 - [ ] Syntax sugar for rows where name = variable like js shorthand
