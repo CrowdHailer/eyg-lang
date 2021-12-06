@@ -3,16 +3,13 @@
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import Pattern from "./Pattern.svelte";
-  import * as Editor from "../gen/eyg/ast/editor";
 
   export let metadata;
   export let pattern;
   export let body;
 
   let multiline = false;
-  multiline = Editor.is_multiexpression(body)
-
-
+  multiline = Display.is_multiexpression(body)
 </script>
 
 <Pattern {pattern} {metadata} />

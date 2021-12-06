@@ -7,6 +7,13 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
 
+pub fn is_multiexpression(expression) {
+  case expression {
+    #(_, e.Let(_, _, _)) -> True
+    _ -> False
+  }
+}
+
 pub type Selection {
   // Note Target status is Above with empty list
   Above(rest: List(Int))

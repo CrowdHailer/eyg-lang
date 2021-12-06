@@ -2,14 +2,11 @@
   import * as Display from "../gen/eyg/editor/display";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
-  import * as Editor from "../gen/eyg/ast/editor";
 
   export let metadata;
   export let fields;
 
   let multiline = false;
-  multiline = Editor.multiline(fields)
-
 </script>
 
 <span

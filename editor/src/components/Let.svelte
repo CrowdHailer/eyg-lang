@@ -1,9 +1,8 @@
 <script>
-    import * as Display from "../gen/eyg/editor/display";
+  import * as Display from "../gen/eyg/editor/display";
 
   import Expression from "./Expression.svelte";
   import Pattern from "./Pattern.svelte";
-  import * as Editor from "../gen/eyg/ast/editor";
   import Indent from "./Indent.svelte";
 
   export let metadata;
@@ -12,18 +11,7 @@
   export let then;
 
   let multiline = false;
-  // TODO move to display
-  multiline = Editor.is_multiexpression(value)
-
-  // Display.display_pattern(metadata, pattern) then use instance of
-
-
-// passing around editor gives us all the config like display options
-  // [selected, pattern_selection, value_selection, then_selection] = Editor.let_selected(path, editor.selection)
-
-  // metadata.marker
-  // metadata.target
-  // need metadata.position so that we can create it for the pattern
+  multiline = Display.is_multiexpression(value)
 </script>
 
 <p
