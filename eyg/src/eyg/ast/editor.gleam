@@ -99,7 +99,7 @@ pub fn handle_click(editor: Editor, target) {
       let position = case rest {
         "" -> []
         _ ->
-          // todo empty string makes unparsable as int list
+          // empty string makes unparsable as int list
           string.split(rest, ",")
           |> list.map(int.parse)
       }
@@ -179,7 +179,6 @@ pub fn handle_change(editor, content) {
         )
       replace_node(tree, parent_position, new)
     }
-    // TODO step in needs to make the unit named type a parameterised named type
     Pattern(p.Discard, _) | Pattern(p.Variable(_), _) ->
       replace_pattern(tree, position, p.Variable(content))
     // Putting stuff in the pattern Element works
@@ -290,7 +289,6 @@ fn handle_transformation(
     "i", False -> draft(tree, position)
     "v", False -> variable(tree, position)
     // sugar
-    // TOD call name in the print
     "n", False -> insert_named(tree, position)
     // xpand for view all in under selection
     // Fallback
@@ -554,7 +552,7 @@ fn swap_elements(match, at) {
     }
     TuplePattern(elements) -> {
       try elements = swap_pair(elements, at)
-      Ok(Pattern(p.Tuple(elements), todo))
+      Ok(Pattern(p.Tuple(elements), todo("fix swap elements in patten")))
     }
     RowExpression(fields) -> {
       try fields = swap_pair(fields, at)
@@ -562,7 +560,7 @@ fn swap_elements(match, at) {
     }
     RowPattern(fields) -> {
       try fields = swap_pair(fields, at)
-      Ok(Pattern(p.Row(fields), todo))
+      Ok(Pattern(p.Row(fields), todo("fix swap elements in patten")))
     }
   }
 }
@@ -706,18 +704,7 @@ fn block_container(tree, position) {
   }
 }
 
-// fn match_let(target) {
-//   case target {
-//     Expression(#(_, e.Let(p, v, t))) -> Ok(#(p, untype(v), untype(t)))
-//     _ -> Error(Nil)
-//   }
-// }
-// TODO or we should wrap once we get to the first not compond. i.e. don't but let in tuple/row
-// binary variable provider cannot be parents
-// let function should contain lets
-// call can but shouldn't??
 fn wrap_assignment(tree, position) {
-  // TODO if already on a let this comes up with a two but it shouldn't
   case closest(tree, position, match_let) {
     None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [0])
     // I don't support let in let yet
@@ -1058,7 +1045,7 @@ fn variable(tree, position) {
 fn insert_named(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
-    // TODO maybe the value should only be a hole
+    // maybe the value should only be a hole
     Expression(#(_, e.Let(p.Discard, _, then))) -> {
       let new =
         ast.let_(
@@ -1234,77 +1221,6 @@ pub fn map_node(
   }
 }
 
-// Goal is to keep selection outlined And a collapse fn
-// exhibit show present
-// fn do_present(
-//   ast,
-//   path,
-//   within_selection,
-//   editor: Editor,
-// ) -> e.Expression(Display) {
-//   // Get Node would be a good change to make first
-//   let #(Metadata(type_: type_, ..), expression) = ast
-//   let errored = case type_ {
-//     Ok(_) -> False
-//     Error(_) -> True
-//   }
-//   // let display = Display(path, selected, errored)
-//   // need an n for tuples etc
-//   case expression {
-//     e.Binary(content) -> #(display, e.Binary(content))
-//     e.Let(pattern, value, then) -> {
-//       // case k inner.
-//       let value = do_present(value, ast.append_path(path, 1), editor)
-//       let then = do_present(then, ast.append_path(path, 2), editor)
-//       // Needs a do present on the pattern part of the tree
-//       #(display, e.Let(pattern, value, then))
-//     }
-//     e.Variable(label) -> #(display, e.Variable(label))
-//   }
-//   // is_focus && expand_bellow || expand_all
-//   // #(_, e.Binary(_), Some([])) ->
-// }
-// before after will they keep the paths
-// Above Inside(rest) Target Before After
-// let's keep this in mind
-// editor has a selection
-// ast node has a position described by a path and a marker
-// the ast selection is above below/within etc
-// ast.at(tree, path) -> Node
-// within is something we need for expand all
-// I don't think any of this beats ast/path.root() in the editor
-// passing selection down the tree though the cases for if key and 2 then inner looks the same as above
-// Meta data in pattern is good but does the type ness really make sense.
-// display meta data in the patterns is an option that I can really evaluate.
-// pub fn present(editor) {
-//   let Editor(tree: tree, position: position, ..) = editor
-//   do_present(tree, position, editor)
-// }
-// // collapsed: Bool, errored: Bool, sugar: Option(Sugar)
-// // selection needs to be optional
-// fn do_present(ast, path, editor: Editor) -> e.Expression(Display) {
-//   // Get Node would be a good change to make first
-//   let #(Metadata(type_: type_, ..), expression) = ast
-//   let selected = path == editor.position
-//   let errored = case type_ {
-//     Ok(_) -> False
-//     Error(_) -> True
-//   }
-//   let display = Display(path, selected, errored)
-//   case expression {
-//     e.Binary(content) -> #(display, e.Binary(content))
-//     e.Let(pattern, value, then) -> {
-//       let value = do_present(value, ast.append_path(path, 1), editor)
-//       let then = do_present(then, ast.append_path(path, 2), editor)
-//       // Needs a do present on the pattern part of the tree
-//       #(display, e.Let(pattern, value, then))
-//     }
-//     e.Variable(label) -> #(display, e.Variable(label))
-//   }
-//   // #(_, e.Binary(_), Some([])) ->
-// }
-// Presenting the metadata is sorta a pain through the tree BUT does svelte land work any better
-// metada can have rest
 pub fn display(editor) {
   let Editor(tree: tree, position: selection, ..) = editor
   // TODO use path.root

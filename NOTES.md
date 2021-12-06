@@ -18,6 +18,7 @@ Need to replace lot's of tuple references with tuple or pattern
 - Deliberatly don't have mutliline strings they come from files etc
 - Need to keep focus on editor root to pick up key press
 - Escape in draft mode should be cancel changes not commit changes
+- Editor has a selection ast node has a position, both are paths
 
 m for metadata
 call this AST, node -> Expression get_element -> get_node position -> path p:1,2 -> code:1,2 ast.
@@ -36,7 +37,8 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Put variables in Blanks, auto complete
 - [x] Drag record fields left and right
 - [ ] Test lambda calculus enums.
-- [ ] Down on Tagged Unit -> Tagged Tuple
+- [ ] Step in on Tagged Unit -> Tagged Tuple
+- [ ] Syntax sugar for rows where name = variable like js shorthand
 - [ ] dot syntax sugar
 - [ ] hard coded providers
 - [ ] Put path of expression in metadata, not part of ast library, maybe we transform and add active error fields?
