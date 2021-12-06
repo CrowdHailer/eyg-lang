@@ -12,14 +12,14 @@
 {#if  sugar instanceof Sugar.UnitVariant}
 <p
   class="border-2 border-transparent outline-none rounded"
-  class:border-red-500={metadata.errored}
+  class:border-red-500={metadata.errored && !Display.is_target(metadata)}
   class:border-indigo-300={Display.is_target(metadata)}
   data-editor={Display.marker(metadata)}
 >
   <span class="text-gray-500">name</span>
   <span
     class="text-blue-800 border-2 border-transparent outline-none rounded"
-    class:border-red-500={metadata.errored}
+    class:border-red-500={metadata.errored && !Display.is_target(metadata)}
     class:border-indigo-300={Display.is_target(metadata)}
     >{sugar.label}</span>
 </p>
@@ -29,14 +29,14 @@
 {:else if sugar instanceof Sugar.TupleVariant}
 <p
   class="border-2 border-transparent outline-none rounded"
-  class:border-red-500={metadata.errored}
+  class:border-red-500={metadata.errored && !Display.is_target(metadata)}
   class:border-indigo-300={Display.is_target(metadata)}
   data-editor={Display.marker(metadata)}
 >
   <span class="text-gray-500">name</span>
   <span
     class="text-blue-800 border-2 border-transparent outline-none rounded"
-    class:border-red-500={metadata.errored}
+    class:border-red-500={metadata.errored && !Display.is_target(metadata)}
     class:border-indigo-300={Display.is_target(metadata)}
     >{sugar.label}({sugar.parameters.toArray()})</span>
 </p>
