@@ -19,15 +19,7 @@
       } else if(Editor.is_select(editor)) {
         document.getElementById("filter").focus()
       } else if(Editor.is_command(editor)) {
-        // TODO stringify in the gleam code
-        let pString = "p:" + editor.position.toArray().join(",");
-
-        let after = document.querySelector("[data-editor='" + pString + "']");
-        if (after) {
-          after.focus();
-        } else {
-          console.error("Action had no effect, was not able to focus cursor")
-        }
+        document.querySelector("[data-editor='root']").focus();
       }
     });
   }
@@ -51,13 +43,9 @@
     if (event.metaKey) {
       return true
     }
-    // maybe escape should be cancel not commit
     if (event.key == "Escape" || event.key == "Tab") {
       event.preventDefault()
       editor = Editor.handle_change(editor, event.target.value)
-      // need update focus to switch back to code tree.
-      // code:1,2,3 might be better that position
-      // I think prevent default prevents change being fired
       updateFocus(editor)
     }
     event.stopPropagation()
@@ -88,14 +76,14 @@
   <h1 class="text-2xl">Editor</h1>
 </header>
 <div
-  class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative"
+  class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative outline-none"
+  tabindex="-1"
   data-editor="root"
   on:click={handleClick}
   on:keydown={handleKeydown}
 >
   <Expression
-    expression={editor.tree}
-    position={[]}
+    expression={Editor.display(editor)}
   />
   <div class="sticky bottom-0 bg-white py-2">
     {#if Editor.is_command(editor)}

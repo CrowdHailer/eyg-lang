@@ -1,40 +1,32 @@
 <script>
+  import * as Display from "../gen/eyg/editor/display";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import Pattern from "./Pattern.svelte";
-  import * as Editor from "../gen/eyg/ast/editor";
-  import * as Typer from "../gen/eyg/typer";
 
-  export let position;
   export let metadata;
   export let pattern;
   export let body;
 
   let multiline = false;
-  multiline = Editor.is_multiexpression(body)
-
-
-  let error = false
-  $: error = Typer.is_error(metadata)
+  multiline = Display.is_multiexpression(body)
 </script>
 
-<Pattern {pattern} {metadata} position={position.concat(0)} />
-<strong
-  class="border-2 border-white focus:border-indigo-300 outline-none rounded"
-  class:border-red-500={error}
-  tabindex="-1"
-  data-editor={"p:" + position.join(",")}>=></strong
+<Pattern {pattern} {metadata} />
+<span
+  class="border-2 border-transparent outline-none rounded"
+  class:border-red-500={metadata.errored && !Display.is_target(metadata)}
+  class:border-indigo-300={Display.is_target(metadata)}
+  data-editor={Display.marker(metadata)}>=></span
 >
 {#if multiline}
 <Indent>
   <Expression
     expression={body}
-    position={position.concat(1)}
   />
 </Indent>
   {:else}
   <Expression
   expression={body}
-  position={position.concat(1)}
 />
 {/if}

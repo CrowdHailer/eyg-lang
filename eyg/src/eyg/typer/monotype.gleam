@@ -26,6 +26,8 @@ pub fn to_string(monotype) {
         string.join(list.intersperse(list.map(elements, to_string), ", ")),
         ")",
       ])
+    Function(Row([#(l, Function(Tuple(ts), _))], _), _) ->
+      string.join([l, ..list.map(ts, to_string)])
     Row(fields, _) ->
       string.join([
         "{",

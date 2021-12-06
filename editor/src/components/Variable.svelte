@@ -1,19 +1,15 @@
 <script>
-  import * as Typer from "../gen/eyg/typer";
+  import * as Display from "../gen/eyg/editor/display";
 
-  export let position;
   export let metadata;
   export let label;
-
-  let error = false
-  $: error = Typer.is_error(metadata)
 </script>
 
 <span
-  class="outline-none text-blue-500 border-2 border-white focus:border-indigo-300 outline-none rounded"
-  class:border-red-500={error}
-  tabindex="-1"
-  data-editor={"p:" + position.join(",")}>{label}</span
+  class="outline-none text-blue-500 border-2 border-transparent outline-none rounded"
+  class:border-red-500={metadata.errored && !Display.is_target(metadata)}
+  class:border-indigo-300={Display.is_target(metadata)}
+  data-editor={Display.marker(metadata)}>{label}</span
 >
 
 <style>

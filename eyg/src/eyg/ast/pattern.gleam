@@ -12,6 +12,7 @@ pub fn variable(label) {
   Variable(label)
 }
 
+// Could be replaced with instance of
 pub fn is_discard(pattern) {
   case pattern {
     Discard -> True

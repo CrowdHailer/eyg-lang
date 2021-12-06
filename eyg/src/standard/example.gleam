@@ -8,14 +8,14 @@ pub fn boolean() {
   ast.let_(
     pattern.Variable("True"),
     ast.function(
-      pattern.Row([#("True", "T")]),
-      ast.call(ast.variable("T"), ast.tuple_([])),
+      pattern.Row([#("True", "then")]),
+      ast.call(ast.variable("then"), ast.tuple_([])),
     ),
     ast.let_(
       pattern.Variable("False"),
       ast.function(
-        pattern.Row([#("False", "F")]),
-        ast.call(ast.variable("F"), ast.tuple_([])),
+        pattern.Row([#("False", "then")]),
+        ast.call(ast.variable("then"), ast.tuple_([])),
       ),
       ast.let_(
         pattern.Variable("and"),
@@ -96,6 +96,10 @@ pub fn list() {
       ),
     ),
   )
+}
+
+pub fn minimal() {
+  ast.let_(pattern.Variable("foo"), ast.binary("Hello"), ast.variable("foo"))
 }
 
 // TODO recursive type definition also need to reread about type being the same or contained within.

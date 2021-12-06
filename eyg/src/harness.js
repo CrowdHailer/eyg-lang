@@ -30,7 +30,7 @@ function deepEqual(x, y) {
         return {variant: "True", inner: []}
       } else {
         return {variant: "False", inner: []}
-      }  
+      }
     }
     // function zero$1() {
     //   return 0
@@ -46,10 +46,9 @@ function deepEqual(x, y) {
       console.log(item)
       return item
     }
-  
-  
-    // TODO put console output in an array.
-  
+
+
+
     return eval(code);
   }
 

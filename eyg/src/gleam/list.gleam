@@ -340,3 +340,33 @@ pub fn any(in list: List(a), satisfying predicate: fn(a) -> Bool) -> Bool {
     [x, ..rest] -> predicate(x) || any(rest, predicate)
   }
 }
+
+fn do_index_map(
+  list: List(a),
+  fun: fn(Int, a) -> b,
+  index: Int,
+  acc: List(b),
+) -> List(b) {
+  case list {
+    [] -> reverse(acc)
+    [x, ..xs] -> {
+      let acc = [fun(index, x), ..acc]
+      do_index_map(xs, fun, index + 1, acc)
+    }
+  }
+}
+
+/// Returns a new list containing only the elements of the first list after the
+/// function has been applied to each one and their index.
+///
+/// The index starts at 0, so the first element is 0, the second is 1, and so
+/// on.
+///
+/// ## Examples
+///
+///    > index_map(["a", "b"], fn(i, x) { #(i, x) })
+///    [#(0, "a"), #(1, "b")]
+///
+pub fn index_map(list: List(a), with fun: fn(Int, a) -> b) -> List(b) {
+  do_index_map(list, fun, 0, [])
+}
