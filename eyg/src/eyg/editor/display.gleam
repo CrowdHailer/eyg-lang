@@ -3,6 +3,7 @@ import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
