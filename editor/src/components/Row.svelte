@@ -26,7 +26,7 @@ data-editor={Display.marker(metadata)}><Indent {multiline}>
         class:border-indigo-300={Display.is_target(label_display)}
         data-editor={Display.marker(label_display)}
         >{label}:</span>
+        <Expression expression={value} />{#if i < fields.toArray().length - 1},{#if multiline}<br />{/if}{/if}
     </span>
-    <Expression expression={value} />{#if i < fields.toArray().length - 1},{#if multiline}<br />{/if}{/if}
   {/each}
 </Indent></span>
