@@ -16,6 +16,7 @@ Need to replace lot's of tuple references with tuple or pattern
 
 - Tuples need brackets to show tuples in tuples
 - Deliberatly don't have mutliline strings they come from files etc
+- Need to keep focus on editor root to pick up key press
 
 m for metadata
 call this AST, node -> Expression get_element -> get_node position -> path p:1,2 -> code:1,2 ast.

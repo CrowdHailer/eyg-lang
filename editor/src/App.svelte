@@ -19,16 +19,7 @@
       } else if(Editor.is_select(editor)) {
         document.getElementById("filter").focus()
       } else if(Editor.is_command(editor)) {
-        console.log("cloc");
-        // TODO stringify in the gleam code
-        // let pString = "p:" + editor.position.toArray().join(",");
-
-        // let after = document.querySelector("[data-editor='" + pString + "']");
-        // if (after) {
-        //   after.focus();
-        // } else {
-        //   console.error("Action had no effect, was not able to focus cursor")
-        // }
+        document.querySelector("[data-editor='root']").focus();
       }
     });
   }
@@ -39,6 +30,7 @@
   }
 
   function handleKeydown(event) {
+    console.log("keydown");
     if (event.metaKey) {
       return true
     }
@@ -88,16 +80,17 @@
 <header class="max-w-4xl mx-auto pb-2 pt-6">
   <h1 class="text-2xl">Editor</h1>
 </header>
+<!-- Needs a tab index to handle key downs -->
 <div
-  class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative"
+  class="max-w-4xl mx-auto rounded shadow px-10 py-6 bg-white relative outline-none"
+  tabindex="-1"
   data-editor="root"
   on:click={handleClick}
   on:keydown={handleKeydown}
 >
   {editor.position.toArray()}
   <Expression
-    expression={Editor.present(editor)}
-    position={[]}
+    expression={Editor.display(editor)}
   />
   <div class="sticky bottom-0 bg-white py-2">
     {#if Editor.is_command(editor)}

@@ -1,25 +1,18 @@
 <script>
-  import * as Typer from "../gen/eyg/typer";
-  export let position;
+  import * as Display from "../gen/eyg/editor/display";
+
   export let metadata;
   export let value;
-
-  let error = false
-  $: error = Typer.is_error(metadata)
-
-  // Have global again. editor is global all the state belongs in it
-  // mapping to the presentation will check that the cursors not gone awry
 </script>
 
 <span
-  class="text-green-400 border-2 border-white focus:border-indigo-300 outline-none rounded inline-block"
-  class:border-red-500={error}
-  tabindex="-1"
-  data-editor={"p:" + position.join(",")}
+  class="text-green-400 border-2 border-transparent outline-none rounded inline-block"
+  class:border-red-500={metadata.errored && !Display.is_target(metadata)}
+  class:border-indigo-300={Display.is_target(metadata)}
+  data-editor={Display.marker(metadata)}
   >{value}</span
 >
 
-<!--  -->
 <style>
   span {
     white-space: pre;

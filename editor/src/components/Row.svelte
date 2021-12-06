@@ -1,38 +1,35 @@
 <script>
+  import * as Display from "../gen/eyg/editor/display";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import * as Editor from "../gen/eyg/ast/editor";
-  import * as Typer from "../gen/eyg/typer";
 
-  export let position;
   export let metadata;
   export let fields;
 
   let multiline = false;
   multiline = Editor.multiline(fields)
 
-  let error = false
-  $: error = Typer.is_error(metadata)
 </script>
 
 <span
-  tabindex="-1"
-  data-editor={"p:" + position.join(",")}
-  class="border-2 border-white focus:border-indigo-300 outline-none rounded"
-  class:border-red-500={error}><Indent {multiline}>
-  {#each fields.toArray() as [label, value], i}
+class="border-2 border-transparent outline-none rounded"
+class:border-red-500={metadata.errored && !Display.is_target(metadata)}
+class:border-indigo-300={Display.is_target(metadata)}
+data-editor={Display.marker(metadata)}><Indent {multiline}>
+  {#each Display.display_expression_fields(metadata, fields).toArray() as [display, label_display, label, value], i}
     <span
-      tabindex="-1"
-      class="text-gray-500 border-2 border-white focus:border-indigo-300 outline-none rounded"
-      data-editor={"p:" + position.concat(i).join(",")}>
+      class="border-2 border-transparent outline-none rounded"
+      class:border-red-500={display.errored && !Display.is_target(display)}
+      class:border-indigo-300={Display.is_target(display)}
+      data-editor={Display.marker(display)}>
       <span
-        tabindex="-1"
-        class="text-gray-500 border-2 border-white focus:border-indigo-300 outline-none rounded"
-        data-editor={"p:" + position.concat(i, 0).join(",")}
-        >{label}</span><span class="text-gray-500"
-        >:</span
-      >
+        class="text-gray-500 border-2 border-transparent outline-none rounded"
+        class:border-red-500={label_display.errored && !Display.is_target(label_display)}
+        class:border-indigo-300={Display.is_target(label_display)}
+        data-editor={Display.marker(label_display)}
+        >{label}:</span>
     </span>
-    <Expression position={position.concat(i, 1)} expression={value} />{#if i < fields.toArray().length - 1},{#if multiline}<br />{/if}{/if}
+    <Expression expression={value} />{#if i < fields.toArray().length - 1},{#if multiline}<br />{/if}{/if}
   {/each}
 </Indent></span>

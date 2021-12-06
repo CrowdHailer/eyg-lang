@@ -1,6 +1,12 @@
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 
+pub fn match(tree) {
+  Ok([])
+  Error
+}
+
+// Dot syntax should need no special handling in the handle change
 // extend sugar to dot syntax
 // add expression information to pattern and pattern values. this will allow doing some is_sugar on the resulting expression
 // by convention change the highest level key i.e. name in pattern follows through to name in calls.

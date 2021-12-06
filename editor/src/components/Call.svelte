@@ -1,22 +1,19 @@
 <script>
+  import * as Display from "../gen/eyg/editor/display";
   import Expression from "./Expression.svelte";
-  import * as Typer from "../gen/eyg/typer";
 
-  export let position;
   export let metadata;
   export let function_;
   export let with_;
 
-  let error = false
-  $: error = Typer.is_error(metadata)
 </script>
 
 <span
-  class="border-2 border-white focus:border-indigo-300 outline-none rounded"
-  class:border-red-500={error}
-  tabindex="-1" data-editor={"p:" + position.join(",")}>
+class="border-2 border-transparent outline-none rounded"
+class:border-red-500={metadata.errored && !Display.is_target(metadata)}
+class:border-indigo-300={Display.is_target(metadata)}
+data-editor={Display.marker(metadata)}>
   <Expression
     expression={function_}
-    position={position.concat(0)}
-  />(<Expression expression={with_} position={position.concat(1)} />)
+  />(<Expression expression={with_}/>)
 </span>
