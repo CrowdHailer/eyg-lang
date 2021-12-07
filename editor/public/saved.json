@@ -1,0 +1,65 @@
+{
+    "node": "Let",
+    "pattern": {
+        "node": "Variable",
+        "label": "boolean"
+    },
+    "value": {
+        "node": "Let",
+        "pattern": {
+            "node": "Variable",
+            "label": "True"
+        },
+        "value": {
+            "node": "Function",
+            "pattern": {
+                "node": "Row",
+                "fields": [
+                    {
+                        "key": "True",
+                        "bind": "then"
+                    }
+                ]
+            },
+            "body": {
+                "node": "Call",
+                "function": {
+                    "node": "Variable",
+                    "label": "then"
+                },
+                "with": {
+                    "node": "Tuple",
+                    "elements": []
+                }
+            }
+        },
+        "then": {
+            "node": "Row",
+            "fields": [
+                {
+                    "node": "Field",
+                    "key": "True",
+                    "value": {
+                        "node": "Variable",
+                        "label": "True"
+                    }
+                }
+            ]
+        }
+    },
+    "then": {
+        "node": "Let",
+        "pattern": {
+            "node": "Variable",
+            "label": "b"
+        },
+        "value": {
+            "node": "Binary",
+            "value": "Hello"
+        },
+        "then": {
+            "node": "Variable",
+            "label": "b"
+        }
+    }
+}

@@ -5,24 +5,8 @@
 </script>
 
 <span
-  class="text-pink-500 border-2 border-transparent outline-none rounded inline-block"
+  class="text-pink-500 border-2 border-transparent outline-none rounded"
   class:border-red-500={metadata.errored && !Display.is_target(metadata)}
   class:border-indigo-300={Display.is_target(metadata)}
   data-editor={Display.marker(metadata)}>todo</span
 >
-
-<style>
-  span:empty {
-    display: inline-block;
-    min-width: 1em;
-  }
-  span {
-    white-space: pre;
-  }
-  span::before {
-    content: " ";
-  }
-  span::after {
-    content: " ";
-  }
-</style>

@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
 import eyg/ast
+import eyg/ast/encode
 import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
@@ -94,8 +95,36 @@ pub fn target_type(editor) {
   }
 }
 
-pub fn init() {
-  let untyped = example.simple()
+pub fn codegen(editor) {
+  let Editor(tree: tree, typer: typer, ..) = editor
+  let good = list.length(typer.inconsistencies) == 0
+  let code = javascript.render_to_string(tree, typer)
+  #(good, code)
+}
+
+external fn do_eval(String) -> anything =
+  "../../harness.js" "run"
+
+// Can put harness as a single record type that is copied to the code bundle and passed in at the top
+pub fn eval(editor) {
+  let Editor(tree: tree, typer: typer, ..) = editor
+  let True = list.length(typer.inconsistencies) == 0
+  let code = javascript.render_in_function(tree, typer)
+  string.join(["(function(){\n", code, "})()"])
+  |> do_eval
+}
+
+pub fn dump(editor) {
+  let Editor(tree: tree, ..) = editor
+  let dump =
+    encode.to_json(tree)
+    |> encode.json_to_string
+  dump
+}
+
+pub fn init(raw) {
+  let untyped = encode.from_json(encode.json_from_string(raw))
+  // let untyped = example.minimal()
   let #(typed, typer) = typer.infer_unconstrained(untyped)
   let mode = Command
   Editor(typed, typer, None, mode)
@@ -505,30 +534,61 @@ fn insert_space(tree, position, offset) {
 }
 
 fn space_below(tree, position) {
-  case closest(tree, position, match_let) {
-    None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [2])
-    Some(#(path, 2, #(pattern, value, then))) -> {
-      let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
-      #(replace_node(tree, path, new), path.append(path.append(path, 2), 2))
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(pattern, value, then))) -> {
+      let new =
+        ast.let_(
+          pattern,
+          untype(value),
+          ast.let_(p.Discard, ast.hole(), untype(then)),
+        )
+      #(
+        replace_node(tree, position, new),
+        path.append(path.append(position, 2), 0),
+      )
     }
-    Some(#(path, _, #(pattern, value, then))) -> {
-      let new = ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
-      #(replace_node(tree, path, new), path.append(path.append(path, 2), 0))
-    }
+    _ ->
+      case closest(tree, position, match_let) {
+        None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [2])
+        Some(#(path, 2, #(pattern, value, then))) -> {
+          let new =
+            ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
+          #(replace_node(tree, path, new), path.append(path.append(path, 2), 2))
+        }
+        Some(#(path, _, #(pattern, value, then))) -> {
+          let new =
+            ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
+          #(replace_node(tree, path, new), path.append(path.append(path, 2), 0))
+        }
+      }
   }
 }
 
 fn space_above(tree, position) {
-  case closest(tree, position, match_let) {
-    None -> #(ast.let_(p.Discard, ast.hole(), untype(tree)), [0])
-    Some(#(path, 2, #(pattern, value, then))) -> {
-      let new = ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
-      #(replace_node(tree, path, new), path.append(path.append(path, 2), 0))
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(pattern, value, then))) -> {
+      let new =
+        ast.let_(
+          p.Discard,
+          ast.hole(),
+          ast.let_(pattern, untype(value), untype(then)),
+        )
+      #(replace_node(tree, position, new), path.append(position, 0))
     }
-    Some(#(path, _, #(pattern, value, then))) -> {
-      let new = ast.let_(p.Discard, ast.hole(), ast.let_(pattern, value, then))
-      #(replace_node(tree, path, new), path.append(path, 0))
-    }
+    _ ->
+      case closest(tree, position, match_let) {
+        None -> #(ast.let_(p.Discard, ast.hole(), untype(tree)), [0])
+        Some(#(path, 2, #(pattern, value, then))) -> {
+          let new =
+            ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
+          #(replace_node(tree, path, new), path.append(path.append(path, 2), 0))
+        }
+        Some(#(path, _, #(pattern, value, then))) -> {
+          let new =
+            ast.let_(p.Discard, ast.hole(), ast.let_(pattern, value, then))
+          #(replace_node(tree, path, new), path.append(path, 0))
+        }
+      }
   }
 }
 
@@ -698,11 +758,24 @@ fn block_container(tree, position) {
   }
 }
 
+type Either(a, b) {
+  Left(a)
+  Right(b)
+}
+
+fn match_let_or_function(target) {
+  case target {
+    Expression(#(_, e.Let(p, v, t))) -> Ok(Left(#(p, untype(v), untype(t))))
+    Expression(#(_, e.Function(p, b))) -> Ok(Right(#(p, untype(b))))
+    _ -> Error(Nil)
+  }
+}
+
 fn wrap_assignment(tree, position) {
-  case closest(tree, position, match_let) {
+  case closest(tree, position, match_let_or_function) {
     None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [0])
     // I don't support let in let yet
-    Some(#(position, 2, #(pattern, value, then))) -> {
+    Some(#(position, 2, Left(#(pattern, value, then)))) -> {
       let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
       #(
         replace_node(tree, position, new),
@@ -710,11 +783,18 @@ fn wrap_assignment(tree, position) {
       )
     }
     // Only need this case because we don't have dot access, but I use it for the boolean and list modules
-    Some(#(position, 1, #(pattern, value, then))) -> {
+    Some(#(position, 1, Left(#(pattern, value, then)))) -> {
       let new = ast.let_(pattern, ast.let_(p.Discard, value, ast.hole()), then)
       #(
         replace_node(tree, position, new),
         path.append(path.append(position, 2), 0),
+      )
+    }
+    Some(#(position, 1, Right(#(pattern, body)))) -> {
+      let new = ast.function(pattern, ast.let_(p.Discard, body, ast.hole()))
+      #(
+        replace_node(tree, position, new),
+        path.append(path.append(position, 1), 0),
       )
     }
     _ -> #(untype(tree), position)

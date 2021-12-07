@@ -36,19 +36,24 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete
 - [x] Drag record fields left and right
-- [ ] implement a harness.js as a big thing that does equal, equal is possible for what we have but might need external types
+- [x] press "e" within function wraps in body
+- [x] implement a harness.js as a big thing that does equal, equal is possible for what we have but might need external types
       show the input, have the function run onClick. name the harness browser or some such
 - [ ] RUN THE PROGRAMS. create an advent of code page.
-- [ ] Load/Save files
+- [x] Load/Save files
+- [x] Drag a line from the let statement
+- [ ] pass an io/console into each program so you can see the output of running them
 - [ ] hard coded providers
 - [ ] Step in on Tagged Unit -> Tagged Tuple
 - [ ] Pin type, click and bump constraints to top
 - [ ] hightlight specific error in top list as the cursor moved over it. Is cursor a bettor name for selection in the editor page
 - [ ] Tab (Space) to Blanks/Errors (nice but not adding new capabilities)
+- [ ] gleam 18 stdlib to js, json lib and dynamic now useful
 - [ ] link from listed error to code point, this needs typer and editor to have same understanding of path.
 - [x] remove tabindex = -1, use position in editor
 - [ ] Syntax sugar for rows where name = variable like js shorthand (nice not functional)
 - [ ] dot syntax sugar (nice not functional)
+- [ ] dump other kinds of providers
 - [x] Fix tests
 - [x] example should use lets in binary module, call variable binary module.
 - [ ] Record rest of fields variable

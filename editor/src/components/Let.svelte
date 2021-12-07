@@ -11,7 +11,7 @@
   export let then;
 
   let multiline = false;
-  multiline = Display.is_multiexpression(value);
+  $: multiline = Display.is_multiexpression(value);
 </script>
 
 <p

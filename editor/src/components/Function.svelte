@@ -9,7 +9,7 @@
   export let body;
 
   let multiline = false;
-  multiline = Display.is_multiexpression(body);
+  $: multiline = Display.is_multiexpression(body);
 </script>
 
 <Pattern {pattern} {metadata} />

@@ -79,7 +79,13 @@ pub fn render_to_string(expression, typer) {
   |> string.join()
 }
 
-pub fn render(tree: Expression(typer.Metadata), state) {
+pub fn render_in_function(expression, typer) {
+  render(expression, #(True, [], typer))
+  |> list.intersperse("\n")
+  |> string.join()
+}
+
+pub fn render(tree, state) {
   let #(context, tree) = tree
   case tree {
     // TODO escape
@@ -204,16 +210,16 @@ pub fn render(tree: Expression(typer.Metadata), state) {
       |> wrap_return(state)
     }
     Call(function, #(_, Row(with))) -> ["Big row todo"]
-    Provider(config, func) -> {
-      let typer.Metadata(type_: Ok(expected), ..) = context
-      let #(a, b, typer) = state
-      let State(substitutions: substitutions, ..) = typer
-      let expected = monotype.resolve(expected, substitutions)
-      let tree = func(config, expected)
-      case typer.infer(tree, expected, typer) {
-        #(typed, typer) -> render(typed, state)
-        _ -> todo("could not infer")
-      }
-    }
   }
+  // Provider(config, func) -> {
+  //   let typer.Metadata(type_: Ok(expected), ..) = context
+  //   let #(a, b, typer) = state
+  //   let State(substitutions: substitutions, ..) = typer
+  //   let expected = monotype.resolve(expected, substitutions)
+  //   let tree = func(config, expected)
+  //   case typer.infer(tree, expected, typer) {
+  //     #(typed, typer) -> render(typed, state)
+  //     _ -> todo("could not infer")
+  //   }
+  // }
 }
