@@ -19,7 +19,7 @@ external fn do_eval(String) -> anything =
 
 pub fn eval(tree, typer) {
   let code = render_in_function(tree, typer)
-  string.join(["(function(){\n", code, "})()"])
+  string.join(["(function(equal){\n", code, "})(equal)"])
   |> do_eval
 }
 

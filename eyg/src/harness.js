@@ -27,7 +27,7 @@ function isObject(object) {
 
 //   incorperate helpers from codegen like variant() and unit()
 export function run(code) {
-  function equal(a, b) {
+  function equal([a, b]) {
     if (deepEqual(a, b)) {
       return ({ True: then }) => { return then([]) }
     } else {
@@ -46,6 +46,9 @@ export function run(code) {
     return item
   }
 
+  // This is need or equal isn't evaled
+  // console.log(equal)
+  equal(["T", "T"])
   return eval(code);
 }
 
