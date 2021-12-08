@@ -16,14 +16,14 @@ pub external fn json_from_string(String) -> JSON =
 external fn unsafe_coerce(a) -> b =
   "../../harness.js" "identity"
 
-fn string(value: String) -> JSON {
+pub fn string(value: String) -> JSON {
   unsafe_coerce(value)
 }
 
 external fn array(value: List(JSON)) -> JSON =
   "../../harness.js" "list"
 
-external fn object(entries: List(#(String, JSON))) -> JSON =
+pub external fn object(entries: List(#(String, JSON))) -> JSON =
   "../../harness.js" "object"
 
 fn pattern_to_json(pattern) {
@@ -129,7 +129,6 @@ external fn from_array(value: JSON) -> List(JSON) =
   "../../harness.js" "from_array"
 
 pub fn from_json(json: JSON) {
-  io.debug(entries(json))
   assert Ok(#(node, rest)) = list.key_pop(entries(json), "node")
   // find node and order rest
   case assert_string(node) {

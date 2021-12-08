@@ -2,6 +2,7 @@ import gleam/io
 import gleam/option.{Some}
 import eyg/codegen/javascript
 import eyg/ast
+import eyg/ast/encode
 import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype
@@ -12,11 +13,16 @@ fn compile(untyped, scope) {
   javascript.render(typed, #(False, [], typer))
 }
 
+fn eval(untyped, scope) {
+  let #(typed, typer) = infer(untyped, monotype.Unbound(-1), scope)
+  javascript.eval(typed, typer)
+}
+
 pub fn variable_assignment_test() {
   let untyped =
     ast.let_(
       pattern.Variable("foo"),
-      ast.binary("My First Value"),
+      ast.binary("V1"),
       ast.let_(
         pattern.Variable("foo"),
         ast.variable("foo"),
@@ -25,9 +31,11 @@ pub fn variable_assignment_test() {
     )
   let js = compile(untyped, init([]))
   let [l1, l2, l3] = js
-  let "let foo$1 = \"My First Value\";" = l1
+  let "let foo$1 = \"V1\";" = l1
   let "let foo$2 = foo$1;" = l2
   let "foo$2" = l3
+
+  let "V1" = eval(untyped, init([]))
 }
 
 fn with_equal(previous) {
@@ -48,31 +56,22 @@ fn with_equal(previous) {
 }
 
 pub fn nested_assignment_test() {
-  let scope =
-    init(
-      []
-      |> with_equal(),
-    )
+  let scope = init([])
   let untyped =
     ast.let_(
       pattern.Variable("match"),
-      ast.let_(
-        pattern.Variable("tmp"),
-        ast.binary("TMP!"),
-        ast.call(
-          ast.variable("equal"),
-          ast.tuple_([ast.variable("tmp"), ast.binary("test")]),
-        ),
-      ),
+      ast.let_(pattern.Variable("tmp"), ast.binary("TMP!"), ast.variable("tmp")),
       ast.variable("match"),
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4, l5] = js
   let "let match$1 = (() => {" = l1
   let "  let tmp$1 = \"TMP!\";" = l2
-  let "  return equal(tmp$1, \"test\");" = l3
+  let "  return tmp$1;" = l3
   let "})();" = l4
   let "match$1" = l5
+
+  let "TMP!" = eval(untyped, init([]))
 }
 
 pub fn tuple_term_test() {
@@ -80,24 +79,15 @@ pub fn tuple_term_test() {
   let js = compile(untyped, init([]))
   let [l1] = js
   let "[\"abc\", \"xyz\"]" = l1
+
+  let #("abc", "xyz") = eval(untyped, init([]))
 }
 
 pub fn multiline_tuple_assignment_test() {
-  let scope =
-    init(
-      []
-      |> with_equal(),
-    )
+  let scope = init([])
   let untyped =
     ast.tuple_([
-      ast.let_(
-        pattern.Variable("tmp"),
-        ast.binary("TMP!"),
-        ast.call(
-          ast.variable("equal"),
-          ast.tuple_([ast.variable("tmp"), ast.binary("test")]),
-        ),
-      ),
+      ast.let_(pattern.Variable("tmp"), ast.binary("TMP!"), ast.variable("tmp")),
       ast.binary("xyz"),
     ])
   let js = compile(untyped, scope)
@@ -105,35 +95,28 @@ pub fn multiline_tuple_assignment_test() {
   let "[" = l1
   let "  (() => {" = l2
   let "    let tmp$1 = \"TMP!\";" = l3
-  let "    return equal(tmp$1, \"test\");" = l4
+  let "    return tmp$1;" = l4
   let "  })()," = l5
   let "  \"xyz\"," = l6
   let "]" = l7
+
+  let #("TMP!", "xyz") = eval(untyped, init([]))
 }
 
 pub fn tuple_destructure_test() {
   let untyped =
     ast.let_(
       pattern.Tuple([Some("a"), Some("b")]),
-      ast.variable("pair"),
-      ast.tuple_([]),
+      ast.tuple_([ast.binary("x"), ast.binary("y")]),
+      ast.variable("a"),
     )
-  let js =
-    compile(
-      untyped,
-      init([
-        #(
-          "pair",
-          polytype.Polytype(
-            [],
-            monotype.Tuple([monotype.Binary, monotype.Binary]),
-          ),
-        ),
-      ]),
-    )
+  let js = compile(untyped, init([]))
+
   let [l1, l2] = js
-  let "let [a$1, b$1] = pair;" = l1
-  let "[]" = l2
+  let "let [a$1, b$1] = [\"x\", \"y\"];" = l1
+  let "a$1" = l2
+
+  let "x" = eval(untyped, init([]))
 }
 
 pub fn row_assignment_test() {
@@ -145,6 +128,12 @@ pub fn row_assignment_test() {
   let js = compile(untyped, init([]))
   let [l1] = js
   let "{first_name: \"Bob\", family_name: \"Ross\"}" = l1
+
+  let True =
+    encode.object([
+      #("first_name", encode.string("Bob")),
+      #("family_name", encode.string("Ross")),
+    ]) == eval(untyped, init([]))
 }
 
 pub fn multiline_row_assignment_test() {
@@ -160,10 +149,7 @@ pub fn multiline_row_assignment_test() {
         ast.let_(
           pattern.Variable("tmp"),
           ast.binary("TMP!"),
-          ast.call(
-            ast.variable("equal"),
-            ast.tuple_([ast.variable("tmp"), ast.binary("test")]),
-          ),
+          ast.variable("tmp"),
         ),
       ),
       #("last_name", ast.binary("xyz")),
@@ -173,10 +159,16 @@ pub fn multiline_row_assignment_test() {
   let "{" = l1
   let "  first_name: (() => {" = l2
   let "    let tmp$1 = \"TMP!\";" = l3
-  let "    return equal(tmp$1, \"test\");" = l4
+  let "    return tmp$1;" = l4
   let "  })()," = l5
   let "  last_name: \"xyz\"," = l6
   let "}" = l7
+
+  let True =
+    encode.object([
+      #("first_name", encode.string("TMP!")),
+      #("last_name", encode.string("xyz")),
+    ]) == eval(untyped, init([]))
 }
 
 pub fn row_destructure_test() {

@@ -70,13 +70,9 @@ fn occurs_in(a, b) {
   case a {
     monotype.Unbound(i) ->
       case do_occurs_in(i, b) {
-        True -> {
-          io.debug(a)
-          io.debug(b)
-          // TODO this very doesn't work
+        True -> // TODO this very doesn't work
           // todo("Foo")
           True
-        }
         False -> False
       }
     _ -> False

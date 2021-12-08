@@ -102,16 +102,11 @@ pub fn codegen(editor) {
   #(good, code)
 }
 
-external fn do_eval(String) -> anything =
-  "../../harness.js" "run"
-
 // Can put harness as a single record type that is copied to the code bundle and passed in at the top
 pub fn eval(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let True = list.length(typer.inconsistencies) == 0
-  let code = javascript.render_in_function(tree, typer)
-  string.join(["(function(){\n", code, "})()"])
-  |> do_eval
+  javascript.eval(tree, typer)
 }
 
 pub fn dump(editor) {

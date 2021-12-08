@@ -14,6 +14,16 @@ import eyg/codegen/utilities.{
   indent, squash, wrap_lines, wrap_single_or_multiline,
 }
 
+// TODO move to dynamic type
+external fn do_eval(String) -> anything =
+  "../../harness.js" "run"
+
+pub fn eval(tree, typer) {
+  let code = render_in_function(tree, typer)
+  string.join(["(function(){\n", code, "})()"])
+  |> do_eval
+}
+
 pub fn maybe_wrap_expression(expression, state) {
   case expression {
     #(_, Let(_, _, _)) -> {
