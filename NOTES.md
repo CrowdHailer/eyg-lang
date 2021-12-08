@@ -42,6 +42,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] RUN THE PROGRAMS. create an advent of code page.
 - [x] Load/Save files
 - [x] Drag a line from the let statement
+- [ ] Fix the netlify deploy step
 - [ ] pass an io/console into each program so you can see the output of running them
 - [ ] hard coded providers
 - [ ] Step in on Tagged Unit -> Tagged Tuple
