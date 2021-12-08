@@ -1,0 +1,10 @@
+
+[build]
+base    = ""
+publish = "editor/public"
+command = """
+    wget -c https://github.com/gleam-lang/gleam/releases/download/v0.18.0/gleam-v0.18.0-linux-amd64.tar.gz -O - | tar -xz -C . &&
+    cp eyg/src/*.js editor/src/gen
+    gleam compile-package --src eyg/src --out editor/src/gen --name editor --target javascript
+    (cd editor && npm run build)
+    """
