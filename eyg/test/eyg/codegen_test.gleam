@@ -201,7 +201,7 @@ pub fn simple_function_call_test() {
     )
   let js = compile(untyped, scope)
   let [l1] = js
-  let "equal(\"foo\", \"bar\")" = l1
+  let "equal([\"foo\", \"bar\"])" = l1
 }
 
 pub fn oneline_function_test() {
@@ -209,7 +209,7 @@ pub fn oneline_function_test() {
   let untyped = ast.function(pattern.Tuple([Some("x")]), ast.variable("x"))
   let js = compile(untyped, scope)
   let [l1] = js
-  let "(function self(x$1) { return x$1; })" = l1
+  let "(function self([x$1]) { return x$1; })" = l1
 }
 
 pub fn call_oneline_function_test() {
@@ -221,7 +221,9 @@ pub fn call_oneline_function_test() {
     )
   let js = compile(untyped, scope)
   let [l1] = js
-  let "(function self(x$1) { return x$1; })(\"hello\")" = l1
+  let "(function self([x$1]) { return x$1; })([\"hello\"])" = l1
+
+  let "hello" = eval(untyped, init([]))
 }
 
 pub fn multiline_function_test() {
@@ -247,9 +249,9 @@ pub fn multiline_function_test() {
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4] = js
-  let "(function self(a$1, b$1) {" = l1
-  let "  let a$2 = equal(a$1, \"blah\");" = l2
-  let "  return equal(b$1, \"other\");" = l3
+  let "(function self([a$1, b$1]) {" = l1
+  let "  let a$2 = equal([a$1, \"blah\"]);" = l2
+  let "  return equal([b$1, \"other\"]);" = l3
   let "})" = l4
 }
 
@@ -257,21 +259,19 @@ pub fn multiline_call_function_test() {
   let scope = init([])
   let untyped =
     ast.call(
-      ast.function(pattern.Tuple([Some("x")]), ast.variable("x")),
-      ast.tuple_([
-        ast.let_(
-          pattern.Variable("tmp"),
-          ast.binary("hello"),
-          ast.variable("tmp"),
-        ),
-      ]),
+      ast.function(pattern.Variable("x"), ast.variable("x")),
+      ast.let_(
+        pattern.Variable("tmp"),
+        ast.binary("hello"),
+        ast.variable("tmp"),
+      ),
     )
   let js = compile(untyped, scope)
-  let [l1, l2, l3, l4, l5, l6] = js
-  let "(function self(x$1) { return x$1; })(" = l1
-  let "  (() => {" = l2
-  let "    let tmp$1 = \"hello\";" = l3
-  let "    return tmp$1;" = l4
-  let "  })()," = l5
-  let ")" = l6
+  let [l1, l2, l3, l4] = js
+  let "(function self(x$1) { return x$1; })((() => {" = l1
+  let "  let tmp$1 = \"hello\";" = l2
+  let "  return tmp$1;" = l3
+  let "})())" = l4
+
+  let "hello" = eval(untyped, init([]))
 }
