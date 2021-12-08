@@ -307,7 +307,7 @@ fn handle_transformation(
     "l", True -> command(drag_right(tree, position))
     "j", True -> command(drag_down(tree, position))
     "k", True -> command(drag_up(tree, position))
-    "b", False -> command(create_binary(tree, position))
+    "b", False -> create_binary(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
     "r", False -> wrap_row(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
@@ -802,9 +802,9 @@ fn create_binary(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
       let new = ast.binary("")
-      #(replace_node(tree, position, new), position)
+      #(Some(replace_node(tree, position, new)), position, Draft(""))
     }
-    _ -> #(untype(tree), position)
+    _ -> #(None, position, Command)
   }
 }
 
