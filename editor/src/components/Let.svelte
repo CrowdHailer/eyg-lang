@@ -34,6 +34,7 @@
         <Expression expression={value} />
       </Indent>
     {:else}
+      <!-- TODO have a position one marker so it is clickable -->
       <span class="text-gray-500">Hidden</span>
     {/if}
   {:else}

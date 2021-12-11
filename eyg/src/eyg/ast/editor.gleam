@@ -398,40 +398,178 @@ fn decrease_selection(tree, position) {
   }
 }
 
-fn move_left(tree, position) {
-  case parent_path(position) {
-    None -> position
-    Some(#(parent, 0)) -> position
-    Some(#(parent, cursor)) ->
-      case get_element(tree, parent), cursor {
-        Expression(#(_, e.Let(_, _, _))), 2 -> position
-        _, _ -> path.append(parent, cursor - 1)
+fn pattern_left(pattern, selection) {
+  case pattern, selection {
+    _, [] -> None
+    p.Tuple(elements), [i] -> {
+      let left = i - 1
+      case 0 <= left {
+        True -> Some([left])
+        False -> None
       }
+    }
+    p.Row(fields), [i] -> {
+      let left = i - 1
+      case 0 <= left {
+        True -> Some([left])
+        False -> None
+      }
+    }
+    p.Row(fields), [i, 1] -> Some([i, 0])
+    p.Row(fields), [i, 0] -> {
+      let left = i - 1
+      case 0 <= left {
+        True -> Some([left, 1])
+        False -> None
+      }
+    }
+  }
+}
+
+fn do_move_left(tree, selection, position) {
+  let #(_, expression) = tree
+  // I think this is a get_expression
+  // get expression doesn't work or parent tuple
+  case expression, selection {
+    // if single line move left, if multi line close
+    e.Let(_, _, _), [1] -> position
+    // poentianally move left right via the top of a function, but that plays weird with rows.
+    e.Function(_, _), [1] -> path.append(position, 0)
+
+    // might be best to check single line then can left out
+    e.Let(pattern, _, _), [0, ..rest] | e.Function(pattern, _), [0, ..rest] ->
+      case pattern_left(pattern, rest) {
+        None -> list.append(position, selection)
+        Some(inner) -> list.flatten([position, [0], inner])
+      }
+    e.Call(_, _), [1] -> path.append(position, 0)
+    e.Tuple(elements), [i] ->
+      case 0 <= i - 1 {
+        True -> path.append(position, i - 1)
+        False -> list.append(position, selection)
+      }
+    e.Row(fields), [i] ->
+      case 0 <= i - 1 {
+        True -> path.append(position, i - 1)
+        False -> list.append(position, selection)
+      }
+    e.Row(fields), [i, 1] -> path.append(path.append(position, i), 0)
+    e.Row(fields), [i, 0] ->
+      case 0 <= i - 1 {
+        True -> path.append(path.append(position, i - 1), 1)
+        False -> list.append(position, selection)
+      }
+    // Step in
+    _, [] -> position
+    e.Tuple(elements), [i, ..rest] -> {
+      assert Ok(element) = list.at(elements, i)
+      do_move_left(element, rest, path.append(position, i))
+    }
+    e.Row(fields), [i, 1, ..rest] -> {
+      assert Ok(#(_, value)) = list.at(fields, i)
+      do_move_left(value, rest, path.append(path.append(position, i), 1))
+    }
+    e.Let(_, value, _), [1, ..rest] ->
+      do_move_left(value, rest, path.append(position, 1))
+    e.Let(_, _, then), [2, ..rest] ->
+      do_move_left(then, rest, path.append(position, 2))
+    e.Function(_, body), [1, ..rest] ->
+      do_move_left(body, rest, path.append(position, 1))
+    e.Call(func, _), [0, ..rest] ->
+      do_move_left(func, rest, path.append(position, 0))
+    e.Call(_, with), [1, ..rest] ->
+      do_move_left(with, rest, path.append(position, 1))
+  }
+}
+
+fn move_left(tree, position) {
+  do_move_left(tree, position, [])
+}
+
+fn pattern_right(pattern, selection) {
+  case pattern, selection {
+    _, [] -> None
+    p.Tuple(elements), [i] -> {
+      let right = i + 1
+      case right < list.length(elements) {
+        True -> Some([right])
+        False -> None
+      }
+    }
+    p.Row(fields), [i] -> {
+      let right = i + 1
+      case right < list.length(fields) {
+        True -> Some([right])
+        False -> None
+      }
+    }
+    p.Row(fields), [i, 0] -> Some([i, 1])
+    p.Row(fields), [i, 1] -> {
+      let right = i + 1
+      case right < list.length(fields) {
+        True -> Some([right, 0])
+        False -> None
+      }
+    }
+  }
+}
+
+fn do_move_right(tree, selection, position) {
+  let #(_, expression) = tree
+  // I think this is a get_expression
+  // get expression doesn't work or parent tuple
+  case expression, selection {
+    e.Let(_, _, _), [] -> path.append(position, 1)
+    e.Function(_, _), [] -> path.append(position, 1)
+
+    // might be best to check single line then can left out
+    e.Let(pattern, _, _), [0, ..rest] | e.Function(pattern, _), [0, ..rest] ->
+      case pattern_right(pattern, rest) {
+        None -> path.append(position, 1)
+        Some(inner) -> list.flatten([position, [0], inner])
+      }
+    e.Call(_, _), [0] -> path.append(position, 1)
+    e.Tuple(elements), [i] ->
+      case i + 1 < list.length(elements) {
+        True -> path.append(position, i + 1)
+        False -> list.append(position, selection)
+      }
+    e.Row(fields), [i] ->
+      case i + 1 < list.length(fields) {
+        True -> path.append(position, i + 1)
+        False -> list.append(position, selection)
+      }
+    e.Row(fields), [i, 0] -> path.append(path.append(position, i), 1)
+    e.Row(fields), [i, 1] ->
+      case i + 1 < list.length(fields) {
+        True -> path.append(path.append(position, i + 1), 0)
+        False -> list.append(position, selection)
+      }
+    // Step in
+    _, [] -> position
+    e.Tuple(elements), [i, ..rest] -> {
+      assert Ok(element) = list.at(elements, i)
+      do_move_right(element, rest, path.append(position, i))
+    }
+    e.Row(fields), [i, 1, ..rest] -> {
+      assert Ok(#(_, value)) = list.at(fields, i)
+      do_move_right(value, rest, path.append(path.append(position, i), 1))
+    }
+    e.Let(_, value, _), [1, ..rest] ->
+      do_move_right(value, rest, path.append(position, 1))
+    e.Let(_, _, then), [2, ..rest] ->
+      do_move_right(then, rest, path.append(position, 2))
+    e.Function(_, body), [1, ..rest] ->
+      do_move_right(body, rest, path.append(position, 1))
+    e.Call(func, _), [0, ..rest] ->
+      do_move_right(func, rest, path.append(position, 0))
+    e.Call(_, with), [1, ..rest] ->
+      do_move_right(with, rest, path.append(position, 1))
   }
 }
 
 fn move_right(tree, position) {
-  case parent_path(position) {
-    None -> position
-    Some(#(parent, cursor)) -> {
-      let max = case get_element(tree, parent) {
-        // parent can't be Binary or var
-        Expression(#(_, e.Tuple(elements))) -> list.length(elements) - 1
-        Expression(#(_, e.Row(fields))) -> list.length(fields) - 1
-        // Let, Function, Call all have two elements 0 & 1
-        Expression(_) -> 1
-        RowField(_, _) -> 1
-        Pattern(p.Tuple(elements), _) -> list.length(elements) - 1
-        Pattern(p.Row(fields), _) -> list.length(fields) - 1
-        // patternkey/value can't be parents
-        PatternField(_, _) -> 1
-      }
-      case cursor < max {
-        True -> path.append(parent, cursor + 1)
-        False -> position
-      }
-    }
-  }
+  do_move_right(tree, position, [])
 }
 
 // TODO not very sure how this works

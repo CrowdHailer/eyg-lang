@@ -316,6 +316,47 @@ pub fn all(in list: List(a), satisfying predicate: fn(a) -> Bool) -> Bool {
   }
 }
 
+/// Gets the first element from the start of the list, if there is one.
+///
+/// ## Examples
+///
+///    > first([])
+///    Error(Nil)
+///
+///    > first([0])
+///    Ok(0)
+///
+///    > first([1, 2])
+///    Ok(1)
+///
+pub fn first(list: List(a)) -> Result(a, Nil) {
+  case list {
+    [] -> Error(Nil)
+    [x, .._] -> Ok(x)
+  }
+}
+
+/// Returns the element in the Nth position in the list, with 0 being the first
+/// position.
+///
+/// `Error(Nil)` is returned if the list is not long enough for the given index.
+///
+/// For any `index` less than 0 this function behaves as if it was set to 0.
+///
+/// ## Examples
+///
+///    > at([1, 2, 3], 1)
+///    Ok(2)
+///
+///    > at([1, 2, 3], 5)
+///    Error(Nil)
+///
+pub fn at(in list: List(a), get index: Int) -> Result(a, Nil) {
+  list
+  |> drop(index)
+  |> first
+}
+
 /// Returns True if the given function returns True for any the elements in
 /// the given list. If the function returns True for any of the elements it
 /// immediately returns True without checking the rest of the list.
