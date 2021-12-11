@@ -35,63 +35,86 @@
             console.log(Editor.eval$(editor));
           }
         } catch (error) {
-          console.error(error);
+          console.error("Caught", error);
         }
         try {
           dump = Editor.dump(editor);
           downloadBlob = new Blob([dump], { type: "application/json" });
         } catch (error) {
-          console.error(error);
+          console.error("Caught", error);
         }
       }
     });
   }
 
   function handleClick(event) {
-    editor = Editor.handle_click(editor, eventToTarget(event));
-    updateFocus(editor);
+    try {
+      editor = Editor.handle_click(editor, eventToTarget(event));
+      updateFocus(editor);
+    } catch (error) {
+      console.error("Caught", error);
+    }
   }
 
   function handleKeydown(event) {
-    if (event.metaKey) {
-      return true;
-    }
+    let tmp;
+    try {
+      if (event.metaKey) {
+        return true;
+      }
 
-    event.preventDefault();
-    editor = Editor.handle_keydown(editor, event.key, event.ctrlKey);
+      event.preventDefault();
+      tmp = Editor.handle_keydown(editor, event.key, event.ctrlKey);
+      console.log(tmp);
+    } catch (error) {
+      return console.error("Caught", error);
+    }
+    editor = tmp;
     updateFocus(editor);
   }
 
   function handleDraftKeydown(event) {
-    if (event.metaKey) {
-      return true;
+    try {
+      if (event.metaKey) {
+        return true;
+      }
+      if (event.key == "Escape" || event.key == "Tab") {
+        event.preventDefault();
+        editor = Editor.handle_change(editor, event.target.value);
+        updateFocus(editor);
+      }
+      event.stopPropagation();
+    } catch (error) {
+      console.error("Caught", error);
     }
-    if (event.key == "Escape" || event.key == "Tab") {
-      event.preventDefault();
-      editor = Editor.handle_change(editor, event.target.value);
-      updateFocus(editor);
-    }
-    event.stopPropagation();
   }
 
   function handleSelectKeydown(event) {
-    if (event.metaKey || event.key == "Escape") {
-      return true;
-    }
-    if (event.key == "Enter" || event.key == " ") {
-      let variable = Editor.in_scope(editor).toArray()[0];
-      if (variable) {
-        editor = Editor.handle_click(editor, "v:" + variable);
+    try {
+      if (event.metaKey || event.key == "Escape") {
+        return true;
       }
-      updateFocus(editor);
-      event.preventDefault();
+      if (event.key == "Enter" || event.key == " ") {
+        let variable = Editor.in_scope(editor).toArray()[0];
+        if (variable) {
+          editor = Editor.handle_click(editor, "v:" + variable);
+        }
+        updateFocus(editor);
+        event.preventDefault();
+      }
+      event.stopPropagation();
+    } catch (error) {
+      console.error("Caught", error);
     }
-    event.stopPropagation();
   }
 
   function handleChange(event) {
-    editor = Editor.handle_change(editor, event.target.value);
-    updateFocus(editor);
+    try {
+      editor = Editor.handle_change(editor, event.target.value);
+      updateFocus(editor);
+    } catch (error) {
+      console.error("Caught", error);
+    }
   }
   const HOME = "HOME";
   const DUMP = "DUMP";
@@ -100,6 +123,7 @@
   updateFocus(editor);
 </script>
 
+<!-- {JSON.stringify(editor.selection)} -->
 <div class="max-w-4xl w-full m-auto px-10 py-4">
   <nav class="flex py-2">
     <button
@@ -133,8 +157,8 @@
     <pre>
       <!-- Doesn't work for single line programs they are not rendered multiline -->
     {#if code}
-    {code}
-    {/if}
+        {code}
+      {/if}
   </pre>
   {:else if page == HOME}
     <div

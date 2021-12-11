@@ -157,7 +157,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
   let Editor(tree: tree, typer: typer, selection: selection, mode: mode) =
     editor
   let Some(path) = selection
-  case mode {
+  let new = case mode {
     Command -> {
       let #(untyped, path, mode) =
         handle_transformation(tree, path, key, ctrl_key)
@@ -180,6 +180,11 @@ pub fn handle_keydown(editor, key, ctrl_key) {
         _ -> todo("handle selection refinement")
       }
   }
+  // crash if this doesn't work to get to handle_keydown error handling
+  // if get_element in target_type always returned OK/Error we could probably work to remove the error handling
+  // though is there any harm in the fall back currently in App.svelte?
+  target_type(new)
+  new
 }
 
 pub fn handle_change(editor, content) {
@@ -367,11 +372,10 @@ fn decrease_selection(tree, position) {
         Draft(""),
       )
     }
-    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
-      None,
-      position,
-      Command,
-    )
+    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) | Expression(#(
+      _,
+      e.Provider(_, _),
+    )) -> #(None, position, Command)
     Expression(_) -> #(None, inner, Command)
     RowField(_, _) -> #(None, inner, Command)
     Pattern(p.Tuple([]), _) -> #(
