@@ -37,26 +37,44 @@ pub fn match(tree) {
             _,
             e.Function(
               p.Row([#(n2, "then")]),
-              #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple(_)))),
+              #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple(e_call)))),
             ),
           ),
         ),
       ),
       then,
     ) if n1 == n2 -> {
-      let parameters =
-        list.fold(
-          elements,
-          [],
-          fn(e, acc) {
-            case e {
-              Some(p) -> [p, ..acc]
-              None -> acc
-            }
-          },
-        )
-      Ok(TupleVariant(n1, parameters, then))
+      try parameters = all_elements_named(elements)
+      try calls = all_elements_variables(e_call)
+      case parameters == calls {
+        True -> Ok(TupleVariant(n1, parameters, then))
+        False -> Error(Nil)
+      }
     }
     _ -> Error(Nil)
   }
+}
+
+fn all_elements_named(elements) {
+  list.try_map(
+    elements,
+    fn(e) {
+      case e {
+        Some(v) -> Ok(v)
+        None -> Error(Nil)
+      }
+    },
+  )
+}
+
+fn all_elements_variables(elements) {
+  list.try_map(
+    elements,
+    fn(e) {
+      case e {
+        #(_, e.Variable(x)) -> Ok(x)
+        _ -> Error(Nil)
+      }
+    },
+  )
 }
