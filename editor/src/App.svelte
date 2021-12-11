@@ -65,7 +65,6 @@
 
       event.preventDefault();
       tmp = Editor.handle_keydown(editor, event.key, event.ctrlKey);
-      console.log(tmp);
     } catch (error) {
       return console.error("Caught", error);
     }
@@ -149,9 +148,7 @@
       download="eyg.json"
       href={URL.createObjectURL(downloadBlob)}>Download</a
     >
-    <pre>
-      {dump}
-    </pre>
+    <textarea class="w-full" rows="40">{dump}</textarea>
   </div>
   {#if page == CODE}
     <pre>
