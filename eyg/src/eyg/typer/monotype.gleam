@@ -39,13 +39,43 @@ pub fn to_string(monotype) {
   }
 }
 
+fn do_occurs_in(i, b) {
+  case b {
+    Unbound(j) if i == j -> True
+    Unbound(_) -> False
+    Binary -> False
+    Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
+    Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
+    Row(fields, _) ->
+      fields
+      |> list.map(fn(x: #(String, Monotype)) { x.1 })
+      |> list.any(do_occurs_in(i, _))
+  }
+}
+
+fn occurs_in(a, b) {
+  case a {
+    Unbound(i) ->
+      case do_occurs_in(i, b) {
+        True -> // TODO this very doesn't work
+          // todo("Foo")
+          True
+        False -> False
+      }
+    _ -> False
+  }
+}
+
 pub fn resolve(type_, substitutions) {
   case type_ {
     Unbound(i) ->
       case list.key_find(substitutions, i) {
         Ok(Unbound(j)) if i == j -> type_
         Error(Nil) -> type_
-        Ok(substitution) -> resolve(substitution, substitutions)
+        Ok(substitution) -> {
+          let False = occurs_in(Unbound(i), substitution)
+          resolve(substitution, substitutions)
+        }
       }
     Binary -> Binary
     Tuple(elements) -> {
@@ -63,14 +93,19 @@ pub fn resolve(type_, substitutions) {
         )
       case rest {
         None -> Row(resolved_fields, None)
-        Some(i) ->
+        Some(i) -> {
+          type_
+          // TODO therese something wang with records
           case resolve(Unbound(i), substitutions) {
             Unbound(j) -> Row(resolved_fields, Some(j))
             Row(inner, rest) -> Row(list.append(resolved_fields, inner), rest)
           }
+        }
       }
     }
+    // TODO check resolve in our record based recursive frunctions
     Function(from, to) -> {
+      io.debug(from)
       let from = resolve(from, substitutions)
       let to = resolve(to, substitutions)
       Function(from, to)

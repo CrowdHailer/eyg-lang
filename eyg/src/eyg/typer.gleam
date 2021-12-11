@@ -185,6 +185,18 @@ fn set_variable(variable, state) {
   State(..state, variables: variables, substitutions: substitutions)
 }
 
+// No generalization
+fn set_self_variable(variable, state) {
+  let #(label, monotype) = variable
+  let State(variables: variables, substitutions: substitutions, ..) = state
+  let polytype =
+    // polytype.generalise(monotype.resolve(monotype, substitutions), state)
+    // io.debug(polytype)
+    polytype.Polytype([], monotype)
+  let variables = [#(label, polytype), ..variables]
+  State(..state, variables: variables, substitutions: substitutions)
+}
+
 fn ones_with_real_keys(elements, done) {
   case elements {
     [] -> list.reverse(done)
@@ -412,9 +424,12 @@ pub fn infer(
           // let #(type_, typer) = do_unify(expected, given, typer)
           let State(variables: variables, location: location, ..) = typer
           let typer = list.fold(bound_variables, typer, set_variable)
-          let typer = set_variable(#(label, given), typer)
+          let typer = set_self_variable(#(label, given), typer)
           let #(return, typer) = infer(body, return_type, append_path(typer, 0))
-          // io.debug("---------------")
+          io.debug("---------------")
+          // io.debug(given)
+          // io.debug(monotype.resolve(given, typer.substitutions) == given)
+          io.debug("---------------")
           // let [#("f", x), .._] = typer.variables
           // io.debug(x.monotype)
           // // let True = x == given
