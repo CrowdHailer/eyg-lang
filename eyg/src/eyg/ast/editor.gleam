@@ -782,7 +782,7 @@ fn wrap_assignment(tree, position) {
       let new = ast.let_(pattern, ast.let_(p.Discard, value, ast.hole()), then)
       #(
         replace_node(tree, position, new),
-        path.append(path.append(position, 2), 0),
+        path.append(path.append(position, 1), 0),
       )
     }
     Some(#(position, 1, Right(#(pattern, body)))) -> {
@@ -1115,7 +1115,10 @@ fn insert_named(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     // maybe the value should only be a hole
-    Expression(#(_, e.Let(p.Discard, _, then))) -> {
+    Expression(#(_, e.Let(p.Discard, _, then))) | Expression(#(
+      _,
+      e.Let(p.Variable(_), _, then),
+    )) -> {
       let new =
         ast.let_(
           p.Variable("Foo"),
@@ -1132,9 +1135,8 @@ fn insert_named(tree, position) {
         Draft("Foo"),
       )
     }
+    _ -> #(None, position, Command)
   }
-  // Expression(_) -> #(None, position, Select(""))
-  // _ -> #(None, position, Command)
 }
 
 fn replace_pattern(tree, position, pattern) {
