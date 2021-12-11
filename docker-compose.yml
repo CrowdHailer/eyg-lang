@@ -28,20 +28,3 @@ services:
     ports:
       - "5000:5000"
     command: "npm run dev"
-
-  language:
-    build:
-      context: .
-      dockerfile: language.Dockerfile
-    volumes:
-      - .:/opt/app
-    network_mode: host
-    command: "watchexec --exts gleam -- gleam compile-package --src language/src --out public/gen --name my_app --target javascript"
-  serve:
-    build:
-      context: .
-      dockerfile: serve.Dockerfile
-    volumes:
-      - ./public:/opt/app
-    network_mode: host
-    command: "sirv . --dev --host 0.0.0.0"
