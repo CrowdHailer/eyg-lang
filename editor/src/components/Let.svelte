@@ -12,6 +12,9 @@
 
   let multiline = false;
   $: multiline = Display.is_multiexpression(value);
+
+  let expand = false;
+  $: expand = Display.show_value(metadata);
 </script>
 
 <p
@@ -26,9 +29,13 @@
     =
   {/if}
   {#if multiline}
-    <Indent>
-      <Expression expression={value} />
-    </Indent>
+    {#if expand}
+      <Indent>
+        <Expression expression={value} />
+      </Indent>
+    {:else}
+      <span class="text-gray-500">Hidden</span>
+    {/if}
   {:else}
     <Expression expression={value} />
   {/if}

@@ -58,6 +58,21 @@ fn child_selection(selection, child) {
   }
 }
 
+// within is not true for let and 2
+pub fn show_value(metadata) {
+  let Display(selection: selection, ..) = metadata
+  case selection {
+    Above([]) -> False
+    Above([0, .._]) | Above([1, .._]) -> True
+    _ -> False
+  }
+  // io.debug(metadata)
+}
+
+// if not selected print value minimal
+// if taget print value minimal, this is where peek in is valuable
+// if target in pattern or value print full
+// down from pattern should move into let, if block
 // it's a nice idea to put value in expression and pattern. but there is no analog to discard.
 // unless we treat it as empty string variable.
 pub fn display(tree, position, selection, editor) {
