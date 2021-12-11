@@ -228,3 +228,10 @@ pub fn display_expression_fields(display, fields) {
     },
   )
 }
+
+pub fn display_unit_variant(display) {
+  let Display(position: position, selection: selection, ..) = display
+  let position = path.append(position, 0)
+  let selection = child_selection(selection, 0)
+  let display = Display(position, selection, False)
+}

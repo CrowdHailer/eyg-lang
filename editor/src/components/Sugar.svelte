@@ -19,7 +19,11 @@
     <span
       class="text-blue-800 border-2 border-transparent outline-none rounded"
       class:border-red-500={metadata.errored && !Display.is_target(metadata)}
-      class:border-indigo-300={Display.is_target(metadata)}>{sugar.label}</span
+      class:border-indigo-300={Display.is_target(
+        Display.display_unit_variant(metadata)
+      )}
+      data-editor={Display.marker(Display.display_unit_variant(metadata))}
+      >{sugar.label}</span
     >
   </p>
   <Expression expression={sugar.then} />
