@@ -320,6 +320,8 @@ fn handle_transformation(
     "u", False -> command(unwrap(tree, position))
     // don't wrap in anything if modifies everything
     "c", False -> call(tree, position)
+    "w", False -> call_with(tree, position)
+
     "d", False -> delete(tree, position)
     // modes
     "i", False -> draft(tree, position)
@@ -1073,11 +1075,25 @@ fn unwrap(tree, position) {
 
 fn call(tree, position) {
   case get_element(tree, position) {
+    // call a let is allowd here for foo
+    // todo dot calling
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(expression) -> {
       let new = ast.call(untype(expression), ast.hole())
       let modified = replace_node(tree, position, new)
       #(Some(modified), list.append(position, [1]), Command)
+    }
+    _ -> #(None, position, Command)
+  }
+}
+
+fn call_with(tree, position) {
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
+    Expression(expression) -> {
+      let new = ast.call(ast.hole(), untype(expression))
+      let modified = replace_node(tree, position, new)
+      #(Some(modified), list.append(position, [0]), Command)
     }
     _ -> #(None, position, Command)
   }
