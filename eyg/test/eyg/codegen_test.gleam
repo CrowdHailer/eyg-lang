@@ -1,5 +1,5 @@
 import gleam/io
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import eyg/codegen/javascript
 import eyg/ast
 import eyg/ast/encode
@@ -8,12 +8,12 @@ import eyg/typer/monotype
 import eyg/typer/polytype
 import eyg/typer.{infer, init}
 
-fn compile(untyped, scope) {
+pub fn compile(untyped, scope) {
   let #(typed, typer) = infer(untyped, monotype.Unbound(-1), scope)
-  javascript.render(typed, #(False, [], typer))
+  javascript.render(typed, javascript.Generator(False, [], typer, None))
 }
 
-fn eval(untyped, scope) {
+pub fn eval(untyped, scope) {
   let #(typed, typer) = infer(untyped, monotype.Unbound(-1), scope)
   javascript.eval(typed, typer)
 }
@@ -209,7 +209,7 @@ pub fn oneline_function_test() {
   let untyped = ast.function(pattern.Tuple([Some("x")]), ast.variable("x"))
   let js = compile(untyped, scope)
   let [l1] = js
-  let "(function self([x$1]) { return x$1; })" = l1
+  let "(function ([x$1]) { return x$1; })" = l1
 }
 
 pub fn call_oneline_function_test() {
@@ -221,7 +221,7 @@ pub fn call_oneline_function_test() {
     )
   let js = compile(untyped, scope)
   let [l1] = js
-  let "(function self([x$1]) { return x$1; })([\"hello\"])" = l1
+  let "(function ([x$1]) { return x$1; })([\"hello\"])" = l1
 
   let "hello" = eval(untyped, init([]))
 }
@@ -249,7 +249,7 @@ pub fn multiline_function_test() {
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4] = js
-  let "(function self([a$1, b$1]) {" = l1
+  let "(function ([a$1, b$1]) {" = l1
   let "  let a$2 = equal([a$1, \"blah\"]);" = l2
   let "  return equal([b$1, \"other\"]);" = l3
   let "})" = l4
@@ -268,7 +268,7 @@ pub fn multiline_call_function_test() {
     )
   let js = compile(untyped, scope)
   let [l1, l2, l3, l4] = js
-  let "(function self(x$1) { return x$1; })((() => {" = l1
+  let "(function (x$1) { return x$1; })((() => {" = l1
   let "  let tmp$1 = \"hello\";" = l2
   let "  return tmp$1;" = l3
   let "})())" = l4

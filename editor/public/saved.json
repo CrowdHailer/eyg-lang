@@ -2,7 +2,7 @@
     "node": "Let",
     "pattern": {
         "node": "Variable",
-        "label": "list"
+        "label": "l_tup"
     },
     "value": {
         "node": "Let",
@@ -13,11 +13,15 @@
         "value": {
             "node": "Function",
             "pattern": {
-                "node": "Row",
-                "fields": [
+                "node": "Tuple",
+                "elements": [
                     {
-                        "key": "Empty",
-                        "bind": "then"
+                        "node": "Bind",
+                        "label": "then"
+                    },
+                    {
+                        "node": "Bind",
+                        "label": ""
                     }
                 ]
             },
@@ -37,7 +41,7 @@
             "node": "Let",
             "pattern": {
                 "node": "Variable",
-                "label": "Head"
+                "label": "Cons"
             },
             "value": {
                 "node": "Function",
@@ -46,22 +50,26 @@
                     "elements": [
                         {
                             "node": "Bind",
-                            "label": "value"
+                            "label": "head"
                         },
                         {
                             "node": "Bind",
-                            "label": "rest"
+                            "label": "tail"
                         }
                     ]
                 },
                 "body": {
                     "node": "Function",
                     "pattern": {
-                        "node": "Row",
-                        "fields": [
+                        "node": "Tuple",
+                        "elements": [
                             {
-                                "key": "Head",
-                                "bind": "then"
+                                "node": "Bind",
+                                "label": ""
+                            },
+                            {
+                                "node": "Bind",
+                                "label": "then"
                             }
                         ]
                     },
@@ -76,11 +84,11 @@
                             "elements": [
                                 {
                                     "node": "Variable",
-                                    "label": "value"
+                                    "label": "head"
                                 },
                                 {
                                     "node": "Variable",
-                                    "label": "rest"
+                                    "label": "tail"
                                 }
                             ]
                         }
@@ -91,7 +99,7 @@
                 "node": "Let",
                 "pattern": {
                     "node": "Variable",
-                    "label": "map"
+                    "label": "shift"
                 },
                 "value": {
                     "node": "Function",
@@ -100,15 +108,11 @@
                         "elements": [
                             {
                                 "node": "Bind",
-                                "label": "list"
+                                "label": "a"
                             },
                             {
                                 "node": "Bind",
-                                "label": "mapper"
-                            },
-                            {
-                                "node": "Bind",
-                                "label": "done"
+                                "label": "b"
                             }
                         ]
                     },
@@ -116,95 +120,83 @@
                         "node": "Call",
                         "function": {
                             "node": "Variable",
-                            "label": "list"
+                            "label": "a"
                         },
                         "with": {
-                            "node": "Row",
-                            "fields": [
+                            "node": "Tuple",
+                            "elements": [
                                 {
-                                    "node": "Field",
-                                    "key": "Head",
-                                    "value": {
-                                        "node": "Function",
-                                        "pattern": {
-                                            "node": "Tuple",
-                                            "elements": [
-                                                {
-                                                    "node": "Bind",
-                                                    "label": "value"
-                                                },
-                                                {
-                                                    "node": "Bind",
-                                                    "label": "rest"
-                                                }
-                                            ]
-                                        },
-                                        "body": {
-                                            "node": "Let",
-                                            "pattern": {
-                                                "node": "Variable",
-                                                "label": "new"
-                                            },
-                                            "value": {
-                                                "node": "Call",
-                                                "function": {
-                                                    "node": "Variable",
-                                                    "label": "mapper"
-                                                },
-                                                "with": {
-                                                    "node": "Variable",
-                                                    "label": "value"
-                                                }
-                                            },
-                                            "then": {
-                                                "node": "Call",
-                                                "function": {
-                                                    "node": "Variable",
-                                                    "label": "map"
-                                                },
-                                                "with": {
-                                                    "node": "Tuple",
-                                                    "elements": [
-                                                        {
-                                                            "node": "Variable",
-                                                            "label": "rest"
-                                                        },
-                                                        {
-                                                            "node": "Variable",
-                                                            "label": "mapper"
-                                                        },
-                                                        {
-                                                            "node": "Call",
-                                                            "function": {
-                                                                "node": "Variable",
-                                                                "label": "Head"
-                                                            },
-                                                            "with": {
-                                                                "node": "Tuple",
-                                                                "elements": [
-                                                                    {
-                                                                        "node": "Variable",
-                                                                        "label": "new"
-                                                                    },
-                                                                    {
-                                                                        "node": "Variable",
-                                                                        "label": "done"
-                                                                    }
-                                                                ]
-                                                            }
-                                                        }
-                                                    ]
-                                                }
-                                            }
-                                        }
+                                    "node": "Function",
+                                    "pattern": {
+                                        "node": "Tuple",
+                                        "elements": []
+                                    },
+                                    "body": {
+                                        "node": "Variable",
+                                        "label": "b"
                                     }
                                 },
                                 {
-                                    "node": "Field",
-                                    "key": "Empty",
-                                    "value": {
-                                        "node": "Variable",
-                                        "label": "done"
+                                    "node": "Function",
+                                    "pattern": {
+                                        "node": "Tuple",
+                                        "elements": [
+                                            {
+                                                "node": "Bind",
+                                                "label": "head"
+                                            },
+                                            {
+                                                "node": "Bind",
+                                                "label": "rest"
+                                            }
+                                        ]
+                                    },
+                                    "body": {
+                                        "node": "Let",
+                                        "pattern": {
+                                            "node": "Variable",
+                                            "label": "done"
+                                        },
+                                        "value": {
+                                            "node": "Call",
+                                            "function": {
+                                                "node": "Variable",
+                                                "label": "Cons"
+                                            },
+                                            "with": {
+                                                "node": "Tuple",
+                                                "elements": [
+                                                    {
+                                                        "node": "Variable",
+                                                        "label": "head"
+                                                    },
+                                                    {
+                                                        "node": "Variable",
+                                                        "label": "b"
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "then": {
+                                            "node": "Call",
+                                            "function": {
+                                                "node": "Variable",
+                                                "label": "shift"
+                                            },
+                                            "with": {
+                                                "node": "Tuple",
+                                                "elements": [
+                                                    {
+                                                        "node": "Variable",
+                                                        "label": "rest"
+                                                    },
+                                                    {
+                                                        "node": "Variable",
+                                                        "label": "done"
+                                                    }
+                                                ]
+                                            }
+                                        }
                                     }
                                 }
                             ]
@@ -215,7 +207,7 @@
                     "node": "Let",
                     "pattern": {
                         "node": "Variable",
-                        "label": "move"
+                        "label": "head_or"
                     },
                     "value": {
                         "node": "Function",
@@ -224,11 +216,11 @@
                             "elements": [
                                 {
                                     "node": "Bind",
-                                    "label": "a"
+                                    "label": "list"
                                 },
                                 {
                                     "node": "Bind",
-                                    "label": "b"
+                                    "label": "or"
                                 }
                             ]
                         },
@@ -236,7 +228,216 @@
                             "node": "Call",
                             "function": {
                                 "node": "Variable",
-                                "label": "a"
+                                "label": "list"
+                            },
+                            "with": {
+                                "node": "Tuple",
+                                "elements": [
+                                    {
+                                        "node": "Function",
+                                        "pattern": {
+                                            "node": "Tuple",
+                                            "elements": []
+                                        },
+                                        "body": {
+                                            "node": "Variable",
+                                            "label": "or"
+                                        }
+                                    },
+                                    {
+                                        "node": "Function",
+                                        "pattern": {
+                                            "node": "Tuple",
+                                            "elements": [
+                                                {
+                                                    "node": "Bind",
+                                                    "label": "head"
+                                                },
+                                                {
+                                                    "node": "Bind",
+                                                    "label": "rest"
+                                                }
+                                            ]
+                                        },
+                                        "body": {
+                                            "node": "Variable",
+                                            "label": "head"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "then": {
+                        "node": "Let",
+                        "pattern": {
+                            "node": "Variable",
+                            "label": "moved"
+                        },
+                        "value": {
+                            "node": "Call",
+                            "function": {
+                                "node": "Variable",
+                                "label": "shift"
+                            },
+                            "with": {
+                                "node": "Tuple",
+                                "elements": [
+                                    {
+                                        "node": "Variable",
+                                        "label": "Empty"
+                                    },
+                                    {
+                                        "node": "Variable",
+                                        "label": "Empty"
+                                    }
+                                ]
+                            }
+                        },
+                        "then": {
+                            "node": "Call",
+                            "function": {
+                                "node": "Variable",
+                                "label": "head_or"
+                            },
+                            "with": {
+                                "node": "Tuple",
+                                "elements": [
+                                    {
+                                        "node": "Variable",
+                                        "label": "moved"
+                                    },
+                                    {
+                                        "node": "Binary",
+                                        "value": "B"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "then": {
+        "node": "Let",
+        "pattern": {
+            "node": "Variable",
+            "label": "list"
+        },
+        "value": {
+            "node": "Let",
+            "pattern": {
+                "node": "Variable",
+                "label": "Empty"
+            },
+            "value": {
+                "node": "Function",
+                "pattern": {
+                    "node": "Row",
+                    "fields": [
+                        {
+                            "key": "Empty",
+                            "bind": "then"
+                        }
+                    ]
+                },
+                "body": {
+                    "node": "Call",
+                    "function": {
+                        "node": "Variable",
+                        "label": "then"
+                    },
+                    "with": {
+                        "node": "Tuple",
+                        "elements": []
+                    }
+                }
+            },
+            "then": {
+                "node": "Let",
+                "pattern": {
+                    "node": "Variable",
+                    "label": "Head"
+                },
+                "value": {
+                    "node": "Function",
+                    "pattern": {
+                        "node": "Tuple",
+                        "elements": [
+                            {
+                                "node": "Bind",
+                                "label": "value"
+                            },
+                            {
+                                "node": "Bind",
+                                "label": "rest"
+                            }
+                        ]
+                    },
+                    "body": {
+                        "node": "Function",
+                        "pattern": {
+                            "node": "Row",
+                            "fields": [
+                                {
+                                    "key": "Head",
+                                    "bind": "then"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "node": "Call",
+                            "function": {
+                                "node": "Variable",
+                                "label": "then"
+                            },
+                            "with": {
+                                "node": "Tuple",
+                                "elements": [
+                                    {
+                                        "node": "Variable",
+                                        "label": "value"
+                                    },
+                                    {
+                                        "node": "Variable",
+                                        "label": "rest"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "then": {
+                    "node": "Let",
+                    "pattern": {
+                        "node": "Variable",
+                        "label": "map"
+                    },
+                    "value": {
+                        "node": "Function",
+                        "pattern": {
+                            "node": "Tuple",
+                            "elements": [
+                                {
+                                    "node": "Bind",
+                                    "label": "list"
+                                },
+                                {
+                                    "node": "Bind",
+                                    "label": "mapper"
+                                },
+                                {
+                                    "node": "Bind",
+                                    "label": "done"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "node": "Call",
+                            "function": {
+                                "node": "Variable",
+                                "label": "list"
                             },
                             "with": {
                                 "node": "Row",
@@ -263,33 +464,24 @@
                                                 "node": "Let",
                                                 "pattern": {
                                                     "node": "Variable",
-                                                    "label": "b"
+                                                    "label": "new"
                                                 },
                                                 "value": {
                                                     "node": "Call",
                                                     "function": {
                                                         "node": "Variable",
-                                                        "label": "Head"
+                                                        "label": "mapper"
                                                     },
                                                     "with": {
-                                                        "node": "Tuple",
-                                                        "elements": [
-                                                            {
-                                                                "node": "Variable",
-                                                                "label": "value"
-                                                            },
-                                                            {
-                                                                "node": "Variable",
-                                                                "label": "b"
-                                                            }
-                                                        ]
+                                                        "node": "Variable",
+                                                        "label": "value"
                                                     }
                                                 },
                                                 "then": {
                                                     "node": "Call",
                                                     "function": {
                                                         "node": "Variable",
-                                                        "label": "move"
+                                                        "label": "map"
                                                     },
                                                     "with": {
                                                         "node": "Tuple",
@@ -300,12 +492,40 @@
                                                             },
                                                             {
                                                                 "node": "Variable",
-                                                                "label": "b"
+                                                                "label": "mapper"
+                                                            },
+                                                            {
+                                                                "node": "Call",
+                                                                "function": {
+                                                                    "node": "Variable",
+                                                                    "label": "Head"
+                                                                },
+                                                                "with": {
+                                                                    "node": "Tuple",
+                                                                    "elements": [
+                                                                        {
+                                                                            "node": "Variable",
+                                                                            "label": "new"
+                                                                        },
+                                                                        {
+                                                                            "node": "Variable",
+                                                                            "label": "done"
+                                                                        }
+                                                                    ]
+                                                                }
                                                             }
                                                         ]
                                                     }
                                                 }
                                             }
+                                        }
+                                    },
+                                    {
+                                        "node": "Field",
+                                        "key": "Empty",
+                                        "value": {
+                                            "node": "Variable",
+                                            "label": "done"
                                         }
                                     }
                                 ]
@@ -313,130 +533,144 @@
                         }
                     },
                     "then": {
-                        "node": "Row",
-                        "fields": [
-                            {
-                                "node": "Field",
-                                "key": "Empty",
-                                "value": {
-                                    "node": "Variable",
-                                    "label": "Empty"
-                                }
-                            },
-                            {
-                                "node": "Field",
-                                "key": "Head",
-                                "value": {
-                                    "node": "Variable",
-                                    "label": "Head"
-                                }
-                            },
-                            {
-                                "node": "Field",
-                                "key": "map",
-                                "value": {
-                                    "node": "Variable",
-                                    "label": "map"
-                                }
-                            },
-                            {
-                                "node": "Field",
-                                "key": "move",
-                                "value": {
-                                    "node": "Variable",
-                                    "label": "move"
-                                }
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-    },
-    "then": {
-        "node": "Let",
-        "pattern": {
-            "node": "Variable",
-            "label": "peano"
-        },
-        "value": {
-            "node": "Let",
-            "pattern": {
-                "node": "Variable",
-                "label": "Zero"
-            },
-            "value": {
-                "node": "Function",
-                "pattern": {
-                    "node": "Row",
-                    "fields": [
-                        {
-                            "key": "Zero",
-                            "bind": "then"
-                        }
-                    ]
-                },
-                "body": {
-                    "node": "Call",
-                    "function": {
-                        "node": "Variable",
-                        "label": "then"
-                    },
-                    "with": {
-                        "node": "Tuple",
-                        "elements": []
-                    }
-                }
-            },
-            "then": {
-                "node": "Let",
-                "pattern": {
-                    "node": "Variable",
-                    "label": "Succ"
-                },
-                "value": {
-                    "node": "Function",
-                    "pattern": {
-                        "node": "Row",
-                        "fields": [
-                            {
-                                "key": "Succ",
-                                "bind": "then"
-                            }
-                        ]
-                    },
-                    "body": {
-                        "node": "Call",
-                        "function": {
+                        "node": "Let",
+                        "pattern": {
                             "node": "Variable",
-                            "label": "then"
+                            "label": "move"
                         },
-                        "with": {
-                            "node": "Tuple",
-                            "elements": []
+                        "value": {
+                            "node": "Function",
+                            "pattern": {
+                                "node": "Tuple",
+                                "elements": [
+                                    {
+                                        "node": "Bind",
+                                        "label": "a"
+                                    },
+                                    {
+                                        "node": "Bind",
+                                        "label": "b"
+                                    }
+                                ]
+                            },
+                            "body": {
+                                "node": "Call",
+                                "function": {
+                                    "node": "Variable",
+                                    "label": "a"
+                                },
+                                "with": {
+                                    "node": "Row",
+                                    "fields": [
+                                        {
+                                            "node": "Field",
+                                            "key": "Head",
+                                            "value": {
+                                                "node": "Function",
+                                                "pattern": {
+                                                    "node": "Tuple",
+                                                    "elements": [
+                                                        {
+                                                            "node": "Bind",
+                                                            "label": "value"
+                                                        },
+                                                        {
+                                                            "node": "Bind",
+                                                            "label": "rest"
+                                                        }
+                                                    ]
+                                                },
+                                                "body": {
+                                                    "node": "Let",
+                                                    "pattern": {
+                                                        "node": "Variable",
+                                                        "label": "b"
+                                                    },
+                                                    "value": {
+                                                        "node": "Call",
+                                                        "function": {
+                                                            "node": "Variable",
+                                                            "label": "Head"
+                                                        },
+                                                        "with": {
+                                                            "node": "Tuple",
+                                                            "elements": [
+                                                                {
+                                                                    "node": "Variable",
+                                                                    "label": "value"
+                                                                },
+                                                                {
+                                                                    "node": "Variable",
+                                                                    "label": "b"
+                                                                }
+                                                            ]
+                                                        }
+                                                    },
+                                                    "then": {
+                                                        "node": "Call",
+                                                        "function": {
+                                                            "node": "Variable",
+                                                            "label": "move"
+                                                        },
+                                                        "with": {
+                                                            "node": "Tuple",
+                                                            "elements": [
+                                                                {
+                                                                    "node": "Variable",
+                                                                    "label": "rest"
+                                                                },
+                                                                {
+                                                                    "node": "Variable",
+                                                                    "label": "b"
+                                                                }
+                                                            ]
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "then": {
+                            "node": "Row",
+                            "fields": [
+                                {
+                                    "node": "Field",
+                                    "key": "Empty",
+                                    "value": {
+                                        "node": "Variable",
+                                        "label": "Empty"
+                                    }
+                                },
+                                {
+                                    "node": "Field",
+                                    "key": "Head",
+                                    "value": {
+                                        "node": "Variable",
+                                        "label": "Head"
+                                    }
+                                },
+                                {
+                                    "node": "Field",
+                                    "key": "map",
+                                    "value": {
+                                        "node": "Variable",
+                                        "label": "map"
+                                    }
+                                },
+                                {
+                                    "node": "Field",
+                                    "key": "move",
+                                    "value": {
+                                        "node": "Variable",
+                                        "label": "move"
+                                    }
+                                }
+                            ]
                         }
                     }
-                },
-                "then": {
-                    "node": "Row",
-                    "fields": [
-                        {
-                            "node": "Field",
-                            "key": "Zero",
-                            "value": {
-                                "node": "Variable",
-                                "label": "Zero"
-                            }
-                        },
-                        {
-                            "node": "Field",
-                            "key": "Succ",
-                            "value": {
-                                "node": "Variable",
-                                "label": "Succ"
-                            }
-                        }
-                    ]
                 }
             }
         },
@@ -444,13 +678,13 @@
             "node": "Let",
             "pattern": {
                 "node": "Variable",
-                "label": "boolean"
+                "label": "peano"
             },
             "value": {
                 "node": "Let",
                 "pattern": {
                     "node": "Variable",
-                    "label": "True"
+                    "label": "Zero"
                 },
                 "value": {
                     "node": "Function",
@@ -458,7 +692,7 @@
                         "node": "Row",
                         "fields": [
                             {
-                                "key": "True",
+                                "key": "Zero",
                                 "bind": "then"
                             }
                         ]
@@ -476,158 +710,199 @@
                     }
                 },
                 "then": {
-                    "node": "Row",
-                    "fields": [
-                        {
-                            "node": "Field",
-                            "key": "True",
-                            "value": {
+                    "node": "Let",
+                    "pattern": {
+                        "node": "Variable",
+                        "label": "Succ"
+                    },
+                    "value": {
+                        "node": "Function",
+                        "pattern": {
+                            "node": "Row",
+                            "fields": [
+                                {
+                                    "key": "Succ",
+                                    "bind": "then"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "node": "Call",
+                            "function": {
                                 "node": "Variable",
-                                "label": "True"
+                                "label": "then"
+                            },
+                            "with": {
+                                "node": "Tuple",
+                                "elements": []
                             }
                         }
-                    ]
+                    },
+                    "then": {
+                        "node": "Row",
+                        "fields": [
+                            {
+                                "node": "Field",
+                                "key": "Zero",
+                                "value": {
+                                    "node": "Variable",
+                                    "label": "Zero"
+                                }
+                            },
+                            {
+                                "node": "Field",
+                                "key": "Succ",
+                                "value": {
+                                    "node": "Variable",
+                                    "label": "Succ"
+                                }
+                            }
+                        ]
+                    }
                 }
             },
             "then": {
                 "node": "Let",
                 "pattern": {
                     "node": "Variable",
-                    "label": "b"
+                    "label": "boolean"
                 },
                 "value": {
-                    "node": "Binary",
-                    "value": "Hello"
+                    "node": "Let",
+                    "pattern": {
+                        "node": "Variable",
+                        "label": "True"
+                    },
+                    "value": {
+                        "node": "Function",
+                        "pattern": {
+                            "node": "Row",
+                            "fields": [
+                                {
+                                    "key": "True",
+                                    "bind": "then"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "node": "Call",
+                            "function": {
+                                "node": "Variable",
+                                "label": "then"
+                            },
+                            "with": {
+                                "node": "Tuple",
+                                "elements": []
+                            }
+                        }
+                    },
+                    "then": {
+                        "node": "Row",
+                        "fields": [
+                            {
+                                "node": "Field",
+                                "key": "True",
+                                "value": {
+                                    "node": "Variable",
+                                    "label": "True"
+                                }
+                            }
+                        ]
+                    }
                 },
                 "then": {
                     "node": "Let",
                     "pattern": {
-                        "node": "Row",
-                        "fields": [
-                            {
-                                "key": "Head",
-                                "bind": "Head"
-                            },
-                            {
-                                "key": "Empty",
-                                "bind": "Empty"
-                            },
-                            {
-                                "key": "move",
-                                "bind": "move"
-                            }
-                        ]
+                        "node": "Variable",
+                        "label": "b"
                     },
                     "value": {
-                        "node": "Variable",
-                        "label": "list"
+                        "node": "Binary",
+                        "value": "Hello"
                     },
                     "then": {
                         "node": "Let",
                         "pattern": {
-                            "node": "Discard"
+                            "node": "Row",
+                            "fields": [
+                                {
+                                    "key": "Head",
+                                    "bind": "Head"
+                                },
+                                {
+                                    "key": "Empty",
+                                    "bind": "Empty"
+                                },
+                                {
+                                    "key": "move",
+                                    "bind": "move"
+                                }
+                            ]
                         },
                         "value": {
-                            "node": "Call",
-                            "function": {
+                            "node": "Variable",
+                            "label": "list"
+                        },
+                        "then": {
+                            "node": "Let",
+                            "pattern": {
+                                "node": "Discard"
+                            },
+                            "value": {
                                 "node": "Call",
                                 "function": {
-                                    "node": "Variable",
-                                    "label": "Head"
+                                    "node": "Call",
+                                    "function": {
+                                        "node": "Variable",
+                                        "label": "Head"
+                                    },
+                                    "with": {
+                                        "node": "Tuple",
+                                        "elements": [
+                                            {
+                                                "node": "Binary",
+                                                "value": "First"
+                                            },
+                                            {
+                                                "node": "Variable",
+                                                "label": "Empty"
+                                            }
+                                        ]
+                                    }
                                 },
                                 "with": {
-                                    "node": "Tuple",
-                                    "elements": [
+                                    "node": "Row",
+                                    "fields": [
                                         {
-                                            "node": "Binary",
-                                            "value": "First"
-                                        },
-                                        {
-                                            "node": "Variable",
-                                            "label": "Empty"
+                                            "node": "Field",
+                                            "key": "Head",
+                                            "value": {
+                                                "node": "Function",
+                                                "pattern": {
+                                                    "node": "Tuple",
+                                                    "elements": [
+                                                        {
+                                                            "node": "Bind",
+                                                            "label": "v"
+                                                        },
+                                                        {
+                                                            "node": "Bind",
+                                                            "label": "rest"
+                                                        }
+                                                    ]
+                                                },
+                                                "body": {
+                                                    "node": "Variable",
+                                                    "label": "v"
+                                                }
+                                            }
                                         }
                                     ]
                                 }
                             },
-                            "with": {
-                                "node": "Row",
-                                "fields": [
-                                    {
-                                        "node": "Field",
-                                        "key": "Head",
-                                        "value": {
-                                            "node": "Function",
-                                            "pattern": {
-                                                "node": "Tuple",
-                                                "elements": [
-                                                    {
-                                                        "node": "Bind",
-                                                        "label": "v"
-                                                    },
-                                                    {
-                                                        "node": "Bind",
-                                                        "label": "rest"
-                                                    }
-                                                ]
-                                            },
-                                            "body": {
-                                                "node": "Variable",
-                                                "label": "v"
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                        },
-                        "then": {
-                            "node": "Call",
-                            "function": {
+                            "then": {
                                 "node": "Variable",
-                                "label": "move"
-                            },
-                            "with": {
-                                "node": "Tuple",
-                                "elements": [
-                                    {
-                                        "node": "Call",
-                                        "function": {
-                                            "node": "Variable",
-                                            "label": "Head"
-                                        },
-                                        "with": {
-                                            "node": "Tuple",
-                                            "elements": [
-                                                {
-                                                    "node": "Binary",
-                                                    "value": "A"
-                                                },
-                                                {
-                                                    "node": "Call",
-                                                    "function": {
-                                                        "node": "Hole"
-                                                    },
-                                                    "with": {
-                                                        "node": "Tuple",
-                                                        "elements": [
-                                                            {
-                                                                "node": "Variable",
-                                                                "label": "b"
-                                                            },
-                                                            {
-                                                                "node": "Variable",
-                                                                "label": "Empty"
-                                                            }
-                                                        ]
-                                                    }
-                                                }
-                                            ]
-                                        }
-                                    },
-                                    {
-                                        "node": "Variable",
-                                        "label": "Empty"
-                                    }
-                                ]
+                                "label": "l_tup"
                             }
                         }
                     }

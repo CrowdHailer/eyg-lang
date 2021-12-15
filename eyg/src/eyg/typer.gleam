@@ -295,36 +295,34 @@ fn with_unbound(thing: a, typer) -> #(#(a, monotype.Monotype), State) {
   #(#(thing, type_), typer)
 }
 
-pub fn infer_unconstrained(expression) {
-  let typer =
-    init([
-      #(
-        "equal",
-        polytype.Polytype(
-          [1, 2],
-          monotype.Function(
-            monotype.Tuple([monotype.Unbound(1), monotype.Unbound(1)]),
-            // TODO Should the be part of parameterisation don't think so as not part of equal getting initialised
-            monotype.Function(
-              monotype.Row(
-                [
-                  #(
-                    "True",
-                    monotype.Function(monotype.Tuple([]), monotype.Unbound(2)),
-                  ),
-                  #(
-                    "False",
-                    monotype.Function(monotype.Tuple([]), monotype.Unbound(2)),
-                  ),
-                ],
-                None,
-              ),
-              monotype.Unbound(2),
+pub fn equal_fn() {
+  polytype.Polytype(
+    [1, 2],
+    monotype.Function(
+      monotype.Tuple([monotype.Unbound(1), monotype.Unbound(1)]),
+      // TODO Should the be part of parameterisation don't think so as not part of equal getting initialised
+      monotype.Function(
+        monotype.Row(
+          [
+            #(
+              "True",
+              monotype.Function(monotype.Tuple([]), monotype.Unbound(2)),
             ),
-          ),
+            #(
+              "False",
+              monotype.Function(monotype.Tuple([]), monotype.Unbound(2)),
+            ),
+          ],
+          None,
         ),
+        monotype.Unbound(2),
       ),
-    ])
+    ),
+  )
+}
+
+pub fn infer_unconstrained(expression) {
+  let typer = init([#("equal", equal_fn())])
   let #(x, typer) = polytype.next_unbound(typer)
   let expected = monotype.Unbound(x)
   infer(expression, expected, typer)
@@ -426,10 +424,8 @@ pub fn infer(
           let typer = list.fold(bound_variables, typer, set_variable)
           let typer = set_self_variable(#(label, given), typer)
           let #(return, typer) = infer(body, return_type, append_path(typer, 0))
-          io.debug("---------------")
           // io.debug(given)
           // io.debug(monotype.resolve(given, typer.substitutions) == given)
-          io.debug("---------------")
           // let [#("f", x), .._] = typer.variables
           // io.debug(x.monotype)
           // // let True = x == given

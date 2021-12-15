@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{None, Option, Some}
 import gleam/string
 import eyg/ast
 import eyg/ast/expression as e
@@ -11,6 +11,18 @@ import eyg/typer/polytype.{State}
 import eyg/typer
 import eyg/codegen/utilities.{
   indent, squash, wrap_lines, wrap_single_or_multiline,
+}
+
+pub type Generator {
+
+  // self is the name being given in a let clause
+  Generator(
+    in_tail: Bool,
+    scope: List(String),
+    // TODO rename as typer
+    typer: State,
+    self: Option(String),
+  )
 }
 
 // TODO move to dynamic type
@@ -36,7 +48,7 @@ pub fn maybe_wrap_expression(expression, state) {
 }
 
 fn wrap_return(lines, state) {
-  let #(in_tail, _, _) = state
+  let Generator(in_tail: in_tail, ..) = state
 
   case in_tail {
     True -> wrap_lines("return ", lines, ";")
@@ -45,18 +57,17 @@ fn wrap_return(lines, state) {
 }
 
 pub fn in_tail(in_tail, state) {
-  let #(_, scope, typer) = state
-  #(in_tail, scope, typer)
+  Generator(..state, in_tail: in_tail)
 }
 
 fn with_assignment(label, state) {
-  let #(in_tail, scope, typer) = state
+  let Generator(scope: scope, ..) = state
   let scope = [label, ..scope]
-  #(in_tail, scope, typer)
+  Generator(..state, scope: scope)
 }
 
 fn count_label(state, label) {
-  let #(_, scope, _) = state
+  let Generator(scope: scope, ..) = state
 
   list.fold(
     scope,
@@ -72,7 +83,6 @@ fn count_label(state, label) {
 
 fn render_label(label, state) {
   case label {
-    "self" -> "self"
     label ->
       case count_label(state, label) {
         // if not previously rendered must be an external thing
@@ -82,14 +92,25 @@ fn render_label(label, state) {
   }
 }
 
+fn render_function_name(state) {
+  let Generator(self: self, scope: scope, ..) = state
+  case self {
+    Some(label) -> {
+      let count = count_label(state, label) + 1
+      string.join([label, "$", int.to_string(count)])
+    }
+    None -> ""
+  }
+}
+
 pub fn render_to_string(expression, typer) {
-  render(expression, #(False, [], typer))
+  render(expression, Generator(False, [], typer, None))
   |> list.intersperse("\n")
   |> string.join()
 }
 
 pub fn render_in_function(expression, typer) {
-  render(expression, #(True, [], typer))
+  render(expression, Generator(True, [], typer, None))
   |> list.intersperse("\n")
   |> string.join()
 }
@@ -156,11 +177,14 @@ pub fn render(tree, state) {
     // TODO escape
     e.Binary(content) ->
       wrap_return([string.join(["\"", content, "\""])], state)
-    e.Tuple(elements) ->
+    e.Tuple(elements) -> {
+      let state = Generator(..state, self: None)
       list.map(elements, maybe_wrap_expression(_, state))
       |> wrap_single_or_multiline(",", "[", "]")
       |> wrap_return(state)
-    e.Row(fields) ->
+    }
+    e.Row(fields) -> {
+      let state = Generator(..state, self: None)
       list.map(
         fields,
         fn(field) {
@@ -174,17 +198,34 @@ pub fn render(tree, state) {
       )
       |> wrap_single_or_multiline(",", "{", "}")
       |> wrap_return(state)
+    }
     e.Let(pattern, value, then) -> {
+      let state = Generator(..state, self: None)
+      let value_state = case pattern {
+        p.Variable(label) ->
+          // can't use with assignment here. It messes up rendering let a = a
+          Generator(..state, self: Some(label))
+        // |> with_assignment(label)
+        _ -> state
+      }
       // value needs to be rendered first to use the correct count for the variable numbers
-      let value = maybe_wrap_expression(value, state)
+      let value = maybe_wrap_expression(value, value_state)
+      // self is only present in value
       let #(bind, state) = render_pattern(pattern, state)
       let assignment = string.join(["let ", bind, " = "])
       list.append(wrap_lines(assignment, value, ";"), render(then, state))
     }
-    e.Variable(label) -> wrap_return([render_label(label, state)], state)
+    e.Variable(label) ->
+      wrap_return([render_label(label, Generator(..state, self: None))], state)
     e.Function(pattern, body) -> {
       let #(bind, state) = render_pattern(pattern, state)
-      let start = string.join(["(function self(", bind, ") {"])
+      let name = render_function_name(state)
+      let start = string.join(["(function ", name, "(", bind, ") {"])
+      // if function given a self name it is available in the body
+      let state = case state.self {
+        None -> state
+        Some(label) -> with_assignment(label, Generator(..state, self: None))
+      }
       case render(body, in_tail(True, state)) {
         [single] -> [string.join([start, " ", single, " })"])]
         lines ->
@@ -194,6 +235,7 @@ pub fn render(tree, state) {
       |> wrap_return(state)
     }
     e.Call(function, with) -> {
+      let state = Generator(..state, self: None)
       let function = render(function, in_tail(False, state))
       let with = wrap_lines("(", maybe_wrap_expression(with, state), ")")
       squash(function, with)

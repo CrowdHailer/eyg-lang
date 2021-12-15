@@ -105,7 +105,6 @@ pub fn resolve(type_, substitutions) {
     }
     // TODO check resolve in our record based recursive frunctions
     Function(from, to) -> {
-      io.debug(from)
       let from = resolve(from, substitutions)
       let to = resolve(to, substitutions)
       Function(from, to)
