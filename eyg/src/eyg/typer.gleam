@@ -11,6 +11,7 @@ import eyg/ast/expression.{
 import eyg/ast/pattern
 import eyg/typer/monotype
 import eyg/typer/polytype.{State}
+import harness/harness
 
 // Context/typer
 pub type Reason {
@@ -351,7 +352,11 @@ pub fn equal_fn() {
 
 pub fn infer_unconstrained(expression) {
   let typer = init()
-  let scope = Scope(variables: [#("equal", equal_fn())], path: path.root())
+  let scope =
+    Scope(
+      variables: [#("equal", equal_fn()), #("harness", harness.string())],
+      path: path.root(),
+    )
   let #(x, typer) = polytype.next_unbound(typer)
   let expected = monotype.Unbound(x)
   infer(expression, expected, #(typer, scope))

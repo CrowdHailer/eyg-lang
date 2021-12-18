@@ -25,6 +25,19 @@ function isObject(object) {
 }
 
 
+
+// eyg list
+function fromArray(array) {
+  let empty = function ([Empty, _]) {
+    return Empty([])
+  }
+  return array.reduceRight((xs, x) => {
+    return function ([_, Head]) {
+      return Head([x, xs])
+    }
+  }, empty)
+}
+
 //   incorperate helpers from codegen like variant() and unit()
 export function run(code) {
   function equal([a, b]) {
@@ -43,6 +56,12 @@ export function run(code) {
   // This is need or equal isn't evaled
   // console.log(equal)
   equal(["T", "T"])
+  const harness = {
+    split: function ([a, b]) {
+      return fromArray(a.split(b))
+    }
+  }
+  console.log(harness.split);
   return eval(code);
 }
 

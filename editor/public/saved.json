@@ -284,8 +284,56 @@
                                 "node": "Tuple",
                                 "elements": [
                                     {
-                                        "node": "Variable",
-                                        "label": "Empty"
+                                        "node": "Call",
+                                        "function": {
+                                            "node": "Variable",
+                                            "label": "Cons"
+                                        },
+                                        "with": {
+                                            "node": "Tuple",
+                                            "elements": [
+                                                {
+                                                    "node": "Binary",
+                                                    "value": "A"
+                                                },
+                                                {
+                                                    "node": "Call",
+                                                    "function": {
+                                                        "node": "Variable",
+                                                        "label": "Cons"
+                                                    },
+                                                    "with": {
+                                                        "node": "Tuple",
+                                                        "elements": [
+                                                            {
+                                                                "node": "Binary",
+                                                                "value": "B"
+                                                            },
+                                                            {
+                                                                "node": "Call",
+                                                                "function": {
+                                                                    "node": "Variable",
+                                                                    "label": "Cons"
+                                                                },
+                                                                "with": {
+                                                                    "node": "Tuple",
+                                                                    "elements": [
+                                                                        {
+                                                                            "node": "Binary",
+                                                                            "value": "C"
+                                                                        },
+                                                                        {
+                                                                            "node": "Variable",
+                                                                            "label": "Empty"
+                                                                        }
+                                                                    ]
+                                                                }
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            ]
+                                        }
                                     },
                                     {
                                         "node": "Variable",
@@ -308,8 +356,8 @@
                                         "label": "moved"
                                     },
                                     {
-                                        "node": "Binary",
-                                        "value": "B"
+                                        "node": "Tuple",
+                                        "elements": []
                                     }
                                 ]
                             }
@@ -901,8 +949,201 @@
                                 }
                             },
                             "then": {
-                                "node": "Variable",
-                                "label": "l_tup"
+                                "node": "Let",
+                                "pattern": {
+                                    "node": "Variable",
+                                    "label": "head_or"
+                                },
+                                "value": {
+                                    "node": "Function",
+                                    "pattern": {
+                                        "node": "Tuple",
+                                        "elements": [
+                                            {
+                                                "node": "Bind",
+                                                "label": "list"
+                                            },
+                                            {
+                                                "node": "Bind",
+                                                "label": "other"
+                                            }
+                                        ]
+                                    },
+                                    "body": {
+                                        "node": "Call",
+                                        "function": {
+                                            "node": "Variable",
+                                            "label": "list"
+                                        },
+                                        "with": {
+                                            "node": "Row",
+                                            "fields": [
+                                                {
+                                                    "node": "Field",
+                                                    "key": "Empty",
+                                                    "value": {
+                                                        "node": "Function",
+                                                        "pattern": {
+                                                            "node": "Tuple",
+                                                            "elements": []
+                                                        },
+                                                        "body": {
+                                                            "node": "Variable",
+                                                            "label": "other"
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "node": "Field",
+                                                    "key": "Head",
+                                                    "value": {
+                                                        "node": "Function",
+                                                        "pattern": {
+                                                            "node": "Tuple",
+                                                            "elements": [
+                                                                {
+                                                                    "node": "Bind",
+                                                                    "label": "x"
+                                                                },
+                                                                {
+                                                                    "node": "Bind",
+                                                                    "label": "y"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "body": {
+                                                            "node": "Variable",
+                                                            "label": "x"
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                "then": {
+                                    "node": "Let",
+                                    "pattern": {
+                                        "node": "Variable",
+                                        "label": "uuu"
+                                    },
+                                    "value": {
+                                        "node": "Call",
+                                        "function": {
+                                            "node": "Variable",
+                                            "label": "head_or"
+                                        },
+                                        "with": {
+                                            "node": "Tuple",
+                                            "elements": [
+                                                {
+                                                    "node": "Call",
+                                                    "function": {
+                                                        "node": "Variable",
+                                                        "label": "Head"
+                                                    },
+                                                    "with": {
+                                                        "node": "Tuple",
+                                                        "elements": [
+                                                            {
+                                                                "node": "Binary",
+                                                                "value": "A"
+                                                            },
+                                                            {
+                                                                "node": "Variable",
+                                                                "label": "Empty"
+                                                            }
+                                                        ]
+                                                    }
+                                                },
+                                                {
+                                                    "node": "Tuple",
+                                                    "elements": [
+                                                        {
+                                                            "node": "Binary",
+                                                            "value": "FF"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "then": {
+                                        "node": "Let",
+                                        "pattern": {
+                                            "node": "Row",
+                                            "fields": [
+                                                {
+                                                    "key": "split",
+                                                    "bind": "split"
+                                                }
+                                            ]
+                                        },
+                                        "value": {
+                                            "node": "Variable",
+                                            "label": "harness"
+                                        },
+                                        "then": {
+                                            "node": "Call",
+                                            "function": {
+                                                "node": "Call",
+                                                "function": {
+                                                    "node": "Variable",
+                                                    "label": "split"
+                                                },
+                                                "with": {
+                                                    "node": "Tuple",
+                                                    "elements": [
+                                                        {
+                                                            "node": "Variable",
+                                                            "label": "b"
+                                                        },
+                                                        {
+                                                            "node": "Binary",
+                                                            "value": "h"
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "with": {
+                                                "node": "Tuple",
+                                                "elements": [
+                                                    {
+                                                        "node": "Function",
+                                                        "pattern": {
+                                                            "node": "Tuple",
+                                                            "elements": []
+                                                        },
+                                                        "body": {
+                                                            "node": "Binary",
+                                                            "value": "X"
+                                                        }
+                                                    },
+                                                    {
+                                                        "node": "Function",
+                                                        "pattern": {
+                                                            "node": "Tuple",
+                                                            "elements": [
+                                                                {
+                                                                    "node": "Bind",
+                                                                    "label": "a"
+                                                                },
+                                                                {
+                                                                    "node": "Bind",
+                                                                    "label": "rest"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "body": {
+                                                            "node": "Variable",
+                                                            "label": "a"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
