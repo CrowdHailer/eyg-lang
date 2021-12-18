@@ -1,5 +1,6 @@
 <script>
   import { tick } from "svelte";
+  import * as Display from "./gen/eyg/editor/display";
 
   import Expression from "./components/Expression.svelte";
   import * as Editor from "./gen/eyg/ast/editor";
@@ -210,8 +211,12 @@
     </div>
   {/if}
 </div>
-<aside class="absolute top-0 right-0 p-2 border-l-4 border-red-700 bg-white">
-  {#each editor.typer.inconsistencies.toArray() as reason}
-    <p>{reason}</p>
+<aside
+  class="absolute top-0 right-0 p-2 border-l-4 border-red-700 bg-white"
+  on:click={handleClick}
+>
+  TODO if path == current
+  {#each editor.typer.inconsistencies.toArray() as [path, reason]}
+    <p data-editor={Display.position_to_marker(path)}>{reason}</p>
   {/each}
 </aside>

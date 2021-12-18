@@ -32,7 +32,7 @@ pub fn marker(display) {
   position_to_marker(position)
 }
 
-fn position_to_marker(position) {
+pub fn position_to_marker(position) {
   let position =
     position
     |> list.map(int.to_string)

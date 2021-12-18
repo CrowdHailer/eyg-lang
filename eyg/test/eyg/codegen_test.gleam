@@ -29,13 +29,13 @@ pub fn variable_assignment_test() {
         ast.variable("foo"),
       ),
     )
-  let js = compile(untyped, init([]))
+  let js = compile(untyped, #(init(), typer.root_scope([])))
   let [l1, l2, l3] = js
   let "let foo$1 = \"V1\";" = l1
   let "let foo$2 = foo$1;" = l2
   let "foo$2" = l3
 
-  let "V1" = eval(untyped, init([]))
+  let "V1" = eval(untyped, #(init(), typer.root_scope([])))
 }
 
 fn with_equal(previous) {
@@ -56,14 +56,14 @@ fn with_equal(previous) {
 }
 
 pub fn nested_assignment_test() {
-  let scope = init([])
+  let state = #(init(), typer.root_scope([]))
   let untyped =
     ast.let_(
       pattern.Variable("match"),
       ast.let_(pattern.Variable("tmp"), ast.binary("TMP!"), ast.variable("tmp")),
       ast.variable("match"),
     )
-  let js = compile(untyped, scope)
+  let js = compile(untyped, state)
   let [l1, l2, l3, l4, l5] = js
   let "let match$1 = (() => {" = l1
   let "  let tmp$1 = \"TMP!\";" = l2
@@ -71,26 +71,26 @@ pub fn nested_assignment_test() {
   let "})();" = l4
   let "match$1" = l5
 
-  let "TMP!" = eval(untyped, init([]))
+  let "TMP!" = eval(untyped, #(init(), typer.root_scope([])))
 }
 
 pub fn tuple_term_test() {
   let untyped = ast.tuple_([ast.binary("abc"), ast.binary("xyz")])
-  let js = compile(untyped, init([]))
+  let js = compile(untyped, #(init(), typer.root_scope([])))
   let [l1] = js
   let "[\"abc\", \"xyz\"]" = l1
 
-  let #("abc", "xyz") = eval(untyped, init([]))
+  let #("abc", "xyz") = eval(untyped, #(init(), typer.root_scope([])))
 }
 
 pub fn multiline_tuple_assignment_test() {
-  let scope = init([])
+  let state = #(init(), typer.root_scope([]))
   let untyped =
     ast.tuple_([
       ast.let_(pattern.Variable("tmp"), ast.binary("TMP!"), ast.variable("tmp")),
       ast.binary("xyz"),
     ])
-  let js = compile(untyped, scope)
+  let js = compile(untyped, state)
   let [l1, l2, l3, l4, l5, l6, l7] = js
   let "[" = l1
   let "  (() => {" = l2
@@ -100,7 +100,7 @@ pub fn multiline_tuple_assignment_test() {
   let "  \"xyz\"," = l6
   let "]" = l7
 
-  let #("TMP!", "xyz") = eval(untyped, init([]))
+  let #("TMP!", "xyz") = eval(untyped, #(init(), typer.root_scope([])))
 }
 
 pub fn tuple_destructure_test() {
@@ -110,13 +110,13 @@ pub fn tuple_destructure_test() {
       ast.tuple_([ast.binary("x"), ast.binary("y")]),
       ast.variable("a"),
     )
-  let js = compile(untyped, init([]))
+  let js = compile(untyped, #(init(), typer.root_scope([])))
 
   let [l1, l2] = js
   let "let [a$1, b$1] = [\"x\", \"y\"];" = l1
   let "a$1" = l2
 
-  let "x" = eval(untyped, init([]))
+  let "x" = eval(untyped, #(init(), typer.root_scope([])))
 }
 
 pub fn row_assignment_test() {
@@ -125,7 +125,7 @@ pub fn row_assignment_test() {
       #("first_name", ast.binary("Bob")),
       #("family_name", ast.binary("Ross")),
     ])
-  let js = compile(untyped, init([]))
+  let js = compile(untyped, #(init(), typer.root_scope([])))
   let [l1] = js
   let "{first_name: \"Bob\", family_name: \"Ross\"}" = l1
 
@@ -133,12 +133,12 @@ pub fn row_assignment_test() {
     encode.object([
       #("first_name", encode.string("Bob")),
       #("family_name", encode.string("Ross")),
-    ]) == eval(untyped, init([]))
+    ]) == eval(untyped, #(init(), typer.root_scope([])))
 }
 
 pub fn multiline_row_assignment_test() {
   let scope =
-    init(
+    typer.root_scope(
       []
       |> with_equal(),
     )
@@ -154,7 +154,7 @@ pub fn multiline_row_assignment_test() {
       ),
       #("last_name", ast.binary("xyz")),
     ])
-  let js = compile(untyped, scope)
+  let js = compile(untyped, #(init(), scope))
   let [l1, l2, l3, l4, l5, l6, l7] = js
   let "{" = l1
   let "  first_name: (() => {" = l2
@@ -168,7 +168,7 @@ pub fn multiline_row_assignment_test() {
     encode.object([
       #("first_name", encode.string("TMP!")),
       #("last_name", encode.string("xyz")),
-    ]) == eval(untyped, init([]))
+    ]) == eval(untyped, #(init(), typer.root_scope([])))
 }
 
 pub fn row_destructure_test() {
@@ -181,7 +181,12 @@ pub fn row_destructure_test() {
   let js =
     compile(
       untyped,
-      init([#("user", polytype.Polytype([], monotype.Unbound(-1)))]),
+      #(
+        init(),
+        typer.root_scope([
+          #("user", polytype.Polytype([], monotype.Unbound(-1))),
+        ]),
+      ),
     )
   let [l1, l2] = js
   let "let {first_name: a$1, family_name: b$1} = user;" = l1
@@ -190,7 +195,7 @@ pub fn row_destructure_test() {
 
 pub fn simple_function_call_test() {
   let scope =
-    init(
+    typer.root_scope(
       []
       |> with_equal(),
     )
@@ -199,36 +204,36 @@ pub fn simple_function_call_test() {
       ast.variable("equal"),
       ast.tuple_([ast.binary("foo"), ast.binary("bar")]),
     )
-  let js = compile(untyped, scope)
+  let js = compile(untyped, #(init(), scope))
   let [l1] = js
   let "equal([\"foo\", \"bar\"])" = l1
 }
 
 pub fn oneline_function_test() {
-  let scope = init([])
+  let state = #(init(), typer.root_scope([]))
   let untyped = ast.function(pattern.Tuple([Some("x")]), ast.variable("x"))
-  let js = compile(untyped, scope)
+  let js = compile(untyped, state)
   let [l1] = js
   let "(function ([x$1]) { return x$1; })" = l1
 }
 
 pub fn call_oneline_function_test() {
-  let scope = init([])
+  let state = #(init(), typer.root_scope([]))
   let untyped =
     ast.call(
       ast.function(pattern.Tuple([Some("x")]), ast.variable("x")),
       ast.tuple_([ast.binary("hello")]),
     )
-  let js = compile(untyped, scope)
+  let js = compile(untyped, state)
   let [l1] = js
   let "(function ([x$1]) { return x$1; })([\"hello\"])" = l1
 
-  let "hello" = eval(untyped, init([]))
+  let "hello" = eval(untyped, #(init(), typer.root_scope([])))
 }
 
 pub fn multiline_function_test() {
   let scope =
-    init(
+    typer.root_scope(
       []
       |> with_equal(),
     )
@@ -247,7 +252,8 @@ pub fn multiline_function_test() {
         ),
       ),
     )
-  let js = compile(untyped, scope)
+  let state = #(init(), scope)
+  let js = compile(untyped, state)
   let [l1, l2, l3, l4] = js
   let "(function ([a$1, b$1]) {" = l1
   let "  let a$2 = equal([a$1, \"blah\"]);" = l2
@@ -256,7 +262,7 @@ pub fn multiline_function_test() {
 }
 
 pub fn multiline_call_function_test() {
-  let scope = init([])
+  let state = #(init(), typer.root_scope([]))
   let untyped =
     ast.call(
       ast.function(pattern.Variable("x"), ast.variable("x")),
@@ -266,12 +272,12 @@ pub fn multiline_call_function_test() {
         ast.variable("tmp"),
       ),
     )
-  let js = compile(untyped, scope)
+  let js = compile(untyped, state)
   let [l1, l2, l3, l4] = js
   let "(function (x$1) { return x$1; })((() => {" = l1
   let "  let tmp$1 = \"hello\";" = l2
   let "  return tmp$1;" = l3
   let "})())" = l4
 
-  let "hello" = eval(untyped, init([]))
+  let "hello" = eval(untyped, #(init(), typer.root_scope([])))
 }
