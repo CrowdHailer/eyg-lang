@@ -107,6 +107,7 @@ fn do_occurs_in(i, b) {
 // next unbound inside mono can be integer and unbound(i) outside
 pub fn unify(expected, given, state) {
   // Pass as tuple to make reduce functions easier to implement
+  // scope path is not modified through unification
   let #(typer, scope): #(State, Scope) = state
   let State(substitutions: substitutions, ..) = typer
   let expected = monotype.resolve(expected, substitutions)
@@ -115,23 +116,18 @@ pub fn unify(expected, given, state) {
   case occurs_in(expected, given) || occurs_in(given, expected) {
     True -> Ok(typer)
     False ->
-      // io.debug("-----")
-      // io.debug(expected)
-      // io.debug(given)
       case expected, given {
         monotype.Binary, monotype.Binary -> Ok(typer)
         monotype.Tuple(expected), monotype.Tuple(given) ->
           case list.zip(expected, given) {
             Error(#(expected, given)) ->
               Error(#(IncorrectArity(expected, given), typer))
-            // TODO path for i
             Ok(pairs) ->
               list.try_fold(
                 pairs,
                 typer,
                 fn(pair, typer) {
                   let #(expected, given) = pair
-                  // TODO path
                   unify(expected, given, #(typer, scope))
                 },
               )
@@ -158,7 +154,6 @@ pub fn unify(expected, given, state) {
             typer,
             fn(pair, typer) {
               let #(expected, given) = pair
-              // TODO path
               unify(expected, given, #(typer, scope))
             },
           )
@@ -168,8 +163,6 @@ pub fn unify(expected, given, state) {
           given_return,
         ) -> {
           try x = unify(expected_from, given_from, state)
-          // let x: State = x
-          let scope: Scope = scope
           unify(expected_return, given_return, #(x, scope))
         }
         expected, given -> Error(#(UnmatchedTypes(expected, given), typer))
@@ -373,11 +366,10 @@ pub fn infer(
   // return all context so more info can be added later
   let #(_, tree) = expression
   let #(typer, scope) = state
-  // TODO add path here
   let meta = Metadata(type_: _, scope: scope.variables, path: scope.path)
   case tree {
     Binary(value) -> {
-      let #(type_, typer) = do_unify(expected, monotype.Binary, state)
+      let #(type_, typer) = do_unify(expected, monotype.Binary, #(typer, scope))
       let expression = #(meta(type_), Binary(value))
       #(expression, typer)
     }
@@ -436,7 +428,7 @@ pub fn infer(
       // Returns typer because of instantiation,
       // TODO separate lookup for instantiate, good for let rec
       let #(type_, typer) = case get_variable(label, typer, scope) {
-        Ok(#(given, typer)) -> do_unify(expected, given, state)
+        Ok(#(given, typer)) -> do_unify(expected, given, #(typer, scope))
         Error(#(reason, _)) -> {
           let State(inconsistencies: inconsistencies, ..) = typer
           let inconsistencies = [
