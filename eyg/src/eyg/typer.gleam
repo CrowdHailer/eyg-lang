@@ -451,19 +451,17 @@ pub fn infer(
           let given = monotype.Function(arg_type, return_type)
           // expected is value of let here don't unify that
           // let #(type_, typer) = do_unify(expected, given, typer)
-          let #(bound_variables, typer) =
-            list.map_state(
+          let bound_variables =
+            list.map(
               bound_variables,
-              typer,
-              fn(bv, typer: State) {
+              fn(bv) {
                 let #(label, monotype) = bv
                 let polytype =
                   polytype.generalise(
                     monotype.resolve(monotype, typer.substitutions),
                     scope.variables,
                   )
-                // TODO I don't think the typer is actually used
-                #(#(label, polytype), typer)
+                #(label, polytype)
               },
             )
           let scope = list.fold(bound_variables, scope, do_set_variable)
@@ -486,22 +484,19 @@ pub fn infer(
         _, _ -> {
           let #(expected_value, bound_variables, typer) =
             pattern_type(pattern, typer)
-          // TODO remove this nesting when we(if?) separate typer and scope
           let #(value, typer) =
             infer(value, expected_value, #(typer, child(scope, 1)))
-          let #(bound_variables, typer) =
-            list.map_state(
+          let bound_variables =
+            list.map(
               bound_variables,
-              typer,
-              fn(bv, typer: State) {
+              fn(bv) {
                 let #(label, monotype) = bv
                 let polytype =
                   polytype.generalise(
                     monotype.resolve(monotype, typer.substitutions),
                     scope.variables,
                   )
-                // TODO I don't think the typer is actually used
-                #(#(label, polytype), typer)
+                #(label, polytype)
               },
             )
           let scope = list.fold(bound_variables, scope, do_set_variable)
@@ -521,20 +516,17 @@ pub fn infer(
       let return_type = monotype.Unbound(y)
       let given = monotype.Function(arg_type, return_type)
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
-      // TODO remove this nesting when we(if?) separate typer and scope
-      let #(bound_variables, typer) =
-        list.map_state(
+      let bound_variables =
+        list.map(
           bound_variables,
-          typer,
-          fn(bv, typer: State) {
+          fn(bv) {
             let #(label, monotype) = bv
             let polytype =
               polytype.generalise(
                 monotype.resolve(monotype, typer.substitutions),
                 scope.variables,
               )
-            // TODO I don't think the typer is actually used
-            #(#(label, polytype), typer)
+            #(label, polytype)
           },
         )
       let scope = list.fold(bound_variables, scope, do_set_variable)

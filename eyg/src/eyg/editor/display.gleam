@@ -93,7 +93,6 @@ pub fn display(tree, position, selection, editor) {
       let elements = list.index_map(elements, display_element)
       #(metadata, e.Tuple(elements))
     }
-    // TODO this also needs fixing with position meta data if we want to keep it 100% in the tree
     e.Row(fields) -> {
       let display_field = fn(index, field) {
         let #(label, value) = field
@@ -169,7 +168,6 @@ pub fn display_pattern(metadata, pattern) {
 }
 
 // display_elements takes care of _ in label too
-// TODO remove all position in svelte land
 pub fn display_pattern_elements(display, elements) {
   let Display(position: position, selection: selection, ..) = display
   list.index_map(

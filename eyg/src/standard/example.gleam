@@ -2,7 +2,6 @@ import gleam/option.{Some}
 import eyg/ast
 import eyg/ast/pattern
 import eyg/typer/monotype
-import standard/builders.{clause}
 
 pub fn boolean() {
   ast.let_(
@@ -102,7 +101,6 @@ pub fn minimal() {
   ast.let_(pattern.Variable("foo"), ast.binary("Hello"), ast.variable("foo"))
 }
 
-// TODO recursive type definition also need to reread about type being the same or contained within.
 pub fn simple() {
   ast.let_(
     pattern.Variable("boolean"),
