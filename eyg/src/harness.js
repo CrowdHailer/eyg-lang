@@ -34,12 +34,6 @@ export function run(code) {
       return ({ False: then }) => { return then([]) }
     }
   }
-  // function zero$1() {
-  //   return 0
-  // }
-  // function inc$1(x) {
-  //   return x + 1
-  // }
 
   function debug(item) {
     console.log(item)

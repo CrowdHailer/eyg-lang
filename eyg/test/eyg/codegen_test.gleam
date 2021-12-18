@@ -38,23 +38,6 @@ pub fn variable_assignment_test() {
   let "V1" = eval(untyped, #(init(), typer.root_scope([])))
 }
 
-fn with_equal(previous) {
-  [
-    #(
-      "equal",
-      polytype.Polytype(
-        [1],
-        monotype.Function(
-          monotype.Tuple([monotype.Unbound(1), monotype.Unbound(1)]),
-          // TODO really needs fixing
-          monotype.Tuple([]),
-        ),
-      ),
-    ),
-    ..previous
-  ]
-}
-
 pub fn nested_assignment_test() {
   let state = #(init(), typer.root_scope([]))
   let untyped =
@@ -137,11 +120,7 @@ pub fn row_assignment_test() {
 }
 
 pub fn multiline_row_assignment_test() {
-  let scope =
-    typer.root_scope(
-      []
-      |> with_equal(),
-    )
+  let scope = typer.root_scope([])
   let untyped =
     ast.row([
       #(
@@ -194,11 +173,7 @@ pub fn row_destructure_test() {
 }
 
 pub fn simple_function_call_test() {
-  let scope =
-    typer.root_scope(
-      []
-      |> with_equal(),
-    )
+  let scope = typer.root_scope([#("equal", typer.equal_fn())])
   let untyped =
     ast.call(
       ast.variable("equal"),
@@ -232,11 +207,7 @@ pub fn call_oneline_function_test() {
 }
 
 pub fn multiline_function_test() {
-  let scope =
-    typer.root_scope(
-      []
-      |> with_equal(),
-    )
+  let scope = typer.root_scope([#("equal", typer.equal_fn())])
   let untyped =
     ast.function(
       pattern.Tuple([Some("a"), Some("b")]),
