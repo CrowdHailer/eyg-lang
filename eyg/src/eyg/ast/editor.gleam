@@ -102,6 +102,18 @@ pub fn is_selected(editor: Editor, path) {
   }
 }
 
+pub fn inconsistencies(editor) {
+  let Editor(typer: t, ..) = editor
+  list.sort(
+    t.inconsistencies,
+    fn(a, b) {
+      let #(a_path, _) = a
+      let #(b_path, _) = b
+      path.order(a_path, b_path)
+    },
+  )
+}
+
 pub fn codegen(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
