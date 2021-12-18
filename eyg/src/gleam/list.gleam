@@ -10,6 +10,37 @@ pub fn find(list: List(a), search: a) -> Result(a, Nil) {
   }
 }
 
+/// Finds the first element in a given list for which the given function returns
+/// True.
+///
+/// Returns `Error(Nil)` if no the function does not return True for any of the
+/// elements.
+///
+/// ## Examples
+///
+///    > find_by([1, 2, 3], fn(x) { x > 2 })
+///    Ok(3)
+///
+///    > find_by([1, 2, 3], fn(x) { x > 4 })
+///    Error(Nil)
+///
+///    > find_by([], fn(_) { True })
+///    Error(Nil)
+///
+pub fn find_by(
+  in haystack: List(a),
+  one_that is_desired: fn(a) -> Bool,
+) -> Result(a, Nil) {
+  case haystack {
+    [] -> Error(Nil)
+    [x, ..rest] ->
+      case is_desired(x) {
+        True -> Ok(x)
+        _ -> find_by(in: rest, one_that: is_desired)
+      }
+  }
+}
+
 pub fn key_find(list: List(#(a, b)), search: a) -> Result(b, Nil) {
   case list {
     [] -> Error(Nil)
