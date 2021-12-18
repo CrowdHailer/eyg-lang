@@ -207,6 +207,10 @@ pub fn handle_keydown(editor, key, ctrl_key) {
   new
 }
 
+pub fn cancel_change(editor) {
+  Editor(..editor, mode: Command)
+}
+
 pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
   let Some(position) = selection

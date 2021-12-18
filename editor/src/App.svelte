@@ -78,9 +78,13 @@
       if (event.metaKey) {
         return true;
       }
-      if (event.key == "Escape" || event.key == "Tab") {
+      if (event.key == "Tab") {
         event.preventDefault();
         editor = Editor.handle_change(editor, event.target.value);
+        updateFocus(editor);
+      } else if (event.key == "Escape") {
+        event.preventDefault();
+        editor = Editor.cancel_change(editor);
         updateFocus(editor);
       }
       event.stopPropagation();

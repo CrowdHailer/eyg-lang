@@ -17,7 +17,6 @@ Need to replace lot's of tuple references with tuple or pattern
 - Tuples need brackets to show tuples in tuples
 - Deliberatly don't have mutliline strings they come from files etc
 - Need to keep focus on editor root to pick up key press
-- Escape in draft mode should be cancel changes not commit changes
 - Editor has a selection ast node has a position, both are paths
 
 m for metadata
@@ -44,6 +43,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Drag a line from the let statement
 - [x] Fix the netlify deploy step
 - [ ] pass an io/console into each program so you can see the output of running them
+- [x] Escape in draft mode should be cancel changes not commit changes
 - [ ] hard coded providers
 - [ ] Step in on Tagged Unit -> Tagged Tuple
 - [ ] Pin type, click and bump constraints to top
