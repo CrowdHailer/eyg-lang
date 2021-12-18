@@ -3,16 +3,13 @@ import gleam/option.{None, Some}
 import gleam/list
 import eyg/typer/monotype.{Binary, Function, Monotype, Row, Tuple, Unbound}
 
-// TODO break up scope typer
+// TODO move to typer but it needs to bring the instantiate function otherwise circular dependencies.
 pub type State {
   State(
-    variables: List(#(String, Polytype)),
     next_unbound: Int,
     substitutions: List(#(Int, Monotype)),
-    // location should be ast paths. does it reset same way as scope
-    location: List(Int),
     // CAN'T hold onto typer.Reason circular dependency
-    inconsistencies: List(String),
+    inconsistencies: List(#(List(Int), String)),
   )
 }
 
@@ -75,10 +72,10 @@ pub fn replace_variable(monotype, x, y) {
 
 // maybe scope builds atop polytype
 // MUST BE resolved first
-pub fn generalise(monotype, state) {
+pub fn generalise(monotype, variables) {
   case monotype {
     Function(_from, _to) -> {
-      let State(variables: variables, ..) = state
+      // let State(variables: variables, ..) = scope
       let in_type = free_variables_in_monotype(monotype)
       let in_scope = free_variables_in_scope(variables)
       Polytype(difference(in_type, in_scope), monotype)

@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/order.{Order}
 
 // This should probably be contains
 pub fn find(list: List(a), search: a) -> Result(a, Nil) {
@@ -6,6 +7,37 @@ pub fn find(list: List(a), search: a) -> Result(a, Nil) {
     [] -> Error(Nil)
     [value, .._] if value == search -> Ok(value)
     [_, ..rest] -> find(rest, search)
+  }
+}
+
+/// Finds the first element in a given list for which the given function returns
+/// True.
+///
+/// Returns `Error(Nil)` if no the function does not return True for any of the
+/// elements.
+///
+/// ## Examples
+///
+///    > find_by([1, 2, 3], fn(x) { x > 2 })
+///    Ok(3)
+///
+///    > find_by([1, 2, 3], fn(x) { x > 4 })
+///    Error(Nil)
+///
+///    > find_by([], fn(_) { True })
+///    Error(Nil)
+///
+pub fn find_by(
+  in haystack: List(a),
+  one_that is_desired: fn(a) -> Bool,
+) -> Result(a, Nil) {
+  case haystack {
+    [] -> Error(Nil)
+    [x, ..rest] ->
+      case is_desired(x) {
+        True -> Ok(x)
+        _ -> find_by(in: rest, one_that: is_desired)
+      }
   }
 }
 
@@ -410,4 +442,49 @@ fn do_index_map(
 ///
 pub fn index_map(list: List(a), with fun: fn(Int, a) -> b) -> List(b) {
   do_index_map(list, fun, 0, [])
+}
+
+fn merge_sort(a: List(a), b: List(a), compare: fn(a, a) -> Order) -> List(a) {
+  case a, b {
+    [], _ -> b
+    _, [] -> a
+    [ax, ..ar], [bx, ..br] ->
+      case compare(ax, bx) {
+        order.Lt -> [ax, ..merge_sort(ar, b, compare)]
+        _ -> [bx, ..merge_sort(a, br, compare)]
+      }
+  }
+}
+
+fn do_sort(
+  list: List(a),
+  compare: fn(a, a) -> Order,
+  list_length: Int,
+) -> List(a) {
+  case list_length < 2 {
+    True -> list
+    False -> {
+      let split_length = list_length / 2
+      let a_list = take(list, split_length)
+      let b_list = drop(list, split_length)
+      merge_sort(
+        do_sort(a_list, compare, split_length),
+        do_sort(b_list, compare, list_length - split_length),
+        compare,
+      )
+    }
+  }
+}
+
+/// Sorts from smallest to largest based upon the ordering specified by a given
+/// function.
+///
+/// ## Examples
+///
+///    > import gleam/int
+///    > list.sort([4, 3, 6, 5, 4, 1, 2], by: int.compare)
+///    [1, 2, 3, 4, 4, 5, 6]
+///
+pub fn sort(list: List(a), by compare: fn(a, a) -> Order) -> List(a) {
+  do_sort(list, compare, length(list))
 }

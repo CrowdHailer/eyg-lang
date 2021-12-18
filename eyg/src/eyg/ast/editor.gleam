@@ -2,6 +2,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
+import gleam/order
 import gleam/string
 import eyg/ast
 import eyg/ast/encode
@@ -95,6 +96,25 @@ pub fn target_type(editor) {
   }
 }
 
+pub fn is_selected(editor: Editor, path) {
+  case editor.selection {
+    Some(p) if p == path -> True
+    _ -> False
+  }
+}
+
+pub fn inconsistencies(editor) {
+  let Editor(typer: t, ..) = editor
+  list.sort(
+    t.inconsistencies,
+    fn(a, b) {
+      let #(a_path, _) = a
+      let #(b_path, _) = b
+      path.order(a_path, b_path)
+    },
+  )
+}
+
 pub fn codegen(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
@@ -160,7 +180,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
   let new = case mode {
     Command -> {
       let #(untyped, path, mode) =
-        handle_transformation(tree, path, key, ctrl_key)
+        handle_transformation(editor, path, key, ctrl_key)
       let #(typed, typer) = case untyped {
         None -> #(tree, typer)
         Some(untyped) -> typer.infer_unconstrained(untyped)
@@ -290,11 +310,13 @@ pub fn untype_field(
 }
 
 fn handle_transformation(
-  tree: e.Expression(Metadata),
+  editor,
   position,
   key,
   ctrl_key,
 ) -> #(Option(e.Expression(Nil)), List(Int), Mode) {
+  let Editor(tree: tree, ..) = editor
+  let inconsistencies = inconsistencies(editor)
   case key, ctrl_key {
     // move
     "a", False -> navigation(increase_selection(tree, position))
@@ -303,6 +325,7 @@ fn handle_transformation(
     "l", False -> navigation(move_right(tree, position))
     "j", False -> navigation(move_down(tree, position))
     "k", False -> navigation(move_up(tree, position))
+    " ", False -> navigation(next_error(inconsistencies, position))
     // transform
     "H", False -> space_left(tree, position)
     "L", False -> space_right(tree, position)
@@ -610,6 +633,29 @@ fn move_down(tree, position) {
             None -> path.append(position, 2)
             Some(position) -> move_down(tree, position)
           }
+      }
+  }
+}
+
+fn next_error(inconsistencies, path) {
+  let points: List(List(Int)) =
+    list.map(inconsistencies, fn(x: #(List(Int), String)) { x.0 })
+  let next =
+    list.find_by(
+      points,
+      fn(p) {
+        case path.order(p, path) {
+          order.Gt -> True
+          _ -> False
+        }
+      },
+    )
+  case next {
+    Ok(n) -> n
+    Error(Nil) ->
+      case points {
+        [p, .._] -> p
+        [] -> path
       }
   }
 }

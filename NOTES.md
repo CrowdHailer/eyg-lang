@@ -47,10 +47,10 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] hard coded providers
 - [ ] Step in on Tagged Unit -> Tagged Tuple
 - [ ] Pin type, click and bump constraints to top
-- [ ] hightlight specific error in top list as the cursor moved over it. Is cursor a bettor name for selection in the editor page
-- [ ] Tab (Space) to Blanks/Errors (nice but not adding new capabilities)
+- [x] hightlight specific error in top list as the cursor moved over it. Is cursor a bettor name for selection in the editor page
+- [x] Tab (Space) to Blanks/Errors (nice but not adding new capabilities)
 - [ ] gleam 18 stdlib to js, json lib and dynamic now useful
-- [ ] link from listed error to code point, this needs typer and editor to have same understanding of path.
+- [x] link from listed error to code point, this needs typer and editor to have same understanding of path.
 - [x] remove tabindex = -1, use position in editor
 - [ ] Syntax sugar for rows where name = variable like js shorthand (nice not functional)
 - [ ] dot syntax sugar (nice not functional)
@@ -81,7 +81,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] It should be possible to focus/unfocus on a blank
 - [x] Need a pattern blank
 - [x] delete should work on the blanks to clear any preset.
-- [ ] Handle errors, maybe not because gleam shouldn't error
+- [x] Handle errors, maybe not because gleam shouldn't error
 - [ ] Show available edit options
 - [ ] rename p:1,2 to code:1,2 or ast
 - [ ] handle editor loosing focus -> Later not that important

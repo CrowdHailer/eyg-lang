@@ -80,7 +80,7 @@ fn head_or() {
 }
 
 pub fn list_equality_test() {
-  let typer = init([#("equal", typer.equal_fn())])
+  let scope = typer.root_scope([#("equal", typer.equal_fn())])
   let untyped = // ast.call(
     //   ast.variable("equal"),
     //   ast.tuple_([cons(ast.binary("A"), empty()), empty()]),
@@ -104,7 +104,9 @@ pub fn list_equality_test() {
       ),
     )
 
-  let #(typed, typer) = infer(untyped, t.Unbound(-1), typer)
+  let typer = init()
+  let state = #(typer, scope)
+  let #(typed, typer) = infer(untyped, t.Unbound(-1), state)
   let State(substitutions: substitutions, inconsistencies: i, ..) = typer
   let [] = i
   let x = typed
@@ -113,7 +115,7 @@ pub fn list_equality_test() {
   io.debug(substitutions)
   io.debug(monotype.to_string(t))
   let _ =
-    codegen_test.compile(untyped, typer)
+    codegen_test.compile(untyped, state)
     |> string.join
     |> io.debug
   // let #(_, e.Call(_, #(_, e.Tuple([l, r])))) = typed
