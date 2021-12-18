@@ -143,7 +143,7 @@ fn do_difference(items, excluded, accumulator) {
   case items {
     [] -> list.reverse(accumulator)
     [next, ..items] ->
-      case list.find(excluded, fn(e) { e == next}) {
+      case list.find(excluded, fn(e) { e == next }) {
         Ok(_) -> do_difference(items, excluded, accumulator)
         Error(_) -> push_new(next, accumulator)
       }
@@ -161,7 +161,7 @@ fn union(new: List(a), existing: List(a)) -> List(a) {
 }
 
 fn push_new(item: a, set: List(a)) -> List(a) {
-  case list.find(set, fn(x) {x == item}) {
+  case list.find(set, fn(x) { x == item }) {
     Ok(_) -> set
     Error(Nil) -> [item, ..set]
   }

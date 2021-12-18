@@ -8,6 +8,10 @@ This also starts a server, need port 5000 mapped
 `docker-compose run -p 5000:5000 editor_frontend npm run dev`
 3. run tests in eyg folder with `./bin/test` VERY slow with mounted volume on mac
 
+- `gleam add` adds a package
+- `gleam deps download` pulls all the packages you have listed
+- packages are kept in the build directory
+
 Note network mode host is not supported on mac.
 
 language/public are basically dead directories

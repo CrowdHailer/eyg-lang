@@ -45,7 +45,8 @@ pub fn reason_to_string(reason) {
         " given ",
         int.to_string(given),
       ])
-    UnknownVariable(label) -> string.concat(["Unknown variable: \"", label, "\""])
+    UnknownVariable(label) ->
+      string.concat(["Unknown variable: \"", label, "\""])
     UnmatchedTypes(expected, given) ->
       string.concat([
         "Unmatched types expected ",
@@ -122,7 +123,10 @@ pub fn unify(expected, given, state) {
         monotype.Tuple(expected), monotype.Tuple(given) ->
           case list.strict_zip(expected, given) {
             Error(_) ->
-              Error(#(IncorrectArity(list.length(expected), list.length(given)), typer))
+              Error(#(
+                IncorrectArity(list.length(expected), list.length(given)),
+                typer,
+              ))
             Ok(pairs) ->
               list.try_fold(
                 pairs,

@@ -6,4 +6,4 @@ packages = [
 ]
 
 [requirements]
-gleam_stdlib = ">= 0.0.0"
+gleam_stdlib = "~> 0.18"

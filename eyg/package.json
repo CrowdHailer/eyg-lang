@@ -1,9 +1,9 @@
 {
   "type": "module",
-  "dependencies": {
-    "gleam-packages": "file:gen/gleam-packages"
+  "devDependencies": {
+    "gleam-packages": "file:./buid/packages"
   },
   "scripts": {
-    "test": "sh bin/test.sh"
+    "test": "node ./bin/run-tests.js"
   }
 }

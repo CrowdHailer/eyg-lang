@@ -1,8 +1,11 @@
 #!/bin/bash
 set -eu
 
-OUT=gen/javascript
+OUT=build/javascript
 rm -fr $OUT
+gleam deps download
+(cd build/packages/gleam_stdlib && gleam compile-package --name gleam_stdlib --target javascript --src src --out build)
 gleam compile-package --name eyg --lib build/packages/gleam_stdlib/build --target javascript --src src --test test --out $OUT
 cp src/*.js $OUT/
-node bin/run-tests.js
+# node bin/run-tests.js
+npm run test

@@ -21,11 +21,7 @@ pub fn to_string(monotype) {
   case monotype {
     Binary -> "Binary"
     Tuple(elements) ->
-      string.concat([
-        "(",
-        string.join(list.map(elements, to_string), ", "),
-        ")",
-      ])
+      string.concat(["(", string.join(list.map(elements, to_string), ", "), ")"])
     Function(Row([#(l, Function(Tuple(ts), _))], _), _) ->
       string.join([l, ..list.map(ts, to_string)], "")
     Row(fields, _) ->
@@ -34,7 +30,8 @@ pub fn to_string(monotype) {
         string.join(list.map(fields, row_to_string), ", "),
         "}",
       ])
-    Function(from, to) -> string.concat([to_string(from), " -> ", to_string(to)])
+    Function(from, to) ->
+      string.concat([to_string(from), " -> ", to_string(to)])
     Unbound(i) -> int.to_string(i)
   }
 }

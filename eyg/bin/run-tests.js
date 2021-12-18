@@ -1,6 +1,6 @@
 import assert from "assert";
 import { opendir } from "fs/promises";
-const dir = "gen/javascript/eyg/";
+const dir = "build/javascript/eyg/";
 import fs from 'fs';
 
 async function main() {

@@ -1,4 +1,5 @@
 import gleam/list
+
 pub fn try_map_state(
   list: List(a),
   initial: s,
