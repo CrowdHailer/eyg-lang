@@ -15,6 +15,7 @@ pub fn string() {
               monotype.Tuple([
                 monotype.Function(monotype.Tuple([]), monotype.Unbound(1)),
                 monotype.Function(
+                  // TODO need recursive type definition
                   monotype.Tuple([monotype.Binary, monotype.Unbound(999)]),
                   monotype.Unbound(1),
                 ),

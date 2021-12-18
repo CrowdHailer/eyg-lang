@@ -1071,76 +1071,89 @@
                                     "then": {
                                         "node": "Let",
                                         "pattern": {
-                                            "node": "Row",
-                                            "fields": [
-                                                {
-                                                    "key": "split",
-                                                    "bind": "split"
-                                                }
-                                            ]
+                                            "node": "Discard"
                                         },
                                         "value": {
-                                            "node": "Variable",
-                                            "label": "harness"
-                                        },
-                                        "then": {
-                                            "node": "Call",
-                                            "function": {
+                                            "node": "Let",
+                                            "pattern": {
+                                                "node": "Row",
+                                                "fields": [
+                                                    {
+                                                        "key": "split",
+                                                        "bind": "split"
+                                                    },
+                                                    {
+                                                        "key": "parseInt",
+                                                        "bind": "parseInt"
+                                                    }
+                                                ]
+                                            },
+                                            "value": {
+                                                "node": "Variable",
+                                                "label": "harness"
+                                            },
+                                            "then": {
                                                 "node": "Call",
                                                 "function": {
-                                                    "node": "Variable",
-                                                    "label": "split"
+                                                    "node": "Call",
+                                                    "function": {
+                                                        "node": "Variable",
+                                                        "label": "split"
+                                                    },
+                                                    "with": {
+                                                        "node": "Tuple",
+                                                        "elements": [
+                                                            {
+                                                                "node": "Variable",
+                                                                "label": "b"
+                                                            },
+                                                            {
+                                                                "node": "Binary",
+                                                                "value": "h"
+                                                            }
+                                                        ]
+                                                    }
                                                 },
                                                 "with": {
                                                     "node": "Tuple",
                                                     "elements": [
                                                         {
-                                                            "node": "Variable",
-                                                            "label": "b"
+                                                            "node": "Function",
+                                                            "pattern": {
+                                                                "node": "Tuple",
+                                                                "elements": []
+                                                            },
+                                                            "body": {
+                                                                "node": "Binary",
+                                                                "value": "X"
+                                                            }
                                                         },
                                                         {
-                                                            "node": "Binary",
-                                                            "value": "h"
+                                                            "node": "Function",
+                                                            "pattern": {
+                                                                "node": "Tuple",
+                                                                "elements": [
+                                                                    {
+                                                                        "node": "Bind",
+                                                                        "label": "a"
+                                                                    },
+                                                                    {
+                                                                        "node": "Bind",
+                                                                        "label": "rest"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "body": {
+                                                                "node": "Variable",
+                                                                "label": "a"
+                                                            }
                                                         }
                                                     ]
                                                 }
-                                            },
-                                            "with": {
-                                                "node": "Tuple",
-                                                "elements": [
-                                                    {
-                                                        "node": "Function",
-                                                        "pattern": {
-                                                            "node": "Tuple",
-                                                            "elements": []
-                                                        },
-                                                        "body": {
-                                                            "node": "Binary",
-                                                            "value": "X"
-                                                        }
-                                                    },
-                                                    {
-                                                        "node": "Function",
-                                                        "pattern": {
-                                                            "node": "Tuple",
-                                                            "elements": [
-                                                                {
-                                                                    "node": "Bind",
-                                                                    "label": "a"
-                                                                },
-                                                                {
-                                                                    "node": "Bind",
-                                                                    "label": "rest"
-                                                                }
-                                                            ]
-                                                        },
-                                                        "body": {
-                                                            "node": "Variable",
-                                                            "label": "a"
-                                                        }
-                                                    }
-                                                ]
                                             }
+                                        },
+                                        "then": {
+                                            "node": "Hole"
                                         }
                                     }
                                 }
