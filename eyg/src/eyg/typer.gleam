@@ -566,7 +566,10 @@ pub fn infer(
         True ->
           State(
             ..typer,
-            inconsistencies: [#(scope.path, "HOLE"), ..typer.inconsistencies],
+            inconsistencies: [
+              #(scope.path, "todo: implementation missing"),
+              ..typer.inconsistencies
+            ],
           )
         False -> typer
       }

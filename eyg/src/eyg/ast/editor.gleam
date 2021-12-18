@@ -95,6 +95,13 @@ pub fn target_type(editor) {
   }
 }
 
+pub fn is_selected(editor: Editor, path) {
+  case editor.selection {
+    Some(p) if p == path -> True
+    _ -> False
+  }
+}
+
 pub fn codegen(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0

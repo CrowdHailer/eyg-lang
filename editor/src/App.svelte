@@ -212,11 +212,17 @@
   {/if}
 </div>
 <aside
-  class="absolute top-0 right-0 p-2 border-l-4 border-red-700 bg-white"
+  class="absolute top-0 right-0 bg-white w-full max-w-sm "
   on:click={handleClick}
 >
-  TODO if path == current
-  {#each editor.typer.inconsistencies.toArray() as [path, reason]}
-    <p data-editor={Display.position_to_marker(path)}>{reason}</p>
+  <!-- TODO remvoe rverse order in gleam -->
+  {#each editor.typer.inconsistencies.toArray().reverse() as [path, reason]}
+    <p
+      class="px-2 border-l-4 border-red-700 text-gray-600 hover:text-black cursor-pointer"
+      class:border-l-8={Editor.is_selected(editor, path)}
+      data-editor={Display.position_to_marker(path)}
+    >
+      {reason}
+    </p>
   {/each}
 </aside>
