@@ -14,27 +14,27 @@ pub type Monotype {
 
 fn row_to_string(row) {
   let #(label, type_) = row
-  string.join([label, ": ", to_string(type_)])
+  string.concat([label, ": ", to_string(type_)])
 }
 
 pub fn to_string(monotype) {
   case monotype {
     Binary -> "Binary"
     Tuple(elements) ->
-      string.join([
+      string.concat([
         "(",
-        string.join(list.intersperse(list.map(elements, to_string), ", ")),
+        string.join(list.map(elements, to_string), ", "),
         ")",
       ])
     Function(Row([#(l, Function(Tuple(ts), _))], _), _) ->
-      string.join([l, ..list.map(ts, to_string)])
+      string.join([l, ..list.map(ts, to_string)], "")
     Row(fields, _) ->
-      string.join([
+      string.concat([
         "{",
-        string.join(list.intersperse(list.map(fields, row_to_string), ", ")),
+        string.join(list.map(fields, row_to_string), ", "),
         "}",
       ])
-    Function(from, to) -> string.join([to_string(from), " -> ", to_string(to)])
+    Function(from, to) -> string.concat([to_string(from), " -> ", to_string(to)])
     Unbound(i) -> int.to_string(i)
   }
 }

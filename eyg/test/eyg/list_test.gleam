@@ -116,7 +116,7 @@ pub fn list_equality_test() {
   io.debug(monotype.to_string(t))
   let _ =
     codegen_test.compile(untyped, state)
-    |> string.join
+    |> string.concat
     |> io.debug
   // let #(_, e.Call(_, #(_, e.Tuple([l, r])))) = typed
   // let Ok(l_type) = get_type(l)

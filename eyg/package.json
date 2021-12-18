@@ -1,6 +1,9 @@
 {
-    "type": "module",
-    "scripts": {
-      "test": "sh bin/test.sh"
-    }
+  "type": "module",
+  "dependencies": {
+    "gleam-packages": "file:gen/gleam-packages"
+  },
+  "scripts": {
+    "test": "sh bin/test.sh"
   }
+}

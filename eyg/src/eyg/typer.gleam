@@ -3,6 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import eyg/misc
 import eyg/ast
 import eyg/ast/path
 import eyg/ast/expression.{
@@ -38,15 +39,15 @@ pub fn child(scope, i) {
 pub fn reason_to_string(reason) {
   case reason {
     IncorrectArity(expected, given) ->
-      string.join([
+      string.concat([
         "Incorrect Arity expected ",
         int.to_string(expected),
         " given ",
         int.to_string(given),
       ])
-    UnknownVariable(label) -> string.join(["Unknown variable: \"", label, "\""])
+    UnknownVariable(label) -> string.concat(["Unknown variable: \"", label, "\""])
     UnmatchedTypes(expected, given) ->
-      string.join([
+      string.concat([
         "Unmatched types expected ",
         monotype.to_string(expected),
         " given ",
@@ -59,7 +60,7 @@ pub fn reason_to_string(reason) {
         ..list.map(expected, fn(x: #(String, monotype.Monotype)) { x.0 })
         |> list.intersperse(", ")
       ]
-      |> string.join
+      |> string.concat
 
     UnexpectedFields(expected) -> "unexpectedfields"
   }
@@ -119,14 +120,14 @@ pub fn unify(expected, given, state) {
       case expected, given {
         monotype.Binary, monotype.Binary -> Ok(typer)
         monotype.Tuple(expected), monotype.Tuple(given) ->
-          case list.zip(expected, given) {
-            Error(#(expected, given)) ->
-              Error(#(IncorrectArity(expected, given), typer))
+          case list.strict_zip(expected, given) {
+            Error(_) ->
+              Error(#(IncorrectArity(list.length(expected), list.length(given)), typer))
             Ok(pairs) ->
               list.try_fold(
                 pairs,
                 typer,
-                fn(pair, typer) {
+                fn(typer, pair) {
                   let #(expected, given) = pair
                   unify(expected, given, #(typer, scope))
                 },
@@ -152,7 +153,7 @@ pub fn unify(expected, given, state) {
           list.try_fold(
             shared,
             typer,
-            fn(pair, typer) {
+            fn(typer, pair) {
               let #(expected, given) = pair
               unify(expected, given, #(typer, scope))
             },
@@ -220,7 +221,7 @@ fn set_self_variable(variable, scope) {
   Scope(..scope, variables: variables)
 }
 
-fn do_set_variable(variable, scope) {
+fn do_set_variable(scope, variable) {
   let Scope(variables: variables, ..) = scope
   let variables = [variable, ..variables]
   Scope(..scope, variables: variables)
@@ -248,13 +249,13 @@ fn pattern_type(pattern, typer) {
       #(type_var, [#(label, type_var)], typer)
     }
     pattern.Tuple(elements) -> {
-      let #(elements, typer) = list.map_state(elements, typer, with_unbound)
+      let #(elements, typer) = misc.map_state(elements, typer, with_unbound)
       let expected = monotype.Tuple(list.map(elements, pairs_second))
       let elements = ones_with_real_keys(elements, [])
       #(expected, elements, typer)
     }
     pattern.Row(fields) -> {
-      let #(fields, typer) = list.map_state(fields, typer, with_unbound)
+      let #(fields, typer) = misc.map_state(fields, typer, with_unbound)
       let extract_field_types = fn(named_field) {
         let #(#(name, _assignment), type_) = named_field
         #(name, type_)
@@ -374,12 +375,12 @@ pub fn infer(
       #(expression, typer)
     }
     Tuple(elements) -> {
-      let #(pairs, typer) = list.map_state(elements, typer, with_unbound)
+      let #(pairs, typer) = misc.map_state(elements, typer, with_unbound)
       let given = monotype.Tuple(list.map(pairs, pairs_second))
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
       // decided I want to match on top level first
       let #(elements, #(typer, _)) =
-        list.map_state(
+        misc.map_state(
           pairs,
           #(typer, 0),
           fn(pair, stz) {
@@ -394,7 +395,7 @@ pub fn infer(
       #(expression, typer)
     }
     Row(fields) -> {
-      let #(pairs, typer) = list.map_state(fields, typer, with_unbound)
+      let #(pairs, typer) = misc.map_state(fields, typer, with_unbound)
       let given =
         monotype.Row(
           list.map(
@@ -409,7 +410,7 @@ pub fn infer(
       // TODO don't think returning type_ needed
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
       let #(fields, #(typer, _)) =
-        list.map_state(
+        misc.map_state(
           pairs,
           #(typer, 0),
           fn(pair, stz) {
@@ -567,7 +568,7 @@ fn pair_replace(replacements, monotype) {
   list.fold(
     replacements,
     monotype,
-    fn(pair, monotype) {
+    fn(monotype, pair) {
       let #(x, y) = pair
       polytype.replace_variable(monotype, x, y)
     },

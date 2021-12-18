@@ -36,8 +36,7 @@ pub fn position_to_marker(position) {
   let position =
     position
     |> list.map(int.to_string)
-    |> list.intersperse(",")
-  string.join(["p:", ..position])
+  string.join(["p:", ..position], ",")
 }
 
 pub fn is_target(display) {

@@ -149,12 +149,12 @@ pub fn handle_click(editor: Editor, target) {
   case string.split(target, ":") {
     ["root"] -> Editor(..editor, selection: Some([]), mode: Command)
     ["p", rest] -> {
-      let path = case rest {
-        "" -> []
+      assert Ok(path) = case rest {
+        "" -> Ok([])
         _ ->
           // empty string makes unparsable as int list
           string.split(rest, ",")
-          |> list.map(int.parse)
+          |> list.try_map(int.parse)
       }
       let mode = case get_element(editor.tree, path) {
         Expression(#(_, e.Binary(content))) -> Draft(content)
@@ -363,7 +363,7 @@ fn handle_transformation(
       Command,
     )
     _, _ -> {
-      io.debug(string.join(["No edit action for key: ", key]))
+      io.debug(string.concat(["No edit action for key: ", key]))
       #(None, position, Command)
     }
   }
@@ -645,7 +645,7 @@ fn next_error(inconsistencies, path) {
   let points: List(List(Int)) =
     list.map(inconsistencies, fn(x: #(List(Int), String)) { x.0 })
   let next =
-    list.find_by(
+    list.find(
       points,
       fn(p) {
         case path.order(p, path) {

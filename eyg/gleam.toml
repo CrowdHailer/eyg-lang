@@ -2,3 +2,4 @@ name = "eyg"
 tool = "gleam"
 version = "0.1.0"
 description = "Abstract Syntax Tree tools"
+dependencies = { gleam_stdlib = "~> 0.18"}

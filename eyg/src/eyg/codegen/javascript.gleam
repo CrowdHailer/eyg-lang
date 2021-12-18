@@ -3,6 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
+import eyg/misc
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
@@ -31,7 +32,7 @@ external fn do_eval(String) -> anything =
 
 pub fn eval(tree, typer) {
   let code = render_in_function(tree, typer)
-  string.join(["(function(equal){\n", code, "})(equal)"])
+  string.concat(["(function(equal){\n", code, "})(equal)"])
   |> do_eval
 }
 
@@ -72,7 +73,7 @@ fn count_label(state, label) {
   list.fold(
     scope,
     0,
-    fn(l, count) {
+    fn(count, l) {
       case l == label {
         True -> count + 1
         False -> count
@@ -87,7 +88,7 @@ fn render_label(label, state) {
       case count_label(state, label) {
         // if not previously rendered must be an external thing
         0 -> label
-        count -> string.join([label, "$", int.to_string(count)])
+        count -> string.concat([label, "$", int.to_string(count)])
       }
   }
 }
@@ -97,7 +98,7 @@ fn render_function_name(state) {
   case self {
     Some(label) -> {
       let count = count_label(state, label) + 1
-      string.join([label, "$", int.to_string(count)])
+      string.concat([label, "$", int.to_string(count)])
     }
     None -> ""
   }
@@ -105,14 +106,12 @@ fn render_function_name(state) {
 
 pub fn render_to_string(expression, typer) {
   render(expression, Generator(False, [], typer, None))
-  |> list.intersperse("\n")
-  |> string.join()
+  |> string.join("\n")
 }
 
 pub fn render_in_function(expression, typer) {
   render(expression, Generator(True, [], typer, None))
-  |> list.intersperse("\n")
-  |> string.join()
+  |> string.join("\n")
 }
 
 fn render_pattern(pattern, state) {
@@ -125,7 +124,7 @@ fn render_pattern(pattern, state) {
     }
     p.Tuple(elements) -> {
       let #(elements, state) =
-        list.map_state(
+        misc.map_state(
           elements,
           state,
           fn(label, state) {
@@ -142,19 +141,19 @@ fn render_pattern(pattern, state) {
         |> list.intersperse(", ")
         // wrap_lines not a good name here
         |> wrap_lines("[", _, "]")
-        |> string.join()
+        |> string.concat()
       #(bind, state)
     }
     p.Row(fields) -> {
       let #(fields, state) =
-        list.map_state(
+        misc.map_state(
           fields,
           state,
           fn(field, state) {
             let #(row_name, label) = field
             let state = with_assignment(label, state)
             let field =
-              string.join([row_name, ": ", render_label(label, state)])
+              string.concat([row_name, ": ", render_label(label, state)])
             #(field, state)
           },
         )
@@ -163,7 +162,7 @@ fn render_pattern(pattern, state) {
         |> list.intersperse(", ")
         // wrap_lines not a good name here
         |> wrap_lines("{", _, "}")
-        |> string.join()
+        |> string.concat()
       #(bind, state)
     }
   }
@@ -176,7 +175,7 @@ pub fn render(tree, state) {
   case tree {
     // TODO escape
     e.Binary(content) ->
-      wrap_return([string.join(["\"", content, "\""])], state)
+      wrap_return([string.concat(["\"", content, "\""])], state)
     e.Tuple(elements) -> {
       let state = Generator(..state, self: None)
       list.map(elements, maybe_wrap_expression(_, state))
@@ -190,7 +189,7 @@ pub fn render(tree, state) {
         fn(field) {
           let #(name, value) = field
           wrap_lines(
-            string.concat(name, ": "),
+            string.concat([name, ": "]),
             maybe_wrap_expression(value, state),
             "",
           )
@@ -212,7 +211,7 @@ pub fn render(tree, state) {
       let value = maybe_wrap_expression(value, value_state)
       // self is only present in value
       let #(bind, state) = render_pattern(pattern, state)
-      let assignment = string.join(["let ", bind, " = "])
+      let assignment = string.concat(["let ", bind, " = "])
       list.append(wrap_lines(assignment, value, ";"), render(then, state))
     }
     e.Variable(label) ->
@@ -220,14 +219,14 @@ pub fn render(tree, state) {
     e.Function(pattern, body) -> {
       let #(bind, state) = render_pattern(pattern, state)
       let name = render_function_name(state)
-      let start = string.join(["(function ", name, "(", bind, ") {"])
+      let start = string.concat(["(function ", name, "(", bind, ") {"])
       // if function given a self name it is available in the body
       let state = case state.self {
         None -> state
         Some(label) -> with_assignment(label, Generator(..state, self: None))
       }
       case render(body, in_tail(True, state)) {
-        [single] -> [string.join([start, " ", single, " })"])]
+        [single] -> [string.concat([start, " ", single, " })"])]
         lines ->
           [start, ..indent(lines)]
           |> list.append(["})"])
