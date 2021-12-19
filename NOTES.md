@@ -29,6 +29,10 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
+- [ ] Pin type, click and bump constraints to top
+- [ ] gleam 18 stdlib to js, json lib and dynamic now useful
+- [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
+- [ ] Copy/paste
 - [ ] Do we even need Int in ast. just use parseint and have it as only a type??
 - [ ] All parse utf8 providers might do what we need here
 - [x] Upgrade gleam
@@ -38,7 +42,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] press "e" within function wraps in body
 - [x] implement a harness.js as a big thing that does equal, equal is possible for what we have but might need external types
       show the input, have the function run onClick. name the harness browser or some such
-- [ ] RUN THE PROGRAMS. create an advent of code page.
+- [x] RUN THE PROGRAMS. create an advent of code page.
 - [x] Load/Save files
 - [x] Drag a line from the let statement
 - [x] Fix the netlify deploy step
@@ -46,10 +50,8 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Escape in draft mode should be cancel changes not commit changes
 - [ ] hard coded providers
 - [ ] Step in on Tagged Unit -> Tagged Tuple
-- [ ] Pin type, click and bump constraints to top
 - [x] hightlight specific error in top list as the cursor moved over it. Is cursor a bettor name for selection in the editor page
 - [x] Tab (Space) to Blanks/Errors (nice but not adding new capabilities)
-- [ ] gleam 18 stdlib to js, json lib and dynamic now useful
 - [x] link from listed error to code point, this needs typer and editor to have same understanding of path.
 - [x] remove tabindex = -1, use position in editor
 - [ ] Syntax sugar for rows where name = variable like js shorthand (nice not functional)
@@ -58,10 +60,8 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Fix tests
 - [x] example should use lets in binary module, call variable binary module.
 - [ ] Record rest of fields variable
-- [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
 - [ ] io.inspect needs debug/inspect call, using reflect API
 - [x] list all errors in program
-- [ ] Copy/paste
 - [x] pretty print missing fields error
 - [x] insert space/drag in patterns
 - [x] create a binary
