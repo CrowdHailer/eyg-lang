@@ -1,8 +1,6 @@
 <script>
   import Hole from "./Hole.svelte";
-  import * as AstBare from "../gen/eyg/ast";
-  import * as Builders from "../gen/standard/builders";
-  const Ast = Object.assign({}, AstBare, Builders);
+  import * as Ast from "../gen/eyg/ast";
   export let metadata;
   export let generator;
   export let config;
