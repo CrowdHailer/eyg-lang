@@ -48,10 +48,7 @@ export function run(code) {
     }
   }
 
-  function debug(item) {
-    console.log(item)
-    return item
-  }
+
 
   // This is need or equal isn't evaled
   // console.log(equal)
@@ -59,9 +56,14 @@ export function run(code) {
   const harness = {
     split: function ([a, b]) {
       return fromArray(a.split(b))
+    },
+    debug: function (item) {
+      console.log(item)
+      return item
     }
   }
   console.log(harness.split);
+  console.log(harness.debug)
   return eval(code);
 }
 
