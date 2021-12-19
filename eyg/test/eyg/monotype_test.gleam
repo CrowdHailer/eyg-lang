@@ -1,8 +1,11 @@
 import gleam/option.{None, Some}
-import eyg/typer/monotype.{Binary, Function, Row, Tuple, Unbound, to_string}
+import eyg/typer/monotype.{
+  Binary, Function, Integer, Row, Tuple, Unbound, to_string,
+}
 
 pub fn type_to_string_test() {
   let "Binary" = to_string(Binary)
+  let "Integer" = to_string(Integer)
   let "()" = to_string(Tuple([]))
   let "(Binary, ())" = to_string(Tuple([Binary, Tuple([])]))
   let "{}" = to_string(Row([], None))

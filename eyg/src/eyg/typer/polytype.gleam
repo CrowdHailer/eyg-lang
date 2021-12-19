@@ -1,7 +1,9 @@
 import gleam/io
 import gleam/option.{None, Some}
 import gleam/list
-import eyg/typer/monotype.{Binary, Function, Monotype, Row, Tuple, Unbound}
+import eyg/typer/monotype.{
+  Binary, Function, Integer, Monotype, Row, Tuple, Unbound,
+}
 
 // TODO move to typer but it needs to bring the instantiate function otherwise circular dependencies.
 pub type State {
@@ -44,6 +46,7 @@ fn do_instantiate(forall, monotype, typer) {
 pub fn replace_variable(monotype, x, y) {
   case monotype {
     Binary -> Binary
+    Integer -> Integer
     Tuple(elements) -> Tuple(list.map(elements, replace_variable(_, x, y)))
     Row(fields, rest) -> {
       let fields =
@@ -105,6 +108,7 @@ fn free_variables_in_polytype(polytype) {
 fn free_variables_in_monotype(monotype) {
   case monotype {
     Binary -> []
+    Integer -> []
     Tuple(elements) ->
       list.fold(
         elements,

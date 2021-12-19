@@ -9,6 +9,10 @@ pub fn binary(value) {
   #(Nil, expression.Binary(value))
 }
 
+pub fn integer(value) {
+  #(Nil, expression.Integer(value))
+}
+
 pub fn call(function, with) {
   #(Nil, expression.Call(function, with))
 }

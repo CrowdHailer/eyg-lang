@@ -9,6 +9,8 @@
   import Variable from "./Variable.svelte";
   import Function from "./Function.svelte";
   import Binary from "./Binary.svelte";
+  import Integer from "./Integer.svelte";
+
   import Provider from "./Provider.svelte";
   import Tuple from "./Tuple.svelte";
   import SugarExpression from "./Sugar.svelte";
@@ -26,6 +28,8 @@
   <Tuple {metadata} elements={tree.elements} />
 {:else if tree instanceof Expression.Binary}
   <Binary {metadata} value={tree.value} />
+{:else if tree instanceof Expression.Integer}
+  <Integer {metadata} value={tree.value} />
 {:else if tree instanceof Expression.Let}
   <Let {metadata} pattern={tree.pattern} value={tree.value} then={tree.then} />
 {:else if tree instanceof Expression.Call}
