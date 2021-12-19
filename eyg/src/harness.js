@@ -38,6 +38,14 @@ function fromArray(array) {
   }, empty)
 }
 
+
+let shown = false
+function foo(x) {
+  if (!shown) {
+    console.log(x);
+    shown = true
+  }
+}
 //   incorperate helpers from codegen like variant() and unit()
 export function run(code) {
   function equal([a, b]) {
@@ -47,7 +55,6 @@ export function run(code) {
       return ({ False: then }) => { return then([]) }
     }
   }
-
 
 
   // This is need or equal isn't evaled
@@ -78,8 +85,7 @@ export function run(code) {
       }
     }
   }
-  console.log(harness.split);
-  console.log(harness.debug)
+  foo(harness)
   return eval(code);
 }
 

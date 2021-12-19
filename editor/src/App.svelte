@@ -18,6 +18,7 @@
 
   let code = "";
   let dump = "";
+  let value = "";
   let downloadBlob = new Blob([], { type: "application/json" });
   function updateFocus(editor) {
     tick().then(() => {
@@ -33,7 +34,9 @@
           // with eval {} is considered a block of code, not an object
           if (rendered[0]) {
             code = rendered[1];
-            console.log(Editor.eval$(editor));
+            value = JSON.stringify(Editor.eval$(editor));
+          } else {
+            value = "";
           }
         } catch (error) {
           console.error("Caught", error);
@@ -171,6 +174,9 @@
       on:keydown={handleKeydown}
     >
       <Expression expression={Editor.display(editor)} />
+      <p class="bg-gray-200 p-1">
+        <span>Output = </span><span>{value}</span>
+      </p>
       <div class="sticky bottom-0 bg-white py-2">
         {#if Editor.is_command(editor)}
           {#if Editor.target_type(editor)[0]}
