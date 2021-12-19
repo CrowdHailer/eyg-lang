@@ -10,8 +10,6 @@ This also starts a server, need port 5000 mapped
 
 Note network mode host is not supported on mac.
 
-language/public are basically dead directories
-
 Need to replace lot's of tuple references with tuple or pattern
 
 - Tuples need brackets to show tuples in tuples
@@ -31,6 +29,8 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
+- [ ] Do we even need Int in ast. just use parseint and have it as only a type??
+- [ ] All parse utf8 providers might do what we need here
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete

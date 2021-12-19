@@ -342,7 +342,8 @@ fn handle_transformation(
     "j", True -> command(drag_down(tree, position))
     "k", True -> command(drag_up(tree, position))
     "b", False -> create_binary(tree, position)
-    "i", False -> create_integer(tree, position)
+    // z for zero bad
+    "z", False -> create_integer(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
     "r", False -> wrap_row(tree, position)
     "e", False -> command(wrap_assignment(tree, position))

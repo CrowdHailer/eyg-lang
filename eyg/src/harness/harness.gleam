@@ -4,7 +4,7 @@ import eyg/typer/polytype
 
 pub fn string() {
   polytype.Polytype(
-    [1, 2],
+    [1, 2, 3],
     monotype.Row(
       [
         #(
@@ -25,7 +25,40 @@ pub fn string() {
           ),
         ),
         #("debug", monotype.Function(monotype.Unbound(2), monotype.Unbound(2))),
-        #("parse_int", monotype.Function(monotype.Binary, monotype.Tuple([]))),
+        #("parse_int", monotype.Function(monotype.Binary, monotype.Integer)),
+        #(
+          "add",
+          monotype.Function(
+            monotype.Tuple([monotype.Integer, monotype.Integer]),
+            monotype.Integer,
+          ),
+        ),
+        #(
+          "compare",
+          monotype.Function(
+            monotype.Tuple([monotype.Integer, monotype.Integer]),
+            monotype.Function(
+              monotype.Row(
+                [
+                  #(
+                    "Lt",
+                    monotype.Function(monotype.Tuple([]), monotype.Unbound(3)),
+                  ),
+                  #(
+                    "Eq",
+                    monotype.Function(monotype.Tuple([]), monotype.Unbound(3)),
+                  ),
+                  #(
+                    "Gt",
+                    monotype.Function(monotype.Tuple([]), monotype.Unbound(3)),
+                  ),
+                ],
+                None,
+              ),
+              monotype.Unbound(3),
+            ),
+          ),
+        ),
       ],
       None,
     ),

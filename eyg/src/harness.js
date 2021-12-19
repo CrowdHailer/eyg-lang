@@ -60,6 +60,22 @@ export function run(code) {
     debug: function (item) {
       console.log(item)
       return item
+    },
+    parse_int: function (x) {
+      // TODO need to handle error case
+      return parseInt(x)
+    },
+    add: function ([a, b]) {
+      return a + b
+    },
+    compare: function ([a, b]) {
+      if (a == b) {
+        return ({ Eq }) => Eq([])
+      } else if (a < b) {
+        return ({ Lt }) => Lt([])
+      } else {
+        return ({ Gt }) => Gt([])
+      }
     }
   }
   console.log(harness.split);
