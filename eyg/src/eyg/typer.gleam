@@ -6,7 +6,7 @@ import gleam/string
 import eyg/ast
 import eyg/ast/path
 import eyg/ast/expression.{
-  Binary, Call, Expression, Function, Let, Provider, Row, Tuple, Variable,
+  Binary, Call, Expression, Function, Integer, Let, Provider, Row, Tuple, Variable,
 }
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -94,6 +94,7 @@ fn do_occurs_in(i, b) {
     monotype.Unbound(j) if i == j -> True
     monotype.Unbound(_) -> False
     monotype.Binary -> False
+    monotype.Integer -> False
     monotype.Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
     monotype.Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
     monotype.Row(fields, _) ->
@@ -119,6 +120,7 @@ pub fn unify(expected, given, state) {
     False ->
       case expected, given {
         monotype.Binary, monotype.Binary -> Ok(typer)
+        monotype.Integer, monotype.Integer -> Ok(typer)
         monotype.Tuple(expected), monotype.Tuple(given) ->
           case list.zip(expected, given) {
             Error(#(expected, given)) ->
@@ -376,6 +378,12 @@ pub fn infer(
     Binary(value) -> {
       let #(type_, typer) = do_unify(expected, monotype.Binary, #(typer, scope))
       let expression = #(meta(type_), Binary(value))
+      #(expression, typer)
+    }
+    Integer(value) -> {
+      let #(type_, typer) =
+        do_unify(expected, monotype.Integer, #(typer, scope))
+      let expression = #(meta(type_), Integer(value))
       #(expression, typer)
     }
     Tuple(elements) -> {

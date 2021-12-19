@@ -157,7 +157,8 @@ pub fn handle_click(editor: Editor, target) {
           |> list.map(int.parse)
       }
       let mode = case get_element(editor.tree, path) {
-        Expression(#(_, e.Binary(content))) -> Draft(content)
+        // Expression(#(_, e.Binary(content))) -> Draft(content)
+        // TODO handle adjusting integer but I actually thinking double clicking is what's needed to activate
         _ -> Command
       }
       Editor(..editor, selection: Some(path), mode: mode)
@@ -215,6 +216,7 @@ pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
   let Some(position) = selection
   let untyped = case get_element(tree, position) {
+    // TODO handle change on Integer
     Expression(#(_, e.Binary(_))) -> {
       let new = ast.binary(content)
       replace_expression(tree, position, new)
@@ -340,6 +342,8 @@ fn handle_transformation(
     "j", True -> command(drag_down(tree, position))
     "k", True -> command(drag_up(tree, position))
     "b", False -> create_binary(tree, position)
+    // z for zero bad
+    "z", False -> create_integer(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
     "r", False -> wrap_row(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
@@ -401,10 +405,10 @@ fn decrease_selection(tree, position) {
         Draft(""),
       )
     }
-    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) | Expression(#(
+    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Integer(_))) | Expression(#(
       _,
-      e.Provider(_, _),
-    )) -> #(None, position, Command)
+      e.Variable(_),
+    )) | Expression(#(_, e.Provider(_, _))) -> #(None, position, Command)
     Expression(_) -> #(None, inner, Command)
     RowField(_, _) -> #(None, inner, Command)
     Pattern(p.Tuple([]), _) -> #(
@@ -1017,6 +1021,20 @@ fn create_binary(tree, position) {
   }
 }
 
+fn create_integer(tree, position) {
+  let hole_func = ast.generate_hole
+
+  case get_element(tree, position) {
+    Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
+      // TODO real number
+      // TODO handle draft could still be draft with type integer?
+      let new = ast.integer(500)
+      #(Some(replace_expression(tree, position, new)), position, Command)
+    }
+    _ -> #(None, position, Command)
+  }
+}
+
 fn wrap_tuple(tree, position) {
   let target = get_element(tree, position)
   // TODO don't wrap multi line terms
@@ -1306,6 +1324,7 @@ fn delete(tree, position) {
 fn draft(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Binary(content))) -> #(None, position, Draft(content))
+    // TODO handle integer
     Pattern(p.Discard, _) -> #(None, position, Draft(""))
     Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
     PatternElement(_, None) -> #(None, position, Draft(""))

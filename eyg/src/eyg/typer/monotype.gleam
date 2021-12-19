@@ -6,6 +6,7 @@ import gleam/string
 
 pub type Monotype {
   Binary
+  Integer
   Tuple(elements: List(Monotype))
   Row(fields: List(#(String, Monotype)), extra: Option(Int))
   Function(from: Monotype, to: Monotype)
@@ -20,6 +21,7 @@ fn row_to_string(row) {
 pub fn to_string(monotype) {
   case monotype {
     Binary -> "Binary"
+    Integer -> "Integer"
     Tuple(elements) ->
       string.join([
         "(",
@@ -44,6 +46,7 @@ fn do_occurs_in(i, b) {
     Unbound(j) if i == j -> True
     Unbound(_) -> False
     Binary -> False
+    Integer -> False
     Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
     Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
     Row(fields, _) ->
@@ -78,6 +81,7 @@ pub fn resolve(type_, substitutions) {
         }
       }
     Binary -> Binary
+    Integer -> Integer
     Tuple(elements) -> {
       let elements = list.map(elements, resolve(_, substitutions))
       Tuple(elements)

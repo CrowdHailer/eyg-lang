@@ -3,6 +3,7 @@ import eyg/ast/pattern.{Pattern}
 
 pub type Node(m) {
   Binary(value: String)
+  Integer(value: Int)
   Tuple(elements: List(Expression(m)))
   Row(fields: List(#(String, Expression(m))))
   Variable(label: String)
