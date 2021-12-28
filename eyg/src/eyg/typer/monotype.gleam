@@ -5,8 +5,8 @@ import gleam/option.{None, Option, Some}
 import gleam/string
 
 pub type Monotype {
+  Native(name: String)
   Binary
-  Integer
   Tuple(elements: List(Monotype))
   Row(fields: List(#(String, Monotype)), extra: Option(Int))
   Function(from: Monotype, to: Monotype)
@@ -20,8 +20,8 @@ fn row_to_string(row) {
 
 pub fn to_string(monotype) {
   case monotype {
+    Native(name: name) -> name
     Binary -> "Binary"
-    Integer -> "Integer"
     Tuple(elements) ->
       string.join([
         "(",
@@ -45,8 +45,8 @@ fn do_occurs_in(i, b) {
   case b {
     Unbound(j) if i == j -> True
     Unbound(_) -> False
+    Native(_) -> False
     Binary -> False
-    Integer -> False
     Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
     Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
     Row(fields, _) ->
@@ -80,8 +80,8 @@ pub fn resolve(type_, substitutions) {
           resolve(substitution, substitutions)
         }
       }
+    Native(name) -> Native(name)
     Binary -> Binary
-    Integer -> Integer
     Tuple(elements) -> {
       let elements = list.map(elements, resolve(_, substitutions))
       Tuple(elements)

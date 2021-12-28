@@ -175,7 +175,6 @@ pub fn render(tree, state) {
     // TODO escape
     e.Binary(content) ->
       wrap_return([string.join(["\"", content, "\""])], state)
-    e.Integer(number) -> wrap_return([int.to_string(number)], state)
     e.Tuple(elements) -> {
       let state = Generator(..state, self: None)
       list.map(elements, maybe_wrap_expression(_, state))

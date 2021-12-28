@@ -26,8 +26,8 @@ fn do_instantiate(forall, monotype, next_unbound) {
 
 pub fn replace_variable(monotype, x, y) {
   case monotype {
+    t.Native(name) -> t.Native(name)
     t.Binary -> t.Binary
-    t.Integer -> t.Integer
     t.Tuple(elements) -> t.Tuple(list.map(elements, replace_variable(_, x, y)))
     t.Row(fields, rest) -> {
       let fields =
@@ -87,8 +87,8 @@ fn free_variables_in_polytype(polytype) {
 
 fn free_variables_in_monotype(monotype) {
   case monotype {
+    t.Native(_) -> []
     t.Binary -> []
-    t.Integer -> []
     t.Tuple(elements) ->
       list.fold(
         elements,

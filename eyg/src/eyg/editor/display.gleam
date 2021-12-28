@@ -84,7 +84,6 @@ pub fn display(tree, position, selection, editor) {
   let metadata = Display(position, selection, errored)
   case expression {
     e.Binary(content) -> #(metadata, e.Binary(content))
-    e.Integer(content) -> #(metadata, e.Integer(content))
     e.Tuple(elements) -> {
       let display_element = fn(index, element) {
         let position = path.append(position, index)

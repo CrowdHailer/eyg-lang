@@ -25,12 +25,18 @@ pub fn string() {
           ),
         ),
         #("debug", t.Function(t.Unbound(2), t.Unbound(2))),
-        #("parse_int", t.Function(t.Binary, t.Integer)),
-        #("add", t.Function(t.Tuple([t.Integer, t.Integer]), t.Integer)),
+        #("parse_int", t.Function(t.Binary, t.Native("Integer"))),
+        #(
+          "add",
+          t.Function(
+            t.Tuple([t.Native("Integer"), t.Native("Integer")]),
+            t.Native("Integer"),
+          ),
+        ),
         #(
           "compare",
           t.Function(
-            t.Tuple([t.Integer, t.Integer]),
+            t.Tuple([t.Native("Integer"), t.Native("Integer")]),
             t.Function(
               t.Row(
                 [
