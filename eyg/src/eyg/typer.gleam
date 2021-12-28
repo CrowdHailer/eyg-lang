@@ -565,8 +565,8 @@ pub fn infer(
       #(expression, typer)
     }
     e.Provider(config, generator) -> {
-      let typer = case generator == ast.generate_hole {
-        True ->
+      let typer = case generator {
+        e.Hole ->
           Typer(
             ..typer,
             inconsistencies: [
@@ -574,7 +574,7 @@ pub fn infer(
               ..typer.inconsistencies
             ],
           )
-        False -> typer
+        _ -> typer
       }
       let expression = #(meta(Ok(expected)), e.Provider(config, generator))
       #(expression, typer)

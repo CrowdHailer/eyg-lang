@@ -47,10 +47,3 @@ fn format(config, hole) {
     }
   }
 }
-
-pub fn from_name(name) {
-  case name {
-    "format" -> #(Nil, e.Provider("", format))
-    "env" | _ -> #(Nil, e.Provider("", env_provider))
-  }
-}

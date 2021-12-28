@@ -1,6 +1,25 @@
 import eyg/typer/monotype as t
 import eyg/ast/pattern.{Pattern}
 
+pub type Generator {
+  Hole
+  // Format
+  Loader
+}
+
+pub fn generator_to_string(generator) {
+  case generator {
+    Hole -> "Hole"
+  }
+}
+
+pub fn generator_from_string(str) {
+  case str {
+    "Hole" -> Hole
+  }
+}
+
+// provider implementations to not create loop
 pub type Node(m) {
   Binary(value: String)
   Tuple(elements: List(Expression(m)))
@@ -9,7 +28,7 @@ pub type Node(m) {
   Let(pattern: Pattern, value: Expression(m), then: Expression(m))
   Function(pattern: Pattern, body: Expression(m))
   Call(function: Expression(m), with: Expression(m))
-  Provider(config: String, generator: fn(String, t.Monotype) -> Expression(Nil))
+  Provider(config: String, generator: Generator)
 }
 
 pub type Expression(m) =

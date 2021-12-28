@@ -36,17 +36,11 @@ pub fn provider(config, generator) {
   #(Nil, e.Provider(config, generator))
 }
 
-pub fn generate_hole(_config, _type) {
-  binary(
-    "this is assumed to never be called, just a flag for implementing holes as a provider",
-  )
-}
-
 pub fn hole() {
-  provider("", generate_hole)
+  provider("", e.Hole)
 }
 
 // can't use this in guards
 pub fn is_hole(generator) {
-  generator == generate_hole
+  generator == e.Hole
 }

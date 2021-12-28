@@ -168,8 +168,6 @@ fn render_pattern(pattern, state) {
 }
 
 pub fn render(tree, state) {
-  let hole_func = ast.generate_hole
-
   let #(context, tree) = tree
   case tree {
     // TODO escape
@@ -239,9 +237,7 @@ pub fn render(tree, state) {
       squash(function, with)
       |> wrap_return(state)
     }
-    e.Provider("", g) if g == hole_func -> [
-      "(() => {throw 'Reached todo in the code'})()",
-    ]
+    e.Provider("", e.Hole) -> ["(() => {throw 'Reached todo in the code'})()"]
     x -> {
       io.debug(x)
       todo("handle this case")

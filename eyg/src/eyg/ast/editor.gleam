@@ -1008,10 +1008,8 @@ fn wrap_assignment(tree, position) {
 }
 
 fn create_binary(tree, position) {
-  let hole_func = ast.generate_hole
-
   case get_element(tree, position) {
-    Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
+    Expression(#(_, e.Provider(_, e.Hole))) -> {
       let new = ast.binary("")
       #(Some(replace_expression(tree, position, new)), position, Draft(""))
     }
@@ -1022,9 +1020,8 @@ fn create_binary(tree, position) {
 fn wrap_tuple(tree, position) {
   let target = get_element(tree, position)
   // TODO don't wrap multi line terms
-  let hole_func = ast.generate_hole
   case target {
-    Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
+    Expression(#(_, e.Provider(_, e.Hole))) -> {
       let new = ast.tuple_([])
       #(replace_expression(tree, position, new), position)
     }
@@ -1046,10 +1043,8 @@ fn wrap_tuple(tree, position) {
 }
 
 fn wrap_row(tree, position) {
-  let hole_func = ast.generate_hole
-
   case get_element(tree, position) {
-    Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
+    Expression(#(_, e.Provider(_, e.Hole))) -> {
       let new = ast.row([])
       #(Some(replace_expression(tree, position, new)), position, Command)
     }
@@ -1168,14 +1163,13 @@ fn call_with(tree, position) {
 }
 
 fn delete(tree, position) {
-  let hole_func = ast.generate_hole
   case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, then))) -> #(
       Some(replace_expression(tree, position, untype(then))),
       position,
       Command,
     )
-    Expression(#(_, e.Provider(_, g))) if g == hole_func ->
+    Expression(#(_, e.Provider(_, e.Hole))) ->
       case parent_path(position) {
         Some(#(p_path, cursor)) ->
           case get_element(tree, p_path) {
