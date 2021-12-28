@@ -13,30 +13,23 @@ pub type State {
   )
 }
 
-pub fn next_unbound(state) {
-  let State(next_unbound: i, ..) = state
-  let state = State(..state, next_unbound: i + 1)
-  #(i, state)
-}
-
 pub type Polytype {
   Polytype(forall: List(Int), monotype: t.Monotype)
 }
 
 // take in an i for the offset
 // is there a name for the unification/constraints
-pub fn instantiate(polytype, typer) {
+pub fn instantiate(polytype, next_unbound) {
   let Polytype(forall, monotype) = polytype
-  do_instantiate(forall, monotype, typer)
+  do_instantiate(forall, monotype, next_unbound)
 }
 
-fn do_instantiate(forall, monotype, typer) {
+fn do_instantiate(forall, monotype, next_unbound) {
   case forall {
-    [] -> #(monotype, typer)
+    [] -> #(monotype, next_unbound)
     [variable, ..forall] -> {
-      let #(replacement, typer) = next_unbound(typer)
-      let monotype = replace_variable(monotype, variable, replacement)
-      do_instantiate(forall, monotype, typer)
+      let monotype = replace_variable(monotype, variable, next_unbound)
+      do_instantiate(forall, monotype, next_unbound + 1)
     }
   }
 }
@@ -76,7 +69,6 @@ pub fn replace_variable(monotype, x, y) {
 pub fn generalise(monotype, variables) {
   case monotype {
     t.Function(_from, _to) -> {
-      // let State(variables: variables, ..) = scope
       let in_type = free_variables_in_monotype(monotype)
       let in_scope = free_variables_in_scope(variables)
       Polytype(difference(in_type, in_scope), monotype)

@@ -102,6 +102,12 @@ fn do_occurs_in(i, b) {
   }
 }
 
+fn next_unbound(state) {
+  let State(next_unbound: i, ..) = state
+  let state = State(..state, next_unbound: i + 1)
+  #(i, state)
+}
+
 // monotype function??
 // This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
 // next unbound inside mono can be integer and unbound(i) outside
@@ -137,7 +143,7 @@ pub fn unify(expected, given, state) {
         any, t.Unbound(i) -> Ok(add_substitution(i, any, typer))
         t.Row(expected, expected_extra), t.Row(given, given_extra) -> {
           let #(expected, given, shared) = group_shared(expected, given)
-          let #(x, typer) = polytype.next_unbound(typer)
+          let #(x, typer) = next_unbound(typer)
           try typer = case given, expected_extra {
             [], _ -> Ok(typer)
             only, Some(i) ->
@@ -196,7 +202,13 @@ fn do_group_shared(left, right, only_left, shared) {
 fn get_variable(label, typer, scope) {
   let Scope(variables: variables, ..) = scope
   case list.key_find(variables, label) {
-    Ok(polytype) -> Ok(polytype.instantiate(polytype, typer))
+    Ok(polytype) -> {
+      let State(next_unbound: next_unbound, ..) = typer
+      let #(monotype, next_unbound) =
+        polytype.instantiate(polytype, next_unbound)
+      let typer = State(..typer, next_unbound: next_unbound)
+      Ok(#(monotype, typer))
+    }
     Error(Nil) -> Error(#(UnknownVariable(label), typer))
   }
 }
@@ -239,12 +251,12 @@ fn ones_with_real_keys(elements, done) {
 fn pattern_type(pattern, typer) {
   case pattern {
     p.Discard -> {
-      let #(x, typer) = polytype.next_unbound(typer)
+      let #(x, typer) = next_unbound(typer)
       let type_var = t.Unbound(x)
       #(type_var, [], typer)
     }
     p.Variable(label) -> {
-      let #(x, typer) = polytype.next_unbound(typer)
+      let #(x, typer) = next_unbound(typer)
       let type_var = t.Unbound(x)
       #(type_var, [#(label, type_var)], typer)
     }
@@ -260,7 +272,7 @@ fn pattern_type(pattern, typer) {
         let #(#(name, _assignment), type_) = named_field
         #(name, type_)
       }
-      let #(x, typer) = polytype.next_unbound(typer)
+      let #(x, typer) = next_unbound(typer)
       let expected = t.Row(list.map(fields, extract_field_types), Some(x))
       let extract_scope_variables = fn(x) {
         let #(#(_name, assignment), type_) = x
@@ -318,7 +330,7 @@ fn pairs_second(pair: #(a, b)) -> b {
 }
 
 fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype), State) {
-  let #(x, typer) = polytype.next_unbound(typer)
+  let #(x, typer) = next_unbound(typer)
   let type_ = t.Unbound(x)
   #(#(thing, type_), typer)
 }
@@ -350,7 +362,7 @@ pub fn infer_unconstrained(expression) {
       variables: [#("equal", equal_fn()), #("harness", harness.string())],
       path: path.root(),
     )
-  let #(x, typer) = polytype.next_unbound(typer)
+  let #(x, typer) = next_unbound(typer)
   let expected = t.Unbound(x)
   infer(expression, expected, #(typer, scope))
 }
@@ -449,7 +461,7 @@ pub fn infer(
       let #(value, state) = case pattern, value {
         p.Variable(label), #(_, e.Function(pattern, body)) -> {
           let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
-          let #(y, typer) = polytype.next_unbound(typer)
+          let #(y, typer) = next_unbound(typer)
           let return_type = t.Unbound(y)
           let given = t.Function(arg_type, return_type)
           // expected is value of let here don't unify that
@@ -515,7 +527,7 @@ pub fn infer(
     }
     e.Function(pattern, body) -> {
       let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
-      let #(y, typer) = polytype.next_unbound(typer)
+      let #(y, typer) = next_unbound(typer)
       let return_type = t.Unbound(y)
       let given = t.Function(arg_type, return_type)
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
@@ -538,7 +550,7 @@ pub fn infer(
       #(#(meta(type_), e.Function(pattern, return)), typer)
     }
     e.Call(function, with) -> {
-      let #(x, typer) = polytype.next_unbound(typer)
+      let #(x, typer) = next_unbound(typer)
       let arg_type = t.Unbound(x)
       let expected_function = t.Function(arg_type, expected)
       let #(function, typer) =
