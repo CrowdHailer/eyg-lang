@@ -342,8 +342,6 @@ fn handle_transformation(
     "j", True -> command(drag_down(tree, position))
     "k", True -> command(drag_up(tree, position))
     "b", False -> create_binary(tree, position)
-    // z for zero bad
-    "z", False -> create_integer(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
     "r", False -> wrap_row(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
@@ -405,10 +403,10 @@ fn decrease_selection(tree, position) {
         Draft(""),
       )
     }
-    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Integer(_))) | Expression(#(
+    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) | Expression(#(
       _,
-      e.Variable(_),
-    )) | Expression(#(_, e.Provider(_, _))) -> #(None, position, Command)
+      e.Provider(_, _),
+    )) -> #(None, position, Command)
     Expression(_) -> #(None, inner, Command)
     RowField(_, _) -> #(None, inner, Command)
     Pattern(p.Tuple([]), _) -> #(
@@ -1016,20 +1014,6 @@ fn create_binary(tree, position) {
     Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
       let new = ast.binary("")
       #(Some(replace_expression(tree, position, new)), position, Draft(""))
-    }
-    _ -> #(None, position, Command)
-  }
-}
-
-fn create_integer(tree, position) {
-  let hole_func = ast.generate_hole
-
-  case get_element(tree, position) {
-    Expression(#(_, e.Provider(_, g))) if g == hole_func -> {
-      // TODO real number
-      // TODO handle draft could still be draft with type integer?
-      let new = ast.integer(500)
-      #(Some(replace_expression(tree, position, new)), position, Command)
     }
     _ -> #(None, position, Command)
   }

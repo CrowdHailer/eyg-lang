@@ -11,7 +11,6 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import harness/harness
 
-// Context/typer
 pub type Reason {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(label: String)
@@ -100,8 +99,8 @@ fn do_occurs_in(i, b) {
   case b {
     t.Unbound(j) if i == j -> True
     t.Unbound(_) -> False
+    t.Native(_) -> False
     t.Binary -> False
-    t.Integer -> False
     t.Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
     t.Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
     t.Row(fields, _) ->
@@ -132,8 +131,8 @@ pub fn unify(expected, given, state) {
     True -> Ok(typer)
     False ->
       case expected, given {
+        t.Native(_), t.Native(_) -> Ok(typer)
         t.Binary, t.Binary -> Ok(typer)
-        t.Integer, t.Integer -> Ok(typer)
         t.Tuple(expected), t.Tuple(given) ->
           case list.zip(expected, given) {
             Error(#(expected, given)) ->
@@ -389,11 +388,6 @@ pub fn infer(
     e.Binary(value) -> {
       let #(type_, typer) = do_unify(expected, t.Binary, #(typer, scope))
       let expression = #(meta(type_), e.Binary(value))
-      #(expression, typer)
-    }
-    e.Integer(value) -> {
-      let #(type_, typer) = do_unify(expected, t.Integer, #(typer, scope))
-      let expression = #(meta(type_), e.Integer(value))
       #(expression, typer)
     }
     e.Tuple(elements) -> {

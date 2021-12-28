@@ -8,10 +8,6 @@ pub fn binary(value) {
   #(Nil, e.Binary(value))
 }
 
-pub fn integer(value) {
-  #(Nil, e.Integer(value))
-}
-
 pub fn call(function, with) {
   #(Nil, e.Call(function, with))
 }

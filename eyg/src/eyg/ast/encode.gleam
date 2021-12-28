@@ -76,8 +76,6 @@ pub fn to_json(ast) {
   case expression {
     e.Binary(value) ->
       object([#("node", string("Binary")), #("value", string(value))])
-    e.Integer(value) ->
-      object([#("node", string("Integer")), #("value", integer(value))])
     e.Tuple(elements) ->
       object([
         #("node", string("Tuple")),
@@ -131,10 +129,6 @@ fn assert_string(value: JSON) -> String {
   unsafe_coerce(value)
 }
 
-fn assert_integer(value: JSON) -> Int {
-  unsafe_coerce(value)
-}
-
 external fn from_array(value: JSON) -> List(JSON) =
   "../../harness.js" "from_array"
 
@@ -145,10 +139,6 @@ pub fn from_json(json: JSON) {
     "Binary" -> {
       let [#("value", value)] = rest
       ast.binary(assert_string(value))
-    }
-    "Integer" -> {
-      let [#("value", value)] = rest
-      ast.integer(assert_integer(value))
     }
     "Tuple" -> {
       let [#("elements", elements)] = rest
