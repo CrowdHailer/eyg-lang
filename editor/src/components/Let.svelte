@@ -34,8 +34,9 @@
         <Expression expression={value} />
       </Indent>
     {:else}
-      <!-- TODO have a position one marker so it is clickable -->
-      <span class="text-gray-500">Hidden</span>
+      <span class="text-gray-500" data-editor="{Display.marker(metadata)},1"
+        >Hidden</span
+      >
     {/if}
   {:else}
     <Expression expression={value} />
