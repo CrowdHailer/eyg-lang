@@ -6,14 +6,14 @@ import eyg/ast/pattern as p
 import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype as t
 import eyg/typer/monotype.{resolve}
-import eyg/typer/polytype.{State}
+import eyg/typer/polytype
 
 pub fn type_bound_function_test() {
   let typer = init()
   let scope = typer.root_scope([])
   let untyped = ast.function(p.Tuple([]), ast.binary(""))
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)
   let t.Function(t.Tuple([]), t.Binary) = resolve(type_, substitutions)
 }
@@ -23,7 +23,7 @@ pub fn generic_function_test() {
   let scope = typer.root_scope([])
   let untyped = ast.function(p.Variable("x"), ast.variable("x"))
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)
   let t.Function(t.Unbound(a), t.Unbound(b)) = resolve(type_, substitutions)
   let True = a == b
@@ -35,7 +35,7 @@ pub fn call_function_test() {
   let untyped =
     ast.call(ast.function(p.Tuple([]), ast.binary("")), ast.tuple_([]))
   let #(typed, typer) = infer(untyped, t.Tuple([]), #(typer, scope))
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)
   let t.Tuple([]) = resolve(type_, substitutions)
 }
@@ -49,7 +49,7 @@ pub fn call_generic_test() {
       ast.tuple_([]),
     )
   let #(typed, typer) = infer(untyped, t.Tuple([]), #(typer, scope))
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)
   let t.Tuple([]) = resolve(type_, substitutions)
 }
@@ -82,7 +82,7 @@ pub fn reuse_generic_function_test() {
     )
   let #(typed, typer) =
     infer(untyped, t.Tuple([t.Tuple([]), t.Binary]), #(typer, scope))
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)
   let t.Tuple([t.Tuple([]), t.Binary]) = resolve(type_, substitutions)
 }
@@ -99,7 +99,7 @@ pub fn reuse_generic_function_test() {
 //   // let untyped = ast.let_(p.Variable("last"), last(), ast.variable("last"))
 //   let untyped = ast.hole()
 //   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-//   let State(substitutions: substitutions, inconsistencies: i, ..) = typer
+//   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
 //   let Ok(type_) = get_type(typed)
 //   let t.Function(t.Tuple([x, y]), z) = resolve(type_, substitutions)
@@ -133,7 +133,7 @@ pub fn reuse_generic_function_test() {
 //       ),
 //     )
 //   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-//   let State(substitutions: substitutions, inconsistencies: i, ..) = typer
+//   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
 //   let Ok(type_) = get_type(typed)
 //   let t.Binary = resolve(type_, substitutions)
@@ -144,7 +144,7 @@ pub fn reuse_generic_function_test() {
 //       ast.call(ast.variable("last"), ast.tuple_([empty(), ast.binary("")])),
 //     )
 //   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-//   let State(substitutions: substitutions, inconsistencies: i, ..) = typer
+//   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
 //   let Ok(type_) = get_type(typed)
 //   let t.Binary = resolve(type_, substitutions)
@@ -169,7 +169,7 @@ pub fn reuse_generic_function_test() {
 //       ast.tuple_([one(one(one(one(empty())))), empty()]),
 //     )
 //   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-//   let State(substitutions: substitutions, inconsistencies: i, ..) = typer
+//   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
 //   let #(_, e.Call(_, #(_, e.Tuple([l, r])))) = typed
 //   let Ok(l_type) = get_type(l)

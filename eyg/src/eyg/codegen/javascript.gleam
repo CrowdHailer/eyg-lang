@@ -6,7 +6,6 @@ import gleam/string
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/typer/polytype.{State}
 import eyg/typer
 import eyg/codegen/utilities.{
   indent, squash, wrap_lines, wrap_single_or_multiline,
@@ -19,7 +18,7 @@ pub type Generator {
     in_tail: Bool,
     scope: List(String),
     // TODO rename as typer
-    typer: State,
+    typer: typer.Typer,
     self: Option(String),
   )
 }

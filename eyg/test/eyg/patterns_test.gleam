@@ -5,7 +5,7 @@ import eyg/ast/pattern
 import eyg/ast/expression
 import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype as t
-import eyg/typer/polytype.{State}
+import eyg/typer/polytype
 
 // This is proablbly better called assignment tests, unless it grows too big and patterns should be separate
 pub fn variable_of_expected_type_test() {
@@ -75,7 +75,7 @@ pub fn matched_expected_tuple_test() {
   let #(typed, typer) = infer(untyped, t.Binary, state)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(value)
   let t.Tuple([t.Binary]) = t.resolve(type_, substitutions)
 }
@@ -119,7 +119,7 @@ pub fn matched_expected_row_test() {
   let #(typed, typer) = infer(untyped, t.Binary, state)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(value)
   let t.Row([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
 }
@@ -134,7 +134,7 @@ pub fn expected_a_row_test() {
   let #(typed, typer) = infer(untyped, t.Binary, state)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Error(reason) = get_type(value)
   let typer.UnmatchedTypes(t.Row(_, _), t.Binary) = reason
 }
@@ -153,7 +153,7 @@ pub fn matched_expected_row_with_additional_fields_test() {
   let #(typed, typer) = infer(untyped, t.Binary, state)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(value)
   let t.Row([#("k", t.Binary), _], _) = t.resolve(type_, substitutions)
 }
@@ -169,7 +169,7 @@ pub fn grow_expected_fields_in_row_test() {
   let #(typed, typer) = infer(untyped, t.Binary, state)
   let Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
-  let State(substitutions: substitutions, ..) = typer
+  let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(value)
   let t.Row([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
 }

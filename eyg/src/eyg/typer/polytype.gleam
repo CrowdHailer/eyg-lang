@@ -3,16 +3,6 @@ import gleam/option.{None, Some}
 import gleam/list
 import eyg/typer/monotype as t
 
-// TODO move to typer but it needs to bring the instantiate function otherwise circular dependencies.
-pub type State {
-  State(
-    next_unbound: Int,
-    substitutions: List(#(Int, t.Monotype)),
-    // CAN'T hold onto typer.Reason circular dependency
-    inconsistencies: List(#(List(Int), String)),
-  )
-}
-
 pub type Polytype {
   Polytype(forall: List(Int), monotype: t.Monotype)
 }

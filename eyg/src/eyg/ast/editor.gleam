@@ -11,7 +11,7 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
-import eyg/typer/polytype.{State}
+import eyg/typer/polytype
 import eyg/codegen/javascript
 import standard/example
 import eyg/editor/display
@@ -25,7 +25,7 @@ pub type Mode {
 pub type Editor {
   Editor(
     tree: e.Expression(Metadata),
-    typer: State,
+    typer: typer.Typer,
     selection: Option(List(Int)),
     mode: Mode,
   )
@@ -69,7 +69,7 @@ pub fn in_scope(editor) {
   }
 }
 
-fn expression_type(expression: e.Expression(Metadata), typer: polytype.State) {
+fn expression_type(expression: e.Expression(Metadata), typer: typer.Typer) {
   let #(metadata, _) = expression
   case metadata.type_ {
     Ok(t) -> #(

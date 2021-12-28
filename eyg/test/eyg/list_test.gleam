@@ -8,7 +8,6 @@ import eyg/ast/pattern as p
 import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype as t
 import eyg/typer/monotype.{resolve}
-import eyg/typer/polytype.{State}
 import eyg/codegen_test
 
 fn empty() {
@@ -107,7 +106,7 @@ pub fn list_equality_test() {
   let typer = init()
   let state = #(typer, scope)
   let #(typed, typer) = infer(untyped, t.Unbound(-1), state)
-  let State(substitutions: substitutions, inconsistencies: i, ..) = typer
+  let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
   let [] = i
   let x = typed
   let Ok(t) = get_type(x)

@@ -8,7 +8,7 @@ import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
-import eyg/typer/polytype.{State}
+import eyg/typer/polytype
 import harness/harness
 
 // Context/typer
@@ -31,6 +31,15 @@ pub type Scope {
 pub fn child(scope, i) {
   let Scope(path: path, ..) = scope
   Scope(..scope, path: path.append(path, i))
+}
+
+pub type Typer {
+  Typer(
+    next_unbound: Int,
+    substitutions: List(#(Int, t.Monotype)),
+    // CAN'T hold onto typer.Reason circular dependency
+    inconsistencies: List(#(List(Int), String)),
+  )
 }
 
 // TODO put the self name in here
@@ -65,13 +74,13 @@ pub fn reason_to_string(reason) {
 }
 
 pub fn init() {
-  State(0, [], [])
+  Typer(0, [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
-  let State(substitutions: substitutions, ..) = typer
+  let Typer(substitutions: substitutions, ..) = typer
   let substitutions = [#(variable, resolves), ..substitutions]
-  State(..typer, substitutions: substitutions)
+  Typer(..typer, substitutions: substitutions)
 }
 
 fn occurs_in(a, b) {
@@ -103,8 +112,8 @@ fn do_occurs_in(i, b) {
 }
 
 fn next_unbound(state) {
-  let State(next_unbound: i, ..) = state
-  let state = State(..state, next_unbound: i + 1)
+  let Typer(next_unbound: i, ..) = state
+  let state = Typer(..state, next_unbound: i + 1)
   #(i, state)
 }
 
@@ -114,8 +123,8 @@ fn next_unbound(state) {
 pub fn unify(expected, given, state) {
   // Pass as tuple to make reduce functions easier to implement
   // scope path is not modified through unification
-  let #(typer, scope): #(State, Scope) = state
-  let State(substitutions: substitutions, ..) = typer
+  let #(typer, scope): #(Typer, Scope) = state
+  let Typer(substitutions: substitutions, ..) = typer
   let expected = t.resolve(expected, substitutions)
   let given = t.resolve(given, substitutions)
 
@@ -203,10 +212,10 @@ fn get_variable(label, typer, scope) {
   let Scope(variables: variables, ..) = scope
   case list.key_find(variables, label) {
     Ok(polytype) -> {
-      let State(next_unbound: next_unbound, ..) = typer
+      let Typer(next_unbound: next_unbound, ..) = typer
       let #(monotype, next_unbound) =
         polytype.instantiate(polytype, next_unbound)
-      let typer = State(..typer, next_unbound: next_unbound)
+      let typer = Typer(..typer, next_unbound: next_unbound)
       Ok(#(monotype, typer))
     }
     Error(Nil) -> Error(#(UnknownVariable(label), typer))
@@ -215,7 +224,7 @@ fn get_variable(label, typer, scope) {
 
 fn set_variable(variable, typer, scope) {
   let #(label, monotype) = variable
-  let State(substitutions: substitutions, ..) = typer
+  let Typer(substitutions: substitutions, ..) = typer
   let Scope(variables: variables, ..) = scope
   let polytype =
     polytype.generalise(t.resolve(monotype, substitutions), variables)
@@ -305,17 +314,17 @@ pub fn get_type(tree: e.Expression(Metadata)) -> Result(t.Monotype, Reason) {
 }
 
 fn do_unify(expected, given, state) {
-  let #(typer, scope): #(State, Scope) = state
+  let #(typer, scope): #(Typer, Scope) = state
   case unify(expected, given, state) {
     Ok(typer) -> #(Ok(expected), typer)
     // Don't think typer needs returning from unify?
     Error(#(reason, typer)) -> {
-      let State(inconsistencies: inconsistencies, ..) = typer
+      let Typer(inconsistencies: inconsistencies, ..) = typer
       let inconsistencies = [
         #(scope.path, reason_to_string(reason)),
         ..typer.inconsistencies
       ]
-      let typer = State(..typer, inconsistencies: inconsistencies)
+      let typer = Typer(..typer, inconsistencies: inconsistencies)
       #(Error(reason), typer)
     }
   }
@@ -329,7 +338,7 @@ fn pairs_second(pair: #(a, b)) -> b {
   pair.1
 }
 
-fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype), State) {
+fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype), Typer) {
   let #(x, typer) = next_unbound(typer)
   let type_ = t.Unbound(x)
   #(#(thing, type_), typer)
@@ -370,9 +379,8 @@ pub fn infer_unconstrained(expression) {
 pub fn infer(
   expression: e.Expression(Nil),
   expected: t.Monotype,
-  // TODO rename State Typer
-  state: #(State, Scope),
-) -> #(e.Expression(Metadata), State) {
+  state: #(Typer, Scope),
+) -> #(e.Expression(Metadata), Typer) {
   // return all context so more info can be added later
   let #(_, tree) = expression
   let #(typer, scope) = state
@@ -430,7 +438,7 @@ pub fn infer(
           fn(pair, stz) {
             let #(tz, i) = stz
             let #(#(name, value), expected) = pair
-            // let tz = State(..tz, location: path.append(path, i))
+            // let tz = Typer(..tz, location: path.append(path, i))
             let #(value, tz) =
               infer(value, expected, #(tz, child(child(scope, i), 1)))
             #(#(name, value), #(tz, i + 1))
@@ -445,12 +453,12 @@ pub fn infer(
       let #(type_, typer) = case get_variable(label, typer, scope) {
         Ok(#(given, typer)) -> do_unify(expected, given, #(typer, scope))
         Error(#(reason, _)) -> {
-          let State(inconsistencies: inconsistencies, ..) = typer
+          let Typer(inconsistencies: inconsistencies, ..) = typer
           let inconsistencies = [
             #(scope.path, reason_to_string(reason)),
             ..typer.inconsistencies
           ]
-          let typer = State(..typer, inconsistencies: inconsistencies)
+          let typer = Typer(..typer, inconsistencies: inconsistencies)
           #(Error(reason), typer)
         }
       }
@@ -563,7 +571,7 @@ pub fn infer(
     e.Provider(config, generator) -> {
       let typer = case generator == ast.generate_hole {
         True ->
-          State(
+          Typer(
             ..typer,
             inconsistencies: [
               #(scope.path, "todo: implementation missing"),
