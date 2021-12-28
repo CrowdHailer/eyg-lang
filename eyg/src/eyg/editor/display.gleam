@@ -233,3 +233,18 @@ pub fn display_unit_variant(display) {
   let selection = child_selection(selection, 0)
   let display = Display(position, selection, False)
 }
+
+pub fn for_provider_config(display) {
+  let Display(position: position, selection: selection, ..) = display
+  let position = path.append(position, 1)
+  let selection = child_selection(selection, 1)
+  let display = Display(position, selection, False)
+}
+
+pub fn for_provider_generator(generator, display) {
+  let Display(position: position, selection: selection, ..) = display
+  let position = path.append(position, 0)
+  let selection = child_selection(selection, 0)
+  let display = Display(position, selection, False)
+  #(e.generator_to_string(generator), display)
+}

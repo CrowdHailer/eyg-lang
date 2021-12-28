@@ -29,13 +29,19 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
+<!-- Definetly not all the typing rules we want work -->
+- let [run, state] = returned.reload.start(tree)
+- state = run([state, tree])
+
 - Call All Code program, not code it's made up of a tree.
 - Call parts of it routines. they are named functions that are returened callable as `bin foo args`
 - PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
+- write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
+
 
 - [ ] Switch Integer Type to Native/Platform with an Enum for possible values inside
 - [ ] Rebae Fsharp talk1hr9min taking types to make type providers moreuseful, we're already planning that
-
+- [ ] Select from for choosing type providers
 - [ ] Pin type, click and bump constraints to top
 - [ ] gleam 18 stdlib to js, json lib and dynamic now useful
 - [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
@@ -53,7 +59,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Fix the netlify deploy step
 - [ ] pass an io/console into each program so you can see the output of running them
 - [x] Escape in draft mode should be cancel changes not commit changes
-- [ ] hard coded providers
+- [x] hard coded providers
 - [ ] Step in on Tagged Unit -> Tagged Tuple
 - [x] hightlight specific error in top list as the cursor moved over it. Is cursor a bettor name for selection in the editor page
 - [x] Tab (Space) to Blanks/Errors (nice but not adding new capabilities)
@@ -61,7 +67,6 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] remove tabindex = -1, use position in editor
 - [ ] Syntax sugar for rows where name = variable like js shorthand (nice not functional)
 - [ ] dot syntax sugar (nice not functional)
-- [ ] dump other kinds of providers
 - [x] Fix tests
 - [x] example should use lets in binary module, call variable binary module.
 - [ ] Record rest of fields variable
@@ -82,7 +87,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [x] Fix saving changes to strings
 - [x] Need Blanks in tuple patterns, could just be option types
 - [x] Record types
-- [ ] rename hole as blank, typed hole in literature
+- [x] rename hole as blank, NO as typed hole in literature
 - [x] It should be possible to focus/unfocus on a blank
 - [x] Need a pattern blank
 - [x] delete should work on the blanks to clear any preset.

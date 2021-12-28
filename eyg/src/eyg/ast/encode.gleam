@@ -13,7 +13,7 @@ pub external fn json_to_string(JSON) -> String =
 pub external fn json_from_string(String) -> JSON =
   "" "JSON.parse"
 
-external fn unsafe_coerce(a) -> b =
+pub external fn unsafe_coerce(a) -> b =
   "../../harness.js" "identity"
 
 pub fn string(value: String) -> JSON {

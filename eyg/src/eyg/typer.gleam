@@ -219,7 +219,7 @@ fn get_variable(label, typer, scope) {
       let typer = Typer(..typer, next_unbound: next_unbound)
       Ok(#(monotype, typer))
     }
-    Error(Nil) -> Error(#(UnknownVariable(label), typer))
+    Error(Nil) -> Error(UnknownVariable(label))
   }
 }
 
@@ -434,7 +434,6 @@ pub fn infer(
           fn(pair, stz) {
             let #(tz, i) = stz
             let #(#(name, value), expected) = pair
-            // let tz = Typer(..tz, location: path.append(path, i))
             let #(value, tz) =
               infer(value, expected, #(tz, child(child(scope, i), 1)))
             #(#(name, value), #(tz, i + 1))
@@ -448,7 +447,7 @@ pub fn infer(
       // TODO separate lookup for instantiate, good for let rec
       let #(type_, typer) = case get_variable(label, typer, scope) {
         Ok(#(given, typer)) -> do_unify(expected, given, #(typer, scope))
-        Error(#(reason, _)) -> {
+        Error(reason) -> {
           let Typer(inconsistencies: inconsistencies, ..) = typer
           let inconsistencies = [
             #(scope.path, reason_to_string(reason)),

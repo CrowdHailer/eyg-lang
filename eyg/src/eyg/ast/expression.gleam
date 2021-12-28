@@ -10,17 +10,20 @@ pub type Generator {
 pub fn generator_to_string(generator) {
   case generator {
     Hole -> "Hole"
+    Loader -> "Loader"
   }
 }
 
 pub fn generator_from_string(str) {
   case str {
     "Hole" -> Hole
+    "Loader" -> Loader
   }
 }
 
 // provider implementations to not create loop
 pub type Node(m) {
+  Literal(internal: String)
   Binary(value: String)
   Tuple(elements: List(Expression(m)))
   Row(fields: List(#(String, Expression(m))))

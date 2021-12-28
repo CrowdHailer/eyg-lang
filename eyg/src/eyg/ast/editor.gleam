@@ -5,6 +5,7 @@ import gleam/option.{None, Option, Some}
 import gleam/order
 import gleam/string
 import eyg/ast
+import eyg/ast/provider
 import eyg/ast/encode
 import eyg/ast/path
 import eyg/ast/expression as e
@@ -302,9 +303,10 @@ pub type Element(a) {
   PatternField(Int, #(String, String))
   PatternKey(Int, String)
   PatternFieldBind(Int, String)
+  ProviderGenerator(e.Generator)
+  ProviderConfig(String)
 }
 
-// TODO write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 external fn untype(e.Expression(a)) -> e.Expression(Nil) =
   "../../harness.js" "identity"
 
@@ -346,6 +348,7 @@ fn handle_transformation(
     "r", False -> wrap_row(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
+    "p", False -> command(insert_provider(tree, position))
     "u", False -> command(unwrap(tree, position))
     // don't wrap in anything if modifies everything
     "c", False -> call(tree, position)
@@ -394,7 +397,6 @@ fn decrease_selection(tree, position) {
       let new = ast.tuple_([ast.hole()])
       #(Some(replace_expression(tree, position, new)), inner, Select(""))
     }
-    // TODO option of having a virtual node when you move down
     Expression(#(_, e.Row([]))) -> {
       let new = ast.row([#("", ast.hole())])
       #(
@@ -473,7 +475,7 @@ fn do_move_left(tree, selection, position) {
         None -> list.append(position, selection)
         Some(inner) -> list.flatten([position, [0], inner])
       }
-    e.Call(_, _), [1] -> path.append(position, 0)
+    e.Call(_, _), [1] | e.Provider(_, _), [1] -> path.append(position, 0)
     e.Tuple(elements), [i] ->
       case 0 <= i - 1 {
         True -> path.append(position, i - 1)
@@ -559,7 +561,7 @@ fn do_move_right(tree, selection, position) {
         None -> path.append(position, 1)
         Some(inner) -> list.flatten([position, [0], inner])
       }
-    e.Call(_, _), [0] -> path.append(position, 1)
+    e.Call(_, _), [0] | e.Provider(_, _), [0] -> path.append(position, 1)
     e.Tuple(elements), [i] ->
       case i + 1 < list.length(elements) {
         True -> path.append(position, i + 1)
@@ -603,7 +605,6 @@ fn move_right(tree, position) {
   do_move_right(tree, position, [])
 }
 
-// TODO not very sure how this works
 fn move_up(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, _))) ->
@@ -624,7 +625,6 @@ fn move_up(tree, position) {
   }
 }
 
-// TODO handle moving into blocks
 fn move_down(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> path.append(position, 2)
@@ -822,7 +822,6 @@ fn swap_elements(match, at) {
   }
 }
 
-// TODO I think draging nested items needs the full backtrace path
 fn drag_left(tree, position) {
   case closest(tree, position, match_compound) {
     None -> #(untype(tree), position)
@@ -1019,7 +1018,6 @@ fn create_binary(tree, position) {
 
 fn wrap_tuple(tree, position) {
   let target = get_element(tree, position)
-  // TODO don't wrap multi line terms
   case target {
     Expression(#(_, e.Provider(_, e.Hole))) -> {
       let new = ast.tuple_([])
@@ -1037,7 +1035,6 @@ fn wrap_tuple(tree, position) {
       replace_pattern(tree, position, p.Tuple([])),
       position,
     )
-    // TODO should be None not untype
     PatternElement(_, _) | Pattern(_, _) -> #(untype(tree), position)
   }
 }
@@ -1081,6 +1078,16 @@ fn wrap_function(tree, position) {
   }
 }
 
+fn insert_provider(tree, position) {
+  case get_element(tree, position) {
+    Expression(expression) -> {
+      let new = ast.provider("", e.Loader)
+      #(replace_expression(tree, position, new), path.append(position, 0))
+    }
+    _ -> #(untype(tree), position)
+  }
+}
+
 // not very useful because we have to path all 3 elements out
 // fn parent_element(tree, position) {
 //   case parent_path(position) {
@@ -1096,6 +1103,12 @@ fn unwrap(tree, position) {
       case parent, index {
         Expression(#(_, e.Tuple(elements))), _ -> {
           let [replacement, .._] = list.drop(elements, index)
+          let modified =
+            replace_expression(tree, parent_position, untype(replacement))
+          #(modified, parent_position)
+        }
+        Expression(#(_, e.Row(fields))), _ -> {
+          let [#(_, replacement), .._] = list.drop(fields, index)
           let modified =
             replace_expression(tree, parent_position, untype(replacement))
           #(modified, parent_position)
@@ -1120,16 +1133,12 @@ fn unwrap(tree, position) {
         Expression(_), _ -> unwrap(tree, position)
         Pattern(p.Tuple(elements), _), _ -> {
           let [label, .._] = list.drop(elements, index)
-          assert Some(#(parent_position, _)) = parent_path(parent_position)
-          assert Expression(#(_, e.Let(_, value, then))) =
-            get_element(tree, parent_position)
           let pattern = case label {
             Some(label) -> p.Variable(label)
             None -> p.Discard
           }
-          let new = ast.let_(pattern, untype(value), untype(then))
-          let modified = replace_expression(tree, parent_position, new)
-          #(modified, list.append(parent_position, [0]))
+          let modified = replace_pattern(tree, parent_position, pattern)
+          #(modified, parent_position)
         }
       }
     }
@@ -1302,7 +1311,6 @@ fn delete(tree, position) {
 fn draft(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Binary(content))) -> #(None, position, Draft(content))
-    // TODO handle integer
     Pattern(p.Discard, _) -> #(None, position, Draft(""))
     Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
     PatternElement(_, None) -> #(None, position, Draft(""))
@@ -1439,6 +1447,8 @@ pub fn get_element(tree, position) {
     #(_, e.Function(_, body)), [1, ..rest] -> get_element(body, rest)
     #(_, e.Call(func, _)), [0, ..rest] -> get_element(func, rest)
     #(_, e.Call(_, with)), [1, ..rest] -> get_element(with, rest)
+    #(_, e.Provider(_, generator)), [0] -> ProviderGenerator(generator)
+    #(_, e.Provider(config, _)), [1] -> ProviderConfig(config)
     _, _ -> {
       io.debug(tree)
       io.debug(position)

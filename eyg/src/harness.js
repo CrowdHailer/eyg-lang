@@ -1,4 +1,6 @@
 import * as Gleam from "./gleam.js"
+import * as Option from "./gleam/option"
+import * as Monotype from "./eyg/typer/monotype"
 
 function deepEqual(x, y) {
   if (isObject(x) && isObject(y)) {
@@ -86,6 +88,10 @@ export function run(code) {
     }
   }
   foo(harness)
+  let T = Monotype
+  foo(T)
+  foo(Gleam)
+  foo(Option)
   return eval(code);
 }
 
