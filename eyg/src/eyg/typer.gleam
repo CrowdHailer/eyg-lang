@@ -133,6 +133,7 @@ pub fn unify(expected, given, state) {
       case expected, given {
         t.Native(e), t.Native(g) if e == g -> Ok(typer)
         t.Native(_), t.Native(_) ->
+          // The typer is passed because some constrains should end up in typer i.e. if some values in Tuple are Ok
           Error(#(UnmatchedTypes(expected, given), typer))
         t.Binary, t.Binary -> Ok(typer)
         t.Tuple(expected), t.Tuple(given) ->
