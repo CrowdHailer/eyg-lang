@@ -3,13 +3,16 @@ import eyg/ast/pattern.{Pattern}
 
 pub type Generator {
   Hole
-  // Format
+  Env
+  Format
   Loader
 }
 
 pub fn generator_to_string(generator) {
   case generator {
     Hole -> "Hole"
+    Env -> "Env"
+    Format -> "Format"
     Loader -> "Loader"
   }
 }
@@ -17,8 +20,14 @@ pub fn generator_to_string(generator) {
 pub fn generator_from_string(str) {
   case str {
     "Hole" -> Hole
+    "Env" -> Env
+    "Format" -> Format
     "Loader" -> Loader
   }
+}
+
+pub fn all_generators() {
+  [Hole, Env, Format, Loader]
 }
 
 // provider implementations to not create loop

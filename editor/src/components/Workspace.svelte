@@ -3,6 +3,8 @@
   import * as Display from "../gen/eyg/editor/display";
 
   import Expression from "./Expression.svelte";
+  import Select from "./Select.svelte";
+
   import * as Editor from "../gen/eyg/ast/editor";
   import * as Eyg from "../gen/eyg";
   import * as Ast from "../gen/eyg/ast";
@@ -70,6 +72,7 @@
   }
 
   function handleKeydown(event) {
+    console.log("outer");
     let tmp;
     try {
       if (event.metaKey) {
@@ -105,25 +108,6 @@
     }
   }
 
-  function handleSelectKeydown(event) {
-    try {
-      if (event.metaKey || event.key == "Escape") {
-        return true;
-      }
-      if (event.key == "Enter" || event.key == " ") {
-        let variable = Editor.in_scope(editor).toArray()[0];
-        if (variable) {
-          editor = Editor.handle_click(editor, "v:" + variable);
-        }
-        updateFocus(editor);
-        event.preventDefault();
-      }
-      event.stopPropagation();
-    } catch (error) {
-      console.error("Caught", error);
-    }
-  }
-
   function handleChange(event) {
     try {
       editor = Editor.handle_change(editor, event.target.value);
@@ -137,6 +121,13 @@
   const CODE = "CODE";
   let page = HOME;
   updateFocus(editor);
+
+  function makeSelection(params) {
+    console.log(params, "Made");
+  }
+  function cancelSelection(params) {
+    console.log(params, "Cancel");
+  }
 </script>
 
 <!-- {JSON.stringify(editor.selection)} -->
@@ -206,26 +197,11 @@
             on:change={handleChange}
           />
         {:else if Editor.is_select(editor)}
-          <div on:keydown={handleSelectKeydown}>
-            <input
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="filter"
-              on:click={(e) => e.stopPropagation()}
-              type="text"
-              bind:value={editor.mode.filter}
-            />
-            <nav>
-              variables:
-              {#each Editor.in_scope(editor).toArray() as v, i}
-                <button
-                  class="m-1 p-1 bg-blue-100 rounded border-black"
-                  class:border={i == 0}
-                  data-editor="v:{v}">{v}</button
-                >
-              {/each}
-            </nav>
-          </div>
-        {/if}
+          <Select
+            choices={editor.mode.choices}
+            {makeSelection}
+            {cancelSelection}
+          />{/if}
       </div>
     </div>
   {/if}

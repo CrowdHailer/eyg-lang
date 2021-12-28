@@ -238,58 +238,65 @@ pub fn render(tree, state) {
       |> wrap_return(state)
     }
     e.Provider("", e.Hole) -> ["(() => {throw 'Reached todo in the code'})()"]
-    // Let's have a bunch of known functions for providers that you can toggle around on in provider land
     e.Provider(config, e.Loader) -> {
       let typer.Metadata(type_: Ok(expected), ..) = context
       let Generator(typer: typer, ..) = state
       let typer.Typer(substitutions: substitutions, ..) = typer
       let loader = t.resolve(expected, substitutions)
-      // expect function from ast to result
-      let t.Function(_from, result) = loader
-      let t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), out) =
-        result
-      // let tree = g(config, expected)
-      // The harness we run should make compile
-      // We also do do eval
-      // Back up have the code that does it in JS land
-      // widow.biz
-      // window.run state
-      // reloadable
-      // Move to compile with value
-      // Need an infer to specific value
-      // Return a thing that will call on func of the other in case of result
-      io.debug(usable)
-      [
-        "((ast) => {",
-        string.join(["  return window.compile(", t.literal(usable), ", ast)"]),
-        "})",
-      ]
-    }
-    // TODO better naming around all the scope here
-    // No variables makes sense, hygenic macros?
-    // path should probably be curret
-    // case typer.infer(
-    //   tree,
-    //   expected,
-    //   #(
-    //     typer,
-    //     typer.Scope(
-    //       path: [],
-    //       variables: [
-    //         #("compile", polytype.Polytype([-99], t.Unbound(-99))),
-    //       ],
-    //     ),
-    //   ),
-    // ) {
-    //   #(typed, typer.Typer(inconsistencies: [], ..)) -> render(typed, state)
-    //   #(typed, typer.Typer(inconsistencies: i, ..)) -> {
-    //     io.debug(i)
-    //     todo("could not infer")
-    //   }
-    // }
-    x -> {
-      io.debug(x)
-      todo("handle this case")
+      case loader {
+        t.Function(_from, result) ->
+          case result {
+            t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), out) -> {
+              io.debug(usable)
+              [
+                "((ast) => {",
+                string.join([
+                  "  return window.compile(",
+                  t.literal(usable),
+                  ", ast)",
+                ]),
+                "})",
+              ]
+            }
+            _ -> [
+              "(() => {throw 'Failed to build provider for ",
+              t.to_string(loader),
+              "'})()",
+            ]
+          }
+      }
     }
   }
+  // let tree = g(config, expected)
+  // The harness we run should make compile
+  // We also do do eval
+  // Back up have the code that does it in JS land
+  // widow.biz
+  // window.run state
+  // reloadable
+  // Move to compile with value
+  // Need an infer to specific value
+  // Return a thing that will call on func of the other in case of result
+  // TODO better naming around all the scope here
+  // No variables makes sense, hygenic macros?
+  // path should probably be curret
+  // case typer.infer(
+  //   tree,
+  //   expected,
+  //   #(
+  //     typer,
+  //     typer.Scope(
+  //       path: [],
+  //       variables: [
+  //         #("compile", polytype.Polytype([-99], t.Unbound(-99))),
+  //       ],
+  //     ),
+  //   ),
+  // ) {
+  //   #(typed, typer.Typer(inconsistencies: [], ..)) -> render(typed, state)
+  //   #(typed, typer.Typer(inconsistencies: i, ..)) -> {
+  //     io.debug(i)
+  //     todo("could not infer")
+  //   }
+  // }
 }

@@ -20,7 +20,7 @@ import eyg/editor/display
 pub type Mode {
   Command
   Draft(content: String)
-  Select(filter: String)
+  Select(choices: List(String))
 }
 
 pub type Editor {
@@ -50,23 +50,6 @@ pub fn is_select(editor) {
   case editor {
     Editor(mode: Select(_), ..) -> True
     _ -> False
-  }
-}
-
-pub fn in_scope(editor) {
-  let Editor(tree: tree, selection: selection, mode: Select(filter), ..) =
-    editor
-  case selection {
-    Some(path) ->
-      case get_element(tree, path) {
-        Expression(#(metadata, _)) -> {
-          let Metadata(scope: scope, ..) = metadata
-          list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
-          |> list.filter(string.starts_with(_, filter))
-        }
-        _ -> []
-      }
-    None -> []
   }
 }
 
@@ -164,14 +147,6 @@ pub fn handle_click(editor: Editor, target) {
       }
       Editor(..editor, selection: Some(path), mode: mode)
     }
-    ["v", label] -> {
-      let Some(path) = editor.selection
-      let untyped = replace_expression(editor.tree, path, ast.variable(label))
-      let #(typed, typer) = typer.infer_unconstrained(untyped)
-      Editor(..editor, tree: typed, typer: typer, mode: Command)
-    }
-
-    _ -> todo("Error: never should have this as a click option")
   }
 }
 
@@ -348,7 +323,7 @@ fn handle_transformation(
     "r", False -> wrap_row(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
-    "p", False -> command(insert_provider(tree, position))
+    "p", False -> insert_provider(tree, position)
     "u", False -> command(unwrap(tree, position))
     // don't wrap in anything if modifies everything
     "c", False -> call(tree, position)
@@ -395,7 +370,7 @@ fn decrease_selection(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Tuple([]))) -> {
       let new = ast.tuple_([ast.hole()])
-      #(Some(replace_expression(tree, position, new)), inner, Select(""))
+      #(Some(replace_expression(tree, position, new)), inner, Command)
     }
     Expression(#(_, e.Row([]))) -> {
       let new = ast.row([#("", ast.hole())])
@@ -691,7 +666,7 @@ fn insert_space(tree, position, offset) {
       #(
         Some(replace_expression(tree, position, new)),
         path.append(position, cursor),
-        Select(""),
+        Command,
       )
     }
     Some(#(position, cursor, RowExpression(fields))) -> {
@@ -1082,9 +1057,13 @@ fn insert_provider(tree, position) {
   case get_element(tree, position) {
     Expression(expression) -> {
       let new = ast.provider("", e.Loader)
-      #(replace_expression(tree, position, new), path.append(position, 0))
+      #(
+        Some(replace_expression(tree, position, new)),
+        path.append(position, 0),
+        Select(list.map(e.all_generators(), e.generator_to_string)),
+      )
     }
-    _ -> #(untype(tree), position)
+    _ -> #(None, position, Command)
   }
 }
 
@@ -1210,14 +1189,14 @@ fn delete(tree, position) {
                 Command,
               )
             }
-            _ -> #(None, position, Select(""))
+            _ -> #(None, position, Command)
           }
-        None -> #(None, position, Select(""))
+        None -> #(None, position, Command)
       }
     Expression(_) -> #(
       Some(replace_expression(tree, position, ast.hole())),
       position,
-      Select(""),
+      Command,
     )
     Pattern(_, _) -> #(
       Some(replace_pattern(tree, position, p.Discard)),
@@ -1304,7 +1283,6 @@ fn delete(tree, position) {
         Command,
       )
     }
-    _ -> todo("deleteee")
   }
 }
 
@@ -1326,7 +1304,12 @@ fn variable(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
-    Expression(_) -> #(None, position, Select(""))
+    Expression(#(metadata, _)) -> {
+      let Metadata(scope: scope, ..) = metadata
+      let variables =
+        list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
+      #(None, position, Select(variables))
+    }
     _ -> #(None, position, Command)
   }
 }
