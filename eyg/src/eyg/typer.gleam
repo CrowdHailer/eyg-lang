@@ -131,7 +131,9 @@ pub fn unify(expected, given, state) {
     True -> Ok(typer)
     False ->
       case expected, given {
-        t.Native(_), t.Native(_) -> Ok(typer)
+        t.Native(e), t.Native(g) if e == g -> Ok(typer)
+        t.Native(_), t.Native(_) ->
+          Error(#(UnmatchedTypes(expected, given), typer))
         t.Binary, t.Binary -> Ok(typer)
         t.Tuple(expected), t.Tuple(given) ->
           case list.zip(expected, given) {

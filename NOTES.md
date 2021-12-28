@@ -37,7 +37,6 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] gleam 18 stdlib to js, json lib and dynamic now useful
 - [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
 - [ ] Copy/paste
-- [ ] Do we even need Int in ast. just use parseint and have it as only a type??
 - [ ] All parse utf8 providers might do what we need here
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
