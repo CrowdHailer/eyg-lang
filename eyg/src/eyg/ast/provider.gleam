@@ -2,22 +2,20 @@ import gleam/io
 import gleam/list
 import gleam/option.{Some}
 import gleam/string
-import eyg/ast/expression.{
-  Binary, Call, Function, Let, Node, Provider, Row, Tuple, Variable,
-}
+import eyg/ast/expression as e
 import eyg/typer/monotype as t
-import eyg/ast/pattern
+import eyg/ast/pattern as p
 
 pub fn env_provider(_config, hole) {
   case hole {
     t.Row(fields, _) -> #(
       Nil,
-      Row(list.map(
+      e.Row(list.map(
         fields,
         fn(field) {
           case field {
-            #(name, t.Binary) -> #(name, #(Nil, Binary(name)))
-            #(name, _) -> #(name, #(Nil, Binary(name)))
+            #(name, t.Binary) -> #(name, #(Nil, e.Binary(name)))
+            #(name, _) -> #(name, #(Nil, e.Binary(name)))
           }
         },
       )),
@@ -27,20 +25,21 @@ pub fn env_provider(_config, hole) {
 
 fn format(config, hole) {
   case string.split(config, "{0}") {
-    [x] -> #(Nil, Function(pattern.Tuple([]), #(Nil, Binary(x))))
+    [x] -> #(Nil, e.Function(p.Tuple([]), #(Nil, e.Binary(x))))
     parts -> {
-      let parts = list.map(parts, Binary)
-      let parts = list.intersperse(parts, Variable("r0"))
+      let parts = list.map(parts, e.Binary)
+      let parts = list.intersperse(parts, e.Variable("r0"))
       let parts = list.map(parts, fn(x) { #(Nil, x) })
+      // TODO use ast helpers but circular
       #(
         Nil,
-        Function(
-          pattern.Tuple([Some("r0")]),
+        e.Function(
+          p.Tuple([Some("r0")]),
           #(
             Nil,
-            Call(
-              #(Nil, Variable("String.prototype.concat.call")),
-              #(Nil, Tuple(parts)),
+            e.Call(
+              #(Nil, e.Variable("String.prototype.concat.call")),
+              #(Nil, e.Tuple(parts)),
             ),
           ),
         ),
@@ -51,7 +50,7 @@ fn format(config, hole) {
 
 pub fn from_name(name) {
   case name {
-    "format" -> #(Nil, Provider("", format))
-    "env" | _ -> #(Nil, Provider("", env_provider))
+    "format" -> #(Nil, e.Provider("", format))
+    "env" | _ -> #(Nil, e.Provider("", env_provider))
   }
 }

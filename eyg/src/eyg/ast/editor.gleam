@@ -10,7 +10,7 @@ import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
-import eyg/typer/monotype
+import eyg/typer/monotype as t
 import eyg/typer/polytype.{State}
 import eyg/codegen/javascript
 import standard/example
@@ -74,8 +74,8 @@ fn expression_type(expression: e.Expression(Metadata), typer: polytype.State) {
   case metadata.type_ {
     Ok(t) -> #(
       False,
-      monotype.resolve(t, typer.substitutions)
-      |> monotype.to_string(),
+      t.resolve(t, typer.substitutions)
+      |> t.to_string(),
     )
     Error(reason) -> #(True, typer.reason_to_string(reason))
   }

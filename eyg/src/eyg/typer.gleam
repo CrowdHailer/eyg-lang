@@ -5,11 +5,9 @@ import gleam/option.{None, Some}
 import gleam/string
 import eyg/ast
 import eyg/ast/path
-import eyg/ast/expression.{
-  Binary, Call, Expression, Function, Integer, Let, Provider, Row, Tuple, Variable,
-}
-import eyg/ast/pattern
-import eyg/typer/monotype
+import eyg/ast/expression as e
+import eyg/ast/pattern as p
+import eyg/typer/monotype as t
 import eyg/typer/polytype.{State}
 import harness/harness
 
@@ -17,9 +15,9 @@ import harness/harness
 pub type Reason {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(label: String)
-  UnmatchedTypes(expected: monotype.Monotype, given: monotype.Monotype)
-  MissingFields(expected: List(#(String, monotype.Monotype)))
-  UnexpectedFields(expected: List(#(String, monotype.Monotype)))
+  UnmatchedTypes(expected: t.Monotype, given: t.Monotype)
+  MissingFields(expected: List(#(String, t.Monotype)))
+  UnexpectedFields(expected: List(#(String, t.Monotype)))
 }
 
 pub fn root_scope(variables) {
@@ -49,15 +47,15 @@ pub fn reason_to_string(reason) {
     UnmatchedTypes(expected, given) ->
       string.join([
         "Unmatched types expected ",
-        monotype.to_string(expected),
+        t.to_string(expected),
         " given ",
-        monotype.to_string(given),
+        t.to_string(given),
       ])
     MissingFields(expected) ->
       // TODO add type information
       [
         "Missing fields:",
-        ..list.map(expected, fn(x: #(String, monotype.Monotype)) { x.0 })
+        ..list.map(expected, fn(x: #(String, t.Monotype)) { x.0 })
         |> list.intersperse(", ")
       ]
       |> string.join
@@ -78,7 +76,7 @@ fn add_substitution(variable, resolves, typer) {
 
 fn occurs_in(a, b) {
   case a {
-    monotype.Unbound(i) ->
+    t.Unbound(i) ->
       case do_occurs_in(i, b) {
         True -> // TODO this very doesn't work
           // todo("Foo")
@@ -91,15 +89,15 @@ fn occurs_in(a, b) {
 
 fn do_occurs_in(i, b) {
   case b {
-    monotype.Unbound(j) if i == j -> True
-    monotype.Unbound(_) -> False
-    monotype.Binary -> False
-    monotype.Integer -> False
-    monotype.Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
-    monotype.Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
-    monotype.Row(fields, _) ->
+    t.Unbound(j) if i == j -> True
+    t.Unbound(_) -> False
+    t.Binary -> False
+    t.Integer -> False
+    t.Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
+    t.Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
+    t.Row(fields, _) ->
       fields
-      |> list.map(fn(x: #(String, monotype.Monotype)) { x.1 })
+      |> list.map(fn(x: #(String, t.Monotype)) { x.1 })
       |> list.any(do_occurs_in(i, _))
   }
 }
@@ -112,16 +110,16 @@ pub fn unify(expected, given, state) {
   // scope path is not modified through unification
   let #(typer, scope): #(State, Scope) = state
   let State(substitutions: substitutions, ..) = typer
-  let expected = monotype.resolve(expected, substitutions)
-  let given = monotype.resolve(given, substitutions)
+  let expected = t.resolve(expected, substitutions)
+  let given = t.resolve(given, substitutions)
 
   case occurs_in(expected, given) || occurs_in(given, expected) {
     True -> Ok(typer)
     False ->
       case expected, given {
-        monotype.Binary, monotype.Binary -> Ok(typer)
-        monotype.Integer, monotype.Integer -> Ok(typer)
-        monotype.Tuple(expected), monotype.Tuple(given) ->
+        t.Binary, t.Binary -> Ok(typer)
+        t.Integer, t.Integer -> Ok(typer)
+        t.Tuple(expected), t.Tuple(given) ->
           case list.zip(expected, given) {
             Error(#(expected, given)) ->
               Error(#(IncorrectArity(expected, given), typer))
@@ -135,21 +133,21 @@ pub fn unify(expected, given, state) {
                 },
               )
           }
-        monotype.Unbound(i), any -> Ok(add_substitution(i, any, typer))
-        any, monotype.Unbound(i) -> Ok(add_substitution(i, any, typer))
-        monotype.Row(expected, expected_extra), monotype.Row(given, given_extra) -> {
+        t.Unbound(i), any -> Ok(add_substitution(i, any, typer))
+        any, t.Unbound(i) -> Ok(add_substitution(i, any, typer))
+        t.Row(expected, expected_extra), t.Row(given, given_extra) -> {
           let #(expected, given, shared) = group_shared(expected, given)
           let #(x, typer) = polytype.next_unbound(typer)
           try typer = case given, expected_extra {
             [], _ -> Ok(typer)
             only, Some(i) ->
-              Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
+              Ok(add_substitution(i, t.Row(only, Some(x)), typer))
             only, None -> Error(#(UnexpectedFields(only), typer))
           }
           try typer = case expected, given_extra {
             [], _ -> Ok(typer)
             only, Some(i) ->
-              Ok(add_substitution(i, monotype.Row(only, Some(x)), typer))
+              Ok(add_substitution(i, t.Row(only, Some(x)), typer))
             only, None -> Error(#(MissingFields(only), typer))
           }
           list.try_fold(
@@ -161,7 +159,7 @@ pub fn unify(expected, given, state) {
             },
           )
         }
-        monotype.Function(expected_from, expected_return), monotype.Function(
+        t.Function(expected_from, expected_return), t.Function(
           given_from,
           given_return,
         ) -> {
@@ -208,7 +206,7 @@ fn set_variable(variable, typer, scope) {
   let State(substitutions: substitutions, ..) = typer
   let Scope(variables: variables, ..) = scope
   let polytype =
-    polytype.generalise(monotype.resolve(monotype, substitutions), variables)
+    polytype.generalise(t.resolve(monotype, substitutions), variables)
   let variables = [#(label, polytype), ..variables]
   Scope(..scope, variables: variables)
 }
@@ -240,31 +238,30 @@ fn ones_with_real_keys(elements, done) {
 
 fn pattern_type(pattern, typer) {
   case pattern {
-    pattern.Discard -> {
+    p.Discard -> {
       let #(x, typer) = polytype.next_unbound(typer)
-      let type_var = monotype.Unbound(x)
+      let type_var = t.Unbound(x)
       #(type_var, [], typer)
     }
-    pattern.Variable(label) -> {
+    p.Variable(label) -> {
       let #(x, typer) = polytype.next_unbound(typer)
-      let type_var = monotype.Unbound(x)
+      let type_var = t.Unbound(x)
       #(type_var, [#(label, type_var)], typer)
     }
-    pattern.Tuple(elements) -> {
+    p.Tuple(elements) -> {
       let #(elements, typer) = list.map_state(elements, typer, with_unbound)
-      let expected = monotype.Tuple(list.map(elements, pairs_second))
+      let expected = t.Tuple(list.map(elements, pairs_second))
       let elements = ones_with_real_keys(elements, [])
       #(expected, elements, typer)
     }
-    pattern.Row(fields) -> {
+    p.Row(fields) -> {
       let #(fields, typer) = list.map_state(fields, typer, with_unbound)
       let extract_field_types = fn(named_field) {
         let #(#(name, _assignment), type_) = named_field
         #(name, type_)
       }
       let #(x, typer) = polytype.next_unbound(typer)
-      let expected =
-        monotype.Row(list.map(fields, extract_field_types), Some(x))
+      let expected = t.Row(list.map(fields, extract_field_types), Some(x))
       let extract_scope_variables = fn(x) {
         let #(#(_name, assignment), type_) = x
         #(assignment, type_)
@@ -277,7 +274,7 @@ fn pattern_type(pattern, typer) {
 
 pub type Metadata {
   Metadata(
-    type_: Result(monotype.Monotype, Reason),
+    type_: Result(t.Monotype, Reason),
     scope: List(#(String, polytype.Polytype)),
     path: List(Int),
   )
@@ -290,7 +287,7 @@ pub fn is_error(metadata) {
   }
 }
 
-pub fn get_type(tree: Expression(Metadata)) -> Result(monotype.Monotype, Reason) {
+pub fn get_type(tree: e.Expression(Metadata)) -> Result(t.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
 }
@@ -320,33 +317,27 @@ fn pairs_second(pair: #(a, b)) -> b {
   pair.1
 }
 
-fn with_unbound(thing: a, typer) -> #(#(a, monotype.Monotype), State) {
+fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype), State) {
   let #(x, typer) = polytype.next_unbound(typer)
-  let type_ = monotype.Unbound(x)
+  let type_ = t.Unbound(x)
   #(#(thing, type_), typer)
 }
 
 pub fn equal_fn() {
   polytype.Polytype(
     [1, 2],
-    monotype.Function(
-      monotype.Tuple([monotype.Unbound(1), monotype.Unbound(1)]),
+    t.Function(
+      t.Tuple([t.Unbound(1), t.Unbound(1)]),
       // TODO Should the be part of parameterisation don't think so as not part of equal getting initialised
-      monotype.Function(
-        monotype.Row(
+      t.Function(
+        t.Row(
           [
-            #(
-              "True",
-              monotype.Function(monotype.Tuple([]), monotype.Unbound(2)),
-            ),
-            #(
-              "False",
-              monotype.Function(monotype.Tuple([]), monotype.Unbound(2)),
-            ),
+            #("True", t.Function(t.Tuple([]), t.Unbound(2))),
+            #("False", t.Function(t.Tuple([]), t.Unbound(2))),
           ],
           None,
         ),
-        monotype.Unbound(2),
+        t.Unbound(2),
       ),
     ),
   )
@@ -360,35 +351,34 @@ pub fn infer_unconstrained(expression) {
       path: path.root(),
     )
   let #(x, typer) = polytype.next_unbound(typer)
-  let expected = monotype.Unbound(x)
+  let expected = t.Unbound(x)
   infer(expression, expected, #(typer, scope))
 }
 
 pub fn infer(
-  expression: Expression(Nil),
-  expected: monotype.Monotype,
+  expression: e.Expression(Nil),
+  expected: t.Monotype,
   // TODO rename State Typer
   state: #(State, Scope),
-) -> #(Expression(Metadata), State) {
+) -> #(e.Expression(Metadata), State) {
   // return all context so more info can be added later
   let #(_, tree) = expression
   let #(typer, scope) = state
   let meta = Metadata(type_: _, scope: scope.variables, path: scope.path)
   case tree {
-    Binary(value) -> {
-      let #(type_, typer) = do_unify(expected, monotype.Binary, #(typer, scope))
-      let expression = #(meta(type_), Binary(value))
+    e.Binary(value) -> {
+      let #(type_, typer) = do_unify(expected, t.Binary, #(typer, scope))
+      let expression = #(meta(type_), e.Binary(value))
       #(expression, typer)
     }
-    Integer(value) -> {
-      let #(type_, typer) =
-        do_unify(expected, monotype.Integer, #(typer, scope))
-      let expression = #(meta(type_), Integer(value))
+    e.Integer(value) -> {
+      let #(type_, typer) = do_unify(expected, t.Integer, #(typer, scope))
+      let expression = #(meta(type_), e.Integer(value))
       #(expression, typer)
     }
-    Tuple(elements) -> {
+    e.Tuple(elements) -> {
       let #(pairs, typer) = list.map_state(elements, typer, with_unbound)
-      let given = monotype.Tuple(list.map(pairs, pairs_second))
+      let given = t.Tuple(list.map(pairs, pairs_second))
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
       // decided I want to match on top level first
       let #(elements, #(typer, _)) =
@@ -403,13 +393,13 @@ pub fn infer(
             #(element, #(tz, i + 1))
           },
         )
-      let expression = #(meta(type_), Tuple(elements))
+      let expression = #(meta(type_), e.Tuple(elements))
       #(expression, typer)
     }
-    Row(fields) -> {
+    e.Row(fields) -> {
       let #(pairs, typer) = list.map_state(fields, typer, with_unbound)
       let given =
-        monotype.Row(
+        t.Row(
           list.map(
             pairs,
             fn(pair) {
@@ -434,10 +424,10 @@ pub fn infer(
             #(#(name, value), #(tz, i + 1))
           },
         )
-      let expression = #(meta(type_), Row(fields))
+      let expression = #(meta(type_), e.Row(fields))
       #(expression, typer)
     }
-    Variable(label) -> {
+    e.Variable(label) -> {
       // Returns typer because of instantiation,
       // TODO separate lookup for instantiate, good for let rec
       let #(type_, typer) = case get_variable(label, typer, scope) {
@@ -452,16 +442,16 @@ pub fn infer(
           #(Error(reason), typer)
         }
       }
-      let expression = #(meta(type_), Variable(label))
+      let expression = #(meta(type_), e.Variable(label))
       #(expression, typer)
     }
-    Let(pattern, value, then) -> {
+    e.Let(pattern, value, then) -> {
       let #(value, state) = case pattern, value {
-        pattern.Variable(label), #(_, Function(pattern, body)) -> {
+        p.Variable(label), #(_, e.Function(pattern, body)) -> {
           let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
           let #(y, typer) = polytype.next_unbound(typer)
-          let return_type = monotype.Unbound(y)
-          let given = monotype.Function(arg_type, return_type)
+          let return_type = t.Unbound(y)
+          let given = t.Function(arg_type, return_type)
           // expected is value of let here don't unify that
           // let #(type_, typer) = do_unify(expected, given, typer)
           let bound_variables =
@@ -471,7 +461,7 @@ pub fn infer(
                 let #(label, monotype) = bv
                 let polytype =
                   polytype.generalise(
-                    monotype.resolve(monotype, typer.substitutions),
+                    t.resolve(monotype, typer.substitutions),
                     scope.variables,
                   )
                 #(label, polytype)
@@ -482,17 +472,17 @@ pub fn infer(
           let #(return, typer) =
             infer(body, return_type, #(typer, child(child(scope, 1), 1)))
           // io.debug(given)
-          // io.debug(monotype.resolve(given, typer.substitutions) == given)
+          // io.debug(t.resolve(given, typer.substitutions) == given)
           // let [#("f", x), .._] = typer.variables
           // io.debug(x.monotype)
           // // let True = x == given
-          // io.debug(monotype.resolve(x.monotype, typer.substitutions))
+          // io.debug(t.resolve(x.monotype, typer.substitutions))
           // io.debug("===========")
-          // io.debug(monotype.resolve(given, typer.substitutions))
+          // io.debug(t.resolve(given, typer.substitutions))
           // Set again after clearing out in the middle
           let scope = set_variable(#(label, given), typer, scope)
           // There are ALOT more type variables if handling all the errors.
-          #(#(meta(Ok(given)), Function(pattern, return)), #(typer, scope))
+          #(#(meta(Ok(given)), e.Function(pattern, return)), #(typer, scope))
         }
         _, _ -> {
           let #(expected_value, bound_variables, typer) =
@@ -506,7 +496,7 @@ pub fn infer(
                 let #(label, monotype) = bv
                 let polytype =
                   polytype.generalise(
-                    monotype.resolve(monotype, typer.substitutions),
+                    t.resolve(monotype, typer.substitutions),
                     scope.variables,
                   )
                 #(label, polytype)
@@ -520,14 +510,14 @@ pub fn infer(
       let scope = child(scope, 2)
       let #(then, typer) = infer(then, expected, #(typer, scope))
       // Let is always OK the error is on the term inside
-      let expression = #(meta(Ok(expected)), Let(pattern, value, then))
+      let expression = #(meta(Ok(expected)), e.Let(pattern, value, then))
       #(expression, typer)
     }
-    Function(pattern, body) -> {
+    e.Function(pattern, body) -> {
       let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
       let #(y, typer) = polytype.next_unbound(typer)
-      let return_type = monotype.Unbound(y)
-      let given = monotype.Function(arg_type, return_type)
+      let return_type = t.Unbound(y)
+      let given = t.Function(arg_type, return_type)
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
       let bound_variables =
         list.map(
@@ -536,7 +526,7 @@ pub fn infer(
             let #(label, monotype) = bv
             let polytype =
               polytype.generalise(
-                monotype.resolve(monotype, typer.substitutions),
+                t.resolve(monotype, typer.substitutions),
                 scope.variables,
               )
             #(label, polytype)
@@ -545,20 +535,20 @@ pub fn infer(
       let scope = list.fold(bound_variables, scope, do_set_variable)
       let #(return, typer) = infer(body, return_type, #(typer, child(scope, 1)))
       // There are ALOT more type variables if handling all the errors.
-      #(#(meta(type_), Function(pattern, return)), typer)
+      #(#(meta(type_), e.Function(pattern, return)), typer)
     }
-    Call(function, with) -> {
+    e.Call(function, with) -> {
       let #(x, typer) = polytype.next_unbound(typer)
-      let arg_type = monotype.Unbound(x)
-      let expected_function = monotype.Function(arg_type, expected)
+      let arg_type = t.Unbound(x)
+      let expected_function = t.Function(arg_type, expected)
       let #(function, typer) =
         infer(function, expected_function, #(typer, child(scope, 0)))
       let #(with, typer) = infer(with, arg_type, #(typer, child(scope, 1)))
       // Type is always! OK at this level
-      let expression = #(meta(Ok(expected)), Call(function, with))
+      let expression = #(meta(Ok(expected)), e.Call(function, with))
       #(expression, typer)
     }
-    Provider(config, generator) -> {
+    e.Provider(config, generator) -> {
       let typer = case generator == ast.generate_hole {
         True ->
           State(
@@ -570,7 +560,7 @@ pub fn infer(
           )
         False -> typer
       }
-      let expression = #(meta(Ok(expected)), Provider(config, generator))
+      let expression = #(meta(Ok(expected)), e.Provider(config, generator))
       #(expression, typer)
     }
   }

@@ -1,61 +1,46 @@
 import gleam/option.{None}
-import eyg/typer/monotype
+import eyg/typer/monotype as t
 import eyg/typer/polytype
 
 pub fn string() {
   polytype.Polytype(
     [1, 2, 3],
-    monotype.Row(
+    t.Row(
       [
         #(
           "split",
-          monotype.Function(
-            monotype.Tuple([monotype.Binary, monotype.Binary]),
-            monotype.Function(
-              monotype.Tuple([
-                monotype.Function(monotype.Tuple([]), monotype.Unbound(1)),
-                monotype.Function(
+          t.Function(
+            t.Tuple([t.Binary, t.Binary]),
+            t.Function(
+              t.Tuple([
+                t.Function(t.Tuple([]), t.Unbound(1)),
+                t.Function(
                   // TODO need recursive type definition
-                  monotype.Tuple([monotype.Binary, monotype.Unbound(999)]),
-                  monotype.Unbound(1),
+                  t.Tuple([t.Binary, t.Unbound(999)]),
+                  t.Unbound(1),
                 ),
               ]),
-              monotype.Unbound(1),
+              t.Unbound(1),
             ),
           ),
         ),
-        #("debug", monotype.Function(monotype.Unbound(2), monotype.Unbound(2))),
-        #("parse_int", monotype.Function(monotype.Binary, monotype.Integer)),
-        #(
-          "add",
-          monotype.Function(
-            monotype.Tuple([monotype.Integer, monotype.Integer]),
-            monotype.Integer,
-          ),
-        ),
+        #("debug", t.Function(t.Unbound(2), t.Unbound(2))),
+        #("parse_int", t.Function(t.Binary, t.Integer)),
+        #("add", t.Function(t.Tuple([t.Integer, t.Integer]), t.Integer)),
         #(
           "compare",
-          monotype.Function(
-            monotype.Tuple([monotype.Integer, monotype.Integer]),
-            monotype.Function(
-              monotype.Row(
+          t.Function(
+            t.Tuple([t.Integer, t.Integer]),
+            t.Function(
+              t.Row(
                 [
-                  #(
-                    "Lt",
-                    monotype.Function(monotype.Tuple([]), monotype.Unbound(3)),
-                  ),
-                  #(
-                    "Eq",
-                    monotype.Function(monotype.Tuple([]), monotype.Unbound(3)),
-                  ),
-                  #(
-                    "Gt",
-                    monotype.Function(monotype.Tuple([]), monotype.Unbound(3)),
-                  ),
+                  #("Lt", t.Function(t.Tuple([]), t.Unbound(3))),
+                  #("Eq", t.Function(t.Tuple([]), t.Unbound(3))),
+                  #("Gt", t.Function(t.Tuple([]), t.Unbound(3))),
                 ],
                 None,
               ),
-              monotype.Unbound(3),
+              t.Unbound(3),
             ),
           ),
         ),

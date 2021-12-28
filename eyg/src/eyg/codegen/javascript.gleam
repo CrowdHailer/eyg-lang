@@ -6,7 +6,6 @@ import gleam/string
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/typer/monotype
 import eyg/typer/polytype.{State}
 import eyg/typer
 import eyg/codegen/utilities.{

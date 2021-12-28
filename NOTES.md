@@ -29,6 +29,10 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
+- Call All Code program, not code it's made up of a tree.
+- Call parts of it routines. they are named functions that are returened callable as `bin foo args`
+- PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
+
 - [ ] Pin type, click and bump constraints to top
 - [ ] gleam 18 stdlib to js, json lib and dynamic now useful
 - [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field

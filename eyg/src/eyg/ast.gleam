@@ -1,44 +1,43 @@
 import gleam/int
 import gleam/list
 import gleam/string
-import eyg/typer/monotype
 import eyg/ast/provider
-import eyg/ast/expression
+import eyg/ast/expression as e
 
 pub fn binary(value) {
-  #(Nil, expression.Binary(value))
+  #(Nil, e.Binary(value))
 }
 
 pub fn integer(value) {
-  #(Nil, expression.Integer(value))
+  #(Nil, e.Integer(value))
 }
 
 pub fn call(function, with) {
-  #(Nil, expression.Call(function, with))
+  #(Nil, e.Call(function, with))
 }
 
 pub fn function(for, body) {
-  #(Nil, expression.Function(for, body))
+  #(Nil, e.Function(for, body))
 }
 
 pub fn let_(pattern, value, then) {
-  #(Nil, expression.Let(pattern, value, then))
+  #(Nil, e.Let(pattern, value, then))
 }
 
 pub fn tuple_(elements) {
-  #(Nil, expression.Tuple(elements))
+  #(Nil, e.Tuple(elements))
 }
 
 pub fn row(fields) {
-  #(Nil, expression.Row(fields))
+  #(Nil, e.Row(fields))
 }
 
 pub fn variable(label) {
-  #(Nil, expression.Variable(label))
+  #(Nil, e.Variable(label))
 }
 
 pub fn provider(config, generator) {
-  #(Nil, expression.Provider(config, generator))
+  #(Nil, e.Provider(config, generator))
 }
 
 pub fn generate_hole(_config, _type) {

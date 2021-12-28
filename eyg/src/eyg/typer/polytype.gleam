@@ -1,15 +1,13 @@
 import gleam/io
 import gleam/option.{None, Some}
 import gleam/list
-import eyg/typer/monotype.{
-  Binary, Function, Integer, Monotype, Row, Tuple, Unbound,
-}
+import eyg/typer/monotype as t
 
 // TODO move to typer but it needs to bring the instantiate function otherwise circular dependencies.
 pub type State {
   State(
     next_unbound: Int,
-    substitutions: List(#(Int, Monotype)),
+    substitutions: List(#(Int, t.Monotype)),
     // CAN'T hold onto typer.Reason circular dependency
     inconsistencies: List(#(List(Int), String)),
   )
@@ -22,7 +20,7 @@ pub fn next_unbound(state) {
 }
 
 pub type Polytype {
-  Polytype(forall: List(Int), monotype: Monotype)
+  Polytype(forall: List(Int), monotype: t.Monotype)
 }
 
 // take in an i for the offset
@@ -45,10 +43,10 @@ fn do_instantiate(forall, monotype, typer) {
 
 pub fn replace_variable(monotype, x, y) {
   case monotype {
-    Binary -> Binary
-    Integer -> Integer
-    Tuple(elements) -> Tuple(list.map(elements, replace_variable(_, x, y)))
-    Row(fields, rest) -> {
+    t.Binary -> t.Binary
+    t.Integer -> t.Integer
+    t.Tuple(elements) -> t.Tuple(list.map(elements, replace_variable(_, x, y)))
+    t.Row(fields, rest) -> {
       let fields =
         list.map(
           fields,
@@ -61,14 +59,14 @@ pub fn replace_variable(monotype, x, y) {
         Some(i) if i == x -> Some(y)
         _ -> rest
       }
-      Row(fields, rest)
+      t.Row(fields, rest)
     }
-    Function(from, to) ->
-      Function(replace_variable(from, x, y), replace_variable(to, x, y))
-    Unbound(i) ->
+    t.Function(from, to) ->
+      t.Function(replace_variable(from, x, y), replace_variable(to, x, y))
+    t.Unbound(i) ->
       case i == x {
-        True -> Unbound(y)
-        False -> Unbound(i)
+        True -> t.Unbound(y)
+        False -> t.Unbound(i)
       }
   }
 }
@@ -77,7 +75,7 @@ pub fn replace_variable(monotype, x, y) {
 // MUST BE resolved first
 pub fn generalise(monotype, variables) {
   case monotype {
-    Function(_from, _to) -> {
+    t.Function(_from, _to) -> {
       // let State(variables: variables, ..) = scope
       let in_type = free_variables_in_monotype(monotype)
       let in_scope = free_variables_in_scope(variables)
@@ -107,9 +105,9 @@ fn free_variables_in_polytype(polytype) {
 
 fn free_variables_in_monotype(monotype) {
   case monotype {
-    Binary -> []
-    Integer -> []
-    Tuple(elements) ->
+    t.Binary -> []
+    t.Integer -> []
+    t.Tuple(elements) ->
       list.fold(
         elements,
         [],
@@ -117,7 +115,7 @@ fn free_variables_in_monotype(monotype) {
           union(free_variables_in_monotype(element), accumulator)
         },
       )
-    Row(fields, extra) -> {
+    t.Row(fields, extra) -> {
       let in_fields =
         list.fold(
           fields,
@@ -133,9 +131,9 @@ fn free_variables_in_monotype(monotype) {
       }
     }
 
-    Function(from, to) ->
+    t.Function(from, to) ->
       union(free_variables_in_monotype(from), free_variables_in_monotype(to))
-    Unbound(i) -> [i]
+    t.Unbound(i) -> [i]
   }
 }
 
