@@ -43,8 +43,8 @@ pub fn to_string(monotype) {
 
 pub fn literal(monotype) {
   case monotype {
+    Native(name) -> string.join(["new T.Native(\"", name, "\")"])
     Binary -> "new T.Binary()"
-    Integer -> "new T.Integer()"
     Tuple(elements) -> {
       let elements =
         list.map(elements, literal)
