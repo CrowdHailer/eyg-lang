@@ -34,6 +34,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
 
 - [ ] Switch Integer Type to Native/Platform with an Enum for possible values inside
+- [ ] Rebae Fsharp talk1hr9min taking types to make type providers moreuseful, we're already planning that
 
 - [ ] Pin type, click and bump constraints to top
 - [ ] gleam 18 stdlib to js, json lib and dynamic now useful

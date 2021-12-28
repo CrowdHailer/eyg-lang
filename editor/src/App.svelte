@@ -4,7 +4,9 @@
 
   import Expression from "./components/Expression.svelte";
   import * as Editor from "./gen/eyg/ast/editor";
-  let editor = Editor.init(`{"node": "Hole"}`);
+  let editor = Editor.init(
+    `{"node": "Provider", "config": "", "generator": "Hole"}`
+  );
   (async function () {
     let response = await fetch("/saved.json");
     let text = await response.text();
