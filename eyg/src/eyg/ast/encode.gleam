@@ -8,13 +8,13 @@ import eyg/ast/pattern as p
 pub external type JSON
 
 pub external fn json_to_string(JSON) -> String =
-  "../../eyg.js" "json_to_string"
+  "../../eyg_utils.js" "json_to_string"
 
 pub external fn json_from_string(String) -> JSON =
   "" "JSON.parse"
 
 pub external fn unsafe_coerce(a) -> b =
-  "../../eyg.js" "identity"
+  "../../eyg_utils.js" "identity"
 
 pub fn string(value: String) -> JSON {
   unsafe_coerce(value)
@@ -25,10 +25,10 @@ pub fn integer(value: Int) -> JSON {
 }
 
 external fn array(value: List(JSON)) -> JSON =
-  "../../eyg.js" "list_to_array"
+  "../../eyg_utils.js" "list_to_array"
 
 pub external fn object(entries: List(#(String, JSON))) -> JSON =
-  "../../eyg.js" "entries_to_object"
+  "../../eyg_utils.js" "entries_to_object"
 
 fn pattern_to_json(pattern) {
   case pattern {
@@ -125,14 +125,14 @@ pub fn to_json(ast) {
 }
 
 external fn entries(object: JSON) -> List(#(String, JSON)) =
-  "../../eyg.js" "entries_from_object"
+  "../../eyg_utils.js" "entries_from_object"
 
 fn assert_string(value: JSON) -> String {
   unsafe_coerce(value)
 }
 
 external fn from_array(value: JSON) -> List(JSON) =
-  "../../eyg.js" "list_from_array"
+  "../../eyg_utils.js" "list_from_array"
 
 pub fn from_json(json: JSON) {
   assert Ok(#(node, rest)) = list.key_pop(entries(json), "node")

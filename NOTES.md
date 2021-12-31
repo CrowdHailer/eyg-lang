@@ -38,6 +38,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
 - [ ] Use a parameterised Enum for all the native types
+- [ ] Resolve type information before printing errors.
 - [x] Switch Integer Type to Native/Platform with an Enum for possible values inside
 - [ ] Rebase Fsharp talk 1hr9min taking types to make type providers moreuseful, we're already planning that
 - [x] Select from for choosing type providers

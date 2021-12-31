@@ -43,7 +43,6 @@ pub type Typer {
   )
 }
 
-// TODO put the self name in here
 pub fn reason_to_string(reason) {
   case reason {
     IncorrectArity(expected, given) ->
@@ -62,10 +61,16 @@ pub fn reason_to_string(reason) {
         t.to_string(given),
       ])
     MissingFields(expected) ->
-      // TODO add type information
       [
-        "Missing fields:",
-        ..list.map(expected, fn(x: #(String, t.Monotype)) { x.0 })
+        "Missing fields: ",
+        ..list.map(
+          expected,
+          fn(x) {
+            let #(name, type_) = x
+            io.debug(type_)
+            string.join([name, ": ", t.to_string(type_)])
+          },
+        )
         |> list.intersperse(", ")
       ]
       |> string.join
@@ -530,7 +535,6 @@ pub fn infer(
           ),
           None,
         )
-      // TODO don't think returning type_ needed
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
       let #(fields, #(typer, _)) =
         list.map_state(

@@ -301,7 +301,7 @@ pub type Element(a, b) {
 }
 
 external fn untype(e.Expression(a, b)) -> e.Expression(Dynamic, Dynamic) =
-  "../../eyg.js" "identity"
+  "../../eyg_utils.js" "identity"
 
 pub fn untype_field(
   field: #(String, e.Expression(a, b)),

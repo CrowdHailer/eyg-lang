@@ -24,8 +24,7 @@ pub type Generator {
   )
 }
 
-// TODO move to dynamic type
-external fn do_eval(String) -> anything =
+external fn do_eval(String) -> Dynamic =
   "../../harness.js" "run"
 
 pub fn eval(tree, typer) {
@@ -278,4 +277,4 @@ pub fn render(
 }
 
 pub external fn unsafe_coerce(a) -> b =
-  "../../eyg.js" "identity"
+  "../../eyg_utils.js" "identity"

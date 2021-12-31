@@ -4,4 +4,4 @@
 pub external type Dynamic
 
 pub external fn from(anything) -> Dynamic =
-  "../eyg.js" "identity"
+  "../eyg_utils.js" "identity"
