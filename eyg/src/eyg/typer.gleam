@@ -18,6 +18,7 @@ pub type Reason {
   UnmatchedTypes(expected: t.Monotype, given: t.Monotype)
   MissingFields(expected: List(#(String, t.Monotype)))
   UnexpectedFields(expected: List(#(String, t.Monotype)))
+  UnableToProvide(expected: t.Monotype, generator: e.Generator)
 }
 
 pub fn root_scope(variables) {
@@ -70,6 +71,13 @@ pub fn reason_to_string(reason) {
       |> string.join
 
     UnexpectedFields(expected) -> "unexpectedfields"
+    UnableToProvide(expected, g) ->
+      string.join([
+        "Unable to generate for expected type ",
+        t.to_string(expected),
+        " with generator ",
+        e.generator_to_string(g),
+      ])
   }
 }
 
@@ -461,6 +469,11 @@ pub fn expand_providers(tree, typer) {
           )
           let #(typed, _typer) =
             infer(dummy, expected, #(typer, root_scope([])))
+          let meta =
+            Metadata(
+              ..meta,
+              type_: Error(UnableToProvide(expected: expected, generator: g)),
+            )
           // expand_providers(typed, typer)
           #(#(meta, e.Provider(config, g, typed)), typer)
         }
