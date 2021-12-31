@@ -14,8 +14,6 @@ pub fn compile(expected, untyped) {
     ])
   let state = #(typer.init(), scope)
   let #(typed, typer) = typer.infer(untyped, expected, state)
-  io.debug("mmmmmmmmm")
-  io.debug(typer.inconsistencies)
   case typer.inconsistencies {
     [] -> fn(handle) {
       let #(ok, _) = handle
