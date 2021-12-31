@@ -5,11 +5,14 @@ import eyg/ast/pattern as p
 import eyg/typer
 
 pub type Element {
-  UnitVariant(label: String, then: e.Expression(typer.Metadata))
+  UnitVariant(
+    label: String,
+    then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
+  )
   TupleVariant(
     label: String,
     parameters: List(String),
-    then: e.Expression(typer.Metadata),
+    then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
   )
 }
 

@@ -8,6 +8,7 @@ import eyg/ast/pattern.{Pattern} as p
 pub type Generator {
   Hole
   Env
+  Example
   Format
   Loader
 }
@@ -16,6 +17,7 @@ pub fn generator_to_string(generator) {
   case generator {
     Hole -> "Hole"
     Env -> "Env"
+    Example -> "Example"
     Format -> "Format"
     Loader -> "Loader"
   }
@@ -25,21 +27,32 @@ pub fn generator_from_string(str) {
   case str {
     "Hole" -> Hole
     "Env" -> Env
+    "Example" -> Example
     "Format" -> Format
     "Loader" -> Loader
   }
 }
 
 pub fn all_generators() {
-  [Hole, Env, Format, Loader]
+  [Example, Env, Format, Loader]
 }
 
 pub fn generate(generator, config, hole) {
   let generator = case generator {
-    Env -> env
-    Format -> format
+    Example -> example
+    _ -> fn(_, _) { Error(Nil) }
   }
+
+  // Env -> env
+  // Format -> format
   generator(config, hole)
+}
+
+pub fn example(config, hole) {
+  case hole {
+    t.Tuple(e) -> Ok(tuple_(list.map(e, fn(_) { binary(config) })))
+    _ -> Error(Nil)
+  }
 }
 
 // decide on load from env, i.e. call system. which makes constant folding hard
@@ -120,17 +133,37 @@ fn format(config, hole) {
 }
 
 // provider implementations to not create loop
-pub type Node(m) {
+pub type Node(m, g) {
   Literal(internal: String)
   Binary(value: String)
-  Tuple(elements: List(Expression(m)))
-  Row(fields: List(#(String, Expression(m))))
+  Tuple(elements: List(Expression(m, g)))
+  Row(fields: List(#(String, Expression(m, g))))
   Variable(label: String)
-  Let(pattern: Pattern, value: Expression(m), then: Expression(m))
-  Function(pattern: Pattern, body: Expression(m))
-  Call(function: Expression(m), with: Expression(m))
-  Provider(config: String, generator: Generator)
+  Let(pattern: Pattern, value: Expression(m, g), then: Expression(m, g))
+  Function(pattern: Pattern, body: Expression(m, g))
+  Call(function: Expression(m, g), with: Expression(m, g))
+  Provider(config: String, generator: Generator, generated: g)
 }
 
-pub type Expression(m) =
-  #(m, Node(m))
+pub type Expression(m, g) =
+  #(m, Node(m, g))
+
+pub fn binary(value) {
+  #(Nil, Binary(value))
+}
+
+pub fn call(function, with) {
+  #(Nil, Call(function, with))
+}
+
+pub fn function(for, body) {
+  #(Nil, Function(for, body))
+}
+
+pub fn let_(pattern, value, then) {
+  #(Nil, Let(pattern, value, then))
+}
+
+pub fn tuple_(elements) {
+  #(Nil, Tuple(elements))
+}

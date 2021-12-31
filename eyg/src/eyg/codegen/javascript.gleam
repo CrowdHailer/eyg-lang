@@ -167,7 +167,10 @@ fn render_pattern(pattern, state) {
   }
 }
 
-pub fn render(tree, state) {
+pub fn render(
+  tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
+  state,
+) {
   let #(context, tree) = tree
   case tree {
     // TODO escape
@@ -237,8 +240,10 @@ pub fn render(tree, state) {
       squash(function, with)
       |> wrap_return(state)
     }
-    e.Provider("", e.Hole) -> ["(() => {throw 'Reached todo in the code'})()"]
-    e.Provider(config, e.Loader) -> {
+    e.Provider("", e.Hole, _) -> [
+      "(() => {throw 'Reached todo in the code'})()",
+    ]
+    e.Provider(config, e.Loader, _) -> {
       let typer.Metadata(type_: Ok(expected), ..) = context
       let Generator(typer: typer, ..) = state
       let typer.Typer(substitutions: substitutions, ..) = typer
@@ -266,17 +271,10 @@ pub fn render(tree, state) {
           }
       }
     }
-    e.Provider(config, generator) -> {
-      let typer.Metadata(type_: Ok(expected), ..) = context
-      let Generator(typer: typer, ..) = state
-      let typer.Typer(substitutions: substitutions, ..) = typer
-      let expected = t.resolve(expected, substitutions)
-      let tree = e.generate(generator, config, expected)
-      let #(typed, typer) =
-        typer.infer(tree, expected, #(typer, typer.root_scope([])))
-      let state = Generator(..state, typer: typer)
-      io.debug(list.length(typer.inconsistencies))
-      render(typed, state)
-    }
+    // This type is recursive starts with generated ends up with nil, in the nil case We should never have a provider?
+    e.Provider(_, _, generated) -> render(unsafe_coerce(generated), state)
   }
 }
+
+pub external fn unsafe_coerce(a) -> b =
+  "../../harness.js" "identity"

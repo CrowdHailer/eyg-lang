@@ -25,7 +25,7 @@ pub type Mode {
 
 pub type Editor {
   Editor(
-    tree: e.Expression(Metadata),
+    tree: e.Expression(Metadata, e.Expression(Metadata, Nil)),
     typer: typer.Typer,
     selection: Option(List(Int)),
     mode: Mode,
@@ -53,7 +53,7 @@ pub fn is_select(editor) {
   }
 }
 
-fn expression_type(expression: e.Expression(Metadata), typer: typer.Typer) {
+fn expression_type(expression: e.Expression(Metadata, a), typer: typer.Typer) {
   let #(metadata, _) = expression
   case metadata.type_ {
     Ok(t) -> #(
@@ -264,14 +264,14 @@ pub fn handle_change(editor, content) {
     }
     ProviderGenerator(_) -> {
       let Some(#(provider_position, _)) = parent_path(position)
-      let Expression(#(_, e.Provider(config, _))) =
+      let Expression(#(_, e.Provider(config, _, _))) =
         get_element(tree, provider_position)
       let new = ast.provider(config, e.generator_from_string(content))
       replace_expression(tree, provider_position, new)
     }
     ProviderConfig(_) -> {
       let Some(#(provider_position, _)) = parent_path(position)
-      let Expression(#(_, e.Provider(_, generator))) =
+      let Expression(#(_, e.Provider(_, generator, _))) =
         get_element(tree, provider_position)
       let new = ast.provider(content, generator)
       replace_expression(tree, provider_position, new)
@@ -286,11 +286,11 @@ pub fn handle_change(editor, content) {
   Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
 
-pub type Element(a) {
-  Expression(e.Expression(a))
-  RowField(Int, #(String, e.Expression(a)))
+pub type Element(a, b) {
+  Expression(e.Expression(a, b))
+  RowField(Int, #(String, e.Expression(a, b)))
   RowKey(Int, String)
-  Pattern(p.Pattern, e.Expression(a))
+  Pattern(p.Pattern, e.Expression(a, b))
   PatternElement(Int, Option(String))
   PatternField(Int, #(String, String))
   PatternKey(Int, String)
@@ -299,12 +299,12 @@ pub type Element(a) {
   ProviderConfig(String)
 }
 
-external fn untype(e.Expression(a)) -> e.Expression(Nil) =
+external fn untype(e.Expression(a, b)) -> e.Expression(Nil, Nil) =
   "../../harness.js" "identity"
 
 pub fn untype_field(
-  field: #(String, e.Expression(a)),
-) -> #(String, e.Expression(Nil)) {
+  field: #(String, e.Expression(a, b)),
+) -> #(String, e.Expression(Nil, Nil)) {
   let #(label, value) = field
   #(label, untype(value))
 }
@@ -314,7 +314,7 @@ fn handle_transformation(
   position,
   key,
   ctrl_key,
-) -> #(Option(e.Expression(Nil)), List(Int), Mode) {
+) -> #(Option(e.Expression(Nil, Nil)), List(Int), Mode) {
   let Editor(tree: tree, ..) = editor
   let inconsistencies = inconsistencies(editor)
   case key, ctrl_key {
@@ -468,7 +468,7 @@ fn do_move_left(tree, selection, position) {
         None -> list.append(position, selection)
         Some(inner) -> list.flatten([position, [0], inner])
       }
-    e.Call(_, _), [1] | e.Provider(_, _), [1] -> path.append(position, 0)
+    e.Call(_, _), [1] | e.Provider(_, _, _), [1] -> path.append(position, 0)
     e.Tuple(elements), [i] ->
       case 0 <= i - 1 {
         True -> path.append(position, i - 1)
@@ -554,7 +554,7 @@ fn do_move_right(tree, selection, position) {
         None -> path.append(position, 1)
         Some(inner) -> list.flatten([position, [0], inner])
       }
-    e.Call(_, _), [0] | e.Provider(_, _), [0] -> path.append(position, 1)
+    e.Call(_, _), [0] | e.Provider(_, _, _), [0] -> path.append(position, 1)
     e.Tuple(elements), [i] ->
       case i + 1 < list.length(elements) {
         True -> path.append(position, i + 1)
@@ -798,6 +798,7 @@ fn swap_elements(match, at) {
   case match {
     TupleExpression(elements) -> {
       try elements = swap_pair(elements, at)
+      let e: List(e.Expression(Nil, Nil)) = elements
       Ok(Expression(ast.tuple_(elements)))
     }
     TuplePattern(elements) -> {
@@ -896,8 +897,8 @@ fn drag_up(tree, original) {
 }
 
 type TupleMatch {
-  TupleExpression(elements: List(e.Expression(Nil)))
-  RowExpression(fields: List(#(String, e.Expression(Nil))))
+  TupleExpression(elements: List(e.Expression(Nil, Nil)))
+  RowExpression(fields: List(#(String, e.Expression(Nil, Nil))))
   TuplePattern(elements: List(Option(String)))
   RowPattern(fields: List(#(String, String)))
 }
@@ -926,7 +927,8 @@ fn match_let(target) {
 fn closest(
   tree,
   position,
-  search: fn(Element(Metadata)) -> Result(t, Nil),
+  search: fn(Element(Metadata, #(Metadata, e.Node(Metadata, Nil)))) ->
+    Result(t, Nil),
 ) -> Option(#(List(Int), Int, t)) {
   case parent_path(position) {
     None -> None
@@ -1001,7 +1003,7 @@ fn wrap_assignment(tree, position) {
 
 fn create_binary(tree, position) {
   case get_element(tree, position) {
-    Expression(#(_, e.Provider(_, e.Hole))) -> {
+    Expression(#(_, e.Provider(_, e.Hole, _))) -> {
       let new = ast.binary("")
       #(Some(replace_expression(tree, position, new)), position, Draft(""))
     }
@@ -1012,7 +1014,7 @@ fn create_binary(tree, position) {
 fn wrap_tuple(tree, position) {
   let target = get_element(tree, position)
   case target {
-    Expression(#(_, e.Provider(_, e.Hole))) -> {
+    Expression(#(_, e.Provider(_, e.Hole, _))) -> {
       let new = ast.tuple_([])
       #(replace_expression(tree, position, new), position)
     }
@@ -1034,7 +1036,7 @@ fn wrap_tuple(tree, position) {
 
 fn wrap_row(tree, position) {
   case get_element(tree, position) {
-    Expression(#(_, e.Provider(_, e.Hole))) -> {
+    Expression(#(_, e.Provider(_, e.Hole, _))) -> {
       let new = ast.row([])
       #(Some(replace_expression(tree, position, new)), position, Command)
     }
@@ -1056,7 +1058,6 @@ fn wrap_row(tree, position) {
       position,
       Command,
     )
-    // TODO should be None not untype
     PatternElement(_, _) | Pattern(_, _) -> #(None, position, Command)
   }
 }
@@ -1076,7 +1077,10 @@ fn insert_provider(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, expression)) -> {
       let new = case expression {
-        e.Provider(config, generator) -> #(Nil, e.Provider(config, generator))
+        e.Provider(config, generator, a) -> #(
+          Nil,
+          e.Provider(config, generator, Nil),
+        )
         _ -> ast.provider("", e.Loader)
       }
       #(
@@ -1088,7 +1092,7 @@ fn insert_provider(tree, position) {
     ProviderGenerator(_) | ProviderConfig(_) -> {
       let Some(#(provider_position, _)) = parent_path(position)
       // assumed to be provider
-      let Expression(#(_, e.Provider(_, _))) =
+      let Expression(#(_, e.Provider(_, _, _))) =
         get_element(tree, provider_position)
       #(None, path.append(provider_position, 0), Select(all_generators))
     }
@@ -1186,7 +1190,7 @@ fn delete(tree, position) {
       position,
       Command,
     )
-    Expression(#(_, e.Provider(_, e.Hole))) ->
+    Expression(#(_, e.Provider(_, e.Hole, _))) ->
       case parent_path(position) {
         Some(#(p_path, cursor)) ->
           case get_element(tree, p_path) {
@@ -1394,7 +1398,7 @@ fn parent_path(path) {
   }
 }
 
-pub fn get_element(tree, position) {
+pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
   case tree, position {
     _, [] -> Expression(tree)
     #(_, e.Tuple(elements)), [i, ..rest] -> {
@@ -1460,8 +1464,8 @@ pub fn get_element(tree, position) {
     #(_, e.Function(_, body)), [1, ..rest] -> get_element(body, rest)
     #(_, e.Call(func, _)), [0, ..rest] -> get_element(func, rest)
     #(_, e.Call(_, with)), [1, ..rest] -> get_element(with, rest)
-    #(_, e.Provider(_, generator)), [0] -> ProviderGenerator(generator)
-    #(_, e.Provider(config, _)), [1] -> ProviderConfig(config)
+    #(_, e.Provider(_, generator, _)), [0] -> ProviderGenerator(generator)
+    #(_, e.Provider(config, _, _)), [1] -> ProviderConfig(config)
     _, _ -> {
       io.debug(tree)
       io.debug(position)
@@ -1471,19 +1475,19 @@ pub fn get_element(tree, position) {
 }
 
 pub fn replace_expression(
-  tree: e.Expression(a),
+  tree: e.Expression(a, b),
   path: List(Int),
-  replacement: e.Expression(Nil),
-) -> e.Expression(Nil) {
+  replacement: e.Expression(Nil, Nil),
+) -> e.Expression(Nil, Nil) {
   let tree = untype(tree)
   map_node(tree, path, fn(_) { replacement })
 }
 
 pub fn map_node(
-  tree: e.Expression(a),
+  tree: e.Expression(a, b),
   path: List(Int),
-  mapper: fn(e.Expression(a)) -> e.Expression(Nil),
-) -> e.Expression(Nil) {
+  mapper: fn(e.Expression(a, b)) -> e.Expression(Nil, Nil),
+) -> e.Expression(Nil, Nil) {
   let #(_, node) = tree
   case node, path {
     _, [] -> mapper(tree)
