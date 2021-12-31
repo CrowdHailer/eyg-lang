@@ -1058,7 +1058,6 @@ fn wrap_row(tree, position) {
       position,
       Command,
     )
-    // TODO should be None not untype
     PatternElement(_, _) | Pattern(_, _) -> #(None, position, Command)
   }
 }
