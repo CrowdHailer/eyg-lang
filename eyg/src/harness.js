@@ -95,26 +95,3 @@ export function run(code) {
   return eval(code);
 }
 
-export function identity(x) {
-  return x
-}
-
-export function object(entries) {
-  return Object.fromEntries(entries)
-}
-
-export function entries(object) {
-  return Gleam.toList(Object.entries(object))
-}
-
-export function list(list) {
-  return list.toArray()
-}
-
-export function from_array(array) {
-  return Gleam.toList(array)
-}
-
-export function json_to_string(json) {
-  return JSON.stringify(json, " ", 2);
-}

@@ -278,4 +278,4 @@ pub fn render(
 }
 
 pub external fn unsafe_coerce(a) -> b =
-  "../../harness.js" "identity"
+  "../../eyg.js" "identity"
