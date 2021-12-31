@@ -384,7 +384,9 @@ pub fn infer_unconstrained(expression) {
 fn expand_providers(tree, typer) {
   let #(meta, expression) = tree
   case expression {
-    // e.Binary(_) | e.Variable(_) -> #(tree, typer)
+    // Binary and Variable are unstructured and restructured to change type of provider generated content
+    e.Binary(value) -> #(#(meta, e.Binary(value)), typer)
+    e.Variable(value) -> #(#(meta, e.Variable(value)), typer)
     e.Tuple(elements) -> {
       let #(elements, typer) = list.map_state(elements, typer, expand_providers)
       #(#(meta, e.Tuple(elements)), typer)
@@ -418,7 +420,7 @@ fn expand_providers(tree, typer) {
       let #(with, typer) = expand_providers(with, typer)
       #(#(meta, e.Call(func, with)), typer)
     }
-    e.Provider(config, g, Nil) if g == Format || g == Env -> {
+    e.Provider(config, g, Nil) -> {
       let Metadata(type_: Ok(expected), ..) = meta
       let Typer(substitutions: substitutions, ..) = typer
       let expected = t.resolve(expected, substitutions)
@@ -428,7 +430,6 @@ fn expand_providers(tree, typer) {
       #(#(meta, e.Provider(config, g, typed)), typer)
     }
   }
-  // _ -> #(tree, typer)
 }
 
 pub fn infer(

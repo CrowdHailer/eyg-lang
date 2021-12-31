@@ -42,6 +42,8 @@ pub fn generate(generator, config, hole) {
     Example -> example
     Env -> env
     Format -> format
+    // TODO this should do better for loading
+    _ -> fn(_, _) { #(Nil, Provider("", Hole, Nil)) }
   }
   generator(config, hole)
 }
