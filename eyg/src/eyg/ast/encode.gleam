@@ -13,7 +13,7 @@ pub external fn json_to_string(JSON) -> String =
 pub external fn json_from_string(String) -> JSON =
   "" "JSON.parse"
 
-external fn unsafe_coerce(a) -> b =
+pub external fn unsafe_coerce(a) -> b =
   "../../harness.js" "identity"
 
 pub fn string(value: String) -> JSON {
@@ -70,8 +70,6 @@ fn pattern_to_json(pattern) {
 }
 
 pub fn to_json(ast) {
-  let hole_func = ast.generate_hole
-
   let #(_, expression) = ast
   case expression {
     e.Binary(value) ->
@@ -117,8 +115,12 @@ pub fn to_json(ast) {
         #("function", to_json(function)),
         #("with", to_json(with)),
       ])
-    e.Provider("", g) if g == hole_func -> object([#("node", string("Hole"))])
-    e.Provider(_, _) -> todo("implement saving other provider types")
+    e.Provider(config, generator) ->
+      object([
+        #("node", string("Provider")),
+        #("config", string(config)),
+        #("generator", string(e.generator_to_string(generator))),
+      ])
   }
 }
 
@@ -181,8 +183,12 @@ pub fn from_json(json: JSON) {
       let with = from_json(with)
       ast.call(function, with)
     }
-    "Hole" -> ast.hole()
-    "Provider" -> todo("loading Providers")
+    "Provider" -> {
+      let [#("config", config), #("generator", generator)] = rest
+      let config = assert_string(config)
+      let generator = assert_string(generator)
+      ast.provider(config, e.generator_from_string(generator))
+    }
   }
 }
 

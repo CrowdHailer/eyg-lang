@@ -41,6 +41,41 @@ pub fn to_string(monotype) {
   }
 }
 
+pub fn literal(monotype) {
+  case monotype {
+    Native(name) -> string.join(["new T.Native(\"", name, "\")"])
+    Binary -> "new T.Binary()"
+    Tuple(elements) -> {
+      let elements =
+        list.map(elements, literal)
+        |> list.intersperse(", ")
+        |> string.join
+      string.join(["new T.Tuple(Gleam.toList([", elements, "]))"])
+    }
+    Row(fields, extra) -> {
+      let fields =
+        list.map(
+          fields,
+          fn(f) {
+            let #(name, value) = f
+            string.join(["[\"", name, "\", ", literal(value), "]"])
+          },
+        )
+        |> list.intersperse(", ")
+        |> string.join
+      let extra = case extra {
+        Some(i) ->
+          string.join(["new Option.Some(", int.to_string(i + 1000), ")"])
+        None -> "new Option.None()"
+      }
+      string.join(["new T.Row(Gleam.toList([", fields, "]), ", extra, ")"])
+    }
+    Function(from, to) ->
+      string.join(["new T.Function(", literal(from), ",", literal(to), ")"])
+    Unbound(i) -> string.join(["new T.Unbound(", int.to_string(i), ")"])
+  }
+}
+
 fn do_occurs_in(i, b) {
   case b {
     Unbound(j) if i == j -> True

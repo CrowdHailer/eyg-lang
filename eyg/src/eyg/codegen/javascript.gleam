@@ -7,6 +7,7 @@ import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer
+import eyg/typer/monotype as t
 import eyg/codegen/utilities.{
   indent, squash, wrap_lines, wrap_single_or_multiline,
 }
@@ -17,7 +18,6 @@ pub type Generator {
   Generator(
     in_tail: Bool,
     scope: List(String),
-    // TODO rename as typer
     typer: typer.Typer,
     self: Option(String),
   )
@@ -168,8 +168,6 @@ fn render_pattern(pattern, state) {
 }
 
 pub fn render(tree, state) {
-  let hole_func = ast.generate_hole
-
   let #(context, tree) = tree
   case tree {
     // TODO escape
@@ -239,12 +237,46 @@ pub fn render(tree, state) {
       squash(function, with)
       |> wrap_return(state)
     }
-    e.Provider("", g) if g == hole_func -> [
-      "(() => {throw 'Reached todo in the code'})()",
-    ]
-    x -> {
-      io.debug(x)
-      todo("handle this case")
+    e.Provider("", e.Hole) -> ["(() => {throw 'Reached todo in the code'})()"]
+    e.Provider(config, e.Loader) -> {
+      let typer.Metadata(type_: Ok(expected), ..) = context
+      let Generator(typer: typer, ..) = state
+      let typer.Typer(substitutions: substitutions, ..) = typer
+      let loader = t.resolve(expected, substitutions)
+      case loader {
+        t.Function(_from, result) ->
+          case result {
+            t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), out) -> {
+              io.debug(usable)
+              [
+                "((ast) => {",
+                string.join([
+                  "  return window.compile(",
+                  t.literal(usable),
+                  ", ast)",
+                ]),
+                "})",
+              ]
+            }
+            _ -> [
+              "(() => {throw 'Failed to build provider for ",
+              t.to_string(loader),
+              "'})()",
+            ]
+          }
+      }
+    }
+    e.Provider(config, generator) -> {
+      let typer.Metadata(type_: Ok(expected), ..) = context
+      let Generator(typer: typer, ..) = state
+      let typer.Typer(substitutions: substitutions, ..) = typer
+      let expected = t.resolve(expected, substitutions)
+      let tree = e.generate(generator, config, expected)
+      let #(typed, typer) =
+        typer.infer(tree, expected, #(typer, typer.root_scope([])))
+      let state = Generator(..state, typer: typer)
+      io.debug(list.length(typer.inconsistencies))
+      render(typed, state)
     }
   }
 }

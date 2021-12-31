@@ -5,7 +5,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import eyg/ast
 import eyg/ast/path
-import eyg/ast/expression as e
+import eyg/ast/expression.{Env, Format} as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -133,6 +133,7 @@ pub fn unify(expected, given, state) {
       case expected, given {
         t.Native(e), t.Native(g) if e == g -> Ok(typer)
         t.Native(_), t.Native(_) ->
+          // The typer is passed because some constrains should end up in typer i.e. if some values in Tuple are Ok
           Error(#(UnmatchedTypes(expected, given), typer))
         t.Binary, t.Binary -> Ok(typer)
         t.Tuple(expected), t.Tuple(given) ->
@@ -219,7 +220,7 @@ fn get_variable(label, typer, scope) {
       let typer = Typer(..typer, next_unbound: next_unbound)
       Ok(#(monotype, typer))
     }
-    Error(Nil) -> Error(#(UnknownVariable(label), typer))
+    Error(Nil) -> Error(UnknownVariable(label))
   }
 }
 
@@ -374,7 +375,60 @@ pub fn infer_unconstrained(expression) {
     )
   let #(x, typer) = next_unbound(typer)
   let expected = t.Unbound(x)
-  infer(expression, expected, #(typer, scope))
+  let #(typed, typer) = infer(expression, expected, #(typer, scope))
+  // use inital scope again Can use local scope as EVERYTHIN immutable
+  // TODO put the string methods in scope
+  let #(for_render, typer) = expand_providers(typed, typer)
+  #(typed, typer)
+}
+
+fn expand_providers(tree, typer) {
+  let #(meta, expression) = tree
+  case expression {
+    e.Binary(_) | e.Variable(_) -> #(tree, typer)
+    e.Tuple(elements) -> {
+      let #(elements, typer) = list.map_state(elements, typer, expand_providers)
+      #(#(meta, e.Tuple(elements)), typer)
+    }
+    e.Row(fields) -> {
+      let #(fields, typer) =
+        list.map_state(
+          fields,
+          typer,
+          fn(row, typer) {
+            let #(key, value) = row
+            let #(value, typer) = expand_providers(value, typer)
+            let row = #(key, value)
+            #(row, typer)
+          },
+        )
+      #(#(meta, e.Row(fields)), typer)
+    }
+    e.Let(label, value, then) -> {
+      let #(value, typer) = expand_providers(value, typer)
+      let #(then, typer) = expand_providers(then, typer)
+      #(#(meta, e.Let(label, value, then)), typer)
+    }
+    e.Function(from, to) -> {
+      // let #(from, typer) = expand_providers(from, typer)
+      let #(to, typer) = expand_providers(to, typer)
+      #(#(meta, e.Function(from, to)), typer)
+    }
+    e.Call(func, with) -> {
+      let #(func, typer) = expand_providers(func, typer)
+      let #(with, typer) = expand_providers(with, typer)
+      #(#(meta, e.Call(func, with)), typer)
+    }
+    e.Provider(config, g) if g == Format || g == Env -> {
+      let Metadata(type_: Ok(expected), ..) = meta
+      let Typer(substitutions: substitutions, ..) = typer
+      let expected = t.resolve(expected, substitutions)
+      let tree = e.generate(g, config, expected)
+      let #(typed, typer) = infer(tree, expected, #(typer, root_scope([])))
+      expand_providers(typed, typer)
+    }
+    _ -> #(tree, typer)
+  }
 }
 
 pub fn infer(
@@ -434,7 +488,6 @@ pub fn infer(
           fn(pair, stz) {
             let #(tz, i) = stz
             let #(#(name, value), expected) = pair
-            // let tz = Typer(..tz, location: path.append(path, i))
             let #(value, tz) =
               infer(value, expected, #(tz, child(child(scope, i), 1)))
             #(#(name, value), #(tz, i + 1))
@@ -448,7 +501,7 @@ pub fn infer(
       // TODO separate lookup for instantiate, good for let rec
       let #(type_, typer) = case get_variable(label, typer, scope) {
         Ok(#(given, typer)) -> do_unify(expected, given, #(typer, scope))
-        Error(#(reason, _)) -> {
+        Error(reason) -> {
           let Typer(inconsistencies: inconsistencies, ..) = typer
           let inconsistencies = [
             #(scope.path, reason_to_string(reason)),
@@ -565,8 +618,8 @@ pub fn infer(
       #(expression, typer)
     }
     e.Provider(config, generator) -> {
-      let typer = case generator == ast.generate_hole {
-        True ->
+      let typer = case generator {
+        e.Hole ->
           Typer(
             ..typer,
             inconsistencies: [
@@ -574,7 +627,7 @@ pub fn infer(
               ..typer.inconsistencies
             ],
           )
-        False -> typer
+        _ -> typer
       }
       let expression = #(meta(Ok(expected)), e.Provider(config, generator))
       #(expression, typer)
