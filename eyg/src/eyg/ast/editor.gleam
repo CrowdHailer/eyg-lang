@@ -62,7 +62,7 @@ fn expression_type(expression: e.Expression(Metadata, a), typer: typer.Typer) {
       t.resolve(t, typer.substitutions)
       |> t.to_string(),
     )
-    Error(reason) -> #(True, typer.reason_to_string(reason))
+    Error(reason) -> #(True, typer.reason_to_string(reason, typer))
   }
 }
 

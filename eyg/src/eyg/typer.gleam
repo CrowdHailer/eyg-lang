@@ -43,7 +43,7 @@ pub type Typer {
   )
 }
 
-pub fn reason_to_string(reason) {
+pub fn reason_to_string(reason, typer: Typer) {
   case reason {
     IncorrectArity(expected, given) ->
       string.join([
@@ -56,9 +56,9 @@ pub fn reason_to_string(reason) {
     UnmatchedTypes(expected, given) ->
       string.join([
         "Unmatched types expected ",
-        t.to_string(expected),
+        t.to_string(t.resolve(expected, typer.substitutions)),
         " given ",
-        t.to_string(given),
+        t.to_string(t.resolve(given, typer.substitutions)),
       ])
     MissingFields(expected) ->
       [
@@ -68,7 +68,11 @@ pub fn reason_to_string(reason) {
           fn(x) {
             let #(name, type_) = x
             io.debug(type_)
-            string.join([name, ": ", t.to_string(type_)])
+            string.join([
+              name,
+              ": ",
+              t.to_string(t.resolve(type_, typer.substitutions)),
+            ])
           },
         )
         |> list.intersperse(", ")
@@ -79,7 +83,7 @@ pub fn reason_to_string(reason) {
     UnableToProvide(expected, g) ->
       string.join([
         "Unable to generate for expected type ",
-        t.to_string(expected),
+        t.to_string(t.resolve(expected, typer.substitutions)),
         " with generator ",
         e.generator_to_string(g),
       ])
@@ -337,7 +341,7 @@ fn do_unify(expected, given, state) {
     Error(#(reason, typer)) -> {
       let Typer(inconsistencies: inconsistencies, ..) = typer
       let inconsistencies = [
-        #(scope.path, reason_to_string(reason)),
+        #(scope.path, reason_to_string(reason, typer)),
         ..typer.inconsistencies
       ]
       let typer = Typer(..typer, inconsistencies: inconsistencies)
@@ -559,7 +563,7 @@ pub fn infer(
         Error(reason) -> {
           let Typer(inconsistencies: inconsistencies, ..) = typer
           let inconsistencies = [
-            #(scope.path, reason_to_string(reason)),
+            #(scope.path, reason_to_string(reason, typer)),
             ..typer.inconsistencies
           ]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
