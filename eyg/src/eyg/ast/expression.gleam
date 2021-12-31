@@ -1,3 +1,4 @@
+import gleam/dynamic
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
@@ -149,21 +150,21 @@ pub type Expression(m, g) =
   #(m, Node(m, g))
 
 pub fn binary(value) {
-  #(Nil, Binary(value))
+  #(dynamic.from(Nil), Binary(value))
 }
 
 pub fn call(function, with) {
-  #(Nil, Call(function, with))
+  #(dynamic.from(Nil), Call(function, with))
 }
 
 pub fn function(for, body) {
-  #(Nil, Function(for, body))
+  #(dynamic.from(Nil), Function(for, body))
 }
 
 pub fn let_(pattern, value, then) {
-  #(Nil, Let(pattern, value, then))
+  #(dynamic.from(Nil), Let(pattern, value, then))
 }
 
 pub fn tuple_(elements) {
-  #(Nil, Tuple(elements))
+  #(dynamic.from(Nil), Tuple(elements))
 }

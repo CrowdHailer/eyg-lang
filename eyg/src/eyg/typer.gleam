@@ -1,3 +1,4 @@
+import gleam/dynamic.{Dynamic}
 import gleam/io
 import gleam/int
 import gleam/list
@@ -422,14 +423,17 @@ pub fn expand_providers(tree, typer) {
       #(#(meta, e.Call(func, with)), typer)
     }
     // Hole needs to be separate, it can't be a function call because it is not always going to be a function that gets called.
-    e.Provider(config, g, Nil) if g == Hole || g == Loader -> {
-      let dummy = #(Nil, e.Provider("", e.Hole, Nil))
+    e.Provider(config, g, _) if g == Hole || g == Loader -> {
+      let dummy = #(
+        dynamic.from(Nil),
+        e.Provider("", e.Hole, dynamic.from(Nil)),
+      )
       let #(typed, _typer) =
         infer(dummy, t.Unbound(-1), #(typer, root_scope([])))
       // expand_providers(typed, typer)
       #(#(meta, e.Provider(config, g, typed)), typer)
     }
-    e.Provider(config, g, Nil) -> {
+    e.Provider(config, g, _) -> {
       let Metadata(type_: Ok(expected), ..) = meta
       let Typer(substitutions: substitutions, ..) = typer
       let expected = t.resolve(expected, substitutions)
@@ -451,7 +455,10 @@ pub fn expand_providers(tree, typer) {
           let inconsistencies = [#(path, message), ..typer.inconsistencies]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
           // This only exists because Loader and Hole need special treatment
-          let dummy = #(Nil, e.Provider("", e.Hole, Nil))
+          let dummy = #(
+            dynamic.from(Nil),
+            e.Provider("", e.Hole, dynamic.from(Nil)),
+          )
           let #(typed, _typer) =
             infer(dummy, expected, #(typer, root_scope([])))
           // expand_providers(typed, typer)
@@ -463,10 +470,10 @@ pub fn expand_providers(tree, typer) {
 }
 
 pub fn infer(
-  expression: e.Expression(Nil, Nil),
+  expression: e.Expression(Dynamic, Dynamic),
   expected: t.Monotype,
   state: #(Typer, Scope),
-) -> #(e.Expression(Metadata, Nil), Typer) {
+) -> #(e.Expression(Metadata, Dynamic), Typer) {
   // return all context so more info can be added later
   let #(_, tree) = expression
   let #(typer, scope) = state
@@ -661,7 +668,10 @@ pub fn infer(
           )
         _ -> typer
       }
-      let expression = #(meta(Ok(expected)), e.Provider(config, generator, Nil))
+      let expression = #(
+        meta(Ok(expected)),
+        e.Provider(config, generator, dynamic.from(Nil)),
+      )
       #(expression, typer)
     }
   }

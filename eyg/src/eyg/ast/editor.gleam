@@ -1,3 +1,4 @@
+import gleam/dynamic.{Dynamic}
 import gleam/io
 import gleam/int
 import gleam/list
@@ -25,7 +26,7 @@ pub type Mode {
 
 pub type Editor {
   Editor(
-    tree: e.Expression(Metadata, e.Expression(Metadata, Nil)),
+    tree: e.Expression(Metadata, e.Expression(Metadata, Dynamic)),
     typer: typer.Typer,
     selection: Option(List(Int)),
     mode: Mode,
@@ -299,12 +300,12 @@ pub type Element(a, b) {
   ProviderConfig(String)
 }
 
-external fn untype(e.Expression(a, b)) -> e.Expression(Nil, Nil) =
+external fn untype(e.Expression(a, b)) -> e.Expression(Dynamic, Dynamic) =
   "../../harness.js" "identity"
 
 pub fn untype_field(
   field: #(String, e.Expression(a, b)),
-) -> #(String, e.Expression(Nil, Nil)) {
+) -> #(String, e.Expression(Dynamic, Dynamic)) {
   let #(label, value) = field
   #(label, untype(value))
 }
@@ -314,7 +315,7 @@ fn handle_transformation(
   position,
   key,
   ctrl_key,
-) -> #(Option(e.Expression(Nil, Nil)), List(Int), Mode) {
+) -> #(Option(e.Expression(Dynamic, Dynamic)), List(Int), Mode) {
   let Editor(tree: tree, ..) = editor
   let inconsistencies = inconsistencies(editor)
   case key, ctrl_key {
@@ -798,7 +799,7 @@ fn swap_elements(match, at) {
   case match {
     TupleExpression(elements) -> {
       try elements = swap_pair(elements, at)
-      let e: List(e.Expression(Nil, Nil)) = elements
+      let e: List(e.Expression(Dynamic, Dynamic)) = elements
       Ok(Expression(ast.tuple_(elements)))
     }
     TuplePattern(elements) -> {
@@ -897,8 +898,8 @@ fn drag_up(tree, original) {
 }
 
 type TupleMatch {
-  TupleExpression(elements: List(e.Expression(Nil, Nil)))
-  RowExpression(fields: List(#(String, e.Expression(Nil, Nil))))
+  TupleExpression(elements: List(e.Expression(Dynamic, Dynamic)))
+  RowExpression(fields: List(#(String, e.Expression(Dynamic, Dynamic))))
   TuplePattern(elements: List(Option(String)))
   RowPattern(fields: List(#(String, String)))
 }
@@ -927,7 +928,7 @@ fn match_let(target) {
 fn closest(
   tree,
   position,
-  search: fn(Element(Metadata, #(Metadata, e.Node(Metadata, Nil)))) ->
+  search: fn(Element(Metadata, #(Metadata, e.Node(Metadata, Dynamic)))) ->
     Result(t, Nil),
 ) -> Option(#(List(Int), Int, t)) {
   case parent_path(position) {
@@ -1078,8 +1079,8 @@ fn insert_provider(tree, position) {
     Expression(#(_, expression)) -> {
       let new = case expression {
         e.Provider(config, generator, a) -> #(
-          Nil,
-          e.Provider(config, generator, Nil),
+          dynamic.from(Nil),
+          e.Provider(config, generator, dynamic.from(Nil)),
         )
         _ -> ast.provider("", e.Loader)
       }
@@ -1477,8 +1478,8 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
 pub fn replace_expression(
   tree: e.Expression(a, b),
   path: List(Int),
-  replacement: e.Expression(Nil, Nil),
-) -> e.Expression(Nil, Nil) {
+  replacement: e.Expression(Dynamic, Dynamic),
+) -> e.Expression(Dynamic, Dynamic) {
   let tree = untype(tree)
   map_node(tree, path, fn(_) { replacement })
 }
@@ -1486,8 +1487,8 @@ pub fn replace_expression(
 pub fn map_node(
   tree: e.Expression(a, b),
   path: List(Int),
-  mapper: fn(e.Expression(a, b)) -> e.Expression(Nil, Nil),
-) -> e.Expression(Nil, Nil) {
+  mapper: fn(e.Expression(a, b)) -> e.Expression(Dynamic, Dynamic),
+) -> e.Expression(Dynamic, Dynamic) {
   let #(_, node) = tree
   case node, path {
     _, [] -> mapper(tree)

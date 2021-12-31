@@ -1,3 +1,4 @@
+import gleam/dynamic.{Dynamic}
 import gleam/io
 import gleam/int
 import gleam/list
@@ -168,7 +169,7 @@ fn render_pattern(pattern, state) {
 }
 
 pub fn render(
-  tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
+  tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Dynamic)),
   state,
 ) {
   let #(context, tree) = tree
