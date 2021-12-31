@@ -40,7 +40,6 @@
           let rendered = Editor.codegen(editor);
           window.tree = editor.tree;
           // with eval {} is considered a block of code, not an object
-          // console.log("evaluating if true", rendered);
           if (rendered[0]) {
             code = rendered[1];
             let returned = Editor.eval$(editor);
@@ -72,7 +71,6 @@
   }
 
   function handleKeydown(event) {
-    console.log("outer");
     let tmp;
     try {
       if (event.metaKey) {
