@@ -148,7 +148,10 @@ pub fn display(tree, position, selection, editor) {
         )
       #(metadata, e.Call(function, with))
     }
-    e.Provider(config, generator) -> #(metadata, e.Provider(config, generator))
+    e.Provider(config, generator, generated) -> #(
+      metadata,
+      e.Provider(config, generator, generated),
+    )
   }
 }
 

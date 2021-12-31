@@ -35,7 +35,7 @@ pub fn variable(label) {
 }
 
 pub fn provider(config, generator) {
-  #(Nil, e.Provider(config, generator))
+  #(Nil, e.Provider(config, generator, Nil))
 }
 
 pub fn hole() {

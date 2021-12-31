@@ -115,7 +115,7 @@ pub fn to_json(ast) {
         #("function", to_json(function)),
         #("with", to_json(with)),
       ])
-    e.Provider(config, generator) ->
+    e.Provider(config, generator, _) ->
       object([
         #("node", string("Provider")),
         #("config", string(config)),

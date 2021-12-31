@@ -310,7 +310,7 @@ pub fn is_error(metadata) {
   }
 }
 
-pub fn get_type(tree: e.Expression(Metadata)) -> Result(t.Monotype, Reason) {
+pub fn get_type(tree: e.Expression(Metadata, a)) -> Result(t.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
 }
@@ -378,14 +378,13 @@ pub fn infer_unconstrained(expression) {
   let #(typed, typer) = infer(expression, expected, #(typer, scope))
   // use inital scope again Can use local scope as EVERYTHIN immutable
   // TODO put the string methods in scope
-  let #(for_render, typer) = expand_providers(typed, typer)
-  #(typed, typer)
+  expand_providers(typed, typer)
 }
 
 fn expand_providers(tree, typer) {
   let #(meta, expression) = tree
   case expression {
-    e.Binary(_) | e.Variable(_) -> #(tree, typer)
+    // e.Binary(_) | e.Variable(_) -> #(tree, typer)
     e.Tuple(elements) -> {
       let #(elements, typer) = list.map_state(elements, typer, expand_providers)
       #(#(meta, e.Tuple(elements)), typer)
@@ -419,23 +418,24 @@ fn expand_providers(tree, typer) {
       let #(with, typer) = expand_providers(with, typer)
       #(#(meta, e.Call(func, with)), typer)
     }
-    e.Provider(config, g) if g == Format || g == Env -> {
+    e.Provider(config, g, Nil) if g == Format || g == Env -> {
       let Metadata(type_: Ok(expected), ..) = meta
       let Typer(substitutions: substitutions, ..) = typer
       let expected = t.resolve(expected, substitutions)
       let tree = e.generate(g, config, expected)
       let #(typed, typer) = infer(tree, expected, #(typer, root_scope([])))
-      expand_providers(typed, typer)
+      // expand_providers(typed, typer)
+      #(#(meta, e.Provider(config, g, typed)), typer)
     }
-    _ -> #(tree, typer)
   }
+  // _ -> #(tree, typer)
 }
 
 pub fn infer(
-  expression: e.Expression(Nil),
+  expression: e.Expression(Nil, Nil),
   expected: t.Monotype,
   state: #(Typer, Scope),
-) -> #(e.Expression(Metadata), Typer) {
+) -> #(e.Expression(Metadata, Nil), Typer) {
   // return all context so more info can be added later
   let #(_, tree) = expression
   let #(typer, scope) = state
@@ -617,7 +617,7 @@ pub fn infer(
       let expression = #(meta(Ok(expected)), e.Call(function, with))
       #(expression, typer)
     }
-    e.Provider(config, generator) -> {
+    e.Provider(config, generator, Nil) -> {
       let typer = case generator {
         e.Hole ->
           Typer(
@@ -629,7 +629,7 @@ pub fn infer(
           )
         _ -> typer
       }
-      let expression = #(meta(Ok(expected)), e.Provider(config, generator))
+      let expression = #(meta(Ok(expected)), e.Provider(config, generator, Nil))
       #(expression, typer)
     }
   }
