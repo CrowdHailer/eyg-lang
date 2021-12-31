@@ -196,6 +196,7 @@ pub fn handle_change(editor, content) {
       let new = ast.binary(content)
       replace_expression(tree, position, new)
     }
+
     Pattern(
       p.Variable(l1),
       #(
@@ -274,6 +275,10 @@ pub fn handle_change(editor, content) {
         get_element(tree, provider_position)
       let new = ast.provider(content, generator)
       replace_expression(tree, provider_position, new)
+    }
+    Expression(_) -> {
+      let new = ast.variable(content)
+      replace_expression(tree, position, new)
     }
   }
 
