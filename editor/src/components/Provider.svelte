@@ -1,10 +1,18 @@
 <script>
   import * as Display from "../gen/eyg/editor/display";
   import Hole from "./Hole.svelte";
+  import Expression from "./Expression.svelte";
+
   import * as Ast from "../gen/eyg/ast";
   export let metadata;
   export let generator;
+  export let generated;
   export let config;
+
+  // Can put exapand status on window object but that will not be reactive
+  // Needs to be in meta data
+  // Or have a reference to global editor state
+  // DO I want the feature to be global?
 
   let generator_string, generator_metadata, config_metadata;
   $: (() => {
@@ -17,6 +25,8 @@
 
 {#if Ast.is_hole(generator)}
   <Hole {metadata} />
+{:else if metadata.expanded}
+  <Expression expression={generated} />
 {:else}
   <span
     class="text-yellow-500 border-2 border-transparent outline-none rounded"

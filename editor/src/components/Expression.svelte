@@ -38,7 +38,12 @@
 {:else if tree instanceof Expression.Function}
   <Function {metadata} pattern={tree.pattern} body={tree.body} />
 {:else if tree instanceof Expression.Provider}
-  <Provider {metadata} config={tree.config} generator={tree.generator} />
+  <Provider
+    {metadata}
+    config={tree.config}
+    generator={tree.generator}
+    generated={tree.generated}
+  />
 {:else}
   {JSON.stringify(tree)}
 {/if}

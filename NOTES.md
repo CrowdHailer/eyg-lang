@@ -39,6 +39,8 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 
 - [ ] Use a parameterised Enum for all the native types
 - [x] Resolve type information before printing errors.
+- [ ] Tree's set up correctly for expanded providers
+- [ ] When we have reordered type constraints, we can push type providers to the top
 - [x] Switch Integer Type to Native/Platform with an Enum for possible values inside
 - [ ] Rebase Fsharp talk 1hr9min taking types to make type providers moreuseful, we're already planning that
 - [x] Select from for choosing type providers

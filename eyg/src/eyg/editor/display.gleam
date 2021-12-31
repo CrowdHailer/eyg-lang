@@ -1,3 +1,4 @@
+import gleam/dynamic.{Dynamic}
 import gleam/int
 import gleam/io
 import gleam/list
@@ -6,6 +7,7 @@ import gleam/string
 import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/ast/editor
 import eyg/typer.{Metadata}
 
 pub fn is_multiexpression(expression) {
@@ -24,7 +26,12 @@ pub type Selection {
 
 pub type Display {
   //   make this marker String path if we put metadata in patterns
-  Display(position: List(Int), selection: Selection, errored: Bool)
+  Display(
+    position: List(Int),
+    selection: Selection,
+    errored: Bool,
+    expanded: Bool,
+  )
 }
 
 pub fn marker(display) {
@@ -69,26 +76,36 @@ pub fn show_value(metadata) {
   // io.debug(metadata)
 }
 
+pub fn display(editor) {
+  let editor.Editor(tree: tree, selection: selection, ..) = editor
+  let selection = case selection {
+    Some(path) -> Above(path)
+    None -> Neither
+  }
+  do_display(tree, path.root(), selection, editor)
+}
+
 // if not selected print value minimal
 // if taget print value minimal, this is where peek in is valuable
 // if target in pattern or value print full
 // down from pattern should move into let, if block
 // it's a nice idea to put value in expression and pattern. but there is no analog to discard.
 // unless we treat it as empty string variable.
-pub fn display(tree, position, selection, editor) {
+pub fn do_display(tree, position, selection, editor) {
   let #(Metadata(type_: type_, ..), expression) = tree
+  let editor.Editor(expanded: expanded, ..) = editor
   let errored = case type_ {
     Ok(_) -> False
     Error(_) -> True
   }
-  let metadata = Display(position, selection, errored)
+  let metadata = Display(position, selection, errored, expanded)
   case expression {
     e.Binary(content) -> #(metadata, e.Binary(content))
     e.Tuple(elements) -> {
       let display_element = fn(index, element) {
         let position = path.append(position, index)
         let selection = child_selection(selection, index)
-        display(element, position, selection, editor)
+        do_display(element, position, selection, editor)
       }
       let elements = list.index_map(elements, display_element)
       #(metadata, e.Tuple(elements))
@@ -98,7 +115,7 @@ pub fn display(tree, position, selection, editor) {
         let #(label, value) = field
         let position = list.append(position, [index, 1])
         let selection = child_selection(child_selection(selection, index), 1)
-        #(label, display(value, position, selection, editor))
+        #(label, do_display(value, position, selection, editor))
       }
       let fields = list.index_map(fields, display_field)
       #(metadata, e.Row(fields))
@@ -106,14 +123,14 @@ pub fn display(tree, position, selection, editor) {
     e.Variable(label) -> #(metadata, e.Variable(label))
     e.Let(pattern, value, then) -> {
       let value =
-        display(
+        do_display(
           value,
           path.append(position, 1),
           child_selection(selection, 1),
           editor,
         )
       let then =
-        display(
+        do_display(
           then,
           path.append(position, 2),
           child_selection(selection, 2),
@@ -123,7 +140,7 @@ pub fn display(tree, position, selection, editor) {
     }
     e.Function(from, to) -> {
       let to =
-        display(
+        do_display(
           to,
           path.append(position, 1),
           child_selection(selection, 1),
@@ -133,14 +150,14 @@ pub fn display(tree, position, selection, editor) {
     }
     e.Call(function, with) -> {
       let function =
-        display(
+        do_display(
           function,
           path.append(position, 0),
           child_selection(selection, 0),
           editor,
         )
       let with =
-        display(
+        do_display(
           with,
           path.append(position, 1),
           child_selection(selection, 1),
@@ -148,12 +165,32 @@ pub fn display(tree, position, selection, editor) {
         )
       #(metadata, e.Call(function, with))
     }
-    e.Provider(config, generator, generated) -> #(
-      metadata,
-      e.Provider(config, generator, generated),
-    )
+    e.Provider(config, generator, generated) ->
+      // coerce back and forth because the expression does not represent the recursion we need.
+      // There are cases when nothing is shown here
+      // TODO better typing of provider with stuff
+      case dynamic.from(generated) == dynamic.from(Nil) {
+        True -> #(metadata, e.Provider(config, generator, generated))
+        False -> {
+          io.debug(generated)
+          let generated: e.Expression(Metadata, e.Expression(Metadata, Dynamic)) =
+            unsafe_coerce(generated)
+          io.debug(generated)
+          let generated =
+            do_display(
+              generated,
+              path.append(position, 1),
+              child_selection(selection, 1),
+              editor,
+            )
+          #(metadata, e.Provider(config, generator, unsafe_coerce(generated)))
+        }
+      }
   }
 }
+
+pub external fn unsafe_coerce(a) -> b =
+  "../../eyg_utils.js" "identity"
 
 // properrty display -> untype should be equal
 // property type -> untype should be equal
@@ -162,17 +199,19 @@ pub type Pattern {
 }
 
 pub fn display_pattern(metadata, pattern) {
-  let Display(position: position, selection: selection, ..) = metadata
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    metadata
   //   ast&path.child
   //   is always 0 but that's a coincidence of fn and let
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, False)
+  let display = Display(position, selection, False, expanded)
 }
 
 // display_elements takes care of _ in label too
 pub fn display_pattern_elements(display, elements) {
-  let Display(position: position, selection: selection, ..) = display
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
   list.index_map(
     elements,
     fn(i, e) {
@@ -182,13 +221,14 @@ pub fn display_pattern_elements(display, elements) {
         Some(label) -> label
         None -> "_"
       }
-      #(Display(position, selection, False), value)
+      #(Display(position, selection, False, expanded), value)
     },
   )
 }
 
 pub fn display_pattern_fields(display, fields) {
-  let Display(position: position, selection: selection, ..) = display
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
   list.index_map(
     fields,
     fn(i, f) {
@@ -200,10 +240,10 @@ pub fn display_pattern_fields(display, fields) {
       let value_selection = child_selection(selection, 1)
       let #(label, bind) = f
       #(
-        Display(position, selection, False),
-        Display(label_position, label_selection, False),
+        Display(position, selection, False, expanded),
+        Display(label_position, label_selection, False, expanded),
         label,
-        Display(value_position, value_selection, False),
+        Display(value_position, value_selection, False, expanded),
         bind,
       )
     },
@@ -211,7 +251,8 @@ pub fn display_pattern_fields(display, fields) {
 }
 
 pub fn display_expression_fields(display, fields) {
-  let Display(position: position, selection: selection, ..) = display
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
   list.index_map(
     fields,
     fn(i, f) {
@@ -221,8 +262,8 @@ pub fn display_expression_fields(display, fields) {
       let label_selection = child_selection(selection, 0)
       let #(label, value) = f
       #(
-        Display(position, selection, False),
-        Display(label_position, label_selection, False),
+        Display(position, selection, False, expanded),
+        Display(label_position, label_selection, False, expanded),
         label,
         value,
       )
@@ -231,23 +272,26 @@ pub fn display_expression_fields(display, fields) {
 }
 
 pub fn display_unit_variant(display) {
-  let Display(position: position, selection: selection, ..) = display
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, False)
+  let display = Display(position, selection, False, expanded)
 }
 
 pub fn for_provider_config(display) {
-  let Display(position: position, selection: selection, ..) = display
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
   let position = path.append(position, 1)
   let selection = child_selection(selection, 1)
-  let display = Display(position, selection, False)
+  let display = Display(position, selection, False, expanded)
 }
 
 pub fn for_provider_generator(generator, display) {
-  let Display(position: position, selection: selection, ..) = display
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, False)
+  let display = Display(position, selection, False, expanded)
   #(e.generator_to_string(generator), display)
 }

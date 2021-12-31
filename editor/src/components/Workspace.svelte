@@ -173,7 +173,7 @@
       on:click={handleClick}
       on:keydown={handleKeydown}
     >
-      <Expression expression={Editor.display(editor)} />
+      <Expression expression={Display.display(editor)} />
       <p class="bg-gray-200 p-1">
         <span>Output = </span><span>{value}</span>
       </p>

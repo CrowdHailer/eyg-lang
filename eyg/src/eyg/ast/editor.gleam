@@ -16,7 +16,6 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/codegen/javascript
 import standard/example
-import eyg/editor/display
 
 pub type Mode {
   Command
@@ -30,6 +29,7 @@ pub type Editor {
     typer: typer.Typer,
     selection: Option(List(Int)),
     mode: Mode,
+    expanded: Bool,
   )
 }
 
@@ -127,7 +127,7 @@ pub fn init(raw) {
   // let untyped = example.minimal()
   let #(typed, typer) = typer.infer_unconstrained(untyped)
   let mode = Command
-  Editor(typed, typer, None, mode)
+  Editor(typed, typer, None, mode, False)
 }
 
 fn rest_to_path(rest) {
@@ -152,25 +152,37 @@ pub fn handle_click(editor: Editor, target) {
 }
 
 pub fn handle_keydown(editor, key, ctrl_key) {
-  let Editor(tree: tree, typer: typer, selection: selection, mode: mode) =
+  let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
     editor
   let Some(path) = selection
   let new = case mode {
-    Command -> {
-      let #(untyped, path, mode) =
-        handle_transformation(editor, path, key, ctrl_key)
-      let #(typed, typer) = case untyped {
-        None -> #(tree, typer)
-        Some(untyped) -> typer.infer_unconstrained(untyped)
+    Command ->
+      case key {
+        "x" -> {
+          let Editor(expanded: expanded, ..) = editor
+          // is there no gleam not
+          let expanded = case expanded {
+            True -> False
+            False -> True
+          }
+          Editor(..editor, expanded: expanded)
+        }
+        _ -> {
+          let #(untyped, path, mode) =
+            handle_transformation(editor, path, key, ctrl_key)
+          let #(typed, typer) = case untyped {
+            None -> #(tree, typer)
+            Some(untyped) -> typer.infer_unconstrained(untyped)
+          }
+          Editor(
+            ..editor,
+            tree: typed,
+            typer: typer,
+            selection: Some(path),
+            mode: mode,
+          )
+        }
       }
-      Editor(
-        ..editor,
-        tree: typed,
-        typer: typer,
-        selection: Some(path),
-        mode: mode,
-      )
-    }
     Draft(_) -> todo("handle draft mode")
     Select(_) ->
       case key {
@@ -1529,13 +1541,4 @@ pub fn map_node(
       todo("unhandled node map")
     }
   }
-}
-
-pub fn display(editor) {
-  let Editor(tree: tree, selection: selection, ..) = editor
-  let selection = case selection {
-    Some(path) -> display.Above(path)
-    None -> display.Neither
-  }
-  display.display(tree, path.root(), selection, editor)
 }
