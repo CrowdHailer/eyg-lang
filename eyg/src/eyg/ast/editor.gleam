@@ -129,23 +129,23 @@ pub fn init(raw) {
   Editor(typed, typer, None, mode)
 }
 
+fn rest_to_path(rest) {
+  case rest {
+    "" -> []
+    _ ->
+      // empty string makes unparsable as int list
+      string.split(rest, ",")
+      |> list.map(int.parse)
+  }
+}
+
+// At the editor level we might want to handle semantic events like select node. And have display do handle click
 pub fn handle_click(editor: Editor, target) {
   case string.split(target, ":") {
     ["root"] -> Editor(..editor, selection: Some([]), mode: Command)
     ["p", rest] -> {
-      let path = case rest {
-        "" -> []
-        _ ->
-          // empty string makes unparsable as int list
-          string.split(rest, ",")
-          |> list.map(int.parse)
-      }
-      let mode = case get_element(editor.tree, path) {
-        // Expression(#(_, e.Binary(content))) -> Draft(content)
-        // TODO handle adjusting integer but I actually thinking double clicking is what's needed to activate
-        _ -> Command
-      }
-      Editor(..editor, selection: Some(path), mode: mode)
+      let path = rest_to_path(rest)
+      Editor(..editor, selection: Some(path), mode: Command)
     }
   }
 }
@@ -192,7 +192,6 @@ pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
   let Some(position) = selection
   let untyped = case get_element(tree, position) {
-    // TODO handle change on Integer
     Expression(#(_, e.Binary(_))) -> {
       let new = ast.binary(content)
       replace_expression(tree, position, new)
@@ -262,9 +261,22 @@ pub fn handle_change(editor, content) {
       let fields = list.flatten([pre, [#(key, content)], post])
       replace_pattern(tree, pattern_position, p.Row(fields))
     }
-
-    _ -> todo("change isn't handled on this element")
+    ProviderGenerator(_) -> {
+      let Some(#(provider_position, _)) = parent_path(position)
+      let Expression(#(_, e.Provider(config, _))) =
+        get_element(tree, provider_position)
+      let new = ast.provider(config, e.generator_from_string(content))
+      replace_expression(tree, provider_position, new)
+    }
+    ProviderConfig(_) -> {
+      let Some(#(provider_position, _)) = parent_path(position)
+      let Expression(#(_, e.Provider(_, generator))) =
+        get_element(tree, provider_position)
+      let new = ast.provider(content, generator)
+      replace_expression(tree, provider_position, new)
+    }
   }
+
   let #(typed, typer) = typer.infer_unconstrained(untyped)
   Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
@@ -380,10 +392,11 @@ fn decrease_selection(tree, position) {
         Draft(""),
       )
     }
-    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) | Expression(#(
-      _,
-      e.Provider(_, _),
-    )) -> #(None, position, Command)
+    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
+      None,
+      position,
+      Command,
+    )
     Expression(_) -> #(None, inner, Command)
     RowField(_, _) -> #(None, inner, Command)
     Pattern(p.Tuple([]), _) -> #(
@@ -1054,14 +1067,25 @@ fn wrap_function(tree, position) {
 }
 
 fn insert_provider(tree, position) {
+  let all_generators = list.map(e.all_generators(), e.generator_to_string)
   case get_element(tree, position) {
-    Expression(expression) -> {
-      let new = ast.provider("", e.Loader)
+    Expression(#(_, expression)) -> {
+      let new = case expression {
+        e.Provider(config, generator) -> #(Nil, e.Provider(config, generator))
+        _ -> ast.provider("", e.Loader)
+      }
       #(
         Some(replace_expression(tree, position, new)),
         path.append(position, 0),
-        Select(list.map(e.all_generators(), e.generator_to_string)),
+        Select(all_generators),
       )
+    }
+    ProviderGenerator(_) | ProviderConfig(_) -> {
+      let Some(#(provider_position, _)) = parent_path(position)
+      // assumed to be provider
+      let Expression(#(_, e.Provider(_, _))) =
+        get_element(tree, provider_position)
+      #(None, path.append(provider_position, 0), Select(all_generators))
     }
     _ -> #(None, position, Command)
   }
@@ -1296,6 +1320,7 @@ fn draft(tree, position) {
     RowKey(_, key) -> #(None, position, Draft(key))
     PatternKey(_, key) -> #(None, position, Draft(key))
     PatternFieldBind(_, label) -> #(None, position, Draft(label))
+    ProviderConfig(config) -> #(None, position, Draft(config))
     _ -> #(None, position, Command)
   }
 }

@@ -266,37 +266,17 @@ pub fn render(tree, state) {
           }
       }
     }
+    e.Provider(config, generator) -> {
+      let typer.Metadata(type_: Ok(expected), ..) = context
+      let Generator(typer: typer, ..) = state
+      let typer.Typer(substitutions: substitutions, ..) = typer
+      let expected = t.resolve(expected, substitutions)
+      let tree = e.generate(generator, config, expected)
+      let #(typed, typer) =
+        typer.infer(tree, expected, #(typer, typer.root_scope([])))
+      let state = Generator(..state, typer: typer)
+      io.debug(list.length(typer.inconsistencies))
+      render(typed, state)
+    }
   }
-  // let tree = g(config, expected)
-  // The harness we run should make compile
-  // We also do do eval
-  // Back up have the code that does it in JS land
-  // widow.biz
-  // window.run state
-  // reloadable
-  // Move to compile with value
-  // Need an infer to specific value
-  // Return a thing that will call on func of the other in case of result
-  // TODO better naming around all the scope here
-  // No variables makes sense, hygenic macros?
-  // path should probably be curret
-  // case typer.infer(
-  //   tree,
-  //   expected,
-  //   #(
-  //     typer,
-  //     typer.Scope(
-  //       path: [],
-  //       variables: [
-  //         #("compile", polytype.Polytype([-99], t.Unbound(-99))),
-  //       ],
-  //     ),
-  //   ),
-  // ) {
-  //   #(typed, typer.Typer(inconsistencies: [], ..)) -> render(typed, state)
-  //   #(typed, typer.Typer(inconsistencies: i, ..)) -> {
-  //     io.debug(i)
-  //     todo("could not infer")
-  //   }
-  // }
 }

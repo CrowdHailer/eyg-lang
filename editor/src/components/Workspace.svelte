@@ -122,11 +122,13 @@
   let page = HOME;
   updateFocus(editor);
 
-  function makeSelection(params) {
-    console.log(params, "Made");
-  }
-  function cancelSelection(params) {
-    console.log(params, "Cancel");
+  function makeSelection(value) {
+    try {
+      editor = Editor.handle_change(editor, value);
+      updateFocus(editor);
+    } catch (error) {
+      console.error("Caught", error);
+    }
   }
 </script>
 
@@ -197,11 +199,7 @@
             on:change={handleChange}
           />
         {:else if Editor.is_select(editor)}
-          <Select
-            choices={editor.mode.choices}
-            {makeSelection}
-            {cancelSelection}
-          />{/if}
+          <Select choices={editor.mode.choices} {makeSelection} />{/if}
       </div>
     </div>
   {/if}

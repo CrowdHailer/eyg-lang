@@ -1,11 +1,13 @@
 <script>
   export let choices;
   export let makeSelection;
-  export let cancelSelection;
-  let filter;
+  // cancel selection is handled by the Escape key being caught at the editor level
+  // export let cancelSelection;
+
+  let filter = "";
   let remaining;
   $: remaining = choices.toArray().filter((c) => {
-    if ((filter = "")) {
+    if (filter == "") {
       return true;
     } else {
       return c.startsWith(filter);
@@ -18,29 +20,29 @@
       return true;
     }
     event.stopPropagation();
-    try {
-      if (event.key == "Enter" || event.key == " ") {
-        let variable = Editor.in_scope(editor).toArray()[0];
-        if (variable) {
-          editor = Editor.handle_click(editor, "v:" + variable);
-        }
-        updateFocus(editor);
-        event.preventDefault();
-      }
-    } catch (error) {
-      console.error("Caught", error);
+    if (event.key == "Enter" || event.key == " ") {
+      let value = remaining[0];
+      makeSelection(value);
+      event.preventDefault();
     }
   }
 
   function handleClick(event) {
     event.stopPropagation();
+    let choice = clickToChoice(event);
+    if (choice !== undefined) {
+      makeSelection(choice);
+    }
   }
-  // TODO handle click key down
-  // TODO remove v:
+
+  function clickToChoice(event) {
+    let element = event.target.closest("[data-choice]");
+    if (element) {
+      return element.dataset.choice;
+    }
+  }
 </script>
 
-{filter}
-{choices}
 <div on:keydown={handleKeydown} on:click={handleClick}>
   <input
     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"

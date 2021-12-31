@@ -5,7 +5,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import eyg/ast
 import eyg/ast/path
-import eyg/ast/expression as e
+import eyg/ast/expression.{Env, Format} as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -375,7 +375,60 @@ pub fn infer_unconstrained(expression) {
     )
   let #(x, typer) = next_unbound(typer)
   let expected = t.Unbound(x)
-  infer(expression, expected, #(typer, scope))
+  let #(typed, typer) = infer(expression, expected, #(typer, scope))
+  // use inital scope again Can use local scope as EVERYTHIN immutable
+  // TODO put the string methods in scope
+  let #(for_render, typer) = expand_providers(typed, typer)
+  #(typed, typer)
+}
+
+fn expand_providers(tree, typer) {
+  let #(meta, expression) = tree
+  case expression {
+    e.Binary(_) | e.Variable(_) -> #(tree, typer)
+    e.Tuple(elements) -> {
+      let #(elements, typer) = list.map_state(elements, typer, expand_providers)
+      #(#(meta, e.Tuple(elements)), typer)
+    }
+    e.Row(fields) -> {
+      let #(fields, typer) =
+        list.map_state(
+          fields,
+          typer,
+          fn(row, typer) {
+            let #(key, value) = row
+            let #(value, typer) = expand_providers(value, typer)
+            let row = #(key, value)
+            #(row, typer)
+          },
+        )
+      #(#(meta, e.Row(fields)), typer)
+    }
+    e.Let(label, value, then) -> {
+      let #(value, typer) = expand_providers(value, typer)
+      let #(then, typer) = expand_providers(then, typer)
+      #(#(meta, e.Let(label, value, then)), typer)
+    }
+    e.Function(from, to) -> {
+      // let #(from, typer) = expand_providers(from, typer)
+      let #(to, typer) = expand_providers(to, typer)
+      #(#(meta, e.Function(from, to)), typer)
+    }
+    e.Call(func, with) -> {
+      let #(func, typer) = expand_providers(func, typer)
+      let #(with, typer) = expand_providers(with, typer)
+      #(#(meta, e.Call(func, with)), typer)
+    }
+    e.Provider(config, g) if g == Format || g == Env -> {
+      let Metadata(type_: Ok(expected), ..) = meta
+      let Typer(substitutions: substitutions, ..) = typer
+      let expected = t.resolve(expected, substitutions)
+      let tree = e.generate(g, config, expected)
+      let #(typed, typer) = infer(tree, expected, #(typer, root_scope([])))
+      expand_providers(typed, typer)
+    }
+    _ -> #(tree, typer)
+  }
 }
 
 pub fn infer(
