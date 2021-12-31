@@ -14,6 +14,7 @@ pub fn compile(expected, untyped) {
     ])
   let state = #(typer.init(), scope)
   let #(typed, typer) = typer.infer(untyped, expected, state)
+  let #(typed, typer) = typer.expand_providers(typed, typer)
   case typer.inconsistencies {
     [] -> fn(handle) {
       let #(ok, _) = handle

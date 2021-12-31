@@ -381,7 +381,8 @@ pub fn infer_unconstrained(expression) {
   expand_providers(typed, typer)
 }
 
-fn expand_providers(tree, typer) {
+// Make private and always put in infer?
+pub fn expand_providers(tree, typer) {
   let #(meta, expression) = tree
   case expression {
     // Binary and Variable are unstructured and restructured to change type of provider generated content
@@ -618,7 +619,8 @@ pub fn infer(
       let expression = #(meta(Ok(expected)), e.Call(function, with))
       #(expression, typer)
     }
-    e.Provider(config, generator, Nil) -> {
+    // Type of provider is nil but actually it's dynamic because we just scrub the type information
+    e.Provider(config, generator, _) -> {
       let typer = case generator {
         e.Hole ->
           Typer(

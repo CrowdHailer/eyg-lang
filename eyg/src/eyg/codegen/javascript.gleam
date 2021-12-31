@@ -167,7 +167,10 @@ fn render_pattern(pattern, state) {
   }
 }
 
-pub fn render(tree, state) {
+pub fn render(
+  tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
+  state,
+) {
   let #(context, tree) = tree
   case tree {
     // TODO escape
@@ -268,5 +271,10 @@ pub fn render(tree, state) {
           }
       }
     }
+    // This type is recursive starts with generated ends up with nil, in the nil case We should never have a provider?
+    e.Provider(_, _, generated) -> render(unsafe_coerce(generated), state)
   }
 }
+
+pub external fn unsafe_coerce(a) -> b =
+  "../../harness.js" "identity"
