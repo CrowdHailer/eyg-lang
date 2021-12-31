@@ -40,19 +40,19 @@ pub fn all_generators() {
 pub fn generate(generator, config, hole) {
   let generator = case generator {
     Example -> example
-    Env -> env
-    Format -> format
-    // TODO this should do better for loading
-    _ -> fn(_, _) { #(Nil, Provider("", Hole, Nil)) }
+    _ -> fn(_, _) { Error(Nil) }
   }
+
+  // Env -> env
+  // Format -> format
   generator(config, hole)
 }
 
 pub fn example(config, hole) {
   case hole {
-    t.Tuple(e) -> tuple_(list.map(e, fn(_) { binary(config) }))
+    t.Tuple(e) -> Ok(tuple_(list.map(e, fn(_) { binary(config) })))
+    _ -> Error(Nil)
   }
-  // _
 }
 
 // decide on load from env, i.e. call system. which makes constant folding hard

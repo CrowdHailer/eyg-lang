@@ -5,7 +5,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import eyg/ast
 import eyg/ast/path
-import eyg/ast/expression.{Env, Format} as e
+import eyg/ast/expression.{Hole, Loader} as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -421,14 +421,43 @@ pub fn expand_providers(tree, typer) {
       let #(with, typer) = expand_providers(with, typer)
       #(#(meta, e.Call(func, with)), typer)
     }
+    // Hole needs to be separate, it can't be a function call because it is not always going to be a function that gets called.
+    e.Provider(config, g, Nil) if g == Hole || g == Loader -> {
+      let dummy = #(Nil, e.Provider("", e.Hole, Nil))
+      let #(typed, _typer) =
+        infer(dummy, t.Unbound(-1), #(typer, root_scope([])))
+      // expand_providers(typed, typer)
+      #(#(meta, e.Provider(config, g, typed)), typer)
+    }
     e.Provider(config, g, Nil) -> {
       let Metadata(type_: Ok(expected), ..) = meta
       let Typer(substitutions: substitutions, ..) = typer
       let expected = t.resolve(expected, substitutions)
-      let tree = e.generate(g, config, expected)
-      let #(typed, typer) = infer(tree, expected, #(typer, root_scope([])))
-      // expand_providers(typed, typer)
-      #(#(meta, e.Provider(config, g, typed)), typer)
+      case e.generate(g, config, expected) {
+        Ok(tree) -> {
+          let #(typed, typer) = infer(tree, expected, #(typer, root_scope([])))
+          // expand_providers(typed, typer)
+          #(#(meta, e.Provider(config, g, typed)), typer)
+        }
+        Error(Nil) -> {
+          let Metadata(path: path, ..) = meta
+          let Typer(inconsistencies: inconsistencies, ..) = typer
+          let message =
+            string.join([
+              "Provider '",
+              e.generator_to_string(g),
+              "' unable to generate code",
+            ])
+          let inconsistencies = [#(path, message), ..typer.inconsistencies]
+          let typer = Typer(..typer, inconsistencies: inconsistencies)
+          // This only exists because Loader and Hole need special treatment
+          let dummy = #(Nil, e.Provider("", e.Hole, Nil))
+          let #(typed, _typer) =
+            infer(dummy, expected, #(typer, root_scope([])))
+          // expand_providers(typed, typer)
+          #(#(meta, e.Provider(config, g, typed)), typer)
+        }
+      }
     }
   }
 }
