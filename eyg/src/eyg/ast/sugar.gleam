@@ -19,41 +19,42 @@ pub type Element {
 // by convention change the highest level key i.e. name in pattern follows through to name in calls.
 pub fn match(tree) {
   case tree {
-    e.Let(
-      p.Variable(n1),
-      #(
-        _,
-        e.Function(
-          p.Row([#(n2, "then")]),
-          #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple([])))),
-        ),
-      ),
-      then,
-    ) if n1 == n2 -> Ok(UnitVariant(n1, then))
-    e.Let(
-      p.Variable(n1),
-      #(
-        _,
-        e.Function(
-          p.Tuple(elements),
-          #(
-            _,
-            e.Function(
-              p.Row([#(n2, "then")]),
-              #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple(e_call)))),
-            ),
-          ),
-        ),
-      ),
-      then,
-    ) if n1 == n2 -> {
-      try parameters = all_elements_named(elements)
-      try calls = all_elements_variables(e_call)
-      case parameters == calls {
-        True -> Ok(TupleVariant(n1, parameters, then))
-        False -> Error(Nil)
-      }
-    }
+    // TODO undo this
+    //   e.Let(
+    //     p.Variable(n1),
+    //     #(
+    //       _,
+    //       e.Function(
+    //         p.Row([#(n2, "then")]),
+    //         #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple([])))),
+    //       ),
+    //     ),
+    //     then,
+    //   ) if n1 == n2 -> Ok(UnitVariant(n1, then))
+    //   e.Let(
+    //     p.Variable(n1),
+    //     #(
+    //       _,
+    //       e.Function(
+    //         p.Tuple(elements),
+    //         #(
+    //           _,
+    //           e.Function(
+    //             p.Row([#(n2, "then")]),
+    //             #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple(e_call)))),
+    //           ),
+    //         ),
+    //       ),
+    //     ),
+    //     then,
+    //   ) if n1 == n2 -> {
+    //     try parameters = all_elements_named(elements)
+    //     try calls = all_elements_variables(e_call)
+    //     case parameters == calls {
+    //       True -> Ok(TupleVariant(n1, parameters, then))
+    //       False -> Error(Nil)
+    //     }
+    //   }
     _ -> Error(Nil)
   }
 }

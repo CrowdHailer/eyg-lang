@@ -1,3 +1,4 @@
+import gleam/dynamic
 import gleam/io
 import gleam/option.{None, Some}
 import eyg/codegen/javascript
@@ -36,8 +37,8 @@ pub fn variable_assignment_test() {
   let "let foo$1 = \"V1\";" = l1
   let "let foo$2 = foo$1;" = l2
   let "foo$2" = l3
-
-  let "V1" = eval(untyped, #(typer.init(), typer.root_scope([])))
+  let True =
+    dynamic.from("V1") == eval(untyped, #(typer.init(), typer.root_scope([])))
 }
 
 pub fn nested_assignment_test() {
@@ -55,8 +56,8 @@ pub fn nested_assignment_test() {
   let "  return tmp$1;" = l3
   let "})();" = l4
   let "match$1" = l5
-
-  let "TMP!" = eval(untyped, #(typer.init(), typer.root_scope([])))
+  let True =
+    dynamic.from("TMP!") == eval(untyped, #(typer.init(), typer.root_scope([])))
 }
 
 pub fn tuple_term_test() {
@@ -64,8 +65,11 @@ pub fn tuple_term_test() {
   let js = compile(untyped, #(typer.init(), typer.root_scope([])))
   let [l1] = js
   let "[\"abc\", \"xyz\"]" = l1
-
-  let #("abc", "xyz") = eval(untyped, #(typer.init(), typer.root_scope([])))
+  let True =
+    dynamic.from(#("abc", "xyz")) == eval(
+      untyped,
+      #(typer.init(), typer.root_scope([])),
+    )
 }
 
 pub fn multiline_tuple_assignment_test() {
@@ -84,8 +88,11 @@ pub fn multiline_tuple_assignment_test() {
   let "  })()," = l5
   let "  \"xyz\"," = l6
   let "]" = l7
-
-  let #("TMP!", "xyz") = eval(untyped, #(typer.init(), typer.root_scope([])))
+  let True =
+    dynamic.from(#("TMP!", "xyz")) == eval(
+      untyped,
+      #(typer.init(), typer.root_scope([])),
+    )
 }
 
 pub fn tuple_destructure_test() {
@@ -100,8 +107,8 @@ pub fn tuple_destructure_test() {
   let [l1, l2] = js
   let "let [a$1, b$1] = [\"x\", \"y\"];" = l1
   let "a$1" = l2
-
-  let "x" = eval(untyped, #(typer.init(), typer.root_scope([])))
+  let True =
+    dynamic.from("x") == eval(untyped, #(typer.init(), typer.root_scope([])))
 }
 
 pub fn row_assignment_test() {
@@ -115,10 +122,10 @@ pub fn row_assignment_test() {
   let "{first_name: \"Bob\", family_name: \"Ross\"}" = l1
 
   let True =
-    encode.object([
+    dynamic.from(encode.object([
       #("first_name", encode.string("Bob")),
       #("family_name", encode.string("Ross")),
-    ]) == eval(untyped, #(typer.init(), typer.root_scope([])))
+    ])) == eval(untyped, #(typer.init(), typer.root_scope([])))
 }
 
 pub fn multiline_row_assignment_test() {
@@ -146,10 +153,10 @@ pub fn multiline_row_assignment_test() {
   let "}" = l7
 
   let True =
-    encode.object([
+    dynamic.from(encode.object([
       #("first_name", encode.string("TMP!")),
       #("last_name", encode.string("xyz")),
-    ]) == eval(untyped, #(typer.init(), typer.root_scope([])))
+    ])) == eval(untyped, #(typer.init(), typer.root_scope([])))
 }
 
 pub fn row_destructure_test() {
@@ -205,7 +212,11 @@ pub fn call_oneline_function_test() {
   let [l1] = js
   let "(function ([x$1]) { return x$1; })([\"hello\"])" = l1
 
-  let "hello" = eval(untyped, #(typer.init(), typer.root_scope([])))
+  let True =
+    dynamic.from("hello") == eval(
+      untyped,
+      #(typer.init(), typer.root_scope([])),
+    )
 }
 
 pub fn multiline_function_test() {
@@ -252,5 +263,9 @@ pub fn multiline_call_function_test() {
   let "  return tmp$1;" = l3
   let "})())" = l4
 
-  let "hello" = eval(untyped, #(typer.init(), typer.root_scope([])))
+  let True =
+    dynamic.from("hello") == eval(
+      untyped,
+      #(typer.init(), typer.root_scope([])),
+    )
 }

@@ -5,12 +5,13 @@ import fs from 'fs';
 
 async function main() {
   console.log("Running tests...");
+  let saved = await import("../../editor/public/saved.json")
 
   let passes = 0;
   let failures = 0;
 
   for await (let entry of await opendir(dir)) {
-    if (!entry.name.endsWith("_test.js")) continue;
+    if (!entry.name.endsWith("program_test.js")) continue;
     let path = "../" + dir + entry.name;
     process.stdout.write("\nlanguage/" + entry.name.slice(0, -3) + ":\n  ");
     let module = await import(path);
@@ -18,7 +19,7 @@ async function main() {
     for (let fnName of Object.keys(module)) {
       if (!fnName.endsWith("_test")) continue;
       try {
-        module[fnName]();
+        module[fnName](saved.default);
         process.stdout.write("✨");
         passes++;
       } catch (error) {

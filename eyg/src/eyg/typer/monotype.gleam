@@ -28,8 +28,30 @@ pub fn to_string(monotype) {
         string.join(list.intersperse(list.map(elements, to_string), ", ")),
         ")",
       ])
-    Function(Row([#(l, Function(Tuple(ts), _))], _), _) ->
-      string.join([l, ..list.map(ts, to_string)])
+    // Function(Row([#(l, Function(Tuple(ts), _))], _), _) ->
+    //   string.join([l, ..list.map(ts, to_string)])
+    Function(Row(fields, _), Unbound(i)) -> {
+      let all =
+        list.try_map(
+          fields,
+          fn(f) {
+            let #(name, type_) = f
+            case type_ {
+              Function(Tuple([]), Unbound(j)) if i == j -> Ok(name)
+              Function(inner, Unbound(j)) if i == j ->
+                Ok(string.join([name, " ", to_string(inner)]))
+              _ -> Error(Nil)
+            }
+          },
+        )
+      case all {
+        Ok(variants) -> string.join(list.intersperse(variants, " | "))
+        Error(Nil) -> {
+          let Function(from, to) = monotype
+          string.join([to_string(from), " -> ", to_string(to)])
+        }
+      }
+    }
     Row(fields, _) ->
       string.join([
         "{",
