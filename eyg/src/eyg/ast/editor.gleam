@@ -1544,11 +1544,16 @@ pub fn map_node(
       ast.call(map_node(func, rest, mapper), untype(with))
     e.Call(func, with), [1, ..rest] ->
       ast.call(untype(func), map_node(with, rest, mapper))
-
-    _, _ -> {
-      io.debug(node)
-      io.debug(path)
-      todo("unhandled node map")
+    e.Case(value, branches), [0, ..rest] -> {
+      let branches =
+        list.map(
+          branches,
+          fn(branch) {
+            let #(name, pattern, then) = branch
+            #(name, pattern, untype(then))
+          },
+        )
+      ast.case_(map_node(value, rest, mapper), branches)
     }
   }
 }
