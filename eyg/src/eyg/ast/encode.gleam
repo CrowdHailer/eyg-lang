@@ -115,6 +115,26 @@ pub fn to_json(ast) {
         #("function", to_json(function)),
         #("with", to_json(with)),
       ])
+    e.Case(value, branches) -> {
+      let branches =
+        list.map(
+          branches,
+          fn(branch) {
+            let #(name, pattern, then) = branch
+            object([
+              #("node", string("Branch")),
+              #("name", string(name)),
+              #("pattern", pattern_to_json(pattern)),
+              #("then", to_json(then)),
+            ])
+          },
+        )
+      object([
+        #("node", string("Case")),
+        #("value", to_json(value)),
+        #("branches", array(branches)),
+      ])
+    }
     e.Provider(config, generator, _) ->
       object([
         #("node", string("Provider")),
@@ -182,6 +202,24 @@ pub fn from_json(json: JSON) {
       let function = from_json(function)
       let with = from_json(with)
       ast.call(function, with)
+    }
+    "Case" -> {
+      let [#("value", value), #("branches", branches)] = rest
+      let value = from_json(value)
+      let branches =
+        list.map(
+          from_array(branches),
+          fn(branch) {
+            let [
+              #("node", _),
+              #("name", name),
+              #("pattern", pattern),
+              #("then", then),
+            ] = entries(branch)
+            #(assert_string(name), pattern_from_json(pattern), from_json(then))
+          },
+        )
+      ast.case_(value, branches)
     }
     "Provider" -> {
       let [#("config", config), #("generator", generator)] = rest

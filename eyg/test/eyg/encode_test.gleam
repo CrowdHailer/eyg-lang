@@ -60,6 +60,18 @@ pub fn encode_call_test() {
   let True = tree == round_trip(tree)
 }
 
+pub fn encode_case_test() {
+  let tree =
+    ast.case_(
+      ast.variable("x"),
+      [
+        #("True", p.Tuple([]), ast.binary("True")),
+        #("False", p.Tuple([]), ast.binary("Not")),
+      ],
+    )
+  let True = tree == round_trip(tree)
+}
+
 pub fn encode_hole_test() {
   let tree = ast.hole()
   let True = tree == round_trip(tree)
