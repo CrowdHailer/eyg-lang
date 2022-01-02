@@ -29,6 +29,21 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
+### Case
+
+- [ ] put meta data on the branch label and pattern so that they can be selected and updated
+- [ ] have case statements collapse when note in focus
+- [ ] move right should open a case statement
+- [ ] move up and down between branches
+- [ ] get element has BranchLabel and Branch Pattern
+- No need to have select the whole block of branches
+- 1 index case is zeroth branch
+- having branches as functions would be it possible to have a branch with a non function. Make invalid states unrepresentable
+  - Pull out helpers for render etc if duplicate code
+- [ ] Fix the rendering of execution, make a codegen test for this AND/OR fix the case test that I have implemented.
+
+### Reload
+
 - let [run, state] = returned.reload.start(tree)
 - state = run([state, tree])
 

@@ -240,6 +240,19 @@ pub fn render(
       squash(function, with)
       |> wrap_return(state)
     }
+    e.Case(value, branches) -> {
+      let value = render(value, in_tail(False, state))
+      let with =
+        wrap_lines(
+          "(",
+          [
+            "maybe_wrap_expression(with, state) TODO render case same as function",
+          ],
+          ")",
+        )
+      squash(value, with)
+      |> wrap_return(state)
+    }
     e.Provider("", e.Hole, _) -> [
       "(() => {throw 'Reached todo in the code'})()",
     ]
