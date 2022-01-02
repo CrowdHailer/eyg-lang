@@ -439,6 +439,22 @@ pub fn expand_providers(tree, typer) {
       let #(with, typer) = expand_providers(with, typer)
       #(#(meta, e.Call(func, with)), typer)
     }
+    e.Case(value, branches) -> {
+      let #(value, typer) = expand_providers(value, typer)
+      let #(branches, typer) =
+        list.map_state(
+          branches,
+          typer,
+          fn(branch, typer) {
+            let #(key, pattern, then) = branch
+            let #(then, typer) = expand_providers(then, typer)
+            let branch = #(key, pattern, value)
+            #(branch, typer)
+          },
+        )
+      #(#(meta, e.Case(value, branches)), typer)
+    }
+
     // Hole needs to be separate, it can't be a function call because it is not always going to be a function that gets called.
     e.Provider(config, g, _) if g == Hole || g == Loader -> {
       let dummy = #(
@@ -674,6 +690,55 @@ pub fn infer(
       let #(with, typer) = infer(with, arg_type, #(typer, child(scope, 1)))
       // Type is always! OK at this level
       let expression = #(meta(Ok(expected)), e.Call(function, with))
+      #(expression, typer)
+    }
+    e.Case(value, branches) -> {
+      // let #(x, typer) = next_unbound(typer)
+      // let return_type = t.Unbound(x)
+      let #(fields, typer) =
+        list.map_state(
+          branches,
+          typer,
+          fn(branch, typer) {
+            let #(name, pattern, then) = branch
+            let #(x, typer) = next_unbound(typer)
+            let arg_type = t.Unbound(x)
+            let expected_function = t.Function(arg_type, expected)
+            // let expected
+            let #(func, typer) =
+              infer(
+                ast.function(pattern, then),
+                expected_function,
+                // TODO needs child scope
+                #(typer, scope),
+              )
+            #(#(name, func, arg_type), typer)
+          },
+        )
+      let field_types =
+        list.map(
+          fields,
+          fn(field) {
+            let #(name, typed, arg_type) = field
+            let type_ = case get_type(typed) {
+              Ok(type_) -> type_
+              Error(_reason) -> arg_type
+            }
+            #(name, type_)
+          },
+        )
+      let expected_switch = t.Row(field_types, None)
+      let #(value, typer) =
+        infer(value, expected_switch, #(typer, child(scope, 0)))
+      let branches =
+        list.map(
+          fields,
+          fn(field) {
+            let #(name, #(_meta, e.Function(pattern, body)), _type) = field
+            #(name, pattern, body)
+          },
+        )
+      let expression = #(meta(Ok(expected)), e.Case(value, branches))
       #(expression, typer)
     }
     // Type of provider is nil but actually it's dynamic because we just scrub the type information

@@ -57,15 +57,16 @@ pub fn none_value_test(saved) {
 //   //   "{True: () -> 6, False: () -> 7} -> 2 -> 2"}"
 //   let "True" = t.to_string(type_)
 // }
-// pub fn and_test(saved) {
-//   let program = encode.from_json(saved)
-//   let Ok(mod) = fetch(program, "boolean")
-//   let Ok(and) = fetch(mod, "and")
-//   let #(typed, typer) = typer.infer_unconstrained(and)
-//   let Ok(type_) = typer.get_type(typed)
-//   let type_ = t.resolve(type_, typer.substitutions)
-//   let "True" = t.to_string(type_)
-// }
+pub fn and_test(saved) {
+  let program = encode.from_json(saved)
+  let Ok(mod) = fetch(program, "boolean")
+  let Ok(and) = fetch(mod, "and")
+  let #(typed, typer) = typer.infer_unconstrained(and)
+  let Ok(type_) = typer.get_type(typed)
+  let type_ = t.resolve(type_, typer.substitutions)
+  let "True" = t.to_string(type_)
+}
+
 pub fn equal_test(saved) {
   let program = encode.from_json(saved)
   let Ok(mod) = fetch(program, "boolean")
