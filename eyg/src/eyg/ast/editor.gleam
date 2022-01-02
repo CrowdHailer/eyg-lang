@@ -520,6 +520,8 @@ fn do_move_left(tree, selection, position) {
       do_move_left(func, rest, path.append(position, 0))
     e.Call(_, with), [1, ..rest] ->
       do_move_left(with, rest, path.append(position, 1))
+    e.Case(value, _), [0, ..rest] ->
+      do_move_left(value, rest, path.append(position, 0))
   }
 }
 
@@ -606,6 +608,8 @@ fn do_move_right(tree, selection, position) {
       do_move_right(func, rest, path.append(position, 0))
     e.Call(_, with), [1, ..rest] ->
       do_move_right(with, rest, path.append(position, 1))
+    e.Case(value, _), [0, ..rest] ->
+      do_move_right(value, rest, path.append(position, 0))
   }
 }
 
@@ -1202,7 +1206,11 @@ fn match(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(expression) -> {
-      let new = ast.case_(untype(expression), [#("Foo", p.Discard, ast.hole())])
+      let new =
+        ast.case_(
+          untype(expression),
+          [#("Foo", p.Discard, ast.hole()), #("Bar", p.Discard, ast.hole())],
+        )
       let modified = replace_expression(tree, position, new)
       #(Some(modified), list.append(position, [0]), Command)
     }

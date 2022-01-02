@@ -41,6 +41,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - having branches as functions would be it possible to have a branch with a non function. Make invalid states unrepresentable
   - Pull out helpers for render etc if duplicate code
 - [ ] Fix the rendering of execution, make a codegen test for this AND/OR fix the case test that I have implemented.
+- [ ] Write tests for Type printing `{not: True | False -> True | False} This is the end goal and acid test
 
 ### Reload
 
@@ -53,6 +54,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
 - [ ] Use a parameterised Enum for all the native types
+- [ ] collapsed/truncated view of rendered types that can be expanded on hover
 - [x] Resolve type information before printing errors.
 - [ ] Tree's set up correctly for expanded providers
 - [ ] When we have reordered type constraints, we can push type providers to the top
@@ -60,7 +62,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] Rebase Fsharp talk 1hr9min taking types to make type providers moreuseful, we're already planning that
 - [x] Select from for choosing type providers
 - [ ] Pin type, click and bump constraints to top
-- [ ] gleam 18 stdlib to js, json lib and dynamic now useful
+- [ ] gleam 18 stdlib to js, json lib and dynamic now useful NOPE I rekon will have my own std lib quicker than investigating node loading.
 - [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
 - [ ] Copy/paste
 - [x] Upgrade gleam
