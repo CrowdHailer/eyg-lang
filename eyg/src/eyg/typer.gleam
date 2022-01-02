@@ -728,8 +728,9 @@ pub fn infer(
           },
         )
       let expected_switch = t.Row(field_types, None)
+      let expected_value = t.Function(expected_switch, expected)
       let #(value, typer) =
-        infer(value, expected_switch, #(typer, child(scope, 0)))
+        infer(value, expected_value, #(typer, child(scope, 0)))
       let branches =
         list.map(
           fields,
