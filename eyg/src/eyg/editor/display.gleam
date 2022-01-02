@@ -165,6 +165,27 @@ pub fn do_display(tree, position, selection, editor) {
         )
       #(metadata, e.Call(function, with))
     }
+    e.Case(value, branches) -> {
+      let value =
+        do_display(
+          value,
+          path.append(position, 0),
+          child_selection(selection, 0),
+          editor,
+        )
+      let branches =
+        list.index_map(
+          branches,
+          fn(index, branch) {
+            let #(name, pattern, then) = branch
+            let position = list.append(position, [index, 1])
+            let selection =
+              child_selection(child_selection(selection, index), 1)
+            #(name, pattern, do_display(then, position, selection, editor))
+          },
+        )
+      #(metadata, e.Case(value, branches))
+    }
     e.Provider(config, generator, generated) ->
       // coerce back and forth because the expression does not represent the recursion we need.
       // There are cases when nothing is shown here
