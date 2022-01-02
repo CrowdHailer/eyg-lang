@@ -358,6 +358,8 @@ fn handle_transformation(
     // don't wrap in anything if modifies everything
     "c", False -> call(tree, position)
     "w", False -> call_with(tree, position)
+    // m for match
+    "m", False -> match(tree, position)
 
     "d", False -> delete(tree, position)
     // modes
@@ -1196,6 +1198,18 @@ fn call_with(tree, position) {
   }
 }
 
+fn match(tree, position) {
+  case get_element(tree, position) {
+    Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
+    Expression(expression) -> {
+      let new = ast.case_(untype(expression), [#("Foo", p.Discard, ast.hole())])
+      let modified = replace_expression(tree, position, new)
+      #(Some(modified), list.append(position, [0]), Command)
+    }
+    _ -> #(None, position, Command)
+  }
+}
+
 fn delete(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, then))) -> #(
@@ -1477,13 +1491,9 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
     #(_, e.Function(_, body)), [1, ..rest] -> get_element(body, rest)
     #(_, e.Call(func, _)), [0, ..rest] -> get_element(func, rest)
     #(_, e.Call(_, with)), [1, ..rest] -> get_element(with, rest)
+    #(_, e.Case(value, _)), [0, ..rest] -> get_element(value, rest)
     #(_, e.Provider(_, generator, _)), [0] -> ProviderGenerator(generator)
     #(_, e.Provider(config, _, _)), [1] -> ProviderConfig(config)
-    _, _ -> {
-      io.debug(tree)
-      io.debug(position)
-      todo("unhandled get_element")
-    }
   }
 }
 
