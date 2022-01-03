@@ -523,8 +523,13 @@ fn do_move_left(tree, selection, position) {
       do_move_left(func, rest, path.append(position, 0))
     e.Call(_, with), [1, ..rest] ->
       do_move_left(with, rest, path.append(position, 1))
+
     e.Case(value, _), [0, ..rest] ->
       do_move_left(value, rest, path.append(position, 0))
+    // TODO this is more move up down
+    e.Case(_, _), [i] if i > 0 -> path.append(position, i - 1)
+    e.Case(_, _), [i, j] if i > 0 && j > 0 ->
+      path.append(path.append(position, i), j - 1)
   }
 }
 
@@ -613,6 +618,8 @@ fn do_move_right(tree, selection, position) {
       do_move_right(with, rest, path.append(position, 1))
     e.Case(value, _), [0, ..rest] ->
       do_move_right(value, rest, path.append(position, 0))
+    e.Case(_, _), [i, j] if i > 0 && j < 2 ->
+      path.append(path.append(position, i), j + 1)
   }
 }
 
@@ -1440,6 +1447,7 @@ fn parent_path(path) {
   }
 }
 
+// TODO renaming element TreeNode helps with element in tuple confusion
 pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
   case tree, position {
     _, [] -> Expression(tree)
