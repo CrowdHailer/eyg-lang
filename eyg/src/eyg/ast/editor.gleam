@@ -1211,7 +1211,10 @@ fn match(tree, position) {
       let new =
         ast.case_(
           untype(expression),
-          [#("Foo", p.Discard, ast.hole()), #("Bar", p.Discard, ast.hole())],
+          [
+            #("Foo", p.Discard, ast.binary("")),
+            #("Bar", p.Discard, ast.tuple_([])),
+          ],
         )
       let modified = replace_expression(tree, position, new)
       #(Some(modified), list.append(position, [0]), Command)
