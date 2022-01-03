@@ -658,28 +658,10 @@ pub fn infer(
       #(expression, typer)
     }
     e.Function(pattern, body) -> {
-      let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
-      let #(y, typer) = next_unbound(typer)
-      let return_type = t.Unbound(y)
-      let given = t.Function(arg_type, return_type)
-      let #(type_, typer) = do_unify(expected, given, #(typer, scope))
-      let bound_variables =
-        list.map(
-          bound_variables,
-          fn(bv) {
-            let #(label, monotype) = bv
-            let polytype =
-              polytype.generalise(
-                t.resolve(monotype, typer.substitutions),
-                scope.variables,
-              )
-            #(label, polytype)
-          },
-        )
-      let scope = list.fold(bound_variables, scope, do_set_variable)
-      let #(return, typer) = infer(body, return_type, #(typer, child(scope, 1)))
       // There are ALOT more type variables if handling all the errors.
-      #(#(meta(type_), e.Function(pattern, return)), typer)
+      let #(body, typer, type_) =
+        infer_function(pattern, body, expected, typer, scope, 1)
+      #(#(meta(type_), e.Function(pattern, body)), typer)
     }
     e.Call(function, with) -> {
       let #(x, typer) = next_unbound(typer)
@@ -693,12 +675,10 @@ pub fn infer(
       #(expression, typer)
     }
     e.Case(value, branches) -> {
-      // let #(x, typer) = next_unbound(typer)
-      // let return_type = t.Unbound(x)
       let #(fields, #(typer, _)) =
         list.map_state(
           branches,
-          #(typer, 0),
+          #(typer, 1),
           fn(branch, state) {
             let #(typer, i) = state
             let #(name, pattern, then) = branch
@@ -706,14 +686,23 @@ pub fn infer(
             let arg_type = t.Unbound(x)
             let expected_function = t.Function(arg_type, expected)
             // let expected
-            let #(func, typer) =
-              infer(
-                ast.function(pattern, then),
+            let #(body, typer, type_) =
+              infer_function(
+                pattern,
+                then,
                 expected_function,
-                // TODO needs child scope
-                #(typer, child(child(scope, i + 1), 2)),
+                typer,
+                child(scope, i),
+                2,
               )
-            #(#(name, func, arg_type), #(typer, i + 1))
+            #(
+              #(
+                name,
+                #(meta(Ok(expected_function)), e.Function(pattern, body)),
+                arg_type,
+              ),
+              #(typer, i + 1),
+            )
           },
         )
       let field_types =
@@ -737,6 +726,7 @@ pub fn infer(
           fields,
           fn(field) {
             let #(name, #(_meta, e.Function(pattern, body)), _type) = field
+            io.debug(meta)
             #(name, pattern, body)
           },
         )
@@ -763,6 +753,33 @@ pub fn infer(
       #(expression, typer)
     }
   }
+}
+
+// body index needed for handling case branches
+fn infer_function(pattern, body, expected, typer, scope, body_index) {
+  // Needs a typed function unit with correct meta data to come out
+  let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
+  let #(y, typer) = next_unbound(typer)
+  let return_type = t.Unbound(y)
+  let given = t.Function(arg_type, return_type)
+  let #(type_, typer) = do_unify(expected, given, #(typer, scope))
+  let bound_variables =
+    list.map(
+      bound_variables,
+      fn(bv) {
+        let #(label, monotype) = bv
+        let polytype =
+          polytype.generalise(
+            t.resolve(monotype, typer.substitutions),
+            scope.variables,
+          )
+        #(label, polytype)
+      },
+    )
+  let scope = list.fold(bound_variables, scope, do_set_variable)
+  let #(body, typer) =
+    infer(body, return_type, #(typer, child(scope, body_index)))
+  #(body, typer, type_)
 }
 
 fn pair_replace(replacements, monotype) {
