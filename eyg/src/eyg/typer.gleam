@@ -695,11 +695,12 @@ pub fn infer(
     e.Case(value, branches) -> {
       // let #(x, typer) = next_unbound(typer)
       // let return_type = t.Unbound(x)
-      let #(fields, typer) =
+      let #(fields, #(typer, _)) =
         list.map_state(
           branches,
-          typer,
-          fn(branch, typer) {
+          #(typer, 0),
+          fn(branch, state) {
+            let #(typer, i) = state
             let #(name, pattern, then) = branch
             let #(x, typer) = next_unbound(typer)
             let arg_type = t.Unbound(x)
@@ -710,9 +711,9 @@ pub fn infer(
                 ast.function(pattern, then),
                 expected_function,
                 // TODO needs child scope
-                #(typer, scope),
+                #(typer, child(child(scope, i + 1), 2)),
               )
-            #(#(name, func, arg_type), typer)
+            #(#(name, func, arg_type), #(typer, i + 1))
           },
         )
       let field_types =
