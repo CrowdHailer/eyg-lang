@@ -293,7 +293,21 @@ pub fn handle_change(editor, content) {
       let new = ast.variable(content)
       replace_expression(tree, position, new)
     }
-    BranchName(_) -> todo("Switch branch name")
+    BranchName(_) -> {
+      let Some(#(branch_position, _)) = parent_path(position)
+      let Some(#(case_position, i)) = parent_path(branch_position)
+      let Expression(#(_, e.Case(value, branches))) =
+        get_element(tree, case_position)
+      let pre = list.take(branches, i - 1)
+      let [branch, ..post] = list.drop(branches, i - 1)
+      let #(_, pattern, then) = branch
+      let branch = #(content, pattern, then)
+      let branches =
+        list.flatten([pre, [branch], post])
+        |> list.map(untype_branch)
+      let new = ast.case_(untype(value), branches)
+      replace_expression(tree, case_position, new)
+    }
   }
 
   let #(typed, typer) = typer.infer_unconstrained(untyped)
@@ -323,6 +337,13 @@ pub fn untype_field(
 ) -> #(String, e.Expression(Dynamic, Dynamic)) {
   let #(label, value) = field
   #(label, untype(value))
+}
+
+pub fn untype_branch(
+  field: #(String, p.Pattern, e.Expression(a, b)),
+) -> #(String, p.Pattern, e.Expression(Dynamic, Dynamic)) {
+  let #(label, pattern, value) = field
+  #(label, pattern, untype(value))
 }
 
 fn handle_transformation(
@@ -438,6 +459,7 @@ fn decrease_selection(tree, position) {
       inner,
       Command,
     )
+    Branch(_) -> #(None, inner, Command)
     _ -> #(None, position, Command)
   }
 }
@@ -526,8 +548,6 @@ fn do_move_left(tree, selection, position) {
 
     e.Case(value, _), [0, ..rest] ->
       do_move_left(value, rest, path.append(position, 0))
-    // TODO this is more move up down
-    e.Case(_, _), [i] if i > 0 -> path.append(position, i - 1)
     e.Case(_, _), [i, j] if i > 0 && j > 0 ->
       path.append(path.append(position, i), j - 1)
   }
@@ -596,6 +616,7 @@ fn do_move_right(tree, selection, position) {
         True -> path.append(path.append(position, i + 1), 0)
         False -> list.append(position, selection)
       }
+    e.Case(_, _), [0] | e.Case(_, _), [] -> path.append(position, 1)
     // Step in
     _, [] -> position
     e.Tuple(elements), [i, ..rest] -> {
@@ -627,6 +648,15 @@ fn move_right(tree, position) {
   do_move_right(tree, position, [])
 }
 
+fn match_let_or_case(target) {
+  case target {
+    Expression(#(_, e.Let(p, v, t))) -> Ok(Left(#(p, untype(v), untype(t))))
+    Expression(#(_, e.Case(v, bs))) ->
+      Ok(Right(#(v, list.map(bs, untype_branch))))
+    _ -> Error(Nil)
+  }
+}
+
 fn move_up(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Let(_, _, _))) ->
@@ -634,15 +664,23 @@ fn move_up(tree, position) {
         Some(#(p, _)) -> p
         None -> position
       }
-    _ ->
-      case parent_let(tree, position) {
+    Expression(#(_, e.Case(_, _))) ->
+      case parent_path(position) {
+        Some(#(p, _)) -> move_up(tree, p)
         None -> position
-        Some(#(p, 0)) | Some(#(p, 1)) ->
+      }
+    _ ->
+      case closest(tree, position, match_let_or_case) {
+        None -> position
+        Some(#(p, 0, Left(_))) | Some(#(p, 1, Left(_))) ->
           case parent_path(p) {
             Some(#(p, _)) -> p
             None -> p
           }
-        Some(#(p, 2)) -> p
+        Some(#(p, 2, Left(_))) -> p
+        // On the top line of a case
+        Some(#(p, 0, Right(_))) -> move_up(tree, p)
+        Some(#(p, i, Right(_))) -> path.append(p, i - 1)
       }
   }
 }
@@ -652,14 +690,20 @@ fn move_down(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> path.append(position, 2)
 
     _ ->
-      case parent_let(tree, position) {
+      case closest(tree, position, match_let_or_case) {
         None -> position
-        Some(#(position, 0)) | Some(#(position, 1)) -> path.append(position, 2)
-        Some(#(position, 2)) ->
+        Some(#(position, 0, Left(_))) | Some(#(position, 1, Left(_))) ->
+          path.append(position, 2)
+        Some(#(position, 2, Left(_))) ->
           case block_container(tree, position) {
             // Select whole bottom line
             None -> path.append(position, 2)
             Some(position) -> move_down(tree, position)
+          }
+        Some(#(position, i, Right(#(_value, branches)))) ->
+          case i < list.length(branches) {
+            True -> path.append(position, i + 1)
+            False -> move_down(tree, position)
           }
       }
   }
@@ -932,7 +976,6 @@ type TupleMatch {
   RowPattern(fields: List(#(String, String)))
 }
 
-// todo make untype_fields
 fn match_compound(target) -> Result(TupleMatch, Nil) {
   case target {
     Expression(#(_, e.Tuple(elements))) ->
@@ -966,13 +1009,6 @@ fn closest(
         Ok(x) -> Some(#(position, index, x))
         Error(_) -> closest(tree, position, search)
       }
-  }
-}
-
-fn parent_let(tree, position) {
-  case closest(tree, position, match_let) {
-    Some(#(path, cursor, _)) -> Some(#(path, cursor))
-    None -> None
   }
 }
 
@@ -1232,137 +1268,185 @@ fn match(tree, position) {
 }
 
 fn delete(tree, position) {
-  case get_element(tree, position) {
-    Expression(#(_, e.Let(_, _, then))) -> #(
-      Some(replace_expression(tree, position, untype(then))),
-      position,
-      Command,
-    )
-    Expression(#(_, e.Provider(_, e.Hole, _))) ->
-      case parent_path(position) {
-        Some(#(p_path, cursor)) ->
-          case get_element(tree, p_path) {
-            Expression(#(_, e.Tuple(elements))) -> {
-              let pre = list.take(elements, cursor)
-              let post = list.drop(elements, cursor + 1)
-              let elements =
-                list.append(pre, post)
-                |> list.map(untype)
-              #(
-                Some(replace_expression(tree, p_path, ast.tuple_(elements))),
-                // TODO go to right path
-                p_path,
-                Command,
-              )
-            }
-            RowField(_, _) -> {
-              let Some(#(record_position, _)) = parent_path(p_path)
-              let Expression(#(_, e.Row(fields))) =
-                get_element(tree, record_position)
-              let pre = list.take(fields, cursor)
-              let post = list.drop(fields, cursor + 1)
-              let fields =
-                list.append(pre, post)
-                |> list.map(untype_field)
-              #(
-                Some(replace_expression(tree, record_position, ast.row(fields))),
-                p_path,
-                Command,
-              )
-            }
-            _ -> #(None, position, Command)
+  let Some(#(tree, position)) = do_delete(untype(tree), position)
+  #(Some(tree), position, Command)
+}
+
+fn max(a, b) {
+  case a < b {
+    True -> b
+    False -> a
+  }
+}
+
+// Map node with step out? left right and delete
+fn do_delete(tree, position) {
+  let #(_, expression) = tree
+  case expression, position {
+    e.Provider(_, e.Hole, _), [] -> None
+    e.Let(_, _, then), [] -> Some(#(then, position))
+    _, [] -> Some(#(ast.hole(), position))
+    e.Tuple(elements), [i, ..rest] -> {
+      let pre = list.take(elements, i)
+      let [inner, ..post] = list.drop(elements, i)
+      case do_delete(inner, rest) {
+        Some(#(inner, position)) -> {
+          let new = ast.tuple_(list.flatten([pre, [inner], post]))
+          Some(#(new, [i, ..position]))
+        }
+        None -> {
+          let elements = list.append(pre, post)
+          let position = case list.length(elements) {
+            0 -> []
+            _ -> [max(0, list.length(pre) - 1)]
           }
-        None -> #(None, position, Command)
+          Some(#(ast.tuple_(elements), position))
+        }
       }
-    Expression(_) -> #(
-      Some(replace_expression(tree, position, ast.hole())),
-      position,
-      Command,
-    )
-    Pattern(_, _) -> #(
-      Some(replace_pattern(tree, position, p.Discard)),
-      position,
-      Command,
-    )
-    PatternElement(cursor, el) -> {
-      let Some(#(pattern_position, _)) = parent_path(position)
-      let Pattern(p.Tuple(elements), _) = get_element(tree, pattern_position)
-      // insert at can take a list
-      let pre = list.take(elements, cursor)
-      let post = list.drop(elements, cursor + 1)
-      let insert = case el {
-        None -> []
-        Some(_) -> [None]
+    }
+    e.Row(fields), [i, ..rest] -> {
+      let pre = list.take(fields, i)
+      let [row, ..post] = list.drop(fields, i)
+      let replacement = case row, rest {
+        // delete the whole row even if key selected, use insert for updating
+        _, [] | _, [0] -> {
+          let fields = list.append(pre, post)
+          let position = case list.length(fields) {
+            0 -> []
+            _ -> [max(0, list.length(pre) - 1)]
+          }
+          Some(#(ast.row(fields), position))
+        }
+        #(label, inner), [1, ..rest] ->
+          case do_delete(inner, rest) {
+            Some(#(inner, position)) -> {
+              let inner = #(label, inner)
+              let new = ast.row(list.flatten([pre, [inner], post]))
+              let position = [i, 1, ..position]
+              Some(#(new, position))
+            }
+            None -> Some(#(tree, [i]))
+          }
       }
-      let elements = list.flatten([pre, insert, post])
-      let position = case list.length(elements) > 0, cursor > 0 && list.length(
-        insert,
-      ) == 0 {
-        False, _ -> pattern_position
-        _, True -> path.append(pattern_position, cursor - 1)
-        _, False -> path.append(pattern_position, cursor)
+    }
+    e.Let(pattern, value, then), [0, ..rest] ->
+      case delete_pattern(pattern, rest) {
+        Some(#(inner, position)) -> {
+          let position = [0, ..position]
+          let new = ast.let_(inner, value, then)
+          Some(#(new, position))
+        }
+        None -> Some(#(then, []))
       }
-      #(
-        Some(replace_pattern(tree, pattern_position, p.Tuple(elements))),
-        position,
-        Command,
-      )
+    e.Let(pattern, value, then), [1, ..rest] ->
+      case do_delete(value, rest) {
+        Some(#(inner, position)) -> {
+          let position = [1, ..position]
+          let new = ast.let_(pattern, inner, then)
+          Some(#(new, position))
+        }
+        None -> Some(#(then, []))
+      }
+    e.Let(pattern, value, then), [2, ..rest] -> {
+      let #(then, position) = case do_delete(then, rest) {
+        Some(#(inner, position)) -> #(inner, [2, ..position])
+        None -> #(then, position)
+      }
+      Some(#(ast.let_(pattern, value, then), position))
     }
-    RowField(_, _) -> {
-      let Some(#(row_position, cursor)) = parent_path(position)
-      let Expression(#(_, e.Row(fields))) =
-        get_element(tree, row_position)
-        |> io.debug
-      let pre = list.take(fields, cursor)
-      let post = list.drop(fields, cursor + 1)
-      let fields =
-        list.append(pre, post)
-        |> list.map(untype_field)
-      #(
-        Some(replace_expression(tree, row_position, ast.row(fields))),
-        row_position,
-        Command,
-      )
+    e.Function(pattern, body), [0, ..rest] ->
+      case delete_pattern(pattern, rest) {
+        Some(#(inner, position)) -> {
+          let new = ast.function(inner, body)
+          Some(#(new, [1, ..position]))
+        }
+        None -> Some(#(tree, []))
+      }
+    e.Function(pattern, body), [1, ..rest] ->
+      case do_delete(body, rest) {
+        Some(#(inner, position)) -> {
+          let new = ast.function(pattern, inner)
+          Some(#(new, [1, ..position]))
+        }
+        None -> Some(#(tree, []))
+      }
+    e.Call(function, with), [0, ..rest] ->
+      case do_delete(function, rest) {
+        Some(#(inner, position)) -> {
+          let new = ast.call(inner, with)
+          Some(#(new, [0, ..position]))
+        }
+        None -> Some(#(tree, []))
+      }
+    e.Call(function, with), [1, ..rest] ->
+      case do_delete(with, rest) {
+        Some(#(inner, position)) -> {
+          let new = ast.call(function, inner)
+          Some(#(new, [1, ..position]))
+        }
+        None -> Some(#(tree, []))
+      }
+    e.Case(value, branches), [0, ..rest] ->
+      case do_delete(value, rest) {
+        Some(#(inner, position)) -> {
+          let new = ast.case_(inner, branches)
+          Some(#(new, [0, ..position]))
+        }
+        None -> Some(#(tree, []))
+      }
+    e.Case(value, branches), [i, ..rest] -> {
+      let i = i - 1
+      let pre = list.take(branches, i)
+      let [branch, ..post] = list.drop(branches, i)
+      let replacement = case branch, rest {
+        _, [] | _, [0] -> {
+          let branches = list.append(pre, post)
+          let position = case list.length(branches) {
+            0 -> [0]
+            _ -> [max(0, list.length(pre) - 1) + 1]
+          }
+          Some(#(ast.case_(value, branches), position))
+        }
+        #(label, pattern, inner), [2, ..rest] ->
+          case do_delete(inner, rest) {
+            Some(#(inner, position)) -> {
+              let inner = #(label, pattern, inner)
+              let new = ast.case_(value, list.flatten([pre, [inner], post]))
+              let position = [i + 1, 2, ..position]
+              Some(#(new, position))
+            }
+            None -> Some(#(tree, [i + 1]))
+          }
+      }
     }
-    RowKey(_, _) -> {
-      let Some(#(field_position, cursor)) = parent_path(position)
-      let Some(#(row_position, cursor)) = parent_path(field_position)
-      let Expression(#(_, e.Row(fields))) = get_element(tree, row_position)
-      let pre = list.take(fields, cursor)
-      let post = list.drop(fields, cursor + 1)
-      let fields =
-        list.append(pre, post)
-        |> list.map(untype_field)
-      #(
-        Some(replace_expression(tree, row_position, ast.row(fields))),
-        row_position,
-        Command,
-      )
+    e.Provider(_, _, _), [i] -> {
+      let new = ast.hole()
+      Some(#(new, []))
     }
-    PatternField(_, _) -> {
-      let Some(#(pattern_position, cursor)) = parent_path(position)
-      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
-      let pre = list.take(fields, cursor)
-      let post = list.drop(fields, cursor + 1)
-      let fields = list.append(pre, post)
-      #(
-        Some(replace_pattern(tree, pattern_position, p.Row(fields))),
-        pattern_position,
-        Command,
-      )
-    }
-    PatternKey(_, _) | PatternFieldBind(_, _) -> {
-      let Some(#(field_position, _)) = parent_path(position)
-      let Some(#(pattern_position, cursor)) = parent_path(field_position)
-      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
-      let pre = list.take(fields, cursor)
-      let post = list.drop(fields, cursor + 1)
-      let fields = list.append(pre, post)
-      #(
-        Some(replace_pattern(tree, pattern_position, p.Row(fields))),
-        pattern_position,
-        Command,
-      )
+  }
+}
+
+fn delete_pattern(pattern, path) {
+  case pattern, path {
+    p.Discard, [] -> None
+    _, [] -> Some(#(p.Discard, []))
+    p.Tuple(elements), [i] -> {
+      let pre = list.take(elements, i)
+      let [element, ..post] = list.drop(elements, i)
+      case element {
+        Some(_) -> {
+          let elements = list.flatten([pre, [None], post])
+          Some(#(p.Tuple(elements), [i]))
+        }
+        None -> {
+          let elements = list.append(pre, post)
+          let position = case list.length(elements) {
+            0 -> []
+            _ -> [max(0, list.length(pre) - 1)]
+          }
+          Some(#(p.Tuple(elements), position))
+        }
+      }
     }
   }
 }
@@ -1425,17 +1509,30 @@ fn insert_named(tree, position) {
 }
 
 fn replace_pattern(tree, position, pattern) {
+  let tree = untype(tree)
   // while we don't have arbitrary nesting in patterns don't update replace node, instead
   // manually step up once
-  let Some(#(let_position, 0)) = parent_path(position)
-  case get_element(tree, let_position) {
-    Expression(#(_, e.Let(_, value, then))) -> {
-      let new = ast.let_(pattern, untype(value), untype(then))
+  let Some(#(let_position, i)) = parent_path(position)
+  case get_element(tree, let_position), i {
+    Expression(#(_, e.Let(_, value, then))), 0 -> {
+      let new = ast.let_(pattern, value, then)
       replace_expression(tree, let_position, new)
     }
-    Expression(#(_, e.Function(_, body))) -> {
-      let new = ast.function(pattern, untype(body))
+    Expression(#(_, e.Function(_, body))), 0 -> {
+      let new = ast.function(pattern, body)
       replace_expression(tree, let_position, new)
+    }
+    Branch(bi), _ -> {
+      let Some(#(case_position, _)) = parent_path(let_position)
+      let Expression(#(_, e.Case(value, branches))) =
+        get_element(tree, case_position)
+      let pre = list.take(branches, bi)
+      let [branch, ..post] = list.drop(branches, bi)
+      let #(label, _, then) = branch
+      let branch = #(label, pattern, then)
+      let branches = list.flatten([pre, [branch], post])
+      let new = ast.case_(value, branches)
+      replace_expression(tree, case_position, new)
     }
   }
 }

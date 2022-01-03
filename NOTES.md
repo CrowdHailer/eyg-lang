@@ -31,11 +31,10 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 
 ### Case
 
-- [ ] put meta data on the branch label and pattern so that they can be selected and updated
-- [ ] have case statements collapse when note in focus
-- [ ] move right should open a case statement
-- [ ] move up and down between branches
-- [ ] get element has BranchLabel and Branch Pattern
+- [x] put meta data on the branch label and pattern so that they can be selected and updated
+- [x] have case statements collapse when note in focus
+- [x] move right should open a case statement
+- [x] move up and down between branches
 - No need to have select the whole block of branches
 - 1 index case is zeroth branch
 - having branches as functions would be it possible to have a branch with a non function. Make invalid states unrepresentable
@@ -55,6 +54,8 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 
 - [ ] Use a parameterised Enum for all the native types
 - [ ] collapsed/truncated view of rendered types that can be expanded on hover
+- [ ] Have a standard nily overflow for left and right, same as delete
+- [ ] Put type information on non expression elements
 - [x] Resolve type information before printing errors.
 - [ ] Tree's set up correctly for expanded providers
 - [ ] When we have reordered type constraints, we can push type providers to the top

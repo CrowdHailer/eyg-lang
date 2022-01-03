@@ -73,6 +73,15 @@ pub fn show_value(metadata) {
     Above([0, .._]) | Above([1, .._]) -> True
     _ -> False
   }
+}
+
+pub fn show_case_value(metadata) {
+  let Display(selection: selection, ..) = metadata
+  case selection {
+    Above([]) -> False
+    Above(_) -> True
+    _ -> False
+  }
   // io.debug(metadata)
 }
 
