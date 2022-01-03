@@ -293,6 +293,7 @@ pub fn handle_change(editor, content) {
       let new = ast.variable(content)
       replace_expression(tree, position, new)
     }
+    BranchName(_) -> todo("Switch branch name")
   }
 
   let #(typed, typer) = typer.infer_unconstrained(untyped)
@@ -1370,6 +1371,7 @@ fn draft(tree, position) {
     PatternKey(_, key) -> #(None, position, Draft(key))
     PatternFieldBind(_, label) -> #(None, position, Draft(label))
     ProviderConfig(config) -> #(None, position, Draft(config))
+    BranchName(name) -> #(None, position, Draft(name))
     _ -> #(None, position, Command)
   }
 }
@@ -1529,6 +1531,8 @@ pub fn map_node(
   case node, path {
     _, [] -> mapper(tree)
     e.Tuple(elements), [index, ..rest] -> {
+      // can't use map at becuase other elements need to be untyped at same time
+      // let elements = list.map(elements, untype)
       let pre =
         list.take(elements, index)
         |> list.map(untype)
@@ -1568,6 +1572,21 @@ pub fn map_node(
           },
         )
       ast.case_(map_node(value, rest, mapper), branches)
+    }
+    e.Case(value, branches), [path_index, 2, ..rest] -> {
+      let branches =
+        list.index_map(
+          branches,
+          fn(branch_index, branch) {
+            let #(label, pattern, then) = branch
+            let then = case branch_index + 1 == path_index {
+              True -> map_node(then, rest, mapper)
+              False -> untype(then)
+            }
+            #(label, pattern, then)
+          },
+        )
+      ast.case_(untype(value), branches)
     }
   }
 }
