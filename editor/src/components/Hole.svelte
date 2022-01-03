@@ -10,3 +10,4 @@
   class:border-indigo-300={Display.is_target(metadata)}
   data-editor={Display.marker(metadata)}>todo</span
 >
+{Display.marker(metadata)}
