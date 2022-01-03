@@ -15,6 +15,9 @@
 
   let expand = false;
   $: expand = Display.show_value(metadata);
+
+  let pattern_display = Display.display_pattern(metadata, pattern);
+  $: pattern_display = Display.display_pattern(metadata, pattern);
 </script>
 
 <p
@@ -24,7 +27,7 @@
   data-editor={Display.marker(metadata)}
 >
   <span class="text-gray-500">let</span>
-  <Pattern {pattern} {metadata} />
+  <Pattern {pattern} metadata={pattern_display} />
   {#if !value[1].body}
     =
   {/if}

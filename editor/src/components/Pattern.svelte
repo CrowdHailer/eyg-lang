@@ -5,29 +5,26 @@
   // Note this is expression metadata the display objects in this file are metadata of type Display
   export let metadata;
   export let pattern;
-
-  let display = Display.display_pattern(metadata, pattern);
-  $: display = Display.display_pattern(metadata, pattern);
 </script>
 
 {#if Pattern.is_discard(pattern)}
   <span
     class="border-2 border-transparent outline-none rounded"
-    data-editor={Display.marker(display)}
-    class:border-indigo-300={Display.is_target(display)}>_</span
+    data-editor={Display.marker(metadata)}
+    class:border-indigo-300={Display.is_target(metadata)}>_</span
   >
 {:else if Pattern.is_variable(pattern)}
   <span
     class="border-2 border-transparent min-w-10 outline-none rounded required text-blue-500"
-    class:border-indigo-300={Display.is_target(display)}
-    data-editor={Display.marker(display)}>{pattern.label}</span
+    class:border-indigo-300={Display.is_target(metadata)}
+    data-editor={Display.marker(metadata)}>{pattern.label}</span
   >
 {:else if Pattern.is_tuple(pattern)}
   <span
     class="border-2 border-transparent outline-none rounded"
-    class:border-indigo-300={Display.is_target(display)}
-    data-editor={Display.marker(display)}
-    >[{#each Display.display_pattern_elements(display, pattern.elements).toArray() as [display, label], i}<span
+    class:border-indigo-300={Display.is_target(metadata)}
+    data-editor={Display.marker(metadata)}
+    >[{#each Display.display_pattern_elements(metadata, pattern.elements).toArray() as [display, label], i}<span
         class="min-w-10 outline-none border-2 border-transparent rounded text-blue-500"
         class:border-indigo-300={Display.is_target(display)}
         data-editor={Display.marker(display)}>{label}</span
@@ -37,9 +34,9 @@
   >
 {:else}<span
     class="border-2 border-transparent outline-none rounded"
-    class:border-indigo-300={Display.is_target(display)}
-    data-editor={Display.marker(display)}
-    >&lbrace;{#each Display.display_pattern_fields(display, pattern.fields).toArray() as [display, display_label, label, display_variable, variable], i}<span
+    class:border-indigo-300={Display.is_target(metadata)}
+    data-editor={Display.marker(metadata)}
+    >&lbrace;{#each Display.display_pattern_fields(metadata, pattern.fields).toArray() as [display, display_label, label, display_variable, variable], i}<span
         class="border-2 border-transparent outline-none rounded"
         class:border-indigo-300={Display.is_target(display)}
         data-editor={Display.marker(display)}
