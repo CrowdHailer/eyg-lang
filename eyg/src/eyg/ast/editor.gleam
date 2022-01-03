@@ -308,6 +308,8 @@ pub type Element(a, b) {
   PatternField(Int, #(String, String))
   PatternKey(Int, String)
   PatternFieldBind(Int, String)
+  Branch(Int)
+  BranchName(String)
   ProviderGenerator(e.Generator)
   ProviderConfig(String)
 }
@@ -1452,56 +1454,57 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
       let [#(_, child), .._] = list.drop(fields, i)
       get_element(child, rest)
     }
-    #(_, e.Let(pattern, _, _)), [0] -> Pattern(pattern, tree)
-    #(_, e.Let(p.Tuple(elements), _, _)), [0, i] -> {
-      // l.at and this should be an error instead
-      let [element, .._] = list.drop(elements, i)
-      PatternElement(i, element)
-    }
-    #(_, e.Let(p.Row(fields), _, _)), [0, i] -> {
-      // l.at and this should be an error instead
-      let [field, .._] = list.drop(fields, i)
-      PatternField(i, field)
-    }
-    #(_, e.Let(p.Row(fields), _, _)), [0, i, 0] -> {
-      // l.at and this should be an error instead
-      let [#(key, _), .._] = list.drop(fields, i)
-      PatternKey(i, key)
-    }
-    #(_, e.Let(p.Row(fields), _, _)), [0, i, 1] -> {
-      // l.at and this should be an error instead
-      let [#(_, bind), .._] = list.drop(fields, i)
-      PatternFieldBind(i, bind)
-    }
+    #(_, e.Let(pattern, _, _)), [0, ..rest] -> get_pattern(pattern, rest, tree)
     #(_, e.Let(_, value, _)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(_, _, then)), [2, ..rest] -> get_element(then, rest)
-    #(_, e.Function(pattern, _)), [0] -> Pattern(pattern, tree)
-    #(_, e.Function(p.Tuple(elements), _)), [0, i] -> {
-      // l.at and this should be an error instead
-      let [element, .._] = list.drop(elements, i)
-      PatternElement(i, element)
-    }
-    #(_, e.Function(p.Row(fields), _)), [0, i] -> {
-      // l.at and this should be an error instead
-      let [field, .._] = list.drop(fields, i)
-      PatternField(i, field)
-    }
-    #(_, e.Function(p.Row(fields), _)), [0, i, 0] -> {
-      // l.at and this should be an error instead
-      let [#(key, _), .._] = list.drop(fields, i)
-      PatternKey(i, key)
-    }
-    #(_, e.Function(p.Row(fields), _)), [0, i, 1] -> {
-      // l.at and this should be an error instead
-      let [#(_, bind), .._] = list.drop(fields, i)
-      PatternFieldBind(i, bind)
-    }
+    #(_, e.Function(pattern, _)), [0, ..rest] ->
+      get_pattern(pattern, rest, tree)
     #(_, e.Function(_, body)), [1, ..rest] -> get_element(body, rest)
     #(_, e.Call(func, _)), [0, ..rest] -> get_element(func, rest)
     #(_, e.Call(_, with)), [1, ..rest] -> get_element(with, rest)
     #(_, e.Case(value, _)), [0, ..rest] -> get_element(value, rest)
+    #(_, e.Case(_, branches)), [i, ..rest] ->
+      get_branches(branches, i, rest, tree)
     #(_, e.Provider(_, generator, _)), [0] -> ProviderGenerator(generator)
     #(_, e.Provider(config, _, _)), [1] -> ProviderConfig(config)
+  }
+}
+
+fn get_pattern(pattern, position, parent) {
+  case pattern, position {
+    pattern, [] -> Pattern(pattern, parent)
+    p.Tuple(elements), [i] -> {
+      // l.at and this should be an error instead
+      let [element, .._] = list.drop(elements, i)
+      PatternElement(i, element)
+    }
+    p.Row(fields), [i] -> {
+      // l.at and this should be an error instead
+      let [field, .._] = list.drop(fields, i)
+      PatternField(i, field)
+    }
+    p.Row(fields), [i, 0] -> {
+      // l.at and this should be an error instead
+      let [#(key, _), .._] = list.drop(fields, i)
+      PatternKey(i, key)
+    }
+    p.Row(fields), [i, 1] -> {
+      // l.at and this should be an error instead
+      let [#(_, bind), .._] = list.drop(fields, i)
+      PatternFieldBind(i, bind)
+    }
+  }
+}
+
+fn get_branches(branches, i, rest, parent) {
+  let i = i - 1
+  let [#(label, pattern, then), .._] = list.drop(branches, i)
+  case rest {
+    [] -> Branch(i)
+    [0] -> BranchName(label)
+    // TODO careful with the parent here
+    [1, ..rest] -> get_pattern(pattern, rest, parent)
+    [2, ..rest] -> get_element(then, rest)
   }
 }
 
