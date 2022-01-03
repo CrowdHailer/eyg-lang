@@ -448,7 +448,7 @@ pub fn expand_providers(tree, typer) {
           fn(branch, typer) {
             let #(key, pattern, then) = branch
             let #(then, typer) = expand_providers(then, typer)
-            let branch = #(key, pattern, value)
+            let branch = #(key, pattern, then)
             #(branch, typer)
           },
         )

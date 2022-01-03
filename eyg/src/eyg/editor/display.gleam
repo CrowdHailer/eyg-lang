@@ -327,9 +327,11 @@ fn display_branch(index, branch, match_meta) {
   let branch_selection = child_selection(selection, index + 1)
   let branch_display =
     Display(branch_position, branch_selection, False, expanded)
+
   let label_position = path.append(branch_position, 0)
   let label_selection = child_selection(branch_selection, 0)
   let label_display = Display(label_position, label_selection, False, expanded)
+
   let pattern_position = path.append(branch_position, 1)
   let pattern_selection = child_selection(branch_selection, 1)
   let pattern_display =
