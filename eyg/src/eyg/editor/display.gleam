@@ -9,6 +9,7 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/ast/editor
 import eyg/typer.{Metadata}
+import eyg/typer/monotype as t
 
 pub fn is_multiexpression(expression) {
   case expression {
@@ -29,6 +30,7 @@ pub type Display {
   Display(
     position: List(Int),
     selection: Selection,
+    type_: String,
     errored: Bool,
     expanded: Bool,
   )
@@ -93,12 +95,12 @@ pub fn display(editor) {
 // unless we treat it as empty string variable.
 pub fn do_display(tree, position, selection, editor) {
   let #(Metadata(type_: type_, ..), expression) = tree
-  let editor.Editor(expanded: expanded, ..) = editor
-  let errored = case type_ {
-    Ok(_) -> False
-    Error(_) -> True
+  let editor.Editor(expanded: expanded, typer: typer, ..) = editor
+  let #(errored, type_) = case type_ {
+    Ok(type_) -> #(False, t.to_string(t.resolve(type_, typer.substitutions)))
+    Error(_) -> #(True, "")
   }
-  let metadata = Display(position, selection, errored, expanded)
+  let metadata = Display(position, selection, type_, errored, expanded)
   case expression {
     e.Binary(content) -> #(metadata, e.Binary(content))
     e.Tuple(elements) -> {
@@ -205,7 +207,7 @@ pub fn display_pattern(metadata, pattern) {
   //   is always 0 but that's a coincidence of fn and let
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, False, expanded)
+  let display = Display(position, selection, "", False, expanded)
 }
 
 // display_elements takes care of _ in label too
@@ -221,7 +223,7 @@ pub fn display_pattern_elements(display, elements) {
         Some(label) -> label
         None -> "_"
       }
-      #(Display(position, selection, False, expanded), value)
+      #(Display(position, selection, "", False, expanded), value)
     },
   )
 }
@@ -240,10 +242,10 @@ pub fn display_pattern_fields(display, fields) {
       let value_selection = child_selection(selection, 1)
       let #(label, bind) = f
       #(
-        Display(position, selection, False, expanded),
-        Display(label_position, label_selection, False, expanded),
+        Display(position, selection, "", False, expanded),
+        Display(label_position, label_selection, "", False, expanded),
         label,
-        Display(value_position, value_selection, False, expanded),
+        Display(value_position, value_selection, "", False, expanded),
         bind,
       )
     },
@@ -262,8 +264,8 @@ pub fn display_expression_fields(display, fields) {
       let label_selection = child_selection(selection, 0)
       let #(label, value) = f
       #(
-        Display(position, selection, False, expanded),
-        Display(label_position, label_selection, False, expanded),
+        Display(position, selection, "", False, expanded),
+        Display(label_position, label_selection, "", False, expanded),
         label,
         value,
       )
@@ -276,7 +278,7 @@ pub fn display_unit_variant(display) {
     display
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, False, expanded)
+  let display = Display(position, selection, "", False, expanded)
 }
 
 pub fn for_provider_config(display) {
@@ -284,7 +286,7 @@ pub fn for_provider_config(display) {
     display
   let position = path.append(position, 1)
   let selection = child_selection(selection, 1)
-  let display = Display(position, selection, False, expanded)
+  let display = Display(position, selection, "", False, expanded)
 }
 
 pub fn for_provider_generator(generator, display) {
@@ -292,6 +294,6 @@ pub fn for_provider_generator(generator, display) {
     display
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, False, expanded)
+  let display = Display(position, selection, "", False, expanded)
   #(e.generator_to_string(generator), display)
 }
