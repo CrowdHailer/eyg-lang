@@ -29,19 +29,6 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
-### Case
-
-- [x] put meta data on the branch label and pattern so that they can be selected and updated
-- [x] have case statements collapse when note in focus
-- [x] move right should open a case statement
-- [x] move up and down between branches
-- No need to have select the whole block of branches
-- 1 index case is zeroth branch
-- having branches as functions would be it possible to have a branch with a non function. Make invalid states unrepresentable
-  - Pull out helpers for render etc if duplicate code
-- [ ] Fix the rendering of execution, make a codegen test for this AND/OR fix the case test that I have implemented.
-- [ ] Write tests for Type printing `{not: True | False -> True | False} This is the end goal and acid test
-
 ### Reload
 
 - let [run, state] = returned.reload.start(tree)
@@ -57,6 +44,7 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] Have a standard nily overflow for left and right, same as delete
 - [ ] Put type information on non expression elements
 - [x] Resolve type information before printing errors.
+- [ ] Reinstate Sugar for named variant Unitary or not.
 - [ ] Tree's set up correctly for expanded providers
 - [ ] When we have reordered type constraints, we can push type providers to the top
 - [x] Switch Integer Type to Native/Platform with an Enum for possible values inside
