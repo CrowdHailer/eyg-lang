@@ -110,7 +110,7 @@ pub fn do_display(tree, position, selection, editor) {
       False,
       t.to_string(
         t.resolve(type_, typer.substitutions),
-        t.need_js_native_to_string,
+        editor.native_to_string,
       ),
     )
     Error(_) -> #(True, "")

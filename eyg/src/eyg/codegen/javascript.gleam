@@ -21,14 +21,16 @@ pub type Generator(n) {
     scope: List(String),
     typer: typer.Typer(n),
     self: Option(String),
+    // Scope and self can me moved out into the metadata
+    native_to_string: fn(n) -> String,
   )
 }
 
 external fn do_eval(String) -> Dynamic =
   "../../harness.js" "run"
 
-pub fn eval(tree, typer) {
-  let code = render_in_function(tree, typer)
+pub fn eval(tree, typer, native_to_string) {
+  let code = render_in_function(tree, typer, native_to_string)
   string.join(["(function(equal){\n", code, "})(equal)"])
   |> do_eval
 }
@@ -101,14 +103,14 @@ fn render_function_name(state) {
   }
 }
 
-pub fn render_to_string(expression, typer) {
-  render(expression, Generator(False, [], typer, None))
+pub fn render_to_string(expression, typer, native_to_string) {
+  render(expression, Generator(False, [], typer, None, native_to_string))
   |> list.intersperse("\n")
   |> string.join()
 }
 
-pub fn render_in_function(expression, typer) {
-  render(expression, Generator(True, [], typer, None))
+pub fn render_in_function(expression, typer, native_to_string) {
+  render(expression, Generator(True, [], typer, None, native_to_string))
   |> list.intersperse("\n")
   |> string.join()
 }
@@ -305,7 +307,7 @@ pub fn render(
             }
             _ -> [
               "(() => {throw 'Failed to build provider for ",
-              t.to_string(loader, t.need_js_native_to_string),
+              t.to_string(loader, state.native_to_string),
               "'})()",
             ]
           }

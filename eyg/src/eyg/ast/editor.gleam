@@ -14,6 +14,7 @@ import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
+import eyg/typer/environment
 import eyg/codegen/javascript
 import harness/harness
 import standard/example
@@ -59,6 +60,7 @@ pub fn is_select(editor) {
 fn expression_type(
   expression: e.Expression(Metadata(n), a),
   typer: typer.Typer(n),
+  native_to_string,
 ) {
   let #(metadata, _) = expression
   case metadata.type_ {
@@ -78,8 +80,10 @@ pub fn target_type(editor) {
   case selection {
     Some(path) ->
       case get_element(tree, path) {
-        Expression(#(_, e.Let(_, value, _))) -> expression_type(value, typer)
-        Expression(expression) -> expression_type(expression, typer)
+        Expression(#(_, e.Let(_, value, _))) ->
+          expression_type(value, typer, native_to_string)
+        Expression(expression) ->
+          expression_type(expression, typer, native_to_string)
         _ -> #(False, "")
       }
     None -> #(False, "")
@@ -105,18 +109,18 @@ pub fn inconsistencies(editor) {
   )
 }
 
-pub fn codegen(editor) {
+pub fn codegen(editor, native_to_string) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
-  let code = javascript.render_to_string(tree, typer)
+  let code = javascript.render_to_string(tree, typer, native_to_string)
   #(good, code)
 }
 
 // Can put harness as a single record type that is copied to the code bundle and passed in at the top
-pub fn eval(editor) {
+pub fn eval(editor, native_to_string) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let True = list.length(typer.inconsistencies) == 0
-  javascript.eval(tree, typer)
+  javascript.eval(tree, typer, native_to_string)
 }
 
 pub fn dump(editor) {
@@ -127,14 +131,14 @@ pub fn dump(editor) {
   dump
 }
 
-pub fn native_to_string(_) {
-  todo
+pub fn native_to_string(_: harness.Browser) {
+  "BOB"
 }
 
 pub fn init(raw) {
   let untyped = encode.from_json(encode.json_from_string(raw))
   // let untyped = example.minimal()
-  // top level scope is the envirobnment maybe
+  // top level scope is the environment maybe
   let variables = [#("equal", typer.equal_fn()), #("harness", harness.string())]
   let #(typed, typer) =
     typer.infer_unconstrained(untyped, variables, native_to_string)
