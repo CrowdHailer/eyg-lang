@@ -11,4 +11,3 @@
   data-editor={Display.marker(metadata)}
   >todo <span>{metadata.type_}</span></span
 >
-{Display.marker(metadata)}
