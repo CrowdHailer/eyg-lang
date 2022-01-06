@@ -12,7 +12,7 @@ pub fn compile(expected, untyped) {
       #("equal", typer.equal_fn()),
       #("harness", harness.string()),
     ])
-  let state = #(typer.init(), scope)
+  let state = #(typer.init(fn(_) { "TODO" }), scope)
   let #(typed, typer) = typer.infer(untyped, expected, state)
   let #(typed, typer) = typer.expand_providers(typed, typer)
   case typer.inconsistencies {

@@ -12,21 +12,21 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import harness/harness
 
-pub type Reason {
+pub type Reason(n) {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(label: String)
-  UnmatchedTypes(expected: t.Monotype, given: t.Monotype)
-  MissingFields(expected: List(#(String, t.Monotype)))
-  UnexpectedFields(expected: List(#(String, t.Monotype)))
-  UnableToProvide(expected: t.Monotype, generator: e.Generator)
+  UnmatchedTypes(expected: t.Monotype(n), given: t.Monotype(n))
+  MissingFields(expected: List(#(String, t.Monotype(n))))
+  UnexpectedFields(expected: List(#(String, t.Monotype(n))))
+  UnableToProvide(expected: t.Monotype(n), generator: e.Generator)
 }
 
 pub fn root_scope(variables) {
   Scope(variables: variables, path: [])
 }
 
-pub type Scope {
-  Scope(path: List(Int), variables: List(#(String, polytype.Polytype)))
+pub type Scope(n) {
+  Scope(path: List(Int), variables: List(#(String, polytype.Polytype(n))))
 }
 
 pub fn child(scope, i) {
@@ -34,16 +34,17 @@ pub fn child(scope, i) {
   Scope(..scope, path: path.append(path, i))
 }
 
-pub type Typer {
+pub type Typer(n) {
   Typer(
+    native_to_string: fn(n) -> String,
     next_unbound: Int,
-    substitutions: List(#(Int, t.Monotype)),
+    substitutions: List(#(Int, t.Monotype(n))),
     // CAN'T hold onto typer.Reason circular dependency
     inconsistencies: List(#(List(Int), String)),
   )
 }
 
-pub fn reason_to_string(reason, typer: Typer) {
+pub fn reason_to_string(reason, typer: Typer(n)) {
   case reason {
     IncorrectArity(expected, given) ->
       string.join([
@@ -56,9 +57,15 @@ pub fn reason_to_string(reason, typer: Typer) {
     UnmatchedTypes(expected, given) ->
       string.join([
         "Unmatched types expected ",
-        t.to_string(t.resolve(expected, typer.substitutions)),
+        t.to_string(
+          t.resolve(expected, typer.substitutions),
+          typer.native_to_string,
+        ),
         " given ",
-        t.to_string(t.resolve(given, typer.substitutions)),
+        t.to_string(
+          t.resolve(given, typer.substitutions),
+          typer.native_to_string,
+        ),
       ])
     MissingFields(expected) ->
       [
@@ -71,7 +78,10 @@ pub fn reason_to_string(reason, typer: Typer) {
             string.join([
               name,
               ": ",
-              t.to_string(t.resolve(type_, typer.substitutions)),
+              t.to_string(
+                t.resolve(type_, typer.substitutions),
+                typer.native_to_string,
+              ),
             ])
           },
         )
@@ -83,15 +93,18 @@ pub fn reason_to_string(reason, typer: Typer) {
     UnableToProvide(expected, g) ->
       string.join([
         "Unable to generate for expected type ",
-        t.to_string(t.resolve(expected, typer.substitutions)),
+        t.to_string(
+          t.resolve(expected, typer.substitutions),
+          typer.native_to_string,
+        ),
         " with generator ",
         e.generator_to_string(g),
       ])
   }
 }
 
-pub fn init() {
-  Typer(0, [], [])
+pub fn init(native_to_string) {
+  Typer(native_to_string, 0, [], [])
 }
 
 fn add_substitution(variable, resolves, typer) {
@@ -123,7 +136,7 @@ fn do_occurs_in(i, b) {
     t.Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
     t.Row(fields, _) ->
       fields
-      |> list.map(fn(x: #(String, t.Monotype)) { x.1 })
+      |> list.map(fn(x: #(String, t.Monotype(n))) { x.1 })
       |> list.any(do_occurs_in(i, _))
   }
 }
@@ -140,7 +153,7 @@ fn next_unbound(state) {
 pub fn unify(expected, given, state) {
   // Pass as tuple to make reduce functions easier to implement
   // scope path is not modified through unification
-  let #(typer, scope): #(Typer, Scope) = state
+  let #(typer, scope): #(Typer(n), Scope(n)) = state
   let Typer(substitutions: substitutions, ..) = typer
   let expected = t.resolve(expected, substitutions)
   let given = t.resolve(given, substitutions)
@@ -313,10 +326,10 @@ fn pattern_type(pattern, typer) {
   }
 }
 
-pub type Metadata {
+pub type Metadata(n) {
   Metadata(
-    type_: Result(t.Monotype, Reason),
-    scope: List(#(String, polytype.Polytype)),
+    type_: Result(t.Monotype(n), Reason(n)),
+    scope: List(#(String, polytype.Polytype(n))),
     path: List(Int),
   )
 }
@@ -328,13 +341,15 @@ pub fn is_error(metadata) {
   }
 }
 
-pub fn get_type(tree: e.Expression(Metadata, a)) -> Result(t.Monotype, Reason) {
+pub fn get_type(
+  tree: e.Expression(Metadata(n), a),
+) -> Result(t.Monotype(n), Reason(n)) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
 }
 
 fn do_unify(expected, given, state) {
-  let #(typer, scope): #(Typer, Scope) = state
+  let #(typer, scope): #(Typer(n), Scope(n)) = state
   case unify(expected, given, state) {
     Ok(typer) -> #(Ok(expected), typer)
     // Don't think typer needs returning from unify?
@@ -358,7 +373,7 @@ fn pairs_second(pair: #(a, b)) -> b {
   pair.1
 }
 
-fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype), Typer) {
+fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype(n)), Typer(n)) {
   let #(x, typer) = next_unbound(typer)
   let type_ = t.Unbound(x)
   #(#(thing, type_), typer)
@@ -384,11 +399,13 @@ pub fn equal_fn() {
   )
 }
 
-pub fn infer_unconstrained(expression) {
-  let typer = init()
+pub fn infer_unconstrained(expression, variables, native_to_string) {
+  let typer = init(native_to_string)
   let scope =
     Scope(
-      variables: [#("equal", equal_fn()), #("harness", harness.string())],
+      // variables: [#("equal", equal_fn()), #("harness", harness.string())],
+      // TODO Harness needs to be parameterised by native types
+      variables: variables,
       path: path.root(),
     )
   let #(x, typer) = next_unbound(typer)
@@ -509,9 +526,9 @@ pub fn expand_providers(tree, typer) {
 
 pub fn infer(
   expression: e.Expression(Dynamic, Dynamic),
-  expected: t.Monotype,
-  state: #(Typer, Scope),
-) -> #(e.Expression(Metadata, Dynamic), Typer) {
+  expected: t.Monotype(n),
+  state: #(Typer(n), Scope(n)),
+) -> #(e.Expression(Metadata(n), Dynamic), Typer(n)) {
   // return all context so more info can be added later
   let #(_, tree) = expression
   let #(typer, scope) = state

@@ -15,6 +15,7 @@ import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/codegen/javascript
+import harness/harness
 import standard/example
 
 pub type Mode {
@@ -23,10 +24,11 @@ pub type Mode {
   Select(choices: List(String))
 }
 
-pub type Editor {
+pub type Editor(n) {
   Editor(
-    tree: e.Expression(Metadata, e.Expression(Metadata, Dynamic)),
-    typer: typer.Typer,
+    variables: List(#(String, polytype.Polytype(n))),
+    tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
+    typer: typer.Typer(n),
     selection: Option(List(Int)),
     mode: Mode,
     expanded: Bool,
@@ -54,13 +56,16 @@ pub fn is_select(editor) {
   }
 }
 
-fn expression_type(expression: e.Expression(Metadata, a), typer: typer.Typer) {
+fn expression_type(
+  expression: e.Expression(Metadata(n), a),
+  typer: typer.Typer(n),
+) {
   let #(metadata, _) = expression
   case metadata.type_ {
     Ok(t) -> #(
       False,
       t.resolve(t, typer.substitutions)
-      |> t.to_string(),
+      |> t.to_string(native_to_string),
     )
     Error(reason) -> #(True, typer.reason_to_string(reason, typer))
   }
@@ -81,7 +86,7 @@ pub fn target_type(editor) {
   }
 }
 
-pub fn is_selected(editor: Editor, path) {
+pub fn is_selected(editor: Editor(n), path) {
   case editor.selection {
     Some(p) if p == path -> True
     _ -> False
@@ -122,12 +127,19 @@ pub fn dump(editor) {
   dump
 }
 
+pub fn native_to_string(_) {
+  todo
+}
+
 pub fn init(raw) {
   let untyped = encode.from_json(encode.json_from_string(raw))
   // let untyped = example.minimal()
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  // top level scope is the envirobnment maybe
+  let variables = [#("equal", typer.equal_fn()), #("harness", harness.string())]
+  let #(typed, typer) =
+    typer.infer_unconstrained(untyped, variables, native_to_string)
   let mode = Command
-  Editor(typed, typer, None, mode, False)
+  Editor(variables, typed, typer, None, mode, False)
 }
 
 fn rest_to_path(rest) {
@@ -141,7 +153,7 @@ fn rest_to_path(rest) {
 }
 
 // At the editor level we might want to handle semantic events like select node. And have display do handle click
-pub fn handle_click(editor: Editor, target) {
+pub fn handle_click(editor: Editor(n), target) {
   case string.split(target, ":") {
     ["root"] -> Editor(..editor, selection: Some([]), mode: Command)
     ["p", rest] -> {
@@ -172,7 +184,12 @@ pub fn handle_keydown(editor, key, ctrl_key) {
             handle_transformation(editor, path, key, ctrl_key)
           let #(typed, typer) = case untyped {
             None -> #(tree, typer)
-            Some(untyped) -> typer.infer_unconstrained(untyped)
+            Some(untyped) ->
+              typer.infer_unconstrained(
+                untyped,
+                editor.variables,
+                native_to_string,
+              )
           }
           Editor(
             ..editor,
@@ -310,7 +327,8 @@ pub fn handle_change(editor, content) {
     }
   }
 
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  let #(typed, typer) =
+    typer.infer_unconstrained(untyped, editor.variables, native_to_string)
   Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
 
@@ -999,7 +1017,7 @@ fn match_let(target) {
 fn closest(
   tree,
   position,
-  search: fn(Element(Metadata, #(Metadata, e.Node(Metadata, Dynamic)))) ->
+  search: fn(Element(Metadata(n), #(Metadata(n), e.Node(Metadata(n), Dynamic)))) ->
     Result(t, Nil),
 ) -> Option(#(List(Int), Int, t)) {
   case parent_path(position) {
@@ -1484,7 +1502,7 @@ fn variable(tree, position) {
     Expression(#(metadata, _)) -> {
       let Metadata(scope: scope, ..) = metadata
       let variables =
-        list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
+        list.map(metadata.scope, fn(x: #(String, polytype.Polytype(n))) { x.0 })
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))
     }

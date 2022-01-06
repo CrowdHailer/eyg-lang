@@ -4,18 +4,17 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer
 
-pub type Element {
-  UnitVariant(
-    label: String,
-    then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
-  )
-  TupleVariant(
-    label: String,
-    parameters: List(String),
-    then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
-  )
-}
-
+// pub type Element {
+//   UnitVariant(
+//     label: String,
+//     then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
+//   )
+//   TupleVariant(
+//     label: String,
+//     parameters: List(String),
+//     then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
+//   )
+// }
 // by convention change the highest level key i.e. name in pattern follows through to name in calls.
 pub fn match(tree) {
   case tree {

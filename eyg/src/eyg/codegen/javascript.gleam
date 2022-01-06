@@ -13,13 +13,13 @@ import eyg/codegen/utilities.{
   indent, squash, wrap_lines, wrap_single_or_multiline,
 }
 
-pub type Generator {
+pub type Generator(n) {
 
   // self is the name being given in a let clause
   Generator(
     in_tail: Bool,
     scope: List(String),
-    typer: typer.Typer,
+    typer: typer.Typer(n),
     self: Option(String),
   )
 }
@@ -178,7 +178,10 @@ fn escape_string(raw) {
 }
 
 pub fn render(
-  tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Dynamic)),
+  tree: e.Expression(
+    typer.Metadata(n),
+    e.Expression(typer.Metadata(n), Dynamic),
+  ),
   state,
 ) {
   let #(context, tree) = tree
@@ -302,7 +305,7 @@ pub fn render(
             }
             _ -> [
               "(() => {throw 'Failed to build provider for ",
-              t.to_string(loader),
+              t.to_string(loader, t.need_js_native_to_string),
               "'})()",
             ]
           }

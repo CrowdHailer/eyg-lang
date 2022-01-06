@@ -106,7 +106,13 @@ pub fn do_display(tree, position, selection, editor) {
   let #(Metadata(type_: type_, ..), expression) = tree
   let editor.Editor(expanded: expanded, typer: typer, ..) = editor
   let #(errored, type_) = case type_ {
-    Ok(type_) -> #(False, t.to_string(t.resolve(type_, typer.substitutions)))
+    Ok(type_) -> #(
+      False,
+      t.to_string(
+        t.resolve(type_, typer.substitutions),
+        t.need_js_native_to_string,
+      ),
+    )
     Error(_) -> #(True, "")
   }
   let metadata = Display(position, selection, type_, errored, expanded)
@@ -206,8 +212,10 @@ pub fn do_display(tree, position, selection, editor) {
         True -> #(metadata, e.Provider(config, generator, generated))
         False -> {
           io.debug(generated)
-          let generated: e.Expression(Metadata, e.Expression(Metadata, Dynamic)) =
-            unsafe_coerce(generated)
+          let generated: e.Expression(
+            Metadata(n),
+            e.Expression(Metadata(n), Dynamic),
+          ) = unsafe_coerce(generated)
           io.debug(generated)
           let generated =
             do_display(
