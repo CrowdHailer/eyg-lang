@@ -10,9 +10,12 @@
 
   let multiline = false;
   $: multiline = Display.is_multiexpression(body);
+
+  let pattern_display = Display.display_pattern(metadata, pattern);
+  $: pattern_display = Display.display_pattern(metadata, pattern);
 </script>
 
-<Pattern {pattern} {metadata} />
+<Pattern {pattern} metadata={pattern_display} />
 <span
   class="border-2 border-transparent outline-none rounded"
   class:border-red-500={metadata.errored && !Display.is_target(metadata)}

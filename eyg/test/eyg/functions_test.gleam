@@ -12,6 +12,7 @@ pub fn type_bound_function_test() {
   let typer = init()
   let scope = typer.root_scope([])
   let untyped = ast.function(p.Tuple([]), ast.binary(""))
+  // TODO infer_unbound
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)

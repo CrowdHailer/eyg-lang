@@ -15,6 +15,10 @@ pub fn call(function, with) {
   #(dynamic.from(Nil), e.Call(function, with))
 }
 
+pub fn case_(value, branches) {
+  #(dynamic.from(Nil), e.Case(value, branches))
+}
+
 pub fn function(for, body) {
   #(dynamic.from(Nil), e.Function(for, body))
 }

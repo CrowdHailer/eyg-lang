@@ -30,15 +30,15 @@ pub fn to_string(monotype) {
       ])
     // Function(Row([#(l, Function(Tuple(ts), _))], _), _) ->
     //   string.join([l, ..list.map(ts, to_string)])
-    Function(Row(fields, _), Unbound(i)) -> {
+    Function(Row(fields, _), return) -> {
       let all =
         list.try_map(
           fields,
           fn(f) {
             let #(name, type_) = f
             case type_ {
-              Function(Tuple([]), Unbound(j)) if i == j -> Ok(name)
-              Function(inner, Unbound(j)) if i == j ->
+              Function(Tuple([]), x) if x == return -> Ok(name)
+              Function(inner, x) if x == return ->
                 Ok(string.join([name, " ", to_string(inner)]))
               _ -> Error(Nil)
             }

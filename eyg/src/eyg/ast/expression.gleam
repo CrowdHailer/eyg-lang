@@ -143,6 +143,10 @@ pub type Node(m, g) {
   Let(pattern: Pattern, value: Expression(m, g), then: Expression(m, g))
   Function(pattern: Pattern, body: Expression(m, g))
   Call(function: Expression(m, g), with: Expression(m, g))
+  Case(
+    value: Expression(m, g),
+    branches: List(#(String, Pattern, Expression(m, g))),
+  )
   Provider(config: String, generator: Generator, generated: g)
 }
 

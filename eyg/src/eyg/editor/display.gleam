@@ -75,6 +75,15 @@ pub fn show_value(metadata) {
     Above([0, .._]) | Above([1, .._]) -> True
     _ -> False
   }
+}
+
+pub fn show_case_value(metadata) {
+  let Display(selection: selection, ..) = metadata
+  case selection {
+    Above([]) -> False
+    Above(_) -> True
+    _ -> False
+  }
   // io.debug(metadata)
 }
 
@@ -167,6 +176,28 @@ pub fn do_display(tree, position, selection, editor) {
         )
       #(metadata, e.Call(function, with))
     }
+    e.Case(value, branches) -> {
+      let value =
+        do_display(
+          value,
+          path.append(position, 0),
+          child_selection(selection, 0),
+          editor,
+        )
+      let branches =
+        list.index_map(
+          branches,
+          fn(index, branch) {
+            let index = index + 1
+            let #(name, pattern, then) = branch
+            let position = list.append(position, [index, 2])
+            let selection =
+              child_selection(child_selection(selection, index), 2)
+            #(name, pattern, do_display(then, position, selection, editor))
+          },
+        )
+      #(metadata, e.Case(value, branches))
+    }
     e.Provider(config, generator, generated) ->
       // coerce back and forth because the expression does not represent the recursion we need.
       // There are cases when nothing is shown here
@@ -193,12 +224,6 @@ pub fn do_display(tree, position, selection, editor) {
 
 pub external fn unsafe_coerce(a) -> b =
   "../../eyg_utils.js" "identity"
-
-// properrty display -> untype should be equal
-// property type -> untype should be equal
-pub type Pattern {
-  Discard
-}
 
 pub fn display_pattern(metadata, pattern) {
   let Display(position: position, selection: selection, expanded: expanded, ..) =
@@ -278,7 +303,7 @@ pub fn display_unit_variant(display) {
     display
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, "", False, expanded)
+  Display(position, selection, "", False, expanded)
 }
 
 pub fn for_provider_config(display) {
@@ -286,7 +311,7 @@ pub fn for_provider_config(display) {
     display
   let position = path.append(position, 1)
   let selection = child_selection(selection, 1)
-  let display = Display(position, selection, "", False, expanded)
+  Display(position, selection, "", False, expanded)
 }
 
 pub fn for_provider_generator(generator, display) {
@@ -296,4 +321,33 @@ pub fn for_provider_generator(generator, display) {
   let selection = child_selection(selection, 0)
   let display = Display(position, selection, "", False, expanded)
   #(e.generator_to_string(generator), display)
+}
+
+pub fn for_branches(branches, display) {
+  list.index_map(
+    branches,
+    fn(index, branch) { display_branch(index, branch, display) },
+  )
+}
+
+fn display_branch(index, branch, match_meta) {
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    match_meta
+  let #(name, pattern, then) = branch
+  let branch_position = path.append(position, index + 1)
+  let branch_selection = child_selection(selection, index + 1)
+  let branch_display =
+    Display(branch_position, branch_selection, "", False, expanded)
+
+  let label_position = path.append(branch_position, 0)
+  let label_selection = child_selection(branch_selection, 0)
+  let label_display =
+    Display(label_position, label_selection, "", False, expanded)
+
+  let pattern_position = path.append(branch_position, 1)
+  let pattern_selection = child_selection(branch_selection, 1)
+  let pattern_display =
+    Display(pattern_position, pattern_selection, "", False, expanded)
+
+  #(branch_display, label_display, name, pattern_display, pattern, then)
 }

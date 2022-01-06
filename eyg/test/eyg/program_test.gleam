@@ -15,8 +15,6 @@ fn fetch(tree, label) {
   }
 }
 
-// TODO print the type needed in a hole
-// TODO There is an error when using in scope a some type, only happening on let rec statements
 pub fn boolean_value_test(saved) {
   let program = encode.from_json(saved)
   let Ok(mod) = fetch(program, "boolean")
@@ -47,16 +45,17 @@ pub fn none_value_test(saved) {
   let "None" = t.to_string(type_)
 }
 
-// pub fn boolean_not_test(saved) {
-//   let program = encode.from_json(saved)
-//   let Ok(mod) = fetch(program, "boolean")
-//   //   let Ok(true) = fetch(mod, "x")
-//   let #(typed, typer) = typer.infer_unconstrained(mod)
-//   let Ok(type_) = typer.get_type(typed)
-//   let type_ = t.resolve(type_, typer.substitutions)
-//   //   "{True: () -> 6, False: () -> 7} -> 2 -> 2"}"
-//   let "True" = t.to_string(type_)
-// }
+pub fn boolean_not_test(saved) {
+  let program = encode.from_json(saved)
+  let Ok(mod) = fetch(program, "boolean")
+  // Can't do this test because mod mean that True/False is not in scope
+  // let Ok(not) = fetch(mod, "not")
+  let #(typed, typer) = typer.infer_unconstrained(mod)
+  let Ok(type_) = typer.get_type(typed)
+  let type_ = t.resolve(type_, typer.substitutions)
+  let "True" = t.to_string(type_)
+}
+
 // pub fn and_test(saved) {
 //   let program = encode.from_json(saved)
 //   let Ok(mod) = fetch(program, "boolean")

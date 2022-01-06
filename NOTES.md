@@ -29,6 +29,8 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
+### Reload
+
 - let [run, state] = returned.reload.start(tree)
 - state = run([state, tree])
 
@@ -38,14 +40,18 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
 - [ ] Use a parameterised Enum for all the native types
+- [ ] collapsed/truncated view of rendered types that can be expanded on hover
+- [ ] Have a standard nily overflow for left and right, same as delete
+- [ ] Put type information on non expression elements
 - [x] Resolve type information before printing errors.
+- [ ] Reinstate Sugar for named variant Unitary or not.
 - [ ] Tree's set up correctly for expanded providers
 - [ ] When we have reordered type constraints, we can push type providers to the top
 - [x] Switch Integer Type to Native/Platform with an Enum for possible values inside
 - [ ] Rebase Fsharp talk 1hr9min taking types to make type providers moreuseful, we're already planning that
 - [x] Select from for choosing type providers
 - [ ] Pin type, click and bump constraints to top
-- [ ] gleam 18 stdlib to js, json lib and dynamic now useful
+- [ ] gleam 18 stdlib to js, json lib and dynamic now useful NOPE I rekon will have my own std lib quicker than investigating node loading.
 - [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
 - [ ] Copy/paste
 - [x] Upgrade gleam

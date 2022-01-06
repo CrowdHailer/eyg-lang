@@ -439,6 +439,22 @@ pub fn expand_providers(tree, typer) {
       let #(with, typer) = expand_providers(with, typer)
       #(#(meta, e.Call(func, with)), typer)
     }
+    e.Case(value, branches) -> {
+      let #(value, typer) = expand_providers(value, typer)
+      let #(branches, typer) =
+        list.map_state(
+          branches,
+          typer,
+          fn(branch, typer) {
+            let #(key, pattern, then) = branch
+            let #(then, typer) = expand_providers(then, typer)
+            let branch = #(key, pattern, then)
+            #(branch, typer)
+          },
+        )
+      #(#(meta, e.Case(value, branches)), typer)
+    }
+
     // Hole needs to be separate, it can't be a function call because it is not always going to be a function that gets called.
     e.Provider(config, g, _) if g == Hole || g == Loader -> {
       let dummy = #(
@@ -595,22 +611,18 @@ pub fn infer(
                 #(label, polytype)
               },
             )
+          // Need to generalize given before bound to self
+          // Or the generalised version instansiated once in scope of body
+          let then_scope = set_variable(#(label, given), typer, scope)
           let scope = list.fold(bound_variables, scope, do_set_variable)
           let scope = set_self_variable(#(label, given), scope)
           let #(return, typer) =
             infer(body, return_type, #(typer, child(child(scope, 1), 1)))
-          // io.debug(given)
-          // io.debug(t.resolve(given, typer.substitutions) == given)
-          // let [#("f", x), .._] = typer.variables
-          // io.debug(x.monotype)
-          // // let True = x == given
-          // io.debug(t.resolve(x.monotype, typer.substitutions))
-          // io.debug("===========")
-          // io.debug(t.resolve(given, typer.substitutions))
-          // Set again after clearing out in the middle
-          let scope = set_variable(#(label, given), typer, scope)
           // There are ALOT more type variables if handling all the errors.
-          #(#(meta(Ok(given)), e.Function(pattern, return)), #(typer, scope))
+          #(
+            #(meta(Ok(given)), e.Function(pattern, return)),
+            #(typer, then_scope),
+          )
         }
         _, _ -> {
           let #(expected_value, bound_variables, typer) =
@@ -642,28 +654,10 @@ pub fn infer(
       #(expression, typer)
     }
     e.Function(pattern, body) -> {
-      let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
-      let #(y, typer) = next_unbound(typer)
-      let return_type = t.Unbound(y)
-      let given = t.Function(arg_type, return_type)
-      let #(type_, typer) = do_unify(expected, given, #(typer, scope))
-      let bound_variables =
-        list.map(
-          bound_variables,
-          fn(bv) {
-            let #(label, monotype) = bv
-            let polytype =
-              polytype.generalise(
-                t.resolve(monotype, typer.substitutions),
-                scope.variables,
-              )
-            #(label, polytype)
-          },
-        )
-      let scope = list.fold(bound_variables, scope, do_set_variable)
-      let #(return, typer) = infer(body, return_type, #(typer, child(scope, 1)))
       // There are ALOT more type variables if handling all the errors.
-      #(#(meta(type_), e.Function(pattern, return)), typer)
+      let #(body, typer, type_) =
+        infer_function(pattern, body, expected, typer, scope, 1)
+      #(#(meta(type_), e.Function(pattern, body)), typer)
     }
     e.Call(function, with) -> {
       let #(x, typer) = next_unbound(typer)
@@ -674,6 +668,65 @@ pub fn infer(
       let #(with, typer) = infer(with, arg_type, #(typer, child(scope, 1)))
       // Type is always! OK at this level
       let expression = #(meta(Ok(expected)), e.Call(function, with))
+      #(expression, typer)
+    }
+    e.Case(value, branches) -> {
+      let #(fields, #(typer, _)) =
+        list.map_state(
+          branches,
+          #(typer, 1),
+          fn(branch, state) {
+            let #(typer, i) = state
+            let #(name, pattern, then) = branch
+            let #(x, typer) = next_unbound(typer)
+            let arg_type = t.Unbound(x)
+            let expected_function = t.Function(arg_type, expected)
+            // let expected
+            let #(body, typer, type_) =
+              infer_function(
+                pattern,
+                then,
+                expected_function,
+                typer,
+                child(scope, i),
+                2,
+              )
+            #(
+              #(
+                name,
+                #(meta(Ok(expected_function)), e.Function(pattern, body)),
+                arg_type,
+              ),
+              #(typer, i + 1),
+            )
+          },
+        )
+      let field_types =
+        list.map(
+          fields,
+          fn(field) {
+            let #(name, typed, arg_type) = field
+            let type_ = case get_type(typed) {
+              Ok(type_) -> type_
+              Error(_reason) -> arg_type
+            }
+            #(name, type_)
+          },
+        )
+      let expected_switch = t.Row(field_types, None)
+      let expected_value = t.Function(expected_switch, expected)
+      let #(value, typer) =
+        infer(value, expected_value, #(typer, child(scope, 0)))
+      let branches =
+        list.map(
+          fields,
+          fn(field) {
+            let #(name, #(_meta, e.Function(pattern, body)), _type) = field
+            io.debug(meta)
+            #(name, pattern, body)
+          },
+        )
+      let expression = #(meta(Ok(expected)), e.Case(value, branches))
       #(expression, typer)
     }
     // Type of provider is nil but actually it's dynamic because we just scrub the type information
@@ -696,6 +749,33 @@ pub fn infer(
       #(expression, typer)
     }
   }
+}
+
+// body index needed for handling case branches
+fn infer_function(pattern, body, expected, typer, scope, body_index) {
+  // Needs a typed function unit with correct meta data to come out
+  let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
+  let #(y, typer) = next_unbound(typer)
+  let return_type = t.Unbound(y)
+  let given = t.Function(arg_type, return_type)
+  let #(type_, typer) = do_unify(expected, given, #(typer, scope))
+  let bound_variables =
+    list.map(
+      bound_variables,
+      fn(bv) {
+        let #(label, monotype) = bv
+        let polytype =
+          polytype.generalise(
+            t.resolve(monotype, typer.substitutions),
+            scope.variables,
+          )
+        #(label, polytype)
+      },
+    )
+  let scope = list.fold(bound_variables, scope, do_set_variable)
+  let #(body, typer) =
+    infer(body, return_type, #(typer, child(scope, body_index)))
+  #(body, typer, type_)
 }
 
 fn pair_replace(replacements, monotype) {
