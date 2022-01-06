@@ -25,6 +25,7 @@
   let value = "";
   let downloadBlob = new Blob([], { type: "application/json" });
 
+  let testGood = true;
   // Gleam inspect makes pretty but is not the runtime representation
   // JSON .stringfy just hides/ignores functions
   function updateFocus(editor) {
@@ -44,6 +45,7 @@
             code = rendered[1];
             let returned = Editor.eval$(editor);
             window.returned = returned;
+            testGood = returned.test == "True";
             value = JSON.stringify(returned);
           } else {
             value = "";
@@ -138,8 +140,13 @@
       class:underline={page == HOME}
       on:click={() => (page = HOME)}>Home</button
     >
+    <span
+      class="ml-auto w-36"
+      class:bg-green-500={testGood}
+      class:bg-red-500={!testGood}
+    />
     <button
-      class="ml-auto pl-2 text-gray-600 hover:underline"
+      class="pl-2 text-gray-600 hover:underline"
       class:underline={page == CODE}
       on:click={() => (page = page == CODE ? HOME : CODE)}>Code</button
     >
