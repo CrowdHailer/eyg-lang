@@ -39,7 +39,6 @@
           >
           <Pattern {pattern} metadata={pattern_meta} />
           <span>=></span>
-          {Display.marker(pattern_meta)}
           <Expression expression={then} />
         </div>
       {/each}

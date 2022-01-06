@@ -242,17 +242,32 @@ pub fn render(
     }
     e.Case(value, branches) -> {
       let value = render(value, in_tail(False, state))
-      let with =
-        wrap_lines(
-          "(",
-          [
-            "maybe_wrap_expression(with, state) TODO render case same as function",
-          ],
-          ")",
+      let branches =
+        list.map(
+          branches,
+          fn(branch) {
+            let #(label, pattern, then) = branch
+            let #(bind, state) = render_pattern(pattern, state)
+            let start = string.join([label, ": (", bind, ") => {"])
+            let then = case render(then, in_tail(True, state)) {
+              [single] -> [string.join([start, " ", single, " },"])]
+              lines ->
+                [start, ..indent(lines)]
+                |> list.append(["},"])
+            }
+          },
         )
-      squash(value, with)
+        // |> wrap_return(state
+        // |> wrap_single_or_multiline("(((((", ",", "####")
+        |> list.flatten()
+        |> indent()
+      // value might be multiline
+      // let x = wrap_single_or_multiline(branches, "(((((", ",", "####")
+      list.append(squash(value, ["({"]), list.append(branches, ["})"]))
       |> wrap_return(state)
     }
+
+    // |> wrap_return(state)
     e.Provider("", e.Hole, _) -> [
       "(() => {throw 'Reached todo in the code'})()",
     ]
