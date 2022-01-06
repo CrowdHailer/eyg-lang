@@ -9,7 +9,7 @@
   export let branches;
 
   let expand = false;
-  $: expand = Display.show_case_value(metadata);
+  $: expand = Display.show_expression(metadata);
 </script>
 
 <span

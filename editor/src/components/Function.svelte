@@ -11,6 +11,9 @@
   let multiline = false;
   $: multiline = Display.is_multiexpression(body);
 
+  let expand = false;
+  $: expand = Display.show_expression(metadata);
+
   let pattern_display = Display.display_pattern(metadata, pattern);
   $: pattern_display = Display.display_pattern(metadata, pattern);
 </script>
@@ -23,9 +26,14 @@
   data-editor={Display.marker(metadata)}>=></span
 >
 {#if multiline}
-  <Indent>
-    <Expression expression={body} />
-  </Indent>
+  {#if expand}
+    <Indent>
+      <Expression expression={body} />
+    </Indent>
+  {:else}
+    <span class="text-gray-500" data-editor="{Display.marker(metadata)},1"
+      >&lbrace; ... &rbrace;</span
+    >{/if}
 {:else}
   <Expression expression={body} />
 {/if}

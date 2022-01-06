@@ -14,7 +14,7 @@
   $: multiline = Display.is_multiexpression(value);
 
   let expand = false;
-  $: expand = Display.show_value(metadata);
+  $: expand = Display.show_let_value(metadata);
 
   let pattern_display = Display.display_pattern(metadata, pattern);
   $: pattern_display = Display.display_pattern(metadata, pattern);

@@ -68,7 +68,7 @@ fn child_selection(selection, child) {
 }
 
 // within is not true for let and 2
-pub fn show_value(metadata) {
+pub fn show_let_value(metadata) {
   let Display(selection: selection, ..) = metadata
   case selection {
     Above([]) -> False
@@ -77,7 +77,7 @@ pub fn show_value(metadata) {
   }
 }
 
-pub fn show_case_value(metadata) {
+pub fn show_expression(metadata) {
   let Display(selection: selection, ..) = metadata
   case selection {
     Above([]) -> False
