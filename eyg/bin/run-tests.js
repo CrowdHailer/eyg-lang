@@ -11,7 +11,7 @@ async function main() {
   let failures = 0;
 
   for await (let entry of await opendir(dir)) {
-    if (!entry.name.endsWith("case_test.js")) continue;
+    if (!entry.name.endsWith("_test.js")) continue;
     let path = "../" + dir + entry.name;
     process.stdout.write("\nlanguage/" + entry.name.slice(0, -3) + ":\n  ");
     let module = await import(path);

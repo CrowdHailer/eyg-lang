@@ -611,22 +611,18 @@ pub fn infer(
                 #(label, polytype)
               },
             )
+          // Need to generalize given before bound to self
+          // Or the generalised version instansiated once in scope of body
+          let then_scope = set_variable(#(label, given), typer, scope)
           let scope = list.fold(bound_variables, scope, do_set_variable)
           let scope = set_self_variable(#(label, given), scope)
           let #(return, typer) =
             infer(body, return_type, #(typer, child(child(scope, 1), 1)))
-          // io.debug(given)
-          // io.debug(t.resolve(given, typer.substitutions) == given)
-          // let [#("f", x), .._] = typer.variables
-          // io.debug(x.monotype)
-          // // let True = x == given
-          // io.debug(t.resolve(x.monotype, typer.substitutions))
-          // io.debug("===========")
-          // io.debug(t.resolve(given, typer.substitutions))
-          // Set again after clearing out in the middle
-          let scope = set_variable(#(label, given), typer, scope)
           // There are ALOT more type variables if handling all the errors.
-          #(#(meta(Ok(given)), e.Function(pattern, return)), #(typer, scope))
+          #(
+            #(meta(Ok(given)), e.Function(pattern, return)),
+            #(typer, then_scope),
+          )
         }
         _, _ -> {
           let #(expected_value, bound_variables, typer) =

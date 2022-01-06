@@ -245,48 +245,38 @@
             "value": {
                 "node": "Let",
                 "pattern": {
-                    "node": "Tuple",
-                    "elements": [
-                        {
-                            "node": "Bind",
-                            "label": "Some"
-                        }
-                    ]
+                    "node": "Variable",
+                    "label": "Some"
                 },
                 "value": {
-                    "node": "Tuple",
-                    "elements": [
-                        {
-                            "node": "Function",
-                            "pattern": {
+                    "node": "Function",
+                    "pattern": {
+                        "node": "Variable",
+                        "label": "value"
+                    },
+                    "body": {
+                        "node": "Function",
+                        "pattern": {
+                            "node": "Row",
+                            "fields": [
+                                {
+                                    "key": "Some",
+                                    "bind": "then"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "node": "Call",
+                            "function": {
+                                "node": "Variable",
+                                "label": "then"
+                            },
+                            "with": {
                                 "node": "Variable",
                                 "label": "value"
-                            },
-                            "body": {
-                                "node": "Function",
-                                "pattern": {
-                                    "node": "Row",
-                                    "fields": [
-                                        {
-                                            "key": "Some",
-                                            "bind": "then"
-                                        }
-                                    ]
-                                },
-                                "body": {
-                                    "node": "Call",
-                                    "function": {
-                                        "node": "Variable",
-                                        "label": "then"
-                                    },
-                                    "with": {
-                                        "node": "Variable",
-                                        "label": "value"
-                                    }
-                                }
                             }
                         }
-                    ]
+                    }
                 },
                 "then": {
                     "node": "Let",
@@ -450,7 +440,16 @@
                                     },
                                     "then": {
                                         "node": "Row",
-                                        "fields": []
+                                        "fields": [
+                                            {
+                                                "node": "Field",
+                                                "key": "Some",
+                                                "value": {
+                                                    "node": "Variable",
+                                                    "label": "Some"
+                                                }
+                                            }
+                                        ]
                                     }
                                 }
                             }
