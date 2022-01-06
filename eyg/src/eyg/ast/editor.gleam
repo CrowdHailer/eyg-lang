@@ -1448,6 +1448,16 @@ fn delete_pattern(pattern, path) {
         }
       }
     }
+    p.Row(fields), [i] | p.Row(fields), [i, 0] | p.Row(fields), [i, 1] -> {
+      let pre = list.take(fields, i)
+      let [element, ..post] = list.drop(fields, i)
+      let fields = list.append(pre, post)
+      let position = case list.length(fields) {
+        0 -> []
+        _ -> [max(0, list.length(pre) - 1)]
+      }
+      Some(#(p.Row(fields), position))
+    }
   }
 }
 

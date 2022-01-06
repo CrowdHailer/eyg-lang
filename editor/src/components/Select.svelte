@@ -15,7 +15,6 @@
   });
 
   function handleKeydown(event) {
-    console.log("keydown");
     if (event.metaKey || event.key == "Escape") {
       return true;
     }

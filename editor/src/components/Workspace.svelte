@@ -212,7 +212,6 @@
       class:border-l-8={Editor.is_selected(editor, path)}
       data-editor={Display.position_to_marker(path)}
     >
-      {Display.position_to_marker(path)}
       {reason}
     </p>
   {/each}
