@@ -29,6 +29,10 @@ getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
 
+
+Selecting an empty variable to put in the tree first means that there is a new Error when you press escape
+Maybe best having state in the editor be intended action. That or an empty variable looks like a whole.
+Interesting potential as Hole is not really a provider
 ### Reload
 
 - let [run, state] = returned.reload.start(tree)

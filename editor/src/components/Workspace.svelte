@@ -31,7 +31,9 @@
   function updateFocus(editor) {
     tick().then(() => {
       if (Editor.is_draft(editor)) {
-        document.getElementById("draft").focus();
+        let element = document.getElementById("draft");
+        element.focus();
+        element.select();
       } else if (Editor.is_select(editor)) {
         document.getElementById("filter").focus();
       } else if (Editor.is_command(editor)) {
@@ -132,7 +134,6 @@
   }
 </script>
 
-<!-- {JSON.stringify(editor.selection)} -->
 <div class="max-w-4xl w-full m-auto px-10 py-4">
   <nav class="flex py-2">
     <button

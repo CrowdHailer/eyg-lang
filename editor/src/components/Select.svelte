@@ -20,9 +20,11 @@
     }
     event.stopPropagation();
     if (event.key == "Enter" || event.key == " ") {
-      let value = remaining[0];
-      makeSelection(value);
       event.preventDefault();
+      if (remaining.length > 0) {
+        let value = remaining[0];
+        makeSelection(value);
+      }
     }
   }
 

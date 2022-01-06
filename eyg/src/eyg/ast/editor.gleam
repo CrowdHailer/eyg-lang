@@ -1485,7 +1485,8 @@ fn variable(tree, position) {
       let Metadata(scope: scope, ..) = metadata
       let variables =
         list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
-      #(None, position, Select(variables))
+      let new = Some(replace_expression(tree, position, ast.variable("")))
+      #(new, position, Select(variables))
     }
     _ -> #(None, position, Command)
   }
