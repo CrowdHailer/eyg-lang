@@ -14,6 +14,9 @@ if javascript {
 
   pub external fn starts_with(String, String) -> Bool =
     "" "String.prototype.startsWith.call"
+
+  pub external fn replace(String, String, String) -> String =
+    "" "String.prototype.replaceAll.call"
 }
 
 pub fn split(string, pattern) {

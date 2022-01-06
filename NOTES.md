@@ -103,14 +103,5 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 - [ ] Show available edit options
 - [ ] rename p:1,2 to code:1,2 or ast
 - [ ] handle editor loosing focus -> Later not that important
-- [ ] Test lambda calculus enums.
+- [x] Test lambda calculus enums.
 - [x] Format tuples/records without any brackets (doesn't work because of nested tuples)
-  ```
-  let a, b = x
-  foo a, b => c, d
-  a, for singletuple
-  ```
-
-Later
-
-Function returning a function for compiletime process

@@ -167,15 +167,24 @@ fn render_pattern(pattern, state) {
   }
 }
 
+// https://www.w3schools.com/js/js_strings.asp
+// quotes and backslash. Note there is also typewriter charachters I have not tackled here.
+fn escape_string(raw) {
+  raw
+  // Need to replace user slashes first so that slashed from later escape sequences are kept
+  |> string.replace("\\", "\\\\")
+  |> string.replace("'", "\\'")
+  |> string.replace("\"", "\\\"")
+}
+
 pub fn render(
   tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Dynamic)),
   state,
 ) {
   let #(context, tree) = tree
   case tree {
-    // TODO escape
     e.Binary(content) ->
-      wrap_return([string.join(["\"", content, "\""])], state)
+      wrap_return([string.join(["\"", escape_string(content), "\""])], state)
     e.Tuple(elements) -> {
       let state = Generator(..state, self: None)
       list.map(elements, maybe_wrap_expression(_, state))
