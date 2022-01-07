@@ -111,18 +111,20 @@ pub fn inconsistencies(editor) {
   )
 }
 
-pub fn codegen(editor, native_to_string) {
+// reuse this code by putting it in platform.compile/codegen/eval
+// Question does editor depend on platform or visaverca happy to make descision later
+pub fn codegen(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
-  let code = javascript.render_to_string(tree, typer, native_to_string)
+  let code =
+    javascript.render_to_string(tree, typer, editor.harness.native_to_string)
   #(good, code)
 }
 
-// Can put harness as a single record type that is copied to the code bundle and passed in at the top
-pub fn eval(editor, native_to_string) {
+pub fn eval(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let True = list.length(typer.inconsistencies) == 0
-  javascript.eval(tree, typer, native_to_string)
+  javascript.eval(tree, typer, editor.harness.native_to_string)
 }
 
 pub fn dump(editor) {

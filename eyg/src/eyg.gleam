@@ -17,9 +17,6 @@ pub fn compile_unconstrained(expression, harness) {
   // use inital scope again Can use local scope as EVERYTHIN immutable
   typer.expand_providers(typed, typer)
 }
-// fn browser_to_string(_) {
-//   todo
-// }
 // pub fn compile(expected, untyped) {
 //   let scope =
 //     typer.root_scope([

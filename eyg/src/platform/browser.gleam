@@ -1,3 +1,5 @@
+//  What does Roc call program + platform -> Application
+// Does program space workspace things like tests live there
 // browser.compile browser.harness
 import gleam/option.{None}
 // typer.common
