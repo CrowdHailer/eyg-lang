@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/order
 import gleam/string
+import eyg
 import eyg/ast
 import eyg/ast/provider
 import eyg/ast/encode
@@ -134,7 +135,7 @@ pub fn dump(editor) {
 
 pub fn init(source, harness) {
   let untyped = encode.from_json(encode.json_from_string(source))
-  let #(typed, typer) = typer.infer_unconstrained(untyped, harness)
+  let #(typed, typer) = eyg.compile_unconstrained(untyped, harness)
   Editor(harness, typed, typer, None, Command, False)
 }
 
@@ -180,7 +181,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
             handle_transformation(editor, path, key, ctrl_key)
           let #(typed, typer) = case untyped {
             None -> #(tree, typer)
-            Some(untyped) -> typer.infer_unconstrained(untyped, editor.harness)
+            Some(untyped) -> eyg.compile_unconstrained(untyped, editor.harness)
           }
           Editor(
             ..editor,
@@ -318,7 +319,7 @@ pub fn handle_change(editor, content) {
     }
   }
 
-  let #(typed, typer) = typer.infer_unconstrained(untyped, editor.harness)
+  let #(typed, typer) = eyg.compile_unconstrained(untyped, editor.harness)
   Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
 

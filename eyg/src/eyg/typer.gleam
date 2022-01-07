@@ -141,10 +141,10 @@ fn do_occurs_in(i, b) {
   }
 }
 
-fn next_unbound(state) {
-  let Typer(next_unbound: i, ..) = state
-  let state = Typer(..state, next_unbound: i + 1)
-  #(i, state)
+pub fn next_unbound(typer) {
+  let Typer(next_unbound: i, ..) = typer
+  let typer = Typer(..typer, next_unbound: i + 1)
+  #(i, typer)
 }
 
 // monotype function??
@@ -397,17 +397,6 @@ pub fn equal_fn() {
       ),
     ),
   )
-}
-
-pub fn infer_unconstrained(expression, harness) {
-  let harness.Harness(variables, native_to_string) = harness
-  let typer = init(native_to_string)
-  let scope = Scope(variables: variables, path: path.root())
-  let #(x, typer) = next_unbound(typer)
-  let expected = t.Unbound(x)
-  let #(typed, typer) = infer(expression, expected, #(typer, scope))
-  // use inital scope again Can use local scope as EVERYTHIN immutable
-  expand_providers(typed, typer)
 }
 
 // Make private and always put in infer?
