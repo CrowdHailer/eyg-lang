@@ -103,6 +103,7 @@ pub fn reason_to_string(reason, typer: Typer(n)) {
   }
 }
 
+// I think the types should be concerned only with types, no redering
 pub fn init(native_to_string) {
   Typer(native_to_string, 0, [], [])
 }

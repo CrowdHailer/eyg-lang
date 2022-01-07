@@ -3,7 +3,6 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/string
-import eyg/ast/provider
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 

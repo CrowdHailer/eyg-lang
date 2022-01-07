@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/option.{None, Some}
+import eyg
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
@@ -9,10 +10,9 @@ import eyg/typer/monotype.{resolve}
 import eyg/typer/polytype
 
 pub fn type_bound_function_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let untyped = ast.function(p.Tuple([]), ast.binary(""))
-  // TODO infer_unbound
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)
@@ -20,7 +20,7 @@ pub fn type_bound_function_test() {
 }
 
 pub fn generic_function_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let untyped = ast.function(p.Variable("x"), ast.variable("x"))
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
@@ -31,7 +31,7 @@ pub fn generic_function_test() {
 }
 
 pub fn call_function_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let untyped =
     ast.call(ast.function(p.Tuple([]), ast.binary("")), ast.tuple_([]))
@@ -42,7 +42,7 @@ pub fn call_function_test() {
 }
 
 pub fn call_generic_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let untyped =
     ast.call(
@@ -56,7 +56,7 @@ pub fn call_generic_test() {
 }
 
 pub fn call_with_incorrect_argument_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let untyped =
     ast.call(
@@ -70,7 +70,7 @@ pub fn call_with_incorrect_argument_test() {
 }
 
 pub fn reuse_generic_function_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let untyped =
     ast.let_(
@@ -95,7 +95,7 @@ pub fn reuse_generic_function_test() {
 // it seems like not generalizing is important these tests make sense, hooray but there's still some weird recursive ness.
 // https://www.cl.cam.ac.uk/teaching/1516/L28/type-inference.pdf
 // pub fn recursive_type_test() {
-//   let typer = init()
+//   let typer = init(fn(_) {todo})
 // let scope = typer.root_scope([])
 //   // let untyped = ast.let_(p.Variable("last"), last(), ast.variable("last"))
 //   let untyped = ast.hole()

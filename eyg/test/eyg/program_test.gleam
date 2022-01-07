@@ -1,10 +1,13 @@
 import gleam/io
+import eyg
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/ast/encode
 import eyg/typer
 import eyg/typer/monotype as t
+import platform/browser
 
+// does a pure/empty platform exist Ivory tower but that won;t even have equal
 // NOTE this relies on label being defined only once
 fn fetch(tree, label) {
   let #(_, expression) = tree
@@ -19,30 +22,30 @@ pub fn boolean_value_test(saved) {
   let program = encode.from_json(saved)
   let Ok(mod) = fetch(program, "boolean")
   let Ok(true) = fetch(mod, "True")
-  let #(typed, typer) = typer.infer_unconstrained(true)
+  let #(typed, typer) = eyg.compile_unconstrained(true, browser.harness())
   let Ok(type_) = typer.get_type(typed)
   let type_ = t.resolve(type_, typer.substitutions)
-  let "True" = t.to_string(type_)
+  let "True" = t.to_string(type_, browser.native_to_string)
 }
 
 pub fn some_value_test(saved) {
   let program = encode.from_json(saved)
   let Ok(mod) = fetch(program, "option")
   let Ok(some) = fetch(mod, "Some")
-  let #(typed, typer) = typer.infer_unconstrained(some)
+  let #(typed, typer) = eyg.compile_unconstrained(some, browser.harness())
   let Ok(type_) = typer.get_type(typed)
   let type_ = t.resolve(type_, typer.substitutions)
-  let "1 -> Some 1" = t.to_string(type_)
+  let "1 -> Some 1" = t.to_string(type_, browser.native_to_string)
 }
 
 pub fn none_value_test(saved) {
   let program = encode.from_json(saved)
   let Ok(mod) = fetch(program, "option")
   let Ok(none) = fetch(mod, "None")
-  let #(typed, typer) = typer.infer_unconstrained(none)
+  let #(typed, typer) = eyg.compile_unconstrained(none, browser.harness())
   let Ok(type_) = typer.get_type(typed)
   let type_ = t.resolve(type_, typer.substitutions)
-  let "None" = t.to_string(type_)
+  let "None" = t.to_string(type_, browser.native_to_string)
 }
 
 pub fn boolean_not_test(saved) {
@@ -50,27 +53,27 @@ pub fn boolean_not_test(saved) {
   let Ok(mod) = fetch(program, "boolean")
   // Can't do this test because mod mean that True/False is not in scope
   // let Ok(not) = fetch(mod, "not")
-  let #(typed, typer) = typer.infer_unconstrained(mod)
+  let #(typed, typer) = eyg.compile_unconstrained(mod, browser.harness())
   let Ok(type_) = typer.get_type(typed)
   let type_ = t.resolve(type_, typer.substitutions)
-  let "True" = t.to_string(type_)
+  let "True" = t.to_string(type_, browser.native_to_string)
 }
 
 // pub fn and_test(saved) {
 //   let program = encode.from_json(saved)
 //   let Ok(mod) = fetch(program, "boolean")
 //   let Ok(and) = fetch(mod, "and")
-//   let #(typed, typer) = typer.infer_unconstrained(and)
+//   let #(typed, typer) = eyg.compile_unconstrained(and)
 //   let Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
-//   let "True" = t.to_string(type_)
+//   let "True" = t.to_string(type_, browser.native_to_string)
 // }
 pub fn equal_test(saved) {
   let program = encode.from_json(saved)
   let Ok(mod) = fetch(program, "boolean")
   let Ok(equal) = fetch(mod, "equal")
-  let #(typed, typer) = typer.infer_unconstrained(equal)
+  let #(typed, typer) = eyg.compile_unconstrained(equal, browser.harness())
   let Ok(type_) = typer.get_type(typed)
   let type_ = t.resolve(type_, typer.substitutions)
-  let "(1, 1) -> True | False" = t.to_string(type_)
+  let "(1, 1) -> True | False" = t.to_string(type_, browser.native_to_string)
 }

@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/option.{None}
+import eyg
 import eyg/ast
 import eyg/ast/expression
 import eyg/typer.{get_type, infer, init}
@@ -7,7 +8,7 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 
 pub fn expected_binary_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.binary("Hello")
@@ -16,7 +17,7 @@ pub fn expected_binary_test() {
 }
 
 pub fn unexpected_binary_error_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.binary("Hello")
@@ -26,7 +27,7 @@ pub fn unexpected_binary_error_test() {
 }
 
 pub fn expected_empty_tuple_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.tuple_([])
@@ -35,7 +36,7 @@ pub fn expected_empty_tuple_test() {
 }
 
 pub fn expected_non_empty_tuple_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.tuple_([ast.tuple_([])])
@@ -44,7 +45,7 @@ pub fn expected_non_empty_tuple_test() {
 }
 
 pub fn unexpected_tuple_size_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.tuple_([ast.binary("not needed")])
@@ -54,7 +55,7 @@ pub fn unexpected_tuple_size_test() {
 }
 
 pub fn unexpected_tuple_element_type_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.tuple_([ast.binary("Yo")])
@@ -66,7 +67,7 @@ pub fn unexpected_tuple_element_type_test() {
 }
 
 pub fn expected_row_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.row([#("foo", ast.tuple_([]))])
@@ -76,7 +77,7 @@ pub fn expected_row_test() {
 }
 
 pub fn unexpected_fields_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.row([#("foo", ast.tuple_([]))])
@@ -87,7 +88,7 @@ pub fn unexpected_fields_test() {
 }
 
 pub fn missing_fields_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.row([])
@@ -99,7 +100,7 @@ pub fn missing_fields_test() {
 }
 
 pub fn unexpected_field_type_test() {
-  let typer = init()
+  let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.row([#("foo", ast.tuple_([]))])

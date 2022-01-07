@@ -7,7 +7,6 @@ import gleam/order
 import gleam/string
 import eyg
 import eyg/ast
-import eyg/ast/provider
 import eyg/ast/encode
 import eyg/ast/path
 import eyg/ast/expression as e

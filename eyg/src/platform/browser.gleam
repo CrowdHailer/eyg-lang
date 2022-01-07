@@ -13,7 +13,7 @@ pub type Browser {
   Array(t.Monotype(Browser))
 }
 
-fn native_to_string(type_) {
+pub fn native_to_string(type_) {
   case type_ {
     Integer -> "Integer"
   }

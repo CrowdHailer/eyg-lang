@@ -10,6 +10,7 @@ import eyg/codegen/javascript
 import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
+import platform/browser
 
 pub fn simple_reload_test() {
   // take in a new program and call values
@@ -26,13 +27,19 @@ pub fn simple_reload_test() {
         ),
       ),
     )
-  let state = #(typer.init(), typer.root_scope([#("equal", typer.equal_fn())]))
+  let state = #(
+    typer.init(browser.native_to_string),
+    typer.root_scope([#("equal", typer.equal_fn())]),
+  )
 
   let #(typed, typer) = typer.infer(untyped, t.Unbound(-1), state)
   let #(typed, typer) = typer.expand_providers(typed, typer)
 
   assert [] = typer.inconsistencies
-  javascript.render(typed, javascript.Generator(False, [], typer, None))
+  javascript.render(
+    typed,
+    javascript.Generator(False, [], typer, None, browser.native_to_string),
+  )
   |> list.intersperse("\n")
   |> string.join()
   |> io.debug
