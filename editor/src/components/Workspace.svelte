@@ -41,7 +41,6 @@
         document.querySelector("[data-editor='root']").focus();
         // Only eval once back to the command mode, this is probably right but also need to make sure to add holes to warnings.
         try {
-          // TODO pass in native here
           let rendered = Editor.codegen(editor);
           window.tree = editor.tree;
           // with eval {} is considered a block of code, not an object
