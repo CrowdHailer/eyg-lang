@@ -298,6 +298,7 @@ pub fn render(
               [
                 "((ast) => {",
                 string.join([
+                  // compile not implemented should probably be env/platform/browser
                   "  return window.compile(",
                   t.literal(usable),
                   ", ast)",

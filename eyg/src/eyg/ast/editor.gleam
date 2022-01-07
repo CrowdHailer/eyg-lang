@@ -14,9 +14,9 @@ import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
-import eyg/typer/environment
+import eyg/typer/harness
 import eyg/codegen/javascript
-import harness/harness
+// import harness/harness
 import standard/example
 
 pub type Mode {
@@ -27,7 +27,8 @@ pub type Mode {
 
 pub type Editor(n) {
   Editor(
-    variables: List(#(String, polytype.Polytype(n))),
+    harness: harness.Harness(n),
+    // TODO maybe manipulate only untyped call it source
     tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
     typer: typer.Typer(n),
     selection: Option(List(Int)),
@@ -81,9 +82,9 @@ pub fn target_type(editor) {
     Some(path) ->
       case get_element(tree, path) {
         Expression(#(_, e.Let(_, value, _))) ->
-          expression_type(value, typer, native_to_string)
+          expression_type(value, typer, editor.harness.native_to_string)
         Expression(expression) ->
-          expression_type(expression, typer, native_to_string)
+          expression_type(expression, typer, editor.harness.native_to_string)
         _ -> #(False, "")
       }
     None -> #(False, "")
@@ -131,19 +132,10 @@ pub fn dump(editor) {
   dump
 }
 
-pub fn native_to_string(_: harness.Browser) {
-  "BOB"
-}
-
-pub fn init(raw) {
-  let untyped = encode.from_json(encode.json_from_string(raw))
-  // let untyped = example.minimal()
-  // top level scope is the environment maybe
-  let variables = [#("equal", typer.equal_fn()), #("harness", harness.string())]
-  let #(typed, typer) =
-    typer.infer_unconstrained(untyped, variables, native_to_string)
-  let mode = Command
-  Editor(variables, typed, typer, None, mode, False)
+pub fn init(source, harness) {
+  let untyped = encode.from_json(encode.json_from_string(source))
+  let #(typed, typer) = typer.infer_unconstrained(untyped, harness)
+  Editor(harness, typed, typer, None, Command, False)
 }
 
 fn rest_to_path(rest) {
@@ -188,12 +180,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
             handle_transformation(editor, path, key, ctrl_key)
           let #(typed, typer) = case untyped {
             None -> #(tree, typer)
-            Some(untyped) ->
-              typer.infer_unconstrained(
-                untyped,
-                editor.variables,
-                native_to_string,
-              )
+            Some(untyped) -> typer.infer_unconstrained(untyped, editor.harness)
           }
           Editor(
             ..editor,
@@ -331,8 +318,7 @@ pub fn handle_change(editor, content) {
     }
   }
 
-  let #(typed, typer) =
-    typer.infer_unconstrained(untyped, editor.variables, native_to_string)
+  let #(typed, typer) = typer.infer_unconstrained(untyped, editor.harness)
   Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
 

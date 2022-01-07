@@ -10,7 +10,7 @@ import eyg/ast/expression.{Hole, Loader} as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
 import eyg/typer/polytype
-import harness/harness
+import eyg/typer/harness
 
 pub type Reason(n) {
   IncorrectArity(expected: Int, given: Int)
@@ -399,20 +399,14 @@ pub fn equal_fn() {
   )
 }
 
-pub fn infer_unconstrained(expression, variables, native_to_string) {
+pub fn infer_unconstrained(expression, harness) {
+  let harness.Harness(variables, native_to_string) = harness
   let typer = init(native_to_string)
-  let scope =
-    Scope(
-      // variables: [#("equal", equal_fn()), #("harness", harness.string())],
-      // TODO Harness needs to be parameterised by native types
-      variables: variables,
-      path: path.root(),
-    )
+  let scope = Scope(variables: variables, path: path.root())
   let #(x, typer) = next_unbound(typer)
   let expected = t.Unbound(x)
   let #(typed, typer) = infer(expression, expected, #(typer, scope))
   // use inital scope again Can use local scope as EVERYTHIN immutable
-  // TODO put the string methods in scope
   expand_providers(typed, typer)
 }
 

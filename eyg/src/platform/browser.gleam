@@ -1,10 +1,27 @@
+// browser.compile browser.harness
 import gleam/option.{None}
+// typer.common
+import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
+import eyg/typer/harness
 
 pub type Browser {
   Integer
   Array(t.Monotype(Browser))
+}
+
+fn native_to_string(type_) {
+  case type_ {
+    Integer -> "Integer"
+  }
+}
+
+pub fn harness() {
+  harness.Harness(
+    [#("equal", typer.equal_fn()), #("harness", string())],
+    native_to_string,
+  )
 }
 
 pub fn string() {
@@ -59,9 +76,4 @@ pub fn string() {
       None,
     ),
   )
-}
-
-pub fn foo() -> Nil {
-  #(5)
-  Nil
 }
