@@ -17,7 +17,6 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/typer/harness
 import eyg/codegen/javascript
-// import harness/harness
 import standard/example
 
 pub type Mode {
@@ -29,7 +28,7 @@ pub type Mode {
 pub type Editor(n) {
   Editor(
     harness: harness.Harness(n),
-    // TODO maybe manipulate only untyped call it source
+    // maybe manipulate only untyped as tree, call it source??
     tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
     typer: typer.Typer(n),
     selection: Option(List(Int)),
