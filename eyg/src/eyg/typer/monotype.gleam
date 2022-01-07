@@ -4,32 +4,33 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
 
-pub type Monotype {
-  Native(name: String)
+pub type Monotype(n) {
+  Native(n)
   Binary
-  Tuple(elements: List(Monotype))
-  Row(fields: List(#(String, Monotype)), extra: Option(Int))
-  Function(from: Monotype, to: Monotype)
+  Tuple(elements: List(Monotype(n)))
+  Row(fields: List(#(String, Monotype(n))), extra: Option(Int))
+  Function(from: Monotype(n), to: Monotype(n))
   Unbound(i: Int)
 }
 
-fn row_to_string(row) {
+fn row_to_string(row, native_to_string) {
   let #(label, type_) = row
-  string.join([label, ": ", to_string(type_)])
+  string.join([label, ": ", to_string(type_, native_to_string)])
 }
 
-pub fn to_string(monotype) {
+pub fn to_string(monotype, native_to_string) {
   case monotype {
-    Native(name: name) -> name
+    Native(native) -> native_to_string(native)
     Binary -> "Binary"
     Tuple(elements) ->
       string.join([
         "(",
-        string.join(list.intersperse(list.map(elements, to_string), ", ")),
+        string.join(list.intersperse(
+          list.map(elements, to_string(_, native_to_string)),
+          ", ",
+        )),
         ")",
       ])
-    // Function(Row([#(l, Function(Tuple(ts), _))], _), _) ->
-    //   string.join([l, ..list.map(ts, to_string)])
     Function(Row(fields, _), return) -> {
       let all =
         list.try_map(
@@ -39,7 +40,7 @@ pub fn to_string(monotype) {
             case type_ {
               Function(Tuple([]), x) if x == return -> Ok(name)
               Function(inner, x) if x == return ->
-                Ok(string.join([name, " ", to_string(inner)]))
+                Ok(string.join([name, " ", to_string(inner, native_to_string)]))
               _ -> Error(Nil)
             }
           },
@@ -48,24 +49,36 @@ pub fn to_string(monotype) {
         Ok(variants) -> string.join(list.intersperse(variants, " | "))
         Error(Nil) -> {
           let Function(from, to) = monotype
-          string.join([to_string(from), " -> ", to_string(to)])
+          string.join([
+            to_string(from, native_to_string),
+            " -> ",
+            to_string(to, native_to_string),
+          ])
         }
       }
     }
     Row(fields, _) ->
       string.join([
         "{",
-        string.join(list.intersperse(list.map(fields, row_to_string), ", ")),
+        string.join(list.intersperse(
+          list.map(fields, row_to_string(_, native_to_string)),
+          ", ",
+        )),
         "}",
       ])
-    Function(from, to) -> string.join([to_string(from), " -> ", to_string(to)])
+    Function(from, to) ->
+      string.join([
+        to_string(from, native_to_string),
+        " -> ",
+        to_string(to, native_to_string),
+      ])
     Unbound(i) -> int.to_string(i)
   }
 }
 
 pub fn literal(monotype) {
   case monotype {
-    Native(name) -> string.join(["new T.Native(\"", name, "\")"])
+    // Native(name) -> string.join(["new T.Native(\"", name, "\")"])
     Binary -> "new T.Binary()"
     Tuple(elements) -> {
       let elements =
@@ -108,7 +121,7 @@ fn do_occurs_in(i, b) {
     Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
     Row(fields, _) ->
       fields
-      |> list.map(fn(x: #(String, Monotype)) { x.1 })
+      |> list.map(fn(x: #(String, Monotype(a))) { x.1 })
       |> list.any(do_occurs_in(i, _))
   }
 }

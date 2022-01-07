@@ -1,6 +1,30 @@
+//  What does Roc call program + platform -> Application
+// Does program space workspace things like tests live there
+// browser.compile browser.harness
 import gleam/option.{None}
+// typer.common
+import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
+import eyg/typer/harness
+
+pub type Browser {
+  Integer
+  Array(t.Monotype(Browser))
+}
+
+fn native_to_string(type_) {
+  case type_ {
+    Integer -> "Integer"
+  }
+}
+
+pub fn harness() {
+  harness.Harness(
+    [#("equal", typer.equal_fn()), #("harness", string())],
+    native_to_string,
+  )
+}
 
 pub fn string() {
   polytype.Polytype(
@@ -25,18 +49,18 @@ pub fn string() {
           ),
         ),
         #("debug", t.Function(t.Unbound(2), t.Unbound(2))),
-        #("parse_int", t.Function(t.Binary, t.Native("Integer"))),
+        #("parse_int", t.Function(t.Binary, t.Native(Integer))),
         #(
           "add",
           t.Function(
-            t.Tuple([t.Native("Integer"), t.Native("Integer")]),
-            t.Native("Integer"),
+            t.Tuple([t.Native(Integer), t.Native(Integer)]),
+            t.Native(Integer),
           ),
         ),
         #(
           "compare",
           t.Function(
-            t.Tuple([t.Native("Integer"), t.Native("Integer")]),
+            t.Tuple([t.Native(Integer), t.Native(Integer)]),
             t.Function(
               t.Row(
                 [
@@ -54,9 +78,4 @@ pub fn string() {
       None,
     ),
   )
-}
-
-pub fn foo() -> Nil {
-  #(5)
-  Nil
 }

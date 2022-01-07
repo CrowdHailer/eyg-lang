@@ -43,7 +43,8 @@ Interesting potential as Hole is not really a provider
 - PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
-- [ ] Use a parameterised Enum for all the native types
+- [ ] Reload and Sugar need to be reinstated
+- [x] Use a parameterised Enum for all the native types
 - [ ] collapsed/truncated view of rendered types that can be expanded on hover
 - [ ] Have a standard nily overflow for left and right, same as delete
 - [ ] Put type information on non expression elements

@@ -13,22 +13,24 @@ import eyg/codegen/utilities.{
   indent, squash, wrap_lines, wrap_single_or_multiline,
 }
 
-pub type Generator {
+pub type Generator(n) {
 
   // self is the name being given in a let clause
   Generator(
     in_tail: Bool,
     scope: List(String),
-    typer: typer.Typer,
+    typer: typer.Typer(n),
     self: Option(String),
+    // Scope and self can me moved out into the metadata
+    native_to_string: fn(n) -> String,
   )
 }
 
 external fn do_eval(String) -> Dynamic =
   "../../harness.js" "run"
 
-pub fn eval(tree, typer) {
-  let code = render_in_function(tree, typer)
+pub fn eval(tree, typer, native_to_string) {
+  let code = render_in_function(tree, typer, native_to_string)
   string.join(["(function(equal){\n", code, "})(equal)"])
   |> do_eval
 }
@@ -101,14 +103,14 @@ fn render_function_name(state) {
   }
 }
 
-pub fn render_to_string(expression, typer) {
-  render(expression, Generator(False, [], typer, None))
+pub fn render_to_string(expression, typer, native_to_string) {
+  render(expression, Generator(False, [], typer, None, native_to_string))
   |> list.intersperse("\n")
   |> string.join()
 }
 
-pub fn render_in_function(expression, typer) {
-  render(expression, Generator(True, [], typer, None))
+pub fn render_in_function(expression, typer, native_to_string) {
+  render(expression, Generator(True, [], typer, None, native_to_string))
   |> list.intersperse("\n")
   |> string.join()
 }
@@ -178,7 +180,10 @@ fn escape_string(raw) {
 }
 
 pub fn render(
-  tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Dynamic)),
+  tree: e.Expression(
+    typer.Metadata(n),
+    e.Expression(typer.Metadata(n), Dynamic),
+  ),
   state,
 ) {
   let #(context, tree) = tree
@@ -293,6 +298,7 @@ pub fn render(
               [
                 "((ast) => {",
                 string.join([
+                  // compile not implemented should probably be env/platform/browser
                   "  return window.compile(",
                   t.literal(usable),
                   ", ast)",
@@ -302,7 +308,7 @@ pub fn render(
             }
             _ -> [
               "(() => {throw 'Failed to build provider for ",
-              t.to_string(loader),
+              t.to_string(loader, state.native_to_string),
               "'})()",
             ]
           }

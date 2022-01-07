@@ -3,8 +3,8 @@ import gleam/option.{None, Some}
 import gleam/list
 import eyg/typer/monotype as t
 
-pub type Polytype {
-  Polytype(forall: List(Int), monotype: t.Monotype)
+pub type Polytype(n) {
+  Polytype(forall: List(Int), monotype: t.Monotype(n))
 }
 
 // take in an i for the offset

@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/order
 import gleam/string
+import eyg
 import eyg/ast
 import eyg/ast/provider
 import eyg/ast/encode
@@ -14,6 +15,7 @@ import eyg/ast/pattern as p
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
+import eyg/typer/harness
 import eyg/codegen/javascript
 import standard/example
 
@@ -23,10 +25,12 @@ pub type Mode {
   Select(choices: List(String))
 }
 
-pub type Editor {
+pub type Editor(n) {
   Editor(
-    tree: e.Expression(Metadata, e.Expression(Metadata, Dynamic)),
-    typer: typer.Typer,
+    harness: harness.Harness(n),
+    // maybe manipulate only untyped as tree, call it source??
+    tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
+    typer: typer.Typer(n),
     selection: Option(List(Int)),
     mode: Mode,
     expanded: Bool,
@@ -54,13 +58,17 @@ pub fn is_select(editor) {
   }
 }
 
-fn expression_type(expression: e.Expression(Metadata, a), typer: typer.Typer) {
+fn expression_type(
+  expression: e.Expression(Metadata(n), a),
+  typer: typer.Typer(n),
+  native_to_string,
+) {
   let #(metadata, _) = expression
   case metadata.type_ {
     Ok(t) -> #(
       False,
       t.resolve(t, typer.substitutions)
-      |> t.to_string(),
+      |> t.to_string(native_to_string),
     )
     Error(reason) -> #(True, typer.reason_to_string(reason, typer))
   }
@@ -73,15 +81,17 @@ pub fn target_type(editor) {
   case selection {
     Some(path) ->
       case get_element(tree, path) {
-        Expression(#(_, e.Let(_, value, _))) -> expression_type(value, typer)
-        Expression(expression) -> expression_type(expression, typer)
+        Expression(#(_, e.Let(_, value, _))) ->
+          expression_type(value, typer, editor.harness.native_to_string)
+        Expression(expression) ->
+          expression_type(expression, typer, editor.harness.native_to_string)
         _ -> #(False, "")
       }
     None -> #(False, "")
   }
 }
 
-pub fn is_selected(editor: Editor, path) {
+pub fn is_selected(editor: Editor(n), path) {
   case editor.selection {
     Some(p) if p == path -> True
     _ -> False
@@ -100,18 +110,20 @@ pub fn inconsistencies(editor) {
   )
 }
 
+// reuse this code by putting it in platform.compile/codegen/eval
+// Question does editor depend on platform or visaverca happy to make descision later
 pub fn codegen(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
-  let code = javascript.render_to_string(tree, typer)
+  let code =
+    javascript.render_to_string(tree, typer, editor.harness.native_to_string)
   #(good, code)
 }
 
-// Can put harness as a single record type that is copied to the code bundle and passed in at the top
 pub fn eval(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   let True = list.length(typer.inconsistencies) == 0
-  javascript.eval(tree, typer)
+  javascript.eval(tree, typer, editor.harness.native_to_string)
 }
 
 pub fn dump(editor) {
@@ -122,12 +134,10 @@ pub fn dump(editor) {
   dump
 }
 
-pub fn init(raw) {
-  let untyped = encode.from_json(encode.json_from_string(raw))
-  // let untyped = example.minimal()
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
-  let mode = Command
-  Editor(typed, typer, None, mode, False)
+pub fn init(source, harness) {
+  let untyped = encode.from_json(encode.json_from_string(source))
+  let #(typed, typer) = eyg.compile_unconstrained(untyped, harness)
+  Editor(harness, typed, typer, None, Command, False)
 }
 
 fn rest_to_path(rest) {
@@ -141,7 +151,7 @@ fn rest_to_path(rest) {
 }
 
 // At the editor level we might want to handle semantic events like select node. And have display do handle click
-pub fn handle_click(editor: Editor, target) {
+pub fn handle_click(editor: Editor(n), target) {
   case string.split(target, ":") {
     ["root"] -> Editor(..editor, selection: Some([]), mode: Command)
     ["p", rest] -> {
@@ -172,7 +182,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
             handle_transformation(editor, path, key, ctrl_key)
           let #(typed, typer) = case untyped {
             None -> #(tree, typer)
-            Some(untyped) -> typer.infer_unconstrained(untyped)
+            Some(untyped) -> eyg.compile_unconstrained(untyped, editor.harness)
           }
           Editor(
             ..editor,
@@ -310,7 +320,7 @@ pub fn handle_change(editor, content) {
     }
   }
 
-  let #(typed, typer) = typer.infer_unconstrained(untyped)
+  let #(typed, typer) = eyg.compile_unconstrained(untyped, editor.harness)
   Editor(..editor, tree: typed, typer: typer, mode: Command)
 }
 
@@ -999,7 +1009,7 @@ fn match_let(target) {
 fn closest(
   tree,
   position,
-  search: fn(Element(Metadata, #(Metadata, e.Node(Metadata, Dynamic)))) ->
+  search: fn(Element(Metadata(n), #(Metadata(n), e.Node(Metadata(n), Dynamic)))) ->
     Result(t, Nil),
 ) -> Option(#(List(Int), Int, t)) {
   case parent_path(position) {
@@ -1484,7 +1494,7 @@ fn variable(tree, position) {
     Expression(#(metadata, _)) -> {
       let Metadata(scope: scope, ..) = metadata
       let variables =
-        list.map(metadata.scope, fn(x: #(String, polytype.Polytype)) { x.0 })
+        list.map(metadata.scope, fn(x: #(String, polytype.Polytype(n))) { x.0 })
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))
     }

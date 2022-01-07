@@ -6,6 +6,7 @@
   import Select from "./Select.svelte";
 
   import * as Editor from "../gen/eyg/ast/editor";
+  import * as Platform from "../gen/platform/browser";
   import * as Eyg from "../gen/eyg";
   import * as Ast from "../gen/eyg/ast";
   import * as Gleam from "../gen/gleam";
@@ -13,7 +14,7 @@
   export let source;
 
   window.compile = Eyg.compile;
-  let editor = Editor.init(source);
+  let editor = Editor.init(source, Platform.harness());
 
   function eventToTarget(event) {
     let element = event.target;
