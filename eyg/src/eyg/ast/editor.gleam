@@ -1251,15 +1251,9 @@ fn match(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(expression) -> {
       let new =
-        ast.case_(
-          untype(expression),
-          [
-            #("Foo", p.Discard, ast.binary("")),
-            #("Bar", p.Discard, ast.tuple_([])),
-          ],
-        )
+        ast.case_(untype(expression), [#("Variant", p.Discard, ast.hole())])
       let modified = replace_expression(tree, position, new)
-      #(Some(modified), list.append(position, [0]), Command)
+      #(Some(modified), list.append(position, [1, 0]), Draft(""))
     }
     _ -> #(None, position, Command)
   }
