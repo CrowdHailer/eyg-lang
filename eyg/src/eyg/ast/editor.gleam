@@ -1502,18 +1502,18 @@ fn insert_named(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     // maybe the value should only be a hole
-    Expression(#(_, e.Let(_, _, _))) ->
-      do_insert_name(tree, path.append(position, 1))
-    Expression(_) -> do_insert_name(tree, position)
+    Expression(#(_, e.Let(_, value, _))) ->
+      do_insert_name(tree, path.append(position, 1), untype(value))
+    Expression(e) -> do_insert_name(tree, position, untype(e))
     _ -> #(None, position, Command)
   }
 }
 
-fn do_insert_name(tree, path) {
+fn do_insert_name(tree, path, value) {
   let new =
     ast.function(
       p.Row([#("Name", "then")]),
-      ast.call(ast.variable("then"), ast.hole()),
+      ast.call(ast.variable("then"), value),
     )
 
   #(Some(replace_expression(tree, path, new)), path, Draft(""))

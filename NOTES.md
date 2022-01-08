@@ -36,6 +36,8 @@ Interesting potential as Hole is not really a provider
 
 Movement around a sugared element is tricky. you don't get to move around the ast as expected
 We can switch to a case statement by element first, BUT things that over flow, i.e. return a none because can move no further left how does that work. Do we want to implement direction for EVERY new sugar?
+
+Sugar is an editor specific no ast general thing. Although that Might be constructs like Try Tags that are common over different renderings.
 ### Reload
 
 - let [run, state] = returned.reload.start(tree)
