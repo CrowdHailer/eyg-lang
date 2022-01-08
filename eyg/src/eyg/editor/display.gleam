@@ -18,6 +18,13 @@ pub fn is_multiexpression(expression) {
   }
 }
 
+pub fn is_unit(expression) {
+  case expression {
+    #(_, e.Tuple([])) -> True
+    _ -> False
+  }
+}
+
 pub type Selection {
   // Note Target status is Above with empty list
   Above(rest: List(Int))

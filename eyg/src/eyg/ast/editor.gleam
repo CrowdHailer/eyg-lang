@@ -212,9 +212,9 @@ pub fn cancel_change(editor) {
 }
 
 fn handle_expression_change(expression, position, content) {
-  let #(_, tree) = expression
+  let #(_, tree) = untype(expression)
   case sugar.match(tree) {
-    Ok(sugar.Tag(_)) -> sugar.tag(content)
+    Ok(sugar.Tagged(_, expression)) -> sugar.tagged(content, expression)
     Error(Nil) ->
       case tree {
         e.Binary(_) -> ast.binary(content)
@@ -226,7 +226,6 @@ fn handle_expression_change(expression, position, content) {
 pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
   let Some(position) = selection
-  io.debug(position)
   let untyped = case get_element(tree, position) {
     Expression(e) -> {
       let new = handle_expression_change(e, position, content)
@@ -1464,7 +1463,7 @@ fn draft(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, tree)) ->
       case sugar.match(tree) {
-        Ok(sugar.Tag(name)) -> #(None, position, Draft(name))
+        Ok(sugar.Tagged(name, _)) -> #(None, position, Draft(name))
         Error(Nil) ->
           case tree {
             e.Binary(content) -> #(None, position, Draft(content))
@@ -1514,10 +1513,10 @@ fn do_insert_name(tree, path) {
   let new =
     ast.function(
       p.Row([#("Name", "then")]),
-      ast.call(ast.variable("then"), ast.tuple_([])),
+      ast.call(ast.variable("then"), ast.hole()),
     )
 
-  #(Some(replace_expression(tree, path, new)), path.append(path, 0), Draft(""))
+  #(Some(replace_expression(tree, path, new)), path, Draft(""))
 }
 
 fn replace_pattern(tree, position, pattern) {

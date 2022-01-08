@@ -7,14 +7,18 @@ import eyg/typer
 
 // Union is a set of variants a variant can be tag or tagged data
 // The sugar is for Tag or Tag Constructor
-pub type Sugar(n) {
-  Tag(name: String)
+pub type Sugar(m, n) {
+  Tagged(name: String, expression: e.Expression(m, n))
 }
 
-pub fn tag(name) {
+// In a call Option(Nil) it's not the constructor called as such that's normal function
+// Dark blue is because Tag
+// don't need constructors in scope as that's a name and we can create in literal with name
+// function constuctors can be more targets at adding extra rules
+pub fn tagged(name, expression) {
   ast.function(
     p.Row([#(name, "then")]),
-    ast.call(ast.variable("then"), ast.tuple_([])),
+    ast.call(ast.variable("then"), expression),
   )
 }
 
@@ -28,8 +32,8 @@ pub fn match(tree) {
   case tree {
     e.Function(
       p.Row([#(name, "then")]),
-      #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple([])))),
-    ) -> Ok(Tag(name))
+      #(_, e.Call(#(_, e.Variable("then")), expression)),
+    ) -> Ok(Tagged(name, expression))
     //   e.Let(
     //     p.Variable(n1),
     //     #(

@@ -33,6 +33,9 @@ ast.map_tree might be useful but don't quite know how you would do it. map_metad
 Selecting an empty variable to put in the tree first means that there is a new Error when you press escape
 Maybe best having state in the editor be intended action. That or an empty variable looks like a whole.
 Interesting potential as Hole is not really a provider
+
+Movement around a sugared element is tricky. you don't get to move around the ast as expected
+We can switch to a case statement by element first, BUT things that over flow, i.e. return a none because can move no further left how does that work. Do we want to implement direction for EVERY new sugar?
 ### Reload
 
 - let [run, state] = returned.reload.start(tree)
@@ -51,7 +54,7 @@ Interesting potential as Hole is not really a provider
 - [ ] Have a standard nily overflow for left and right, same as delete
 - [ ] Put type information on non expression elements
 - [x] Resolve type information before printing errors.
-- [ ] Reinstate Sugar for named variant Unitary or not.
+- [x] Reinstate Sugar for named variant Unitary or not.
 - [ ] Tree's set up correctly for expanded providers
 - [ ] When we have reordered type constraints, we can push type providers to the top
 - [x] Switch Integer Type to Native/Platform with an Enum for possible values inside

@@ -13,7 +13,7 @@
   import Provider from "./Provider.svelte";
   import Tuple from "./Tuple.svelte";
 
-  import Tag from "./Tag.svelte";
+  import Tagged from "./Tagged.svelte";
 
   export let expression;
   let metadata, tree, sugar;
@@ -27,8 +27,8 @@
   })();
 </script>
 
-{#if sugar instanceof Sugar.Tag}
-  <Tag {metadata} name={sugar.name} />
+{#if sugar instanceof Sugar.Tagged}
+  <Tagged {metadata} name={sugar.name} expression={sugar.expression} />
 {:else if tree instanceof Expression.Tuple}
   <Tuple {metadata} elements={tree.elements} />
 {:else if tree instanceof Expression.Binary}

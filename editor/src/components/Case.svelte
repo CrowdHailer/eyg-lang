@@ -31,7 +31,7 @@
           data-editor={Display.marker(branch_meta)}
         >
           <span
-            class="text-blue-800 border-2 border-transparent outline-none rounded"
+            class="text-blue-800 font-bold border-2 border-transparent outline-none rounded"
             class:border-red-500={name_meta.errored &&
               !Display.is_target(name_meta)}
             class:border-indigo-300={Display.is_target(name_meta)}
