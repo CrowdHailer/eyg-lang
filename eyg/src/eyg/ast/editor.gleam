@@ -1026,42 +1026,26 @@ type Either(a, b) {
   Right(b)
 }
 
-fn match_let_or_function(target) {
-  case target {
-    Expression(#(_, e.Let(p, v, t))) -> Ok(Left(#(p, untype(v), untype(t))))
-    Expression(#(_, e.Function(p, b))) -> Ok(Right(#(p, untype(b))))
-    _ -> Error(Nil)
+fn current_expression(tree, position, inner) {
+  case get_element(tree, position) {
+    Expression(e) -> #(e, position, inner)
+    _ -> {
+      assert Some(#(path, p)) = parent_path(position)
+      current_expression(tree, path, [p, ..inner])
+    }
   }
 }
 
-fn wrap_assignment(tree, position) {
-  case closest(tree, position, match_let_or_function) {
-    None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [0])
-    // I don't support let in let yet
-    Some(#(position, 2, Left(#(pattern, value, then)))) -> {
-      let new = ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
-      #(
-        replace_expression(tree, position, new),
-        path.append(path.append(position, 2), 0),
-      )
-    }
-    // Only need this case because we don't have dot access, but I use it for the boolean and list modules
-    Some(#(position, 1, Left(#(pattern, value, then)))) -> {
-      let new = ast.let_(pattern, ast.let_(p.Discard, value, ast.hole()), then)
-      #(
-        replace_expression(tree, position, new),
-        path.append(path.append(position, 1), 0),
-      )
-    }
-    Some(#(position, 1, Right(#(pattern, body)))) -> {
-      let new = ast.function(pattern, ast.let_(p.Discard, body, ast.hole()))
-      #(
-        replace_expression(tree, position, new),
-        path.append(path.append(position, 1), 0),
-      )
-    }
-    _ -> #(untype(tree), position)
+fn wrap_assignment(tree, path) {
+  let #(expression, path, inner) = current_expression(untype(tree), path, [])
+  let new = case expression, inner {
+    // can't have inner start with a 2 otherwise would return at that level
+    #(_, e.Let(p, v, t)), _ ->
+      ast.let_(p.Discard, ast.let_(p, v, ast.hole()), t)
+    _, _ -> ast.let_(p.Discard, expression, ast.hole())
   }
+  let updated = replace_expression(tree, path, new)
+  #(updated, path.append(path, 0))
 }
 
 fn create_binary(tree, position) {
