@@ -849,34 +849,62 @@ fn space_below(tree, position) {
   }
 }
 
+// match_block
+// closest with remaining path
+// if on a match then want to fall up
+// if on a let then want to fall up and match on the position 2
+// if on a block row want to end up on block element
+// if on a let at top of function or branch want to match on said line
+// a func of func of lets is multi line but it is not the block above
+// block parent differnt to term
+// Wraps first non value for assignment
+type Block(m, n) {
+  Let(pattern: p.Pattern, value: e.Expression(m, n), then: e.Expression(m, n))
+  Function
+  BranchBlock
+}
+
+// block parent only works if we also take path position
+fn block_parent(element) {
+  case element {
+    Expression(#(_, tree)) ->
+      case tree {
+        e.Let(p, v, t) -> Ok(Let(p, v, t))
+        e.Function(_, #(_, e.Let(_, _, _))) -> Ok(Function)
+        _ -> Error(Nil)
+      }
+    Branch(_) -> Ok(BranchBlock)
+    _ -> Error(Nil)
+  }
+}
+
+// If in a block must be on a in a let
 fn space_above(tree, position) {
-  case get_element(tree, position) {
-    Expression(#(_, e.Let(pattern, value, then))) -> {
+  case closest(tree, position, block_parent) {
+    None -> {
+      let new = ast.let_(p.Discard, ast.hole(), untype(tree))
+      #(new, [0])
+    }
+    Some(#(path, 2, Let(pattern, value, then))) -> {
+      let new =
+        ast.let_(
+          pattern,
+          untype(value),
+          ast.let_(p.Discard, ast.hole(), untype(then)),
+        )
+      let new_path = path.append(path.append(path, 2), 0)
+      #(replace_expression(tree, path, new), new_path)
+    }
+    Some(#(path, _, Let(pattern, value, then))) -> {
       let new =
         ast.let_(
           p.Discard,
           ast.hole(),
           ast.let_(pattern, untype(value), untype(then)),
         )
-      #(replace_expression(tree, position, new), path.append(position, 0))
+      let new_path = path.append(path, 0)
+      #(replace_expression(tree, path, new), new_path)
     }
-    _ ->
-      case closest(tree, position, match_let) {
-        None -> #(ast.let_(p.Discard, ast.hole(), untype(tree)), [0])
-        Some(#(path, 2, #(pattern, value, then))) -> {
-          let new =
-            ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
-          #(
-            replace_expression(tree, path, new),
-            path.append(path.append(path, 2), 0),
-          )
-        }
-        Some(#(path, _, #(pattern, value, then))) -> {
-          let new =
-            ast.let_(p.Discard, ast.hole(), ast.let_(pattern, value, then))
-          #(replace_expression(tree, path, new), path.append(path, 0))
-        }
-      }
   }
 }
 
