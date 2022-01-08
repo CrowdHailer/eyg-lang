@@ -11,6 +11,7 @@ import eyg/ast/encode
 import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/ast/sugar
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -210,34 +211,26 @@ pub fn cancel_change(editor) {
   Editor(..editor, mode: Command)
 }
 
+fn handle_expression_change(expression, position, content) {
+  let #(_, tree) = expression
+  case sugar.match(tree) {
+    Ok(s) -> todo
+    Error(Nil) ->
+      case tree {
+        e.Binary(_) -> ast.binary(content)
+        _ -> ast.variable(content)
+      }
+  }
+}
+
 pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
   let Some(position) = selection
+  io.debug(position)
   let untyped = case get_element(tree, position) {
-    Expression(#(_, e.Binary(_))) -> {
-      let new = ast.binary(content)
+    Expression(e) -> {
+      let new = handle_expression_change(e, position, content)
       replace_expression(tree, position, new)
-    }
-
-    Pattern(
-      p.Variable(l1),
-      #(
-        _,
-        e.Let(
-          _alreadymatchedpattern,
-          #(_, e.Function(p.Row([#(l2, "then")]), body)),
-          then,
-        ),
-      ),
-    ) if l1 == l2 -> {
-      let Some(#(parent_position, _)) = parent_path(position)
-      let new =
-        ast.let_(
-          p.Variable(content),
-          ast.function(p.Row([#(content, "then")]), untype(body)),
-          untype(then),
-        )
-      replace_expression(tree, parent_position, new)
     }
     Pattern(p.Discard, _) | Pattern(p.Variable(_), _) ->
       replace_pattern(tree, position, p.Variable(content))
@@ -298,10 +291,7 @@ pub fn handle_change(editor, content) {
       let new = ast.provider(content, generator)
       replace_expression(tree, provider_position, new)
     }
-    Expression(_) -> {
-      let new = ast.variable(content)
-      replace_expression(tree, position, new)
-    }
+
     BranchName(_) -> {
       let Some(#(branch_position, _)) = parent_path(position)
       let Some(#(case_position, i)) = parent_path(branch_position)
@@ -1505,27 +1495,21 @@ fn insert_named(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     // maybe the value should only be a hole
-    Expression(#(_, e.Let(p.Discard, _, then))) | Expression(#(
-      _,
-      e.Let(p.Variable(_), _, then),
-    )) -> {
-      let new =
-        ast.let_(
-          p.Variable("Foo"),
-          ast.function(
-            p.Row([#("Foo", "then")]),
-            ast.call(ast.variable("then"), ast.tuple_([])),
-          ),
-          untype(then),
-        )
-      #(
-        Some(replace_expression(tree, position, new)),
-        path.append(position, 0),
-        Draft("Foo"),
-      )
-    }
+    Expression(#(_, e.Let(_, _, _))) ->
+      do_insert_name(tree, path.append(position, 1))
+    Expression(_) -> do_insert_name(tree, position)
     _ -> #(None, position, Command)
   }
+}
+
+fn do_insert_name(tree, path) {
+  let new =
+    ast.function(
+      p.Row([#("Name", "then")]),
+      ast.call(ast.variable("then"), ast.tuple_([])),
+    )
+
+  #(Some(replace_expression(tree, path, new)), path.append(path, 0), Draft(""))
 }
 
 fn replace_pattern(tree, position, pattern) {
