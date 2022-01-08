@@ -10,20 +10,25 @@
   import Variable from "./Variable.svelte";
   import Function from "./Function.svelte";
   import Binary from "./Binary.svelte";
-
   import Provider from "./Provider.svelte";
   import Tuple from "./Tuple.svelte";
-  import SugarExpression from "./Sugar.svelte";
+
+  import Tag from "./Tag.svelte";
 
   export let expression;
   let metadata, tree, sugar;
   $: metadata = expression[0];
   $: tree = expression[1];
-  $: sugar = Sugar.match(tree);
+  $: sugar = (function (params) {
+    let result = Sugar.match(tree);
+    if (result instanceof Gleam.Ok) {
+      return result[0];
+    }
+  })();
 </script>
 
-{#if sugar instanceof Gleam.Ok}
-  <SugarExpression {metadata} sugar={sugar[0]} />
+{#if sugar instanceof Sugar.Tag}
+  <Tag {metadata} name={sugar.name} />
 {:else if tree instanceof Expression.Tuple}
   <Tuple {metadata} elements={tree.elements} />
 {:else if tree instanceof Expression.Binary}

@@ -4,32 +4,24 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer
 
-// pub type Element {
-//   UnitVariant(
-//     label: String,
-//     then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
-//   )
-//   TupleVariant(
-//     label: String,
-//     parameters: List(String),
-//     then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
-//   )
-// }
+// Union is a set of variants a variant can be tag or tagged data
+// The sugar is for Tag or Tag Constructor
+pub type Sugar(n) {
+  Tag(name: String)
+}
+
+// TupleVariant(
+//   label: String,
+//   parameters: List(String),
+//   then: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Nil)),
+// )
 // by convention change the highest level key i.e. name in pattern follows through to name in calls.
 pub fn match(tree) {
   case tree {
-    // TODO undo this
-    //   e.Let(
-    //     p.Variable(n1),
-    //     #(
-    //       _,
-    //       e.Function(
-    //         p.Row([#(n2, "then")]),
-    //         #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple([])))),
-    //       ),
-    //     ),
-    //     then,
-    //   ) if n1 == n2 -> Ok(UnitVariant(n1, then))
+    e.Function(
+      p.Row([#(name, "then")]),
+      #(_, e.Call(#(_, e.Variable("then")), #(_, e.Tuple([])))),
+    ) -> Ok(Tag(name))
     //   e.Let(
     //     p.Variable(n1),
     //     #(
