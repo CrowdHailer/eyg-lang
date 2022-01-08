@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/option.{None, Some}
+import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer
@@ -8,6 +9,13 @@ import eyg/typer
 // The sugar is for Tag or Tag Constructor
 pub type Sugar(n) {
   Tag(name: String)
+}
+
+pub fn tag(name) {
+  ast.function(
+    p.Row([#(name, "then")]),
+    ast.call(ast.variable("then"), ast.tuple_([])),
+  )
 }
 
 // TupleVariant(

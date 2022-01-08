@@ -214,7 +214,7 @@ pub fn cancel_change(editor) {
 fn handle_expression_change(expression, position, content) {
   let #(_, tree) = expression
   case sugar.match(tree) {
-    Ok(s) -> todo
+    Ok(sugar.Tag(_)) -> sugar.tag(content)
     Error(Nil) ->
       case tree {
         e.Binary(_) -> ast.binary(content)
@@ -1462,7 +1462,15 @@ fn delete_pattern(pattern, path) {
 
 fn draft(tree, position) {
   case get_element(tree, position) {
-    Expression(#(_, e.Binary(content))) -> #(None, position, Draft(content))
+    Expression(#(_, tree)) ->
+      case sugar.match(tree) {
+        Ok(sugar.Tag(name)) -> #(None, position, Draft(name))
+        Error(Nil) ->
+          case tree {
+            e.Binary(content) -> #(None, position, Draft(content))
+            _ -> #(None, position, Command)
+          }
+      }
     Pattern(p.Discard, _) -> #(None, position, Draft(""))
     Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
     PatternElement(_, None) -> #(None, position, Draft(""))
