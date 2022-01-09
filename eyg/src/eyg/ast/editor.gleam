@@ -1437,8 +1437,18 @@ fn do_delete(tree, position) {
           }
           Some(#(ast.case_(value, branches), position))
         }
-        #(label, pattern, inner), [2, ..rest] ->
-          case do_delete(inner, rest) {
+        #(label, pattern, then), [1, ..rest] ->
+          case delete_pattern(pattern, rest) {
+            Some(#(inner, position)) -> {
+              let new = #(label, inner, then)
+              let new = ast.case_(value, list.flatten([pre, [new], post]))
+              let position = [i + 1, 1, ..position]
+              Some(#(new, position))
+            }
+            None -> Some(#(tree, [i + 1]))
+          }
+        #(label, pattern, then), [2, ..rest] ->
+          case do_delete(then, rest) {
             Some(#(inner, position)) -> {
               let inner = #(label, pattern, inner)
               let new = ast.case_(value, list.flatten([pre, [inner], post]))
