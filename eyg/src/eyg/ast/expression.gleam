@@ -117,7 +117,6 @@ fn format(config, hole) {
   // let parts = list.map(parts, Binary)
   // let parts = list.intersperse(parts, Variable("r0"))
   // let parts = list.map(parts, fn(x) { #(Nil, x) })
-  // // TODO use ast helpers but circular
   // #(
   //   Nil,
   //   Function(
@@ -135,7 +134,6 @@ fn format(config, hole) {
 
 // provider implementations to not create loop
 pub type Node(m, g) {
-  Literal(internal: String)
   Binary(value: String)
   Tuple(elements: List(Expression(m, g)))
   Row(fields: List(#(String, Expression(m, g))))
