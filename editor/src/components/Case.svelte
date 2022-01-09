@@ -40,17 +40,9 @@
           <Pattern {pattern} metadata={pattern_meta} />
           <span>=></span>
           {#if Display.is_multiexpression(then)}
-            <!-- Don't think we want to collapse, encourage function use in blocks -->
-            {#if true}
-              <Indent>
-                <Expression expression={then} />
-              </Indent>
-            {:else}
-              <span
-                class="text-gray-500"
-                data-editor="{Display.marker(metadata)},1"
-                >&lbrace; ... &rbrace;</span
-              >{/if}
+            <Indent>
+              <Expression expression={then} />
+            </Indent>
           {:else}
             <Expression expression={then} />
           {/if}
