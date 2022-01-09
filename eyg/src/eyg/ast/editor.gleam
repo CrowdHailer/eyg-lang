@@ -543,11 +543,24 @@ fn do_move_left(tree, selection, position) {
       do_move_left(func, rest, path.append(position, 0))
     e.Call(_, with), [1, ..rest] ->
       do_move_left(with, rest, path.append(position, 1))
-
+    // move within value
     e.Case(value, _), [0, ..rest] ->
       do_move_left(value, rest, path.append(position, 0))
+    // move along branch elements
     e.Case(_, _), [i, j] if i > 0 && j > 0 ->
       path.append(path.append(position, i), j - 1)
+    e.Case(_, branches), [i, 1, ..rest] -> {
+      let Ok(#(_, pattern, _)) = list.at(branches, i - 1)
+      case pattern_left(pattern, rest) {
+        None -> list.append(position, [i, 0])
+        Some(inner) -> list.flatten([position, [i, 1], inner])
+      }
+    }
+    // do_move_left(then, rest, path.append(path.append(position, i), 1))
+    e.Case(_, branches), [i, 2, ..rest] -> {
+      let Ok(#(_, _, then)) = list.at(branches, i - 1)
+      do_move_left(then, rest, path.append(path.append(position, i), 2))
+    }
   }
 }
 
@@ -639,6 +652,17 @@ fn do_move_right(tree, selection, position) {
       do_move_right(value, rest, path.append(position, 0))
     e.Case(_, _), [i, j] if i > 0 && j < 2 ->
       path.append(path.append(position, i), j + 1)
+    e.Case(_, branches), [i, 1, ..rest] -> {
+      let Ok(#(_, pattern, _)) = list.at(branches, i - 1)
+      case pattern_right(pattern, rest) {
+        None -> list.append(position, [i, 2])
+        Some(inner) -> list.flatten([position, [i, 1], inner])
+      }
+    }
+    e.Case(_, branches), [i, 2, ..rest] -> {
+      let Ok(#(_, _, then)) = list.at(branches, i - 1)
+      do_move_right(then, rest, path.append(path.append(position, i), 2))
+    }
   }
 }
 
