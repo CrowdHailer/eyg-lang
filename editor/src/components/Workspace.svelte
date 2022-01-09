@@ -96,7 +96,9 @@
       if (event.metaKey) {
         return true;
       }
-      if (event.key == "Tab") {
+      // handle Enter here, it's also handled by handle change but if the value is the same.
+      // i.e. blank for new binary, no change event is fired
+      if (event.key == "Tab" || event.key == "Enter") {
         event.preventDefault();
         editor = Editor.handle_change(editor, event.target.value);
         updateFocus(editor);
