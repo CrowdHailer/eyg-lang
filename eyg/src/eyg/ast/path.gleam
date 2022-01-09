@@ -5,8 +5,16 @@ pub fn root() {
   []
 }
 
+// maybe path.child
 pub fn append(path, i) {
   list.append(path, [i])
+}
+
+pub fn parent(path) {
+  case list.reverse(path) {
+    [] -> Error(Nil)
+    [last, ..rest] -> Ok(#(list.reverse(rest), last))
+  }
 }
 
 pub fn order(a, b) {
