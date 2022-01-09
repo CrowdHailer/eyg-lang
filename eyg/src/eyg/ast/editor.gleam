@@ -1037,12 +1037,11 @@ fn current_expression(tree, position, inner) {
 }
 
 fn wrap_assignment(tree, path) {
-  let #(expression, path, inner) = current_expression(untype(tree), path, [])
-  let new = case expression, inner {
-    // can't have inner start with a 2 otherwise would return at that level
-    #(_, e.Let(p, v, t)), _ ->
-      ast.let_(p.Discard, ast.let_(p, v, ast.hole()), t)
-    _, _ -> ast.let_(p.Discard, expression, ast.hole())
+  let #(expression, path, _inner) = current_expression(untype(tree), path, [])
+  // Inner must always be pointing to the pattern or the let node itself.
+  let new = case expression {
+    #(_, e.Let(p, v, t)) -> ast.let_(p.Discard, ast.let_(p, v, ast.hole()), t)
+    _ -> ast.let_(p.Discard, expression, ast.hole())
   }
   let updated = replace_expression(tree, path, new)
   #(updated, path.append(path, 0))
