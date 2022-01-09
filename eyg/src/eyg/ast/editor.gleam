@@ -849,15 +849,6 @@ fn space_below(tree, position) {
   }
 }
 
-// match_block
-// closest with remaining path
-// if on a match then want to fall up
-// if on a let then want to fall up and match on the position 2
-// if on a block row want to end up on block element
-// if on a let at top of function or branch want to match on said line
-// a func of func of lets is multi line but it is not the block above
-// block parent differnt to term
-// Wraps first non value for assignment
 type BlockLine(m, n) {
   Let(pattern: p.Pattern, value: e.Expression(m, n), then: e.Expression(m, n))
   CaseBranch
@@ -1213,13 +1204,6 @@ fn insert_provider(tree, position) {
   }
 }
 
-// not very useful because we have to path all 3 elements out
-// fn parent_element(tree, position) {
-//   case parent_path(position) {
-//     None -> None
-//     Some(#(parent_position, index)) ->
-//   }
-//  }
 fn unwrap(tree, position) {
   case parent_path(position) {
     None -> #(untype(tree), position)
@@ -1255,7 +1239,11 @@ fn unwrap(tree, position) {
           let modified = replace_expression(tree, parent_position, untype(body))
           #(modified, parent_position)
         }
-        Expression(_), _ -> unwrap(tree, position)
+        Expression(#(_, e.Case(value, _))), 0 -> {
+          let modified =
+            replace_expression(tree, parent_position, untype(value))
+          #(modified, parent_position)
+        }
         Pattern(p.Tuple(elements), _), _ -> {
           let [label, .._] = list.drop(elements, index)
           let pattern = case label {
