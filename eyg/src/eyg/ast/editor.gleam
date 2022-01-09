@@ -858,52 +858,67 @@ fn space_below(tree, position) {
 // a func of func of lets is multi line but it is not the block above
 // block parent differnt to term
 // Wraps first non value for assignment
-type Block(m, n) {
+type BlockLine(m, n) {
   Let(pattern: p.Pattern, value: e.Expression(m, n), then: e.Expression(m, n))
-  Function
-  BranchBlock
+  CaseBranch
 }
 
-// block parent only works if we also take path position
-fn block_parent(element) {
+fn block_line(element) {
   case element {
-    Expression(#(_, tree)) ->
-      case tree {
-        e.Let(p, v, t) -> Ok(Let(p, v, t))
-        e.Function(_, #(_, e.Let(_, _, _))) -> Ok(Function)
-        _ -> Error(Nil)
-      }
-    Branch(_) -> Ok(BranchBlock)
+    Expression(#(_, e.Let(p, v, t))) -> Ok(Let(p, v, t))
+    Branch(_) -> Ok(CaseBranch)
     _ -> Error(Nil)
   }
 }
 
+fn do_from_here(tree, path, search, inner) {
+  case search(get_element(tree, path)) {
+    Ok(match) -> Ok(#(match, path, inner))
+    Error(Nil) ->
+      case parent_path(path) {
+        Some(#(path, i)) -> do_from_here(tree, path, search, [i, ..inner])
+        None -> Error(Nil)
+      }
+  }
+}
+
+fn from_here(tree, path, search) {
+  do_from_here(tree, path, search, [])
+}
+
 // If in a block must be on a in a let
-fn space_above(tree, position) {
-  case closest(tree, position, block_parent) {
-    None -> {
-      let new = ast.let_(p.Discard, ast.hole(), untype(tree))
-      #(new, [0])
+fn space_above(tree, path) {
+  let tree = untype(tree)
+  case from_here(tree, path, block_line) {
+    Error(Nil) -> {
+      let updated = ast.let_(p.Discard, ast.hole(), tree)
+      let path = [0]
+      #(updated, path)
     }
-    Some(#(path, 2, Let(pattern, value, then))) -> {
-      let new =
-        ast.let_(
-          pattern,
-          untype(value),
-          ast.let_(p.Discard, ast.hole(), untype(then)),
-        )
-      let new_path = path.append(path.append(path, 2), 0)
-      #(replace_expression(tree, path, new), new_path)
+    Ok(#(Let(p, v, t), path, [2, .._])) -> {
+      let new = ast.let_(p, v, ast.let_(p.Discard, ast.hole(), t))
+      let updated = replace_expression(tree, path, new)
+      let path = list.append(path, [2, 0])
+      #(updated, path)
     }
-    Some(#(path, _, Let(pattern, value, then))) -> {
-      let new =
-        ast.let_(
-          p.Discard,
-          ast.hole(),
-          ast.let_(pattern, untype(value), untype(then)),
-        )
-      let new_path = path.append(path, 0)
-      #(replace_expression(tree, path, new), new_path)
+    Ok(#(Let(p, v, t), path, _)) -> {
+      let new = ast.let_(p.Discard, ast.hole(), ast.let_(p, v, t))
+      let updated = replace_expression(tree, path, new)
+      let path = list.append(path, [0])
+      #(updated, path)
+    }
+    Ok(#(CaseBranch, path, _)) -> {
+      assert Some(#(path, i)) = parent_path(path)
+      assert Expression(#(_, e.Case(value, branches))) = get_element(tree, path)
+      let bi = i - 1
+      let pre = list.take(branches, bi)
+      let post = list.drop(branches, bi)
+      let new = #("Variant", p.Discard, ast.hole())
+      let branches = list.flatten([pre, [new], post])
+      let new = ast.case_(value, branches)
+      let updated = replace_expression(tree, path, new)
+      let path = list.append(path, [bi + 1, 0])
+      #(updated, path)
     }
   }
 }

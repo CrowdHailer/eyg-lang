@@ -43,6 +43,11 @@ Don't collapse case encourage simple branches ALSO the top level case is always 
 
 Have a different AST structure where function and let contain blocks, blocks are lets and terms only contain terms
 call shouldn't contain blocks. is a function something we can put in term. some open questions
+
+Only do space above for branches in case, no reordering because there is no variable behaviour one will be called.
+Rest or fall through belongs at the bottom. Don't need to reduce the union type because rest can be a variable we pull out in the bottom case clause
+NOTE a Block of lets and block of branches look very similar if there is a final stage
+Porbably should'nt introduce block into AST without checking it makes sense in other views.
 ### Reload
 
 - let [run, state] = returned.reload.start(tree)
