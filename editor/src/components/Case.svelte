@@ -39,7 +39,13 @@
           >
           <Pattern {pattern} metadata={pattern_meta} />
           <span>=></span>
-          <Expression expression={then} />
+          {#if Display.is_multiexpression(then)}
+            <Indent>
+              <Expression expression={then} />
+            </Indent>
+          {:else}
+            <Expression expression={then} />
+          {/if}
         </div>
       {/each}
     </Indent>

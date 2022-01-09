@@ -38,6 +38,11 @@ Movement around a sugared element is tricky. you don't get to move around the as
 We can switch to a case statement by element first, BUT things that over flow, i.e. return a none because can move no further left how does that work. Do we want to implement direction for EVERY new sugar?
 
 Sugar is an editor specific no ast general thing. Although that Might be constructs like Try Tags that are common over different renderings.
+
+Don't collapse case encourage simple branches ALSO the top level case is always collapsable
+
+Have a different AST structure where function and let contain blocks, blocks are lets and terms only contain terms
+call shouldn't contain blocks. is a function something we can put in term. some open questions
 ### Reload
 
 - let [run, state] = returned.reload.start(tree)
