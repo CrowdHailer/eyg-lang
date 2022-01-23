@@ -240,14 +240,15 @@ pub fn do_display(tree, position, selection, editor) {
 pub external fn unsafe_coerce(a) -> b =
   "../../eyg_utils.js" "identity"
 
-pub fn display_pattern(metadata, pattern) {
+// Don't use pattern as separate pattern element functions are used to render further into tree
+pub fn display_pattern(metadata, _pattern) {
   let Display(position: position, selection: selection, expanded: expanded, ..) =
     metadata
   //   ast&path.child
   //   is always 0 but that's a coincidence of fn and let
   let position = path.append(position, 0)
   let selection = child_selection(selection, 0)
-  let display = Display(position, selection, "", False, expanded)
+  Display(position, selection, "", False, expanded)
 }
 
 // display_elements takes care of _ in label too

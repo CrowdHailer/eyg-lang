@@ -927,12 +927,12 @@ fn swap_elements(match, at) {
   case match {
     TupleExpression(elements) -> {
       try elements = swap_pair(elements, at)
-      let e: List(e.Expression(Dynamic, Dynamic)) = elements
       Ok(Expression(ast.tuple_(elements)))
     }
     TuplePattern(elements) -> {
       try elements = swap_pair(elements, at)
-      Ok(Pattern(p.Tuple(elements), todo("fix swap elements in patten")))
+      // This hole is not used we are reusing the Pattern type which expects a parent expression
+      Ok(Pattern(p.Tuple(elements), ast.hole()))
     }
     RowExpression(fields) -> {
       try fields = swap_pair(fields, at)
@@ -940,7 +940,8 @@ fn swap_elements(match, at) {
     }
     RowPattern(fields) -> {
       try fields = swap_pair(fields, at)
-      Ok(Pattern(p.Row(fields), todo("fix swap elements in patten")))
+      // This hole is not used we are reusing the Pattern type which expects a parent expression
+      Ok(Pattern(p.Row(fields), ast.hole()))
     }
   }
 }
@@ -984,8 +985,8 @@ fn drag_right(tree, position) {
 fn drag_down(tree, position) {
   case closest(tree, position, match_let) {
     None -> #(untype(tree), position)
-    Some(#(path, 2, #(pattern, value, then))) -> // leave as is, can't drag past un assigned
-    #(untype(tree), position)
+    // leave as is, can't drag past un assigned
+    Some(#(_path, 2, _)) -> #(untype(tree), position)
     Some(#(path, _, #(pattern, value, #(_, e.Let(p_after, v_after, then))))) -> {
       let new = ast.let_(p_after, v_after, ast.let_(pattern, value, then))
       #(
@@ -1000,8 +1001,8 @@ fn drag_down(tree, position) {
 fn drag_up(tree, original) {
   case closest(tree, original, match_let) {
     None -> #(untype(tree), original)
-    Some(#(position, 2, #(pattern, value, then))) -> // leave as is, would meet a 0/1 node first if dragable.
-    #(untype(tree), original)
+    // leave as is, would meet a 0/1 node first if dragable.
+    Some(#(_position, 2, _)) -> #(untype(tree), original)
     Some(#(position, _, #(pattern, value, then))) ->
       case path.parent(position) {
         Error(Nil) -> #(untype(tree), original)
@@ -1075,7 +1076,7 @@ fn block_container(tree, position) {
         Error(Nil) -> None
         Ok(#(position, _)) -> block_container(tree, position)
       }
-    Expression(expression) -> Some(position)
+    Expression(_) -> Some(position)
   }
 }
 
@@ -1181,7 +1182,7 @@ fn insert_provider(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, expression)) -> {
       let new = case expression {
-        e.Provider(config, generator, a) -> #(
+        e.Provider(config, generator, _) -> #(
           dynamic.from(Nil),
           e.Provider(config, generator, dynamic.from(Nil)),
         )
@@ -1337,7 +1338,7 @@ fn do_delete(tree, position) {
     e.Row(fields), [i, ..rest] -> {
       let pre = list.take(fields, i)
       let [row, ..post] = list.drop(fields, i)
-      let replacement = case row, rest {
+      case row, rest {
         // delete the whole row even if key selected, use insert for updating
         _, [] | _, [0] -> {
           let fields = list.append(pre, post)
@@ -1428,7 +1429,7 @@ fn do_delete(tree, position) {
       let i = i - 1
       let pre = list.take(branches, i)
       let [branch, ..post] = list.drop(branches, i)
-      let replacement = case branch, rest {
+      case branch, rest {
         _, [] | _, [0] -> {
           let branches = list.append(pre, post)
           let position = case list.length(branches) {
@@ -1459,7 +1460,7 @@ fn do_delete(tree, position) {
           }
       }
     }
-    e.Provider(_, _, _), [i] -> {
+    e.Provider(_, _, _), [_i] -> {
       let new = ast.hole()
       Some(#(new, []))
     }
@@ -1490,7 +1491,7 @@ fn delete_pattern(pattern, path) {
     }
     p.Row(fields), [i] | p.Row(fields), [i, 0] | p.Row(fields), [i, 1] -> {
       let pre = list.take(fields, i)
-      let [element, ..post] = list.drop(fields, i)
+      let [_deleted, ..post] = list.drop(fields, i)
       let fields = list.append(pre, post)
       let position = case list.length(fields) {
         0 -> []
@@ -1532,7 +1533,7 @@ fn variable(tree, position) {
     Expression(#(metadata, _)) -> {
       let Metadata(scope: scope, ..) = metadata
       let variables =
-        list.map(metadata.scope, fn(x: #(String, polytype.Polytype(n))) { x.0 })
+        list.map(scope, fn(x: #(String, polytype.Polytype(n))) { x.0 })
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))
     }
