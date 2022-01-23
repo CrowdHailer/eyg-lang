@@ -604,37 +604,23 @@ pub fn infer(
     e.Let(pattern, value, then) -> {
       let #(value, state) = case pattern, value {
         p.Variable(label), #(_, e.Function(pattern, body)) -> {
-          let #(arg_type, bound_variables, typer) = pattern_type(pattern, typer)
+          let #(x, typer) = next_unbound(typer)
+          let arg_type = t.Unbound(x)
           let #(y, typer) = next_unbound(typer)
           let return_type = t.Unbound(y)
-          let given = t.Function(arg_type, return_type)
-          // expected is value of let here don't unify that
-          // let #(type_, typer) = do_unify(expected, given, typer)
-          let bound_variables =
-            list.map(
-              bound_variables,
-              fn(bv) {
-                let #(label, monotype) = bv
-                let polytype =
-                  polytype.generalise(
-                    t.resolve(monotype, typer.substitutions),
-                    scope.variables,
-                  )
-                #(label, polytype)
-              },
+          let self_type = t.Function(arg_type, return_type)
+          let inner_scope = set_self_variable(#(label, self_type), scope)
+          let #(body, typer, type_) =
+            infer_function(
+              pattern,
+              body,
+              self_type,
+              typer,
+              child(inner_scope, 1),
+              1,
             )
-          // Need to generalize given before bound to self
-          // Or the generalised version instansiated once in scope of body
-          let then_scope = set_variable(#(label, given), typer, scope)
-          let scope = list.fold(bound_variables, scope, do_set_variable)
-          let scope = set_self_variable(#(label, given), scope)
-          let #(return, typer) =
-            infer(body, return_type, #(typer, child(child(scope, 1), 1)))
-          // There are ALOT more type variables if handling all the errors.
-          #(
-            #(meta(Ok(given)), e.Function(pattern, return)),
-            #(typer, then_scope),
-          )
+          let scope = set_variable(#(label, self_type), typer, scope)
+          #(#(meta(type_), e.Function(pattern, body)), #(typer, scope))
         }
         _, _ -> {
           let #(expected_value, bound_variables, typer) =

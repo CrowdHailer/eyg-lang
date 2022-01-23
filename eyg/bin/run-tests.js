@@ -11,13 +11,13 @@ async function main() {
   let failures = 0;
 
   for await (let entry of await opendir(dir)) {
-    if (!entry.name.endsWith("_test.js")) continue;
+    if (!entry.name.endsWith("test.js")) continue;
     let path = "../" + dir + entry.name;
     process.stdout.write("\nlanguage/" + entry.name.slice(0, -3) + ":\n  ");
     let module = await import(path);
 
     for (let fnName of Object.keys(module)) {
-      if (!fnName.endsWith("_test")) continue;
+      if (!fnName.endsWith("recursive_test")) continue;
       try {
         module[fnName](saved.default);
         process.stdout.write("✨");

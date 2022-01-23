@@ -15,6 +15,7 @@
 
   window.compile = Eyg.compile;
   let editor = Editor.init(source, Platform.harness());
+  window.editor = editor;
 
   function eventToTarget(event) {
     let element = event.target;
