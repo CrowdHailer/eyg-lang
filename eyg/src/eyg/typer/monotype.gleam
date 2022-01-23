@@ -31,7 +31,7 @@ pub fn to_string(monotype, native_to_string) {
         )),
         ")",
       ])
-    Function(Row(fields, _), return) -> {
+    Function(Row(fields, rest), return) -> {
       let all =
         list.try_map(
           fields,
@@ -46,7 +46,8 @@ pub fn to_string(monotype, native_to_string) {
           },
         )
       case all {
-        Ok(variants) -> string.join(list.intersperse(variants, " | "))
+        Ok(variants) ->
+          string.join(["Variants ", ..list.intersperse(variants, " | ")])
         Error(Nil) -> {
           let Function(from, to) = monotype
           string.join([

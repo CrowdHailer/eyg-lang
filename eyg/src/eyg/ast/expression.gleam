@@ -7,6 +7,7 @@ import eyg/ast/pattern.{Pattern} as p
 
 pub type Generator {
   Hole
+  Type
   Env
   Example
   Format
@@ -16,6 +17,7 @@ pub type Generator {
 pub fn generator_to_string(generator) {
   case generator {
     Hole -> "Hole"
+    Type -> "Type"
     Env -> "Env"
     Example -> "Example"
     Format -> "Format"
@@ -26,6 +28,7 @@ pub fn generator_to_string(generator) {
 pub fn generator_from_string(str) {
   case str {
     "Hole" -> Hole
+    "Type" -> Type
     "Env" -> Env
     "Example" -> Example
     "Format" -> Format
@@ -34,12 +37,13 @@ pub fn generator_from_string(str) {
 }
 
 pub fn all_generators() {
-  [Example, Env, Format, Loader]
+  [Example, Env, Format, Loader, Type]
 }
 
 pub fn generate(generator, config, hole) {
   let generator = case generator {
     Example -> example
+    Type -> lift_type
     _ -> fn(_, _) { Error(Nil) }
   }
 
@@ -51,6 +55,24 @@ pub fn generate(generator, config, hole) {
 pub fn example(config, hole) {
   case hole {
     t.Tuple(e) -> Ok(tuple_(list.map(e, fn(_) { binary(config) })))
+    _ -> Error(Nil)
+  }
+}
+
+fn tagged(name, value) {
+  function(p.Row([#(name, "then")]), call(variable("then"), value))
+}
+
+pub fn lift_type(_config, hole) {
+  case hole {
+    t.Function(from, _to) -> {
+      let inner = case from {
+        t.Binary -> tagged("Binary", tuple_([]))
+        t.Tuple(_) -> tagged("Tuple", tuple_([]))
+        _ -> tagged("TODO", tuple_([]))
+      }
+      Ok(function(p.Discard, inner))
+    }
     _ -> Error(Nil)
   }
 }
@@ -166,4 +188,8 @@ pub fn let_(pattern, value, then) {
 
 pub fn tuple_(elements) {
   #(dynamic.from(Nil), Tuple(elements))
+}
+
+pub fn variable(label) {
+  #(dynamic.from(Nil), Variable(label))
 }
