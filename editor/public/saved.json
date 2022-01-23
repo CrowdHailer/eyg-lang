@@ -31,208 +31,247 @@
             "node": "Let",
             "pattern": {
                 "node": "Variable",
-                "label": "True"
+                "label": "not"
             },
             "value": {
                 "node": "Function",
                 "pattern": {
-                    "node": "Row",
-                    "fields": [
-                        {
-                            "key": "True",
-                            "bind": "then"
-                        }
-                    ]
+                    "node": "Variable",
+                    "label": "value"
                 },
                 "body": {
-                    "node": "Call",
-                    "function": {
+                    "node": "Case",
+                    "value": {
                         "node": "Variable",
-                        "label": "then"
+                        "label": "value"
                     },
-                    "with": {
-                        "node": "Tuple",
-                        "elements": []
-                    }
+                    "branches": [
+                        {
+                            "node": "Branch",
+                            "name": "True",
+                            "pattern": {
+                                "node": "Tuple",
+                                "elements": []
+                            },
+                            "then": {
+                                "node": "Function",
+                                "pattern": {
+                                    "node": "Row",
+                                    "fields": [
+                                        {
+                                            "key": "False",
+                                            "bind": "then"
+                                        }
+                                    ]
+                                },
+                                "body": {
+                                    "node": "Call",
+                                    "function": {
+                                        "node": "Variable",
+                                        "label": "then"
+                                    },
+                                    "with": {
+                                        "node": "Tuple",
+                                        "elements": []
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "node": "Branch",
+                            "name": "False",
+                            "pattern": {
+                                "node": "Tuple",
+                                "elements": []
+                            },
+                            "then": {
+                                "node": "Function",
+                                "pattern": {
+                                    "node": "Row",
+                                    "fields": [
+                                        {
+                                            "key": "True",
+                                            "bind": "then"
+                                        }
+                                    ]
+                                },
+                                "body": {
+                                    "node": "Call",
+                                    "function": {
+                                        "node": "Variable",
+                                        "label": "then"
+                                    },
+                                    "with": {
+                                        "node": "Tuple",
+                                        "elements": []
+                                    }
+                                }
+                            }
+                        }
+                    ]
                 }
             },
             "then": {
                 "node": "Let",
                 "pattern": {
                     "node": "Variable",
-                    "label": "False"
+                    "label": "and"
                 },
                 "value": {
                     "node": "Function",
                     "pattern": {
-                        "node": "Row",
-                        "fields": [
+                        "node": "Tuple",
+                        "elements": [
                             {
-                                "key": "False",
-                                "bind": "then"
+                                "node": "Bind",
+                                "label": "a"
+                            },
+                            {
+                                "node": "Bind",
+                                "label": "b"
                             }
                         ]
                     },
                     "body": {
-                        "node": "Call",
-                        "function": {
-                            "node": "Variable",
-                            "label": "then"
-                        },
-                        "with": {
-                            "node": "Tuple",
-                            "elements": []
-                        }
-                    }
-                },
-                "then": {
-                    "node": "Let",
-                    "pattern": {
-                        "node": "Variable",
-                        "label": "equal"
-                    },
-                    "value": {
-                        "node": "Variable",
-                        "label": "equal"
-                    },
-                    "then": {
-                        "node": "Let",
-                        "pattern": {
-                            "node": "Variable",
-                            "label": "not"
-                        },
+                        "node": "Case",
                         "value": {
-                            "node": "Function",
-                            "pattern": {
-                                "node": "Variable",
-                                "label": "value"
-                            },
-                            "body": {
-                                "node": "Case",
-                                "value": {
-                                    "node": "Variable",
-                                    "label": "value"
-                                },
-                                "branches": [
-                                    {
-                                        "node": "Branch",
-                                        "name": "True",
-                                        "pattern": {
-                                            "node": "Tuple",
-                                            "elements": []
-                                        },
-                                        "then": {
-                                            "node": "Variable",
-                                            "label": "False"
-                                        }
-                                    },
-                                    {
-                                        "node": "Branch",
-                                        "name": "False",
-                                        "pattern": {
-                                            "node": "Tuple",
-                                            "elements": []
-                                        },
-                                        "then": {
-                                            "node": "Variable",
-                                            "label": "True"
-                                        }
-                                    }
-                                ]
-                            }
+                            "node": "Variable",
+                            "label": "a"
                         },
-                        "then": {
-                            "node": "Let",
-                            "pattern": {
-                                "node": "Variable",
-                                "label": "and"
-                            },
-                            "value": {
-                                "node": "Function",
+                        "branches": [
+                            {
+                                "node": "Branch",
+                                "name": "True",
                                 "pattern": {
                                     "node": "Tuple",
-                                    "elements": [
-                                        {
-                                            "node": "Bind",
-                                            "label": "a"
-                                        },
-                                        {
-                                            "node": "Bind",
-                                            "label": "b"
-                                        }
-                                    ]
+                                    "elements": []
                                 },
-                                "body": {
+                                "then": {
                                     "node": "Case",
                                     "value": {
                                         "node": "Variable",
-                                        "label": "a"
+                                        "label": "b"
                                     },
                                     "branches": [
                                         {
                                             "node": "Branch",
-                                            "name": "True",
+                                            "name": "False",
                                             "pattern": {
-                                                "node": "Discard"
+                                                "node": "Tuple",
+                                                "elements": []
                                             },
                                             "then": {
-                                                "node": "Variable",
-                                                "label": "b"
+                                                "node": "Function",
+                                                "pattern": {
+                                                    "node": "Row",
+                                                    "fields": [
+                                                        {
+                                                            "key": "False",
+                                                            "bind": "then"
+                                                        }
+                                                    ]
+                                                },
+                                                "body": {
+                                                    "node": "Call",
+                                                    "function": {
+                                                        "node": "Variable",
+                                                        "label": "then"
+                                                    },
+                                                    "with": {
+                                                        "node": "Tuple",
+                                                        "elements": []
+                                                    }
+                                                }
                                             }
                                         },
                                         {
                                             "node": "Branch",
-                                            "name": "False",
+                                            "name": "True",
                                             "pattern": {
-                                                "node": "Discard"
+                                                "node": "Tuple",
+                                                "elements": []
                                             },
                                             "then": {
-                                                "node": "Variable",
-                                                "label": "b"
+                                                "node": "Function",
+                                                "pattern": {
+                                                    "node": "Row",
+                                                    "fields": [
+                                                        {
+                                                            "key": "True",
+                                                            "bind": "then"
+                                                        }
+                                                    ]
+                                                },
+                                                "body": {
+                                                    "node": "Call",
+                                                    "function": {
+                                                        "node": "Variable",
+                                                        "label": "then"
+                                                    },
+                                                    "with": {
+                                                        "node": "Tuple",
+                                                        "elements": []
+                                                    }
+                                                }
                                             }
                                         }
                                     ]
                                 }
                             },
-                            "then": {
-                                "node": "Row",
-                                "fields": [
-                                    {
-                                        "node": "Field",
-                                        "key": "True",
-                                        "value": {
-                                            "node": "Variable",
-                                            "label": "True"
-                                        }
+                            {
+                                "node": "Branch",
+                                "name": "False",
+                                "pattern": {
+                                    "node": "Tuple",
+                                    "elements": []
+                                },
+                                "then": {
+                                    "node": "Function",
+                                    "pattern": {
+                                        "node": "Row",
+                                        "fields": [
+                                            {
+                                                "key": "False",
+                                                "bind": "then"
+                                            }
+                                        ]
                                     },
-                                    {
-                                        "node": "Field",
-                                        "key": "False",
-                                        "value": {
+                                    "body": {
+                                        "node": "Call",
+                                        "function": {
                                             "node": "Variable",
-                                            "label": "False"
-                                        }
-                                    },
-                                    {
-                                        "node": "Field",
-                                        "key": "and",
-                                        "value": {
-                                            "node": "Variable",
-                                            "label": "and"
-                                        }
-                                    },
-                                    {
-                                        "node": "Field",
-                                        "key": "not",
-                                        "value": {
-                                            "node": "Variable",
-                                            "label": "not"
+                                            "label": "then"
+                                        },
+                                        "with": {
+                                            "node": "Tuple",
+                                            "elements": []
                                         }
                                     }
-                                ]
+                                }
+                            }
+                        ]
+                    }
+                },
+                "then": {
+                    "node": "Row",
+                    "fields": [
+                        {
+                            "node": "Field",
+                            "key": "and",
+                            "value": {
+                                "node": "Variable",
+                                "label": "and"
+                            }
+                        },
+                        {
+                            "node": "Field",
+                            "key": "not",
+                            "value": {
+                                "node": "Variable",
+                                "label": "not"
                             }
                         }
-                    }
+                    ]
                 }
             }
         },
@@ -246,152 +285,69 @@
                 "node": "Let",
                 "pattern": {
                     "node": "Variable",
-                    "label": "Some"
+                    "label": "unwrap"
                 },
                 "value": {
                     "node": "Function",
                     "pattern": {
-                        "node": "Variable",
-                        "label": "value"
+                        "node": "Tuple",
+                        "elements": [
+                            {
+                                "node": "Bind",
+                                "label": "optional"
+                            },
+                            {
+                                "node": "Bind",
+                                "label": "fallback"
+                            }
+                        ]
                     },
                     "body": {
-                        "node": "Function",
-                        "pattern": {
-                            "node": "Row",
-                            "fields": [
-                                {
-                                    "key": "Some",
-                                    "bind": "then"
-                                }
-                            ]
+                        "node": "Case",
+                        "value": {
+                            "node": "Variable",
+                            "label": "optional"
                         },
-                        "body": {
-                            "node": "Call",
-                            "function": {
-                                "node": "Variable",
-                                "label": "then"
+                        "branches": [
+                            {
+                                "node": "Branch",
+                                "name": "Some",
+                                "pattern": {
+                                    "node": "Variable",
+                                    "label": "value"
+                                },
+                                "then": {
+                                    "node": "Variable",
+                                    "label": "value"
+                                }
                             },
-                            "with": {
-                                "node": "Variable",
-                                "label": "value"
+                            {
+                                "node": "Branch",
+                                "name": "None",
+                                "pattern": {
+                                    "node": "Tuple",
+                                    "elements": []
+                                },
+                                "then": {
+                                    "node": "Variable",
+                                    "label": "fallback"
+                                }
                             }
-                        }
+                        ]
                     }
                 },
                 "then": {
-                    "node": "Let",
-                    "pattern": {
-                        "node": "Variable",
-                        "label": "None"
-                    },
-                    "value": {
-                        "node": "Function",
-                        "pattern": {
-                            "node": "Row",
-                            "fields": [
-                                {
-                                    "key": "None",
-                                    "bind": "then"
-                                }
-                            ]
-                        },
-                        "body": {
-                            "node": "Call",
-                            "function": {
+                    "node": "Row",
+                    "fields": [
+                        {
+                            "node": "Field",
+                            "key": "unwrap",
+                            "value": {
                                 "node": "Variable",
-                                "label": "then"
-                            },
-                            "with": {
-                                "node": "Tuple",
-                                "elements": []
+                                "label": "unwrap"
                             }
                         }
-                    },
-                    "then": {
-                        "node": "Let",
-                        "pattern": {
-                            "node": "Variable",
-                            "label": "unwrap"
-                        },
-                        "value": {
-                            "node": "Function",
-                            "pattern": {
-                                "node": "Tuple",
-                                "elements": [
-                                    {
-                                        "node": "Bind",
-                                        "label": "optional"
-                                    },
-                                    {
-                                        "node": "Bind",
-                                        "label": "fallback"
-                                    }
-                                ]
-                            },
-                            "body": {
-                                "node": "Case",
-                                "value": {
-                                    "node": "Variable",
-                                    "label": "optional"
-                                },
-                                "branches": [
-                                    {
-                                        "node": "Branch",
-                                        "name": "Some",
-                                        "pattern": {
-                                            "node": "Variable",
-                                            "label": "value"
-                                        },
-                                        "then": {
-                                            "node": "Variable",
-                                            "label": "value"
-                                        }
-                                    },
-                                    {
-                                        "node": "Branch",
-                                        "name": "None",
-                                        "pattern": {
-                                            "node": "Tuple",
-                                            "elements": []
-                                        },
-                                        "then": {
-                                            "node": "Variable",
-                                            "label": "fallback"
-                                        }
-                                    }
-                                ]
-                            }
-                        },
-                        "then": {
-                            "node": "Row",
-                            "fields": [
-                                {
-                                    "node": "Field",
-                                    "key": "Some",
-                                    "value": {
-                                        "node": "Variable",
-                                        "label": "Some"
-                                    }
-                                },
-                                {
-                                    "node": "Field",
-                                    "key": "None",
-                                    "value": {
-                                        "node": "Variable",
-                                        "label": "None"
-                                    }
-                                },
-                                {
-                                    "node": "Field",
-                                    "key": "unwrap",
-                                    "value": {
-                                        "node": "Variable",
-                                        "label": "unwrap"
-                                    }
-                                }
-                            ]
-                        }
-                    }
+                    ]
                 }
             },
             "then": {
@@ -2069,14 +2025,6 @@
                                             "node": "Row",
                                             "fields": [
                                                 {
-                                                    "key": "True",
-                                                    "bind": "True"
-                                                },
-                                                {
-                                                    "key": "False",
-                                                    "bind": "False"
-                                                },
-                                                {
                                                     "key": "not",
                                                     "bind": "not"
                                                 }
@@ -2099,8 +2047,27 @@
                                                     "label": "not"
                                                 },
                                                 "with": {
-                                                    "node": "Variable",
-                                                    "label": "False"
+                                                    "node": "Function",
+                                                    "pattern": {
+                                                        "node": "Row",
+                                                        "fields": [
+                                                            {
+                                                                "key": "False",
+                                                                "bind": "then"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "body": {
+                                                        "node": "Call",
+                                                        "function": {
+                                                            "node": "Variable",
+                                                            "label": "then"
+                                                        },
+                                                        "with": {
+                                                            "node": "Tuple",
+                                                            "elements": []
+                                                        }
+                                                    }
                                                 }
                                             },
                                             "then": {
