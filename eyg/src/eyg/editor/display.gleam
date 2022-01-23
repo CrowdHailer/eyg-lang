@@ -91,7 +91,6 @@ pub fn show_expression(metadata) {
     Above(_) -> True
     _ -> False
   }
-  // io.debug(metadata)
 }
 
 pub fn display(editor) {
@@ -218,12 +217,10 @@ pub fn do_display(tree, position, selection, editor) {
       case dynamic.from(generated) == dynamic.from(Nil) {
         True -> #(metadata, e.Provider(config, generator, generated))
         False -> {
-          io.debug(generated)
           let generated: e.Expression(
             Metadata(n),
             e.Expression(Metadata(n), Dynamic),
           ) = unsafe_coerce(generated)
-          io.debug(generated)
           let generated =
             do_display(
               generated,

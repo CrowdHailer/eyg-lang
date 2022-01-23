@@ -293,19 +293,16 @@ pub fn render(
       case loader {
         t.Function(_from, result) ->
           case result {
-            t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), _out) -> {
-              io.debug(usable)
-              [
-                "((ast) => {",
-                string.join([
-                  // compile not implemented should probably be env/platform/browser
-                  "  return window.compile(",
-                  t.literal(usable),
-                  ", ast)",
-                ]),
-                "})",
-              ]
-            }
+            t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), _out) -> [
+              "((ast) => {",
+              string.join([
+                // compile not implemented should probably be env/platform/browser
+                "  return window.compile(",
+                t.literal(usable),
+                ", ast)",
+              ]),
+              "})",
+            ]
             _ -> [
               "(() => {throw 'Failed to build provider for ",
               t.to_string(loader, state.native_to_string),

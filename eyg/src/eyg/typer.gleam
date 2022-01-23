@@ -734,7 +734,6 @@ pub fn infer(
           fields,
           fn(field) {
             let #(name, #(_meta, e.Function(pattern, body)), _type) = field
-            io.debug(meta)
             #(name, pattern, body)
           },
         )
