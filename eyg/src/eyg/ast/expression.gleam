@@ -1,7 +1,6 @@
 import gleam/dynamic
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
 import gleam/string
 import eyg/typer/monotype as t
 import eyg/ast/pattern.{Pattern} as p
@@ -60,23 +59,22 @@ pub fn example(config, hole) {
 // OR we refer to map type and return a function
 // We can generate stuff that assumes a scope and in the type checking works by pulling in the value.
 // THis works best for JSON parsing etc. string in and eyg terms out
-fn env(_config, hole) {
-  case hole {
-    t.Row(fields, _) -> #(
-      Nil,
-      Row(list.map(
-        fields,
-        fn(field) {
-          case field {
-            #(name, t.Binary) -> #(name, #(Nil, Binary(name)))
-            #(name, _) -> #(name, #(Nil, Binary(name)))
-          }
-        },
-      )),
-    )
-  }
-}
-
+// fn env(_config, hole) {
+//   case hole {
+//     t.Row(fields, _) -> #(
+//       Nil,
+//       Row(list.map(
+//         fields,
+//         fn(field) {
+//           case field {
+//             #(name, t.Binary) -> #(name, #(Nil, Binary(name)))
+//             #(name, _) -> #(name, #(Nil, Binary(name)))
+//           }
+//         },
+//       )),
+//     )
+//   }
+// }
 fn build_format(remaining, acc, args, i) {
   case remaining {
     [] -> #(
@@ -99,39 +97,38 @@ fn build_format(remaining, acc, args, i) {
 }
 
 // Ask how do you pass in the functions for the compiled code in Elixir
-fn format(config, hole) {
-  case string.split(config, "%s") {
-    // warning why format if no stuff
-    [x] -> #(Nil, Function(p.Tuple([]), #(Nil, Binary(x))))
-    [start, ..parts] -> {
-      let #(array, args) = build_format(parts, [Binary(start)], [], 0)
-      #(
-        Nil,
-        Function(
-          p.Tuple(list.map(args, Some)),
-          #(Nil, Call(#(Nil, Variable("string.concat")), #(Nil, Tuple(array)))),
-        ),
-      )
-    }
-  }
-  // let parts = list.map(parts, Binary)
-  // let parts = list.intersperse(parts, Variable("r0"))
-  // let parts = list.map(parts, fn(x) { #(Nil, x) })
-  // #(
-  //   Nil,
-  //   Function(
-  //     p.Tuple([Some("r0")]),
-  //     #(
-  //       Nil,
-  //       Call(
-  //         #(Nil, Variable("String.prototype.concat.call")),
-  //         #(Nil, Tuple(parts)),
-  //       ),
-  //     ),
-  //   ),
-  // )
-}
-
+// fn format(config, hole) {
+//   case string.split(config, "%s") {
+//     // warning why format if no stuff
+//     [x] -> #(Nil, Function(p.Tuple([]), #(Nil, Binary(x))))
+//     [start, ..parts] -> {
+//       let #(array, args) = build_format(parts, [Binary(start)], [], 0)
+//       #(
+//         Nil,
+//         Function(
+//           p.Tuple(list.map(args, Some)),
+//           #(Nil, Call(#(Nil, Variable("string.concat")), #(Nil, Tuple(array)))),
+//         ),
+//       )
+//     }
+//   }
+//   // let parts = list.map(parts, Binary)
+//   // let parts = list.intersperse(parts, Variable("r0"))
+//   // let parts = list.map(parts, fn(x) { #(Nil, x) })
+//   // #(
+//   //   Nil,
+//   //   Function(
+//   //     p.Tuple([Some("r0")]),
+//   //     #(
+//   //       Nil,
+//   //       Call(
+//   //         #(Nil, Variable("String.prototype.concat.call")),
+//   //         #(Nil, Tuple(parts)),
+//   //       ),
+//   //     ),
+//   //   ),
+//   // )
+// }
 // provider implementations to not create loop
 pub type Node(m, g) {
   Binary(value: String)

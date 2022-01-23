@@ -22,8 +22,8 @@ pub fn order(a, b) {
     [], [] -> order.Eq
     [x, .._], [y, .._] if x < y -> order.Lt
     [x, .._], [y, .._] if x > y -> order.Gt
-    [], [y, .._] -> order.Lt
-    [x, .._], [] -> order.Gt
+    [], [_, .._] -> order.Lt
+    [_, .._], [] -> order.Gt
     [x, ..a], [y, ..b] if x == y -> order(a, b)
   }
 }

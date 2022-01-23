@@ -169,14 +169,9 @@ pub fn resolve(type_, substitutions) {
         None -> Row(resolved_fields, None)
         Some(i) -> {
           type_
-          // TODO therese something wang with records
           case resolve(Unbound(i), substitutions) {
             Unbound(j) -> Row(resolved_fields, Some(j))
             Row(inner, rest) -> Row(list.append(resolved_fields, inner), rest)
-            x -> {
-              io.debug(x)
-              todo("unifying")
-            }
           }
         }
       }
