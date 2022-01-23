@@ -93,7 +93,7 @@ fn render_label(label, state) {
 }
 
 fn render_function_name(state) {
-  let Generator(self: self, scope: scope, ..) = state
+  let Generator(self: self, ..) = state
   case self {
     Some(label) -> {
       let count = count_label(state, label) + 1
@@ -263,7 +263,7 @@ pub fn render(
             let #(label, pattern, then) = branch
             let #(bind, state) = render_pattern(pattern, state)
             let start = string.join([label, ": (", bind, ") => {"])
-            let then = case render(then, in_tail(True, state)) {
+            case render(then, in_tail(True, state)) {
               [single] -> [string.join([start, " ", single, " },"])]
               lines ->
                 [start, ..indent(lines)]
@@ -285,7 +285,7 @@ pub fn render(
     e.Provider("", e.Hole, _) -> [
       "(() => {throw 'Reached todo in the code'})()",
     ]
-    e.Provider(config, e.Loader, _) -> {
+    e.Provider(_config, e.Loader, _) -> {
       let typer.Metadata(type_: Ok(expected), ..) = context
       let Generator(typer: typer, ..) = state
       let typer.Typer(substitutions: substitutions, ..) = typer
@@ -293,7 +293,7 @@ pub fn render(
       case loader {
         t.Function(_from, result) ->
           case result {
-            t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), out) -> {
+            t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), _out) -> {
               io.debug(usable)
               [
                 "((ast) => {",

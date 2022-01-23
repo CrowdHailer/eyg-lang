@@ -1,5 +1,4 @@
 import gleam/list
-import gleam/option.{None, Some}
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p

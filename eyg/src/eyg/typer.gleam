@@ -3,6 +3,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/pair
 import gleam/string
 import eyg/ast
 import eyg/ast/path
@@ -305,7 +306,7 @@ fn pattern_type(pattern, typer) {
     }
     p.Tuple(elements) -> {
       let #(elements, typer) = list.map_state(elements, typer, with_unbound)
-      let expected = t.Tuple(list.map(elements, pairs_second))
+      let expected = t.Tuple(list.map(elements, pair.second))
       let elements = ones_with_real_keys(elements, [])
       #(expected, elements, typer)
     }
@@ -364,14 +365,6 @@ fn do_unify(expected, given, state) {
       #(Error(reason), typer)
     }
   }
-}
-
-fn pairs_first(pair: #(a, b)) -> a {
-  pair.0
-}
-
-fn pairs_second(pair: #(a, b)) -> b {
-  pair.1
 }
 
 fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype(n)), Typer(n)) {
@@ -525,7 +518,7 @@ pub fn infer(
     }
     e.Tuple(elements) -> {
       let #(pairs, typer) = list.map_state(elements, typer, with_unbound)
-      let given = t.Tuple(list.map(pairs, pairs_second))
+      let given = t.Tuple(list.map(pairs, pair.second))
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
       // decided I want to match on top level first
       let #(elements, #(typer, _)) =

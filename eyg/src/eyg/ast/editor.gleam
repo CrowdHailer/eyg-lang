@@ -4,6 +4,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/order
+import gleam/pair
 import gleam/string
 import eyg
 import eyg/ast
@@ -193,12 +194,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
           )
         }
       }
-    Draft(_) -> todo("handle draft mode")
-    Select(_) ->
-      case key {
-        "Escape" -> Editor(..editor, mode: Command)
-        _ -> todo("handle selection refinement")
-      }
+    Select(_) if key == "Escape" -> Editor(..editor, mode: Command)
   }
   // crash if this doesn't work to get to handle_keydown error handling
   // if get_element in target_type always returned OK/Error we could probably work to remove the error handling
@@ -211,7 +207,7 @@ pub fn cancel_change(editor) {
   Editor(..editor, mode: Command)
 }
 
-fn handle_expression_change(expression, position, content) {
+fn handle_expression_change(expression, content) {
   let #(_, tree) = untype(expression)
   case sugar.match(tree) {
     Ok(sugar.Tagged(_, expression)) -> sugar.tagged(content, expression)
@@ -228,7 +224,7 @@ pub fn handle_change(editor, content) {
   let Some(position) = selection
   let untyped = case get_element(tree, position) {
     Expression(e) -> {
-      let new = handle_expression_change(e, position, content)
+      let new = handle_expression_change(e, content)
       replace_expression(tree, position, new)
     }
     Pattern(p.Discard, _) | Pattern(p.Variable(_), _) ->
@@ -412,8 +408,8 @@ fn command(result) {
   #(Some(tree), position, Command)
 }
 
-fn increase_selection(tree, position) {
-  let position = case path.parent(position) {
+fn increase_selection(_tree, position) {
+  case path.parent(position) {
     Ok(#(position, _)) -> position
     Error(Nil) -> []
   }
@@ -465,22 +461,22 @@ fn decrease_selection(tree, position) {
 fn pattern_left(pattern, selection) {
   case pattern, selection {
     _, [] -> None
-    p.Tuple(elements), [i] -> {
+    p.Tuple(_elements), [i] -> {
       let left = i - 1
       case 0 <= left {
         True -> Some([left])
         False -> None
       }
     }
-    p.Row(fields), [i] -> {
+    p.Row(_fields), [i] -> {
       let left = i - 1
       case 0 <= left {
         True -> Some([left])
         False -> None
       }
     }
-    p.Row(fields), [i, 1] -> Some([i, 0])
-    p.Row(fields), [i, 0] -> {
+    p.Row(_fields), [i, 1] -> Some([i, 0])
+    p.Row(_fields), [i, 0] -> {
       let left = i - 1
       case 0 <= left {
         True -> Some([left, 1])
@@ -507,18 +503,18 @@ fn do_move_left(tree, selection, position) {
         Some(inner) -> list.flatten([position, [0], inner])
       }
     e.Call(_, _), [1] | e.Provider(_, _, _), [1] -> path.append(position, 0)
-    e.Tuple(elements), [i] ->
+    e.Tuple(_elements), [i] ->
       case 0 <= i - 1 {
         True -> path.append(position, i - 1)
         False -> list.append(position, selection)
       }
-    e.Row(fields), [i] ->
+    e.Row(_fields), [i] ->
       case 0 <= i - 1 {
         True -> path.append(position, i - 1)
         False -> list.append(position, selection)
       }
-    e.Row(fields), [i, 1] -> path.append(path.append(position, i), 0)
-    e.Row(fields), [i, 0] ->
+    e.Row(_fields), [i, 1] -> path.append(path.append(position, i), 0)
+    e.Row(_fields), [i, 0] ->
       case 0 <= i - 1 {
         True -> path.append(path.append(position, i - 1), 1)
         False -> list.append(position, selection)
@@ -585,7 +581,7 @@ fn pattern_right(pattern, selection) {
         False -> None
       }
     }
-    p.Row(fields), [i, 0] -> Some([i, 1])
+    p.Row(_fields), [i, 0] -> Some([i, 1])
     p.Row(fields), [i, 1] -> {
       let right = i + 1
       case right < list.length(fields) {
@@ -621,7 +617,7 @@ fn do_move_right(tree, selection, position) {
         True -> path.append(position, i + 1)
         False -> list.append(position, selection)
       }
-    e.Row(fields), [i, 0] -> path.append(path.append(position, i), 1)
+    e.Row(_fields), [i, 0] -> path.append(path.append(position, i), 1)
     e.Row(fields), [i, 1] ->
       case i + 1 < list.length(fields) {
         True -> path.append(path.append(position, i + 1), 0)
@@ -732,8 +728,7 @@ fn move_down(tree, position) {
 }
 
 fn next_error(inconsistencies, path) {
-  let points: List(List(Int)) =
-    list.map(inconsistencies, fn(x: #(List(Int), String)) { x.0 })
+  let points: List(List(Int)) = list.map(inconsistencies, pair.first)
   let next =
     list.find_by(
       points,
@@ -1532,8 +1527,7 @@ fn variable(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(#(metadata, _)) -> {
       let Metadata(scope: scope, ..) = metadata
-      let variables =
-        list.map(scope, fn(x: #(String, polytype.Polytype(n))) { x.0 })
+      let variables = list.map(scope, pair.first)
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))
     }
