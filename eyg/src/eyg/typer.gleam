@@ -75,7 +75,6 @@ pub fn reason_to_string(reason, typer: Typer(n)) {
           expected,
           fn(x) {
             let #(name, type_) = x
-            io.debug(type_)
             string.join([
               name,
               ": ",
@@ -90,7 +89,26 @@ pub fn reason_to_string(reason, typer: Typer(n)) {
       ]
       |> string.join
 
-    UnexpectedFields(expected) -> "unexpectedfields"
+    UnexpectedFields(expected) ->
+      [
+        "Unexpected fields: ",
+        ..list.map(
+          expected,
+          fn(x) {
+            let #(name, type_) = x
+            string.join([
+              name,
+              ": ",
+              t.to_string(
+                t.resolve(type_, typer.substitutions),
+                typer.native_to_string,
+              ),
+            ])
+          },
+        )
+        |> list.intersperse(", ")
+      ]
+      |> string.join
     UnableToProvide(expected, g) ->
       string.join([
         "Unable to generate for expected type ",
@@ -351,7 +369,7 @@ pub fn get_type(
 }
 
 fn do_unify(expected, given, state) {
-  let #(typer, scope): #(Typer(n), Scope(n)) = state
+  let #(_typer, scope): #(Typer(n), Scope(n)) = state
   case unify(expected, given, state) {
     Ok(typer) -> #(Ok(expected), typer)
     // Don't think typer needs returning from unify?
@@ -359,7 +377,7 @@ fn do_unify(expected, given, state) {
       let Typer(inconsistencies: inconsistencies, ..) = typer
       let inconsistencies = [
         #(scope.path, reason_to_string(reason, typer)),
-        ..typer.inconsistencies
+        ..inconsistencies
       ]
       let typer = Typer(..typer, inconsistencies: inconsistencies)
       #(Error(reason), typer)
@@ -479,7 +497,7 @@ pub fn expand_providers(tree, typer) {
               e.generator_to_string(g),
               "' unable to generate code",
             ])
-          let inconsistencies = [#(path, message), ..typer.inconsistencies]
+          let inconsistencies = [#(path, message), ..inconsistencies]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
           // This only exists because Loader and Hole need special treatment
           let dummy = #(
@@ -574,7 +592,7 @@ pub fn infer(
           let Typer(inconsistencies: inconsistencies, ..) = typer
           let inconsistencies = [
             #(scope.path, reason_to_string(reason, typer)),
-            ..typer.inconsistencies
+            ..inconsistencies
           ]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
           #(Error(reason), typer)
@@ -676,7 +694,7 @@ pub fn infer(
             let arg_type = t.Unbound(x)
             let expected_function = t.Function(arg_type, expected)
             // let expected
-            let #(body, typer, type_) =
+            let #(body, typer, _type_) =
               infer_function(
                 pattern,
                 then,
@@ -770,15 +788,4 @@ fn infer_function(pattern, body, expected, typer, scope, body_index) {
   let #(body, typer) =
     infer(body, return_type, #(typer, child(scope, body_index)))
   #(body, typer, type_)
-}
-
-fn pair_replace(replacements, monotype) {
-  list.fold(
-    replacements,
-    monotype,
-    fn(pair, monotype) {
-      let #(x, y) = pair
-      polytype.replace_variable(monotype, x, y)
-    },
-  )
 }
