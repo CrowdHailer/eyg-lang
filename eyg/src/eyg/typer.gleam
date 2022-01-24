@@ -495,7 +495,8 @@ pub fn expand_providers(tree, typer) {
             string.join([
               "Provider '",
               e.generator_to_string(g),
-              "' unable to generate code",
+              "' unable to generate code for type: ",
+              t.to_string(expected, typer.native_to_string),
             ])
           let inconsistencies = [#(path, message), ..inconsistencies]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
