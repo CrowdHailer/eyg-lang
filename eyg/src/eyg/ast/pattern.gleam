@@ -1,10 +1,8 @@
 import gleam/list
-import gleam/option.{Option}
 
 pub type Pattern {
-  Discard
   Variable(label: String)
-  Tuple(elements: List(Option(String)))
+  Tuple(elements: List(String))
   Row(fields: List(#(String, String)))
 }
 
@@ -15,7 +13,7 @@ pub fn variable(label) {
 // Could be replaced with instance of
 pub fn is_discard(pattern) {
   case pattern {
-    Discard -> True
+    Variable("") -> True
     _ -> False
   }
 }

@@ -1,5 +1,4 @@
 import gleam/io
-import gleam/option.{None, Some}
 import eyg
 import eyg/ast
 import eyg/ast/pattern as p
@@ -64,7 +63,7 @@ fn last() {
         [
           #(
             "Cons",
-            p.Tuple([None, Some("rest")]),
+            p.Tuple(["", "rest"]),
             ast.call(ast.variable("last"), ast.variable("rest")),
           ),
           #("Nil", p.Tuple([]), ast.binary("")),

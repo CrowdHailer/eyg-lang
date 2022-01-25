@@ -1,6 +1,5 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None, Some}
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
@@ -32,7 +31,6 @@ pub external fn object(entries: List(#(String, JSON))) -> JSON =
 
 fn pattern_to_json(pattern) {
   case pattern {
-    p.Discard -> object([#("node", string("Discard"))])
     p.Variable(label) ->
       object([#("node", string("Variable")), #("label", string(label))])
     p.Tuple(elements) ->
@@ -43,11 +41,7 @@ fn pattern_to_json(pattern) {
           array(list.map(
             elements,
             fn(element) {
-              case element {
-                Some(label) ->
-                  object([#("node", string("Bind")), #("label", string(label))])
-                None -> object([#("node", string("Discard"))])
-              }
+              object([#("node", string("Bind")), #("label", string(element))])
             },
           )),
         ),
@@ -233,7 +227,6 @@ pub fn from_json(json: JSON) {
 fn pattern_from_json(json: JSON) {
   assert Ok(#(node, rest)) = list.key_pop(entries(json), "node")
   case assert_string(node) {
-    "Discard" -> p.Discard
     "Variable" -> {
       let [#("label", label)] = rest
       p.Variable(assert_string(label))
@@ -246,10 +239,9 @@ fn pattern_from_json(json: JSON) {
           fn(e) {
             assert Ok(#(node, rest)) = list.key_pop(entries(e), "node")
             case assert_string(node) {
-              "Discard" -> None
               "Bind" -> {
                 let [#("label", label)] = rest
-                Some(assert_string(label))
+                assert_string(label)
               }
             }
           },

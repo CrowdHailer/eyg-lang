@@ -1517,7 +1517,8 @@
                                                         {
                                                             "node": "Function",
                                                             "pattern": {
-                                                                "node": "Discard"
+                                                                "node": "Variable",
+                                                                "label": ""
                                                             },
                                                             "body": {
                                                                 "node": "Call",
@@ -1929,7 +1930,8 @@
                                                                 "body": {
                                                                     "node": "Let",
                                                                     "pattern": {
-                                                                        "node": "Discard"
+                                                                        "node": "Variable",
+                                                                        "label": ""
                                                                     },
                                                                     "value": {
                                                                         "node": "Call",
@@ -2112,7 +2114,8 @@
                                                                     "node": "Branch",
                                                                     "name": "Tuple",
                                                                     "pattern": {
-                                                                        "node": "Discard"
+                                                                        "node": "Variable",
+                                                                        "label": ""
                                                                     },
                                                                     "then": {
                                                                         "node": "Binary",
@@ -2139,7 +2142,8 @@
                                             "then": {
                                                 "node": "Let",
                                                 "pattern": {
-                                                    "node": "Discard"
+                                                    "node": "Variable",
+                                                    "label": ""
                                                 },
                                                 "value": {
                                                     "node": "Variable",

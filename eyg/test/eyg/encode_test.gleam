@@ -1,4 +1,3 @@
-import gleam/option.{None, Some}
 import eyg/ast
 import eyg/ast/encode
 import eyg/ast/pattern as p
@@ -34,16 +33,12 @@ pub fn encode_variable_test() {
 pub fn encode_let_test() {
   let tree =
     ast.let_(
-      p.Discard,
+      p.Variable("foo"),
       ast.tuple_([]),
       ast.let_(
-        p.Variable("foo"),
+        p.Tuple(["bar", ""]),
         ast.tuple_([]),
-        ast.let_(
-          p.Tuple([Some("bar"), None]),
-          ast.tuple_([]),
-          ast.let_(p.Row([#("baz", "b")]), ast.tuple_([]), ast.variable("foo")),
-        ),
+        ast.let_(p.Row([#("baz", "b")]), ast.tuple_([]), ast.variable("foo")),
       ),
     )
 
