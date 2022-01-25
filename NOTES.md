@@ -62,13 +62,14 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
+- [ ] Tag ast node Union Type, remove sugar check rendering of JS
+- [ ] Put type information on non expression elements
 - [ ] Reload and Sugar need to be reinstated - Theres thoughts on renaming tree and running code async to editor.
       All less important that a cool spreadsheety program
       https://mukulrathi.com/create-your-own-programming-language/intro-to-type-checking/
 - [x] Use a parameterised Enum for all the native types
 - [ ] collapsed/truncated view of rendered types that can be expanded on hover
 - [ ] Have a standard nily overflow for left and right, same as delete
-- [ ] Put type information on non expression elements
 - [x] Resolve type information before printing errors.
 - [x] Reinstate Sugar for named variant Unitary or not.
 - [ ] Tree's set up correctly for expanded providers
