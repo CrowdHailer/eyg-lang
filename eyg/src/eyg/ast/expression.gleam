@@ -71,7 +71,7 @@ pub fn lift_type(_config, hole) {
         t.Tuple(_) -> tagged("Tuple", tuple_([]))
         _ -> tagged("TODO", tuple_([]))
       }
-      Ok(function(p.Discard, inner))
+      Ok(function(p.Variable(""), inner))
     }
     _ -> Error(Nil)
   }

@@ -18,7 +18,6 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/typer/harness
 import eyg/codegen/javascript
-import standard/example
 
 pub type Mode {
   Command
@@ -227,7 +226,7 @@ pub fn handle_change(editor, content) {
       let new = handle_expression_change(e, content)
       replace_expression(tree, position, new)
     }
-    Pattern(p.Discard, _) | Pattern(p.Variable(_), _) ->
+    Pattern(p.Variable(_), _) ->
       replace_pattern(tree, position, p.Variable(content))
     // Putting stuff in the pattern Element works
     PatternElement(i, _) -> {
@@ -235,7 +234,7 @@ pub fn handle_change(editor, content) {
       let Pattern(p.Tuple(elements), _) = get_element(tree, pattern_position)
       let pre = list.take(elements, i)
       let [_, ..post] = list.drop(elements, i)
-      let elements = list.flatten([pre, [Some(content)], post])
+      let elements = list.flatten([pre, [content], post])
       replace_pattern(tree, pattern_position, p.Tuple(elements))
     }
     RowKey(i, _) -> {
@@ -313,7 +312,7 @@ pub type Element(a, b) {
   RowField(Int, #(String, e.Expression(a, b)))
   RowKey(Int, String)
   Pattern(p.Pattern, e.Expression(a, b))
-  PatternElement(Int, Option(String))
+  PatternElement(Int, String)
   PatternField(Int, #(String, String))
   PatternKey(Int, String)
   PatternFieldBind(Int, String)
@@ -438,7 +437,7 @@ fn decrease_selection(tree, position) {
     Expression(_) -> #(None, inner, Command)
     RowField(_, _) -> #(None, inner, Command)
     Pattern(p.Tuple([]), _) -> #(
-      Some(replace_pattern(tree, position, p.Tuple([None]))),
+      Some(replace_pattern(tree, position, p.Tuple([""]))),
       inner,
       Draft(""),
     )
@@ -788,7 +787,7 @@ fn insert_space(tree, position, offset) {
     }
     Some(#(position, cursor, TuplePattern(elements))) -> {
       let cursor = cursor + offset
-      let new = p.Tuple(insert_at(elements, cursor, None))
+      let new = p.Tuple(insert_at(elements, cursor, ""))
       #(
         Some(replace_pattern(tree, position, new)),
         path.append(position, cursor),
@@ -814,7 +813,7 @@ fn space_below(tree, position) {
         ast.let_(
           pattern,
           untype(value),
-          ast.let_(p.Discard, ast.hole(), untype(then)),
+          ast.let_(p.Variable(""), ast.hole(), untype(then)),
         )
       #(
         replace_expression(tree, position, new),
@@ -823,10 +822,10 @@ fn space_below(tree, position) {
     }
     _ ->
       case closest(tree, position, match_let) {
-        None -> #(ast.let_(p.Discard, untype(tree), ast.hole()), [2])
+        None -> #(ast.let_(p.Variable(""), untype(tree), ast.hole()), [2])
         Some(#(path, 2, #(pattern, value, then))) -> {
           let new =
-            ast.let_(pattern, value, ast.let_(p.Discard, then, ast.hole()))
+            ast.let_(pattern, value, ast.let_(p.Variable(""), then, ast.hole()))
           #(
             replace_expression(tree, path, new),
             path.append(path.append(path, 2), 2),
@@ -834,7 +833,7 @@ fn space_below(tree, position) {
         }
         Some(#(path, _, #(pattern, value, then))) -> {
           let new =
-            ast.let_(pattern, value, ast.let_(p.Discard, ast.hole(), then))
+            ast.let_(pattern, value, ast.let_(p.Variable(""), ast.hole(), then))
           #(
             replace_expression(tree, path, new),
             path.append(path.append(path, 2), 0),
@@ -877,18 +876,18 @@ fn space_above(tree, path) {
   let tree = untype(tree)
   case from_here(tree, path, block_line) {
     Error(Nil) -> {
-      let updated = ast.let_(p.Discard, ast.hole(), tree)
+      let updated = ast.let_(p.Variable(""), ast.hole(), tree)
       let path = [0]
       #(updated, path)
     }
     Ok(#(Let(p, v, t), path, [2, .._])) -> {
-      let new = ast.let_(p, v, ast.let_(p.Discard, ast.hole(), t))
+      let new = ast.let_(p, v, ast.let_(p.Variable(""), ast.hole(), t))
       let updated = replace_expression(tree, path, new)
       let path = list.append(path, [2, 0])
       #(updated, path)
     }
     Ok(#(Let(p, v, t), path, _)) -> {
-      let new = ast.let_(p.Discard, ast.hole(), ast.let_(p, v, t))
+      let new = ast.let_(p.Variable(""), ast.hole(), ast.let_(p, v, t))
       let updated = replace_expression(tree, path, new)
       let path = list.append(path, [0])
       #(updated, path)
@@ -899,7 +898,7 @@ fn space_above(tree, path) {
       let bi = i - 1
       let pre = list.take(branches, bi)
       let post = list.drop(branches, bi)
-      let new = #("Variant", p.Discard, ast.hole())
+      let new = #("Variant", p.Variable(""), ast.hole())
       let branches = list.flatten([pre, [new], post])
       let new = ast.case_(value, branches)
       let updated = replace_expression(tree, path, new)
@@ -1024,7 +1023,7 @@ fn drag_up(tree, original) {
 type TupleMatch {
   TupleExpression(elements: List(e.Expression(Dynamic, Dynamic)))
   RowExpression(fields: List(#(String, e.Expression(Dynamic, Dynamic))))
-  TuplePattern(elements: List(Option(String)))
+  TuplePattern(elements: List(String))
   RowPattern(fields: List(#(String, String)))
 }
 
@@ -1094,8 +1093,9 @@ fn wrap_assignment(tree, path) {
   let #(expression, path, _inner) = current_expression(untype(tree), path, [])
   // Inner must always be pointing to the pattern or the let node itself.
   let new = case expression {
-    #(_, e.Let(p, v, t)) -> ast.let_(p.Discard, ast.let_(p, v, ast.hole()), t)
-    _ -> ast.let_(p.Discard, expression, ast.hole())
+    #(_, e.Let(p, v, t)) ->
+      ast.let_(p.Variable(""), ast.let_(p, v, ast.hole()), t)
+    _ -> ast.let_(p.Variable(""), expression, ast.hole())
   }
   let updated = replace_expression(tree, path, new)
   #(updated, path.append(path, 0))
@@ -1122,13 +1122,13 @@ fn wrap_tuple(tree, position) {
       let new = ast.tuple_([untype(expression)])
       #(replace_expression(tree, position, new), path.append(position, 0))
     }
-    Pattern(p.Variable(label), _) -> #(
-      replace_pattern(tree, position, p.Tuple([Some(label)])),
-      path.append(position, 0),
-    )
-    Pattern(p.Discard, _) -> #(
+    Pattern(p.Variable(""), _) -> #(
       replace_pattern(tree, position, p.Tuple([])),
       position,
+    )
+    Pattern(p.Variable(label), _) -> #(
+      replace_pattern(tree, position, p.Tuple([label])),
+      path.append(position, 0),
     )
     PatternElement(_, _) | Pattern(_, _) -> #(untype(tree), position)
   }
@@ -1148,15 +1148,15 @@ fn wrap_row(tree, position) {
         Draft(""),
       )
     }
+    Pattern(p.Variable(""), _) -> #(
+      Some(replace_pattern(tree, position, p.Row([]))),
+      position,
+      Command,
+    )
     Pattern(p.Variable(label), _) -> #(
       Some(replace_pattern(tree, position, p.Row([#("", label)]))),
       path.append(path.append(position, 0), 0),
       Draft(""),
-    )
-    Pattern(p.Discard, _) -> #(
-      Some(replace_pattern(tree, position, p.Row([]))),
-      position,
-      Command,
     )
     PatternElement(_, _) | Pattern(_, _) -> #(None, position, Command)
   }
@@ -1165,7 +1165,7 @@ fn wrap_row(tree, position) {
 fn wrap_function(tree, position) {
   case get_element(tree, position) {
     Expression(expression) -> {
-      let new = ast.function(p.Discard, untype(expression))
+      let new = ast.function(p.Variable(""), untype(expression))
       #(replace_expression(tree, position, new), path.append(position, 0))
     }
     _ -> #(untype(tree), position)
@@ -1242,10 +1242,7 @@ fn unwrap(tree, position) {
         }
         Pattern(p.Tuple(elements), _), _ -> {
           let [label, .._] = list.drop(elements, index)
-          let pattern = case label {
-            Some(label) -> p.Variable(label)
-            None -> p.Discard
-          }
+          let pattern = p.Variable(label)
           let modified = replace_pattern(tree, parent_position, pattern)
           #(modified, parent_position)
         }
@@ -1285,7 +1282,10 @@ fn match(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(expression) -> {
       let new =
-        ast.case_(untype(expression), [#("Variant", p.Discard, ast.hole())])
+        ast.case_(
+          untype(expression),
+          [#("Variant", p.Variable(""), ast.hole())],
+        )
       let modified = replace_expression(tree, position, new)
       #(Some(modified), list.append(position, [1, 0]), Draft(""))
     }
@@ -1464,23 +1464,23 @@ fn do_delete(tree, position) {
 
 fn delete_pattern(pattern, path) {
   case pattern, path {
-    p.Discard, [] -> None
-    _, [] -> Some(#(p.Discard, []))
+    p.Variable(""), [] -> None
+    _, [] -> Some(#(p.Variable(""), []))
     p.Tuple(elements), [i] -> {
       let pre = list.take(elements, i)
       let [element, ..post] = list.drop(elements, i)
       case element {
-        Some(_) -> {
-          let elements = list.flatten([pre, [None], post])
-          Some(#(p.Tuple(elements), [i]))
-        }
-        None -> {
+        "" -> {
           let elements = list.append(pre, post)
           let position = case list.length(elements) {
             0 -> []
             _ -> [max(0, list.length(pre) - 1)]
           }
           Some(#(p.Tuple(elements), position))
+        }
+        _ -> {
+          let elements = list.flatten([pre, [""], post])
+          Some(#(p.Tuple(elements), [i]))
         }
       }
     }
@@ -1508,10 +1508,8 @@ fn draft(tree, position) {
             _ -> #(None, position, Command)
           }
       }
-    Pattern(p.Discard, _) -> #(None, position, Draft(""))
     Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
-    PatternElement(_, None) -> #(None, position, Draft(""))
-    PatternElement(_, Some(label)) -> #(None, position, Draft(label))
+    PatternElement(_, label) -> #(None, position, Draft(label))
     RowKey(_, key) -> #(None, position, Draft(key))
     PatternKey(_, key) -> #(None, position, Draft(key))
     PatternFieldBind(_, label) -> #(None, position, Draft(label))

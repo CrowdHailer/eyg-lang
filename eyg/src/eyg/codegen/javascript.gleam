@@ -117,7 +117,6 @@ pub fn render_in_function(expression, typer, native_to_string) {
 
 fn render_pattern(pattern, state) {
   case pattern {
-    p.Discard -> #("_", state)
     p.Variable(label) -> {
       let state = with_assignment(label, state)
       let bind = render_label(label, state)
@@ -129,12 +128,8 @@ fn render_pattern(pattern, state) {
           elements,
           state,
           fn(label, state) {
-            let label2 = case label {
-              Some(l) -> l
-              None -> "_"
-            }
-            let state = with_assignment(label2, state)
-            #(render_label(label2, state), state)
+            let state = with_assignment(label, state)
+            #(render_label(label, state), state)
           },
         )
       let bind =

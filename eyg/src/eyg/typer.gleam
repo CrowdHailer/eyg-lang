@@ -304,15 +304,15 @@ fn do_set_variable(variable, scope) {
 fn ones_with_real_keys(elements, done) {
   case elements {
     [] -> list.reverse(done)
-    [#(None, _), ..rest] -> ones_with_real_keys(rest, done)
-    [#(Some(label), monotype), ..rest] ->
+    [#("", _), ..rest] -> ones_with_real_keys(rest, done)
+    [#(label, monotype), ..rest] ->
       ones_with_real_keys(rest, [#(label, monotype), ..done])
   }
 }
 
 fn pattern_type(pattern, typer) {
   case pattern {
-    p.Discard -> {
+    p.Variable("") -> {
       let #(x, typer) = next_unbound(typer)
       let type_var = t.Unbound(x)
       #(type_var, [], typer)

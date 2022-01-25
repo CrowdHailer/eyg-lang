@@ -254,12 +254,13 @@ pub fn display_pattern_elements(display, elements) {
     display
   list.index_map(
     elements,
-    fn(i, e) {
+    fn(i, bind) {
       let position = path.append(position, i)
       let selection = child_selection(selection, i)
-      let value = case e {
-        Some(label) -> label
-        None -> "_"
+      // Not the best solution. printing an underscore is just done for view and probably belongs in CSS
+      let value = case bind {
+        "" -> "_"
+        label -> label
       }
       #(Display(position, selection, "", False, expanded), value)
     },

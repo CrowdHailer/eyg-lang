@@ -48,6 +48,10 @@ Only do space above for branches in case, no reordering because there is no vari
 Rest or fall through belongs at the bottom. Don't need to reduce the union type because rest can be a variable we pull out in the bottom case clause
 NOTE a Block of lets and block of branches look very similar if there is a final stage
 Porbably should'nt introduce block into AST without checking it makes sense in other views.
+
+NOTE empty strings are preferable to a new type when empty string is meaningless.
+e.g. variables can't be the empty string so no need for a discard or optional type.
+
 ### Reload
 
 - let [run, state] = returned.reload.start(tree)
@@ -74,7 +78,7 @@ Porbably should'nt introduce block into AST without checking it makes sense in o
 - [x] Select from for choosing type providers
 - [ ] Pin type, click and bump constraints to top
 - [ ] gleam 18 stdlib to js, json lib and dynamic now useful NOPE I rekon will have my own std lib quicker than investigating node loading.
-- [ ] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
+- [x] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
 - [ ] Copy/paste
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
