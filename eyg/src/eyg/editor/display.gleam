@@ -210,6 +210,7 @@ pub fn do_display(tree, position, selection, editor) {
         )
       #(metadata, e.Case(value, branches))
     }
+    e.Hole -> #(metadata, e.Hole)
     e.Provider(config, generator, generated) ->
       // coerce back and forth because the expression does not represent the recursion we need.
       // There are cases when nothing is shown here

@@ -129,6 +129,7 @@ pub fn to_json(ast) {
         #("branches", array(branches)),
       ])
     }
+    e.Hole -> object([#("node", string("Hole"))])
     e.Provider(config, generator, _) ->
       object([
         #("node", string("Provider")),
@@ -214,6 +215,10 @@ pub fn from_json(json: JSON) {
           },
         )
       ast.case_(value, branches)
+    }
+    "Hole" -> {
+      let [] = rest
+      ast.hole()
     }
     "Provider" -> {
       let [#("config", config), #("generator", generator)] = rest

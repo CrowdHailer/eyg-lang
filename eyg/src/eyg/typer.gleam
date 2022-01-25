@@ -7,7 +7,7 @@ import gleam/pair
 import gleam/string
 import eyg/ast
 import eyg/ast/path
-import eyg/ast/expression.{Hole, Loader} as e
+import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -468,16 +468,8 @@ pub fn expand_providers(tree, typer) {
     }
 
     // Hole needs to be separate, it can't be a function call because it is not always going to be a function that gets called.
-    e.Provider(config, g, _) if g == Hole || g == Loader -> {
-      let dummy = #(
-        dynamic.from(Nil),
-        e.Provider("", e.Hole, dynamic.from(Nil)),
-      )
-      let #(typed, _typer) =
-        infer(dummy, t.Unbound(-1), #(typer, root_scope([])))
-      // expand_providers(typed, typer)
-      #(#(meta, e.Provider(config, g, typed)), typer)
-    }
+    // TODO this loader exception lets it produce invalid code while experimenting
+    e.Hole | e.Provider(_, e.Loader, _) -> #(#(meta, e.Hole), typer)
     e.Provider(config, g, _) -> {
       let Metadata(type_: Ok(expected), ..) = meta
       let Typer(substitutions: substitutions, ..) = typer
@@ -501,10 +493,7 @@ pub fn expand_providers(tree, typer) {
           let inconsistencies = [#(path, message), ..inconsistencies]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
           // This only exists because Loader and Hole need special treatment
-          let dummy = #(
-            dynamic.from(Nil),
-            e.Provider("", e.Hole, dynamic.from(Nil)),
-          )
+          let dummy = #(dynamic.from(Nil), e.Hole)
           let #(typed, _typer) =
             infer(dummy, expected, #(typer, root_scope([])))
           let meta =
@@ -728,18 +717,20 @@ pub fn infer(
       #(expression, typer)
     }
     // Type of provider is nil but actually it's dynamic because we just scrub the type information
+    e.Hole -> {
+      let typer =
+        Typer(
+          ..typer,
+          inconsistencies: [
+            #(scope.path, "todo: implementation missing"),
+            ..typer.inconsistencies
+          ],
+        )
+      let expression = #(meta(Ok(expected)), e.Hole)
+      #(expression, typer)
+    }
+
     e.Provider(config, generator, _) -> {
-      let typer = case generator {
-        e.Hole ->
-          Typer(
-            ..typer,
-            inconsistencies: [
-              #(scope.path, "todo: implementation missing"),
-              ..typer.inconsistencies
-            ],
-          )
-        _ -> typer
-      }
       let expression = #(
         meta(Ok(expected)),
         e.Provider(config, generator, dynamic.from(Nil)),

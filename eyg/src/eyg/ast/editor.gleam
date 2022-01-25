@@ -1103,7 +1103,7 @@ fn wrap_assignment(tree, path) {
 
 fn create_binary(tree, position) {
   case get_element(tree, position) {
-    Expression(#(_, e.Provider(_, e.Hole, _))) -> {
+    Expression(#(_, e.Hole)) -> {
       let new = ast.binary("")
       #(Some(replace_expression(tree, position, new)), position, Draft(""))
     }
@@ -1114,7 +1114,7 @@ fn create_binary(tree, position) {
 fn wrap_tuple(tree, position) {
   let target = get_element(tree, position)
   case target {
-    Expression(#(_, e.Provider(_, e.Hole, _))) -> {
+    Expression(#(_, e.Hole)) -> {
       let new = ast.tuple_([])
       #(replace_expression(tree, position, new), position)
     }
@@ -1136,7 +1136,7 @@ fn wrap_tuple(tree, position) {
 
 fn wrap_row(tree, position) {
   case get_element(tree, position) {
-    Expression(#(_, e.Provider(_, e.Hole, _))) -> {
+    Expression(#(_, e.Hole)) -> {
       let new = ast.row([])
       #(Some(replace_expression(tree, position, new)), position, Command)
     }
@@ -1309,7 +1309,7 @@ fn max(a, b) {
 fn do_delete(tree, position) {
   let #(_, expression) = tree
   case expression, position {
-    e.Provider(_, e.Hole, _), [] -> None
+    e.Hole, [] -> None
     e.Let(_, _, then), [] -> Some(#(then, position))
     _, [] -> Some(#(ast.hole(), position))
     e.Tuple(elements), [i, ..rest] -> {

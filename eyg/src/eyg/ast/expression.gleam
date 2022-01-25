@@ -6,7 +6,6 @@ import eyg/typer/monotype as t
 import eyg/ast/pattern.{Pattern} as p
 
 pub type Generator {
-  Hole
   Type
   Env
   Example
@@ -16,7 +15,6 @@ pub type Generator {
 
 pub fn generator_to_string(generator) {
   case generator {
-    Hole -> "Hole"
     Type -> "Type"
     Env -> "Env"
     Example -> "Example"
@@ -27,7 +25,6 @@ pub fn generator_to_string(generator) {
 
 pub fn generator_from_string(str) {
   case str {
-    "Hole" -> Hole
     "Type" -> Type
     "Env" -> Env
     "Example" -> Example
@@ -44,6 +41,7 @@ pub fn generate(generator, config, hole) {
   let generator = case generator {
     Example -> example
     Type -> lift_type
+    Loader -> fn(_, _) { Ok(#(dynamic.from(Nil), Hole)) }
     _ -> fn(_, _) { Error(Nil) }
   }
 
@@ -164,6 +162,7 @@ pub type Node(m, g) {
     value: Expression(m, g),
     branches: List(#(String, Pattern, Expression(m, g))),
   )
+  Hole
   Provider(config: String, generator: Generator, generated: g)
 }
 
