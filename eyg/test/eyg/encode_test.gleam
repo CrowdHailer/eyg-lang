@@ -1,4 +1,3 @@
-import gleam/option.{None, Some}
 import eyg/ast
 import eyg/ast/encode
 import eyg/ast/pattern as p
@@ -37,7 +36,7 @@ pub fn encode_let_test() {
       p.Variable("foo"),
       ast.tuple_([]),
       ast.let_(
-        p.Tuple([Some("bar"), None]),
+        p.Tuple(["bar", ""]),
         ast.tuple_([]),
         ast.let_(p.Row([#("baz", "b")]), ast.tuple_([]), ast.variable("foo")),
       ),

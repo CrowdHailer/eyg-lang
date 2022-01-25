@@ -17,7 +17,7 @@ async function main() {
     let module = await import(path);
 
     for (let fnName of Object.keys(module)) {
-      if (!fnName.endsWith("recursive_test")) continue;
+      if (!fnName.endsWith("_test")) continue;
       try {
         module[fnName](saved.default);
         process.stdout.write("✨");

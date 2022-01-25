@@ -45,10 +45,7 @@ pub fn call_generic_test() {
   let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let untyped =
-    ast.call(
-      ast.function(p.Tuple([Some("x")]), ast.variable("x")),
-      ast.tuple_([]),
-    )
+    ast.call(ast.function(p.Tuple(["x"]), ast.variable("x")), ast.tuple_([]))
   let #(typed, typer) = infer(untyped, t.Tuple([]), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
   let Ok(type_) = get_type(typed)
@@ -75,7 +72,7 @@ pub fn reuse_generic_function_test() {
   let untyped =
     ast.let_(
       p.Variable("id"),
-      ast.function(p.Tuple([Some("x")]), ast.variable("x")),
+      ast.function(p.Tuple(["x"]), ast.variable("x")),
       ast.tuple_([
         ast.call(ast.variable("id"), ast.tuple_([])),
         ast.call(ast.variable("id"), ast.binary("")),
