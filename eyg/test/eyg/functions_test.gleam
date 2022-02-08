@@ -9,27 +9,6 @@ import eyg/typer/monotype as t
 import eyg/typer/monotype.{resolve}
 import eyg/typer/polytype
 
-pub fn type_bound_function_test() {
-  let typer = init(fn(_) { todo })
-  let scope = typer.root_scope([])
-  let untyped = ast.function(p.Tuple([]), ast.binary(""))
-  let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-  let typer.Typer(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  let t.Function(t.Tuple([]), t.Binary) = resolve(type_, substitutions)
-}
-
-pub fn generic_function_test() {
-  let typer = init(fn(_) { todo })
-  let scope = typer.root_scope([])
-  let untyped = ast.function(p.Variable("x"), ast.variable("x"))
-  let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
-  let typer.Typer(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  let t.Function(t.Unbound(a), t.Unbound(b)) = resolve(type_, substitutions)
-  let True = a == b
-}
-
 pub fn call_function_test() {
   let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])

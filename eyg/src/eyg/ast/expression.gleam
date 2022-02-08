@@ -192,3 +192,11 @@ pub fn tuple_(elements) {
 pub fn variable(label) {
   #(dynamic.from(Nil), Variable(label))
 }
+
+pub fn row(fields) {
+  #(dynamic.from(Nil), Row(fields))
+}
+
+pub fn hole() {
+  #(dynamic.from(Nil), Hole)
+}

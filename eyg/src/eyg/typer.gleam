@@ -18,7 +18,7 @@ pub type Reason(n) {
   UnknownVariable(label: String)
   UnmatchedTypes(expected: t.Monotype(n), given: t.Monotype(n))
   MissingFields(expected: List(#(String, t.Monotype(n))))
-  UnexpectedFields(expected: List(#(String, t.Monotype(n))))
+  UnexpectedFields(unexpected: List(#(String, t.Monotype(n))))
   UnableToProvide(expected: t.Monotype(n), generator: e.Generator)
 }
 
