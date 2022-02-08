@@ -11,6 +11,7 @@ pub type Monotype(n) {
   Row(fields: List(#(String, Monotype(n))), extra: Option(Int))
   Function(from: Monotype(n), to: Monotype(n))
   Unbound(i: Int)
+  Recursive(i: Int, type_: Monotype(n))
 }
 
 fn row_to_string(row, native_to_string) {
@@ -114,6 +115,7 @@ pub fn literal(monotype) {
 
 fn do_occurs_in(i, b) {
   case b {
+    Recursive(j, inner) -> do_occurs_in(i, inner)
     Unbound(j) if i == j -> True
     Unbound(_) -> False
     Native(_) -> False
@@ -142,15 +144,22 @@ fn occurs_in(a, b) {
 
 pub fn resolve(type_, substitutions) {
   case type_ {
+    Recursive(i, inner) -> Recursive(i, inner)
     Unbound(i) ->
       case list.key_find(substitutions, i) {
         Ok(Unbound(j)) if i == j -> type_
         Error(Nil) -> type_
-        Ok(substitution) -> {
-          let False = occurs_in(Unbound(i), substitution)
-          resolve(substitution, substitutions)
-        }
+        Ok(substitution) ->
+          case occurs_in(Unbound(i), substitution) {
+            False -> resolve(substitution, substitutions)
+            True -> {
+              io.debug("====================")
+              io.debug(substitution)
+              Recursive(i, substitution)
+            }
+          }
       }
+    // let False = 
     Native(name) -> Native(name)
     Binary -> Binary
     Tuple(elements) -> {

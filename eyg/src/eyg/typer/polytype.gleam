@@ -51,6 +51,11 @@ pub fn replace_variable(monotype, x, y) {
         True -> t.Unbound(y)
         False -> t.Unbound(i)
       }
+    t.Recursive(i, inner) ->
+      case i == x {
+        True -> t.Recursive(y, inner)
+        False -> t.Recursive(i, inner)
+      }
   }
 }
 
@@ -116,6 +121,7 @@ fn free_variables_in_monotype(monotype) {
     t.Function(from, to) ->
       union(free_variables_in_monotype(from), free_variables_in_monotype(to))
     t.Unbound(i) -> [i]
+    t.Recursive(_, inner) -> free_variables_in_monotype(inner)
   }
 }
 

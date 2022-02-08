@@ -1,10 +1,14 @@
 import gleam/io
+import gleam/list
 import gleam/option.{None, Some}
 import eyg
 import eyg/ast
 import eyg/ast/editor
-import eyg/ast/expression.{binary, call, function, hole, row, tuple_, variable}
+import eyg/ast/expression.{
+  binary, call, function, hole, let_, row, tuple_, variable,
+}
 import eyg/typer
+import eyg/ast/expression as e
 import eyg/typer/monotype as t
 import eyg/ast/pattern as p
 import eyg/typer/polytype
@@ -27,9 +31,18 @@ fn unbound() {
 }
 
 fn get_type(typed, checker: typer.Typer(a)) {
-  try type_ = typer.get_type(typed)
-  let resolved = t.resolve(type_, checker.substitutions)
-  Ok(resolved)
+  case typer.get_type(typed) {
+    Ok(type_) -> {
+      let resolved = t.resolve(type_, checker.substitutions)
+      Ok(resolved)
+    }
+    Error(typer.UnmatchedTypes(expected, given)) -> {
+      let expected = t.resolve(expected, checker.substitutions)
+      let given = t.resolve(given, checker.substitutions)
+      Error(typer.UnmatchedTypes(expected, given))
+    }
+    Error(reason) -> Error(reason)
+  }
 }
 
 // TODO move to AST
@@ -77,7 +90,6 @@ pub fn tuple_expression_test() {
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
 
-// TODO merge hole
 pub fn pair_test() {
   let source = tuple_([binary("Hello"), tuple_([])])
 
@@ -117,8 +129,8 @@ pub fn row_expression_test() {
   let #(typed, checker) = infer(source, t.Row([], None))
   assert Error(reason) = get_type(typed, checker)
 
-  // TODO resolve types in errors too
   // assert typer.UnexpectedFields([#("foo", t.Binary)]) = reason
+  // TODO move up
   let #(typed, checker) = infer(source, t.Row([#("foo", t.Tuple([]))], None))
   assert Ok(type_) = get_type(typed, checker)
   assert t.Row([#("foo", t.Tuple([]))], None) = type_
@@ -167,9 +179,9 @@ pub fn function_test() {
   let #(typed, checker) = infer(source, t.Binary)
   assert Error(reason) = get_type(typed, checker)
 
-  // TODO resolve errors
   // assert typer.UnmatchedTypes(t.Binary, t.Function(t.Unbound(_), t.Tuple([]))) =
   //   reason
+  // TODO move up
   let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Tuple([])))
   assert Ok(type_) = get_type(typed, checker)
   assert t.Function(t.Tuple([]), t.Tuple([])) = type_
@@ -264,4 +276,160 @@ pub fn hole_expression_test() {
   let #(typed, checker) = infer(source, t.Binary)
   assert Ok(type_) = get_type(typed, checker)
   assert t.Binary = type_
+}
+
+// patterns
+pub fn tuple_pattern_test() {
+  let source = function(p.Tuple(["x"]), variable("x"))
+
+  let #(typed, checker) = infer(source, unbound())
+  assert Ok(t.Function(from, _)) = get_type(typed, checker)
+  assert t.Tuple([t.Unbound(_)]) = from
+
+  let #(typed, checker) =
+    infer(source, t.Function(t.Tuple([unbound()]), t.Unbound(-2)))
+  assert Ok(t.Function(from, _)) = get_type(typed, checker)
+  assert t.Tuple([t.Unbound(_)]) = from
+
+  let #(typed, checker) =
+    infer(source, t.Function(t.Tuple([t.Binary]), t.Unbound(-2)))
+  assert Ok(t.Function(from, _)) = get_type(typed, checker)
+  assert t.Tuple([t.Binary]) = from
+
+  // wrong arity
+  let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Unbound(-2)))
+  assert Error(reason) = get_type(typed, checker)
+  // TODO need to return the function error
+  assert typer.IncorrectArity(0, 1) = reason
+
+  // wrong bound type
+  let #(typed, checker) =
+    infer(source, t.Function(t.Tuple([t.Binary]), t.Tuple([])))
+  // Should this be an inside error or not
+  // assert Error(reason) = get_type(typed, checker)
+  // // TODO need to return the function error
+  // assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+}
+
+// let
+pub fn row_pattern_test() {
+  let source = function(p.Row([#("foo", "x")]), variable("x"))
+  // todo
+}
+
+// TODO expanding row type test
+// test reusing id
+// pub fn recursive_tuple_test() {
+//   let source =
+//     let_(
+//       p.Variable("f"),
+//       function(
+//         p.Tuple([]),
+//         tuple_([binary("x"), call(variable("f"), tuple_([]))]),
+//       ),
+//       variable("f"),
+//     )
+//   let #(typed, checker) = infer(source, unbound())
+//   assert Ok(t.Function(from, to)) = get_type(typed, checker)
+//   assert t.Tuple([]) = from
+//   // assert t.Tuple([t.Binary, t.Unbound(mu)]) = to
+//   // typer.get_type(typed)
+//   // |> io.debug
+//   list.map(checker.substitutions, io.debug)
+//   // io.debug(mu)
+//   // io.debug("----")
+//   let [x, .._] = checker.substitutions
+//   let #(-1, t.Function(_, t.Tuple(elements))) = x
+//   io.debug(elements)
+//   let [_, t.Recursive(mu, inner)] = elements
+//   io.debug("loow ")
+//   io.debug(mu)
+//   io.debug(inner)
+//   let t.Tuple([_, t.Unbound(x)]) = inner
+//   io.debug(x)
+// }
+fn my_infer(untyped, goal) {
+  do_my_infer(untyped, goal, [])
+}
+
+// Do this as alg J
+fn do_my_infer(untyped, goal, env) {
+  let #(_, untyped) = untyped
+  io.debug(untyped)
+  case untyped {
+    e.Let(p.Variable(f), #(_, e.Function(p.Variable(x), body)), then) -> {
+      let p = t.Unbound(1)
+      let r = t.Unbound(2)
+      let env = [#(f, t.Function(p, r)), #(x, p), ..env]
+      do_my_infer(body, r, env)
+    }
+    e.Tuple([e1, e2]) -> {
+      // unify goal tuple(tnext 1)
+      let t1 = t.Unbound(3)
+      let t2 = t.Unbound(4)
+      io.debug("goal")
+      io.debug(goal)
+      do_my_infer(e1, t1, env)
+      do_my_infer(e2, t2, env)
+    }
+    e.Binary(_) -> {
+      io.debug("is binary")
+      io.debug(goal)
+      #(1, 1)
+    }
+    e.Call(e1, e2) -> {
+      io.debug(goal)
+      io.debug(e1)
+      io.debug(e2)
+      // 0 = 1 -> 2
+      // 1 = Tuple([]) Null
+      // 2 = Tuple(3, 4)
+      // 3 = Binary
+      // 4 = 1 -> 2.1
+      // 2 = Tuple(Binary, 2)
+      // rA(Binary, A)
+      // rA[Nil | Cons (B, A)]
+      // reverse: rA[Nil | Cons (B, A)] -> rA[Nil | Cons (B, A)]
+      // map: rA[Nil | Cons (B, A)] -> (B, C) -> rD[Nil | Cons (C, D)]
+// map: List(B) -> (B -> C) -> List(C)
+      todo("in call")
+    }
+    e.Variable(label) -> {
+      let t = list.key_find(env, label)
+      io.debug(t)
+      todo
+    }
+  }
+  // #(1, 1)
+}
+
+pub fn my_recursive_tuple_test() {
+  let source =
+    let_(
+      p.Variable("f"),
+      function(
+        p.Variable("x"),
+        tuple_([binary("hello"), call(variable("f"), tuple_([]))]),
+      ),
+      variable("f"),
+    )
+
+  let #(typed, checker) = my_infer(source, unbound())
+  // assert Ok(t.Function(from, to)) = get_type(typed, checker)
+  // assert t.Tuple([]) = from
+  // // assert t.Tuple([t.Binary, t.Unbound(mu)]) = to
+  // // typer.get_type(typed)
+  // // |> io.debug
+  // list.map(checker.substitutions, io.debug)
+  // // io.debug(mu)
+  // // io.debug("----")
+  // let [x, .._] = checker.substitutions
+  // let #(-1, t.Function(_, t.Tuple(elements))) = x
+  // io.debug(elements)
+  // let [_, t.Recursive(mu, inner)] = elements
+  // io.debug("loow ")
+  // io.debug(mu)
+  // io.debug(inner)
+  // let t.Tuple([_, t.Unbound(x)]) = inner
+  // io.debug(x)
 }

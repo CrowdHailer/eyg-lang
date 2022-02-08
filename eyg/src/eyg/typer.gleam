@@ -168,7 +168,7 @@ pub fn next_unbound(typer) {
 }
 
 // monotype function??
-// This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
+// This will need the checker/unification/constraints data structure as it uses substitutions and updates the next var value
 // next unbound inside mono can be integer and unbound(i) outside
 pub fn unify(expected, given, state) {
   // Pass as tuple to make reduce functions easier to implement
@@ -178,65 +178,63 @@ pub fn unify(expected, given, state) {
   let expected = t.resolve(expected, substitutions)
   let given = t.resolve(given, substitutions)
 
-  case occurs_in(expected, given) || occurs_in(given, expected) {
-    True -> Ok(typer)
-    False ->
-      case expected, given {
-        t.Native(e), t.Native(g) if e == g -> Ok(typer)
-        t.Native(_), t.Native(_) ->
-          // The typer is passed because some constrains should end up in typer i.e. if some values in Tuple are Ok
-          Error(#(UnmatchedTypes(expected, given), typer))
-        t.Binary, t.Binary -> Ok(typer)
-        t.Tuple(expected), t.Tuple(given) ->
-          case list.zip(expected, given) {
-            Error(#(expected, given)) ->
-              Error(#(IncorrectArity(expected, given), typer))
-            Ok(pairs) ->
-              list.try_fold(
-                pairs,
-                typer,
-                fn(pair, typer) {
-                  let #(expected, given) = pair
-                  unify(expected, given, #(typer, scope))
-                },
-              )
-          }
-        t.Unbound(i), any -> Ok(add_substitution(i, any, typer))
-        any, t.Unbound(i) -> Ok(add_substitution(i, any, typer))
-        t.Row(expected, expected_extra), t.Row(given, given_extra) -> {
-          let #(expected, given, shared) = group_shared(expected, given)
-          let #(x, typer) = next_unbound(typer)
-          try typer = case given, expected_extra {
-            [], _ -> Ok(typer)
-            only, Some(i) ->
-              Ok(add_substitution(i, t.Row(only, Some(x)), typer))
-            only, None -> Error(#(UnexpectedFields(only), typer))
-          }
-          try typer = case expected, given_extra {
-            [], _ -> Ok(typer)
-            only, Some(i) ->
-              Ok(add_substitution(i, t.Row(only, Some(x)), typer))
-            only, None -> Error(#(MissingFields(only), typer))
-          }
+  // case occurs_in(expected, given) || occurs_in(given, expected) {
+  //   // True -> todo("handle_occurs")
+  //   _ ->
+  case expected, given {
+    t.Native(e), t.Native(g) if e == g -> Ok(typer)
+    t.Native(_), t.Native(_) ->
+      // The typer is passed because some constrains should end up in typer i.e. if some values in Tuple are Ok
+      Error(#(UnmatchedTypes(expected, given), typer))
+    t.Binary, t.Binary -> Ok(typer)
+    t.Tuple(expected), t.Tuple(given) ->
+      case list.zip(expected, given) {
+        Error(#(expected, given)) ->
+          Error(#(IncorrectArity(expected, given), typer))
+        Ok(pairs) ->
           list.try_fold(
-            shared,
+            pairs,
             typer,
             fn(pair, typer) {
               let #(expected, given) = pair
               unify(expected, given, #(typer, scope))
             },
           )
-        }
-        t.Function(expected_from, expected_return), t.Function(
-          given_from,
-          given_return,
-        ) -> {
-          try x = unify(expected_from, given_from, state)
-          unify(expected_return, given_return, #(x, scope))
-        }
-        expected, given -> Error(#(UnmatchedTypes(expected, given), typer))
       }
+    t.Unbound(i), any -> Ok(add_substitution(i, any, typer))
+    any, t.Unbound(i) -> Ok(add_substitution(i, any, typer))
+    t.Row(expected, expected_extra), t.Row(given, given_extra) -> {
+      let #(expected, given, shared) = group_shared(expected, given)
+      let #(x, typer) = next_unbound(typer)
+      try typer = case given, expected_extra {
+        [], _ -> Ok(typer)
+        only, Some(i) -> Ok(add_substitution(i, t.Row(only, Some(x)), typer))
+        only, None -> Error(#(UnexpectedFields(only), typer))
+      }
+      try typer = case expected, given_extra {
+        [], _ -> Ok(typer)
+        only, Some(i) -> Ok(add_substitution(i, t.Row(only, Some(x)), typer))
+        only, None -> Error(#(MissingFields(only), typer))
+      }
+      list.try_fold(
+        shared,
+        typer,
+        fn(pair, typer) {
+          let #(expected, given) = pair
+          unify(expected, given, #(typer, scope))
+        },
+      )
+    }
+    t.Function(expected_from, expected_return), t.Function(
+      given_from,
+      given_return,
+    ) -> {
+      try x = unify(expected_from, given_from, state)
+      unify(expected_return, given_return, #(x, scope))
+    }
+    expected, given -> Error(#(UnmatchedTypes(expected, given), typer))
   }
+  // }
 }
 
 fn group_shared(left, right) {
