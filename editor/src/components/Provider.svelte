@@ -1,6 +1,5 @@
 <script>
   import * as Display from "../gen/eyg/editor/display";
-  import Hole from "./Hole.svelte";
   import Expression from "./Expression.svelte";
 
   import * as Ast from "../gen/eyg/ast";
@@ -23,9 +22,7 @@
   $: config_metadata = Display.for_provider_config(metadata);
 </script>
 
-{#if Ast.is_hole(generator)}
-  <Hole {metadata} />
-{:else if metadata.expanded}
+{#if metadata.expanded}
   <Expression expression={generated} />
 {:else}
   <span

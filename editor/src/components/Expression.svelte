@@ -10,6 +10,7 @@
   import Variable from "./Variable.svelte";
   import Function from "./Function.svelte";
   import Binary from "./Binary.svelte";
+  import Hole from "./Hole.svelte";
   import Provider from "./Provider.svelte";
   import Tuple from "./Tuple.svelte";
 
@@ -45,6 +46,8 @@
   <Variable {metadata} label={tree.label} on:delete />
 {:else if tree instanceof Expression.Function}
   <Function {metadata} pattern={tree.pattern} body={tree.body} />
+{:else if tree instanceof Expression.Hole}
+  <Hole {metadata} />
 {:else if tree instanceof Expression.Provider}
   <Provider
     {metadata}

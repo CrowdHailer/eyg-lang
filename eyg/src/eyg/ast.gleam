@@ -43,9 +43,5 @@ pub fn provider(config, generator) {
 }
 
 pub fn hole() {
-  provider("", e.Hole)
-}
-
-pub fn is_hole(generator) {
-  generator == e.Hole
+  #(dynamic.from(Nil), e.Hole)
 }

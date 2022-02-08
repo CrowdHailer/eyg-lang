@@ -277,9 +277,7 @@ pub fn render(
     }
 
     // |> wrap_return(state)
-    e.Provider("", e.Hole, _) -> [
-      "(() => {throw 'Reached todo in the code'})()",
-    ]
+    e.Hole -> ["(() => {throw 'Reached todo in the code'})()"]
     e.Provider(_config, e.Loader, _) -> {
       let typer.Metadata(type_: Ok(expected), ..) = context
       let Generator(typer: typer, ..) = state
