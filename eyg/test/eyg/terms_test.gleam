@@ -35,15 +35,14 @@ fn unbound() {
 }
 
 fn get_type(typed, checker) {
-  let inference.State(substitutions: substitutions, ..) = checker
   case typed {
     Ok(type_) -> {
-      let resolved = t.resolve(type_, substitutions)
+      let resolved = inference.resolve(type_, checker)
       Ok(resolved)
     }
     Error(typer.UnmatchedTypes(expected, given)) -> {
-      let expected = t.resolve(expected, substitutions)
-      let given = t.resolve(given, substitutions)
+      let expected = inference.resolve(expected, checker)
+      let given = inference.resolve(given, checker)
       Error(typer.UnmatchedTypes(expected, given))
     }
     Error(reason) -> Error(reason)

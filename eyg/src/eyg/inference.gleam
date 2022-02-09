@@ -48,16 +48,72 @@ pub fn lookup(env, label) {
   todo
 }
 
-pub fn generalise(mono, env) {
-  todo("generalise")
+pub fn do_free_in_type(t, substitutions, set) {
+  case t {
+    t.Unbound(i) ->
+      case list.key_find(substitutions, i) {
+        Ok(t) -> do_free_in_type(t, substitutions, set)
+        Error(Nil) -> push_new(i, set)
+      }
+    t.Native(_) | t.Binary -> set
+    // Tuple
+    // Row
+    t.Function(from, to) -> {
+      let set = do_free_in_type(from, substitutions, set)
+      do_free_in_type(to, substitutions, set)
+    }
+  }
 }
 
-pub fn instantiate(_, _) {
-  todo
+pub fn free_in_type(t, substitutions) {
+  do_free_in_type(t, substitutions, [])
 }
 
-pub fn resolve(_, _) {
-  todo
+fn push_new(item: a, set: List(a)) -> List(a) {
+  case list.find(set, item) {
+    Ok(_) -> set
+    Error(Nil) -> [item, ..set]
+  }
+}
+
+fn is_not_free_in_env(i, substitutions, env) {
+  // TOODO smart filter or stateful env
+  True
+}
+
+pub fn generalise(mono, substitutions, env) {
+  let type_params =
+    free_in_type(mono, substitutions)
+    |> list.filter(fn(i) { is_not_free_in_env(i, substitutions, env) })
+  //   todo("generalise")
+  //   Hmm have Native(Letter) in the type and list of strings in the parameters
+  // can't be new numbers
+  // Dont need to be named can just use initial i's discovered
+  #(type_params, mono)
+}
+
+pub fn instantiate(poly, _) {
+  // same as resolve with map of new vars
+  let #([], mono) = poly
+  mono
+}
+
+pub fn do_resolve(t, substitutions) {
+  // This has an occurs in thing
+  t.resolve(t, substitutions)
+  //   case t {
+  //     t.Unbound(i) ->
+  //       case list.key_find(substitutions, i) {
+  //         Ok(t) -> do_resolve(t, substitutions)
+  //         Error(Nil) -> t
+  //       }
+  //     Native(_) | Binary(_) -> t
+  //   }
+}
+
+pub fn resolve(t, state) {
+  let State(substitutions: substitutions, ..) = state
+  do_resolve(t, substitutions)
 }
 
 pub type State(n) {
@@ -71,9 +127,6 @@ fn fresh(state) {
   #(t.Unbound(i), State(..state, next_unbound: i + 1))
 }
 
-// CAN'T hold onto typer.Reason circular dependency
-// definetly not string
-// inconsistencies: List(#(List(Int), String)),
 pub fn infer(untyped, expected) {
   let state = State(0, [])
   let scope = []
@@ -89,11 +142,7 @@ fn do_infer(untyped, expected, state, scope) {
         Ok(state) -> #(Ok(expected), state)
         Error(reason) -> #(Error(reason), state)
       }
-    //   e.Variable(label) -> {
-    //     let schema = lookup(env, label)
-    //     let monotype = instantiate(schema, substitutions)
-    //     unify(expected, monotype, substitutions)
-    //   }
+
     e.Function(p.Variable(label), body) -> {
       let #(arg, state) = fresh(state)
       let #(return, state) = fresh(state)
@@ -103,17 +152,32 @@ fn do_infer(untyped, expected, state, scope) {
         Error(reason) -> #(Error(reason), state)
       }
     }
-    //   e.Call(func, with) -> {
-    //     let s = infer(func, fresh, state)
-    //   }
+    e.Call(func, with) -> {
+      let #(arg, state) = fresh(state)
+      let #(_t, state) = do_infer(func, t.Function(arg, expected), state, scope)
+      do_infer(with, arg, state, scope)
+    }
+
     e.Let(p.Variable(label), value, then) -> {
       let #(u, state) = fresh(state)
       //   TODO haandle self case or variable renaming
       let #(_t, state) =
         do_infer(value, u, state, [#(label, #([], u)), ..scope])
       //   generalise with top level scope 
-      let polytype = generalise(resolve(u, state), scope)
+      //   Don't need generalize
+      let polytype = generalise(u, state.substitutions, scope)
       do_infer(then, expected, state, [#(label, polytype), ..scope])
     }
+    e.Variable(label) ->
+      case list.key_find(scope, label) {
+        Ok(polytype) -> {
+          let monotype = instantiate(polytype, state.substitutions)
+          case unify(expected, monotype, state) {
+            Ok(state) -> #(Ok(expected), state)
+            Error(reason) -> #(Error(reason), state)
+          }
+        }
+        Error(Nil) -> #(Error(typer.UnknownVariable(label)), state)
+      }
   }
 }
