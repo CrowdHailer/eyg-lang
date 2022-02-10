@@ -369,34 +369,43 @@ pub fn recursive_loop_test() {
       variable("f"),
     )
   let #(typed, checker) = infer(source, unbound())
-  assert Ok(t.Binary) = get_type(typed, checker)
+  assert Ok(t.Function(t.Unbound(i), t.Unbound(j))) = get_type(typed, checker)
+  assert True = i != j
+  // TODO x = i and f = i -> j internally but not poly
+  // assert Ok(body) = get_expression(typed, [1])
+  // assert Ok(t.Function(t.Unbound(i), t.Unbound(j))) = get_type(body, checker)
+  // TODO ----
+  // id called polymorphically internally FAil
+  // id called polymorphically externally Success
 }
-// pub fn my_recursive_tuple_test() {
-//   let source =
-//     let_(
-//       p.Variable("f"),
-//       function(
-//         p.Variable("x"),
-//         tuple_([binary("hello"), call(variable("f"), tuple_([]))]),
-//       ),
-//       variable("f"),
-//     )
-//   let #(typed, checker) = my_infer(source, unbound())
-//   // assert Ok(t.Function(from, to)) = get_type(typed, checker)
-//   // assert t.Tuple([]) = from
-//   // // assert t.Tuple([t.Binary, t.Unbound(mu)]) = to
-//   // // typer.get_type(typed)
-//   // // |> io.debug
-//   // list.map(checker.substitutions, io.debug)
-//   // // io.debug(mu)
-//   // // io.debug("----")
-//   // let [x, .._] = checker.substitutions
-//   // let #(-1, t.Function(_, t.Tuple(elements))) = x
-//   // io.debug(elements)
-//   // let [_, t.Recursive(mu, inner)] = elements
-//   // io.debug("loow ")
-//   // io.debug(mu)
-//   // io.debug(inner)
-//   // let t.Tuple([_, t.Unbound(x)]) = inner
-//   // io.debug(x)
-// }
+
+// TODO let x = x Test
+pub fn my_recursive_tuple_test() {
+  let source =
+    let_(
+      p.Variable("f"),
+      function(
+        p.Variable("x"),
+        tuple_([binary("hello"), call(variable("f"), tuple_([]))]),
+      ),
+      variable("f"),
+    )
+  let #(typed, checker) = infer(source, unbound())
+  // assert Ok(t.Function(from, to)) = get_type(typed, checker)
+  // assert t.Tuple([]) = from
+  // // assert t.Tuple([t.Binary, t.Unbound(mu)]) = to
+  // // typer.get_type(typed)
+  // // |> io.debug
+  // list.map(checker.substitutions, io.debug)
+  // // io.debug(mu)
+  // // io.debug("----")
+  // let [x, .._] = checker.substitutions
+  // let #(-1, t.Function(_, t.Tuple(elements))) = x
+  // io.debug(elements)
+  // let [_, t.Recursive(mu, inner)] = elements
+  // io.debug("loow ")
+  // io.debug(mu)
+  // io.debug(inner)
+  // let t.Tuple([_, t.Unbound(x)]) = inner
+  // io.debug(x)
+}
