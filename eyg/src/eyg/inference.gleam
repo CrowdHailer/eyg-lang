@@ -1,4 +1,6 @@
 import gleam/io
+import gleam/int
+import gleam/string
 import gleam/list
 import gleam/pair
 import eyg/ast/expression as e
@@ -6,19 +8,28 @@ import eyg/ast/pattern as p
 import eyg/typer/monotype as t
 import eyg/typer
 
-pub fn do_unify(pair, substitutions) {
+pub fn do_unify(
+  pair: #(t.Monotype(n), t.Monotype(n)),
+  substitutions: List(#(Int, #(Bool, t.Monotype(n)))),
+) -> Result(List(#(Int, #(Bool, t.Monotype(n)))), typer.Reason(n)) {
   let #(t1, t2) = pair
   case t1, t2 {
     t.Unbound(i), t.Unbound(j) if i == j -> Ok(substitutions)
     t.Unbound(i), _ ->
       case list.key_find(substitutions, i) {
-        Ok(t1) -> do_unify(#(t1, t2), substitutions)
-        Error(Nil) -> Ok([#(i, t2), ..substitutions])
+        Ok(#(_rec, t1)) -> do_unify(#(t1, t2), substitutions)
+        Error(Nil) -> {
+          let rec = i == 2
+          Ok([#(i, #(rec, t2)), ..substitutions])
+        }
       }
     _, t.Unbound(j) ->
       case list.key_find(substitutions, j) {
-        Ok(t2) -> do_unify(#(t1, t2), substitutions)
-        Error(Nil) -> Ok([#(j, t1), ..substitutions])
+        Ok(#(_rec, t2)) -> do_unify(#(t1, t2), substitutions)
+        Error(Nil) -> {
+          let rec = j == 2
+          Ok([#(j, #(rec, t1)), ..substitutions])
+        }
       }
     t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(substitutions)
     t.Binary, t.Binary -> Ok(substitutions)
@@ -46,25 +57,61 @@ pub fn lookup(env, label) {
   todo
 }
 
-pub fn do_free_in_type(t, substitutions, set) {
-  case t {
-    t.Unbound(i) ->
-      case list.key_find(substitutions, i) {
-        Ok(t) -> do_free_in_type(t, substitutions, set)
-        Error(Nil) -> push_new(i, set)
-      }
-    t.Native(_) | t.Binary -> set
-    // Tuple
-    // Row
-    t.Function(from, to) -> {
-      let set = do_free_in_type(from, substitutions, set)
-      do_free_in_type(to, substitutions, set)
-    }
-  }
+pub fn do_free_in_type(
+  t,
+  substitutions: List(#(Int, #(Bool, t.Monotype(n)))),
+  set,
+) {
+  // io.debug(t)
+  // io.debug("-=-------------------")
+  // list.map(
+  //   substitutions,
+  //   fn(s) {
+  //     let #(k, #(b, t)) = s
+  //     io.debug(k)
+  //     io.debug(b)
+  //     io.debug(t.to_string(t, fn(_) { "OOO" }))
+  //   },
+  // )
+  // io.debug(monotype.to_string(t1, fn(_) { "OTHER" }))
+  // TODO remove
+  []
+  // case t {
+  //   t.Unbound(i) ->
+  //     case list.key_find(substitutions, i) {
+  //       Ok(#(_rec, t)) -> do_free_in_type(t, substitutions, set)
+  //       Error(Nil) -> push_new(i, set)
+  //     }
+  //   t.Native(_) | t.Binary -> set
+  //   t.Tuple(elements) ->
+  //     list.fold(
+  //       elements,
+  //       set,
+  //       fn(e, set) { do_free_in_type(e, substitutions, set) },
+  //     )
+  //   // Row
+  //   t.Function(from, to) -> {
+  //     let set = do_free_in_type(from, substitutions, set)
+  //     do_free_in_type(to, substitutions, set)
+  //   }
+  // }
 }
 
 pub fn free_in_type(t, substitutions) {
   do_free_in_type(t, substitutions, [])
+}
+
+fn do_free_in_elements(elements, substitutions, set) {
+  todo
+  // case elements {
+  //   [] -> set
+  //   [element, ..rest] ->
+  //     do_free_in_elements(
+  //       rest,
+  //       substitutions,
+  //       do_free_in_type(element, substitutions, set),
+  //     )
+  // }
 }
 
 pub fn do_free_in_polytype(poly, substitutions) {
@@ -100,6 +147,7 @@ pub fn generalise(mono, substitutions, env) {
   #(type_params, mono)
 }
 
+// Need to handle having recursive type on it's own. i.e. i needs to be in Recurive(i, inner)
 pub fn instantiate(poly, state) {
   let #(forall, mono) = poly
   let #(substitutions, state) =
@@ -108,35 +156,118 @@ pub fn instantiate(poly, state) {
       state,
       fn(i, state) {
         let #(tj, state) = fresh(state)
-        #(#(i, tj), state)
+        // TODO does this need to handle
+        #(#(i, #(False, tj)), state)
       },
     )
-  let t = do_resolve(mono, substitutions)
+  let t = do_resolve(mono, substitutions, [])
   #(t, state)
 }
 
-pub fn do_resolve(t, substitutions) {
-  // This has an occurs in thing
-  t.resolve(t, substitutions)
-  //   case t {
-  //     t.Unbound(i) ->
-  //       case list.key_find(substitutions, i) {
-  //         Ok(t) -> do_resolve(t, substitutions)
-  //         Error(Nil) -> t
-  //       }
-  //     Native(_) | Binary(_) -> t
-  //   }
+// TODO tags/unions
+
+pub fn print(t, substitutions, recuring) {
+  case t {
+    t.Unbound(i) ->
+      case list.find(recuring, i) {
+        Ok(_) -> int.to_string(i)
+        Error(Nil) ->
+          case list.key_find(substitutions, i) {
+            Error(Nil) -> int.to_string(i)
+            Ok(#(True, t)) ->
+              string.join([
+                "μ",
+                int.to_string(i),
+                ".",
+                print(t, substitutions, [i, ..recuring]),
+              ])
+            Ok(#(False, t)) -> print(t, substitutions, recuring)
+          }
+      }
+    t.Tuple(elements) ->
+      string.join([
+        "(",
+        string.join(list.intersperse(
+          list.map(elements, print(_, substitutions, recuring)),
+          ", ",
+        )),
+        ")",
+      ])
+    t.Binary -> "Binary"
+    t.Function(from, to) ->
+      string.join([
+        print(from, substitutions, recuring),
+        " -> ",
+        print(to, substitutions, recuring),
+      ])
+  }
+}
+
+pub fn do_resolve(type_, substitutions, recuring) {
+  case type_ {
+    t.Unbound(i) ->
+      case list.find(recuring, i) {
+        Error(Nil) ->
+          case list.key_find(substitutions, i) {
+            Ok(#(_rec, t.Unbound(j))) if i == j -> type_
+            Error(Nil) -> type_
+            Ok(#(False, s)) -> do_resolve(s, substitutions, recuring)
+            Ok(#(True, s)) -> do_resolve(s, substitutions, [i, ..recuring])
+          }
+      }
+    // case occurs_in(Unbound(i), substitution) {
+    //   False -> resolve(substitution, substitutions)
+    //   True -> {
+    //     io.debug("====================")
+    //     io.debug(substitution)
+    //     Recursive(i, substitution)
+    //   }
+    // }
+    // let False = 
+    // t.Native(name) -> Native(name)
+    t.Binary -> t.Binary
+    t.Tuple(elements) -> {
+      let elements = list.map(elements, do_resolve(_, substitutions, recuring))
+      t.Tuple(elements)
+    }
+    // Row(fields, rest) -> {
+    //   let resolved_fields =
+    //     list.map(
+    //       fields,
+    //       fn(field) {
+    //         let #(name, type_) = field
+    //         #(name, do_resolve(type_, substitutions))
+    //       },
+    //     )
+    //   case rest {
+    //     None -> Row(resolved_fields, None)
+    //     Some(i) -> {
+    //       type_
+    //       case do_resolve(Unbound(i), substitutions) {
+    //         Unbound(j) -> Row(resolved_fields, Some(j))
+    //         Row(inner, rest) -> Row(list.append(resolved_fields, inner), rest)
+    //       }
+    //     }
+    //   }
+    // }
+    // TODO check do_resolve in our record based recursive frunctions
+    t.Function(from, to) -> {
+      let from = do_resolve(from, substitutions, recuring)
+      let to = do_resolve(to, substitutions, recuring)
+      t.Function(from, to)
+    }
+  }
 }
 
 pub fn resolve(t, state) {
   let State(substitutions: substitutions, ..) = state
-  do_resolve(t, substitutions)
+  do_resolve(t, substitutions, [])
 }
 
 pub type State(n) {
   State(//   definetly not this
     // native_to_string: fn(n) -> String,
-    next_unbound: Int, substitutions: List(#(Int, t.Monotype(n))))
+    next_unbound: Int, substitutions: List(#(Int, #(Bool, t.Monotype(n)))))
 }
 
 fn fresh(state) {
@@ -151,7 +282,12 @@ pub fn infer(untyped, expected) {
 }
 
 // return just substitutions
-fn do_infer(untyped, expected, state, scope) {
+fn do_infer(
+  untyped,
+  expected,
+  state,
+  scope,
+) -> #(Result(t.Monotype(n), typer.Reason(n)), State(n)) {
   let #(_, expression) = untyped
   case expression {
     e.Binary(_) ->
@@ -169,20 +305,33 @@ fn do_infer(untyped, expected, state, scope) {
             #(#(e, u), state)
           },
         )
-      case unify(expected, t.Tuple(list.map(with_type, pair.second)), state) {
+      let #(t, state) = case unify(
+        expected,
+        t.Tuple(list.map(with_type, pair.second)),
+        state,
+      ) {
         Ok(state) -> #(Ok(expected), state)
         Error(reason) -> #(Error(reason), state)
       }
-      list.map_state(with_type, fn(with_type, state) {
-        let #(element, expected) = 
-      })
+      let #(_, state) =
+        list.map_state(
+          with_type,
+          state,
+          fn(with_type, state) {
+            let #(element, expected) = with_type
+            do_infer(element, expected, state, scope)
+          },
+        )
+      #(t, state)
     }
     e.Function(p.Variable(label), body) -> {
       let #(arg, state) = fresh(state)
       let #(return, state) = fresh(state)
       case unify(expected, t.Function(arg, return), state) {
         Ok(state) ->
+          // let state =
           do_infer(body, return, state, [#(label, #([], arg)), ..scope])
+        // #(Ok(expected), state)
         Error(reason) -> #(Error(reason), state)
       }
     }
