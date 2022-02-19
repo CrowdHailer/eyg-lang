@@ -41,13 +41,19 @@ pub fn do_unify(
 }
 
 fn add_substitution(i, type_, substitutions) {
-  // TODO occurs in check
+  // These checks arrive too late end up with reursive type only existing in first recursion
   // We assume i doesn't occur in substitutions
-  // list.contains(free_in_type(type_), i)
-  let type_ = case i == 2 {
-    True -> t.Recursive(i, type_)
-    False -> type_
-  }
+  // let check =
+  //   list.contains(free_in_type(do_resolve(type_, substitutions, [])), i)
+  // let type_ = case check {
+  //   True -> {
+  //     io.debug("============")
+  //     io.debug(i)
+  //     io.debug(type_)
+  //     t.Recursive(i, type_)
+  //   }
+  //   False -> type_
+  // }
   [#(i, type_), ..substitutions]
 }
 
@@ -133,30 +139,50 @@ pub fn instantiate(poly, state) {
   #(t, state)
 }
 
-// TODO tags/unions
-// everything should be doable with resolve if we have a Recursive type
-// When unifying Does recursion need to be someting that can move between substitutions
-// When writing an annotation it would include recursive types
-// List(B) = μA.[Null | Cons(B, A)]
-pub fn print(t, state) {
-  let type_ = resolve(t, state)
-  to_string(type_)
+pub fn do_reccuring_in_type(type_, found) {
+  todo
 }
 
-fn to_string(t) {
+pub fn recuring_in_type(type_) {
+  do_reccuring_in_type(type_, [])
+}
+
+pub fn print(t, state) {
+  let type_ = resolve(t, state)
+  let #(rendered, _) = to_string(type_, [])
+  rendered
+}
+
+pub fn to_string(t, used) {
+  // Having structural types would allow replacing integer variables with letter variables easily in a substitution
+  // a function to list variable types would allow a simple substitution
+  // A lot easier to debug if not using used as part of this
   case t {
-    t.Unbound(i) -> int.to_string(i)
-    t.Recursive(i, t) ->
-      string.join(["μ", int.to_string(i), ".", to_string(t)])
-    t.Tuple(elements) ->
-      string.join([
-        "(",
-        string.join(list.intersperse(list.map(elements, to_string), ", ")),
-        ")",
-      ])
-    t.Binary -> "Binary"
-    t.Function(from, to) ->
-      string.join([to_string(from), " -> ", to_string(to)])
+    t.Unbound(i) -> {
+      let used = push_new(i, used)
+      assert Ok(index) = index(used, i)
+      #(int.to_string(index), used)
+    }
+    t.Recursive(i, t) -> {
+      let used = push_new(i, used)
+      let #(inner, used) = to_string(t, used)
+      assert Ok(index) = index(used, i)
+      let rendered = string.join(["μ", int.to_string(index), ".", inner])
+      #(rendered, used)
+    }
+    t.Tuple(elements) -> {
+      let #(rendered, used) = list.map_state(elements, used, to_string)
+      let rendered =
+        string.join(["(", string.join(list.intersperse(rendered, ", ")), ")"])
+      #(rendered, used)
+    }
+    t.Binary -> #("Binary", used)
+    t.Function(from, to) -> {
+      let #(from, used) = to_string(from, used)
+      let #(to, used) = to_string(to, used)
+      let rendered = string.join([from, " -> ", to])
+      #(rendered, used)
+    }
   }
 }
 
@@ -169,9 +195,17 @@ pub fn do_resolve(type_, substitutions: List(#(Int, t.Monotype(n))), recuring) {
           case list.key_find(substitutions, i) {
             Ok(t.Unbound(j)) if i == j -> type_
             Error(Nil) -> type_
-            Ok(sub) -> do_resolve(sub, substitutions, recuring)
+            Ok(sub) -> {
+              let inner = do_resolve(sub, substitutions, [i, ..recuring])
+              let recursive = list.contains(free_in_type(inner), i)
+              case recursive {
+                False -> inner
+                True -> t.Recursive(i, inner)
+              }
+            }
           }
       }
+    // This needs to exist as might already have been called by generalize
     t.Recursive(i, sub) -> {
       let inner = do_resolve(sub, substitutions, [i, ..recuring])
       t.Recursive(i, inner)
@@ -270,7 +304,6 @@ fn do_infer(untyped, expected, state, scope) {
         )
       #(t, state)
     }
-
     // e.Row(fields) -> {
     // }
     e.Function(p.Variable(label), body) -> {
@@ -343,4 +376,17 @@ fn union(new: List(a), existing: List(a)) -> List(a) {
       union(new, existing)
     }
   }
+}
+
+fn do_index(list, term, count) {
+  case list {
+    [] -> Error(Nil)
+    [item, .._] if item == term -> Ok(count)
+    [_, ..list] -> do_index(list, term, count + 1)
+  }
+}
+
+// set index start from back
+fn index(list, term) {
+  do_index(list.reverse(list), term, 0)
 }

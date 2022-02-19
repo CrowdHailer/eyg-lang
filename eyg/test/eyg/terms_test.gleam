@@ -397,19 +397,20 @@ pub fn my_recursive_tuple_test() {
     )
   let #(Ok(typed), checker) = infer(source, unbound())
 
-  io.debug("-=-------------------")
+  // io.debug("-=-------------------")
   // io.debug(typed)
   // list.map(
   //   checker.substitutions,
   //   fn(s) {
   //     let #(k, t) = s
   //     io.debug(k)
-  //     io.debug(t.to_string(t, fn(_) { "OOO" }))
+  //     // io.debug(t.to_string(t, fn(_) { "OOO" }))
+  //     io.debug(inference.to_string(t, []))
   //   },
   // )
-  let "() -> μ2.(Binary, 2)" =
-    inference.print(typed, checker)
-    |> io.debug
+  let "() -> μ0.(Binary, 0)" = inference.print(typed, checker)
+  // inference.print(t.Unbound(4), checker)
+  // |> io.debug
   // assert Ok(t.Function(from, to)) = get_type(typed, checker)
   // assert t.Tuple([]) = from
   // // assert t.Tuple([t.Binary, t.Unbound(mu)]) = to
