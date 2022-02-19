@@ -64,10 +64,6 @@ fn unify(t1, t2, state: State(n)) {
   Ok(State(..state, substitutions: s))
 }
 
-pub fn lookup(env, label) {
-  todo
-}
-
 // relies on type having been resolved
 fn do_free_in_type(type_, set) {
   case type_ {
@@ -137,14 +133,6 @@ pub fn instantiate(poly, state) {
     )
   let t = do_resolve(mono, substitutions, [])
   #(t, state)
-}
-
-pub fn do_reccuring_in_type(type_, found) {
-  todo
-}
-
-pub fn recuring_in_type(type_) {
-  do_reccuring_in_type(type_, [])
 }
 
 pub fn print(t, state) {
@@ -311,9 +299,7 @@ fn do_infer(untyped, expected, state, scope) {
       let #(return, state) = fresh(state)
       case unify(expected, t.Function(arg, return), state) {
         Ok(state) ->
-          // let state =
           do_infer(body, return, state, [#(label, #([], arg)), ..scope])
-        // #(Ok(expected), state)
         Error(reason) -> #(Error(reason), state)
       }
     }
