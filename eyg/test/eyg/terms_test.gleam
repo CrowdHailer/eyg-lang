@@ -403,8 +403,9 @@ pub fn my_recursive_tuple_test() {
       io.debug(t.to_string(t, fn(_) { "OOO" }))
     },
   )
-  inference.print(typed, checker.substitutions, [])
-  |> io.debug
+  let "() -> μ2.(Binary, 2)" =
+    inference.print(typed, checker.substitutions, [])
+    |> io.debug
   // assert Ok(t.Function(from, to)) = get_type(typed, checker)
   // assert t.Tuple([]) = from
   // // assert t.Tuple([t.Binary, t.Unbound(mu)]) = to

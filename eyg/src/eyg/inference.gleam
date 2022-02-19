@@ -18,18 +18,12 @@ pub fn do_unify(
     t.Unbound(i), _ ->
       case list.key_find(substitutions, i) {
         Ok(#(_rec, t1)) -> do_unify(#(t1, t2), substitutions)
-        Error(Nil) -> {
-          let rec = i == 2
-          Ok([#(i, #(rec, t2)), ..substitutions])
-        }
+        Error(Nil) -> Ok(add_substitution(i, t2, substitutions))
       }
     _, t.Unbound(j) ->
       case list.key_find(substitutions, j) {
         Ok(#(_rec, t2)) -> do_unify(#(t1, t2), substitutions)
-        Error(Nil) -> {
-          let rec = j == 2
-          Ok([#(j, #(rec, t1)), ..substitutions])
-        }
+        Error(Nil) -> Ok(add_substitution(j, t1, substitutions))
       }
     t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(substitutions)
     t.Binary, t.Binary -> Ok(substitutions)
@@ -44,6 +38,14 @@ pub fn do_unify(
     }
     _, _ -> Error(typer.UnmatchedTypes(t1, t2))
   }
+}
+
+fn add_substitution(i, type_, substitutions) {
+  // TODO occurs in check
+  // We assume i doesn't occur in substitutions
+  // List.contains(free_in_type(type_), i)
+  let rec = i == 2
+  [#(i, #(rec, type_)), ..substitutions]
 }
 
 fn unify(t1, t2, state: State(n)) {
@@ -165,7 +167,10 @@ pub fn instantiate(poly, state) {
 }
 
 // TODO tags/unions
-
+// everything should be doable with resolve if we have a Recursive type
+// When unifying Does recursion need to be someting that can move between substitutions
+// When writing an annotation it would include recursive types
+// List(B) = μA.[Null | Cons(B, A)]
 pub fn print(t, substitutions, recuring) {
   case t {
     t.Unbound(i) ->
