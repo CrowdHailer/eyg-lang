@@ -170,40 +170,25 @@ pub fn instantiate(poly, state) {
 // When unifying Does recursion need to be someting that can move between substitutions
 // When writing an annotation it would include recursive types
 // List(B) = μA.[Null | Cons(B, A)]
-pub fn print(t, substitutions, recuring) {
+pub fn print(t, state) {
+  let type_ = resolve(t, state)
+  to_string(type_)
+}
+
+fn to_string(t) {
   case t {
-    t.Unbound(i) ->
-      case list.find(recuring, i) {
-        Ok(_) -> int.to_string(i)
-        Error(Nil) ->
-          case list.key_find(substitutions, i) {
-            Error(Nil) -> int.to_string(i)
-            Ok(t.Recursive(i, t)) ->
-              string.join([
-                "μ",
-                int.to_string(i),
-                ".",
-                print(t, substitutions, [i, ..recuring]),
-              ])
-            Ok(t) -> print(t, substitutions, recuring)
-          }
-      }
+    t.Unbound(i) -> int.to_string(i)
+    t.Recursive(i, t) ->
+      string.join(["μ", int.to_string(i), ".", to_string(t)])
     t.Tuple(elements) ->
       string.join([
         "(",
-        string.join(list.intersperse(
-          list.map(elements, print(_, substitutions, recuring)),
-          ", ",
-        )),
+        string.join(list.intersperse(list.map(elements, to_string), ", ")),
         ")",
       ])
     t.Binary -> "Binary"
     t.Function(from, to) ->
-      string.join([
-        print(from, substitutions, recuring),
-        " -> ",
-        print(to, substitutions, recuring),
-      ])
+      string.join([to_string(from), " -> ", to_string(to)])
   }
 }
 
@@ -211,27 +196,18 @@ pub fn do_resolve(type_, substitutions: List(#(Int, t.Monotype(n))), recuring) {
   case type_ {
     t.Unbound(i) ->
       case list.find(recuring, i) {
+        Ok(_) -> type_
         Error(Nil) ->
           case list.key_find(substitutions, i) {
             Ok(t.Unbound(j)) if i == j -> type_
             Error(Nil) -> type_
-            Ok(t.Recursive(j, sub)) -> {
-              let inner = do_resolve(sub, substitutions, [j, ..recuring])
-              t.Recursive(j, inner)
-            }
             Ok(sub) -> do_resolve(sub, substitutions, recuring)
           }
       }
-    // case occurs_in(Unbound(i), substitution) {
-    //   False -> resolve(substitution, substitutions)
-    //   True -> {
-    //     io.debug("====================")
-    //     io.debug(substitution)
-    //     Recursive(i, substitution)
-    //   }
-    // }
-    // let False = 
-    // t.Native(name) -> Native(name)
+    t.Recursive(i, sub) -> {
+      let inner = do_resolve(sub, substitutions, [i, ..recuring])
+      t.Recursive(i, inner)
+    }
     t.Binary -> t.Binary
     t.Tuple(elements) -> {
       let elements = list.map(elements, do_resolve(_, substitutions, recuring))
