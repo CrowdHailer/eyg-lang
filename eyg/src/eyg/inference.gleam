@@ -10,19 +10,19 @@ import eyg/typer
 
 pub fn do_unify(
   pair: #(t.Monotype(n), t.Monotype(n)),
-  substitutions: List(#(Int, #(Bool, t.Monotype(n)))),
-) -> Result(List(#(Int, #(Bool, t.Monotype(n)))), typer.Reason(n)) {
+  substitutions: List(#(Int, t.Monotype(n))),
+) -> Result(List(#(Int, t.Monotype(n))), typer.Reason(n)) {
   let #(t1, t2) = pair
   case t1, t2 {
     t.Unbound(i), t.Unbound(j) if i == j -> Ok(substitutions)
     t.Unbound(i), _ ->
       case list.key_find(substitutions, i) {
-        Ok(#(_rec, t1)) -> do_unify(#(t1, t2), substitutions)
+        Ok(t1) -> do_unify(#(t1, t2), substitutions)
         Error(Nil) -> Ok(add_substitution(i, t2, substitutions))
       }
     _, t.Unbound(j) ->
       case list.key_find(substitutions, j) {
-        Ok(#(_rec, t2)) -> do_unify(#(t1, t2), substitutions)
+        Ok(t2) -> do_unify(#(t1, t2), substitutions)
         Error(Nil) -> Ok(add_substitution(j, t1, substitutions))
       }
     t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(substitutions)
@@ -44,8 +44,11 @@ fn add_substitution(i, type_, substitutions) {
   // TODO occurs in check
   // We assume i doesn't occur in substitutions
   // List.contains(free_in_type(type_), i)
-  let rec = i == 2
-  [#(i, #(rec, type_)), ..substitutions]
+  let type_ = case i == 2 {
+    True -> t.Recursive(i, type_)
+    False -> type_
+  }
+  [#(i, type_), ..substitutions]
 }
 
 fn unify(t1, t2, state: State(n)) {
@@ -59,11 +62,7 @@ pub fn lookup(env, label) {
   todo
 }
 
-pub fn do_free_in_type(
-  t,
-  substitutions: List(#(Int, #(Bool, t.Monotype(n)))),
-  set,
-) {
+pub fn do_free_in_type(t, substitutions: List(#(Int, t.Monotype(n))), set) {
   // io.debug(t)
   // io.debug("-=-------------------")
   // list.map(
@@ -149,7 +148,7 @@ pub fn generalise(mono, substitutions, env) {
   #(type_params, mono)
 }
 
-// Need to handle having recursive type on it's own. i.e. i needs to be in Recurive(i, inner)
+// Need to handle having recursive type on it's own. i.e. i needs to be in Recursive(i, inner)
 pub fn instantiate(poly, state) {
   let #(forall, mono) = poly
   let #(substitutions, state) =
@@ -157,9 +156,9 @@ pub fn instantiate(poly, state) {
       forall,
       state,
       fn(i, state) {
+        // TODO with zip
         let #(tj, state) = fresh(state)
-        // TODO does this need to handle
-        #(#(i, #(False, tj)), state)
+        #(#(i, tj), state)
       },
     )
   let t = do_resolve(mono, substitutions, [])
@@ -179,14 +178,14 @@ pub fn print(t, substitutions, recuring) {
         Error(Nil) ->
           case list.key_find(substitutions, i) {
             Error(Nil) -> int.to_string(i)
-            Ok(#(True, t)) ->
+            Ok(t.Recursive(i, t)) ->
               string.join([
                 "μ",
                 int.to_string(i),
                 ".",
                 print(t, substitutions, [i, ..recuring]),
               ])
-            Ok(#(False, t)) -> print(t, substitutions, recuring)
+            Ok(t) -> print(t, substitutions, recuring)
           }
       }
     t.Tuple(elements) ->
@@ -208,16 +207,19 @@ pub fn print(t, substitutions, recuring) {
   }
 }
 
-pub fn do_resolve(type_, substitutions, recuring) {
+pub fn do_resolve(type_, substitutions: List(#(Int, t.Monotype(n))), recuring) {
   case type_ {
     t.Unbound(i) ->
       case list.find(recuring, i) {
         Error(Nil) ->
           case list.key_find(substitutions, i) {
-            Ok(#(_rec, t.Unbound(j))) if i == j -> type_
+            Ok(t.Unbound(j)) if i == j -> type_
             Error(Nil) -> type_
-            Ok(#(False, s)) -> do_resolve(s, substitutions, recuring)
-            Ok(#(True, s)) -> do_resolve(s, substitutions, [i, ..recuring])
+            Ok(t.Recursive(j, sub)) -> {
+              let inner = do_resolve(sub, substitutions, [j, ..recuring])
+              t.Recursive(j, inner)
+            }
+            Ok(sub) -> do_resolve(sub, substitutions, recuring)
           }
       }
     // case occurs_in(Unbound(i), substitution) {
@@ -272,7 +274,7 @@ pub fn resolve(t, state) {
 pub type State(n) {
   State(//   definetly not this
     // native_to_string: fn(n) -> String,
-    next_unbound: Int, substitutions: List(#(Int, #(Bool, t.Monotype(n)))))
+    next_unbound: Int, substitutions: List(#(Int, t.Monotype(n))))
 }
 
 fn fresh(state) {

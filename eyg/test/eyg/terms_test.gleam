@@ -394,15 +394,14 @@ pub fn my_recursive_tuple_test() {
 
   io.debug("-=-------------------")
   // io.debug(typed)
-  list.map(
-    checker.substitutions,
-    fn(s) {
-      let #(k, #(b, t)) = s
-      io.debug(k)
-      io.debug(b)
-      io.debug(t.to_string(t, fn(_) { "OOO" }))
-    },
-  )
+  // list.map(
+  //   checker.substitutions,
+  //   fn(s) {
+  //     let #(k, t) = s
+  //     io.debug(k)
+  //     io.debug(t.to_string(t, fn(_) { "OOO" }))
+  //   },
+  // )
   let "() -> μ2.(Binary, 2)" =
     inference.print(typed, checker.substitutions, [])
     |> io.debug
