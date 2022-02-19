@@ -102,10 +102,9 @@ pub fn pair_test() {
   let #(typed, checker) = infer(source, t.Tuple([tx, tx]))
   assert Ok(type_) = get_type(typed, checker)
   assert t.Tuple([t.Binary, t.Binary]) = type_
-  // TODO
-  // assert Ok(element) = get_expression(typed, [1])
-  // assert Error(reason) = get_type(element, checker)
-  // assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+  assert Ok(element) = get_expression(typed, [1])
+  assert Error(reason) = get_type(element, checker)
+  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }
 
 // pub fn row_expression_test() {
