@@ -258,10 +258,10 @@ pub fn infer(untyped, expected) {
 fn do_infer(untyped, expected, state, scope) {
   let #(_, expression) = untyped
   case expression {
-    e.Binary(_) ->
+    e.Binary(value) ->
       case unify(expected, t.Binary, state) {
-        Ok(state) -> #(Ok(expected), state)
-        Error(reason) -> #(Error(reason), state)
+        Ok(state) -> #(#(Ok(expected), e.Binary(value)), state)
+        Error(reason) -> #(#(Error(reason), e.Binary(value)), state)
       }
     e.Tuple(elements) -> {
       let #(with_type, state) =
@@ -281,7 +281,7 @@ fn do_infer(untyped, expected, state, scope) {
         Ok(state) -> #(Ok(expected), state)
         Error(reason) -> #(Error(reason), state)
       }
-      let #(_, state) =
+      let #(elements, state) =
         list.map_state(
           with_type,
           state,
@@ -290,43 +290,52 @@ fn do_infer(untyped, expected, state, scope) {
             do_infer(element, expected, state, scope)
           },
         )
-      #(t, state)
+      #(#(t, e.Tuple(elements)), state)
     }
     // e.Row(fields) -> {
     // }
     e.Function(p.Variable(label), body) -> {
       let #(arg, state) = fresh(state)
       let #(return, state) = fresh(state)
-      case unify(expected, t.Function(arg, return), state) {
-        Ok(state) ->
-          do_infer(body, return, state, [#(label, #([], arg)), ..scope])
+      let #(body, state) =
+        do_infer(body, return, state, [#(label, #([], arg)), ..scope])
+      let #(t, state) = case unify(expected, t.Function(arg, return), state) {
+        Ok(state) -> #(Ok(expected), state)
         Error(reason) -> #(Error(reason), state)
       }
+      #(#(t, e.Function(p.Variable(label), body)), state)
     }
     e.Call(func, with) -> {
       let #(arg, state) = fresh(state)
-      let #(_t, state) = do_infer(func, t.Function(arg, expected), state, scope)
-      do_infer(with, arg, state, scope)
+      let #(func, state) =
+        do_infer(func, t.Function(arg, expected), state, scope)
+      let #(with, state) = do_infer(with, arg, state, scope)
+      #(#(Ok(expected), e.Call(func, with)), state)
     }
 
     e.Let(p.Variable(label), value, then) -> {
       let #(u, state) = fresh(state)
       //   TODO haandle self case or variable renaming
       let value_scope = [#(label, #([], u)), ..scope]
-      let #(_t, state) = do_infer(value, u, state, value_scope)
+      let #(value, state) = do_infer(value, u, state, value_scope)
       let polytype = generalise(u, state, scope)
-      do_infer(then, expected, state, [#(label, polytype), ..scope])
+      let #(then, state) =
+        do_infer(then, expected, state, [#(label, polytype), ..scope])
+      #(#(Ok(expected), e.Let(p.Variable(label), value, then)), state)
     }
     e.Variable(label) ->
       case list.key_find(scope, label) {
         Ok(polytype) -> {
           let #(monotype, state) = instantiate(polytype, state)
           case unify(expected, monotype, state) {
-            Ok(state) -> #(Ok(expected), state)
-            Error(reason) -> #(Error(reason), state)
+            Ok(state) -> #(#(Ok(expected), e.Variable(label)), state)
+            Error(reason) -> #(#(Error(reason), e.Variable(label)), state)
           }
         }
-        Error(Nil) -> #(Error(typer.UnknownVariable(label)), state)
+        Error(Nil) -> #(
+          #(Error(typer.UnknownVariable(label)), e.Variable(label)),
+          state,
+        )
       }
   }
 }

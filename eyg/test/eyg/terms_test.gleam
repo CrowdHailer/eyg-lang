@@ -35,6 +35,7 @@ fn unbound() {
 }
 
 fn get_type(typed, checker) {
+  let #(typed, tree) = typed
   case typed {
     Ok(type_) -> {
       let resolved = inference.resolve(type_, checker)
@@ -85,10 +86,9 @@ pub fn tuple_expression_test() {
   let #(typed, checker) = infer(source, t.Tuple([t.Tuple([])]))
   // Type is correct here only internally is there a failure
   assert Ok(t.Tuple([t.Tuple([])])) = get_type(typed, checker)
-  // TODO
-  // assert Ok(element) = get_expression(typed, [0])
-  // assert Error(reason) = get_type(element, checker)
-  // assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
+  assert Ok(element) = get_expression(typed, [0])
+  assert Error(reason) = get_type(element, checker)
+  assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
 
 pub fn pair_test() {
@@ -395,7 +395,7 @@ pub fn my_recursive_tuple_test() {
       ),
       variable("f"),
     )
-  let #(Ok(typed), checker) = infer(source, unbound())
+  let #(typed, checker) = infer(source, unbound())
 
   // io.debug("-=-------------------")
   // io.debug(typed)
@@ -408,7 +408,8 @@ pub fn my_recursive_tuple_test() {
   //     io.debug(inference.to_string(t, []))
   //   },
   // )
-  let "() -> μ0.(Binary, 0)" = inference.print(typed, checker)
+  let Ok(type_) = get_type(typed, checker)
+  let "() -> μ0.(Binary, 0)" = inference.print(type_, checker)
   // inference.print(t.Unbound(4), checker)
   // |> io.debug
   // assert Ok(t.Function(from, to)) = get_type(typed, checker)
