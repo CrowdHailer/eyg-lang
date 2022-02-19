@@ -10,6 +10,13 @@ pub fn find(list: List(a), search: a) -> Result(a, Nil) {
   }
 }
 
+pub fn contains(list: List(a), search: a) -> Bool {
+  case find(list, search) {
+    Ok(_) -> True
+    Error(Nil) -> False
+  }
+}
+
 /// Finds the first element in a given list for which the given function returns
 /// True.
 ///

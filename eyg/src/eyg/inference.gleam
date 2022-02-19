@@ -43,7 +43,7 @@ pub fn do_unify(
 fn add_substitution(i, type_, substitutions) {
   // TODO occurs in check
   // We assume i doesn't occur in substitutions
-  // List.contains(free_in_type(type_), i)
+  // list.contains(free_in_type(type_), i)
   let type_ = case i == 2 {
     True -> t.Recursive(i, type_)
     False -> type_
@@ -62,62 +62,32 @@ pub fn lookup(env, label) {
   todo
 }
 
-pub fn do_free_in_type(t, substitutions: List(#(Int, t.Monotype(n))), set) {
-  // io.debug(t)
-  // io.debug("-=-------------------")
-  // list.map(
-  //   substitutions,
-  //   fn(s) {
-  //     let #(k, #(b, t)) = s
-  //     io.debug(k)
-  //     io.debug(b)
-  //     io.debug(t.to_string(t, fn(_) { "OOO" }))
-  //   },
-  // )
-  // io.debug(monotype.to_string(t1, fn(_) { "OTHER" }))
-  // TODO remove
-  []
-  // case t {
-  //   t.Unbound(i) ->
-  //     case list.key_find(substitutions, i) {
-  //       Ok(#(_rec, t)) -> do_free_in_type(t, substitutions, set)
-  //       Error(Nil) -> push_new(i, set)
-  //     }
-  //   t.Native(_) | t.Binary -> set
-  //   t.Tuple(elements) ->
-  //     list.fold(
-  //       elements,
-  //       set,
-  //       fn(e, set) { do_free_in_type(e, substitutions, set) },
-  //     )
-  //   // Row
-  //   t.Function(from, to) -> {
-  //     let set = do_free_in_type(from, substitutions, set)
-  //     do_free_in_type(to, substitutions, set)
-  //   }
-  // }
+// relies on type having been resolved
+fn do_free_in_type(type_, set) {
+  case type_ {
+    t.Unbound(i) -> push_new(i, set)
+    t.Native(_) | t.Binary -> set
+    t.Tuple(elements) -> list.fold(elements, set, do_free_in_type)
+    t.Recursive(i, type_) -> {
+      let inner = do_free_in_type(type_, set)
+      difference(inner, [i])
+    }
+    // Row
+    t.Function(from, to) -> {
+      let set = do_free_in_type(from, set)
+      do_free_in_type(to, set)
+    }
+  }
 }
 
-pub fn free_in_type(t, substitutions) {
-  do_free_in_type(t, substitutions, [])
-}
-
-fn do_free_in_elements(elements, substitutions, set) {
-  todo
-  // case elements {
-  //   [] -> set
-  //   [element, ..rest] ->
-  //     do_free_in_elements(
-  //       rest,
-  //       substitutions,
-  //       do_free_in_type(element, substitutions, set),
-  //     )
-  // }
+pub fn free_in_type(t) {
+  do_free_in_type(t, [])
 }
 
 pub fn do_free_in_polytype(poly, substitutions) {
   let #(quantifiers, mono) = poly
-  difference(free_in_type(mono, substitutions), quantifiers)
+  let mono = resolve(mono, substitutions)
+  difference(free_in_type(mono), quantifiers)
 }
 
 pub fn do_free_in_env(env, substitutions, set) {
@@ -140,11 +110,9 @@ pub fn free_in_env(env, substitutions) {
 // can't be new numbers
 // Dont need to be named can just use initial i's discovered
 pub fn generalise(mono, substitutions, env) {
+  let mono = resolve(mono, substitutions)
   let type_params =
-    difference(
-      free_in_type(mono, substitutions),
-      free_in_env(env, substitutions),
-    )
+    difference(free_in_type(mono), free_in_env(env, substitutions))
   #(type_params, mono)
 }
 
@@ -265,12 +233,7 @@ pub fn infer(untyped, expected) {
 }
 
 // return just substitutions
-fn do_infer(
-  untyped,
-  expected,
-  state,
-  scope,
-) -> #(Result(t.Monotype(n), typer.Reason(n)), State(n)) {
+fn do_infer(untyped, expected, state, scope) {
   let #(_, expression) = untyped
   case expression {
     e.Binary(_) ->
@@ -307,6 +270,9 @@ fn do_infer(
         )
       #(t, state)
     }
+
+    // e.Row(fields) -> {
+    // }
     e.Function(p.Variable(label), body) -> {
       let #(arg, state) = fresh(state)
       let #(return, state) = fresh(state)
@@ -329,7 +295,7 @@ fn do_infer(
       //   TODO haandle self case or variable renaming
       let value_scope = [#(label, #([], u)), ..scope]
       let #(_t, state) = do_infer(value, u, state, value_scope)
-      let polytype = generalise(u, state.substitutions, scope)
+      let polytype = generalise(u, state, scope)
       do_infer(then, expected, state, [#(label, polytype), ..scope])
     }
     e.Variable(label) ->

@@ -68,42 +68,46 @@ pub fn binary_expression_test() {
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
 
-// pub fn tuple_expression_test() {
-//   let source = tuple_([binary("Hello")])
-//   let #(typed, checker) = infer(source, unbound())
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Tuple([t.Binary]) = type_
-//   let #(typed, checker) = infer(source, t.Tuple([unbound()]))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Tuple([t.Binary]) = type_
-//   let #(typed, checker) = infer(source, t.Tuple([t.Binary]))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Tuple([t.Binary]) = type_
-//   let #(typed, checker) = infer(source, t.Tuple([]))
-//   assert Error(reason) = get_type(typed, checker)
-//   assert typer.IncorrectArity(0, 1) = reason
-//   let #(typed, checker) = infer(source, t.Tuple([t.Tuple([])]))
-//   // Type is correct here only internally is there a failure
-//   assert Ok(t.Tuple([t.Tuple([])])) = get_type(typed, checker)
-//   assert Ok(element) = get_expression(typed, [0])
-//   assert Error(reason) = get_type(element, checker)
-//   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
-// }
-// pub fn pair_test() {
-//   let source = tuple_([binary("Hello"), tuple_([])])
-//   let tx = t.Unbound(-1)
-//   let ty = t.Unbound(-2)
-//   let #(typed, checker) = infer(source, t.Tuple([tx, ty]))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Tuple([t.Binary, t.Tuple([])]) = type_
-//   // could check tx/ty bound properly
-//   let #(typed, checker) = infer(source, t.Tuple([tx, tx]))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Tuple([t.Binary, t.Binary]) = type_
-//   assert Ok(element) = get_expression(typed, [1])
-//   assert Error(reason) = get_type(element, checker)
-//   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
-// }
+pub fn tuple_expression_test() {
+  let source = tuple_([binary("Hello")])
+  let #(typed, checker) = infer(source, unbound())
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Tuple([t.Binary]) = type_
+  let #(typed, checker) = infer(source, t.Tuple([unbound()]))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Tuple([t.Binary]) = type_
+  let #(typed, checker) = infer(source, t.Tuple([t.Binary]))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Tuple([t.Binary]) = type_
+  let #(typed, checker) = infer(source, t.Tuple([]))
+  assert Error(reason) = get_type(typed, checker)
+  assert typer.IncorrectArity(0, 1) = reason
+  let #(typed, checker) = infer(source, t.Tuple([t.Tuple([])]))
+  // Type is correct here only internally is there a failure
+  assert Ok(t.Tuple([t.Tuple([])])) = get_type(typed, checker)
+  // TODO
+  // assert Ok(element) = get_expression(typed, [0])
+  // assert Error(reason) = get_type(element, checker)
+  // assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
+}
+
+pub fn pair_test() {
+  let source = tuple_([binary("Hello"), tuple_([])])
+  let tx = t.Unbound(-1)
+  let ty = t.Unbound(-2)
+  let #(typed, checker) = infer(source, t.Tuple([tx, ty]))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Tuple([t.Binary, t.Tuple([])]) = type_
+  // could check tx/ty bound properly
+  let #(typed, checker) = infer(source, t.Tuple([tx, tx]))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Tuple([t.Binary, t.Binary]) = type_
+  // TODO
+  // assert Ok(element) = get_expression(typed, [1])
+  // assert Error(reason) = get_type(element, checker)
+  // assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+}
+
 // pub fn row_expression_test() {
 //   // TODO order when row is called
 //   let source = row([#("foo", binary("Hello"))])
@@ -137,13 +141,14 @@ pub fn binary_expression_test() {
 // }
 // // TODO tag test
 // // TODO patterns
-// pub fn var_expression_test() {
-//   let source = variable("x")
-//   let #(typed, checker) = infer(source, unbound())
-//   assert Error(reason) = get_type(typed, checker)
-//   // TODO check we're on the lowest unbound integer
-//   assert typer.UnknownVariable("x") = reason
-// }
+pub fn var_expression_test() {
+  let source = variable("x")
+  let #(typed, checker) = infer(source, unbound())
+  assert Error(reason) = get_type(typed, checker)
+  // TODO check we're on the lowest unbound integer
+  assert typer.UnknownVariable("x") = reason
+}
+
 // pub fn function_test() {
 //   let source = function(p.Variable(""), binary(""))
 //   let #(typed, checker) = infer(source, unbound())
