@@ -33,7 +33,12 @@ pub fn do_unify(
         Ok(pairs) -> list.try_fold(pairs, state, do_unify)
         Error(#(c1, c2)) -> Error(typer.IncorrectArity(c1, c2))
       }
-    t.Row(row1, extra1), t.Row(row2, extra2) -> {
+    // Is the type only ever Row. I think not it's Record Record and Union Union
+    // TODO t.Record(r1)
+    t.Row(row1, extra1), t.Row(row2, extra2) | t.Union(row1, extra1), t.Union(
+      row2,
+      extra2,
+    ) -> {
       let #(unmatched1, unmatched2, shared) = typer.group_shared(row1, row2)
       let #(i, state) = fresh(state)
       try state = case unmatched2, extra1 {
@@ -199,6 +204,8 @@ pub fn to_string(t, used) {
         string.join(["(", string.join(list.intersperse(rendered, ", ")), ")"])
       #(rendered, used)
     }
+    // TODO used first fn used variable names
+    t.Union(_, _) -> #("UNION", used)
     t.Binary -> #("Binary", used)
     t.Function(from, to) -> {
       let #(from, used) = to_string(from, used)

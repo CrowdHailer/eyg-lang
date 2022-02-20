@@ -1603,6 +1603,9 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
       let [#(_, child), .._] = list.drop(fields, i)
       get_element(child, rest)
     }
+    // TODO need to get out the union tag
+    #(_, e.Tagged(_tag, value)), [1, ..rest] -> get_element(value, rest)
+
     #(_, e.Let(pattern, _, _)), [0, ..rest] -> get_pattern(pattern, rest, tree)
     #(_, e.Let(_, value, _)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(_, _, then)), [2, ..rest] -> get_element(then, rest)

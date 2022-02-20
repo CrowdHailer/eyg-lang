@@ -142,10 +142,39 @@ pub fn row_expression_test() {
 }
 
 pub fn tag_test() {
-  let source = tagged("None", tuple_([]))
+  let source = tagged("Some", tuple_([]))
+
+  // Unbound
   let #(typed, checker) = infer(source, unbound())
   assert Ok(type_) = get_type(typed, checker)
-  assert t.Union([#("None", t.Tuple([]))], Some(_)) = type_
+  assert t.Union([#("Some", t.Tuple([]))], Some(_)) = type_
+
+  // Part of Option
+  let #(typed, checker) =
+    infer(
+      source,
+      t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None),
+    )
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None) = type_
+  io.debug(inference.print(type_, checker))
+
+  // Mismatched type
+  let #(typed, checker) =
+    infer(source, t.Union([#("Some", t.Binary), #("None", t.Tuple([]))], None))
+  assert Ok(type_) = get_type(typed, checker)
+  // TODO expected option of A or A
+  assert Ok(element) = get_expression(typed, [1])
+  assert Error(reason) = get_type(element, checker)
+  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+  // assert t.Union([#("Some", t.Tuple([]))], Some(_)) = type_
+  // wrong variant
+  // union Foo
+  let #(typed, checker) = infer(source, t.Union([#("Foo", t.Tuple([]))], None))
+  assert Error(reason) = get_type(typed, checker)
+  assert typer.UnexpectedFields(a) = reason
+  io.debug(a)
+  // io.debug(b)
 }
 
 // // TODO tag test
