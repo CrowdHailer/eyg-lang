@@ -365,12 +365,12 @@ fn do_infer(untyped, expected, state, scope) {
     e.Function(p.Variable(label), body) -> {
       let #(arg, state) = fresh(state)
       let #(return, state) = fresh(state)
-      let #(body, state) =
-        do_infer(body, return, state, [#(label, #([], arg)), ..scope])
       let #(t, state) = case unify(expected, t.Function(arg, return), state) {
         Ok(state) -> #(Ok(expected), state)
         Error(reason) -> #(Error(reason), state)
       }
+      let #(body, state) =
+        do_infer(body, return, state, [#(label, #([], arg)), ..scope])
       #(#(t, e.Function(p.Variable(label), body)), state)
     }
     e.Call(func, with) -> {

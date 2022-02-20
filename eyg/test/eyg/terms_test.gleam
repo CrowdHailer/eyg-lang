@@ -151,52 +151,55 @@ pub fn var_expression_test() {
   assert typer.UnknownVariable("x") = reason
 }
 
-// pub fn function_test() {
-//   let source = function(p.Variable(""), binary(""))
-//   let #(typed, checker) = infer(source, unbound())
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Function(t.Unbound(_), t.Binary) = type_
-//   let #(typed, checker) = infer(source, t.Function(unbound(), t.Unbound(-2)))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Function(t.Unbound(_), t.Binary) = type_
-//   let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Binary))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Function(t.Tuple([]), t.Binary) = type_
-//   let #(typed, checker) = infer(source, t.Function(unbound(), unbound()))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Function(t.Binary, t.Binary) = type_
-//   let #(typed, checker) = infer(source, t.Binary)
-//   assert Error(reason) = get_type(typed, checker)
-//   // assert typer.UnmatchedTypes(t.Binary, t.Function(t.Unbound(_), t.Tuple([]))) =
-//   //   reason
-//   // TODO move up
-//   let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Tuple([])))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Function(t.Tuple([]), t.Tuple([])) = type_
-//   assert Ok(body) = get_expression(typed, [1])
-//   assert Error(reason) = get_type(body, checker)
-//   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
-// }
-// pub fn id_function_test() {
-//   let source = function(p.Variable("x"), variable("x"))
-//   let #(typed, checker) = infer(source, unbound())
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Function(t.Unbound(i), t.Unbound(j)) = type_
-//   assert True = i == j
-//   let #(typed, checker) = infer(source, t.Function(unbound(), t.Binary))
-//   assert Ok(type_) = get_type(typed, checker)
-//   // TODO check unbound is now binary
-//   assert t.Function(t.Binary, t.Binary) = type_
-//   let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Binary))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Function(t.Tuple([]), t.Binary) = type_
-//   assert Ok(body) = get_expression(typed, [1])
-//   assert Error(reason) = get_type(body, checker)
-//   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
-//   // Not this is saying that the variable is wrong some how
-// }
+pub fn function_test() {
+  let source = function(p.Variable(""), binary(""))
+  let #(typed, checker) = infer(source, unbound())
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Function(t.Unbound(_), t.Binary) = type_
+  let #(typed, checker) = infer(source, t.Function(unbound(), t.Unbound(-2)))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Function(t.Unbound(_), t.Binary) = type_
+  let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Binary))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Function(t.Tuple([]), t.Binary) = type_
+  let #(typed, checker) = infer(source, t.Function(unbound(), unbound()))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Function(t.Binary, t.Binary) = type_
+  let #(typed, checker) = infer(source, t.Binary)
+  assert Error(reason) = get_type(typed, checker)
+  // assert typer.UnmatchedTypes(t.Binary, t.Function(t.Unbound(_), t.Tuple([]))) =
+  //   reason
+  // TODO move up
+  let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Tuple([])))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Function(t.Tuple([]), t.Tuple([])) = type_
+  assert Ok(body) = get_expression(typed, [1])
+  assert Error(reason) = get_type(body, checker)
+  assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
+}
+
+pub fn id_function_test() {
+  let source = function(p.Variable("x"), variable("x"))
+  let #(typed, checker) = infer(source, unbound())
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Function(t.Unbound(i), t.Unbound(j)) = type_
+  assert True = i == j
+  let #(typed, checker) = infer(source, t.Function(unbound(), t.Binary))
+  assert Ok(type_) = get_type(typed, checker)
+  // TODO check unbound is now binary
+  assert t.Function(t.Binary, t.Binary) = type_
+  let #(typed, checker) = infer(source, t.Function(t.Tuple([]), t.Binary))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Function(t.Tuple([]), t.Binary) = type_
+  assert Ok(body) = get_expression(typed, [1])
+  assert Error(reason) = get_type(body, checker)
+  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+  // Not this is saying that the variable is wrong some how
+}
+
 // // equal bin bin
 // // equal bin tuple still returns true
+// TODO patterns in arguments
 // pub fn call_function_test() {
 //   let func = function(p.Tuple([]), binary(""))
 //   let source = call(func, tuple_([]))
@@ -211,34 +214,36 @@ pub fn var_expression_test() {
 //   // assert Error(reason) = get_type(typed, checker)
 //   // assert typer.UnmatchedTypes(t.Tuple([]), t.Tuple([])) = reason
 // }
-// pub fn call_generic_function_test() {
-//   let func = function(p.Variable("x"), variable("x"))
-//   let source = call(func, tuple_([]))
-//   let #(typed, checker) = infer(source, unbound())
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Tuple([]) = type_
-//   let #(typed, checker) = infer(source, t.Tuple([]))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Tuple([]) = type_
-//   // error in generic pushed to arguments
-//   let #(typed, checker) = infer(source, t.Binary)
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Binary = type_
-//   assert Ok(body) = get_expression(typed, [1])
-//   assert Error(reason) = get_type(body, checker)
-//   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
-// }
-// pub fn call_not_a_function_test() {
-//   let source = call(binary("no a func"), tuple_([]))
-//   let #(typed, checker) = infer(source, t.Binary)
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Binary = type_
-//   assert Ok(body) = get_expression(typed, [0])
-//   assert Error(reason) = get_type(body, checker)
-//   assert typer.UnmatchedTypes(expected, t.Binary) = reason
-//   // TODO resolve expected
-//   // assert t.Function(t.Tuple([]), t.Binary) = expected
-// }
+pub fn call_generic_function_test() {
+  let func = function(p.Variable("x"), variable("x"))
+  let source = call(func, tuple_([]))
+  let #(typed, checker) = infer(source, unbound())
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Tuple([]) = type_
+  let #(typed, checker) = infer(source, t.Tuple([]))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Tuple([]) = type_
+  // error in generic pushed to arguments
+  let #(typed, checker) = infer(source, t.Binary)
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Binary = type_
+  assert Ok(body) = get_expression(typed, [1])
+  assert Error(reason) = get_type(body, checker)
+  assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
+}
+
+pub fn call_not_a_function_test() {
+  let source = call(binary("no a func"), tuple_([]))
+  let #(typed, checker) = infer(source, t.Binary)
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Binary = type_
+  assert Ok(body) = get_expression(typed, [0])
+  assert Error(reason) = get_type(body, checker)
+  assert typer.UnmatchedTypes(expected, t.Binary) = reason
+  // TODO resolve expected
+  // assert t.Function(t.Tuple([]), t.Binary) = expected
+}
+
 // pub fn hole_expression_test() {
 //   let source = hole()
 //   let #(typed, checker) = infer(source, unbound())
