@@ -107,37 +107,40 @@ pub fn pair_test() {
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }
 
-// pub fn row_expression_test() {
-//   // TODO order when row is called
-//   let source = row([#("foo", binary("Hello"))])
-//   let #(typed, checker) = infer(source, unbound())
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Row([#("foo", t.Binary)], None) = type_
-//   let #(typed, checker) = infer(source, t.Row([#("foo", t.Binary)], None))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Row([#("foo", t.Binary)], None) = type_
-//   // TODO row with some
-//   let #(typed, checker) =
-//     infer(source, t.Row([#("foo", t.Binary), #("bar", t.Binary)], None))
-//   assert Error(reason) = get_type(typed, checker)
-//   assert typer.MissingFields([#("bar", t.Binary)]) = reason
-//   let #(typed, checker) = infer(source, t.Row([], None))
-//   assert Error(reason) = get_type(typed, checker)
-//   // assert typer.UnexpectedFields([#("foo", t.Binary)]) = reason
-//   // TODO move up
-//   let #(typed, checker) = infer(source, t.Row([#("foo", t.Tuple([]))], None))
-//   assert Ok(type_) = get_type(typed, checker)
-//   assert t.Row([#("foo", t.Tuple([]))], None) = type_
-//   assert Ok(element) = get_expression(typed, [0, 1])
-//   assert Error(reason) = get_type(element, checker)
-//   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
-//   // T.Row(head, option(more_row))
-//   // Means no such thing as an empty record. Good because tuple is unit
-//   let #(typed, checker) = infer(source, t.Row([#("foo", t.Binary)], Some(-1)))
-//   assert Ok(type_) = get_type(typed, checker)
-//   // TODO should resolve to none
-//   // assert t.Row([#("foo", t.Binary)], None) = type_
-// }
+pub fn row_expression_test() {
+  // TODO order when row is called
+  let source = row([#("foo", binary("Hello"))])
+  let #(typed, checker) = infer(source, unbound())
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Row([#("foo", t.Binary)], None) = type_
+  let #(typed, checker) = infer(source, t.Row([#("foo", t.Binary)], None))
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Row([#("foo", t.Binary)], None) = type_
+  // TODO row with some
+  let #(typed, checker) =
+    infer(source, t.Row([#("foo", t.Binary), #("bar", t.Binary)], None))
+  assert Error(reason) = get_type(typed, checker)
+  assert typer.MissingFields([#("bar", t.Binary)]) = reason
+  let #(typed, checker) = infer(source, t.Row([], None))
+  assert Error(reason) = get_type(typed, checker)
+  // assert typer.UnexpectedFields([#("foo", t.Binary)]) = reason
+  // TODO move up
+  let #(typed, checker) = infer(source, t.Row([#("foo", t.Tuple([]))], None))
+  // TODO think which one I want most.
+  // assert Ok(type_) = get_type(typed, checker)
+  // assert t.Row([#("foo", t.Tuple([]))], None) = type_
+  // assert Ok(element) = get_expression(typed, [0, 1])
+  // assert Error(reason) = get_type(element, checker)
+  // assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
+  // ----- up to previous todo
+  // T.Row(head, option(more_row))
+  // Means no such thing as an empty record. Good because tuple is unit
+  let #(typed, checker) = infer(source, t.Row([#("foo", t.Binary)], Some(-1)))
+  assert Ok(type_) = get_type(typed, checker)
+  // TODO should resolve to none
+  // assert t.Row([#("foo", t.Binary)], None) = type_
+}
+
 // // TODO tag test
 // // TODO patterns
 pub fn var_expression_test() {

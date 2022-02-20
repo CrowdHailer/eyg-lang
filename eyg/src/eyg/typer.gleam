@@ -237,7 +237,8 @@ pub fn unify(expected, given, state) {
   // }
 }
 
-fn group_shared(left, right) {
+// TODO test in list
+pub fn group_shared(left, right) {
   do_group_shared(left, right, [], [])
 }
 

@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/int
+import gleam/option.{None, Some}
 import gleam/string
 import gleam/list
 import gleam/pair
@@ -10,37 +11,52 @@ import eyg/typer
 
 pub fn do_unify(
   pair: #(t.Monotype(n), t.Monotype(n)),
-  substitutions: List(#(Int, t.Monotype(n))),
-) -> Result(List(#(Int, t.Monotype(n))), typer.Reason(n)) {
+  state: State(n),
+) -> Result(State(n), typer.Reason(n)) {
   let #(t1, t2) = pair
   case t1, t2 {
-    t.Unbound(i), t.Unbound(j) if i == j -> Ok(substitutions)
+    t.Unbound(i), t.Unbound(j) if i == j -> Ok(state)
     t.Unbound(i), _ ->
-      case list.key_find(substitutions, i) {
-        Ok(t1) -> do_unify(#(t1, t2), substitutions)
-        Error(Nil) -> Ok(add_substitution(i, t2, substitutions))
+      case list.key_find(state.substitutions, i) {
+        Ok(t1) -> do_unify(#(t1, t2), state)
+        Error(Nil) -> Ok(add_substitution(i, t2, state))
       }
     _, t.Unbound(j) ->
-      case list.key_find(substitutions, j) {
-        Ok(t2) -> do_unify(#(t1, t2), substitutions)
-        Error(Nil) -> Ok(add_substitution(j, t1, substitutions))
+      case list.key_find(state.substitutions, j) {
+        Ok(t2) -> do_unify(#(t1, t2), state)
+        Error(Nil) -> Ok(add_substitution(j, t1, state))
       }
-    t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(substitutions)
-    t.Binary, t.Binary -> Ok(substitutions)
+    t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(state)
+    t.Binary, t.Binary -> Ok(state)
     t.Tuple(e1), t.Tuple(e2) ->
       case list.zip(e1, e2) {
-        Ok(pairs) -> list.try_fold(pairs, substitutions, do_unify)
+        Ok(pairs) -> list.try_fold(pairs, state, do_unify)
         Error(#(c1, c2)) -> Error(typer.IncorrectArity(c1, c2))
       }
+    t.Row(row1, extra1), t.Row(row2, extra2) -> {
+      let #(unmatched1, unmatched2, shared) = typer.group_shared(row1, row2)
+      let #(i, state) = fresh(state)
+      try state = case unmatched2, extra1 {
+        [], _ -> Ok(state)
+        only, Some(i) -> Ok(add_substitution(i, t.Row(only, Some(i)), state))
+        only, None -> Error(typer.UnexpectedFields(only))
+      }
+      try state = case unmatched1, extra2 {
+        [], _ -> Ok(state)
+        only, Some(i) -> Ok(add_substitution(i, t.Row(only, Some(i)), state))
+        only, None -> Error(typer.MissingFields(only))
+      }
+      list.try_fold(shared, state, do_unify)
+    }
     t.Function(from1, to1), t.Function(from2, to2) -> {
-      try substitutions = do_unify(#(from1, from2), substitutions)
-      do_unify(#(to1, to2), substitutions)
+      try state = do_unify(#(from1, from2), state)
+      do_unify(#(to1, to2), state)
     }
     _, _ -> Error(typer.UnmatchedTypes(t1, t2))
   }
 }
 
-fn add_substitution(i, type_, substitutions) {
+fn add_substitution(i, type_, state: State(n)) -> State(n) {
   // These checks arrive too late end up with reursive type only existing in first recursion
   // We assume i doesn't occur in substitutions
   // let check =
@@ -54,14 +70,16 @@ fn add_substitution(i, type_, substitutions) {
   //   }
   //   False -> type_
   // }
-  [#(i, type_), ..substitutions]
+  let substitutions = [#(i, type_), ..state.substitutions]
+  State(..state, substitutions: substitutions)
 }
 
 fn unify(t1, t2, state: State(n)) {
-  let State(substitutions: s, ..) = state
-  try s = do_unify(#(t1, t2), s)
-  //   TODO add errors here
-  Ok(State(..state, substitutions: s))
+  // let State(substitutions: s, ..) = state
+  // try s = do_unify(#(t1, t2), s)
+  // //   TODO add errors here
+  // Ok(State(..state, substitutions: s))
+  do_unify(#(t1, t2), state)
 }
 
 // relies on type having been resolved
@@ -70,11 +88,27 @@ fn do_free_in_type(type_, set) {
     t.Unbound(i) -> push_new(i, set)
     t.Native(_) | t.Binary -> set
     t.Tuple(elements) -> list.fold(elements, set, do_free_in_type)
+    t.Row(fields, rest) -> {
+      let set =
+        list.fold(
+          fields,
+          set,
+          fn(field, set) {
+            let #(_name, type_) = field
+            do_free_in_type(type_, set)
+          },
+        )
+      case rest {
+        None -> set
+        // Already resolved
+        Some(i) -> push_new(i, set)
+      }
+    }
     t.Recursive(i, type_) -> {
       let inner = do_free_in_type(type_, set)
       difference(inner, [i])
     }
-    // Row
+
     t.Function(from, to) -> {
       let set = do_free_in_type(from, set)
       do_free_in_type(to, set)
@@ -203,27 +237,27 @@ pub fn do_resolve(type_, substitutions: List(#(Int, t.Monotype(n))), recuring) {
       let elements = list.map(elements, do_resolve(_, substitutions, recuring))
       t.Tuple(elements)
     }
-    // Row(fields, rest) -> {
-    //   let resolved_fields =
-    //     list.map(
-    //       fields,
-    //       fn(field) {
-    //         let #(name, type_) = field
-    //         #(name, do_resolve(type_, substitutions))
-    //       },
-    //     )
-    //   case rest {
-    //     None -> Row(resolved_fields, None)
-    //     Some(i) -> {
-    //       type_
-    //       case do_resolve(Unbound(i), substitutions) {
-    //         Unbound(j) -> Row(resolved_fields, Some(j))
-    //         Row(inner, rest) -> Row(list.append(resolved_fields, inner), rest)
-    //       }
-    //     }
-    //   }
-    // }
-    // TODO check do_resolve in our record based recursive frunctions
+    t.Row(fields, rest) -> {
+      let resolved_fields =
+        list.map(
+          fields,
+          fn(field) {
+            let #(name, type_) = field
+            #(name, do_resolve(type_, substitutions, recuring))
+          },
+        )
+      case rest {
+        None -> t.Row(resolved_fields, None)
+        Some(i) -> {
+          type_
+          case do_resolve(t.Unbound(i), substitutions, recuring) {
+            t.Unbound(j) -> t.Row(resolved_fields, Some(j))
+            t.Row(inner, rest) ->
+              t.Row(list.append(resolved_fields, inner), rest)
+          }
+        }
+      }
+    }
     t.Function(from, to) -> {
       let from = do_resolve(from, substitutions, recuring)
       let to = do_resolve(to, substitutions, recuring)
@@ -292,8 +326,42 @@ fn do_infer(untyped, expected, state, scope) {
         )
       #(#(t, e.Tuple(elements)), state)
     }
-    // e.Row(fields) -> {
-    // }
+    e.Row(fields) -> {
+      // This approach fails because the fresh type is not available later
+      // let #(fields, state) = list.map_state(fields, state, fn(field, state) {
+      //   let #(name, untyped) = field
+      //   let #(type_, state) = fresh(state)
+      //   let #(typed, state) = do_infer(untyped, type_, state, scope)
+      //   #(#(name, typed), state)
+      // })
+      // let field_types = list.map(fields, fn(field) {
+      //   let #(name, typed) = field
+      //   let #(Ok(type_), _tree) = typed
+      //   #(name, type_)
+      // })
+      // let given = t.Row(field_types, None)
+      // #(#(Ok(t.Tuple([])), e.Binary("")), state)
+      let #(pairs, state) =
+        list.map_state(
+          fields,
+          state,
+          fn(field, state) {
+            let #(name, untyped) = field
+            let #(expected, state) = fresh(state)
+            let row_type = #(name, expected)
+            let #(typed, state) = do_infer(untyped, expected, state, scope)
+            let typed_row = #(name, typed)
+            #(#(row_type, typed_row), state)
+          },
+        )
+      let #(row_types, typed_rows) = list.unzip(pairs)
+      let given = t.Row(row_types, None)
+      let #(t, state) = case unify(expected, given, state) {
+        Ok(state) -> #(Ok(expected), state)
+        Error(reason) -> #(Error(reason), state)
+      }
+      #(#(t, e.Row(typed_rows)), state)
+    }
     e.Function(p.Variable(label), body) -> {
       let #(arg, state) = fresh(state)
       let #(return, state) = fresh(state)

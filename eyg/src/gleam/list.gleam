@@ -17,6 +17,27 @@ pub fn contains(list: List(a), search: a) -> Bool {
   }
 }
 
+fn do_unzip(input, xs, ys) {
+  case input {
+    [] -> #(reverse(xs), reverse(ys))
+    [#(x, y), ..rest] -> do_unzip(rest, [x, ..xs], [y, ..ys])
+  }
+}
+
+/// Takes a single list of 2-element tuples and returns two lists.
+///
+/// ## Examples
+///
+///    > unzip([#(1, 2), #(3, 4)])
+///    #([1, 3], [2, 4])
+///
+///    > unzip([])
+///    #([], [])
+///
+pub fn unzip(input: List(#(a, b))) -> #(List(a), List(b)) {
+  do_unzip(input, [], [])
+}
+
 /// Finds the first element in a given list for which the given function returns
 /// True.
 ///
