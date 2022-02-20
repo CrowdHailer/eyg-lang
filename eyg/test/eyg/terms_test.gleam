@@ -5,7 +5,7 @@ import eyg
 import eyg/ast
 import eyg/ast/editor
 import eyg/ast/expression.{
-  binary, call, function, hole, let_, row, tuple_, variable,
+  binary, call, function, hole, let_, row, tagged, tuple_, variable,
 }
 import eyg/typer
 import eyg/ast/expression as e
@@ -139,6 +139,13 @@ pub fn row_expression_test() {
   assert Ok(type_) = get_type(typed, checker)
   // TODO should resolve to none
   // assert t.Row([#("foo", t.Binary)], None) = type_
+}
+
+pub fn tag_test() {
+  let source = tagged("None", tuple_([]))
+  let #(typed, checker) = infer(source, unbound())
+  assert Ok(type_) = get_type(typed, checker)
+  assert t.Union([#("None", t.Tuple([]))], Some(_)) = type_
 }
 
 // // TODO tag test

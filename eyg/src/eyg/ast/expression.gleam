@@ -57,10 +57,9 @@ pub fn example(config, hole) {
   }
 }
 
-fn tagged(name, value) {
-  function(p.Row([#(name, "then")]), call(variable("then"), value))
-}
-
+// fn tagged(name, value) {
+//   function(p.Row([#(name, "then")]), call(variable("then"), value))
+// }
 pub fn lift_type(_config, hole) {
   case hole {
     t.Function(from, _to) -> {
@@ -154,6 +153,7 @@ pub type Node(m, g) {
   Binary(value: String)
   Tuple(elements: List(Expression(m, g)))
   Row(fields: List(#(String, Expression(m, g))))
+  Tagged(tag: String, value: Expression(m, g))
   Variable(label: String)
   Let(pattern: Pattern, value: Expression(m, g), then: Expression(m, g))
   Function(pattern: Pattern, body: Expression(m, g))
@@ -195,6 +195,10 @@ pub fn variable(label) {
 
 pub fn row(fields) {
   #(dynamic.from(Nil), Row(fields))
+}
+
+pub fn tagged(tag, value) {
+  #(dynamic.from(Nil), Tagged(tag, value))
 }
 
 pub fn hole() {

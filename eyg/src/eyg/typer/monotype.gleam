@@ -8,7 +8,9 @@ pub type Monotype(n) {
   Native(n)
   Binary
   Tuple(elements: List(Monotype(n)))
+  // TODO rename Record
   Row(fields: List(#(String, Monotype(n))), extra: Option(Int))
+  Union(variants: List(#(String, Monotype(n))), extra: Option(Int))
   Function(from: Monotype(n), to: Monotype(n))
   Unbound(i: Int)
   Recursive(i: Int, type_: Monotype(n))

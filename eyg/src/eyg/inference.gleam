@@ -88,31 +88,32 @@ fn do_free_in_type(type_, set) {
     t.Unbound(i) -> push_new(i, set)
     t.Native(_) | t.Binary -> set
     t.Tuple(elements) -> list.fold(elements, set, do_free_in_type)
-    t.Row(fields, rest) -> {
-      let set =
-        list.fold(
-          fields,
-          set,
-          fn(field, set) {
-            let #(_name, type_) = field
-            do_free_in_type(type_, set)
-          },
-        )
-      case rest {
-        None -> set
-        // Already resolved
-        Some(i) -> push_new(i, set)
-      }
-    }
+    t.Row(rows, rest) | t.Union(rows, rest) -> do_free_in_row(rows, rest, set)
     t.Recursive(i, type_) -> {
       let inner = do_free_in_type(type_, set)
       difference(inner, [i])
     }
-
     t.Function(from, to) -> {
       let set = do_free_in_type(from, set)
       do_free_in_type(to, set)
     }
+  }
+}
+
+fn do_free_in_row(rows, rest, set) {
+  let set =
+    list.fold(
+      rows,
+      set,
+      fn(row, set) {
+        let #(_name, type_) = row
+        do_free_in_type(type_, set)
+      },
+    )
+  case rest {
+    None -> set
+    // Already resolved
+    Some(i) -> push_new(i, set)
   }
 }
 
@@ -258,6 +259,28 @@ pub fn do_resolve(type_, substitutions: List(#(Int, t.Monotype(n))), recuring) {
         }
       }
     }
+    t.Union(variants, rest) -> {
+      let resolved_variants =
+        // TODO map_value would help or a resolve_named unify_named etc probably also sensible
+        list.map(
+          variants,
+          fn(variant) {
+            let #(name, type_) = variant
+            #(name, do_resolve(type_, substitutions, recuring))
+          },
+        )
+      case rest {
+        None -> t.Union(resolved_variants, None)
+        Some(i) -> {
+          type_
+          case do_resolve(t.Unbound(i), substitutions, recuring) {
+            t.Unbound(j) -> t.Union(resolved_variants, Some(j))
+            t.Union(inner, rest) ->
+              t.Union(list.append(resolved_variants, inner), rest)
+          }
+        }
+      }
+    }
     t.Function(from, to) -> {
       let from = do_resolve(from, substitutions, recuring)
       let to = do_resolve(to, substitutions, recuring)
@@ -362,6 +385,18 @@ fn do_infer(untyped, expected, state, scope) {
       }
       #(#(t, e.Row(typed_rows)), state)
     }
+    e.Tagged(tag, value) -> {
+      let #(i, state) = fresh(state)
+      let #(t.Unbound(j), state) = fresh(state)
+      let given = t.Union([#(tag, i)], Some(j))
+      let #(t, state) = case unify(expected, given, state) {
+        Ok(state) -> #(Ok(expected), state)
+        Error(reason) -> #(Error(reason), state)
+      }
+      let #(typed, state) = do_infer(value, i, state, scope)
+      #(#(t, e.Tagged(tag, typed)), state)
+    }
+
     e.Function(p.Variable(label), body) -> {
       let #(arg, state) = fresh(state)
       let #(return, state) = fresh(state)
