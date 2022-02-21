@@ -1,6 +1,6 @@
 FROM rust:1.58.1 AS build
 
-ENV SHA="v0.19.0"
+ENV SHA="v0.20.0-rc1"
 RUN set -xe \
         && curl -fSL -o gleam-src.tar.gz "https://github.com/gleam-lang/gleam/archive/${SHA}.tar.gz" \
         && mkdir -p /usr/src/gleam-src \
@@ -14,7 +14,7 @@ WORKDIR /opt/app
 RUN cargo install watchexec-cli
 
 # FROM elixir:1.12.2
-FROM node:16.13.2
+FROM node:16.14.0
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin
