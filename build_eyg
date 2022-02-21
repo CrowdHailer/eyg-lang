@@ -1,6 +1,0 @@
-#!/bin/bash
-set -eu
-
-cp eyg/src/*.js editor/src/gen
-gleam format
-gleam compile-package --src eyg/src --out editor/src/gen --name editor --target javascript

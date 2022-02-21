@@ -1,12 +1,12 @@
 <script>
-  import * as Gleam from "../gen/gleam";
+  import * as Gleam from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
 
-  import * as Display from "../gen/eyg/editor/display";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
 
   import Expression from "./Expression.svelte";
   import Pattern from "./Pattern.svelte";
   import Indent from "./Indent.svelte";
-  import * as Sugar from "../gen/eyg/ast/sugar";
+  import * as Sugar from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/sugar";
 
   export let metadata;
   export let pattern;
