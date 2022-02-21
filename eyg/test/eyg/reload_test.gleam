@@ -41,7 +41,7 @@ pub fn simple_reload_test() {
     javascript.Generator(False, [], typer, None, browser.native_to_string),
   )
   |> list.intersperse("\n")
-  |> string.join()
+  |> string.concat()
   |> io.debug
   //   todo
 }

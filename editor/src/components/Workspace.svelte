@@ -1,15 +1,15 @@
 <script>
   import { tick } from "svelte";
-  import * as Display from "../gen/eyg/editor/display";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
 
   import Expression from "./Expression.svelte";
   import Select from "./Select.svelte";
 
-  import * as Editor from "../gen/eyg/ast/editor";
-  import * as Platform from "../gen/platform/browser";
-  import * as Eyg from "../gen/eyg";
-  import * as Ast from "../gen/eyg/ast";
-  import * as Gleam from "../gen/gleam";
+  import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/editor";
+  import * as Platform from "../../../eyg/build/dev/javascript/eyg/dist/platform/browser";
+  import * as Eyg from "../../../eyg/build/dev/javascript/eyg/dist/eyg";
+  import * as Ast from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast";
+  import * as Gleam from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
 
   export let source;
 

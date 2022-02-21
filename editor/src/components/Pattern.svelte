@@ -1,6 +1,6 @@
 <script>
-  import * as Display from "../gen/eyg/editor/display";
-  import * as Pattern from "../gen/eyg/ast/pattern";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
+  import * as Pattern from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/pattern";
 
   // Note this is expression metadata the display objects in this file are metadata of type Display
   export let metadata;

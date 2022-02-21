@@ -1,4 +1,4 @@
-import * as Gleam from "./gleam.js"
+import * as Gleam from "./gleam.mjs"
 
 export function identity(x) {
     return x

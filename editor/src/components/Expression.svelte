@@ -1,7 +1,7 @@
 <script>
-  import * as Gleam from "../gen/gleam";
-  import * as Expression from "../gen/eyg/ast/expression";
-  import * as Sugar from "../gen/eyg/ast/sugar";
+  import * as Gleam from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
+  import * as Expression from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/expression";
+  import * as Sugar from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/sugar";
 
   import Let from "./Let.svelte";
   import Call from "./Call.svelte";

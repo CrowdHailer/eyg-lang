@@ -1,12 +1,10 @@
 Everything is started in Docker containers using docker compose.
 
-1. Run a terminal for the editor image and run `./build_eyg`.
-This is only editor code and copies the eyg code only once.
-`docker-compose run editor watchexec --exts gleam -- ./build_eyg`
-2. Run a terminal for the editor image, cd in to the editor directory and run npm run dev.
-This also starts a server, need port 5000 mapped
-`docker-compose run -p 5000:5000 editor_frontend npm run dev`
-3. run tests in eyg folder with `./bin/test` VERY slow with mounted volume on mac
+1.  `docker-compose run --workdir /opt/app/eyg editor watchexec --exts gleam -- gleam build`
+2.  Run a terminal for the editor image, cd in to the editor directory and run npm run dev.
+    This also starts a server, need port 5000 mapped
+    `docker-compose run -p 5000:5000 editor_frontend npm run dev`
+3.  run tests in eyg folder with `./bin/test` VERY slow with mounted volume on mac
 
 Note network mode host is not supported on mac.
 
@@ -28,7 +26,6 @@ Getelement Pattern should have only the express, and an indication it is the pat
 getelement should be get_node get_code??
 ast/path module can exist, but we need to pull things out and pass to the "is sugared function" transforms can exist in editor but also ast if they are useful enough, such as replace expression.
 ast.map_tree might be useful but don't quite know how you would do it. map_metadata might exist which I guess the typer does but there is a pain separating constraints from scope
-
 
 Selecting an empty variable to put in the tree first means that there is a new Error when you press escape
 Maybe best having state in the editor be intended action. That or an empty variable looks like a whole.
@@ -78,7 +75,6 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - [ ] Rebase Fsharp talk 1hr9min taking types to make type providers moreuseful, we're already planning that
 - [x] Select from for choosing type providers
 - [ ] Pin type, click and bump constraints to top
-- [ ] gleam 18 stdlib to js, json lib and dynamic now useful NOPE I rekon will have my own std lib quicker than investigating node loading.
 - [x] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
 - [ ] Copy/paste
 - [x] Upgrade gleam

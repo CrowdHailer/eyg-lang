@@ -15,7 +15,7 @@ pub type Monotype(n) {
 
 fn row_to_string(row, native_to_string) {
   let #(label, type_) = row
-  string.join([label, ": ", to_string(type_, native_to_string)])
+  string.concat([label, ": ", to_string(type_, native_to_string)])
 }
 
 pub fn to_string(monotype, native_to_string) {
@@ -23,9 +23,9 @@ pub fn to_string(monotype, native_to_string) {
     Native(native) -> native_to_string(native)
     Binary -> "Binary"
     Tuple(elements) ->
-      string.join([
+      string.concat([
         "(",
-        string.join(list.intersperse(
+        string.concat(list.intersperse(
           list.map(elements, to_string(_, native_to_string)),
           ", ",
         )),
@@ -40,17 +40,17 @@ pub fn to_string(monotype, native_to_string) {
             case type_ {
               Function(Tuple([]), x) if x == return -> Ok(name)
               Function(inner, x) if x == return ->
-                Ok(string.join([name, " ", to_string(inner, native_to_string)]))
+                Ok(string.concat([name, " ", to_string(inner, native_to_string)]))
               _ -> Error(Nil)
             }
           },
         )
       case all {
         Ok(variants) ->
-          string.join(["Variants ", ..list.intersperse(variants, " | ")])
+          string.concat(["Variants ", ..list.intersperse(variants, " | ")])
         Error(Nil) -> {
           let Function(from, to) = monotype
-          string.join([
+          string.concat([
             to_string(from, native_to_string),
             " -> ",
             to_string(to, native_to_string),
@@ -59,16 +59,16 @@ pub fn to_string(monotype, native_to_string) {
       }
     }
     Row(fields, _) ->
-      string.join([
+      string.concat([
         "{",
-        string.join(list.intersperse(
+        string.concat(list.intersperse(
           list.map(fields, row_to_string(_, native_to_string)),
           ", ",
         )),
         "}",
       ])
     Function(from, to) ->
-      string.join([
+      string.concat([
         to_string(from, native_to_string),
         " -> ",
         to_string(to, native_to_string),
@@ -79,14 +79,14 @@ pub fn to_string(monotype, native_to_string) {
 
 pub fn literal(monotype) {
   case monotype {
-    // Native(name) -> string.join(["new T.Native(\"", name, "\")"])
+    // Native(name) -> string.concat(["new T.Native(\"", name, "\")"])
     Binary -> "new T.Binary()"
     Tuple(elements) -> {
       let elements =
         list.map(elements, literal)
         |> list.intersperse(", ")
-        |> string.join
-      string.join(["new T.Tuple(Gleam.toList([", elements, "]))"])
+        |> string.concat
+      string.concat(["new T.Tuple(Gleam.toList([", elements, "]))"])
     }
     Row(fields, extra) -> {
       let fields =
@@ -94,21 +94,21 @@ pub fn literal(monotype) {
           fields,
           fn(f) {
             let #(name, value) = f
-            string.join(["[\"", name, "\", ", literal(value), "]"])
+            string.concat(["[\"", name, "\", ", literal(value), "]"])
           },
         )
         |> list.intersperse(", ")
-        |> string.join
+        |> string.concat
       let extra = case extra {
         Some(i) ->
-          string.join(["new Option.Some(", int.to_string(i + 1000), ")"])
+          string.concat(["new Option.Some(", int.to_string(i + 1000), ")"])
         None -> "new Option.None()"
       }
-      string.join(["new T.Row(Gleam.toList([", fields, "]), ", extra, ")"])
+      string.concat(["new T.Row(Gleam.toList([", fields, "]), ", extra, ")"])
     }
     Function(from, to) ->
-      string.join(["new T.Function(", literal(from), ",", literal(to), ")"])
-    Unbound(i) -> string.join(["new T.Unbound(", int.to_string(i), ")"])
+      string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
+    Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
   }
 }
 

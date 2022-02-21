@@ -53,7 +53,7 @@ pub fn position_to_marker(position) {
     position
     |> list.map(int.to_string)
     |> list.intersperse(",")
-  string.join(["p:", ..position])
+  string.concat(["p:", ..position])
 }
 
 pub fn is_target(display) {
@@ -79,7 +79,7 @@ pub fn show_let_value(metadata) {
   let Display(selection: selection, ..) = metadata
   case selection {
     Above([]) -> False
-    Above([0, .._]) | Above([1, .._]) -> True
+    Above([0, ..]) | Above([1, ..]) -> True
     _ -> False
   }
 }

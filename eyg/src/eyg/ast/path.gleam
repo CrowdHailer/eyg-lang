@@ -20,10 +20,10 @@ pub fn parent(path) {
 pub fn order(a, b) {
   case a, b {
     [], [] -> order.Eq
-    [x, .._], [y, .._] if x < y -> order.Lt
-    [x, .._], [y, .._] if x > y -> order.Gt
-    [], [_, .._] -> order.Lt
-    [_, .._], [] -> order.Gt
+    [x, ..], [y, ..] if x < y -> order.Lt
+    [x, ..], [y, ..] if x > y -> order.Gt
+    [], [_, ..] -> order.Lt
+    [_, ..], [] -> order.Gt
     [x, ..a], [y, ..b] if x == y -> order(a, b)
   }
 }

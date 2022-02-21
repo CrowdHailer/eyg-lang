@@ -2,17 +2,17 @@ import gleam/list
 import gleam/string
 
 pub fn indent(lines) {
-  list.map(lines, fn(line) { string.concat("  ", line) })
+  list.map(lines, fn(line) { string.concat(["  ", line]) })
 }
 
 pub fn wrap_lines(pre, lines, post) {
   case lines {
-    [] -> [string.concat(pre, post)]
+    [] -> [string.concat([pre, post])]
     [first, ..rest] -> {
-      let first = string.concat(pre, first)
+      let first = string.concat([pre, first])
       let lines = [first, ..rest]
       let [last, ..rest] = list.reverse(lines)
-      let last = string.concat(last, post)
+      let last = string.concat([last, post])
       list.reverse([last, ..rest])
     }
   }
@@ -21,7 +21,7 @@ pub fn wrap_lines(pre, lines, post) {
 pub fn squash(a, b) {
   let [pre, ..a] = list.reverse(a)
   let [post, ..b] = b
-  list.append(list.reverse(a), [string.concat(pre, post), ..b])
+  list.append(list.reverse(a), [string.concat([pre, post]), ..b])
 }
 
 pub fn wrap_single_or_multiline(terms, delimeter, before, after) {
@@ -29,7 +29,7 @@ pub fn wrap_single_or_multiline(terms, delimeter, before, after) {
     list.fold(
       terms,
       Ok([]),
-      fn(lines, state) {
+      fn(state, lines) {
         case state {
           Ok(singles) ->
             case lines {
@@ -48,9 +48,9 @@ pub fn wrap_single_or_multiline(terms, delimeter, before, after) {
       let values_string =
         singles
         |> list.reverse()
-        |> list.intersperse(string.concat(delimeter, " "))
+        |> list.intersperse(string.concat([delimeter, " "]))
         |> wrap_lines(before, _, after)
-        |> string.join()
+        |> string.concat()
       [values_string]
     }
     Error(multis) -> {

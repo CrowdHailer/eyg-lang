@@ -142,11 +142,11 @@ pub fn init(source, harness) {
 
 fn rest_to_path(rest) {
   case rest {
-    "" -> []
+    "" -> Ok([])
     _ ->
       // empty string makes unparsable as int list
       string.split(rest, ",")
-      |> list.map(int.parse)
+      |> list.try_map(int.parse)
   }
 }
 
@@ -155,7 +155,7 @@ pub fn handle_click(editor: Editor(n), target) {
   case string.split(target, ":") {
     ["root"] -> Editor(..editor, selection: Some([]), mode: Command)
     ["p", rest] -> {
-      let path = rest_to_path(rest)
+      assert Ok(path) = rest_to_path(rest)
       Editor(..editor, selection: Some(path), mode: Command)
     }
   }
@@ -392,7 +392,7 @@ fn handle_transformation(
       Command,
     )
     _, _ -> {
-      io.debug(string.join(["No edit action for key: ", key]))
+      io.debug(string.concat(["No edit action for key: ", key]))
       #(None, position, Command)
     }
   }
@@ -729,7 +729,7 @@ fn move_down(tree, position) {
 fn next_error(inconsistencies, path) {
   let points: List(List(Int)) = list.map(inconsistencies, pair.first)
   let next =
-    list.find_by(
+    list.find(
       points,
       fn(p) {
         case path.order(p, path) {
@@ -742,7 +742,7 @@ fn next_error(inconsistencies, path) {
     Ok(n) -> n
     Error(Nil) ->
       case points {
-        [p, .._] -> p
+        [p, ..] -> p
         [] -> path
       }
   }
@@ -880,7 +880,7 @@ fn space_above(tree, path) {
       let path = [0]
       #(updated, path)
     }
-    Ok(#(Let(p, v, t), path, [2, .._])) -> {
+    Ok(#(Let(p, v, t), path, [2, ..])) -> {
       let new = ast.let_(p, v, ast.let_(p.Variable(""), ast.hole(), t))
       let updated = replace_expression(tree, path, new)
       let path = list.append(path, [2, 0])
@@ -1207,13 +1207,13 @@ fn unwrap(tree, position) {
       let parent = get_element(tree, parent_position)
       case parent, index {
         Expression(#(_, e.Tuple(elements))), _ -> {
-          let [replacement, .._] = list.drop(elements, index)
+          let [replacement, ..] = list.drop(elements, index)
           let modified =
             replace_expression(tree, parent_position, untype(replacement))
           #(modified, parent_position)
         }
         Expression(#(_, e.Row(fields))), _ -> {
-          let [#(_, replacement), .._] = list.drop(fields, index)
+          let [#(_, replacement), ..] = list.drop(fields, index)
           let modified =
             replace_expression(tree, parent_position, untype(replacement))
           #(modified, parent_position)
@@ -1241,7 +1241,7 @@ fn unwrap(tree, position) {
           #(modified, parent_position)
         }
         Pattern(p.Tuple(elements), _), _ -> {
-          let [label, .._] = list.drop(elements, index)
+          let [label, ..] = list.drop(elements, index)
           let pattern = p.Variable(label)
           let modified = replace_pattern(tree, parent_position, pattern)
           #(modified, parent_position)
@@ -1588,19 +1588,19 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
   case tree, position {
     _, [] -> Expression(tree)
     #(_, e.Tuple(elements)), [i, ..rest] -> {
-      let [child, .._] = list.drop(elements, i)
+      let [child, ..] = list.drop(elements, i)
       get_element(child, rest)
     }
     #(_, e.Row(fields)), [i] -> {
-      let [field, .._] = list.drop(fields, i)
+      let [field, ..] = list.drop(fields, i)
       RowField(i, field)
     }
     #(_, e.Row(fields)), [i, 0] -> {
-      let [#(key, _), .._] = list.drop(fields, i)
+      let [#(key, _), ..] = list.drop(fields, i)
       RowKey(i, key)
     }
     #(_, e.Row(fields)), [i, 1, ..rest] -> {
-      let [#(_, child), .._] = list.drop(fields, i)
+      let [#(_, child), ..] = list.drop(fields, i)
       get_element(child, rest)
     }
     #(_, e.Let(pattern, _, _)), [0, ..rest] -> get_pattern(pattern, rest, tree)
@@ -1624,22 +1624,22 @@ fn get_pattern(pattern, position, parent) {
     pattern, [] -> Pattern(pattern, parent)
     p.Tuple(elements), [i] -> {
       // l.at and this should be an error instead
-      let [element, .._] = list.drop(elements, i)
+      let [element, ..] = list.drop(elements, i)
       PatternElement(i, element)
     }
     p.Row(fields), [i] -> {
       // l.at and this should be an error instead
-      let [field, .._] = list.drop(fields, i)
+      let [field, ..] = list.drop(fields, i)
       PatternField(i, field)
     }
     p.Row(fields), [i, 0] -> {
       // l.at and this should be an error instead
-      let [#(key, _), .._] = list.drop(fields, i)
+      let [#(key, _), ..] = list.drop(fields, i)
       PatternKey(i, key)
     }
     p.Row(fields), [i, 1] -> {
       // l.at and this should be an error instead
-      let [#(_, bind), .._] = list.drop(fields, i)
+      let [#(_, bind), ..] = list.drop(fields, i)
       PatternFieldBind(i, bind)
     }
   }
@@ -1647,7 +1647,7 @@ fn get_pattern(pattern, position, parent) {
 
 fn get_branches(branches, i, rest, parent) {
   let i = i - 1
-  let [#(label, pattern, then), .._] = list.drop(branches, i)
+  let [#(label, pattern, then), ..] = list.drop(branches, i)
   case rest {
     [] -> Branch(i)
     [0] -> BranchName(label)

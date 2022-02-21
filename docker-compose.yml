@@ -17,7 +17,7 @@ services:
     # network_mode unavailable on mac
     # network_mode: host
     # can't have port here because need to start two services
-    command: "watchexec --exts gleam -- sh build_eyg"
+    # command: "watchexec --exts gleam -- sh build_eyg"
   editor_frontend:
     image: node:16.13.0
     working_dir: /opt/app/editor

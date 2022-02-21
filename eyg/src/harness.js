@@ -1,6 +1,3 @@
-import * as Gleam from "./gleam.js"
-// import * as Option from "./gleam/option"
-// import * as Monotype from "./eyg/typer/monotype"
 
 function deepEqual(x, y) {
   if (isObject(x) && isObject(y)) {

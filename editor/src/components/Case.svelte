@@ -1,5 +1,5 @@
 <script>
-  import * as Display from "../gen/eyg/editor/display";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
   import Expression from "./Expression.svelte";
   import Indent from "./Indent.svelte";
   import Pattern from "./Pattern.svelte";

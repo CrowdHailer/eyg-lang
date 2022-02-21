@@ -71,7 +71,7 @@ fn free_variables_in_scope(variables) {
   list.fold(
     variables,
     [],
-    fn(variable, free) {
+    fn(free, variable) {
       let #(_label, polytype) = variable
       free_variables_in_polytype(polytype)
       |> union(free)
@@ -93,7 +93,7 @@ fn free_variables_in_monotype(monotype) {
       list.fold(
         elements,
         [],
-        fn(element, accumulator) {
+        fn(accumulator, element) {
           union(free_variables_in_monotype(element), accumulator)
         },
       )
@@ -102,7 +102,7 @@ fn free_variables_in_monotype(monotype) {
         list.fold(
           fields,
           [],
-          fn(field, accumulator) {
+          fn(accumulator, field) {
             let #(_name, value) = field
             union(free_variables_in_monotype(value), accumulator)
           },
@@ -127,7 +127,7 @@ fn do_difference(items, excluded, accumulator) {
   case items {
     [] -> list.reverse(accumulator)
     [next, ..items] ->
-      case list.find(excluded, next) {
+      case list.find(excluded, fn(i) { i == next }) {
         Ok(_) -> do_difference(items, excluded, accumulator)
         Error(_) -> push_new(next, accumulator)
       }
@@ -145,7 +145,7 @@ fn union(new: List(a), existing: List(a)) -> List(a) {
 }
 
 fn push_new(item: a, set: List(a)) -> List(a) {
-  case list.find(set, item) {
+  case list.find(set, fn(i) { i == item }) {
     Ok(_) -> set
     Error(Nil) -> [item, ..set]
   }

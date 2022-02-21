@@ -1,8 +1,8 @@
 <script>
-  import * as Display from "../gen/eyg/editor/display";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
   import Expression from "./Expression.svelte";
 
-  import * as Ast from "../gen/eyg/ast";
+  import * as Ast from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast";
   export let metadata;
   export let generator;
   export let generated;
