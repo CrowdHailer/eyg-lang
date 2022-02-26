@@ -143,7 +143,18 @@ pub fn do_display(tree, position, selection, editor) {
       let fields = list.index_map(fields, display_field)
       #(metadata, e.Record(fields))
     }
-    e.Tagged(_, _) -> todo("display tagged")
+    e.Tagged(tag, value) -> #(
+      metadata,
+      e.Tagged(
+        tag,
+        do_display(
+          value,
+          path.append(position, 1),
+          child_selection(selection, 1),
+          editor,
+        ),
+      ),
+    )
     e.Variable(label) -> #(metadata, e.Variable(label))
     e.Let(pattern, value, then) -> {
       let value =

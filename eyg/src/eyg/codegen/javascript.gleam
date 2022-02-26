@@ -208,7 +208,20 @@ pub fn render(
       |> wrap_single_or_multiline(",", "{", "}")
       |> wrap_return(state)
     }
-    e.Tagged(_, _) -> todo("render tagged type THink best tested")
+    // TODO escape tag
+    // TODO test
+    e.Tagged(tag, value) -> {
+      let state = Generator(..state, self: None)
+      let start = string.concat(["{", tag, ":"])
+      case maybe_wrap_expression(value, state) {
+        [single] -> [string.concat([start, " ", single, " }"])]
+        lines ->
+          [start, ..indent(lines)]
+          |> list.append(["}"])
+      }
+      |> wrap_return(state)
+    }
+
     e.Let(pattern, value, then) -> {
       let state = Generator(..state, self: None)
       let value_state = case pattern {
