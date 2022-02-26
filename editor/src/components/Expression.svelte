@@ -1,7 +1,5 @@
 <script>
-  import * as Gleam from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
   import * as Expression from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/expression";
-  import * as Sugar from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/sugar";
 
   import Let from "./Let.svelte";
   import Call from "./Call.svelte";
@@ -17,20 +15,12 @@
   import Tagged from "./Tagged.svelte";
 
   export let expression;
-  let metadata, tree, sugar;
+  let metadata, tree;
   $: metadata = expression[0];
   $: tree = expression[1];
-  $: sugar = (function (params) {
-    let result = Sugar.match(tree);
-    if (result instanceof Gleam.Ok) {
-      return result[0];
-    }
-  })();
 </script>
 
-{#if sugar instanceof Sugar.Tagged}
-  <Tagged {metadata} name={sugar.name} expression={sugar.expression} />
-{:else if tree instanceof Expression.Tuple}
+{#if tree instanceof Expression.Tuple}
   <Tuple {metadata} elements={tree.elements} />
 {:else if tree instanceof Expression.Binary}
   <Binary {metadata} value={tree.value} />
@@ -42,6 +32,8 @@
   <Case {metadata} value={tree.value} branches={tree.branches} />
 {:else if tree instanceof Expression.Record}
   <Record {metadata} fields={tree.fields} />
+  <!-- {#if tree instanceof Expression.Tagged}
+  <Tagged {metadata} tag={tree.tag} value={tree.value} /> -->
 {:else if tree instanceof Expression.Variable}
   <Variable {metadata} label={tree.label} on:delete />
 {:else if tree instanceof Expression.Function}

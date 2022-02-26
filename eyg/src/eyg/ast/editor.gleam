@@ -12,7 +12,6 @@ import eyg/ast/encode
 import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/ast/sugar
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -213,13 +212,9 @@ pub fn cancel_change(editor) {
 
 fn handle_expression_change(expression, content) {
   let #(_, tree) = untype(expression)
-  case sugar.match(tree) {
-    Ok(sugar.Tagged(_, expression)) -> sugar.tagged(content, expression)
-    Error(Nil) ->
-      case tree {
-        e.Binary(_) -> ast.binary(content)
-        _ -> ast.variable(content)
-      }
+  case tree {
+    e.Binary(_) -> ast.binary(content)
+    _ -> ast.variable(content)
   }
 }
 
@@ -374,7 +369,9 @@ fn handle_transformation(
     "k", True -> command(drag_up(tree, position))
     "b", False -> create_binary(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
-    "r", False -> wrap_row(tree, position)
+    "r", False -> wrap_record(tree, position)
+    // TODO insert tagged
+    // "n", False -> insert_named(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
     "p", False -> insert_provider(tree, position)
@@ -389,8 +386,6 @@ fn handle_transformation(
     // modes
     "i", False -> draft(tree, position)
     "v", False -> variable(tree, position)
-    // sugar
-    "n", False -> insert_named(tree, position)
     // xpand for view all in under selection
     // Fallback
     "Control", _ | "Shift", _ | "Alt", _ | "Meta", _ -> #(
@@ -1144,7 +1139,7 @@ fn wrap_tuple(tree, position) {
   }
 }
 
-fn wrap_row(tree, position) {
+fn wrap_record(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Hole)) -> {
       let new = ast.row([])
@@ -1511,13 +1506,9 @@ fn delete_pattern(pattern, path) {
 fn draft(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, tree)) ->
-      case sugar.match(tree) {
-        Ok(sugar.Tagged(name, _)) -> #(None, position, Draft(name))
-        Error(Nil) ->
-          case tree {
-            e.Binary(content) -> #(None, position, Draft(content))
-            _ -> #(None, position, Command)
-          }
+      case tree {
+        e.Binary(content) -> #(None, position, Draft(content))
+        _ -> #(None, position, Command)
       }
     Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
     PatternElement(_, label) -> #(None, position, Draft(label))
@@ -1544,27 +1535,24 @@ fn variable(tree, position) {
   }
 }
 
-fn insert_named(tree, position) {
-  case get_element(tree, position) {
-    // Confusing to replace a whole Let at once.
-    // maybe the value should only be a hole
-    Expression(#(_, e.Let(_, value, _))) ->
-      do_insert_name(tree, path.append(position, 1), untype(value))
-    Expression(e) -> do_insert_name(tree, position, untype(e))
-    _ -> #(None, position, Command)
-  }
-}
-
-fn do_insert_name(tree, path, value) {
-  let new =
-    ast.function(
-      p.Record([#("Name", "then")]),
-      ast.call(ast.variable("then"), value),
-    )
-
-  #(Some(replace_expression(tree, path, new)), path, Draft(""))
-}
-
+// fn insert_named(tree, position) {
+//   case get_element(tree, position) {
+//     // Confusing to replace a whole Let at once.
+//     // maybe the value should only be a hole
+//     Expression(#(_, e.Let(_, value, _))) ->
+//       do_insert_name(tree, path.append(position, 1), untype(value))
+//     Expression(e) -> do_insert_name(tree, position, untype(e))
+//     _ -> #(None, position, Command)
+//   }
+// }
+// fn do_insert_name(tree, path, value) {
+//   let new =
+//     ast.function(
+//       p.Record([#("Name", "then")]),
+//       ast.call(ast.variable("then"), value),
+//     )
+//   #(Some(replace_expression(tree, path, new)), path, Draft(""))
+// }
 fn replace_pattern(tree, position, pattern) {
   let tree = untype(tree)
   // while we don't have arbitrary nesting in patterns don't update replace node, instead

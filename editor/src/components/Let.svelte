@@ -1,12 +1,9 @@
 <script>
-  import * as Gleam from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
-
   import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
 
   import Expression from "./Expression.svelte";
   import Pattern from "./Pattern.svelte";
   import Indent from "./Indent.svelte";
-  import * as Sugar from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/sugar";
 
   export let metadata;
   export let pattern;
@@ -31,8 +28,8 @@
 >
   <span class="text-gray-500">let</span>
   <Pattern {pattern} metadata={pattern_display} />
-  <!-- Small bit of implicit sugar -->
-  {#if !value[1].body || Sugar.match(value[1]) instanceof Gleam.Ok}
+  <!-- Small bit of implicit sugar for let = -->
+  {#if !value[1].body}
     =
   {/if}
   {#if multiline}
