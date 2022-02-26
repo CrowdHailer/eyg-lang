@@ -16,6 +16,7 @@ pub type Browser {
 pub fn native_to_string(type_) {
   case type_ {
     Integer -> "Integer"
+    _ -> todo("more")
   }
 }
 

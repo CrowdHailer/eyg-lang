@@ -122,7 +122,7 @@ pub fn codegen(editor) {
 
 pub fn eval(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
-  let True = list.length(typer.inconsistencies) == 0
+  assert True = list.length(typer.inconsistencies) == 0
   javascript.eval(tree, typer, editor.harness.native_to_string)
 }
 
@@ -164,7 +164,7 @@ pub fn handle_click(editor: Editor(n), target) {
 pub fn handle_keydown(editor, key, ctrl_key) {
   let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
     editor
-  let Some(path) = selection
+  assert Some(path) = selection
   let new = case mode {
     Command ->
       case key {
@@ -194,6 +194,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
         }
       }
     Select(_) if key == "Escape" -> Editor(..editor, mode: Command)
+    _ -> todo("any oether keydown should not happen")
   }
   // crash if this doesn't work to get to handle_keydown error handling
   // if get_element in target_type always returned OK/Error we could probably work to remove the error handling
@@ -220,7 +221,7 @@ fn handle_expression_change(expression, content) {
 
 pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
-  let Some(position) = selection
+  assert Some(position) = selection
   let untyped = case get_element(tree, position) {
     Expression(e) -> {
       let new = handle_expression_change(e, content)
@@ -231,7 +232,7 @@ pub fn handle_change(editor, content) {
     // Putting stuff in the pattern Element works
     PatternElement(i, _) -> {
       assert Ok(#(pattern_position, _)) = path.parent(position)
-      let Pattern(p.Tuple(elements), _) = get_element(tree, pattern_position)
+      assert Pattern(p.Tuple(elements), _) = get_element(tree, pattern_position)
       let pre = list.take(elements, i)
       let [_, ..post] = list.drop(elements, i)
       let elements = list.flatten([pre, [content], post])
@@ -240,7 +241,7 @@ pub fn handle_change(editor, content) {
     RowKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(record_position, _)) = path.parent(field_position)
-      let Expression(#(_, e.Row(fields))) = get_element(tree, record_position)
+      assert Expression(#(_, e.Row(fields))) = get_element(tree, record_position)
       let pre =
         list.take(fields, i)
         |> list.map(untype_field)
@@ -254,7 +255,7 @@ pub fn handle_change(editor, content) {
     PatternKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(pattern_position, _)) = path.parent(field_position)
-      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
+      assert Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
       // TODO map at
       let pre = list.take(fields, i)
       let [#(_, label), ..post] = list.drop(fields, i)
@@ -264,7 +265,7 @@ pub fn handle_change(editor, content) {
     PatternFieldBind(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(pattern_position, _)) = path.parent(field_position)
-      let Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
+      assert Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
       // TODO map at
       let pre = list.take(fields, i)
       let [#(key, _), ..post] = list.drop(fields, i)
@@ -273,14 +274,14 @@ pub fn handle_change(editor, content) {
     }
     ProviderGenerator(_) -> {
       assert Ok(#(provider_position, _)) = path.parent(position)
-      let Expression(#(_, e.Provider(config, _, _))) =
+      assert Expression(#(_, e.Provider(config, _, _))) =
         get_element(tree, provider_position)
       let new = ast.provider(config, e.generator_from_string(content))
       replace_expression(tree, provider_position, new)
     }
     ProviderConfig(_) -> {
       assert Ok(#(provider_position, _)) = path.parent(position)
-      let Expression(#(_, e.Provider(_, generator, _))) =
+      assert Expression(#(_, e.Provider(_, generator, _))) =
         get_element(tree, provider_position)
       let new = ast.provider(content, generator)
       replace_expression(tree, provider_position, new)
@@ -289,7 +290,7 @@ pub fn handle_change(editor, content) {
     BranchName(_) -> {
       assert Ok(#(branch_position, _)) = path.parent(position)
       assert Ok(#(case_position, i)) = path.parent(branch_position)
-      let Expression(#(_, e.Case(value, branches))) =
+      assert Expression(#(_, e.Case(value, branches))) =
         get_element(tree, case_position)
       let pre = list.take(branches, i - 1)
       let [branch, ..post] = list.drop(branches, i - 1)
@@ -301,6 +302,7 @@ pub fn handle_change(editor, content) {
       let new = ast.case_(untype(value), branches)
       replace_expression(tree, case_position, new)
     }
+    _ -> todo("handle the other options")
   }
 
   let #(typed, typer) = eyg.compile_unconstrained(untyped, editor.harness)
@@ -545,7 +547,7 @@ fn do_move_left(tree, selection, position) {
     e.Case(_, _), [i, j] if i > 0 && j > 0 ->
       path.append(path.append(position, i), j - 1)
     e.Case(_, branches), [i, 1, ..rest] -> {
-      let Ok(#(_, pattern, _)) = list.at(branches, i - 1)
+      assert Ok(#(_, pattern, _)) = list.at(branches, i - 1)
       case pattern_left(pattern, rest) {
         None -> list.append(position, [i, 0])
         Some(inner) -> list.flatten([position, [i, 1], inner])
@@ -553,7 +555,7 @@ fn do_move_left(tree, selection, position) {
     }
     // do_move_left(then, rest, path.append(path.append(position, i), 1))
     e.Case(_, branches), [i, 2, ..rest] -> {
-      let Ok(#(_, _, then)) = list.at(branches, i - 1)
+      assert Ok(#(_, _, then)) = list.at(branches, i - 1)
       do_move_left(then, rest, path.append(path.append(position, i), 2))
     }
   }
@@ -648,14 +650,14 @@ fn do_move_right(tree, selection, position) {
     e.Case(_, _), [i, j] if i > 0 && j < 2 ->
       path.append(path.append(position, i), j + 1)
     e.Case(_, branches), [i, 1, ..rest] -> {
-      let Ok(#(_, pattern, _)) = list.at(branches, i - 1)
+      assert Ok(#(_, pattern, _)) = list.at(branches, i - 1)
       case pattern_right(pattern, rest) {
         None -> list.append(position, [i, 2])
         Some(inner) -> list.flatten([position, [i, 1], inner])
       }
     }
     e.Case(_, branches), [i, 2, ..rest] -> {
-      let Ok(#(_, _, then)) = list.at(branches, i - 1)
+      assert Ok(#(_, _, then)) = list.at(branches, i - 1)
       do_move_right(then, rest, path.append(path.append(position, i), 2))
     }
   }
@@ -1071,6 +1073,7 @@ fn block_container(tree, position) {
         Ok(#(position, _)) -> block_container(tree, position)
       }
     Expression(_) -> Some(position)
+    _ -> todo("so many other options")
   }
 }
 
@@ -1131,6 +1134,7 @@ fn wrap_tuple(tree, position) {
       path.append(position, 0),
     )
     PatternElement(_, _) | Pattern(_, _) -> #(untype(tree), position)
+    _ -> todo("more tuple wrapping possibilities")
   }
 }
 
@@ -1159,6 +1163,7 @@ fn wrap_row(tree, position) {
       Draft(""),
     )
     PatternElement(_, _) | Pattern(_, _) -> #(None, position, Command)
+    _ -> todo("cant wrap as row")
   }
 }
 
@@ -1192,7 +1197,7 @@ fn insert_provider(tree, position) {
     ProviderGenerator(_) | ProviderConfig(_) -> {
       assert Ok(#(provider_position, _)) = path.parent(position)
       // assumed to be provider
-      let Expression(#(_, e.Provider(_, _, _))) =
+      assert Expression(#(_, e.Provider(_, _, _))) =
         get_element(tree, provider_position)
       #(None, path.append(provider_position, 0), Select(all_generators))
     }
@@ -1294,7 +1299,7 @@ fn match(tree, position) {
 }
 
 fn delete(tree, position) {
-  let Some(#(tree, position)) = do_delete(untype(tree), position)
+  assert Some(#(tree, position)) = do_delete(untype(tree), position)
   #(Some(tree), position, Command)
 }
 
@@ -1570,7 +1575,7 @@ fn replace_pattern(tree, position, pattern) {
     }
     Branch(bi), _ -> {
       assert Ok(#(case_position, _)) = path.parent(let_position)
-      let Expression(#(_, e.Case(value, branches))) =
+      assert Expression(#(_, e.Case(value, branches))) =
         get_element(tree, case_position)
       let pre = list.take(branches, bi)
       let [branch, ..post] = list.drop(branches, bi)

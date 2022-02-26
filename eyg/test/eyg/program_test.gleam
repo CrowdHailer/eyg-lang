@@ -19,56 +19,56 @@
 // }
 // pub fn boolean_value_test(saved) {
 //   let program = encode.from_json(saved)
-//   let Ok(mod) = fetch(program, "boolean")
-//   let Ok(true_mod) = fetch(mod, "True")
+//   assert Ok(mod) = fetch(program, "boolean")
+//   assert Ok(true_mod) = fetch(mod, "True")
 //   let #(typed, typer) = eyg.compile_unconstrained(true_mod, browser.harness())
-//   let Ok(type_) = typer.get_type(typed)
+//   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
 //   let "True" = t.to_string(type_, browser.native_to_string)
 // }
 // pub fn some_value_test(saved) {
 //   let program = encode.from_json(saved)
-//   let Ok(mod) = fetch(program, "option")
-//   let Ok(some) = fetch(mod, "Some")
+//   assert Ok(mod) = fetch(program, "option")
+//   assert Ok(some) = fetch(mod, "Some")
 //   let #(typed, typer) = eyg.compile_unconstrained(some, browser.harness())
-//   let Ok(type_) = typer.get_type(typed)
+//   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
 //   let "1 -> Some 1" = t.to_string(type_, browser.native_to_string)
 // }
 // pub fn none_value_test(saved) {
 //   let program = encode.from_json(saved)
-//   let Ok(mod) = fetch(program, "option")
-//   let Ok(none) = fetch(mod, "None")
+//   assert Ok(mod) = fetch(program, "option")
+//   assert Ok(none) = fetch(mod, "None")
 //   let #(typed, typer) = eyg.compile_unconstrained(none, browser.harness())
-//   let Ok(type_) = typer.get_type(typed)
+//   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
 //   let "None" = t.to_string(type_, browser.native_to_string)
 // }
 // pub fn boolean_not_test(saved) {
 //   let program = encode.from_json(saved)
-//   let Ok(mod) = fetch(program, "boolean")
+//   assert Ok(mod) = fetch(program, "boolean")
 //   // Can't do this test because mod mean that True/False is not in scope
-//   // let Ok(not) = fetch(mod, "not")
+//   // assert Ok(not) = fetch(mod, "not")
 //   let #(typed, typer) = eyg.compile_unconstrained(mod, browser.harness())
-//   let Ok(type_) = typer.get_type(typed)
+//   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
 //   let "True" = t.to_string(type_, browser.native_to_string)
 // }
 // // pub fn and_test(saved) {
 // //   let program = encode.from_json(saved)
-// //   let Ok(mod) = fetch(program, "boolean")
-// //   let Ok(and) = fetch(mod, "and")
+// //   assert Ok(mod) = fetch(program, "boolean")
+// //   assert Ok(and) = fetch(mod, "and")
 // //   let #(typed, typer) = eyg.compile_unconstrained(and)
-// //   let Ok(type_) = typer.get_type(typed)
+// //   assert Ok(type_) = typer.get_type(typed)
 // //   let type_ = t.resolve(type_, typer.substitutions)
 // //   let "True" = t.to_string(type_, browser.native_to_string)
 // // }
 // pub fn equal_test(saved) {
 //   let program = encode.from_json(saved)
-//   let Ok(mod) = fetch(program, "boolean")
-//   let Ok(equal) = fetch(mod, "equal")
+//   assert Ok(mod) = fetch(program, "boolean")
+//   assert Ok(equal) = fetch(mod, "equal")
 //   let #(typed, typer) = eyg.compile_unconstrained(equal, browser.harness())
-//   let Ok(type_) = typer.get_type(typed)
+//   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
 //   let "(1, 1) -> True | False" = t.to_string(type_, browser.native_to_string)
 // }

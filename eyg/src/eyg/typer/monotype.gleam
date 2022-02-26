@@ -49,7 +49,7 @@ pub fn to_string(monotype, native_to_string) {
         Ok(variants) ->
           string.concat(["Variants ", ..list.intersperse(variants, " | ")])
         Error(Nil) -> {
-          let Function(from, to) = monotype
+          assert Function(from, to) = monotype
           string.concat([
             to_string(from, native_to_string),
             " -> ",
@@ -109,6 +109,7 @@ pub fn literal(monotype) {
     Function(from, to) ->
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
+    Native(_) -> todo("ss")
   }
 }
 
@@ -147,7 +148,7 @@ pub fn resolve(type_, substitutions) {
         Ok(Unbound(j)) if i == j -> type_
         Error(Nil) -> type_
         Ok(substitution) -> {
-          let False = occurs_in(Unbound(i), substitution)
+          assert False = occurs_in(Unbound(i), substitution)
           resolve(substitution, substitutions)
         }
       }
@@ -173,6 +174,7 @@ pub fn resolve(type_, substitutions) {
           case resolve(Unbound(i), substitutions) {
             Unbound(j) -> Row(resolved_fields, Some(j))
             Row(inner, rest) -> Row(list.append(resolved_fields, inner), rest)
+            _ -> todo("should only ever be one or the other. perhaps always an i")
           }
         }
       }

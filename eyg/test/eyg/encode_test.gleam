@@ -12,22 +12,22 @@ fn round_trip(ast) {
 
 pub fn encode_binary_test() {
   let tree = ast.binary("Example")
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_tuple_test() {
   let tree = ast.tuple_([ast.tuple_([]), ast.binary("Example")])
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_row_test() {
   let tree = ast.row([#("foo", ast.row([])), #("bar", ast.binary("Bar"))])
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_variable_test() {
   let tree = ast.variable("var")
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_let_test() {
@@ -42,17 +42,17 @@ pub fn encode_let_test() {
       ),
     )
 
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_function_test() {
   let tree = ast.function(p.Variable("x"), ast.variable("x"))
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_call_test() {
   let tree = ast.call(ast.variable("x"), ast.tuple_([]))
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_case_test() {
@@ -64,10 +64,10 @@ pub fn encode_case_test() {
         #("False", p.Tuple([]), ast.binary("Not")),
       ],
     )
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }
 
 pub fn encode_hole_test() {
   let tree = ast.hole()
-  let True = tree == round_trip(tree)
+  assert True = tree == round_trip(tree)
 }

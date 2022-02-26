@@ -37,7 +37,7 @@ pub fn is_tuple(pattern) {
 }
 
 pub fn replace_element(pattern, index, new) {
-  let Tuple(elements) = pattern
+  assert Tuple(elements) = pattern
   let pre = list.take(elements, index)
   let post = list.drop(elements, index + 1)
   let elements = list.append(pre, [new, ..post])

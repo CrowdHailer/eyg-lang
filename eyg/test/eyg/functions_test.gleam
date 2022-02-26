@@ -15,8 +15,8 @@ pub fn type_bound_function_test() {
   let untyped = ast.function(p.Tuple([]), ast.binary(""))
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  let t.Function(t.Tuple([]), t.Binary) = resolve(type_, substitutions)
+  assert Ok(type_) = get_type(typed)
+  assert t.Function(t.Tuple([]), t.Binary) = resolve(type_, substitutions)
 }
 
 pub fn generic_function_test() {
@@ -25,9 +25,9 @@ pub fn generic_function_test() {
   let untyped = ast.function(p.Variable("x"), ast.variable("x"))
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  let t.Function(t.Unbound(a), t.Unbound(b)) = resolve(type_, substitutions)
-  let True = a == b
+  assert Ok(type_) = get_type(typed)
+  assert t.Function(t.Unbound(a), t.Unbound(b)) = resolve(type_, substitutions)
+  assert True = a == b
 }
 
 pub fn call_function_test() {
@@ -37,8 +37,8 @@ pub fn call_function_test() {
     ast.call(ast.function(p.Tuple([]), ast.binary("")), ast.tuple_([]))
   let #(typed, typer) = infer(untyped, t.Tuple([]), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  let t.Tuple([]) = resolve(type_, substitutions)
+  assert Ok(type_) = get_type(typed)
+  assert t.Tuple([]) = resolve(type_, substitutions)
 }
 
 pub fn call_generic_test() {
@@ -48,8 +48,8 @@ pub fn call_generic_test() {
     ast.call(ast.function(p.Tuple(["x"]), ast.variable("x")), ast.tuple_([]))
   let #(typed, typer) = infer(untyped, t.Tuple([]), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  let t.Tuple([]) = resolve(type_, substitutions)
+  assert Ok(type_) = get_type(typed)
+  assert t.Tuple([]) = resolve(type_, substitutions)
 }
 
 pub fn call_with_incorrect_argument_test() {
@@ -62,8 +62,8 @@ pub fn call_with_incorrect_argument_test() {
     )
   let #(typed, _state) = infer(untyped, t.Tuple([]), #(typer, scope))
   let #(_context, e.Call(_func, with)) = typed
-  let Error(reason) = get_type(with)
-  let typer.IncorrectArity(0, 1) = reason
+  assert Error(reason) = get_type(with)
+  assert typer.IncorrectArity(0, 1) = reason
 }
 
 pub fn reuse_generic_function_test() {
@@ -81,8 +81,8 @@ pub fn reuse_generic_function_test() {
   let #(typed, typer) =
     infer(untyped, t.Tuple([t.Tuple([]), t.Binary]), #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
-  let Ok(type_) = get_type(typed)
-  let t.Tuple([t.Tuple([]), t.Binary]) = resolve(type_, substitutions)
+  assert Ok(type_) = get_type(typed)
+  assert t.Tuple([t.Tuple([]), t.Binary]) = resolve(type_, substitutions)
 }
 //https://cs.stackexchange.com/questions/101152/let-rec-recursive-expression-static-typing-rule
 //https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system recursive definitions
@@ -99,9 +99,9 @@ pub fn reuse_generic_function_test() {
 //   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
 //   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
-//   let Ok(type_) = get_type(typed)
-//   let t.Function(t.Tuple([x, y]), z) = resolve(type_, substitutions)
-//   let t.Function(t.Tuple([a, b]), c) = x
+//   assert Ok(type_) = get_type(typed)
+//   assert t.Function(t.Tuple([x, y]), z) = resolve(type_, substitutions)
+//   assert t.Function(t.Tuple([a, b]), c) = x
 //   let typer =
 //     init([
 //       #(
@@ -133,8 +133,8 @@ pub fn reuse_generic_function_test() {
 //   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
 //   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
-//   let Ok(type_) = get_type(typed)
-//   let t.Binary = resolve(type_, substitutions)
+//   assert Ok(type_) = get_type(typed)
+//   assert t.Binary = resolve(type_, substitutions)
 //   let untyped =
 //     ast.let_(
 //       p.Variable("last"),
@@ -144,8 +144,8 @@ pub fn reuse_generic_function_test() {
 //   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
 //   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
-//   let Ok(type_) = get_type(typed)
-//   let t.Binary = resolve(type_, substitutions)
+//   assert Ok(type_) = get_type(typed)
+//   assert t.Binary = resolve(type_, substitutions)
 // }
 // fn empty() {
 //   ast.function(
@@ -170,10 +170,10 @@ pub fn reuse_generic_function_test() {
 //   let typer.Typer(substitutions: substitutions, inconsistencies: i, ..) = typer
 //   let [] = i
 //   let #(_, e.Call(_, #(_, e.Tuple([l, r])))) = typed
-//   let Ok(l_type) = get_type(l)
-//   let Ok(r_type) = get_type(r)
+//   assert Ok(l_type) = get_type(l)
+//   assert Ok(r_type) = get_type(r)
 //   let l_type = resolve(l_type, substitutions)
 //   let r_type = resolve(r_type, substitutions)
 //   io.debug(monotype.to_string(l_type))
-//   let True = l_type == r_type
+//   assert True = l_type == r_type
 // }

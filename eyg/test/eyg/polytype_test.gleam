@@ -13,6 +13,6 @@ pub fn instantiate_function_test() {
   let checker = typer.init(fn(_) { todo })
   let polytype = Polytype([0], Function(Unbound(0), Unbound(0)))
   let #(Function(from, to), _) = instantiate(polytype, 1)
-  let Unbound(1) = from
-  let Unbound(1) = to
+  assert Unbound(1) = from
+  assert Unbound(1) = to
 }
