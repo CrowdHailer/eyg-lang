@@ -6,7 +6,7 @@
   import Let from "./Let.svelte";
   import Call from "./Call.svelte";
   import Case from "./Case.svelte";
-  import Row from "./Row.svelte";
+  import Record from "./Record.svelte";
   import Variable from "./Variable.svelte";
   import Function from "./Function.svelte";
   import Binary from "./Binary.svelte";
@@ -40,8 +40,8 @@
   <Call {metadata} function_={tree.function} with_={tree.with} />
 {:else if tree instanceof Expression.Case}
   <Case {metadata} value={tree.value} branches={tree.branches} />
-{:else if tree instanceof Expression.Row}
-  <Row {metadata} fields={tree.fields} />
+{:else if tree instanceof Expression.Record}
+  <Record {metadata} fields={tree.fields} />
 {:else if tree instanceof Expression.Variable}
   <Variable {metadata} label={tree.label} on:delete />
 {:else if tree instanceof Expression.Function}

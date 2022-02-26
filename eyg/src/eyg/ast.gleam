@@ -31,7 +31,7 @@ pub fn tuple_(elements) {
 }
 
 pub fn row(fields) {
-  #(dynamic.from(Nil), e.Row(fields))
+  #(dynamic.from(Nil), e.Record(fields))
 }
 
 pub fn variable(label) {

@@ -46,9 +46,9 @@ fn pattern_to_json(pattern) {
           )),
         ),
       ])
-    p.Row(fields) ->
+    p.Record(fields) ->
       object([
-        #("node", string("Row")),
+        #("node", string("Record")),
         #(
           "fields",
           array(list.map(
@@ -73,7 +73,7 @@ pub fn to_json(ast) {
         #("node", string("Tuple")),
         #("elements", array(list.map(elements, to_json))),
       ])
-    e.Row(fields) -> {
+    e.Record(fields) -> {
       let fields =
         list.map(
           fields,
@@ -86,7 +86,7 @@ pub fn to_json(ast) {
             ])
           },
         )
-      object([#("node", string("Row")), #("fields", array(fields))])
+      object([#("node", string("Record")), #("fields", array(fields))])
     }
     e.Variable(label) ->
       object([#("node", string("Variable")), #("label", string(label))])
@@ -162,7 +162,7 @@ pub fn from_json(json: JSON) {
       let elements = list.map(from_array(elements), from_json)
       ast.tuple_(elements)
     }
-    "Row" -> {
+    "Record" -> {
       let [#("fields", fields)] = rest
       let fields =
         list.map(
@@ -253,7 +253,7 @@ fn pattern_from_json(json: JSON) {
         )
       p.Tuple(elements)
     }
-    "Row" -> {
+    "Record" -> {
       let [#("fields", fields)] = rest
       let fields =
         list.map(
@@ -263,7 +263,7 @@ fn pattern_from_json(json: JSON) {
             #(assert_string(key), assert_string(bind))
           },
         )
-      p.Row(fields)
+      p.Record(fields)
     }
   }
 }

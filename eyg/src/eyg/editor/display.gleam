@@ -133,7 +133,7 @@ pub fn do_display(tree, position, selection, editor) {
       let elements = list.index_map(elements, display_element)
       #(metadata, e.Tuple(elements))
     }
-    e.Row(fields) -> {
+    e.Record(fields) -> {
       let display_field = fn(index, field) {
         let #(label, value) = field
         let position = list.append(position, [index, 1])
@@ -141,7 +141,7 @@ pub fn do_display(tree, position, selection, editor) {
         #(label, do_display(value, position, selection, editor))
       }
       let fields = list.index_map(fields, display_field)
-      #(metadata, e.Row(fields))
+      #(metadata, e.Record(fields))
     }
     e.Variable(label) -> #(metadata, e.Variable(label))
     e.Let(pattern, value, then) -> {

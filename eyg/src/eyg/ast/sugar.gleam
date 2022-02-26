@@ -14,9 +14,10 @@ pub type Sugar(m, n) {
 // Dark blue is because Tag
 // don't need constructors in scope as that's a name and we can create in literal with name
 // function constuctors can be more targets at adding extra rules
+// TODO remove
 pub fn tagged(name, expression) {
   ast.function(
-    p.Row([#(name, "then")]),
+    p.Record([#(name, "then")]),
     ast.call(ast.variable("then"), expression),
   )
 }
@@ -24,7 +25,7 @@ pub fn tagged(name, expression) {
 pub fn match(tree) {
   case tree {
     e.Function(
-      p.Row([#(name, "then")]),
+      p.Record([#(name, "then")]),
       #(_, e.Call(#(_, e.Variable("then")), expression)),
     ) -> Ok(Tagged(name, expression))
     _ -> Error(Nil)

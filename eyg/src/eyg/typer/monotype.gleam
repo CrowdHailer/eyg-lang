@@ -8,7 +8,7 @@ pub type Monotype(n) {
   Native(n)
   Binary
   Tuple(elements: List(Monotype(n)))
-  Row(fields: List(#(String, Monotype(n))), extra: Option(Int))
+  Record(fields: List(#(String, Monotype(n))), extra: Option(Int))
   Function(from: Monotype(n), to: Monotype(n))
   Unbound(i: Int)
 }
@@ -31,7 +31,7 @@ pub fn to_string(monotype, native_to_string) {
         )),
         ")",
       ])
-    Function(Row(fields, rest), return) -> {
+    Function(Record(fields, rest), return) -> {
       let all =
         list.try_map(
           fields,
@@ -58,7 +58,7 @@ pub fn to_string(monotype, native_to_string) {
         }
       }
     }
-    Row(fields, _) ->
+    Record(fields, _) ->
       string.concat([
         "{",
         string.concat(list.intersperse(
@@ -88,7 +88,7 @@ pub fn literal(monotype) {
         |> string.concat
       string.concat(["new T.Tuple(Gleam.toList([", elements, "]))"])
     }
-    Row(fields, extra) -> {
+    Record(fields, extra) -> {
       let fields =
         list.map(
           fields,
@@ -104,7 +104,7 @@ pub fn literal(monotype) {
           string.concat(["new Option.Some(", int.to_string(i + 1000), ")"])
         None -> "new Option.None()"
       }
-      string.concat(["new T.Row(Gleam.toList([", fields, "]), ", extra, ")"])
+      string.concat(["new T.Record(Gleam.toList([", fields, "]), ", extra, ")"])
     }
     Function(from, to) ->
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
@@ -121,7 +121,7 @@ fn do_occurs_in(i, b) {
     Binary -> False
     Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
     Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
-    Row(fields, _) ->
+    Record(fields, _) ->
       fields
       |> list.map(fn(x: #(String, Monotype(a))) { x.1 })
       |> list.any(do_occurs_in(i, _))
@@ -158,7 +158,7 @@ pub fn resolve(type_, substitutions) {
       let elements = list.map(elements, resolve(_, substitutions))
       Tuple(elements)
     }
-    Row(fields, rest) -> {
+    Record(fields, rest) -> {
       let resolved_fields =
         list.map(
           fields,
@@ -168,12 +168,13 @@ pub fn resolve(type_, substitutions) {
           },
         )
       case rest {
-        None -> Row(resolved_fields, None)
+        None -> Record(resolved_fields, None)
         Some(i) -> {
           type_
           case resolve(Unbound(i), substitutions) {
-            Unbound(j) -> Row(resolved_fields, Some(j))
-            Row(inner, rest) -> Row(list.append(resolved_fields, inner), rest)
+            Unbound(j) -> Record(resolved_fields, Some(j))
+            Record(inner, rest) ->
+              Record(list.append(resolved_fields, inner), rest)
             _ ->
               todo("should only ever be one or the other. perhaps always an i")
           }

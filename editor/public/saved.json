@@ -1,7 +1,7 @@
 {
     "node": "Let",
     "pattern": {
-        "node": "Row",
+        "node": "Record",
         "fields": [
             {
                 "key": "debug",
@@ -56,7 +56,7 @@
                             "then": {
                                 "node": "Function",
                                 "pattern": {
-                                    "node": "Row",
+                                    "node": "Record",
                                     "fields": [
                                         {
                                             "key": "False",
@@ -87,7 +87,7 @@
                             "then": {
                                 "node": "Function",
                                 "pattern": {
-                                    "node": "Row",
+                                    "node": "Record",
                                     "fields": [
                                         {
                                             "key": "True",
@@ -163,7 +163,7 @@
                                             "then": {
                                                 "node": "Function",
                                                 "pattern": {
-                                                    "node": "Row",
+                                                    "node": "Record",
                                                     "fields": [
                                                         {
                                                             "key": "False",
@@ -194,7 +194,7 @@
                                             "then": {
                                                 "node": "Function",
                                                 "pattern": {
-                                                    "node": "Row",
+                                                    "node": "Record",
                                                     "fields": [
                                                         {
                                                             "key": "True",
@@ -228,7 +228,7 @@
                                 "then": {
                                     "node": "Function",
                                     "pattern": {
-                                        "node": "Row",
+                                        "node": "Record",
                                         "fields": [
                                             {
                                                 "key": "False",
@@ -253,7 +253,7 @@
                     }
                 },
                 "then": {
-                    "node": "Row",
+                    "node": "Record",
                     "fields": [
                         {
                             "node": "Field",
@@ -337,7 +337,7 @@
                     }
                 },
                 "then": {
-                    "node": "Row",
+                    "node": "Record",
                     "fields": [
                         {
                             "node": "Field",
@@ -428,7 +428,7 @@
                                                 {
                                                     "node": "Function",
                                                     "pattern": {
-                                                        "node": "Row",
+                                                        "node": "Record",
                                                         "fields": [
                                                             {
                                                                 "key": "Cons",
@@ -492,7 +492,7 @@
                                         {
                                             "node": "Function",
                                             "pattern": {
-                                                "node": "Row",
+                                                "node": "Record",
                                                 "fields": [
                                                     {
                                                         "key": "Nil",
@@ -592,7 +592,7 @@
                                                 "value": {
                                                     "node": "Function",
                                                     "pattern": {
-                                                        "node": "Row",
+                                                        "node": "Record",
                                                         "fields": [
                                                             {
                                                                 "key": "Cons",
@@ -698,7 +698,7 @@
                                                 {
                                                     "node": "Function",
                                                     "pattern": {
-                                                        "node": "Row",
+                                                        "node": "Record",
                                                         "fields": [
                                                             {
                                                                 "key": "Nil",
@@ -723,7 +723,7 @@
                                     }
                                 },
                                 "then": {
-                                    "node": "Row",
+                                    "node": "Record",
                                     "fields": [
                                         {
                                             "node": "Field",
@@ -1343,7 +1343,7 @@
                                                         }
                                                     },
                                                     "then": {
-                                                        "node": "Row",
+                                                        "node": "Record",
                                                         "fields": [
                                                             {
                                                                 "node": "Field",
@@ -1396,7 +1396,7 @@
                         "value": {
                             "node": "Let",
                             "pattern": {
-                                "node": "Row",
+                                "node": "Record",
                                 "fields": [
                                     {
                                         "key": "split",
@@ -1427,7 +1427,7 @@
                             "then": {
                                 "node": "Let",
                                 "pattern": {
-                                    "node": "Row",
+                                    "node": "Record",
                                     "fields": [
                                         {
                                             "key": "fold",
@@ -1554,7 +1554,7 @@
                                                                     "label": "initial"
                                                                 },
                                                                 "value": {
-                                                                    "node": "Row",
+                                                                    "node": "Record",
                                                                     "fields": [
                                                                         {
                                                                             "node": "Field",
@@ -1591,7 +1591,7 @@
                                                                 "then": {
                                                                     "node": "Let",
                                                                     "pattern": {
-                                                                        "node": "Row",
+                                                                        "node": "Record",
                                                                         "fields": [
                                                                             {
                                                                                 "key": "count",
@@ -1634,7 +1634,7 @@
                                                                                     "body": {
                                                                                         "node": "Let",
                                                                                         "pattern": {
-                                                                                            "node": "Row",
+                                                                                            "node": "Record",
                                                                                             "fields": [
                                                                                                 {
                                                                                                     "key": "previous",
@@ -1679,7 +1679,7 @@
                                                                                                     }
                                                                                                 },
                                                                                                 "with": {
-                                                                                                    "node": "Row",
+                                                                                                    "node": "Record",
                                                                                                     "fields": [
                                                                                                         {
                                                                                                             "node": "Field",
@@ -1753,7 +1753,7 @@
                                                                                                 }
                                                                                             },
                                                                                             "then": {
-                                                                                                "node": "Row",
+                                                                                                "node": "Record",
                                                                                                 "fields": [
                                                                                                     {
                                                                                                         "node": "Field",
@@ -1880,7 +1880,7 @@
                                                                 "body": {
                                                                     "node": "Let",
                                                                     "pattern": {
-                                                                        "node": "Row",
+                                                                        "node": "Record",
                                                                         "fields": [
                                                                             {
                                                                                 "key": "reload",
@@ -1895,7 +1895,7 @@
                                                                     "then": {
                                                                         "node": "Let",
                                                                         "pattern": {
-                                                                            "node": "Row",
+                                                                            "node": "Record",
                                                                             "fields": [
                                                                                 {
                                                                                     "key": "behaviour",
@@ -2033,7 +2033,7 @@
                                             }
                                         },
                                         "then": {
-                                            "node": "Row",
+                                            "node": "Record",
                                             "fields": [
                                                 {
                                                     "node": "Field",
@@ -2071,7 +2071,7 @@
                                     "body": {
                                         "node": "Let",
                                         "pattern": {
-                                            "node": "Row",
+                                            "node": "Record",
                                             "fields": [
                                                 {
                                                     "key": "not",
@@ -2211,7 +2211,7 @@
                                                                 "with": {
                                                                     "node": "Function",
                                                                     "pattern": {
-                                                                        "node": "Row",
+                                                                        "node": "Record",
                                                                         "fields": [
                                                                             {
                                                                                 "key": "False",
@@ -2273,7 +2273,7 @@
                                     }
                                 },
                                 "then": {
-                                    "node": "Row",
+                                    "node": "Record",
                                     "fields": [
                                         {
                                             "node": "Field",

@@ -197,7 +197,7 @@ pub fn multiline_row_assignment_test() {
 pub fn row_destructure_test() {
   let untyped =
     ast.let_(
-      pattern.Row([#("first_name", "a"), #("family_name", "b")]),
+      pattern.Record([#("first_name", "a"), #("family_name", "b")]),
       ast.variable("user"),
       ast.tuple_([]),
     )

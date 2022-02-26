@@ -58,7 +58,7 @@ pub fn example(config, hole) {
 }
 
 fn tagged(name, value) {
-  function(p.Row([#(name, "then")]), call(variable("then"), value))
+  function(p.Record([#(name, "then")]), call(variable("then"), value))
 }
 
 pub fn lift_type(_config, hole) {
@@ -81,9 +81,9 @@ pub fn lift_type(_config, hole) {
 // THis works best for JSON parsing etc. string in and eyg terms out
 // fn env(_config, hole) {
 //   case hole {
-//     t.Row(fields, _) -> #(
+//     t.Record(fields, _) -> #(
 //       Nil,
-//       Row(list.map(
+//       Record(list.map(
 //         fields,
 //         fn(field) {
 //           case field {
@@ -153,7 +153,7 @@ fn build_format(remaining, acc, args, i) {
 pub type Node(m, g) {
   Binary(value: String)
   Tuple(elements: List(Expression(m, g)))
-  Row(fields: List(#(String, Expression(m, g))))
+  Record(fields: List(#(String, Expression(m, g))))
   Variable(label: String)
   Let(pattern: Pattern, value: Expression(m, g), then: Expression(m, g))
   Function(pattern: Pattern, body: Expression(m, g))

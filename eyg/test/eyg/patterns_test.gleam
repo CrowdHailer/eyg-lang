@@ -113,17 +113,21 @@ pub fn unexpected_tuple_size_test() {
 pub fn matched_expected_row_test() {
   let scope =
     typer.root_scope([
-      #("foo", polytype.Polytype([], t.Row([#("k", t.Binary)], None))),
+      #("foo", polytype.Polytype([], t.Record([#("k", t.Binary)], None))),
     ])
   let state = #(typer.init(browser.native_to_string), scope)
   let untyped =
-    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+    ast.let_(
+      pattern.Record([#("k", "a")]),
+      ast.variable("foo"),
+      ast.variable("a"),
+    )
   let #(typed, typer) = infer(untyped, t.Binary, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
   assert Ok(type_) = get_type(value)
-  assert t.Row([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
+  assert t.Record([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
 }
 
 pub fn expected_a_row_test() {
@@ -132,13 +136,17 @@ pub fn expected_a_row_test() {
   let state = #(typer, scope)
 
   let untyped =
-    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+    ast.let_(
+      pattern.Record([#("k", "a")]),
+      ast.variable("foo"),
+      ast.variable("a"),
+    )
   let #(typed, typer) = infer(untyped, t.Binary, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
   assert Error(reason) = get_type(value)
-  assert typer.UnmatchedTypes(t.Row(_, _), t.Binary) = reason
+  assert typer.UnmatchedTypes(t.Record(_, _), t.Binary) = reason
 }
 
 pub fn matched_expected_row_with_additional_fields_test() {
@@ -146,32 +154,43 @@ pub fn matched_expected_row_with_additional_fields_test() {
     typer.root_scope([
       #(
         "foo",
-        polytype.Polytype([], t.Row([#("k", t.Binary), #("j", t.Binary)], None)),
+        polytype.Polytype(
+          [],
+          t.Record([#("k", t.Binary), #("j", t.Binary)], None),
+        ),
       ),
     ])
   let state = #(typer.init(browser.native_to_string), scope)
   let untyped =
-    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+    ast.let_(
+      pattern.Record([#("k", "a")]),
+      ast.variable("foo"),
+      ast.variable("a"),
+    )
   let #(typed, typer) = infer(untyped, t.Binary, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
   assert Ok(type_) = get_type(value)
-  assert t.Row([#("k", t.Binary), _], _) = t.resolve(type_, substitutions)
+  assert t.Record([#("k", t.Binary), _], _) = t.resolve(type_, substitutions)
 }
 
 pub fn grow_expected_fields_in_row_test() {
   let typer = typer.init(browser.native_to_string)
   let scope =
-    typer.root_scope([#("foo", polytype.Polytype([], t.Row([], Some(-1))))])
+    typer.root_scope([#("foo", polytype.Polytype([], t.Record([], Some(-1))))])
   let state = #(typer, scope)
 
   let untyped =
-    ast.let_(pattern.Row([#("k", "a")]), ast.variable("foo"), ast.variable("a"))
+    ast.let_(
+      pattern.Record([#("k", "a")]),
+      ast.variable("foo"),
+      ast.variable("a"),
+    )
   let #(typed, typer) = infer(untyped, t.Binary, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
   assert Ok(type_) = get_type(value)
-  assert t.Row([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
+  assert t.Record([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
 }

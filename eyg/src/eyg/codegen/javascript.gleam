@@ -141,7 +141,7 @@ fn render_pattern(pattern, state) {
         |> string.concat()
       #(bind, state)
     }
-    p.Row(fields) -> {
+    p.Record(fields) -> {
       let #(fields, state) =
         misc.map_state(
           fields,
@@ -192,7 +192,7 @@ pub fn render(
       |> wrap_single_or_multiline(",", "[", "]")
       |> wrap_return(state)
     }
-    e.Row(fields) -> {
+    e.Record(fields) -> {
       let state = Generator(..state, self: None)
       list.map(
         fields,

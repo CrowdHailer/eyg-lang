@@ -38,7 +38,7 @@ pub fn encode_let_test() {
       ast.let_(
         p.Tuple(["bar", ""]),
         ast.tuple_([]),
-        ast.let_(p.Row([#("baz", "b")]), ast.tuple_([]), ast.variable("foo")),
+        ast.let_(p.Record([#("baz", "b")]), ast.tuple_([]), ast.variable("foo")),
       ),
     )
 

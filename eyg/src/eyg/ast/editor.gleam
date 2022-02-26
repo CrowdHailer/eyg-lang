@@ -245,7 +245,7 @@ pub fn handle_change(editor, content) {
     RowKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(record_position, _)) = path.parent(field_position)
-      assert Expression(#(_, e.Row(fields))) =
+      assert Expression(#(_, e.Record(fields))) =
         get_element(tree, record_position)
       let pre =
         list.take(fields, i)
@@ -260,22 +260,22 @@ pub fn handle_change(editor, content) {
     PatternKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(pattern_position, _)) = path.parent(field_position)
-      assert Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
+      assert Pattern(p.Record(fields), _) = get_element(tree, pattern_position)
       // TODO map at
       let pre = list.take(fields, i)
       let [#(_, label), ..post] = list.drop(fields, i)
       let fields = list.flatten([pre, [#(content, label)], post])
-      replace_pattern(tree, pattern_position, p.Row(fields))
+      replace_pattern(tree, pattern_position, p.Record(fields))
     }
     PatternFieldBind(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(pattern_position, _)) = path.parent(field_position)
-      assert Pattern(p.Row(fields), _) = get_element(tree, pattern_position)
+      assert Pattern(p.Record(fields), _) = get_element(tree, pattern_position)
       // TODO map at
       let pre = list.take(fields, i)
       let [#(key, _), ..post] = list.drop(fields, i)
       let fields = list.flatten([pre, [#(key, content)], post])
-      replace_pattern(tree, pattern_position, p.Row(fields))
+      replace_pattern(tree, pattern_position, p.Record(fields))
     }
     ProviderGenerator(_) -> {
       assert Ok(#(provider_position, _)) = path.parent(position)
@@ -428,7 +428,7 @@ fn decrease_selection(tree, position) {
       let new = ast.tuple_([ast.hole()])
       #(Some(replace_expression(tree, position, new)), inner, Command)
     }
-    Expression(#(_, e.Row([]))) -> {
+    Expression(#(_, e.Record([]))) -> {
       let new = ast.row([#("", ast.hole())])
       #(
         Some(replace_expression(tree, position, new)),
@@ -448,13 +448,13 @@ fn decrease_selection(tree, position) {
       inner,
       Draft(""),
     )
-    Pattern(p.Row([]), _) -> #(
-      Some(replace_pattern(tree, position, p.Row([#("", "")]))),
+    Pattern(p.Record([]), _) -> #(
+      Some(replace_pattern(tree, position, p.Record([#("", "")]))),
       path.append(inner, 0),
       Draft(""),
     )
 
-    Pattern(p.Tuple(_), _) | Pattern(p.Row(_), _) | PatternField(_, _) -> #(
+    Pattern(p.Tuple(_), _) | Pattern(p.Record(_), _) | PatternField(_, _) -> #(
       None,
       inner,
       Command,
@@ -474,15 +474,15 @@ fn pattern_left(pattern, selection) {
         False -> None
       }
     }
-    p.Row(_fields), [i] -> {
+    p.Record(_fields), [i] -> {
       let left = i - 1
       case 0 <= left {
         True -> Some([left])
         False -> None
       }
     }
-    p.Row(_fields), [i, 1] -> Some([i, 0])
-    p.Row(_fields), [i, 0] -> {
+    p.Record(_fields), [i, 1] -> Some([i, 0])
+    p.Record(_fields), [i, 0] -> {
       let left = i - 1
       case 0 <= left {
         True -> Some([left, 1])
@@ -514,13 +514,13 @@ fn do_move_left(tree, selection, position) {
         True -> path.append(position, i - 1)
         False -> list.append(position, selection)
       }
-    e.Row(_fields), [i] ->
+    e.Record(_fields), [i] ->
       case 0 <= i - 1 {
         True -> path.append(position, i - 1)
         False -> list.append(position, selection)
       }
-    e.Row(_fields), [i, 1] -> path.append(path.append(position, i), 0)
-    e.Row(_fields), [i, 0] ->
+    e.Record(_fields), [i, 1] -> path.append(path.append(position, i), 0)
+    e.Record(_fields), [i, 0] ->
       case 0 <= i - 1 {
         True -> path.append(path.append(position, i - 1), 1)
         False -> list.append(position, selection)
@@ -531,7 +531,7 @@ fn do_move_left(tree, selection, position) {
       assert Ok(element) = list.at(elements, i)
       do_move_left(element, rest, path.append(position, i))
     }
-    e.Row(fields), [i, 1, ..rest] -> {
+    e.Record(fields), [i, 1, ..rest] -> {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_left(value, rest, path.append(path.append(position, i), 1))
     }
@@ -580,15 +580,15 @@ fn pattern_right(pattern, selection) {
         False -> None
       }
     }
-    p.Row(fields), [i] -> {
+    p.Record(fields), [i] -> {
       let right = i + 1
       case right < list.length(fields) {
         True -> Some([right])
         False -> None
       }
     }
-    p.Row(_fields), [i, 0] -> Some([i, 1])
-    p.Row(fields), [i, 1] -> {
+    p.Record(_fields), [i, 0] -> Some([i, 1])
+    p.Record(fields), [i, 1] -> {
       let right = i + 1
       case right < list.length(fields) {
         True -> Some([right, 0])
@@ -618,13 +618,13 @@ fn do_move_right(tree, selection, position) {
         True -> path.append(position, i + 1)
         False -> list.append(position, selection)
       }
-    e.Row(fields), [i] ->
+    e.Record(fields), [i] ->
       case i + 1 < list.length(fields) {
         True -> path.append(position, i + 1)
         False -> list.append(position, selection)
       }
-    e.Row(_fields), [i, 0] -> path.append(path.append(position, i), 1)
-    e.Row(fields), [i, 1] ->
+    e.Record(_fields), [i, 0] -> path.append(path.append(position, i), 1)
+    e.Record(fields), [i, 1] ->
       case i + 1 < list.length(fields) {
         True -> path.append(path.append(position, i + 1), 0)
         False -> list.append(position, selection)
@@ -636,7 +636,7 @@ fn do_move_right(tree, selection, position) {
       assert Ok(element) = list.at(elements, i)
       do_move_right(element, rest, path.append(position, i))
     }
-    e.Row(fields), [i, 1, ..rest] -> {
+    e.Record(fields), [i, 1, ..rest] -> {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_right(value, rest, path.append(path.append(position, i), 1))
     }
@@ -804,7 +804,7 @@ fn insert_space(tree, position, offset) {
     }
     Some(#(position, cursor, RowPattern(fields))) -> {
       let cursor = cursor + offset
-      let new = p.Row(insert_at(fields, cursor, #("", "")))
+      let new = p.Record(insert_at(fields, cursor, #("", "")))
       #(
         Some(replace_pattern(tree, position, new)),
         path.append(path.append(position, cursor), 0),
@@ -943,7 +943,7 @@ fn swap_elements(match, at) {
     RowPattern(fields) -> {
       try fields = swap_pair(fields, at)
       // This hole is not used we are reusing the Pattern type which expects a parent expression
-      Ok(Pattern(p.Row(fields), ast.hole()))
+      Ok(Pattern(p.Record(fields), ast.hole()))
     }
   }
 }
@@ -1039,10 +1039,10 @@ fn match_compound(target) -> Result(TupleMatch, Nil) {
   case target {
     Expression(#(_, e.Tuple(elements))) ->
       Ok(TupleExpression(list.map(elements, untype)))
-    Expression(#(_, e.Row(fields))) ->
+    Expression(#(_, e.Record(fields))) ->
       Ok(RowExpression(list.map(fields, untype_field)))
     Pattern(p.Tuple(elements), _) -> Ok(TuplePattern(elements))
-    Pattern(p.Row(fields), _) -> Ok(RowPattern(fields))
+    Pattern(p.Record(fields), _) -> Ok(RowPattern(fields))
 
     _ -> Error(Nil)
   }
@@ -1159,12 +1159,12 @@ fn wrap_row(tree, position) {
       )
     }
     Pattern(p.Variable(""), _) -> #(
-      Some(replace_pattern(tree, position, p.Row([]))),
+      Some(replace_pattern(tree, position, p.Record([]))),
       position,
       Command,
     )
     Pattern(p.Variable(label), _) -> #(
-      Some(replace_pattern(tree, position, p.Row([#("", label)]))),
+      Some(replace_pattern(tree, position, p.Record([#("", label)]))),
       path.append(path.append(position, 0), 0),
       Draft(""),
     )
@@ -1223,7 +1223,7 @@ fn unwrap(tree, position) {
             replace_expression(tree, parent_position, untype(replacement))
           #(modified, parent_position)
         }
-        Expression(#(_, e.Row(fields))), _ -> {
+        Expression(#(_, e.Record(fields))), _ -> {
           let [#(_, replacement), ..] = list.drop(fields, index)
           let modified =
             replace_expression(tree, parent_position, untype(replacement))
@@ -1341,7 +1341,7 @@ fn do_delete(tree, position) {
         }
       }
     }
-    e.Row(fields), [i, ..rest] -> {
+    e.Record(fields), [i, ..rest] -> {
       let pre = list.take(fields, i)
       let [row, ..post] = list.drop(fields, i)
       case row, rest {
@@ -1495,7 +1495,7 @@ fn delete_pattern(pattern, path) {
         }
       }
     }
-    p.Row(fields), [i] | p.Row(fields), [i, 0] | p.Row(fields), [i, 1] -> {
+    p.Record(fields), [i] | p.Record(fields), [i, 0] | p.Record(fields), [i, 1] -> {
       let pre = list.take(fields, i)
       let [_deleted, ..post] = list.drop(fields, i)
       let fields = list.append(pre, post)
@@ -1503,7 +1503,7 @@ fn delete_pattern(pattern, path) {
         0 -> []
         _ -> [max(0, list.length(pre) - 1)]
       }
-      Some(#(p.Row(fields), position))
+      Some(#(p.Record(fields), position))
     }
   }
 }
@@ -1558,7 +1558,7 @@ fn insert_named(tree, position) {
 fn do_insert_name(tree, path, value) {
   let new =
     ast.function(
-      p.Row([#("Name", "then")]),
+      p.Record([#("Name", "then")]),
       ast.call(ast.variable("then"), value),
     )
 
@@ -1602,15 +1602,15 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
       let [child, ..] = list.drop(elements, i)
       get_element(child, rest)
     }
-    #(_, e.Row(fields)), [i] -> {
+    #(_, e.Record(fields)), [i] -> {
       let [field, ..] = list.drop(fields, i)
       RowField(i, field)
     }
-    #(_, e.Row(fields)), [i, 0] -> {
+    #(_, e.Record(fields)), [i, 0] -> {
       let [#(key, _), ..] = list.drop(fields, i)
       RowKey(i, key)
     }
-    #(_, e.Row(fields)), [i, 1, ..rest] -> {
+    #(_, e.Record(fields)), [i, 1, ..rest] -> {
       let [#(_, child), ..] = list.drop(fields, i)
       get_element(child, rest)
     }
@@ -1638,17 +1638,17 @@ fn get_pattern(pattern, position, parent) {
       let [element, ..] = list.drop(elements, i)
       PatternElement(i, element)
     }
-    p.Row(fields), [i] -> {
+    p.Record(fields), [i] -> {
       // l.at and this should be an error instead
       let [field, ..] = list.drop(fields, i)
       PatternField(i, field)
     }
-    p.Row(fields), [i, 0] -> {
+    p.Record(fields), [i, 0] -> {
       // l.at and this should be an error instead
       let [#(key, _), ..] = list.drop(fields, i)
       PatternKey(i, key)
     }
-    p.Row(fields), [i, 1] -> {
+    p.Record(fields), [i, 1] -> {
       // l.at and this should be an error instead
       let [#(_, bind), ..] = list.drop(fields, i)
       PatternFieldBind(i, bind)
@@ -1697,7 +1697,7 @@ pub fn map_node(
       let elements = list.flatten([pre, [updated], post])
       ast.tuple_(elements)
     }
-    e.Row(fields), [index, 1, ..rest] -> {
+    e.Record(fields), [index, 1, ..rest] -> {
       let pre =
         list.take(fields, index)
         |> list.map(untype_field)

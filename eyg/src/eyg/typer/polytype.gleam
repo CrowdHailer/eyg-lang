@@ -29,7 +29,7 @@ pub fn replace_variable(monotype, x, y) {
     t.Native(name) -> t.Native(name)
     t.Binary -> t.Binary
     t.Tuple(elements) -> t.Tuple(list.map(elements, replace_variable(_, x, y)))
-    t.Row(fields, rest) -> {
+    t.Record(fields, rest) -> {
       let fields =
         list.map(
           fields,
@@ -42,7 +42,7 @@ pub fn replace_variable(monotype, x, y) {
         Some(i) if i == x -> Some(y)
         _ -> rest
       }
-      t.Row(fields, rest)
+      t.Record(fields, rest)
     }
     t.Function(from, to) ->
       t.Function(replace_variable(from, x, y), replace_variable(to, x, y))
@@ -97,7 +97,7 @@ fn free_variables_in_monotype(monotype) {
           union(free_variables_in_monotype(element), accumulator)
         },
       )
-    t.Row(fields, extra) -> {
+    t.Record(fields, extra) -> {
       let in_fields =
         list.fold(
           fields,

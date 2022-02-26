@@ -1,3 +1,5 @@
+## Development Environment
+
 Everything is started in Docker containers using docker compose.
 
 1.  `docker-compose run --workdir /opt/app/eyg editor watchexec --exts gleam -- gleam build`
@@ -6,7 +8,10 @@ Everything is started in Docker containers using docker compose.
     `docker-compose run -p 5000:5000 editor_frontend npm run dev`
 3.  run tests in eyg folder with `./bin/test` VERY slow with mounted volume on mac
 
-Note network mode host is not supported on mac.
+Notes:
+
+- network mode host is not supported on mac.
+- volume mapping on mac is very slow.
 
 Need to replace lot's of tuple references with tuple or pattern
 
@@ -14,6 +19,17 @@ Need to replace lot's of tuple references with tuple or pattern
 - Deliberatly don't have mutliline strings they come from files etc
 - Need to keep focus on editor root to pick up key press
 - Editor has a selection ast node has a position, both are paths
+
+## Names
+
+> A record is a collection of fields, possibly of different data types, typically in a fixed number and sequence.[5] The fields of a record may also be called members, particularly in object-oriented programming; fields may also be called elements, though this risks confusion with the elements of a collection.
+
+> A record type is a data type that describes such values and variables. Most modern computer languages allow the programmer to define new record types. The definition includes specifying the data type of each field and an identifier (name or label) by which it can be accessed.
+> https://en.wikipedia.org/wiki/Record_(computer_science)
+
+Records have fields
+
+### Rename thoughts
 
 m for metadata
 call this AST, node -> Expression get_element -> get_node position -> path p:1,2 -> code:1,2 ast.

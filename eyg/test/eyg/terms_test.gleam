@@ -72,8 +72,8 @@ pub fn expected_row_test() {
   let state = #(typer, scope)
   let untyped = ast.row([#("foo", ast.tuple_([]))])
   let #(typed, _typer) =
-    infer(untyped, t.Row([#("foo", t.Tuple([]))], None), state)
-  assert Ok(t.Row([#("foo", t.Tuple([]))], None)) = get_type(typed)
+    infer(untyped, t.Record([#("foo", t.Tuple([]))], None), state)
+  assert Ok(t.Record([#("foo", t.Tuple([]))], None)) = get_type(typed)
 }
 
 pub fn unexpected_fields_test() {
@@ -81,7 +81,7 @@ pub fn unexpected_fields_test() {
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.row([#("foo", ast.tuple_([]))])
-  let #(typed, _typer) = infer(untyped, t.Row([], None), state)
+  let #(typed, _typer) = infer(untyped, t.Record([], None), state)
   assert Error(reason) = get_type(typed)
   assert typer.UnexpectedFields([#("foo", x)]) = reason
   // x is unbound but we probably have better info
@@ -93,7 +93,7 @@ pub fn missing_fields_test() {
   let state = #(typer, scope)
   let untyped = ast.row([])
   let #(typed, _typer) =
-    infer(untyped, t.Row([#("foo", t.Tuple([]))], None), state)
+    infer(untyped, t.Record([#("foo", t.Tuple([]))], None), state)
   assert Error(reason) = get_type(typed)
   assert typer.MissingFields([#("foo", x)]) = reason
   // I think we might only need the name not type, BUT why throw away info
@@ -105,9 +105,9 @@ pub fn unexpected_field_type_test() {
   let state = #(typer, scope)
   let untyped = ast.row([#("foo", ast.tuple_([]))])
   let #(typed, _typer) =
-    infer(untyped, t.Row([#("foo", t.Binary)], None), state)
-  assert Ok(t.Row([#("foo", t.Binary)], None)) = get_type(typed)
-  assert #(_context, expression.Row([#("foo", child)])) = typed
+    infer(untyped, t.Record([#("foo", t.Binary)], None), state)
+  assert Ok(t.Record([#("foo", t.Binary)], None)) = get_type(typed)
+  assert #(_context, expression.Record([#("foo", child)])) = typed
   assert Error(reason) = get_type(child)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }

@@ -165,7 +165,7 @@ fn do_occurs_in(i, b) {
     t.Binary -> False
     t.Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
     t.Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
-    t.Row(fields, _) ->
+    t.Record(fields, _) ->
       fields
       |> list.map(fn(x: #(String, t.Monotype(n))) { x.1 })
       |> list.any(do_occurs_in(i, _))
@@ -217,19 +217,19 @@ pub fn unify(expected, given, state) {
           }
         t.Unbound(i), any -> Ok(add_substitution(i, any, typer))
         any, t.Unbound(i) -> Ok(add_substitution(i, any, typer))
-        t.Row(expected, expected_extra), t.Row(given, given_extra) -> {
+        t.Record(expected, expected_extra), t.Record(given, given_extra) -> {
           let #(expected, given, shared) = group_shared(expected, given)
           let #(x, typer) = next_unbound(typer)
           try typer = case given, expected_extra {
             [], _ -> Ok(typer)
             only, Some(i) ->
-              Ok(add_substitution(i, t.Row(only, Some(x)), typer))
+              Ok(add_substitution(i, t.Record(only, Some(x)), typer))
             only, None -> Error(#(UnexpectedFields(only), typer))
           }
           try typer = case expected, given_extra {
             [], _ -> Ok(typer)
             only, Some(i) ->
-              Ok(add_substitution(i, t.Row(only, Some(x)), typer))
+              Ok(add_substitution(i, t.Record(only, Some(x)), typer))
             only, None -> Error(#(MissingFields(only), typer))
           }
           list.try_fold(
@@ -342,14 +342,14 @@ fn pattern_type(pattern, typer) {
       let elements = ones_with_real_keys(elements, [])
       #(expected, elements, typer)
     }
-    p.Row(fields) -> {
+    p.Record(fields) -> {
       let #(fields, typer) = misc.map_state(fields, typer, with_unbound)
       let extract_field_types = fn(named_field) {
         let #(#(name, _assignment), type_) = named_field
         #(name, type_)
       }
       let #(x, typer) = next_unbound(typer)
-      let expected = t.Row(list.map(fields, extract_field_types), Some(x))
+      let expected = t.Record(list.map(fields, extract_field_types), Some(x))
       let extract_scope_variables = fn(x) {
         let #(#(_name, assignment), type_) = x
         #(assignment, type_)
@@ -409,7 +409,7 @@ pub fn equal_fn() {
       t.Tuple([t.Unbound(1), t.Unbound(1)]),
       // TODO Should the be part of parameterisation don't think so as not part of equal getting initialised
       t.Function(
-        t.Row(
+        t.Record(
           [
             #("True", t.Function(t.Tuple([]), t.Unbound(2))),
             #("False", t.Function(t.Tuple([]), t.Unbound(2))),
@@ -433,7 +433,7 @@ pub fn expand_providers(tree, typer) {
       let #(elements, typer) = misc.map_state(elements, typer, expand_providers)
       #(#(meta, e.Tuple(elements)), typer)
     }
-    e.Row(fields) -> {
+    e.Record(fields) -> {
       let #(fields, typer) =
         misc.map_state(
           fields,
@@ -445,7 +445,7 @@ pub fn expand_providers(tree, typer) {
             #(row, typer)
           },
         )
-      #(#(meta, e.Row(fields)), typer)
+      #(#(meta, e.Record(fields)), typer)
     }
     e.Let(label, value, then) -> {
       let #(value, typer) = expand_providers(value, typer)
@@ -551,10 +551,10 @@ pub fn infer(
       let expression = #(meta(type_), e.Tuple(elements))
       #(expression, typer)
     }
-    e.Row(fields) -> {
+    e.Record(fields) -> {
       let #(pairs, typer) = misc.map_state(fields, typer, with_unbound)
       let given =
-        t.Row(
+        t.Record(
           list.map(
             pairs,
             fn(pair) {
@@ -577,7 +577,7 @@ pub fn infer(
             #(#(name, value), #(tz, i + 1))
           },
         )
-      let expression = #(meta(type_), e.Row(fields))
+      let expression = #(meta(type_), e.Record(fields))
       #(expression, typer)
     }
     e.Variable(label) -> {
@@ -705,7 +705,7 @@ pub fn infer(
             #(name, type_)
           },
         )
-      let expected_switch = t.Row(field_types, None)
+      let expected_switch = t.Record(field_types, None)
       let expected_value = t.Function(expected_switch, expected)
       let #(value, typer) =
         infer(value, expected_value, #(typer, child(scope, 0)))

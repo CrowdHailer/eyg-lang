@@ -30,7 +30,7 @@ pub fn harness() {
 pub fn string() {
   polytype.Polytype(
     [1, 2, 3],
-    t.Row(
+    t.Record(
       [
         #(
           "split",
@@ -63,7 +63,7 @@ pub fn string() {
           t.Function(
             t.Tuple([t.Native(Integer), t.Native(Integer)]),
             t.Function(
-              t.Row(
+              t.Record(
                 [
                   #("Lt", t.Function(t.Tuple([]), t.Unbound(3))),
                   #("Eq", t.Function(t.Tuple([]), t.Unbound(3))),
