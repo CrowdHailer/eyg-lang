@@ -20,13 +20,13 @@ fn compile(source) {
 
 pub fn function_with_concrete_type_test() {
   let source = assigned(ast.function(p.Tuple([]), ast.binary("")))
-  let t.Function(t.Tuple([]), t.Binary) = compile(source)
+  assert t.Function(t.Tuple([]), t.Binary) = compile(source)
 }
 
 pub fn identity_function_test() {
   let source = assigned(ast.function(p.Variable("x"), ast.variable("x")))
-  let t.Function(t.Unbound(i), t.Unbound(j)) = compile(source)
-  let True = i == j
+  assert t.Function(t.Unbound(i), t.Unbound(j)) = compile(source)
+  assert True = i == j
 }
 
 pub fn external_variable_binding_test() {
@@ -39,7 +39,7 @@ pub fn external_variable_binding_test() {
         ast.let_(p.Tuple([]), ast.variable("a"), ast.variable("f")),
       ),
     )
-  let t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
+  assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
     compile(source)
 }
 
@@ -49,7 +49,7 @@ pub fn recursive_test() {
   //   p.Tuple([None, Some("a")]),
   //   ast.call(ast.variable("foo"), ast.variable("a")),
   // ))
-  let t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
+  assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
     compile(source)
 }
 
