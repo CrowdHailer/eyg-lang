@@ -32,8 +32,8 @@
   <Case {metadata} value={tree.value} branches={tree.branches} />
 {:else if tree instanceof Expression.Record}
   <Record {metadata} fields={tree.fields} />
-  <!-- {#if tree instanceof Expression.Tagged}
-  <Tagged {metadata} tag={tree.tag} value={tree.value} /> -->
+{:else if tree instanceof Expression.Tagged}
+  <Tagged {metadata} tag={tree.tag} value={tree.value} />
 {:else if tree instanceof Expression.Variable}
   <Variable {metadata} label={tree.label} on:delete />
 {:else if tree instanceof Expression.Function}

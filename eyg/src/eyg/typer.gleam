@@ -169,7 +169,7 @@ fn do_occurs_in(i, b) {
       fields
       |> list.map(fn(x: #(String, t.Monotype(n))) { x.1 })
       |> list.any(do_occurs_in(i, _))
-    t.Union(_, _) -> todo("we aren't doing occurs")
+    t.Union(_, _) -> False
   }
 }
 
@@ -449,8 +449,7 @@ pub fn expand_providers(tree, typer) {
       #(#(meta, e.Record(fields)), typer)
     }
     e.Tagged(tag, value) -> {
-      // let value = expand_providers(value, typer)
-      let value = todo("expand providers in tagged, causes recursive type")
+      let #(value, typer) = expand_providers(value, typer)
       #(#(meta, e.Tagged(tag, value)), typer)
     }
     e.Let(label, value, then) -> {

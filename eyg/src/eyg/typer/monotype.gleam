@@ -127,7 +127,7 @@ fn do_occurs_in(i, b) {
       fields
       |> list.map(fn(x: #(String, Monotype(a))) { x.1 })
       |> list.any(do_occurs_in(i, _))
-    Union(_, _) -> todo("never gonan be needed")
+    Union(_, _) -> False
   }
 }
 

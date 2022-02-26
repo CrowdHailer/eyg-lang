@@ -214,6 +214,7 @@ fn handle_expression_change(expression, content) {
   let #(_, tree) = untype(expression)
   case tree {
     e.Binary(_) -> ast.binary(content)
+    e.Tagged(_, value) -> e.tagged(content, value)
     _ -> ast.variable(content)
   }
 }
