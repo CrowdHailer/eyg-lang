@@ -21,6 +21,8 @@ pub type Reason(n) {
   MissingFields(expected: List(#(String, t.Monotype(n))))
   UnexpectedFields(expected: List(#(String, t.Monotype(n))))
   UnableToProvide(expected: t.Monotype(n), generator: e.Generator)
+  ProviderFailed(generator: e.Generator, expected: t.Monotype(n))
+  Warning(message: String)
 }
 
 pub fn root_scope(variables) {
@@ -41,8 +43,7 @@ pub type Typer(n) {
     native_to_string: fn(n) -> String,
     next_unbound: Int,
     substitutions: List(#(Int, t.Monotype(n))),
-    // CAN'T hold onto typer.Reason circular dependency
-    inconsistencies: List(#(List(Int), String)),
+    inconsistencies: List(#(List(Int), Reason(n))),
   )
 }
 
@@ -121,6 +122,14 @@ pub fn reason_to_string(reason, typer: Typer(n)) {
         " with generator ",
         e.generator_to_string(g),
       ])
+    ProviderFailed(g, expected) ->
+      string.concat([
+        "Provider '",
+        e.generator_to_string(g),
+        "' unable to generate code for type: ",
+        t.to_string(expected, typer.native_to_string),
+      ])
+    Warning(message) -> message
   }
 }
 
@@ -380,10 +389,7 @@ fn do_unify(expected, given, state) {
     // Don't think typer needs returning from unify?
     Error(#(reason, typer)) -> {
       let Typer(inconsistencies: inconsistencies, ..) = typer
-      let inconsistencies = [
-        #(scope.path, reason_to_string(reason, typer)),
-        ..inconsistencies
-      ]
+      let inconsistencies = [#(scope.path, reason), ..inconsistencies]
       let typer = Typer(..typer, inconsistencies: inconsistencies)
       #(Error(reason), typer)
     }
@@ -488,14 +494,10 @@ pub fn expand_providers(tree, typer) {
         Error(Nil) -> {
           let Metadata(path: path, ..) = meta
           let Typer(inconsistencies: inconsistencies, ..) = typer
-          let message =
-            string.concat([
-              "Provider '",
-              e.generator_to_string(g),
-              "' unable to generate code for type: ",
-              t.to_string(expected, typer.native_to_string),
-            ])
-          let inconsistencies = [#(path, message), ..inconsistencies]
+          let inconsistencies = [
+            #(path, ProviderFailed(g, expected)),
+            ..inconsistencies
+          ]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
           // This only exists because Loader and Hole need special treatment
           let dummy = #(dynamic.from(Nil), e.Hole)
@@ -585,10 +587,7 @@ pub fn infer(
         Ok(#(given, typer)) -> do_unify(expected, given, #(typer, scope))
         Error(reason) -> {
           let Typer(inconsistencies: inconsistencies, ..) = typer
-          let inconsistencies = [
-            #(scope.path, reason_to_string(reason, typer)),
-            ..inconsistencies
-          ]
+          let inconsistencies = [#(scope.path, reason), ..inconsistencies]
           let typer = Typer(..typer, inconsistencies: inconsistencies)
           #(Error(reason), typer)
         }
@@ -727,7 +726,7 @@ pub fn infer(
         Typer(
           ..typer,
           inconsistencies: [
-            #(scope.path, "todo: implementation missing"),
+            #(scope.path, Warning("todo: implementation missing")),
             ..typer.inconsistencies
           ],
         )

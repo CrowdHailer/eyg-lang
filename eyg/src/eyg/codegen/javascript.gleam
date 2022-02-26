@@ -303,7 +303,7 @@ pub fn render(
               "'})()",
             ]
           }
-          _ -> todo("handle error from loader")
+        _ -> todo("handle error from loader")
       }
     }
     // This type is recursive starts with generated ends up with nil, in the nil case We should never have a provider?

@@ -108,6 +108,10 @@ pub fn inconsistencies(editor) {
       path.order(a_path, b_path)
     },
   )
+  |> list.map(fn(i) {
+    let #(path, reason) = i
+    #(path, typer.reason_to_string(reason, t))
+  })
 }
 
 // reuse this code by putting it in platform.compile/codegen/eval
@@ -241,7 +245,8 @@ pub fn handle_change(editor, content) {
     RowKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(record_position, _)) = path.parent(field_position)
-      assert Expression(#(_, e.Row(fields))) = get_element(tree, record_position)
+      assert Expression(#(_, e.Row(fields))) =
+        get_element(tree, record_position)
       let pre =
         list.take(fields, i)
         |> list.map(untype_field)
@@ -728,6 +733,7 @@ fn move_down(tree, position) {
   }
 }
 
+// make a next point function in ast
 fn next_error(inconsistencies, path) {
   let points: List(List(Int)) = list.map(inconsistencies, pair.first)
   let next =
