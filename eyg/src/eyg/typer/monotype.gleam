@@ -9,6 +9,7 @@ pub type Monotype(n) {
   Binary
   Tuple(elements: List(Monotype(n)))
   Record(fields: List(#(String, Monotype(n))), extra: Option(Int))
+  Union(variants: List(#(String, Monotype(n))), extra: Option(Int))
   Function(from: Monotype(n), to: Monotype(n))
   Unbound(i: Int)
 }
@@ -67,6 +68,7 @@ pub fn to_string(monotype, native_to_string) {
         )),
         "}",
       ])
+    Union(variants, _) -> "TODO finsih "
     Function(from, to) ->
       string.concat([
         to_string(from, native_to_string),
@@ -109,7 +111,7 @@ pub fn literal(monotype) {
     Function(from, to) ->
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
-    Native(_) -> todo("ss")
+    Native(_) | Union(_, _) -> todo("ss")
   }
 }
 
@@ -125,6 +127,7 @@ fn do_occurs_in(i, b) {
       fields
       |> list.map(fn(x: #(String, Monotype(a))) { x.1 })
       |> list.any(do_occurs_in(i, _))
+    Union(_, _) -> todo("never gonan be needed")
   }
 }
 
@@ -181,6 +184,7 @@ pub fn resolve(type_, substitutions) {
         }
       }
     }
+    Union(_, _) -> todo("resolve union as row")
     // TODO check resolve in our record based recursive frunctions
     Function(from, to) -> {
       let from = resolve(from, substitutions)

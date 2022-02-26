@@ -169,6 +169,7 @@ fn do_occurs_in(i, b) {
       fields
       |> list.map(fn(x: #(String, t.Monotype(n))) { x.1 })
       |> list.any(do_occurs_in(i, _))
+    t.Union(_, _) -> todo("we aren't doing occurs")
   }
 }
 
@@ -585,7 +586,17 @@ pub fn infer(
       let expression = #(meta(type_), e.Record(fields))
       #(expression, typer)
     }
-    e.Tagged(_, _) -> todo("infer type of tagged")
+    e.Tagged(tag, value) -> {
+      let #(x, typer) = next_unbound(typer)
+      let value_type = t.Unbound(x)
+      let #(y, typer) = next_unbound(typer)
+      let given = t.Union([#(tag, value_type)], Some(y))
+      let #(type_, typer) = do_unify(expected, given, #(typer, scope))
+      let #(value, typer) = infer(value, value_type, #(typer, child(scope, 1)))
+      let expression = #(meta(Ok(expected)), e.Tagged(tag, value))
+      #(expression, typer)
+    }
+
     e.Variable(label) -> {
       // Returns typer because of instantiation,
       // TODO separate lookup for instantiate, good for let rec

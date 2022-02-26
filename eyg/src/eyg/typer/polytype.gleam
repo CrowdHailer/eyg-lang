@@ -44,6 +44,7 @@ pub fn replace_variable(monotype, x, y) {
       }
       t.Record(fields, rest)
     }
+    t.Union(_, _) -> todo("replcs union")
     t.Function(from, to) ->
       t.Function(replace_variable(from, x, y), replace_variable(to, x, y))
     t.Unbound(i) ->
@@ -112,7 +113,7 @@ fn free_variables_in_monotype(monotype) {
         None -> in_fields
       }
     }
-
+    t.Union(_, _) -> todo("gen union")
     t.Function(from, to) ->
       union(free_variables_in_monotype(from), free_variables_in_monotype(to))
     t.Unbound(i) -> [i]

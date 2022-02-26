@@ -1180,7 +1180,6 @@ fn wrap_tagged(tree, path) {
   }
 }
 
-
 fn wrap_function(tree, position) {
   case get_element(tree, position) {
     Expression(expression) -> {
@@ -1547,7 +1546,6 @@ fn variable(tree, position) {
     _ -> #(None, position, Command)
   }
 }
-
 
 fn replace_pattern(tree, position, pattern) {
   let tree = untype(tree)
