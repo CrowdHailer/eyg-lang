@@ -370,8 +370,7 @@ fn handle_transformation(
     "b", False -> create_binary(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
     "r", False -> wrap_record(tree, position)
-    // TODO insert tagged
-    // "n", False -> insert_named(tree, position)
+    "n", False -> wrap_tagged(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
     "p", False -> insert_provider(tree, position)
@@ -1168,6 +1167,20 @@ fn wrap_record(tree, position) {
   }
 }
 
+fn wrap_tagged(tree, path) {
+  case get_element(tree, path) {
+    Expression(#(_, e.Let(_, value, _))) ->
+      wrap_tagged(tree, path.append(path, 1))
+    Expression(e) -> {
+      let inner = path.append(path, 0)
+      let new = e.tagged("", untype(e))
+      #(Some(replace_expression(tree, path, new)), path, Draft(""))
+    }
+    _ -> #(None, path, Command)
+  }
+}
+
+
 fn wrap_function(tree, position) {
   case get_element(tree, position) {
     Expression(expression) -> {
@@ -1535,24 +1548,7 @@ fn variable(tree, position) {
   }
 }
 
-// fn insert_named(tree, position) {
-//   case get_element(tree, position) {
-//     // Confusing to replace a whole Let at once.
-//     // maybe the value should only be a hole
-//     Expression(#(_, e.Let(_, value, _))) ->
-//       do_insert_name(tree, path.append(position, 1), untype(value))
-//     Expression(e) -> do_insert_name(tree, position, untype(e))
-//     _ -> #(None, position, Command)
-//   }
-// }
-// fn do_insert_name(tree, path, value) {
-//   let new =
-//     ast.function(
-//       p.Record([#("Name", "then")]),
-//       ast.call(ast.variable("then"), value),
-//     )
-//   #(Some(replace_expression(tree, path, new)), path, Draft(""))
-// }
+
 fn replace_pattern(tree, position, pattern) {
   let tree = untype(tree)
   // while we don't have arbitrary nesting in patterns don't update replace node, instead
