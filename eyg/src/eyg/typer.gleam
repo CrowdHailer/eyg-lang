@@ -19,7 +19,7 @@ pub type Reason(n) {
   UnknownVariable(label: String)
   UnmatchedTypes(expected: t.Monotype(n), given: t.Monotype(n))
   MissingFields(expected: List(#(String, t.Monotype(n))))
-  UnexpectedFields(expected: List(#(String, t.Monotype(n))))
+  UnexpectedFields(unexpected: List(#(String, t.Monotype(n))))
   UnableToProvide(expected: t.Monotype(n), generator: e.Generator)
   ProviderFailed(generator: e.Generator, expected: t.Monotype(n))
   Warning(message: String)
@@ -179,7 +179,7 @@ pub fn next_unbound(typer) {
 }
 
 // monotype function??
-// This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
+// This will need the checker/unification/constraints data structure as it uses substitutions and updates the next var value
 // next unbound inside mono can be integer and unbound(i) outside
 pub fn unify(expected, given, state) {
   // Pass as tuple to make reduce functions easier to implement
@@ -447,6 +447,11 @@ pub fn expand_providers(tree, typer) {
         )
       #(#(meta, e.Record(fields)), typer)
     }
+    e.Tagged(tag, value) -> {
+      // let value = expand_providers(value, typer)
+      let value = todo("expand providers in tagged, causes recursive type")
+      #(#(meta, e.Tagged(tag, value)), typer)
+    }
     e.Let(label, value, then) -> {
       let #(value, typer) = expand_providers(value, typer)
       let #(then, typer) = expand_providers(then, typer)
@@ -580,6 +585,7 @@ pub fn infer(
       let expression = #(meta(type_), e.Record(fields))
       #(expression, typer)
     }
+    e.Tagged(_, _) -> todo("infer type of tagged")
     e.Variable(label) -> {
       // Returns typer because of instantiation,
       // TODO separate lookup for instantiate, good for let rec

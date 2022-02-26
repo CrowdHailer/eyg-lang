@@ -208,6 +208,7 @@ pub fn render(
       |> wrap_single_or_multiline(",", "{", "}")
       |> wrap_return(state)
     }
+    e.Tagged(_, _) -> todo("render tagged type THink best tested")
     e.Let(pattern, value, then) -> {
       let state = Generator(..state, self: None)
       let value_state = case pattern {

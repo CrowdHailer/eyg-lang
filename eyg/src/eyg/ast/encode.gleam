@@ -88,6 +88,7 @@ pub fn to_json(ast) {
         )
       object([#("node", string("Record")), #("fields", array(fields))])
     }
+    e.Tagged(_, _) -> todo("finish encode and test")
     e.Variable(label) ->
       object([#("node", string("Variable")), #("label", string(label))])
     e.Let(pattern, value, then) ->
