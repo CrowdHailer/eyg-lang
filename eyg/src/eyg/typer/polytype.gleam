@@ -66,7 +66,13 @@ pub fn replace_variable(monotype, x, y) {
         True -> t.Unbound(y)
         False -> t.Unbound(i)
       }
-    t.Recursive(_, _) -> todo("replace in recursive")
+    t.Recursive(i, inner) -> {
+      let i = case i == x {
+        True -> y
+        False -> i
+      }
+      t.Recursive(i, replace_variable(inner, x, y))
+    }
   }
 }
 

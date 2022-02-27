@@ -298,20 +298,36 @@ pub fn do_unify(
         Error(list.LengthMismatch) ->
           Error(IncorrectArity(list.length(e1), list.length(e2)))
       }
-    t.Record(row1, extra1), t.Record(row2, extra2) | t.Union(row1, extra1), t.Union(
-      row2,
-      extra2,
-    ) -> {
+    t.Record(row1, extra1), t.Record(row2, extra2) -> {
       let #(unmatched1, unmatched2, shared) = group_shared(row1, row2)
-      let #(i, state) = fresh(state)
+      let #(next, state) = next_unbound(state)
       try state = case unmatched2, extra1 {
         [], _ -> Ok(state)
-        only, Some(i) -> Ok(add_substitution(i, t.Record(only, Some(i)), state))
+        only, Some(i) ->
+          Ok(add_substitution(i, t.Record(only, Some(next)), state))
         only, None -> Error(UnexpectedFields(only))
       }
       try state = case unmatched1, extra2 {
         [], _ -> Ok(state)
-        only, Some(i) -> Ok(add_substitution(i, t.Record(only, Some(i)), state))
+        only, Some(i) ->
+          Ok(add_substitution(i, t.Record(only, Some(next)), state))
+        only, None -> Error(MissingFields(only))
+      }
+      list.try_fold(shared, state, do_unify)
+    }
+    t.Union(row1, extra1), t.Union(row2, extra2) -> {
+      let #(unmatched1, unmatched2, shared) = group_shared(row1, row2)
+      let #(next, state) = next_unbound(state)
+      try state = case unmatched2, extra1 {
+        [], _ -> Ok(state)
+        only, Some(i) ->
+          Ok(add_substitution(i, t.Union(only, Some(next)), state))
+        only, None -> Error(UnexpectedFields(only))
+      }
+      try state = case unmatched1, extra2 {
+        [], _ -> Ok(state)
+        only, Some(i) ->
+          Ok(add_substitution(i, t.Union(only, Some(next)), state))
         only, None -> Error(MissingFields(only))
       }
       list.try_fold(shared, state, do_unify)
@@ -453,10 +469,14 @@ pub fn expand_providers(tree, typer) {
   }
 }
 
-fn try_unify(expected, given, typer) {
+fn try_unify(expected, given, typer, path) {
   case unify(expected, given, typer) {
     Ok(typer) -> #(Ok(expected), typer)
-    Error(reason) -> #(Error(reason), typer)
+    Error(reason) -> {
+      let inconsistencies = [#(path, reason), ..typer.inconsistencies]
+      let typer = Typer(..typer, inconsistencies: inconsistencies)
+      #(Error(reason), typer)
+    }
   }
 }
 
@@ -471,14 +491,14 @@ pub fn infer(
   let meta = Metadata(type_: _, scope: scope.variables, path: scope.path)
   case tree {
     e.Binary(value) -> {
-      let #(result, typer) = try_unify(expected, t.Binary, typer)
+      let #(result, typer) = try_unify(expected, t.Binary, typer, scope.path)
       let expression = #(meta(result), e.Binary(value))
       #(expression, typer)
     }
     e.Tuple(elements) -> {
       let #(pairs, typer) = misc.map_state(elements, typer, with_unbound)
       let given = t.Tuple(list.map(pairs, pair.second))
-      let #(type_, typer) = try_unify(expected, given, typer)
+      let #(type_, typer) = try_unify(expected, given, typer, scope.path)
       // decided I want to match on top level first
       let #(elements, #(typer, _)) =
         misc.map_state(
@@ -508,7 +528,7 @@ pub fn infer(
           ),
           None,
         )
-      let #(type_, typer) = try_unify(expected, given, typer)
+      let #(type_, typer) = try_unify(expected, given, typer, scope.path)
       let #(fields, #(typer, _)) =
         misc.map_state(
           pairs,
@@ -529,7 +549,7 @@ pub fn infer(
       let value_type = t.Unbound(x)
       let #(y, typer) = next_unbound(typer)
       let given = t.Union([#(tag, value_type)], Some(y))
-      let #(type_, typer) = try_unify(expected, given, typer)
+      let #(type_, typer) = try_unify(expected, given, typer, scope.path)
       let #(value, typer) = infer(value, value_type, #(typer, child(scope, 1)))
       let expression = #(meta(type_), e.Tagged(tag, value))
       #(expression, typer)
@@ -538,7 +558,7 @@ pub fn infer(
       // Returns typer because of instantiation,
       // TODO separate lookup for instantiate, good for let rec
       let #(type_, typer) = case get_variable(label, typer, scope) {
-        Ok(#(given, typer)) -> try_unify(expected, given, typer)
+        Ok(#(given, typer)) -> try_unify(expected, given, typer, scope.path)
         Error(reason) -> {
           let Typer(inconsistencies: inconsistencies, ..) = typer
           let inconsistencies = [#(scope.path, reason), ..inconsistencies]
@@ -698,7 +718,7 @@ fn infer_function(pattern, body, expected, typer, scope, body_index) {
   let #(y, typer) = next_unbound(typer)
   let return_type = t.Unbound(y)
   let given = t.Function(arg_type, return_type)
-  let #(type_, typer) = try_unify(expected, given, typer)
+  let #(type_, typer) = try_unify(expected, given, typer, scope.path)
   let bound_variables =
     list.map(
       bound_variables,

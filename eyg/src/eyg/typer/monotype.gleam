@@ -139,15 +139,16 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
           }
       }
     // This needs to exist as might already have been called by generalize
-    Recursive(i, inner) ->
-      case list.key_find(substitutions, i) {
-        // TODO maybe never
-        Ok(_) -> Unbound(i)
-        Error(Nil) -> {
-          let inner = do_resolve(inner, substitutions, [i, ..recuring])
-          Recursive(i, inner)
-        }
-      }
+    Recursive(i, inner) -> {
+      // case list.key_find(substitutions, i) {
+      //   // TODO maybe never
+      //   Ok(_) -> Unbound(i)
+      //   Error(Nil) -> {
+      let inner = do_resolve(inner, substitutions, [i, ..recuring])
+      Recursive(i, inner)
+    }
+    // }
+    // }
     Binary -> Binary
     Tuple(elements) -> {
       let elements = list.map(elements, do_resolve(_, substitutions, recuring))
@@ -170,7 +171,12 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
             Unbound(j) -> Record(resolved_fields, Some(j))
             Record(inner, rest) ->
               Record(list.append(resolved_fields, inner), rest)
-            _ -> todo("should never have matched")
+            x -> {
+              io.debug(substitutions)
+              io.debug(recuring)
+              io.debug(x)
+              todo("should never have matched")
+            }
           }
         }
       }
@@ -193,7 +199,11 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
             Unbound(j) -> Union(resolved_variants, Some(j))
             Union(inner, rest) ->
               Union(list.append(resolved_variants, inner), rest)
-            _ -> todo("improper union")
+            x -> {
+              io.debug(recuring)
+              io.debug(x)
+              todo("improper union")
+            }
           }
         }
       }
@@ -270,4 +280,42 @@ fn do_difference(items, excluded, accumulator) {
         Error(_) -> push_new(next, accumulator)
       }
   }
+}
+
+fn do_used_in_type(set, type_) {
+  case type_ {
+    Unbound(i) -> push_new(i, set)
+    Native(_) | Binary -> set
+    Tuple(elements) -> list.fold(elements, set, do_used_in_type)
+    Record(rows, rest) | Union(rows, rest) -> do_used_in_row(rows, rest, set)
+    Recursive(i, type_) -> {
+      push_new(i, set)
+      do_used_in_type(set, type_)
+    }
+    Function(from, to) -> {
+      let set = do_used_in_type(set, from)
+      do_used_in_type(set, to)
+    }
+  }
+}
+
+fn do_used_in_row(rows, rest, set) {
+  let set =
+    list.fold(
+      rows,
+      set,
+      fn(set, row) {
+        let #(_name, type_) = row
+        do_used_in_type(set, type_)
+      },
+    )
+  case rest {
+    None -> set
+    // Already resolved
+    Some(i) -> push_new(i, set)
+  }
+}
+
+pub fn used_in_type(t) {
+  do_used_in_type([], t)
 }

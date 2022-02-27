@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/list
 import gleam/option.{None, Some}
 import eyg
 import eyg/ast
@@ -7,6 +8,7 @@ import eyg/ast/pattern as p
 import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
+import misc
 
 fn infer(untyped, type_) {
   let native_to_string = fn(_: Nil) { "" }
@@ -19,7 +21,22 @@ fn infer(untyped, type_) {
 
 fn get_type(typed, checker: typer.Typer(n)) {
   case typer.get_type(typed) {
-    Ok(type_) -> Ok(t.resolve(type_, checker.substitutions))
+    Ok(type_) -> {
+      let type_ = t.resolve(type_, checker.substitutions)
+      let used = t.used_in_type(type_)
+      let #(minimal, _) =
+        misc.map_state(used, 0, fn(used, i) { #(#(used, i), i + 1) })
+      let type_ =
+        list.fold(
+          minimal,
+          type_,
+          fn(type_, replace) {
+            let #(old, new) = replace
+            polytype.replace_variable(type_, old, new)
+          },
+        )
+      Ok(type_)
+    }
     Error(reason) -> todo("resolve")
   }
 }
@@ -48,11 +65,8 @@ pub fn recursive_tuple_test() {
   //     io.debug(inference.to_string(t, []))
   //   },
   // )
-  io.debug(checker.substitutions)
   assert Ok(type_) = get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" =
-    t.to_string(type_, fn(_) { todo("native") })
-    |> io.debug
+  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
   // inference.print(t.Unbound(4), checker)
   // |> io.debug
   // assert Ok(t.Function(from, to)) = get_type(typed, checker)
