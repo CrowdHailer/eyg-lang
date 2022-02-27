@@ -217,6 +217,25 @@ pub fn record_destructure_test() {
   let "[]" = l2
 }
 
+// TODO use json lib
+pub fn tagged_assignment_test() {
+  let untyped = e.tagged("Some", ast.binary("Sue"))
+  let js =
+    compile(
+      untyped,
+      #(typer.init(browser.native_to_string), typer.root_scope([])),
+    )
+
+  let [l1] = js
+  let "{Some: \"Sue\"}" = l1
+
+  assert True =
+    dynamic.from(encode.object([#("Some", encode.string("Sue"))])) == eval(
+      untyped,
+      #(typer.init(browser.native_to_string), typer.root_scope([])),
+    )
+}
+
 pub fn simple_function_call_test() {
   let scope = typer.root_scope([#("equal", typer.equal_fn())])
   let untyped =

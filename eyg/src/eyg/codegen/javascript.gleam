@@ -214,7 +214,7 @@ pub fn render(
       let state = Generator(..state, self: None)
       let start = string.concat(["{", tag, ":"])
       case maybe_wrap_expression(value, state) {
-        [single] -> [string.concat([start, " ", single, " }"])]
+        [single] -> [string.concat([start, " ", single, "}"])]
         lines ->
           [start, ..indent(lines)]
           |> list.append(["}"])
