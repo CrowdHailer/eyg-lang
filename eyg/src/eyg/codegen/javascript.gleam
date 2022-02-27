@@ -209,7 +209,6 @@ pub fn render(
       |> wrap_return(state)
     }
     // TODO escape tag
-    // TODO test
     e.Tagged(tag, value) -> {
       let state = Generator(..state, self: None)
       let start = string.concat(["{", tag, ":"])
