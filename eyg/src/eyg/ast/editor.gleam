@@ -314,6 +314,7 @@ pub type Element(a, b) {
   Expression(e.Expression(a, b))
   RowField(Int, #(String, e.Expression(a, b)))
   RowKey(Int, String)
+  Tag(String)
   Pattern(p.Pattern, e.Expression(a, b))
   PatternElement(Int, String)
   PatternField(Int, #(String, String))
@@ -520,6 +521,7 @@ fn do_move_left(tree, selection, position) {
         True -> path.append(path.append(position, i - 1), 1)
         False -> list.append(position, selection)
       }
+    e.Tagged(_, _), [1] -> path.append(position, 0)
     // Step in
     _, [] -> position
     e.Tuple(elements), [i, ..rest] -> {
@@ -530,6 +532,8 @@ fn do_move_left(tree, selection, position) {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_left(value, rest, path.append(path.append(position, i), 1))
     }
+    e.Tagged(_, value), [1, ..rest] ->
+      do_move_left(value, rest, path.append(position, 1))
     e.Let(_, value, _), [1, ..rest] ->
       do_move_left(value, rest, path.append(position, 1))
     e.Let(_, _, then), [2, ..rest] ->
@@ -624,6 +628,7 @@ fn do_move_right(tree, selection, position) {
         True -> path.append(path.append(position, i + 1), 0)
         False -> list.append(position, selection)
       }
+      e.Tagged(_, _), [0] -> path.append(position, 1)
     e.Case(_, _), [0] | e.Case(_, _), [] -> path.append(position, 1)
     // Step in
     _, [] -> position
@@ -635,6 +640,8 @@ fn do_move_right(tree, selection, position) {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_right(value, rest, path.append(path.append(position, i), 1))
     }
+        e.Tagged(_, value), [1, ..rest] ->
+      do_move_right(value, rest, path.append(position, 1))
     e.Let(_, value, _), [1, ..rest] ->
       do_move_right(value, rest, path.append(position, 1))
     e.Let(_, _, then), [2, ..rest] ->
@@ -1597,6 +1604,8 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
       let [#(_, child), ..] = list.drop(fields, i)
       get_element(child, rest)
     }
+    #(_, e.Tagged(tag, _)), [0] -> Tag(tag)
+    #(_, e.Tagged(_, value)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(pattern, _, _)), [0, ..rest] -> get_pattern(pattern, rest, tree)
     #(_, e.Let(_, value, _)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(_, _, then)), [2, ..rest] -> get_element(then, rest)
