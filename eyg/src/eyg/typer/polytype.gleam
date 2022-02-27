@@ -44,7 +44,21 @@ pub fn replace_variable(monotype, x, y) {
       }
       t.Record(fields, rest)
     }
-    t.Union(_, _) -> todo("replcs union")
+    t.Union(variants, rest) -> {
+      let vairants =
+        list.map(
+          vairants,
+          fn(vairant) {
+            let #(name, value) = vairant
+            #(name, replace_variable(value, x, y))
+          },
+        )
+      let rest = case rest {
+        Some(i) if i == x -> Some(y)
+        _ -> rest
+      }
+      t.Union(vairants, rest)
+    }
     t.Function(from, to) ->
       t.Function(replace_variable(from, x, y), replace_variable(to, x, y))
     t.Unbound(i) ->
@@ -98,25 +112,27 @@ fn free_variables_in_monotype(monotype) {
           union(free_variables_in_monotype(element), accumulator)
         },
       )
-    t.Record(fields, extra) -> {
-      let in_fields =
-        list.fold(
-          fields,
-          [],
-          fn(accumulator, field) {
-            let #(_name, value) = field
-            union(free_variables_in_monotype(value), accumulator)
-          },
-        )
-      case extra {
-        Some(i) -> push_new(i, in_fields)
-        None -> in_fields
-      }
-    }
-    t.Union(_, _) -> todo("gen union")
+    t.Record(fields, extra) -> free_variables_in_row(fields, extra)
+    t.Union(variants, extra) -> free_variables_in_row(variants, extra)
     t.Function(from, to) ->
       union(free_variables_in_monotype(from), free_variables_in_monotype(to))
     t.Unbound(i) -> [i]
+  }
+}
+
+fn free_variables_in_row(rows, extra) {
+  let in_rows =
+    list.fold(
+      rows,
+      [],
+      fn(accumulator, row) {
+        let #(_name, value) = row
+        union(free_variables_in_monotype(value), accumulator)
+      },
+    )
+  case extra {
+    Some(i) -> push_new(i, in_rows)
+    None -> in_rows
   }
 }
 
