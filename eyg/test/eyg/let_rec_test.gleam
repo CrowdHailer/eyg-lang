@@ -1,74 +1,75 @@
 import gleam/io
+import gleam/option.{None, Some}
 import eyg
 import eyg/ast
+import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer
 import eyg/typer/monotype as t
-import platform/browser
+import eyg/typer/polytype
 
-fn assigned(tree) {
-  ast.let_(p.Variable("foo"), tree, ast.variable("foo"))
+fn infer(untyped, type_) {
+  let native_to_string = fn(_: Nil) { "" }
+  let variables = [#("equal", typer.equal_fn())]
+  let checker = typer.init(native_to_string)
+  let scope = typer.root_scope(variables)
+  let state = #(checker, scope)
+  typer.infer(untyped, type_, state)
 }
 
-fn compile(source) {
-  let #(typed, typer) = eyg.compile_unconstrained(source, browser.harness())
-  assert [] = typer.inconsistencies
-  let typer.Typer(substitutions: substitutions, ..) = typer
-  assert Ok(type_) = typer.get_type(typed)
-  t.resolve(type_, substitutions)
+fn get_type(typed, checker: typer.Typer(n)) {
+  case typer.get_type(typed) {
+    Ok(type_) -> Ok(t.resolve(type_, checker.substitutions))
+    Error(reason) -> todo("resolve")
+  }
 }
 
-pub fn function_with_concrete_type_test() {
-  let source = assigned(ast.function(p.Tuple([]), ast.binary("")))
-  assert t.Function(t.Tuple([]), t.Binary) = compile(source)
-}
-
-pub fn identity_function_test() {
-  let source = assigned(ast.function(p.Variable("x"), ast.variable("x")))
-  assert t.Function(t.Unbound(i), t.Unbound(j)) = compile(source)
-  assert True = i == j
-}
-
-pub fn external_variable_binding_test() {
+// TODO let x = x Test
+pub fn recursive_tuple_test() {
   let source =
-    ast.function(
-      p.Variable("a"),
-      ast.let_(
-        p.Variable("f"),
-        ast.function(p.Tuple([]), ast.variable("a")),
-        ast.let_(p.Tuple([]), ast.variable("a"), ast.variable("f")),
+    e.let_(
+      p.Variable("f"),
+      e.function(
+        p.Variable("x"),
+        e.tuple_([e.binary("hello"), e.call(e.variable("f"), e.tuple_([]))]),
       ),
+      e.variable("f"),
     )
-  assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
-    compile(source)
-}
+  let #(typed, checker) = infer(source, t.Unbound(-1))
 
-// pub fn recursive_test() {
-//   let source = last()
-//   // assigned(ast.function(
-//   //   p.Tuple([None, Some("a")]),
-//   //   ast.call(ast.variable("foo"), ast.variable("a")),
-//   // ))
-//   assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
-//     compile(source)
-// }
-fn last() {
-  ast.let_(
-    p.Variable("last"),
-    ast.function(
-      p.Variable("xs"),
-      ast.case_(
-        ast.variable("xs"),
-        [
-          #(
-            "Cons",
-            p.Tuple(["", "rest"]),
-            ast.call(ast.variable("last"), ast.variable("rest")),
-          ),
-          #("Nil", p.Tuple([]), ast.binary("")),
-        ],
-      ),
-    ),
-    ast.variable("last"),
-  )
+  // io.debug("-=-------------------")
+  // io.debug(typed)
+  // list.map(
+  //   checker.substitutions,
+  //   fn(s) {
+  //     let #(k, t) = s
+  //     io.debug(k)
+  //     // io.debug(t.to_string(t, fn(_) { "OOO" }))
+  //     io.debug(inference.to_string(t, []))
+  //   },
+  // )
+  io.debug(checker.substitutions)
+  assert Ok(type_) = get_type(typed, checker)
+  let "() -> μ0.(Binary, 0)" =
+    t.to_string(type_, fn(_) { todo("native") })
+    |> io.debug
+  // inference.print(t.Unbound(4), checker)
+  // |> io.debug
+  // assert Ok(t.Function(from, to)) = get_type(typed, checker)
+  // assert t.Tuple([]) = from
+  // // assert t.Tuple([t.Binary, t.Unbound(mu)]) = to
+  // // typer.get_type(typed)
+  // // |> io.debug
+  // list.map(checker.substitutions, io.debug)
+  // // io.debug(mu)
+  // // io.debug("----")
+  // let [x, .._] = checker.substitutions
+  // let #(-1, t.Function(_, t.Tuple(elements))) = x
+  // io.debug(elements)
+  // let [_, t.Recursive(mu, inner)] = elements
+  // io.debug("loow ")
+  // io.debug(mu)
+  // io.debug(inner)
+  // let t.Tuple([_, t.Unbound(x)]) = inner
+  // io.debug(x)
 }

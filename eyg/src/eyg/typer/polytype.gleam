@@ -66,6 +66,7 @@ pub fn replace_variable(monotype, x, y) {
         True -> t.Unbound(y)
         False -> t.Unbound(i)
       }
+    t.Recursive(_, _) -> todo("replace in recursive")
   }
 }
 
@@ -74,7 +75,7 @@ pub fn replace_variable(monotype, x, y) {
 pub fn generalise(monotype, variables) {
   case monotype {
     t.Function(_from, _to) -> {
-      let in_type = free_variables_in_monotype(monotype)
+      let in_type = t.free_in_type(monotype)
       let in_scope = free_variables_in_scope(variables)
       Polytype(difference(in_type, in_scope), monotype)
     }
@@ -96,44 +97,8 @@ fn free_variables_in_scope(variables) {
 
 fn free_variables_in_polytype(polytype) {
   let Polytype(quantified, monotype) = polytype
-  free_variables_in_monotype(monotype)
+  t.free_in_type(monotype)
   |> difference(quantified)
-}
-
-fn free_variables_in_monotype(monotype) {
-  case monotype {
-    t.Native(_) -> []
-    t.Binary -> []
-    t.Tuple(elements) ->
-      list.fold(
-        elements,
-        [],
-        fn(accumulator, element) {
-          union(free_variables_in_monotype(element), accumulator)
-        },
-      )
-    t.Record(fields, extra) -> free_variables_in_row(fields, extra)
-    t.Union(variants, extra) -> free_variables_in_row(variants, extra)
-    t.Function(from, to) ->
-      union(free_variables_in_monotype(from), free_variables_in_monotype(to))
-    t.Unbound(i) -> [i]
-  }
-}
-
-fn free_variables_in_row(rows, extra) {
-  let in_rows =
-    list.fold(
-      rows,
-      [],
-      fn(accumulator, row) {
-        let #(_name, value) = row
-        union(free_variables_in_monotype(value), accumulator)
-      },
-    )
-  case extra {
-    Some(i) -> push_new(i, in_rows)
-    None -> in_rows
-  }
 }
 
 fn difference(items: List(a), excluded: List(a)) -> List(a) {
