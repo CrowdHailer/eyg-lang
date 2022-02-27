@@ -14,8 +14,8 @@ pub type Monotype(n) {
   Unbound(i: Int)
 }
 
-fn row_to_string(row, native_to_string) {
-  let #(label, type_) = row
+fn field_to_string(field, native_to_string) {
+  let #(label, type_) = field
   string.concat([label, ": ", to_string(type_, native_to_string)])
 }
 
@@ -63,7 +63,7 @@ pub fn to_string(monotype, native_to_string) {
       string.concat([
         "{",
         string.concat(list.intersperse(
-          list.map(fields, row_to_string(_, native_to_string)),
+          list.map(fields, field_to_string(_, native_to_string)),
           ", ",
         )),
         "}",

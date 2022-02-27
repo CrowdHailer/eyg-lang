@@ -251,7 +251,7 @@ pub fn handle_change(editor, content) {
         post
         |> list.map(untype_field)
       let fields = list.flatten([pre, [#(content, untype(value))], post])
-      replace_expression(tree, record_position, ast.row(fields))
+      replace_expression(tree, record_position, e.record(fields))
     }
     PatternKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
@@ -424,7 +424,7 @@ fn decrease_selection(tree, position) {
       #(Some(replace_expression(tree, position, new)), inner, Command)
     }
     Expression(#(_, e.Record([]))) -> {
-      let new = ast.row([#("", ast.hole())])
+      let new = e.record([#("", ast.hole())])
       #(
         Some(replace_expression(tree, position, new)),
         path.append(inner, 0),
@@ -494,7 +494,7 @@ fn do_move_left(tree, selection, position) {
   case expression, selection {
     // if single line move left, if multi line close
     e.Let(_, _, _), [1] -> position
-    // poentianally move left right via the top of a function, but that plays weird with rows.
+    // poentianally move left right via the top of a function, but that plays weird with records.
     e.Function(_, _), [1] -> path.append(position, 0)
 
     // might be best to check single line then can left out
@@ -781,7 +781,7 @@ fn insert_space(tree, position, offset) {
     }
     Some(#(position, cursor, RowExpression(fields))) -> {
       let cursor = cursor + offset
-      let new = ast.row(insert_at(fields, cursor, #("", ast.hole())))
+      let new = e.record(insert_at(fields, cursor, #("", ast.hole())))
       #(
         Some(replace_expression(tree, position, new)),
         path.append(path.append(position, cursor), 0),
@@ -933,7 +933,7 @@ fn swap_elements(match, at) {
     }
     RowExpression(fields) -> {
       try fields = swap_pair(fields, at)
-      Ok(Expression(ast.row(fields)))
+      Ok(Expression(e.record(fields)))
     }
     RowPattern(fields) -> {
       try fields = swap_pair(fields, at)
@@ -1142,11 +1142,11 @@ fn wrap_tuple(tree, position) {
 fn wrap_record(tree, position) {
   case get_element(tree, position) {
     Expression(#(_, e.Hole)) -> {
-      let new = ast.row([])
+      let new = e.record([])
       #(Some(replace_expression(tree, position, new)), position, Command)
     }
     Expression(expression) -> {
-      let new = ast.row([#("", untype(expression))])
+      let new = e.record([#("", untype(expression))])
       #(
         Some(replace_expression(tree, position, new)),
         path.append(path.append(position, 0), 0),
@@ -1164,7 +1164,7 @@ fn wrap_record(tree, position) {
       Draft(""),
     )
     PatternElement(_, _) | Pattern(_, _) -> #(None, position, Command)
-    _ -> todo("cant wrap as row")
+    _ -> todo("cant wrap as record")
   }
 }
 
@@ -1351,22 +1351,22 @@ fn do_delete(tree, position) {
     }
     e.Record(fields), [i, ..rest] -> {
       let pre = list.take(fields, i)
-      let [row, ..post] = list.drop(fields, i)
-      case row, rest {
-        // delete the whole row even if key selected, use insert for updating
+      let [record, ..post] = list.drop(fields, i)
+      case record, rest {
+        // delete the whole record even if key selected, use insert for updating
         _, [] | _, [0] -> {
           let fields = list.append(pre, post)
           let position = case list.length(fields) {
             0 -> []
             _ -> [max(0, list.length(pre) - 1)]
           }
-          Some(#(ast.row(fields), position))
+          Some(#(e.record(fields), position))
         }
         #(label, inner), [1, ..rest] ->
           case do_delete(inner, rest) {
             Some(#(inner, position)) -> {
               let inner = #(label, inner)
-              let new = ast.row(list.flatten([pre, [inner], post]))
+              let new = e.record(list.flatten([pre, [inner], post]))
               let position = [i, 1, ..position]
               Some(#(new, position))
             }
@@ -1688,7 +1688,7 @@ pub fn map_node(
       let post = list.map(post, untype_field)
       let updated = map_node(current, rest, mapper)
       let fields = list.flatten([pre, [#(k, updated)], post])
-      ast.row(fields)
+      e.record(fields)
     }
     e.Let(pattern, value, then), [1, ..rest] ->
       ast.let_(pattern, map_node(value, rest, mapper), untype(then))

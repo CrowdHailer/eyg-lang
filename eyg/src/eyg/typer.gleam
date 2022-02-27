@@ -439,11 +439,11 @@ pub fn expand_providers(tree, typer) {
         misc.map_state(
           fields,
           typer,
-          fn(row, typer) {
-            let #(key, value) = row
+          fn(field, typer) {
+            let #(key, value) = field
             let #(value, typer) = expand_providers(value, typer)
-            let row = #(key, value)
-            #(row, typer)
+            let field = #(key, value)
+            #(field, typer)
           },
         )
       #(#(meta, e.Record(fields)), typer)

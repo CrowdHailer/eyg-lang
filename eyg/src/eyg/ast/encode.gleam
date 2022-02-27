@@ -173,7 +173,7 @@ pub fn from_json(json: JSON) {
             #(assert_string(key), from_json(value))
           },
         )
-      ast.row(fields)
+      e.record(fields)
     }
     "Variable" -> {
       let [#("label", label)] = rest

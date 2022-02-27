@@ -2,7 +2,7 @@ import gleam/io
 import gleam/option.{None}
 import eyg
 import eyg/ast
-import eyg/ast/expression
+import eyg/ast/expression as e
 import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -61,16 +61,16 @@ pub fn unexpected_tuple_element_type_test() {
   let untyped = ast.tuple_([ast.binary("Yo")])
   let #(typed, _typer) = infer(untyped, t.Tuple([t.Tuple([])]), state)
   assert Ok(t.Tuple([t.Tuple([])])) = get_type(typed)
-  assert #(_context, expression.Tuple([child])) = typed
+  assert #(_context, e.Tuple([child])) = typed
   assert Error(reason) = get_type(child)
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
 
-pub fn expected_row_test() {
+pub fn expected_record_test() {
   let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
-  let untyped = ast.row([#("foo", ast.tuple_([]))])
+  let untyped = e.record([#("foo", ast.tuple_([]))])
   let #(typed, _typer) =
     infer(untyped, t.Record([#("foo", t.Tuple([]))], None), state)
   assert Ok(t.Record([#("foo", t.Tuple([]))], None)) = get_type(typed)
@@ -80,7 +80,7 @@ pub fn unexpected_fields_test() {
   let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
-  let untyped = ast.row([#("foo", ast.tuple_([]))])
+  let untyped = e.record([#("foo", ast.tuple_([]))])
   let #(typed, _typer) = infer(untyped, t.Record([], None), state)
   assert Error(reason) = get_type(typed)
   assert typer.UnexpectedFields([#("foo", x)]) = reason
@@ -91,7 +91,7 @@ pub fn missing_fields_test() {
   let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
-  let untyped = ast.row([])
+  let untyped = e.record([])
   let #(typed, _typer) =
     infer(untyped, t.Record([#("foo", t.Tuple([]))], None), state)
   assert Error(reason) = get_type(typed)
@@ -103,11 +103,11 @@ pub fn unexpected_field_type_test() {
   let typer = init(fn(_) { todo })
   let scope = typer.root_scope([])
   let state = #(typer, scope)
-  let untyped = ast.row([#("foo", ast.tuple_([]))])
+  let untyped = e.record([#("foo", ast.tuple_([]))])
   let #(typed, _typer) =
     infer(untyped, t.Record([#("foo", t.Binary)], None), state)
   assert Ok(t.Record([#("foo", t.Binary)], None)) = get_type(typed)
-  assert #(_context, expression.Record([#("foo", child)])) = typed
+  assert #(_context, e.Record([#("foo", child)])) = typed
   assert Error(reason) = get_type(child)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }

@@ -3,6 +3,7 @@ import gleam/io
 import gleam/option.{None, Some}
 import eyg/codegen/javascript
 import eyg/ast
+import eyg/ast/expression as e
 import eyg/ast/encode
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -136,9 +137,9 @@ pub fn tuple_destructure_test() {
     )
 }
 
-pub fn row_assignment_test() {
+pub fn record_assignment_test() {
   let untyped =
-    ast.row([
+    e.record([
       #("first_name", ast.binary("Bob")),
       #("family_name", ast.binary("Ross")),
     ])
@@ -160,10 +161,10 @@ pub fn row_assignment_test() {
     )
 }
 
-pub fn multiline_row_assignment_test() {
+pub fn multiline_record_assignment_test() {
   let scope = typer.root_scope([])
   let untyped =
-    ast.row([
+    e.record([
       #(
         "first_name",
         ast.let_(
@@ -194,7 +195,7 @@ pub fn multiline_row_assignment_test() {
     )
 }
 
-pub fn row_destructure_test() {
+pub fn record_destructure_test() {
   let untyped =
     ast.let_(
       pattern.Record([#("first_name", "a"), #("family_name", "b")]),

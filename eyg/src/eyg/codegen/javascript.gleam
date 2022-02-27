@@ -147,10 +147,10 @@ fn render_pattern(pattern, state) {
           fields,
           state,
           fn(field, state) {
-            let #(row_name, label) = field
-            let state = with_assignment(label, state)
+            let #(field_name, binding) = field
+            let state = with_assignment(binding, state)
             let field =
-              string.concat([row_name, ": ", render_label(label, state)])
+              string.concat([field_name, ": ", render_label(binding, state)])
             #(field, state)
           },
         )

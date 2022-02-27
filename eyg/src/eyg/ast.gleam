@@ -30,7 +30,7 @@ pub fn tuple_(elements) {
   #(dynamic.from(Nil), e.Tuple(elements))
 }
 
-pub fn row(fields) {
+pub fn record(fields) {
   #(dynamic.from(Nil), e.Record(fields))
 }
 
