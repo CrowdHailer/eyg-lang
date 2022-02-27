@@ -592,7 +592,7 @@ pub fn infer(
       let given = t.Union([#(tag, value_type)], Some(y))
       let #(type_, typer) = do_unify(expected, given, #(typer, scope))
       let #(value, typer) = infer(value, value_type, #(typer, child(scope, 1)))
-      let expression = #(meta(Ok(expected)), e.Tagged(tag, value))
+      let expression = #(meta(type_), e.Tagged(tag, value))
       #(expression, typer)
     }
 
