@@ -113,45 +113,13 @@ pub fn literal(monotype) {
   }
 }
 
-fn do_occurs_in(i, b) {
-  case b {
-    Unbound(j) if i == j -> True
-    Unbound(_) -> False
-    Native(_) -> False
-    Binary -> False
-    Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
-    Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
-    Record(fields, _) ->
-      fields
-      |> list.map(fn(x: #(String, Monotype(a))) { x.1 })
-      |> list.any(do_occurs_in(i, _))
-    Union(_, _) -> False
-  }
-}
-
-fn occurs_in(a, b) {
-  case a {
-    Unbound(i) ->
-      case do_occurs_in(i, b) {
-        True -> // TODO this very doesn't work
-          // todo("Foo")
-          True
-        False -> False
-      }
-    _ -> False
-  }
-}
-
 pub fn resolve(type_, substitutions) {
   case type_ {
     Unbound(i) ->
       case list.key_find(substitutions, i) {
         Ok(Unbound(j)) if i == j -> type_
         Error(Nil) -> type_
-        Ok(substitution) -> {
-          assert False = occurs_in(Unbound(i), substitution)
-          resolve(substitution, substitutions)
-        }
+        Ok(substitution) -> resolve(substitution, substitutions)
       }
     Native(name) -> Native(name)
     Binary -> Binary
@@ -171,6 +139,7 @@ pub fn resolve(type_, substitutions) {
       case rest {
         None -> Record(resolved_fields, None)
         Some(i) ->
+          // todo resolve_variable function
           case resolve(Unbound(i), substitutions) {
             Unbound(j) -> Record(resolved_fields, Some(j))
             Record(inner, rest) ->
