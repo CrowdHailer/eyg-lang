@@ -88,7 +88,13 @@ pub fn to_json(ast) {
         )
       object([#("node", string("Record")), #("fields", array(fields))])
     }
-    e.Tagged(_, _) -> todo("finish encode and test")
+    e.Tagged(tag, value) ->
+      object([
+        #("node", string("Tagged")),
+        #("tag", string(tag)),
+        #("value", to_json(value)),
+      ])
+
     e.Variable(label) ->
       object([#("node", string("Variable")), #("label", string(label))])
     e.Let(pattern, value, then) ->
@@ -174,6 +180,12 @@ pub fn from_json(json: JSON) {
           },
         )
       e.record(fields)
+    }
+    "Tagged" -> {
+      let [#("tag", tag), #("value", value)] = rest
+      let tag = assert_string(tag)
+      let value = from_json(value)
+      e.tagged(tag, value)
     }
     "Variable" -> {
       let [#("label", label)] = rest
