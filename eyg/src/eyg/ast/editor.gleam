@@ -253,6 +253,16 @@ pub fn handle_change(editor, content) {
       let fields = list.flatten([pre, [#(content, untype(value))], post])
       replace_expression(tree, record_position, e.record(fields))
     }
+    Tag(_) -> {
+      assert Ok(#(tagged_position, _)) = path.parent(position)
+      assert Expression(#(_, e.Tagged(_, value))) =
+        get_element(tree, tagged_position)
+      replace_expression(
+        tree,
+        tagged_position,
+        e.tagged(content, untype(value)),
+      )
+    }
     PatternKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(pattern_position, _)) = path.parent(field_position)
@@ -287,7 +297,6 @@ pub fn handle_change(editor, content) {
       let new = ast.provider(content, generator)
       replace_expression(tree, provider_position, new)
     }
-
     BranchName(_) -> {
       assert Ok(#(branch_position, _)) = path.parent(position)
       assert Ok(#(case_position, i)) = path.parent(branch_position)
@@ -1182,7 +1191,7 @@ fn wrap_tagged(tree, path) {
     Expression(e) -> {
       let inner = path.append(path, 0)
       let new = e.tagged("", untype(e))
-      #(Some(replace_expression(tree, path, new)), path, Draft(""))
+      #(Some(replace_expression(tree, path, new)), inner, Draft(""))
     }
     _ -> #(None, path, Command)
   }
@@ -1538,6 +1547,7 @@ fn draft(tree, position) {
     Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
     PatternElement(_, label) -> #(None, position, Draft(label))
     FieldKey(_, key) -> #(None, position, Draft(key))
+    Tag(tag) -> #(None, position, Draft(tag))
     PatternKey(_, key) -> #(None, position, Draft(key))
     PatternFieldBind(_, label) -> #(None, position, Draft(label))
     ProviderConfig(config) -> #(None, position, Draft(config))
@@ -1704,6 +1714,8 @@ pub fn map_node(
       let fields = list.flatten([pre, [#(k, updated)], post])
       e.record(fields)
     }
+    e.Tagged(tag, value), [1, ..rest] ->
+      e.tagged(tag, map_node(value, rest, mapper))
     e.Let(pattern, value, then), [1, ..rest] ->
       ast.let_(pattern, map_node(value, rest, mapper), untype(then))
     e.Let(pattern, value, then), [2, ..rest] ->
