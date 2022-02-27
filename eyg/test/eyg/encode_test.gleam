@@ -1,4 +1,5 @@
 import eyg/ast
+import eyg/ast/expression as e
 import eyg/ast/encode
 import eyg/ast/pattern as p
 
@@ -20,8 +21,13 @@ pub fn encode_tuple_test() {
   assert True = tree == round_trip(tree)
 }
 
-pub fn encode_row_test() {
-  let tree = ast.row([#("foo", ast.row([])), #("bar", ast.binary("Bar"))])
+pub fn encode_record_test() {
+  let tree = ast.record([#("foo", ast.record([])), #("bar", ast.binary("Bar"))])
+  assert True = tree == round_trip(tree)
+}
+
+pub fn encode_tagged_test() {
+  let tree = e.tagged("Foo", ast.tuple_([]))
   assert True = tree == round_trip(tree)
 }
 

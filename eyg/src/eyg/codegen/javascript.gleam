@@ -147,10 +147,10 @@ fn render_pattern(pattern, state) {
           fields,
           state,
           fn(field, state) {
-            let #(row_name, label) = field
-            let state = with_assignment(label, state)
+            let #(field_name, binding) = field
+            let state = with_assignment(binding, state)
             let field =
-              string.concat([row_name, ": ", render_label(label, state)])
+              string.concat([field_name, ": ", render_label(binding, state)])
             #(field, state)
           },
         )
@@ -208,6 +208,19 @@ pub fn render(
       |> wrap_single_or_multiline(",", "{", "}")
       |> wrap_return(state)
     }
+    // TODO escape tag
+    e.Tagged(tag, value) -> {
+      let state = Generator(..state, self: None)
+      let start = string.concat(["{", tag, ":"])
+      case maybe_wrap_expression(value, state) {
+        [single] -> [string.concat([start, " ", single, "}"])]
+        lines ->
+          [start, ..indent(lines)]
+          |> list.append(["}"])
+      }
+      |> wrap_return(state)
+    }
+
     e.Let(pattern, value, then) -> {
       let state = Generator(..state, self: None)
       let value_state = case pattern {

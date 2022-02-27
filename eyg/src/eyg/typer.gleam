@@ -19,7 +19,7 @@ pub type Reason(n) {
   UnknownVariable(label: String)
   UnmatchedTypes(expected: t.Monotype(n), given: t.Monotype(n))
   MissingFields(expected: List(#(String, t.Monotype(n))))
-  UnexpectedFields(expected: List(#(String, t.Monotype(n))))
+  UnexpectedFields(unexpected: List(#(String, t.Monotype(n))))
   UnableToProvide(expected: t.Monotype(n), generator: e.Generator)
   ProviderFailed(generator: e.Generator, expected: t.Monotype(n))
   Warning(message: String)
@@ -169,6 +169,7 @@ fn do_occurs_in(i, b) {
       fields
       |> list.map(fn(x: #(String, t.Monotype(n))) { x.1 })
       |> list.any(do_occurs_in(i, _))
+    t.Union(_, _) -> False
   }
 }
 
@@ -179,7 +180,7 @@ pub fn next_unbound(typer) {
 }
 
 // monotype function??
-// This will need the checker/unification/constraints data structure as it uses subsitutions and updates the next var value
+// This will need the checker/unification/constraints data structure as it uses substitutions and updates the next var value
 // next unbound inside mono can be integer and unbound(i) outside
 pub fn unify(expected, given, state) {
   // Pass as tuple to make reduce functions easier to implement
@@ -230,6 +231,30 @@ pub fn unify(expected, given, state) {
             [], _ -> Ok(typer)
             only, Some(i) ->
               Ok(add_substitution(i, t.Record(only, Some(x)), typer))
+            only, None -> Error(#(MissingFields(only), typer))
+          }
+          list.try_fold(
+            shared,
+            typer,
+            fn(typer, pair) {
+              let #(expected, given) = pair
+              unify(expected, given, #(typer, scope))
+            },
+          )
+        }
+        t.Union(expected, expected_extra), t.Union(given, given_extra) -> {
+          let #(expected, given, shared) = group_shared(expected, given)
+          let #(x, typer) = next_unbound(typer)
+          try typer = case given, expected_extra {
+            [], _ -> Ok(typer)
+            only, Some(i) ->
+              Ok(add_substitution(i, t.Union(only, Some(x)), typer))
+            only, None -> Error(#(UnexpectedFields(only), typer))
+          }
+          try typer = case expected, given_extra {
+            [], _ -> Ok(typer)
+            only, Some(i) ->
+              Ok(add_substitution(i, t.Union(only, Some(x)), typer))
             only, None -> Error(#(MissingFields(only), typer))
           }
           list.try_fold(
@@ -438,14 +463,18 @@ pub fn expand_providers(tree, typer) {
         misc.map_state(
           fields,
           typer,
-          fn(row, typer) {
-            let #(key, value) = row
+          fn(field, typer) {
+            let #(key, value) = field
             let #(value, typer) = expand_providers(value, typer)
-            let row = #(key, value)
-            #(row, typer)
+            let field = #(key, value)
+            #(field, typer)
           },
         )
       #(#(meta, e.Record(fields)), typer)
+    }
+    e.Tagged(tag, value) -> {
+      let #(value, typer) = expand_providers(value, typer)
+      #(#(meta, e.Tagged(tag, value)), typer)
     }
     e.Let(label, value, then) -> {
       let #(value, typer) = expand_providers(value, typer)
@@ -580,6 +609,16 @@ pub fn infer(
       let expression = #(meta(type_), e.Record(fields))
       #(expression, typer)
     }
+    e.Tagged(tag, value) -> {
+      let #(x, typer) = next_unbound(typer)
+      let value_type = t.Unbound(x)
+      let #(y, typer) = next_unbound(typer)
+      let given = t.Union([#(tag, value_type)], Some(y))
+      let #(type_, typer) = do_unify(expected, given, #(typer, scope))
+      let #(value, typer) = infer(value, value_type, #(typer, child(scope, 1)))
+      let expression = #(meta(type_), e.Tagged(tag, value))
+      #(expression, typer)
+    }
     e.Variable(label) -> {
       // Returns typer because of instantiation,
       // TODO separate lookup for instantiate, good for let rec
@@ -663,58 +702,51 @@ pub fn infer(
       #(expression, typer)
     }
     e.Case(value, branches) -> {
-      let #(fields, #(typer, _)) =
+      let #(branches, #(typer, _)) =
         misc.map_state(
           branches,
           #(typer, 1),
           fn(branch, state) {
             let #(typer, i) = state
             let #(name, pattern, then) = branch
-            let #(x, typer) = next_unbound(typer)
-            let arg_type = t.Unbound(x)
-            let expected_function = t.Function(arg_type, expected)
-            // let expected
-            let #(body, typer, _type_) =
-              infer_function(
-                pattern,
-                then,
-                expected_function,
-                typer,
-                child(scope, i),
-                2,
+            // variant value type
+            let #(type_, bound_variables, typer) = pattern_type(pattern, typer)
+            let row = #(name, type_)
+            let state = #(typer, i + 1)
+            // I think these need generalising after the value has been unified
+            let bound_variables =
+              list.map(
+                bound_variables,
+                fn(bv) {
+                  let #(label, monotype) = bv
+                  let polytype =
+                    polytype.generalise(
+                      t.resolve(monotype, typer.substitutions),
+                      scope.variables,
+                    )
+                  #(label, polytype)
+                },
               )
-            #(
-              #(
-                name,
-                #(meta(Ok(expected_function)), e.Function(pattern, body)),
-                arg_type,
-              ),
-              #(typer, i + 1),
-            )
+            let scope = list.fold(bound_variables, scope, do_set_variable)
+            let inference = #(name, pattern, then, child(child(scope, i), 2))
+            #(#(row, inference), state)
           },
         )
-      let field_types =
-        list.map(
-          fields,
-          fn(field) {
-            let #(name, typed, arg_type) = field
-            let type_ = case get_type(typed) {
-              Ok(type_) -> type_
-              Error(_reason) -> arg_type
-            }
-            #(name, type_)
-          },
-        )
-      let expected_switch = t.Record(field_types, None)
-      let expected_value = t.Function(expected_switch, expected)
+      let #(rows, inferences) = list.unzip(branches)
+      let expected_value = t.Union(rows, None)
+      // unifys value with patterns
       let #(value, typer) =
         infer(value, expected_value, #(typer, child(scope, 0)))
-      let branches =
-        list.map(
-          fields,
-          fn(field) {
-            let #(name, #(_meta, e.Function(pattern, body)), _type) = field
-            #(name, pattern, body)
+      // Case could fail if not a union type at all ?
+      let #(branches, typer) =
+        misc.map_state(
+          inferences,
+          typer,
+          fn(inf, typer) {
+            let #(name, pattern, then, scope) = inf
+            let #(then, typer) = infer(then, expected, #(typer, scope))
+            let branch = #(name, pattern, then)
+            #(branch, typer)
           },
         )
       let expression = #(meta(Ok(expected)), e.Case(value, branches))

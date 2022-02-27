@@ -3,6 +3,7 @@ import gleam/io
 import gleam/option.{None, Some}
 import eyg/codegen/javascript
 import eyg/ast
+import eyg/ast/expression as e
 import eyg/ast/encode
 import eyg/ast/pattern
 import eyg/typer/monotype
@@ -136,9 +137,9 @@ pub fn tuple_destructure_test() {
     )
 }
 
-pub fn row_assignment_test() {
+pub fn record_assignment_test() {
   let untyped =
-    ast.row([
+    e.record([
       #("first_name", ast.binary("Bob")),
       #("family_name", ast.binary("Ross")),
     ])
@@ -160,10 +161,10 @@ pub fn row_assignment_test() {
     )
 }
 
-pub fn multiline_row_assignment_test() {
+pub fn multiline_record_assignment_test() {
   let scope = typer.root_scope([])
   let untyped =
-    ast.row([
+    e.record([
       #(
         "first_name",
         ast.let_(
@@ -194,7 +195,7 @@ pub fn multiline_row_assignment_test() {
     )
 }
 
-pub fn row_destructure_test() {
+pub fn record_destructure_test() {
   let untyped =
     ast.let_(
       pattern.Record([#("first_name", "a"), #("family_name", "b")]),
@@ -214,6 +215,49 @@ pub fn row_destructure_test() {
   let [l1, l2] = js
   let "let {first_name: a$1, family_name: b$1} = user;" = l1
   let "[]" = l2
+}
+
+// TODO use json lib
+pub fn tagged_assignment_test() {
+  let untyped = e.tagged("Some", ast.binary("Sue"))
+  let js =
+    compile(
+      untyped,
+      #(typer.init(browser.native_to_string), typer.root_scope([])),
+    )
+
+  let [l1] = js
+  let "{Some: \"Sue\"}" = l1
+
+  assert True =
+    dynamic.from(encode.object([#("Some", encode.string("Sue"))])) == eval(
+      untyped,
+      #(typer.init(browser.native_to_string), typer.root_scope([])),
+    )
+}
+
+pub fn multiline_tagged_assignment_test() {
+  let scope = typer.root_scope([])
+  let untyped =
+    e.tagged(
+      "Some",
+      ast.let_(pattern.Variable("tmp"), ast.binary("TMP!"), ast.variable("tmp")),
+    )
+
+  let js = compile(untyped, #(typer.init(browser.native_to_string), scope))
+  let [l1, l2, l3, l4, l5, l6] = js
+  let "{Some:" = l1
+  let "  (() => {" = l2
+  let "    let tmp$1 = \"TMP!\";" = l3
+  let "    return tmp$1;" = l4
+  let "  })()" = l5
+  let "}" = l6
+
+  assert True =
+    dynamic.from(encode.object([#("Some", encode.string("TMP!"))])) == eval(
+      untyped,
+      #(typer.init(browser.native_to_string), typer.root_scope([])),
+    )
 }
 
 pub fn simple_function_call_test() {

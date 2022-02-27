@@ -110,7 +110,7 @@ pub fn unexpected_tuple_size_test() {
   assert typer.IncorrectArity(1, 0) = reason
 }
 
-pub fn matched_expected_row_test() {
+pub fn matched_expected_record_test() {
   let scope =
     typer.root_scope([
       #("foo", polytype.Polytype([], t.Record([#("k", t.Binary)], None))),
@@ -130,7 +130,7 @@ pub fn matched_expected_row_test() {
   assert t.Record([#("k", t.Binary)], _) = t.resolve(type_, substitutions)
 }
 
-pub fn expected_a_row_test() {
+pub fn expected_a_record_test() {
   let typer = typer.init(browser.native_to_string)
   let scope = typer.root_scope([#("foo", polytype.Polytype([], t.Binary))])
   let state = #(typer, scope)
@@ -149,7 +149,7 @@ pub fn expected_a_row_test() {
   assert typer.UnmatchedTypes(t.Record(_, _), t.Binary) = reason
 }
 
-pub fn matched_expected_row_with_additional_fields_test() {
+pub fn matched_expected_record_with_additional_fields_test() {
   let scope =
     typer.root_scope([
       #(
@@ -175,7 +175,7 @@ pub fn matched_expected_row_with_additional_fields_test() {
   assert t.Record([#("k", t.Binary), _], _) = t.resolve(type_, substitutions)
 }
 
-pub fn grow_expected_fields_in_row_test() {
+pub fn grow_expected_fields_in_record_test() {
   let typer = typer.init(browser.native_to_string)
   let scope =
     typer.root_scope([#("foo", polytype.Polytype([], t.Record([], Some(-1))))])

@@ -143,6 +143,18 @@ pub fn do_display(tree, position, selection, editor) {
       let fields = list.index_map(fields, display_field)
       #(metadata, e.Record(fields))
     }
+    e.Tagged(tag, value) -> #(
+      metadata,
+      e.Tagged(
+        tag,
+        do_display(
+          value,
+          path.append(position, 1),
+          child_selection(selection, 1),
+          editor,
+        ),
+      ),
+    )
     e.Variable(label) -> #(metadata, e.Variable(label))
     e.Let(pattern, value, then) -> {
       let value =
@@ -313,7 +325,7 @@ pub fn display_expression_fields(display, fields) {
   )
 }
 
-pub fn display_unit_variant(display) {
+pub fn display_tag(display) {
   let Display(position: position, selection: selection, expanded: expanded, ..) =
     display
   let position = path.append(position, 0)

@@ -9,13 +9,19 @@ pub type Monotype(n) {
   Binary
   Tuple(elements: List(Monotype(n)))
   Record(fields: List(#(String, Monotype(n))), extra: Option(Int))
+  Union(variants: List(#(String, Monotype(n))), extra: Option(Int))
   Function(from: Monotype(n), to: Monotype(n))
   Unbound(i: Int)
 }
 
-fn row_to_string(row, native_to_string) {
-  let #(label, type_) = row
+fn field_to_string(field, native_to_string) {
+  let #(label, type_) = field
   string.concat([label, ": ", to_string(type_, native_to_string)])
+}
+
+fn variant_to_string(variant, native_to_string) {
+  let #(label, type_) = variant
+  string.concat([label, " ", to_string(type_, native_to_string)])
 }
 
 pub fn to_string(monotype, native_to_string) {
@@ -31,42 +37,36 @@ pub fn to_string(monotype, native_to_string) {
         )),
         ")",
       ])
-    Function(Record(fields, rest), return) -> {
-      let all =
-        list.try_map(
-          fields,
-          fn(f) {
-            let #(name, type_) = f
-            case type_ {
-              Function(Tuple([]), x) if x == return -> Ok(name)
-              Function(inner, x) if x == return ->
-                Ok(string.concat([name, " ", to_string(inner, native_to_string)]))
-              _ -> Error(Nil)
-            }
-          },
-        )
-      case all {
-        Ok(variants) ->
-          string.concat(["Variants ", ..list.intersperse(variants, " | ")])
-        Error(Nil) -> {
-          assert Function(from, to) = monotype
-          string.concat([
-            to_string(from, native_to_string),
-            " -> ",
-            to_string(to, native_to_string),
-          ])
-        }
+    Record(fields, extra) -> {
+      let extra = case extra {
+        Some(i) -> [string.concat(["..", int.to_string(i)])]
+        None -> []
       }
-    }
-    Record(fields, _) ->
       string.concat([
         "{",
         string.concat(list.intersperse(
-          list.map(fields, row_to_string(_, native_to_string)),
+          list.map(fields, field_to_string(_, native_to_string))
+          |> list.append(extra),
           ", ",
         )),
         "}",
       ])
+    }
+    Union(variants, extra) -> {
+      let extra = case extra {
+        Some(i) -> [string.concat(["..", int.to_string(i)])]
+        None -> []
+      }
+      string.concat([
+        "[",
+        string.concat(list.intersperse(
+          list.map(variants, variant_to_string(_, native_to_string))
+          |> list.append(extra),
+          " | ",
+        )),
+        "]",
+      ])
+    }
     Function(from, to) ->
       string.concat([
         to_string(from, native_to_string),
@@ -109,7 +109,7 @@ pub fn literal(monotype) {
     Function(from, to) ->
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
-    Native(_) -> todo("ss")
+    Native(_) | Union(_, _) -> todo("ss")
   }
 }
 
@@ -125,6 +125,7 @@ fn do_occurs_in(i, b) {
       fields
       |> list.map(fn(x: #(String, Monotype(a))) { x.1 })
       |> list.any(do_occurs_in(i, _))
+    Union(_, _) -> False
   }
 }
 
@@ -169,8 +170,7 @@ pub fn resolve(type_, substitutions) {
         )
       case rest {
         None -> Record(resolved_fields, None)
-        Some(i) -> {
-          type_
+        Some(i) ->
           case resolve(Unbound(i), substitutions) {
             Unbound(j) -> Record(resolved_fields, Some(j))
             Record(inner, rest) ->
@@ -178,7 +178,28 @@ pub fn resolve(type_, substitutions) {
             _ ->
               todo("should only ever be one or the other. perhaps always an i")
           }
-        }
+      }
+    }
+    Union(variants, extra) -> {
+      let resolved_variants =
+        list.map(
+          variants,
+          fn(variant) {
+            let #(name, type_) = variant
+            #(name, resolve(type_, substitutions))
+          },
+        )
+      case extra {
+        None -> Union(resolved_variants, None)
+        Some(i) ->
+          case resolve(Unbound(i), substitutions) {
+            Unbound(j) -> Union(resolved_variants, Some(j))
+            // TODO remove this and see if always works as i
+            Union(inner, rest) ->
+              Union(list.append(resolved_variants, inner), rest)
+            _ ->
+              todo("should only ever be one or the other. perhaps always an i")
+          }
       }
     }
     // TODO check resolve in our record based recursive frunctions
