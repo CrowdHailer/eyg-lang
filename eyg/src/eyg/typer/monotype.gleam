@@ -170,8 +170,7 @@ pub fn resolve(type_, substitutions) {
         )
       case rest {
         None -> Record(resolved_fields, None)
-        Some(i) -> {
-          type_
+        Some(i) ->
           case resolve(Unbound(i), substitutions) {
             Unbound(j) -> Record(resolved_fields, Some(j))
             Record(inner, rest) ->
@@ -179,7 +178,6 @@ pub fn resolve(type_, substitutions) {
             _ ->
               todo("should only ever be one or the other. perhaps always an i")
           }
-        }
       }
     }
     Union(variants, extra) -> {
@@ -193,8 +191,7 @@ pub fn resolve(type_, substitutions) {
         )
       case extra {
         None -> Union(resolved_variants, None)
-        Some(i) -> {
-          type_
+        Some(i) ->
           case resolve(Unbound(i), substitutions) {
             Unbound(j) -> Union(resolved_variants, Some(j))
             // TODO remove this and see if always works as i
@@ -203,7 +200,6 @@ pub fn resolve(type_, substitutions) {
             _ ->
               todo("should only ever be one or the other. perhaps always an i")
           }
-        }
       }
     }
     // TODO check resolve in our record based recursive frunctions

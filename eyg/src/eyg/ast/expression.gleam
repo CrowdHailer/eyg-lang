@@ -198,6 +198,10 @@ pub fn tagged(tag, value) {
   #(dynamic.from(Nil), Tagged(tag, value))
 }
 
+pub fn case_(value, branches) {
+  #(dynamic.from(Nil), Case(value, branches))
+}
+
 pub fn hole() {
   #(dynamic.from(Nil), Hole)
 }

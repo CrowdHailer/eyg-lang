@@ -43,16 +43,15 @@ pub fn external_variable_binding_test() {
     compile(source)
 }
 
-pub fn recursive_test() {
-  let source = last()
-  // assigned(ast.function(
-  //   p.Tuple([None, Some("a")]),
-  //   ast.call(ast.variable("foo"), ast.variable("a")),
-  // ))
-  assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
-    compile(source)
-}
-
+// pub fn recursive_test() {
+//   let source = last()
+//   // assigned(ast.function(
+//   //   p.Tuple([None, Some("a")]),
+//   //   ast.call(ast.variable("foo"), ast.variable("a")),
+//   // ))
+//   assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
+//     compile(source)
+// }
 fn last() {
   ast.let_(
     p.Variable("last"),
