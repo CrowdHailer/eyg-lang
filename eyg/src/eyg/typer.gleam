@@ -429,20 +429,10 @@ fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype(n)), Typer(n)) {
 
 pub fn equal_fn() {
   polytype.Polytype(
-    [1, 2],
+    [1],
     t.Function(
       t.Tuple([t.Unbound(1), t.Unbound(1)]),
-      // TODO Should the be part of parameterisation don't think so as not part of equal getting initialised
-      t.Function(
-        t.Record(
-          [
-            #("True", t.Function(t.Tuple([]), t.Unbound(2))),
-            #("False", t.Function(t.Tuple([]), t.Unbound(2))),
-          ],
-          None,
-        ),
-        t.Unbound(2),
-      ),
+      t.Union([#("True", t.Tuple([])), #("False", t.Tuple([]))], None),
     ),
   )
 }

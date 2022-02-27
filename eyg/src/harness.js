@@ -49,9 +49,9 @@ function foo(x) {
 export function run(code) {
   function equal([a, b]) {
     if (deepEqual(a, b)) {
-      return ({ True: then }) => { return then([]) }
+      return { True: [] }
     } else {
-      return ({ False: then }) => { return then([]) }
+      return { False: [] }
     }
   }
 

@@ -264,29 +264,27 @@ pub fn render(
       |> wrap_return(state)
     }
     e.Case(value, branches) -> {
-      let value = render(value, in_tail(False, state))
       let branches =
-        list.map(
+        list.flat_map(
           branches,
           fn(branch) {
             let #(label, pattern, then) = branch
             let #(bind, state) = render_pattern(pattern, state)
-            let start = string.concat([label, ": (", bind, ") => {"])
-            case render(then, in_tail(True, state)) {
-              [single] -> [string.concat([start, " ", single, " },"])]
-              lines ->
-                [start, ..indent(lines)]
-                |> list.append(["},"])
-            }
+            let assignment = string.concat(["let ", bind, " = $.", label, ";"])
+            let clause =
+              indent([assignment, ..render(then, in_tail(True, state))])
+            let match =
+              string.concat(["else if (Object.hasOwn($, \"", label, "\")) {"])
+            list.append([match, ..clause], ["}"])
           },
         )
-        // |> wrap_return(state
-        // |> wrap_single_or_multiline("(((((", ",", "####")
-        |> list.flatten()
+      let branches =
+        ["if (false) {}", ..branches]
         |> indent()
-      // value might be multiline
-      // let x = wrap_single_or_multiline(branches, "(((((", ",", "####")
-      list.append(squash(value, ["({"]), list.append(branches, ["})"]))
+      let pre = "(function ($){"
+      let function = list.append([pre, ..branches], ["})"])
+      let with = wrap_lines("(", maybe_wrap_expression(value, state), ")")
+      squash(function, with)
       |> wrap_return(state)
     }
 
