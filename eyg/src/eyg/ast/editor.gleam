@@ -238,7 +238,7 @@ pub fn handle_change(editor, content) {
       let elements = list.flatten([pre, [content], post])
       replace_pattern(tree, pattern_position, p.Tuple(elements))
     }
-    RowKey(i, _) -> {
+    FieldKey(i, _) -> {
       assert Ok(#(field_position, _)) = path.parent(position)
       assert Ok(#(record_position, _)) = path.parent(field_position)
       assert Expression(#(_, e.Record(fields))) =
@@ -312,8 +312,8 @@ pub fn handle_change(editor, content) {
 
 pub type Element(a, b) {
   Expression(e.Expression(a, b))
-  RowField(Int, #(String, e.Expression(a, b)))
-  RowKey(Int, String)
+  Field(Int, #(String, e.Expression(a, b)))
+  FieldKey(Int, String)
   Tag(String)
   Pattern(p.Pattern, e.Expression(a, b))
   PatternElement(Int, String)
@@ -438,7 +438,7 @@ fn decrease_selection(tree, position) {
       Command,
     )
     Expression(_) -> #(None, inner, Command)
-    RowField(_, _) -> #(None, inner, Command)
+    Field(_, _) -> #(None, inner, Command)
     Pattern(p.Tuple([]), _) -> #(
       Some(replace_pattern(tree, position, p.Tuple([""]))),
       inner,
@@ -786,7 +786,7 @@ fn insert_space(tree, position, offset) {
         Command,
       )
     }
-    Some(#(position, cursor, RowExpression(fields))) -> {
+    Some(#(position, cursor, RecordExpression(fields))) -> {
       let cursor = cursor + offset
       let new = e.record(insert_at(fields, cursor, #("", ast.hole())))
       #(
@@ -804,7 +804,7 @@ fn insert_space(tree, position, offset) {
         Draft(""),
       )
     }
-    Some(#(position, cursor, RowPattern(fields))) -> {
+    Some(#(position, cursor, RecordPattern(fields))) -> {
       let cursor = cursor + offset
       let new = p.Record(insert_at(fields, cursor, #("", "")))
       #(
@@ -938,11 +938,11 @@ fn swap_elements(match, at) {
       // This hole is not used we are reusing the Pattern type which expects a parent expression
       Ok(Pattern(p.Tuple(elements), ast.hole()))
     }
-    RowExpression(fields) -> {
+    RecordExpression(fields) -> {
       try fields = swap_pair(fields, at)
       Ok(Expression(e.record(fields)))
     }
-    RowPattern(fields) -> {
+    RecordPattern(fields) -> {
       try fields = swap_pair(fields, at)
       // This hole is not used we are reusing the Pattern type which expects a parent expression
       Ok(Pattern(p.Record(fields), ast.hole()))
@@ -1032,9 +1032,9 @@ fn drag_up(tree, original) {
 
 type TupleMatch {
   TupleExpression(elements: List(e.Expression(Dynamic, Dynamic)))
-  RowExpression(fields: List(#(String, e.Expression(Dynamic, Dynamic))))
+  RecordExpression(fields: List(#(String, e.Expression(Dynamic, Dynamic))))
   TuplePattern(elements: List(String))
-  RowPattern(fields: List(#(String, String)))
+  RecordPattern(fields: List(#(String, String)))
 }
 
 fn match_compound(target) -> Result(TupleMatch, Nil) {
@@ -1042,9 +1042,9 @@ fn match_compound(target) -> Result(TupleMatch, Nil) {
     Expression(#(_, e.Tuple(elements))) ->
       Ok(TupleExpression(list.map(elements, untype)))
     Expression(#(_, e.Record(fields))) ->
-      Ok(RowExpression(list.map(fields, untype_field)))
+      Ok(RecordExpression(list.map(fields, untype_field)))
     Pattern(p.Tuple(elements), _) -> Ok(TuplePattern(elements))
-    Pattern(p.Record(fields), _) -> Ok(RowPattern(fields))
+    Pattern(p.Record(fields), _) -> Ok(RecordPattern(fields))
 
     _ -> Error(Nil)
   }
@@ -1537,7 +1537,7 @@ fn draft(tree, position) {
       }
     Pattern(p.Variable(label), _) -> #(None, position, Draft(label))
     PatternElement(_, label) -> #(None, position, Draft(label))
-    RowKey(_, key) -> #(None, position, Draft(key))
+    FieldKey(_, key) -> #(None, position, Draft(key))
     PatternKey(_, key) -> #(None, position, Draft(key))
     PatternFieldBind(_, label) -> #(None, position, Draft(label))
     ProviderConfig(config) -> #(None, position, Draft(config))
@@ -1599,11 +1599,11 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
     }
     #(_, e.Record(fields)), [i] -> {
       let [field, ..] = list.drop(fields, i)
-      RowField(i, field)
+      Field(i, field)
     }
     #(_, e.Record(fields)), [i, 0] -> {
       let [#(key, _), ..] = list.drop(fields, i)
-      RowKey(i, key)
+      FieldKey(i, key)
     }
     #(_, e.Record(fields)), [i, 1, ..rest] -> {
       let [#(_, child), ..] = list.drop(fields, i)
