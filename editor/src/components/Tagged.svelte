@@ -10,6 +10,8 @@
   $: tag_display = Display.display_pattern(metadata);
 </script>
 
+<!-- needs an else that passes in an empty tuple -->
+<!-- {#if !Display.is_unit(value)}<Expression expression={value} />{/if} -->
 <span
   class="border-2 border-transparent outline-none rounded"
   class:border-red-500={metadata.errored && !Display.is_target(metadata)}
@@ -21,5 +23,5 @@
       !Display.is_target(tag_display)}
     class:border-indigo-300={Display.is_target(tag_display)}
     data-editor={Display.marker(tag_display)}>{tag}</span
-  >{#if !Display.is_unit(value)}<Expression expression={value} />{/if}</span
+  ><Expression expression={value} /></span
 >

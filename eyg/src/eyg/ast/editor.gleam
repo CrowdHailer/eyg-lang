@@ -1395,6 +1395,16 @@ fn do_delete(tree, position) {
           }
       }
     }
+    e.Tagged(_, value), [0] -> Some(#(value, []))
+    e.Tagged(tag, value), [1, ..rest] ->
+      case do_delete(value, rest) {
+        Some(#(inner, path)) -> {
+          let new = e.tagged(tag, inner)
+          let path = [1, ..path]
+          Some(#(new, path))
+        }
+        None -> Some(#(tree, []))
+      }
     e.Let(pattern, value, then), [0, ..rest] ->
       case delete_pattern(pattern, rest) {
         Some(#(inner, position)) -> {
