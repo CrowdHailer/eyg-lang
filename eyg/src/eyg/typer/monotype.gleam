@@ -19,6 +19,11 @@ fn field_to_string(field, native_to_string) {
   string.concat([label, ": ", to_string(type_, native_to_string)])
 }
 
+fn variant_to_string(variant, native_to_string) {
+  let #(label, type_) = variant
+  string.concat([label, " ", to_string(type_, native_to_string)])
+}
+
 pub fn to_string(monotype, native_to_string) {
   case monotype {
     Native(native) -> native_to_string(native)
@@ -32,43 +37,36 @@ pub fn to_string(monotype, native_to_string) {
         )),
         ")",
       ])
-    Function(Record(fields, rest), return) -> {
-      let all =
-        list.try_map(
-          fields,
-          fn(f) {
-            let #(name, type_) = f
-            case type_ {
-              Function(Tuple([]), x) if x == return -> Ok(name)
-              Function(inner, x) if x == return ->
-                Ok(string.concat([name, " ", to_string(inner, native_to_string)]))
-              _ -> Error(Nil)
-            }
-          },
-        )
-      case all {
-        Ok(variants) ->
-          string.concat(["Variants ", ..list.intersperse(variants, " | ")])
-        Error(Nil) -> {
-          assert Function(from, to) = monotype
-          string.concat([
-            to_string(from, native_to_string),
-            " -> ",
-            to_string(to, native_to_string),
-          ])
-        }
+    Record(fields, extra) -> {
+      let extra = case extra {
+        Some(i) -> [string.concat(["..", int.to_string(i)])]
+        None -> []
       }
-    }
-    Record(fields, _) ->
       string.concat([
         "{",
         string.concat(list.intersperse(
-          list.map(fields, field_to_string(_, native_to_string)),
+          list.map(fields, field_to_string(_, native_to_string))
+          |> list.append(extra),
           ", ",
         )),
         "}",
       ])
-    Union(variants, _) -> "TODO finsih "
+    }
+    Union(variants, extra) -> {
+      let extra = case extra {
+        Some(i) -> [string.concat(["..", int.to_string(i)])]
+        None -> []
+      }
+      string.concat([
+        "[",
+        string.concat(list.intersperse(
+          list.map(variants, variant_to_string(_, native_to_string))
+          |> list.append(extra),
+          " | ",
+        )),
+        "]",
+      ])
+    }
     Function(from, to) ->
       string.concat([
         to_string(from, native_to_string),

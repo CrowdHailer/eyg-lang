@@ -45,11 +45,11 @@ pub fn replace_variable(monotype, x, y) {
       t.Record(fields, rest)
     }
     t.Union(variants, rest) -> {
-      let vairants =
+      let variants =
         list.map(
-          vairants,
-          fn(vairant) {
-            let #(name, value) = vairant
+          variants,
+          fn(variant) {
+            let #(name, value) = variant
             #(name, replace_variable(value, x, y))
           },
         )
@@ -57,7 +57,7 @@ pub fn replace_variable(monotype, x, y) {
         Some(i) if i == x -> Some(y)
         _ -> rest
       }
-      t.Union(vairants, rest)
+      t.Union(variants, rest)
     }
     t.Function(from, to) ->
       t.Function(replace_variable(from, x, y), replace_variable(to, x, y))
