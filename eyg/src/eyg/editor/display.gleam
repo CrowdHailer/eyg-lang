@@ -325,7 +325,7 @@ pub fn display_expression_fields(display, fields) {
   )
 }
 
-pub fn display_unit_variant(display) {
+pub fn display_tag(display) {
   let Display(position: position, selection: selection, expanded: expanded, ..) =
     display
   let position = path.append(position, 0)

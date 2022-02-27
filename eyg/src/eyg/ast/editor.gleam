@@ -628,7 +628,7 @@ fn do_move_right(tree, selection, position) {
         True -> path.append(path.append(position, i + 1), 0)
         False -> list.append(position, selection)
       }
-      e.Tagged(_, _), [0] -> path.append(position, 1)
+    e.Tagged(_, _), [0] -> path.append(position, 1)
     e.Case(_, _), [0] | e.Case(_, _), [] -> path.append(position, 1)
     // Step in
     _, [] -> position
@@ -640,7 +640,7 @@ fn do_move_right(tree, selection, position) {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_right(value, rest, path.append(path.append(position, i), 1))
     }
-        e.Tagged(_, value), [1, ..rest] ->
+    e.Tagged(_, value), [1, ..rest] ->
       do_move_right(value, rest, path.append(position, 1))
     e.Let(_, value, _), [1, ..rest] ->
       do_move_right(value, rest, path.append(position, 1))
@@ -1242,6 +1242,11 @@ fn unwrap(tree, position) {
           let [#(_, replacement), ..] = list.drop(fields, index)
           let modified =
             replace_expression(tree, parent_position, untype(replacement))
+          #(modified, parent_position)
+        }
+        Expression(#(_, e.Tagged(_, value))), _ -> {
+          let modified =
+            replace_expression(tree, parent_position, untype(value))
           #(modified, parent_position)
         }
         Expression(#(_, e.Call(func, _))), 0 -> {
