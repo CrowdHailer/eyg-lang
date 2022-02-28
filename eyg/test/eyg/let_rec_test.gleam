@@ -57,6 +57,33 @@ pub fn recursive_tuple_test() {
   let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
 }
 
+pub fn loop_test() {
+  let source =
+    e.let_(
+      p.Variable("loop"),
+      e.function(
+        p.Variable("f"),
+        e.case_(
+          e.call(e.variable("f"), e.tuple_([])),
+          [
+            #("True", p.Tuple([]), e.call(e.variable("loop"), e.variable("f"))),
+            #("False,", p.Tuple([]), e.binary("Done")),
+          ],
+        ),
+      ),
+      e.variable("loop"),
+    )
+  let #(typed, checker) = infer(source, t.Unbound(-1))
+  assert Ok(type_) = get_type(typed, checker)
+  io.debug(checker.substitutions)
+  let "() -> [True () | False, ()] -> Binary" =
+    t.to_string(type_, fn(_) { todo("native") })
+    |> io.debug
+  // Shouldn't be getting stuck in case where return value is unknown
+  // Needs a drop out
+}
+
+// TODO need to test unification of recursive type after instantiation
 pub fn recursive_union_test() {
   let source =
     e.let_(
@@ -71,7 +98,7 @@ pub fn recursive_union_test() {
               "Cons",
               p.Tuple(["item", "rest"]),
               e.let_(
-                p.Variable("from"),
+                p.Variable("to"),
                 e.tagged(
                   "Cons",
                   e.tuple_([e.variable("item"), e.variable("to")]),
@@ -94,18 +121,4 @@ pub fn recursive_union_test() {
   let "() -> μ0.(Binary, 0)" =
     t.to_string(type_, fn(_) { todo("native") })
     |> io.debug
-}
-
-pub fn unification_test() {
-  let typer = typer.init(fn(_) { "TODO" })
-  assert Ok(typer) =
-    typer.unify(t.Unbound(1), t.Tuple([t.Binary, t.Unbound(2)]), typer)
-  assert Ok(typer) = typer.unify(t.Unbound(2), t.Unbound(1), typer)
-  // io.debug("----------")
-  // io.debug(typer.substitutions)
-  // io.debug(t.resolve(t.Unbound(1), typer.substitutions))
-  // io.debug(t.resolve(t.Unbound(2), typer.substitutions))
-  // // TODO rest recursive
-  // // TODO Should be the same type in base
-  // todo
 }

@@ -18,3 +18,18 @@ fn do_map_state(list, state, func, accumulator) {
     }
   }
 }
+
+fn do_zip_with(list, state, generator, accumulator) {
+  case list {
+    [] -> list.reverse(accumulator)
+    [item, ..list] -> {
+      let #(next, state) = generator(state)
+      let accumulator = [#(item, next), ..accumulator]
+      do_zip_with(list, state, generator, accumulator)
+    }
+  }
+}
+
+pub fn zip_with(list, state, generator) {
+  do_zip_with(list, state, generator, [])
+}

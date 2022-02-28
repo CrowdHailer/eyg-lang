@@ -359,8 +359,13 @@ fn add_substitution(
   state: #(Typer(n), List(Int)),
 ) -> #(Typer(n), List(Int)) {
   let #(state, seen) = state
-  let substitutions = [#(i, type_), ..state.substitutions]
-  #(Typer(..state, substitutions: substitutions), seen)
+  case t.resolve(type_, state.substitutions) {
+    t.Unbound(j) if j == i -> #(state, seen)
+    _ -> {
+      let substitutions = [#(i, type_), ..state.substitutions]
+      #(Typer(..state, substitutions: substitutions), seen)
+    }
+  }
 }
 
 pub fn unify(t1, t2, state: Typer(n)) {
