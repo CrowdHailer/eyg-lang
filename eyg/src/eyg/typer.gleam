@@ -274,79 +274,98 @@ pub fn get_type(
 }
 
 pub fn do_unify(
-  state: Typer(n),
+  state: #(Typer(n), List(Int)),
   pair: #(t.Monotype(n), t.Monotype(n)),
-) -> Result(Typer(n), Reason(n)) {
+) -> Result(#(Typer(n), List(Int)), Reason(n)) {
+  // io.debug("do_unify")
   let #(t1, t2) = pair
+  let #(state, seen) = state
+  // io.debug(t1)
+  // io.debug(t2)
+  // io.debug(state.substitutions)
   case t1, t2 {
-    t.Unbound(i), t.Unbound(j) if i == j -> Ok(state)
+    t.Unbound(i), t.Unbound(j) if i == j -> Ok(#(state, seen))
     t.Unbound(i), _ ->
       case list.key_find(state.substitutions, i) {
-        Ok(t1) -> do_unify(state, #(t1, t2))
-        Error(Nil) -> Ok(add_substitution(i, t2, state))
+        Ok(t1) ->
+          case list.contains(seen, i) {
+            False -> do_unify(#(state, [i, ..seen]), #(t1, t2))
+            True -> Ok(#(state, seen))
+          }
+        Error(Nil) -> Ok(add_substitution(i, t2, #(state, seen)))
       }
     _, t.Unbound(j) ->
       case list.key_find(state.substitutions, j) {
-        Ok(t2) -> do_unify(state, #(t1, t2))
-        Error(Nil) -> Ok(add_substitution(j, t1, state))
+        Ok(t2) ->
+          case list.contains(seen, j) {
+            False -> do_unify(#(state, [j, ..seen]), #(t1, t2))
+            True -> Ok(#(state, seen))
+          }
+        Error(Nil) -> Ok(add_substitution(j, t1, #(state, seen)))
       }
-    t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(state)
-    t.Binary, t.Binary -> Ok(state)
+    t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(#(state, seen))
+    t.Binary, t.Binary -> Ok(#(state, seen))
     t.Tuple(e1), t.Tuple(e2) ->
       case list.strict_zip(e1, e2) {
-        Ok(pairs) -> list.try_fold(pairs, state, do_unify)
+        Ok(pairs) -> list.try_fold(pairs, #(state, seen), do_unify)
         Error(list.LengthMismatch) ->
           Error(IncorrectArity(list.length(e1), list.length(e2)))
       }
     t.Record(row1, extra1), t.Record(row2, extra2) -> {
       let #(unmatched1, unmatched2, shared) = group_shared(row1, row2)
       let #(next, state) = next_unbound(state)
-      try state = case unmatched2, extra1 {
-        [], _ -> Ok(state)
+      try #(state, seen) = case unmatched2, extra1 {
+        [], _ -> Ok(#(state, seen))
         only, Some(i) ->
-          Ok(add_substitution(i, t.Record(only, Some(next)), state))
+          Ok(add_substitution(i, t.Record(only, Some(next)), #(state, seen)))
         only, None -> Error(UnexpectedFields(only))
       }
-      try state = case unmatched1, extra2 {
-        [], _ -> Ok(state)
+      try #(state, seen) = case unmatched1, extra2 {
+        [], _ -> Ok(#(state, seen))
         only, Some(i) ->
-          Ok(add_substitution(i, t.Record(only, Some(next)), state))
+          Ok(add_substitution(i, t.Record(only, Some(next)), #(state, seen)))
         only, None -> Error(MissingFields(only))
       }
-      list.try_fold(shared, state, do_unify)
+      list.try_fold(shared, #(state, seen), do_unify)
     }
     t.Union(row1, extra1), t.Union(row2, extra2) -> {
       let #(unmatched1, unmatched2, shared) = group_shared(row1, row2)
       let #(next, state) = next_unbound(state)
-      try state = case unmatched2, extra1 {
-        [], _ -> Ok(state)
+      try #(state, seen) = case unmatched2, extra1 {
+        [], _ -> Ok(#(state, seen))
         only, Some(i) ->
-          Ok(add_substitution(i, t.Union(only, Some(next)), state))
+          Ok(add_substitution(i, t.Union(only, Some(next)), #(state, seen)))
         only, None -> Error(UnexpectedFields(only))
       }
-      try state = case unmatched1, extra2 {
-        [], _ -> Ok(state)
+      try #(state, seen) = case unmatched1, extra2 {
+        [], _ -> Ok(#(state, seen))
         only, Some(i) ->
-          Ok(add_substitution(i, t.Union(only, Some(next)), state))
+          Ok(add_substitution(i, t.Union(only, Some(next)), #(state, seen)))
         only, None -> Error(MissingFields(only))
       }
-      list.try_fold(shared, state, do_unify)
+      list.try_fold(shared, #(state, seen), do_unify)
     }
     t.Function(from1, to1), t.Function(from2, to2) -> {
-      try state = do_unify(state, #(from1, from2))
-      do_unify(state, #(to1, to2))
+      try #(state, seen) = do_unify(#(state, seen), #(from1, from2))
+      do_unify(#(state, seen), #(to1, to2))
     }
     _, _ -> Error(UnmatchedTypes(t1, t2))
   }
 }
 
-fn add_substitution(i, type_, state: Typer(n)) -> Typer(n) {
+fn add_substitution(
+  i,
+  type_,
+  state: #(Typer(n), List(Int)),
+) -> #(Typer(n), List(Int)) {
+  let #(state, seen) = state
   let substitutions = [#(i, type_), ..state.substitutions]
-  Typer(..state, substitutions: substitutions)
+  #(Typer(..state, substitutions: substitutions), seen)
 }
 
-fn unify(t1, t2, state: Typer(n)) {
-  do_unify(state, #(t1, t2))
+pub fn unify(t1, t2, state: Typer(n)) {
+  try #(state, seen) = do_unify(#(state, []), #(t1, t2))
+  Ok(state)
 }
 
 fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype(n)), Typer(n)) {
@@ -486,6 +505,9 @@ pub fn infer(
   state: #(Typer(n), Scope(n)),
 ) -> #(e.Expression(Metadata(n), Dynamic), Typer(n)) {
   // return all context so more info can be added later
+  // io.debug("infer")
+  // io.debug(expression)
+  // io.debug(expected)
   let #(_, tree) = expression
   let #(typer, scope) = state
   let meta = Metadata(type_: _, scope: scope.variables, path: scope.path)
