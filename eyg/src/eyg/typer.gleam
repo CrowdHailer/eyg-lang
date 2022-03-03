@@ -184,8 +184,24 @@ fn set_variable(variable, typer, scope) {
   let #(label, monotype) = variable
   let Typer(substitutions: substitutions, ..) = typer
   let Scope(variables: variables, ..) = scope
-  let polytype =
-    polytype.generalise(t.resolve(monotype, substitutions), variables)
+  io.debug("resolve")
+  list.map(
+    substitutions,
+    fn(s) {
+      let #(i, t) = s
+      io.debug(string.concat([
+        int.to_string(i),
+        " = ",
+        t.to_string(t, fn(_) { todo("native") }),
+      ]))
+    },
+  )
+  io.debug("---------------")
+  io.debug(monotype)
+  io.debug("====")
+  let resolved = t.resolve(monotype, substitutions)
+  io.debug(resolved)
+  let polytype = polytype.generalise(resolved, variables)
   let variables = [#(label, polytype), ..variables]
   Scope(..scope, variables: variables)
 }
@@ -280,11 +296,20 @@ pub fn do_unify(
   // io.debug("do_unify")
   let #(t1, t2) = pair
   let #(state, seen) = state
-  // io.debug(t1)
-  // io.debug(t2)
   // io.debug(state.substitutions)
   case t1, t2 {
     t.Unbound(i), t.Unbound(j) if i == j -> Ok(#(state, seen))
+    // Need to keep reference to variables for resolving recursive types
+    t.Unbound(i), t.Unbound(j) ->
+      case list.key_find(state.substitutions, i) {
+        Ok(r1) ->
+          case list.key_find(state.substitutions, j) {
+            Ok(r2) -> do_unify(#(state, [i, j, ..seen]), #(r1, r2))
+            Error(_) -> Ok(add_substitution(j, t1, #(state, seen)))
+          }
+        Error(_) -> Ok(add_substitution(i, t2, #(state, seen)))
+      }
+
     t.Unbound(i), _ ->
       case list.key_find(state.substitutions, i) {
         Ok(t1) ->
@@ -303,6 +328,23 @@ pub fn do_unify(
           }
         Error(Nil) -> Ok(add_substitution(j, t1, #(state, seen)))
       }
+    // TODO does recursive recursive make any sense. I dont think so
+    // This is a fold/unfold
+    t.Recursive(i, inner1), t.Recursive(j, inner2) -> {
+      let inner2 = polytype.replace_variable(inner2, j, i)
+      case inner1 == inner2 {
+        True -> Ok(#(state, seen))
+        False -> Error(UnmatchedTypes(inner1, inner2))
+      }
+    }
+    t.Recursive(i, inner), _ -> {
+      let t1 = polytype.replace_type(inner, i, t1)
+      do_unify(#(state, seen), #(t1, t2))
+    }
+    _, t.Recursive(i, inner) -> {
+      let t2 = polytype.replace_type(inner, i, t2)
+      do_unify(#(state, seen), #(t1, t2))
+    }
     t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(#(state, seen))
     t.Binary, t.Binary -> Ok(#(state, seen))
     t.Tuple(e1), t.Tuple(e2) ->
@@ -614,7 +656,10 @@ pub fn infer(
               child(inner_scope, 1),
               1,
             )
+          io.debug("SELF")
+          // io.debug(self_type)
           let scope = set_variable(#(label, self_type), typer, scope)
+          // io.debug(scope)
           #(#(meta(type_), e.Function(pattern, body)), #(typer, scope))
         }
         _, _ -> {

@@ -1,10 +1,13 @@
 import gleam/io
+import gleam/int
 import gleam/list
+import gleam/string
 import gleam/option.{None, Some}
 import eyg
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/ast/editor
 import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -53,8 +56,11 @@ pub fn recursive_tuple_test() {
       e.variable("f"),
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
+  io.debug("rec tup type")
   assert Ok(type_) = get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
+  let "() -> μ0.(Binary, 0)" =
+    t.to_string(type_, fn(_) { todo("native") })
+    |> io.debug
 }
 
 pub fn loop_test() {
@@ -75,7 +81,7 @@ pub fn loop_test() {
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = get_type(typed, checker)
-  io.debug(checker.substitutions)
+  // io.debug(checker.substitutions)
   let "() -> [True () | False, ()] -> Binary" =
     t.to_string(type_, fn(_) { todo("native") })
     |> io.debug
@@ -93,7 +99,6 @@ pub fn recursive_union_test() {
         e.case_(
           e.variable("from"),
           [
-            #("Nil", p.Tuple([]), e.variable("to")),
             #(
               "Cons",
               p.Tuple(["item", "rest"]),
@@ -109,16 +114,55 @@ pub fn recursive_union_test() {
                 ),
               ),
             ),
+            #("Nil", p.Tuple([]), e.variable("to")),
           ],
         ),
       ),
-      e.variable("move"),
+      e.let_(
+        p.Variable("reverse"),
+        e.function(
+          p.Variable("items"),
+          e.call(
+            e.variable("move"),
+            e.tuple_([e.variable("items"), e.tagged("Nil", e.tuple_([]))]),
+          ),
+        ),
+        e.variable("reverse"),
+      ),
     )
-  io.debug("top")
+
+  // io.debug("top")
   let #(typed, checker) = infer(source, t.Unbound(-1))
+
+  assert Ok(move_exp) = get_expression(typed, [1])
+  io.debug("exp")
+
+  assert Ok(type_) = get_type(move_exp, checker)
+  io.debug("type")
+  t.to_string(type_, fn(_) { todo("native") })
+  // |> io.debug
+  list.map(
+    checker.substitutions,
+    fn(s) {
+      let #(i, t) = s
+      io.debug(string.concat([
+        int.to_string(i),
+        " = ",
+        t.to_string(t, fn(_) { todo("native") }),
+      ]))
+    },
+  )
+
+  // io.debug(checker.substitutions)
   io.debug("infered")
+  io.debug(checker.inconsistencies)
   assert Ok(type_) = get_type(typed, checker)
   let "() -> μ0.(Binary, 0)" =
     t.to_string(type_, fn(_) { todo("native") })
     |> io.debug
+}
+
+fn get_expression(tree, path) {
+  assert editor.Expression(expression) = editor.get_element(tree, path)
+  Ok(expression)
 }

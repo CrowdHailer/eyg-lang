@@ -76,6 +76,58 @@ pub fn replace_variable(monotype, x, y) {
   }
 }
 
+pub fn replace_type(monotype, x, t) {
+  case monotype {
+    t.Native(name) -> t.Native(name)
+    t.Binary -> t.Binary
+    t.Tuple(elements) -> t.Tuple(list.map(elements, replace_type(_, x, t)))
+    t.Record(fields, rest) -> {
+      let fields =
+        list.map(
+          fields,
+          fn(field) {
+            let #(name, value) = field
+            #(name, replace_type(value, x, t))
+          },
+        )
+      let rest = case rest {
+        Some(i) if i == x -> todo("can't replace row variable with type")
+        _ -> rest
+      }
+      t.Record(fields, rest)
+    }
+    t.Union(variants, rest) -> {
+      let variants =
+        list.map(
+          variants,
+          fn(variant) {
+            let #(name, value) = variant
+            #(name, replace_type(value, x, t))
+          },
+        )
+      let rest = case rest {
+        Some(i) if i == x -> todo("can't replace row variable with type")
+        _ -> rest
+      }
+      t.Union(variants, rest)
+    }
+    t.Function(from, to) ->
+      t.Function(replace_type(from, x, t), replace_type(to, x, t))
+    t.Unbound(i) ->
+      case i == x {
+        True -> t
+        False -> t.Unbound(i)
+      }
+    t.Recursive(i, inner) -> {
+      let i = case i == x {
+        True -> todo("can't replace recursive with type")
+        False -> i
+      }
+      t.Recursive(i, replace_type(inner, x, t))
+    }
+  }
+}
+
 // maybe scope builds atop polytype
 // MUST BE resolved first
 pub fn generalise(monotype, variables) {

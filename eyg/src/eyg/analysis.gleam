@@ -36,7 +36,9 @@ pub fn get_type(typed, checker: typer.Typer(n)) {
 }
 
 pub fn shrink(type_) {
-  let used = t.used_in_type(type_)
+  let used =
+    t.used_in_type(type_)
+    |> list.reverse
   let minimal = misc.zip_with(used, 0, incrementor)
   list.fold(
     minimal,
