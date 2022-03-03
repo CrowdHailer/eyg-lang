@@ -44,7 +44,6 @@ pub fn limited_row_test() {
   assert t.Binary = t.resolve(t.Unbound(-1), typer.substitutions)
   assert t.Union([#("None", t.Tuple([]))], None) =
     t.resolve(t.Unbound(-2), typer.substitutions)
-  io.debug("---------------")
 }
 
 pub fn equal_row_test() {
@@ -56,8 +55,5 @@ pub fn equal_row_test() {
 
   // assert Ok(typer) = typer.unify(t.Unbound(2), t.Unbound(3), typer)
   assert t.Binary = t.resolve(t.Unbound(-1), typer.substitutions)
-  assert t.Union([], None) =
-    t.resolve(t.Unbound(-2), typer.substitutions)
-    |> io.debug
-  io.debug("---------------")
+  assert t.Union([], None) = t.resolve(t.Unbound(-2), typer.substitutions)
 }

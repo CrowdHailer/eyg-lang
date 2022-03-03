@@ -289,7 +289,7 @@ fn do_used_in_type(set, type_) {
     Tuple(elements) -> list.fold(elements, set, do_used_in_type)
     Record(rows, rest) | Union(rows, rest) -> do_used_in_row(rows, rest, set)
     Recursive(i, type_) -> {
-      push_new(i, set)
+      let set = push_new(i, set)
       do_used_in_type(set, type_)
     }
     Function(from, to) -> {

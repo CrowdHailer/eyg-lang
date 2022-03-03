@@ -4,6 +4,7 @@ import gleam/list
 import gleam/string
 import gleam/option.{None, Some}
 import eyg
+import eyg/analysis
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
@@ -22,28 +23,6 @@ fn infer(untyped, type_) {
   typer.infer(untyped, type_, state)
 }
 
-fn get_type(typed, checker: typer.Typer(n)) {
-  case typer.get_type(typed) {
-    Ok(type_) -> {
-      let type_ = t.resolve(type_, checker.substitutions)
-      let used = t.used_in_type(type_)
-      let #(minimal, _) =
-        misc.map_state(used, 0, fn(used, i) { #(#(used, i), i + 1) })
-      let type_ =
-        list.fold(
-          minimal,
-          type_,
-          fn(type_, replace) {
-            let #(old, new) = replace
-            polytype.replace_variable(type_, old, new)
-          },
-        )
-      Ok(type_)
-    }
-    Error(reason) -> todo("resolve")
-  }
-}
-
 // TODO let x = x Test
 pub fn recursive_tuple_test() {
   let source =
@@ -57,7 +36,7 @@ pub fn recursive_tuple_test() {
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
   io.debug("rec tup type")
-  assert Ok(type_) = get_type(typed, checker)
+  assert Ok(type_) = analysis.get_type(typed, checker)
   let "() -> μ0.(Binary, 0)" =
     t.to_string(type_, fn(_) { todo("native") })
     |> io.debug
@@ -80,7 +59,7 @@ pub fn loop_test() {
       e.variable("loop"),
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
-  assert Ok(type_) = get_type(typed, checker)
+  assert Ok(type_) = analysis.get_type(typed, checker)
   // io.debug(checker.substitutions)
   let "() -> [True () | False, ()] -> Binary" =
     t.to_string(type_, fn(_) { todo("native") })
@@ -137,7 +116,7 @@ pub fn recursive_union_test() {
   assert Ok(move_exp) = get_expression(typed, [1])
   io.debug("exp")
 
-  assert Ok(type_) = get_type(move_exp, checker)
+  assert Ok(type_) = analysis.get_type(move_exp, checker)
   io.debug("type")
   t.to_string(type_, fn(_) { todo("native") })
   // |> io.debug
@@ -156,7 +135,7 @@ pub fn recursive_union_test() {
   // io.debug(checker.substitutions)
   io.debug("infered")
   io.debug(checker.inconsistencies)
-  assert Ok(type_) = get_type(typed, checker)
+  assert Ok(type_) = analysis.get_type(typed, checker)
   let "() -> μ0.(Binary, 0)" =
     t.to_string(type_, fn(_) { todo("native") })
     |> io.debug
