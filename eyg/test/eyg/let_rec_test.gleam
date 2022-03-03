@@ -111,6 +111,7 @@ pub fn recursive_union_test() {
     )
 
   // io.debug("top")
+  io.debug("===============================================")
   let #(typed, checker) = infer(source, t.Unbound(-1))
 
   assert Ok(move_exp) = get_expression(typed, [1])
@@ -119,19 +120,19 @@ pub fn recursive_union_test() {
   assert Ok(type_) = analysis.get_type(move_exp, checker)
   io.debug("type")
   t.to_string(type_, fn(_) { todo("native") })
-  // |> io.debug
-  list.map(
-    checker.substitutions,
-    fn(s) {
-      let #(i, t) = s
-      io.debug(string.concat([
-        int.to_string(i),
-        " = ",
-        t.to_string(t, fn(_) { todo("native") }),
-      ]))
-    },
-  )
 
+  // |> io.debug
+  // list.map(
+  //   checker.substitutions,
+  //   fn(s) {
+  //     let #(i, t) = s
+  //     io.debug(string.concat([
+  //       int.to_string(i),
+  //       " = ",
+  //       t.to_string(t, fn(_) { todo("native") }),
+  //     ]))
+  //   },
+  // )
   // io.debug(checker.substitutions)
   io.debug("infered")
   io.debug(checker.inconsistencies)

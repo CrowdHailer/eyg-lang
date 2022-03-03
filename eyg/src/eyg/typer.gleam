@@ -562,6 +562,8 @@ pub fn expand_providers(tree, typer) {
 }
 
 fn try_unify(expected, given, typer, path) {
+  // io.debug(expected)
+  // io.debug(given)
   case unify(expected, given, typer) {
     Ok(typer) -> #(Ok(expected), typer)
     Error(reason) -> {
@@ -683,7 +685,8 @@ pub fn infer(
               1,
             )
           io.debug("SELF")
-          // io.debug(self_type)
+          let typer: Typer(n) = typer
+          io.debug(t.resolve(self_type, typer.substitutions))
           let scope = set_variable(#(label, self_type), typer, scope)
           // io.debug(scope)
           #(#(meta(type_), e.Function(pattern, body)), #(typer, scope))
