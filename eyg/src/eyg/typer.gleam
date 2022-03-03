@@ -184,23 +184,23 @@ fn set_variable(variable, typer, scope) {
   let #(label, monotype) = variable
   let Typer(substitutions: substitutions, ..) = typer
   let Scope(variables: variables, ..) = scope
-  io.debug("resolve")
-  list.map(
-    substitutions,
-    fn(s) {
-      let #(i, t) = s
-      io.debug(string.concat([
-        int.to_string(i),
-        " = ",
-        t.to_string(t, fn(_) { todo("native") }),
-      ]))
-    },
-  )
-  io.debug("---------------")
-  io.debug(monotype)
-  io.debug("====")
+  // io.debug("resolve")
+  // list.map(
+  //   substitutions,
+  //   fn(s) {
+  //     let #(i, t) = s
+  //     io.debug(string.concat([
+  //       int.to_string(i),
+  //       " = ",
+  //       t.to_string(t, fn(_) { todo("native") }),
+  //     ]))
+  //   },
+  // )
+  // io.debug("---------------")
+  // io.debug(monotype)
+  // io.debug("====")
   let resolved = t.resolve(monotype, substitutions)
-  io.debug(resolved)
+  // io.debug(resolved)
   let polytype = polytype.generalise(resolved, variables)
   let variables = [#(label, polytype), ..variables]
   Scope(..scope, variables: variables)
@@ -363,6 +363,7 @@ pub fn do_unify(
         only, None -> Error(UnexpectedFields(only))
       }
       try #(state, seen) = case unmatched1, extra2 {
+        // TODO handle extra's the same as in Union
         [], _ -> Ok(#(state, seen))
         only, Some(i) ->
           Ok(add_substitution(i, t.Record(only, Some(next)), #(state, seen)))
@@ -372,17 +373,42 @@ pub fn do_unify(
     }
     t.Union(row1, extra1), t.Union(row2, extra2) -> {
       let #(unmatched1, unmatched2, shared) = group_shared(row1, row2)
+      // io.debug("HERE")
+      // io.debug(unmatched1)
+      // io.debug(unmatched2)
+      // io.debug(extra1)
+      // io.debug(extra2)
       let #(next, state) = next_unbound(state)
       try #(state, seen) = case unmatched2, extra1 {
-        [], _ -> Ok(#(state, seen))
+        [], None -> Ok(#(state, seen))
         only, Some(i) ->
-          Ok(add_substitution(i, t.Union(only, Some(next)), #(state, seen)))
+          Ok(add_substitution(
+            i,
+            t.Union(
+              only,
+              case extra2 {
+                Some(_) -> Some(next)
+                None -> None
+              },
+            ),
+            #(state, seen),
+          ))
         only, None -> Error(UnexpectedFields(only))
       }
       try #(state, seen) = case unmatched1, extra2 {
-        [], _ -> Ok(#(state, seen))
+        [], None -> Ok(#(state, seen))
         only, Some(i) ->
-          Ok(add_substitution(i, t.Union(only, Some(next)), #(state, seen)))
+          Ok(add_substitution(
+            i,
+            t.Union(
+              only,
+              case extra1 {
+                Some(_) -> Some(next)
+                None -> None
+              },
+            ),
+            #(state, seen),
+          ))
         only, None -> Error(MissingFields(only))
       }
       list.try_fold(shared, #(state, seen), do_unify)
