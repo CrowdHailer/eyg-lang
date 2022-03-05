@@ -1,74 +1,120 @@
 import gleam/io
+import gleam/int
+import gleam/list
+import gleam/string
+import gleam/option.{None, Some}
 import eyg
+import eyg/analysis
 import eyg/ast
+import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/ast/editor
 import eyg/typer
 import eyg/typer/monotype as t
-import platform/browser
+import eyg/typer/polytype
+import misc
 
-fn assigned(tree) {
-  ast.let_(p.Variable("foo"), tree, ast.variable("foo"))
+fn infer(untyped, type_) {
+  let native_to_string = fn(_: Nil) { "" }
+  let variables = [#("equal", typer.equal_fn())]
+  let checker = typer.init(native_to_string)
+  let scope = typer.root_scope(variables)
+  let state = #(checker, scope)
+  typer.infer(untyped, type_, state)
 }
 
-fn compile(source) {
-  let #(typed, typer) = eyg.compile_unconstrained(source, browser.harness())
-  assert [] = typer.inconsistencies
-  let typer.Typer(substitutions: substitutions, ..) = typer
-  assert Ok(type_) = typer.get_type(typed)
-  t.resolve(type_, substitutions)
-}
-
-pub fn function_with_concrete_type_test() {
-  let source = assigned(ast.function(p.Tuple([]), ast.binary("")))
-  assert t.Function(t.Tuple([]), t.Binary) = compile(source)
-}
-
-pub fn identity_function_test() {
-  let source = assigned(ast.function(p.Variable("x"), ast.variable("x")))
-  assert t.Function(t.Unbound(i), t.Unbound(j)) = compile(source)
-  assert True = i == j
-}
-
-pub fn external_variable_binding_test() {
+// TODO let x = x Test
+pub fn recursive_tuple_test() {
   let source =
-    ast.function(
-      p.Variable("a"),
-      ast.let_(
+    e.let_(
+      p.Variable("f"),
+      e.function(
+        p.Variable("x"),
+        e.tuple_([e.binary("hello"), e.call(e.variable("f"), e.tuple_([]))]),
+      ),
+      e.variable("f"),
+    )
+  let #(typed, checker) = infer(source, t.Unbound(-1))
+  assert Ok(type_) = analysis.get_type(typed, checker)
+  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
+}
+
+pub fn loop_test() {
+  let source =
+    e.let_(
+      p.Variable("loop"),
+      e.function(
         p.Variable("f"),
-        ast.function(p.Tuple([]), ast.variable("a")),
-        ast.let_(p.Tuple([]), ast.variable("a"), ast.variable("f")),
+        e.case_(
+          e.call(e.variable("f"), e.tuple_([])),
+          [
+            #("True", p.Tuple([]), e.call(e.variable("loop"), e.variable("f"))),
+            #("False,", p.Tuple([]), e.binary("Done")),
+          ],
+        ),
+      ),
+      e.variable("loop"),
+    )
+  let #(typed, checker) = infer(source, t.Unbound(-1))
+  assert Ok(type_) = analysis.get_type(typed, checker)
+  let "() -> [True () | False, ()] -> Binary" =
+    t.to_string(type_, fn(_) { todo("native") })
+  // Shouldn't be getting stuck in case where return value is unknown
+  // Needs a drop out
+}
+
+pub fn recursive_union_test() {
+  let source =
+    e.let_(
+      p.Variable("move"),
+      e.function(
+        p.Tuple(["from", "to"]),
+        e.case_(
+          e.variable("from"),
+          [
+            #(
+              "Cons",
+              p.Tuple(["item", "rest"]),
+              e.let_(
+                p.Variable("to"),
+                e.tagged(
+                  "Cons",
+                  e.tuple_([e.variable("item"), e.variable("to")]),
+                ),
+                e.call(
+                  e.variable("move"),
+                  e.tuple_([e.variable("rest"), e.variable("to")]),
+                ),
+              ),
+            ),
+            #("Nil", p.Tuple([]), e.variable("to")),
+          ],
+        ),
+      ),
+      e.let_(
+        p.Variable("reverse"),
+        e.function(
+          p.Variable("items"),
+          e.call(
+            e.variable("move"),
+            e.tuple_([e.variable("items"), e.tagged("Nil", e.tuple_([]))]),
+          ),
+        ),
+        e.variable("reverse"),
       ),
     )
-  assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
-    compile(source)
+
+  let #(typed, checker) = infer(source, t.Unbound(-1))
+
+  assert Ok(move_exp) = get_expression(typed, [1])
+  assert Ok(type_) = analysis.get_type(move_exp, checker)
+  t.to_string(type_, fn(_) { todo("native") })
+
+  assert Ok(type_) = analysis.get_type(typed, checker)
+  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
 }
 
-// pub fn recursive_test() {
-//   let source = last()
-//   // assigned(ast.function(
-//   //   p.Tuple([None, Some("a")]),
-//   //   ast.call(ast.variable("foo"), ast.variable("a")),
-//   // ))
-//   assert t.Function(t.Tuple([]), t.Function(t.Tuple([]), t.Tuple([]))) =
-//     compile(source)
-// }
-fn last() {
-  ast.let_(
-    p.Variable("last"),
-    ast.function(
-      p.Variable("xs"),
-      ast.case_(
-        ast.variable("xs"),
-        [
-          #(
-            "Cons",
-            p.Tuple(["", "rest"]),
-            ast.call(ast.variable("last"), ast.variable("rest")),
-          ),
-          #("Nil", p.Tuple([]), ast.binary("")),
-        ],
-      ),
-    ),
-    ast.variable("last"),
-  )
+fn get_expression(tree, path) {
+  assert editor.Expression(expression) = editor.get_element(tree, path)
+  Ok(expression)
 }

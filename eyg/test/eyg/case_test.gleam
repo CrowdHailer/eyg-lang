@@ -14,9 +14,6 @@ fn infer(untyped, type_) {
   let checker = typer.init(native_to_string)
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
-  // TODO replace all variables
-  //
-  // sdo
   typer.infer(untyped, type_, state)
 }
 

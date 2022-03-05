@@ -12,6 +12,7 @@ pub type Monotype(n) {
   Union(variants: List(#(String, Monotype(n))), extra: Option(Int))
   Function(from: Monotype(n), to: Monotype(n))
   Unbound(i: Int)
+  Recursive(i: Int, type_: Monotype(n))
 }
 
 fn field_to_string(field, native_to_string) {
@@ -74,6 +75,10 @@ pub fn to_string(monotype, native_to_string) {
         to_string(to, native_to_string),
       ])
     Unbound(i) -> int.to_string(i)
+    Recursive(i, inner) -> {
+      let inner = to_string(inner, native_to_string)
+      string.concat(["μ", int.to_string(i), ".", inner])
+    }
   }
 }
 
@@ -109,54 +114,37 @@ pub fn literal(monotype) {
     Function(from, to) ->
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
-    Native(_) | Union(_, _) -> todo("ss")
+    Native(_) | Union(_, _) | Recursive(_, _) -> todo("ss literal")
   }
 }
 
-fn do_occurs_in(i, b) {
-  case b {
-    Unbound(j) if i == j -> True
-    Unbound(_) -> False
-    Native(_) -> False
-    Binary -> False
-    Function(from, to) -> do_occurs_in(i, from) || do_occurs_in(i, to)
-    Tuple(elements) -> list.any(elements, do_occurs_in(i, _))
-    Record(fields, _) ->
-      fields
-      |> list.map(fn(x: #(String, Monotype(a))) { x.1 })
-      |> list.any(do_occurs_in(i, _))
-    Union(_, _) -> False
-  }
-}
-
-fn occurs_in(a, b) {
-  case a {
-    Unbound(i) ->
-      case do_occurs_in(i, b) {
-        True -> // TODO this very doesn't work
-          // todo("Foo")
-          True
-        False -> False
-      }
-    _ -> False
-  }
-}
-
-pub fn resolve(type_, substitutions) {
+pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
   case type_ {
+    Native(s) -> Native(s)
     Unbound(i) ->
-      case list.key_find(substitutions, i) {
-        Ok(Unbound(j)) if i == j -> type_
-        Error(Nil) -> type_
-        Ok(substitution) -> {
-          assert False = occurs_in(Unbound(i), substitution)
-          resolve(substitution, substitutions)
-        }
+      case list.find(recuring, fn(j) { i == j }) {
+        Ok(_) -> type_
+        Error(Nil) ->
+          case list.key_find(substitutions, i) {
+            Ok(Unbound(j)) if i == j -> type_
+            Error(Nil) -> type_
+            Ok(sub) -> {
+              let inner = do_resolve(sub, substitutions, [i, ..recuring])
+              let recursive = list.contains(free_in_type(inner), i)
+              case recursive {
+                False -> inner
+                True -> Recursive(i, inner)
+              }
+            }
+          }
       }
-    Native(name) -> Native(name)
+    Recursive(i, inner) -> {
+      let inner = do_resolve(inner, substitutions, [i, ..recuring])
+      Recursive(i, inner)
+    }
     Binary -> Binary
     Tuple(elements) -> {
-      let elements = list.map(elements, resolve(_, substitutions))
+      let elements = list.map(elements, do_resolve(_, substitutions, recuring))
       Tuple(elements)
     }
     Record(fields, rest) -> {
@@ -165,55 +153,153 @@ pub fn resolve(type_, substitutions) {
           fields,
           fn(field) {
             let #(name, type_) = field
-            #(name, resolve(type_, substitutions))
+            #(name, do_resolve(type_, substitutions, recuring))
           },
         )
       case rest {
         None -> Record(resolved_fields, None)
-        Some(i) ->
-          case resolve(Unbound(i), substitutions) {
+        Some(i) -> {
+          type_
+          case do_resolve(Unbound(i), substitutions, recuring) {
             Unbound(j) -> Record(resolved_fields, Some(j))
             Record(inner, rest) ->
               Record(list.append(resolved_fields, inner), rest)
-            _ ->
-              todo("should only ever be one or the other. perhaps always an i")
+            x -> todo("should never have matched")
           }
+        }
       }
     }
-    Union(variants, extra) -> {
+    Union(variants, rest) -> {
       let resolved_variants =
+        // TODO map_value would help or a resolve_named unify_named etc probably also sensible
         list.map(
           variants,
           fn(variant) {
             let #(name, type_) = variant
-            #(name, resolve(type_, substitutions))
+            #(name, do_resolve(type_, substitutions, recuring))
           },
         )
-      case extra {
+      case rest {
         None -> Union(resolved_variants, None)
-        Some(i) ->
-          case resolve(Unbound(i), substitutions) {
+        Some(i) -> {
+          type_
+          case do_resolve(Unbound(i), substitutions, recuring) {
             Unbound(j) -> Union(resolved_variants, Some(j))
-            // TODO remove this and see if always works as i
             Union(inner, rest) ->
               Union(list.append(resolved_variants, inner), rest)
-            _ ->
-              todo("should only ever be one or the other. perhaps always an i")
+            x -> todo("improper union")
           }
+        }
       }
     }
-    // TODO check resolve in our record based recursive frunctions
     Function(from, to) -> {
-      let from = resolve(from, substitutions)
-      let to = resolve(to, substitutions)
+      let from = do_resolve(from, substitutions, recuring)
+      let to = do_resolve(to, substitutions, recuring)
       Function(from, to)
     }
   }
 }
 
-pub fn how_many_args(type_) {
+pub fn resolve(t, substitutions) {
+  do_resolve(t, substitutions, [])
+}
+
+// relies on type having been resolved
+fn do_free_in_type(set, type_) {
   case type_ {
-    Function(Tuple(elements), _) -> list.length(elements)
-    _ -> 0
+    Unbound(i) -> push_new(i, set)
+    Native(_) | Binary -> set
+    Tuple(elements) -> list.fold(elements, set, do_free_in_type)
+    Record(rows, rest) | Union(rows, rest) -> do_free_in_row(rows, rest, set)
+    Recursive(i, type_) -> {
+      let inner = do_free_in_type(set, type_)
+      difference(inner, [i])
+    }
+    Function(from, to) -> {
+      let set = do_free_in_type(set, from)
+      do_free_in_type(set, to)
+    }
   }
+}
+
+fn do_free_in_row(rows, rest, set) {
+  let set =
+    list.fold(
+      rows,
+      set,
+      fn(set, row) {
+        let #(_name, type_) = row
+        do_free_in_type(set, type_)
+      },
+    )
+  case rest {
+    None -> set
+    // Already resolved
+    Some(i) -> push_new(i, set)
+  }
+}
+
+pub fn free_in_type(t) {
+  do_free_in_type([], t)
+}
+
+// Set TODO move to set dir
+fn push_new(item: a, set: List(a)) -> List(a) {
+  case list.find(set, fn(i) { i == item }) {
+    Ok(_) -> set
+    Error(Nil) -> [item, ..set]
+  }
+}
+
+fn difference(items: List(a), excluded: List(a)) -> List(a) {
+  do_difference(items, excluded, [])
+}
+
+fn do_difference(items, excluded, accumulator) {
+  case items {
+    [] -> list.reverse(accumulator)
+    [next, ..items] ->
+      case list.find(excluded, fn(n) { n == next }) {
+        Ok(_) -> do_difference(items, excluded, accumulator)
+        Error(_) -> push_new(next, accumulator)
+      }
+  }
+}
+
+fn do_used_in_type(set, type_) {
+  case type_ {
+    Unbound(i) -> push_new(i, set)
+    Native(_) | Binary -> set
+    Tuple(elements) -> list.fold(elements, set, do_used_in_type)
+    Record(rows, rest) | Union(rows, rest) -> do_used_in_row(rows, rest, set)
+    Recursive(i, type_) -> {
+      let set = push_new(i, set)
+      do_used_in_type(set, type_)
+    }
+    Function(from, to) -> {
+      let set = do_used_in_type(set, from)
+      do_used_in_type(set, to)
+    }
+  }
+}
+
+fn do_used_in_row(rows, rest, set) {
+  let set =
+    list.fold(
+      rows,
+      set,
+      fn(set, row) {
+        let #(_name, type_) = row
+        do_used_in_type(set, type_)
+      },
+    )
+  case rest {
+    None -> set
+    // Already resolved
+    Some(i) -> push_new(i, set)
+  }
+}
+
+pub fn used_in_type(t) {
+  do_used_in_type([], t)
 }
