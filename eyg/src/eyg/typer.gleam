@@ -184,23 +184,7 @@ fn set_variable(variable, typer, scope) {
   let #(label, monotype) = variable
   let Typer(substitutions: substitutions, ..) = typer
   let Scope(variables: variables, ..) = scope
-  // io.debug("resolve")
-  // list.map(
-  //   substitutions,
-  //   fn(s) {
-  //     let #(i, t) = s
-  //     io.debug(string.concat([
-  //       int.to_string(i),
-  //       " = ",
-  //       t.to_string(t, fn(_) { todo("native") }),
-  //     ]))
-  //   },
-  // )
-  // io.debug("---------------")
-  // io.debug(monotype)
-  // io.debug("====")
   let resolved = t.resolve(monotype, substitutions)
-  // io.debug(resolved)
   let polytype = polytype.generalise(resolved, variables)
   let variables = [#(label, polytype), ..variables]
   Scope(..scope, variables: variables)
@@ -293,10 +277,8 @@ pub fn do_unify(
   state: #(Typer(n), List(Int)),
   pair: #(t.Monotype(n), t.Monotype(n)),
 ) -> Result(#(Typer(n), List(Int)), Reason(n)) {
-  // io.debug("do_unify")
   let #(t1, t2) = pair
   let #(state, seen) = state
-  // io.debug(state.substitutions)
   case t1, t2 {
     t.Unbound(i), t.Unbound(j) if i == j -> Ok(#(state, seen))
     // Need to keep reference to variables for resolving recursive types
@@ -328,8 +310,6 @@ pub fn do_unify(
           }
         Error(Nil) -> Ok(add_substitution(j, t1, #(state, seen)))
       }
-    // TODO does recursive recursive make any sense. I dont think so
-    // This is a fold/unfold
     t.Recursive(i, inner1), t.Recursive(j, inner2) -> {
       let inner2 = polytype.replace_variable(inner2, j, i)
       case inner1 == inner2 {
@@ -373,11 +353,6 @@ pub fn do_unify(
     }
     t.Union(row1, extra1), t.Union(row2, extra2) -> {
       let #(unmatched1, unmatched2, shared) = group_shared(row1, row2)
-      // io.debug("HERE")
-      // io.debug(unmatched1)
-      // io.debug(unmatched2)
-      // io.debug(extra1)
-      // io.debug(extra2)
       let #(next, state) = next_unbound(state)
       try #(state, seen) = case unmatched2, extra1 {
         [], None -> Ok(#(state, seen))
@@ -562,8 +537,6 @@ pub fn expand_providers(tree, typer) {
 }
 
 fn try_unify(expected, given, typer, path) {
-  // io.debug(expected)
-  // io.debug(given)
   case unify(expected, given, typer) {
     Ok(typer) -> #(Ok(expected), typer)
     Error(reason) -> {
@@ -579,10 +552,6 @@ pub fn infer(
   expected: t.Monotype(n),
   state: #(Typer(n), Scope(n)),
 ) -> #(e.Expression(Metadata(n), Dynamic), Typer(n)) {
-  // return all context so more info can be added later
-  // io.debug("infer")
-  // io.debug(expression)
-  // io.debug(expected)
   let #(_, tree) = expression
   let #(typer, scope) = state
   let meta = Metadata(type_: _, scope: scope.variables, path: scope.path)
@@ -684,11 +653,8 @@ pub fn infer(
               child(inner_scope, 1),
               1,
             )
-          io.debug("SELF")
           let typer: Typer(n) = typer
-          io.debug(t.resolve(self_type, typer.substitutions))
           let scope = set_variable(#(label, self_type), typer, scope)
-          // io.debug(scope)
           #(#(meta(type_), e.Function(pattern, body)), #(typer, scope))
         }
         _, _ -> {

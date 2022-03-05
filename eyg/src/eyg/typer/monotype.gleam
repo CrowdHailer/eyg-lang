@@ -138,17 +138,10 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
             }
           }
       }
-    // This needs to exist as might already have been called by generalize
     Recursive(i, inner) -> {
-      // case list.key_find(substitutions, i) {
-      //   // TODO maybe never
-      //   Ok(_) -> Unbound(i)
-      //   Error(Nil) -> {
       let inner = do_resolve(inner, substitutions, [i, ..recuring])
       Recursive(i, inner)
     }
-    // }
-    // }
     Binary -> Binary
     Tuple(elements) -> {
       let elements = list.map(elements, do_resolve(_, substitutions, recuring))
@@ -171,12 +164,7 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
             Unbound(j) -> Record(resolved_fields, Some(j))
             Record(inner, rest) ->
               Record(list.append(resolved_fields, inner), rest)
-            x -> {
-              io.debug(substitutions)
-              io.debug(recuring)
-              io.debug(x)
-              todo("should never have matched")
-            }
+            x -> todo("should never have matched")
           }
         }
       }
@@ -199,11 +187,7 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
             Unbound(j) -> Union(resolved_variants, Some(j))
             Union(inner, rest) ->
               Union(list.append(resolved_variants, inner), rest)
-            x -> {
-              io.debug(recuring)
-              io.debug(x)
-              todo("improper union")
-            }
+            x -> todo("improper union")
           }
         }
       }
@@ -259,7 +243,7 @@ pub fn free_in_type(t) {
   do_free_in_type([], t)
 }
 
-// Set
+// Set TODO move to set dir
 fn push_new(item: a, set: List(a)) -> List(a) {
   case list.find(set, fn(i) { i == item }) {
     Ok(_) -> set

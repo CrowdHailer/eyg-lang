@@ -35,11 +35,8 @@ pub fn recursive_tuple_test() {
       e.variable("f"),
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
-  io.debug("rec tup type")
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" =
-    t.to_string(type_, fn(_) { todo("native") })
-    |> io.debug
+  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
 }
 
 pub fn loop_test() {
@@ -60,15 +57,12 @@ pub fn loop_test() {
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
-  // io.debug(checker.substitutions)
   let "() -> [True () | False, ()] -> Binary" =
     t.to_string(type_, fn(_) { todo("native") })
-    |> io.debug
   // Shouldn't be getting stuck in case where return value is unknown
   // Needs a drop out
 }
 
-// TODO need to test unification of recursive type after instantiation
 pub fn recursive_union_test() {
   let source =
     e.let_(
@@ -110,36 +104,14 @@ pub fn recursive_union_test() {
       ),
     )
 
-  // io.debug("top")
-  io.debug("===============================================")
   let #(typed, checker) = infer(source, t.Unbound(-1))
 
   assert Ok(move_exp) = get_expression(typed, [1])
-  io.debug("exp")
-
   assert Ok(type_) = analysis.get_type(move_exp, checker)
-  io.debug("type")
   t.to_string(type_, fn(_) { todo("native") })
 
-  // |> io.debug
-  // list.map(
-  //   checker.substitutions,
-  //   fn(s) {
-  //     let #(i, t) = s
-  //     io.debug(string.concat([
-  //       int.to_string(i),
-  //       " = ",
-  //       t.to_string(t, fn(_) { todo("native") }),
-  //     ]))
-  //   },
-  // )
-  // io.debug(checker.substitutions)
-  io.debug("infered")
-  io.debug(checker.inconsistencies)
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" =
-    t.to_string(type_, fn(_) { todo("native") })
-    |> io.debug
+  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
 }
 
 fn get_expression(tree, path) {

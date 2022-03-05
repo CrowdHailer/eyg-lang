@@ -79,7 +79,7 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
-- [ ] Tag ast node Union Type, remove sugar check rendering of JS
+- [x] Tag ast node Union Type, remove sugar check rendering of JS
 - [ ] Put type information on non expression elements
 - [ ] Reload and Sugar need to be reinstated - Theres thoughts on renaming tree and running code async to editor.
       All less important that a cool spreadsheety program
@@ -148,3 +148,11 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - [ ] handle editor loosing focus -> Later not that important
 - [x] Test lambda calculus enums.
 - [x] Format tuples/records without any brackets (doesn't work because of nested tuples)
+
+https://cs.stackexchange.com/questions/101152/let-rec-recursive-expression-static-typing-rule
+https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system recursive definitions
+https://boxbase.org/entries/2018/mar/5/hindley-milner/
+https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-2-f39c33ca9513
+https://ahnfelt.medium.com/type-inference-by-example-part-7-31e1d1d05f56
+it seems like not generalizing is important these tests make sense, hooray but there's still some weird recursive ness.
+https://www.cl.cam.ac.uk/teaching/1516/L28/type-inference.pdf
