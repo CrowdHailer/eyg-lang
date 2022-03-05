@@ -12,6 +12,7 @@ import eyg/ast/encode
 import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/analysis
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
@@ -67,6 +68,7 @@ fn expression_type(
     Ok(t) -> #(
       False,
       t.resolve(t, typer.substitutions)
+      |> analysis.shrink
       |> t.to_string(native_to_string),
     )
     Error(reason) -> #(True, typer.reason_to_string(reason, typer))
