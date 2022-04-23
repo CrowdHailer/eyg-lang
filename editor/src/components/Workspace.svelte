@@ -1,6 +1,7 @@
 <script>
   import { tick } from "svelte";
   import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
+  import * as Firmata from "../device_connection";
 
   import Expression from "./Expression.svelte";
   import Select from "./Select.svelte";
@@ -10,6 +11,10 @@
   import * as Eyg from "../../../eyg/build/dev/javascript/eyg/dist/eyg";
   import * as Ast from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast";
   import * as Gleam from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
+
+  let setScan = function () {
+    console.log("flop");
+  };
 
   export let source;
 
@@ -50,6 +55,7 @@
             let returned = Editor.eval$(editor);
             window.returned = returned;
             testGood = returned.test == "True";
+            setScan(returned.scan);
             value = JSON.stringify(returned);
           } else {
             value = "";
@@ -136,6 +142,11 @@
       console.error("Caught", error);
     }
   }
+
+  async function connectDevice() {
+    setScan = await Firmata.connectDevice();
+    setScan(window.returned.scan);
+  }
 </script>
 
 <div class="max-w-4xl w-full m-auto px-10 py-4">
@@ -159,6 +170,11 @@
       class="pl-2 text-gray-600 hover:underline"
       class:underline={page == DUMP}
       on:click={() => (page = page == DUMP ? HOME : DUMP)}>Dump</button
+    >
+    <button
+      class="pl-2 text-gray-600 hover:underline"
+      class:underline={page == DUMP}
+      on:click={connectDevice}>Connect</button
     >
   </nav>
   <!-- Make it so you can inspect saved code in case of crash -->
