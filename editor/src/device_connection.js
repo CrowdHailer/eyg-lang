@@ -8,10 +8,17 @@ export async function connectDevice() {
 
   // TODO needs init for state and model of pins
   (async () => {
+    // Firmata needs to be ready and reset before we can do anything
+    await sleep(1000);
     const writer = port.writable.getWriter();
 
     const reset = new Uint8Array([0xff, 0xf9]);
     await writer.write(reset);
+    await sleep(3000);
+    // const set = new Uint8Array([0xf5, 13, 1]);
+    // let r = await writer.write(set);
+    // console.log(r);
+    // console.log("fooooooooooooooooooo");
 
     let state = 0;
     while (true) {
@@ -21,12 +28,21 @@ export async function connectDevice() {
         const [output, s] = scan([input, state]);
         state = s;
         console.log(state);
-        const set = new Uint8Array([0xf5, 13, binaryToNative(output.Pin13)]);
+        const set = new Uint8Array([
+          0xf5,
+          12,
+          binaryToNative(output.Pin12),
+          0xf5,
+          13,
+          binaryToNative(output.Pin13),
+        ]);
         await writer.write(set);
       }
 
       await tick;
     }
+    await sleep(5000);
+    console.log("gob");
     writer.releaseLock();
   })();
 
