@@ -593,76 +593,208 @@
                       "label": "harness"
                     },
                     "then": {
-                      "node": "Case",
-                      "value": {
-                        "node": "Call",
-                        "function": {
-                          "node": "Variable",
-                          "label": "equal"
-                        },
-                        "with": {
-                          "node": "Tuple",
-                          "elements": [
-                            {
-                              "node": "Variable",
-                              "label": "event"
-                            },
-                            {
-                              "node": "Binary",
-                              "value": "u"
-                            }
-                          ]
-                        }
+                      "node": "Let",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": "action"
                       },
-                      "branches": [
-                        {
-                          "node": "Branch",
-                          "name": "False",
-                          "pattern": {
-                            "node": "Tuple",
-                            "elements": []
+                      "value": {
+                        "node": "Case",
+                        "value": {
+                          "node": "Call",
+                          "function": {
+                            "node": "Variable",
+                            "label": "equal"
                           },
-                          "then": {
-                            "node": "Call",
-                            "function": {
-                              "node": "Variable",
-                              "label": "add"
-                            },
-                            "with": {
+                          "with": {
+                            "node": "Tuple",
+                            "elements": [
+                              {
+                                "node": "Variable",
+                                "label": "event"
+                              },
+                              {
+                                "node": "Binary",
+                                "value": "u"
+                              }
+                            ]
+                          }
+                        },
+                        "branches": [
+                          {
+                            "node": "Branch",
+                            "name": "True",
+                            "pattern": {
                               "node": "Tuple",
-                              "elements": [
-                                {
+                              "elements": []
+                            },
+                            "then": {
+                              "node": "Tagged",
+                              "tag": "Increment",
+                              "value": {
+                                "node": "Tuple",
+                                "elements": []
+                              }
+                            }
+                          },
+                          {
+                            "node": "Branch",
+                            "name": "False",
+                            "pattern": {
+                              "node": "Tuple",
+                              "elements": []
+                            },
+                            "then": {
+                              "node": "Case",
+                              "value": {
+                                "node": "Call",
+                                "function": {
                                   "node": "Variable",
-                                  "label": "state"
+                                  "label": "equal"
+                                },
+                                "with": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Variable",
+                                      "label": "event"
+                                    },
+                                    {
+                                      "node": "Binary",
+                                      "value": "d"
+                                    }
+                                  ]
+                                }
+                              },
+                              "branches": [
+                                {
+                                  "node": "Branch",
+                                  "name": "True",
+                                  "pattern": {
+                                    "node": "Tuple",
+                                    "elements": []
+                                  },
+                                  "then": {
+                                    "node": "Tagged",
+                                    "tag": "Decrement",
+                                    "value": {
+                                      "node": "Tuple",
+                                      "elements": []
+                                    }
+                                  }
                                 },
                                 {
-                                  "node": "Call",
-                                  "function": {
-                                    "node": "Variable",
-                                    "label": "i"
+                                  "node": "Branch",
+                                  "name": "False",
+                                  "pattern": {
+                                    "node": "Tuple",
+                                    "elements": []
                                   },
-                                  "with": {
-                                    "node": "Binary",
-                                    "value": "1"
+                                  "then": {
+                                    "node": "Tagged",
+                                    "tag": "Unknown",
+                                    "value": {
+                                      "node": "Tuple",
+                                      "elements": []
+                                    }
                                   }
                                 }
                               ]
                             }
                           }
+                        ]
+                      },
+                      "then": {
+                        "node": "Case",
+                        "value": {
+                          "node": "Variable",
+                          "label": "action"
                         },
-                        {
-                          "node": "Branch",
-                          "name": "True",
-                          "pattern": {
-                            "node": "Tuple",
-                            "elements": []
+                        "branches": [
+                          {
+                            "node": "Branch",
+                            "name": "Increment",
+                            "pattern": {
+                              "node": "Tuple",
+                              "elements": []
+                            },
+                            "then": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "add"
+                              },
+                              "with": {
+                                "node": "Tuple",
+                                "elements": [
+                                  {
+                                    "node": "Variable",
+                                    "label": "state"
+                                  },
+                                  {
+                                    "node": "Call",
+                                    "function": {
+                                      "node": "Variable",
+                                      "label": "i"
+                                    },
+                                    "with": {
+                                      "node": "Binary",
+                                      "value": "1"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
                           },
-                          "then": {
-                            "node": "Variable",
-                            "label": "state"
+                          {
+                            "node": "Branch",
+                            "name": "Decrement",
+                            "pattern": {
+                              "node": "Tuple",
+                              "elements": []
+                            },
+                            "then": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "add"
+                              },
+                              "with": {
+                                "node": "Tuple",
+                                "elements": [
+                                  {
+                                    "node": "Variable",
+                                    "label": "state"
+                                  },
+                                  {
+                                    "node": "Call",
+                                    "function": {
+                                      "node": "Variable",
+                                      "label": "i"
+                                    },
+                                    "with": {
+                                      "node": "Binary",
+                                      "value": "-1"
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          },
+                          {
+                            "node": "Branch",
+                            "name": "Unknown",
+                            "pattern": {
+                              "node": "Tuple",
+                              "elements": []
+                            },
+                            "then": {
+                              "node": "Variable",
+                              "label": "state"
+                            }
                           }
-                        }
-                      ]
+                        ]
+                      }
                     }
                   }
                 },

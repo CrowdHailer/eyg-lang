@@ -82,6 +82,8 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
+- [ ] Copy/paste
+- [ ] dot syntax sugar (nice not functional)
 - [x] Tag ast node Union Type, remove sugar check rendering of JS
 - [ ] Put type information on non expression elements
 - [ ] Reload and Sugar need to be reinstated - Theres thoughts on renaming tree and running code async to editor.
@@ -99,7 +101,6 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - [x] Select from for choosing type providers
 - [ ] Pin type, click and bump constraints to top
 - [x] empty pattern turns into discard, in which case what is the point of an empty string in p.Variable field
-- [ ] Copy/paste
 - [x] Upgrade gleam
 - [x] Reimplement Edit actions load variables that we have had, then close PR's in order and with explination as they are good.
 - [x] Put variables in Blanks, auto complete
@@ -114,13 +115,12 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - [ ] pass an io/console into each program so you can see the output of running them
 - [x] Escape in draft mode should be cancel changes not commit changes
 - [x] hard coded providers
-- [ ] Step in on Tagged Unit -> Tagged Tuple
+- [x] Step in on Tagged Unit -> Tagged Tuple
 - [x] hightlight specific error in top list as the cursor moved over it. Is cursor a bettor name for selection in the editor page
 - [x] Tab (Space) to Blanks/Errors (nice but not adding new capabilities)
 - [x] link from listed error to code point, this needs typer and editor to have same understanding of path.
 - [x] remove tabindex = -1, use position in editor
 - [ ] Syntax sugar for rows where name = variable like js shorthand (nice not functional)
-- [ ] dot syntax sugar (nice not functional)
 - [x] Fix tests
 - [x] example should use lets in binary module, call variable binary module.
 - [ ] Record rest of fields variable
