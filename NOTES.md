@@ -13,6 +13,9 @@ Notes:
 - network mode host is not supported on mac.
 - volume mapping on mac is very slow.
 
+## Descisions
+
+
 Need to replace lot's of tuple references with tuple or pattern
 
 - Tuples need brackets to show tuples in tuples
@@ -156,3 +159,26 @@ https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-2-f39c33ca9
 https://ahnfelt.medium.com/type-inference-by-example-part-7-31e1d1d05f56
 it seems like not generalizing is important these tests make sense, hooray but there's still some weird recursive ness.
 https://www.cl.cam.ac.uk/teaching/1516/L28/type-inference.pdf
+
+
+
+## Apple land
+
+Total failure to install. Something to do with only the bundle.js.map file permissions.
+Even running in /tmp/lima didn't fix that file permission though it did fix everything else.
+
+```
+docker run -it -w /opt/app -v ${PWD}:/opt/app -v eyg_build:/opt/app/eyg/build -p 5000:5000 --name eyg_builder --rm editor bash
+```
+TODO add format
+```
+(cd eyg; gleam build) && (cd editor; npm run build)
+```
+```
+docker exec -it eyg_builder bash -c "cd editor && npm run start"
+```
+```
+docker cp eyg_builder:/opt/app/eyg/build ./tmp
+```
+
+File watcher did not work so I had no solution for a watch task.

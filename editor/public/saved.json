@@ -514,32 +514,217 @@
             }
           },
           "then": {
-            "node": "Record",
-            "fields": [
-              {
-                "node": "Field",
-                "key": "test",
+            "node": "Let",
+            "pattern": {
+              "node": "Variable",
+              "label": "spreadsheet"
+            },
+            "value": {
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": "initial"
+              },
+              "value": {
+                "node": "Let",
+                "pattern": {
+                  "node": "Record",
+                  "fields": [
+                    {
+                      "key": "parse_int",
+                      "bind": "i"
+                    }
+                  ]
+                },
                 "value": {
+                  "node": "Variable",
+                  "label": "harness"
+                },
+                "then": {
                   "node": "Call",
                   "function": {
                     "node": "Variable",
-                    "label": "test"
+                    "label": "i"
                   },
                   "with": {
-                    "node": "Tuple",
-                    "elements": []
+                    "node": "Binary",
+                    "value": "0"
                   }
                 }
               },
-              {
-                "node": "Field",
-                "key": "scan",
-                "value": {
+              "then": {
+                "node": "Let",
+                "pattern": {
                   "node": "Variable",
-                  "label": "scan"
+                  "label": "loop"
+                },
+                "value": {
+                  "node": "Function",
+                  "pattern": {
+                    "node": "Tuple",
+                    "elements": [
+                      {
+                        "node": "Bind",
+                        "label": "event"
+                      },
+                      {
+                        "node": "Bind",
+                        "label": "state"
+                      }
+                    ]
+                  },
+                  "body": {
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Record",
+                      "fields": [
+                        {
+                          "key": "add",
+                          "bind": "add"
+                        },
+                        {
+                          "key": "parse_int",
+                          "bind": "i"
+                        }
+                      ]
+                    },
+                    "value": {
+                      "node": "Variable",
+                      "label": "harness"
+                    },
+                    "then": {
+                      "node": "Case",
+                      "value": {
+                        "node": "Call",
+                        "function": {
+                          "node": "Variable",
+                          "label": "equal"
+                        },
+                        "with": {
+                          "node": "Tuple",
+                          "elements": [
+                            {
+                              "node": "Variable",
+                              "label": "event"
+                            },
+                            {
+                              "node": "Binary",
+                              "value": "u"
+                            }
+                          ]
+                        }
+                      },
+                      "branches": [
+                        {
+                          "node": "Branch",
+                          "name": "False",
+                          "pattern": {
+                            "node": "Tuple",
+                            "elements": []
+                          },
+                          "then": {
+                            "node": "Call",
+                            "function": {
+                              "node": "Variable",
+                              "label": "add"
+                            },
+                            "with": {
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Variable",
+                                  "label": "state"
+                                },
+                                {
+                                  "node": "Call",
+                                  "function": {
+                                    "node": "Variable",
+                                    "label": "i"
+                                  },
+                                  "with": {
+                                    "node": "Binary",
+                                    "value": "1"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        {
+                          "node": "Branch",
+                          "name": "True",
+                          "pattern": {
+                            "node": "Tuple",
+                            "elements": []
+                          },
+                          "then": {
+                            "node": "Variable",
+                            "label": "state"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "node": "Record",
+                  "fields": [
+                    {
+                      "node": "Field",
+                      "key": "initial",
+                      "value": {
+                        "node": "Variable",
+                        "label": "initial"
+                      }
+                    },
+                    {
+                      "node": "Field",
+                      "key": "loop",
+                      "value": {
+                        "node": "Variable",
+                        "label": "loop"
+                      }
+                    }
+                  ]
                 }
               }
-            ]
+            },
+            "then": {
+              "node": "Record",
+              "fields": [
+                {
+                  "node": "Field",
+                  "key": "test",
+                  "value": {
+                    "node": "Call",
+                    "function": {
+                      "node": "Variable",
+                      "label": "test"
+                    },
+                    "with": {
+                      "node": "Tuple",
+                      "elements": []
+                    }
+                  }
+                },
+                {
+                  "node": "Field",
+                  "key": "spreadsheet",
+                  "value": {
+                    "node": "Variable",
+                    "label": "spreadsheet"
+                  }
+                },
+                {
+                  "node": "Field",
+                  "key": "scan",
+                  "value": {
+                    "node": "Variable",
+                    "label": "scan"
+                  }
+                }
+              ]
+            }
           }
         }
       }
