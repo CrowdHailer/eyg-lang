@@ -126,15 +126,14 @@ pub fn codegen(editor) {
   io.debug("CODEGEN")
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
-  let code =
-    javascript.render_to_string(tree, typer, editor.harness.native_to_string)
+  let code = javascript.render_to_string(tree, typer)
   #(good, code)
 }
 
 pub fn eval(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
   assert True = list.length(typer.inconsistencies) == 0
-  javascript.eval(tree, typer, editor.harness.native_to_string)
+  javascript.eval(tree, typer)
 }
 
 pub fn dump(editor) {
