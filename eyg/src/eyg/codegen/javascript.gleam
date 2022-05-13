@@ -24,11 +24,10 @@ pub type Generator(n) {
     scope: List(String),
     typer: typer.Typer(n),
     self: Option(String),
-    // Scope and self can me moved out into the metadata
-    native_to_string: fn(n) -> String,
   )
 }
 
+// Scope and self can me moved out into the metadata
 external fn do_eval(String) -> Dynamic =
   "../../harness.js" "run"
 
@@ -107,13 +106,13 @@ fn render_function_name(state) {
 }
 
 pub fn render_to_string(expression, typer, native_to_string) {
-  render(expression, Generator(False, [], typer, None, native_to_string))
+  render(expression, Generator(False, [], typer, None))
   |> list.intersperse("\n")
   |> string.concat()
 }
 
 pub fn render_in_function(expression, typer, native_to_string) {
-  render(expression, Generator(True, [], typer, None, native_to_string))
+  render(expression, Generator(True, [], typer, None))
   |> list.intersperse("\n")
   |> string.concat()
 }
