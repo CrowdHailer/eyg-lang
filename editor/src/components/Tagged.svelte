@@ -7,7 +7,7 @@
   export let value;
 
   let tag_display;
-  $: tag_display = Display.display_pattern(metadata);
+  $: tag_display = Display.display_tag(metadata);
 </script>
 
 <!-- needs an else that passes in an empty tuple -->

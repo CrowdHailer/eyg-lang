@@ -338,6 +338,14 @@ pub fn display_expression_fields(display, fields) {
   )
 }
 
+pub fn display_access_key(display) {
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
+  let position = path.append(position, 1)
+  let selection = child_selection(selection, 1)
+  Display(position, selection, "", False, expanded)
+}
+
 pub fn display_tag(display) {
   let Display(position: position, selection: selection, expanded: expanded, ..) =
     display

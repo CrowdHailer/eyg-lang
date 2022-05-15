@@ -319,6 +319,16 @@ pub fn handle_change(editor, content) {
       let new = ast.case_(untype(value), branches)
       replace_expression(tree, case_position, new)
     }
+    FieldAccess(_) -> {
+      assert Ok(#(tagged_position, _)) = path.parent(position)
+      assert Expression(#(_, e.Access(value, _))) =
+        get_element(tree, tagged_position)
+      replace_expression(
+        tree,
+        tagged_position,
+        e.access(untype(value), content),
+      )
+    }
     _ -> todo("handle the other options")
   }
 
@@ -330,6 +340,7 @@ pub type Element(a, b) {
   Expression(e.Expression(a, b))
   Field(Int, #(String, e.Expression(a, b)))
   FieldKey(Int, String)
+  FieldAccess(String)
   Tag(String)
   Pattern(p.Pattern, e.Expression(a, b))
   PatternElement(Int, String)
@@ -388,6 +399,7 @@ fn handle_transformation(
     "b", False -> create_binary(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
     "r", False -> wrap_record(tree, position)
+    "g", False -> create_access(tree, position)
     "n", False -> wrap_tagged(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
@@ -1191,6 +1203,20 @@ fn wrap_record(tree, position) {
   }
 }
 
+fn create_access(tree, path) {
+  case get_element(tree, path) {
+    Expression(expression) -> {
+      let new = ast.access(untype(expression), "")
+      #(
+        Some(replace_expression(tree, path, new)),
+        path.append(path, 1),
+        Draft(""),
+      )
+    }
+    _ -> #(None, path, Command)
+  }
+}
+
 fn wrap_tagged(tree, path) {
   case get_element(tree, path) {
     Expression(#(_, e.Let(_, value, _))) ->
@@ -1660,6 +1686,8 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
       let [#(_, child), ..] = list.drop(fields, i)
       get_element(child, rest)
     }
+    #(_, e.Access(value, _)), [0, ..rest] -> get_element(value, rest)
+    #(_, e.Access(_, key)), [1] -> FieldAccess(key)
     #(_, e.Tagged(tag, _)), [0] -> Tag(tag)
     #(_, e.Tagged(_, value)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(pattern, _, _)), [0, ..rest] -> get_pattern(pattern, rest, tree)

@@ -5,6 +5,7 @@
   import Call from "./Call.svelte";
   import Case from "./Case.svelte";
   import Record from "./Record.svelte";
+  import Access from "./Access.svelte";
   import Variable from "./Variable.svelte";
   import Function from "./Function.svelte";
   import Binary from "./Binary.svelte";
@@ -32,6 +33,8 @@
   <Case {metadata} value={tree.value} branches={tree.branches} />
 {:else if tree instanceof Expression.Record}
   <Record {metadata} fields={tree.fields} />
+{:else if tree instanceof Expression.Access}
+  <Access {metadata} value={tree.value} key={tree.key} />
 {:else if tree instanceof Expression.Tagged}
   <Tagged {metadata} tag={tree.tag} value={tree.value} />
 {:else if tree instanceof Expression.Variable}
