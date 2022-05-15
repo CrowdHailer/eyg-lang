@@ -549,6 +549,7 @@ fn do_move_left(tree, selection, position) {
         True -> path.append(path.append(position, i - 1), 1)
         False -> list.append(position, selection)
       }
+    e.Access(_, _), [1] -> path.append(position, 0)
     e.Tagged(_, _), [1] -> path.append(position, 0)
     // Step in
     _, [] -> position
@@ -656,6 +657,7 @@ fn do_move_right(tree, selection, position) {
         True -> path.append(path.append(position, i + 1), 0)
         False -> list.append(position, selection)
       }
+    e.Access(_, _), [0] -> path.append(position, 1)
     e.Tagged(_, _), [0] -> path.append(position, 1)
     e.Case(_, _), [0] | e.Case(_, _), [] -> path.append(position, 1)
     // Step in
