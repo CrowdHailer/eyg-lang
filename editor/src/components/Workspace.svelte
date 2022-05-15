@@ -12,9 +12,7 @@
   import * as Ast from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast";
   import * as Gleam from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
 
-  let setScan = function () {
-    console.log("flop");
-  };
+  let setScan = function () {};
 
   export let source;
 

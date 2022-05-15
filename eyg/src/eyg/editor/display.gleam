@@ -144,6 +144,18 @@ pub fn do_display(tree, position, selection, editor) {
       let fields = list.index_map(fields, display_field)
       #(metadata, e.Record(fields))
     }
+    e.Access(value, label) -> #(
+      metadata,
+      e.Access(
+        do_display(
+          value,
+          path.append(position, 0),
+          child_selection(selection, 0),
+          editor,
+        ),
+        label,
+      ),
+    )
     e.Tagged(tag, value) -> #(
       metadata,
       e.Tagged(
@@ -324,6 +336,14 @@ pub fn display_expression_fields(display, fields) {
       )
     },
   )
+}
+
+pub fn display_access_key(display) {
+  let Display(position: position, selection: selection, expanded: expanded, ..) =
+    display
+  let position = path.append(position, 1)
+  let selection = child_selection(selection, 1)
+  Display(position, selection, "", False, expanded)
 }
 
 pub fn display_tag(display) {

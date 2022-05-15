@@ -88,6 +88,12 @@ pub fn to_json(ast) {
         )
       object([#("node", string("Record")), #("fields", array(fields))])
     }
+    e.Access(value, key) ->
+      object([
+        #("node", string("Access")),
+        #("value", to_json(value)),
+        #("key", string(key)),
+      ])
     e.Tagged(tag, value) ->
       object([
         #("node", string("Tagged")),
@@ -180,6 +186,12 @@ pub fn from_json(json: JSON) {
           },
         )
       e.record(fields)
+    }
+    "Access" -> {
+      let [#("value", value), #("key", key)] = rest
+      let value = from_json(value)
+      let key = assert_string(key)
+      e.access(value, key)
     }
     "Tagged" -> {
       let [#("tag", tag), #("value", value)] = rest

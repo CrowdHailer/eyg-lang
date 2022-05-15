@@ -376,6 +376,10 @@ pub fn expand_providers(tree, typer) {
         )
       #(#(meta, e.Record(fields)), typer)
     }
+    e.Access(value, label) -> {
+      let #(value, typer) = expand_providers(value, typer)
+      #(#(meta, e.Access(value, label)), typer)
+    }
     e.Tagged(tag, value) -> {
       let #(value, typer) = expand_providers(value, typer)
       #(#(meta, e.Tagged(tag, value)), typer)
@@ -460,6 +464,7 @@ fn try_unify(expected, given, typer, path) {
   }
 }
 
+// expected is the type this expression should evaluate too
 pub fn infer(
   expression: e.Expression(Dynamic, Dynamic),
   expected: t.Monotype(n),
@@ -521,6 +526,17 @@ pub fn infer(
           },
         )
       let expression = #(meta(type_), e.Record(fields))
+      #(expression, typer)
+    }
+    e.Access(value, label) -> {
+      let #(t, typer) = next_unbound(typer)
+      let field_type = t.Unbound(t)
+      let #(t, typer) = next_unbound(typer)
+      let record_type = t.Record([#(label, field_type)], Some(t))
+      let #(type_, typer) = try_unify(expected, field_type, typer, scope.path)
+      let #(value, typer) = infer(value, record_type, #(typer, child(scope, 0)))
+      // do records have labels or keys?
+      let expression = #(meta(type_), e.Access(value, label))
       #(expression, typer)
     }
     e.Tagged(tag, value) -> {

@@ -26,6 +26,11 @@ pub fn encode_record_test() {
   assert True = tree == round_trip(tree)
 }
 
+pub fn encode_access_test() {
+  let tree = ast.access(ast.variable("x"), "foo")
+  assert True = tree == round_trip(tree)
+}
+
 pub fn encode_tagged_test() {
   let tree = e.tagged("Foo", ast.tuple_([]))
   assert True = tree == round_trip(tree)

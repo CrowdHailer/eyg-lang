@@ -34,6 +34,10 @@ pub fn record(fields) {
   #(dynamic.from(Nil), e.Record(fields))
 }
 
+pub fn access(value, label) {
+  #(dynamic.from(Nil), e.Access(value, label))
+}
+
 pub fn variable(label) {
   #(dynamic.from(Nil), e.Variable(label))
 }

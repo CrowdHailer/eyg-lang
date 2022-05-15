@@ -123,7 +123,6 @@ pub fn inconsistencies(editor) {
 // reuse this code by putting it in platform.compile/codegen/eval
 // Question does editor depend on platform or visaverca happy to make descision later
 pub fn codegen(editor) {
-  io.debug("CODEGEN")
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
   let code = javascript.render_to_string(tree, typer)
@@ -222,7 +221,10 @@ fn handle_expression_change(expression, content) {
   case tree {
     e.Binary(_) -> ast.binary(content)
     e.Tagged(_, value) -> e.tagged(content, value)
-    _ -> ast.variable(content)
+    _ -> {
+      let [v, ..rest] = string.split(content, ".")
+      list.fold(rest, ast.variable(v), fn(acc, key) { e.access(acc, key) })
+    }
   }
 }
 
@@ -319,6 +321,16 @@ pub fn handle_change(editor, content) {
       let new = ast.case_(untype(value), branches)
       replace_expression(tree, case_position, new)
     }
+    FieldAccess(_) -> {
+      assert Ok(#(tagged_position, _)) = path.parent(position)
+      assert Expression(#(_, e.Access(value, _))) =
+        get_element(tree, tagged_position)
+      replace_expression(
+        tree,
+        tagged_position,
+        e.access(untype(value), content),
+      )
+    }
     _ -> todo("handle the other options")
   }
 
@@ -330,6 +342,7 @@ pub type Element(a, b) {
   Expression(e.Expression(a, b))
   Field(Int, #(String, e.Expression(a, b)))
   FieldKey(Int, String)
+  FieldAccess(String)
   Tag(String)
   Pattern(p.Pattern, e.Expression(a, b))
   PatternElement(Int, String)
@@ -388,6 +401,7 @@ fn handle_transformation(
     "b", False -> create_binary(tree, position)
     "t", False -> command(wrap_tuple(tree, position))
     "r", False -> wrap_record(tree, position)
+    "g", False -> create_access(tree, position)
     "n", False -> wrap_tagged(tree, position)
     "e", False -> command(wrap_assignment(tree, position))
     "f", False -> command(wrap_function(tree, position))
@@ -537,6 +551,7 @@ fn do_move_left(tree, selection, position) {
         True -> path.append(path.append(position, i - 1), 1)
         False -> list.append(position, selection)
       }
+    e.Access(_, _), [1] -> path.append(position, 0)
     e.Tagged(_, _), [1] -> path.append(position, 0)
     // Step in
     _, [] -> position
@@ -548,6 +563,8 @@ fn do_move_left(tree, selection, position) {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_left(value, rest, path.append(path.append(position, i), 1))
     }
+    e.Access(value, _), [0, ..rest] ->
+      do_move_left(value, rest, path.append(position, 0))
     e.Tagged(_, value), [1, ..rest] ->
       do_move_left(value, rest, path.append(position, 1))
     e.Let(_, value, _), [1, ..rest] ->
@@ -644,6 +661,7 @@ fn do_move_right(tree, selection, position) {
         True -> path.append(path.append(position, i + 1), 0)
         False -> list.append(position, selection)
       }
+    e.Access(_, _), [0] -> path.append(position, 1)
     e.Tagged(_, _), [0] -> path.append(position, 1)
     e.Case(_, _), [0] | e.Case(_, _), [] -> path.append(position, 1)
     // Step in
@@ -656,6 +674,8 @@ fn do_move_right(tree, selection, position) {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_right(value, rest, path.append(path.append(position, i), 1))
     }
+    e.Access(value, _), [0, ..rest] ->
+      do_move_right(value, rest, path.append(position, 0))
     e.Tagged(_, value), [1, ..rest] ->
       do_move_right(value, rest, path.append(position, 1))
     e.Let(_, value, _), [1, ..rest] ->
@@ -1191,6 +1211,24 @@ fn wrap_record(tree, position) {
   }
 }
 
+fn create_access(tree, path) {
+  case get_element(tree, path), list.reverse(path) {
+    FieldAccess(_), [1, ..rest] -> {
+      let path = list.reverse(rest)
+      create_access(tree, path)
+    }
+    Expression(expression), _ -> {
+      let new = ast.access(untype(expression), "")
+      #(
+        Some(replace_expression(tree, path, new)),
+        path.append(path, 1),
+        Draft(""),
+      )
+    }
+    _, _ -> #(None, path, Command)
+  }
+}
+
 fn wrap_tagged(tree, path) {
   case get_element(tree, path) {
     Expression(#(_, e.Let(_, value, _))) ->
@@ -1402,6 +1440,16 @@ fn do_delete(tree, position) {
           }
       }
     }
+    e.Access(value, _), [1] -> Some(#(value, []))
+    e.Access(value, label), [0, ..rest] ->
+      case do_delete(value, rest) {
+        Some(#(inner, path)) -> {
+          let new = e.access(inner, label)
+          let path = [0, ..path]
+          Some(#(new, path))
+        }
+        None -> Some(#(tree, []))
+      }
     e.Tagged(_, value), [0] -> Some(#(value, []))
     e.Tagged(tag, value), [1, ..rest] ->
       case do_delete(value, rest) {
@@ -1573,37 +1621,49 @@ fn draft(tree, position) {
   }
 }
 
+fn get_fields_from_type(type_) {
+  case type_ {
+    t.Record(rows, _) -> {
+      list.flat_map(
+        rows,
+        fn(row) {
+          let #(key, t) = row
+          let prefix = string.append(key, ".")
+          [
+            key,
+            ..get_fields_from_type(t)
+            |> list.map(string.append(prefix, _))
+          ]
+        },
+      )
+    }
+    _ -> []
+  }
+}
+
 fn variable(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(#(metadata, _)) -> {
       let Metadata(scope: scope, ..) = metadata
-      // io.debug(scope)
       let variables =
         list.fold(
           scope,
           [],
           fn(acc, variable) {
             case variable {
-              // TODO this variable needs to be available as short hand in the type checker
-              // TODO needs to care about variable number but only for the first bit
-              // I think variable needs to be inserted with int value
-              // if rebuilding to push scope variables they need to be numbered as 0 so can access them
-              #(label, polytype.Polytype([], t.Record(rows, _))) -> {
+              #(label, polytype.Polytype(_, type_)) -> {
                 let prefix = string.append(label, ".")
                 let sub =
-                  rows
-                  |> list.map(pair.first)
+                  get_fields_from_type(type_)
                   |> list.map(string.append(prefix, _))
                   |> list.append(acc)
                 [label, ..sub]
               }
-              #(label, _) -> [label, ..acc]
             }
           },
         )
-      // TODO test
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))
     }
@@ -1660,6 +1720,8 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
       let [#(_, child), ..] = list.drop(fields, i)
       get_element(child, rest)
     }
+    #(_, e.Access(value, _)), [0, ..rest] -> get_element(value, rest)
+    #(_, e.Access(_, key)), [1] -> FieldAccess(key)
     #(_, e.Tagged(tag, _)), [0] -> Tag(tag)
     #(_, e.Tagged(_, value)), [1, ..rest] -> get_element(value, rest)
     #(_, e.Let(pattern, _, _)), [0, ..rest] -> get_pattern(pattern, rest, tree)
@@ -1755,6 +1817,8 @@ pub fn map_node(
       let fields = list.flatten([pre, [#(k, updated)], post])
       e.record(fields)
     }
+    e.Access(value, label), [0, ..rest] ->
+      e.access(map_node(value, rest, mapper), label)
     e.Tagged(tag, value), [1, ..rest] ->
       e.tagged(tag, map_node(value, rest, mapper))
     e.Let(pattern, value, then), [1, ..rest] ->
