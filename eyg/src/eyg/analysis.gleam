@@ -11,9 +11,8 @@ import eyg/typer/polytype
 import misc
 
 pub fn infer(untyped, type_) {
-  let native_to_string = fn(_: Nil) { "TODO" }
   let variables = [#("equal", typer.equal_fn())]
-  let checker = typer.init(native_to_string)
+  let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
   typer.infer(untyped, type_, state)
@@ -49,7 +48,7 @@ pub fn shrink(type_) {
     },
   )
 }
-
-pub fn print(type_, _) {
-  t.to_string(type_, fn(_) { "TODO again" })
-}
+// Shouldn't rely on editor rendering used only in tests
+// pub fn print(type_, _) {
+//   t.to_string(type_, fn(_) { "TODO again" })
+// }

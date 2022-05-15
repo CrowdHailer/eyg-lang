@@ -17,6 +17,8 @@ import eyg/codegen/utilities.{
 pub type Generator(n) {
 
   // self is the name being given in a let clause
+  // TODO move scope to have numbers in the typer
+  // TODO move native out as never render native type
   Generator(
     in_tail: Bool,
     scope: List(String),
@@ -309,8 +311,8 @@ pub fn render(
               "})",
             ]
             _ -> [
-              "(() => {throw 'Failed to build provider for ",
-              t.to_string(loader, state.native_to_string),
+              "(() => {throw 'Failed to build provider for ", // We should just panic here
+              // montyp_to_string(loader, state.native_to_string),
               "'})()",
             ]
           }

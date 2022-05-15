@@ -9,9 +9,8 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 
 fn infer(untyped, type_) {
-  let native_to_string = fn(_: Nil) { "" }
   let variables = [#("equal", typer.equal_fn())]
-  let checker = typer.init(native_to_string)
+  let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
   typer.infer(untyped, type_, state)

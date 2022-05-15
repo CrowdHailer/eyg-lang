@@ -50,8 +50,9 @@
           let rendered = Editor.codegen(editor);
           window.tree = editor.tree;
           // with eval {} is considered a block of code, not an object
+          // Can render code, but not execute if is good.
+          code = rendered[1];
           if (rendered[0]) {
-            code = rendered[1];
             let returned = Editor.eval$(editor);
             window.returned = returned;
             testGood = returned.test == "True";
