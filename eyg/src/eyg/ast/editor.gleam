@@ -1428,6 +1428,16 @@ fn do_delete(tree, position) {
           }
       }
     }
+    e.Access(value, _), [1] -> Some(#(value, []))
+    e.Access(value, label), [0, ..rest] ->
+      case do_delete(value, rest) {
+        Some(#(inner, path)) -> {
+          let new = e.access(inner, label)
+          let path = [0, ..path]
+          Some(#(new, path))
+        }
+        None -> Some(#(tree, []))
+      }
     e.Tagged(_, value), [0] -> Some(#(value, []))
     e.Tagged(tag, value), [1, ..rest] ->
       case do_delete(value, rest) {
