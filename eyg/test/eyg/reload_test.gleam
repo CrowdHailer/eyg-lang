@@ -33,10 +33,7 @@ pub fn simple_reload_test() {
   let #(typed, typer) = typer.expand_providers(typed, typer)
 
   assert [] = typer.inconsistencies
-  javascript.render(
-    typed,
-    javascript.Generator(False, [], typer, None, browser.native_to_string),
-  )
+  javascript.render(typed, javascript.Generator(False, [], typer, None))
   |> list.intersperse("\n")
   |> string.concat()
   |> io.debug
