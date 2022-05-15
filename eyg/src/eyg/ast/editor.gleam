@@ -1653,15 +1653,10 @@ fn variable(tree, position) {
           [],
           fn(acc, variable) {
             case variable {
-              // TODO this variable needs to be available as short hand in the type checker
-              // TODO needs to care about variable number but only for the first bit
-              // I think variable needs to be inserted with int value
-              // if rebuilding to push scope variables they need to be numbered as 0 so can access them
               #(label, polytype.Polytype(_, type_)) -> {
                 let prefix = string.append(label, ".")
                 let sub =
                   get_fields_from_type(type_)
-                  // |> list.map(pair.first)
                   |> list.map(string.append(prefix, _))
                   |> list.append(acc)
                 [label, ..sub]
@@ -1669,8 +1664,6 @@ fn variable(tree, position) {
             }
           },
         )
-      // #(label, _) -> [label, ..acc]
-      // TODO test
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))
     }
