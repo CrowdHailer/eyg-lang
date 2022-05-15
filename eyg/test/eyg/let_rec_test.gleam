@@ -13,11 +13,11 @@ import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
 import misc
+import eyg/editor/type_info
 
 fn infer(untyped, type_) {
-  let native_to_string = fn(_: Nil) { "" }
   let variables = [#("equal", typer.equal_fn())]
-  let checker = typer.init(native_to_string)
+  let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
   typer.infer(untyped, type_, state)
@@ -36,7 +36,8 @@ pub fn recursive_tuple_test() {
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
+  let "() -> μ0.(Binary, 0)" =
+    type_info.to_string(type_, fn(_) { todo("native") })
 }
 
 pub fn loop_test() {
@@ -58,7 +59,7 @@ pub fn loop_test() {
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
   let "() -> [True () | False, ()] -> Binary" =
-    t.to_string(type_, fn(_) { todo("native") })
+    type_info.to_string(type_, fn(_) { todo("native") })
   // Shouldn't be getting stuck in case where return value is unknown
   // Needs a drop out
 }
@@ -108,10 +109,11 @@ pub fn recursive_union_test() {
 
   assert Ok(move_exp) = get_expression(typed, [1])
   assert Ok(type_) = analysis.get_type(move_exp, checker)
-  t.to_string(type_, fn(_) { todo("native") })
+  type_info.to_string(type_, fn(_) { todo("native") })
 
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" = t.to_string(type_, fn(_) { todo("native") })
+  let "() -> μ0.(Binary, 0)" =
+    type_info.to_string(type_, fn(_) { todo("native") })
 }
 
 fn get_expression(tree, path) {

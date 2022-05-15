@@ -7,7 +7,7 @@ import eyg/typer/harness
 
 pub fn compile_unconstrained(expression, harness) {
   let harness.Harness(variables, native_to_string) = harness
-  let p = typer.init(native_to_string)
+  let p = typer.init()
   let scope = typer.root_scope(variables)
   let #(x, typer) = typer.next_unbound(p)
   let expected = t.Unbound(x)

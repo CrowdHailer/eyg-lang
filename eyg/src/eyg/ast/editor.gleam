@@ -18,6 +18,7 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/typer/harness
 import eyg/codegen/javascript
+import eyg/editor/type_info
 
 pub type Mode {
   Command
@@ -69,9 +70,12 @@ fn expression_type(
       False,
       t.resolve(t, typer.substitutions)
       |> analysis.shrink
-      |> t.to_string(native_to_string),
+      |> type_info.to_string(native_to_string),
     )
-    Error(reason) -> #(True, typer.reason_to_string(reason, typer))
+    Error(reason) -> #(
+      True,
+      type_info.reason_to_string(reason, native_to_string),
+    )
   }
 }
 
@@ -111,13 +115,15 @@ pub fn inconsistencies(editor) {
   )
   |> list.map(fn(i) {
     let #(path, reason) = i
-    #(path, typer.reason_to_string(reason, t))
+    // TODO resolve
+    #(path, type_info.reason_to_string(reason, editor.harness.native_to_string))
   })
 }
 
 // reuse this code by putting it in platform.compile/codegen/eval
 // Question does editor depend on platform or visaverca happy to make descision later
 pub fn codegen(editor) {
+  io.debug("CODEGEN")
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
   let code =
@@ -1574,7 +1580,31 @@ fn variable(tree, position) {
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(#(metadata, _)) -> {
       let Metadata(scope: scope, ..) = metadata
-      let variables = list.map(scope, pair.first)
+      // io.debug(scope)
+      let variables =
+        list.fold(
+          scope,
+          [],
+          fn(acc, variable) {
+            case variable {
+              // TODO this variable needs to be available as short hand in the type checker
+              // TODO needs to care about variable number but only for the first bit
+              // I think variable needs to be inserted with int value
+              // if rebuilding to push scope variables they need to be numbered as 0 so can access them
+              #(label, polytype.Polytype([], t.Record(rows, _))) -> {
+                let prefix = string.append(label, ".")
+                let sub =
+                  rows
+                  |> list.map(pair.first)
+                  |> list.map(string.append(prefix, _))
+                  |> list.append(acc)
+                [label, ..sub]
+              }
+              #(label, _) -> [label, ..acc]
+            }
+          },
+        )
+      // TODO test
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))
     }

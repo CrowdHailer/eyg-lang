@@ -1,7 +1,6 @@
 import gleam/option.{None, Some}
-import eyg/typer/monotype.{
-  Binary, Function, Native, Record, Tuple, Unbound, to_string,
-}
+import eyg/typer/monotype.{Binary, Function, Native, Record, Tuple, Unbound}
+import eyg/editor/type_info.{to_string}
 
 fn native_to_string(_) {
   "N"

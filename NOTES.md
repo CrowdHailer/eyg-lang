@@ -84,6 +84,7 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 
 - [ ] Copy/paste
 - [ ] dot syntax sugar (nice not functional)
+  - or just name things "foo.subfoo"
 - [x] Tag ast node Union Type, remove sugar check rendering of JS
 - [ ] Put type information on non expression elements
 - [ ] Reload and Sugar need to be reinstated - Theres thoughts on renaming tree and running code async to editor.

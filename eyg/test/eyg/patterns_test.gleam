@@ -11,7 +11,7 @@ import platform/browser
 
 // This is proablbly better called assignment tests, unless it grows too big and patterns should be separate
 pub fn variable_of_expected_type_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope =
     typer.Scope(
       variables: [#("foo", polytype.Polytype([], t.Tuple([])))],
@@ -23,7 +23,7 @@ pub fn variable_of_expected_type_test() {
 }
 
 pub fn variable_of_unexpected_type_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope = typer.root_scope([#("foo", polytype.Polytype([], t.Tuple([])))])
   let state = #(typer, scope)
   let untyped = ast.variable("foo")
@@ -33,7 +33,7 @@ pub fn variable_of_unexpected_type_test() {
 }
 
 pub fn missing_variable_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.variable("foo")
@@ -44,7 +44,7 @@ pub fn missing_variable_test() {
 
 // assignment
 pub fn expected_assignment_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped =
@@ -54,7 +54,7 @@ pub fn expected_assignment_test() {
 }
 
 pub fn unexpected_then_type_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped =
@@ -68,7 +68,7 @@ pub fn unexpected_then_type_test() {
 }
 
 pub fn matched_expected_tuple_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope =
     typer.root_scope([#("foo", polytype.Polytype([], t.Tuple([t.Binary])))])
   let state = #(typer, scope)
@@ -83,7 +83,7 @@ pub fn matched_expected_tuple_test() {
 }
 
 pub fn expected_a_tuple_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope = typer.root_scope([#("foo", polytype.Polytype([], t.Binary))])
   let state = #(typer, scope)
 
@@ -97,7 +97,7 @@ pub fn expected_a_tuple_test() {
 }
 
 pub fn unexpected_tuple_size_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope = typer.root_scope([#("foo", polytype.Polytype([], t.Tuple([])))])
   let state = #(typer, scope)
 
@@ -115,7 +115,7 @@ pub fn matched_expected_record_test() {
     typer.root_scope([
       #("foo", polytype.Polytype([], t.Record([#("k", t.Binary)], None))),
     ])
-  let state = #(typer.init(browser.native_to_string), scope)
+  let state = #(typer.init(), scope)
   let untyped =
     ast.let_(
       pattern.Record([#("k", "a")]),
@@ -131,7 +131,7 @@ pub fn matched_expected_record_test() {
 }
 
 pub fn expected_a_record_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope = typer.root_scope([#("foo", polytype.Polytype([], t.Binary))])
   let state = #(typer, scope)
 
@@ -160,7 +160,7 @@ pub fn matched_expected_record_with_additional_fields_test() {
         ),
       ),
     ])
-  let state = #(typer.init(browser.native_to_string), scope)
+  let state = #(typer.init(), scope)
   let untyped =
     ast.let_(
       pattern.Record([#("k", "a")]),
@@ -176,7 +176,7 @@ pub fn matched_expected_record_with_additional_fields_test() {
 }
 
 pub fn grow_expected_fields_in_record_test() {
-  let typer = typer.init(browser.native_to_string)
+  let typer = typer.init()
   let scope =
     typer.root_scope([#("foo", polytype.Polytype([], t.Record([], Some(-1))))])
   let state = #(typer, scope)

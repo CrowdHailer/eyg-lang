@@ -20,13 +20,28 @@ pub fn native_to_string(type_) {
   }
 }
 
+// probably should be called platform or native in the
+// TODO Is there ever a reason for an ast node to be native, I don't think so must go through function
+// But Native<3> allows compile time native stuff
 pub fn harness() {
   harness.Harness(
-    [#("equal", typer.equal_fn()), #("harness", string())],
+    [
+      #("equal", typer.equal_fn()),
+      // #("harness.string.split", typer.equal_fn()),
+      #(
+        "harness.parse_int",
+        polytype.Polytype([], t.Function(t.Binary, t.Native(Integer))),
+      ),
+    ],
+    // #("harness", string())
     native_to_string,
   )
 }
 
+// fn p0() {
+// }
+// Polytimes are always instantiated we can reduce to lowest number when put in scope
+// perhaps they should be letters or similar
 pub fn string() {
   polytype.Polytype(
     [1, 2, 3],

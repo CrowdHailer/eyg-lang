@@ -127,8 +127,8 @@ pub fn tag_test() {
     )
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None) = type_
-  io.debug(analysis.print(type_, checker))
 
+  // io.debug(analysis.print(type_, checker))
   // Mismatched type
   let #(typed, checker) =
     analysis.infer(
@@ -433,7 +433,8 @@ pub fn my_recursive_tuple_test() {
   //   },
   // )
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" = analysis.print(type_, checker)
+  // TODOO reinstate or use type_info printing directly
+  // let "() -> μ0.(Binary, 0)" = analysis.print(type_, checker)
   // analysis.print(t.Unbound(4), checker)
   // |> io.debug
   // assert Ok(t.Function(from, to)) = analysis.get_type(typed, checker)

@@ -40,102 +40,15 @@ pub fn child(scope, i) {
 
 pub type Typer(n) {
   Typer(
-    native_to_string: fn(n) -> String,
     next_unbound: Int,
     substitutions: List(#(Int, t.Monotype(n))),
     inconsistencies: List(#(List(Int), Reason(n))),
   )
 }
 
-pub fn reason_to_string(reason, typer: Typer(n)) {
-  case reason {
-    IncorrectArity(expected, given) ->
-      string.concat([
-        "Incorrect Arity expected ",
-        int.to_string(expected),
-        " given ",
-        int.to_string(given),
-      ])
-    UnknownVariable(label) ->
-      string.concat(["Unknown variable: \"", label, "\""])
-    UnmatchedTypes(expected, given) ->
-      string.concat([
-        "Unmatched types expected ",
-        t.to_string(
-          t.resolve(expected, typer.substitutions),
-          typer.native_to_string,
-        ),
-        " given ",
-        t.to_string(
-          t.resolve(given, typer.substitutions),
-          typer.native_to_string,
-        ),
-      ])
-    MissingFields(expected) ->
-      [
-        "Missing fields: ",
-        ..list.map(
-          expected,
-          fn(x) {
-            let #(name, type_) = x
-            string.concat([
-              name,
-              ": ",
-              t.to_string(
-                t.resolve(type_, typer.substitutions),
-                typer.native_to_string,
-              ),
-            ])
-          },
-        )
-        |> list.intersperse(", ")
-      ]
-      |> string.concat
-
-    UnexpectedFields(expected) ->
-      [
-        "Unexpected fields: ",
-        ..list.map(
-          expected,
-          fn(x) {
-            let #(name, type_) = x
-            string.concat([
-              name,
-              ": ",
-              t.to_string(
-                t.resolve(type_, typer.substitutions),
-                typer.native_to_string,
-              ),
-            ])
-          },
-        )
-        |> list.intersperse(", ")
-      ]
-      |> string.concat
-    UnableToProvide(expected, g) ->
-      string.concat([
-        "Unable to generate for expected type ",
-        t.to_string(
-          t.resolve(expected, typer.substitutions),
-          typer.native_to_string,
-        ),
-        " with generator ",
-        e.generator_to_string(g),
-      ])
-    ProviderFailed(g, expected) ->
-      string.concat([
-        "Provider '",
-        e.generator_to_string(g),
-        "' unable to generate code for type: ",
-        t.to_string(expected, typer.native_to_string),
-      ])
-    Warning(message) -> message
-  }
-}
-
 // I think the types should be concerned only with types, no redering
-pub fn init(native_to_string) {
-  Typer(native_to_string, 0, [], [])
+pub fn init() {
+  Typer(0, [], [])
 }
 
 pub fn next_unbound(typer) {

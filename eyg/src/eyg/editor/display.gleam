@@ -10,6 +10,7 @@ import eyg/ast/pattern as p
 import eyg/ast/editor
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
+import eyg/editor/type_info
 
 pub fn is_multiexpression(expression) {
   case expression {
@@ -114,7 +115,7 @@ pub fn do_display(tree, position, selection, editor) {
   let #(errored, type_) = case type_ {
     Ok(type_) -> #(
       False,
-      t.to_string(
+      type_info.to_string(
         t.resolve(type_, typer.substitutions),
         editor.harness.native_to_string,
       ),
