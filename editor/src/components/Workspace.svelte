@@ -156,7 +156,12 @@
       on:click={() => (page = HOME)}>Home</button
     >
     <span
-      class="ml-auto w-36"
+      class="ml-auto mr-2  border-2 border-white outline-none rounded"
+      class:border-yellow-500={Editor.yank_path(editor)[0]}
+      >{Editor.yank_path(editor)[1]}</span
+    >
+    <span
+      class="w-36"
       class:bg-green-500={testGood}
       class:bg-red-500={!testGood}
     />

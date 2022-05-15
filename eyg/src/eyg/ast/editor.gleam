@@ -35,7 +35,7 @@ pub type Editor(n) {
     selection: Option(List(Int)),
     mode: Mode,
     expanded: Bool,
-    yanked: Option(e.Expression(Dynamic, Dynamic)),
+    yanked: Option(#(List(Int), e.Expression(Dynamic, Dynamic))),
   )
 }
 
@@ -171,6 +171,24 @@ pub fn handle_click(editor: Editor(n), target) {
   }
 }
 
+pub fn yank_path(editor: Editor(n)) {
+  case editor.selection {
+    None -> #(False, "")
+    Some(path) ->
+      case editor.yanked {
+        None -> #(False, "")
+        Some(#(path, _)) -> #(
+          True,
+          string.join(
+            path
+            |> list.map(int.to_string),
+            ".",
+          ),
+        )
+      }
+  }
+}
+
 pub fn handle_keydown(editor, key, ctrl_key) {
   let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
     editor
@@ -194,11 +212,11 @@ pub fn handle_keydown(editor, key, ctrl_key) {
             False ->
               case get_element(tree, path) {
                 Expression(expression) ->
-                  Editor(..editor, yanked: Some(untype(expression)))
+                  Editor(..editor, yanked: Some(#(path, untype(expression))))
                 _ -> editor
               }
             True -> {
-              assert Some(new) = editor.yanked
+              assert Some(#(_, new)) = editor.yanked
               let untyped = replace_expression(tree, path, new)
               let #(typed, typer) =
                 eyg.compile_unconstrained(untyped, editor.harness)
