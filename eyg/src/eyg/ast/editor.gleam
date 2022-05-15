@@ -35,6 +35,7 @@ pub type Editor(n) {
     selection: Option(List(Int)),
     mode: Mode,
     expanded: Bool,
+    yanked: Option(e.Expression(Dynamic, Dynamic)),
   )
 }
 
@@ -146,7 +147,7 @@ pub fn dump(editor) {
 pub fn init(source, harness) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let #(typed, typer) = eyg.compile_unconstrained(untyped, harness)
-  Editor(harness, typed, typer, None, Command, False)
+  Editor(harness, typed, typer, None, Command, False, None)
 }
 
 fn rest_to_path(rest) {
@@ -175,6 +176,7 @@ pub fn handle_keydown(editor, key, ctrl_key) {
     editor
   assert Some(path) = selection
   let new = case mode {
+    // TODO in draft etc pass through
     Command ->
       case key {
         "x" -> {
@@ -186,6 +188,23 @@ pub fn handle_keydown(editor, key, ctrl_key) {
           }
           Editor(..editor, expanded: expanded)
         }
+        // yd is yank delete
+        "y" ->
+          case ctrl_key {
+            False ->
+              case get_element(tree, path) {
+                Expression(expression) ->
+                  Editor(..editor, yanked: Some(untype(expression)))
+                _ -> editor
+              }
+            True -> {
+              assert Some(new) = editor.yanked
+              let untyped = replace_expression(tree, path, new)
+              let #(typed, typer) =
+                eyg.compile_unconstrained(untyped, editor.harness)
+              Editor(..editor, tree: typed, typer: typer)
+            }
+          }
         _ -> {
           let #(untyped, path, mode) =
             handle_transformation(editor, path, key, ctrl_key)
@@ -410,9 +429,11 @@ fn handle_transformation(
     // don't wrap in anything if modifies everything
     "c", False -> call(tree, position)
     "w", False -> call_with(tree, position)
+    // Ctry C for call with
     // m for match
     "m", False -> match(tree, position)
 
+    // TODO branch
     "d", False -> delete(tree, position)
     // modes
     "i", False -> draft(tree, position)
@@ -1339,7 +1360,6 @@ fn unwrap(tree, position) {
 fn call(tree, position) {
   case get_element(tree, position) {
     // call a let is allowd here for foo
-    // todo dot calling
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(expression) -> {
       let new = ast.call(untype(expression), ast.hole())
@@ -1623,7 +1643,7 @@ fn draft(tree, position) {
 
 fn get_fields_from_type(type_) {
   case type_ {
-    t.Record(rows, _) -> {
+    t.Record(rows, _) ->
       list.flat_map(
         rows,
         fn(row) {
@@ -1636,7 +1656,6 @@ fn get_fields_from_type(type_) {
           ]
         },
       )
-    }
     _ -> []
   }
 }
