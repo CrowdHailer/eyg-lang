@@ -561,6 +561,8 @@ fn do_move_left(tree, selection, position) {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_left(value, rest, path.append(path.append(position, i), 1))
     }
+    e.Access(value, _), [0, ..rest] ->
+      do_move_left(value, rest, path.append(position, 0))
     e.Tagged(_, value), [1, ..rest] ->
       do_move_left(value, rest, path.append(position, 1))
     e.Let(_, value, _), [1, ..rest] ->
@@ -670,6 +672,8 @@ fn do_move_right(tree, selection, position) {
       assert Ok(#(_, value)) = list.at(fields, i)
       do_move_right(value, rest, path.append(path.append(position, i), 1))
     }
+    e.Access(value, _), [0, ..rest] ->
+      do_move_right(value, rest, path.append(position, 0))
     e.Tagged(_, value), [1, ..rest] ->
       do_move_right(value, rest, path.append(position, 1))
     e.Let(_, value, _), [1, ..rest] ->
@@ -1206,8 +1210,14 @@ fn wrap_record(tree, position) {
 }
 
 fn create_access(tree, path) {
-  case get_element(tree, path) {
-    Expression(expression) -> {
+  case get_element(tree, path), list.reverse(path) {
+    FieldAccess(_), [1, ..rest] -> {
+      io.debug(path)
+      io.debug("up")
+      let path = list.reverse(rest)
+      create_access(tree, path)
+    }
+    Expression(expression), _ -> {
       let new = ast.access(untype(expression), "")
       #(
         Some(replace_expression(tree, path, new)),
@@ -1215,7 +1225,7 @@ fn create_access(tree, path) {
         Draft(""),
       )
     }
-    _ -> #(None, path, Command)
+    _, _ -> #(None, path, Command)
   }
 }
 
@@ -1795,6 +1805,8 @@ pub fn map_node(
       let fields = list.flatten([pre, [#(k, updated)], post])
       e.record(fields)
     }
+    e.Access(value, label), [0, ..rest] ->
+      e.access(map_node(value, rest, mapper), label)
     e.Tagged(tag, value), [1, ..rest] ->
       e.tagged(tag, map_node(value, rest, mapper))
     e.Let(pattern, value, then), [1, ..rest] ->
