@@ -183,3 +183,20 @@ docker cp eyg_builder:/opt/app/eyg/build ./tmp
 ```
 
 File watcher did not work so I had no solution for a watch task.
+
+None if this worked well so I stopped using docker
+
+## Communities
+
+- Why so few arduino frameworks https://www.reddit.com/r/arduino/comments/ulx8he/why_are_there_so_few_arduino_frameworks_is_it_a/
+- Most exciting home automation https://www.reddit.com/r/homeautomation/comments/ulxkk3/what_is_the_most_exciting_future_for_home/
+Why is there no widespread open PLC tools
+- IOT enviromental iot https://www.reddit.com/r/IOT/comments/uo7lon/iot_projects_for_environmentalecological/
+- https://openplc.discussion.community/news-announcements-532110
+- PLC4x where is the JavaScrip
+- is arduino a PLC asked in PLC4x
+- [ ] Rust on PLC's rust forum
+- [ ] Nim on PLC's
+- reddit Robotics/automate
+- can keep trying coda etc
+- https://www.hpe.com/us/en/insights/articles/9-top-reddits-for-tech-sustainability-enthusiasts-1906.html

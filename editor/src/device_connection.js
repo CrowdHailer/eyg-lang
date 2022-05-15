@@ -1,3 +1,6 @@
+import * as Firmata from "../../eyg/build/dev/javascript/eyg/dist/firmata/firmata";
+import * as Gleam from "../../eyg/build/dev/javascript/eyg/dist/gleam";
+
 export async function connectDevice() {
   console.log("connecting");
   let port = await navigator.serial.requestPort({ filters: [] });
@@ -20,9 +23,13 @@ export async function connectDevice() {
     // console.log(r);
     // console.log("fooooooooooooooooooo");
 
+    // I think this writes report digital and analoge. one seems to work one not
+    // const set = new Uint8Array([0xd0, 0x92, 1, 0xc0, 0xa0, 1]);
+    // await writer.write(set);
+
     let state = 0;
     while (true) {
-      const tick = sleep(500);
+      const tick = sleep(200);
       if (scan) {
         const input = null;
         const [output, s] = scan([input, state]);
@@ -39,6 +46,11 @@ export async function connectDevice() {
         await writer.write(set);
       }
 
+      // turn off the analogue or digital subscription
+      // await sleep(5000);
+
+      // const set = new Uint8Array([0xd0, 0x92, 0, 0xc0, 0xa0, 0]);
+      // await writer.write(set);
       await tick;
     }
     await sleep(5000);
@@ -65,10 +77,13 @@ function binaryToNative(eyg) {
 }
 
 async function startReader(port) {
+  console.log(Firmata);
+  let [parseState, parseMessages] = Firmata.fresh();
   while (port.readable) {
     const reader = port.readable.getReader();
     try {
       while (true) {
+        console.log("startread");
         const { value, done } = await reader.read();
         if (done) {
           // Allow the serial port to be closed later.
@@ -76,10 +91,18 @@ async function startReader(port) {
           break;
         }
         if (value) {
-          // console.log(value);
+          console.log(value);
           value.forEach((element) => {
             console.log(element, element.toString(16));
           });
+          const parseResult = Firmata.parse(
+            new Gleam.BitString(value),
+            parseState,
+            parseMessages
+          );
+          parseState = parseResult[0];
+          parseMessages = new Gleam.Empty();
+          console.log(parseResult[1]);
         }
       }
     } catch (error) {
