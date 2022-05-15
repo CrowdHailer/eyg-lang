@@ -123,7 +123,6 @@ pub fn inconsistencies(editor) {
 // reuse this code by putting it in platform.compile/codegen/eval
 // Question does editor depend on platform or visaverca happy to make descision later
 pub fn codegen(editor) {
-  io.debug("CODEGEN")
   let Editor(tree: tree, typer: typer, ..) = editor
   let good = list.length(typer.inconsistencies) == 0
   let code = javascript.render_to_string(tree, typer)
@@ -222,7 +221,10 @@ fn handle_expression_change(expression, content) {
   case tree {
     e.Binary(_) -> ast.binary(content)
     e.Tagged(_, value) -> e.tagged(content, value)
-    _ -> ast.variable(content)
+    _ -> {
+      let [v, ..rest] = string.split(content, ".")
+      list.fold(rest, ast.variable(v), fn(acc, key) { e.access(acc, key) })
+    }
   }
 }
 
@@ -1212,8 +1214,6 @@ fn wrap_record(tree, position) {
 fn create_access(tree, path) {
   case get_element(tree, path), list.reverse(path) {
     FieldAccess(_), [1, ..rest] -> {
-      io.debug(path)
-      io.debug("up")
       let path = list.reverse(rest)
       create_access(tree, path)
     }
@@ -1621,13 +1621,32 @@ fn draft(tree, position) {
   }
 }
 
+fn get_fields_from_type(type_) {
+  case type_ {
+    t.Record(rows, _) -> {
+      list.flat_map(
+        rows,
+        fn(row) {
+          let #(key, t) = row
+          let prefix = string.append(key, ".")
+          [
+            key,
+            ..get_fields_from_type(t)
+            |> list.map(string.append(prefix, _))
+          ]
+        },
+      )
+    }
+    _ -> []
+  }
+}
+
 fn variable(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
     Expression(#(metadata, _)) -> {
       let Metadata(scope: scope, ..) = metadata
-      // io.debug(scope)
       let variables =
         list.fold(
           scope,
@@ -1638,19 +1657,19 @@ fn variable(tree, position) {
               // TODO needs to care about variable number but only for the first bit
               // I think variable needs to be inserted with int value
               // if rebuilding to push scope variables they need to be numbered as 0 so can access them
-              #(label, polytype.Polytype([], t.Record(rows, _))) -> {
+              #(label, polytype.Polytype(_, type_)) -> {
                 let prefix = string.append(label, ".")
                 let sub =
-                  rows
-                  |> list.map(pair.first)
+                  get_fields_from_type(type_)
+                  // |> list.map(pair.first)
                   |> list.map(string.append(prefix, _))
                   |> list.append(acc)
                 [label, ..sub]
               }
-              #(label, _) -> [label, ..acc]
             }
           },
         )
+      // #(label, _) -> [label, ..acc]
       // TODO test
       let new = Some(replace_expression(tree, position, ast.variable("")))
       #(new, position, Select(variables))

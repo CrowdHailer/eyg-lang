@@ -25,15 +25,12 @@ pub fn native_to_string(type_) {
 // But Native<3> allows compile time native stuff
 pub fn harness() {
   harness.Harness(
-    [
-      #("equal", typer.equal_fn()),
-      // #("harness.string.split", typer.equal_fn()),
-      #(
-        "harness.parse_int",
-        polytype.Polytype([], t.Function(t.Binary, t.Native(Integer))),
-      ),
-    ],
-    // #("harness", string())
+    [#("equal", typer.equal_fn()), #("harness", string())],
+    // #("harness.string.split", typer.equal_fn()),
+    // #(
+    //   "harness.parse_int",
+    //   polytype.Polytype([], t.Function(t.Binary, t.Native(Integer))),
+    // ),
     native_to_string,
   )
 }
