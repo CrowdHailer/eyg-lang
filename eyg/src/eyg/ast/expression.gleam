@@ -150,6 +150,7 @@ pub type Node(m, g) {
   Binary(value: String)
   Tuple(elements: List(Expression(m, g)))
   Record(fields: List(#(String, Expression(m, g))))
+  Access(value: Expression(m, g), label: String)
   Tagged(tag: String, value: Expression(m, g))
   Variable(label: String)
   Let(pattern: Pattern, value: Expression(m, g), then: Expression(m, g))
@@ -192,6 +193,10 @@ pub fn variable(label) {
 
 pub fn record(fields) {
   #(dynamic.from(Nil), Record(fields))
+}
+
+pub fn access(value, label) {
+  #(dynamic.from(Nil), Access(value, label))
 }
 
 pub fn tagged(tag, value) {

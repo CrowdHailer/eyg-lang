@@ -88,6 +88,7 @@ pub fn to_json(ast) {
         )
       object([#("node", string("Record")), #("fields", array(fields))])
     }
+    e.Access(_, _) -> todo("add test")
     e.Tagged(tag, value) ->
       object([
         #("node", string("Tagged")),

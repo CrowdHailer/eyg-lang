@@ -16,6 +16,7 @@ fn infer(untyped, type_) {
   typer.infer(untyped, type_, state)
 }
 
+// TODO use analysis module instead
 fn get_type(typed, checker: typer.Typer(n)) {
   case typer.get_type(typed) {
     Ok(type_) -> Ok(t.resolve(type_, checker.substitutions))

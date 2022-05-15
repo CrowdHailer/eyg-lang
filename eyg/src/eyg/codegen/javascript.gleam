@@ -209,6 +209,12 @@ pub fn render(
       |> wrap_single_or_multiline(",", "{", "}")
       |> wrap_return(state)
     }
+
+    e.Access(value, label) ->
+      maybe_wrap_expression(value, state)
+      |> squash([string.concat([".", label])])
+      |> wrap_return(state)
+
     // TODO escape tag
     e.Tagged(tag, value) -> {
       let state = Generator(..state, self: None)

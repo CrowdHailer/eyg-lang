@@ -12,37 +12,33 @@ pub type State {
 }
 
 pub type Message {
-    ProtocolVersion(major: Int, minor: Int)
-    ReportFirmware(payload: String)
+  ProtocolVersion(major: Int, minor: Int)
+  ReportFirmware(payload: String)
 }
-
 
 pub fn fresh() {
-    #(Initial, [])
+  #(Initial, [])
 }
-
-
 
 pub fn parse(bytes, state, received) {
   case bytes {
     <<>> -> #(state, list.reverse(received))
-    <<next, rest:binary>> ->
-      case state, next {
-        Initial, 0xF9 -> parse(rest, Major, received)
-        Major, major -> parse(rest, Minor(major), received)
-        Minor(major), minor -> parse(rest, Initial, [ProtocolVersion(major, minor), ..received])
-        Initial, 0xF0 -> parse(rest, Sysex, received)
-        Sysex, 0x79 -> parse(rest, SxReportFirmware(<<>>), received)
-        SxReportFirmware(bytes), 0xF7 -> {
-            io.debug(bytes)
-            assert Ok(report) = bit_string.to_string(bytes)
-            let message = ReportFirmware(report)
-            parse(rest, Initial, [message, ..received])
-        }
-        SxReportFirmware(bytes), byte -> parse(rest, SxReportFirmware(<<byte, bytes:bits>>), received)
-        _, _ -> #(state, received)
-      }
   }
+  // Blocked out untill pattern matching released in JS target
+  // <<next, rest:binary>> ->
+  //   case state, next {
+  //     Initial, 0xF9 -> parse(rest, Major, received)
+  //     Major, major -> parse(rest, Minor(major), received)
+  //     Minor(major), minor -> parse(rest, Initial, [ProtocolVersion(major, minor), ..received])
+  //     Initial, 0xF0 -> parse(rest, Sysex, received)
+  //     Sysex, 0x79 -> parse(rest, SxReportFirmware(<<>>), received)
+  //     SxReportFirmware(bytes), 0xF7 -> {
+  //         io.debug(bytes)
+  //         assert Ok(report) = bit_string.to_string(bytes)
+  //         let message = ReportFirmware(report)
+  //         parse(rest, Initial, [message, ..received])
+  //     }
+  //     SxReportFirmware(bytes), byte -> parse(rest, SxReportFirmware(<<byte, bytes:bits>>), received)
+  //     _, _ -> #(state, received)
+  //   }
 }
-
-
