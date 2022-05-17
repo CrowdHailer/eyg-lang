@@ -1,6 +1,6 @@
 <script>
-    import Workspace from "./components/Workspace.svelte";
-    import Spreadsheet from "./spreadsheet/Workspace.svelte";
+    import Editor from "./components/Editor.svelte";
+    import Spreadsheet from "./spreadsheet/Spreadsheet.svelte";
 
     let source = (async function () {
         let response = await fetch("/saved.json");
@@ -14,6 +14,6 @@
     {#if window.location.hash.slice(1) == "spreadsheet"}
         <Spreadsheet {source} />
     {:else}
-        <Workspace {source} />
+        <Editor {source} />
     {/if}
 {/await}
