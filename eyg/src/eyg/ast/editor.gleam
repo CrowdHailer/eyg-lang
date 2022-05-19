@@ -28,6 +28,7 @@ pub type Mode {
 
 pub type Editor(n) {
   Editor(
+    show: String,
     harness: harness.Harness(n),
     // maybe manipulate only untyped as tree, call it source??
     tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
@@ -132,8 +133,10 @@ pub fn codegen(editor) {
 
 pub fn eval(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
-  assert True = list.length(typer.inconsistencies) == 0
-  javascript.eval(tree, typer)
+  case list.length(typer.inconsistencies) {
+    0 -> Ok(javascript.eval(tree, typer))
+    _ -> Error("some inconsitencies")
+  }
 }
 
 pub fn dump(editor) {
@@ -147,7 +150,7 @@ pub fn dump(editor) {
 pub fn init(source, harness) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let #(typed, typer) = eyg.compile_unconstrained(untyped, harness)
-  Editor(harness, typed, typer, None, Command, False, None)
+  Editor("ast", harness, typed, typer, None, Command, False, None)
 }
 
 fn rest_to_path(rest) {
@@ -189,10 +192,13 @@ pub fn yank_path(editor: Editor(n)) {
   }
 }
 
-pub fn handle_keydown(editor, key, ctrl_key) {
+pub fn handle_keydown(editor, key, ctrl_key, text) {
   let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
     editor
-  assert Some(path) = selection
+  let path = case selection {
+    Some(path) -> path
+    None -> []
+  }
   let new = case mode {
     // TODO in draft etc pass through
     Command ->
@@ -223,6 +229,20 @@ pub fn handle_keydown(editor, key, ctrl_key) {
               Editor(..editor, tree: typed, typer: typer)
             }
           }
+        "q" -> {
+          let show = case editor.show {
+            "ast" -> "dump"
+            _ -> "ast"
+          }
+          Editor(..editor, show: show)
+        }
+        "Q" -> {
+          let show = case editor.show {
+            "ast" -> "code"
+            _ -> "ast"
+          }
+          Editor(..editor, show: show)
+        }
         _ -> {
           let #(untyped, path, mode) =
             handle_transformation(editor, path, key, ctrl_key)
@@ -239,9 +259,12 @@ pub fn handle_keydown(editor, key, ctrl_key) {
           )
         }
       }
-    Select(_) if key == "Escape" -> Editor(..editor, mode: Command)
-    _ -> todo("any oether keydown should not happen")
+    Select(_) | Draft(_) if key == "Escape" -> Editor(..editor, mode: Command)
+    Select(_) | Draft(_) if key == "Enter" -> handle_change(editor, text)
+    // Do nothing
+    Select(_) | Draft(_) -> editor
   }
+  // _ -> todo("any oether keydown should not happen")
   // crash if this doesn't work to get to handle_keydown error handling
   // if get_element in target_type always returned OK/Error we could probably work to remove the error handling
   // though is there any harm in the fall back currently in App.svelte?
