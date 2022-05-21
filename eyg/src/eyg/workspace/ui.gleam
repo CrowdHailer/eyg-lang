@@ -1,5 +1,7 @@
 import gleam/dynamic
 import gleam/io
+import gleam/list
+import gleam/result
 import gleam/option.{None, Some}
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
@@ -36,9 +38,9 @@ pub fn click(marker) -> Transform(n) {
   fn(before: State(n)) {
     let state = case marker {
       ["editor", ..rest] -> {
-        let editor = case rest, before.editor {
+        let editor = case list.reverse(rest), before.editor {
           [], _ -> before.editor
-          [x], Some(editor) -> Some(editor.handle_change(editor, x))
+          [last, .._], Some(editor) -> Some(editor.handle_click(editor, last))
         }
         State(..before, focus: Editor, editor: editor)
       }

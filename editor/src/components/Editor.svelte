@@ -3,6 +3,7 @@
   import Expression from "./Expression.svelte";
 
   import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/editor";
+  import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
 
   // TODO connect firmata
   export let editor;
@@ -26,16 +27,17 @@
   </a>
 {:else}
   <div class="w-full m-auto px-10 py-4">
-    <div class="outline-none" tabindex="-1" data-editor="root">
+    <div class="outline-none" tabindex="-1" data-ui="root">
       <Expression expression={Display.display(editor)} />
 
+      <!-- TODO unify content and choices BUT maybe we don't need that because we will switch to update variable/ type hole filtering -->
       <div class="sticky bottom-0 bg-white py-2">
-        {#if Editor.is_draft(editor) || Editor.is_select(editor)}
+        {#if UI.is_composing(editor)}
           <input
             class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             id="draft"
             type="text"
-            value={editor.mode.content}
+            value={editor.mode.content || ""}
           />
           <!-- TODO remove all toArrays -->
           <nav>

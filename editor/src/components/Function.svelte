@@ -23,7 +23,7 @@
   class="border-2 border-transparent outline-none rounded"
   class:border-red-500={metadata.errored && !Display.is_target(metadata)}
   class:border-indigo-300={Display.is_target(metadata)}
-  data-editor={Display.marker(metadata)}>=></span
+  data-ui={Display.marker(metadata)}>=></span
 >
 {#if multiline}
   {#if expand}
@@ -31,7 +31,7 @@
       <Expression expression={body} />
     </Indent>
   {:else}
-    <span class="text-gray-500" data-editor="{Display.marker(metadata)},1"
+    <span class="text-gray-500" data-ui="{Display.marker(metadata)},1"
       >&lbrace; ... &rbrace;</span
     >{/if}
 {:else}

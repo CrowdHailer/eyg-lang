@@ -16,7 +16,7 @@
   class="border-2 border-transparent outline-none rounded"
   class:border-red-500={metadata.errored && !Display.is_target(metadata)}
   class:border-indigo-300={Display.is_target(metadata)}
-  data-editor={Display.marker(metadata)}
+  data-ui={Display.marker(metadata)}
 >
   <span class="text-gray-500">match</span>
   <Expression expression={value} />
@@ -28,14 +28,14 @@
           class:border-red-500={branch_meta.errored &&
             !Display.is_target(branch_meta)}
           class:border-indigo-300={Display.is_target(branch_meta)}
-          data-editor={Display.marker(branch_meta)}
+          data-ui={Display.marker(branch_meta)}
         >
           <span
             class="text-blue-800 font-bold border-2 border-transparent outline-none rounded"
             class:border-red-500={name_meta.errored &&
               !Display.is_target(name_meta)}
             class:border-indigo-300={Display.is_target(name_meta)}
-            data-editor={Display.marker(name_meta)}>{name}</span
+            data-ui={Display.marker(name_meta)}>{name}</span
           >
           <Pattern {pattern} metadata={pattern_meta} />
           <span>=></span>
@@ -50,7 +50,7 @@
       {/each}
     </Indent>
   {:else}
-    <span class="text-gray-500" data-editor="{Display.marker(metadata)},1"
+    <span class="text-gray-500" data-ui="{Display.marker(metadata)},1"
       >&lbrace; ... &rbrace;</span
     >
   {/if}

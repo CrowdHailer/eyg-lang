@@ -40,27 +40,6 @@ pub type Editor(n) {
   )
 }
 
-pub fn is_command(editor) {
-  case editor {
-    Editor(mode: Command, ..) -> True
-    _ -> False
-  }
-}
-
-pub fn is_draft(editor) {
-  case editor {
-    Editor(mode: Draft(_), ..) -> True
-    _ -> False
-  }
-}
-
-pub fn is_select(editor) {
-  case editor {
-    Editor(mode: Select(_), ..) -> True
-    _ -> False
-  }
-}
-
 fn expression_type(
   expression: e.Expression(Metadata(n), a),
   typer: typer.Typer(n),
@@ -171,6 +150,7 @@ pub fn handle_click(editor: Editor(n), target) {
       assert Ok(path) = rest_to_path(rest)
       Editor(..editor, selection: Some(path), mode: Command)
     }
+    [choice] -> handle_change(editor, choice)
   }
 }
 
