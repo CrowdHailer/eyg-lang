@@ -2,7 +2,6 @@ import gleam/dynamic
 import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
-import gleam/javascript/array.{Array}
 import eyg/typer/monotype as t
 import eyg/ast/editor
 
@@ -13,7 +12,12 @@ pub type Panel {
 }
 
 pub type Workspace(n) {
-  Workspace(focus: Panel, editor: Option(editor.Editor(n)), active_mount: Int)
+  Workspace(
+    focus: Panel,
+    editor: Option(editor.Editor(n)),
+    active_mount: Int,
+    mounts: List(Mount),
+  )
 }
 
 // Numbered workspaces make global things like firmata connection trick can just be named
@@ -64,28 +68,3 @@ external fn inspect_gleam(a) -> String =
 
 external fn inspect(a) -> String =
   "" "JSON.stringify"
-
-pub fn mounts(state: Workspace(n)) {
-  case state.editor {
-    None -> []
-
-    Some(editor) ->
-      case editor.eval(editor) {
-        Ok(code) ->
-          [
-            case dynamic.field("test", dynamic.string)(code) {
-              Ok(test) -> [TestSuite(test)]
-              Error(_) -> []
-            },
-            case dynamic.field("spreadsheet", Ok)(code) {
-              Ok(test) -> [UI]
-              Error(_) -> []
-            },
-            [Static(inspect(code))],
-          ]
-          |> list.flatten
-        _ -> [TestSuite("True")]
-      }
-  }
-  |> array.from_list()
-}

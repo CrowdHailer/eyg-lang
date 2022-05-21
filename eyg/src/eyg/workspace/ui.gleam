@@ -1,10 +1,11 @@
-import gleam/dynamic
+import gleam/dynamic.{Dynamic}
 import gleam/int
 import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
 import gleam/option.{None, Some}
+import gleam_extra
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import eyg/ast/editor
@@ -16,7 +17,13 @@ external fn fetch(String) -> Promise(String) =
 
 // TODO move to workspace
 pub fn init() {
-  let state = Workspace(focus: OnEditor, editor: None, active_mount: 0)
+  let state =
+    Workspace(
+      focus: OnEditor,
+      editor: None,
+      active_mount: 0,
+      mounts: [workspace.TestSuite("True")],
+    )
 
   let task =
     promise.map(
@@ -42,10 +49,13 @@ pub fn click(marker) -> Transform(n) {
     let state = case marker {
       ["editor", ..rest] -> {
         let editor = case list.reverse(rest), before.editor {
-          [], _ -> before.editor
-          [last, ..], Some(editor) -> Some(editor.handle_click(editor, last))
+          [], _ -> before
+          [last, ..], Some(editor) -> {
+            let editor = editor.handle_click(editor, last)
+            // TODO handle code
+            Workspace(..before, focus: OnEditor, editor: Some(editor))
+          }
         }
-        Workspace(..before, focus: OnEditor, editor: editor)
       }
       ["bench", ..rest] ->
         case rest {
@@ -62,12 +72,42 @@ pub fn click(marker) -> Transform(n) {
   }
 }
 
+// call all the benches Bench with name etc then plus Mount in the middle
+// TO
 pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
   fn(before) {
     let state = case before {
       Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
         let editor = editor.handle_keydown(editor, key, ctrl, text)
-        Workspace(..before, editor: Some(editor))
+        let workspace = Workspace(..before, editor: Some(editor))
+        assert Ok(mount) = list.at(before.mounts, before.active_mount)
+        // TODO keep pre an post mount lists in place
+        // let evaled = 
+        // TODO EDITOR State vs Generated/Compiled might be a way to group the manipulation
+        case editor.eval(editor) {
+          Ok(code) -> {
+            1
+            let mounts = case dynamic.field(
+              "test",
+              gleam_extra.dynamic_function,
+            )(
+              code,
+            ) {
+              Ok(test) -> {
+                assert Ok(r) = test(dynamic.from([]))
+                // TODO Inner value should be tuple 0, probably should be added to gleam extra
+                case dynamic.field("True", Ok)(r) {
+                  Ok(inner) -> [workspace.TestSuite("True")]
+                  Error(_) -> [workspace.TestSuite("False")]
+                }
+              }
+              Error(_) -> [mount]
+            }
+            Workspace(..workspace, mounts: mounts)
+          }
+          // todo
+          _ -> workspace
+        }
       }
       _ -> before
     }
@@ -94,6 +134,7 @@ pub fn get_editor(state: Workspace(n)) {
   }
 }
 
-pub fn benches(workspace) {
-  workspace.mounts(workspace)
+pub fn benches(workspace: Workspace(_)) {
+  workspace.mounts
+  |> array.from_list()
 }

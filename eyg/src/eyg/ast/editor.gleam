@@ -146,6 +146,7 @@ pub fn dump(editor) {
 
 pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
+  // TODO init with Workspace first mount
   let constraint = t.Unbound(-1)
   let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
   let #(typed, typer) = typer.expand_providers(typed, typer)
