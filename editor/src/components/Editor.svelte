@@ -15,7 +15,9 @@
     )[1]}</pre>
   <div class="sticky bottom-0 bg-gray-200 p-2 pb-4" />
 {:else if editor.show == "dump"}
-  <pre class="w-full m-auto px-10 py-4" tabindex="0">{Editor.dump(editor)}</pre>
+  <textarea class="w-full h-full m-auto p-4" tabindex="0"
+    >{Editor.dump(editor)}</textarea
+  >
   <a
     class="sticky bottom-0 bg-gray-200 p-2 pb-4"
     download="eyg.json"
