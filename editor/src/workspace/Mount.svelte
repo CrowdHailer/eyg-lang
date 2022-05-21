@@ -5,15 +5,19 @@
   import TestSuite from "./TestSuite.svelte";
   import UI from "./UI.svelte";
 
+  export let index;
   export let mount;
 </script>
 
-{#if mount instanceof Mount.Static}
-  <Static value={mount.value} />
-{:else if mount instanceof Mount.TestSuite}
-  <TestSuite result={mount.result} />
-{:else if mount instanceof Mount.UI}
-  <UI />
-{:else}
-  {JSON.stringify(mount)}
-{/if}
+<!-- TODO collapse and show at this level -->
+<div data-ui="mount:{index}">
+  {#if mount instanceof Mount.Static}
+    <Static value={mount.value} />
+  {:else if mount instanceof Mount.TestSuite}
+    <TestSuite result={mount.result} />
+  {:else if mount instanceof Mount.UI}
+    <UI />
+  {:else}
+    {JSON.stringify(mount)}
+  {/if}
+</div>

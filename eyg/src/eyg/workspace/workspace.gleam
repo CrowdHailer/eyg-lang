@@ -6,13 +6,15 @@ import eyg/ast/editor
 
 pub type Panel {
   OnEditor
-  OnMount(i: Int)
+  // TODO 0 is tets suite but maybe better with enum, unlees we number mounts
+  OnMounts
 }
 
 pub type Workspace(n) {
-  Workspace(focus: Panel, editor: Option(editor.Editor(n)))
+  Workspace(focus: Panel, editor: Option(editor.Editor(n)), active_mount: Int)
 }
 
+// Numbered workspaces make global things like firmata connection trick can just be named
 // Bench rename panel benches?
 pub type Mount {
   Static(value: String)

@@ -1,20 +1,22 @@
 import gleam/dynamic
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/result
+import gleam/string
 import gleam/option.{None, Some}
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import eyg/ast/editor
 import platform/browser
-import eyg/workspace/workspace.{OnEditor, OnMount, Workspace}
+import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
 
 external fn fetch(String) -> Promise(String) =
   "../../browser_ffi" "fetchSource"
 
 // TODO move to workspace
 pub fn init() {
-  let state = Workspace(focus: OnEditor, editor: None)
+  let state = Workspace(focus: OnEditor, editor: None, active_mount: 0)
 
   let task =
     promise.map(
@@ -47,10 +49,13 @@ pub fn click(marker) -> Transform(n) {
       }
       ["bench", ..rest] ->
         case rest {
-          [] -> Workspace(..before, focus: OnMount(0))
-          rest -> {
-            io.debug(rest)
-            Workspace(..before, focus: OnMount(0))
+          [] -> Workspace(..before, focus: OnMounts)
+          [mount, ..inner] -> {
+            let ["", index] = string.split(mount, "mount:")
+            assert Ok(index) =
+              index
+              |> int.parse()
+            Workspace(..before, focus: OnMounts)
           }
         }
       _ -> before
@@ -62,7 +67,7 @@ pub fn click(marker) -> Transform(n) {
 pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
   fn(before) {
     let state = case before {
-      Workspace(focus: OnEditor, editor: Some(editor)) -> {
+      Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
         let editor = editor.handle_keydown(editor, key, ctrl, text)
         Workspace(..before, editor: Some(editor))
       }
@@ -79,7 +84,7 @@ pub fn editor_focused(state: Workspace(n)) {
 
 pub fn bench_focused(state: Workspace(n)) {
   case state.focus {
-    OnMount(_) -> True
+    OnMounts -> True
     _ -> False
   }
 }
