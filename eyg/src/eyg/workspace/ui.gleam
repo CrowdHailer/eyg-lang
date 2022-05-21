@@ -7,14 +7,14 @@ import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import eyg/ast/editor
 import platform/browser
-import eyg/workspace/workspace.{Bench, Editor, State}
+import eyg/workspace/workspace.{OnEditor, OnMount, Workspace}
 
 external fn fetch(String) -> Promise(String) =
   "../../browser_ffi" "fetchSource"
 
 // TODO move to workspace
 pub fn init() {
-  let state = State(focus: Editor, editor: None)
+  let state = Workspace(focus: OnEditor, editor: None)
 
   let task =
     promise.map(
@@ -22,7 +22,7 @@ pub fn init() {
       fn(data) {
         fn(before) {
           let e = editor.init(data, browser.harness())
-          let state = State(..before, editor: Some(e))
+          let state = Workspace(..before, editor: Some(e))
 
           #(state, array.from_list([]))
         }
@@ -32,25 +32,27 @@ pub fn init() {
 }
 
 pub type Transform(n) =
-  fn(State(n)) -> #(State(n), Array(Promise(fn(State(n)) -> #(State(n), Nil))))
+  fn(Workspace(n)) ->
+    #(Workspace(n), Array(Promise(fn(Workspace(n)) -> #(Workspace(n), Nil))))
 
 pub fn click(marker) -> Transform(n) {
-  fn(before: State(n)) {
+  fn(before: Workspace(n)) {
     let state = case marker {
       ["editor", ..rest] -> {
         let editor = case list.reverse(rest), before.editor {
           [], _ -> before.editor
           [last, ..], Some(editor) -> Some(editor.handle_click(editor, last))
         }
-        State(..before, focus: Editor, editor: editor)
+        Workspace(..before, focus: OnEditor, editor: editor)
       }
-      ["bench", ..rest] -> case rest {
-        [] -> State(..before, focus: Bench)
-        rest -> {
-          io.debug(rest)
-          State(..before, focus: Bench)
+      ["bench", ..rest] ->
+        case rest {
+          [] -> Workspace(..before, focus: OnMount(0))
+          rest -> {
+            io.debug(rest)
+            Workspace(..before, focus: OnMount(0))
+          }
         }
-      }
       _ -> before
     }
     #(state, array.from_list([]))
@@ -60,9 +62,9 @@ pub fn click(marker) -> Transform(n) {
 pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
   fn(before) {
     let state = case before {
-      State(focus: Editor, editor: Some(editor)) -> {
+      Workspace(focus: OnEditor, editor: Some(editor)) -> {
         let editor = editor.handle_keydown(editor, key, ctrl, text)
-        State(..before, editor: Some(editor))
+        Workspace(..before, editor: Some(editor))
       }
       _ -> before
     }
@@ -71,15 +73,18 @@ pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
 }
 
 // views
-pub fn editor_focused(state: State(n)) {
-  state.focus == Editor
+pub fn editor_focused(state: Workspace(n)) {
+  state.focus == OnEditor
 }
 
-pub fn bench_focused(state: State(n)) {
-  state.focus == Bench
+pub fn bench_focused(state: Workspace(n)) {
+  case state.focus {
+    OnMount(_) -> True
+    _ -> False
+  }
 }
 
-pub fn get_editor(state: State(n)) {
+pub fn get_editor(state: Workspace(n)) {
   case state.editor {
     None -> dynamic.from(Nil)
     Some(editor) -> dynamic.from(editor)

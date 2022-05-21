@@ -5,12 +5,12 @@ import gleam/javascript/array.{Array}
 import eyg/ast/editor
 
 pub type Panel {
-  Editor
-  Bench
+  OnEditor
+  OnMount(i: Int)
 }
 
-pub type State(n) {
-  State(focus: Panel, editor: Option(editor.Editor(n)))
+pub type Workspace(n) {
+  Workspace(focus: Panel, editor: Option(editor.Editor(n)))
 }
 
 // Bench rename panel benches?
@@ -21,7 +21,6 @@ pub type Mount {
   UI
 }
 
-
 // CLI
 // ScanCycle
 // TODO add inspect to std lib
@@ -31,7 +30,7 @@ external fn inspect_gleam(a) -> String =
 external fn inspect(a) -> String =
   "" "JSON.stringify"
 
-pub fn mounts(state: State(n)) {
+pub fn mounts(state: Workspace(n)) {
   case state.editor {
     None -> []
 
