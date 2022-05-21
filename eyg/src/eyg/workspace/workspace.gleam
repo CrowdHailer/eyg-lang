@@ -18,7 +18,9 @@ pub type Mount {
   Static(value: String)
   String2String
   TestSuite(result: String)
+  UI
 }
+
 
 // CLI
 // ScanCycle
@@ -39,6 +41,10 @@ pub fn mounts(state: State(n)) {
           [
             case dynamic.field("test", dynamic.string)(code) {
               Ok(test) -> [TestSuite(test)]
+              Error(_) -> []
+            },
+            case dynamic.field("spreadsheet", Ok)(code) {
+              Ok(test) -> [UI]
               Error(_) -> []
             },
             [Static(inspect(code))],

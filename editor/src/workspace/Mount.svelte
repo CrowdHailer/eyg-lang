@@ -3,6 +3,7 @@
 
   import Static from "./Static.svelte";
   import TestSuite from "./TestSuite.svelte";
+  import UI from "./UI.svelte";
 
   export let mount;
 </script>
@@ -11,6 +12,8 @@
   <Static value={mount.value} />
 {:else if mount instanceof Mount.TestSuite}
   <TestSuite result={mount.result} />
+{:else if mount instanceof Mount.UI}
+  <UI />
 {:else}
   {JSON.stringify(mount)}
 {/if}

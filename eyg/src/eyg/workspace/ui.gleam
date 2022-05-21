@@ -44,7 +44,13 @@ pub fn click(marker) -> Transform(n) {
         }
         State(..before, focus: Editor, editor: editor)
       }
-      ["bench"] -> State(..before, focus: Bench)
+      ["bench", ..rest] -> case rest {
+        [] -> State(..before, focus: Bench)
+        rest -> {
+          io.debug(rest)
+          State(..before, focus: Bench)
+        }
+      }
       _ -> before
     }
     #(state, array.from_list([]))
