@@ -1,5 +1,6 @@
 <script>
   import Editor from "./components/Editor.svelte";
+  import Mount from "./workspace/Mount.svelte";
 
   import * as UI from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/ui";
   import * as Gleam from "../../eyg/build/dev/javascript/eyg/dist/gleam";
@@ -78,16 +79,8 @@
     class:border-blue-200={UI.bench_focused(state)}
     data-ui="bench"
   >
-    {#each UI.benches(state) as bench}
-      <p>Output</p>
-      <p class="bg-gray-200 p-1">
-        <span>Output = </span><span>{bench.value}</span>
-      </p>
-      <span
-        class="inline-block w-36"
-        class:bg-green-500={bench.value == '"True"'}
-        class:bg-red-500={!bench.value == '"True"'}>Test</span
-      >
+    {#each UI.benches(state) as mount}
+      <Mount {mount} />
     {/each}
   </div>
 </div>

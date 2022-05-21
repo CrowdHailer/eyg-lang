@@ -40,7 +40,7 @@ pub fn click(marker) -> Transform(n) {
       ["editor", ..rest] -> {
         let editor = case list.reverse(rest), before.editor {
           [], _ -> before.editor
-          [last, .._], Some(editor) -> Some(editor.handle_click(editor, last))
+          [last, ..], Some(editor) -> Some(editor.handle_click(editor, last))
         }
         State(..before, focus: Editor, editor: editor)
       }
@@ -80,31 +80,6 @@ pub fn get_editor(state: State(n)) {
   }
 }
 
-// Bench rename panel benches?
-pub type Mount {
-  Mount(value: String)
-}
-
-// TODO add inspect to std lib
-external fn inspect_gleam(a) -> String =
-  "../../gleam" "inspect"
-
-external fn inspect(a) -> String =
-  "" "JSON.stringify"
-
-pub fn benches(state: State(n)) {
-  case state.editor {
-    None -> []
-
-    Some(editor) ->
-      case editor.eval(editor) {
-        Ok(code) ->
-          case dynamic.field("test", Ok)(code) {
-            Ok(test) -> [Mount(inspect(code)), Mount(inspect(test))]
-            Error(_) -> []
-          }
-        _ -> []
-      }
-  }
-  |> array.from_list()
+pub fn benches(workspace) {
+  workspace.mounts(workspace)
 }
