@@ -30,6 +30,7 @@ pub type Editor(n) {
   Editor(
     show: String,
     harness: harness.Harness(n),
+    constraint: t.Monotype(n),
     // maybe manipulate only untyped as tree, call it source??
     tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
     typer: typer.Typer(n),
@@ -38,6 +39,23 @@ pub type Editor(n) {
     expanded: Bool,
     yanked: Option(#(List(Int), e.Expression(Dynamic, Dynamic))),
   )
+}
+
+pub fn set_constraint(editor: Editor(_), constraint) {
+  Editor(..editor, constraint: constraint)
+  |> analyse(untype(editor.tree))
+}
+
+pub fn set_untyped(editor: Editor(_), untyped) {
+  analyse(editor, untyped)
+}
+
+pub fn analyse(editor: Editor(_), untyped) {
+  // let untyped = untype(editor.tree)
+  let #(typed, typer) =
+    analysis.infer(untyped, editor.constraint, editor.harness.variables)
+  let #(typed, typer) = typer.expand_providers(typed, typer)
+  Editor(..editor, tree: typed, typer: typer)
 }
 
 fn expression_type(
@@ -126,10 +144,12 @@ pub fn dump(editor) {
   dump
 }
 
-pub fn init(source, harness) {
+pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
-  let #(typed, typer) = eyg.compile_unconstrained(untyped, harness)
-  Editor("ast", harness, typed, typer, None, Command, False, None)
+  let constraint = t.Unbound(-1)
+  let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
+  let #(typed, typer) = typer.expand_providers(typed, typer)
+  Editor("ast", harness, constraint, typed, typer, None, Command, False, None)
 }
 
 fn rest_to_path(rest) {
@@ -204,9 +224,7 @@ pub fn handle_keydown(editor, key, ctrl_key, text) {
             True -> {
               assert Some(#(_, new)) = editor.yanked
               let untyped = replace_expression(tree, path, new)
-              let #(typed, typer) =
-                eyg.compile_unconstrained(untyped, editor.harness)
-              Editor(..editor, tree: typed, typer: typer)
+              set_untyped(editor, untyped)
             }
           }
         "q" -> {
@@ -226,17 +244,11 @@ pub fn handle_keydown(editor, key, ctrl_key, text) {
         _ -> {
           let #(untyped, path, mode) =
             handle_transformation(editor, path, key, ctrl_key)
-          let #(typed, typer) = case untyped {
-            None -> #(tree, typer)
-            Some(untyped) -> eyg.compile_unconstrained(untyped, editor.harness)
+          let editor = Editor(..editor, selection: Some(path), mode: mode)
+          case untyped {
+            None -> editor
+            Some(untyped) -> set_untyped(editor, untyped)
           }
-          Editor(
-            ..editor,
-            tree: typed,
-            typer: typer,
-            selection: Some(path),
-            mode: mode,
-          )
         }
       }
     Select(_) | Draft(_) if key == "Escape" -> Editor(..editor, mode: Command)
@@ -374,8 +386,8 @@ pub fn handle_change(editor, content) {
     _ -> todo("handle the other options")
   }
 
-  let #(typed, typer) = eyg.compile_unconstrained(untyped, editor.harness)
-  Editor(..editor, tree: typed, typer: typer, mode: Command)
+  let editor = Editor(..editor, mode: Command)
+  set_untyped(editor, untyped)
 }
 
 pub type Element(a, b) {

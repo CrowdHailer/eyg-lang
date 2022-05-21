@@ -52,10 +52,8 @@ pub fn click(marker) -> Transform(n) {
           [] -> Workspace(..before, focus: OnMounts)
           [mount, ..inner] -> {
             let ["", index] = string.split(mount, "mount:")
-            assert Ok(index) =
-              index
-              |> int.parse()
-            Workspace(..before, focus: OnMounts)
+            assert Ok(index) = int.parse(index)
+            workspace.focus_on_mount(before, index)
           }
         }
       _ -> before

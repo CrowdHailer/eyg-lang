@@ -8,6 +8,7 @@ import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
 
+// TODO use analysis infer
 fn infer(untyped, type_) {
   let variables = [#("equal", typer.equal_fn())]
   let checker = typer.init()
@@ -17,6 +18,7 @@ fn infer(untyped, type_) {
 }
 
 // TODO use analysis module instead
+// TODO shrink
 fn get_type(typed, checker: typer.Typer(n)) {
   case typer.get_type(typed) {
     Ok(type_) -> Ok(t.resolve(type_, checker.substitutions))

@@ -10,8 +10,7 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import misc
 
-pub fn infer(untyped, type_) {
-  let variables = [#("equal", typer.equal_fn())]
+pub fn infer(untyped, type_, variables) {
   let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)

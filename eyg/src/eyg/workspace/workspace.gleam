@@ -1,7 +1,9 @@
 import gleam/dynamic
+import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/javascript/array.{Array}
+import eyg/typer/monotype as t
 import eyg/ast/editor
 
 pub type Panel {
@@ -21,6 +23,37 @@ pub type Mount {
   String2String
   TestSuite(result: String)
   UI
+}
+
+pub fn focus_on_mount(before: Workspace(_), index) {
+  let constraint = case index {
+    0 ->
+      t.Record(
+        [
+          #(
+            "test",
+            t.Function(
+              t.Tuple([]),
+              t.Union(
+                variants: [#("True", t.Tuple([])), #("False", t.Tuple([]))],
+                extra: None,
+              ),
+            ),
+          ),
+        ],
+        Some(-1),
+      )
+    _ -> t.Unbound(-1)
+  }
+  let editor = case before.editor {
+    None -> None
+    Some(editor) -> {
+      let editor = editor.set_constraint(editor, constraint)
+      Some(editor)
+    }
+  }
+  io.debug(constraint)
+  Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
 }
 
 // CLI
@@ -51,7 +84,7 @@ pub fn mounts(state: Workspace(n)) {
             [Static(inspect(code))],
           ]
           |> list.flatten
-        _ -> []
+        _ -> [TestSuite("True")]
       }
   }
   |> array.from_list()
