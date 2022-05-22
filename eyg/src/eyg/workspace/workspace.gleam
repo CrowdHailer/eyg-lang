@@ -29,7 +29,7 @@ pub type Workspace(n) {
 // Bench rename panel benches?
 pub type Mount {
   Static(value: String)
-  String2String
+  String2String(input: String, output: String)
   TestSuite(result: String)
   UI
 }
@@ -45,14 +45,19 @@ fn mount_constraint(mount) {
           extra: None,
         ),
       )
-    String2String -> t.Function(t.Binary, t.Binary)
+    String2String(_, _) -> t.Function(t.Binary, t.Binary)
     _ -> t.Unbound(-2)
   }
 }
 
-pub fn focus_on_mount(before: Workspace(_), index) {
-  assert Ok(App(key, mount)) = list.at(before.apps, index)
+fn app_constraint(app) {
+  let App(key, mount) = app
   let constraint = t.Record([#(key, mount_constraint(mount))], Some(-1))
+}
+
+pub fn focus_on_mount(before: Workspace(_), index) {
+  assert Ok(app) = list.at(before.apps, index)
+  let constraint = app_constraint(app)
   let editor = case before.editor {
     None -> None
     Some(editor) -> {
@@ -77,16 +82,16 @@ pub fn run_app(code, app) {
         Error(_) -> TestSuite("False")
       }
     }
-    String2String -> {
+    String2String(input, output) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)
-      assert Ok(r) = prog(dynamic.from("TODO what's this field"))
+      assert Ok(r) = prog(dynamic.from(input))
       // TODO Inner value should be tuple 0, probably should be added to gleam extra
       case dynamic.string(r) {
-        Ok(returned) -> {
-          io.debug("result of the string")
-          io.debug(returned)
-          String2String
+        Ok(output) -> {
+          io.debug(input)
+          io.debug(output)
+          String2String(input, output)
         }
         Error(_) -> todo("should always be a string")
       }

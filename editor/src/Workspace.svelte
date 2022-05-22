@@ -18,7 +18,7 @@
     state = next;
     tick().then(() => {
       if (changed) {
-        let element = document.querySelector("input");
+        let element = document.querySelector("input:not([disabled]");
         if (element) {
           element.focus();
           element.select();
@@ -54,6 +54,16 @@
     let transform = UI.click(getMarker(event.target));
     if (update(transform)) event.preventDefault();
   }
+
+  function handleInput(event) {
+    let data = event.target.value;
+    let marker = getMarker(event.target);
+    let transform = UI.on_input(data, marker);
+    update(transform);
+    // console.log(data, marker);
+    // preventDefault does nothing here.
+    // event.preventDefault();
+  }
 </script>
 
 <div
@@ -63,6 +73,7 @@
   autofocus
   on:click={handleClick}
   on:keypress={handleKeydown}
+  on:input={handleInput}
 >
   <div
     class="w-1/2 max-h-screen flex-1 overflow-x-hidden border-2 border-gray-200 flex flex-col"
@@ -80,7 +91,12 @@
     data-ui="bench"
   >
     {#each UI.benches(state) as app, index}
-      <Mount key={app.key} mount={app.mount} {index} />
+      <Mount
+        key={app.key}
+        mount={app.mount}
+        {index}
+        active={UI.is_active(state, index)}
+      />
     {/each}
   </div>
 </div>

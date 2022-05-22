@@ -9,6 +9,7 @@
   export let index;
   export let key;
   export let mount;
+  export let active;
 </script>
 
 <!-- TODO collapse and show at this level -->
@@ -21,7 +22,7 @@
   {:else if mount instanceof Mount.UI}
     <UI />
   {:else if mount instanceof Mount.String2String}
-    <String2String />
+    <String2String output={mount.output} {active} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

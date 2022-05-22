@@ -24,7 +24,7 @@ pub fn init() {
       active_mount: 0,
       apps: [
         workspace.App("test", workspace.TestSuite("True")),
-        workspace.App("cli", workspace.String2String),
+        workspace.App("cli", workspace.String2String("", "")),
       ],
     )
 
@@ -34,7 +34,9 @@ pub fn init() {
       fn(data) {
         fn(before) {
           let e = editor.init(data, browser.harness())
+          // TODO take all the constrints first or just active mount
           let state = Workspace(..before, editor: Some(e))
+          let state = workspace.focus_on_mount(state, 0)
 
           #(state, array.from_list([]))
         }
@@ -100,12 +102,40 @@ pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
         let pre = list.take(before.apps, before.active_mount)
         assert [app, ..post] = list.drop(before.apps, before.active_mount)
         // TODO do nothing for now BECAUSE we use on change
-        
         before
       }
       _ -> before
     }
     #(state, array.from_list([]))
+  }
+}
+
+pub fn on_input(data, marker) -> Transform(n) {
+  fn(before) {
+    let workspace = case before {
+      Workspace(focus: OnMounts, editor: Some(editor), active_mount: i, ..) -> {
+        let pre = list.take(before.apps, before.active_mount)
+        assert [app, ..post] = list.drop(before.apps, before.active_mount)
+        case app.mount {
+          workspace.String2String(input, output) -> {
+            let mount = workspace.String2String(data, output)
+            let app = workspace.App(app.key, mount)
+            case editor.eval(editor) {
+              Ok(code) -> {
+                let app = workspace.run_app(code, app)
+                let apps = list.append(pre, [app, ..post])
+                Workspace(..before, apps: apps)
+              }
+              // todo
+              _ -> before
+            }
+          }
+          _ -> todo("this app dont change here")
+        }
+      }
+      _ -> before
+    }
+    #(workspace, array.from_list([]))
   }
 }
 
@@ -131,4 +161,11 @@ pub fn get_editor(state: Workspace(n)) {
 pub fn benches(workspace: Workspace(_)) {
   workspace.apps
   |> array.from_list()
+}
+
+pub fn is_active(state: Workspace(_), index) {
+  case state {
+    Workspace(focus: OnMounts, active_mount: a, ..) if a == index -> True
+    _ -> False
+  }
 }
