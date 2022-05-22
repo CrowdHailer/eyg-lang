@@ -126,7 +126,6 @@ pub fn on_input(data, marker) -> Transform(n) {
                 let apps = list.append(pre, [app, ..post])
                 Workspace(..before, apps: apps)
               }
-              // todo
               _ -> before
             }
           }

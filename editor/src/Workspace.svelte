@@ -9,7 +9,7 @@
 
   let workspace;
   let state;
-  function update(transform) {
+  function update(transform, skip) {
     let [next, tasks] = transform(state);
     tasks.forEach((task) => {
       task.then(update);
@@ -17,7 +17,7 @@
     let changed = !Gleam.isEqual(next, state);
     state = next;
     tick().then(() => {
-      if (changed) {
+      if (changed && !skip) {
         let element = document.querySelector("input:not([disabled]");
         if (element) {
           element.focus();
@@ -33,8 +33,13 @@
   update(UI.init);
 
   function handleKeydown(event) {
-    //   only after keypress/up do we have a value, but space and enter come after
+    // TODO   only after keypress/up do we have a value, but space and enter come after
+    if (event.target.closest('[data-ui="bench"]')) {
+      return;
+    }
     let text = event.target.closest("input")?.value || "";
+    // TODO this change is forcing focus on the elements Need to update to a do the select thing
+    // Also it would probably be good to just not handle key down if in an input. BUT we want to capture enter escape keys
     let transform = UI.keydown(event.key, event.ctrlKey, text);
     let changed = update(transform);
     if (changed) event.preventDefault();
@@ -59,7 +64,7 @@
     let data = event.target.value;
     let marker = getMarker(event.target);
     let transform = UI.on_input(data, marker);
-    update(transform);
+    update(transform, true);
     // console.log(data, marker);
     // preventDefault does nothing here.
     // event.preventDefault();

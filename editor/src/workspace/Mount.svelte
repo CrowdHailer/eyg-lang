@@ -22,7 +22,7 @@
   {:else if mount instanceof Mount.UI}
     <UI />
   {:else if mount instanceof Mount.String2String}
-    <String2String output={mount.output} {active} />
+    <String2String input={mount.input} output={mount.output} {active} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

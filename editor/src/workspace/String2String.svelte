@@ -1,5 +1,6 @@
 <script>
   export let output;
+  export let input;
   export let active;
 </script>
 
