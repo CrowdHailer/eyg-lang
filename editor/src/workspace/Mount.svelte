@@ -4,6 +4,7 @@
   import Static from "./Static.svelte";
   import TestSuite from "./TestSuite.svelte";
   import UI from "./UI.svelte";
+  import String2String from "./String2String.svelte";
 
   export let index;
   export let key;
@@ -19,6 +20,8 @@
     <TestSuite result={mount.result} />
   {:else if mount instanceof Mount.UI}
     <UI />
+  {:else if mount instanceof Mount.String2String}
+    <String2String />
   {:else}
     {JSON.stringify(mount)}
   {/if}

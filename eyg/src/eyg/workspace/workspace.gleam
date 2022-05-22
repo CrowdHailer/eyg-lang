@@ -2,6 +2,7 @@ import gleam/dynamic
 import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
+import gleam_extra
 import eyg/typer/monotype as t
 import eyg/ast/editor
 
@@ -39,10 +40,12 @@ fn mount_constraint(mount) {
       t.Function(
         t.Tuple([]),
         t.Union(
+          // TODO t.Bool 
           variants: [#("True", t.Tuple([])), #("False", t.Tuple([]))],
           extra: None,
         ),
       )
+    String2String -> t.Function(t.Binary, t.Binary)
     _ -> t.Unbound(-2)
   }
 }
@@ -58,6 +61,40 @@ pub fn focus_on_mount(before: Workspace(_), index) {
     }
   }
   Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
+}
+
+pub fn run_app(code, app) {
+  let App(key, mount) = app
+  io.debug("running the app")
+  let mount = case mount {
+    TestSuite(_) -> {
+      let cast = gleam_extra.dynamic_function
+      assert Ok(prog) = dynamic.field(key, cast)(code)
+      assert Ok(r) = prog(dynamic.from([]))
+      // TODO Inner value should be tuple 0, probably should be added to gleam extra
+      case dynamic.field("True", Ok)(r) {
+        Ok(inner) -> TestSuite("True")
+        Error(_) -> TestSuite("False")
+      }
+    }
+    String2String -> {
+      let cast = gleam_extra.dynamic_function
+      assert Ok(prog) = dynamic.field(key, cast)(code)
+      assert Ok(r) = prog(dynamic.from("TODO what's this field"))
+      // TODO Inner value should be tuple 0, probably should be added to gleam extra
+      case dynamic.string(r) {
+        Ok(returned) -> {
+          io.debug("result of the string")
+          io.debug(returned)
+          String2String
+        }
+        Error(_) -> todo("should always be a string")
+      }
+    }
+
+    _ -> todo
+  }
+  App(key, mount)
 }
 
 // CLI

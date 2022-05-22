@@ -22,7 +22,10 @@ pub fn init() {
       focus: OnEditor,
       editor: None,
       active_mount: 0,
-      apps: [workspace.App("test", workspace.TestSuite("True"))],
+      apps: [
+        workspace.App("test", workspace.TestSuite("True")),
+        workspace.App("cli", workspace.String2String),
+      ],
     )
 
   let task =
@@ -80,31 +83,25 @@ pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
       Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
         let editor = editor.handle_keydown(editor, key, ctrl, text)
         let workspace = Workspace(..before, editor: Some(editor))
-        assert Ok(workspace.App(key, mount)) =
-          list.at(before.apps, before.active_mount)
-        // TODO keep pre an post mount lists in place
-        // let evaled = 
+        let pre = list.take(before.apps, before.active_mount)
+        assert [app, ..post] = list.drop(before.apps, before.active_mount)
         // TODO EDITOR State vs Generated/Compiled might be a way to group the manipulation
         case editor.eval(editor) {
           Ok(code) -> {
-            let apps = case dynamic.field(key, gleam_extra.dynamic_function)(
-              code,
-            ) {
-              Ok(test) -> {
-                assert Ok(r) = test(dynamic.from([]))
-                // TODO Inner value should be tuple 0, probably should be added to gleam extra
-                case dynamic.field("True", Ok)(r) {
-                  Ok(inner) -> [workspace.App(key, workspace.TestSuite("True"))]
-                  Error(_) -> [workspace.App(key, workspace.TestSuite("False"))]
-                }
-              }
-              Error(_) -> [workspace.App(key, mount)]
-            }
+            let app = workspace.run_app(code, app)
+            let apps = list.append(pre, [app, ..post])
             Workspace(..workspace, apps: apps)
           }
           // todo
           _ -> workspace
         }
+      }
+      Workspace(focus: OnMounts, active_mount: i, ..) -> {
+        let pre = list.take(before.apps, before.active_mount)
+        assert [app, ..post] = list.drop(before.apps, before.active_mount)
+        // TODO do nothing for now BECAUSE we use on change
+        
+        before
       }
       _ -> before
     }
