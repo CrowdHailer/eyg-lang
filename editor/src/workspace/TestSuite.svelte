@@ -2,7 +2,7 @@
   export let result;
 </script>
 
-<div class="p-6">
+<div class="">
   <p>TestSuite</p>
 
   <span

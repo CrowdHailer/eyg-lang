@@ -12,15 +12,3 @@ export function render() {
 
 // Gleam extension
 
-import * as G from "gleam.mjs";
-
-// All of my things are function 1
-export function dynamic_function(f) {
-  if (typeof f == "function" && f.length == 1) {
-    console.log("IS ALL OK");
-    return new G.Ok(f);
-  } else {
-    console.log("IS BAD");
-    return new G.Error(G.Empty());
-  }
-}

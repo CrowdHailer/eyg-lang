@@ -11,12 +11,16 @@ pub type Panel {
   OnMounts
 }
 
+pub type App {
+  App(key: String, mount: Mount)
+}
+
 pub type Workspace(n) {
   Workspace(
     focus: Panel,
     editor: Option(editor.Editor(n)),
     active_mount: Int,
-    mounts: List(Mount),
+    apps: List(App),
   )
 }
 
@@ -29,26 +33,23 @@ pub type Mount {
   UI
 }
 
-pub fn focus_on_mount(before: Workspace(_), index) {
-  let constraint = case index {
-    0 ->
-      t.Record(
-        [
-          #(
-            "test",
-            t.Function(
-              t.Tuple([]),
-              t.Union(
-                variants: [#("True", t.Tuple([])), #("False", t.Tuple([]))],
-                extra: None,
-              ),
-            ),
-          ),
-        ],
-        Some(-1),
+fn mount_constraint(mount) {
+  case mount {
+    TestSuite(_) ->
+      t.Function(
+        t.Tuple([]),
+        t.Union(
+          variants: [#("True", t.Tuple([])), #("False", t.Tuple([]))],
+          extra: None,
+        ),
       )
-    _ -> t.Unbound(-1)
+    _ -> t.Unbound(-2)
   }
+}
+
+pub fn focus_on_mount(before: Workspace(_), index) {
+  assert Ok(App(key, mount)) = list.at(before.apps, index)
+  let constraint = t.Record([#(key, mount_constraint(mount))], Some(-1))
   let editor = case before.editor {
     None -> None
     Some(editor) -> {
@@ -56,7 +57,6 @@ pub fn focus_on_mount(before: Workspace(_), index) {
       Some(editor)
     }
   }
-  io.debug(constraint)
   Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
 }
 

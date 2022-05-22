@@ -6,11 +6,13 @@
   import UI from "./UI.svelte";
 
   export let index;
+  export let key;
   export let mount;
 </script>
 
 <!-- TODO collapse and show at this level -->
-<div data-ui="mount:{index}">
+<div class="p-6" data-ui="mount:{index}">
+  <span>{key}</span>
   {#if mount instanceof Mount.Static}
     <Static value={mount.value} />
   {:else if mount instanceof Mount.TestSuite}

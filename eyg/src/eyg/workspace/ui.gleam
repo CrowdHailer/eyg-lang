@@ -22,7 +22,7 @@ pub fn init() {
       focus: OnEditor,
       editor: None,
       active_mount: 0,
-      mounts: [workspace.TestSuite("True")],
+      apps: [workspace.App("test", workspace.TestSuite("True"))],
     )
 
   let task =
@@ -80,30 +80,27 @@ pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
       Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
         let editor = editor.handle_keydown(editor, key, ctrl, text)
         let workspace = Workspace(..before, editor: Some(editor))
-        assert Ok(mount) = list.at(before.mounts, before.active_mount)
+        assert Ok(workspace.App(key, mount)) =
+          list.at(before.apps, before.active_mount)
         // TODO keep pre an post mount lists in place
         // let evaled = 
         // TODO EDITOR State vs Generated/Compiled might be a way to group the manipulation
         case editor.eval(editor) {
           Ok(code) -> {
-            1
-            let mounts = case dynamic.field(
-              "test",
-              gleam_extra.dynamic_function,
-            )(
+            let apps = case dynamic.field(key, gleam_extra.dynamic_function)(
               code,
             ) {
               Ok(test) -> {
                 assert Ok(r) = test(dynamic.from([]))
                 // TODO Inner value should be tuple 0, probably should be added to gleam extra
                 case dynamic.field("True", Ok)(r) {
-                  Ok(inner) -> [workspace.TestSuite("True")]
-                  Error(_) -> [workspace.TestSuite("False")]
+                  Ok(inner) -> [workspace.App(key, workspace.TestSuite("True"))]
+                  Error(_) -> [workspace.App(key, workspace.TestSuite("False"))]
                 }
               }
-              Error(_) -> [mount]
+              Error(_) -> [workspace.App(key, mount)]
             }
-            Workspace(..workspace, mounts: mounts)
+            Workspace(..workspace, apps: apps)
           }
           // todo
           _ -> workspace
@@ -135,6 +132,6 @@ pub fn get_editor(state: Workspace(n)) {
 }
 
 pub fn benches(workspace: Workspace(_)) {
-  workspace.mounts
+  workspace.apps
   |> array.from_list()
 }

@@ -79,8 +79,8 @@
     class:border-blue-200={UI.bench_focused(state)}
     data-ui="bench"
   >
-    {#each UI.benches(state) as mount, index}
-      <Mount {mount} {index} />
+    {#each UI.benches(state) as app, index}
+      <Mount key={app.key} mount={app.mount} {index} />
     {/each}
   </div>
 </div>
