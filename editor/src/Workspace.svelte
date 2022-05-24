@@ -69,6 +69,8 @@
     // preventDefault does nothing here.
     // event.preventDefault();
   }
+  let app;
+  $: app = UI.running_app(state);
 </script>
 
 <div
@@ -91,17 +93,22 @@
     {/if}
   </div>
   <div
-    class="w-1/2 max-h-screen flex-1 overflow-x-hidden border-2 border-gray-200"
+    class="w-1/2 max-h-screen flex-1 overflow-x-hidden border-2 border-gray-200 flex flex-col"
     class:border-blue-200={UI.bench_focused(state)}
     data-ui="bench"
   >
-    {#each UI.benches(state) as app, index}
-      <Mount
-        key={app.key}
-        mount={app.mount}
-        {index}
-        active={UI.is_active(state, index)}
-      />
-    {/each}
+    {#if app}
+      <Mount key={app.key} mount={app.mount} active={true} />
+    {/if}
+    <div class="sticky bottom-0 mt-auto bg-gray-200 p-2 pb-4 text-right">
+      <details>
+        <summary class="cursor-pointer">Apps</summary>
+        <ul>
+          {#each UI.benches(state) as app, index}
+            <li data-ui="mount:{index}">{app.key}</li>
+          {/each}
+        </ul>
+      </details>
+    </div>
   </div>
 </div>

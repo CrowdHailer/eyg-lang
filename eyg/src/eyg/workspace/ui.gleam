@@ -162,9 +162,20 @@ pub fn benches(workspace: Workspace(_)) {
   |> array.from_list()
 }
 
+// Not needed I don;t think
 pub fn is_active(state: Workspace(_), index) {
   case state {
     Workspace(focus: OnMounts, active_mount: a, ..) if a == index -> True
     _ -> False
+  }
+}
+
+pub fn running_app(state: Workspace(_)) {
+  case state {
+    Workspace(apps: apps, active_mount: a, ..) -> case list.at(apps, a) {
+      Error(_) -> dynamic.from(Nil)
+      Ok(app) -> dynamic.from(app)
+    }
+    _ -> dynamic.from(Nil)
   }
 }

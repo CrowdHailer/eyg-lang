@@ -13,7 +13,7 @@
 </script>
 
 <!-- TODO collapse and show at this level -->
-<div class="p-6" data-ui="mount:{index}">
+<div class="p-6 my-auto">
   <span>{key}</span>
   {#if mount instanceof Mount.Static}
     <Static value={mount.value} />
