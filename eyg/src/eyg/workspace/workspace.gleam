@@ -1,4 +1,4 @@
-import gleam/dynamic
+import gleam/dynamic.{Dynamic}
 import gleam/io
 import gleam/list
 import gleam/option.{None, Option, Some}
@@ -32,6 +32,7 @@ pub type Mount {
   String2String(input: String, output: String)
   TestSuite(result: String)
   UI
+  Firmata(scan: Option(fn(Dynamic)-> Dynamic))
 }
 
 fn mount_constraint(mount) {
@@ -46,7 +47,17 @@ fn mount_constraint(mount) {
         ),
       )
     String2String(_, _) -> t.Function(t.Binary, t.Binary)
+    UI -> t.Function(t.Unbound(-2), t.Binary)
+    Firmata(_) -> {
+      // TODO move boolean to standard types
+      let boolean = t.Union([#("True", t.Tuple([])),#("False", t.Tuple([]))], None)
+      let input = t.Record([], None)
+      let state = t.Unbound(-2)
+      let output = t.Record([#("Pin12", boolean), #("Pin13", boolean)], None)
+      t.Function(t.Tuple([input, state]), t.Tuple([output, state]))
+      }
     _ -> t.Unbound(-2)
+    
   }
 }
 
@@ -96,8 +107,17 @@ pub fn run_app(code, app) {
         Error(_) -> todo("should always be a string")
       }
     }
-
-    _ -> todo
+    Firmata(_) -> {
+      let cast = gleam_extra.dynamic_function
+      assert Ok(scan) = dynamic.field(key, cast)(code)
+      
+      Firmata(Some(fn(x){
+        assert Ok(returned) = scan(x)
+        returned
+      }))
+    }
+    UI() -> todo("The UI thing")
+    Static(_) -> todo("probably remove I don't see much value in static")
   }
   App(key, mount)
 }

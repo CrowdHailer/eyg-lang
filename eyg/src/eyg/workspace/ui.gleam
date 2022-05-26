@@ -25,6 +25,8 @@ pub fn init() {
       apps: [
         workspace.App("test", workspace.TestSuite("True")),
         workspace.App("cli", workspace.String2String("", "")),
+        workspace.App("scan", workspace.Firmata(None)),
+        workspace.App("counter", workspace.UI)
       ],
     )
 

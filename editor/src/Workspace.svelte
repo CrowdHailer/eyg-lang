@@ -100,7 +100,7 @@
     {#if app}
       <Mount key={app.key} mount={app.mount} active={true} />
     {/if}
-    <div class="sticky bottom-0 mt-auto bg-gray-200 p-2 pb-4 text-right">
+    <div class="sticky bottom-0 bg-gray-200 p-2 pb-4 text-right">
       <details>
         <summary class="cursor-pointer">Apps</summary>
         <ul>
