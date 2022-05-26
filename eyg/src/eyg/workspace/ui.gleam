@@ -8,7 +8,7 @@ import gleam/option.{None, Some}
 import gleam_extra
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
-import eyg/ast/editor
+import eyg/editor/editor
 import platform/browser
 import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
 

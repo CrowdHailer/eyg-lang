@@ -1,5 +1,5 @@
 <script>
-    import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/editor";
+    import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/editor";
     import * as Platform from "../../../eyg/build/dev/javascript/eyg/dist/platform/browser";
 
     export let source;

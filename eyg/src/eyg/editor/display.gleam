@@ -7,7 +7,7 @@ import gleam/string
 import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/ast/editor
+import eyg/editor/editor
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/editor/type_info

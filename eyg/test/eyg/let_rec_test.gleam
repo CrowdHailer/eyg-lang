@@ -8,7 +8,7 @@ import eyg/analysis
 import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/ast/editor
+import eyg/editor/editor
 import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype

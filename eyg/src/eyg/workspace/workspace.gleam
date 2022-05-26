@@ -4,7 +4,7 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam_extra
 import eyg/typer/monotype as t
-import eyg/ast/editor
+import eyg/editor/editor
 
 pub type Panel {
   OnEditor

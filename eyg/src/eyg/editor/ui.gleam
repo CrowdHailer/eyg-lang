@@ -1,4 +1,4 @@
-import eyg/ast/editor.{Editor}
+import eyg/editor/editor.{Editor}
 
 // TODO command mode is transform mode
 pub fn is_composing(editor: Editor(_)) {

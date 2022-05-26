@@ -2,7 +2,7 @@
   import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
   import Expression from "./Expression.svelte";
 
-  import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/editor";
+  import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/editor";
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
 
   // TODO connect firmata

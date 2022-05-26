@@ -4,7 +4,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import eyg/analysis
 import eyg/ast
-import eyg/ast/editor
+import eyg/editor/editor
 import eyg/ast/expression.{
   binary, call, function, hole, let_, record, tagged, tuple_, variable,
 }
