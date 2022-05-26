@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
@@ -63,5 +64,27 @@ pub fn handle_input(editor: Editor(_), data) {
       Editor(..editor, mode: mode)
     }
     _ -> editor
+  }
+}
+
+fn rest_to_path(rest) {
+  case rest {
+    "" -> Ok([])
+    _ ->
+      // empty string makes unparsable as int list
+      string.split(rest, ",")
+      |> list.try_map(int.parse)
+  }
+}
+
+// At the editor level we might want to handle semantic events like select node. And have display do handle click
+pub fn handle_click(editor: Editor(n), target) {
+  case string.split(target, ":") {
+    ["root"] -> Editor(..editor, selection: Some([]), mode: editor.Command)
+    ["p", rest] -> {
+      assert Ok(path) = rest_to_path(rest)
+      Editor(..editor, selection: Some(path), mode: editor.Command)
+    }
+    [choice] -> editor.handle_change(editor, choice)
   }
 }

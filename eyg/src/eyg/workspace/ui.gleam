@@ -59,7 +59,7 @@ pub fn click(marker) -> Transform(n) {
         let editor = case list.reverse(rest), before.editor {
           [], _ -> before
           [last, ..], Some(editor) -> {
-            let editor = editor.handle_click(editor, last)
+            let editor = editor_ui.handle_click(editor, last)
             // TODO handle code
             Workspace(..before, focus: OnEditor, editor: Some(editor))
           }
