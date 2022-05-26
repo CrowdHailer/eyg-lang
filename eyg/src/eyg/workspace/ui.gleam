@@ -4,11 +4,12 @@ import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
-import gleam/option.{None, Some}
+import gleam/option.{None, Option, Some}
 import gleam_extra
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import eyg/editor/editor
+import eyg/editor/ui as editor_ui
 import platform/browser
 import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
 
@@ -81,35 +82,37 @@ pub fn click(marker) -> Transform(n) {
 
 // call all the benches Bench with name etc then plus Mount in the middle
 // TO
-pub fn keydown(key: String, ctrl: Bool, text: String) -> Transform(n) {
-  fn(before) {
-    let state = case before {
-      Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
-        let editor = editor.handle_keydown(editor, key, ctrl, text)
-        let workspace = Workspace(..before, editor: Some(editor))
-        let pre = list.take(before.apps, before.active_mount)
-        assert [app, ..post] = list.drop(before.apps, before.active_mount)
-        // TODO EDITOR State vs Generated/Compiled might be a way to group the manipulation
-        case editor.eval(editor) {
-          Ok(code) -> {
-            let app = workspace.run_app(code, app)
-            let apps = list.append(pre, [app, ..post])
-            Workspace(..workspace, apps: apps)
-          }
-          // todo
-          _ -> workspace
+pub fn keydown(key: String, ctrl: Bool, text: Option(String)) -> Transform(n) {
+  handle_keydown(_, key, ctrl, text)
+}
+
+fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
+  let state = case before {
+    Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
+      let editor = editor_ui.handle_keydown(editor, key, ctrl, text)
+      let workspace = Workspace(..before, editor: Some(editor))
+      let pre = list.take(before.apps, before.active_mount)
+      assert [app, ..post] = list.drop(before.apps, before.active_mount)
+      // TODO EDITOR State vs Generated/Compiled might be a way to group the manipulation
+      case editor.eval(editor) {
+        Ok(code) -> {
+          let app = workspace.run_app(code, app)
+          let apps = list.append(pre, [app, ..post])
+          Workspace(..workspace, apps: apps)
         }
+        // todo
+        _ -> workspace
       }
-      Workspace(focus: OnMounts, active_mount: i, ..) -> {
-        let pre = list.take(before.apps, before.active_mount)
-        assert [app, ..post] = list.drop(before.apps, before.active_mount)
-        // TODO do nothing for now BECAUSE we use on change
-        before
-      }
-      _ -> before
     }
-    #(state, array.from_list([]))
+    Workspace(focus: OnMounts, active_mount: i, ..) -> {
+      let pre = list.take(before.apps, before.active_mount)
+      assert [app, ..post] = list.drop(before.apps, before.active_mount)
+      // TODO do nothing for now BECAUSE we use on change
+      before
+    }
+    _ -> before
   }
+  #(state, array.from_list([]))
 }
 
 pub fn on_input(data, marker) -> Transform(n) {

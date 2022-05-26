@@ -193,78 +193,6 @@ pub fn yank_path(editor: Editor(n)) {
   }
 }
 
-pub fn handle_keydown(editor, key, ctrl_key, text) {
-  let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
-    editor
-  let path = case selection {
-    Some(path) -> path
-    None -> []
-  }
-  let new = case mode {
-    // TODO in draft etc pass through
-    Command ->
-      case key {
-        "x" -> {
-          let Editor(expanded: expanded, ..) = editor
-          // is there no gleam not
-          let expanded = case expanded {
-            True -> False
-            False -> True
-          }
-          Editor(..editor, expanded: expanded)
-        }
-        // yd is yank delete
-        "y" ->
-          case ctrl_key {
-            False ->
-              case get_element(tree, path) {
-                Expression(expression) ->
-                  Editor(..editor, yanked: Some(#(path, untype(expression))))
-                _ -> editor
-              }
-            True -> {
-              assert Some(#(_, new)) = editor.yanked
-              let untyped = replace_expression(tree, path, new)
-              set_untyped(editor, untyped)
-            }
-          }
-        "q" -> {
-          let show = case editor.show {
-            "ast" -> "dump"
-            _ -> "ast"
-          }
-          Editor(..editor, show: show)
-        }
-        "Q" -> {
-          let show = case editor.show {
-            "ast" -> "code"
-            _ -> "ast"
-          }
-          Editor(..editor, show: show)
-        }
-        _ -> {
-          let #(untyped, path, mode) =
-            handle_transformation(editor, path, key, ctrl_key)
-          let editor = Editor(..editor, selection: Some(path), mode: mode)
-          case untyped {
-            None -> editor
-            Some(untyped) -> set_untyped(editor, untyped)
-          }
-        }
-      }
-    Select(_) | Draft(_) if key == "Escape" -> Editor(..editor, mode: Command)
-    Select(_) | Draft(_) if key == "Enter" -> handle_change(editor, text)
-    // Do nothing
-    Select(_) | Draft(_) -> editor
-  }
-  // _ -> todo("any oether keydown should not happen")
-  // crash if this doesn't work to get to handle_keydown error handling
-  // if get_element in target_type always returned OK/Error we could probably work to remove the error handling
-  // though is there any harm in the fall back currently in App.svelte?
-  target_type(new)
-  new
-}
-
 pub fn cancel_change(editor) {
   Editor(..editor, mode: Command)
 }
@@ -425,7 +353,7 @@ pub fn untype_branch(
   #(label, pattern, untype(value))
 }
 
-fn handle_transformation(
+pub fn handle_transformation(
   editor,
   position,
   key,
@@ -484,6 +412,61 @@ fn handle_transformation(
       #(None, position, Command)
     }
   }
+}
+
+pub fn cancel(editor) {
+  Editor(..editor, mode: Command)
+}
+
+pub fn toggle_provider_expansion(editor) {
+  let Editor(expanded: expanded, ..) = editor
+  // is there no gleam not
+  let expanded = case expanded {
+    True -> False
+    False -> True
+  }
+  Editor(..editor, expanded: expanded)
+}
+
+pub fn toggle_encoded(editor: Editor(_)) {
+  let show = case editor.show {
+    "ast" -> "dump"
+    _ -> "ast"
+  }
+  Editor(..editor, show: show)
+}
+
+pub fn toggle_code(editor: Editor(_)) {
+  let show = case editor.show {
+    "ast" -> "code"
+    _ -> "ast"
+  }
+  Editor(..editor, show: show)
+}
+
+pub fn yank(editor) {
+  let Editor(tree: tree, selection: selection, ..) = editor
+  let path = case selection {
+    Some(path) -> path
+    None -> []
+  }
+
+  case get_element(tree, path) {
+    Expression(expression) ->
+      Editor(..editor, yanked: Some(#(path, untype(expression))))
+    _ -> editor
+  }
+}
+
+pub fn paste(editor) {
+  let Editor(tree: tree, selection: selection, yanked: yanked, ..) = editor
+  let path = case selection {
+    Some(path) -> path
+    None -> []
+  }
+  assert Some(#(_, new)) = yanked
+  let untyped = replace_expression(tree, path, new)
+  set_untyped(editor, untyped)
 }
 
 fn navigation(position) {

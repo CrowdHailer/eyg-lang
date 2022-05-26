@@ -4,6 +4,7 @@
 
   import * as UI from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/ui";
   import * as Gleam from "../../eyg/build/dev/javascript/eyg/dist/gleam";
+  import * as Option from "../../eyg/build/dev/javascript/gleam_stdlib/dist/gleam/option.mjs";
 
   import { tick } from "svelte";
 
@@ -37,10 +38,11 @@
     if (event.target.closest('[data-ui="bench"]')) {
       return;
     }
-    let text = event.target.closest("input")?.value || "";
+    let inputEl = event.target.closest("input");
+    let input = inputEl ? new Option.Some(inputEl.value) : new Option.None();
     // TODO this change is forcing focus on the elements Need to update to a do the select thing
     // Also it would probably be good to just not handle key down if in an input. BUT we want to capture enter escape keys
-    let transform = UI.keydown(event.key, event.ctrlKey, text);
+    let transform = UI.keydown(event.key, event.ctrlKey, input);
     let changed = update(transform);
     if (changed) event.preventDefault();
   }
