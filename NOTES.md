@@ -82,8 +82,11 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
-- [ ] Copy/paste
-- [ ] dot syntax sugar (nice not functional)
+- [ ] Move Editor state under editor directory
+- [ ] Separate Editor state from UI key handling
+- [ ] Standardise handle key_down on input etc
+- [x] Copy/paste
+- [x] dot syntax sugar (nice not functional)
   - or just name things "foo.subfoo"
 - [x] Tag ast node Union Type, remove sugar check rendering of JS
 - [ ] Put type information on non expression elements
