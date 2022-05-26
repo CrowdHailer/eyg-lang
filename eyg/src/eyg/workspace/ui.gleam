@@ -26,7 +26,7 @@ pub fn init() {
         workspace.App("test", workspace.TestSuite("True")),
         workspace.App("cli", workspace.String2String("", "")),
         workspace.App("scan", workspace.Firmata(None)),
-        workspace.App("counter", workspace.UI)
+        workspace.App("counter", workspace.UI),
       ],
     )
 
@@ -174,10 +174,11 @@ pub fn is_active(state: Workspace(_), index) {
 
 pub fn running_app(state: Workspace(_)) {
   case state {
-    Workspace(apps: apps, active_mount: a, ..) -> case list.at(apps, a) {
-      Error(_) -> dynamic.from(Nil)
-      Ok(app) -> dynamic.from(app)
-    }
+    Workspace(apps: apps, active_mount: a, ..) ->
+      case list.at(apps, a) {
+        Error(_) -> dynamic.from(Nil)
+        Ok(app) -> dynamic.from(app)
+      }
     _ -> dynamic.from(Nil)
   }
 }

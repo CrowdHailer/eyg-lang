@@ -7,3 +7,4 @@ pub fn is_composing(editor: Editor(_)) {
     _ -> True
   }
 }
+// Is there a separation here between keyboard and mouse

@@ -32,7 +32,7 @@ pub type Mount {
   String2String(input: String, output: String)
   TestSuite(result: String)
   UI
-  Firmata(scan: Option(fn(Dynamic)-> Dynamic))
+  Firmata(scan: Option(fn(Dynamic) -> Dynamic))
 }
 
 fn mount_constraint(mount) {
@@ -50,14 +50,14 @@ fn mount_constraint(mount) {
     UI -> t.Function(t.Unbound(-2), t.Binary)
     Firmata(_) -> {
       // TODO move boolean to standard types
-      let boolean = t.Union([#("True", t.Tuple([])),#("False", t.Tuple([]))], None)
+      let boolean =
+        t.Union([#("True", t.Tuple([])), #("False", t.Tuple([]))], None)
       let input = t.Record([], None)
       let state = t.Unbound(-2)
       let output = t.Record([#("Pin12", boolean), #("Pin13", boolean)], None)
       t.Function(t.Tuple([input, state]), t.Tuple([output, state]))
-      }
+    }
     _ -> t.Unbound(-2)
-    
   }
 }
 
@@ -110,13 +110,12 @@ pub fn run_app(code, app) {
     Firmata(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(scan) = dynamic.field(key, cast)(code)
-      
-      Firmata(Some(fn(x){
+      Firmata(Some(fn(x) {
         assert Ok(returned) = scan(x)
         returned
       }))
     }
-    UI() -> todo("The UI thing")
+    UI -> todo("The UI thing")
     Static(_) -> todo("probably remove I don't see much value in static")
   }
   App(key, mount)
