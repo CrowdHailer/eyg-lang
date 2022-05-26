@@ -22,7 +22,8 @@
         let element = document.querySelector("input:not([disabled]");
         if (element) {
           element.focus();
-          element.select();
+          // TODO move to a should highlight field in editor
+          editor.mode.content ? element.select() : null;
         } else {
           workspace && workspace.focus();
         }

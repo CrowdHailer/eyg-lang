@@ -28,6 +28,7 @@ pub fn handle_keydown(editor, key, ctrl, input) {
   case key, ctrl, input {
     "Escape", _, Some(_) -> editor.cancel(editor)
     "Enter", _, Some(text) -> editor.handle_change(editor, text)
+    " ", _, Some(text) -> editor.autofill_choice(editor, text)
     _, _, Some(text) -> editor
     // Command mode
     "q", _, None -> editor.toggle_encoded(editor)

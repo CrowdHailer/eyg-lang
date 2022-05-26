@@ -209,6 +209,24 @@ fn handle_expression_change(expression, content) {
   }
 }
 
+pub fn autofill_choice(editor, content) {
+  let Editor(tree: tree, selection: selection, ..) = editor
+  let content = case editor.mode {
+    Select(choices, filter) -> {
+      let filtered = list.filter(choices, string.starts_with(_, filter))
+      case filtered {
+        [choice, ..] -> {
+          io.debug(choice)
+          let mode = Select(choices, choice)
+          Editor(..editor, mode: mode)
+        }
+        [] -> editor
+      }
+    }
+    _ -> editor
+  }
+}
+
 pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
   let content = case editor.mode {
