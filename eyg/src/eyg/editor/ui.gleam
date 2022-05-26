@@ -1,4 +1,8 @@
+import gleam/io
+import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
+import gleam/javascript/array
 import eyg/editor/editor.{Editor}
 
 // TODO command mode is transform mode
@@ -7,6 +11,15 @@ pub fn is_composing(editor: Editor(_)) {
     editor.Command -> False
     _ -> True
   }
+}
+
+pub fn choices(editor: Editor(_)) {
+  case editor.mode {
+    editor.Select(choices, filter) ->
+      list.filter(choices, string.starts_with(_, filter))
+    _ -> []
+  }
+  |> array.from_list
 }
 
 // Is there a separation here between keyboard and mouse
@@ -39,5 +52,15 @@ pub fn handle_keydown(editor, key, ctrl, input) {
         Some(untyped) -> editor.set_untyped(editor, untyped)
       }
     }
+  }
+}
+
+pub fn handle_input(editor: Editor(_), data) {
+  case editor.mode {
+    editor.Select(choices, _filter) -> {
+      let mode = editor.Select(choices, data)
+      Editor(..editor, mode: mode)
+    }
+    _ -> editor
   }
 }

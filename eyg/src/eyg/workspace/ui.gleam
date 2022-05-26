@@ -137,8 +137,12 @@ pub fn on_input(data, marker) -> Transform(n) {
           _ -> todo("this app dont change here")
         }
       }
-      _ -> before
+      Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
+        let editor = editor_ui.handle_input(editor, data)
+        let workspace = Workspace(..before, editor: Some(editor))
+      }
     }
+    // This doesn't change the code
     #(workspace, array.from_list([]))
   }
 }

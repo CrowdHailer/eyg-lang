@@ -4,6 +4,7 @@
 
   import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/editor";
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
+  import Ui from "../workspace/UI.svelte";
 
   // TODO connect firmata
   export let editor;
@@ -43,7 +44,7 @@
           />
           <!-- TODO remove all toArrays -->
           <nav>
-            {#each editor.mode?.choices?.toArray() || [] as choice, i}
+            {#each UI.choices(editor) as choice, i}
               <button
                 class="m-1 p-1 bg-blue-100 rounded border-black"
                 class:border={i == 0}

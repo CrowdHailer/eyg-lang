@@ -23,7 +23,7 @@ import eyg/editor/type_info
 pub type Mode {
   Command
   Draft(content: String)
-  Select(choices: List(String))
+  Select(choices: List(String), filter: String)
 }
 
 pub type Editor(n) {
@@ -211,6 +211,16 @@ fn handle_expression_change(expression, content) {
 
 pub fn handle_change(editor, content) {
   let Editor(tree: tree, selection: selection, ..) = editor
+  let content = case editor.mode {
+    Select(choices, filter) -> {
+      let filtered = list.filter(choices, string.starts_with(_, filter))
+      case filtered {
+        [choice, ..] -> choice
+        [] -> content
+      }
+    }
+    _ -> content
+  }
   assert Some(position) = selection
   let untyped = case get_element(tree, position) {
     Expression(e) -> {
@@ -1304,7 +1314,7 @@ fn insert_provider(tree, position) {
       #(
         Some(replace_expression(tree, position, new)),
         path.append(position, 0),
-        Select(all_generators),
+        Select(all_generators, ""),
       )
     }
     ProviderGenerator(_) | ProviderConfig(_) -> {
@@ -1312,7 +1322,7 @@ fn insert_provider(tree, position) {
       // assumed to be provider
       assert Expression(#(_, e.Provider(_, _, _))) =
         get_element(tree, provider_position)
-      #(None, path.append(provider_position, 0), Select(all_generators))
+      #(None, path.append(provider_position, 0), Select(all_generators, ""))
     }
     _ -> #(None, position, Command)
   }
@@ -1700,8 +1710,7 @@ fn variable(tree, position) {
             }
           },
         )
-      let new = Some(replace_expression(tree, position, ast.variable("")))
-      #(new, position, Select(variables))
+      #(None, position, Select(variables, ""))
     }
     _ -> #(None, position, Command)
   }
