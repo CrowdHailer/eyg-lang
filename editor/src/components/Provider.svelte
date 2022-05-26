@@ -29,19 +29,19 @@
     class="text-yellow-500 border-2 border-transparent outline-none rounded"
     class:border-red-500={metadata.errored && !Display.is_target(metadata)}
     class:border-indigo-300={Display.is_target(metadata)}
-    data-editor={Display.marker(metadata)}
+    data-ui={Display.marker(metadata)}
     ><span
       class="text-yellow-500 border-2 border-transparent outline-none rounded"
       class:border-red-500={generator_metadata.errored &&
         !Display.is_target(generator_metadata)}
       class:border-indigo-300={Display.is_target(generator_metadata)}
-      data-editor={Display.marker(generator_metadata)}>{generator_string}</span
+      data-ui={Display.marker(generator_metadata)}>{generator_string}</span
     ><span
       class="text-yellow-500 border-2 border-transparent outline-none rounded"
       class:border-red-500={config_metadata.errored &&
         !Display.is_target(config_metadata)}
       class:border-indigo-300={Display.is_target(config_metadata)}
-      data-editor={Display.marker(config_metadata)}>&lt;{config}&gt</span
+      data-ui={Display.marker(config_metadata)}>&lt;{config}&gt</span
     ></span
   >
 {/if}

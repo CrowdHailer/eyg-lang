@@ -21,9 +21,11 @@ pub fn fresh() {
 }
 
 pub fn parse(bytes, state, received) {
-  case bytes {
-    <<>> -> #(state, list.reverse(received))
-  }
+  Nil
+  // TODO needs release 22
+  // case bytes {
+  //   <<>> -> #(state, list.reverse(received))
+  // }
   // Blocked out untill pattern matching released in JS target
   // <<next, rest:binary>> ->
   //   case state, next {

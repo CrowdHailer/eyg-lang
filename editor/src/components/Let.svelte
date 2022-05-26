@@ -24,7 +24,7 @@
   class="border-2 border-transparent outline-none rounded"
   class:border-red-500={metadata.errored && !Display.is_target(metadata)}
   class:border-indigo-300={Display.is_target(metadata)}
-  data-editor={Display.marker(metadata)}
+  data-ui={Display.marker(metadata)}
 >
   <span class="text-gray-500">let</span>
   <Pattern {pattern} metadata={pattern_display} />
@@ -38,7 +38,7 @@
         <Expression expression={value} />
       </Indent>
     {:else}
-      <span class="text-gray-500" data-editor="{Display.marker(metadata)},1"
+      <span class="text-gray-500" data-ui="{Display.marker(metadata)},1"
         >&lbrace; ... &rbrace;</span
       >
     {/if}

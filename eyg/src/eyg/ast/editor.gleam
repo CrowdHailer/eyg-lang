@@ -28,7 +28,9 @@ pub type Mode {
 
 pub type Editor(n) {
   Editor(
+    show: String,
     harness: harness.Harness(n),
+    constraint: t.Monotype(n),
     // maybe manipulate only untyped as tree, call it source??
     tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
     typer: typer.Typer(n),
@@ -39,25 +41,21 @@ pub type Editor(n) {
   )
 }
 
-pub fn is_command(editor) {
-  case editor {
-    Editor(mode: Command, ..) -> True
-    _ -> False
-  }
+pub fn set_constraint(editor: Editor(_), constraint) {
+  Editor(..editor, constraint: constraint)
+  |> analyse(untype(editor.tree))
 }
 
-pub fn is_draft(editor) {
-  case editor {
-    Editor(mode: Draft(_), ..) -> True
-    _ -> False
-  }
+pub fn set_untyped(editor: Editor(_), untyped) {
+  analyse(editor, untyped)
 }
 
-pub fn is_select(editor) {
-  case editor {
-    Editor(mode: Select(_), ..) -> True
-    _ -> False
-  }
+pub fn analyse(editor: Editor(_), untyped) {
+  // let untyped = untype(editor.tree)
+  let #(typed, typer) =
+    analysis.infer(untyped, editor.constraint, editor.harness.variables)
+  let #(typed, typer) = typer.expand_providers(typed, typer)
+  Editor(..editor, tree: typed, typer: typer)
 }
 
 fn expression_type(
@@ -132,8 +130,10 @@ pub fn codegen(editor) {
 
 pub fn eval(editor) {
   let Editor(tree: tree, typer: typer, ..) = editor
-  assert True = list.length(typer.inconsistencies) == 0
-  javascript.eval(tree, typer)
+  case list.length(typer.inconsistencies) {
+    0 -> Ok(javascript.eval(tree, typer))
+    _ -> Error("some inconsitencies")
+  }
 }
 
 pub fn dump(editor) {
@@ -144,10 +144,13 @@ pub fn dump(editor) {
   dump
 }
 
-pub fn init(source, harness) {
+pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
-  let #(typed, typer) = eyg.compile_unconstrained(untyped, harness)
-  Editor(harness, typed, typer, None, Command, False, None)
+  // TODO init with Workspace first mount
+  let constraint = t.Unbound(-1)
+  let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
+  let #(typed, typer) = typer.expand_providers(typed, typer)
+  Editor("ast", harness, constraint, typed, typer, None, Command, False, None)
 }
 
 fn rest_to_path(rest) {
@@ -168,6 +171,7 @@ pub fn handle_click(editor: Editor(n), target) {
       assert Ok(path) = rest_to_path(rest)
       Editor(..editor, selection: Some(path), mode: Command)
     }
+    [choice] -> handle_change(editor, choice)
   }
 }
 
@@ -189,10 +193,13 @@ pub fn yank_path(editor: Editor(n)) {
   }
 }
 
-pub fn handle_keydown(editor, key, ctrl_key) {
+pub fn handle_keydown(editor, key, ctrl_key, text) {
   let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
     editor
-  assert Some(path) = selection
+  let path = case selection {
+    Some(path) -> path
+    None -> []
+  }
   let new = case mode {
     // TODO in draft etc pass through
     Command ->
@@ -218,30 +225,39 @@ pub fn handle_keydown(editor, key, ctrl_key) {
             True -> {
               assert Some(#(_, new)) = editor.yanked
               let untyped = replace_expression(tree, path, new)
-              let #(typed, typer) =
-                eyg.compile_unconstrained(untyped, editor.harness)
-              Editor(..editor, tree: typed, typer: typer)
+              set_untyped(editor, untyped)
             }
           }
+        "q" -> {
+          let show = case editor.show {
+            "ast" -> "dump"
+            _ -> "ast"
+          }
+          Editor(..editor, show: show)
+        }
+        "Q" -> {
+          let show = case editor.show {
+            "ast" -> "code"
+            _ -> "ast"
+          }
+          Editor(..editor, show: show)
+        }
         _ -> {
           let #(untyped, path, mode) =
             handle_transformation(editor, path, key, ctrl_key)
-          let #(typed, typer) = case untyped {
-            None -> #(tree, typer)
-            Some(untyped) -> eyg.compile_unconstrained(untyped, editor.harness)
+          let editor = Editor(..editor, selection: Some(path), mode: mode)
+          case untyped {
+            None -> editor
+            Some(untyped) -> set_untyped(editor, untyped)
           }
-          Editor(
-            ..editor,
-            tree: typed,
-            typer: typer,
-            selection: Some(path),
-            mode: mode,
-          )
         }
       }
-    Select(_) if key == "Escape" -> Editor(..editor, mode: Command)
-    _ -> todo("any oether keydown should not happen")
+    Select(_) | Draft(_) if key == "Escape" -> Editor(..editor, mode: Command)
+    Select(_) | Draft(_) if key == "Enter" -> handle_change(editor, text)
+    // Do nothing
+    Select(_) | Draft(_) -> editor
   }
+  // _ -> todo("any oether keydown should not happen")
   // crash if this doesn't work to get to handle_keydown error handling
   // if get_element in target_type always returned OK/Error we could probably work to remove the error handling
   // though is there any harm in the fall back currently in App.svelte?
@@ -371,8 +387,8 @@ pub fn handle_change(editor, content) {
     _ -> todo("handle the other options")
   }
 
-  let #(typed, typer) = eyg.compile_unconstrained(untyped, editor.harness)
-  Editor(..editor, tree: typed, typer: typer, mode: Command)
+  let editor = Editor(..editor, mode: Command)
+  set_untyped(editor, untyped)
 }
 
 pub type Element(a, b) {
