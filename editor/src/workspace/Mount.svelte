@@ -23,7 +23,7 @@
     <TestSuite result={mount.result} />
   {:else if mount instanceof Mount.UI}
     <p><strong>{key}:</strong> UI</p>
-    <UI />
+    <UI rendered={mount.rendered} />
   {:else if mount instanceof Mount.String2String}
     <p><strong>{key}:</strong> CLI</p>
     <String2String input={mount.input} output={mount.output} {active} />

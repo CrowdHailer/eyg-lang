@@ -24,7 +24,7 @@ pub fn init() {
       editor: None,
       active_mount: 0,
       apps: [
-        workspace.App("counter", workspace.UI(0)),
+        workspace.App("counter", workspace.UI(None, None, "")),
         workspace.App("test", workspace.TestSuite("True")),
         workspace.App("cli", workspace.String2String("", "")),
         workspace.App("scan", workspace.Firmata(None)),
@@ -74,11 +74,17 @@ pub fn click(marker) -> Transform(n) {
       ["bench", ..rest] ->
         case rest {
           [] -> Workspace(..before, focus: OnMounts)
-          [mount, ..inner] -> {
-            let ["", index] = string.split(mount, "mount:")
-            assert Ok(index) = int.parse(index)
-            workspace.focus_on_mount(before, index)
-          }
+          [mount, ..inner] ->
+            case string.split(mount, "mount:") {
+              ["", index] -> {
+                assert Ok(index) = int.parse(index)
+                workspace.focus_on_mount(before, index)
+              }
+              _ -> {
+                let func = workspace.handle_click(_)
+                workspace.dispatch_to_app(before, func)
+              }
+            }
         }
       _ -> before
     }

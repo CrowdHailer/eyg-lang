@@ -13,7 +13,7 @@ pub type Panel {
 }
 
 pub type App {
-  App(key: String, mount: Mount)
+  App(key: String, mount: Mount(Dynamic))
 }
 
 pub type Workspace(n) {
@@ -27,11 +27,11 @@ pub type Workspace(n) {
 
 // Numbered workspaces make global things like firmata connection trick can just be named
 // Bench rename panel benches?
-pub type Mount {
+pub type Mount(a) {
   Static(value: String)
   String2String(input: String, output: String)
   TestSuite(result: String)
-  UI(state: Int)
+  UI(initial: Option(a), state: Option(a), rendered: String)
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
 }
 
@@ -40,7 +40,7 @@ pub fn handle_keydown(app, key, ctrl, text) {
   let App(key, mount) = app
   // Need an init from first time we focus
   case mount {
-    UI(count) -> {
+    UI(initia, state, rendered) -> {
       io.debug("count all this state")
       app
     }
@@ -53,6 +53,16 @@ pub fn handle_input(app, data) {
 
   let mount = case app.mount {
     String2String(input, output) -> String2String(data, output)
+    _ -> todo("this app dont change here")
+  }
+  App(key, mount)
+}
+
+pub fn handle_click(app) {
+  // TODO this needs the code
+  let App(key, mount) = app
+
+  let mount = case app.mount {
     _ -> todo("this app dont change here")
   }
   App(key, mount)
@@ -78,7 +88,15 @@ fn mount_constraint(mount) {
         ),
       )
     String2String(_, _) -> t.Function(t.Binary, t.Binary)
-    UI(_) -> t.Record([#("render", t.Function(t.Unbound(-2), t.Binary))], None)
+    UI(_, _, _) ->
+      t.Record(
+        [
+          #("init", t.Function(t.Tuple([]), t.Unbound(-2))),
+          #("update", t.Function(t.Unbound(-2), t.Unbound(-2))),
+          #("render", t.Function(t.Unbound(-2), t.Binary)),
+        ],
+        None,
+      )
     Firmata(_) -> {
       // TODO move boolean to standard types
       let boolean =
@@ -150,7 +168,23 @@ pub fn code_update(code, app) {
         returned
       }))
     }
-    UI(_) -> todo("The UI thing")
+    UI(initial, state, rendered) -> {
+      assert Ok(record) = dynamic.field(key, Ok)(code)
+      let cast = gleam_extra.dynamic_function
+      assert Ok(init) = dynamic.field("init", cast)(record)
+      assert Ok(render) = dynamic.field("render", cast)(record)
+      assert Ok(new_initial) = init(dynamic.from([]))
+      // TODO this is where we need to clear or update state
+      // TODO do the state update next
+      case Some(new_initial) == initial {
+        True -> {
+          assert Ok(rendered) = render(new_initial)
+          assert Ok(rendered) = dynamic.string(rendered)
+          UI(Some(new_initial), state, rendered)
+        }
+        False -> UI(initial, state, rendered)
+      }
+    }
     Static(_) -> todo("probably remove I don't see much value in static")
   }
   App(key, mount)
