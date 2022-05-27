@@ -24,10 +24,10 @@ pub fn init() {
       editor: None,
       active_mount: 0,
       apps: [
+        workspace.App("counter", workspace.UI(0)),
         workspace.App("test", workspace.TestSuite("True")),
         workspace.App("cli", workspace.String2String("", "")),
         workspace.App("scan", workspace.Firmata(None)),
-        workspace.App("counter", workspace.UI),
       ],
     )
 
@@ -37,7 +37,6 @@ pub fn init() {
       fn(data) {
         fn(before) {
           let e = editor.init(data, browser.harness())
-          // TODO take all the constrints first or just active mount
           let state = Workspace(..before, editor: Some(e))
           let state = workspace.focus_on_mount(state, 0)
 
@@ -60,8 +59,15 @@ pub fn click(marker) -> Transform(n) {
           [], _ -> before
           [last, ..], Some(editor) -> {
             let editor = editor_ui.handle_click(editor, last)
-            // TODO handle code
-            Workspace(..before, focus: OnEditor, editor: Some(editor))
+            let workspace =
+              Workspace(..before, focus: OnEditor, editor: Some(editor))
+            case editor.eval(editor) {
+              Ok(code) -> {
+                let func = workspace.code_update(code, _)
+                workspace.dispatch_to_app(workspace, func)
+              }
+              _ -> workspace
+            }
           }
         }
       }
@@ -81,7 +87,6 @@ pub fn click(marker) -> Transform(n) {
 }
 
 // call all the benches Bench with name etc then plus Mount in the middle
-// TO
 pub fn keydown(key: String, ctrl: Bool, text: Option(String)) -> Transform(n) {
   handle_keydown(_, key, ctrl, text)
 }
@@ -91,24 +96,17 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
     Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
       let editor = editor_ui.handle_keydown(editor, key, ctrl, text)
       let workspace = Workspace(..before, editor: Some(editor))
-      let pre = list.take(before.apps, before.active_mount)
-      assert [app, ..post] = list.drop(before.apps, before.active_mount)
-      // TODO EDITOR State vs Generated/Compiled might be a way to group the manipulation
       case editor.eval(editor) {
         Ok(code) -> {
-          let app = workspace.run_app(code, app)
-          let apps = list.append(pre, [app, ..post])
-          Workspace(..workspace, apps: apps)
+          let func = workspace.code_update(code, _)
+          workspace.dispatch_to_app(workspace, func)
         }
-        // todo
         _ -> workspace
       }
     }
     Workspace(focus: OnMounts, active_mount: i, ..) -> {
-      let pre = list.take(before.apps, before.active_mount)
-      assert [app, ..post] = list.drop(before.apps, before.active_mount)
-      // TODO do nothing for now BECAUSE we use on change
-      before
+      let func = workspace.handle_keydown(_, key, ctrl, text)
+      workspace.dispatch_to_app(before, func)
     }
     _ -> before
   }
@@ -118,25 +116,14 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
 pub fn on_input(data, marker) -> Transform(n) {
   fn(before) {
     let workspace = case before {
-      Workspace(focus: OnMounts, editor: Some(editor), active_mount: i, ..) -> {
-        let pre = list.take(before.apps, before.active_mount)
-        assert [app, ..post] = list.drop(before.apps, before.active_mount)
-        case app.mount {
-          workspace.String2String(input, output) -> {
-            let mount = workspace.String2String(data, output)
-            let app = workspace.App(app.key, mount)
-            case editor.eval(editor) {
-              Ok(code) -> {
-                let app = workspace.run_app(code, app)
-                let apps = list.append(pre, [app, ..post])
-                Workspace(..before, apps: apps)
-              }
-              _ -> before
-            }
+      Workspace(focus: OnMounts, editor: Some(editor), active_mount: i, ..) ->
+        case editor.eval(editor) {
+          Ok(code) -> {
+            let func = workspace.handle_input(_, data)
+            workspace.dispatch_to_app(before, func)
           }
-          _ -> todo("this app dont change here")
+          _ -> before
         }
-      }
       Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
         let editor = editor_ui.handle_input(editor, data)
         let workspace = Workspace(..before, editor: Some(editor))

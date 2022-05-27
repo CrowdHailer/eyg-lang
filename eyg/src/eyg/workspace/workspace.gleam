@@ -31,8 +31,39 @@ pub type Mount {
   Static(value: String)
   String2String(input: String, output: String)
   TestSuite(result: String)
-  UI
+  UI(state: Int)
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
+}
+
+// mount handling of keydown
+pub fn handle_keydown(app, key, ctrl, text) {
+  let App(key, mount) = app
+  // Need an init from first time we focus
+  case mount {
+    UI(count) -> {
+      io.debug("count all this state")
+      app
+    }
+    _ -> app
+  }
+}
+
+pub fn handle_input(app, data) {
+  let App(key, mount) = app
+
+  let mount = case app.mount {
+    String2String(input, output) -> String2String(data, output)
+    _ -> todo("this app dont change here")
+  }
+  App(key, mount)
+}
+
+pub fn dispatch_to_app(workspace: Workspace(_), function) {
+  let pre = list.take(workspace.apps, workspace.active_mount)
+  assert [app, ..post] = list.drop(workspace.apps, workspace.active_mount)
+  let app = function(app)
+  let apps = list.append(pre, [app, ..post])
+  Workspace(..workspace, apps: apps)
 }
 
 fn mount_constraint(mount) {
@@ -47,7 +78,7 @@ fn mount_constraint(mount) {
         ),
       )
     String2String(_, _) -> t.Function(t.Binary, t.Binary)
-    UI -> t.Function(t.Unbound(-2), t.Binary)
+    UI(_) -> t.Record([#("render", t.Function(t.Unbound(-2), t.Binary))], None)
     Firmata(_) -> {
       // TODO move boolean to standard types
       let boolean =
@@ -79,7 +110,7 @@ pub fn focus_on_mount(before: Workspace(_), index) {
   Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
 }
 
-pub fn run_app(code, app) {
+pub fn code_update(code, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
@@ -119,7 +150,7 @@ pub fn run_app(code, app) {
         returned
       }))
     }
-    UI -> todo("The UI thing")
+    UI(_) -> todo("The UI thing")
     Static(_) -> todo("probably remove I don't see much value in static")
   }
   App(key, mount)
