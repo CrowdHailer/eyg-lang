@@ -20,8 +20,8 @@ pub type Reason(n) {
   UnmatchedTypes(expected: t.Monotype(n), given: t.Monotype(n))
   MissingFields(expected: List(#(String, t.Monotype(n))))
   UnexpectedFields(unexpected: List(#(String, t.Monotype(n))))
-  UnableToProvide(expected: t.Monotype(n), generator: e.Generator)
   ProviderFailed(generator: e.Generator, expected: t.Monotype(n))
+  GeneratedInvalid(errors: List(#(List(Int), Reason(n))))
   Warning(message: String)
 }
 
@@ -352,14 +352,19 @@ pub fn equal_fn() {
 }
 
 // Make private and always put in infer?
-pub fn expand_providers(tree, typer) {
+pub fn expand_providers(tree, typer, scope) {
   let #(meta, expression) = tree
   case expression {
     // Binary and Variable are unstructured and restructured to change type of provider generated content
     e.Binary(value) -> #(#(meta, e.Binary(value)), typer)
     e.Variable(value) -> #(#(meta, e.Variable(value)), typer)
     e.Tuple(elements) -> {
-      let #(elements, typer) = misc.map_state(elements, typer, expand_providers)
+      let #(elements, typer) =
+        misc.map_state(
+          elements,
+          typer,
+          fn(e, typer) { expand_providers(e, typer, scope) },
+        )
       #(#(meta, e.Tuple(elements)), typer)
     }
     e.Record(fields) -> {
@@ -369,7 +374,7 @@ pub fn expand_providers(tree, typer) {
           typer,
           fn(field, typer) {
             let #(key, value) = field
-            let #(value, typer) = expand_providers(value, typer)
+            let #(value, typer) = expand_providers(value, typer, scope)
             let field = #(key, value)
             #(field, typer)
           },
@@ -377,37 +382,37 @@ pub fn expand_providers(tree, typer) {
       #(#(meta, e.Record(fields)), typer)
     }
     e.Access(value, label) -> {
-      let #(value, typer) = expand_providers(value, typer)
+      let #(value, typer) = expand_providers(value, typer, scope)
       #(#(meta, e.Access(value, label)), typer)
     }
     e.Tagged(tag, value) -> {
-      let #(value, typer) = expand_providers(value, typer)
+      let #(value, typer) = expand_providers(value, typer, scope)
       #(#(meta, e.Tagged(tag, value)), typer)
     }
     e.Let(label, value, then) -> {
-      let #(value, typer) = expand_providers(value, typer)
-      let #(then, typer) = expand_providers(then, typer)
+      let #(value, typer) = expand_providers(value, typer, scope)
+      let #(then, typer) = expand_providers(then, typer, scope)
       #(#(meta, e.Let(label, value, then)), typer)
     }
     e.Function(from, to) -> {
       // let #(from, typer) = expand_providers(from, typer)
-      let #(to, typer) = expand_providers(to, typer)
+      let #(to, typer) = expand_providers(to, typer, scope)
       #(#(meta, e.Function(from, to)), typer)
     }
     e.Call(func, with) -> {
-      let #(func, typer) = expand_providers(func, typer)
-      let #(with, typer) = expand_providers(with, typer)
+      let #(func, typer) = expand_providers(func, typer, scope)
+      let #(with, typer) = expand_providers(with, typer, scope)
       #(#(meta, e.Call(func, with)), typer)
     }
     e.Case(value, branches) -> {
-      let #(value, typer) = expand_providers(value, typer)
+      let #(value, typer) = expand_providers(value, typer, scope)
       let #(branches, typer) =
         misc.map_state(
           branches,
           typer,
           fn(branch, typer) {
             let #(key, pattern, then) = branch
-            let #(then, typer) = expand_providers(then, typer)
+            let #(then, typer) = expand_providers(then, typer, scope)
             let branch = #(key, pattern, then)
             #(branch, typer)
           },
@@ -416,16 +421,32 @@ pub fn expand_providers(tree, typer) {
     }
 
     // Hole needs to be separate, it can't be a function call because it is not always going to be a function that gets called.
-    // TODO this loader exception lets it produce invalid code while experimenting
-    e.Hole | e.Provider(_, e.Loader, _) -> #(#(meta, e.Hole), typer)
+    e.Hole -> #(#(meta, e.Hole), typer)
+    // Only expand providers one level
     e.Provider(config, g, _) -> {
       let Metadata(type_: Ok(expected), ..) = meta
       let Typer(substitutions: substitutions, ..) = typer
       let expected = t.resolve(expected, substitutions)
       case e.generate(g, config, expected) {
         Ok(tree) -> {
-          let #(typed, typer) = infer(tree, expected, #(typer, root_scope([])))
-          // expand_providers(typed, typer)
+          let state = Scope(variables: scope, path: meta.path)
+          let previous_errors = list.length(typer.inconsistencies)
+          let #(typed, typer) = infer(tree, expected, #(typer, state))
+          let extra = list.length(typer.inconsistencies) - previous_errors
+          // New inconsistencies pushed on font
+          let new_errors = list.take(typer.inconsistencies, extra)
+          let old_errors = list.drop(typer.inconsistencies, extra)
+          let #(meta, typer) = case new_errors {
+            [] -> #(meta, typer)
+            _ -> {
+              let reason = GeneratedInvalid(new_errors)
+              let meta = Metadata(..meta, type_: Error(reason))
+              let new = #(meta.path, reason)
+              let inconsistencies = [new, ..old_errors]
+              let typer = Typer(..typer, inconsistencies: inconsistencies)
+              #(meta, typer)
+            }
+          }
           #(#(meta, e.Provider(config, g, typed)), typer)
         }
         Error(Nil) -> {
@@ -443,9 +464,8 @@ pub fn expand_providers(tree, typer) {
           let meta =
             Metadata(
               ..meta,
-              type_: Error(UnableToProvide(expected: expected, generator: g)),
+              type_: Error(ProviderFailed(expected: expected, generator: g)),
             )
-          // expand_providers(typed, typer)
           #(#(meta, e.Provider(config, g, typed)), typer)
         }
       }

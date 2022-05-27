@@ -297,35 +297,10 @@ pub fn render(
 
     // |> wrap_return(state)
     e.Hole -> ["(() => {throw 'Reached todo in the code'})()"]
-    e.Provider(_config, e.Loader, _) -> {
-      let typer.Metadata(type_: Ok(expected), ..) = context
-      let Generator(typer: typer, ..) = state
-      let typer.Typer(substitutions: substitutions, ..) = typer
-      let loader = t.resolve(expected, substitutions)
-      case loader {
-        t.Function(_from, result) ->
-          case result {
-            t.Function(t.Tuple([t.Function(usable, _), t.Function(_, _)]), _out) -> [
-              "((ast) => {",
-              string.concat([
-                // compile not implemented should probably be env/platform/browser
-                "  return window.compile(",
-                t.literal(usable),
-                ", ast)",
-              ]),
-              "})",
-            ]
-            _ -> [
-              "(() => {throw 'Failed to build provider for ", // We should just panic here
-              // montyp_to_string(loader, state.native_to_string),
-              "'})()",
-            ]
-          }
-        _ -> todo("handle error from loader")
-      }
-    }
+
     // This type is recursive starts with generated ends up with nil, in the nil case We should never have a provider?
-    e.Provider(_, _, generated) -> render(unsafe_coerce(generated), state)
+    e.Provider(_, _, generated) ->
+      maybe_wrap_expression(unsafe_coerce(generated), state)
   }
 }
 

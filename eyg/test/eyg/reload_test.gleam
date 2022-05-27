@@ -30,7 +30,7 @@ pub fn simple_reload_test() {
   let state = #(typer.init(), typer.root_scope([#("equal", typer.equal_fn())]))
 
   let #(typed, typer) = typer.infer(untyped, t.Unbound(-1), state)
-  let #(typed, typer) = typer.expand_providers(typed, typer)
+  let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
   assert [] = typer.inconsistencies
   javascript.render(typed, javascript.Generator(False, [], typer, None))

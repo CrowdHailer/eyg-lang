@@ -13,13 +13,13 @@ import platform/browser
 
 pub fn compile(untyped, scope) {
   let #(typed, typer) = typer.infer(untyped, monotype.Unbound(-1), scope)
-  let #(typed, typer) = typer.expand_providers(typed, typer)
+  let #(typed, typer) = typer.expand_providers(typed, typer, [])
   javascript.render(typed, javascript.Generator(False, [], typer, None))
 }
 
 pub fn eval(untyped, scope) {
   let #(typed, typer) = typer.infer(untyped, monotype.Unbound(-1), scope)
-  let #(typed, typer) = typer.expand_providers(typed, typer)
+  let #(typed, typer) = typer.expand_providers(typed, typer, [])
   javascript.eval(typed, typer)
 }
 

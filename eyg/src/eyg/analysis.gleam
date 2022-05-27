@@ -47,7 +47,3 @@ pub fn shrink(type_) {
     },
   )
 }
-// Shouldn't rely on editor rendering used only in tests
-// pub fn print(type_, _) {
-//   t.to_string(type_, fn(_) { "TODO again" })
-// }

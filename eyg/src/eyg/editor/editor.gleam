@@ -51,10 +51,11 @@ pub fn set_untyped(editor: Editor(_), untyped) {
 }
 
 pub fn analyse(editor: Editor(_), untyped) {
-  // let untyped = untype(editor.tree)
   let #(typed, typer) =
     analysis.infer(untyped, editor.constraint, editor.harness.variables)
-  let #(typed, typer) = typer.expand_providers(typed, typer)
+  let #(typed, typer) =
+    typer.expand_providers(typed, typer, editor.harness.variables)
+
   Editor(..editor, tree: typed, typer: typer)
 }
 
@@ -149,7 +150,7 @@ pub fn init(source, harness: harness.Harness(_)) {
   // TODO init with Workspace first mount
   let constraint = t.Unbound(-1)
   let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
-  let #(typed, typer) = typer.expand_providers(typed, typer)
+  let #(typed, typer) = typer.expand_providers(typed, typer, harness.variables)
   Editor("ast", harness, constraint, typed, typer, None, Command, False, None)
 }
 
@@ -1305,7 +1306,7 @@ fn insert_provider(tree, position) {
           dynamic.from(Nil),
           e.Provider(config, generator, dynamic.from(Nil)),
         )
-        _ -> ast.provider("", e.Loader)
+        _ -> ast.provider("", e.Type)
       }
       #(
         Some(replace_expression(tree, position, new)),
@@ -1778,6 +1779,12 @@ pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
       get_branches(branches, i, rest, tree)
     #(_, e.Provider(_, generator, _)), [0] -> ProviderGenerator(generator)
     #(_, e.Provider(config, _, _)), [1] -> ProviderConfig(config)
+    _, _ -> {
+      // This allows us to attach tree/position to tmp variable in console
+      io.debug(tree)
+      io.debug(position)
+      todo("failed to find element")
+    }
   }
 }
 
