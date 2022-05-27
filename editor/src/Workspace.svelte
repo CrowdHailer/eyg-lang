@@ -100,8 +100,9 @@
     class:border-blue-200={UI.bench_focused(state)}
     data-ui="bench"
   >
+    <!-- TODO Mount active outside individual mount -->
     {#if app}
-      <Mount key={app.key} mount={app.mount} active={true} />
+      <Mount key={app.key} mount={app.mount} active={UI.bench_focused(state)} />
     {/if}
     <div class="sticky bottom-0 bg-gray-200 p-2 pb-4 text-right">
       <details>
