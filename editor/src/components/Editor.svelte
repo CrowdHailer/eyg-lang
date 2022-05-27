@@ -6,7 +6,6 @@
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
   import Ui from "../workspace/UI.svelte";
 
-  // TODO connect firmata
   export let editor;
   $: window.eyg_source = Editor.dump(editor);
 </script>

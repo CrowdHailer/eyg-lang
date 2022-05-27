@@ -1,9 +1,5 @@
 import * as T from "./eyg/typer/monotype.mjs";
 import * as Eyg from "./eyg.mjs";
-import * as Encode from "./eyg/ast/encode.mjs";
-import * as Typer from "./eyg/typer.mjs";
-import * as Gleam from "./gleam.mjs";
-import * as Codegen from "./eyg/codegen/javascript.mjs";
 
 console.log(T);
 function deepEqual(x, y) {

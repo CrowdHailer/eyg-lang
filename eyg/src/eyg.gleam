@@ -10,7 +10,6 @@ import eyg/codegen/javascript
 import eyg/editor/type_info
 import platform/browser
 
-// TODO remove
 pub fn compile_unconstrained(expression, harness) {
   let harness.Harness(variables, _) = harness
   let typer__ = typer.init()

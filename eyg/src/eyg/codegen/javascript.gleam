@@ -18,7 +18,6 @@ pub type Generator(n) {
 
   // self is the name being given in a let clause
   // TODO move scope to have numbers in the typer
-  // TODO move native out as never render native type
   Generator(
     in_tail: Bool,
     scope: List(String),
@@ -295,7 +294,6 @@ pub fn render(
       |> wrap_return(state)
     }
 
-    // |> wrap_return(state)
     e.Hole -> ["(() => {throw 'Reached todo in the code'})()"]
 
     // This type is recursive starts with generated ends up with nil, in the nil case We should never have a provider?
