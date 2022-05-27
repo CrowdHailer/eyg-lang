@@ -6,8 +6,8 @@
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
   import Ui from "../workspace/UI.svelte";
 
-  // TODO connect firmata
   export let editor;
+  $: window.eyg_source = Editor.dump(editor);
 </script>
 
 {#if editor.show == "code"}
@@ -56,6 +56,7 @@
       </div>
     </div>
   </div>
+  <!-- {JSON.stringify(Editor.inconsistencies(editor))} -->
   <div
     class="sticky bottom-0 bg-gray-200 p-2 pb-4"
     class:bg-red-200={Editor.target_type(editor)[0]}

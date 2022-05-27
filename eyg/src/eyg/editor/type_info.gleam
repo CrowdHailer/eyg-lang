@@ -127,12 +127,14 @@ pub fn resolve_reason(reason, typer: Typer(n)) {
     //     |> list.intersperse(", ")
     //   ]
     //   |> string.concat
-    typer.UnableToProvide(expected, g) ->
-      typer.UnableToProvide(t.resolve(expected, typer.substitutions), g)
+    typer.ProviderFailed(g, expected) ->
+      typer.ProviderFailed(g, t.resolve(expected, typer.substitutions))
 
     typer.ProviderFailed(g, expected) ->
       typer.ProviderFailed(g, t.resolve(expected, typer.substitutions))
 
+    // TODO resolve sub sreason
+    typer.GeneratedInvalid(reasons) -> typer.GeneratedInvalid(reasons)
     typer.Warning(message) -> reason
   }
 }
@@ -183,13 +185,6 @@ pub fn reason_to_string(reason, native_to_string) {
         |> list.intersperse(", ")
       ]
       |> string.concat
-    typer.UnableToProvide(expected, g) ->
-      string.concat([
-        "Unable to generate for expected type ",
-        to_string(expected, native_to_string),
-        " with generator ",
-        e.generator_to_string(g),
-      ])
     typer.ProviderFailed(g, expected) ->
       string.concat([
         "Provider '",
@@ -198,5 +193,9 @@ pub fn reason_to_string(reason, native_to_string) {
         to_string(expected, native_to_string),
       ])
     typer.Warning(message) -> message
+    typer.GeneratedInvalid(reasons) -> {
+      io.debug(reasons)
+      "Generated invalid code"
+    }
   }
 }

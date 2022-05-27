@@ -104,7 +104,11 @@ pub fn run_app(code, app) {
           io.debug(output)
           String2String(input, output)
         }
-        Error(_) -> todo("should always be a string")
+        Error(reason) -> {
+          io.debug(r)
+          io.debug(reason)
+          todo("should always be a string")
+        }
       }
     }
     Firmata(_) -> {

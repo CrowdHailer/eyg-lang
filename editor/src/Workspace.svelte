@@ -23,7 +23,7 @@
         if (element) {
           element.focus();
           // TODO move to a should highlight field in editor
-          editor.mode.content ? element.select() : null;
+          state.editor[0].mode.content ? element.select() : null;
         } else {
           workspace && workspace.focus();
         }

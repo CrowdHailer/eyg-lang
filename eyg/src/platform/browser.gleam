@@ -1,7 +1,7 @@
 //  What does Roc call program + platform -> Application
 // Does program space workspace things like tests live there
 // browser.compile browser.harness
-import gleam/option.{None}
+import gleam/option.{None, Some}
 // typer.common
 import eyg/typer
 import eyg/typer/monotype as t
@@ -33,7 +33,7 @@ pub fn harness() {
 // perhaps they should be letters or similar
 pub fn string() {
   polytype.Polytype(
-    [1, 2, 3],
+    [1, 2, 3, 4, 5],
     t.Record(
       [
         #(
@@ -79,6 +79,14 @@ pub fn string() {
             ),
           ),
         ),
+        #(
+          "compile",
+          t.Function(
+            t.Tuple([t.Binary, t.Binary]),
+            t.Union([#("OK", t.Unbound(4)), #("Error", t.Binary)], Some(5)),
+          ),
+        ),
+        #("source", t.Function(t.Tuple([]), t.Binary)),
       ],
       None,
     ),

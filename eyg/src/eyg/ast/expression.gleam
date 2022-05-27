@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/io
 import gleam/int
 import gleam/list
 import gleam/string
@@ -6,6 +7,7 @@ import eyg/typer/monotype as t
 import eyg/ast/pattern.{Pattern} as p
 
 pub type Generator {
+  BadTuple
   Type
   Env
   Example
@@ -15,6 +17,7 @@ pub type Generator {
 
 pub fn generator_to_string(generator) {
   case generator {
+    BadTuple -> "BadTuple"
     Type -> "Type"
     Env -> "Env"
     Example -> "Example"
@@ -25,6 +28,7 @@ pub fn generator_to_string(generator) {
 
 pub fn generator_from_string(str) {
   case str {
+    "BadTuple" -> BadTuple
     "Type" -> Type
     "Env" -> Env
     "Example" -> Example
@@ -37,11 +41,39 @@ pub fn all_generators() {
   [Example, Env, Format, Loader, Type]
 }
 
+// This is an Eyg Result
+fn value_from_result(type_) {
+  case type_ {
+    t.Union([#("OK", type_), #("Error", _)], _) -> Ok(type_)
+    t.Union([#("Error", _), #("OK", type_)], _) -> Ok(type_)
+    _ -> Error(Nil)
+  }
+}
+
 pub fn generate(generator, config, hole) {
   let generator = case generator {
+    BadTuple -> fn(_, _) {
+      Ok(let_(p.Variable("x"), tuple_([]), variable("x")))
+    }
     Example -> example
     Type -> lift_type
-    Loader -> fn(_, _) { Ok(#(dynamic.from(Nil), Hole)) }
+    Loader -> fn(_, _) {
+      case hole {
+        t.Function(source, return) ->
+          case value_from_result(return) {
+            Ok(target) ->
+              Ok(function(
+                p.Variable("source"),
+                call(
+                  access(variable("harness"), "compile"),
+                  tuple_([variable("source"), binary(t.literal(target))]),
+                ),
+              ))
+            Error(Nil) -> Error(Nil)
+          }
+        _ -> Error(Nil)
+      }
+    }
     _ -> fn(_, _) { Error(Nil) }
   }
 
@@ -209,4 +241,8 @@ pub fn case_(value, branches) {
 
 pub fn hole() {
   #(dynamic.from(Nil), Hole)
+}
+
+pub fn provider(config, generator) {
+  #(dynamic.from(Nil), Provider(config, generator, dynamic.from(Nil)))
 }
