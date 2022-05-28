@@ -2,8 +2,6 @@
   export let rendered;
 </script>
 
-<div class="p-6">
-  <h1>UI.spredshees</h1>
-  <div data-ui="my-button">inner button</div>
+<div class="w-full h-full bg-gray-100 p6" data-ui="my-app">
   {@html rendered}
 </div>

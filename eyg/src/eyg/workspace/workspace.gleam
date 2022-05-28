@@ -31,7 +31,17 @@ pub type Mount(a) {
   Static(value: String)
   String2String(input: String, output: String)
   TestSuite(result: String)
-  UI(initial: Option(a), state: Option(a), rendered: String)
+  UI(
+    initial: Option(a),
+    state: Option(
+      #(
+        Dynamic,
+        fn(Dynamic) -> Result(Dynamic, String),
+        fn(Dynamic) -> Result(Dynamic, String),
+      ),
+    ),
+    rendered: String,
+  )
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
 }
 
@@ -59,10 +69,15 @@ pub fn handle_input(app, data) {
 }
 
 pub fn handle_click(app) {
-  // TODO this needs the code
   let App(key, mount) = app
 
   let mount = case app.mount {
+    UI(initial, Some(#(state, update, render)), _) -> {
+      assert Ok(state) = update(state)
+      assert Ok(rendered) = render(state)
+      assert Ok(rendered) = dynamic.string(rendered)
+      UI(initial, Some(#(state, update, render)), rendered)
+    }
     _ -> todo("this app dont change here")
   }
   App(key, mount)
@@ -172,17 +187,25 @@ pub fn code_update(code, app) {
       assert Ok(record) = dynamic.field(key, Ok)(code)
       let cast = gleam_extra.dynamic_function
       assert Ok(init) = dynamic.field("init", cast)(record)
+      assert Ok(update) = dynamic.field("update", cast)(record)
       assert Ok(render) = dynamic.field("render", cast)(record)
       assert Ok(new_initial) = init(dynamic.from([]))
-      // TODO this is where we need to clear or update state
       // TODO do the state update next
+      io.debug("-------------")
+      io.debug(Some(new_initial) == initial)
       case Some(new_initial) == initial {
-        True -> {
-          assert Ok(rendered) = render(new_initial)
+        False -> {
+          let initial = new_initial
+          let state = new_initial
+          assert Ok(rendered) = render(state)
           assert Ok(rendered) = dynamic.string(rendered)
-          UI(Some(new_initial), state, rendered)
+          UI(Some(new_initial), Some(#(state, update, render)), rendered)
         }
-        False -> UI(initial, state, rendered)
+        True -> {
+          assert Some(#(state, _update, _render)) = state
+          let state = Some(#(state, update, render))
+          UI(initial, state, rendered)
+        }
       }
     }
     Static(_) -> todo("probably remove I don't see much value in static")
