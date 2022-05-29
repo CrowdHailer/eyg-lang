@@ -190,9 +190,6 @@ pub fn code_update(code, app) {
       assert Ok(update) = dynamic.field("update", cast)(record)
       assert Ok(render) = dynamic.field("render", cast)(record)
       assert Ok(new_initial) = init(dynamic.from([]))
-      // TODO do the state update next
-      io.debug("-------------")
-      io.debug(Some(new_initial) == initial)
       case Some(new_initial) == initial {
         False -> {
           let initial = new_initial
