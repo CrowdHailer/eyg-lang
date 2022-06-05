@@ -94,12 +94,14 @@ export function run(code) {
       window.eyg_source = empty;
       // In Gleam format
       let computed = Eyg.provider(source, constraint);
+      let result;
       if (computed.isOk()) {
-        return { OK: computed[0] };
+        result = { OK: computed[0] };
       } else {
-        return { Error: computed[0] };
+        result = { Error: computed[0] };
       }
       window.eyg_source = everything;
+      return result
     },
     source: function () {
       return window.eyg_source;
