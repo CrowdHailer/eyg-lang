@@ -31,7 +31,7 @@
       <Expression expression={body} />
     </Indent>
   {:else}
-    <span class="text-gray-500" data-ui="{Display.marker(metadata)},1"
+    <span class="text-gray-500" data-ui={Display.collapse_marker(metadata)}
       >&lbrace; ... &rbrace;</span
     >{/if}
 {:else}

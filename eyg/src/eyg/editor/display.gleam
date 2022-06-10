@@ -49,6 +49,12 @@ pub fn marker(display) {
   position_to_marker(position)
 }
 
+pub fn collapse_marker(display) {
+  let Display(position: position, ..) = display
+  let position = path.append(position, 1)
+  position_to_marker(position)
+}
+
 pub fn position_to_marker(position) {
   let position =
     position
