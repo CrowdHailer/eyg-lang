@@ -138,14 +138,14 @@ pub fn inconsistencies(editor) {
 //     _ -> Error("some inconsitencies")
 //   }
 // }
-// TODO call out
-// pub fn dump(editor) {
-//   let Editor(tree: tree, ..) = editor
-//   let dump =
-//     encode.to_json(tree)
-//     |> encode.json_to_string
-//   dump
-// }
+pub fn dump(editor) {
+  let Editor(source: source, ..) = editor
+  let dump =
+    encode.to_json(source)
+    |> encode.json_to_string
+  dump
+}
+
 pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let constraint = t.Unbound(-1)
