@@ -43,6 +43,7 @@ pub fn handle_keydown(editor, key, ctrl, input) {
     "y", False, None -> Ok(editor.yank(editor))
     "y", True, None -> editor.paste(editor)
     "a", _, None -> editor.increase_selection(editor)
+    "s", _, None -> editor.decrease_selection(editor)
     "x", _, None -> Ok(editor.toggle_provider_expansion(editor))
     _, _, None -> {
       let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =

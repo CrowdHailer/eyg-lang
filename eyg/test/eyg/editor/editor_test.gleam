@@ -12,7 +12,7 @@ pub fn fn_equality_test() {
 
 fn empty_editor() {
   editor.init(
-    "{\"node\": \"Tuple\", \"elements\": []}",
+    "{\"node\": \"Binary\", \"value\": \"\"}",
     harness.Harness([], fn(_native) { todo }),
   )
 }
@@ -25,8 +25,15 @@ pub fn paste_empty_test() {
 
 pub fn increase_selection_from_nothing_test() {
   let editor = empty_editor()
-
+  assert Ok(editor) = editor.increase_selection(editor)
   assert Error(Nil) = editor.increase_selection(editor)
+}
+
+// Tuples do result in selection decrease
+pub fn decrease_selection_from_nothing_test() {
+  let editor = empty_editor()
+  assert Ok(editor) = editor.decrease_selection(editor)
+  assert Error(Nil) = editor.decrease_selection(editor)
 }
 
 pub fn move_test_should_change_nothing() {

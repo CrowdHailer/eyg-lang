@@ -369,7 +369,6 @@ pub fn handle_transformation(
   let inconsistencies = inconsistencies(editor)
   case key, ctrl_key {
     // move
-    "s", False -> decrease_selection(tree, position)
     "h", False -> navigation(move_left(tree, position))
     "l", False -> navigation(move_right(tree, position))
     "j", False -> navigation(move_down(tree, position))
@@ -488,57 +487,86 @@ fn command(result) {
   #(Some(tree), position, Command)
 }
 
-pub fn increase_selection(editor) {
+// Doesn't really work with decrease selection, need access to tree
+fn do_navigation(editor, nav) {
   let Editor(selection: selection, ..) = editor
-  let path = case selection {
-    Some(path) -> path
-    None -> []
+  case selection {
+    Some(path) -> {
+      try path = nav(path)
+      Ok(Editor(..editor, selection: Some(path)))
+    }
+
+    None -> {
+      let path = []
+      Ok(Editor(..editor, selection: Some(path)))
+    }
   }
-  try #(path, _) = path.parent(path)
-  Ok(Editor(..editor, selection: Some(path)))
 }
 
-fn decrease_selection(tree, position) {
-  let inner = path.append(position, 0)
-  case get_element(tree, position) {
-    Expression(#(_, e.Tuple([]))) -> {
-      let new = ast.tuple_([ast.hole()])
-      #(Some(replace_expression(tree, position, new)), inner, Command)
-    }
-    Expression(#(_, e.Record([]))) -> {
-      let new = e.record([#("", ast.hole())])
-      #(
-        Some(replace_expression(tree, position, new)),
-        path.append(inner, 0),
-        Draft(""),
-      )
-    }
-    Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
-      None,
-      position,
-      Command,
-    )
-    Expression(_) -> #(None, inner, Command)
-    Field(_, _) -> #(None, inner, Command)
-    Pattern(p.Tuple([]), _) -> #(
-      Some(replace_pattern(tree, position, p.Tuple([""]))),
-      inner,
-      Draft(""),
-    )
-    Pattern(p.Record([]), _) -> #(
-      Some(replace_pattern(tree, position, p.Record([#("", "")]))),
-      path.append(inner, 0),
-      Draft(""),
-    )
-
-    Pattern(p.Tuple(_), _) | Pattern(p.Record(_), _) | PatternField(_, _) -> #(
-      None,
-      inner,
-      Command,
-    )
-    Branch(_) -> #(None, inner, Command)
-    _ -> #(None, position, Command)
+pub fn increase_selection(editor) {
+  let nav = fn(path) {
+    try #(path, _) = path.parent(path)
+    Ok(path)
   }
+  do_navigation(editor, nav)
+}
+
+// This action does result in changes to the tree
+pub fn decrease_selection(editor) {
+  let Editor(selection: selection, tree: tree, ..) = editor
+  try #(untyped, path, mode) = case selection {
+    Some(path) -> {
+      let inner = path.append(path, 0)
+      let #(tree, new, mode) = case get_element(tree, path) {
+        Expression(#(_, e.Tuple([]))) -> {
+          let new = ast.tuple_([ast.hole()])
+          #(Some(replace_expression(tree, path, new)), inner, Command)
+        }
+        Expression(#(_, e.Record([]))) -> {
+          let new = e.record([#("", ast.hole())])
+          #(
+            Some(replace_expression(tree, path, new)),
+            path.append(inner, 0),
+            Draft(""),
+          )
+        }
+        Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
+          None,
+          path,
+          Command,
+        )
+        Expression(_) -> #(None, inner, Command)
+        Field(_, _) -> #(None, inner, Command)
+        Pattern(p.Tuple([]), _) -> #(
+          Some(replace_pattern(tree, path, p.Tuple([""]))),
+          inner,
+          Draft(""),
+        )
+        Pattern(p.Record([]), _) -> #(
+          Some(replace_pattern(tree, path, p.Record([#("", "")]))),
+          path.append(inner, 0),
+          Draft(""),
+        )
+        Pattern(p.Tuple(_), _) | Pattern(p.Record(_), _) | PatternField(_, _) -> #(
+          None,
+          inner,
+          Command,
+        )
+        Branch(_) -> #(None, inner, Command)
+        _ -> #(None, path, Command)
+      }
+      case new == path {
+        True -> Error(Nil)
+        False -> Ok(#(tree, new, mode))
+      }
+    }
+    None -> Ok(#(None, [], Command))
+  }
+  let editor = Editor(..editor, selection: Some(path), mode: mode)
+  Ok(case untyped {
+    None -> editor
+    Some(untyped) -> set_untyped(editor, untyped)
+  })
 }
 
 fn pattern_left(pattern, selection) {
