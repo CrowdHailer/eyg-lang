@@ -40,6 +40,14 @@ pub fn init() {
           let state = Workspace(..before, editor: Some(e))
           let state = workspace.focus_on_mount(state, 0)
 
+          let state = case editor.eval(e) {
+            Ok(code) -> {
+              let func = workspace.code_update(code, _)
+              workspace.dispatch_to_app(state, func)
+            }
+            _ -> state
+          }
+
           #(state, array.from_list([]))
         }
       },

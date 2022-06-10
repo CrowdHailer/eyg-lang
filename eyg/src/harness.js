@@ -63,7 +63,6 @@ export function run(code) {
       return fromArray(a.split(b));
     },
     concat: function ([a, b]) {
-      console.log(a, b, "fooo");
       return a + b;
     },
     debug: function (item) {

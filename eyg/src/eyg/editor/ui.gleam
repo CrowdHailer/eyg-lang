@@ -27,6 +27,7 @@ fn ui_warn(key, ctrl) {
   io.debug(string.concat(["unable to handle command ", key, ""]))
 }
 
+// There is a duplication of state where mode swiches to draft and the cursor is within a text box
 // Is there a separation here between keyboard and mouse
 // Actions
 pub fn handle_keydown(editor, key, ctrl, input) {
@@ -63,6 +64,7 @@ pub fn handle_keydown(editor, key, ctrl, input) {
   }
   case result {
     Ok(editor) -> editor
+    // TODO equality check here
     Error(Nil) -> {
       ui_warn(key, ctrl)
       editor
