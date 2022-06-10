@@ -859,7 +859,7 @@
                   },
                   "body": {
                     "node": "Binary",
-                    "value": "abc"
+                    "value": "new"
                   }
                 },
                 "then": {
@@ -875,8 +875,28 @@
                       "label": "state"
                     },
                     "body": {
-                      "node": "Variable",
-                      "label": "state"
+                      "node": "Call",
+                      "function": {
+                        "node": "Access",
+                        "value": {
+                          "node": "Variable",
+                          "label": "harness"
+                        },
+                        "key": "concat"
+                      },
+                      "with": {
+                        "node": "Tuple",
+                        "elements": [
+                          {
+                            "node": "Variable",
+                            "label": "state"
+                          },
+                          {
+                            "node": "Binary",
+                            "value": "click2"
+                          }
+                        ]
+                      }
                     }
                   },
                   "then": {
@@ -892,8 +912,28 @@
                         "label": "a"
                       },
                       "body": {
-                        "node": "Binary",
-                        "value": "h1 hello"
+                        "node": "Call",
+                        "function": {
+                          "node": "Access",
+                          "value": {
+                            "node": "Variable",
+                            "label": "harness"
+                          },
+                          "key": "concat"
+                        },
+                        "with": {
+                          "node": "Tuple",
+                          "elements": [
+                            {
+                              "node": "Binary",
+                              "value": "<h1 class=\"text-blue-500\">"
+                            },
+                            {
+                              "node": "Variable",
+                              "label": "a"
+                            }
+                          ]
+                        }
                       }
                     },
                     "then": {
