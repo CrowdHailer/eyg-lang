@@ -104,15 +104,15 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
       let workspace = Workspace(..before, editor: Some(editor))
       // TODO move equality to untyped tree
       case before.editor != workspace.editor {
-        True -> 
-      case editor.eval(editor) {
-        Ok(code) -> {
-          let func = workspace.code_update(code, _)
-          workspace.dispatch_to_app(workspace, func)
-        }
-        _ -> workspace
-      }
-      False -> workspace
+        True ->
+          case editor.eval(editor) {
+            Ok(code) -> {
+              let func = workspace.code_update(code, _)
+              workspace.dispatch_to_app(workspace, func)
+            }
+            _ -> workspace
+          }
+        False -> workspace
       }
     }
     Workspace(focus: OnMounts, active_mount: i, ..) -> {

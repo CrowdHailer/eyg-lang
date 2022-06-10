@@ -200,7 +200,9 @@ pub fn code_update(code, app) {
         }
         True -> {
           assert Some(#(state, _update, _render)) = state
+          assert Ok(rendered) = render(state)
           let state = Some(#(state, update, render))
+          assert Ok(rendered) = dynamic.string(rendered)
           UI(initial, state, rendered)
         }
       }
