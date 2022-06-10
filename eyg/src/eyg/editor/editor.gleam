@@ -30,6 +30,8 @@ pub type Cache(n) {
   Cache(
     typed: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
     typer: typer.Typer(n),
+    code: String,
+    evaled: Result(Dynamic, Nil),
   )
 }
 
@@ -38,6 +40,7 @@ pub type Editor(n) {
     show: String,
     harness: harness.Harness(n),
     constraint: t.Monotype(n),
+    // TODO Make Nil and remove all reference to untype
     source: e.Expression(Dynamic, Dynamic),
     selection: Option(List(Int)),
     mode: Mode,
@@ -55,15 +58,20 @@ pub fn set_untyped(editor: Editor(_), source) {
   Editor(..editor, source: source)
 }
 
-pub fn analyse(editor: Editor(_), untyped) {
-  let #(typed, typer) =
-    analysis.infer(untyped, editor.constraint, editor.harness.variables)
-  let #(typed, typer) =
-    typer.expand_providers(typed, typer, editor.harness.variables)
+pub fn analyse(source, constraint, harness) {
+  let harness.Harness(variables: variables, ..) = harness
+  let #(typed, typer) = analysis.infer(source, constraint, variables)
+  let #(typed, typer) = typer.expand_providers(typed, typer, variables)
+  let #(code, evaled) = case typer.inconsistencies {
+    [] -> {
+      let code = javascript.render_to_string(typed, typer)
+      let evaled = javascript.eval(typed, typer)
+      #(code, Ok(evaled))
+    }
+    _ -> #("", Error(Nil))
+  }
 
-  // Editor(..editor, tree: typed, typer: typer)
-  // TODO code eval
-  #(typed, typer)
+  Cache(typed, typer, code, evaled)
 }
 
 fn expression_type(
@@ -132,23 +140,6 @@ pub fn inconsistencies(editor) {
   // })
 }
 
-// reuse this code by putting it in platform.compile/codegen/eval
-// Question does editor depend on platform or visaverca happy to make descision later
-// TODO remove
-// pub fn codegen(editor) {
-//   let Editor(tree: tree, typer: typer, ..) = editor
-//   let good = list.length(typer.inconsistencies) == 0
-//   let code = javascript.render_to_string(tree, typer)
-//   #(good, code)
-// }
-// TODO remove
-// pub fn eval(editor) {
-//   let Editor(tree: tree, typer: typer, ..) = editor
-//   case list.length(typer.inconsistencies) {
-//     0 -> Ok(javascript.eval(tree, typer))
-//     _ -> Error("some inconsitencies")
-//   }
-// }
 pub fn dump(editor) {
   let Editor(source: source, ..) = editor
   let dump =
@@ -160,9 +151,7 @@ pub fn dump(editor) {
 pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let constraint = t.Unbound(-1)
-  let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
-  let #(typed, typer) = typer.expand_providers(typed, typer, harness.variables)
-  let cache = Cache(typed, typer)
+  let cache = analyse(untyped, constraint, harness)
   Editor("ast", harness, constraint, untyped, None, Command, False, None, cache)
 }
 
