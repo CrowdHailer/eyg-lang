@@ -106,7 +106,7 @@ pub fn display(editor) {
     Some(path) -> Above(path)
     None -> Neither
   }
-  do_display(todo("this needs the analysis"), path.root(), selection, editor)
+  do_display(editor.cache.typed, path.root(), selection, editor)
 }
 
 // if not selected print value minimal
@@ -118,7 +118,7 @@ pub fn display(editor) {
 pub fn do_display(tree, position, selection, editor) {
   let #(Metadata(type_: type_, ..), expression) = tree
   let editor.Editor(expanded: expanded, ..) = editor
-  let typer: typer.Typer(_) = todo("from analysis")
+  let typer: typer.Typer(_) = editor.cache.typer
   let #(errored, type_) = case type_ {
     Ok(type_) -> #(
       False,

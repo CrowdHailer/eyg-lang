@@ -26,6 +26,13 @@ pub type Mode {
   Select(choices: List(String), filter: String)
 }
 
+pub type Cache(n) {
+  Cache(
+    typed: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
+    typer: typer.Typer(n),
+  )
+}
+
 pub type Editor(n) {
   Editor(
     show: String,
@@ -36,6 +43,7 @@ pub type Editor(n) {
     mode: Mode,
     expanded: Bool,
     yanked: Option(#(List(Int), e.Expression(Dynamic, Dynamic))),
+    cache: Cache(n),
   )
 }
 
@@ -79,21 +87,24 @@ fn expression_type(
 }
 
 // returns bool if error
+// TODO move to display
 pub fn target_type(editor) {
-  todo("do we even use this")
-  // let Editor(tree: tree, typer: typer, selection: selection, ..) = editor
-  // // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
-  // case selection {
-  //   Some(path) ->
-  //     case get_element(tree, path) {
-  //       Expression(#(_, e.Let(_, value, _))) ->
-  //         expression_type(value, typer, editor.harness.native_to_string)
-  //       Expression(expression) ->
-  //         expression_type(expression, typer, editor.harness.native_to_string)
-  //       _ -> #(False, "")
-  //     }
-  //   None -> #(False, "")
-  // }
+  let Editor(cache: cache, selection: selection, ..) = editor
+  case selection {
+    Some(path) ->
+      case get_element(cache.typed, path) {
+        Expression(#(_, e.Let(_, value, _))) ->
+          expression_type(value, cache.typer, editor.harness.native_to_string)
+        Expression(expression) ->
+          expression_type(
+            expression,
+            cache.typer,
+            editor.harness.native_to_string,
+          )
+        _ -> #(False, "")
+      }
+    None -> #(False, "")
+  }
 }
 
 pub fn is_selected(editor: Editor(n), path) {
@@ -149,9 +160,10 @@ pub fn dump(editor) {
 pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let constraint = t.Unbound(-1)
-  // let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
-  // let #(typed, typer) = typer.expand_providers(typed, typer, harness.variables)
-  Editor("ast", harness, constraint, untyped, None, Command, False, None)
+  let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
+  let #(typed, typer) = typer.expand_providers(typed, typer, harness.variables)
+  let cache = Cache(typed, typer)
+  Editor("ast", harness, constraint, untyped, None, Command, False, None, cache)
 }
 
 pub fn yank_path(editor: Editor(n)) {
