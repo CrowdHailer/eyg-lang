@@ -102,12 +102,17 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
     Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
       let editor = editor_ui.handle_keydown(editor, key, ctrl, text)
       let workspace = Workspace(..before, editor: Some(editor))
+      // TODO move equality to untyped tree
+      case before.editor != workspace.editor {
+        True -> 
       case editor.eval(editor) {
         Ok(code) -> {
           let func = workspace.code_update(code, _)
           workspace.dispatch_to_app(workspace, func)
         }
         _ -> workspace
+      }
+      False -> workspace
       }
     }
     Workspace(focus: OnMounts, active_mount: i, ..) -> {

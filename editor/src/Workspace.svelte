@@ -15,7 +15,9 @@
     tasks.forEach((task) => {
       task.then(update);
     });
-    let changed = !Gleam.isEqual(next, state);
+    // TODO change only on untyped tree
+    // Note Gleam does not manage functional equality
+    let changed = !Gleam.isEqual(next?.editor, state?.editor);
     state = next;
     tick().then(() => {
       if (changed && !skip) {
