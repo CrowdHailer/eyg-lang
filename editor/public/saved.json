@@ -840,48 +840,186 @@
               }
             },
             "then": {
-              "node": "Record",
-              "fields": [
-                {
-                  "node": "Field",
-                  "key": "test",
-                  "value": {
-                    "node": "Variable",
-                    "label": "test"
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": "counter"
+              },
+              "value": {
+                "node": "Let",
+                "pattern": {
+                  "node": "Variable",
+                  "label": "init"
+                },
+                "value": {
+                  "node": "Function",
+                  "pattern": {
+                    "node": "Tuple",
+                    "elements": []
+                  },
+                  "body": {
+                    "node": "Binary",
+                    "value": "new"
                   }
                 },
-                {
-                  "node": "Field",
-                  "key": "spreadsheet",
-                  "value": {
+                "then": {
+                  "node": "Let",
+                  "pattern": {
                     "node": "Variable",
-                    "label": "spreadsheet"
-                  }
-                },
-                {
-                  "node": "Field",
-                  "key": "scan",
-                  "value": {
-                    "node": "Variable",
-                    "label": "scan"
-                  }
-                },
-                {
-                  "node": "Field",
-                  "key": "cli",
+                    "label": "update"
+                  },
                   "value": {
                     "node": "Function",
                     "pattern": {
                       "node": "Variable",
-                      "label": ""
+                      "label": "state"
                     },
                     "body": {
+                      "node": "Call",
+                      "function": {
+                        "node": "Access",
+                        "value": {
+                          "node": "Variable",
+                          "label": "harness"
+                        },
+                        "key": "concat"
+                      },
+                      "with": {
+                        "node": "Tuple",
+                        "elements": [
+                          {
+                            "node": "Variable",
+                            "label": "state"
+                          },
+                          {
+                            "node": "Binary",
+                            "value": "click2"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "node": "Let",
+                    "pattern": {
                       "node": "Variable",
-                      "label": "reload"
+                      "label": "render"
+                    },
+                    "value": {
+                      "node": "Function",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": "a"
+                      },
+                      "body": {
+                        "node": "Call",
+                        "function": {
+                          "node": "Access",
+                          "value": {
+                            "node": "Variable",
+                            "label": "harness"
+                          },
+                          "key": "concat"
+                        },
+                        "with": {
+                          "node": "Tuple",
+                          "elements": [
+                            {
+                              "node": "Binary",
+                              "value": "<h1 class=\"text-blue-500\">"
+                            },
+                            {
+                              "node": "Variable",
+                              "label": "a"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "then": {
+                      "node": "Record",
+                      "fields": [
+                        {
+                          "node": "Field",
+                          "key": "init",
+                          "value": {
+                            "node": "Variable",
+                            "label": "init"
+                          }
+                        },
+                        {
+                          "node": "Field",
+                          "key": "update",
+                          "value": {
+                            "node": "Variable",
+                            "label": "update"
+                          }
+                        },
+                        {
+                          "node": "Field",
+                          "key": "render",
+                          "value": {
+                            "node": "Variable",
+                            "label": "render"
+                          }
+                        }
+                      ]
                     }
                   }
                 }
-              ]
+              },
+              "then": {
+                "node": "Record",
+                "fields": [
+                  {
+                    "node": "Field",
+                    "key": "test",
+                    "value": {
+                      "node": "Variable",
+                      "label": "test"
+                    }
+                  },
+                  {
+                    "node": "Field",
+                    "key": "spreadsheet",
+                    "value": {
+                      "node": "Variable",
+                      "label": "spreadsheet"
+                    }
+                  },
+                  {
+                    "node": "Field",
+                    "key": "scan",
+                    "value": {
+                      "node": "Variable",
+                      "label": "scan"
+                    }
+                  },
+                  {
+                    "node": "Field",
+                    "key": "cli",
+                    "value": {
+                      "node": "Function",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": ""
+                      },
+                      "body": {
+                        "node": "Variable",
+                        "label": "reload"
+                      }
+                    }
+                  },
+                  {
+                    "node": "Field",
+                    "key": "counter",
+                    "value": {
+                      "node": "Variable",
+                      "label": "counter"
+                    }
+                  }
+                ]
+              }
             }
           }
         }

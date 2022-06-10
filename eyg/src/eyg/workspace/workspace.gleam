@@ -13,7 +13,7 @@ pub type Panel {
 }
 
 pub type App {
-  App(key: String, mount: Mount)
+  App(key: String, mount: Mount(Dynamic))
 }
 
 pub type Workspace(n) {
@@ -27,12 +27,68 @@ pub type Workspace(n) {
 
 // Numbered workspaces make global things like firmata connection trick can just be named
 // Bench rename panel benches?
-pub type Mount {
+pub type Mount(a) {
   Static(value: String)
   String2String(input: String, output: String)
   TestSuite(result: String)
-  UI
+  UI(
+    initial: Option(a),
+    state: Option(
+      #(
+        Dynamic,
+        fn(Dynamic) -> Result(Dynamic, String),
+        fn(Dynamic) -> Result(Dynamic, String),
+      ),
+    ),
+    rendered: String,
+  )
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
+}
+
+// mount handling of keydown
+pub fn handle_keydown(app, key, ctrl, text) {
+  let App(key, mount) = app
+  // Need an init from first time we focus
+  case mount {
+    UI(initia, state, rendered) -> {
+      io.debug("count all this state")
+      app
+    }
+    _ -> app
+  }
+}
+
+pub fn handle_input(app, data) {
+  let App(key, mount) = app
+
+  let mount = case app.mount {
+    String2String(input, output) -> String2String(data, output)
+    _ -> todo("this app dont change here")
+  }
+  App(key, mount)
+}
+
+pub fn handle_click(app) {
+  let App(key, mount) = app
+
+  let mount = case app.mount {
+    UI(initial, Some(#(state, update, render)), _) -> {
+      assert Ok(state) = update(state)
+      assert Ok(rendered) = render(state)
+      assert Ok(rendered) = dynamic.string(rendered)
+      UI(initial, Some(#(state, update, render)), rendered)
+    }
+    _ -> todo("this app dont change here")
+  }
+  App(key, mount)
+}
+
+pub fn dispatch_to_app(workspace: Workspace(_), function) {
+  let pre = list.take(workspace.apps, workspace.active_mount)
+  assert [app, ..post] = list.drop(workspace.apps, workspace.active_mount)
+  let app = function(app)
+  let apps = list.append(pre, [app, ..post])
+  Workspace(..workspace, apps: apps)
 }
 
 fn mount_constraint(mount) {
@@ -47,7 +103,15 @@ fn mount_constraint(mount) {
         ),
       )
     String2String(_, _) -> t.Function(t.Binary, t.Binary)
-    UI -> t.Function(t.Unbound(-2), t.Binary)
+    UI(_, _, _) ->
+      t.Record(
+        [
+          #("init", t.Function(t.Tuple([]), t.Unbound(-2))),
+          #("update", t.Function(t.Unbound(-2), t.Unbound(-2))),
+          #("render", t.Function(t.Unbound(-2), t.Binary)),
+        ],
+        None,
+      )
     Firmata(_) -> {
       // TODO move boolean to standard types
       let boolean =
@@ -79,7 +143,7 @@ pub fn focus_on_mount(before: Workspace(_), index) {
   Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
 }
 
-pub fn run_app(code, app) {
+pub fn code_update(code, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
@@ -119,7 +183,30 @@ pub fn run_app(code, app) {
         returned
       }))
     }
-    UI -> todo("The UI thing")
+    UI(initial, state, rendered) -> {
+      assert Ok(record) = dynamic.field(key, Ok)(code)
+      let cast = gleam_extra.dynamic_function
+      assert Ok(init) = dynamic.field("init", cast)(record)
+      assert Ok(update) = dynamic.field("update", cast)(record)
+      assert Ok(render) = dynamic.field("render", cast)(record)
+      assert Ok(new_initial) = init(dynamic.from([]))
+      case Some(new_initial) == initial {
+        False -> {
+          let initial = new_initial
+          let state = new_initial
+          assert Ok(rendered) = render(state)
+          assert Ok(rendered) = dynamic.string(rendered)
+          UI(Some(new_initial), Some(#(state, update, render)), rendered)
+        }
+        True -> {
+          assert Some(#(state, _update, _render)) = state
+          assert Ok(rendered) = render(state)
+          let state = Some(#(state, update, render))
+          assert Ok(rendered) = dynamic.string(rendered)
+          UI(initial, state, rendered)
+        }
+      }
+    }
     Static(_) -> todo("probably remove I don't see much value in static")
   }
   App(key, mount)

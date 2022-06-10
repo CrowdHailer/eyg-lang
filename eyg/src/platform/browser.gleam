@@ -53,6 +53,7 @@ pub fn string() {
             ),
           ),
         ),
+        #("concat", t.Function(t.Tuple([t.Binary, t.Binary]), t.Binary)),
         #("debug", t.Function(t.Unbound(2), t.Unbound(2))),
         #("parse_int", t.Function(t.Binary, t.Native(Integer))),
         #(

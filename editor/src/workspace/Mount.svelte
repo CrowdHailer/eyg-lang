@@ -16,6 +16,7 @@
 <!-- TODO collapse and show at this level -->
 <div class="h-full">
   {#if mount instanceof Mount.Static}
+    <!-- TODO Put this in active footer next to details -->
     <p><strong>{key}:</strong> Static</p>
     <Static value={mount.value} />
   {:else if mount instanceof Mount.TestSuite}
@@ -23,7 +24,7 @@
     <TestSuite result={mount.result} />
   {:else if mount instanceof Mount.UI}
     <p><strong>{key}:</strong> UI</p>
-    <UI />
+    <UI rendered={mount.rendered} />
   {:else if mount instanceof Mount.String2String}
     <p><strong>{key}:</strong> CLI</p>
     <String2String input={mount.input} output={mount.output} {active} />

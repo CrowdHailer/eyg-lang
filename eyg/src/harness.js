@@ -62,6 +62,10 @@ export function run(code) {
     split: function ([a, b]) {
       return fromArray(a.split(b));
     },
+    concat: function ([a, b]) {
+      console.log(a, b, "fooo");
+      return a + b;
+    },
     debug: function (item) {
       console.log(item);
       return item;
@@ -101,7 +105,7 @@ export function run(code) {
         result = { Error: computed[0] };
       }
       window.eyg_source = everything;
-      return result
+      return result;
     },
     source: function () {
       return window.eyg_source;
