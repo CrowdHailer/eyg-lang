@@ -30,27 +30,20 @@ fn ui_warn(key, ctrl) {
 // Is there a separation here between keyboard and mouse
 // Actions
 pub fn handle_keydown(editor, key, ctrl, input) {
-  case key, ctrl, input {
-    "Escape", _, Some(_) -> editor.cancel(editor)
-    "Enter", _, Some(text) -> editor.handle_change(editor, text)
-    " ", _, Some(text) -> editor.autofill_choice(editor, text)
-    _, _, Some(text) -> editor
+  let result = case key, ctrl, input {
+    "Escape", _, Some(_) -> Ok(editor.cancel(editor))
+    "Enter", _, Some(text) -> Ok(editor.handle_change(editor, text))
+    " ", _, Some(text) -> Ok(editor.autofill_choice(editor, text))
+    _, _, Some(text) -> Ok(editor)
     // Command mode
     // toggle_dump
     // toggle_generated source -> code for computers encoded could be the code view
-    "q", _, None -> editor.toggle_encoded(editor)
-    "Q", _, None -> editor.toggle_code(editor)
-    "x", _, None -> editor.toggle_provider_expansion(editor)
-    "y", False, None -> editor.yank(editor)
-    "y", True, None ->
-      case editor.paste(editor) {
-        Ok(editor) -> editor
-        Error(Nil) -> {
-          ui_warn(key, ctrl)
-          editor
-        }
-      }
-
+    "q", _, None -> Ok(editor.toggle_encoded(editor))
+    "Q", _, None -> Ok(editor.toggle_code(editor))
+    "y", False, None -> Ok(editor.yank(editor))
+    "y", True, None -> editor.paste(editor)
+    "a", _, None -> editor.increase_selection(editor)
+    "x", _, None -> Ok(editor.toggle_provider_expansion(editor))
     _, _, None -> {
       let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
         editor
@@ -61,10 +54,17 @@ pub fn handle_keydown(editor, key, ctrl, input) {
       let #(untyped, path, mode) =
         editor.handle_transformation(editor, path, key, ctrl)
       let editor = Editor(..editor, selection: Some(path), mode: mode)
-      case untyped {
+      Ok(case untyped {
         None -> editor
         Some(untyped) -> editor.set_untyped(editor, untyped)
-      }
+      })
+    }
+  }
+  case result {
+    Ok(editor) -> editor
+    Error(Nil) -> {
+      ui_warn(key, ctrl)
+      editor
     }
   }
 }

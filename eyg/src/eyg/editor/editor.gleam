@@ -369,7 +369,6 @@ pub fn handle_transformation(
   let inconsistencies = inconsistencies(editor)
   case key, ctrl_key {
     // move
-    "a", False -> navigation(increase_selection(tree, position))
     "s", False -> decrease_selection(tree, position)
     "h", False -> navigation(move_left(tree, position))
     "l", False -> navigation(move_right(tree, position))
@@ -489,11 +488,14 @@ fn command(result) {
   #(Some(tree), position, Command)
 }
 
-fn increase_selection(_tree, position) {
-  case path.parent(position) {
-    Ok(#(position, _)) -> position
-    Error(Nil) -> []
+pub fn increase_selection(editor) {
+  let Editor(selection: selection, ..) = editor
+  let path = case selection {
+    Some(path) -> path
+    None -> []
   }
+  try #(path, _) = path.parent(path)
+  Ok(Editor(..editor, selection: Some(path)))
 }
 
 fn decrease_selection(tree, position) {

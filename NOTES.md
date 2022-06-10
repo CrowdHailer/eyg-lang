@@ -174,7 +174,6 @@ Even running in /tmp/lima didn't fix that file permission though it did fix ever
 ```
 docker run -it -w /opt/app -v ${PWD}:/opt/app -v eyg_build:/opt/app/eyg/build -p 5000:5000 --name eyg_builder --rm editor bash
 ```
-TODO add format
 ```
 (cd eyg; gleam build) && (cd editor; npm run build)
 ```
