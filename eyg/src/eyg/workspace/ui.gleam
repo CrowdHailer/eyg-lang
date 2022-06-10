@@ -107,21 +107,16 @@ pub fn keydown(key: String, ctrl: Bool, text: Option(String)) -> Transform(n) {
 
 fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
   let state = case before {
-    Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
-      let editor = editor_ui.handle_keydown(editor, key, ctrl, text)
+    Workspace(focus: OnEditor, editor: Some(before_editor), ..) -> {
+      let editor = editor_ui.handle_keydown(before_editor, key, ctrl, text)
       let workspace = Workspace(..before, editor: Some(editor))
-      // TODO move equality to untyped tree
-      case before.editor != workspace.editor {
-        True -> workspace
-        // TODO reinstate
-        // case editor.eval(editor) {
-        //   Ok(code) -> {
-        //     let func = workspace.code_update(code, _)
-        //     workspace.dispatch_to_app(workspace, func)
-        //   }
-        //   _ -> workspace
-        // }
-        False -> workspace
+      let changed = editor.source != before_editor.source
+      case changed, editor.cache.evaled {
+        True, Ok(code) -> {
+          let func = workspace.code_update(code, _)
+          workspace.dispatch_to_app(workspace, func)
+        }
+        _, _ -> workspace
       }
     }
     Workspace(focus: OnMounts, active_mount: i, ..) -> {
@@ -136,15 +131,10 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
 pub fn on_input(data, marker) -> Transform(n) {
   fn(before) {
     let workspace = case before {
-      Workspace(focus: OnMounts, editor: Some(editor), active_mount: i, ..) ->
-        // case editor.eval(editor) {
-        //   Ok(code) -> {
-        //     let func = workspace.handle_input(_, data)
-        //     workspace.dispatch_to_app(before, func)
-        //   }
-        //   _ -> before
-        // }
-        before
+      Workspace(focus: OnMounts, editor: Some(editor), active_mount: i, ..) -> {
+        let func = workspace.handle_input(_, data)
+        workspace.dispatch_to_app(before, func)
+      }
       Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
         let editor = editor_ui.handle_input(editor, data)
         let workspace = Workspace(..before, editor: Some(editor))
