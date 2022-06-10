@@ -470,9 +470,14 @@ pub fn paste(editor) {
     Some(path) -> path
     None -> []
   }
-  assert Some(#(_, new)) = yanked
-  let untyped = replace_expression(tree, path, new)
-  set_untyped(editor, untyped)
+  case yanked {
+    Some(#(_, new)) -> {
+      let untyped = replace_expression(tree, path, new)
+      Ok(set_untyped(editor, untyped))
+    }
+
+    None -> Error(Nil)
+  }
 }
 
 fn navigation(position) {

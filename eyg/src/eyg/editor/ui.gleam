@@ -23,6 +23,10 @@ pub fn choices(editor: Editor(_)) {
   |> array.from_list
 }
 
+fn ui_warn(key, ctrl) {
+  io.debug(string.concat(["unable to handle command ", key, ""]))
+}
+
 // Is there a separation here between keyboard and mouse
 // Actions
 pub fn handle_keydown(editor, key, ctrl, input) {
@@ -32,12 +36,20 @@ pub fn handle_keydown(editor, key, ctrl, input) {
     " ", _, Some(text) -> editor.autofill_choice(editor, text)
     _, _, Some(text) -> editor
     // Command mode
+    // toggle_dump
+    // toggle_generated source -> code for computers encoded could be the code view
     "q", _, None -> editor.toggle_encoded(editor)
     "Q", _, None -> editor.toggle_code(editor)
     "x", _, None -> editor.toggle_provider_expansion(editor)
     "y", False, None -> editor.yank(editor)
-    // TODO typecheck
-    "y", True, None -> editor.paste(editor)
+    "y", True, None ->
+      case editor.paste(editor) {
+        Ok(editor) -> editor
+        Error(Nil) -> {
+          ui_warn(key, ctrl)
+          editor
+        }
+      }
 
     _, _, None -> {
       let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
