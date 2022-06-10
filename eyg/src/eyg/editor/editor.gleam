@@ -50,15 +50,19 @@ pub type Editor(n) {
   )
 }
 
-pub fn set_constraint(editor: Editor(_), constraint) {
-  Editor(..editor, constraint: constraint)
+pub fn set_constraint(editor, constraint) {
+  let Editor(source: source, harness: harness, ..) = editor
+  let cache = analyse(source, constraint, harness)
+  Editor(..editor, constraint: constraint, cache: cache)
 }
 
 pub fn set_untyped(editor: Editor(_), source) {
-  Editor(..editor, source: source)
+  let Editor(constraint: constraint, harness: harness, ..) = editor
+  let cache = analyse(source, constraint, harness)
+  Editor(..editor, source: source, cache: cache)
 }
 
-pub fn analyse(source, constraint, harness) {
+fn analyse(source, constraint, harness) {
   let harness.Harness(variables: variables, ..) = harness
   let #(typed, typer) = analysis.infer(source, constraint, variables)
   let #(typed, typer) = typer.expand_providers(typed, typer, variables)
