@@ -85,61 +85,41 @@ pub fn resolve_reason(reason, typer: Typer(n)) {
         t.resolve(given, typer.substitutions),
       )
 
-    typer.MissingFields(expected) -> todo("missin")
-    // TODO resolve field function
-    // typer.MissingFields(list.map(expected, ))
-    //   [
-    //     "Missing fields: ",
-    //     ..list.map(
-    //       expected,
-    //       fn(x) {
-    //         let #(name, type_) = x
-    //         string.concat([
-    //           name,
-    //           ": ",
-    //           to_string(
-    //             t.resolve(type_, typer.substitutions),
-    //             native_to_string,
-    //           ),
-    //         ])
-    //       },
-    //     )
-    //     |> list.intersperse(", ")
-    //   ]
-    //   |> string.concat
-    typer.UnexpectedFields(expected) -> todo("unexpected")
-    //   [
-    //     "Unexpected fields: ",
-    //     ..list.map(
-    //       expected,
-    //       fn(x) {
-    //         let #(name, type_) = x
-    //         string.concat([
-    //           name,
-    //           ": ",
-    //           to_string(
-    //             t.resolve(type_, typer.substitutions),
-    //             native_to_string,
-    //           ),
-    //         ])
-    //       },
-    //     )
-    //     |> list.intersperse(", ")
-    //   ]
-    //   |> string.concat
+    typer.MissingFields(expected) ->
+      typer.MissingFields(list.map(
+        expected,
+        fn(field) {
+          let #(name, type_) = field
+          #(name, t.resolve(type_, typer.substitutions))
+        },
+      ))
+    typer.UnexpectedFields(expected) ->
+      typer.UnexpectedFields(list.map(
+        expected,
+        fn(field) {
+          let #(name, type_) = field
+          #(name, t.resolve(type_, typer.substitutions))
+        },
+      ))
     typer.ProviderFailed(g, expected) ->
       typer.ProviderFailed(g, t.resolve(expected, typer.substitutions))
 
     typer.ProviderFailed(g, expected) ->
       typer.ProviderFailed(g, t.resolve(expected, typer.substitutions))
 
-    // TODO resolve sub sreason
-    typer.GeneratedInvalid(reasons) -> typer.GeneratedInvalid(reasons)
+    typer.GeneratedInvalid(reasons) ->
+      typer.GeneratedInvalid(list.map(
+        reasons,
+        fn(sub) {
+          let #(path, reason) = sub
+          let reason = resolve_reason(reason, typer)
+          #(path, reason)
+        },
+      ))
     typer.Warning(message) -> reason
   }
 }
 
-// TODO uses need to resolve first
 pub fn reason_to_string(reason, native_to_string) {
   case reason {
     typer.IncorrectArity(expected, given) ->
