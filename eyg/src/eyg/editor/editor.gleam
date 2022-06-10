@@ -26,74 +26,56 @@ pub type Mode {
   Select(choices: List(String), filter: String)
 }
 
+pub type Cache(n) {
+  Cache(
+    typed: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
+    typer: typer.Typer(n),
+    code: String,
+    evaled: Result(Dynamic, Nil),
+  )
+}
+
 pub type Editor(n) {
   Editor(
     show: String,
     harness: harness.Harness(n),
     constraint: t.Monotype(n),
-    // maybe manipulate only untyped as tree, call it source??
-    tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
-    typer: typer.Typer(n),
+    // TODO Make Nil and remove all reference to untype
+    source: e.Expression(Dynamic, Dynamic),
     selection: Option(List(Int)),
     mode: Mode,
     expanded: Bool,
     yanked: Option(#(List(Int), e.Expression(Dynamic, Dynamic))),
+    cache: Cache(n),
   )
 }
 
-pub fn set_constraint(editor: Editor(_), constraint) {
-  Editor(..editor, constraint: constraint)
-  |> analyse(untype(editor.tree))
+pub fn set_constraint(editor, constraint) {
+  let Editor(source: source, harness: harness, ..) = editor
+  let cache = analyse(source, constraint, harness)
+  Editor(..editor, constraint: constraint, cache: cache)
 }
 
-pub fn set_untyped(editor: Editor(_), untyped) {
-  analyse(editor, untyped)
+pub fn set_untyped(editor: Editor(_), source) {
+  let Editor(constraint: constraint, harness: harness, ..) = editor
+  let cache = analyse(source, constraint, harness)
+  Editor(..editor, source: source, cache: cache)
 }
 
-pub fn analyse(editor: Editor(_), untyped) {
-  let #(typed, typer) =
-    analysis.infer(untyped, editor.constraint, editor.harness.variables)
-  let #(typed, typer) =
-    typer.expand_providers(typed, typer, editor.harness.variables)
-
-  Editor(..editor, tree: typed, typer: typer)
-}
-
-fn expression_type(
-  expression: e.Expression(Metadata(n), a),
-  typer: typer.Typer(n),
-  native_to_string,
-) {
-  let #(metadata, _) = expression
-  case metadata.type_ {
-    Ok(t) -> #(
-      False,
-      t.resolve(t, typer.substitutions)
-      |> analysis.shrink
-      |> type_info.to_string(native_to_string),
-    )
-    Error(reason) -> #(
-      True,
-      type_info.reason_to_string(reason, native_to_string),
-    )
+fn analyse(source, constraint, harness) {
+  let harness.Harness(variables: variables, ..) = harness
+  let #(typed, typer) = analysis.infer(source, constraint, variables)
+  let #(typed, typer) = typer.expand_providers(typed, typer, variables)
+  let #(code, evaled) = case typer.inconsistencies {
+    [] -> {
+      let code = javascript.render_to_string(typed, typer)
+      let evaled = javascript.eval(typed, typer)
+      #(code, Ok(evaled))
+    }
+    _ -> #("", Error(Nil))
   }
-}
 
-// returns bool if error
-pub fn target_type(editor) {
-  let Editor(tree: tree, typer: typer, selection: selection, ..) = editor
-  // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
-  case selection {
-    Some(path) ->
-      case get_element(tree, path) {
-        Expression(#(_, e.Let(_, value, _))) ->
-          expression_type(value, typer, editor.harness.native_to_string)
-        Expression(expression) ->
-          expression_type(expression, typer, editor.harness.native_to_string)
-        _ -> #(False, "")
-      }
-    None -> #(False, "")
-  }
+  Cache(typed, typer, code, evaled)
 }
 
 pub fn is_selected(editor: Editor(n), path) {
@@ -103,8 +85,8 @@ pub fn is_selected(editor: Editor(n), path) {
   }
 }
 
-pub fn inconsistencies(editor) {
-  let Editor(typer: t, ..) = editor
+fn inconsistencies(editor) {
+  let Editor(cache: Cache(typer: t, ..), ..) = editor
   list.sort(
     t.inconsistencies,
     fn(a, b) {
@@ -120,27 +102,10 @@ pub fn inconsistencies(editor) {
   })
 }
 
-// reuse this code by putting it in platform.compile/codegen/eval
-// Question does editor depend on platform or visaverca happy to make descision later
-pub fn codegen(editor) {
-  let Editor(tree: tree, typer: typer, ..) = editor
-  let good = list.length(typer.inconsistencies) == 0
-  let code = javascript.render_to_string(tree, typer)
-  #(good, code)
-}
-
-pub fn eval(editor) {
-  let Editor(tree: tree, typer: typer, ..) = editor
-  case list.length(typer.inconsistencies) {
-    0 -> Ok(javascript.eval(tree, typer))
-    _ -> Error("some inconsitencies")
-  }
-}
-
 pub fn dump(editor) {
-  let Editor(tree: tree, ..) = editor
+  let Editor(source: source, ..) = editor
   let dump =
-    encode.to_json(tree)
+    encode.to_json(source)
     |> encode.json_to_string
   dump
 }
@@ -148,9 +113,8 @@ pub fn dump(editor) {
 pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let constraint = t.Unbound(-1)
-  let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
-  let #(typed, typer) = typer.expand_providers(typed, typer, harness.variables)
-  Editor("ast", harness, constraint, typed, typer, None, Command, False, None)
+  let cache = analyse(untyped, constraint, harness)
+  Editor("ast", harness, constraint, untyped, None, Command, False, None, cache)
 }
 
 pub fn yank_path(editor: Editor(n)) {
@@ -188,7 +152,7 @@ fn handle_expression_change(expression, content) {
 }
 
 pub fn autofill_choice(editor, content) {
-  let Editor(tree: tree, selection: selection, ..) = editor
+  let Editor(selection: selection, ..) = editor
   let content = case editor.mode {
     Select(choices, filter) -> {
       let filtered = list.filter(choices, string.starts_with(_, filter))
@@ -206,7 +170,7 @@ pub fn autofill_choice(editor, content) {
 }
 
 pub fn handle_change(editor, content) {
-  let Editor(tree: tree, selection: selection, ..) = editor
+  let Editor(source: tree, selection: selection, ..) = editor
   let content = case editor.mode {
     Select(choices, filter) -> {
       let filtered = list.filter(choices, string.starts_with(_, filter))
@@ -365,7 +329,7 @@ pub fn handle_transformation(
   key,
   ctrl_key,
 ) -> #(Option(e.Expression(Dynamic, Dynamic)), List(Int), Mode) {
-  let Editor(tree: tree, ..) = editor
+  let Editor(source: tree, ..) = editor
   let inconsistencies = inconsistencies(editor)
   case key, ctrl_key {
     // move
@@ -403,7 +367,7 @@ pub fn handle_transformation(
     "d", False -> delete(tree, position)
     // modes
     "i", False -> draft(tree, position)
-    "v", False -> variable(tree, position)
+    "v", False -> variable(editor.cache.typed, position)
     // xpand for view all in under selection
     // Fallback
     "Control", _ | "Shift", _ | "Alt", _ | "Meta", _ -> #(
@@ -449,13 +413,13 @@ pub fn toggle_code(editor: Editor(_)) {
 }
 
 pub fn yank(editor) {
-  let Editor(tree: tree, selection: selection, ..) = editor
+  let Editor(source: source, selection: selection, ..) = editor
   let path = case selection {
     Some(path) -> path
     None -> []
   }
 
-  case get_element(tree, path) {
+  case get_element(source, path) {
     Expression(expression) ->
       Editor(..editor, yanked: Some(#(path, untype(expression))))
     _ -> editor
@@ -463,14 +427,14 @@ pub fn yank(editor) {
 }
 
 pub fn paste(editor) {
-  let Editor(tree: tree, selection: selection, yanked: yanked, ..) = editor
+  let Editor(source: source, selection: selection, yanked: yanked, ..) = editor
   let path = case selection {
     Some(path) -> path
     None -> []
   }
   case yanked {
     Some(#(_, new)) -> {
-      let untyped = replace_expression(tree, path, new)
+      let untyped = replace_expression(source, path, new)
       Ok(set_untyped(editor, untyped))
     }
 
@@ -513,7 +477,7 @@ pub fn increase_selection(editor) {
 
 // This action does result in changes to the tree
 pub fn decrease_selection(editor) {
-  let Editor(selection: selection, tree: tree, ..) = editor
+  let Editor(selection: selection, source: tree, ..) = editor
   try #(untyped, path, mode) = case selection {
     Some(path) -> {
       let inner = path.append(path, 0)
@@ -1175,8 +1139,7 @@ fn match_let(target) {
 fn closest(
   tree,
   position,
-  search: fn(Element(Metadata(n), #(Metadata(n), e.Node(Metadata(n), Dynamic)))) ->
-    Result(t, Nil),
+  search: fn(Element(Dynamic, Dynamic)) -> Result(t, Nil),
 ) -> Option(#(List(Int), Int, t)) {
   case path.parent(position) {
     Error(Nil) -> None

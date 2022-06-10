@@ -11,6 +11,7 @@ import eyg/editor/editor
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/editor/type_info
+import eyg/analysis
 
 pub fn is_multiexpression(expression) {
   case expression {
@@ -71,6 +72,46 @@ pub fn is_target(display) {
   }
 }
 
+// returns bool if error
+pub fn target_type(editor) {
+  let editor.Editor(cache: cache, selection: selection, ..) = editor
+  case selection {
+    Some(path) ->
+      case editor.get_element(cache.typed, path) {
+        editor.Expression(#(_, e.Let(_, value, _))) ->
+          expression_type(value, cache.typer, editor.harness.native_to_string)
+        editor.Expression(expression) ->
+          expression_type(
+            expression,
+            cache.typer,
+            editor.harness.native_to_string,
+          )
+        _ -> #(False, "")
+      }
+    None -> #(False, "")
+  }
+}
+
+fn expression_type(
+  expression: e.Expression(Metadata(n), a),
+  typer: typer.Typer(n),
+  native_to_string,
+) {
+  let #(metadata, _) = expression
+  case metadata.type_ {
+    Ok(t) -> #(
+      False,
+      t.resolve(t, typer.substitutions)
+      |> analysis.shrink
+      |> type_info.to_string(native_to_string),
+    )
+    Error(reason) -> #(
+      True,
+      type_info.reason_to_string(reason, native_to_string),
+    )
+  }
+}
+
 fn child_selection(selection, child) {
   case selection {
     Above([x, ..rest]) if x == child -> Above(rest)
@@ -101,12 +142,12 @@ pub fn show_expression(metadata) {
 }
 
 pub fn display(editor) {
-  let editor.Editor(tree: tree, selection: selection, ..) = editor
+  let editor.Editor(source: source, selection: selection, ..) = editor
   let selection = case selection {
     Some(path) -> Above(path)
     None -> Neither
   }
-  do_display(tree, path.root(), selection, editor)
+  do_display(editor.cache.typed, path.root(), selection, editor)
 }
 
 // if not selected print value minimal
@@ -117,7 +158,8 @@ pub fn display(editor) {
 // unless we treat it as empty string variable.
 pub fn do_display(tree, position, selection, editor) {
   let #(Metadata(type_: type_, ..), expression) = tree
-  let editor.Editor(expanded: expanded, typer: typer, ..) = editor
+  let editor.Editor(expanded: expanded, ..) = editor
+  let typer: typer.Typer(_) = editor.cache.typer
   let #(errored, type_) = case type_ {
     Ok(type_) -> #(
       False,

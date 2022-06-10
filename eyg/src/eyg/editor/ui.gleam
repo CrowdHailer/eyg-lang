@@ -47,8 +47,7 @@ pub fn handle_keydown(editor, key, ctrl, input) {
     "s", _, None -> editor.decrease_selection(editor)
     "x", _, None -> Ok(editor.toggle_provider_expansion(editor))
     _, _, None -> {
-      let Editor(tree: tree, typer: typer, selection: selection, mode: mode, ..) =
-        editor
+      let Editor(selection: selection, mode: mode, ..) = editor
       let path = case selection {
         Some(path) -> path
         None -> []
