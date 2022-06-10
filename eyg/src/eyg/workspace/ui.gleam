@@ -40,14 +40,13 @@ pub fn init() {
           let state = Workspace(..before, editor: Some(e))
           let state = workspace.focus_on_mount(state, 0)
 
-          let state = case editor.eval(e) {
-            Ok(code) -> {
-              let func = workspace.code_update(code, _)
-              workspace.dispatch_to_app(state, func)
-            }
-            _ -> state
-          }
-
+          // let state = case editor.eval(e) {
+          //   Ok(code) -> {
+          //     let func = workspace.code_update(code, _)
+          //     workspace.dispatch_to_app(state, func)
+          //   }
+          //   _ -> state
+          // }
           #(state, array.from_list([]))
         }
       },
@@ -69,16 +68,17 @@ pub fn click(marker) -> Transform(n) {
             let editor = editor_ui.handle_click(editor, last)
             let workspace =
               Workspace(..before, focus: OnEditor, editor: Some(editor))
-            case editor.eval(editor) {
-              Ok(code) -> {
-                let func = workspace.code_update(code, _)
-                workspace.dispatch_to_app(workspace, func)
-              }
-              _ -> workspace
-            }
           }
         }
       }
+      // TODO
+      // case editor.eval(editor) {
+      //   Ok(code) -> {
+      //     let func = workspace.code_update(code, _)
+      //     workspace.dispatch_to_app(workspace, func)
+      //   }
+      //   _ -> workspace
+      // }
       ["bench", ..rest] ->
         case rest {
           [] -> Workspace(..before, focus: OnMounts)
@@ -112,14 +112,15 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
       let workspace = Workspace(..before, editor: Some(editor))
       // TODO move equality to untyped tree
       case before.editor != workspace.editor {
-        True ->
-          case editor.eval(editor) {
-            Ok(code) -> {
-              let func = workspace.code_update(code, _)
-              workspace.dispatch_to_app(workspace, func)
-            }
-            _ -> workspace
-          }
+        True -> workspace
+        // TODO reinstate
+        // case editor.eval(editor) {
+        //   Ok(code) -> {
+        //     let func = workspace.code_update(code, _)
+        //     workspace.dispatch_to_app(workspace, func)
+        //   }
+        //   _ -> workspace
+        // }
         False -> workspace
       }
     }
@@ -136,13 +137,14 @@ pub fn on_input(data, marker) -> Transform(n) {
   fn(before) {
     let workspace = case before {
       Workspace(focus: OnMounts, editor: Some(editor), active_mount: i, ..) ->
-        case editor.eval(editor) {
-          Ok(code) -> {
-            let func = workspace.handle_input(_, data)
-            workspace.dispatch_to_app(before, func)
-          }
-          _ -> before
-        }
+        // case editor.eval(editor) {
+        //   Ok(code) -> {
+        //     let func = workspace.handle_input(_, data)
+        //     workspace.dispatch_to_app(before, func)
+        //   }
+        //   _ -> before
+        // }
+        before
       Workspace(focus: OnEditor, editor: Some(editor), ..) -> {
         let editor = editor_ui.handle_input(editor, data)
         let workspace = Workspace(..before, editor: Some(editor))

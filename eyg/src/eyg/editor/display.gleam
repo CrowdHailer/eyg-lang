@@ -101,12 +101,12 @@ pub fn show_expression(metadata) {
 }
 
 pub fn display(editor) {
-  let editor.Editor(tree: tree, selection: selection, ..) = editor
+  let editor.Editor(source: source, selection: selection, ..) = editor
   let selection = case selection {
     Some(path) -> Above(path)
     None -> Neither
   }
-  do_display(tree, path.root(), selection, editor)
+  do_display(todo("this needs the analysis"), path.root(), selection, editor)
 }
 
 // if not selected print value minimal
@@ -117,7 +117,8 @@ pub fn display(editor) {
 // unless we treat it as empty string variable.
 pub fn do_display(tree, position, selection, editor) {
   let #(Metadata(type_: type_, ..), expression) = tree
-  let editor.Editor(expanded: expanded, typer: typer, ..) = editor
+  let editor.Editor(expanded: expanded, ..) = editor
+  let typer: typer.Typer(_) = todo("from analysis")
   let #(errored, type_) = case type_ {
     Ok(type_) -> #(
       False,

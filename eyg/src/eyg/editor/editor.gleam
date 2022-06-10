@@ -31,9 +31,7 @@ pub type Editor(n) {
     show: String,
     harness: harness.Harness(n),
     constraint: t.Monotype(n),
-    // maybe manipulate only untyped as tree, call it source??
-    tree: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
-    typer: typer.Typer(n),
+    source: e.Expression(Dynamic, Dynamic),
     selection: Option(List(Int)),
     mode: Mode,
     expanded: Bool,
@@ -43,11 +41,10 @@ pub type Editor(n) {
 
 pub fn set_constraint(editor: Editor(_), constraint) {
   Editor(..editor, constraint: constraint)
-  |> analyse(untype(editor.tree))
 }
 
-pub fn set_untyped(editor: Editor(_), untyped) {
-  analyse(editor, untyped)
+pub fn set_untyped(editor: Editor(_), source) {
+  Editor(..editor, source: source)
 }
 
 pub fn analyse(editor: Editor(_), untyped) {
@@ -56,7 +53,9 @@ pub fn analyse(editor: Editor(_), untyped) {
   let #(typed, typer) =
     typer.expand_providers(typed, typer, editor.harness.variables)
 
-  Editor(..editor, tree: typed, typer: typer)
+  // Editor(..editor, tree: typed, typer: typer)
+  // TODO code eval
+  #(typed, typer)
 }
 
 fn expression_type(
@@ -81,19 +80,20 @@ fn expression_type(
 
 // returns bool if error
 pub fn target_type(editor) {
-  let Editor(tree: tree, typer: typer, selection: selection, ..) = editor
-  // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
-  case selection {
-    Some(path) ->
-      case get_element(tree, path) {
-        Expression(#(_, e.Let(_, value, _))) ->
-          expression_type(value, typer, editor.harness.native_to_string)
-        Expression(expression) ->
-          expression_type(expression, typer, editor.harness.native_to_string)
-        _ -> #(False, "")
-      }
-    None -> #(False, "")
-  }
+  todo("do we even use this")
+  // let Editor(tree: tree, typer: typer, selection: selection, ..) = editor
+  // // can leave active on manipulation and just pull path on search for active, would make beginning of transform very inefficient as would involve a search
+  // case selection {
+  //   Some(path) ->
+  //     case get_element(tree, path) {
+  //       Expression(#(_, e.Let(_, value, _))) ->
+  //         expression_type(value, typer, editor.harness.native_to_string)
+  //       Expression(expression) ->
+  //         expression_type(expression, typer, editor.harness.native_to_string)
+  //       _ -> #(False, "")
+  //     }
+  //   None -> #(False, "")
+  // }
 }
 
 pub fn is_selected(editor: Editor(n), path) {
@@ -104,53 +104,54 @@ pub fn is_selected(editor: Editor(n), path) {
 }
 
 pub fn inconsistencies(editor) {
-  let Editor(typer: t, ..) = editor
-  list.sort(
-    t.inconsistencies,
-    fn(a, b) {
-      let #(a_path, _) = a
-      let #(b_path, _) = b
-      path.order(a_path, b_path)
-    },
-  )
-  |> list.map(fn(i) {
-    let #(path, reason) = i
-    let reason = type_info.resolve_reason(reason, t)
-    #(path, type_info.reason_to_string(reason, editor.harness.native_to_string))
-  })
+  todo("I dont think we need this public")
+  // let Editor(typer: t, ..) = editor
+  // list.sort(
+  //   t.inconsistencies,
+  //   fn(a, b) {
+  //     let #(a_path, _) = a
+  //     let #(b_path, _) = b
+  //     path.order(a_path, b_path)
+  //   },
+  // )
+  // |> list.map(fn(i) {
+  //   let #(path, reason) = i
+  //   let reason = type_info.resolve_reason(reason, t)
+  //   #(path, type_info.reason_to_string(reason, editor.harness.native_to_string))
+  // })
 }
 
 // reuse this code by putting it in platform.compile/codegen/eval
 // Question does editor depend on platform or visaverca happy to make descision later
-pub fn codegen(editor) {
-  let Editor(tree: tree, typer: typer, ..) = editor
-  let good = list.length(typer.inconsistencies) == 0
-  let code = javascript.render_to_string(tree, typer)
-  #(good, code)
-}
-
-pub fn eval(editor) {
-  let Editor(tree: tree, typer: typer, ..) = editor
-  case list.length(typer.inconsistencies) {
-    0 -> Ok(javascript.eval(tree, typer))
-    _ -> Error("some inconsitencies")
-  }
-}
-
-pub fn dump(editor) {
-  let Editor(tree: tree, ..) = editor
-  let dump =
-    encode.to_json(tree)
-    |> encode.json_to_string
-  dump
-}
-
+// TODO remove
+// pub fn codegen(editor) {
+//   let Editor(tree: tree, typer: typer, ..) = editor
+//   let good = list.length(typer.inconsistencies) == 0
+//   let code = javascript.render_to_string(tree, typer)
+//   #(good, code)
+// }
+// TODO remove
+// pub fn eval(editor) {
+//   let Editor(tree: tree, typer: typer, ..) = editor
+//   case list.length(typer.inconsistencies) {
+//     0 -> Ok(javascript.eval(tree, typer))
+//     _ -> Error("some inconsitencies")
+//   }
+// }
+// TODO call out
+// pub fn dump(editor) {
+//   let Editor(tree: tree, ..) = editor
+//   let dump =
+//     encode.to_json(tree)
+//     |> encode.json_to_string
+//   dump
+// }
 pub fn init(source, harness: harness.Harness(_)) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let constraint = t.Unbound(-1)
-  let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
-  let #(typed, typer) = typer.expand_providers(typed, typer, harness.variables)
-  Editor("ast", harness, constraint, typed, typer, None, Command, False, None)
+  // let #(typed, typer) = analysis.infer(untyped, constraint, harness.variables)
+  // let #(typed, typer) = typer.expand_providers(typed, typer, harness.variables)
+  Editor("ast", harness, constraint, untyped, None, Command, False, None)
 }
 
 pub fn yank_path(editor: Editor(n)) {
@@ -188,7 +189,7 @@ fn handle_expression_change(expression, content) {
 }
 
 pub fn autofill_choice(editor, content) {
-  let Editor(tree: tree, selection: selection, ..) = editor
+  let Editor(selection: selection, ..) = editor
   let content = case editor.mode {
     Select(choices, filter) -> {
       let filtered = list.filter(choices, string.starts_with(_, filter))
@@ -206,7 +207,7 @@ pub fn autofill_choice(editor, content) {
 }
 
 pub fn handle_change(editor, content) {
-  let Editor(tree: tree, selection: selection, ..) = editor
+  let Editor(source: tree, selection: selection, ..) = editor
   let content = case editor.mode {
     Select(choices, filter) -> {
       let filtered = list.filter(choices, string.starts_with(_, filter))
@@ -365,7 +366,7 @@ pub fn handle_transformation(
   key,
   ctrl_key,
 ) -> #(Option(e.Expression(Dynamic, Dynamic)), List(Int), Mode) {
-  let Editor(tree: tree, ..) = editor
+  let Editor(source: tree, ..) = editor
   let inconsistencies = inconsistencies(editor)
   case key, ctrl_key {
     // move
@@ -449,13 +450,13 @@ pub fn toggle_code(editor: Editor(_)) {
 }
 
 pub fn yank(editor) {
-  let Editor(tree: tree, selection: selection, ..) = editor
+  let Editor(source: source, selection: selection, ..) = editor
   let path = case selection {
     Some(path) -> path
     None -> []
   }
 
-  case get_element(tree, path) {
+  case get_element(source, path) {
     Expression(expression) ->
       Editor(..editor, yanked: Some(#(path, untype(expression))))
     _ -> editor
@@ -463,14 +464,14 @@ pub fn yank(editor) {
 }
 
 pub fn paste(editor) {
-  let Editor(tree: tree, selection: selection, yanked: yanked, ..) = editor
+  let Editor(source: source, selection: selection, yanked: yanked, ..) = editor
   let path = case selection {
     Some(path) -> path
     None -> []
   }
   case yanked {
     Some(#(_, new)) -> {
-      let untyped = replace_expression(tree, path, new)
+      let untyped = replace_expression(source, path, new)
       Ok(set_untyped(editor, untyped))
     }
 
@@ -513,7 +514,7 @@ pub fn increase_selection(editor) {
 
 // This action does result in changes to the tree
 pub fn decrease_selection(editor) {
-  let Editor(selection: selection, tree: tree, ..) = editor
+  let Editor(selection: selection, source: tree, ..) = editor
   try #(untyped, path, mode) = case selection {
     Some(path) -> {
       let inner = path.append(path, 0)
@@ -1175,8 +1176,7 @@ fn match_let(target) {
 fn closest(
   tree,
   position,
-  search: fn(Element(Metadata(n), #(Metadata(n), e.Node(Metadata(n), Dynamic)))) ->
-    Result(t, Nil),
+  search: fn(Element(Dynamic, Dynamic)) -> Result(t, Nil),
 ) -> Option(#(List(Int), Int, t)) {
   case path.parent(position) {
     Error(Nil) -> None
@@ -1722,27 +1722,28 @@ fn variable(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
-    Expression(#(metadata, _)) -> {
-      let Metadata(scope: scope, ..) = metadata
-      let variables =
-        list.fold(
-          scope,
-          [],
-          fn(acc, variable) {
-            case variable {
-              #(label, polytype.Polytype(_, type_)) -> {
-                let prefix = string.append(label, ".")
-                let sub =
-                  get_fields_from_type(type_)
-                  |> list.map(string.append(prefix, _))
-                  |> list.append(acc)
-                [label, ..sub]
-              }
-            }
-          },
-        )
-      #(None, position, Select(variables, ""))
-    }
+    // TODO
+    // Expression(#(metadata, _)) -> {
+    //   let Metadata(scope: scope, ..) = metadata
+    //   let variables =
+    //     list.fold(
+    //       scope,
+    //       [],
+    //       fn(acc, variable) {
+    //         case variable {
+    //           #(label, polytype.Polytype(_, type_)) -> {
+    //             let prefix = string.append(label, ".")
+    //             let sub =
+    //               get_fields_from_type(type_)
+    //               |> list.map(string.append(prefix, _))
+    //               |> list.append(acc)
+    //             [label, ..sub]
+    //           }
+    //         }
+    //       },
+    //     )
+    //   #(None, position, Select(variables, ""))
+    // }
     _ -> #(None, position, Command)
   }
 }
