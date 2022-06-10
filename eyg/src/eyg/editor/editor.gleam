@@ -126,22 +126,21 @@ pub fn is_selected(editor: Editor(n), path) {
   }
 }
 
-pub fn inconsistencies(editor) {
-  todo("I dont think we need this public")
-  // let Editor(typer: t, ..) = editor
-  // list.sort(
-  //   t.inconsistencies,
-  //   fn(a, b) {
-  //     let #(a_path, _) = a
-  //     let #(b_path, _) = b
-  //     path.order(a_path, b_path)
-  //   },
-  // )
-  // |> list.map(fn(i) {
-  //   let #(path, reason) = i
-  //   let reason = type_info.resolve_reason(reason, t)
-  //   #(path, type_info.reason_to_string(reason, editor.harness.native_to_string))
-  // })
+fn inconsistencies(editor) {
+  let Editor(cache: Cache(typer: t, ..), ..) = editor
+  list.sort(
+    t.inconsistencies,
+    fn(a, b) {
+      let #(a_path, _) = a
+      let #(b_path, _) = b
+      path.order(a_path, b_path)
+    },
+  )
+  |> list.map(fn(i) {
+    let #(path, reason) = i
+    let reason = type_info.resolve_reason(reason, t)
+    #(path, type_info.reason_to_string(reason, editor.harness.native_to_string))
+  })
 }
 
 pub fn dump(editor) {
@@ -409,7 +408,7 @@ pub fn handle_transformation(
     "d", False -> delete(tree, position)
     // modes
     "i", False -> draft(tree, position)
-    "v", False -> variable(tree, position)
+    "v", False -> variable(editor.cache.typed, position)
     // xpand for view all in under selection
     // Fallback
     "Control", _ | "Shift", _ | "Alt", _ | "Meta", _ -> #(
@@ -1727,28 +1726,27 @@ fn variable(tree, position) {
   case get_element(tree, position) {
     // Confusing to replace a whole Let at once.
     Expression(#(_, e.Let(_, _, _))) -> #(None, position, Command)
-    // TODO
-    // Expression(#(metadata, _)) -> {
-    //   let Metadata(scope: scope, ..) = metadata
-    //   let variables =
-    //     list.fold(
-    //       scope,
-    //       [],
-    //       fn(acc, variable) {
-    //         case variable {
-    //           #(label, polytype.Polytype(_, type_)) -> {
-    //             let prefix = string.append(label, ".")
-    //             let sub =
-    //               get_fields_from_type(type_)
-    //               |> list.map(string.append(prefix, _))
-    //               |> list.append(acc)
-    //             [label, ..sub]
-    //           }
-    //         }
-    //       },
-    //     )
-    //   #(None, position, Select(variables, ""))
-    // }
+    Expression(#(metadata, _)) -> {
+      let Metadata(scope: scope, ..) = metadata
+      let variables =
+        list.fold(
+          scope,
+          [],
+          fn(acc, variable) {
+            case variable {
+              #(label, polytype.Polytype(_, type_)) -> {
+                let prefix = string.append(label, ".")
+                let sub =
+                  get_fields_from_type(type_)
+                  |> list.map(string.append(prefix, _))
+                  |> list.append(acc)
+                [label, ..sub]
+              }
+            }
+          },
+        )
+      #(None, position, Select(variables, ""))
+    }
     _ -> #(None, position, Command)
   }
 }
