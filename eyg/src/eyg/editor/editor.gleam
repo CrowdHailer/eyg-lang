@@ -115,7 +115,7 @@ pub fn inconsistencies(editor) {
   )
   |> list.map(fn(i) {
     let #(path, reason) = i
-    // TODO resolve
+    let reason = type_info.resolve_reason(reason, t)
     #(path, type_info.reason_to_string(reason, editor.harness.native_to_string))
   })
 }

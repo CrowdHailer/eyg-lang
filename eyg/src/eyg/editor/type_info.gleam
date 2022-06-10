@@ -85,7 +85,7 @@ pub fn resolve_reason(reason, typer: Typer(n)) {
         t.resolve(given, typer.substitutions),
       )
 
-    typer.MissingFields(expected) -> todo
+    typer.MissingFields(expected) -> todo("missin")
     // TODO resolve field function
     // typer.MissingFields(list.map(expected, ))
     //   [
@@ -107,7 +107,7 @@ pub fn resolve_reason(reason, typer: Typer(n)) {
     //     |> list.intersperse(", ")
     //   ]
     //   |> string.concat
-    typer.UnexpectedFields(expected) -> todo
+    typer.UnexpectedFields(expected) -> todo("unexpected")
     //   [
     //     "Unexpected fields: ",
     //     ..list.map(

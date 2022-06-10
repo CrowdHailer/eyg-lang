@@ -9,6 +9,7 @@ import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
 import misc
+import eyg/editor/type_info
 
 pub fn infer(untyped, type_, variables) {
   let checker = typer.init()
@@ -28,8 +29,10 @@ pub fn get_type(typed, checker: typer.Typer(n)) {
       let type_ = shrink(type_)
       Ok(type_)
     }
-    // TODO resolve error
-    Error(reason) -> Error(reason)
+    Error(reason) -> {
+      let reason = type_info.resolve_reason(reason, checker)
+      Error(reason)
+    }
   }
 }
 
