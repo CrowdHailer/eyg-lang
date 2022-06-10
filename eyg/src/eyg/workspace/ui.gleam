@@ -37,17 +37,16 @@ pub fn init() {
       fn(data) {
         fn(before) {
           let e = editor.init(data, browser.harness())
-          let state = Workspace(..before, editor: Some(e))
-          let state = workspace.focus_on_mount(state, 0)
-
-          // let state = case editor.eval(e) {
-          //   Ok(code) -> {
-          //     let func = workspace.code_update(code, _)
-          //     workspace.dispatch_to_app(state, func)
-          //   }
-          //   _ -> state
-          // }
-          #(state, array.from_list([]))
+          let workspace = Workspace(..before, editor: Some(e))
+          let workspace = workspace.focus_on_mount(workspace, 0)
+          let workspace = case e.cache.evaled {
+            Ok(code) -> {
+              let func = workspace.code_update(code, _)
+              workspace.dispatch_to_app(workspace, func)
+            }
+            _ -> workspace
+          }
+          #(workspace, array.from_list([]))
         }
       },
     )
@@ -64,21 +63,21 @@ pub fn click(marker) -> Transform(n) {
       ["editor", ..rest] -> {
         let editor = case list.reverse(rest), before.editor {
           [], _ -> before
-          [last, ..], Some(editor) -> {
-            let editor = editor_ui.handle_click(editor, last)
+          [last, ..], Some(before_editor) -> {
+            let editor = editor_ui.handle_click(before_editor, last)
             let workspace =
               Workspace(..before, focus: OnEditor, editor: Some(editor))
+            let changed = editor.source != before_editor.source
+            case changed, editor.cache.evaled {
+              True, Ok(code) -> {
+                let func = workspace.code_update(code, _)
+                workspace.dispatch_to_app(workspace, func)
+              }
+              _, _ -> workspace
+            }
           }
         }
       }
-      // TODO
-      // case editor.eval(editor) {
-      //   Ok(code) -> {
-      //     let func = workspace.code_update(code, _)
-      //     workspace.dispatch_to_app(workspace, func)
-      //   }
-      //   _ -> workspace
-      // }
       ["bench", ..rest] ->
         case rest {
           [] -> Workspace(..before, focus: OnMounts)
