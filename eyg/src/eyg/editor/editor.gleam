@@ -78,47 +78,6 @@ fn analyse(source, constraint, harness) {
   Cache(typed, typer, code, evaled)
 }
 
-fn expression_type(
-  expression: e.Expression(Metadata(n), a),
-  typer: typer.Typer(n),
-  native_to_string,
-) {
-  let #(metadata, _) = expression
-  case metadata.type_ {
-    Ok(t) -> #(
-      False,
-      t.resolve(t, typer.substitutions)
-      |> analysis.shrink
-      |> type_info.to_string(native_to_string),
-    )
-    Error(reason) -> #(
-      True,
-      type_info.reason_to_string(reason, native_to_string),
-    )
-  }
-}
-
-// returns bool if error
-// TODO move to display
-pub fn target_type(editor) {
-  let Editor(cache: cache, selection: selection, ..) = editor
-  case selection {
-    Some(path) ->
-      case get_element(cache.typed, path) {
-        Expression(#(_, e.Let(_, value, _))) ->
-          expression_type(value, cache.typer, editor.harness.native_to_string)
-        Expression(expression) ->
-          expression_type(
-            expression,
-            cache.typer,
-            editor.harness.native_to_string,
-          )
-        _ -> #(False, "")
-      }
-    None -> #(False, "")
-  }
-}
-
 pub fn is_selected(editor: Editor(n), path) {
   case editor.selection {
     Some(p) if p == path -> True

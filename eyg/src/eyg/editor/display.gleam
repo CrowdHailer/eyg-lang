@@ -11,6 +11,7 @@ import eyg/editor/editor
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/editor/type_info
+import eyg/analysis
 
 pub fn is_multiexpression(expression) {
   case expression {
@@ -68,6 +69,46 @@ pub fn is_target(display) {
   case selection {
     Above([]) -> True
     _ -> False
+  }
+}
+
+// returns bool if error
+pub fn target_type(editor) {
+  let editor.Editor(cache: cache, selection: selection, ..) = editor
+  case selection {
+    Some(path) ->
+      case editor.get_element(cache.typed, path) {
+        editor.Expression(#(_, e.Let(_, value, _))) ->
+          expression_type(value, cache.typer, editor.harness.native_to_string)
+        editor.Expression(expression) ->
+          expression_type(
+            expression,
+            cache.typer,
+            editor.harness.native_to_string,
+          )
+        _ -> #(False, "")
+      }
+    None -> #(False, "")
+  }
+}
+
+fn expression_type(
+  expression: e.Expression(Metadata(n), a),
+  typer: typer.Typer(n),
+  native_to_string,
+) {
+  let #(metadata, _) = expression
+  case metadata.type_ {
+    Ok(t) -> #(
+      False,
+      t.resolve(t, typer.substitutions)
+      |> analysis.shrink
+      |> type_info.to_string(native_to_string),
+    )
+    Error(reason) -> #(
+      True,
+      type_info.reason_to_string(reason, native_to_string),
+    )
   }
 }
 

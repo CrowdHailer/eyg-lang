@@ -4,16 +4,13 @@
 
   import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/editor";
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
-  import Ui from "../workspace/UI.svelte";
 
   export let editor;
   $: window.eyg_source = Editor.dump(editor);
 </script>
 
 {#if editor.show == "code"}
-  <pre class="w-full m-auto px-10 py-4" tabindex="0">{Editor.codegen(
-      editor
-    )[1]}</pre>
+  <pre class="w-full m-auto px-10 py-4" tabindex="0">{editor.cache.code}</pre>
   <div class="sticky bottom-0 bg-gray-200 p-2 pb-4" />
 {:else if editor.show == "dump"}
   <textarea class="w-full h-full m-auto p-4" tabindex="0"
@@ -58,8 +55,8 @@
   </div>
   <div
     class="sticky bottom-0 bg-gray-200 p-2 pb-4"
-    class:bg-red-200={Editor.target_type(editor)[0]}
+    class:bg-red-200={Display.target_type(editor)[0]}
   >
-    type: {Editor.target_type(editor)[1]}
+    type: {Display.target_type(editor)[1]}
   </div>
 {/if}
