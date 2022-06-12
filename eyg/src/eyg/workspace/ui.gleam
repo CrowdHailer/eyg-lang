@@ -26,7 +26,7 @@ pub fn init() {
       apps: [
         workspace.App("counter", workspace.UI(None, None, "")),
         workspace.App("test", workspace.TestSuite("True")),
-        workspace.App("cli", workspace.String2String("", "")),
+        workspace.App("cli", workspace.String2String("", "", None)),
         workspace.App("scan", workspace.Firmata(None)),
       ],
     )
@@ -39,13 +39,6 @@ pub fn init() {
           let e = editor.init(data, browser.harness())
           let workspace = Workspace(..before, editor: Some(e))
           let workspace = workspace.focus_on_mount(workspace, 0)
-          let workspace = case e.cache.evaled {
-            Ok(code) -> {
-              let func = workspace.code_update(code, _)
-              workspace.dispatch_to_app(workspace, func)
-            }
-            _ -> workspace
-          }
           #(workspace, array.from_list([]))
         }
       },

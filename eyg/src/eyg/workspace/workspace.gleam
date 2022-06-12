@@ -29,7 +29,11 @@ pub type Workspace(n) {
 // Bench rename panel benches?
 pub type Mount(a) {
   Static(value: String)
-  String2String(input: String, output: String)
+  String2String(
+    input: String,
+    output: String,
+    func: Option(fn(String) -> String),
+  )
   TestSuite(result: String)
   UI(
     initial: Option(a),
@@ -62,7 +66,14 @@ pub fn handle_input(app, data) {
   let App(key, mount) = app
 
   let mount = case app.mount {
-    String2String(input, output) -> String2String(data, output)
+    String2String(input, output, func) ->
+      case func {
+        None -> String2String(data, output, func)
+        Some(f) -> {
+          let output = f(data)
+          String2String(data, output, func)
+        }
+      }
     _ -> todo("this app dont change here")
   }
   App(key, mount)
@@ -102,7 +113,7 @@ fn mount_constraint(mount) {
           extra: None,
         ),
       )
-    String2String(_, _) -> t.Function(t.Binary, t.Binary)
+    String2String(_, _, _) -> t.Function(t.Binary, t.Binary)
     UI(_, _, _) ->
       t.Record(
         [
@@ -140,7 +151,16 @@ pub fn focus_on_mount(before: Workspace(_), index) {
       Some(editor)
     }
   }
-  Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
+
+  let workspace =
+    Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
+  case workspace.editor {
+    Some(editor.Editor(cache: editor.Cache(evaled: Ok(code), ..), ..)) -> {
+      let func = code_update(code, _)
+      dispatch_to_app(workspace, func)
+    }
+    _ -> workspace
+  }
 }
 
 pub fn code_update(code, app) {
@@ -157,23 +177,16 @@ pub fn code_update(code, app) {
         Error(_) -> TestSuite("False")
       }
     }
-    String2String(input, output) -> {
+    String2String(input, output, _) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)
-      assert Ok(r) = prog(dynamic.from(input))
-      // TODO Inner value should be tuple 0, probably should be added to gleam extra
-      case dynamic.string(r) {
-        Ok(output) -> {
-          io.debug(input)
-          io.debug(output)
-          String2String(input, output)
-        }
-        Error(reason) -> {
-          io.debug(r)
-          io.debug(reason)
-          todo("should always be a string")
-        }
+      let prog = fn(input: String) {
+        assert Ok(output) = prog(dynamic.from(input))
+        assert Ok(output) = dynamic.string(output)
+        output
       }
+      let output = prog(input)
+      String2String(input, output, Some(prog))
     }
     Firmata(_) -> {
       let cast = gleam_extra.dynamic_function
