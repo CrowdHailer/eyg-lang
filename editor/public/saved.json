@@ -527,17 +527,37 @@
         }
       },
       "then": {
-        "node": "Record",
-        "fields": [
-          {
-            "node": "Field",
-            "key": "h1",
-            "value": {
-              "node": "Variable",
-              "label": "h1"
+        "node": "Let",
+        "pattern": {
+          "node": "Variable",
+          "label": "center"
+        },
+        "value": {
+          "node": "Provider",
+          "config": "<div class=\"m-auto\">%s</div>",
+          "generator": "Format"
+        },
+        "then": {
+          "node": "Record",
+          "fields": [
+            {
+              "node": "Field",
+              "key": "h1",
+              "value": {
+                "node": "Variable",
+                "label": "h1"
+              }
+            },
+            {
+              "node": "Field",
+              "key": "center",
+              "value": {
+                "node": "Variable",
+                "label": "center"
+              }
             }
-          }
-        ]
+          ]
+        }
       }
     },
     "then": {
@@ -671,8 +691,12 @@
                 "elements": []
               },
               "body": {
-                "node": "Binary",
-                "value": "new"
+                "node": "Access",
+                "value": {
+                  "node": "Variable",
+                  "label": "int"
+                },
+                "key": "zero"
               }
             },
             "then": {
@@ -693,9 +717,9 @@
                     "node": "Access",
                     "value": {
                       "node": "Variable",
-                      "label": "harness"
+                      "label": "int"
                     },
-                    "key": "concat"
+                    "key": "add"
                   },
                   "with": {
                     "node": "Tuple",
@@ -705,8 +729,12 @@
                         "label": "state"
                       },
                       {
-                        "node": "Binary",
-                        "value": "click2"
+                        "node": "Access",
+                        "value": {
+                          "node": "Variable",
+                          "label": "int"
+                        },
+                        "key": "one"
                       }
                     ]
                   }
@@ -725,23 +753,74 @@
                     "label": "a"
                   },
                   "body": {
-                    "node": "Call",
-                    "function": {
-                      "node": "Access",
-                      "value": {
-                        "node": "Variable",
-                        "label": "html"
-                      },
-                      "key": "h1"
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Variable",
+                      "label": "count"
                     },
-                    "with": {
-                      "node": "Tuple",
-                      "elements": [
-                        {
+                    "value": {
+                      "node": "Call",
+                      "function": {
+                        "node": "Access",
+                        "value": {
                           "node": "Variable",
-                          "label": "a"
-                        }
-                      ]
+                          "label": "html"
+                        },
+                        "key": "h1"
+                      },
+                      "with": {
+                        "node": "Tuple",
+                        "elements": [
+                          {
+                            "node": "Call",
+                            "function": {
+                              "node": "Provider",
+                              "config": "count = %s",
+                              "generator": "Format"
+                            },
+                            "with": {
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Call",
+                                  "function": {
+                                    "node": "Access",
+                                    "value": {
+                                      "node": "Variable",
+                                      "label": "int"
+                                    },
+                                    "key": "to_string"
+                                  },
+                                  "with": {
+                                    "node": "Variable",
+                                    "label": "a"
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "then": {
+                      "node": "Call",
+                      "function": {
+                        "node": "Access",
+                        "value": {
+                          "node": "Variable",
+                          "label": "html"
+                        },
+                        "key": "center"
+                      },
+                      "with": {
+                        "node": "Tuple",
+                        "elements": [
+                          {
+                            "node": "Variable",
+                            "label": "count"
+                          }
+                        ]
+                      }
                     }
                   }
                 },
