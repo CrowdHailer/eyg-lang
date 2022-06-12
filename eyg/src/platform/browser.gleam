@@ -22,8 +22,46 @@ pub fn native_to_string(type_) {
 
 pub fn harness() {
   harness.Harness(
-    [#("equal", typer.equal_fn()), #("harness", string())],
+    [#("equal", typer.equal_fn()), #("harness", string()), #("int", int())],
     native_to_string,
+  )
+}
+
+fn int() {
+  polytype.Polytype(
+    [],
+    t.Record(
+      [
+        #(
+          "parse",
+          t.Function(
+            t.Binary,
+            t.Union([#("OK", t.Native(Integer)), #("Error", t.Tuple([]))], None),
+          ),
+        ),
+        #("to_string", t.Function(t.Native(Integer), t.Binary)),
+        #(
+          "add",
+          t.Function(
+            t.Tuple([t.Native(Integer), t.Native(Integer)]),
+            t.Native(Integer),
+          ),
+        ),
+        #(
+          "compare",
+          t.Function(
+            t.Tuple([t.Native(Integer), t.Native(Integer)]),
+            t.Union(
+              [#("Lt", t.Tuple([])), #("Eq", t.Tuple([])), #("Gt", t.Tuple([]))],
+              None,
+            ),
+          ),
+        ),
+        #("zero", t.Native(Integer)),
+        #("one", t.Native(Integer)),
+      ],
+      None,
+    ),
   )
 }
 
@@ -33,7 +71,7 @@ pub fn harness() {
 // perhaps they should be letters or similar
 pub fn string() {
   polytype.Polytype(
-    [1, 2, 3, 4, 5],
+    [1, 2, 3, 4, 5, 6],
     t.Record(
       [
         #(
@@ -55,31 +93,7 @@ pub fn string() {
         ),
         #("concat", t.Function(t.Tuple([t.Binary, t.Binary]), t.Binary)),
         #("debug", t.Function(t.Unbound(2), t.Unbound(2))),
-        #("parse_int", t.Function(t.Binary, t.Native(Integer))),
-        #(
-          "add",
-          t.Function(
-            t.Tuple([t.Native(Integer), t.Native(Integer)]),
-            t.Native(Integer),
-          ),
-        ),
-        #(
-          "compare",
-          t.Function(
-            t.Tuple([t.Native(Integer), t.Native(Integer)]),
-            t.Function(
-              t.Record(
-                [
-                  #("Lt", t.Function(t.Tuple([]), t.Unbound(3))),
-                  #("Eq", t.Function(t.Tuple([]), t.Unbound(3))),
-                  #("Gt", t.Function(t.Tuple([]), t.Unbound(3))),
-                ],
-                None,
-              ),
-              t.Unbound(3),
-            ),
-          ),
-        ),
+        #("inspect", t.Function(t.Unbound(6), t.Binary)),
         #(
           "compile",
           t.Function(

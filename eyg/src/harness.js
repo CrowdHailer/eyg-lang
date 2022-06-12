@@ -69,22 +69,6 @@ export function run(code) {
       console.log(item);
       return item;
     },
-    parse_int: function (x) {
-      // TODO need to handle error case
-      return parseInt(x);
-    },
-    add: function ([a, b]) {
-      return a + b;
-    },
-    compare: function ([a, b]) {
-      if (a == b) {
-        return ({ Eq }) => Eq([]);
-      } else if (a < b) {
-        return ({ Lt }) => Lt([]);
-      } else {
-        return ({ Gt }) => Gt([]);
-      }
-    },
     compile: function ([source, constraint_literal]) {
       let constraint = eval(constraint_literal);
 
@@ -111,6 +95,39 @@ export function run(code) {
     },
   };
   foo(harness);
+  const int = {
+    parse: function (x) {
+      const maybeInt = parseInt(x);
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/isNaN#confusing_special-case_behavior
+      // leverages the unique never-equal-to-itself characteristic of NaN
+      if (maybeInt != maybeInt) {
+        return { Error: [] };
+      } else {
+        return { OK: maybeInt };
+      }
+    },
+    to_string: function (i) {
+      return i.toString();
+    },
+    add: function ([a, b]) {
+      return a + b;
+    },
+    compare: function ([a, b]) {
+      if (a == b) {
+        return { Eq: [] };
+      } else if (a < b) {
+        return { Lt: [] };
+      } else {
+        return { Gt: [] };
+      }
+    },
+    // This is because I don't have a parse assertion
+    // perhaps constant folding, not assert is the way forward here.
+    zero: 0,
+    one: 1,
+  };
+  foo(int);
+
   // let T = Monotype
   // foo(T)
   // foo(Gleam)
