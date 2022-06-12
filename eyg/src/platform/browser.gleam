@@ -48,6 +48,14 @@ fn int() {
           ),
         ),
         #(
+          "multiply",
+          t.Function(
+            t.Tuple([t.Native(Integer), t.Native(Integer)]),
+            t.Native(Integer),
+          ),
+        ),
+        #("negate", t.Function(t.Native(Integer), t.Native(Integer))),
+        #(
           "compare",
           t.Function(
             t.Tuple([t.Native(Integer), t.Native(Integer)]),
@@ -59,6 +67,7 @@ fn int() {
         ),
         #("zero", t.Native(Integer)),
         #("one", t.Native(Integer)),
+        #("two", t.Native(Integer)),
       ],
       None,
     ),

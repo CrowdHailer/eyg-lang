@@ -112,6 +112,12 @@ export function run(code) {
     add: function ([a, b]) {
       return a + b;
     },
+    multiply: function ([a, b]) {
+      return a * b;
+    },
+    negate: function (a) {
+      return -1 * b;
+    },
     compare: function ([a, b]) {
       if (a == b) {
         return { Eq: [] };
@@ -125,6 +131,7 @@ export function run(code) {
     // perhaps constant folding, not assert is the way forward here.
     zero: 0,
     one: 1,
+    two: 2,
   };
   foo(int);
 
