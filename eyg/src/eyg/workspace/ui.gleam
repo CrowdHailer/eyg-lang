@@ -9,6 +9,7 @@ import gleam_extra
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import eyg/editor/editor
+import eyg/ast/encode
 import eyg/editor/ui as editor_ui
 import platform/browser
 import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
@@ -16,20 +17,34 @@ import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
 external fn fetch(String) -> Promise(String) =
   "../../browser_ffi" "fetchSource"
 
-// TODO move to workspace
+fn apps() {
+  [
+    workspace.App("counter", workspace.UI(None, None, "")),
+    workspace.App("test", workspace.TestSuite("True")),
+    workspace.App("cli", workspace.String2String("", "", None)),
+    workspace.App("scan", workspace.Firmata(None)),
+  ]
+}
+
+pub fn deploy(hash) {
+  assert Ok(app) = list.find(apps(), fn(app: workspace.App) { app.key == hash })
+  promise.map(
+    fetch("./saved.json"),
+    fn(source) {
+      let source = encode.from_json(encode.json_from_string(source))
+      let constraint = workspace.app_constraint(app)
+      assert editor.Cache(_, _, _, Ok(code)) =
+        editor.analyse(source, constraint, browser.harness())
+      assert Ok(inner) = dynamic.field(app.key, Ok)(code)
+      inner
+    },
+  )
+}
+
+// TODO move to workspace maybe
 pub fn init() {
   let state =
-    Workspace(
-      focus: OnEditor,
-      editor: None,
-      active_mount: 0,
-      apps: [
-        workspace.App("counter", workspace.UI(None, None, "")),
-        workspace.App("test", workspace.TestSuite("True")),
-        workspace.App("cli", workspace.String2String("", "", None)),
-        workspace.App("scan", workspace.Firmata(None)),
-      ],
-    )
+    Workspace(focus: OnEditor, editor: None, active_mount: 0, apps: apps())
 
   let task =
     promise.map(

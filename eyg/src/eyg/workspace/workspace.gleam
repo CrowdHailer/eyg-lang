@@ -102,7 +102,7 @@ pub fn dispatch_to_app(workspace: Workspace(_), function) {
   Workspace(..workspace, apps: apps)
 }
 
-fn mount_constraint(mount) {
+pub fn mount_constraint(mount) {
   case mount {
     TestSuite(_) ->
       t.Function(
@@ -136,7 +136,7 @@ fn mount_constraint(mount) {
   }
 }
 
-fn app_constraint(app) {
+pub fn app_constraint(app) {
   let App(key, mount) = app
   let constraint = t.Record([#(key, mount_constraint(mount))], Some(-1))
 }
