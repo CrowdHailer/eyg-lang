@@ -74,11 +74,27 @@ pub fn generate(generator, config, hole) {
         _ -> Error(Nil)
       }
     }
-    _ -> fn(_, _) { Error(Nil) }
+    Format -> fn(_, _) {
+      let parts = string.split(config, "%s")
+      let range = list.range(1, list.length(parts))
+      let vars =
+        list.map(range, fn(i) { string.concat(["$", int.to_string(i)]) })
+      try body =
+        list.interleave([
+          parts
+          |> list.map(binary),
+          vars
+          |> list.map(fn(v) { variable(v) }),
+        ])
+        |> list.reverse
+        |> list.reduce(fn(acc, element) {
+          call(access(variable("harness"), "concat"), tuple_([element, acc]))
+        })
+      Ok(function(p.Tuple(vars), body))
+    }
+    Env -> fn(_, _) { Error(Nil) }
   }
 
-  // Env -> env
-  // Format -> format
   generator(config, hole)
 }
 
