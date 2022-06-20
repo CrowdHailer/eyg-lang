@@ -15,9 +15,28 @@ export async function connectDevice() {
     await sleep(1000);
     const writer = port.writable.getWriter();
 
-    const reset = new Uint8Array([0xff, 0xf9]);
+    // System Reset
+    const reset = new Uint8Array([0xff]);
     await writer.write(reset);
     await sleep(3000);
+    // const capability = new Uint8Array([0xf0, 0x6b, 0xf7]);
+    // await writer.write(capability);
+    // await sleep(3000);
+    // const pinstate = new Uint8Array([0xf0, 0x6d, 13, 0xf7]);
+    // await writer.write(pinstate);
+    // const reportAnalogue = new Uint8Array([0xc0, 0xa0, 1]);
+    // await writer.write(reportAnalogue);
+    // pull up
+    const setMode = new Uint8Array([0xf4, 7, 11]);
+    await writer.write(setMode);
+
+    const reportDigital = new Uint8Array([0xd0, 1]);
+    await writer.write(reportDigital);
+
+    await sleep(3000);
+
+    console.log("ASKED for capability");
+    undefined();
     // const set = new Uint8Array([0xf5, 13, 1]);
     // let r = await writer.write(set);
     // console.log(r);
@@ -91,10 +110,11 @@ async function startReader(port) {
           break;
         }
         if (value) {
-          console.log(value);
-          value.forEach((element) => {
-            console.log(element, element.toString(16));
-          });
+          // console.log(value);
+          // value.forEach((element) => {
+          //   console.log(element, element.toString(16));
+          // });
+
           const parseResult = Firmata.parse(
             new Gleam.BitString(value),
             parseState,

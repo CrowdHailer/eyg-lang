@@ -3,4 +3,4 @@ tool = "gleam"
 version = "0.1.0"
 target = "javascript"
 description = "Abstract Syntax Tree tools"
-dependencies = { gleeunit = "~> 0.6", gleam_stdlib = "~> 0.20", gleam_javascript = "~> 0.1"}
+dependencies = { gleeunit = "~> 0.6", gleam_stdlib = "~> 0.20", gleam_javascript = "~> 0.1", gleam_bitwise = "~> 1.2"}
