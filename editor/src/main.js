@@ -1,9 +1,11 @@
 // import { main } from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/main";
 import { deploy } from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/ui.mjs";
+import * as Spreasheet from "../../eyg/build/dev/javascript/eyg/dist/spreadsheet/main.mjs";
 
 import App from "./Workspace.svelte";
 
-var deployPage = window.location.pathname.slice(1) == "deploy";
+const path = window.location.pathname.slice(1);
+var deployPage = path == "deploy";
 var app;
 if (deployPage) {
   deploy(window.location.search.slice(1)).then(({ init, update, render }) => {
@@ -19,6 +21,8 @@ if (deployPage) {
       container.innerHTML = render(state);
     });
   });
+} else if (path == "spreadsheet") {
+  Spreasheet.main();
 } else {
   app = new App({
     target: document.body,
