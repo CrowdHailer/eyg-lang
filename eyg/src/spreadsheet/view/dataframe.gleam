@@ -1,18 +1,20 @@
 import gleam/io
 import gleam/int
 import gleam/list
+import gleam/string
 import lustre/attribute.{class, style}
 import lustre/element.{button, div, span, text}
-import spreadsheet/state.{Frame, State}
+import spreadsheet/log/reduce.{Frame}
 import lustre/cmd
 
-pub fn render(state: State) {
+pub fn render(frame, focus) {
+  let Frame(headers: headers, ..) = frame
+  let width = list.length(headers)
+  let grid_columns =
+    string.concat(["2em repeat(", int.to_string(width), ", minmax(0, 1fr))"])
   div(
-    [
-      class("grid"),
-      style([#("grid-template-columns", "2em repeat(3, minmax(0, 1fr))")]),
-    ],
-    cells(state.frame, state.focus),
+    [class("grid"), style([#("grid-template-columns", grid_columns)])],
+    cells(frame, focus),
   )
 }
 
