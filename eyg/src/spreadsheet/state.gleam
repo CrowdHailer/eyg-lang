@@ -14,8 +14,23 @@ pub type Frame {
 }
 
 pub fn init() {
-  let rows = reduce()
-  State(Frame(["Name", "Address", "Stuff"], rows), #(0, 0))
+  let view =
+    Table([
+      Requirement(name, StringValue(""), True),
+      Requirement(address, StringValue(""), True),
+      Requirement(stuff, StringValue(""), False),
+    ])
+
+  let frame = reduce(view)
+  State(frame, #(0, 0))
+}
+
+pub type Requirement {
+  Requirement(attribute: String, type_: Value, required: Bool)
+}
+
+pub type Table {
+  Table(requirements: List(Requirement))
 }
 
 // log/data file
@@ -44,70 +59,38 @@ fn entities(commits) {
   |> map.values()
 }
 
-fn reduce() {
-  let view = [
-    #(name, StringValue(""), True),
-    #(address, StringValue(""), True),
-    #(stuff, StringValue(""), False),
-  ]
-
-  list.filter_map(
-    entities(data()),
-    fn(entity) {
-      try row =
-        list.try_map(
-          view,
-          fn(column) {
-            let #(key, type_, required) = column
-            case required {
-              True -> {
-                try value = map.get(entity, key)
-                case type_ {
-                  StringValue("") -> {
-                    assert StringValue(value) = value
-                    Ok(value)
-                  }
-                  _ -> todo("something better with values")
-                }
+fn to_view(entity, view: Table) {
+  try row =
+    list.try_map(
+      view.requirements,
+      fn(column) {
+        let Requirement(key, type_, required) = column
+        case required {
+          True -> {
+            try value = map.get(entity, key)
+            case type_ {
+              StringValue("") -> {
+                assert StringValue(value) = value
+                Ok(value)
               }
-              False -> case map.get(entity, key) {
-                Ok(StringValue(value)) -> Ok(value) 
-                Error(Nil) -> Ok("")
-              }
+              _ -> todo("something better with values")
             }
-          },
-        )
-      Ok(row)
-    },
-  )
-  // TODO just equality on the type
-  // io.debug(StringValue == StringValue)
-  // let filtered =
-  //   list.fold(
-  //     view,
-  //     entities(data()),
-  //     fn(remaining, spec) {
-  //       // TODO key should include details of type, i.e. hash or similar
-  //       let #(key, _, required) = spec
-  //       list.filter(remaining, map.has_key(_, key))
-  //     },
-  //   )
+          }
+          False ->
+            case map.get(entity, key) {
+              Ok(StringValue(value)) -> Ok(value)
+              Error(Nil) -> Ok("")
+            }
+        }
+      },
+    )
+  Ok(row)
+}
 
-  // // TODO derived fields
-  // list.map(
-  //   filtered,
-  //   fn(entity) {
-  //     list.map(
-  //       view,
-  //       fn(required) {
-  //         let #(key, StringValue("")) = required
-  //         assert Ok(StringValue(value)) = map.get(entity, key)
-  //         value
-  //       },
-  //     )
-  //   },
-  // )
-  // probably a nicer way to itterate through entities without assert
+fn reduce(view) {
+  let rows = list.filter_map(entities(data()), to_view(_, view))
+  let headers = list.map(view.requirements, fn(r: Requirement){r.attribute})
+  Frame(headers, rows)
 }
 
 const name = "Name"
@@ -131,16 +114,16 @@ fn data() {
   ]
 }
 
-type Commit {
+pub type Commit {
   Commit(changes: List(EAV))
 }
 
-type Value {
+pub type Value {
   StringValue(String)
   IntValue(Int)
 }
 
 // Entity Attribute Value
-type EAV {
+pub type EAV {
   EAV(entity: Int, attribute: String, value: Value)
 }
