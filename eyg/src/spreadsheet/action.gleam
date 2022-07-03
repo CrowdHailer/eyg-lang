@@ -19,6 +19,10 @@ fn handle_keypress(state, key) {
   let width = list.length(frame.headers)
   let height = list.length(frame.data)
   case key {
+    "d" -> {
+      let State(diff: diff, ..) = state
+      State(..state, diff: !diff)
+    }
     "ArrowRight" -> {
       let State(focus: #(t, x, y), ..) = state
       State(..state, focus: #(t, int.min(x + 1, width - 1), y))
@@ -46,7 +50,6 @@ fn handle_keypress(state, key) {
       let State(focus: #(t, x, y), ..) = state
       State(..state, focus: #(0, 0, 0))
     }
-
     _ -> {
       io.debug(key)
       state

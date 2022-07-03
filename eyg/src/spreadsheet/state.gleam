@@ -7,11 +7,11 @@ import spreadsheet/log/reduce
 // maybe model or just spreadsheet is a better name
 
 pub type State {
-  State(commits: List(reduce.Commit), focus: #(Int, Int, Int))
+  State(commits: List(reduce.Commit), focus: #(Int, Int, Int), diff: Bool)
 }
 
 pub fn init() {
-  State(data(), #(0, 0, 0))
+  State(data(), #(0, 0, 0), False)
 }
 
 pub fn frame(state: State) {

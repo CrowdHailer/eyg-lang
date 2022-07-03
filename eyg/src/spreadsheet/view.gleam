@@ -8,12 +8,25 @@ import spreadsheet/view/dataframe
 pub fn render(state: state.State) {
   let #(_, x, y) = state.focus
   let #(name, frame) = state.frame(state)
+  let pre = case state.diff {
+    True -> "DIFF "
+    False -> ""
+  }
   let command =
-    string.concat([name, ":", "(", int.to_string(x), " ", int.to_string(y), ")"])
+    string.concat([
+      pre,
+      name,
+      " ",
+      "(",
+      int.to_string(x),
+      " ",
+      int.to_string(y),
+      ")",
+    ])
   div(
     [class("flex flex-col min-h-screen")],
     [
-      dataframe.render(frame, #(x, y)),
+      dataframe.render(frame, #(x, y), state.diff),
       div([class("mt-auto p-1 bg-gray-900 text-white")], [text(command)]),
     ],
   )

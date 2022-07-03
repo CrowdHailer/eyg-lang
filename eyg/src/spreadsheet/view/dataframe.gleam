@@ -7,14 +7,14 @@ import lustre/element.{button, div, span, text}
 import spreadsheet/log/reduce.{Frame}
 import lustre/cmd
 
-pub fn render(frame, focus) {
+pub fn render(frame, focus, diff) {
   let Frame(headers: headers, ..) = frame
   let width = list.length(headers)
   let grid_columns =
     string.concat(["2em repeat(", int.to_string(width), ", minmax(0, 1fr))"])
   div(
     [class("grid"), style([#("grid-template-columns", grid_columns)])],
-    cells(frame, focus),
+    cells(frame, focus, diff),
   )
 }
 
@@ -23,17 +23,15 @@ type Cell {
   Unchanged(value: String)
 }
 
-fn cells(frame, focus) {
+fn cells(frame, focus, diff) {
   let #(x, y) = focus
-  let Frame(headers, data) = frame
+  let Frame(commit, headers, data) = frame
   let hcells =
     list.map(
       headers,
       fn(h) { span([class("p-1 bg-gray-900 text-white")], [text(h)]) },
     )
   let hcells = [span([class("bg-gray-900")], []), ..hcells]
-
-  let commit = 2
 
   list.index_map(
     data,
@@ -48,7 +46,7 @@ fn cells(frame, focus) {
             }
           },
         )
-      case double {
+      case double && diff {
         False -> [
           span([class("bg-gray-50")], [text(int.to_string(i + 1))]),
           ..list.index_map(

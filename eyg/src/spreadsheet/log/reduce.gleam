@@ -12,7 +12,11 @@ pub type Table {
 }
 
 pub type Frame {
-  Frame(headers: List(String), data: List(List(List(#(Int, Value)))))
+  Frame(
+    commit: Int,
+    headers: List(String),
+    data: List(List(List(#(Int, Value)))),
+  )
 }
 
 // log/data file
@@ -90,10 +94,11 @@ pub fn reduce(data, view) {
       EAV(0, "name", StringValue("tables")),
       EAV(0, "requirements", TableRequirements(requirements)),
     ])
+  let count = list.length(data)
   let data = [zero, ..data]
   let rows = list.filter_map(entities(data), to_view(_, view))
   let headers = list.map(view.requirements, fn(r: Requirement) { r.attribute })
-  Frame(headers, rows)
+  Frame(count, headers, rows)
 }
 
 pub type Commit {
