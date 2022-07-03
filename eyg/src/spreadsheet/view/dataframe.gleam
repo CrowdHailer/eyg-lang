@@ -41,7 +41,7 @@ fn cells(frame, focus) {
               False, True -> "bg-blue-50"
               False, False -> ""
             }
-            span([class(color)], [text(value)])
+            span([class(color)], [text(to_string(value))])
           },
         )
       ]
@@ -49,4 +49,14 @@ fn cells(frame, focus) {
   )
   |> list.flatten
   |> list.append(hcells, _)
+}
+
+fn to_string(value) {
+  case value {
+    reduce.StringValue(value) -> value
+    reduce.TableRequirements(_) -> "#TABLE"
+    _ ->
+      // io.debug(value)
+      todo("something better with values")
+  }
 }

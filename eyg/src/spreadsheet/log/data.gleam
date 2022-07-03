@@ -9,16 +9,6 @@ const stuff = "Stuff"
 pub fn data() {
   [
     reduce.Commit([
-      reduce.EAV(0, "name", reduce.StringValue("tables")),
-      //   TODO deduplicate this
-      reduce.EAV(
-        0,
-        "requirements",
-        reduce.TableRequirements([
-          reduce.Requirement("name", reduce.StringValue(""), True),
-          reduce.Requirement("requirements", reduce.TableRequirements([]), True),
-        ]),
-      ),
       reduce.EAV(1, name, reduce.StringValue("Alice")),
       reduce.EAV(1, address, reduce.StringValue("London")),
       reduce.EAV(2, name, reduce.StringValue("Bob")),
@@ -29,9 +19,9 @@ pub fn data() {
     ]),
     reduce.Commit([
       reduce.EAV(1, address, reduce.StringValue("Leeds")),
-      reduce.EAV(5, "name", reduce.StringValue("friends")),
+      reduce.EAV(4, "name", reduce.StringValue("friends")),
       reduce.EAV(
-        5,
+        4,
         "requirements",
         reduce.TableRequirements([
           reduce.Requirement("Name", reduce.StringValue(""), True),

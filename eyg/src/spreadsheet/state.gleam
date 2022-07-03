@@ -16,14 +16,10 @@ pub fn init() {
 
 pub fn frame(state: State) {
   let #(table_id, _, _) = state.focus
-  // TODO this needs to work on entity_id
-  // and return entities ordered by that
-  assert Ok(entity) = list.at(reduce.entities(state.commits), table_id)
-  // assert Ok(reduce.StringValue(name)) = map.get(entity, "name")
-  assert Ok(reduce.TableRequirements(requirements)) =
-    map.get(entity, "requirements")
-  let view = reduce.Table(requirements)
+  // This is a flaky match
+  assert Ok([reduce.StringValue(_), reduce.TableRequirements(requirements)]) =
+    list.at(reduce.tables(state.commits).data, table_id)
 
-  // Add table of tables to the front
+  let view = reduce.Table(requirements)
   let frame = reduce.reduce(state.commits, view)
 }

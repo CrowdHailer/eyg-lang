@@ -12,7 +12,7 @@ pub type Table {
 }
 
 pub type Frame {
-  Frame(headers: List(String), data: List(List(String)))
+  Frame(headers: List(String), data: List(List(Value)))
 }
 
 // log/data file
@@ -50,22 +50,12 @@ fn to_view(entity, view: Table) {
         case required {
           True -> {
             try value = map.get(entity, key)
-            case type_ {
-              StringValue("") -> {
-                assert StringValue(value) = value
-                Ok(value)
-              }
-              TableRequirements([]) -> {
-                assert TableRequirements(_) = value
-                Ok("#Table")
-              }
-              _ -> todo("something better with values")
-            }
+            Ok(value)
           }
           False ->
             case map.get(entity, key) {
-              Ok(StringValue(value)) -> Ok(value)
-              Error(Nil) -> Ok("")
+              Ok(value) -> Ok(value)
+              Error(Nil) -> Ok(StringValue("NA"))
             }
         }
       },
@@ -73,20 +63,33 @@ fn to_view(entity, view: Table) {
   Ok(row)
 }
 
+pub fn tables(commits) {
+  let requirements = [
+    Requirement("name", StringValue(""), True),
+    Requirement("requirements", TableRequirements([]), True),
+  ]
+  let zero =
+    Commit([
+      EAV(0, "name", StringValue("tables")),
+      EAV(0, "requirements", TableRequirements(requirements)),
+    ])
+  reduce(commits, Table(requirements))
+}
+
 pub fn reduce(data, view) {
+  let requirements = [
+    Requirement("name", StringValue(""), True),
+    Requirement("requirements", TableRequirements([]), True),
+  ]
+  let zero =
+    Commit([
+      EAV(0, "name", StringValue("tables")),
+      EAV(0, "requirements", TableRequirements(requirements)),
+    ])
+  let data = [zero, ..data]
   let rows = list.filter_map(entities(data), to_view(_, view))
   let headers = list.map(view.requirements, fn(r: Requirement) { r.attribute })
   Frame(headers, rows)
-}
-
-pub fn table(commits) {
-  let view =
-    Table([
-      Requirement("name", StringValue(""), True),
-      Requirement("requirements", TableRequirements([]), True),
-    ])
-
-  reduce(commits, view)
 }
 
 pub type Commit {
