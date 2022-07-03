@@ -125,6 +125,7 @@ fn cells(frame, focus, diff) {
 fn to_string(value) {
   case value {
     reduce.StringValue(value) -> value
+    reduce.IntValue(value) -> int.to_string(value)
     reduce.TableRequirements(_) -> "#TABLE"
     _ ->
       // io.debug(value)

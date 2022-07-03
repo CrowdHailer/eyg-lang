@@ -20,13 +20,13 @@ fn handle_keypress(state, key) {
   let height = list.length(frame.data)
   case key {
     "w" -> {
-       let State(offset: offset, ..) = state
-       let offset = int.max(offset - 1, 0)
+      let State(offset: offset, ..) = state
+      let offset = int.max(offset - 1, 0)
       State(..state, offset: offset)
     }
     "s" -> {
-       let State(offset: offset, ..) = state
-       let offset = int.min(offset + 1, list.length(state.commits) - 1)
+      let State(offset: offset, ..) = state
+      let offset = int.min(offset + 1, list.length(state.commits) - 1)
       State(..state, offset: offset)
     }
     "d" -> {

@@ -13,7 +13,7 @@ pub fn render(state: state.State) {
     False -> "VIEW"
   }
   let at = case state.offset {
-    0 -> "" 
+    0 -> ""
     n -> string.concat(["@ -", int.to_string(n)])
   }
   let command =
