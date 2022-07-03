@@ -19,6 +19,11 @@ pub fn init() {
   State(data(), #(0, 0, 0), False, 0)
 }
 
+// TODO read from a source, though that has no ability to update
+// See current changes and make a commit
+// map filter reduce
+// see lists when joined
+
 pub fn frame(state: State) {
   let #(table_id, _, _) = state.focus
   // This is a flaky match

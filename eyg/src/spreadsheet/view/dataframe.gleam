@@ -127,8 +127,5 @@ fn to_string(value) {
     reduce.StringValue(value) -> value
     reduce.IntValue(value) -> int.to_string(value)
     reduce.TableRequirements(_) -> "#TABLE"
-    _ ->
-      // io.debug(value)
-      todo("something better with values")
   }
 }
