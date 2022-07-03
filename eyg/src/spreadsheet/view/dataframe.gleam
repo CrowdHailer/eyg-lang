@@ -3,9 +3,8 @@ import gleam/int
 import gleam/list
 import lustre/attribute.{class, style}
 import lustre/element.{button, div, span, text}
-import spreadsheet/state.{State, Frame}
+import spreadsheet/state.{Frame, State}
 import lustre/cmd
-
 
 pub fn render(state: State) {
   div(
@@ -49,4 +48,3 @@ fn cells(frame, focus) {
   |> list.flatten
   |> list.append(hcells, _)
 }
-

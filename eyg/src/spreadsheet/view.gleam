@@ -1,4 +1,5 @@
 import spreadsheet/view/dataframe
-pub fn render(state)  {
-    dataframe.render(state)
+
+pub fn render(state) {
+  dataframe.render(state)
 }

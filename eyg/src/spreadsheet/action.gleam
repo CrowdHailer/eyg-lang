@@ -1,4 +1,3 @@
-
 import gleam/io
 import gleam/int
 import gleam/list
@@ -19,7 +18,7 @@ fn handle_keypress(state, key) {
   case key {
     "ArrowRight" -> {
       let State(frame, #(x, y)) = state
-      State(frame,#(int.min(x + 1, list.length(frame.headers) - 1), y))
+      State(frame, #(int.min(x + 1, list.length(frame.headers) - 1), y))
     }
     "ArrowLeft" -> {
       let State(frame, #(x, y)) = state
@@ -31,7 +30,7 @@ fn handle_keypress(state, key) {
     }
     "ArrowDown" -> {
       let State(frame, #(x, y)) = state
-      State(frame,#(x, int.min(y + 1, list.length(frame.data) - 1)))
+      State(frame, #(x, int.min(y + 1, list.length(frame.data) - 1)))
     }
 
     _ -> {
