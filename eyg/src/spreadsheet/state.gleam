@@ -13,18 +13,7 @@ pub type Frame {
 }
 
 pub fn init() {
-  let filtered = reduce()
-  // TODO derived fields
-  let rows =
-    list.map(
-      filtered,
-      fn(entity) {
-        assert Ok(StringValue(name)) = map.get(entity, name)
-        assert Ok(StringValue(address)) = map.get(entity, address)
-        assert Ok(StringValue(stuff)) = map.get(entity, stuff)
-        [name, address, stuff]
-      },
-    )
+  let rows = reduce()
   State(Frame(["Name", "Address", "Stuff"], rows), #(0, 0))
 }
 
@@ -55,10 +44,39 @@ fn entities(commits) {
 }
 
 fn reduce() {
-  entities(data())
-  |> list.filter(map.has_key(_, name))
-  |> list.filter(map.has_key(_, address))
-  |> io.debug()
+  let view = [
+    #(name, StringValue("")),
+    #(address, StringValue("")),
+    #(stuff, StringValue("")),
+  ]
+
+  // TODO just equality on the type
+  // io.debug(StringValue == StringValue)
+  let filtered =
+    list.fold(
+      view,
+      entities(data()),
+      fn(remaining, required) {
+        // TODO key should include details of type, i.e. hash or similar
+        let #(key, _) = required
+        list.filter(remaining, map.has_key(_, key))
+      },
+    )
+
+  // TODO derived fields
+  list.map(
+    filtered,
+    fn(entity) { 
+      list.map(
+        view,
+        fn(required) {
+          let #(key, StringValue("")) = required
+          assert Ok(StringValue(value)) = map.get(entity, key)
+          value
+        },
+      ) },
+  )
+  // probably a nicer way to itterate through entities without assert
 }
 
 const name = "Name"
@@ -78,11 +96,9 @@ fn data() {
       EAV(2, address, StringValue("London")),
       EAV(2, stuff, StringValue("Book")),
       EAV(3, name, StringValue("London")),
-      EAV(3, "population", IntValue(8000000))
+      EAV(3, "population", IntValue(8000000)),
     ]),
-    Commit([
-      EAV(1, address, StringValue("Leeds")),
-    ])
+    Commit([EAV(1, address, StringValue("Leeds"))]),
   ]
 }
 
