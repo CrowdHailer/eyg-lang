@@ -15,7 +15,7 @@ pub fn update(state, action) {
 }
 
 fn handle_keypress(state, key) {
-  let frame = state.frame(state)
+  let #(_, frame) = state.frame(state)
   let width = list.length(frame.headers)
   let height = list.length(frame.data)
   case key {

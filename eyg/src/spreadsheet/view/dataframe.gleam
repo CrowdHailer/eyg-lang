@@ -29,7 +29,7 @@ fn cells(frame, focus) {
   let hcells =
     list.map(
       headers,
-      fn(h) { span([class("bg-gray-900 text-white")], [text(h)]) },
+      fn(h) { span([class("p-1 bg-gray-900 text-white")], [text(h)]) },
     )
   let hcells = [span([class("bg-gray-900")], []), ..hcells]
 
@@ -77,9 +77,11 @@ fn cells(frame, focus) {
               fn(j, values) {
                 let #(loud, rendered) = case values {
                   [] -> #(False, "")
-                  [#(committed, value), ..] if committed != commit ->
-                    #(False, to_string(value))
-                  [#(_, value),#(_, old), ..] -> #(True, to_string(old))
+                  [#(committed, value), ..] if committed != commit -> #(
+                    False,
+                    to_string(value),
+                  )
+                  [#(_, value), #(_, old), ..] -> #(True, to_string(old))
                   [#(_, value)] -> #(True, "")
                 }
                 let color = case x == j && y == i, loud {
@@ -98,11 +100,13 @@ fn cells(frame, focus) {
               fn(j, values) {
                 let #(loud, rendered) = case values {
                   [] -> #(False, "")
-                  [#(committed, value), ..] if committed != commit ->
-                    #(False, to_string(value))
+                  [#(committed, value), ..] if committed != commit -> #(
+                    False,
+                    to_string(value),
+                  )
                   [#(_, value), ..] -> #(True, to_string(value))
                 }
-                let color = case x == j && y == i,loud {
+                let color = case x == j && y == i, loud {
                   True, _ -> "bg-indigo-200"
                   False, True -> "bg-green-300 text-green-800"
                   False, False -> ""

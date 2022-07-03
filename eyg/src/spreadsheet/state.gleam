@@ -18,10 +18,11 @@ pub fn frame(state: State) {
   let #(table_id, _, _) = state.focus
   // This is a flaky match
   assert Ok([
-    [#(_, reduce.StringValue(_))],
+    [#(_, reduce.StringValue(name))],
     [#(_, reduce.TableRequirements(requirements))],
   ]) = list.at(reduce.tables(state.commits).data, table_id)
 
   let view = reduce.Table(requirements)
   let frame = reduce.reduce(state.commits, view)
+  #(name, frame)
 }
