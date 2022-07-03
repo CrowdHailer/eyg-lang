@@ -12,16 +12,16 @@ pub type Table {
 }
 
 pub type Frame {
-  Frame(headers: List(String), data: List(List(Value)))
+  Frame(headers: List(String), data: List(List(List(#(Int, Value)))))
 }
 
 // log/data file
 
 pub fn entities(commits) {
-  list.fold(
+  list.index_fold(
     commits,
     map.new(),
-    fn(state, commit) {
+    fn(state, commit, index) {
       let Commit(changes) = commit
       list.fold(
         changes,
@@ -32,7 +32,11 @@ pub fn entities(commits) {
             Ok(e) -> e
             Error(Nil) -> map.new()
           }
-          map.insert(entity, attribute, value)
+          let history = case map.get(entity, attribute) {
+            Error(Nil) -> []
+            Ok(history) -> history
+          }
+          map.insert(entity, attribute, [#(index, value), ..history])
           |> map.insert(state, entity_id, _)
         },
       )
@@ -55,7 +59,7 @@ fn to_view(entity, view: Table) {
           False ->
             case map.get(entity, key) {
               Ok(value) -> Ok(value)
-              Error(Nil) -> Ok(StringValue("NA"))
+              Error(Nil) -> Ok([])
             }
         }
       },

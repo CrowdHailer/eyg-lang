@@ -17,8 +17,10 @@ pub fn init() {
 pub fn frame(state: State) {
   let #(table_id, _, _) = state.focus
   // This is a flaky match
-  assert Ok([reduce.StringValue(_), reduce.TableRequirements(requirements)]) =
-    list.at(reduce.tables(state.commits).data, table_id)
+  assert Ok([
+    [#(_, reduce.StringValue(_))],
+    [#(_, reduce.TableRequirements(requirements))],
+  ]) = list.at(reduce.tables(state.commits).data, table_id)
 
   let view = reduce.Table(requirements)
   let frame = reduce.reduce(state.commits, view)

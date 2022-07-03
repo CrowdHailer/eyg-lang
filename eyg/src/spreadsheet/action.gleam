@@ -46,7 +46,6 @@ fn handle_keypress(state, key) {
       let State(focus: #(t, x, y), ..) = state
       State(..state, focus: #(0, 0, 0))
     }
-    
 
     _ -> {
       io.debug(key)
