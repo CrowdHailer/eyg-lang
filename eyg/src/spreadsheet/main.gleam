@@ -11,27 +11,62 @@ external fn listen_keypress(fn(string) -> Nil) -> Nil =
   "../spreadsheet_ffi" "listenKeypress"
 
 pub fn main() {
-  let app = lustre.application(#(0, cmd.none()), update, render)
+  let app = lustre.application(#(init(), cmd.none()), update, render)
   assert Ok(dispatch) = lustre.start(app, "#app")
 
   listen_keypress(fn(key) {
     // Dispatch keypress i.e. just listen to event here and update should have all the logic in.
-    case key {
-      "u" -> dispatch(Incr)
-      _ -> dispatch(Decr)
-    }
+    dispatch(Keypress(key))
   })
 }
 
+pub type State {
+  State(frame: Frame, focus: #(Int, Int))
+}
+
+fn init() {
+  State(
+    Frame(
+      ["Name", "Address", "Stuff"],
+      [["Alice", "London", ""], ["Bob", "London", ""]],
+    ),
+    #(0, 0),
+  )
+}
+
 pub type Action {
-  Incr
-  Decr
+  Keypress(String)
 }
 
 fn update(state, action) {
   case action {
-    Incr -> #(state + 1, cmd.none())
-    Decr -> #(state - 1, cmd.none())
+    Keypress(key) -> #(handle_keypress(state, key), cmd.none())
+  }
+}
+
+fn handle_keypress(state, key) {
+  case key {
+    "ArrowRight" -> {
+      let State(frame, #(x, y)) = state
+      State(frame,#(int.min(x + 1, list.length(frame.headers) - 1), y))
+    }
+    "ArrowLeft" -> {
+      let State(frame, #(x, y)) = state
+      State(frame, #(int.max(x - 1, 0), y))
+    }
+    "ArrowUp" -> {
+      let State(frame, #(x, y)) = state
+      State(frame, #(x, int.max(y - 1, 0)))
+    }
+    "ArrowDown" -> {
+      let State(frame, #(x, y)) = state
+      State(frame,#(x, int.min(y + 1, list.length(frame.data) - 1)))
+    }
+
+    _ -> {
+      io.debug(key)
+      state
+    }
   }
 }
 
@@ -41,11 +76,12 @@ fn render(state) {
   dataframe(state)
 }
 
-type Frame {
+pub type Frame {
   Frame(headers: List(String), data: List(List(String)))
 }
 
-fn cells(frame) {
+fn cells(frame, focus) {
+  let #(x, y) = focus
   let Frame(headers, data) = frame
   let hcells =
     list.map(
@@ -62,9 +98,10 @@ fn cells(frame) {
         ..list.index_map(
           row,
           fn(j, value) {
-            let color = case int.is_even(i + j) {
-              True -> "bg-blue-50"
-              False -> ""
+            let color = case x == j && y == i, int.is_even(i + j) {
+              True, _ -> "bg-indigo-300"
+              False, True -> "bg-blue-50"
+              False, False -> ""
             }
             span([class(color)], [text(value)])
           },
@@ -76,19 +113,12 @@ fn cells(frame) {
   |> list.append(hcells, _)
 }
 
-fn f() {
-  Frame(
-    ["Name", "Address", "Stuff"],
-    [["Alice", "London", ""], ["Bob", "London", ""]],
-  )
-}
-
-fn dataframe(state) {
+fn dataframe(state: State) {
   div(
     [
       class("grid"),
       style([#("grid-template-columns", "2em repeat(3, minmax(0, 1fr))")]),
     ],
-    cells(f()),
+    cells(state.frame, state.focus),
   )
 }
