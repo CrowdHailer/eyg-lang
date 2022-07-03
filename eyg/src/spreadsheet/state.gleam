@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/map
+import gleam/option
 
 // maybe model or just spreadsheet is a better name
 
@@ -45,37 +46,67 @@ fn entities(commits) {
 
 fn reduce() {
   let view = [
-    #(name, StringValue("")),
-    #(address, StringValue("")),
-    #(stuff, StringValue("")),
+    #(name, StringValue(""), True),
+    #(address, StringValue(""), True),
+    #(stuff, StringValue(""), False),
   ]
 
+  list.filter_map(
+    entities(data()),
+    fn(entity) {
+      try row =
+        list.try_map(
+          view,
+          fn(column) {
+            let #(key, type_, required) = column
+            case required {
+              True -> {
+                try value = map.get(entity, key)
+                case type_ {
+                  StringValue("") -> {
+                    assert StringValue(value) = value
+                    Ok(value)
+                  }
+                  _ -> todo("something better with values")
+                }
+              }
+              False -> case map.get(entity, key) {
+                Ok(StringValue(value)) -> Ok(value) 
+                Error(Nil) -> Ok("")
+              }
+            }
+          },
+        )
+      Ok(row)
+    },
+  )
   // TODO just equality on the type
   // io.debug(StringValue == StringValue)
-  let filtered =
-    list.fold(
-      view,
-      entities(data()),
-      fn(remaining, required) {
-        // TODO key should include details of type, i.e. hash or similar
-        let #(key, _) = required
-        list.filter(remaining, map.has_key(_, key))
-      },
-    )
+  // let filtered =
+  //   list.fold(
+  //     view,
+  //     entities(data()),
+  //     fn(remaining, spec) {
+  //       // TODO key should include details of type, i.e. hash or similar
+  //       let #(key, _, required) = spec
+  //       list.filter(remaining, map.has_key(_, key))
+  //     },
+  //   )
 
-  // TODO derived fields
-  list.map(
-    filtered,
-    fn(entity) { 
-      list.map(
-        view,
-        fn(required) {
-          let #(key, StringValue("")) = required
-          assert Ok(StringValue(value)) = map.get(entity, key)
-          value
-        },
-      ) },
-  )
+  // // TODO derived fields
+  // list.map(
+  //   filtered,
+  //   fn(entity) {
+  //     list.map(
+  //       view,
+  //       fn(required) {
+  //         let #(key, StringValue("")) = required
+  //         assert Ok(StringValue(value)) = map.get(entity, key)
+  //         value
+  //       },
+  //     )
+  //   },
+  // )
   // probably a nicer way to itterate through entities without assert
 }
 
@@ -90,8 +121,6 @@ fn data() {
     Commit([
       EAV(1, name, StringValue("Alice")),
       EAV(1, address, StringValue("London")),
-      // TODO option value for stuff
-      EAV(1, stuff, StringValue("")),
       EAV(2, name, StringValue("Bob")),
       EAV(2, address, StringValue("London")),
       EAV(2, stuff, StringValue("Book")),
