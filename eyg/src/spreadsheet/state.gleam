@@ -7,11 +7,16 @@ import spreadsheet/log/reduce
 // maybe model or just spreadsheet is a better name
 
 pub type State {
-  State(commits: List(reduce.Commit), focus: #(Int, Int, Int), diff: Bool)
+  State(
+    commits: List(reduce.Commit),
+    focus: #(Int, Int, Int),
+    diff: Bool,
+    offset: Int,
+  )
 }
 
 pub fn init() {
-  State(data(), #(0, 0, 0), False)
+  State(data(), #(0, 0, 0), False, 0)
 }
 
 pub fn frame(state: State) {
@@ -23,6 +28,8 @@ pub fn frame(state: State) {
   ]) = list.at(reduce.tables(state.commits).data, table_id)
 
   let view = reduce.Table(requirements)
-  let frame = reduce.reduce(state.commits, view)
+  let commits =
+    list.take(state.commits, list.length(state.commits) - state.offset)
+  let frame = reduce.reduce(commits, view)
   #(name, frame)
 }

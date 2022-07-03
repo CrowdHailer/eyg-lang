@@ -9,12 +9,18 @@ pub fn render(state: state.State) {
   let #(_, x, y) = state.focus
   let #(name, frame) = state.frame(state)
   let pre = case state.diff {
-    True -> "DIFF "
-    False -> ""
+    True -> "DIFF"
+    False -> "VIEW"
+  }
+  let at = case state.offset {
+    0 -> "" 
+    n -> string.concat(["@ -", int.to_string(n)])
   }
   let command =
     string.concat([
       pre,
+      at,
+      " ",
       name,
       " ",
       "(",

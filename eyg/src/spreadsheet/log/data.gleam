@@ -30,5 +30,18 @@ pub fn data() {
         ]),
       ),
     ]),
+    reduce.Commit([
+      reduce.EAV(5, name, reduce.StringValue("Susan")),
+      reduce.EAV(5, address, reduce.StringValue("Slough")),
+      reduce.EAV(5, stuff, reduce.StringValue("Pot")),
+      reduce.EAV(6, name, reduce.StringValue("Tina")),
+      reduce.EAV(6, address, reduce.StringValue("Crianlarich")),
+      reduce.EAV(6, stuff, reduce.StringValue("Scissors")),
+    ]),
+    reduce.Commit([
+      reduce.EAV(1, address, reduce.StringValue("Dover")),
+      reduce.EAV(5, stuff, reduce.StringValue("Pots and Pans")),
+    ]),
+    reduce.Commit([reduce.EAV(6, name, reduce.StringValue("Tiina"))]),
   ]
 }
