@@ -15,11 +15,9 @@ pub fn update(state, action) {
 }
 
 fn handle_keypress(state, key) {
-  // let width = list.length(frame.headers)
-  // TODO
-  // list.length(frame.data)
-  let width = 3
-  let height = 2
+  let frame = state.frame(state)
+  let width = list.length(frame.headers)
+  let height = list.length(frame.data)
   case key {
     "ArrowRight" -> {
       let State(focus: #(t, x, y), ..) = state
