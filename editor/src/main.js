@@ -21,7 +21,7 @@ if (deployPage) {
       container.innerHTML = render(state);
     });
   });
-} else if (path == "spreadsheet") {
+} else if (path.startsWith("spreadsheet")) {
   Spreasheet.main();
 } else {
   app = new App({
