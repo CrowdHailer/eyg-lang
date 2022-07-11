@@ -24,6 +24,8 @@ pub fn init() {
 // map filter reduce
 // see lists when joined
 
+// TODO list does a lot of editing
+
 pub fn frame(state: State) {
   let #(table_id, _, _) = state.focus
   // This is a flaky match
@@ -32,7 +34,7 @@ pub fn frame(state: State) {
     [#(_, reduce.TableRequirements(requirements))],
   ]) = list.at(reduce.tables(state.commits).data, table_id)
 
-  let view = reduce.Table(requirements)
+  let view = reduce.Table(requirements, [])
   let commits =
     list.take(state.commits, list.length(state.commits) - state.offset)
   let frame = reduce.reduce(commits, view)

@@ -8,8 +8,16 @@ pub type Requirement {
 
 // Projection
 pub type Table {
-  Table(requirements: List(Requirement))
+  Table(requirements: List(Requirement), derived: List(#(String, fn(Nil) -> Nil)))
+  
 }
+
+// TODO
+// Just write functions for filter
+// Can we prove canonical tree? in which case we can test for stability by writing the tree we want and checking it doesn't change
+// Test to find all the commits that affected a projection
+
+
 
 pub type Frame {
   Frame(
@@ -81,7 +89,7 @@ pub fn tables(commits) {
       EAV(0, "name", StringValue("tables")),
       EAV(0, "requirements", TableRequirements(requirements)),
     ])
-  reduce(commits, Table(requirements))
+  reduce(commits, Table(requirements, []))
 }
 
 pub fn reduce(data, view) {
