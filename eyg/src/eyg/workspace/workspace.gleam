@@ -171,6 +171,7 @@ pub fn code_update(code, app) {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)
       assert Ok(r) = prog(dynamic.from([]))
+      |> io.debug()
       // TODO Inner value should be tuple 0, probably should be added to gleam extra
       case dynamic.field("True", Ok)(r) {
         Ok(inner) -> TestSuite("True")

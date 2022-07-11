@@ -13,6 +13,7 @@ pub type Generator {
   Example
   Format
   Loader
+  Parse
 }
 
 pub fn generator_to_string(generator) {
@@ -23,6 +24,7 @@ pub fn generator_to_string(generator) {
     Example -> "Example"
     Format -> "Format"
     Loader -> "Loader"
+    Parse -> "Parse"
   }
 }
 
@@ -34,11 +36,12 @@ pub fn generator_from_string(str) {
     "Example" -> Example
     "Format" -> Format
     "Loader" -> Loader
+    "Parse" -> Parse
   }
 }
 
 pub fn all_generators() {
-  [Example, Env, Format, Loader, Type]
+  [Example, Env, Format, Loader, Type, Parse]
 }
 
 // This is an Eyg Result
@@ -93,6 +96,47 @@ pub fn generate(generator, config, hole) {
       Ok(function(p.Tuple(vars), body))
     }
     Env -> fn(_, _) { Error(Nil) }
+    // TODO expand let statements within providers
+    // Parse -> {
+    //   fn(_, _)  {
+    //     case hole {
+    //       t.Function(_,
+    //         t.Record([#(k, v)], _)) -> {
+    //           io.debug(v)
+    //           // TODO match v type
+    //           let key_fn = access(variable("harness"), "key")
+    //           let body = let_(
+    //             p.Variable("json"), 
+    //             call( access(variable("harness"), "deserialize"), variable("x")),
+    //             let_(
+    //               p.Variable(k), 
+    //               call(key_fn, tuple_([variable("json"), binary(k)])),
+    //               record([#(k, variable(k))]
+    //             )
+    //           ))
+    //           // TODO multi key records
+    //           Ok(function(p.Variable("x"), body))
+    //         } 
+    //         _ -> todo
+    //     }
+    //   }
+    // }
+    Parse -> {
+      fn(_, _)  {
+        case hole {
+          t.Function(_,
+            t.Record([#(k, v)], _)) -> {
+              io.debug(v)
+              // TODO match v type
+              let key_fn = access(variable("harness"), "key")
+              let deserialized = call( access(variable("harness"), "deserialize"), variable("x"))
+              // TODO multi key records
+              Ok(function(p.Variable("x"), record([#(k, call(key_fn, tuple_([deserialized, binary(k)])))])))
+            } 
+            _ -> todo
+        }
+      }
+    }
   }
 
   generator(config, hole)
@@ -219,7 +263,7 @@ pub fn binary(value) {
   #(dynamic.from(Nil), Binary(value))
 }
 
-pub fn call(function, with) {
+pub fn call(function: Expression(dynamic.Dynamic, dynamic.Dynamic), with) {
   #(dynamic.from(Nil), Call(function, with))
 }
 

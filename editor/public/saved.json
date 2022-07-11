@@ -667,8 +667,112 @@
               }
             },
             "then": {
-              "node": "Variable",
-              "label": "result"
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": ""
+              },
+              "value": {
+                "node": "Call",
+                "function": {
+                  "node": "Call",
+                  "function": {
+                    "node": "Access",
+                    "value": {
+                      "node": "Variable",
+                      "label": "harness"
+                    },
+                    "key": "fetch"
+                  },
+                  "with": {
+                    "node": "Binary",
+                    "value": "https://coda.io/apis/v1/docs"
+                  }
+                },
+                "with": {
+                  "node": "Function",
+                  "pattern": {
+                    "node": "Variable",
+                    "label": "body"
+                  },
+                  "body": {
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Record",
+                      "fields": [
+                        {
+                          "key": "statusCode",
+                          "bind": "code"
+                        }
+                      ]
+                    },
+                    "value": {
+                      "node": "Call",
+                      "function": {
+                        "node": "Provider",
+                        "config": "",
+                        "generator": "Parse"
+                      },
+                      "with": {
+                        "node": "Variable",
+                        "label": "body"
+                      }
+                    },
+                    "then": {
+                      "node": "Let",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": ""
+                      },
+                      "value": {
+                        "node": "Call",
+                        "function": {
+                          "node": "Access",
+                          "value": {
+                            "node": "Variable",
+                            "label": "harness"
+                          },
+                          "key": "debug"
+                        },
+                        "with": {
+                          "node": "Variable",
+                          "label": "body"
+                        }
+                      },
+                      "then": {
+                        "node": "Let",
+                        "pattern": {
+                          "node": "Variable",
+                          "label": ""
+                        },
+                        "value": {
+                          "node": "Call",
+                          "function": {
+                            "node": "Access",
+                            "value": {
+                              "node": "Variable",
+                              "label": "harness"
+                            },
+                            "key": "debug"
+                          },
+                          "with": {
+                            "node": "Variable",
+                            "label": "code"
+                          }
+                        },
+                        "then": {
+                          "node": "Tuple",
+                          "elements": []
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "node": "Variable",
+                "label": "result"
+              }
             }
           }
         },

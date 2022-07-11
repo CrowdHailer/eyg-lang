@@ -11,11 +11,14 @@ import eyg/typer/harness
 pub type Browser {
   Integer
   Array(t.Monotype(Browser))
+  // maybe just dynamic
+  JSON
 }
 
 pub fn native_to_string(type_) {
   case type_ {
     Integer -> "Integer"
+    JSON -> "JSON"
     _ -> todo("more")
   }
 }
@@ -80,7 +83,7 @@ fn int() {
 // perhaps they should be letters or similar
 pub fn string() {
   polytype.Polytype(
-    [1, 2, 3, 4, 5, 6],
+    [1, 2, 3, 4, 5, 6, 7,8, 9],
     t.Record(
       [
         #(
@@ -102,7 +105,7 @@ pub fn string() {
         ),
         #("concat", t.Function(t.Tuple([t.Binary, t.Binary]), t.Binary)),
         #("debug", t.Function(t.Unbound(2), t.Unbound(2))),
-        #("inspect", t.Function(t.Unbound(6), t.Binary)),
+        // #("inspect", t.Function(t.Unbound(6), t.Binary)),
         #(
           "compile",
           t.Function(
@@ -111,6 +114,10 @@ pub fn string() {
           ),
         ),
         #("source", t.Function(t.Tuple([]), t.Binary)),
+        #("fetch", t.Function(t.Binary, t.Function(t.Function(t.Binary, t.Unbound(7)), t.Tuple([])))),
+        // TODO this should probably be returning JSON not unbound
+        #("key", t.Function(t.Tuple([t.Unbound(8), t.Binary]), t.Unbound(9))),
+        #("deserialize", t.Function(t.Binary, t.Native(JSON)))
       ],
       None,
     ),

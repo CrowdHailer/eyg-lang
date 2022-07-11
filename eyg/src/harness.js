@@ -93,6 +93,18 @@ export function run(code) {
     source: function () {
       return window.eyg_source;
     },
+    fetch: function (url) {
+      return function (cont) {
+        fetch(url).then((resp) => resp.text().then((body) => cont(body)));
+        return [];
+      };
+    },
+    deserialize: function (raw) {
+      return JSON.parse(raw);
+    },
+    key: function ([object, key]) {
+      return object[key];
+    },
   };
   foo(harness);
   const int = {
