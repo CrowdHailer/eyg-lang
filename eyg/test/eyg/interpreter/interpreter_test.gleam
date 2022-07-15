@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/dynamic
 import gleam/map
+import gleam/string
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/interpreter/interpreter.{exec} as r
@@ -66,5 +67,16 @@ pub fn unions_test() {
     assert r.Binary("foo") = exec(source, empty) 
 
 }
-// TODO string reverse
+
+
+pub fn builtin_test()  {
+    let env = map.new()
+    |> map.insert("string", r.Record([#("reverse", r.BuiltinFn(fn(object) {
+        assert r.Binary(value) = object
+        r.Binary(string.reverse(value))
+    }))]))
+    let source = e.call(e.access(e.variable("string"), "reverse"), e.binary("hello"))
+
+    assert r.Binary("olleh") = exec(source, env) 
+}
 // recursive eval

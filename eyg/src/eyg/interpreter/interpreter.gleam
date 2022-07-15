@@ -11,6 +11,7 @@ pub type Object {
     Record(List(#(String, Object)))
     Tagged(String, Object)
     Function(p.Pattern, e.Expression(Dynamic, Dynamic), map.Map(String, Object))
+    BuiltinFn(fn(Object) -> Object)
 }
 
 fn value_map(pairs, func) { 
@@ -69,9 +70,18 @@ pub fn exec(source, env)  {
             Function(pattern, body, env)
         }
         e.Call(func, arg) -> {
-            assert Function(pattern, body, captured) = exec(func, env)
-            let inner = extend_env(captured, pattern, exec(arg, env))
-            exec(body, inner)
+            let arg = exec(arg, env)
+            case exec(func, env) {
+                 Function(pattern, body, captured)                  -> {
+
+                    let inner = extend_env(captured, pattern, arg)
+                    exec(body, inner)
+                }
+                BuiltinFn(func) -> {
+                    func(arg)
+                }
+                _ -> todo("Should never be called")
+            }
 
         }
         e.Hole() -> todo("interpreted a program with a hole")
