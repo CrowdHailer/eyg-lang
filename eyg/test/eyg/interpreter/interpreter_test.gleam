@@ -1,10 +1,15 @@
 import gleam/io
 import gleam/dynamic
+import gleam/list
 import gleam/map
 import gleam/string
+import eyg/analysis
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/interpreter/interpreter.{exec} as r
+import eyg/typer
+import eyg/typer/monotype as t
+import eyg/codegen/javascript
 
 pub fn tuples_test() {
     let empty = map.new()
@@ -68,6 +73,7 @@ pub fn unions_test() {
 
 }
 
+// recursive eval
 
 pub fn builtin_test()  {
     let env = map.new()
@@ -79,4 +85,54 @@ pub fn builtin_test()  {
 
     assert r.Binary("olleh") = exec(source, env) 
 }
-// recursive eval
+
+
+fn render_var(assignment) { 
+    let #(var, object) = assignment
+    case object {
+        r.Binary(content) -> [string.concat(["let ", var, " = ", "\"", javascript.escape_string(content), "\";"])]
+        r.Tuple(_) -> todo("tuple")
+        r.Record(_) -> todo("record")
+        r.Tagged(_, _) -> todo("tagged")
+        // Builtins should never be included, I need to check variables used in a previous step
+        r.Function(_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
+        r.BuiltinFn(_) -> []
+    }
+ }
+
+fn capture(object) { 
+    assert r.Function(pattern, body, captured) = object
+    let func = e.function(pattern, body)
+
+    let source = e.call(func, e.binary("DOM"))
+
+    let #(typed, typer) = analysis.infer(source, t.Unbound(-1), [])
+    let #(typed, typer) = typer.expand_providers(typed, typer, [])
+    // We shouldn't need to type check again or expand providers as this will have be done on the first pass
+    // However the render function takes typed AST not untyped and I don't want to fix that now.
+    //   assert [] = typer.inconsistencies
+
+    
+    list.map(map.to_list(captured), render_var)
+    |> list.flatten
+    |> list.append([javascript.render_to_string(typed, typer)])
+    |> string.join("\n")
+    |> io.debug()
+    |> javascript.do_eval()
+    |> io.debug()
+    r.Tuple([])
+ }
+
+pub fn capture_test()  {
+    let source = e.let_(
+        p.Variable("message"), 
+        e.binary("hello"),
+        e.call(e.variable("capture"), e.function(p.Variable("name"),
+            e.tuple_([e.variable("message"), e.variable("name")])
+        ))
+    )
+
+    let env = map.new()
+    |> map.insert("capture", r.BuiltinFn(capture))
+    assert r.Tuple([]) = exec(source, env) 
+}
