@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotless</title>
+    <script src="https://unpkg.com/codeflask/build/codeflask.min.js"></script>
+    <link
+      href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <script src="/main.js" type="module"></script>
+  </head>
+  <body class="bg-gray-100">
+    <main class="w-full max-w-5xl mx-auto shadow p-2 my-6">
+      <h1 class="text-5xl mb-6">Spotless</h1>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <h2 class="bg-gray-800 text-white px-2 py-1">Editor</h2>
+          <div id="editor" class="relative h-64"></div>
+        </div>
+        <div>
+          <h2 class="px-2 py-1">
+            Requests to: <a id="domain" target="_blank" class="underline"></a>
+          </h2>
+          <div id="request-log" class="px-2 text-gray-600">No requests</div>
+        </div>
+      </div>
+    </main>
+    <script type="module" id="log">
+      export function handle(request) {
+        console.log(request);
+        return { status: 200, body: "hello from client" };
+      }
+    </script>
+    <script>
+      const clientId = makeid(6);
+      const domainLink = document.getElementById("domain");
+
+      const { api, domain } = (function name() {
+        if (window.location.hostname === "localhost") {
+          return {
+            domain: "localhost:8080/" + clientId,
+            api: "http://localhost:8080",
+          };
+        } else {
+          return {
+            domain: clientId + ".spotless.run",
+            api: "https://spotless.run/api",
+          };
+        }
+      })();
+
+      domainLink.innerText = domain;
+      domainLink.href = "http://" + domain;
+
+      let raw, dirty, module;
+
+      const flask = new CodeFlask("#editor", { language: "js" });
+      flask.onUpdate((code) => {
+        raw = code;
+        dirty = true;
+      });
+      flask.updateCode(
+        document
+          .getElementById("log")
+          .innerText.trim()
+          .replaceAll(/\n\s{6}/g, "\n")
+      );
+      let any = false;
+      const requestLog = document.getElementById("request-log");
+
+      function logRequest(request, response) {
+        if (any === false) {
+          requestLog.innerText = "";
+          any = true;
+        }
+        let logLine = document.createElement("div");
+        let content = `${request.method} ${request.path} - ${response.status} ${response.body.length}bytes`;
+        logLine.innerText = content;
+        requestLog.append(logLine);
+      }
+      // push to backend
+      // read response
+      // rerun with new code
+      // handle errors
+
+      // Review exorcism
+
+      async function compile() {
+        return await import(
+          URL.createObjectURL(new Blob([raw], { type: "text/javascript" }))
+        );
+      }
+
+      async function getModule() {
+        if (dirty) {
+          module = await compile();
+          dirty = false;
+        }
+        return module;
+      }
+      // https://2ality.com/2019/10/eval-via-import.html
+
+      async function pullRequests() {
+        while (true) {
+          let fetched = await fetch(api + "/request/" + clientId);
+          if (fetched.status === 200) {
+            let data = await fetched.json();
+            let mod = await getModule();
+            let { status, body } = await mod.handle(data);
+            logRequest(data, { status, body });
+            fetch(api + "/response/" + data.response_id, {
+              method: "POST",
+              body: JSON.stringify({ status, body }),
+            });
+          }
+        }
+      }
+
+      function makeid(length) {
+        var result = "";
+        // Base32 letter set
+        var characters = "abcdefghijklmnopqrstuvwxyz234567";
+        var charactersLength = characters.length;
+        for (var i = 0; i < length; i++) {
+          result += characters.charAt(
+            Math.floor(Math.random() * charactersLength)
+          );
+        }
+        return result;
+      }
+      pullRequests();
+    </script>
+  </body>
+</html>

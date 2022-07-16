@@ -1,0 +1,8 @@
+/_build/
+/deps/
+/doc/
+/gen/
+/.fetch
+erl_crash.dump
+*.ez
+spotless-*.tar

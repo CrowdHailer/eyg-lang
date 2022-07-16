@@ -1,0 +1,2 @@
+defmodule Spotless do
+end

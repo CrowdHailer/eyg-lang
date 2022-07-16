@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+
+mix local.hex --force && mix local.rebar --force
+mix deps.get --force
+
+elixir --sname spotless -S mix run --no-halt
