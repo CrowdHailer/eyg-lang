@@ -23,6 +23,7 @@ fn apps() {
     workspace.App("test", workspace.TestSuite("True")),
     workspace.App("cli", workspace.String2String("", "", None)),
     workspace.App("scan", workspace.Firmata(None)),
+    workspace.App("server", workspace.Server(None))
   ]
 }
 

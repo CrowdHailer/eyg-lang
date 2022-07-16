@@ -47,6 +47,7 @@ pub type Mount(a) {
     rendered: String,
   )
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
+  Server(handle: Option(fn(Dynamic) -> Dynamic))
 }
 
 // mount handling of keydown
@@ -132,7 +133,8 @@ pub fn mount_constraint(mount) {
       let output = t.Record([#("Pin12", boolean), #("Pin13", boolean)], None)
       t.Function(t.Tuple([input, state]), t.Tuple([output, state]))
     }
-    _ -> t.Unbound(-2)
+    Server(_) -> t.Function(t.Binary, t.Binary)
+    Static(_) -> t.Unbound(-2)
   }
 }
 
@@ -222,6 +224,14 @@ pub fn code_update(code, app) {
       }
     }
     Static(_) -> todo("probably remove I don't see much value in static")
+    Server(_) -> {
+      let cast = gleam_extra.dynamic_function
+      assert Ok(scan) = dynamic.field(key, cast)(code)
+      Server(Some(fn(x) {
+        assert Ok(returned) = scan(x)
+        returned
+      }))
+    }
   }
   App(key, mount)
 }

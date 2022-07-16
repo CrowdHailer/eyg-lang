@@ -164,6 +164,9 @@ https://ahnfelt.medium.com/type-inference-by-example-part-7-31e1d1d05f56
 it seems like not generalizing is important these tests make sense, hooray but there's still some weird recursive ness.
 https://www.cl.cam.ac.uk/teaching/1516/L28/type-inference.pdf
 
+## Multiple docker compose files
+
+use `-f` https://docs.docker.com/compose/extends/
 
 
 ## Apple land

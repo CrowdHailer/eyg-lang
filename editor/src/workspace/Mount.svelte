@@ -6,6 +6,7 @@
   import UI from "./UI.svelte";
   import String2String from "./String2String.svelte";
   import Firmata from "./Firmata.svelte";
+  import Server from "./Server.svelte";
 
   export let index;
   export let key;
@@ -31,6 +32,9 @@
   {:else if mount instanceof Mount.Firmata}
     <p><strong>{key}:</strong> Firmata</p>
     <Firmata scan={mount.scan} />
+  {:else if mount instanceof Mount.Server}
+    <p><strong>{key}:</strong> Server</p>
+    <Server handle={mount.handle} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

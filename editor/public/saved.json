@@ -1053,33 +1053,67 @@
               }
             },
             "then": {
-              "node": "Record",
-              "fields": [
-                {
-                  "node": "Field",
-                  "key": "test",
-                  "value": {
-                    "node": "Variable",
-                    "label": "test"
-                  }
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": "server"
+              },
+              "value": {
+                "node": "Function",
+                "pattern": {
+                  "node": "Variable",
+                  "label": ""
                 },
-                {
-                  "node": "Field",
-                  "key": "cli",
-                  "value": {
-                    "node": "Variable",
-                    "label": "cli"
-                  }
-                },
-                {
-                  "node": "Field",
-                  "key": "counter",
-                  "value": {
-                    "node": "Variable",
-                    "label": "counter"
+                "body": {
+                  "node": "Call",
+                  "function": {
+                    "node": "Access",
+                    "value": {
+                      "node": "Variable",
+                      "label": "html"
+                    },
+                    "key": "h1"
+                  },
+                  "with": {
+                    "node": "Tuple",
+                    "elements": [
+                      {
+                        "node": "Binary",
+                        "value": "Hello world"
+                      }
+                    ]
                   }
                 }
-              ]
+              },
+              "then": {
+                "node": "Record",
+                "fields": [
+                  {
+                    "node": "Field",
+                    "key": "test",
+                    "value": {
+                      "node": "Variable",
+                      "label": "test"
+                    }
+                  },
+                  {
+                    "node": "Field",
+                    "key": "cli",
+                    "value": {
+                      "node": "Variable",
+                      "label": "cli"
+                    }
+                  },
+                  {
+                    "node": "Field",
+                    "key": "counter",
+                    "value": {
+                      "node": "Variable",
+                      "label": "counter"
+                    }
+                  }
+                ]
+              }
             }
           }
         }
