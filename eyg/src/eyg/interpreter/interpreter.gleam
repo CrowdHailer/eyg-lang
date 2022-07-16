@@ -2,8 +2,10 @@ import gleam/io
 import gleam/dynamic.{Dynamic}
 import gleam/list
 import gleam/map
+import gleam/string
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
+import eyg/codegen/javascript
 
 pub type Object {
     Binary(String)
@@ -22,7 +24,7 @@ fn value_map(pairs, func) {
      })
  }
 
-fn extend_env(env, pattern, object) { 
+pub fn extend_env(env, pattern, object) { 
     case pattern {
         p.Variable(var) ->  map.insert(env, var, object)
         p.Tuple(keys) -> {
@@ -63,6 +65,7 @@ pub fn exec(source, env)  {
             exec(then, extend_env(env, pattern, exec(value, env)))
         }
         e.Variable(var) -> {
+            io.debug(var)
             assert Ok(value) = map.get(env, var)
             value
         }
@@ -72,7 +75,7 @@ pub fn exec(source, env)  {
         e.Call(func, arg) -> {
             let arg = exec(arg, env)
             case exec(func, env) {
-                 Function(pattern, body, captured)                  -> {
+                 Function(pattern, body, captured) -> {
 
                     let inner = extend_env(captured, pattern, arg)
                     exec(body, inner)
@@ -85,6 +88,37 @@ pub fn exec(source, env)  {
 
         }
         e.Hole() -> todo("interpreted a program with a hole")
-        e.Provider(_, _, _) -> todo("providers should have been expanded before evaluation")
+        e.Provider(_, _, generated) -> {
+            io.debug(source)
+            Tuple([])
+            exec(dynamic.unsafe_coerce(generated), env)
+            // todo("providers should have been expanded before evaluation")
+            }
     }
 }
+
+pub fn render_var(assignment) { 
+    let #(var, object) = assignment
+    case var {
+        "" -> [] 
+        _ -> case object {
+            Binary(content) -> [string.concat(["let ", var, " = ", "\"", javascript.escape_string(content), "\";"])]
+            Tuple(_) -> todo("tuple")
+            Record(fields) -> {
+                let term = list.map(
+                    fields,
+                    fn(field) {
+                    let #(name, Binary(content)) = field
+                    string.concat([name, ": ", "\"", javascript.escape_string(content), "\""])
+                    },
+                )
+                |> string.join(", ")
+                [string.concat(["let ", var, " = ","{", term, "}",";"])]
+            }
+            Tagged(_, _) -> todo("tagged")
+            // Builtins should never be included, I need to check variables used in a previous step
+            Function(_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
+            BuiltinFn(_) -> []
+        }
+    }
+ }

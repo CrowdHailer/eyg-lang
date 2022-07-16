@@ -1,10 +1,18 @@
 import gleam/dynamic.{Dynamic}
 import gleam/io
 import gleam/list
+import gleam/map
 import gleam/option.{None, Option, Some}
+import gleam/string
 import gleam_extra
 import eyg/typer/monotype as t
+import eyg/ast/expression as e
+import eyg/interpreter/interpreter
 import eyg/editor/editor
+import eyg/analysis
+import eyg/typer
+import eyg/codegen/javascript
+
 
 pub type Panel {
   OnEditor
@@ -48,6 +56,8 @@ pub type Mount(a) {
   )
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
   Server(handle: Option(fn(Dynamic) -> Dynamic))
+  // Only difference between server and universial is that universal works with source
+  Universal(handle: Option(fn( String,  String,  String) -> String))
 }
 
 // mount handling of keydown
@@ -134,6 +144,13 @@ pub fn mount_constraint(mount) {
       t.Function(t.Tuple([input, state]), t.Tuple([output, state]))
     }
     Server(_) -> t.Function(t.Binary, t.Binary)
+    Universal(_) -> t.Function(
+      t.Record([#("Method", t.Binary), #("Path", t.Binary), #("Body", t.Binary)], None), 
+      t.Function(
+        t.Record([#("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([])), t.Tuple([]))), #("render", t.Function(t.Binary, t.Tuple([])))], None), 
+        t.Binary
+      )
+    )
     Static(_) -> t.Unbound(-2)
   }
 }
@@ -157,15 +174,15 @@ pub fn focus_on_mount(before: Workspace(_), index) {
   let workspace =
     Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
   case workspace.editor {
-    Some(editor.Editor(cache: editor.Cache(evaled: Ok(code), ..), ..)) -> {
-      let func = code_update(code, _)
+    Some(editor.Editor(cache: editor.Cache(evaled: Ok(code), ..), source: s ..)) -> {
+      let func = code_update(code, s, _)
       dispatch_to_app(workspace, func)
     }
     _ -> workspace
   }
 }
 
-pub fn code_update(code, app) {
+pub fn code_update(code, source, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
@@ -232,9 +249,62 @@ pub fn code_update(code, app) {
         returned
       }))
     }
+    Universal(_) -> {
+      // let source = e.access(source, key)
+      // TODO this looses scope but issues with rewritting harness
+      // Need to shake tree
+      assert #(_, e.Record(fields)) = last_term(source)
+      assert Ok(server_source) = list.key_find(fields, key) 
+
+      // rerender as a function same as capture
+      // Pass in dom arguments
+      // on click at all times
+      // Need mutable ref or app state
+
+      let handler = fn (method, path, body) { 
+        let server_arg = interpreter.Record([#("Method", interpreter.Binary(method)),#("Path", interpreter.Binary(path)),#("Body", interpreter.Binary(body))])
+        assert interpreter.Function(pattern, body, captured) = interpreter.exec(editor.untype(server_source), map.new())
+
+        // eval server fn with arg
+        let inner = interpreter.extend_env(captured, pattern, server_arg)
+
+        // client function
+        assert interpreter.Function(pattern, body, captured) =  interpreter.exec(body, inner)
+        io.debug(captured)
+        io.debug(body)
+        let client_source = e.function(pattern, body)
+        
+        // TODO captured should not include empty
+        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [])
+        let #(typed, typer) = typer.expand_providers(typed, typer, [])
+
+        let program = list.map(map.to_list(captured), interpreter.render_var)
+        |> list.flatten
+        |> list.append([javascript.render_to_string(typed, typer)])
+        |> string.join("\n")
+        |> string.append("({
+OnKeypress: (f) => document.addEventListener(\"keydown\", function (event) {
+    f(event.key);
+  }),
+render: (value) => document.body.innerHTML = value
+});")
+string.concat(["<head></head><body></body><script>", program, "</script>"])
+      }
+      Universal(Some(handler))
+    }
   }
   App(key, mount)
 }
+
+// TODO REPL in place in tree as app
+
+fn last_term(source) { 
+  let #(_, tree) = source
+  case tree {
+    e.Let(_,_, then) -> last_term(then) 
+    _ -> source
+  }
+ }
 
 // CLI
 // ScanCycle

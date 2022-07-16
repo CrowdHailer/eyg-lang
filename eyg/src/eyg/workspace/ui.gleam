@@ -23,7 +23,8 @@ fn apps() {
     workspace.App("test", workspace.TestSuite("True")),
     workspace.App("cli", workspace.String2String("", "", None)),
     workspace.App("scan", workspace.Firmata(None)),
-    workspace.App("server", workspace.Server(None))
+    workspace.App("server", workspace.Server(None)),
+    workspace.App("universal", workspace.Universal(None)),
   ]
 }
 
@@ -79,7 +80,7 @@ pub fn click(marker) -> Transform(n) {
             let changed = editor.source != before_editor.source
             case changed, editor.cache.evaled {
               True, Ok(code) -> {
-                let func = workspace.code_update(code, _)
+                let func = workspace.code_update(code, editor.source, _)
                 workspace.dispatch_to_app(workspace, func)
               }
               _, _ -> workspace
@@ -121,7 +122,9 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
       let changed = editor.source != before_editor.source
       case changed, editor.cache.evaled {
         True, Ok(code) -> {
-          let func = workspace.code_update(code, _)
+          let func = workspace.code_update(code, editor.source, _)
+          // app gets source
+          io.debug("to interpret here")
           workspace.dispatch_to_app(workspace, func)
         }
         _, _ -> workspace

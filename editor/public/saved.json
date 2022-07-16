@@ -1111,6 +1111,80 @@
                       "node": "Variable",
                       "label": "counter"
                     }
+                  },
+                  {
+                    "node": "Field",
+                    "key": "universal",
+                    "value": {
+                      "node": "Function",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": "request"
+                      },
+                      "body": {
+                        "node": "Function",
+                        "pattern": {
+                          "node": "Variable",
+                          "label": "dom"
+                        },
+                        "body": {
+                          "node": "Let",
+                          "pattern": {
+                            "node": "Variable",
+                            "label": ""
+                          },
+                          "value": {
+                            "node": "Call",
+                            "function": {
+                              "node": "Access",
+                              "value": {
+                                "node": "Variable",
+                                "label": "dom"
+                              },
+                              "key": "render"
+                            },
+                            "with": {
+                              "node": "Access",
+                              "value": {
+                                "node": "Variable",
+                                "label": "request"
+                              },
+                              "key": "Method"
+                            }
+                          },
+                          "then": {
+                            "node": "Let",
+                            "pattern": {
+                              "node": "Variable",
+                              "label": ""
+                            },
+                            "value": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Access",
+                                "value": {
+                                  "node": "Variable",
+                                  "label": "dom"
+                                },
+                                "key": "OnKeypress"
+                              },
+                              "with": {
+                                "node": "Access",
+                                "value": {
+                                  "node": "Variable",
+                                  "label": "dom"
+                                },
+                                "key": "render"
+                              }
+                            },
+                            "then": {
+                              "node": "Binary",
+                              "value": "Foo"
+                            }
+                          }
+                        }
+                      }
+                    }
                   }
                 ]
               }
