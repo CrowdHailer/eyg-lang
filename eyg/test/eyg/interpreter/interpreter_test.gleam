@@ -87,18 +87,6 @@ pub fn builtin_test()  {
 }
 
 
-fn render_var(assignment) { 
-    let #(var, object) = assignment
-    case object {
-        r.Binary(content) -> [string.concat(["let ", var, " = ", "\"", javascript.escape_string(content), "\";"])]
-        r.Tuple(_) -> todo("tuple")
-        r.Record(_) -> todo("record")
-        r.Tagged(_, _) -> todo("tagged")
-        // Builtins should never be included, I need to check variables used in a previous step
-        r.Function(_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
-        r.BuiltinFn(_) -> []
-    }
- }
 
 fn capture(object) { 
     assert r.Function(pattern, body, captured) = object
@@ -113,7 +101,7 @@ fn capture(object) {
     //   assert [] = typer.inconsistencies
 
     
-    list.map(map.to_list(captured), render_var)
+    list.map(map.to_list(captured), r.render_var)
     |> list.flatten
     |> list.append([javascript.render_to_string(typed, typer)])
     |> string.join("\n")

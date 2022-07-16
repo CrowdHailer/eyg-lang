@@ -35,6 +35,9 @@
   {:else if mount instanceof Mount.Server}
     <p><strong>{key}:</strong> Server</p>
     <Server handle={mount.handle} />
+  {:else if mount instanceof Mount.Universal}
+    <p><strong>{key}:</strong> Server</p>
+    <Server handle={mount.handle} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

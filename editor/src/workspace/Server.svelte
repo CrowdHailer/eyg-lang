@@ -20,7 +20,8 @@
         let status = 200;
         let body = "";
         if (handlerFn) {
-          body = handlerFn(data.body);
+          body = handlerFn(data.method, data.path, data.body);
+          console.log("in herer", body, handlerFn);
         }
         exchanges = exchanges.concat(exchanges, [
           { request: data, response: { status, body } },

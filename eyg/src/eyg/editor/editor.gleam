@@ -306,7 +306,7 @@ pub type Element(a, b) {
   ProviderConfig(String)
 }
 
-external fn untype(e.Expression(a, b)) -> e.Expression(Dynamic, Dynamic) =
+pub external fn untype(e.Expression(a, b)) -> e.Expression(Dynamic, Dynamic) =
   "../../eyg_utils.js" "identity"
 
 pub fn untype_field(
