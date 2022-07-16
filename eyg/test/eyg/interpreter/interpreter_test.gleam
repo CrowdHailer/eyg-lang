@@ -1,0 +1,138 @@
+import gleam/io
+import gleam/dynamic
+import gleam/list
+import gleam/map
+import gleam/string
+import eyg/analysis
+import eyg/ast/expression as e
+import eyg/ast/pattern as p
+import eyg/interpreter/interpreter.{exec} as r
+import eyg/typer
+import eyg/typer/monotype as t
+import eyg/codegen/javascript
+
+pub fn tuples_test() {
+    let empty = map.new()
+    let source = e.tuple_([e.tuple_([]), e.binary("hello")])
+
+    assert r.Tuple([r.Tuple([]), r.Binary("hello")]) = exec(source, empty)
+}
+
+pub fn tuple_patterns_test() {
+    let empty = map.new()
+    let source = e.let_(
+        p.Tuple(["x", "y"]), 
+        e.tuple_([e.binary("foo"), e.binary("bar")]), 
+        e.tuple_([e.variable("y"), e.variable("x")])
+        )
+
+    assert r.Tuple([r.Binary("bar"), r.Binary("foo")]) = exec(source, empty)
+}
+
+
+pub fn records_test() {
+    let empty = map.new()
+    let source = e.access(e.record([#("foo", e.tuple_([]))]), "foo")
+
+    assert r.Tuple([]) = exec(source, empty) 
+}
+
+pub fn variables_test() {
+    let empty = map.new()
+    let source = e.let_(p.Variable("a"), e.tuple_([]), e.variable("a"))
+
+    assert r.Tuple([]) = exec(source, empty)
+}
+
+pub fn functions_test() {
+    let empty = map.new()
+    let source = e.call(e.function(p.Variable("x"), e.variable("x")), e.tuple_([]))
+
+    assert r.Tuple([]) = exec(source, empty) 
+
+        let source = e.call(e.function(p.Tuple([]), e.binary("inner")), e.tuple_([]))
+
+    assert r.Binary("inner") = exec(source, empty) 
+
+}
+
+pub fn unions_test() {
+        let empty = map.new()
+    let source = e.case_(e.tagged("True", e.tuple_([])), [
+        #("False", p.Tuple([]), e.binary("no")),
+        #("True", p.Tuple([]), e.binary("yes"))
+    ])
+    assert r.Binary("yes") = exec(source, empty) 
+
+            let empty = map.new()
+    let source = e.case_(e.tagged("Some", e.binary("foo")), [
+        #("Some", p.Variable("a"), e.variable("a")),
+        #("None", p.Tuple([]), e.binary("BAD"))
+    ])
+    assert r.Binary("foo") = exec(source, empty) 
+
+}
+
+// recursive eval
+
+pub fn builtin_test()  {
+    let env = map.new()
+    |> map.insert("string", r.Record([#("reverse", r.BuiltinFn(fn(object) {
+        assert r.Binary(value) = object
+        r.Binary(string.reverse(value))
+    }))]))
+    let source = e.call(e.access(e.variable("string"), "reverse"), e.binary("hello"))
+
+    assert r.Binary("olleh") = exec(source, env) 
+}
+
+
+fn render_var(assignment) { 
+    let #(var, object) = assignment
+    case object {
+        r.Binary(content) -> [string.concat(["let ", var, " = ", "\"", javascript.escape_string(content), "\";"])]
+        r.Tuple(_) -> todo("tuple")
+        r.Record(_) -> todo("record")
+        r.Tagged(_, _) -> todo("tagged")
+        // Builtins should never be included, I need to check variables used in a previous step
+        r.Function(_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
+        r.BuiltinFn(_) -> []
+    }
+ }
+
+fn capture(object) { 
+    assert r.Function(pattern, body, captured) = object
+    let func = e.function(pattern, body)
+
+    let source = e.call(func, e.binary("DOM"))
+
+    let #(typed, typer) = analysis.infer(source, t.Unbound(-1), [])
+    let #(typed, typer) = typer.expand_providers(typed, typer, [])
+    // We shouldn't need to type check again or expand providers as this will have be done on the first pass
+    // However the render function takes typed AST not untyped and I don't want to fix that now.
+    //   assert [] = typer.inconsistencies
+
+    
+    list.map(map.to_list(captured), render_var)
+    |> list.flatten
+    |> list.append([javascript.render_to_string(typed, typer)])
+    |> string.join("\n")
+    |> io.debug()
+    |> javascript.do_eval()
+    |> io.debug()
+    r.Tuple([])
+ }
+
+pub fn capture_test()  {
+    let source = e.let_(
+        p.Variable("message"), 
+        e.binary("hello"),
+        e.call(e.variable("capture"), e.function(p.Variable("name"),
+            e.tuple_([e.variable("message"), e.variable("name")])
+        ))
+    )
+
+    let env = map.new()
+    |> map.insert("capture", r.BuiltinFn(capture))
+    assert r.Tuple([]) = exec(source, env) 
+}

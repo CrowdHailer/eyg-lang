@@ -27,7 +27,7 @@ pub type Generator(n) {
 }
 
 // Scope and self can me moved out into the metadata
-external fn do_eval(String) -> Dynamic =
+pub external fn do_eval(String) -> Dynamic =
   "../../harness.js" "run"
 
 pub fn eval(tree, typer) {
@@ -167,7 +167,7 @@ fn render_pattern(pattern, state) {
 
 // https://www.w3schools.com/js/js_strings.asp
 // quotes and backslash. Note there is also typewriter charachters I have not tackled here.
-fn escape_string(raw) {
+pub fn escape_string(raw) {
   raw
   // Need to replace user slashes first so that slashed from later escape sequences are kept
   |> string.replace("\\", "\\\\")
