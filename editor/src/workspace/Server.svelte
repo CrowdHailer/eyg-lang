@@ -58,10 +58,13 @@
 <div>
   <h2 class="">Requests handled</h2>
   {#each exchanges as e}
-    <div class="px-2">
-      {e.request.method}
-      {e.request.path} - {e.response.status}
-      {e.response.body.length} bytes
+    <div class="px-2 flex">
+      <span class="flex-1">{e.request.method} {e.request.path}</span>
+      <span class="flex-1">
+        {e.response.status}
+        {#if e.response.body.length > 30}{e.response.body.length} bytes{:else}{e
+            .response.body}{/if}</span
+      >
     </div>
   {:else}
     <div id="request-log" class="px-2 text-gray-600">No requests</div>

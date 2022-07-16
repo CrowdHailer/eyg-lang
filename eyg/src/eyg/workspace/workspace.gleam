@@ -226,9 +226,9 @@ pub fn code_update(code, app) {
     Static(_) -> todo("probably remove I don't see much value in static")
     Server(_) -> {
       let cast = gleam_extra.dynamic_function
-      assert Ok(scan) = dynamic.field(key, cast)(code)
+      assert Ok(handle) = dynamic.field(key, cast)(code)
       Server(Some(fn(x) {
-        assert Ok(returned) = scan(x)
+        assert Ok(returned) = handle(x)
         returned
       }))
     }
