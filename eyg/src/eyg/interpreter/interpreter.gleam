@@ -41,15 +41,20 @@ pub fn extend_env(env, pattern, object) {
  }
 
 pub fn exec(source, env)  {
-    let #(_, source) = source
-    case source {
+    let #(_, s) = source
+    case s {
         e.Binary(value) -> Binary(value)
         e.Tuple(elements) -> Tuple(list.map(elements, exec(_, env)))
         e.Record(fields) -> Record(value_map(fields, exec(_, env)))
         e.Access(record, key) -> {
             assert Record(fields) = exec(record, env)
-            assert Ok(value) = list.key_find(fields, key)
-            value
+            case list.key_find(fields, key) {
+                Ok(value) -> value
+                _ -> {
+                    io.debug(key)
+                    todo("missing key in record")
+                }
+            }
         }
         e.Tagged(tag, value) -> Tagged(tag, exec(value, env))
         e.Case(value, branches) -> {
@@ -99,8 +104,7 @@ pub fn exec(source, env)  {
         }
         e.Hole() -> todo("interpreted a program with a hole")
         e.Provider(_, _, generated) -> {
-            io.debug(source)
-            Tuple([])
+            // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
             exec(dynamic.unsafe_coerce(generated), env)
             // todo("providers should have been expanded before evaluation")
             }
@@ -110,25 +114,30 @@ pub fn exec(source, env)  {
 pub fn render_var(assignment) { 
     let #(var, object) = assignment
     case var {
-        "" -> [] 
-        _ -> case object {
-            Binary(content) -> [string.concat(["let ", var, " = ", "\"", javascript.escape_string(content), "\";"])]
-            Tuple(_) -> todo("tuple")
+        "" -> "" 
+        _ -> string.concat(["let ", var, " = ", render_object(object), ";"])
+    }
+ }
+
+fn render_object(object) {
+case object {
+            Binary(content) -> string.concat([ "\"", javascript.escape_string(content), "\""])
+            Tuple(_) -> "null"
             Record(fields) -> {
                 let term = list.map(
                     fields,
                     fn(field) {
-                    let #(name, Binary(content)) = field
-                    string.concat([name, ": ", "\"", javascript.escape_string(content), "\""])
+                    let #(name, object) = field
+                    string.concat([name, ": ", render_object(object)])
                     },
                 )
                 |> string.join(", ")
-                [string.concat(["let ", var, " = ","{", term, "}",";"])]
+                string.concat(["{", term, "}"])
             }
-            Tagged(_, _) -> todo("tagged")
+            Tagged(_, _) ->"null"
             // Builtins should never be included, I need to check variables used in a previous step
-            Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
-            BuiltinFn(_) -> []
+            // Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
+            Function(_,_,_,_) -> "null"
+            BuiltinFn(_) -> "null"
         }
-    }
- }
+}

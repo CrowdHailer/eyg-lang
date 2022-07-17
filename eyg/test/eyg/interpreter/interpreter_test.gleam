@@ -135,7 +135,6 @@ fn capture(object) {
 
     
     list.map(map.to_list(captured), r.render_var)
-    |> list.flatten
     |> list.append([javascript.render_to_string(typed, typer)])
     |> string.join("\n")
     |> io.debug()

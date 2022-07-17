@@ -14,20 +14,17 @@
       let fetched = await fetch(api + "/request/" + clientId);
       if (fetched.status === 200) {
         let data = await fetched.json();
-        console.log(data);
         // let mod = await getModule();
         data.path = data.path.slice(7) || "/";
         let status = 200;
         let body = "";
         if (handlerFn) {
           body = handlerFn(data.method, data.path, data.body);
-          console.log("in herer", body, handlerFn);
         }
         exchanges = exchanges.concat(exchanges, [
           { request: data, response: { status, body } },
         ]);
         // logRequest(data, { status, body });
-        // console.log(body);
         fetch(api + "/response/" + data.response_id, {
           method: "POST",
           body: JSON.stringify({ status, body }),

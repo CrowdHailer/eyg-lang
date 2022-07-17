@@ -1122,37 +1122,33 @@
                         "label": "request"
                       },
                       "body": {
-                        "node": "Function",
+                        "node": "Let",
                         "pattern": {
                           "node": "Variable",
-                          "label": "dom"
+                          "label": ""
                         },
-                        "body": {
-                          "node": "Let",
+                        "value": {
+                          "node": "Call",
+                          "function": {
+                            "node": "Access",
+                            "value": {
+                              "node": "Variable",
+                              "label": "harness"
+                            },
+                            "key": "debug"
+                          },
+                          "with": {
+                            "node": "Binary",
+                            "value": "Hello from server"
+                          }
+                        },
+                        "then": {
+                          "node": "Function",
                           "pattern": {
                             "node": "Variable",
-                            "label": ""
+                            "label": "dom"
                           },
-                          "value": {
-                            "node": "Call",
-                            "function": {
-                              "node": "Access",
-                              "value": {
-                                "node": "Variable",
-                                "label": "dom"
-                              },
-                              "key": "render"
-                            },
-                            "with": {
-                              "node": "Access",
-                              "value": {
-                                "node": "Variable",
-                                "label": "request"
-                              },
-                              "key": "Method"
-                            }
-                          },
-                          "then": {
+                          "body": {
                             "node": "Let",
                             "pattern": {
                               "node": "Variable",
@@ -1166,20 +1162,46 @@
                                   "node": "Variable",
                                   "label": "dom"
                                 },
-                                "key": "OnKeypress"
+                                "key": "render"
                               },
                               "with": {
                                 "node": "Access",
                                 "value": {
                                   "node": "Variable",
-                                  "label": "dom"
+                                  "label": "request"
                                 },
-                                "key": "render"
+                                "key": "Method"
                               }
                             },
                             "then": {
-                              "node": "Binary",
-                              "value": "Foo"
+                              "node": "Let",
+                              "pattern": {
+                                "node": "Variable",
+                                "label": ""
+                              },
+                              "value": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "dom"
+                                  },
+                                  "key": "OnKeypress"
+                                },
+                                "with": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "dom"
+                                  },
+                                  "key": "render"
+                                }
+                              },
+                              "then": {
+                                "node": "Binary",
+                                "value": "Foo"
+                              }
                             }
                           }
                         }

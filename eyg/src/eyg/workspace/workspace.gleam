@@ -7,6 +7,7 @@ import gleam/string
 import gleam_extra
 import eyg/typer/monotype as t
 import eyg/ast/expression as e
+import eyg/ast/pattern as p
 import eyg/interpreter/interpreter
 import eyg/editor/editor
 import eyg/analysis
@@ -262,8 +263,17 @@ pub fn code_update(code, source, app) {
       // Need mutable ref or app state
 
       let handler = fn (method, path, body) { 
+        let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [])
+        let #(typed, typer) = typer.expand_providers(typed, typer, [])
+
+        let top_env = map.new()
+        |> map.insert("harness", interpreter.Record([
+          #("compile", interpreter.Function(p.Variable(""), e.tagged("Error", e.binary("not in interpreter")), map.new(), None)), 
+          #("debug", interpreter.BuiltinFn(io.debug))
+        ]))
+// We expand the providers but the exec needs dynamic
         let server_arg = interpreter.Record([#("Method", interpreter.Binary(method)),#("Path", interpreter.Binary(path)),#("Body", interpreter.Binary(body))])
-        assert interpreter.Function(pattern, body, captured, None) = interpreter.exec(editor.untype(server_source), map.new())
+        assert interpreter.Function(pattern, body, captured, None) = interpreter.exec(editor.untype(typed), top_env)
 
         // eval server fn with arg
         let inner = interpreter.extend_env(captured, pattern, server_arg)
@@ -277,7 +287,6 @@ pub fn code_update(code, source, app) {
         let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
         let program = list.map(map.to_list(captured), interpreter.render_var)
-        |> list.flatten
         |> list.append([javascript.render_to_string(typed, typer)])
         |> string.join("\n")
         |> string.append("({
