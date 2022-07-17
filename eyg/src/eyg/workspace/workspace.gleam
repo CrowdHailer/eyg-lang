@@ -250,11 +250,11 @@ pub fn code_update(code, source, app) {
       }))
     }
     Universal(_) -> {
-      // let source = e.access(source, key)
       // TODO this looses scope but issues with rewritting harness
       // Need to shake tree
-      assert #(_, e.Record(fields)) = last_term(source)
-      assert Ok(server_source) = list.key_find(fields, key) 
+      // assert #(_, e.Record(fields)) = last_term(source)
+      // assert Ok(server_source) = list.key_find(fields, key) 
+      let server_source = e.access(source, key)
 
       // rerender as a function same as capture
       // Pass in dom arguments
@@ -263,15 +263,13 @@ pub fn code_update(code, source, app) {
 
       let handler = fn (method, path, body) { 
         let server_arg = interpreter.Record([#("Method", interpreter.Binary(method)),#("Path", interpreter.Binary(path)),#("Body", interpreter.Binary(body))])
-        assert interpreter.Function(pattern, body, captured) = interpreter.exec(editor.untype(server_source), map.new())
+        assert interpreter.Function(pattern, body, captured, None) = interpreter.exec(editor.untype(server_source), map.new())
 
         // eval server fn with arg
         let inner = interpreter.extend_env(captured, pattern, server_arg)
 
         // client function
-        assert interpreter.Function(pattern, body, captured) =  interpreter.exec(body, inner)
-        io.debug(captured)
-        io.debug(body)
+        assert interpreter.Function(pattern, body, captured, None) =  interpreter.exec(body, inner)
         let client_source = e.function(pattern, body)
         
         // TODO captured should not include empty

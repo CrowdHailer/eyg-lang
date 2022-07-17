@@ -2,6 +2,7 @@ import gleam/io
 import gleam/dynamic
 import gleam/list
 import gleam/map
+import gleam/option.{None}
 import gleam/string
 import eyg/analysis
 import eyg/ast/expression as e
@@ -73,7 +74,39 @@ pub fn unions_test() {
 
 }
 
-// recursive eval
+fn tail() { 
+    r.Tagged("Nil", r.Tuple([]))
+}
+
+fn cons(h,t) {
+     r.Tagged("Cons", r.Tuple([h, t]))
+
+}
+
+pub fn recursive_test() {
+    let source = e.let_(
+        p.Variable("move"),
+        e.function(p.Tuple(["from", "to"]), 
+            e.case_(e.variable("from"), [
+                #("Nil", p.Tuple([]), e.variable("to")),
+                #("Cons", p.Tuple(["item", "from"]), e.let_(
+                    p.Variable("to"),
+                    e.tagged("Cons", e.tuple_([e.variable("item"), e.variable("to")])),
+                    e.call(e.variable("move"), e.tuple_([e.variable("from"), e.variable("to")]))
+                ))
+            ])
+        ),
+        e.call(e.variable("move"), e.variable("x"))
+    )
+    let empty = map.new()
+    |> map.insert("x", r.Tuple([tail(), tail()]))
+    assert r.Tagged("Nil", r.Tuple([])) = exec(source, empty) 
+
+        let empty = map.new()
+    |> map.insert("x", r.Tuple([cons(r.Binary("1"),cons(r.Binary("2"),tail())), tail()]))
+    assert r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))])) = exec(source, empty) 
+    |> io.debug
+}
 
 pub fn builtin_test()  {
     let env = map.new()
@@ -89,7 +122,7 @@ pub fn builtin_test()  {
 
 
 fn capture(object) { 
-    assert r.Function(pattern, body, captured) = object
+    assert r.Function(pattern, body, captured, None) = object
     let func = e.function(pattern, body)
 
     let source = e.call(func, e.binary("DOM"))

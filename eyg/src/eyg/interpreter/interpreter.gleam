@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/dynamic.{Dynamic}
+import gleam/option.{Option, Some, None}
 import gleam/list
 import gleam/map
 import gleam/string
@@ -12,7 +13,7 @@ pub type Object {
     Tuple(List(Object))
     Record(List(#(String, Object)))
     Tagged(String, Object)
-    Function(p.Pattern, e.Expression(Dynamic, Dynamic), map.Map(String, Object))
+    Function(p.Pattern, e.Expression(Dynamic, Dynamic), map.Map(String, Object), Option(String))
     BuiltinFn(fn(Object) -> Object)
 }
 
@@ -62,21 +63,30 @@ pub fn exec(source, env)  {
 
         }
         e.Let(pattern, value, then) -> {
-            exec(then, extend_env(env, pattern, exec(value, env)))
+            case pattern, value {
+                p.Variable(label), #(_, e.Function(pattern, body)) -> {
+                    map.insert(env, label, Function(pattern, body, env, Some(label)))
+                }
+                _,_ -> extend_env(env, pattern, exec(value, env))
+            }
+            |> exec(then, _)
         }
         e.Variable(var) -> {
-            io.debug(var)
             assert Ok(value) = map.get(env, var)
             value
         }
         e.Function(pattern, body) -> {
-            Function(pattern, body, env)
+            Function(pattern, body, env, None)
         }
         e.Call(func, arg) -> {
-            let arg = exec(arg, env)
-            case exec(func, env) {
-                 Function(pattern, body, captured) -> {
-
+            let func = exec(func, env)
+            let arg = exec(arg, env)            
+            case func {
+                 Function(pattern, body, captured, self)  -> {
+                    let captured = case self {
+                        Some(label) -> map.insert(captured, label, func)
+                        None -> captured
+                    }
                     let inner = extend_env(captured, pattern, arg)
                     exec(body, inner)
                 }
@@ -117,7 +127,7 @@ pub fn render_var(assignment) {
             }
             Tagged(_, _) -> todo("tagged")
             // Builtins should never be included, I need to check variables used in a previous step
-            Function(_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
+            Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
             BuiltinFn(_) -> []
         }
     }
