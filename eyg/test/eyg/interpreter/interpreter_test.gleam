@@ -156,3 +156,18 @@ pub fn capture_test()  {
     |> map.insert("capture", r.BuiltinFn(capture))
     assert r.Tuple([]) = exec(source, env) 
 }
+
+pub fn coroutines_test() {
+    let source = e.call(
+        e.call(e.variable("spawn"), e.let_(p.Variable("loop"), e.function(p.Variable("message"), e.variable("loop")), e.variable("loop"))),
+        e.function(p.Variable("pid"), e.variable("pid"))
+    )
+
+    let env = map.new()
+    |> map.insert("spawn", r.BuiltinFn(fn(x) {
+        assert r.Function(pattern, body, env, self) = x
+        // todo("inside spawn")
+        r.Coroutine(x)
+    }))
+    assert #(r.Pid(0), coroutines) = r.run(source, env, []) 
+}
