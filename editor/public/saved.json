@@ -1086,118 +1086,129 @@
                 }
               },
               "then": {
-                "node": "Record",
-                "fields": [
-                  {
-                    "node": "Field",
-                    "key": "test",
-                    "value": {
-                      "node": "Variable",
-                      "label": "test"
-                    }
+                "node": "Let",
+                "pattern": {
+                  "node": "Variable",
+                  "label": "universal"
+                },
+                "value": {
+                  "node": "Function",
+                  "pattern": {
+                    "node": "Variable",
+                    "label": "request"
                   },
-                  {
-                    "node": "Field",
-                    "key": "cli",
-                    "value": {
+                  "body": {
+                    "node": "Let",
+                    "pattern": {
                       "node": "Variable",
-                      "label": "cli"
-                    }
-                  },
-                  {
-                    "node": "Field",
-                    "key": "counter",
+                      "label": "initial"
+                    },
                     "value": {
-                      "node": "Variable",
-                      "label": "counter"
-                    }
-                  },
-                  {
-                    "node": "Field",
-                    "key": "universal",
-                    "value": {
+                      "node": "Access",
+                      "value": {
+                        "node": "Variable",
+                        "label": "request"
+                      },
+                      "key": "Method"
+                    },
+                    "then": {
                       "node": "Function",
                       "pattern": {
                         "node": "Variable",
-                        "label": "request"
+                        "label": "dom"
                       },
                       "body": {
                         "node": "Let",
                         "pattern": {
                           "node": "Variable",
-                          "label": "initial"
+                          "label": ""
                         },
                         "value": {
-                          "node": "Access",
-                          "value": {
-                            "node": "Variable",
-                            "label": "request"
+                          "node": "Call",
+                          "function": {
+                            "node": "Access",
+                            "value": {
+                              "node": "Variable",
+                              "label": "dom"
+                            },
+                            "key": "render"
                           },
-                          "key": "Method"
+                          "with": {
+                            "node": "Variable",
+                            "label": "initial"
+                          }
                         },
                         "then": {
-                          "node": "Function",
+                          "node": "Let",
                           "pattern": {
                             "node": "Variable",
-                            "label": "dom"
+                            "label": ""
                           },
-                          "body": {
-                            "node": "Let",
-                            "pattern": {
-                              "node": "Variable",
-                              "label": ""
-                            },
-                            "value": {
-                              "node": "Call",
-                              "function": {
-                                "node": "Access",
-                                "value": {
-                                  "node": "Variable",
-                                  "label": "dom"
-                                },
-                                "key": "render"
-                              },
-                              "with": {
-                                "node": "Variable",
-                                "label": "initial"
-                              }
-                            },
-                            "then": {
-                              "node": "Let",
-                              "pattern": {
-                                "node": "Variable",
-                                "label": ""
-                              },
+                          "value": {
+                            "node": "Call",
+                            "function": {
+                              "node": "Access",
                               "value": {
-                                "node": "Call",
-                                "function": {
-                                  "node": "Access",
-                                  "value": {
-                                    "node": "Variable",
-                                    "label": "dom"
-                                  },
-                                  "key": "OnKeypress"
-                                },
-                                "with": {
-                                  "node": "Access",
-                                  "value": {
-                                    "node": "Variable",
-                                    "label": "dom"
-                                  },
-                                  "key": "render"
-                                }
+                                "node": "Variable",
+                                "label": "dom"
                               },
-                              "then": {
-                                "node": "Binary",
-                                "value": ""
-                              }
+                              "key": "OnKeypress"
+                            },
+                            "with": {
+                              "node": "Access",
+                              "value": {
+                                "node": "Variable",
+                                "label": "dom"
+                              },
+                              "key": "render"
                             }
+                          },
+                          "then": {
+                            "node": "Binary",
+                            "value": ""
                           }
                         }
                       }
                     }
                   }
-                ]
+                },
+                "then": {
+                  "node": "Record",
+                  "fields": [
+                    {
+                      "node": "Field",
+                      "key": "test",
+                      "value": {
+                        "node": "Variable",
+                        "label": "test"
+                      }
+                    },
+                    {
+                      "node": "Field",
+                      "key": "cli",
+                      "value": {
+                        "node": "Variable",
+                        "label": "cli"
+                      }
+                    },
+                    {
+                      "node": "Field",
+                      "key": "counter",
+                      "value": {
+                        "node": "Variable",
+                        "label": "counter"
+                      }
+                    },
+                    {
+                      "node": "Field",
+                      "key": "universal",
+                      "value": {
+                        "node": "Variable",
+                        "label": "universal"
+                      }
+                    }
+                  ]
+                }
               }
             }
           }

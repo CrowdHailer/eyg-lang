@@ -273,13 +273,14 @@ pub fn code_update(code, source, app) {
         ]))
 // We expand the providers but the exec needs dynamic
         let server_arg = interpreter.Record([#("Method", interpreter.Binary(method)),#("Path", interpreter.Binary(path)),#("Body", interpreter.Binary(body))])
-        assert interpreter.Function(pattern, body, captured, None) = interpreter.exec(editor.untype(typed), top_env)
+        assert interpreter.Function(pattern, body, captured, _) = interpreter.exec(editor.untype(typed), top_env)
 
         // eval server fn with arg
+        // can definetly make a call with request as a named call arg
         let inner = interpreter.extend_env(captured, pattern, server_arg)
 
         // client function
-        assert interpreter.Function(pattern, body, captured, None) =  interpreter.exec(body, inner)
+        assert interpreter.Function(pattern, body, captured, _) =  interpreter.exec(body, inner)
         let client_source = e.function(pattern, body)
         
         // TODO captured should not include empty
