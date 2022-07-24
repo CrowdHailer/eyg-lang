@@ -1125,22 +1125,15 @@
                         "node": "Let",
                         "pattern": {
                           "node": "Variable",
-                          "label": ""
+                          "label": "initial"
                         },
                         "value": {
-                          "node": "Call",
-                          "function": {
-                            "node": "Access",
-                            "value": {
-                              "node": "Variable",
-                              "label": "harness"
-                            },
-                            "key": "debug"
+                          "node": "Access",
+                          "value": {
+                            "node": "Variable",
+                            "label": "request"
                           },
-                          "with": {
-                            "node": "Binary",
-                            "value": "Hello from server"
-                          }
+                          "key": "Method"
                         },
                         "then": {
                           "node": "Function",
@@ -1165,12 +1158,8 @@
                                 "key": "render"
                               },
                               "with": {
-                                "node": "Access",
-                                "value": {
-                                  "node": "Variable",
-                                  "label": "request"
-                                },
-                                "key": "Method"
+                                "node": "Variable",
+                                "label": "initial"
                               }
                             },
                             "then": {
@@ -1200,7 +1189,7 @@
                               },
                               "then": {
                                 "node": "Binary",
-                                "value": "Foo"
+                                "value": ""
                               }
                             }
                           }

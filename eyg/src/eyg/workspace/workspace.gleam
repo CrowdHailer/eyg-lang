@@ -148,7 +148,7 @@ pub fn mount_constraint(mount) {
     Universal(_) -> t.Function(
       t.Record([#("Method", t.Binary), #("Path", t.Binary), #("Body", t.Binary)], None), 
       t.Function(
-        t.Record([#("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([])), t.Tuple([]))), #("render", t.Function(t.Binary, t.Tuple([])))], None), 
+        t.Record([#("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([])), t.Tuple([]))), #("render", t.Function(t.Binary, t.Tuple([]))),  #("log", t.Function(t.Binary, t.Tuple([])))], None), 
         t.Binary
       )
     )
@@ -293,7 +293,8 @@ pub fn code_update(code, source, app) {
 OnKeypress: (f) => document.addEventListener(\"keydown\", function (event) {
     f(event.key);
   }),
-render: (value) => document.body.innerHTML = value
+render: (value) => document.body.innerHTML = value,
+log: (x) => console.log(x),
 });")
 string.concat(["<head></head><body></body><script>", program, "</script>"])
       }
