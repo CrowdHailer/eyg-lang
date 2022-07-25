@@ -63,8 +63,8 @@ pub fn set_untyped(editor: Editor(_), source) {
 }
 
 pub fn analyse(source, constraint, harness) {
-  let harness.Harness(variables: variables, ..) = harness
-  let #(typed, typer) = analysis.infer(source, constraint, variables)
+  let harness.Harness(variables: variables, native_to_string: _, native_to_parameters: native_to_parameters) = harness
+  let #(typed, typer) = analysis.infer(source, constraint, variables, native_to_parameters)
   let #(typed, typer) = typer.expand_providers(typed, typer, variables)
   let #(code, evaled) = case typer.inconsistencies {
     [] -> {

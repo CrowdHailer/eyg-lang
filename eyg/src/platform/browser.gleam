@@ -27,10 +27,20 @@ pub fn native_to_string(type_) {
   }
 }
 
+pub fn native_to_parameters(n)  {
+  case n {
+    Integer -> []
+    JSON -> []
+    Array(inner) -> [inner]
+    Address(inner) -> [inner]
+  }
+}
+
 pub fn harness() {
   harness.Harness(
     [#("equal", typer.equal_fn()), #("harness", string()), #("int", int())],
     native_to_string,
+    native_to_parameters
   )
 }
 

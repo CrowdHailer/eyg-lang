@@ -11,8 +11,8 @@ import eyg/typer/polytype
 import misc
 import eyg/editor/type_info
 
-pub fn infer(untyped, type_, variables) {
-  let checker = typer.init()
+pub fn infer(untyped, type_, variables, native_to_parameters) {
+  let checker = typer.init(native_to_parameters)
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
   typer.infer(untyped, type_, state)

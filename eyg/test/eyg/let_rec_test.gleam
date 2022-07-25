@@ -17,7 +17,7 @@ import eyg/editor/type_info
 
 fn infer(untyped, type_) {
   let variables = [#("equal", typer.equal_fn())]
-  let checker = typer.init()
+  let checker = typer.init(fn(_){ todo("native to parameters in infer")})
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
   typer.infer(untyped, type_, state)

@@ -127,7 +127,7 @@ fn capture(object) {
 
     let source = e.call(func, e.binary("DOM"))
 
-    let #(typed, typer) = analysis.infer(source, t.Unbound(-1), [])
+    let #(typed, typer) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo("capture native pp")})
     let #(typed, typer) = typer.expand_providers(typed, typer, [])
     // We shouldn't need to type check again or expand providers as this will have be done on the first pass
     // However the render function takes typed AST not untyped and I don't want to fix that now.

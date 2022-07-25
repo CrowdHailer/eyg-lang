@@ -268,7 +268,7 @@ pub fn code_update(code, source, app) {
       // on click at all times
       // Need mutable ref or app state
 
-      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [])
+      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [], browser.native_to_parameters)
       let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
       let top_env = map.new()
@@ -301,7 +301,7 @@ pub fn code_update(code, source, app) {
         let client_source = e.function(pattern, body)
         
         // TODO captured should not include empty
-        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [])
+        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [], browser.native_to_parameters)
         let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
         let program = list.map(map.to_list(captured), interpreter.render_var)

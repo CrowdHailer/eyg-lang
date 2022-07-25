@@ -22,32 +22,32 @@ fn get_expression(tree, path) {
 
 pub fn binary_expression_test() {
   let source = binary("Hello")
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(t.Binary) = analysis.get_type(typed, checker)
 
-  let #(typed, checker) = analysis.infer(source, t.Binary, [])
+  let #(typed, checker) = analysis.infer(source, t.Binary, [], fn(_) { todo})
   assert Ok(t.Binary) = analysis.get_type(typed, checker)
 
-  let #(typed, checker) = analysis.infer(source, t.Tuple([]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([]), [], fn(_) { todo})
   assert Error(reason) = analysis.get_type(typed, checker)
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
 
 pub fn tuple_expression_test() {
   let source = tuple_([binary("Hello")])
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([t.Binary]) = type_
-  let #(typed, checker) = analysis.infer(source, t.Tuple([t.Unbound(-1)]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([t.Unbound(-1)]), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([t.Binary]) = type_
-  let #(typed, checker) = analysis.infer(source, t.Tuple([t.Binary]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([t.Binary]), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([t.Binary]) = type_
-  let #(typed, checker) = analysis.infer(source, t.Tuple([]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([]), [], fn(_) { todo})
   assert Error(reason) = analysis.get_type(typed, checker)
   assert typer.IncorrectArity(0, 1) = reason
-  let #(typed, checker) = analysis.infer(source, t.Tuple([t.Tuple([])]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([t.Tuple([])]), [], fn(_) { todo})
   // Type is correct here only internally is there a failure
   assert Ok(t.Tuple([t.Tuple([])])) = analysis.get_type(typed, checker)
   assert Ok(element) = get_expression(typed, [0])
@@ -59,11 +59,11 @@ pub fn pair_test() {
   let source = tuple_([binary("Hello"), tuple_([])])
   let tx = t.Unbound(-1)
   let ty = t.Unbound(-2)
-  let #(typed, checker) = analysis.infer(source, t.Tuple([tx, ty]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([tx, ty]), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([t.Binary, t.Tuple([])]) = type_
   // could check tx/ty bound properly
-  let #(typed, checker) = analysis.infer(source, t.Tuple([tx, tx]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([tx, tx]), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([t.Binary, t.Binary]) = type_
   assert Ok(element) = get_expression(typed, [1])
@@ -74,11 +74,11 @@ pub fn pair_test() {
 pub fn row_expression_test() {
   // TODO order when record is called
   let source = record([#("foo", binary("Hello"))])
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Record([#("foo", t.Binary)], None) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Record([#("foo", t.Binary)], None), [])
+    analysis.infer(source, t.Record([#("foo", t.Binary)], None), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Record([#("foo", t.Binary)], None) = type_
   // TODO record with some
@@ -87,15 +87,16 @@ pub fn row_expression_test() {
       source,
       t.Record([#("foo", t.Binary), #("bar", t.Binary)], None),
       [],
+       fn(_) { todo}
     )
   assert Error(reason) = analysis.get_type(typed, checker)
   assert typer.MissingFields([#("bar", t.Binary)]) = reason
-  let #(typed, checker) = analysis.infer(source, t.Record([], None), [])
+  let #(typed, checker) = analysis.infer(source, t.Record([], None), [], fn(_) { todo})
   assert Error(reason) = analysis.get_type(typed, checker)
   // assert typer.UnexpectedFields([#("foo", t.Binary)]) = reason
   // TODO move up
   let #(typed, checker) =
-    analysis.infer(source, t.Record([#("foo", t.Tuple([]))], None), [])
+    analysis.infer(source, t.Record([#("foo", t.Tuple([]))], None), [], fn(_) { todo})
   // TODO think which one I want most.
   // assert Ok(type_) = analysis.get_type(typed, checker)
   // assert t.Record([#("foo", t.Tuple([]))], None) = type_
@@ -106,7 +107,7 @@ pub fn row_expression_test() {
   // T.Record(head, option(more_row))
   // Means no such thing as an empty record. Good because tuple is unit
   let #(typed, checker) =
-    analysis.infer(source, t.Record([#("foo", t.Binary)], Some(-1)), [])
+    analysis.infer(source, t.Record([#("foo", t.Binary)], Some(-1)), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   // TODO should resolve to none
   // assert t.Record([#("foo", t.Binary)], None) = type_
@@ -116,7 +117,7 @@ pub fn tag_test() {
   let source = tagged("Some", tuple_([]))
 
   // Unbound
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Union([#("Some", t.Tuple([]))], Some(_)) = type_
 
@@ -125,7 +126,8 @@ pub fn tag_test() {
     analysis.infer(
       source,
       t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None),
-      [],
+      []
+      , fn(_) { todo}
     )
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None) = type_
@@ -137,6 +139,7 @@ pub fn tag_test() {
       source,
       t.Union([#("Some", t.Binary), #("None", t.Tuple([]))], None),
       [],
+       fn(_) { todo}
     )
   assert Ok(type_) = analysis.get_type(typed, checker)
   // TODO expected option of A or A
@@ -147,7 +150,7 @@ pub fn tag_test() {
   // wrong variant
   // union Foo
   let #(typed, checker) =
-    analysis.infer(source, t.Union([#("Foo", t.Tuple([]))], None), [])
+    analysis.infer(source, t.Union([#("Foo", t.Tuple([]))], None), [], fn(_) { todo})
   assert Error(reason) = analysis.get_type(typed, checker)
   assert typer.UnexpectedFields(a) = reason
   io.debug(a)
@@ -158,7 +161,7 @@ pub fn tag_test() {
 // // TODO patterns
 pub fn var_expression_test() {
   let source = variable("x")
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Error(reason) = analysis.get_type(typed, checker)
   // TODO check we're on the lowest unbound integer
   assert typer.UnknownVariable("x") = reason
@@ -166,28 +169,28 @@ pub fn var_expression_test() {
 
 pub fn function_test() {
   let source = function(p.Variable(""), binary(""))
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Unbound(_), t.Binary) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-2)), [])
+    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-2)), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Unbound(_), t.Binary) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Tuple([]), t.Binary), [])
+    analysis.infer(source, t.Function(t.Tuple([]), t.Binary), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Tuple([]), t.Binary) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-1)), [])
+    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-1)), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Binary, t.Binary) = type_
-  let #(typed, checker) = analysis.infer(source, t.Binary, [])
+  let #(typed, checker) = analysis.infer(source, t.Binary, [], fn(_) { todo})
   assert Error(reason) = analysis.get_type(typed, checker)
   // assert typer.UnmatchedTypes(t.Binary, t.Function(t.Unbound(_), t.Tuple([]))) =
   //   reason
   // TODO move up
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Tuple([]), t.Tuple([])), [])
+    analysis.infer(source, t.Function(t.Tuple([]), t.Tuple([])), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Tuple([]), t.Tuple([])) = type_
   assert Ok(body) = get_expression(typed, [1])
@@ -197,17 +200,17 @@ pub fn function_test() {
 
 pub fn id_function_test() {
   let source = function(p.Variable("x"), variable("x"))
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Unbound(i), t.Unbound(j)) = type_
   assert True = i == j
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Binary), [])
+    analysis.infer(source, t.Function(t.Unbound(-1), t.Binary), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   // TODO check unbound is now binary
   assert t.Function(t.Binary, t.Binary) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Tuple([]), t.Binary), [])
+    analysis.infer(source, t.Function(t.Tuple([]), t.Binary), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Tuple([]), t.Binary) = type_
   assert Ok(body) = get_expression(typed, [1])
@@ -236,14 +239,14 @@ pub fn id_function_test() {
 pub fn call_generic_function_test() {
   let func = function(p.Variable("x"), variable("x"))
   let source = call(func, tuple_([]))
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([]) = type_
-  let #(typed, checker) = analysis.infer(source, t.Tuple([]), [])
+  let #(typed, checker) = analysis.infer(source, t.Tuple([]), [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([]) = type_
   // error in generic pushed to arguments
-  let #(typed, checker) = analysis.infer(source, t.Binary, [])
+  let #(typed, checker) = analysis.infer(source, t.Binary, [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Binary = type_
   assert Ok(body) = get_expression(typed, [1])
@@ -253,7 +256,7 @@ pub fn call_generic_function_test() {
 
 pub fn call_not_a_function_test() {
   let source = call(binary("no a func"), tuple_([]))
-  let #(typed, checker) = analysis.infer(source, t.Binary, [])
+  let #(typed, checker) = analysis.infer(source, t.Binary, [], fn(_) { todo})
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Binary = type_
   assert Ok(body) = get_expression(typed, [0])
@@ -399,7 +402,7 @@ pub fn recursive_loop_test() {
       ),
       variable("f"),
     )
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
   assert Ok(t.Function(t.Unbound(i), t.Unbound(j))) =
     analysis.get_type(typed, checker)
   assert True = i != j
@@ -422,7 +425,7 @@ pub fn my_recursive_tuple_test() {
       ),
       variable("f"),
     )
-  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
+  let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], fn(_) { todo})
 
   // io.debug("-=-------------------")
   // io.debug(typed)

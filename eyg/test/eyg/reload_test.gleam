@@ -27,7 +27,7 @@ pub fn simple_reload_test() {
         ),
       ),
     )
-  let state = #(typer.init(), typer.root_scope([#("equal", typer.equal_fn())]))
+  let state = #(typer.init(browser.native_to_parameters), typer.root_scope([#("equal", typer.equal_fn())]))
 
   let #(typed, typer) = typer.infer(untyped, t.Unbound(-1), state)
   let #(typed, typer) = typer.expand_providers(typed, typer, [])

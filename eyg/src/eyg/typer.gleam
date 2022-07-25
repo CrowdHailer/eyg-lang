@@ -43,12 +43,13 @@ pub type Typer(n) {
     next_unbound: Int,
     substitutions: List(#(Int, t.Monotype(n))),
     inconsistencies: List(#(List(Int), Reason(n))),
+    native_to_parameters: fn(n) -> List(t.Monotype(n))
   )
 }
 
 // I think the types should be concerned only with types, no redering
-pub fn init() {
-  Typer(0, [], [])
+pub fn init(native_to_parameters) {
+  Typer(0, [], [], native_to_parameters)
 }
 
 pub fn next_unbound(typer) {
