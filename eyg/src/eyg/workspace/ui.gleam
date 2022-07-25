@@ -67,8 +67,8 @@ pub type Transform(n) =
   fn(Workspace(n)) ->
     #(Workspace(n), Array(Promise(fn(Workspace(n)) -> #(Workspace(n), Nil))))
 
-pub fn click(marker) -> Transform(n) {
-  fn(before: Workspace(n)) {
+pub fn click(marker) -> Transform(browser.Browser) {
+  fn(before: Workspace(browser.Browser)) {
     let state = case marker {
       ["editor", ..rest] -> {
         let editor = case list.reverse(rest), before.editor {

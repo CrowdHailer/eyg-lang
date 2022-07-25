@@ -146,6 +146,12 @@ pub fn exec_call(func, arg) {
     }
 }
 
+pub fn spawn(x)  {
+        assert Function(pattern, body, env, self) = x
+        // todo("inside spawn")
+        Coroutine(x)
+}
+
 pub fn render_var(assignment) { 
     let #(var, object) = assignment
     case var {

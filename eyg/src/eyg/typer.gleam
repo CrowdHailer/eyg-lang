@@ -225,10 +225,7 @@ pub fn do_unify(
       }
     t.Recursive(i, inner1), t.Recursive(j, inner2) -> {
       let inner2 = polytype.replace_variable(inner2, j, i)
-      case inner1 == inner2 {
-        True -> Ok(#(state, seen))
-        False -> Error(UnmatchedTypes(inner1, inner2))
-      }
+      do_unify(#(state, seen), #(inner1, inner2))
     }
     t.Recursive(i, inner), _ -> {
       let t1 = polytype.replace_type(inner, i, t1)
@@ -238,7 +235,11 @@ pub fn do_unify(
       let t2 = polytype.replace_type(inner, i, t2)
       do_unify(#(state, seen), #(t1, t2))
     }
-    t.Native(n1), t.Native(n2) if n1 == n2 -> Ok(#(state, seen))
+    t.Native(n1), t.Native(n2) -> {
+      Ok(#(state, seen))
+      // TODO pass in native_to_parameters
+      // do_unify(#(state, seen), #(n1, n2))
+    }
     t.Binary, t.Binary -> Ok(#(state, seen))
     t.Tuple(e1), t.Tuple(e2) ->
       case list.strict_zip(e1, e2) {

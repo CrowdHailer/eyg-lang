@@ -2,15 +2,18 @@
 // Does program space workspace things like tests live there
 // browser.compile browser.harness
 import gleam/option.{None, Some}
+import gleam/string
 // typer.common
 import eyg/typer
 import eyg/typer/monotype as t
+import eyg/editor/type_info
 import eyg/typer/polytype
 import eyg/typer/harness
 
 pub type Browser {
   Integer
   Array(t.Monotype(Browser))
+  Address(t.Monotype(Browser))
   // maybe just dynamic
   JSON
 }
@@ -19,6 +22,7 @@ pub fn native_to_string(type_) {
   case type_ {
     Integer -> "Integer"
     JSON -> "JSON"
+    Address(inner) -> string.concat(["Address(", type_info.to_string(inner, native_to_string), ")"])
     _ -> todo("more")
   }
 }
@@ -83,7 +87,7 @@ fn int() {
 // perhaps they should be letters or similar
 pub fn string() {
   polytype.Polytype(
-    [1, 2, 3, 4, 5, 6, 7,8, 9],
+    [1, 2, 3, 4, 5, 6, 7,8, 9, 10, 11],
     t.Record(
       [
         #(
@@ -117,7 +121,8 @@ pub fn string() {
         #("fetch", t.Function(t.Binary, t.Function(t.Function(t.Binary, t.Unbound(7)), t.Tuple([])))),
         // TODO this should probably be returning JSON not unbound
         #("key", t.Function(t.Tuple([t.Unbound(8), t.Binary]), t.Unbound(9))),
-        #("deserialize", t.Function(t.Binary, t.Native(JSON)))
+        #("deserialize", t.Function(t.Binary, t.Native(JSON))),
+        #("spawn", t.Function(t.Recursive(0, t.Function(t.Unbound(10), t.Unbound(0))), t.Function(t.Function(t.Native(Address(t.Unbound(10))), t.Unbound(11)), t.Unbound(11)))),
       ],
       None,
     ),

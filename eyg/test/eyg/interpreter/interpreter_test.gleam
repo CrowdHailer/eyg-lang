@@ -164,10 +164,6 @@ pub fn coroutines_test() {
     )
 
     let env = map.new()
-    |> map.insert("spawn", r.BuiltinFn(fn(x) {
-        assert r.Function(pattern, body, env, self) = x
-        // todo("inside spawn")
-        r.Coroutine(x)
-    }))
+    |> map.insert("spawn", r.BuiltinFn(r.spawn))
     assert #(r.Pid(0), coroutines) = r.run(source, env, []) 
 }

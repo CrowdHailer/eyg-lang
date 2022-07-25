@@ -64,6 +64,18 @@ pub fn loop_test() {
   // Needs a drop out
 }
 
+pub fn actor_loop_test()  {
+  let source = e.let_(
+    p.Variable("loop"),
+    e.function(p.Variable("message"), e.variable("loop")),
+    e.variable("loop")
+  )
+  let #(typed, checker) = infer(source, t.Unbound(-1))
+  assert Ok(type_) = analysis.get_type(typed, checker)
+  let "0 -> μ1.0 -> 1" =
+    type_info.to_string(type_, fn(_) { todo("native") })
+}
+
 pub fn recursive_union_test() {
   let source =
     e.let_(
@@ -109,10 +121,11 @@ pub fn recursive_union_test() {
 
   assert Ok(move_exp) = get_expression(typed, [1])
   assert Ok(type_) = analysis.get_type(move_exp, checker)
-  type_info.to_string(type_, fn(_) { todo("native") })
+  assert "(μ0.[Cons (1, 0) | Nil ()], μ2.[Cons (1, 2) | Nil () | ..3]) -> μ2.[Cons (1, 2) | Nil () | ..3]" =
+    type_info.to_string(type_, fn(_) { todo("native") })
 
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" =
+  assert "μ0.[Cons (1, 0) | Nil ()] -> μ2.[Cons (1, 2) | Nil () | ..3]" =
     type_info.to_string(type_, fn(_) { todo("native") })
 }
 
