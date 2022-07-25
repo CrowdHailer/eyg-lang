@@ -208,3 +208,9 @@ Why is there no widespread open PLC tools
 
 
 https://twitter.com/roc_lang/status/1441557679978295298
+## Effect handlers
+- Very deep and general paper expliaining the algebra but with types and kinds. https://www.cambridge.org/core/services/aop-cambridge-core/content/view/DF590482FEE2F6888CD68B4B446E31D5/S0956796820000040a.pdf/effect-handlers-via-generalised-continuations.pdf
+- simpler overview https://homepages.inf.ed.ac.uk/slindley/papers/handlers-cps.pdf
+- An introduction haven't worked out if it is simple yet https://www.eff-lang.org/handlers-tutorial.pdf
+- https://www.microsoft.com/en-us/research/wp-content/uploads/2016/08/algeff-tr-2016-1.pdf
+- Deep but react specific view into the ideas. https://www.yld.io/blog/continuations-coroutines-fibers-effects/
