@@ -105,6 +105,12 @@ export function run(code) {
     key: function ([object, key]) {
       return object[key];
     },
+    spawn: function (params) {
+      // console.log("Should this be in compiled code", params);
+      return function (params) {
+        // console.log("spawned", params);
+      };
+    },
   };
   foo(harness);
   const int = {

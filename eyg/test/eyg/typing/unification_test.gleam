@@ -33,6 +33,12 @@ pub fn recursive_unification_test() {
   assert True = typer == unchanged
 }
 
+pub fn unknown_but_recursive_function_test() {
+  let t1 = t.Function(t.Unbound(288), t.Recursive(253, t.Function(t.Unbound(288), t.Unbound(253))))
+  let t2 = t.Recursive(i: 0, type_: t.Function(from: t.Unbound(i: 285), to: t.Unbound(i: 0)))
+  assert Ok(_) = typer.unify(t1, t2, typer.Typer(next_unbound: 3, inconsistencies: [], substitutions: []))
+}
+
 pub fn limited_row_test() {
   let typer = typer.init()
   let t1 = t.Union([#("Some", t.Binary), #("None", t.Tuple([]))], None)

@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/dynamic.{Dynamic}
 import gleam/option.{Option, Some, None}
+import gleam/int
 import gleam/list
 import gleam/map
 import gleam/string
@@ -10,10 +11,13 @@ import eyg/codegen/javascript
 
 pub type Object {
     Binary(String)
+    Pid(Int)
     Tuple(List(Object))
     Record(List(#(String, Object)))
     Tagged(String, Object)
     Function(p.Pattern, e.Expression(Dynamic, Dynamic), map.Map(String, Object), Option(String))
+    Coroutine(Object)
+    Ready(Object, Object)
     BuiltinFn(fn(Object) -> Object)
 }
 
@@ -39,6 +43,30 @@ pub fn extend_env(env, pattern, object) {
         p.Record(fields) -> todo("not supporting record fields here yet")
     }
  }
+
+
+pub fn run(source, env, coroutines)  {
+    case exec(source, env) {
+        Ready(coroutine, next) -> {
+            let pid = list.length(coroutines)
+            let coroutines = list.append(coroutines, [coroutine])
+            run_call(next, Pid(pid), coroutines) 
+        }
+        done -> #(done, coroutines)
+    }
+}
+
+// There's probably a nice way to have run call be the only func that necessary if I assume a main fn
+pub fn run_call(next, arg, coroutines)  {
+    case exec_call(next, arg) {
+        Ready(coroutine, next) -> {
+            let pid = list.length(coroutines)
+            let coroutines = list.append(coroutines, [coroutine])
+            run_call(next, Pid(pid), coroutines)
+        }
+        done -> #(done, coroutines)
+    }
+}
 
 pub fn exec(source, env)  {
     let #(_, s) = source
@@ -86,20 +114,7 @@ pub fn exec(source, env)  {
         e.Call(func, arg) -> {
             let func = exec(func, env)
             let arg = exec(arg, env)            
-            case func {
-                 Function(pattern, body, captured, self)  -> {
-                    let captured = case self {
-                        Some(label) -> map.insert(captured, label, func)
-                        None -> captured
-                    }
-                    let inner = extend_env(captured, pattern, arg)
-                    exec(body, inner)
-                }
-                BuiltinFn(func) -> {
-                    func(arg)
-                }
-                _ -> todo("Should never be called")
-            }
+            exec_call(func, arg)
 
         }
         e.Hole() -> todo("interpreted a program with a hole")
@@ -109,6 +124,32 @@ pub fn exec(source, env)  {
             // todo("providers should have been expanded before evaluation")
             }
     }
+}
+
+pub fn exec_call(func, arg) {
+    case func {
+            Function(pattern, body, captured, self)  -> {
+            let captured = case self {
+                Some(label) -> map.insert(captured, label, func)
+                None -> captured
+            }
+            let inner = extend_env(captured, pattern, arg)
+            exec(body, inner)
+        }
+        BuiltinFn(func) -> {
+            func(arg)
+        }
+        Coroutine(forked) -> {
+            Ready(forked, arg)
+        }
+        _ -> todo("Should never be called")
+    }
+}
+
+pub fn spawn(x)  {
+        assert Function(pattern, body, env, self) = x
+        // todo("inside spawn")
+        Coroutine(x)
 }
 
 pub fn render_var(assignment) { 
@@ -122,6 +163,7 @@ pub fn render_var(assignment) {
 fn render_object(object) {
 case object {
             Binary(content) -> string.concat([ "\"", javascript.escape_string(content), "\""])
+            Pid(pid) -> int.to_string(pid)
             Tuple(_) -> "null"
             Record(fields) -> {
                 let term = list.map(
@@ -139,5 +181,7 @@ case object {
             // Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
             Function(_,_,_,_) -> "null"
             BuiltinFn(_) -> "null"
+            Coroutine(_) -> "null"
+            Ready(_, _) -> "null"
         }
 }

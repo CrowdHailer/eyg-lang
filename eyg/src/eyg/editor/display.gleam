@@ -79,12 +79,12 @@ pub fn target_type(editor) {
     Some(path) ->
       case editor.get_element(cache.typed, path) {
         editor.Expression(#(_, e.Let(_, value, _))) ->
-          expression_type(value, cache.typer, editor.harness.native_to_string)
+          expression_type(value, cache.typer, )
         editor.Expression(expression) ->
           expression_type(
             expression,
             cache.typer,
-            editor.harness.native_to_string,
+            
           )
         _ -> #(False, "")
       }
@@ -93,9 +93,9 @@ pub fn target_type(editor) {
 }
 
 fn expression_type(
-  expression: e.Expression(Metadata(n), a),
-  typer: typer.Typer(n),
-  native_to_string,
+  expression: e.Expression(Metadata, a),
+  typer: typer.Typer,
+  
 ) {
   let #(metadata, _) = expression
   case metadata.type_ {
@@ -103,11 +103,11 @@ fn expression_type(
       False,
       t.resolve(t, typer.substitutions)
       |> analysis.shrink
-      |> type_info.to_string(native_to_string),
+      |> type_info.to_string(),
     )
     Error(reason) -> #(
       True,
-      type_info.reason_to_string(reason, native_to_string),
+      type_info.reason_to_string(reason, ),
     )
   }
 }
@@ -159,13 +159,13 @@ pub fn display(editor) {
 pub fn do_display(tree, position, selection, editor) {
   let #(Metadata(type_: type_, ..), expression) = tree
   let editor.Editor(expanded: expanded, ..) = editor
-  let typer: typer.Typer(_) = editor.cache.typer
+  let typer: typer.Typer = editor.cache.typer
   let #(errored, type_) = case type_ {
     Ok(type_) -> #(
       False,
       type_info.to_string(
         t.resolve(type_, typer.substitutions),
-        editor.harness.native_to_string,
+        
       ),
     )
     Error(_) -> #(True, "")
@@ -292,8 +292,8 @@ pub fn do_display(tree, position, selection, editor) {
         True -> #(metadata, e.Provider(config, generator, generated))
         False -> {
           let generated: e.Expression(
-            Metadata(n),
-            e.Expression(Metadata(n), Dynamic),
+            Metadata,
+            e.Expression(Metadata, Dynamic),
           ) = unsafe_coerce(generated)
           let generated =
             do_display(

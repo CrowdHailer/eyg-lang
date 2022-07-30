@@ -21,7 +21,7 @@ pub type Generator(n) {
   Generator(
     in_tail: Bool,
     scope: List(String),
-    typer: typer.Typer(n),
+    typer: typer.Typer,
     self: Option(String),
   )
 }
@@ -177,8 +177,8 @@ pub fn escape_string(raw) {
 
 pub fn render(
   tree: e.Expression(
-    typer.Metadata(n),
-    e.Expression(typer.Metadata(n), Dynamic),
+    typer.Metadata,
+    e.Expression(typer.Metadata, Dynamic),
   ),
   state,
 ) {

@@ -63,12 +63,12 @@ pub fn init() {
   #(state, array.from_list([task]))
 }
 
-pub type Transform(n) =
-  fn(Workspace(n)) ->
-    #(Workspace(n), Array(Promise(fn(Workspace(n)) -> #(Workspace(n), Nil))))
+pub type Transform =
+  fn(Workspace) ->
+    #(Workspace, Array(Promise(fn(Workspace) -> #(Workspace, Nil))))
 
-pub fn click(marker) -> Transform(n) {
-  fn(before: Workspace(n)) {
+pub fn click(marker) -> Transform {
+  fn(before: Workspace) {
     let state = case marker {
       ["editor", ..rest] -> {
         let editor = case list.reverse(rest), before.editor {
@@ -110,7 +110,7 @@ pub fn click(marker) -> Transform(n) {
 }
 
 // call all the benches Bench with name etc then plus Mount in the middle
-pub fn keydown(key: String, ctrl: Bool, text: Option(String)) -> Transform(n) {
+pub fn keydown(key: String, ctrl: Bool, text: Option(String)) -> Transform {
   handle_keydown(_, key, ctrl, text)
 }
 
@@ -139,7 +139,7 @@ fn handle_keydown(before, key: String, ctrl: Bool, text: Option(String)) {
   #(state, array.from_list([]))
 }
 
-pub fn on_input(data, marker) -> Transform(n) {
+pub fn on_input(data, marker) -> Transform {
   fn(before) {
     let workspace = case before {
       Workspace(focus: OnMounts, editor: Some(editor), active_mount: i, ..) -> {
@@ -157,38 +157,38 @@ pub fn on_input(data, marker) -> Transform(n) {
 }
 
 // views
-pub fn editor_focused(state: Workspace(n)) {
+pub fn editor_focused(state: Workspace) {
   state.focus == OnEditor
 }
 
-pub fn bench_focused(state: Workspace(n)) {
+pub fn bench_focused(state: Workspace) {
   case state.focus {
     OnMounts -> True
     _ -> False
   }
 }
 
-pub fn get_editor(state: Workspace(n)) {
+pub fn get_editor(state: Workspace) {
   case state.editor {
     None -> dynamic.from(Nil)
     Some(editor) -> dynamic.from(editor)
   }
 }
 
-pub fn benches(workspace: Workspace(_)) {
+pub fn benches(workspace: Workspace) {
   workspace.apps
   |> array.from_list()
 }
 
 // Not needed I don;t think
-pub fn is_active(state: Workspace(_), index) {
+pub fn is_active(state: Workspace, index) {
   case state {
     Workspace(focus: OnMounts, active_mount: a, ..) if a == index -> True
     _ -> False
   }
 }
 
-pub fn running_app(state: Workspace(_)) {
+pub fn running_app(state: Workspace) {
   case state {
     Workspace(apps: apps, active_mount: a, ..) ->
       case list.at(apps, a) {

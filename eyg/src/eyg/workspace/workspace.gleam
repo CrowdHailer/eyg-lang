@@ -1,5 +1,6 @@
 import gleam/dynamic.{Dynamic}
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/map
 import gleam/option.{None, Option, Some}
@@ -13,7 +14,7 @@ import eyg/editor/editor
 import eyg/analysis
 import eyg/typer
 import eyg/codegen/javascript
-
+import platform/browser
 
 pub type Panel {
   OnEditor
@@ -25,10 +26,10 @@ pub type App {
   App(key: String, mount: Mount(Dynamic))
 }
 
-pub type Workspace(n) {
+pub type Workspace {
   Workspace(
     focus: Panel,
-    editor: Option(editor.Editor(n)),
+    editor: Option(editor.Editor),
     active_mount: Int,
     apps: List(App),
   )
@@ -106,7 +107,7 @@ pub fn handle_click(app) {
   App(key, mount)
 }
 
-pub fn dispatch_to_app(workspace: Workspace(_), function) {
+pub fn dispatch_to_app(workspace: Workspace, function) {
   let pre = list.take(workspace.apps, workspace.active_mount)
   assert [app, ..post] = list.drop(workspace.apps, workspace.active_mount)
   let app = function(app)
@@ -148,7 +149,12 @@ pub fn mount_constraint(mount) {
     Universal(_) -> t.Function(
       t.Record([#("Method", t.Binary), #("Path", t.Binary), #("Body", t.Binary)], None), 
       t.Function(
-        t.Record([#("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([])), t.Tuple([]))), #("render", t.Function(t.Binary, t.Tuple([]))),  #("log", t.Function(t.Binary, t.Tuple([])))], None), 
+        t.Record([
+          #("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([])), t.Tuple([]))), 
+          #("render", t.Function(t.Binary, t.Tuple([]))),  
+          #("log", t.Function(t.Binary, t.Tuple([]))),
+          #("send", t.Function(t.Tuple([t.Native("Address", [t.Unbound(-3)]), t.Unbound(-3)]), t.Tuple([]))),
+          ], None), 
         t.Binary
       )
     )
@@ -161,7 +167,7 @@ pub fn app_constraint(app) {
   let constraint = t.Record([#(key, mount_constraint(mount))], Some(-1))
 }
 
-pub fn focus_on_mount(before: Workspace(_), index) {
+pub fn focus_on_mount(before: Workspace, index) {
   assert Ok(app) = list.at(before.apps, index)
   let constraint = app_constraint(app)
   let editor = case before.editor {
@@ -262,29 +268,40 @@ pub fn code_update(code, source, app) {
       // on click at all times
       // Need mutable ref or app state
 
-      let handler = fn (method, path, body) { 
-        let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [])
-        let #(typed, typer) = typer.expand_providers(typed, typer, [])
+      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [], )
+      let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
-        let top_env = map.new()
-        |> map.insert("harness", interpreter.Record([
-          #("compile", interpreter.Function(p.Variable(""), e.tagged("Error", e.binary("not in interpreter")), map.new(), None)), 
-          #("debug", interpreter.BuiltinFn(io.debug))
-        ]))
+      let top_env = map.new()
+      |> map.insert("harness", interpreter.Record([
+        #("compile", interpreter.Function(p.Variable(""), e.tagged("Error", e.binary("not in interpreter")), map.new(), None)), 
+        #("debug", interpreter.BuiltinFn(io.debug)),
+        #("spawn", interpreter.BuiltinFn(interpreter.spawn))
+      ]))
+
+      let #(server_fn, coroutines) = interpreter.run(editor.untype(typed), top_env, [])
+
+      let handler = fn (method, path, body) { 
+        case method, string.split(path, "/") {
+          "POST", ["", "_", id] -> {
+            assert Ok(pid) = int.parse(id)
+            assert Ok(c) = list.at(coroutines, pid)
+            interpreter.exec_call(c, interpreter.Binary(body))
+            ""
+          }
+          _,_ -> {
+
+   
 // We expand the providers but the exec needs dynamic
         let server_arg = interpreter.Record([#("Method", interpreter.Binary(method)),#("Path", interpreter.Binary(path)),#("Body", interpreter.Binary(body))])
-        assert interpreter.Function(pattern, body, captured, _) = interpreter.exec(editor.untype(typed), top_env)
 
-        // eval server fn with arg
-        // can definetly make a call with request as a named call arg
-        let inner = interpreter.extend_env(captured, pattern, server_arg)
-
+        
         // client function
-        assert interpreter.Function(pattern, body, captured, _) =  interpreter.exec(body, inner)
+        assert interpreter.Function(pattern, body, captured, _) = interpreter.exec_call(server_fn, server_arg)
+
         let client_source = e.function(pattern, body)
         
         // TODO captured should not include empty
-        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [])
+        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [], )
         let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
         let program = list.map(map.to_list(captured), interpreter.render_var)
@@ -296,9 +313,14 @@ OnKeypress: (f) => document.addEventListener(\"keydown\", function (event) {
   }),
 render: (value) => document.body.innerHTML = value,
 log: (x) => console.log(x),
+send: ([pid, message]) => {
+  fetch(`${window.location.pathname}/_/${pid}`, {method: 'POST', body: message})
+}
 });")
 string.concat(["<head></head><body></body><script>", program, "</script>"])
       }
+             }
+        }
       Universal(Some(handler))
     }
   }

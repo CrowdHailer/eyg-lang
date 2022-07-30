@@ -11,7 +11,7 @@ import eyg/editor/type_info
 import platform/browser
 
 pub fn compile_unconstrained(expression, harness) {
-  let harness.Harness(variables, _) = harness
+  let harness.Harness(variables) = harness
   let typer__ = typer.init()
   let scope = typer.root_scope(variables)
   let #(x, typer) = typer.next_unbound(typer__)
@@ -21,7 +21,7 @@ pub fn compile_unconstrained(expression, harness) {
 }
 
 pub fn provider(source, constraint) -> Result(Dynamic, String) {
-  let harness.Harness(variables, native_to_string) = browser.harness()
+  let harness.Harness(variables, ) = browser.harness()
   let untyped = encode.from_json(encode.json_from_string(source))
   let scope = typer.root_scope(variables)
   let typer = typer.init()
@@ -36,7 +36,7 @@ pub fn provider(source, constraint) -> Result(Dynamic, String) {
           typer.inconsistencies,
           fn(i) {
             let #(_path, reason) = i
-            type_info.reason_to_string(reason, native_to_string)
+            type_info.reason_to_string(reason, )
           },
         ),
         " & ",

@@ -8,6 +8,8 @@ import eyg/typer.{get_type, infer, init}
 import eyg/typer/monotype as t
 import eyg/typer/monotype.{resolve}
 import eyg/typer/polytype
+import platform/browser
+
 
 pub fn type_bound_function_test() {
   let typer = init()

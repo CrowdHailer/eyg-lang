@@ -3,8 +3,8 @@ import gleam/option.{None, Some}
 import gleam/list
 import eyg/typer/monotype as t
 
-pub type Polytype(n) {
-  Polytype(forall: List(Int), monotype: t.Monotype(n))
+pub type Polytype {
+  Polytype(forall: List(Int), monotype: t.Monotype)
 }
 
 // take in an i for the offset
@@ -26,7 +26,7 @@ fn do_instantiate(forall, monotype, next_unbound) {
 
 pub fn replace_variable(monotype, x, y) {
   case monotype {
-    t.Native(name) -> t.Native(name)
+    t.Native(name, inner) -> t.Native(name, list.map(inner, replace_variable(_, x, y)))
     t.Binary -> t.Binary
     t.Tuple(elements) -> t.Tuple(list.map(elements, replace_variable(_, x, y)))
     t.Record(fields, rest) -> {
@@ -78,7 +78,7 @@ pub fn replace_variable(monotype, x, y) {
 
 pub fn replace_type(monotype, x, t) {
   case monotype {
-    t.Native(name) -> t.Native(name)
+    t.Native(name, inner) -> t.Native(name, list.map(inner, replace_type(_, x, t)))
     t.Binary -> t.Binary
     t.Tuple(elements) -> t.Tuple(list.map(elements, replace_type(_, x, t)))
     t.Record(fields, rest) -> {

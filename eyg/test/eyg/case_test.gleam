@@ -19,7 +19,7 @@ fn infer(untyped, type_) {
 
 // TODO use analysis module instead
 // TODO shrink
-fn get_type(typed, checker: typer.Typer(n)) {
+fn get_type(typed, checker: typer.Typer) {
   case typer.get_type(typed) {
     Ok(type_) -> Ok(t.resolve(type_, checker.substitutions))
     Error(reason) -> todo("resolve")

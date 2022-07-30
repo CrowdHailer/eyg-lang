@@ -86,7 +86,7 @@ pub fn row_expression_test() {
     analysis.infer(
       source,
       t.Record([#("foo", t.Binary), #("bar", t.Binary)], None),
-      [],
+      []
     )
   assert Error(reason) = analysis.get_type(typed, checker)
   assert typer.MissingFields([#("bar", t.Binary)]) = reason
@@ -125,7 +125,8 @@ pub fn tag_test() {
     analysis.infer(
       source,
       t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None),
-      [],
+      []
+      
     )
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None) = type_
@@ -136,7 +137,7 @@ pub fn tag_test() {
     analysis.infer(
       source,
       t.Union([#("Some", t.Binary), #("None", t.Tuple([]))], None),
-      [],
+      []
     )
   assert Ok(type_) = analysis.get_type(typed, checker)
   // TODO expected option of A or A

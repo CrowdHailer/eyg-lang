@@ -205,3 +205,6 @@ Why is there no widespread open PLC tools
 - reddit Robotics/automate
 - can keep trying coda etc
 - https://www.hpe.com/us/en/insights/articles/9-top-reddits-for-tech-sustainability-enthusiasts-1906.html
+
+
+https://twitter.com/roc_lang/status/1441557679978295298

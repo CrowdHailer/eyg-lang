@@ -22,7 +22,7 @@ fn incrementor(i) {
   #(i, i + 1)
 }
 
-pub fn get_type(typed, checker: typer.Typer(n)) {
+pub fn get_type(typed, checker: typer.Typer) {
   case typer.get_type(typed) {
     Ok(type_) -> {
       let type_ = t.resolve(type_, checker.substitutions)

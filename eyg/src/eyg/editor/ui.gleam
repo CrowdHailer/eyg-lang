@@ -7,14 +7,14 @@ import gleam/javascript/array
 import eyg/editor/editor.{Editor}
 
 // TODO command mode is transform mode
-pub fn is_composing(editor: Editor(_)) {
+pub fn is_composing(editor: Editor) {
   case editor.mode {
     editor.Command -> False
     _ -> True
   }
 }
 
-pub fn choices(editor: Editor(_)) {
+pub fn choices(editor: Editor) {
   case editor.mode {
     editor.Select(choices, filter) ->
       list.filter(choices, string.starts_with(_, filter))
@@ -71,7 +71,7 @@ pub fn handle_keydown(editor, key, ctrl, input) {
   }
 }
 
-pub fn handle_input(editor: Editor(_), data) {
+pub fn handle_input(editor: Editor, data) {
   case editor.mode {
     editor.Select(choices, _filter) -> {
       let mode = editor.Select(choices, data)
@@ -92,7 +92,7 @@ fn rest_to_path(rest) {
 }
 
 // At the editor level we might want to handle semantic events like select node. And have display do handle click
-pub fn handle_click(editor: Editor(n), target) {
+pub fn handle_click(editor: Editor, target) {
   case string.split(target, ":") {
     ["root"] -> Editor(..editor, selection: Some([]), mode: editor.Command)
     ["p", rest] -> {
