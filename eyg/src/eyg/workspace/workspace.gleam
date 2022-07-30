@@ -15,6 +15,10 @@ import eyg/analysis
 import eyg/typer
 import eyg/codegen/javascript
 import platform/browser
+import gleam/javascript as real_js
+
+pub external fn to_object(entries: List(#(String, Dynamic))) -> Dynamic =
+  "../../eyg_utils.js" "entries_to_object"
 
 pub type Panel {
   OnEditor
@@ -57,7 +61,7 @@ pub type Mount(a) {
     rendered: String,
   )
   // State, render handle
-  Pure(Option(#(Dynamic, fn(Dynamic) -> String, fn(Dynamic) -> Dynamic)))
+  Pure(Option(#(Dynamic, fn(Dynamic) -> String, fn(Dynamic) -> Dynamic, real_js.Reference(List(Action)))))
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
   Server(handle: Option(fn(Dynamic) -> Dynamic))
   // Only difference between server and universial is that universal works with source
@@ -73,11 +77,11 @@ pub fn handle_keydown(app, key, ctrl, text) {
       io.debug("count all this state")
       app
     }
-    Pure(Some(#(state, render, update))) -> {
+    Pure(Some(#(state, render, update, ref))) -> {
       let state = update(dynamic.from(#(key, state)))
       io.debug("new state")
       io.debug(state)
-      let mount = Pure(Some(#(state, render, update)))
+      let mount = Pure(Some(#(state, render, update, ref)))
       App(key, mount)
     }
     _ -> app
@@ -124,6 +128,7 @@ pub fn dispatch_to_app(workspace: Workspace, function) {
   Workspace(..workspace, apps: apps)
 }
 
+
 pub fn mount_constraint(mount) {
   case mount {
     TestSuite(_) ->
@@ -147,14 +152,15 @@ pub fn mount_constraint(mount) {
       )
     Pure(_) -> t.Record([
       #("render", t.Function(t.Unbound(-4), t.Binary)),
-      #("init", t.Function(
-         t.Function(
-          // t.Tuple([t.Binary, t.Unbound(-4)]), t.Function(t.Tuple([]), t.Unbound(-4))
-          // handler
-          t.Function(t.Tuple([t.Binary, t.Unbound(-4)]), t.Unbound(-4)),
-          // continuation
-          t.Function(t.Function(t.Tuple([]), t.Unbound(-5)), t.Unbound(-5))
-        )
+      #("init", t.Function(t.Record([
+          #("on_keypress",t.Function(
+            // t.Tuple([t.Binary, t.Unbound(-4)]), t.Function(t.Tuple([]), t.Unbound(-4))
+            // handler
+            t.Function(t.Tuple([t.Binary, t.Unbound(-4)]), t.Unbound(-4)),
+            // continuation
+            t.Function(t.Function(t.Tuple([]), t.Unbound(-5)), t.Unbound(-5))
+          ))
+        ], None)
       , t.Unbound(-4)))
       ], None)
     Firmata(_) -> {
@@ -209,6 +215,11 @@ pub fn focus_on_mount(before: Workspace, index) {
     _ -> workspace
   }
 }
+
+pub type Action {
+  Keypress(fn(Dynamic) -> Dynamic)
+}
+
 
 pub fn code_update(code, source, app) {
   let App(key, mount) = app
@@ -274,27 +285,36 @@ pub fn code_update(code, source, app) {
       let cast = gleam_extra.dynamic_function
       assert Ok(init) = dynamic.field("init", cast)(record)
       assert Ok(render) = dynamic.field("render", cast)(record)
-      assert Ok(new_initial) = init(dynamic.from(fn(handle) { 
-        // io.debug(handle)
-        // io.debug(handle(["key A", "state"]))
-        // io.debug("TODO register handle")
-        // How do we get out the values from pure in here
-        // This pulls the handle out for continuation
-        // Probably some linked list unwrapping needed here.
-        fn(cont) {#(handle, cont([]))}
-      }))
+      let ref = real_js.make_reference([])
+      let env = to_object([
+        #("on_keypress", dynamic.from(fn(handle) { 
+          real_js.update_reference(ref, fn(x) {[handle, ..x]})
+          // io.debug(handle)
+          // io.debug(handle(["key A", "state"]))
+          // io.debug("TODO register handle")
+          // How do we get out the values from pure in here
+          // This pulls the handle out for continuation
+          // Probably some linked list unwrapping needed here.
+          fn(cont) {cont([])}
+        }))
+      ])
+
+      assert Ok(new_initial) = init(env)
       |> io.debug()
-      assert Ok(#(handle, initial)) = dynamic.tuple2(gleam_extra.dynamic_function, Ok)(new_initial)
+      io.debug("that was the result")
+      // assert Ok(#(handle, initial)) = dynamic.tuple2(gleam_extra.dynamic_function, Ok)(new_initial)
+      // io.debug(initial)
       let render = fn(state) {
         assert Ok(rendered) = render(state)
         assert Ok(rendered) = dynamic.string(rendered)
         rendered
       }
-      let handle = fn(x) {
-        assert Ok(state) = handle(x) 
-        state
-      }
-      Pure(Some(#(initial, render, handle)))
+      let [Keypress(handle),] = real_js.dereference(ref)
+      // let handle = fn(x) {
+      //   assert Ok(state) = handle(x) 
+      //   state
+      // }
+      Pure(Some(#(new_initial, render, handle, ref)))
     }
     Static(_) -> todo("probably remove I don't see much value in static")
     Server(_) -> {

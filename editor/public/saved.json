@@ -1355,46 +1355,62 @@
                         "node": "Function",
                         "pattern": {
                           "node": "Variable",
-                          "label": "keypress"
+                          "label": "client"
                         },
                         "body": {
-                          "node": "Call",
-                          "function": {
+                          "node": "Let",
+                          "pattern": {
+                            "node": "Record",
+                            "fields": [
+                              {
+                                "key": "on_keypress",
+                                "bind": "keypress"
+                              }
+                            ]
+                          },
+                          "value": {
+                            "node": "Variable",
+                            "label": "client"
+                          },
+                          "then": {
                             "node": "Call",
                             "function": {
-                              "node": "Variable",
-                              "label": "keypress"
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "keypress"
+                              },
+                              "with": {
+                                "node": "Function",
+                                "pattern": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Bind",
+                                      "label": "key"
+                                    },
+                                    {
+                                      "node": "Bind",
+                                      "label": "state"
+                                    }
+                                  ]
+                                },
+                                "body": {
+                                  "node": "Binary",
+                                  "value": "pressed"
+                                }
+                              }
                             },
                             "with": {
                               "node": "Function",
                               "pattern": {
                                 "node": "Tuple",
-                                "elements": [
-                                  {
-                                    "node": "Bind",
-                                    "label": "key"
-                                  },
-                                  {
-                                    "node": "Bind",
-                                    "label": "state"
-                                  }
-                                ]
+                                "elements": []
                               },
                               "body": {
                                 "node": "Binary",
-                                "value": "pressed"
+                                "value": "initial"
                               }
-                            }
-                          },
-                          "with": {
-                            "node": "Function",
-                            "pattern": {
-                              "node": "Tuple",
-                              "elements": []
-                            },
-                            "body": {
-                              "node": "Binary",
-                              "value": "initial"
                             }
                           }
                         }
