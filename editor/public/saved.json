@@ -1340,41 +1340,150 @@
                     }
                   },
                   "then": {
-                    "node": "Record",
-                    "fields": [
-                      {
-                        "node": "Field",
-                        "key": "test",
-                        "value": {
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Variable",
+                      "label": "fetch"
+                    },
+                    "value": {
+                      "node": "Let",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": "init"
+                      },
+                      "value": {
+                        "node": "Function",
+                        "pattern": {
                           "node": "Variable",
-                          "label": "test"
+                          "label": "keypress"
+                        },
+                        "body": {
+                          "node": "Call",
+                          "function": {
+                            "node": "Call",
+                            "function": {
+                              "node": "Variable",
+                              "label": "keypress"
+                            },
+                            "with": {
+                              "node": "Function",
+                              "pattern": {
+                                "node": "Tuple",
+                                "elements": [
+                                  {
+                                    "node": "Bind",
+                                    "label": "key"
+                                  },
+                                  {
+                                    "node": "Bind",
+                                    "label": "state"
+                                  }
+                                ]
+                              },
+                              "body": {
+                                "node": "Binary",
+                                "value": "pressed"
+                              }
+                            }
+                          },
+                          "with": {
+                            "node": "Function",
+                            "pattern": {
+                              "node": "Tuple",
+                              "elements": []
+                            },
+                            "body": {
+                              "node": "Binary",
+                              "value": "initial"
+                            }
+                          }
                         }
                       },
-                      {
-                        "node": "Field",
-                        "key": "cli",
-                        "value": {
+                      "then": {
+                        "node": "Let",
+                        "pattern": {
                           "node": "Variable",
-                          "label": "cli"
-                        }
-                      },
-                      {
-                        "node": "Field",
-                        "key": "counter",
+                          "label": "render"
+                        },
                         "value": {
-                          "node": "Variable",
-                          "label": "counter"
-                        }
-                      },
-                      {
-                        "node": "Field",
-                        "key": "universal",
-                        "value": {
-                          "node": "Variable",
-                          "label": "universal"
+                          "node": "Function",
+                          "pattern": {
+                            "node": "Variable",
+                            "label": "state"
+                          },
+                          "body": {
+                            "node": "Variable",
+                            "label": "state"
+                          }
+                        },
+                        "then": {
+                          "node": "Record",
+                          "fields": [
+                            {
+                              "node": "Field",
+                              "key": "init",
+                              "value": {
+                                "node": "Variable",
+                                "label": "init"
+                              }
+                            },
+                            {
+                              "node": "Field",
+                              "key": "render",
+                              "value": {
+                                "node": "Variable",
+                                "label": "render"
+                              }
+                            }
+                          ]
                         }
                       }
-                    ]
+                    },
+                    "then": {
+                      "node": "Record",
+                      "fields": [
+                        {
+                          "node": "Field",
+                          "key": "test",
+                          "value": {
+                            "node": "Variable",
+                            "label": "test"
+                          }
+                        },
+                        {
+                          "node": "Field",
+                          "key": "cli",
+                          "value": {
+                            "node": "Variable",
+                            "label": "cli"
+                          }
+                        },
+                        {
+                          "node": "Field",
+                          "key": "counter",
+                          "value": {
+                            "node": "Variable",
+                            "label": "counter"
+                          }
+                        },
+                        {
+                          "node": "Field",
+                          "key": "universal",
+                          "value": {
+                            "node": "Variable",
+                            "label": "universal"
+                          }
+                        },
+                        {
+                          "node": "Field",
+                          "key": "fetch",
+                          "value": {
+                            "node": "Variable",
+                            "label": "fetch"
+                          }
+                        }
+                      ]
+                    }
                   }
                 }
               }

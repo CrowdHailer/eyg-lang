@@ -20,6 +20,7 @@ external fn fetch(String) -> Promise(String) =
 fn apps() {
   [
     workspace.App("counter", workspace.UI(None, None, "")),
+    workspace.App("fetch", workspace.Pure(None)),
     workspace.App("test", workspace.TestSuite("True")),
     workspace.App("cli", workspace.String2String("", "", None)),
     workspace.App("scan", workspace.Firmata(None)),

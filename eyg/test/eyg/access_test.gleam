@@ -23,3 +23,4 @@ pub fn access_variable_test() {
   assert t.Record(fields: [#("foo", t.Unbound(i: 0))], extra: Some(1)) = from
   assert t.Unbound(i: 0) = to
 }
+

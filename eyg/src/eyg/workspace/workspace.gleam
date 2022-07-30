@@ -56,6 +56,8 @@ pub type Mount(a) {
     ),
     rendered: String,
   )
+  // State, render handle
+  Pure(Option(#(Dynamic, fn(Dynamic) -> String, fn(Dynamic) -> Dynamic)))
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
   Server(handle: Option(fn(Dynamic) -> Dynamic))
   // Only difference between server and universial is that universal works with source
@@ -70,6 +72,13 @@ pub fn handle_keydown(app, key, ctrl, text) {
     UI(initia, state, rendered) -> {
       io.debug("count all this state")
       app
+    }
+    Pure(Some(#(state, render, update))) -> {
+      let state = update(dynamic.from(#(key, state)))
+      io.debug("new state")
+      io.debug(state)
+      let mount = Pure(Some(#(state, render, update)))
+      App(key, mount)
     }
     _ -> app
   }
@@ -136,6 +145,18 @@ pub fn mount_constraint(mount) {
         ],
         None,
       )
+    Pure(_) -> t.Record([
+      #("render", t.Function(t.Unbound(-4), t.Binary)),
+      #("init", t.Function(
+         t.Function(
+          // t.Tuple([t.Binary, t.Unbound(-4)]), t.Function(t.Tuple([]), t.Unbound(-4))
+          // handler
+          t.Function(t.Tuple([t.Binary, t.Unbound(-4)]), t.Unbound(-4)),
+          // continuation
+          t.Function(t.Function(t.Tuple([]), t.Unbound(-5)), t.Unbound(-5))
+        )
+      , t.Unbound(-4)))
+      ], None)
     Firmata(_) -> {
       // TODO move boolean to standard types
       let boolean =
@@ -246,6 +267,34 @@ pub fn code_update(code, source, app) {
           UI(initial, state, rendered)
         }
       }
+    }
+    // TODO actually update
+    Pure(_) -> {
+      assert Ok(record) = dynamic.field(key, Ok)(code)
+      let cast = gleam_extra.dynamic_function
+      assert Ok(init) = dynamic.field("init", cast)(record)
+      assert Ok(render) = dynamic.field("render", cast)(record)
+      assert Ok(new_initial) = init(dynamic.from(fn(handle) { 
+        // io.debug(handle)
+        // io.debug(handle(["key A", "state"]))
+        // io.debug("TODO register handle")
+        // How do we get out the values from pure in here
+        // This pulls the handle out for continuation
+        // Probably some linked list unwrapping needed here.
+        fn(cont) {#(handle, cont([]))}
+      }))
+      |> io.debug()
+      assert Ok(#(handle, initial)) = dynamic.tuple2(gleam_extra.dynamic_function, Ok)(new_initial)
+      let render = fn(state) {
+        assert Ok(rendered) = render(state)
+        assert Ok(rendered) = dynamic.string(rendered)
+        rendered
+      }
+      let handle = fn(x) {
+        assert Ok(state) = handle(x) 
+        state
+      }
+      Pure(Some(#(initial, render, handle)))
     }
     Static(_) -> todo("probably remove I don't see much value in static")
     Server(_) -> {

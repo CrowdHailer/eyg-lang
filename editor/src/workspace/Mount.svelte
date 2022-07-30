@@ -7,6 +7,7 @@
   import String2String from "./String2String.svelte";
   import Firmata from "./Firmata.svelte";
   import Server from "./Server.svelte";
+  import Pure from "./Pure.svelte";
 
   export let index;
   export let key;
@@ -38,6 +39,9 @@
   {:else if mount instanceof Mount.Universal}
     <p><strong>{key}:</strong> Server</p>
     <Server handle={mount.handle} />
+  {:else if mount instanceof Mount.Pure}
+    <p><strong>{key}:</strong> Pure</p>
+    <Pure state={mount[0]} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

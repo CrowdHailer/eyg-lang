@@ -107,8 +107,9 @@ export function run(code) {
     },
     spawn: function (params) {
       // console.log("Should this be in compiled code", params);
-      return function (params) {
+      return function (continuation) {
         // console.log("spawned", params);
+        return continuation({ Address: 1 });
       };
     },
   };
