@@ -17,7 +17,7 @@ import eyg/editor/type_info
 
 fn infer(untyped, type_) {
   let variables = [#("equal", typer.equal_fn())]
-  let checker = typer.init(fn(_){ todo("native to parameters in infer")})
+  let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
   typer.infer(untyped, type_, state)
@@ -37,7 +37,7 @@ pub fn recursive_tuple_test() {
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
   let "() -> μ0.(Binary, 0)" =
-    type_info.to_string(type_, fn(_) { todo("native") })
+    type_info.to_string(type_)
 }
 
 pub fn loop_test() {
@@ -59,7 +59,7 @@ pub fn loop_test() {
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
   let "() -> [True () | False, ()] -> Binary" =
-    type_info.to_string(type_, fn(_) { todo("native") })
+    type_info.to_string(type_)
   // Shouldn't be getting stuck in case where return value is unknown
   // Needs a drop out
 }
@@ -73,7 +73,7 @@ pub fn actor_loop_test()  {
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
   let "0 -> μ1.0 -> 1" =
-    type_info.to_string(type_, fn(_) { todo("native") })
+    type_info.to_string(type_)
 }
 
 pub fn recursive_union_test() {
@@ -122,11 +122,11 @@ pub fn recursive_union_test() {
   assert Ok(move_exp) = get_expression(typed, [1])
   assert Ok(type_) = analysis.get_type(move_exp, checker)
   assert "(μ0.[Cons (1, 0) | Nil ()], μ2.[Cons (1, 2) | Nil () | ..3]) -> μ2.[Cons (1, 2) | Nil () | ..3]" =
-    type_info.to_string(type_, fn(_) { todo("native") })
+    type_info.to_string(type_)
 
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert "μ0.[Cons (1, 0) | Nil ()] -> μ2.[Cons (1, 2) | Nil () | ..3]" =
-    type_info.to_string(type_, fn(_) { todo("native") })
+    type_info.to_string(type_)
 }
 
 fn get_expression(tree, path) {

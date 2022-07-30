@@ -12,7 +12,7 @@ import platform/browser
 
 
 pub fn type_bound_function_test() {
-  let typer = init(browser.native_to_parameters)
+  let typer = init()
   let scope = typer.root_scope([])
   let untyped = ast.function(p.Tuple([]), ast.binary(""))
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
@@ -22,7 +22,7 @@ pub fn type_bound_function_test() {
 }
 
 pub fn generic_function_test() {
-  let typer = init(browser.native_to_parameters)
+  let typer = init()
   let scope = typer.root_scope([])
   let untyped = ast.function(p.Variable("x"), ast.variable("x"))
   let #(typed, typer) = infer(untyped, t.Unbound(-1), #(typer, scope))
@@ -33,7 +33,7 @@ pub fn generic_function_test() {
 }
 
 pub fn call_function_test() {
-  let typer = init(browser.native_to_parameters)
+  let typer = init()
   let scope = typer.root_scope([])
   let untyped =
     ast.call(ast.function(p.Tuple([]), ast.binary("")), ast.tuple_([]))
@@ -44,7 +44,7 @@ pub fn call_function_test() {
 }
 
 pub fn call_generic_test() {
-  let typer = init(browser.native_to_parameters)
+  let typer = init()
   let scope = typer.root_scope([])
   let untyped =
     ast.call(ast.function(p.Tuple(["x"]), ast.variable("x")), ast.tuple_([]))
@@ -55,7 +55,7 @@ pub fn call_generic_test() {
 }
 
 pub fn call_with_incorrect_argument_test() {
-  let typer = init(browser.native_to_parameters)
+  let typer = init()
   let scope = typer.root_scope([])
   let untyped =
     ast.call(
@@ -69,7 +69,7 @@ pub fn call_with_incorrect_argument_test() {
 }
 
 pub fn reuse_generic_function_test() {
-  let typer = init(browser.native_to_parameters)
+  let typer = init()
   let scope = typer.root_scope([])
   let untyped =
     ast.let_(

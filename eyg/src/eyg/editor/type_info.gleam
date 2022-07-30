@@ -8,25 +8,33 @@ import eyg/typer/monotype as t
 // TODO remove typer because we should probably just resolve before printing.
 import eyg/typer.{Typer}
 
-fn field_to_string(field, native_to_string) {
+fn field_to_string(field, ) {
   let #(label, type_) = field
-  string.concat([label, ": ", to_string(type_, native_to_string)])
+  string.concat([label, ": ", to_string(type_, )])
 }
 
-fn variant_to_string(variant, native_to_string) {
+fn variant_to_string(variant, ) {
   let #(label, type_) = variant
-  string.concat([label, " ", to_string(type_, native_to_string)])
+  string.concat([label, " ", to_string(type_, )])
 }
 
-pub fn to_string(monotype, native_to_string) {
+pub fn to_string(monotype, ) {
   case monotype {
-    t.Native(native) -> native_to_string(native)
+    t.Native(name, parameters) -> string.concat([
+        name,
+        "(",
+        string.concat(list.intersperse(
+          list.map(parameters, to_string(_, )),
+          ", ",
+        )),
+        ")",
+      ])
     t.Binary -> "Binary"
     t.Tuple(elements) ->
       string.concat([
         "(",
         string.concat(list.intersperse(
-          list.map(elements, to_string(_, native_to_string)),
+          list.map(elements, to_string(_, )),
           ", ",
         )),
         ")",
@@ -39,7 +47,7 @@ pub fn to_string(monotype, native_to_string) {
       string.concat([
         "{",
         string.concat(list.intersperse(
-          list.map(fields, field_to_string(_, native_to_string))
+          list.map(fields, field_to_string(_, ))
           |> list.append(extra),
           ", ",
         )),
@@ -54,7 +62,7 @@ pub fn to_string(monotype, native_to_string) {
       string.concat([
         "[",
         string.concat(list.intersperse(
-          list.map(variants, variant_to_string(_, native_to_string))
+          list.map(variants, variant_to_string(_, ))
           |> list.append(extra),
           " | ",
         )),
@@ -63,19 +71,19 @@ pub fn to_string(monotype, native_to_string) {
     }
     t.Function(from, to) ->
       string.concat([
-        to_string(from, native_to_string),
+        to_string(from, ),
         " -> ",
-        to_string(to, native_to_string),
+        to_string(to, ),
       ])
     t.Unbound(i) -> int.to_string(i)
     t.Recursive(i, inner) -> {
-      let inner = to_string(inner, native_to_string)
+      let inner = to_string(inner, )
       string.concat(["μ", int.to_string(i), ".", inner])
     }
   }
 }
 
-pub fn resolve_reason(reason, typer: Typer(n)) {
+pub fn resolve_reason(reason, typer: Typer) {
   case reason {
     typer.IncorrectArity(expected, given) -> reason
     typer.UnknownVariable(label) -> reason
@@ -120,7 +128,7 @@ pub fn resolve_reason(reason, typer: Typer(n)) {
   }
 }
 
-pub fn reason_to_string(reason, native_to_string) {
+pub fn reason_to_string(reason, ) {
   case reason {
     typer.IncorrectArity(expected, given) ->
       string.concat([
@@ -134,9 +142,9 @@ pub fn reason_to_string(reason, native_to_string) {
     typer.UnmatchedTypes(expected, given) ->
       string.concat([
         "Unmatched types expected ",
-        to_string(expected, native_to_string),
+        to_string(expected, ),
         " given ",
-        to_string(given, native_to_string),
+        to_string(given, ),
       ])
     typer.MissingFields(expected) ->
       [
@@ -145,7 +153,7 @@ pub fn reason_to_string(reason, native_to_string) {
           expected,
           fn(x) {
             let #(name, type_) = x
-            string.concat([name, ": ", to_string(type_, native_to_string)])
+            string.concat([name, ": ", to_string(type_, )])
           },
         )
         |> list.intersperse(", ")
@@ -159,7 +167,7 @@ pub fn reason_to_string(reason, native_to_string) {
           expected,
           fn(x) {
             let #(name, type_) = x
-            string.concat([name, ": ", to_string(type_, native_to_string)])
+            string.concat([name, ": ", to_string(type_, )])
           },
         )
         |> list.intersperse(", ")
@@ -170,7 +178,7 @@ pub fn reason_to_string(reason, native_to_string) {
         "Provider '",
         e.generator_to_string(g),
         "' unable to generate code for type: ",
-        to_string(expected, native_to_string),
+        to_string(expected, ),
       ])
     typer.Warning(message) -> message
     typer.GeneratedInvalid(reasons) -> {

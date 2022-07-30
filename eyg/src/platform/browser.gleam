@@ -10,37 +10,10 @@ import eyg/editor/type_info
 import eyg/typer/polytype
 import eyg/typer/harness
 
-pub type Browser {
-  Integer
-  Array(t.Monotype(Browser))
-  Address(t.Monotype(Browser))
-  // maybe just dynamic
-  JSON
-}
-
-pub fn native_to_string(type_) {
-  case type_ {
-    Integer -> "Integer"
-    JSON -> "JSON"
-    Address(inner) -> string.concat(["Address(", type_info.to_string(inner, native_to_string), ")"])
-    _ -> todo("more")
-  }
-}
-
-pub fn native_to_parameters(n)  {
-  case n {
-    Integer -> []
-    JSON -> []
-    Array(inner) -> [inner]
-    Address(inner) -> [inner]
-  }
-}
 
 pub fn harness() {
   harness.Harness(
     [#("equal", typer.equal_fn()), #("harness", string()), #("int", int())],
-    native_to_string,
-    native_to_parameters
   )
 }
 
@@ -53,38 +26,38 @@ fn int() {
           "parse",
           t.Function(
             t.Binary,
-            t.Union([#("OK", t.Native(Integer)), #("Error", t.Tuple([]))], None),
+            t.Union([#("OK", t.Native("Integer", [])), #("Error", t.Tuple([]))], None),
           ),
         ),
-        #("to_string", t.Function(t.Native(Integer), t.Binary)),
+        #("to_string", t.Function(t.Native("Integer", []), t.Binary)),
         #(
           "add",
           t.Function(
-            t.Tuple([t.Native(Integer), t.Native(Integer)]),
-            t.Native(Integer),
+            t.Tuple([t.Native("Integer", []), t.Native("Integer", [])]),
+            t.Native("Integer", []),
           ),
         ),
         #(
           "multiply",
           t.Function(
-            t.Tuple([t.Native(Integer), t.Native(Integer)]),
-            t.Native(Integer),
+            t.Tuple([t.Native("Integer", []), t.Native("Integer", [])]),
+            t.Native("Integer", []),
           ),
         ),
-        #("negate", t.Function(t.Native(Integer), t.Native(Integer))),
+        #("negate", t.Function(t.Native("Integer", []), t.Native("Integer", []))),
         #(
           "compare",
           t.Function(
-            t.Tuple([t.Native(Integer), t.Native(Integer)]),
+            t.Tuple([t.Native("Integer", []), t.Native("Integer", [])]),
             t.Union(
               [#("Lt", t.Tuple([])), #("Eq", t.Tuple([])), #("Gt", t.Tuple([]))],
               None,
             ),
           ),
         ),
-        #("zero", t.Native(Integer)),
-        #("one", t.Native(Integer)),
-        #("two", t.Native(Integer)),
+        #("zero", t.Native("Integer", [])),
+        #("one", t.Native("Integer", [])),
+        #("two", t.Native("Integer", [])),
       ],
       None,
     ),
@@ -131,8 +104,8 @@ pub fn string() {
         #("fetch", t.Function(t.Binary, t.Function(t.Function(t.Binary, t.Unbound(7)), t.Tuple([])))),
         // TODO this should probably be returning JSON not unbound
         #("key", t.Function(t.Tuple([t.Unbound(8), t.Binary]), t.Unbound(9))),
-        #("deserialize", t.Function(t.Binary, t.Native(JSON))),
-        #("spawn", t.Function(t.Recursive(0, t.Function(t.Unbound(10), t.Unbound(0))), t.Function(t.Function(t.Native(Address(t.Unbound(10))), t.Unbound(11)), t.Unbound(11)))),
+        #("deserialize", t.Function(t.Binary, t.Native("JSON", []))),
+        #("spawn", t.Function(t.Recursive(0, t.Function(t.Unbound(10), t.Unbound(0))), t.Function(t.Function(t.Native("Address", [t.Unbound(10)]), t.Unbound(11)), t.Unbound(11)))),
       ],
       None,
     ),

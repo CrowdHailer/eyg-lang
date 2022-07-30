@@ -26,10 +26,10 @@ pub type App {
   App(key: String, mount: Mount(Dynamic))
 }
 
-pub type Workspace(n) {
+pub type Workspace {
   Workspace(
     focus: Panel,
-    editor: Option(editor.Editor(n)),
+    editor: Option(editor.Editor),
     active_mount: Int,
     apps: List(App),
   )
@@ -107,7 +107,7 @@ pub fn handle_click(app) {
   App(key, mount)
 }
 
-pub fn dispatch_to_app(workspace: Workspace(_), function) {
+pub fn dispatch_to_app(workspace: Workspace, function) {
   let pre = list.take(workspace.apps, workspace.active_mount)
   assert [app, ..post] = list.drop(workspace.apps, workspace.active_mount)
   let app = function(app)
@@ -153,7 +153,7 @@ pub fn mount_constraint(mount) {
           #("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([])), t.Tuple([]))), 
           #("render", t.Function(t.Binary, t.Tuple([]))),  
           #("log", t.Function(t.Binary, t.Tuple([]))),
-          #("send", t.Function(t.Tuple([t.Native(browser.Address(t.Unbound(-3))), t.Unbound(-3)]), t.Tuple([]))),
+          #("send", t.Function(t.Tuple([t.Native("Address", [t.Unbound(-3)]), t.Unbound(-3)]), t.Tuple([]))),
           ], None), 
         t.Binary
       )
@@ -167,7 +167,7 @@ pub fn app_constraint(app) {
   let constraint = t.Record([#(key, mount_constraint(mount))], Some(-1))
 }
 
-pub fn focus_on_mount(before: Workspace(_), index) {
+pub fn focus_on_mount(before: Workspace, index) {
   assert Ok(app) = list.at(before.apps, index)
   let constraint = app_constraint(app)
   let editor = case before.editor {
@@ -268,7 +268,7 @@ pub fn code_update(code, source, app) {
       // on click at all times
       // Need mutable ref or app state
 
-      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [], browser.native_to_parameters)
+      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [], )
       let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
       let top_env = map.new()
@@ -301,7 +301,7 @@ pub fn code_update(code, source, app) {
         let client_source = e.function(pattern, body)
         
         // TODO captured should not include empty
-        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [], browser.native_to_parameters)
+        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [], )
         let #(typed, typer) = typer.expand_providers(typed, typer, [])
 
         let program = list.map(map.to_list(captured), interpreter.render_var)

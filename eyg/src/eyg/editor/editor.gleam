@@ -26,27 +26,27 @@ pub type Mode {
   Select(choices: List(String), filter: String)
 }
 
-pub type Cache(n) {
+pub type Cache {
   Cache(
-    typed: e.Expression(Metadata(n), e.Expression(Metadata(n), Dynamic)),
-    typer: typer.Typer(n),
+    typed: e.Expression(Metadata, e.Expression(Metadata, Dynamic)),
+    typer: typer.Typer,
     code: String,
     evaled: Result(Dynamic, Nil),
   )
 }
 
-pub type Editor(n) {
+pub type Editor {
   Editor(
     show: String,
-    harness: harness.Harness(n),
-    constraint: t.Monotype(n),
+    harness: harness.Harness,
+    constraint: t.Monotype,
     // TODO Make Nil and remove all reference to untype
     source: e.Expression(Dynamic, Dynamic),
     selection: Option(List(Int)),
     mode: Mode,
     expanded: Bool,
     yanked: Option(#(List(Int), e.Expression(Dynamic, Dynamic))),
-    cache: Cache(n),
+    cache: Cache,
   )
 }
 
@@ -56,15 +56,15 @@ pub fn set_constraint(editor, constraint) {
   Editor(..editor, constraint: constraint, cache: cache)
 }
 
-pub fn set_untyped(editor: Editor(_), source) {
+pub fn set_untyped(editor: Editor, source) {
   let Editor(constraint: constraint, harness: harness, ..) = editor
   let cache = analyse(source, constraint, harness)
   Editor(..editor, source: source, cache: cache)
 }
 
 pub fn analyse(source, constraint, harness) {
-  let harness.Harness(variables: variables, native_to_string: _, native_to_parameters: native_to_parameters) = harness
-  let #(typed, typer) = analysis.infer(source, constraint, variables, native_to_parameters)
+  let harness.Harness(variables: variables,) = harness
+  let #(typed, typer) = analysis.infer(source, constraint, variables)
   let #(typed, typer) = typer.expand_providers(typed, typer, variables)
   let #(code, evaled) = case typer.inconsistencies {
     [] -> {
@@ -78,7 +78,7 @@ pub fn analyse(source, constraint, harness) {
   Cache(typed, typer, code, evaled)
 }
 
-pub fn is_selected(editor: Editor(n), path) {
+pub fn is_selected(editor: Editor, path) {
   case editor.selection {
     Some(p) if p == path -> True
     _ -> False
@@ -98,7 +98,7 @@ fn inconsistencies(editor) {
   |> list.map(fn(i) {
     let #(path, reason) = i
     let reason = type_info.resolve_reason(reason, t)
-    #(path, type_info.reason_to_string(reason, editor.harness.native_to_string))
+    #(path, type_info.reason_to_string(reason, ))
   })
 }
 
@@ -110,14 +110,14 @@ pub fn dump(editor) {
   dump
 }
 
-pub fn init(source, harness: harness.Harness(_)) {
+pub fn init(source, harness: harness.Harness) {
   let untyped = encode.from_json(encode.json_from_string(source))
   let constraint = t.Unbound(-1)
   let cache = analyse(untyped, constraint, harness)
   Editor("ast", harness, constraint, untyped, None, Command, False, None, cache)
 }
 
-pub fn yank_path(editor: Editor(n)) {
+pub fn yank_path(editor: Editor) {
   case editor.selection {
     None -> #(False, "")
     Some(path) ->
@@ -396,7 +396,7 @@ pub fn toggle_provider_expansion(editor) {
   Editor(..editor, expanded: expanded)
 }
 
-pub fn toggle_encoded(editor: Editor(_)) {
+pub fn toggle_encoded(editor: Editor) {
   let show = case editor.show {
     "ast" -> "dump"
     _ -> "ast"
@@ -404,7 +404,7 @@ pub fn toggle_encoded(editor: Editor(_)) {
   Editor(..editor, show: show)
 }
 
-pub fn toggle_code(editor: Editor(_)) {
+pub fn toggle_code(editor: Editor) {
   let show = case editor.show {
     "ast" -> "code"
     _ -> "ast"

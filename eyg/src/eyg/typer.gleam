@@ -14,14 +14,14 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/typer/harness
 
-pub type Reason(n) {
+pub type Reason {
   IncorrectArity(expected: Int, given: Int)
   UnknownVariable(label: String)
-  UnmatchedTypes(expected: t.Monotype(n), given: t.Monotype(n))
-  MissingFields(expected: List(#(String, t.Monotype(n))))
-  UnexpectedFields(unexpected: List(#(String, t.Monotype(n))))
-  ProviderFailed(generator: e.Generator, expected: t.Monotype(n))
-  GeneratedInvalid(errors: List(#(List(Int), Reason(n))))
+  UnmatchedTypes(expected: t.Monotype, given: t.Monotype)
+  MissingFields(expected: List(#(String, t.Monotype)))
+  UnexpectedFields(unexpected: List(#(String, t.Monotype)))
+  ProviderFailed(generator: e.Generator, expected: t.Monotype)
+  GeneratedInvalid(errors: List(#(List(Int), Reason)))
   Warning(message: String)
 }
 
@@ -29,8 +29,8 @@ pub fn root_scope(variables) {
   Scope(variables: variables, path: [])
 }
 
-pub type Scope(n) {
-  Scope(path: List(Int), variables: List(#(String, polytype.Polytype(n))))
+pub type Scope {
+  Scope(path: List(Int), variables: List(#(String, polytype.Polytype)))
 }
 
 pub fn child(scope, i) {
@@ -38,18 +38,17 @@ pub fn child(scope, i) {
   Scope(..scope, path: path.append(path, i))
 }
 
-pub type Typer(n) {
+pub type Typer {
   Typer(
     next_unbound: Int,
-    substitutions: List(#(Int, t.Monotype(n))),
-    inconsistencies: List(#(List(Int), Reason(n))),
-    native_to_parameters: fn(n) -> List(t.Monotype(n))
+    substitutions: List(#(Int, t.Monotype)),
+    inconsistencies: List(#(List(Int), Reason)),
   )
 }
 
 // I think the types should be concerned only with types, no redering
-pub fn init(native_to_parameters) {
-  Typer(0, [], [], native_to_parameters)
+pub fn init() {
+  Typer(0, [], [])
 }
 
 pub fn next_unbound(typer) {
@@ -165,10 +164,10 @@ fn pattern_type(pattern, typer) {
   }
 }
 
-pub type Metadata(n) {
+pub type Metadata {
   Metadata(
-    type_: Result(t.Monotype(n), Reason(n)),
-    scope: List(#(String, polytype.Polytype(n))),
+    type_: Result(t.Monotype, Reason),
+    scope: List(#(String, polytype.Polytype)),
     path: List(Int),
   )
 }
@@ -181,16 +180,16 @@ pub fn is_error(metadata) {
 }
 
 pub fn get_type(
-  tree: e.Expression(Metadata(n), a),
-) -> Result(t.Monotype(n), Reason(n)) {
+  tree: e.Expression(Metadata, a),
+) -> Result(t.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
 }
 
 pub fn do_unify(
-  state: #(Typer(n), List(Int)),
-  pair: #(t.Monotype(n), t.Monotype(n)),
-) -> Result(#(Typer(n), List(Int)), Reason(n)) {
+  state: #(Typer, List(Int)),
+  pair: #(t.Monotype, t.Monotype),
+) -> Result(#(Typer, List(Int)), Reason) {
   let #(t1, t2) = pair
   let #(state, seen) = state
   case t1, t2 {
@@ -236,10 +235,15 @@ pub fn do_unify(
       let t2 = polytype.replace_type(inner, i, t2)
       do_unify(#(state, seen), #(t1, t2))
     }
-    t.Native(n1), t.Native(n2) -> {
-      Ok(#(state, seen))
-      // TODO pass in native_to_parameters
-      // do_unify(#(state, seen), #(n1, n2))
+    t.Native(n1,i1), t.Native(n2,i2) -> {
+      case n1 == n2 {
+        True -> case list.strict_zip(i1, i2) {
+          Ok(pairs) -> list.try_fold(pairs, #(state, seen), do_unify)
+          Error(list.LengthMismatch) ->
+            Error(IncorrectArity(list.length(i1), list.length(i2)))
+        }
+        False -> Error(UnmatchedTypes(t.Native(n1,i1), t.Native(n2,i2)))
+      }
     }
     t.Binary, t.Binary -> Ok(#(state, seen))
     t.Tuple(e1), t.Tuple(e2) ->
@@ -314,8 +318,8 @@ pub fn do_unify(
 fn add_substitution(
   i,
   type_,
-  state: #(Typer(n), List(Int)),
-) -> #(Typer(n), List(Int)) {
+  state: #(Typer, List(Int)),
+) -> #(Typer, List(Int)) {
   let #(state, seen) = state
   case t.resolve(type_, state.substitutions) {
     t.Unbound(j) if j == i -> #(state, seen)
@@ -326,12 +330,12 @@ fn add_substitution(
   }
 }
 
-pub fn unify(t1, t2, state: Typer(n)) {
+pub fn unify(t1, t2, state: Typer) {
   try #(state, seen) = do_unify(#(state, []), #(t1, t2))
   Ok(state)
 }
 
-fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype(n)), Typer(n)) {
+fn with_unbound(thing: a, typer) -> #(#(a, t.Monotype), Typer) {
   let #(x, typer) = next_unbound(typer)
   let type_ = t.Unbound(x)
   #(#(thing, type_), typer)
@@ -489,9 +493,9 @@ fn try_unify(expected, given, typer, path) {
 // expected is the type this expression should evaluate too
 pub fn infer(
   expression: e.Expression(Dynamic, Dynamic),
-  expected: t.Monotype(n),
-  state: #(Typer(n), Scope(n)),
-) -> #(e.Expression(Metadata(n), Dynamic), Typer(n)) {
+  expected: t.Monotype,
+  state: #(Typer, Scope),
+) -> #(e.Expression(Metadata, Dynamic), Typer) {
   let #(_, tree) = expression
   let #(typer, scope) = state
   let meta = Metadata(type_: _, scope: scope.variables, path: scope.path)
@@ -604,7 +608,7 @@ pub fn infer(
               child(inner_scope, 1),
               1,
             )
-          let typer: Typer(n) = typer
+          let typer: Typer = typer
           let scope = set_variable(#(label, self_type), typer, scope)
           #(#(meta(type_), e.Function(pattern, body)), #(typer, scope))
         }

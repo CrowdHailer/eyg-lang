@@ -4,15 +4,15 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
 
-pub type Monotype(n) {
-  Native(n)
+pub type Monotype {
+  Native(name: String, parameters: List(Monotype))
   Binary
-  Tuple(elements: List(Monotype(n)))
-  Record(fields: List(#(String, Monotype(n))), extra: Option(Int))
-  Union(variants: List(#(String, Monotype(n))), extra: Option(Int))
-  Function(from: Monotype(n), to: Monotype(n))
+  Tuple(elements: List(Monotype))
+  Record(fields: List(#(String, Monotype)), extra: Option(Int))
+  Union(variants: List(#(String, Monotype)), extra: Option(Int))
+  Function(from: Monotype, to: Monotype)
   Unbound(i: Int)
-  Recursive(i: Int, type_: Monotype(n))
+  Recursive(i: Int, type_: Monotype)
 }
 
 pub fn literal(monotype) {
@@ -47,13 +47,17 @@ pub fn literal(monotype) {
     Function(from, to) ->
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
-    Native(_) | Union(_, _) | Recursive(_, _) -> todo("ss literal")
+    Native(_, _) | Union(_, _) | Recursive(_, _) -> todo("ss literal")
   }
 }
 
-pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
+
+pub fn do_resolve(type_, substitutions: List(#(Int, Monotype)), recuring) {
   case type_ {
-    Native(s) -> Native(s)
+    Native(name, parameters) -> {
+      let parameters = list.map(parameters, do_resolve(_, substitutions, recuring))
+      Native(name,parameters)
+      }
     Unbound(i) ->
       case list.find(recuring, fn(j) { i == j }) {
         Ok(_) -> type_
@@ -120,7 +124,11 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype(n))), recuring) {
             Unbound(j) -> Union(resolved_variants, Some(j))
             Union(inner, rest) ->
               Union(list.append(resolved_variants, inner), rest)
-            x -> todo("improper union")
+            x -> {
+              io.debug("bad resolution of a union")
+              io.debug(i)
+              Union(resolved_variants, None)
+              }
           }
         }
       }
@@ -141,7 +149,10 @@ pub fn resolve(t, substitutions) {
 fn do_free_in_type(set, type_) {
   case type_ {
     Unbound(i) -> push_new(i, set)
-    Native(_) | Binary -> set
+    Native(_, parameters) ->{
+      list.fold(parameters, set, do_free_in_type)
+      }
+    Binary -> set
     Tuple(elements) -> list.fold(elements, set, do_free_in_type)
     Record(rows, rest) | Union(rows, rest) -> do_free_in_row(rows, rest, set)
     Recursive(i, type_) -> {
@@ -202,7 +213,8 @@ fn do_difference(items, excluded, accumulator) {
 fn do_used_in_type(set, type_) {
   case type_ {
     Unbound(i) -> push_new(i, set)
-    Native(_) | Binary -> set
+    Native(_, inner) -> list.fold(inner, set, do_used_in_type)
+    Binary -> set
     Tuple(elements) -> list.fold(elements, set, do_used_in_type)
     Record(rows, rest) | Union(rows, rest) -> do_used_in_row(rows, rest, set)
     Recursive(i, type_) -> {

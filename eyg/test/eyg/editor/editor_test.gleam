@@ -13,7 +13,7 @@ pub fn fn_equality_test() {
 fn empty_editor() {
   editor.init(
     "{\"node\": \"Binary\", \"value\": \"\"}",
-    harness.Harness([], fn(_native) { todo }, fn(_) {todo}),
+    harness.Harness([]),
   )
 }
 

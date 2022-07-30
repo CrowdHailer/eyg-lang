@@ -23,7 +23,7 @@
 //   let #(typed, typer) = eyg.compile_unconstrained(true_mod, browser.harness())
 //   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
-//   let "True" = t.to_string(type_, browser.native_to_string)
+//   let "True" = t.to_string(type_, )
 // }
 // pub fn some_value_test(saved) {
 //   let program = encode.from_json(saved)
@@ -32,7 +32,7 @@
 //   let #(typed, typer) = eyg.compile_unconstrained(some, browser.harness())
 //   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
-//   let "1 -> Some 1" = t.to_string(type_, browser.native_to_string)
+//   let "1 -> Some 1" = t.to_string(type_, )
 // }
 // pub fn none_value_test(saved) {
 //   let program = encode.from_json(saved)
@@ -41,7 +41,7 @@
 //   let #(typed, typer) = eyg.compile_unconstrained(none, browser.harness())
 //   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
-//   let "None" = t.to_string(type_, browser.native_to_string)
+//   let "None" = t.to_string(type_, )
 // }
 // pub fn boolean_not_test(saved) {
 //   let program = encode.from_json(saved)
@@ -51,7 +51,7 @@
 //   let #(typed, typer) = eyg.compile_unconstrained(mod, browser.harness())
 //   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
-//   let "True" = t.to_string(type_, browser.native_to_string)
+//   let "True" = t.to_string(type_, )
 // }
 // // pub fn and_test(saved) {
 // //   let program = encode.from_json(saved)
@@ -60,7 +60,7 @@
 // //   let #(typed, typer) = eyg.compile_unconstrained(and)
 // //   assert Ok(type_) = typer.get_type(typed)
 // //   let type_ = t.resolve(type_, typer.substitutions)
-// //   let "True" = t.to_string(type_, browser.native_to_string)
+// //   let "True" = t.to_string(type_, )
 // // }
 // pub fn equal_test(saved) {
 //   let program = encode.from_json(saved)
@@ -69,5 +69,5 @@
 //   let #(typed, typer) = eyg.compile_unconstrained(equal, browser.harness())
 //   assert Ok(type_) = typer.get_type(typed)
 //   let type_ = t.resolve(type_, typer.substitutions)
-//   let "(1, 1) -> True | False" = t.to_string(type_, browser.native_to_string)
+//   let "(1, 1) -> True | False" = t.to_string(type_, )
 // }

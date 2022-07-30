@@ -11,7 +11,7 @@ import eyg/typer/polytype
 // TODO use analysis infer
 fn infer(untyped, type_) {
   let variables = [#("equal", typer.equal_fn())]
-  let checker = typer.init(fn(_) { todo("case test") })
+  let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
   typer.infer(untyped, type_, state)
@@ -19,7 +19,7 @@ fn infer(untyped, type_) {
 
 // TODO use analysis module instead
 // TODO shrink
-fn get_type(typed, checker: typer.Typer(n)) {
+fn get_type(typed, checker: typer.Typer) {
   case typer.get_type(typed) {
     Ok(type_) -> Ok(t.resolve(type_, checker.substitutions))
     Error(reason) -> todo("resolve")
