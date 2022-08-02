@@ -68,6 +68,7 @@ pub fn run_call(next, arg, coroutines)  {
     }
 }
 
+// TODO pull out as tree walk
 pub fn eval(source, env)  {
     let #(_, s) = source
     case s {

@@ -9,6 +9,7 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/interpreter/interpreter as r
 import eyg/interpreter/tail_call
+import eyg/interpreter/stepwise
 import eyg/typer
 import eyg/typer/monotype as t
 import eyg/codegen/javascript
@@ -17,8 +18,9 @@ pub fn tuples_test() {
     let empty = map.new()
     let source = e.tuple_([e.tuple_([]), e.binary("hello")])
 
-    assert r.Tuple([r.Tuple([]), r.Binary("hello")]) = tail_call.eval(source, empty)
     assert r.Tuple([r.Tuple([]), r.Binary("hello")]) = r.eval(source, empty)
+    assert r.Tuple([r.Tuple([]), r.Binary("hello")]) = tail_call.eval(source, empty)
+    assert r.Tuple([r.Tuple([]), r.Binary("hello")]) = stepwise.eval(source, empty)
 }
 
 pub fn tuple_patterns_test() {
@@ -31,6 +33,7 @@ pub fn tuple_patterns_test() {
 
     assert r.Tuple([r.Binary("bar"), r.Binary("foo")]) = r.eval(source, empty)
     assert r.Tuple([r.Binary("bar"), r.Binary("foo")]) = tail_call.eval(source, empty)
+    assert r.Tuple([r.Binary("bar"), r.Binary("foo")]) = stepwise.eval(source, empty)
 }
 
 
@@ -40,6 +43,7 @@ pub fn records_test() {
 
     assert r.Tuple([]) = r.eval(source, empty) 
     assert r.Tuple([]) = tail_call.eval(source, empty) 
+    assert r.Tuple([]) = stepwise.eval(source, empty)
 }
 
 pub fn variables_test() {
@@ -48,6 +52,7 @@ pub fn variables_test() {
 
     assert r.Tuple([]) = r.eval(source, empty)
     assert r.Tuple([]) = tail_call.eval(source, empty)
+    assert r.Tuple([]) = stepwise.eval(source, empty)
 }
 
 pub fn functions_test() {
@@ -56,11 +61,14 @@ pub fn functions_test() {
 
     assert r.Tuple([]) = r.eval(source, empty) 
     assert r.Tuple([]) = tail_call.eval(source, empty) 
+    assert r.Tuple([]) = stepwise.eval(source, empty)
 
-        let source = e.call(e.function(p.Tuple([]), e.binary("inner")), e.tuple_([]))
 
+    let source = e.call(e.function(p.Tuple([]), e.binary("inner")), e.tuple_([]))
     assert r.Binary("inner") = r.eval(source, empty) 
     assert r.Binary("inner") = tail_call.eval(source, empty) 
+    assert r.Binary("inner") = stepwise.eval(source, empty)
+
 
 }
 
@@ -72,14 +80,18 @@ pub fn unions_test() {
     ])
     assert r.Binary("yes") = r.eval(source, empty) 
     assert r.Binary("yes") = tail_call.eval(source, empty) 
+    assert r.Binary("yes") = stepwise.eval(source, empty)
 
-            let empty = map.new()
+
+    let empty = map.new()
     let source = e.case_(e.tagged("Some", e.binary("foo")), [
         #("Some", p.Variable("a"), e.variable("a")),
         #("None", p.Tuple([]), e.binary("BAD"))
     ])
     assert r.Binary("foo") = r.eval(source, empty) 
     assert r.Binary("foo") = tail_call.eval(source, empty) 
+    assert r.Binary("foo") = stepwise.eval(source, empty)
+
 
 }
 
@@ -111,11 +123,15 @@ pub fn recursive_test() {
     |> map.insert("x", r.Tuple([tail(), tail()]))
     assert r.Tagged("Nil", r.Tuple([])) = r.eval(source, empty) 
     assert r.Tagged("Nil", r.Tuple([])) = tail_call.eval(source, empty) 
+    assert r.Tagged("Nil", r.Tuple([])) = stepwise.eval(source, empty)
 
-        let empty = map.new()
+
+    let empty = map.new()
     |> map.insert("x", r.Tuple([cons(r.Binary("1"),cons(r.Binary("2"),tail())), tail()]))
     assert r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))])) = r.eval(source, empty) 
     assert r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))])) = tail_call.eval(source, empty) 
+    assert r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))])) = stepwise.eval(source, empty)
+
 }
 
 pub fn builtin_test()  {
@@ -128,6 +144,8 @@ pub fn builtin_test()  {
 
     assert r.Binary("olleh") = r.eval(source, env) 
     assert r.Binary("olleh") = tail_call.eval(source, env) 
+    assert r.Binary("olleh") = stepwise.eval(source, env)
+
 }
 
 
@@ -167,6 +185,8 @@ pub fn capture_test()  {
     |> map.insert("capture", r.BuiltinFn(capture))
     assert r.Tuple([]) = r.eval(source, env) 
     assert r.Tuple([]) = tail_call.eval(source, env) 
+    assert r.Tuple([]) = stepwise.eval(source, env)
+
 }
 
 pub fn coroutines_test() {
