@@ -12,15 +12,20 @@ import eyg/interpreter/interpreter as r
 
 pub fn eval(source, env) {
     let cont = step(source, env, fn(value) { Done(value) })
-    loop(cont)
+    loop(cont, [])
 }
 
-fn loop(cont) { 
+fn loop(cont, processes) { 
     case cont {
         Done(value) -> value
         Cont(value, cont) -> {
-            loop(cont(value))
+            loop(cont(value), processes)
         }
+        // Spawn(func) -> {
+        //     let pid = list.length(processes)
+        //     let processes = [func, ..processes]
+        //     loop(r.Function(p.Variable("then"), e.call(e.variable("then"), )), processes)
+        // }
     }
 }
 
@@ -28,6 +33,7 @@ fn loop(cont) {
 pub type Cont {
     Done(r.Object)
     Cont(r.Object, fn(r.Object) -> Cont)
+    // Spawn(r.Object)
 }
 
 fn eval_tuple(elements, env, acc, cont) { 
@@ -63,7 +69,7 @@ pub fn step(source, env, cont)  {
             step(record, env, fn(value) {
                 assert r.Record(fields) = value
                 case list.key_find(fields, key) {
-                    Ok(value) -> cont(value)
+                    Ok(value) -> Cont(value, cont)
                     _ -> {
                         io.debug(key)
                         todo("missing key in record")
@@ -100,15 +106,15 @@ pub fn step(source, env, cont)  {
         }
         e.Variable(var) -> {
             assert Ok(value) = map.get(env, var)
-            cont(value)
+            Cont(value, cont)
         }
         e.Function(pattern, body) -> {
-            cont(r.Function(pattern, body, env, None))
+            Cont(r.Function(pattern, body, env, None), cont)
         }
         e.Call(func, arg) -> {
             step(func, env, fn(func) {
                 step(arg, env, fn(arg) {
-                    cont(r.exec_call(func, arg))
+                    exec_call(func, arg, cont)
                 })            
             })
 
@@ -122,3 +128,33 @@ pub fn step(source, env, cont)  {
     }
 }
 
+pub fn exec_call(func, arg, cont) {
+    let s = spawn
+    case func {
+            r.Function(pattern, body, captured, self)  -> {
+            let captured = case self {
+                Some(label) -> map.insert(captured, label, func)
+                None -> captured
+            }
+            let inner = r.extend_env(captured, pattern, arg)
+            step(body, inner, cont)
+        }
+        // r.BuiltinFn(func) if func == s -> {
+        //     // io.debug(cont)
+        //     // todo("spwan")
+        //     Spawn(func)
+        //     // io.debug(func == spawn)
+        //     // Cont(func(arg), cont)
+        // }
+        r.Coroutine(forked) -> {
+            Cont(r.Ready(forked, arg), cont)
+        }
+        _ -> todo("Should never be called")
+    }
+}
+
+pub fn spawn(x)  {
+        // assert Function(pattern, body, env, self) = x
+        // todo("inside spawn")
+        r.Coroutine(x)
+}
