@@ -32,24 +32,31 @@ pub fn walk_tuple_test() {
 pub fn process_test() {
     let empty = map.new()
     |> map.insert("spawn", r.BuiltinFn(stepwise.spawn))
+    |> map.insert("send", r.BuiltinFn(stepwise.send))
     |> map.insert("x", r.Binary("really a function"))
-    let source = e.call(e.call(e.variable("spawn"), e.variable("x")), e.function(p.Variable("pid"), e.variable("pid")))
+    let source = e.call(e.call(e.variable("spawn"), e.variable("x")), e.function(p.Variable("pid"), 
+    e.call(e.call(e.variable("send"), e.tuple_([e.variable("pid"), e.binary("Post")])), e.function(p.Variable("_sent"), e.variable("pid"))  )
+    
+    ))
 
-    assert stepwise.Cont(value, cont) = stepwise.step(source, empty, stepwise.Done) 
-    |> io.debug
-    // assert r.Tuple([]) = value
-    assert stepwise.Cont(value, cont) = cont(value)
-    |> io.debug
-    assert stepwise.Cont(value, cont) = cont(value)
-    |> io.debug
-    assert stepwise.Cont(value, cont) = cont(value)
-    |> io.debug
-    assert stepwise.Cont(value, cont) = cont(value)
-    |> io.debug
-    assert stepwise.Cont(value, cont) = cont(value)
-    |> io.debug
+    // assert stepwise.Cont(value, cont) = stepwise.step(source, empty, stepwise.Done) 
+    // |> io.debug
+    // // assert r.Tuple([]) = value
+    // assert stepwise.Cont(value, cont) = cont(value)
+    // |> io.debug
+    // assert stepwise.Cont(value, cont) = cont(value)
+    // |> io.debug
+    // assert stepwise.Cont(value, cont) = cont(value)
+    // |> io.debug
+    // assert stepwise.Cont(value, cont) = cont(value)
+    // |> io.debug
+    // assert stepwise.Cont(value, cont) = cont(value)
+    // |> io.debug
 
-    assert r.Binary("hello") = value
+    // assert r.Binary("hello") = value
+    // TODO rename so not empty
+    stepwise.effect_eval(source, empty)
+    |> io.debug()
     // TODO for some reason we get done twice at the end.
     // Maybe there is a zero position value that we don't need to worry about
 }

@@ -11,29 +11,56 @@ import eyg/codegen/javascript
 import eyg/interpreter/interpreter as r
 
 pub fn eval(source, env) {
+    let #(_, value) = effect_eval(source, env)
+    value
+}
+
+pub fn effect_eval(source, env) {
     let cont = step(source, env, fn(value) { Done(value) })
     loop(cont, [])
 }
 
 fn loop(cont, processes) { 
     case cont {
-        Done(value) -> value
+        Done(value) -> #(processes, value)
         Cont(value, cont) -> {
+            // let #(_, value) = value
             loop(cont(value), processes)
         }
-        // Spawn(func) -> {
-        //     let pid = list.length(processes)
-        //     let processes = [func, ..processes]
-        //     loop(r.Function(p.Variable("then"), e.call(e.variable("then"), )), processes)
-        // }
+        Eff(effect, cont) -> {
+            // handle effect
+            case effect {
+                Spawn(func) -> {
+                    let pid = list.length(processes)
+                    let processes = [func, ..processes]
+                    let value = r.Function(p.Variable("then"), e.call(e.variable("then"), e.variable("pid")), map.new() |> map.insert("pid", r.Pid(pid)), None)
+
+                    loop(cont(value), processes)
+                }
+                Send(message) -> {
+                    //   let pid = list.length(processes)
+                    // let processes = [func, ..processes]
+                    io.debug("doooing the sending")
+                    io.debug(message)
+                    let value = r.Function(p.Variable("then"), e.call(e.variable("then"), e.tuple_([])), map.new() , None)
+
+                    loop(cont(value), processes)
+                }
+            }
+        }
     }
 }
 
 // pub type Cont = Option(fn(r.Object) -> Cont)
 pub type Cont {
     Done(r.Object)
-    Cont(r.Object, fn(r.Object) -> Cont)
-    // Spawn(r.Object)
+    Cont( r.Object, fn(r.Object) -> Cont)
+    Eff(Effect, fn(r.Object) -> Cont)
+}
+
+pub type Effect {
+    Spawn(func: r.Object)
+    Send(pid_and_message: r.Object)
 }
 
 fn eval_tuple(elements, env, acc, cont) { 
@@ -105,7 +132,9 @@ pub fn step(source, env, cont)  {
             }
         }
         e.Variable(var) -> {
+            io.debug("GET a variable")
             assert Ok(value) = map.get(env, var)
+            |> io.debug()
             Cont(value, cont)
         }
         e.Function(pattern, body) -> {
@@ -129,7 +158,8 @@ pub fn step(source, env, cont)  {
 }
 
 pub fn exec_call(func, arg, cont) {
-    let s = spawn
+    let sp = spawn
+    let se = send
     case func {
             r.Function(pattern, body, captured, self)  -> {
             let captured = case self {
@@ -139,16 +169,24 @@ pub fn exec_call(func, arg, cont) {
             let inner = r.extend_env(captured, pattern, arg)
             step(body, inner, cont)
         }
-        // r.BuiltinFn(func) if func == s -> {
-        //     // io.debug(cont)
-        //     // todo("spwan")
-        //     Spawn(func)
-        //     // io.debug(func == spawn)
-        //     // Cont(func(arg), cont)
-        // }
-        r.Coroutine(forked) -> {
-            Cont(r.Ready(forked, arg), cont)
+        r.BuiltinFn(func) if func == sp -> {
+            // io.debug(cont)
+            // todo("spwan")
+            // Spawn(func)
+            // io.debug(func == spawn)
+            // Theres no state too pass in here TODO
+            // Cont(r.Spawn(fn), )
+            // Cont(#([Spawn(func)], todo), cont)
+            io.debug("spawn arg ============")
+            io.debug(arg)
+            Eff(Spawn(arg), cont)
         }
+        r.BuiltinFn(func) if func == se -> {
+            Eff(Send(arg), cont)
+        }
+        // r.Coroutine(forked) -> {
+        //     Cont(r.Ready(forked, arg), cont)
+        // }
         _ -> todo("Should never be called")
     }
 }
@@ -156,5 +194,14 @@ pub fn exec_call(func, arg, cont) {
 pub fn spawn(x)  {
         // assert Function(pattern, body, env, self) = x
         // todo("inside spawn")
-        r.Coroutine(x)
+        // r.Coroutine(x)
+        todo
+}
+
+
+pub fn send(x)  {
+        // assert Function(pattern, body, env, self) = x
+        // todo("inside spawn")
+        // r.Coroutine(x)
+        todo
 }
