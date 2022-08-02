@@ -21,35 +21,36 @@ pub fn eval(source, env, kont) {
   }
 }
 
-pub fn iter(source, env, kont) {
-  let #(_, s) = source
-  case s {
-    e.Binary(bin) -> #(r.Binary(bin), env, kont)
-    e.Tagged(tag, value) -> #(
-      value,
-      env,
-      fn(value, env, kont) { r.Tagged(tag, value) },
-    )
-    e.Let(p.Variable(var), value, then) ->
-      iter(
-        value,
-        env,
-        fn(value, env, kont) {
-          let env = map.insert(env, var, value)
-          iter(then, env, value)
-        },
-      )
-  }
-}
+// pub fn iter(source, env, kont) {
+//   let #(_, s) = source
+//   case s {
+//     e.Binary(bin) -> #(r.Binary(bin), env, kont)
+//     // e.Tagged(tag, value) -> #(
+//     //   value,
+//     //   env,
+//     //   fn(value, env, kont) { r.Tagged(tag, value) },
+//     // )
+//     // e.Let(p.Variable(var), value, then) ->
+//     //   iter(
+//     //     value,
+//     //     env,
+//     //     fn(value, env, kont) {
+//     //       let env = map.insert(env, var, value)
+//     //       iter(then, env, value)
+//     //     },
+//     //   )
+//     _ -> todo
+//   }
+// }
 
-pub fn loop(value, env, kont) -> Nil {
-  // iter is start conditions
-  //   let #(value, env, kont) = iter(source, env, [])
-  case kont {
-    [] -> value
-    [k, kont] -> {
-      let #(value, env, kont) = k(value, env)
-      loop(value, env, kont)
-    }
-  }
-}
+// pub fn loop(value, env, kont) -> Nil {
+//   // iter is start conditions
+//   //   let #(value, env, kont) = iter(source, env, [])
+//   case kont {
+//     [] -> value
+//     [k, kont] -> {
+//       let #(value, env, kont) = k(value, env)
+//       loop(value, env, kont)
+//     }
+//   }
+// }

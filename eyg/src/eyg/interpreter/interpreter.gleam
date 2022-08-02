@@ -46,7 +46,7 @@ pub fn extend_env(env, pattern, object) {
 
 
 pub fn run(source, env, coroutines)  {
-    case exec_old(source, env) {
+    case eval(source, env) {
         Ready(coroutine, next) -> {
             let pid = list.length(coroutines)
             let coroutines = list.append(coroutines, [coroutine])
@@ -68,14 +68,14 @@ pub fn run_call(next, arg, coroutines)  {
     }
 }
 
-pub fn exec_old(source, env)  {
+pub fn eval(source, env)  {
     let #(_, s) = source
     case s {
         e.Binary(value) -> Binary(value)
-        e.Tuple(elements) -> Tuple(list.map(elements, exec_old(_, env)))
-        e.Record(fields) -> Record(value_map(fields, exec_old(_, env)))
+        e.Tuple(elements) -> Tuple(list.map(elements, eval(_, env)))
+        e.Record(fields) -> Record(value_map(fields, eval(_, env)))
         e.Access(record, key) -> {
-            assert Record(fields) = exec_old(record, env)
+            assert Record(fields) = eval(record, env)
             case list.key_find(fields, key) {
                 Ok(value) -> value
                 _ -> {
@@ -84,15 +84,15 @@ pub fn exec_old(source, env)  {
                 }
             }
         }
-        e.Tagged(tag, value) -> Tagged(tag, exec_old(value, env))
+        e.Tagged(tag, value) -> Tagged(tag, eval(value, env))
         e.Case(value, branches) -> {
-            assert Tagged(tag, value) = exec_old(value, env)
+            assert Tagged(tag, value) = eval(value, env)
             assert Ok(#(_, pattern, then)) = list.find(branches, fn(branch) {
                 let #(t, _, _) = branch
                 t == tag
             })
             let env = extend_env(env, pattern, value)
-            exec_old(then, env)
+            eval(then, env)
 
         }
         e.Let(pattern, value, then) -> {
@@ -100,9 +100,9 @@ pub fn exec_old(source, env)  {
                 p.Variable(label), #(_, e.Function(pattern, body)) -> {
                     map.insert(env, label, Function(pattern, body, env, Some(label)))
                 }
-                _,_ -> extend_env(env, pattern, exec_old(value, env))
+                _,_ -> extend_env(env, pattern, eval(value, env))
             }
-            |> exec_old(then, _)
+            |> eval(then, _)
         }
         e.Variable(var) -> {
             assert Ok(value) = map.get(env, var)
@@ -112,15 +112,15 @@ pub fn exec_old(source, env)  {
             Function(pattern, body, env, None)
         }
         e.Call(func, arg) -> {
-            let func = exec_old(func, env)
-            let arg = exec_old(arg, env)            
+            let func = eval(func, env)
+            let arg = eval(arg, env)            
             exec_call(func, arg)
 
         }
         e.Hole() -> todo("interpreted a program with a hole")
         e.Provider(_, _, generated) -> {
             // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
-            exec_old(dynamic.unsafe_coerce(generated), env)
+            eval(dynamic.unsafe_coerce(generated), env)
             // todo("providers should have been expanded before evaluation")
             }
     }
@@ -134,7 +134,7 @@ pub fn exec_call(func, arg) {
                 None -> captured
             }
             let inner = extend_env(captured, pattern, arg)
-            exec_old(body, inner)
+            eval(body, inner)
         }
         BuiltinFn(func) -> {
             func(arg)
@@ -184,237 +184,4 @@ case object {
             Coroutine(_) -> "null"
             Ready(_, _) -> "null"
         }
-}
-
-fn exec_tuple(elements, env, acc, k) { 
-    case elements {
-        [] -> k(Tuple(list.reverse(acc))) 
-        [e, ..elements] -> exec2(e, env, fn(value) {
-            exec_tuple(elements, env, [value, ..acc], k)
-        })
-    }
- }
-
- fn exec_record(fields, env, acc, k) { 
-    case fields {
-        [] -> k(Record(list.reverse(acc))) 
-        [f, ..fields] -> {
-             let #(name, e) = f
-            exec2(e, env, fn(value) {
-               
-                exec_record(fields, env, [#(name, value), ..acc], k)
-            })
-        }
-    }
- }
-
-
-// ----------------------------
-// pub fn exec(source, env) {
-//     exec2(source, env, fn(x){x})
-// }
-
-pub fn exec2(source, env, kont)  {
-    let #(_, s) = source
-    case s {
-        e.Binary(content) -> kont(Binary(content))
-        e.Tuple(elements) -> {
-            exec_tuple(elements, env, [], kont)
-        }
-        e.Record(fields) -> exec_record(fields, env, [], kont)
-        e.Access(record, key) -> {
-            exec2(record, env, fn(value) {
-                assert Record(fields) = value
-                case list.key_find(fields, key) {
-                    Ok(value) -> kont(value)
-                    _ -> {
-                        io.debug(key)
-                        todo("missing key in record")
-                    }
-                }
-            })
-        }
-        e.Tagged(tag, value) -> {
-            exec2(value, env, fn(value) {
-                kont(Tagged(tag, value))
-            })
-        }
-        e.Case(value, branches) -> {
-           exec2(value, env, fn(value) {
-                assert Tagged(tag, value) = value
-                assert Ok(#(_, pattern, then)) = list.find(branches, fn(branch) {
-                    let #(t, _, _) = branch
-                    t == tag
-                })
-                let env = extend_env(env, pattern, value)
-                exec2(then, env, kont)
-           })
-        }
-        e.Let(pattern, value, then) -> {
-            case pattern, value {
-                p.Variable(label), #(_, e.Function(pattern, body)) -> {
-                   exec2(then, map.insert(env, label, Function(pattern, body, env, Some(label))), kont)
-                }
-                _,_ -> exec2(value, env, fn(value) {
-                    extend_env(env, pattern, value)
-                    |> exec2(then, _, kont)
-                }) 
-            }
-        }
-        e.Variable(var) -> {
-            assert Ok(value) = map.get(env, var)
-            kont(value)
-        }
-        e.Function(pattern, body) -> {
-            kont(Function(pattern, body, env, None))
-        }
-        e.Call(func, arg) -> {
-            exec2(func, env, fn(func) {
-                exec2(arg, env, fn(arg) {
-                    io.debug(exec_call(func, arg))
-                    kont(exec_call(func, arg))
-                })            
-            })
-
-        }
-        e.Hole() -> todo("interpreted a program with a hole")
-        e.Provider(_, _, generated) -> {
-            // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
-            exec2(dynamic.unsafe_coerce(generated), env, kont)
-            // todo("providers should have been expanded before evaluation")
-            }
-    }
-}
-
-pub type Step(a,b) {
-    More(v: e.Expression(a,b), e: map.Map(String, Object), k: Option(fn(Object) -> Step(a,b)), )
-    Done(v: Object)
-}
-
-fn apply(next, value) { 
-    case next {
-        Some(k) -> Done(value )
-        None ->Done(value)
-    }
-    // #(next, value)
-}
-
-pub fn exec(source, env) {
-    do_exec(source, env, None)
-    // v
-}
-
-fn do_exec(source, env, kont) { 
-    case exec3(source, env, kont) {
-        Done(value) -> value
-        More(exp,env,cont) ->  {
-            io.debug(exp)
-            do_exec(source, env, kont)
-        }
-    }
- }
-
-// fn do_exec(source, env) { 
-    
-// }
-
-fn exec_tuple3(elements: List(e.Expression(_,_)), env, acc, k)  { 
-    case elements {
-        [] -> apply(k,Tuple(list.reverse(acc))) 
-        [e, ..elements] -> More(e, env, Some(fn(value) {
-            exec_tuple3(elements, env, [value, ..acc], k)
-        }))
-    }
- }
-
- fn exec_record3(fields, env, acc, k) { 
-    case fields {
-        [] -> apply(k,Record(list.reverse(acc))) 
-        [f, ..fields] -> {
-             let #(name, e) = f
-            More(e, env, Some(fn(value) {
-               
-                exec_record3(fields, env, [#(name, value), ..acc], k)
-            }))
-        }
-    }
- }
-pub fn cap(f) {
-    fn(value) {
-        #(value, Some(fn(){f(value)}))
-    }
-}
-
-import gleam/iterator
-// it's not a proper linked list the stack is a new recursive type
-pub fn exec3(source, env, kont)  {
-    let #(_, s) = source
-    case s {
-        e.Binary(content) -> apply(kont,Binary(content))
-        e.Tuple(elements) -> {
-            exec_tuple3(elements, env, [], kont)
-        }
-        e.Record(fields) -> exec_record3(fields, env, [], kont)
-        e.Access(record, key) -> {
-            More(record, env, Some(fn(value) {
-                assert Record(fields) = value
-                case list.key_find(fields, key) {
-                    Ok(value) -> apply(kont, value)
-                    _ -> {
-                        io.debug(key)
-                        todo("missing key in record")
-                    }
-                }
-            }))
-        }
-        e.Tagged(tag, value) -> {
-            More(value, env, Some(fn(value) {
-                apply(kont, Tagged(tag, value))
-            }))
-        }
-        e.Case(value, branches) -> {
-           More(value, env, Some(fn(value) {
-                assert Tagged(tag, value) = value
-                assert Ok(#(_, pattern, then)) = list.find(branches, fn(branch) {
-                    let #(t, _, _) = branch
-                    t == tag
-                })
-                let env = extend_env(env, pattern, value)
-                More(then, env, Some(apply(kont,_)))
-           }))
-        }
-        e.Let(pattern, value, then) -> {
-            case pattern, value {
-                p.Variable(label), #(_, e.Function(pattern, body)) -> {
-                   More(then, map.insert(env, label, Function(pattern, body, env, Some(label))), Some(apply(kont,_)))
-                }
-                _,_ -> More(value, env, Some(fn(value) {
-                    extend_env(env, pattern, value)
-                    |> More(then, _, Some(apply(kont,_)))
-                }) )
-            }
-        }
-        e.Variable(var) -> {
-            assert Ok(value) = map.get(env, var)
-            apply(kont, value)
-        }
-        e.Function(pattern, body) -> {
-            apply(kont, Function(pattern, body, env, None))
-        }
-        e.Call(func, arg) -> {
-            More(func, env, Some(fn(func) {
-                More(arg, env, Some(fn(arg) {
-                    io.debug(exec_call(func, arg))
-                    apply(kont, exec_call(func, arg))
-                })           ) 
-            }))
-
-        }
-        e.Hole() -> todo("interpreted a program with a hole")
-        e.Provider(_, _, generated) -> {
-            // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
-            More(dynamic.unsafe_coerce(generated), env, Some(apply(kont,_)))
-            // todo("providers should have been expanded before evaluation")
-            }
-    }
 }
