@@ -167,3 +167,8 @@ pub fn coroutines_test() {
     |> map.insert("spawn", r.BuiltinFn(r.spawn))
     assert #(r.Pid(0), coroutines) = r.run(source, env, []) 
 }
+
+// send -> dispatch ~~~> deliver -> receive
+// Value(x)
+// Effect(send: List(Int, Value), spawn)
+// Spawn iterate can take out key
