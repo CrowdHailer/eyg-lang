@@ -10,10 +10,21 @@ import eyg/editor/type_info
 import eyg/typer/polytype
 import eyg/typer/harness
 
+fn callback(arg, return, then) { 
+  polytype.Polytype(
+    [then],
+      t.Function(arg, t.Function(t.Function(return, t.Unbound(then)), t.Unbound(then)))
+  )
+}
 
 pub fn harness() {
   harness.Harness(
-    [#("equal", typer.equal_fn()), #("harness", string()), #("int", int())],
+    [#("equal", typer.equal_fn()), #("harness", string()), #("int", int()),
+    // TODO unbound 5 needed in polytype
+    #("spawn", callback(t.Recursive(0, t.Function(t.Unbound(5), t.Unbound(0))), t.Native("Pid", [t.Unbound(5)]), -84)),
+    // TODO don't hardcode binary as message/pid type
+    #("send", callback(t.Tuple([t.Native("Pid", [t.Binary]), t.Binary]), t.Tuple([]), -87))],
+
   )
 }
 

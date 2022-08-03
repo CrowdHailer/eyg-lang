@@ -12,6 +12,7 @@ import eyg/editor/editor
 import eyg/ast/encode
 import eyg/editor/ui as editor_ui
 import platform/browser
+import eyg/ast/expression as e
 import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
 
 external fn fetch(String) -> Promise(String) =
@@ -19,6 +20,7 @@ external fn fetch(String) -> Promise(String) =
 
 fn apps() {
   [
+    workspace.App("show", workspace.Interpreted(e.hole())),
     workspace.App("counter", workspace.UI(None, None, "")),
     workspace.App("fetch", workspace.Pure(None)),
     workspace.App("test", workspace.TestSuite("True")),

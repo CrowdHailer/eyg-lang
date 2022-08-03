@@ -66,6 +66,7 @@ pub type Mount(a) {
   Server(handle: Option(fn(Dynamic) -> Dynamic))
   // Only difference between server and universial is that universal works with source
   Universal(handle: Option(fn( String,  String,  String) -> String))
+  Interpreted(source: e.Expression(Dynamic, Dynamic))
 }
 
 // mount handling of keydown
@@ -186,6 +187,7 @@ pub fn mount_constraint(mount) {
       )
     )
     Static(_) -> t.Unbound(-2)
+    Interpreted(_) -> t.Function(t.Record([#("ui", t.Native("Pid", [t.Binary]))], None), t.Tuple([])) 
   }
 }
 
@@ -225,6 +227,7 @@ pub fn code_update(code, source, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
+    Interpreted(_) -> Interpreted(e.access(source, key)) 
     TestSuite(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)

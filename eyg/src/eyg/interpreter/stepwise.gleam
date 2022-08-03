@@ -26,16 +26,24 @@ import eyg/interpreter/interpreter as r
 
 
 fn write_html(o) { 
-    io.debug("external html")
+    io.debug("external html!!")
     io.debug(o)
+    assert r.Binary(content) = o
+    write_into_div(content)
     r.BuiltinFn(write_html)
 }
 fn set_key_handler(o) { 
-        io.debug("external key")
+    io.debug("external key!")
     io.debug(o)
     r.Tuple([]) 
 }
 
+external fn write_into_div(String) -> Nil =
+  "../../browser_ffi" "writeIntoDiv"
+
+pub fn run_browser(source)  {
+    start(source, map.new())
+}
 
 pub fn start(source, env) { 
     let processes = [r.BuiltinFn(write_html), r.BuiltinFn(set_key_handler)]
@@ -46,8 +54,10 @@ pub fn start(source, env) {
     |> map.insert( "system", r.Record([#("ui", r.Pid(0)), #("on_keypress", r.Pid(1))]))
     |> map.insert("spawn", r.BuiltinFn(spawn))
     |> map.insert("send", r.BuiltinFn(send))
+    |> map.insert("harness", r.Record([#("debug", r.BuiltinFn(io.debug))]))
     let cont = step(program, env, fn(value) { Done(value) })
     let #(processes, messages, _value) = loop(cont, processes, [])
+    io.debug(processes)
     let messages = list.reverse(messages)
     // send -> dispatch ~~~> deliver -> receive
     let processes = deliver_messages(processes, messages)
@@ -93,7 +103,7 @@ fn loop(cont, processes, messages) {
                 Spawn(func) -> {
                     let pid = list.length(processes)
                     // TODO need to add process at the end
-                    let processes = [func, ..processes]
+                    let processes = list.append(processes, [func])
                     let value = r.Function(p.Variable("then"), e.call(e.variable("then"), e.variable("pid")), map.new() |> map.insert("pid", r.Pid(pid)), None)
 
                     loop(cont(value), processes, messages)
@@ -245,7 +255,10 @@ pub fn exec_call(func, arg, cont) {
         // r.Coroutine(forked) -> {
         //     Cont(r.Ready(forked, arg), cont)
         // }
-        _ -> todo("Should never be called")
+        _ -> {
+            io.debug(func)
+            todo("Should never be called")
+        }
     }
 }
 

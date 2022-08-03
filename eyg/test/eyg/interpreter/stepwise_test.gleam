@@ -61,6 +61,15 @@ pub fn process_test() {
     // Maybe there is a zero position value that we don't need to worry about
 }
 
+
+// TODO callbacks needed otherwise type system can't see whats happening Need to be wrapped up in a bigger type
+// System(Int) needs a done(Int) although most of the time done is tuple
+// Needs to call out to external fn because types can't be dynamic and that is needed to convert specific message types to dynamic list that can be reordered
+// Having anon functions that are applied on actor don't work because if there is a message ahead then there is no mutable reference that allows new state to be pulled
+// Is there a way to pop out one value and go depth first, but early messages might never be delivered and how do I resume with updated state
+
+// Message type is safe because it is just object type in runtime
+
 pub fn dom_test() {
     let source = e.function(p.Variable("browser"), 
         e.let_(p.Variable("ui"), e.access(e.variable("browser"), "ui"),

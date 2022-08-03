@@ -8,6 +8,7 @@
   import Firmata from "./Firmata.svelte";
   import Server from "./Server.svelte";
   import Pure from "./Pure.svelte";
+  import Interpreted from "./Interpreted.svelte";
 
   export let index;
   export let key;
@@ -42,6 +43,9 @@
   {:else if mount instanceof Mount.Pure}
     <p><strong>{key}:</strong> Pure</p>
     <Pure state={mount[0]} />
+  {:else if mount instanceof Mount.Interpreted}
+    <p><strong>{key}:</strong> Interpreted</p>
+    <Interpreted source={mount.source} />
   {:else}
     {JSON.stringify(mount)}
   {/if}
