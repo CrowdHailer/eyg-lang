@@ -10,41 +10,98 @@ import eyg/ast/pattern as p
 import eyg/codegen/javascript
 import eyg/interpreter/interpreter as r
 
+
+// fn handle(msg, state, browser) { 
+//     let state = msg(state)
+//     send(browser, render(state))(fn([]) {
+//         handle(_, state, browser)
+//     })
+//  }
+
+// fn init(browser){
+//     spawn(handle(_, initial, browser))(fn(main){
+        
+//     })
+// }
+
+
+fn write_html(o) { 
+    io.debug("external html")
+    io.debug(o)
+    r.BuiltinFn(write_html)
+}
+fn set_key_handler(o) { 
+        io.debug("external key")
+    io.debug(o)
+    r.Tuple([]) 
+}
+
+
+pub fn start(source, env) { 
+    let processes = [r.BuiltinFn(write_html), r.BuiltinFn(set_key_handler)]
+
+    // easier than making a step call function does need to ensure there is no system key in env
+    let program = e.call(source, e.variable("system"))
+    let env = env
+    |> map.insert( "system", r.Record([#("ui", r.Pid(0)), #("on_keypress", r.Pid(1))]))
+    |> map.insert("spawn", r.BuiltinFn(spawn))
+    |> map.insert("send", r.BuiltinFn(send))
+    let cont = step(program, env, fn(value) { Done(value) })
+    let #(processes, messages, _value) = loop(cont, processes, [])
+    let messages = list.reverse(messages)
+    // send -> dispatch ~~~> deliver -> receive
+    let processes = deliver_messages(processes, messages)
+}
+
+// needs map_at
+fn deliver_messages(processes, messages) { 
+    case messages {
+        [] -> processes 
+        [r.Tuple([r.Pid(i), message]), ..rest] -> {
+            let pre = list.take(processes, i)
+            let [process, ..post] = list.drop(processes, i)
+            // need messages offset
+            let cont = exec_call(process, message, fn(value) { Done(value) })
+            // TODO need function to hadnle messages here
+            let #([],[], value) = loop(cont, [], [])
+            let processes = list.flatten([pre, [value], post])
+            deliver_messages(processes, rest)
+        }
+    }
+}
+
 pub fn eval(source, env) {
-    let #(_, value) = effect_eval(source, env)
+    let #(_, _, value) = effect_eval(source, env)
     value
 }
 
 pub fn effect_eval(source, env) {
     let cont = step(source, env, fn(value) { Done(value) })
-    loop(cont, [])
+    loop(cont, [], [])
 }
 
-fn loop(cont, processes) { 
+fn loop(cont, processes, messages) { 
     case cont {
-        Done(value) -> #(processes, value)
+        Done(value) -> #(processes, messages, value)
         Cont(value, cont) -> {
             // let #(_, value) = value
-            loop(cont(value), processes)
+            loop(cont(value), processes, messages)
         }
         Eff(effect, cont) -> {
             // handle effect
             case effect {
                 Spawn(func) -> {
                     let pid = list.length(processes)
+                    // TODO need to add process at the end
                     let processes = [func, ..processes]
                     let value = r.Function(p.Variable("then"), e.call(e.variable("then"), e.variable("pid")), map.new() |> map.insert("pid", r.Pid(pid)), None)
 
-                    loop(cont(value), processes)
+                    loop(cont(value), processes, messages)
                 }
                 Send(message) -> {
-                    //   let pid = list.length(processes)
-                    // let processes = [func, ..processes]
-                    io.debug("doooing the sending")
-                    io.debug(message)
+                    let messages = [message, ..messages]
                     let value = r.Function(p.Variable("then"), e.call(e.variable("then"), e.tuple_([])), map.new() , None)
-
-                    loop(cont(value), processes)
+                    loop(cont(value), processes, messages)
                 }
             }
         }
@@ -132,9 +189,7 @@ pub fn step(source, env, cont)  {
             }
         }
         e.Variable(var) -> {
-            io.debug("GET a variable")
             assert Ok(value) = map.get(env, var)
-            |> io.debug()
             Cont(value, cont)
         }
         e.Function(pattern, body) -> {
@@ -184,6 +239,9 @@ pub fn exec_call(func, arg, cont) {
         r.BuiltinFn(func) if func == se -> {
             Eff(Send(arg), cont)
         }
+        r.BuiltinFn(func) -> {
+            Cont(func(arg), cont)
+        }
         // r.Coroutine(forked) -> {
         //     Cont(r.Ready(forked, arg), cont)
         // }
@@ -195,7 +253,7 @@ pub fn spawn(x)  {
         // assert Function(pattern, body, env, self) = x
         // todo("inside spawn")
         // r.Coroutine(x)
-        todo
+        todo("this is the spawn function")
 }
 
 
@@ -203,5 +261,5 @@ pub fn send(x)  {
         // assert Function(pattern, body, env, self) = x
         // todo("inside spawn")
         // r.Coroutine(x)
-        todo
+        todo("this is the send function")
 }

@@ -61,3 +61,16 @@ pub fn process_test() {
     // Maybe there is a zero position value that we don't need to worry about
 }
 
+pub fn dom_test() {
+    let source = e.function(p.Variable("browser"), 
+        e.let_(p.Variable("ui"), e.access(e.variable("browser"), "ui"),
+        e.call(
+            e.call(e.variable("send"), e.tuple_([e.variable("ui"), e.binary("hello")])),
+            e.function(p.Variable(""), e.call(e.variable("send"), e.tuple_([e.variable("ui"), e.binary("goodby")])))
+        )
+        )
+    )
+
+    stepwise.start(source, map.new())
+    |> io.debug
+}
