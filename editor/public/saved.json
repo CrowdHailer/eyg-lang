@@ -146,8 +146,146 @@
                       }
                     },
                     "then": {
-                      "node": "Tuple",
-                      "elements": []
+                      "node": "Let",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": ""
+                      },
+                      "value": {
+                        "node": "Call",
+                        "function": {
+                          "node": "Variable",
+                          "label": "send"
+                        },
+                        "with": {
+                          "node": "Tuple",
+                          "elements": [
+                            {
+                              "node": "Access",
+                              "value": {
+                                "node": "Variable",
+                                "label": "dom"
+                              },
+                              "key": "fetch"
+                            },
+                            {
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Binary",
+                                  "value": "/stuff.text"
+                                },
+                                {
+                                  "node": "Function",
+                                  "pattern": {
+                                    "node": "Variable",
+                                    "label": "page"
+                                  },
+                                  "body": {
+                                    "node": "Let",
+                                    "pattern": {
+                                      "node": "Variable",
+                                      "label": ""
+                                    },
+                                    "value": {
+                                      "node": "Call",
+                                      "function": {
+                                        "node": "Variable",
+                                        "label": "send"
+                                      },
+                                      "with": {
+                                        "node": "Tuple",
+                                        "elements": [
+                                          {
+                                            "node": "Access",
+                                            "value": {
+                                              "node": "Variable",
+                                              "label": "dom"
+                                            },
+                                            "key": "ui"
+                                          },
+                                          {
+                                            "node": "Variable",
+                                            "label": "page"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "then": {
+                                      "node": "Let",
+                                      "pattern": {
+                                        "node": "Variable",
+                                        "label": ""
+                                      },
+                                      "value": {
+                                        "node": "Call",
+                                        "function": {
+                                          "node": "Variable",
+                                          "label": "send"
+                                        },
+                                        "with": {
+                                          "node": "Tuple",
+                                          "elements": [
+                                            {
+                                              "node": "Access",
+                                              "value": {
+                                                "node": "Variable",
+                                                "label": "dom"
+                                              },
+                                              "key": "on_keypress"
+                                            },
+                                            {
+                                              "node": "Function",
+                                              "pattern": {
+                                                "node": "Variable",
+                                                "label": "kee"
+                                              },
+                                              "body": {
+                                                "node": "Let",
+                                                "pattern": {
+                                                  "node": "Variable",
+                                                  "label": ""
+                                                },
+                                                "value": {
+                                                  "node": "Call",
+                                                  "function": {
+                                                    "node": "Access",
+                                                    "value": {
+                                                      "node": "Variable",
+                                                      "label": "harness"
+                                                    },
+                                                    "key": "debug"
+                                                  },
+                                                  "with": {
+                                                    "node": "Variable",
+                                                    "label": "kee"
+                                                  }
+                                                },
+                                                "then": {
+                                                  "node": "Tuple",
+                                                  "elements": []
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "then": {
+                                        "node": "Tuple",
+                                        "elements": []
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "then": {
+                        "node": "Tuple",
+                        "elements": []
+                      }
                     }
                   }
                 }

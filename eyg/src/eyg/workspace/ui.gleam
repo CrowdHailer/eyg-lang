@@ -13,14 +13,19 @@ import eyg/ast/encode
 import eyg/editor/ui as editor_ui
 import platform/browser
 import eyg/ast/expression as e
+import eyg/interpreter/interpreter as r
+import eyg/interpreter/stepwise
 import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
+import gleam/javascript as real_js
+
 
 external fn fetch(String) -> Promise(String) =
   "../../browser_ffi" "fetchSource"
 
 fn apps() {
+  // assert Ok(intial_show) = stepwise.run_browser(e.tuple_([])) 
   [
-    workspace.App("show", workspace.Interpreted(e.hole())),
+    workspace.App("show", workspace.Interpreted(#(real_js.make_reference([]), r.Tuple([])))),
     workspace.App("counter", workspace.UI(None, None, "")),
     workspace.App("fetch", workspace.Pure(None)),
     workspace.App("test", workspace.TestSuite("True")),

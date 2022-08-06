@@ -10,6 +10,7 @@ import eyg/typer/monotype as t
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/interpreter/interpreter
+import eyg/interpreter/stepwise
 import eyg/editor/editor
 import eyg/analysis
 import eyg/typer
@@ -66,11 +67,11 @@ pub type Mount(a) {
   Server(handle: Option(fn(Dynamic) -> Dynamic))
   // Only difference between server and universial is that universal works with source
   Universal(handle: Option(fn( String,  String,  String) -> String))
-  Interpreted(source: e.Expression(Dynamic, Dynamic))
+  Interpreted(state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object))
 }
 
 // mount handling of keydown
-pub fn handle_keydown(app, key, ctrl, text) {
+pub fn handle_keydown(app, k, ctrl, text) {
   let App(key, mount) = app
   // Need an init from first time we focus
   case mount {
@@ -83,6 +84,11 @@ pub fn handle_keydown(app, key, ctrl, text) {
       io.debug("new state")
       io.debug(state)
       let mount = Pure(Some(#(state, render, update, ref)))
+      App(key, mount)
+    }
+    Interpreted(state) -> {
+      let state = stepwise.handle_keydown(state, k)
+      let mount = Interpreted(state)
       App(key, mount)
     }
     _ -> app
@@ -187,7 +193,11 @@ pub fn mount_constraint(mount) {
       )
     )
     Static(_) -> t.Unbound(-2)
-    Interpreted(_) -> t.Function(t.Record([#("ui", t.Native("Pid", [t.Binary]))], None), t.Tuple([])) 
+    Interpreted(_) -> t.Function(t.Record([
+      #("ui", t.Native("Pid", [t.Binary])),
+      #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Tuple([]))])),
+      #("fetch", t.Native("Pid", [t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]))])])),
+      ], None), t.Tuple([])) 
   }
 }
 
@@ -227,7 +237,16 @@ pub fn code_update(code, source, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
-    Interpreted(_) -> Interpreted(e.access(source, key)) 
+    Interpreted(old) -> {
+      case stepwise.run_browser(e.access(source, key)) {
+        Ok(new) -> Interpreted(new) 
+        Error(reason) -> {
+          io.debug("failed to interpret")
+          io.debug(reason)
+          Interpreted(old)
+        }
+      }
+    }
     TestSuite(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)

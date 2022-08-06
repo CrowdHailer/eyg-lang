@@ -5,10 +5,13 @@ import gleam/int
 import gleam/list
 import gleam/map
 import gleam/string
+import gleam/function
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/codegen/javascript
 import eyg/interpreter/interpreter as r
+import gleam/javascript as real_js
+import gleam/javascript/promise.{Promise}
 
 
 // fn handle(msg, state, browser) { 
@@ -26,32 +29,56 @@ import eyg/interpreter/interpreter as r
 
 
 fn write_html(o) { 
-    io.debug("external html!!")
-    io.debug(o)
     assert r.Binary(content) = o
     write_into_div(content)
     r.BuiltinFn(write_html)
 }
 fn set_key_handler(o) { 
-    io.debug("external key!")
-    io.debug(o)
-    r.Tuple([]) 
+   todo("we don't use this but might with key handler as mutable ref")
 }
 
 external fn write_into_div(String) -> Nil =
   "../../browser_ffi" "writeIntoDiv"
+external fn try_catch(fn() -> b) -> Result(b, string) =
+  "../../browser_ffi" "tryCatch"
+external fn do_fetch(String) -> Promise(String) =
+  "../../browser_ffi" "fetchText"
 
 pub fn run_browser(source)  {
-    start(source, map.new())
+    let r = try_catch(fn() { 
+        start(source, map.new())
+    })    
+}
+
+pub fn fetch(o, ref)  {
+    assert r.Tuple([r.Binary(url), callback]) = o
+    io.debug(url)
+    promise.map(do_fetch(url), fn(body) {
+        let processes = real_js.dereference(ref)
+        io.debug(body)
+        let cont = step_call(callback, r.Binary(body), fn(value) { Done(value) })
+        let #(processes, messages, value) = loop(cont, processes, [])
+        io.debug("done")
+        io.debug(value)
+        let messages = list.reverse(messages)
+        // send -> dispatch ~~~> deliver -> receive
+        // TODO this should be r.function
+        let #(processes, key_handler) = deliver_messages(processes, messages, r.Binary("we ignore this key handler"))
+        // Key handler is thrown away here needs to be in mutable state ref TODO
+        real_js.set_reference(ref, processes)
+    })
+    // could be promise to value 
+    r.BuiltinFn(fetch(_, ref))
 }
 
 pub fn start(source, env) { 
-    let processes = [r.BuiltinFn(write_html), r.BuiltinFn(set_key_handler)]
+    let ref = real_js.make_reference([])
+    let processes = [r.BuiltinFn(write_html), r.BuiltinFn(set_key_handler), r.BuiltinFn(fetch(_, ref))]
 
     // easier than making a step call function does need to ensure there is no system key in env
     let program = e.call(source, e.variable("system"))
     let env = env
-    |> map.insert( "system", r.Record([#("ui", r.Pid(0)), #("on_keypress", r.Pid(1))]))
+    |> map.insert( "system", r.Record([#("ui", r.Pid(0)), #("on_keypress", r.Pid(1)), #("fetch", r.Pid(2))]))
     |> map.insert("spawn", r.BuiltinFn(spawn))
     |> map.insert("send", r.BuiltinFn(send))
     |> map.insert("harness", r.Record([#("debug", r.BuiltinFn(io.debug))]))
@@ -60,22 +87,42 @@ pub fn start(source, env) {
     io.debug(processes)
     let messages = list.reverse(messages)
     // send -> dispatch ~~~> deliver -> receive
-    let processes = deliver_messages(processes, messages)
+    // TODO this should be r.function
+    let handler = r.Function(p.Variable("key"), e.call(e.variable("send"), e.tuple_([e.access(e.variable("system"), "ui"), e.variable("key")])), env, None)
+    let #(processes, key_handler) = deliver_messages(processes, messages, handler)
+    real_js.set_reference(ref, processes)
+    #(ref, key_handler)
+}
+
+pub fn handle_keydown(state, key) {
+    let #(ref, key_handler) = state
+    let processes = real_js.dereference(ref)
+    let cont = step_call(key_handler, r.Binary(key), fn(value) { Done(value) })
+    let #(processes, messages, _value) = loop(cont, processes, [])
+    let messages = list.reverse(messages)
+    // send -> dispatch ~~~> deliver -> receive
+    // TODO this should be r.function
+    let #(processes, key_handler) = deliver_messages(processes, messages, key_handler)
+    real_js.set_reference(ref, processes)
+    #(ref, key_handler)
 }
 
 // needs map_at
-fn deliver_messages(processes, messages) { 
+fn deliver_messages(processes, messages, key_handler) { 
     case messages {
-        [] -> processes 
+        [] -> #(processes, key_handler) 
+        [r.Tuple([r.Pid(1), new_handler]), ..rest] -> {
+            deliver_messages(processes, rest, new_handler)
+        }
         [r.Tuple([r.Pid(i), message]), ..rest] -> {
             let pre = list.take(processes, i)
             let [process, ..post] = list.drop(processes, i)
             // need messages offset
-            let cont = exec_call(process, message, fn(value) { Done(value) })
+            let cont = step_call(process, message, fn(value) { Done(value) })
             // TODO need function to hadnle messages here
             let #([],[], value) = loop(cont, [], [])
             let processes = list.flatten([pre, [value], post])
-            deliver_messages(processes, rest)
+            deliver_messages(processes, rest, key_handler)
         }
     }
 }
@@ -208,7 +255,7 @@ pub fn step(source, env, cont)  {
         e.Call(func, arg) -> {
             step(func, env, fn(func) {
                 step(arg, env, fn(arg) {
-                    exec_call(func, arg, cont)
+                    step_call(func, arg, cont)
                 })            
             })
 
@@ -222,7 +269,7 @@ pub fn step(source, env, cont)  {
     }
 }
 
-pub fn exec_call(func, arg, cont) {
+pub fn step_call(func, arg, cont) {
     let sp = spawn
     let se = send
     case func {
