@@ -35,7 +35,27 @@ fn std_int() {
             assert r.Native(dynamic) = object
             assert Ok(value) = dynamic.int(dynamic)
             r.Binary(int.to_string(value))
-        }))
+        })),
+        #("add", r.BuiltinFn(fn(object) { 
+            assert r.Tuple([r.Native(d1), r.Native(d2)]) = object
+            assert Ok(v1) = dynamic.int(d1)
+            assert Ok(v2) = dynamic.int(d2)
+            native(v1 + v2)
+        })),
+        #("multiply", r.BuiltinFn(fn(object) { 
+            assert r.Tuple([r.Native(d1), r.Native(d2)]) = object
+            assert Ok(v1) = dynamic.int(d1)
+            assert Ok(v2) = dynamic.int(d2)
+            native(v1 * v2)
+        })),
+        #("negate", r.BuiltinFn(fn(object) { 
+            assert r.Native(dynamic) = object
+            assert Ok(value) = dynamic.int(dynamic)
+            native(-1 * value)
+        })),
+        #("zero", native(0)),
+        #("one", native(1)),
+        #("two", native(2)),
     ])    
 }
 
@@ -67,6 +87,13 @@ pub fn boot(source) {
         [], [] -> Nil
         _, _ -> todo("finish handling spawning processes on boot") 
     }
+    // Deliver first messages
+    // Put processes in a reference
+    // render pids for the client
+    // put a debug function in client eval in the client
+    // Move everything to harness as used previously
+    // Total counter is a nice way to do things
+    // Show in client which count you are
     case server {
         r.Function(arg, body, env, _) -> Ok(fn(method, path, body) { 
             let request = r.Record([
