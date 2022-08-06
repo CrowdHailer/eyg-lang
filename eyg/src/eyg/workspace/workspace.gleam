@@ -202,7 +202,9 @@ pub fn mount_constraint(mount) {
       ], None), t.Tuple([])) 
     IServer(_) -> t.Function(
       t.Record([#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)], None), 
-      t.Binary
+      t.Function(t.Record([], None), t.Binary)
+      // TODO have a static interpreted
+      // t.Binary
     )
   }
 }

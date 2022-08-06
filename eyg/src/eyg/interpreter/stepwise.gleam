@@ -299,6 +299,8 @@ pub fn spawn(x)  {
         // todo("inside spawn")
         // r.Coroutine(x)
         todo("this is the spawn function")
+        // r.Binary("this is the spawn fn which is evaled at the beginning because of the compile step which we should stop TODO")
+        // r.Function(p.Variable("x"), e.variable("x"), map.new(), None)
 }
 
 

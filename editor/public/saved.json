@@ -300,13 +300,45 @@
         "label": "server"
       },
       "value": {
-        "node": "Function",
-        "pattern": {
-          "node": "Variable",
-          "label": ""
+        "node": "Call",
+        "function": {
+          "node": "Call",
+          "function": {
+            "node": "Variable",
+            "label": "spawn"
+          },
+          "with": {
+            "node": "Variable",
+            "label": "loop"
+          }
         },
-        "body": {
-          "node": "Hole"
+        "with": {
+          "node": "Function",
+          "pattern": {
+            "node": "Variable",
+            "label": "pid"
+          },
+          "body": {
+            "node": "Let",
+            "pattern": {
+              "node": "Variable",
+              "label": ""
+            },
+            "value": {
+              "node": "Tuple",
+              "elements": []
+            },
+            "then": {
+              "node": "Function",
+              "pattern": {
+                "node": "Variable",
+                "label": "request"
+              },
+              "body": {
+                "node": "Hole"
+              }
+            }
+          }
         }
       },
       "then": {

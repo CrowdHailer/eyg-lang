@@ -24,7 +24,7 @@
         if (handlerFn) {
           body = handlerFn(data.method, data.path, data.body);
         }
-        exchanges = exchanges.concat(exchanges, [
+        exchanges = exchanges.concat([
           { request: data, response: { status, body } },
         ]);
         // logRequest(data, { status, body });

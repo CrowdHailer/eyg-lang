@@ -1,11 +1,14 @@
 import gleam/dynamic
 import gleam/int
 import gleam/io
+import gleam/list
 import gleam/map
 import gleam/option.{None}
 import gleam/string
 import eyg/interpreter/interpreter as r
+import gleam/javascript as real_js
 import eyg/interpreter/stepwise
+import eyg/codegen/javascript
 
 const true = r.Tagged("True", r.Tuple([]))
 const false = r.Tagged("false", r.Tuple([]))
@@ -67,9 +70,17 @@ fn std_string() {
     ])
 }
 
+fn concat(object) { 
+    assert r.Tuple([r.Binary(left), r.Binary(right)]) = object
+    r.Binary(string.concat([left, right]))
+ }
+
 fn prelude() { 
     map.new()
-    |> map.insert("debug", r.BuiltinFn(io.debug))
+    |> map.insert("harness", r.Record([
+        #("debug", r.BuiltinFn(io.debug)),
+        #("concat", r.BuiltinFn(concat))
+    ]))
     |> map.insert("equal", r.BuiltinFn(equal))
     |> map.insert("int", std_int())
     |> map.insert("string", std_string())
@@ -83,12 +94,8 @@ pub fn boot(source) {
     let processes = []
     let cont = stepwise.step(source, prelude(), fn(value) { stepwise.Done(value) })
     let #(processes, messages, server) = stepwise.loop(cont, processes, [])
-    case processes, messages {
-        [], [] -> Nil
-        _, _ -> todo("finish handling spawning processes on boot") 
-    }
-    // Deliver first messages
-    // Put processes in a reference
+    let processes = deliver_messages(processes, messages)
+    let ref = real_js.make_reference(processes)
     // render pids for the client
     // put a debug function in client eval in the client
     // Move everything to harness as used previously
@@ -101,18 +108,45 @@ pub fn boot(source) {
                 #("path", r.Binary(path)),
                 #("body", r.Binary(body)),
             ])
+            let processes = real_js.dereference(ref)
             let cont = stepwise.step_call(server, request, fn(value) { stepwise.Done(value) })
             let #(processes, messages, response) = stepwise.loop(cont, processes, [])
-            case processes, messages {
-                [], [] -> Nil
-                _, _ -> todo("finish handling spawning processes on serve") 
-            }
+            let processes = deliver_messages(processes, messages)
+            real_js.set_reference(ref, processes)
             // Need to handle variable type
             case response {
                 r.Binary(content) -> content 
+                r.Function(pattern, body, captured, _self) -> {
+                    // TODO HTML heading
+                    // create the spawn and send function, this should gather and execute after main function
+                    // functions should have hash ref to AST to be serialized. Have to use interpreter until that is ready
+                    // builtins should be implement foo: builtin.foo
+                    // TODO call interpret in the client
+                    // Pass out the pids
+                    list.map(map.to_list(captured) |> list.append([#("doo", response)]), r.render_var)
+                    // |> list.append([javascript.render_to_string(typed, typer)])
+                    |> string.join("\n")   
+                }
                 _ -> todo("havent handled non binary responses")
             }
         })
         _ -> todo("need to handle other server types")
+    }
+}
+
+
+fn deliver_messages(processes, messages) { 
+    case messages {
+        [] -> processes
+        [r.Tuple([r.Pid(i), message]), ..rest] -> {
+            let pre = list.take(processes, i)
+            let [process, ..post] = list.drop(processes, i)
+            // need messages offset
+            let cont = stepwise.step_call(process, message, fn(value) { stepwise.Done(value) })
+            // TODO need function to hadnle messages here
+            let #([],messages, value) = stepwise.loop(cont, [], rest)
+            let processes = list.flatten([pre, [value], post])
+            deliver_messages(processes, messages)
+        }
     }
 }
