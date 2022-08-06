@@ -38,7 +38,10 @@
     <p><strong>{key}:</strong> Server</p>
     <Server handle={mount.handle} />
   {:else if mount instanceof Mount.Universal}
-    <p><strong>{key}:</strong> Server</p>
+    <p><strong>{key}:</strong> Universal</p>
+    <Server handle={mount.handle} />
+  {:else if mount instanceof Mount.IServer}
+    <p><strong>{key}:</strong> IServer</p>
     <Server handle={mount.handle} />
   {:else if mount instanceof Mount.Pure}
     <p><strong>{key}:</strong> Pure</p>

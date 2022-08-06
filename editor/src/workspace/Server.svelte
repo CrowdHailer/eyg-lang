@@ -11,6 +11,9 @@
   const api = "http://localhost:8080";
   async function pullRequests() {
     while (true) {
+      // TODO move to Gleam code
+      // TODO show error when unable to connect
+      // TODO rewire to the heroku deployed version
       let fetched = await fetch(api + "/request/" + clientId);
       if (fetched.status === 200) {
         let data = await fetched.json();
@@ -37,8 +40,11 @@
   $: (function () {
     if (handle instanceof Option.Some) {
       handlerFn = handle[0];
-    } else {
+    } else if (handle instanceof Option.None) {
       handlerFn = undefined;
+    } else {
+      // No option for IServer
+      handlerFn = handle;
     }
   })();
 </script>

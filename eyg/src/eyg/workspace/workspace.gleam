@@ -12,6 +12,7 @@ import eyg/ast/pattern as p
 import eyg/interpreter/interpreter
 import eyg/interpreter/stepwise
 import eyg/editor/editor
+import eyg/workspace/server
 import eyg/analysis
 import eyg/typer
 import eyg/codegen/javascript
@@ -68,6 +69,7 @@ pub type Mount(a) {
   // Only difference between server and universial is that universal works with source
   Universal(handle: Option(fn( String,  String,  String) -> String))
   Interpreted(state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object))
+  IServer(handle: fn(String, String, String) -> String)
 }
 
 // mount handling of keydown
@@ -198,6 +200,10 @@ pub fn mount_constraint(mount) {
       #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Tuple([]))])),
       #("fetch", t.Native("Pid", [t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]))])])),
       ], None), t.Tuple([])) 
+    IServer(_) -> t.Function(
+      t.Record([#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)], None), 
+      t.Binary
+    )
   }
 }
 
@@ -244,6 +250,16 @@ pub fn code_update(code, source, app) {
           io.debug("failed to interpret")
           io.debug(reason)
           Interpreted(old)
+        }
+      }
+    }
+    IServer(old) -> {
+      case server.boot(e.access(source, key)) {
+        Ok(new) -> IServer(new) 
+        Error(reason) -> {
+          io.debug("failed to interpret")
+          io.debug(reason)
+          IServer(old)
         }
       }
     }

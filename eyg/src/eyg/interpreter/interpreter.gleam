@@ -19,6 +19,7 @@ pub type Object {
     Coroutine(Object)
     Ready(Object, Object)
     BuiltinFn(fn(Object) -> Object)
+    Native(Dynamic)
 }
 
 fn value_map(pairs, func) { 
@@ -184,5 +185,6 @@ case object {
             BuiltinFn(_) -> "null"
             Coroutine(_) -> "null"
             Ready(_, _) -> "null"
+            Native(_) -> "null"
         }
 }

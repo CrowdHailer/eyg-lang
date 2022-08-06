@@ -13,21 +13,6 @@ import eyg/interpreter/interpreter as r
 import gleam/javascript as real_js
 import gleam/javascript/promise.{Promise}
 
-
-// fn handle(msg, state, browser) { 
-//     let state = msg(state)
-//     send(browser, render(state))(fn([]) {
-//         handle(_, state, browser)
-//     })
-//  }
-
-// fn init(browser){
-//     spawn(handle(_, initial, browser))(fn(main){
-        
-//     })
-// }
-
-
 fn write_html(o) { 
     assert r.Binary(content) = o
     write_into_div(content)
@@ -137,7 +122,7 @@ pub fn effect_eval(source, env) {
     loop(cont, [], [])
 }
 
-fn loop(cont, processes, messages) { 
+pub fn loop(cont, processes, messages) { 
     case cont {
         Done(value) -> #(processes, messages, value)
         Cont(value, cont) -> {
