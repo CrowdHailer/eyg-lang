@@ -208,3 +208,36 @@ Why is there no widespread open PLC tools
 
 
 https://twitter.com/roc_lang/status/1441557679978295298
+
+## Modelling
+
+Good search terms
+- ERP workflow
+- Business process modelling
+
+Less good
+- Workflow/proces automation finds too much about PLC specifically.
+
+More
+- There is CUE for just the data view https://cuelang.org/docs/usecases/validation/
+- Business Process Model and Notation (BPMN)
+- https://www.researchgate.net/publication/256445465_Selecting_a_Process_Modeling_Language_for_Process_Based_Unification_of_Multiple_Standards_and_Models
+- G2
+  - https://www.researchgate.net/publication/4142024_Modeling_and_simulation_of_an_industrial_application_by_the_expert_systems_generator_G2
+- https://www.omg.org/about/index.htm
+- CAMUNDA most interesting has open source stuff https://camunda.com/bpmn/
+- Formal workflow https://www.researchgate.net/publication/220102263_A_rigorous_methodology_for_specification_and_verification_of_business_processes
+- https://workflowengine.io/blog/why-use-a-workflow-engine/
+- https://gojs.net/latest/samples/index.html
+- https://www.flowable.com/open-source
+- https://ignitetech.com/softwarelibrary/gensym
+- https://core.ac.uk/outputs/286380580
+- https://www.researchgate.net/publication/220102263_A_rigorous_methodology_for_specification_and_verification_of_business_processes
+- https://www.researchgate.net/publication/276480800_Business_process_management_as_the_Killer_App_for_Petri_nets
+- https://www.researchgate.net/publication/221542866_A_Simple_Algorithm_for_Automatic_Layout_of_BPMN_Processes
+- https://social-biz.org/tag/wydiwye/
+- https://social-biz.org/2006/07/09/what-bpm-can-learn-from-a-spreadsheet/
+- https://www.officetimeline.com/swimlane-diagram
+- https://swimlanes.io/
+- https://blog.tomsawyer.com/automating-swimlane-diagrams
+- https://www.yworks.com/products/yed#yed-support-resources
