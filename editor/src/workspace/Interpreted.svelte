@@ -2,7 +2,6 @@
   import * as Interpreter from "../../../eyg/build/dev/javascript/eyg/dist/eyg/interpreter/stepwise";
 
   export let source;
-  //   console.log(Interpreter);
   $: (() => {
     if (source) {
       try {
@@ -14,5 +13,4 @@
   })();
 </script>
 
-<!-- {JSON.stringify(source)} -->
 <div id="the-id-for-dropping-html" />

@@ -94,7 +94,7 @@ pub fn do_eval(source, env, cont)  {
         e.Call(func, arg) -> {
             do_eval(func, env, fn(func) {
                 do_eval(arg, env, fn(arg) {
-                    cont(r.exec_call(func, arg))
+                    cont(exec_call(func, arg))
                 })            
             })
 
@@ -108,3 +108,23 @@ pub fn do_eval(source, env, cont)  {
     }
 }
 
+
+pub fn exec_call(func, arg) {
+    case func {
+            r.Function(pattern, body, captured, self)  -> {
+            let captured = case self {
+                Some(label) -> map.insert(captured, label, func)
+                None -> captured
+            }
+            let inner = r.extend_env(captured, pattern, arg)
+            eval(body, inner)
+        }
+        r.BuiltinFn(func) -> {
+            func(arg)
+        }
+        r.Coroutine(forked) -> {
+            r.Ready(forked, arg)
+        }
+        _ -> todo("Should never be called")
+    }
+}

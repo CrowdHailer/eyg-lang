@@ -23,11 +23,11 @@ fn set_key_handler(o) {
 }
 
 external fn write_into_div(String) -> Nil =
-  "../../browser_ffi" "writeIntoDiv"
+  "../../browser_ffi.js" "writeIntoDiv"
 external fn try_catch(fn() -> b) -> Result(b, string) =
-  "../../browser_ffi" "tryCatch"
+  "../../browser_ffi.js" "tryCatch"
 external fn do_fetch(String) -> Promise(String) =
-  "../../browser_ffi" "fetchText"
+  "../../browser_ffi.js" "fetchText"
 
 pub fn run_browser(source)  {
     let r = try_catch(fn() { 
@@ -37,17 +37,11 @@ pub fn run_browser(source)  {
 
 pub fn fetch(o, ref)  {
     assert r.Tuple([r.Binary(url), callback]) = o
-    io.debug(url)
     promise.map(do_fetch(url), fn(body) {
         let processes = real_js.dereference(ref)
-        io.debug(body)
         let cont = step_call(callback, r.Binary(body), fn(value) { Done(value) })
         let #(processes, messages, value) = loop(cont, processes, [])
-        io.debug("done")
-        io.debug(value)
         let messages = list.reverse(messages)
-        // send -> dispatch ~~~> deliver -> receive
-        // TODO this should be r.function
         let #(processes, key_handler) = deliver_messages(processes, messages, r.Binary("we ignore this key handler"))
         // Key handler is thrown away here needs to be in mutable state ref TODO
         real_js.set_reference(ref, processes)
@@ -69,10 +63,7 @@ pub fn start(source, env) {
     |> map.insert("harness", r.Record([#("debug", r.BuiltinFn(io.debug))]))
     let cont = step(program, env, fn(value) { Done(value) })
     let #(processes, messages, _value) = loop(cont, processes, [])
-    io.debug(processes)
     let messages = list.reverse(messages)
-    // send -> dispatch ~~~> deliver -> receive
-    // TODO this should be r.function
     let handler = r.Function(p.Variable("key"), e.call(e.variable("send"), e.tuple_([e.access(e.variable("system"), "ui"), e.variable("key")])), env, None)
     let #(processes, key_handler) = deliver_messages(processes, messages, handler)
     real_js.set_reference(ref, processes)

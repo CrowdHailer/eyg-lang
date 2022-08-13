@@ -10,6 +10,7 @@ import eyg/typer/monotype as t
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/interpreter/interpreter
+import eyg/interpreter/tree_walk
 import eyg/interpreter/stepwise
 import eyg/editor/editor
 import eyg/workspace/server
@@ -384,17 +385,16 @@ pub fn code_update(code, source, app) {
       |> map.insert("harness", interpreter.Record([
         #("compile", interpreter.Function(p.Variable(""), e.tagged("Error", e.binary("not in interpreter")), map.new(), None)), 
         #("debug", interpreter.BuiltinFn(io.debug)),
-        #("spawn", interpreter.BuiltinFn(interpreter.spawn))
       ]))
 
-      let #(server_fn, coroutines) = interpreter.run(editor.untype(typed), top_env, [])
+      let #(server_fn, coroutines) = tree_walk.run(editor.untype(typed), top_env, [])
 
       let handler = fn (method, path, body) { 
         case method, string.split(path, "/") {
           "POST", ["", "_", id] -> {
             assert Ok(pid) = int.parse(id)
             assert Ok(c) = list.at(coroutines, pid)
-            interpreter.exec_call(c, interpreter.Binary(body))
+            tree_walk.exec_call(c, interpreter.Binary(body))
             ""
           }
           _,_ -> {
@@ -405,7 +405,7 @@ pub fn code_update(code, source, app) {
 
         
         // client function
-        assert interpreter.Function(pattern, body, captured, _) = interpreter.exec_call(server_fn, server_arg)
+        assert interpreter.Function(pattern, body, captured, _) = tree_walk.exec_call(server_fn, server_arg)
 
         let client_source = e.function(pattern, body)
         

@@ -10,16 +10,13 @@
   import Pure from "./Pure.svelte";
   import Interpreted from "./Interpreted.svelte";
 
-  export let index;
   export let key;
   export let mount;
   export let active;
 </script>
 
-<!-- TODO collapse and show at this level -->
 <div class="h-full">
   {#if mount instanceof Mount.Static}
-    <!-- TODO Put this in active footer next to details -->
     <p><strong>{key}:</strong> Static</p>
     <Static value={mount.value} />
   {:else if mount instanceof Mount.TestSuite}
