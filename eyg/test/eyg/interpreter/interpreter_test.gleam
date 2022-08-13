@@ -22,7 +22,7 @@ pub fn tuples_test() {
     assert Ok(r.Tuple([r.Tuple([]), r.Binary("hello")])) = tree_walk.eval(source, empty)
     assert Ok(r.Tuple([r.Tuple([]), r.Binary("hello")])) = tail_call.eval(source, empty)
     // I wonder if handling Ok/Error makes interpreter slower
-    assert r.Tuple([r.Tuple([]), r.Binary("hello")]) = stepwise.eval(source, empty)
+    assert Ok(r.Tuple([r.Tuple([]), r.Binary("hello")])) = stepwise.eval(source, empty)
 }
 
 pub fn tuple_patterns_test() {
@@ -35,7 +35,7 @@ pub fn tuple_patterns_test() {
 
     assert Ok(r.Tuple([r.Binary("bar"), r.Binary("foo")])) = tree_walk.eval(source, empty)
     assert Ok(r.Tuple([r.Binary("bar"), r.Binary("foo")])) = tail_call.eval(source, empty)
-    assert r.Tuple([r.Binary("bar"), r.Binary("foo")]) = stepwise.eval(source, empty)
+    assert Ok(r.Tuple([r.Binary("bar"), r.Binary("foo")])) = stepwise.eval(source, empty)
 }
 
 pub fn incorrect_tuple_size_match_test() {
@@ -48,7 +48,7 @@ pub fn incorrect_tuple_size_match_test() {
 
     assert Error(_) = tree_walk.eval(source, empty)
     assert Error(_) = tail_call.eval(source, empty)
-    // assert Error(_) = stepwise.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 pub fn not_a_tuple_match_test() {
@@ -61,7 +61,7 @@ pub fn not_a_tuple_match_test() {
 
     assert Error(_) = tree_walk.eval(source, empty)
     assert Error(_) = tail_call.eval(source, empty)
-    // assert Error(_) = stepwise.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 
@@ -71,7 +71,7 @@ pub fn record_access_test() {
 
     assert Ok(r.Tuple([])) = tree_walk.eval(source, empty) 
     assert Ok(r.Tuple([])) = tail_call.eval(source, empty) 
-    assert r.Tuple([]) = stepwise.eval(source, empty)
+    assert Ok(r.Tuple([])) = stepwise.eval(source, empty)
 }
 
 pub fn record_missing_key_test() {
@@ -80,7 +80,7 @@ pub fn record_missing_key_test() {
 
     assert Error(_) = tree_walk.eval(source, empty) 
     assert Error(_) = tail_call.eval(source, empty) 
-    // assert r.Tuple([]) = stepwise.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 pub fn invalid_access_test() {
@@ -89,7 +89,7 @@ pub fn invalid_access_test() {
 
     assert Error(_) = tree_walk.eval(source, empty) 
     assert Error(_) = tail_call.eval(source, empty) 
-    // assert r.Tuple([]) = stepwise.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 
@@ -99,7 +99,7 @@ pub fn variables_test() {
 
     assert Ok(r.Tuple([])) = tree_walk.eval(source, empty)
     assert Ok(r.Tuple([])) = tail_call.eval(source, empty)
-    assert r.Tuple([]) = stepwise.eval(source, empty)
+    assert Ok(r.Tuple([])) = stepwise.eval(source, empty)
 }
 
 pub fn unknown_variable_test() {
@@ -108,7 +108,7 @@ pub fn unknown_variable_test() {
 
     assert Error(_) = tree_walk.eval(source, empty)
     assert Error(_) = tail_call.eval(source, empty)
-    // assert r.Tuple([]) = stepwise.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 pub fn functions_test() {
@@ -117,15 +117,13 @@ pub fn functions_test() {
 
     assert Ok(r.Tuple([])) = tree_walk.eval(source, empty) 
     assert Ok(r.Tuple([])) = tail_call.eval(source, empty) 
-    assert r.Tuple([]) = stepwise.eval(source, empty)
+    assert Ok(r.Tuple([])) = stepwise.eval(source, empty)
 
 
     let source = e.call(e.function(p.Tuple([]), e.binary("inner")), e.tuple_([]))
     assert Ok(r.Binary("inner")) = tree_walk.eval(source, empty) 
     assert Ok(r.Binary("inner")) = tail_call.eval(source, empty) 
-    assert r.Binary("inner") = stepwise.eval(source, empty)
-
-
+    assert Ok(r.Binary("inner")) = stepwise.eval(source, empty)
 }
 
 pub fn unions_test() {
@@ -136,7 +134,7 @@ pub fn unions_test() {
     ])
     assert Ok(r.Binary("yes")) = tree_walk.eval(source, empty) 
     assert Ok(r.Binary("yes")) = tail_call.eval(source, empty) 
-    assert r.Binary("yes") = stepwise.eval(source, empty)
+    assert Ok(r.Binary("yes")) = stepwise.eval(source, empty)
 
 
     let empty = map.new()
@@ -146,7 +144,7 @@ pub fn unions_test() {
     ])
     assert Ok(r.Binary("foo")) = tree_walk.eval(source, empty) 
     assert Ok(r.Binary("foo")) = tail_call.eval(source, empty) 
-    assert r.Binary("foo") = stepwise.eval(source, empty)
+    assert Ok(r.Binary("foo")) = stepwise.eval(source, empty)
 }
 
 pub fn unhandled_case_test()  {
@@ -155,7 +153,8 @@ pub fn unhandled_case_test()  {
         #("False", p.Tuple([]), e.binary("no")),
     ])
     assert Error(_) = tree_walk.eval(source, empty) 
-    assert Error(_) = tail_call.eval(source, empty) 
+    assert Error(_) = tail_call.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 pub fn invalid_match_test()  {
@@ -164,7 +163,8 @@ pub fn invalid_match_test()  {
         #("False", p.Tuple([]), e.binary("no")),
     ])
     assert Error(_) = tree_walk.eval(source, empty) 
-    assert Error(_) = tail_call.eval(source, empty) 
+    assert Error(_) = tail_call.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 pub fn eval_hole_test() {
@@ -173,7 +173,7 @@ pub fn eval_hole_test() {
 
     assert Error(_) = tree_walk.eval(source, empty)
     assert Error(_) = tail_call.eval(source, empty)
-    // assert r.Tuple([]) = stepwise.eval(source, empty)
+    assert Error(_) = stepwise.eval(source, empty)
 }
 
 fn tail() { 
@@ -204,14 +204,14 @@ pub fn recursive_test() {
     |> map.insert("x", r.Tuple([tail(), tail()]))
     assert Ok(r.Tagged("Nil", r.Tuple([]))) = tree_walk.eval(source, empty) 
     assert Ok(r.Tagged("Nil", r.Tuple([]))) = tail_call.eval(source, empty) 
-    assert r.Tagged("Nil", r.Tuple([])) = stepwise.eval(source, empty)
+    assert Ok(r.Tagged("Nil", r.Tuple([]))) = stepwise.eval(source, empty)
 
 
     let empty = map.new()
     |> map.insert("x", r.Tuple([cons(r.Binary("1"),cons(r.Binary("2"),tail())), tail()]))
     assert Ok(r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))]))) = tree_walk.eval(source, empty) 
     assert Ok(r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))]))) = tail_call.eval(source, empty) 
-    assert r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))])) = stepwise.eval(source, empty)
+    assert Ok(r.Tagged("Cons", r.Tuple([r.Binary("2"), r.Tagged("Cons", r.Tuple([r.Binary("1"), r.Tagged("Nil", r.Tuple([]))]))]))) = stepwise.eval(source, empty)
 
 }
 
@@ -225,7 +225,7 @@ pub fn builtin_test()  {
 
     assert Ok(r.Binary("olleh")) = tree_walk.eval(source, env) 
     assert Ok(r.Binary("olleh")) = tail_call.eval(source, env) 
-    assert r.Binary("olleh") = stepwise.eval(source, env)
+    assert Ok(r.Binary("olleh")) = stepwise.eval(source, env)
 
 }
 
@@ -266,7 +266,7 @@ pub fn capture_test()  {
     |> map.insert("capture", r.BuiltinFn(capture))
     assert Ok(r.Tuple([])) = tree_walk.eval(source, env) 
     assert Ok(r.Tuple([])) = tail_call.eval(source, env) 
-    assert r.Tuple([]) = stepwise.eval(source, env)
+    assert Ok(r.Tuple([])) = stepwise.eval(source, env)
 
 }
 

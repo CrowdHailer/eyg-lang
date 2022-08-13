@@ -92,8 +92,8 @@ pub fn boot(source) {
     // boot might have socket as pids but that's later
     // There is no keyhandler here. that's all client side
     let processes = []
-    let cont = stepwise.step(source, prelude(), fn(value) { stepwise.Done(value) })
-    let #(processes, messages, server) = stepwise.loop(cont, processes, [])
+    assert Ok(cont) = stepwise.step(source, prelude(), fn(value) { Ok(stepwise.Done(value)) })
+    assert Ok(#(processes, messages, server)) = stepwise.loop(cont, processes, [])
     let processes = deliver_messages(processes, messages)
     let ref = real_js.make_reference(processes)
     // render pids for the client
@@ -109,8 +109,8 @@ pub fn boot(source) {
                 #("body", r.Binary(body)),
             ])
             let processes = real_js.dereference(ref)
-            let cont = stepwise.step_call(server, request, fn(value) { stepwise.Done(value) })
-            let #(processes, messages, response) = stepwise.loop(cont, processes, [])
+            assert Ok(cont) = stepwise.step_call(server, request, fn(value) { Ok(stepwise.Done(value)) })
+            assert Ok(#(processes, messages, response)) = stepwise.loop(cont, processes, [])
             let processes = deliver_messages(processes, messages)
             real_js.set_reference(ref, processes)
             // Need to handle variable type
@@ -142,9 +142,9 @@ fn deliver_messages(processes, messages) {
             let pre = list.take(processes, i)
             let [process, ..post] = list.drop(processes, i)
             // need messages offset
-            let cont = stepwise.step_call(process, message, fn(value) { stepwise.Done(value) })
+            assert Ok(cont) = stepwise.step_call(process, message, fn(value) { Ok(stepwise.Done(value)) })
             // TODO need function to hadnle messages here
-            let #([],messages, value) = stepwise.loop(cont, [], rest)
+            assert Ok(#([],messages, value)) = stepwise.loop(cont, [], rest)
             let processes = list.flatten([pre, [value], post])
             deliver_messages(processes, messages)
         }

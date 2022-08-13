@@ -39,8 +39,8 @@ pub fn fetch(o, ref)  {
     assert r.Tuple([r.Binary(url), callback]) = o
     promise.map(do_fetch(url), fn(body) {
         let processes = real_js.dereference(ref)
-        let cont = step_call(callback, r.Binary(body), fn(value) { Done(value) })
-        let #(processes, messages, value) = loop(cont, processes, [])
+        assert Ok(cont) = step_call(callback, r.Binary(body), fn(value) { Ok(Done(value)) })
+        assert Ok(#(processes, messages, value)) = loop(cont, processes, [])
         let messages = list.reverse(messages)
         let #(processes, key_handler) = deliver_messages(processes, messages, r.Binary("we ignore this key handler"))
         // Key handler is thrown away here needs to be in mutable state ref TODO
@@ -61,8 +61,8 @@ pub fn start(source, env) {
     |> map.insert("spawn", r.BuiltinFn(spawn))
     |> map.insert("send", r.BuiltinFn(send))
     |> map.insert("harness", r.Record([#("debug", r.BuiltinFn(io.debug))]))
-    let cont = step(program, env, fn(value) { Done(value) })
-    let #(processes, messages, _value) = loop(cont, processes, [])
+    assert Ok(cont) = step(program, env, fn(value) { Ok(Done(value)) })
+    assert Ok(#(processes, messages, _value)) = loop(cont, processes, [])
     let messages = list.reverse(messages)
     let handler = r.Function(p.Variable("key"), e.call(e.variable("send"), e.tuple_([e.access(e.variable("system"), "ui"), e.variable("key")])), env, None)
     let #(processes, key_handler) = deliver_messages(processes, messages, handler)
@@ -73,8 +73,8 @@ pub fn start(source, env) {
 pub fn handle_keydown(state, key) {
     let #(ref, key_handler) = state
     let processes = real_js.dereference(ref)
-    let cont = step_call(key_handler, r.Binary(key), fn(value) { Done(value) })
-    let #(processes, messages, _value) = loop(cont, processes, [])
+    assert Ok(cont) = step_call(key_handler, r.Binary(key), fn(value) { Ok(Done(value)) })
+    assert Ok(#(processes, messages, _value)) = loop(cont, processes, [])
     let messages = list.reverse(messages)
     // send -> dispatch ~~~> deliver -> receive
     // TODO this should be r.function
@@ -94,9 +94,9 @@ fn deliver_messages(processes, messages, key_handler) {
             let pre = list.take(processes, i)
             let [process, ..post] = list.drop(processes, i)
             // need messages offset
-            let cont = step_call(process, message, fn(value) { Done(value) })
+            assert Ok(cont) = step_call(process, message, fn(value) { Ok(Done(value)) })
             // TODO need function to hadnle messages here
-            let #([],[], value) = loop(cont, [], [])
+            assert Ok(#([],[], value)) = loop(cont, [], [])
             let processes = list.flatten([pre, [value], post])
             deliver_messages(processes, rest, key_handler)
         }
@@ -104,37 +104,38 @@ fn deliver_messages(processes, messages, key_handler) {
 }
 
 pub fn eval(source, env) {
-    let #(_, _, value) = effect_eval(source, env)
-    value
+    try #(_, _, value) = effect_eval(source, env)
+    Ok(value)
 }
 
 pub fn effect_eval(source, env) {
-    let cont = step(source, env, fn(value) { Done(value) })
+    try cont = step(source, env, fn(value) { Ok(Done(value)) })
     loop(cont, [], [])
 }
 
-pub fn loop(cont, processes, messages) { 
+pub fn loop(cont: Cont, processes, messages) -> Result(#(List(r.Object), List(r.Object), r.Object), String) { 
     case cont {
-        Done(value) -> #(processes, messages, value)
+        Done(value) -> Ok(#(processes, messages, value))
         Cont(value, cont) -> {
             // let #(_, value) = value
-            loop(cont(value), processes, messages)
+            try next = cont(value)
+            loop(next, processes, messages)
         }
         Eff(effect, cont) -> {
             // handle effect
             case effect {
                 Spawn(func) -> {
                     let pid = list.length(processes)
-                    // TODO need to add process at the end
                     let processes = list.append(processes, [func])
                     let value = r.Function(p.Variable("then"), e.call(e.variable("then"), e.variable("pid")), map.new() |> map.insert("pid", r.Pid(pid)), None)
-
-                    loop(cont(value), processes, messages)
+                    assert Ok(value) = cont(value)
+                    loop(value, processes, messages)
                 }
                 Send(message) -> {
                     let messages = [message, ..messages]
                     let value = r.Function(p.Variable("then"), e.call(e.variable("then"), e.tuple_([])), map.new() , None)
-                    loop(cont(value), processes, messages)
+                    assert Ok(value) = cont(value)
+                    loop(value, processes, messages)
                 }
             }
         }
@@ -144,8 +145,8 @@ pub fn loop(cont, processes, messages) {
 // pub type Cont = Option(fn(r.Object) -> Cont)
 pub type Cont {
     Done(r.Object)
-    Cont( r.Object, fn(r.Object) -> Cont)
-    Eff(Effect, fn(r.Object) -> Cont)
+    Cont( r.Object, fn(r.Object) -> Result(Cont, String))
+    Eff(Effect, fn(r.Object) -> Result(Cont, String))
 }
 
 pub type Effect {
@@ -153,9 +154,9 @@ pub type Effect {
     Send(pid_and_message: r.Object)
 }
 
-fn eval_tuple(elements, env, acc, cont) { 
+fn eval_tuple(elements, env, acc, cont) -> Result(Cont, String) { 
     case elements {
-        [] -> Cont(r.Tuple(list.reverse(acc)), cont) 
+        [] -> Ok(Cont(r.Tuple(list.reverse(acc)), cont))
         [e, ..elements] -> step(e, env, fn(value) {
             eval_tuple(elements, env, [value, ..acc], cont)
         })
@@ -164,7 +165,7 @@ fn eval_tuple(elements, env, acc, cont) {
 
  fn eval_record(fields, env, acc, cont) { 
     case fields {
-        [] -> Cont(r.Record(list.reverse(acc)), cont) 
+        [] -> Ok(Cont(r.Record(list.reverse(acc)), cont) )
         [f, ..fields] -> {
              let #(name, e) = f
             step(e, env, fn(value) {
@@ -174,40 +175,50 @@ fn eval_tuple(elements, env, acc, cont) {
     }
  }
 
-pub fn step(source, env, cont)  {
+pub fn step(source, env, cont: fn(r.Object) -> Result(Cont, String)) -> Result(Cont, String) {
     let #(_, s) = source
     case s {
-        e.Binary(content) -> Cont(r.Binary(content), cont)
+        e.Binary(content) -> Ok(Cont(r.Binary(content), cont))
         e.Tuple(elements) -> {
             eval_tuple(elements, env, [], cont)
         }
         e.Record(fields) -> eval_record(fields, env, [], cont)
         e.Access(record, key) -> {
             step(record, env, fn(value) {
-                assert r.Record(fields) = value
-                case list.key_find(fields, key) {
-                    Ok(value) -> Cont(value, cont)
-                    _ -> {
-                        io.debug(key)
-                        todo("missing key in record")
+                case value {
+                    r.Record(fields) -> case list.key_find(fields, key) {
+                        Ok(value) -> Ok(Cont(value, cont))
+                        _ -> {
+                            io.debug(key)
+                            Error("missing key in record")
+                        }
                     }
-                }
+                    _ -> Error("not a record")
+                }                
             })
         }
         e.Tagged(tag, value) -> {
             step(value, env, fn(value) {
-                Cont(r.Tagged(tag, value), cont)
+                Ok(Cont(r.Tagged(tag, value), cont))
             })
         }
         e.Case(value, branches) -> {
            step(value, env, fn(value) {
-                assert r.Tagged(tag, value) = value
-                assert Ok(#(_, pattern, then)) = list.find(branches, fn(branch) {
+                try #(tag, value) = case value {
+                    r.Tagged(tag, value) -> Ok(#(tag, value))
+                    _ -> Error("not a union")
+                }
+                let match  = list.find(branches, fn(branch) {
                     let #(t, _, _) = branch
                     t == tag
                 })
-                assert Ok(env) = r.extend_env(env, pattern, value)
-                step(then, env, cont)
+                case match {
+                    Ok(#(_, pattern, then)) -> {
+                        try env = r.extend_env(env, pattern, value)
+                        step(then, env, cont)
+                    }
+                    Error(Nil) -> Error("Did not match any branches")
+                }
            })
         }
         e.Let(pattern, value, then) -> {
@@ -216,17 +227,19 @@ pub fn step(source, env, cont)  {
                    step(then, map.insert(env, label, r.Function(pattern, body, env, Some(label))), cont)
                 }
                 _,_ -> step(value, env, fn(value) {
-                    assert Ok(env) = r.extend_env(env, pattern, value)
+                    try env = r.extend_env(env, pattern, value)
                     step(then, env, cont)
                 }) 
             }
         }
         e.Variable(var) -> {
-            assert Ok(value) = map.get(env, var)
-            Cont(value, cont)
+            case map.get(env, var) {
+                Ok(value) -> Ok(Cont(value, cont))
+                Error(Nil) -> Error("missing value")
+            }
         }
         e.Function(pattern, body) -> {
-            Cont(r.Function(pattern, body, env, None), cont)
+            Ok(Cont(r.Function(pattern, body, env, None), cont))
         }
         e.Call(func, arg) -> {
             step(func, env, fn(func) {
@@ -236,7 +249,7 @@ pub fn step(source, env, cont)  {
             })
 
         }
-        e.Hole() -> todo("interpreted a program with a hole")
+        e.Hole() -> Error("interpreted a program with a hole")
         e.Provider(_, _, generated) -> {
             // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
             step(dynamic.unsafe_coerce(generated), env, cont)
@@ -245,16 +258,16 @@ pub fn step(source, env, cont)  {
     }
 }
 
-pub fn step_call(func, arg, cont) {
+pub fn step_call(func, arg, cont: fn(r.Object) -> Result(Cont, String)) {
     let sp = spawn
     let se = send
     case func {
-            r.Function(pattern, body, captured, self)  -> {
+        r.Function(pattern, body, captured, self)  -> {
             let captured = case self {
                 Some(label) -> map.insert(captured, label, func)
                 None -> captured
             }
-            assert Ok(inner) = r.extend_env(captured, pattern, arg)
+            try inner = r.extend_env(captured, pattern, arg)
             step(body, inner, cont)
         }
         r.BuiltinFn(func) if func == sp -> {
@@ -267,13 +280,13 @@ pub fn step_call(func, arg, cont) {
             // Cont(#([Spawn(func)], todo), cont)
             io.debug("spawn arg ============")
             io.debug(arg)
-            Eff(Spawn(arg), cont)
+            Ok(Eff(Spawn(arg), cont))
         }
         r.BuiltinFn(func) if func == se -> {
-            Eff(Send(arg), cont)
+            Ok(Eff(Send(arg), cont))
         }
         r.BuiltinFn(func) -> {
-            Cont(func(arg), cont)
+            Ok(Cont(func(arg), cont))
         }
         // r.Coroutine(forked) -> {
         //     Cont(r.Ready(forked, arg), cont)
