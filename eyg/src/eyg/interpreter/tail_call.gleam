@@ -47,14 +47,17 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
         e.Record(fields) -> exec_record(fields, env, [], cont)
         e.Access(record, key) -> {
             do_eval(record, env, fn(value) {
-                assert r.Record(fields) = value
-                case list.key_find(fields, key) {
-                    Ok(value) -> cont(value)
-                    _ -> {
-                        io.debug(key)
-                        Error("missing key in record")
+                case value {
+                    r.Record(fields) -> case list.key_find(fields, key) {
+                        Ok(value) -> cont(value)
+                        _ -> {
+                            io.debug(key)
+                            Error("missing key in record")
+                        }
                     }
+                    _ -> Error("not a record")
                 }
+                
             })
         }
         e.Tagged(tag, value) -> {
@@ -64,13 +67,21 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
         }
         e.Case(value, branches) -> {
            do_eval(value, env, fn(value) {
-                assert r.Tagged(tag, value) = value
-                assert Ok(#(_, pattern, then)) = list.find(branches, fn(branch) {
+                try #(tag, value) = case value {
+                    r.Tagged(tag, value) -> Ok(#(tag, value))
+                    _ -> Error("not a union")
+                }
+                let match  = list.find(branches, fn(branch) {
                     let #(t, _, _) = branch
                     t == tag
                 })
-                assert Ok(env) = r.extend_env(env, pattern, value)
-                do_eval(then, env, cont)
+                case match {
+                    Ok(#(_, pattern, then)) -> {
+                        try env = r.extend_env(env, pattern, value)
+                        do_eval(then, env, cont)
+                    }
+                    Error(Nil) -> Error("Did not match any branches")
+                }
            })
         }
         e.Let(pattern, value, then) -> {
@@ -79,14 +90,16 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
                    do_eval(then, map.insert(env, label, r.Function(pattern, body, env, Some(label))), cont)
                 }
                 _,_ -> do_eval(value, env, fn(value) {
-                    assert Ok(env) = r.extend_env(env, pattern, value)
+                    try env = r.extend_env(env, pattern, value)
                     do_eval(then, env, cont)
                 }) 
             }
         }
         e.Variable(var) -> {
-            assert Ok(value) = map.get(env, var)
-            cont(value)
+             case map.get(env, var) {
+                Ok(value) -> cont(value)
+                Error(Nil) -> Error("missing value")
+            }
         }
         e.Function(pattern, body) -> {
             cont(r.Function(pattern, body, env, None))
@@ -100,7 +113,7 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
             })
 
         }
-        e.Hole() -> todo("interpreted a program with a hole")
+        e.Hole() -> Error("interpreted a program with a hole")
         e.Provider(_, _, generated) -> {
             // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
             do_eval(dynamic.unsafe_coerce(generated), env, cont)

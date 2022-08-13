@@ -22,13 +22,16 @@ pub fn eval(source, env)  {
             Ok(r.Record(fields))
         }
         e.Access(record, key) -> {
-            try r.Record(fields) = eval(record, env)
-            case list.key_find(fields, key) {
-                Ok(value) -> Ok(value)
-                _ -> {
-                    io.debug(key)
-                    todo("missing key in record")
+            try record = eval(record, env)
+            case record {
+                r.Record(fields) -> case list.key_find(fields, key) {
+                    Ok(value) -> Ok(value)
+                    Error(Nil) -> {
+                        io.debug(key)
+                        Error("missing key in record")
+                    }
                 }
+                _ -> Error("not a record")
             }
         }
         e.Tagged(tag, value) -> {
@@ -36,13 +39,22 @@ pub fn eval(source, env)  {
             Ok(r.Tagged(tag, value))
         }
         e.Case(value, branches) -> {
-            try r.Tagged(tag, value) = eval(value, env)
-            assert Ok(#(_, pattern, then)) = list.find(branches, fn(branch) {
+            try value = eval(value, env)
+            try #(tag, value) = case value {
+                r.Tagged(tag, value) -> Ok(#(tag, value))
+                _ -> Error("not a union")
+            }
+            let match  = list.find(branches, fn(branch) {
                 let #(t, _, _) = branch
                 t == tag
             })
-            try env = r.extend_env(env, pattern, value)
-            eval(then, env)
+            case match {
+                Ok(#(_, pattern, then)) -> {
+                    try env = r.extend_env(env, pattern, value)
+                    eval(then, env)
+                }
+                Error(Nil) -> Error("missing branch")
+            }
 
         }
         e.Let(pattern, value, then) -> {
@@ -72,7 +84,7 @@ pub fn eval(source, env)  {
             exec_call(func, arg)
 
         }
-        e.Hole() -> todo("interpreted a program with a hole")
+        e.Hole() -> Error("interpreted a program with a hole")
         e.Provider(_, _, generated) -> {
             // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
             eval(dynamic.unsafe_coerce(generated), env)

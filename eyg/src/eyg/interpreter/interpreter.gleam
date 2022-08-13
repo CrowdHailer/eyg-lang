@@ -27,16 +27,19 @@ pub fn extend_env(env, pattern, object) {
     case pattern {
         p.Variable(var) ->  Ok(map.insert(env, var, object))
         p.Tuple(keys) -> {
-            assert Tuple(elements) = object
-            case list.strict_zip(keys, elements) {
-                Ok(pairs) -> {
-                    Ok(list.fold(pairs, env, fn(env, pair) { 
-                        let #(var, value)= pair
-                        map.insert(env, var, value)
-                    }))
-                } 
-                Error(reason) -> Error("needs better error")
+            case object {
+                Tuple(elements) -> case list.strict_zip(keys, elements) {
+                    Ok(pairs) -> {
+                        Ok(list.fold(pairs, env, fn(env, pair) { 
+                            let #(var, value)= pair
+                            map.insert(env, var, value)
+                        }))
+                    } 
+                    Error(reason) -> Error("needs better error")
+                }
+                _ -> Error("not a tuple") 
             }
+            
             }
         p.Record(fields) -> todo("not supporting record fields here yet")
     }
