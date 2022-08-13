@@ -45,7 +45,6 @@ pub type Workspace {
 // Numbered workspaces make global things like firmata connection trick can just be named
 // Bench rename panel benches?
 pub type Mount(a) {
-  Static(value: String)
   String2String(
     input: String,
     output: String,
@@ -195,7 +194,6 @@ pub fn mount_constraint(mount) {
         t.Binary
       )
     )
-    Static(_) -> t.Unbound(-2)
     Interpreted(_) -> t.Function(t.Record([
       #("ui", t.Native("Pid", [t.Binary])),
       #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Tuple([]))])),
@@ -357,7 +355,6 @@ pub fn code_update(code, source, app) {
       // }
       Pure(Some(#(new_initial, render, handle, ref)))
     }
-    Static(_) -> todo("probably remove I don't see much value in static")
     Server(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(handle) = dynamic.field(key, cast)(code)

@@ -1,7 +1,6 @@
 <script>
   import * as Mount from "../../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/workspace";
 
-  import Static from "./Static.svelte";
   import TestSuite from "./TestSuite.svelte";
   import UI from "./UI.svelte";
   import String2String from "./String2String.svelte";
@@ -16,10 +15,7 @@
 </script>
 
 <div class="h-full">
-  {#if mount instanceof Mount.Static}
-    <p><strong>{key}:</strong> Static</p>
-    <Static value={mount.value} />
-  {:else if mount instanceof Mount.TestSuite}
+  {#if mount instanceof Mount.TestSuite}
     <p><strong>{key}:</strong> Test Suite</p>
     <TestSuite result={mount.result} />
   {:else if mount instanceof Mount.UI}
