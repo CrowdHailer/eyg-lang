@@ -214,7 +214,7 @@ pub fn render(
       |> squash([string.concat([".", label])])
       |> wrap_return(state)
 
-    // TODO escape tag
+    // escape tag needed
     e.Tagged(tag, value) -> {
       let state = Generator(..state, self: None)
       let start = string.concat(["{", tag, ":"])
