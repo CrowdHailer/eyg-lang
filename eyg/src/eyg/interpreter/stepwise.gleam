@@ -206,7 +206,7 @@ pub fn step(source, env, cont)  {
                     let #(t, _, _) = branch
                     t == tag
                 })
-                let env = r.extend_env(env, pattern, value)
+                assert Ok(env) = r.extend_env(env, pattern, value)
                 step(then, env, cont)
            })
         }
@@ -216,8 +216,8 @@ pub fn step(source, env, cont)  {
                    step(then, map.insert(env, label, r.Function(pattern, body, env, Some(label))), cont)
                 }
                 _,_ -> step(value, env, fn(value) {
-                    r.extend_env(env, pattern, value)
-                    |> step(then, _, cont)
+                    assert Ok(env) = r.extend_env(env, pattern, value)
+                    step(then, env, cont)
                 }) 
             }
         }
@@ -254,7 +254,7 @@ pub fn step_call(func, arg, cont) {
                 Some(label) -> map.insert(captured, label, func)
                 None -> captured
             }
-            let inner = r.extend_env(captured, pattern, arg)
+            assert Ok(inner) = r.extend_env(captured, pattern, arg)
             step(body, inner, cont)
         }
         r.BuiltinFn(func) if func == sp -> {

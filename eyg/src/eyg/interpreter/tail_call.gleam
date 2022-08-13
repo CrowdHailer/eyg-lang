@@ -34,10 +34,10 @@ fn eval_tuple(elements, env, acc, cont) {
 
 
 pub fn eval(source, env) {
-    do_eval(source, env, fn(x){x})
+    do_eval(source, env, fn(x){Ok(x)})
 }
 
-pub fn do_eval(source, env, cont)  {
+pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
     let #(_, s) = source
     case s {
         e.Binary(content) -> cont(r.Binary(content))
@@ -52,7 +52,7 @@ pub fn do_eval(source, env, cont)  {
                     Ok(value) -> cont(value)
                     _ -> {
                         io.debug(key)
-                        todo("missing key in record")
+                        Error("missing key in record")
                     }
                 }
             })
@@ -69,7 +69,7 @@ pub fn do_eval(source, env, cont)  {
                     let #(t, _, _) = branch
                     t == tag
                 })
-                let env = r.extend_env(env, pattern, value)
+                assert Ok(env) = r.extend_env(env, pattern, value)
                 do_eval(then, env, cont)
            })
         }
@@ -79,8 +79,8 @@ pub fn do_eval(source, env, cont)  {
                    do_eval(then, map.insert(env, label, r.Function(pattern, body, env, Some(label))), cont)
                 }
                 _,_ -> do_eval(value, env, fn(value) {
-                    r.extend_env(env, pattern, value)
-                    |> do_eval(then, _, cont)
+                    assert Ok(env) = r.extend_env(env, pattern, value)
+                    do_eval(then, env, cont)
                 }) 
             }
         }
@@ -94,7 +94,8 @@ pub fn do_eval(source, env, cont)  {
         e.Call(func, arg) -> {
             do_eval(func, env, fn(func) {
                 do_eval(arg, env, fn(arg) {
-                    cont(exec_call(func, arg))
+                    try value = exec_call(func, arg)
+                    cont(value)
                 })            
             })
 
@@ -116,14 +117,14 @@ pub fn exec_call(func, arg) {
                 Some(label) -> map.insert(captured, label, func)
                 None -> captured
             }
-            let inner = r.extend_env(captured, pattern, arg)
+            assert Ok(inner) = r.extend_env(captured, pattern, arg)
             eval(body, inner)
         }
         r.BuiltinFn(func) -> {
-            func(arg)
+            Ok(func(arg))
         }
         r.Coroutine(forked) -> {
-            r.Ready(forked, arg)
+            Ok(r.Ready(forked, arg))
         }
         _ -> todo("Should never be called")
     }
