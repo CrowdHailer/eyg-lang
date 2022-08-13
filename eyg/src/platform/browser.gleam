@@ -22,7 +22,6 @@ pub fn harness() {
         [5, -84],
         callback(t.Recursive(0, t.Function(t.Unbound(5), t.Unbound(0))), t.Native("Pid", [t.Unbound(5)]), -84)),
       ),
-      // TODO don't hardcode binary as message/pid type
       #("send", polytype.Polytype(
         [15, -87],
         callback(t.Tuple([t.Native("Pid", [t.Unbound(15)]), t.Unbound(15)]), t.Tuple([]), -87))
