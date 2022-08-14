@@ -29,20 +29,23 @@ fn return(value) {
     r.Tagged("Return", value)
  }
 
-fn eval(source) { 
-    let env = map.new()
+fn eval(source, pids) { 
+    let env = list.fold(pids, map.new(), fn(env, pair){
+        let #(name, pid) = pair
+        map.insert(env, name, pid)
+    })
     |> map.insert("spawn", r.BuiltinFn(fn(loop) { r.BuiltinFn(spawn(loop, _)) }))
     |> map.insert("send", r.BuiltinFn(fn(message) { r.BuiltinFn(send(message, _)) }))
     |> map.insert("return", r.BuiltinFn(return))
+
     tail_call.eval(source, env)
 }
 
 // I think we start with a step and pass continuation to run but we are now duplicating the Done Eff stuff that is in stepwise
 // TODO I think we can remove it at that level
 
-
-pub fn eval_source(source, offset) {
-    try value = eval(source)
+pub fn eval_source(source, offset, pids) {
+    try value = eval(source, pids)
     do_eval(value, offset, [], [])
 }
 
@@ -71,10 +74,11 @@ fn do_eval(value, offset, processes, messages) {
 }
 
 pub fn run_source(source, global)  {
-    // TODO add pids to the end
-    let processes = global
-    try #(_value, processes, messages) = eval_source(source, list.length(global))
-    deliver_messages(processes, messages)
+    let #(names, global) = list.unzip(global)
+    let pids = list.index_map(names, fn(i, name) { #(name, r.Pid(i))})
+    try #(_value, spawned, dispatched) = eval_source(source, list.length(global), pids)
+    let processes = list.append(global, spawned)
+    deliver_messages(processes, dispatched)
 }
 
 fn deliver_message(processes, message) { 
@@ -108,7 +112,7 @@ pub fn start_a_process_test()  {
                     e.call(e.variable("return"), e.variable("pid"))
             )
         )))
-    assert Ok(#(value, processes, messages)) = eval_source(source, 0)
+    assert Ok(#(value, processes, messages)) = eval_source(source, 0, [])
     assert r.Pid(0) = value
     assert [process] = processes
     assert r.Function(_,_,_,Some("loop")) = process
@@ -116,4 +120,14 @@ pub fn start_a_process_test()  {
     assert r.Tuple([r.Pid(0), r.Binary("Hello")]) = message
 }
 
-// TODO test with global have a timeout or some such that we can then call back in with
+fn logger(x) {
+    io.debug(x)
+    r.Tagged("Return", r.BuiltinFn(logger))
+}
+
+pub fn logger_process_test()  {
+    let source = e.call(e.call(e.variable("send"), e.tuple_([e.variable("logger"), e.binary("My Log line")])), e.function(p.Variable(""), e.tagged("Return",e.binary("sent"))))
+    let global = [#("logger", r.BuiltinFn(logger))]
+    assert Ok([process]) = run_source(source, global)
+    assert True = process == r.BuiltinFn(logger)
+}
