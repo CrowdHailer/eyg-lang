@@ -41,31 +41,58 @@ fn eval(source) {
 // TODO I think we can remove it at that level
 
 
-pub fn eval_source(source, processes, messages) {
+pub fn eval_source(source, offset) {
     try value = eval(source)
-    do_eval(value, processes, messages)
+    do_eval(value, offset, [], [])
 }
 
-pub fn eval_call(func, arg, processes, messages) {
+pub fn eval_call(func, arg, offset, processes, messages) {
     try value = tail_call.eval_call(func, arg)
-    do_eval(value, processes, messages)
+    do_eval(value, offset, processes, messages)
 }
 
-fn do_eval(value, processes, messages) { 
+fn do_eval(value, offset, processes, messages) { 
     case value {
         r.Tagged("Return", value) -> Ok(#(value, processes, messages))
         r.Tagged("Spawn", r.Tuple([loop, continue])) -> {
-            let pid = list.length(processes)
+            let pid = offset + list.length(processes)
             let processes = list.append(processes, [loop])
-            eval_call(continue, r.Pid(pid), processes, messages)
+            eval_call(continue, r.Pid(pid), offset, processes, messages)
         }
         r.Tagged("Send", r.Tuple([dispatch, continue])) -> {
             let messages = list.append(messages, [dispatch])
-            eval_call(continue, r.Tuple([]), processes, messages)
+            eval_call(continue, r.Tuple([]), offset, processes, messages)
         }
         _ -> {
             io.debug(value)
             todo("should always be typed to the above")
+        }
+    }
+}
+
+pub fn run_source(source, global)  {
+    // TODO add pids to the end
+    let processes = global
+    try #(_value, processes, messages) = eval_source(source, list.length(global))
+    deliver_messages(processes, messages)
+}
+
+fn deliver_message(processes, message) { 
+    assert r.Tuple([r.Pid(i), message]) = message
+    let pre = list.take(processes, i)
+    let [process, ..post] = list.drop(processes, i)
+    try #(process, spawned, dispatched) = eval_call(process, message, list.length(processes), [], [])
+    let processes = list.flatten([pre, [process], post, spawned])
+    Ok(#(processes, dispatched))
+}
+
+fn deliver_messages(processes, messages) { 
+    case messages {
+        [] -> Ok(processes)
+        [message, ..rest] -> {
+            try #(processes, dispatched) = deliver_message(processes, message)
+            // Message delivery is width first
+            deliver_messages(processes, list.append(rest, dispatched))
         }
     }
 }
@@ -81,7 +108,7 @@ pub fn start_a_process_test()  {
                     e.call(e.variable("return"), e.variable("pid"))
             )
         )))
-    assert Ok(#(value, processes, messages)) = eval_source(source, [], [])
+    assert Ok(#(value, processes, messages)) = eval_source(source, 0)
     assert r.Pid(0) = value
     assert [process] = processes
     assert r.Function(_,_,_,Some("loop")) = process
@@ -89,3 +116,4 @@ pub fn start_a_process_test()  {
     assert r.Tuple([r.Pid(0), r.Binary("Hello")]) = message
 }
 
+// TODO test with global have a timeout or some such that we can then call back in with
