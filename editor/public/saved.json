@@ -342,25 +342,68 @@
         }
       },
       "then": {
-        "node": "Record",
-        "fields": [
-          {
-            "node": "Field",
-            "key": "show",
-            "value": {
-              "node": "Variable",
-              "label": "show"
-            }
+        "node": "Let",
+        "pattern": {
+          "node": "Variable",
+          "label": "proxy"
+        },
+        "value": {
+          "node": "Let",
+          "pattern": {
+            "node": "Variable",
+            "label": ""
           },
-          {
-            "node": "Field",
-            "key": "next",
-            "value": {
+          "value": {
+            "node": "Tuple",
+            "elements": []
+          },
+          "then": {
+            "node": "Call",
+            "function": {
               "node": "Variable",
-              "label": "server"
+              "label": "return"
+            },
+            "with": {
+              "node": "Function",
+              "pattern": {
+                "node": "Variable",
+                "label": ""
+              },
+              "body": {
+                "node": "Hole"
+              }
             }
           }
-        ]
+        },
+        "then": {
+          "node": "Record",
+          "fields": [
+            {
+              "node": "Field",
+              "key": "show",
+              "value": {
+                "node": "Variable",
+                "label": "show"
+              }
+            },
+            {
+              "node": "Field",
+              "key": "proxy",
+              "value": {
+                "node": "Variable",
+                "label": "proxy"
+              }
+            },
+            {
+              "node": "Field",
+              "key": "next",
+              "value": {
+                "node": "Variable",
+                "label": "server"
+              }
+            }
+          ]
+        }
       }
     }
   }

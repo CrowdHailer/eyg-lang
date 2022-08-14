@@ -13,6 +13,7 @@ import eyg/interpreter/interpreter
 import eyg/interpreter/tree_walk
 import eyg/interpreter/stepwise
 import eyg/editor/editor
+import eyg/workspace/proxy
 import eyg/workspace/server
 import eyg/analysis
 import eyg/typer
@@ -70,6 +71,7 @@ pub type Mount(a) {
   Universal(handle: Option(fn( String,  String,  String) -> String))
   Interpreted(state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object))
   IServer(handle: fn(String, String, String) -> String)
+  Proxy()
 }
 
 // mount handling of keydown
@@ -203,6 +205,7 @@ pub fn mount_constraint(mount) {
       t.Record([#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)], None), 
       t.Function(t.Record([], None), t.Binary)
     )
+    Proxy -> proxy.constraint()
   }
 }
 
@@ -427,6 +430,7 @@ string.concat(["<head></head><body></body><script>", program, "</script>"])
         }
       Universal(Some(handler))
     }
+    Proxy -> Proxy
   }
   App(key, mount)
 }

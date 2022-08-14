@@ -10,6 +10,29 @@ export async function fetchText(url) {
   return await response.text();
 }
 
+export async function fetchJSON(url) {
+  try {
+    let response = await fetch(url);
+    let data = await response.json();
+    return new Gleam.Ok(data);
+  } catch (error) {
+    new Gleam.Error(error);
+  }
+}
+
+export async function postJSON(url, data) {
+  try {
+    let response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    console.log(response.status);
+    return new Gleam.Ok([]);
+  } catch (error) {
+    new Gleam.Error(error);
+  }
+}
+
 export function writeIntoDiv(content) {
   let el = document.getElementById("the-id-for-dropping-html");
   if (el) {

@@ -8,6 +8,7 @@
   import Server from "./Server.svelte";
   import Pure from "./Pure.svelte";
   import Interpreted from "./Interpreted.svelte";
+  import Proxy from "./Proxy.svelte";
 
   export let key;
   export let mount;
@@ -42,6 +43,9 @@
   {:else if mount instanceof Mount.Interpreted}
     <p><strong>{key}:</strong> Interpreted</p>
     <Interpreted source={mount.source} />
+  {:else if mount instanceof Mount.Proxy}
+    <p><strong>{key}:</strong> Proxy</p>
+    <Proxy source={mount.source} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

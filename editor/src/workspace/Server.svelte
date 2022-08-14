@@ -1,5 +1,4 @@
 <script>
-  import { log } from "../../../eyg/build/dev/javascript/gleam_stdlib/dist/gleam_stdlib.mjs";
   import * as Option from "../../../eyg/build/dev/javascript/gleam_stdlib/dist/gleam/option.mjs";
 
   export let handle;
