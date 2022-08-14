@@ -30,7 +30,7 @@ pub fn start_a_process_test()  {
 
 fn logger(x) {
     io.debug(x)
-    r.Tagged("Return", r.BuiltinFn(logger))
+    Ok(r.Tagged("Return", r.BuiltinFn(logger)))
 }
 
 pub fn logger_process_test()  {

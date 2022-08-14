@@ -19,14 +19,14 @@ fn spawn(loop, continue) {
     let c = r.Fn(pattern, body, env, self)
     // TODO remove spawn if type checks are good
     r.Spawn(l, c)
-    r.Tagged("Spawn", r.Tuple([loop, continue]))
+    Ok(r.Tagged("Spawn", r.Tuple([loop, continue])))
  }
 fn send(dispatch, continue){
     assert r.Tuple([pid, message]) = dispatch
-    r.Tagged("Send", r.Tuple([dispatch, continue]))
+    Ok(r.Tagged("Send", r.Tuple([dispatch, continue])))
 }
 fn return(value) { 
-    r.Tagged("Return", value)
+    Ok(r.Tagged("Return", value))
  }
 
 fn eval(source, pids) { 
@@ -34,8 +34,8 @@ fn eval(source, pids) {
         let #(name, pid) = pair
         map.insert(env, name, pid)
     })
-    |> map.insert("spawn", r.BuiltinFn(fn(loop) { r.BuiltinFn(spawn(loop, _)) }))
-    |> map.insert("send", r.BuiltinFn(fn(message) { r.BuiltinFn(send(message, _)) }))
+    |> map.insert("spawn", r.BuiltinFn(fn(loop) { Ok(r.BuiltinFn(spawn(loop, _))) }))
+    |> map.insert("send", r.BuiltinFn(fn(message) { Ok(r.BuiltinFn(send(message, _))) }))
     |> map.insert("return", r.BuiltinFn(return))
 
     tail_call.eval(source, env)

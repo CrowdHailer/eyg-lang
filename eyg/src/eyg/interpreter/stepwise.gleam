@@ -16,7 +16,7 @@ import gleam/javascript/promise.{Promise}
 fn write_html(o) { 
     assert r.Binary(content) = o
     write_into_div(content)
-    r.BuiltinFn(write_html)
+    Ok(r.BuiltinFn(write_html))
 }
 fn set_key_handler(o) { 
    todo("we don't use this but might with key handler as mutable ref")
@@ -47,7 +47,7 @@ pub fn fetch(o, ref)  {
         real_js.set_reference(ref, processes)
     })
     // could be promise to value 
-    r.BuiltinFn(fetch(_, ref))
+    Ok(r.BuiltinFn(fetch(_, ref)))
 }
 
 pub fn start(source, env) { 
@@ -60,7 +60,7 @@ pub fn start(source, env) {
     |> map.insert( "system", r.Record([#("ui", r.Pid(0)), #("on_keypress", r.Pid(1)), #("fetch", r.Pid(2))]))
     |> map.insert("spawn", r.BuiltinFn(spawn))
     |> map.insert("send", r.BuiltinFn(send))
-    |> map.insert("harness", r.Record([#("debug", r.BuiltinFn(io.debug))]))
+    |> map.insert("harness", r.Record([#("debug", r.BuiltinFn(fn(x) {Ok(io.debug(x))}))]))
     assert Ok(cont) = step(program, env, fn(value) { Ok(Done(value)) })
     assert Ok(#(processes, messages, _value)) = loop(cont, processes, [])
     let messages = list.reverse(messages)
@@ -286,7 +286,8 @@ pub fn step_call(func, arg, cont: fn(r.Object) -> Result(Cont, String)) {
             Ok(Eff(Send(arg), cont))
         }
         r.BuiltinFn(func) -> {
-            Ok(Cont(func(arg), cont))
+            try value = func(arg)
+            Ok(Cont(value, cont))
         }
         // r.Coroutine(forked) -> {
         //     Cont(r.Ready(forked, arg), cont)

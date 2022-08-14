@@ -15,10 +15,10 @@ const false = r.Tagged("false", r.Tuple([]))
 
 fn equal(object) { 
     assert r.Tuple([left, right]) = object
-    case left == right {
+    Ok(case left == right {
         True -> true
         False -> false
-    }
+    })
 }
 
 fn native(value) { 
@@ -30,31 +30,33 @@ fn std_int() {
         #("parse", r.BuiltinFn(fn(object){ 
             assert r.Binary(content) = object
             case int.parse(content) {
-                Ok(value) -> r.Tagged("Ok", native(value)) 
-                Error(reason) -> r.Tagged("Error", r.Record([]))
+                Ok(value) -> {
+                    Ok(r.Tagged("Ok", native(value)) )
+                }
+                Error(reason) -> Ok(r.Tagged("Error", r.Record([])))
             }
          })),
         #("to_string", r.BuiltinFn(fn(object) { 
             assert r.Native(dynamic) = object
             assert Ok(value) = dynamic.int(dynamic)
-            r.Binary(int.to_string(value))
+            Ok(r.Binary(int.to_string(value)))
         })),
         #("add", r.BuiltinFn(fn(object) { 
             assert r.Tuple([r.Native(d1), r.Native(d2)]) = object
             assert Ok(v1) = dynamic.int(d1)
             assert Ok(v2) = dynamic.int(d2)
-            native(v1 + v2)
+            Ok(native(v1 + v2))
         })),
         #("multiply", r.BuiltinFn(fn(object) { 
             assert r.Tuple([r.Native(d1), r.Native(d2)]) = object
             assert Ok(v1) = dynamic.int(d1)
             assert Ok(v2) = dynamic.int(d2)
-            native(v1 * v2)
+            Ok(native(v1 * v2))
         })),
         #("negate", r.BuiltinFn(fn(object) { 
             assert r.Native(dynamic) = object
             assert Ok(value) = dynamic.int(dynamic)
-            native(-1 * value)
+            Ok(native(-1 * value))
         })),
         #("zero", native(0)),
         #("one", native(1)),
@@ -72,13 +74,13 @@ fn std_string() {
 
 fn concat(object) { 
     assert r.Tuple([r.Binary(left), r.Binary(right)]) = object
-    r.Binary(string.concat([left, right]))
+    Ok(r.Binary(string.concat([left, right])))
  }
 
 fn prelude() { 
     map.new()
     |> map.insert("harness", r.Record([
-        #("debug", r.BuiltinFn(io.debug)),
+        #("debug", r.BuiltinFn(fn(x) {Ok(io.debug(x))})),
         #("concat", r.BuiltinFn(concat))
     ]))
     |> map.insert("equal", r.BuiltinFn(equal))

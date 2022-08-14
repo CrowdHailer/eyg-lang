@@ -22,7 +22,7 @@ pub type Object {
     Function(p.Pattern, e.Expression(Dynamic, Dynamic), map.Map(String, Object), Option(String))
     Coroutine(Object)
     Ready(Object, Object)
-    BuiltinFn(fn(Object) -> Object)
+    BuiltinFn(fn(Object) -> Result(Object, String))
     Native(Dynamic)
     Spawn(Fn, Fn)
 }

@@ -219,7 +219,7 @@ pub fn builtin_test()  {
     let env = map.new()
     |> map.insert("string", r.Record([#("reverse", r.BuiltinFn(fn(object) {
         assert r.Binary(value) = object
-        r.Binary(string.reverse(value))
+        Ok(r.Binary(string.reverse(value)))
     }))]))
     let source = e.call(e.access(e.variable("string"), "reverse"), e.binary("hello"))
 
@@ -250,7 +250,7 @@ fn capture(object) {
     |> io.debug()
     |> javascript.do_eval()
     |> io.debug()
-    r.Tuple([])
+    Ok(r.Tuple([]))
  }
 
 pub fn capture_test()  {

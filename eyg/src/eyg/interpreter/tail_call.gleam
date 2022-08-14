@@ -134,7 +134,7 @@ pub fn eval_call(func, arg) {
             eval(body, inner)
         }
         r.BuiltinFn(func) -> {
-            Ok(func(arg))
+            func(arg)
         }
         r.Coroutine(forked) -> {
             Ok(r.Ready(forked, arg))

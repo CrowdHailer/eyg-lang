@@ -379,7 +379,7 @@ pub fn code_update(code, source, app) {
       let top_env = map.new()
       |> map.insert("harness", interpreter.Record([
         #("compile", interpreter.Function(p.Variable(""), e.tagged("Error", e.binary("not in interpreter")), map.new(), None)), 
-        #("debug", interpreter.BuiltinFn(io.debug)),
+        #("debug", interpreter.BuiltinFn(fn(x) {Ok(io.debug(x))})),
       ]))
 
       let #(server_fn, coroutines) = tree_walk.run(editor.untype(typed), top_env, [])
