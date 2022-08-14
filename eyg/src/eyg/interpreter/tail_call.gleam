@@ -107,7 +107,7 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
         e.Call(func, arg) -> {
             do_eval(func, env, fn(func) {
                 do_eval(arg, env, fn(arg) {
-                    try value = exec_call(func, arg)
+                    try value = eval_call(func, arg)
                     cont(value)
                 })            
             })
@@ -123,7 +123,7 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
 }
 
 
-pub fn exec_call(func, arg) {
+pub fn eval_call(func, arg) {
     case func {
             r.Function(pattern, body, captured, self)  -> {
             let captured = case self {

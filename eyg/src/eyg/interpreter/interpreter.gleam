@@ -9,6 +9,10 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/codegen/javascript
 
+pub type Fn {
+    Fn(p.Pattern, e.Expression(Dynamic, Dynamic), map.Map(String, Object), Option(String))
+}
+
 pub type Object {
     Binary(String)
     Pid(Int)
@@ -20,6 +24,7 @@ pub type Object {
     Ready(Object, Object)
     BuiltinFn(fn(Object) -> Object)
     Native(Dynamic)
+    Spawn(Fn, Fn)
 }
 
 
@@ -79,5 +84,6 @@ case object {
             Coroutine(_) -> "null"
             Ready(_, _) -> "null"
             Native(_) -> "null"
+            Spawn(_, _) -> todo("spawnn")
         }
 }
