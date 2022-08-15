@@ -45,7 +45,7 @@
     <Interpreted source={mount.source} />
   {:else if mount instanceof Mount.Proxy}
     <p><strong>{key}:</strong> Proxy</p>
-    <Proxy source={mount.source} />
+    <Proxy state={mount.state} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

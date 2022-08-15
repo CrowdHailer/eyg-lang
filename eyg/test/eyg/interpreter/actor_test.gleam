@@ -36,7 +36,7 @@ fn logger(x) {
 pub fn logger_process_test()  {
     let source = e.call(e.call(e.variable("send"), e.tuple_([e.variable("logger"), e.binary("My Log line")])), e.function(p.Variable(""), e.tagged("Return",e.binary("sent"))))
     let global = [#("logger", r.BuiltinFn(logger))]
-    assert Ok([process]) = actor.run_source(source, global)
+    assert Ok(#(_, [process])) = actor.run_source(source, global)
     assert True = process == r.BuiltinFn(logger)
 }
 
@@ -50,7 +50,7 @@ fn ast_send(pid, message, then) {
 pub fn spawning_process_does_nothing_unless_returned_test() {
     let loop = e.let_(p.Variable("loop"), e.function(p.Variable("message"), e.variable("loop")), e.variable("loop"))
     let source = e.let_(p.Variable(""), ast_spawn(loop, e.function(p.Variable(""), e.tuple_([]))), e.tagged("Return", e.binary("then")))
-    assert Ok([]) = actor.run_source(source, [])
+    assert Ok(#(_, [])) = actor.run_source(source, [])
 }
 
 pub fn sending_does_nothing_unless_returned_test() {

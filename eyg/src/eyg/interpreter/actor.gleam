@@ -76,9 +76,10 @@ fn do_eval(value, offset, processes, messages) {
 pub fn run_source(source, global)  {
     let #(names, global) = list.unzip(global)
     let pids = list.index_map(names, fn(i, name) { #(name, r.Pid(i))})
-    try #(_value, spawned, dispatched) = eval_source(source, list.length(global), pids)
+    try #(value, spawned, dispatched) = eval_source(source, list.length(global), pids)
     let processes = list.append(global, spawned)
-    deliver_messages(processes, dispatched)
+    try processes = deliver_messages(processes, dispatched)
+    Ok(#(value, processes))
 }
 
 fn deliver_message(processes, message) { 
@@ -90,7 +91,7 @@ fn deliver_message(processes, message) {
     Ok(#(processes, dispatched))
 }
 
-fn deliver_messages(processes, messages) { 
+pub fn deliver_messages(processes, messages) { 
     case messages {
         [] -> Ok(processes)
         [message, ..rest] -> {

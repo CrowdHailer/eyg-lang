@@ -71,7 +71,7 @@ pub type Mount(a) {
   Universal(handle: Option(fn( String,  String,  String) -> String))
   Interpreted(state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object))
   IServer(handle: fn(String, String, String) -> String)
-  Proxy()
+  Proxy(state: Result(#(interpreter.Object, List(interpreter.Object)), String))
 }
 
 // mount handling of keydown
@@ -205,7 +205,7 @@ pub fn mount_constraint(mount) {
       t.Record([#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)], None), 
       t.Function(t.Record([], None), t.Binary)
     )
-    Proxy -> proxy.constraint()
+    Proxy(_) -> proxy.constraint()
   }
 }
 
@@ -430,7 +430,7 @@ string.concat(["<head></head><body></body><script>", program, "</script>"])
         }
       Universal(Some(handler))
     }
-    Proxy -> Proxy
+    Proxy(_) -> Proxy(proxy.code_update(source, key))
   }
   App(key, mount)
 }

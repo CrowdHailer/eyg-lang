@@ -160,7 +160,8 @@ export function run(code) {
   // foo(Gleam)
   // foo(Option)
   try {
-    return eval(code);
+    // TODO add back in
+    // return eval(code);
   } catch (error) {
     console.warn(error);
   }

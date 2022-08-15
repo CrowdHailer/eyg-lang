@@ -98,7 +98,7 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
         e.Variable(var) -> {
              case map.get(env, var) {
                 Ok(value) -> cont(value)
-                Error(Nil) -> Error("missing value")
+                Error(Nil) -> Error(string.concat(["missing value: ", var]))
             }
         }
         e.Function(pattern, body) -> {
