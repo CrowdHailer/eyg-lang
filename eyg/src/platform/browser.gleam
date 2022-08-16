@@ -28,9 +28,10 @@ pub fn harness() {
       ),
       #("done", polytype.Polytype([-111], t.Function(t.Unbound(-111), t.Native("Run", [t.Unbound(-111)])))),
       // could call quote
-      #("compile", polytype.Polytype([], t.Function(t.Function(t.Record([
+      #("compile", polytype.Polytype([871], t.Function(t.Function(t.Record([
         #("ui", t.Native("Pid", [t.Binary])),
         #("log", t.Native("Pid", [t.Binary])),
+        #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Unbound(871))])),
       ], None), t.Binary), t.Binary)))
     ],
 

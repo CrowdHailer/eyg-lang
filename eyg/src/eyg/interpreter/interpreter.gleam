@@ -60,6 +60,8 @@ pub fn render_var(assignment) {
                 document.body.innerHTML = message
             } else if(pid == 'log') {
                 console.log(message)
+            } else if(pid == 'on_keypress') {
+                document.addEventListener(\"keydown\", function (event) {message(event.key);})
             } else {
                 console.warn(pid, 'unknown pid') 
             }

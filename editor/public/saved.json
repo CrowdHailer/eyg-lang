@@ -145,11 +145,18 @@
                                       "node": "Variable",
                                       "label": "w"
                                     },
-                                    "key": "log"
+                                    "key": "on_keypress"
                                   },
                                   {
-                                    "node": "Binary",
-                                    "value": "foo2"
+                                    "node": "Function",
+                                    "pattern": {
+                                      "node": "Variable",
+                                      "label": ""
+                                    },
+                                    "body": {
+                                      "node": "Tuple",
+                                      "elements": []
+                                    }
                                   }
                                 ]
                               }
