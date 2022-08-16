@@ -17,7 +17,7 @@ pub fn start_a_process_test()  {
             e.call(
                 e.call(e.variable("send"), e.tuple_([e.variable("pid"), e.binary("Hello")])), 
                 e.function(p.Variable(""), 
-                    e.call(e.variable("return"), e.variable("pid"))
+                    e.call(e.variable("done"), e.variable("pid"))
             )
         )))
     assert Ok(#(value, processes, messages)) = actor.eval_source(source, 0, [])

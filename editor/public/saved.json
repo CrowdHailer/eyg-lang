@@ -8,7 +8,7 @@
     "node": "Let",
     "pattern": {
       "node": "Variable",
-      "label": ""
+      "label": "abc"
     },
     "value": {
       "node": "Tuple",
@@ -18,7 +18,7 @@
       "node": "Call",
       "function": {
         "node": "Variable",
-        "label": "return"
+        "label": "done"
       },
       "with": {
         "node": "Function",
@@ -27,8 +27,51 @@
           "label": ""
         },
         "body": {
-          "node": "Binary",
-          "value": "hello"
+          "node": "Call",
+          "function": {
+            "node": "Variable",
+            "label": "done"
+          },
+          "with": {
+            "node": "Call",
+            "function": {
+              "node": "Variable",
+              "label": "compile"
+            },
+            "with": {
+              "node": "Function",
+              "pattern": {
+                "node": "Variable",
+                "label": "w"
+              },
+              "body": {
+                "node": "Let",
+                "pattern": {
+                  "node": "Variable",
+                  "label": ""
+                },
+                "value": {
+                  "node": "Variable",
+                  "label": "abc"
+                },
+                "then": {
+                  "node": "Call",
+                  "function": {
+                    "node": "Access",
+                    "value": {
+                      "node": "Variable",
+                      "label": "w"
+                    },
+                    "key": "alert"
+                  },
+                  "with": {
+                    "node": "Binary",
+                    "value": "hello"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

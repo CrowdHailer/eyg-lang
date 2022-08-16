@@ -64,7 +64,11 @@ fn render_object(object) {
 case object {
             Binary(content) -> string.concat([ "\"", javascript.escape_string(content), "\""])
             Pid(pid) -> int.to_string(pid)
-            Tuple(_) -> "null"
+            Tuple(elements) -> {
+                let term = list.map(elements, render_object)
+                |> string.join(", ")
+                string.concat(["[", term, "]"])
+            }
             Record(fields) -> {
                 let term = list.map(
                     fields,
@@ -76,11 +80,11 @@ case object {
                 |> string.join(", ")
                 string.concat(["{", term, "}"])
             }
-            Tagged(_, _) ->"null"
+            Tagged(tag, value) ->string.concat(["{", tag, ":", render_object(value), "}"])
             // Builtins should never be included, I need to check variables used in a previous step
             // Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
             Function(_,_,_,_) -> "null"
-            BuiltinFn(_) -> "null"
+            BuiltinFn(_) -> todo("we aren't using builtin here should be part of env")
             Coroutine(_) -> "null"
             Ready(_, _) -> "null"
             Native(_) -> "null"

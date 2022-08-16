@@ -5,7 +5,6 @@
   export let state;
   let message = "";
   let p;
-  $: console.log(new Ok(), state, state instanceof Ok);
   $: (() => {
     if (state instanceof Ok) {
       console.log("proxy");
@@ -22,7 +21,6 @@
     while (true) {
       // Need async in JS land for while loop and to make sure svelte updating of source is patched into while loop
       let r = await Proxy.fetch_request();
-      console.log(r);
       Proxy.handle(r, p);
     }
   })();

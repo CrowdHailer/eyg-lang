@@ -403,6 +403,7 @@ pub fn code_update(code, source, app) {
 
         
         // client function
+        // TODO use proxy/actor version
         assert Ok(interpreter.Function(pattern, body, captured, _)) = tree_walk.exec_call(server_fn, server_arg)
 
         let client_source = e.function(pattern, body)

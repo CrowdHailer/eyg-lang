@@ -1,12 +1,16 @@
 import gleam/io
 import gleam/list
 import gleam/map
+import gleam/string
 import gleam/option.{Some}
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/interpreter/interpreter as r
 import eyg/interpreter/tail_call
-
+import eyg/analysis
+import eyg/typer
+import eyg/codegen/javascript
+import eyg/typer/monotype as t
 
 // maybe coroutines is better name and abstraction
 
@@ -25,7 +29,7 @@ fn send(dispatch, continue){
     assert r.Tuple([pid, message]) = dispatch
     Ok(r.Tagged("Send", r.Tuple([dispatch, continue])))
 }
-fn return(value) { 
+fn done(value) { 
     Ok(r.Tagged("Return", value))
  }
 
@@ -36,9 +40,60 @@ fn eval(source, pids) {
     })
     |> map.insert("spawn", r.BuiltinFn(fn(loop) { Ok(r.BuiltinFn(spawn(loop, _))) }))
     |> map.insert("send", r.BuiltinFn(fn(message) { Ok(r.BuiltinFn(send(message, _))) }))
-    |> map.insert("return", r.BuiltinFn(return))
+    // TODO wanted to call this return but need to escape keywords or just interpret in client
+    // A quote and encode then interpreting would never need escaping
+    |> map.insert("done", r.BuiltinFn(done))
+    // TODO start using quote and building into the program runtime things like interpreter type checker etc
+    |> map.insert("compile", r.BuiltinFn(app))
 
     tail_call.eval(source, env)
+}
+
+// TODO move app function into the eyg program using concat at that top level
+pub fn app(term) {
+    let program = compile_function(term)
+    |> string.append("(window)")
+
+    let app = string.concat(["<html><body></body><script>\n",program,"\n</script></html>"])
+    Ok(r.Binary(app))
+}
+
+// TODO compile needs to take a type argument
+// Do we actually want to build all the universal apps
+// Using JSON and REST was probably Ok with type providers and we need to start from the outside world
+// Compilation process and eval needs to be part of the individual mounts where we use each one.
+
+// TODO infer/unify take a Record type of none for the environment takes record type of some for infering
+// Need tasks vs actor for the server handling
+
+//  render closed function if i have recursive patterns on records and tuple makes it very easy to only have relevant variables in scope
+
+// TODO quote and test will make a good path to building everything self hosted
+
+// TODO move compile_function out although it's probably part of the standard library
+pub fn compile_function(term) {
+    assert r.Function(pattern, body, captured, _) = term
+
+    let client_source = e.function(pattern, body)
+    
+    // TODO another good use for structural types is moving builting from functions for evaluation to names for rendering here
+    
+    // TODO captured should not include empty
+    let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [], )
+    let #(typed, typer) = typer.expand_providers(typed, typer, [])
+    // Shouldn't need filter just do it at time of variable creation
+    let variables = list.filter_map(typer.inconsistencies, fn(inconsistency) {
+        case inconsistency {
+            #(_, typer.UnknownVariable(v)) -> Ok(v)
+            _ -> Error(Nil)
+        }
+    })
+    let env = map.take(captured, variables)
+
+    let program = list.map(map.to_list(env), r.render_var)
+    |> list.append([javascript.render_to_string(typed, typer)])
+    |> string.join("\n")
+    
 }
 
 // I think we start with a step and pass continuation to run but we are now duplicating the Done Eff stuff that is in stepwise

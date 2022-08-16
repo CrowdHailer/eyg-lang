@@ -13,10 +13,14 @@ export async function fetchText(url) {
 export async function fetchJSON(url) {
   try {
     let response = await fetch(url);
-    let data = await response.json();
-    return new Gleam.Ok(data);
+    if (response.status == 200) {
+      let data = await response.json();
+      return new Gleam.Ok(data);
+    } else {
+      return new Gleam.Error("204");
+    }
   } catch (error) {
-    new Gleam.Error(error);
+    return new Gleam.Error(error);
   }
 }
 
