@@ -52,7 +52,7 @@ fn eval(source, pids) {
 // TODO move app function into the eyg program using concat at that top level
 pub fn app(term) {
     let program = compile_function(term)
-    |> string.append("(window)")
+    |> string.append("({ui: 'ui', log: 'log'})")
 
     let app = string.concat(["<html><body></body><script>\n",program,"\n</script></html>"])
     Ok(r.Binary(app))

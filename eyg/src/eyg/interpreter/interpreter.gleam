@@ -53,10 +53,19 @@ pub fn extend_env(env, pattern, object) {
 
 
 pub fn render_var(assignment) { 
-    let #(var, object) = assignment
-    case var {
-        "" -> "" 
-        _ -> string.concat(["let ", var, " = ", render_object(object), ";"])
+    case assignment {
+        #("", _) -> "" 
+        #("send", BuiltinFn(_)) -> string.concat(["let send = ([pid, message]) => (then) => { 
+            if (pid == 'ui') {
+                document.body.innerHTML = message
+            } else if(pid == 'log') {
+                console.log(message)
+            } else {
+                console.warn(pid, 'unknown pid') 
+            }
+            return then([])
+        }", ";"])
+        #(var, object) -> string.concat(["let ", var, " = ", render_object(object), ";"])
     }
  }
 

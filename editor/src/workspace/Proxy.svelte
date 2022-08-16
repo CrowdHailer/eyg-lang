@@ -21,7 +21,9 @@
     while (true) {
       // Need async in JS land for while loop and to make sure svelte updating of source is patched into while loop
       let r = await Proxy.fetch_request();
-      Proxy.handle(r, p);
+      if (p) {
+        Proxy.handle(r, p);
+      }
     }
   })();
 </script>
