@@ -8,7 +8,7 @@
     "node": "Function",
     "pattern": {
       "node": "Variable",
-      "label": ""
+      "label": "message"
     },
     "body": {
       "node": "Let",
@@ -27,8 +27,8 @@
           "key": "debug"
         },
         "with": {
-          "node": "Binary",
-          "value": "hooo"
+          "node": "Variable",
+          "label": "message"
         }
       },
       "then": {
