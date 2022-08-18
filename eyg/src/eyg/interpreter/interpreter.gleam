@@ -9,10 +9,6 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/codegen/javascript
 
-pub type Fn {
-    Fn(p.Pattern, e.Expression(Dynamic, Dynamic), map.Map(String, Object), Option(String))
-}
-
 pub type Object {
     Binary(String)
     Pid(Int)

@@ -7,8 +7,6 @@
   let p;
   $: (() => {
     if (state instanceof Ok) {
-      console.log("proxy");
-      // Proxy.run(state["0"]);
       p = state["0"];
       message = "";
     } else {
