@@ -17,12 +17,6 @@ import eyg/typer/monotype as t
 // Need to return a continuation that we can step into
 fn spawn(loop, continue) { 
     // TODO add an env filter step
-    assert r.Function(pattern, body, env, self) = loop
-    let l = r.Fn(pattern, body, env, self)
-    assert r.Function(pattern, body, env, self) = continue
-    let c = r.Fn(pattern, body, env, self)
-    // TODO remove spawn if type checks are good
-    r.Spawn(l, c)
     Ok(r.Tagged("Spawn", r.Tuple([loop, continue])))
  }
 fn send(dispatch, continue){
@@ -38,6 +32,7 @@ fn eval(source, pids) {
         let #(name, pid) = pair
         map.insert(env, name, pid)
     })
+    |> map.insert("harness", r.Record([#("debug", r.BuiltinFn(fn(x) { Ok(io.debug(x))}))]))
     |> map.insert("spawn", r.BuiltinFn(fn(loop) { Ok(r.BuiltinFn(spawn(loop, _))) }))
     |> map.insert("send", r.BuiltinFn(fn(message) { Ok(r.BuiltinFn(send(message, _))) }))
     // TODO wanted to call this return but need to escape keywords or just interpret in client
@@ -111,7 +106,6 @@ pub fn eval_call(func, arg, offset, processes, messages) {
 
 fn do_eval(value, offset, processes, messages) { 
     case value {
-        r.Tagged("Return", value) -> Ok(#(value, processes, messages))
         r.Tagged("Spawn", r.Tuple([loop, continue])) -> {
             let pid = offset + list.length(processes)
             let processes = list.append(processes, [loop])
@@ -121,10 +115,13 @@ fn do_eval(value, offset, processes, messages) {
             let messages = list.append(messages, [dispatch])
             eval_call(continue, r.Tuple([]), offset, processes, messages)
         }
-        _ -> {
-            io.debug(value)
-            todo("should always be typed to the above")
-        }
+        // TODO dynamic is weird and not caught by type sceme
+        r.Tagged("Return", value) | value -> Ok(#(value, processes, messages))
+        // _ -> {
+        //     io.debug(value)
+        //     // todo("should always be typed to the above")
+        //     value
+        // }
     }
 }
 

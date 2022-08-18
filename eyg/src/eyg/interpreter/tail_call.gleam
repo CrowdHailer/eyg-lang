@@ -139,6 +139,9 @@ pub fn eval_call(func, arg) {
         r.Coroutine(forked) -> {
             Ok(r.Ready(forked, arg))
         }
-        _ -> todo("Should never be called")
+        _ -> {
+            io.debug(func)
+            todo("Should never be called")
+        }
     }
 }

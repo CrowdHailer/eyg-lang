@@ -24,7 +24,6 @@ pub type Object {
     Ready(Object, Object)
     BuiltinFn(fn(Object) -> Result(Object, String))
     Native(Dynamic)
-    Spawn(Fn, Fn)
 }
 
 
@@ -63,7 +62,8 @@ pub fn render_var(assignment) {
             } else if(pid == 'on_keypress') {
                 document.addEventListener(\"keydown\", function (event) {message(event.key);})
             } else {
-                console.warn(pid, 'unknown pid') 
+                console.warn(pid, message) 
+                fetch(`${window.location.pathname}/_/${pid}`, {method: 'POST', body: message})
             }
             return then([])
         }", ";"])
@@ -99,6 +99,5 @@ case object {
             Coroutine(_) -> "null"
             Ready(_, _) -> "null"
             Native(_) -> "null"
-            Spawn(_, _) -> todo("spawnn")
         }
 }
