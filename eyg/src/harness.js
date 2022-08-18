@@ -106,10 +106,7 @@ export function run(code) {
       return object[key];
     },
     spawn: function (params) {
-      console.log("1234");
-      // console.log("Should this be in compiled code", params);
       return function (continuation) {
-        console.log("spawned", params);
         return continuation({ Address: 1 });
       };
     },
@@ -160,8 +157,7 @@ export function run(code) {
   // foo(Gleam)
   // foo(Option)
   try {
-    // TODO add back in
-    // return eval(code);
+    return eval(code);
   } catch (error) {
     console.warn(error);
   }
