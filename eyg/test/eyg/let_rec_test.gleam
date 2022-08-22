@@ -23,7 +23,6 @@ fn infer(untyped, type_) {
   typer.infer(untyped, type_, state)
 }
 
-// TODO let x = x Test
 pub fn recursive_tuple_test() {
   let source =
     e.let_(
@@ -119,7 +118,7 @@ pub fn recursive_union_test() {
 
   let #(typed, checker) = infer(source, t.Unbound(-1))
 
-  assert Ok(move_exp) = get_expression(typed, [1])
+  assert Ok(move_exp) = editor.get_expression(typed, [1])
   assert Ok(type_) = analysis.get_type(move_exp, checker)
   assert "(μ0.[Cons (1, 0) | Nil ()], μ2.[Cons (1, 2) | Nil () | ..3]) -> μ2.[Cons (1, 2) | Nil () | ..3]" =
     type_info.to_string(type_)
@@ -129,7 +128,3 @@ pub fn recursive_union_test() {
     type_info.to_string(type_)
 }
 
-fn get_expression(tree, path) {
-  assert editor.Expression(expression) = editor.get_element(tree, path)
-  Ok(expression)
-}

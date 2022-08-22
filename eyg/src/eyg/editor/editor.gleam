@@ -1739,6 +1739,11 @@ fn replace_pattern(tree, position, pattern) {
   }
 }
 
+pub fn get_expression(tree, path) {
+  assert Expression(expression) = get_element(tree, path)
+  Ok(expression)
+}
+
 // TODO renaming element TreeNode helps with element in tuple confusion
 pub fn get_element(tree: e.Expression(a, b), position) -> Element(a, b) {
   case tree, position {

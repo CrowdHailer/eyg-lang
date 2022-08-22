@@ -14,11 +14,6 @@ import eyg/typer/monotype as t
 import eyg/ast/pattern as p
 import eyg/typer/polytype
 
-// TODO move to AST
-fn get_expression(tree, path) {
-  assert editor.Expression(expression) = editor.get_element(tree, path)
-  Ok(expression)
-}
 
 pub fn binary_expression_test() {
   let source = binary("Hello")
@@ -50,7 +45,7 @@ pub fn tuple_expression_test() {
   let #(typed, checker) = analysis.infer(source, t.Tuple([t.Tuple([])]), [])
   // Type is correct here only internally is there a failure
   assert Ok(t.Tuple([t.Tuple([])])) = analysis.get_type(typed, checker)
-  assert Ok(element) = get_expression(typed, [0])
+  assert Ok(element) = editor.get_expression(typed, [0])
   assert Error(reason) = analysis.get_type(element, checker)
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
@@ -66,7 +61,7 @@ pub fn pair_test() {
   let #(typed, checker) = analysis.infer(source, t.Tuple([tx, tx]), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Tuple([t.Binary, t.Binary]) = type_
-  assert Ok(element) = get_expression(typed, [1])
+  assert Ok(element) = editor.get_expression(typed, [1])
   assert Error(reason) = analysis.get_type(element, checker)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }
@@ -99,7 +94,7 @@ pub fn row_expression_test() {
   // TODO think which one I want most.
   // assert Ok(type_) = analysis.get_type(typed, checker)
   // assert t.Record([#("foo", t.Tuple([]))], None) = type_
-  // assert Ok(element) = get_expression(typed, [0, 1])
+  // assert Ok(element) = editor.get_expression(typed, [0, 1])
   // assert Error(reason) = analysis.get_type(element, checker)
   // assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
   // ----- up to previous todo
@@ -141,7 +136,7 @@ pub fn tag_test() {
     )
   assert Ok(type_) = analysis.get_type(typed, checker)
   // TODO expected option of A or A
-  assert Ok(element) = get_expression(typed, [1])
+  assert Ok(element) = editor.get_expression(typed, [1])
   assert Error(reason) = analysis.get_type(element, checker)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
   // assert t.Union([#("Some", t.Tuple([]))], Some(_)) = type_
@@ -191,7 +186,7 @@ pub fn function_test() {
     analysis.infer(source, t.Function(t.Tuple([]), t.Tuple([])), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Tuple([]), t.Tuple([])) = type_
-  assert Ok(body) = get_expression(typed, [1])
+  assert Ok(body) = editor.get_expression(typed, [1])
   assert Error(reason) = analysis.get_type(body, checker)
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
 }
@@ -211,7 +206,7 @@ pub fn id_function_test() {
     analysis.infer(source, t.Function(t.Tuple([]), t.Binary), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Tuple([]), t.Binary) = type_
-  assert Ok(body) = get_expression(typed, [1])
+  assert Ok(body) = editor.get_expression(typed, [1])
   assert Error(reason) = analysis.get_type(body, checker)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
   // Not this is saying that the variable is wrong some how
@@ -247,7 +242,7 @@ pub fn call_generic_function_test() {
   let #(typed, checker) = analysis.infer(source, t.Binary, [])
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Binary = type_
-  assert Ok(body) = get_expression(typed, [1])
+  assert Ok(body) = editor.get_expression(typed, [1])
   assert Error(reason) = analysis.get_type(body, checker)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }
@@ -257,7 +252,7 @@ pub fn call_not_a_function_test() {
   let #(typed, checker) = analysis.infer(source, t.Binary, [])
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Binary = type_
-  assert Ok(body) = get_expression(typed, [0])
+  assert Ok(body) = editor.get_expression(typed, [0])
   assert Error(reason) = analysis.get_type(body, checker)
   assert typer.UnmatchedTypes(expected, t.Binary) = reason
   // TODO resolve expected
@@ -405,7 +400,7 @@ pub fn recursive_loop_test() {
     analysis.get_type(typed, checker)
   assert True = i != j
   // TODO x = i and f = i -> j internally but not poly
-  // assert Ok(body) = get_expression(typed, [1])
+  // assert Ok(body) = editor.get_expression(typed, [1])
   // assert Ok(t.Function(t.Unbound(i), t.Unbound(j))) = analysis.get_type(body, checker)
   // TODO ----
   // id called polymorphically internally FAil
