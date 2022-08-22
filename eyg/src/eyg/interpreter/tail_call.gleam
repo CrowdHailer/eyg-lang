@@ -108,7 +108,14 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
             do_eval(func, env, fn(func) {
                 do_eval(arg, env, fn(arg) {
                     try value = eval_call(func, arg)
-                    cont(value)
+                    case value {
+                        r.Effect(name,value,_) -> {
+                            // Ok(r.Effect(name, value, cont))
+                            // Call continue IF we want to pass values in to handler, think the above might make more sense
+                            cont(r.Effect(name, value, cont))
+                        }
+                        _ -> cont(value)
+                    }
                 })            
             })
 

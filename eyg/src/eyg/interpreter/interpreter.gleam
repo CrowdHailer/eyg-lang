@@ -20,6 +20,7 @@ pub type Object {
     Ready(Object, Object)
     BuiltinFn(fn(Object) -> Result(Object, String))
     Native(Dynamic)
+    Effect(String, Object, fn(Object) -> Result(Object, String))
 }
 
 
@@ -95,5 +96,6 @@ case object {
             Coroutine(_) -> "null"
             Ready(_, _) -> "null"
             Native(_) -> "null"
+            Effect(_,_,_) -> todo("this shouldnt be rendered")
         }
 }
