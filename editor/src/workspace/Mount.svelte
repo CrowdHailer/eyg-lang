@@ -1,27 +1,22 @@
 <script>
   import * as Mount from "../../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/workspace";
 
-  import Static from "./Static.svelte";
   import TestSuite from "./TestSuite.svelte";
   import UI from "./UI.svelte";
   import String2String from "./String2String.svelte";
   import Firmata from "./Firmata.svelte";
   import Server from "./Server.svelte";
   import Pure from "./Pure.svelte";
+  import Interpreted from "./Interpreted.svelte";
+  import Proxy from "./Proxy.svelte";
 
-  export let index;
   export let key;
   export let mount;
   export let active;
 </script>
 
-<!-- TODO collapse and show at this level -->
 <div class="h-full">
-  {#if mount instanceof Mount.Static}
-    <!-- TODO Put this in active footer next to details -->
-    <p><strong>{key}:</strong> Static</p>
-    <Static value={mount.value} />
-  {:else if mount instanceof Mount.TestSuite}
+  {#if mount instanceof Mount.TestSuite}
     <p><strong>{key}:</strong> Test Suite</p>
     <TestSuite result={mount.result} />
   {:else if mount instanceof Mount.UI}
@@ -37,11 +32,20 @@
     <p><strong>{key}:</strong> Server</p>
     <Server handle={mount.handle} />
   {:else if mount instanceof Mount.Universal}
-    <p><strong>{key}:</strong> Server</p>
+    <p><strong>{key}:</strong> Universal</p>
+    <Server handle={mount.handle} />
+  {:else if mount instanceof Mount.IServer}
+    <p><strong>{key}:</strong> IServer</p>
     <Server handle={mount.handle} />
   {:else if mount instanceof Mount.Pure}
     <p><strong>{key}:</strong> Pure</p>
     <Pure state={mount[0]} />
+  {:else if mount instanceof Mount.Interpreted}
+    <p><strong>{key}:</strong> Interpreted</p>
+    <Interpreted source={mount.source} />
+  {:else if mount instanceof Mount.Proxy}
+    <p><strong>{key}:</strong> Proxy</p>
+    <Proxy state={mount.state} />
   {:else}
     {JSON.stringify(mount)}
   {/if}

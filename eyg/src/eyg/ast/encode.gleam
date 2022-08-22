@@ -152,10 +152,10 @@ pub fn to_json(ast) {
   }
 }
 
-external fn entries(object: JSON) -> List(#(String, JSON)) =
+pub external fn entries(object: JSON) -> List(#(String, JSON)) =
   "../../eyg_utils.js" "entries_from_object"
 
-fn assert_string(value: JSON) -> String {
+pub fn assert_string(value: JSON) -> String {
   unsafe_coerce(value)
 }
 

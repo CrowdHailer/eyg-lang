@@ -37,7 +37,7 @@
   update(UI.init);
 
   function handleKeydown(event) {
-    // TODO   only after keypress/up do we have a value, but space and enter come after
+    // only after keypress/up do we have a value, but space and enter come after
     if (event.target.closest('[data-ui="bench"]')) {
       return;
     }

@@ -51,7 +51,7 @@ pub fn case_test() {
   assert [] = checker.inconsistencies
   assert Ok(t.Function(from, to)) = get_type(typed, checker)
   //   This remains a limited type because it's only on instantiation within the case value that it get's unified
-  assert t.Union([#("None", t.Tuple([])), #("Some", t.Binary)], Some(_)) = from
+  assert t.Union([#("None", t.Tuple([])), #("Some", t.Binary)], _) = from
   assert t.Binary = to
 
   let expected =

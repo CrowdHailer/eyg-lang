@@ -30,7 +30,6 @@
     <div class="outline-none" tabindex="-1" data-ui="root">
       <Expression expression={Display.display(editor)} />
 
-      <!-- TODO unify content and choices BUT maybe we don't need that because we will switch to update variable/ type hole filtering -->
       <div class="sticky bottom-0 bg-white py-2">
         {#if UI.is_composing(editor)}
           <input
@@ -39,7 +38,6 @@
             type="text"
             value={editor.mode.content || editor.mode.filter || ""}
           />
-          <!-- TODO remove all toArrays -->
           <nav>
             {#each UI.choices(editor) as choice, i}
               <button

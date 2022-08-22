@@ -10,7 +10,11 @@ import eyg/typer/monotype as t
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/interpreter/interpreter
+import eyg/interpreter/tree_walk
+import eyg/interpreter/stepwise
 import eyg/editor/editor
+import eyg/workspace/proxy
+import eyg/workspace/server
 import eyg/analysis
 import eyg/typer
 import eyg/codegen/javascript
@@ -42,7 +46,6 @@ pub type Workspace {
 // Numbered workspaces make global things like firmata connection trick can just be named
 // Bench rename panel benches?
 pub type Mount(a) {
-  Static(value: String)
   String2String(
     input: String,
     output: String,
@@ -66,10 +69,13 @@ pub type Mount(a) {
   Server(handle: Option(fn(Dynamic) -> Dynamic))
   // Only difference between server and universial is that universal works with source
   Universal(handle: Option(fn( String,  String,  String) -> String))
+  Interpreted(state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object))
+  IServer(handle: fn(String, String, String) -> String)
+  Proxy(state: Result(#(interpreter.Object, List(interpreter.Object)), String))
 }
 
 // mount handling of keydown
-pub fn handle_keydown(app, key, ctrl, text) {
+pub fn handle_keydown(app, k, ctrl, text) {
   let App(key, mount) = app
   // Need an init from first time we focus
   case mount {
@@ -82,6 +88,11 @@ pub fn handle_keydown(app, key, ctrl, text) {
       io.debug("new state")
       io.debug(state)
       let mount = Pure(Some(#(state, render, update, ref)))
+      App(key, mount)
+    }
+    Interpreted(state) -> {
+      let state = stepwise.handle_keydown(state, k)
+      let mount = Interpreted(state)
       App(key, mount)
     }
     _ -> app
@@ -185,7 +196,16 @@ pub fn mount_constraint(mount) {
         t.Binary
       )
     )
-    Static(_) -> t.Unbound(-2)
+    Interpreted(_) -> t.Function(t.Record([
+      #("ui", t.Native("Pid", [t.Binary])),
+      #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Tuple([]))])),
+      #("fetch", t.Native("Pid", [t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]))])])),
+      ], None), t.Tuple([])) 
+    IServer(_) -> t.Function(
+      t.Record([#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)], None), 
+      t.Function(t.Record([], None), t.Binary)
+    )
+    Proxy(_) -> proxy.constraint()
   }
 }
 
@@ -225,6 +245,26 @@ pub fn code_update(code, source, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
+    Interpreted(old) -> {
+      case stepwise.run_browser(e.access(source, key)) {
+        Ok(new) -> Interpreted(new) 
+        Error(reason) -> {
+          io.debug("failed to interpret")
+          io.debug(reason)
+          Interpreted(old)
+        }
+      }
+    }
+    IServer(old) -> {
+      case server.boot(e.access(source, key)) {
+        Ok(new) -> IServer(new) 
+        Error(reason) -> {
+          io.debug("failed to interpret")
+          io.debug(reason)
+          IServer(old)
+        }
+      }
+    }
     TestSuite(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)
@@ -316,7 +356,6 @@ pub fn code_update(code, source, app) {
       // }
       Pure(Some(#(new_initial, render, handle, ref)))
     }
-    Static(_) -> todo("probably remove I don't see much value in static")
     Server(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(handle) = dynamic.field(key, cast)(code)
@@ -343,18 +382,17 @@ pub fn code_update(code, source, app) {
       let top_env = map.new()
       |> map.insert("harness", interpreter.Record([
         #("compile", interpreter.Function(p.Variable(""), e.tagged("Error", e.binary("not in interpreter")), map.new(), None)), 
-        #("debug", interpreter.BuiltinFn(io.debug)),
-        #("spawn", interpreter.BuiltinFn(interpreter.spawn))
+        #("debug", interpreter.BuiltinFn(fn(x) {Ok(io.debug(x))})),
       ]))
 
-      let #(server_fn, coroutines) = interpreter.run(editor.untype(typed), top_env, [])
+      let #(server_fn, coroutines) = tree_walk.run(editor.untype(typed), top_env, [])
 
       let handler = fn (method, path, body) { 
         case method, string.split(path, "/") {
           "POST", ["", "_", id] -> {
             assert Ok(pid) = int.parse(id)
             assert Ok(c) = list.at(coroutines, pid)
-            interpreter.exec_call(c, interpreter.Binary(body))
+            tree_walk.exec_call(c, interpreter.Binary(body))
             ""
           }
           _,_ -> {
@@ -365,7 +403,8 @@ pub fn code_update(code, source, app) {
 
         
         // client function
-        assert interpreter.Function(pattern, body, captured, _) = interpreter.exec_call(server_fn, server_arg)
+        // TODO use proxy/actor version
+        assert Ok(interpreter.Function(pattern, body, captured, _)) = tree_walk.exec_call(server_fn, server_arg)
 
         let client_source = e.function(pattern, body)
         
@@ -392,6 +431,7 @@ string.concat(["<head></head><body></body><script>", program, "</script>"])
         }
       Universal(Some(handler))
     }
+    Proxy(_) -> Proxy(proxy.code_update(source, key))
   }
   App(key, mount)
 }
