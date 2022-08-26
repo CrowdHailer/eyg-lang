@@ -69,7 +69,8 @@ pub fn to_string(monotype, ) {
         "]",
       ])
     }
-    t.Function(from, to) ->
+    // TODO render effects here
+    t.Function(from, to, _) ->
       string.concat([
         to_string(from, ),
         " -> ",

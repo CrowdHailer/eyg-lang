@@ -6,19 +6,19 @@ import eyg/ast
 import eyg/ast/expression as e
 import eyg/ast/encode
 import eyg/ast/pattern
-import eyg/typer/monotype
+import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/typer
 import platform/browser
 
 pub fn compile(untyped, scope) {
-  let #(typed, typer) = typer.infer(untyped, monotype.Unbound(-1), scope)
+  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1),  t.Row([], None), scope)
   let #(typed, typer) = typer.expand_providers(typed, typer, [])
   javascript.render(typed, javascript.Generator(False, [], typer, None))
 }
 
 pub fn eval(untyped, scope) {
-  let #(typed, typer) = typer.infer(untyped, monotype.Unbound(-1), scope)
+  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1), t.Row([], None), scope)
   let #(typed, typer) = typer.expand_providers(typed, typer, [])
   javascript.eval(typed, typer)
 }
@@ -174,7 +174,7 @@ pub fn record_destructure_test() {
       #(
         typer.init(),
         typer.root_scope([
-          #("user", polytype.Polytype([], monotype.Unbound(-1))),
+          #("user", polytype.Polytype([], t.Unbound(-1))),
         ]),
       ),
     )

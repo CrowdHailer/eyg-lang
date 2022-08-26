@@ -18,7 +18,7 @@ pub fn access_variable_test() {
   let source = e.function(p.Variable("x"), e.access(e.variable("x"), "foo"))
   let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [], )
   assert [] = checker.inconsistencies
-  assert Ok(t.Function(from, to)) = analysis.get_type(typed, checker)
+  assert Ok(t.Function(from, to, _)) = analysis.get_type(typed, checker)
 
   assert t.Record(fields: [#("foo", t.Unbound(i: 0))], extra: Some(1)) = from
   assert t.Unbound(i: 0) = to

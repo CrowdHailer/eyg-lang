@@ -15,7 +15,7 @@ pub fn infer(untyped, type_, variables) {
   let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
-  typer.infer(untyped, type_, state)
+  typer.infer(untyped, type_,  t.Row([], None), state)
 }
 
 fn incrementor(i) {

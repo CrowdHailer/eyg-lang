@@ -69,6 +69,13 @@ pub fn eval(source, env)  {
             }
             eval(then, env)
         }
+        // TODO write up why this can't work single value only
+        // e.Effect(name, value) -> {
+        //     handler(name, value)
+        // }
+        // e.EffectFul(body, catch) -> {
+        //     // This is limited to one to one effect and handle i.e. read/send/put
+        // }
         e.Variable(var) -> {
             case map.get(env, var) {
                 Ok(value) -> Ok(value)

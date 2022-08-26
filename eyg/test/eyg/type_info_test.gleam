@@ -1,5 +1,6 @@
 import gleam/option.{None, Some}
-import eyg/typer/monotype.{Binary, Function, Native, Record, Tuple, Unbound}
+// only use t.version
+import eyg/typer/monotype.{Binary, Function, Native, Record, Tuple, Unbound} as t
 import eyg/editor/type_info.{to_string}
 
 pub fn type_to_string_test() {
@@ -12,5 +13,6 @@ pub fn type_to_string_test() {
       Record([#("foo", Binary), #("bar", Tuple([]))], None),
       
     )
-  let "() -> Binary" = to_string(Function(Tuple([]), Binary), )
+  let "() -> Binary" = to_string(Function(Tuple([]), Binary, t.empty), )
+  // TODO with effects test
 }

@@ -15,12 +15,13 @@ import eyg/typer/polytype
 import misc
 import eyg/editor/type_info
 
+// TODO use analysis infer
 fn infer(untyped, type_) {
   let variables = [#("equal", typer.equal_fn())]
   let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
-  typer.infer(untyped, type_, state)
+  typer.infer(untyped, type_,  t.Row([], None), state)
 }
 
 pub fn recursive_tuple_test() {

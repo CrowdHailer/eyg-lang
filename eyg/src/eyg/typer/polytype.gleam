@@ -59,8 +59,9 @@ pub fn replace_variable(monotype, x, y) {
       }
       t.Union(variants, rest)
     }
-    t.Function(from, to) ->
-      t.Function(replace_variable(from, x, y), replace_variable(to, x, y))
+    t.Function(from, to, effects) ->
+      // TODO test and fix
+      t.Function(replace_variable(from, x, y), replace_variable(to, x, y), effects)
     t.Unbound(i) ->
       case i == x {
         True -> t.Unbound(y)
@@ -111,8 +112,9 @@ pub fn replace_type(monotype, x, t) {
       }
       t.Union(variants, rest)
     }
-    t.Function(from, to) ->
-      t.Function(replace_type(from, x, t), replace_type(to, x, t))
+    t.Function(from, to, effects) ->
+      // TODO test and replace
+      t.Function(replace_type(from, x, t), replace_type(to, x, t), effects)
     t.Unbound(i) ->
       case i == x {
         True -> t
@@ -132,7 +134,7 @@ pub fn replace_type(monotype, x, t) {
 // MUST BE resolved first
 pub fn generalise(monotype, variables) {
   case monotype {
-    t.Function(_from, _to) -> {
+    t.Function(_from, _to, _effects) -> {
       let in_type = t.free_in_type(monotype)
       let in_scope = free_variables_in_scope(variables)
       Polytype(difference(in_type, in_scope), monotype)

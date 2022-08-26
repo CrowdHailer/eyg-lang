@@ -34,8 +34,8 @@ pub fn recursive_unification_test() {
 }
 
 pub fn unknown_but_recursive_function_test() {
-  let t1 = t.Function(t.Unbound(288), t.Recursive(253, t.Function(t.Unbound(288), t.Unbound(253))))
-  let t2 = t.Recursive(i: 0, type_: t.Function(from: t.Unbound(i: 285), to: t.Unbound(i: 0)))
+  let t1 = t.Function(t.Unbound(288), t.Recursive(253, t.Function(t.Unbound(288), t.Unbound(253), t.empty)), t.empty)
+  let t2 = t.Recursive(i: 0, type_: t.Function(from: t.Unbound(i: 285), to: t.Unbound(i: 0), effects: t.empty))
   assert Ok(_) = typer.unify(t1, t2, typer.Typer(next_unbound: 3, inconsistencies: [], substitutions: []))
 }
 
