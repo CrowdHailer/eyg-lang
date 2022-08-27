@@ -340,9 +340,6 @@ fn unify_rows(state, row1, row2) {
       ))
     only, None -> Error(UnexpectedFields(only))
   }
-  io.debug("herere")
-  io.debug(extra1)
-  io.debug(extra2)
   case extra1, extra2 {
     Some(i), Some(j) if i == j -> todo("this case isnt handled")
     _ , _ -> Nil
@@ -383,7 +380,6 @@ fn add_substitution(
 }
 
 pub fn unify(t1, t2, state: Typer) {
-  io.debug(#(t1, t2, state, "<----------"))
   try #(state, seen) = do_unify(#(state, []), #(t1, t2))
   Ok(state)
 }
@@ -674,7 +670,6 @@ pub fn infer(
         _, _ -> {
           let #(expected_value, bound_variables, typer) =
             pattern_type(pattern, typer)
-            io.debug(effects)
           let #(value, typer) =
             infer(value, expected_value, effects, #(typer, child(scope, 1)))
           let bound_variables =
@@ -696,7 +691,11 @@ pub fn infer(
       }
       let #(typer, scope) = state
       let scope = child(scope, 2)
-      io.debug(effects)
+      // This is essentially an instantiation
+      let t.Row(items, extra) = effects
+      assert t.Union(items, extra) = t.resolve(t.Union(items, extra), typer.substitutions)
+      let effects = t.Row(items, extra)
+      
       let #(then, typer) = infer(then, expected, effects, #(typer, scope))
       // Let is always OK the error is on the term inside
       let expression = #(meta(Ok(expected)), e.Let(pattern, value, then))
@@ -714,13 +713,9 @@ pub fn infer(
       let expected_function = t.Function(arg_type, expected, effects)
       let #(function, typer) =
         infer(function, expected_function, effects, #(typer, child(scope, 0)))
-      io.debug("outer--------------------------------")
-      io.debug(effects)
-      io.debug(typer.substitutions)
       // This should be unecessary
       let t.Row(items, extra) = effects
       assert t.Union(items, extra) = t.resolve(t.Union(items, extra), typer.substitutions)
-      |> io.debug
       let effects = t.Row(items, extra)
       // merge effects is different to ther function matching because it should be fixed
       // I think resolving is sensible Also test that open effect remains open forever

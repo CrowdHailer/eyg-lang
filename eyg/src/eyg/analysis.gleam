@@ -17,6 +17,13 @@ pub fn infer(untyped, type_, variables) {
   typer.infer(untyped, type_,  t.empty, state)
 }
 
+pub fn infer_effectful(untyped, type_, effects, variables) {
+  let checker = typer.init()
+  let scope = typer.root_scope(variables)
+  let state = #(checker, scope)
+  typer.infer(untyped, type_, effects, state)
+}
+
 fn incrementor(i) {
   #(i, i + 1)
 }
