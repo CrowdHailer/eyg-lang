@@ -14,12 +14,12 @@ pub type Monotype {
   Tuple(elements: List(Monotype))
   Record(fields: List(#(String, Monotype)), extra: Option(Int))
   Union(variants: List(#(String, Monotype)), extra: Option(Int))
-  Function(from: Monotype, to: Monotype, effects: Row)
+  Function(from: Monotype, to: Monotype, effects: Monotype)
   Unbound(i: Int)
   Recursive(i: Int, type_: Monotype)
 }
 
-pub const empty = Row([], None)
+pub const empty = Union([], None)
 
 pub fn literal(monotype) {
   case monotype {
@@ -141,12 +141,9 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype)), recuring) {
       }
     }
     Function(from, to, effects) -> {
-      let Row(items, rest) = effects
-      let temp_type = Union(items, rest)
-      assert Union(items, rest) = do_resolve(temp_type, substitutions, recuring)
-      let effects = Row(items, rest)
       let from = do_resolve(from, substitutions, recuring)
       let to = do_resolve(to, substitutions, recuring)
+      let effects = do_resolve(effects , substitutions, recuring)
       Function(from, to, effects)
     }
   }
@@ -171,9 +168,9 @@ fn do_free_in_type(set, type_) {
       difference(inner, [i])
     }
     Function(from, to, effects) -> {
-      // TODO do I need to handle effect types as free
       let set = do_free_in_type(set, from)
-      do_free_in_type(set, to)
+      let set = do_free_in_type(set, to)
+      do_free_in_type(set, effects)
     }
   }
 }

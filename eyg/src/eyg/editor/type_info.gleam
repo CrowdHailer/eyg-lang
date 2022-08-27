@@ -70,7 +70,7 @@ pub fn to_string(monotype, ) {
       ])
     }
     t.Function(from, to, effects) -> {
-      let t.Row(items, extra) = effects
+      assert t.Union(items, extra) = effects
       let extra = case extra {
         Some(i) -> [string.concat(["..", int.to_string(i)])]
         None -> []

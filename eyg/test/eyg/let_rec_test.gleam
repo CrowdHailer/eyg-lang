@@ -21,7 +21,7 @@ fn infer(untyped, type_) {
   let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
-  typer.infer(untyped, type_,  t.Row([], None), state)
+  typer.infer(untyped, type_,  t.empty, state)
 }
 
 pub fn recursive_tuple_test() {

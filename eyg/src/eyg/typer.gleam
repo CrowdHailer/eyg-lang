@@ -309,7 +309,7 @@ pub fn do_unify(
     }
     t.Function(from1, to1, effects1), t.Function(from2, to2, effects2) -> {
       try #(state, seen) = do_unify(#(state, seen), #(from1, from2))
-      try #(state, seen) = unify_rows(#(state, seen), effects1, effects2)
+      try #(state, seen) = do_unify(#(state, seen), #(effects1, effects2))
       do_unify(#(state, seen), #(to1, to2))
     }
     _, _ -> Error(UnmatchedTypes(t1, t2))
@@ -340,6 +340,9 @@ fn unify_rows(state, row1, row2) {
       ))
     only, None -> Error(UnexpectedFields(only))
   }
+  io.debug(items1)
+  io.debug(items2)
+  io.debug([extra1, extra2])
   case extra1, extra2 {
     Some(i), Some(j) if i == j -> todo("this case isnt handled")
     _ , _ -> Nil
@@ -486,12 +489,11 @@ pub fn expand_providers(tree, typer, scope) {
       let Typer(substitutions: substitutions, ..) = typer
       let expected = t.resolve(expected, substitutions)
       // TODO can providers produce effects
-      let no_effect = t.Row([], None)
       case e.generate(g, config, expected) {
         Ok(tree) -> {
           let state = Scope(variables: scope, path: meta.path)
           let previous_errors = list.length(typer.inconsistencies)
-          let #(typed, typer) = infer(tree, expected, no_effect, #(typer, state))
+          let #(typed, typer) = infer(tree, expected, t.empty, #(typer, state))
           let extra = list.length(typer.inconsistencies) - previous_errors
           // New inconsistencies pushed on font
           let new_errors = list.take(typer.inconsistencies, extra)
@@ -520,7 +522,7 @@ pub fn expand_providers(tree, typer, scope) {
           // This only exists because Loader and Hole need special treatment
           let dummy = #(dynamic.from(Nil), e.Hole)
           let #(typed, _typer) =
-            infer(dummy, expected, no_effect, #(typer, root_scope([])))
+            infer(dummy, expected, t.empty, #(typer, root_scope([])))
           let meta =
             Metadata(
               ..meta,
@@ -548,7 +550,7 @@ fn try_unify(expected, given, typer, path) {
 pub fn infer(
   expression: e.Expression(Dynamic, Dynamic),
   expected: t.Monotype, 
-  effects: t.Row,
+  effects: t.Monotype,
   state: #(Typer, Scope),
 ) -> #(e.Expression(Metadata, Dynamic), Typer) {
   let #(_, tree) = expression
@@ -692,9 +694,7 @@ pub fn infer(
       let #(typer, scope) = state
       let scope = child(scope, 2)
       // This is essentially an instantiation
-      let t.Row(items, extra) = effects
-      assert t.Union(items, extra) = t.resolve(t.Union(items, extra), typer.substitutions)
-      let effects = t.Row(items, extra)
+      assert effects = t.resolve(effects, typer.substitutions)
       
       let #(then, typer) = infer(then, expected, effects, #(typer, scope))
       // Let is always OK the error is on the term inside
@@ -714,14 +714,10 @@ pub fn infer(
       let #(function, typer) =
         infer(function, expected_function, effects, #(typer, child(scope, 0)))
       // This should be unecessary
-      let t.Row(items, extra) = effects
-      assert t.Union(items, extra) = t.resolve(t.Union(items, extra), typer.substitutions)
-      let effects = t.Row(items, extra)
+      assert effects = t.resolve(effects, typer.substitutions)
       // merge effects is different to ther function matching because it should be fixed
       // I think resolving is sensible Also test that open effect remains open forever
 
-      // TODO test call(log, call(about))
-      // TODO test let log /let abort
       
       let #(with, typer) = infer(with, arg_type,effects, #(typer, child(scope, 1)))
       // Type is always! OK at this level
@@ -812,7 +808,7 @@ fn infer_function(pattern, body, expected, typer, scope, body_index) {
   let #(y, typer) = next_unbound(typer)
   let return_type = t.Unbound(y)
   let #(z, typer) = next_unbound(typer)
-  let effects = t.Row([], Some(z))
+  let effects = t.Unbound(z)
   let given = t.Function(arg_type, return_type, effects)
   let #(type_, typer) = try_unify(expected, given, typer, scope.path)
   let bound_variables =

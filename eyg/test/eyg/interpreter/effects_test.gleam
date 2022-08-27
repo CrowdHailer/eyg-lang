@@ -69,9 +69,9 @@ pub fn handled_effect_test()  {
 
 // Ask in unison what logging with the same effect but different types should do.
 
-// todo union never is not the type because it will return the effect handler result
+// TODO union never is not the type because it will return the effect handler result
 // I can't work out what should be value of effect type
-const effect_fn = #("effect", polytype.Polytype([-99], t.Function(t.Union([], Some(-99)), t.Union([], None), t.Row([], Some(-99)))))
+const effect_fn = #("effect", polytype.Polytype([-99], t.Function(t.Union([], Some(-99)), t.Union([], None), t.Union([], Some(-99)))))
 
 pub fn effect_literal_test() {
     let source = log(e.binary("hello"))
@@ -81,40 +81,39 @@ pub fn effect_literal_test() {
     // Probably we want something around the effect types to be returned
 }
 
-const log_fn = #("log", polytype.Polytype([1], t.Function(t.Binary, t.Tuple([]), t.Row([#("Log", t.Binary)], Some(1)))))
-const abort_fn = #("abort", polytype.Polytype([1], t.Function(t.Tuple([]), t.Tuple([]), t.Row([#("Abort", t.Tuple([]))], Some(1)))))
+const log_fn = #("log", polytype.Polytype([1], t.Function(t.Binary, t.Tuple([]), t.Union([#("Log", t.Binary)], Some(1)))))
+const abort_fn = #("abort", polytype.Polytype([1], t.Function(t.Tuple([]), t.Tuple([]), t.Union([#("Abort", t.Tuple([]))], Some(1)))))
 
 pub fn single_effect_test() {
     let source = e.call(e.variable("log"), e.binary("my log"))
 
     // I think effect type should just be union
     // open effects space
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([], Some(-2)), [log_fn])
-    assert t.Union([#("Log", t.Binary)], Some(_)) = t.resolve(t.Union([], Some(-2)), typer.substitutions)
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Unbound(-2), [log_fn])
+    assert t.Union([#("Log", t.Binary)], Some(_)) = t.resolve(t.Unbound(-2), typer.substitutions)
     assert [] = typer.inconsistencies
 
     // unbound term of effect
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([#("Log", t.Unbound(-2))], None), [log_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Union([#("Log", t.Unbound(-2))], None), [log_fn])
     assert t.Binary = t.resolve(t.Unbound(-2), typer.substitutions)
     assert [] = typer.inconsistencies
 
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([#("Log", t.Binary)], None), [log_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Union([#("Log", t.Binary)], None), [log_fn])
     assert [] = typer.inconsistencies
 
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([#("Log", t.Tuple([]))], None), [log_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Union([#("Log", t.Tuple([]))], None), [log_fn])
     assert [#([0], typer.UnmatchedTypes(t.Tuple([]), t.Binary))] = typer.inconsistencies
 
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([], None), [log_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [log_fn])
     assert [#([0], typer.UnexpectedFields([#("Log", t.Binary)]))] = typer.inconsistencies
 
-    io.debug("here")
     // function test
     let source = e.function(p.Tuple([]), source)
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([], None), [log_fn])
+    // Potentially open is a better name to t.empty
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [log_fn])
     assert [] = typer.inconsistencies
-    io.debug(typer.substitutions)
-    assert t.Binary = t.resolve(t.Unbound(-1), typer.substitutions)
-    |> io.debug
+    assert t.Function(t.Tuple([]), t.Tuple([]), effect) = t.resolve(t.Unbound(-1), typer.substitutions)
+    assert t.Union([#("Log", t.Binary)], Some(_)) = effect
 }
 
 pub fn multiple_call_effect_test() {
@@ -122,15 +121,23 @@ pub fn multiple_call_effect_test() {
 
     // I think effect type should just be union
     // open effects space
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([], Some(-2)), [log_fn, abort_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Unbound(-2), [log_fn, abort_fn])
     assert [] = typer.inconsistencies
     assert t.Union([#("Abort", t.Tuple([])), #("Log", t.Binary)], Some(_)) = t.resolve(t.Union([], Some(-2)), typer.substitutions)
 
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([#("Log", t.Tuple([]))], None), [log_fn, abort_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Union([#("Log", t.Tuple([]))], None), [log_fn, abort_fn])
     assert [
         #([1, 0], typer.UnmatchedTypes(t.Tuple([]), t.Binary)),
         #([0], typer.UnexpectedFields([#("Abort", t.Tuple([]))])),        
     ] = typer.inconsistencies
+
+        // function test
+    let source = e.function(p.Tuple([]), source)
+    // Potentially open is a better name to t.empty
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [log_fn, abort_fn])
+    assert [] = typer.inconsistencies
+    assert t.Function(t.Tuple([]), t.Tuple([]), effect) = t.resolve(t.Unbound(-1), typer.substitutions)
+    assert t.Union([#("Abort", t.Tuple([])), #("Log", t.Binary)], Some(_)) = effect
 }
 
 pub fn multiple_let_effect_test() {
@@ -140,13 +147,20 @@ pub fn multiple_let_effect_test() {
     
     // I think effect type should just be union
     // open effects space
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([], Some(-2)), [log_fn, abort_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Unbound(-2), [log_fn, abort_fn])
     assert [] = typer.inconsistencies
     assert t.Union([#("Log", t.Binary), #("Abort", t.Tuple([]))], Some(_)) = t.resolve(t.Union([], Some(-2)), typer.substitutions)
 
-    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Row([#("Log", t.Tuple([]))], None), [log_fn, abort_fn])
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Union([#("Log", t.Tuple([]))], None), [log_fn, abort_fn])
     assert [
         #([2, 0], typer.UnexpectedFields([#("Abort", t.Tuple([]))])),        
         #([1, 0], typer.UnmatchedTypes(t.Tuple([]), t.Binary)),
     ] = typer.inconsistencies
+
+    let source = e.function(p.Tuple([]), source)
+    // Potentially open is a better name to t.empty
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [log_fn, abort_fn])
+    assert [] = typer.inconsistencies
+    assert t.Function(t.Tuple([]), t.Tuple([]), effect) = t.resolve(t.Unbound(-1), typer.substitutions)
+    assert t.Union([#("Log", t.Binary), #("Abort", t.Tuple([]))], Some(_)) = effect
 }

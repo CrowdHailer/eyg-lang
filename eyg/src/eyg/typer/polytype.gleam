@@ -60,8 +60,7 @@ pub fn replace_variable(monotype, x, y) {
       t.Union(variants, rest)
     }
     t.Function(from, to, effects) ->
-      // TODO test and fix
-      t.Function(replace_variable(from, x, y), replace_variable(to, x, y), effects)
+      t.Function(replace_variable(from, x, y), replace_variable(to, x, y), replace_variable(effects, x, y))
     t.Unbound(i) ->
       case i == x {
         True -> t.Unbound(y)
@@ -113,8 +112,7 @@ pub fn replace_type(monotype, x, t) {
       t.Union(variants, rest)
     }
     t.Function(from, to, effects) ->
-      // TODO test and replace
-      t.Function(replace_type(from, x, t), replace_type(to, x, t), effects)
+      t.Function(replace_type(from, x, t), replace_type(to, x, t), replace_type(effects, x, t))
     t.Unbound(i) ->
       case i == x {
         True -> t

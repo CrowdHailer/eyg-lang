@@ -12,13 +12,13 @@ import eyg/typer
 import platform/browser
 
 pub fn compile(untyped, scope) {
-  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1),  t.Row([], None), scope)
+  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1),  t.empty, scope)
   let #(typed, typer) = typer.expand_providers(typed, typer, [])
   javascript.render(typed, javascript.Generator(False, [], typer, None))
 }
 
 pub fn eval(untyped, scope) {
-  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1), t.Row([], None), scope)
+  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1), t.empty, scope)
   let #(typed, typer) = typer.expand_providers(typed, typer, [])
   javascript.eval(typed, typer)
 }
