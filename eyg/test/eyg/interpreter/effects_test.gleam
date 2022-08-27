@@ -11,8 +11,6 @@ import eyg/typer/polytype
 import eyg/analysis
 
 
-// TODO try/catch syntax does work with multi resume
-
 fn log(term) { 
     e.call(e.variable("effect"), e.tagged("Log", term))
 }

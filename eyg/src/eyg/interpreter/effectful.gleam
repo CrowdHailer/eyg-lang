@@ -15,7 +15,7 @@ fn handle(handler, computation) {
 
 fn effect(term) { 
     case term {
-        r.Tagged(name, value) -> Ok(r.Effect(name, value, fn(x) { Ok(x)}))
+        r.Tagged(name, value) -> Ok(r.Effect(name, value, fn(x) { Ok(x) }))
         _ -> Error("not a good effect")
     }
 }
@@ -24,7 +24,7 @@ fn effect(term) {
 fn env() { 
     map.new()
     |> map.insert("effect", r.BuiltinFn(effect))
-    |> map.insert("handle", r.BuiltinFn(fn(x) {Ok(r.BuiltinFn(handle(x,_)))}))
+    |> map.insert("handle", r.BuiltinFn(fn(handler) {Ok(r.BuiltinFn(handle(handler,_)))}))
 }
 
 pub fn eval(source) {

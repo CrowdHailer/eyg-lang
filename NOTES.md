@@ -215,6 +215,38 @@ https://twitter.com/roc_lang/status/1441557679978295298
 - nice syntax https://www.microsoft.com/en-us/research/wp-content/uploads/2016/08/algeff-tr-2016-1.pdf
 - Deep but react specific view into the ideas. https://www.yld.io/blog/continuations-coroutines-fibers-effects/
 
+#### Adding a try catch AST
+
+The following is a neat approach to add effects to a language. But this requires several AST notes
+It also is not the cleanest for multiple runs of the continuation
+
+```js
+run {
+  const [] = effect Log("hello")
+} handle (Log, message) {
+  // ..do logging
+}
+```
+
+Potentially the following works
+```js
+run {
+  let [] = effect Log("hello")
+  let [] = effect Log("world")
+  "Done"
+} handle (Log, message, continue) {
+  let [messages, value] = continue([])
+  let messages = [message, ..messages]
+  #(messages, value)
+} pure (value) {
+  #([], value)
+}
+
+// => #(["Hello", "World"], "Done")
+```
+
+
+
 ## Modelling
 
 Good search terms

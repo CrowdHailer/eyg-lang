@@ -109,16 +109,14 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
                 do_eval(arg, env, fn(arg) {
                     try value = eval_call(func, arg)
                     case value {
+                        // when an Effect occurs evaluation needs to stop until the effect finds a handler.
+                        // continuing evaluation can create multiple effects that would need a second tree walk to be continued
                         r.Effect(name,value,next) -> {
                             Ok(r.Effect(name, value, fn(x) {
                                 // Is there a nicer way to call this is we have defuntionalized
                                 try x = cont(x)
                                 next(x)
                             }))
-                            // Call continue IF we want to pass values in to handler, think the above might make more sense
-                            // Cannot pass as pure here because we get tuple of effects
-                            // cont(r.Effect(name, value, cont))
-                            // cont(r.Binary("totalyl wrong"))
                         }
                         _ -> cont(value)
                     }
