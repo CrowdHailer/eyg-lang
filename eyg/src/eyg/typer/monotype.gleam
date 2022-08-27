@@ -4,9 +4,9 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
 
-pub type Row {
-  Row(members: List(#(String, Monotype)), extra: Option(Int))
-}
+// pub type Row {
+//   Row(members: List(#(String, Monotype)), extra: Option(Int))
+// }
 
 pub type Monotype {
   Native(name: String, parameters: List(Monotype))
@@ -51,7 +51,7 @@ pub fn literal(monotype) {
       string.concat(["new T.Record(Gleam.toList([", fields, "]), ", extra, ")"])
     }
     Function(from, to, effects) ->
-      // TODO add effects
+      // need to add effects
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
     Native(_, _) | Union(_, _) | Recursive(_, _) -> todo("ss literal")
@@ -231,9 +231,9 @@ fn do_used_in_type(set, type_) {
       do_used_in_type(set, type_)
     }
     Function(from, to, effects) -> {
-      // TODO fix used in type
       let set = do_used_in_type(set, from)
-      do_used_in_type(set, to)
+      let set = do_used_in_type(set, to)
+      do_used_in_type(set, effects)
     }
   }
 }

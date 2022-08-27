@@ -166,9 +166,9 @@ pub fn function_test() {
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Unbound(_), t.Binary, _) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-2), t.empty), [])
+    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-2), t.Unbound(-3)), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Unbound(_), t.Binary, _) = type_
+  assert t.Function(t.Unbound(_), t.Binary, t.Unbound(_)) = type_
   let #(typed, checker) =
     analysis.infer(source, t.Function(t.Tuple([]), t.Binary, t.empty), [])
   assert Ok(type_) = analysis.get_type(typed, checker)

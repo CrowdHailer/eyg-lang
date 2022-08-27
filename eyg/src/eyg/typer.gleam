@@ -316,57 +316,6 @@ pub fn do_unify(
   }
 }
 
-// TODO use for union/Record
-fn unify_rows(state, row1, row2) { 
-  let #(state, seen) = state
-  let #(next, state) = next_unbound(state)
-
-  let t.Row(items1, extra1) = row1
-  let t.Row(items2, extra2) = row2
-  let #(unmatched1, unmatched2, shared) = group_shared(items1, items2)
-  try #(state, seen) = case unmatched2, extra1 {
-    [], None -> Ok(#(state, seen))
-    only, Some(i) ->
-      Ok(add_substitution(
-        i,
-        t.Union(
-          only,
-          case extra2 {
-            Some(_) -> Some(next)
-            None -> None
-          },
-        ),
-        #(state, seen),
-      ))
-    only, None -> Error(UnexpectedFields(only))
-  }
-  io.debug(items1)
-  io.debug(items2)
-  io.debug([extra1, extra2])
-  case extra1, extra2 {
-    Some(i), Some(j) if i == j -> todo("this case isnt handled")
-    _ , _ -> Nil
-  }
-  try #(state, seen) = case unmatched1, extra2 {
-    [], None -> Ok(#(state, seen))
-    only, Some(i) ->
-      Ok(add_substitution(
-        i,
-        t.Union(
-          only,
-          case extra1 {
-            Some(_) -> Some(next)
-            None -> None
-          },
-        ),
-        #(state, seen),
-      ))
-    only, None -> Error(MissingFields(only))
-  }
-  list.try_fold(shared, #(state, seen), do_unify)
-  // return #(missing, mismatched, extra) in left right, have record union know what to do
-}
-
 fn add_substitution(
   i,
   type_,
