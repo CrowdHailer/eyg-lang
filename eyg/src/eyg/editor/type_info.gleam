@@ -69,13 +69,32 @@ pub fn to_string(monotype, ) {
         "]",
       ])
     }
-    // TODO render effects here
-    t.Function(from, to, _) ->
+    t.Function(from, to, effects) -> {
+      let t.Row(items, extra) = effects
+      let extra = case extra {
+        Some(i) -> [string.concat(["..", int.to_string(i)])]
+        None -> []
+      }
+      let effects = case list.length(items) == 0 {
+        True -> ""
+        False -> string.concat([
+          "{",
+          string.concat(list.intersperse(
+            list.map(items, variant_to_string(_, ))
+            |> list.append(extra),
+            " | ",
+          )),
+          "}",
+        ])
+      } 
       string.concat([
         to_string(from, ),
-        " -> ",
+        " ->",
+        effects,
+        " ",
         to_string(to, ),
       ])
+    }
     t.Unbound(i) -> int.to_string(i)
     t.Recursive(i, inner) -> {
       let inner = to_string(inner, )

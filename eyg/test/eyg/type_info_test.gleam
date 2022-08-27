@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/option.{None, Some}
 // only use t.version
 import eyg/typer/monotype.{Binary, Function, Native, Record, Tuple, Unbound} as t
@@ -13,6 +14,9 @@ pub fn type_to_string_test() {
       Record([#("foo", Binary), #("bar", Tuple([]))], None),
       
     )
-  let "() -> Binary" = to_string(Function(Tuple([]), Binary, t.empty), )
-  // TODO with effects test
+  let "[Foo () | Bar Binary]" = to_string(t.Union([#("Foo", t.Tuple([])), #("Bar", t.Binary)], None))
+  let "[Foo () | ..0]" = to_string(t.Union([#("Foo", t.Tuple([]))], Some(0)))
+  let "() -> Binary" = to_string(Function(Tuple([]), Binary, t.empty))
+  let "() ->{Abort () | Log Binary} Binary" = to_string(Function(Tuple([]), Binary, t.Row([#("Abort", t.Tuple([])), #("Log", t.Binary)], None)))
+  let "() ->{Abort () | ..1} Binary" = to_string(Function(Tuple([]), Binary, t.Row([#("Abort", t.Tuple([]))], Some(1))))
 }
