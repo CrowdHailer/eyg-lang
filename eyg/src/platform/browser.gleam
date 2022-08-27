@@ -10,6 +10,8 @@ import eyg/editor/type_info
 import eyg/typer/polytype
 import eyg/typer/harness
 
+// TODO make all effectual functions open
+// TODO dont need to make open and just pass around rows
 fn callback(arg, return, then) { 
       t.Function(arg, t.Function(t.Function(return, t.Unbound(then), t.empty), t.Unbound(then), t.empty), t.empty)
 }
@@ -32,7 +34,8 @@ pub fn harness() {
         #("ui", t.Native("Pid", [t.Binary])),
         #("log", t.Native("Pid", [t.Binary])),
         #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Unbound(871), t.empty)])),
-      ], None), t.Binary, t.empty), t.Binary, t.empty)))
+      ], None), t.Binary, t.empty), t.Binary, t.empty))),
+      #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Unbound(-441))))
     ],
 
   )
@@ -95,7 +98,7 @@ fn int() {
 // perhaps they should be letters or similar
 pub fn string() {
   polytype.Polytype(
-    [1, 2, 3, 4, 5, 6, 7,8, 9, 10, 11],
+    [1, 2, 3, 4, 5, 6, 7,8, 9, 10, 11, 12],
     t.Record(
       [
         #(
@@ -119,7 +122,7 @@ pub fn string() {
           ),
         ),
         #("concat", t.Function(t.Tuple([t.Binary, t.Binary]), t.Binary, t.empty)),
-        #("debug", t.Function(t.Unbound(2), t.Unbound(2), t.empty)),
+        #("debug", t.Function(t.Unbound(2), t.Unbound(2), t.Union([#("Log", t.Binary)], Some(12)))),
         // #("inspect", t.Function(t.Unbound(6), t.Binary)),
         #(
           "compile",

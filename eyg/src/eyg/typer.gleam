@@ -352,11 +352,11 @@ fn fresh(typer) {
 // remove all references to "True" "Some" "Ok"
 pub fn equal_fn() {
   polytype.Polytype(
-    [1],
+    [1, 2],
     t.Function(
       t.Tuple([t.Unbound(1), t.Unbound(1)]),
       t.Union([#("True", t.Tuple([])), #("False", t.Tuple([]))], None),
-      t.empty,
+      t.open(2),
     ),
   )
 }
@@ -603,7 +603,11 @@ pub fn infer(
           let arg_type = t.Unbound(x)
           let #(y, typer) = next_unbound(typer)
           let return_type = t.Unbound(y)
-          let self_type = t.Function(arg_type, return_type, t.empty)
+          let #(z, typer) = next_unbound(typer)
+          let effect_type = t.Unbound(z)
+
+          // TODO test effects in optionally reursive functions
+          let self_type = t.Function(arg_type, return_type, effect_type)
           let inner_scope = set_self_variable(#(label, self_type), scope)
           let #(body, typer, type_) =
             infer_function(
@@ -709,6 +713,8 @@ pub fn infer(
       // unifys value with patterns
       let #(value, typer) =
         infer(value, expected_value, effects, #(typer, child(scope, 0)))
+
+      let effects = t.resolve(effects, typer.substitutions)
       // Case could fail if not a union type at all ?
       let #(branches, typer) =
         misc.map_state(
@@ -717,6 +723,9 @@ pub fn infer(
           fn(inf, typer) {
             let #(name, pattern, then, scope) = inf
             let #(then, typer) = infer(then, expected,effects, #(typer, scope))
+            // TODO move resolving effects to the bottom
+            let effects = t.resolve(effects, typer.substitutions)
+
             let branch = #(name, pattern, then)
             #(branch, typer)
           },
@@ -760,6 +769,9 @@ fn infer_function(pattern, body, expected, typer, scope, body_index) {
   let effects = t.Unbound(z)
   let given = t.Function(arg_type, return_type, effects)
   let #(type_, typer) = try_unify(expected, given, typer, scope.path)
+
+  let effects = t.resolve(effects, typer.substitutions)
+  
   let bound_variables =
     list.map(
       bound_variables,

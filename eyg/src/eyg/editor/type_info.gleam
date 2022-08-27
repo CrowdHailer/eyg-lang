@@ -69,28 +69,11 @@ pub fn to_string(monotype, ) {
         "]",
       ])
     }
-    t.Function(from, to, effects) -> {
-      assert t.Union(items, extra) = effects
-      let extra = case extra {
-        Some(i) -> [string.concat(["..", int.to_string(i)])]
-        None -> []
-      }
-      let effects = case list.length(items) == 0 {
-        True -> ""
-        False -> string.concat([
-          "{",
-          string.concat(list.intersperse(
-            list.map(items, variant_to_string(_, ))
-            |> list.append(extra),
-            " | ",
-          )),
-          "}",
-        ])
-      } 
+    t.Function(from, to, effects) -> { 
       string.concat([
         to_string(from, ),
         " ->",
-        effects,
+        to_string(effects),
         " ",
         to_string(to, ),
       ])

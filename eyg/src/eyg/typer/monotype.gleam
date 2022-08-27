@@ -20,6 +20,9 @@ pub type Monotype {
 }
 
 pub const empty = Union([], None)
+pub fn open(i)  {
+  Union([], Some(i))
+}
 
 pub fn literal(monotype) {
   case monotype {

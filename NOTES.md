@@ -245,7 +245,10 @@ run {
 // => #(["Hello", "World"], "Done")
 ```
 
+#### Functions in harness
 
+It's a gotcha that needs avoiding but as it stands any closed effects for a function result in locking the whole block.
+It would be best to udate the unification algorithm so we understood better what was bad/unused
 
 ## Modelling
 
