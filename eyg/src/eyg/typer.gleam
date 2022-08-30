@@ -715,7 +715,7 @@ pub fn infer(
       let expression = #(meta(Ok(expected)), e.Call(#(meta(r), e.Variable("do")), with))
       #(expression, typer)
     }
-    e.Call(#(_, e.Variable("catch")), with) -> {
+    e.Call(#(_, e.Variable("impl")), with) -> {
       // x: union of effects handled in this catch block
       let #(x, typer) = next_unbound(typer)
       // y/handled_return: value each branch of the handler must return and final return value
@@ -776,7 +776,7 @@ pub fn infer(
       let given = catcher_type
       let #(_, typer) = try_unify(expected, given, typer, scope.path)
 
-      let expression = #(meta(Ok(expected)), e.Call(#(meta(Ok(function_type)), e.Variable("catch")), with))
+      let expression = #(meta(Ok(expected)), e.Call(#(meta(Ok(function_type)), e.Variable("impl")), with))
       #(expression, typer)
     }
     e.Call(function, with) -> {

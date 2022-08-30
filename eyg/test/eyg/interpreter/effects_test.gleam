@@ -91,7 +91,8 @@ pub fn unbound_effect_literal_test() {
 
     assert [] = typer.inconsistencies
     assert Ok(t.Unbound(-1)) = get_type(typed, typer)
-    assert t.Union([#("Log", t.Function(t.Binary, t.Unbound(-1), _))], Some(_)) = t.resolve(t.Unbound(-2), typer.substitutions)
+    assert t.Union([#("Log", t.Function(t.Binary, t.Unbound(-1), after))], Some(_)) = t.resolve(t.Unbound(-2), typer.substitutions)
+    // TODO do we want linear types
 
     assert Ok(t.Union([#("Log", t.Binary)], None)) = get_sub_type(typed, typer, [1])
     assert Ok(t.Function(t.Union([#("Log", t.Binary)], None), t.Unbound(-1), _)) = get_sub_type(typed, typer, [0])
@@ -180,7 +181,7 @@ pub fn mismateched_effect_in_block_test() {
 
 
 pub fn not_a_function_handler_test() {
-    let source = e.call(e.variable("catch"), e.binary("yo!"))
+    let source = e.call(e.variable("impl"), e.binary("yo!"))
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
     // maybe this ends up on the call level i.e. an error at the root
@@ -189,7 +190,7 @@ pub fn not_a_function_handler_test() {
 }
 
 pub fn handler_is_not_union_test() {
-    let source = e.call(e.variable("catch"), e.function(p.Tuple([]), e.binary("yo!")))
+    let source = e.call(e.variable("impl"), e.function(p.Tuple([]), e.binary("yo!")))
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
     // maybe this ends up on the call level i.e. an error at the root
@@ -198,7 +199,7 @@ pub fn handler_is_not_union_test() {
 }
 
 pub fn handler_is_missing_effect_test() {
-    let source = e.call(e.variable("catch"), e.function(p.Variable("effect"), e.case_(e.variable("effect"), [
+    let source = e.call(e.variable("impl"), e.function(p.Variable("effect"), e.case_(e.variable("effect"), [
         #("Return", p.Tuple([]), e.binary("pure")),
     ])))
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
@@ -214,7 +215,7 @@ pub fn infer_handler_test() {
         #("Return", p.Tuple([]), e.tuple_([e.binary("foo"), e.tuple_([])])),
         #("Foo", p.Tuple(["v", "k"]), e.tuple_([e.variable("v"), e.call(e.variable("k"), e.binary("read"))]))
     ]))
-    let source = e.call(e.variable("catch"), handler)
+    let source = e.call(e.variable("impl"), handler)
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
     assert [] = typer.inconsistencies
@@ -237,7 +238,7 @@ pub fn infer_continuation_type_test() {
         #("Return", p.Variable(""), e.hole()),
         #("Foo", p.Tuple(["v", "k"]), e.tuple_([e.variable("v"), e.variable("k")]))
     ]))
-    let source = e.call(e.variable("catch"), handler)
+    let source = e.call(e.variable("impl"), handler)
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
     assert [#(_, typer.Warning(_))] = typer.inconsistencies
@@ -248,11 +249,7 @@ pub fn infer_continuation_type_test() {
     assert t.Function(t.Unbound(input), t.Tuple([t.Unbound(effect_arg), 
         t.Function(t.Unbound(effect_return), t.Unbound(cont_return), cont_effect)
     ]), t.Union([], Some(outer))) = exec
-    |> io.debug
-    io.debug(cont_effect)
-    io.debug("---")
     assert t.Function(t.Unbound(i), t.Unbound(c_ret), t.Union([#("Foo", effect)], Some(other_effects))) = computation
-    |> io.debug
     assert t.Function(t.Unbound(eff_arg), t.Unbound(eff_ret), eff) = effect
     assert True = i == input
     assert True = effect_arg == eff_arg
@@ -260,17 +257,6 @@ pub fn infer_continuation_type_test() {
     // cont_return is trivial
     assert True = cont_return == c_ret
 
-    // io.debug(eff_arg)
-    // io.debug(effect_arg)
-    // assert True = 
-    io.debug("---")
-    
-
-    // Pure handles a tuple so the return type here needs to be the same
-    // Foo effect is available to computation, but we also need to extend by the environment effects
-    |> io.debug
-    // assert True = other_effects == outer
-    |> io.debug
 }
 
 // TODO recursive test

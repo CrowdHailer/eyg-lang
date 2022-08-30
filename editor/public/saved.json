@@ -12,7 +12,7 @@
         "node": "Call",
         "function": {
           "node": "Variable",
-          "label": "catch"
+          "label": "impl"
         },
         "with": {
           "node": "Function",
