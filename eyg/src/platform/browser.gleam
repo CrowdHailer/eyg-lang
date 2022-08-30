@@ -35,7 +35,14 @@ pub fn harness() {
         #("log", t.Native("Pid", [t.Binary])),
         #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Unbound(871), t.empty)])),
       ], None), t.Binary, t.empty), t.Binary, t.empty))),
-      #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Unbound(-441))))
+      // #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Unbound(-441))))
+      // #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Function(t.Unbound(-441), t.Unbound(-442)))))
+      // #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Unbound(-441))))
+
+      // I think handling needs a dynamic mapping of types
+      // So does effect because the tag needs to be in the function
+      // Needs map function types
+      // #("handle", polytype.Polytype())
     ],
 
   )

@@ -331,6 +331,7 @@ pub fn handle_transformation(
 ) -> #(Option(e.Expression(Dynamic, Dynamic)), List(Int), Mode) {
   let Editor(source: tree, ..) = editor
   let inconsistencies = inconsistencies(editor)
+  io.debug(inconsistencies)
   case key, ctrl_key {
     // move
     "h", False -> navigation(move_left(tree, position))

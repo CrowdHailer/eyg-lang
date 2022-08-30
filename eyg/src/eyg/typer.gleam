@@ -581,9 +581,15 @@ pub fn infer(
       let expression = #(meta(type_), e.Tagged(tag, value))
       #(expression, typer)
     }
+    e.Variable(label) if label == "raise" || label == "catch" -> {
+      let expression = #(meta(Ok(expected)), e.Variable(label))
+      #(expression, typer)
+    }
     e.Variable(label) -> {
       // Returns typer because of instantiation,
       // TODO separate lookup for instantiate, good for let rec
+      // io.debug("booo")
+      // io.debug(t.resolve(expected, typer.substitutions))
       let #(type_, typer) = case get_variable(label, typer, scope) {
         Ok(#(given, typer)) -> try_unify(expected, given, typer, scope.path)
         Error(reason) -> {
@@ -647,7 +653,7 @@ pub fn infer(
       let #(typer, scope) = state
       let scope = child(scope, 2)
       // This is essentially an instantiation
-      assert effects = t.resolve(effects, typer.substitutions)
+      // assert effects = t.resolve(effects, typer.substitutions)
       
       let #(then, typer) = infer(then, expected, effects, #(typer, scope))
       // Let is always OK the error is on the term inside
@@ -660,14 +666,124 @@ pub fn infer(
         infer_function(pattern, body, expected, typer, scope, 1)
       #(#(meta(type_), e.Function(pattern, body)), typer)
     }
+    // this is a specific keyword, we could have keyword pluggable and then allow overwriting of keyword. But why do that
+    e.Call(#(_, e.Variable("raise")), with) -> {
+      let #(x, typer) = next_unbound(typer)
+      let arg_type = t.Union([], Some(x))
+      let #(with, typer) = infer(with, arg_type, effects, #(typer, child(scope, 1)))
+
+      let #(y, typer) = next_unbound(typer)
+      let function_type = t.Unbound(y)
+
+      let #(r, typer) = case get_type(with) {
+        Ok(type_) -> {
+          assert t.Union([#(name, value)], Some(extra)) = t.resolve(type_, typer.substitutions)
+
+          // All the effect variants need to be known when deciding the type of the effect keyword.
+          // This unification ensures that the union is closed
+          let #(_, typer) = try_unify(t.Unbound(extra), t.Union([], None), typer, child(scope, 1).path)
+
+          let #(z, typer) = next_unbound(typer)
+          // Tuple as unit for pure effects, I think this is the type of the continuation
+          let raised = t.Union([#(name, t.Function(value, expected, t.Tuple([])))], Some(z))
+
+          // Can unify with an unbound value for raised so that we show the call is at least a function
+          let expected_function = t.Function(arg_type, expected, raised)
+          let #(r1, typer) = try_unify(function_type, expected_function, typer,  child(scope, 0).path)
+
+          let #(r2, typer) = try_unify(effects, raised, typer, child(scope, 0).path)
+          // TODO test errors are kept
+          let r = case r1, r2 {
+            Ok(_), Ok(_) -> r1
+            Error(_), _ -> r1
+            _, _ -> r2
+          }
+          #(r, typer)
+        }
+        Error(reason) -> #(Ok(function_type), typer)
+      }
+
+      let expression = #(meta(Ok(expected)), e.Call(#(meta(r), e.Variable("raise")), with))
+      #(expression, typer)
+    }
+    e.Call(#(_, e.Variable("catch")), with) -> {
+      // x: union of effects handled in this catch block
+      let #(x, typer) = next_unbound(typer)
+      // y/handled_return: value each branch of the handler must return and final return value
+      let #(y, typer) = next_unbound(typer)
+      let handled_return = t.Unbound(y)
+            
+      let #(z, typer) = next_unbound(typer)
+      let computation_arg = t.Unbound(z)
+      // a/computation_return value of the computed being executed with out effect raised
+      let #(a, typer) = next_unbound(typer)
+      let computation_return = t.Unbound(a)
+      // // b/inner_effects: the set of effects available to the computation, should only include external effects when actually called
+      // let #(b, typer) = next_unbound(typer)
+      // let inner_effects = t.Unbound(b)
+      // effects thrown by handler same as final exec type
+      let #(c, typer) = next_unbound(typer)
+      let unhandled_effects = t.Union([], Some(c))
+      // effect arg type/might be n of these
+      let #(d, typer) = next_unbound(typer)
+      let effect_arg = t.Unbound(d)
+      let #(e, typer) = next_unbound(typer)
+      let effect_return = t.Unbound(e)
+
+
+      // fn(handler_type) -> fn(computation_type) -> 
+      let handler_type = t.Function(t.Union([#("Pure", computation_return)], Some(x)), handled_return, unhandled_effects)
+
+
+
+      let #(_, temp_typer) = infer(with, handler_type, effects, #(typer, child(scope, 1)))
+      let #(inner_effects, handler_type) = case t.resolve(t.Unbound(x), temp_typer.substitutions) |> io.debug {
+        t.Union([#(name, _)], None) -> {
+          // TODO remove 171
+          let inner_effects = t.Union([#(name, t.Function(effect_arg, effect_return, t.Unbound(-171)))], None)
+          // TODO this is probably outer effects because you need to call catch again
+          let continuation_type = t.Function(effect_return ,computation_return, inner_effects)
+          let handler_type = t.Function(
+            t.Union([#("Pure", computation_return), #(name, t.Tuple([effect_arg, continuation_type]))], None), 
+            handled_return, 
+            unhandled_effects
+          )
+          #(inner_effects, handler_type)
+        }
+        // Maybe this shouldn't be empty
+        _ -> {
+          io.debug("NO MATCHINGGGG!!!!!!!!!!!!!!1")
+          // TODO need to catch this inconsistency
+          #(t.empty, handler_type)
+        }
+      }
+      let #(with, typer) = infer(with, handler_type, effects, #(typer, child(scope, 1)))
+      io.debug("inner")
+      io.debug(inner_effects)
+
+      // type of final call
+      let exec_type = t.Function(computation_arg, handled_return, unhandled_effects)
+      let computation_type = t.Function(computation_arg, computation_return, inner_effects)
+      let catcher_type = t.Function(computation_type, exec_type, t.Union([], None))
+      // type to assign the catch function
+      let function_type = t.Function(handler_type, catcher_type, effects)
+
+      let given = catcher_type
+      let #(_, typer) = try_unify(expected, given, typer, scope.path)
+
+      let expression = #(meta(Ok(expected)), e.Call(#(meta(Ok(function_type)), e.Variable("catch")), with))
+      #(expression, typer)
+    }
     e.Call(function, with) -> {
       let #(x, typer) = next_unbound(typer)
       let arg_type = t.Unbound(x)
       let expected_function = t.Function(arg_type, expected, effects)
+
+      // Is this where we should instantiate every effect list
       let #(function, typer) =
         infer(function, expected_function, effects, #(typer, child(scope, 0)))
       // This should be unecessary
-      assert effects = t.resolve(effects, typer.substitutions)
+      // assert effects = t.resolve(effects, typer.substitutions)
       // merge effects is different to ther function matching because it should be fixed
       // I think resolving is sensible Also test that open effect remains open forever
 
@@ -714,7 +830,7 @@ pub fn infer(
       let #(value, typer) =
         infer(value, expected_value, effects, #(typer, child(scope, 0)))
 
-      let effects = t.resolve(effects, typer.substitutions)
+      // let effects = t.resolve(effects, typer.substitutions)
       // Case could fail if not a union type at all ?
       let #(branches, typer) =
         misc.map_state(
@@ -724,7 +840,7 @@ pub fn infer(
             let #(name, pattern, then, scope) = inf
             let #(then, typer) = infer(then, expected,effects, #(typer, scope))
             // TODO move resolving effects to the bottom
-            let effects = t.resolve(effects, typer.substitutions)
+            // let effects = t.resolve(effects, typer.substitutions)
 
             let branch = #(name, pattern, then)
             #(branch, typer)
@@ -770,7 +886,7 @@ fn infer_function(pattern, body, expected, typer, scope, body_index) {
   let given = t.Function(arg_type, return_type, effects)
   let #(type_, typer) = try_unify(expected, given, typer, scope.path)
 
-  let effects = t.resolve(effects, typer.substitutions)
+  // let effects = t.resolve(effects, typer.substitutions)
   
   let bound_variables =
     list.map(
