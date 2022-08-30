@@ -60,7 +60,6 @@ pub fn loop_test() {
   assert Ok(type_) = analysis.get_type(typed, checker)
   let "() -> [True () | False, ()] -> Binary" =
     type_info.to_string(type_)
-    |> io.debug
   // Shouldn't be getting stuck in case where return value is unknown
   // Needs a drop out
 }
@@ -75,7 +74,6 @@ pub fn actor_loop_test()  {
   assert Ok(type_) = analysis.get_type(typed, checker)
   let "0 -> μ1.0 -> 1" =
     type_info.to_string(type_)
-    |> io.debug
 }
 
 pub fn recursive_union_test() {
