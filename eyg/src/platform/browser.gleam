@@ -28,7 +28,7 @@ pub fn harness() {
         [15, -87],
         callback(t.Tuple([t.Native("Pid", [t.Unbound(15)]), t.Unbound(15)]), t.Tuple([]), -87))
       ),
-      #("done", polytype.Polytype([-111], t.Function(t.Unbound(-111), t.Native("Run", [t.Unbound(-111)]), t.empty))),
+      // #("done", polytype.Polytype([-111], t.Function(t.Unbound(-111), t.Native("Run", [t.Unbound(-111)]), t.empty))),
       // could call quote
       #("compile", polytype.Polytype([871], t.Function(t.Function(t.Record([
         #("ui", t.Native("Pid", [t.Binary])),

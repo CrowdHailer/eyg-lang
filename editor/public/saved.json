@@ -2,145 +2,358 @@
   "node": "Let",
   "pattern": {
     "node": "Variable",
-    "label": "x"
+    "label": "collect_logs"
   },
   "value": {
-    "node": "Call",
-    "function": {
+    "node": "Function",
+    "pattern": {
+      "node": "Variable",
+      "label": "effect"
+    },
+    "body": {
+      "node": "Case",
+      "value": {
+        "node": "Variable",
+        "label": "effect"
+      },
+      "branches": [
+        {
+          "node": "Branch",
+          "name": "Log",
+          "pattern": {
+            "node": "Tuple",
+            "elements": [
+              {
+                "node": "Bind",
+                "label": "line"
+              },
+              {
+                "node": "Bind",
+                "label": "kont"
+              }
+            ]
+          },
+          "then": {
+            "node": "Let",
+            "pattern": {
+              "node": "Tuple",
+              "elements": [
+                {
+                  "node": "Bind",
+                  "label": "logs"
+                },
+                {
+                  "node": "Bind",
+                  "label": "value"
+                }
+              ]
+            },
+            "value": {
+              "node": "Call",
+              "function": {
+                "node": "Call",
+                "function": {
+                  "node": "Call",
+                  "function": {
+                    "node": "Variable",
+                    "label": "impl"
+                  },
+                  "with": {
+                    "node": "Variable",
+                    "label": "collect_logs"
+                  }
+                },
+                "with": {
+                  "node": "Variable",
+                  "label": "kont"
+                }
+              },
+              "with": {
+                "node": "Tuple",
+                "elements": []
+              }
+            },
+            "then": {
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": "logs"
+              },
+              "value": {
+                "node": "Tagged",
+                "tag": "Cons",
+                "value": {
+                  "node": "Tuple",
+                  "elements": [
+                    {
+                      "node": "Variable",
+                      "label": "line"
+                    },
+                    {
+                      "node": "Variable",
+                      "label": "logs"
+                    }
+                  ]
+                }
+              },
+              "then": {
+                "node": "Tuple",
+                "elements": [
+                  {
+                    "node": "Variable",
+                    "label": "logs"
+                  },
+                  {
+                    "node": "Variable",
+                    "label": "value"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "node": "Branch",
+          "name": "Return",
+          "pattern": {
+            "node": "Variable",
+            "label": "value"
+          },
+          "then": {
+            "node": "Tuple",
+            "elements": [
+              {
+                "node": "Tagged",
+                "tag": "Nil",
+                "value": {
+                  "node": "Tuple",
+                  "elements": []
+                }
+              },
+              {
+                "node": "Variable",
+                "label": "value"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "then": {
+    "node": "Let",
+    "pattern": {
+      "node": "Tuple",
+      "elements": [
+        {
+          "node": "Bind",
+          "label": ""
+        },
+        {
+          "node": "Bind",
+          "label": ""
+        }
+      ]
+    },
+    "value": {
       "node": "Call",
       "function": {
         "node": "Call",
         "function": {
-          "node": "Variable",
-          "label": "impl"
+          "node": "Call",
+          "function": {
+            "node": "Variable",
+            "label": "impl"
+          },
+          "with": {
+            "node": "Variable",
+            "label": "collect_logs"
+          }
         },
         "with": {
           "node": "Function",
           "pattern": {
             "node": "Variable",
-            "label": "eff"
+            "label": ""
           },
           "body": {
-            "node": "Case",
-            "value": {
+            "node": "Let",
+            "pattern": {
               "node": "Variable",
-              "label": "eff"
+              "label": ""
             },
-            "branches": [
-              {
-                "node": "Branch",
-                "name": "Log",
-                "pattern": {
-                  "node": "Tuple",
-                  "elements": [
-                    {
-                      "node": "Bind",
-                      "label": "line"
-                    },
-                    {
-                      "node": "Bind",
-                      "label": "kont"
-                    }
-                  ]
-                },
-                "then": {
-                  "node": "Tuple",
-                  "elements": [
-                    {
-                      "node": "Call",
-                      "function": {
-                        "node": "Variable",
-                        "label": "kont"
-                      },
-                      "with": {
-                        "node": "Tuple",
-                        "elements": []
-                      }
-                    }
-                  ]
-                }
+            "value": {
+              "node": "Call",
+              "function": {
+                "node": "Variable",
+                "label": "do"
               },
-              {
-                "node": "Branch",
-                "name": "Pure",
-                "pattern": {
-                  "node": "Variable",
-                  "label": "v"
-                },
-                "then": {
+              "with": {
+                "node": "Tagged",
+                "tag": "Log",
+                "value": {
                   "node": "Tuple",
-                  "elements": [
-                    {
-                      "node": "Variable",
-                      "label": "v"
-                    }
-                  ]
+                  "elements": []
                 }
               }
-            ]
+            },
+            "then": {
+              "node": "Binary",
+              "value": "hello"
+            }
           }
         }
       },
       "with": {
-        "node": "Function",
-        "pattern": {
-          "node": "Tuple",
-          "elements": []
-        },
-        "body": {
-          "node": "Let",
-          "pattern": {
-            "node": "Variable",
-            "label": ""
-          },
-          "value": {
+        "node": "Tuple",
+        "elements": []
+      }
+    },
+    "then": {
+      "node": "Let",
+      "pattern": {
+        "node": "Variable",
+        "label": "x"
+      },
+      "value": {
+        "node": "Call",
+        "function": {
+          "node": "Call",
+          "function": {
             "node": "Call",
             "function": {
               "node": "Variable",
-              "label": "do"
+              "label": "impl"
             },
             "with": {
-              "node": "Tagged",
-              "tag": "Foo",
-              "value": {
-                "node": "Tuple",
-                "elements": []
+              "node": "Function",
+              "pattern": {
+                "node": "Variable",
+                "label": "eff"
+              },
+              "body": {
+                "node": "Case",
+                "value": {
+                  "node": "Variable",
+                  "label": "eff"
+                },
+                "branches": [
+                  {
+                    "node": "Branch",
+                    "name": "Log",
+                    "pattern": {
+                      "node": "Tuple",
+                      "elements": [
+                        {
+                          "node": "Bind",
+                          "label": "line"
+                        },
+                        {
+                          "node": "Bind",
+                          "label": "kont"
+                        }
+                      ]
+                    },
+                    "then": {
+                      "node": "Tuple",
+                      "elements": [
+                        {
+                          "node": "Call",
+                          "function": {
+                            "node": "Variable",
+                            "label": "kont"
+                          },
+                          "with": {
+                            "node": "Tuple",
+                            "elements": []
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "node": "Branch",
+                    "name": "Return",
+                    "pattern": {
+                      "node": "Variable",
+                      "label": "v"
+                    },
+                    "then": {
+                      "node": "Tuple",
+                      "elements": [
+                        {
+                          "node": "Variable",
+                          "label": "v"
+                        }
+                      ]
+                    }
+                  }
+                ]
               }
             }
           },
-          "then": {
-            "node": "Let",
+          "with": {
+            "node": "Function",
             "pattern": {
-              "node": "Variable",
-              "label": "x2"
+              "node": "Tuple",
+              "elements": []
             },
-            "value": {
-              "node": "Binary",
-              "value": "done"
-            },
-            "then": {
-              "node": "Variable",
-              "label": "x2"
+            "body": {
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": ""
+              },
+              "value": {
+                "node": "Call",
+                "function": {
+                  "node": "Variable",
+                  "label": "do"
+                },
+                "with": {
+                  "node": "Tagged",
+                  "tag": "Foo",
+                  "value": {
+                    "node": "Tuple",
+                    "elements": []
+                  }
+                }
+              },
+              "then": {
+                "node": "Let",
+                "pattern": {
+                  "node": "Variable",
+                  "label": "x2"
+                },
+                "value": {
+                  "node": "Binary",
+                  "value": "done"
+                },
+                "then": {
+                  "node": "Variable",
+                  "label": "x2"
+                }
+              }
             }
           }
+        },
+        "with": {
+          "node": "Tuple",
+          "elements": []
         }
+      },
+      "then": {
+        "node": "Record",
+        "fields": [
+          {
+            "node": "Field",
+            "key": "proxy",
+            "value": {
+              "node": "Hole"
+            }
+          }
+        ]
       }
-    },
-    "with": {
-      "node": "Tuple",
-      "elements": []
     }
-  },
-  "then": {
-    "node": "Record",
-    "fields": [
-      {
-        "node": "Field",
-        "key": "proxy",
-        "value": {
-          "node": "Hole"
-        }
-      }
-    ]
   }
 }

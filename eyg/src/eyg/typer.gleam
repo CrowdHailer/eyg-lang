@@ -681,7 +681,7 @@ pub fn infer(
 
               let #(z, typer) = next_unbound(typer)
               // Tuple as unit for pure effects, I think this is the type of the continuation
-              let raised = t.Union([#(name, t.Function(value, expected, t.Tuple([])))], Some(z))
+              let raised = t.Union([#(name, t.Function(value, expected, t.empty))], Some(z))
 
               // Can unify with an unbound value for raised so that we show the call is at least a function
               let expected_function = t.Function(arg_type, expected, raised)
@@ -744,6 +744,7 @@ pub fn infer(
       let #(inner_effects, handler_type) = case t.resolve(t.Unbound(x), temp_typer.substitutions) {
         t.Union([#(name, _)], None) -> {
           // c = unhandled_effects
+          // inner effects are none because I intend for the handler needing to have explicit pass up value
           let inner_effects = t.Union([#(name, t.Function(effect_arg, effect_return, unhandled_effects))], Some(c))
           // TODO this is probably outer effects because you need to call catch again
           // This should get resolved with unification for a raise
@@ -774,9 +775,8 @@ pub fn infer(
       let function_type = t.Function(handler_type, catcher_type, effects)
 
       let given = catcher_type
-      let #(_, typer) = try_unify(expected, given, typer, scope.path)
-
-      let expression = #(meta(Ok(expected)), e.Call(#(meta(Ok(function_type)), e.Variable("impl")), with))
+      let #(r, typer) = try_unify(expected, given, typer, scope.path)
+      let expression = #(meta(r), e.Call(#(meta(Ok(function_type)), e.Variable("impl")), with))
       #(expression, typer)
     }
     e.Call(function, with) -> {
