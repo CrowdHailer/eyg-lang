@@ -256,10 +256,29 @@ pub fn infer_continuation_type_test() {
     assert True = effect_return == eff_ret
     // cont_return is trivial
     assert True = cont_return == c_ret
-
 }
 
-// TODO recursive test
+pub fn recursive_handler_test() {
+    let source = e.call(e.variable("impl"), collect_logs())
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
+
+    assert [] = typer.inconsistencies
+
+    // calling the catch function never raises effects even if evaluating the arguments might
+    assert Ok(t.Function(computation, exec, t.Union([], None))) = get_type(typed, typer)
+
+    // Final returned type is the arm values of case statements in the handler
+    assert t.Function(t.Unbound(input), t.Tuple([list, value]), t.Union([], Some(outer))) = exec
+    assert t.Recursive(i, t.Union([#("Cons", t.Tuple([t.Unbound(_), t.Unbound(r)])), #("Nil", t.Tuple([]))], _)) = list
+    assert True = i == r
+
+    assert t.Function(t.Unbound(i), c_ret, t.Union([#("Log", effect)], Some(other_effects))) = computation
+    // assert t.Function(t.Unbound(eff_arg), t.Unbound(eff_ret), eff) = effect
+    assert True = i == input
+    assert True = value == c_ret
+    assert True = outer == other_effects
+}
+
 
 // --------------------- LOG functions ------------------------------
 
