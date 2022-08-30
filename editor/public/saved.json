@@ -97,7 +97,7 @@
             "node": "Call",
             "function": {
               "node": "Variable",
-              "label": "raise"
+              "label": "do"
             },
             "with": {
               "node": "Tagged",

@@ -14,7 +14,7 @@ import eyg/editor/type_info
 
 
 fn log(term) { 
-    e.call(e.variable("raise"), e.tagged("Log", term))
+    e.call(e.variable("do"), e.tagged("Log", term))
 }
 
 fn log_twice() { 
@@ -48,13 +48,13 @@ pub fn functions_test()  {
 
 fn collect_logs() { 
     e.let_(p.Variable("collect_logs"),
-        e.function(p.Variable("raise"), e.case_(e.variable("raise"), [
+        e.function(p.Variable("effect"), e.case_(e.variable("effect"), [
             #("Log", p.Tuple(["e", "k"]), 
-                e.let_(p.Tuple(["list", "value"]), e.call(e.call(e.call(e.variable("handle"), e.variable("collect_logs")), e.variable("k")), e.tuple_([])),
+                e.let_(p.Tuple(["list", "value"]), e.call(e.call(e.call(e.variable("impl"), e.variable("collect_logs")), e.variable("k")), e.tuple_([])),
                     e.tuple_([e.tagged("Cons", e.tuple_([e.variable("e"), e.variable("list")])), e.variable("value")])
                 ) 
             ),
-            #("Pure", p.Variable("value"), e.tuple_([e.tagged("Nil", e.tuple_([])), e.variable("value")])),    
+            #("Return", p.Variable("value"), e.tuple_([e.tagged("Nil", e.tuple_([])), e.variable("value")])),    
         ])),
         e.variable("collect_logs")
     )
@@ -63,7 +63,7 @@ fn collect_logs() {
 pub fn handled_effect_test()  {
     let source = log_computation()
     let handler = collect_logs()
-    let handled = e.call(e.call(e.variable("handle"), handler), source)
+    let handled = e.call(e.call(e.variable("impl"), handler), source)
     assert Ok(r.Tuple([logs, value])) = effectful.eval(e.call(handled, e.tuple_([])))
     assert r.Tagged("Cons", r.Tuple([r.Binary("hello"), r.Tagged("Cons", r.Tuple([r.Binary("world"), r.Tagged("Nil", r.Tuple([]))]))])) = logs
     assert r.Tuple([]) = value    
@@ -86,7 +86,7 @@ fn get_type(typed, typer){
 }
 
 pub fn unbound_effect_literal_test() {
-    let source = e.call(e.variable("raise"), e.tagged("Log", e.binary("hello")))
+    let source = e.call(e.variable("do"), e.tagged("Log", e.binary("hello")))
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Unbound(-2), [])
 
     assert [] = typer.inconsistencies
@@ -100,7 +100,7 @@ pub fn unbound_effect_literal_test() {
 }
 
 pub fn bound_effect_literal_test() {
-    let source = e.call(e.variable("raise"), e.tagged("Log", e.binary("hello")))
+    let source = e.call(e.variable("do"), e.tagged("Log", e.binary("hello")))
     // I think unbound -2 is effects in the rest of the continuation
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Union([#("Log", t.Function(t.Binary, t.Tuple([]), t.Unbound(-2)))], None), [])
 
@@ -112,7 +112,7 @@ pub fn bound_effect_literal_test() {
 }
 
 pub fn infering_function_effect_test()  {
-    let source = e.function(p.Tuple([]), e.call(e.variable("raise"), e.tagged("Log", e.binary("hello"))))
+    let source = e.function(p.Tuple([]), e.call(e.variable("do"), e.tagged("Log", e.binary("hello"))))
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
     assert [] = typer.inconsistencies
@@ -122,15 +122,16 @@ pub fn infering_function_effect_test()  {
 }
 
 pub fn incorrect_effect_raised_test() {
-    let source = e.call(e.variable("raise"), e.tagged("Log", e.tuple_([])))
+    let source = e.call(e.variable("do"), e.tagged("Log", e.tuple_([])))
     // I think unbound -2 is effects in the rest of the continuation
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Union([#("Log", t.Function(t.Binary, t.Tuple([]), t.Unbound(-2)))], None), [])
 
     assert [#([0], typer.UnmatchedTypes(t.Binary, t.Tuple([])))] = typer.inconsistencies
+    assert Error(typer.UnmatchedTypes(_,_)) = get_sub_type(typed, typer, [0])
 }
 
 pub fn incorrect_effect_returned_test() {
-    let source = e.call(e.variable("raise"), e.tagged("Log", e.binary("hello")))
+    let source = e.call(e.variable("do"), e.tagged("Log", e.binary("hello")))
     // I think unbound -2 is effects in the rest of the continuation
     let #(typed, typer) = analysis.infer_effectful(source, t.Binary, t.Union([#("Log", t.Function(t.Binary, t.Tuple([]), t.Unbound(-2)))], None), [])
 
@@ -138,14 +139,23 @@ pub fn incorrect_effect_returned_test() {
 }
 
 pub fn effect_with_not_a_union_type_test() {
-    let source = e.call(e.variable("raise"), e.tuple_([]))
+    let source = e.call(e.variable("do"), e.tuple_([]))
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Unbound(-2), [])
 
     assert [#([1], typer.UnmatchedTypes(t.Union(_,_), t.Tuple([])))] = typer.inconsistencies
 }
 
+pub fn effect_with_a_big_union_type_test() {
+    let source = e.call(e.variable("do"), e.variable("x"))
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.Unbound(-2), [
+        #("x", polytype.Polytype([], t.Union([#("Foo", t.Binary), #("Bar", t.Binary)], None)))
+    ])
+
+    assert [#([1], typer.UnexpectedFields([#("Foo", _), #("Bar", _)]))] = typer.inconsistencies
+}
+
 pub fn cant_call_effect_in_pure_env_test() {
-    let source = e.call(e.variable("raise"), e.tagged("Log", e.binary("hello")))
+    let source = e.call(e.variable("do"), e.tagged("Log", e.binary("hello")))
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
     // maybe this ends up on the call level i.e. an error at the root
@@ -168,43 +178,6 @@ pub fn mismateched_effect_in_block_test() {
 
 // --------------------- Handle Keyword -----------------------------
 
-// // If i stop it doesn't have to be type checked
-// (eff, state) => {
-//     Log(#(line, cont)) -> {
-//         let #(value, state) = cont([])
-//         #(value, [line, ..state])
-//     }
-//     Return(value) -> #(value, [])
-// }
-
-// (eff, state) => {
-//     Flip(#([], cont)) -> #(append(cont(true), cont(false)), Nil)
-//     Return(value) -> #([value], Nil)
-// }
-
-
-// ```js
-// function foo() {
-//     let a = []
-//     effect({Log: "message"}).cont([] => {
-//     let b = []
-//     if b == true {
-//         return effect({Log: "world"})
-//     } else {
-
-//     }.cont(([]) => {
-//     b + 1
-//     })
-//     })
-// }
-// ```
-
-// // Shallow vs deep handlers are possible
-// // handle(handler)(initial)(func)(arg hmmm)
-
-// // https://www.youtube.com/watch?v=3Ltgkjpme-Y freer monads
-// // linked from shallow vs deep https://homepages.inf.ed.ac.uk/slindley/papers/shallow-extended.pdf
-// // Frank has shallow
 
 pub fn not_a_function_handler_test() {
     let source = e.call(e.variable("catch"), e.binary("yo!"))
@@ -212,67 +185,95 @@ pub fn not_a_function_handler_test() {
 
     // maybe this ends up on the call level i.e. an error at the root
     assert [#([1], typer.UnmatchedTypes(t.Function(_,_,_), t.Binary))] = typer.inconsistencies
+    // TODO test that it's still in the tree
 }
 
-// Test missing pure
+pub fn handler_is_not_union_test() {
+    let source = e.call(e.variable("catch"), e.function(p.Tuple([]), e.binary("yo!")))
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
-pub fn infer_hole_type_for_handler_test() {
+    // maybe this ends up on the call level i.e. an error at the root
+    // TODO errors should return the actual top types at the position and then print the diff
+    assert [#([1], typer.UnmatchedTypes(t.Union(_,_), t.Tuple([])))] = typer.inconsistencies
+}
+
+pub fn handler_is_missing_effect_test() {
+    let source = e.call(e.variable("catch"), e.function(p.Variable("effect"), e.case_(e.variable("effect"), [
+        #("Return", p.Tuple([]), e.binary("pure")),
+    ])))
+    let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
+
+    // maybe this ends up on the call level i.e. an error at the root
+    // TODO errors should return the actual top types at the position and then print the diff
+    // This error would be better if it said the case was missing fields but that's not how we work
+    assert [#([1, 1, 0], typer.UnexpectedFields(_))] = typer.inconsistencies
+}
+
+pub fn infer_handler_test() {
     let handler = e.function(p.Variable("eff"), e.case_(e.variable("eff"),[
-        #("Pure", p.Tuple([]), e.tuple_([e.tuple_([]), e.binary("foo")])),
+        #("Return", p.Tuple([]), e.tuple_([e.binary("foo"), e.tuple_([])])),
         #("Foo", p.Tuple(["v", "k"]), e.tuple_([e.variable("v"), e.call(e.variable("k"), e.binary("read"))]))
     ]))
     let source = e.call(e.variable("catch"), handler)
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
-    typer.inconsistencies
-    |> io.debug
-    io.debug("===================")
-    assert Ok(t.Function(computation, t.Function(arg, ret, eff), t.Union([], None))) = get_type(typed, typer)
-    // This should have the effects
-    computation
-    |> io.debug
-    arg
-    |> io.debug
-    ret
-    |> io.debug
-    // eff should be empty at theis time
-    eff
-    |> io.debug
+    assert [] = typer.inconsistencies
+    // calling the catch function never raises effects even if evaluating the arguments might
+    assert Ok(t.Function(computation, exec, t.Union([], None))) = get_type(typed, typer)
 
+    // Final returned type is the arm values of case statements in the handler
+    assert t.Function(t.Unbound(input), t.Tuple([t.Binary, t.Tuple([])]), t.Union([], Some(outer))) = exec
 
-    todo("stop here")
-    // let source = e.call(e.call(
-    //     e.call(e.variable("catch"), handler), 
-    //     e.function(p.variable("a"), e.call(e.variable("raise"), e.tagged("Foo", e.variable("a"))))
-    // ), e.record([]))
-    // let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
-
-    // // maybe this ends up on the call level i.e. an error at the root
-    // // assert [#(hole_path, typer.Warning(_))] = 
-    // typer.inconsistencies
-    // |> io.debug
-    // get_type(typed, typer)
-    // |> io.debug
-    // assert Ok(t.Function(effect_variants, proper_return, _)) = get_sub_type(typed, typer, [0,0,1])
-    // |> io.debug
+    // Pure handles a tuple so the return type here needs to be the same
+    // Foo effect is available to computation, but we also need to extend by the environment effects
+    assert t.Function(t.Unbound(i), t.Tuple([]), t.Union([#("Foo", effect)], Some(other_effects))) = computation
+    assert True = i == input
+    assert True = other_effects == outer
+    assert t.Function(t.Binary, t.Binary, eff) = effect
 }
 
-pub fn handle_logs_in_collection_test() {
-    let source = e.call(e.variable("catch"), collect_logs())
+pub fn infer_continuation_type_test() {
+    let handler = e.function(p.Variable("eff"), e.case_(e.variable("eff"),[
+        #("Return", p.Variable(""), e.hole()),
+        #("Foo", p.Tuple(["v", "k"]), e.tuple_([e.variable("v"), e.variable("k")]))
+    ]))
+    let source = e.call(e.variable("catch"), handler)
     let #(typed, typer) = analysis.infer_effectful(source, t.Unbound(-1), t.empty, [])
 
-    // maybe this ends up on the call level i.e. an error at the root
-    assert [] = typer.inconsistencies
+    assert [#(_, typer.Warning(_))] = typer.inconsistencies
+    // calling the catch function never raises effects even if evaluating the arguments might
+    assert Ok(t.Function(computation, exec, t.Union([], None))) = get_type(typed, typer)
+
+    // Final returned type is the arm values of case statements in the handler
+    assert t.Function(t.Unbound(input), t.Tuple([t.Unbound(effect_arg), 
+        t.Function(t.Unbound(effect_return), t.Unbound(cont_return), cont_effect)
+    ]), t.Union([], Some(outer))) = exec
     |> io.debug
-    // assert Ok(t.Unbound(-1)) = 
-    assert Ok(t) =get_type(typed, typer)
-    // |> io.debug
-    t
-    |> type_info.to_string
-    todo("more")
+    io.debug(cont_effect)
+    io.debug("---")
+    assert t.Function(t.Unbound(i), t.Unbound(c_ret), t.Union([#("Foo", effect)], Some(other_effects))) = computation
+    |> io.debug
+    assert t.Function(t.Unbound(eff_arg), t.Unbound(eff_ret), eff) = effect
+    assert True = i == input
+    assert True = effect_arg == eff_arg
+    assert True = effect_return == eff_ret
+    // cont_return is trivial
+    assert True = cont_return == c_ret
+
+    // io.debug(eff_arg)
+    // io.debug(effect_arg)
+    // assert True = 
+    io.debug("---")
+    
+
+    // Pure handles a tuple so the return type here needs to be the same
+    // Foo effect is available to computation, but we also need to extend by the environment effects
+    |> io.debug
+    // assert True = other_effects == outer
+    |> io.debug
 }
 
-
+// TODO recursive test
 
 // --------------------- LOG functions ------------------------------
 

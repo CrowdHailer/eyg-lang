@@ -136,7 +136,7 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype)), recuring) {
               Union(list.append(resolved_variants, inner), rest)
             x -> {
               io.debug("bad resolution of a union")
-              io.debug(i)
+              io.debug(#(i, x))
               Union(resolved_variants, None)
               }
           }

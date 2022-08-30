@@ -215,6 +215,14 @@ https://twitter.com/roc_lang/status/1441557679978295298
 - nice syntax https://www.microsoft.com/en-us/research/wp-content/uploads/2016/08/algeff-tr-2016-1.pdf
 - Deep but react specific view into the ideas. https://www.yld.io/blog/continuations-coroutines-fibers-effects/
 
+#### Naming
+
+- "effect" "handle" not great because effect is used for variable names all over, handle is already used in servers
+- "try" "catch" not really a try at this point
+- "thow" "raise" maybe but do we still catch
+- "do" -> do log message, do abort reason sound ok
+- "impl" for the log etc sort of. Can I use eval/exec exec better because value assumes eval, we don't have interface so impl works
+
 #### Adding a try catch AST
 
 The following is a neat approach to add effects to a language. But this requires several AST notes
@@ -245,7 +253,54 @@ run {
 // => #(["Hello", "World"], "Done")
 ```
 
-#### Functions in harness
+#### choices
+
+- recursive function or pass a state parameter
+
+- limit to single resumption, dont want to but better performance
+
+#### Some syntax stuff
+
+// If i stop it doesn't have to be type checked
+(eff, state) => {
+    Log(#(line, cont)) -> {
+        let #(value, state) = cont([])
+        #(value, [line, ..state])
+    }
+    Return(value) -> #(value, [])
+}
+
+(eff, state) => {
+    Flip(#([], cont)) -> #(append(cont(true), cont(false)), Nil)
+    Return(value) -> #([value], Nil)
+}
+
+
+```js
+function foo() {
+    let a = []
+    effect({Log: "message"}).cont([] => {
+    let b = []
+    if b == true {
+        return effect({Log: "world"})
+    } else {
+
+    }.cont(([]) => {
+    b + 1
+    })
+    })
+}
+```
+
+// Shallow vs deep handlers are possible
+// handle(handler)(initial)(func)(arg hmmm)
+
+// https://www.youtube.com/watch?v=3Ltgkjpme-Y freer monads
+// linked from shallow vs deep https://homepages.inf.ed.ac.uk/slindley/papers/shallow-extended.pdf
+// Frank has shallow
+
+
+#### Functions in harness with a type signature that is not open for effects locks the whole block
 
 It's a gotcha that needs avoiding but as it stands any closed effects for a function result in locking the whole block.
 It would be best to udate the unification algorithm so we understood better what was bad/unused
