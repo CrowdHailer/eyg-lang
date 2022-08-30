@@ -18,7 +18,8 @@ pub fn variable_of_expected_type_test() {
       path: [],
     )
   let untyped = ast.variable("foo")
-  assert #(typed, _typer) = infer(untyped, t.Tuple([]), #(typer, scope))
+  // TODO use analysis.infer in this test file
+  assert #(typed, _typer) = infer(untyped, t.Tuple([]), t.empty, #(typer, scope))
   assert Ok(t.Tuple([])) = get_type(typed)
 }
 
@@ -27,7 +28,7 @@ pub fn variable_of_unexpected_type_test() {
   let scope = typer.root_scope([#("foo", polytype.Polytype([], t.Tuple([])))])
   let state = #(typer, scope)
   let untyped = ast.variable("foo")
-  assert #(typed, _typer) = infer(untyped, t.Binary, state)
+  assert #(typed, _typer) = infer(untyped, t.Binary, t.empty, state)
   assert Error(reason) = get_type(typed)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
 }
@@ -37,7 +38,7 @@ pub fn missing_variable_test() {
   let scope = typer.root_scope([])
   let state = #(typer, scope)
   let untyped = ast.variable("foo")
-  let #(typed, _state) = infer(untyped, t.Binary, state)
+  let #(typed, _state) = infer(untyped, t.Binary, t.empty, state)
   assert Error(reason) = get_type(typed)
   assert typer.UnknownVariable("foo") = reason
 }
@@ -49,7 +50,7 @@ pub fn expected_assignment_test() {
   let state = #(typer, scope)
   let untyped =
     ast.let_(pattern.Variable("foo"), ast.tuple_([]), ast.variable("foo"))
-  let #(typed, _typer) = infer(untyped, t.Tuple([]), state)
+  let #(typed, _typer) = infer(untyped, t.Tuple([]), t.empty, state)
   assert Ok(t.Tuple([])) = get_type(typed)
 }
 
@@ -59,7 +60,7 @@ pub fn unexpected_then_type_test() {
   let state = #(typer, scope)
   let untyped =
     ast.let_(pattern.Variable("foo"), ast.binary("wrong"), ast.variable("foo"))
-  let #(typed, _typer) = infer(untyped, t.Tuple([]), state)
+  let #(typed, _typer) = infer(untyped, t.Tuple([]), t.empty, state)
   //   Should the error be on the inner
   assert Ok(t.Tuple([])) = get_type(typed)
   assert #(_context, expression.Let(_pattern, _value, then)) = typed
@@ -74,7 +75,7 @@ pub fn matched_expected_tuple_test() {
   let state = #(typer, scope)
   let untyped =
     ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
-  let #(typed, typer) = infer(untyped, t.Binary, state)
+  let #(typed, typer) = infer(untyped, t.Binary, t.empty, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
@@ -89,7 +90,7 @@ pub fn expected_a_tuple_test() {
 
   let untyped =
     ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
-  let #(typed, _state) = infer(untyped, t.Binary, state)
+  let #(typed, _state) = infer(untyped, t.Binary, t.empty, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   assert Error(reason) = get_type(value)
@@ -103,7 +104,7 @@ pub fn unexpected_tuple_size_test() {
 
   let untyped =
     ast.let_(pattern.Tuple(["a"]), ast.variable("foo"), ast.variable("a"))
-  let #(typed, _state) = infer(untyped, t.Binary, state)
+  let #(typed, _state) = infer(untyped, t.Binary, t.empty, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   assert Error(reason) = get_type(value)
@@ -122,7 +123,7 @@ pub fn matched_expected_record_test() {
       ast.variable("foo"),
       ast.variable("a"),
     )
-  let #(typed, typer) = infer(untyped, t.Binary, state)
+  let #(typed, typer) = infer(untyped, t.Binary, t.empty, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
@@ -141,7 +142,7 @@ pub fn expected_a_record_test() {
       ast.variable("foo"),
       ast.variable("a"),
     )
-  let #(typed, typer) = infer(untyped, t.Binary, state)
+  let #(typed, typer) = infer(untyped, t.Binary, t.empty, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
@@ -167,7 +168,7 @@ pub fn matched_expected_record_with_additional_fields_test() {
       ast.variable("foo"),
       ast.variable("a"),
     )
-  let #(typed, typer) = infer(untyped, t.Binary, state)
+  let #(typed, typer) = infer(untyped, t.Binary, t.empty, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer
@@ -187,7 +188,7 @@ pub fn grow_expected_fields_in_record_test() {
       ast.variable("foo"),
       ast.variable("a"),
     )
-  let #(typed, typer) = infer(untyped, t.Binary, state)
+  let #(typed, typer) = infer(untyped, t.Binary, t.empty, state)
   assert Ok(t.Binary) = get_type(typed)
   assert #(_context, expression.Let(_pattern, value, _then)) = typed
   let typer.Typer(substitutions: substitutions, ..) = typer

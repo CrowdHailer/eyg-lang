@@ -1,6 +1,5 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None, Some}
 import eyg
 import eyg/ast
 import eyg/ast/expression as e
@@ -15,7 +14,14 @@ pub fn infer(untyped, type_, variables) {
   let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
-  typer.infer(untyped, type_, state)
+  typer.infer(untyped, type_,  t.empty, state)
+}
+
+pub fn infer_effectful(untyped, type_, effects, variables) {
+  let checker = typer.init()
+  let scope = typer.root_scope(variables)
+  let state = #(checker, scope)
+  typer.infer(untyped, type_, effects, state)
 }
 
 fn incrementor(i) {

@@ -16,7 +16,8 @@
   })();
   // Possible could just pass in state
   (async function () {
-    while (true) {
+    // TODO proxy needs to shut down for errors
+    while (false) {
       // Need async in JS land for while loop and to make sure svelte updating of source is patched into while loop
       let r = await Proxy.fetch_request();
       if (p) {

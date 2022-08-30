@@ -150,29 +150,31 @@ pub fn mount_constraint(mount) {
           variants: [#("True", t.Tuple([])), #("False", t.Tuple([]))],
           extra: None,
         ),
+        t.empty,
       )
-    String2String(_, _, _) -> t.Function(t.Binary, t.Binary)
+    String2String(_, _, _) -> t.Function(t.Binary, t.Binary, t.empty)
     UI(_, _, _) ->
       t.Record(
         [
-          #("init", t.Function(t.Tuple([]), t.Unbound(-2))),
-          #("update", t.Function(t.Unbound(-2), t.Unbound(-2))),
-          #("render", t.Function(t.Unbound(-2), t.Binary)),
+          #("init", t.Function(t.Tuple([]), t.Unbound(-2), t.empty)),
+          #("update", t.Function(t.Unbound(-2), t.Unbound(-2), t.empty)),
+          #("render", t.Function(t.Unbound(-2), t.Binary, t.empty)),
         ],
         None,
       )
     Pure(_) -> t.Record([
-      #("render", t.Function(t.Unbound(-4), t.Binary)),
+      #("render", t.Function(t.Unbound(-4), t.Binary, t.empty)),
       #("init", t.Function(t.Record([
           #("on_keypress",t.Function(
             // t.Tuple([t.Binary, t.Unbound(-4)]), t.Function(t.Tuple([]), t.Unbound(-4))
             // handler
-            t.Function(t.Tuple([t.Binary, t.Unbound(-4)]), t.Unbound(-4)),
+            t.Function(t.Tuple([t.Binary, t.Unbound(-4)]), t.Unbound(-4), t.empty),
             // continuation
-            t.Function(t.Function(t.Tuple([]), t.Unbound(-5)), t.Unbound(-5))
+            t.Function(t.Function(t.Tuple([]), t.Unbound(-5), t.empty), t.Unbound(-5), t.empty),
+            t.empty,
           ))
         ], None)
-      , t.Unbound(-4)))
+      , t.Unbound(-4), t.empty))
       ], None)
     Firmata(_) -> {
       // TODO move boolean to standard types
@@ -181,29 +183,32 @@ pub fn mount_constraint(mount) {
       let input = t.Record([], None)
       let state = t.Unbound(-2)
       let output = t.Record([#("Pin12", boolean), #("Pin13", boolean)], None)
-      t.Function(t.Tuple([input, state]), t.Tuple([output, state]))
+      t.Function(t.Tuple([input, state]), t.Tuple([output, state]), t.empty)
     }
-    Server(_) -> t.Function(t.Binary, t.Binary)
+    Server(_) -> t.Function(t.Binary, t.Binary, t.empty)
     Universal(_) -> t.Function(
       t.Record([#("Method", t.Binary), #("Path", t.Binary), #("Body", t.Binary)], None), 
       t.Function(
         t.Record([
-          #("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([])), t.Tuple([]))), 
-          #("render", t.Function(t.Binary, t.Tuple([]))),  
-          #("log", t.Function(t.Binary, t.Tuple([]))),
-          #("send", t.Function(t.Tuple([t.Native("Address", [t.Unbound(-3)]), t.Unbound(-3)]), t.Tuple([]))),
+          #("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([]), t.empty), t.Tuple([]), t.empty)), 
+          #("render", t.Function(t.Binary, t.Tuple([]), t.empty)),  
+          #("log", t.Function(t.Binary, t.Tuple([]), t.empty)),
+          #("send", t.Function(t.Tuple([t.Native("Address", [t.Unbound(-3)]), t.Unbound(-3)]), t.Tuple([]), t.empty)),
           ], None), 
-        t.Binary
-      )
+        t.Binary,
+        t.empty,
+      ),
+      t.empty,
     )
     Interpreted(_) -> t.Function(t.Record([
       #("ui", t.Native("Pid", [t.Binary])),
-      #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Tuple([]))])),
-      #("fetch", t.Native("Pid", [t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]))])])),
-      ], None), t.Tuple([])) 
+      #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Tuple([]), t.empty)])),
+      #("fetch", t.Native("Pid", [t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]), t.empty)])])),
+      ], None), t.Tuple([]), t.empty) 
     IServer(_) -> t.Function(
       t.Record([#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)], None), 
-      t.Function(t.Record([], None), t.Binary)
+      t.Function(t.Record([], None), t.Binary, t.empty),
+      t.empty,
     )
     Proxy(_) -> proxy.constraint()
   }

@@ -4,15 +4,24 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
 
+// pub type Row {
+//   Row(members: List(#(String, Monotype)), extra: Option(Int))
+// }
+
 pub type Monotype {
   Native(name: String, parameters: List(Monotype))
   Binary
   Tuple(elements: List(Monotype))
   Record(fields: List(#(String, Monotype)), extra: Option(Int))
   Union(variants: List(#(String, Monotype)), extra: Option(Int))
-  Function(from: Monotype, to: Monotype)
+  Function(from: Monotype, to: Monotype, effects: Monotype)
   Unbound(i: Int)
   Recursive(i: Int, type_: Monotype)
+}
+
+pub const empty = Union([], None)
+pub fn open(i)  {
+  Union([], Some(i))
 }
 
 pub fn literal(monotype) {
@@ -44,7 +53,8 @@ pub fn literal(monotype) {
       }
       string.concat(["new T.Record(Gleam.toList([", fields, "]), ", extra, ")"])
     }
-    Function(from, to) ->
+    Function(from, to, effects) ->
+      // need to add effects
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
     Native(_, _) | Union(_, _) | Recursive(_, _) -> todo("ss literal")
@@ -126,17 +136,18 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype)), recuring) {
               Union(list.append(resolved_variants, inner), rest)
             x -> {
               io.debug("bad resolution of a union")
-              io.debug(i)
+              io.debug(#(i, x))
               Union(resolved_variants, None)
               }
           }
         }
       }
     }
-    Function(from, to) -> {
+    Function(from, to, effects) -> {
       let from = do_resolve(from, substitutions, recuring)
       let to = do_resolve(to, substitutions, recuring)
-      Function(from, to)
+      let effects = do_resolve(effects , substitutions, recuring)
+      Function(from, to, effects)
     }
   }
 }
@@ -159,9 +170,10 @@ fn do_free_in_type(set, type_) {
       let inner = do_free_in_type(set, type_)
       difference(inner, [i])
     }
-    Function(from, to) -> {
+    Function(from, to, effects) -> {
       let set = do_free_in_type(set, from)
-      do_free_in_type(set, to)
+      let set = do_free_in_type(set, to)
+      do_free_in_type(set, effects)
     }
   }
 }
@@ -221,9 +233,10 @@ fn do_used_in_type(set, type_) {
       let set = push_new(i, set)
       do_used_in_type(set, type_)
     }
-    Function(from, to) -> {
+    Function(from, to, effects) -> {
       let set = do_used_in_type(set, from)
-      do_used_in_type(set, to)
+      let set = do_used_in_type(set, to)
+      do_used_in_type(set, effects)
     }
   }
 }

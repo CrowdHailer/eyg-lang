@@ -14,7 +14,7 @@ fn infer(untyped, type_) {
   let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
-  typer.infer(untyped, type_, state)
+  typer.infer(untyped, type_, t.empty, state)
 }
 
 // TODO use analysis module instead
@@ -40,22 +40,22 @@ pub fn case_test() {
     )
 
   let #(typed, checker) = infer(source, t.Unbound(-1))
-  assert Ok(t.Function(from, to)) = get_type(typed, checker)
+  assert Ok(t.Function(from, to, _)) = get_type(typed, checker)
   assert [] = checker.inconsistencies
   assert t.Union([#("None", t.Tuple([])), #("Some", t.Binary)], None) = from
   assert t.Binary = to
 
   let expected =
-    t.Function(t.Union([#("None", t.Tuple([]))], Some(-1)), t.Binary)
+    t.Function(t.Union([#("None", t.Tuple([]))], Some(-1)), t.Binary, t.empty)
   let #(typed, checker) = infer(source, expected)
   assert [] = checker.inconsistencies
-  assert Ok(t.Function(from, to)) = get_type(typed, checker)
+  assert Ok(t.Function(from, to, _)) = get_type(typed, checker)
   //   This remains a limited type because it's only on instantiation within the case value that it get's unified
   assert t.Union([#("None", t.Tuple([])), #("Some", t.Binary)], _) = from
   assert t.Binary = to
 
   let expected =
-    t.Function(t.Union([#("Foo", t.Tuple([]))], Some(-1)), t.Binary)
+    t.Function(t.Union([#("Foo", t.Tuple([]))], Some(-1)), t.Binary, t.empty)
   let #(typed, checker) = infer(source, expected)
   assert [#(path, error)] = checker.inconsistencies
   // body of function, value of case
@@ -63,7 +63,7 @@ pub fn case_test() {
   assert typer.UnexpectedFields([#("Foo", t.Tuple([]))]) = error
 
   let expected =
-    t.Function(t.Union([#("Some", t.Tuple([]))], Some(-1)), t.Binary)
+    t.Function(t.Union([#("Some", t.Tuple([]))], Some(-1)), t.Binary, t.empty)
   let #(typed, checker) = infer(source, expected)
   assert [#(path, error)] = checker.inconsistencies
   // then of second branch

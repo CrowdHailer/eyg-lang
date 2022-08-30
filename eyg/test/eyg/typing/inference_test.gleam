@@ -164,28 +164,28 @@ pub fn function_test() {
   let source = function(p.Variable(""), binary(""))
   let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Unbound(_), t.Binary) = type_
+  assert t.Function(t.Unbound(_), t.Binary, _) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-2)), [])
+    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-2), t.Unbound(-3)), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Unbound(_), t.Binary) = type_
+  assert t.Function(t.Unbound(_), t.Binary, t.Unbound(_)) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Tuple([]), t.Binary), [])
+    analysis.infer(source, t.Function(t.Tuple([]), t.Binary, t.empty), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Tuple([]), t.Binary) = type_
+  assert t.Function(t.Tuple([]), t.Binary, _) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-1)), [])
+    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-1), t.empty), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Binary, t.Binary) = type_
+  assert t.Function(t.Binary, t.Binary, _) = type_
   let #(typed, checker) = analysis.infer(source, t.Binary, [])
   assert Error(reason) = analysis.get_type(typed, checker)
   // assert typer.UnmatchedTypes(t.Binary, t.Function(t.Unbound(_), t.Tuple([]))) =
   //   reason
   // TODO move up
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Tuple([]), t.Tuple([])), [])
+    analysis.infer(source, t.Function(t.Tuple([]), t.Tuple([]), t.empty), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Tuple([]), t.Tuple([])) = type_
+  assert t.Function(t.Tuple([]), t.Tuple([]), _) = type_
   assert Ok(body) = editor.get_expression(typed, [1])
   assert Error(reason) = analysis.get_type(body, checker)
   assert typer.UnmatchedTypes(t.Tuple([]), t.Binary) = reason
@@ -195,17 +195,17 @@ pub fn id_function_test() {
   let source = function(p.Variable("x"), variable("x"))
   let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Unbound(i), t.Unbound(j)) = type_
+  assert t.Function(t.Unbound(i), t.Unbound(j), _) = type_
   assert True = i == j
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Binary), [])
+    analysis.infer(source, t.Function(t.Unbound(-1), t.Binary, t.empty), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
   // TODO check unbound is now binary
-  assert t.Function(t.Binary, t.Binary) = type_
+  assert t.Function(t.Binary, t.Binary, _) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Tuple([]), t.Binary), [])
+    analysis.infer(source, t.Function(t.Tuple([]), t.Binary, t.empty), [])
   assert Ok(type_) = analysis.get_type(typed, checker)
-  assert t.Function(t.Tuple([]), t.Binary) = type_
+  assert t.Function(t.Tuple([]), t.Binary, _) = type_
   assert Ok(body) = editor.get_expression(typed, [1])
   assert Error(reason) = analysis.get_type(body, checker)
   assert typer.UnmatchedTypes(t.Binary, t.Tuple([])) = reason
@@ -396,7 +396,7 @@ pub fn recursive_loop_test() {
       variable("f"),
     )
   let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
-  assert Ok(t.Function(t.Unbound(i), t.Unbound(j))) =
+  assert Ok(t.Function(t.Unbound(i), t.Unbound(j), _)) =
     analysis.get_type(typed, checker)
   assert True = i != j
   // TODO x = i and f = i -> j internally but not poly

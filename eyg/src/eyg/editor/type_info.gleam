@@ -69,18 +69,46 @@ pub fn to_string(monotype, ) {
         "]",
       ])
     }
-    t.Function(from, to) ->
+    t.Function(from, to, effects) -> { 
       string.concat([
         to_string(from, ),
-        " -> ",
+        " ->",
+        effects_to_string(effects),
+        " ",
         to_string(to, ),
       ])
+    }
     t.Unbound(i) -> int.to_string(i)
     t.Recursive(i, inner) -> {
       let inner = to_string(inner, )
       string.concat(["μ", int.to_string(i), ".", inner])
     }
   }
+}
+
+fn effects_to_string(type_){
+  case type_ {
+    // The assumption is that if still unbound we don't know anything yet
+    // This also relates to unions that are open, based on usage, but don't throw any types
+    t.Unbound(_) -> "" 
+    t.Union([], _) -> ""
+    t.Union(effects, _) -> {
+      // angled brackets after Koka's lead
+      string.concat([" <", string.join(list.map(effects, effect_to_string), " | "), ">"])
+    } 
+    // Not sure why this ever happens
+    _ -> string.concat([" <", to_string(type_), ">"])
+  }
+}
+
+fn effect_to_string(effect) { 
+  let #(name, args) = effect
+  let arg_string = case args {
+    t.Function(from, to, _) -> to_string(t.Function(from, to, t.empty))
+    t.Recursive(r1, t.Function(from, to, t.Unbound(r2))) if r1 == r2 -> to_string(t.Function(from, to, t.empty))
+    _ -> to_string(args)
+  }
+  string.concat([name, " ", arg_string])
 }
 
 pub fn resolve_reason(reason, typer: Typer) {

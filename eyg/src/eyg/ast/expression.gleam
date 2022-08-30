@@ -62,7 +62,7 @@ pub fn generate(generator, config, hole) {
     Type -> lift_type
     Loader -> fn(_, _) {
       case hole {
-        t.Function(source, return) ->
+        t.Function(source, return, _) ->
           case value_from_result(return) {
             Ok(target) ->
               Ok(function(
@@ -125,7 +125,7 @@ pub fn generate(generator, config, hole) {
       fn(_, _)  {
         case hole {
           t.Function(_,
-            t.Record([#(k, v)], _)) -> {
+            t.Record([#(k, v)], _), _) -> {
               io.debug(v)
               // TODO match v type
               let key_fn = access(variable("harness"), "key")
@@ -151,7 +151,7 @@ pub fn example(config, hole) {
 
 pub fn lift_type(_config, hole) {
   case hole {
-    t.Function(from, _to) -> {
+    t.Function(from, _to, _) -> {
       let inner = case from {
         t.Binary -> tagged("Binary", tuple_([]))
         t.Tuple(_) -> tagged("Tuple", tuple_([]))
@@ -306,3 +306,4 @@ pub fn hole() {
 pub fn provider(config, generator) {
   #(dynamic.from(Nil), Provider(config, generator, dynamic.from(Nil)))
 }
+
