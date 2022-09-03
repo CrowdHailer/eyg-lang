@@ -494,7 +494,7 @@ pub fn decrease_selection(editor) {
             Draft(""),
           )
         }
-        Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) -> #(
+        Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) | Expression(#(_, e.Hole)) -> #(
           None,
           path,
           Command,

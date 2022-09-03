@@ -108,7 +108,7 @@ pub fn constraint() {
     // Function t.put handler
     // TODO put back response type, needs native int in the environment
     // Can I build up and AST e.let_(std, stdlib, prog)?
-    t.Native("Run", [t.Function(request_type, t.Native("Run", [t.Binary]), t.empty)])
+    t.Function(request_type, t.Binary, t.empty)
 }
 
 pub fn code_update(source, key)  {

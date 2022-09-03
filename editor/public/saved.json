@@ -210,150 +210,16 @@
       }
     },
     "then": {
-      "node": "Let",
-      "pattern": {
-        "node": "Variable",
-        "label": "x"
-      },
-      "value": {
-        "node": "Call",
-        "function": {
-          "node": "Call",
-          "function": {
-            "node": "Call",
-            "function": {
-              "node": "Variable",
-              "label": "impl"
-            },
-            "with": {
-              "node": "Function",
-              "pattern": {
-                "node": "Variable",
-                "label": "eff"
-              },
-              "body": {
-                "node": "Case",
-                "value": {
-                  "node": "Variable",
-                  "label": "eff"
-                },
-                "branches": [
-                  {
-                    "node": "Branch",
-                    "name": "Log",
-                    "pattern": {
-                      "node": "Tuple",
-                      "elements": [
-                        {
-                          "node": "Bind",
-                          "label": "line"
-                        },
-                        {
-                          "node": "Bind",
-                          "label": "kont"
-                        }
-                      ]
-                    },
-                    "then": {
-                      "node": "Tuple",
-                      "elements": [
-                        {
-                          "node": "Call",
-                          "function": {
-                            "node": "Variable",
-                            "label": "kont"
-                          },
-                          "with": {
-                            "node": "Tuple",
-                            "elements": []
-                          }
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "node": "Branch",
-                    "name": "Return",
-                    "pattern": {
-                      "node": "Variable",
-                      "label": "v"
-                    },
-                    "then": {
-                      "node": "Tuple",
-                      "elements": [
-                        {
-                          "node": "Variable",
-                          "label": "v"
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          },
-          "with": {
-            "node": "Function",
-            "pattern": {
-              "node": "Tuple",
-              "elements": []
-            },
-            "body": {
-              "node": "Let",
-              "pattern": {
-                "node": "Variable",
-                "label": ""
-              },
-              "value": {
-                "node": "Call",
-                "function": {
-                  "node": "Variable",
-                  "label": "do"
-                },
-                "with": {
-                  "node": "Tagged",
-                  "tag": "Foo",
-                  "value": {
-                    "node": "Tuple",
-                    "elements": []
-                  }
-                }
-              },
-              "then": {
-                "node": "Let",
-                "pattern": {
-                  "node": "Variable",
-                  "label": "x2"
-                },
-                "value": {
-                  "node": "Binary",
-                  "value": "done"
-                },
-                "then": {
-                  "node": "Variable",
-                  "label": "x2"
-                }
-              }
-            }
+      "node": "Record",
+      "fields": [
+        {
+          "node": "Field",
+          "key": "proxy",
+          "value": {
+            "node": "Hole"
           }
-        },
-        "with": {
-          "node": "Tuple",
-          "elements": []
         }
-      },
-      "then": {
-        "node": "Record",
-        "fields": [
-          {
-            "node": "Field",
-            "key": "proxy",
-            "value": {
-              "node": "Hole"
-            }
-          }
-        ]
-      }
+      ]
     }
   }
 }

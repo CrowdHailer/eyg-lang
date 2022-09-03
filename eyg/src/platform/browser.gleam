@@ -11,40 +11,12 @@ import eyg/typer/polytype
 import eyg/typer/harness
 
 // TODO make all effectual functions open
-// TODO dont need to make open and just pass around rows
-fn callback(arg, return, then) { 
-      t.Function(arg, t.Function(t.Function(return, t.Unbound(then), t.empty), t.Unbound(then), t.empty), t.empty)
-}
 
 pub fn harness() {
   harness.Harness(
     [
       #("equal", typer.equal_fn()), #("harness", string()), #("int", int()),
-      #("spawn", polytype.Polytype(
-        [5, -84],
-        callback(t.Recursive(0, t.Function(t.Unbound(5), t.Unbound(0), t.empty)), t.Native("Pid", [t.Unbound(5)]), -84)),
-      ),
-      #("send", polytype.Polytype(
-        [15, -87],
-        callback(t.Tuple([t.Native("Pid", [t.Unbound(15)]), t.Unbound(15)]), t.Tuple([]), -87))
-      ),
-      // #("done", polytype.Polytype([-111], t.Function(t.Unbound(-111), t.Native("Run", [t.Unbound(-111)]), t.empty))),
-      // could call quote
-      #("compile", polytype.Polytype([871], t.Function(t.Function(t.Record([
-        #("ui", t.Native("Pid", [t.Binary])),
-        #("log", t.Native("Pid", [t.Binary])),
-        #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Unbound(871), t.empty)])),
-      ], None), t.Binary, t.empty), t.Binary, t.empty))),
-      // #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Unbound(-441))))
-      // #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Function(t.Unbound(-441), t.Unbound(-442)))))
-      // #("effect", polytype.Polytype([-441, -442], t.Function(t.Unbound(-441), t.Unbound(-442), t.Unbound(-441))))
-
-      // I think handling needs a dynamic mapping of types
-      // So does effect because the tag needs to be in the function
-      // Needs map function types
-      // #("handle", polytype.Polytype())
     ],
-
   )
 }
 
