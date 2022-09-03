@@ -4,24 +4,24 @@
 
   export let state;
   let message = "";
-  let p;
+  let program;
   $: (() => {
     if (state instanceof Ok) {
-      p = state["0"];
+      program = state["0"];
       message = "";
     } else {
-      p = undefined;
+      program = undefined;
       message = state["0"];
     }
   })();
   // Possible could just pass in state
   (async function () {
     // TODO proxy needs to shut down for errors
-    while (false) {
+    while (true) {
       // Need async in JS land for while loop and to make sure svelte updating of source is patched into while loop
       let r = await Proxy.fetch_request();
-      if (p) {
-        Proxy.handle(r, p);
+      if (program) {
+        Proxy.handle(r, state);
       }
     }
   })();

@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/map
 import eyg/interpreter/interpreter as r
 import eyg/interpreter/tail_call
@@ -29,4 +30,20 @@ fn env() {
 
 pub fn eval(source) {
     tail_call.eval(source, env())
+}
+
+pub fn eval_call(func, arg) {
+    try step = tail_call.eval_call(func, arg)
+    case step {
+        r.Effect(effect,value,cont) -> {
+            case effect {
+                "Log" -> {
+                    io.debug(value)
+                    cont(r.Tuple([]))
+                }
+                _ -> todo("unkown effect")
+            }
+        }
+        step -> Ok(step)
+    }
 }

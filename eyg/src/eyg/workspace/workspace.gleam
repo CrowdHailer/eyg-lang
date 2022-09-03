@@ -71,7 +71,7 @@ pub type Mount(a) {
   Universal(handle: Option(fn( String,  String,  String) -> String))
   Interpreted(state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object))
   IServer(handle: fn(String, String, String) -> String)
-  Proxy(state: Result(#(interpreter.Object, List(interpreter.Object)), String))
+  Proxy(state: proxy.State)
 }
 
 // mount handling of keydown

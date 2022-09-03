@@ -1,3 +1,4 @@
+import gleam/dynamic.{Dynamic}
 import gleam/int
 import gleam/io
 import gleam/list
@@ -8,7 +9,8 @@ import eyg/ast/encode.{JSON}
 import gleam/javascript/promise.{Promise}
 import eyg/typer/monotype as t
 import eyg/interpreter/interpreter as r
-import eyg/interpreter/actor
+import eyg/interpreter/effectful
+import eyg/interpreter/tail_call
 import eyg/ast/expression as e
 
 
@@ -22,40 +24,42 @@ const client_id = "123456";
 const api = "http://localhost:8080";
 
 
-pub fn handle(fetched, state) {
+pub fn handle(fetched, state: State) {
     case fetched {
         Ok(#(request, response_id)) -> {
             assert r.Record([#("method", r.Binary(method)),#("path", r.Binary(path)),#("body", r.Binary(body))]) = request
             case string.split(path, "/") {
                 // Need to pull this out of the fields value
-                ["", "123456", "_", pid] -> {
-                    let #(function, processes) = state
-                    assert Ok(pid) = int.parse(pid)
-                    assert Ok(processes) = actor.deliver_messages(processes, [r.Tuple([r.Pid(pid), r.Binary(body)])])
-                    let reply = encode.object([#("status", encode.integer(200)), #("body", encode.string("piddy"))])
-                    let url = string.join([api, "response", response_id], "/")
-                    post_json(url, reply)
-                    state
+                // ["", "123456", "_", pid] -> {
+                //     let #(function, processes) = state
+                //     assert Ok(pid) = int.parse(pid)
+                //     assert Ok(processes) = actor.deliver_messages(processes, [r.Tuple([r.Pid(pid), r.Binary(body)])])
+                //     let reply = encode.object([#("status", encode.integer(200)), #("body", encode.string("piddy"))])
+                //     let url = string.join([api, "response", response_id], "/")
+                //     post_json(url, reply)
+                //     state
 
-                }
+                // }
                 ["", "123456", ..path] -> {
                     let path = string.join(path, "/")
                     let request = r.Record([#("method", r.Binary(method)),#("path", r.Binary(path)),#("body", r.Binary(body))])
-                    let #(function, processes) = state
-                    assert Ok(#(value, spawned, dispatched)) = actor.eval_call(function, request, list.length(processes), processes, [])
-                    let processes = list.append(processes, spawned)
-                    assert Ok(processes) = actor.deliver_messages(processes, dispatched)
-                    let state = #(function, processes)
-                    // TODO have counter that forwards to logger, build a handle request function that is tested
-                    io.debug(request)
-                    // 
-                    io.debug(processes)
-                    assert r.Binary(content) = value
+                    // todo("boooooooooo")
+                    // let #(function, processes) = state
+                    // assert Ok(#(value, spawned, dispatched)) = actor.eval_call(function, request, list.length(processes), processes, [])
+                    // let processes = list.append(processes, spawned)
+                    // assert Ok(processes) = actor.deliver_messages(processes, dispatched)
+                    // let state = #(function, processes)
+                    // // TODO have counter that forwards to logger, build a handle request function that is tested
+                    // // 
+                    // assert r.Binary(content) = value
+                    assert Ok(state) = state
+                    assert Ok(term) = effectful.eval(state)
+                    assert Ok(r.Binary(content)) = effectful.eval_call(term, request)
 
                     let reply = encode.object([#("status", encode.integer(200)), #("body", encode.string(content))])
                     let url = string.join([api, "response", response_id], "/")
                     post_json(url, reply)
-                    state
+                    Ok(state)
                 }
             }
         } 
@@ -108,11 +112,15 @@ pub fn constraint() {
     // Function t.put handler
     // TODO put back response type, needs native int in the environment
     // Can I build up and AST e.let_(std, stdlib, prog)?
-    t.Function(request_type, t.Binary, t.empty)
+    t.Function(request_type, t.Binary, t.Union([#("Log", t.Function(t.Binary, t.Tuple([]), t.Union([], None)))], None))
 }
 
-pub fn code_update(source, key)  {
+pub type State = Result(#(Dynamic, e.Node(Dynamic, Dynamic)), String)
+
+pub fn code_update(source, key) -> State  {
+    io.debug("code update")
+    io.debug(key)
     let source = e.access(source, key)
-    actor.run_source(source, [])
+    Ok(source)
 }
 

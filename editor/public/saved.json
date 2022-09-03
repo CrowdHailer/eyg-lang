@@ -216,7 +216,41 @@
           "node": "Field",
           "key": "proxy",
           "value": {
-            "node": "Hole"
+            "node": "Function",
+            "pattern": {
+              "node": "Variable",
+              "label": "r"
+            },
+            "body": {
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": ""
+              },
+              "value": {
+                "node": "Call",
+                "function": {
+                  "node": "Variable",
+                  "label": "do"
+                },
+                "with": {
+                  "node": "Tagged",
+                  "tag": "Log",
+                  "value": {
+                    "node": "Access",
+                    "value": {
+                      "node": "Variable",
+                      "label": "r"
+                    },
+                    "key": "method"
+                  }
+                }
+              },
+              "then": {
+                "node": "Binary",
+                "value": "hello"
+              }
+            }
           }
         }
       ]
