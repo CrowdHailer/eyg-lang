@@ -26,6 +26,7 @@ fn apps() {
   // assert Ok(intial_show) = stepwise.run_browser(e.tuple_([])) 
   [
     workspace.App("proxy", workspace.Proxy(Error("No code given"))),
+    workspace.App("recipe", workspace.Proxy(Error("No code given"))),
     workspace.App("next", workspace.IServer(fn(_,_,_) { "TODO put a holder in here"})),
     workspace.App("show", workspace.Interpreted(#(real_js.make_reference([]), r.Tuple([])))),
     workspace.App("counter", workspace.UI(None, None, "")),

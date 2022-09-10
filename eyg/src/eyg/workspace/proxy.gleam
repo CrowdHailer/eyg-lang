@@ -54,12 +54,21 @@ pub fn handle(fetched, state: State) {
                     // assert r.Binary(content) = value
                     assert Ok(state) = state
                     assert Ok(term) = effectful.eval(state)
-                    assert Ok(r.Binary(content)) = effectful.eval_call(term, request)
+                    case effectful.eval_call(term, request, effectful.real_log) {
+                        Ok(r.Binary(content)) -> {
+                            let reply = encode.object([#("status", encode.integer(200)), #("body", encode.string(content))])
+                            let url = string.join([api, "response", response_id], "/")
+                            post_json(url, reply)
+                            Ok(state)
+                        }
+                        Error(reason) -> {
+                            let reply = encode.object([#("status", encode.integer(500)), #("body", encode.string(reason))])
+                            let url = string.join([api, "response", response_id], "/")
+                            post_json(url, reply)
+                            Ok(state)
+                        }
+                    }
 
-                    let reply = encode.object([#("status", encode.integer(200)), #("body", encode.string(content))])
-                    let url = string.join([api, "response", response_id], "/")
-                    post_json(url, reply)
-                    Ok(state)
                 }
             }
         } 
@@ -112,7 +121,10 @@ pub fn constraint() {
     // Function t.put handler
     // TODO put back response type, needs native int in the environment
     // Can I build up and AST e.let_(std, stdlib, prog)?
-    t.Function(request_type, t.Binary, t.Union([#("Log", t.Function(t.Binary, t.Tuple([]), t.Union([], None)))], None))
+    t.Function(request_type, t.Binary, t.Union([
+        #("Log", t.Function(t.Binary, t.Tuple([]), t.Union([], None))),
+        #("HTTP", t.Function(t.Union([#("Get", t.Binary)], None), t.Binary, t.empty))
+    ], None))
 }
 
 pub type State = Result(#(Dynamic, e.Node(Dynamic, Dynamic)), String)
