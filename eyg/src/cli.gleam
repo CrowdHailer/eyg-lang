@@ -22,7 +22,8 @@ external fn read_file_sync(String, String) -> String = "fs" "readFileSync"
 
 // todo move to global/hash/something suggesting one program
 pub fn load() { 
-    let path = string.join([cwd(), "..", "editor", "public", "saved.json"], "/")
+    // TODO path needs to have dots' for cli
+    let path = string.join([cwd(), "editor", "public", "saved.json"], "/")
     let json = read_file_sync(path, "utf8")
     encode.from_json(encode.json_from_string(json))
 }

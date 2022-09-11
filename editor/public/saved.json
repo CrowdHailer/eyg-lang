@@ -351,6 +351,14 @@
                 "node": "Variable",
                 "label": "recipe"
               }
+            },
+            {
+              "node": "Field",
+              "key": "foo",
+              "value": {
+                "node": "Binary",
+                "value": "bob"
+              }
             }
           ]
         }
