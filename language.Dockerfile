@@ -15,6 +15,7 @@ RUN cargo install watchexec-cli
 
 # FROM elixir:1.12.2
 # TODO call dev and prod as targets
+# or maybe slab
 FROM node:18.4.0 AS gleam
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin

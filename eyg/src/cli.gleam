@@ -8,6 +8,8 @@ import eyg/interpreter/effectful
 // TODO need an effectful version that allows us to access stuff here
 import eyg/interpreter/tail_call
 import gleam/javascript/array
+import eyg/interpreter/interpreter as r
+
 
 
 // Should we use the node express server 
@@ -37,6 +39,26 @@ pub fn run(args) {
             // TODO we can assert that the type is of the correct value
             assert Ok(term) = effectful.eval(program)
             io.debug(term)
+        }
+    }
+}
+
+pub fn req(method, path, body) {
+    let request = r.Record([#("method", r.Binary(method)),#("path", r.Binary(path)),#("body", r.Binary(body))])
+    // called action/fn/lambda/prog/fetch or slate/slabe on outside
+    // THere is an API vs compute endpoint
+    // Automate deploy from my program
+    // Web/GUO/CLI/HMI are all API's
+    let program = e.access(load(), "web")
+    assert Ok(term) = effectful.eval(program)
+    case effectful.eval_call(term, request, effectful.real_log) {
+        // TODO return a response type
+        // TODO move out of CLI
+        Ok(r.Binary(content)) -> {
+            content
+        }
+        Error(reason) -> {
+            reason
         }
     }
 }

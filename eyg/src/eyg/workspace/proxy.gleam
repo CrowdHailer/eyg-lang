@@ -13,6 +13,8 @@ import eyg/interpreter/effectful
 import eyg/interpreter/tail_call
 import eyg/ast/expression as e
 
+// TODO rename web or similar to match in slab/substrate/slate
+// Clean up proxy in the apps list so that we have only one web
 
 external fn fetch_json(String) -> Promise(Result(JSON, String)) =
   "../../browser_ffi.js" "fetchJSON"

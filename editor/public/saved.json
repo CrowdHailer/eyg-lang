@@ -301,66 +301,95 @@
           }
         },
         "then": {
-          "node": "Record",
-          "fields": [
-            {
-              "node": "Field",
-              "key": "proxy",
-              "value": {
-                "node": "Function",
-                "pattern": {
-                  "node": "Variable",
-                  "label": "r"
-                },
-                "body": {
-                  "node": "Let",
-                  "pattern": {
-                    "node": "Variable",
-                    "label": ""
-                  },
-                  "value": {
-                    "node": "Call",
-                    "function": {
-                      "node": "Variable",
-                      "label": "do"
-                    },
-                    "with": {
-                      "node": "Tagged",
-                      "tag": "Log",
-                      "value": {
-                        "node": "Access",
-                        "value": {
-                          "node": "Variable",
-                          "label": "r"
-                        },
-                        "key": "method"
-                      }
-                    }
-                  },
-                  "then": {
-                    "node": "Binary",
-                    "value": "hello"
-                  }
-                }
-              }
+          "node": "Let",
+          "pattern": {
+            "node": "Variable",
+            "label": "web"
+          },
+          "value": {
+            "node": "Function",
+            "pattern": {
+              "node": "Variable",
+              "label": "request"
             },
-            {
-              "node": "Field",
-              "key": "recipe",
-              "value": {
+            "body": {
+              "node": "Let",
+              "pattern": {
                 "node": "Variable",
-                "label": "recipe"
-              }
-            },
-            {
-              "node": "Field",
-              "key": "foo",
+                "label": ""
+              },
               "value": {
+                "node": "Tuple",
+                "elements": []
+              },
+              "then": {
                 "node": "Binary",
-                "value": "bob"
+                "value": "hello world!"
               }
             }
-          ]
+          },
+          "then": {
+            "node": "Record",
+            "fields": [
+              {
+                "node": "Field",
+                "key": "proxy",
+                "value": {
+                  "node": "Function",
+                  "pattern": {
+                    "node": "Variable",
+                    "label": "r"
+                  },
+                  "body": {
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Variable",
+                      "label": ""
+                    },
+                    "value": {
+                      "node": "Call",
+                      "function": {
+                        "node": "Variable",
+                        "label": "do"
+                      },
+                      "with": {
+                        "node": "Tagged",
+                        "tag": "Log",
+                        "value": {
+                          "node": "Access",
+                          "value": {
+                            "node": "Variable",
+                            "label": "r"
+                          },
+                          "key": "method"
+                        }
+                      }
+                    },
+                    "then": {
+                      "node": "Binary",
+                      "value": "hello"
+                    }
+                  }
+                }
+              },
+              {
+                "node": "Field",
+                "key": "recipe",
+                "value": {
+                  "node": "Variable",
+                  "label": "recipe"
+                }
+              },
+              {
+                "node": "Field",
+                "key": "web",
+                "value": {
+                  "node": "Variable",
+                  "label": "web"
+                }
+              }
+            ]
+          }
         }
       }
     }
