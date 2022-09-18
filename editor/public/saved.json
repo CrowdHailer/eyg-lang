@@ -324,7 +324,7 @@
               },
               "then": {
                 "node": "Binary",
-                "value": "hello world!"
+                "value": "hello magic!"
               }
             }
           },
