@@ -1,6 +1,6 @@
 FROM rust:1.61.0 AS build
 
-ENV SHA="v0.22.1"
+ENV SHA="v0.23.0-rc2"
 RUN set -xe \
         && curl -fSL -o gleam-src.tar.gz "https://github.com/gleam-lang/gleam/archive/${SHA}.tar.gz" \
         && mkdir -p /usr/src/gleam-src \
@@ -16,7 +16,7 @@ RUN cargo install watchexec-cli
 # FROM elixir:1.12.2
 # TODO call dev and prod as targets
 # or maybe slab
-FROM node:18.4.0 AS gleam
+FROM node:18.9.0 AS gleam
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin
@@ -24,7 +24,7 @@ RUN gleam --version
 
 CMD ["gleam"]
 
-FROM node:18.4.0
+FROM node:18.9.0
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin
@@ -41,3 +41,4 @@ RUN npm install && \
 WORKDIR /opt/app
 RUN npm install
 CMD node ./server.js
+# TODO local dev overwrites built files
