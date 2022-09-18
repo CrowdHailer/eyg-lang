@@ -5,10 +5,10 @@
   import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/editor";
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
 
-  import { Octokit } from "https://cdn.skypack.dev/@octokit/rest";
+  // import { Octokit } from "https://cdn.skypack.dev/@octokit/rest";
   // Use let in components const causes nil obkject issues
   let ghAccessToken = 'ghAccessToken'
-  let octokit = new Octokit({
+  let octokit = new window.Octokit({
     auth: localStorage.getItem(ghAccessToken),
   });
   window.setAccessToken = function (token) {
