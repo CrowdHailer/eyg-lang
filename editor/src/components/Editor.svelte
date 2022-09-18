@@ -22,6 +22,7 @@
     if (deploying) {
       return
     }
+    deploying = true
 
     const owner = "midas-framework"
     const repo = "project_wisdom"
@@ -29,6 +30,18 @@
     const {data} = await octokit.rest.repos.getContent({owner, repo, path});
     console.log(data);
     console.log(data.sha);
+    const sha = data.sha
+    const message = "deployed from editor"
+    const content = btoa(Editor.dump(editor))
+    await octokit.rest.repos.createOrUpdateFileContents({
+        owner,
+        repo,
+        path,
+        message,
+        content,
+        sha,
+    })
+    deploying = false
   }
 </script>
 
