@@ -21,7 +21,7 @@ fn infer(untyped, type_) {
   let checker = typer.init()
   let scope = typer.root_scope(variables)
   let state = #(checker, scope)
-  typer.infer(untyped, type_,  t.empty, state)
+  typer.infer(untyped, type_, t.empty, state)
 }
 
 pub fn recursive_tuple_test() {
@@ -36,8 +36,7 @@ pub fn recursive_tuple_test() {
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> μ0.(Binary, 0)" =
-    type_info.to_string(type_)
+  let "() -> μ0.(Binary, 0)" = type_info.to_string(type_)
 }
 
 pub fn loop_test() {
@@ -58,22 +57,21 @@ pub fn loop_test() {
     )
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "() -> [True () | False, ()] -> Binary" =
-    type_info.to_string(type_)
+  let "() -> [True () | False, ()] -> Binary" = type_info.to_string(type_)
   // Shouldn't be getting stuck in case where return value is unknown
   // Needs a drop out
 }
 
-pub fn actor_loop_test()  {
-  let source = e.let_(
-    p.Variable("loop"),
-    e.function(p.Variable("message"), e.variable("loop")),
-    e.variable("loop")
-  )
+pub fn actor_loop_test() {
+  let source =
+    e.let_(
+      p.Variable("loop"),
+      e.function(p.Variable("message"), e.variable("loop")),
+      e.variable("loop"),
+    )
   let #(typed, checker) = infer(source, t.Unbound(-1))
   assert Ok(type_) = analysis.get_type(typed, checker)
-  let "0 -> μ1.0 -> 1" =
-    type_info.to_string(type_)
+  let "0 -> μ1.0 -> 1" = type_info.to_string(type_)
 }
 
 pub fn recursive_union_test() {
@@ -128,4 +126,3 @@ pub fn recursive_union_test() {
   assert "μ0.[Cons (1, 0) | Nil ()] -> μ2.[Cons (1, 2) | Nil () | ..3]" =
     type_info.to_string(type_)
 }
-

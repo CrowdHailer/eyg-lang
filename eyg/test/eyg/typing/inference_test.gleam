@@ -14,7 +14,6 @@ import eyg/typer/monotype as t
 import eyg/ast/pattern as p
 import eyg/typer/polytype
 
-
 pub fn binary_expression_test() {
   let source = binary("Hello")
   let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])
@@ -81,7 +80,7 @@ pub fn row_expression_test() {
     analysis.infer(
       source,
       t.Record([#("foo", t.Binary), #("bar", t.Binary)], None),
-      []
+      [],
     )
   assert Error(reason) = analysis.get_type(typed, checker)
   assert typer.MissingFields([#("bar", t.Binary)]) = reason
@@ -120,9 +119,9 @@ pub fn tag_test() {
     analysis.infer(
       source,
       t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None),
-      []
-      
+      [],
     )
+
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Union([#("Some", t.Tuple([])), #("None", t.Tuple([]))], None) = type_
 
@@ -132,7 +131,7 @@ pub fn tag_test() {
     analysis.infer(
       source,
       t.Union([#("Some", t.Binary), #("None", t.Tuple([]))], None),
-      []
+      [],
     )
   assert Ok(type_) = analysis.get_type(typed, checker)
   // TODO expected option of A or A
@@ -166,7 +165,11 @@ pub fn function_test() {
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Unbound(_), t.Binary, _) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-2), t.Unbound(-3)), [])
+    analysis.infer(
+      source,
+      t.Function(t.Unbound(-1), t.Unbound(-2), t.Unbound(-3)),
+      [],
+    )
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Unbound(_), t.Binary, t.Unbound(_)) = type_
   let #(typed, checker) =
@@ -174,7 +177,11 @@ pub fn function_test() {
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Tuple([]), t.Binary, _) = type_
   let #(typed, checker) =
-    analysis.infer(source, t.Function(t.Unbound(-1), t.Unbound(-1), t.empty), [])
+    analysis.infer(
+      source,
+      t.Function(t.Unbound(-1), t.Unbound(-1), t.empty),
+      [],
+    )
   assert Ok(type_) = analysis.get_type(typed, checker)
   assert t.Function(t.Binary, t.Binary, _) = type_
   let #(typed, checker) = analysis.infer(source, t.Binary, [])

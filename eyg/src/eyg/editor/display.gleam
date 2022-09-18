@@ -79,24 +79,16 @@ pub fn target_type(editor) {
     Some(path) ->
       case editor.get_element(cache.typed, path) {
         editor.Expression(#(_, e.Let(_, value, _))) ->
-          expression_type(value, cache.typer, )
+          expression_type(value, cache.typer)
         editor.Expression(expression) ->
-          expression_type(
-            expression,
-            cache.typer,
-            
-          )
+          expression_type(expression, cache.typer)
         _ -> #(False, "")
       }
     None -> #(False, "")
   }
 }
 
-fn expression_type(
-  expression: e.Expression(Metadata, a),
-  typer: typer.Typer,
-  
-) {
+fn expression_type(expression: e.Expression(Metadata, a), typer: typer.Typer) {
   let #(metadata, _) = expression
   case metadata.type_ {
     Ok(t) -> #(
@@ -105,10 +97,7 @@ fn expression_type(
       |> analysis.shrink
       |> type_info.to_string(),
     )
-    Error(reason) -> #(
-      True,
-      type_info.reason_to_string(reason, ),
-    )
+    Error(reason) -> #(True, type_info.reason_to_string(reason))
   }
 }
 
@@ -163,10 +152,7 @@ pub fn do_display(tree, position, selection, editor) {
   let #(errored, type_) = case type_ {
     Ok(type_) -> #(
       False,
-      type_info.to_string(
-        t.resolve(type_, typer.substitutions),
-        
-      ),
+      type_info.to_string(t.resolve(type_, typer.substitutions)),
     )
     Error(_) -> #(True, "")
   }
@@ -291,10 +277,8 @@ pub fn do_display(tree, position, selection, editor) {
       case dynamic.from(generated) == dynamic.from(Nil) {
         True -> #(metadata, e.Provider(config, generator, generated))
         False -> {
-          let generated: e.Expression(
-            Metadata,
-            e.Expression(Metadata, Dynamic),
-          ) = unsafe_coerce(generated)
+          let generated: e.Expression(Metadata, e.Expression(Metadata, Dynamic)) =
+            unsafe_coerce(generated)
           let generated =
             do_display(
               generated,

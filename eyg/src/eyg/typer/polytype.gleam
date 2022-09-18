@@ -26,7 +26,8 @@ fn do_instantiate(forall, monotype, next_unbound) {
 
 pub fn replace_variable(monotype, x, y) {
   case monotype {
-    t.Native(name, inner) -> t.Native(name, list.map(inner, replace_variable(_, x, y)))
+    t.Native(name, inner) ->
+      t.Native(name, list.map(inner, replace_variable(_, x, y)))
     t.Binary -> t.Binary
     t.Tuple(elements) -> t.Tuple(list.map(elements, replace_variable(_, x, y)))
     t.Record(fields, rest) -> {
@@ -60,7 +61,11 @@ pub fn replace_variable(monotype, x, y) {
       t.Union(variants, rest)
     }
     t.Function(from, to, effects) ->
-      t.Function(replace_variable(from, x, y), replace_variable(to, x, y), replace_variable(effects, x, y))
+      t.Function(
+        replace_variable(from, x, y),
+        replace_variable(to, x, y),
+        replace_variable(effects, x, y),
+      )
     t.Unbound(i) ->
       case i == x {
         True -> t.Unbound(y)
@@ -78,7 +83,8 @@ pub fn replace_variable(monotype, x, y) {
 
 pub fn replace_type(monotype, x, t) {
   case monotype {
-    t.Native(name, inner) -> t.Native(name, list.map(inner, replace_type(_, x, t)))
+    t.Native(name, inner) ->
+      t.Native(name, list.map(inner, replace_type(_, x, t)))
     t.Binary -> t.Binary
     t.Tuple(elements) -> t.Tuple(list.map(elements, replace_type(_, x, t)))
     t.Record(fields, rest) -> {
@@ -112,7 +118,11 @@ pub fn replace_type(monotype, x, t) {
       t.Union(variants, rest)
     }
     t.Function(from, to, effects) ->
-      t.Function(replace_type(from, x, t), replace_type(to, x, t), replace_type(effects, x, t))
+      t.Function(
+        replace_type(from, x, t),
+        replace_type(to, x, t),
+        replace_type(effects, x, t),
+      )
     t.Unbound(i) ->
       case i == x {
         True -> t

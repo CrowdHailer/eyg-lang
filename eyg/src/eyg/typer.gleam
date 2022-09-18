@@ -179,9 +179,7 @@ pub fn is_error(metadata) {
   }
 }
 
-pub fn get_type(
-  tree: e.Expression(Metadata, a),
-) -> Result(t.Monotype, Reason) {
+pub fn get_type(tree: e.Expression(Metadata, a)) -> Result(t.Monotype, Reason) {
   let #(Metadata(type_: type_, ..), _) = tree
   type_
 }
@@ -235,16 +233,16 @@ pub fn do_unify(
       let t2 = polytype.replace_type(inner, i, t2)
       do_unify(#(state, seen), #(t1, t2))
     }
-    t.Native(n1,i1), t.Native(n2,i2) -> {
+    t.Native(n1, i1), t.Native(n2, i2) ->
       case n1 == n2 {
-        True -> case list.strict_zip(i1, i2) {
-          Ok(pairs) -> list.try_fold(pairs, #(state, seen), do_unify)
-          Error(list.LengthMismatch) ->
-            Error(IncorrectArity(list.length(i1), list.length(i2)))
-        }
-        False -> Error(UnmatchedTypes(t.Native(n1,i1), t.Native(n2,i2)))
+        True ->
+          case list.strict_zip(i1, i2) {
+            Ok(pairs) -> list.try_fold(pairs, #(state, seen), do_unify)
+            Error(list.LengthMismatch) ->
+              Error(IncorrectArity(list.length(i1), list.length(i2)))
+          }
+        False -> Error(UnmatchedTypes(t.Native(n1, i1), t.Native(n2, i2)))
       }
-    }
     t.Binary, t.Binary -> Ok(#(state, seen))
     t.Tuple(e1), t.Tuple(e2) ->
       case list.strict_zip(e1, e2) {
@@ -316,11 +314,7 @@ pub fn do_unify(
   }
 }
 
-fn add_substitution(
-  i,
-  type_,
-  state: #(Typer, List(Int)),
-) -> #(Typer, List(Int)) {
+fn add_substitution(i, type_, state: #(Typer, List(Int))) -> #(Typer, List(Int)) {
   let #(state, seen) = state
   case t.resolve(type_, state.substitutions) {
     t.Unbound(j) if j == i -> #(state, seen)
@@ -498,7 +492,7 @@ fn try_unify(expected, given, typer, path) {
 // expected is the type this expression should evaluate too
 pub fn infer(
   expression: e.Expression(Dynamic, Dynamic),
-  expected: t.Monotype, 
+  expected: t.Monotype,
   effects: t.Monotype,
   state: #(Typer, Scope),
 ) -> #(e.Expression(Metadata, Dynamic), Typer) {
@@ -566,7 +560,8 @@ pub fn infer(
       let #(t, typer) = next_unbound(typer)
       let record_type = t.Record([#(label, field_type)], Some(t))
       let #(type_, typer) = try_unify(expected, field_type, typer, scope.path)
-      let #(value, typer) = infer(value, record_type, effects, #(typer, child(scope, 0)))
+      let #(value, typer) =
+        infer(value, record_type, effects, #(typer, child(scope, 0)))
       // do records have labels or keys?
       let expression = #(meta(type_), e.Access(value, label))
       #(expression, typer)
@@ -577,7 +572,8 @@ pub fn infer(
       let #(y, typer) = next_unbound(typer)
       let given = t.Union([#(tag, value_type)], Some(y))
       let #(type_, typer) = try_unify(expected, given, typer, scope.path)
-      let #(value, typer) = infer(value, value_type, effects, #(typer, child(scope, 1)))
+      let #(value, typer) =
+        infer(value, value_type, effects, #(typer, child(scope, 1)))
       let expression = #(meta(type_), e.Tagged(tag, value))
       #(expression, typer)
     }
@@ -607,7 +603,6 @@ pub fn infer(
           let return_type = t.Unbound(y)
           let #(z, typer) = next_unbound(typer)
           let effect_type = t.Unbound(z)
-
           // TODO test effects in optionally reursive functions
           let self_type = t.Function(arg_type, return_type, effect_type)
           let inner_scope = set_self_variable(#(label, self_type), scope)
@@ -650,7 +645,6 @@ pub fn infer(
       let scope = child(scope, 2)
       // This is essentially an instantiation
       // assert effects = t.resolve(effects, typer.substitutions)
-      
       let #(then, typer) = infer(then, expected, effects, #(typer, scope))
       // Let is always OK the error is on the term inside
       let expression = #(meta(Ok(expected)), e.Let(pattern, value, then))
@@ -666,28 +660,41 @@ pub fn infer(
     e.Call(#(_, e.Variable("do")), with) -> {
       let #(x, typer) = next_unbound(typer)
       let arg_type = t.Union([], Some(x))
-      let #(with, typer) = infer(with, arg_type, effects, #(typer, child(scope, 1)))
-
+      let #(with, typer) =
+        infer(with, arg_type, effects, #(typer, child(scope, 1)))
       let #(y, typer) = next_unbound(typer)
       let function_type = t.Unbound(y)
-
       let #(r, typer) = case get_type(with) {
-        Ok(type_) -> {
+        Ok(type_) ->
           case t.resolve(type_, typer.substitutions) {
             t.Union([#(name, value)], Some(extra)) -> {
               // All the effect variants need to be known when deciding the type of the effect keyword.
               // This unification ensures that the union is closed
-              let #(_, typer) = try_unify(t.Unbound(extra), t.Union([], None), typer, child(scope, 1).path)
-
+              let #(_, typer) =
+                try_unify(
+                  t.Unbound(extra),
+                  t.Union([], None),
+                  typer,
+                  child(scope, 1).path,
+                )
               let #(z, typer) = next_unbound(typer)
               // Tuple as unit for pure effects, I think this is the type of the continuation
-              let raised = t.Union([#(name, t.Function(value, expected, t.empty))], Some(z))
-
+              let raised =
+                t.Union(
+                  [#(name, t.Function(value, expected, t.empty))],
+                  Some(z),
+                )
               // Can unify with an unbound value for raised so that we show the call is at least a function
               let expected_function = t.Function(arg_type, expected, raised)
-              let #(r1, typer) = try_unify(function_type, expected_function, typer,  child(scope, 0).path)
-
-              let #(r2, typer) = try_unify(effects, raised, typer, child(scope, 0).path)
+              let #(r1, typer) =
+                try_unify(
+                  function_type,
+                  expected_function,
+                  typer,
+                  child(scope, 0).path,
+                )
+              let #(r2, typer) =
+                try_unify(effects, raised, typer, child(scope, 0).path)
               // TODO test errors are kept
               let r = case r1, r2 {
                 Ok(_), Ok(_) -> r1
@@ -698,21 +705,28 @@ pub fn infer(
             }
             t -> {
               let reason = case t {
-                t.Union([],_ ) -> MissingFields([#("Effect", t.Unbound(-100))]) 
+                t.Union([], _) -> MissingFields([#("Effect", t.Unbound(-100))])
                 t.Union(fields, _) -> UnexpectedFields(fields)
-                _ -> UnmatchedTypes(t.Union([#("Effect", t.Unbound(-100))], None), t)
+                _ ->
+                  UnmatchedTypes(
+                    t.Union([#("Effect", t.Unbound(-100))], None),
+                    t,
+                  )
               }
-              let inconsistencies = [#(child(scope, 1).path, reason), ..typer.inconsistencies]
+              let inconsistencies = [
+                #(child(scope, 1).path, reason),
+                ..typer.inconsistencies
+              ]
               let typer = Typer(..typer, inconsistencies: inconsistencies)
               #(Error(reason), typer)
             }
           }
-
-        }
         Error(reason) -> #(Ok(function_type), typer)
       }
-
-      let expression = #(meta(Ok(expected)), e.Call(#(meta(r), e.Variable("do")), with))
+      let expression = #(
+        meta(Ok(expected)),
+        e.Call(#(meta(r), e.Variable("do")), with),
+      )
       #(expression, typer)
     }
     e.Call(#(_, e.Variable("impl")), with) -> {
@@ -721,7 +735,6 @@ pub fn infer(
       // y/handled_return: value each branch of the handler must return and final return value
       let #(y, typer) = next_unbound(typer)
       let handled_return = t.Unbound(y)
-            
       let #(z, typer) = next_unbound(typer)
       let computation_arg = t.Unbound(z)
       // a/computation_return value of the computed being executed with out effect raised
@@ -736,54 +749,88 @@ pub fn infer(
       let effect_arg = t.Unbound(d)
       let #(e, typer) = next_unbound(typer)
       let effect_return = t.Unbound(e)
-
-
-      let handler_type = t.Function(t.Union([#("Return", computation_return)], Some(x)), handled_return, unhandled_effects)
-
-      let #(_, temp_typer) = infer(with, handler_type, effects, #(typer, child(scope, 1)))
-      let #(inner_effects, handler_type) = case t.resolve(t.Unbound(x), temp_typer.substitutions) {
+      let handler_type =
+        t.Function(
+          t.Union([#("Return", computation_return)], Some(x)),
+          handled_return,
+          unhandled_effects,
+        )
+      let #(_, temp_typer) =
+        infer(with, handler_type, effects, #(typer, child(scope, 1)))
+      let #(inner_effects, handler_type) = case
+        t.resolve(t.Unbound(x), temp_typer.substitutions)
+      {
         t.Union([#(name, _)], None) -> {
           // c = unhandled_effects
           // inner effects are none because I intend for the handler needing to have explicit pass up value
-          let inner_effects = t.Union([#(name, t.Function(effect_arg, effect_return, unhandled_effects))], Some(c))
+          let inner_effects =
+            t.Union(
+              [
+                #(
+                  name,
+                  t.Function(effect_arg, effect_return, unhandled_effects),
+                ),
+              ],
+              Some(c),
+            )
           // TODO this is probably outer effects because you need to call catch again
           // This should get resolved with unification for a raise
           // The raise needs to handle if we have a continuation effect
           // unhandled_effects needed here I'm pretty sure
-          let continuation_type = t.Function(effect_return, computation_return, inner_effects)
-          let handler_type = t.Function(
-            t.Union([#("Return", computation_return), #(name, t.Tuple([effect_arg, continuation_type]))], None), 
-            handled_return, 
-            unhandled_effects
-          )
+          let continuation_type =
+            t.Function(effect_return, computation_return, inner_effects)
+          let handler_type =
+            t.Function(
+              t.Union(
+                [
+                  #("Return", computation_return),
+                  #(name, t.Tuple([effect_arg, continuation_type])),
+                ],
+                None,
+              ),
+              handled_return,
+              unhandled_effects,
+            )
           #(inner_effects, handler_type)
         }
         // Maybe this shouldn't be empty
         t.Union([], None) -> {
-          let handler_type = t.Function(t.Union([#("Return", computation_return), #("Effect", t.Unbound(-100))], Some(x)), handled_return, unhandled_effects)
+          let handler_type =
+            t.Function(
+              t.Union(
+                [#("Return", computation_return), #("Effect", t.Unbound(-100))],
+                Some(x),
+              ),
+              handled_return,
+              unhandled_effects,
+            )
           #(unhandled_effects, handler_type)
         }
         _ -> #(unhandled_effects, handler_type)
       }
-      let #(with, typer) = infer(with, handler_type, effects, #(typer, child(scope, 1)))
-
+      let #(with, typer) =
+        infer(with, handler_type, effects, #(typer, child(scope, 1)))
       // type of final call
-      let exec_type = t.Function(computation_arg, handled_return, unhandled_effects)
-      let computation_type = t.Function(computation_arg, computation_return, inner_effects)
-      let catcher_type = t.Function(computation_type, exec_type, t.Union([], None))
+      let exec_type =
+        t.Function(computation_arg, handled_return, unhandled_effects)
+      let computation_type =
+        t.Function(computation_arg, computation_return, inner_effects)
+      let catcher_type =
+        t.Function(computation_type, exec_type, t.Union([], None))
       // type to assign the catch function
       let function_type = t.Function(handler_type, catcher_type, effects)
-
       let given = catcher_type
       let #(r, typer) = try_unify(expected, given, typer, scope.path)
-      let expression = #(meta(r), e.Call(#(meta(Ok(function_type)), e.Variable("impl")), with))
+      let expression = #(
+        meta(r),
+        e.Call(#(meta(Ok(function_type)), e.Variable("impl")), with),
+      )
       #(expression, typer)
     }
     e.Call(function, with) -> {
       let #(x, typer) = next_unbound(typer)
       let arg_type = t.Unbound(x)
       let expected_function = t.Function(arg_type, expected, effects)
-
       // Is this where we should instantiate every effect list
       let #(function, typer) =
         infer(function, expected_function, effects, #(typer, child(scope, 0)))
@@ -791,9 +838,8 @@ pub fn infer(
       // assert effects = t.resolve(effects, typer.substitutions)
       // merge effects is different to ther function matching because it should be fixed
       // I think resolving is sensible Also test that open effect remains open forever
-
-      
-      let #(with, typer) = infer(with, arg_type,effects, #(typer, child(scope, 1)))
+      let #(with, typer) =
+        infer(with, arg_type, effects, #(typer, child(scope, 1)))
       // io.debug(#("---->", t.resolve(arg_type, typer.substitutions), t.resolve(expected_function, typer.substitutions)))
       // Type is always! OK at this level
       let expression = #(meta(Ok(expected)), e.Call(function, with))
@@ -835,7 +881,6 @@ pub fn infer(
       // unifys value with patterns
       let #(value, typer) =
         infer(value, expected_value, effects, #(typer, child(scope, 0)))
-
       // let effects = t.resolve(effects, typer.substitutions)
       // Case could fail if not a union type at all ?
       let #(branches, typer) =
@@ -844,10 +889,9 @@ pub fn infer(
           typer,
           fn(inf, typer) {
             let #(name, pattern, then, scope) = inf
-            let #(then, typer) = infer(then, expected,effects, #(typer, scope))
+            let #(then, typer) = infer(then, expected, effects, #(typer, scope))
             // TODO move resolving effects to the bottom
             // let effects = t.resolve(effects, typer.substitutions)
-
             let branch = #(name, pattern, then)
             #(branch, typer)
           },
@@ -893,7 +937,6 @@ fn infer_function(pattern, body, expected, typer, scope, body_index) {
   let #(type_, typer) = try_unify(expected, given, typer, scope.path)
 
   // let effects = t.resolve(effects, typer.substitutions)
-  
   let bound_variables =
     list.map(
       bound_variables,

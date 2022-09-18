@@ -12,7 +12,7 @@ import eyg/typer
 import platform/browser
 
 pub fn compile(untyped, scope) {
-  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1),  t.empty, scope)
+  let #(typed, typer) = typer.infer(untyped, t.Unbound(-1), t.empty, scope)
   let #(typed, typer) = typer.expand_providers(typed, typer, [])
   javascript.render(typed, javascript.Generator(False, [], typer, None))
 }
@@ -173,9 +173,7 @@ pub fn record_destructure_test() {
       untyped,
       #(
         typer.init(),
-        typer.root_scope([
-          #("user", polytype.Polytype([], t.Unbound(-1))),
-        ]),
+        typer.root_scope([#("user", polytype.Polytype([], t.Unbound(-1)))]),
       ),
     )
   let [l1, l2] = js

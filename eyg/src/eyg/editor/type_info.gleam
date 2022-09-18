@@ -8,35 +8,30 @@ import eyg/typer/monotype as t
 // TODO remove typer because we should probably just resolve before printing.
 import eyg/typer.{Typer}
 
-fn field_to_string(field, ) {
+fn field_to_string(field) {
   let #(label, type_) = field
-  string.concat([label, ": ", to_string(type_, )])
+  string.concat([label, ": ", to_string(type_)])
 }
 
-fn variant_to_string(variant, ) {
+fn variant_to_string(variant) {
   let #(label, type_) = variant
-  string.concat([label, " ", to_string(type_, )])
+  string.concat([label, " ", to_string(type_)])
 }
 
-pub fn to_string(monotype, ) {
+pub fn to_string(monotype) {
   case monotype {
-    t.Native(name, parameters) -> string.concat([
+    t.Native(name, parameters) ->
+      string.concat([
         name,
         "(",
-        string.concat(list.intersperse(
-          list.map(parameters, to_string(_, )),
-          ", ",
-        )),
+        string.concat(list.intersperse(list.map(parameters, to_string(_)), ", ")),
         ")",
       ])
     t.Binary -> "Binary"
     t.Tuple(elements) ->
       string.concat([
         "(",
-        string.concat(list.intersperse(
-          list.map(elements, to_string(_, )),
-          ", ",
-        )),
+        string.concat(list.intersperse(list.map(elements, to_string(_)), ", ")),
         ")",
       ])
     t.Record(fields, extra) -> {
@@ -47,7 +42,7 @@ pub fn to_string(monotype, ) {
       string.concat([
         "{",
         string.concat(list.intersperse(
-          list.map(fields, field_to_string(_, ))
+          list.map(fields, field_to_string(_))
           |> list.append(extra),
           ", ",
         )),
@@ -62,50 +57,53 @@ pub fn to_string(monotype, ) {
       string.concat([
         "[",
         string.concat(list.intersperse(
-          list.map(variants, variant_to_string(_, ))
+          list.map(variants, variant_to_string(_))
           |> list.append(extra),
           " | ",
         )),
         "]",
       ])
     }
-    t.Function(from, to, effects) -> { 
+    t.Function(from, to, effects) ->
       string.concat([
-        to_string(from, ),
+        to_string(from),
         " ->",
         effects_to_string(effects),
         " ",
-        to_string(to, ),
+        to_string(to),
       ])
-    }
     t.Unbound(i) -> int.to_string(i)
     t.Recursive(i, inner) -> {
-      let inner = to_string(inner, )
+      let inner = to_string(inner)
       string.concat(["μ", int.to_string(i), ".", inner])
     }
   }
 }
 
-fn effects_to_string(type_){
+fn effects_to_string(type_) {
   case type_ {
     // The assumption is that if still unbound we don't know anything yet
     // This also relates to unions that are open, based on usage, but don't throw any types
-    t.Unbound(_) -> "" 
+    t.Unbound(_) -> ""
     t.Union([], _) -> ""
-    t.Union(effects, _) -> {
+    t.Union(effects, _) ->
       // angled brackets after Koka's lead
-      string.concat([" <", string.join(list.map(effects, effect_to_string), " | "), ">"])
-    } 
+      string.concat([
+        " <",
+        string.join(list.map(effects, effect_to_string), " | "),
+        ">",
+      ])
     // Not sure why this ever happens
     _ -> string.concat([" <", to_string(type_), ">"])
   }
 }
 
-fn effect_to_string(effect) { 
+fn effect_to_string(effect) {
   let #(name, args) = effect
   let arg_string = case args {
     t.Function(from, to, _) -> to_string(t.Function(from, to, t.empty))
-    t.Recursive(r1, t.Function(from, to, t.Unbound(r2))) if r1 == r2 -> to_string(t.Function(from, to, t.empty))
+    t.Recursive(r1, t.Function(from, to, t.Unbound(r2))) if r1 == r2 ->
+      to_string(t.Function(from, to, t.empty))
     _ -> to_string(args)
   }
   string.concat([name, " ", arg_string])
@@ -156,7 +154,7 @@ pub fn resolve_reason(reason, typer: Typer) {
   }
 }
 
-pub fn reason_to_string(reason, ) {
+pub fn reason_to_string(reason) {
   case reason {
     typer.IncorrectArity(expected, given) ->
       string.concat([
@@ -170,9 +168,9 @@ pub fn reason_to_string(reason, ) {
     typer.UnmatchedTypes(expected, given) ->
       string.concat([
         "Unmatched types expected ",
-        to_string(expected, ),
+        to_string(expected),
         " given ",
-        to_string(given, ),
+        to_string(given),
       ])
     typer.MissingFields(expected) ->
       [
@@ -181,7 +179,7 @@ pub fn reason_to_string(reason, ) {
           expected,
           fn(x) {
             let #(name, type_) = x
-            string.concat([name, ": ", to_string(type_, )])
+            string.concat([name, ": ", to_string(type_)])
           },
         )
         |> list.intersperse(", ")
@@ -195,7 +193,7 @@ pub fn reason_to_string(reason, ) {
           expected,
           fn(x) {
             let #(name, type_) = x
-            string.concat([name, ": ", to_string(type_, )])
+            string.concat([name, ": ", to_string(type_)])
           },
         )
         |> list.intersperse(", ")
@@ -206,7 +204,7 @@ pub fn reason_to_string(reason, ) {
         "Provider '",
         e.generator_to_string(g),
         "' unable to generate code for type: ",
-        to_string(expected, ),
+        to_string(expected),
       ])
     typer.Warning(message) -> message
     typer.GeneratedInvalid(reasons) -> {

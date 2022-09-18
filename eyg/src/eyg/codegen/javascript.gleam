@@ -176,10 +176,7 @@ pub fn escape_string(raw) {
 }
 
 pub fn render(
-  tree: e.Expression(
-    typer.Metadata,
-    e.Expression(typer.Metadata, Dynamic),
-  ),
+  tree: e.Expression(typer.Metadata, e.Expression(typer.Metadata, Dynamic)),
   state,
 ) {
   let #(context, tree) = tree

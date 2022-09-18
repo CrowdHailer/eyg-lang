@@ -13,11 +13,11 @@ import eyg/typer/harness
 // TODO make all effectual functions open
 
 pub fn harness() {
-  harness.Harness(
-    [
-      #("equal", typer.equal_fn()), #("harness", string()), #("int", int()),
-    ],
-  )
+  harness.Harness([
+    #("equal", typer.equal_fn()),
+    #("harness", string()),
+    #("int", int()),
+  ])
 }
 
 fn int() {
@@ -29,7 +29,10 @@ fn int() {
           "parse",
           t.Function(
             t.Binary,
-            t.Union([#("OK", t.Native("Integer", [])), #("Error", t.Tuple([]))], None),
+            t.Union(
+              [#("OK", t.Native("Integer", [])), #("Error", t.Tuple([]))],
+              None,
+            ),
             t.empty,
           ),
         ),
@@ -50,7 +53,10 @@ fn int() {
             t.empty,
           ),
         ),
-        #("negate", t.Function(t.Native("Integer", []), t.Native("Integer", []), t.empty)),
+        #(
+          "negate",
+          t.Function(t.Native("Integer", []), t.Native("Integer", []), t.empty),
+        ),
         #(
           "compare",
           t.Function(
@@ -77,7 +83,7 @@ fn int() {
 // perhaps they should be letters or similar
 pub fn string() {
   polytype.Polytype(
-    [1, 2, 3, 4, 5, 6, 7,8, 9, 10, 11, 12],
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
     t.Record(
       [
         #(
@@ -91,34 +97,58 @@ pub fn string() {
                   // TODO need recursive type definition
                   t.Tuple([t.Binary, t.Unbound(999)]),
                   t.Unbound(1),
-                  t.empty
+                  t.empty,
                 ),
               ]),
               t.Unbound(1),
-              t.empty
+              t.empty,
             ),
-            t.empty
+            t.empty,
           ),
         ),
-        #("concat", t.Function(t.Tuple([t.Binary, t.Binary]), t.Binary, t.empty)),
-        #("debug", t.Function(t.Unbound(2), t.Unbound(2), t.Union([#("Log", t.Binary)], Some(12)))),
+        #(
+          "concat",
+          t.Function(t.Tuple([t.Binary, t.Binary]), t.Binary, t.empty),
+        ),
+        #(
+          "debug",
+          t.Function(
+            t.Unbound(2),
+            t.Unbound(2),
+            t.Union([#("Log", t.Binary)], Some(12)),
+          ),
+        ),
         // #("inspect", t.Function(t.Unbound(6), t.Binary)),
         #(
           "compile",
           t.Function(
             t.Tuple([t.Binary, t.Binary]),
             t.Union([#("OK", t.Unbound(4)), #("Error", t.Binary)], Some(5)),
-            t.empty
+            t.empty,
           ),
         ),
         #("source", t.Function(t.Tuple([]), t.Binary, t.empty)),
-        #("fetch", t.Function(t.Binary, t.Function(t.Function(t.Binary, t.Unbound(7), t.empty), t.Tuple([]), t.empty), t.empty)),
+        #(
+          "fetch",
+          t.Function(
+            t.Binary,
+            t.Function(
+              t.Function(t.Binary, t.Unbound(7), t.empty),
+              t.Tuple([]),
+              t.empty,
+            ),
+            t.empty,
+          ),
+        ),
         // TODO this should probably be returning JSON not unbound
-        #("key", t.Function(t.Tuple([t.Unbound(8), t.Binary]), t.Unbound(9), t.empty)),
+        #(
+          "key",
+          t.Function(t.Tuple([t.Unbound(8), t.Binary]), t.Unbound(9), t.empty),
+        ),
         #("deserialize", t.Function(t.Binary, t.Native("JSON", []), t.empty)),
-        // TODO fix in case of spawn test
-        // #("spawn", t.Function(t.Recursive(0, t.Function(t.Unbound(10), t.Unbound(0))), t.Function(t.Function(t.Native("Address", [t.Unbound(10)]), t.Unbound(11)), t.Unbound(11)))),
       ],
+      // TODO fix in case of spawn test
+      // #("spawn", t.Function(t.Recursive(0, t.Function(t.Unbound(10), t.Unbound(0))), t.Function(t.Function(t.Native("Address", [t.Unbound(10)]), t.Unbound(11)), t.Unbound(11)))),
       None,
     ),
   )

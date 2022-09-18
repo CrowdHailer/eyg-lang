@@ -121,20 +121,21 @@ pub fn generate(generator, config, hole) {
     //     }
     //   }
     // }
-    Parse -> {
-      fn(_, _)  {
-        case hole {
-          t.Function(_,
-            t.Record([#(k, v)], _), _) -> {
-              io.debug(v)
-              // TODO match v type
-              let key_fn = access(variable("harness"), "key")
-              let deserialized = call( access(variable("harness"), "deserialize"), variable("x"))
-              // TODO multi key records
-              Ok(function(p.Variable("x"), record([#(k, call(key_fn, tuple_([deserialized, binary(k)])))])))
-            } 
-            _ -> todo
+    Parse -> fn(_, _) {
+      case hole {
+        t.Function(_, t.Record([#(k, v)], _), _) -> {
+          io.debug(v)
+          // TODO match v type
+          let key_fn = access(variable("harness"), "key")
+          let deserialized =
+            call(access(variable("harness"), "deserialize"), variable("x"))
+          // TODO multi key records
+          Ok(function(
+            p.Variable("x"),
+            record([#(k, call(key_fn, tuple_([deserialized, binary(k)])))]),
+          ))
         }
+        _ -> todo
       }
     }
   }
@@ -306,4 +307,3 @@ pub fn hole() {
 pub fn provider(config, generator) {
   #(dynamic.from(Nil), Provider(config, generator, dynamic.from(Nil)))
 }
-

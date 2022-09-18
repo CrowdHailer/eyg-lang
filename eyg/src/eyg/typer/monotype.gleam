@@ -20,7 +20,8 @@ pub type Monotype {
 }
 
 pub const empty = Union([], None)
-pub fn open(i)  {
+
+pub fn open(i) {
   Union([], Some(i))
 }
 
@@ -61,13 +62,13 @@ pub fn literal(monotype) {
   }
 }
 
-
 pub fn do_resolve(type_, substitutions: List(#(Int, Monotype)), recuring) {
   case type_ {
     Native(name, parameters) -> {
-      let parameters = list.map(parameters, do_resolve(_, substitutions, recuring))
-      Native(name,parameters)
-      }
+      let parameters =
+        list.map(parameters, do_resolve(_, substitutions, recuring))
+      Native(name, parameters)
+    }
     Unbound(i) ->
       case list.find(recuring, fn(j) { i == j }) {
         Ok(_) -> type_
@@ -138,7 +139,7 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype)), recuring) {
               io.debug("bad resolution of a union")
               io.debug(#(i, x))
               Union(resolved_variants, None)
-              }
+            }
           }
         }
       }
@@ -146,7 +147,7 @@ pub fn do_resolve(type_, substitutions: List(#(Int, Monotype)), recuring) {
     Function(from, to, effects) -> {
       let from = do_resolve(from, substitutions, recuring)
       let to = do_resolve(to, substitutions, recuring)
-      let effects = do_resolve(effects , substitutions, recuring)
+      let effects = do_resolve(effects, substitutions, recuring)
       Function(from, to, effects)
     }
   }
@@ -160,9 +161,7 @@ pub fn resolve(t, substitutions) {
 fn do_free_in_type(set, type_) {
   case type_ {
     Unbound(i) -> push_new(i, set)
-    Native(_, parameters) ->{
-      list.fold(parameters, set, do_free_in_type)
-      }
+    Native(_, parameters) -> list.fold(parameters, set, do_free_in_type)
     Binary -> set
     Tuple(elements) -> list.fold(elements, set, do_free_in_type)
     Record(rows, rest) | Union(rows, rest) -> do_free_in_row(rows, rest, set)

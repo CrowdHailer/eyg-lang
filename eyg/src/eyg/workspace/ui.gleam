@@ -18,7 +18,6 @@ import eyg/interpreter/stepwise
 import eyg/workspace/workspace.{OnEditor, OnMounts, Workspace}
 import gleam/javascript as real_js
 
-
 external fn fetch(String) -> Promise(String) =
   "../../browser_ffi" "fetchSource"
 
@@ -27,8 +26,14 @@ fn apps() {
   [
     workspace.App("proxy", workspace.Proxy(Error("No code given"))),
     workspace.App("recipe", workspace.Proxy(Error("No code given"))),
-    workspace.App("next", workspace.IServer(fn(_,_,_) { "TODO put a holder in here"})),
-    workspace.App("show", workspace.Interpreted(#(real_js.make_reference([]), r.Tuple([])))),
+    workspace.App(
+      "next",
+      workspace.IServer(fn(_, _, _) { "TODO put a holder in here" }),
+    ),
+    workspace.App(
+      "show",
+      workspace.Interpreted(#(real_js.make_reference([]), r.Tuple([]))),
+    ),
     workspace.App("counter", workspace.UI(None, None, "")),
     workspace.App("fetch", workspace.Pure(None)),
     workspace.App("test", workspace.TestSuite("True")),

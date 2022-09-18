@@ -5,7 +5,5 @@ import eyg/typer/monotype
 // Program <- Harness -> Platform = Applicatin
 // Is this the Harness?
 pub type Harness {
-  Harness(
-    variables: List(#(String, polytype.Polytype)),
-  )
+  Harness(variables: List(#(String, polytype.Polytype)))
 }

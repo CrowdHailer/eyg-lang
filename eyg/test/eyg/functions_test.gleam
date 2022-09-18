@@ -10,7 +10,6 @@ import eyg/typer/monotype.{resolve}
 import eyg/typer/polytype
 import platform/browser
 
-
 pub fn type_bound_function_test() {
   let typer = init()
   let scope = typer.root_scope([])
@@ -28,7 +27,8 @@ pub fn generic_function_test() {
   let #(typed, typer) = infer(untyped, t.Unbound(-1), t.empty, #(typer, scope))
   let typer.Typer(substitutions: substitutions, ..) = typer
   assert Ok(type_) = get_type(typed)
-  assert t.Function(t.Unbound(a), t.Unbound(b), _) = resolve(type_, substitutions)
+  assert t.Function(t.Unbound(a), t.Unbound(b), _) =
+    resolve(type_, substitutions)
   assert True = a == b
 }
 

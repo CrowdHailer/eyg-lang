@@ -64,12 +64,23 @@ pub type Mount(a) {
     rendered: String,
   )
   // State, render handle
-  Pure(Option(#(Dynamic, fn(Dynamic) -> String, fn(Dynamic) -> Dynamic, real_js.Reference(List(Action)))))
+  Pure(
+    Option(
+      #(
+        Dynamic,
+        fn(Dynamic) -> String,
+        fn(Dynamic) -> Dynamic,
+        real_js.Reference(List(Action)),
+      ),
+    ),
+  )
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
   Server(handle: Option(fn(Dynamic) -> Dynamic))
   // Only difference between server and universial is that universal works with source
-  Universal(handle: Option(fn( String,  String,  String) -> String))
-  Interpreted(state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object))
+  Universal(handle: Option(fn(String, String, String) -> String))
+  Interpreted(
+    state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object),
+  )
   IServer(handle: fn(String, String, String) -> String)
   Proxy(state: proxy.State)
 }
@@ -139,7 +150,6 @@ pub fn dispatch_to_app(workspace: Workspace, function) {
   Workspace(..workspace, apps: apps)
 }
 
-
 pub fn mount_constraint(mount) {
   case mount {
     TestSuite(_) ->
@@ -162,20 +172,44 @@ pub fn mount_constraint(mount) {
         ],
         None,
       )
-    Pure(_) -> t.Record([
-      #("render", t.Function(t.Unbound(-4), t.Binary, t.empty)),
-      #("init", t.Function(t.Record([
-          #("on_keypress",t.Function(
-            // t.Tuple([t.Binary, t.Unbound(-4)]), t.Function(t.Tuple([]), t.Unbound(-4))
-            // handler
-            t.Function(t.Tuple([t.Binary, t.Unbound(-4)]), t.Unbound(-4), t.empty),
-            // continuation
-            t.Function(t.Function(t.Tuple([]), t.Unbound(-5), t.empty), t.Unbound(-5), t.empty),
-            t.empty,
-          ))
-        ], None)
-      , t.Unbound(-4), t.empty))
-      ], None)
+    Pure(_) ->
+      t.Record(
+        [
+          #("render", t.Function(t.Unbound(-4), t.Binary, t.empty)),
+          #(
+            "init",
+            t.Function(
+              t.Record(
+                [
+                  #(
+                    "on_keypress",
+                    t.Function(
+                      // t.Tuple([t.Binary, t.Unbound(-4)]), t.Function(t.Tuple([]), t.Unbound(-4))
+                      // handler
+                      t.Function(
+                        t.Tuple([t.Binary, t.Unbound(-4)]),
+                        t.Unbound(-4),
+                        t.empty,
+                      ),
+                      // continuation
+                      t.Function(
+                        t.Function(t.Tuple([]), t.Unbound(-5), t.empty),
+                        t.Unbound(-5),
+                        t.empty,
+                      ),
+                      t.empty,
+                    ),
+                  ),
+                ],
+                None,
+              ),
+              t.Unbound(-4),
+              t.empty,
+            ),
+          ),
+        ],
+        None,
+      )
     Firmata(_) -> {
       // TODO move boolean to standard types
       let boolean =
@@ -186,30 +220,74 @@ pub fn mount_constraint(mount) {
       t.Function(t.Tuple([input, state]), t.Tuple([output, state]), t.empty)
     }
     Server(_) -> t.Function(t.Binary, t.Binary, t.empty)
-    Universal(_) -> t.Function(
-      t.Record([#("Method", t.Binary), #("Path", t.Binary), #("Body", t.Binary)], None), 
+    Universal(_) ->
       t.Function(
-        t.Record([
-          #("OnKeypress", t.Function(t.Function(t.Binary, t.Tuple([]), t.empty), t.Tuple([]), t.empty)), 
-          #("render", t.Function(t.Binary, t.Tuple([]), t.empty)),  
-          #("log", t.Function(t.Binary, t.Tuple([]), t.empty)),
-          #("send", t.Function(t.Tuple([t.Native("Address", [t.Unbound(-3)]), t.Unbound(-3)]), t.Tuple([]), t.empty)),
-          ], None), 
-        t.Binary,
+        t.Record(
+          [#("Method", t.Binary), #("Path", t.Binary), #("Body", t.Binary)],
+          None,
+        ),
+        t.Function(
+          t.Record(
+            [
+              #(
+                "OnKeypress",
+                t.Function(
+                  t.Function(t.Binary, t.Tuple([]), t.empty),
+                  t.Tuple([]),
+                  t.empty,
+                ),
+              ),
+              #("render", t.Function(t.Binary, t.Tuple([]), t.empty)),
+              #("log", t.Function(t.Binary, t.Tuple([]), t.empty)),
+              #(
+                "send",
+                t.Function(
+                  t.Tuple([t.Native("Address", [t.Unbound(-3)]), t.Unbound(-3)]),
+                  t.Tuple([]),
+                  t.empty,
+                ),
+              ),
+            ],
+            None,
+          ),
+          t.Binary,
+          t.empty,
+        ),
         t.empty,
-      ),
-      t.empty,
-    )
-    Interpreted(_) -> t.Function(t.Record([
-      #("ui", t.Native("Pid", [t.Binary])),
-      #("on_keypress", t.Native("Pid", [t.Function(t.Binary, t.Tuple([]), t.empty)])),
-      #("fetch", t.Native("Pid", [t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]), t.empty)])])),
-      ], None), t.Tuple([]), t.empty) 
-    IServer(_) -> t.Function(
-      t.Record([#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)], None), 
-      t.Function(t.Record([], None), t.Binary, t.empty),
-      t.empty,
-    )
+      )
+    Interpreted(_) ->
+      t.Function(
+        t.Record(
+          [
+            #("ui", t.Native("Pid", [t.Binary])),
+            #(
+              "on_keypress",
+              t.Native("Pid", [t.Function(t.Binary, t.Tuple([]), t.empty)]),
+            ),
+            #(
+              "fetch",
+              t.Native(
+                "Pid",
+                [
+                  t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]), t.empty)]),
+                ],
+              ),
+            ),
+          ],
+          None,
+        ),
+        t.Tuple([]),
+        t.empty,
+      )
+    IServer(_) ->
+      t.Function(
+        t.Record(
+          [#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)],
+          None,
+        ),
+        t.Function(t.Record([], None), t.Binary, t.empty),
+        t.empty,
+      )
     Proxy(_) -> proxy.constraint()
   }
 }
@@ -233,7 +311,7 @@ pub fn focus_on_mount(before: Workspace, index) {
   let workspace =
     Workspace(..before, focus: OnMounts, active_mount: index, editor: editor)
   case workspace.editor {
-    Some(editor.Editor(cache: editor.Cache(evaled: Ok(code), ..), source: s ..)) -> {
+    Some(editor.Editor(cache: editor.Cache(evaled: Ok(code), ..), source: s, ..)) -> {
       let func = code_update(code, s, _)
       dispatch_to_app(workspace, func)
     }
@@ -245,36 +323,34 @@ pub type Action {
   Keypress(fn(Dynamic) -> Dynamic)
 }
 
-
 pub fn code_update(code, source, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
-    Interpreted(old) -> {
+    Interpreted(old) ->
       case stepwise.run_browser(e.access(source, key)) {
-        Ok(new) -> Interpreted(new) 
+        Ok(new) -> Interpreted(new)
         Error(reason) -> {
           io.debug("failed to interpret")
           io.debug(reason)
           Interpreted(old)
         }
       }
-    }
-    IServer(old) -> {
+    IServer(old) ->
       case server.boot(e.access(source, key)) {
-        Ok(new) -> IServer(new) 
+        Ok(new) -> IServer(new)
         Error(reason) -> {
           io.debug("failed to interpret")
           io.debug(reason)
           IServer(old)
         }
       }
-    }
     TestSuite(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)
-      assert Ok(r) = prog(dynamic.from([]))
-      |> io.debug()
+      assert Ok(r) =
+        prog(dynamic.from([]))
+        |> io.debug()
       // TODO Inner value should be tuple 0, probably should be added to gleam extra
       case dynamic.field("True", Ok)(r) {
         Ok(inner) -> TestSuite("True")
@@ -331,21 +407,25 @@ pub fn code_update(code, source, app) {
       assert Ok(init) = dynamic.field("init", cast)(record)
       assert Ok(render) = dynamic.field("render", cast)(record)
       let ref = real_js.make_reference([])
-      let env = to_object([
-        #("on_keypress", dynamic.from(fn(handle) { 
-          real_js.update_reference(ref, fn(x) {[handle, ..x]})
-          // io.debug(handle)
-          // io.debug(handle(["key A", "state"]))
-          // io.debug("TODO register handle")
-          // How do we get out the values from pure in here
-          // This pulls the handle out for continuation
-          // Probably some linked list unwrapping needed here.
-          fn(cont) {cont([])}
-        }))
-      ])
-
-      assert Ok(new_initial) = init(env)
-      |> io.debug()
+      let env =
+        to_object([
+          #(
+            "on_keypress",
+            dynamic.from(fn(handle) {
+              real_js.update_reference(ref, fn(x) { [handle, ..x] })
+              // io.debug(handle)
+              // io.debug(handle(["key A", "state"]))
+              // io.debug("TODO register handle")
+              // How do we get out the values from pure in here
+              // This pulls the handle out for continuation
+              // Probably some linked list unwrapping needed here.
+              fn(cont) { cont([]) }
+            }),
+          ),
+        ])
+      assert Ok(new_initial) =
+        init(env)
+        |> io.debug()
       io.debug("that was the result")
       // assert Ok(#(handle, initial)) = dynamic.tuple2(gleam_extra.dynamic_function, Ok)(new_initial)
       // io.debug(initial)
@@ -354,7 +434,7 @@ pub fn code_update(code, source, app) {
         assert Ok(rendered) = dynamic.string(rendered)
         rendered
       }
-      let [Keypress(handle),] = real_js.dereference(ref)
+      let [Keypress(handle)] = real_js.dereference(ref)
       // let handle = fn(x) {
       //   assert Ok(state) = handle(x) 
       //   state
@@ -375,24 +455,32 @@ pub fn code_update(code, source, app) {
       // assert #(_, e.Record(fields)) = last_term(source)
       // assert Ok(server_source) = list.key_find(fields, key) 
       let server_source = e.access(source, key)
-
       // rerender as a function same as capture
       // Pass in dom arguments
       // on click at all times
       // Need mutable ref or app state
-
-      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [], )
+      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [])
       let #(typed, typer) = typer.expand_providers(typed, typer, [])
-
-      let top_env = map.new()
-      |> map.insert("harness", interpreter.Record([
-        #("compile", interpreter.Function(p.Variable(""), e.tagged("Error", e.binary("not in interpreter")), map.new(), None)), 
-        #("debug", interpreter.BuiltinFn(fn(x) {Ok(io.debug(x))})),
-      ]))
-
-      let #(server_fn, coroutines) = tree_walk.run(editor.untype(typed), top_env, [])
-
-      let handler = fn (method, path, body) { 
+      let top_env =
+        map.new()
+        |> map.insert(
+          "harness",
+          interpreter.Record([
+            #(
+              "compile",
+              interpreter.Function(
+                p.Variable(""),
+                e.tagged("Error", e.binary("not in interpreter")),
+                map.new(),
+                None,
+              ),
+            ),
+            #("debug", interpreter.BuiltinFn(fn(x) { Ok(io.debug(x)) })),
+          ]),
+        )
+      let #(server_fn, coroutines) =
+        tree_walk.run(editor.untype(typed), top_env, [])
+      let handler = fn(method, path, body) {
         case method, string.split(path, "/") {
           "POST", ["", "_", id] -> {
             assert Ok(pid) = int.parse(id)
@@ -400,27 +488,29 @@ pub fn code_update(code, source, app) {
             tree_walk.exec_call(c, interpreter.Binary(body))
             ""
           }
-          _,_ -> {
-
-   
-// We expand the providers but the exec needs dynamic
-        let server_arg = interpreter.Record([#("Method", interpreter.Binary(method)),#("Path", interpreter.Binary(path)),#("Body", interpreter.Binary(body))])
-
-        
-        // client function
-        // TODO use proxy/actor version
-        assert Ok(interpreter.Function(pattern, body, captured, _)) = tree_walk.exec_call(server_fn, server_arg)
-
-        let client_source = e.function(pattern, body)
-        
-        // TODO captured should not include empty
-        let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [], )
-        let #(typed, typer) = typer.expand_providers(typed, typer, [])
-
-        let program = list.map(map.to_list(captured), interpreter.render_var)
-        |> list.append([javascript.render_to_string(typed, typer)])
-        |> string.join("\n")
-        |> string.append("({
+          _, _ -> {
+            // We expand the providers but the exec needs dynamic
+            let server_arg =
+              interpreter.Record([
+                #("Method", interpreter.Binary(method)),
+                #("Path", interpreter.Binary(path)),
+                #("Body", interpreter.Binary(body)),
+              ])
+            // client function
+            // TODO use proxy/actor version
+            assert Ok(interpreter.Function(pattern, body, captured, _)) =
+              tree_walk.exec_call(server_fn, server_arg)
+            let client_source = e.function(pattern, body)
+            // TODO captured should not include empty
+            let #(typed, typer) =
+              analysis.infer(client_source, t.Unbound(-1), [])
+            let #(typed, typer) = typer.expand_providers(typed, typer, [])
+            let program =
+              list.map(map.to_list(captured), interpreter.render_var)
+              |> list.append([javascript.render_to_string(typed, typer)])
+              |> string.join("\n")
+              |> string.append(
+                "({
 OnKeypress: (f) => document.addEventListener(\"keydown\", function (event) {
     f(event.key);
   }),
@@ -429,11 +519,16 @@ log: (x) => console.log(x),
 send: ([pid, message]) => {
   fetch(`${window.location.pathname}/_/${pid}`, {method: 'POST', body: message})
 }
-});")
-string.concat(["<head></head><body></body><script>", program, "</script>"])
-      }
-             }
+});",
+              )
+            string.concat([
+              "<head></head><body></body><script>",
+              program,
+              "</script>",
+            ])
+          }
         }
+      }
       Universal(Some(handler))
     }
     Proxy(_) -> Proxy(proxy.code_update(source, key))
@@ -443,13 +538,13 @@ string.concat(["<head></head><body></body><script>", program, "</script>"])
 
 // TODO REPL in place in tree as app
 
-fn last_term(source) { 
+fn last_term(source) {
   let #(_, tree) = source
   case tree {
-    e.Let(_,_, then) -> last_term(then) 
+    e.Let(_, _, then) -> last_term(then)
     _ -> source
   }
- }
+}
 
 // CLI
 // ScanCycle

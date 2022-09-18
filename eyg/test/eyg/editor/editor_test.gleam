@@ -11,10 +11,7 @@ pub fn fn_equality_test() {
 }
 
 fn empty_editor() {
-  editor.init(
-    "{\"node\": \"Binary\", \"value\": \"\"}",
-    harness.Harness([]),
-  )
+  editor.init("{\"node\": \"Binary\", \"value\": \"\"}", harness.Harness([]))
 }
 
 // TODO maybe editor should have core state and view state?

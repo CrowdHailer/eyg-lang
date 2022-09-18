@@ -63,7 +63,7 @@ pub fn set_untyped(editor: Editor, source) {
 }
 
 pub fn analyse(source, constraint, harness) {
-  let harness.Harness(variables: variables,) = harness
+  let harness.Harness(variables: variables) = harness
   let #(typed, typer) = analysis.infer(source, constraint, variables)
   let #(typed, typer) = typer.expand_providers(typed, typer, variables)
   let #(code, evaled) = case typer.inconsistencies {
@@ -98,7 +98,7 @@ fn inconsistencies(editor) {
   |> list.map(fn(i) {
     let #(path, reason) = i
     let reason = type_info.resolve_reason(reason, t)
-    #(path, type_info.reason_to_string(reason, ))
+    #(path, type_info.reason_to_string(reason))
   })
 }
 
@@ -494,11 +494,10 @@ pub fn decrease_selection(editor) {
             Draft(""),
           )
         }
-        Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) | Expression(#(_, e.Hole)) -> #(
-          None,
-          path,
-          Command,
-        )
+        Expression(#(_, e.Binary(_))) | Expression(#(_, e.Variable(_))) | Expression(#(
+          _,
+          e.Hole,
+        )) -> #(None, path, Command)
         Expression(_) -> #(None, inner, Command)
         Field(_, _) -> #(None, inner, Command)
         Pattern(p.Tuple([]), _) -> #(

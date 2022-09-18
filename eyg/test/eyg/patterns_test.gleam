@@ -19,7 +19,8 @@ pub fn variable_of_expected_type_test() {
     )
   let untyped = ast.variable("foo")
   // TODO use analysis.infer in this test file
-  assert #(typed, _typer) = infer(untyped, t.Tuple([]), t.empty, #(typer, scope))
+  assert #(typed, _typer) =
+    infer(untyped, t.Tuple([]), t.empty, #(typer, scope))
   assert Ok(t.Tuple([])) = get_type(typed)
 }
 
