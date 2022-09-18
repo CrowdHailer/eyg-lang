@@ -25,7 +25,7 @@
     const owner = "midas-framework"
     const repo = "project_wisdom"
     const path = "editor/public/saved.json"
-    const data = await octokit.rest.repos.getContent({owner, repo, path});
+    const {data} = await octokit.rest.repos.getContent({owner, repo, path});
     console.log(data);
     console.log(data.sha);
   }
