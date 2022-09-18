@@ -39,4 +39,5 @@ RUN npm install && \
     npm run build
 
 WORKDIR /opt/app
+RUN npm install
 CMD node ./server.js
