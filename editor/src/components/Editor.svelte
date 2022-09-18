@@ -6,8 +6,9 @@
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
 
   import { Octokit } from "https://cdn.skypack.dev/@octokit/rest";
-  const ghAccessToken = 'ghAccessToken'
-  const octokit = new Octokit({
+  // Use let in components const causes nil obkject issues
+  let ghAccessToken = 'ghAccessToken'
+  let octokit = new Octokit({
     auth: localStorage.getItem(ghAccessToken),
   });
   window.setAccessToken = function (token) {
