@@ -5,10 +5,40 @@
   import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/editor";
   import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
 
+  import { Octokit } from "https://cdn.skypack.dev/@octokit/rest";
+  const ghAccessToken = 'ghAccessToken'
+  const octokit = new Octokit({
+    auth: localStorage.getItem(ghAccessToken),
+  });
+  window.setAccessToken = function (token) {
+    localStorage.setItem(ghAccessToken, token)
+  }
   export let editor;
   $: window.eyg_source = Editor.dump(editor);
+
+  let deploying = false
+  async function deploy() {
+    if (deploying) {
+      return
+    }
+
+    const owner = "midas-framework"
+    const repo = "project_wisdom"
+    const path = "editor/public/saved.json"
+    const data = await octokit.rest.repos.getContent({owner, repo, path});
+    console.log(data);
+    console.log(data.sha);
+  }
 </script>
 
+<button
+  class="m-1 p-1 bg-blue-100 rounded border border-black"
+  on:click={deploy}>{#if deploying}
+    Deploying
+  {:else}
+    Deploy
+  {/if}</button
+>
 {#if editor.show == "code"}
   <pre class="w-full m-auto px-10 py-4" tabindex="0">{editor.cache.code}</pre>
   <div class="sticky bottom-0 bg-gray-200 p-2 pb-4" />
