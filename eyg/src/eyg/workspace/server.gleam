@@ -10,18 +10,6 @@ import gleam/javascript as real_js
 import eyg/interpreter/stepwise
 import eyg/codegen/javascript
 
-const true = r.Tagged("True", r.Tuple([]))
-
-const false = r.Tagged("false", r.Tuple([]))
-
-fn equal(object) {
-  assert r.Tuple([left, right]) = object
-  Ok(case left == right {
-    True -> true
-    False -> false
-  })
-}
-
 fn native(value) {
   r.Native(dynamic.from(value))
 }
@@ -96,7 +84,7 @@ fn prelude() {
       #("concat", r.BuiltinFn(concat)),
     ]),
   )
-  |> map.insert("equal", r.BuiltinFn(equal))
+  |> map.insert("equal", r.BuiltinFn(r.equal))
   |> map.insert("int", std_int())
   |> map.insert("string", std_string())
   |> map.insert("spawn", r.BuiltinFn(stepwise.spawn))

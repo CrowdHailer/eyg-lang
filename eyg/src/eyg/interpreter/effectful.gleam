@@ -30,6 +30,9 @@ fn env() {
     "impl",
     r.BuiltinFn(fn(handler) { Ok(r.BuiltinFn(impl(handler, _))) }),
   )
+  // Is this part of effectful
+  // interpreter/builtins might be better
+  |> map.insert("equal", r.BuiltinFn(r.equal))
 }
 
 pub fn eval(source) {

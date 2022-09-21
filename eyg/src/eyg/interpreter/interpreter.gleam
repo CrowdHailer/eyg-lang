@@ -113,3 +113,16 @@ fn render_object(object) {
     Effect(_, _, _) -> todo("this shouldnt be rendered")
   }
 }
+
+// std
+const true = Tagged("True", Tuple([]))
+
+const false = Tagged("False", Tuple([]))
+
+pub fn equal(object) {
+  assert Tuple([left, right]) = object
+  Ok(case left == right {
+    True -> true
+    False -> false
+  })
+}

@@ -316,15 +316,64 @@
               "node": "Let",
               "pattern": {
                 "node": "Variable",
-                "label": ""
+                "label": "path"
               },
               "value": {
-                "node": "Tuple",
-                "elements": []
+                "node": "Access",
+                "value": {
+                  "node": "Variable",
+                  "label": "request"
+                },
+                "key": "path"
               },
               "then": {
-                "node": "Binary",
-                "value": "hello magic!"
+                "node": "Case",
+                "value": {
+                  "node": "Call",
+                  "function": {
+                    "node": "Variable",
+                    "label": "equal"
+                  },
+                  "with": {
+                    "node": "Tuple",
+                    "elements": [
+                      {
+                        "node": "Binary",
+                        "value": "/hello"
+                      },
+                      {
+                        "node": "Variable",
+                        "label": "path"
+                      }
+                    ]
+                  }
+                },
+                "branches": [
+                  {
+                    "node": "Branch",
+                    "name": "False",
+                    "pattern": {
+                      "node": "Tuple",
+                      "elements": []
+                    },
+                    "then": {
+                      "node": "Variable",
+                      "label": "path"
+                    }
+                  },
+                  {
+                    "node": "Branch",
+                    "name": "True",
+                    "pattern": {
+                      "node": "Tuple",
+                      "elements": []
+                    },
+                    "then": {
+                      "node": "Binary",
+                      "value": "Hello World"
+                    }
+                  }
+                ]
               }
             }
           },
