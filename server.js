@@ -2,6 +2,7 @@ import source from "./editor/public/saved.json" assert { type: "json" };
 import * as Eyg from "./eyg/build/dev/javascript/eyg/dist/cli.mjs";
 // console.log(source);
 import express from "express";
+import url from "url";
 const app = express();
 const port = process.env.PORT || 8080;
 
@@ -11,9 +12,13 @@ const port = process.env.PORT || 8080;
 app.use(express.raw({ type: "*/*" }));
 app.use((req, res) => {
   console.log(req.method, req.path, req.body.toString());
-  const greeting = "<h1>Hello From Node on Fly!</h1>";
   // TODO render which parameters are generic differently to unbound
-  const result = Eyg.req(req.method, req.path, req.body.toString());
+  const result = Eyg.req(
+    req.header("Host"),
+    req.method,
+    req.path,
+    req.body.toString()
+  );
   console.log(result);
   res.send(result);
 });

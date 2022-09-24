@@ -377,7 +377,7 @@
         "node": "Let",
         "pattern": {
           "node": "Variable",
-          "label": "web"
+          "label": "foo"
         },
         "value": {
           "node": "Function",
@@ -386,45 +386,100 @@
             "label": "request"
           },
           "body": {
-            "node": "Let",
+            "node": "Access",
+            "value": {
+              "node": "Variable",
+              "label": "request"
+            },
+            "key": "method"
+          }
+        },
+        "then": {
+          "node": "Let",
+          "pattern": {
+            "node": "Variable",
+            "label": "bar"
+          },
+          "value": {
+            "node": "Function",
             "pattern": {
               "node": "Variable",
-              "label": "path"
+              "label": "request"
             },
-            "value": {
+            "body": {
               "node": "Access",
               "value": {
                 "node": "Variable",
                 "label": "request"
               },
               "key": "path"
+            }
+          },
+          "then": {
+            "node": "Let",
+            "pattern": {
+              "node": "Variable",
+              "label": "web"
             },
-            "then": {
-              "node": "Let",
+            "value": {
+              "node": "Function",
               "pattern": {
                 "node": "Variable",
-                "label": "routes"
+                "label": "request"
               },
-              "value": {
-                "node": "Tagged",
-                "tag": "Cons",
+              "body": {
+                "node": "Let",
+                "pattern": {
+                  "node": "Variable",
+                  "label": "routes"
+                },
                 "value": {
-                  "node": "Tuple",
-                  "elements": [
-                    {
+                  "node": "Tagged",
+                  "tag": "Nil",
+                  "value": {
+                    "node": "Tuple",
+                    "elements": []
+                  }
+                },
+                "then": {
+                  "node": "Let",
+                  "pattern": {
+                    "node": "Variable",
+                    "label": "routes"
+                  },
+                  "value": {
+                    "node": "Tagged",
+                    "tag": "Cons",
+                    "value": {
                       "node": "Tuple",
                       "elements": [
                         {
-                          "node": "Binary",
-                          "value": "/foo"
+                          "node": "Tuple",
+                          "elements": [
+                            {
+                              "node": "Binary",
+                              "value": "localhost:5002"
+                            },
+                            {
+                              "node": "Variable",
+                              "label": "bar"
+                            }
+                          ]
                         },
                         {
-                          "node": "Binary",
-                          "value": "<h1>Foo</h1>"
+                          "node": "Variable",
+                          "label": "routes"
                         }
                       ]
+                    }
+                  },
+                  "then": {
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Variable",
+                      "label": "routes"
                     },
-                    {
+                    "value": {
                       "node": "Tagged",
                       "tag": "Cons",
                       "value": {
@@ -435,160 +490,237 @@
                             "elements": [
                               {
                                 "node": "Binary",
-                                "value": "/bar"
+                                "value": "bar.web.petersaxton.uk"
                               },
                               {
-                                "node": "Binary",
-                                "value": "- hello, world!"
+                                "node": "Variable",
+                                "label": "bar"
                               }
                             ]
                           },
                           {
-                            "node": "Tagged",
-                            "tag": "Nil",
-                            "value": {
-                              "node": "Tuple",
-                              "elements": []
-                            }
+                            "node": "Variable",
+                            "label": "routes"
                           }
                         ]
                       }
-                    }
-                  ]
-                }
-              },
-              "then": {
-                "node": "Let",
-                "pattern": {
-                  "node": "Variable",
-                  "label": "route"
-                },
-                "value": {
-                  "node": "Call",
-                  "function": {
-                    "node": "Access",
-                    "value": {
-                      "node": "Access",
-                      "value": {
-                        "node": "Variable",
-                        "label": "lib"
-                      },
-                      "key": "list"
                     },
-                    "key": "find"
-                  },
-                  "with": {
-                    "node": "Tuple",
-                    "elements": [
-                      {
+                    "then": {
+                      "node": "Let",
+                      "pattern": {
                         "node": "Variable",
                         "label": "routes"
                       },
-                      {
-                        "node": "Function",
-                        "pattern": {
+                      "value": {
+                        "node": "Tagged",
+                        "tag": "Cons",
+                        "value": {
                           "node": "Tuple",
                           "elements": [
                             {
-                              "node": "Bind",
-                              "label": "match"
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Binary",
+                                  "value": "localhost:5001"
+                                },
+                                {
+                                  "node": "Variable",
+                                  "label": "foo"
+                                }
+                              ]
                             },
                             {
-                              "node": "Bind",
-                              "label": ""
+                              "node": "Variable",
+                              "label": "routes"
                             }
                           ]
+                        }
+                      },
+                      "then": {
+                        "node": "Let",
+                        "pattern": {
+                          "node": "Variable",
+                          "label": "routes"
                         },
-                        "body": {
-                          "node": "Call",
-                          "function": {
-                            "node": "Variable",
-                            "label": "equal"
-                          },
-                          "with": {
+                        "value": {
+                          "node": "Tagged",
+                          "tag": "Cons",
+                          "value": {
                             "node": "Tuple",
                             "elements": [
                               {
-                                "node": "Variable",
-                                "label": "match"
+                                "node": "Tuple",
+                                "elements": [
+                                  {
+                                    "node": "Binary",
+                                    "value": "foo.web.petersaxton.uk"
+                                  },
+                                  {
+                                    "node": "Variable",
+                                    "label": "foo"
+                                  }
+                                ]
                               },
                               {
                                 "node": "Variable",
-                                "label": "path"
+                                "label": "routes"
+                              }
+                            ]
+                          }
+                        },
+                        "then": {
+                          "node": "Let",
+                          "pattern": {
+                            "node": "Variable",
+                            "label": "route"
+                          },
+                          "value": {
+                            "node": "Call",
+                            "function": {
+                              "node": "Access",
+                              "value": {
+                                "node": "Access",
+                                "value": {
+                                  "node": "Variable",
+                                  "label": "lib"
+                                },
+                                "key": "list"
+                              },
+                              "key": "find"
+                            },
+                            "with": {
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Variable",
+                                  "label": "routes"
+                                },
+                                {
+                                  "node": "Function",
+                                  "pattern": {
+                                    "node": "Tuple",
+                                    "elements": [
+                                      {
+                                        "node": "Bind",
+                                        "label": "match"
+                                      },
+                                      {
+                                        "node": "Bind",
+                                        "label": ""
+                                      }
+                                    ]
+                                  },
+                                  "body": {
+                                    "node": "Call",
+                                    "function": {
+                                      "node": "Variable",
+                                      "label": "equal"
+                                    },
+                                    "with": {
+                                      "node": "Tuple",
+                                      "elements": [
+                                        {
+                                          "node": "Variable",
+                                          "label": "match"
+                                        },
+                                        {
+                                          "node": "Access",
+                                          "value": {
+                                            "node": "Variable",
+                                            "label": "request"
+                                          },
+                                          "key": "origin"
+                                        }
+                                      ]
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          "then": {
+                            "node": "Case",
+                            "value": {
+                              "node": "Variable",
+                              "label": "route"
+                            },
+                            "branches": [
+                              {
+                                "node": "Branch",
+                                "name": "Error",
+                                "pattern": {
+                                  "node": "Tuple",
+                                  "elements": []
+                                },
+                                "then": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "request"
+                                  },
+                                  "key": "origin"
+                                }
+                              },
+                              {
+                                "node": "Branch",
+                                "name": "Ok",
+                                "pattern": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Bind",
+                                      "label": ""
+                                    },
+                                    {
+                                      "node": "Bind",
+                                      "label": "page"
+                                    }
+                                  ]
+                                },
+                                "then": {
+                                  "node": "Call",
+                                  "function": {
+                                    "node": "Variable",
+                                    "label": "page"
+                                  },
+                                  "with": {
+                                    "node": "Variable",
+                                    "label": "request"
+                                  }
+                                }
                               }
                             ]
                           }
                         }
                       }
-                    ]
-                  }
-                },
-                "then": {
-                  "node": "Case",
-                  "value": {
-                    "node": "Variable",
-                    "label": "route"
-                  },
-                  "branches": [
-                    {
-                      "node": "Branch",
-                      "name": "Error",
-                      "pattern": {
-                        "node": "Tuple",
-                        "elements": []
-                      },
-                      "then": {
-                        "node": "Binary",
-                        "value": "Not Found"
-                      }
-                    },
-                    {
-                      "node": "Branch",
-                      "name": "Ok",
-                      "pattern": {
-                        "node": "Tuple",
-                        "elements": [
-                          {
-                            "node": "Bind",
-                            "label": "path"
-                          },
-                          {
-                            "node": "Bind",
-                            "label": "page"
-                          }
-                        ]
-                      },
-                      "then": {
-                        "node": "Variable",
-                        "label": "page"
-                      }
                     }
-                  ]
+                  }
                 }
               }
+            },
+            "then": {
+              "node": "Record",
+              "fields": [
+                {
+                  "node": "Field",
+                  "key": "proxy",
+                  "value": {
+                    "node": "Variable",
+                    "label": "web"
+                  }
+                },
+                {
+                  "node": "Field",
+                  "key": "web",
+                  "value": {
+                    "node": "Variable",
+                    "label": "web"
+                  }
+                }
+              ]
             }
           }
-        },
-        "then": {
-          "node": "Record",
-          "fields": [
-            {
-              "node": "Field",
-              "key": "proxy",
-              "value": {
-                "node": "Variable",
-                "label": "web"
-              }
-            },
-            {
-              "node": "Field",
-              "key": "web",
-              "value": {
-                "node": "Variable",
-                "label": "web"
-              }
-            }
-          ]
         }
       }
     }

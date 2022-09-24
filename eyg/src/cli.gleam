@@ -42,9 +42,10 @@ pub fn run(args) {
   }
 }
 
-pub fn req(method, path, body) {
+pub fn req(origin, method, path, body) {
   let request =
     r.Record([
+      #("origin", r.Binary(origin)),
       #("method", r.Binary(method)),
       #("path", r.Binary(path)),
       #("body", r.Binary(body)),
