@@ -23,6 +23,29 @@ fn do(effect) {
   }
 }
 
+// TODO move somewhere for interpreter
+fn string_append(args) {
+  case args {
+    r.Tuple([r.Binary(first), r.Binary(second)]) ->
+      Ok(r.Binary(string.append(first, second)))
+    _ -> Error("bad arguments")
+  }
+}
+
+fn string_uppercase(arg) {
+  case arg {
+    r.Binary(value) -> Ok(r.Binary(string.uppercase(value)))
+    _ -> Error("bad arguments")
+  }
+}
+
+fn string_lowercase(arg) {
+  case arg {
+    r.Binary(value) -> Ok(r.Binary(string.lowercase(value)))
+    _ -> Error("bad arguments")
+  }
+}
+
 fn env() {
   map.new()
   |> map.insert("do", r.BuiltinFn(do))
@@ -32,7 +55,17 @@ fn env() {
   )
   // Is this part of effectful
   // interpreter/builtins might be better
+  // Maybe these should just be fast lookups for certain hashes
   |> map.insert("equal", r.BuiltinFn(r.equal))
+  // TODO add types to builtin
+  |> map.insert(
+    "builtin",
+    r.Record([
+      #("append", r.BuiltinFn(string_append)),
+      #("uppercase", r.BuiltinFn(string_uppercase)),
+      #("lowercase", r.BuiltinFn(string_lowercase)),
+    ]),
+  )
 }
 
 pub fn eval(source) {

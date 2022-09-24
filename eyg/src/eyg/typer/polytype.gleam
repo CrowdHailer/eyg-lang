@@ -150,7 +150,6 @@ pub fn generalise(monotype, variables) {
     _ -> {
       let in_type = t.free_in_type(monotype)
       let in_scope = free_variables_in_scope(variables)
-      
       Polytype(difference(in_type, in_scope), monotype)
     }
   }

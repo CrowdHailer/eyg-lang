@@ -187,10 +187,10 @@ fn do_free_in_row(rows, rest, set) {
         do_free_in_type(set, type_)
       },
     )
-    // TODO test but I'm pretty sure that extension one is not free in the type, or at least should not be generalised
-    // Maybe sometimes it is we have a value from a match in the remaining cases catch all case
-    // TODO I think row types need unifying in an expand kind of way don't know how we do this nested
-    set
+  // TODO test but I'm pretty sure that extension one is not free in the type, or at least should not be generalised
+  // Maybe sometimes it is we have a value from a match in the remaining cases catch all case
+  // TODO I think row types need unifying in an expand kind of way don't know how we do this nested
+  set
   // case rest {
   //   None -> set
   //   // Already resolved

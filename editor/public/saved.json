@@ -386,12 +386,32 @@
             "label": "request"
           },
           "body": {
-            "node": "Access",
-            "value": {
-              "node": "Variable",
-              "label": "request"
+            "node": "Call",
+            "function": {
+              "node": "Access",
+              "value": {
+                "node": "Variable",
+                "label": "builtin"
+              },
+              "key": "append"
             },
-            "key": "method"
+            "with": {
+              "node": "Tuple",
+              "elements": [
+                {
+                  "node": "Access",
+                  "value": {
+                    "node": "Variable",
+                    "label": "request"
+                  },
+                  "key": "method"
+                },
+                {
+                  "node": "Binary",
+                  "value": "hello"
+                }
+              ]
+            }
           }
         },
         "then": {
@@ -407,12 +427,23 @@
               "label": "request"
             },
             "body": {
-              "node": "Access",
-              "value": {
-                "node": "Variable",
-                "label": "request"
+              "node": "Call",
+              "function": {
+                "node": "Access",
+                "value": {
+                  "node": "Variable",
+                  "label": "builtin"
+                },
+                "key": "uppercase"
               },
-              "key": "path"
+              "with": {
+                "node": "Access",
+                "value": {
+                  "node": "Variable",
+                  "label": "request"
+                },
+                "key": "path"
+              }
             }
           },
           "then": {
