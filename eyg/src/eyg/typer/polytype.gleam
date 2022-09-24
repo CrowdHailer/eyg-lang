@@ -144,7 +144,11 @@ pub fn generalise(monotype, variables) {
   case monotype {
     t.Function(_from, _to, _effects) -> {
       let in_type = t.free_in_type(monotype)
+      |> io.debug
       let in_scope = free_variables_in_scope(variables)
+      |> io.debug
+      
+      io.debug(difference(in_type, in_scope))
       Polytype(difference(in_type, in_scope), monotype)
     }
     _ -> Polytype([], monotype)
@@ -169,7 +173,7 @@ fn free_variables_in_polytype(polytype) {
   |> difference(quantified)
 }
 
-fn difference(items: List(a), excluded: List(a)) -> List(a) {
+pub fn difference(items: List(a), excluded: List(a)) -> List(a) {
   do_difference(items, excluded, [])
 }
 
@@ -179,7 +183,7 @@ fn do_difference(items, excluded, accumulator) {
     [next, ..items] ->
       case list.find(excluded, fn(i) { i == next }) {
         Ok(_) -> do_difference(items, excluded, accumulator)
-        Error(_) -> push_new(next, accumulator)
+        Error(_) -> do_difference(items, excluded, push_new(next, accumulator))
       }
   }
 }
