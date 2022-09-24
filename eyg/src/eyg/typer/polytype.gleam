@@ -140,18 +140,19 @@ pub fn replace_type(monotype, x, t) {
 
 // maybe scope builds atop polytype
 // MUST BE resolved first
+// TODO test generalisation must have resolved first
+// TODO maybe this is where we need to keep track of extra variables in row
+// fn(a) -> {foo: string, ..a} 
+// Maybe they are always open but if none on the variable add it at the time
 pub fn generalise(monotype, variables) {
   case monotype {
-    t.Function(_from, _to, _effects) -> {
+    t.Unbound(i) -> Polytype([], monotype)
+    _ -> {
       let in_type = t.free_in_type(monotype)
-      |> io.debug
       let in_scope = free_variables_in_scope(variables)
-      |> io.debug
       
-      io.debug(difference(in_type, in_scope))
       Polytype(difference(in_type, in_scope), monotype)
     }
-    _ -> Polytype([], monotype)
   }
 }
 

@@ -12,6 +12,7 @@ app.use(express.raw({ type: "*/*" }));
 app.use((req, res) => {
   console.log(req.method, req.path, req.body.toString());
   const greeting = "<h1>Hello From Node on Fly!</h1>";
+  // TODO render which parameters are generic differently to unbound
   const result = Eyg.req(req.method, req.path, req.body.toString());
   console.log(result);
   res.send(result);

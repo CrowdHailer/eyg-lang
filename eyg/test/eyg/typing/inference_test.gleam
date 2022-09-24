@@ -236,7 +236,7 @@ pub fn id_function_test() {
 //   // assert Error(reason) = analysis.get_type(typed, checker)
 //   // assert typer.UnmatchedTypes(t.Tuple([]), t.Tuple([])) = reason
 // }
-pub fn call_generic_function_test() {
+pub fn generic_call_function_test() {
   let func = function(p.Variable("x"), variable("x"))
   let source = call(func, tuple_([]))
   let #(typed, checker) = analysis.infer(source, t.Unbound(-1), [])

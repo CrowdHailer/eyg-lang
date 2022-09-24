@@ -422,6 +422,8 @@ pub fn infer_continuation_type_test() {
   ) = computation
   assert t.Function(t.Unbound(eff_arg), t.Unbound(eff_ret), eff) = effect
   assert True = i == input
+  io.debug("badd")
+  io.debug([effect_arg, eff_arg])
   assert True = effect_arg == eff_arg
   assert True = effect_return == eff_ret
   // cont_return is trivial

@@ -68,7 +68,7 @@ pub fn call_with_incorrect_argument_test() {
   assert typer.IncorrectArity(0, 1) = reason
 }
 
-pub fn reuse_generic_function_test() {
+pub fn generic_reuse_function_test() {
   let typer = init()
   let scope = typer.root_scope([])
   let untyped =
