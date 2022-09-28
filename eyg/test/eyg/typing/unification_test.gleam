@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/option.{None, Some}
-import eyg/analysis
+import eyg/typer/polytype
 import eyg/typer
 import eyg/typer/monotype as t
 
@@ -23,11 +23,11 @@ pub fn recursive_unification_test() {
 
   assert t.Recursive(0, t.Tuple([t.Binary, t.Unbound(0)])) =
     t.resolve(t.Unbound(1), typer.substitutions)
-    |> analysis.shrink
+    |> polytype.shrink
 
   assert t.Recursive(0, t.Tuple([t.Binary, t.Unbound(0)])) =
     t.resolve(t.Unbound(2), typer.substitutions)
-    |> analysis.shrink
+    |> polytype.shrink
 
   assert Ok(unchanged) = typer.unify(t.Unbound(2), t.Unbound(1), typer)
   assert True = typer == unchanged

@@ -2,6 +2,7 @@ import gleam/io
 import gleam/option.{None, Some}
 import gleam/list
 import eyg/typer/monotype as t
+import misc
 
 pub type Polytype {
   Polytype(forall: List(Int), monotype: t.Monotype)
@@ -203,4 +204,27 @@ fn push_new(item: a, set: List(a)) -> List(a) {
     Ok(_) -> set
     Error(Nil) -> [item, ..set]
   }
+}
+
+fn incrementor(i) {
+  #(i, i + 1)
+}
+
+pub fn shrink(type_) {
+  shrink_to(type_, 0)
+}
+
+pub fn shrink_to(type_, i) {
+  let used =
+    t.used_in_type(type_)
+    |> list.reverse
+  let minimal = misc.zip_with(used, i, incrementor)
+  list.fold(
+    minimal,
+    type_,
+    fn(type_, replace) {
+      let #(old, new) = replace
+      replace_variable(type_, old, new)
+    },
+  )
 }

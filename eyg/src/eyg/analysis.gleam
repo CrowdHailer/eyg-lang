@@ -7,7 +7,6 @@ import eyg/ast/pattern as p
 import eyg/typer
 import eyg/typer/monotype as t
 import eyg/typer/polytype
-import misc
 import eyg/editor/type_info
 
 pub fn infer(untyped, type_, variables) {
@@ -24,15 +23,11 @@ pub fn infer_effectful(untyped, type_, effects, variables) {
   typer.infer(untyped, type_, effects, state)
 }
 
-fn incrementor(i) {
-  #(i, i + 1)
-}
-
 pub fn get_type(typed, checker: typer.Typer) {
   case typer.get_type(typed) {
     Ok(type_) -> {
       let type_ = t.resolve(type_, checker.substitutions)
-      let type_ = shrink(type_)
+      let type_ = polytype.shrink(type_)
       Ok(type_)
     }
     Error(reason) -> {
@@ -40,19 +35,4 @@ pub fn get_type(typed, checker: typer.Typer) {
       Error(reason)
     }
   }
-}
-
-pub fn shrink(type_) {
-  let used =
-    t.used_in_type(type_)
-    |> list.reverse
-  let minimal = misc.zip_with(used, 0, incrementor)
-  list.fold(
-    minimal,
-    type_,
-    fn(type_, replace) {
-      let #(old, new) = replace
-      polytype.replace_variable(type_, old, new)
-    },
-  )
 }

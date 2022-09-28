@@ -15,18 +15,18 @@
     }
   })();
   // Possible could just pass in state
-  const poll = (async function () {
+  const poll = async function () {
     // TODO proxy needs to shut down for errors
-    while (true) {
+    while (false) {
       // Need async in JS land for while loop and to make sure svelte updating of source is patched into while loop
       let r = await Proxy.fetch_request();
       if (program) {
         Proxy.handle(r, state);
       }
     }
-  });
-  if (window.location.hostname.startsWith('localhost')) {
-    poll()
+  };
+  if (window.location.hostname.startsWith("localhost")) {
+    poll();
   }
 </script>
 

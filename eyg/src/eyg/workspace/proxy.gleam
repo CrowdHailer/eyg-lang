@@ -129,7 +129,12 @@ pub fn fetch_request() {
 }
 
 const request_type = t.Record(
-  [#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)],
+  [
+    #("origin", t.Binary),
+    #("method", t.Binary),
+    #("path", t.Binary),
+    #("body", t.Binary),
+  ],
   None,
 )
 

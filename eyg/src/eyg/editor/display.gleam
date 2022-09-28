@@ -11,7 +11,7 @@ import eyg/editor/editor
 import eyg/typer.{Metadata}
 import eyg/typer/monotype as t
 import eyg/editor/type_info
-import eyg/analysis
+import eyg/typer/polytype
 
 pub fn is_multiexpression(expression) {
   case expression {
@@ -94,7 +94,7 @@ fn expression_type(expression: e.Expression(Metadata, a), typer: typer.Typer) {
     Ok(t) -> #(
       False,
       t.resolve(t, typer.substitutions)
-      |> analysis.shrink
+      |> polytype.shrink
       |> type_info.to_string(),
     )
     Error(reason) -> #(True, type_info.reason_to_string(reason))
