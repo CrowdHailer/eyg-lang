@@ -9,6 +9,7 @@ import eyg/ast/pattern.{Pattern} as p
 pub type Generator {
   BadTuple
   Type
+  List
   Env
   Example
   Format
@@ -19,6 +20,7 @@ pub type Generator {
 pub fn generator_to_string(generator) {
   case generator {
     BadTuple -> "BadTuple"
+    List -> "List"
     Type -> "Type"
     Env -> "Env"
     Example -> "Example"
@@ -31,6 +33,7 @@ pub fn generator_to_string(generator) {
 pub fn generator_from_string(str) {
   case str {
     "BadTuple" -> BadTuple
+    "List" -> List
     "Type" -> Type
     "Env" -> Env
     "Example" -> Example
@@ -41,7 +44,7 @@ pub fn generator_from_string(str) {
 }
 
 pub fn all_generators() {
-  [Example, Env, Format, Loader, Type, Parse]
+  [Example, Env, Format, Loader, Type, Parse, List]
 }
 
 // This is an Eyg Result
@@ -59,6 +62,7 @@ pub fn generate(generator, config, hole) {
       Ok(let_(p.Variable("x"), tuple_([]), variable("x")))
     }
     Example -> example
+    List -> gen_list
     Type -> lift_type
     Loader -> fn(_, _) {
       case hole {
@@ -146,6 +150,29 @@ pub fn generate(generator, config, hole) {
 pub fn example(config, hole) {
   case hole {
     t.Tuple(e) -> Ok(tuple_(list.map(e, fn(_) { binary(config) })))
+    _ -> Error(Nil)
+  }
+}
+
+pub fn gen_list(_config, hole: t.Monotype) {
+  case hole {
+    // elements all need to be the same type
+    t.Function(t.Tuple(elements), _to, _effect) -> {
+      let empty = tagged("Nil", tuple_([]))
+      let vars =
+        list.index_map(
+          elements,
+          fn(i, _) { string.concat(["e", int.to_string(i)]) },
+        )
+      let built =
+        list.fold_right(
+          vars,
+          empty,
+          fn(tail, label) { tagged("Cons", tuple_([variable(label), tail])) },
+        )
+      let transform = function(p.Tuple(vars), built)
+      Ok(transform)
+    }
     _ -> Error(Nil)
   }
 }

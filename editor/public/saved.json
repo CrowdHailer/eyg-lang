@@ -1513,22 +1513,96 @@
               "label": "request"
             },
             "body": {
-              "node": "Call",
-              "function": {
-                "node": "Access",
-                "value": {
-                  "node": "Variable",
-                  "label": "builtin"
-                },
-                "key": "uppercase"
+              "node": "Let",
+              "pattern": {
+                "node": "Variable",
+                "label": "parts"
               },
-              "with": {
-                "node": "Access",
-                "value": {
-                  "node": "Variable",
-                  "label": "request"
+              "value": {
+                "node": "Call",
+                "function": {
+                  "node": "Provider",
+                  "config": "",
+                  "generator": "List"
                 },
-                "key": "path"
+                "with": {
+                  "node": "Tuple",
+                  "elements": [
+                    {
+                      "node": "Binary",
+                      "value": "hey"
+                    },
+                    {
+                      "node": "Binary",
+                      "value": " oggog"
+                    },
+                    {
+                      "node": "Binary",
+                      "value": "foo"
+                    }
+                  ]
+                }
+              },
+              "then": {
+                "node": "Let",
+                "pattern": {
+                  "node": "Variable",
+                  "label": "concat"
+                },
+                "value": {
+                  "node": "Function",
+                  "pattern": {
+                    "node": "Variable",
+                    "label": "strings"
+                  },
+                  "body": {
+                    "node": "Call",
+                    "function": {
+                      "node": "Access",
+                      "value": {
+                        "node": "Access",
+                        "value": {
+                          "node": "Variable",
+                          "label": "lib"
+                        },
+                        "key": "list"
+                      },
+                      "key": "fold"
+                    },
+                    "with": {
+                      "node": "Tuple",
+                      "elements": [
+                        {
+                          "node": "Variable",
+                          "label": "strings"
+                        },
+                        {
+                          "node": "Binary",
+                          "value": ""
+                        },
+                        {
+                          "node": "Access",
+                          "value": {
+                            "node": "Variable",
+                            "label": "builtin"
+                          },
+                          "key": "append"
+                        }
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "node": "Call",
+                  "function": {
+                    "node": "Variable",
+                    "label": "concat"
+                  },
+                  "with": {
+                    "node": "Variable",
+                    "label": "parts"
+                  }
+                }
               }
             }
           },

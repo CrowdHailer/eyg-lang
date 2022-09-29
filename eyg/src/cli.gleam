@@ -7,6 +7,10 @@ import eyg/interpreter/effectful
 import eyg/interpreter/tail_call
 import gleam/javascript/array
 import eyg/interpreter/interpreter as r
+import eyg/analysis
+import eyg/typer
+import eyg/typer/monotype as t
+import eyg/editor/editor
 
 // Should we use the node express server 
 // is there something clever with cloudflare worker tooling
@@ -55,7 +59,11 @@ pub fn req(origin, method, path, body) {
   // Automate deploy from my program
   // Web/GUO/CLI/HMI are all API's
   let program = e.access(load(), "web")
-  assert Ok(term) = effectful.eval(program)
+  let #(typed, typer) = analysis.infer(program, t.Unbound(-1), [])
+  let #(xtyped, typer) = typer.expand_providers(typed, typer, [])
+  // TODO fix need for untype
+  // TODO provide proper environment for expaning the providers
+  assert Ok(term) = effectful.eval(editor.untype(xtyped))
   case effectful.eval_call(term, request, effectful.real_log) {
     // TODO return a response type
     // TODO move out of CLI

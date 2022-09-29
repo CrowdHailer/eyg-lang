@@ -1,5 +1,5 @@
 import gleam/io
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
@@ -43,4 +43,48 @@ pub fn bad_tuple_test() {
   assert Error(_) = type_
   //  assert Ok(t.Union([#("Binary", t.Tuple([]))], Some(0))) = type_
   //  todo("flunk")
+}
+
+pub fn empty_list_provider_test() {
+  let source = e.call(e.provider("", e.List), e.tuple_([]))
+  // TODO move to type lib
+  let constraint = t.Recursive(0, t.Union([#("Nil", t.Tuple([]))], None))
+
+  let #(typed, typer) = analysis.infer(source, constraint, [])
+  let #(xtyped, typer) = typer.expand_providers(typed, typer, [])
+  assert [] = typer.inconsistencies
+  // io.debug(xtyped)
+  // let type_ =
+  //   analysis.get_type(xtyped, typer)
+  //   |> io.debug
+  // assert Ok(t.Union([#("Binary", t.Tuple([]))], Some(0))) = type_
+}
+
+pub fn list_provider_test() {
+  let source =
+    e.call(e.provider("", e.List), e.tuple_([e.binary("foo"), e.binary("bar")]))
+  // TODO move to type lib
+  let constraint =
+    t.Recursive(
+      0,
+      t.Union(
+        [
+          #("Nil", t.Tuple([])),
+          #("Cons", t.Tuple([t.Unbound(1), t.Unbound(0)])),
+        ],
+        None,
+      ),
+    )
+
+  let #(typed, typer) = analysis.infer(source, constraint, [])
+  let #(xtyped, typer) = typer.expand_providers(typed, typer, [])
+  assert [] = typer.inconsistencies
+  let type_ = analysis.get_type(xtyped, typer)
+  assert Ok(t.Recursive(
+    0,
+    t.Union(
+      [#("Nil", t.Tuple([])), #("Cons", t.Tuple([t.Binary, t.Unbound(0)]))],
+      None,
+    ),
+  )) = type_
 }

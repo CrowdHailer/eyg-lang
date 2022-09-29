@@ -147,9 +147,11 @@ pub fn do_eval(source, env, cont) -> Result(r.Object, String) {
       )
 
     e.Hole -> Error("interpreted a program with a hole")
-    e.Provider(_, _, generated) ->
+    e.Provider(_, _, generated) -> {
+      io.debug(generated)
       // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
       do_eval(dynamic.unsafe_coerce(generated), env, cont)
+    }
   }
   // todo("providers should have been expanded before evaluation")
 }
