@@ -1138,7 +1138,7 @@
                                 "elements": [
                                   {
                                     "node": "Binary",
-                                    "value": "<div style=\"display: flex;flex-direction: column;align-items: center\">"
+                                    "value": "<div style=\"display: flex;flex-direction: column;align-items: center;gap: 1em;padding: 1em;text-align: center\">"
                                   },
                                   {
                                     "node": "Variable",
@@ -1178,36 +1178,85 @@
                         "node": "Let",
                         "pattern": {
                           "node": "Variable",
-                          "label": "text"
+                          "label": "hstack"
                         },
                         "value": {
                           "node": "Function",
                           "pattern": {
                             "node": "Variable",
-                            "label": "content"
+                            "label": "children"
                           },
                           "body": {
-                            "node": "Call",
-                            "function": {
+                            "node": "Let",
+                            "pattern": {
                               "node": "Variable",
-                              "label": "element"
+                              "label": "inner"
                             },
-                            "with": {
-                              "node": "Tuple",
-                              "elements": [
-                                {
-                                  "node": "Binary",
-                                  "value": "div style=\"width:100%; height:100%\""
+                            "value": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "concat"
+                              },
+                              "with": {
+                                "node": "Variable",
+                                "label": "children"
+                              }
+                            },
+                            "then": {
+                              "node": "Let",
+                              "pattern": {
+                                "node": "Variable",
+                                "label": "buffer"
+                              },
+                              "value": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "builtin"
+                                  },
+                                  "key": "append"
                                 },
-                                {
+                                "with": {
                                   "node": "Tuple",
-                                  "elements": []
-                                },
-                                {
-                                  "node": "Variable",
-                                  "label": "content"
+                                  "elements": [
+                                    {
+                                      "node": "Binary",
+                                      "value": "<div style=\"display: flex;align-items: center;gap: 1em;padding: 1em;text-align: center\">"
+                                    },
+                                    {
+                                      "node": "Variable",
+                                      "label": "inner"
+                                    }
+                                  ]
                                 }
-                              ]
+                              },
+                              "then": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "builtin"
+                                  },
+                                  "key": "append"
+                                },
+                                "with": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Variable",
+                                      "label": "buffer"
+                                    },
+                                    {
+                                      "node": "Binary",
+                                      "value": "</div>"
+                                    }
+                                  ]
+                                }
+                              }
                             }
                           }
                         },
@@ -1215,92 +1264,205 @@
                           "node": "Let",
                           "pattern": {
                             "node": "Variable",
-                            "label": "main"
+                            "label": "text"
                           },
                           "value": {
-                            "node": "Call",
-                            "function": {
+                            "node": "Function",
+                            "pattern": {
                               "node": "Variable",
-                              "label": "stack"
+                              "label": "content"
                             },
-                            "with": {
-                              "node": "Tagged",
-                              "tag": "Cons",
-                              "value": {
+                            "body": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "element"
+                              },
+                              "with": {
                                 "node": "Tuple",
                                 "elements": [
                                   {
-                                    "node": "Call",
-                                    "function": {
-                                      "node": "Variable",
-                                      "label": "text"
-                                    },
-                                    "with": {
-                                      "node": "Binary",
-                                      "value": "helloasdfkjasdljfhawefihuafdlajsdhfh"
-                                    }
+                                    "node": "Binary",
+                                    "value": "div"
                                   },
                                   {
-                                    "node": "Tagged",
-                                    "tag": "Cons",
-                                    "value": {
-                                      "node": "Tuple",
-                                      "elements": [
-                                        {
-                                          "node": "Call",
-                                          "function": {
-                                            "node": "Variable",
-                                            "label": "image"
-                                          },
-                                          "with": {
-                                            "node": "Tuple",
-                                            "elements": []
-                                          }
-                                        },
-                                        {
-                                          "node": "Tagged",
-                                          "tag": "Nil",
-                                          "value": {
-                                            "node": "Tuple",
-                                            "elements": []
-                                          }
-                                        }
-                                      ]
-                                    }
+                                    "node": "Tuple",
+                                    "elements": []
+                                  },
+                                  {
+                                    "node": "Variable",
+                                    "label": "content"
                                   }
                                 ]
                               }
                             }
                           },
                           "then": {
-                            "node": "Call",
-                            "function": {
-                              "node": "Access",
-                              "value": {
-                                "node": "Variable",
-                                "label": "builtin"
-                              },
-                              "key": "append"
+                            "node": "Let",
+                            "pattern": {
+                              "node": "Variable",
+                              "label": "header"
                             },
-                            "with": {
-                              "node": "Tuple",
-                              "elements": [
-                                {
+                            "value": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "hstack"
+                              },
+                              "with": {
+                                "node": "Tagged",
+                                "tag": "Cons",
+                                "value": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Call",
+                                      "function": {
+                                        "node": "Variable",
+                                        "label": "text"
+                                      },
+                                      "with": {
+                                        "node": "Binary",
+                                        "value": "fooo"
+                                      }
+                                    },
+                                    {
+                                      "node": "Tagged",
+                                      "tag": "Cons",
+                                      "value": {
+                                        "node": "Tuple",
+                                        "elements": [
+                                          {
+                                            "node": "Call",
+                                            "function": {
+                                              "node": "Variable",
+                                              "label": "image"
+                                            },
+                                            "with": {
+                                              "node": "Tuple",
+                                              "elements": []
+                                            }
+                                          },
+                                          {
+                                            "node": "Tagged",
+                                            "tag": "Nil",
+                                            "value": {
+                                              "node": "Tuple",
+                                              "elements": []
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            },
+                            "then": {
+                              "node": "Let",
+                              "pattern": {
+                                "node": "Variable",
+                                "label": "main"
+                              },
+                              "value": {
+                                "node": "Call",
+                                "function": {
                                   "node": "Variable",
-                                  "label": "head"
+                                  "label": "stack"
                                 },
-                                {
-                                  "node": "Call",
-                                  "function": {
-                                    "node": "Variable",
-                                    "label": "body"
-                                  },
-                                  "with": {
-                                    "node": "Variable",
-                                    "label": "main"
+                                "with": {
+                                  "node": "Tagged",
+                                  "tag": "Cons",
+                                  "value": {
+                                    "node": "Tuple",
+                                    "elements": [
+                                      {
+                                        "node": "Variable",
+                                        "label": "header"
+                                      },
+                                      {
+                                        "node": "Tagged",
+                                        "tag": "Cons",
+                                        "value": {
+                                          "node": "Tuple",
+                                          "elements": [
+                                            {
+                                              "node": "Call",
+                                              "function": {
+                                                "node": "Variable",
+                                                "label": "image"
+                                              },
+                                              "with": {
+                                                "node": "Tuple",
+                                                "elements": []
+                                              }
+                                            },
+                                            {
+                                              "node": "Tagged",
+                                              "tag": "Cons",
+                                              "value": {
+                                                "node": "Tuple",
+                                                "elements": [
+                                                  {
+                                                    "node": "Call",
+                                                    "function": {
+                                                      "node": "Variable",
+                                                      "label": "text"
+                                                    },
+                                                    "with": {
+                                                      "node": "Binary",
+                                                      "value": "footer"
+                                                    }
+                                                  },
+                                                  {
+                                                    "node": "Tagged",
+                                                    "tag": "Nil",
+                                                    "value": {
+                                                      "node": "Tuple",
+                                                      "elements": []
+                                                    }
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      }
+                                    ]
                                   }
                                 }
-                              ]
+                              },
+                              "then": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "builtin"
+                                  },
+                                  "key": "append"
+                                },
+                                "with": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Variable",
+                                      "label": "head"
+                                    },
+                                    {
+                                      "node": "Call",
+                                      "function": {
+                                        "node": "Variable",
+                                        "label": "body"
+                                      },
+                                      "with": {
+                                        "node": "Variable",
+                                        "label": "main"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
                             }
                           }
                         }
