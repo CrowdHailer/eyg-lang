@@ -6,7 +6,6 @@ import url from "url";
 const app = express();
 const port = process.env.PORT || 8080;
 
-// TODO set up logs
 // TODO Don't clash with proxy
 // https://stackoverflow.com/a/18710277
 app.use(express.raw({ type: "*/*" }));
@@ -19,12 +18,7 @@ app.use((req, res) => {
     req.path,
     req.body.toString()
   );
-  console.log(result);
   res.send(result);
 });
-// app.get("/:program", (req, res) => {
-//   const program = req.params["program"];
-//   res.send(JSON.stringify());
-// });
 
 app.listen(port, () => console.log(`HelloNode app listening on port ${port}!`));
