@@ -30,6 +30,11 @@ fn builtins() {
   )
   |> add_field("uppercase", t.Function(t.Binary, t.Binary, t.empty))
   |> add_field("lowercase", t.Function(t.Binary, t.Binary, t.empty))
+  |> add_field(
+    "replace",
+    t.Function(t.Tuple([t.Binary, t.Binary, t.Binary]), t.Binary, t.empty),
+  )
+
 }
 
 fn add_field(state, key, type_) {

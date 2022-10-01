@@ -49,6 +49,14 @@ fn string_lowercase(arg) {
   }
 }
 
+fn string_replace(arg) {
+  case arg {
+    r.Tuple([r.Binary(string), r.Binary(target), r.Binary(replacement)]) -> Ok(r.Binary(string.replace(string, target, replacement)))
+    _ -> Error("bad arguments")
+  }
+}
+
+
 fn env() {
   map.new()
   |> map.insert("do", r.BuiltinFn(do))
@@ -67,6 +75,7 @@ fn env() {
       #("append", r.BuiltinFn(string_append)),
       #("uppercase", r.BuiltinFn(string_uppercase)),
       #("lowercase", r.BuiltinFn(string_lowercase)),
+      #("replace", r.BuiltinFn(string_replace)),
     ]),
   )
 }
