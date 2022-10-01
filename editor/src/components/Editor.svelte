@@ -41,6 +41,28 @@
     });
     saving = false;
   }
+  // This can definetly become something we do in gleam
+  let deploying = false;
+  const host = window.location.host;
+  const local = host.startsWith("localhost:");
+  console.log("local", local);
+  const deployOrigin = local
+    ? "http://localhost:5002"
+    : "https://cluster.web.petersaxton.uk";
+  async function deploy() {
+    if (deploying) {
+      return;
+    }
+    deploying = true;
+    // TODO put in scret
+    const url = deployOrigin + "/deploy";
+    const response = await fetch(url, {
+      method: "POST",
+      body: Editor.dump(editor),
+    });
+    console.log(response);
+    deploying = false;
+  }
 </script>
 
 <button class="m-1 p-1 bg-blue-100 rounded border border-black" on:click={save}
@@ -48,6 +70,15 @@
     Saving
   {:else}
     Save
+  {/if}</button
+>
+<button
+  class="m-1 p-1 bg-blue-100 rounded border border-black"
+  on:click={deploy}
+  >{#if deploying}
+    Deploying
+  {:else}
+    Deploy
   {/if}</button
 >
 {#if editor.show == "code"}

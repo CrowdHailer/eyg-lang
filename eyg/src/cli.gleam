@@ -33,6 +33,10 @@ pub fn load() {
   encode.from_json(encode.json_from_string(json))
 }
 
+pub fn from_string(json) {
+  encode.from_json(encode.json_from_string(json))
+}
+
 pub fn run(args) {
   let args = array.to_list(args)
   io.debug(args)
@@ -46,7 +50,7 @@ pub fn run(args) {
   }
 }
 
-pub fn req(origin, method, path, body) {
+pub fn req(origin, method, path, body, source) {
   let request =
     r.Record([
       #("origin", r.Binary(origin)),
@@ -58,7 +62,9 @@ pub fn req(origin, method, path, body) {
   // THere is an API vs compute endpoint
   // Automate deploy from my program
   // Web/GUO/CLI/HMI are all API's
-  let program = e.access(load(), "web")
+  io.debug("----")
+  io.debug(source)
+  let program = e.access(source, "web")
   let #(typed, typer) = analysis.infer(program, t.Unbound(-1), [])
   let #(xtyped, typer) = typer.expand_providers(typed, typer, [])
   // TODO fix need for untype
