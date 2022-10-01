@@ -1564,7 +1564,7 @@
               "node": "Let",
               "pattern": {
                 "node": "Variable",
-                "label": "bar"
+                "label": "cluster"
               },
               "value": {
                 "node": "Function",
@@ -1576,106 +1576,165 @@
                   "node": "Let",
                   "pattern": {
                     "node": "Variable",
-                    "label": "parts"
+                    "label": "page"
                   },
                   "value": {
-                    "node": "Call",
-                    "function": {
-                      "node": "Provider",
-                      "config": "",
-                      "generator": "List"
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Variable",
+                      "label": "head"
                     },
-                    "with": {
-                      "node": "Tuple",
-                      "elements": [
-                        {
-                          "node": "Binary",
-                          "value": "hey"
+                    "value": {
+                      "node": "Binary",
+                      "value": "<link href=\"https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css\" rel=\"stylesheet\"/><link rel=\"stylesheet\" href=\"http://localhost:5000/style/layout.css\" />"
+                    },
+                    "then": {
+                      "node": "Let",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": "head"
+                      },
+                      "value": {
+                        "node": "Call",
+                        "function": {
+                          "node": "Access",
+                          "value": {
+                            "node": "Variable",
+                            "label": "html"
+                          },
+                          "key": "el"
                         },
-                        {
-                          "node": "Binary",
-                          "value": " oggog"
+                        "with": {
+                          "node": "Tuple",
+                          "elements": [
+                            {
+                              "node": "Binary",
+                              "value": "head"
+                            },
+                            {
+                              "node": "Binary",
+                              "value": "lang=\"en\""
+                            },
+                            {
+                              "node": "Variable",
+                              "label": "head"
+                            }
+                          ]
+                        }
+                      },
+                      "then": {
+                        "node": "Let",
+                        "pattern": {
+                          "node": "Variable",
+                          "label": "body"
                         },
-                        {
+                        "value": {
                           "node": "Call",
                           "function": {
                             "node": "Access",
                             "value": {
                               "node": "Variable",
-                              "label": "layout"
+                              "label": "html"
                             },
-                            "key": "splash"
+                            "key": "el"
                           },
                           "with": {
                             "node": "Tuple",
                             "elements": [
                               {
                                 "node": "Binary",
-                                "value": "800"
+                                "value": "body"
                               },
                               {
                                 "node": "Binary",
-                                "value": "200"
+                                "value": "class=\"min-h-screen\""
+                              },
+                              {
+                                "node": "Binary",
+                                "value": "<script src=\"http://localhost:5000/lib/cluster.js\" type=\"module\"></script>"
+                              }
+                            ]
+                          }
+                        },
+                        "then": {
+                          "node": "Call",
+                          "function": {
+                            "node": "Access",
+                            "value": {
+                              "node": "Variable",
+                              "label": "builtin"
+                            },
+                            "key": "append"
+                          },
+                          "with": {
+                            "node": "Tuple",
+                            "elements": [
+                              {
+                                "node": "Variable",
+                                "label": "head"
+                              },
+                              {
+                                "node": "Variable",
+                                "label": "body"
                               }
                             ]
                           }
                         }
-                      ]
+                      }
                     }
                   },
                   "then": {
-                    "node": "Let",
-                    "pattern": {
-                      "node": "Variable",
-                      "label": "inner"
-                    },
+                    "node": "Case",
                     "value": {
                       "node": "Call",
                       "function": {
-                        "node": "Access",
-                        "value": {
-                          "node": "Access",
-                          "value": {
-                            "node": "Variable",
-                            "label": "lib"
-                          },
-                          "key": "string"
-                        },
-                        "key": "concat"
-                      },
-                      "with": {
                         "node": "Variable",
-                        "label": "parts"
-                      }
-                    },
-                    "then": {
-                      "node": "Call",
-                      "function": {
-                        "node": "Access",
-                        "value": {
-                          "node": "Variable",
-                          "label": "html"
-                        },
-                        "key": "el"
+                        "label": "equal"
                       },
                       "with": {
                         "node": "Tuple",
                         "elements": [
                           {
-                            "node": "Binary",
-                            "value": "h1"
+                            "node": "Access",
+                            "value": {
+                              "node": "Variable",
+                              "label": "request"
+                            },
+                            "key": "path"
                           },
                           {
                             "node": "Binary",
-                            "value": ""
-                          },
-                          {
-                            "node": "Variable",
-                            "label": "inner"
+                            "value": "/"
                           }
                         ]
                       }
-                    }
+                    },
+                    "branches": [
+                      {
+                        "node": "Branch",
+                        "name": "False",
+                        "pattern": {
+                          "node": "Tuple",
+                          "elements": []
+                        },
+                        "then": {
+                          "node": "Binary",
+                          "value": "{\"ZX6G4\": \"foo\"}"
+                        }
+                      },
+                      {
+                        "node": "Branch",
+                        "name": "True",
+                        "pattern": {
+                          "node": "Tuple",
+                          "elements": []
+                        },
+                        "then": {
+                          "node": "Variable",
+                          "label": "page"
+                        }
+                      }
+                    ]
                   }
                 }
               },
@@ -1726,7 +1785,7 @@
                                 },
                                 {
                                   "node": "Variable",
-                                  "label": "bar"
+                                  "label": "cluster"
                                 }
                               ]
                             },
@@ -1754,11 +1813,11 @@
                                 "elements": [
                                   {
                                     "node": "Binary",
-                                    "value": "bar.web.petersaxton.uk"
+                                    "value": "cluster.web.petersaxton.uk"
                                   },
                                   {
                                     "node": "Variable",
-                                    "label": "bar"
+                                    "label": "cluster"
                                   }
                                 ]
                               },

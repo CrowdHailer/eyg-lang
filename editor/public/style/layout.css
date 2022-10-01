@@ -10,6 +10,8 @@
   flex-direction: column;
   /* TODO maybe add justify and always start in the middle, check in conjunction with what belongs on the body */
   align-items: center;
+  min-height: 100%;
+  justify-content: center;
 }
 
 .vstack > * {
