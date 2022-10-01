@@ -1576,57 +1576,80 @@
                   "node": "Let",
                   "pattern": {
                     "node": "Variable",
-                    "label": "page"
+                    "label": "config"
                   },
                   "value": {
                     "node": "Let",
                     "pattern": {
                       "node": "Variable",
-                      "label": "head"
+                      "label": "desktop"
                     },
                     "value": {
                       "node": "Binary",
-                      "value": "<link href=\"https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css\" rel=\"stylesheet\"/><link rel=\"stylesheet\" href=\"http://localhost:5000/style/layout.css\" />"
+                      "value": "hello desktop"
                     },
                     "then": {
-                      "node": "Let",
-                      "pattern": {
-                        "node": "Variable",
-                        "label": "head"
-                      },
-                      "value": {
-                        "node": "Call",
-                        "function": {
+                      "node": "Call",
+                      "function": {
+                        "node": "Access",
+                        "value": {
                           "node": "Access",
                           "value": {
                             "node": "Variable",
-                            "label": "html"
+                            "label": "lib"
                           },
-                          "key": "el"
+                          "key": "string"
+                        },
+                        "key": "concat"
+                      },
+                      "with": {
+                        "node": "Call",
+                        "function": {
+                          "node": "Provider",
+                          "config": "",
+                          "generator": "List"
                         },
                         "with": {
                           "node": "Tuple",
                           "elements": [
                             {
                               "node": "Binary",
-                              "value": "head"
-                            },
-                            {
-                              "node": "Binary",
-                              "value": "lang=\"en\""
+                              "value": "{\"ZX6G4\": \""
                             },
                             {
                               "node": "Variable",
-                              "label": "head"
+                              "label": "desktop"
+                            },
+                            {
+                              "node": "Binary",
+                              "value": "\"}"
                             }
                           ]
                         }
+                      }
+                    }
+                  },
+                  "then": {
+                    "node": "Let",
+                    "pattern": {
+                      "node": "Variable",
+                      "label": "page"
+                    },
+                    "value": {
+                      "node": "Let",
+                      "pattern": {
+                        "node": "Variable",
+                        "label": "head"
+                      },
+                      "value": {
+                        "node": "Binary",
+                        "value": "<link href=\"https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css\" rel=\"stylesheet\"/><link rel=\"stylesheet\" href=\"http://localhost:5000/style/layout.css\" />"
                       },
                       "then": {
                         "node": "Let",
                         "pattern": {
                           "node": "Variable",
-                          "label": "body"
+                          "label": "head"
                         },
                         "value": {
                           "node": "Call",
@@ -1643,98 +1666,133 @@
                             "elements": [
                               {
                                 "node": "Binary",
-                                "value": "body"
+                                "value": "head"
                               },
                               {
                                 "node": "Binary",
-                                "value": "class=\"min-h-screen\""
+                                "value": "lang=\"en\""
                               },
-                              {
-                                "node": "Binary",
-                                "value": "<script src=\"http://localhost:5000/lib/cluster.js\" type=\"module\"></script>"
-                              }
-                            ]
-                          }
-                        },
-                        "then": {
-                          "node": "Call",
-                          "function": {
-                            "node": "Access",
-                            "value": {
-                              "node": "Variable",
-                              "label": "builtin"
-                            },
-                            "key": "append"
-                          },
-                          "with": {
-                            "node": "Tuple",
-                            "elements": [
                               {
                                 "node": "Variable",
                                 "label": "head"
-                              },
-                              {
-                                "node": "Variable",
-                                "label": "body"
                               }
                             ]
                           }
-                        }
-                      }
-                    }
-                  },
-                  "then": {
-                    "node": "Case",
-                    "value": {
-                      "node": "Call",
-                      "function": {
-                        "node": "Variable",
-                        "label": "equal"
-                      },
-                      "with": {
-                        "node": "Tuple",
-                        "elements": [
-                          {
-                            "node": "Access",
-                            "value": {
-                              "node": "Variable",
-                              "label": "request"
-                            },
-                            "key": "path"
+                        },
+                        "then": {
+                          "node": "Let",
+                          "pattern": {
+                            "node": "Variable",
+                            "label": "body"
                           },
-                          {
-                            "node": "Binary",
-                            "value": "/"
+                          "value": {
+                            "node": "Call",
+                            "function": {
+                              "node": "Access",
+                              "value": {
+                                "node": "Variable",
+                                "label": "html"
+                              },
+                              "key": "el"
+                            },
+                            "with": {
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Binary",
+                                  "value": "body"
+                                },
+                                {
+                                  "node": "Binary",
+                                  "value": "class=\"min-h-screen\""
+                                },
+                                {
+                                  "node": "Binary",
+                                  "value": "<script src=\"http://localhost:5000/lib/cluster.js\" type=\"module\"></script>"
+                                }
+                              ]
+                            }
+                          },
+                          "then": {
+                            "node": "Call",
+                            "function": {
+                              "node": "Access",
+                              "value": {
+                                "node": "Variable",
+                                "label": "builtin"
+                              },
+                              "key": "append"
+                            },
+                            "with": {
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Variable",
+                                  "label": "head"
+                                },
+                                {
+                                  "node": "Variable",
+                                  "label": "body"
+                                }
+                              ]
+                            }
                           }
-                        ]
+                        }
                       }
                     },
-                    "branches": [
-                      {
-                        "node": "Branch",
-                        "name": "False",
-                        "pattern": {
-                          "node": "Tuple",
-                          "elements": []
+                    "then": {
+                      "node": "Case",
+                      "value": {
+                        "node": "Call",
+                        "function": {
+                          "node": "Variable",
+                          "label": "equal"
                         },
-                        "then": {
-                          "node": "Binary",
-                          "value": "{\"ZX6G4\": \"foo\"}"
+                        "with": {
+                          "node": "Tuple",
+                          "elements": [
+                            {
+                              "node": "Access",
+                              "value": {
+                                "node": "Variable",
+                                "label": "request"
+                              },
+                              "key": "path"
+                            },
+                            {
+                              "node": "Binary",
+                              "value": "/"
+                            }
+                          ]
                         }
                       },
-                      {
-                        "node": "Branch",
-                        "name": "True",
-                        "pattern": {
-                          "node": "Tuple",
-                          "elements": []
+                      "branches": [
+                        {
+                          "node": "Branch",
+                          "name": "False",
+                          "pattern": {
+                            "node": "Tuple",
+                            "elements": []
+                          },
+                          "then": {
+                            "node": "Variable",
+                            "label": "config"
+                          }
                         },
-                        "then": {
-                          "node": "Variable",
-                          "label": "page"
+                        {
+                          "node": "Branch",
+                          "name": "True",
+                          "pattern": {
+                            "node": "Tuple",
+                            "elements": []
+                          },
+                          "then": {
+                            "node": "Variable",
+                            "label": "page"
+                          }
                         }
-                      }
-                    ]
+                      ]
+                    }
                   }
                 }
               },

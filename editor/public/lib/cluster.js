@@ -44,9 +44,9 @@ const poll = async function () {
     if (response.status == 200) {
       const config = await response.json();
       if (config[node]) {
-        console.log(config[node]);
+        window.document.body.innerHTML = config[node];
       } else {
-        console.log("nothing");
+        console.log("tick");
         window.document.body.innerHTML = `<div class="vstack"><div>${node} no program</div></div>`;
       }
       await delay(1000);
