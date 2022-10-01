@@ -2357,7 +2357,7 @@
                           },
                           "value": {
                             "node": "Binary",
-                            "value": "<link href=\"https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css\" rel=\"stylesheet\"/><link rel=\"stylesheet\" href=\"http://localhost:5000/style/layout.css\" />"
+                            "value": "<link href=\"https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css\" rel=\"stylesheet\"/><link rel=\"stylesheet\" href=\"http://localhost:5000/style/layout.css\" /><link rel=\"stylesheet\" href=\"https://programs.petersaxton.uk/style/layout.css\" />"
                           },
                           "then": {
                             "node": "Let",
@@ -2422,7 +2422,7 @@
                                     },
                                     {
                                       "node": "Binary",
-                                      "value": "<script src=\"http://localhost:5000/lib/cluster.js\" type=\"module\"></script>"
+                                      "value": "<script src=\"http://localhost:5000/lib/cluster.js\" type=\"module\"></script><script src=\"https://programs.petersaxton.uk/lib/cluster.js\" type=\"module\"></script>"
                                     }
                                   ]
                                 }
