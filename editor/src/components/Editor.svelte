@@ -7,50 +7,47 @@
 
   // import { Octokit } from "https://cdn.skypack.dev/@octokit/rest";
   // Use let in components const causes nil obkject issues
-  let ghAccessToken = 'ghAccessToken'
+  let ghAccessToken = "ghAccessToken";
   let octokit = new window.Octokit({
     auth: localStorage.getItem(ghAccessToken),
   });
   window.setAccessToken = function (token) {
-    localStorage.setItem(ghAccessToken, token)
-  }
+    localStorage.setItem(ghAccessToken, token);
+  };
   export let editor;
   $: window.eyg_source = Editor.dump(editor);
 
-  let deploying = false
-  async function deploy() {
-    if (deploying) {
-      return
+  let saving = false;
+  async function save() {
+    if (saving) {
+      return;
     }
-    deploying = true
+    saving = true;
 
-    const owner = "midas-framework"
-    const repo = "project_wisdom"
-    const path = "editor/public/saved.json"
-    const {data} = await octokit.rest.repos.getContent({owner, repo, path});
-    console.log(data);
-    console.log(data.sha);
-    const sha = data.sha
-    const message = "deployed from editor"
-    const content = btoa(Editor.dump(editor))
+    const owner = "midas-framework";
+    const repo = "project_wisdom";
+    const path = "editor/public/saved.json";
+    const { data } = await octokit.rest.repos.getContent({ owner, repo, path });
+    const sha = data.sha;
+    const message = "saveed from editor";
+    const content = btoa(Editor.dump(editor));
     await octokit.rest.repos.createOrUpdateFileContents({
-        owner,
-        repo,
-        path,
-        message,
-        content,
-        sha,
-    })
-    deploying = false
+      owner,
+      repo,
+      path,
+      message,
+      content,
+      sha,
+    });
+    saving = false;
   }
 </script>
 
-<button
-  class="m-1 p-1 bg-blue-100 rounded border border-black"
-  on:click={deploy}>{#if deploying}
-    Deploying
+<button class="m-1 p-1 bg-blue-100 rounded border border-black" on:click={save}
+  >{#if saving}
+    Saving
   {:else}
-    Deploy
+    Save
   {/if}</button
 >
 {#if editor.show == "code"}
