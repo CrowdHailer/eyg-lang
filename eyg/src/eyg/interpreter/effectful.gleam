@@ -28,7 +28,10 @@ fn string_append(args) {
   case args {
     r.Tuple([r.Binary(first), r.Binary(second)]) ->
       Ok(r.Binary(string.append(first, second)))
-    _ -> Error("bad arguments")
+    _ -> {
+      io.debug(args)
+      Error("bad arguments!!")
+      }
   }
 }
 

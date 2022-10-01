@@ -9,126 +9,7 @@
       href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
       rel="stylesheet"
     />
-    <style>
-      .vstack {
-        display: grid;
-        place-content: center;
-        padding: 1ch 0;
-        gap: 1ch;
-      }
-      .vstack > * {
-        padding: 0ch 1ch;
-      }
-
-      .vstack2 {
-        display: flex;
-        flex-direction: column;
-      }
-      /* overwrite these at points in the tree */
-      :root {
-        --space: 1ch;
-      }
-      .vstack2 > * {
-        padding: calc(var(--space) * 0.5) var(--space);
-        margin: 0 auto;
-      }
-
-      .vstack2 > *.cover {
-        width: 100%;
-        text-align: center;
-      }
-      .vstack2 > *.spacer {
-        flex-grow: 1;
-      }
-      .vstack2 > .divider {
-        height: 2px;
-        width: 75%;
-        padding-top: 0;
-        padding-bottom: 0;
-        margin: 0.5ch auto;
-      }
-      /* same right as child of zstack */
-      .vstack2.right > * {
-        margin-right: 0;
-      }
-      /* This is getting rather too contextual now */
-      .vstack2.right > *.divider {
-        margin-right: 1ch;
-      }
-      .vstack2.left > * {
-        margin-left: 0;
-      }
-      /* This is getting rather too contextual now */
-      .vstack2.left > *.divider {
-        margin-left: 1ch;
-      }
-
-      .hstack2 {
-        display: flex;
-        /* not sure why this needs width 100% but vstack is flex grow */
-        width: 100%;
-        justify-content: center;
-      }
-      .hstack2 > * {
-        padding: 1ch 0.5ch;
-        margin: auto 0;
-      }
-      .hstack2 > *.cover {
-        width: 100%;
-        text-align: center;
-      }
-      .hstack2 > *.spacer {
-        flex-grow: 1;
-      }
-
-      .hstack2 > .divider {
-        width: 2px;
-        background-color: white;
-        padding: 0;
-        min-height: 1em;
-        margin: 1ch 0.5ch;
-        /* height: 2px; */
-        /* width: 151%; */
-        /* margin: auto; */
-      }
-      /* text grows */
-      .zstack2 {
-        display: grid;
-        align-items: center;
-        justify-items: center;
-        grid-template-columns: fit-content(536px);
-      }
-      .zstack2 > * {
-        grid-area: 1/1/1/1;
-      }
-      .zstack2 > .cover {
-        width: 100%;
-        height: 100%;
-      }
-      .zstack2 > .left {
-        justify-self: left;
-        margin-left: 0.5ch;
-      }
-      .zstack2 > .right {
-        justify-self: right;
-        margin-right: 0.5ch;
-      }
-      .zstack2 > .bottom {
-        align-self: end;
-        margin-bottom: 0.5ch;
-      }
-      .zstack2 > .top {
-        align-self: start;
-        margin-top: 0.5ch;
-      }
-
-      /* zstack2 {
-        display: relative;
-      }
-      .zstack2 > * {
-        position: absolute;
-      } */
-    </style>
+    <link rel="stylesheet" href="http://localhost:5000/style/layout.css" />
   </head>
   <body class="min-h-screen flex flex-col">
     <!-- <div class="vstack">
@@ -136,9 +17,9 @@
       <div class="bg-red-500">basdasdhjkashdkjasd</div>
     </div>
     <hr /> -->
-    <div class="vstack2 flex-grow justify-center">
+    <div class="vstack flex-grow justify-center">
       <div class="cover bg-green-500">
-        <div class="hstack2">
+        <div class="hstack">
           <div>Foo</div>
           <div>bar</div>
           <div class="spacer"></div>
@@ -153,10 +34,10 @@
         itaque.
       </div>
       <div class="spacer"></div>
-      <div class="hstack2">
+      <div class="hstack">
         <span>hello</span>
         <!-- <div class="spacer"></div> -->
-        <div class="zstack2">
+        <div class="zstack">
           <div
             class="cover bg-purple-500 rounded"
             style="transform: rotate(-10deg); z-index: -1"
@@ -164,7 +45,7 @@
           <img class="shadow-xl rounded" src="https://picsum.photos/536/354" />
           <div class="left bottom text-gray-100 font-bold text-2xl">Ok</div>
           <div class="left top text-gray-100 font-bold text-2xl">Top</div>
-          <div class="vstack2 top right text-gray-100">
+          <div class="vstack top right text-gray-100">
             <div>foo much longer item</div>
             <div class="divider bg-white"></div>
             <div>bar</div>
@@ -182,14 +63,14 @@
       <div class="spacer"></div>
 
       <div class="bg-gray-500 text-white cover">
-        <div class="hstack2">
-          <div class="vstack2">
+        <div class="hstack">
+          <div class="vstack">
             <div>Foo</div>
             <div>Foo</div>
             <div>Foo</div>
           </div>
           <div class="divider"></div>
-          <div class="vstack2 left">
+          <div class="vstack left">
             <div>Foo</div>
             <div>asjdkhalkshdajklhsdlashdasds</div>
           </div>
