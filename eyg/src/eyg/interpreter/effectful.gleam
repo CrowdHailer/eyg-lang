@@ -31,7 +31,7 @@ fn string_append(args) {
     _ -> {
       io.debug(args)
       Error("bad arguments!!")
-      }
+    }
   }
 }
 
@@ -51,11 +51,11 @@ fn string_lowercase(arg) {
 
 fn string_replace(arg) {
   case arg {
-    r.Tuple([r.Binary(string), r.Binary(target), r.Binary(replacement)]) -> Ok(r.Binary(string.replace(string, target, replacement)))
+    r.Tuple([r.Binary(string), r.Binary(target), r.Binary(replacement)]) ->
+      Ok(r.Binary(string.replace(string, target, replacement)))
     _ -> Error("bad arguments")
   }
 }
-
 
 fn env() {
   map.new()

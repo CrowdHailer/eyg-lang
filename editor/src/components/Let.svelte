@@ -33,15 +33,16 @@
     =
   {/if}
   {#if multiline}
-    {#if expand}
-      <Indent>
-        <Expression expression={value} />
-      </Indent>
-    {:else}
-      <span class="text-gray-500" data-ui={Display.collapse_marker(metadata)}
-        >&lbrace; ... &rbrace;</span
-      >
-    {/if}
+    <Indent>
+      <Expression expression={value} />
+    </Indent>
+    <!-- This special value represents a multiline expression but is not not multi line by being a standin string -->
+    <!-- This value comes from the display function could probably be removed if we have a terminating thing in the tree -->
+    <!-- Here structural types would be useful because you could add Hidden into the AST tree -->
+  {:else if value[1].value === "EYG_SPECIAL_COLLAPSE_VALUE"}
+    <span class="text-gray-500" data-ui={Display.collapse_marker(metadata)}
+      >&lbrace; ... &rbrace;</span
+    >
   {:else}
     <Expression expression={value} />
   {/if}

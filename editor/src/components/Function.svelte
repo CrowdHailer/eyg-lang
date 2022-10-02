@@ -26,14 +26,13 @@
   data-ui={Display.marker(metadata)}>=></span
 >
 {#if multiline}
-  {#if expand}
-    <Indent>
-      <Expression expression={body} />
-    </Indent>
-  {:else}
-    <span class="text-gray-500" data-ui={Display.collapse_marker(metadata)}
-      >&lbrace; ... &rbrace;</span
-    >{/if}
+  <Indent>
+    <Expression expression={body} />
+  </Indent>
+{:else if body[1].value === "EYG_SPECIAL_COLLAPSE_VALUE"}
+  <span class="text-gray-500" data-ui={Display.collapse_marker(metadata)}
+    >&lbrace; ... &rbrace;</span
+  >
 {:else}
   <Expression expression={body} />
 {/if}
