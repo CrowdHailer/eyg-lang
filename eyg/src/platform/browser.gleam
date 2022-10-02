@@ -34,7 +34,6 @@ fn builtins() {
     "replace",
     t.Function(t.Tuple([t.Binary, t.Binary, t.Binary]), t.Binary, t.empty),
   )
-
 }
 
 fn add_field(state, key, type_) {

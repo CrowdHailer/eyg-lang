@@ -204,13 +204,44 @@ pub fn do_display(tree, position, selection, editor) {
     )
     e.Variable(label) -> #(metadata, e.Variable(label))
     e.Let(pattern, value, then) -> {
-      let value =
-        do_display(
-          value,
-          path.append(position, 1),
-          child_selection(selection, 1),
-          editor,
-        )
+      let value = case show_let_value(metadata) || !is_multiexpression(value) {
+        True -> {
+          // This x is to handle a bug in the compiler
+          let x =
+            do_display(
+              value,
+              path.append(position, 1),
+              child_selection(selection, 1),
+              editor,
+            )
+          x
+        }
+        // This handles the case when we are not going to render the tree.
+        // We duplicate checks in this display function and in the component so there is probably a much nicer way of doing this
+        // the metadata -> display function is duplicated that could probably be cleaned up.
+        // look at PR 52 to see the pieces
+        False -> {
+          let #(Metadata(type_: type_, ..), _expression) = value
+          let editor.Editor(expanded: expanded, ..) = editor
+          let typer: typer.Typer = editor.cache.typer
+          let #(errored, type_) = case type_ {
+            Ok(type_) -> #(
+              False,
+              type_info.to_string(t.resolve(type_, typer.substitutions)),
+            )
+            Error(_) -> #(True, "")
+          }
+          let metadata =
+            Display(
+              path.append(position, 1),
+              child_selection(selection, 1),
+              type_,
+              errored,
+              expanded,
+            )
+          #(metadata, e.Binary("EYG_SPECIAL_COLLAPSE_VALUE"))
+        }
+      }
       let then =
         do_display(
           then,
@@ -221,13 +252,40 @@ pub fn do_display(tree, position, selection, editor) {
       #(metadata, e.Let(pattern, value, then))
     }
     e.Function(from, to) -> {
-      let to =
-        do_display(
-          to,
-          path.append(position, 1),
-          child_selection(selection, 1),
-          editor,
-        )
+      let to = case show_expression(metadata) || !is_multiexpression(to) {
+        True -> {
+          // This x is to handle a bug in the compiler
+          let x =
+            do_display(
+              to,
+              path.append(position, 1),
+              child_selection(selection, 1),
+              editor,
+            )
+          x
+        }
+        False -> {
+          let #(Metadata(type_: type_, ..), _expression) = to
+          let editor.Editor(expanded: expanded, ..) = editor
+          let typer: typer.Typer = editor.cache.typer
+          let #(errored, type_) = case type_ {
+            Ok(type_) -> #(
+              False,
+              type_info.to_string(t.resolve(type_, typer.substitutions)),
+            )
+            Error(_) -> #(True, "")
+          }
+          let metadata =
+            Display(
+              path.append(position, 1),
+              child_selection(selection, 1),
+              type_,
+              errored,
+              expanded,
+            )
+          #(metadata, e.Binary("EYG_SPECIAL_COLLAPSE_VALUE"))
+        }
+      }
       #(metadata, e.Function(from, to))
     }
     e.Call(function, with) -> {
@@ -255,18 +313,21 @@ pub fn do_display(tree, position, selection, editor) {
           child_selection(selection, 0),
           editor,
         )
-      let branches =
-        list.index_map(
-          branches,
-          fn(index, branch) {
-            let index = index + 1
-            let #(name, pattern, then) = branch
-            let position = list.append(position, [index, 2])
-            let selection =
-              child_selection(child_selection(selection, index), 2)
-            #(name, pattern, do_display(then, position, selection, editor))
-          },
-        )
+      let branches = case show_expression(metadata) {
+        True ->
+          list.index_map(
+            branches,
+            fn(index, branch) {
+              let index = index + 1
+              let #(name, pattern, then) = branch
+              let position = list.append(position, [index, 2])
+              let selection =
+                child_selection(child_selection(selection, index), 2)
+              #(name, pattern, do_display(then, position, selection, editor))
+            },
+          )
+        False -> []
+      }
       #(metadata, e.Case(value, branches))
     }
     e.Hole -> #(metadata, e.Hole)
