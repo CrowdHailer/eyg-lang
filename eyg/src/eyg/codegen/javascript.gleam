@@ -173,6 +173,10 @@ pub fn escape_string(raw) {
   |> string.replace("\\", "\\\\")
   |> string.replace("'", "\\'")
   |> string.replace("\"", "\\\"")
+
+// Not js but browser
+  |> string.replace("<", "\\<")
+  |> string.replace(">", "\\>")
 }
 
 pub fn render(

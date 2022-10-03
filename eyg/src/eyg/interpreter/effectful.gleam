@@ -1,8 +1,17 @@
 import gleam/io
+import gleam/list
 import gleam/map
 import gleam/string
 import eyg/interpreter/interpreter as r
 import eyg/interpreter/tail_call
+// TODO remove and have a compile client function
+// has arbitrary effect types as something that composes and we have a big browser harness
+import eyg/ast/expression as e
+import eyg/analysis
+import eyg/typer
+import eyg/typer/monotype as t
+import eyg/editor/editor
+import eyg/codegen/javascript
 
 fn impl(handler, computation) {
   Ok(r.BuiltinFn(fn(arg) {
@@ -57,6 +66,29 @@ fn string_replace(arg) {
   }
 }
 
+fn term_serialize(term) {
+  // io.debug(term)
+  assert r.Function(pattern, body, captured, _) = term
+  let client_source = e.function(pattern, body)
+  // TODO captured should not include empty
+  let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [])
+  let #(typed, typer) = typer.expand_providers(typed, typer, [])
+  let program =
+    list.map(map.to_list(captured), r.render_var)
+    |> list.append([javascript.render_to_string(typed, typer)])
+    |> string.join("\n")
+    |> string.append(
+      "({
+  on_click: (f) => { document.onclick = () => f() },
+  display: (value) => document.body.innerHTML = value,
+});",
+    )
+  let page =
+    string.concat(["<head></head><body></body><script>", program, "</script>"])
+  // assert r.Function() = term
+  Ok(r.Binary(page))
+}
+
 fn env() {
   map.new()
   |> map.insert("do", r.BuiltinFn(do))
@@ -76,6 +108,8 @@ fn env() {
       #("uppercase", r.BuiltinFn(string_uppercase)),
       #("lowercase", r.BuiltinFn(string_lowercase)),
       #("replace", r.BuiltinFn(string_replace)),
+      // These could be parts of the server environment only because they are encoded
+      #("serialize", r.BuiltinFn(term_serialize)),
     ]),
   )
 }

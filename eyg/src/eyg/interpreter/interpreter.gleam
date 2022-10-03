@@ -8,6 +8,10 @@ import gleam/string
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/codegen/javascript
+import eyg/analysis
+import eyg/typer
+import eyg/typer/monotype as t
+
 
 pub type Object {
   Binary(String)
@@ -55,7 +59,13 @@ pub fn extend_env(env, pattern, object) {
 
 pub fn render_var(assignment) {
   case assignment {
-    #("", _) -> ""
+    // NOTE that effect handlers are not supported in compiled code
+    #("", _) | #("do", _) | #("impl", _) -> ""
+    #("equal", _) -> "let equal = ([a, b]) => a == b;"
+    // TODO remove duplication of this builtincode
+    // can i import * as builtin from /gleam/version
+    #("builtin", _) -> "let builtin = {append: ([a, b]) => a + b}"
+    // TODO have a standard builtin to lookup table
     #("send", BuiltinFn(_)) ->
       string.concat([
         "let send = ([pid, message]) => (then) => { 
@@ -78,10 +88,12 @@ pub fn render_var(assignment) {
   }
 }
 
-fn render_object(object) {
+pub fn render_object(object) {
   case object {
     Binary(content) ->
       string.concat(["\"", javascript.escape_string(content), "\""])
+    //       |> string.replace("<", "&lt;")
+    // |> string.replace(">", "&gt;")
     Pid(pid) -> int.to_string(pid)
     Tuple(elements) -> {
       let term =
@@ -105,8 +117,13 @@ fn render_object(object) {
       string.concat(["{", tag, ":", render_object(value), "}"])
     // Builtins should never be included, I need to check variables used in a previous step
     // Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
-    Function(_, _, _, _) -> "null"
-    BuiltinFn(_) -> todo("we aren't using builtin here should be part of env")
+    Function(pattern, body, _, _) -> {
+        let #(typed, typer) = analysis.infer(e.function(pattern, body), t.Unbound(-1), [])
+        let #(typed, typer) = typer.expand_providers(typed, typer, [])
+        javascript.render_to_string(typed, typer)
+    }
+    BuiltinFn(_) -> "null /* we aren't using builtin here should be part of env */"
+    // TODO remove Coroutine/ready there where and old experiment
     Coroutine(_) -> "null"
     Ready(_, _) -> "null"
     Native(_) -> "null"

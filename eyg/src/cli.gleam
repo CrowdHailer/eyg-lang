@@ -62,8 +62,6 @@ pub fn req(origin, method, path, body, source) {
   // THere is an API vs compute endpoint
   // Automate deploy from my program
   // Web/GUO/CLI/HMI are all API's
-  io.debug("----")
-  io.debug(source)
   let program = e.access(source, "web")
   let #(typed, typer) = analysis.infer(program, t.Unbound(-1), [])
   let #(xtyped, typer) = typer.expand_providers(typed, typer, [])
