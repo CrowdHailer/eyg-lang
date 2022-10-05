@@ -11,7 +11,7 @@ const port = process.env.PORT || 8080;
 // TODO Don't clash with proxy
 // https://stackoverflow.com/a/18710277
 app.use(cors());
-app.use(express.raw({ type: "*/*" }));
+app.use(express.raw({ type: "*/*", limit: "1mb" }));
 let source = Eyg.load();
 // console.log(source);
 app.use((req, res) => {

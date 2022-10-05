@@ -52,6 +52,7 @@ fn value_from_result(type_) {
   case type_ {
     t.Union([#("OK", type_), #("Error", _)], _) -> Ok(type_)
     t.Union([#("Error", _), #("OK", type_)], _) -> Ok(type_)
+    // Can't match unbound as we need internal type, OR we can pass unbound to the compiler
     _ -> Error(Nil)
   }
 }
@@ -72,7 +73,7 @@ pub fn generate(generator, config, hole) {
               Ok(function(
                 p.Variable("source"),
                 call(
-                  access(variable("harness"), "compile"),
+                  access(variable("builtin"), "compile"),
                   tuple_([variable("source"), binary(t.literal(target))]),
                 ),
               ))

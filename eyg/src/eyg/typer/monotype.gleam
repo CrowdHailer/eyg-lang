@@ -54,11 +54,33 @@ pub fn literal(monotype) {
       }
       string.concat(["new T.Record(Gleam.toList([", fields, "]), ", extra, ")"])
     }
+    Union(varients, extra) -> {
+      let varients =
+        list.map(
+          varients,
+          fn(f) {
+            let #(name, value) = f
+            string.concat(["[\"", name, "\", ", literal(value), "]"])
+          },
+        )
+        |> list.intersperse(", ")
+        |> string.concat
+      let extra = case extra {
+        Some(i) ->
+          string.concat(["new Option.Some(", int.to_string(i + 1000), ")"])
+        None -> "new Option.None()"
+      }
+      string.concat(["new T.Union(Gleam.toList([", varients, "]), ", extra, ")"])
+    }
     Function(from, to, effects) ->
       // need to add effects
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
-    Native(_, _) | Union(_, _) | Recursive(_, _) -> todo("ss literal")
+    Recursive(i, rest) -> string.concat(["new T.Recursive(", int.to_string(i), ", ", literal(rest), ")"])
+    Native(_, _)  -> {
+      io.debug(monotype)
+      todo("ss literal")
+    }
   }
 }
 
