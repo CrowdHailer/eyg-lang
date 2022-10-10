@@ -16,6 +16,10 @@ pub fn infer(untyped, type_, variables) {
   typer.infer(untyped, type_, t.empty, state)
 }
 
+pub fn infer_unbound(untyped) {
+  infer(untyped, t.Unbound(-1), [])
+}
+
 pub fn infer_effectful(untyped, type_, effects, variables) {
   let checker = typer.init()
   let scope = typer.root_scope(variables)

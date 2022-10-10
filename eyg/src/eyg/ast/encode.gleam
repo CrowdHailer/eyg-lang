@@ -164,6 +164,9 @@ external fn from_array(value: JSON) -> List(JSON) =
 
 pub fn from_json(json: JSON) {
   assert Ok(#(node, rest)) = list.key_pop(entries(json), "node")
+
+  // TODO need to load out properly
+  // TODO make this robust no asserts or assumption of order use key pop
   // find node and order rest
   case assert_string(node) {
     "Binary" -> {
@@ -203,8 +206,8 @@ pub fn from_json(json: JSON) {
       let [#("label", label)] = rest
       ast.variable(assert_string(label))
     }
-
     "Let" -> {
+
       let [#("pattern", pattern), #("value", value), #("then", then)] = rest
       let pattern = pattern_from_json(pattern)
       let value = from_json(value)

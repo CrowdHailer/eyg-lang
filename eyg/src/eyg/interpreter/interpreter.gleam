@@ -64,6 +64,7 @@ pub fn render_var(assignment) {
     #("equal", _) -> "let equal = ([a, b]) => a == b;"
     // TODO remove duplication of this builtincode
     // can i import * as builtin from /gleam/version
+    // TODO builtin needs to include render
     #("builtin", _) -> "let builtin = {append: ([a, b]) => a + b}"
     // TODO have a standard builtin to lookup table
     #("send", BuiltinFn(_)) ->
@@ -117,7 +118,8 @@ pub fn render_object(object) {
       string.concat(["{", tag, ":", render_object(value), "}"])
     // Builtins should never be included, I need to check variables used in a previous step
     // Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
-    Function(pattern, body, _, _) -> {
+    Function(pattern, body, captured, _) -> {
+        // TODO this needs to render captured to be useful
         let #(typed, typer) = analysis.infer(e.function(pattern, body), t.Unbound(-1), [])
         let #(typed, typer) = typer.expand_providers(typed, typer, [])
         javascript.render_to_string(typed, typer)

@@ -1,4 +1,5 @@
 // import { main } from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/main";
+// TODO remove deploy
 import { deploy } from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/ui.mjs";
 import * as Spreasheet from "../../eyg/build/dev/javascript/eyg/dist/spreadsheet/main.mjs";
 
