@@ -12,7 +12,6 @@ import eyg/analysis
 import eyg/typer
 import eyg/typer/monotype as t
 
-
 pub type Object {
   Binary(String)
   Pid(Int)
@@ -119,12 +118,14 @@ pub fn render_object(object) {
     // Builtins should never be included, I need to check variables used in a previous step
     // Function(_,_,_,_) -> todo("this needs compile again but I need a way to do this without another type check")
     Function(pattern, body, captured, _) -> {
-        // TODO this needs to render captured to be useful
-        let #(typed, typer) = analysis.infer(e.function(pattern, body), t.Unbound(-1), [])
-        let #(typed, typer) = typer.expand_providers(typed, typer, [])
-        javascript.render_to_string(typed, typer)
+      // TODO this needs to render captured to be useful
+      let #(typed, typer) =
+        analysis.infer(e.function(pattern, body), t.Unbound(-1), [])
+      let #(typed, typer) = typer.expand_providers(typed, typer, [])
+      javascript.render_to_string(typed, typer)
     }
-    BuiltinFn(_) -> "null /* we aren't using builtin here should be part of env */"
+    BuiltinFn(_) ->
+      "null /* we aren't using builtin here should be part of env */"
     // TODO remove Coroutine/ready there where and old experiment
     Coroutine(_) -> "null"
     Ready(_, _) -> "null"

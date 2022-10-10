@@ -84,26 +84,25 @@ fn term_serialize(term) {
   // TODO does with work can we have outside poller
   on_code: (f) => { document.oncode = f }
 });",
-// This didn't work because of rendering captured variables for a fn within some scope.
-// We need a whole review of rendering or use interpreter
-//     "(({init}) => {
-//   console.log(init, 'initial state')
-//   const update = ({page, interrupt}) => {
-//     document.body.innerHTML = page
-//     document.onclick = () => update(interrupt({Click: 'key'}))
-//     document.oncode = (code) => update(interrupt({Code: code}))
-// TODO this needs the codegen part of loader
-//   }
-//   update(init)  
-//   // TODO set interval
-// })"
     )
+  // This didn't work because of rendering captured variables for a fn within some scope.
+  // We need a whole review of rendering or use interpreter
+  //     "(({init}) => {
+  //   console.log(init, 'initial state')
+  //   const update = ({page, interrupt}) => {
+  //     document.body.innerHTML = page
+  //     document.onclick = () => update(interrupt({Click: 'key'}))
+  //     document.oncode = (code) => update(interrupt({Code: code}))
+  // TODO this needs the codegen part of loader
+  //   }
+  //   update(init)  
+  //   // TODO set interval
+  // })"
   let page =
     string.concat(["<head></head><body></body><script>", program, "</script>"])
   // assert r.Function() = term
   Ok(r.Binary(page))
 }
-
 
 fn env() {
   map.new()

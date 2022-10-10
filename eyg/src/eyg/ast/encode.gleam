@@ -207,7 +207,6 @@ pub fn from_json(json: JSON) {
       ast.variable(assert_string(label))
     }
     "Let" -> {
-
       let [#("pattern", pattern), #("value", value), #("then", then)] = rest
       let pattern = pattern_from_json(pattern)
       let value = from_json(value)
