@@ -15,7 +15,6 @@ import eyg/typer
 import eyg/typer/monotype as t
 import eyg/editor/editor
 
-
 fn update(page, interrupt, display, on_click) {
   io.debug(page)
   display(page)
@@ -25,9 +24,14 @@ fn b(args) {
   Ok(args)
 }
 
-fn tree() { 
-  r.Function(p.Variable("x"), e.tuple_([e.variable("x"),e.variable("x")]), map.new(), None)
- }
+fn tree() {
+  r.Function(
+    p.Variable("x"),
+    e.tuple_([e.variable("x"), e.variable("x")]),
+    map.new(),
+    None,
+  )
+}
 
 // uses default builtin that need moving out of effectful
 // has an entry point key should eventually be a hash
@@ -44,12 +48,12 @@ pub fn interpret_client(source, key, display, on_click) {
   let #(xtyped, typer) =
     typer.expand_providers(typed, typer, [])
     // Running the interpreter kills the client
-      // assert Ok(term) = effectful.eval(editor.untype(xtyped))
-      // io.debug(term)
+    // assert Ok(term) = effectful.eval(editor.untype(xtyped))
+    // io.debug(term)
     |> io.debug
   io.debug("expanded")
-    effectful.eval_call(tree(), r.Binary("nothing exciting"), effectful.real_log)
-    |> io.debug
+  effectful.eval_call(tree(), r.Binary("nothing exciting"), effectful.real_log)
+  |> io.debug
   // //   TODO make an AST the requires rendering
   //   term
 }
