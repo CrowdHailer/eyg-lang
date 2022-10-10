@@ -76,8 +76,15 @@ pub fn literal(monotype) {
       // need to add effects
       string.concat(["new T.Function(", literal(from), ",", literal(to), ")"])
     Unbound(i) -> string.concat(["new T.Unbound(", int.to_string(i), ")"])
-    Recursive(i, rest) -> string.concat(["new T.Recursive(", int.to_string(i), ", ", literal(rest), ")"])
-    Native(_, _)  -> {
+    Recursive(i, rest) ->
+      string.concat([
+        "new T.Recursive(",
+        int.to_string(i),
+        ", ",
+        literal(rest),
+        ")",
+      ])
+    Native(_, _) -> {
       io.debug(monotype)
       todo("ss literal")
     }
