@@ -3057,8 +3057,26 @@
                               "elements": []
                             },
                             "then": {
-                              "node": "Binary",
-                              "value": "TODO encode"
+                              "node": "Call",
+                              "function": {
+                                "node": "Access",
+                                "value": {
+                                  "node": "Variable",
+                                  "label": "builtin"
+                                },
+                                "key": "serialize"
+                              },
+                              "with": {
+                                "node": "Function",
+                                "pattern": {
+                                  "node": "Variable",
+                                  "label": ""
+                                },
+                                "body": {
+                                  "node": "Tuple",
+                                  "elements": []
+                                }
+                              }
                             }
                           }
                         ]

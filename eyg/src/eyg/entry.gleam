@@ -1,4 +1,6 @@
 import gleam/io
+import gleam/map
+import gleam/option.{None}
 import gleam/string
 import eyg/ast/encode
 import eyg/ast/expression as e
@@ -7,10 +9,12 @@ import eyg/interpreter/effectful
 import eyg/interpreter/tail_call
 import gleam/javascript/array
 import eyg/interpreter/interpreter as r
+import eyg/ast/pattern as p
 import eyg/analysis
 import eyg/typer
 import eyg/typer/monotype as t
 import eyg/editor/editor
+
 
 fn update(page, interrupt, display, on_click) {
   io.debug(page)
@@ -18,8 +22,12 @@ fn update(page, interrupt, display, on_click) {
 }
 
 fn b(args) {
-  Ok(r.Binary("done"))
+  Ok(args)
 }
+
+fn tree() { 
+  r.Function(p.Variable("x"), e.tuple_([e.variable("x"),e.variable("x")]), map.new(), None)
+ }
 
 // uses default builtin that need moving out of effectful
 // has an entry point key should eventually be a hash
@@ -35,11 +43,13 @@ pub fn interpret_client(source, key, display, on_click) {
   io.debug("---- typed")
   let #(xtyped, typer) =
     typer.expand_providers(typed, typer, [])
-    //   assert Ok(term) = effectful.eval(editor.untype(xtyped))
-    //   io.debug(term)
+    // Running the interpreter kills the client
+      // assert Ok(term) = effectful.eval(editor.untype(xtyped))
+      // io.debug(term)
     |> io.debug
-  //   effectful.eval_call(r.BuiltinFn(b), term, effectful.real_log)
-  //   |> io.debug
+  io.debug("expanded")
+    effectful.eval_call(tree(), r.Binary("nothing exciting"), effectful.real_log)
+    |> io.debug
   // //   TODO make an AST the requires rendering
   //   term
 }

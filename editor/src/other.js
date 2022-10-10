@@ -7,13 +7,16 @@ import data from "../public/saved.json";
 // let target = new URL(document.currentScript.src).hash.slice(1);
 // console.log(target, Analysis);
 
-(async function name() {
+async function GoGoGo() {
   const source = Encode.from_json(data);
   const initial = Entry.interpret_client(source, "counter");
   console.log(initial);
   const { default: next } = await import("../public/saved.json");
-  console.log(Encode.from_json(data));
-})();
+  console.log(Encode.from_json(next));
+}
 
+console.log(window, GoGoGo);
+window.GoGoGo = GoGoGo;
+GoGoGo();
 // Started doing this because the code gen was troublesome, also in code gen we will nee to pull in the loader
 // here we have can use the already existing gleam .run
