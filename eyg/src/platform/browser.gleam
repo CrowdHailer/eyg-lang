@@ -36,13 +36,13 @@ fn builtins() {
   )
   |> add_field("serialize", t.Function(t.Unbound(0), t.Binary, t.empty))
   |> add_field(
-          "compile",
-          t.Function(
-            t.Tuple([t.Binary, t.Binary]),
-            t.Union([#("OK", t.Unbound(0)), #("Error", t.Binary)], Some(1)),
-            t.empty,
-          ),
-        )
+    "compile",
+    t.Function(
+      t.Tuple([t.Binary, t.Binary]),
+      t.Union([#("OK", t.Unbound(0)), #("Error", t.Binary)], Some(1)),
+      t.empty,
+    ),
+  )
 }
 
 fn add_field(state, key, type_) {
