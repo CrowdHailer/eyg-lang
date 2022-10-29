@@ -41,15 +41,15 @@ external fn log(a) -> Nil =
 // TODO this is the one that we are using in latest
 fn term_serialize(term) {
   let program =
-    runtime.render_object(term)
-    |> string.append(
-      "({
-  on_click: (f) => { document.onclick = () => f() },
-  display: (value) => document.body.innerHTML = value,
-});",
-    )
+    string.append("window.Program = ", runtime.render_object(term))
+//     |> string.append(
+//       "({
+//   on_click: (f) => { document.onclick = () => f() },
+//   display: (value) => document.body.innerHTML = value,
+// });",
+//     )
   let page =
-    string.concat(["<head></head><body></body><script>", program, "</script>"])
+    string.concat(["<script>", program, "</script><body></body>"])
   // assert r.Function() = term
   Ok(r.Binary(page))
 }

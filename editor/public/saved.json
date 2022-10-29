@@ -1603,7 +1603,7 @@
               },
               "value": {
                 "node": "Binary",
-                "value": "<head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><link href=\"https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css\" rel=\"stylesheet\"/><link rel=\"stylesheet\" href=\"http://localhost:5000/style/layout.css\" /></head>"
+                "value": "<head><meta charset=\"utf-8\" /><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><link href=\"https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css\" rel=\"stylesheet\"/><link rel=\"stylesheet\" href=\"http://localhost:5000/style/layout.css\" /><script src=\"http://localhost:5000/build/bundle.js#client\"></script></head>"
               },
               "then": {
                 "node": "Let",
@@ -3825,20 +3825,33 @@
                                 "node": "Access",
                                 "value": {
                                   "node": "Variable",
-                                  "label": "builtin"
+                                  "label": "layout"
                                 },
-                                "key": "append"
+                                "key": "vstack"
                               },
                               "with": {
                                 "node": "Tuple",
                                 "elements": [
                                   {
                                     "node": "Binary",
-                                    "value": "<div class=\"vstack\"> "
+                                    "value": "text-red-500"
                                   },
                                   {
-                                    "node": "Variable",
-                                    "label": "state"
+                                    "node": "Call",
+                                    "function": {
+                                      "node": "Provider",
+                                      "config": "",
+                                      "generator": "List"
+                                    },
+                                    "with": {
+                                      "node": "Tuple",
+                                      "elements": [
+                                        {
+                                          "node": "Variable",
+                                          "label": "state"
+                                        }
+                                      ]
+                                    }
                                   }
                                 ]
                               }

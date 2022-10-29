@@ -14,12 +14,21 @@ pub fn builtin() {
   // #("serialize", r.BuiltinFn(term_serialize)),
 }
 
+external fn log(a) -> Nil =
+  "" "console.log"
+
+// This might well be easier to write in JS
+pub fn compiled_string_append(args) {
+  let #(first, second) = args
+  string.append(first, second)
+}
+
+// interpreted
 fn string_append(args) {
   case args {
     r.Tuple([r.Binary(first), r.Binary(second)]) ->
       Ok(r.Binary(string.append(first, second)))
     _ -> {
-      io.debug(args)
       Error("bad arguments!!")
     }
   }

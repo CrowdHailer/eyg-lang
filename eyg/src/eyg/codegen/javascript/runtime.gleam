@@ -11,6 +11,7 @@ import eyg/codegen/javascript
 import eyg/analysis
 import eyg/analysis/shake
 import eyg/typer
+import eyg/editor/editor
 
 pub fn render_var(assignment) {
   case assignment {
@@ -58,12 +59,13 @@ pub fn render_object(object) {
         analysis.infer(e.function(pattern, body), t.Unbound(-1), [])
       let #(typed, typer) = typer.expand_providers(typed, typer, [])
       assert r.Record(fields) =
-        shake.shake_function(pattern, body, captured, self)
+        shake.shake_function(pattern, editor.untype(typed), captured, self)
       //   io.debug(fields)
+      // TODO use maybe wrap expression an indent
       ["(() => {", ..list.map(fields, render_var)]
       |> list.append([
-        string.append("return ", javascript.render_to_string(typed, typer)),
-        "})();",
+        javascript.render_fn_to_string(typed, typer, self),
+        "})()",
       ])
       |> string.join("\n")
     }
@@ -71,7 +73,7 @@ pub fn render_object(object) {
       //   assert Ok(r.Record(globals)) = map.get(effectful.env(), "builtin")
       let globals = builtin.builtin()
       assert Ok(label) = render_builtin(f, globals)
-      label
+      string.append("Builtin.", label)
     }
     r.Coroutine(_) -> todo("remove Coroutine from runtime")
     r.Ready(_, _) -> todo("remove Ready from runtime")

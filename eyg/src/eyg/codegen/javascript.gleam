@@ -104,6 +104,15 @@ fn render_function_name(state) {
   }
 }
 
+pub fn render_fn_to_string(expression, typer, self) {
+  render(expression, Generator(True, [], typer, self))
+  // In use this is always needed but there are probably better slicing of concerns to be found
+  |> indent()
+  |> list.intersperse("\n")
+  |> string.concat()
+}
+
+
 pub fn render_to_string(expression, typer) {
   render(expression, Generator(False, [], typer, None))
   |> list.intersperse("\n")
