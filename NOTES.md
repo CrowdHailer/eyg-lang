@@ -349,3 +349,9 @@ More
 - https://swimlanes.io/
 - https://blog.tomsawyer.com/automating-swimlane-diagrams
 - https://www.yworks.com/products/yed#yed-support-resources
+
+#### Rank Polymorphism
+
+- Let should not be generalized https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tldi10-vytiniotis.pdf
+- https://cs.uwaterloo.ca/research/tr/2006/CS-2006-08.pdf
+- https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/putting.pdf
