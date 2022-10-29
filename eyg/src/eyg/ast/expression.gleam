@@ -272,6 +272,7 @@ pub type Node(m, g) {
   Tuple(elements: List(Expression(m, g)))
   Record(fields: List(#(String, Expression(m, g))))
   Access(value: Expression(m, g), key: String)
+  // Maybe Tagged becomes Tag and returns a functin
   Tagged(tag: String, value: Expression(m, g))
   Variable(label: String)
   Let(pattern: Pattern, value: Expression(m, g), then: Expression(m, g))

@@ -12,6 +12,9 @@ import eyg/typer
 import eyg/typer/monotype as t
 import eyg/editor/editor
 import eyg/codegen/javascript
+import eyg/codegen/javascript/runtime
+import eyg/interpreter/builtin
+import eyg/analysis/shake
 
 fn impl(handler, computation) {
   Ok(r.BuiltinFn(fn(arg) {
@@ -32,51 +35,13 @@ fn do(effect) {
   }
 }
 
-// TODO move somewhere for interpreter
-fn string_append(args) {
-  case args {
-    r.Tuple([r.Binary(first), r.Binary(second)]) ->
-      Ok(r.Binary(string.append(first, second)))
-    _ -> {
-      io.debug(args)
-      Error("bad arguments!!")
-    }
-  }
-}
+external fn log(a) -> Nil =
+  "" "console.log"
 
-fn string_uppercase(arg) {
-  case arg {
-    r.Binary(value) -> Ok(r.Binary(string.uppercase(value)))
-    _ -> Error("bad arguments")
-  }
-}
-
-fn string_lowercase(arg) {
-  case arg {
-    r.Binary(value) -> Ok(r.Binary(string.lowercase(value)))
-    _ -> Error("bad arguments")
-  }
-}
-
-fn string_replace(arg) {
-  case arg {
-    r.Tuple([r.Binary(string), r.Binary(target), r.Binary(replacement)]) ->
-      Ok(r.Binary(string.replace(string, target, replacement)))
-    _ -> Error("bad arguments")
-  }
-}
-
+// TODO this is the one that we are using in latest
 fn term_serialize(term) {
-  // io.debug(term)
-  assert r.Function(pattern, body, captured, _) = term
-  let client_source = e.function(pattern, body)
-  // TODO captured should not include empty
-  let #(typed, typer) = analysis.infer(client_source, t.Unbound(-1), [])
-  let #(typed, typer) = typer.expand_providers(typed, typer, [])
   let program =
-    list.map(map.to_list(captured), r.render_var)
-    |> list.append([javascript.render_to_string(typed, typer)])
-    |> string.join("\n")
+    runtime.render_object(term)
     |> string.append(
       "({
   on_click: (f) => { document.onclick = () => f() },
@@ -89,7 +54,7 @@ fn term_serialize(term) {
   Ok(r.Binary(page))
 }
 
-fn env() {
+pub fn env() {
   map.new()
   |> map.insert("do", r.BuiltinFn(do))
   |> map.insert(
@@ -103,14 +68,7 @@ fn env() {
   // TODO add types to builtin
   |> map.insert(
     "builtin",
-    r.Record([
-      #("append", r.BuiltinFn(string_append)),
-      #("uppercase", r.BuiltinFn(string_uppercase)),
-      #("lowercase", r.BuiltinFn(string_lowercase)),
-      #("replace", r.BuiltinFn(string_replace)),
-      // These could be parts of the server environment only because they are encoded
-      #("serialize", r.BuiltinFn(term_serialize)),
-    ]),
+    r.Record([#("serialize", r.BuiltinFn(term_serialize)), ..builtin.builtin()]),
   )
 }
 

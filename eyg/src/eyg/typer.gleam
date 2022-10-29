@@ -57,7 +57,7 @@ pub fn next_unbound(typer) {
   #(i, typer)
 }
 
-fn group_shared(left, right) {
+pub fn group_shared(left, right) {
   do_group_shared(left, right, [], [])
 }
 
