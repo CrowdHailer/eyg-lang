@@ -36,6 +36,11 @@ if (deployPage) {
         document.onclick = () => f();
         return [];
       },
+      on_keydown: (f) => {
+        // https://medium.com/analytics-vidhya/implementing-keyboard-controls-or-shortcuts-in-javascript-82e11fccbf0c
+        document.onkeydown = (event) => f(event.key);
+        return [];
+      },
       display: (value) => {
         document.body.innerHTML = value;
         return [];

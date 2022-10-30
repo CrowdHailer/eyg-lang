@@ -3805,217 +3805,278 @@
                         "node": "Let",
                         "pattern": {
                           "node": "Variable",
-                          "label": "render"
+                          "label": "handle_keydown"
                         },
                         "value": {
                           "node": "Function",
                           "pattern": {
                             "node": "Variable",
-                            "label": "state"
+                            "label": "key"
                           },
                           "body": {
-                            "node": "Let",
-                            "pattern": {
-                              "node": "Variable",
-                              "label": "main"
-                            },
-                            "value": {
-                              "node": "Call",
-                              "function": {
-                                "node": "Access",
-                                "value": {
-                                  "node": "Variable",
-                                  "label": "layout"
-                                },
-                                "key": "vstack"
-                              },
-                              "with": {
-                                "node": "Tuple",
-                                "elements": [
-                                  {
-                                    "node": "Binary",
-                                    "value": "text-red-500"
-                                  },
-                                  {
-                                    "node": "Call",
-                                    "function": {
-                                      "node": "Provider",
-                                      "config": "",
-                                      "generator": "List"
-                                    },
-                                    "with": {
-                                      "node": "Tuple",
-                                      "elements": [
-                                        {
-                                          "node": "Variable",
-                                          "label": "state"
-                                        }
-                                      ]
-                                    }
-                                  }
-                                ]
-                              }
-                            },
-                            "then": {
-                              "node": "Variable",
-                              "label": "main"
-                            }
+                            "node": "Variable",
+                            "label": "key"
                           }
                         },
                         "then": {
                           "node": "Let",
                           "pattern": {
                             "node": "Variable",
-                            "label": "main"
+                            "label": "render"
                           },
                           "value": {
                             "node": "Function",
                             "pattern": {
-                              "node": "Record",
-                              "fields": [
-                                {
-                                  "key": "on_click",
-                                  "bind": "on_click"
-                                },
-                                {
-                                  "key": "display",
-                                  "bind": "display"
-                                }
-                              ]
+                              "node": "Variable",
+                              "label": "state"
                             },
                             "body": {
                               "node": "Let",
                               "pattern": {
                                 "node": "Variable",
-                                "label": "loop"
+                                "label": "main"
                               },
                               "value": {
-                                "node": "Function",
-                                "pattern": {
-                                  "node": "Variable",
-                                  "label": "state"
-                                },
-                                "body": {
-                                  "node": "Let",
-                                  "pattern": {
-                                    "node": "Tuple",
-                                    "elements": []
-                                  },
-                                  "value": {
-                                    "node": "Call",
-                                    "function": {
-                                      "node": "Variable",
-                                      "label": "display"
-                                    },
-                                    "with": {
-                                      "node": "Call",
-                                      "function": {
-                                        "node": "Variable",
-                                        "label": "render"
-                                      },
-                                      "with": {
-                                        "node": "Variable",
-                                        "label": "state"
-                                      }
-                                    }
-                                  },
-                                  "then": {
-                                    "node": "Call",
-                                    "function": {
-                                      "node": "Variable",
-                                      "label": "on_click"
-                                    },
-                                    "with": {
-                                      "node": "Function",
-                                      "pattern": {
-                                        "node": "Variable",
-                                        "label": "target"
-                                      },
-                                      "body": {
-                                        "node": "Call",
-                                        "function": {
-                                          "node": "Variable",
-                                          "label": "loop"
-                                        },
-                                        "with": {
-                                          "node": "Call",
-                                          "function": {
-                                            "node": "Variable",
-                                            "label": "handle_click"
-                                          },
-                                          "with": {
-                                            "node": "Tuple",
-                                            "elements": [
-                                              {
-                                                "node": "Variable",
-                                                "label": "target"
-                                              },
-                                              {
-                                                "node": "Variable",
-                                                "label": "state"
-                                              }
-                                            ]
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              },
-                              "then": {
                                 "node": "Call",
                                 "function": {
-                                  "node": "Variable",
-                                  "label": "loop"
-                                },
-                                "with": {
-                                  "node": "Access",
-                                  "value": {
-                                    "node": "Variable",
-                                    "label": "req"
-                                  },
-                                  "key": "method"
-                                }
-                              }
-                            }
-                          },
-                          "then": {
-                            "node": "Call",
-                            "function": {
-                              "node": "Access",
-                              "value": {
-                                "node": "Variable",
-                                "label": "builtin"
-                              },
-                              "key": "append"
-                            },
-                            "with": {
-                              "node": "Tuple",
-                              "elements": [
-                                {
                                   "node": "Access",
                                   "value": {
                                     "node": "Variable",
                                     "label": "layout"
                                   },
-                                  "key": "head"
+                                  "key": "vstack"
                                 },
-                                {
+                                "with": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Binary",
+                                      "value": "text-red-500"
+                                    },
+                                    {
+                                      "node": "Call",
+                                      "function": {
+                                        "node": "Provider",
+                                        "config": "",
+                                        "generator": "List"
+                                      },
+                                      "with": {
+                                        "node": "Tuple",
+                                        "elements": [
+                                          {
+                                            "node": "Variable",
+                                            "label": "state"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              "then": {
+                                "node": "Variable",
+                                "label": "main"
+                              }
+                            }
+                          },
+                          "then": {
+                            "node": "Let",
+                            "pattern": {
+                              "node": "Variable",
+                              "label": "main"
+                            },
+                            "value": {
+                              "node": "Function",
+                              "pattern": {
+                                "node": "Record",
+                                "fields": [
+                                  {
+                                    "key": "on_click",
+                                    "bind": "on_click"
+                                  },
+                                  {
+                                    "key": "on_keydown",
+                                    "bind": "on_keydown"
+                                  },
+                                  {
+                                    "key": "display",
+                                    "bind": "display"
+                                  }
+                                ]
+                              },
+                              "body": {
+                                "node": "Let",
+                                "pattern": {
+                                  "node": "Variable",
+                                  "label": "loop"
+                                },
+                                "value": {
+                                  "node": "Function",
+                                  "pattern": {
+                                    "node": "Variable",
+                                    "label": "state"
+                                  },
+                                  "body": {
+                                    "node": "Let",
+                                    "pattern": {
+                                      "node": "Tuple",
+                                      "elements": []
+                                    },
+                                    "value": {
+                                      "node": "Call",
+                                      "function": {
+                                        "node": "Variable",
+                                        "label": "display"
+                                      },
+                                      "with": {
+                                        "node": "Call",
+                                        "function": {
+                                          "node": "Variable",
+                                          "label": "render"
+                                        },
+                                        "with": {
+                                          "node": "Variable",
+                                          "label": "state"
+                                        }
+                                      }
+                                    },
+                                    "then": {
+                                      "node": "Let",
+                                      "pattern": {
+                                        "node": "Tuple",
+                                        "elements": []
+                                      },
+                                      "value": {
+                                        "node": "Call",
+                                        "function": {
+                                          "node": "Variable",
+                                          "label": "on_click"
+                                        },
+                                        "with": {
+                                          "node": "Function",
+                                          "pattern": {
+                                            "node": "Variable",
+                                            "label": "target"
+                                          },
+                                          "body": {
+                                            "node": "Call",
+                                            "function": {
+                                              "node": "Variable",
+                                              "label": "loop"
+                                            },
+                                            "with": {
+                                              "node": "Call",
+                                              "function": {
+                                                "node": "Variable",
+                                                "label": "handle_click"
+                                              },
+                                              "with": {
+                                                "node": "Tuple",
+                                                "elements": [
+                                                  {
+                                                    "node": "Variable",
+                                                    "label": "target"
+                                                  },
+                                                  {
+                                                    "node": "Variable",
+                                                    "label": "state"
+                                                  }
+                                                ]
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "then": {
+                                        "node": "Call",
+                                        "function": {
+                                          "node": "Variable",
+                                          "label": "on_keydown"
+                                        },
+                                        "with": {
+                                          "node": "Function",
+                                          "pattern": {
+                                            "node": "Variable",
+                                            "label": "key"
+                                          },
+                                          "body": {
+                                            "node": "Call",
+                                            "function": {
+                                              "node": "Variable",
+                                              "label": "loop"
+                                            },
+                                            "with": {
+                                              "node": "Call",
+                                              "function": {
+                                                "node": "Variable",
+                                                "label": "handle_keydown"
+                                              },
+                                              "with": {
+                                                "node": "Variable",
+                                                "label": "key"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "then": {
                                   "node": "Call",
                                   "function": {
+                                    "node": "Variable",
+                                    "label": "loop"
+                                  },
+                                  "with": {
                                     "node": "Access",
                                     "value": {
                                       "node": "Variable",
-                                      "label": "builtin"
+                                      "label": "req"
                                     },
-                                    "key": "serialize"
-                                  },
-                                  "with": {
-                                    "node": "Variable",
-                                    "label": "main"
+                                    "key": "method"
                                   }
                                 }
-                              ]
+                              }
+                            },
+                            "then": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Access",
+                                "value": {
+                                  "node": "Variable",
+                                  "label": "builtin"
+                                },
+                                "key": "append"
+                              },
+                              "with": {
+                                "node": "Tuple",
+                                "elements": [
+                                  {
+                                    "node": "Access",
+                                    "value": {
+                                      "node": "Variable",
+                                      "label": "layout"
+                                    },
+                                    "key": "head"
+                                  },
+                                  {
+                                    "node": "Call",
+                                    "function": {
+                                      "node": "Access",
+                                      "value": {
+                                        "node": "Variable",
+                                        "label": "builtin"
+                                      },
+                                      "key": "serialize"
+                                    },
+                                    "with": {
+                                      "node": "Variable",
+                                      "label": "main"
+                                    }
+                                  }
+                                ]
+                              }
                             }
                           }
                         }
