@@ -14,7 +14,6 @@ import eyg/interpreter/tree_walk
 import eyg/interpreter/stepwise
 import eyg/editor/editor
 import eyg/workspace/proxy
-import eyg/workspace/server
 import eyg/analysis
 import eyg/typer
 import eyg/codegen/javascript
@@ -77,11 +76,6 @@ pub type Mount(a) {
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
   Server(handle: Option(fn(Dynamic) -> Dynamic))
   // Only difference between server and universial is that universal works with source
-  Universal(handle: Option(fn(String, String, String) -> String))
-  Interpreted(
-    state: #(real_js.Reference(List(interpreter.Object)), interpreter.Object),
-  )
-  IServer(handle: fn(String, String, String) -> String)
   Proxy(state: proxy.State)
 }
 
@@ -99,11 +93,6 @@ pub fn handle_keydown(app, k, ctrl, text) {
       io.debug("new state")
       io.debug(state)
       let mount = Pure(Some(#(state, render, update, ref)))
-      App(key, mount)
-    }
-    Interpreted(state) -> {
-      let state = stepwise.handle_keydown(state, k)
-      let mount = Interpreted(state)
       App(key, mount)
     }
     _ -> app
@@ -220,74 +209,6 @@ pub fn mount_constraint(mount) {
       t.Function(t.Tuple([input, state]), t.Tuple([output, state]), t.empty)
     }
     Server(_) -> t.Function(t.Binary, t.Binary, t.empty)
-    Universal(_) ->
-      t.Function(
-        t.Record(
-          [#("Method", t.Binary), #("Path", t.Binary), #("Body", t.Binary)],
-          None,
-        ),
-        t.Function(
-          t.Record(
-            [
-              #(
-                "OnKeypress",
-                t.Function(
-                  t.Function(t.Binary, t.Tuple([]), t.empty),
-                  t.Tuple([]),
-                  t.empty,
-                ),
-              ),
-              #("render", t.Function(t.Binary, t.Tuple([]), t.empty)),
-              #("log", t.Function(t.Binary, t.Tuple([]), t.empty)),
-              #(
-                "send",
-                t.Function(
-                  t.Tuple([t.Native("Address", [t.Unbound(-3)]), t.Unbound(-3)]),
-                  t.Tuple([]),
-                  t.empty,
-                ),
-              ),
-            ],
-            None,
-          ),
-          t.Binary,
-          t.empty,
-        ),
-        t.empty,
-      )
-    Interpreted(_) ->
-      t.Function(
-        t.Record(
-          [
-            #("ui", t.Native("Pid", [t.Binary])),
-            #(
-              "on_keypress",
-              t.Native("Pid", [t.Function(t.Binary, t.Tuple([]), t.empty)]),
-            ),
-            #(
-              "fetch",
-              t.Native(
-                "Pid",
-                [
-                  t.Tuple([t.Binary, t.Function(t.Binary, t.Tuple([]), t.empty)]),
-                ],
-              ),
-            ),
-          ],
-          None,
-        ),
-        t.Tuple([]),
-        t.empty,
-      )
-    IServer(_) ->
-      t.Function(
-        t.Record(
-          [#("method", t.Binary), #("path", t.Binary), #("body", t.Binary)],
-          None,
-        ),
-        t.Function(t.Record([], None), t.Binary, t.empty),
-        t.empty,
-      )
     Proxy(_) -> proxy.constraint()
   }
 }
@@ -327,24 +248,6 @@ pub fn code_update(code, source, app) {
   let App(key, mount) = app
   io.debug("running the app")
   let mount = case mount {
-    Interpreted(old) ->
-      case stepwise.run_browser(e.access(source, key)) {
-        Ok(new) -> Interpreted(new)
-        Error(reason) -> {
-          io.debug("failed to interpret")
-          io.debug(reason)
-          Interpreted(old)
-        }
-      }
-    IServer(old) ->
-      case server.boot(e.access(source, key)) {
-        Ok(new) -> IServer(new)
-        Error(reason) -> {
-          io.debug("failed to interpret")
-          io.debug(reason)
-          IServer(old)
-        }
-      }
     TestSuite(_) -> {
       let cast = gleam_extra.dynamic_function
       assert Ok(prog) = dynamic.field(key, cast)(code)
@@ -448,88 +351,6 @@ pub fn code_update(code, source, app) {
         assert Ok(returned) = handle(x)
         returned
       }))
-    }
-    Universal(_) -> {
-      // TODO this looses scope but issues with rewritting harness
-      // Need to shake tree
-      // assert #(_, e.Record(fields)) = last_term(source)
-      // assert Ok(server_source) = list.key_find(fields, key) 
-      let server_source = e.access(source, key)
-      // rerender as a function same as capture
-      // Pass in dom arguments
-      // on click at all times
-      // Need mutable ref or app state
-      let #(typed, typer) = analysis.infer(server_source, t.Unbound(-1), [])
-      let #(typed, typer) = typer.expand_providers(typed, typer, [])
-      let top_env =
-        map.new()
-        |> map.insert(
-          "harness",
-          interpreter.Record([
-            #(
-              "compile",
-              interpreter.Function(
-                p.Variable(""),
-                e.tagged("Error", e.binary("not in interpreter")),
-                map.new(),
-                None,
-              ),
-            ),
-            #("debug", interpreter.BuiltinFn(fn(x) { Ok(io.debug(x)) })),
-          ]),
-        )
-      let #(server_fn, coroutines) =
-        tree_walk.run(editor.untype(typed), top_env, [])
-      let handler = fn(method, path, body) {
-        case method, string.split(path, "/") {
-          "POST", ["", "_", id] -> {
-            assert Ok(pid) = int.parse(id)
-            assert Ok(c) = list.at(coroutines, pid)
-            tree_walk.exec_call(c, interpreter.Binary(body))
-            ""
-          }
-          _, _ -> {
-            // We expand the providers but the exec needs dynamic
-            let server_arg =
-              interpreter.Record([
-                #("Method", interpreter.Binary(method)),
-                #("Path", interpreter.Binary(path)),
-                #("Body", interpreter.Binary(body)),
-              ])
-            // client function
-            // TODO use proxy/actor version
-            assert Ok(interpreter.Function(pattern, body, captured, _)) =
-              tree_walk.exec_call(server_fn, server_arg)
-            let client_source = e.function(pattern, body)
-            // TODO captured should not include empty
-            let #(typed, typer) =
-              analysis.infer(client_source, t.Unbound(-1), [])
-            let #(typed, typer) = typer.expand_providers(typed, typer, [])
-            let program =
-              list.map(map.to_list(captured), interpreter.render_var)
-              |> list.append([javascript.render_to_string(typed, typer)])
-              |> string.join("\n")
-              |> string.append(
-                "({
-OnKeypress: (f) => document.addEventListener(\"keydown\", function (event) {
-    f(event.key);
-  }),
-render: (value) => document.body.innerHTML = value,
-log: (x) => console.log(x),
-send: ([pid, message]) => {
-  fetch(`${window.location.pathname}/_/${pid}`, {method: 'POST', body: message})
-}
-});",
-              )
-            string.concat([
-              "<head></head><body></body><script>",
-              program,
-              "</script>",
-            ])
-          }
-        }
-      }
-      Universal(Some(handler))
     }
     Proxy(_) -> Proxy(proxy.code_update(source, key))
   }

@@ -90,32 +90,6 @@ pub fn eval(source, env) {
       // TODO this could be typed better with an anonymous fn that first unwraps then goes to nil
       eval(dynamic.unsafe_coerce(generated), env)
   }
-  // todo("providers should have been expanded before evaluation")
-}
-
-pub fn run(source, env, coroutines) {
-  case eval(source, env) {
-    Ok(r.Ready(coroutine, next)) -> {
-      let pid = list.length(coroutines)
-      let coroutines = list.append(coroutines, [coroutine])
-      run_call(next, r.Pid(pid), coroutines)
-    }
-    Ok(done) -> #(done, coroutines)
-    Error(reason) -> todo("I think this needs error")
-  }
-}
-
-// There's probably a nice way to have run call be the only func that necessary if I assume a main fn
-pub fn run_call(next, arg, coroutines) {
-  case exec_call(next, arg) {
-    Ok(r.Ready(coroutine, next)) -> {
-      let pid = list.length(coroutines)
-      let coroutines = list.append(coroutines, [coroutine])
-      run_call(next, r.Pid(pid), coroutines)
-    }
-    Ok(done) -> #(done, coroutines)
-    Error(reason) -> todo("I think this needs error")
-  }
 }
 
 pub fn exec_call(func: r.Object, arg) {
@@ -129,14 +103,8 @@ pub fn exec_call(func: r.Object, arg) {
       eval(body, inner)
     }
     r.BuiltinFn(func) -> func(arg)
-    r.Coroutine(forked) -> Ok(r.Ready(forked, arg))
     _ -> todo("Should never be called")
   }
-}
-
-pub fn spawn(x) {
-  assert r.Function(pattern, body, env, self) = x
-  r.Coroutine(x)
 }
 
 fn value_try_map(pairs, func) {

@@ -4,17 +4,9 @@ import gleam/map
 import gleam/string
 import eyg/interpreter/interpreter as r
 import eyg/interpreter/tail_call
-// TODO remove and have a compile client function
-// has arbitrary effect types as something that composes and we have a big browser harness
-import eyg/ast/expression as e
-import eyg/analysis
-import eyg/typer
-import eyg/typer/monotype as t
-import eyg/editor/editor
 import eyg/codegen/javascript
 import eyg/codegen/javascript/runtime
 import eyg/interpreter/builtin
-import eyg/analysis/shake
 
 fn impl(handler, computation) {
   Ok(r.BuiltinFn(fn(arg) {
@@ -38,19 +30,9 @@ fn do(effect) {
 external fn log(a) -> Nil =
   "" "console.log"
 
-// TODO this is the one that we are using in latest
 fn term_serialize(term) {
-  let program =
-    string.append("window.Program = ", runtime.render_object(term))
-//     |> string.append(
-//       "({
-//   on_click: (f) => { document.onclick = () => f() },
-//   display: (value) => document.body.innerHTML = value,
-// });",
-//     )
-  let page =
-    string.concat(["<script>", program, "</script><body></body>"])
-  // assert r.Function() = term
+  let program = string.append("window.Program = ", runtime.render_object(term))
+  let page = string.concat(["<script>", program, "</script><body></body>"])
   Ok(r.Binary(page))
 }
 
@@ -64,7 +46,7 @@ pub fn env() {
   // Is this part of effectful
   // interpreter/builtins might be better
   // Maybe these should just be fast lookups for certain hashes
-  |> map.insert("equal", r.BuiltinFn(r.equal))
+  |> map.insert("equal", r.BuiltinFn(builtin.equal))
   // TODO add types to builtin
   |> map.insert(
     "builtin",

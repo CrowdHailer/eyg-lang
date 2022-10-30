@@ -7,7 +7,6 @@
   import Firmata from "./Firmata.svelte";
   import Server from "./Server.svelte";
   import Pure from "./Pure.svelte";
-  import Interpreted from "./Interpreted.svelte";
   import Proxy from "./Proxy.svelte";
 
   export let key;
@@ -31,18 +30,9 @@
   {:else if mount instanceof Mount.Server}
     <p><strong>{key}:</strong> Server</p>
     <Server handle={mount.handle} />
-  {:else if mount instanceof Mount.Universal}
-    <p><strong>{key}:</strong> Universal</p>
-    <Server handle={mount.handle} />
-  {:else if mount instanceof Mount.IServer}
-    <p><strong>{key}:</strong> IServer</p>
-    <Server handle={mount.handle} />
   {:else if mount instanceof Mount.Pure}
     <p><strong>{key}:</strong> Pure</p>
     <Pure state={mount[0]} />
-  {:else if mount instanceof Mount.Interpreted}
-    <p><strong>{key}:</strong> Interpreted</p>
-    <Interpreted source={mount.source} />
   {:else if mount instanceof Mount.Proxy}
     <p><strong>{key}:</strong> Proxy</p>
     <Proxy state={mount.state} />

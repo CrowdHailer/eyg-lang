@@ -75,11 +75,8 @@ pub fn render_object(object) {
       assert Ok(label) = render_builtin(f, globals)
       string.append("Builtin.", label)
     }
-    r.Coroutine(_) -> todo("remove Coroutine from runtime")
-    r.Ready(_, _) -> todo("remove Ready from runtime")
     r.Native(_) -> todo("remove Native from runtime")
     r.Effect(_, _, _) -> todo("this shouldnt be rendered")
-    r.Pid(_) -> todo("remove Pid from runtime")
   }
 }
 
