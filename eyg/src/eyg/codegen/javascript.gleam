@@ -112,7 +112,6 @@ pub fn render_fn_to_string(expression, typer, self) {
   |> string.concat()
 }
 
-
 pub fn render_to_string(expression, typer) {
   render(expression, Generator(False, [], typer, None))
   |> list.intersperse("\n")

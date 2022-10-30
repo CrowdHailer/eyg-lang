@@ -28,9 +28,7 @@ fn string_append(args) {
   case args {
     r.Tuple([r.Binary(first), r.Binary(second)]) ->
       Ok(r.Binary(string.append(first, second)))
-    _ -> {
-      Error("bad arguments!!")
-    }
+    _ -> Error("bad arguments!!")
   }
 }
 
@@ -54,4 +52,17 @@ fn string_replace(arg) {
       Ok(r.Binary(string.replace(string, target, replacement)))
     _ -> Error("bad arguments")
   }
+}
+
+// std
+const true = r.Tagged("True", r.Tuple([]))
+
+const false = r.Tagged("False", r.Tuple([]))
+
+pub fn equal(object) {
+  assert r.Tuple([left, right]) = object
+  Ok(case left == right {
+    True -> true
+    False -> false
+  })
 }

@@ -192,11 +192,9 @@ fn do_shake(
     }
     e.Hole -> #(substitutions, next)
     e.Provider(_, _, x) ->
-      {
-        // todo("Provider should not be present in ast expansion should already have run")
-        // TODO fix this we need to pass types more cleverly
-        do_shake(dynamic.unsafe_coerce(x), expected, substitutions, env, next)
-      }
+      // todo("Provider should not be present in ast expansion should already have run")
+      // TODO fix this we need to pass types more cleverly
+      do_shake(dynamic.unsafe_coerce(x), expected, substitutions, env, next)
   }
 }
 

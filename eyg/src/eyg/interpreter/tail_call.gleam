@@ -167,7 +167,6 @@ pub fn eval_call(func, arg) {
       eval(body, inner)
     }
     r.BuiltinFn(func) -> func(arg)
-    r.Coroutine(forked) -> Ok(r.Ready(forked, arg))
     _ -> {
       io.debug(func)
       todo("Should never be called")
