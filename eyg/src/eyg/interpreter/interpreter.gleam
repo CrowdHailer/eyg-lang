@@ -49,6 +49,9 @@ pub fn extend_env(env, pattern, object) {
         _ -> Error("not a tuple")
       }
 
-    p.Record(fields) -> todo("not supporting record fields here yet")
+    p.Record(fields) -> {
+      io.debug(fields)
+      todo("not supporting record fields here yet")
+    }
   }
 }

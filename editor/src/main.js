@@ -33,7 +33,11 @@ if (deployPage) {
   ready(function () {
     window.Program({
       on_click: (f) => {
-        document.onclick = () => f();
+        // console.log(f);
+        document.onclick = (event) => {
+          console.log(event);
+          f(event.target);
+        };
         return [];
       },
       on_keydown: (f) => {

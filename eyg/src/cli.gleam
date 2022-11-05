@@ -50,6 +50,10 @@ pub fn run(args) {
   }
 }
 
+
+external fn log(a) -> Nil =
+  "" "console.log"
+
 pub fn req(origin, method, path, body, source) {
   let request =
     r.Record([
@@ -67,11 +71,23 @@ pub fn req(origin, method, path, body, source) {
   let #(xtyped, typer) = typer.expand_providers(typed, typer, [])
   // TODO fix need for untype
   // TODO provide proper environment for expaning the providers
-  assert Ok(term) = effectful.eval(editor.untype(xtyped))
-  case effectful.eval_call(term, request, effectful.real_log) {
-    // TODO return a response type
-    // TODO move out of CLI
-    Ok(r.Binary(content)) -> content
+  case effectful.eval(editor.untype(xtyped)) {
+    Ok(r.Effect(_,_,_)) -> todo("need to handle effects")
+    Ok(term) ->
+      case effectful.eval_call(term, request, effectful.real_log) {
+        // TODO return a response type
+        // TODO move out of CLI
+        Ok(r.Binary(content)) -> content
+        Ok(other) -> {
+          // TODO need to not have other as not whole tree with env saved
+          // TODO effectful run
+          log(term)
+          log(other)
+          "Some non binary return"
+        }
+        Error(reason) -> reason
+      }
+
     Error(reason) -> reason
   }
 }

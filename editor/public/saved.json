@@ -1074,6 +1074,14 @@
                                   "node": "Variable",
                                   "label": "intersperse"
                                 }
+                              },
+                              {
+                                "node": "Field",
+                                "key": "reverse",
+                                "value": {
+                                  "node": "Variable",
+                                  "label": "reverse"
+                                }
                               }
                             ]
                           }
@@ -3772,174 +3780,122 @@
                           "label": ""
                         },
                         "value": {
-                          "node": "Call",
-                          "function": {
-                            "node": "Variable",
-                            "label": "program"
-                          },
-                          "with": {
-                            "node": "Record",
-                            "fields": [
-                              {
-                                "node": "Field",
-                                "key": "on_click",
-                                "value": {
-                                  "node": "Function",
-                                  "pattern": {
-                                    "node": "Variable",
-                                    "label": "f"
-                                  },
-                                  "body": {
-                                    "node": "Let",
-                                    "pattern": {
-                                      "node": "Tuple",
-                                      "elements": []
-                                    },
-                                    "value": {
-                                      "node": "Call",
-                                      "function": {
-                                        "node": "Variable",
-                                        "label": "f"
-                                      },
-                                      "with": {
-                                        "node": "Binary",
-                                        "value": ""
-                                      }
-                                    },
-                                    "then": {
-                                      "node": "Tuple",
-                                      "elements": []
-                                    }
-                                  }
-                                }
-                              },
-                              {
-                                "node": "Field",
-                                "key": "on_keydown",
-                                "value": {
-                                  "node": "Function",
-                                  "pattern": {
-                                    "node": "Variable",
-                                    "label": "f"
-                                  },
-                                  "body": {
-                                    "node": "Let",
-                                    "pattern": {
-                                      "node": "Tuple",
-                                      "elements": []
-                                    },
-                                    "value": {
-                                      "node": "Call",
-                                      "function": {
-                                        "node": "Variable",
-                                        "label": "f"
-                                      },
-                                      "with": {
-                                        "node": "Binary",
-                                        "value": ""
-                                      }
-                                    },
-                                    "then": {
-                                      "node": "Tuple",
-                                      "elements": []
-                                    }
-                                  }
-                                }
-                              },
-                              {
-                                "node": "Field",
-                                "key": "display",
-                                "value": {
-                                  "node": "Function",
-                                  "pattern": {
-                                    "node": "Variable",
-                                    "label": "string"
-                                  },
-                                  "body": {
-                                    "node": "Tuple",
-                                    "elements": []
-                                  }
-                                }
-                              }
-                            ]
-                          }
+                          "node": "Binary",
+                          "value": "lazy program for type binding"
                         },
                         "then": {
                           "node": "Let",
                           "pattern": {
                             "node": "Variable",
-                            "label": "program"
+                            "label": ""
                           },
                           "value": {
-                            "node": "Call",
-                            "function": {
-                              "node": "Access",
-                              "value": {
-                                "node": "Variable",
-                                "label": "builtin"
-                              },
-                              "key": "append"
+                            "node": "Function",
+                            "pattern": {
+                              "node": "Variable",
+                              "label": ""
                             },
-                            "with": {
-                              "node": "Tuple",
-                              "elements": [
-                                {
-                                  "node": "Binary",
-                                  "value": "window.Program = "
-                                },
-                                {
-                                  "node": "Call",
-                                  "function": {
-                                    "node": "Access",
+                            "body": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "program"
+                              },
+                              "with": {
+                                "node": "Record",
+                                "fields": [
+                                  {
+                                    "node": "Field",
+                                    "key": "on_click",
                                     "value": {
-                                      "node": "Variable",
-                                      "label": "builtin"
-                                    },
-                                    "key": "js"
+                                      "node": "Function",
+                                      "pattern": {
+                                        "node": "Variable",
+                                        "label": "f"
+                                      },
+                                      "body": {
+                                        "node": "Let",
+                                        "pattern": {
+                                          "node": "Tuple",
+                                          "elements": []
+                                        },
+                                        "value": {
+                                          "node": "Call",
+                                          "function": {
+                                            "node": "Variable",
+                                            "label": "f"
+                                          },
+                                          "with": {
+                                            "node": "Binary",
+                                            "value": ""
+                                          }
+                                        },
+                                        "then": {
+                                          "node": "Tuple",
+                                          "elements": []
+                                        }
+                                      }
+                                    }
                                   },
-                                  "with": {
-                                    "node": "Variable",
-                                    "label": "program"
+                                  {
+                                    "node": "Field",
+                                    "key": "on_keydown",
+                                    "value": {
+                                      "node": "Function",
+                                      "pattern": {
+                                        "node": "Variable",
+                                        "label": "f"
+                                      },
+                                      "body": {
+                                        "node": "Let",
+                                        "pattern": {
+                                          "node": "Tuple",
+                                          "elements": []
+                                        },
+                                        "value": {
+                                          "node": "Call",
+                                          "function": {
+                                            "node": "Variable",
+                                            "label": "f"
+                                          },
+                                          "with": {
+                                            "node": "Binary",
+                                            "value": ""
+                                          }
+                                        },
+                                        "then": {
+                                          "node": "Tuple",
+                                          "elements": []
+                                        }
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "node": "Field",
+                                    "key": "display",
+                                    "value": {
+                                      "node": "Function",
+                                      "pattern": {
+                                        "node": "Variable",
+                                        "label": "string"
+                                      },
+                                      "body": {
+                                        "node": "Tuple",
+                                        "elements": []
+                                      }
+                                    }
                                   }
-                                }
-                              ]
+                                ]
+                              }
                             }
                           },
                           "then": {
                             "node": "Let",
                             "pattern": {
                               "node": "Variable",
-                              "label": "script"
+                              "label": "program"
                             },
                             "value": {
-                              "node": "Call",
-                              "function": {
-                                "node": "Access",
-                                "value": {
-                                  "node": "Variable",
-                                  "label": "html"
-                                },
-                                "key": "el"
-                              },
-                              "with": {
-                                "node": "Tuple",
-                                "elements": [
-                                  {
-                                    "node": "Binary",
-                                    "value": "script"
-                                  },
-                                  {
-                                    "node": "Binary",
-                                    "value": ""
-                                  },
-                                  {
-                                    "node": "Variable",
-                                    "label": "program"
-                                  }
-                                ]
-                              }
-                            },
-                            "then": {
                               "node": "Call",
                               "function": {
                                 "node": "Access",
@@ -3953,18 +3909,88 @@
                                 "node": "Tuple",
                                 "elements": [
                                   {
-                                    "node": "Access",
-                                    "value": {
-                                      "node": "Variable",
-                                      "label": "layout"
-                                    },
-                                    "key": "head"
+                                    "node": "Binary",
+                                    "value": "window.Program = "
                                   },
                                   {
-                                    "node": "Variable",
-                                    "label": "script"
+                                    "node": "Call",
+                                    "function": {
+                                      "node": "Access",
+                                      "value": {
+                                        "node": "Variable",
+                                        "label": "builtin"
+                                      },
+                                      "key": "js"
+                                    },
+                                    "with": {
+                                      "node": "Variable",
+                                      "label": "program"
+                                    }
                                   }
                                 ]
+                              }
+                            },
+                            "then": {
+                              "node": "Let",
+                              "pattern": {
+                                "node": "Variable",
+                                "label": "script"
+                              },
+                              "value": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "html"
+                                  },
+                                  "key": "el"
+                                },
+                                "with": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Binary",
+                                      "value": "script"
+                                    },
+                                    {
+                                      "node": "Binary",
+                                      "value": ""
+                                    },
+                                    {
+                                      "node": "Variable",
+                                      "label": "program"
+                                    }
+                                  ]
+                                }
+                              },
+                              "then": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "builtin"
+                                  },
+                                  "key": "append"
+                                },
+                                "with": {
+                                  "node": "Tuple",
+                                  "elements": [
+                                    {
+                                      "node": "Access",
+                                      "value": {
+                                        "node": "Variable",
+                                        "label": "layout"
+                                      },
+                                      "key": "head"
+                                    },
+                                    {
+                                      "node": "Variable",
+                                      "label": "script"
+                                    }
+                                  ]
+                                }
                               }
                             }
                           }
@@ -4060,51 +4086,57 @@
                                 "label": "state"
                               },
                               "body": {
-                                "node": "Let",
-                                "pattern": {
-                                  "node": "Variable",
-                                  "label": "main"
-                                },
-                                "value": {
-                                  "node": "Call",
-                                  "function": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Access",
+                                  "value": {
                                     "node": "Access",
                                     "value": {
                                       "node": "Variable",
-                                      "label": "layout"
+                                      "label": "lib"
                                     },
-                                    "key": "vstack"
+                                    "key": "list"
+                                  },
+                                  "key": "reverse"
+                                },
+                                "with": {
+                                  "node": "Call",
+                                  "function": {
+                                    "node": "Provider",
+                                    "config": "",
+                                    "generator": "List"
                                   },
                                   "with": {
                                     "node": "Tuple",
                                     "elements": [
                                       {
-                                        "node": "Binary",
-                                        "value": "text-red-500"
-                                      },
-                                      {
                                         "node": "Call",
                                         "function": {
-                                          "node": "Provider",
-                                          "config": "",
-                                          "generator": "List"
+                                          "node": "Variable",
+                                          "label": "do"
                                         },
                                         "with": {
-                                          "node": "Tuple",
-                                          "elements": [
-                                            {
+                                          "node": "Tagged",
+                                          "tag": "Click",
+                                          "value": {
+                                            "node": "Function",
+                                            "pattern": {
+                                              "node": "Variable",
+                                              "label": ""
+                                            },
+                                            "body": {
                                               "node": "Variable",
                                               "label": "state"
                                             }
-                                          ]
+                                          }
                                         }
+                                      },
+                                      {
+                                        "node": "Binary",
+                                        "value": "foo"
                                       }
                                     ]
                                   }
-                                },
-                                "then": {
-                                  "node": "Variable",
-                                  "label": "main"
                                 }
                               }
                             },
@@ -4112,64 +4144,101 @@
                               "node": "Let",
                               "pattern": {
                                 "node": "Variable",
-                                "label": "main"
+                                "label": "render"
                               },
                               "value": {
                                 "node": "Function",
                                 "pattern": {
-                                  "node": "Record",
-                                  "fields": [
-                                    {
-                                      "key": "on_click",
-                                      "bind": "on_click"
-                                    },
-                                    {
-                                      "key": "on_keydown",
-                                      "bind": "on_keydown"
-                                    },
-                                    {
-                                      "key": "display",
-                                      "bind": "display"
-                                    }
-                                  ]
+                                  "node": "Variable",
+                                  "label": "state"
                                 },
                                 "body": {
                                   "node": "Let",
                                   "pattern": {
                                     "node": "Variable",
-                                    "label": "loop"
+                                    "label": "main"
                                   },
                                   "value": {
-                                    "node": "Function",
-                                    "pattern": {
-                                      "node": "Variable",
-                                      "label": "state"
-                                    },
-                                    "body": {
-                                      "node": "Let",
-                                      "pattern": {
-                                        "node": "Tuple",
-                                        "elements": []
-                                      },
+                                    "node": "Call",
+                                    "function": {
+                                      "node": "Access",
                                       "value": {
-                                        "node": "Call",
-                                        "function": {
-                                          "node": "Variable",
-                                          "label": "display"
+                                        "node": "Variable",
+                                        "label": "layout"
+                                      },
+                                      "key": "vstack"
+                                    },
+                                    "with": {
+                                      "node": "Tuple",
+                                      "elements": [
+                                        {
+                                          "node": "Binary",
+                                          "value": "text-red-500"
                                         },
-                                        "with": {
+                                        {
                                           "node": "Call",
                                           "function": {
-                                            "node": "Variable",
-                                            "label": "render"
+                                            "node": "Provider",
+                                            "config": "",
+                                            "generator": "List"
                                           },
                                           "with": {
-                                            "node": "Variable",
-                                            "label": "state"
+                                            "node": "Tuple",
+                                            "elements": [
+                                              {
+                                                "node": "Variable",
+                                                "label": "state"
+                                              }
+                                            ]
                                           }
                                         }
+                                      ]
+                                    }
+                                  },
+                                  "then": {
+                                    "node": "Variable",
+                                    "label": "main"
+                                  }
+                                }
+                              },
+                              "then": {
+                                "node": "Let",
+                                "pattern": {
+                                  "node": "Variable",
+                                  "label": "main"
+                                },
+                                "value": {
+                                  "node": "Function",
+                                  "pattern": {
+                                    "node": "Record",
+                                    "fields": [
+                                      {
+                                        "key": "on_click",
+                                        "bind": "on_click"
                                       },
-                                      "then": {
+                                      {
+                                        "key": "on_keydown",
+                                        "bind": "on_keydown"
+                                      },
+                                      {
+                                        "key": "display",
+                                        "bind": "display"
+                                      }
+                                    ]
+                                  },
+                                  "body": {
+                                    "node": "Let",
+                                    "pattern": {
+                                      "node": "Variable",
+                                      "label": "loop"
+                                    },
+                                    "value": {
+                                      "node": "Function",
+                                      "pattern": {
+                                        "node": "Variable",
+                                        "label": "state"
+                                      },
+                                      "body": {
                                         "node": "Let",
                                         "pattern": {
                                           "node": "Tuple",
@@ -4179,102 +4248,120 @@
                                           "node": "Call",
                                           "function": {
                                             "node": "Variable",
-                                            "label": "on_click"
+                                            "label": "display"
                                           },
                                           "with": {
-                                            "node": "Function",
-                                            "pattern": {
+                                            "node": "Call",
+                                            "function": {
                                               "node": "Variable",
-                                              "label": "target"
+                                              "label": "render"
                                             },
-                                            "body": {
-                                              "node": "Call",
-                                              "function": {
-                                                "node": "Variable",
-                                                "label": "loop"
-                                              },
-                                              "with": {
-                                                "node": "Call",
-                                                "function": {
-                                                  "node": "Variable",
-                                                  "label": "handle_click"
-                                                },
-                                                "with": {
-                                                  "node": "Tuple",
-                                                  "elements": [
-                                                    {
-                                                      "node": "Variable",
-                                                      "label": "target"
-                                                    },
-                                                    {
-                                                      "node": "Variable",
-                                                      "label": "state"
-                                                    }
-                                                  ]
-                                                }
-                                              }
+                                            "with": {
+                                              "node": "Variable",
+                                              "label": "state"
                                             }
                                           }
                                         },
                                         "then": {
-                                          "node": "Call",
-                                          "function": {
-                                            "node": "Variable",
-                                            "label": "on_keydown"
+                                          "node": "Let",
+                                          "pattern": {
+                                            "node": "Tuple",
+                                            "elements": []
                                           },
-                                          "with": {
-                                            "node": "Function",
-                                            "pattern": {
+                                          "value": {
+                                            "node": "Call",
+                                            "function": {
                                               "node": "Variable",
-                                              "label": "key"
+                                              "label": "on_click"
                                             },
-                                            "body": {
-                                              "node": "Call",
-                                              "function": {
+                                            "with": {
+                                              "node": "Function",
+                                              "pattern": {
                                                 "node": "Variable",
-                                                "label": "loop"
+                                                "label": "target"
                                               },
-                                              "with": {
+                                              "body": {
                                                 "node": "Call",
                                                 "function": {
                                                   "node": "Variable",
-                                                  "label": "handle_keydown"
+                                                  "label": "loop"
                                                 },
                                                 "with": {
+                                                  "node": "Call",
+                                                  "function": {
+                                                    "node": "Variable",
+                                                    "label": "handle_click"
+                                                  },
+                                                  "with": {
+                                                    "node": "Tuple",
+                                                    "elements": [
+                                                      {
+                                                        "node": "Variable",
+                                                        "label": "target"
+                                                      },
+                                                      {
+                                                        "node": "Variable",
+                                                        "label": "state"
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          },
+                                          "then": {
+                                            "node": "Call",
+                                            "function": {
+                                              "node": "Variable",
+                                              "label": "on_keydown"
+                                            },
+                                            "with": {
+                                              "node": "Function",
+                                              "pattern": {
+                                                "node": "Variable",
+                                                "label": "key"
+                                              },
+                                              "body": {
+                                                "node": "Call",
+                                                "function": {
                                                   "node": "Variable",
-                                                  "label": "key"
+                                                  "label": "loop"
+                                                },
+                                                "with": {
+                                                  "node": "Call",
+                                                  "function": {
+                                                    "node": "Variable",
+                                                    "label": "handle_keydown"
+                                                  },
+                                                  "with": {
+                                                    "node": "Variable",
+                                                    "label": "key"
+                                                  }
                                                 }
                                               }
                                             }
                                           }
                                         }
                                       }
-                                    }
-                                  },
-                                  "then": {
-                                    "node": "Call",
-                                    "function": {
-                                      "node": "Variable",
-                                      "label": "loop"
                                     },
-                                    "with": {
-                                      "node": "Access",
-                                      "value": {
+                                    "then": {
+                                      "node": "Call",
+                                      "function": {
                                         "node": "Variable",
-                                        "label": "req"
+                                        "label": "loop"
                                       },
-                                      "key": "method"
+                                      "with": {
+                                        "node": "Access",
+                                        "value": {
+                                          "node": "Variable",
+                                          "label": "req"
+                                        },
+                                        "key": "method"
+                                      }
                                     }
                                   }
-                                }
-                              },
-                              "then": {
-                                "node": "Call",
-                                "function": {
-                                  "node": "Variable",
-                                  "label": "client"
                                 },
-                                "with": {
+                                "then": {
                                   "node": "Variable",
                                   "label": "main"
                                 }
@@ -4288,65 +4375,92 @@
                       "node": "Let",
                       "pattern": {
                         "node": "Variable",
-                        "label": "web"
+                        "label": "reactive"
                       },
                       "value": {
                         "node": "Function",
                         "pattern": {
                           "node": "Variable",
-                          "label": "request"
+                          "label": ""
                         },
                         "body": {
                           "node": "Let",
                           "pattern": {
                             "node": "Variable",
-                            "label": "routes"
+                            "label": ""
                           },
                           "value": {
-                            "node": "Tagged",
-                            "tag": "Nil",
-                            "value": {
-                              "node": "Tuple",
-                              "elements": []
+                            "node": "Call",
+                            "function": {
+                              "node": "Variable",
+                              "label": "do"
+                            },
+                            "with": {
+                              "node": "Tagged",
+                              "tag": "Log",
+                              "value": {
+                                "node": "Binary",
+                                "value": "woop"
+                              }
                             }
                           },
                           "then": {
-                            "node": "Let",
+                            "node": "Binary",
+                            "value": "maybe he"
+                          }
+                        }
+                      },
+                      "then": {
+                        "node": "Let",
+                        "pattern": {
+                          "node": "Variable",
+                          "label": "universal"
+                        },
+                        "value": {
+                          "node": "Function",
+                          "pattern": {
+                            "node": "Variable",
+                            "label": "app"
+                          },
+                          "body": {
+                            "node": "Function",
                             "pattern": {
                               "node": "Variable",
-                              "label": "routes"
+                              "label": "req"
                             },
-                            "value": {
-                              "node": "Tagged",
-                              "tag": "Cons",
-                              "value": {
-                                "node": "Tuple",
-                                "elements": [
-                                  {
-                                    "node": "Tuple",
-                                    "elements": [
-                                      {
-                                        "node": "Binary",
-                                        "value": "localhost:5004"
-                                      },
-                                      {
-                                        "node": "Access",
-                                        "value": {
-                                          "node": "Variable",
-                                          "label": "reload"
-                                        },
-                                        "key": "web"
-                                      }
-                                    ]
-                                  },
-                                  {
-                                    "node": "Variable",
-                                    "label": "routes"
-                                  }
-                                ]
+                            "body": {
+                              "node": "Call",
+                              "function": {
+                                "node": "Variable",
+                                "label": "client"
+                              },
+                              "with": {
+                                "node": "Call",
+                                "function": {
+                                  "node": "Variable",
+                                  "label": "app"
+                                },
+                                "with": {
+                                  "node": "Variable",
+                                  "label": "req"
+                                }
                               }
+                            }
+                          }
+                        },
+                        "then": {
+                          "node": "Let",
+                          "pattern": {
+                            "node": "Variable",
+                            "label": "web"
+                          },
+                          "value": {
+                            "node": "Function",
+                            "pattern": {
+                              "node": "Variable",
+                              "label": "request"
                             },
-                            "then": {
+                            "body": {
                               "node": "Let",
                               "pattern": {
                                 "node": "Variable",
@@ -4354,28 +4468,10 @@
                               },
                               "value": {
                                 "node": "Tagged",
-                                "tag": "Cons",
+                                "tag": "Nil",
                                 "value": {
                                   "node": "Tuple",
-                                  "elements": [
-                                    {
-                                      "node": "Tuple",
-                                      "elements": [
-                                        {
-                                          "node": "Binary",
-                                          "value": "localhost:5003"
-                                        },
-                                        {
-                                          "node": "Variable",
-                                          "label": "counter"
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "node": "Variable",
-                                      "label": "routes"
-                                    }
-                                  ]
+                                  "elements": []
                                 }
                               },
                               "then": {
@@ -4395,11 +4491,32 @@
                                         "elements": [
                                           {
                                             "node": "Binary",
-                                            "value": "counter.web.petersaxton.uk"
+                                            "value": "localhost:5004"
                                           },
                                           {
-                                            "node": "Variable",
-                                            "label": "counter"
+                                            "node": "Function",
+                                            "pattern": {
+                                              "node": "Variable",
+                                              "label": "request"
+                                            },
+                                            "body": {
+                                              "node": "Call",
+                                              "function": {
+                                                "node": "Variable",
+                                                "label": "client"
+                                              },
+                                              "with": {
+                                                "node": "Call",
+                                                "function": {
+                                                  "node": "Variable",
+                                                  "label": "reactive"
+                                                },
+                                                "with": {
+                                                  "node": "Variable",
+                                                  "label": "request"
+                                                }
+                                              }
+                                            }
                                           }
                                         ]
                                       },
@@ -4427,11 +4544,32 @@
                                           "elements": [
                                             {
                                               "node": "Binary",
-                                              "value": "localhost:5002"
+                                              "value": "localhost:5003"
                                             },
                                             {
-                                              "node": "Variable",
-                                              "label": "cluster"
+                                              "node": "Function",
+                                              "pattern": {
+                                                "node": "Variable",
+                                                "label": "request"
+                                              },
+                                              "body": {
+                                                "node": "Call",
+                                                "function": {
+                                                  "node": "Variable",
+                                                  "label": "client"
+                                                },
+                                                "with": {
+                                                  "node": "Call",
+                                                  "function": {
+                                                    "node": "Variable",
+                                                    "label": "counter"
+                                                  },
+                                                  "with": {
+                                                    "node": "Variable",
+                                                    "label": "request"
+                                                  }
+                                                }
+                                              }
                                             }
                                           ]
                                         },
@@ -4459,11 +4597,11 @@
                                             "elements": [
                                               {
                                                 "node": "Binary",
-                                                "value": "cluster.web.petersaxton.uk"
+                                                "value": "counter.web.petersaxton.uk"
                                               },
                                               {
                                                 "node": "Variable",
-                                                "label": "cluster"
+                                                "label": "counter"
                                               }
                                             ]
                                           },
@@ -4491,11 +4629,11 @@
                                               "elements": [
                                                 {
                                                   "node": "Binary",
-                                                  "value": "localhost:5001"
+                                                  "value": "localhost:5002"
                                                 },
                                                 {
                                                   "node": "Variable",
-                                                  "label": "dashboard"
+                                                  "label": "cluster"
                                                 }
                                               ]
                                             },
@@ -4523,11 +4661,11 @@
                                                 "elements": [
                                                   {
                                                     "node": "Binary",
-                                                    "value": "dashboard.web.petersaxton.uk"
+                                                    "value": "cluster.web.petersaxton.uk"
                                                   },
                                                   {
                                                     "node": "Variable",
-                                                    "label": "dashboard"
+                                                    "label": "cluster"
                                                   }
                                                 ]
                                               },
@@ -4542,92 +4680,158 @@
                                           "node": "Let",
                                           "pattern": {
                                             "node": "Variable",
-                                            "label": "route"
+                                            "label": "routes"
                                           },
                                           "value": {
-                                            "node": "Call",
-                                            "function": {
-                                              "node": "Access",
-                                              "value": {
-                                                "node": "Access",
-                                                "value": {
-                                                  "node": "Variable",
-                                                  "label": "lib"
-                                                },
-                                                "key": "list"
-                                              },
-                                              "key": "key_find"
-                                            },
-                                            "with": {
+                                            "node": "Tagged",
+                                            "tag": "Cons",
+                                            "value": {
                                               "node": "Tuple",
                                               "elements": [
                                                 {
-                                                  "node": "Variable",
-                                                  "label": "routes"
+                                                  "node": "Tuple",
+                                                  "elements": [
+                                                    {
+                                                      "node": "Binary",
+                                                      "value": "localhost:5001"
+                                                    },
+                                                    {
+                                                      "node": "Variable",
+                                                      "label": "dashboard"
+                                                    }
+                                                  ]
                                                 },
                                                 {
-                                                  "node": "Access",
-                                                  "value": {
-                                                    "node": "Variable",
-                                                    "label": "request"
-                                                  },
-                                                  "key": "origin"
+                                                  "node": "Variable",
+                                                  "label": "routes"
                                                 }
                                               ]
                                             }
                                           },
                                           "then": {
-                                            "node": "Case",
-                                            "value": {
+                                            "node": "Let",
+                                            "pattern": {
                                               "node": "Variable",
-                                              "label": "route"
+                                              "label": "routes"
                                             },
-                                            "branches": [
-                                              {
-                                                "node": "Branch",
-                                                "name": "Error",
-                                                "pattern": {
-                                                  "node": "Tuple",
-                                                  "elements": []
-                                                },
-                                                "then": {
+                                            "value": {
+                                              "node": "Tagged",
+                                              "tag": "Cons",
+                                              "value": {
+                                                "node": "Tuple",
+                                                "elements": [
+                                                  {
+                                                    "node": "Tuple",
+                                                    "elements": [
+                                                      {
+                                                        "node": "Binary",
+                                                        "value": "dashboard.web.petersaxton.uk"
+                                                      },
+                                                      {
+                                                        "node": "Variable",
+                                                        "label": "dashboard"
+                                                      }
+                                                    ]
+                                                  },
+                                                  {
+                                                    "node": "Variable",
+                                                    "label": "routes"
+                                                  }
+                                                ]
+                                              }
+                                            },
+                                            "then": {
+                                              "node": "Let",
+                                              "pattern": {
+                                                "node": "Variable",
+                                                "label": "route"
+                                              },
+                                              "value": {
+                                                "node": "Call",
+                                                "function": {
                                                   "node": "Access",
                                                   "value": {
-                                                    "node": "Variable",
-                                                    "label": "request"
+                                                    "node": "Access",
+                                                    "value": {
+                                                      "node": "Variable",
+                                                      "label": "lib"
+                                                    },
+                                                    "key": "list"
                                                   },
-                                                  "key": "origin"
-                                                }
-                                              },
-                                              {
-                                                "node": "Branch",
-                                                "name": "Ok",
-                                                "pattern": {
+                                                  "key": "key_find"
+                                                },
+                                                "with": {
                                                   "node": "Tuple",
                                                   "elements": [
                                                     {
-                                                      "node": "Bind",
-                                                      "label": ""
+                                                      "node": "Variable",
+                                                      "label": "routes"
                                                     },
                                                     {
-                                                      "node": "Bind",
-                                                      "label": "page"
+                                                      "node": "Access",
+                                                      "value": {
+                                                        "node": "Variable",
+                                                        "label": "request"
+                                                      },
+                                                      "key": "origin"
                                                     }
                                                   ]
-                                                },
-                                                "then": {
-                                                  "node": "Call",
-                                                  "function": {
-                                                    "node": "Variable",
-                                                    "label": "page"
-                                                  },
-                                                  "with": {
-                                                    "node": "Variable",
-                                                    "label": "request"
-                                                  }
                                                 }
+                                              },
+                                              "then": {
+                                                "node": "Case",
+                                                "value": {
+                                                  "node": "Variable",
+                                                  "label": "route"
+                                                },
+                                                "branches": [
+                                                  {
+                                                    "node": "Branch",
+                                                    "name": "Error",
+                                                    "pattern": {
+                                                      "node": "Tuple",
+                                                      "elements": []
+                                                    },
+                                                    "then": {
+                                                      "node": "Access",
+                                                      "value": {
+                                                        "node": "Variable",
+                                                        "label": "request"
+                                                      },
+                                                      "key": "origin"
+                                                    }
+                                                  },
+                                                  {
+                                                    "node": "Branch",
+                                                    "name": "Ok",
+                                                    "pattern": {
+                                                      "node": "Tuple",
+                                                      "elements": [
+                                                        {
+                                                          "node": "Bind",
+                                                          "label": ""
+                                                        },
+                                                        {
+                                                          "node": "Bind",
+                                                          "label": "page"
+                                                        }
+                                                      ]
+                                                    },
+                                                    "then": {
+                                                      "node": "Call",
+                                                      "function": {
+                                                        "node": "Variable",
+                                                        "label": "page"
+                                                      },
+                                                      "with": {
+                                                        "node": "Variable",
+                                                        "label": "request"
+                                                      }
+                                                    }
+                                                  }
+                                                ]
                                               }
-                                            ]
+                                            }
                                           }
                                         }
                                       }
@@ -4636,92 +4840,92 @@
                                 }
                               }
                             }
+                          },
+                          "then": {
+                            "node": "Let",
+                            "pattern": {
+                              "node": "Variable",
+                              "label": "counter_init"
+                            },
+                            "value": {
+                              "node": "Tuple",
+                              "elements": [
+                                {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Access",
+                                    "value": {
+                                      "node": "Access",
+                                      "value": {
+                                        "node": "Variable",
+                                        "label": "reload"
+                                      },
+                                      "key": "counter"
+                                    },
+                                    "key": "init"
+                                  },
+                                  "key": "page"
+                                },
+                                {
+                                  "node": "Access",
+                                  "value": {
+                                    "node": "Access",
+                                    "value": {
+                                      "node": "Access",
+                                      "value": {
+                                        "node": "Variable",
+                                        "label": "reload"
+                                      },
+                                      "key": "counter"
+                                    },
+                                    "key": "init"
+                                  },
+                                  "key": "interrupt"
+                                }
+                              ]
+                            },
+                            "then": {
+                              "node": "Record",
+                              "fields": [
+                                {
+                                  "node": "Field",
+                                  "key": "proxy",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "web"
+                                  }
+                                },
+                                {
+                                  "node": "Field",
+                                  "key": "web",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "web"
+                                  }
+                                },
+                                {
+                                  "node": "Field",
+                                  "key": "counter_init",
+                                  "value": {
+                                    "node": "Variable",
+                                    "label": "counter_init"
+                                  }
+                                },
+                                {
+                                  "node": "Field",
+                                  "key": "counter",
+                                  "value": {
+                                    "node": "Access",
+                                    "value": {
+                                      "node": "Variable",
+                                      "label": "reload"
+                                    },
+                                    "key": "counter"
+                                  }
+                                }
+                              ]
+                            }
                           }
-                        }
-                      },
-                      "then": {
-                        "node": "Let",
-                        "pattern": {
-                          "node": "Variable",
-                          "label": "counter_init"
-                        },
-                        "value": {
-                          "node": "Tuple",
-                          "elements": [
-                            {
-                              "node": "Access",
-                              "value": {
-                                "node": "Access",
-                                "value": {
-                                  "node": "Access",
-                                  "value": {
-                                    "node": "Variable",
-                                    "label": "reload"
-                                  },
-                                  "key": "counter"
-                                },
-                                "key": "init"
-                              },
-                              "key": "page"
-                            },
-                            {
-                              "node": "Access",
-                              "value": {
-                                "node": "Access",
-                                "value": {
-                                  "node": "Access",
-                                  "value": {
-                                    "node": "Variable",
-                                    "label": "reload"
-                                  },
-                                  "key": "counter"
-                                },
-                                "key": "init"
-                              },
-                              "key": "interrupt"
-                            }
-                          ]
-                        },
-                        "then": {
-                          "node": "Record",
-                          "fields": [
-                            {
-                              "node": "Field",
-                              "key": "proxy",
-                              "value": {
-                                "node": "Variable",
-                                "label": "web"
-                              }
-                            },
-                            {
-                              "node": "Field",
-                              "key": "web",
-                              "value": {
-                                "node": "Variable",
-                                "label": "web"
-                              }
-                            },
-                            {
-                              "node": "Field",
-                              "key": "counter_init",
-                              "value": {
-                                "node": "Variable",
-                                "label": "counter_init"
-                              }
-                            },
-                            {
-                              "node": "Field",
-                              "key": "counter",
-                              "value": {
-                                "node": "Access",
-                                "value": {
-                                  "node": "Variable",
-                                  "label": "reload"
-                                },
-                                "key": "counter"
-                              }
-                            }
-                          ]
                         }
                       }
                     }
