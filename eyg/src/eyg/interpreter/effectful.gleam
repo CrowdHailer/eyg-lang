@@ -27,15 +27,6 @@ fn do(effect) {
   }
 }
 
-external fn log(a) -> Nil =
-  "" "console.log"
-
-fn term_serialize(term) {
-  let program = string.append("window.Program = ", runtime.render_object(term))
-  let page = string.concat(["<script>", program, "</script><body></body>"])
-  Ok(r.Binary(page))
-}
-
 pub fn env() {
   map.new()
   |> map.insert("do", r.BuiltinFn(do))
@@ -50,7 +41,10 @@ pub fn env() {
   // TODO add types to builtin
   |> map.insert(
     "builtin",
-    r.Record([#("serialize", r.BuiltinFn(term_serialize)), ..builtin.builtin()]),
+    r.Record([
+      #("js", r.BuiltinFn(fn(o) { Ok(r.Binary(runtime.render_object(o))) })),
+      ..builtin.builtin()
+    ]),
   )
 }
 

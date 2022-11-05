@@ -11,7 +11,7 @@ pub fn builtin() {
   ]
   // These could be parts of the server environment only because they are encoded
   // Thi creates a circular dependency
-  // #("serialize", r.BuiltinFn(term_serialize)),
+  // #("js", r.BuiltinFn(runtime.render_object)),
 }
 
 external fn log(a) -> Nil =

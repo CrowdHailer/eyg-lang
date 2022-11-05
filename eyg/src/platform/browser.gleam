@@ -35,6 +35,7 @@ fn builtins() {
     t.Function(t.Tuple([t.Binary, t.Binary, t.Binary]), t.Binary, t.empty),
   )
   |> add_field("serialize", t.Function(t.Unbound(0), t.Binary, t.empty))
+  |> add_field("js", t.Function(t.Unbound(0), t.Binary, t.empty))
   |> add_field(
     "compile",
     t.Function(
