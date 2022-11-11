@@ -335,6 +335,10 @@ pub fn handler_is_missing_effect_test() {
 }
 
 pub fn infer_handler_test() {
+  //  impl(eff) {
+  //    Return([]) -> ["foo", []]
+  //    Foo(v, k) -> [v, k("read")]
+  //  }
   let handler =
     e.function(
       p.Variable("eff"),
@@ -375,7 +379,9 @@ pub fn infer_handler_test() {
     t.Unbound(i),
     t.Tuple([]),
     t.Union([#("Foo", effect)], Some(other_effects)),
-  ) = computation
+  ) =
+    computation
+    |> io.debug
   assert True = i == input
   assert True = other_effects == outer
   assert t.Function(t.Binary, t.Binary, eff) = effect

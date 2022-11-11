@@ -39,17 +39,14 @@ pub fn from_string(json) {
 
 pub fn run(args) {
   let args = array.to_list(args)
-  io.debug(args)
   case args {
     [path] -> {
       let program = e.access(load(), path)
       // TODO we can assert that the type is of the correct value
       assert Ok(term) = effectful.eval(program)
-      io.debug(term)
     }
   }
 }
-
 
 external fn log(a) -> Nil =
   "" "console.log"
@@ -72,7 +69,7 @@ pub fn req(origin, method, path, body, source) {
   // TODO fix need for untype
   // TODO provide proper environment for expaning the providers
   case effectful.eval(editor.untype(xtyped)) {
-    Ok(r.Effect(_,_,_)) -> todo("need to handle effects")
+    Ok(r.Effect(_, _, _)) -> todo("need to handle effects")
     Ok(term) ->
       case effectful.eval_call(term, request, effectful.real_log) {
         // TODO return a response type

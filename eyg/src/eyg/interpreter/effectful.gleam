@@ -48,7 +48,6 @@ pub fn env() {
   )
 }
 
-
 pub fn eval(source) {
   tail_call.eval(source, env())
 }
@@ -78,7 +77,7 @@ pub fn real_log(effect, value, cont) {
       let response =
         r.Binary(fetch(url))
         |> io.debug
-        // TODO should be cont
+      // TODO should be cont
       Ok(response)
     }
     _ -> Error(string.concat(["unkown effect ", effect]))
