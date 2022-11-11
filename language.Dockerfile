@@ -1,4 +1,4 @@
-FROM rust:1.64.0 AS build
+FROM rust:1.65.0 AS build
 
 ENV SHA="v0.24.0"
 RUN set -xe \
@@ -16,7 +16,7 @@ RUN cargo install watchexec-cli
 # FROM elixir:1.12.2
 # TODO call dev and prod as targets
 # or maybe slab
-FROM node:18.9.0 AS gleam
+FROM node:18.12.1 AS gleam
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin
@@ -24,7 +24,7 @@ RUN gleam --version
 
 CMD ["gleam"]
 
-FROM node:18.9.0
+FROM node:18.12.1
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin

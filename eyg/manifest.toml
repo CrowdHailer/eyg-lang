@@ -4,8 +4,8 @@
 packages = [
   { name = "gleam_bitwise", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_bitwise", source = "hex", outer_checksum = "6064699EFBABB1CA392DCB193D0E8B402FB042B4B46857B01E6875E643B57F54" },
   { name = "gleam_javascript", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_javascript", source = "hex", outer_checksum = "BD62C0CE36E3A07A2EF9ADE9ED7DE4FAB4BF751EE7B4954C40BDA821910EBE42" },
-  { name = "gleam_stdlib", version = "0.23.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "6BF84F0A486192488F7A2DF44F90B1964831CB374C05F4856A7A0BB1DD37F68C" },
-  { name = "gleeunit", version = "0.6.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "A006864621DB80C4FBB0746580703502FD81A4D38D23FCB20A8120984D353DF0" },
+  { name = "gleam_stdlib", version = "0.24.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "BD0E75F3153375218E9EC380930E3621036CADCF4246AA55B193BDABFD06D5CE" },
+  { name = "gleeunit", version = "0.7.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "6F88395CAC9363EBE3D632E62C2C6EF731BBFB0A8D31E5E7287BC400002F15B2" },
   { name = "lustre", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "lustre", source = "hex", outer_checksum = "BBC3E878C3456D79886FE14B48FD88181E1D2EA20782EFF1DD4FD458C56E8BC9" },
 ]
 
