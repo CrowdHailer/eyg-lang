@@ -32,6 +32,12 @@ Need to replace lot's of tuple references with tuple or pattern
 - Need to keep focus on editor root to pick up key press
 - Editor has a selection ast node has a position, both are paths
 
+## Open issues
+
+- Want a test harness for Request handling that linearises the call's in the way I do in go
+- Need extended unions for Effect types
+- Need extended records for HTML stateful apps i.e. simple handlers over big state
+
 ## Names
 
 > A record is a collection of fields, possibly of different data types, typically in a fixed number and sequence.[5] The fields of a record may also be called members, particularly in object-oriented programming; fields may also be called elements, though this risks confusion with the elements of a collection.

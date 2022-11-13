@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import gleam/map.{Map}
 import gleam/javascript
@@ -13,6 +14,7 @@ type Expression {
   Lambda(name: String, body: Expression)
   Apply(func: Expression, argument: Expression)
   Let(name: String, definition: Expression, body: Expression)
+  Fix(exp: Expression)
   LetRec(name: String, definition: Expression, body: Expression)
 }
 
@@ -113,7 +115,11 @@ fn varbind(u, typ) {
     TypeVariable(x) if x == u -> map.new()
     _ ->
       case map.get(ftv(typ), u) {
-        Ok(_) -> todo("RECURSION IS BACK")
+        Ok(_) -> {
+          io.debug("foror")
+          map.new()
+        }
+        // todo("RECURSION IS BACK")
         Error(Nil) ->
           map.new()
           |> map.insert(u, typ)
@@ -175,25 +181,41 @@ fn do_infer(env, exp, ref) {
       let #(s2, tthen) = do_infer(env, body, ref)
       #(compose(s2, s1), tthen)
     }
+    Fix(expression) -> {
+      let #(s1, tconstructor) = do_infer(env, expression, ref)
+      let tfunc = fresh(ref)
+      let s2 = unify(TFun(tfunc, tfunc), tconstructor)
+      #(compose(s2, s1), tfunc)
+    }
     LetRec(_, _, _) -> todo("letrec")
   }
 }
 
 fn infer(env, exp) {
   let #(s, typ) = do_infer(env, exp, javascript.make_reference(0))
+  io.debug(s)
   apply(s, typ)
 }
 
 pub fn function_name_test() {
-  assert TBinary = infer(map.new(), Primitive(Binary))
+  //   assert TBinary = infer(map.new(), Primitive(Binary))
 
-  assert TBinary =
-    infer(map.new(), Apply(Lambda("_", Primitive(Binary)), Primitive(Int)))
+  //   assert TBinary =
+  //     infer(map.new(), Apply(Lambda("_", Primitive(Binary)), Primitive(Int)))
 
-  assert TInt =
-    infer(map.new(), Apply(Lambda("x", Variable("x")), Primitive(Int)))
+  //   assert TInt =
+  //     infer(map.new(), Apply(Lambda("x", Variable("x")), Primitive(Int)))
 
-  assert TInt = infer(map.new(), Let("x", Primitive(Int), Variable("x")))
+  //   assert TInt = infer(map.new(), Let("x", Primitive(Int), Variable("x")))
+
+  //   assert TFun(TypeVariable(0), TypeVariable(0)) =
+  //     infer(map.new(), Lambda("y", Variable("y")))
+
+  infer(map.new(), Fix(Lambda("f", Lambda("x", Variable("x")))))
+  |> io.debug
   //   todo
+  //   * let map = (fix ( map f s.
+  // (cond (null s) nil
+  // (cons (f (hd s)) (map f (tl s)))))) in map *)
   []
 }
