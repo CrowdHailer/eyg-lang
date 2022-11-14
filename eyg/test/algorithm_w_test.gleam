@@ -103,23 +103,15 @@ fn instantiate(scheme, ref) {
   apply(s, typ)
 }
 
-// let instantiate (ts : Scheme) =
-//     match ts with
-//     | Scheme(vars, t) ->
-//         let nvars = vars |> List.map (fun name -> newTyVar (string name.[0]) )
-//         let s = List.zip vars nvars |> Map.ofList
-//         Typ.apply s t
-
 fn varbind(u, typ) {
   case typ {
     TypeVariable(x) if x == u -> map.new()
     _ ->
       case map.get(ftv(typ), u) {
         Ok(_) -> {
-          io.debug("foror")
           map.new()
+          todo("RECURSION IS BACK")
         }
-        // todo("RECURSION IS BACK")
         Error(Nil) ->
           map.new()
           |> map.insert(u, typ)
@@ -193,29 +185,28 @@ fn do_infer(env, exp, ref) {
 
 fn infer(env, exp) {
   let #(s, typ) = do_infer(env, exp, javascript.make_reference(0))
-  io.debug(s)
+  // io.debug(s)
   apply(s, typ)
 }
 
 pub fn function_name_test() {
-  //   assert TBinary = infer(map.new(), Primitive(Binary))
+  assert TBinary = infer(map.new(), Primitive(Binary))
 
-  //   assert TBinary =
-  //     infer(map.new(), Apply(Lambda("_", Primitive(Binary)), Primitive(Int)))
+  assert TBinary =
+    infer(map.new(), Apply(Lambda("_", Primitive(Binary)), Primitive(Int)))
 
-  //   assert TInt =
-  //     infer(map.new(), Apply(Lambda("x", Variable("x")), Primitive(Int)))
+  assert TInt =
+    infer(map.new(), Apply(Lambda("x", Variable("x")), Primitive(Int)))
 
-  //   assert TInt = infer(map.new(), Let("x", Primitive(Int), Variable("x")))
+  assert TInt = infer(map.new(), Let("x", Primitive(Int), Variable("x")))
 
-  //   assert TFun(TypeVariable(0), TypeVariable(0)) =
-  //     infer(map.new(), Lambda("y", Variable("y")))
+  assert TFun(TypeVariable(0), TypeVariable(0)) =
+    infer(map.new(), Lambda("y", Variable("y")))
 
   infer(map.new(), Fix(Lambda("f", Lambda("x", Variable("x")))))
   |> io.debug
-  //   todo
-  //   * let map = (fix ( map f s.
-  // (cond (null s) nil
-  // (cons (f (hd s)) (map f (tl s)))))) in map *)
+
+  // infer(map.new(), Fix(Lambda("f", Lambda("x", Variable("f")))))
+  // |> io.debug
   []
 }
