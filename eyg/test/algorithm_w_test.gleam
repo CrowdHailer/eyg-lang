@@ -34,8 +34,9 @@ type Scheme {
 type TypeEnv =
   Map(String, Scheme)
 
-type Subst =
-  Map(String, Type)
+// Just an aliass
+// type Subst =
+//   Map(String, Type)
 
 // TYPE
 fn ftv(typ) {
@@ -89,6 +90,8 @@ fn apply_env(sub, env) {
 fn compose(sub1, sub2) {
   map.merge(map.map_values(sub2, fn(_k, v) { apply(sub1, v) }), sub1)
 }
+
+// schema
 
 fn generalize(env: Map(String, Scheme), typ) {
   let variables = map.keys(map.drop(ftv_env(env), map.keys(ftv(typ))))

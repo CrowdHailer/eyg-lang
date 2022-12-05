@@ -11,8 +11,13 @@ Various extensions exist, when considering extensions do they leave inference co
     (cond (null s) nil
     (cons (f (hd s)) (map f (tl s)))))) in map *)
   ```
+
+- https://legacy-blog.akgupta.ca/blog/2013/05/14/so-you-still-dont-understand-hindley-milner/ great view of the type rules
+
+- https://www.cl.cam.ac.uk/teaching/1415/L28/type-inference.pdf linking type rules to implementation
 - https://gergo.erdi.hu/projects/tandoori/Tandoori-Compositional-Typeclass.pdf A thorough explination of algorithm W vs M
-  M is the version when a target type is specified. TODO read compositional type system
+  M is the version when a target type is specified. Too much about classes and subtyping
+  W & J essentially the same but call mutable subs map
 - https://github.com/7sharp9/write-you-an-inference-in-fsharp Writing interence in Fsharp through various features like purity and Rows
   TODO does the mutable version explain effect types
 - https://github.com/sdiehl/write-you-a-haskell/blob/master/chapter7/poly/src/Infer.hs Write you a haskell is also good to follow
@@ -69,8 +74,67 @@ the same complexity as keeping a list of not in row labels.
   - Fixes some issues by only allowing extension -> this is the one I should make next
   - https://smlsharp.github.io/en/ in language
 - https://arxiv.org/pdf/2108.06296.pdf Need to understand why kinds are brought into it
+
+#### An ML-style Record Calculus with Extensible Records
+
+> We present an alternative construction based on the polymorphic record calculus developed by Ohori. Ohori based his polymorphic record calculus on the idea of kind restrictions. This allowed him to express polymorphic operations on records such as field selection and modification
+
+Ohori does not allow extension because no representation of rows without a field
+
+```
+{foo = 5, ..b}
+b.foo
+```
+
 - https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/scopedlabels.pdf This paper describes Records that have shadowing i.e. overwriting a field leaves it discoverable when a field is removed.
+
+- scoped labels have uses like overwriting color in text env that can be returned to previous value later?
+- equality on reordering of labels up to same type
+
+Gaster and Jones [7] presented an elegant type system
+for records and variants based on the theory of qualified types [10,
+11]. Special lacks predicates are used to prevent records from
+containing duplicate labels
+
+In particular, as imposed by MLF, type annotations are only neces-
+sary when function arguments of an unknown type are used poly-
+morphically.
+!!!!
+
+Read MLF or are there other ways allowing may instantiations
+I(a) = Int -> Int
+I(a) = String -> Int
+a = A -> Int
+I(a) = String -> String
+a = A -> B
+My language doesn't allow generic usage of a fn passed in.
+
+Useful way of getting a never type out -> Never type, needed with Effects
+Return(Int) | Exp(String)
+how is generic function within a record handled in this paper
+
+does always update allow us to drop free row variable?
+
+
+
   Author Daan. Part of IFIP working group 2.16 on programming language design https://languagedesign.org/
+
+Total fn type inference
+Dhall alpha reduction
+
+Is recursive totality checking same or different to Dhall style inference.
+
+- fn polymorphism not let
+- row with only update
+- update access
+equi/iso -> 
+- MLF needs annotation for generic parameters
+
+- MLSub vs record stuff
+- The scoped approach will work for dropping recursive check in fn, BUT we need to understand equi or not.
+
+Koka structs?
+The koka paper talks about automatically opening records
 
 #### Advanced
 

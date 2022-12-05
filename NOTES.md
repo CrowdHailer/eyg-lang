@@ -171,7 +171,7 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - [x] Test lambda calculus enums.
 - [x] Format tuples/records without any brackets (doesn't work because of nested tuples)
 
-https://cs.stackexchange.com/questions/101152/let-rec-recursive-expression-static-typing-rule
+https://cs.stackexchange.com/questions/101152/let-rec-recursive-expression-static-typing-rule Point out difference between typing rules and algorithm
 https://en.wikipedia.org/wiki/Hindley%E2%80%93Milner_type_system recursive definitions
 https://boxbase.org/entries/2018/mar/5/hindley-milner/
 https://medium.com/@dhruvrajvanshi/type-inference-for-beginners-part-2-f39c33ca9513
