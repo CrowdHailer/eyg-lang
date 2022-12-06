@@ -3,6 +3,7 @@ import gleam/list
 import gleam/map.{Map}
 import gleam/set
 import gleam/result
+import gleam/setx
 import eyg/analysis/typ as t
 // TODO manage without JS
 import gleam/javascript
@@ -11,8 +12,8 @@ import gleam/javascript
 fn ftv(typ) {
   case typ {
     // TODO union type variables
-    // t.Fun(from, effects, to) -> set.union(ftv(from), ftv(to))
-    // t.Var(x) -> set_singleton(TermVar(x))
+    t.Fun(from, effects, to) -> set.union(ftv(from), ftv(to))
+    t.Var(x) -> setx.singleton(TermVar(x))
     t.Integer | t.Binary -> set.new()
     // t.Record(row) -> ftv_row(row)
     // t.Union(row) -> ftv_row(row)
@@ -24,7 +25,7 @@ fn ftv(typ) {
 // fn ftv_row(row) {
 //   case row {
 //     RowClosed -> set.new()
-//     RowOpen(x) -> set_singleton(RowVar(x))
+//     RowOpen(x) -> setx.singleton(RowVar(x))
 //     RowExtend(_label, value, tail) -> set.union(ftv(value), ftv_row(tail))
 //   }
 // }
@@ -117,6 +118,58 @@ pub fn apply(sub: Substitutions, typ) {
   }
 }
 
+fn apply_row(sub: Substitutions, row, apply) {
+  case row {
+    t.RowClosed -> t.RowClosed
+    t.RowOpen(x) ->
+      case map.get(sub.rows, x) {
+        Ok(replace) -> replace
+        Error(Nil) -> row
+      }
+    t.RowExtend(label, value, tail) ->
+      t.RowExtend(label, apply(sub, value), apply_row(sub, tail, apply))
+  }
+}
+
+fn apply_effects(sub: Substitutions, effect) {
+  case effect {
+    t.RowClosed -> t.RowClosed
+    t.RowOpen(x) ->
+      case map.get(sub.effs, x) {
+        Ok(replace) -> replace
+        Error(Nil) -> effect
+      }
+    t.RowExtend(label, #(in, out), tail) ->
+      t.RowExtend(
+        label,
+        #(apply(sub, in), apply(sub, out)),
+        apply_effects(sub, tail),
+      )
+  }
+  // RowExtend(label, apply(sub, value), apply_row(sub, tail, apply))
+}
+
+fn compose(sub1: Substitutions, sub2: Substitutions) {
+  let terms =
+    map.merge(
+      map.map_values(sub2.terms, fn(_k, v) { apply(sub1, v) }),
+      sub1.terms,
+    )
+  let rows =
+    map.merge(
+      map.map_values(sub2.rows, fn(_k, v) { apply_row(sub1, v, apply) }),
+      sub1.rows,
+    )
+  // TODO
+  let effs = sub1.effs
+
+  // map.merge(
+  //   map.map_values(sub2.rows, fn(_k, v) { apply_row(sub1, v, apply) }),
+  //   sub1.rows,
+  // )
+  Substitutions(terms, rows, effs)
+}
+
 pub fn generalise(env: Map(String, Scheme), typ) {
   let variables = set.to_list(set_drop(ftv_env(env), set.to_list(ftv(typ))))
   Scheme(variables, typ)
@@ -168,12 +221,36 @@ fn varbind(u, typ) {
 
 pub fn unify(t1, t2) {
   case t1, t2 {
+    t.Fun(from1, effects1, to1), t.Fun(from2, effects2, to2) -> {
+      let s1 = unify(from1, from2)
+      let s2 = unify(apply(s1, to1), apply(s1, to2))
+      // io.debug(effects1)
+      // io.debug(effects2)
+      let s3 = compose(s2, s1)
+      // apply row pulls out of substitutions
+      // apply_effects(s3, effects1, fn(s, r) { Nil })
+      unify_effects(apply_effects(s3, effects1), apply_effects(s3, effects2))
+    }
     t.Var(u), t | t, t.Var(u) -> varbind(u, t)
     t.Binary, t.Binary -> sub_empty()
     t.Integer, t.Integer -> sub_empty()
     _, _ -> {
       io.debug(#(t1, t2))
       todo("unify")
+    }
+  }
+}
+
+fn unify_effects(eff1, eff2) {
+  case eff1, eff2 {
+    t.RowClosed, t.RowClosed -> Substitutions(map.new(), map.new(), map.new())
+    t.RowOpen(u), t.RowOpen(v) if u == v ->
+      Substitutions(map.new(), map.new(), map.new())
+    t.RowOpen(u), r | r, t.RowOpen(u) -> {
+      let effs =
+        map.new()
+        |> map.insert(u, r)
+      Substitutions(map.new(), map.new(), effs)
     }
   }
 }

@@ -12,6 +12,16 @@ pub fn empty_env() {
 
 pub fn infer(env, exp, typ, eff, ref) {
   case exp {
+    e.Lambda(arg, body) -> {
+      let t = t.Var(fresh(ref))
+      let u = t.Var(fresh(ref))
+      let r = t.RowOpen(fresh(ref))
+      let s1 = unify(typ, t.Fun(t, r, u))
+      let env =
+        apply_env(s1, env)
+        |> map.insert(arg, unification.Scheme([], apply(s1, t)))
+      infer(env, body, apply(s1, u), r, ref)
+    }
     e.Variable(x) ->
       case map.get(env, x) {
         Ok(scheme) -> {

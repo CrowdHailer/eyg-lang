@@ -53,3 +53,19 @@ pub fn variables_test() {
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Binary = resolve(sub, typ)
 }
+
+// Functions
+pub fn function_test() {
+  let exp = e.Lambda("x", e.Binary)
+  let env = infer.empty_env()
+  let typ = t.Fun(t.Integer, t.RowClosed, t.Binary)
+  let eff = t.RowClosed
+
+  let ref = javascript.make_reference(0)
+  let _ = infer(env, exp, typ, eff, ref)
+
+  let typ = t.Var(1)
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Binary = resolve(sub, typ)
+}
