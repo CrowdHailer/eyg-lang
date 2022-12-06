@@ -1,6 +1,6 @@
 <script>
-  import * as Proxy from "../../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/proxy";
-  import { Ok, Error } from "../../../eyg/build/dev/javascript/eyg/dist/gleam";
+  import * as Proxy from "../../../eyg/build/dev/javascript/eyg/eyg/workspace/proxy";
+  import { Ok, Error } from "../../../eyg/build/dev/javascript/eyg/gleam";
 
   export let state;
   let message = "";

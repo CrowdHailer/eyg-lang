@@ -1,5 +1,5 @@
 <script>
-  import * as Expression from "../../../eyg/build/dev/javascript/eyg/dist/eyg/ast/expression";
+  import * as Expression from "../../../eyg/build/dev/javascript/eyg/eyg/ast/expression";
 
   import Let from "./Let.svelte";
   import Call from "./Call.svelte";

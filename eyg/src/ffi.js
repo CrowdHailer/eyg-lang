@@ -1,5 +1,5 @@
 import Workspace from "../../../../../../editor/src/Workspace.svelte";
-// import * as Gleam from "../build/dev/javascript/eyg/dist/gleam.mjs";
+// import * as Gleam from "../build/dev/javascript/eyg/gleam.mjs";
 
 export function render() {
   let ws = new Workspace({

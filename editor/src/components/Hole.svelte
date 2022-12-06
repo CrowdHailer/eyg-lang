@@ -1,5 +1,5 @@
 <script>
-  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/eyg/editor/display";
 
   export let metadata;
 </script>

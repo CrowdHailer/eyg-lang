@@ -2,9 +2,9 @@
   import Editor from "./components/Editor.svelte";
   import Mount from "./workspace/Mount.svelte";
 
-  import * as UI from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/ui";
-  import * as Gleam from "../../eyg/build/dev/javascript/eyg/dist/gleam";
-  import * as Option from "../../eyg/build/dev/javascript/gleam_stdlib/dist/gleam/option.mjs";
+  import * as UI from "../../eyg/build/dev/javascript/eyg/eyg/workspace/ui";
+  import * as Gleam from "../../eyg/build/dev/javascript/eyg/gleam";
+  import * as Option from "../../eyg/build/dev/javascript/gleam_stdlib/gleam/option.mjs";
 
   import { tick } from "svelte";
 

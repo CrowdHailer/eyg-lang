@@ -42,7 +42,6 @@ type Primitive {
 // Row Tail(Open | Closed) Extend
 // always open or close i.e. in koka effects
 
-
 type Expression {
   Variable(name: String)
   Primitive(primitive: Primitive)

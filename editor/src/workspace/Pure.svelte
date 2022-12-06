@@ -1,6 +1,6 @@
 <script>
-  import * as Option from "../../../eyg/build/dev/javascript/gleam_stdlib/dist/gleam/option.mjs";
-  import { log } from "../../../eyg/build/dev/javascript/gleam_stdlib/dist/gleam_stdlib.mjs";
+  import * as Option from "../../../eyg/build/dev/javascript/gleam_stdlib/gleam/option.mjs";
+  import { log } from "../../../eyg/build/dev/javascript/gleam_stdlib/gleam_stdlib.mjs";
 
   export let state;
   //   $: console.log(code);

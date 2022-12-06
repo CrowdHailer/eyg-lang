@@ -1,5 +1,5 @@
-import * as Firmata from "../../eyg/build/dev/javascript/eyg/dist/firmata/firmata";
-import * as Gleam from "../../eyg/build/dev/javascript/eyg/dist/gleam";
+import * as Firmata from "../../eyg/build/dev/javascript/eyg/firmata/firmata";
+import * as Gleam from "../../eyg/build/dev/javascript/eyg/gleam";
 
 export async function connectDevice() {
   console.log("connecting");

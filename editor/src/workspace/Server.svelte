@@ -1,5 +1,5 @@
 <script>
-  import * as Option from "../../../eyg/build/dev/javascript/gleam_stdlib/dist/gleam/option.mjs";
+  import * as Option from "../../../eyg/build/dev/javascript/gleam_stdlib/gleam/option.mjs";
 
   export let handle;
   let handlerFn;

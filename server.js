@@ -1,5 +1,5 @@
 // import source from "./editor/public/saved.json" assert { type: "json" };
-import * as Eyg from "./eyg/build/dev/javascript/eyg/dist/cli.mjs";
+import * as Eyg from "./eyg/build/dev/javascript/eyg/cli.mjs";
 // console.log(source);
 import express from "express";
 import cors from "cors";

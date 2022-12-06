@@ -1,9 +1,9 @@
 <script>
-  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/eyg/editor/display";
   import Expression from "./Expression.svelte";
 
-  import * as Editor from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/editor";
-  import * as UI from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/ui";
+  import * as Editor from "../../../eyg/build/dev/javascript/eyg/eyg/editor/editor";
+  import * as UI from "../../../eyg/build/dev/javascript/eyg/eyg/editor/ui";
 
   // import { Octokit } from "https://cdn.skypack.dev/@octokit/rest";
   // Use let in components const causes nil obkject issues

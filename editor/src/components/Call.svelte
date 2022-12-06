@@ -1,5 +1,5 @@
 <script>
-  import * as Display from "../../../eyg/build/dev/javascript/eyg/dist/eyg/editor/display";
+  import * as Display from "../../../eyg/build/dev/javascript/eyg/eyg/editor/display";
   import Expression from "./Expression.svelte";
 
   export let metadata;

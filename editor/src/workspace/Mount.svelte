@@ -1,5 +1,5 @@
 <script>
-  import * as Mount from "../../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/workspace";
+  import * as Mount from "../../../eyg/build/dev/javascript/eyg/eyg/workspace/workspace";
 
   import TestSuite from "./TestSuite.svelte";
   import UI from "./UI.svelte";

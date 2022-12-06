@@ -1,7 +1,7 @@
-// import { main } from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/main";
-import { compiled_string_append } from "../../eyg/build/dev/javascript/eyg/dist/eyg/interpreter/builtin.mjs";
-import { deploy } from "../../eyg/build/dev/javascript/eyg/dist/eyg/workspace/ui.mjs";
-import * as Spreasheet from "../../eyg/build/dev/javascript/eyg/dist/spreadsheet/main.mjs";
+// import { main } from "../../eyg/build/dev/javascript/eyg/eyg/workspace/main";
+import { compiled_string_append } from "../../eyg/build/dev/javascript/eyg/eyg/interpreter/builtin.mjs";
+import { deploy } from "../../eyg/build/dev/javascript/eyg/eyg/workspace/ui.mjs";
+import * as Spreasheet from "../../eyg/build/dev/javascript/eyg/spreadsheet/main.mjs";
 import window from "window";
 
 import App from "./Workspace.svelte";
