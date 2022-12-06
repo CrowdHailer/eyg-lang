@@ -64,8 +64,42 @@ pub fn function_test() {
   let ref = javascript.make_reference(0)
   let _ = infer(env, exp, typ, eff, ref)
 
-  let typ = t.Var(1)
+  let typ = t.Var(-1)
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
-  assert t.Binary = resolve(sub, typ)
+  assert t.Fun(t.Var(_), t.RowOpen(_), t.Binary) = resolve(sub, typ)
 }
+
+pub fn pure_function_test() {
+  let exp = e.Lambda("x", e.Variable("x"))
+  let env = infer.empty_env()
+  let typ = t.Var(-1)
+  let eff = t.RowClosed
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Fun(t.Var(x), t.RowOpen(2), t.Var(y)) = resolve(sub, typ)
+  assert True = x == y
+}
+
+pub fn pure_function_call_test() {
+  let func = e.Lambda("x", e.Variable("x"))
+  let exp = e.Apply(func, e.Binary)
+  let env = infer.empty_env()
+  let typ = t.Binary
+  let eff = t.RowClosed
+
+  // let ref = javascript.make_reference(0)
+  // let _ = infer(env, exp, typ, eff, ref)
+  let typ = t.Var(-1)
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  io.debug("foo")
+  io.debug(sub)
+  assert t.Binary =
+    resolve(sub, typ)
+    |> io.debug
+}
+// Collect effects
+// effects in functions
+// infer apply where func &arg create effect and final application

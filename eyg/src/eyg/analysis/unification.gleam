@@ -109,8 +109,8 @@ pub fn apply(sub: Substitutions, typ) {
         Ok(replace) -> replace
         Error(Nil) -> typ
       }
-    // Fun(from, effects, to) ->
-    //   Fun(apply(sub, from), apply_effects(sub, effects), apply(sub, to))
+    t.Fun(from, effects, to) ->
+      t.Fun(apply(sub, from), apply_effects(sub, effects), apply(sub, to))
     // TRecord(row) -> TRecord(apply_row(sub, row, apply))
     // TUnion(row) -> TUnion(apply_row(sub, row, apply))
     t.Integer | t.Binary -> typ
@@ -118,7 +118,7 @@ pub fn apply(sub: Substitutions, typ) {
   }
 }
 
-fn apply_row(sub: Substitutions, row, apply) {
+pub fn apply_row(sub: Substitutions, row) {
   case row {
     t.RowClosed -> t.RowClosed
     t.RowOpen(x) ->
@@ -127,11 +127,11 @@ fn apply_row(sub: Substitutions, row, apply) {
         Error(Nil) -> row
       }
     t.RowExtend(label, value, tail) ->
-      t.RowExtend(label, apply(sub, value), apply_row(sub, tail, apply))
+      t.RowExtend(label, apply(sub, value), apply_row(sub, tail))
   }
 }
 
-fn apply_effects(sub: Substitutions, effect) {
+pub fn apply_effects(sub: Substitutions, effect) {
   case effect {
     t.RowClosed -> t.RowClosed
     t.RowOpen(x) ->
@@ -149,7 +149,7 @@ fn apply_effects(sub: Substitutions, effect) {
   // RowExtend(label, apply(sub, value), apply_row(sub, tail, apply))
 }
 
-fn compose(sub1: Substitutions, sub2: Substitutions) {
+pub fn compose(sub1: Substitutions, sub2: Substitutions) {
   let terms =
     map.merge(
       map.map_values(sub2.terms, fn(_k, v) { apply(sub1, v) }),
@@ -157,7 +157,7 @@ fn compose(sub1: Substitutions, sub2: Substitutions) {
     )
   let rows =
     map.merge(
-      map.map_values(sub2.rows, fn(_k, v) { apply_row(sub1, v, apply) }),
+      map.map_values(sub2.rows, fn(_k, v) { apply_row(sub1, v) }),
       sub1.rows,
     )
   // TODO
