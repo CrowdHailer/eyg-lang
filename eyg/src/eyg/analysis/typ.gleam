@@ -1,16 +1,54 @@
+import gleam/set
+import gleam/setx
+
+// This separation of kinds could be opened as a PR to the F-sharp project
+
 pub type Row(kind) {
-  RowClosed
-  RowOpen(Int)
-  // Needs to be type for Type variable -> PR to kind in f-sharp code
-  RowExtend(label: String, value: kind, tail: Row(kind))
+  Closed
+  Open(Int)
+  Extend(label: String, value: kind, tail: Row(kind))
 }
 
-pub type Type {
-  Var(Int)
+pub type Term {
+  Unbound(Int)
   Integer
   Binary
-  Fun(Type, Row(#(Type, Type)), Type)
+  Fun(Term, Row(#(Term, Term)), Term)
   // Row parameterised by T for effects
-  Union(Row(Type))
-  Record(Row(Type))
+  Union(Row(Term))
+  Record(Row(Term))
+}
+
+pub type Variable {
+  Term(Int)
+  Row(Int)
+  Effect(Int)
+}
+
+pub fn ftv(typ) {
+  case typ {
+    Unbound(x) -> setx.singleton(Term(x))
+    Integer | Binary -> set.new()
+    Record(row) -> ftv_row(row)
+    Union(row) -> ftv_row(row)
+    Fun(from, effects, to) ->
+      set.union(set.union(ftv(from), ftv_effect(effects)), ftv(to))
+  }
+}
+
+fn ftv_row(row) {
+  case row {
+    Closed -> set.new()
+    Open(x) -> setx.singleton(Row(x))
+    Extend(_label, value, tail) -> set.union(ftv(value), ftv_row(tail))
+  }
+}
+
+fn ftv_effect(row) {
+  case row {
+    Closed -> set.new()
+    Open(x) -> setx.singleton(Effect(x))
+    Extend(_label, #(from, to), tail) ->
+      set.union(set.union(ftv(from), ftv(to)), ftv_effect(tail))
+  }
 }
