@@ -150,17 +150,80 @@ fn field(row, label) {
   }
 }
 
-// // Records
-// pub fn record_test() {
-//   let exp = e.Record([], option.None)
+// Records
+pub fn record_creation_test() {
+  let exp = e.Record([], option.None)
+  let env = env.empty()
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Record(row) = resolve(sub, typ)
+  should.equal(row, t.Closed)
+
+  let exp = e.Record([#("foo", e.Binary), #("bar", e.Integer)], option.None)
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Record(row) = resolve(sub, typ)
+  assert t.Extend(
+    label: "bar",
+    value: t.Integer,
+    tail: t.Extend(label: "foo", value: t.Binary, tail: t.Closed),
+  ) = row
+}
+
+pub fn record_update_test() {
+  let exp = e.Record([], option.Some("x"))
+  let env = env.empty()
+  let x = Scheme([], t.Unbound(-2))
+  let env = map.insert(env, "x", x)
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Record(row) = resolve(sub, typ)
+  assert t.Open(x) = row
+  assert t.Record(row) = resolve(sub, t.Unbound(-2))
+  assert t.Open(y) = row
+  should.equal(x, y)
+
+  let exp = e.Record([#("foo", e.Binary)], option.Some("x"))
+  let env = env.empty()
+  let mono =
+    t.Record(t.Extend("foo", t.Binary, t.Extend("bar", t.Integer, t.Closed)))
+  let x = Scheme([], mono)
+  let env = map.insert(env, "x", x)
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Record(row) = resolve(sub, typ)
+  assert t.Extend(
+    label: "foo",
+    value: t.Binary,
+    tail: t.Extend(label: "bar", value: t.Integer, tail: t.Closed),
+  ) = row
+}
+
+// TODO update type
+// pub fn record_update_type_test() {
+//   let exp = e.Record([#("foo", e.Binary)], option.Some("x"))
 //   let env = env.empty()
+//   let mono =
+//     t.Record(t.Extend("foo", t.Integer, t.Extend("bar", t.Integer, t.Closed)))
+//   let x = Scheme([], mono)
+//   let env = map.insert(env, "x", x)
 //   let typ = t.Unbound(-1)
 //   let eff = t.Closed
 
 //   let ref = javascript.make_reference(0)
 //   let sub = infer(env, exp, typ, eff, ref)
 //   assert t.Record(row) = resolve(sub, typ)
-//   // TODO fields
+//   assert t.Extend(
+//     label: "foo",
+//     value: t.Binary,
+//     tail: t.Extend(label: "bar", value: t.Integer, tail: t.Closed),
+//   ) = row
 // }
 
 pub fn select_test() {

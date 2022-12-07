@@ -62,31 +62,32 @@ pub fn infer(env, exp, typ, eff, ref) {
     e.Integer -> unify(typ, t.Integer, ref)
     e.Vacant -> sub.none()
 
-    // Record
-    // e.Record(_, None) -> todo
-    //   // let #(sjs1, row) =
-    //   //   list.fold(
-    //   //     fields,
-    //   //     #(sub.none(), t.Closed),
-    //   //     fn(state, field) {
-    //   //       let #(s1, row) = state
-    //   //       let #(label, value) = field
-    //   //       let t = t.Unbound(fresh(ref))
-    //   //       let s2 =
-    //   //         infer(
-    //   //           env,
-    //   //           value,
-    //   //           sub.apply(s1, t),
-    //   //           sub.apply_effects(s1, eff),
-    //   //           ref,
-    //   //         )
-    //   //       let s3 = compose(s2, s1)
-    //   //       #(s3, t.Extend(label, sub.apply(s3, t), sub.apply_row(s3, row)))
-    //   //     },
-    //   //   )
-    // todo
-    // let s2k = unify(typ, t.Record(row), ref)
-    // compose(s2k, sjs1)
+    // Record creation
+    e.Record(fields, None) -> {
+      let #(s1, row) =
+        list.fold(fields, #(sub.none(), t.Closed), infer_record(env, eff, ref))
+      let s2 = unify(typ, t.Record(row), ref)
+      compose(s2, s1)
+    }
+
+    // Record update
+    e.Record(fields, Some(x)) ->
+      case map.get(env, x) {
+        Ok(scheme) -> {
+          let root = instantiate(scheme, ref)
+          let s0 = unify(typ, root, ref)
+          let #(s1, row) =
+            list.fold(
+              fields,
+              #(s0, t.Open(fresh(ref))),
+              infer_record(env, eff, ref),
+            )
+          let s2 = compose(s1, s0)
+          let s3 = unify(apply(s2, typ), apply(s2, t.Record(row)), ref)
+          compose(s3, s2)
+        }
+        Error(Nil) -> todo("missing record to extend variable")
+      }
     e.Select(label) -> {
       let t = t.Unbound(fresh(ref))
       let r = t.Open(fresh(ref))
@@ -100,5 +101,17 @@ pub fn infer(env, exp, typ, eff, ref) {
       let e = t.Open(fresh(ref))
       unify(typ, t.Fun(t, e, t.Union(t.Extend(label, t, r))), ref)
     }
+  }
+}
+
+fn infer_record(env, eff, ref) {
+  fn(state, field) {
+    let #(s1, row) = state
+    let #(label, value) = field
+    let t = t.Unbound(fresh(ref))
+    let s2 =
+      infer(env, value, sub.apply(s1, t), sub.apply_effects(s1, eff), ref)
+    let s3 = compose(s2, s1)
+    #(s3, t.Extend(label, sub.apply(s3, t), sub.apply_row(s3, row)))
   }
 }
