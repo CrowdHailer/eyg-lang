@@ -15,8 +15,11 @@ pub type Expression {
   // Row
   Record(fields: List(#(String, Expression)), from: Option(String))
   Select(label: String)
-
   Tag(label: String)
+  Match(
+    value: Expression,
+    branches: List(#(String, String, Expression)),
+    tail: Option(#(String, Expression)),
+  )
 }
-// match
 // Effect

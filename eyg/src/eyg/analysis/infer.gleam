@@ -101,6 +101,42 @@ pub fn infer(env, exp, typ, eff, ref) {
       let e = t.Open(fresh(ref))
       unify(typ, t.Fun(t, e, t.Union(t.Extend(label, t, r))), ref)
     }
+    e.Match(value, branches, tail) -> {
+      let state = case tail {
+        Some(#(param, then)) -> {
+          let tail = t.Open(fresh(ref))
+          let env = map.insert(env, param, Scheme([], t.Union(tail)))
+          let s = infer(env, then, typ, eff, ref)
+          #(s, sub.apply_row(s, tail))
+        }
+        None -> #(sub.none(), t.Closed)
+      }
+      let #(s1, row) =
+        list.fold(
+          branches,
+          state,
+          fn(state, branch) {
+            let #(s1, row) = state
+            let #(label, param, then) = branch
+            let field_type = t.Unbound(fresh(ref))
+            let env = map.insert(env, param, Scheme([], field_type))
+            let s2 =
+              infer(
+                env,
+                then,
+                sub.apply(s1, typ),
+                sub.apply_effects(s1, eff),
+                ref,
+              )
+            let s3 = compose(s2, s1)
+            let row =
+              t.Extend(label, sub.apply(s3, field_type), sub.apply_row(s3, row))
+            #(s3, row)
+          },
+        )
+      let s2 = infer(env, value, t.Union(row), eff, ref)
+      compose(s2, s1)
+    }
   }
 }
 

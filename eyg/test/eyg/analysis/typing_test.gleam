@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/map
-import gleam/option
+import gleam/option.{None, Some}
 import gleam/set
 import gleam/setx
 import eyg/analysis/expression as e
@@ -292,6 +292,45 @@ pub fn tag_test() {
   assert t.Union(t.Extend(l, a, t.Open(_))) = resolve(sub, typ)
   should.equal(a, t.Binary)
   should.equal(l, "foo")
+}
+
+// empty match is an error
+pub fn closed_match_test() {
+  let branches = [#("Some", "v", e.Variable("v")), #("None", "", e.Binary)]
+  let exp = e.Match(e.Variable("x"), branches, None)
+  let env = env.empty()
+  let x = Scheme([], t.Unbound(-2))
+  let env = map.insert(env, "x", x)
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Binary = resolve(sub, typ)
+  assert t.Union(t.Extend(
+    label: "None",
+    value: t.Unbound(1),
+    tail: t.Extend(label: "Some", value: t.Binary, tail: t.Closed),
+  )) = resolve(sub, t.Unbound(-2))
+}
+
+pub fn open_match_test() {
+  let branches = [#("Some", "v", e.Variable("v")), #("None", "", e.Binary)]
+  let exp = e.Match(e.Variable("x"), branches, Some(#("", e.Binary)))
+  let env = env.empty()
+  let x = Scheme([], t.Unbound(-2))
+  let env = map.insert(env, "x", x)
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Binary = resolve(sub, typ)
+  assert t.Union(t.Extend(
+    label: "None",
+    value: t.Unbound(_),
+    tail: t.Extend(label: "Some", value: t.Binary, tail: t.Open(_)),
+  )) = resolve(sub, t.Unbound(-2))
 }
 // Collect effects
 // effects in functions
