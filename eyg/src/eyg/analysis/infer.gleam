@@ -137,6 +137,12 @@ pub fn infer(env, exp, typ, eff, ref) {
       let s2 = infer(env, value, t.Union(row), eff, ref)
       compose(s2, s1)
     }
+    e.Perform(label) -> {
+      let arg = t.Unbound(fresh(ref))
+      let ret = t.Unbound(fresh(ref))
+      let tail = t.Open(fresh(ref))
+      unify(typ, t.Fun(arg, t.Extend(label, #(arg, ret), tail), ret), ref)
+    }
   }
 }
 

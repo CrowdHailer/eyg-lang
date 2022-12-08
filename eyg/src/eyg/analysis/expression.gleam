@@ -21,5 +21,12 @@ pub type Expression {
     branches: List(#(String, String, Expression)),
     tail: Option(#(String, Expression)),
   )
+
+  // Effect
+  // do/act/effect(effect is a verb and noun)
+  Perform(label: String)
 }
-// Effect
+// TODO read koka paper
+// single label only but we need continuation etc
+// Handle(label: String, param String, )  fn(a) -> <label x,y | eff>
+// Handle with no label fn(fn(a, lslslsll, b), action) -> exec

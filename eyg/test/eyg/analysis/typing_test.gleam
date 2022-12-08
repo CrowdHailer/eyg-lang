@@ -9,7 +9,7 @@ import eyg/analysis/env
 import eyg/analysis/infer.{infer}
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
-import eyg/analysis/unification.{resolve}
+import eyg/analysis/unification.{resolve, resolve_effect, resolve_row}
 import gleam/javascript
 import gleeunit/should
 
@@ -142,7 +142,7 @@ pub fn pure_function_call_test() {
 
 // call generic could be a test row(a = id(Int) b = id(Int))
 
-fn field(row, label) {
+fn field(row: t.Row(a), label) {
   case row {
     t.Open(_) | t.Closed -> Error(Nil)
     t.Extend(l, t, _) if l == label -> Ok(t)
@@ -332,6 +332,47 @@ pub fn open_match_test() {
     tail: t.Extend(label: "Some", value: t.Binary, tail: t.Open(_)),
   )) = resolve(sub, t.Unbound(-2))
 }
-// Collect effects
-// effects in functions
+
+pub fn single_effect_test() {
+  let exp = e.Perform("Log")
+  let env = env.empty()
+  let typ = t.Unbound(-1)
+  let eff = t.Open(-2)
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  // No effects untill called
+  assert t.Open(-2) = resolve_effect(sub, eff)
+  assert t.Fun(t.Unbound(arg), fn_eff, t.Unbound(ret)) = resolve(sub, typ)
+  assert Ok(#(t.Unbound(lift), t.Unbound(cont))) = field(fn_eff, "Log")
+  should.not_equal(lift, cont)
+  should.equal(arg, lift)
+  should.equal(cont, ret)
+
+  // test effects are raised when called
+  let exp = e.Apply(exp, e.Binary)
+  let typ = t.Integer
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Ok(#(t.Binary, t.Integer)) =
+    resolve_effect(sub, eff)
+    |> field("Log")
+}
+
+pub fn collect_effects_test() {
+  let exp = e.Apply(e.Perform("Log"), e.Apply(e.Perform("Ask"), e.Binary))
+  let env = env.empty()
+  let typ = t.Unbound(-1)
+  let eff = t.Open(-2)
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Unbound(final) = resolve(sub, typ)
+  let raised = resolve_effect(sub, eff)
+  assert Ok(#(t.Binary, t.Unbound(ret1))) = field(raised, "Ask")
+  assert Ok(#(t.Unbound(lift2), t.Unbound(ret2))) = field(raised, "Log")
+  should.equal(ret1, lift2)
+  should.equal(ret2, final)
+}
 // infer apply where func &arg create effect and final application
+// path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
