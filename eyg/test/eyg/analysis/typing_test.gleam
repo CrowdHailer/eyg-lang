@@ -376,3 +376,5 @@ pub fn collect_effects_test() {
 }
 // infer apply where func &arg create effect and final application
 // path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
+
+// handle(label)(fn(lift) fn(cont))
