@@ -205,26 +205,25 @@ pub fn record_update_test() {
   ) = row
 }
 
-// TODO update type
-// pub fn record_update_type_test() {
-//   let exp = e.Record([#("foo", e.Binary)], option.Some("x"))
-//   let env = env.empty()
-//   let mono =
-//     t.Record(t.Extend("foo", t.Integer, t.Extend("bar", t.Integer, t.Closed)))
-//   let x = Scheme([], mono)
-//   let env = map.insert(env, "x", x)
-//   let typ = t.Unbound(-1)
-//   let eff = t.Closed
+pub fn record_update_type_test() {
+  let exp = e.Record([#("foo", e.Binary)], option.Some("x"))
+  let env = env.empty()
+  let mono =
+    t.Record(t.Extend("foo", t.Integer, t.Extend("bar", t.Integer, t.Closed)))
+  let x = Scheme([], mono)
+  let env = map.insert(env, "x", x)
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
 
-//   let ref = javascript.make_reference(0)
-//   let sub = infer(env, exp, typ, eff, ref)
-//   assert t.Record(row) = resolve(sub, typ)
-//   assert t.Extend(
-//     label: "foo",
-//     value: t.Binary,
-//     tail: t.Extend(label: "bar", value: t.Integer, tail: t.Closed),
-//   ) = row
-// }
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Record(row) = resolve(sub, typ)
+  assert t.Extend(
+    label: "foo",
+    value: t.Binary,
+    tail: t.Extend(label: "bar", value: t.Integer, tail: t.Closed),
+  ) = row
+}
 
 pub fn select_test() {
   let exp = e.Select("foo")

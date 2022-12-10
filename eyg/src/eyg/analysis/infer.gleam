@@ -8,7 +8,9 @@ import eyg/analysis/substitutions.{apply,
   apply_effects, apply_row, compose} as sub
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/env
-import eyg/analysis/unification.{fresh, generalise, instantiate, unify}
+import eyg/analysis/unification.{
+  fresh, generalise, instantiate, unify, unify_row,
+}
 
 // alg w
 // alg w_fix
@@ -62,32 +64,56 @@ pub fn infer(env, exp, typ, eff, ref) {
     e.Integer -> unify(typ, t.Integer, ref)
     e.Vacant -> sub.none()
 
-    // Record creation
-    e.Record(fields, None) -> {
-      let #(s1, row) =
-        list.fold(fields, #(sub.none(), t.Closed), infer_record(env, eff, ref))
-      let s2 = unify(typ, t.Record(row), ref)
-      compose(s2, s1)
-    }
-
-    // Record update
-    e.Record(fields, Some(x)) ->
-      case map.get(env, x) {
-        Ok(scheme) -> {
-          let root = instantiate(scheme, ref)
-          let s0 = unify(typ, root, ref)
-          let #(s1, row) =
-            list.fold(
-              fields,
-              #(s0, t.Open(fresh(ref))),
-              infer_record(env, eff, ref),
-            )
-          let s2 = compose(s1, s0)
-          let s3 = unify(apply(s2, typ), apply(s2, t.Record(row)), ref)
-          compose(s3, s2)
+    e.Record(fields, tail) -> {
+      let row = t.Open(fresh(ref))
+      // if type already defined then this unifies the fields inference
+      let s1 = unify(typ, t.Record(row), ref)
+      let row = apply_row(s1, row)
+      let #(unchanged, s2, update) =
+        list.fold_right(
+          fields,
+          #(row, s1, []),
+          fn(state, field) {
+            let #(label, value) = field
+            let #(r, s1, update) = state
+            let t = t.Unbound(fresh(ref))
+            let next = t.Open(fresh(ref))
+            let s2 = unify_row(r, t.Extend(label, t, next), ref)
+            let s3 = compose(s2, s1)
+            let t = apply(s3, t)
+            let eff = apply_effects(s3, eff)
+            let s4 = infer(env, value, t, eff, ref)
+            let s5 = compose(s4, s3)
+            #(apply_row(s5, next), s5, [label, ..update])
+          },
+        )
+      let s3 = compose(s2, s1)
+      case tail {
+        Some(var) ->
+          case map.get(env, var) {
+            Ok(scheme) -> {
+              let previous = instantiate(scheme, ref)
+              // If there is a variable we assume update semantics, not extend.
+              // A new type var is instantiated for each field because we allow type changes.
+              // For extend we could unify without applying the update fields.
+              let row =
+                list.fold(
+                  update,
+                  apply_row(s3, unchanged),
+                  fn(row, label) { t.Extend(label, t.Unbound(fresh(ref)), row) },
+                )
+              let s4 = unify(t.Record(row), previous, ref)
+              compose(s4, s3)
+            }
+            Error(_) -> todo("missing tail")
+          }
+        None -> {
+          // If there is no variable we are creating a record and therefor it has no tail
+          let s4 = unify_row(unchanged, t.Closed, ref)
+          compose(s4, s3)
         }
-        Error(Nil) -> todo("missing record to extend variable")
       }
+    }
     e.Select(label) -> {
       let t = t.Unbound(fresh(ref))
       let r = t.Open(fresh(ref))
@@ -101,6 +127,7 @@ pub fn infer(env, exp, typ, eff, ref) {
       let e = t.Open(fresh(ref))
       unify(typ, t.Fun(t, e, t.Union(t.Extend(label, t, r))), ref)
     }
+    // TODO this becomes apply
     e.Match(value, branches, tail) -> {
       let state = case tail {
         Some(#(param, then)) -> {

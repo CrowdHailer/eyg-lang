@@ -93,7 +93,7 @@ fn rewrite_row(row, new_label, ref) {
   }
 }
 
-fn unify_row(r1, r2, ref) {
+pub fn unify_row(r1, r2, ref) {
   case r1, r2 {
     t.Closed, t.Closed -> sub.none()
     t.Open(u), t.Open(v) if u == v -> sub.none()
