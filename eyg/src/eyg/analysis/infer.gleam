@@ -131,41 +131,43 @@ pub fn infer(env, exp, typ, eff, ref) {
       unify(typ, t.Fun(t, e, t.Union(t.Extend(label, t, r))), ref)
     }
     // TODO this becomes apply
-    e.Match(value, branches, tail) -> {
-      let state = case tail {
-        Some(#(param, then)) -> {
-          let tail = t.Open(fresh(ref))
-          let env = map.insert(env, param, Scheme([], t.Union(tail)))
-          let s = infer(env, then, typ, eff, ref)
-          #(s, sub.apply_row(s, tail))
-        }
-        None -> #(sub.none(), t.Closed)
-      }
-      let #(s1, row) =
+    e.Match(branches, tail) -> {
+      let inner = t.Open(fresh(ref))
+      let row = t.Open(fresh(ref))
+      let ret = t.Unbound(fresh(ref))
+      let needed = t.Fun(t.Union(row), inner, ret)
+      let s1 = unify(typ, needed, ref)
+      let #(s2, remaining) =
         list.fold(
           branches,
-          state,
+          #(s1, apply_row(s1, row)),
           fn(state, branch) {
             let #(s1, row) = state
             let #(label, param, then) = branch
             let field_type = t.Unbound(fresh(ref))
-            let env = map.insert(env, param, Scheme([], field_type))
-            let s2 =
-              infer(
-                env,
-                then,
-                sub.apply(s1, typ),
-                sub.apply_effects(s1, eff),
-                ref,
-              )
+            let remaining = t.Open(fresh(ref))
+            let s2 = unify_row(row, t.Extend(label, field_type, remaining), ref)
             let s3 = compose(s2, s1)
-            let row =
-              t.Extend(label, sub.apply(s3, field_type), sub.apply_row(s3, row))
-            #(s3, row)
+            let env = map.insert(env, param, Scheme([], apply(s3, field_type)))
+            let s4 =
+              infer(env, then, apply(s3, ret), apply_effects(s3, inner), ref)
+            let s5 = compose(s4, s3)
+            #(s5, apply_row(s5, remaining))
           },
         )
-      let s2 = infer(env, value, t.Union(row), eff, ref)
-      compose(s2, s1)
+      // s2 already unifed with s1
+      case tail {
+        Some(#(param, then)) -> {
+          let env = map.insert(env, param, Scheme([], t.Union(remaining)))
+          let s3 =
+            infer(env, then, apply(s2, ret), apply_effects(s2, inner), ref)
+          compose(s3, s2)
+        }
+        None -> {
+          let s3 = unify_row(remaining, t.Closed, ref)
+          compose(s3, s2)
+        }
+      }
     }
     e.Perform(label) -> {
       let arg = t.Unbound(fresh(ref))

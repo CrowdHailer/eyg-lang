@@ -17,7 +17,6 @@ pub type Expression {
   Select(label: String)
   Tag(label: String)
   Match(
-    value: Expression,
     branches: List(#(String, String, Expression)),
     tail: Option(#(String, Expression)),
   )
@@ -25,6 +24,7 @@ pub type Expression {
   // Effect
   // do/act/effect(effect is a verb and noun)
   Perform(label: String)
+  // variable is the parameter name for the state
   Deep(variable: String, branches: List(#(String, String, String, Expression)))
 }
 
@@ -129,7 +129,7 @@ pub const unit = Record([], None)
 
 // // let run = fix(effectful -> handle{})
 // // shallow
-// fn with_reader(dict) { 
+// fn with_reader(dict) {
 //   let effectful = handle {
 //     Read key, continue -> effectful(continue(map.get(key, or: "empty text")))
 //   }
@@ -155,7 +155,7 @@ pub const unit = Record([], None)
 
 // // Need fix + shallow or state i.e. deep
 //   // no rec needed
-// fn with_reader(words) { 
+// fn with_reader(words) {
 //   handle(state) {
 //     Read key, continue -> continue(state, map.get(key, or: "empty text"))
 //   }(words)
@@ -163,14 +163,14 @@ pub const unit = Record([], None)
 
 // // This needs continuation in the effect types but allows state to be optional
 // // continue can return a thunk
-// fn with_reader(words) { 
+// fn with_reader(words) {
 //   let rec run = fn(state) handle {
 //     Read key, continue -> run(state, continue(map.get(key, or: "empty text")))
 //   }
 //   run(words)
 // }
 
-// fn choose(prog) { 
+// fn choose(prog) {
 //   // no rec needed
 //   (handle(state) {
 //     Random Nil, k -> append(k(state, True), k(state, False))
@@ -178,7 +178,7 @@ pub const unit = Record([], None)
 // }
 
 // // state optional
-// fn choose(prog) { 
+// fn choose(prog) {
 //   // no rec needed
 //   (handle {
 //     Random _, cont -> append(cont(True), cont(False))

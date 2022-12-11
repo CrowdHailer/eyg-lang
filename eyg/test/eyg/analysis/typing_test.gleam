@@ -296,41 +296,39 @@ pub fn tag_test() {
 // empty match is an error
 pub fn closed_match_test() {
   let branches = [#("Some", "v", e.Variable("v")), #("None", "", e.Binary)]
-  let exp = e.Match(e.Variable("x"), branches, None)
+  let exp = e.Match(branches, None)
   let env = env.empty()
-  let x = Scheme([], t.Unbound(-2))
-  let env = map.insert(env, "x", x)
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
-  assert t.Binary = resolve(sub, typ)
+  assert t.Fun(union, _, t.Binary) = resolve(sub, typ)
   assert t.Union(t.Extend(
-    label: "None",
-    value: t.Unbound(1),
-    tail: t.Extend(label: "Some", value: t.Binary, tail: t.Closed),
-  )) = resolve(sub, t.Unbound(-2))
+    label: "Some",
+    value: t.Binary,
+    tail: t.Extend(label: "None", value: t.Unbound(_), tail: t.Closed),
+  )) = union
 }
 
 pub fn open_match_test() {
   let branches = [#("Some", "v", e.Variable("v")), #("None", "", e.Binary)]
-  let exp = e.Match(e.Variable("x"), branches, Some(#("", e.Binary)))
+  let exp = e.Match(branches, Some(#("", e.Binary)))
   let env = env.empty()
-  let x = Scheme([], t.Unbound(-2))
-  let env = map.insert(env, "x", x)
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
-  assert t.Binary = resolve(sub, typ)
+  assert t.Fun(union, _, t.Binary) = resolve(sub, typ)
   assert t.Union(t.Extend(
-    label: "None",
-    value: t.Unbound(_),
-    tail: t.Extend(label: "Some", value: t.Binary, tail: t.Open(_)),
-  )) = resolve(sub, t.Unbound(-2))
+    label: "Some",
+    value: t.Binary,
+    tail: t.Extend(label: "None", value: t.Unbound(_), tail: t.Open(_)),
+  )) = union
 }
+
+// Test raising effects in branches are matched
 
 pub fn single_effect_test() {
   let exp = e.Perform("Log")
