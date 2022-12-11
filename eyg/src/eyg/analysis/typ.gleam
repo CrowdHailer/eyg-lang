@@ -19,6 +19,8 @@ pub type Term {
   Record(Row(Term))
 }
 
+pub const unit = Record(Closed)
+
 pub type Variable {
   Term(Int)
   Row(Int)

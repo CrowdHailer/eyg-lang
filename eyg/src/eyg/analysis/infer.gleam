@@ -130,7 +130,6 @@ pub fn infer(env, exp, typ, eff, ref) {
       let e = t.Open(fresh(ref))
       unify(typ, t.Fun(t, e, t.Union(t.Extend(label, t, r))), ref)
     }
-    // TODO this becomes apply
     e.Match(branches, tail) -> {
       let inner = t.Open(fresh(ref))
       let row = t.Open(fresh(ref))
@@ -178,9 +177,7 @@ pub fn infer(env, exp, typ, eff, ref) {
     // handle
     e.Deep(var, branches) -> {
       // The effects for apply the fn must be open but not necessarily tied to eff in this context, they can be passed around
-      // TODO move unit && thunk to t
       // unit -> body is a defered computation
-      let unit = t.Record(t.Closed)
       // linking parts of the handler, ret is same before and after handler applies, see examples
       let state = t.Unbound(fresh(ref))
       let ret = t.Unbound(fresh(ref))
@@ -191,10 +188,10 @@ pub fn infer(env, exp, typ, eff, ref) {
         t.Fun(
           state,
           t.Open(fresh(ref)),
-          t.Fun(t.Fun(unit, effects, ret), uncaught, ret),
+          t.Fun(t.Fun(t.unit, effects, ret), uncaught, ret),
         )
       let s1 = unify(typ, needed, ref)
-      let #(s2, extended) =
+      let #(s2, _extended) =
         list.fold(
           branches,
           #(s1, apply_effects(s1, uncaught)),

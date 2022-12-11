@@ -378,7 +378,6 @@ pub fn deep_handler_test() {
   let exp = e.Deep("state", [#("Put", "new", "k", then)])
   // We make the state the same as the raised value
   // I think exec & comp is a good set of naming.
-  // TODO make Case the same kind of function thing
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Open(-2)
@@ -406,7 +405,6 @@ pub fn deep_handler_test() {
 }
 
 // path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
-// TODO case without value,
 
 pub fn anony_test() {
   let exp =
