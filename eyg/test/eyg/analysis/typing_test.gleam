@@ -6,12 +6,28 @@ import gleam/setx
 import eygir/expression as e
 import eyg/analysis/typ.{ftv} as t
 import eyg/analysis/env
-import eyg/analysis/inference.{infer}
+import eyg/analysis/inference
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
-import eyg/analysis/unification.{resolve, resolve_effect, resolve_row}
+import eyg/analysis/unification
 import gleam/javascript
 import gleeunit/should
+
+pub fn infer(env, exp, typ, eff, ref) {
+  inference.infer(env, exp, typ, eff, ref, [])
+}
+
+pub fn resolve(inf: inference.Infered, typ) {
+  unification.resolve(inf.substitutions, typ)
+}
+
+pub fn resolve_row(inf: inference.Infered, row) {
+  unification.resolve_row(inf.substitutions, row)
+}
+
+pub fn resolve_effect(inf: inference.Infered, row) {
+  unification.resolve_effect(inf.substitutions, row)
+}
 
 pub fn free_type_variables_test() {
   ftv(t.Unbound(0))
@@ -46,6 +62,17 @@ pub fn free_type_variables_test() {
   |> should.equal(set.from_list([t.Term(1), t.Term(2), t.Effect(3)]))
 }
 
+fn type_of(inf: inference.Infered, path) {
+  let r = case map.get(inf.paths, path) {
+    Ok(r) -> r
+    Error(Nil) -> todo("invalid path")
+  }
+  case r {
+    Ok(t) -> Ok(unification.resolve(inf.substitutions, t))
+    Error(reason) -> Error(reason)
+  }
+}
+
 // Primitive
 pub fn binary_test() {
   let exp = e.Binary("hi")
@@ -60,6 +87,7 @@ pub fn binary_test() {
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Binary = resolve(sub, typ)
+  assert Ok(t.Binary) = type_of(sub, [])
 }
 
 pub fn integer_test() {
@@ -92,6 +120,8 @@ pub fn variables_test() {
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Binary = resolve(sub, typ)
+  assert Ok(t.Binary) = type_of(sub, [1])
+  assert Ok(t.Binary) = type_of(sub, [2])
 }
 
 // let x = x is an error
@@ -121,7 +151,9 @@ pub fn pure_function_test() {
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Fun(t.Unbound(x), t.Open(2), t.Unbound(y)) = resolve(sub, typ)
-  assert True = x == y
+  should.equal(x, y)
+  assert Ok(t.Unbound(z)) = type_of(sub, [1])
+  should.equal(x, z)
 }
 
 pub fn pure_function_call_test() {
@@ -446,5 +478,5 @@ pub fn eval_handled_test() {
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Integer = resolve(sub, typ)
 }
-// path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
-// interpreter + provider
+// path + errors + warnings + alg w + gleam use + fixpoint + equi/iso + external lookup + hash + cbor + zipper
+// interpreter + provider + cps codegen + pull out node for editor

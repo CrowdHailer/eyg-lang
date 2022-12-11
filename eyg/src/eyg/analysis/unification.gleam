@@ -38,32 +38,32 @@ pub fn instantiate(scheme, ref) {
 
 fn varbind(u, typ) {
   case typ {
-    t.Unbound(x) if x == u -> sub.none()
+    t.Unbound(x) if x == u -> Ok(sub.none())
     _ ->
       case set.contains(t.ftv(typ), t.Term(u)) {
         True -> todo("RECURSION IS BACK")
-        False -> sub.term(u, typ)
+        False -> Ok(sub.term(u, typ))
       }
   }
 }
 
-pub fn unify(t1, t2, ref) {
+pub fn unify(t1, t2, ref) -> Result(_, _) {
   case t1, t2 {
     t.Fun(from1, effects1, to1), t.Fun(from2, effects2, to2) -> {
-      let s1 = unify(from1, from2, ref)
-      let s2 = unify(sub.apply(s1, to1), sub.apply(s1, to2), ref)
+      try s1 = unify(from1, from2, ref)
+      try s2 = unify(sub.apply(s1, to1), sub.apply(s1, to2), ref)
       let s3 = sub.compose(s2, s1)
-      let s4 =
+      try s4 =
         unify_effects(
           sub.apply_effects(s3, effects1),
           sub.apply_effects(s3, effects2),
           ref,
         )
-      sub.compose(s4, s3)
+      Ok(sub.compose(s4, s3))
     }
     t.Unbound(u), t | t, t.Unbound(u) -> varbind(u, t)
-    t.Binary, t.Binary -> sub.none()
-    t.Integer, t.Integer -> sub.none()
+    t.Binary, t.Binary -> Ok(sub.none())
+    t.Integer, t.Integer -> Ok(sub.none())
     t.Record(r1), t.Record(r2) -> unify_row(r1, r2, ref)
     _, _ -> {
       io.debug(#(t1, t2))
@@ -95,17 +95,17 @@ fn rewrite_row(row, new_label, ref) {
 
 pub fn unify_row(r1, r2, ref) {
   case r1, r2 {
-    t.Closed, t.Closed -> sub.none()
-    t.Open(u), t.Open(v) if u == v -> sub.none()
-    t.Open(u), r | r, t.Open(u) -> sub.row(u, r)
+    t.Closed, t.Closed -> Ok(sub.none())
+    t.Open(u), t.Open(v) if u == v -> Ok(sub.none())
+    t.Open(u), r | r, t.Open(u) -> Ok(sub.row(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
     t.Extend(label, t1, tail1), r -> {
       let #(t2, tail2, s1) = rewrite_row(r, label, ref)
-      let s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
+      try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
       let s3 = sub.compose(s2, s1)
-      let s4 =
+      try s4 =
         unify_row(sub.apply_row(s3, tail1), sub.apply_row(s3, tail2), ref)
-      sub.compose(s4, s3)
+      Ok(sub.compose(s4, s3))
     }
   }
 }
@@ -134,23 +134,23 @@ fn rewrite_effect(effect, new_label, ref) {
 
 pub fn unify_effects(eff1, eff2, ref) {
   case eff1, eff2 {
-    t.Closed, t.Closed -> sub.none()
-    t.Open(u), t.Open(v) if u == v -> sub.none()
-    t.Open(u), r | r, t.Open(u) -> sub.effect(u, r)
+    t.Closed, t.Closed -> Ok(sub.none())
+    t.Open(u), t.Open(v) if u == v -> Ok(sub.none())
+    t.Open(u), r | r, t.Open(u) -> Ok(sub.effect(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
     t.Extend(label, #(t1, u1), tail1), r -> {
       let #(#(t2, u2), tail2, s1) = rewrite_effect(r, label, ref)
-      let s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
+      try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
       let s3 = sub.compose(s2, s1)
-      let s4 = unify(sub.apply(s1, u1), sub.apply(s1, u2), ref)
+      try s4 = unify(sub.apply(s1, u1), sub.apply(s1, u2), ref)
       let s5 = sub.compose(s4, s3)
-      let s6 =
+      try s6 =
         unify_effects(
           sub.apply_effects(s5, tail1),
           sub.apply_effects(s5, tail2),
           ref,
         )
-      sub.compose(s6, s5)
+      Ok(sub.compose(s6, s5))
     }
   }
 }
