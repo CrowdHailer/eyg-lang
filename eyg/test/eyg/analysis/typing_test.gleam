@@ -373,7 +373,75 @@ pub fn collect_effects_test() {
   should.equal(ret1, lift2)
   should.equal(ret2, final)
 }
-// infer apply where func &arg create effect and final application
-// path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
 
-// handle(label)(fn(lift) fn(cont))
+pub fn deep_handler_test() {
+  // Put new, k -> k(new, 0)
+  let then = e.Apply(e.Apply(e.Variable("k"), e.Variable("new")), e.Integer)
+  let exp = e.Deep("state", [#("Put", "new", "k", then)])
+  // We make the state the same as the raised value
+  // I think exec & comp is a good set of naming.
+  // TODO make Case the same kind of function thing
+  let env = env.empty()
+  let typ = t.Unbound(-1)
+  let eff = t.Open(-2)
+
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Open(e0) = resolve_effect(sub, eff)
+  assert t.Fun(t.Unbound(state1), t.Open(e1), exec) = resolve(sub, typ)
+  should.not_equal(e0, e1)
+  assert t.Fun(comp, t.Open(e2), t.Unbound(ret1)) = exec
+  should.not_equal(e0, e2)
+  should.not_equal(e1, e2)
+  assert t.Fun(t.Record(t.Closed), inner, t.Unbound(ret2)) = comp
+  // we have chosen to not need a pure handler part of the expression,
+  // maybe needed if pure handler raises other effects
+  should.equal(ret1, ret2)
+  assert t.Extend("Put", #(t.Unbound(call), reply), t.Open(tail)) = inner
+  // Put save the call value in state
+  should.equal(call, state1)
+  should.equal(reply, t.Integer)
+  // calling the exec function with comp as an argument have all the uncaugt effects plus inner ones
+  should.equal(e2, tail)
+  // call with binary make state binary
+  // call comp with perform last makes int return value
+}
+
+// path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
+// TODO case without value,
+
+pub fn anony_test() {
+  let exp =
+    e.Apply(
+      e.Lambda("f", e.Apply(e.Variable("f"), e.Binary)),
+      e.Lambda("_", e.Integer),
+    )
+
+  let env = env.empty()
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Integer = resolve(sub, typ)
+}
+
+pub fn eval_handled_test() {
+  let then =
+    e.Apply(e.Apply(e.Variable("k"), e.Variable("state")), e.Variable("state"))
+  let handler = e.Deep("state", [#("Get", "_", "k", then)])
+  let comp = e.Lambda("_", e.Apply(e.Perform("Get"), e.Binary))
+  let exp = e.Apply(e.Apply(handler, e.Integer), comp)
+
+  let env = env.empty()
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, comp, typ, eff, ref)
+  assert _ = resolve(sub, typ)
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, e.Apply(handler, e.Integer), typ, eff, ref)
+  assert _ = resolve(sub, typ)
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.Integer = resolve(sub, typ)
+}

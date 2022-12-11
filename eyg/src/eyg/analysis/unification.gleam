@@ -132,7 +132,7 @@ fn rewrite_effect(effect, new_label, ref) {
   }
 }
 
-fn unify_effects(eff1, eff2, ref) {
+pub fn unify_effects(eff1, eff2, ref) {
   case eff1, eff2 {
     t.Closed, t.Closed -> sub.none()
     t.Open(u), t.Open(v) if u == v -> sub.none()

@@ -9,7 +9,7 @@ import eyg/analysis/substitutions.{apply,
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/env
 import eyg/analysis/unification.{
-  fresh, generalise, instantiate, unify, unify_row,
+  fresh, generalise, instantiate, unify, unify_effects, unify_row,
 }
 
 // alg w
@@ -27,7 +27,7 @@ pub fn infer(env, exp, typ, eff, ref) {
       let env =
         env.apply(s1, env)
         |> map.insert(arg, Scheme([], apply(s1, t)))
-      let s2 = infer(env, body, apply(s1, u), r, ref)
+      let s2 = infer(env, body, apply(s1, u), apply_effects(s1, r), ref)
       compose(s2, s1)
     }
     e.Apply(func, arg) -> {
@@ -49,14 +49,17 @@ pub fn infer(env, exp, typ, eff, ref) {
           let t = instantiate(scheme, ref)
           unify(typ, t, ref)
         }
-        Error(Nil) -> todo("inconsis variable")
+        Error(Nil) -> {
+          io.debug(x)
+          todo("inconsis variable")
+        }
       }
     e.Let(x, value, then) -> {
       let t = t.Unbound(fresh(ref))
       let s1 = infer(env, value, t, eff, ref)
       let scheme = generalise(env.apply(s1, env), apply(s1, t))
       let env = env.apply(s1, map.insert(env, x, scheme))
-      let s2 = infer(env, then, typ, eff, ref)
+      let s2 = infer(env, then, apply(s1, typ), apply_effects(s1, eff), ref)
       compose(s2, s1)
     }
     // Primitive
@@ -170,17 +173,61 @@ pub fn infer(env, exp, typ, eff, ref) {
       let tail = t.Open(fresh(ref))
       unify(typ, t.Fun(arg, t.Extend(label, #(arg, ret), tail), ret), ref)
     }
-  }
-}
-
-fn infer_record(env, eff, ref) {
-  fn(state, field) {
-    let #(s1, row) = state
-    let #(label, value) = field
-    let t = t.Unbound(fresh(ref))
-    let s2 =
-      infer(env, value, sub.apply(s1, t), sub.apply_effects(s1, eff), ref)
-    let s3 = compose(s2, s1)
-    #(s3, t.Extend(label, sub.apply(s3, t), sub.apply_row(s3, row)))
+    // handle
+    e.Deep(var, branches) -> {
+      // The effects for apply the fn must be open but not necessarily tied to eff in this context, they can be passed around
+      // TODO move unit && thunk to t
+      // unit -> body is a defered computation
+      let unit = t.Record(t.Closed)
+      // linking parts of the handler, ret is same before and after handler applies, see examples
+      let state = t.Unbound(fresh(ref))
+      let ret = t.Unbound(fresh(ref))
+      // effects consist of all in this handler and all uncaught
+      let uncaught = t.Open(fresh(ref))
+      let effects = t.Open(fresh(ref))
+      let needed =
+        t.Fun(
+          state,
+          t.Open(fresh(ref)),
+          t.Fun(t.Fun(unit, effects, ret), uncaught, ret),
+        )
+      let s1 = unify(typ, needed, ref)
+      let #(s2, extended) =
+        list.fold(
+          branches,
+          #(s1, apply_effects(s1, uncaught)),
+          fn(acc, branch) {
+            let #(s1, row) = acc
+            let #(label, param, kont, then) = branch
+            let call = t.Unbound(fresh(ref))
+            let reply = t.Unbound(fresh(ref))
+            // What should this unify with
+            let extended = t.Extend(label, #(call, reply), row)
+            let s2 = unify_effects(effects, extended, ref)
+            let s3 = compose(s2, s1)
+            let env =
+              env
+              |> map.insert(var, Scheme([], state))
+              |> map.insert(param, Scheme([], apply(s3, call)))
+              |> map.insert(
+                kont,
+                Scheme(
+                  [],
+                  t.Fun(
+                    state,
+                    t.Open(fresh(ref)),
+                    t.Fun(reply, effects, apply(s3, ret)),
+                  ),
+                ),
+              )
+            let s4 =
+              infer(env, then, apply(s3, ret), apply_effects(s3, eff), ref)
+            let s5 = compose(s4, s3)
+            let row = apply_effects(s5, extended)
+            #(s5, row)
+          },
+        )
+      s2
+    }
   }
 }
