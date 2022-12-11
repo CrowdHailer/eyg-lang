@@ -6,7 +6,7 @@ import gleam/setx
 import eyg/analysis/expression as e
 import eyg/analysis/typ.{ftv} as t
 import eyg/analysis/env
-import eyg/analysis/infer.{infer}
+import eyg/analysis/inference.{infer}
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification.{resolve, resolve_effect, resolve_row}
@@ -404,8 +404,6 @@ pub fn deep_handler_test() {
   // call comp with perform last makes int return value
 }
 
-// path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
-
 pub fn anony_test() {
   let exp =
     e.Apply(
@@ -441,3 +439,5 @@ pub fn eval_handled_test() {
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Integer = resolve(sub, typ)
 }
+// path + errors + warnings + fixpoint + equi/iso + external lookup + hash + zipper
+// interpreter + provider
