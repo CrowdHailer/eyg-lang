@@ -3,7 +3,7 @@ import gleam/map
 import gleam/option.{None, Some}
 import gleam/set
 import gleam/setx
-import eyg/analysis/expression as e
+import eygir/expression as e
 import eyg/analysis/typ.{ftv} as t
 import eyg/analysis/env
 import eyg/analysis/inference.{infer}
@@ -48,7 +48,7 @@ pub fn free_type_variables_test() {
 
 // Primitive
 pub fn binary_test() {
-  let exp = e.Binary
+  let exp = e.Binary("hi")
   let env = env.empty()
   let typ = t.Binary
   let eff = t.Closed
@@ -63,7 +63,7 @@ pub fn binary_test() {
 }
 
 pub fn integer_test() {
-  let exp = e.Integer
+  let exp = e.Integer(1)
   let env = env.empty()
   let typ = t.Integer
   let eff = t.Closed
@@ -80,7 +80,7 @@ pub fn integer_test() {
 
 // Variables
 pub fn variables_test() {
-  let exp = e.Let("x", e.Binary, e.Variable("x"))
+  let exp = e.Let("x", e.Binary("hi"), e.Variable("x"))
   let env = env.empty()
   let typ = t.Binary
   let eff = t.Closed
@@ -98,7 +98,7 @@ pub fn variables_test() {
 
 // Functions
 pub fn function_test() {
-  let exp = e.Lambda("x", e.Binary)
+  let exp = e.Lambda("x", e.Binary("hi"))
   let env = env.empty()
   let typ = t.Fun(t.Integer, t.Closed, t.Binary)
   let eff = t.Closed
@@ -126,7 +126,7 @@ pub fn pure_function_test() {
 
 pub fn pure_function_call_test() {
   let func = e.Lambda("x", e.Variable("x"))
-  let exp = e.Apply(func, e.Binary)
+  let exp = e.Apply(func, e.Binary("hi"))
   let env = env.empty()
   let typ = t.Binary
   let eff = t.Closed
@@ -162,7 +162,8 @@ pub fn record_creation_test() {
   assert t.Record(row) = resolve(sub, typ)
   should.equal(row, t.Closed)
 
-  let exp = e.Record([#("foo", e.Binary), #("bar", e.Integer)], option.None)
+  let exp =
+    e.Record([#("foo", e.Binary("hi")), #("bar", e.Integer(1))], option.None)
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Record(row) = resolve(sub, typ)
@@ -189,7 +190,7 @@ pub fn record_update_test() {
   assert t.Open(y) = row
   should.equal(x, y)
 
-  let exp = e.Record([#("foo", e.Binary)], option.Some("x"))
+  let exp = e.Record([#("foo", e.Binary("hi"))], option.Some("x"))
   let env = env.empty()
   let mono =
     t.Record(t.Extend("foo", t.Binary, t.Extend("bar", t.Integer, t.Closed)))
@@ -206,7 +207,7 @@ pub fn record_update_test() {
 }
 
 pub fn record_update_type_test() {
-  let exp = e.Record([#("foo", e.Binary)], option.Some("x"))
+  let exp = e.Record([#("foo", e.Binary("hi"))], option.Some("x"))
   let env = env.empty()
   let mono =
     t.Record(t.Extend("foo", t.Integer, t.Extend("bar", t.Integer, t.Closed)))
@@ -285,7 +286,7 @@ pub fn tag_test() {
   should.equal(a, b)
   should.equal(l, "foo")
 
-  let exp = e.Apply(exp, e.Binary)
+  let exp = e.Apply(exp, e.Binary("hi"))
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Union(t.Extend(l, a, t.Open(_))) = resolve(sub, typ)
@@ -295,7 +296,10 @@ pub fn tag_test() {
 
 // empty match is an error
 pub fn closed_match_test() {
-  let branches = [#("Some", "v", e.Variable("v")), #("None", "", e.Binary)]
+  let branches = [
+    #("Some", "v", e.Variable("v")),
+    #("None", "", e.Binary("hi")),
+  ]
   let exp = e.Match(branches, None)
   let env = env.empty()
   let typ = t.Unbound(-1)
@@ -312,8 +316,11 @@ pub fn closed_match_test() {
 }
 
 pub fn open_match_test() {
-  let branches = [#("Some", "v", e.Variable("v")), #("None", "", e.Binary)]
-  let exp = e.Match(branches, Some(#("", e.Binary)))
+  let branches = [
+    #("Some", "v", e.Variable("v")),
+    #("None", "", e.Binary("hi")),
+  ]
+  let exp = e.Match(branches, Some(#("", e.Binary("hi"))))
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Closed
@@ -347,7 +354,7 @@ pub fn single_effect_test() {
   should.equal(cont, ret)
 
   // test effects are raised when called
-  let exp = e.Apply(exp, e.Binary)
+  let exp = e.Apply(exp, e.Binary("hi"))
   let typ = t.Integer
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
@@ -357,7 +364,7 @@ pub fn single_effect_test() {
 }
 
 pub fn collect_effects_test() {
-  let exp = e.Apply(e.Perform("Log"), e.Apply(e.Perform("Ask"), e.Binary))
+  let exp = e.Apply(e.Perform("Log"), e.Apply(e.Perform("Ask"), e.Binary("hi")))
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Open(-2)
@@ -374,7 +381,7 @@ pub fn collect_effects_test() {
 
 pub fn deep_handler_test() {
   // Put new, k -> k(new, 0)
-  let then = e.Apply(e.Apply(e.Variable("k"), e.Variable("new")), e.Integer)
+  let then = e.Apply(e.Apply(e.Variable("k"), e.Variable("new")), e.Integer(1))
   let exp = e.Deep("state", [#("Put", "new", "k", then)])
   // We make the state the same as the raised value
   // I think exec & comp is a good set of naming.
@@ -407,8 +414,8 @@ pub fn deep_handler_test() {
 pub fn anony_test() {
   let exp =
     e.Apply(
-      e.Lambda("f", e.Apply(e.Variable("f"), e.Binary)),
-      e.Lambda("_", e.Integer),
+      e.Lambda("f", e.Apply(e.Variable("f"), e.Binary("hi"))),
+      e.Lambda("_", e.Integer(1)),
     )
 
   let env = env.empty()
@@ -423,8 +430,8 @@ pub fn eval_handled_test() {
   let then =
     e.Apply(e.Apply(e.Variable("k"), e.Variable("state")), e.Variable("state"))
   let handler = e.Deep("state", [#("Get", "_", "k", then)])
-  let comp = e.Lambda("_", e.Apply(e.Perform("Get"), e.Binary))
-  let exp = e.Apply(e.Apply(handler, e.Integer), comp)
+  let comp = e.Lambda("_", e.Apply(e.Perform("Get"), e.Binary("hi")))
+  let exp = e.Apply(e.Apply(handler, e.Integer(1)), comp)
 
   let env = env.empty()
   let typ = t.Unbound(-1)
@@ -433,7 +440,7 @@ pub fn eval_handled_test() {
   let sub = infer(env, comp, typ, eff, ref)
   assert _ = resolve(sub, typ)
   let ref = javascript.make_reference(0)
-  let sub = infer(env, e.Apply(handler, e.Integer), typ, eff, ref)
+  let sub = infer(env, e.Apply(handler, e.Integer(1)), typ, eff, ref)
   assert _ = resolve(sub, typ)
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)

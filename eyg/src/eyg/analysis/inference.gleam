@@ -2,7 +2,7 @@ import gleam/io
 import gleam/list
 import gleam/map
 import gleam/option.{None, Some}
-import eyg/analysis/expression as e
+import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions.{apply,
   apply_effects, apply_row, compose} as sub
@@ -63,8 +63,8 @@ pub fn infer(env, exp, typ, eff, ref) {
       compose(s2, s1)
     }
     // Primitive
-    e.Binary -> unify(typ, t.Binary, ref)
-    e.Integer -> unify(typ, t.Integer, ref)
+    e.Binary(_) -> unify(typ, t.Binary, ref)
+    e.Integer(_) -> unify(typ, t.Integer, ref)
     e.Vacant -> sub.none()
 
     e.Record(fields, tail) -> {

@@ -7,8 +7,8 @@ pub type Expression {
   Let(label: String, definition: Expression, body: Expression)
 
   // Primitive
-  Integer
-  Binary
+  Integer(value: Int)
+  Binary(value: String)
 
   Vacant
 
