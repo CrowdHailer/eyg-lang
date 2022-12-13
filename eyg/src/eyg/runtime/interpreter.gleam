@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import eygir/expression as e
@@ -35,6 +36,7 @@ fn continue(k, term) {
 // return just k acc wrap in record call continue outside
 fn create_record(fields, env, acc, k) {
   case fields {
+    // possibly continue outside
     [] -> continue(k, Record(acc))
     [#(l, exp), ..rest] -> {
       let k = fn(term) { create_record(rest, env, [#(l, term), ..acc], k) }
@@ -169,10 +171,12 @@ pub fn eval(exp: e.Expression, env, k) -> Term {
         Ok(_) -> todo("not a record")
         Error(Nil) -> todo("variable not defined")
       }
-    e.Select(label) -> Builtin(select(label, _))
-    e.Tag(label) -> Builtin(Tagged(label, _))
-    e.Match(branches, tail) -> Builtin(match(branches, tail, _, env, k))
-    e.Perform(label) -> Builtin(Effect(label, _, k))
-    e.Deep(state, branches) -> Builtin(handle(branches, state, _, env, k))
+    e.Select(label) -> continue(k, Builtin(select(label, _)))
+    e.Tag(label) -> continue(k, Builtin(Tagged(label, _)))
+    e.Match(branches, tail) ->
+      continue(k, Builtin(match(branches, tail, _, env, k)))
+    e.Perform(label) -> continue(k, Builtin(Effect(label, _, k)))
+    e.Deep(state, branches) ->
+      continue(k, Builtin(handle(branches, state, _, env, k)))
   }
 }
