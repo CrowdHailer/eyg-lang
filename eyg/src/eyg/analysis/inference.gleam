@@ -90,7 +90,11 @@ pub fn infer(env, exp, typ, eff, ref, path) {
     }
     e.Apply(func, arg) -> {
       let t = t.Unbound(fresh(ref))
-      let s1 = infer(env, func, t.Fun(t, eff, typ), eff, ref, path)
+      // TODO fix this so that dont need self unify to add path to sub
+      // just point path to typ at top of infer but need to check map for errors separatly
+      let s0 = unify(typ, typ, ref, path)
+      let s1 = infer(env, func, t.Fun(t, eff, typ), eff, ref, [0, ..path])
+      let s1 = compose(s1, s0)
       let s2 =
         infer(
           env_apply(s1, env),
@@ -98,7 +102,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
           apply(s1, t),
           apply_effects(s1, eff),
           ref,
-          path,
+          [1, ..path],
         )
       compose(s2, s1)
     }
@@ -139,22 +143,22 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       // if type already defined then this unifies the fields inference
       let s1 = unify(typ, t.Record(row), ref, path)
       let row = apply_row(s1, row)
-      let #(unchanged, s2, update) =
+      let #(unchanged, s2, update, _) =
         list.fold_right(
           fields,
-          #(row, s1, []),
+          #(row, s1, [], 1),
           fn(state, field) {
             let #(label, value) = field
-            let #(r, s1, update) = state
+            let #(r, s1, update, index) = state
             let t = t.Unbound(fresh(ref))
             let next = t.Open(fresh(ref))
             let s2 = unify_row(r, t.Extend(label, t, next), ref)
             let s3 = compose(s2, s1)
             let t = apply(s3, t)
             let eff = apply_effects(s3, eff)
-            let s4 = infer(env, value, t, eff, ref, path)
+            let s4 = infer(env, value, t, eff, ref, [index, ..path])
             let s5 = compose(s4, s3)
-            #(apply_row(s5, next), s5, [label, ..update])
+            #(apply_row(s5, next), s5, [label, ..update], index + 1)
           },
         )
       let s3 = compose(s2, s1)
@@ -172,7 +176,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
                   apply_row(s3, unchanged),
                   fn(row, label) { t.Extend(label, t.Unbound(fresh(ref)), row) },
                 )
-              let s4 = unify(t.Record(row), previous, ref, path)
+              let s4 = unify(t.Record(row), previous, ref, [0, ..path])
               compose(s4, s3)
             }
             Error(_) -> todo("missing tail")
@@ -203,12 +207,12 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       let ret = t.Unbound(fresh(ref))
       let needed = t.Fun(t.Union(row), inner, ret)
       let s1 = unify(typ, needed, ref, path)
-      let #(s2, remaining) =
+      let #(s2, remaining, _index) =
         list.fold(
           branches,
-          #(s1, apply_row(s1, row)),
+          #(s1, apply_row(s1, row), 1),
           fn(state, branch) {
-            let #(s1, row) = state
+            let #(s1, row, index) = state
             let #(label, param, then) = branch
             let field_type = t.Unbound(fresh(ref))
             let remaining = t.Open(fresh(ref))
@@ -222,10 +226,10 @@ pub fn infer(env, exp, typ, eff, ref, path) {
                 apply(s3, ret),
                 apply_effects(s3, inner),
                 ref,
-                path,
+                [index, ..path],
               )
             let s5 = compose(s4, s3)
-            #(s5, apply_row(s5, remaining))
+            #(s5, apply_row(s5, remaining), index + 1)
           },
         )
       // s2 already unifed with s1
@@ -239,7 +243,9 @@ pub fn infer(env, exp, typ, eff, ref, path) {
               apply(s2, ret),
               apply_effects(s2, inner),
               ref,
-              path,
+              // TODO move this to error branch
+              // maybe zero not the best here
+              [0, ..path],
             )
           compose(s3, s2)
         }
@@ -272,12 +278,12 @@ pub fn infer(env, exp, typ, eff, ref, path) {
           t.Fun(t.Fun(t.unit, effects, ret), uncaught, ret),
         )
       let s1 = unify(typ, needed, ref, path)
-      let #(s2, _extended) =
+      let #(s2, _extended, _) =
         list.fold(
           branches,
-          #(s1, apply_effects(s1, uncaught)),
+          #(s1, apply_effects(s1, uncaught), 0),
           fn(acc, branch) {
-            let #(s1, row) = acc
+            let #(s1, row, index) = acc
             let #(label, param, kont, then) = branch
             let call = t.Unbound(fresh(ref))
             let reply = t.Unbound(fresh(ref))
@@ -307,11 +313,11 @@ pub fn infer(env, exp, typ, eff, ref, path) {
                 apply(s3, ret),
                 apply_effects(s3, eff),
                 ref,
-                path,
+                [index, ..path],
               )
             let s5 = compose(s4, s3)
             let row = apply_effects(s5, extended)
-            #(s5, row)
+            #(s5, row, index + 1)
           },
         )
       s2
