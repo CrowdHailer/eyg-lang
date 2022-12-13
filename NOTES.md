@@ -361,3 +361,119 @@ More
 - Let should not be generalized https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tldi10-vytiniotis.pdf
 - https://cs.uwaterloo.ca/research/tr/2006/CS-2006-08.pdf
 - https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/putting.pdf
+
+
+### Designing Effects
+Raising is simple design descision
+
+```js
+perform("Log")
+// fn(Binary) -> <Log Binary | e> Nil
+
+fn log(message) {
+  perform("Log", message)
+}
+```
+
+#### single resumption or not
+Single resumption allows more performant compilation, but I have uses for multiple resumption
+
+#### Have a pure branch?
+
+```js
+handle {
+  perform Log "a"
+  perform Log "b"
+  5
+  // the main function
+} effect Log(msg), k {
+  #(logs, value) = k(Nil)
+  #([msg, ..logs], value)
+} pure value {
+  #([], value)
+}
+```
+
+Here there is no pure keywork, the main block has to return correct type.
+This can be handled by wrapping function
+
+```js
+handle {
+  let value = // the main function
+  #([], value)
+} Log(msg) k {
+  #(logs, value) = k(Nil)
+  #([msg, ..logs], value)
+}
+
+// choice
+fn all_choices(f) handle {
+  [f()]
+} Random(Nil) k {
+  append(k(True), k(False))
+}
+```
+  #### Block or function syntax
+
+Prefer first class handle statements
+
+#### arg vs computation taking unit
+Call function `unit -> <eff> a` a computation,
+it's easier to type check rather than allowing another type parameter as argument that must then be passed around
+
+#### Deep vs Shallow
+Shallow needs a recursive reference to the handler function to implement the deep handler. Nice not to need recursion
+
+Deep
+
+```js
+let with_counter = handle(state) {
+  Inc _, k -> k(state + 1, Nil)
+  Get _, k -> k(state, state)
+}
+
+let from_zero = with_counter(0)
+let {state, result} = from_zero(_ -> {
+  let Nil = perform(Inc, Nil)
+  let Nil = perform(Inc, Nil)
+  let total = perform(Get, Nil)
+})
+
+```
+
+shallow
+```js
+let with_counter = fn(current) handle {
+  Inc _, k -> with_counter(current + 1, Nil -> k(Nil))
+  Get _, k -> with_counter(current, Nil -> k(current))
+}(0)
+```
+
+Deep handler means always providing a state even for effects that don't need it.
+First class continuation are slightly messier to wrap
+```js
+let all_choices = fn(prog) handle(state) {
+  Random(Nil) cont -> #(state, append(cont(True), cont(False)))
+}(Nil)(_ -> [f()])
+
+let catch = fn(f) handle(_state) {
+  Error reason, cont -> Fail(reason)
+}(Nil)(_ -> Ok(f()))
+```
+
+#### Complete effect handlers, need reraise.
+
+```js
+handle(buffer) {
+  Log msg, k -> k([msg, ..buffer], Nil)
+  other -> perform(other)
+}
+```
+
+Shallow & total handlers allow emulating linear types but more complicated inference,
+i.e. don't provide a pure branch. However, needs a raise function that takes a union to effect to reraise.
+This can't be checked because the union of types raised is not the same as the union of effects,
+where the type includes both raised and continuation type.
+
+### Nominal or Structural effect types
+Nice to not declare ahead of time, unlike Unison or Koka
