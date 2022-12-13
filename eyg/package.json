@@ -1,6 +1,10 @@
 {
     "type": "module",
     "scripts": {
-      "test": "sh bin/test.sh"
+        "test": "sh bin/test.sh"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.18.2"
     }
-  }
+}

@@ -9,6 +9,8 @@ import eyg/typer/harness
 import eyg/codegen/javascript
 import eyg/editor/type_info
 import platform/browser
+import entry
+import gleam/javascript/array.{Array}
 
 pub fn compile_unconstrained(expression, harness) {
   let harness.Harness(variables) = harness
@@ -44,4 +46,14 @@ pub fn provider(source, constraint) -> Result(Dynamic, String) {
         " & ",
       ))
   }
+}
+
+// document that rad start shell at dollar
+// This becomes the entry point
+external fn args(Int) -> Array(String) =
+  "" "process.argv.slice"
+
+// zero arity
+pub fn main() {
+  entry.main(array.to_list(args(1)))
 }
