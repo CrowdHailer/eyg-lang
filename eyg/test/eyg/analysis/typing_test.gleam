@@ -480,3 +480,47 @@ pub fn eval_handled_test() {
 }
 // path + errors + warnings + alg w + gleam use + fixpoint + equi/iso + external lookup + hash + cbor + zipper
 // interpreter + provider + cps codegen + pull out node for editor
+// 1. interprest new expression, entrypoint and css
+// 2. codegen new cps style for reactive front end
+// + quote for universal apps
+// 2.5. universal app log in front and backend some standard runtime choices
+// 3. parser or editor
+// can we do composable runtimes to work with effects
+// path + errors + warnings +
+// fixpoint + equi/iso (not needed array as native type)
+// external lookup i.e. no mod of tree + hash + zipper ast.{Node}
+// understand how to separate param without value from hash to value.
+// Need this for walk through programming
+// ui for all open var's
+// interpreter + provider (provider not needed for current deploys)
+// quote and provide are opposites
+// cps codegen, not needed with interpreter tho probably in client
+// editor render in solid js or just run through proper transform
+// loader + quote instead of compile
+// interpreter in my language -> implements a cps codegen using quote (Good steps)
+
+// let {} = do("Log")("message")
+// 1 + 2
+// let {} = do("Log")("message")
+// 3 + 4
+
+// ((_) => {
+//   return effect("Log", "message")
+// })({}) => {
+//   1 + 2
+//   return effect("Log", "message")
+// })({} => {
+
+// })
+
+// compile abtract effect types using generators
+// quote and fix just in environment
+// understand why fix is not as efficient as let rec
+
+// Reactive style code from solid style
+
+// path -> hash
+// can we have hash even in parts referencing named vars?
+// Is it always ok we debrujin
+// hash -> type + evald
+// uuid for views
