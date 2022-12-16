@@ -113,7 +113,6 @@ pub fn do_prepare(act, path, exp, build_outer) {
     [index, ..rest] -> {
       // delete always and merge
       let #(child, build_inner) = step(exp, index)
-      //   let unwrap = Some(fn() { build_outer(child) })
       act
       |> check_right(exp, index)
       |> space_above(child, index, build_inner)
@@ -239,6 +238,10 @@ pub fn select(act: Act) {
     Some(r) -> Some(fn(label) { r(e.Apply(e.Select(label), _)) })
     None -> None
   }
+  // case e.Vacant {
+  //   e.Vacant -> fn(label) { kont(e.Select(label)) }
+  //   term -> fn(label) { kont(e.Apply(e.Select(label), term)) }
+  // }
 }
 
 pub fn tag(act: Act) {
@@ -256,6 +259,14 @@ pub fn perform(act: Act) {
     None -> None
   }
 }
+
+// pub fn insert(exp: e.Expression) -> Nil {
+//   case exp {
+//     e.Let(l, v, t) -> {
+//       let resume = fn(label) { kont(e.Let(label, v, t)) }
+//     }
+//   }
+// }
 
 pub fn delete(act: Act) {
   act.delete
