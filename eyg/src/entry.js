@@ -69,7 +69,7 @@ const lustre = `
 <title>Morph</title>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app" class="min-h-screen"></div>
 <script type="module">
   import {main} from "/src/eyg/morph/ui.mjs"
   main()
