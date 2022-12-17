@@ -54,6 +54,7 @@ const page = `
 </html>
 `;
 
+// TODO rely on local layout css
 const lustre = `
 <!DOCTYPE html>
 <html lang="en">
@@ -61,6 +62,8 @@ const lustre = `
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css" rel="stylesheet" />
+<link href="https://programs.petersaxton.uk/style/layout.css" rel="stylesheet" />
 <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 <title>Morph</title>
