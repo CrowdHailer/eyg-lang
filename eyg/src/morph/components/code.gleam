@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{None, Option, Some}
 import gleam/string
 import lustre/element.{button, div, p, span, text}
 import lustre/attribute.{class}
@@ -84,41 +84,98 @@ fn multiline(exp) {
   |> io.debug
 }
 
-fn render_block(exp, br) {
-  case exp {
-    e.Let(_, _, _) -> {
-      let br_inner = string.append(br, "  ")
-      list.flatten([
-        [text(string.append("{", br_inner))],
-        render_text(exp, br_inner),
-        [text(string.append(br, "}"))],
-      ])
-    }
-    _ -> render_text(exp, br)
+pub type Location {
+  Location(path: List(Int), selection: Option(List(Int)))
+}
+
+fn open(location) {
+  let Location(selection: selection, ..) = location
+  case selection {
+    None -> False
+    Some(_) -> True
   }
 }
 
-pub fn render_text(exp, br) {
+fn focused(location) {
+  let Location(selection: selection, ..) = location
+  case selection {
+    Some([]) -> True
+    _ -> False
+  }
+}
+
+// call location.step
+fn child(location, i) {
+  let Location(path: path, selection: selection) = location
+  let path = list.append(path, [i])
+  let selection = case selection {
+    Some([j, ..inner]) if i == j -> Some(inner)
+    _ -> None
+  }
+  Location(path, selection)
+}
+
+// loc is inner position but if block
+fn render_block(exp, br, loc, index) {
+  case exp {
+    e.Let(_, _, _) ->
+      case open(loc) {
+        True -> {
+          let class = case focused(loc) {
+            True -> class("font-bold")
+            False -> class("")
+          }
+          let br_inner = string.append(br, "  ")
+          list.flatten([
+            [span([class], [text(string.append("{", br_inner))])],
+            render_text(exp, br_inner, child(loc, index)),
+            [span([class], [text(string.append(br, "}"))])],
+          ])
+        }
+        False -> [text("{ ... }")]
+      }
+    _ -> render_text(exp, br, child(loc, index))
+  }
+}
+
+fn active(children, loc) {
+  let class = case focused(loc) {
+    True -> class("font-bold")
+    False -> class("")
+  }
+  span([class], children)
+}
+
+pub fn render_text(exp, br, loc) {
   case exp {
     e.Variable(var) -> [text(var)]
     e.Lambda(param, body) -> [
       text(param),
       text(" -> "),
-      ..render_block(body, br)
+      ..render_block(body, br, loc, 1)
     ]
     e.Apply(func, arg) ->
       list.flatten([
-        render_text(func, br),
+        render_text(func, br, child(loc, 0)),
         [text("(")],
-        render_text(arg, br),
+        render_text(arg, br, child(loc, 1)),
         [text(")")],
       ])
     e.Let(label, value, then) ->
       list.flatten([
-        [span([class("font-bold")], [text("let ")]), text(label), text(" = ")],
-        render_block(value, br),
+        [
+          active(
+            [
+              span([class(" text-gray-400")], [text("let ")]),
+              text(label),
+              text(" = "),
+            ],
+            loc,
+          ),
+        ],
+        render_block(value, br, loc, 1),
         [text(br)],
-        render_text(then, br),
+        render_text(then, br, child(loc, 2)),
       ])
 
     // Dont space around records
@@ -136,11 +193,12 @@ pub fn render_text(exp, br) {
         |> io.debug()
       {
         True -> [text("mul")]
+        // TODO offset from from
         False -> {
           let fields =
             fields
-            |> list.map(fn(f) {
-              [text(f.0), text(": "), ..render_text(f.1, br)]
+            |> list.index_map(fn(i, f) {
+              [text(f.0), text(": "), ..render_text(f.1, br, child(loc, i))]
             })
             |> list.intersperse([text(", ")])
             |> list.prepend([text("{")])
@@ -150,13 +208,13 @@ pub fn render_text(exp, br) {
       }
     e.Select(label) -> [text(string.append(".", label))]
     e.Tag(label) -> [span([class("text-blue-500")], [text(label)])]
-    e.Match(options, else) -> {
+    e.Match(branches, else) -> {
       let br_inner = string.append(br, "  ")
       list.flatten([
-        [span([class("font-bold")], [text("match")]), text(" {")],
-        list.flatten(list.map(
-          options,
-          fn(opt) {
+        [span([], [span([class("")], [text("match")]), text(" {")])],
+        list.flatten(list.index_map(
+          branches,
+          fn(i, opt) {
             let #(tag, var, then) = opt
             [
               text(br_inner),
@@ -164,7 +222,7 @@ pub fn render_text(exp, br) {
               text("("),
               text(var),
               text(") -> "),
-              ..render_block(then, br_inner)
+              ..render_block(then, br_inner, loc, i)
             ]
           },
         )),
@@ -173,7 +231,7 @@ pub fn render_text(exp, br) {
             text(br_inner),
             text(var),
             text(" -> "),
-            ..render_block(then, br_inner)
+            ..render_block(then, br_inner, loc, list.length(branches))
           ]
           None -> []
         },
@@ -181,13 +239,16 @@ pub fn render_text(exp, br) {
       ])
     }
     e.Perform(label) -> [
-      span([class("font-bold")], [text("perform ")]),
+      span([class(" text-gray-400")], [text("perform ")]),
       text(label),
     ]
     e.Deep(_, _) -> todo
   }
-  // _ -> {
-  //   io.debug(exp)
-  //   [text("todo render")]
-  // }
 }
+// select the whole thing can be border if it is collapsed
+// need a single line view for each expression, then we can select a let by collapsing
+// selecting the
+// let a = |x -> { ... }|
+// TODO focused, click, move, transform
+// background, underline
+// TODO save 
