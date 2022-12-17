@@ -1,5 +1,5 @@
 import gleam/int
-import lustre/element.{button, div, p, text}
+import lustre/element.{button, div, p, pre, text}
 import lustre/event.{dispatch, on_click}
 import lustre/attribute.{class}
 import morph/action
@@ -20,7 +20,8 @@ pub fn render(state) {
           button([on_click(dispatch(action.Incr))], [text("+")]),
         ],
       ),
-      code.render(source),
+      // code.render(source),
+      pre([], code.render_text(source, "\n")),
       div([class("spacer")], []),
       div([class("cover bg-gray-100")], [text("morph")]),
     ],

@@ -77,17 +77,17 @@ external fn do_serve(fn(String) -> String) -> Nil =
 
 fn web(_) {
   let prog = e.Apply(e.Select("web"), source)
-  let a =
-    inference.infer(
-      map.new(),
-      prog,
-      t.Unbound(-1),
-      t.Closed,
-      javascript.make_reference(0),
-      [],
-    )
-  type_of(a, [])
-  |> io.debug()
+  // let a =
+  //   inference.infer(
+  //     map.new(),
+  //     prog,
+  //     t.Unbound(-1),
+  //     t.Closed,
+  //     javascript.make_reference(0),
+  //     [],
+  //   )
+  // type_of(a, [])
+  // |> io.debug()
   // TODO does this return type matter for anything
   let handler = interpreter.eval(prog, [], fn(x) { x })
 
