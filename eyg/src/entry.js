@@ -5,7 +5,7 @@ import cors from "cors";
 
 import url from "url";
 const app = express();
-const port = process.env.PORT || 8899;
+const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.raw({ type: "*/*", limit: "1mb" }));
@@ -54,14 +54,35 @@ const page = `
 </html>
 `;
 
-
+const lustre = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<title>Morph</title>
+</head>
+<body>
+  <div id="app"></div>
+<script type="module">
+  import {main} from "/src/eyg/morph/ui.mjs"
+  main()
+</script>
+</html>
+`;
 // TODO solid example does have h defined
 
 export function serve(handler) {
   console.log(process.cwd());
   app.use((req, res) => {
-    if (req.header("host") == "localhost:8899") {
+    let host = req.header("host");
+    if (host == "localhost:8899") {
       res.send(page);
+    } else if (host == "localhost:5000") {
+      res.send(lustre);
     } else {
       console.log("bob!!");
       console.log(req.hostname);
