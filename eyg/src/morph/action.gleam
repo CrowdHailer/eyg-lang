@@ -1,5 +1,8 @@
 pub type Action {
-  Incr
-  Decr
   Keypress(key: String)
+  SelectNode(path: List(Int))
+}
+
+pub type State {
+  State(selection: List(Int))
 }

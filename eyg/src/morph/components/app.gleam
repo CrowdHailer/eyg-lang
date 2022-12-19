@@ -1,4 +1,3 @@
-import gleam/int
 import gleam/option.{Some}
 import lustre/element.{button, div, p, pre, text}
 import lustre/event.{dispatch, on_click}
@@ -8,23 +7,16 @@ import morph/action
 import source.{source}
 import morph/components/code
 
-pub fn render(state) {
+pub fn render(state: action.State) {
   div(
     [class("h-screen vstack")],
     [
       div([class("spacer")], []),
-      div(
-        [class("cover")],
-        [
-          button([on_click(dispatch(action.Decr))], [text("-")]),
-          p([], [text(int.to_string(state))]),
-          button([on_click(dispatch(action.Incr))], [text("+")]),
-        ],
-      ),
       // code.render(source),
+      text("foo"),
       pre(
         [],
-        code.render_text(source, "\n", code.Location([], Some([1, 2, 2, 1]))),
+        code.render_text(source, "\n", code.Location([], Some(state.selection))),
       ),
       div([class("spacer")], []),
       div([class("cover bg-gray-100")], [text("morph")]),

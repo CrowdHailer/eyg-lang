@@ -9,7 +9,8 @@ external fn listen_keypress(fn(string) -> Nil) -> Nil =
   "../browser_ffi.js" "listenKeypress"
 
 pub fn main() {
-  let app = lustre.application(#(0, cmd.none()), update, app.render)
+  let state = action.State([])
+  let app = lustre.application(#(state, cmd.none()), update, app.render)
   assert Ok(dispatch) = lustre.start(app, "#app")
 
   listen_keypress(fn(key) {
@@ -19,10 +20,8 @@ pub fn main() {
 }
 
 fn update(state, action) {
-  1 + 2
   case action {
-    action.Incr -> #(state + 1, cmd.none())
-    action.Decr -> #(state - 1, cmd.none())
-    action.Keypress(_) -> #(state * 2, cmd.none())
+    action.Keypress(_) -> #(state, cmd.none())
+    action.SelectNode(path) -> #(action.State(path), cmd.none())
   }
 }

@@ -4,15 +4,17 @@ import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
 import lustre/element.{button, div, p, span, text}
+import lustre/event.{dispatch, on_click}
 import lustre/attribute.{class}
 import eygir/expression as e
+import morph/action.{SelectNode}
 
 pub fn render(source) {
   div([class("cover")], [div([], [text("code")]), expression(source)])
 }
 
 // lists of expressions collapse on spans
-// apply appply apply 
+// apply appply apply
 // fn fn fn fn
 fn expression(exp) {
   case exp {
@@ -69,7 +71,6 @@ fn expression(exp) {
 }
 
 fn multiline(exp) {
-  io.debug(exp)
   case exp {
     e.Variable(_) -> False
     e.Lambda(_, body) -> multiline(body)
@@ -81,7 +82,6 @@ fn multiline(exp) {
     e.Select(_) | e.Tag(_) | e.Perform(_) -> False
     e.Match(_, _) | e.Deep(_, _) -> True
   }
-  |> io.debug
 }
 
 pub type Location {
@@ -140,15 +140,19 @@ fn render_block(exp, br, loc, index) {
 
 fn active(children, loc) {
   let class = case focused(loc) {
-    True -> class("font-bold")
+    // turning bold is subtle but works
+    // text color is an interesting clash and need placing of "{" to be handled outside blok
+    True -> class("font-black text-orange-500 ")
+    // border top and bottom seems pretty for let blocks but less so matches
+    // True -> class("border-2 border-indigo-300 rounded")
     False -> class("")
   }
-  span([class], children)
+  span([class, on_click(dispatch(SelectNode(loc.path)))], children)
 }
 
 pub fn render_text(exp, br, loc) {
   case exp {
-    e.Variable(var) -> [text(var)]
+    e.Variable(var) -> [active([text(var)], loc)]
     e.Lambda(param, body) -> [
       text(param),
       text(" -> "),
@@ -180,18 +184,18 @@ pub fn render_text(exp, br, loc) {
 
     // Dont space around records
     // e.Record([], None) -> [text("{}")]
-    e.Binary(value) -> [
-      span([class("text-green-500")], [text("\""), text(value), text("\"")]),
-    ]
+    e.Binary(value) -> // let text with borderx
+    [span([class("text-green-500")], [text("\""), text(value), text("\"")])]
     e.Integer(value) -> [
-      span([class("text-purple-500")], [text(int.to_string(value))]),
+      // definetly smaller ways to render ths
+      active(
+        [span([class("text-purple-500")], [text(int.to_string(value))])],
+        loc,
+      ),
     ]
     e.Vacant -> [span([class("text-red-500")], [text("todo")])]
     e.Record(fields, from) ->
-      case
-        list.any(fields, fn(f) { multiline(f.1) })
-        |> io.debug()
-      {
+      case list.any(fields, fn(f) { multiline(f.1) }) {
         True -> [text("mul")]
         // TODO offset from from
         False -> {
@@ -251,4 +255,4 @@ pub fn render_text(exp, br, loc) {
 // let a = |x -> { ... }|
 // TODO focused, click, move, transform
 // background, underline
-// TODO save 
+// TODO save
