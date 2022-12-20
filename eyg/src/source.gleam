@@ -30,9 +30,15 @@ const pre = e.Let(
           #(
             "Nee",
             "parts",
-            e.Apply(e.Apply(e.Select("map"), e.Variable("list")), e.Tag("Some")),
+            e.Apply(
+              e.Apply(
+                e.Apply(e.Select("map"), e.Variable("list")),
+                e.Variable("things"),
+              ),
+              e.Tag("Some"),
+            ),
           ),
-          #("Bar", "_", e.Apply(e.Select("bob"), e.Variable("xxx"))),
+          #("Bar", "_", e.Apply(e.Select("name"), e.Variable("user"))),
         ],
         Some(#("else", e.Apply(e.Tag("Ok"), e.Binary("fallback")))),
       ),

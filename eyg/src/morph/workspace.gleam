@@ -53,6 +53,7 @@ pub fn handle_keydown(space: WorkSpace, key) {
   }
 }
 
+// This is separate to transform stuff
 pub type Act {
   Act(
     target: e.Expression,
@@ -62,6 +63,39 @@ pub type Act {
     ),
     reversed: List(Int),
   )
+}
+
+fn step(exp, i) {
+  case exp, i {
+    e.Apply(func, arg), 0 -> #(func, e.Apply(_, arg))
+    e.Apply(func, arg), 1 -> #(func, e.Apply(func, _))
+    e.Let(label, value, then), 1 -> #(value, e.Let(label, _, then))
+    e.Let(label, value, then), 2 -> #(then, e.Let(label, value, _))
+  }
+}
+
+fn do_prepare(exp, selection, acc, update) {
+  assert [i, ..rest] = selection
+  let #(child, update_child) = step(exp, i)
+  let update_child = fn(new) { update(update_child(new)) }
+  case rest {
+    [] ->
+      Act(
+        target: child,
+        update: update_child,
+        parent: Some(#(i, [], exp, update)),
+        reversed: acc,
+      )
+    _ -> do_prepare(child, rest, [i, ..acc], update_child)
+  }
+}
+
+pub fn prepare(exp, selection) {
+  let zip = fn(new) { new }
+  case selection {
+    [] -> Act(target: exp, update: zip, parent: None, reversed: [])
+    _ -> do_prepare(exp, selection, [], zip)
+  }
 }
 
 pub fn call_with(act: Act) {

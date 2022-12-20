@@ -115,6 +115,10 @@ fn child(location, i) {
   Location(path, selection)
 }
 
+// let map result then =
+//   (case(Ok)(v -> Ok(then(v)))
+//   case(Error)(_ -> result))(result)
+
 // loc is inner position but if block
 fn render_block(exp, br, loc, index) {
   case exp {
