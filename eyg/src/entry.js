@@ -71,7 +71,7 @@ const lustre = `
 <body>
   <div id="app" class="min-h-screen"></div>
 <script type="module">
-  import {main} from "/src/eyg/morph/ui.mjs"
+  import {main} from "/src/eyg/atelier/main.mjs"
   main()
 </script>
 </html>
@@ -79,13 +79,18 @@ const lustre = `
 // TODO solid example does have h defined
 
 export function serve(handler) {
-  console.log(process.cwd());
   app.use((req, res) => {
     let host = req.header("host");
     if (host == "localhost:8899") {
       res.send(page);
     } else if (host == "localhost:5000") {
-      res.send(lustre);
+      if (req.path == "/save") {
+        console.log("nice try");
+        console.log(req.body.toString());
+        res.send("")
+      } else {
+        res.send(lustre);
+      }
     } else {
       console.log("bob!!");
       console.log(req.hostname);
@@ -99,7 +104,9 @@ export function serve(handler) {
   app.listen(port, () =>
     console.log(`HelloNode app listening on port ${port}!`)
   );
-  console.log("noop");
+  app.listen(5001, () =>
+    console.log(`HelloNode app listening on port ${5001}!`)
+  );
 }
 
 // TODO gleam run --watch look at JS source files and gleam source files

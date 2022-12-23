@@ -188,6 +188,18 @@ pub fn infer(env, exp, typ, eff, ref, path) {
         }
       }
     }
+    e.Empty -> {
+      let t = t.Record(t.Closed)
+      unify(typ, t, ref, path)
+    }
+    e.Extend(label) -> {
+      let t = t.Unbound(fresh(ref))
+      let r = t.Open(fresh(ref))
+      let e1 = t.Open(fresh(ref))
+      let e2 = t.Open(fresh(ref))
+      t.Fun(t, e1, t.Fun(t.Record(r), e2, t.Record(t.Extend(label, t, r))))
+      |> unify(typ, _, ref, path)
+    }
     e.Select(label) -> {
       let t = t.Unbound(fresh(ref))
       let r = t.Open(fresh(ref))
@@ -200,6 +212,28 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       let r = t.Open(fresh(ref))
       let e = t.Open(fresh(ref))
       unify(typ, t.Fun(t, e, t.Union(t.Extend(label, t, r))), ref, path)
+    }
+    e.Case(label) -> {
+      let t = t.Unbound(fresh(ref))
+      let ret = t.Unbound(fresh(ref))
+      let r = t.Open(fresh(ref))
+      let e1 = t.Open(fresh(ref))
+      let e2 = t.Open(fresh(ref))
+      let e3 = t.Open(fresh(ref))
+      let e4 = t.Open(fresh(ref))
+      let e5 = t.Open(fresh(ref))
+      let branch = t.Fun(t, e1, ret)
+      let else = t.Fun(t.Union(r), e2, ret)
+      let exec = t.Fun(t.Union(t.Extend(label, t, r)), e3, ret)
+      t.Fun(branch, e4, t.Fun(else, e5, exec))
+      |> unify(typ, _, ref, path)
+    }
+    e.NoCases -> {
+      // unbound return to match cases
+      let t = t.Unbound(fresh(ref))
+      let e = t.Open(fresh(ref))
+      t.Fun(t.Union(t.Closed), e, t)
+      |> unify(typ, _, ref, path)
     }
     e.Match(branches, tail) -> {
       let inner = t.Open(fresh(ref))

@@ -1,11 +1,6 @@
 import gleam/option.{None, Some}
 import eygir/expression as e
 
-// don't need helpers if just wire up edditor
-// fn f(param, body) { 
-//   e.Lambda(param, body)
-//  }
-
 const cli = e.Apply(
   e.Lambda("x", e.Record([#("foo", e.Variable("x"))], None)),
   e.Binary("hello"),
@@ -13,39 +8,25 @@ const cli = e.Apply(
 
 const web = e.Lambda(
   "req",
-  e.Record([#("body", e.Binary("Hello, world!"))], None),
-)
-
-const pre = e.Let(
-  "x",
-  e.Integer(5),
   e.Let(
-    "y",
-    e.Binary("foo"),
+    "response",
+    e.Apply(e.Apply(e.Extend("body"), e.Binary("Hello, world!")), e.Empty),
     e.Let(
-      "z",
-      e.Match(
-        [
-          #("Foo", "_", e.Let("tmp", e.Variable("user"), e.Tag("Noop"))),
-          #(
-            "Nee",
-            "parts",
+      "_",
+      e.Apply(e.Select("body"), e.Variable("response")),
+      e.Let(
+        "return",
+        e.Apply(
+          e.Apply(
+            e.Apply(e.Case("Some"), e.Lambda("x", e.Variable("x"))),
             e.Apply(
-              e.Apply(
-                e.Apply(e.Select("map"), e.Variable("list")),
-                e.Variable("things"),
-              ),
-              e.Tag("Some"),
+              e.Apply(e.Case("None"), e.Lambda("_", e.Binary("other"))),
+              e.NoCases,
             ),
           ),
-          #("Bar", "_", e.Apply(e.Select("name"), e.Variable("user"))),
-        ],
-        Some(#("else", e.Apply(e.Tag("Ok"), e.Binary("fallback")))),
-      ),
-      e.Let(
-        "fizz",
-        e.Lambda("y", e.Lambda("z", e.Let("x", e.Variable("y"), e.Vacant))),
-        e.Apply(e.Perform("log"), e.Binary("message")),
+          e.Variable("thing"),
+        ),
+        e.Variable("response"),
       ),
     ),
   ),
@@ -53,6 +34,10 @@ const pre = e.Let(
 
 pub const source = e.Let(
   "pre",
-  pre,
-  e.Record([#("cli", e.Lambda("_", cli)), #("web", web)], None),
+  e.Binary("other"),
+  e.Let(
+    "web",
+    web,
+    e.Record([#("cli", e.Lambda("_", cli)), #("web", e.Variable("web"))], None),
+  ),
 )

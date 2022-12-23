@@ -76,22 +76,22 @@ external fn do_serve(fn(String) -> String) -> Nil =
   "./entry.js" "serve"
 
 fn web(_) {
-  let prog = e.Apply(e.Select("web"), source)
-  // let a =
-  //   inference.infer(
-  //     map.new(),
-  //     prog,
-  //     t.Unbound(-1),
-  //     t.Closed,
-  //     javascript.make_reference(0),
-  //     [],
-  //   )
-  // type_of(a, [])
-  // |> io.debug()
-  // TODO does this return type matter for anything
-  let handler = interpreter.eval(prog, [], fn(x) { x })
-
   do_serve(fn(x) {
+    let prog = e.Apply(e.Select("web"), source)
+
+    let a =
+      inference.infer(
+        map.new(),
+        prog,
+        t.Unbound(-1),
+        t.Closed,
+        javascript.make_reference(0),
+        [],
+      )
+    type_of(a, [])
+    |> io.debug()
+    // TODO does this return type matter for anything
+    let handler = interpreter.eval(prog, [], fn(x) { x })
     // TODO use get field function
     // TODO need a run function that takes effect handlers, do we need to pass id as cont here
     assert interpreter.Record([#("body", interpreter.Binary(body)), ..]) =

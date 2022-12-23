@@ -111,7 +111,7 @@ fn eval_effect(term, handlers, svar, state, env, k) {
                 )
               })
             })
-          // Think we need some kind of fold generator to execing 
+          // Think we need some kind of fold generator to execing
           // resumevar needs to be a created function
           let env = [
             #(liftvar, lift),
@@ -147,12 +147,13 @@ pub fn eval_call(f, arg, k) {
   }
 }
 
-// TODO test interpreter, particularly handle 
+// TODO test interpreter, particularly handle
 // TODO try moving Handle/Match to key_value lists
 pub fn eval(exp: e.Expression, env, k) -> Term {
   case exp {
     e.Lambda(param, body) -> continue(k, Function(param, body, env))
     e.Apply(f, arg) ->
+      // io.debug(arg)
       eval(f, env, fn(f) { eval(arg, env, eval_call(f, _, k)) })
     e.Variable(x) ->
       case list.key_find(env, x) {
@@ -178,5 +179,19 @@ pub fn eval(exp: e.Expression, env, k) -> Term {
     e.Perform(label) -> continue(k, Builtin(Effect(label, _, k)))
     e.Deep(state, branches) ->
       continue(k, Builtin(handle(branches, state, _, env, k)))
+    // TODO test
+    e.Empty -> continue(k, Record([]))
+    e.Extend(label) ->
+      continue(
+        k,
+        Builtin(fn(value) {
+          Builtin(fn(record) {
+            assert Record(fields) = record
+            Record([#(label, value), ..fields])
+          })
+        }),
+      )
+    e.Case(label) -> todo("case etsd")
+    e.NoCases -> todo("thingk this really should wrror")
   }
 }
