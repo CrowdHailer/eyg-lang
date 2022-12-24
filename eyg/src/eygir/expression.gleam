@@ -32,4 +32,4 @@ pub type Expression {
   Deep(variable: String, branches: List(#(String, String, String, Expression)))
 }
 
-pub const unit = Record([], None)
+pub const unit = Empty

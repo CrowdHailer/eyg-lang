@@ -49,27 +49,36 @@ fn sound(inf: inference.Infered) {
 // Probably create an analysis state
 // TODO in error handle unification todo
 // TODO handle error in rewrite row
-// TODO web handling
 fn cli(_) {
-  let prog = e.Apply(e.Apply(e.Select("cli"), source), e.unit)
+  let prog = e.Apply(e.Select("cli"), source)
   let a =
     inference.infer(
       map.new(),
-      prog,
+      e.Apply(prog, e.unit),
       t.Unbound(-1),
-      t.Closed,
+      t.Extend("Log", #(t.Binary, t.unit), t.Closed),
       javascript.make_reference(0),
       [],
     )
   type_of(a, [])
   assert True = sound(a)
 
-  let prog =
-    e.Apply(e.Select("foo"), e.Record([#("foo", e.Binary("foo"))], None))
-
-  interpreter.eval(prog, [], fn(x) { x })
+  let exec = interpreter.eval(prog, [], fn(x) { x })
+  // |> io.debug
+  run(exec, interpreter.Record([]))
   |> io.debug
   0
+}
+
+fn run(prog, term) {
+  case interpreter.eval_call(prog, term, fn(x) { x }) {
+    interpreter.Effect("Log", interpreter.Binary(b), k) -> {
+      io.debug(b)
+      run(interpreter.Builtin(k), interpreter.Record([]))
+    }
+    interpreter.Effect(_, _, _) -> todo("unhandled effect")
+    term -> term
+  }
 }
 
 external fn do_serve(fn(String) -> String) -> Nil =

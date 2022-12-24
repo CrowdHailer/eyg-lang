@@ -1,9 +1,13 @@
 import gleam/option.{None, Some}
 import eygir/expression as e
 
-const cli = e.Apply(
-  e.Lambda("x", e.Record([#("foo", e.Variable("x"))], None)),
-  e.Binary("hello"),
+const cli = e.Lambda(
+  "_",
+  e.Let(
+    "_",
+    e.Apply(e.Perform("Log"), e.Binary("Hello Logger")),
+    e.Apply(e.Apply(e.Extend("eff"), e.Variable("_")), e.Empty),
+  ),
 )
 
 const web = e.Lambda(
@@ -24,7 +28,7 @@ const web = e.Lambda(
               e.NoCases,
             ),
           ),
-          e.Variable("thing"),
+          e.Apply(e.Tag("Some"), e.Binary("foo")),
         ),
         e.Variable("response"),
       ),
@@ -33,11 +37,14 @@ const web = e.Lambda(
 )
 
 pub const source = e.Let(
-  "pre",
-  e.Binary("other"),
+  "cli",
+  cli,
   e.Let(
     "web",
     web,
-    e.Record([#("cli", e.Lambda("_", cli)), #("web", e.Variable("web"))], None),
+    e.Apply(
+      e.Apply(e.Extend("cli"), e.Variable("cli")),
+      e.Apply(e.Apply(e.Extend("web"), e.Variable("web")), e.Empty),
+    ),
   ),
 )

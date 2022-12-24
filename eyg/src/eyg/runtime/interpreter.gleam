@@ -30,7 +30,11 @@ fn select(label, term) {
 }
 
 fn continue(k, term) {
-  k(term)
+  case term {
+    // Just don't need k on resume
+    Effect(label, lifted, resume) -> k(Record([]))
+    _ -> k(term)
+  }
 }
 
 // return just k acc wrap in record call continue outside
@@ -142,8 +146,16 @@ pub fn eval_call(f, arg, k) {
       let env = [#(param, arg), ..env]
       eval(body, env, k)
     }
-    Builtin(f) -> continue(k, f(arg))
-    _ -> todo("not a function")
+    Builtin(f) ->
+      case f(arg) {
+        // continue should take only terms
+        Effect(label, lifted, _) -> Effect(label, lifted, k)
+        _ -> continue(k, f(arg))
+      }
+    _ -> {
+      io.debug(#(f, arg))
+      todo("not a function")
+    }
   }
 }
 
@@ -152,9 +164,11 @@ pub fn eval_call(f, arg, k) {
 pub fn eval(exp: e.Expression, env, k) -> Term {
   case exp {
     e.Lambda(param, body) -> continue(k, Function(param, body, env))
-    e.Apply(f, arg) ->
+    e.Apply(f, arg) -> {
+      1
       // io.debug(arg)
       eval(f, env, fn(f) { eval(arg, env, eval_call(f, _, k)) })
+    }
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(term) -> continue(k, term)
