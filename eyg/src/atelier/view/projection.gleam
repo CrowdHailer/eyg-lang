@@ -78,7 +78,16 @@ pub fn do_render(exp, br, loc) {
     e.Select(label) -> [select(label, loc)]
     e.Tag(label) -> [tag(label, loc)]
     e.Case(label) -> [match(label, br, loc)]
-    e.NoCases -> [span([class("text-gray-400")], [text("nocases")])]
+    e.NoCases -> [
+      span(
+        [
+          class("text-gray-400"),
+          click(loc),
+          classes([#("text-gray-400", True), ..highlight(focused(loc))]),
+        ],
+        [text("nocases")],
+      ),
+    ]
     e.Match(branches, else) -> {
       let br_inner = string.append(br, "  ")
       list.flatten([
@@ -301,7 +310,7 @@ fn tag(label, loc) {
 fn match(label, br, loc) {
   let target = focused(loc)
   [click(loc), classes([#("text-blue-500", True), ..highlight(target)])]
-  |> span([text(string.append(" ", label))])
+  |> span([text(label)])
 }
 
 fn perform(label, loc) {

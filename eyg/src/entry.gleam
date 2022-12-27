@@ -94,6 +94,25 @@ fn web(_) {
             [],
             t.Fun(t.Binary, t.Open(-1), t.Fun(t.Binary, t.Open(-2), t.Binary)),
           ),
+        )
+        |> map.insert(
+          "equal",
+          scheme.Scheme(
+            [],
+            t.Fun(
+              t.Unbound(-3),
+              t.Open(-4),
+              t.Fun(
+                t.Unbound(-5),
+                t.Open(-6),
+                t.Union(t.Extend(
+                  "True",
+                  t.unit,
+                  t.Extend("False", t.unit, t.Closed),
+                )),
+              ),
+            ),
+          ),
         ),
         prog,
         t.Unbound(-1),
@@ -111,6 +130,15 @@ fn web(_) {
   0
 }
 
+// TODO put with helpers in runtime
+fn builtin2(f) {
+  r.Builtin(fn(a) { r.Value(r.Builtin(fn(b) { r.Value(f(a, b)) })) })
+}
+
+const true = r.Tagged("True", r.Record([]))
+
+const false = r.Tagged("False", r.Record([]))
+
 fn server_run(prog, path) {
   let env = [
     #(
@@ -121,6 +149,15 @@ fn server_run(prog, path) {
           assert r.Binary(s) = second
           r.Value(r.Binary(string.append(f, s)))
         }))
+      }),
+    ),
+    #(
+      "equal",
+      builtin2(fn(x, y) {
+        case x == y {
+          True -> true
+          False -> false
+        }
       }),
     ),
   ]

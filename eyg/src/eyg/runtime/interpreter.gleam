@@ -102,9 +102,6 @@ pub fn eval(exp: e.Expression, env, k) {
 
 // Test interpreter -> setup node env effects & environment, types and values
 //
-// fn builtin2(f) {
-//   Builtin(fn(a) { Builtin(fn(b) { f(a, b) }) })
-// }
 
 fn select(label, term) {
   assert Record(fields) = term

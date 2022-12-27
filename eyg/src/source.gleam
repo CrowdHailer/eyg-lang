@@ -25,21 +25,26 @@ const web = e.Lambda(
       e.Empty,
     ),
     e.Let(
-      "_",
-      e.Apply(e.Select("body"), e.Variable("response")),
-      e.Let(
-        "return",
+      "match",
+      e.Apply(
         e.Apply(
-          e.Apply(
-            e.Apply(e.Case("Some"), e.Lambda("x", e.Variable("x"))),
-            e.Apply(
-              e.Apply(e.Case("None"), e.Lambda("_", e.Binary("other"))),
-              e.NoCases,
-            ),
+          e.Case("True"),
+          e.Lambda(
+            "_",
+            e.Apply(e.Apply(e.Extend("body"), e.Binary("special")), e.Empty),
           ),
-          e.Apply(e.Tag("Some"), e.Binary("foo")),
         ),
-        e.Variable("response"),
+        e.Apply(
+          e.Apply(e.Case("False"), e.Lambda("_", e.Variable("response"))),
+          e.NoCases,
+        ),
+      ),
+      e.Apply(
+        e.Variable("match"),
+        e.Apply(
+          e.Apply(e.Variable("equal"), e.Binary("/foo")),
+          e.Variable("req"),
+        ),
       ),
     ),
   ),
