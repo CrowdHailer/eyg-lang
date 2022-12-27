@@ -4,8 +4,10 @@ import gleam/option.{None, Some}
 import eygir/expression as e
 
 // harness global handler world external exterior mount surface
-pub fn run(source, term, extrinsic) {
-  handle(eval(source, [], eval_call(_, term, Value(_))), extrinsic)
+pub fn run(source, env, term, extrinsic) {
+  // Probably separate first handle non effectful from second
+  io.debug(#("RUUUUN", env))
+  handle(eval(source, env, eval_call(_, term, Value(_))), extrinsic)
 }
 
 fn handle(return, extrinsic) {
@@ -45,6 +47,7 @@ fn continue(k, term) {
 pub fn eval_call(f, arg, k) {
   case f {
     Function(param, body, env) -> {
+      io.debug(env)
       let env = [#(param, arg), ..env]
       eval(body, env, k)
     }

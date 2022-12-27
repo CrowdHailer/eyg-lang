@@ -14,7 +14,16 @@ const web = e.Lambda(
   "req",
   e.Let(
     "response",
-    e.Apply(e.Apply(e.Extend("body"), e.Binary("Hello, world!")), e.Empty),
+    e.Apply(
+      e.Apply(
+        e.Extend("body"),
+        e.Apply(
+          e.Apply(e.Variable("string_append"), e.Binary("hello")),
+          e.Variable("req"),
+        ),
+      ),
+      e.Empty,
+    ),
     e.Let(
       "_",
       e.Apply(e.Select("body"), e.Variable("response")),

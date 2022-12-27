@@ -3,12 +3,14 @@ import gleam/list
 import gleam/map
 import gleam/option.{None}
 import gleam/result
+import gleam/string
 import gleam/javascript
 import gleam/javascript/array.{Array}
 import eyg/analysis/inference
 import eyg/analysis/unification
+import eyg/analysis/scheme
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter
+import eyg/runtime/interpreter as r
 import eygir/expression as e
 import source.{source}
 
@@ -65,7 +67,7 @@ fn cli(_) {
 
   // exec is run without argument, or call -> run
   // pass in args more important than exec run
-  interpreter.run(prog, interpreter.Record([]), in_cli)
+  r.run(prog, [], r.Record([]), in_cli)
   |> io.debug
   0
 }
@@ -73,7 +75,7 @@ fn cli(_) {
 // Map composes better
 fn in_cli(label, term) {
   io.debug(#("Effect", label, term))
-  interpreter.Record([])
+  r.Record([])
 }
 
 external fn do_serve(fn(String) -> String) -> Nil =
@@ -85,7 +87,14 @@ fn web(_) {
 
     let a =
       inference.infer(
-        map.new(),
+        map.new()
+        |> map.insert(
+          "string_append",
+          scheme.Scheme(
+            [],
+            t.Fun(t.Binary, t.Open(-1), t.Fun(t.Binary, t.Open(-2), t.Binary)),
+          ),
+        ),
         prog,
         t.Unbound(-1),
         t.Closed,
@@ -94,13 +103,42 @@ fn web(_) {
       )
     type_of(a, [])
     |> io.debug()
-    // TODO use get field function
-    assert interpreter.Record([#("body", interpreter.Binary(body)), ..]) =
-      interpreter.run(prog, interpreter.Binary(x), in_cli)
-      |> io.debug
-    body
+    server_run(prog, x)
   })
 
+  // TODO use get field function
   // TODO does this return type matter for anything
   0
+}
+
+fn server_run(prog, path) {
+  let env = [
+    #(
+      "string_append",
+      r.Builtin(fn(first) {
+        r.Value(r.Builtin(fn(second) {
+          assert r.Binary(f) = first
+          assert r.Binary(s) = second
+          r.Value(r.Binary(string.append(f, s)))
+        }))
+      }),
+    ),
+  ]
+  assert return = r.run(prog, env, r.Binary(path), in_cli)
+  assert r.Binary(body) = field(return, "body")
+  body
+}
+
+// TODO linux with list as an effect
+
+// move to runtime or interpreter
+fn field(term, field) {
+  case term {
+    r.Record(fields) ->
+      case list.key_find(fields, field) {
+        Ok(value) -> value
+        Error(Nil) -> todo("no field")
+      }
+    _ -> todo("not a record")
+  }
 }
