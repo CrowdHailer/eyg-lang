@@ -11,7 +11,10 @@ import atelier/app.{SelectNode}
 
 pub fn render(source, selection) {
   let loc = Location([], Some(selection))
-  pre([style([#("cursor", "pointer")])], do_render(source, "\n", loc))
+  pre(
+    [style([#("cursor", "pointer")]), class("w-full max-w-6xl")],
+    do_render(source, "\n", loc),
+  )
 }
 
 fn click(loc: Location) {

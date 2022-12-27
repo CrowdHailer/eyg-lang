@@ -195,17 +195,23 @@ pub fn eval(exp: e.Expression, env, k) -> Term {
       continue(k, Builtin(handle(branches, state, _, env, k)))
     // TODO test
     e.Empty -> continue(k, Record([]))
-    e.Extend(label) ->
-      continue(
-        k,
-        Builtin(fn(value) {
-          Builtin(fn(record) {
-            assert Record(fields) = record
-            Record([#(label, value), ..fields])
-          })
-        }),
-      )
+    e.Extend(label) -> continue(k, extend(label))
     e.Case(label) -> todo("case etsd")
     e.NoCases -> todo("thingk this really should wrror")
   }
+}
+
+// Test interpreter -> setup node env effects & environment, types and values
+//
+fn builtin2(f) {
+  Builtin(fn(a) { Builtin(fn(b) { f(a, b) }) })
+}
+
+fn extend(label) {
+  Builtin(fn(value) {
+    Builtin(fn(record) {
+      assert Record(fields) = record
+      Record([#(label, value), ..fields])
+    })
+  })
 }
