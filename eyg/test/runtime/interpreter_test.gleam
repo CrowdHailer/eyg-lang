@@ -21,12 +21,11 @@ pub fn function_test() {
   |> should.equal(r.Value(r.Function("x", body, env)))
 }
 
-// todo test eval_call
-
 pub fn function_application_test() {
   let source = e.Apply(e.Lambda("x", e.Binary("body")), e.Integer(0))
   r.eval(source, [], id)
   |> should.equal(r.Value(r.Binary("body")))
+
   let source =
     e.Let(
       "id",
@@ -41,7 +40,7 @@ pub fn builtin_application_test() {
   let source = e.Apply(e.Variable("reverse"), e.Binary("hello"))
   let f = fn(x) {
     assert r.Binary(value) = x
-    r.Binary(string.reverse(value))
+    r.Value(r.Binary(string.reverse(value)))
   }
   r.eval(source, [#("reverse", r.Builtin(f))], id)
   |> should.equal(r.Value(r.Binary("olleh")))
@@ -74,4 +73,58 @@ pub fn record_creation_test() {
   |> should.equal(r.Value(r.Binary("FOO")))
   r.eval(e.Apply(e.Select("bar"), source), [], id)
   |> should.equal(r.Value(r.Integer(0)))
+}
+
+pub fn case_test() {
+  let switch =
+    e.Apply(
+      e.Apply(e.Case("Some"), e.Lambda("x", e.Variable("x"))),
+      e.Apply(
+        e.Apply(e.Case("None"), e.Lambda("_", e.Binary("else"))),
+        e.NoCases,
+      ),
+    )
+
+  let source = e.Apply(switch, e.Apply(e.Tag("Some"), e.Binary("foo")))
+  r.eval(source, [], id)
+  |> should.equal(r.Value(r.Binary("foo")))
+
+  let source = e.Apply(switch, e.Apply(e.Tag("None"), e.Empty))
+  r.eval(source, [], id)
+  |> should.equal(r.Value(r.Binary("else")))
+}
+
+pub fn rasing_effect_test() {
+  let source =
+    e.Let(
+      "a",
+      e.Apply(e.Perform("Foo"), e.Integer(1)),
+      e.Apply(e.Perform("Bar"), e.Variable("a")),
+    )
+  assert r.Effect("Foo", lifted, k) = r.eval(source, [], id)
+  lifted
+  |> should.equal(r.Integer(1))
+  assert r.Effect("Bar", lifted, k) = k(r.Binary("reply"))
+  lifted
+  |> should.equal(r.Binary("reply"))
+  assert r.Value(term) = k(r.Record([]))
+  term
+  |> should.equal(r.Record([]))
+}
+
+pub fn effect_in_case_test() {
+  let switch =
+    e.Apply(
+      e.Apply(e.Case("Ok"), e.Lambda("x", e.Variable("x"))),
+      e.Apply(e.Apply(e.Case("Error"), e.Perform("Raise")), e.NoCases),
+    )
+
+  let source = e.Apply(switch, e.Apply(e.Tag("Ok"), e.Binary("foo")))
+  r.eval(source, [], id)
+  |> should.equal(r.Value(r.Binary("foo")))
+
+  let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Binary("nope")))
+  assert r.Effect("Raise", lifted, k) = r.eval(source, [], id)
+  lifted
+  |> should.equal(r.Binary("nope"))
 }

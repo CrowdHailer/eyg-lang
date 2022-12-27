@@ -22,7 +22,7 @@ pub type Term {
   Record(fields: List(#(String, Term)))
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
-  Builtin(func: fn(Term) -> Term)
+  Builtin(func: fn(Term) -> Return)
   Perform(label: String)
 }
 
@@ -48,7 +48,13 @@ pub fn eval_call(f, arg, k) {
       let env = [#(param, arg), ..env]
       eval(body, env, k)
     }
-    Builtin(f) -> continue(k, f(arg))
+    // builtin needs to return result for the case statement
+    Builtin(f) ->
+      case f(arg) {
+        Value(term) -> continue(k, term)
+        Effect(l, a, _gnore) -> Effect(l, a, k)
+      }
+    // TODO perform should be effect without arg
     Perform(label) -> Effect(label, arg, k)
     _ -> {
       io.debug(#(f, arg))
@@ -79,35 +85,50 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Vacant -> todo("interpreted a todo")
     e.Record(fields, _) -> todo("record")
     e.Select(label) -> continue(k, Builtin(select(label, _)))
-    e.Tag(label) -> continue(k, Builtin(Tagged(label, _)))
+    e.Tag(label) -> continue(k, Builtin(fn(x) { Value(Tagged(label, x)) }))
     e.Match(branches, tail) -> todo("match")
     e.Perform(label) -> continue(k, Perform(label))
     e.Deep(state, branches) -> todo("deep")
     // TODO test
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, extend(label))
-    e.Case(label) -> todo("case etsd")
-    e.NoCases -> todo("thingk this really should wrror")
+    e.Case(label) -> continue(k, match(label))
+    e.NoCases -> continue(k, Builtin(fn(_) { todo("no cases match") }))
   }
 }
 
 // Test interpreter -> setup node env effects & environment, types and values
 //
-fn builtin2(f) {
-  Builtin(fn(a) { Builtin(fn(b) { f(a, b) }) })
-}
+// fn builtin2(f) {
+//   Builtin(fn(a) { Builtin(fn(b) { f(a, b) }) })
+// }
 
 fn select(label, term) {
   assert Record(fields) = term
   assert Ok(value) = list.key_find(fields, label)
-  value
+  Value(value)
 }
 
 fn extend(label) {
   Builtin(fn(value) {
-    Builtin(fn(record) {
+    Value(Builtin(fn(record) {
       assert Record(fields) = record
-      Record([#(label, value), ..fields])
-    })
+      Value(Record([#(label, value), ..fields]))
+    }))
+  })
+}
+
+// which k
+fn match(label) {
+  Builtin(fn(matched) {
+    Value(Builtin(fn(otherwise) {
+      Value(Builtin(fn(value) {
+        assert Tagged(l, term) = value
+        case l == label {
+          True -> eval_call(matched, term, Value)
+          False -> eval_call(otherwise, value, Value)
+        }
+      }))
+    }))
   })
 }
