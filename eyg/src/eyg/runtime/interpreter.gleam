@@ -10,13 +10,16 @@ pub type Term {
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
   Builtin(func: fn(Term) -> Term)
-  Effect(label: String, lift: Term, continuation: fn(Term) -> Term)
+  Effect(label: String, lift: Term)
 }
 
 fn continue(k, term) {
   case term {
     // Just don't need k on resume
-    Effect(label, lifted, resume) -> k(Record([]))
+    Effect(label, lifted) -> {
+      io.debug(#(label, lifted))
+      k(Record([]))
+    }
     _ -> k(term)
   }
 }
@@ -27,12 +30,7 @@ pub fn eval_call(f, arg, k) {
       let env = [#(param, arg), ..env]
       eval(body, env, k)
     }
-    Builtin(f) ->
-      case f(arg) {
-        // continue should take only terms
-        Effect(label, lifted, _) -> Effect(label, lifted, k)
-        _ -> continue(k, f(arg))
-      }
+    Builtin(f) -> continue(k, f(arg))
     _ -> {
       io.debug(#(f, arg))
       todo("not a function")
@@ -42,7 +40,7 @@ pub fn eval_call(f, arg, k) {
 
 // TODO test interpreter, particularly handle
 // TODO try moving Handle/Match to key_value lists
-pub fn eval(exp: e.Expression, env, k) -> Term {
+pub fn eval(exp: e.Expression, env, k) {
   case exp {
     e.Lambda(param, body) -> continue(k, Function(param, body, env))
     e.Apply(f, arg) -> {
@@ -64,7 +62,7 @@ pub fn eval(exp: e.Expression, env, k) -> Term {
     e.Select(label) -> continue(k, Builtin(select(label, _)))
     e.Tag(label) -> continue(k, Builtin(Tagged(label, _)))
     e.Match(branches, tail) -> todo("match")
-    e.Perform(label) -> continue(k, Builtin(Effect(label, _, k)))
+    e.Perform(label) -> continue(k, Builtin(Effect(label, _)))
     e.Deep(state, branches) -> todo("deep")
     // TODO test
     e.Empty -> continue(k, Record([]))

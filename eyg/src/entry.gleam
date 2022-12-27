@@ -72,11 +72,11 @@ fn cli(_) {
 
 fn run(prog, term) {
   case interpreter.eval_call(prog, term, fn(x) { x }) {
-    interpreter.Effect("Log", interpreter.Binary(b), k) -> {
-      io.debug(b)
-      run(interpreter.Builtin(k), interpreter.Record([]))
-    }
-    interpreter.Effect(_, _, _) -> todo("unhandled effect")
+    // interpreter.Effect("Log", interpreter.Binary(b)) -> {
+    //   io.debug(b)
+    //   run(interpreter.Builtin(k), interpreter.Record([]))
+    // }
+    interpreter.Effect(_, _) -> todo("unhandled effect")
     term -> term
   }
 }
