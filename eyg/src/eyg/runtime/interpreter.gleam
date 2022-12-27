@@ -3,6 +3,19 @@ import gleam/list
 import gleam/option.{None, Some}
 import eygir/expression as e
 
+// harness global handler world external exterior mount surface
+pub fn run(source, term, extrinsic) {
+  handle(eval(source, [], eval_call(_, term, Value(_))), extrinsic)
+}
+
+fn handle(return, extrinsic) {
+  case return {
+    // TODO stateful handler
+    Effect(label, term, k) -> handle(k(extrinsic(label, term)), extrinsic)
+    Value(term) -> term
+  }
+}
+
 pub type Term {
   Integer(value: Int)
   Binary(value: String)
@@ -10,16 +23,21 @@ pub type Term {
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
   Builtin(func: fn(Term) -> Term)
-  Effect(label: String, lift: Term)
+  Perform(label: String)
+}
+
+pub type Return {
+  Value(term: Term)
+  Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
 }
 
 fn continue(k, term) {
   case term {
     // Just don't need k on resume
-    Effect(label, lifted) -> {
-      io.debug(#(label, lifted))
-      k(Record([]))
-    }
+    // Effect(label, lifted) -> {
+    //   io.debug(#(label, lifted))
+    //   k(Record([]))
+    // }
     _ -> k(term)
   }
 }
@@ -31,6 +49,7 @@ pub fn eval_call(f, arg, k) {
       eval(body, env, k)
     }
     Builtin(f) -> continue(k, f(arg))
+    Perform(label) -> Effect(label, arg, k)
     _ -> {
       io.debug(#(f, arg))
       todo("not a function")
@@ -62,7 +81,7 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Select(label) -> continue(k, Builtin(select(label, _)))
     e.Tag(label) -> continue(k, Builtin(Tagged(label, _)))
     e.Match(branches, tail) -> todo("match")
-    e.Perform(label) -> continue(k, Builtin(Effect(label, _)))
+    e.Perform(label) -> continue(k, Perform(label))
     e.Deep(state, branches) -> todo("deep")
     // TODO test
     e.Empty -> continue(k, Record([]))

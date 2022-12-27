@@ -4,13 +4,13 @@ import eygir/expression as e
 import eyg/runtime/interpreter as r
 
 fn id(x) {
-  x
+  r.Value(x)
 }
 
 pub fn variable_test() {
   let source = e.Variable("x")
   r.eval(source, [#("x", r.Binary("assigned"))], id)
-  |> should.equal(r.Binary("assigned"))
+  |> should.equal(r.Value(r.Binary("assigned")))
 }
 
 pub fn function_test() {
@@ -18,7 +18,7 @@ pub fn function_test() {
   let source = e.Lambda("x", body)
   let env = [#("foo", r.Binary("assigned"))]
   r.eval(source, env, id)
-  |> should.equal(r.Function("x", body, env))
+  |> should.equal(r.Value(r.Function("x", body, env)))
 }
 
 // todo test eval_call
@@ -26,7 +26,7 @@ pub fn function_test() {
 pub fn function_application_test() {
   let source = e.Apply(e.Lambda("x", e.Binary("body")), e.Integer(0))
   r.eval(source, [], id)
-  |> should.equal(r.Binary("body"))
+  |> should.equal(r.Value(r.Binary("body")))
   let source =
     e.Let(
       "id",
@@ -34,7 +34,7 @@ pub fn function_application_test() {
       e.Apply(e.Variable("id"), e.Integer(0)),
     )
   r.eval(source, [], id)
-  |> should.equal(r.Integer(0))
+  |> should.equal(r.Value(r.Integer(0)))
 }
 
 pub fn builtin_application_test() {
@@ -44,26 +44,26 @@ pub fn builtin_application_test() {
     r.Binary(string.reverse(value))
   }
   r.eval(source, [#("reverse", r.Builtin(f))], id)
-  |> should.equal(r.Binary("olleh"))
+  |> should.equal(r.Value(r.Binary("olleh")))
 }
 
 // primitive
 pub fn create_a_binary_test() {
   let source = e.Binary("hello")
   r.eval(source, [], id)
-  |> should.equal(r.Binary("hello"))
+  |> should.equal(r.Value(r.Binary("hello")))
 }
 
 pub fn create_an_integer_test() {
   let source = e.Integer(5)
   r.eval(source, [], id)
-  |> should.equal(r.Integer(5))
+  |> should.equal(r.Value(r.Integer(5)))
 }
 
 pub fn record_creation_test() {
   let source = e.Empty
   r.eval(source, [], id)
-  |> should.equal(r.Record([]))
+  |> should.equal(r.Value(r.Record([])))
 
   let source =
     e.Apply(
@@ -71,7 +71,7 @@ pub fn record_creation_test() {
       e.Apply(e.Apply(e.Extend("bar"), e.Integer(0)), e.Empty),
     )
   r.eval(e.Apply(e.Select("foo"), source), [], id)
-  |> should.equal(r.Binary("FOO"))
+  |> should.equal(r.Value(r.Binary("FOO")))
   r.eval(e.Apply(e.Select("bar"), source), [], id)
-  |> should.equal(r.Integer(0))
+  |> should.equal(r.Value(r.Integer(0)))
 }

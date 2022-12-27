@@ -63,22 +63,17 @@ fn cli(_) {
   type_of(a, [])
   assert True = sound(a)
 
-  let exec = interpreter.eval(prog, [], fn(x) { x })
-  // |> io.debug
-  run(exec, interpreter.Record([]))
+  // exec is run without argument, or call -> run
+  // pass in args more important than exec run
+  interpreter.run(prog, interpreter.Record([]), in_cli)
   |> io.debug
   0
 }
 
-fn run(prog, term) {
-  case interpreter.eval_call(prog, term, fn(x) { x }) {
-    // interpreter.Effect("Log", interpreter.Binary(b)) -> {
-    //   io.debug(b)
-    //   run(interpreter.Builtin(k), interpreter.Record([]))
-    // }
-    interpreter.Effect(_, _) -> todo("unhandled effect")
-    term -> term
-  }
+// Map composes better
+fn in_cli(label, term) {
+  io.debug(#("Effect", label, term))
+  interpreter.Record([])
 }
 
 external fn do_serve(fn(String) -> String) -> Nil =
@@ -99,15 +94,13 @@ fn web(_) {
       )
     type_of(a, [])
     |> io.debug()
-    // TODO does this return type matter for anything
-    let handler = interpreter.eval(prog, [], fn(x) { x })
     // TODO use get field function
-    // TODO need a run function that takes effect handlers, do we need to pass id as cont here
     assert interpreter.Record([#("body", interpreter.Binary(body)), ..]) =
-      interpreter.eval_call(handler, interpreter.Binary(x), fn(x) { x })
+      interpreter.run(prog, interpreter.Binary(x), in_cli)
       |> io.debug
     body
   })
 
+  // TODO does this return type matter for anything
   0
 }
