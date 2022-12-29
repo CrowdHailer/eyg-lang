@@ -173,7 +173,8 @@ fn server_run(prog, path) {
       }),
     ),
   ]
-  assert return = r.run(prog, env, r.Binary(path), in_cli)
+  let request = r.Record([#("path", r.Binary(path))])
+  assert return = r.run(prog, env, request, in_cli)
   assert r.Binary(body) = field(return, "body")
   body
 }

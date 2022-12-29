@@ -73,6 +73,8 @@ pub fn keypress(key, state: WorkSpace) {
     // Navigate(act), "r" -> todo("record")
     // Navigate(act), "t" -> todo("tuple now tag")
     Navigate(act), "y" -> Ok(copy(act, state))
+    // copy paste quite rare so we use upper case. might be best as command
+    Navigate(act), "Y" -> paste(act, state)
     // Navigate(act), "u" -> todo("unwrap")
     Navigate(act), "i" -> insert(act, state)
     // Navigate(act), "o" -> todo("o")
@@ -89,7 +91,7 @@ pub fn keypress(key, state: WorkSpace) {
     // Navigate(act), "z" -> todo("z")
     // Navigate(act), "x" -> todo("!!provider expansion not needed atm")
     Navigate(act), "c" -> call(act, state)
-    // Navigate(act), "v" -> todo("variable")
+    Navigate(act), "v" -> Ok(variable(act, state))
     Navigate(act), "b" -> Ok(binary(act, state))
     // Navigate(act), "n" -> todo("!named but this is likely to be tagged now")
     Navigate(act), "m" -> match(act, state)
@@ -140,6 +142,16 @@ fn assign_to(act, state) {
 
 fn copy(act, state) {
   WorkSpace(..state, yanked: Some(act.target))
+}
+
+fn paste(act, state) {
+  case state.yanked {
+    Some(snippet) -> {
+      let source = act.update(snippet)
+      update_source(state, source)
+    }
+    None -> Error("nothing on clipboard")
+  }
 }
 
 fn insert(act, state) {
@@ -221,6 +233,16 @@ fn select(act, state) {
 fn call(act, state) {
   let source = act.update(e.Apply(act.target, e.Vacant))
   update_source(state, source)
+}
+
+fn variable(act, state) {
+  let commit = case act.target {
+    e.Let(label, value, then) -> fn(text) {
+      act.update(e.Let(label, e.Variable(text), then))
+    }
+    exp -> fn(text) { act.update(e.Variable(text)) }
+  }
+  WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
 fn binary(act, state) {
