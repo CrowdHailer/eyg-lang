@@ -6,7 +6,6 @@ import eygir/expression as e
 // harness global handler world external exterior mount surface
 pub fn run(source, env, term, extrinsic) {
   // Probably separate first handle non effectful from second
-  io.debug(#("RUUUUN", env))
   handle(eval(source, env, eval_call(_, term, Value(_))), extrinsic)
 }
 
@@ -132,3 +131,7 @@ fn match(label) {
     }))
   })
 }
+// world state
+// hGet(state -> key -> kont -> kont(state))(state)(exec)
+// Is there a way to pass state through, but if we have fix we don't need to but i need to update inference
+// Hmm

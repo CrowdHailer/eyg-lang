@@ -12,6 +12,7 @@ import eyg/analysis/scheme
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eygir/expression as e
+import eygir/decode
 import source.{source}
 
 // document that rad start shell at dollar
@@ -78,12 +79,13 @@ fn in_cli(label, term) {
   r.Record([])
 }
 
-external fn do_serve(fn(String) -> String) -> Nil =
+external fn do_serve(fn(String) -> String, fn(String) -> Nil) -> Nil =
   "./entry.js" "serve"
 
 fn web(_) {
-  do_serve(fn(x) {
-    let prog = e.Apply(e.Select("web"), source)
+  let store = javascript.make_reference(source)
+  let handle = fn(x) {
+    let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
     let a =
       inference.infer(
@@ -123,12 +125,22 @@ fn web(_) {
     type_of(a, [])
     |> io.debug()
     server_run(prog, x)
-  })
+  }
 
+  let save = fn(raw) {
+    assert Ok(source) = decode.from_json(raw)
+    javascript.set_reference(store, source)
+    write_file_sync("saved/saved.json", raw)
+    Nil
+  }
+  do_serve(handle, save)
   // TODO use get field function
   // TODO does this return type matter for anything
   0
 }
+
+external fn write_file_sync(String, String) -> Nil =
+  "fs" "writeFileSync"
 
 // TODO put with helpers in runtime
 fn builtin2(f) {

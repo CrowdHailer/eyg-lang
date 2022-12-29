@@ -37,6 +37,19 @@ export async function postJSON(url, data) {
     new Gleam.Error(error);
   }
 }
+export async function post(url, data) {
+  try {
+    let response = await fetch(url, {
+      method: "POST",
+      body: data,
+    });
+    console.log(response.status);
+    return new Gleam.Ok([]);
+  } catch (error) {
+    new Gleam.Error(error);
+  }
+}
+
 
 export function writeIntoDiv(content) {
   let el = document.getElementById("the-id-for-dropping-html");

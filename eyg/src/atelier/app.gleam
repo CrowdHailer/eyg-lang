@@ -6,6 +6,7 @@ import gleam/string
 import lustre/cmd
 import atelier/transform
 import eygir/expression as e
+import eygir/encode
 import gleam/javascript/promise.{Promise}
 
 pub type WorkSpace {
@@ -111,9 +112,12 @@ pub fn keypress(key, state: WorkSpace) {
 external fn post_json(String, a) -> Promise(Result(#(), String)) =
   "../browser_ffi.js" "postJSON"
 
+external fn post(String, String) -> Promise(Result(#(), String)) =
+  "../browser_ffi.js" "post"
+
 fn save(state) {
   // todo("encode")
-  post_json("/save", state.source)
+  post("/save", encode.to_json(state.source))
   |> io.debug
   Ok(state)
 }

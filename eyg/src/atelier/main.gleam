@@ -3,13 +3,15 @@ import lustre
 import lustre/cmd
 import atelier/app
 import atelier/view/root
-import source.{source}
+import eygir/decode
 
 // render -> app
 // main -> render
 // is main in app circle
 // vew depends on state
-pub fn main() {
+// load source can I use same static path i.e. /src/source.json
+pub fn main(source) {
+  assert Ok(source) = decode.from_json(source)
   assert Ok(dispatch) =
     lustre.application(#(app.init(source), cmd.none()), app.update, root.render)
     |> lustre.start("#app")

@@ -27,6 +27,10 @@ app.use(
     },
   })
 );
+app.use(
+  "/saved",
+  express.static("saved")
+);
 
 const page = `
 <!DOCTYPE html>
@@ -72,22 +76,30 @@ const lustre = `
   <div id="app" class="min-h-screen"></div>
 <script type="module">
   import {main} from "/src/eyg/atelier/main.mjs"
-  main()
+  fetch('/saved/saved.json').then(resp => {
+    return resp.text()
+  }).then(source => {
+    console.log(source)
+    main(source)
+  })
 </script>
 </html>
 `;
 // TODO solid example does have h defined
 
-export function serve(handler) {
+export function serve(handler, saver) {
   app.use((req, res) => {
     let host = req.header("host");
     if (host == "localhost:8899") {
       res.send(page);
     } else if (host == "localhost:5000") {
       if (req.path == "/save") {
-        console.log("nice try");
-        console.log(req.body.toString());
-        res.send("")
+        let body = req.body.toString();
+        console.log(body);
+        saver(body)
+        // just write to file
+        console.log("saved");
+        res.send("done")
       } else {
         res.send(lustre);
       }
