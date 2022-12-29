@@ -8,6 +8,9 @@ import atelier/transform
 import eygir/expression as e
 import eygir/encode
 import gleam/javascript/promise.{Promise}
+import gleam/fetch
+import gleam/http
+import gleam/http/request
 
 pub type WorkSpace {
   WorkSpace(
@@ -111,15 +114,20 @@ pub fn keypress(key, state: WorkSpace) {
   }
 }
 
-external fn post_json(String, a) -> Promise(Result(#(), String)) =
-  "../browser_ffi.js" "postJSON"
-
-external fn post(String, String) -> Promise(Result(#(), String)) =
-  "../browser_ffi.js" "post"
-
+// could move to a atelier/client.{save}
 fn save(state) {
-  // todo("encode")
-  post("/save", encode.to_json(state.source))
+  let request =
+    request.new()
+    |> request.set_method(http.Post)
+    // Note needs scheme and host setting wont use fetch defaults of being able to have just a path
+    |> request.set_scheme(http.Http)
+    |> request.set_host("localhost:5000")
+    |> request.set_path("/save")
+    |> request.prepend_header("content-type", "application/json")
+    |> request.set_body(encode.to_json(state.source))
+
+  fetch.send(request)
+  |> io.debug
   Ok(state)
 }
 

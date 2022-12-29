@@ -12,15 +12,9 @@ app.use(express.raw({ type: "*/*", limit: "1mb" }));
 // express.static.mime.define({ "application/json": ["mjs"] });
 app.use(
   "/src",
-  // (req, resp, next) => {
-  //   console.log("nooooooooooooo", req.path.endsWith(".mjs"));
-  //   res.setHeader("content-type", "*");
-  //   next();
-  // },
   express.static("build/dev/javascript", {
     setHeaders: function (res, path, stat) {
       // if file is a .xml file, then set content-type
-      console.log(path);
       if (path.endsWith(".mjs")) {
         res.setHeader("Content-Type", "application/javascript");
       }
@@ -103,11 +97,7 @@ export function serve(handler, saver) {
         res.send(lustre);
       }
     } else {
-      console.log("bob!!");
-      console.log(req.hostname);
-      // console.log(req.body.toString());
       const result = handler(req.path);
-      console.log("result", result);
       res.send(result);
     }
   });
