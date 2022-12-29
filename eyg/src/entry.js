@@ -95,7 +95,6 @@ export function serve(handler, saver) {
     } else if (host == "localhost:5000") {
       if (req.path == "/save") {
         let body = req.body.toString();
-        console.log(body);
         saver(body)
         // just write to file
         console.log("saved");

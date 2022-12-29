@@ -78,7 +78,7 @@ pub fn keypress(key, state: WorkSpace) {
     // Navigate(act), "u" -> todo("unwrap")
     Navigate(act), "i" -> insert(act, state)
     // Navigate(act), "o" -> todo("o")
-    // Navigate(act), "p" -> todo("provider not needed")
+    Navigate(act), "p" -> Ok(perform(act, state))
     Navigate(act), "a" -> increase(state)
     Navigate(act), "s" -> decrease(act, state)
     Navigate(act), "d" -> delete(act, state)
@@ -120,7 +120,6 @@ external fn post(String, String) -> Promise(Result(#(), String)) =
 fn save(state) {
   // todo("encode")
   post("/save", encode.to_json(state.source))
-  |> io.debug
   Ok(state)
 }
 
@@ -228,6 +227,16 @@ fn select(act, state) {
       WorkSpace(..state, mode: WriteLabel("", commit))
     }
   }
+}
+
+fn perform(act, state) {
+  let commit = case act.target {
+    e.Let(label, value, then) -> fn(text) {
+      act.update(e.Let(label, e.Perform(text), then))
+    }
+    exp -> fn(text) { act.update(e.Perform(text)) }
+  }
+  WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
 fn call(act, state) {
