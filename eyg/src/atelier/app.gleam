@@ -74,11 +74,11 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "w" -> call_with(act, state)
     Navigate(act), "e" -> Ok(assign_to(act, state))
     // Navigate(act), "r" -> todo("record and tagged next to each other is nice")
-    // Navigate(act), "t" -> todo("tuple now tag")
+    Navigate(act), "t" -> Ok(tag(act, state))
     Navigate(act), "y" -> Ok(copy(act, state))
     // copy paste quite rare so we use upper case. might be best as command
     Navigate(act), "Y" -> paste(act, state)
-    // Navigate(act), "u" -> todo("unwrap")
+    Navigate(act), "u" -> unwrap(act, state)
     Navigate(act), "i" -> insert(act, state)
     // Navigate(act), "o" -> todo("o")
     Navigate(act), "p" -> Ok(perform(act, state))
@@ -147,6 +147,14 @@ fn assign_to(act, state) {
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
+fn tag(act, state) {
+  let commit = case act.target {
+    e.Vacant -> fn(text) { act.update(e.Tag(text)) }
+    exp -> fn(text) { act.update(e.Apply(e.Tag(text), exp)) }
+  }
+  WorkSpace(..state, mode: WriteLabel("", commit))
+}
+
 fn copy(act, state) {
   WorkSpace(..state, yanked: Some(act.target))
 }
@@ -158,6 +166,16 @@ fn paste(act, state) {
       update_source(state, source)
     }
     None -> Error("nothing on clipboard")
+  }
+}
+
+fn unwrap(act, state) {
+  case act.parent {
+    None -> Error("top level")
+    Some(#(i, list, _, parent_update)) -> {
+      let source = parent_update(act.target)
+      update_source(state, source)
+    }
   }
 }
 
