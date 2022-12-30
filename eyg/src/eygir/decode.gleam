@@ -24,6 +24,8 @@ pub fn decoder(x) {
       decode3(e.Let, label(), field("value", decoder), field("then", decoder))
     "integer" -> decode1(e.Integer, field("value", int))
     "binary" -> decode1(e.Binary, field("value", string))
+    "tail" -> fn(_) { Ok(e.Tail) }
+    "cons" -> fn(_) { Ok(e.Cons) }
     "vacant" -> fn(_) { Ok(e.Vacant) }
     "empty" -> fn(_) { Ok(e.Empty) }
     "extend" -> decode1(e.Extend, label())

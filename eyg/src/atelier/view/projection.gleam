@@ -56,6 +56,13 @@ pub fn do_render(exp, br, loc) {
     e.Let(label, value, then) -> assigment(label, value, then, br, loc)
     e.Binary(value) -> [string(value, loc)]
     e.Integer(value) -> [integer(value, loc)]
+    e.Tail -> [
+      span([click(loc), classes(highlight(focused(loc)))], [text("[]")]),
+    ]
+    e.Cons -> [
+      // maybe gray but probably better rendering in apply
+      span([click(loc), classes(highlight(focused(loc)))], [text("cons")]),
+    ]
     e.Vacant -> [vacant(loc)]
     e.Empty -> [text("{}")]
     e.Record(fields, from) ->
@@ -81,7 +88,6 @@ pub fn do_render(exp, br, loc) {
     e.NoCases -> [
       span(
         [
-          class("text-gray-400"),
           click(loc),
           classes([#("text-gray-400", True), ..highlight(focused(loc))]),
         ],

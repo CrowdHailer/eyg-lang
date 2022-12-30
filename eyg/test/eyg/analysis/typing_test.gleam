@@ -106,6 +106,25 @@ pub fn integer_test() {
   assert t.Integer = resolve(sub, typ)
 }
 
+pub fn empty_list_test() {
+  let exp = e.Tail
+  let env = env.empty()
+  let typ = t.LinkedList(t.Unbound(-1))
+  let eff = t.Closed
+  let ref = javascript.make_reference(0)
+
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Ok(t.LinkedList(e)) = type_of(sub, [])
+  resolve(sub, t.Unbound(-1))
+  |> should.equal(e)
+
+  let typ = t.Unbound(1)
+  let ref = javascript.make_reference(0)
+
+  let sub = infer(env, exp, typ, eff, ref)
+  assert t.LinkedList(t.Unbound(_)) = resolve(sub, typ)
+}
+
 // Variables
 pub fn variables_test() {
   let exp = e.Let("x", e.Binary("hi"), e.Variable("x"))

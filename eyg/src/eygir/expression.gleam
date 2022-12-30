@@ -1,5 +1,11 @@
 import gleam/option.{None, Option}
 
+// Add Intege
+// List
+// hd Ok({value, rest}) Error({})
+// head(list)(value-> rest -> {})(_ -> {})
+// fix as a variable that exists. Shallow handlers
+
 pub type Expression {
   Variable(label: String)
   Lambda(label: String, body: Expression)
@@ -9,6 +15,13 @@ pub type Expression {
   // Primitive
   Integer(value: Int)
   Binary(value: String)
+
+  Tail
+  // type system won't allow improper list
+  // Is there a need for first class list, not as both are addressible as expressions
+  // There is an idea that I can have restrictive record etc but stil keep
+  // super simple fn application
+  Cons
 
   Vacant
 

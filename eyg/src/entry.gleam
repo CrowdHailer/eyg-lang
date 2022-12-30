@@ -56,7 +56,7 @@ fn cli(_) {
   let prog = e.Apply(e.Select("cli"), source)
   let a =
     inference.infer(
-      map.new(),
+      env(),
       e.Apply(prog, e.unit),
       t.Unbound(-1),
       t.Extend("Log", #(t.Binary, t.unit), t.Closed),
@@ -82,6 +82,114 @@ fn in_cli(label, term) {
 external fn do_serve(fn(String) -> String, fn(String) -> Nil) -> Nil =
   "./entry.js" "serve"
 
+// env should be the same, i.e. stdlib because env stuff argument to the run fn
+
+fn env() {
+  map.new()
+  |> map.insert(
+    "string_append",
+    scheme.Scheme(
+      [t.Effect(-1), t.Effect(-2)],
+      t.Fun(t.Binary, t.Open(-1), t.Fun(t.Binary, t.Open(-2), t.Binary)),
+    ),
+  )
+  |> map.insert(
+    "equal",
+    scheme.Scheme(
+      [],
+      // TODO needs term and variable
+      // [-3, -4, -5, -6],
+      t.Fun(
+        t.Unbound(-3),
+        t.Open(-4),
+        t.Fun(
+          t.Unbound(-5),
+          t.Open(-6),
+          t.Union(t.Extend("True", t.unit, t.Extend("False", t.unit, t.Closed))),
+        ),
+      ),
+    ),
+  )
+  |> map.insert(
+    "list_fold",
+    scheme.Scheme(
+      [],
+      // TODO
+      // [-7, -8, -9, -10, -11, -12, -13],
+      t.Fun(
+        t.LinkedList(t.Unbound(-7)),
+        t.Open(-8),
+        t.Fun(
+          t.Unbound(-9),
+          t.Open(-10),
+          t.Fun(
+            t.Fun(
+              t.Unbound(-7),
+              t.Open(-11),
+              t.Fun(t.Unbound(-9), t.Open(-12), t.Unbound(-9)),
+            ),
+            t.Open(-13),
+            t.Unbound(-9),
+          ),
+        ),
+      ),
+    ),
+  )
+  |> map.insert(
+    "string_concat",
+    scheme.Scheme([], t.Fun(t.LinkedList(t.Binary), t.Open(-14), t.Binary)),
+  )
+}
+
+fn env_values() {
+  [
+    #(
+      "string_append",
+      r.Builtin(fn(first) {
+        r.Value(r.Builtin(fn(second) {
+          assert r.Binary(f) = first
+          assert r.Binary(s) = second
+          r.Value(r.Binary(string.append(f, s)))
+        }))
+      }),
+    ),
+    #(
+      "equal",
+      builtin2(fn(x, y) {
+        case x == y {
+          True -> true
+          False -> false
+        }
+      }),
+    ),
+    // #(
+    //   "list_fold",
+    //   builtin3(fn(list, initial, f) {
+    //     assert r.LinkedList(elements) = list
+    //     list.fold(
+    //       elements,
+    //       initial,
+    //       fn(acc, i) { r.eval_call(f, i, r.eval_call(_, acc, r.Value)) },
+    //     )
+    //   }),
+    // ),
+    #(
+      "string_concat",
+      r.Builtin(fn(list) {
+        assert r.LinkedList(elements) = list
+        r.Value(r.Binary(list.fold(
+          elements,
+          "",
+          fn(buffer, e) {
+            assert r.Binary(value) = e
+            string.append(buffer, value)
+          },
+        )))
+      }),
+    ),
+  ]
+}
+
 fn web(_) {
   let store = javascript.make_reference(source)
   let handle = fn(x) {
@@ -89,33 +197,7 @@ fn web(_) {
 
     let a =
       inference.infer(
-        map.new()
-        |> map.insert(
-          "string_append",
-          scheme.Scheme(
-            [],
-            t.Fun(t.Binary, t.Open(-1), t.Fun(t.Binary, t.Open(-2), t.Binary)),
-          ),
-        )
-        |> map.insert(
-          "equal",
-          scheme.Scheme(
-            [],
-            t.Fun(
-              t.Unbound(-3),
-              t.Open(-4),
-              t.Fun(
-                t.Unbound(-5),
-                t.Open(-6),
-                t.Union(t.Extend(
-                  "True",
-                  t.unit,
-                  t.Extend("False", t.unit, t.Closed),
-                )),
-              ),
-            ),
-          ),
-        ),
+        env(),
         prog,
         t.Unbound(-1),
         t.Closed,
@@ -147,34 +229,21 @@ fn builtin2(f) {
   r.Builtin(fn(a) { r.Value(r.Builtin(fn(b) { r.Value(f(a, b)) })) })
 }
 
+fn builtin3(f) {
+  r.Builtin(fn(a) {
+    r.Value(r.Builtin(fn(b) {
+      r.Value(r.Builtin(fn(c) { r.Value(f(a, b, c)) }))
+    }))
+  })
+}
+
 const true = r.Tagged("True", r.Record([]))
 
 const false = r.Tagged("False", r.Record([]))
 
 fn server_run(prog, path) {
-  let env = [
-    #(
-      "string_append",
-      r.Builtin(fn(first) {
-        r.Value(r.Builtin(fn(second) {
-          assert r.Binary(f) = first
-          assert r.Binary(s) = second
-          r.Value(r.Binary(string.append(f, s)))
-        }))
-      }),
-    ),
-    #(
-      "equal",
-      builtin2(fn(x, y) {
-        case x == y {
-          True -> true
-          False -> false
-        }
-      }),
-    ),
-  ]
   let request = r.Record([#("path", r.Binary(path))])
-  assert return = r.run(prog, env, request, in_cli)
+  assert return = r.run(prog, env_values(), request, in_cli)
   assert r.Binary(body) = field(return, "body")
   body
 }

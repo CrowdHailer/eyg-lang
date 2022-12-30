@@ -22,6 +22,8 @@ pub fn expression_test() {
   check_encoding(e.Let("x", e.Binary("hi"), e.Variable("x")))
   check_encoding(e.Integer(5))
   check_encoding(e.Binary("hello"))
+  check_encoding(e.Tail)
+  check_encoding(e.Cons)
   check_encoding(e.Vacant)
   check_encoding(e.Empty)
   check_encoding(e.Extend("foo"))

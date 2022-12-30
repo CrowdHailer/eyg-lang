@@ -91,6 +91,7 @@ pub fn apply(sub: Substitutions, typ) {
     t.Record(row) -> t.Record(apply_row(sub, row))
     t.Union(row) -> t.Union(apply_row(sub, row))
     t.Integer | t.Binary -> typ
+    t.LinkedList(element) -> t.LinkedList(apply(sub, element))
   }
 }
 

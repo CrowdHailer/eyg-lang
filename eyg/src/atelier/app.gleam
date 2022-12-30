@@ -73,7 +73,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "q" -> save(state)
     Navigate(act), "w" -> call_with(act, state)
     Navigate(act), "e" -> Ok(assign_to(act, state))
-    // Navigate(act), "r" -> todo("record")
+    // Navigate(act), "r" -> todo("record and tagged next to each other is nice")
     // Navigate(act), "t" -> todo("tuple now tag")
     Navigate(act), "y" -> Ok(copy(act, state))
     // copy paste quite rare so we use upper case. might be best as command
@@ -92,11 +92,11 @@ pub fn keypress(key, state: WorkSpace) {
     // Navigate(act), "k" -> todo("up probably not")
     // Navigate(act), "l" -> todo("right probably not")
     // Navigate(act), "z" -> todo("z")
-    // Navigate(act), "x" -> todo("!!provider expansion not needed atm")
+    Navigate(act), "x" -> list(act, state)
     Navigate(act), "c" -> call(act, state)
     Navigate(act), "v" -> Ok(variable(act, state))
     Navigate(act), "b" -> Ok(binary(act, state))
-    // Navigate(act), "n" -> todo("!named but this is likely to be tagged now")
+    // Navigate(act), "n" -> todo("!named but this is likely to be tagged now n for number")
     Navigate(act), "m" -> match(act, state)
     // Navigate(act), " " -> todo("space follow suggestion next error")
     Navigate(_), _ -> Error("no action for keypress")
@@ -170,6 +170,7 @@ fn insert(act, state) {
 
     e.Binary(value) -> Ok(#(value, e.Binary(_)))
     e.Integer(value) -> Error("there needs to be a new mode for integer insert")
+    e.Tail | e.Cons -> Error("there is no insert for lists")
     e.Vacant -> Error("no insert option for vacant")
     e.Record(_, _) -> todo("record insert")
     e.Empty -> Error("empty record no insert")
@@ -245,6 +246,15 @@ fn perform(act, state) {
     exp -> fn(text) { act.update(e.Perform(text)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
+}
+
+fn list(act, state) {
+  let new = case act.target {
+    e.Vacant -> e.Tail
+    exp -> e.Apply(e.Apply(e.Cons, e.Vacant), exp)
+  }
+  let source = act.update(new)
+  update_source(state, source)
 }
 
 fn call(act, state) {

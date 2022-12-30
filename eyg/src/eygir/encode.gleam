@@ -20,6 +20,8 @@ pub fn encode(exp) {
       |> node("let", _)
     e.Integer(i) -> node("integer", [#("value", int(i))])
     e.Binary(s) -> node("binary", [#("value", string(s))])
+    e.Tail -> node("tail", [])
+    e.Cons -> node("cons", [])
     e.Vacant -> node("vacant", [])
     e.Record(_, _) -> todo("remove heres")
     e.Empty -> node("empty", [])

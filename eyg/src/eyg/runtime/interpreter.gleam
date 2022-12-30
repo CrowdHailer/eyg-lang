@@ -20,6 +20,7 @@ fn handle(return, extrinsic) {
 pub type Term {
   Integer(value: Int)
   Binary(value: String)
+  LinkedList(elements: List(Term))
   Record(fields: List(#(String, Term)))
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
@@ -84,6 +85,8 @@ pub fn eval(exp: e.Expression, env, k) {
       eval(value, env, fn(term) { eval(then, [#(var, term), ..env], k) })
     e.Integer(value) -> continue(k, Integer(value))
     e.Binary(value) -> continue(k, Binary(value))
+    e.Tail -> continue(k, LinkedList([]))
+    e.Cons -> continue(k, cons())
     e.Vacant -> todo("interpreted a todo")
     e.Record(fields, _) -> todo("record")
     e.Select(label) -> continue(k, Builtin(select(label, _)))
@@ -101,6 +104,15 @@ pub fn eval(exp: e.Expression, env, k) {
 
 // Test interpreter -> setup node env effects & environment, types and values
 //
+
+fn cons() {
+  Builtin(fn(value) {
+    Value(Builtin(fn(tail) {
+      assert LinkedList(elements) = tail
+      Value(LinkedList([value, ..elements]))
+    }))
+  })
+}
 
 fn select(label, term) {
   assert Record(fields) = term
