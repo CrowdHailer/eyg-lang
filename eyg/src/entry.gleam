@@ -52,7 +52,13 @@ fn sound(inf: inference.Infered) {
 // Probably create an analysis state
 // TODO in error handle unification todo
 // TODO handle error in rewrite row
+external fn read_file_sync(String, String) -> String =
+  "fs" "readFileSync"
+
+// TODO remove source in Gleam format page
 pub fn cli(_) {
+  let json = read_file_sync("saved/saved.json", "utf8")
+  assert Ok(source) = decode.from_json(json)
   let prog = e.Apply(e.Select("cli"), source)
   let a =
     inference.infer(
@@ -139,6 +145,13 @@ fn env() {
     "string_concat",
     scheme.Scheme([], t.Fun(t.LinkedList(t.Binary), t.Open(-14), t.Binary)),
   )
+  |> map.insert(
+    "add",
+    scheme.Scheme(
+      [],
+      t.Fun(t.Integer, t.Open(-15), t.Fun(t.Integer, t.Open(-15), t.Integer)),
+    ),
+  )
 }
 
 pub fn env_values() {
@@ -163,7 +176,7 @@ pub fn env_values() {
           True -> true
           False -> false
         }
-        |> k
+        |> r.continue(k, _)
       }),
     ),
     #(
@@ -188,6 +201,14 @@ pub fn env_values() {
             },
           )),
         )
+      }),
+    ),
+    #(
+      "add",
+      builtin2(fn(x, y, k) {
+        assert r.Integer(x) = x
+        assert r.Integer(y) = y
+        r.continue(k, r.Integer(x + y))
       }),
     ),
   ]

@@ -1,7 +1,5 @@
 import gleam/option.{None, Option}
 
-// Add Intege
-// List
 // hd Ok({value, rest}) Error({})
 // head(list)(value-> rest -> {})(_ -> {})
 // fix as a variable that exists. Shallow handlers

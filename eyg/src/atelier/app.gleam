@@ -1,5 +1,6 @@
 // this can define state and UI maybe UI should be separate
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
@@ -46,7 +47,15 @@ pub fn update(state: WorkSpace, action) {
     Change(value) -> {
       let mode = case state.mode {
         WriteLabel(_, commit) -> WriteLabel(value, commit)
-        // WriteNumber(_, commit) -> TODO do we need to map number
+        WriteNumber(_, commit) ->
+          case value {
+            "" -> WriteNumber(0, commit)
+            _ -> {
+              io.debug(value)
+              assert Ok(number) = int.parse(value)
+              WriteNumber(number, commit)
+            }
+          }
         m -> m
       }
       let state = WorkSpace(..state, mode: mode)
@@ -309,13 +318,15 @@ fn binary(act, state) {
 }
 
 fn number(act, state) {
-  let commit = case act.target {
-    e.Let(label, value, then) -> fn(value) {
-      act.update(e.Let(label, e.Integer(value), then))
-    }
-    exp -> fn(value) { act.update(e.Integer(value)) }
+  let #(v, commit) = case act.target {
+    e.Let(label, value, then) -> #(
+      0,
+      fn(value) { act.update(e.Let(label, e.Integer(value), then)) },
+    )
+    e.Integer(value) -> #(value, fn(value) { act.update(e.Integer(value)) })
+    exp -> #(0, fn(value) { act.update(e.Integer(value)) })
   }
-  WorkSpace(..state, mode: WriteNumber(0, commit))
+  WorkSpace(..state, mode: WriteNumber(v, commit))
 }
 
 fn match(act, state) {
