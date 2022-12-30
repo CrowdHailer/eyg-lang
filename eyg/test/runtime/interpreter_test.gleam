@@ -40,9 +40,9 @@ pub fn function_application_test() {
 
 pub fn builtin_application_test() {
   let source = e.Apply(e.Variable("reverse"), e.Binary("hello"))
-  let f = fn(x) {
+  let f = fn(x, k) {
     assert r.Binary(value) = x
-    r.Value(r.Binary(string.reverse(value)))
+    r.continue(k, r.Binary(string.reverse(value)))
   }
   r.eval(source, [#("reverse", r.Builtin(f))], id)
   |> should.equal(r.Value(r.Binary("olleh")))
@@ -135,21 +135,24 @@ pub fn effect_in_builtin_test() {
   let source =
     e.Apply(
       e.Variable("native_call"),
-      e.Lambda("x", e.Apply(e.Perform("Foo"), e.Variable("x"))),
+      e.Lambda(
+        "x",
+        e.Let(
+          "reply",
+          e.Apply(e.Perform("Foo"), e.Variable("x")),
+          e.Apply(e.Apply(e.Extend("field"), e.Variable("reply")), e.Empty),
+        ),
+      ),
     )
   let env = [
     #(
       "native_call",
-      r.Builtin(fn(x) {
-        io.debug(x)
-        // todo("fooo native")
-        r.eval_call(x, r.Binary("called"), r.Value)
-      }),
+      r.Builtin(fn(x, k) { r.eval_call(x, r.Binary("called"), k) }),
     ),
   ]
   assert r.Effect("Foo", lifted, k) = r.eval(source, env, id)
   lifted
   |> should.equal(r.Binary("called"))
-  k(r.Record([]))
-  |> io.debug
+  k(r.Binary("reply"))
+  |> should.equal(r.Value(r.Record([#("field", r.Binary("reply"))])))
 }

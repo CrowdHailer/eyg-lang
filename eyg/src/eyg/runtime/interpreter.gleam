@@ -24,7 +24,7 @@ pub type Term {
   Record(fields: List(#(String, Term)))
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
-  Builtin(func: fn(Term) -> Return)
+  Builtin(func: fn(Term, fn(Term) -> Return) -> Return)
   Perform(label: String)
 }
 
@@ -33,7 +33,7 @@ pub type Return {
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
 }
 
-fn continue(k, term) {
+pub fn continue(k, term) {
   case term {
     // Just don't need k on resume
     // Effect(label, lifted) -> {
@@ -52,11 +52,7 @@ pub fn eval_call(f, arg, k) {
       eval(body, env, k)
     }
     // builtin needs to return result for the case statement
-    Builtin(f) ->
-      case f(arg) {
-        Value(term) -> continue(k, term)
-        Effect(l, a, _gnore) -> Effect(l, a, k)
-      }
+    Builtin(f) -> f(arg, k)
     // TODO perform should be effect without arg
     Perform(label) -> Effect(label, arg, k)
     _ -> {
@@ -89,8 +85,9 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Cons -> continue(k, cons())
     e.Vacant -> todo("interpreted a todo")
     e.Record(fields, _) -> todo("record")
-    e.Select(label) -> continue(k, Builtin(select(label, _)))
-    e.Tag(label) -> continue(k, Builtin(fn(x) { Value(Tagged(label, x)) }))
+    e.Select(label) -> continue(k, Builtin(select(label)))
+    e.Tag(label) ->
+      continue(k, Builtin(fn(x, k) { continue(k, Tagged(label, x)) }))
     e.Match(branches, tail) -> todo("match")
     e.Perform(label) -> continue(k, Perform(label))
     e.Deep(state, branches) -> todo("deep")
@@ -98,7 +95,7 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, extend(label))
     e.Case(label) -> continue(k, match(label))
-    e.NoCases -> continue(k, Builtin(fn(_) { todo("no cases match") }))
+    e.NoCases -> continue(k, Builtin(fn(_, _) { todo("no cases match") }))
   }
 }
 
@@ -106,41 +103,56 @@ pub fn eval(exp: e.Expression, env, k) {
 //
 
 fn cons() {
-  Builtin(fn(value) {
-    Value(Builtin(fn(tail) {
-      assert LinkedList(elements) = tail
-      Value(LinkedList([value, ..elements]))
-    }))
+  Builtin(fn(value, k) {
+    continue(
+      k,
+      Builtin(fn(tail, k) {
+        assert LinkedList(elements) = tail
+        continue(k, LinkedList([value, ..elements]))
+      }),
+    )
   })
 }
 
-fn select(label, term) {
-  assert Record(fields) = term
-  assert Ok(value) = list.key_find(fields, label)
-  Value(value)
+fn select(label) {
+  fn(term, k) {
+    assert Record(fields) = term
+    assert Ok(value) = list.key_find(fields, label)
+    // Value(value)
+    continue(k, value)
+  }
 }
 
 fn extend(label) {
-  Builtin(fn(value) {
-    Value(Builtin(fn(record) {
-      assert Record(fields) = record
-      Value(Record([#(label, value), ..fields]))
-    }))
+  Builtin(fn(value, k) {
+    continue(
+      k,
+      Builtin(fn(record, k) {
+        assert Record(fields) = record
+        continue(k, Record([#(label, value), ..fields]))
+      }),
+    )
   })
 }
 
 // which k
 fn match(label) {
-  Builtin(fn(matched) {
-    Value(Builtin(fn(otherwise) {
-      Value(Builtin(fn(value) {
-        assert Tagged(l, term) = value
-        case l == label {
-          True -> eval_call(matched, term, Value)
-          False -> eval_call(otherwise, value, Value)
-        }
-      }))
-    }))
+  Builtin(fn(matched, k) {
+    continue(
+      k,
+      Builtin(fn(otherwise, k) {
+        continue(
+          k,
+          Builtin(fn(value, k) {
+            assert Tagged(l, term) = value
+            case l == label {
+              True -> eval_call(matched, term, k)
+              False -> eval_call(otherwise, value, k)
+            }
+          }),
+        )
+      }),
+    )
   })
 }
 // world state

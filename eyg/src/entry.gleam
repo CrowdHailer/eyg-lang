@@ -145,49 +145,60 @@ pub fn env_values() {
   [
     #(
       "string_append",
-      r.Builtin(fn(first) {
-        r.Value(r.Builtin(fn(second) {
-          assert r.Binary(f) = first
-          assert r.Binary(s) = second
-          r.Value(r.Binary(string.append(f, s)))
-        }))
+      r.Builtin(fn(first, k) {
+        r.continue(
+          k,
+          r.Builtin(fn(second, k) {
+            assert r.Binary(f) = first
+            assert r.Binary(s) = second
+            r.continue(k, r.Binary(string.append(f, s)))
+          }),
+        )
       }),
     ),
     #(
       "equal",
-      builtin2(fn(x, y) {
+      builtin2(fn(x, y, k) {
         case x == y {
           True -> true
           False -> false
         }
+        |> k
       }),
     ),
-    // #(
-    //   "list_fold",
-    //   builtin3(fn(list, initial, f) {
-    //     assert r.LinkedList(elements) = list
-    //     list.fold(
-    //       elements,
-    //       r.Value(initial),
-    //       fn(acc, i) { r.eval_call(f, i, r.eval_call(_, acc, r.Value)) },
-    //     )
-    //   }),
-    // ),
+    #(
+      "list_fold",
+      builtin3(fn(list, initial, f, k) {
+        assert r.LinkedList(elements) = list
+        do_fold(elements, initial, f, k)
+      }),
+    ),
     #(
       "string_concat",
-      r.Builtin(fn(list) {
+      r.Builtin(fn(list, k) {
         assert r.LinkedList(elements) = list
-        r.Value(r.Binary(list.fold(
-          elements,
-          "",
-          fn(buffer, e) {
-            assert r.Binary(value) = e
-            string.append(buffer, value)
-          },
-        )))
+        r.continue(
+          k,
+          r.Binary(list.fold(
+            elements,
+            "",
+            fn(buffer, e) {
+              assert r.Binary(value) = e
+              string.append(buffer, value)
+            },
+          )),
+        )
       }),
     ),
   ]
+}
+
+fn do_fold(elements, state, f, k) {
+  case elements {
+    [] -> r.continue(k, state)
+    [e, ..rest] ->
+      r.eval_call(f, e, r.eval_call(_, state, do_fold(rest, _, f, k)))
+  }
 }
 
 fn web(_) {
@@ -226,14 +237,17 @@ external fn write_file_sync(String, String) -> Nil =
 
 // TODO put with helpers in runtime
 fn builtin2(f) {
-  r.Builtin(fn(a) { r.Value(r.Builtin(fn(b) { r.Value(f(a, b)) })) })
+  r.Builtin(fn(a, k) { r.continue(k, r.Builtin(fn(b, k) { f(a, b, k) })) })
 }
 
 fn builtin3(f) {
-  r.Builtin(fn(a) {
-    r.Value(r.Builtin(fn(b) {
-      r.Value(r.Builtin(fn(c) { r.Value(f(a, b, c)) }))
-    }))
+  r.Builtin(fn(a, k) {
+    r.continue(
+      k,
+      r.Builtin(fn(b, k) {
+        r.continue(k, r.Builtin(fn(c, k) { f(a, b, c, k) }))
+      }),
+    )
   })
 }
 

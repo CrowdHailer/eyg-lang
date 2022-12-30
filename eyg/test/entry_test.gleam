@@ -16,3 +16,29 @@ pub fn concat_test() {
   r.eval(source, entry.env_values(), r.Value)
   |> should.equal(r.Value(r.Binary("fizzbuzz")))
 }
+
+pub fn fold_test() {
+  let list =
+    e.Apply(
+      e.Apply(e.Cons, e.Binary("fizz")),
+      e.Apply(e.Apply(e.Cons, e.Binary("buzz")), e.Tail),
+    )
+  let reducer =
+    e.Lambda(
+      "element",
+      e.Lambda(
+        "state",
+        e.Apply(
+          e.Apply(e.Variable("string_append"), e.Variable("state")),
+          e.Variable("element"),
+        ),
+      ),
+    )
+  let source =
+    e.Apply(
+      e.Apply(e.Apply(e.Variable("list_fold"), list), e.Binary("initial")),
+      reducer,
+    )
+  r.eval(source, entry.env_values(), r.Value)
+  |> should.equal(r.Value(r.Binary("initialfizzbuzz")))
+}
