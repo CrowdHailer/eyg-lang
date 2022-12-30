@@ -52,7 +52,7 @@ fn sound(inf: inference.Infered) {
 // Probably create an analysis state
 // TODO in error handle unification todo
 // TODO handle error in rewrite row
-fn cli(_) {
+pub fn cli(_) {
   let prog = e.Apply(e.Select("cli"), source)
   let a =
     inference.infer(
@@ -68,13 +68,13 @@ fn cli(_) {
 
   // exec is run without argument, or call -> run
   // pass in args more important than exec run
-  r.run(prog, [], r.Record([]), in_cli)
+  r.run(prog, env_values(), r.Record([]), in_cli)
   |> io.debug
   0
 }
 
 // Map composes better
-fn in_cli(label, term) {
+pub fn in_cli(label, term) {
   io.debug(#("Effect", label, term))
   r.Record([])
 }
@@ -141,7 +141,7 @@ fn env() {
   )
 }
 
-fn env_values() {
+pub fn env_values() {
   [
     #(
       "string_append",
@@ -168,7 +168,7 @@ fn env_values() {
     //     assert r.LinkedList(elements) = list
     //     list.fold(
     //       elements,
-    //       initial,
+    //       r.Value(initial),
     //       fn(acc, i) { r.eval_call(f, i, r.eval_call(_, acc, r.Value)) },
     //     )
     //   }),

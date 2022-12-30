@@ -1,3 +1,5 @@
+import gleam/io
+import gleam/map
 import gleam/string
 import gleeunit/should
 import eygir/expression as e
@@ -127,4 +129,27 @@ pub fn effect_in_case_test() {
   assert r.Effect("Raise", lifted, k) = r.eval(source, [], id)
   lifted
   |> should.equal(r.Binary("nope"))
+}
+
+pub fn effect_in_builtin_test() {
+  let source =
+    e.Apply(
+      e.Variable("native_call"),
+      e.Lambda("x", e.Apply(e.Perform("Foo"), e.Variable("x"))),
+    )
+  let env = [
+    #(
+      "native_call",
+      r.Builtin(fn(x) {
+        io.debug(x)
+        // todo("fooo native")
+        r.eval_call(x, r.Binary("called"), r.Value)
+      }),
+    ),
+  ]
+  assert r.Effect("Foo", lifted, k) = r.eval(source, env, id)
+  lifted
+  |> should.equal(r.Binary("called"))
+  k(r.Record([]))
+  |> io.debug
 }
