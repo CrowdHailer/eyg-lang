@@ -13,6 +13,10 @@ pub fn render(state: app.WorkSpace) {
     app.WriteLabel(value, _) -> Some(value)
     _ -> None
   }
+  let input_number = case state.mode {
+    app.WriteNumber(number, _) -> Some(number)
+    _ -> None
+  }
 
   div(
     [class("h-screen vstack")],
@@ -27,6 +31,17 @@ pub fn render(state: app.WorkSpace) {
             attribute.autofocus(True),
             event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
             attribute.value(dynamic.from(value)),
+          ])
+        None -> div([], [])
+      },
+      case input_number {
+        Some(number) ->
+          input([
+            class("border w-full"),
+            attribute.type_("number"),
+            attribute.autofocus(True),
+            event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+            attribute.value(dynamic.from(number)),
           ])
         None -> div([], [])
       },

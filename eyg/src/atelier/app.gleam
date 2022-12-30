@@ -25,6 +25,7 @@ pub type WorkSpace {
 pub type Mode {
   Navigate(actions: transform.Act)
   WriteLabel(value: String, commit: fn(String) -> e.Expression)
+  WriteNumber(value: Int, commit: fn(Int) -> e.Expression)
 }
 
 pub type Action {
@@ -45,6 +46,7 @@ pub fn update(state: WorkSpace, action) {
     Change(value) -> {
       let mode = case state.mode {
         WriteLabel(_, commit) -> WriteLabel(value, commit)
+        // WriteNumber(_, commit) -> TODO do we need to map number
         m -> m
       }
       let state = WorkSpace(..state, mode: mode)
@@ -96,7 +98,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "c" -> call(act, state)
     Navigate(act), "v" -> Ok(variable(act, state))
     Navigate(act), "b" -> Ok(binary(act, state))
-    // Navigate(act), "n" -> todo("!named but this is likely to be tagged now n for number")
+    Navigate(act), "n" -> Ok(number(act, state))
     Navigate(act), "m" -> match(act, state)
     // Navigate(act), " " -> todo("space follow suggestion next error")
     Navigate(_), _ -> Error("no action for keypress")
@@ -106,7 +108,13 @@ pub fn keypress(key, state: WorkSpace) {
       update_source(state, source)
     }
     WriteLabel(_, _), k -> Ok(state)
+    WriteNumber(text, commit), k if k == "Enter" -> {
+      let source = commit(text)
+      update_source(state, source)
+    }
+    WriteNumber(_, _), k -> Ok(state)
   }
+
   case r {
     // Always clear message on new keypress
     Ok(state) -> #(WorkSpace(..state, error: None), cmd.none())
@@ -298,6 +306,16 @@ fn binary(act, state) {
     exp -> fn(text) { act.update(e.Binary(text)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
+}
+
+fn number(act, state) {
+  let commit = case act.target {
+    e.Let(label, value, then) -> fn(value) {
+      act.update(e.Let(label, e.Integer(value), then))
+    }
+    exp -> fn(value) { act.update(e.Integer(value)) }
+  }
+  WorkSpace(..state, mode: WriteNumber(0, commit))
 }
 
 fn match(act, state) {
