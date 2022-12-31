@@ -64,7 +64,9 @@ pub fn do_render(exp, br, loc) {
       span([click(loc), classes(highlight(focused(loc)))], [text("cons")]),
     ]
     e.Vacant -> [vacant(loc)]
-    e.Empty -> [text("{}")]
+    e.Empty -> [
+      span([click(loc), classes(highlight(focused(loc)))], [text("{}")]),
+    ]
     e.Record(fields, from) ->
       case False {
         True -> [text("mul")]
@@ -83,6 +85,7 @@ pub fn do_render(exp, br, loc) {
       }
     e.Extend(label) -> [extend(label, loc)]
     e.Select(label) -> [select(label, loc)]
+    e.Overwrite(label) -> [overwrite(label, loc)]
     e.Tag(label) -> [tag(label, loc)]
     e.Case(label) -> [match(label, br, loc)]
     e.NoCases -> [
@@ -297,14 +300,20 @@ fn vacant(loc) {
 
 fn extend(label, loc) {
   let target = focused(loc)
-  [click(loc), classes(highlight(target))]
+  [click(loc), classes([#("text-blue-700", True), ..highlight(target)])]
   |> span([text(string.append("+", label))])
 }
 
 fn select(label, loc) {
   let target = focused(loc)
-  [click(loc), classes(highlight(target))]
+  [click(loc), classes([#("text-blue-700", True), ..highlight(target)])]
   |> span([text(string.append(".", label))])
+}
+
+fn overwrite(label, loc) {
+  let target = focused(loc)
+  [click(loc), classes([#("text-blue-700", True), ..highlight(target)])]
+  |> span([text(string.append(":=", label))])
 }
 
 fn tag(label, loc) {

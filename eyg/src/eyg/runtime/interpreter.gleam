@@ -94,6 +94,7 @@ pub fn eval(exp: e.Expression, env, k) {
     // TODO test
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, extend(label))
+    e.Overwrite(label) -> continue(k, overwrite(label))
     e.Case(label) -> continue(k, match(label))
     e.NoCases -> continue(k, Builtin(fn(_, _) { todo("no cases match") }))
   }
@@ -129,6 +130,19 @@ fn extend(label) {
       k,
       Builtin(fn(record, k) {
         assert Record(fields) = record
+        continue(k, Record([#(label, value), ..fields]))
+      }),
+    )
+  })
+}
+
+fn overwrite(label) {
+  Builtin(fn(value, k) {
+    continue(
+      k,
+      Builtin(fn(record, k) {
+        assert Record(fields) = record
+        assert Ok(#(_old, fields)) = list.key_pop(fields, label)
         continue(k, Record([#(label, value), ..fields]))
       }),
     )

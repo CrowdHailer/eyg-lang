@@ -27,6 +27,7 @@ pub fn encode(exp) {
     e.Empty -> node("empty", [])
     e.Extend(x) -> node("extend", [label(x)])
     e.Select(x) -> node("select", [label(x)])
+    e.Overwrite(x) -> node("overwrite", [label(x)])
     e.Tag(x) -> node("tag", [label(x)])
     e.Case(x) -> node("case", [label(x)])
     e.NoCases -> node("nocases", [])

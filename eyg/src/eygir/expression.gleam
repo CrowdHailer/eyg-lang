@@ -28,6 +28,7 @@ pub type Expression {
   Empty
   Extend(label: String)
   Select(label: String)
+  Overwrite(label: String)
   Tag(label: String)
   Case(label: String)
   NoCases

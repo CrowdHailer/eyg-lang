@@ -209,6 +209,23 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       t.Fun(t, e1, t.Fun(t.Record(r), e2, t.Record(t.Extend(label, t, r))))
       |> unify(typ, _, ref, path)
     }
+    e.Overwrite(label) -> {
+      let t = t.Unbound(fresh(ref))
+      let u = t.Unbound(fresh(ref))
+      let r = t.Open(fresh(ref))
+      let e1 = t.Open(fresh(ref))
+      let e2 = t.Open(fresh(ref))
+      t.Fun(
+        t,
+        e1,
+        t.Fun(
+          t.Record(t.Extend(label, u, r)),
+          e2,
+          t.Record(t.Extend(label, t, r)),
+        ),
+      )
+      |> unify(typ, _, ref, path)
+    }
     e.Select(label) -> {
       let t = t.Unbound(fresh(ref))
       let r = t.Open(fresh(ref))

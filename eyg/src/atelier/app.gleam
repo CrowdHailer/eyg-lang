@@ -84,14 +84,14 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "q" -> save(state)
     Navigate(act), "w" -> call_with(act, state)
     Navigate(act), "e" -> Ok(assign_to(act, state))
-    // Navigate(act), "r" -> todo("record and tagged next to each other is nice")
+    Navigate(act), "r" -> record(act, state)
     Navigate(act), "t" -> Ok(tag(act, state))
     Navigate(act), "y" -> Ok(copy(act, state))
     // copy paste quite rare so we use upper case. might be best as command
     Navigate(act), "Y" -> paste(act, state)
     Navigate(act), "u" -> unwrap(act, state)
     Navigate(act), "i" -> insert(act, state)
-    // Navigate(act), "o" -> todo("o")
+    Navigate(act), "o" -> overwrite(act, state)
     Navigate(act), "p" -> Ok(perform(act, state))
     Navigate(act), "a" -> increase(state)
     Navigate(act), "s" -> decrease(act, state)
@@ -164,6 +164,26 @@ fn assign_to(act, state) {
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
+fn record(act, state) {
+  let commit = case act.target {
+    e.Vacant ->
+      act.update(e.Empty)
+      |> update_source(state, _)
+    e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
+      let commit = fn(text) {
+        act.update(e.Apply(e.Apply(e.Extend(text), e.Vacant), exp))
+      }
+      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+    }
+    exp -> {
+      let commit = fn(text) {
+        act.update(e.Apply(e.Apply(e.Extend(text), exp), e.Empty))
+      }
+      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+    }
+  }
+}
+
 fn tag(act, state) {
   let commit = case act.target {
     e.Vacant -> fn(text) { act.update(e.Tag(text)) }
@@ -211,6 +231,7 @@ fn insert(act, state) {
     e.Empty -> Error("empty record no insert")
     e.Extend(label) -> Ok(#(label, e.Extend))
     e.Select(label) -> Ok(#(label, e.Select))
+    e.Overwrite(label) -> Ok(#(label, e.Overwrite))
     e.Tag(label) -> Ok(#(label, e.Tag))
     e.Case(label) -> Ok(#(label, e.Case))
     e.NoCases -> Error("no cases")
@@ -221,6 +242,24 @@ fn insert(act, state) {
 
   let mode = WriteLabel(text, fn(new) { act.update(build(new)) })
   Ok(WorkSpace(..state, mode: mode))
+}
+
+fn overwrite(act, state) {
+  let commit = case act.target {
+    e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
+      let commit = fn(text) {
+        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant), exp))
+      }
+      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+    }
+    exp -> {
+      let commit = fn(text) {
+        // This is the same as above
+        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant), exp))
+      }
+      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+    }
+  }
 }
 
 fn increase(state) {

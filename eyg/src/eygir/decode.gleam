@@ -30,6 +30,7 @@ pub fn decoder(x) {
     "empty" -> fn(_) { Ok(e.Empty) }
     "extend" -> decode1(e.Extend, label())
     "select" -> decode1(e.Select, label())
+    "overwrite" -> decode1(e.Overwrite, label())
     "tag" -> decode1(e.Tag, label())
     "case" -> decode1(e.Case, label())
     "nocases" -> fn(_) { Ok(e.NoCases) }
