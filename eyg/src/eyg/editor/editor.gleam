@@ -17,7 +17,6 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/typer/harness
 import eyg/codegen/javascript
-import eyg/editor/type_info
 
 pub type Mode {
   Command
@@ -96,8 +95,7 @@ fn inconsistencies(editor) {
   )
   |> list.map(fn(i) {
     let #(path, reason) = i
-    let reason = type_info.resolve_reason(reason, t)
-    #(path, type_info.reason_to_string(reason))
+    #(path, "TODO removed")
   })
 }
 

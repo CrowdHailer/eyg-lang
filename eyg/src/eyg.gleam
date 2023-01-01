@@ -6,7 +6,6 @@ import eyg/typer/monotype as t
 import eyg/typer
 import eyg/typer/harness
 import eyg/codegen/javascript
-import eyg/editor/type_info
 import platform/browser
 import entry
 import gleam/javascript/array.{Array}

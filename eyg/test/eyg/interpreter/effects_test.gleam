@@ -10,7 +10,6 @@ import eyg/typer/monotype as t
 import eyg/typer/polytype
 import eyg/analysis
 import eyg/editor/editor
-import eyg/editor/type_info
 
 fn log(term) {
   e.call(e.variable("do"), e.tagged("Log", term))
@@ -114,7 +113,7 @@ pub fn handled_effect_test() {
 // TODO union never is not the type because it will return the effect handler result
 // I can't work out what should be value of effect type
 
-// analysis.get_type shrinks unbound as well so we can't use that for checking 
+// analysis.get_type shrinks unbound as well so we can't use that for checking
 fn get_sub_type(typed, typer: typer.Typer, path) {
   assert Ok(element) = editor.get_expression(typed, path)
   try type_ = typer.get_type(element)

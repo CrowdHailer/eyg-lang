@@ -9,7 +9,6 @@ import gleam/string
 // typer.common
 import eyg/typer
 import eyg/typer/monotype as t
-import eyg/editor/type_info
 import eyg/typer/polytype
 import eyg/typer/harness
 
