@@ -10,33 +10,8 @@ export async function fetchText(url) {
   return await response.text();
 }
 
-export async function fetchJSON(url) {
-  try {
-    let response = await fetch(url);
-    if (response.status == 200) {
-      let data = await response.json();
-      return new Gleam.Ok(data);
-    } else {
-      return new Gleam.Error("204");
-    }
-  } catch (error) {
-    return new Gleam.Error(error);
-  }
-}
 
-export async function postJSON(url, data) {
-  console.log(data);
-  try {
-    let response = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-    console.log(response.status);
-    return new Gleam.Ok([]);
-  } catch (error) {
-    new Gleam.Error(error);
-  }
-}
+
 export async function post(url, data) {
   try {
     let response = await fetch(url, {

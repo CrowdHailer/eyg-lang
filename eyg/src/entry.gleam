@@ -14,7 +14,6 @@ import eyg/runtime/interpreter as r
 import eyg/runtime/standard
 import eygir/expression as e
 import eygir/decode
-import source.{source}
 
 // document that rad start shell at dollar
 // This becomes the entry point
@@ -92,6 +91,9 @@ external fn do_serve(fn(String) -> String, fn(String) -> Nil) -> Nil =
 // env should be the same, i.e. stdlib because env stuff argument to the run fn
 
 fn web(_) {
+  let json = read_file_sync("saved/saved.json", "utf8")
+  assert Ok(source) = decode.from_json(json)
+
   let store = javascript.make_reference(source)
   let handle = fn(x) {
     let prog = e.Apply(e.Select("web"), javascript.dereference(store))
