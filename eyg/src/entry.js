@@ -26,31 +26,6 @@ app.use(
   express.static("saved")
 );
 
-const page = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Editor</title>
-</head>
-<body>
-<h1>Yep</h1>
-
-<script type="module">
-  import * as core from "https://cdn.skypack.dev/solid-js";
-  import {render} from "https://cdn.skypack.dev/solid-js/web";
-  import h from "https://cdn.skypack.dev/solid-js/h";
-  window.Solid = {
-    core,
-    h,
-  }
-  import {app} from "/src/eyg/workspace.mjs"
-  render(app, document.body)
-</script>
-</html>
-`;
 
 // TODO rely on local layout css
 const lustre = `
@@ -83,9 +58,7 @@ const lustre = `
 export function serve(handler, saver) {
   app.use((req, res) => {
     let host = req.header("host");
-    if (host == "localhost:8899") {
-      res.send(page);
-    } else if (host == "localhost:5000") {
+    if (host == "localhost:5000") {
       if (req.path == "/save") {
         let body = req.body.toString();
         saver(body)
