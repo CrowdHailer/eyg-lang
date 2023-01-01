@@ -14,7 +14,6 @@ pub fn chained_resolve_test() {
   assert True = t1 == t3
 }
 
-// TODO rec1.1 == 1
 pub fn recursive_unification_test() {
   let typer = typer.init()
   assert Ok(typer) =

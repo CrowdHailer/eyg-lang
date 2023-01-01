@@ -8,7 +8,6 @@ import gleam/pair
 import gleam/string
 import eyg
 import eyg/ast
-import eyg/ast/encode
 import eyg/ast/path
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
@@ -102,16 +101,8 @@ fn inconsistencies(editor) {
   })
 }
 
-pub fn dump(editor) {
-  let Editor(source: source, ..) = editor
-  let dump =
-    encode.to_json(source)
-    |> encode.json_to_string
-  dump
-}
-
 pub fn init(source, harness: harness.Harness) {
-  let untyped = encode.from_json(encode.json_from_string(source))
+  let untyped = todo
   let constraint = t.Unbound(-1)
   let cache = analyse(untyped, constraint, harness)
   Editor("ast", harness, constraint, untyped, None, Command, False, None, cache)

@@ -9,7 +9,6 @@ import gleam_extra
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import eyg/editor/editor
-import eyg/ast/encode
 import eyg/editor/ui as editor_ui
 import platform/browser
 import eyg/ast/expression as e
@@ -23,8 +22,6 @@ external fn fetch(String) -> Promise(String) =
 
 fn apps() {
   [
-    workspace.App("proxy", workspace.Proxy(Error("No code given"))),
-    workspace.App("recipe", workspace.Proxy(Error("No code given"))),
     workspace.App("counter", workspace.UI(None, None, "")),
     workspace.App("fetch", workspace.Pure(None)),
     workspace.App("test", workspace.TestSuite("True")),
@@ -32,21 +29,6 @@ fn apps() {
     workspace.App("scan", workspace.Firmata(None)),
     workspace.App("server", workspace.Server(None)),
   ]
-}
-
-pub fn deploy(hash) {
-  assert Ok(app) = list.find(apps(), fn(app: workspace.App) { app.key == hash })
-  promise.map(
-    fetch("./saved.json"),
-    fn(source) {
-      let source = encode.from_json(encode.json_from_string(source))
-      let constraint = workspace.app_constraint(app)
-      assert editor.Cache(_, _, _, Ok(code)) =
-        editor.analyse(source, constraint, browser.harness())
-      assert Ok(inner) = dynamic.field(app.key, Ok)(code)
-      inner
-    },
-  )
 }
 
 // TODO move to workspace maybe

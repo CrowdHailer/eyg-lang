@@ -13,7 +13,6 @@ import eyg/interpreter/interpreter
 import eyg/interpreter/tree_walk
 import eyg/interpreter/stepwise
 import eyg/editor/editor
-import eyg/workspace/proxy
 import eyg/analysis
 import eyg/typer
 import eyg/codegen/javascript
@@ -75,9 +74,9 @@ pub type Mount(a) {
   )
   Firmata(scan: Option(fn(Dynamic) -> Dynamic))
   Server(handle: Option(fn(Dynamic) -> Dynamic))
-  // Only difference between server and universial is that universal works with source
-  Proxy(state: proxy.State)
 }
+
+// Only difference between server and universial is that universal works with source
 
 // mount handling of keydown
 pub fn handle_keydown(app, k, ctrl, text) {
@@ -145,7 +144,7 @@ pub fn mount_constraint(mount) {
       t.Function(
         t.Tuple([]),
         t.Union(
-          // TODO t.Bool 
+          // TODO t.Bool
           variants: [#("True", t.Tuple([])), #("False", t.Tuple([]))],
           extra: None,
         ),
@@ -209,7 +208,6 @@ pub fn mount_constraint(mount) {
       t.Function(t.Tuple([input, state]), t.Tuple([output, state]), t.empty)
     }
     Server(_) -> t.Function(t.Binary, t.Binary, t.empty)
-    Proxy(_) -> proxy.constraint()
   }
 }
 
@@ -339,7 +337,7 @@ pub fn code_update(code, source, app) {
       }
       let [Keypress(handle)] = real_js.dereference(ref)
       // let handle = fn(x) {
-      //   assert Ok(state) = handle(x) 
+      //   assert Ok(state) = handle(x)
       //   state
       // }
       Pure(Some(#(new_initial, render, handle, ref)))
@@ -352,7 +350,6 @@ pub fn code_update(code, source, app) {
         returned
       }))
     }
-    Proxy(_) -> Proxy(proxy.code_update(source, key))
   }
   App(key, mount)
 }
