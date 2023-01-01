@@ -67,10 +67,7 @@ pub fn unify(t1, t2, ref) -> Result(_, _) {
     t.LinkedList(i1), t.LinkedList(i2) -> unify(i1, i2, ref)
     t.Record(r1), t.Record(r2) -> unify_row(r1, r2, ref)
     t.Union(r1), t.Union(r2) -> unify_row(r1, r2, ref)
-    _, _ -> {
-      io.debug(#(t1, t2))
-      todo("unify")
-    }
+    _, _ -> Error(#(t1, t2))
   }
 }
 

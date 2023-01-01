@@ -51,8 +51,9 @@ fn compose(inf1: Infered, inf2: Infered) {
 
 fn unify(t1, t2, ref, path) {
   case unification.unify(t1, t2, ref) {
-    Ok(s) -> Infered(s, singleton(path, Ok(t1)))
-    Error(_) -> todo("unification fail")
+    Ok(s) -> Infered(s, singleton(list.reverse(path), Ok(t1)))
+    // TODO real error
+    Error(_) -> Infered(sub.none(), singleton(list.reverse(path), Error(Nil)))
   }
 }
 
@@ -85,7 +86,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
         env_apply(s1, env)
         |> map.insert(arg, Scheme([], apply(s1, t)))
       let s2 =
-        infer(env, body, apply(s1, u), apply_effects(s1, r), ref, [1, ..path])
+        infer(env, body, apply(s1, u), apply_effects(s1, r), ref, [0, ..path])
       compose(s2, s1)
     }
     e.Apply(func, arg) -> {
@@ -114,12 +115,12 @@ pub fn infer(env, exp, typ, eff, ref, path) {
         }
         Error(Nil) -> {
           io.debug(x)
-          todo("inconsis variable")
+          Infered(sub.none(), singleton(list.reverse(path), Error(Nil)))
         }
       }
     e.Let(x, value, then) -> {
       let t = t.Unbound(fresh(ref))
-      let s1 = infer(env, value, t, eff, ref, [1, ..path])
+      let s1 = infer(env, value, t, eff, ref, [0, ..path])
       let scheme = generalise(env_apply(s1, env), apply(s1, t))
       let env = env_apply(s1, map.insert(env, x, scheme))
       let s2 =
@@ -129,9 +130,11 @@ pub fn infer(env, exp, typ, eff, ref, path) {
           apply(s1, typ),
           apply_effects(s1, eff),
           ref,
-          [2, ..path],
+          [1, ..path],
         )
       compose(s2, s1)
+      // TODO remove but needed for path to typ to exist in state
+      |> compose(unify(typ, typ, ref, path))
     }
     // Primitive
     e.Binary(_) -> unify(typ, t.Binary, ref, path)
@@ -145,7 +148,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       |> unify(typ, _, ref, path)
     }
 
-    e.Vacant -> Infered(sub.none(), singleton(path, Ok(typ)))
+    e.Vacant -> Infered(sub.none(), singleton(list.reverse(path), Ok(typ)))
 
     e.Record(fields, tail) -> {
       let row = t.Open(fresh(ref))

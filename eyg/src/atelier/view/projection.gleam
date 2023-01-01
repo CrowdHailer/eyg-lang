@@ -8,12 +8,14 @@ import lustre/event.{dispatch, on_click}
 import lustre/attribute.{class, classes, style}
 import eygir/expression as e
 import atelier/app.{SelectNode}
+import atelier/view/typ
+import eyg/runtime/standard
 
-pub fn render(source, selection) {
+pub fn render(source, selection, inferred) {
   let loc = Location([], Some(selection))
   pre(
     [style([#("cursor", "pointer")]), class("w-full max-w-6xl")],
-    do_render(source, "\n", loc),
+    do_render(source, "\n", loc, inferred),
   )
 }
 
@@ -48,12 +50,13 @@ fn click(loc: Location) {
 // can't be x because of the then clause
 // let x = y -> (z -> {})(foo)
 
-pub fn do_render(exp, br, loc) {
+pub fn do_render(exp, br, loc, inferred) {
   case exp {
     e.Variable(var) -> [variable(var, loc)]
-    e.Lambda(param, body) -> [lambda(param, body, br, loc)]
-    e.Apply(func, arg) -> call(func, arg, br, loc)
-    e.Let(label, value, then) -> assigment(label, value, then, br, loc)
+    e.Lambda(param, body) -> [lambda(param, body, br, loc, inferred)]
+    e.Apply(func, arg) -> call(func, arg, br, loc, inferred)
+    e.Let(label, value, then) ->
+      assigment(label, value, then, br, loc, inferred)
     e.Binary(value) -> [string(value, loc)]
     e.Integer(value) -> [integer(value, loc)]
     e.Tail -> [
@@ -63,7 +66,7 @@ pub fn do_render(exp, br, loc) {
       // maybe gray but probably better rendering in apply
       span([click(loc), classes(highlight(focused(loc)))], [text("cons")]),
     ]
-    e.Vacant -> [vacant(loc)]
+    e.Vacant -> [vacant(loc, inferred)]
     e.Empty -> [
       span([click(loc), classes(highlight(focused(loc)))], [text("{}")]),
     ]
@@ -75,7 +78,11 @@ pub fn do_render(exp, br, loc) {
           let fields =
             fields
             |> list.index_map(fn(i, f) {
-              [text(f.0), text(": "), ..do_render(f.1, br, child(loc, i))]
+              [
+                text(f.0),
+                text(": "),
+                ..do_render(f.1, br, child(loc, i), inferred)
+              ]
             })
             |> list.intersperse([text(", ")])
             |> list.prepend([text("{")])
@@ -111,7 +118,7 @@ pub fn do_render(exp, br, loc) {
               text("("),
               text(var),
               text(") -> "),
-              ..render_block(then, br_inner, child(loc, i))
+              ..render_block(then, br_inner, child(loc, i), inferred)
             ]
           },
         )),
@@ -120,7 +127,12 @@ pub fn do_render(exp, br, loc) {
             text(br_inner),
             text(var),
             text(" -> "),
-            ..render_block(then, br_inner, child(loc, list.length(branches)))
+            ..render_block(
+              then,
+              br_inner,
+              child(loc, list.length(branches)),
+              inferred,
+            )
           ]
           None -> []
         },
@@ -140,7 +152,7 @@ pub fn do_render(exp, br, loc) {
 // TODO handle not creating new arrows fo fn's
 // fn render arg wrap if need be etc
 // fn render call'd etc
-fn render_block(exp, br, loc) {
+fn render_block(exp, br, loc, inferred) {
   // TODO pretty sure need to move indented BR up but not for closing
   case exp {
     e.Let(_, _, _) ->
@@ -149,13 +161,13 @@ fn render_block(exp, br, loc) {
           let br_inner = string.append(br, "  ")
           list.flatten([
             [text(string.append("{", br_inner))],
-            do_render(exp, br_inner, loc),
+            do_render(exp, br_inner, loc, inferred),
             [text(string.append(br, "}"))],
           ])
         }
         False -> [span([click(loc)], [text("{ ... }")])]
       }
-    _ -> do_render(exp, br, loc)
+    _ -> do_render(exp, br, loc, inferred)
   }
 }
 
@@ -169,17 +181,17 @@ fn variable(var, loc) {
   |> span([text(var)])
 }
 
-fn lambda(param, body, br, loc) {
+fn lambda(param, body, br, loc, inferred) {
   let target = focused(loc)
 
   [classes(highlight(target))]
   |> span([
     span([click(loc)], [text(param), text(" -> ")]),
-    ..render_block(body, br, child(loc, 0))
+    ..render_block(body, br, child(loc, 0), inferred)
   ])
 }
 
-fn render_branch(label, then, else, br, loc_branch, loc_else) {
+fn render_branch(label, then, else, br, loc_branch, loc_else, inferred) {
   let loc_match = child(loc_branch, 0)
   let loc_then = child(loc_branch, 1)
   let match =
@@ -188,7 +200,7 @@ fn render_branch(label, then, else, br, loc_branch, loc_else) {
       classes([#("text-blue-500", True), ..highlight(focused(loc_match))]),
     ]
     |> span([text(label)])
-  let branch = render_block(then, br, loc_then)
+  let branch = render_block(then, br, loc_then, inferred)
   [
     text(br),
     span(
@@ -208,8 +220,9 @@ fn render_branch(label, then, else, br, loc_branch, loc_else) {
           br,
           child(loc_else, 0),
           child(loc_else, 1),
+          inferred,
         )
-      _ -> [text(br), ..do_render(else, br, loc_else)]
+      _ -> [text(br), ..do_render(else, br, loc_else, inferred)]
     }
   ]
 }
@@ -218,7 +231,7 @@ fn render_branch(label, then, else, br, loc_branch, loc_else) {
 // call with binary is error
 // apply to just a case could leave it as ++
 // nocases should be rendered alone as empty match
-fn call(func, arg, br, loc) {
+fn call(func, arg, br, loc, inferred) {
   let target = focused(loc)
   // not target but any selected
   let inner = case func {
@@ -256,9 +269,9 @@ fn call(func, arg, br, loc) {
     _ ->
       // arg becomes then
       list.flatten([
-        render_block(func, br, child(loc, 0)),
+        render_block(func, br, child(loc, 0), inferred),
         [text("(")],
-        render_block(arg, br, child(loc, 1)),
+        render_block(arg, br, child(loc, 1), inferred),
         [text(")")],
       ])
   }
@@ -266,17 +279,17 @@ fn call(func, arg, br, loc) {
   [span([classes(highlight(target))], inner)]
 }
 
-fn assigment(label, value, then, br, loc) {
+fn assigment(label, value, then, br, loc, inferred) {
   let active = focused(loc)
   let assignment = [
     span(
       [click(loc)],
       [span([class("text-gray-400")], [text("let ")]), text(label), text(" = ")],
     ),
-    ..render_block(value, br, child(loc, 0))
+    ..render_block(value, br, child(loc, 0), inferred)
   ]
   let el = span([classes(highlight(active))], assignment)
-  [el, text(br), ..do_render(then, br, child(loc, 1))]
+  [el, text(br), ..do_render(then, br, child(loc, 1), inferred)]
 }
 
 fn string(value, loc) {
@@ -292,10 +305,10 @@ fn integer(value, loc) {
   |> span([text(int.to_string(value))])
 }
 
-fn vacant(loc) {
+fn vacant(loc, inferred) {
   let target = focused(loc)
   [click(loc), classes([#("text-red-500", True), ..highlight(target)])]
-  |> span([text("todo")])
+  |> span([text(typ.render(standard.type_of(inferred, loc.path)))])
 }
 
 fn extend(label, loc) {

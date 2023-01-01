@@ -1,7 +1,7 @@
 import gleam/io
 import eygir/expression as e
 import eyg/runtime/interpreter as r
-import entry
+import eyg/runtime/standard
 import gleeunit/should
 
 // Probably this belongs in something like
@@ -13,7 +13,7 @@ pub fn concat_test() {
       e.Apply(e.Apply(e.Cons, e.Binary("buzz")), e.Tail),
     )
   let source = e.Apply(e.Variable("string_concat"), list)
-  r.eval(source, entry.env_values(), r.Value)
+  r.eval(source, standard.env_values(), r.Value)
   |> should.equal(r.Value(r.Binary("fizzbuzz")))
 }
 
@@ -39,6 +39,6 @@ pub fn fold_test() {
       e.Apply(e.Apply(e.Variable("list_fold"), list), e.Binary("initial")),
       reducer,
     )
-  r.eval(source, entry.env_values(), r.Value)
+  r.eval(source, standard.env_values(), r.Value)
   |> should.equal(r.Value(r.Binary("initialfizzbuzz")))
 }

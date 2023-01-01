@@ -109,6 +109,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "b" -> Ok(binary(act, state))
     Navigate(act), "n" -> Ok(number(act, state))
     Navigate(act), "m" -> match(act, state)
+    Navigate(act), "M" -> nocases(act, state)
     // Navigate(act), " " -> todo("space follow suggestion next error")
     Navigate(_), _ -> Error("no action for keypress")
     // Other mode
@@ -380,6 +381,10 @@ fn match(act, state) {
     }
   }
   Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+}
+
+fn nocases(act, state) {
+  update_source(state, act.update(e.NoCases))
 }
 
 // app state actions maybe separate from ui but maybe ui files organised by mode

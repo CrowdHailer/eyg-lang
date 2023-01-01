@@ -77,52 +77,105 @@ fn type_of(inf: inference.Infered, path) {
 pub fn binary_test() {
   let exp = e.Binary("hi")
   let env = env.empty()
+
+  // exact type
   let typ = t.Binary
   let eff = t.Closed
   let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Ok(t.Binary) = type_of(sub, [])
 
-  let _ = infer(env, exp, typ, eff, ref)
-
-  let typ = t.Unbound(1)
+  // unbound type
+  let typ = t.Unbound(-1)
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Binary = resolve(sub, typ)
   assert Ok(t.Binary) = type_of(sub, [])
+
+  // incorrect type
+  let typ = t.Integer
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Error(_) = type_of(sub, [])
 }
 
 pub fn integer_test() {
   let exp = e.Integer(1)
   let env = env.empty()
+
+  // exact type
   let typ = t.Integer
   let eff = t.Closed
   let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Ok(t.Integer) = type_of(sub, [])
 
-  let _ = infer(env, exp, typ, eff, ref)
-
-  let typ = t.Unbound(1)
+  // unbound type
+  let typ = t.Unbound(-1)
   let ref = javascript.make_reference(0)
-
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Integer = resolve(sub, typ)
+  assert Ok(t.Integer) = type_of(sub, [])
+
+  // incorrect type
+  let typ = t.Binary
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Error(_) = type_of(sub, [])
 }
 
 pub fn empty_list_test() {
   let exp = e.Tail
   let env = env.empty()
-  let typ = t.LinkedList(t.Unbound(-1))
+
+  // exact type
+  let typ = t.LinkedList(t.Binary)
   let eff = t.Closed
   let ref = javascript.make_reference(0)
-
   let sub = infer(env, exp, typ, eff, ref)
+  assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
+
+  // unbound element
+  let typ = t.LinkedList(t.Unbound(-1))
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+
   assert Ok(t.LinkedList(e)) = type_of(sub, [])
   resolve(sub, t.Unbound(-1))
   |> should.equal(e)
 
+  // unbound type
   let typ = t.Unbound(1)
   let ref = javascript.make_reference(0)
-
   let sub = infer(env, exp, typ, eff, ref)
-  assert t.LinkedList(t.Unbound(_)) = resolve(sub, typ)
+
+  assert Ok(t.LinkedList(t.Unbound(_))) = type_of(sub, [])
+
+  // incorrect type
+  let typ = t.Binary
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Error(_) = type_of(sub, [])
+}
+
+pub fn primitive_list_test() {
+  let exp = e.Apply(e.Apply(e.Cons, e.Integer(0)), e.Tail)
+  let env = env.empty()
+
+  let typ = t.LinkedList(t.Binary)
+  let eff = t.Closed
+  let ref = javascript.make_reference(0)
+  let sub = infer(env, exp, typ, eff, ref)
+  assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
+  assert Ok(t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary))) =
+    type_of(sub, [0])
+  assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [1])
+  assert Ok(t.Fun(
+    t.Binary,
+    t.Closed,
+    t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary)),
+  )) = type_of(sub, [0, 0])
+  assert Error(_) = type_of(sub, [0, 1])
 }
 
 // Variables
@@ -139,11 +192,9 @@ pub fn variables_test() {
   let ref = javascript.make_reference(0)
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Binary = resolve(sub, typ)
+  assert Ok(t.Binary) = type_of(sub, [0])
   assert Ok(t.Binary) = type_of(sub, [1])
-  assert Ok(t.Binary) = type_of(sub, [2])
 }
-
-// let x = x is an error
 
 // Functions
 pub fn function_test() {
@@ -171,7 +222,7 @@ pub fn pure_function_test() {
   let sub = infer(env, exp, typ, eff, ref)
   assert t.Fun(t.Unbound(x), t.Open(2), t.Unbound(y)) = resolve(sub, typ)
   should.equal(x, y)
-  assert Ok(t.Unbound(z)) = type_of(sub, [1])
+  assert Ok(t.Unbound(z)) = type_of(sub, [0])
   should.equal(x, z)
 }
 
