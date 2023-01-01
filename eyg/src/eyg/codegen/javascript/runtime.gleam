@@ -11,7 +11,6 @@ import eyg/codegen/javascript
 import eyg/analysis
 import eyg/analysis/shake
 import eyg/typer
-import eyg/editor/editor
 
 pub fn render_var(assignment) {
   case assignment {
@@ -59,7 +58,7 @@ pub fn render_object(object) {
         analysis.infer(e.function(pattern, body), t.Unbound(-1), [])
       let #(typed, typer) = typer.expand_providers(typed, typer, [])
       assert r.Record(fields) =
-        shake.shake_function(pattern, editor.untype(typed), captured, self)
+        shake.shake_function(pattern, todo, captured, self)
       //   io.debug(fields)
       // TODO use maybe wrap expression an indent
       ["(() => {", ..list.map(fields, render_var)]
