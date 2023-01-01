@@ -1,6 +1,9 @@
 import gleam/dynamic
 import gleam/string
 import gleam/io
+import gleam/list
+import gleam/map
+import gleam/result
 import gleam/option.{None, Some}
 import lustre/element.{button, div, input, p, pre, span, text}
 import lustre/event.{dispatch, on_click, on_keydown}
@@ -9,6 +12,19 @@ import atelier/app
 import atelier/view/projection
 import atelier/view/typ
 import eyg/runtime/standard
+
+// TODO add to gleam
+fn do_filter_errors(l, acc) {
+  case l {
+    [] -> list.reverse(acc)
+    [Ok(_), ..rest] -> do_filter_errors(rest, acc)
+    [Error(reason), ..rest] -> do_filter_errors(rest, [reason, ..acc])
+  }
+}
+
+pub fn filter_errors(l) {
+  do_filter_errors(l, [])
+}
 
 // maybe belongs in procejection .render
 pub fn render(state: app.WorkSpace) {
@@ -22,6 +38,8 @@ pub fn render(state: app.WorkSpace) {
   }
 
   let inferred = standard.infer(state.source)
+  map.filter(inferred.paths, fn(k, v) { result.is_error(v) })
+  |> io.debug
 
   div(
     [class("h-screen vstack")],

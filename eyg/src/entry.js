@@ -73,7 +73,6 @@ const lustre = `
   fetch('/saved/saved.json').then(resp => {
     return resp.text()
   }).then(source => {
-    console.log(source)
     main(source)
   })
 </script>

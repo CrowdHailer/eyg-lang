@@ -64,7 +64,13 @@ pub fn do_render(exp, br, loc, inferred) {
     ]
     e.Cons -> [
       // maybe gray but probably better rendering in apply
-      span([click(loc), classes(highlight(focused(loc)))], [text("cons")]),
+      span(
+        [
+          click(loc),
+          classes([#("text-gray-400", True), ..highlight(focused(loc))]),
+        ],
+        [text("cons")],
+      ),
     ]
     e.Vacant -> [vacant(loc, inferred)]
     e.Empty -> [

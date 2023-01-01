@@ -65,6 +65,8 @@ pub fn env() {
       ),
     ),
   )
+  // TODO effects are matching and we need them all open here. Potentially
+  // unification should be ok on closed open
   |> map.insert(
     "list_fold",
     scheme.Scheme(
@@ -92,7 +94,10 @@ pub fn env() {
   )
   |> map.insert(
     "string_concat",
-    scheme.Scheme([], t.Fun(t.LinkedList(t.Binary), t.Open(-14), t.Binary)),
+    scheme.Scheme(
+      [t.Effect(-14)],
+      t.Fun(t.LinkedList(t.Binary), t.Open(-14), t.Binary),
+    ),
   )
   |> map.insert(
     "add",
@@ -112,6 +117,7 @@ pub fn env_values() {
           k,
           r.Builtin(fn(second, k) {
             assert r.Binary(f) = first
+            io.debug(second)
             assert r.Binary(s) = second
             r.continue(k, r.Binary(string.append(f, s)))
           }),

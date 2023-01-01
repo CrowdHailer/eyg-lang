@@ -112,7 +112,10 @@ pub fn unify_row(r1, r2, ref) {
 // looks like rewrite row but reference to sub.effect and creating fresh is specific
 fn rewrite_effect(effect, new_label, ref) {
   case effect {
-    t.Closed -> todo("effect rewrite failed")
+    t.Closed -> {
+      io.debug(#("eff r", new_label))
+      todo("effect rewrite failed")
+    }
     t.Extend(label, field, tail) if label == new_label -> #(
       field,
       tail,
