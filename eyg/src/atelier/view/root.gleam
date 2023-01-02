@@ -49,12 +49,35 @@ pub fn render(state: app.WorkSpace) {
       div([class("spacer")], []),
       case input_value {
         Some(value) ->
-          input([
-            class("border w-full"),
-            attribute.autofocus(True),
-            event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
-            attribute.value(dynamic.from(value)),
-          ])
+          div(
+            [class("w-full")],
+            [
+              div(
+                [],
+                case map.get(inferred.environments, state.selection) {
+                  // using spaces because we are in pre tag and text based
+                  // not in pre tag here
+                  Ok(env) ->
+                    list.map(
+                      map.keys(env)
+                      |> list.unique,
+                      fn(v) {
+                        // TODO on click needs to make the selection
+                        span([class("rounded bg-blue-100 p-1")], [text(v)])
+                      },
+                    )
+                    |> list.intersperse(text(" "))
+                  Error(_) -> [text("no env")]
+                },
+              ),
+              input([
+                class("border w-full"),
+                attribute.autofocus(True),
+                event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+                attribute.value(dynamic.from(value)),
+              ]),
+            ],
+          )
         None -> div([], [])
       },
       case input_number {

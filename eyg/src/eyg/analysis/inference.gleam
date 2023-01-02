@@ -18,10 +18,13 @@ pub type Infered {
   // result could be separate map of errors
   Infered(
     substitutions: sub.Substitutions,
+    // TODO need better name than paths
     paths: Map(List(Int), Result(t.Term, Nil)),
+    environments: Map(List(Int), Map(String, Scheme)),
   )
 }
 
+// TODO mapx
 fn singleton(k, v) {
   map.insert(map.new(), k, v)
 }
@@ -46,27 +49,29 @@ fn compose(inf1: Infered, inf2: Infered) {
   Infered(
     sub.compose(inf1.substitutions, inf2.substitutions),
     map.merge(inf1.paths, inf2.paths),
+    map.merge(inf1.environments, inf2.environments),
   )
 }
 
 fn unify(t1, t2, ref, path) {
   case unification.unify(t1, t2, ref) {
-    Ok(s) -> Infered(s, singleton(list.reverse(path), Ok(t1)))
+    Ok(s) -> Infered(s, singleton(list.reverse(path), Ok(t1)), map.new())
     // TODO real error
-    Error(_) -> Infered(sub.none(), singleton(list.reverse(path), Error(Nil)))
+    Error(_) ->
+      Infered(sub.none(), singleton(list.reverse(path), Error(Nil)), map.new())
   }
 }
 
 fn unify_row(r1, r2, ref) {
   case unification.unify_row(r1, r2, ref) {
-    Ok(s) -> Infered(s, map.new())
+    Ok(s) -> Infered(s, map.new(), map.new())
     Error(_) -> todo("unification fail")
   }
 }
 
 fn unify_effects(e1, e2, ref) {
   case unification.unify_effects(e1, e2, ref) {
-    Ok(s) -> Infered(s, map.new())
+    Ok(s) -> Infered(s, map.new(), map.new())
     Error(_) -> todo("unification fail")
   }
 }
@@ -115,7 +120,11 @@ pub fn infer(env, exp, typ, eff, ref, path) {
         }
         Error(Nil) -> {
           io.debug(x)
-          Infered(sub.none(), singleton(list.reverse(path), Error(Nil)))
+          Infered(
+            sub.none(),
+            singleton(list.reverse(path), Error(Nil)),
+            map.new(),
+          )
         }
       }
     e.Let(x, value, then) -> {
@@ -148,7 +157,8 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       |> unify(typ, _, ref, path)
     }
 
-    e.Vacant -> Infered(sub.none(), singleton(list.reverse(path), Ok(typ)))
+    e.Vacant ->
+      Infered(sub.none(), singleton(list.reverse(path), Ok(typ)), map.new())
 
     e.Record(fields, tail) -> {
       let row = t.Open(fresh(ref))
@@ -386,4 +396,5 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       s2
     }
   }
+  |> compose(Infered(sub.none(), map.new(), singleton(path, env)))
 }
