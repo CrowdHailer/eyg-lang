@@ -39,8 +39,8 @@ pub fn render(state: app.WorkSpace) {
 
   let inferred = standard.infer(state.source)
   map.filter(inferred.paths, fn(k, v) { result.is_error(v) })
-  |> io.debug
 
+  // TODO print errors
   div(
     [class("h-screen vstack")],
     [

@@ -20,6 +20,10 @@ pub type WorkSpace {
     mode: Mode,
     yanked: Option(e.Expression),
     error: Option(String),
+    history: #(
+      List(#(e.Expression, List(Int))),
+      List(#(e.Expression, List(Int))),
+    ),
   )
 }
 
@@ -38,7 +42,7 @@ pub type Action {
 pub fn init(source) {
   assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
-  WorkSpace([], source, mode, None, None)
+  WorkSpace([], source, mode, None, None, #([], []))
 }
 
 pub fn update(state: WorkSpace, action) {
@@ -102,7 +106,8 @@ pub fn keypress(key, state: WorkSpace) {
     // Navigate(act), "j" -> todo("down probably not")
     // Navigate(act), "k" -> todo("up probably not")
     // Navigate(act), "l" -> todo("right probably not")
-    // Navigate(act), "z" -> todo("z")
+    Navigate(act), "z" -> undo(state)
+    Navigate(act), "Z" -> redo(state)
     Navigate(act), "x" -> list(act, state)
     Navigate(act), "c" -> call(act, state)
     Navigate(act), "v" -> Ok(variable(act, state))
@@ -323,6 +328,49 @@ fn perform(act, state) {
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
+fn undo(state: WorkSpace) {
+  case state.history {
+    #([], _) -> Error("No history")
+    #([#(source, selection), ..rest], forward) -> {
+      let history = #(rest, [#(state.source, state.selection), ..forward])
+      try act = transform.prepare(source, selection)
+      // Has to already be in navigate mode to undo
+      io.debug(#("pop", list.length(rest)))
+      let mode = Navigate(act)
+      Ok(
+        WorkSpace(
+          ..state,
+          source: source,
+          selection: selection,
+          mode: mode,
+          history: history,
+        ),
+      )
+    }
+  }
+}
+
+fn redo(state) {
+  case state.history {
+    #(_, []) -> Error("No redo")
+    #(backward, [#(source, selection), ..rest]) -> {
+      let history = #([#(state.source, state.selection), ..backward], rest)
+      try act = transform.prepare(source, selection)
+      // Has to already be in navigate mode to undo
+      let mode = Navigate(act)
+      Ok(
+        WorkSpace(
+          ..state,
+          source: source,
+          selection: selection,
+          mode: mode,
+          history: history,
+        ),
+      )
+    }
+  }
+}
+
 fn list(act, state) {
   let new = case act.target {
     e.Vacant -> e.Tail
@@ -390,12 +438,15 @@ fn nocases(act, state) {
 // app state actions maybe separate from ui but maybe ui files organised by mode
 // update source also ends the entry state
 fn update_source(state: WorkSpace, source) {
-  // try mode = case state.mode {
-  //   Navigate(_) -> {
   try act = transform.prepare(source, state.selection)
   let mode = Navigate(act)
-  //   }
-  //   _ -> Ok(state.mode)
-  // }
-  Ok(WorkSpace(..state, source: source, mode: mode))
+  let history = case source == state.source {
+    True -> state.history
+    False -> {
+      let #(backwards, _forwards) = state.history
+      io.debug("push")
+      #([#(state.source, state.selection), ..backwards], [])
+    }
+  }
+  Ok(WorkSpace(..state, source: source, mode: mode, history: history))
 }
