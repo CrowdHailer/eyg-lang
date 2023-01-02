@@ -101,7 +101,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "s" -> decrease(act, state)
     Navigate(act), "d" -> delete(act, state)
     Navigate(act), "f" -> Ok(abstract(act, state))
-    Navigate(act), "g" -> Ok(select(act, state))
+    Navigate(act), "g" -> select(act, state)
     // Navigate(act), "h" -> todo("left probably not")
     // Navigate(act), "j" -> todo("down probably not")
     // Navigate(act), "k" -> todo("up probably not")
@@ -307,13 +307,10 @@ fn abstract(act, state) {
 // g for get
 fn select(act, state) {
   let commit = case act.target {
-    e.Let(label, value, then) -> {
-      io.debug("can't get on let")
-      state
-    }
+    e.Let(label, value, then) -> Error("can't get on let")
     exp -> {
       let commit = fn(text) { act.update(e.Apply(e.Select(text), exp)) }
-      WorkSpace(..state, mode: WriteLabel("", commit))
+      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
   }
 }
@@ -335,7 +332,6 @@ fn undo(state: WorkSpace) {
       let history = #(rest, [#(state.source, state.selection), ..forward])
       try act = transform.prepare(source, selection)
       // Has to already be in navigate mode to undo
-      io.debug(#("pop", list.length(rest)))
       let mode = Navigate(act)
       Ok(
         WorkSpace(
@@ -444,7 +440,6 @@ fn update_source(state: WorkSpace, source) {
     True -> state.history
     False -> {
       let #(backwards, _forwards) = state.history
-      io.debug("push")
       #([#(state.source, state.selection), ..backwards], [])
     }
   }

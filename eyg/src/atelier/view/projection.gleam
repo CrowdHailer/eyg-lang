@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/int
 import gleam/list
+import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
 import lustre/element.{button, div, p, pre, span, text}
@@ -9,6 +10,7 @@ import lustre/attribute.{class, classes, style}
 import eygir/expression as e
 import atelier/app.{SelectNode}
 import atelier/view/typ
+import eyg/analysis/inference
 import eyg/runtime/standard
 
 pub fn render(source, selection, inferred) {
@@ -52,29 +54,38 @@ fn click(loc: Location) {
 
 pub fn do_render(exp, br, loc, inferred) {
   case exp {
-    e.Variable(var) -> [variable(var, loc)]
+    e.Variable(var) -> [variable(var, loc, inferred)]
     e.Lambda(param, body) -> [lambda(param, body, br, loc, inferred)]
     e.Apply(func, arg) -> call(func, arg, br, loc, inferred)
     e.Let(label, value, then) ->
       assigment(label, value, then, br, loc, inferred)
-    e.Binary(value) -> [string(value, loc)]
-    e.Integer(value) -> [integer(value, loc)]
+    e.Binary(value) -> [string(value, loc, inferred)]
+    e.Integer(value) -> [integer(value, loc, inferred)]
     e.Tail -> [
-      span([click(loc), classes(highlight(focused(loc)))], [text("[]")]),
+      span(
+        [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
+        [text("[]")],
+      ),
     ]
     e.Cons -> [
       // maybe gray but probably better rendering in apply
       span(
         [
           click(loc),
-          classes([#("text-gray-400", True), ..highlight(focused(loc))]),
+          classes([
+            #("text-gray-400", True),
+            ..highlight(focused(loc), error(loc, inferred))
+          ]),
         ],
         [text("cons")],
       ),
     ]
     e.Vacant -> [vacant(loc, inferred)]
     e.Empty -> [
-      span([click(loc), classes(highlight(focused(loc)))], [text("{}")]),
+      span(
+        [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
+        [text("{}")],
+      ),
     ]
     e.Record(fields, from) ->
       case False {
@@ -96,16 +107,19 @@ pub fn do_render(exp, br, loc, inferred) {
             |> list.flatten
         }
       }
-    e.Extend(label) -> [extend(label, loc)]
-    e.Select(label) -> [select(label, loc)]
-    e.Overwrite(label) -> [overwrite(label, loc)]
-    e.Tag(label) -> [tag(label, loc)]
-    e.Case(label) -> [match(label, br, loc)]
+    e.Extend(label) -> [extend(label, loc, inferred)]
+    e.Select(label) -> [select(label, loc, inferred)]
+    e.Overwrite(label) -> [overwrite(label, loc, inferred)]
+    e.Tag(label) -> [tag(label, loc, inferred)]
+    e.Case(label) -> [match(label, br, loc, inferred)]
     e.NoCases -> [
       span(
         [
           click(loc),
-          classes([#("text-gray-400", True), ..highlight(focused(loc))]),
+          classes([
+            #("text-gray-400", True),
+            ..highlight(focused(loc), error(loc, inferred))
+          ]),
         ],
         [text("nocases")],
       ),
@@ -145,21 +159,15 @@ pub fn do_render(exp, br, loc, inferred) {
         [text(br), text("}")],
       ])
     }
-    e.Perform(label) -> [perform(label, loc)]
+    e.Perform(label) -> [perform(label, loc, inferred)]
     e.Deep(_, _) -> todo
   }
 }
 
-// select the whole thing can be border if it is collapsed
-// need a single line view for each expression, then we can select a let by collapsing
-// background, underline
-// TODO save
 // TODO handle needing brackets for functions as args
 // TODO handle not creating new arrows fo fn's
 // fn render arg wrap if need be etc
-// fn render call'd etc
 fn render_block(exp, br, loc, inferred) {
-  // TODO pretty sure need to move indented BR up but not for closing
   case exp {
     e.Let(_, _, _) ->
       case open(loc) {
@@ -177,20 +185,33 @@ fn render_block(exp, br, loc, inferred) {
   }
 }
 
-fn highlight(target) {
-  [#("border-b-2", target), #("border-indigo-300", True)]
+fn highlight(target, alert) {
+  // let colour = case target, alert {
+  //   True, _ -> [#("border-b-2", True), #("border-indigo-300", True)]
+  //   _, True -> [#("border-b-2", False), #("bg-red-100", True)]
+  //   False, False -> [#("border-b-2", False), #("border-indigo-300", True)]
+  // }
+  [
+    #("border-b-2", target),
+    #("border-indigo-300", True),
+    #("rounded", True),
+    #("bg-red-200", alert),
+  ]
 }
 
-fn variable(var, loc) {
+fn variable(var, loc, inferred) {
   let target = focused(loc)
-  [classes(highlight(target)), click(loc)]
+  let alert = error(loc, inferred)
+
+  [classes(highlight(target, alert)), click(loc)]
   |> span([text(var)])
 }
 
 fn lambda(param, body, br, loc, inferred) {
   let target = focused(loc)
+  let alert = error(loc, inferred)
 
-  [classes(highlight(target))]
+  [classes(highlight(target, alert))]
   |> span([
     span([click(loc)], [text(param), text(" -> ")]),
     ..render_block(body, br, child(loc, 0), inferred)
@@ -203,14 +224,17 @@ fn render_branch(label, then, else, br, loc_branch, loc_else, inferred) {
   let match =
     [
       click(loc_match),
-      classes([#("text-blue-500", True), ..highlight(focused(loc_match))]),
+      classes([
+        #("text-blue-500", True),
+        ..highlight(focused(loc_match), error(loc_match, inferred))
+      ]),
     ]
     |> span([text(label)])
   let branch = render_block(then, br, loc_then, inferred)
   [
     text(br),
     span(
-      [classes(highlight(focused(loc_branch)))],
+      [classes(highlight(focused(loc_branch), error(loc_branch, inferred)))],
       [match, text(" "), ..branch],
     ),
     ..case else {
@@ -239,6 +263,8 @@ fn render_branch(label, then, else, br, loc_branch, loc_else, inferred) {
 // nocases should be rendered alone as empty match
 fn call(func, arg, br, loc, inferred) {
   let target = focused(loc)
+  let alert = error(loc, inferred)
+
   // not target but any selected
   let inner = case func {
     // e.Apply(e.Case(label), then) -> {
@@ -282,11 +308,13 @@ fn call(func, arg, br, loc, inferred) {
       ])
   }
 
-  [span([classes(highlight(target))], inner)]
+  [span([classes(highlight(target, alert))], inner)]
 }
 
 fn assigment(label, value, then, br, loc, inferred) {
   let active = focused(loc)
+  let alert = error(loc, inferred)
+
   let assignment = [
     span(
       [click(loc)],
@@ -294,62 +322,87 @@ fn assigment(label, value, then, br, loc, inferred) {
     ),
     ..render_block(value, br, child(loc, 0), inferred)
   ]
-  let el = span([classes(highlight(active))], assignment)
+  let el = span([classes(highlight(active, alert))], assignment)
   [el, text(br), ..do_render(then, br, child(loc, 1), inferred)]
 }
 
-fn string(value, loc) {
+fn error(loc: Location, inferred: inference.Infered) {
+  case map.get(inferred.paths, loc.path) {
+    Ok(Error(_)) -> True
+    _ -> False
+  }
+}
+
+fn string(value, loc, inferred) {
   let target = focused(loc)
+  let alert = error(loc, inferred)
   let content = string.concat(["\"", value, "\""])
-  [click(loc), classes([#("text-green-500", True), ..highlight(target)])]
+  [click(loc), classes([#("text-green-500", True), ..highlight(target, alert)])]
   |> span([text(content)])
 }
 
-fn integer(value, loc) {
+fn integer(value, loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes([#("text-purple-500", True), ..highlight(target)])]
+  let alert = error(loc, inferred)
+  [
+    click(loc),
+    classes([#("text-purple-500", True), ..highlight(target, alert)]),
+  ]
   |> span([text(int.to_string(value))])
 }
 
 fn vacant(loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes([#("text-red-500", True), ..highlight(target)])]
+  let alert = error(loc, inferred)
+  [click(loc), classes([#("text-red-500", True), ..highlight(target, alert)])]
   |> span([text(typ.render(standard.type_of(inferred, loc.path)))])
 }
 
-fn extend(label, loc) {
+fn extend(label, loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes([#("text-blue-700", True), ..highlight(target)])]
+  let alert = error(loc, inferred)
+
+  [click(loc), classes([#("text-blue-700", True), ..highlight(target, alert)])]
   |> span([text(string.append("+", label))])
 }
 
-fn select(label, loc) {
+fn select(label, loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes([#("text-blue-700", True), ..highlight(target)])]
+  let alert = error(loc, inferred)
+
+  [click(loc), classes([#("text-blue-700", True), ..highlight(target, alert)])]
   |> span([text(string.append(".", label))])
 }
 
-fn overwrite(label, loc) {
+fn overwrite(label, loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes([#("text-blue-700", True), ..highlight(target)])]
+  let alert = error(loc, inferred)
+
+  [click(loc), classes([#("text-blue-700", True), ..highlight(target, alert)])]
   |> span([text(string.append(":=", label))])
 }
 
-fn tag(label, loc) {
+fn tag(label, loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes([#("text-blue-500", True), ..highlight(target)])]
+  let alert = error(loc, inferred)
+
+  [click(loc), classes([#("text-blue-500", True), ..highlight(target, alert)])]
   |> span([text(label)])
 }
 
-fn match(label, br, loc) {
+fn match(label, br, loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes([#("text-blue-500", True), ..highlight(target)])]
+  let alert = error(loc, inferred)
+
+  [click(loc), classes([#("text-blue-500", True), ..highlight(target, alert)])]
   |> span([text(label)])
 }
 
-fn perform(label, loc) {
+fn perform(label, loc, inferred) {
   let target = focused(loc)
-  [click(loc), classes(highlight(target))]
+  let alert = error(loc, inferred)
+
+  [click(loc), classes(highlight(target, alert))]
   |> span([span([class("text-gray-400")], [text("perform ")]), text(label)])
 }
 
