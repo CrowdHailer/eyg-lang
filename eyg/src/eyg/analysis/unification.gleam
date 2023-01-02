@@ -47,6 +47,12 @@ fn varbind(u, typ) {
   }
 }
 
+pub type Failure {
+  TypeMismatch(t.Term, t.Term)
+  RowMismatch(String)
+  MissingVariable(String)
+}
+
 pub fn unify(t1, t2, ref) -> Result(_, _) {
   case t1, t2 {
     t.Fun(from1, effects1, to1), t.Fun(from2, effects2, to2) -> {
@@ -67,27 +73,24 @@ pub fn unify(t1, t2, ref) -> Result(_, _) {
     t.LinkedList(i1), t.LinkedList(i2) -> unify(i1, i2, ref)
     t.Record(r1), t.Record(r2) -> unify_row(r1, r2, ref)
     t.Union(r1), t.Union(r2) -> unify_row(r1, r2, ref)
-    _, _ -> Error(#(t1, t2))
+    _, _ -> Error(TypeMismatch(t1, t2))
   }
 }
 
 fn rewrite_row(row, new_label, ref) {
   case row {
-    t.Closed -> todo("row rewrite failed")
-    t.Extend(label, field, tail) if label == new_label -> #(
-      field,
-      tail,
-      sub.none(),
-    )
+    t.Closed -> Error(RowMismatch(new_label))
+    t.Extend(label, field, tail) if label == new_label ->
+      Ok(#(field, tail, sub.none()))
     t.Open(old) -> {
       let t = t.Unbound(fresh(ref))
       let r = t.Open(fresh(ref))
       let s = sub.row(old, t.Extend(new_label, t, r))
-      #(t, r, s)
+      Ok(#(t, r, s))
     }
     t.Extend(label, field, tail) -> {
-      let #(field1, tail1, subs) = rewrite_row(tail, new_label, ref)
-      #(field1, t.Extend(label, field, tail1), subs)
+      try #(field1, tail1, subs) = rewrite_row(tail, new_label, ref)
+      Ok(#(field1, t.Extend(label, field, tail1), subs))
     }
   }
 }
@@ -99,7 +102,7 @@ pub fn unify_row(r1, r2, ref) {
     t.Open(u), r | r, t.Open(u) -> Ok(sub.row(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
     t.Extend(label, t1, tail1), r -> {
-      let #(t2, tail2, s1) = rewrite_row(r, label, ref)
+      try #(t2, tail2, s1) = rewrite_row(r, label, ref)
       try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
       let s3 = sub.compose(s2, s1)
       try s4 =

@@ -19,7 +19,7 @@ pub type Infered {
   Infered(
     substitutions: sub.Substitutions,
     // TODO need better name than paths
-    paths: Map(List(Int), Result(t.Term, Nil)),
+    paths: Map(List(Int), Result(t.Term, unification.Failure)),
     environments: Map(List(Int), Map(String, Scheme)),
   )
 }
@@ -57,8 +57,12 @@ fn unify(t1, t2, ref, path) {
   case unification.unify(t1, t2, ref) {
     Ok(s) -> Infered(s, singleton(list.reverse(path), Ok(t1)), map.new())
     // TODO real error
-    Error(_) ->
-      Infered(sub.none(), singleton(list.reverse(path), Error(Nil)), map.new())
+    Error(reason) ->
+      Infered(
+        sub.none(),
+        singleton(list.reverse(path), Error(reason)),
+        map.new(),
+      )
   }
 }
 
@@ -118,14 +122,13 @@ pub fn infer(env, exp, typ, eff, ref, path) {
           let t = instantiate(scheme, ref)
           unify(typ, t, ref, path)
         }
-        Error(Nil) -> {
-          io.debug(x)
+        Error(Nil) ->
           Infered(
             sub.none(),
-            singleton(list.reverse(path), Error(Nil)),
+            // TODO move error somewhere better
+            singleton(list.reverse(path), Error(unification.MissingVariable(x))),
             map.new(),
           )
-        }
       }
     e.Let(x, value, then) -> {
       let t = t.Unbound(fresh(ref))

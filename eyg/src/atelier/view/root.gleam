@@ -102,7 +102,7 @@ pub fn render(state: app.WorkSpace) {
                 [
                   text(string.append(
                     ":",
-                    standard.infer(state.source)
+                    inferred
                     |> standard.type_of(state.selection)
                     |> typ.render(),
                   )),

@@ -2,13 +2,23 @@ import gleam/int
 import gleam/list
 import gleam/string
 import eyg/analysis/typ as t
+import eyg/analysis/unification
 
 // TODO remove type_info
 // Do we have a general need for type debug functionality
 pub fn render(type_info) {
   case type_info {
     Ok(t) -> render_type(t)
-    Error(Nil) -> "Error"
+    Error(f) -> render_failure(f)
+  }
+}
+
+fn render_failure(f) {
+  case f {
+    unification.TypeMismatch(a, b) ->
+      string.concat(["Type Missmatch: ", render_type(a), " vs ", render_type(b)])
+    unification.RowMismatch(label) -> string.append("Row Missmatch: ", label)
+    unification.MissingVariable(x) -> string.append("missing variable: ", x)
   }
 }
 

@@ -18,8 +18,20 @@ pub fn infer(prog) {
   inference.infer(
     env(),
     prog,
-    t.Unbound(-1),
-    t.Open(-2),
+    t.Record(t.Extend(
+      "cli",
+      t.Fun(t.Record(t.Closed), t.Open(-1000), t.Unbound(-1001)),
+      t.Extend(
+        "web",
+        t.Fun(
+          t.Record(t.Extend("path", t.Binary, t.Closed)),
+          t.Open(-1002),
+          t.Record(t.Extend("body", t.Binary, t.Closed)),
+        ),
+        t.Open(-1003),
+      ),
+    )),
+    t.Open(-1004),
     javascript.make_reference(0),
     [],
   )
