@@ -115,24 +115,18 @@ pub fn unify_row(r1, r2, ref) {
 // looks like rewrite row but reference to sub.effect and creating fresh is specific
 fn rewrite_effect(effect, new_label, ref) {
   case effect {
-    t.Closed -> {
-      io.debug(#("eff r", new_label))
-      todo("effect rewrite failed")
-    }
-    t.Extend(label, field, tail) if label == new_label -> #(
-      field,
-      tail,
-      sub.none(),
-    )
+    t.Closed -> Error(RowMismatch(new_label))
+    t.Extend(label, field, tail) if label == new_label ->
+      Ok(#(field, tail, sub.none()))
     t.Open(old) -> {
       let t = #(t.Unbound(fresh(ref)), t.Unbound(fresh(ref)))
       let r = t.Open(fresh(ref))
       let s = sub.effect(old, t.Extend(new_label, t, r))
-      #(t, r, s)
+      Ok(#(t, r, s))
     }
     t.Extend(label, field, tail) -> {
-      let #(field1, tail1, subs) = rewrite_effect(tail, new_label, ref)
-      #(field1, t.Extend(label, field, tail1), subs)
+      try #(field1, tail1, subs) = rewrite_effect(tail, new_label, ref)
+      Ok(#(field1, t.Extend(label, field, tail1), subs))
     }
   }
 }
@@ -144,7 +138,7 @@ pub fn unify_effects(eff1, eff2, ref) {
     t.Open(u), r | r, t.Open(u) -> Ok(sub.effect(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
     t.Extend(label, #(t1, u1), tail1), r -> {
-      let #(#(t2, u2), tail2, s1) = rewrite_effect(r, label, ref)
+      try #(#(t2, u2), tail2, s1) = rewrite_effect(r, label, ref)
       try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
       let s3 = sub.compose(s2, s1)
       try s4 = unify(sub.apply(s1, u1), sub.apply(s1, u2), ref)
