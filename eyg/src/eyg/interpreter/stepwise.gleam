@@ -13,18 +13,9 @@ import eyg/interpreter/interpreter as r
 import gleam/javascript as real_js
 import gleam/javascript/promise.{Promise}
 
-fn write_html(o) {
-  assert r.Binary(content) = o
-  write_into_div(content)
-  Ok(r.BuiltinFn(write_html))
-}
-
 fn set_key_handler(o) {
   todo("we don't use this but might with key handler as mutable ref")
 }
-
-external fn write_into_div(String) -> Nil =
-  "../../browser_ffi.js" "writeIntoDiv"
 
 external fn try_catch(fn() -> b) -> Result(b, string) =
   "../../browser_ffi.js" "tryCatch"

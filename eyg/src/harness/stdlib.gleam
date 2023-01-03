@@ -64,4 +64,51 @@ pub fn lib() {
     |> env.extend("ffi_uppercase", string.uppercase())
     |> env.extend("ffi_lowercase", string.lowercase())
     |> env.extend("ffi_length", string.length())
+    // list
+    |> env.extend("ffi_fold", fold())
+}
+
+pub fn fold() {
+  #(
+    t.Fun(
+      t.LinkedList(t.Unbound(-7)),
+      t.Open(-8),
+      t.Fun(
+        t.Unbound(-9),
+        t.Open(-10),
+        t.Fun(
+          t.Fun(
+            t.Unbound(-7),
+            t.Open(-11),
+            t.Fun(t.Unbound(-9), t.Open(-12), t.Unbound(-9)),
+          ),
+          t.Open(-13),
+          t.Unbound(-9),
+        ),
+      ),
+    ),
+    builtin3(fn(list, initial, f, k) {
+      assert r.LinkedList(elements) = list
+      do_fold(elements, initial, f, k)
+    }),
+  )
+}
+
+fn do_fold(elements, state, f, k) {
+  case elements {
+    [] -> r.continue(k, state)
+    [e, ..rest] ->
+      r.eval_call(f, e, r.eval_call(_, state, do_fold(rest, _, f, k)))
+  }
+}
+
+fn builtin3(f) {
+  r.Builtin(fn(a, k) {
+    r.continue(
+      k,
+      r.Builtin(fn(b, k) {
+        r.continue(k, r.Builtin(fn(c, k) { f(a, b, c, k) }))
+      }),
+    )
+  })
 }
