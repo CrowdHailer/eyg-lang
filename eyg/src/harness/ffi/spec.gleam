@@ -1,7 +1,6 @@
 import gleam/list
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import gleeunit/should
 
 fn is_integer(term) {
   case term {

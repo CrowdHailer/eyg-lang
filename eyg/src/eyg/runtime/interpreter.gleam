@@ -47,7 +47,6 @@ pub fn continue(k, term) {
 pub fn eval_call(f, arg, k) {
   case f {
     Function(param, body, env) -> {
-      io.debug(env)
       let env = [#(param, arg), ..env]
       eval(body, env, k)
     }
