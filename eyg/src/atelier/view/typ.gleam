@@ -4,7 +4,6 @@ import gleam/string
 import eyg/analysis/typ as t
 import eyg/analysis/unification
 
-// TODO remove type_info
 // Do we have a general need for type debug functionality
 pub fn render(type_info) {
   case type_info {

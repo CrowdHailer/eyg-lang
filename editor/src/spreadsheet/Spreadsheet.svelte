@@ -1,6 +1,6 @@
 <script>
   import * as Editor from "../../../eyg/build/dev/javascript/eyg/eyg/editor/editor";
-  import * as Platform from "../../../eyg/build/dev/javascript/eyg/platform/browser";
+  import * as Platform from "../../../eyg/build/dev/javascript/eyg/platforms/browser";
 
   export let source;
   let { spreadsheet } = Editor.eval$(Editor.init(source, Platform.harness()));

@@ -7,7 +7,7 @@ import eyg/ast/expression
 import eyg/typer.{get_type, infer}
 import eyg/typer/monotype as t
 import eyg/typer/polytype
-import platform/browser
+import platforms/browser
 
 // This is proablbly better called assignment tests, unless it grows too big and patterns should be separate
 pub fn variable_of_expected_type_test() {

@@ -4,7 +4,7 @@ import eyg/ast/expression as e
 import eyg/ast/pattern as p
 import eyg/typer/monotype as t
 import eyg/analysis
-import platform/browser
+import platforms/browser
 
 pub fn access_record_literal_test() {
   let source = e.access(e.record([#("foo", e.binary("bar"))]), "foo")

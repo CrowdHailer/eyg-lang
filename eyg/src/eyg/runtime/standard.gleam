@@ -13,10 +13,11 @@ import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eygir/expression as e
 import eygir/decode
+import harness/stdlib
 
 pub fn infer(prog) {
   inference.infer(
-    env(),
+    stdlib.lib().0,
     prog,
     t.Record(t.Extend(
       "cli",
@@ -51,32 +52,8 @@ pub fn type_of(inf: inference.Infered, path) {
   }
 }
 
-pub fn env() {
+fn env() {
   map.new()
-  |> map.insert(
-    "string_append",
-    scheme.Scheme(
-      [t.Effect(-1), t.Effect(-2)],
-      t.Fun(t.Binary, t.Open(-1), t.Fun(t.Binary, t.Open(-2), t.Binary)),
-    ),
-  )
-  |> map.insert(
-    "equal",
-    scheme.Scheme(
-      [],
-      // TODO needs term and variable
-      // [-3, -4, -5, -6],
-      t.Fun(
-        t.Unbound(-3),
-        t.Open(-4),
-        t.Fun(
-          t.Unbound(-5),
-          t.Open(-6),
-          t.Union(t.Extend("True", t.unit, t.Extend("False", t.unit, t.Closed))),
-        ),
-      ),
-    ),
-  )
   // TODO effects are matching and we need them all open here. Potentially
   // unification should be ok on closed open
   |> map.insert(
@@ -104,78 +81,15 @@ pub fn env() {
       ),
     ),
   )
-  |> map.insert(
-    "string_concat",
-    scheme.Scheme(
-      [t.Effect(-14)],
-      t.Fun(t.LinkedList(t.Binary), t.Open(-14), t.Binary),
-    ),
-  )
-  |> map.insert(
-    "add",
-    scheme.Scheme(
-      [],
-      t.Fun(t.Integer, t.Open(-15), t.Fun(t.Integer, t.Open(-15), t.Integer)),
-    ),
-  )
 }
 
-pub fn env_values() {
+fn env_values() {
   [
-    #(
-      "string_append",
-      r.Builtin(fn(first, k) {
-        r.continue(
-          k,
-          r.Builtin(fn(second, k) {
-            assert r.Binary(f) = first
-            io.debug(second)
-            assert r.Binary(s) = second
-            r.continue(k, r.Binary(string.append(f, s)))
-          }),
-        )
-      }),
-    ),
-    #(
-      "equal",
-      builtin2(fn(x, y, k) {
-        case x == y {
-          True -> true
-          False -> false
-        }
-        |> r.continue(k, _)
-      }),
-    ),
     #(
       "list_fold",
       builtin3(fn(list, initial, f, k) {
         assert r.LinkedList(elements) = list
         do_fold(elements, initial, f, k)
-      }),
-    ),
-    #(
-      "string_concat",
-      r.Builtin(fn(list, k) {
-        assert r.LinkedList(elements) = list
-        r.continue(
-          k,
-          r.Binary(list.fold(
-            elements,
-            "",
-            fn(buffer, e) {
-              assert r.Binary(value) = e
-              string.append(buffer, value)
-            },
-          )),
-        )
-      }),
-    ),
-    #(
-      "add",
-      builtin2(fn(x, y, k) {
-        assert r.Integer(x) = x
-        assert r.Integer(y) = y
-        r.continue(k, r.Integer(x + y))
       }),
     ),
   ]

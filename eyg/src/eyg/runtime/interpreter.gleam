@@ -75,7 +75,10 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(term) -> continue(k, term)
-        Error(Nil) -> todo("variable not defined")
+        Error(Nil) -> {
+          io.debug(x)
+          todo("variable not defined")
+        }
       }
     e.Let(var, value, then) ->
       eval(value, env, fn(term) { eval(then, [#(var, term), ..env], k) })
