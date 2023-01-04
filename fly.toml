@@ -9,6 +9,7 @@ processes = []
   dockerfile = "language.Dockerfile"
 
 [env]
+  Port = "8080"
 
 [experimental]
   allowed_public_ports = []
