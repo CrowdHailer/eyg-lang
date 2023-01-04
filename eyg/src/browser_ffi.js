@@ -1,37 +1,4 @@
-import * as Gleam from "./gleam.mjs";
-
-export async function fetchSource() {
-  let response = await fetch("/saved.json");
-  return await response.text();
-}
-
-export async function fetchText(url) {
-  let response = await fetch(url);
-  return await response.text();
-}
-
-export async function post(url, data) {
-  try {
-    let response = await fetch(url, {
-      method: "POST",
-      body: data,
-    });
-    console.log(response.status);
-    return new Gleam.Ok([]);
-  } catch (error) {
-    new Gleam.Error(error);
-  }
-}
-
-export function tryCatch(f) {
-  try {
-    return new Gleam.Ok(f());
-  } catch (error) {
-    return new Gleam.Error(error);
-  }
-}
-
-// for morph
+// for atelier_ffi
 export function listenKeypress(dispatch) {
   // https://medium.com/analytics-vidhya/implementing-keyboard-controls-or-shortcuts-in-javascript-82e11fccbf0c
   document.addEventListener("keydown", function (event) {
