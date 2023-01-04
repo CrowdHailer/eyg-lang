@@ -5,4 +5,4 @@ WORKDIR /opt/app/eyg
 RUN npm install
 RUN gleam build
 RUN npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js
-RUN gleam run web
+CMD gleam run web
