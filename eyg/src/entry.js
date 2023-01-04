@@ -15,7 +15,18 @@ app.use(
   express.static("build/dev/javascript", {
     setHeaders: function (res, path, stat) {
       // if file is a .xml file, then set content-type
-      if (path.endsWith(".mjs")) {
+      if (path.endsWith(".mjs") || path.endsWith(".js")) {
+        res.setHeader("Content-Type", "application/javascript");
+      }
+    },
+  })
+);
+app.use(
+  "/public",
+  express.static("public", {
+    setHeaders: function (res, path, stat) {
+      // if file is a .xml file, then set content-type
+      if (path.endsWith(".mjs") || path.endsWith(".js")) {
         res.setHeader("Content-Type", "application/javascript");
       }
     },
@@ -43,14 +54,7 @@ const lustre = `
 </head>
 <body>
   <div id="app" class="min-h-screen"></div>
-<script type="module">
-  import {main} from "/src/eyg/atelier/main.mjs"
-  fetch('/saved/saved.json').then(resp => {
-    return resp.text()
-  }).then(source => {
-    main(source)
-  })
-</script>
+  <script src="/public/bundle.js"></script>
 </html>
 `;
 // TODO solid example does have h defined

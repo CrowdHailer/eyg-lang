@@ -32,4 +32,6 @@ COPY --from=build /usr/local/cargo/bin/watchexec /bin
 COPY . /opt/app
 WORKDIR /opt/app/eyg
 RUN npm install
+RUN gleam run build
+RUN npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js
 RUN gleam run web
