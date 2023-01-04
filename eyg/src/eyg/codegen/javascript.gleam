@@ -26,16 +26,6 @@ pub type Generator(n) {
   )
 }
 
-// Scope and self can me moved out into the metadata
-pub external fn do_eval(String) -> Dynamic =
-  "../../harness.js" "run"
-
-pub fn eval(tree, typer) {
-  let code = render_in_function(tree, typer)
-  string.concat(["(function(equal){\n", code, "})(equal)"])
-  |> do_eval
-}
-
 pub fn maybe_wrap_expression(expression, state) {
   case expression {
     #(_, e.Let(_, _, _)) -> {

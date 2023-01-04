@@ -15,7 +15,7 @@ pub fn data() {
       reduce.EAV(2, address, reduce.StringValue("London")),
       reduce.EAV(2, stuff, reduce.StringValue("Book")),
       reduce.EAV(3, name, reduce.StringValue("Old London Town")),
-      reduce.EAV(3, "population", reduce.IntValue(8000000)),
+      reduce.EAV(3, "population", reduce.IntValue(8_000_000)),
     ]),
     reduce.Commit([
       reduce.EAV(1, address, reduce.StringValue("Leeds")),
