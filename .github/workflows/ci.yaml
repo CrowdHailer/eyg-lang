@@ -2,7 +2,8 @@ name: Deploy to Fly
 on:
   push:
     branches:
-      - main
+      # TODO switch back to main
+      - cleanup
 jobs:
   deploy:
     name: Deploy proxy

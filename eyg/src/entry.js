@@ -58,7 +58,7 @@ const lustre = `
 export function serve(handler, saver) {
   app.use((req, res) => {
     let host = req.header("host");
-    if (host == "localhost:5000") {
+    if (host == "localhost:5000" || host == "source.web.petersaxton.uk") {
       if (req.path == "/save") {
         let body = req.body.toString();
         saver(body)

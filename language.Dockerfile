@@ -1,6 +1,6 @@
 FROM rust:1.65.0 AS build
 
-ENV SHA="v0.25.0"
+ENV SHA="v0.25.3"
 RUN set -xe \
         && curl -fSL -o gleam-src.tar.gz "https://github.com/gleam-lang/gleam/archive/${SHA}.tar.gz" \
         && mkdir -p /usr/src/gleam-src \
@@ -31,14 +31,4 @@ COPY --from=build /usr/local/cargo/bin/watchexec /bin
 
 COPY . /opt/app
 WORKDIR /opt/app/eyg
-RUN gleam build
-WORKDIR /opt/app/editor
-RUN npm install && \
-# need a build/.keep to work wit fly deploy
-#     mkdir public/build && \
-    npm run build
-
-WORKDIR /opt/app
-RUN npm install
-CMD node ./server.js
-# TODO local dev overwrites built files
+RUN gleam run web
