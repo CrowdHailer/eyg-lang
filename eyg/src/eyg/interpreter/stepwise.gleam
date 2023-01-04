@@ -8,7 +8,6 @@ import gleam/string
 import gleam/function
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/codegen/javascript
 import eyg/interpreter/interpreter as r
 import gleam/javascript as real_js
 import gleam/javascript/promise.{Promise}

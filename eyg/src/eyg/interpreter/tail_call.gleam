@@ -7,7 +7,6 @@ import gleam/map
 import gleam/string
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/codegen/javascript
 import eyg/interpreter/interpreter as r
 
 fn eval_tuple(elements, env, acc, cont) {

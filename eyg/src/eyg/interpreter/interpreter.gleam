@@ -7,7 +7,6 @@ import gleam/map
 import gleam/string
 import eyg/ast/expression as e
 import eyg/ast/pattern as p
-import eyg/codegen/javascript
 import eyg/analysis
 import eyg/typer
 import eyg/typer/monotype as t
