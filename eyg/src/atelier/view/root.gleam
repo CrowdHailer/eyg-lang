@@ -7,8 +7,8 @@ import gleam/result
 import gleam/option.{None, Some}
 import lustre/element.{button, div, input, p, pre, span, text}
 import lustre/event.{dispatch, on_click, on_keydown}
-import lustre/attribute.{class}
-import atelier/app
+import lustre/attribute.{class, classes}
+import atelier/app.{SelectNode}
 import atelier/view/projection
 import atelier/view/typ
 import eyg/runtime/standard
@@ -25,15 +25,14 @@ pub fn render(state: app.WorkSpace) {
   }
 
   let inferred = standard.infer(state.source)
-  map.filter(inferred.paths, fn(k, v) { result.is_error(v) })
 
-  // TODO print errors
   div(
     [class("h-screen vstack")],
     [
       div([class("spacer")], []),
       projection.render(state.source, state.selection, inferred),
       div([class("spacer")], []),
+      render_errors(inferred),
       case input_value {
         Some(value) ->
           div(
@@ -109,4 +108,39 @@ pub fn render(state: app.WorkSpace) {
       ),
     ],
   )
+}
+
+fn render_errors(inferred) {
+  let errors =
+    list.filter_map(
+      map.to_list(inferred.paths),
+      fn(el) {
+        let #(k, v) = el
+        case v {
+          Ok(_) -> Error(Nil)
+          Error(reason) -> Ok(#(k, reason))
+        }
+      },
+    )
+
+  case list.length(errors) != 0 {
+    False -> span([], [])
+    True ->
+      div(
+        [classes([#("cover bg-red-300", True)])],
+        list.map(
+          errors,
+          fn(err) {
+            let #(path, reason) = err
+            div(
+              [
+                classes([#("cursor-pointer", True)]),
+                on_click(dispatch(SelectNode(path))),
+              ],
+              [text(typ.render_failure(reason))],
+            )
+          },
+        ),
+      )
+  }
 }

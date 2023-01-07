@@ -420,7 +420,6 @@ fn match(act, state) {
     // e.Let(label, value, then) -> fn(text) {
     //   act.update(e.Let(label, e.Binary(text), then))
     // }
-    // TODO probably need matching to do diff in case
     // Match on original value should maybe be the arg? but I like promoting first class everything
     exp -> fn(text) {
       act.update(e.Apply(e.Apply(e.Case(text), e.Vacant), exp))

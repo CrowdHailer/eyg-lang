@@ -12,7 +12,7 @@ pub fn render(type_info) {
   }
 }
 
-fn render_failure(f) {
+pub fn render_failure(f) {
   case f {
     unification.TypeMismatch(a, b) ->
       string.concat(["Type Missmatch: ", render_type(a), " vs ", render_type(b)])

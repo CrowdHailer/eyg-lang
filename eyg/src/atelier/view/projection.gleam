@@ -60,10 +60,10 @@ pub fn do_render(exp, br, loc, inferred) {
         [text("{}")],
       ),
     ]
+    // This will be deleted if we get rid of record
     e.Record(fields, from) ->
       case False {
         True -> [text("mul")]
-        // TODO offset from from
         False -> {
           let fields =
             fields
@@ -138,8 +138,7 @@ pub fn do_render(exp, br, loc, inferred) {
 }
 
 // TODO handle needing brackets for functions as args
-// TODO handle not creating new arrows fo fn's
-// fn render arg wrap if need be etc
+// i.e. (a -> "x") -> cs
 fn render_block(exp, br, loc, inferred) {
   case exp {
     e.Let(_, _, _) ->
