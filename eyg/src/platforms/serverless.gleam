@@ -21,7 +21,7 @@ pub fn run(source, _) {
   let store = javascript.make_reference(source)
   let #(types, values) = stdlib.lib()
 
-  let handle = fn(x) {
+  let handle = fn(method, scheme, host, path, query, body) {
     // prog is new on every request could store eval'd in store
     let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
@@ -36,7 +36,7 @@ pub fn run(source, _) {
       )
     // type_of(a, [])
     // |> io.debug()
-    server_run(prog, x)
+    server_run(prog, method, scheme, host, path, query, body)
   }
 
   let save = fn(raw) {
@@ -54,9 +54,17 @@ pub fn run(source, _) {
 external fn write_file_sync(String, String) -> Nil =
   "fs" "writeFileSync"
 
-fn server_run(prog, path) {
+fn server_run(prog, method, scheme, host, path, query, body) {
   let #(types, values) = stdlib.lib()
-  let request = r.Record([#("path", r.Binary(path))])
+  let request =
+    r.Record([
+      #("method", r.Binary(method)),
+      #("scheme", r.Binary(scheme)),
+      #("host", r.Binary(host)),
+      #("path", r.Binary(path)),
+      #("query", r.Binary(query)),
+      #("body", r.Binary(body)),
+    ])
   assert return = r.run(prog, values, request, in_cli)
   assert r.Binary(body) = field(return, "body")
   body
@@ -76,7 +84,10 @@ fn field(term, field) {
   }
 }
 
-external fn do_serve(fn(String) -> String, fn(String) -> Nil) -> Nil =
+external fn do_serve(
+  fn(String, String, String, String, String, String) -> String,
+  fn(String) -> Nil,
+) -> Nil =
   "../entry.js" "serve"
 
 pub fn in_cli(label, term) {

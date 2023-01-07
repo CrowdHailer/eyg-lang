@@ -66,17 +66,27 @@ fn unify(t1, t2, ref, path) {
   }
 }
 
-fn unify_row(r1, r2, ref) {
+fn unify_row(r1, r2, ref, path) {
   case unification.unify_row(r1, r2, ref) {
     Ok(s) -> Infered(s, map.new(), map.new())
-    Error(_) -> todo("unification fail")
+    Error(reason) ->
+      Infered(
+        sub.none(),
+        singleton(list.reverse(path), Error(reason)),
+        map.new(),
+      )
   }
 }
 
-fn unify_effects(e1, e2, ref) {
+fn unify_effects(e1, e2, ref, path) {
   case unification.unify_effects(e1, e2, ref) {
     Ok(s) -> Infered(s, map.new(), map.new())
-    Error(_) -> todo("unification fail")
+    Error(reason) ->
+      Infered(
+        sub.none(),
+        singleton(list.reverse(path), Error(reason)),
+        map.new(),
+      )
   }
 }
 
@@ -177,7 +187,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
             let #(r, s1, update, index) = state
             let t = t.Unbound(fresh(ref))
             let next = t.Open(fresh(ref))
-            let s2 = unify_row(r, t.Extend(label, t, next), ref)
+            let s2 = unify_row(r, t.Extend(label, t, next), ref, path)
             let s3 = compose(s2, s1)
             let t = apply(s3, t)
             let eff = apply_effects(s3, eff)
@@ -208,7 +218,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
           }
         None -> {
           // If there is no variable we are creating a record and therefor it has no tail
-          let s4 = unify_row(unchanged, t.Closed, ref)
+          let s4 = unify_row(unchanged, t.Closed, ref, path)
           compose(s4, s3)
         }
       }
@@ -292,7 +302,8 @@ pub fn infer(env, exp, typ, eff, ref, path) {
             let #(label, param, then) = branch
             let field_type = t.Unbound(fresh(ref))
             let remaining = t.Open(fresh(ref))
-            let s2 = unify_row(row, t.Extend(label, field_type, remaining), ref)
+            let s2 =
+              unify_row(row, t.Extend(label, field_type, remaining), ref, path)
             let s3 = compose(s2, s1)
             let env = map.insert(env, param, Scheme([], apply(s3, field_type)))
             let s4 =
@@ -326,7 +337,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
           compose(s3, s2)
         }
         None -> {
-          let s3 = unify_row(remaining, t.Closed, ref)
+          let s3 = unify_row(remaining, t.Closed, ref, path)
           compose(s3, s2)
         }
       }
@@ -365,7 +376,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
             let reply = t.Unbound(fresh(ref))
             // What should this unify with
             let extended = t.Extend(label, #(call, reply), row)
-            let s2 = unify_effects(effects, extended, ref)
+            let s2 = unify_effects(effects, extended, ref, path)
             let s3 = compose(s2, s1)
             let env =
               env

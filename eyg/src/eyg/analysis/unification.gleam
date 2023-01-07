@@ -101,13 +101,17 @@ pub fn unify_row(r1, r2, ref) {
     t.Open(u), t.Open(v) if u == v -> Ok(sub.none())
     t.Open(u), r | r, t.Open(u) -> Ok(sub.row(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
-    t.Extend(label, t1, tail1), r -> {
+    t.Extend(label, t1, tail1), r | r, t.Extend(label, t1, tail1) -> {
       try #(t2, tail2, s1) = rewrite_row(r, label, ref)
       try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
       let s3 = sub.compose(s2, s1)
       try s4 =
         unify_row(sub.apply_row(s3, tail1), sub.apply_row(s3, tail2), ref)
       Ok(sub.compose(s4, s3))
+    }
+    _, _ -> {
+      io.debug(#(r1, r2))
+      todo("I dont understand")
     }
   }
 }

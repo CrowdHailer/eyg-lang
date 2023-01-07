@@ -69,7 +69,11 @@ export function serve(handler, saver) {
         res.send(lustre);
       }
     } else {
-      const result = handler(req.path);
+      // https://stackoverflow.com/questions/10643981/how-to-get-the-unparsed-query-string-from-a-http-request-in-express
+      var i = req.url.indexOf('?');
+      var query = req.url.substr(i+1);
+      // req.hostname removes port
+      const result = handler(req.method, req.protocol,req.headers.host, req.path, query, req.body.toString());
       res.send(result);
     }
   });

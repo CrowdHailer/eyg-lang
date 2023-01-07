@@ -25,7 +25,27 @@ pub fn infer(prog) {
       t.Extend(
         "web",
         t.Fun(
-          t.Record(t.Extend("path", t.Binary, t.Closed)),
+          t.Record(t.Extend(
+            "method",
+            t.Binary,
+            t.Extend(
+              "scheme",
+              t.Binary,
+              t.Extend(
+                "host",
+                t.Binary,
+                t.Extend(
+                  "path",
+                  t.Binary,
+                  t.Extend(
+                    "query",
+                    t.Binary,
+                    t.Extend("body", t.Binary, t.Closed),
+                  ),
+                ),
+              ),
+            ),
+          )),
           t.Open(-1002),
           t.Record(t.Extend("body", t.Binary, t.Closed)),
         ),
