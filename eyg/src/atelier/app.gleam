@@ -37,6 +37,7 @@ pub type Action {
   Keypress(key: String)
   Change(value: String)
   SelectNode(path: List(Int))
+  ClickOption(chosen: String)
 }
 
 pub fn init(source) {
@@ -64,6 +65,12 @@ pub fn update(state: WorkSpace, action) {
       }
       let state = WorkSpace(..state, mode: mode)
       #(state, cmd.none())
+    }
+    ClickOption(text) -> {
+      assert WriteLabel(_, commit) = state.mode
+      let source = commit(text)
+      assert Ok(workspace) = update_source(state, source)
+      #(workspace, cmd.none())
     }
     SelectNode(path) -> select_node(state, path)
   }

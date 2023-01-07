@@ -8,7 +8,7 @@ import gleam/option.{None, Some}
 import lustre/element.{button, div, input, p, pre, span, text}
 import lustre/event.{dispatch, on_click, on_keydown}
 import lustre/attribute.{class, classes}
-import atelier/app.{SelectNode}
+import atelier/app.{ClickOption, SelectNode}
 import atelier/view/projection
 import atelier/view/typ
 import eyg/runtime/standard
@@ -48,8 +48,13 @@ pub fn render(state: app.WorkSpace) {
                       map.keys(env)
                       |> list.unique,
                       fn(v) {
-                        // TODO on click needs to make the selection
-                        span([class("rounded bg-blue-100 p-1")], [text(v)])
+                        span(
+                          [
+                            class("rounded bg-blue-100 p-1"),
+                            on_click(dispatch(ClickOption(v))),
+                          ],
+                          [text(v)],
+                        )
                       },
                     )
                     |> list.intersperse(text(" "))
