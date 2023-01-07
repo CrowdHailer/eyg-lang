@@ -370,7 +370,9 @@ fn redo(state) {
 fn list(act, state) {
   let new = case act.target {
     e.Vacant -> e.Tail
-    exp -> e.Apply(e.Apply(e.Cons, e.Vacant), exp)
+    e.Tail | e.Apply(e.Apply(e.Cons, _), _) ->
+      e.Apply(e.Apply(e.Cons, e.Vacant), act.target)
+    _ -> e.Apply(e.Apply(e.Cons, act.target), e.Tail)
   }
   let source = act.update(new)
   update_source(state, source)

@@ -298,6 +298,30 @@ fn call(func, arg, br, loc, inferred) {
     //     ]
     //   }
     // }
+    e.Apply(e.Extend(label), element), arg ->
+      list.flatten([
+        [
+          text("{"),
+          span(
+            {
+              let loc = child(child(loc, 0), 0)
+              [
+                click(loc),
+                classes([
+                  #("text-blue-700", True),
+                  ..highlight(focused(loc), error(loc, inferred))
+                ]),
+              ]
+            },
+            [text(label)],
+          ),
+          text(": "),
+        ],
+        render_block(element, br, child(child(loc, 0), 1), inferred),
+        [text(", ")],
+        render_block(arg, br, child(loc, 1), inferred),
+        [text("}")],
+      ])
     e.Apply(e.Cons, element), arg ->
       list.flatten([
         [text("[")],
