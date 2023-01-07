@@ -266,7 +266,7 @@ fn call(func, arg, br, loc, inferred) {
   let alert = error(loc, inferred)
 
   // not target but any selected
-  let inner = case func {
+  let inner = case func, arg {
     // e.Apply(e.Case(label), then) -> {
     //   let loc_branch = child(loc, 0)
     //   let loc_else = child(loc, 1)
@@ -298,7 +298,20 @@ fn call(func, arg, br, loc, inferred) {
     //     ]
     //   }
     // }
-    _ ->
+    e.Apply(e.Cons, element), arg ->
+      list.flatten([
+        [text("[")],
+        render_block(element, br, child(child(loc, 0), 1), inferred),
+        [text(", ")],
+        render_block(arg, br, child(loc, 1), inferred),
+        [text("]")],
+      ])
+    e.Select(_), arg ->
+      list.flatten([
+        render_block(arg, br, child(loc, 1), inferred),
+        render_block(func, br, child(loc, 0), inferred),
+      ])
+    _, arg ->
       // arg becomes then
       list.flatten([
         render_block(func, br, child(loc, 0), inferred),
