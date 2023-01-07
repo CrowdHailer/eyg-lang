@@ -182,7 +182,7 @@ fn record(act, state) {
     e.Vacant ->
       act.update(e.Empty)
       |> update_source(state, _)
-    e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
+    e.Empty as exp | e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
       let commit = fn(text) {
         act.update(e.Apply(e.Apply(e.Extend(text), e.Vacant), exp))
       }
