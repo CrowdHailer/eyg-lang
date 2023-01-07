@@ -28,6 +28,17 @@ pub type Term {
   Perform(label: String)
 }
 
+pub fn field(term, field) {
+  case term {
+    Record(fields) ->
+      case list.key_find(fields, field) {
+        Ok(value) -> Ok(value)
+        Error(Nil) -> Error(Nil)
+      }
+    _ -> Error(Nil)
+  }
+}
+
 pub type Return {
   Value(term: Term)
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
@@ -61,16 +72,12 @@ pub fn eval_call(f, arg, k) {
   }
 }
 
-// TODO test interpreter, particularly handle
 // TODO try moving Handle/Match to key_value lists
 pub fn eval(exp: e.Expression, env, k) {
   case exp {
     e.Lambda(param, body) -> continue(k, Function(param, body, env))
-    e.Apply(f, arg) -> {
-      1
-      // io.debug(arg)
+    e.Apply(f, arg) ->
       eval(f, env, fn(f) { eval(arg, env, eval_call(f, _, k)) })
-    }
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(term) -> continue(k, term)
@@ -93,7 +100,6 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Match(branches, tail) -> todo("match")
     e.Perform(label) -> continue(k, Perform(label))
     e.Deep(state, branches) -> todo("deep")
-    // TODO test
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, extend(label))
     e.Overwrite(label) -> continue(k, overwrite(label))

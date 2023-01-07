@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/javascript/array.{Array}
 import eygir/decode
 import platforms/cli
@@ -23,6 +24,9 @@ pub fn do_main(args) {
   case args {
     ["cli", ..rest] -> cli.run(source, rest)
     ["web", ..rest] -> serverless.run(source, rest)
-    _ -> todo("no action matched")
+    _ -> {
+      io.debug(#("no runner for: ", args))
+      0
+    }
   }
 }

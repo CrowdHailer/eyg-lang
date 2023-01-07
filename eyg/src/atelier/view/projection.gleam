@@ -132,7 +132,7 @@ pub fn do_render(exp, br, loc, inferred) {
       ])
     }
     e.Perform(label) -> [perform(label, loc, inferred)]
-    e.Deep(_, _) -> todo
+    e.Deep(_, _) -> [text("deep is not supported")]
   }
 }
 

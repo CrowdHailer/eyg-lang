@@ -18,6 +18,7 @@ pub fn render_failure(f) {
       string.concat(["Type Missmatch: ", render_type(a), " vs ", render_type(b)])
     unification.RowMismatch(label) -> string.append("Row Missmatch: ", label)
     unification.MissingVariable(x) -> string.append("missing variable: ", x)
+    unification.RecursiveType -> "Recurive type"
   }
 }
 

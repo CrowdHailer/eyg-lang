@@ -46,8 +46,7 @@ pub fn run(source, _) {
     Nil
   }
   do_serve(handle, save)
-  // TODO use get field function
-  // TODO does this return type matter for anything
+  // This return type is ignored but should maybe be part of ffi for cli
   0
 }
 
@@ -66,22 +65,8 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("body", r.Binary(body)),
     ])
   assert return = r.run(prog, values, request, in_cli)
-  assert r.Binary(body) = field(return, "body")
+  assert Ok(r.Binary(body)) = r.field(return, "body")
   body
-}
-
-// TODO linux with list as an effect
-
-// move to runtime or interpreter
-fn field(term, field) {
-  case term {
-    r.Record(fields) ->
-      case list.key_find(fields, field) {
-        Ok(value) -> value
-        Error(Nil) -> todo("no field")
-      }
-    _ -> todo("not a record")
-  }
 }
 
 external fn do_serve(

@@ -1,5 +1,5 @@
 // alg W + Fix still here
-// Row as in Fshrp guys 
+// Row as in Fshrp guys
 // Split Row from to add union and Record
 // Fsharp impl doesn't have separation between type var and row var so improper records
 
@@ -333,7 +333,6 @@ fn unify(t1, t2) {
       let s3 = compose(s2, s1)
       // apply row pulls out of substitutions
       // apply_effects(s3, effects1, fn(s, r) { Nil })
-      io.debug("unify effects")
       unify_effects(apply_effects(s3, effects1), apply_effects(s3, effects2))
       |> io.debug
     }

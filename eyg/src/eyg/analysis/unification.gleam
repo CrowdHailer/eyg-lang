@@ -40,7 +40,7 @@ fn varbind(u, typ) {
     t.Unbound(x) if x == u -> Ok(sub.none())
     _ ->
       case set.contains(t.ftv(typ), t.Term(u)) {
-        True -> todo("RECURSION IS BACK")
+        True -> Error(RecursiveType)
         False -> Ok(sub.term(u, typ))
       }
   }
@@ -50,6 +50,7 @@ pub type Failure {
   TypeMismatch(t.Term, t.Term)
   RowMismatch(String)
   MissingVariable(String)
+  RecursiveType
 }
 
 pub fn unify(t1, t2, ref) -> Result(_, _) {
@@ -107,10 +108,6 @@ pub fn unify_row(r1, r2, ref) {
       try s4 =
         unify_row(sub.apply_row(s3, tail1), sub.apply_row(s3, tail2), ref)
       Ok(sub.compose(s4, s3))
-    }
-    _, _ -> {
-      io.debug(#(r1, r2))
-      todo("I dont understand")
     }
   }
 }
