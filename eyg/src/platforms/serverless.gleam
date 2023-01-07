@@ -9,14 +9,6 @@ import harness/stdlib
 import gleam/javascript
 import eygir/decode
 
-pub fn cli_build(source) {
-  assert r.Value(term) = r.eval(source, todo, r.Value)
-  fn(raw) {
-    // Need to loop through effects
-    r.eval_call(term, r.Binary(raw), r.Value)
-  }
-}
-
 pub fn run(source, _) {
   let store = javascript.make_reference(source)
   let #(types, values) = stdlib.lib()
@@ -34,8 +26,6 @@ pub fn run(source, _) {
         javascript.make_reference(0),
         [],
       )
-    // type_of(a, [])
-    // |> io.debug()
     server_run(prog, method, scheme, host, path, query, body)
   }
 

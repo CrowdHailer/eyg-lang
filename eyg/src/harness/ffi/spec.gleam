@@ -1,6 +1,7 @@
 import gleam/list
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
+import gleam/javascript
 
 fn is_integer(term) {
   case term {
@@ -10,7 +11,7 @@ fn is_integer(term) {
 }
 
 pub fn integer() {
-  #(t.Integer, is_integer, r.Integer)
+  fn(ref) { #(t.Integer, is_integer, r.Integer) }
 }
 
 fn is_string(term) {
@@ -21,7 +22,7 @@ fn is_string(term) {
 }
 
 pub fn string() {
-  #(t.Binary, is_string, r.Binary)
+  fn(ref) { #(t.Binary, is_string, r.Binary) }
 }
 
 pub fn is_list(term, cast) {
@@ -32,34 +33,39 @@ pub fn is_list(term, cast) {
 }
 
 pub fn list_of(element) {
-  let #(t, cast, encode) = element
-  #(
-    t.LinkedList(t),
-    is_list(_, cast),
-    fn(v) { r.LinkedList(list.map(v, encode)) },
-  )
+  fn(ref) {
+    let #(t, cast, encode) = element(ref)
+    #(
+      t.LinkedList(t),
+      is_list(_, cast),
+      fn(v) { r.LinkedList(list.map(v, encode)) },
+    )
+  }
 }
 
 pub fn lambda(from, to) {
-  let #(t1, cast, _) = from
-  let #(t2, _, encode) = to
-  // TODO ref
-  let constraint = t.Fun(t1, t.Open(1), t2)
+  fn(ref) {
+    let #(t1, cast, _) = from(ref)
+    let #(t2, _, encode) = to(ref)
+    let constraint =
+      t.Fun(t1, t.Open(javascript.update_reference(ref, fn(x) { x + 1 })), t2)
 
-  #(
-    constraint,
-    fn(x) { todo("parse") },
-    fn(impl) {
-      r.Builtin(fn(arg, k) {
-        assert Ok(input) = cast(arg)
-        r.continue(k, encode(impl(input)))
-      })
-    },
-  )
+    #(
+      constraint,
+      fn(x) { todo("parse") },
+      fn(impl) {
+        r.Builtin(fn(arg, k) {
+          assert Ok(input) = cast(arg)
+          r.continue(k, encode(impl(input)))
+        })
+      },
+    )
+  }
 }
 
 pub fn build(spec, term) {
-  let #(constraint, _, encode) = spec
-  //   let call = fn(args) {, args) }
+  // ignored match is for fn arg terms, only needed within specific function contexts.
+  // the builder starts with the encode side
+  let #(constraint, _, encode) = spec(javascript.make_reference(0))
   #(constraint, encode(term))
 }

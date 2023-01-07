@@ -44,7 +44,7 @@ pub fn lambda_test() {
   |> should.equal(r.Value(r.Integer(3)))
 
   spec
-  |> should.equal(t.Fun(t.Integer, t.Open(1), t.Integer))
+  |> should.equal(t.Fun(t.Integer, t.Open(0), t.Integer))
 }
 
 pub fn nested_lambda_test() {
@@ -59,11 +59,10 @@ pub fn nested_lambda_test() {
   |> should.equal(t.Fun(
     t.Integer,
     t.Open(1),
-    t.Fun(t.Binary, t.Open(1), t.Integer),
+    t.Fun(t.Binary, t.Open(0), t.Integer),
   ))
 }
 
-// TODO unbound i.e. list_of length
 pub fn list_test() {
   // sum fn
   let #(spec, term) =
@@ -87,7 +86,7 @@ pub fn list_fn_test() {
   |> should.equal(r.Value(r.Integer(0)))
 
   spec
-  |> should.equal(t.Fun(t.LinkedList(t.Integer), t.Open(1), t.Integer))
+  |> should.equal(t.Fun(t.LinkedList(t.Integer), t.Open(0), t.Integer))
 }
 
 // unbound -> id
