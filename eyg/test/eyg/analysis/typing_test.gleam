@@ -6,16 +6,11 @@ import gleam/setx
 import eygir/expression as e
 import eyg/analysis/typ.{ftv} as t
 import eyg/analysis/env
-import eyg/analysis/inference.{type_of}
+import eyg/analysis/inference.{infer, type_of}
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
-import gleam/javascript
 import gleeunit/should
-
-pub fn infer(env, exp, typ, eff, ref) {
-  inference.infer(env, exp, typ, eff, ref, [])
-}
 
 pub fn resolve(inf: inference.Infered, typ) {
   unification.resolve(inf.substitutions, typ)
@@ -70,21 +65,18 @@ pub fn binary_test() {
   // exact type
   let typ = t.Binary
   let eff = t.Closed
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Ok(t.Binary) = type_of(sub, [])
 
   // unbound type
   let typ = t.Unbound(-1)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Binary = resolve(sub, typ)
   assert Ok(t.Binary) = type_of(sub, [])
 
   // incorrect type
   let typ = t.Integer
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Error(_) = type_of(sub, [])
 }
 
@@ -95,21 +87,18 @@ pub fn integer_test() {
   // exact type
   let typ = t.Integer
   let eff = t.Closed
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Ok(t.Integer) = type_of(sub, [])
 
   // unbound type
   let typ = t.Unbound(-1)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Integer = resolve(sub, typ)
   assert Ok(t.Integer) = type_of(sub, [])
 
   // incorrect type
   let typ = t.Binary
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Error(_) = type_of(sub, [])
 }
 
@@ -120,14 +109,12 @@ pub fn empty_list_test() {
   // exact type
   let typ = t.LinkedList(t.Binary)
   let eff = t.Closed
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
 
   // unbound element
   let typ = t.LinkedList(t.Unbound(-1))
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
 
   assert Ok(t.LinkedList(e)) = type_of(sub, [])
   resolve(sub, t.Unbound(-1))
@@ -135,15 +122,13 @@ pub fn empty_list_test() {
 
   // unbound type
   let typ = t.Unbound(1)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
 
   assert Ok(t.LinkedList(t.Unbound(_))) = type_of(sub, [])
 
   // incorrect type
   let typ = t.Binary
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Error(_) = type_of(sub, [])
 }
 
@@ -153,8 +138,7 @@ pub fn primitive_list_test() {
 
   let typ = t.LinkedList(t.Binary)
   let eff = t.Closed
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
   assert Ok(t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary))) =
     type_of(sub, [0])
@@ -173,13 +157,11 @@ pub fn variables_test() {
   let env = env.empty()
   let typ = t.Binary
   let eff = t.Closed
-  let ref = javascript.make_reference(0)
 
-  let _ = infer(env, exp, typ, eff, ref)
+  let _ = infer(env, exp, typ, eff)
 
   let typ = t.Unbound(1)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Binary = resolve(sub, typ)
   assert Ok(t.Binary) = type_of(sub, [0])
   assert Ok(t.Binary) = type_of(sub, [1])
@@ -192,12 +174,10 @@ pub fn function_test() {
   let typ = t.Fun(t.Integer, t.Closed, t.Binary)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let _ = infer(env, exp, typ, eff, ref)
+  let _ = infer(env, exp, typ, eff)
 
   let typ = t.Unbound(-1)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Fun(t.Unbound(_), t.Open(_), t.Binary) = resolve(sub, typ)
 }
 
@@ -207,8 +187,7 @@ pub fn pure_function_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Fun(t.Unbound(x), t.Open(2), t.Unbound(y)) = resolve(sub, typ)
   should.equal(x, y)
   assert Ok(t.Unbound(z)) = type_of(sub, [0])
@@ -222,12 +201,10 @@ pub fn pure_function_call_test() {
   let typ = t.Binary
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let _ = infer(env, exp, typ, eff, ref)
+  let _ = infer(env, exp, typ, eff)
 
   let typ = t.Unbound(-1)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Binary = resolve(sub, typ)
 }
 
@@ -248,15 +225,13 @@ pub fn record_creation_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Record(row) = resolve(sub, typ)
   should.equal(row, t.Closed)
 
   let exp =
     e.Record([#("foo", e.Binary("hi")), #("bar", e.Integer(1))], option.None)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Record(row) = resolve(sub, typ)
   assert t.Extend(
     label: "bar",
@@ -273,8 +248,7 @@ pub fn record_update_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Record(row) = resolve(sub, typ)
   assert t.Open(x) = row
   assert t.Record(row) = resolve(sub, t.Unbound(-2))
@@ -287,8 +261,7 @@ pub fn record_update_test() {
     t.Record(t.Extend("foo", t.Binary, t.Extend("bar", t.Integer, t.Closed)))
   let x = Scheme([], mono)
   let env = map.insert(env, "x", x)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Record(row) = resolve(sub, typ)
   assert t.Extend(
     label: "foo",
@@ -307,8 +280,7 @@ pub fn record_update_type_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Record(row) = resolve(sub, typ)
   assert t.Extend(
     label: "foo",
@@ -323,8 +295,7 @@ pub fn select_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Fun(t.Record(t.Extend(l, a, t.Open(_))), _eff, b) = resolve(sub, typ)
   should.equal(a, b)
   should.equal(l, "foo")
@@ -334,8 +305,7 @@ pub fn select_test() {
   let x = Scheme([], t.Record(t.Extend("foo", t.Binary, t.Closed)))
   let env = map.insert(env, "x", x)
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
 
   assert t.Binary = resolve(sub, typ)
 }
@@ -353,8 +323,7 @@ pub fn combine_select_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
 
   assert t.Unbound(x) = resolve(sub, typ)
   assert t.Record(row) = resolve(sub, t.Unbound(-2))
@@ -371,15 +340,13 @@ pub fn tag_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Fun(a, _eff, t.Union(t.Extend(l, b, t.Open(_)))) = resolve(sub, typ)
   should.equal(a, b)
   should.equal(l, "foo")
 
   let exp = e.Apply(exp, e.Binary("hi"))
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Union(t.Extend(l, a, t.Open(_))) = resolve(sub, typ)
   should.equal(a, t.Binary)
   should.equal(l, "foo")
@@ -396,8 +363,7 @@ pub fn closed_match_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Fun(union, _, t.Binary) = resolve(sub, typ)
   assert t.Union(t.Extend(
     label: "Some",
@@ -416,8 +382,7 @@ pub fn open_match_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Fun(union, _, t.Binary) = resolve(sub, typ)
   assert t.Union(t.Extend(
     label: "Some",
@@ -434,8 +399,7 @@ pub fn single_effect_test() {
   let typ = t.Unbound(-1)
   let eff = t.Open(-2)
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   // No effects untill called
   assert t.Open(-2) = resolve_effect(sub, eff)
   assert t.Fun(t.Unbound(arg), fn_eff, t.Unbound(ret)) = resolve(sub, typ)
@@ -447,8 +411,7 @@ pub fn single_effect_test() {
   // test effects are raised when called
   let exp = e.Apply(exp, e.Binary("hi"))
   let typ = t.Integer
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert Ok(#(t.Binary, t.Integer)) =
     resolve_effect(sub, eff)
     |> field("Log")
@@ -460,8 +423,7 @@ pub fn collect_effects_test() {
   let typ = t.Unbound(-1)
   let eff = t.Open(-2)
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Unbound(final) = resolve(sub, typ)
   let raised = resolve_effect(sub, eff)
   assert Ok(#(t.Binary, t.Unbound(ret1))) = field(raised, "Ask")
@@ -480,8 +442,7 @@ pub fn deep_handler_test() {
   let typ = t.Unbound(-1)
   let eff = t.Open(-2)
 
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Open(e0) = resolve_effect(sub, eff)
   assert t.Fun(t.Unbound(state1), t.Open(e1), exec) = resolve(sub, typ)
   should.not_equal(e0, e1)
@@ -512,8 +473,7 @@ pub fn anony_test() {
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Closed
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Integer = resolve(sub, typ)
 }
 
@@ -527,14 +487,11 @@ pub fn eval_handled_test() {
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Closed
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, comp, typ, eff, ref)
+  let sub = infer(env, comp, typ, eff)
   assert _ = resolve(sub, typ)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, e.Apply(handler, e.Integer(1)), typ, eff, ref)
+  let sub = infer(env, e.Apply(handler, e.Integer(1)), typ, eff)
   assert _ = resolve(sub, typ)
-  let ref = javascript.make_reference(0)
-  let sub = infer(env, exp, typ, eff, ref)
+  let sub = infer(env, exp, typ, eff)
   assert t.Integer = resolve(sub, typ)
 }
 // path + errors + warnings + alg w + gleam use + fixpoint + equi/iso + external lookup + hash + cbor + zipper

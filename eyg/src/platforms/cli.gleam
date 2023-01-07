@@ -25,8 +25,6 @@ pub fn run(source, _args) {
         t.Integer,
       ),
       t.Extend("Log", #(t.Binary, t.unit), t.Closed),
-      javascript.make_reference(0),
-      [],
     )
 
   case inference.sound(inferred) {

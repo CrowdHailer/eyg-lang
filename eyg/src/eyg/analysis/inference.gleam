@@ -10,6 +10,7 @@ import eyg/analysis/substitutions as sub
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/env
 import eyg/analysis/unification.{fresh, generalise, instantiate}
+import gleam/javascript
 
 // alg w
 // alg w_fix
@@ -111,7 +112,11 @@ fn unify_effects(e1, e2, ref, path) {
 // There is an always feed state through version using `use` that doesn't compose state but add's to single version
 // don't make too pretty here
 
-pub fn infer(env, exp, typ, eff, ref, path) {
+pub fn infer(env, exp, typ, eff) {
+  do_infer(env, exp, typ, eff, javascript.make_reference(0), [])
+}
+
+fn do_infer(env, exp, typ, eff, ref, path) {
   case exp {
     e.Lambda(arg, body) -> {
       let t = t.Unbound(fresh(ref))
@@ -122,18 +127,25 @@ pub fn infer(env, exp, typ, eff, ref, path) {
         env_apply(s1, env)
         |> map.insert(arg, Scheme([], apply(s1, t)))
       let s2 =
-        infer(env, body, apply(s1, u), apply_effects(s1, r), ref, [0, ..path])
+        do_infer(
+          env,
+          body,
+          apply(s1, u),
+          apply_effects(s1, r),
+          ref,
+          [0, ..path],
+        )
       compose(s2, s1)
     }
     e.Apply(func, arg) -> {
       let t = t.Unbound(fresh(ref))
       // TODO fix this so that dont need self unify to add path to sub
-      // just point path to typ at top of infer but need to check map for errors separatly
+      // just point path to typ at top of do_infer but need to check map for errors separatly
       let s0 = unify(typ, typ, ref, path)
-      let s1 = infer(env, func, t.Fun(t, eff, typ), eff, ref, [0, ..path])
+      let s1 = do_infer(env, func, t.Fun(t, eff, typ), eff, ref, [0, ..path])
       let s1 = compose(s1, s0)
       let s2 =
-        infer(
+        do_infer(
           env_apply(s1, env),
           arg,
           apply(s1, t),
@@ -161,11 +173,11 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       }
     e.Let(x, value, then) -> {
       let t = t.Unbound(fresh(ref))
-      let s1 = infer(env, value, t, eff, ref, [0, ..path])
+      let s1 = do_infer(env, value, t, eff, ref, [0, ..path])
       let scheme = generalise(env_apply(s1, env), apply(s1, t))
       let env = env_apply(s1, map.insert(env, x, scheme))
       let s2 =
-        infer(
+        do_infer(
           env,
           then,
           apply(s1, typ),
@@ -214,7 +226,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
             let s3 = compose(s2, s1)
             let t = apply(s3, t)
             let eff = apply_effects(s3, eff)
-            let s4 = infer(env, value, t, eff, ref, [index, ..path])
+            let s4 = do_infer(env, value, t, eff, ref, [index, ..path])
             let s5 = compose(s4, s3)
             #(apply_row(s5, next), s5, [label, ..update], index + 1)
           },
@@ -330,7 +342,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
             let s3 = compose(s2, s1)
             let env = map.insert(env, param, Scheme([], apply(s3, field_type)))
             let s4 =
-              infer(
+              do_infer(
                 env,
                 then,
                 apply(s3, ret),
@@ -347,7 +359,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
         Some(#(param, then)) -> {
           let env = map.insert(env, param, Scheme([], t.Union(remaining)))
           let s3 =
-            infer(
+            do_infer(
               env,
               then,
               apply(s2, ret),
@@ -417,7 +429,7 @@ pub fn infer(env, exp, typ, eff, ref, path) {
                 ),
               )
             let s4 =
-              infer(
+              do_infer(
                 env,
                 then,
                 apply(s3, ret),

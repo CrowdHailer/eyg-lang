@@ -53,7 +53,5 @@ pub fn infer(prog) {
       ),
     )),
     t.Open(-1004),
-    javascript.make_reference(0),
-    [],
   )
 }

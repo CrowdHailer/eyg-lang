@@ -17,15 +17,7 @@ pub fn run(source, _) {
     // prog is new on every request could store eval'd in store
     let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
-    let a =
-      inference.infer(
-        types,
-        prog,
-        t.Unbound(-1),
-        t.Closed,
-        javascript.make_reference(0),
-        [],
-      )
+    let a = inference.infer(types, prog, t.Unbound(-1), t.Closed)
     server_run(prog, method, scheme, host, path, query, body)
   }
 

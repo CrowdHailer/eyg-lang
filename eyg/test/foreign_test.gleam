@@ -99,15 +99,7 @@ pub fn add_test() {
     |> env.extend("ffi_add", integer.add())
 
   let prog = e.Apply(e.Apply(e.Variable("ffi_add"), e.Integer(1)), e.Integer(2))
-  let sub =
-    inference.infer(
-      types,
-      prog,
-      t.Unbound(-1),
-      t.Open(-2),
-      javascript.make_reference(0),
-      [],
-    )
+  let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
   r.eval(prog, values, r.Value)
