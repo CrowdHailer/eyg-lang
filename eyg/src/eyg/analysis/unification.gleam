@@ -15,7 +15,6 @@ pub fn fresh(ref) {
   javascript.update_reference(ref, fn(x) { x + 1 })
 }
 
-// TODO infer
 pub fn generalise(env, typ) {
   let variables = set.to_list(setx.drop(env.ftv(env), set.to_list(t.ftv(typ))))
   Scheme(variables, typ)

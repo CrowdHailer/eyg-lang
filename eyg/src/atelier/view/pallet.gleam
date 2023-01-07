@@ -8,8 +8,6 @@ import lustre/element.{button, div, input, p, pre, span, text}
 import lustre/event.{dispatch, on_click, on_keydown}
 import lustre/attribute.{class, classes}
 import eyg/analysis/inference
-// TODO remove standard, type of needs to be somewhere else
-import eyg/runtime/standard
 import atelier/app.{ClickOption, SelectNode}
 import atelier/view/typ
 
@@ -82,7 +80,7 @@ fn render_navigate(inferred: inference.Infered, state) {
             text(string.append(
               ":",
               inferred
-              |> standard.type_of(state.selection)
+              |> inference.type_of(state.selection)
               |> typ.render(),
             )),
           ],
@@ -103,7 +101,7 @@ fn render_navigate(inferred: inference.Infered, state) {
 fn render_errors(inferred: inference.Infered) {
   let errors =
     list.filter_map(
-      map.to_list(inferred.paths),
+      map.to_list(inferred.types),
       fn(el) {
         let #(k, v) = el
         case v {

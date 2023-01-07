@@ -57,17 +57,3 @@ pub fn infer(prog) {
     [],
   )
 }
-
-pub fn type_of(inf: inference.Infered, path) {
-  let r = case map.get(inf.paths, path) {
-    Ok(r) -> r
-    Error(Nil) -> {
-      io.debug(path)
-      todo("invalid path")
-    }
-  }
-  case r {
-    Ok(t) -> Ok(unification.resolve(inf.substitutions, t))
-    Error(reason) -> Error(reason)
-  }
-}

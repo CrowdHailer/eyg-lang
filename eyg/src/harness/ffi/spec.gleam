@@ -56,7 +56,6 @@ pub fn lambda(from, to) {
       })
     },
   )
-  // todo("foo")
 }
 
 pub fn build(spec, term) {

@@ -6,7 +6,7 @@ import gleam/setx
 import eygir/expression as e
 import eyg/analysis/typ.{ftv} as t
 import eyg/analysis/env
-import eyg/analysis/inference
+import eyg/analysis/inference.{type_of}
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
@@ -60,17 +60,6 @@ pub fn free_type_variables_test() {
   let eff = t.Extend("r", #(t.Unbound(1), t.Unbound(2)), t.Open(3))
   ftv(t.Fun(t.Integer, eff, t.Integer))
   |> should.equal(set.from_list([t.Term(1), t.Term(2), t.Effect(3)]))
-}
-
-fn type_of(inf: inference.Infered, path) {
-  let r = case map.get(inf.paths, path) {
-    Ok(r) -> r
-    Error(Nil) -> todo("invalid path")
-  }
-  case r {
-    Ok(t) -> Ok(unification.resolve(inf.substitutions, t))
-    Error(reason) -> Error(reason)
-  }
 }
 
 // Primitive

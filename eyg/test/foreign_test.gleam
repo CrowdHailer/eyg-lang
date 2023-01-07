@@ -11,7 +11,6 @@ import eyg/analysis/inference
 import eygir/expression as e
 import gleeunit/should
 import gleam/javascript
-import eyg/runtime/standard
 
 pub fn integer_test() {
   let #(spec, term) =
@@ -110,7 +109,7 @@ pub fn add_test() {
       javascript.make_reference(0),
       [],
     )
-  standard.type_of(sub, [])
+  inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
   r.eval(prog, values, r.Value)
   |> should.equal(r.Value(r.Integer(3)))

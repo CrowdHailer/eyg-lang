@@ -19,10 +19,23 @@ pub type Infered {
   // result could be separate map of errors
   Infered(
     substitutions: sub.Substitutions,
-    // TODO need better name than paths
-    paths: Map(List(Int), Result(t.Term, unification.Failure)),
+    types: Map(List(Int), Result(t.Term, unification.Failure)),
     environments: Map(List(Int), Map(String, Scheme)),
   )
+}
+
+pub fn type_of(inf: Infered, path) {
+  let r = case map.get(inf.types, path) {
+    Ok(r) -> r
+    Error(Nil) -> {
+      io.debug(path)
+      todo("invalid path")
+    }
+  }
+  case r {
+    Ok(t) -> Ok(unification.resolve(inf.substitutions, t))
+    Error(reason) -> Error(reason)
+  }
 }
 
 fn apply(inf: Infered, typ) {
@@ -44,7 +57,7 @@ fn env_apply(inf: Infered, env) {
 fn compose(inf1: Infered, inf2: Infered) {
   Infered(
     sub.compose(inf1.substitutions, inf2.substitutions),
-    map.merge(inf1.paths, inf2.paths),
+    map.merge(inf1.types, inf2.types),
     map.merge(inf1.environments, inf2.environments),
   )
 }

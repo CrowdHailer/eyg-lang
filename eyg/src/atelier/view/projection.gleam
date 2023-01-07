@@ -11,7 +11,6 @@ import eygir/expression as e
 import atelier/app.{SelectNode}
 import atelier/view/typ
 import eyg/analysis/inference
-import eyg/runtime/standard
 
 pub fn render(source, selection, inferred) {
   let loc = Location([], Some(selection))
@@ -336,7 +335,7 @@ fn assigment(label, value, then, br, loc, inferred) {
 }
 
 fn error(loc: Location, inferred: inference.Infered) {
-  case map.get(inferred.paths, loc.path) {
+  case map.get(inferred.types, loc.path) {
     Ok(Error(_)) -> True
     _ -> False
   }
@@ -364,7 +363,7 @@ fn vacant(loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
   [click(loc), classes([#("text-red-500", True), ..highlight(target, alert)])]
-  |> span([text(typ.render(standard.type_of(inferred, loc.path)))])
+  |> span([text(typ.render(inference.type_of(inferred, loc.path)))])
 }
 
 fn extend(label, loc, inferred) {
