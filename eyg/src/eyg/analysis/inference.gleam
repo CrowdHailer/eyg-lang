@@ -2,6 +2,7 @@ import gleam/io
 import gleam/list
 import gleam/map.{Map}
 import gleam/mapx
+import gleam/result
 import gleam/option.{None, Some}
 import eygir/expression as e
 import eyg/analysis/typ as t
@@ -35,6 +36,14 @@ pub fn type_of(inf: Infered, path) {
   case r {
     Ok(t) -> Ok(unification.resolve(inf.substitutions, t))
     Error(reason) -> Error(reason)
+  }
+}
+
+pub fn sound(inferred: Infered) {
+  let errors = map.filter(inferred.types, fn(k, v) { result.is_error(v) })
+  case map.size(errors) == 0 {
+    True -> Ok(Nil)
+    False -> Error(errors)
   }
 }
 
