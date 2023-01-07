@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/map.{Map}
+import gleam/mapx
 import gleam/option.{None, Some}
 import eygir/expression as e
 import eyg/analysis/typ as t
@@ -22,11 +23,6 @@ pub type Infered {
     paths: Map(List(Int), Result(t.Term, unification.Failure)),
     environments: Map(List(Int), Map(String, Scheme)),
   )
-}
-
-// TODO mapx
-fn singleton(k, v) {
-  map.insert(map.new(), k, v)
 }
 
 fn apply(inf: Infered, typ) {
@@ -55,12 +51,11 @@ fn compose(inf1: Infered, inf2: Infered) {
 
 fn unify(t1, t2, ref, path) {
   case unification.unify(t1, t2, ref) {
-    Ok(s) -> Infered(s, singleton(list.reverse(path), Ok(t1)), map.new())
-    // TODO real error
+    Ok(s) -> Infered(s, mapx.singleton(list.reverse(path), Ok(t1)), map.new())
     Error(reason) ->
       Infered(
         sub.none(),
-        singleton(list.reverse(path), Error(reason)),
+        mapx.singleton(list.reverse(path), Error(reason)),
         map.new(),
       )
   }
@@ -72,7 +67,7 @@ fn unify_row(r1, r2, ref, path) {
     Error(reason) ->
       Infered(
         sub.none(),
-        singleton(list.reverse(path), Error(reason)),
+        mapx.singleton(list.reverse(path), Error(reason)),
         map.new(),
       )
   }
@@ -84,7 +79,7 @@ fn unify_effects(e1, e2, ref, path) {
     Error(reason) ->
       Infered(
         sub.none(),
-        singleton(list.reverse(path), Error(reason)),
+        mapx.singleton(list.reverse(path), Error(reason)),
         map.new(),
       )
   }
@@ -135,8 +130,10 @@ pub fn infer(env, exp, typ, eff, ref, path) {
         Error(Nil) ->
           Infered(
             sub.none(),
-            // TODO move error somewhere better
-            singleton(list.reverse(path), Error(unification.MissingVariable(x))),
+            mapx.singleton(
+              list.reverse(path),
+              Error(unification.MissingVariable(x)),
+            ),
             map.new(),
           )
       }
@@ -171,7 +168,11 @@ pub fn infer(env, exp, typ, eff, ref, path) {
     }
 
     e.Vacant ->
-      Infered(sub.none(), singleton(list.reverse(path), Ok(typ)), map.new())
+      Infered(
+        sub.none(),
+        mapx.singleton(list.reverse(path), Ok(typ)),
+        map.new(),
+      )
 
     e.Record(fields, tail) -> {
       let row = t.Open(fresh(ref))
@@ -410,5 +411,5 @@ pub fn infer(env, exp, typ, eff, ref, path) {
       s2
     }
   }
-  |> compose(Infered(sub.none(), map.new(), singleton(path, env)))
+  |> compose(Infered(sub.none(), map.new(), mapx.singleton(path, env)))
 }

@@ -13,19 +13,6 @@ import atelier/view/projection
 import atelier/view/typ
 import eyg/runtime/standard
 
-// TODO add to gleam
-fn do_filter_errors(l, acc) {
-  case l {
-    [] -> list.reverse(acc)
-    [Ok(_), ..rest] -> do_filter_errors(rest, acc)
-    [Error(reason), ..rest] -> do_filter_errors(rest, [reason, ..acc])
-  }
-}
-
-pub fn filter_errors(l) {
-  do_filter_errors(l, [])
-}
-
 // maybe belongs in procejection .render
 pub fn render(state: app.WorkSpace) {
   let input_value = case state.mode {

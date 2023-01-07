@@ -1,16 +1,10 @@
 import gleam/dynamic.{DecodeError, decode2, decode3, field, int, string}
+import gleam/dynamicx.{decode1}
 import gleam/json
 import eygir/expression as e
 
 fn label() {
   field("label", string)
-}
-
-fn decode1(constructor, d1) {
-  fn(raw) {
-    try value = d1(raw)
-    Ok(constructor(value))
-  }
 }
 
 pub fn decoder(x) {

@@ -25,33 +25,6 @@ fn click(loc: Location) {
   on_click(dispatch(SelectNode(loc.path)))
 }
 
-// do we highlight whole line if lambda is in assigment
-// deleting a call statement removes both sides, so needs to highlight both
-// multiline values which are then applied
-// call with multiline is weird, if multiline is not a fn
-// let map = is -> f -> {}
-// render_block keeps going untill new line
-// let x = fn(a) { fn(b) { match { ... } }}
-// let x = a -> b -> match { ... }
-// multiline call
-// foo(let x = ...)
-// foo(
-//   let x = 5
-//   x
-// )
-// map(l)(x -> {
-//    fpo
-// })
-// if collapsing border works with c or ml style syntax
-//
-// let x = y -> z -> {foo = x, y = z}(bob)
-// let x = y -> (z -> {foo = x, y = z})(bob)
-// let x = (y -> z -> {foo = x, y = z})(bob)
-// let x = y z -> {}(foo)
-// is x the thing being called or anon fn
-// can't be x because of the then clause
-// let x = y -> (z -> {})(foo)
-
 pub fn do_render(exp, br, loc, inferred) {
   case exp {
     e.Variable(var) -> [variable(var, loc, inferred)]
