@@ -1,10 +1,15 @@
 import gleam/dynamic
+import gleam/io
 import gleam/list
 import gleam/map
+import gleam/option.{None, Some}
 import gleam/set
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import harness/ffi/spec.{build, integer, lambda, list_of, string}
+import harness/ffi/spec.{
+  build, empty, end, field, integer, lambda, list_of, record, string, union,
+  variant,
+}
 import harness/ffi/integer
 import harness/ffi/env
 import eyg/analysis/inference
@@ -89,9 +94,41 @@ pub fn list_fn_test() {
   |> should.equal(t.Fun(t.LinkedList(t.Integer), t.Open(0), t.Integer))
 }
 
+pub fn unit_type_test() {
+  let #(spec, term) =
+    record(empty())
+    |> build(Nil)
+  should.equal(spec, t.Record(t.Closed))
+  should.equal(term, r.Record([]))
+}
+
+pub fn record_test() {
+  let #(spec, term) =
+    record(field("name", string(), field("age", integer(), empty())))
+    |> build(#("bob", #(5, Nil)))
+  should.equal(
+    spec,
+    t.Record(t.Extend("name", t.Binary, t.Extend("age", t.Integer, t.Closed))),
+  )
+  should.equal(
+    term,
+    r.Record([#("name", r.Binary("bob")), #("age", r.Integer(5))]),
+  )
+}
+
+pub fn union_test() {
+  let #(spec, term) =
+    union(variant("Some", integer(), variant("None", integer(), end())))
+    |> build(fn(some) { fn(none) { some(10) } })
+  should.equal(
+    spec,
+    t.Union(t.Extend("Some", t.Integer, t.Extend("None", t.Integer, t.Closed))),
+  )
+  should.equal(term, r.Tagged("Some", r.Integer(10)))
+}
+
 // unbound -> id
 // unbound -> list.reverse
-// call fn -> list.fold
 
 pub fn add_test() {
   let #(types, values) =

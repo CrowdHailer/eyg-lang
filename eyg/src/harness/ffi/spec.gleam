@@ -1,4 +1,5 @@
 import gleam/list
+import gleam/option.{None, Some}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import gleam/javascript
@@ -40,6 +41,57 @@ pub fn list_of(element) {
       is_list(_, cast),
       fn(v) { r.LinkedList(list.map(v, encode)) },
     )
+  }
+}
+
+pub fn empty() {
+  fn(ref) { #(t.Closed, fn(x: Nil) { [] }) }
+}
+
+pub fn field(label, value, rest) {
+  fn(ref) {
+    let #(tvalue, _, encode_value) = value(ref)
+    let #(ttail, encode_tail) = rest(ref)
+    #(
+      t.Extend(label, tvalue, ttail),
+      fn(build) {
+        let #(value, next) = build
+        let fields = encode_tail(next)
+        [#(label, encode_value(value)), ..fields]
+      },
+    )
+  }
+}
+
+pub fn record(field_spec) {
+  fn(ref) {
+    let #(row, encode) = field_spec(ref)
+    #(t.Record(row), fn(_) { todo }, fn(term) { r.Record(encode(term)) })
+  }
+}
+
+pub fn end() {
+  fn(ref) { #(t.Closed, fn(x: r.Term) { x }) }
+}
+
+pub fn variant(label, value, tail) {
+  fn(ref) {
+    let #(tvalue, _, encode_value) = value(ref)
+    let #(ttail, encode_tail) = tail(ref)
+    #(
+      t.Extend(label, tvalue, ttail),
+      fn(encode) {
+        let inner = encode(fn(value) { r.Tagged(label, encode_value(value)) })
+        encode_tail(inner)
+      },
+    )
+  }
+}
+
+pub fn union(row_spec) {
+  fn(ref) {
+    let #(row, encode) = row_spec(ref)
+    #(t.Union(row), fn(_) { todo }, fn(term) { encode(term) })
   }
 }
 

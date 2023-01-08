@@ -1,5 +1,7 @@
 import gleam/int
-import harness/ffi/spec.{build, integer, lambda, string}
+import harness/ffi/spec.{
+  build, empty, end, integer, lambda, record, string, union, variant,
+}
 
 pub fn add() {
   lambda(integer(), lambda(integer(), integer()))
@@ -27,8 +29,20 @@ pub fn absolute() {
 }
 
 pub fn int_parse() {
-  lambda(integer(), lambda(integer(), integer()))
-  |> build(fn(x) { fn(y) { todo("needs result type") } })
+  lambda(
+    string(),
+    union(variant("Ok", integer(), variant("Error", record(empty()), end()))),
+  )
+  |> build(fn(raw) {
+    fn(ok) {
+      fn(error) {
+        case int.parse(raw) {
+          Ok(i) -> ok(i)
+          Error(_) -> error(Nil)
+        }
+      }
+    }
+  })
 }
 
 pub fn int_to_string() {
