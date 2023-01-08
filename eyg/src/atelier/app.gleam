@@ -230,30 +230,33 @@ fn unwrap(act, state) {
 }
 
 fn insert(act, state) {
-  try #(text, build) = case act.target {
-    e.Variable(value) -> Ok(#(value, e.Variable(_)))
-    e.Lambda(param, body) -> Ok(#(param, e.Lambda(_, body)))
+  let write = fn(text, build) {
+    WriteLabel(text, fn(new) { act.update(build(new)) })
+  }
+  try mode = case act.target {
+    e.Variable(value) -> Ok(write(value, e.Variable(_)))
+    e.Lambda(param, body) -> Ok(write(param, e.Lambda(_, body)))
     e.Apply(_, _) -> Error("no insert option for apply")
-    e.Let(var, body, then) -> Ok(#(var, e.Let(_, body, then)))
+    e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
 
-    e.Binary(value) -> Ok(#(value, e.Binary(_)))
-    e.Integer(value) -> Error("there needs to be a new mode for integer insert")
+    e.Binary(value) -> Ok(write(value, e.Binary(_)))
+    e.Integer(value) ->
+      Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
     e.Vacant -> Error("no insert option for vacant")
     e.Record(_, _) -> Error("insert not implemented for record")
     e.Empty -> Error("empty record no insert")
-    e.Extend(label) -> Ok(#(label, e.Extend))
-    e.Select(label) -> Ok(#(label, e.Select))
-    e.Overwrite(label) -> Ok(#(label, e.Overwrite))
-    e.Tag(label) -> Ok(#(label, e.Tag))
-    e.Case(label) -> Ok(#(label, e.Case))
+    e.Extend(label) -> Ok(write(label, e.Extend))
+    e.Select(label) -> Ok(write(label, e.Select))
+    e.Overwrite(label) -> Ok(write(label, e.Overwrite))
+    e.Tag(label) -> Ok(write(label, e.Tag))
+    e.Case(label) -> Ok(write(label, e.Case))
     e.NoCases -> Error("no cases")
     e.Match(_, _) -> Error("insert not implemented for match")
-    e.Perform(label) -> Ok(#(label, e.Perform))
+    e.Perform(label) -> Ok(write(label, e.Perform))
     e.Deep(_, _) -> Error("insert not implemented for deep")
   }
 
-  let mode = WriteLabel(text, fn(new) { act.update(build(new)) })
   Ok(WorkSpace(..state, mode: mode))
 }
 
