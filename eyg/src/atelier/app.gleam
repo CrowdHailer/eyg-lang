@@ -30,12 +30,14 @@ pub type WorkSpace {
 pub type Mode {
   Navigate(actions: transform.Act)
   WriteLabel(value: String, commit: fn(String) -> e.Expression)
+  WriteText(value: String, commit: fn(String) -> e.Expression)
   WriteNumber(value: Int, commit: fn(Int) -> e.Expression)
 }
 
 pub type Action {
   Keypress(key: String)
   Change(value: String)
+  Commit
   SelectNode(path: List(Int))
   ClickOption(chosen: String)
 }
@@ -61,10 +63,17 @@ pub fn update(state: WorkSpace, action) {
               WriteNumber(number, commit)
             }
           }
+        WriteText(_, commit) -> WriteText(value, commit)
         m -> m
       }
       let state = WorkSpace(..state, mode: mode)
       #(state, cmd.none())
+    }
+    Commit -> {
+      assert WriteText(current, commit) = state.mode
+      let source = commit(current)
+      assert Ok(workspace) = update_source(state, source)
+      #(workspace, cmd.none())
     }
     ClickOption(text) -> {
       assert WriteLabel(_, commit) = state.mode
@@ -135,6 +144,7 @@ pub fn keypress(key, state: WorkSpace) {
       update_source(state, source)
     }
     WriteNumber(_, _), k -> Ok(state)
+    WriteText(_, _), k -> Ok(state)
   }
 
   case r {
@@ -239,7 +249,8 @@ fn insert(act, state) {
     e.Apply(_, _) -> Error("no insert option for apply")
     e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
 
-    e.Binary(value) -> Ok(write(value, e.Binary(_)))
+    e.Binary(value) ->
+      Ok(WriteText(value, fn(new) { act.update(e.Binary(new)) }))
     e.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
@@ -410,7 +421,7 @@ fn binary(act, state) {
     }
     exp -> fn(text) { act.update(e.Binary(text)) }
   }
-  WorkSpace(..state, mode: WriteLabel("", commit))
+  WorkSpace(..state, mode: WriteText("", commit))
 }
 
 fn number(act, state) {

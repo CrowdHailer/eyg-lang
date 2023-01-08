@@ -4,7 +4,7 @@ import gleam/list
 import gleam/map
 import gleam/string
 import gleam/option.{None, Some}
-import lustre/element.{button, div, input, p, pre, span, text}
+import lustre/element.{button, div, input, p, pre, span, text, textarea}
 import lustre/event.{dispatch, on_click, on_keydown}
 import lustre/attribute.{class, classes}
 import eyg/analysis/inference
@@ -17,6 +17,7 @@ pub fn render(state: app.WorkSpace, inferred) {
     case state.mode {
       app.WriteLabel(value, _) -> render_label(value, inferred, state)
       app.WriteNumber(number, _) -> render_number(number)
+      app.WriteText(value, _) -> render_text(value)
       _ -> render_navigate(inferred, state)
     },
   )
@@ -65,6 +66,24 @@ fn render_number(number) {
       event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
       attribute.value(dynamic.from(number)),
     ]),
+  ]
+}
+
+// Do text areas have change event
+fn render_text(value) {
+  [
+    div(
+      [
+        classes([
+          #("bg-green-500", True),
+          #("text-white", True),
+          #("cursor-pointer", True),
+        ]),
+        on_click(dispatch(app.Commit)),
+      ],
+      [text("Done")],
+    ),
+    textarea([attribute.rows(10), classes([#("w-full", True)])]),
   ]
 }
 
