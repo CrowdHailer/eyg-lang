@@ -11,19 +11,16 @@ import lustre/attribute.{class, classes}
 import atelier/app.{ClickOption, SelectNode}
 import atelier/view/projection
 import atelier/view/pallet
-import eyg/runtime/standard
 
 // maybe belongs in procejection .render
 pub fn render(state: app.WorkSpace) {
-  let inferred = standard.infer(state.source)
-
   div(
     [class("h-screen vstack")],
     [
       div([class("spacer")], []),
-      projection.render(state.source, state.selection, inferred),
+      projection.render(state.source, state.selection, state.inferred),
       div([class("spacer")], []),
-      pallet.render(state, inferred),
+      pallet.render(state, state.inferred),
     ],
   )
 }

@@ -4,19 +4,22 @@ import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/string
-import lustre/cmd
-import atelier/transform
-import eygir/expression as e
-import eygir/encode
 import gleam/javascript/promise.{Promise}
 import gleam/fetch
 import gleam/http
 import gleam/http/request
+import lustre/cmd
+import atelier/transform
+import eygir/expression as e
+import eygir/encode
+import eyg/analysis/inference
+import eyg/runtime/standard
 
 pub type WorkSpace {
   WorkSpace(
     selection: List(Int),
     source: e.Expression,
+    inferred: inference.Infered,
     mode: Mode,
     yanked: Option(e.Expression),
     error: Option(String),
@@ -45,7 +48,7 @@ pub type Action {
 pub fn init(source) {
   assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
-  WorkSpace([], source, mode, None, None, #([], []))
+  WorkSpace([], source, standard.infer(source), mode, None, None, #([], []))
 }
 
 pub fn update(state: WorkSpace, action) {
@@ -458,12 +461,21 @@ fn nocases(act, state) {
 fn update_source(state: WorkSpace, source) {
   try act = transform.prepare(source, state.selection)
   let mode = Navigate(act)
-  let history = case source == state.source {
-    True -> state.history
+  let #(history, inferred) = case source == state.source {
+    True -> #(state.history, state.inferred)
     False -> {
       let #(backwards, _forwards) = state.history
-      #([#(state.source, state.selection), ..backwards], [])
+      let history = #([#(state.source, state.selection), ..backwards], [])
+      #(history, standard.infer(state.source))
     }
   }
-  Ok(WorkSpace(..state, source: source, mode: mode, history: history))
+  Ok(
+    WorkSpace(
+      ..state,
+      source: source,
+      mode: mode,
+      history: history,
+      inferred: inferred,
+    ),
+  )
 }
