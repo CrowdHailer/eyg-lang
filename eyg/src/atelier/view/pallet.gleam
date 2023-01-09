@@ -83,7 +83,13 @@ fn render_text(value) {
       ],
       [text("Done")],
     ),
-    textarea([attribute.rows(10), classes([#("w-full", True)])]),
+    textarea([
+      attribute.rows(10),
+      classes([#("w-full", True)]),
+      attribute.autofocus(True),
+      event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+      attribute.value(dynamic.from(value)),
+    ]),
   ]
 }
 

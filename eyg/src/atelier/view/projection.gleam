@@ -344,6 +344,10 @@ fn error(loc: Location, inferred: inference.Infered) {
 fn string(value, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
+  let value = case string.split_once(value, "\n") {
+    Error(Nil) -> value
+    Ok(#(head, _)) -> string.append(head, "...")
+  }
   let content = string.concat(["\"", value, "\""])
   [click(loc), classes([#("text-green-500", True), ..highlight(target, alert)])]
   |> span([text(content)])
