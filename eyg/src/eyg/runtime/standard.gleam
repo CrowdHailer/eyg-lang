@@ -14,44 +14,37 @@ import eyg/runtime/interpreter as r
 import eygir/expression as e
 import eygir/decode
 import harness/stdlib
+import platforms/cli
+
+pub const web = t.Fun(
+  t.Record(
+    t.Extend(
+      "method",
+      t.Binary,
+      t.Extend(
+        "scheme",
+        t.Binary,
+        t.Extend(
+          "host",
+          t.Binary,
+          t.Extend(
+            "path",
+            t.Binary,
+            t.Extend("query", t.Binary, t.Extend("body", t.Binary, t.Closed)),
+          ),
+        ),
+      ),
+    ),
+  ),
+  t.Extend("Log", #(t.Binary, t.Record(t.Closed)), t.Closed),
+  t.Record(t.Extend("body", t.Binary, t.Closed)),
+)
 
 pub fn infer(prog) {
   inference.infer(
     stdlib.lib().0,
     prog,
-    t.Record(t.Extend(
-      "cli",
-      t.Fun(t.Record(t.Closed), t.Open(-1000), t.Unbound(-1001)),
-      t.Extend(
-        "web",
-        t.Fun(
-          t.Record(t.Extend(
-            "method",
-            t.Binary,
-            t.Extend(
-              "scheme",
-              t.Binary,
-              t.Extend(
-                "host",
-                t.Binary,
-                t.Extend(
-                  "path",
-                  t.Binary,
-                  t.Extend(
-                    "query",
-                    t.Binary,
-                    t.Extend("body", t.Binary, t.Closed),
-                  ),
-                ),
-              ),
-            ),
-          )),
-          t.Open(-1002),
-          t.Record(t.Extend("body", t.Binary, t.Closed)),
-        ),
-        t.Open(-1003),
-      ),
-    )),
-    t.Open(-1004),
+    t.Record(t.Extend("cli", cli.typ, t.Extend("web", web, t.Closed))),
+    t.Closed,
   )
 }

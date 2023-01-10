@@ -4,6 +4,25 @@ import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import gleam/javascript
 
+fn fresh(ref) {
+  javascript.update_reference(ref, fn(x) { x + 1 })
+}
+
+pub fn unbound() {
+  let mem = javascript.make_reference(None)
+  fn(ref) {
+    let x = case javascript.dereference(mem) {
+      Some(x) -> x
+      None -> {
+        let x = fresh(ref)
+        javascript.set_reference(mem, Some(x))
+        x
+      }
+    }
+    #(t.Unbound(x), Ok, fn(x: r.Term) { x })
+  }
+}
+
 fn is_integer(term) {
   case term {
     r.Integer(x) -> Ok(x)
@@ -99,8 +118,7 @@ pub fn lambda(from, to) {
   fn(ref) {
     let #(t1, cast, _) = from(ref)
     let #(t2, _, encode) = to(ref)
-    let constraint =
-      t.Fun(t1, t.Open(javascript.update_reference(ref, fn(x) { x + 1 })), t2)
+    let constraint = t.Fun(t1, t.Open(fresh(ref)), t2)
 
     #(
       constraint,

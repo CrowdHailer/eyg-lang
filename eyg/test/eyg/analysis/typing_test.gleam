@@ -494,6 +494,32 @@ pub fn eval_handled_test() {
   let sub = infer(env, exp, typ, eff)
   assert t.Integer = resolve(sub, typ)
 }
+
+// Checks that a function is correctly generalized over it's effect type
+pub fn instantiation_of_effect_test() {
+  let source =
+    e.Let(
+      "f",
+      e.Lambda("x", e.Variable("x")),
+      e.Let(
+        "do",
+        e.Lambda(
+          "x",
+          e.Let(
+            "_",
+            e.Apply(e.Perform("Log"), e.Binary("my log")),
+            e.Apply(e.Variable("f"), e.Integer(0)),
+          ),
+        ),
+        e.Apply(e.Variable("f"), e.Empty),
+      ),
+    )
+  let env = env.empty()
+  let typ = t.Unbound(-1)
+  let eff = t.Closed
+  let sub = infer(env, source, typ, eff)
+  assert Ok(Nil) = inference.sound(sub)
+}
 // path + errors + warnings + alg w + gleam use + fixpoint + equi/iso + external lookup + hash + cbor + zipper
 // interpreter + provider + cps codegen + pull out node for editor
 // 1. interprest new expression, entrypoint and css

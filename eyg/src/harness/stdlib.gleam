@@ -1,5 +1,6 @@
 import harness/ffi/env
 import harness/ffi/integer
+import harness/ffi/linked_list
 import harness/ffi/string
 import eyg/runtime/interpreter as r
 import eyg/analysis/typ as t
@@ -66,6 +67,7 @@ pub fn lib() {
     |> env.extend("ffi_length", string.length())
     // list
     |> env.extend("ffi_fold", fold())
+    |> env.extend("ffi_pop", linked_list.pop())
 }
 
 pub fn fold() {

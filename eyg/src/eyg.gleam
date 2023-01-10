@@ -17,7 +17,12 @@ pub fn main() {
 external fn read_file_sync(String, String) -> String =
   "fs" "readFileSync"
 
-pub fn do_main(args) {
+external fn exit(Int) -> Nil =
+  "" "process.exit"
+
+// exit can't be used on serverless because the run function returns with the server as a promise
+// need to await or work off promises
+pub fn do_main(args) -> Nil {
   let json = read_file_sync("saved/saved.json", "utf8")
   assert Ok(source) = decode.from_json(json)
 
@@ -26,7 +31,7 @@ pub fn do_main(args) {
     ["web", ..rest] -> serverless.run(source, rest)
     _ -> {
       io.debug(#("no runner for: ", args))
-      0
+      exit(1)
     }
   }
 }

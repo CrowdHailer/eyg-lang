@@ -8,6 +8,7 @@ import eyg/analysis/inference
 import harness/stdlib
 import gleam/javascript
 import eygir/decode
+import eyg/runtime/standard
 
 pub fn run(source, _) {
   let store = javascript.make_reference(source)
@@ -17,19 +18,29 @@ pub fn run(source, _) {
     // prog is new on every request could store eval'd in store
     let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
-    let a = inference.infer(types, prog, t.Unbound(-1), t.Closed)
+    let inferred = inference.infer(types, prog, standard.web, t.Closed)
+    case inference.sound(inferred) {
+      Ok(Nil) -> Nil
+      Error(reason) -> {
+        io.debug("not sound")
+        io.debug(reason)
+        Nil
+      }
+    }
+
     server_run(prog, method, scheme, host, path, query, body)
   }
 
   let save = fn(raw) {
     assert Ok(source) = decode.from_json(raw)
+    // should we infer on save
     javascript.set_reference(store, source)
     write_file_sync("saved/saved.json", raw)
     Nil
   }
   do_serve(handle, save)
   // This return type is ignored but should maybe be part of ffi for cli
-  0
+  // 0
 }
 
 external fn write_file_sync(String, String) -> Nil =

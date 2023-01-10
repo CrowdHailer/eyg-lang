@@ -7,8 +7,8 @@ import gleam/set
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/spec.{
-  build, empty, end, field, integer, lambda, list_of, record, string, union,
-  variant,
+  build, empty, end, field, integer, lambda, list_of, record, string, unbound,
+  union, variant,
 }
 import harness/ffi/integer
 import harness/ffi/env
@@ -66,6 +66,24 @@ pub fn nested_lambda_test() {
     t.Open(1),
     t.Fun(t.Binary, t.Open(0), t.Integer),
   ))
+}
+
+pub fn unbound_test() {
+  let #(spec, term) =
+    unbound()
+    |> build(r.Binary("anything"))
+  should.equal(r.Binary("anything"), term)
+  should.equal(t.Unbound(0), spec)
+}
+
+pub fn polymorphic_function_test() {
+  let t = unbound()
+  let #(spec, term) =
+    lambda(t, t)
+    |> build(fn(x) { x })
+  r.eval_call(term, r.Binary("hey"), r.Value)
+  |> should.equal(r.Value(r.Binary("hey")))
+  should.equal(t.Fun(t.Unbound(0), t.Open(1), t.Unbound(0)), spec)
 }
 
 pub fn list_test() {
@@ -127,7 +145,6 @@ pub fn union_test() {
   should.equal(term, r.Tagged("Some", r.Integer(10)))
 }
 
-// unbound -> id
 // unbound -> list.reverse
 
 pub fn add_test() {

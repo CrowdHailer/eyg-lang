@@ -16,7 +16,7 @@ pub fn fresh(ref) {
 }
 
 pub fn generalise(env, typ) {
-  let variables = set.to_list(setx.drop(env.ftv(env), set.to_list(t.ftv(typ))))
+  let variables = set.to_list(setx.drop(t.ftv(typ), set.to_list(env.ftv(env))))
   Scheme(variables, typ)
 }
 
@@ -137,7 +137,7 @@ pub fn unify_effects(eff1, eff2, ref) {
     t.Open(u), t.Open(v) if u == v -> Ok(sub.none())
     t.Open(u), r | r, t.Open(u) -> Ok(sub.effect(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
-    t.Extend(label, #(t1, u1), tail1), r -> {
+    t.Extend(label, #(t1, u1), tail1), r | r, t.Extend(label, #(t1, u1), tail1) -> {
       try #(#(t2, u2), tail2, s1) = rewrite_effect(r, label, ref)
       try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
       let s3 = sub.compose(s2, s1)
