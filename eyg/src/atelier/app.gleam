@@ -466,7 +466,7 @@ fn update_source(state: WorkSpace, source) {
     False -> {
       let #(backwards, _forwards) = state.history
       let history = #([#(state.source, state.selection), ..backwards], [])
-      #(history, standard.infer(state.source))
+      #(history, standard.infer(source))
     }
   }
   Ok(

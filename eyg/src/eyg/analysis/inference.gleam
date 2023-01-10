@@ -31,7 +31,8 @@ pub fn type_of(inf: Infered, path) {
     Ok(r) -> r
     Error(Nil) -> {
       io.debug(path)
-      todo("invalid path")
+      // todo("invalid path")
+      Error(unification.MissingVariable("bad path"))
     }
   }
   case r {
@@ -445,5 +446,9 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       s2
     }
   }
-  |> compose(Infered(sub.none(), map.new(), mapx.singleton(path, env)))
+  |> compose(Infered(
+    sub.none(),
+    map.new(),
+    mapx.singleton(list.reverse(path), env),
+  ))
 }

@@ -71,6 +71,18 @@ fn render_row(r) -> List(String) {
 fn render_effects(effects) {
   case effects {
     t.Open(_) | t.Closed -> ""
-    t.Extend(label, _, tail) -> string.concat([" <", label, ">"])
+    t.Extend(label, _, tail) ->
+      string.concat([
+        " <",
+        string.join(collect_effect(tail, [label]), ", "),
+        ">",
+      ])
+  }
+}
+
+fn collect_effect(eff, acc) {
+  case eff {
+    t.Extend(label, _, tail) -> collect_effect(tail, [label, ..acc])
+    _ -> acc
   }
 }
