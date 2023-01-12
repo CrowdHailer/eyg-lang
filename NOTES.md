@@ -477,3 +477,7 @@ where the type includes both raised and continuation type.
 
 ### Nominal or Structural effect types
 Nice to not declare ahead of time, unlike Unison or Koka
+
+## Datalog style DB
+- https://github.com/cozodb/cozo
+- https://github.com/quoll/asami

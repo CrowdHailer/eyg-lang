@@ -187,3 +187,13 @@ This doesn't work for structural typing.
 - https://lmcs.episciences.org/1004/pdf Inferring Algebraic effects koka relates
 
 
+## CPS
+More of a compilation concern
+- https://matt.might.net/articles/cps-conversion/ How to compile with continuations
+- https://dev.to/yelouafi/algebraic-effects-in-javascript-part-2---capturing-continuations-with-generators-13da most thorough explaination with continuations
+- https://github.com/phenax/algebraic-effects Library using generators and yield does it allow multiple resumption
+- https://nythrox.github.io/effects.js/#/algeff Other JS library
+
+Are continuations just first class control flow, do we need to call them effects as that is not really the case for for comprehensions
+Can we always CPS style with backpassing and perform is just bumping to the higher level
+If I want to handle a promise I need a different API http.get vs task.async(http.get)
