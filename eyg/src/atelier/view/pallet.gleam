@@ -4,8 +4,8 @@ import gleam/list
 import gleam/map
 import gleam/string
 import gleam/option.{None, Some}
-import lustre/element.{button, div, input, p, pre, span, text, textarea}
-import lustre/event.{dispatch, on_click, on_keydown}
+import lustre/element.{div, input, span, text, textarea}
+import lustre/event.{dispatch, on_click}
 import lustre/attribute.{class, classes}
 import eyg/analysis/inference
 import atelier/app.{ClickOption, SelectNode}

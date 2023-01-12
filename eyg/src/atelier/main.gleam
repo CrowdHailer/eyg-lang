@@ -1,4 +1,3 @@
-import gleam/option.{None, Some}
 import lustre
 import lustre/cmd
 import atelier/app

@@ -1,10 +1,9 @@
-import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
-import lustre/element.{button, div, p, pre, span, text}
+import lustre/element.{pre, span, text}
 import lustre/event.{dispatch, on_click}
 import lustre/attribute.{class, classes, style}
 import eygir/expression as e
@@ -60,24 +59,22 @@ pub fn do_render(exp, br, loc, inferred) {
       ),
     ]
     // This will be deleted if we get rid of record
-    e.Record(fields, from) ->
+    e.Record(fields, _from) ->
       case False {
         True -> [text("mul")]
-        False -> {
-          let fields =
-            fields
-            |> list.index_map(fn(i, f) {
-              [
-                text(f.0),
-                text(": "),
-                ..do_render(f.1, br, child(loc, i), inferred)
-              ]
-            })
-            |> list.intersperse([text(", ")])
-            |> list.prepend([text("{")])
-            |> list.append([[text("}")]])
-            |> list.flatten
-        }
+        False ->
+          fields
+          |> list.index_map(fn(i, f) {
+            [
+              text(f.0),
+              text(": "),
+              ..do_render(f.1, br, child(loc, i), inferred)
+            ]
+          })
+          |> list.intersperse([text(", ")])
+          |> list.prepend([text("{")])
+          |> list.append([[text("}")]])
+          |> list.flatten
       }
     e.Extend(label) -> [extend(label, loc, inferred)]
     e.Select(label) -> [select(label, loc, inferred)]
@@ -402,7 +399,7 @@ fn tag(label, loc, inferred) {
   |> span([text(label)])
 }
 
-fn match(label, br, loc, inferred) {
+fn match(label, _br, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
 

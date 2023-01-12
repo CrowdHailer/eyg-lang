@@ -1,14 +1,6 @@
-import gleam/dynamic
-import gleam/string
-import gleam/io
-import gleam/list
-import gleam/map
-import gleam/result
-import gleam/option.{None, Some}
-import lustre/element.{button, div, input, p, pre, span, text}
-import lustre/event.{dispatch, on_click, on_keydown}
-import lustre/attribute.{class, classes}
-import atelier/app.{ClickOption, SelectNode}
+import lustre/element.{div}
+import lustre/attribute.{class}
+import atelier/app
 import atelier/view/projection
 import atelier/view/pallet
 
