@@ -42,6 +42,7 @@ pub type Expression {
   Perform(label: String)
   // variable is the parameter name for the state
   Deep(variable: String, branches: List(#(String, String, String, Expression)))
+  Handle(label: String)
 }
 
 pub const unit = Empty

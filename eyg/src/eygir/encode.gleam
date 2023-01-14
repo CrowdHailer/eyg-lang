@@ -34,6 +34,7 @@ pub fn encode(exp) {
     e.Match(_, _) -> todo("remove match")
     e.Deep(_, _) -> todo("remove deep")
     e.Perform(x) -> node("perform", [label(x)])
+    e.Handle(x) -> node("handle", [label(x)])
   }
 }
 

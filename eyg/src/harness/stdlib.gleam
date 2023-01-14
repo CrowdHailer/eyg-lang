@@ -20,7 +20,7 @@ fn equal() {
         t.Union(t.Extend("True", t.unit, t.Extend("False", t.unit, t.Closed))),
       ),
     ),
-    builtin2(fn(x, y, k) {
+    r.builtin2(fn(x, y, k) {
       case x == y {
         True -> true
         False -> false
@@ -28,10 +28,6 @@ fn equal() {
       |> r.continue(k, _)
     }),
   )
-}
-
-fn builtin2(f) {
-  r.Builtin(fn(a, k) { r.continue(k, r.Builtin(fn(b, k) { f(a, b, k) })) })
 }
 
 external fn stringify(a) -> String =

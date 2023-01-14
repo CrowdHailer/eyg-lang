@@ -105,6 +105,7 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Overwrite(label) -> continue(k, overwrite(label))
     e.Case(label) -> continue(k, match(label))
     e.NoCases -> continue(k, Builtin(fn(_, _) { todo("no cases match") }))
+    e.Handle(label) -> continue(k, inner_handle(label))
   }
 }
 
@@ -177,7 +178,39 @@ fn match(label) {
     )
   })
 }
+
+pub fn inner_handle(label) {
+  Builtin(fn(handler, k) {
+    let wrapped = fn(term) {
+      case continue(k, term) {
+        Value(v) -> Value(v)
+        Effect(l, lifted, resume) if l == label ->
+          eval_call(
+            handler,
+            lifted,
+            eval_call(
+              _,
+              Builtin(fn(reply, handler_k) {
+                case resume(reply) {
+                  Value(value) -> continue(handler_k, value)
+                  effect -> effect
+                }
+              }),
+              Value,
+            ),
+          )
+        Effect(_, _, _) as other -> other
+      }
+    }
+    continue(wrapped, Function("x", e.Variable("x"), []))
+  })
+}
+
 // world state
 // hGet(state -> key -> kont -> kont(state))(state)(exec)
 // Is there a way to pass state through, but if we have fix we don't need to but i need to update inference
 // Hmm
+
+pub fn builtin2(f) {
+  Builtin(fn(a, k) { continue(k, Builtin(fn(b, k) { f(a, b, k) })) })
+}

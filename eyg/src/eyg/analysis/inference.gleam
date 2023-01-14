@@ -445,6 +445,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         )
       s2
     }
+    e.Handle(_) -> todo("infer handle")
   }
   |> compose(Infered(
     sub.none(),

@@ -29,6 +29,8 @@ pub fn decoder(x) {
     "case" -> decode1(e.Case, label())
     "nocases" -> fn(_) { Ok(e.NoCases) }
     "perform" -> decode1(e.Perform, label())
+    "handle" -> decode1(e.Handle, label())
+
     incorrect -> fn(_) { Error([DecodeError("node", incorrect, ["0"])]) }
   }(
     x,

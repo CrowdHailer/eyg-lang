@@ -269,6 +269,7 @@ fn insert(act, state) {
     e.Match(_, _) -> Error("insert not implemented for match")
     e.Perform(label) -> Ok(write(label, e.Perform))
     e.Deep(_, _) -> Error("insert not implemented for deep")
+    e.Handle(label) -> Ok(write(label, e.Handle))
   }
 
   Ok(WorkSpace(..state, mode: mode))

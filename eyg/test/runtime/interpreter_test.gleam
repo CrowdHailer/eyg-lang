@@ -156,3 +156,74 @@ pub fn effect_in_builtin_test() {
   k(r.Binary("reply"))
   |> should.equal(r.Value(r.Record([#("field", r.Binary("reply"))])))
 }
+
+pub fn handler_no_effect_test() {
+  let handler =
+    e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
+  let exec = e.Apply(e.Tag("Ok"), e.Binary("mystring"))
+  let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+
+  r.eval(source, [], id)
+  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
+}
+
+pub fn handle_early_return_effect_test() {
+  let handler =
+    e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
+  let exec = e.Apply(e.Perform("Throw"), e.Binary("Bad thing"))
+  let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+
+  r.eval(source, [], id)
+  |> should.equal(r.Value(r.Tagged("Error", r.Binary("Bad thing"))))
+}
+
+pub fn handle_resume_test() {
+  let handler =
+    e.Lambda(
+      "x",
+      e.Lambda(
+        "k",
+        e.Apply(
+          e.Apply(e.Extend("value"), e.Apply(e.Variable("k"), e.Empty)),
+          e.Apply(e.Apply(e.Extend("log"), e.Variable("x")), e.Empty),
+        ),
+      ),
+    )
+
+  let exec =
+    e.Let(
+      "_",
+      e.Apply(e.Perform("Log"), e.Binary("my message")),
+      e.Integer(100),
+    )
+  let source = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
+
+  r.eval(source, [], id)
+  |> should.equal(r.Value(r.Record([
+    #("value", r.Integer(100)),
+    #("log", r.Binary("my message")),
+  ])))
+}
+
+pub fn ignore_other_effect_test() {
+  let handler =
+    e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
+  let exec =
+    e.Apply(
+      e.Apply(e.Extend("foo"), e.Apply(e.Perform("Foo"), e.Empty)),
+      e.Empty,
+    )
+  let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+
+  assert r.Effect("Foo", lifted, k) = r.eval(source, [], id)
+  lifted
+  |> should.equal(r.Record([]))
+  // calling k should fall throu
+  // Should test wrapping binary here to check K works properly
+  k(r.Binary("reply"))
+  |> should.equal(r.Value(r.Record([#("foo", r.Binary("reply"))])))
+}
+// TODO multiple effects
+// TODO multiple resumptions
+// TODO match with inference
+// TODO handle logs in front end code

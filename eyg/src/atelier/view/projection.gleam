@@ -130,6 +130,7 @@ pub fn do_render(exp, br, loc, inferred) {
     }
     e.Perform(label) -> [perform(label, loc, inferred)]
     e.Deep(_, _) -> [text("deep is not supported")]
+    e.Handle(label) -> [handle(label, loc, inferred)]
   }
 }
 
@@ -413,6 +414,14 @@ fn perform(label, loc, inferred) {
 
   [click(loc), classes(highlight(target, alert))]
   |> span([span([class("text-gray-400")], [text("perform ")]), text(label)])
+}
+
+fn handle(label, loc, inferred) {
+  let target = focused(loc)
+  let alert = error(loc, inferred)
+
+  [click(loc), classes(highlight(target, alert))]
+  |> span([span([class("text-gray-400")], [text("handle ")]), text(label)])
 }
 
 // location is separate to path, extract but it may be view layer only.

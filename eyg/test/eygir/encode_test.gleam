@@ -32,4 +32,5 @@ pub fn expression_test() {
   check_encoding(e.Case("foo"))
   check_encoding(e.NoCases)
   check_encoding(e.Perform("foo"))
+  check_encoding(e.Handle("handle"))
 }
