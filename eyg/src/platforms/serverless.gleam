@@ -55,6 +55,7 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
+    // TODO ffi effect logger
   assert return = r.run(prog, values, request, in_cli)
   assert Ok(r.Binary(body)) = r.field(return, "body")
   body
