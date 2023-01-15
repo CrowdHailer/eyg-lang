@@ -1,5 +1,3 @@
-import gleam/io
-import gleam/map
 import gleam/string
 import gleeunit/should
 import eygir/expression as e
@@ -126,7 +124,7 @@ pub fn effect_in_case_test() {
   |> should.equal(r.Value(r.Binary("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Binary("nope")))
-  assert r.Effect("Raise", lifted, k) = r.eval(source, [], id)
+  assert r.Effect("Raise", lifted, _k) = r.eval(source, [], id)
   lifted
   |> should.equal(r.Binary("nope"))
 }

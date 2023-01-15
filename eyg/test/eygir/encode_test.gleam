@@ -2,7 +2,7 @@ import gleam/json
 import gleeunit/should
 import eygir/expression as e
 import eygir/encode.{to_json}
-import eygir/decode.{from_json}
+import eygir/decode
 
 fn round_trip(exp) {
   exp

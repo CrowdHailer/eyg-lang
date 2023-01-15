@@ -1,4 +1,3 @@
-import gleam/io
 import gleeunit/should
 import eygir/expression as e
 import atelier/app

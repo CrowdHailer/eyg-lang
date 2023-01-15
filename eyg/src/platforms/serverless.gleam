@@ -1,6 +1,4 @@
-// serverless
 import gleam/io
-import gleam/list
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
@@ -12,7 +10,7 @@ import eyg/runtime/standard
 
 pub fn run(source, _) {
   let store = javascript.make_reference(source)
-  let #(types, values) = stdlib.lib()
+  let #(types, _values) = stdlib.lib()
 
   let handle = fn(method, scheme, host, path, query, body) {
     // prog is new on every request could store eval'd in store
@@ -47,7 +45,7 @@ external fn write_file_sync(String, String) -> Nil =
   "fs" "writeFileSync"
 
 fn server_run(prog, method, scheme, host, path, query, body) {
-  let #(types, values) = stdlib.lib()
+  let #(_types, values) = stdlib.lib()
   let request =
     r.Record([
       #("method", r.Binary(method)),

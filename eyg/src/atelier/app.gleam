@@ -3,8 +3,6 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
-import gleam/string
-import gleam/javascript/promise.{Promise}
 import gleam/fetch
 import gleam/http
 import gleam/http/request
@@ -104,7 +102,7 @@ pub fn select_node(state, path) {
 pub fn keypress(key, state: WorkSpace) {
   let r = case state.mode, key {
     // save in this state only because q is a normal letter needed when entering text
-    Navigate(act), "q" -> save(state)
+    Navigate(_act), "q" -> save(state)
     Navigate(act), "w" -> call_with(act, state)
     Navigate(act), "e" -> Ok(assign_to(act, state))
     Navigate(act), "r" -> record(act, state)
@@ -116,7 +114,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "i" -> insert(act, state)
     Navigate(act), "o" -> overwrite(act, state)
     Navigate(act), "p" -> Ok(perform(act, state))
-    Navigate(act), "a" -> increase(state)
+    Navigate(_act), "a" -> increase(state)
     Navigate(act), "s" -> decrease(act, state)
     Navigate(act), "d" -> delete(act, state)
     Navigate(act), "f" -> Ok(abstract(act, state))
@@ -125,8 +123,8 @@ pub fn keypress(key, state: WorkSpace) {
     // Navigate(act), "j" -> ("down probably not")
     // Navigate(act), "k" -> ("up probably not")
     // Navigate(act), "l" -> ("right probably not")
-    Navigate(act), "z" -> undo(state)
-    Navigate(act), "Z" -> redo(state)
+    Navigate(_act), "z" -> undo(state)
+    Navigate(_act), "Z" -> redo(state)
     Navigate(act), "x" -> list(act, state)
     Navigate(act), "c" -> call(act, state)
     Navigate(act), "v" -> Ok(variable(act, state))
@@ -141,13 +139,13 @@ pub fn keypress(key, state: WorkSpace) {
       let source = commit(text)
       update_source(state, source)
     }
-    WriteLabel(_, _), k -> Ok(state)
+    WriteLabel(_, _), _k -> Ok(state)
     WriteNumber(text, commit), k if k == "Enter" -> {
       let source = commit(text)
       update_source(state, source)
     }
-    WriteNumber(_, _), k -> Ok(state)
-    WriteText(_, _), k -> Ok(state)
+    WriteNumber(_, _), _k -> Ok(state)
+    WriteText(_, _), _k -> Ok(state)
   }
 
   case r {
@@ -191,7 +189,7 @@ fn assign_to(act, state) {
 }
 
 fn record(act, state) {
-  let commit = case act.target {
+  case act.target {
     e.Vacant ->
       act.update(e.Empty)
       |> update_source(state, _)
@@ -235,7 +233,7 @@ fn paste(act, state) {
 fn unwrap(act, state) {
   case act.parent {
     None -> Error("top level")
-    Some(#(i, list, _, parent_update)) -> {
+    Some(#(_i, _list, _, parent_update)) -> {
       let source = parent_update(act.target)
       update_source(state, source)
     }
@@ -276,7 +274,7 @@ fn insert(act, state) {
 }
 
 fn overwrite(act, state) {
-  let commit = case act.target {
+  case act.target {
     e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
       let commit = fn(text) {
         act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant), exp))
@@ -302,7 +300,7 @@ fn increase(state) {
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 
-fn decrease(act, state) {
+fn decrease(_act, state) {
   let selection = list.append(state.selection, [0])
   try act = transform.prepare(state.source, selection)
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
@@ -313,7 +311,7 @@ fn delete(act, state) {
   // when deleting with a vacant as a target there is no change
   // we can instead bump up the path
   let source = case act.target {
-    e.Let(label, _, then) -> act.update(then)
+    e.Let(_label, _, then) -> act.update(then)
     _ -> act.update(e.Vacant)
   }
   update_source(state, source)
@@ -329,10 +327,9 @@ fn abstract(act, state) {
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-// g for get
 fn select(act, state) {
-  let commit = case act.target {
-    e.Let(label, value, then) -> Error("can't get on let")
+  case act.target {
+    e.Let(_label, _value, _then) -> Error("can't get on let")
     exp -> {
       let commit = fn(text) { act.update(e.Apply(e.Select(text), exp)) }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
@@ -342,10 +339,10 @@ fn select(act, state) {
 
 fn perform(act, state) {
   let commit = case act.target {
-    e.Let(label, value, then) -> fn(text) {
+    e.Let(label, _value, then) -> fn(text) {
       act.update(e.Let(label, e.Perform(text), then))
     }
-    exp -> fn(text) { act.update(e.Perform(text)) }
+    _exp -> fn(text) { act.update(e.Perform(text)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
@@ -410,32 +407,32 @@ fn call(act, state) {
 
 fn variable(act, state) {
   let commit = case act.target {
-    e.Let(label, value, then) -> fn(text) {
+    e.Let(label, _value, then) -> fn(text) {
       act.update(e.Let(label, e.Variable(text), then))
     }
-    exp -> fn(text) { act.update(e.Variable(text)) }
+    _exp -> fn(text) { act.update(e.Variable(text)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
 fn binary(act, state) {
   let commit = case act.target {
-    e.Let(label, value, then) -> fn(text) {
+    e.Let(label, _value, then) -> fn(text) {
       act.update(e.Let(label, e.Binary(text), then))
     }
-    exp -> fn(text) { act.update(e.Binary(text)) }
+    _exp -> fn(text) { act.update(e.Binary(text)) }
   }
   WorkSpace(..state, mode: WriteText("", commit))
 }
 
 fn number(act, state) {
   let #(v, commit) = case act.target {
-    e.Let(label, value, then) -> #(
+    e.Let(label, _value, then) -> #(
       0,
       fn(value) { act.update(e.Let(label, e.Integer(value), then)) },
     )
     e.Integer(value) -> #(value, fn(value) { act.update(e.Integer(value)) })
-    exp -> #(0, fn(value) { act.update(e.Integer(value)) })
+    _exp -> #(0, fn(value) { act.update(e.Integer(value)) })
   }
   WorkSpace(..state, mode: WriteNumber(v, commit))
 }

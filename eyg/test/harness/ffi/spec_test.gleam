@@ -1,23 +1,12 @@
-import gleam/dynamic
-import gleam/io
 import gleam/list
-import gleam/map
-import gleam/option.{None, Some}
-import gleam/set
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/spec.{
   build, empty, end, field, integer, lambda, list_of, record, string, unbound,
   union, variant,
 }
-import harness/ffi/integer
-import harness/ffi/env
-import eyg/analysis/inference
-import eygir/expression as e
 import gleeunit/should
-import gleam/javascript
 
-// TODO move to ffi module tests
 pub fn integer_test() {
   let #(spec, term) =
     integer()
@@ -56,7 +45,7 @@ pub fn lambda_test() {
 pub fn nested_lambda_test() {
   let #(spec, term) =
     lambda(integer(), lambda(string(), integer()))
-    |> build(fn(x) { fn(b) { x + 1 } })
+    |> build(fn(x) { fn(_b) { x + 1 } })
 
   r.eval_call(term, r.Integer(2), r.eval_call(_, r.Binary("hey"), r.Value))
   |> should.equal(r.Value(r.Integer(3)))
@@ -138,25 +127,10 @@ pub fn record_test() {
 pub fn union_test() {
   let #(spec, term) =
     union(variant("Some", integer(), variant("None", integer(), end())))
-    |> build(fn(some) { fn(none) { some(10) } })
+    |> build(fn(some) { fn(_none) { some(10) } })
   should.equal(
     spec,
     t.Union(t.Extend("Some", t.Integer, t.Extend("None", t.Integer, t.Closed))),
   )
   should.equal(term, r.Tagged("Some", r.Integer(10)))
-}
-
-// unbound -> list.reverse
-
-pub fn add_test() {
-  let #(types, values) =
-    env.init()
-    |> env.extend("ffi_add", integer.add())
-
-  let prog = e.Apply(e.Apply(e.Variable("ffi_add"), e.Integer(1)), e.Integer(2))
-  let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
-  inference.type_of(sub, [])
-  |> should.equal(Ok(t.Integer))
-  r.eval(prog, values, r.Value)
-  |> should.equal(r.Value(r.Integer(3)))
 }

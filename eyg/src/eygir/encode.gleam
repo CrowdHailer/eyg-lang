@@ -1,4 +1,4 @@
-import gleam/json.{array, int, null, object, string}
+import gleam/json.{int, object, string}
 import eygir/expression as e
 
 fn node(name, attributes) {

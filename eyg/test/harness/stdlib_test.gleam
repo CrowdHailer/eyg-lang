@@ -1,7 +1,5 @@
-import gleam/io
 import eygir/expression as e
 import eyg/runtime/interpreter as r
-import eyg/runtime/standard
 import harness/ffi/string
 import harness/stdlib
 import gleeunit/should

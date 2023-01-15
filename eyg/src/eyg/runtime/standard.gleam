@@ -1,18 +1,5 @@
-import gleam/io
-import gleam/list
-import gleam/map
-import gleam/option.{None}
-import gleam/result
-import gleam/string
-import gleam/javascript
-import gleam/javascript/array.{Array}
 import eyg/analysis/inference
-import eyg/analysis/unification
-import eyg/analysis/scheme
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
-import eygir/expression as e
-import eygir/decode
 import harness/stdlib
 import platforms/cli
 

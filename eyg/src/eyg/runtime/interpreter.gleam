@@ -109,9 +109,6 @@ pub fn eval(exp: e.Expression, env, k) {
   }
 }
 
-// Test interpreter -> setup node env effects & environment, types and values
-//
-
 fn cons() {
   Builtin(fn(value, k) {
     continue(
