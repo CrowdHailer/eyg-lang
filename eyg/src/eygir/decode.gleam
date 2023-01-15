@@ -1,5 +1,5 @@
-import gleam/dynamic.{DecodeError, decode2, decode3, field, int, string}
-import gleam/dynamicx.{decode1}
+import gleam/dynamic.{DecodeError,
+  decode1, decode2, decode3, field, int, string}
 import gleam/json
 import eygir/expression as e
 

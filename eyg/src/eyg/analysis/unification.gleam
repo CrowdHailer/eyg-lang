@@ -2,7 +2,6 @@ import gleam/list
 import gleam/map
 import gleam/set
 import gleam/result
-import gleam/setx
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
 import eyg/analysis/scheme.{Scheme}
@@ -15,7 +14,7 @@ pub fn fresh(ref) {
 }
 
 pub fn generalise(env, typ) {
-  let variables = set.to_list(setx.drop(t.ftv(typ), set.to_list(env.ftv(env))))
+  let variables = set.to_list(set.drop(t.ftv(typ), set.to_list(env.ftv(env))))
   Scheme(variables, typ)
 }
 

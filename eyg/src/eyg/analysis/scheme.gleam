@@ -1,4 +1,4 @@
-import gleam/setx
+import gleam/set
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
 
@@ -8,7 +8,7 @@ pub type Scheme {
 
 pub fn ftv(scheme) {
   let Scheme(forall, typ) = scheme
-  setx.drop(t.ftv(typ), forall)
+  set.drop(t.ftv(typ), forall)
 }
 
 pub fn apply(sub, scheme) {
