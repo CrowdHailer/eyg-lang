@@ -2,7 +2,6 @@ name: Deploy to Fly
 on:
   push:
     branches:
-      # TODO switch back to main
       - cleanup
 jobs:
   deploy:
