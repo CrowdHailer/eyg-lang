@@ -8,6 +8,6 @@
         "express": "^4.18.2"
     },
     "devDependencies": {
-        "rollup": "^3.9.1"
+        "rollup": "^3.10.0"
     }
 }
