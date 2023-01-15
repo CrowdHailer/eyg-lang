@@ -5,7 +5,6 @@ import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eyg/analysis/inference
 import harness/stdlib
-import gleam/javascript
 
 pub fn in_cli(label, term) {
   io.debug(#("Effect", label, term))

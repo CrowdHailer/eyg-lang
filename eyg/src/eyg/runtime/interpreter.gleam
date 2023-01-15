@@ -202,3 +202,12 @@ pub fn inner_handle(label) {
 pub fn builtin2(f) {
   Builtin(fn(a, k) { continue(k, Builtin(fn(b, k) { f(a, b, k) })) })
 }
+
+pub fn builtin3(f) {
+  Builtin(fn(a, k) {
+    continue(
+      k,
+      Builtin(fn(b, k) { continue(k, Builtin(fn(c, k) { f(a, b, c, k) })) }),
+    )
+  })
+}
