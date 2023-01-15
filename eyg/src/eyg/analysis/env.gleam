@@ -1,7 +1,5 @@
 import gleam/map.{Map}
 import gleam/set
-import eyg/analysis/typ as t
-import eyg/analysis/substitutions as sub
 import eyg/analysis/scheme.{Scheme}
 
 type TypeEnv =

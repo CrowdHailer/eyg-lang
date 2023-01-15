@@ -3,7 +3,6 @@ import gleam/list
 import gleam/map.{Map}
 import gleam/mapx
 import gleam/result
-import gleam/option.{None, Some}
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub

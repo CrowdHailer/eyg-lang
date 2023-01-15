@@ -31,7 +31,7 @@ fn is_integer(term) {
 }
 
 pub fn integer() {
-  fn(ref) { #(t.Integer, is_integer, r.Integer) }
+  fn(_ref) { #(t.Integer, is_integer, r.Integer) }
 }
 
 fn is_string(term) {
@@ -42,7 +42,7 @@ fn is_string(term) {
 }
 
 pub fn string() {
-  fn(ref) { #(t.Binary, is_string, r.Binary) }
+  fn(_ref) { #(t.Binary, is_string, r.Binary) }
 }
 
 pub fn is_list(term, cast) {
@@ -64,7 +64,7 @@ pub fn list_of(element) {
 }
 
 pub fn empty() {
-  fn(ref) { #(t.Closed, fn(x: Nil) { [] }) }
+  fn(_ref) { #(t.Closed, fn(_: Nil) { [] }) }
 }
 
 pub fn field(label, value, rest) {
@@ -90,7 +90,7 @@ pub fn record(field_spec) {
 }
 
 pub fn end() {
-  fn(ref) { #(t.Closed, fn(x: r.Term) { x }) }
+  fn(_ref) { #(t.Closed, fn(x: r.Term) { x }) }
 }
 
 pub fn variant(label, value, tail) {

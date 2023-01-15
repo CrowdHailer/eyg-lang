@@ -1,6 +1,5 @@
-import gleam/io
 import gleam/list
-import gleam/map.{Map}
+import gleam/map
 import gleam/set
 import gleam/result
 import gleam/setx

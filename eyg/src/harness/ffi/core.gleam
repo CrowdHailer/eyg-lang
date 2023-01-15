@@ -1,8 +1,7 @@
-import gleam/io
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/spec.{
-  build, empty, end, integer, lambda, record, string, unbound, union, variant,
+  build, empty, end, lambda, record, string, unbound, union, variant,
 }
 
 pub const true = r.Tagged("True", r.Record([]))
@@ -16,8 +15,6 @@ pub const boolean = t.Union(
     t.Extend("False", t.Record(t.Closed), t.Closed),
   ),
 )
-
-//   t.Extend("True", t.unit, t.Extend("False", t.unit, t.Closed)),
 
 pub fn equal() {
   let el = unbound()

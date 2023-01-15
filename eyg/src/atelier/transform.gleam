@@ -1,7 +1,4 @@
 // TODO maybe morph
-import gleam/io
-import gleam/int
-import gleam/list
 import gleam/option.{None, Option, Some}
 import eygir/expression as e
 

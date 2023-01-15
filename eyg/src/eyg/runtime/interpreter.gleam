@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/list
 import gleam/map
-import gleam/option.{None, Some}
 import eygir/expression as e
 
 // TODO run test where handlers are applied only on call, assume closed always for initial inference

@@ -1,9 +1,3 @@
-import gleam/option.{None, Option}
-
-// hd Ok({value, rest}) Error({})
-// head(list)(value-> rest -> {})(_ -> {})
-// fix as a variable that exists. Shallow handlers
-
 pub type Expression {
   Variable(label: String)
   Lambda(label: String, body: Expression)
