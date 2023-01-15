@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import eygir/expression as e
 
+// TODO run test where handlers are applied only on call, assume closed always for initial inference
 // harness global handler world external exterior mount surface
 pub fn run(source, env, term, extrinsic) {
   // Probably separate first handle non effectful from second
@@ -25,7 +26,6 @@ pub type Term {
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
   Builtin(func: fn(Term, fn(Term) -> Return) -> Return)
-  Perform(label: String)
 }
 
 pub fn field(term, field) {
@@ -63,8 +63,6 @@ pub fn eval_call(f, arg, k) {
     }
     // builtin needs to return result for the case statement
     Builtin(f) -> f(arg, k)
-    // TODO perform should be effect without arg
-    Perform(label) -> Effect(label, arg, k)
     _ -> {
       io.debug(#(f, arg))
       todo("not a function")
@@ -96,7 +94,8 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Select(label) -> continue(k, Builtin(select(label)))
     e.Tag(label) ->
       continue(k, Builtin(fn(x, k) { continue(k, Tagged(label, x)) }))
-    e.Perform(label) -> continue(k, Perform(label))
+    e.Perform(label) ->
+      continue(k, Builtin(fn(lift, resume) { Effect(label, lift, resume) }))
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, extend(label))
     e.Overwrite(label) -> continue(k, overwrite(label))
