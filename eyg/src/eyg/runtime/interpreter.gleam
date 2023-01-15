@@ -206,11 +206,6 @@ pub fn inner_handle(label) {
   })
 }
 
-// world state
-// hGet(state -> key -> kont -> kont(state))(state)(exec)
-// Is there a way to pass state through, but if we have fix we don't need to but i need to update inference
-// Hmm
-
 pub fn builtin2(f) {
   Builtin(fn(a, k) { continue(k, Builtin(fn(b, k) { f(a, b, k) })) })
 }

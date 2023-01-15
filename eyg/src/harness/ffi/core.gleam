@@ -54,44 +54,21 @@ pub fn debug() {
   |> build(fn(x) { stringify(x) })
 }
 
-// pub fn foo(builder, k) {
-//   r.continue(
-//     r.Builtin(fn(arg, k2) {
-//       r.eval_call(builder, builder, r.eval_call(_, arg, k2))
-//     }),
-//     k,
-//   )
-// }
+fn fixed(builder) {
+  r.Builtin(fn(arg, inner_k) {
+    r.eval_call(builder, fixed(builder), r.eval_call(_, arg, inner_k))
+  })
+}
 
 pub fn fix() {
-  let t =
+  let typ =
     t.Fun(
       t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-1)),
       t.Open(-3),
       t.Unbound(-1),
     )
-  let f =
-    r.Builtin(fn(builder, k) {
-      r.eval_call(
-        builder,
-        r.Builtin(fn(arg, inner_k) {
-          r.eval_call(
-            builder,
-            r.Builtin(fn(arg, inner_k) {
-              r.eval_call(
-                builder,
-                r.Builtin(fn(a, b) {
-                  io.debug(#("aaa", a))
-                  todo("inside")
-                }),
-                r.eval_call(_, arg, inner_k),
-              )
-            }),
-            r.eval_call(_, arg, inner_k),
-          )
-        }),
-        k,
-      )
-    })
-  #(t, f)
+
+  let value =
+    r.Builtin(fn(builder, k) { r.eval_call(builder, fixed(builder), k) })
+  #(typ, value)
 }
