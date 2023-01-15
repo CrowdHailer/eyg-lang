@@ -17,6 +17,7 @@ import eygir/expression as e
 import gleeunit/should
 import gleam/javascript
 
+// TODO move to ffi module tests
 pub fn integer_test() {
   let #(spec, term) =
     integer()

@@ -1,53 +1,17 @@
 import harness/ffi/env
+import harness/ffi/core
 import harness/ffi/integer
 import harness/ffi/linked_list
 import harness/ffi/string
 import eyg/runtime/interpreter as r
 import eyg/analysis/typ as t
 
-const true = r.Tagged("True", r.Record([]))
-
-const false = r.Tagged("False", r.Record([]))
-
-fn equal() {
-  #(
-    t.Fun(
-      t.Unbound(1),
-      t.Open(2),
-      t.Fun(
-        t.Unbound(1),
-        t.Open(3),
-        t.Union(t.Extend("True", t.unit, t.Extend("False", t.unit, t.Closed))),
-      ),
-    ),
-    r.builtin2(fn(x, y, k) {
-      case x == y {
-        True -> true
-        False -> false
-      }
-      |> r.continue(k, _)
-    }),
-  )
-}
-
-external fn stringify(a) -> String =
-  "" "JSON.stringify"
-
-fn debug() {
-  #(
-    t.Fun(t.Unbound(1), t.Open(2), t.Binary),
-    r.Builtin(fn(x, k) {
-      r.Binary(stringify(x))
-      |> r.continue(k, _)
-    }),
-  )
-}
 
 pub fn lib() {
   let #(types, values) =
     env.init()
-    |> env.extend("equal", equal())
-    |> env.extend("debug", debug())
+    |> env.extend("equal", core.equal())
+    |> env.extend("debug", core.debug())
     // integer
     |> env.extend("ffi_add", integer.add())
     |> env.extend("ffi_subtract", integer.subtract())
@@ -66,6 +30,7 @@ pub fn lib() {
     |> env.extend("ffi_pop", linked_list.pop())
 }
 
+// TODO move fold to list and test
 pub fn fold() {
   #(
     t.Fun(
