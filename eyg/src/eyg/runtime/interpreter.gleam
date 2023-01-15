@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/map
 import gleam/option.{None, Some}
 import eygir/expression as e
 
@@ -12,8 +13,13 @@ pub fn run(source, env, term, extrinsic) {
 
 fn handle(return, extrinsic) {
   case return {
-    // TODO stateful handler
-    Effect(label, term, k) -> handle(k(extrinsic(label, term)), extrinsic)
+    // Don't have stateful handlers because extrinsic handlers can hold references to
+    // mutable state db files etc
+    Effect(label, term, k) -> {
+      assert Ok(handler) = map.get(extrinsic, label)
+
+      handle(eval_call(handler, term, k), extrinsic)
+    }
     Value(term) -> term
   }
 }
@@ -70,7 +76,6 @@ pub fn eval_call(f, arg, k) {
   }
 }
 
-// TODO try moving Handle/Match to key_value lists
 pub fn eval(exp: e.Expression, env, k) {
   case exp {
     e.Lambda(param, body) -> continue(k, Function(param, body, env))

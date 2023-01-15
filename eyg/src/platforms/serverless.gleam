@@ -4,6 +4,7 @@ import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eyg/analysis/inference
 import harness/stdlib
+import harness/effect
 import gleam/javascript
 import eygir/decode
 import eyg/runtime/standard
@@ -41,6 +42,11 @@ pub fn run(source, _) {
   // 0
 }
 
+fn handlers() {
+  effect.init()
+  |> effect.extend("Log", effect.debug_logger())
+}
+
 external fn write_file_sync(String, String) -> Nil =
   "fs" "writeFileSync"
 
@@ -55,8 +61,7 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
-    // TODO ffi effect logger
-  assert return = r.run(prog, values, request, in_cli)
+  assert return = r.run(prog, values, request, handlers().1)
   assert Ok(r.Binary(body)) = r.field(return, "body")
   body
 }
@@ -66,8 +71,3 @@ external fn do_serve(
   fn(String) -> Nil,
 ) -> Nil =
   "../entry.js" "serve"
-
-pub fn in_cli(label, term) {
-  io.debug(#("Effect", label, term))
-  r.Record([])
-}
