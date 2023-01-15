@@ -11,7 +11,7 @@ external fn args(Int) -> Array(String) =
 
 // zero arity
 pub fn main() {
-  do_main(array.to_list(args(1)))
+  do_main(array.to_list(args(3)))
 }
 
 external fn read_file_sync(String, String) -> String =
