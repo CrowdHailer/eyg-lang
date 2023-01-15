@@ -6,12 +6,12 @@ import harness/ffi/string
 import eyg/runtime/interpreter as r
 import eyg/analysis/typ as t
 
-
 pub fn lib() {
   let #(types, values) =
     env.init()
     |> env.extend("equal", core.equal())
     |> env.extend("debug", core.debug())
+    |> env.extend("fix", core.fix())
     // integer
     |> env.extend("ffi_add", integer.add())
     |> env.extend("ffi_subtract", integer.subtract())

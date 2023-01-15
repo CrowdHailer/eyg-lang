@@ -37,6 +37,7 @@ pub fn run(source, args) {
     Ok(Nil) -> {
       assert r.Integer(return) =
         r.run(prog, values, r.LinkedList(list.map(args, r.Binary)), in_cli)
+        |> io.debug
       return
     }
     Error(reasons) -> {
