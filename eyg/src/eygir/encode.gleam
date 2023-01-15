@@ -23,7 +23,6 @@ pub fn encode(exp) {
     e.Tail -> node("tail", [])
     e.Cons -> node("cons", [])
     e.Vacant -> node("vacant", [])
-    e.Record(_, _) -> todo("remove heres")
     e.Empty -> node("empty", [])
     e.Extend(x) -> node("extend", [label(x)])
     e.Select(x) -> node("select", [label(x)])
@@ -31,8 +30,6 @@ pub fn encode(exp) {
     e.Tag(x) -> node("tag", [label(x)])
     e.Case(x) -> node("case", [label(x)])
     e.NoCases -> node("nocases", [])
-    e.Match(_, _) -> todo("remove match")
-    e.Deep(_, _) -> todo("remove deep")
     e.Perform(x) -> node("perform", [label(x)])
     e.Handle(x) -> node("handle", [label(x)])
   }

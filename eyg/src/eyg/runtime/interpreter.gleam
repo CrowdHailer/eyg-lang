@@ -93,13 +93,10 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Tail -> continue(k, LinkedList([]))
     e.Cons -> continue(k, cons())
     e.Vacant -> todo("interpreted a todo")
-    e.Record(fields, _) -> todo("record")
     e.Select(label) -> continue(k, Builtin(select(label)))
     e.Tag(label) ->
       continue(k, Builtin(fn(x, k) { continue(k, Tagged(label, x)) }))
-    e.Match(branches, tail) -> todo("match")
     e.Perform(label) -> continue(k, Perform(label))
-    e.Deep(state, branches) -> todo("deep")
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, extend(label))
     e.Overwrite(label) -> continue(k, overwrite(label))

@@ -1,6 +1,4 @@
-import gleam/io
 import gleam/map
-import gleam/option.{None, Some}
 import gleam/set
 import gleam/setx
 import eygir/expression as e
@@ -219,75 +217,6 @@ fn field(row: t.Row(a), label) {
 }
 
 // Records
-pub fn record_creation_test() {
-  let exp = e.Record([], option.None)
-  let env = env.empty()
-  let typ = t.Unbound(-1)
-  let eff = t.Closed
-
-  let sub = infer(env, exp, typ, eff)
-  assert t.Record(row) = resolve(sub, typ)
-  should.equal(row, t.Closed)
-
-  let exp =
-    e.Record([#("foo", e.Binary("hi")), #("bar", e.Integer(1))], option.None)
-  let sub = infer(env, exp, typ, eff)
-  assert t.Record(row) = resolve(sub, typ)
-  assert t.Extend(
-    label: "bar",
-    value: t.Integer,
-    tail: t.Extend(label: "foo", value: t.Binary, tail: t.Closed),
-  ) = row
-}
-
-pub fn record_update_test() {
-  let exp = e.Record([], option.Some("x"))
-  let env = env.empty()
-  let x = Scheme([], t.Unbound(-2))
-  let env = map.insert(env, "x", x)
-  let typ = t.Unbound(-1)
-  let eff = t.Closed
-
-  let sub = infer(env, exp, typ, eff)
-  assert t.Record(row) = resolve(sub, typ)
-  assert t.Open(x) = row
-  assert t.Record(row) = resolve(sub, t.Unbound(-2))
-  assert t.Open(y) = row
-  should.equal(x, y)
-
-  let exp = e.Record([#("foo", e.Binary("hi"))], option.Some("x"))
-  let env = env.empty()
-  let mono =
-    t.Record(t.Extend("foo", t.Binary, t.Extend("bar", t.Integer, t.Closed)))
-  let x = Scheme([], mono)
-  let env = map.insert(env, "x", x)
-  let sub = infer(env, exp, typ, eff)
-  assert t.Record(row) = resolve(sub, typ)
-  assert t.Extend(
-    label: "foo",
-    value: t.Binary,
-    tail: t.Extend(label: "bar", value: t.Integer, tail: t.Closed),
-  ) = row
-}
-
-pub fn record_update_type_test() {
-  let exp = e.Record([#("foo", e.Binary("hi"))], option.Some("x"))
-  let env = env.empty()
-  let mono =
-    t.Record(t.Extend("foo", t.Integer, t.Extend("bar", t.Integer, t.Closed)))
-  let x = Scheme([], mono)
-  let env = map.insert(env, "x", x)
-  let typ = t.Unbound(-1)
-  let eff = t.Closed
-
-  let sub = infer(env, exp, typ, eff)
-  assert t.Record(row) = resolve(sub, typ)
-  assert t.Extend(
-    label: "foo",
-    value: t.Binary,
-    tail: t.Extend(label: "bar", value: t.Integer, tail: t.Closed),
-  ) = row
-}
 
 pub fn select_test() {
   let exp = e.Select("foo")
@@ -352,45 +281,6 @@ pub fn tag_test() {
   should.equal(l, "foo")
 }
 
-// empty match is an error
-pub fn closed_match_test() {
-  let branches = [
-    #("Some", "v", e.Variable("v")),
-    #("None", "", e.Binary("hi")),
-  ]
-  let exp = e.Match(branches, None)
-  let env = env.empty()
-  let typ = t.Unbound(-1)
-  let eff = t.Closed
-
-  let sub = infer(env, exp, typ, eff)
-  assert t.Fun(union, _, t.Binary) = resolve(sub, typ)
-  assert t.Union(t.Extend(
-    label: "Some",
-    value: t.Binary,
-    tail: t.Extend(label: "None", value: t.Unbound(_), tail: t.Closed),
-  )) = union
-}
-
-pub fn open_match_test() {
-  let branches = [
-    #("Some", "v", e.Variable("v")),
-    #("None", "", e.Binary("hi")),
-  ]
-  let exp = e.Match(branches, Some(#("", e.Binary("hi"))))
-  let env = env.empty()
-  let typ = t.Unbound(-1)
-  let eff = t.Closed
-
-  let sub = infer(env, exp, typ, eff)
-  assert t.Fun(union, _, t.Binary) = resolve(sub, typ)
-  assert t.Union(t.Extend(
-    label: "Some",
-    value: t.Binary,
-    tail: t.Extend(label: "None", value: t.Unbound(_), tail: t.Open(_)),
-  )) = union
-}
-
 // Test raising effects in branches are matched
 
 pub fn single_effect_test() {
@@ -432,37 +322,6 @@ pub fn collect_effects_test() {
   should.equal(ret2, final)
 }
 
-pub fn deep_handler_test() {
-  // Put new, k -> k(new, 0)
-  let then = e.Apply(e.Apply(e.Variable("k"), e.Variable("new")), e.Integer(1))
-  let exp = e.Deep("state", [#("Put", "new", "k", then)])
-  // We make the state the same as the raised value
-  // I think exec & comp is a good set of naming.
-  let env = env.empty()
-  let typ = t.Unbound(-1)
-  let eff = t.Open(-2)
-
-  let sub = infer(env, exp, typ, eff)
-  assert t.Open(e0) = resolve_effect(sub, eff)
-  assert t.Fun(t.Unbound(state1), t.Open(e1), exec) = resolve(sub, typ)
-  should.not_equal(e0, e1)
-  assert t.Fun(comp, t.Open(e2), t.Unbound(ret1)) = exec
-  should.not_equal(e0, e2)
-  should.not_equal(e1, e2)
-  assert t.Fun(t.Record(t.Closed), inner, t.Unbound(ret2)) = comp
-  // we have chosen to not need a pure handler part of the expression,
-  // maybe needed if pure handler raises other effects
-  should.equal(ret1, ret2)
-  assert t.Extend("Put", #(t.Unbound(call), reply), t.Open(tail)) = inner
-  // Put save the call value in state
-  should.equal(call, state1)
-  should.equal(reply, t.Integer)
-  // calling the exec function with comp as an argument have all the uncaugt effects plus inner ones
-  should.equal(e2, tail)
-  // call with binary make state binary
-  // call comp with perform last makes int return value
-}
-
 pub fn anony_test() {
   let exp =
     e.Apply(
@@ -473,24 +332,6 @@ pub fn anony_test() {
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Closed
-  let sub = infer(env, exp, typ, eff)
-  assert t.Integer = resolve(sub, typ)
-}
-
-pub fn eval_handled_test() {
-  let then =
-    e.Apply(e.Apply(e.Variable("k"), e.Variable("state")), e.Variable("state"))
-  let handler = e.Deep("state", [#("Get", "_", "k", then)])
-  let comp = e.Lambda("_", e.Apply(e.Perform("Get"), e.Binary("hi")))
-  let exp = e.Apply(e.Apply(handler, e.Integer(1)), comp)
-
-  let env = env.empty()
-  let typ = t.Unbound(-1)
-  let eff = t.Closed
-  let sub = infer(env, comp, typ, eff)
-  assert _ = resolve(sub, typ)
-  let sub = infer(env, e.Apply(handler, e.Integer(1)), typ, eff)
-  assert _ = resolve(sub, typ)
   let sub = infer(env, exp, typ, eff)
   assert t.Integer = resolve(sub, typ)
 }
@@ -520,49 +361,3 @@ pub fn instantiation_of_effect_test() {
   let sub = infer(env, source, typ, eff)
   assert Ok(Nil) = inference.sound(sub)
 }
-// path + errors + warnings + alg w + gleam use + fixpoint + equi/iso + external lookup + hash + cbor + zipper
-// interpreter + provider + cps codegen + pull out node for editor
-// 1. interprest new expression, entrypoint and css
-// 2. codegen new cps style for reactive front end
-// + quote for universal apps
-// 2.5. universal app log in front and backend some standard runtime choices
-// 3. parser or editor
-// can we do composable runtimes to work with effects
-// path + errors + warnings +
-// fixpoint + equi/iso (not needed array as native type)
-// external lookup i.e. no mod of tree + hash + zipper ast.{Node}
-// understand how to separate param without value from hash to value.
-// Need this for walk through programming
-// ui for all open var's
-// interpreter + provider (provider not needed for current deploys)
-// quote and provide are opposites
-// cps codegen, not needed with interpreter tho probably in client
-// editor render in solid js or just run through proper transform
-// loader + quote instead of compile
-// interpreter in my language -> implements a cps codegen using quote (Good steps)
-
-// let {} = do("Log")("message")
-// 1 + 2
-// let {} = do("Log")("message")
-// 3 + 4
-
-// ((_) => {
-//   return effect("Log", "message")
-// })({}) => {
-//   1 + 2
-//   return effect("Log", "message")
-// })({} => {
-
-// })
-
-// compile abtract effect types using generators
-// quote and fix just in environment
-// understand why fix is not as efficient as let rec
-
-// Reactive style code from solid style
-
-// path -> hash
-// can we have hash even in parts referencing named vars?
-// Is it always ok we debrujin
-// hash -> type + evald
-// uuid for views

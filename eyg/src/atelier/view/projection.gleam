@@ -58,24 +58,6 @@ pub fn do_render(exp, br, loc, inferred) {
         [text("{}")],
       ),
     ]
-    // This will be deleted if we get rid of record
-    e.Record(fields, _from) ->
-      case False {
-        True -> [text("mul")]
-        False ->
-          fields
-          |> list.index_map(fn(i, f) {
-            [
-              text(f.0),
-              text(": "),
-              ..do_render(f.1, br, child(loc, i), inferred)
-            ]
-          })
-          |> list.intersperse([text(", ")])
-          |> list.prepend([text("{")])
-          |> list.append([[text("}")]])
-          |> list.flatten
-      }
     e.Extend(label) -> [extend(label, loc, inferred)]
     e.Select(label) -> [select(label, loc, inferred)]
     e.Overwrite(label) -> [overwrite(label, loc, inferred)]
@@ -93,43 +75,7 @@ pub fn do_render(exp, br, loc, inferred) {
         [text("nocases")],
       ),
     ]
-    e.Match(branches, else) -> {
-      let br_inner = string.append(br, "  ")
-      list.flatten([
-        [span([], [span([class("")], [text("match")]), text(" {")])],
-        list.flatten(list.index_map(
-          branches,
-          fn(i, opt) {
-            let #(tag, var, then) = opt
-            [
-              text(br_inner),
-              span([class("text-blue-500")], [text(tag)]),
-              text("("),
-              text(var),
-              text(") -> "),
-              ..render_block(then, br_inner, child(loc, i), inferred)
-            ]
-          },
-        )),
-        case else {
-          Some(#(var, then)) -> [
-            text(br_inner),
-            text(var),
-            text(" -> "),
-            ..render_block(
-              then,
-              br_inner,
-              child(loc, list.length(branches)),
-              inferred,
-            )
-          ]
-          None -> []
-        },
-        [text(br), text("}")],
-      ])
-    }
     e.Perform(label) -> [perform(label, loc, inferred)]
-    e.Deep(_, _) -> [text("deep is not supported")]
     e.Handle(label) -> [handle(label, loc, inferred)]
   }
 }

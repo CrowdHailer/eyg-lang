@@ -256,7 +256,6 @@ fn insert(act, state) {
       Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
     e.Vacant -> Error("no insert option for vacant")
-    e.Record(_, _) -> Error("insert not implemented for record")
     e.Empty -> Error("empty record no insert")
     e.Extend(label) -> Ok(write(label, e.Extend))
     e.Select(label) -> Ok(write(label, e.Select))
@@ -264,9 +263,7 @@ fn insert(act, state) {
     e.Tag(label) -> Ok(write(label, e.Tag))
     e.Case(label) -> Ok(write(label, e.Case))
     e.NoCases -> Error("no cases")
-    e.Match(_, _) -> Error("insert not implemented for match")
     e.Perform(label) -> Ok(write(label, e.Perform))
-    e.Deep(_, _) -> Error("insert not implemented for deep")
     e.Handle(label) -> Ok(write(label, e.Handle))
   }
 

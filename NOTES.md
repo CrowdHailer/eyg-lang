@@ -156,7 +156,6 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 - [x] Drag up/down
 - [x] create function
 - [x] insert before after on records requires a path to the record element
-- [x] holes can be printed as `todo` Red, pattern discard is underscore. all blanks should have a value.
 - [x] Fix saving changes to strings
 - [x] Need Blanks in tuple patterns, could just be option types
 - [x] Record types

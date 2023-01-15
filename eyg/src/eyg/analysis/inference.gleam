@@ -209,56 +209,6 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         map.new(),
       )
 
-    e.Record(fields, tail) -> {
-      let row = t.Open(fresh(ref))
-      // if type already defined then this unifies the fields inference
-      let s1 = unify(typ, t.Record(row), ref, path)
-      let row = apply_row(s1, row)
-      let #(unchanged, s2, update, _) =
-        list.fold_right(
-          fields,
-          #(row, s1, [], 1),
-          fn(state, field) {
-            let #(label, value) = field
-            let #(r, s1, update, index) = state
-            let t = t.Unbound(fresh(ref))
-            let next = t.Open(fresh(ref))
-            let s2 = unify_row(r, t.Extend(label, t, next), ref, path)
-            let s3 = compose(s2, s1)
-            let t = apply(s3, t)
-            let eff = apply_effects(s3, eff)
-            let s4 = do_infer(env, value, t, eff, ref, [index, ..path])
-            let s5 = compose(s4, s3)
-            #(apply_row(s5, next), s5, [label, ..update], index + 1)
-          },
-        )
-      let s3 = compose(s2, s1)
-      case tail {
-        Some(var) ->
-          case map.get(env, var) {
-            Ok(scheme) -> {
-              let previous = instantiate(scheme, ref)
-              // If there is a variable we assume update semantics, not extend.
-              // A new type var is instantiated for each field because we allow type changes.
-              // For extend we could unify without applying the update fields.
-              let row =
-                list.fold(
-                  update,
-                  apply_row(s3, unchanged),
-                  fn(row, label) { t.Extend(label, t.Unbound(fresh(ref)), row) },
-                )
-              let s4 = unify(t.Record(row), previous, ref, [0, ..path])
-              compose(s4, s3)
-            }
-            Error(_) -> todo("missing tail")
-          }
-        None -> {
-          // If there is no variable we are creating a record and therefor it has no tail
-          let s4 = unify_row(unchanged, t.Closed, ref, path)
-          compose(s4, s3)
-        }
-      }
-    }
     e.Empty -> {
       let t = t.Record(t.Closed)
       unify(typ, t, ref, path)
@@ -323,127 +273,11 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       t.Fun(t.Union(t.Closed), e, t)
       |> unify(typ, _, ref, path)
     }
-    e.Match(branches, tail) -> {
-      let inner = t.Open(fresh(ref))
-      let row = t.Open(fresh(ref))
-      let ret = t.Unbound(fresh(ref))
-      let needed = t.Fun(t.Union(row), inner, ret)
-      let s1 = unify(typ, needed, ref, path)
-      let #(s2, remaining, _index) =
-        list.fold(
-          branches,
-          #(s1, apply_row(s1, row), 1),
-          fn(state, branch) {
-            let #(s1, row, index) = state
-            let #(label, param, then) = branch
-            let field_type = t.Unbound(fresh(ref))
-            let remaining = t.Open(fresh(ref))
-            let s2 =
-              unify_row(row, t.Extend(label, field_type, remaining), ref, path)
-            let s3 = compose(s2, s1)
-            let env = map.insert(env, param, Scheme([], apply(s3, field_type)))
-            let s4 =
-              do_infer(
-                env,
-                then,
-                apply(s3, ret),
-                apply_effects(s3, inner),
-                ref,
-                [index, ..path],
-              )
-            let s5 = compose(s4, s3)
-            #(s5, apply_row(s5, remaining), index + 1)
-          },
-        )
-      // s2 already unifed with s1
-      case tail {
-        Some(#(param, then)) -> {
-          let env = map.insert(env, param, Scheme([], t.Union(remaining)))
-          let s3 =
-            do_infer(
-              env,
-              then,
-              apply(s2, ret),
-              apply_effects(s2, inner),
-              ref,
-              // TODO move this to error branch
-              // maybe zero not the best here
-              [0, ..path],
-            )
-          compose(s3, s2)
-        }
-        None -> {
-          let s3 = unify_row(remaining, t.Closed, ref, path)
-          compose(s3, s2)
-        }
-      }
-    }
     e.Perform(label) -> {
       let arg = t.Unbound(fresh(ref))
       let ret = t.Unbound(fresh(ref))
       let tail = t.Open(fresh(ref))
       unify(typ, t.Fun(arg, t.Extend(label, #(arg, ret), tail), ret), ref, path)
-    }
-    // handle
-    e.Deep(var, branches) -> {
-      // The effects for apply the fn must be open but not necessarily tied to eff in this context, they can be passed around
-      // unit -> body is a defered computation
-      // linking parts of the handler, ret is same before and after handler applies, see examples
-      let state = t.Unbound(fresh(ref))
-      let ret = t.Unbound(fresh(ref))
-      // effects consist of all in this handler and all uncaught
-      let uncaught = t.Open(fresh(ref))
-      let effects = t.Open(fresh(ref))
-      let needed =
-        t.Fun(
-          state,
-          t.Open(fresh(ref)),
-          t.Fun(t.Fun(t.unit, effects, ret), uncaught, ret),
-        )
-      let s1 = unify(typ, needed, ref, path)
-      let #(s2, _extended, _) =
-        list.fold(
-          branches,
-          #(s1, apply_effects(s1, uncaught), 0),
-          fn(acc, branch) {
-            let #(s1, row, index) = acc
-            let #(label, param, kont, then) = branch
-            let call = t.Unbound(fresh(ref))
-            let reply = t.Unbound(fresh(ref))
-            // What should this unify with
-            let extended = t.Extend(label, #(call, reply), row)
-            let s2 = unify_effects(effects, extended, ref, path)
-            let s3 = compose(s2, s1)
-            let env =
-              env
-              |> map.insert(var, Scheme([], state))
-              |> map.insert(param, Scheme([], apply(s3, call)))
-              |> map.insert(
-                kont,
-                Scheme(
-                  [],
-                  t.Fun(
-                    state,
-                    t.Open(fresh(ref)),
-                    t.Fun(reply, effects, apply(s3, ret)),
-                  ),
-                ),
-              )
-            let s4 =
-              do_infer(
-                env,
-                then,
-                apply(s3, ret),
-                apply_effects(s3, eff),
-                ref,
-                [index, ..path],
-              )
-            let s5 = compose(s4, s3)
-            let row = apply_effects(s5, extended)
-            #(s5, row, index + 1)
-          },
-        )
-      s2
     }
     e.Handle(_) -> todo("infer handle")
   }
