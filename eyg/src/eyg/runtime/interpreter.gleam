@@ -199,21 +199,20 @@ pub fn inner_handle(label) {
       case continue(k, term) {
         Value(v) -> Value(v)
         Abort(f) -> Abort(f)
-        Effect(l, lifted, resume) if l == label ->
+        Effect(l, lifted, resume) if l == label -> {
+          use term <- eval_call(handler, lifted)
+
           eval_call(
-            handler,
-            lifted,
-            eval_call(
-              _,
-              Builtin(fn(reply, handler_k) {
-                case resume(reply) {
-                  Value(value) -> continue(handler_k, value)
-                  effect -> effect
-                }
-              }),
-              Value,
-            ),
+            term,
+            Builtin(fn(reply, handler_k) {
+              case resume(reply) {
+                Value(value) -> continue(handler_k, value)
+                effect -> effect
+              }
+            }),
+            Value,
           )
+        }
         Effect(_, _, _) as other -> other
       }
     }
