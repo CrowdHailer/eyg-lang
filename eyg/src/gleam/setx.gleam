@@ -1,4 +1,3 @@
-import gleam/list
 import gleam/set
 
 pub fn singleton(value) {

@@ -3,6 +3,16 @@ import gleam/list
 import gleam/map
 import eygir/expression as e
 
+pub type Failure {
+  NotAFunction(Term)
+  UndefinedVariable(String)
+  Todo
+  NoCases
+  UnhandledEffect(String)
+  IncorrectTerm(expected: String)
+  MissingField(String)
+}
+
 // TODO run test where handlers are applied only on call, assume closed always for initial inference
 // harness global handler world external exterior mount surface
 pub fn run(source, env, term, extrinsic) {
@@ -14,12 +24,13 @@ fn handle(return, extrinsic) {
   case return {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
-    Effect(label, term, k) -> {
-      assert Ok(handler) = map.get(extrinsic, label)
-
-      handle(eval_call(handler, term, k), extrinsic)
-    }
-    Value(term) -> term
+    Effect(label, term, k) ->
+      case map.get(extrinsic, label) {
+        Ok(handler) -> handle(eval_call(handler, term, k), extrinsic)
+        Error(Nil) -> Error(UnhandledEffect(label))
+      }
+    Value(term) -> Ok(term)
+    Abort(failure) -> Error(failure)
   }
 }
 
@@ -47,15 +58,11 @@ pub fn field(term, field) {
 pub type Return {
   Value(term: Term)
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
+  Abort(Failure)
 }
 
 pub fn continue(k, term) {
   case term {
-    // Just don't need k on resume
-    // Effect(label, lifted) -> {
-    //   io.debug(#(label, lifted))
-    //   k(Record([]))
-    // }
     _ -> k(term)
   }
 }
@@ -68,10 +75,7 @@ pub fn eval_call(f, arg, k) {
     }
     // builtin needs to return result for the case statement
     Builtin(f) -> f(arg, k)
-    _ -> {
-      io.debug(#(f, arg))
-      todo("not a function")
-    }
+    term -> Abort(NotAFunction(term))
   }
 }
 
@@ -83,10 +87,7 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(term) -> continue(k, term)
-        Error(Nil) -> {
-          io.debug(x)
-          todo("variable not defined")
-        }
+        Error(Nil) -> Abort(UndefinedVariable(x))
       }
     e.Let(var, value, then) ->
       eval(value, env, fn(term) { eval(then, [#(var, term), ..env], k) })
@@ -94,7 +95,7 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Binary(value) -> continue(k, Binary(value))
     e.Tail -> continue(k, LinkedList([]))
     e.Cons -> continue(k, cons())
-    e.Vacant -> todo("interpreted a todo")
+    e.Vacant -> Abort(Todo)
     e.Select(label) -> continue(k, Builtin(select(label)))
     e.Tag(label) ->
       continue(k, Builtin(fn(x, k) { continue(k, Tagged(label, x)) }))
@@ -104,7 +105,7 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Extend(label) -> continue(k, extend(label))
     e.Overwrite(label) -> continue(k, overwrite(label))
     e.Case(label) -> continue(k, match(label))
-    e.NoCases -> continue(k, Builtin(fn(_, _) { todo("no cases match") }))
+    e.NoCases -> continue(k, Builtin(fn(_, _) { Abort(NoCases) }))
     e.Handle(label) -> continue(k, inner_handle(label))
   }
 }
@@ -114,8 +115,10 @@ fn cons() {
     continue(
       k,
       Builtin(fn(tail, k) {
-        assert LinkedList(elements) = tail
-        continue(k, LinkedList([value, ..elements]))
+        case tail {
+          LinkedList(elements) -> continue(k, LinkedList([value, ..elements]))
+          _ -> Abort(IncorrectTerm("LinkedList"))
+        }
       }),
     )
   })
@@ -123,10 +126,14 @@ fn cons() {
 
 fn select(label) {
   fn(term, k) {
-    assert Record(fields) = term
-    assert Ok(value) = list.key_find(fields, label)
-    // Value(value)
-    continue(k, value)
+    case term {
+      Record(fields) ->
+        case list.key_find(fields, label) {
+          Ok(value) -> continue(k, value)
+          Error(Nil) -> Abort(MissingField(label))
+        }
+      _ -> Abort(IncorrectTerm("Record"))
+    }
   }
 }
 
@@ -134,9 +141,11 @@ fn extend(label) {
   Builtin(fn(value, k) {
     continue(
       k,
-      Builtin(fn(record, k) {
-        assert Record(fields) = record
-        continue(k, Record([#(label, value), ..fields]))
+      Builtin(fn(term, k) {
+        case term {
+          Record(fields) -> continue(k, Record([#(label, value), ..fields]))
+          _ -> Abort(IncorrectTerm("Record"))
+        }
       }),
     )
   })
@@ -146,16 +155,21 @@ fn overwrite(label) {
   Builtin(fn(value, k) {
     continue(
       k,
-      Builtin(fn(record, k) {
-        assert Record(fields) = record
-        assert Ok(#(_old, fields)) = list.key_pop(fields, label)
-        continue(k, Record([#(label, value), ..fields]))
+      Builtin(fn(term, k) {
+        case term {
+          Record(fields) ->
+            case list.key_pop(fields, label) {
+              Ok(#(_old, fields)) ->
+                continue(k, Record([#(label, value), ..fields]))
+              Error(Nil) -> Abort(MissingField(label))
+            }
+          _ -> Abort(IncorrectTerm("Record"))
+        }
       }),
     )
   })
 }
 
-// which k
 fn match(label) {
   Builtin(fn(matched, k) {
     continue(
@@ -164,10 +178,13 @@ fn match(label) {
         continue(
           k,
           Builtin(fn(value, k) {
-            assert Tagged(l, term) = value
-            case l == label {
-              True -> eval_call(matched, term, k)
-              False -> eval_call(otherwise, value, k)
+            case value {
+              Tagged(l, term) ->
+                case l == label {
+                  True -> eval_call(matched, term, k)
+                  False -> eval_call(otherwise, value, k)
+                }
+              term -> Abort(IncorrectTerm("Tagged"))
             }
           }),
         )
@@ -181,6 +198,7 @@ pub fn inner_handle(label) {
     let wrapped = fn(term) {
       case continue(k, term) {
         Value(v) -> Value(v)
+        Abort(f) -> Abort(f)
         Effect(l, lifted, resume) if l == label ->
           eval_call(
             handler,

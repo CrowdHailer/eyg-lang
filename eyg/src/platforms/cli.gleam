@@ -27,7 +27,7 @@ pub fn run(source, args) {
 
   case inference.sound(inferred) {
     Ok(Nil) -> {
-      assert r.Integer(return) =
+      assert Ok(r.Integer(return)) =
         r.run(
           prog,
           values,
