@@ -158,7 +158,7 @@ pub fn effect_in_builtin_test() {
 pub fn handler_no_effect_test() {
   let handler =
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
-  let exec = e.Apply(e.Tag("Ok"), e.Binary("mystring"))
+  let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Binary("mystring")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
   r.eval(source, [], id)
@@ -168,7 +168,7 @@ pub fn handler_no_effect_test() {
 pub fn handle_early_return_effect_test() {
   let handler =
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
-  let exec = e.Apply(e.Perform("Throw"), e.Binary("Bad thing"))
+  let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Binary("Bad thing")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
   r.eval(source, [], id)
@@ -189,10 +189,13 @@ pub fn handle_resume_test() {
     )
 
   let exec =
-    e.Let(
+    e.Lambda(
       "_",
-      e.Apply(e.Perform("Log"), e.Binary("my message")),
-      e.Integer(100),
+      e.Let(
+        "_",
+        e.Apply(e.Perform("Log"), e.Binary("my message")),
+        e.Integer(100),
+      ),
     )
   let source = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
 
@@ -207,9 +210,12 @@ pub fn ignore_other_effect_test() {
   let handler =
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
   let exec =
-    e.Apply(
-      e.Apply(e.Extend("foo"), e.Apply(e.Perform("Foo"), e.Empty)),
-      e.Empty,
+    e.Lambda(
+      "_",
+      e.Apply(
+        e.Apply(e.Extend("foo"), e.Apply(e.Perform("Foo"), e.Empty)),
+        e.Empty,
+      ),
     )
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
@@ -249,13 +255,16 @@ pub fn multiple_effects_test() {
 
 pub fn multiple_resumptions_test() {
   let raise =
-    e.Apply(
-      e.Apply(e.Extend("a"), e.Apply(e.Perform("Choose"), e.unit)),
-      // e.Apply(
-      //   e.Apply(e.Extend("b"), e.Apply(e.Perform("Choose"), e.unit)),
-      e.Empty,
+    e.Lambda(
+      "_",
+      e.Apply(
+        e.Apply(e.Extend("a"), e.Apply(e.Perform("Choose"), e.unit)),
+        e.Apply(
+          e.Apply(e.Extend("b"), e.Apply(e.Perform("Choose"), e.unit)),
+          e.Empty,
+        ),
+      ),
     )
-  // ),
   let handle =
     e.Apply(
       e.Handle("Choose"),
@@ -277,5 +286,23 @@ pub fn multiple_resumptions_test() {
   r.eval(source, [], id)
   |> should.equal(r.Value(r.Record([])))
 }
+
 // TODO match with inference
 // TODO handle logs in front end code
+
+pub fn handler_doesnt_continue_test() {
+  let handler =
+    e.Apply(
+      e.Handle("Log"),
+      e.Lambda("lift", e.Lambda("k", e.Binary("Caught"))),
+    )
+  let source =
+    e.Let(
+      "_",
+      e.Apply(handler, e.Lambda("_", e.Binary("Original"))),
+      e.Apply(e.Perform("Log"), e.Binary("outer")),
+    )
+  assert r.Effect("Log", r.Binary("outer"), k) = r.eval(source, [], id)
+  k(r.Record([]))
+  |> should.equal(r.Value(r.Record([])))
+}

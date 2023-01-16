@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/map
+import gleam/string
 import eygir/expression as e
 
 pub type Failure {
@@ -9,7 +10,7 @@ pub type Failure {
   Todo
   NoCases
   UnhandledEffect(String)
-  IncorrectTerm(expected: String)
+  IncorrectTerm(expected: String, got: Term)
   MissingField(String)
 }
 
@@ -117,7 +118,7 @@ fn cons() {
       Builtin(fn(tail, k) {
         case tail {
           LinkedList(elements) -> continue(k, LinkedList([value, ..elements]))
-          _ -> Abort(IncorrectTerm("LinkedList"))
+          term -> Abort(IncorrectTerm("LinkedList", term))
         }
       }),
     )
@@ -132,7 +133,7 @@ fn select(label) {
           Ok(value) -> continue(k, value)
           Error(Nil) -> Abort(MissingField(label))
         }
-      _ -> Abort(IncorrectTerm("Record"))
+      term -> Abort(IncorrectTerm(string.append("Record -select", label), term))
     }
   }
 }
@@ -144,7 +145,7 @@ fn extend(label) {
       Builtin(fn(term, k) {
         case term {
           Record(fields) -> continue(k, Record([#(label, value), ..fields]))
-          _ -> Abort(IncorrectTerm("Record"))
+          term -> Abort(IncorrectTerm("Record -extend", term))
         }
       }),
     )
@@ -163,7 +164,7 @@ fn overwrite(label) {
                 continue(k, Record([#(label, value), ..fields]))
               Error(Nil) -> Abort(MissingField(label))
             }
-          _ -> Abort(IncorrectTerm("Record"))
+          term -> Abort(IncorrectTerm("Record -overwrite", term))
         }
       }),
     )
@@ -184,7 +185,7 @@ fn match(label) {
                   True -> eval_call(matched, term, k)
                   False -> eval_call(otherwise, value, k)
                 }
-              term -> Abort(IncorrectTerm("Tagged"))
+              term -> Abort(IncorrectTerm("Tagged", term))
             }
           }),
         )
@@ -195,31 +196,102 @@ fn match(label) {
 
 fn handled(label, handler, k) {
   fn(term) {
+    io.debug(term)
+    // always exec
     case continue(k, term) {
       Effect(l, lifted, resume) if l == label -> {
-        use term <- eval_call(handler, lifted)
-
+        io.debug(#("eff", l, lifted))
         eval_call(
-          term,
-          Builtin(fn(reply, handler_k) {
-            case resume(reply) {
-              Value(value) ->
-                continue(handled(label, handler, handler_k), value)
-              effect -> effect
-            }
-          }),
-          Value,
+          handler,
+          lifted,
+          eval_call(
+            _,
+            Builtin(fn(reply, handler_k) {
+              case continue(handled(label, handler, resume), reply) {
+                Value(v) -> {
+                  io.debug(#("foo", v))
+                  // continue(handler_k, v)
+                  Value(v)
+                }
+                other -> other
+              }
+            }),
+            Value,
+          ),
         )
       }
-      other -> other
+      // TODO need to unwrap continuation
+      other -> {
+        io.debug(#("other", other))
+        other
+      }
     }
   }
 }
 
+pub fn do(label, handler, k, thing) {
+  case thing {
+    Effect(l, lifted, resume) if l == label ->
+      eval_call(
+        handler,
+        lifted,
+        eval_call(
+          _,
+          Builtin(fn(reply, handler_k) {
+            io.debug(#("tiddle"))
+            // todo("inners")
+            do(label, handler, handler_k, resume(reply))
+          }),
+          // eval_call(resume, reply, Value)
+          Value,
+        ),
+      )
+      |> io.debug
+    // todo("runner")
+    Value(v) -> continue(k, v)
+    other -> other
+  }
+}
+
+// Is it easier without multiple resumption?
+pub fn runner(label, handler) {
+  Builtin(fn(exec, k) {
+    do(label, handler, k, eval_call(exec, Record([]), Value))
+  })
+  // case eval_call(exec, Record([]), Value) {
+  //   Effect(l, lifted, resume) if l == label ->
+  //     eval_call(
+  //       handler,
+  //       lifted,
+  //       eval_call(
+  //         _,
+  //         Builtin(fn(reply, handler_k) {
+  //           io.debug(#("tiddle"))
+  //           // todo("inners")
+  //           case resume(reply) {
+  //             Value(v) -> continue(handler_k, v)
+  //             // There seems to be value in a try continue
+  //             other -> {
+  //               io.debug(#("other", other))
+  //               other
+  //             }
+  //           }
+  //         }),
+  //         // eval_call(resume, reply, Value)
+  //         Value,
+  //       ),
+  //     )
+  //     |> io.debug
+  //   // todo("runner")
+  //   Value(v) -> continue(k, v)
+  //   other -> other
+  // }
+}
+
 pub fn inner_handle(label) {
   Builtin(fn(handler, k) {
-    let wrapped = handled(label, handler, k)
-    continue(wrapped, Function("x", e.Variable("x"), []))
+    // let wrapped = handled(label, handler, k)
+    continue(k, runner(label, handler))
   })
 }
 

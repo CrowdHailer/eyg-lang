@@ -59,7 +59,6 @@ pub fn update(state: WorkSpace, action) {
           case value {
             "" -> WriteNumber(0, commit)
             _ -> {
-              io.debug(value)
               assert Ok(number) = int.parse(value)
               WriteNumber(number, commit)
             }
@@ -119,7 +118,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "d" -> delete(act, state)
     Navigate(act), "f" -> Ok(abstract(act, state))
     Navigate(act), "g" -> select(act, state)
-    // Navigate(act), "h" -> ("left probably not")
+    Navigate(act), "h" -> handle(act, state)
     // Navigate(act), "j" -> ("down probably not")
     // Navigate(act), "k" -> ("up probably not")
     // Navigate(act), "l" -> ("right probably not")
@@ -329,6 +328,18 @@ fn select(act, state) {
     e.Let(_label, _value, _then) -> Error("can't get on let")
     exp -> {
       let commit = fn(text) { act.update(e.Apply(e.Select(text), exp)) }
+      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+    }
+  }
+}
+
+fn handle(act, state) {
+  case act.target {
+    e.Let(_label, _value, _then) -> Error("can't handle on let")
+    exp -> {
+      let commit = fn(text) {
+        act.update(e.Apply(e.Apply(e.Handle(text), e.Vacant), exp))
+      }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
   }
