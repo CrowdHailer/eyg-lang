@@ -193,29 +193,32 @@ fn match(label) {
   })
 }
 
+fn handled(label, handler, k) {
+  fn(term) {
+    case continue(k, term) {
+      Effect(l, lifted, resume) if l == label -> {
+        use term <- eval_call(handler, lifted)
+
+        eval_call(
+          term,
+          Builtin(fn(reply, handler_k) {
+            case resume(reply) {
+              Value(value) ->
+                continue(handled(label, handler, handler_k), value)
+              effect -> effect
+            }
+          }),
+          Value,
+        )
+      }
+      other -> other
+    }
+  }
+}
+
 pub fn inner_handle(label) {
   Builtin(fn(handler, k) {
-    let wrapped = fn(term) {
-      case continue(k, term) {
-        Value(v) -> Value(v)
-        Abort(f) -> Abort(f)
-        Effect(l, lifted, resume) if l == label -> {
-          use term <- eval_call(handler, lifted)
-
-          eval_call(
-            term,
-            Builtin(fn(reply, handler_k) {
-              case resume(reply) {
-                Value(value) -> continue(handler_k, value)
-                effect -> effect
-              }
-            }),
-            Value,
-          )
-        }
-        Effect(_, _, _) as other -> other
-      }
-    }
+    let wrapped = handled(label, handler, k)
     continue(wrapped, Function("x", e.Variable("x"), []))
   })
 }

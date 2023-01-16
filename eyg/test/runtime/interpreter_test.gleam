@@ -221,7 +221,61 @@ pub fn ignore_other_effect_test() {
   k(r.Binary("reply"))
   |> should.equal(r.Value(r.Record([#("foo", r.Binary("reply"))])))
 }
-// TODO multiple effects
-// TODO multiple resumptions
+
+pub fn multiple_effects_test() {
+  let source =
+    e.Apply(
+      e.Apply(e.Extend("a"), e.Apply(e.Perform("Choose"), e.unit)),
+      e.Apply(
+        e.Apply(e.Extend("b"), e.Apply(e.Perform("Choose"), e.unit)),
+        e.Empty,
+      ),
+    )
+
+  assert r.Effect("Choose", lifted, k) = r.eval(source, [], id)
+  lifted
+  |> should.equal(r.Record([]))
+
+  assert r.Effect("Choose", lifted, k) = k(r.Binary("True"))
+  lifted
+  |> should.equal(r.Record([]))
+
+  k(r.Binary("False"))
+  |> should.equal(r.Value(r.Record([
+    #("a", r.Binary("True")),
+    #("b", r.Binary("False")),
+  ])))
+}
+
+pub fn multiple_resumptions_test() {
+  let raise =
+    e.Apply(
+      e.Apply(e.Extend("a"), e.Apply(e.Perform("Choose"), e.unit)),
+      // e.Apply(
+      //   e.Apply(e.Extend("b"), e.Apply(e.Perform("Choose"), e.unit)),
+      e.Empty,
+    )
+  // ),
+  let handle =
+    e.Apply(
+      e.Handle("Choose"),
+      e.Lambda(
+        "_",
+        e.Lambda(
+          "k",
+          e.Apply(
+            e.Apply(e.Extend("first"), e.Apply(e.Variable("k"), e.true)),
+            e.Apply(
+              e.Apply(e.Extend("second"), e.Apply(e.Variable("k"), e.false)),
+              e.Empty,
+            ),
+          ),
+        ),
+      ),
+    )
+  let source = e.Apply(handle, raise)
+  r.eval(source, [], id)
+  |> should.equal(r.Value(r.Record([])))
+}
 // TODO match with inference
 // TODO handle logs in front end code

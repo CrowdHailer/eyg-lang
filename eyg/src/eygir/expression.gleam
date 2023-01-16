@@ -33,3 +33,7 @@ pub type Expression {
 }
 
 pub const unit = Empty
+
+pub const true = Apply(Tag("True"), unit)
+
+pub const false = Apply(Tag("False"), unit)

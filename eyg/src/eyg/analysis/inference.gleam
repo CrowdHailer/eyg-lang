@@ -277,7 +277,22 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       let tail = t.Open(fresh(ref))
       unify(typ, t.Fun(arg, t.Extend(label, #(arg, ret), tail), ret), ref, path)
     }
-    e.Handle(_) -> todo("infer handle")
+    e.Handle(label) -> {
+      let ret = t.Unbound(fresh(ref))
+      let lift = t.Unbound(fresh(ref))
+      let reply = t.Unbound(fresh(ref))
+      let tail = t.Open(fresh(ref))
+
+      let kont = t.Fun(reply, tail, ret)
+      let handler = t.Fun(lift, tail, t.Fun(kont, tail, ret))
+      let exec = t.Fun(t.unit, t.Extend(label, #(lift, reply), tail), ret)
+      unify(
+        typ,
+        t.Fun(handler, t.Open(fresh(ref)), t.Fun(exec, tail, ret)),
+        ref,
+        path,
+      )
+    }
   }
   |> compose(Infered(
     sub.none(),
