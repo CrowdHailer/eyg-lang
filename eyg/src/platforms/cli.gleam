@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/nodejs
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
@@ -15,10 +16,6 @@ fn handlers() {
 pub fn typ() {
   t.Fun(t.LinkedList(t.Binary), handlers().0, t.Integer)
 }
-
-// t.Unit doesn't work here
-external fn exit(Int) -> Nil =
-  "" "process.exit"
 
 pub fn run(source, args) {
   let #(types, values) = stdlib.lib()
@@ -43,7 +40,5 @@ pub fn run(source, args) {
       1
     }
   }
-  |> exit()
-  // exec is run without argument, or call -> run
-  // pass in args more important than exec run
+  |> nodejs.exit()
 }

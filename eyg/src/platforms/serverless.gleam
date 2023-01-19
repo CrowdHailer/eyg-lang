@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/nodejs/fs
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
@@ -34,7 +35,7 @@ pub fn run(source, _) {
     assert Ok(source) = decode.from_json(raw)
     // should we infer on save
     javascript.set_reference(store, source)
-    write_file_sync("saved/saved.json", raw)
+    fs.write_file_sync("saved/saved.json", raw)
     Nil
   }
   do_serve(handle, save)
@@ -46,9 +47,6 @@ fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
 }
-
-external fn write_file_sync(String, String) -> Nil =
-  "fs" "writeFileSync"
 
 fn server_run(prog, method, scheme, host, path, query, body) {
   let #(_types, values) = stdlib.lib()
