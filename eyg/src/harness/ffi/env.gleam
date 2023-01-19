@@ -14,7 +14,6 @@ pub fn extend(state, name, parts) {
   let #(typ, value) = parts
 
   let scheme = Scheme(set.to_list(t.ftv(typ)), typ)
-  // TODO can shrink globally
   let types = map.insert(types, name, scheme)
   let values = [#(name, value), ..values]
   #(types, values)
