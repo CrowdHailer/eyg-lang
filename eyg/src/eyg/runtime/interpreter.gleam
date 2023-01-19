@@ -7,7 +7,7 @@ import eygir/expression as e
 pub type Failure {
   NotAFunction(Term)
   UndefinedVariable(String)
-  Todo
+  Vacant
   NoCases
   UnhandledEffect(String)
   IncorrectTerm(expected: String, got: Term)
@@ -96,7 +96,7 @@ pub fn eval(exp: e.Expression, env, k) {
     e.Binary(value) -> continue(k, Binary(value))
     e.Tail -> continue(k, LinkedList([]))
     e.Cons -> continue(k, cons())
-    e.Vacant -> Abort(Todo)
+    e.Vacant -> Abort(Vacant)
     e.Select(label) -> continue(k, Builtin(select(label)))
     e.Tag(label) ->
       continue(k, Builtin(fn(x, k) { continue(k, Tagged(label, x)) }))
@@ -238,8 +238,6 @@ pub fn do(label, handler, k, thing) {
         eval_call(
           _,
           Builtin(fn(reply, handler_k) {
-            io.debug(#("tiddle"))
-            // todo("inners")
             do(label, handler, handler_k, resume(reply))
           }),
           // eval_call(resume, reply, Value)
@@ -247,7 +245,6 @@ pub fn do(label, handler, k, thing) {
         ),
       )
       |> io.debug
-    // todo("runner")
     Value(v) -> continue(k, v)
     other -> other
   }
@@ -267,7 +264,6 @@ pub fn runner(label, handler) {
   //         _,
   //         Builtin(fn(reply, handler_k) {
   //           io.debug(#("tiddle"))
-  //           // todo("inners")
   //           case resume(reply) {
   //             Value(v) -> continue(handler_k, v)
   //             // There seems to be value in a try continue
@@ -282,7 +278,6 @@ pub fn runner(label, handler) {
   //       ),
   //     )
   //     |> io.debug
-  //   // todo("runner")
   //   Value(v) -> continue(k, v)
   //   other -> other
   // }

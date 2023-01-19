@@ -30,8 +30,9 @@ pub fn render_type(typ) {
     t.LinkedList(el) -> string.concat(["List(", render_type(el), ")"])
     t.Fun(from, effects, to) ->
       string.concat([
+        "(",
         render_type(from),
-        " ->",
+        ") ->",
         render_effects(effects),
         " ",
         render_type(to),

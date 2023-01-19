@@ -287,9 +287,6 @@ pub fn multiple_resumptions_test() {
   |> should.equal(r.Value(r.Record([])))
 }
 
-// TODO match with inference
-// TODO handle logs in front end code
-
 pub fn handler_doesnt_continue_test() {
   let handler =
     e.Apply(

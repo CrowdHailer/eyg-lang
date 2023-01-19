@@ -80,8 +80,6 @@ pub fn do_render(exp, br, loc, inferred) {
   }
 }
 
-// TODO handle needing brackets for functions as args
-// i.e. (a -> "x") -> cs
 fn render_block(exp, br, loc, inferred) {
   case exp {
     e.Let(_, _, _) ->

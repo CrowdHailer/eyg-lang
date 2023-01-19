@@ -27,10 +27,19 @@ pub fn pop() {
 }
 
 pub fn fold() {
-  // let el = unbound()
-  // let acc = unbound()
-  // lambda(list_of(el), lambda(acc, lambda(la)))
-  // TODO needs lambda in
+  let el = unbound()
+  let acc = unbound()
+  let reducer = lambda(el, lambda(acc, acc))
+  lambda(list_of(el), lambda(acc, lambda(reducer, acc)))
+  |> build(fn(_list) {
+    fn(_initial) {
+      fn(_reducer) {
+        // Effects need to be understood for functions in.
+        // Probably best to start writing test suite in eyg to handle this
+        todo("effects to handle")
+      }
+    }
+  })
   #(
     t.Fun(
       t.LinkedList(t.Unbound(-7)),
