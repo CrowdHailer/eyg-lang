@@ -47,7 +47,7 @@ const lustre = `
 <link href="/public/layout.css" rel="stylesheet" />
 <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-<title>Morph</title>
+<title>Atelier</title>
 </head>
 <body>
   <div id="app" class="min-h-screen"></div>

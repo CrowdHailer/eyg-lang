@@ -11,11 +11,6 @@ import eyg/analysis/env
 import eyg/analysis/unification.{fresh, generalise, instantiate}
 import gleam/javascript
 
-// alg w
-// alg w_fix
-// alg w_equi
-// alg w_iso
-
 pub type Infered {
   // result could be separate map of errors
   Infered(
@@ -157,6 +152,14 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     e.Variable(x) ->
       case map.get(env, x) {
         Ok(scheme) -> {
+          // TODO remove
+          case "string_concat" == x || "self" == x {
+            True -> {
+              io.debug(#(x, scheme))
+              Nil
+            }
+            False -> Nil
+          }
           let t = instantiate(scheme, ref)
           unify(typ, t, ref, path)
         }

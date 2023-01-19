@@ -32,6 +32,7 @@ pub fn infer(prog) {
     stdlib.lib().0,
     prog,
     t.Record(t.Extend("cli", cli.typ(), t.Extend("web", web, t.Closed))),
-    t.Closed,
+    // TODO have to make closed effect type in self is not working correctly
+    t.Open(-1023),
   )
 }

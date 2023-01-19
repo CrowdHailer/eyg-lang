@@ -20,7 +20,8 @@ pub fn typ() {
 pub fn run(source, args) {
   let #(types, values) = stdlib.lib()
   let prog = e.Apply(e.Select("cli"), source)
-  let inferred = inference.infer(types, prog, typ(), t.Closed)
+  // TODO make inference Closed, need to handle fix i.e. effect para
+  let inferred = inference.infer(types, prog, typ(), t.Open(-9982))
 
   case inference.sound(inferred) {
     Ok(Nil) -> {
