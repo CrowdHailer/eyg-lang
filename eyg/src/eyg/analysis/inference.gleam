@@ -35,7 +35,7 @@ pub fn type_of(inf: Infered, path) {
 }
 
 pub fn sound(inferred: Infered) {
-  let errors = map.filter(inferred.types, fn(k, v) { result.is_error(v) })
+  let errors = map.filter(inferred.types, fn(_k, v) { result.is_error(v) })
   case map.size(errors) == 0 {
     True -> Ok(Nil)
     False -> Error(errors)
@@ -46,9 +46,9 @@ fn apply(inf: Infered, typ) {
   sub.apply(inf.substitutions, typ)
 }
 
-fn apply_row(inf: Infered, row) {
-  sub.apply_row(inf.substitutions, row)
-}
+// fn apply_row(inf: Infered, row) {
+//   sub.apply_row(inf.substitutions, row)
+// }
 
 fn apply_effects(inf: Infered, eff) {
   sub.apply_effects(inf.substitutions, eff)
@@ -78,29 +78,29 @@ fn unify(t1, t2, ref, path) {
   }
 }
 
-fn unify_row(r1, r2, ref, path) {
-  case unification.unify_row(r1, r2, ref) {
-    Ok(s) -> Infered(s, map.new(), map.new())
-    Error(reason) ->
-      Infered(
-        sub.none(),
-        mapx.singleton(list.reverse(path), Error(reason)),
-        map.new(),
-      )
-  }
-}
+// fn unify_row(r1, r2, ref, path) {
+//   case unification.unify_row(r1, r2, ref) {
+//     Ok(s) -> Infered(s, map.new(), map.new())
+//     Error(reason) ->
+//       Infered(
+//         sub.none(),
+//         mapx.singleton(list.reverse(path), Error(reason)),
+//         map.new(),
+//       )
+//   }
+// }
 
-fn unify_effects(e1, e2, ref, path) {
-  case unification.unify_effects(e1, e2, ref) {
-    Ok(s) -> Infered(s, map.new(), map.new())
-    Error(reason) ->
-      Infered(
-        sub.none(),
-        mapx.singleton(list.reverse(path), Error(reason)),
-        map.new(),
-      )
-  }
-}
+// fn unify_effects(e1, e2, ref, path) {
+//   case unification.unify_effects(e1, e2, ref) {
+//     Ok(s) -> Infered(s, map.new(), map.new())
+//     Error(reason) ->
+//       Infered(
+//         sub.none(),
+//         mapx.singleton(list.reverse(path), Error(reason)),
+//         map.new(),
+//       )
+//   }
+// }
 
 // CPS style infer can be resumed so same infer and infer with path fn
 // There is an always feed state through version using `use` that doesn't compose state but add's to single version
