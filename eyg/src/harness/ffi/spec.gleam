@@ -64,15 +64,36 @@ pub fn list_of(element) {
 }
 
 pub fn empty() {
-  fn(_ref) { #(t.Closed, fn(_: Nil) { [] }) }
+  fn(_ref) {
+    #(
+      t.Closed,
+      fn(fields) {
+        case fields {
+          [] -> Ok(Nil)
+          _ -> Error(Nil)
+        }
+      },
+      fn(_: Nil) { [] },
+    )
+  }
 }
 
 pub fn field(label, value, rest) {
   fn(ref) {
-    let #(tvalue, _, encode_value) = value(ref)
-    let #(ttail, encode_tail) = rest(ref)
+    let #(tvalue, cast_value, encode_value) = value(ref)
+    let #(ttail, cast_tail, encode_tail) = rest(ref)
     #(
       t.Extend(label, tvalue, ttail),
+      fn(fields) {
+        case list.key_pop(fields, label) {
+          Ok(#(value, rest)) -> {
+            try v = cast_value(value)
+            try t = cast_tail(rest)
+            Ok(#(v, t))
+          }
+          Error(Nil) -> Error(Nil)
+        }
+      },
       fn(build) {
         let #(value, next) = build
         let fields = encode_tail(next)
@@ -84,8 +105,15 @@ pub fn field(label, value, rest) {
 
 pub fn record(field_spec) {
   fn(ref) {
-    let #(row, encode) = field_spec(ref)
-    #(t.Record(row), fn(_) { todo }, fn(term) { r.Record(encode(term)) })
+    let #(row, cast, encode) = field_spec(ref)
+    #(
+      t.Record(row),
+      fn(term) {
+        assert r.Record(row) = term
+        cast(row)
+      },
+      fn(term) { r.Record(encode(term)) },
+    )
   }
 }
 
@@ -116,17 +144,27 @@ pub fn union(row_spec) {
 
 pub fn lambda(from, to) {
   fn(ref) {
-    let #(t1, cast, _) = from(ref)
-    let #(t2, _, encode) = to(ref)
+    let #(t1, cast_arg, encode_arg) = from(ref)
+    let #(t2, cast_return, encode_return) = to(ref)
     let constraint = t.Fun(t1, t.Open(fresh(ref)), t2)
 
     #(
       constraint,
-      fn(x) { todo("parse") },
+      fn(f) {
+        Ok(fn(x) {
+          // This doesn't handle effects yet. 
+          // We probably should but how inefficient is this now
+          // probably need to pass continuation in for effects
+          assert r.Value(v) = r.eval_call(f, encode_arg(x), r.Value)
+          // the eval is assumed to be good
+          assert Ok(r) = cast_return(v)
+          r
+        })
+      },
       fn(impl) {
         r.Builtin(fn(arg, k) {
-          assert Ok(input) = cast(arg)
-          r.continue(k, encode(impl(input)))
+          assert Ok(input) = cast_arg(arg)
+          r.continue(k, encode_return(impl(input)))
         })
       },
     )

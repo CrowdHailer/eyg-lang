@@ -1,6 +1,7 @@
 import gleam/list
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
+import eygir/expression as e
 import harness/ffi/spec.{
   build, empty, end, field, integer, lambda, list_of, record, string, unbound,
   union, variant,
@@ -76,8 +77,20 @@ pub fn polymorphic_function_test() {
   should.equal(t.Fun(t.Unbound(0), t.Open(1), t.Unbound(0)), spec)
 }
 
+pub fn first_class_function_test() {
+  let t = unbound()
+  let #(spec, term) =
+    lambda(lambda(integer(), integer()), integer())
+    |> build(fn(f) { f(5) })
+  r.eval_call(term, r.Function("x", e.Variable("x"), []), r.Value)
+  |> should.equal(r.Value(r.Integer(5)))
+  should.equal(
+    t.Fun(t.Fun(t.Integer, t.Open(0), t.Integer), t.Open(1), t.Integer),
+    spec,
+  )
+}
+
 pub fn list_test() {
-  // sum fn
   let #(spec, term) =
     list_of(integer())
     |> build([1, 2])
@@ -90,7 +103,6 @@ pub fn list_test() {
 }
 
 pub fn list_fn_test() {
-  // sum fn
   let #(spec, term) =
     lambda(list_of(integer()), integer())
     |> build(fn(x) { list.length(x) })
@@ -122,6 +134,44 @@ pub fn record_test() {
     term,
     r.Record([#("name", r.Binary("bob")), #("age", r.Integer(5))]),
   )
+}
+
+pub fn unit_fn_test() {
+  let #(spec, term) =
+    lambda(record(empty()), integer())
+    |> build(fn(_: Nil) { 5 })
+
+  r.eval_call(term, r.Record([]), r.Value)
+  |> should.equal(r.Value(r.Integer(5)))
+
+  spec
+  |> should.equal(t.Fun(t.Record(t.Closed), t.Open(0), t.Integer))
+}
+
+pub fn record_fn_test() {
+  let #(spec, term) =
+    lambda(
+      record(field("name", string(), field("age", integer(), empty()))),
+      integer(),
+    )
+    |> build(fn(rec) {
+      let #(_name, #(age, Nil)) = rec
+      age
+    })
+
+  r.eval_call(
+    term,
+    r.Record([#("age", r.Integer(55)), #("name", r.Binary("bob"))]),
+    r.Value,
+  )
+  |> should.equal(r.Value(r.Integer(55)))
+
+  spec
+  |> should.equal(t.Fun(
+    t.Record(t.Extend("name", t.Binary, t.Extend("age", t.Integer, t.Closed))),
+    t.Open(0),
+    t.Integer,
+  ))
 }
 
 pub fn union_test() {
