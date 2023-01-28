@@ -208,7 +208,10 @@ pub fn handled(label, handler, outer_k, thing) {
       continue(outer_k, applied)
     }
     Value(v) -> continue(outer_k, v)
-    other -> other
+    // Not equal to this effect
+    Effect(l, lifted, resume) ->
+      Effect(l, lifted, fn(x) { handled(label, handler, outer_k, resume(x)) })
+    Abort(reason) -> Abort(reason)
   }
 }
 

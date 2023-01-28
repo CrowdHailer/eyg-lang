@@ -182,7 +182,8 @@ fn call_with(act, state) {
 fn assign_to(act, state) {
   let commit = case act.target {
     e.Let(_, _, _) -> fn(text) { act.update(e.Let(text, e.Vacant, act.target)) }
-    exp -> fn(text) { act.update(e.Let(text, exp, e.Vacant)) }
+    // normally I want to add something above
+    exp -> fn(text) { act.update(e.Let(text, e.Vacant, exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }

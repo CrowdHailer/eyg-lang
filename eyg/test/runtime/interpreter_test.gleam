@@ -303,3 +303,27 @@ pub fn handler_doesnt_continue_test() {
   k(r.Record([]))
   |> should.equal(r.Value(r.Record([])))
 }
+
+pub fn handler_is_applied_after_other_effects_test() {
+  let handler =
+    e.Apply(e.Handle("Fail"), e.Lambda("lift", e.Lambda("k", e.Integer(-1))))
+  let exec =
+    e.Lambda(
+      "_",
+      e.Let(
+        "_",
+        e.Apply(e.Perform("Log"), e.Binary("my log")),
+        e.Let(
+          "_",
+          e.Apply(e.Perform("Fail"), e.Binary("some error")),
+          e.Binary("done"),
+        ),
+      ),
+    )
+
+  let source = e.Apply(handler, exec)
+  assert r.Effect("Log", r.Binary("my log"), k) = r.eval(source, [], id)
+
+  k(r.Record([]))
+  |> should.equal(r.Value(r.Integer(-1)))
+}
