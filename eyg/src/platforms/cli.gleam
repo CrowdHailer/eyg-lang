@@ -17,14 +17,25 @@ pub fn typ() {
   t.Fun(t.LinkedList(t.Binary), handlers().0, t.Integer)
 }
 
+external fn start() -> #(Int, Int) =
+  "process" "hrtime"
+
+external fn duration(#(Int, Int)) -> #(Int, Int) =
+  "process" "hrtime"
+
 pub fn run(source, args) {
   let #(types, values) = stdlib.lib()
   let prog = e.Apply(e.Select("cli"), source)
   // TODO make inference Closed, need to handle fix i.e. effect para
+  let hrstart = start()
   let inferred = inference.infer(types, prog, typ(), t.Open(-9982))
+  let hrend = duration(hrstart)
+  io.debug(#("inference", hrend))
 
+  // console.info("Inference time (hr): %ds %dms", hrend)
   case inference.sound(inferred) {
     Ok(Nil) -> {
+      let hrstart = start()
       assert Ok(r.Integer(return)) =
         r.run(
           prog,
@@ -33,6 +44,8 @@ pub fn run(source, args) {
           handlers().1,
         )
         |> io.debug
+      let hrend = duration(hrstart)
+      io.debug(#("run", hrend))
       return
     }
     Error(reasons) -> {

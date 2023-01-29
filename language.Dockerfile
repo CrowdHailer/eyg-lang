@@ -33,3 +33,5 @@ RUN npm install
 RUN gleam build
 RUN npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js
 CMD gleam run web
+
+# gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js && gleam run web
