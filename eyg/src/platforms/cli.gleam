@@ -26,9 +26,8 @@ external fn duration(#(Int, Int)) -> #(Int, Int) =
 pub fn run(source, args) {
   let #(types, values) = stdlib.lib()
   let prog = e.Apply(e.Select("cli"), source)
-  // TODO make inference Closed, need to handle fix i.e. effect para
   let hrstart = start()
-  let inferred = inference.infer(types, prog, typ(), t.Open(-9982))
+  let inferred = inference.infer(types, prog, typ(), t.Closed)
   let hrend = duration(hrstart)
   io.debug(#("inference", hrend))
 
