@@ -104,10 +104,10 @@ pub fn rasing_effect_test() {
   assert r.Effect("Foo", lifted, k) = r.eval(source, [], id)
   lifted
   |> should.equal(r.Integer(1))
-  assert r.Effect("Bar", lifted, k) = k(r.Binary("reply"))
+  assert r.Effect("Bar", lifted, k) = r.loop(k(r.Binary("reply")))
   lifted
   |> should.equal(r.Binary("reply"))
-  assert r.Value(term) = k(r.Record([]))
+  assert r.Value(term) = r.loop(k(r.Record([])))
   term
   |> should.equal(r.Record([]))
 }
@@ -152,6 +152,7 @@ pub fn effect_in_builtin_test() {
   lifted
   |> should.equal(r.Binary("called"))
   k(r.Binary("reply"))
+  |> r.loop()
   |> should.equal(r.Value(r.Record([#("field", r.Binary("reply"))])))
 }
 
@@ -225,6 +226,7 @@ pub fn ignore_other_effect_test() {
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
   k(r.Binary("reply"))
+  |> r.loop
   |> should.equal(r.Value(r.Record([#("foo", r.Binary("reply"))])))
 }
 
@@ -242,11 +244,12 @@ pub fn multiple_effects_test() {
   lifted
   |> should.equal(r.Record([]))
 
-  assert r.Effect("Choose", lifted, k) = k(r.Binary("True"))
+  assert r.Effect("Choose", lifted, k) = r.loop(k(r.Binary("True")))
   lifted
   |> should.equal(r.Record([]))
 
   k(r.Binary("False"))
+  |> r.loop
   |> should.equal(r.Value(r.Record([
     #("a", r.Binary("True")),
     #("b", r.Binary("False")),
@@ -325,5 +328,6 @@ pub fn handler_is_applied_after_other_effects_test() {
   assert r.Effect("Log", r.Binary("my log"), k) = r.eval(source, [], id)
 
   k(r.Record([]))
+  |> r.loop
   |> should.equal(r.Value(r.Integer(-1)))
 }

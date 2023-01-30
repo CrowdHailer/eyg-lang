@@ -30,6 +30,7 @@ fn handle(return, extrinsic) {
         Error(Nil) -> Error(UnhandledEffect(label))
       }
     Value(term) -> Ok(term)
+    Cont(term, k) -> handle(k(term), extrinsic)
     Abort(failure) -> Error(failure)
   }
 }
@@ -56,22 +57,31 @@ pub fn field(term, field) {
 }
 
 pub type Return {
+  // It's messy to have Value and Cont, but I don't know how to do this in a tail recursive way
+  // This problem will hopefully go away as I build a more sophisticated interpreter.
+  // Value is needed for returning from eval/run
+  // Cont is needed to break the stack (with loop). 
+  // I could remove Value and always return a result from run, but that would make it not easy to check correct Effects in tests.
   Value(term: Term)
+  Cont(term: Term, k: fn(Term) -> Return)
+
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
   Abort(Failure)
 }
 
 pub fn continue(k, term) {
-  case term {
-    _ -> k(term)
-  }
+    Cont(term, k)
 }
 
 pub fn eval_call(f, arg, k) {
+  loop(step_call(f, arg, k))
+}
+
+fn step_call(f, arg, k) {
   case f {
     Function(param, body, env) -> {
       let env = [#(param, arg), ..env]
-      eval(body, env, k)
+      step(body, env, k)
     }
     // builtin needs to return result for the case statement
     Builtin(f) -> f(arg, k)
@@ -79,18 +89,33 @@ pub fn eval_call(f, arg, k) {
   }
 }
 
+// Loop is always tail recursive. 
+// It is used to string individual steps into an eval call.
+// If not separated the eval implementation causes stack overflows.
+// This is because eval needs references to itself in continuations.
+pub fn loop(return) {
+  case return {
+    Cont(term, k) -> loop(k(term))
+    return -> return
+  }
+}
+
 pub fn eval(exp: e.Expression, env, k) {
+  loop(step(exp, env, k))
+}
+
+fn step(exp: e.Expression, env, k) {
   case exp {
     e.Lambda(param, body) -> continue(k, Function(param, body, env))
     e.Apply(f, arg) ->
-      eval(f, env, fn(f) { eval(arg, env, eval_call(f, _, k)) })
+      step(f, env, fn(f) { step(arg, env, step_call(f, _, k)) })
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(term) -> continue(k, term)
         Error(Nil) -> Abort(UndefinedVariable(x))
       }
     e.Let(var, value, then) ->
-      eval(value, env, fn(term) { eval(then, [#(var, term), ..env], k) })
+      step(value, env, fn(term) { step(then, [#(var, term), ..env], k) })
     e.Integer(value) -> continue(k, Integer(value))
     e.Binary(value) -> continue(k, Binary(value))
     e.Tail -> continue(k, LinkedList([]))
@@ -181,8 +206,8 @@ fn match(label) {
             case value {
               Tagged(l, term) ->
                 case l == label {
-                  True -> eval_call(matched, term, k)
-                  False -> eval_call(otherwise, value, k)
+                  True -> step_call(matched, term, k)
+                  False -> step_call(otherwise, value, k)
                 }
               term -> Abort(IncorrectTerm("Tagged", term))
             }
@@ -196,21 +221,26 @@ fn match(label) {
 pub fn handled(label, handler, outer_k, thing) {
   case thing {
     Effect(l, lifted, resume) if l == label -> {
-      use partial <- eval_call(handler, lifted)
+      use partial <- step_call(handler, lifted)
 
-      use applied <- eval_call(
+      use applied <- step_call(
         partial,
         Builtin(fn(reply, handler_k) {
-          handled(label, handler, handler_k, resume(reply))
+          handled(label, handler, handler_k, loop(resume(reply)))
         }),
       )
 
       continue(outer_k, applied)
     }
     Value(v) -> continue(outer_k, v)
+    Cont(term, k) -> Cont(term, k)
     // Not equal to this effect
     Effect(l, lifted, resume) ->
-      Effect(l, lifted, fn(x) { handled(label, handler, outer_k, resume(x)) })
+      Effect(
+        l,
+        lifted,
+        fn(x) { handled(label, handler, outer_k, loop(resume(x))) },
+      )
     Abort(reason) -> Abort(reason)
   }
 }

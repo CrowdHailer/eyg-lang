@@ -361,5 +361,4 @@ pub fn instantiation_of_effect_test() {
   let sub = infer(env, source, typ, eff)
   assert Ok(Nil) = inference.sound(sub)
 }
-// TODO fix stack overflow in fold
 // TODO fix Effect in fix value
