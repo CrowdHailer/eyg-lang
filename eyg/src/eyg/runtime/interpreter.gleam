@@ -13,11 +13,18 @@ pub type Failure {
   MissingField(String)
 }
 
-// TODO run test where handlers are applied only on call, assume closed always for initial inference
-// harness global handler world external exterior mount surface
 pub fn run(source, env, term, extrinsic) {
-  // Probably separate first handle non effectful from second
-  handle(eval(source, env, eval_call(_, term, Value(_))), extrinsic)
+  case
+    eval(source, env, fn(f) { handle(eval_call(f, term, Value(_)), extrinsic) })
+  {
+    // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
+    // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
+    // The eval fn above could use Not a Function Error in any case which is not a Function
+    Value(term) -> Ok(term)
+    Abort(failure) -> Error(failure)
+    Effect(label, _, _) -> Error(UnhandledEffect(label))
+    _ -> todo("should have evaluated and not be a Cont at all")
+  }
 }
 
 fn handle(return, extrinsic) {
@@ -27,11 +34,11 @@ fn handle(return, extrinsic) {
     Effect(label, term, k) ->
       case map.get(extrinsic, label) {
         Ok(handler) -> handle(eval_call(handler, term, k), extrinsic)
-        Error(Nil) -> Error(UnhandledEffect(label))
+        Error(Nil) -> Abort(UnhandledEffect(label))
       }
-    Value(term) -> Ok(term)
+    Value(term) -> Value(term)
     Cont(term, k) -> handle(k(term), extrinsic)
-    Abort(failure) -> Error(failure)
+    Abort(failure) -> Abort(failure)
   }
 }
 
@@ -70,7 +77,7 @@ pub type Return {
 }
 
 pub fn continue(k, term) {
-    Cont(term, k)
+  Cont(term, k)
 }
 
 pub fn eval_call(f, arg, k) {
