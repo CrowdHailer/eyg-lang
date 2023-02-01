@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/map
 import gleam/set
 import eyg/analysis/typ as t
