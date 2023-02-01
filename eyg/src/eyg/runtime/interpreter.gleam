@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/list
 import gleam/map
 import gleam/string
@@ -52,6 +53,35 @@ pub type Term {
   Builtin(func: fn(Term, fn(Term) -> Return) -> Return)
 }
 
+// This might not give in runtime core, more runtime presentation
+pub fn to_string(term) {
+  case term {
+    Integer(value) -> int.to_string(value)
+    Binary(value) -> string.concat(["\"", value, "\""])
+    LinkedList(items) ->
+      list.map(items, to_string)
+      |> list.intersperse(", ")
+      |> list.prepend("[")
+      |> list.append(["]"])
+      |> string.concat
+    Record(fields) ->
+      fields
+      |> list.map(field_to_string)
+      |> list.intersperse(", ")
+      |> list.prepend("{")
+      |> list.append(["}"])
+      |> string.concat
+    Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
+    Function(param, _, _) -> string.concat(["(", param, ") -> ..."])
+    Builtin(_) -> "Builtin(...)"
+  }
+}
+
+fn field_to_string(field) {
+  let #(k, v) = field
+  string.concat([k, ": ", to_string(v)])
+}
+
 pub fn field(term, field) {
   case term {
     Record(fields) ->
@@ -67,7 +97,7 @@ pub type Return {
   // It's messy to have Value and Cont, but I don't know how to do this in a tail recursive way
   // This problem will hopefully go away as I build a more sophisticated interpreter.
   // Value is needed for returning from eval/run
-  // Cont is needed to break the stack (with loop). 
+  // Cont is needed to break the stack (with loop).
   // I could remove Value and always return a result from run, but that would make it not easy to check correct Effects in tests.
   Value(term: Term)
   Cont(term: Term, k: fn(Term) -> Return)
@@ -96,7 +126,7 @@ fn step_call(f, arg, k) {
   }
 }
 
-// Loop is always tail recursive. 
+// Loop is always tail recursive.
 // It is used to string individual steps into an eval call.
 // If not separated the eval implementation causes stack overflows.
 // This is because eval needs references to itself in continuations.

@@ -43,12 +43,9 @@ pub fn equal() {
   })
 }
 
-external fn stringify(a) -> String =
-  "" "JSON.stringify"
-
 pub fn debug() {
   lambda(unbound(), string())
-  |> build(fn(x) { stringify(x) })
+  |> build(r.to_string)
 }
 
 fn fixed(builder) {

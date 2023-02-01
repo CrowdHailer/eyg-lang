@@ -152,7 +152,7 @@ pub fn lambda(from, to) {
       constraint,
       fn(f) {
         Ok(fn(x) {
-          // This doesn't handle effects yet. 
+          // This doesn't handle effects yet.
           // We probably should but how inefficient is this now
           // probably need to pass continuation in for effects
           assert r.Value(v) = r.eval_call(f, encode_arg(x), r.Value)
