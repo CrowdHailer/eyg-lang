@@ -75,18 +75,26 @@ fn render_row(r) -> List(String) {
 fn render_effects(effects) {
   case effects {
     t.Open(_) | t.Closed -> ""
-    t.Extend(label, _, tail) ->
+    t.Extend(label, #(lift, resume), tail) ->
       string.concat([
         " <",
-        string.join(collect_effect(tail, [label]), ", "),
+        string.join(
+          collect_effect(tail, [render_effect(label, lift, resume)]),
+          ", ",
+        ),
         ">",
       ])
   }
 }
 
+fn render_effect(label, lift, resume) {
+  string.concat([label, "(", render_type(lift), ", ", render_type(resume), ")"])
+}
+
 fn collect_effect(eff, acc) {
   case eff {
-    t.Extend(label, _, tail) -> collect_effect(tail, [label, ..acc])
+    t.Extend(label, #(lift, resume), tail) ->
+      collect_effect(tail, [render_effect(label, lift, resume), ..acc])
     _ -> acc
   }
 }
