@@ -78,3 +78,16 @@ pub fn query_where_test() {
     |> map.insert("directorName", S("James Cameron")),
   ])
 }
+
+pub fn query_rest_test() {
+  query.run(
+    ["directorName"],
+    [
+      #(v("movie"), s("movie/title"), s("The Terminator")),
+      #(v("movie"), s("movie/director"), v("director")),
+      #(v("director"), s("person/name"), v("directorName")),
+    ],
+    movies(),
+  )
+  |> should.equal([[S("James Cameron")]])
+}

@@ -67,3 +67,22 @@ pub fn where(patterns, triples) {
     },
   )
 }
+
+fn assert_map(items, func) {
+  list.map(
+    items,
+    fn(el) {
+      assert Ok(return) = func(el)
+      return
+    },
+  )
+}
+
+fn actualize(context, find) {
+  assert_map(find, map.get(context, _))
+}
+
+pub fn run(find, patterns, triples) {
+  where(patterns, triples)
+  |> list.map(actualize(_, find))
+}
