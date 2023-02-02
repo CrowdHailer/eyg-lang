@@ -12,6 +12,7 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = "~> 0.26"
+gleam_javascript = "~> 0.4"
 
 [dev-dependencies]
 gleeunit = "~> 0.9"
