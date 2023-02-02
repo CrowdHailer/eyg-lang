@@ -1,7 +1,7 @@
 import gleam/dynamic.{Dynamic}
 import gleam/list
 import gleam/map
-import magpie/query.{Constant, Variable}
+import magpie/query.{Constant, Variable, i, s, v}
 import magpie/store/in_memory.{B, I, L, S}
 import gleam/javascript/array.{Array}
 import gleeunit/should
@@ -54,14 +54,27 @@ pub fn match_pattern_test() {
 }
 
 pub fn query_single_test() {
-  query.single(
-    #(query.v("movie"), query.s("movie/year"), query.i(1987)),
-    movies(),
-    map.new(),
-  )
+  query.single(#(v("movie"), s("movie/year"), i(1987)), movies(), map.new())
   |> should.equal([
     singleton("movie", I(202)),
     singleton("movie", I(203)),
     singleton("movie", I(204)),
+  ])
+}
+
+pub fn query_where_test() {
+  query.where(
+    [
+      #(v("movie"), s("movie/title"), s("The Terminator")),
+      #(v("movie"), s("movie/director"), v("director")),
+      #(v("director"), s("person/name"), v("directorName")),
+    ],
+    movies(),
+  )
+  |> should.equal([
+    map.new()
+    |> map.insert("movie", I(200))
+    |> map.insert("director", I(100))
+    |> map.insert("directorName", S("James Cameron")),
   ])
 }

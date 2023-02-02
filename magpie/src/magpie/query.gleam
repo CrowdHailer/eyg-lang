@@ -56,3 +56,14 @@ pub fn match_pattern(pattern: Pattern, triple: Triple, context) {
 pub fn single(pattern, triples, context) {
   list.filter_map(triples, match_pattern(pattern, _, context))
 }
+
+pub fn where(patterns, triples) {
+  list.fold(
+    patterns,
+    [map.new()],
+    fn(contexts, pattern) {
+      list.map(contexts, single(pattern, triples, _))
+      |> list.flatten
+    },
+  )
+}
