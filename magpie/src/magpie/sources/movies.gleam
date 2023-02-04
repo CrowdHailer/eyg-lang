@@ -4,7 +4,7 @@ import magpie/store/in_memory.{B, I, L, S}
 import gleam/javascript/array.{Array}
 
 external fn do_movies() -> Array(#(Int, String, Dynamic)) =
-  "../../movies.js" "movies"
+  "../../movies.mjs" "movies"
 
 pub fn movies() {
   assert Ok(movies) =
