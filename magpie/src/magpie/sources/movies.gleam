@@ -21,5 +21,5 @@ pub fn movies() {
         )
       Ok(#(e, a, v))
     })
-  movies
+  in_memory.create_db(movies)
 }

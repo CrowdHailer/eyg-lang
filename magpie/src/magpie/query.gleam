@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/map
+import gleam/result
 // probably the query shouldn't depend on store details
 import magpie/store/in_memory.{B, I, L, S, Triple}
 
@@ -53,16 +54,27 @@ pub fn match_pattern(pattern: Pattern, triple: Triple, context) {
   Ok(context)
 }
 
-pub fn single(pattern, triples, context) {
-  list.filter_map(triples, match_pattern(pattern, _, context))
+pub fn single(pattern, db, context) {
+  relevant_triples(db, pattern)
+  |> list.filter_map(match_pattern(pattern, _, context))
 }
 
-pub fn where(patterns, triples) {
+pub fn relevant_triples(db: in_memory.DB, pattern) {
+  case pattern {
+    #(Constant(I(id)), _, _) -> map.get(db.entity_index, id)
+    #(_, Constant(S(attr)), _) -> map.get(db.attribute_index, attr)
+    #(_, _, Constant(value)) -> map.get(db.value_index, value)
+    _ -> Error(Nil)
+  }
+  |> result.unwrap(db.triples)
+}
+
+pub fn where(patterns, db) {
   list.fold(
     patterns,
     [map.new()],
     fn(contexts, pattern) {
-      list.map(contexts, single(pattern, triples, _))
+      list.map(contexts, single(pattern, db, _))
       |> list.flatten
     },
   )
@@ -82,7 +94,7 @@ fn actualize(context, find) {
   assert_map(find, map.get(context, _))
 }
 
-pub fn run(find, patterns, triples) {
-  where(patterns, triples)
+pub fn run(find, patterns, db) {
+  where(patterns, db)
   |> list.map(actualize(_, find))
 }
