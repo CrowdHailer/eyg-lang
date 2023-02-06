@@ -15,3 +15,5 @@ XTDB quinn haskell version OCAML https://www.google.com/url?sa=t&rct=j&q=&esrc=s
 args/inputs to queries -> rules
 agg
 predicates vs rule
+
+text based notebook builder

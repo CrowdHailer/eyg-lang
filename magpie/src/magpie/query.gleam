@@ -1,6 +1,8 @@
+import gleam/io
 import gleam/list
 import gleam/map
 import gleam/result
+import gleam/string
 // probably the query shouldn't depend on store details
 import magpie/store/in_memory.{B, I, L, S, Triple}
 
@@ -80,18 +82,22 @@ pub fn where(patterns, db) {
   )
 }
 
-fn assert_map(items, func) {
+fn actualize(context: map.Map(String, in_memory.Value), find) {
   list.map(
-    items,
-    fn(el) {
-      assert Ok(return) = func(el)
-      return
+    find,
+    fn(f) {
+      case map.get(context, f) {
+        Ok(r) -> r
+        Error(Nil) -> {
+          io.debug(string.concat([
+            "actualize failed due to invalid find key: ",
+            f,
+          ]))
+          todo("fail")
+        }
+      }
     },
   )
-}
-
-fn actualize(context, find) {
-  assert_map(find, map.get(context, _))
 }
 
 pub fn run(find, patterns, db) {
