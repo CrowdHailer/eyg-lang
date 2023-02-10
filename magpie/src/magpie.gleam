@@ -6,6 +6,7 @@ import gleam/javascript/array.{Array}
 import magpie/sources/yaml
 import magpie/query.{i, s, v}
 import magpie/store/in_memory.{B, I, L, S}
+import magpie/store/json
 
 pub external fn read_dir_sync(String) -> String =
   "fs" "readdirSync"
@@ -13,35 +14,23 @@ pub external fn read_dir_sync(String) -> String =
 pub external fn glob(String) -> Array(String) =
   "./magpie_ffi.mjs" "sync"
 
+external fn write_file_sync(String, String) -> String =
+  "fs" "writeFileSync"
+
 pub fn main() {
   io.debug("start")
   let db =
-    glob("../")
+    glob("../../../northvolt/firefly-release/**/fleet.yaml")
     |> array.to_list
     |> yaml.read_files
-  io.debug("db ready")
 
-  // query.run(
-  //   ["driver", "version"],
-  //   [
-  //     #(v("values"), s("driver"), v("driver")),
-  //     #(v("values"), s("version"), v("version")),
-  //     #(v("values"), s("replicaCount"), i(0)),
-  //   ],
-  //   db,
-  // )
-  query.run(
-    ["version"],
-    [
-      #(v("values"), s("version"), v("version")),
-      #(v("values"), s("driver"), v("driver")),
-    ],
-    db,
-  )
-  // currently not unique
-  |> list.unique
-  |> print
-
+  let content =
+    string.concat([
+      "export function data(){\n  return ",
+      json.to_string(db.triples),
+      "\n}",
+    ])
+  write_file_sync("build/dev/javascript/magpie/db.mjs", content)
   Nil
 }
 

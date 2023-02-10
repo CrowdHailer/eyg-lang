@@ -1,6 +1,14 @@
 {
+  "scripts": {
+    "build": "npx rollup -f iife -i ./build/dev/javascript/magpie/client.js -o public/bundle.js"
+  },
   "dependencies": {
     "glob": "^8.1.0",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "rollup": "^3.14.0"
   }
 }
