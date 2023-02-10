@@ -12,6 +12,7 @@ import lustre/attribute.{class}
 import magpie/store/json
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/query.{i, s, v}
+import browser/hash
 
 external fn db() -> Dynamic =
   "../db.mjs" "data"
@@ -89,11 +90,26 @@ pub fn init() {
   )
 }
 
+external fn get_hash() -> String =
+  "../browser_ffi.mjs" "getHash"
+
+external fn set_hash(String) -> Nil =
+  "../browser_ffi.mjs" "setHash"
+
+fn update_hash(queries) {
+  cmd.from(fn(_dispatch) {
+    set_hash(hash.encode(
+      queries
+      |> list.map(fn(x: #(_, _)) { x.0 }),
+    ))
+  })
+}
+
 pub fn update(state, action) {
   case action {
     Index -> {
       assert Ok(triples) = json.decoder()(db())
-      let db = in_memory.create_db(list.take(triples, 100))
+      let db = in_memory.create_db(triples)
       io.print("created db")
       #(Running(db, queries(), OverView), cmd.none())
     }
@@ -102,7 +118,10 @@ pub fn update(state, action) {
       assert Running(db, queries, _mode) = state
       assert Ok(q) = list.at(queries, i)
       let #(#(from, where), _cache) = q
-      let cache = query.run(from, where, db)
+      let cache =
+        query.run(from, where, db)
+        // probably should need to run unique as query should take care of it
+        |> list.unique
       let pre = list.take(queries, i)
       let post = list.drop(queries, i + 1)
       let queries = list.flatten([pre, [#(#(from, where), Some(cache))], post])
@@ -111,12 +130,12 @@ pub fn update(state, action) {
     AddQuery -> {
       assert Running(db, queries, mode) = state
       let queries = list.append(queries, [#(#([], []), None)])
-      #(Running(db, queries, mode), cmd.none())
+      #(Running(db, queries, mode), update_hash(queries))
     }
     DeleteQuery(i) -> {
       assert Running(db, queries, mode) = state
       let queries = delete_at(queries, i)
-      #(Running(db, queries, mode), cmd.none())
+      #(Running(db, queries, mode), update_hash(queries))
     }
     AddVariable(i) -> {
       assert Running(db, queries, _) = state
@@ -134,7 +153,7 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), cmd.none())
+      #(Running(db, queries, OverView), update_hash(queries))
     }
     DeleteVariable(i, j) -> {
       assert Running(db, queries, _) = state
@@ -147,7 +166,7 @@ pub fn update(state, action) {
             #(#(delete_at(find, j), where), None)
           },
         )
-      #(Running(db, queries, OverView), cmd.none())
+      #(Running(db, queries, OverView), update_hash(queries))
     }
     AddPattern(i) -> {
       assert Running(db, queries, _) = state
@@ -162,20 +181,18 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), cmd.none())
+      #(Running(db, queries, OverView), update_hash(queries))
     }
     EditMatch(i, j, k) -> {
       assert Running(db, queries, _) = state
       assert Ok(#(#(_find, where), _cache)) = list.at(queries, i)
       assert Ok(pattern) = list.at(where, j)
-      io.debug(#(i, j, k))
 
       let match = case k {
         0 -> pattern.0
         1 -> pattern.1
         2 -> pattern.2
       }
-      io.debug(match)
       let selection = case match {
         query.Variable(var) -> Variable(var)
         query.Constant(S(value)) -> ConstString(value)
@@ -218,7 +235,7 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), cmd.none())
+      #(Running(db, queries, OverView), update_hash(queries))
     }
 
     DeletePattern(i, j) -> {
@@ -232,7 +249,7 @@ pub fn update(state, action) {
             #(#(find, delete_at(where, j)), None)
           },
         )
-      #(Running(db, queries, OverView), cmd.none())
+      #(Running(db, queries, OverView), update_hash(queries))
     }
     InputChange(new) -> {
       assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
@@ -377,28 +394,31 @@ fn render_edit(mode) {
   }
 }
 
-pub fn queries() {
+fn queries() {
+  case hash.decode(get_hash()) {
+    Ok(q) -> q
+    Error(_) -> default_queries()
+  }
+  |> list.map(fn(q) { #(q, None) })
+}
+
+// probably remove these all together
+fn default_queries() {
   [
     #(
-      #(
-        ["version"],
-        [
-          #(v("values"), s("version"), v("version")),
-          #(v("values"), s("driver"), s("litmus")),
-        ],
-      ),
-      None,
+      ["version"],
+      [
+        #(v("values"), s("version"), v("version")),
+        #(v("values"), s("driver"), s("litmus")),
+      ],
     ),
     #(
-      #(
-        ["driver", "version"],
-        [
-          #(v("values"), s("driver"), v("driver")),
-          #(v("values"), s("version"), v("version")),
-          #(v("values"), s("replicaCount"), i(0)),
-        ],
-      ),
-      None,
+      ["driver", "version"],
+      [
+        #(v("values"), s("driver"), v("driver")),
+        #(v("values"), s("version"), v("version")),
+        #(v("values"), s("replicaCount"), i(0)),
+      ],
     ),
   ]
 }
