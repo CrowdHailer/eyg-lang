@@ -28,7 +28,7 @@ fn value() {
   }
 }
 
-fn decoder() {
+pub fn decoder() {
   dynamic.list(dynamic.tuple3(dynamic.int, dynamic.string, value()))
 }
 
