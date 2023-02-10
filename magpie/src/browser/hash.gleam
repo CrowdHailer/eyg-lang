@@ -158,6 +158,10 @@ fn decode_one(str) {
 }
 
 pub fn decode(str) {
-  string.split(str, "&")
-  |> list.try_map(decode_one)
+  case str {
+    "" -> Ok([])
+    _ ->
+      string.split(str, "&")
+      |> list.try_map(decode_one)
+  }
 }

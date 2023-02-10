@@ -31,9 +31,22 @@ fn map_at(items, i, f) {
   Ok(list.flatten([pre, [f(item)], post]))
 }
 
+external fn add_event_listener(String, fn(Nil) -> Nil) -> Nil =
+  "" "addEventListener"
+
 pub fn run() {
-  lustre.application(init(), update, render)
-  |> lustre.start("#app")
+  assert Ok(dispatch) =
+    lustre.application(init(), update, render)
+    |> lustre.start("#app")
+
+  add_event_listener(
+    "hashchange",
+    fn(_) {
+      io.debug("Foo")
+      Nil
+      dispatch(HashChange)
+    },
+  )
 }
 
 pub type MatchSelection {
@@ -64,6 +77,7 @@ pub type App {
 
 pub type Action {
   Index
+  HashChange
   RunQuery(Int)
   AddQuery
   DeleteQuery(Int)
@@ -112,6 +126,13 @@ pub fn update(state, action) {
       let db = in_memory.create_db(triples)
       io.print("created db")
       #(Running(db, queries(), OverView), cmd.none())
+    }
+    HashChange -> {
+      let state = case state {
+        Running(db, _queries, _mode) -> Running(db, queries(), OverView)
+        other -> other
+      }
+      #(state, cmd.none())
     }
     RunQuery(i) -> {
       io.debug("running")
@@ -278,9 +299,32 @@ pub fn render(state) {
     Running(db, queries, mode) ->
       el.div(
         [class("bg-gray-200 min-h-screen p-4")],
-        list.flatten([render_edit(mode), render_notebook(db, queries, mode)]),
+        list.flatten([
+          render_edit(mode),
+          render_notebook(db, queries, mode),
+          render_examples(),
+        ]),
       )
   }
+}
+
+fn render_examples() {
+  [
+    el.div(
+      [class("max-w-4xl mx-auto p-4")],
+      [
+        el.div([class("text-gray-600 font-bold")], [el.text("Examples")]),
+        el.a(
+          [
+            attribute.href(
+              "#vmovie,smovie/year,vyear,r0,smovie/title,sAlien:1&i200,vattribute,vvalue:1,0&vdirector,sperson/name,vdirectorName,vmovie,smovie/director,r0,r2,smovie/title,vtitle,r2,smovie/cast,varnold,r4,sperson/name,sArnold Schwarzenegger:3,1",
+            ),
+          ],
+          [el.text("movies")],
+        ),
+      ],
+    ),
+  ]
 }
 
 fn render_edit(mode) {
@@ -397,30 +441,17 @@ fn render_edit(mode) {
 fn queries() {
   case hash.decode(get_hash()) {
     Ok(q) -> q
-    Error(_) -> default_queries()
+    Error(reason) -> {
+      io.debug(reason)
+      default_queries()
+    }
   }
   |> list.map(fn(q) { #(q, None) })
 }
 
 // probably remove these all together
 fn default_queries() {
-  [
-    #(
-      ["version"],
-      [
-        #(v("values"), s("version"), v("version")),
-        #(v("values"), s("driver"), s("litmus")),
-      ],
-    ),
-    #(
-      ["driver", "version"],
-      [
-        #(v("values"), s("driver"), v("driver")),
-        #(v("values"), s("version"), v("version")),
-        #(v("values"), s("replicaCount"), i(0)),
-      ],
-    ),
-  ]
+  []
 }
 
 fn render_notebook(db, queries, mode) {

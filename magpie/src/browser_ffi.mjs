@@ -1,5 +1,5 @@
 export function getHash() {
-    return window.location.hash.slice(1)
+    return decodeURIComponent(window.location.hash.slice(1))
 }
 
 export function setHash(hash) {
