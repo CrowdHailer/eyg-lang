@@ -46,6 +46,7 @@ pub type MatchSelection {
   Variable(value: String)
   ConstString(value: String)
   ConstInteger(value: Option(Int))
+  ConstBoolean(value: Bool)
 }
 
 pub type Mode {
@@ -83,6 +84,7 @@ pub type Action {
   ReplaceMatch
   DeletePattern(query: Int, pattern: Int)
   InputChange(new: String)
+  CheckChange(new: Bool)
 }
 
 // choice in edit match, or form submit info in discord
@@ -211,7 +213,7 @@ pub fn update(state, action) {
         query.Variable(var) -> Variable(var)
         query.Constant(S(value)) -> ConstString(value)
         query.Constant(I(value)) -> ConstInteger(Some(value))
-        query.Constant(B(value)) -> todo("booling select")
+        query.Constant(B(value)) -> ConstBoolean(value)
       }
 
       let mode = UpdateMatch(i, j, k, selection)
@@ -229,6 +231,7 @@ pub fn update(state, action) {
         ConstInteger(Some(value)) -> query.i(value)
         // if we have a discard could use that here
         ConstInteger(None) -> query.i(0)
+        ConstBoolean(bool) -> query.b(bool)
       }
       assert Ok(queries) =
         map_at(
@@ -273,6 +276,15 @@ pub fn update(state, action) {
         Variable(_) -> Variable(new)
         ConstString(_) -> ConstString(new)
         ConstInteger(_) -> ConstInteger(option.from_result(int.parse(new)))
+        ConstBoolean(_) -> todo("shouldn't happend because check change")
+      }
+      #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
+    }
+    CheckChange(new) -> {
+      assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
+      let selection = case selection {
+        ConstBoolean(_) -> ConstBoolean(new)
+        _ -> todo("shouldn't happend because input change")
       }
       #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
@@ -393,6 +405,19 @@ fn render_edit(mode) {
                         ],
                         [el.text("integer")],
                       ),
+                      el.button(
+                        [
+                          class(case selection {
+                            ConstBoolean(_) ->
+                              "mr-1 bg-blue-800 text-white rounded border border-blue-600 px-2"
+                            _ -> "mr-1 rounded border border-blue-600 px-2"
+                          }),
+                          event.on_click(event.dispatch(EditMatchType(ConstBoolean(
+                            False,
+                          )))),
+                        ],
+                        [el.text("boolean")],
+                      ),
                     ],
                   ),
                   el.div(
@@ -426,6 +451,17 @@ fn render_edit(mode) {
                               None -> ""
                             })),
                             attribute.type_("number"),
+                          ])
+                        ConstBoolean(value) ->
+                          el.input([
+                            class("border my-2"),
+                            event.on_click(fn(d) {
+                              // value for on input is always
+                              event.dispatch(CheckChange(!value))(d)
+                            }),
+                            attribute.value(dynamic.from("true")),
+                            attribute.checked(value),
+                            attribute.type_("checkbox"),
                           ])
                       },
                     ],
@@ -657,6 +693,16 @@ fn render_match(match, i, j, k) {
     [event.on_click(event.dispatch(EditMatch(i, j, k)))],
     [
       case match {
+        query.Constant(B(value)) ->
+          el.span(
+            [class("font-bold text-pink-400")],
+            [
+              el.text(case value {
+                True -> "true"
+                False -> "false"
+              }),
+            ],
+          )
         query.Constant(value) -> el.text(print_value(value))
         query.Variable(var) -> render_var(var)
       },
