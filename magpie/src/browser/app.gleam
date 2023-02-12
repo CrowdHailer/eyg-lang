@@ -826,45 +826,7 @@ pub fn render_results(find, results, db) {
               [],
               list.map(
                 relation,
-                fn(i) {
-                  el.td(
-                    [class("border px-1")],
-                    [
-                      case i {
-                        I(ref) ->
-                          case map.get(db.entity_index, ref) {
-                            Ok(parts) ->
-                              el.details(
-                                [],
-                                [
-                                  el.summary([], [el.text(int.to_string(ref))]),
-                                  ..list.map(
-                                    parts,
-                                    fn(triple) {
-                                      el.div(
-                                        [class("flex")],
-                                        [
-                                          el.span(
-                                            [class("flex-grow mx-2")],
-                                            [el.text(triple.1)],
-                                          ),
-                                          el.span(
-                                            [class("flex-grow mx-2")],
-                                            [el.text(print_value(triple.2))],
-                                          ),
-                                        ],
-                                      )
-                                    },
-                                  )
-                                ],
-                              )
-                            Error(Nil) -> el.text(print_value(i))
-                          }
-                        _ -> el.text(print_value(i))
-                      },
-                    ],
-                  )
-                },
+                fn(i) { el.td([class("border px-1")], [render_doc(i, db)]) },
               ),
             )
           },
@@ -872,4 +834,44 @@ pub fn render_results(find, results, db) {
       ),
     ],
   )
+}
+
+fn render_doc(value, db) {
+  case value {
+    I(ref) ->
+      case map.get(db.entity_index, ref) {
+        Ok(parts) ->
+          el.details(
+            [],
+            [
+              el.summary([], [el.text(int.to_string(ref))]),
+              el.table(
+                [],
+                [
+                  el.tbody(
+                    [],
+                    list.map(
+                      parts,
+                      fn(triple) {
+                        el.tr(
+                          [class("")],
+                          [
+                            el.td([class("border px-1")], [el.text(triple.1)]),
+                            el.td(
+                              [class("border px-1")],
+                              [render_doc(triple.2, db)],
+                            ),
+                          ],
+                        )
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          )
+        Error(Nil) -> el.text(print_value(I(ref)))
+      }
+    _ -> el.text(print_value(value))
+  }
 }
