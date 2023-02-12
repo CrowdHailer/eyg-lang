@@ -39,20 +39,13 @@ pub fn run() {
     lustre.application(init(), update, render)
     |> lustre.start("#app")
 
-  add_event_listener(
-    "hashchange",
-    fn(_) {
-      io.debug("Foo")
-      Nil
-      dispatch(HashChange)
-    },
-  )
+  add_event_listener("hashchange", fn(_) { dispatch(HashChange) })
 }
 
 pub type MatchSelection {
   Variable(value: String)
   ConstString(value: String)
-  ConstInteger(value: Int)
+  ConstInteger(value: Option(Int))
 }
 
 pub type Mode {
@@ -217,7 +210,7 @@ pub fn update(state, action) {
       let selection = case match {
         query.Variable(var) -> Variable(var)
         query.Constant(S(value)) -> ConstString(value)
-        query.Constant(I(value)) -> ConstInteger(value)
+        query.Constant(I(value)) -> ConstInteger(Some(value))
         query.Constant(B(value)) -> todo("booling select")
       }
 
@@ -233,7 +226,9 @@ pub fn update(state, action) {
       let match = case selection {
         Variable(var) -> query.Variable(var)
         ConstString(value) -> query.s(value)
-        ConstInteger(value) -> query.i(value)
+        ConstInteger(Some(value)) -> query.i(value)
+        // if we have a discard could use that here
+        ConstInteger(None) -> query.i(0)
       }
       assert Ok(queries) =
         map_at(
@@ -277,7 +272,7 @@ pub fn update(state, action) {
       let selection = case selection {
         Variable(_) -> Variable(new)
         ConstString(_) -> ConstString(new)
-        _ -> todo("input change")
+        ConstInteger(_) -> ConstInteger(option.from_result(int.parse(new)))
       }
       #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
@@ -349,16 +344,23 @@ fn render_edit(mode) {
                 [
                   el.div(
                     [],
-                    [el.h2([class("text-xl")], [el.text("update match")])],
+                    [
+                      el.h2(
+                        [class("text-xl my-4 border-b")],
+                        [el.text("update match")],
+                      ),
+                    ],
                   ),
                   el.div(
                     [],
                     [
                       el.button(
                         [
-                          class(
-                            "bg-blue-300 rounded border border-blue-600 px-2",
-                          ),
+                          class(case selection {
+                            Variable(_) ->
+                              "mr-1 bg-blue-800 text-white rounded border border-blue-600 px-2"
+                            _ -> "mr-1 rounded border border-blue-600 px-2"
+                          }),
                           event.on_click(event.dispatch(EditMatchType(Variable(
                             "x",
                           )))),
@@ -367,9 +369,11 @@ fn render_edit(mode) {
                       ),
                       el.button(
                         [
-                          class(
-                            "bg-blue-300 rounded border border-blue-600 px-2",
-                          ),
+                          class(case selection {
+                            ConstString(_) ->
+                              "mr-1 bg-blue-800 text-white rounded border border-blue-600 px-2"
+                            _ -> "mr-1 rounded border border-blue-600 px-2"
+                          }),
                           event.on_click(event.dispatch(EditMatchType(ConstString(
                             "",
                           )))),
@@ -378,11 +382,13 @@ fn render_edit(mode) {
                       ),
                       el.button(
                         [
-                          class(
-                            "bg-blue-300 rounded border border-blue-600 px-2",
-                          ),
+                          class(case selection {
+                            ConstInteger(_) ->
+                              "mr-1 bg-blue-800 text-white rounded border border-blue-600 px-2"
+                            _ -> "mr-1 rounded border border-blue-600 px-2"
+                          }),
                           event.on_click(event.dispatch(EditMatchType(ConstInteger(
-                            0,
+                            None,
                           )))),
                         ],
                         [el.text("integer")],
@@ -395,7 +401,7 @@ fn render_edit(mode) {
                       case selection {
                         Variable(var) ->
                           el.input([
-                            class("border mx-2"),
+                            class("border my-2"),
                             event.on_input(fn(value, d) {
                               event.dispatch(InputChange(value))(d)
                             }),
@@ -403,7 +409,7 @@ fn render_edit(mode) {
                           ])
                         ConstString(value) ->
                           el.input([
-                            class("border mx-2"),
+                            class("border my-2"),
                             event.on_input(fn(value, d) {
                               event.dispatch(InputChange(value))(d)
                             }),
@@ -411,11 +417,15 @@ fn render_edit(mode) {
                           ])
                         ConstInteger(value) ->
                           el.input([
-                            class("border mx-2"),
+                            class("border my-2"),
                             event.on_input(fn(value, d) {
                               event.dispatch(InputChange(value))(d)
                             }),
-                            attribute.value(dynamic.from(int.to_string(value))),
+                            attribute.value(dynamic.from(case value {
+                              Some(value) -> int.to_string(value)
+                              None -> ""
+                            })),
+                            attribute.type_("number"),
                           ])
                       },
                     ],
