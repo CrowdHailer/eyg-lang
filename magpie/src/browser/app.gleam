@@ -2,6 +2,7 @@ import gleam/dynamic.{Dynamic}
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
 import lustre
@@ -517,7 +518,7 @@ fn render_notebook(db, queries, mode) {
             el.text(int.to_string(list.length(db.triples))),
           ],
         ),
-        ..list.index_map(queries, render_query(mode))
+        ..list.index_map(queries, render_query(mode, db))
         |> list.append([
           el.button(
             [
@@ -558,7 +559,7 @@ fn where_vars(where) {
   |> list.unique
 }
 
-fn render_query(mode) {
+fn render_query(mode, db) {
   fn(i, state) {
     let #(query, cache) = state
     let #(find, where): #(_, List(query.Pattern)) = query
@@ -681,7 +682,7 @@ fn render_query(mode) {
                 ),
               ],
             )
-          Some(results) -> render_results(find, results)
+          Some(results) -> render_results(find, results, db)
         },
       ],
     )
@@ -720,7 +721,7 @@ fn print_value(value) {
   }
 }
 
-pub fn render_results(find, results) {
+pub fn render_results(find, results, db) {
   el.table(
     [class("my-2")],
     [
@@ -746,7 +747,43 @@ pub fn render_results(find, results) {
               list.map(
                 relation,
                 fn(i) {
-                  el.td([class("border px-1")], [el.text(print_value(i))])
+                  el.td(
+                    [class("border px-1")],
+                    [
+                      case i {
+                        I(ref) ->
+                          case map.get(db.entity_index, ref) {
+                            Ok(parts) ->
+                              el.details(
+                                [],
+                                [
+                                  el.summary([], [el.text(int.to_string(ref))]),
+                                  ..list.map(
+                                    parts,
+                                    fn(triple) {
+                                      el.div(
+                                        [class("flex")],
+                                        [
+                                          el.span(
+                                            [class("flex-grow mx-2")],
+                                            [el.text(triple.1)],
+                                          ),
+                                          el.span(
+                                            [class("flex-grow mx-2")],
+                                            [el.text(print_value(triple.2))],
+                                          ),
+                                        ],
+                                      )
+                                    },
+                                  )
+                                ],
+                              )
+                            Error(Nil) -> el.text(print_value(i))
+                          }
+                        _ -> el.text(print_value(i))
+                      },
+                    ],
+                  )
                 },
               ),
             )
