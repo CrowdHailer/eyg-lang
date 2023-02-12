@@ -308,7 +308,7 @@ pub fn render(state) {
       el.div(
         [class("bg-gray-200 min-h-screen p-4")],
         list.flatten([
-          render_edit(mode),
+          render_edit(mode, db),
           render_notebook(db, queries, mode),
           render_examples(),
         ]),
@@ -335,9 +335,9 @@ fn render_examples() {
   ]
 }
 
-fn render_edit(mode) {
+fn render_edit(mode, db) {
   case mode {
-    UpdateMatch(_, _, _, selection) -> [
+    UpdateMatch(_, _, k, selection) -> [
       el.div(
         [
           class(
@@ -423,53 +423,133 @@ fn render_edit(mode) {
                   ),
                   el.div(
                     [],
-                    [
-                      case selection {
-                        Variable(var) ->
-                          el.input([
-                            class("border my-2"),
-                            event.on_input(fn(value, d) {
-                              event.dispatch(InputChange(value))(d)
-                            }),
-                            attribute.value(dynamic.from(var)),
-                          ])
-                        ConstString(value) ->
+                    case selection {
+                      Variable(var) -> [
+                        el.input([
+                          class("border my-2"),
+                          event.on_input(fn(value, d) {
+                            event.dispatch(InputChange(value))(d)
+                          }),
+                          attribute.value(dynamic.from(var)),
+                        ]),
+                      ]
+                      ConstString(value) -> {
+                        let suggestions =
+                          case k {
+                            0 -> []
+                            1 ->
+                              map.to_list(db.attribute_index)
+                              |> list.map(fn(pair) {
+                                let #(key, triples) = pair
+                                #(key, list.length(triples))
+                              })
+                            2 ->
+                              map.to_list(db.value_index)
+                              |> list.filter_map(fn(pair) {
+                                let #(key, triples) = pair
+                                case key {
+                                  S(value) -> Ok(#(value, list.length(triples)))
+                                  _ -> Error(Nil)
+                                }
+                              })
+                          }
+                          |> list.filter(fn(pair) {
+                            let #(key, count) = pair
+                            string.starts_with(key, value)
+                          })
+
+                        [
                           el.input([
                             class("border my-2"),
                             event.on_input(fn(value, d) {
                               event.dispatch(InputChange(value))(d)
                             }),
                             attribute.value(dynamic.from(value)),
-                          ])
-                        ConstInteger(value) ->
-                          el.input([
-                            class("border my-2"),
-                            event.on_input(fn(value, d) {
-                              event.dispatch(InputChange(value))(d)
-                            }),
-                            attribute.value(dynamic.from(case value {
-                              Some(value) -> int.to_string(value)
-                              None -> ""
-                            })),
-                            attribute.type_("number"),
-                          ])
-                        ConstBoolean(value) ->
-                          el.input([
-                            class("border my-2"),
-                            event.on_click(fn(d) {
-                              // value for on input is always
-                              event.dispatch(CheckChange(!value))(d)
-                            }),
-                            attribute.value(dynamic.from("true")),
-                            attribute.checked(value),
-                            attribute.type_("checkbox"),
-                          ])
-                      },
-                    ],
+                          ]),
+                          el.ul(
+                            [class("border-l-4 border-blue-800 bg-blue-200")],
+                            list.map(
+                              list.take(suggestions, 20),
+                              fn(pair) {
+                                let #(s, count) = pair
+                                let matched =
+                                  string.slice(s, 0, string.length(value))
+                                let rest =
+                                  string.slice(
+                                    s,
+                                    string.length(value),
+                                    string.length(s),
+                                  )
+                                el.li(
+                                  [],
+                                  [
+                                    el.button(
+                                      [
+                                        event.on_click(fn(d) {
+                                          event.dispatch(InputChange(s))(d)
+                                          // Is it a bad idea to dispatch multiple events
+                                          event.dispatch(ReplaceMatch)(d)
+                                        }),
+                                        class("flex w-full"),
+                                      ],
+                                      [
+                                        el.span(
+                                          [class("font-bold")],
+                                          [el.text(matched)],
+                                        ),
+                                        el.span([], [el.text(rest)]),
+                                        el.span(
+                                          [class("ml-auto mr-2")],
+                                          [
+                                            el.text(string.concat([
+                                              "(",
+                                              int.to_string(count),
+                                              ")",
+                                            ])),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                )
+                              },
+                            ),
+                          ),
+                        ]
+                      }
+
+                      ConstInteger(value) -> [
+                        el.input([
+                          class("border my-2"),
+                          event.on_input(fn(value, d) {
+                            event.dispatch(InputChange(value))(d)
+                          }),
+                          attribute.value(dynamic.from(case value {
+                            Some(value) -> int.to_string(value)
+                            None -> ""
+                          })),
+                          attribute.type_("number"),
+                        ]),
+                      ]
+                      ConstBoolean(value) -> [
+                        el.input([
+                          class("border my-2"),
+                          event.on_click(fn(d) {
+                            // value for on input is always
+                            event.dispatch(CheckChange(!value))(d)
+                          }),
+                          attribute.value(dynamic.from("true")),
+                          attribute.checked(value),
+                          attribute.type_("checkbox"),
+                        ]),
+                      ]
+                    },
                   ),
                   el.button(
                     [
-                      class("bg-blue-300 rounded border border-blue-600 px-2"),
+                      class(
+                        "bg-blue-300 rounded border border-blue-600 px-2 my-2",
+                      ),
                       event.on_click(event.dispatch(ReplaceMatch)),
                     ],
                     [el.text("Set match")],
