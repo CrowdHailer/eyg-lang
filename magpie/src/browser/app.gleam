@@ -802,35 +802,49 @@ fn print_value(value) {
 }
 
 pub fn render_results(find, results, db) {
-  el.table(
-    [class("my-2")],
+  el.div(
+    [class("bg-blue-100 p-1 my-2")],
     [
-      el.thead(
+      el.div(
         [],
+        [el.text("rows "), el.text(int.to_string(list.length(results)))],
+      ),
+      el.table(
+        [class("")],
         [
-          el.tr(
+          el.thead(
+            [],
+            [
+              el.tr(
+                [],
+                list.map(
+                  find,
+                  fn(var) { el.th([class("font-bold")], [el.text(var)]) },
+                ),
+              ),
+            ],
+          ),
+          el.tbody(
             [],
             list.map(
-              find,
-              fn(var) { el.th([class("font-bold")], [el.text(var)]) },
+              results,
+              fn(relation) {
+                el.tr(
+                  [],
+                  list.map(
+                    relation,
+                    fn(i) {
+                      el.td(
+                        [class("border border-white px-1")],
+                        [render_doc(i, db)],
+                      )
+                    },
+                  ),
+                )
+              },
             ),
           ),
         ],
-      ),
-      el.tbody(
-        [],
-        list.map(
-          results,
-          fn(relation) {
-            el.tr(
-              [],
-              list.map(
-                relation,
-                fn(i) { el.td([class("border px-1")], [render_doc(i, db)]) },
-              ),
-            )
-          },
-        ),
       ),
     ],
   )
