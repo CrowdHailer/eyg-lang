@@ -1,4 +1,4 @@
-external fn do_read_file_sync(path: String, String) -> String =
+external fn do_read_file_sync(String, String) -> String =
   "fs" "readFileSync"
 
 /// Returns the contents of the path as a string.
