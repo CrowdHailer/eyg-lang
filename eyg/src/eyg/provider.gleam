@@ -98,7 +98,10 @@ pub fn language_term_to_expression(term) -> e.Expression {
 pub fn expand(generator, inferred, path) {
   try fit =
     inference.type_of(inferred, path)
-    |> result.map_error(fn(_) { todo("this inf error") })
+    |> result.map_error(fn(reason) {
+      io.debug(path)
+      todo("this inf error")
+    })
   try needed = case fit {
     t.Union(row) ->
       // TODO ordered fields fn
@@ -109,7 +112,10 @@ pub fn expand(generator, inferred, path) {
   }
 
   io.debug(#("needed", needed))
-  assert r.Value(g) = r.eval(generator, [], id)
+  // TODO needs variables available to the generator
+  assert r.Value(g) =
+    r.eval(generator, [], id)
+    |> io.debug
   assert r.Value(result) = r.eval_call(g, type_to_language_term(needed), id)
 
   assert r.Tagged(tag, value) = result
@@ -126,4 +132,75 @@ pub fn expand(generator, inferred, path) {
       Ok(code)
     }
   }
+}
+
+// =------------------------
+
+// TODO call pre eval
+fn do_expand(source, inferred, path, env) {
+  case source {
+    e.Variable(label) -> Ok(e.Variable(label))
+    e.Lambda(label, body) -> {
+      try body = do_expand(body, inferred, [0, ..path], env)
+      Ok(e.Lambda(label, body))
+    }
+    e.Apply(func, argument) -> {
+      try func = do_expand(func, inferred, [0, ..path], env)
+      try argument = do_expand(argument, inferred, [1, ..path], env)
+      Ok(e.Apply(func, argument))
+    }
+    e.Let(label, definition, body) -> {
+      try definition =
+        do_expand(
+          definition,
+          inferred,
+          [0, ..path],
+          [#(label, definition), ..env],
+        )
+      try body = do_expand(body, inferred, [1, ..path], env)
+      Ok(e.Let(label, definition, body))
+    }
+
+    e.Cons -> Ok(e.Cons)
+    e.Tail -> Ok(e.Tail)
+
+    e.Integer(value) -> Ok(e.Integer(value))
+    e.Binary(value) -> Ok(e.Binary(value))
+    e.Vacant -> Ok(e.Vacant)
+    e.Empty -> Ok(e.Empty)
+    e.Extend(label) -> Ok(e.Extend(label))
+    e.Select(label) -> Ok(e.Select(label))
+    e.Overwrite(label) -> Ok(e.Overwrite(label))
+    e.Tag(label) -> Ok(e.Tag(label))
+    e.Case(label) -> Ok(e.Case(label))
+    e.NoCases -> Ok(e.NoCases)
+    e.Perform(label) -> Ok(e.Perform(label))
+    e.Handle(label) -> Ok(e.Handle(label))
+    // e.Let(label, value, then) -> {
+    //   let value = do_expand(value, inferred, step(path, 0), env)
+    //   //   assert r.Value(term) =
+    //   //     r.eval(value, env, id)
+    //   //     |> io.debug
+    //   let then =
+    //     do_expand(then, inferred, step(path, 1), [#(label, value), ..env])
+    //   e.Let(label, value, then)
+    // }
+    // e.Lambda(param, body) -> e.Lambda(param, body)
+    // DO we always want a fn probably not
+    e.Provider(generator) -> {
+      // TODO expand should probably find something callable for generator, rather than an AST
+      // and at this point we do shrink a
+      // pass through new runtime value eval every thing with my parameters kind in the env
+      // slight eval 
+      // OORR put path info on interpreter, probably good.
+      // pass Waiting or normal runtime through. 
+      io.debug(env)
+      expand(generator, inferred, list.reverse(path))
+    }
+  }
+  //   need env at the time
+}
+
+pub fn pre_eval(source, inferred) {
+  do_expand(source, inferred, [], [])
 }

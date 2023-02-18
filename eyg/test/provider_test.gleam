@@ -17,34 +17,6 @@ fn id(x) {
   r.Value(x)
 }
 
-fn do_expand(source, inferred, path, env) {
-  case source {
-    // e.Let(label, value, then) -> {
-    //   let value = do_expand(value, inferred, step(path, 0), env)
-    //   //   assert r.Value(term) =
-    //   //     r.eval(value, env, id)
-    //   //     |> io.debug
-    //   let then =
-    //     do_expand(then, inferred, step(path, 1), [#(label, value), ..env])
-    //   e.Let(label, value, then)
-    // }
-    // e.Lambda(param, body) -> e.Lambda(param, body)
-    // DO we always want a fn probably not
-    e.Provider(generator) -> provider.expand(generator, inferred, path)
-
-    //   need env at the time
-    e.Vacant -> Ok(e.Vacant)
-    _ -> {
-      io.debug(source)
-      todo("nooooop")
-    }
-  }
-}
-
-fn expand(source, inferred) {
-  do_expand(source, inferred, [], [])
-}
-
 // e.case and case_of
 // builders of eyg versions
 // These ast helpers need to end up in the code
@@ -133,7 +105,7 @@ pub fn type_string_test() {
     )
   inference.sound(inferred)
   |> should.equal(Ok(Nil))
-  assert Ok(expanded) = expand(source, inferred)
+  assert Ok(expanded) = provider.pre_eval(source, inferred)
   assert r.Value(result) = r.eval(expanded, [], id)
   assert r.Tagged("Ok", program) = result
   r.eval_call(program, r.Integer(1), id)
@@ -157,7 +129,7 @@ pub fn type_string_test() {
 //   // inferred.types
 //   // |> io.debug
 //   // //   r.eval(source, [], id)
-//   // expand(source, inferred)
+//   // provider.pre_eval(source, inferred)
 //   // |> io.debug
 
 //   todo("test")

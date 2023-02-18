@@ -7,6 +7,7 @@ import eyg/runtime/interpreter as r
 import eyg/analysis/inference
 import harness/stdlib
 import harness/effect
+import eyg/provider
 
 fn handlers() {
   effect.init()
@@ -35,6 +36,13 @@ pub fn run(source, args) {
   case inference.sound(inferred) {
     Ok(Nil) -> {
       let hrstart = start()
+      let prog = case provider.pre_eval(prog, inferred) {
+        Ok(prog) -> prog
+        Error(reason) -> {
+          io.debug(#("preeval failed", reason))
+          todo
+        }
+      }
       assert Ok(r.Integer(return)) =
         r.run(
           prog,
