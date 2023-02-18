@@ -20,8 +20,6 @@ pub type Term {
   Record(Row(Term))
 }
 
-pub const unit = Record(Closed)
-
 pub type Variable {
   Term(Int)
   Row(Int)
@@ -56,3 +54,9 @@ fn ftv_effect(row) {
       set.union(set.union(ftv(from), ftv(to)), ftv_effect(tail))
   }
 }
+
+pub const unit = Record(Closed)
+
+pub const boolean = Union(
+  Extend("True", Record(Closed), Extend("False", Record(Closed), Closed)),
+)

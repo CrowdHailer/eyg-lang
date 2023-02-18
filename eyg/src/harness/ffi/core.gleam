@@ -8,14 +8,6 @@ pub const true = r.Tagged("True", r.Record([]))
 
 pub const false = r.Tagged("False", r.Record([]))
 
-pub const boolean = t.Union(
-  t.Extend(
-    "True",
-    t.Record(t.Closed),
-    t.Extend("False", t.Record(t.Closed), t.Closed),
-  ),
-)
-
 pub fn equal() {
   let el = unbound()
   lambda(

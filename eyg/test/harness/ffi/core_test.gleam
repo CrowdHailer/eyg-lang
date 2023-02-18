@@ -17,7 +17,7 @@ pub fn unequal_test() {
   let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
 
   inference.type_of(sub, [])
-  |> should.equal(Ok(core.boolean))
+  |> should.equal(Ok(t.boolean))
 
   r.eval(prog, values, r.Value)
   |> should.equal(r.Value(core.false))
@@ -33,7 +33,7 @@ pub fn equal_test() {
   let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
 
   inference.type_of(sub, [])
-  |> should.equal(Ok(core.boolean))
+  |> should.equal(Ok(t.boolean))
 
   r.eval(prog, values, r.Value)
   |> should.equal(r.Value(core.true))
