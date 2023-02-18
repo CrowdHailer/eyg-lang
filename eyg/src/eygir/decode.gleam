@@ -30,7 +30,7 @@ pub fn decoder(x) {
     "nocases" -> fn(_) { Ok(e.NoCases) }
     "perform" -> decode1(e.Perform, label())
     "handle" -> decode1(e.Handle, label())
-
+    "provider" -> decode1(e.Provider, field("generator", decoder))
     incorrect -> fn(_) { Error([DecodeError("node", incorrect, ["0"])]) }
   }(
     x,

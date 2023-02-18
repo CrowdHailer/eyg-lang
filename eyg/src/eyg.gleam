@@ -8,7 +8,7 @@ import platforms/serverless
 
 // zero arity
 pub fn main() {
-  do_main(list.drop(nodejs.args(), 3))
+  do_main(list.drop(nodejs.args(), 2))
 }
 
 // exit can't be used on serverless because the run function returns with the server as a promise

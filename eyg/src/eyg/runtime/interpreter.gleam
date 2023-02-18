@@ -174,7 +174,7 @@ fn step(exp: e.Expression, env, k) {
     e.Case(label) -> continue(k, match(label))
     e.NoCases -> continue(k, Builtin(fn(_, _) { Abort(NoCases) }))
     e.Handle(label) -> continue(k, build_runner(label))
-    e.Provider(generator) -> continue(k, provider(generator))
+    e.Provider(generator) -> todo("no generators")
   }
 }
 

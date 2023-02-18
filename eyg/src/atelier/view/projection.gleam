@@ -77,7 +77,7 @@ pub fn do_render(exp, br, loc, inferred) {
     ]
     e.Perform(label) -> [perform(label, loc, inferred)]
     e.Handle(label) -> [handle(label, loc, inferred)]
-    e.Provider(generator) -> todo("with provider")
+    e.Provider(generator) -> [provider(generator, br, loc, inferred)]
   }
 }
 
@@ -367,6 +367,18 @@ fn handle(label, loc, inferred) {
 
   [click(loc), classes(highlight(target, alert))]
   |> span([span([class("text-gray-400")], [text("handle ")]), text(label)])
+}
+
+fn provider(generator, br, loc, inferred) {
+  let target = focused(loc)
+  let alert = error(loc, inferred)
+  let rendered = [
+    span([click(loc)], [span([class("text-gray-400")], [text("gen")])]),
+    text("("),
+    ..render_block(generator, br, child(loc, 0), inferred)
+    |> list.append([text(")")])
+  ]
+  let el = span([classes(highlight(target, alert))], rendered)
 }
 
 // location is separate to path, extract but it may be view layer only.

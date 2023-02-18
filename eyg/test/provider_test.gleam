@@ -10,72 +10,12 @@ import eyg/provider
 import gleam/result
 import gleeunit/should
 
-fn id(x) {
-  r.Value(x)
-}
-
-fn step(path, i) {
-  list.append(path, [i])
-}
-
-const r_unit = r.Record([])
-
-fn type_to_language_term(type_) {
-  case type_ {
-    t.Unbound(i) -> r.Tagged("Unbound", r.Integer(i))
-    t.Integer -> r.Tagged("Integer", r_unit)
-    t.Binary -> r.Tagged("Binary", r_unit)
-    t.LinkedList(item) -> r.Tagged("List", type_to_language_term(item))
-    t.Fun(from, effects, to) -> {
-      let from = type_to_language_term(from)
-      let to = type_to_language_term(to)
-      r.Tagged("Lambda", r.Record([#("from", from), #("to", to)]))
-    }
-    t.Record(row) -> r.Tagged("Record", row_to_language_term(row))
-    t.Union(row) -> r.Tagged("Union", row_to_language_term(row))
-  }
-}
-
-fn row_to_language_term(row) {
-  todo("row_to_language_term")
-}
-
-fn language_term_to_expression(term) -> e.Expression {
-  assert r.Tagged(node, inner) = term
-  case node {
-    "Variable" -> {
-      assert r.Binary(value) = inner
-      e.Variable(value)
-    }
-    "Lambda" -> {
-      assert r.Record(fields) = inner
-      assert Ok(r.Binary(param)) = list.key_find(fields, "label")
-      assert Ok(body) = list.key_find(fields, "body")
-      e.Lambda(param, language_term_to_expression(body))
-    }
-    "Binary" -> {
-      assert r.Binary(value) = inner
-      e.Binary(value)
-    }
-    "Integer" -> {
-      assert r.Integer(value) = inner
-      e.Integer(value)
-    }
-  }
-}
-
-// TODO deduplicate fn
-fn field(row: t.Row(a), label) {
-  case row {
-    t.Open(_) | t.Closed -> Error(Nil)
-    t.Extend(l, t, _) if l == label -> Ok(t)
-    t.Extend(_, _, tail) -> field(tail, label)
-  }
-}
-
 // call provide and prewalk
 // path in interpreter, loader just needs to be near id function and return AST. 
 // UI for provider, test with format.
+fn id(x) {
+  r.Value(x)
+}
 
 fn do_expand(source, inferred, path, env) {
   case source {
@@ -90,38 +30,7 @@ fn do_expand(source, inferred, path, env) {
     // }
     // e.Lambda(param, body) -> e.Lambda(param, body)
     // DO we always want a fn probably not
-    e.Provider(generator) -> {
-      try fit =
-        inference.type_of(inferred, path)
-        |> result.map_error(fn(_) { todo("this inf error") })
-      try needed = case fit {
-        t.Union(row) ->
-          // TODO ordered fields fn
-          field(row, "Ok")
-          |> result.map_error(fn(_) { "no Ok field" })
-
-        _ -> Error("not a union")
-      }
-
-      io.debug(#("needed", needed))
-      assert r.Value(g) = r.eval(generator, [], id)
-      assert r.Value(result) = r.eval_call(g, type_to_language_term(needed), id)
-
-      assert r.Tagged(tag, value) = result
-      case tag {
-        "Ok" -> {
-          let generated = language_term_to_expression(value)
-          io.debug(#("generated", generated))
-          let inferred = inference.infer(map.new(), generated, needed, t.Closed)
-          io.debug(inference.sound(inferred))
-          let code = case inference.sound(inferred) {
-            Ok(Nil) -> e.Apply(e.Tag("Ok"), generated)
-            Error(_) -> e.Apply(e.Tag("Error"), e.unit)
-          }
-          Ok(code)
-        }
-      }
-    }
+    e.Provider(generator) -> provider.expand(generator, inferred, path)
 
     //   need env at the time
     e.Vacant -> Ok(e.Vacant)
@@ -141,7 +50,7 @@ fn expand(source, inferred) {
 // These ast helpers need to end up in the code
 fn cast_term(ast) {
   assert r.Value(value) = r.eval(ast, [], id)
-  language_term_to_expression(value)
+  provider.language_term_to_expression(value)
 }
 
 pub fn builder_test() {
@@ -202,16 +111,17 @@ pub fn type_string_test() {
     )
 
   assert r.Value(g) = r.eval(generator, [], id)
-  assert r.Value(result) = r.eval_call(g, type_to_language_term(t.Integer), id)
+  assert r.Value(result) =
+    r.eval_call(g, provider.type_to_language_term(t.Integer), id)
   result
   |> should.equal(r.error(r.Binary("not a lambda")))
 
-  let hole = type_to_language_term(t.Fun(t.Binary, t.Closed, t.Binary))
+  let hole = provider.type_to_language_term(t.Fun(t.Binary, t.Closed, t.Binary))
   assert r.Value(result) = r.eval_call(g, hole, id)
   assert r.Tagged("Ok", code) = result
   // |> should.equal(r.error(r.Binary("not a lambda")))
   code
-  |> language_term_to_expression
+  |> provider.language_term_to_expression
   |> should.equal(e.Lambda("_", e.Binary("is binary")))
   let source = e.Provider(generator)
   let inferred =

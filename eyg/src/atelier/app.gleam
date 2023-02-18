@@ -119,7 +119,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "f" -> Ok(abstract(act, state))
     Navigate(act), "g" -> select(act, state)
     Navigate(act), "h" -> handle(act, state)
-    // Navigate(act), "j" -> ("down probably not")
+    Navigate(act), "j" -> provider(act, state)
     // Navigate(act), "k" -> ("up probably not")
     // Navigate(act), "l" -> ("right probably not")
     Navigate(_act), "z" -> undo(state)
@@ -345,6 +345,17 @@ fn handle(act, state) {
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
   }
+}
+
+fn provider(act, state) {
+  case act.target {
+    e.Let(_label, _value, _then) -> Error("can't handle on let")
+    exp -> {
+      let source = act.update(e.Provider(exp))
+      update_source(state, source)
+    }
+  }
+  // Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
 }
 
 fn perform(act, state) {

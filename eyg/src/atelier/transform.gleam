@@ -22,6 +22,7 @@ fn step(exp, i) {
     e.Apply(func, arg), 1 -> Ok(#(arg, e.Apply(func, _)))
     e.Let(label, value, then), 0 -> Ok(#(value, e.Let(label, _, then)))
     e.Let(label, value, then), 1 -> Ok(#(then, e.Let(label, value, _)))
+    e.Provider(generator), 0 -> Ok(#(generator, e.Provider))
     _, _ -> Error("invalid path")
   }
 }
