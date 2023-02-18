@@ -31,6 +31,7 @@ pub fn lambda(param, body) {
   )
 }
 
+// TODO built in Type and AST types as can't do recursive
 // TODO test below
 fn id(x) {
   r.Value(x)
@@ -112,11 +113,9 @@ pub fn expand(generator, inferred, path) {
   }
 
   io.debug(#("needed", needed))
-  // TODO needs variables available to the generator
-  assert r.Value(g) =
-    r.eval(generator, [], id)
-    |> io.debug
-  assert r.Value(result) = r.eval_call(g, type_to_language_term(needed), id)
+
+  assert r.Value(result) =
+    r.eval_call(generator, type_to_language_term(needed), id)
 
   assert r.Tagged(tag, value) = result
   case tag {
@@ -191,10 +190,16 @@ fn do_expand(source, inferred, path, env) {
       // TODO expand should probably find something callable for generator, rather than an AST
       // and at this point we do shrink a
       // pass through new runtime value eval every thing with my parameters kind in the env
-      // slight eval 
+      // slight eval
       // OORR put path info on interpreter, probably good.
-      // pass Waiting or normal runtime through. 
+      // pass Waiting or normal runtime through.
       io.debug(env)
+      // TODO needs variables available to the generator
+      assert r.Value(generator) =
+        r.eval(generator, [], id)
+        |> io.debug
+
+      // expand needs a runtime value, with env captured, so semantics of env management don't need to be understood
       expand(generator, inferred, list.reverse(path))
     }
   }

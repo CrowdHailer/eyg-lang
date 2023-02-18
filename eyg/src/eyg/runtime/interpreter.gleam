@@ -44,6 +44,7 @@ fn handle(return, extrinsic) {
   }
 }
 
+// TODO term and to string in own file
 pub type Term {
   Integer(value: Int)
   Binary(value: String)
