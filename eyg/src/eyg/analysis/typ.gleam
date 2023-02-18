@@ -57,6 +57,35 @@ fn ftv_effect(row) {
 
 pub const unit = Record(Closed)
 
-pub const boolean = Union(
-  Extend("True", Record(Closed), Extend("False", Record(Closed), Closed)),
+pub const boolean = Union(Extend("True", unit, Extend("False", unit, Closed)))
+
+pub fn result(value, reason) {
+  Union(Extend("Ok", value, Extend("Error", reason, Closed)))
+}
+
+// TODO how do I represent recursive types here
+pub const type_ = Union(
+  Extend(
+    "Unbound",
+    Integer,
+    Extend(
+      "Integer",
+      unit,
+      Extend(
+        "Binary",
+        unit,
+        Extend(
+          "List",
+          unit,
+          Extend(
+            "Lambda",
+            Record(Extend("from", unit, Extend("to", unit, Closed))),
+            Extend("Record", unit, Extend("Union", unit, Closed)),
+          ),
+        ),
+      ),
+    ),
+  ),
 )
+
+pub const expression = Union(Extend("Binary", Binary, Closed))

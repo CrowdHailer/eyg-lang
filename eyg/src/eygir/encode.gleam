@@ -32,6 +32,9 @@ pub fn encode(exp) {
     e.NoCases -> node("nocases", [])
     e.Perform(x) -> node("perform", [label(x)])
     e.Handle(x) -> node("handle", [label(x)])
+    // TODO test, maybe quote is better name
+    e.Provider(generator) ->
+      node("provider", [#("generator", encode(generator))])
   }
 }
 

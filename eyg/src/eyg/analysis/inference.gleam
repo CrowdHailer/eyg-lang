@@ -288,6 +288,21 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         path,
       )
     }
+    e.Provider(generator) -> {
+      let t_gen = t.Fun(t.type_, t.Closed, t.result(t.expression, t.Binary))
+      // TODO need to use values for type and expression
+      let t_gen =
+        t.Fun(
+          t.Unbound(fresh(ref)),
+          t.Closed,
+          t.result(t.Unbound(fresh(ref)), t.Binary),
+        )
+
+      let s0 = do_infer(env, generator, t_gen, t.Closed, ref, [0, ..path])
+      let found = t.result(t.Unbound(fresh(ref)), t.unit)
+      let s1 = unify(apply(s0, typ), found, ref, path)
+      compose(s0, s1)
+    }
   }
   |> compose(Infered(
     sub.none(),

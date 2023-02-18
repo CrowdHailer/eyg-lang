@@ -265,6 +265,7 @@ fn insert(act, state) {
     e.NoCases -> Error("no cases")
     e.Perform(label) -> Ok(write(label, e.Perform))
     e.Handle(label) -> Ok(write(label, e.Handle))
+    e.Provider(generator) -> todo("gen prov insert")
   }
 
   Ok(WorkSpace(..state, mode: mode))

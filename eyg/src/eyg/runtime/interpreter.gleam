@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
@@ -51,6 +52,10 @@ pub type Term {
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
   Builtin(func: fn(Term, fn(Term) -> Return) -> Return)
+}
+
+pub fn error(value) {
+  Tagged("Error", value)
 }
 
 // This might not give in runtime core, more runtime presentation
@@ -169,6 +174,7 @@ fn step(exp: e.Expression, env, k) {
     e.Case(label) -> continue(k, match(label))
     e.NoCases -> continue(k, Builtin(fn(_, _) { Abort(NoCases) }))
     e.Handle(label) -> continue(k, build_runner(label))
+    e.Provider(generator) -> continue(k, provider(generator))
   }
 }
 
@@ -304,3 +310,17 @@ pub fn builtin3(f) {
     )
   })
 }
+
+pub fn provider(generator) {
+  io.debug(#("generator", generator))
+  // I could return a lazy value but would need to reverse everything i.e. turn runtime value into thing
+  // It's not necessary to have provider return a function
+  // could pass lazy value to everything but would also get executed more than once because when
+  // pulling a record field we only know its a type of at least that value and we don't know what to pass inside
+  Builtin(fn(func, k) {
+    io.debug(func)
+    // io.debug(type_)
+    todo("error should be expanded OR can I take type from runtime")
+  })
+}
+// Path information in interpreter which is available to provider

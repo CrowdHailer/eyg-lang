@@ -30,6 +30,8 @@ pub type Expression {
   // do/act/effect(effect is a verb and noun)
   Perform(label: String)
   Handle(label: String)
+  // Macro maybe
+  Provider(Expression)
 }
 
 pub const unit = Empty
@@ -37,3 +39,11 @@ pub const unit = Empty
 pub const true = Apply(Tag("True"), unit)
 
 pub const false = Apply(Tag("False"), unit)
+
+pub fn ok(value) {
+  Apply(Tag("Ok"), value)
+}
+
+pub fn error(value) {
+  Apply(Tag("Error"), value)
+}
