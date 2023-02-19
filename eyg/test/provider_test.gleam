@@ -39,6 +39,43 @@ pub fn builder_test() {
   |> should.equal(e.Lambda("_", e.Integer(0)))
 }
 
+fn call3(label, arg1, arg2, arg3) {
+  e.Apply(e.Apply(e.Apply(e.Variable(label), arg1), arg2), arg3)
+}
+
+pub fn format_test() {
+  e.Lambda(
+    "template",
+    e.Let(
+      "parts",
+      e.Apply(
+        e.Apply(e.Variable("ffi_string_split"), e.Variable("%")),
+        e.Variable("template"),
+      ),
+      e.Apply(
+        e.match(
+          [
+            #(
+              "Ok",
+              "p",
+              call3(
+                "ffi_fold",
+                e.Apply(e.Select("tail"), e.Variable("p")),
+                e.Apply(e.Select("head"), e.Variable("p")),
+                e.Lambda("item", e.Lambda("acc", e.Vacant)),
+              ),
+            ),
+            #("Error", "_", e.Vacant),
+          ],
+          None,
+        ),
+        e.Apply(e.Variable("ffi_pop"), e.Variable("parts")),
+      ),
+    ),
+  )
+  todo
+}
+
 // Going direct to string is unnecessay. we probably want to do that direct in eyg and transform here
 // to a object for the type
 pub fn type_to_string_provider_test() {

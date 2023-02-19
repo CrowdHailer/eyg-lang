@@ -110,13 +110,7 @@ pub fn language_term_to_expression(term) -> e.Expression {
   }
 }
 
-pub fn expand(generator, inferred, path) {
-  try fit =
-    inference.type_of(inferred, path)
-    |> result.map_error(fn(reason) {
-      io.debug(path)
-      todo("this inf error")
-    })
+pub fn expand(generator, fit) {
   try needed = case fit {
     t.Union(row) ->
       // TODO ordered fields fn
@@ -154,19 +148,25 @@ pub fn expand(generator, inferred, path) {
 
 pub fn expander(inferred) {
   fn(gen, htap, k) {
-    // Not sure why gen isn't a exp, perhaps defuntionalise all the builtins
-    // provider.expand/eval just takes type
-    case expand(gen, inferred, list.reverse(htap)) {
-      // This result is the code result that may be an error from the generator
-      // However the Ok we match on here is did the generator run and static analysis should protect against it
-      Ok(expression) ->
-        // TODO this should almost certainly pass in the same value
-        // Also need to understand path to pass in more
-        r.eval(expression, [], noop, k)
-      Error(reason) ->
-        r.Abort(r.UndefinedVariable(
-          "TODO This really is a bad provision something",
-        ))
+    let path = list.reverse(htap)
+    case inference.type_of(inferred, path) {
+      Ok(fit) ->
+        // Not sure why gen isn't a exp, perhaps defuntionalise all the builtins
+        // provider.expand/eval just takes type
+        case expand(gen, fit) {
+          // This result is the code result that may be an error from the generator
+          // However the Ok we match on here is did the generator run and static analysis should protect against it
+          Ok(expression) ->
+            // TODO this should almost certainly pass in the same value
+            // Also need to understand path to pass in more
+            r.eval(expression, [], noop, k)
+          Error(reason) ->
+            r.Abort(r.UndefinedVariable(
+              "TODO This really is a bad provision something",
+            ))
+        }
+
+      Error(_) -> todo("there is no type")
     }
   }
 }
@@ -241,7 +241,7 @@ fn do_expand(source, inferred, path, env) {
       // TODO totally sensible that runtime value is returned and only in precompile do we put it back to expression
       // inference could be completly separate rerun, but that's in efficient and bad for debugging.
       //   need env at the time
-      expand(generator, inferred, list.reverse(path))
+      // expand(generator, inferred, list.reverse(path))
       todo("this needs to be part of static")
     }
   }
