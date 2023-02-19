@@ -155,7 +155,13 @@ pub fn lambda(from, to) {
           // This doesn't handle effects yet.
           // We probably should but how inefficient is this now
           // probably need to pass continuation in for effects
-          assert r.Value(v) = r.eval_call(f, encode_arg(x), r.Value)
+          assert r.Value(v) =
+            r.eval_call(
+              f,
+              encode_arg(x),
+              fn(_, _) { r.Abort(todo("lambda spec provider")) },
+              r.Value,
+            )
           // the eval is assumed to be good
           assert Ok(r) = cast_return(v)
           r

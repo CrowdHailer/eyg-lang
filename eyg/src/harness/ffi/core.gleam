@@ -42,7 +42,17 @@ pub fn debug() {
 
 fn fixed(builder) {
   r.Builtin(fn(arg, inner_k) {
-    r.eval_call(builder, fixed(builder), r.eval_call(_, arg, inner_k))
+    r.eval_call(
+      builder,
+      fixed(builder),
+      fn(_, _) { r.Abort(todo("maybe the builtin should get same expand")) },
+      r.eval_call(
+        _,
+        arg,
+        fn(_, _) { r.Abort(todo("maybe the builtin should get same expand")) },
+        inner_k,
+      ),
+    )
   })
 }
 
@@ -55,6 +65,13 @@ pub fn fix() {
     )
 
   let value =
-    r.Builtin(fn(builder, k) { r.eval_call(builder, fixed(builder), k) })
+    r.Builtin(fn(builder, k) {
+      r.eval_call(
+        builder,
+        fixed(builder),
+        fn(_, _) { r.Abort(todo("maybe the builtin should get same expand")) },
+        k,
+      )
+    })
   #(typ, value)
 }

@@ -36,7 +36,7 @@ pub fn lambda_test() {
     lambda(integer(), integer())
     |> build(fn(x) { x + 1 })
 
-  r.eval_call(term, r.Integer(2), r.Value)
+  r.eval_call(term, r.Integer(2), fn(_, _) { todo("no provider") }, r.Value)
   |> should.equal(r.Value(r.Integer(3)))
 
   spec
@@ -48,7 +48,12 @@ pub fn nested_lambda_test() {
     lambda(integer(), lambda(string(), integer()))
     |> build(fn(x) { fn(_b) { x + 1 } })
 
-  r.eval_call(term, r.Integer(2), r.eval_call(_, r.Binary("hey"), r.Value))
+  r.eval_call(
+    term,
+    r.Integer(2),
+    fn(_, _) { todo("no provider") },
+    r.eval_call(_, r.Binary("hey"), fn(_, _) { todo("no provider") }, r.Value),
+  )
   |> should.equal(r.Value(r.Integer(3)))
 
   spec
@@ -72,7 +77,7 @@ pub fn polymorphic_function_test() {
   let #(spec, term) =
     lambda(t, t)
     |> build(fn(x) { x })
-  r.eval_call(term, r.Binary("hey"), r.Value)
+  r.eval_call(term, r.Binary("hey"), fn(_, _) { todo("no provider") }, r.Value)
   |> should.equal(r.Value(r.Binary("hey")))
   should.equal(t.Fun(t.Unbound(0), t.Open(1), t.Unbound(0)), spec)
 }
@@ -82,7 +87,12 @@ pub fn first_class_function_test() {
   let #(spec, term) =
     lambda(lambda(integer(), integer()), integer())
     |> build(fn(f) { f(5) })
-  r.eval_call(term, r.Function("x", e.Variable("x"), []), r.Value)
+  r.eval_call(
+    term,
+    r.Function("x", e.Variable("x"), [], []),
+    fn(_, _) { todo("no provider") },
+    r.Value,
+  )
   |> should.equal(r.Value(r.Integer(5)))
   should.equal(
     t.Fun(t.Fun(t.Integer, t.Open(0), t.Integer), t.Open(1), t.Integer),
@@ -107,7 +117,7 @@ pub fn list_fn_test() {
     lambda(list_of(integer()), integer())
     |> build(fn(x) { list.length(x) })
 
-  r.eval_call(term, r.LinkedList([]), r.Value)
+  r.eval_call(term, r.LinkedList([]), fn(_, _) { todo("no provider") }, r.Value)
   |> should.equal(r.Value(r.Integer(0)))
 
   spec
@@ -141,7 +151,7 @@ pub fn unit_fn_test() {
     lambda(record(empty()), integer())
     |> build(fn(_: Nil) { 5 })
 
-  r.eval_call(term, r.Record([]), r.Value)
+  r.eval_call(term, r.Record([]), fn(_, _) { todo("no provider") }, r.Value)
   |> should.equal(r.Value(r.Integer(5)))
 
   spec
@@ -162,6 +172,7 @@ pub fn record_fn_test() {
   r.eval_call(
     term,
     r.Record([#("age", r.Integer(55)), #("name", r.Binary("bob"))]),
+    fn(_, _) { todo("no provider") },
     r.Value,
   )
   |> should.equal(r.Value(r.Integer(55)))

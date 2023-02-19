@@ -59,7 +59,14 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
-  assert Ok(return) = r.run(prog, values, request, handlers().1)
+  assert Ok(return) =
+    r.run(
+      prog,
+      values,
+      request,
+      handlers().1,
+      fn(_, _) { todo("i have type info") },
+    )
   assert Ok(r.Binary(body)) = r.field(return, "body")
   body
 }

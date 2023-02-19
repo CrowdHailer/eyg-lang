@@ -15,6 +15,11 @@ pub fn add_test() {
   let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
-  r.eval(prog, values, r.Value)
+  r.eval(
+    prog,
+    values,
+    fn(_, _) { r.Abort(todo("int maybe the builtin should get same expand")) },
+    r.Value,
+  )
   |> should.equal(r.Value(r.Integer(3)))
 }

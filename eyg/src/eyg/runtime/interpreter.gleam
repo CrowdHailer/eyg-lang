@@ -15,9 +15,14 @@ pub type Failure {
   MissingField(String)
 }
 
-pub fn run(source, env, term, extrinsic) {
+pub fn run(source, env, term, extrinsic, expand) {
   case
-    eval(source, env, fn(f) { handle(eval_call(f, term, Value(_)), extrinsic) })
+    eval(
+      source,
+      env,
+      expand,
+      fn(f) { handle(eval_call(f, term, expand, Value(_)), extrinsic, expand) },
+    )
   {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
     // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
@@ -25,21 +30,22 @@ pub fn run(source, env, term, extrinsic) {
     Value(term) -> Ok(term)
     Abort(failure) -> Error(failure)
     Effect(label, _, _) -> Error(UnhandledEffect(label))
-    _ -> todo("should have evaluated and not be a Cont at all")
+    Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
   }
 }
 
-fn handle(return, extrinsic) {
+fn handle(return, extrinsic, expand) {
   case return {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
     Effect(label, term, k) ->
       case map.get(extrinsic, label) {
-        Ok(handler) -> handle(eval_call(handler, term, k), extrinsic)
+        Ok(handler) ->
+          handle(eval_call(handler, term, expand, k), extrinsic, expand)
         Error(Nil) -> Abort(UnhandledEffect(label))
       }
     Value(term) -> Value(term)
-    Cont(term, k) -> handle(k(term), extrinsic)
+    Cont(term, k) -> handle(k(term), extrinsic, expand)
     Abort(failure) -> Abort(failure)
   }
 }
@@ -51,7 +57,12 @@ pub type Term {
   LinkedList(elements: List(Term))
   Record(fields: List(#(String, Term)))
   Tagged(label: String, value: Term)
-  Function(param: String, body: e.Expression, env: List(#(String, Term)))
+  Function(
+    param: String,
+    body: e.Expression,
+    env: List(#(String, Term)),
+    htap: List(Int),
+  )
   Builtin(func: fn(Term, fn(Term) -> Return) -> Return)
 }
 
@@ -78,7 +89,7 @@ pub fn to_string(term) {
       |> list.append(["}"])
       |> string.concat
     Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
-    Function(param, _, _) -> string.concat(["(", param, ") -> ..."])
+    Function(param, _, _, _) -> string.concat(["(", param, ") -> ..."])
     Builtin(_) -> "Builtin(...)"
   }
 }
@@ -112,19 +123,23 @@ pub type Return {
   Abort(Failure)
 }
 
+// Seemed easer to return Generate than pass expand fn through all steps
+// seemend not easier pain around handle of effects vs provider
+// Provide(generator: Term, htap: List(Int), k: fn(Term) -> Return)
+
 pub fn continue(k, term) {
   Cont(term, k)
 }
 
-pub fn eval_call(f, arg, k) {
-  loop(step_call(f, arg, k))
+pub fn eval_call(f, arg, expand, k) {
+  loop(step_call(f, arg, expand, k))
 }
 
-fn step_call(f, arg, k) {
+fn step_call(f, arg, expand, k) {
   case f {
-    Function(param, body, env) -> {
+    Function(param, body, env, htap) -> {
       let env = [#(param, arg), ..env]
-      step(body, env, k)
+      step(body, env, expand, [0, ..htap], k)
     }
     // builtin needs to return result for the case statement
     Builtin(f) -> f(arg, k)
@@ -143,22 +158,37 @@ pub fn loop(return) {
   }
 }
 
-pub fn eval(exp: e.Expression, env, k) {
-  loop(step(exp, env, k))
+// eval_at if need path
+pub fn eval(exp: e.Expression, env, expand, k) {
+  loop(step(exp, env, expand, [], k))
 }
 
-fn step(exp: e.Expression, env, k) {
+fn step(exp: e.Expression, env, expand, htap, k) {
   case exp {
-    e.Lambda(param, body) -> continue(k, Function(param, body, env))
+    e.Lambda(param, body) -> continue(k, Function(param, body, env, htap))
     e.Apply(f, arg) ->
-      step(f, env, fn(f) { step(arg, env, step_call(f, _, k)) })
+      step(
+        f,
+        env,
+        expand,
+        [0, ..htap],
+        fn(f) {
+          step(arg, env, expand, [1, ..htap], step_call(f, _, expand, k))
+        },
+      )
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(term) -> continue(k, term)
         Error(Nil) -> Abort(UndefinedVariable(x))
       }
     e.Let(var, value, then) ->
-      step(value, env, fn(term) { step(then, [#(var, term), ..env], k) })
+      step(
+        value,
+        env,
+        expand,
+        [0, ..htap],
+        fn(term) { step(then, [#(var, term), ..env], expand, [1, ..htap], k) },
+      )
     e.Integer(value) -> continue(k, Integer(value))
     e.Binary(value) -> continue(k, Binary(value))
     e.Tail -> continue(k, LinkedList([]))
@@ -172,10 +202,11 @@ fn step(exp: e.Expression, env, k) {
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, extend(label))
     e.Overwrite(label) -> continue(k, overwrite(label))
-    e.Case(label) -> continue(k, match(label))
+    e.Case(label) -> continue(k, match(label, expand))
     e.NoCases -> continue(k, Builtin(fn(_, _) { Abort(NoCases) }))
-    e.Handle(label) -> continue(k, build_runner(label))
-    e.Provider(generator) -> todo("no generators")
+    e.Handle(label) -> continue(k, build_runner(label, expand))
+    e.Provider(generator) ->
+      step(generator, env, expand, [0, ..htap], expand(_, htap))
   }
 }
 
@@ -239,7 +270,7 @@ fn overwrite(label) {
   })
 }
 
-fn match(label) {
+fn match(label, expand) {
   Builtin(fn(matched, k) {
     continue(
       k,
@@ -250,8 +281,8 @@ fn match(label) {
             case value {
               Tagged(l, term) ->
                 case l == label {
-                  True -> step_call(matched, term, k)
-                  False -> step_call(otherwise, value, k)
+                  True -> step_call(matched, term, expand, k)
+                  False -> step_call(otherwise, value, expand, k)
                 }
               term -> Abort(IncorrectTerm("Tagged", term))
             }
@@ -262,16 +293,17 @@ fn match(label) {
   })
 }
 
-pub fn handled(label, handler, outer_k, thing) {
+pub fn handled(label, handler, outer_k, thing, expand) {
   case thing {
     Effect(l, lifted, resume) if l == label -> {
-      use partial <- step_call(handler, lifted)
+      use partial <- step_call(handler, lifted, expand)
 
       use applied <- step_call(
         partial,
         Builtin(fn(reply, handler_k) {
-          handled(label, handler, handler_k, loop(resume(reply)))
+          handled(label, handler, handler_k, loop(resume(reply)), expand)
         }),
+        expand,
       )
 
       continue(outer_k, applied)
@@ -283,20 +315,26 @@ pub fn handled(label, handler, outer_k, thing) {
       Effect(
         l,
         lifted,
-        fn(x) { handled(label, handler, outer_k, loop(resume(x))) },
+        fn(x) { handled(label, handler, outer_k, loop(resume(x)), expand) },
       )
     Abort(reason) -> Abort(reason)
   }
 }
 
-pub fn runner(label, handler) {
+pub fn runner(label, handler, expand) {
   Builtin(fn(exec, k) {
-    handled(label, handler, k, eval_call(exec, Record([]), Value))
+    handled(
+      label,
+      handler,
+      k,
+      eval_call(exec, Record([]), expand, Value),
+      expand,
+    )
   })
 }
 
-pub fn build_runner(label) {
-  Builtin(fn(handler, k) { continue(k, runner(label, handler)) })
+pub fn build_runner(label, expand) {
+  Builtin(fn(handler, k) { continue(k, runner(label, handler, expand)) })
 }
 
 pub fn builtin2(f) {
@@ -311,17 +349,16 @@ pub fn builtin3(f) {
     )
   })
 }
-
-pub fn provider(generator) {
-  io.debug(#("generator", generator))
-  // I could return a lazy value but would need to reverse everything i.e. turn runtime value into thing
-  // It's not necessary to have provider return a function
-  // could pass lazy value to everything but would also get executed more than once because when
-  // pulling a record field we only know its a type of at least that value and we don't know what to pass inside
-  Builtin(fn(func, k) {
-    io.debug(func)
-    // io.debug(type_)
-    todo("error should be expanded OR can I take type from runtime")
-  })
-}
-// Path information in interpreter which is available to provider
+// pub fn provider(generator) {
+//   io.debug(#("generator", generator))
+//   // I could return a lazy value but would need to reverse everything i.e. turn runtime value into thing
+//   // It's not necessary to have provider return a function
+//   // could pass lazy value to everything but would also get executed more than once because when
+//   // pulling a record field we only know its a type of at least that value and we don't know what to pass inside
+//   Builtin(fn(func, k) {
+//     io.debug(func)
+//     // io.debug(type_)
+//     todo("error should be expanded OR can I take type from runtime")
+//   })
+// }
+// // Path information in interpreter which is available to provider

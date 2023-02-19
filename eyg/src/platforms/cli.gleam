@@ -49,6 +49,7 @@ pub fn run(source, args) {
           values,
           r.LinkedList(list.map(args, r.Binary)),
           handlers().1,
+          fn(_, _) { todo("this one yes") },
         )
         |> io.debug
       let hrend = duration(hrstart)

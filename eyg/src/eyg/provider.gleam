@@ -32,7 +32,16 @@ pub fn lambda(param, body) {
 }
 
 // TODO built in Type and AST types as can't do recursive
+// TODO k in provider eval
+// TODO add a Must function that handles runtime things to preeval
+// static.preeval/infer/shrink/alpha/beta returctions
+// TODO json encode decode available in std lib for universal app
+// preeval drop through implentation
 // TODO test below
+
+// Expand only really needed because can't remove provider from static analysis
+// Could make an interpretr that assumes never a provider.
+// But need to stack can I statically always remove all providers? I guess lazy builin it possible
 fn id(x) {
   r.Value(x)
 }
@@ -115,14 +124,21 @@ pub fn expand(generator, inferred, path) {
   io.debug(#("needed", needed))
 
   assert r.Value(result) =
-    r.eval_call(generator, type_to_language_term(needed), id)
+    r.eval_call(
+      generator,
+      type_to_language_term(needed),
+      fn(_, _) { r.Abort(todo("lets not get nested yet")) },
+      id,
+    )
 
+  // TODO return runtime result, static analysis should be part of static tooling
   assert r.Tagged(tag, value) = result
   case tag {
     "Ok" -> {
       let generated = language_term_to_expression(value)
       io.debug(#("generated", generated))
       let inferred = inference.infer(map.new(), generated, needed, t.Closed)
+      // Maybe sound inference is part of expand i.e. static
       io.debug(inference.sound(inferred))
       let code = case inference.sound(inferred) {
         Ok(Nil) -> e.Apply(e.Tag("Ok"), generated)
@@ -196,14 +212,16 @@ fn do_expand(source, inferred, path, env) {
       io.debug(env)
       // TODO needs variables available to the generator
       assert r.Value(generator) =
-        r.eval(generator, [], id)
+        r.eval(generator, [], fn(_, _) { todo("also nested avoid") }, id)
         |> io.debug
 
       // expand needs a runtime value, with env captured, so semantics of env management don't need to be understood
+      // TODO totally sensible that runtime value is returned and only in precompile do we put it back to expression
+      // inference could be completly separate rerun, but that's in efficient and bad for debugging.
+      //   need env at the time
       expand(generator, inferred, list.reverse(path))
     }
   }
-  //   need env at the time
 }
 
 pub fn pre_eval(source, inferred) {

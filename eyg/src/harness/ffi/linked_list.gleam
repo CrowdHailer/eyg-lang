@@ -69,6 +69,20 @@ fn do_fold(elements, state, f, k) {
   case elements {
     [] -> r.continue(k, state)
     [e, ..rest] ->
-      r.eval_call(f, e, r.eval_call(_, state, do_fold(rest, _, f, k)))
+      r.eval_call(
+        f,
+        e,
+        fn(_, _) {
+          r.Abort(todo("tdo maybe the builtin should get same expand"))
+        },
+        r.eval_call(
+          _,
+          state,
+          fn(_, _) {
+            r.Abort(todo("tdo maybe the builtin should get same expand"))
+          },
+          do_fold(rest, _, f, k),
+        ),
+      )
   }
 }

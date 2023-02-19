@@ -11,7 +11,7 @@ import gleam/result
 import gleeunit/should
 
 // call provide and prewalk
-// path in interpreter, loader just needs to be near id function and return AST. 
+// path in interpreter, loader just needs to be near id function and return AST.
 // UI for provider, test with format.
 fn id(x) {
   r.Value(x)
@@ -21,7 +21,7 @@ fn id(x) {
 // builders of eyg versions
 // These ast helpers need to end up in the code
 fn cast_term(ast) {
-  assert r.Value(value) = r.eval(ast, [], id)
+  assert r.Value(value) = r.eval(ast, [], fn(_, _) { todo("testcast") }, id)
   provider.language_term_to_expression(value)
 }
 
@@ -82,14 +82,27 @@ pub fn type_string_test() {
       Some(#("_", e.error(e.Binary("not a lambda")))),
     )
 
-  assert r.Value(g) = r.eval(generator, [], id)
+  assert r.Value(g) =
+    r.eval(
+      generator,
+      [],
+      // or a eval value
+      fn(_, _) { todo("maybe a provider none fn is helpful") },
+      id,
+    )
   assert r.Value(result) =
-    r.eval_call(g, provider.type_to_language_term(t.Integer), id)
+    r.eval_call(
+      g,
+      provider.type_to_language_term(t.Integer),
+      fn(_, _) { todo("maybe a provider none fn is helpful2") },
+      id,
+    )
   result
   |> should.equal(r.error(r.Binary("not a lambda")))
 
   let hole = provider.type_to_language_term(t.Fun(t.Binary, t.Closed, t.Binary))
-  assert r.Value(result) = r.eval_call(g, hole, id)
+  assert r.Value(result) =
+    r.eval_call(g, hole, fn(_, _) { todo("also not needed") }, id)
   assert r.Tagged("Ok", code) = result
   // |> should.equal(r.error(r.Binary("not a lambda")))
   code
@@ -106,10 +119,39 @@ pub fn type_string_test() {
   inference.sound(inferred)
   |> should.equal(Ok(Nil))
   assert Ok(expanded) = provider.pre_eval(source, inferred)
-  assert r.Value(result) = r.eval(expanded, [], id)
+  assert r.Value(result) =
+    r.eval(
+      expanded,
+      [],
+      fn(_, _) {
+        todo("def a provider noop fn also reuse id fn, and evalvalue")
+      },
+      id,
+    )
   assert r.Tagged("Ok", program) = result
-  r.eval_call(program, r.Integer(1), id)
+  r.eval_call(program, r.Integer(1), fn(_, _) { todo("no providertest") }, id)
   |> should.equal(r.Value(r.Binary("is binary")))
+
+  let expand = fn(gen, htap) {
+    // Not sure why gen isn't a exp, perhaps defuntionalise all the builtins
+    io.debug(#(gen, htap))
+    // provider.expand/eval just takes type
+    case provider.expand(gen, inferred, list.reverse(htap)) {
+      Ok(expression) -> {
+        io.debug(expression)
+        // TODO this should definetly use the k from the generator
+        r.eval(expression, [], fn(_, _) { todo("more nesting") }, r.Value)
+      }
+      Error(reason) -> {
+        io.debug(reason)
+        r.Abort(r.UndefinedVariable(
+          "TODO This really is a bad provision something",
+        ))
+      }
+    }
+  }
+  r.eval(source, [], expand, r.Value)
+  |> io.debug
 }
 // pub fn provider_test() {
 //   // let source =
