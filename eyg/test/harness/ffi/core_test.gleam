@@ -2,6 +2,7 @@ import eyg/analysis/typ as t
 import eyg/analysis/inference
 import eyg/runtime/interpreter as r
 import eygir/expression as e
+import eyg/provider
 import harness/ffi/core
 import harness/ffi/integer
 import harness/ffi/linked_list
@@ -19,7 +20,7 @@ pub fn unequal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, values, fn(_, _) { todo("providernoop") }, r.Value)
+  r.eval(prog, values, provider.noop, r.Value)
   |> should.equal(r.Value(core.false))
 }
 
@@ -35,7 +36,7 @@ pub fn equal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, values, fn(_, _) { todo("providernoop") }, r.Value)
+  r.eval(prog, values, provider.noop, r.Value)
   |> should.equal(r.Value(core.true))
 }
 
@@ -51,7 +52,7 @@ pub fn simple_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Binary))
 
-  r.eval(prog, values, fn(_, _) { todo("providernoop") }, r.Value)
+  r.eval(prog, values, provider.noop, r.Value)
   |> should.equal(r.Value(r.Binary("foo")))
 }
 
@@ -71,7 +72,7 @@ pub fn no_recursive_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, values, fn(_, _) { todo("providernoop") }, r.Value)
+  r.eval(prog, values, provider.noop, r.Value)
   |> should.equal(r.Value(r.Integer(1)))
 }
 
@@ -131,6 +132,6 @@ pub fn recursive_sum_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, values, fn(_, _) { todo("providernoop") }, r.Value)
+  r.eval(prog, values, provider.noop, r.Value)
   |> should.equal(r.Value(r.Integer(4)))
 }

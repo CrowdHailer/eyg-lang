@@ -1,5 +1,6 @@
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
+import eyg/provider
 import harness/ffi/spec.{
   build, empty, end, field, lambda, list_of, record, unbound, union, variant,
 }
@@ -72,17 +73,8 @@ fn do_fold(elements, state, f, k) {
       r.eval_call(
         f,
         e,
-        fn(_, _) {
-          r.Abort(todo("tdo maybe the builtin should get same expand"))
-        },
-        r.eval_call(
-          _,
-          state,
-          fn(_, _) {
-            r.Abort(todo("tdo maybe the builtin should get same expand"))
-          },
-          do_fold(rest, _, f, k),
-        ),
+        provider.noop,
+        r.eval_call(_, state, provider.noop, do_fold(rest, _, f, k)),
       )
   }
 }

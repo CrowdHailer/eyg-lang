@@ -1,5 +1,6 @@
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
+import eyg/provider
 import harness/ffi/spec.{
   build, empty, end, lambda, record, string, unbound, union, variant,
 }
@@ -45,13 +46,8 @@ fn fixed(builder) {
     r.eval_call(
       builder,
       fixed(builder),
-      fn(_, _) { r.Abort(todo("maybe the builtin should get same expand")) },
-      r.eval_call(
-        _,
-        arg,
-        fn(_, _) { r.Abort(todo("maybe the builtin should get same expand")) },
-        inner_k,
-      ),
+      provider.noop,
+      r.eval_call(_, arg, provider.noop, inner_k),
     )
   })
 }
@@ -66,12 +62,7 @@ pub fn fix() {
 
   let value =
     r.Builtin(fn(builder, k) {
-      r.eval_call(
-        builder,
-        fixed(builder),
-        fn(_, _) { r.Abort(todo("maybe the builtin should get same expand")) },
-        k,
-      )
+      r.eval_call(builder, fixed(builder), provider.noop, k)
     })
   #(typ, value)
 }

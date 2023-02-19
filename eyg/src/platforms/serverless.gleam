@@ -4,6 +4,7 @@ import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eyg/analysis/inference
+import eyg/provider
 import harness/stdlib
 import harness/effect
 import gleam/javascript
@@ -59,14 +60,7 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
-  assert Ok(return) =
-    r.run(
-      prog,
-      values,
-      request,
-      handlers().1,
-      fn(_, _) { todo("i have type info") },
-    )
+  assert Ok(return) = r.run(prog, values, request, handlers().1, provider.noop)
   assert Ok(r.Binary(body)) = r.field(return, "body")
   body
 }

@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
+import eyg/provider
 import gleam/javascript
 
 fn fresh(ref) {
@@ -156,12 +157,7 @@ pub fn lambda(from, to) {
           // We probably should but how inefficient is this now
           // probably need to pass continuation in for effects
           assert r.Value(v) =
-            r.eval_call(
-              f,
-              encode_arg(x),
-              fn(_, _) { r.Abort(todo("lambda spec provider")) },
-              r.Value,
-            )
+            r.eval_call(f, encode_arg(x), provider.noop, r.Value)
           // the eval is assumed to be good
           assert Ok(r) = cast_return(v)
           r

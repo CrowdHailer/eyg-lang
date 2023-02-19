@@ -21,7 +21,7 @@ fn id(x) {
 // builders of eyg versions
 // These ast helpers need to end up in the code
 fn cast_term(ast) {
-  assert r.Value(value) = r.eval(ast, [], fn(_, _) { todo("testcast") }, id)
+  assert r.Value(value) = r.eval(ast, [], provider.noop, id)
   provider.language_term_to_expression(value)
 }
 
@@ -39,26 +39,11 @@ pub fn builder_test() {
   |> should.equal(e.Lambda("_", e.Integer(0)))
 }
 
-fn match(branches, tail) {
-  let final = case tail {
-    Some(#(param, body)) -> e.Lambda(param, body)
-    None -> e.NoCases
-  }
-  list.fold_right(
-    branches,
-    final,
-    fn(acc, branch) {
-      let #(label, param, then) = branch
-      e.Apply(e.Apply(e.Case(label), e.Lambda(param, then)), acc)
-    },
-  )
-}
-
 // Going direct to string is unnecessay. we probably want to do that direct in eyg and transform here
 // to a object for the type
-pub fn type_string_test() {
+pub fn type_to_string_provider_test() {
   let from_case =
-    match(
+    e.match(
       [
         #("Integer", "_", provider.lambda("_", provider.binary("is integer"))),
         #("Binary", "_", provider.lambda("_", provider.binary("is binary"))),
@@ -68,7 +53,7 @@ pub fn type_string_test() {
 
   // using first class case statement to return fn
   let generator =
-    match(
+    e.match(
       [
         #(
           "Lambda",
@@ -79,79 +64,27 @@ pub fn type_string_test() {
           )),
         ),
       ],
+      // TODO I think there is a way I want to see which passes type directly
       Some(#("_", e.error(e.Binary("not a lambda")))),
     )
 
-  assert r.Value(g) =
-    r.eval(
-      generator,
-      [],
-      // or a eval value
-      fn(_, _) { todo("maybe a provider none fn is helpful") },
-      id,
+  let source =
+    e.Apply(
+      e.match(
+        [
+          #("Ok", "code", e.Apply(e.Variable("code"), e.Integer(1))),
+          #("Error", "_", e.Binary("Nope to compilation")),
+        ],
+        None,
+      ),
+      e.Provider(generator),
     )
-  assert r.Value(result) =
-    r.eval_call(
-      g,
-      provider.type_to_language_term(t.Integer),
-      fn(_, _) { todo("maybe a provider none fn is helpful2") },
-      id,
-    )
-  result
-  |> should.equal(r.error(r.Binary("not a lambda")))
-
-  let hole = provider.type_to_language_term(t.Fun(t.Binary, t.Closed, t.Binary))
-  assert r.Value(result) =
-    r.eval_call(g, hole, fn(_, _) { todo("also not needed") }, id)
-  assert r.Tagged("Ok", code) = result
-  // |> should.equal(r.error(r.Binary("not a lambda")))
-  code
-  |> provider.language_term_to_expression
-  |> should.equal(e.Lambda("_", e.Binary("is binary")))
-  let source = e.Provider(generator)
-  let inferred =
-    inference.infer(
-      map.new(),
-      source,
-      t.result(t.Fun(t.Binary, t.Closed, t.Binary), t.Unbound(-1)),
-      t.Closed,
-    )
+  let inferred = inference.infer(map.new(), source, t.Binary, t.Closed)
   inference.sound(inferred)
   |> should.equal(Ok(Nil))
-  assert Ok(expanded) = provider.pre_eval(source, inferred)
-  assert r.Value(result) =
-    r.eval(
-      expanded,
-      [],
-      fn(_, _) {
-        todo("def a provider noop fn also reuse id fn, and evalvalue")
-      },
-      id,
-    )
-  assert r.Tagged("Ok", program) = result
-  r.eval_call(program, r.Integer(1), fn(_, _) { todo("no providertest") }, id)
-  |> should.equal(r.Value(r.Binary("is binary")))
 
-  let expand = fn(gen, htap) {
-    // Not sure why gen isn't a exp, perhaps defuntionalise all the builtins
-    io.debug(#(gen, htap))
-    // provider.expand/eval just takes type
-    case provider.expand(gen, inferred, list.reverse(htap)) {
-      Ok(expression) -> {
-        io.debug(expression)
-        // TODO this should definetly use the k from the generator
-        r.eval(expression, [], fn(_, _) { todo("more nesting") }, r.Value)
-      }
-      Error(reason) -> {
-        io.debug(reason)
-        r.Abort(r.UndefinedVariable(
-          "TODO This really is a bad provision something",
-        ))
-      }
-    }
-  }
-  r.eval(source, [], expand, r.Value)
-  |> io.debug
+  r.eval(source, [], provider.expander(inferred), r.Value)
+  |> should.equal(r.Value(r.Binary("is integer")))
 }
 // pub fn provider_test() {
 //   // let source =
@@ -169,10 +102,8 @@ pub fn type_string_test() {
 //   // let inferred = inference.infer(map.new(), source, t.unit, t.Closed)
 //   // //   Doesn't seem to be inferring correctly
 //   // inferred.types
-//   // |> io.debug
 //   // //   r.eval(source, [], id)
 //   // provider.pre_eval(source, inferred)
-//   // |> io.debug
 
 //   todo("test")
 // }

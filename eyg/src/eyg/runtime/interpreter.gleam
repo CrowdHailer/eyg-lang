@@ -206,7 +206,7 @@ fn step(exp: e.Expression, env, expand, htap, k) {
     e.NoCases -> continue(k, Builtin(fn(_, _) { Abort(NoCases) }))
     e.Handle(label) -> continue(k, build_runner(label, expand))
     e.Provider(generator) ->
-      step(generator, env, expand, [0, ..htap], expand(_, htap))
+      step(generator, env, expand, [0, ..htap], expand(_, htap, k))
   }
 }
 

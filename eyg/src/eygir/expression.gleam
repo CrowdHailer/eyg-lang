@@ -1,3 +1,6 @@
+import gleam/list
+import gleam/option.{None, Some}
+
 pub type Expression {
   Variable(label: String)
   Lambda(label: String, body: Expression)
@@ -46,4 +49,20 @@ pub fn ok(value) {
 
 pub fn error(value) {
   Apply(Tag("Error"), value)
+}
+
+// We calling case or match? what's my preferred name not just avoiding gleam collision
+pub fn match(branches, tail) {
+  let final = case tail {
+    Some(#(param, body)) -> Lambda(param, body)
+    None -> NoCases
+  }
+  list.fold_right(
+    branches,
+    final,
+    fn(acc, branch) {
+      let #(label, param, then) = branch
+      Apply(Apply(Case(label), Lambda(param, then)), acc)
+    },
+  )
 }

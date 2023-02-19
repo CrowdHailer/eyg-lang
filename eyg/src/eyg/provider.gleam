@@ -31,8 +31,13 @@ pub fn lambda(param, body) {
   )
 }
 
+pub fn noop(_, _, _) {
+  r.Abort(r.UnhandledEffect(
+    "TODO this is probably not this error but all I have now",
+  ))
+}
+
 // TODO built in Type and AST types as can't do recursive
-// TODO k in provider eval
 // TODO add a Must function that handles runtime things to preeval
 // static.preeval/infer/shrink/alpha/beta returctions
 // TODO json encode decode available in std lib for universal app
@@ -121,30 +126,47 @@ pub fn expand(generator, inferred, path) {
     _ -> Error("not a union")
   }
 
-  io.debug(#("needed", needed))
-
+  // Or is this the same
   assert r.Value(result) =
-    r.eval_call(
-      generator,
-      type_to_language_term(needed),
-      fn(_, _) { r.Abort(todo("lets not get nested yet")) },
-      id,
-    )
+    r.eval_call(generator, type_to_language_term(needed), noop, id)
 
   // TODO return runtime result, static analysis should be part of static tooling
   assert r.Tagged(tag, value) = result
+  // This turns one runtime value into another, 
+  // the above is a runtime value representing an AST, need to eval to get real runtime value
+  // but the current runtime value.
   case tag {
     "Ok" -> {
       let generated = language_term_to_expression(value)
-      io.debug(#("generated", generated))
       let inferred = inference.infer(map.new(), generated, needed, t.Closed)
       // Maybe sound inference is part of expand i.e. static
+      // TODO move type checking out
       io.debug(inference.sound(inferred))
       let code = case inference.sound(inferred) {
         Ok(Nil) -> e.Apply(e.Tag("Ok"), generated)
         Error(_) -> e.Apply(e.Tag("Error"), e.unit)
       }
       Ok(code)
+    }
+  }
+  // Ok(result)
+}
+
+pub fn expander(inferred) {
+  fn(gen, htap, k) {
+    // Not sure why gen isn't a exp, perhaps defuntionalise all the builtins
+    // provider.expand/eval just takes type
+    case expand(gen, inferred, list.reverse(htap)) {
+      // This result is the code result that may be an error from the generator
+      // However the Ok we match on here is did the generator run and static analysis should protect against it
+      Ok(expression) ->
+        // TODO this should almost certainly pass in the same value
+        // Also need to understand path to pass in more
+        r.eval(expression, [], noop, k)
+      Error(reason) ->
+        r.Abort(r.UndefinedVariable(
+          "TODO This really is a bad provision something",
+        ))
     }
   }
 }
@@ -212,7 +234,7 @@ fn do_expand(source, inferred, path, env) {
       io.debug(env)
       // TODO needs variables available to the generator
       assert r.Value(generator) =
-        r.eval(generator, [], fn(_, _) { todo("also nested avoid") }, id)
+        r.eval(generator, [], noop, id)
         |> io.debug
 
       // expand needs a runtime value, with env captured, so semantics of env management don't need to be understood
@@ -220,6 +242,7 @@ fn do_expand(source, inferred, path, env) {
       // inference could be completly separate rerun, but that's in efficient and bad for debugging.
       //   need env at the time
       expand(generator, inferred, list.reverse(path))
+      todo("this needs to be part of static")
     }
   }
 }

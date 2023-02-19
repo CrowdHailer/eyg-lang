@@ -4,6 +4,7 @@ import harness/ffi/integer
 import harness/ffi/env
 import eyg/analysis/inference
 import eygir/expression as e
+import eyg/provider
 import gleeunit/should
 
 pub fn add_test() {
@@ -15,11 +16,6 @@ pub fn add_test() {
   let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
-  r.eval(
-    prog,
-    values,
-    fn(_, _) { r.Abort(todo("int maybe the builtin should get same expand")) },
-    r.Value,
-  )
+  r.eval(prog, values, provider.noop, r.Value)
   |> should.equal(r.Value(r.Integer(3)))
 }
