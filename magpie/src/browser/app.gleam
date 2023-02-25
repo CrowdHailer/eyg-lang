@@ -59,9 +59,8 @@ pub type Mode {
 }
 
 pub type App {
-  Loading
-  Running(
-    db: in_memory.DB,
+  App(
+    db: Option(worker.Worker),
     queries: List(
       #(
         #(List(String), List(#(query.Match, query.Match, query.Match))),
@@ -94,10 +93,16 @@ pub type Action {
 
 pub fn init() {
   #(
-    Loading,
+    App(None, queries(), OverView),
     cmd.from(fn(dispatch) {
-      io.debug("starting")
-      dispatch(Index)
+      let w = worker.start_worker("./worker.js")
+      worker.on_message(
+        w,
+        fn(raw) {
+          io.debug(raw)
+          worker.on_message(w, io.debug)
+        },
+      )
     }),
   )
 }
@@ -120,16 +125,20 @@ fn update_hash(queries) {
 pub fn update(state, action) {
   case action {
     Index -> {
+      let w =
+        worker.start_worker("./worker.js")
+        |> io.debug
       // assert Ok(triples) = json.decoder()(db())
       // TODO remove from state
-      let triples = []
-      let db = in_memory.create_db(triples)
-      io.print("created db")
-      #(Running(db, queries(), OverView), cmd.none())
+      // let triples = []
+      // let db = in_memory.create_db(triples)
+      // io.print("created db")
+      // #(App(db, queries(), OverView), cmd.none())
+      todo("Only an action when adding DB's")
     }
     HashChange -> {
       let state = case state {
-        Running(db, _queries, _mode) -> Running(db, queries(), OverView)
+        App(db, _queries, _mode) -> App(db, queries(), OverView)
         other -> other
       }
       #(state, cmd.none())
@@ -137,45 +146,43 @@ pub fn update(state, action) {
     RunQuery(i) -> {
       io.debug("running")
 
-      assert Running(db, queries, _mode) = state
+      assert App(Some(db), queries, _mode) = state
       assert Ok(q) = list.at(queries, i)
       let #(#(from, where), _cache) = q
-      let cache =
-        query.run(from, where, db)
-        // probably should need to run unique as query should take care of it
-        |> list.unique
 
-      let w =
-        worker.start_worker("./worker.js")
-        |> io.debug
-      worker.on_message(w, io.debug)
-
-      w
-      |> worker.post_message(serialize.query().encode(serialize.Query(
-        from,
-        where,
-      )))
+      // let cache =
+      //   query.run(from, where, db)
+      //   // probably should need to run unique as query should take care of it
+      //   |> list.unique
+      // let w =
+      //   worker.start_worker("./worker.js")
+      //   |> io.debug
+      // worker.on_message(w, io.debug)
+      worker.post_message(
+        db,
+        serialize.query().encode(serialize.Query(from, where)),
+      )
       let pre = list.take(queries, i)
       let post = list.drop(queries, i + 1)
-      let queries = list.flatten([pre, [#(#(from, where), Some(cache))], post])
-      #(Running(db, queries, OverView), cmd.none())
+      let queries = list.flatten([pre, [#(#(from, where), None)], post])
+      #(App(Some(db), queries, OverView), cmd.none())
     }
     AddQuery -> {
-      assert Running(db, queries, mode) = state
+      assert App(db, queries, mode) = state
       let queries = list.append(queries, [#(#([], []), None)])
-      #(Running(db, queries, mode), update_hash(queries))
+      #(App(db, queries, mode), update_hash(queries))
     }
     DeleteQuery(i) -> {
-      assert Running(db, queries, mode) = state
+      assert App(db, queries, mode) = state
       let queries = delete_at(queries, i)
-      #(Running(db, queries, mode), update_hash(queries))
+      #(App(db, queries, mode), update_hash(queries))
     }
     AddVariable(i) -> {
-      assert Running(db, queries, _) = state
-      #(Running(db, queries, ChooseVariable(i)), cmd.none())
+      assert App(db, queries, _) = state
+      #(App(db, queries, ChooseVariable(i)), cmd.none())
     }
     SelectVariable(var) -> {
-      assert Running(db, queries, ChooseVariable(i)) = state
+      assert App(db, queries, ChooseVariable(i)) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -186,10 +193,10 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     DeleteVariable(i, j) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -199,10 +206,10 @@ pub fn update(state, action) {
             #(#(delete_at(find, j), where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     AddPattern(i) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -214,10 +221,10 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     EditMatch(i, j, k) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(#(#(_find, where), _cache)) = list.at(queries, i)
       assert Ok(pattern) = list.at(where, j)
 
@@ -234,14 +241,14 @@ pub fn update(state, action) {
       }
 
       let mode = UpdateMatch(i, j, k, selection)
-      #(Running(db, queries, mode), cmd.none())
+      #(App(db, queries, mode), cmd.none())
     }
     EditMatchType(selection) -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, _)) = state
-      #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
+      assert App(db, queries, UpdateMatch(i, j, k, _)) = state
+      #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
     ReplaceMatch -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
+      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let match = case selection {
         Variable(var) -> query.Variable(var)
         ConstString(value) -> query.s(value)
@@ -271,11 +278,11 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
 
     DeletePattern(i, j) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -285,32 +292,32 @@ pub fn update(state, action) {
             #(#(find, delete_at(where, j)), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     InputChange(new) -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
+      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let selection = case selection {
         Variable(_) -> Variable(new)
         ConstString(_) -> ConstString(new)
         ConstInteger(_) -> ConstInteger(option.from_result(int.parse(new)))
         ConstBoolean(_) -> todo("shouldn't happend because check change")
       }
-      #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
+      #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
     CheckChange(new) -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
+      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let selection = case selection {
         ConstBoolean(_) -> ConstBoolean(new)
         _ -> todo("shouldn't happend because input change")
       }
-      #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
+      #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
   }
 }
 
 pub fn render(state) {
   case state {
-    Loading ->
+    App(None, _, _) ->
       el.div(
         [
           class(
@@ -320,12 +327,12 @@ pub fn render(state) {
         [el.text("loading")],
       )
 
-    Running(db, queries, mode) ->
+    App(Some(db), queries, mode) ->
       el.div(
         [class("bg-gray-200 min-h-screen p-4")],
         list.flatten([
-          render_edit(mode, db),
-          render_notebook(db, queries, mode),
+          render_edit(mode, todo),
+          render_notebook(todo, queries, mode),
           render_examples(),
         ]),
       )

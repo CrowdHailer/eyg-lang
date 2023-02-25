@@ -41,6 +41,11 @@ pub fn run(self: Worker) {
     },
   )
 
+// TODO plinth
+// TODO can also use single code build with db in in worker
+// Loaded is useful for the front end
+// if I can solve worker in static file should be ok
+// Just put React on window for worker? there is no window. need and optional if thing.
   let request =
     request.new()
     |> request.set_method(Get)
