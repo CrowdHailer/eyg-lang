@@ -8,7 +8,7 @@ pub type Query {
   Query(find: List(String), patterns: List(query.Pattern))
 }
 
-fn tuple3(a, b, c) {
+fn tuple3(a: codec.Codec(a), b: codec.Codec(b), c: codec.Codec(c)) {
   codec.from(
     fn(t) {
       let #(v1, v2, v3) = t
@@ -17,7 +17,17 @@ fn tuple3(a, b, c) {
         fn(x) { x },
       )
     },
-    dynamic.tuple3(codec.decoder(a), codec.decoder(a), codec.decoder(a)),
+    dynamic.tuple3(codec.decoder(a), codec.decoder(b), codec.decoder(c)),
+  )
+}
+
+fn tuple2(a: codec.Codec(a), b: codec.Codec(b)) {
+  codec.from(
+    fn(t) {
+      let #(v1, v2) = t
+      json.array([codec.encoder(a)(v1), codec.encoder(b)(v2)], fn(x) { x })
+    },
+    dynamic.tuple2(codec.decoder(a), codec.decoder(b)),
   )
 }
 
@@ -72,4 +82,26 @@ pub fn query() {
 
 pub fn relations() {
   codec.list(codec.list(value()))
+}
+
+pub type DBView {
+  DBView(triple_count: Int, attribute_suggestions: List(#(String, Int)))
+}
+
+// TODO need variant3
+// value_suggestions: List(#(String, Int, Nil)),
+
+pub fn db_view() {
+  codec.custom1(fn(q, value) {
+    let DBView(triple_count, attribute_suggestions) = value
+    q(triple_count, attribute_suggestions)
+  })
+  |> codec.variant2(
+    "",
+    DBView,
+    codec.int(),
+    codec.list(tuple2(codec.string(), codec.int())),
+  )
+  // codec.list(tuple3(codec.string(), codec.int(), codec.succeed(Nil))),
+  |> codec.construct()
 }

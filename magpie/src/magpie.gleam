@@ -43,19 +43,19 @@ pub fn main() {
       |> yaml.read_files
   }
 
-  // let content =
-  //   string.concat([
-  //     "export function data(){\n  return ",
-  //     json.to_string(db.triples),
-  //     "\n}",
-  //   ])
-  // write_file_sync("build/dev/javascript/magpie/db.mjs", content)
-  // let content =
-  //   string.concat([
-  //     "export function data(){\n  return ",
-  //     json.to_string(db.triples),
-  //     "\n}",
-  //   ])
+  let content =
+    string.concat([
+      "export function data(){\n  return ",
+      json.to_string(db.triples),
+      "\n}",
+    ])
+  write_file_sync("build/dev/javascript/magpie/db.mjs", content)
+  let content =
+    string.concat([
+      "export function data(){\n  return ",
+      json.to_string(db.triples),
+      "\n}",
+    ])
   write_file_sync("public/db.json", json.to_string(db.triples))
   Nil
 }

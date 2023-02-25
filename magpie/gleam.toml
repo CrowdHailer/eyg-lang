@@ -15,7 +15,6 @@ gleam_stdlib = "~> 0.26"
 gleam_javascript = "~> 0.4"
 gleam_json = "~> 0.5"
 lustre = "~> 1.3"
-gleam_fetch = "~> 0.1"
 
 [dev-dependencies]
 gleeunit = "~> 0.9"

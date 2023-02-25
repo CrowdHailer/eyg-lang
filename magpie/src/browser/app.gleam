@@ -17,9 +17,6 @@ import browser/hash
 import browser/worker
 import browser/serialize
 
-// external fn db() -> Dynamic =
-//   "../db.mjs" "data"
-
 // At the top to get generic
 fn delete_at(items, i) {
   let pre = list.take(items, i)
@@ -58,9 +55,13 @@ pub type Mode {
   UpdateMatch(query: Int, pattern: Int, match: Int, selection: MatchSelection)
 }
 
+pub type DB {
+  DB(worker: worker.Worker, working: Bool, db_view: serialize.DBView)
+}
+
 pub type App {
   App(
-    db: Option(worker.Worker),
+    db: DB,
     queries: List(
       #(
         #(List(String), List(#(query.Match, query.Match, query.Match))),
@@ -72,9 +73,10 @@ pub type App {
 }
 
 pub type Action {
-  Index
+  Indexed(serialize.DBView)
   HashChange
   RunQuery(Int)
+  QueryResult(List(List(in_memory.Value)))
   AddQuery
   DeleteQuery(Int)
   AddVariable(query: Int)
@@ -92,15 +94,24 @@ pub type Action {
 // choice in edit match, or form submit info in discord
 
 pub fn init() {
+  let w = worker.start_worker("./worker.js")
   #(
-    App(None, queries(), OverView),
+    App(DB(w, True, serialize.DBView(0, [])), queries(), OverView),
     cmd.from(fn(dispatch) {
-      let w = worker.start_worker("./worker.js")
       worker.on_message(
         w,
         fn(raw) {
-          io.debug(raw)
-          worker.on_message(w, io.debug)
+          case serialize.db_view().decode(raw) {
+            Ok(db_view) -> dispatch(Indexed(db_view))
+            Error(_) ->
+              case serialize.relations().decode(raw) {
+                Ok(relations) -> dispatch(QueryResult(relations))
+                Error(_) -> {
+                  io.debug(#("unexpected message", raw))
+                  Nil
+                }
+              }
+          }
         },
       )
     }),
@@ -124,18 +135,10 @@ fn update_hash(queries) {
 
 pub fn update(state, action) {
   case action {
-    Index -> {
-      let w =
-        worker.start_worker("./worker.js")
-        |> io.debug
-      // assert Ok(triples) = json.decoder()(db())
-      // TODO remove from state
-      // let triples = []
-      // let db = in_memory.create_db(triples)
-      // io.print("created db")
-      // #(App(db, queries(), OverView), cmd.none())
-      todo("Only an action when adding DB's")
-    }
+    Indexed(view) -> #(
+      App(DB(state.db.worker, False, view), queries(), OverView),
+      cmd.none(),
+    )
     HashChange -> {
       let state = case state {
         App(db, _queries, _mode) -> App(db, queries(), OverView)
@@ -146,18 +149,10 @@ pub fn update(state, action) {
     RunQuery(i) -> {
       io.debug("running")
 
-      assert App(Some(db), queries, _mode) = state
+      assert App(DB(db, False, view), queries, _mode) = state
       assert Ok(q) = list.at(queries, i)
       let #(#(from, where), _cache) = q
 
-      // let cache =
-      //   query.run(from, where, db)
-      //   // probably should need to run unique as query should take care of it
-      //   |> list.unique
-      // let w =
-      //   worker.start_worker("./worker.js")
-      //   |> io.debug
-      // worker.on_message(w, io.debug)
       worker.post_message(
         db,
         serialize.query().encode(serialize.Query(from, where)),
@@ -165,7 +160,11 @@ pub fn update(state, action) {
       let pre = list.take(queries, i)
       let post = list.drop(queries, i + 1)
       let queries = list.flatten([pre, [#(#(from, where), None)], post])
-      #(App(Some(db), queries, OverView), cmd.none())
+      #(App(DB(db, True, view), queries, OverView), cmd.none())
+    }
+    QueryResult(relations) -> {
+      io.debug(relations)
+      #(state, cmd.none())
     }
     AddQuery -> {
       assert App(db, queries, mode) = state
@@ -316,27 +315,15 @@ pub fn update(state, action) {
 }
 
 pub fn render(state) {
-  case state {
-    App(None, _, _) ->
-      el.div(
-        [
-          class(
-            "flex flex-col min-h-screen text-center justify-around bg-gray-50 text-xl",
-          ),
-        ],
-        [el.text("loading")],
-      )
-
-    App(Some(db), queries, mode) ->
-      el.div(
-        [class("bg-gray-200 min-h-screen p-4")],
-        list.flatten([
-          render_edit(mode, todo),
-          render_notebook(todo, queries, mode),
-          render_examples(),
-        ]),
-      )
-  }
+  let App(DB(_, _, view), queries, mode) = state
+  el.div(
+    [class("bg-gray-200 min-h-screen p-4")],
+    list.flatten([
+      render_edit(mode, view),
+      render_notebook(view, queries, mode),
+      render_examples(),
+    ]),
+  )
 }
 
 fn render_examples() {
@@ -460,21 +447,9 @@ fn render_edit(mode, db) {
                         let suggestions =
                           case k {
                             0 -> []
-                            1 ->
-                              map.to_list(db.attribute_index)
-                              |> list.map(fn(pair) {
-                                let #(key, triples) = pair
-                                #(key, list.length(triples))
-                              })
-                            2 ->
-                              map.to_list(db.value_index)
-                              |> list.filter_map(fn(pair) {
-                                let #(key, triples) = pair
-                                case key {
-                                  S(value) -> Ok(#(value, list.length(triples)))
-                                  _ -> Error(Nil)
-                                }
-                              })
+                            1 -> db.attribute_suggestions
+                            // TODO value_suggestions
+                            2 -> []
                           }
                           |> list.filter(fn(pair) {
                             let #(key, count) = pair
@@ -604,7 +579,7 @@ fn default_queries() {
   []
 }
 
-fn render_notebook(db, queries, mode) {
+fn render_notebook(view, queries, mode) {
   [
     el.div(
       [
@@ -618,10 +593,10 @@ fn render_notebook(db, queries, mode) {
           [
             el.h1([class("text-2xl")], [el.text("Queries")]),
             el.text("database record count: "),
-            el.text(int.to_string(list.length(db.triples))),
+            el.text(int.to_string(view.triple_count)),
           ],
         ),
-        ..list.index_map(queries, render_query(mode, db))
+        ..list.index_map(queries, render_query(mode, view))
         |> list.append([
           el.button(
             [
@@ -875,40 +850,40 @@ pub fn render_results(find, results, db) {
 
 fn render_doc(value, db) {
   case value {
-    I(ref) ->
-      case map.get(db.entity_index, ref) {
-        Ok(parts) ->
-          el.details(
-            [],
-            [
-              el.summary([], [el.text(int.to_string(ref))]),
-              el.table(
-                [],
-                [
-                  el.tbody(
-                    [],
-                    list.map(
-                      parts,
-                      fn(triple) {
-                        el.tr(
-                          [class("")],
-                          [
-                            el.td([class("border px-1")], [el.text(triple.1)]),
-                            el.td(
-                              [class("border px-1")],
-                              [render_doc(triple.2, db)],
-                            ),
-                          ],
-                        )
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          )
-        Error(Nil) -> el.text(print_value(I(ref)))
-      }
+    // I(ref) ->
+    //   case map.get(db.entity_index, ref) {
+    //     Ok(parts) ->
+    //       el.details(
+    //         [],
+    //         [
+    //           el.summary([], [el.text(int.to_string(ref))]),
+    //           el.table(
+    //             [],
+    //             [
+    //               el.tbody(
+    //                 [],
+    //                 list.map(
+    //                   parts,
+    //                   fn(triple) {
+    //                     el.tr(
+    //                       [class("")],
+    //                       [
+    //                         el.td([class("border px-1")], [el.text(triple.1)]),
+    //                         el.td(
+    //                           [class("border px-1")],
+    //                           [render_doc(triple.2, db)],
+    //                         ),
+    //                       ],
+    //                     )
+    //                   },
+    //                 ),
+    //               ),
+    //             ],
+    //           ),
+    //         ],
+    //       )
+    //     Error(Nil) -> el.text(print_value(I(ref)))
+    //   }
     _ -> el.text(print_value(value))
   }
 }
