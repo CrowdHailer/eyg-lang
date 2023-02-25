@@ -1,8 +1,7 @@
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
 import lustre
@@ -10,9 +9,8 @@ import lustre/cmd
 import lustre/element as el
 import lustre/event
 import lustre/attribute.{class}
-import magpie/store/json
 import magpie/store/in_memory.{B, I, L, S}
-import magpie/query.{i, s, v}
+import magpie/query.{v}
 import browser/hash
 import browser/worker
 import browser/serialize
@@ -55,8 +53,14 @@ pub type Mode {
   UpdateMatch(query: Int, pattern: Int, match: Int, selection: MatchSelection)
 }
 
+pub type DBState {
+  Indexing
+  Querying(Int)
+  Ready
+}
+
 pub type DB {
-  DB(worker: worker.Worker, working: Bool, db_view: serialize.DBView)
+  DB(worker: worker.Worker, working: DBState, db_view: serialize.DBView)
 }
 
 pub type App {
@@ -96,7 +100,7 @@ pub type Action {
 pub fn init() {
   let w = worker.start_worker("./worker.js")
   #(
-    App(DB(w, True, serialize.DBView(0, [])), queries(), OverView),
+    App(DB(w, Indexing, serialize.DBView(0, [])), queries(), OverView),
     cmd.from(fn(dispatch) {
       worker.on_message(
         w,
@@ -136,7 +140,7 @@ fn update_hash(queries) {
 pub fn update(state, action) {
   case action {
     Indexed(view) -> #(
-      App(DB(state.db.worker, False, view), queries(), OverView),
+      App(DB(state.db.worker, Ready, view), queries(), OverView),
       cmd.none(),
     )
     HashChange -> {
@@ -149,22 +153,35 @@ pub fn update(state, action) {
     RunQuery(i) -> {
       io.debug("running")
 
-      assert App(DB(db, False, view), queries, _mode) = state
-      assert Ok(q) = list.at(queries, i)
-      let #(#(from, where), _cache) = q
+      assert App(DB(db, Ready, view), queries, _mode) = state
+      assert Ok(queries) =
+        map_at(
+          queries,
+          i,
+          fn(q) {
+            let #(#(from, where), _cache) = q
 
-      worker.post_message(
-        db,
-        serialize.query().encode(serialize.Query(from, where)),
-      )
-      let pre = list.take(queries, i)
-      let post = list.drop(queries, i + 1)
-      let queries = list.flatten([pre, [#(#(from, where), None)], post])
-      #(App(DB(db, True, view), queries, OverView), cmd.none())
+            worker.post_message(
+              db,
+              serialize.query().encode(serialize.Query(from, where)),
+            )
+            #(#(from, where), None)
+          },
+        )
+      #(App(DB(db, Querying(i), view), queries, OverView), cmd.none())
     }
     QueryResult(relations) -> {
-      io.debug(relations)
-      #(state, cmd.none())
+      assert App(DB(db, Querying(i), view), queries, _mode) = state
+      assert Ok(queries) =
+        map_at(
+          queries,
+          i,
+          fn(q) {
+            let #(#(from, where), _cache) = q
+            #(#(from, where), Some(relations))
+          },
+        )
+      #(App(..state, queries: queries), cmd.none())
     }
     AddQuery -> {
       assert App(db, queries, mode) = state
