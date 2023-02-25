@@ -1,8 +1,7 @@
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
 import lustre
@@ -10,13 +9,11 @@ import lustre/cmd
 import lustre/element as el
 import lustre/event
 import lustre/attribute.{class}
-import magpie/store/json
 import magpie/store/in_memory.{B, I, L, S}
-import magpie/query.{i, s, v}
+import magpie/query.{v}
 import browser/hash
-
-external fn db() -> Dynamic =
-  "../db.mjs" "data"
+import browser/worker
+import browser/serialize
 
 // At the top to get generic
 fn delete_at(items, i) {
@@ -56,10 +53,19 @@ pub type Mode {
   UpdateMatch(query: Int, pattern: Int, match: Int, selection: MatchSelection)
 }
 
+pub type DBState {
+  Indexing
+  Querying(Int)
+  Ready
+}
+
+pub type DB {
+  DB(worker: worker.Worker, working: DBState, db_view: serialize.DBView)
+}
+
 pub type App {
-  Loading
-  Running(
-    db: in_memory.DB,
+  App(
+    db: DB,
     queries: List(
       #(
         #(List(String), List(#(query.Match, query.Match, query.Match))),
@@ -71,9 +77,10 @@ pub type App {
 }
 
 pub type Action {
-  Index
+  Indexed(serialize.DBView)
   HashChange
   RunQuery(Int)
+  QueryResult(List(List(in_memory.Value)))
   AddQuery
   DeleteQuery(Int)
   AddVariable(query: Int)
@@ -91,11 +98,26 @@ pub type Action {
 // choice in edit match, or form submit info in discord
 
 pub fn init() {
+  let w = worker.start_worker("./worker.js")
   #(
-    Loading,
+    App(DB(w, Indexing, serialize.DBView(0, [])), queries(), OverView),
     cmd.from(fn(dispatch) {
-      io.debug("starting")
-      dispatch(Index)
+      worker.on_message(
+        w,
+        fn(raw) {
+          case serialize.db_view().decode(raw) {
+            Ok(db_view) -> dispatch(Indexed(db_view))
+            Error(_) ->
+              case serialize.relations().decode(raw) {
+                Ok(relations) -> dispatch(QueryResult(relations))
+                Error(_) -> {
+                  io.debug(#("unexpected message", raw))
+                  Nil
+                }
+              }
+          }
+        },
+      )
     }),
   )
 }
@@ -117,49 +139,66 @@ fn update_hash(queries) {
 
 pub fn update(state, action) {
   case action {
-    Index -> {
-      assert Ok(triples) = json.decoder()(db())
-      let db = in_memory.create_db(triples)
-      io.print("created db")
-      #(Running(db, queries(), OverView), cmd.none())
-    }
+    Indexed(view) -> #(
+      App(DB(state.db.worker, Ready, view), queries(), OverView),
+      cmd.none(),
+    )
     HashChange -> {
       let state = case state {
-        Running(db, _queries, _mode) -> Running(db, queries(), OverView)
+        App(db, _queries, _mode) -> App(db, queries(), OverView)
         other -> other
       }
       #(state, cmd.none())
     }
     RunQuery(i) -> {
       io.debug("running")
-      assert Running(db, queries, _mode) = state
-      assert Ok(q) = list.at(queries, i)
-      let #(#(from, where), _cache) = q
-      let cache =
-        query.run(from, where, db)
-        // probably should need to run unique as query should take care of it
-        |> list.unique
-      let pre = list.take(queries, i)
-      let post = list.drop(queries, i + 1)
-      let queries = list.flatten([pre, [#(#(from, where), Some(cache))], post])
-      #(Running(db, queries, OverView), cmd.none())
+
+      assert App(DB(db, Ready, view), queries, _mode) = state
+      assert Ok(queries) =
+        map_at(
+          queries,
+          i,
+          fn(q) {
+            let #(#(from, where), _cache) = q
+
+            worker.post_message(
+              db,
+              serialize.query().encode(serialize.Query(from, where)),
+            )
+            #(#(from, where), None)
+          },
+        )
+      #(App(DB(db, Querying(i), view), queries, OverView), cmd.none())
+    }
+    QueryResult(relations) -> {
+      assert App(DB(db, Querying(i), view), queries, _mode) = state
+      assert Ok(queries) =
+        map_at(
+          queries,
+          i,
+          fn(q) {
+            let #(#(from, where), _cache) = q
+            #(#(from, where), Some(relations))
+          },
+        )
+      #(App(..state, queries: queries, db: DB(db, Ready, view)), cmd.none())
     }
     AddQuery -> {
-      assert Running(db, queries, mode) = state
+      assert App(db, queries, mode) = state
       let queries = list.append(queries, [#(#([], []), None)])
-      #(Running(db, queries, mode), update_hash(queries))
+      #(App(db, queries, mode), update_hash(queries))
     }
     DeleteQuery(i) -> {
-      assert Running(db, queries, mode) = state
+      assert App(db, queries, mode) = state
       let queries = delete_at(queries, i)
-      #(Running(db, queries, mode), update_hash(queries))
+      #(App(db, queries, mode), update_hash(queries))
     }
     AddVariable(i) -> {
-      assert Running(db, queries, _) = state
-      #(Running(db, queries, ChooseVariable(i)), cmd.none())
+      assert App(db, queries, _) = state
+      #(App(db, queries, ChooseVariable(i)), cmd.none())
     }
     SelectVariable(var) -> {
-      assert Running(db, queries, ChooseVariable(i)) = state
+      assert App(db, queries, ChooseVariable(i)) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -170,10 +209,10 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     DeleteVariable(i, j) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -183,10 +222,10 @@ pub fn update(state, action) {
             #(#(delete_at(find, j), where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     AddPattern(i) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -198,10 +237,10 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     EditMatch(i, j, k) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(#(#(_find, where), _cache)) = list.at(queries, i)
       assert Ok(pattern) = list.at(where, j)
 
@@ -218,14 +257,14 @@ pub fn update(state, action) {
       }
 
       let mode = UpdateMatch(i, j, k, selection)
-      #(Running(db, queries, mode), cmd.none())
+      #(App(db, queries, mode), cmd.none())
     }
     EditMatchType(selection) -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, _)) = state
-      #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
+      assert App(db, queries, UpdateMatch(i, j, k, _)) = state
+      #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
     ReplaceMatch -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
+      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let match = case selection {
         Variable(var) -> query.Variable(var)
         ConstString(value) -> query.s(value)
@@ -255,11 +294,11 @@ pub fn update(state, action) {
             #(#(find, where), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
 
     DeletePattern(i, j) -> {
-      assert Running(db, queries, _) = state
+      assert App(db, queries, _) = state
       assert Ok(queries) =
         map_at(
           queries,
@@ -269,51 +308,39 @@ pub fn update(state, action) {
             #(#(find, delete_at(where, j)), None)
           },
         )
-      #(Running(db, queries, OverView), update_hash(queries))
+      #(App(db, queries, OverView), update_hash(queries))
     }
     InputChange(new) -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
+      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let selection = case selection {
         Variable(_) -> Variable(new)
         ConstString(_) -> ConstString(new)
         ConstInteger(_) -> ConstInteger(option.from_result(int.parse(new)))
         ConstBoolean(_) -> todo("shouldn't happend because check change")
       }
-      #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
+      #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
     CheckChange(new) -> {
-      assert Running(db, queries, UpdateMatch(i, j, k, selection)) = state
+      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let selection = case selection {
         ConstBoolean(_) -> ConstBoolean(new)
         _ -> todo("shouldn't happend because input change")
       }
-      #(Running(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
+      #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
   }
 }
 
 pub fn render(state) {
-  case state {
-    Loading ->
-      el.div(
-        [
-          class(
-            "flex flex-col min-h-screen text-center justify-around bg-gray-50 text-xl",
-          ),
-        ],
-        [el.text("loading")],
-      )
-
-    Running(db, queries, mode) ->
-      el.div(
-        [class("bg-gray-200 min-h-screen p-4")],
-        list.flatten([
-          render_edit(mode, db),
-          render_notebook(db, queries, mode),
-          render_examples(),
-        ]),
-      )
-  }
+  let App(DB(_, state, view), queries, mode) = state
+  el.div(
+    [class("bg-gray-200 min-h-screen p-4")],
+    list.flatten([
+      render_edit(mode, view),
+      render_notebook(state, view, queries, mode),
+      render_examples(),
+    ]),
+  )
 }
 
 fn render_examples() {
@@ -437,21 +464,9 @@ fn render_edit(mode, db) {
                         let suggestions =
                           case k {
                             0 -> []
-                            1 ->
-                              map.to_list(db.attribute_index)
-                              |> list.map(fn(pair) {
-                                let #(key, triples) = pair
-                                #(key, list.length(triples))
-                              })
-                            2 ->
-                              map.to_list(db.value_index)
-                              |> list.filter_map(fn(pair) {
-                                let #(key, triples) = pair
-                                case key {
-                                  S(value) -> Ok(#(value, list.length(triples)))
-                                  _ -> Error(Nil)
-                                }
-                              })
+                            1 -> db.attribute_suggestions
+                            // TODO value_suggestions
+                            2 -> []
                           }
                           |> list.filter(fn(pair) {
                             let #(key, count) = pair
@@ -581,7 +596,7 @@ fn default_queries() {
   []
 }
 
-fn render_notebook(db, queries, mode) {
+fn render_notebook(state, view, queries, mode) {
   [
     el.div(
       [
@@ -595,10 +610,10 @@ fn render_notebook(db, queries, mode) {
           [
             el.h1([class("text-2xl")], [el.text("Queries")]),
             el.text("database record count: "),
-            el.text(int.to_string(list.length(db.triples))),
+            el.text(int.to_string(view.triple_count)),
           ],
         ),
-        ..list.index_map(queries, render_query(mode, db))
+        ..list.index_map(queries, render_query(mode, state, view))
         |> list.append([
           el.button(
             [
@@ -639,7 +654,7 @@ fn where_vars(where) {
   |> list.unique
 }
 
-fn render_query(mode, db) {
+fn render_query(mode, connection, db) {
   fn(i, state) {
     let #(query, cache) = state
     let #(find, where): #(_, List(query.Pattern)) = query
@@ -742,15 +757,28 @@ fn render_query(mode, db) {
             el.div(
               [],
               [
-                el.button(
-                  [
-                    event.on_click(event.dispatch(RunQuery(i))),
-                    class(
-                      "bg-blue-300 rounded mr-2 py-1 border border-blue-600 px-2 my-2",
-                    ),
-                  ],
-                  [el.text("Run query")],
-                ),
+                case connection {
+                  Ready ->
+                    el.button(
+                      [
+                        event.on_click(event.dispatch(RunQuery(i))),
+                        class(
+                          "bg-blue-300 rounded mr-2 py-1 border border-blue-600 px-2 my-2",
+                        ),
+                      ],
+                      [el.text("Run query")],
+                    )
+                  _ ->
+                    el.button(
+                      [
+                        attribute.disabled(True),
+                        class(
+                          "bg-gray-300 rounded mr-2 py-1 border border-gray-600 px-2 my-2",
+                        ),
+                      ],
+                      [el.text("Run query")],
+                    )
+                },
                 el.button(
                   [
                     event.on_click(event.dispatch(DeleteQuery(i))),
@@ -852,40 +880,41 @@ pub fn render_results(find, results, db) {
 
 fn render_doc(value, db) {
   case value {
-    I(ref) ->
-      case map.get(db.entity_index, ref) {
-        Ok(parts) ->
-          el.details(
-            [],
-            [
-              el.summary([], [el.text(int.to_string(ref))]),
-              el.table(
-                [],
-                [
-                  el.tbody(
-                    [],
-                    list.map(
-                      parts,
-                      fn(triple) {
-                        el.tr(
-                          [class("")],
-                          [
-                            el.td([class("border px-1")], [el.text(triple.1)]),
-                            el.td(
-                              [class("border px-1")],
-                              [render_doc(triple.2, db)],
-                            ),
-                          ],
-                        )
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          )
-        Error(Nil) -> el.text(print_value(I(ref)))
-      }
+    // TODO reenable entity_index but needs codec support
+    // I(ref) ->
+    //   case map.get(db.entity_index, ref) {
+    //     Ok(parts) ->
+    //       el.details(
+    //         [],
+    //         [
+    //           el.summary([], [el.text(int.to_string(ref))]),
+    //           el.table(
+    //             [],
+    //             [
+    //               el.tbody(
+    //                 [],
+    //                 list.map(
+    //                   parts,
+    //                   fn(triple) {
+    //                     el.tr(
+    //                       [class("")],
+    //                       [
+    //                         el.td([class("border px-1")], [el.text(triple.1)]),
+    //                         el.td(
+    //                           [class("border px-1")],
+    //                           [render_doc(triple.2, db)],
+    //                         ),
+    //                       ],
+    //                     )
+    //                   },
+    //                 ),
+    //               ),
+    //             ],
+    //           ),
+    //         ],
+    //       )
+    //     Error(Nil) -> el.text(print_value(I(ref)))
+    //   }
     _ -> el.text(print_value(value))
   }
 }
