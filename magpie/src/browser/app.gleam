@@ -181,7 +181,7 @@ pub fn update(state, action) {
             #(#(from, where), Some(relations))
           },
         )
-      #(App(..state, queries: queries), cmd.none())
+      #(App(..state, queries: queries, db: DB(db, Ready, view)), cmd.none())
     }
     AddQuery -> {
       assert App(db, queries, mode) = state
@@ -332,12 +332,12 @@ pub fn update(state, action) {
 }
 
 pub fn render(state) {
-  let App(DB(_, _, view), queries, mode) = state
+  let App(DB(_, state, view), queries, mode) = state
   el.div(
     [class("bg-gray-200 min-h-screen p-4")],
     list.flatten([
       render_edit(mode, view),
-      render_notebook(view, queries, mode),
+      render_notebook(state, view, queries, mode),
       render_examples(),
     ]),
   )
@@ -596,7 +596,7 @@ fn default_queries() {
   []
 }
 
-fn render_notebook(view, queries, mode) {
+fn render_notebook(state, view, queries, mode) {
   [
     el.div(
       [
@@ -613,7 +613,7 @@ fn render_notebook(view, queries, mode) {
             el.text(int.to_string(view.triple_count)),
           ],
         ),
-        ..list.index_map(queries, render_query(mode, view))
+        ..list.index_map(queries, render_query(mode, state, view))
         |> list.append([
           el.button(
             [
@@ -654,7 +654,7 @@ fn where_vars(where) {
   |> list.unique
 }
 
-fn render_query(mode, db) {
+fn render_query(mode, connection, db) {
   fn(i, state) {
     let #(query, cache) = state
     let #(find, where): #(_, List(query.Pattern)) = query
@@ -757,15 +757,28 @@ fn render_query(mode, db) {
             el.div(
               [],
               [
-                el.button(
-                  [
-                    event.on_click(event.dispatch(RunQuery(i))),
-                    class(
-                      "bg-blue-300 rounded mr-2 py-1 border border-blue-600 px-2 my-2",
-                    ),
-                  ],
-                  [el.text("Run query")],
-                ),
+                case connection {
+                  Ready ->
+                    el.button(
+                      [
+                        event.on_click(event.dispatch(RunQuery(i))),
+                        class(
+                          "bg-blue-300 rounded mr-2 py-1 border border-blue-600 px-2 my-2",
+                        ),
+                      ],
+                      [el.text("Run query")],
+                    )
+                  _ ->
+                    el.button(
+                      [
+                        attribute.disabled(True),
+                        class(
+                          "bg-gray-300 rounded mr-2 py-1 border border-gray-600 px-2 my-2",
+                        ),
+                      ],
+                      [el.text("Run query")],
+                    )
+                },
                 el.button(
                   [
                     event.on_click(event.dispatch(DeleteQuery(i))),
