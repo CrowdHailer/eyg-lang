@@ -2,10 +2,7 @@ import gleam/io
 import gleam/dynamic.{Dynamic}
 import gleam/list
 import gleam/map
-import gleam/http.{Get}
-import gleam/http/request
 import gleam/json
-import gleam/fetch
 import gleam/javascript/promise.{try_await}
 import magpie/query
 import magpie/store/in_memory

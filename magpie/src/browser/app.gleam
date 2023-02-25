@@ -830,10 +830,10 @@ fn print_value(value) {
 }
 
 pub fn render_results(find, results, db) {
-  el.div(
+  el.details(
     [class("bg-blue-100 p-1 my-2")],
     [
-      el.div(
+      el.summary(
         [],
         [el.text("rows "), el.text(int.to_string(list.length(results)))],
       ),
