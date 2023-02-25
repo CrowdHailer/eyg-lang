@@ -55,12 +55,9 @@ pub fn run(self: Worker) {
   on_message(
     self,
     fn(data) {
-      io.debug(data)
       case serialize.query().decode(data) {
         Ok(serialize.Query(from, patterns)) -> {
-          io.debug(#(from, patterns))
           let result = query.run(from, patterns, db)
-          io.debug(result)
           post_message(self, serialize.relations().encode(result))
         }
         Error(_) -> todo("couldn't decode")
@@ -68,5 +65,4 @@ pub fn run(self: Worker) {
     },
   )
   // TODO plinth
-  // TODO can also use single code build with db in in worker
 }
