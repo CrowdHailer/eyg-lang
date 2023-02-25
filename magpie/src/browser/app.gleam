@@ -14,9 +14,11 @@ import magpie/store/json
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/query.{i, s, v}
 import browser/hash
+import browser/worker
+import browser/serialize
 
-external fn db() -> Dynamic =
-  "../db.mjs" "data"
+// external fn db() -> Dynamic =
+//   "../db.mjs" "data"
 
 // At the top to get generic
 fn delete_at(items, i) {
@@ -118,7 +120,9 @@ fn update_hash(queries) {
 pub fn update(state, action) {
   case action {
     Index -> {
-      assert Ok(triples) = json.decoder()(db())
+      // assert Ok(triples) = json.decoder()(db())
+      // TODO remove from state
+      let triples = []
       let db = in_memory.create_db(triples)
       io.print("created db")
       #(Running(db, queries(), OverView), cmd.none())
@@ -132,6 +136,7 @@ pub fn update(state, action) {
     }
     RunQuery(i) -> {
       io.debug("running")
+
       assert Running(db, queries, _mode) = state
       assert Ok(q) = list.at(queries, i)
       let #(#(from, where), _cache) = q
@@ -139,6 +144,17 @@ pub fn update(state, action) {
         query.run(from, where, db)
         // probably should need to run unique as query should take care of it
         |> list.unique
+
+      let w =
+        worker.start_worker("./worker.js")
+        |> io.debug
+      worker.on_message(w, io.debug)
+
+      w
+      |> worker.post_message(serialize.query().encode(serialize.Query(
+        from,
+        where,
+      )))
       let pre = list.take(queries, i)
       let post = list.drop(queries, i + 1)
       let queries = list.flatten([pre, [#(#(from, where), Some(cache))], post])

@@ -2,4 +2,4 @@
 *.ez
 build
 erl_crash.dump
-public/bundle.js
+

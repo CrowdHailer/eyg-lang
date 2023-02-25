@@ -1,6 +1,9 @@
 {
   "scripts": {
-    "build": "npx rollup -f iife -i ./build/dev/javascript/magpie/client.js -o public/bundle.js"
+    "compile": "gleam build",
+    "bundle:app": "npx rollup -f iife -i ./build/dev/javascript/magpie/app.js -o public/app.js",
+    "bundle:worker": "npx rollup -f iife -i ./build/dev/javascript/magpie/worker.js -o public/worker.js",
+    "build": "npm run bundle:app && npm run bundle:worker"
   },
   "dependencies": {
     "glob": "^8.1.0",
@@ -9,6 +12,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "rollup": "^3.14.0"
+    "rollup": "^3.14.0",
+    "sirv-cli": "^2.0.2"
   }
 }

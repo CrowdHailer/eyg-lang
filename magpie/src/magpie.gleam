@@ -34,7 +34,7 @@ pub fn args() {
 
 pub fn main() {
   io.debug("start")
-  let db = case list.drop(args(), 3) {
+  let db = case list.drop(args(), 2) {
     ["movies"] -> movies.movies()
     ["fleet"] ->
       // #vvalues,sversion,vversion,r0,sdriver,slitmus:1&vvalues,sdriver,vdriver,r0,sversion,vversion,r0,sreplicaCount,i0:1,2
@@ -43,13 +43,20 @@ pub fn main() {
       |> yaml.read_files
   }
 
-  let content =
-    string.concat([
-      "export function data(){\n  return ",
-      json.to_string(db.triples),
-      "\n}",
-    ])
-  write_file_sync("build/dev/javascript/magpie/db.mjs", content)
+  // let content =
+  //   string.concat([
+  //     "export function data(){\n  return ",
+  //     json.to_string(db.triples),
+  //     "\n}",
+  //   ])
+  // write_file_sync("build/dev/javascript/magpie/db.mjs", content)
+  // let content =
+  //   string.concat([
+  //     "export function data(){\n  return ",
+  //     json.to_string(db.triples),
+  //     "\n}",
+  //   ])
+  write_file_sync("public/db.json", json.to_string(db.triples))
   Nil
 }
 
