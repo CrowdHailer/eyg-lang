@@ -23,29 +23,33 @@ pub fn render(state: app.WorkSpace, inferred) {
   )
 }
 
-fn render_label(value, inferred: inference.Infered, state) {
+fn render_label(value, inferred: option.Option(inference.Infered), state) {
   [
     div(
       [],
-      case map.get(inferred.environments, state.selection) {
-        // using spaces because we are in pre tag and text based
-        // not in pre tag here
-        Ok(env) ->
-          list.map(
-            map.keys(env)
-            |> list.unique,
-            fn(v) {
-              span(
-                [
-                  class("rounded bg-blue-100 p-1"),
-                  on_click(dispatch(ClickOption(v))),
-                ],
-                [text(v)],
+      case inferred {
+        Some(inferred) ->
+          case map.get(inferred.environments, state.selection) {
+            // using spaces because we are in pre tag and text based
+            // not in pre tag here
+            Ok(env) ->
+              list.map(
+                map.keys(env)
+                |> list.unique,
+                fn(v) {
+                  span(
+                    [
+                      class("rounded bg-blue-100 p-1"),
+                      on_click(dispatch(ClickOption(v))),
+                    ],
+                    [text(v)],
+                  )
+                },
               )
-            },
-          )
-          |> list.intersperse(text(" "))
-        Error(_) -> [text("no env")]
+              |> list.intersperse(text(" "))
+            Error(_) -> [text("no env")]
+          }
+        None -> []
       },
     ),
     input([
@@ -93,21 +97,28 @@ fn render_text(value) {
   ]
 }
 
-fn render_navigate(inferred: inference.Infered, state) {
+fn render_navigate(inferred, state) {
   [
-    render_errors(inferred),
+    case inferred {
+      Some(inferred) -> render_errors(inferred)
+      None -> span([], [])
+    },
     div(
       [class("hstack")],
       [
         span(
           [],
           [
-            text(string.append(
-              ":",
-              inferred
-              |> inference.type_of(state.selection)
-              |> typ.render(),
-            )),
+            case inferred {
+              Some(inferred) ->
+                text(string.append(
+                  ":",
+                  inferred
+                  |> inference.type_of(state.selection)
+                  |> typ.render(),
+                ))
+              None -> span([], [text("type checking")])
+            },
           ],
         ),
         span([class("spacer")], []),
