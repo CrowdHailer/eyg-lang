@@ -11,7 +11,7 @@ import atelier/app.{SelectNode}
 import atelier/view/typ
 import eyg/analysis/inference
 
-pub fn render(source, selection, inferred) {
+pub fn render(source, selection, inferred: Option(inference.Infered)) {
   let loc = Location([], Some(selection))
   pre(
     [style([#("cursor", "pointer")]), class("w-full max-w-6xl")],
@@ -276,10 +276,14 @@ fn assigment(label, value, then, br, loc, inferred) {
   [el, text(br), ..do_render(then, br, child(loc, 1), inferred)]
 }
 
-fn error(loc: Location, inferred: inference.Infered) {
-  case map.get(inferred.types, loc.path) {
-    Ok(Error(_)) -> True
-    _ -> False
+fn error(loc: Location, inferred: Option(inference.Infered)) {
+  case inferred {
+    Some(inferred) ->
+      case map.get(inferred.types, loc.path) {
+        Ok(Error(_)) -> True
+        _ -> False
+      }
+    None -> False
   }
 }
 
@@ -308,8 +312,12 @@ fn integer(value, loc, inferred) {
 fn vacant(loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
+  let content = case inferred {
+    Some(inferred) -> typ.render(inference.type_of(inferred, loc.path))
+    None -> "todo"
+  }
   [click(loc), classes([#("text-red-500", True), ..highlight(target, alert)])]
-  |> span([text(typ.render(inference.type_of(inferred, loc.path)))])
+  |> span([text(content)])
 }
 
 fn extend(label, loc, inferred) {

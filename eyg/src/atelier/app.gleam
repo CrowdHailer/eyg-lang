@@ -17,7 +17,7 @@ pub type WorkSpace {
   WorkSpace(
     selection: List(Int),
     source: e.Expression,
-    inferred: inference.Infered,
+    inferred: Option(inference.Infered),
     mode: Mode,
     yanked: Option(e.Expression),
     error: Option(String),
@@ -46,7 +46,16 @@ pub type Action {
 pub fn init(source) {
   assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
-  WorkSpace([], source, standard.infer(source), mode, None, None, #([], []))
+  // Have inference work once for showing elements but need to also background this
+  WorkSpace(
+    [],
+    source,
+    Some(standard.infer(source)),
+    mode,
+    None,
+    None,
+    #([], []),
+  )
 }
 
 pub fn update(state: WorkSpace, action) {
@@ -473,7 +482,7 @@ fn update_source(state: WorkSpace, source) {
     False -> {
       let #(backwards, _forwards) = state.history
       let history = #([#(state.source, state.selection), ..backwards], [])
-      #(history, standard.infer(source))
+      #(history, None)
     }
   }
   Ok(
