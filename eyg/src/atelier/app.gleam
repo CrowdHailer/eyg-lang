@@ -7,7 +7,7 @@ import gleam/fetch
 import gleam/http
 import gleam/http/request
 import lustre/cmd
-import atelier/transform
+import atelier/transform.{Act}
 import eygir/expression as e
 import eygir/encode
 import eyg/analysis/inference
@@ -166,7 +166,7 @@ pub fn keypress(key, state: WorkSpace) {
 }
 
 // could move to a atelier/client.{save}
-fn save(state) {
+fn save(state: WorkSpace) {
   let request =
     request.new()
     |> request.set_method(http.Post)
@@ -182,7 +182,7 @@ fn save(state) {
   Ok(state)
 }
 
-fn call_with(act, state) {
+fn call_with(act: Act, state) {
   let source = act.update(e.Apply(e.Vacant, act.target))
   update_source(state, source)
 }
@@ -190,7 +190,7 @@ fn call_with(act, state) {
 // e is essentially line above on a let statement.
 // nested lets can only be created from the value on the right.
 // moving something to a module might just have to be copy paste
-fn assign_to(act, state) {
+fn assign_to(act: Act, state) {
   let commit = case act.target {
     e.Let(_, _, _) -> fn(text) { act.update(e.Let(text, e.Vacant, act.target)) }
     // normally I want to add something above
@@ -199,7 +199,7 @@ fn assign_to(act, state) {
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-fn record(act, state) {
+fn record(act: Act, state) {
   case act.target {
     e.Vacant ->
       act.update(e.Empty)
@@ -219,7 +219,7 @@ fn record(act, state) {
   }
 }
 
-fn tag(act, state) {
+fn tag(act: Act, state) {
   let commit = case act.target {
     e.Vacant -> fn(text) { act.update(e.Tag(text)) }
     exp -> fn(text) { act.update(e.Apply(e.Tag(text), exp)) }
@@ -227,11 +227,11 @@ fn tag(act, state) {
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-fn copy(act, state) {
+fn copy(act: Act, state) {
   WorkSpace(..state, yanked: Some(act.target))
 }
 
-fn paste(act, state) {
+fn paste(act: Act, state: WorkSpace) {
   case state.yanked {
     Some(snippet) -> {
       let source = act.update(snippet)
@@ -241,7 +241,7 @@ fn paste(act, state) {
   }
 }
 
-fn unwrap(act, state) {
+fn unwrap(act: Act, state) {
   case act.parent {
     None -> Error("top level")
     Some(#(_i, _list, _, parent_update)) -> {
@@ -251,7 +251,7 @@ fn unwrap(act, state) {
   }
 }
 
-fn insert(act, state) {
+fn insert(act: Act, state) {
   let write = fn(text, build) {
     WriteLabel(text, fn(new) { act.update(build(new)) })
   }
@@ -281,7 +281,7 @@ fn insert(act, state) {
   Ok(WorkSpace(..state, mode: mode))
 }
 
-fn overwrite(act, state) {
+fn overwrite(act: Act, state) {
   case act.target {
     e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
       let commit = fn(text) {
@@ -299,7 +299,7 @@ fn overwrite(act, state) {
   }
 }
 
-fn increase(state) {
+fn increase(state: WorkSpace) {
   try selection = case list.reverse(state.selection) {
     [_, ..rest] -> Ok(list.reverse(rest))
     [] -> Error("no increase")
@@ -308,13 +308,13 @@ fn increase(state) {
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 
-fn decrease(_act, state) {
+fn decrease(_act, state: WorkSpace) {
   let selection = list.append(state.selection, [0])
   try act = transform.prepare(state.source, selection)
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 
-fn delete(act, state) {
+fn delete(act: Act, state) {
   // an assignment vacant or not is always deleted.
   // when deleting with a vacant as a target there is no change
   // we can instead bump up the path
@@ -325,7 +325,7 @@ fn delete(act, state) {
   update_source(state, source)
 }
 
-fn abstract(act, state) {
+fn abstract(act: Act, state) {
   let commit = case act.target {
     e.Let(label, value, then) -> fn(text) {
       act.update(e.Let(label, e.Lambda(text, value), then))
@@ -335,7 +335,7 @@ fn abstract(act, state) {
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-fn select(act, state) {
+fn select(act: Act, state) {
   case act.target {
     e.Let(_label, _value, _then) -> Error("can't get on let")
     exp -> {
@@ -345,7 +345,7 @@ fn select(act, state) {
   }
 }
 
-fn handle(act, state) {
+fn handle(act: Act, state) {
   case act.target {
     e.Let(_label, _value, _then) -> Error("can't handle on let")
     exp -> {
@@ -357,7 +357,7 @@ fn handle(act, state) {
   }
 }
 
-fn perform(act, state) {
+fn perform(act: Act, state) {
   let commit = case act.target {
     e.Let(label, _value, then) -> fn(text) {
       act.update(e.Let(label, e.Perform(text), then))
@@ -388,7 +388,7 @@ fn undo(state: WorkSpace) {
   }
 }
 
-fn redo(state) {
+fn redo(state: WorkSpace) {
   case state.history {
     #(_, []) -> Error("No redo")
     #(backward, [#(source, selection), ..rest]) -> {
@@ -409,7 +409,7 @@ fn redo(state) {
   }
 }
 
-fn list(act, state) {
+fn list(act: Act, state) {
   let new = case act.target {
     e.Vacant -> e.Tail
     e.Tail | e.Apply(e.Apply(e.Cons, _), _) ->
@@ -420,12 +420,12 @@ fn list(act, state) {
   update_source(state, source)
 }
 
-fn call(act, state) {
+fn call(act: Act, state) {
   let source = act.update(e.Apply(act.target, e.Vacant))
   update_source(state, source)
 }
 
-fn variable(act, state) {
+fn variable(act: Act, state) {
   let commit = case act.target {
     e.Let(label, _value, then) -> fn(term) {
       act.update(e.Let(label, term, then))
@@ -435,7 +435,7 @@ fn variable(act, state) {
   WorkSpace(..state, mode: WriteTerm("", commit))
 }
 
-fn binary(act, state) {
+fn binary(act: Act, state) {
   let commit = case act.target {
     e.Let(label, _value, then) -> fn(text) {
       act.update(e.Let(label, e.Binary(text), then))
@@ -445,7 +445,7 @@ fn binary(act, state) {
   WorkSpace(..state, mode: WriteText("", commit))
 }
 
-fn number(act, state) {
+fn number(act: Act, state) {
   let #(v, commit) = case act.target {
     e.Let(label, _value, then) -> #(
       0,
@@ -457,7 +457,7 @@ fn number(act, state) {
   WorkSpace(..state, mode: WriteNumber(v, commit))
 }
 
-fn match(act, state) {
+fn match(act: Act, state) {
   let commit = case act.target {
     // e.Let(label, value, then) -> fn(text) {
     //   act.update(e.Let(label, e.Binary(text), then))
@@ -470,7 +470,7 @@ fn match(act, state) {
   Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
 }
 
-fn nocases(act, state) {
+fn nocases(act: Act, state) {
   update_source(state, act.update(e.NoCases))
 }
 

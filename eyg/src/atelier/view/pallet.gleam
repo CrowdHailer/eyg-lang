@@ -36,7 +36,11 @@ fn render_label(value) {
   ]
 }
 
-fn render_variable(value, inferred: option.Option(inference.Infered), state) {
+fn render_variable(
+  value,
+  inferred: option.Option(inference.Infered),
+  state: app.WorkSpace,
+) {
   [
     div(
       [],
@@ -110,7 +114,7 @@ fn render_text(value) {
   ]
 }
 
-fn render_navigate(inferred, state) {
+fn render_navigate(inferred, state: app.WorkSpace) {
   [
     case inferred {
       Some(inferred) -> render_errors(inferred)
