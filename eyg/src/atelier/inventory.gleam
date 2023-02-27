@@ -1,3 +1,5 @@
+import gleam/result
+
 import gleam/list
 import gleam/map
 import gleam/string
@@ -9,7 +11,7 @@ import eyg/analysis/scheme.{Scheme}
 // inventory catalog roster haystack
 
 pub fn variables_at(environments, path) {
-  try environment = map.get(environments, path)
+  use environment <- result.then(map.get(environments, path))
   Ok(variables(environment))
 }
 

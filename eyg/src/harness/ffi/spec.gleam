@@ -1,3 +1,5 @@
+import gleam/result
+
 import gleam/list
 import gleam/option.{None, Some}
 import eyg/analysis/typ as t
@@ -87,8 +89,8 @@ pub fn field(label, value, rest) {
       fn(fields) {
         case list.key_pop(fields, label) {
           Ok(#(value, rest)) -> {
-            try v = cast_value(value)
-            try t = cast_tail(rest)
+            use v <- result.then(cast_value(value))
+            use t <- result.then(cast_tail(rest))
             Ok(#(v, t))
           }
           Error(Nil) -> Error(Nil)

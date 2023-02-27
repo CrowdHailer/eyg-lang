@@ -1,3 +1,5 @@
+import gleam/result
+
 // dont need to move now but morph transform is better name
 // We can replace act with a zipper list to the point the cursor is at
 // probably we will move the specific transformation code from app to transform
@@ -29,7 +31,7 @@ fn step(exp, i) {
 
 fn do_prepare(exp, selection, acc, update) {
   let assert [i, ..rest] = selection
-  try #(child, update_child) = step(exp, i)
+  use #(child, update_child) <- result.then(step(exp, i))
   let update_child = fn(new) { update(update_child(new)) }
   case rest {
     [] ->

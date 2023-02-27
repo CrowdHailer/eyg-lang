@@ -54,15 +54,14 @@ pub type Failure {
 pub fn unify(t1, t2, ref) -> Result(_, _) {
   case t1, t2 {
     t.Fun(from1, effects1, to1), t.Fun(from2, effects2, to2) -> {
-      try s1 = unify(from1, from2, ref)
-      try s2 = unify(sub.apply(s1, to1), sub.apply(s1, to2), ref)
+      use s1 <- result.then(unify(from1, from2, ref))
+      use s2 <- result.then(unify(sub.apply(s1, to1), sub.apply(s1, to2), ref))
       let s3 = sub.compose(s2, s1)
-      try s4 =
-        unify_effects(
-          sub.apply_effects(s3, effects1),
-          sub.apply_effects(s3, effects2),
-          ref,
-        )
+      use s4 <- result.then(unify_effects(
+        sub.apply_effects(s3, effects1),
+        sub.apply_effects(s3, effects2),
+        ref,
+      ))
       Ok(sub.compose(s4, s3))
     }
     t.Unbound(u), t | t, t.Unbound(u) -> varbind(u, t)
@@ -87,7 +86,11 @@ fn rewrite_row(row, new_label, ref) {
       Ok(#(t, r, s))
     }
     t.Extend(label, field, tail) -> {
-      try #(field1, tail1, subs) = rewrite_row(tail, new_label, ref)
+      use #(field1, tail1, subs) <- result.then(rewrite_row(
+        tail,
+        new_label,
+        ref,
+      ))
       Ok(#(field1, t.Extend(label, field, tail1), subs))
     }
   }
@@ -100,11 +103,14 @@ pub fn unify_row(r1, r2, ref) {
     t.Open(u), r | r, t.Open(u) -> Ok(sub.row(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
     t.Extend(label, t1, tail1), r | r, t.Extend(label, t1, tail1) -> {
-      try #(t2, tail2, s1) = rewrite_row(r, label, ref)
-      try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
+      use #(t2, tail2, s1) <- result.then(rewrite_row(r, label, ref))
+      use s2 <- result.then(unify(sub.apply(s1, t1), sub.apply(s1, t2), ref))
       let s3 = sub.compose(s2, s1)
-      try s4 =
-        unify_row(sub.apply_row(s3, tail1), sub.apply_row(s3, tail2), ref)
+      use s4 <- result.then(unify_row(
+        sub.apply_row(s3, tail1),
+        sub.apply_row(s3, tail2),
+        ref,
+      ))
       Ok(sub.compose(s4, s3))
     }
   }
@@ -123,7 +129,11 @@ fn rewrite_effect(effect, new_label, ref) {
       Ok(#(t, r, s))
     }
     t.Extend(label, field, tail) -> {
-      try #(field1, tail1, subs) = rewrite_effect(tail, new_label, ref)
+      use #(field1, tail1, subs) <- result.then(rewrite_effect(
+        tail,
+        new_label,
+        ref,
+      ))
       Ok(#(field1, t.Extend(label, field, tail1), subs))
     }
   }
@@ -136,17 +146,16 @@ pub fn unify_effects(eff1, eff2, ref) {
     t.Open(u), r | r, t.Open(u) -> Ok(sub.effect(u, r))
     // I think all possible cominations the reach this point in the case are extend constructors from this point
     t.Extend(label, #(t1, u1), tail1), r | r, t.Extend(label, #(t1, u1), tail1) -> {
-      try #(#(t2, u2), tail2, s1) = rewrite_effect(r, label, ref)
-      try s2 = unify(sub.apply(s1, t1), sub.apply(s1, t2), ref)
+      use #(#(t2, u2), tail2, s1) <- result.then(rewrite_effect(r, label, ref))
+      use s2 <- result.then(unify(sub.apply(s1, t1), sub.apply(s1, t2), ref))
       let s3 = sub.compose(s2, s1)
-      try s4 = unify(sub.apply(s1, u1), sub.apply(s1, u2), ref)
+      use s4 <- result.then(unify(sub.apply(s1, u1), sub.apply(s1, u2), ref))
       let s5 = sub.compose(s4, s3)
-      try s6 =
-        unify_effects(
-          sub.apply_effects(s5, tail1),
-          sub.apply_effects(s5, tail2),
-          ref,
-        )
+      use s6 <- result.then(unify_effects(
+        sub.apply_effects(s5, tail1),
+        sub.apply_effects(s5, tail2),
+        ref,
+      ))
       Ok(sub.compose(s6, s5))
     }
   }

@@ -1,3 +1,5 @@
+import gleam/result
+
 // this can define state and UI maybe UI should be separate
 import gleam/io
 import gleam/int
@@ -255,7 +257,7 @@ fn insert(act: Act, state) {
   let write = fn(text, build) {
     WriteLabel(text, fn(new) { act.update(build(new)) })
   }
-  try mode = case act.target {
+  use mode <- result.then(case act.target {
     e.Variable(value) -> Ok(write(value, e.Variable(_)))
     e.Lambda(param, body) -> Ok(write(param, e.Lambda(_, body)))
     e.Apply(_, _) -> Error("no insert option for apply")
@@ -276,7 +278,7 @@ fn insert(act: Act, state) {
     e.NoCases -> Error("no cases")
     e.Perform(label) -> Ok(write(label, e.Perform))
     e.Handle(label) -> Ok(write(label, e.Handle))
-  }
+  })
 
   Ok(WorkSpace(..state, mode: mode))
 }
@@ -300,17 +302,17 @@ fn overwrite(act: Act, state) {
 }
 
 fn increase(state: WorkSpace) {
-  try selection = case list.reverse(state.selection) {
+  use selection <- result.then(case list.reverse(state.selection) {
     [_, ..rest] -> Ok(list.reverse(rest))
     [] -> Error("no increase")
-  }
+  })
   let assert Ok(act) = transform.prepare(state.source, selection)
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 
 fn decrease(_act, state: WorkSpace) {
   let selection = list.append(state.selection, [0])
-  try act = transform.prepare(state.source, selection)
+  use act <- result.then(transform.prepare(state.source, selection))
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 
@@ -372,7 +374,7 @@ fn undo(state: WorkSpace) {
     #([], _) -> Error("No history")
     #([#(source, selection), ..rest], forward) -> {
       let history = #(rest, [#(state.source, state.selection), ..forward])
-      try act = transform.prepare(source, selection)
+      use act <- result.then(transform.prepare(source, selection))
       // Has to already be in navigate mode to undo
       let mode = Navigate(act)
       Ok(
@@ -393,7 +395,7 @@ fn redo(state: WorkSpace) {
     #(_, []) -> Error("No redo")
     #(backward, [#(source, selection), ..rest]) -> {
       let history = #([#(state.source, state.selection), ..backward], rest)
-      try act = transform.prepare(source, selection)
+      use act <- result.then(transform.prepare(source, selection))
       // Has to already be in navigate mode to undo
       let mode = Navigate(act)
       Ok(
@@ -477,7 +479,7 @@ fn nocases(act: Act, state) {
 // app state actions maybe separate from ui but maybe ui files organised by mode
 // update source also ends the entry state
 fn update_source(state: WorkSpace, source) {
-  try act = transform.prepare(source, state.selection)
+  use act <- result.then(transform.prepare(source, state.selection))
   let mode = Navigate(act)
   let #(history, inferred) = case source == state.source {
     True -> #(state.history, state.inferred)

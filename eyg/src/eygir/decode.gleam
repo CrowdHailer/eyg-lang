@@ -1,3 +1,5 @@
+import gleam/result
+
 import gleam/dynamic.{DecodeError,
   decode1, decode2, decode3, field, int, string}
 import gleam/json
@@ -8,7 +10,7 @@ fn label() {
 }
 
 pub fn decoder(x) {
-  try node = field("node", string)(x)
+  use node <- result.then(field("node", string)(x))
   case node {
     "variable" -> decode1(e.Variable, label())
     "function" -> decode2(e.Lambda, label(), field("body", decoder))
