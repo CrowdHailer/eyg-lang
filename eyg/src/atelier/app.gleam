@@ -33,6 +33,7 @@ pub type Mode {
   WriteLabel(value: String, commit: fn(String) -> e.Expression)
   WriteText(value: String, commit: fn(String) -> e.Expression)
   WriteNumber(value: Int, commit: fn(Int) -> e.Expression)
+  WriteTerm(value: String, commit: fn(e.Expression) -> e.Expression)
 }
 
 pub type Action {
@@ -40,7 +41,7 @@ pub type Action {
   Change(value: String)
   Commit
   SelectNode(path: List(Int))
-  ClickOption(chosen: String)
+  ClickOption(chosen: e.Expression)
 }
 
 pub fn init(source) {
@@ -84,9 +85,9 @@ pub fn update(state: WorkSpace, action) {
       assert Ok(workspace) = update_source(state, source)
       #(workspace, cmd.none())
     }
-    ClickOption(text) -> {
-      assert WriteLabel(_, commit) = state.mode
-      let source = commit(text)
+    ClickOption(new) -> {
+      assert WriteTerm(_, commit) = state.mode
+      let source = commit(new)
       assert Ok(workspace) = update_source(state, source)
       #(workspace, cmd.none())
     }
@@ -154,6 +155,7 @@ pub fn keypress(key, state: WorkSpace) {
     }
     WriteNumber(_, _), _k -> Ok(state)
     WriteText(_, _), _k -> Ok(state)
+    WriteTerm(_, _), _k -> Ok(state)
   }
 
   case r {
@@ -425,12 +427,12 @@ fn call(act, state) {
 
 fn variable(act, state) {
   let commit = case act.target {
-    e.Let(label, _value, then) -> fn(text) {
-      act.update(e.Let(label, e.Variable(text), then))
+    e.Let(label, _value, then) -> fn(term) {
+      act.update(e.Let(label, term, then))
     }
-    _exp -> fn(text) { act.update(e.Variable(text)) }
+    _exp -> fn(term) { act.update(term) }
   }
-  WorkSpace(..state, mode: WriteLabel("", commit))
+  WorkSpace(..state, mode: WriteTerm("", commit))
 }
 
 fn binary(act, state) {

@@ -10,12 +10,14 @@ import lustre/attribute.{class, classes}
 import eyg/analysis/inference
 import atelier/app.{ClickOption, SelectNode}
 import atelier/view/typ
+import atelier/inventory
 
 pub fn render(state: app.WorkSpace, inferred) {
   div(
     [class("cover bg-gray-100")],
     case state.mode {
-      app.WriteLabel(value, _) -> render_label(value, inferred, state)
+      app.WriteLabel(value, _) -> render_label(value)
+      app.WriteTerm(value, _) -> render_variable(value, inferred, state)
       app.WriteNumber(number, _) -> render_number(number)
       app.WriteText(value, _) -> render_text(value)
       _ -> render_navigate(inferred, state)
@@ -23,26 +25,37 @@ pub fn render(state: app.WorkSpace, inferred) {
   )
 }
 
-fn render_label(value, inferred: option.Option(inference.Infered), state) {
+fn render_label(value) {
+  [
+    input([
+      class("border w-full"),
+      attribute.autofocus(True),
+      event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+      attribute.value(dynamic.from(value)),
+    ]),
+  ]
+}
+
+fn render_variable(value, inferred: option.Option(inference.Infered), state) {
   [
     div(
       [],
       case inferred {
         Some(inferred) ->
-          case map.get(inferred.environments, state.selection) {
+          case inventory.variables_at(inferred.environments, state.selection) {
             // using spaces because we are in pre tag and text based
             // not in pre tag here
-            Ok(env) ->
+            Ok(options) ->
               list.map(
-                map.keys(env)
-                |> list.unique,
-                fn(v) {
+                options,
+                fn(option) {
+                  let #(t, term) = option
                   span(
                     [
                       class("rounded bg-blue-100 p-1"),
-                      on_click(dispatch(ClickOption(v))),
+                      on_click(dispatch(ClickOption(term))),
                     ],
-                    [text(v)],
+                    [text(t)],
                   )
                 },
               )
