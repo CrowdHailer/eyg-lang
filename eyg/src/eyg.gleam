@@ -1,47 +1,28 @@
-import gleam/dynamic.{Dynamic}
 import gleam/io
 import gleam/list
-import gleam/string
-import eyg/ast/encode
-import eyg/typer/monotype as t
-import eyg/typer
-import eyg/typer/harness
-import eyg/codegen/javascript
-import eyg/editor/type_info
-import platform/browser
+import gleam/nodejs
+import gleam/nodejs/fs
+import eygir/decode
+import platforms/cli
+import platforms/serverless
 
-pub fn compile_unconstrained(expression, harness) {
-  let harness.Harness(variables) = harness
-  let typer__ = typer.init()
-  let scope = typer.root_scope(variables)
-  let #(x, typer) = typer.next_unbound(typer__)
-  let expected = t.Unbound(x)
-  let #(typed, typer) =
-    typer.infer(expression, expected, t.empty, #(typer, scope))
-  typer.expand_providers(typed, typer, [])
+// zero arity
+pub fn main() {
+  do_main(list.drop(nodejs.args(), 2))
 }
 
-pub fn provider(source, constraint) -> Result(Dynamic, String) {
-  let harness.Harness(variables) = browser.harness()
-  let untyped = encode.from_json(encode.json_from_string(source))
-  let scope = typer.root_scope(variables)
-  let typer = typer.init()
-  let #(typed, typer) =
-    typer.infer(untyped, constraint, t.empty, #(typer, scope))
-  let #(typed, typer) = typer.expand_providers(typed, typer, variables)
+// exit can't be used on serverless because the run function returns with the server as a promise
+// need to await or work off promises
+pub fn do_main(args) -> Nil {
+  let json = fs.read_file_sync("saved/saved.json")
+  assert Ok(source) = decode.from_json(json)
 
-  case typer.inconsistencies {
-    [] -> Ok(javascript.eval(typed, typer))
-    _ ->
-      Error(string.join(
-        list.map(
-          typer.inconsistencies,
-          fn(i) {
-            let #(_path, reason) = i
-            type_info.reason_to_string(reason)
-          },
-        ),
-        " & ",
-      ))
+  case args {
+    ["cli", ..rest] -> cli.run(source, rest)
+    ["web", ..rest] -> serverless.run(source, rest)
+    _ -> {
+      io.debug(#("no runner for: ", args))
+      nodejs.exit(1)
+    }
   }
 }

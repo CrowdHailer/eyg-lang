@@ -1,6 +1,6 @@
-FROM rust:1.65.0 AS build
+FROM rust:1.67.1 AS build
 
-ENV SHA="v0.25.0"
+ENV SHA="v0.26.2"
 RUN set -xe \
         && curl -fSL -o gleam-src.tar.gz "https://github.com/gleam-lang/gleam/archive/${SHA}.tar.gz" \
         && mkdir -p /usr/src/gleam-src \
@@ -14,9 +14,7 @@ WORKDIR /opt/app
 RUN cargo install watchexec-cli
 
 # FROM elixir:1.12.2
-# TODO call dev and prod as targets
-# or maybe slab
-FROM node:18.12.1 AS gleam
+FROM node:18.14.0 AS gleam
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin
@@ -24,21 +22,16 @@ RUN gleam --version
 
 CMD ["gleam"]
 
-FROM node:18.12.1
+FROM node:18.13.0
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 COPY --from=build /usr/local/cargo/bin/watchexec /bin
 
 COPY . /opt/app
 WORKDIR /opt/app/eyg
-RUN gleam build
-WORKDIR /opt/app/editor
-RUN npm install && \
-# need a build/.keep to work wit fly deploy
-#     mkdir public/build && \
-    npm run build
+# RUN npm install
+# RUN gleam build
+# RUN npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js
+# CMD gleam run web
 
-WORKDIR /opt/app
-RUN npm install
-CMD node ./server.js
-# TODO local dev overwrites built files
+# gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js && gleam run web

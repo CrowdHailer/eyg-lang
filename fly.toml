@@ -6,9 +6,10 @@ kill_timeout = 5
 processes = []
 
 [build]
-  dockerfile = "language.Dockerfile"
+  dockerfile = "fly.Dockerfile"
 
 [env]
+  PORT = "8080"
 
 [experimental]
   allowed_public_ports = []
