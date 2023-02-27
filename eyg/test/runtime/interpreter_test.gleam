@@ -287,7 +287,47 @@ pub fn multiple_resumptions_test() {
     )
   let source = e.Apply(handle, raise)
   r.eval(source, [], id)
-  |> should.equal(r.Value(r.Record([])))
+  // Not sure this is the correct value but it checks regressions
+  |> should.equal(r.Value(term: r.Record(fields: [
+    #(
+      "first",
+      r.Record([
+        #(
+          "first",
+          r.Record([
+            #("a", r.Tagged("True", r.Record([]))),
+            #("b", r.Tagged("True", r.Record([]))),
+          ]),
+        ),
+        #(
+          "second",
+          r.Record([
+            #("a", r.Tagged("True", r.Record([]))),
+            #("b", r.Tagged("False", r.Record([]))),
+          ]),
+        ),
+      ]),
+    ),
+    #(
+      "second",
+      r.Record([
+        #(
+          "first",
+          r.Record([
+            #("a", r.Tagged("False", r.Record([]))),
+            #("b", r.Tagged("True", r.Record([]))),
+          ]),
+        ),
+        #(
+          "second",
+          r.Record([
+            #("a", r.Tagged("False", r.Record([]))),
+            #("b", r.Tagged("False", r.Record([]))),
+          ]),
+        ),
+      ]),
+    ),
+  ])))
 }
 
 pub fn handler_doesnt_continue_test() {

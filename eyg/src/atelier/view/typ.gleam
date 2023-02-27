@@ -145,15 +145,11 @@ pub fn used_in_type(t) {
   do_used_in_type(set.new(), t)
 }
 
-fn incrementor(i) {
-  #(i, i + 1)
-}
-
 pub fn shrink(type_) {
   shrink_to(type_, 0)
 }
 
-pub fn shrink_to(type_, i) {
+pub fn shrink_to(type_, _i) {
   let used = used_in_type(type_)
   used
   |> set.to_list
