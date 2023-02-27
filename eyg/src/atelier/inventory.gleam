@@ -6,7 +6,7 @@ import eyg/analysis/typ as t
 import eyg/analysis/scheme.{Scheme}
 
 // Names could be explorer rover scout librarian cataloge
-// inventory catalog roster
+// inventory catalog roster haystack
 
 pub fn variables_at(environments, path) {
   try environment = map.get(environments, path)
