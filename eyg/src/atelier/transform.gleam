@@ -28,7 +28,7 @@ fn step(exp, i) {
 }
 
 fn do_prepare(exp, selection, acc, update) {
-  assert [i, ..rest] = selection
+  let assert [i, ..rest] = selection
   try #(child, update_child) = step(exp, i)
   let update_child = fn(new) { update(update_child(new)) }
   case rest {

@@ -10,8 +10,8 @@ import eygir/decode
 // vew depends on state
 // load source can I use same static path i.e. /src/source.json
 pub fn main(source) {
-  assert Ok(source) = decode.from_json(source)
-  assert Ok(dispatch) =
+  let assert Ok(source) = decode.from_json(source)
+  let assert Ok(dispatch) =
     lustre.application(#(app.init(source), cmd.none()), app.update, root.render)
     |> lustre.start("#app")
 

@@ -26,7 +26,7 @@ pub fn insert_parameter_test() {
 
   let #(state, _cmd) = app.select_node(initial, [0])
   let #(state, _cmd) = app.keypress("i", state)
-  assert app.WriteLabel(initial, commit) = state.mode
+  let assert app.WriteLabel(initial, commit) = state.mode
   should.equal(initial, "x")
   e.Let("_", e.Variable("foo"), e.Vacant)
   |> should.equal(commit("foo"))
@@ -37,7 +37,7 @@ pub fn insert_parameter_test() {
 
   let #(state, _cmd) = app.select_node(initial, [0])
   let #(state, _cmd) = app.keypress("i", state)
-  assert app.WriteLabel(initial, commit) = state.mode
+  let assert app.WriteLabel(initial, commit) = state.mode
   should.equal(initial, "y")
   e.Lambda("x", e.Lambda("foo", e.Vacant))
   |> should.equal(commit("foo"))
@@ -48,7 +48,7 @@ pub fn insert_parameter_test() {
 
   let #(state, _cmd) = app.select_node(initial, [0])
   let #(state, _cmd) = app.keypress("i", state)
-  assert app.WriteLabel(initial, commit) = state.mode
+  let assert app.WriteLabel(initial, commit) = state.mode
   should.equal(initial, "x")
   e.Let("_", e.Let("foo", e.Binary("stuff"), e.Vacant), e.Vacant)
   |> should.equal(commit("foo"))

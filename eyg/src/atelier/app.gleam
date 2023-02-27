@@ -45,7 +45,7 @@ pub type Action {
 }
 
 pub fn init(source) {
-  assert Ok(act) = transform.prepare(source, [])
+  let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
   // Have inference work once for showing elements but need to also background this
   WorkSpace(
@@ -69,7 +69,7 @@ pub fn update(state: WorkSpace, action) {
           case value {
             "" -> WriteNumber(0, commit)
             _ -> {
-              assert Ok(number) = int.parse(value)
+              let assert Ok(number) = int.parse(value)
               WriteNumber(number, commit)
             }
           }
@@ -80,15 +80,15 @@ pub fn update(state: WorkSpace, action) {
       #(state, cmd.none())
     }
     Commit -> {
-      assert WriteText(current, commit) = state.mode
+      let assert WriteText(current, commit) = state.mode
       let source = commit(current)
-      assert Ok(workspace) = update_source(state, source)
+      let assert Ok(workspace) = update_source(state, source)
       #(workspace, cmd.none())
     }
     ClickOption(new) -> {
-      assert WriteTerm(_, commit) = state.mode
+      let assert WriteTerm(_, commit) = state.mode
       let source = commit(new)
-      assert Ok(workspace) = update_source(state, source)
+      let assert Ok(workspace) = update_source(state, source)
       #(workspace, cmd.none())
     }
     SelectNode(path) -> select_node(state, path)
@@ -97,7 +97,7 @@ pub fn update(state: WorkSpace, action) {
 
 pub fn select_node(state, path) {
   let WorkSpace(source: source, ..) = state
-  assert Ok(act) = transform.prepare(source, path)
+  let assert Ok(act) = transform.prepare(source, path)
   let mode = Navigate(act)
   let state = WorkSpace(..state, source: source, selection: path, mode: mode)
 
@@ -304,7 +304,7 @@ fn increase(state: WorkSpace) {
     [_, ..rest] -> Ok(list.reverse(rest))
     [] -> Error("no increase")
   }
-  assert Ok(act) = transform.prepare(state.source, selection)
+  let assert Ok(act) = transform.prepare(state.source, selection)
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 

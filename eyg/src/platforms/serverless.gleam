@@ -32,7 +32,7 @@ pub fn run(source, _) {
   }
 
   let save = fn(raw) {
-    assert Ok(source) = decode.from_json(raw)
+    let assert Ok(source) = decode.from_json(raw)
     // should we infer on save
     javascript.set_reference(store, source)
     fs.write_file_sync("saved/saved.json", raw)
@@ -59,8 +59,8 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
-  assert Ok(return) = r.run(prog, values, request, handlers().1)
-  assert Ok(r.Binary(body)) = r.field(return, "body")
+  let assert Ok(return) = r.run(prog, values, request, handlers().1)
+  let assert Ok(r.Binary(body)) = r.field(return, "body")
   body
 }
 

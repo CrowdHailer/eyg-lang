@@ -64,18 +64,18 @@ pub fn binary_test() {
   let typ = t.Binary
   let eff = t.Closed
   let sub = infer(env, exp, typ, eff)
-  assert Ok(t.Binary) = type_of(sub, [])
+  let assert Ok(t.Binary) = type_of(sub, [])
 
   // unbound type
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
-  assert t.Binary = resolve(sub, typ)
-  assert Ok(t.Binary) = type_of(sub, [])
+  let assert t.Binary = resolve(sub, typ)
+  let assert Ok(t.Binary) = type_of(sub, [])
 
   // incorrect type
   let typ = t.Integer
   let sub = infer(env, exp, typ, eff)
-  assert Error(_) = type_of(sub, [])
+  let assert Error(_) = type_of(sub, [])
 }
 
 pub fn integer_test() {
@@ -86,18 +86,18 @@ pub fn integer_test() {
   let typ = t.Integer
   let eff = t.Closed
   let sub = infer(env, exp, typ, eff)
-  assert Ok(t.Integer) = type_of(sub, [])
+  let assert Ok(t.Integer) = type_of(sub, [])
 
   // unbound type
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
-  assert t.Integer = resolve(sub, typ)
-  assert Ok(t.Integer) = type_of(sub, [])
+  let assert t.Integer = resolve(sub, typ)
+  let assert Ok(t.Integer) = type_of(sub, [])
 
   // incorrect type
   let typ = t.Binary
   let sub = infer(env, exp, typ, eff)
-  assert Error(_) = type_of(sub, [])
+  let assert Error(_) = type_of(sub, [])
 }
 
 pub fn empty_list_test() {
@@ -108,13 +108,13 @@ pub fn empty_list_test() {
   let typ = t.LinkedList(t.Binary)
   let eff = t.Closed
   let sub = infer(env, exp, typ, eff)
-  assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
+  let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
 
   // unbound element
   let typ = t.LinkedList(t.Unbound(-1))
   let sub = infer(env, exp, typ, eff)
 
-  assert Ok(t.LinkedList(e)) = type_of(sub, [])
+  let assert Ok(t.LinkedList(e)) = type_of(sub, [])
   resolve(sub, t.Unbound(-1))
   |> should.equal(e)
 
@@ -122,12 +122,12 @@ pub fn empty_list_test() {
   let typ = t.Unbound(1)
   let sub = infer(env, exp, typ, eff)
 
-  assert Ok(t.LinkedList(t.Unbound(_))) = type_of(sub, [])
+  let assert Ok(t.LinkedList(t.Unbound(_))) = type_of(sub, [])
 
   // incorrect type
   let typ = t.Binary
   let sub = infer(env, exp, typ, eff)
-  assert Error(_) = type_of(sub, [])
+  let assert Error(_) = type_of(sub, [])
 }
 
 pub fn primitive_list_test() {
@@ -137,16 +137,16 @@ pub fn primitive_list_test() {
   let typ = t.LinkedList(t.Binary)
   let eff = t.Closed
   let sub = infer(env, exp, typ, eff)
-  assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
-  assert Ok(t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary))) =
+  let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
+  let assert Ok(t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary))) =
     type_of(sub, [0])
-  assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [1])
-  assert Ok(t.Fun(
+  let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [1])
+  let assert Ok(t.Fun(
     t.Binary,
     t.Closed,
     t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary)),
   )) = type_of(sub, [0, 0])
-  assert Error(_) = type_of(sub, [0, 1])
+  let assert Error(_) = type_of(sub, [0, 1])
 }
 
 // Variables
@@ -160,9 +160,9 @@ pub fn variables_test() {
 
   let typ = t.Unbound(1)
   let sub = infer(env, exp, typ, eff)
-  assert t.Binary = resolve(sub, typ)
-  assert Ok(t.Binary) = type_of(sub, [0])
-  assert Ok(t.Binary) = type_of(sub, [1])
+  let assert t.Binary = resolve(sub, typ)
+  let assert Ok(t.Binary) = type_of(sub, [0])
+  let assert Ok(t.Binary) = type_of(sub, [1])
 }
 
 // Functions
@@ -176,7 +176,7 @@ pub fn function_test() {
 
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
-  assert t.Fun(t.Unbound(_), t.Open(_), t.Binary) = resolve(sub, typ)
+  let assert t.Fun(t.Unbound(_), t.Open(_), t.Binary) = resolve(sub, typ)
 }
 
 pub fn pure_function_test() {
@@ -186,9 +186,9 @@ pub fn pure_function_test() {
   let eff = t.Closed
 
   let sub = infer(env, exp, typ, eff)
-  assert t.Fun(t.Unbound(x), t.Open(2), t.Unbound(y)) = resolve(sub, typ)
+  let assert t.Fun(t.Unbound(x), t.Open(2), t.Unbound(y)) = resolve(sub, typ)
   should.equal(x, y)
-  assert Ok(t.Unbound(z)) = type_of(sub, [0])
+  let assert Ok(t.Unbound(z)) = type_of(sub, [0])
   should.equal(x, z)
 }
 
@@ -203,7 +203,7 @@ pub fn pure_function_call_test() {
 
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
-  assert t.Binary = resolve(sub, typ)
+  let assert t.Binary = resolve(sub, typ)
 }
 
 // call generic could be a test row(a = id(Int) b = id(Int))
@@ -225,7 +225,8 @@ pub fn select_test() {
   let eff = t.Closed
 
   let sub = infer(env, exp, typ, eff)
-  assert t.Fun(t.Record(t.Extend(l, a, t.Open(_))), _eff, b) = resolve(sub, typ)
+  let assert t.Fun(t.Record(t.Extend(l, a, t.Open(_))), _eff, b) =
+    resolve(sub, typ)
   should.equal(a, b)
   should.equal(l, "foo")
 
@@ -236,7 +237,7 @@ pub fn select_test() {
 
   let sub = infer(env, exp, typ, eff)
 
-  assert t.Binary = resolve(sub, typ)
+  let assert t.Binary = resolve(sub, typ)
 }
 
 pub fn combine_select_test() {
@@ -254,11 +255,11 @@ pub fn combine_select_test() {
 
   let sub = infer(env, exp, typ, eff)
 
-  assert t.Unbound(x) = resolve(sub, typ)
-  assert t.Record(row) = resolve(sub, t.Unbound(-2))
-  assert Ok(t.Unbound(y)) = field(row, "foo")
+  let assert t.Unbound(x) = resolve(sub, typ)
+  let assert t.Record(row) = resolve(sub, t.Unbound(-2))
+  let assert Ok(t.Unbound(y)) = field(row, "foo")
   should.not_equal(x, y)
-  assert Ok(t.Unbound(z)) = field(row, "bar")
+  let assert Ok(t.Unbound(z)) = field(row, "bar")
   should.equal(x, z)
 }
 
@@ -270,13 +271,14 @@ pub fn tag_test() {
   let eff = t.Closed
 
   let sub = infer(env, exp, typ, eff)
-  assert t.Fun(a, _eff, t.Union(t.Extend(l, b, t.Open(_)))) = resolve(sub, typ)
+  let assert t.Fun(a, _eff, t.Union(t.Extend(l, b, t.Open(_)))) =
+    resolve(sub, typ)
   should.equal(a, b)
   should.equal(l, "foo")
 
   let exp = e.Apply(exp, e.Binary("hi"))
   let sub = infer(env, exp, typ, eff)
-  assert t.Union(t.Extend(l, a, t.Open(_))) = resolve(sub, typ)
+  let assert t.Union(t.Extend(l, a, t.Open(_))) = resolve(sub, typ)
   should.equal(a, t.Binary)
   should.equal(l, "foo")
 }
@@ -291,9 +293,9 @@ pub fn single_effect_test() {
 
   let sub = infer(env, exp, typ, eff)
   // No effects untill called
-  assert t.Open(-2) = resolve_effect(sub, eff)
-  assert t.Fun(t.Unbound(arg), fn_eff, t.Unbound(ret)) = resolve(sub, typ)
-  assert Ok(#(t.Unbound(lift), t.Unbound(cont))) = field(fn_eff, "Log")
+  let assert t.Open(-2) = resolve_effect(sub, eff)
+  let assert t.Fun(t.Unbound(arg), fn_eff, t.Unbound(ret)) = resolve(sub, typ)
+  let assert Ok(#(t.Unbound(lift), t.Unbound(cont))) = field(fn_eff, "Log")
   should.not_equal(lift, cont)
   should.equal(arg, lift)
   should.equal(cont, ret)
@@ -302,7 +304,7 @@ pub fn single_effect_test() {
   let exp = e.Apply(exp, e.Binary("hi"))
   let typ = t.Integer
   let sub = infer(env, exp, typ, eff)
-  assert Ok(#(t.Binary, t.Integer)) =
+  let assert Ok(#(t.Binary, t.Integer)) =
     resolve_effect(sub, eff)
     |> field("Log")
 }
@@ -314,10 +316,10 @@ pub fn collect_effects_test() {
   let eff = t.Open(-2)
 
   let sub = infer(env, exp, typ, eff)
-  assert t.Unbound(final) = resolve(sub, typ)
+  let assert t.Unbound(final) = resolve(sub, typ)
   let raised = resolve_effect(sub, eff)
-  assert Ok(#(t.Binary, t.Unbound(ret1))) = field(raised, "Ask")
-  assert Ok(#(t.Unbound(lift2), t.Unbound(ret2))) = field(raised, "Log")
+  let assert Ok(#(t.Binary, t.Unbound(ret1))) = field(raised, "Ask")
+  let assert Ok(#(t.Unbound(lift2), t.Unbound(ret2))) = field(raised, "Log")
   should.equal(ret1, lift2)
   should.equal(ret2, final)
 }
@@ -333,7 +335,7 @@ pub fn anony_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
   let sub = infer(env, exp, typ, eff)
-  assert t.Integer = resolve(sub, typ)
+  let assert t.Integer = resolve(sub, typ)
 }
 
 // Checks that a function is correctly generalized over it's effect type
@@ -359,5 +361,5 @@ pub fn instantiation_of_effect_test() {
   let typ = t.Unbound(-1)
   let eff = t.Closed
   let sub = infer(env, source, typ, eff)
-  assert Ok(Nil) = inference.sound(sub)
+  let assert Ok(Nil) = inference.sound(sub)
 }

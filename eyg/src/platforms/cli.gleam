@@ -35,7 +35,7 @@ pub fn run(source, args) {
   case inference.sound(inferred) {
     Ok(Nil) -> {
       let hrstart = start()
-      assert Ok(r.Integer(return)) =
+      let assert Ok(r.Integer(return)) =
         r.run(
           prog,
           values,

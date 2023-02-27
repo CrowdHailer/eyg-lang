@@ -39,7 +39,7 @@ pub fn function_application_test() {
 pub fn builtin_application_test() {
   let source = e.Apply(e.Variable("reverse"), e.Binary("hello"))
   let f = fn(x, k) {
-    assert r.Binary(value) = x
+    let assert r.Binary(value) = x
     r.continue(k, r.Binary(string.reverse(value)))
   }
   r.eval(source, [#("reverse", r.Builtin(f))], id)
@@ -101,13 +101,13 @@ pub fn rasing_effect_test() {
       e.Apply(e.Perform("Foo"), e.Integer(1)),
       e.Apply(e.Perform("Bar"), e.Variable("a")),
     )
-  assert r.Effect("Foo", lifted, k) = r.eval(source, [], id)
+  let assert r.Effect("Foo", lifted, k) = r.eval(source, [], id)
   lifted
   |> should.equal(r.Integer(1))
-  assert r.Effect("Bar", lifted, k) = r.loop(k(r.Binary("reply")))
+  let assert r.Effect("Bar", lifted, k) = r.loop(k(r.Binary("reply")))
   lifted
   |> should.equal(r.Binary("reply"))
-  assert r.Value(term) = r.loop(k(r.Record([])))
+  let assert r.Value(term) = r.loop(k(r.Record([])))
   term
   |> should.equal(r.Record([]))
 }
@@ -124,7 +124,7 @@ pub fn effect_in_case_test() {
   |> should.equal(r.Value(r.Binary("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Binary("nope")))
-  assert r.Effect("Raise", lifted, _k) = r.eval(source, [], id)
+  let assert r.Effect("Raise", lifted, _k) = r.eval(source, [], id)
   lifted
   |> should.equal(r.Binary("nope"))
 }
@@ -148,7 +148,7 @@ pub fn effect_in_builtin_test() {
       r.Builtin(fn(x, k) { r.eval_call(x, r.Binary("called"), k) }),
     ),
   ]
-  assert r.Effect("Foo", lifted, k) = r.eval(source, env, id)
+  let assert r.Effect("Foo", lifted, k) = r.eval(source, env, id)
   lifted
   |> should.equal(r.Binary("called"))
   k(r.Binary("reply"))
@@ -220,7 +220,7 @@ pub fn ignore_other_effect_test() {
     )
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
-  assert r.Effect("Foo", lifted, k) = r.eval(source, [], id)
+  let assert r.Effect("Foo", lifted, k) = r.eval(source, [], id)
   lifted
   |> should.equal(r.Record([]))
   // calling k should fall throu
@@ -240,11 +240,11 @@ pub fn multiple_effects_test() {
       ),
     )
 
-  assert r.Effect("Choose", lifted, k) = r.eval(source, [], id)
+  let assert r.Effect("Choose", lifted, k) = r.eval(source, [], id)
   lifted
   |> should.equal(r.Record([]))
 
-  assert r.Effect("Choose", lifted, k) = r.loop(k(r.Binary("True")))
+  let assert r.Effect("Choose", lifted, k) = r.loop(k(r.Binary("True")))
   lifted
   |> should.equal(r.Record([]))
 
@@ -342,7 +342,7 @@ pub fn handler_doesnt_continue_test() {
       e.Apply(handler, e.Lambda("_", e.Binary("Original"))),
       e.Apply(e.Perform("Log"), e.Binary("outer")),
     )
-  assert r.Effect("Log", r.Binary("outer"), k) = r.eval(source, [], id)
+  let assert r.Effect("Log", r.Binary("outer"), k) = r.eval(source, [], id)
   k(r.Record([]))
   |> should.equal(r.Value(r.Record([])))
 }
@@ -365,7 +365,7 @@ pub fn handler_is_applied_after_other_effects_test() {
     )
 
   let source = e.Apply(handler, exec)
-  assert r.Effect("Log", r.Binary("my log"), k) = r.eval(source, [], id)
+  let assert r.Effect("Log", r.Binary("my log"), k) = r.eval(source, [], id)
 
   k(r.Record([]))
   |> r.loop

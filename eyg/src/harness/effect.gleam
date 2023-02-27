@@ -16,7 +16,7 @@ pub fn extend(state, label, parts) {
 }
 
 fn for(lift, reply, handler) {
-  assert #(t.Fun(from, _effects, to), value) =
+  let assert #(t.Fun(from, _effects, to), value) =
     spec.lambda(lift, reply)
     |> spec.build(handler)
   #(from, to, value)

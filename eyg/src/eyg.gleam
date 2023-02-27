@@ -15,7 +15,7 @@ pub fn main() {
 // need to await or work off promises
 pub fn do_main(args) -> Nil {
   let json = fs.read_file_sync("saved/saved.json")
-  assert Ok(source) = decode.from_json(json)
+  let assert Ok(source) = decode.from_json(json)
 
   case args {
     ["cli", ..rest] -> cli.run(source, rest)

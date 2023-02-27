@@ -59,7 +59,7 @@ pub fn fold() {
       ),
     ),
     r.builtin3(fn(list, initial, f, k) {
-      assert r.LinkedList(elements) = list
+      let assert r.LinkedList(elements) = list
       do_fold(elements, initial, f, k)
     }),
   )

@@ -109,7 +109,7 @@ pub fn record(field_spec) {
     #(
       t.Record(row),
       fn(term) {
-        assert r.Record(row) = term
+        let assert r.Record(row) = term
         cast(row)
       },
       fn(term) { r.Record(encode(term)) },
@@ -155,15 +155,15 @@ pub fn lambda(from, to) {
           // This doesn't handle effects yet.
           // We probably should but how inefficient is this now
           // probably need to pass continuation in for effects
-          assert r.Value(v) = r.eval_call(f, encode_arg(x), r.Value)
+          let assert r.Value(v) = r.eval_call(f, encode_arg(x), r.Value)
           // the eval is assumed to be good
-          assert Ok(r) = cast_return(v)
+          let assert Ok(r) = cast_return(v)
           r
         })
       },
       fn(impl) {
         r.Builtin(fn(arg, k) {
-          assert Ok(input) = cast_arg(arg)
+          let assert Ok(input) = cast_arg(arg)
           r.continue(k, encode_return(impl(input)))
         })
       },
