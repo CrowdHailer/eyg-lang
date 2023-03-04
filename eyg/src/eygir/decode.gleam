@@ -1,5 +1,4 @@
 import gleam/result
-
 import gleam/dynamic.{DecodeError,
   decode1, decode2, decode3, field, int, string}
 import gleam/json

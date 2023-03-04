@@ -1,5 +1,4 @@
 import gleam/result
-
 // this can define state and UI maybe UI should be separate
 import gleam/io
 import gleam/int

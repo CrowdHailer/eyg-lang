@@ -1,5 +1,4 @@
 import gleam/result
-
 import gleam/list
 import gleam/option.{None, Some}
 import eyg/analysis/typ as t

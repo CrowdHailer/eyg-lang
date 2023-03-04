@@ -1,5 +1,4 @@
 import gleam/result
-
 import gleam/list
 import gleam/map
 import gleam/string
