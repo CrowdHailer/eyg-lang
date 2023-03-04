@@ -84,4 +84,7 @@ export function serve(handler, saver) {
   app.listen(5001, () =>
     console.log(`HelloNode app listening on port ${5001}!`)
   );
+  app.listen(5002, () =>
+    console.log(`HelloNode app listening on port ${5002}!`)
+  );
 }

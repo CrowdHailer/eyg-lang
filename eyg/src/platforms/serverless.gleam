@@ -59,9 +59,18 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
-  let assert Ok(return) = r.run(prog, values, request, handlers().1)
-  let assert Ok(r.Binary(body)) = r.field(return, "body")
-  body
+  case r.run(prog, values, request, handlers().1) {
+    Ok(return) ->
+      case r.field(return, "body") {
+        Ok(r.Binary(body)) -> body
+        Ok(_) -> "body field was not a Binary"
+        Error(_) -> "return value was not a record"
+      }
+    Error(reason) -> {
+      io.debug(reason)
+      "Failed to run serverless program"
+    }
+  }
 }
 
 external fn do_serve(
