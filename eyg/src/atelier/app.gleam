@@ -4,6 +4,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
+import gleam/string
 import gleam/fetch
 import gleam/http
 import gleam/http/request
@@ -75,6 +76,7 @@ pub fn update(state: WorkSpace, action) {
             }
           }
         WriteText(_, commit) -> WriteText(value, commit)
+        WriteTerm(_, commit) -> WriteTerm(value, commit)
         m -> m
       }
       let state = WorkSpace(..state, mode: mode)
@@ -156,6 +158,17 @@ pub fn keypress(key, state: WorkSpace) {
     }
     WriteNumber(_, _), _k -> Ok(state)
     WriteText(_, _), _k -> Ok(state)
+    WriteTerm(new, commit), k if k == "Enter" -> {
+      let assert [var, ..selects] = string.split(new, ".")
+      let expression =
+        list.fold(
+          selects,
+          e.Variable(var),
+          fn(acc, select) { e.Apply(e.Select(select), acc) },
+        )
+      let source = commit(expression)
+      update_source(state, source)
+    }
     WriteTerm(_, _), _k -> Ok(state)
   }
 
