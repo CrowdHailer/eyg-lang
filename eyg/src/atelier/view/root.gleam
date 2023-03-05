@@ -9,9 +9,9 @@ pub fn render(state: app.WorkSpace) {
   div(
     [class("h-screen vstack")],
     [
-      div([class("spacer")], []),
+      div([class("expand")], []),
       projection.render(state.source, state.selection, state.inferred),
-      div([class("spacer")], []),
+      div([class("expand")], []),
       pallet.render(state, state.inferred),
     ],
   )

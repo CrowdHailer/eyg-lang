@@ -14,8 +14,27 @@
   justify-content: center;
 }
 
+/* Stacks fill the container by default but for body they need vh units to expand and center content */
+body > .vstack, .screen > .vstack {
+  min-height: 100vh;
+}
+
 .vstack > * {
   padding: calc(var(--space) * 0.5) var(--space);
+}
+
+/* Cover the container on a cross axis */
+.vstack > *.cover {
+  width: 100%;
+}
+
+/* Expand the element along axis */
+.vstack > *.expand {
+  flex-grow: 1;
+}
+
+.vstack.wrap > * {
+  padding: 0;
 }
 
 /* horizontal */
@@ -29,6 +48,11 @@
 .hstack > * {
   padding: var(--space) calc(var(--space) * 0.5);
 }
+
+.hstack.wrap > * {
+  padding: 0;
+}
+
 
 /* z-axis */
 .zstack {
@@ -80,9 +104,7 @@
 /* Color/SVG/ can be cover element */
 /* http://defagos.github.io/understanding_swiftui_layout_behaviors/ */
 
-.vstack > *.cover {
-  align-self: stretch;
-}
+
 
 .hstack > *.cover {
   align-self: stretch;
@@ -92,13 +114,11 @@
   height: 100%;
 }
 
-.vstack > *.spacer {
+
+.hstack > *.expand {
   flex-grow: 1;
 }
-.hstack > *.spacer {
-  flex-grow: 1;
-}
-/* There is no z-stack spacer */
+/* There is no z-stack expand */
 
 /* rectangle/color should be stretch/cover already */
 

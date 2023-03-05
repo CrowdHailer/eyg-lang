@@ -415,3 +415,7 @@ Nice to not declare ahead of time, unlike Unison or Koka
 ## Datalog style DB
 - https://github.com/cozodb/cozo
 - https://github.com/quoll/asami
+
+
+## Database for all source code
+https://theoryof.predictable.software/articles/some-requirements-for-a-universal-asset-graph/

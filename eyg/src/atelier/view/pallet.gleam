@@ -138,7 +138,7 @@ fn render_navigate(inferred, state: app.WorkSpace) {
             },
           ],
         ),
-        span([class("spacer")], []),
+        span([class("expand")], []),
         span(
           [class("text-red-500")],
           case state.error {
