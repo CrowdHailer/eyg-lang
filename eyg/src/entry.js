@@ -31,6 +31,17 @@ app.use(
   })
 );
 app.use(
+  "/build",
+  express.static("build/dev/javascript", {
+    setHeaders: function (res, path, stat) {
+      // if file is a .xml file, then set content-type
+      if (path.endsWith(".mjs") || path.endsWith(".js")) {
+        res.setHeader("Content-Type", "application/javascript");
+      }
+    },
+  })
+);
+app.use(
   "/saved",
   express.static("saved")
 );
