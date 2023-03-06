@@ -21,9 +21,6 @@ pub external fn post_message(Worker, json.Json) -> Nil =
 pub external fn on_message(Worker, fn(Dynamic) -> a) -> Nil =
   "../browser_ffi.mjs" "onMessage"
 
-pub external fn log(a) -> Nil =
-  "" "console.log"
-
 pub fn run(self: Worker) {
   let db = loader.db()
   let attribute_suggestions =
