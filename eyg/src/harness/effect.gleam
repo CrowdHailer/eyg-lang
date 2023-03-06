@@ -2,6 +2,7 @@ import gleam/io
 import gleam/map
 import eyg/analysis/typ as t
 import harness/ffi/spec
+import plinth/browser/window
 
 pub fn init() {
   #(t.Closed, map.new())
@@ -25,6 +26,15 @@ fn for(lift, reply, handler) {
 pub fn debug_logger() {
   let handler = fn(message) {
     io.debug(message)
+    Nil
+  }
+
+  for(spec.string(), spec.record(spec.empty()), handler)
+}
+
+pub fn window_alert() {
+  let handler = fn(message) {
+    window.alert(message)
     Nil
   }
 

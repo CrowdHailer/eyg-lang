@@ -9,6 +9,7 @@ pub fn lib() {
   |> env.extend("equal", core.equal())
   |> env.extend("debug", core.debug())
   |> env.extend("fix", core.fix())
+  |> env.extend("serialize", core.serialize())
   // integer
   |> env.extend("ffi_add", integer.add())
   |> env.extend("ffi_subtract", integer.subtract())
