@@ -107,3 +107,20 @@ pub fn tagged_test() {
   |> r.eval([], r.eval_call(_, arg, r.Value))
   |> should.equal(r.Value(r.Tagged("Ok", arg)))
 }
+
+pub fn case_test() {
+  let exp =
+    e.Apply(
+      e.Apply(e.Case("Ok"), e.Lambda("_", e.Binary("good"))),
+      e.Apply(
+        e.Apply(e.Case("Error"), e.Lambda("_", e.Binary("bad"))),
+        e.NoCases,
+      ),
+    )
+
+  let arg = r.Tagged("Ok", r.Record([]))
+  let assert r.Value(term) = r.eval(exp, [], r.Value)
+  capture.capture(term)
+  |> r.eval([], r.eval_call(_, arg, r.Value))
+  |> should.equal(r.Value(r.Binary("good")))
+}
