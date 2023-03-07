@@ -126,6 +126,7 @@ pub fn case_test() {
 }
 // TODO test and demo this
 // capture logs and send to client
+// serializing in exec is mind bending, does the value of the logs in client even make sense
 // fn() {
 //   log "abc"
 //   log "xyz"

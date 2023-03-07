@@ -273,7 +273,6 @@ pub fn handled(label, handler, outer_k, thing) {
 
       use applied <- step_call(
         partial,
-        // Builtin(fn(reply, k) {
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
