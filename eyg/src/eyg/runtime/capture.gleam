@@ -53,9 +53,13 @@ pub fn capture(term) {
 
 fn capture_defunc(switch) {
   case switch {
-    r.Tag0(label) -> e.Tag(label)
     r.Cons0 -> e.Cons
     r.Cons1(item) -> e.Apply(e.Cons, capture(item))
+    r.Extend0(label) -> e.Extend(label)
+    r.Extend1(label, value) -> e.Apply(e.Extend(label), capture(value))
+    r.Select0(label) -> e.Select(label)
+    r.Tag0(label) -> e.Tag(label)
+    r.Perform0(label) -> e.Perform(label)
   }
 }
 

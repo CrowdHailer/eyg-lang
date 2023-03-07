@@ -57,7 +57,11 @@ pub type Term {
 pub type Switch {
   Cons0
   Cons1(Term)
+  Extend0(String)
+  Extend1(String, Term)
+  Select0(String)
   Tag0(String)
+  Perform0(String)
 }
 
 // This might not give in runtime core, more runtime presentation
@@ -132,13 +136,13 @@ fn step_call(f, arg, k) {
     Builtin(f) -> f(arg, k)
     Defunc(switch) ->
       case switch {
-        Tag0(label) -> continue(k, Tagged(label, arg))
         Cons0 -> continue(k, Defunc(Cons1(arg)))
-        Cons1(value) ->
-          case arg {
-            LinkedList(elements) -> continue(k, LinkedList([value, ..elements]))
-            term -> Abort(IncorrectTerm("LinkedList", term))
-          }
+        Cons1(value) -> cons(value, arg, k)
+        Extend0(label) -> continue(k, Defunc(Extend1(label, arg)))
+        Extend1(label, value) -> extend(label, value, arg, k)
+        Select0(label) -> select(label, arg, k)
+        Tag0(label) -> continue(k, Tagged(label, arg))
+        Perform0(label) -> perform(label, arg, k)
       }
 
     term -> Abort(NotAFunction(term))
@@ -175,14 +179,13 @@ fn step(exp: e.Expression, env, k) {
     e.Integer(value) -> continue(k, Integer(value))
     e.Binary(value) -> continue(k, Binary(value))
     e.Tail -> continue(k, LinkedList([]))
-    e.Cons -> continue(k, cons())
+    e.Cons -> continue(k, Defunc(Cons0))
     e.Vacant -> Abort(Vacant)
-    e.Select(label) -> continue(k, Builtin(select(label)))
+    e.Select(label) -> continue(k, Defunc(Select0(label)))
     e.Tag(label) -> continue(k, Defunc(Tag0(label)))
-    e.Perform(label) ->
-      continue(k, Builtin(fn(lift, resume) { Effect(label, lift, resume) }))
+    e.Perform(label) -> continue(k, Defunc(Perform0(label)))
     e.Empty -> continue(k, Record([]))
-    e.Extend(label) -> continue(k, extend(label))
+    e.Extend(label) -> continue(k, Defunc(Extend0(label)))
     e.Overwrite(label) -> continue(k, overwrite(label))
     e.Case(label) -> continue(k, match(label))
     e.NoCases -> continue(k, Builtin(fn(_, _) { Abort(NoCases) }))
@@ -190,46 +193,33 @@ fn step(exp: e.Expression, env, k) {
   }
 }
 
-fn cons() {
-  // Builtin(fn(value, k) {
-  //   continue(
-  //     k,
-  //     Builtin(fn(tail, k) {
-  //       case tail {
-  //         LinkedList(elements) -> continue(k, LinkedList([value, ..elements]))
-  //         term -> Abort(IncorrectTerm("LinkedList", term))
-  //       }
-  //     }),
-  //   )
-  // })
-  Defunc(Cons0)
-}
-
-fn select(label) {
-  fn(term, k) {
-    case term {
-      Record(fields) ->
-        case list.key_find(fields, label) {
-          Ok(value) -> continue(k, value)
-          Error(Nil) -> Abort(MissingField(label))
-        }
-      term -> Abort(IncorrectTerm(string.append("Record -select", label), term))
-    }
+fn cons(item, tail, k) {
+  case tail {
+    LinkedList(elements) -> continue(k, LinkedList([item, ..elements]))
+    term -> Abort(IncorrectTerm("LinkedList", term))
   }
 }
 
-fn extend(label) {
-  Builtin(fn(value, k) {
-    continue(
-      k,
-      Builtin(fn(term, k) {
-        case term {
-          Record(fields) -> continue(k, Record([#(label, value), ..fields]))
-          term -> Abort(IncorrectTerm("Record -extend", term))
-        }
-      }),
-    )
-  })
+fn select(label, arg, k) {
+  case arg {
+    Record(fields) ->
+      case list.key_find(fields, label) {
+        Ok(value) -> continue(k, value)
+        Error(Nil) -> Abort(MissingField(label))
+      }
+    term -> Abort(IncorrectTerm(string.append("Record -select", label), term))
+  }
+}
+
+fn perform(label, lift, resume) {
+  Effect(label, lift, resume)
+}
+
+fn extend(label, value, rest, k) {
+  case rest {
+    Record(fields) -> continue(k, Record([#(label, value), ..fields]))
+    term -> Abort(IncorrectTerm("Record -extend", term))
+  }
 }
 
 fn overwrite(label) {
