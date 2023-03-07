@@ -124,3 +124,13 @@ pub fn case_test() {
   |> r.eval([], r.eval_call(_, arg, r.Value))
   |> should.equal(r.Value(r.Binary("good")))
 }
+// TODO test and demo this
+// capture logs and send to client
+// fn() {
+//   log "abc"
+//   log "xyz"
+//   Done 0
+// handle
+//   Log value, k -> Cont k
+// }
+// |> serialize

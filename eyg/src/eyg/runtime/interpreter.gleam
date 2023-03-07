@@ -68,6 +68,9 @@ pub type Switch {
   Match2(String, Term, Term)
   NoCases0
   Perform0(String)
+  Handle0(String)
+  Handle1(String, Term)
+  Resume(String, Term, fn(Term) -> Return)
 }
 
 // This might not give in runtime core, more runtime presentation
@@ -155,6 +158,13 @@ fn step_call(f, arg, k) {
         Match2(label, branch, rest) -> match(label, branch, rest, arg, k)
         NoCases0 -> Abort(NoCases)
         Perform0(label) -> perform(label, arg, k)
+        Handle0(label) -> continue(k, Defunc(Handle1(label, arg)))
+        Handle1(label, handler) -> runner(label, handler, arg, k)
+        // Ok so I am lost as to why resume works or is it even needed
+        // I think it is in the situation where someone serializes a
+        // partially applied continuation function in handler
+        Resume(label, handler, resume) ->
+          handled(label, handler, k, loop(resume(arg)))
       }
 
     term -> Abort(NotAFunction(term))
@@ -201,7 +211,7 @@ fn step(exp: e.Expression, env, k) {
     e.Overwrite(label) -> continue(k, Defunc(Overwrite0(label)))
     e.Case(label) -> continue(k, Defunc(Match0(label)))
     e.NoCases -> continue(k, Defunc(NoCases0))
-    e.Handle(label) -> continue(k, build_runner(label))
+    e.Handle(label) -> continue(k, Defunc(Handle0(label)))
   }
 }
 
@@ -263,9 +273,11 @@ pub fn handled(label, handler, outer_k, thing) {
 
       use applied <- step_call(
         partial,
-        Builtin(fn(reply, handler_k) {
-          handled(label, handler, handler_k, loop(resume(reply)))
-        }),
+        // Builtin(fn(reply, k) {
+        // Ok so I am lost as to why resume works or is it even needed
+        // I think it is in the situation where someone serializes a
+        // partially applied continuation function in handler
+        Defunc(Resume(label, handler, resume)),
       )
 
       continue(outer_k, applied)
@@ -283,14 +295,8 @@ pub fn handled(label, handler, outer_k, thing) {
   }
 }
 
-pub fn runner(label, handler) {
-  Builtin(fn(exec, k) {
-    handled(label, handler, k, eval_call(exec, Record([]), Value))
-  })
-}
-
-pub fn build_runner(label) {
-  Builtin(fn(handler, k) { continue(k, runner(label, handler)) })
+pub fn runner(label, handler, exec, k) {
+  handled(label, handler, k, eval_call(exec, Record([]), Value))
 }
 
 pub fn builtin2(f) {

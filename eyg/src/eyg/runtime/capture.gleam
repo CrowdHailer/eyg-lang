@@ -67,6 +67,11 @@ fn capture_defunc(switch) {
       e.Apply(e.Apply(e.Case(label), capture(value)), capture(matched))
     r.NoCases0 -> e.NoCases
     r.Perform0(label) -> e.Perform(label)
+    r.Handle0(label) -> e.Handle(label)
+    r.Handle1(label, handler) -> e.Apply(e.Handle(label), capture(handler))
+    r.Resume(label, handler, resume) ->
+      // possibly we do nothing as the context of the handler has been lost
+      todo("not idea how to capture the func here")
   }
 }
 
