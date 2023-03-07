@@ -51,6 +51,13 @@ pub type Term {
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
   Builtin(func: fn(Term, fn(Term) -> Return) -> Return)
+  Defunc(Switch)
+}
+
+pub type Switch {
+  Cons0
+  Cons1(Term)
+  Tag0(String)
 }
 
 // This might not give in runtime core, more runtime presentation
@@ -74,6 +81,7 @@ pub fn to_string(term) {
     Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
     Function(param, _, _) -> string.concat(["(", param, ") -> ..."])
     Builtin(_) -> "Builtin(...)"
+    Defunc(_) -> todo("defunc print")
   }
 }
 
@@ -122,6 +130,17 @@ fn step_call(f, arg, k) {
     }
     // builtin needs to return result for the case statement
     Builtin(f) -> f(arg, k)
+    Defunc(switch) ->
+      case switch {
+        Tag0(label) -> continue(k, Tagged(label, arg))
+        Cons0 -> continue(k, Defunc(Cons1(arg)))
+        Cons1(value) ->
+          case arg {
+            LinkedList(elements) -> continue(k, LinkedList([value, ..elements]))
+            term -> Abort(IncorrectTerm("LinkedList", term))
+          }
+      }
+
     term -> Abort(NotAFunction(term))
   }
 }
@@ -159,8 +178,7 @@ fn step(exp: e.Expression, env, k) {
     e.Cons -> continue(k, cons())
     e.Vacant -> Abort(Vacant)
     e.Select(label) -> continue(k, Builtin(select(label)))
-    e.Tag(label) ->
-      continue(k, Builtin(fn(x, k) { continue(k, Tagged(label, x)) }))
+    e.Tag(label) -> continue(k, Defunc(Tag0(label)))
     e.Perform(label) ->
       continue(k, Builtin(fn(lift, resume) { Effect(label, lift, resume) }))
     e.Empty -> continue(k, Record([]))
@@ -173,17 +191,18 @@ fn step(exp: e.Expression, env, k) {
 }
 
 fn cons() {
-  Builtin(fn(value, k) {
-    continue(
-      k,
-      Builtin(fn(tail, k) {
-        case tail {
-          LinkedList(elements) -> continue(k, LinkedList([value, ..elements]))
-          term -> Abort(IncorrectTerm("LinkedList", term))
-        }
-      }),
-    )
-  })
+  // Builtin(fn(value, k) {
+  //   continue(
+  //     k,
+  //     Builtin(fn(tail, k) {
+  //       case tail {
+  //         LinkedList(elements) -> continue(k, LinkedList([value, ..elements]))
+  //         term -> Abort(IncorrectTerm("LinkedList", term))
+  //       }
+  //     }),
+  //   )
+  // })
+  Defunc(Cons0)
 }
 
 fn select(label) {
