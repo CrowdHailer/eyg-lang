@@ -57,8 +57,15 @@ fn capture_defunc(switch) {
     r.Cons1(item) -> e.Apply(e.Cons, capture(item))
     r.Extend0(label) -> e.Extend(label)
     r.Extend1(label, value) -> e.Apply(e.Extend(label), capture(value))
+    r.Overwrite0(label) -> e.Overwrite(label)
+    r.Overwrite1(label, value) -> e.Apply(e.Overwrite(label), capture(value))
     r.Select0(label) -> e.Select(label)
     r.Tag0(label) -> e.Tag(label)
+    r.Match0(label) -> e.Case(label)
+    r.Match1(label, value) -> e.Apply(e.Case(label), capture(value))
+    r.Match2(label, value, matched) ->
+      e.Apply(e.Apply(e.Case(label), capture(value)), capture(matched))
+    r.NoCases0 -> e.NoCases
     r.Perform0(label) -> e.Perform(label)
   }
 }

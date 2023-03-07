@@ -59,8 +59,14 @@ pub type Switch {
   Cons1(Term)
   Extend0(String)
   Extend1(String, Term)
+  Overwrite0(String)
+  Overwrite1(String, Term)
   Select0(String)
   Tag0(String)
+  Match0(String)
+  Match1(String, Term)
+  Match2(String, Term, Term)
+  NoCases0
   Perform0(String)
 }
 
@@ -140,8 +146,14 @@ fn step_call(f, arg, k) {
         Cons1(value) -> cons(value, arg, k)
         Extend0(label) -> continue(k, Defunc(Extend1(label, arg)))
         Extend1(label, value) -> extend(label, value, arg, k)
+        Overwrite0(label) -> continue(k, Defunc(Overwrite1(label, arg)))
+        Overwrite1(label, value) -> overwrite(label, value, arg, k)
         Select0(label) -> select(label, arg, k)
         Tag0(label) -> continue(k, Tagged(label, arg))
+        Match0(label) -> continue(k, Defunc(Match1(label, arg)))
+        Match1(label, branch) -> continue(k, Defunc(Match2(label, branch, arg)))
+        Match2(label, branch, rest) -> match(label, branch, rest, arg, k)
+        NoCases0 -> Abort(NoCases)
         Perform0(label) -> perform(label, arg, k)
       }
 
@@ -186,9 +198,9 @@ fn step(exp: e.Expression, env, k) {
     e.Perform(label) -> continue(k, Defunc(Perform0(label)))
     e.Empty -> continue(k, Record([]))
     e.Extend(label) -> continue(k, Defunc(Extend0(label)))
-    e.Overwrite(label) -> continue(k, overwrite(label))
-    e.Case(label) -> continue(k, match(label))
-    e.NoCases -> continue(k, Builtin(fn(_, _) { Abort(NoCases) }))
+    e.Overwrite(label) -> continue(k, Defunc(Overwrite0(label)))
+    e.Case(label) -> continue(k, Defunc(Match0(label)))
+    e.NoCases -> continue(k, Defunc(NoCases0))
     e.Handle(label) -> continue(k, build_runner(label))
   }
 }
@@ -222,46 +234,26 @@ fn extend(label, value, rest, k) {
   }
 }
 
-fn overwrite(label) {
-  Builtin(fn(value, k) {
-    continue(
-      k,
-      Builtin(fn(term, k) {
-        case term {
-          Record(fields) ->
-            case list.key_pop(fields, label) {
-              Ok(#(_old, fields)) ->
-                continue(k, Record([#(label, value), ..fields]))
-              Error(Nil) -> Abort(MissingField(label))
-            }
-          term -> Abort(IncorrectTerm("Record -overwrite", term))
-        }
-      }),
-    )
-  })
+fn overwrite(label, value, rest, k) {
+  case rest {
+    Record(fields) ->
+      case list.key_pop(fields, label) {
+        Ok(#(_old, fields)) -> continue(k, Record([#(label, value), ..fields]))
+        Error(Nil) -> Abort(MissingField(label))
+      }
+    term -> Abort(IncorrectTerm("Record -overwrite", term))
+  }
 }
 
-fn match(label) {
-  Builtin(fn(matched, k) {
-    continue(
-      k,
-      Builtin(fn(otherwise, k) {
-        continue(
-          k,
-          Builtin(fn(value, k) {
-            case value {
-              Tagged(l, term) ->
-                case l == label {
-                  True -> step_call(matched, term, k)
-                  False -> step_call(otherwise, value, k)
-                }
-              term -> Abort(IncorrectTerm("Tagged", term))
-            }
-          }),
-        )
-      }),
-    )
-  })
+fn match(label, matched, otherwise, value, k) {
+  case value {
+    Tagged(l, term) ->
+      case l == label {
+        True -> step_call(matched, term, k)
+        False -> step_call(otherwise, value, k)
+      }
+    term -> Abort(IncorrectTerm("Tagged", term))
+  }
 }
 
 pub fn handled(label, handler, outer_k, thing) {
