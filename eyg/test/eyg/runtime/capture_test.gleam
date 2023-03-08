@@ -118,20 +118,91 @@ pub fn case_test() {
       ),
     )
 
-  let arg = r.Tagged("Ok", r.Record([]))
   let assert r.Value(term) = r.eval(exp, [], r.Value)
-  capture.capture(term)
+  let next = capture.capture(term)
+
+  let arg = r.Tagged("Ok", r.Record([]))
+  next
   |> r.eval([], r.eval_call(_, arg, r.Value))
   |> should.equal(r.Value(r.Binary("good")))
+
+  let arg = r.Tagged("Error", r.Record([]))
+  next
+  |> r.eval([], r.eval_call(_, arg, r.Value))
+  |> should.equal(r.Value(r.Binary("bad")))
 }
-// TODO test and demo this
-// capture logs and send to client
-// serializing in exec is mind bending, does the value of the logs in client even make sense
-// fn() {
-//   log "abc"
-//   log "xyz"
-//   Done 0
-// handle
-//   Log value, k -> Cont k
-// }
-// |> serialize
+
+pub fn partial_case_test() {
+  let exp = e.Apply(e.Case("Ok"), e.Lambda("_", e.Binary("good")))
+
+  let assert r.Value(term) = r.eval(exp, [], r.Value)
+  let rest =
+    e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Binary("bad"))), e.NoCases)
+  let assert r.Value(rest) = r.eval(rest, [], r.Value)
+
+  let next = capture.capture(term)
+
+  let arg = r.Tagged("Ok", r.Record([]))
+  next
+  |> r.eval([], r.eval_call(_, rest, r.eval_call(_, arg, r.Value)))
+  |> should.equal(r.Value(r.Binary("good")))
+
+  let arg = r.Tagged("Error", r.Record([]))
+  next
+  |> r.eval([], r.eval_call(_, rest, r.eval_call(_, arg, r.Value)))
+  |> should.equal(r.Value(r.Binary("bad")))
+}
+
+pub fn handler_test() {
+  let exp =
+    e.Apply(
+      e.Handle("Abort"),
+      e.Lambda(
+        "value",
+        e.Lambda("_k", e.Apply(e.Tag("Error"), e.Variable("value"))),
+      ),
+    )
+  let assert r.Value(term) = r.eval(exp, [], r.Value)
+  let next = capture.capture(term)
+
+  let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Binary("some string")))
+  let assert r.Value(exec) = r.eval(exec, [], r.Value)
+
+  next
+  |> r.eval([], r.eval_call(_, exec, r.Value))
+  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("some string"))))
+
+  let exec = e.Lambda("_", e.Apply(e.Perform("Abort"), e.Binary("failure")))
+  let assert r.Value(exec) = r.eval(exec, [], r.Value)
+
+  next
+  |> r.eval([], r.eval_call(_, exec, r.Value))
+  |> should.equal(r.Value(r.Tagged("Error", r.Binary("failure"))))
+}
+
+pub fn capture_resume_test() {
+  let handler =
+    e.Lambda(
+      "message",
+      // e.Lambda("k", e.Apply(e.Tag("Stopped"), e.Variable("k"))),
+      e.Lambda("k", e.Variable("k")),
+    )
+
+  let exec =
+    e.Lambda(
+      "_",
+      e.Let(
+        "_",
+        e.Apply(e.Perform("Log"), e.Binary("first")),
+        e.Let("_", e.Apply(e.Perform("Log"), e.Binary("second")), e.Integer(0)),
+      ),
+    )
+  let exp = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
+  let assert r.Value(term) = r.eval(exp, [], r.Value)
+  let next = capture.capture(term)
+
+  next
+  |> r.eval([], r.eval_call(_, r.Binary("fooo"), r.Value))
+  // This should return a effect of subsequent logs, I don't know how to do this
+  todo
+}
