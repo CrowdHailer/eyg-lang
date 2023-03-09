@@ -290,7 +290,7 @@ fn insert(act: Act, state) {
     e.NoCases -> Error("no cases")
     e.Perform(label) -> Ok(write(label, e.Perform))
     e.Handle(label) -> Ok(write(label, e.Handle))
-    e.Builtin(_) -> todo("app builtin")
+    e.Builtin(_) -> Error("no insert option for builtin, use stdlib references")
   })
 
   Ok(WorkSpace(..state, mode: mode))

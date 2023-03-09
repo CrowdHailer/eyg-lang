@@ -156,17 +156,19 @@ pub fn lambda(from, to) {
           // This doesn't handle effects yet.
           // We probably should but how inefficient is this now
           // probably need to pass continuation in for effects
-          let assert r.Value(v) = r.eval_call(f, encode_arg(x), r.Value)
+          let v = todo("some value do we have builtins here")
+          // let assert r.Value(v) = r.eval_call(f, encode_arg(x), r.Value)
           // the eval is assumed to be good
           let assert Ok(r) = cast_return(v)
           r
         })
       },
       fn(impl) {
-        r.Builtin(fn(arg, k) {
-          let assert Ok(input) = cast_arg(arg)
-          r.continue(k, encode_return(impl(input)))
-        })
+        // r.Builtin(fn(arg, k) {
+        //   let assert Ok(input) = cast_arg(arg)
+        //   r.continue(k, encode_return(impl(input)))
+        // })
+        r.Defunc(r.RenameBuiltin("ssss", []))
       },
     )
   }

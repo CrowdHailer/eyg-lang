@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/map
 import gleam/nodejs
 import eygir/expression as e
 import eyg/analysis/typ as t
@@ -38,7 +39,7 @@ pub fn run(source, args) {
       let assert Ok(r.Integer(return)) =
         r.run(
           prog,
-          values,
+          r.Env([], map.new()),
           r.LinkedList(list.map(args, r.Binary)),
           handlers().1,
         )

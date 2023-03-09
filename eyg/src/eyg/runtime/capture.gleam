@@ -28,7 +28,6 @@ pub fn capture(term) {
         },
       )
     r.Tagged(label, value) -> e.Apply(e.Tag(label), capture(value))
-    r.Builtin(_) -> e.Binary("builtin function")
     r.Function(arg, body, env) -> {
       // Note env list has variables multiple times and we need to find first only
       let assert Ok(env) =
@@ -75,10 +74,12 @@ fn capture_defunc(switch) {
       e.Apply(e.Handle(label), capture(handler))
       todo("not idea how to capture the func here")
     }
-    r.Builtin0(identifier) -> e.Builtin(identifier)
-    // TODO fix
-    r.Builtin1(identifier, _) -> e.Builtin(identifier)
-    r.Builtin2(identifier, _, _) -> e.Builtin(identifier)
+    r.RenameBuiltin(identifier, args) ->
+      list.fold(
+        args,
+        e.Builtin(identifier),
+        fn(exp, arg) { e.Apply(exp, capture(arg)) },
+      )
   }
 }
 
