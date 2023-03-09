@@ -45,7 +45,8 @@ pub fn handle(return, builtins, extrinsic) {
     Effect(label, term, k) ->
       case map.get(extrinsic, label) {
         Ok(handler) ->
-          handle(eval_call(handler, term, builtins, k), builtins, extrinsic)
+          // handle(eval_call(handler, term, builtins, k), builtins, extrinsic)
+          handle(handler(term, k), builtins, extrinsic)
         Error(Nil) -> Abort(UnhandledEffect(label))
       }
     Value(term) -> Value(term)

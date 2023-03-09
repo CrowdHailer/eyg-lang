@@ -3,6 +3,8 @@ import gleam/map
 import eyg/analysis/typ as t
 import harness/ffi/spec
 import plinth/browser/window
+import eyg/runtime/interpreter as r
+import harness/ffi/cast
 
 pub fn init() {
   #(t.Closed, map.new())
@@ -28,8 +30,15 @@ pub fn debug_logger() {
     io.debug(message)
     Nil
   }
-
-  for(spec.string(), spec.record(spec.empty()), handler)
+  // for(spec.string(), spec.record(spec.empty()), handler)
+  #(
+    t.Binary,
+    t.unit,
+    fn(message, k) {
+      io.debug(message)
+      r.continue(k, r.unit)
+    },
+  )
 }
 
 pub fn window_alert() {
@@ -38,5 +47,14 @@ pub fn window_alert() {
     Nil
   }
 
-  for(spec.string(), spec.record(spec.empty()), handler)
+  // for(spec.string(), spec.record(spec.empty()), handler)
+  #(
+    t.Binary,
+    t.unit,
+    fn(message, k) {
+      use message <- cast.string(message)
+      window.alert(message)
+      r.continue(k, r.unit)
+    },
+  )
 }
