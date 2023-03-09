@@ -10,6 +10,7 @@ import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/env
 import eyg/analysis/unification.{fresh, generalise, instantiate}
 import gleam/javascript
+import harness/stdlib
 
 pub type Infered {
   // result could be separate map of errors
@@ -288,9 +289,13 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         path,
       )
     }
-    // TODO lookup types
     // TODO proper continuation deployment
-    e.Builtin(identifier) -> unify(typ, typ, ref, path)
+    e.Builtin(identifier) ->
+      // TODO should probably pass builtins in
+      case map.get(stdlib.lib().0, identifier) {
+        Ok(scheme) -> unify(typ, instantiate(scheme, ref), ref, path)
+        Error(Nil) -> todo("error in inferendce here")
+      }
   }
   |> compose(Infered(
     sub.none(),

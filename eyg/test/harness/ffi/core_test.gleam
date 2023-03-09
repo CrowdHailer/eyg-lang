@@ -1,28 +1,27 @@
-// import eyg/analysis/typ as t
-// import eyg/analysis/inference
-// import eyg/runtime/interpreter as r
-// import eygir/expression as e
-// import harness/ffi/core
-// import harness/ffi/integer
-// import harness/ffi/linked_list
-// import harness/ffi/env
-// import gleeunit/should
+import gleam/io
+import gleam/map
+import eyg/analysis/typ as t
+import eyg/analysis/inference
+import eyg/runtime/interpreter as r
+import eygir/expression as e
+import harness/ffi/core
+import harness/ffi/integer
+import harness/ffi/linked_list
+import harness/ffi/env
+import harness/stdlib
+import gleeunit/should
 
-// pub fn unequal_test() {
-//   let #(types, values) =
-//     env.init()
-//     |> env.extend("equal", core.equal())
+pub fn unequal_test() {
+  let prog = e.Apply(e.Apply(e.Builtin("equal"), e.Integer(1)), e.Integer(2))
+  let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
 
-//   let prog = e.Apply(e.Apply(e.Variable("equal"), e.Integer(1)), e.Integer(2))
-//   let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
+  inference.sound(sub)
+  inference.type_of(sub, [])
+  |> should.equal(Ok(t.boolean))
 
-//   inference.type_of(sub, [])
-//   |> should.equal(Ok(t.boolean))
-
-//   r.eval(prog, values, r.Value)
-//   |> should.equal(r.Value(core.false))
-// }
-
+  r.eval(prog, stdlib.env(), r.Value)
+  |> should.equal(r.Value(r.false))
+}
 // pub fn equal_test() {
 //   let #(types, values) =
 //     env.init()

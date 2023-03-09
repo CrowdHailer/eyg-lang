@@ -5,7 +5,9 @@ import eyg/runtime/interpreter as r
 import eyg/runtime/capture
 
 pub fn equal() {
-  r.Arity2(do_equal)
+  let type_ =
+    t.Fun(t.Unbound(0), t.Open(1), t.Fun(t.Unbound(0), t.Open(2), t.boolean))
+  #(type_, r.Arity2(do_equal))
 }
 
 fn do_equal(left, right, _builtins, k) {

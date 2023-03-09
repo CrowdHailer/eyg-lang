@@ -18,8 +18,10 @@ pub fn run() {
     document.query_selector("script[type=\"application/eygir\"]")
   let assert Ok(continuation) = decode.from_json(document.inner_text(el))
 
-  let #(_types, values) = stdlib.lib()
-  let content = case r.run(continuation, values, r.Record([]), handlers().1) {
+  // let #(_types, values) = stdlib.lib()
+  let content = case
+    r.run(continuation, stdlib.env(), r.Record([]), handlers().1)
+  {
     Ok(r.Binary(content)) -> content
     err -> {
       io.debug(#("return", err))
