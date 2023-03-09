@@ -46,6 +46,7 @@ pub fn run(source, _) {
 fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
+  |> effect.extend("FFI_Equal", effect.equal())
 }
 
 fn server_run(prog, method, scheme, host, path, query, body) {

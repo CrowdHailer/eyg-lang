@@ -10,6 +10,19 @@ pub const true = r.Tagged("True", r.Record([]))
 
 pub const false = r.Tagged("False", r.Record([]))
 
+pub fn do_equal(x) {
+  fn(y) {
+    fn(true) {
+      fn(false) {
+        case x == y {
+          True -> true(Nil)
+          False -> false(Nil)
+        }
+      }
+    }
+  }
+}
+
 pub fn equal() {
   let el = unbound()
   lambda(
@@ -23,18 +36,7 @@ pub fn equal() {
       )),
     ),
   )
-  |> build(fn(x) {
-    fn(y) {
-      fn(true) {
-        fn(false) {
-          case x == y {
-            True -> true(Nil)
-            False -> false(Nil)
-          }
-        }
-      }
-    }
-  })
+  |> build(do_equal)
 }
 
 pub fn debug() {
@@ -47,6 +49,10 @@ fn fixed(builder) {
     r.eval_call(builder, fixed(builder), r.eval_call(_, arg, inner_k))
   })
 }
+
+// A Defunc where the switch takes all options for stdlib is effctive
+// but it ties implementation of the interpreter to the std library that is used
+// Also what AST node do we capture to. Variables could always be over written
 
 pub fn fix() {
   let typ =

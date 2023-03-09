@@ -2,6 +2,7 @@ import gleam/io
 import gleam/map
 import eyg/analysis/typ as t
 import harness/ffi/spec
+import harness/ffi/core
 import plinth/browser/window
 
 pub fn init() {
@@ -21,6 +22,29 @@ fn for(lift, reply, handler) {
     spec.lambda(lift, reply)
     |> spec.build(handler)
   #(from, to, value)
+}
+
+pub fn equal() {
+  let t = spec.unbound()
+  for(
+    spec.record(spec.field("left", t, spec.field("right", t, spec.empty()))),
+    spec.union(spec.variant(
+      "True",
+      spec.record(spec.empty()),
+      spec.variant("False", spec.record(spec.empty()), spec.end()),
+    )),
+    fn(args) {
+      fn(true) {
+        fn(false) {
+          let #(left, #(right, Nil)) = args
+          case left == right {
+            True -> true(Nil)
+            False -> false(Nil)
+          }
+        }
+      }
+    },
+  )
 }
 
 pub fn debug_logger() {

@@ -6,7 +6,7 @@ import harness/ffi/string
 
 pub fn lib() {
   env.init()
-  |> env.extend("equal", core.equal())
+  // |> env.extend("equal", core.equal())
   |> env.extend("debug", core.debug())
   |> env.extend("fix", core.fix())
   |> env.extend("serialize", core.serialize())

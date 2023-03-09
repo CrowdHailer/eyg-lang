@@ -28,7 +28,7 @@ pub fn run(source, env, term, extrinsic) {
   }
 }
 
-fn handle(return, extrinsic) {
+pub fn handle(return, extrinsic) {
   case return {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
