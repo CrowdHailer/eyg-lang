@@ -7,7 +7,7 @@ import atelier/view/pallet
 // maybe belongs in procejection .render
 pub fn render(state: app.WorkSpace) {
   div(
-    [class("h-screen vstack")],
+    [class("vstack")],
     [
       div([class("expand")], []),
       projection.render(state.source, state.selection, state.inferred),
