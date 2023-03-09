@@ -289,7 +289,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       )
     }
     // TODO lookup types
-    e.Builtin(identifier) -> unify(t.Binary, t.Integer, ref, path)
+    e.Builtin(identifier) -> unify(typ, typ, ref, path)
   }
   |> compose(Infered(
     sub.none(),
