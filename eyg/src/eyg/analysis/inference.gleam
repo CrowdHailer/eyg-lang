@@ -289,6 +289,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       )
     }
     // TODO lookup types
+    // TODO proper continuation deployment
     e.Builtin(identifier) -> unify(typ, typ, ref, path)
   }
   |> compose(Infered(
