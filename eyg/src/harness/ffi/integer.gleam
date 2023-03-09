@@ -2,10 +2,6 @@ import gleam/int
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 
-// import harness/ffi/spec.{
-//   build, empty, end, integer, lambda, record, string, union, variant,
-// }
-
 pub fn add() {
   r.Arity2(do_add)
 }
@@ -15,44 +11,64 @@ fn do_add(left, right, k) {
   use right <- cast.integer(right)
   r.continue(k, r.Integer(left + right))
 }
-// pub fn subtract() {
-//   lambda(integer(), lambda(integer(), integer()))
-//   |> build(fn(x) { fn(y) { x - y } })
-// }
 
-// pub fn multiply() {
-//   lambda(integer(), lambda(integer(), integer()))
-//   |> build(fn(x) { fn(y) { x * y } })
-// }
+pub fn subtract() {
+  r.Arity2(do_subtract)
+}
 
-// pub fn divide() {
-//   lambda(integer(), lambda(integer(), integer()))
-//   |> build(fn(x) { fn(y) { x / y } })
-// }
+fn do_subtract(left, right, k) {
+  use left <- cast.integer(left)
+  use right <- cast.integer(right)
+  r.continue(k, r.Integer(left - right))
+}
 
-// pub fn absolute() {
-//   lambda(integer(), integer())
-//   |> build(fn(x) { int.absolute_value(x) })
-// }
+pub fn multiply() {
+  r.Arity2(do_multiply)
+}
 
-// pub fn int_parse() {
-//   lambda(
-//     string(),
-//     union(variant("Ok", integer(), variant("Error", record(empty()), end()))),
-//   )
-//   |> build(fn(raw) {
-//     fn(ok) {
-//       fn(error) {
-//         case int.parse(raw) {
-//           Ok(i) -> ok(i)
-//           Error(_) -> error(Nil)
-//         }
-//       }
-//     }
-//   })
-// }
+fn do_multiply(left, right, k) {
+  use left <- cast.integer(left)
+  use right <- cast.integer(right)
+  r.continue(k, r.Integer(left * right))
+}
 
-// pub fn int_to_string() {
-//   lambda(integer(), string())
-//   |> build(fn(x) { int.to_string(x) })
-// }
+pub fn divide() {
+  r.Arity2(do_divide)
+}
+
+fn do_divide(left, right, k) {
+  use left <- cast.integer(left)
+  use right <- cast.integer(right)
+  r.continue(k, r.Integer(left / right))
+}
+
+pub fn absolute() {
+  r.Arity1(do_absolute)
+}
+
+fn do_absolute(x, k) {
+  use x <- cast.integer(x)
+  r.continue(k, r.Integer(int.absolute_value(x)))
+}
+
+pub fn parse() {
+  r.Arity1(do_parse)
+}
+
+fn do_parse(raw, k) {
+  use raw <- cast.string(raw)
+  case int.parse(raw) {
+    Ok(i) -> r.ok(r.Integer(i))
+    Error(Nil) -> r.error(r.unit)
+  }
+  |> r.continue(k, _)
+}
+
+pub fn to_string() {
+  r.Arity1(do_to_string)
+}
+
+fn do_to_string(x, k) {
+  use x <- cast.integer(x)
+  r.continue(k, r.Binary(int.to_string(x)))
+}
