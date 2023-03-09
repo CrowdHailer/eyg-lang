@@ -10,14 +10,6 @@ import harness/ffi/string
 pub fn lib() {
   // env.init()
 
-  // // integer
-  // |> env.extend("ffi_add", integer.add())
-  // |> env.extend("ffi_subtract", integer.subtract())
-  // |> env.extend("ffi_multiply", integer.multiply())
-  // |> env.extend("ffi_divide", integer.divide())
-  // |> env.extend("ffi_absolute", integer.absolute())
-  // |> env.extend("ffi_int_parse", integer.int_parse())
-  // |> env.extend("ffi_int_to_string", integer.int_to_string())
   // // string
   // |> env.extend("ffi_append", string.append())
   // |> env.extend("ffi_uppercase", string.uppercase())
@@ -38,6 +30,14 @@ pub fn env() {
     |> map.insert("debug", core.debug())
     |> map.insert("fix", core.fix())
     |> map.insert("serialize", core.serialize())
+    // integer
+    |> map.insert("int_add", integer.add())
+    // |> map.insert("int_subtract", integer.subtract())
+    // |> map.insert("int_multiply", integer.multiply())
+    // |> map.insert("int_divide", integer.divide())
+    // |> map.insert("int_absolute", integer.absolute())
+    // |> map.insert("int_int_parse", integer.int_parse())
+    // |> map.insert("int_int_to_string", integer.int_to_string())
     // string
     |> map.insert("string_append", string.append())
     // list
