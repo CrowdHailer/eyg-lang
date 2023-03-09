@@ -61,7 +61,7 @@ const lustre = `
 <title>Atelier</title>
 </head>
 <body>
-  <div id="app" class="min-h-screen"></div>
+  <div id="app" class="screen"></div>
   <script src="/public/bundle.js"></script>
 </html>
 `;

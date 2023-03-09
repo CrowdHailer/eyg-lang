@@ -39,7 +39,7 @@ pub fn run(source, args) {
       let assert Ok(r.Integer(return)) =
         r.run(
           prog,
-          r.Env([], map.new()),
+          stdlib.env(),
           r.LinkedList(list.map(args, r.Binary)),
           handlers().1,
         )

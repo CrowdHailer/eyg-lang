@@ -7,7 +7,7 @@ pub fn pop() {
   r.Arity1(do_pop)
 }
 
-fn do_pop(term, k) {
+fn do_pop(term, _builtins, k) {
   use elements <- cast.list(term)
   let return = case elements {
     [] -> r.error(r.unit)
@@ -21,10 +21,8 @@ pub fn fold() {
   r.Arity3(fold_impl)
 }
 
-pub fn fold_impl(list, initial, func, k) {
+pub fn fold_impl(list, initial, func, builtins, k) {
   use elements <- cast.list(list)
-  // TODO pass in same builtins
-  let r.Env(_, builtins) = todo("fold builtins")
   do_fold(elements, initial, func, builtins, k)
 }
 

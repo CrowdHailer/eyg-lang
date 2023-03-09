@@ -164,9 +164,9 @@ pub fn eval_call(f, arg, builtins, k) {
 // builtins should be specified not in runtime terms but their own IDL
 // So that the interpreter knows how to cast them
 // interpreter builds on FFI or base
-// inference & interpreter need to extend expression and FFI 
+// inference & interpreter need to extend expression and FFI
 // Or reverse Std lib provides implementations to each
-// make builtin be label args implementations 
+// make builtin be label args implementations
 // capture drops implementations passin in as env.
 // but env doesn make link I still need a builtin in the AST node
 // and eval needs to read that with implementations so full circle
@@ -202,7 +202,7 @@ fn step_call(f, arg, builtins, k) {
         Resume(label, handler, resume) ->
           handled(label, handler, k, loop(resume(arg)), builtins)
         RenameBuiltin(key, applied) ->
-          call_builtin(key, list.append(applied, [arg]), k, builtins)
+          call_builtin(key, list.append(applied, [arg]), builtins, k)
       }
 
     term -> Abort(NotAFunction(term))
@@ -210,18 +210,20 @@ fn step_call(f, arg, builtins, k) {
 }
 
 pub type Arity {
-  Arity1(fn(Term, fn(Term) -> Return) -> Return)
-  Arity2(fn(Term, Term, fn(Term) -> Return) -> Return)
-  Arity3(fn(Term, Term, Term, fn(Term) -> Return) -> Return)
+  Arity1(fn(Term, map.Map(String, Arity), fn(Term) -> Return) -> Return)
+  Arity2(fn(Term, Term, map.Map(String, Arity), fn(Term) -> Return) -> Return)
+  Arity3(
+    fn(Term, Term, Term, map.Map(String, Arity), fn(Term) -> Return) -> Return,
+  )
 }
 
-fn call_builtin(key, applied, kont, builtins) {
+fn call_builtin(key, applied, builtins, kont) {
   case map.get(builtins, key) {
     Ok(func) ->
       case func, applied {
-        Arity1(impl), [x] -> impl(x, kont)
-        Arity2(impl), [x, y] -> impl(x, y, kont)
-        Arity3(impl), [x, y, z] -> impl(x, y, z, kont)
+        Arity1(impl), [x] -> impl(x, builtins, kont)
+        Arity2(impl), [x, y] -> impl(x, y, builtins, kont)
+        Arity3(impl), [x, y, z] -> impl(x, y, z, builtins, kont)
         _, args -> continue(kont, Defunc(RenameBuiltin(key, args)))
       }
 
