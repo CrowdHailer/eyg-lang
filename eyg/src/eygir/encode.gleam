@@ -32,7 +32,7 @@ pub fn encode(exp) {
     e.NoCases -> node("nocases", [])
     e.Perform(x) -> node("perform", [label(x)])
     e.Handle(x) -> node("handle", [label(x)])
-    e.Builtin(_) -> todo("encode builtin")
+    e.Builtin(x) -> node("builtin", [label(x)])
   }
 }
 
