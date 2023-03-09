@@ -71,6 +71,9 @@ pub type Switch {
   Handle0(String)
   Handle1(String, Term)
   Resume(String, Term, fn(Term) -> Return)
+  Builtin0(String)
+  Builtin1(String, Term)
+  Builtin2(String, Term, Term)
 }
 
 // This might not give in runtime core, more runtime presentation
@@ -165,10 +168,53 @@ fn step_call(f, arg, k) {
         // partially applied continuation function in handler
         Resume(label, handler, resume) ->
           handled(label, handler, k, loop(resume(arg)))
+        Builtin0(identifier) ->
+          case identifier {
+            "list_pop" -> do_pop(arg, k)
+            "list_fold" -> continue(k, Defunc(Builtin1(identifier, arg)))
+          }
+        Builtin1(identifier, arg1) ->
+          case identifier {
+            "list_fold" -> continue(k, Defunc(Builtin2(identifier, arg1, arg)))
+          }
+        Builtin2(identifier, arg1, arg2) ->
+          case identifier {
+            "list_fold" -> do_fold(arg1, arg2, arg, k)
+          }
       }
 
     term -> Abort(NotAFunction(term))
   }
+}
+
+pub type Arity {
+  Arity1(fn(Term) -> Term)
+  Arity2(fn(Term, Term) -> Term)
+}
+
+fn call_builtin(key, applied) {
+  let func = todo
+  case func, applied {
+    Arity1(impl), [x] -> impl(x)
+    Arity2(impl), [x, y] -> impl(x, y)
+  }
+}
+
+// In interpreter because circular dependencies interprester -> spec -> stdlib/linked list
+pub fn do_pop(term, k) {
+  case term {
+    LinkedList([]) -> continue(k, Tagged("Error", Record([])))
+    LinkedList([head, ..tail]) ->
+      continue(
+        k,
+        Tagged("Ok", Record([#("head", head), #("tail", LinkedList(tail))])),
+      )
+    _ -> Abort(IncorrectTerm("List", term))
+  }
+}
+
+pub fn do_fold(list, initial, func, k) {
+  todo("do_fold")
 }
 
 // Loop is always tail recursive.
@@ -212,6 +258,7 @@ fn step(exp: e.Expression, env, k) {
     e.Case(label) -> continue(k, Defunc(Match0(label)))
     e.NoCases -> continue(k, Defunc(NoCases0))
     e.Handle(label) -> continue(k, Defunc(Handle0(label)))
+    e.Builtin(identifier) -> continue(k, Defunc(Builtin0(identifier)))
   }
 }
 

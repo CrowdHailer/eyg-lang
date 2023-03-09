@@ -15,6 +15,8 @@ fn effect_eval(exp, extrinsic) {
 // the handlers are equivalent to let so is where we generalize
 // But a function might well have two equality checks and not know ahead of time what they will be
 // What is the goal here. FFI worked before but no deploy/resumption
+// polymorphic effects are described because of the usage of rows
+// Is there a forall A fn(A,A)<FFI_EQUAL(A)> True | False
 pub fn equal_test() {
   let #(lift, resume, handle) = effect.equal()
   // |> io.debug

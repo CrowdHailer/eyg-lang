@@ -75,6 +75,10 @@ fn capture_defunc(switch) {
       e.Apply(e.Handle(label), capture(handler))
       todo("not idea how to capture the func here")
     }
+    r.Builtin0(identifier) -> e.Builtin(identifier)
+    // TODO fix
+    r.Builtin1(identifier, _) -> e.Builtin(identifier)
+    r.Builtin2(identifier, _, _) -> e.Builtin(identifier)
   }
 }
 

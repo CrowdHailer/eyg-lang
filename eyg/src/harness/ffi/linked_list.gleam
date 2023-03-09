@@ -4,6 +4,17 @@ import harness/ffi/spec.{
   build, empty, end, field, lambda, list_of, record, unbound, union, variant,
 }
 
+pub fn do_pop(list) {
+  fn(ok) {
+    fn(error) {
+      case list {
+        [head, ..tail] -> ok(#(head, #(tail, Nil)))
+        [] -> error(Nil)
+      }
+    }
+  }
+}
+
 pub fn pop() {
   let el = unbound()
   lambda(
@@ -14,16 +25,7 @@ pub fn pop() {
       variant("Error", record(empty()), end()),
     )),
   )
-  |> build(fn(list) {
-    fn(ok) {
-      fn(error) {
-        case list {
-          [head, ..tail] -> ok(#(head, #(tail, Nil)))
-          [] -> error(Nil)
-        }
-      }
-    }
-  })
+  |> build(do_pop)
 }
 
 pub fn fold() {

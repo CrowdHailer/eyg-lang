@@ -77,6 +77,7 @@ pub fn do_render(exp, br, loc, inferred) {
     ]
     e.Perform(label) -> [perform(label, loc, inferred)]
     e.Handle(label) -> [handle(label, loc, inferred)]
+    e.Builtin(id) -> [variable(id, loc, inferred)]
   }
 }
 

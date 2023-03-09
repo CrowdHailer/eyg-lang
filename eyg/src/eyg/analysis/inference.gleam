@@ -288,6 +288,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         path,
       )
     }
+    e.Builtin(identifier) -> todo("infer builtin")
   }
   |> compose(Infered(
     sub.none(),

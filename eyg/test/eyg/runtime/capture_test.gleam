@@ -206,3 +206,69 @@ pub fn capture_resume_test() {
   // This should return a effect of subsequent logs, I don't know how to do this
   todo
 }
+
+pub fn builtin_arity1_test() {
+  let exp = e.Builtin("list_pop")
+  let assert r.Value(term) = r.eval(exp, [], r.Value)
+  let next = capture.capture(term)
+
+  let split =
+    r.Tagged(
+      "Ok",
+      r.Record([
+        #("head", r.Integer(1)),
+        #("tail", r.LinkedList([r.Integer(2)])),
+      ]),
+    )
+  next
+  |> r.eval(
+    [],
+    r.eval_call(_, r.LinkedList([r.Integer(1), r.Integer(2)]), r.Value),
+  )
+  |> should.equal(r.Value(split))
+
+  // same as complete eval
+  let exp =
+    e.Apply(
+      exp,
+      e.Apply(
+        e.Apply(e.Cons, e.Integer(1)),
+        e.Apply(e.Apply(e.Cons, e.Integer(2)), e.Tail),
+      ),
+    )
+  r.eval(exp, [], r.Value)
+  |> should.equal(r.Value(split))
+}
+
+pub fn builtin_arity3_test() {
+  let exp = e.Apply(e.Apply(e.Builtin("list_fold"), e.Tail), e.Integer(0))
+  let assert r.Value(term) = r.eval(exp, [], r.Value)
+  let next = capture.capture(term)
+
+  let split =
+    r.Tagged(
+      "Ok",
+      r.Record([
+        #("head", r.Integer(1)),
+        #("tail", r.LinkedList([r.Integer(2)])),
+      ]),
+    )
+  next
+  |> r.eval(
+    [],
+    r.eval_call(_, r.LinkedList([r.Integer(1), r.Integer(2)]), r.Value),
+  )
+  |> should.equal(r.Value(split))
+
+  // same as complete eval
+  let exp =
+    e.Apply(
+      exp,
+      e.Apply(
+        e.Apply(e.Cons, e.Integer(1)),
+        e.Apply(e.Apply(e.Cons, e.Integer(2)), e.Tail),
+      ),
+    )
+  r.eval(exp, [], r.Value)
+  |> should.equal(r.Value(split))
+}
