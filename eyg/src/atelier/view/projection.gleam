@@ -77,7 +77,7 @@ pub fn do_render(exp, br, loc, inferred) {
     ]
     e.Perform(label) -> [perform(label, loc, inferred)]
     e.Handle(label) -> [handle(label, loc, inferred)]
-    e.Builtin(id) -> [variable(id, loc, inferred)]
+    e.Builtin(id) -> [builtin(id, loc, inferred)]
   }
 }
 
@@ -118,6 +118,14 @@ fn variable(var, loc, inferred) {
   let alert = error(loc, inferred)
 
   [classes(highlight(target, alert)), click(loc)]
+  |> span([text(var)])
+}
+
+fn builtin(var, loc, inferred) {
+  let target = focused(loc)
+  let alert = error(loc, inferred)
+
+  [classes([#("italic", True), ..highlight(target, alert)]), click(loc)]
   |> span([text(var)])
 }
 

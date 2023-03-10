@@ -3,6 +3,7 @@ import gleam/list
 import gleam/map.{Map}
 import gleam/mapx
 import gleam/result
+import gleam/string
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
@@ -294,7 +295,18 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       // TODO should probably pass builtins in
       case map.get(stdlib.lib().0, identifier) {
         Ok(scheme) -> unify(typ, instantiate(scheme, ref), ref, path)
-        Error(Nil) -> todo("error in inferendce here")
+        Error(Nil) ->
+          Infered(
+            sub.none(),
+            mapx.singleton(
+              list.reverse(path),
+              Error(unification.MissingVariable(string.append(
+                "Builtin: ",
+                identifier,
+              ))),
+            ),
+            map.new(),
+          )
       }
   }
   |> compose(Infered(
