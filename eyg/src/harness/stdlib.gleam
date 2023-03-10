@@ -28,7 +28,8 @@ pub fn lib() {
   init()
   |> extend("equal", core.equal())
   |> extend("debug", core.debug())
-  // |> extend("fix", core.fix())
+  |> extend("fix", core.fix())
+  |> extend("fixed", core.fixed())
   |> extend("serialize", core.serialize())
   // // integer
   |> extend("int_add", integer.add())

@@ -28,16 +28,37 @@ fn do_debug(term, _builtins, k) {
 }
 
 pub fn fix() {
-  r.Arity1(do_fix)
+  let type_ =
+    t.Fun(
+      t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-1)),
+      t.Open(-3),
+      t.Unbound(-1),
+    )
+  #(type_, r.Arity1(do_fix))
 }
 
 fn do_fix(builder, builtins, k) {
-  r.eval_call(builder, builder, builtins, k)
+  r.eval_call(
+    builder,
+    r.Defunc(r.RenameBuiltin("fixed", [builder])),
+    builtins,
+    k,
+  )
 }
 
-fn fixed(builder) {
-  io.debug(builder)
-  // let builtins = todo
+pub fn fixed() {
+  // I'm not sure a type ever means anything here
+  #(
+    t.Unbound(0),
+    r.Arity2(fn(builder, arg, builtins, k) {
+      r.eval_call(
+        builder,
+        r.Defunc(r.RenameBuiltin("fixed", [builder])),
+        builtins,
+        r.eval_call(_, arg, builtins, k),
+      )
+    }),
+  )
   // r.Builtin(fn(arg, inner_k) {
   //   r.eval_call(
   //     builder,

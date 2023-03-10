@@ -60,94 +60,94 @@ pub fn debug_test() {
   // value is serialized as binary, hence the quotes
   |> should.equal(r.Value(r.Binary("\"foo\"")))
 }
-// pub fn simple_fix_test() {
-//   let prog = e.Apply(e.Builtin("fix"), e.Lambda("_", e.Binary("foo")))
-//   let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
 
-//   inference.sound(sub)
-//   |> should.equal(Ok(Nil))
-//   inference.type_of(sub, [])
-//   |> should.equal(Ok(t.Binary))
+pub fn simple_fix_test() {
+  let prog = e.Apply(e.Builtin("fix"), e.Lambda("_", e.Binary("foo")))
+  let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
 
-//   r.eval(prog, stdlib.env(), r.Value)
-//   |> should.equal(r.Value(r.Binary("foo")))
-// }
-// pub fn no_recursive_fix_test() {
-//   let #(types, values) =
-//     env.init()
-//     |> env.extend("fix", core.fix())
-//   let prog =
-//     e.Apply(
-//       e.Apply(e.Variable("fix"), e.Lambda("_", e.Lambda("x", e.Variable("x")))),
-//       e.Integer(1),
-//     )
-//   let sub = inference.infer(types, prog, t.Unbound(-10), t.Closed)
+  inference.sound(sub)
+  |> should.equal(Ok(Nil))
+  inference.type_of(sub, [])
+  |> should.equal(Ok(t.Binary))
 
-//   inference.sound(sub)
-//   |> should.equal(Ok(Nil))
-//   inference.type_of(sub, [])
-//   |> should.equal(Ok(t.Integer))
+  r.eval(prog, stdlib.env(), r.Value)
+  |> should.equal(r.Value(r.Binary("foo")))
+}
 
-//   r.eval(prog, values, r.Value)
-//   |> should.equal(r.Value(r.Integer(1)))
-// }
+pub fn no_recursive_fix_test() {
+  let prog =
+    e.Let(
+      "fix",
+      e.Builtin("fix"),
+      e.Apply(
+        e.Apply(
+          e.Variable("fix"),
+          e.Lambda("_", e.Lambda("x", e.Variable("x"))),
+        ),
+        e.Integer(1),
+      ),
+    )
+  let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
 
-// pub fn recursive_sum_test() {
-//   let #(types, values) =
-//     env.init()
-//     |> env.extend("fix", core.fix())
-//     |> env.extend("ffi_add", integer.add())
-//     |> env.extend("ffi_pop", linked_list.pop())
+  inference.sound(sub)
+  |> should.equal(Ok(Nil))
+  inference.type_of(sub, [])
+  |> should.equal(Ok(t.Integer))
 
-//   let list =
-//     e.Apply(
-//       e.Apply(e.Cons, e.Integer(1)),
-//       e.Apply(e.Apply(e.Cons, e.Integer(3)), e.Tail),
-//     )
+  r.eval(prog, stdlib.env(), r.Value)
+  |> should.equal(r.Value(r.Integer(1)))
+}
 
-//   let switch =
-//     e.Apply(
-//       e.Apply(
-//         e.Case("Ok"),
-//         e.Lambda(
-//           "split",
-//           e.Apply(
-//             e.Apply(
-//               e.Variable("self"),
-//               e.Apply(
-//                 e.Apply(e.Variable("ffi_add"), e.Variable("total")),
-//                 e.Apply(e.Select("head"), e.Variable("split")),
-//               ),
-//             ),
-//             e.Apply(e.Select("tail"), e.Variable("split")),
-//           ),
-//         ),
-//       ),
-//       e.Apply(
-//         e.Apply(e.Case("Error"), e.Lambda("_", e.Variable("total"))),
-//         e.NoCases,
-//       ),
-//     )
-//   let sum =
-//     e.Lambda(
-//       "self",
-//       e.Lambda(
-//         "total",
-//         e.Lambda(
-//           "items",
-//           e.Apply(switch, e.Apply(e.Variable("ffi_pop"), e.Variable("items"))),
-//         ),
-//       ),
-//     )
-//   let prog =
-//     e.Apply(e.Apply(e.Apply(e.Variable("fix"), sum), e.Integer(0)), list)
-//   let sub = inference.infer(types, prog, t.Unbound(-10), t.Closed)
+pub fn recursive_sum_test() {
+  let list =
+    e.Apply(
+      e.Apply(e.Cons, e.Integer(1)),
+      e.Apply(e.Apply(e.Cons, e.Integer(3)), e.Tail),
+    )
 
-//   inference.sound(sub)
-//   |> should.equal(Ok(Nil))
-//   inference.type_of(sub, [])
-//   |> should.equal(Ok(t.Integer))
+  let switch =
+    e.Apply(
+      e.Apply(
+        e.Case("Ok"),
+        e.Lambda(
+          "split",
+          e.Apply(
+            e.Apply(
+              e.Variable("self"),
+              e.Apply(
+                e.Apply(e.Builtin("int_add"), e.Variable("total")),
+                e.Apply(e.Select("head"), e.Variable("split")),
+              ),
+            ),
+            e.Apply(e.Select("tail"), e.Variable("split")),
+          ),
+        ),
+      ),
+      e.Apply(
+        e.Apply(e.Case("Error"), e.Lambda("_", e.Variable("total"))),
+        e.NoCases,
+      ),
+    )
+  let sum =
+    e.Lambda(
+      "self",
+      e.Lambda(
+        "total",
+        e.Lambda(
+          "items",
+          e.Apply(switch, e.Apply(e.Builtin("list_pop"), e.Variable("items"))),
+        ),
+      ),
+    )
+  let prog =
+    e.Apply(e.Apply(e.Apply(e.Builtin("fix"), sum), e.Integer(0)), list)
+  let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
 
-//   r.eval(prog, values, r.Value)
-//   |> should.equal(r.Value(r.Integer(4)))
-// }
+  inference.sound(sub)
+  |> should.equal(Ok(Nil))
+  inference.type_of(sub, [])
+  |> should.equal(Ok(t.Integer))
+
+  r.eval(prog, stdlib.env(), r.Value)
+  |> should.equal(r.Value(r.Integer(4)))
+}
