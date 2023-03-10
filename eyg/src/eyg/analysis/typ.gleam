@@ -57,6 +57,8 @@ fn ftv_effect(row) {
 
 pub const unit = Record(Closed)
 
-pub const boolean = Union(
-  Extend("True", Record(Closed), Extend("False", Record(Closed), Closed)),
-)
+pub const boolean = Union(Extend("True", unit, Extend("False", unit, Closed)))
+
+pub fn result(value, reason) {
+  Union(Extend("Ok", value, Extend("Error", reason, Closed)))
+}

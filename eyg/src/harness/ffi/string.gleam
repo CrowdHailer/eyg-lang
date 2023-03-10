@@ -1,9 +1,11 @@
 import gleam/string
+import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 
 pub fn append() {
-  r.Arity2(do_append)
+  let type_ = t.Fun(t.Binary, t.Open(0), t.Fun(t.Binary, t.Open(0), t.Binary))
+  #(type_, r.Arity2(do_append))
 }
 
 pub fn do_append(left, right, _builtins, k) {
@@ -13,7 +15,8 @@ pub fn do_append(left, right, _builtins, k) {
 }
 
 pub fn uppercase() {
-  r.Arity1(do_uppercase)
+  let type_ = t.Fun(t.Binary, t.Open(0), t.Binary)
+  #(type_, r.Arity1(do_uppercase))
 }
 
 pub fn do_uppercase(value, _builtins, k) {
@@ -22,7 +25,8 @@ pub fn do_uppercase(value, _builtins, k) {
 }
 
 pub fn lowercase() {
-  r.Arity1(do_lowercase)
+  let type_ = t.Fun(t.Binary, t.Open(0), t.Binary)
+  #(type_, r.Arity1(do_lowercase))
 }
 
 pub fn do_lowercase(value, _builtins, k) {
@@ -31,7 +35,8 @@ pub fn do_lowercase(value, _builtins, k) {
 }
 
 pub fn length() {
-  r.Arity1(do_length)
+  let type_ = t.Fun(t.Binary, t.Open(0), t.Integer)
+  #(type_, r.Arity1(do_length))
 }
 
 pub fn do_length(value, _builtins, k) {

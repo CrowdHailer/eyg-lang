@@ -27,25 +27,25 @@ pub fn extend(state, name, parts) {
 pub fn lib() {
   init()
   |> extend("equal", core.equal())
-  // |> map.insert("debug", core.debug())
-  // |> map.insert("fix", core.fix())
-  // |> map.insert("serialize", core.serialize())
+  |> extend("debug", core.debug())
+  // |> extend("fix", core.fix())
+  |> extend("serialize", core.serialize())
   // // integer
-  // |> map.insert("int_add", integer.add())
-  // |> map.insert("int_subtract", integer.subtract())
-  // |> map.insert("int_multiply", integer.multiply())
-  // |> map.insert("int_divide", integer.divide())
-  // |> map.insert("int_absolute", integer.absolute())
-  // |> map.insert("int_parse", integer.parse())
-  // |> map.insert("int_to_string", integer.to_string())
+  |> extend("int_add", integer.add())
+  |> extend("int_subtract", integer.subtract())
+  |> extend("int_multiply", integer.multiply())
+  |> extend("int_divide", integer.divide())
+  |> extend("int_absolute", integer.absolute())
+  |> extend("int_parse", integer.parse())
+  |> extend("int_to_string", integer.to_string())
   // // string
-  // |> map.insert("string_append", string.append())
-  // |> map.insert("string_uppercase", string.uppercase())
-  // |> map.insert("string_lowercase", string.lowercase())
-  // |> map.insert("string_length", string.length())
+  |> extend("string_append", string.append())
+  |> extend("string_uppercase", string.uppercase())
+  |> extend("string_lowercase", string.lowercase())
+  |> extend("string_length", string.length())
   // // list
-  // |> map.insert("list_pop", linked_list.pop())
-  // |> map.insert("list_fold", linked_list.fold()),
+  |> extend("list_pop", linked_list.pop())
+  |> extend("list_fold", linked_list.fold())
 }
 
 pub fn env() {

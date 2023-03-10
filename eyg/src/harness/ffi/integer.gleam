@@ -1,9 +1,12 @@
 import gleam/int
+import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 
 pub fn add() {
-  r.Arity2(do_add)
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_add))
 }
 
 fn do_add(left, right, _builtins, k) {
@@ -13,7 +16,9 @@ fn do_add(left, right, _builtins, k) {
 }
 
 pub fn subtract() {
-  r.Arity2(do_subtract)
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_subtract))
 }
 
 fn do_subtract(left, right, _builtins, k) {
@@ -23,7 +28,9 @@ fn do_subtract(left, right, _builtins, k) {
 }
 
 pub fn multiply() {
-  r.Arity2(do_multiply)
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_multiply))
 }
 
 fn do_multiply(left, right, _builtins, k) {
@@ -33,7 +40,9 @@ fn do_multiply(left, right, _builtins, k) {
 }
 
 pub fn divide() {
-  r.Arity2(do_divide)
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_divide))
 }
 
 fn do_divide(left, right, _builtins, k) {
@@ -43,7 +52,8 @@ fn do_divide(left, right, _builtins, k) {
 }
 
 pub fn absolute() {
-  r.Arity1(do_absolute)
+  let type_ = t.Fun(t.Integer, t.Open(0), t.Integer)
+  #(type_, r.Arity1(do_absolute))
 }
 
 fn do_absolute(x, _builtins, k) {
@@ -52,7 +62,8 @@ fn do_absolute(x, _builtins, k) {
 }
 
 pub fn parse() {
-  r.Arity1(do_parse)
+  let type_ = t.Fun(t.Binary, t.Open(0), t.Integer)
+  #(type_, r.Arity1(do_parse))
 }
 
 fn do_parse(raw, _builtins, k) {
@@ -65,7 +76,8 @@ fn do_parse(raw, _builtins, k) {
 }
 
 pub fn to_string() {
-  r.Arity1(do_to_string)
+  let type_ = t.Fun(t.Integer, t.Open(0), t.Binary)
+  #(type_, r.Arity1(do_to_string))
 }
 
 fn do_to_string(x, _builtins, k) {

@@ -19,7 +19,8 @@ fn do_equal(left, right, _builtins, k) {
 }
 
 pub fn debug() {
-  r.Arity1(do_debug)
+  let type_ = t.Fun(t.Unbound(0), t.Open(1), t.Binary)
+  #(type_, r.Arity1(do_debug))
 }
 
 fn do_debug(term, _builtins, k) {
@@ -51,16 +52,12 @@ fn fixed(builder) {
 // but it ties implementation of the interpreter to the std library that is used
 // Also what AST node do we capture to. Variables could always be over written
 
-// // THis should be replaced by capture which returns ast
+// This should be replaced by capture which returns ast
 pub fn serialize() {
-  r.Arity1(do_serialize)
-  //   // let typ =
-  //   //   t.Fun(t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-2)), t.Open(-3), t.Binary)
+  let type_ =
+    t.Fun(t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-2)), t.Open(-3), t.Binary)
 
-  //   // let value =
-  //   //   r.Builtin(fn(builder, _builtins,  k) {
-  //   //   })
-  //   // #(typ, value)
+  #(type_, r.Arity1(do_serialize))
 }
 
 pub fn do_serialize(term, _builtins, k) {

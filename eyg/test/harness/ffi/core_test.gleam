@@ -16,44 +16,62 @@ pub fn unequal_test() {
   let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
+  |> should.equal(Ok(Nil))
+
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
   r.eval(prog, stdlib.env(), r.Value)
   |> should.equal(r.Value(r.false))
 }
-// pub fn equal_test() {
-//   let #(types, values) =
-//     env.init()
-//     |> env.extend("equal", core.equal())
 
-//   let prog =
-//     e.Apply(e.Apply(e.Variable("equal"), e.Binary("foo")), e.Binary("foo"))
-//   let sub = inference.infer(types, prog, t.Unbound(-1), t.Open(-2))
+pub fn equal_test() {
+  let prog =
+    e.Apply(e.Apply(e.Builtin("equal"), e.Binary("foo")), e.Binary("foo"))
+  let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
 
-//   inference.type_of(sub, [])
-//   |> should.equal(Ok(t.boolean))
+  inference.sound(sub)
+  |> should.equal(Ok(Nil))
 
-//   r.eval(prog, values, r.Value)
-//   |> should.equal(r.Value(core.true))
-// }
+  inference.type_of(sub, [])
+  |> should.equal(Ok(t.boolean))
 
+  r.eval(prog, stdlib.env(), r.Value)
+  |> should.equal(r.Value(r.true))
+}
+
+// also tests generalization of builtins
+pub fn debug_test() {
+  let prog =
+    e.Let(
+      "_",
+      e.Apply(e.Builtin("debug"), e.Integer(10)),
+      e.Apply(e.Builtin("debug"), e.Binary("foo")),
+    )
+  let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
+
+  inference.sound(sub)
+  |> should.equal(Ok(Nil))
+
+  inference.type_of(sub, [])
+  |> should.equal(Ok(t.Binary))
+
+  r.eval(prog, stdlib.env(), r.Value)
+  // value is serialized as binary, hence the quotes
+  |> should.equal(r.Value(r.Binary("\"foo\"")))
+}
 // pub fn simple_fix_test() {
-//   let #(types, values) =
-//     env.init()
-//     |> env.extend("fix", core.fix())
-//   let prog = e.Apply(e.Variable("fix"), e.Lambda("_", e.Binary("foo")))
-//   let sub = inference.infer(types, prog, t.Unbound(-10), t.Closed)
+//   let prog = e.Apply(e.Builtin("fix"), e.Lambda("_", e.Binary("foo")))
+//   let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
 
 //   inference.sound(sub)
 //   |> should.equal(Ok(Nil))
 //   inference.type_of(sub, [])
 //   |> should.equal(Ok(t.Binary))
 
-//   r.eval(prog, values, r.Value)
+//   r.eval(prog, stdlib.env(), r.Value)
 //   |> should.equal(r.Value(r.Binary("foo")))
 // }
-
 // pub fn no_recursive_fix_test() {
 //   let #(types, values) =
 //     env.init()
