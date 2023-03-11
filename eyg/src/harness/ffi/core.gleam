@@ -1,4 +1,3 @@
-import gleam/io
 import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter as r

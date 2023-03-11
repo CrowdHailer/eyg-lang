@@ -341,7 +341,7 @@ fn match(label, matched, otherwise, value, builtins, k) {
   }
 }
 
-pub fn handled(label, handler, outer_k, thing, builtins) -> Return {
+fn handled(label, handler, outer_k, thing, builtins) -> Return {
   case thing {
     Effect(l, lifted, resume) if l == label -> {
       use partial <- step_call(handler, lifted, builtins)

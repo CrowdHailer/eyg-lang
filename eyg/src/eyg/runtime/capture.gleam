@@ -68,7 +68,7 @@ fn capture_defunc(switch) {
     r.Perform0(label) -> e.Perform(label)
     r.Handle0(label) -> e.Handle(label)
     r.Handle1(label, handler) -> e.Apply(e.Handle(label), capture(handler))
-    r.Resume(label, handler, resume) -> {
+    r.Resume(label, handler, _resume) -> {
       // possibly we do nothing as the context of the handler has been lost
       // Resume needs to be an expression I think
       e.Apply(e.Handle(label), capture(handler))

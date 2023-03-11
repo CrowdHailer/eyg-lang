@@ -1,6 +1,5 @@
 import eygir/expression as e
 import eyg/runtime/interpreter as r
-import harness/ffi/string
 import harness/stdlib
 import gleeunit/should
 

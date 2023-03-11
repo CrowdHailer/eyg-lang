@@ -1,5 +1,4 @@
 import gleam/map
-import gleam/io
 import eygir/expression as e
 import eyg/runtime/interpreter as r
 import eyg/runtime/capture
@@ -218,7 +217,6 @@ pub fn capture_resume_test() {
   next
   |> r.eval(env.empty(), r.eval_call(_, r.Binary("fooo"), map.new(), r.Value))
   // This should return a effect of subsequent logs, I don't know how to do this
-  todo
 }
 
 pub fn builtin_arity1_test() {

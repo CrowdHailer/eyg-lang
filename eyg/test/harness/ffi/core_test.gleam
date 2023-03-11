@@ -1,13 +1,8 @@
-import gleam/io
 import gleam/map
 import eyg/analysis/typ as t
 import eyg/analysis/inference
 import eyg/runtime/interpreter as r
 import eygir/expression as e
-import harness/ffi/core
-import harness/ffi/integer
-import harness/ffi/linked_list
-import harness/ffi/env
 import harness/stdlib
 import gleeunit/should
 

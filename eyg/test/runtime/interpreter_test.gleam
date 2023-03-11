@@ -1,5 +1,4 @@
 import gleam/map
-import gleam/string
 import gleeunit/should
 import eygir/expression as e
 import eyg/runtime/interpreter as r

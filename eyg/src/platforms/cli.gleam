@@ -1,6 +1,5 @@
 import gleam/io
 import gleam/list
-import gleam/map
 import gleam/nodejs
 import eygir/expression as e
 import eyg/analysis/typ as t
@@ -25,7 +24,7 @@ external fn duration(#(Int, Int)) -> #(Int, Int) =
   "process" "hrtime"
 
 pub fn run(source, args) {
-  let #(types, values) = stdlib.lib()
+  let #(types, _values) = stdlib.lib()
   let prog = e.Apply(e.Select("cli"), source)
   let hrstart = start()
   let inferred = inference.infer(types, prog, typ(), t.Closed)

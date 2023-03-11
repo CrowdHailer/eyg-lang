@@ -1,9 +1,7 @@
-import gleam/io
 import gleam/map
 import gleam/set
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import harness/ffi/env
 import harness/ffi/core
 import harness/ffi/integer
 import harness/ffi/linked_list

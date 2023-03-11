@@ -1,8 +1,6 @@
 import gleam/map
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import harness/ffi/integer
-import harness/ffi/env
 import eyg/analysis/inference
 import eygir/expression as e
 import harness/stdlib

@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/map
 import eyg/analysis/typ as t
-import harness/ffi/spec
 import plinth/browser/window
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
@@ -18,19 +17,7 @@ pub fn extend(state, label, parts) {
   #(eff, handlers)
 }
 
-fn for(lift, reply, handler) {
-  let assert #(t.Fun(from, _effects, to), value) =
-    spec.lambda(lift, reply)
-    |> spec.build(handler)
-  #(from, to, value)
-}
-
 pub fn debug_logger() {
-  let handler = fn(message) {
-    io.debug(message)
-    Nil
-  }
-  // for(spec.string(), spec.record(spec.empty()), handler)
   #(
     t.Binary,
     t.unit,
@@ -42,12 +29,6 @@ pub fn debug_logger() {
 }
 
 pub fn window_alert() {
-  let handler = fn(message) {
-    window.alert(message)
-    Nil
-  }
-
-  // for(spec.string(), spec.record(spec.empty()), handler)
   #(
     t.Binary,
     t.unit,
