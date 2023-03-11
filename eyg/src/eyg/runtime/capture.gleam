@@ -74,7 +74,7 @@ fn capture_defunc(switch) {
       e.Apply(e.Handle(label), capture(handler))
       todo("not idea how to capture the func here")
     }
-    r.RenameBuiltin(identifier, args) ->
+    r.Builtin(identifier, args) ->
       list.fold(
         args,
         e.Builtin(identifier),

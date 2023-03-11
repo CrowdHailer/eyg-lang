@@ -83,8 +83,7 @@ pub type Switch {
   Handle0(String)
   Handle1(String, Term)
   Resume(String, Term, fn(Term) -> Return)
-  // Rename
-  RenameBuiltin(String, List(Term))
+  Builtin(String, List(Term))
 }
 
 pub const unit = Record([])
@@ -192,7 +191,7 @@ fn step_call(f, arg, builtins, k) {
         // partially applied continuation function in handler
         Resume(label, handler, resume) ->
           handled(label, handler, k, loop(resume(arg)), builtins)
-        RenameBuiltin(key, applied) ->
+        Builtin(key, applied) ->
           call_builtin(key, list.append(applied, [arg]), builtins, k)
       }
 
@@ -215,7 +214,7 @@ fn call_builtin(key, applied, builtins, kont) {
         Arity1(impl), [x] -> impl(x, builtins, kont)
         Arity2(impl), [x, y] -> impl(x, y, builtins, kont)
         Arity3(impl), [x, y, z] -> impl(x, y, z, builtins, kont)
-        _, args -> continue(kont, Defunc(RenameBuiltin(key, args)))
+        _, args -> continue(kont, Defunc(Builtin(key, args)))
       }
 
     Error(Nil) -> Abort(UndefinedVariable(key))
@@ -276,7 +275,7 @@ fn step(exp: e.Expression, env: Env, k) {
     e.Case(label) -> continue(k, Defunc(Match0(label)))
     e.NoCases -> continue(k, Defunc(NoCases0))
     e.Handle(label) -> continue(k, Defunc(Handle0(label)))
-    e.Builtin(identifier) -> continue(k, Defunc(RenameBuiltin(identifier, [])))
+    e.Builtin(identifier) -> continue(k, Defunc(Builtin(identifier, [])))
   }
 }
 

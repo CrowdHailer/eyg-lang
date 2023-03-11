@@ -37,12 +37,7 @@ pub fn fix() {
 }
 
 fn do_fix(builder, builtins, k) {
-  r.eval_call(
-    builder,
-    r.Defunc(r.RenameBuiltin("fixed", [builder])),
-    builtins,
-    k,
-  )
+  r.eval_call(builder, r.Defunc(r.Builtin("fixed", [builder])), builtins, k)
 }
 
 pub fn fixed() {
@@ -54,7 +49,7 @@ pub fn fixed() {
     r.Arity2(fn(builder, arg, builtins, k) {
       r.eval_call(
         builder,
-        r.Defunc(r.RenameBuiltin("fixed", [builder])),
+        r.Defunc(r.Builtin("fixed", [builder])),
         builtins,
         r.eval_call(_, arg, builtins, k),
       )
