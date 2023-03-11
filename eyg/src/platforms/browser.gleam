@@ -1,9 +1,10 @@
 import gleam/io
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import eygir/decode
 import plinth/browser/document
 import plinth/browser/console
 import eyg/runtime/interpreter as r
+import eyg/analysis/typ as t
 import harness/effect
 import harness/stdlib
 
@@ -12,6 +13,7 @@ fn handlers() {
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("Alert", effect.window_alert())
   |> effect.extend("HTTP", effect.http())
+  |> effect.extend("Render", render())
 }
 
 pub fn run() {
@@ -29,4 +31,20 @@ pub fn run() {
     }
   }
   console.log(content)
+}
+
+// TODO add a wait effect
+fn render() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(page, k) {
+      let assert r.Binary(page) = page
+      case document.query_selector("#app") {
+        Ok(Some(element)) -> document.set_text(element, page)
+        _ -> todo("error from render")
+      }
+      r.continue(k, r.unit)
+    },
+  )
 }

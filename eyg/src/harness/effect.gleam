@@ -109,3 +109,6 @@ pub fn await() {
   )
   // r.Abort(r.UndefinedVariable("omg I'm so lost"))
 }
+// TODO serialize to return a promise that can be awaited on.
+// Now is a function that can error if promise not resolved
+// Capturing HTTP can return a value that is not a promise and so await stays sync
