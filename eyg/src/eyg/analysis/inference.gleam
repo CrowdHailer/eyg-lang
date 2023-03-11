@@ -290,9 +290,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         path,
       )
     }
-    // TODO proper continuation deployment
     e.Builtin(identifier) ->
-      // TODO should probably pass builtins in
       case map.get(stdlib.lib().0, identifier) {
         Ok(scheme) -> unify(typ, instantiate(scheme, ref), ref, path)
         Error(Nil) ->

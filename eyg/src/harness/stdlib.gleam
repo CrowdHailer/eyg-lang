@@ -29,7 +29,7 @@ pub fn lib() {
   |> extend("fix", core.fix())
   |> extend("fixed", core.fixed())
   |> extend("serialize", core.serialize())
-  // // integer
+  // integer
   |> extend("int_add", integer.add())
   |> extend("int_subtract", integer.subtract())
   |> extend("int_multiply", integer.multiply())
@@ -37,12 +37,12 @@ pub fn lib() {
   |> extend("int_absolute", integer.absolute())
   |> extend("int_parse", integer.parse())
   |> extend("int_to_string", integer.to_string())
-  // // string
+  // string
   |> extend("string_append", string.append())
   |> extend("string_uppercase", string.uppercase())
   |> extend("string_lowercase", string.lowercase())
   |> extend("string_length", string.length())
-  // // list
+  // list
   |> extend("list_pop", linked_list.pop())
   |> extend("list_fold", linked_list.fold())
 }

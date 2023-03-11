@@ -47,6 +47,8 @@ fn do_fix(builder, builtins, k) {
 
 pub fn fixed() {
   // I'm not sure a type ever means anything here
+  // fixed is not a function you can reference directly it's just a runtime
+  // value produced by the fix action
   #(
     t.Unbound(0),
     r.Arity2(fn(builder, arg, builtins, k) {
@@ -58,19 +60,7 @@ pub fn fixed() {
       )
     }),
   )
-  // r.Builtin(fn(arg, inner_k) {
-  //   r.eval_call(
-  //     builder,
-  //     fixed(builder),
-  //     builtins,
-  //     r.eval_call(_, arg, builtins, inner_k),
-  //   )
-  // })
 }
-
-// A Defunc where the switch takes all options for stdlib is effctive
-// but it ties implementation of the interpreter to the std library that is used
-// Also what AST node do we capture to. Variables could always be over written
 
 // This should be replaced by capture which returns ast
 pub fn serialize() {
