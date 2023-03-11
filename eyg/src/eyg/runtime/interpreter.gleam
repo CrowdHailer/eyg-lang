@@ -3,6 +3,7 @@ import gleam/list
 import gleam/map
 import gleam/string
 import eygir/expression as e
+import gleam/javascript/promise.{Promise}
 
 pub type Failure {
   NotAFunction(Term)
@@ -34,7 +35,48 @@ pub fn run(source, env, term, extrinsic) {
     Value(term) -> Ok(term)
     Abort(failure) -> Error(failure)
     Effect(label, _, _) -> Error(UnhandledEffect(label))
-    _ -> todo("should have evaluated and not be a Cont at all")
+    Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
+    Async(_) -> todo("oh dear async")
+  }
+}
+
+pub fn run_async(source, env, term, extrinsic) {
+  let ret =
+    eval(
+      source,
+      env,
+      fn(f) {
+        handle(
+          eval_call(f, term, env.builtins, Value(_)),
+          env.builtins,
+          extrinsic,
+        )
+      },
+    )
+  flatten_promise(ret, env, extrinsic)
+}
+
+pub fn flatten_promise(ret, env: Env, extrinsic) {
+  case ret {
+    // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
+    // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
+    // The eval fn above could use Not a Function Error in any case which is not a Function
+    Value(term) -> promise.resolve(Ok(term))
+    Abort(failure) -> promise.resolve(Error(failure))
+    Effect(label, _, _) -> promise.resolve(Error(UnhandledEffect(label)))
+    Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
+    Async(p) ->
+      promise.await(
+        p,
+        fn(parts) {
+          let #(term, k) = parts
+          flatten_promise(
+            handle(k(term), env.builtins, extrinsic),
+            env,
+            extrinsic,
+          )
+        },
+      )
   }
 }
 
@@ -52,6 +94,7 @@ pub fn handle(return, builtins, extrinsic) {
     Value(term) -> Value(term)
     Cont(term, k) -> handle(k(term), builtins, extrinsic)
     Abort(failure) -> Abort(failure)
+    Async(promise) -> Async(promise)
   }
 }
 
@@ -151,6 +194,7 @@ pub type Return {
 
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
   Abort(Failure)
+  Async(Promise(#(Term, fn(Term) -> Return)))
 }
 
 pub fn continue(k, term) {
@@ -356,6 +400,8 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
         fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
       )
     Abort(reason) -> Abort(reason)
+    // I think we need to key this
+    Async(promise) -> Async(promise)
   }
 }
 

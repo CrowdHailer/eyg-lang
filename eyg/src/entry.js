@@ -67,7 +67,7 @@ const lustre = `
 `;
 
 export function serve(handler, saver) {
-  app.use((req, res) => {
+  app.use(async (req, res) => {
     let host = req.header("host");
     if (host == "localhost:5000" || host == "source.web.petersaxton.uk") {
       if (req.path == "/save") {
@@ -84,7 +84,7 @@ export function serve(handler, saver) {
       var i = req.url.indexOf('?');
       var query = req.url.substr(i+1);
       // req.hostname removes port
-      const result = handler(req.method, req.protocol,req.headers.host, req.path, query, req.body.toString());
+      const result = await handler(req.method, req.protocol,req.headers.host, req.path, query, req.body.toString());
       res.send(result);
     }
   });

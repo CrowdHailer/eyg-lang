@@ -1,5 +1,7 @@
 import gleam/io
+// TODO make plinth
 import gleam/nodejs/fs
+import gleam/javascript/promise.{Promise}
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
@@ -28,6 +30,10 @@ pub fn run(source, _) {
   }
 
   let handle = fn(method, scheme, host, path, query, body) {
+    // Need to get prog on every run so it's fetch in development 
+    // Maybe inference belongs on save
+    let prog = e.Apply(e.Select("web"), javascript.dereference(store))
+
     server_run(prog, method, scheme, host, path, query, body)
   }
 
@@ -46,6 +52,8 @@ pub fn run(source, _) {
 fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
+  |> effect.extend("HTTP", effect.http())
+  |> effect.extend("Async", effect.http())
 }
 
 fn server_run(prog, method, scheme, host, path, query, body) {
@@ -60,7 +68,8 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("body", r.Binary(body)),
     ])
   let env = r.Env([], values)
-  case r.run(prog, env, request, handlers().1) {
+  use ret <- promise.map(r.run_async(prog, env, request, handlers().1))
+  case ret {
     Ok(return) ->
       case r.field(return, "body") {
         Ok(r.Binary(body)) -> body
@@ -75,7 +84,7 @@ fn server_run(prog, method, scheme, host, path, query, body) {
 }
 
 external fn do_serve(
-  fn(String, String, String, String, String, String) -> String,
+  fn(String, String, String, String, String, String) -> Promise(String),
   fn(String) -> Nil,
 ) -> Nil =
   "../entry.js" "serve"

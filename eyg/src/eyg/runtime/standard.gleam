@@ -23,7 +23,11 @@ pub const web = t.Fun(
       ),
     ),
   ),
-  t.Extend("Log", #(t.Binary, t.Record(t.Closed)), t.Closed),
+  t.Extend(
+    "Log",
+    #(t.Binary, t.Record(t.Closed)),
+    t.Extend("HTTP", #(t.Binary, t.Record(t.Closed)), t.Closed),
+  ),
   t.Record(t.Extend("body", t.Binary, t.Closed)),
 )
 

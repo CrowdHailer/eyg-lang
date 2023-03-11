@@ -11,6 +11,8 @@ fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("Alert", effect.window_alert())
+  |> effect.extend("HTTP", effect.http())
+  |> effect.extend("Async", effect.async())
 }
 
 pub fn run() {
@@ -18,7 +20,6 @@ pub fn run() {
     document.query_selector("script[type=\"application/eygir\"]")
   let assert Ok(continuation) = decode.from_json(document.inner_text(el))
 
-  // let #(_types, values) = stdlib.lib()
   let content = case
     r.run(continuation, stdlib.env(), r.Record([]), handlers().1)
   {
