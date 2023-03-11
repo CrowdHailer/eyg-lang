@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
@@ -36,7 +37,7 @@ pub fn run(source, env, term, extrinsic) {
     Abort(failure) -> Error(failure)
     Effect(label, _, _) -> Error(UnhandledEffect(label))
     Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
-    Async(_) -> todo("oh dear async")
+    Async(_, _) -> todo("oh dear async")
   }
 }
 
@@ -65,11 +66,10 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     Abort(failure) -> promise.resolve(Error(failure))
     Effect(label, _, _) -> promise.resolve(Error(UnhandledEffect(label)))
     Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
-    Async(p) ->
+    Async(p, k) ->
       promise.await(
         p,
-        fn(parts) {
-          let #(term, k) = parts
+        fn(term) {
           flatten_promise(
             handle(k(term), env.builtins, extrinsic),
             env,
@@ -94,7 +94,7 @@ pub fn handle(return, builtins, extrinsic) {
     Value(term) -> Value(term)
     Cont(term, k) -> handle(k(term), builtins, extrinsic)
     Abort(failure) -> Abort(failure)
-    Async(promise) -> Async(promise)
+    Async(promise, k) -> Async(promise, k)
   }
 }
 
@@ -194,7 +194,7 @@ pub type Return {
 
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
   Abort(Failure)
-  Async(Promise(#(Term, fn(Term) -> Return)))
+  Async(promise: Promise(Term), k: fn(Term) -> Return)
 }
 
 pub fn continue(k, term) {
@@ -342,7 +342,10 @@ fn select(label, arg, k) {
 }
 
 fn perform(label, lift, resume) {
-  Effect(label, lift, resume)
+  case label {
+    "Async" -> Async(promise.resolve(lift), resume)
+    _ -> Effect(label, lift, resume)
+  }
 }
 
 fn extend(label, value, rest, k) {
@@ -376,6 +379,20 @@ fn match(label, matched, otherwise, value, builtins, k) {
 
 fn handled(label, handler, outer_k, thing, builtins) -> Return {
   case thing {
+    Async(promise, resume) if label == "Async" -> {
+      use partial <- step_call(handler, unit, builtins)
+
+      use applied <- step_call(
+        partial,
+        // Ok so I am lost as to why resume works or is it even needed
+        // I think it is in the situation where someone serializes a
+        // partially applied continuation function in handler
+        Defunc(Resume("async", handler, resume)),
+        builtins,
+      )
+
+      continue(outer_k, applied)
+    }
     Effect(l, lifted, resume) if l == label -> {
       use partial <- step_call(handler, lifted, builtins)
 
@@ -390,18 +407,37 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
 
       continue(outer_k, applied)
     }
-    Value(v) -> continue(outer_k, v)
-    Cont(term, k) -> Cont(term, k)
+    Value(v) ->
+      continue(outer_k, v)
+      |> io.debug
+    Cont(term, k) ->
+      Cont(
+        term,
+        fn(x) {
+          io.debug(#("k", x))
+          k(x)
+          |> io.debug
+        },
+      )
     // Not equal to this effect
-    Effect(l, lifted, resume) ->
+    Effect(l, lifted, resume) -> {
+      io.debug(#(lifted, l, "effect"))
+      io.debug(label)
       Effect(
         l,
         lifted,
+        fn(x) {
+          io.debug(#("back", x))
+          handled(label, handler, outer_k, loop(resume(x)), builtins)
+        },
+      )
+    }
+    Async(promise, resume) ->
+      Async(
+        promise,
         fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
       )
     Abort(reason) -> Abort(reason)
-    // I think we need to key this
-    Async(promise) -> Async(promise)
   }
 }
 

@@ -62,3 +62,7 @@ pub const boolean = Union(Extend("True", unit, Extend("False", unit, Closed)))
 pub fn result(value, reason) {
   Union(Extend("Ok", value, Extend("Error", reason, Closed)))
 }
+
+pub fn option(value) {
+  Union(Extend("Some", value, Extend("None", unit, Closed)))
+}

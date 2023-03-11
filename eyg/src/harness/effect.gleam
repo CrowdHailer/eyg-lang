@@ -69,22 +69,24 @@ pub fn http() {
           fetch.send(request),
           fn(response) { fetch.read_text_body(response) },
         )
-
-      // io.debug(r)
-      // todo("http")
-      r.Async(promise.map(
-        promise,
-        fn(response) {
+        |> promise.map(fn(response) {
           case response {
-            Ok(response) -> {
-              io.debug(response.body)
-              // io.debug(cb)
-              #(r.Binary(response.body), k)
-            }
-            Error(_) -> #(r.Binary("bad response"), k)
+            Ok(response) -> r.Binary(response.body)
+            Error(_) -> r.Binary("bad response")
           }
-        },
-      ))
+        })
+
+      // This is not handled at the point where we are back
+      // And I think that this might even make sense because we are handling HTTP outside of async
+      // And technically the handler doesn't see that
+      // I need some foo raise bar tests inside or outside handler
+      // HTTP could be Async from the start
+      // perform Async(_ -> perform HTTP)
+      // capture async makes promise available
+      // Can do the oposite and have promise straight away
+      // I'm pretty sure this is right because Logs in a handler should be visible outside.
+      // But I want to catch HTTP two efffects one time.
+      r.Async(promise, k)
     },
   )
   // use message <- cast.string(message)
