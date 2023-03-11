@@ -12,7 +12,6 @@ fn handlers() {
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("Alert", effect.window_alert())
   |> effect.extend("HTTP", effect.http())
-  |> effect.extend("Async", effect.async())
 }
 
 pub fn run() {

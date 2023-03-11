@@ -38,3 +38,10 @@ pub fn field(key, inner, term, k) {
     _ -> r.Abort(r.IncorrectTerm("Record", term))
   }
 }
+
+pub fn promise(term, k) {
+  case term {
+    r.Promise(js_promise) -> k(js_promise)
+    _ -> r.Abort(r.IncorrectTerm("Promise", term))
+  }
+}

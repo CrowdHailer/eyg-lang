@@ -4,7 +4,7 @@ import gleam/list
 import gleam/map
 import gleam/string
 import eygir/expression as e
-import gleam/javascript/promise.{Promise}
+import gleam/javascript/promise.{Promise as JSPromise}
 
 pub type Failure {
   NotAFunction(Term)
@@ -69,9 +69,16 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     Async(p, k) ->
       promise.await(
         p,
-        fn(term) {
+        fn(return) {
           flatten_promise(
-            handle(k(term), env.builtins, extrinsic),
+            handle(
+              case return {
+                Value(term) -> k(term)
+                _ -> return
+              },
+              env.builtins,
+              extrinsic,
+            ),
             env,
             extrinsic,
           )
@@ -105,8 +112,8 @@ pub type Term {
   Record(fields: List(#(String, Term)))
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
-  // Builtin(func: fn(Term, fn(Term) -> Return) -> Return)
   Defunc(Switch)
+  Promise(JSPromise(Return))
 }
 
 pub type Switch {
@@ -164,6 +171,7 @@ pub fn to_string(term) {
     Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
     Function(param, _, _) -> string.concat(["(", param, ") -> ..."])
     Defunc(_) -> string.concat(["Defunc: "])
+    Promise(_) -> string.concat(["Promise: "])
   }
 }
 
@@ -194,7 +202,7 @@ pub type Return {
 
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
   Abort(Failure)
-  Async(promise: Promise(Term), k: fn(Term) -> Return)
+  Async(promise: JSPromise(Return), k: fn(Term) -> Return)
 }
 
 pub fn continue(k, term) {
@@ -343,7 +351,7 @@ fn select(label, arg, k) {
 
 fn perform(label, lift, resume) {
   case label {
-    "Async" -> Async(promise.resolve(lift), resume)
+    "Async" -> Async(promise.resolve(Value(lift)), resume)
     _ -> Effect(label, lift, resume)
   }
 }

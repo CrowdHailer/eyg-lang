@@ -47,6 +47,7 @@ pub fn capture(term) {
       list.fold(env, tail, add_var)
     }
     r.Defunc(switch) -> capture_defunc(switch)
+    r.Promise(_) -> todo("not capturing promise")
   }
 }
 

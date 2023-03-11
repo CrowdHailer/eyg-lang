@@ -30,7 +30,7 @@ pub fn run(source, _) {
   }
 
   let handle = fn(method, scheme, host, path, query, body) {
-    // Need to get prog on every run so it's fetch in development 
+    // Need to get prog on every run so it's fetch in development
     // Maybe inference belongs on save
     let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
@@ -53,7 +53,7 @@ fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("HTTP", effect.http())
-  |> effect.extend("Async", effect.http())
+  |> effect.extend("Await", effect.await())
 }
 
 fn server_run(prog, method, scheme, host, path, query, body) {

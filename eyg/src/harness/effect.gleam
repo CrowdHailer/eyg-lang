@@ -74,6 +74,7 @@ pub fn http() {
             Ok(response) -> r.Binary(response.body)
             Error(_) -> r.Binary("bad response")
           }
+          |> r.Value
         })
 
       // This is not handled at the point where we are back
@@ -86,15 +87,25 @@ pub fn http() {
       // Can do the oposite and have promise straight away
       // I'm pretty sure this is right because Logs in a handler should be visible outside.
       // But I want to catch HTTP two efffects one time.
-      r.Async(promise, k)
+      // r.Async(promise, k)
+      r.continue(k, r.Promise(promise))
     },
   )
+  // capturing async needs the value to be already ready
   // use message <- cast.string(message)
   // window.alert(message)
   // r.continue(k, r.unit)
 }
 
-pub fn async() {
-  #(t.Binary, t.unit, fn(a, k) { r.continue(k, r.Binary("im continuing")) })
+// Await makes async polymorphic TODO problem
+pub fn await() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(promise, k) {
+      use js_promise <- cast.promise(promise)
+      r.Async(js_promise, k)
+    },
+  )
   // r.Abort(r.UndefinedVariable("omg I'm so lost"))
 }

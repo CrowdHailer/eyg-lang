@@ -2,6 +2,7 @@ import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter as r
 import eyg/runtime/capture
+import gleam/javascript/promise
 
 pub fn equal() {
   let type_ =
@@ -68,4 +69,28 @@ pub fn serialize() {
 pub fn do_serialize(term, _builtins, k) {
   let exp = capture.capture(term)
   r.continue(k, r.Binary(encode.to_json(exp)))
+}
+
+pub fn promise_await() {
+  // TODO real type
+  let type_ = t.Unbound(0)
+  #(type_, r.Arity2(do_await))
+}
+
+// this is promise await not effect Async/Await
+fn do_await(promise, prog, builtins, k) {
+  case promise {
+    r.Promise(js_promise) ->
+      r.Promise(promise.map(
+        js_promise,
+        fn(resolved) {
+          case resolved {
+            r.Value(resolved) -> r.eval_call(prog, resolved, builtins, r.Value)
+            _ -> resolved
+          }
+        },
+      ))
+      |> r.continue(k, _)
+    _ -> todo("shouldve been a promise")
+  }
 }

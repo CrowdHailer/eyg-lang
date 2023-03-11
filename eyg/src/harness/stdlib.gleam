@@ -29,6 +29,7 @@ pub fn lib() {
   |> extend("fix", core.fix())
   |> extend("fixed", core.fixed())
   |> extend("serialize", core.serialize())
+  |> extend("promise_await", core.promise_await())
   // integer
   |> extend("int_add", integer.add())
   |> extend("int_subtract", integer.subtract())
