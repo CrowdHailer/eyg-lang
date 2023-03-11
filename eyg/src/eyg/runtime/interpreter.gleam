@@ -121,7 +121,7 @@ pub fn to_string(term) {
       |> string.concat
     Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
     Function(param, _, _) -> string.concat(["(", param, ") -> ..."])
-    Defunc(_) -> todo("defunc print")
+    Defunc(_) -> string.concat(["Defunc: "])
   }
 }
 
@@ -161,16 +161,6 @@ pub fn continue(k, term) {
 pub fn eval_call(f, arg, builtins, k) {
   loop(step_call(f, arg, builtins, k))
 }
-
-// builtins should be specified not in runtime terms but their own IDL
-// So that the interpreter knows how to cast them
-// interpreter builds on FFI or base
-// inference & interpreter need to extend expression and FFI
-// Or reverse Std lib provides implementations to each
-// make builtin be label args implementations
-// capture drops implementations passin in as env.
-// but env doesn make link I still need a builtin in the AST node
-// and eval needs to read that with implementations so full circle
 
 fn step_call(f, arg, builtins, k) {
   case f {
@@ -379,15 +369,3 @@ pub fn runner(label, handler, exec, builtins, k) {
     builtins,
   )
 }
-// pub fn builtin2(f) {
-//   Builtin(fn(a, k) { continue(k, Builtin(fn(b, k) { f(a, b, k) })) })
-// }
-
-// pub fn builtin3(f) {
-//   Builtin(fn(a, k) {
-//     continue(
-//       k,
-//       Builtin(fn(b, k) { continue(k, Builtin(fn(c, k) { f(a, b, c, k) })) }),
-//     )
-//   })
-// }

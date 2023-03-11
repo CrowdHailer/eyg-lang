@@ -288,4 +288,3 @@ pub fn builtin_arity3_test() {
   r.eval(exp, stdlib.env(), r.Value)
   |> should.equal(r.Value(r.Integer(2)))
 }
-// TODO buildserver is just a continuation
