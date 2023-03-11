@@ -15,16 +15,16 @@ pub fn fold_test() {
       e.Lambda(
         "state",
         e.Apply(
-          e.Apply(e.Variable("ffi_append"), e.Variable("state")),
+          e.Apply(e.Builtin("string_append"), e.Variable("state")),
           e.Variable("element"),
         ),
       ),
     )
   let source =
     e.Apply(
-      e.Apply(e.Apply(e.Variable("ffi_fold"), list), e.Binary("initial")),
+      e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Binary("initial")),
       reducer,
     )
-  r.eval(source, stdlib.lib().1, r.Value)
+  r.eval(source, stdlib.env(), r.Value)
   |> should.equal(r.Value(r.Binary("initialfizzbuzz")))
 }

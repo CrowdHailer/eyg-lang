@@ -24,7 +24,7 @@ external fn duration(#(Int, Int)) -> #(Int, Int) =
   "process" "hrtime"
 
 pub fn run(source, args) {
-  let #(types, values) = stdlib.lib()
+  let #(types, _values) = stdlib.lib()
   let prog = e.Apply(e.Select("cli"), source)
   let hrstart = start()
   let inferred = inference.infer(types, prog, typ(), t.Closed)
@@ -38,7 +38,7 @@ pub fn run(source, args) {
       let assert Ok(r.Integer(return)) =
         r.run(
           prog,
-          values,
+          stdlib.env(),
           r.LinkedList(list.map(args, r.Binary)),
           handlers().1,
         )

@@ -1,29 +1,52 @@
-import harness/ffi/env
+import gleam/map
+import gleam/set
+import eyg/analysis/typ as t
+import eyg/runtime/interpreter as r
 import harness/ffi/core
 import harness/ffi/integer
 import harness/ffi/linked_list
 import harness/ffi/string
+import eyg/analysis/scheme.{Scheme}
+
+pub fn init() {
+  #(map.new(), map.new())
+}
+
+pub fn extend(state, name, parts) {
+  let #(types, implementations) = state
+  let #(type_, implementation) = parts
+
+  let scheme = Scheme(set.to_list(t.ftv(type_)), type_)
+  let types = map.insert(types, name, scheme)
+  let values = map.insert(implementations, name, implementation)
+  #(types, values)
+}
 
 pub fn lib() {
-  env.init()
-  |> env.extend("equal", core.equal())
-  |> env.extend("debug", core.debug())
-  |> env.extend("fix", core.fix())
-  |> env.extend("serialize", core.serialize())
+  init()
+  |> extend("equal", core.equal())
+  |> extend("debug", core.debug())
+  |> extend("fix", core.fix())
+  |> extend("fixed", core.fixed())
+  |> extend("serialize", core.serialize())
   // integer
-  |> env.extend("ffi_add", integer.add())
-  |> env.extend("ffi_subtract", integer.subtract())
-  |> env.extend("ffi_multiply", integer.multiply())
-  |> env.extend("ffi_divide", integer.divide())
-  |> env.extend("ffi_absolute", integer.absolute())
-  |> env.extend("ffi_int_parse", integer.int_parse())
-  |> env.extend("ffi_int_to_string", integer.int_to_string())
+  |> extend("int_add", integer.add())
+  |> extend("int_subtract", integer.subtract())
+  |> extend("int_multiply", integer.multiply())
+  |> extend("int_divide", integer.divide())
+  |> extend("int_absolute", integer.absolute())
+  |> extend("int_parse", integer.parse())
+  |> extend("int_to_string", integer.to_string())
   // string
-  |> env.extend("ffi_append", string.append())
-  |> env.extend("ffi_uppercase", string.uppercase())
-  |> env.extend("ffi_lowercase", string.lowercase())
-  |> env.extend("ffi_length", string.length())
+  |> extend("string_append", string.append())
+  |> extend("string_uppercase", string.uppercase())
+  |> extend("string_lowercase", string.lowercase())
+  |> extend("string_length", string.length())
   // list
-  |> env.extend("ffi_fold", linked_list.fold())
-  |> env.extend("ffi_pop", linked_list.pop())
+  |> extend("list_pop", linked_list.pop())
+  |> extend("list_fold", linked_list.fold())
+}
+
+pub fn env() {
+  r.Env([], lib().1)
 }

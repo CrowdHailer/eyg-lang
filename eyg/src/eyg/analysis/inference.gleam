@@ -3,6 +3,7 @@ import gleam/list
 import gleam/map.{Map}
 import gleam/mapx
 import gleam/result
+import gleam/string
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
@@ -10,6 +11,7 @@ import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/env
 import eyg/analysis/unification.{fresh, generalise, instantiate}
 import gleam/javascript
+import harness/stdlib
 
 pub type Infered {
   // result could be separate map of errors
@@ -288,6 +290,22 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         path,
       )
     }
+    e.Builtin(identifier) ->
+      case map.get(stdlib.lib().0, identifier) {
+        Ok(scheme) -> unify(typ, instantiate(scheme, ref), ref, path)
+        Error(Nil) ->
+          Infered(
+            sub.none(),
+            mapx.singleton(
+              list.reverse(path),
+              Error(unification.MissingVariable(string.append(
+                "Builtin: ",
+                identifier,
+              ))),
+            ),
+            map.new(),
+          )
+      }
   }
   |> compose(Infered(
     sub.none(),

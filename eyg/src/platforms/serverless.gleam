@@ -59,7 +59,8 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
-  case r.run(prog, values, request, handlers().1) {
+  let env = r.Env([], values)
+  case r.run(prog, env, request, handlers().1) {
     Ok(return) ->
       case r.field(return, "body") {
         Ok(r.Binary(body)) -> body

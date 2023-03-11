@@ -30,6 +30,7 @@ pub type Expression {
   // do/act/effect(effect is a verb and noun)
   Perform(label: String)
   Handle(label: String)
+  Builtin(identifier: String)
 }
 
 pub const unit = Empty

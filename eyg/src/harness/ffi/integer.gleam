@@ -1,51 +1,86 @@
 import gleam/int
-import harness/ffi/spec.{
-  build, empty, end, integer, lambda, record, string, union, variant,
-}
+import eyg/analysis/typ as t
+import eyg/runtime/interpreter as r
+import harness/ffi/cast
 
 pub fn add() {
-  lambda(integer(), lambda(integer(), integer()))
-  |> build(fn(x) { fn(y) { x + y } })
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_add))
+}
+
+fn do_add(left, right, _builtins, k) {
+  use left <- cast.integer(left)
+  use right <- cast.integer(right)
+  r.continue(k, r.Integer(left + right))
 }
 
 pub fn subtract() {
-  lambda(integer(), lambda(integer(), integer()))
-  |> build(fn(x) { fn(y) { x - y } })
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_subtract))
+}
+
+fn do_subtract(left, right, _builtins, k) {
+  use left <- cast.integer(left)
+  use right <- cast.integer(right)
+  r.continue(k, r.Integer(left - right))
 }
 
 pub fn multiply() {
-  lambda(integer(), lambda(integer(), integer()))
-  |> build(fn(x) { fn(y) { x * y } })
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_multiply))
+}
+
+fn do_multiply(left, right, _builtins, k) {
+  use left <- cast.integer(left)
+  use right <- cast.integer(right)
+  r.continue(k, r.Integer(left * right))
 }
 
 pub fn divide() {
-  lambda(integer(), lambda(integer(), integer()))
-  |> build(fn(x) { fn(y) { x / y } })
+  let type_ =
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+  #(type_, r.Arity2(do_divide))
+}
+
+fn do_divide(left, right, _builtins, k) {
+  use left <- cast.integer(left)
+  use right <- cast.integer(right)
+  r.continue(k, r.Integer(left / right))
 }
 
 pub fn absolute() {
-  lambda(integer(), integer())
-  |> build(fn(x) { int.absolute_value(x) })
+  let type_ = t.Fun(t.Integer, t.Open(0), t.Integer)
+  #(type_, r.Arity1(do_absolute))
 }
 
-pub fn int_parse() {
-  lambda(
-    string(),
-    union(variant("Ok", integer(), variant("Error", record(empty()), end()))),
-  )
-  |> build(fn(raw) {
-    fn(ok) {
-      fn(error) {
-        case int.parse(raw) {
-          Ok(i) -> ok(i)
-          Error(_) -> error(Nil)
-        }
-      }
-    }
-  })
+fn do_absolute(x, _builtins, k) {
+  use x <- cast.integer(x)
+  r.continue(k, r.Integer(int.absolute_value(x)))
 }
 
-pub fn int_to_string() {
-  lambda(integer(), string())
-  |> build(fn(x) { int.to_string(x) })
+pub fn parse() {
+  let type_ = t.Fun(t.Binary, t.Open(0), t.Integer)
+  #(type_, r.Arity1(do_parse))
+}
+
+fn do_parse(raw, _builtins, k) {
+  use raw <- cast.string(raw)
+  case int.parse(raw) {
+    Ok(i) -> r.ok(r.Integer(i))
+    Error(Nil) -> r.error(r.unit)
+  }
+  |> r.continue(k, _)
+}
+
+pub fn to_string() {
+  let type_ = t.Fun(t.Integer, t.Open(0), t.Binary)
+  #(type_, r.Arity1(do_to_string))
+}
+
+fn do_to_string(x, _builtins, k) {
+  use x <- cast.integer(x)
+  r.continue(k, r.Binary(int.to_string(x)))
 }
