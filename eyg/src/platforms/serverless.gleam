@@ -53,6 +53,7 @@ fn handlers() {
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("HTTP", effect.http())
   |> effect.extend("Await", effect.await())
+  |> effect.extend("Wait", effect.wait())
 }
 
 fn server_run(prog, method, scheme, host, path, query, body) {

@@ -14,6 +14,7 @@ fn handlers() {
   |> effect.extend("Alert", effect.window_alert())
   |> effect.extend("HTTP", effect.http())
   |> effect.extend("Render", render())
+  |> effect.extend("Wait", effect.wait())
 }
 
 pub fn run() {
@@ -33,7 +34,6 @@ pub fn run() {
   console.log(content)
 }
 
-// TODO add a wait effect
 fn render() {
   #(
     t.Binary,

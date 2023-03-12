@@ -27,6 +27,7 @@ pub fn run(source, env, term, extrinsic) {
           env.builtins,
           extrinsic,
         )
+        |> io.debug
       },
     )
   {
@@ -70,11 +71,16 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
       promise.await(
         p,
         fn(return) {
+          io.debug("return")
           flatten_promise(
             handle(
               case return {
                 Value(term) -> k(term)
-                _ -> return
+                _ -> {
+                  io.debug("here")
+                  io.debug(return)
+                  return
+                }
               },
               env.builtins,
               extrinsic,
@@ -387,6 +393,7 @@ fn match(label, matched, otherwise, value, builtins, k) {
 
 fn handled(label, handler, outer_k, thing, builtins) -> Return {
   case thing {
+    // Remove this?
     Async(promise, resume) if label == "Async" -> {
       use partial <- step_call(handler, unit, builtins)
 

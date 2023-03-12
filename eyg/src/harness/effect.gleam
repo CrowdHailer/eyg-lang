@@ -7,6 +7,7 @@ import gleam/http/response
 import gleam/javascript/promise.{try_await}
 import eyg/analysis/typ as t
 import plinth/browser/window
+import plinth/javascript/promisex
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 
@@ -92,5 +93,17 @@ pub fn await() {
     },
   )
 }
+
 // Click buttons
-// TODO ask about composition of use
+
+pub fn wait() {
+  #(
+    t.Integer,
+    t.unit,
+    fn(milliseconds, k) {
+      use milliseconds <- cast.integer(milliseconds)
+      let p = promisex.wait(milliseconds)
+      r.continue(k, r.Promise(promise.map(p, fn(_) { r.Value(r.unit) })))
+    },
+  )
+}
