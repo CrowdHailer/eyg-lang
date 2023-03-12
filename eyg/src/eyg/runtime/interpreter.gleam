@@ -415,31 +415,15 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
 
       continue(outer_k, applied)
     }
-    Value(v) ->
-      continue(outer_k, v)
-      |> io.debug
-    Cont(term, k) ->
-      Cont(
-        term,
-        fn(x) {
-          io.debug(#("k", x))
-          k(x)
-          |> io.debug
-        },
-      )
+    Value(v) -> continue(outer_k, v)
+    Cont(term, k) -> Cont(term, fn(x) { k(x) })
     // Not equal to this effect
-    Effect(l, lifted, resume) -> {
-      io.debug(#(lifted, l, "effect"))
-      io.debug(label)
+    Effect(l, lifted, resume) ->
       Effect(
         l,
         lifted,
-        fn(x) {
-          io.debug(#("back", x))
-          handled(label, handler, outer_k, loop(resume(x)), builtins)
-        },
+        fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
       )
-    }
     Async(promise, resume) ->
       Async(
         promise,

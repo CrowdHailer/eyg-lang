@@ -1,5 +1,5 @@
 import gleam/io
-import gleam/option.{None, Some}
+import gleam/option.{Some}
 import eygir/decode
 import plinth/browser/document
 import plinth/browser/console

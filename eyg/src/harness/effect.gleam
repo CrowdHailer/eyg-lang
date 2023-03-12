@@ -77,27 +77,11 @@ pub fn http() {
           |> r.Value
         })
 
-      // This is not handled at the point where we are back
-      // And I think that this might even make sense because we are handling HTTP outside of async
-      // And technically the handler doesn't see that
-      // I need some foo raise bar tests inside or outside handler
-      // HTTP could be Async from the start
-      // perform Async(_ -> perform HTTP)
-      // capture async makes promise available
-      // Can do the oposite and have promise straight away
-      // I'm pretty sure this is right because Logs in a handler should be visible outside.
-      // But I want to catch HTTP two efffects one time.
-      // r.Async(promise, k)
       r.continue(k, r.Promise(promise))
     },
   )
-  // capturing async needs the value to be already ready
-  // use message <- cast.string(message)
-  // window.alert(message)
-  // r.continue(k, r.unit)
 }
 
-// Await makes async polymorphic TODO problem
 pub fn await() {
   #(
     t.Binary,
@@ -107,8 +91,6 @@ pub fn await() {
       r.Async(js_promise, k)
     },
   )
-  // r.Abort(r.UndefinedVariable("omg I'm so lost"))
 }
-// TODO serialize to return a promise that can be awaited on.
-// Now is a function that can error if promise not resolved
-// Capturing HTTP can return a value that is not a promise and so await stays sync
+// Click buttons
+// TODO ask about composition of use
