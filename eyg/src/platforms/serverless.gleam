@@ -1,6 +1,5 @@
 import gleam/io
-// TODO make plinth
-import gleam/nodejs/fs
+import plinth/nodejs/fs
 import gleam/javascript/promise.{Promise}
 import eygir/expression as e
 import eyg/analysis/typ as t

@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/nodejs
+import plinth/nodejs
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r

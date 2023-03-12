@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/list
-import gleam/nodejs
-import gleam/nodejs/fs
+import plinth/nodejs
+import plinth/nodejs/fs
 import eygir/decode
 import platforms/cli
 import platforms/serverless
