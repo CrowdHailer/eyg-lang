@@ -118,6 +118,7 @@ fn listen() {
               env.builtins,
               extrinsic,
             )
+          io.debug(ret)
           Nil
         },
       )
