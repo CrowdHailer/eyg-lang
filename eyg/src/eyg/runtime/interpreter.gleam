@@ -27,7 +27,6 @@ pub fn run(source, env, term, extrinsic) {
           env.builtins,
           extrinsic,
         )
-        |> io.debug
       },
     )
   {
@@ -40,7 +39,7 @@ pub fn run(source, env, term, extrinsic) {
     Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
     // This is where async becomes threaded
     // Automatic web worker is possile
-    // await should stay in handler scope, TODO test capture logs after wait
+    // await should stay in handler scope, 
     Async(_, _) -> todo("oh dear async")
   }
 }
@@ -74,7 +73,6 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
       promise.await(
         p,
         fn(return) {
-          io.debug("return")
           flatten_promise(
             handle(k(return), env.builtins, extrinsic),
             env,
@@ -348,10 +346,7 @@ fn select(label, arg, k) {
 }
 
 fn perform(label, lift, resume) {
-  case label {
-    // "Async" -> Async(promise.resolve(Value(lift)), resume)
-    _ -> Effect(label, lift, resume)
-  }
+  Effect(label, lift, resume)
 }
 
 fn extend(label, value, rest, k) {
@@ -386,7 +381,7 @@ fn match(label, matched, otherwise, value, builtins, k) {
 fn handled(label, handler, outer_k, thing, builtins) -> Return {
   case thing {
     // Remove this?
-    Async(promise, resume) if label == "Async" -> {
+    Async(exec, resume) if label == "Async" -> {
       use partial <- step_call(handler, unit, builtins)
 
       use applied <- step_call(
@@ -394,7 +389,7 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        Defunc(Resume("async", handler, resume)),
+        Defunc(Resume("Async", handler, resume)),
         builtins,
       )
 
@@ -415,7 +410,7 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
       continue(outer_k, applied)
     }
     Value(v) -> continue(outer_k, v)
-    Cont(term, k) -> Cont(term, fn(x) { k(x) })
+    Cont(term, k) -> Cont(term, k)
     // Not equal to this effect
     Effect(l, lifted, resume) ->
       Effect(
@@ -423,9 +418,9 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
         lifted,
         fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
       )
-    Async(promise, resume) ->
+    Async(exec, resume) ->
       Async(
-        promise,
+        exec,
         fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
       )
     Abort(reason) -> Abort(reason)
@@ -437,9 +432,7 @@ pub fn runner(label, handler, exec, builtins, k) {
     label,
     handler,
     k,
-    eval_call(exec, Record([]), builtins, Value)
-    // async should return async value immediatly
-    |> io.debug,
+    eval_call(exec, Record([]), builtins, Value),
     builtins,
   )
 }

@@ -95,7 +95,6 @@ fn listen() {
       use event <- cast.field("event", cast.string, sub)
       use handle <- cast.field("handler", cast.any, sub)
 
-      io.debug(event)
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
 
@@ -108,7 +107,6 @@ fn listen() {
               env.builtins,
               extrinsic,
             )
-          io.debug(#("click ret", ret))
           Nil
         },
       )

@@ -381,3 +381,9 @@ pub fn handler_is_applied_after_other_effects_test() {
   |> r.loop
   |> should.equal(r.Value(r.Integer(-1)))
 }
+
+// async/task
+
+pub fn asyn_test() -> Nil {
+  todo
+}
