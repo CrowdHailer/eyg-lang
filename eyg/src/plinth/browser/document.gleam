@@ -21,3 +21,10 @@ pub fn inner_text(el: Element) -> String {
   let assert Ok(text) = dynamic.string(do_get(el, "innerText"))
   text
 }
+
+external fn do_set(any, String, Dynamic) -> Nil =
+  "" "Reflect.set"
+
+pub fn set_text(el: Element, value: String) {
+  do_set(el, "innerText", dynamic.from(value))
+}

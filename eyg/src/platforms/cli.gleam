@@ -1,16 +1,20 @@
 import gleam/io
 import gleam/list
-import gleam/nodejs
+import plinth/nodejs
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eyg/analysis/inference
 import harness/stdlib
 import harness/effect
+import gleam/javascript/promise.{Promise}
 
 fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
+  |> effect.extend("HTTP", effect.http())
+  |> effect.extend("Await", effect.await())
+  |> effect.extend("Wait", effect.wait())
 }
 
 pub fn typ() {
@@ -32,17 +36,18 @@ pub fn run(source, args) {
   io.debug(#("inference", hrend))
 
   // console.info("Inference time (hr): %ds %dms", hrend)
-  case inference.sound(inferred) {
+  use code <- promise.await(case inference.sound(inferred) {
     Ok(Nil) -> {
       let hrstart = start()
-      let assert Ok(r.Integer(return)) =
-        r.run(
-          prog,
-          stdlib.env(),
-          r.LinkedList(list.map(args, r.Binary)),
-          handlers().1,
-        )
-        |> io.debug
+      use ret <- promise.map(r.run_async(
+        prog,
+        stdlib.env(),
+        r.LinkedList(list.map(args, r.Binary)),
+        handlers().1,
+      ))
+
+      io.debug(ret)
+      let assert Ok(r.Integer(return)) = ret
       let hrend = duration(hrstart)
       io.debug(#("run", hrend))
       return
@@ -50,8 +55,10 @@ pub fn run(source, args) {
     Error(reasons) -> {
       io.debug("program not sound")
       io.debug(reasons)
-      1
+      promise.resolve(1)
     }
-  }
+  })
+  code
   |> nodejs.exit()
+  promise.resolve(code)
 }

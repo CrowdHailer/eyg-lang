@@ -1,7 +1,11 @@
+import gleam/io
+import gleam/map
 import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter as r
 import eyg/runtime/capture
+import gleam/javascript/promise
+import harness/ffi/cast
 
 pub fn equal() {
   let type_ =
