@@ -60,7 +60,12 @@ pub fn web() {
           )),
           t.Record(t.Closed),
         ),
-        t.Closed,
+        t.Extend(
+          "Await",
+          #(t.Unbound(-1), t.Unbound(-1)),
+          // It might be better to have constants for all these effects
+          t.Extend("Wait", #(t.Integer, t.Unbound(-2)), t.Closed),
+        ),
       ),
     ),
     t.Record(t.Extend("body", t.Binary, t.Closed)),

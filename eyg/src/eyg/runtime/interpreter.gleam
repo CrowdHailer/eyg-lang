@@ -378,7 +378,6 @@ fn match(label, matched, otherwise, value, builtins, k) {
 
 fn handled(label, handler, outer_k, thing, builtins) -> Return {
   case thing {
-    // Remove this?
     Effect(l, lifted, resume) if l == label -> {
       use partial <- step_call(handler, lifted, builtins)
 

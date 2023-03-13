@@ -9,15 +9,12 @@ import harness/stdlib
 import harness/effect
 import gleam/javascript/promise.{Promise}
 
-
 fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
-    |> effect.extend("HTTP", effect.http())
+  |> effect.extend("HTTP", effect.http())
   |> effect.extend("Await", effect.await())
-
-    |> effect.extend("Wait", effect.wait())
-
+  |> effect.extend("Wait", effect.wait())
 }
 
 pub fn typ() {
@@ -42,14 +39,14 @@ pub fn run(source, args) {
   use code <- promise.await(case inference.sound(inferred) {
     Ok(Nil) -> {
       let hrstart = start()
-        use ret <- promise.map(r.run_async(
-          prog,
-          stdlib.env(),
-          r.LinkedList(list.map(args, r.Binary)),
-          handlers().1,
-        ))
+      use ret <- promise.map(r.run_async(
+        prog,
+        stdlib.env(),
+        r.LinkedList(list.map(args, r.Binary)),
+        handlers().1,
+      ))
 
-         io.debug(ret)
+      io.debug(ret)
       let assert Ok(r.Integer(return)) = ret
       let hrend = duration(hrstart)
       io.debug(#("run", hrend))

@@ -97,7 +97,7 @@ pub fn async() {
 // Write up how passing the handlers gets to choose run context
 // i.e. here the click has async but not await
 // single extrinsic for listen is a good idea because internally we can build event handlers for on click etc
-// TODO need key value for qwik style continuations on the click
+// need key value for qwik style continuations on the click
 fn listen() {
   #(
     t.unit,

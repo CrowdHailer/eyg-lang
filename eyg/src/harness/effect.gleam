@@ -94,8 +94,6 @@ pub fn await() {
   )
 }
 
-// Click buttons
-
 pub fn wait() {
   #(
     t.Integer,
