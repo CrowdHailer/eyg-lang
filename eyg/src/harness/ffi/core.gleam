@@ -77,31 +77,43 @@ pub fn do_serialize(term, _builtins, k) {
 pub fn promise_then() {
   // TODO real type
   let type_ = t.Unbound(0)
-  #(type_, r.Arity2(do_then))
+  #(
+    type_,
+    r.Arity2(fn(_, _, _, _) {
+      r.Value(r.Binary(
+        "This isnt needed but means handling async is not in program",
+      ))
+    }),
+  )
 }
-
-// this is promise await not effect Async/Await
-// This should be called then
-fn do_then(promise, prog, builtins, k) {
-  use js_promise <- cast.promise(promise)
-  io.debug("doing awaut")
-  r.Promise(promise.map(
-    js_promise,
-    fn(resolved) {
-      io.debug(#("resolve", resolved))
-      case resolved {
-        r.Value(resolved) ->
-          // TODO does this have the handlers in scope
-          // How do we get reference to handlers outside
-          // Inner request not going through log stages
-          // async does change effect scope
-          r.eval_call(prog, resolved, builtins, r.Value)
-          |> io.debug
-          |> r.handle(builtins, map.new())
-          |> io.debug
-        _ -> resolved
-      }
-    },
-  ))
-  |> r.continue(k, _)
-}
+// // this is promise await not effect Async/Await
+// // This should be called then
+// fn do_then(promise, prog, builtins, k) {
+//   use js_promise <- cast.promise(promise)
+//   io.debug("doing awaut")
+//   r.Promise(promise.map(
+//     js_promise,
+//     fn(resolved) {
+//       io.debug(#("resolve", resolved))
+//       // case resolved {
+//       //   r.Value(resolved) ->
+//       // TODO does this have the handlers in scope
+//       // How do we get reference to handlers outside
+//       // Inner request not going through log stages
+//       // async does change effect scope
+//       // worker wold hAVE new builtin effects
+//       // just last effect different
+//       // runtime design
+//       // just be async default
+//       // neecd channel pid for message back
+//       // or global state as effect
+//       // queue all the http messagge etc effects
+//       // but first log ends up on outside effect
+//       // async ashould put everythi last timeout zero
+//       r.eval_call(prog, resolved, builtins, r.Value)
+//     },
+//   ))
+//   //   _ -> resolved
+//   // }
+//   |> r.continue(k, _)
+// }

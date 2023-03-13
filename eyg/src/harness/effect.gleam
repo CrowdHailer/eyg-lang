@@ -75,7 +75,6 @@ pub fn http() {
             Ok(response) -> r.Binary(response.body)
             Error(_) -> r.Binary("bad response")
           }
-          |> r.Value
         })
 
       r.continue(k, r.Promise(promise))
@@ -103,7 +102,7 @@ pub fn wait() {
     fn(milliseconds, k) {
       use milliseconds <- cast.integer(milliseconds)
       let p = promisex.wait(milliseconds)
-      r.continue(k, r.Promise(promise.map(p, fn(_) { r.Value(r.unit) })))
+      r.continue(k, r.Promise(promise.map(p, fn(_) { r.unit })))
     },
   )
 }

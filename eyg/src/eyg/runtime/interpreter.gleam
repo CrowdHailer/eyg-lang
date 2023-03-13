@@ -38,6 +38,9 @@ pub fn run(source, env, term, extrinsic) {
     Abort(failure) -> Error(failure)
     Effect(label, _, _) -> Error(UnhandledEffect(label))
     Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
+    // This is where async becomes threaded
+    // Automatic web worker is possile
+    // await should stay in handler scope, TODO test capture logs after wait
     Async(_, _) -> todo("oh dear async")
   }
 }
@@ -73,18 +76,7 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
         fn(return) {
           io.debug("return")
           flatten_promise(
-            handle(
-              case return {
-                Value(term) -> k(term)
-                _ -> {
-                  io.debug("here")
-                  io.debug(return)
-                  return
-                }
-              },
-              env.builtins,
-              extrinsic,
-            ),
+            handle(k(return), env.builtins, extrinsic),
             env,
             extrinsic,
           )
@@ -119,7 +111,7 @@ pub type Term {
   Tagged(label: String, value: Term)
   Function(param: String, body: e.Expression, env: List(#(String, Term)))
   Defunc(Switch)
-  Promise(JSPromise(Return))
+  Promise(JSPromise(Term))
 }
 
 pub type Switch {
@@ -208,7 +200,7 @@ pub type Return {
 
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
   Abort(Failure)
-  Async(promise: JSPromise(Return), k: fn(Term) -> Return)
+  Async(promise: JSPromise(Term), k: fn(Term) -> Return)
 }
 
 pub fn continue(k, term) {
@@ -357,7 +349,7 @@ fn select(label, arg, k) {
 
 fn perform(label, lift, resume) {
   case label {
-    "Async" -> Async(promise.resolve(Value(lift)), resume)
+    // "Async" -> Async(promise.resolve(Value(lift)), resume)
     _ -> Effect(label, lift, resume)
   }
 }
@@ -445,7 +437,9 @@ pub fn runner(label, handler, exec, builtins, k) {
     label,
     handler,
     k,
-    eval_call(exec, Record([]), builtins, Value),
+    eval_call(exec, Record([]), builtins, Value)
+    // async should return async value immediatly
+    |> io.debug,
     builtins,
   )
 }
