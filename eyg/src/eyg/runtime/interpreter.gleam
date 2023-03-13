@@ -37,10 +37,8 @@ pub fn run(source, env, term, extrinsic) {
     Abort(failure) -> Error(failure)
     Effect(label, _, _) -> Error(UnhandledEffect(label))
     Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
-    // This is where async becomes threaded
-    // Automatic web worker is possile
-    // await should stay in handler scope, 
-    Async(_, _) -> todo("oh dear async")
+    Async(_, _) ->
+      todo("cannot return async value some sync run. This effect would not be allowed by type system")
   }
 }
 
@@ -381,20 +379,6 @@ fn match(label, matched, otherwise, value, builtins, k) {
 fn handled(label, handler, outer_k, thing, builtins) -> Return {
   case thing {
     // Remove this?
-    Async(exec, resume) if label == "Async" -> {
-      use partial <- step_call(handler, unit, builtins)
-
-      use applied <- step_call(
-        partial,
-        // Ok so I am lost as to why resume works or is it even needed
-        // I think it is in the situation where someone serializes a
-        // partially applied continuation function in handler
-        Defunc(Resume("Async", handler, resume)),
-        builtins,
-      )
-
-      continue(outer_k, applied)
-    }
     Effect(l, lifted, resume) if l == label -> {
       use partial <- step_call(handler, lifted, builtins)
 

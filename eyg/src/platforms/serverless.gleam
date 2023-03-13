@@ -46,6 +46,7 @@ pub fn run(source, _) {
   do_serve(handle, save)
   // This return type is ignored but should maybe be part of ffi for cli
   // 0
+  promise.resolve(0)
 }
 
 fn handlers() {

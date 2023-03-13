@@ -1,9 +1,13 @@
+import gleam/io
 import gleam/map
+import gleam/javascript/promise
 import gleeunit/should
 import eygir/expression as e
 import eyg/runtime/interpreter as r
 import harness/ffi/env
+import harness/effect
 import harness/stdlib
+import platforms/browser
 
 pub fn variable_test() {
   let source = e.Variable("x")
@@ -384,6 +388,17 @@ pub fn handler_is_applied_after_other_effects_test() {
 
 // async/task
 
-pub fn asyn_test() -> Nil {
-  todo
+fn handlers() {
+  effect.init()
+  |> effect.extend("Async", browser.async())
+}
+
+pub fn async_test() {
+  let source =
+    e.Lambda("_", e.Apply(e.Perform("Async"), e.Lambda("_", e.Binary("later"))))
+  let assert Ok(r.Promise(p)) =
+    r.run(source, stdlib.env(), r.unit, handlers().1)
+  use value <- promise.map(p)
+  value
+  |> should.equal(r.Binary("later"))
 }

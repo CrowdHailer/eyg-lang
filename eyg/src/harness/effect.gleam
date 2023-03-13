@@ -82,6 +82,7 @@ pub fn http() {
   )
 }
 
+// Needs to be builtin effect not just handler so that correct external handlers can be applied.
 pub fn await() {
   #(
     t.Binary,

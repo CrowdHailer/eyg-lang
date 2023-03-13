@@ -55,7 +55,7 @@ fn render() {
   )
 }
 
-fn async() {
+pub fn async() {
   #(
     t.unit,
     t.unit,
@@ -64,18 +64,29 @@ fn async() {
       let #(_, extrinsic) =
         handlers()
         |> effect.extend("Await", effect.await())
-      promisex.wait(0)
-      |> promise.map(fn(_: Nil) {
-        let ret =
-          r.handle(
-            r.eval_call(exec, r.unit, env.builtins, r.Value(_)),
-            env.builtins,
-            extrinsic,
-          )
-        r.flatten_promise(ret, env, extrinsic)
-        |> promise.map(io.debug)
-      })
-      r.continue(k, r.unit)
+      // always needs to be executed later so make wrapped as promise from the start
+      let promise =
+        promisex.wait(0)
+        |> promise.await(fn(_: Nil) {
+          let ret =
+            r.handle(
+              r.eval_call(exec, r.unit, env.builtins, r.Value(_)),
+              env.builtins,
+              extrinsic,
+            )
+          r.flatten_promise(ret, env, extrinsic)
+        })
+        |> promise.map(fn(result) {
+          case result {
+            Ok(term) -> term
+            Error(reason) -> {
+              io.debug(reason)
+              todo("this shouldn't fail")
+            }
+          }
+        })
+
+      r.continue(k, r.Promise(promise))
     },
   )
 }
