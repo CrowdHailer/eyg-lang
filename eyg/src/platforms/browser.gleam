@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/option.{Some}
 import eygir/decode
+import plinth/browser/window
 import plinth/browser/document
 import plinth/browser/console
 import eyg/runtime/interpreter as r
@@ -9,6 +10,7 @@ import harness/effect
 import harness/stdlib
 import gleam/javascript/promise
 import plinth/javascript/promisex
+import harness/ffi/cast
 
 fn handlers() {
   effect.init()
@@ -18,6 +20,7 @@ fn handlers() {
   |> effect.extend("Render", render())
   |> effect.extend("Wait", effect.wait())
   |> effect.extend("Async", async())
+  |> effect.extend("Listen", listen())
 }
 
 pub fn run() {
@@ -72,6 +75,43 @@ fn async() {
         r.flatten_promise(ret, env, extrinsic)
         |> promise.map(io.debug)
       })
+      r.continue(k, r.unit)
+    },
+  )
+}
+
+// maybe on click is a better abstraction
+// maybe not as puts more in the platform
+// maybe global window or single global ref is a good effect
+// Write up how passing the handlers gets to choose run context
+// i.e. here the click has async but not await
+// single extrinsic for listen is a good idea because internally we can build event handlers for on click etc
+// TODO need key value for qwik style continuations on the click
+fn listen() {
+  #(
+    t.unit,
+    t.unit,
+    fn(sub, k) {
+      use event <- cast.field("event", cast.string, sub)
+      use handle <- cast.field("handler", cast.any, sub)
+
+      io.debug(event)
+      let env = stdlib.env()
+      let #(_, extrinsic) = handlers()
+
+      window.add_event_listener(
+        event,
+        fn(_) {
+          let ret =
+            r.handle(
+              r.eval_call(handle, r.unit, env.builtins, r.Value(_)),
+              env.builtins,
+              extrinsic,
+            )
+          io.debug(#("click ret", ret))
+          Nil
+        },
+      )
       r.continue(k, r.unit)
     },
   )
