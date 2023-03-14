@@ -6,6 +6,7 @@ import eyg/runtime/interpreter as r
 import eyg/runtime/capture
 import gleam/javascript/promise
 import harness/ffi/cast
+import plinth/browser/window
 
 pub fn equal() {
   let type_ =
@@ -63,8 +64,7 @@ pub fn fixed() {
 
 // This should be replaced by capture which returns ast
 pub fn serialize() {
-  let type_ =
-    t.Fun(t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-2)), t.Open(-3), t.Binary)
+  let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Binary)
 
   #(type_, r.Arity1(do_serialize))
 }
@@ -72,4 +72,14 @@ pub fn serialize() {
 pub fn do_serialize(term, _builtins, k) {
   let exp = capture.capture(term)
   r.continue(k, r.Binary(encode.to_json(exp)))
+}
+
+pub fn encode_uri() {
+  let type_ = t.Fun(t.Binary, t.Open(-1), t.Binary)
+  #(type_, r.Arity1(do_encode_uri))
+}
+
+pub fn do_encode_uri(term, _builtins, k) {
+  use unencoded <- cast.string(term)
+  r.continue(k, r.Binary(window.encode_uri(unencoded)))
 }

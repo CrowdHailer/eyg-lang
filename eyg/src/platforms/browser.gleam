@@ -134,11 +134,14 @@ fn on_click() {
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
 
-      document.on_click(fn(event) {
+      document.on_click(fn(arg) {
+        let arg = window.decode_uri(arg)
+        let assert Ok(arg) = decode.from_json(arg)
+        let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.Value)
         // pass as general term to program arg or fn
         let ret =
           r.handle(
-            r.eval_call(handle, r.Binary(event), env.builtins, r.Value(_)),
+            r.eval_call(handle, arg, env.builtins, r.Value(_)),
             env.builtins,
             extrinsic,
           )

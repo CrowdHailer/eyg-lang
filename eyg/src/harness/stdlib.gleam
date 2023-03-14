@@ -29,6 +29,7 @@ pub fn lib() {
   |> extend("fix", core.fix())
   |> extend("fixed", core.fixed())
   |> extend("serialize", core.serialize())
+  |> extend("encode_uri", core.encode_uri())
   // integer
   |> extend("int_add", integer.add())
   |> extend("int_subtract", integer.subtract())
