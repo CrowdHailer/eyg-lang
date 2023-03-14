@@ -26,12 +26,18 @@ fn handlers() {
 pub fn run() {
   let assert Ok(Some(el)) =
     document.query_selector("script[type=\"application/eygir\"]")
-  let assert Ok(continuation) = decode.from_json(document.inner_text(el))
 
-  case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
-    Ok(_) -> Nil
-    err -> {
-      io.debug(#("return", err))
+  case decode.from_json(window.decode_uri(document.inner_text(el))) {
+    Ok(continuation) ->
+      case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
+        Ok(_) -> Nil
+        err -> {
+          io.debug(#("return", err))
+          Nil
+        }
+      }
+    Error(reason) -> {
+      io.debug(reason)
       Nil
     }
   }
