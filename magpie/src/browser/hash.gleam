@@ -65,7 +65,7 @@ fn encode_one(query) {
     list.map(
       find,
       fn(f) {
-        assert Ok(i) = index(vars, f)
+        let assert Ok(i) = index(vars, f)
         int.to_string(i)
       },
     )

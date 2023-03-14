@@ -6,7 +6,7 @@ external fn raw_db() -> Dynamic =
   "../db.mjs" "data"
 
 pub fn triples() {
-  assert Ok(triples) = json.decoder()(raw_db())
+  let assert Ok(triples) = json.decoder()(raw_db())
   triples
 }
 

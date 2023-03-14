@@ -7,7 +7,7 @@ external fn do_movies() -> Array(#(Int, String, Dynamic)) =
   "../../movies.mjs" "movies"
 
 pub fn movies() {
-  assert Ok(movies) =
+  let assert Ok(movies) =
     array.to_list(do_movies())
     |> list.try_map(fn(r) {
       let #(e, a, v) = r

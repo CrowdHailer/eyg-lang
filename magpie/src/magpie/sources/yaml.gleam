@@ -21,7 +21,7 @@ external fn read_file_sync(String, String) -> String =
 
 pub fn read_files(files) {
   let ref = javascript.make_reference(0)
-  assert Ok(read) =
+  let assert Ok(read) =
     list.try_map(
       files,
       fn(f) {

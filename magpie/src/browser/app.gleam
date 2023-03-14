@@ -33,7 +33,7 @@ external fn add_event_listener(String, fn(Nil) -> Nil) -> Nil =
   "" "addEventListener"
 
 pub fn run() {
-  assert Ok(dispatch) =
+  let assert Ok(dispatch) =
     lustre.application(init(), update, render)
     |> lustre.start("#app")
 
@@ -153,8 +153,8 @@ pub fn update(state, action) {
     RunQuery(i) -> {
       io.debug("running")
 
-      assert App(DB(db, Ready, view), queries, _mode) = state
-      assert Ok(queries) =
+      let assert App(DB(db, Ready, view), queries, _mode) = state
+      let assert Ok(queries) =
         map_at(
           queries,
           i,
@@ -171,8 +171,8 @@ pub fn update(state, action) {
       #(App(DB(db, Querying(i), view), queries, OverView), cmd.none())
     }
     QueryResult(relations) -> {
-      assert App(DB(db, Querying(i), view), queries, _mode) = state
-      assert Ok(queries) =
+      let assert App(DB(db, Querying(i), view), queries, _mode) = state
+      let assert Ok(queries) =
         map_at(
           queries,
           i,
@@ -184,22 +184,22 @@ pub fn update(state, action) {
       #(App(..state, queries: queries, db: DB(db, Ready, view)), cmd.none())
     }
     AddQuery -> {
-      assert App(db, queries, mode) = state
+      let assert App(db, queries, mode) = state
       let queries = list.append(queries, [#(#([], []), None)])
       #(App(db, queries, mode), update_hash(queries))
     }
     DeleteQuery(i) -> {
-      assert App(db, queries, mode) = state
+      let assert App(db, queries, mode) = state
       let queries = delete_at(queries, i)
       #(App(db, queries, mode), update_hash(queries))
     }
     AddVariable(i) -> {
-      assert App(db, queries, _) = state
+      let assert App(db, queries, _) = state
       #(App(db, queries, ChooseVariable(i)), cmd.none())
     }
     SelectVariable(var) -> {
-      assert App(db, queries, ChooseVariable(i)) = state
-      assert Ok(queries) =
+      let assert App(db, queries, ChooseVariable(i)) = state
+      let assert Ok(queries) =
         map_at(
           queries,
           i,
@@ -212,8 +212,8 @@ pub fn update(state, action) {
       #(App(db, queries, OverView), update_hash(queries))
     }
     DeleteVariable(i, j) -> {
-      assert App(db, queries, _) = state
-      assert Ok(queries) =
+      let assert App(db, queries, _) = state
+      let assert Ok(queries) =
         map_at(
           queries,
           i,
@@ -225,8 +225,8 @@ pub fn update(state, action) {
       #(App(db, queries, OverView), update_hash(queries))
     }
     AddPattern(i) -> {
-      assert App(db, queries, _) = state
-      assert Ok(queries) =
+      let assert App(db, queries, _) = state
+      let assert Ok(queries) =
         map_at(
           queries,
           i,
@@ -240,9 +240,9 @@ pub fn update(state, action) {
       #(App(db, queries, OverView), update_hash(queries))
     }
     EditMatch(i, j, k) -> {
-      assert App(db, queries, _) = state
-      assert Ok(#(#(_find, where), _cache)) = list.at(queries, i)
-      assert Ok(pattern) = list.at(where, j)
+      let assert App(db, queries, _) = state
+      let assert Ok(#(#(_find, where), _cache)) = list.at(queries, i)
+      let assert Ok(pattern) = list.at(where, j)
 
       let match = case k {
         0 -> pattern.0
@@ -260,11 +260,11 @@ pub fn update(state, action) {
       #(App(db, queries, mode), cmd.none())
     }
     EditMatchType(selection) -> {
-      assert App(db, queries, UpdateMatch(i, j, k, _)) = state
+      let assert App(db, queries, UpdateMatch(i, j, k, _)) = state
       #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
     ReplaceMatch -> {
-      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
+      let assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let match = case selection {
         Variable(var) -> query.Variable(var)
         ConstString(value) -> query.s(value)
@@ -273,13 +273,13 @@ pub fn update(state, action) {
         ConstInteger(None) -> query.i(0)
         ConstBoolean(bool) -> query.b(bool)
       }
-      assert Ok(queries) =
+      let assert Ok(queries) =
         map_at(
           queries,
           i,
           fn(q) {
             let #(#(find, where), _cache) = q
-            assert Ok(where) =
+            let assert Ok(where) =
               map_at(
                 where,
                 j,
@@ -298,8 +298,8 @@ pub fn update(state, action) {
     }
 
     DeletePattern(i, j) -> {
-      assert App(db, queries, _) = state
-      assert Ok(queries) =
+      let assert App(db, queries, _) = state
+      let assert Ok(queries) =
         map_at(
           queries,
           i,
@@ -311,7 +311,7 @@ pub fn update(state, action) {
       #(App(db, queries, OverView), update_hash(queries))
     }
     InputChange(new) -> {
-      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
+      let assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let selection = case selection {
         Variable(_) -> Variable(new)
         ConstString(_) -> ConstString(new)
@@ -321,7 +321,7 @@ pub fn update(state, action) {
       #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
     CheckChange(new) -> {
-      assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
+      let assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let selection = case selection {
         ConstBoolean(_) -> ConstBoolean(new)
         _ -> todo("shouldn't happend because input change")
