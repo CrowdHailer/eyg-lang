@@ -3,7 +3,6 @@ import gleam/option.{Some}
 import eygir/decode
 import plinth/browser/window
 import plinth/browser/document
-import plinth/browser/console
 import eyg/runtime/interpreter as r
 import eyg/analysis/typ as t
 import harness/effect
@@ -21,6 +20,7 @@ fn handlers() {
   |> effect.extend("Wait", effect.wait())
   |> effect.extend("Async", async())
   |> effect.extend("Listen", listen())
+  |> effect.extend("OnClick", on_click())
 }
 
 pub fn run() {
@@ -28,16 +28,13 @@ pub fn run() {
     document.query_selector("script[type=\"application/eygir\"]")
   let assert Ok(continuation) = decode.from_json(document.inner_text(el))
 
-  let content = case
-    r.run(continuation, stdlib.env(), r.Record([]), handlers().1)
-  {
-    Ok(r.Binary(content)) -> content
+  case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
+    Ok(_) -> Nil
     err -> {
       io.debug(#("return", err))
-      "Something went wrong"
+      Nil
     }
   }
-  console.log(content)
 }
 
 fn render() {
@@ -47,7 +44,7 @@ fn render() {
     fn(page, k) {
       let assert r.Binary(page) = page
       case document.query_selector("#app") {
-        Ok(Some(element)) -> document.set_text(element, page)
+        Ok(Some(element)) -> document.set_html(element, page)
         _ -> todo("error from render")
       }
       r.continue(k, r.unit)
@@ -122,6 +119,37 @@ fn listen() {
           Nil
         },
       )
+      r.continue(k, r.unit)
+    },
+  )
+}
+
+// different to listen because replaces handler
+
+fn on_click() {
+  #(
+    t.unit,
+    t.unit,
+    fn(handle, k) {
+      let env = stdlib.env()
+      let #(_, extrinsic) = handlers()
+
+      document.on_click(fn(event) {
+        // pass as general term to program arg or fn
+        let ret =
+          r.handle(
+            r.eval_call(handle, r.Binary(event), env.builtins, r.Value(_)),
+            env.builtins,
+            extrinsic,
+          )
+        case ret {
+          r.Value(_) -> Nil
+          _ -> {
+            io.debug(ret)
+            Nil
+          }
+        }
+      })
       r.continue(k, r.unit)
     },
   )
