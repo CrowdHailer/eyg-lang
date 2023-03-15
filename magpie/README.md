@@ -2,6 +2,11 @@
 
 A Datalog query engine.
 
+## Running
+
+npx sirv ./public
+http://localhost:8080/#vvalues,sversion,vversion,r0,sdriver,slitmus:1&vvalues,sdriver,vdriver,r0,sversion,vversion,r0,sreplicaCount,i0:1,2&ve,sversion,vversion:1&vid,ssystemFBS,vfbs,r0,sversion,vversion,r0,sdriver,snvstate:1,2
+
 ## Notes
 
 Initial implementation follows from [this article](https://www.instantdb.com/essays/datalogjs)

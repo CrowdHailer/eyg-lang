@@ -137,7 +137,7 @@ fn update_hash(queries) {
   })
 }
 
-pub fn update(state, action) {
+pub fn update(state: App, action) {
   case action {
     Indexed(view) -> #(
       App(DB(state.db.worker, Ready, view), queries(), OverView),
@@ -362,7 +362,7 @@ fn render_examples() {
   ]
 }
 
-fn render_edit(mode, db) {
+fn render_edit(mode, db: serialize.DBView) {
   case mode {
     UpdateMatch(_, _, k, selection) -> [
       el.div(
@@ -596,7 +596,7 @@ fn default_queries() {
   []
 }
 
-fn render_notebook(state, view, queries, mode) {
+fn render_notebook(state, view: serialize.DBView, queries, mode) {
   [
     el.div(
       [
