@@ -11,3 +11,14 @@ export function onClick(f) {
     }
   };
 }
+
+export function onKeyDown(f) {
+  document.onkeydown = function (event) {
+    // let arg = event.target.closest("[data-keydown]")?.dataset?.click;
+    // can deserialize in language
+    // event.key
+    // if (arg) {
+      f(event.key);
+    // }
+  };
+}

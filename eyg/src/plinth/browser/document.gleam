@@ -35,3 +35,6 @@ pub fn set_html(el: Element, value: String) {
 
 pub external fn on_click(fn(String) -> Nil) -> Nil =
   "../../plinth_ffi.js" "onClick"
+
+pub external fn on_keydown(fn(String) -> Nil) -> Nil =
+  "../../plinth_ffi.js" "onKeyDown"

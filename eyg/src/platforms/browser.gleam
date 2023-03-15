@@ -10,6 +10,7 @@ import harness/stdlib
 import gleam/javascript/promise
 import plinth/javascript/promisex
 import harness/ffi/cast
+import eygir/expression as e
 
 fn handlers() {
   effect.init()
@@ -21,6 +22,7 @@ fn handlers() {
   |> effect.extend("Async", async())
   |> effect.extend("Listen", listen())
   |> effect.extend("OnClick", on_click())
+  |> effect.extend("OnKeyDown", on_keydown())
 }
 
 pub fn run() {
@@ -143,23 +145,44 @@ fn on_click() {
       document.on_click(fn(arg) {
         let arg = window.decode_uri(arg)
         let assert Ok(arg) = decode.from_json(arg)
-        let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.Value)
-        // pass as general term to program arg or fn
-        let ret =
-          r.handle(
-            r.eval_call(handle, arg, env.builtins, r.Value(_)),
-            env.builtins,
-            extrinsic,
-          )
-        case ret {
-          r.Value(_) -> Nil
-          _ -> {
-            io.debug(ret)
-            Nil
-          }
-        }
+
+        do_handle(arg, handle, env.builtins, extrinsic)
       })
       r.continue(k, r.unit)
     },
   )
+}
+
+fn on_keydown() {
+  #(
+    t.unit,
+    t.unit,
+    fn(handle, k) {
+      let env = stdlib.env()
+      let #(_, extrinsic) = handlers()
+
+      document.on_keydown(fn(k) {
+        do_handle(e.Binary(k), handle, env.builtins, extrinsic)
+      })
+      r.continue(k, r.unit)
+    },
+  )
+}
+
+fn do_handle(arg, handle, builtins, extrinsic) {
+  let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.Value)
+  // pass as general term to program arg or fn
+  let ret =
+    r.handle(
+      r.eval_call(handle, arg, builtins, r.Value(_)),
+      builtins,
+      extrinsic,
+    )
+  case ret {
+    r.Value(_) -> Nil
+    _ -> {
+      io.debug(ret)
+      Nil
+    }
+  }
 }

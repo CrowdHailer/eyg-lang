@@ -2,37 +2,42 @@ import gleam/json.{int, object, string}
 import eygir/expression as e
 
 fn node(name, attributes) {
-  object([#("node", string(name)), ..attributes])
+  object([#("0", string(name)), ..attributes])
 }
 
 fn label(value) {
-  #("label", string(value))
+  #("l", string(value))
 }
 
 pub fn encode(exp) {
   case exp {
-    e.Variable(x) -> node("variable", [label(x)])
-    e.Lambda(x, body) -> node("function", [label(x), #("body", encode(body))])
-    e.Apply(func, arg) ->
-      node("call", [#("function", encode(func)), #("arg", encode(arg))])
+    e.Variable(x) -> node("v", [label(x)])
+    // function
+    e.Lambda(x, body) -> node("f", [label(x), #("b", encode(body))])
+    e.Apply(func, arg) -> node("a", [#("f", encode(func)), #("a", encode(arg))])
     e.Let(x, value, then) ->
-      [label(x), #("value", encode(value)), #("then", encode(then))]
-      |> node("let", _)
-    e.Integer(i) -> node("integer", [#("value", int(i))])
-    e.Binary(s) -> node("binary", [#("value", string(s))])
-    e.Tail -> node("tail", [])
-    e.Cons -> node("cons", [])
-    e.Vacant -> node("vacant", [])
-    e.Empty -> node("empty", [])
-    e.Extend(x) -> node("extend", [label(x)])
-    e.Select(x) -> node("select", [label(x)])
-    e.Overwrite(x) -> node("overwrite", [label(x)])
-    e.Tag(x) -> node("tag", [label(x)])
-    e.Case(x) -> node("case", [label(x)])
-    e.NoCases -> node("nocases", [])
-    e.Perform(x) -> node("perform", [label(x)])
-    e.Handle(x) -> node("handle", [label(x)])
-    e.Builtin(x) -> node("builtin", [label(x)])
+      [label(x), #("v", encode(value)), #("t", encode(then))]
+      |> node("l", _)
+    e.Integer(i) -> node("i", [#("v", int(i))])
+    // string
+    e.Binary(s) -> node("s", [#("v", string(s))])
+    e.Tail -> node("ta", [])
+    e.Cons -> node("c", [])
+    // zero
+    e.Vacant -> node("z", [])
+    // unit
+    e.Empty -> node("u", [])
+    e.Extend(x) -> node("e", [label(x)])
+    // get
+    e.Select(x) -> node("g", [label(x)])
+    e.Overwrite(x) -> node("o", [label(x)])
+    e.Tag(x) -> node("t", [label(x)])
+    // match
+    e.Case(x) -> node("m", [label(x)])
+    e.NoCases -> node("n", [])
+    e.Perform(x) -> node("p", [label(x)])
+    e.Handle(x) -> node("h", [label(x)])
+    e.Builtin(x) -> node("b", [label(x)])
   }
 }
 

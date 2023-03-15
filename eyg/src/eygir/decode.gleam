@@ -1,37 +1,54 @@
 import gleam/result
-import gleam/dynamic.{DecodeError,
-  decode1, decode2, decode3, field, int, string}
+import gleam/dynamic.{
+  DecodeError, any, decode1, decode2, decode3, field, int, string,
+}
 import gleam/json
 import eygir/expression as e
 
 fn label() {
-  field("label", string)
+  any([field("label", string), field("l", string)])
 }
 
 pub fn decoder(x) {
-  use node <- result.then(field("node", string)(x))
+  use node <- result.then(any([field("node", string), field("0", string)])(x))
   case node {
-    "variable" -> decode1(e.Variable, label())
-    "function" -> decode2(e.Lambda, label(), field("body", decoder))
-    "call" ->
-      decode2(e.Apply, field("function", decoder), field("arg", decoder))
-    "let" ->
-      decode3(e.Let, label(), field("value", decoder), field("then", decoder))
-    "integer" -> decode1(e.Integer, field("value", int))
-    "binary" -> decode1(e.Binary, field("value", string))
-    "tail" -> fn(_) { Ok(e.Tail) }
-    "cons" -> fn(_) { Ok(e.Cons) }
-    "vacant" -> fn(_) { Ok(e.Vacant) }
-    "empty" -> fn(_) { Ok(e.Empty) }
-    "extend" -> decode1(e.Extend, label())
-    "select" -> decode1(e.Select, label())
-    "overwrite" -> decode1(e.Overwrite, label())
-    "tag" -> decode1(e.Tag, label())
-    "case" -> decode1(e.Case, label())
-    "nocases" -> fn(_) { Ok(e.NoCases) }
-    "perform" -> decode1(e.Perform, label())
-    "handle" -> decode1(e.Handle, label())
-    "builtin" -> decode1(e.Builtin, label())
+    "v" | "variable" -> decode1(e.Variable, label())
+    "f" | "function" ->
+      decode2(
+        e.Lambda,
+        label(),
+        any([field("body", decoder), field("b", decoder)]),
+      )
+    "a" | "call" ->
+      decode2(
+        e.Apply,
+        any([field("function", decoder), field("f", decoder)]),
+        any([field("arg", decoder), field("a", decoder)]),
+      )
+    "l" | "let" ->
+      decode3(
+        e.Let,
+        label(),
+        any([field("value", decoder), field("v", decoder)]),
+        any([field("then", decoder), field("t", decoder)]),
+      )
+    "i" | "integer" ->
+      decode1(e.Integer, any([field("value", int), field("v", int)]))
+    "s" | "binary" ->
+      decode1(e.Binary, any([field("value", string), field("v", string)]))
+    "ta" | "tail" -> fn(_) { Ok(e.Tail) }
+    "c" | "cons" -> fn(_) { Ok(e.Cons) }
+    "z" | "vacant" -> fn(_) { Ok(e.Vacant) }
+    "u" | "empty" -> fn(_) { Ok(e.Empty) }
+    "e" | "extend" -> decode1(e.Extend, label())
+    "g" | "select" -> decode1(e.Select, label())
+    "o" | "overwrite" -> decode1(e.Overwrite, label())
+    "t" | "tag" -> decode1(e.Tag, label())
+    "m" | "case" -> decode1(e.Case, label())
+    "n" | "nocases" -> fn(_) { Ok(e.NoCases) }
+    "p" | "perform" -> decode1(e.Perform, label())
+    "h" | "handle" -> decode1(e.Handle, label())
+    "b" | "builtin" -> decode1(e.Builtin, label())
 
     incorrect -> fn(_) { Error([DecodeError("node", incorrect, ["0"])]) }
   }(
