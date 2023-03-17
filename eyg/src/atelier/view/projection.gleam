@@ -189,37 +189,38 @@ fn call(func, arg, br, loc, inferred) {
 
   // not target but any selected
   let inner = case func, arg {
-    // e.Apply(e.Case(label), then) -> {
-    //   let loc_branch = child(loc, 0)
-    //   let loc_else = child(loc, 1)
-    //   case open(loc_branch) || open(loc_else) {
-    //     True -> {
-    //       let pre = [
-    //         span(
-    //           [click(loc)],
-    //           [span([class("text-gray-400")], [text("match")]), text(" {")],
-    //         ),
-    //       ]
-    //       let branches =
-    //         render_branch(
-    //           label,
-    //           then,
-    //           arg,
-    //           string.append(br, "  "),
-    //           loc_branch,
-    //           loc_else,
-    //         )
-    //       let post = [text(br), text("}")]
-    //       list.flatten([pre, branches, post])
-    //     }
-    //     False -> [
-    //       span(
-    //         [click(loc_branch)],
-    //         [span([class("text-gray-400")], [text("match")]), text(" { ... }")],
-    //       ),
-    //     ]
-    //   }
-    // }
+    e.Apply(e.Case(label), then), arg -> {
+      let loc_branch = child(loc, 0)
+      let loc_else = child(loc, 1)
+      case open(loc_branch) || open(loc_else) {
+        True -> {
+          let pre = [
+            span(
+              [click(loc)],
+              [span([class("text-gray-400")], [text("match")]), text(" {")],
+            ),
+          ]
+          let branches =
+            render_branch(
+              label,
+              then,
+              arg,
+              string.append(br, "  "),
+              loc_branch,
+              loc_else,
+              inferred,
+            )
+          let post = [text(br), text("}")]
+          list.flatten([pre, branches, post])
+        }
+        False -> [
+          span(
+            [click(loc_branch)],
+            [span([class("text-gray-400")], [text("match")]), text(" { ... }")],
+          ),
+        ]
+      }
+    }
     e.Apply(e.Extend(label), element), arg ->
       list.flatten([
         [
@@ -244,14 +245,58 @@ fn call(func, arg, br, loc, inferred) {
         render_block(arg, br, child(loc, 1), inferred),
         [text("}")],
       ])
-    e.Apply(e.Cons, element), arg ->
+    e.Apply(e.Cons, element), arg -> {
+      let root = #(child(child(loc, 0), 1), element)
+      let #(elements, tail) = gather_list(arg, child(loc, 1), [root])
+
+      let multiline = list.length(elements) > 3
+      let br_inner = string.append(br, "  ")
+      let separator = case multiline {
+        False -> ", "
+        True -> br_inner
+      }
+
+      let rendered =
+        list.map(
+          list.reverse(elements),
+          fn(pair) {
+            let #(loc, e) = pair
+            render_block(e, br_inner, loc, inferred)
+          },
+        )
+        |> list.flatten
+        |> list.intersperse(text(separator))
+
+      let pre = case multiline {
+        True -> string.append("[", br_inner)
+        False -> "["
+      }
       list.flatten([
-        [text("[")],
-        render_block(element, br, child(child(loc, 0), 1), inferred),
-        [text(", ")],
-        render_block(arg, br, child(loc, 1), inferred),
-        [text("]")],
+        [text(pre)],
+        rendered,
+        case tail {
+          None -> [
+            text(case multiline {
+              False -> "]"
+              True -> string.append(br, "]")
+            }),
+          ]
+          Some(#(other, loc)) -> [
+            text(separator),
+            text(".."),
+            ..render_block(other, br, loc, inferred)
+          ]
+        },
       ])
+    }
+
+    // list.flatten([
+    //   [text("[")],
+    //   render_block(element, br, child(child(loc, 0), 1), inferred),
+    //   [text(separator)],
+    //   render_block(arg, br, child(loc, 1), inferred),
+    //   [text("]")],
+    // ])
     e.Select(_), arg ->
       list.flatten([
         render_block(arg, br, child(loc, 1), inferred),
@@ -268,6 +313,19 @@ fn call(func, arg, br, loc, inferred) {
   }
 
   [span([classes(highlight(target, alert))], inner)]
+}
+
+fn gather_list(tail, loc, acc) {
+  case tail {
+    e.Apply(e.Apply(e.Cons, element), tail) ->
+      gather_list(
+        tail,
+        child(loc, 1),
+        [#(child(child(loc, 0), 1), element), ..acc],
+      )
+    e.Tail -> #(acc, None)
+    other -> #(acc, Some(#(other, loc)))
+  }
 }
 
 fn assigment(label, value, then, br, loc, inferred) {
