@@ -41,6 +41,10 @@ pub fn main() {
       glob("../../../northvolt/firefly-release/**/fleet.yaml")
       |> array.to_list
       |> yaml.read_files
+    ["system-config"] ->
+      glob("../../../northvolt/system-config/nodesets/**/system.yml")
+      |> array.to_list
+      |> yaml.read_files
   }
 
   let content =
