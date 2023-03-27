@@ -285,6 +285,7 @@ fn call(func, arg, br, loc, inferred) {
             text(separator),
             text(".."),
             ..render_block(other, br, loc, inferred)
+            |> list.append([text("]")])
           ]
         },
       ])
