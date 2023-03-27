@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/list
 import gleam/option.{Some}
 import eygir/decode
 import plinth/browser/window
@@ -26,20 +27,44 @@ fn handlers() {
 }
 
 pub fn run() {
-  let assert Ok(Some(el)) =
-    document.query_selector("script[type=\"application/eygir\"]")
-
-  case decode.from_json(window.decode_uri(document.inner_text(el))) {
-    Ok(continuation) ->
-      case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
-        Ok(_) -> Nil
-        err -> {
-          io.debug(#("return", err))
+  case document.query_selector("script[type=\"application/eygir\"]") {
+    Ok(Some(el)) ->
+      case decode.from_json(window.decode_uri(document.inner_text(el))) {
+        Ok(continuation) ->
+          case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
+            Ok(_) -> Nil
+            err -> {
+              io.debug(#("return", err))
+              Nil
+            }
+          }
+        Error(reason) -> {
+          io.debug(reason)
           Nil
         }
       }
-    Error(reason) -> {
-      io.debug(reason)
+
+    _ -> {
+      io.debug("no script to run")
+
+      let assert Ok(elements) =
+        document.query_selector_all("script[type=\"editor/eygir\"]")
+      list.map(
+        elements,
+        fn(el) {
+          case decode.from_json(window.decode_uri(document.inner_text(el))) {
+            Ok(c) -> {
+              io.debug(c)
+              document.insert_after(el, "<p>Nice</p>")
+              Nil
+            }
+            Error(reason) -> {
+              io.debug(reason)
+              Nil
+            }
+          }
+        },
+      )
       Nil
     }
   }

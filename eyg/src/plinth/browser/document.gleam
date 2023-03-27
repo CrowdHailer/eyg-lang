@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/dynamic.{Dynamic}
 import gleam/option.{Option}
 
@@ -13,6 +14,22 @@ pub fn query_selector(selector) -> Result(Option(Element), _) {
     selector,
   ))
 }
+
+external fn do_query_selector_all(String) -> Dynamic =
+  "" "document.querySelectorAll"
+
+external fn array_from(any) -> a =
+  "" "Array.from"
+
+pub fn query_selector_all(selector) -> Result(List(Element), _) {
+  dynamic.list(fn(e) { Ok(dynamic.unsafe_coerce(e)) })(
+    do_query_selector_all(selector)
+    |> array_from(),
+  )
+}
+
+pub external fn insert_after(Element, String) -> Nil =
+  "../../plinth_ffi.js" "insertAfter"
 
 external fn do_get(any, String) -> Dynamic =
   "" "Reflect.get"
