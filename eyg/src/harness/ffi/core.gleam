@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/list
 import gleam/map
 import eygir/expression as e
 import eyg/analysis/typ as t
@@ -84,67 +85,78 @@ pub fn capture() {
 
 pub fn do_capture(term, _builtins, k) {
   let exp = capture.capture(term)
-  r.continue(k, expression_to_language(exp))
+  r.continue(k, r.LinkedList(expression_to_language(exp)))
 }
 
 // could be term to lang
+// Defunc continuation 
+// recursive data structure vs list
+// recusive correct by construction
+// could just read till next end term
+// Cases and provider
+// i.e.
+// match exp {
+//   Handle format("handle %s")
+// }
+// crafting interpreters probably has a handle on this
+// flat design is first step to hashable
+// defunc continuation
+// use the render block version and drop out when finished
+// anything simple -> cont
+// most other things use render block with indent
+// try and write to buffer once but why performance
+// actually always return lines
+// if single render block does it's thing
+// if not we nest in
+// is there an elegant write once I think it pairs with defunc'd
+// rendering? is it that interesting to do twice?
 fn expression_to_language(exp) {
   case exp {
-    e.Variable(label) ->
-      r.Tagged("Variable", r.Record([#("label", r.Binary(label))]))
-    e.Lambda(label, body) ->
-      r.Tagged(
-        "Lambda",
-        r.Record([
-          #("label", r.Binary(label)),
-          #("body", expression_to_language(body)),
-        ]),
-      )
-    e.Apply(func, argument) ->
-      r.Tagged(
-        "Apply",
-        r.Record([
-          #("func", expression_to_language(func)),
-          #("arguement", expression_to_language(argument)),
-        ]),
-      )
-    e.Let(label, definition, body) ->
-      r.Tagged(
-        "Let",
-        r.Record([
-          #("label", r.Binary(label)),
-          #("definition", expression_to_language(definition)),
-          #("body", expression_to_language(body)),
-        ]),
-      )
+    e.Variable(label) -> [r.Tagged("Variable", r.Binary(label))]
+    e.Lambda(label, body) -> {
+      let head = r.Tagged("Lambda", r.Binary(label))
+      let rest = expression_to_language(body)
+      [head, ..rest]
+    }
+    e.Apply(func, argument) -> {
+      let head = r.Tagged("Apply", r.Record([]))
+      let rest =
+        list.append(
+          expression_to_language(func),
+          expression_to_language(argument),
+        )
+      [head, ..rest]
+    }
+    e.Let(label, definition, body) -> {
+      let head = r.Tagged("Let", r.Binary(label))
+      [
+        head,
+        ..list.append(
+          expression_to_language(definition),
+          expression_to_language(body),
+        )
+      ]
+    }
 
-    e.Integer(value) ->
-      r.Tagged("Integer", r.Record([#("value", r.Integer(value))]))
-    e.Binary(value) ->
-      r.Tagged("Binary", r.Record([#("value", r.Binary(value))]))
+    e.Integer(value) -> [r.Tagged("Integer", r.Integer(value))]
+    e.Binary(value) -> [r.Tagged("Binary", r.Binary(value))]
 
-    e.Tail -> r.Tagged("Tail", r.Record([]))
-    e.Cons -> r.Tagged("Cons", r.Record([]))
+    e.Tail -> [r.Tagged("Tail", r.Record([]))]
+    e.Cons -> [r.Tagged("Cons", r.Record([]))]
 
-    e.Vacant -> r.Tagged("Vacant", r.Record([]))
+    e.Vacant -> [r.Tagged("Vacant", r.Record([]))]
 
-    e.Empty -> r.Tagged("Empty", r.Record([]))
-    e.Extend(label) ->
-      r.Tagged("Extend", r.Record([#("label", r.Binary(label))]))
-    e.Select(label) ->
-      r.Tagged("Select", r.Record([#("label", r.Binary(label))]))
-    e.Overwrite(label) ->
-      r.Tagged("Overwrite", r.Record([#("label", r.Binary(label))]))
-    e.Tag(label) -> r.Tagged("Tag", r.Record([#("label", r.Binary(label))]))
-    e.Case(label) -> r.Tagged("Case", r.Record([#("label", r.Binary(label))]))
-    e.NoCases -> r.Tagged("NoCases", r.Record([]))
+    e.Empty -> [r.Tagged("Empty", r.Record([]))]
+    e.Extend(label) -> [r.Tagged("Extend", r.Binary(label))]
+    e.Select(label) -> [r.Tagged("Select", r.Binary(label))]
+    e.Overwrite(label) -> [r.Tagged("Overwrite", r.Binary(label))]
+    e.Tag(label) -> [r.Tagged("Tag", r.Binary(label))]
+    e.Case(label) -> [r.Tagged("Case", r.Binary(label))]
+    e.NoCases -> [r.Tagged("NoCases", r.Record([]))]
 
-    e.Perform(label) ->
-      r.Tagged("Perform", r.Record([#("label", r.Binary(label))]))
-    e.Handle(label) ->
-      r.Tagged("Handle", r.Record([#("label", r.Binary(label))]))
-    e.Builtin(identifier) ->
-      r.Tagged("Builtin", r.Record([#("identifier", r.Binary(identifier))]))
+    e.Perform(label) -> [r.Tagged("Perform", r.Binary(label))]
+    e.Handle(label) -> [r.Tagged("Handle", r.Binary(label))]
+    e.Builtin(identifier) -> [r.Tagged("Builtin", r.Binary(identifier))]
   }
 }
 
