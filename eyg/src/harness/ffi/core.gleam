@@ -110,6 +110,7 @@ pub fn do_capture(term, _builtins, k) {
 // if not we nest in
 // is there an elegant write once I think it pairs with defunc'd
 // rendering? is it that interesting to do twice?
+// TODO have a single code element that renders the value
 fn expression_to_language(exp) {
   case exp {
     e.Variable(label) -> [r.Tagged("Variable", r.Binary(label))]
