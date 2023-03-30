@@ -1,6 +1,6 @@
 /* overwrite these at points in the tree */
 :root {
-  --space: 1ch;
+  --space: 1rem;
 }
 
 /* stack definitions */
@@ -19,13 +19,32 @@ body > .vstack, .screen > .vstack {
   min-height: 100vh;
 }
 
+.vstack {
+  padding: 0 var(--space);
+}
 .vstack > * {
-  padding: calc(var(--space) * 0.5) var(--space);
+  margin: calc(var(--space) * 0.5) 0;
+}
+
+/* assumed to cover, probably true for hstack as well */
+.vstack > .vstack {
+  padding: 0;
+  margin: 0;
 }
 
 /* Cover the container on a cross axis */
 .vstack > *.cover {
   width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+/* if covering the padding moves to the children */
+.cover {
+  padding: 0 var(--space);
+}
+.cover > * {
+  margin: calc(var(--space) * 0.5) 0;
 }
 
 /* Expand the element along axis */
@@ -33,8 +52,19 @@ body > .vstack, .screen > .vstack {
   flex-grow: 1;
 }
 
-.vstack.wrap > * {
+.vstack.wrap {
   padding: 0;
+}
+.vstack.wrap > * {
+  margin: 0;
+}
+
+
+.vstack.loose {
+  padding: 0 calc(2 * var(--space));
+}
+.vstack.loose > * {
+  margin: calc(0.5 * var(--space)) 0;
 }
 
 /* horizontal */
@@ -153,3 +183,17 @@ body > .vstack, .screen > .vstack {
   /* margin: auto; */
 }
 /* text grows */
+
+/* Doc stuff is different */
+.doc {
+  color: #41403e;
+  font-family: "Neucha", sans-serif;
+  padding: 1px calc(2 * var(--space));
+}
+.doc > * {
+  margin: var(--space) 0;
+}
+.doc > h1 {
+  font-family: "Patrick Hand SC", sans-serif;
+  font-weight: normal;
+}
