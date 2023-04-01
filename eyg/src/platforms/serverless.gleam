@@ -19,14 +19,15 @@ pub fn run(source, _) {
   let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
   let inferred = inference.infer(types, prog, standard.web(), t.Closed)
-  case inference.sound(inferred) {
-    Ok(Nil) -> Nil
-    Error(reason) -> {
-      io.debug("not sound")
-      io.debug(reason)
-      Nil
-    }
-  }
+  // Inference is just handled on page load
+  // case inference.sound(inferred) {
+  //   Ok(Nil) -> Nil
+  //   Error(reason) -> {
+  //     io.debug("not sound")
+  //     io.debug(reason)
+  //     Nil
+  //   }
+  // }
 
   let handle = fn(method, scheme, host, path, query, body) {
     // Need to get prog on every run so it's fetch in development
