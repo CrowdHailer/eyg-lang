@@ -88,6 +88,43 @@ pub fn do_capture(term, _builtins, k) {
   r.continue(k, r.LinkedList(expression_to_language(exp)))
 }
 
+// block needs squashing with row on the front
+// have non empty list type
+// have growing front and back list
+// Integer v -> done(integer(v))
+// Apply -> block(f -> block(a ->))
+// then(block(indent), fn b -> then(expression(indent), fn t -> {
+//   ["let l = ", b, t]
+
+// })
+
+// // eygir
+// case next {
+//   Select l -> {
+//     select(l)
+//     then(block)(arg -> {
+//       []
+//     })
+//   }
+// vacant is not a type checker error it's a query we can use
+//   _ -> 
+// }
+// Let label -> rest -> block(indent)(rest)(value -> {
+//   expression(then -> {
+//     let assignment = match length(value) == 0 {
+//        indent(value)
+//     }
+//     done(list.append())
+//   }
+// })
+// Apply -> source -> 
+//  match {
+//    _ -> block(ident)(source)
+// }
+// })
+// block = indent -> parts match{let is write {}}
+// block(indent + 2) then(expression)
+
 // could be term to lang
 // Defunc continuation 
 // recursive data structure vs list
