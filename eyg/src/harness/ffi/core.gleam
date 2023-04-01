@@ -182,7 +182,7 @@ fn expression_to_language(exp) {
     e.Tail -> [r.Tagged("Tail", r.Record([]))]
     e.Cons -> [r.Tagged("Cons", r.Record([]))]
 
-    e.Vacant -> [r.Tagged("Vacant", r.Record([]))]
+    e.Vacant(comment) -> [r.Tagged("Vacant", r.Binary(comment))]
 
     e.Empty -> [r.Tagged("Empty", r.Record([]))]
     e.Extend(label) -> [r.Tagged("Extend", r.Binary(label))]

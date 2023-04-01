@@ -9,7 +9,7 @@ import gleam/javascript/promise.{Promise as JSPromise}
 pub type Failure {
   NotAFunction(Term)
   UndefinedVariable(String)
-  Vacant
+  Vacant(comment: String)
   NoCases
   UnhandledEffect(String)
   IncorrectTerm(expected: String, got: Term)
@@ -311,7 +311,7 @@ fn step(exp: e.Expression, env: Env, k) {
     e.Binary(value) -> continue(k, Binary(value))
     e.Tail -> continue(k, LinkedList([]))
     e.Cons -> continue(k, Defunc(Cons0))
-    e.Vacant -> Abort(Vacant)
+    e.Vacant(comment) -> Abort(Vacant(comment))
     e.Select(label) -> continue(k, Defunc(Select0(label)))
     e.Tag(label) -> continue(k, Defunc(Tag0(label)))
     e.Perform(label) -> continue(k, Defunc(Perform0(label)))

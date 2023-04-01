@@ -24,7 +24,7 @@ pub fn expression_test() {
   check_encoding(e.Binary("hello"))
   check_encoding(e.Tail)
   check_encoding(e.Cons)
-  check_encoding(e.Vacant)
+  check_encoding(e.Vacant("finish this"))
   check_encoding(e.Empty)
   check_encoding(e.Extend("foo"))
   check_encoding(e.Select("foo"))

@@ -38,7 +38,8 @@ pub fn decoder(x) {
       decode1(e.Binary, any([field("value", string), field("v", string)]))
     "ta" | "tail" -> fn(_) { Ok(e.Tail) }
     "c" | "cons" -> fn(_) { Ok(e.Cons) }
-    "z" | "vacant" -> fn(_) { Ok(e.Vacant) }
+    "z" | "vacant" ->
+      decode1(e.Vacant, any([field("c", string), fn(_) { Ok("no comment") }]))
     "u" | "empty" -> fn(_) { Ok(e.Empty) }
     "e" | "extend" -> decode1(e.Extend, label())
     "g" | "select" -> decode1(e.Select, label())
