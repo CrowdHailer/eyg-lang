@@ -19,6 +19,7 @@ pub fn run(source, _) {
   let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
   let inferred = inference.infer(types, prog, standard.web(), t.Closed)
+
   // Inference is just handled on page load
   // case inference.sound(inferred) {
   //   Ok(Nil) -> Nil
@@ -28,7 +29,6 @@ pub fn run(source, _) {
   //     Nil
   //   }
   // }
-
   let handle = fn(method, scheme, host, path, query, body) {
     // Need to get prog on every run so it's fetch in development
     // Maybe inference belongs on save
