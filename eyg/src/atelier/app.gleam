@@ -282,7 +282,7 @@ fn insert(act: Act, state) {
     e.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
-    e.Vacant(_comment) -> Error("no insert option for vacant")
+    e.Vacant(comment) -> Ok(write(comment, e.Vacant))
     e.Empty -> Error("empty record no insert")
     e.Extend(label) -> Ok(write(label, e.Extend))
     e.Select(label) -> Ok(write(label, e.Select))
