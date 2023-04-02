@@ -197,7 +197,7 @@ fn save(state: WorkSpace) {
 }
 
 fn call_with(act: Act, state) {
-  let source = act.update(e.Apply(e.Vacant, act.target))
+  let source = act.update(e.Apply(e.Vacant(""), act.target))
   update_source(state, source)
 }
 
@@ -206,21 +206,23 @@ fn call_with(act: Act, state) {
 // moving something to a module might just have to be copy paste
 fn assign_to(act: Act, state) {
   let commit = case act.target {
-    e.Let(_, _, _) -> fn(text) { act.update(e.Let(text, e.Vacant, act.target)) }
+    e.Let(_, _, _) -> fn(text) {
+      act.update(e.Let(text, e.Vacant(""), act.target))
+    }
     // normally I want to add something above
-    exp -> fn(text) { act.update(e.Let(text, e.Vacant, exp)) }
+    exp -> fn(text) { act.update(e.Let(text, e.Vacant(""), exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
 fn record(act: Act, state) {
   case act.target {
-    e.Vacant ->
+    e.Vacant(_comment) ->
       act.update(e.Empty)
       |> update_source(state, _)
     e.Empty as exp | e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
       let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Extend(text), e.Vacant), exp))
+        act.update(e.Apply(e.Apply(e.Extend(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -235,7 +237,7 @@ fn record(act: Act, state) {
 
 fn tag(act: Act, state) {
   let commit = case act.target {
-    e.Vacant -> fn(text) { act.update(e.Tag(text)) }
+    e.Vacant(_comment) -> fn(text) { act.update(e.Tag(text)) }
     exp -> fn(text) { act.update(e.Apply(e.Tag(text), exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
@@ -280,7 +282,7 @@ fn insert(act: Act, state) {
     e.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
-    e.Vacant -> Error("no insert option for vacant")
+    e.Vacant(comment) -> Ok(write(comment, e.Vacant))
     e.Empty -> Error("empty record no insert")
     e.Extend(label) -> Ok(write(label, e.Extend))
     e.Select(label) -> Ok(write(label, e.Select))
@@ -300,14 +302,14 @@ fn overwrite(act: Act, state) {
   case act.target {
     e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
       let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant), exp))
+        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
     exp -> {
       let commit = fn(text) {
         // This is the same as above
-        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant), exp))
+        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -335,7 +337,7 @@ fn delete(act: Act, state) {
   // we can instead bump up the path
   let source = case act.target {
     e.Let(_label, _, then) -> act.update(then)
-    _ -> act.update(e.Vacant)
+    _ -> act.update(e.Vacant(""))
   }
   update_source(state, source)
 }
@@ -365,7 +367,7 @@ fn handle(act: Act, state) {
     e.Let(_label, _value, _then) -> Error("can't handle on let")
     exp -> {
       let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Handle(text), e.Vacant), exp))
+        act.update(e.Apply(e.Apply(e.Handle(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -426,9 +428,9 @@ fn redo(state: WorkSpace) {
 
 fn list(act: Act, state) {
   let new = case act.target {
-    e.Vacant -> e.Tail
+    e.Vacant(_comment) -> e.Tail
     e.Tail | e.Apply(e.Apply(e.Cons, _), _) ->
-      e.Apply(e.Apply(e.Cons, e.Vacant), act.target)
+      e.Apply(e.Apply(e.Cons, e.Vacant("")), act.target)
     _ -> e.Apply(e.Apply(e.Cons, act.target), e.Tail)
   }
   let source = act.update(new)
@@ -436,7 +438,7 @@ fn list(act: Act, state) {
 }
 
 fn call(act: Act, state) {
-  let source = act.update(e.Apply(act.target, e.Vacant))
+  let source = act.update(e.Apply(act.target, e.Vacant("")))
   update_source(state, source)
 }
 
@@ -479,7 +481,7 @@ fn match(act: Act, state) {
     // }
     // Match on original value should maybe be the arg? but I like promoting first class everything
     exp -> fn(text) {
-      act.update(e.Apply(e.Apply(e.Case(text), e.Vacant), exp))
+      act.update(e.Apply(e.Apply(e.Case(text), e.Vacant("")), exp))
     }
   }
   Ok(WorkSpace(..state, mode: WriteLabel("", commit)))

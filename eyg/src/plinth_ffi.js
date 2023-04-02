@@ -18,7 +18,11 @@ export function onKeyDown(f) {
     // can deserialize in language
     // event.key
     // if (arg) {
-      f(event.key);
+    f(event.key);
     // }
   };
+}
+
+export function insertAfter(e, text) {
+  e.insertAdjacentHTML("afterend", text);
 }

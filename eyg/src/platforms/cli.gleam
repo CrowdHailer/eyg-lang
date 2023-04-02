@@ -31,12 +31,12 @@ pub fn run(source, args) {
   let #(types, _values) = stdlib.lib()
   let prog = e.Apply(e.Select("cli"), source)
   let hrstart = start()
-  let inferred = inference.infer(types, prog, typ(), t.Closed)
-  let hrend = duration(hrstart)
-  io.debug(#("inference", hrend))
 
+  // let inferred = inference.infer(types, prog, typ(), t.Closed)
+  // let hrend = duration(hrstart)
+  // io.debug(#("inference", hrend))
   // console.info("Inference time (hr): %ds %dms", hrend)
-  use code <- promise.await(case inference.sound(inferred) {
+  use code <- promise.await(case Ok(Nil) {
     Ok(Nil) -> {
       let hrstart = start()
       use ret <- promise.map(r.run_async(

@@ -51,7 +51,7 @@ pub fn do_render(exp, br, loc, inferred) {
         [text("cons")],
       ),
     ]
-    e.Vacant -> [vacant(loc, inferred)]
+    e.Vacant(comment) -> [vacant(comment, loc, inferred)]
     e.Empty -> [
       span(
         [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
@@ -377,12 +377,16 @@ fn integer(value, loc, inferred) {
   |> span([text(int.to_string(value))])
 }
 
-fn vacant(loc, inferred) {
+fn vacant(comment, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
   let content = case inferred {
     Some(inferred) -> typ.render(inference.type_of(inferred, loc.path))
-    None -> "todo"
+    None ->
+      case comment {
+        "" -> "todo"
+        comment -> comment
+      }
   }
   [click(loc), classes([#("text-red-500", True), ..highlight(target, alert)])]
   |> span([text(content)])

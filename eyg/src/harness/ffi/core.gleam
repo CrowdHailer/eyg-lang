@@ -1,5 +1,7 @@
 import gleam/io
+import gleam/list
 import gleam/map
+import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter as r
@@ -72,6 +74,128 @@ pub fn serialize() {
 pub fn do_serialize(term, _builtins, k) {
   let exp = capture.capture(term)
   r.continue(k, r.Binary(encode.to_json(exp)))
+}
+
+pub fn capture() {
+  // TODO need enum type
+  let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
+
+  #(type_, r.Arity1(do_capture))
+}
+
+pub fn do_capture(term, _builtins, k) {
+  let exp = capture.capture(term)
+  r.continue(k, r.LinkedList(expression_to_language(exp)))
+}
+
+// block needs squashing with row on the front
+// have non empty list type
+// have growing front and back list
+// Integer v -> done(integer(v))
+// Apply -> block(f -> block(a ->))
+// then(block(indent), fn b -> then(expression(indent), fn t -> {
+//   ["let l = ", b, t]
+
+// })
+
+// // eygir
+// case next {
+//   Select l -> {
+//     select(l)
+//     then(block)(arg -> {
+//       []
+//     })
+//   }
+// vacant is not a type checker error it's a query we can use
+//   _ -> 
+// }
+// Let label -> rest -> block(indent)(rest)(value -> {
+//   expression(then -> {
+//     let assignment = match length(value) == 0 {
+//        indent(value)
+//     }
+//     done(list.append())
+//   }
+// })
+// Apply -> source -> 
+//  match {
+//    _ -> block(ident)(source)
+// }
+// })
+// block = indent -> parts match{let is write {}}
+// block(indent + 2) then(expression)
+
+// could be term to lang
+// Defunc continuation 
+// recursive data structure vs list
+// recusive correct by construction
+// could just read till next end term
+// Cases and provider
+// i.e.
+// match exp {
+//   Handle format("handle %s")
+// }
+// crafting interpreters probably has a handle on this
+// flat design is first step to hashable
+// defunc continuation
+// use the render block version and drop out when finished
+// anything simple -> cont
+// most other things use render block with indent
+// try and write to buffer once but why performance
+// actually always return lines
+// if single render block does it's thing
+// if not we nest in
+// is there an elegant write once I think it pairs with defunc'd
+// rendering? is it that interesting to do twice?
+// TODO have a single code element that renders the value
+fn expression_to_language(exp) {
+  case exp {
+    e.Variable(label) -> [r.Tagged("Variable", r.Binary(label))]
+    e.Lambda(label, body) -> {
+      let head = r.Tagged("Lambda", r.Binary(label))
+      let rest = expression_to_language(body)
+      [head, ..rest]
+    }
+    e.Apply(func, argument) -> {
+      let head = r.Tagged("Apply", r.Record([]))
+      let rest =
+        list.append(
+          expression_to_language(func),
+          expression_to_language(argument),
+        )
+      [head, ..rest]
+    }
+    e.Let(label, definition, body) -> {
+      let head = r.Tagged("Let", r.Binary(label))
+      [
+        head,
+        ..list.append(
+          expression_to_language(definition),
+          expression_to_language(body),
+        )
+      ]
+    }
+
+    e.Integer(value) -> [r.Tagged("Integer", r.Integer(value))]
+    e.Binary(value) -> [r.Tagged("Binary", r.Binary(value))]
+
+    e.Tail -> [r.Tagged("Tail", r.Record([]))]
+    e.Cons -> [r.Tagged("Cons", r.Record([]))]
+
+    e.Vacant(comment) -> [r.Tagged("Vacant", r.Binary(comment))]
+
+    e.Empty -> [r.Tagged("Empty", r.Record([]))]
+    e.Extend(label) -> [r.Tagged("Extend", r.Binary(label))]
+    e.Select(label) -> [r.Tagged("Select", r.Binary(label))]
+    e.Overwrite(label) -> [r.Tagged("Overwrite", r.Binary(label))]
+    e.Tag(label) -> [r.Tagged("Tag", r.Binary(label))]
+    e.Case(label) -> [r.Tagged("Case", r.Binary(label))]
+    e.NoCases -> [r.Tagged("NoCases", r.Record([]))]
+
+    e.Perform(label) -> [r.Tagged("Perform", r.Binary(label))]
+    e.Handle(label) -> [r.Tagged("Handle", r.Binary(label))]
+    e.Builtin(identifier) -> [r.Tagged("Builtin", r.Binary(identifier))]
+  }
 }
 
 pub fn encode_uri() {

@@ -197,7 +197,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       |> unify(typ, _, ref, path)
     }
 
-    e.Vacant ->
+    e.Vacant(_comment) ->
       Infered(
         sub.none(),
         mapx.singleton(list.reverse(path), Ok(typ)),

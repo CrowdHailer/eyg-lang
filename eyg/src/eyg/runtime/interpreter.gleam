@@ -9,9 +9,9 @@ import gleam/javascript/promise.{Promise as JSPromise}
 pub type Failure {
   NotAFunction(Term)
   UndefinedVariable(String)
-  Vacant
+  Vacant(comment: String)
   NoCases
-  UnhandledEffect(String)
+  UnhandledEffect(String, Term)
   IncorrectTerm(expected: String, got: Term)
   MissingField(String)
 }
@@ -35,7 +35,7 @@ pub fn run(source, env, term, extrinsic) {
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> Ok(term)
     Abort(failure) -> Error(failure)
-    Effect(label, _, _) -> Error(UnhandledEffect(label))
+    Effect(label, lifted, _) -> Error(UnhandledEffect(label, lifted))
     Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
     Async(_, _) ->
       todo("cannot return async value some sync run. This effect would not be allowed by type system")
@@ -65,7 +65,8 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> promise.resolve(Ok(term))
     Abort(failure) -> promise.resolve(Error(failure))
-    Effect(label, _, _) -> promise.resolve(Error(UnhandledEffect(label)))
+    Effect(label, lifted, _) ->
+      promise.resolve(Error(UnhandledEffect(label, lifted)))
     Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
     Async(p, k) ->
       promise.await(
@@ -90,7 +91,7 @@ pub fn handle(return, builtins, extrinsic) {
         Ok(handler) ->
           // handle(eval_call(handler, term, builtins, k), builtins, extrinsic)
           handle(handler(term, k), builtins, extrinsic)
-        Error(Nil) -> Abort(UnhandledEffect(label))
+        Error(Nil) -> Abort(UnhandledEffect(label, term))
       }
     Value(term) -> Value(term)
     Cont(term, k) -> handle(k(term), builtins, extrinsic)
@@ -311,7 +312,7 @@ fn step(exp: e.Expression, env: Env, k) {
     e.Binary(value) -> continue(k, Binary(value))
     e.Tail -> continue(k, LinkedList([]))
     e.Cons -> continue(k, Defunc(Cons0))
-    e.Vacant -> Abort(Vacant)
+    e.Vacant(comment) -> Abort(Vacant(comment))
     e.Select(label) -> continue(k, Defunc(Select0(label)))
     e.Tag(label) -> continue(k, Defunc(Tag0(label)))
     e.Perform(label) -> continue(k, Defunc(Perform0(label)))
