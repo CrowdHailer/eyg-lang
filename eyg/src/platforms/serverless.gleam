@@ -18,8 +18,7 @@ pub fn run(source, _) {
   // prog is new on every request could store eval'd in store
   let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
-  let inferred = inference.infer(types, prog, standard.web(), t.Closed)
-
+  // let inferred = inference.infer(types, prog, standard.web(), t.Closed)
   // Inference is just handled on page load
   // case inference.sound(inferred) {
   //   Ok(Nil) -> Nil
