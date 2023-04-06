@@ -5,6 +5,11 @@ import gleam/option
 import gleam/set.{Set}
 import gleam/setx
 import eygir/expression as e
+import eyg/analysis/typ as t
+import eyg/analysis/substitutions as sub
+import eyg/analysis/scheme.{Scheme}
+import eyg/analysis/env
+import eyg/analysis/unification
 
 pub type Exp {
   Var(String)
@@ -13,90 +18,6 @@ pub type Exp {
   Call(Int, Int)
   Integer(Int)
   String(String)
-}
-
-type Source =
-  Map(Int, #(Exp, Set(String)))
-
-fn let_(label, value, then) {
-  fn(count) {
-    let #(count, v) = value(count)
-    let value_id = count - 1
-    let assert Ok(#(_, free_v)) = map.get(v, value_id)
-
-    let #(count, t) = then(count)
-    let then_id = count - 1
-    let assert Ok(#(_, free_t)) = map.get(t, then_id)
-    let free = set.union(free_v, set.delete(free_t, label))
-
-    #(
-      count,
-      map.merge(v, t)
-      |> map.insert(count, #(Let(label, value_id, then_id), free)),
-    )
-  }
-}
-
-fn var(x) {
-  fn(count) {
-    #(
-      count + 1,
-      map.new()
-      |> map.insert(
-        count,
-        #(
-          Var(x),
-          set.new()
-          |> set.insert(x),
-        ),
-      ),
-    )
-  }
-}
-
-fn integer(i) {
-  fn(count) {
-    #(
-      count + 1,
-      map.new()
-      |> map.insert(count, #(Integer(i), set.new())),
-    )
-  }
-}
-
-pub type T {
-  TInt
-}
-
-fn w(env, exp, source, fresh, cache) {
-  let assert Ok(#(node, free)) = map.get(source, exp)
-  io.debug(node)
-  let #(s, t, fresh, cache) = case node {
-    Let(label, v, t) -> {
-      let #(s1, t1, fresh, cache) = w(env, v, source, fresh, cache)
-      let env1 = map.insert(env, label, t1)
-      let #(s2, t2, fresh, cache) = w(env1, t, source, fresh, cache)
-      // TODO real s
-      #(s2, t2, fresh, cache)
-    }
-    Var(x) -> {
-      let assert Ok(t) = map.get(env, x)
-      #(Nil, t, fresh, cache)
-    }
-    Integer(_) -> #(Nil, TInt, fresh, cache)
-
-    _ -> todo("22w")
-  }
-  let cache =
-    map.update(
-      cache,
-      exp,
-      fn(previous) {
-        let by_env = option.unwrap(previous, map.new())
-        map.insert(by_env, map.take(env, set.to_list(free)), t)
-      },
-    )
-  #(s, t, fresh, cache)
 }
 
 fn do_tree_to_ref(
@@ -180,13 +101,15 @@ pub fn do_unzip(old, new, zoom, rev) {
     [] -> #(new, list.reverse(rev))
     [next, ..zoom] -> {
       let assert Ok(#(node, free)) = list.at(list.reverse(rev), next)
-      // TODO free
+      // TODO free, maybe free should be a separate step
       io.debug(#(node, old))
       let exp = case node {
         Let(label, value, then) if value == old -> Let(label, new, then)
         Let(label, value, then) if then == old -> Let(label, value, new)
         Fn(param, body) if body == old -> Fn(param, new)
-        _ -> todo("moo")
+        Call(func, arg) if func == old -> Call(new, arg)
+        Call(func, arg) if arg == old -> Call(func, new)
+        _ -> todo("Can't have a path into literal")
       }
       // TODO real free
       let new = list.length(rev)
@@ -204,6 +127,55 @@ pub fn unzip(tree, cursor, refs) {
     #([], old) -> do_unzip(old, new, [], rev)
     #([old, ..zoom], root) -> do_unzip(old, new, list.append(zoom, [root]), rev)
   }
+}
+
+fn do_w(env, exp, refs, cache) {
+  let t = todo
+  let #(s, t, cache) = case node {
+    Let(label, v, t) -> {
+      let #(s1, t1, cache) = w(env, v, refs, cache)
+      let env1 = map.insert(env, label, t1)
+      let #(s2, t2, cache) = w(env1, t, refs, cache)
+      // TODO real s
+      #(s2, t2, cache)
+    }
+    Var(x) -> {
+      let assert Ok(t) = map.get(env, x)
+      #(sub.none(), t, cache)
+    }
+    Integer(_) -> #(sub.none(), t.Integer, cache)
+
+    _ -> todo("22w")
+  }
+}
+
+// Need single map of substitutions, is this the efficient J algo?
+// Free should be easy in bottom up order assume need value is already present
+// probably not fast in edits to std lib. maybe with only part of record field it would be faster.
+// but if async and cooperative then we can just manage without as needed.
+// TODO have building type stuff happen at startup. try it out in browser
+fn w(env, exp, refs, cache) {
+  let assert Ok(#(node, free)) = list.at(refs, exp)
+  // can always use small env
+  let env = map.take(env, set.to_list(free))
+  case map.get(cache, exp) {
+    Ok(envs) ->
+      case map.get(envs, env) {
+        Ok(r) -> r
+        _ -> do_w(env, exp, refs, cache)
+      }
+    _ -> do_w(env, exp, refs, cache)
+  }
+  let cache =
+    map.update(
+      cache,
+      exp,
+      fn(previous) {
+        let by_env = option.unwrap(previous, map.new())
+        map.insert(by_env, map.take(env, set.to_list(free)), t)
+      },
+    )
+  #(s, t, cache)
 }
 
 pub fn two_test() {
@@ -226,6 +198,7 @@ pub fn two_test() {
   let [point, ..] = cursor.0
   io.debug(list.at(refs, point))
 
+  w(map.new(), root, refs, map.new())
   unzip(e.Integer(10), cursor, refs)
   |> io.debug
 
