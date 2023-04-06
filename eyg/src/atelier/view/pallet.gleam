@@ -5,7 +5,7 @@ import gleam/map
 import gleam/string
 import gleam/option.{None, Some}
 import lustre/element.{div, input, span, text, textarea}
-import lustre/event.{dispatch, on_click}
+import lustre/event.{on_click}
 import lustre/attribute.{class, classes}
 import eyg/analysis/inference
 import atelier/app.{ClickOption, SelectNode}
@@ -30,7 +30,7 @@ fn render_label(value) {
     input([
       class("border w-full"),
       attribute.autofocus(True),
-      event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+      event.on_input(fn(v) { app.Change(v) }),
       attribute.value(dynamic.from(value)),
     ]),
   ]
@@ -57,7 +57,7 @@ fn render_variable(
                   span(
                     [
                       class("rounded bg-blue-100 p-1"),
-                      on_click(dispatch(ClickOption(term))),
+                      on_click(ClickOption(term)),
                     ],
                     [text(t)],
                   )
@@ -72,7 +72,7 @@ fn render_variable(
     input([
       class("border w-full"),
       attribute.autofocus(True),
-      event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+      event.on_input(fn(v) { app.Change(v) }),
       attribute.value(dynamic.from(value)),
     ]),
   ]
@@ -84,7 +84,7 @@ fn render_number(number) {
       class("border w-full"),
       attribute.type_("number"),
       attribute.autofocus(True),
-      event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+      event.on_input(fn(v) { app.Change(v) }),
       attribute.value(dynamic.from(number)),
     ]),
   ]
@@ -100,7 +100,7 @@ fn render_text(value) {
           #("text-white", True),
           #("cursor-pointer", True),
         ]),
-        on_click(dispatch(app.Commit)),
+        on_click(app.Commit),
       ],
       [text("Done")],
     ),
@@ -108,7 +108,7 @@ fn render_text(value) {
       attribute.rows(10),
       classes([#("w-full", True)]),
       attribute.autofocus(True),
-      event.on_input(fn(v, d) { dispatch(app.Change(v))(d) }),
+      event.on_input(fn(v) { app.Change(v) }),
       attribute.value(dynamic.from(value)),
     ]),
   ]
@@ -174,10 +174,7 @@ fn render_errors(inferred: inference.Infered) {
           fn(err) {
             let #(path, reason) = err
             div(
-              [
-                classes([#("cursor-pointer", True)]),
-                on_click(dispatch(SelectNode(path))),
-              ],
+              [classes([#("cursor-pointer", True)]), on_click(SelectNode(path))],
               [text(typ.render_failure(reason))],
             )
           },

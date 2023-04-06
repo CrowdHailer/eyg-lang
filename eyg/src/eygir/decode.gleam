@@ -52,9 +52,7 @@ pub fn decoder(x) {
     "b" | "builtin" -> decode1(e.Builtin, label())
 
     incorrect -> fn(_) { Error([DecodeError("node", incorrect, ["0"])]) }
-  }(
-    x,
-  )
+  }(x)
 }
 
 pub fn from_json(raw) {

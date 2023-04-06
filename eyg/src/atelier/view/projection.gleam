@@ -4,7 +4,7 @@ import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
 import lustre/element.{pre, span, text}
-import lustre/event.{dispatch, on_click}
+import lustre/event.{on_click}
 import lustre/attribute.{class, classes, style}
 import eygir/expression as e
 import atelier/app.{SelectNode}
@@ -20,7 +20,7 @@ pub fn render(source, selection, inferred: Option(inference.Infered)) {
 }
 
 fn click(loc: Location) {
-  on_click(dispatch(SelectNode(loc.path)))
+  on_click(SelectNode(loc.path))
 }
 
 pub fn do_render(exp, br, loc, inferred) {
