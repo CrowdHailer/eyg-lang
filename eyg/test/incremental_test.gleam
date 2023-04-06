@@ -64,19 +64,6 @@ fn integer(i) {
   }
 }
 
-// TODO ask
-// type State {
-//   State(next: Int)
-// }
-
-// fn fresh(then) { 
-
-//  }
-
-// pub fn function_name() -> Nil {
-//   use i <- fresh()
-// }
-
 pub type T {
   TInt
 }
@@ -111,43 +98,6 @@ fn w(env, exp, source, fresh, cache) {
     )
   #(s, t, fresh, cache)
 }
-
-fn unzip(cursor, exp, source) {
-  let id = map.size(source)
-  let source = map.insert(source, id, exp)
-  let #(rev, _initial) = cursor
-  case rev {
-    [] -> #(id, source)
-  }
-
-  // [key, parent, ..rest] | [key] parent
-  // [x, ..rest] -> {
-  //   let assert Ok(#(node, free)) = map.get(source, x)
-  // }
-  todo("banana")
-}
-
-// pub fn function_name_test() -> Nil {
-//   let #(size, source) = let_("x", integer(2), var("x"))(0)
-//   io.debug(size)
-//   source
-//   |> map.to_list
-//   |> io.debug
-
-//   io.debug("---")
-//   let path = [0]
-//   let cursor = zip(source, path, 2)
-//   io.debug(cursor)
-
-//   io.debug("---!!!!!")
-//   unzip(cursor, #(String("foo"), set.new()), source)
-
-//   let #(s, t, fresh, cache) = w(map.new(), 2, source, 0, map.new())
-//   map.get(cache, 0)
-//   |> io.debug
-
-//   todo
-// }
 
 fn do_tree_to_ref(
   tree,
@@ -196,7 +146,6 @@ fn tree_to_ref(tree) {
 fn zip_match(node, path_element) {
   case node, path_element {
     Let(_, index, _), 0 -> index
-
     Let(_, _, index), 1 -> index
     Fn(_, index), 0 -> index
   }
@@ -207,7 +156,6 @@ fn do_zip(path, refs, current, zoom, root) {
     [] -> #([current, ..zoom], root)
     [path_element, ..path] -> {
       let assert Ok(#(node, _free)) = list.at(refs, current)
-      io.debug(node)
       let zoom = [current, ..zoom]
       let current = zip_match(node, path_element)
       do_zip(path, refs, current, zoom, root)
@@ -221,10 +169,40 @@ fn zip(path, root, refs) {
     [] -> #([], root)
     [path_element, ..path] -> {
       let assert Ok(#(node, _free)) = list.at(refs, root)
-      io.debug(node)
       let current = zip_match(node, path_element)
       do_zip(path, refs, current, [], root)
     }
+  }
+}
+
+pub fn do_unzip(old, new, zoom, rev) {
+  case zoom {
+    [] -> #(new, list.reverse(rev))
+    [next, ..zoom] -> {
+      let assert Ok(#(node, free)) = list.at(list.reverse(rev), next)
+      // TODO free
+      io.debug(#(node, old))
+      let exp = case node {
+        Let(label, value, then) if value == old -> Let(label, new, then)
+        Let(label, value, then) if then == old -> Let(label, value, new)
+        Fn(param, body) if body == old -> Fn(param, new)
+        _ -> todo("moo")
+      }
+      // TODO real free
+      let new = list.length(rev)
+      let rev = [#(exp, free), ..rev]
+      do_unzip(next, new, zoom, rev)
+    }
+  }
+}
+
+pub fn unzip(tree, cursor, refs) {
+  let #(exp, free, acc) = do_tree_to_ref(tree, list.reverse(refs))
+  let new = list.length(acc)
+  let rev = [#(exp, free), ..acc]
+  case cursor {
+    #([], old) -> do_unzip(old, new, [], rev)
+    #([old, ..zoom], root) -> do_unzip(old, new, list.append(zoom, [root]), rev)
   }
 }
 
@@ -241,18 +219,22 @@ pub fn two_test() {
   io.debug(refs)
   io.debug(list.at(refs, root))
 
-  // binary 
+  // binary
   let path = [1, 0]
   let cursor = zip(path, root, refs)
   io.debug(cursor)
   let [point, ..] = cursor.0
   io.debug(list.at(refs, point))
+
+  unzip(e.Integer(10), cursor, refs)
+  |> io.debug
+
+  todo("moo")
   let path = [1, 1, 0]
   let cursor = zip(path, root, refs)
   io.debug(cursor)
   let [point, ..] = cursor.0
   io.debug(list.at(refs, point))
 }
-
 // TODO printing map in node
 // TODO binary-size in JS match
