@@ -94,6 +94,8 @@ pub fn init(source) {
     t,
   ))
 
+// not helpful
+  // list.map(map.to_list(s.types), io.debug)
   io.debug("------------------------")
 
   let start = pnow()
