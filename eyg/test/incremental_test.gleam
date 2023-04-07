@@ -192,8 +192,22 @@ pub fn free(refs, previous) {
 // TODO test calling the same node twice hits the cach
 
 fn cache_lookup(cache, ref, env) {
-  use envs <- result.then(map.get(cache, ref))
+  io.debug(#("-----------", ref, env))
+  use envs <- result.then(io.debug(map.get(cache, ref)))
+
   map.get(envs, env)
+  |> io.debug
+}
+
+fn cache_update(cache, ref, env, t) {
+  map.update(
+    cache,
+    ref,
+    fn(cached) {
+      option.unwrap(cached, map.new())
+      |> map.insert(env, t)
+    },
+  )
 }
 
 // frees can  be built lazily as a map
@@ -205,7 +219,16 @@ pub fn cached(ref: Int, source, frees, types, env, subs, count) {
     Ok(t) -> #(t, subs, types)
     Error(Nil) -> {
       let assert Ok(node) = list.at(source, ref)
-      case node {
+      let #(t, subs, cache) = case node {
+        Var(x) -> {
+          case map.get(env, x) {
+            Ok(scheme) -> {
+              let t = unification.instantiate(scheme, count)
+              #(t, subs, types)
+            }
+            Error(Nil) -> todo("no var")
+          }
+        }
         Let(x, value, then) -> {
           let #(t1, subs, types) =
             cached(value, source, frees, types, env, subs, count)
@@ -228,11 +251,15 @@ pub fn cached(ref: Int, source, frees, types, env, subs, count) {
           todo("other nodes")
         }
       }
+      let cache = cache_update(cache, ref, required, t)
+      #(t, subs, cache)
     }
   }
 }
 
 pub fn two_test() {
+  todo("moo")
+
   let tree =
     e.Let(
       "x",
@@ -254,27 +281,33 @@ pub fn two_test() {
   let [point, ..] = cursor.0
   io.debug(list.at(refs, point))
 
-  cached(
-    root,
-    refs,
-    f,
-    map.new(),
-    env.empty(),
-    sub.none(),
-    javascript.make_reference(0),
-  )
-  let #(root, refs) = unzip(e.Variable("x"), cursor, refs)
+  let count = javascript.make_reference(0)
+  let #(t, subs, cache) =
+    cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
+  io.debug(t)
+  let #(root, refs) = unzip(e.Integer(3), cursor, refs)
 
   io.debug(refs)
   let f2 = free(refs, f)
   io.debug(list.map(f2, set.to_list))
 
-  todo("moo")
   let path = [1, 1, 0]
   let cursor = zip(path, root, refs)
   io.debug(cursor)
   let [point, ..] = cursor.0
   io.debug(list.at(refs, point))
+
+  io.debug("====")
+  io.debug(cache)
+  io.debug("====")
+
+  let #(t2, subs, cache) =
+    cached(root, refs, f2, cache, env.empty(), subs, count)
+  io.debug(t2)
 }
 // TODO printing map in node
 // TODO binary-size in JS match
+
+pub fn all_test() {
+  
+}
