@@ -35,40 +35,66 @@ pub fn empty() {
 }
 
 pub fn load(store: Store, tree) {
+  // maybe just include the exp
   let #(exp, acc) = source.do_from_tree_map(tree, store.source)
   let index = map.size(acc)
   let source = map.insert(acc, index, exp)
   #(index, Store(..store, source: source))
 }
 
-pub fn free(store: Store, root) {
+pub fn free(
+  store: Store,
+  root,
+  acc,
+) -> Result(#(Set(String), Store, List(#(Int, Set(String)))), Nil) {
   case map.get(store.free, root) {
-    Ok(vars) -> Ok(#(vars, store))
+    Ok(vars) -> {
+      io.debug(#(
+        "found----",
+        root,
+        map.get(store.source, root),
+        map.size(store.free),
+        list.length(acc),
+      ))
+      Ok(#(vars, store, acc))
+    }
     Error(Nil) -> {
       use node <- result.then(map.get(store.source, root))
-      use #(vars, store) <- result.then(case node {
-        source.Var(x) -> Ok(#(setx.singleton(x), store))
+      use #(vars, store, acc) <- result.then(case node {
+        source.Var(x) -> Ok(#(setx.singleton(x), store, acc))
         source.Fn(x, ref) -> {
-          use #(vars, store) <- result.then(free(store, ref))
-          Ok(#(set.delete(vars, x), store))
+          use #(vars, store, acc) <- result.then(free(store, ref, acc))
+          Ok(#(set.delete(vars, x), store, acc))
         }
         source.Let(x, ref_v, ref_t) -> {
-          use #(value, store) <- result.then(free(store, ref_v))
-          use #(then, store) <- result.then(free(store, ref_t))
+          use #(value, store, acc) <- result.then(free(store, ref_v, acc))
+          use #(then, store, acc) <- result.then(free(store, ref_t, acc))
           let vars = set.union(value, set.delete(then, x))
-          Ok(#(vars, store))
+          Ok(#(vars, store, acc))
         }
         source.Call(ref_func, ref_arg) -> {
-          use #(func, store) <- result.then(free(store, ref_func))
-          use #(arg, store) <- result.then(free(store, ref_arg))
+          use #(func, store, acc) <- result.then(free(store, ref_func, acc))
+          use #(arg, store, acc) <- result.then(free(store, ref_arg, acc))
           let vars = set.union(func, arg)
-          Ok(#(vars, store))
+          Ok(#(vars, store, acc))
         }
-        _ -> Ok(#(set.new(), store))
+        _ -> Ok(#(set.new(), store, acc))
       })
+      let before = map.size(store.free)
       let free = map.insert(store.free, root, vars)
+      let acc = [#(root, vars), ..acc]
       let store = Store(..store, free: free)
-      Ok(#(vars, store))
+      let after = map.size(store.free)
+      case after - before {
+        0 -> {
+          io.debug(#(node, before, root))
+          todo("this shouldn't happen")
+          // and it doesn't
+          Nil
+        }
+        1 -> Nil
+      }
+      Ok(#(vars, store, acc))
     }
   }
 }
@@ -81,7 +107,7 @@ pub fn type_(store: Store, root) {
 
 // Error only for invalid ref
 pub fn do_type(env, ref, store: Store) -> Result(_, _) {
-  use #(vars, store) <- result.then(free(store, ref))
+  use #(vars, store, _) <- result.then(free(store, ref, []))
   let required = map.take(env, set.to_list(vars))
   case inference.cache_lookup(store.types, ref, required) {
     Ok(t) -> Ok(#(t, store))

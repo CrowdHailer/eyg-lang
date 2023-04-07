@@ -15,7 +15,7 @@ pub fn literal_test() {
   let #(ref_binary, s) = store.load(s, tree)
   should.equal(ref_binary, 0)
   //   should.equal(store.tree(s, ref_binary), Ok(tree))
-  let assert Ok(#(free, s)) = store.free(s, ref_binary)
+  let assert Ok(#(free, s, _)) = store.free(s, ref_binary, [])
   should.equal(map.size(s.free), 1)
   should.equal(free, set.new())
   let assert Ok(#(t, s)) = store.type_(s, ref_binary)
@@ -24,7 +24,7 @@ pub fn literal_test() {
 
   let #(ref_integer, s) = store.load(s, e.Integer(5))
   should.equal(ref_integer, 1)
-  let assert Ok(#(free, s)) = store.free(s, ref_integer)
+  let assert Ok(#(free, s, _)) = store.free(s, ref_integer, [])
   should.equal(map.size(s.free), 2)
   should.equal(free, set.new())
   let assert Ok(#(t, s)) = store.type_(s, ref_integer)
@@ -97,6 +97,32 @@ pub fn function_unification_test() {
   io.debug("------------")
   // should.equal(n, )
 }
+
+pub fn let_test() {
+  let s = store.empty()
+
+  let tree =
+    e.Let(
+      "x",
+      e.Let("tmp", e.Binary("i"), e.Binary("o")),
+      e.Let(
+        "y",
+        e.Integer(1),
+        e.Apply(e.Apply(e.Extend("a"), e.Variable("x")), e.Empty),
+      ),
+    )
+  let #(root, s) = store.load(s, tree)
+  should.equal(root, 10)
+  should.equal(map.size(s.source), 11)
+
+  let assert Ok(#(t, s, _)) = store.free(s, root, [])
+  // should.equal(t, t.Integer)
+  should.equal(map.size(s.free), 11)
+  // Where is it going wrong
+  should.equal(map.size(s.types), 0)
+  // all seems to work.
+  // TODO where am I loosing elements
+}
 // TODO generalization test
 // pub fn let_scope_test() {
 //   let s = store.empty()
@@ -118,7 +144,7 @@ pub fn function_unification_test() {
 //   should.equal(ref_binary, 12)
 //   should.equal(map.size(s.source), 13)
 
-//   let assert Ok(#(free, s)) = store.free(s, ref_binary)
+//   let assert Ok(#(free, s,_)) = store.free(s, ref_binary, [])
 //   should.equal(map.size(s.free), 13)
 //   should.equal(free, set.new())
 //   let assert Ok(#(t, s)) = store.type_(s, ref_binary)

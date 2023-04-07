@@ -69,12 +69,15 @@ pub fn init(source) {
   io.debug(#(
     "loading store took ms:",
     pnow() - start,
+    root,
     map.size(s.source),
     map.size(s.free),
   ))
 
   let start = pnow()
-  let assert Ok(#(vars, s)) = store.free(s, root)
+  let assert Ok(#(vars, s, x)) = store.free(s, root, [])
+  // OK map works
+  io.debug(#("othr", list.length(x)))
   // TODO i think should be same size
   io.debug(#(
     "memoizing free took ms:",
@@ -84,6 +87,27 @@ pub fn init(source) {
     vars
     |> set.to_list,
   ))
+  io.debug(map.get(s.source, root))
+  io.debug(map.get(s.source, root - 1))
+  io.debug(map.get(s.source, root - 2))
+  io.debug(map.get(s.source, root - 3))
+  io.debug(map.get(s.source, root - 4))
+  io.debug(map.get(s.source, 0))
+  io.debug(map.get(s.source, 1))
+
+  io.debug(map.get(s.free, root))
+  io.debug(map.get(s.free, root - 1))
+  io.debug(map.get(s.free, root - 2))
+  io.debug(map.get(s.free, root - 3))
+  io.debug(map.get(s.free, root - 4))
+  io.debug(map.get(s.free, 0))
+  io.debug(map.get(s.free, 1))
+
+  // io.debug(#("free--", map.get(s.free, 5757)))
+  io.debug(list.length(map.to_list(s.source)))
+
+  io.debug(list.length(map.to_list(s.free)))
+  // todo("wat")
 
   let start = pnow()
   let assert Ok(#(t, s)) = store.type_(s, root)
