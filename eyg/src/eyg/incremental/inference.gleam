@@ -53,8 +53,37 @@ pub fn free(refs, previous) {
   do_free(list.drop(refs, list.length(previous)), list.reverse(previous))
 }
 
-// TODO incremental/free
-// TODO incremental/cursor.{from_path, replace}
+fn do_free_map(rest, acc) {
+  case rest {
+    [] -> acc
+    [node, ..rest] -> {
+      let free = case node {
+        source.Var(x) -> setx.singleton(x)
+        source.Fn(x, ref) -> {
+          let assert Ok(body) = map.get(acc, ref)
+          set.delete(body, x)
+        }
+        source.Let(x, ref_v, ref_t) -> {
+          let assert Ok(value) = map.get(acc, ref_v)
+          let assert Ok(then) = map.get(acc, ref_t)
+          set.union(value, set.delete(then, x))
+        }
+        source.Call(ref_func, ref_arg) -> {
+          let assert Ok(func) = map.get(acc, ref_func)
+          let assert Ok(arg) = map.get(acc, ref_arg)
+          set.union(func, arg)
+        }
+        _ -> set.new()
+      }
+      do_free_map(rest, map.insert(acc, map.size(acc), free))
+    }
+  }
+}
+
+pub fn free_map(refs, previous) {
+  // TODO need to be careful on taking new only
+  do_free_map(list.drop(refs, map.size(previous)), previous)
+}
 
 // // Need single map of substitutions, is this the efficient J algo?
 // // Free should be easy in bottom up order assume need value is already present

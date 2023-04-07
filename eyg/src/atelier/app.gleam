@@ -69,6 +69,9 @@ pub fn init(source) {
   io.debug(#("finding free took ms:", pnow() - start))
   let count = javascript.make_reference(0)
   let start = pnow()
+  let fm = new_i.free_map(refs, map.new())
+  io.debug(#("finding free took ms:", pnow() - start))
+  let start = pnow()
   let #(t, s, cache) =
     new_i.cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
   io.debug(#("initial type check took ms:", pnow() - start))
@@ -88,6 +91,9 @@ pub fn init(source) {
   io.debug(#("f2 took ms:", pnow() - start))
   let #(t, s, cache) = new_i.cached(root, refs, f, cache, env.empty(), s, count)
   io.debug(#("partial type check took ms:", pnow() - start))
+  let start = pnow()
+  let fm2 = new_i.free_map(refs, fm)
+  io.debug(#("finding fm2 took ms:", pnow() - start))
 
   let start = pnow()
   let inferred = Some(standard.infer(source))
