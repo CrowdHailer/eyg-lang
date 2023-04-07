@@ -207,8 +207,8 @@ pub fn do_free(rest, acc) {
   }
 }
 
-pub fn free(refs) {
-  do_free(refs, [])
+pub fn free(refs, previous) {
+  do_free(list.drop(refs, list.length(previous)), list.reverse(previous))
 }
 
 pub fn two_test() {
@@ -222,10 +222,8 @@ pub fn two_test() {
   let #(root, refs) = tree_to_ref(tree)
   io.debug(root)
   io.debug(refs)
-  io.debug(
-    free(refs)
-    |> list.map(set.to_list),
-  )
+  let f = free(refs, [])
+  io.debug(list.map(f, set.to_list))
   io.debug(list.at(refs, root))
 
   // binary
@@ -235,9 +233,12 @@ pub fn two_test() {
   let [point, ..] = cursor.0
   io.debug(list.at(refs, point))
 
-  w(map.new(), root, refs, map.new())
-  unzip(e.Integer(10), cursor, refs)
-  |> io.debug
+  // w(map.new(), root, refs, map.new())
+  let #(root, refs) = unzip(e.Variable("x"), cursor, refs)
+
+  io.debug(refs)
+  let f2 = free(refs, f)
+  io.debug(list.map(f2, set.to_list))
 
   todo("moo")
   let path = [1, 1, 0]
