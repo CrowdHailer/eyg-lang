@@ -1,5 +1,6 @@
 import gleam/set
 import gleam/setx
+import gleam/javascript
 
 // This separation of kinds could be opened as a PR to the F-sharp project
 
@@ -65,4 +66,20 @@ pub fn result(value, reason) {
 
 pub fn option(value) {
   Union(Extend("Some", value, Extend("None", unit, Closed)))
+}
+
+pub fn tail(ref) {
+  LinkedList(Unbound(fresh(ref)))
+}
+
+pub fn cons(ref) {
+  let t = Unbound(fresh(ref))
+  let e1 = Open(fresh(ref))
+  let e2 = Open(fresh(ref))
+  Fun(t, e1, Fun(LinkedList(t), e2, LinkedList(t)))
+}
+
+// copied from unification to not get circular ref
+pub fn fresh(ref) {
+  javascript.update_reference(ref, fn(x) { x + 1 })
 }

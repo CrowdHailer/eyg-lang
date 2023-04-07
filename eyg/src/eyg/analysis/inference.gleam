@@ -188,15 +188,8 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     // Primitive
     e.Binary(_) -> unify(typ, t.Binary, ref, path)
     e.Integer(_) -> unify(typ, t.Integer, ref, path)
-    e.Tail -> unify(typ, t.LinkedList(t.Unbound(fresh(ref))), ref, path)
-    e.Cons -> {
-      let t = t.Unbound(fresh(ref))
-      let e1 = t.Open(fresh(ref))
-      let e2 = t.Open(fresh(ref))
-      t.Fun(t, e1, t.Fun(t.LinkedList(t), e2, t.LinkedList(t)))
-      |> unify(typ, _, ref, path)
-    }
-
+    e.Tail -> unify(typ, t.tail(ref), ref, path)
+    e.Cons -> unify(typ, t.cons(ref), ref, path)
     e.Vacant(_comment) ->
       Infered(
         sub.none(),

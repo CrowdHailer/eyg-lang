@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/map.{Map}
 import gleam/result
 import gleam/set.{Set}
@@ -10,12 +11,14 @@ import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
 import eyg/incremental/source
 import eyg/incremental/inference
+import eyg/incremental/cursor
 
 pub type Store {
   Store(
     source: Map(Int, source.Expression),
     free: Map(Int, Set(String)),
     types: Map(Int, Map(Map(String, Scheme), t.Term)),
+    substitutions: sub.Substitutions,
     counter: javascript.Reference(Int),
   )
 }
@@ -25,6 +28,7 @@ pub fn empty() {
     source: map.new(),
     free: map.new(),
     types: map.new(),
+    substitutions: sub.none(),
     counter: javascript.make_reference(0),
   )
 }
@@ -69,7 +73,9 @@ pub fn free(store: Store, root) {
 }
 
 pub fn type_(store: Store, root) {
-  do_type(map.new(), root, store)
+  use #(unresolved, store) <- result.then(do_type(map.new(), root, store))
+  let t = unification.resolve(store.substitutions, unresolved)
+  Ok(#(t, store))
 }
 
 // Error only for invalid ref
@@ -106,21 +112,41 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
           let ret = unification.fresh(store.counter)
           use #(t1, store) <- result.then(do_type(env, func, store))
           use #(t2, store) <- result.then(do_type(env, arg, store))
-          let s0 =
+          let unified =
             unification.unify(
               t.Fun(t2, t.Closed, t.Unbound(ret)),
               t1,
               store.counter,
             )
+          io.debug(unified)
+          let store = case unified {
+            Ok(s) ->
+              Store(..store, substitutions: sub.compose(store.substitutions, s))
+            Error(_reason) -> todo("unifiy failed")
+          }
+
           Ok(#(t.Unbound(ret), store))
         }
         source.Integer(_) -> Ok(#(t.Integer, store))
         source.String(_) -> Ok(#(t.Binary, store))
-        _ -> Ok(#(t.Unbound(unification.fresh(store.counter)), store))
+        source.Tail -> Ok(#(t.tail(store.counter), store))
+        source.Cons -> Ok(#(t.cons(store.counter), store))
+        other -> {
+          io.debug(other)
+          todo("type needed")
+        }
       })
       let types = inference.cache_update(store.types, ref, required, t)
       let store = Store(..store, types: types)
       Ok(#(t, store))
     }
   }
+}
+
+pub fn cursor(store: Store, root, path) {
+  cursor.at_map(path, root, store.source)
+}
+
+pub fn focus(store: Store, c) {
+  map.get(store.source, cursor.inner(c))
 }

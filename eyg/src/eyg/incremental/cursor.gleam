@@ -1,9 +1,11 @@
 import gleam/io
 import gleam/list
+import gleam/map
+import gleam/result
 import eygir/expression as e
 import eyg/incremental/source.{Call, Fn, Let}
 
-fn zip_match(node, path_element) {
+pub fn zip_match(node, path_element) {
   case node, path_element {
     Let(_, index, _), 0 -> index
     Let(_, _, index), 1 -> index
@@ -41,6 +43,30 @@ pub fn at(path, root, refs) {
   }
 }
 
+fn do_at_map(path, refs, current, zoom, root) {
+  case path {
+    [] -> Ok(#([current, ..zoom], root))
+    [path_element, ..path] -> {
+      use node <- result.then(map.get(refs, root))
+      let zoom = [current, ..zoom]
+      let current = zip_match(node, path_element)
+      do_at_map(path, refs, current, zoom, root)
+    }
+  }
+}
+
+// root and refs together from tree
+pub fn at_map(path, root, refs) {
+  case path {
+    [] -> Ok(#([], root))
+    [path_element, ..path] -> {
+      use node <- result.then(map.get(refs, root))
+      let current = zip_match(node, path_element)
+      do_at_map(path, refs, current, [], root)
+    }
+  }
+}
+
 fn do_replace(old, new, zoom, rev) {
   case zoom {
     [] -> #(new, list.reverse(rev))
@@ -71,6 +97,7 @@ pub fn replace(tree, cursor, refs) {
       do_replace(old, new, list.append(zoom, [root]), rev)
   }
 }
+
 // fn do_replace_map(old, new, zoom, rev) {
 //   case zoom {
 //     [] -> #(new, list.reverse(rev))
@@ -101,3 +128,10 @@ pub fn replace(tree, cursor, refs) {
 //       do_replace_map(old, new, list.append(zoom, [root]), rev)
 //   }
 // }
+
+pub fn inner(c) {
+  case c {
+    #([], root) -> root
+    #([ref, ..], _) -> ref
+  }
+}
