@@ -41,16 +41,32 @@ pub fn do_from_tree(tree, acc) {
       let #(value, acc) = do_from_tree(value, acc)
       let value_index = list.length(acc)
       let acc = [value, ..acc]
-
       #(Let(label, value_index, then_index), acc)
     }
-    e.Binary(value) -> {
-      #(String(value), acc)
+    e.Apply(func, arg) -> {
+      let #(arg, acc) = do_from_tree(arg, acc)
+      let arg_index = list.length(acc)
+      let acc = [arg, ..acc]
+      let #(func, acc) = do_from_tree(func, acc)
+      let func_index = list.length(acc)
+      let acc = [func, ..acc]
+      #(Call(func_index, arg_index), acc)
     }
-    e.Integer(value) -> {
-      #(Integer(value), acc)
-    }
-    _ -> todo("rest of ref")
+    e.Binary(value) -> #(String(value), acc)
+    e.Integer(value) -> #(Integer(value), acc)
+    e.Tail -> #(Tail, acc)
+    e.Cons -> #(Cons, acc)
+    e.Vacant(comment) -> #(Vacant(comment), acc)
+    e.Empty -> #(Empty, acc)
+    e.Extend(label) -> #(Extend(label), acc)
+    e.Select(label) -> #(Select(label), acc)
+    e.Overwrite(label) -> #(Overwrite(label), acc)
+    e.Tag(label) -> #(Tag(label), acc)
+    e.Case(label) -> #(Case(label), acc)
+    e.NoCases -> #(NoCases, acc)
+    e.Perform(label) -> #(Perform(label), acc)
+    e.Handle(label) -> #(Handle(label), acc)
+    e.Builtin(identifier) -> #(Builtin(identifier), acc)
   }
 }
 

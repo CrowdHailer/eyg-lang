@@ -19,3 +19,11 @@ pub external fn cwd() -> String =
 /// Node.js will not terminate until all the `exit` event listeners are called.
 pub external fn exit(code: Int) -> Nil =
   "" "process.exit"
+
+pub external type HRTime
+
+pub external fn start() -> HRTime =
+  "process" "hrtime"
+
+pub external fn duration(HRTime) -> #(Int, Int) =
+  "process" "hrtime"

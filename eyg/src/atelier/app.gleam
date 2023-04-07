@@ -3,17 +3,23 @@ import gleam/result
 import gleam/io
 import gleam/int
 import gleam/list
+import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
 import gleam/fetch
 import gleam/http
 import gleam/http/request
+import gleam/javascript
 import lustre/cmd
 import atelier/transform.{Act}
 import eygir/expression as e
 import eygir/encode
 import eyg/analysis/inference
 import eyg/runtime/standard
+import eyg/incremental/source as incremental
+import eyg/incremental/inference as new_i
+import eyg/analysis/substitutions as sub
+import eyg/analysis/env
 
 pub type WorkSpace {
   WorkSpace(
@@ -27,6 +33,7 @@ pub type WorkSpace {
       List(#(e.Expression, List(Int))),
       List(#(e.Expression, List(Int))),
     ),
+    incremental: new_i.Cache,
   )
 }
 
@@ -46,19 +53,29 @@ pub type Action {
   ClickOption(chosen: e.Expression)
 }
 
+external fn pnow() -> Int =
+  "" "performance.now"
+
 pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
+  let start = pnow()
+  let inferred = Some(standard.infer(source))
+  io.debug(#("standard infer took ms:", pnow() - start))
+  let start = pnow()
+  let #(root, refs) = incremental.from_tree(source)
+  io.debug(#("building incremental took ms:", pnow() - start, list.length(refs)))
+
+  let start = pnow()
+  let f = new_i.free(refs, [])
+  io.debug(#("finding free took ms:", pnow() - start))
+  let count = javascript.make_reference(0)
+  let start = pnow()
+  let #(t, s, cache) =
+    new_i.cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
+  io.debug(#("finding free took ms:", pnow() - start))
   // Have inference work once for showing elements but need to also background this
-  WorkSpace(
-    [],
-    source,
-    Some(standard.infer(source)),
-    mode,
-    None,
-    None,
-    #([], []),
-  )
+  WorkSpace([], source, inferred, mode, None, None, #([], []), #(s, cache))
 }
 
 pub fn update(state: WorkSpace, action) {
@@ -335,11 +352,15 @@ fn delete(act: Act, state) {
   // an assignment vacant or not is always deleted.
   // when deleting with a vacant as a target there is no change
   // we can instead bump up the path
+  let start = pnow()
   let source = case act.target {
     e.Let(_label, _, then) -> act.update(then)
     _ -> act.update(e.Vacant(""))
   }
-  update_source(state, source)
+  let ret = update_source(state, source)
+  io.debug(#("normal update took ms:", pnow() - start))
+
+  ret
 }
 
 fn abstract(act: Act, state) {

@@ -15,6 +15,9 @@ import eyg/analysis/unification
 import eyg/incremental/source
 import eyg/incremental/cursor
 
+pub type Cache =
+  #(sub.Substitutions, Map(Int, Map(Map(String, Scheme), t.Term)))
+
 fn from_end(items, i) {
   list.at(items, list.length(items) - 1 - i)
 }
@@ -62,11 +65,9 @@ pub fn free(refs, previous) {
 // TODO test calling the same node twice hits the cach
 
 fn cache_lookup(cache, ref, env) {
-  io.debug(#("-----------", ref, env))
-  use envs <- result.then(io.debug(map.get(cache, ref)))
+  use envs <- result.then(map.get(cache, ref))
 
   map.get(envs, env)
-  |> io.debug
 }
 
 fn cache_update(cache, ref, env, t) {
@@ -82,7 +83,15 @@ fn cache_update(cache, ref, env, t) {
 
 // frees can  be built lazily as a map
 // hash cache can exist for saving to file
-pub fn cached(ref: Int, source, frees, types, env, subs, count) {
+pub fn cached(
+  ref: Int,
+  source,
+  frees,
+  types,
+  env,
+  subs: sub.Substitutions,
+  count,
+) {
   let assert Ok(free) = list.at(frees, ref)
   let required = map.take(env, set.to_list(free))
   case cache_lookup(types, ref, required) {
@@ -114,12 +123,19 @@ pub fn cached(ref: Int, source, frees, types, env, subs, count) {
           let t = t.Fun(t.Unbound(param), t.Closed, body)
           #(t, subs, types)
         }
+        source.Call(func, arg) -> {
+          let ret = unification.fresh(count)
+          let #(t1, s1, types) =
+            cached(func, source, frees, types, env, subs, count)
+          let #(t2, s2, types) =
+            cached(arg, source, frees, types, env, subs, count)
+          let s0 =
+            unification.unify(t.Fun(t2, t.Closed, t.Unbound(ret)), t1, count)
+          #(t.Unbound(ret), s1, types)
+        }
         source.Integer(_) -> #(t.Integer, subs, types)
         source.String(_) -> #(t.Binary, subs, types)
-        _ -> {
-          io.debug(node)
-          todo("other nodes")
-        }
+        _ -> #(t.Unbound(unification.fresh(count)), subs, types)
       }
       let cache = cache_update(cache, ref, required, t)
       #(t, subs, cache)
