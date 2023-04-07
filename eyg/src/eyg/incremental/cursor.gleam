@@ -2,7 +2,6 @@ import gleam/io
 import gleam/list
 import gleam/map
 import gleam/result
-import eygir/expression as e
 import eyg/incremental/source.{Call, Fn, Let}
 
 pub fn zip_match(node, path_element) {
@@ -47,7 +46,7 @@ fn do_at_map(path, refs, current, zoom, root) {
   case path {
     [] -> Ok(#([current, ..zoom], root))
     [path_element, ..path] -> {
-      use node <- result.then(map.get(refs, root))
+      use node <- result.then(map.get(refs, current))
       let zoom = [current, ..zoom]
       let current = zip_match(node, path_element)
       do_at_map(path, refs, current, zoom, root)

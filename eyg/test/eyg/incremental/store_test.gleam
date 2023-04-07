@@ -1,9 +1,9 @@
 import gleam/io
-import gleam/list
 import gleam/map
 import gleam/set
 import eygir/expression as e
 import eyg/analysis/typ as t
+import eyg/incremental/source
 import eyg/incremental/store
 import eyg/incremental/cursor
 import gleeunit/should
@@ -46,14 +46,16 @@ pub fn function_unification_test() {
 
   let assert Ok(c) = store.cursor(s, root, [1])
   let assert Ok(node) = store.focus(s, c)
-  // io.debug(node) test node
+  should.equal(node, source.String("hey"))
 
-  // s should not change
+  // s does not change on fetching inner type
   let assert Ok(#(type_, _)) = store.type_(s, cursor.inner(c))
   should.equal(type_, t.Binary)
 
-  let assert Ok(c) = store.cursor(s, root, [0])
+  let assert Ok(c) = store.cursor(s, root, [0, 0])
   let assert Ok(node) = store.focus(s, c)
+  should.equal(node, source.Var("x"))
+
   // io.debug(node) test node
 
   // s should not change
