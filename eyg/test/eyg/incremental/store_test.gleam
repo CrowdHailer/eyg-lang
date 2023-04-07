@@ -41,12 +41,37 @@ pub fn function_unification_test() {
   should.equal(map.size(s.source), 4)
 
   let assert Ok(#(t, s)) = store.type_(s, root)
+  should.equal(t, t.Binary)
   should.equal(map.size(s.free), 4)
   should.equal(map.size(s.types), 4)
 
   let assert Ok(c) = store.cursor(s, root, [1])
   let assert Ok(node) = store.focus(s, c)
   should.equal(node, source.String("hey"))
+  let assert Ok(#(root1, s)) = store.replace(s, c, source.Integer(10))
+  should.equal(map.size(s.source), 6)
+
+  let assert Ok(c) = store.cursor(s, root, [0, 0])
+  let assert Ok(node) = store.focus(s, c)
+  should.equal(node, source.Var("x"))
+  let assert Ok(#(root2, s)) = store.replace(s, c, source.Empty)
+  should.equal(map.size(s.source), 9)
+  // source increase by path length + 1
+  // free and types are lazy so stay at 4
+  should.equal(map.size(s.free), 4)
+  should.equal(map.size(s.types), 4)
+
+  let assert Ok(#(t, s)) = store.type_(s, root1)
+  should.equal(t, t.Integer)
+  let assert Ok(#(t, s)) = store.type_(s, root2)
+  should.equal(t, t.unit)
+
+  should.equal(map.size(s.free), 9)
+  should.equal(map.size(s.types), 9)
+
+  todo("not here because type_ doesn't work to just reach in")
+  // hash of type or id includes free
+  // TODO need type in tree, and errors
 
   // s does not change on fetching inner type
   let assert Ok(#(type_, _)) = store.type_(s, cursor.inner(c))
@@ -56,16 +81,23 @@ pub fn function_unification_test() {
   let assert Ok(node) = store.focus(s, c)
   should.equal(node, source.Var("x"))
 
-  // io.debug(node) test node
-
-  // s should not change
+  // s does not change on fetching inner type
+  io.debug("------------")
+  io.debug(#(
+    cursor.inner(c),
+    map.keys(s.types),
+    s.types
+    |> map.get(cursor.inner(c)),
+  ))
+  // How do I get the actual type value. only root works
+  // |> map.to_list,
   let assert Ok(#(type_, _)) = store.type_(s, cursor.inner(c))
   // binary -> binary because not generalised in let statement
   should.equal(type_, t.Fun(t.Binary, t.Closed, t.Binary))
-
+  io.debug("------------")
   // should.equal(n, )
-  should.equal(t, t.Binary)
 }
+// TODO generalization test
 // pub fn let_scope_test() {
 //   let s = store.empty()
 

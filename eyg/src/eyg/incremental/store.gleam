@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/list
 import gleam/map.{Map}
 import gleam/result
 import gleam/set.{Set}
@@ -87,14 +88,23 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
     Error(Nil) -> {
       use node <- result.then(map.get(store.source, ref))
       use #(t, store) <- result.then(case node {
-        source.Var(x) ->
-          case map.get(env, x) {
+        source.Var(x) -> {
+          io.debug(#(
+            env
+            |> map.to_list,
+            x,
+          ))
+          case
+            map.get(env, x)
+            |> io.debug
+          {
             Ok(scheme) -> {
               let t = unification.instantiate(scheme, store.counter)
               Ok(#(t, store))
             }
-            Error(Nil) -> todo("no var")
+            Error(Nil) -> todo("no var in env")
           }
+        }
         source.Let(x, value, then) -> {
           use #(t1, store) <- result.then(do_type(env, value, store))
           let scheme = unification.generalise(env, t1)
@@ -161,6 +171,41 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
 
 pub fn cursor(store: Store, root, path) {
   cursor.at_map(path, root, store.source)
+}
+
+fn do_replace(old_id, new_id, zoom, store: Store) {
+  case zoom {
+    [] -> Ok(#(new_id, store))
+    [next, ..zoom] -> {
+      use node <- result.then(map.get(store.source, next))
+      let exp = case node {
+        source.Let(label, value, then) if value == old_id ->
+          source.Let(label, new_id, then)
+        source.Let(label, value, then) if then == old_id ->
+          source.Let(label, value, new_id)
+        source.Fn(param, body) if body == old_id -> source.Fn(param, new_id)
+        source.Call(func, arg) if func == old_id -> source.Call(new_id, arg)
+        source.Call(func, arg) if arg == old_id -> source.Call(func, new_id)
+        _ -> todo("Can't have a path into literal")
+      }
+      let new_id = map.size(store.source)
+      let source = map.insert(store.source, new_id, exp)
+      let store = Store(..store, source: source)
+      do_replace(next, new_id, zoom, store)
+    }
+  }
+}
+
+// could separate pushing one item from fn and pass in new index here
+pub fn replace(store: Store, cursor, exp) {
+  let new_id = map.size(store.source)
+  let source = map.insert(store.source, new_id, exp)
+  let store = Store(..store, source: source)
+  case cursor {
+    #([], old) -> do_replace(old, new_id, [], store)
+    #([old, ..zoom], root) ->
+      do_replace(old, new_id, list.append(zoom, [root]), store)
+  }
 }
 
 pub fn focus(store: Store, c) {
