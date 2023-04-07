@@ -20,41 +20,47 @@ pub type Exp {
   String(String)
 }
 
-fn do_tree_to_ref(tree, acc) -> #(Exp, List(Exp)) {
+fn do_tree_to_ref(
+  tree,
+  acc,
+) -> #(Exp, set.Set(String), List(#(Exp, set.Set(String)))) {
   case tree {
     e.Variable(label) -> {
-      #(Var(label), acc)
+      let free = setx.singleton(label)
+      #(Var(label), free, acc)
     }
     e.Lambda(label, body) -> {
-      let #(node, acc) = do_tree_to_ref(body, acc)
+      let #(node, free, acc) = do_tree_to_ref(body, acc)
       let index = list.length(acc)
-      let acc = [node, ..acc]
-      #(Fn(label, index), acc)
+      let acc = [#(node, free), ..acc]
+      let free = set.delete(free, label)
+      #(Fn(label, index), free, acc)
     }
     e.Let(label, value, then) -> {
-      let #(then, acc) = do_tree_to_ref(then, acc)
+      let #(then, free_t, acc) = do_tree_to_ref(then, acc)
       let then_index = list.length(acc)
-      let acc = [then, ..acc]
-      let #(value, acc) = do_tree_to_ref(value, acc)
+      let acc = [#(then, free_t), ..acc]
+      let #(value, free_v, acc) = do_tree_to_ref(value, acc)
       let value_index = list.length(acc)
-      let acc = [value, ..acc]
+      let acc = [#(value, free_v), ..acc]
 
-      #(Let(label, value_index, then_index), acc)
+      let free = set.union(free_v, set.delete(free_t, label))
+      #(Let(label, value_index, then_index), free, acc)
     }
     e.Binary(value) -> {
-      #(String(value), acc)
+      #(String(value), set.new(), acc)
     }
     e.Integer(value) -> {
-      #(Integer(value), acc)
+      #(Integer(value), set.new(), acc)
     }
     _ -> todo("rest of ref")
   }
 }
 
 fn tree_to_ref(tree) {
-  let #(exp, acc) = do_tree_to_ref(tree, [])
+  let #(exp, free, acc) = do_tree_to_ref(tree, [])
   let index = list.length(acc)
-  let source = list.reverse([exp, ..acc])
+  let source = list.reverse([#(exp, free), ..acc])
   #(index, source)
 }
 
@@ -70,7 +76,7 @@ fn do_zip(path, refs, current, zoom, root) {
   case path {
     [] -> #([current, ..zoom], root)
     [path_element, ..path] -> {
-      let assert Ok(node) = list.at(refs, current)
+      let assert Ok(#(node, _free)) = list.at(refs, current)
       let zoom = [current, ..zoom]
       let current = zip_match(node, path_element)
       do_zip(path, refs, current, zoom, root)
@@ -83,7 +89,7 @@ fn zip(path, root, refs) {
   case path {
     [] -> #([], root)
     [path_element, ..path] -> {
-      let assert Ok(node) = list.at(refs, root)
+      let assert Ok(#(node, _free)) = list.at(refs, root)
       let current = zip_match(node, path_element)
       do_zip(path, refs, current, [], root)
     }
@@ -94,7 +100,9 @@ pub fn do_unzip(old, new, zoom, rev) {
   case zoom {
     [] -> #(new, list.reverse(rev))
     [next, ..zoom] -> {
-      let assert Ok(node) = list.at(list.reverse(rev), next)
+      let assert Ok(#(node, free)) = list.at(list.reverse(rev), next)
+      // TODO free, maybe free should be a separate step
+      io.debug(#(node, old))
       let exp = case node {
         Let(label, value, then) if value == old -> Let(label, new, then)
         Let(label, value, then) if then == old -> Let(label, value, new)
@@ -103,17 +111,18 @@ pub fn do_unzip(old, new, zoom, rev) {
         Call(func, arg) if arg == old -> Call(func, new)
         _ -> todo("Can't have a path into literal")
       }
+      // TODO real free
       let new = list.length(rev)
-      let rev = [exp, ..rev]
+      let rev = [#(exp, free), ..rev]
       do_unzip(next, new, zoom, rev)
     }
   }
 }
 
 pub fn unzip(tree, cursor, refs) {
-  let #(exp, acc) = do_tree_to_ref(tree, list.reverse(refs))
+  let #(exp, free, acc) = do_tree_to_ref(tree, list.reverse(refs))
   let new = list.length(acc)
-  let rev = [exp, ..acc]
+  let rev = [#(exp, free), ..acc]
   case cursor {
     #([], old) -> do_unzip(old, new, [], rev)
     #([old, ..zoom], root) -> do_unzip(old, new, list.append(zoom, [root]), rev)
@@ -174,43 +183,6 @@ pub fn w(env, exp, refs, cache) -> Nil {
   todo
 }
 
-fn from_end(items, i) {
-  list.at(items, list.length(items) - 1 - i)
-}
-
-pub fn do_free(rest, acc) {
-  case rest {
-    [] -> list.reverse(acc)
-    [node, ..rest] -> {
-      let free = case node {
-        Var(x) -> setx.singleton(x)
-        Fn(x, ref) -> {
-          let assert Ok(body) = from_end(acc, ref)
-          set.delete(body, x)
-        }
-        Let(x, ref_v, ref_t) -> {
-          let assert Ok(value) = from_end(acc, ref_v)
-          let assert Ok(then) = from_end(acc, ref_t)
-          set.union(value, set.delete(then, x))
-        }
-        Call(ref_func, ref_arg) -> {
-          let assert Ok(func) = from_end(acc, ref_func)
-          let assert Ok(arg) = from_end(acc, ref_arg)
-          set.union(func, arg)
-        }
-
-        Integer(_) -> set.new()
-        String(_) -> set.new()
-      }
-      do_free(rest, [free, ..acc])
-    }
-  }
-}
-
-pub fn free(refs) {
-  do_free(refs, [])
-}
-
 pub fn two_test() {
   let tree =
     e.Let(
@@ -222,10 +194,6 @@ pub fn two_test() {
   let #(root, refs) = tree_to_ref(tree)
   io.debug(root)
   io.debug(refs)
-  io.debug(
-    free(refs)
-    |> list.map(set.to_list),
-  )
   io.debug(list.at(refs, root))
 
   // binary
