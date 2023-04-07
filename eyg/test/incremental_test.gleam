@@ -2,8 +2,10 @@ import gleam/io
 import gleam/list
 import gleam/map.{Map}
 import gleam/option
+import gleam/result
 import gleam/set.{Set}
 import gleam/setx
+import gleam/javascript
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
@@ -120,60 +122,6 @@ pub fn unzip(tree, cursor, refs) {
   }
 }
 
-// fn do_w(env, exp, refs, cache) {
-//   let t = todo
-//   let #(s, t, cache) = case node {
-//     Let(label, v, t) -> {
-//       let #(s1, t1, cache) = w(env, v, refs, cache)
-//       let env1 = map.insert(env, label, t1)
-//       let #(s2, t2, cache) = w(env1, t, refs, cache)
-//       // TODO real s
-//       #(s2, t2, cache)
-//     }
-//     Var(x) -> {
-//       let assert Ok(t) = map.get(env, x)
-//       #(sub.none(), t, cache)
-//     }
-//     Integer(_) -> #(sub.none(), t.Integer, cache)
-
-//     _ -> todo("22w")
-//   }
-// }
-
-// // Need single map of substitutions, is this the efficient J algo?
-// // Free should be easy in bottom up order assume need value is already present
-// // probably not fast in edits to std lib. maybe with only part of record field it would be faster.
-// // but if async and cooperative then we can just manage without as needed.
-// // TODO have building type stuff happen at startup. try it out in browser
-// fn w(env, exp, refs, cache) {
-//   let assert Ok(#(node, free)) = list.at(refs, exp)
-//   // can always use small env
-//   let env = map.take(env, set.to_list(free))
-//   case map.get(cache, exp) {
-//     Ok(envs) ->
-//       case map.get(envs, env) {
-//         Ok(r) -> r
-//         _ -> do_w(env, exp, refs, cache)
-//       }
-//     _ -> do_w(env, exp, refs, cache)
-//   }
-//   let t = todo
-//   let cache =
-//     map.update(
-//       cache,
-//       exp,
-//       fn(previous) {
-//         let by_env = option.unwrap(previous, map.new())
-//         map.insert(by_env, map.take(env, set.to_list(free)), t)
-//       },
-//     )
-//   #(s, t, cache)
-// }
-
-pub fn w(env, exp, refs, cache) -> Nil {
-  todo
-}
-
 fn from_end(items, i) {
   list.at(items, list.length(items) - 1 - i)
 }
@@ -211,6 +159,79 @@ pub fn free(refs, previous) {
   do_free(list.drop(refs, list.length(previous)), list.reverse(previous))
 }
 
+// TODO incremental/source
+// TODO incremental/free
+// TODO incremental/cursor.{from_path, replace}
+
+// fn do_w(env, exp, refs, cache) {
+//   let t = todo
+//   let #(s, t, cache) = case node {
+//     Let(label, v, t) -> {
+//       let #(s1, t1, cache) = w(env, v, refs, cache)
+//       let env1 = map.insert(env, label, t1)
+//       let #(s2, t2, cache) = w(env1, t, refs, cache)
+//       // TODO real s
+//       #(s2, t2, cache)
+//     }
+//     Var(x) -> {
+//       let assert Ok(t) = map.get(env, x)
+//       #(sub.none(), t, cache)
+//     }
+//     Integer(_) -> #(sub.none(), t.Integer, cache)
+
+//     _ -> todo("22w")
+//   }
+// }
+
+// // Need single map of substitutions, is this the efficient J algo?
+// // Free should be easy in bottom up order assume need value is already present
+// // probably not fast in edits to std lib. maybe with only part of record field it would be faster.
+// // but if async and cooperative then we can just manage without as needed.
+// // TODO have building type stuff happen at startup. try it out in browser
+
+// TODO test calling the same node twice hits the cach
+
+fn cache_lookup(cache, ref, env) {
+  use envs <- result.then(map.get(cache, ref))
+  map.get(envs, env)
+}
+
+// frees can  be built lazily as a map
+// hash cache can exist for saving to file
+pub fn cached(ref: Int, source, frees, types, env, subs, count) {
+  let assert Ok(free) = list.at(frees, ref)
+  let required = map.take(env, set.to_list(free))
+  case cache_lookup(types, ref, required) {
+    Ok(t) -> #(t, subs, types)
+    Error(Nil) -> {
+      let assert Ok(node) = list.at(source, ref)
+      case node {
+        Let(x, value, then) -> {
+          let #(t1, subs, types) =
+            cached(value, source, frees, types, env, subs, count)
+          let scheme = unification.generalise(env, t1)
+          let env = map.insert(env, x, scheme)
+          cached(then, source, frees, types, env, subs, count)
+        }
+        Fn(x, body) -> {
+          let param = unification.fresh(count)
+          let env = map.insert(env, x, Scheme([], t.Unbound(param)))
+          let #(body, subs, types) =
+            cached(body, source, frees, types, env, subs, count)
+          let t = t.Fun(t.Unbound(param), t.Closed, body)
+          #(t, subs, types)
+        }
+        Integer(_) -> #(t.Integer, subs, types)
+        String(_) -> #(t.Binary, subs, types)
+        _ -> {
+          io.debug(node)
+          todo("other nodes")
+        }
+      }
+    }
+  }
+}
+
 pub fn two_test() {
   let tree =
     e.Let(
@@ -233,7 +254,15 @@ pub fn two_test() {
   let [point, ..] = cursor.0
   io.debug(list.at(refs, point))
 
-  // w(map.new(), root, refs, map.new())
+  cached(
+    root,
+    refs,
+    f,
+    map.new(),
+    env.empty(),
+    sub.none(),
+    javascript.make_reference(0),
+  )
   let #(root, refs) = unzip(e.Variable("x"), cursor, refs)
 
   io.debug(refs)
