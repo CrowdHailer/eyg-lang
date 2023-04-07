@@ -131,11 +131,23 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
         source.String(_) -> Ok(#(t.Binary, store))
         source.Tail -> Ok(#(t.tail(store.counter), store))
         source.Cons -> Ok(#(t.cons(store.counter), store))
-        other -> {
-          io.debug(other)
-          todo("type needed")
-        }
+        source.Vacant(_) ->
+          Ok(#(t.Unbound(unification.fresh(store.counter)), store))
+        source.Empty -> Ok(#(t.empty(), store))
+        source.Extend(label) -> Ok(#(t.extend(label, store.counter), store))
+        source.Select(label) -> Ok(#(t.select(label, store.counter), store))
+        source.Overwrite(label) ->
+          Ok(#(t.overwrite(label, store.counter), store))
+        source.Tag(label) -> Ok(#(t.tag(label, store.counter), store))
+        source.Case(label) -> Ok(#(t.case_(label, store.counter), store))
+        source.NoCases -> Ok(#(t.nocases(store.counter), store))
+        source.Perform(label) -> Ok(#(t.perform(label, store.counter), store))
+        source.Handle(label) -> Ok(#(t.handle(label, store.counter), store))
+        source.Builtin(_) ->
+          Ok(#(t.Unbound(unification.fresh(store.counter)), store))
       })
+      // TODO lookup builtins
+      // Ok(#(t.builtin(store.counter), store))
       let types = inference.cache_update(store.types, ref, required, t)
       let store = Store(..store, types: types)
       Ok(#(t, store))
