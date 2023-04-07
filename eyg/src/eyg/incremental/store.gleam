@@ -2,16 +2,31 @@ import gleam/map.{Map}
 import gleam/result
 import gleam/set.{Set}
 import gleam/setx
+import gleam/javascript
 // TODO source -> ref
+import eyg/analysis/typ as t
+import eyg/analysis/substitutions as sub
+import eyg/analysis/scheme.{Scheme}
+import eyg/analysis/unification
 import eyg/incremental/source
 import eyg/incremental/inference
 
 pub type Store {
-  Store(source: Map(Int, source.Expression), free: Map(Int, Set(String)))
+  Store(
+    source: Map(Int, source.Expression),
+    free: Map(Int, Set(String)),
+    types: Map(Int, Map(Map(String, Scheme), t.Term)),
+    counter: javascript.Reference(Int),
+  )
 }
 
 pub fn empty() {
-  Store(source: map.new(), free: map.new())
+  Store(
+    source: map.new(),
+    free: map.new(),
+    types: map.new(),
+    counter: javascript.make_reference(0),
+  )
 }
 
 pub fn load(store: Store, tree) {
@@ -54,56 +69,58 @@ pub fn free(store: Store, root) {
 }
 
 pub fn type_(store: Store, root) {
-  //   inference.cached(root, store.source, f, cache, env.empty(), s, count)
-  todo("do type")
+  do_type(map.new(), root, store)
 }
-// pub fn do_type(store: Store, ref) {
-//   let assert Ok(free) = list.at(frees, ref)
-//   let required = map.take(env, set.to_list(free))
-//   case cache_lookup(types, ref, required) {
-//     Ok(t) -> #(t, subs, types)
-//     Error(Nil) -> {
-//       let assert Ok(node) = list.at(source, ref)
-//       let #(t, subs, cache) = case node {
-//         source.Var(x) ->
-//           case map.get(env, x) {
-//             Ok(scheme) -> {
-//               let t = unification.instantiate(scheme, count)
-//               #(t, subs, types)
-//             }
-//             Error(Nil) -> todo("no var")
-//           }
-//         source.Let(x, value, then) -> {
-//           let #(t1, subs, types) =
-//             cached(value, source, frees, types, env, subs, count)
-//           let scheme = unification.generalise(env, t1)
-//           let env = map.insert(env, x, scheme)
-//           cached(then, source, frees, types, env, subs, count)
-//         }
-//         source.Fn(x, body) -> {
-//           let param = unification.fresh(count)
-//           let env = map.insert(env, x, Scheme([], t.Unbound(param)))
-//           let #(body, subs, types) =
-//             cached(body, source, frees, types, env, subs, count)
-//           let t = t.Fun(t.Unbound(param), t.Closed, body)
-//           #(t, subs, types)
-//         }
-//         source.Call(func, arg) -> {
-//           let ret = unification.fresh(count)
-//           let #(t1, s1, types) =
-//             cached(func, source, frees, types, env, subs, count)
-//           let #(t2, s2, types) =
-//             cached(arg, source, frees, types, env, subs, count)
-//           let s0 =
-//             unification.unify(t.Fun(t2, t.Closed, t.Unbound(ret)), t1, count)
-//           #(t.Unbound(ret), s1, types)
-//         }
-//         source.Integer(_) -> #(t.Integer, subs, types)
-//         source.String(_) -> #(t.Binary, subs, types)
-//         _ -> #(t.Unbound(unification.fresh(count)), subs, types)
-//       }
-//       let cache = cache_update(cache, ref, required, t)
-//       #(t, subs, cache)
-//     }
-//   }
-// }
+
+// Error only for invalid ref
+pub fn do_type(env, ref, store: Store) -> Result(_, _) {
+  use #(vars, store) <- result.then(free(store, ref))
+  let required = map.take(env, set.to_list(vars))
+  case inference.cache_lookup(store.types, ref, required) {
+    Ok(t) -> Ok(#(t, store))
+    Error(Nil) -> {
+      use node <- result.then(map.get(store.source, ref))
+      use #(t, store) <- result.then(case node {
+        source.Var(x) ->
+          case map.get(env, x) {
+            Ok(scheme) -> {
+              let t = unification.instantiate(scheme, store.counter)
+              Ok(#(t, store))
+            }
+            Error(Nil) -> todo("no var")
+          }
+        source.Let(x, value, then) -> {
+          use #(t1, store) <- result.then(do_type(env, value, store))
+          let scheme = unification.generalise(env, t1)
+          let env = map.insert(env, x, scheme)
+          do_type(env, then, store)
+        }
+        source.Fn(x, body) -> {
+          let param = unification.fresh(store.counter)
+          let env = map.insert(env, x, Scheme([], t.Unbound(param)))
+          use #(body, store) <- result.then(do_type(env, body, store))
+          let t = t.Fun(t.Unbound(param), t.Closed, body)
+          Ok(#(t, store))
+        }
+        source.Call(func, arg) -> {
+          let ret = unification.fresh(store.counter)
+          use #(t1, store) <- result.then(do_type(env, func, store))
+          use #(t2, store) <- result.then(do_type(env, arg, store))
+          let s0 =
+            unification.unify(
+              t.Fun(t2, t.Closed, t.Unbound(ret)),
+              t1,
+              store.counter,
+            )
+          Ok(#(t.Unbound(ret), store))
+        }
+        source.Integer(_) -> Ok(#(t.Integer, store))
+        source.String(_) -> Ok(#(t.Binary, store))
+        _ -> Ok(#(t.Unbound(unification.fresh(store.counter)), store))
+      })
+      let types = inference.cache_update(store.types, ref, required, t)
+      let store = Store(..store, types: types)
+      Ok(#(t, store))
+    }
+  }
+}

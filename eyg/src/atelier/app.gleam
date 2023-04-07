@@ -82,6 +82,18 @@ pub fn init(source) {
     vars,
   ))
 
+  let start = pnow()
+  let assert Ok(#(t, s)) = store.type_(s, root)
+  // TODO i think should be same size
+  io.debug(#(
+    "typing took ms:",
+    pnow() - start,
+    map.size(s.source),
+    map.size(s.free),
+    map.size(s.types),
+    t,
+  ))
+
   io.debug("------------------------")
 
   let start = pnow()
