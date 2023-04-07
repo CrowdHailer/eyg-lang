@@ -15,7 +15,13 @@ pub fn render(source, selection, inferred: Option(inference.Infered)) {
   let loc = Location([], Some(selection))
   pre(
     [style([#("cursor", "pointer")]), class("w-full max-w-6xl")],
-    do_render(source, "\n", loc, inferred),
+    [
+      text(
+        list.map(selection, int.to_string)
+        |> string.join(","),
+      ),
+      ..do_render(source, "\n", loc, inferred)
+    ],
   )
 }
 

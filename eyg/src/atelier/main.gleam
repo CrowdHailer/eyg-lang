@@ -1,3 +1,4 @@
+import gleam/io
 import lustre
 import lustre/cmd
 import atelier/app
@@ -15,6 +16,7 @@ pub fn main(source) {
     lustre.application(#(app.init(source), cmd.none()), app.update, root.render)
     |> lustre.start("#app")
 
+  io.debug(dispatch)
   listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
 }
 

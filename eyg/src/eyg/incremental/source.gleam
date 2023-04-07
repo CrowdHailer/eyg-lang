@@ -25,9 +25,7 @@ pub type Expression {
 
 pub fn do_from_tree(tree, acc) {
   case tree {
-    e.Variable(label) -> {
-      #(Var(label), acc)
-    }
+    e.Variable(label) -> #(Var(label), acc)
     e.Lambda(label, body) -> {
       let #(node, acc) = do_from_tree(body, acc)
       let index = list.length(acc)

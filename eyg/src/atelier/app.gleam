@@ -18,6 +18,7 @@ import eyg/analysis/inference
 import eyg/runtime/standard
 import eyg/incremental/source as incremental
 import eyg/incremental/inference as new_i
+import eyg/incremental/cursor
 import eyg/analysis/substitutions as sub
 import eyg/analysis/env
 
@@ -60,9 +61,6 @@ pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
   let start = pnow()
-  let inferred = Some(standard.infer(source))
-  io.debug(#("standard infer took ms:", pnow() - start))
-  let start = pnow()
   let #(root, refs) = incremental.from_tree(source)
   io.debug(#("building incremental took ms:", pnow() - start, list.length(refs)))
 
@@ -73,7 +71,28 @@ pub fn init(source) {
   let start = pnow()
   let #(t, s, cache) =
     new_i.cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
-  io.debug(#("finding free took ms:", pnow() - start))
+  io.debug(#("initial type check took ms:", pnow() - start))
+  let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+  let start = pnow()
+  let c = cursor.at(path, root, refs)
+  io.debug(#("building cursor took ms:", pnow() - start))
+  io.debug(c)
+
+  let start = pnow()
+  let #(x, refs) = cursor.replace(e.Binary("hello"), c, refs)
+  io.debug(#("replacing at cursor took ms:", pnow() - start))
+  io.debug(x)
+
+  let start = pnow()
+  let f2 = new_i.free(refs, f)
+  io.debug(#("f2 took ms:", pnow() - start))
+  let #(t, s, cache) = new_i.cached(root, refs, f, cache, env.empty(), s, count)
+  io.debug(#("partial type check took ms:", pnow() - start))
+
+  let start = pnow()
+  let inferred = Some(standard.infer(source))
+  io.debug(#("standard infer took ms:", pnow() - start))
+
   // Have inference work once for showing elements but need to also background this
   WorkSpace([], source, inferred, mode, None, None, #([], []), #(s, cache))
 }

@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import eygir/expression as e
 import eyg/incremental/source.{Call, Fn, Let}
@@ -7,6 +8,12 @@ fn zip_match(node, path_element) {
     Let(_, index, _), 0 -> index
     Let(_, _, index), 1 -> index
     Fn(_, index), 0 -> index
+    Call(index, _), 0 -> index
+    Call(_, index), 1 -> index
+    _, _ -> {
+      io.debug(#(node, path_element))
+      todo("no_zip_match")
+    }
   }
 }
 

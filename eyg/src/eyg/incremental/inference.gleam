@@ -99,7 +99,7 @@ pub fn cached(
     Error(Nil) -> {
       let assert Ok(node) = list.at(source, ref)
       let #(t, subs, cache) = case node {
-        source.Var(x) -> {
+        source.Var(x) ->
           case map.get(env, x) {
             Ok(scheme) -> {
               let t = unification.instantiate(scheme, count)
@@ -107,7 +107,6 @@ pub fn cached(
             }
             Error(Nil) -> todo("no var")
           }
-        }
         source.Let(x, value, then) -> {
           let #(t1, subs, types) =
             cached(value, source, frees, types, env, subs, count)

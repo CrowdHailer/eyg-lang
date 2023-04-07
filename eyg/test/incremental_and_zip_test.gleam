@@ -47,12 +47,8 @@ fn do_tree_to_ref(
       let free = set.union(free_v, set.delete(free_t, label))
       #(Let(label, value_index, then_index), free, acc)
     }
-    e.Binary(value) -> {
-      #(String(value), set.new(), acc)
-    }
-    e.Integer(value) -> {
-      #(Integer(value), set.new(), acc)
-    }
+    e.Binary(value) -> #(String(value), set.new(), acc)
+    e.Integer(value) -> #(Integer(value), set.new(), acc)
     _ -> todo("rest of ref")
   }
 }
