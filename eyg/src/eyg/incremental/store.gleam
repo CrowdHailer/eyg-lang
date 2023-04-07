@@ -122,7 +122,11 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
           let store = case unified {
             Ok(s) ->
               Store(..store, substitutions: sub.compose(store.substitutions, s))
-            Error(_reason) -> todo("unifiy failed")
+            Error(_reason) -> {
+              io.debug("unifiy failed")
+              // TODO handle failure
+              store
+            }
           }
 
           Ok(#(t.Unbound(ret), store))
