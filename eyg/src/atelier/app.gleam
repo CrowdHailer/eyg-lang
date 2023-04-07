@@ -103,11 +103,20 @@ pub fn init(source) {
   io.debug(map.get(s.free, 0))
   io.debug(map.get(s.free, 1))
 
+  io.debug("====================")
+  // Not all in a line
+
+  let at = map.size(s.source) - map.size(s.free)
+  io.debug(#(map.get(s.free, at - 100), at - 100))
+  io.debug(#(map.get(s.free, at), at))
+  io.debug(#(map.get(s.free, at + 1), at + 1))
+  io.debug("====================")
+
   // io.debug(#("free--", map.get(s.free, 5757)))
   io.debug(list.length(map.to_list(s.source)))
 
   io.debug(list.length(map.to_list(s.free)))
-  // todo("wat")
+  todo("wat")
 
   let start = pnow()
   let assert Ok(#(t, s)) = store.type_(s, root)
