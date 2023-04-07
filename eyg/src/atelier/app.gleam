@@ -5,6 +5,7 @@ import gleam/int
 import gleam/list
 import gleam/map
 import gleam/option.{None, Option, Some}
+import gleam/set
 import gleam/string
 import gleam/fetch
 import gleam/http
@@ -62,6 +63,7 @@ pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
 
+  let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
   let start = pnow()
   let #(root, s) = store.load(store.empty(), source)
   io.debug(#(
@@ -79,11 +81,37 @@ pub fn init(source) {
     pnow() - start,
     map.size(s.source),
     map.size(s.free),
-    vars,
+    vars
+    |> set.to_list,
   ))
 
   let start = pnow()
   let assert Ok(#(t, s)) = store.type_(s, root)
+  // TODO i think should be same size
+  io.debug(#(
+    "typing took ms:",
+    pnow() - start,
+    map.size(s.source),
+    map.size(s.free),
+    map.size(s.types),
+    t,
+  ))
+
+  let start = pnow()
+  let assert Ok(c) = store.cursor(s, root, path)
+  io.debug(#("building store.cursor took ms:", pnow() - start))
+  // io.debug(c)
+  let start = pnow()
+  let assert Ok(#(root_, s)) = store.replace(s, c, incremental.String("hello"))
+  io.debug(#(
+    "updating store.replace took ms:",
+    pnow() - start,
+    map.size(s.source),
+    map.size(s.free),
+    map.size(s.types),
+  ))
+  let start = pnow()
+  let assert Ok(#(t, s)) = store.type_(s, root_)
   // TODO i think should be same size
   io.debug(#(
     "typing took ms:",
@@ -122,7 +150,6 @@ pub fn init(source) {
     new_i.cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
   io.debug(#("initial type check took ms:", pnow() - start))
 
-  let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
   let start = pnow()
   let c = cursor.at(path, root, refs)
   io.debug(#("building cursor took ms:", pnow() - start))

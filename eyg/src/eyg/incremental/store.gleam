@@ -89,15 +89,7 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
       use node <- result.then(map.get(store.source, ref))
       use #(t, store) <- result.then(case node {
         source.Var(x) -> {
-          io.debug(#(
-            env
-            |> map.to_list,
-            x,
-          ))
-          case
-            map.get(env, x)
-            |> io.debug
-          {
+          case map.get(env, x) {
             Ok(scheme) -> {
               let t = unification.instantiate(scheme, store.counter)
               Ok(#(t, store))
@@ -128,7 +120,6 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
               t1,
               store.counter,
             )
-          io.debug(unified)
           let store = case unified {
             Ok(s) ->
               Store(..store, substitutions: sub.compose(store.substitutions, s))
