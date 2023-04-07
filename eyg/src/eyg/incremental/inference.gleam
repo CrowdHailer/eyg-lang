@@ -93,13 +93,13 @@ pub fn free_map(refs, previous) {
 
 // TODO test calling the same node twice hits the cach
 
-fn cache_lookup(cache, ref, env) {
+pub fn cache_lookup(cache, ref, env) {
   use envs <- result.then(map.get(cache, ref))
 
   map.get(envs, env)
 }
 
-fn cache_update(cache, ref, env, t) {
+pub fn cache_update(cache, ref, env, t) {
   map.update(
     cache,
     ref,

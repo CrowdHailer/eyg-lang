@@ -71,3 +71,33 @@ pub fn replace(tree, cursor, refs) {
       do_replace(old, new, list.append(zoom, [root]), rev)
   }
 }
+// fn do_replace_map(old, new, zoom, rev) {
+//   case zoom {
+//     [] -> #(new, list.reverse(rev))
+//     [next, ..zoom] -> {
+//       let assert Ok(node) = list.at(list.reverse(rev), next)
+//       let exp = case node {
+//         Let(label, value, then) if value == old -> Let(label, new, then)
+//         Let(label, value, then) if then == old -> Let(label, value, new)
+//         Fn(param, body) if body == old -> Fn(param, new)
+//         Call(func, arg) if func == old -> Call(new, arg)
+//         Call(func, arg) if arg == old -> Call(func, new)
+//         _ -> todo("Can't have a path into literal")
+//       }
+//       let new = list.length(rev)
+//       let rev = [exp, ..rev]
+//       do_replace_map(next, new, zoom, rev)
+//     }
+//   }
+// }
+
+// pub fn replace_map(tree, cursor, refs) {
+//   let #(exp, acc) = source.do_from_tree(tree, list.reverse(refs))
+//   let new = list.length(acc)
+//   let rev = [exp, ..acc]
+//   case cursor {
+//     #([], old) -> do_replace_map(old, new, [], rev)
+//     #([old, ..zoom], root) ->
+//       do_replace_map(old, new, list.append(zoom, [root]), rev)
+//   }
+// }

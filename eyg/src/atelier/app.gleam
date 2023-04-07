@@ -19,6 +19,7 @@ import eyg/runtime/standard
 import eyg/incremental/source as incremental
 import eyg/incremental/inference as new_i
 import eyg/incremental/cursor
+import eyg/incremental/store
 import eyg/analysis/substitutions as sub
 import eyg/analysis/env
 
@@ -60,21 +61,53 @@ external fn pnow() -> Int =
 pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
+
+  let start = pnow()
+  let #(root, s) = store.load(store.empty(), source)
+  io.debug(#(
+    "loading store took ms:",
+    pnow() - start,
+    map.size(s.source),
+    map.size(s.free),
+  ))
+
+  let start = pnow()
+  let assert Ok(#(vars, s)) = store.free(s, root)
+  // TODO i think should be same size
+  io.debug(#(
+    "memoizing free took ms:",
+    pnow() - start,
+    map.size(s.source),
+    map.size(s.free),
+    vars,
+  ))
+
+  io.debug("------------------------")
+
   let start = pnow()
   let #(root, refs) = incremental.from_tree(source)
   io.debug(#("building incremental took ms:", pnow() - start, list.length(refs)))
+  let start = pnow()
+  let #(root, refs_map) = incremental.from_tree_map(source)
+  io.debug(#(
+    "building incremental map took ms:",
+    pnow() - start,
+    map.size(refs_map),
+  ))
 
   let start = pnow()
   let f = new_i.free(refs, [])
   io.debug(#("finding free took ms:", pnow() - start))
-  let count = javascript.make_reference(0)
   let start = pnow()
   let fm = new_i.free_map(refs, map.new())
   io.debug(#("finding free took ms:", pnow() - start))
+
+  let count = javascript.make_reference(0)
   let start = pnow()
   let #(t, s, cache) =
     new_i.cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
   io.debug(#("initial type check took ms:", pnow() - start))
+
   let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
   let start = pnow()
   let c = cursor.at(path, root, refs)
@@ -82,9 +115,20 @@ pub fn init(source) {
   io.debug(c)
 
   let start = pnow()
+  let refs_map =
+    list.index_map(refs, fn(i, r) { #(i, r) })
+    |> map.from_list()
+  io.debug(#("list to map took ms:", pnow() - start))
+
+  let start = pnow()
   let #(x, refs) = cursor.replace(e.Binary("hello"), c, refs)
   io.debug(#("replacing at cursor took ms:", pnow() - start))
   io.debug(x)
+
+  //   let start = pnow()
+  // let #(x, refs) = cursor.replace_map(e.Binary("hello"), c, refs_map)
+  // io.debug(#("replacing at cursor took ms:", pnow() - start))
+  // io.debug(x)
 
   let start = pnow()
   let f2 = new_i.free(refs, f)
