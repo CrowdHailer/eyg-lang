@@ -153,13 +153,20 @@ pub fn cached(
         }
         source.Call(func, arg) -> {
           let ret = unification.fresh(count)
-          let #(t1, s1, types) =
+          let #(t1, subs, types) =
             cached(func, source, frees, types, env, subs, count)
-          let #(t2, s2, types) =
+          let #(t2, subs, types) =
             cached(arg, source, frees, types, env, subs, count)
-          let s0 =
+          let subs = case
             unification.unify(t.Fun(t2, t.Closed, t.Unbound(ret)), t1, count)
-          #(t.Unbound(ret), s1, types)
+          {
+            Ok(su) -> sub.compose(subs, su)
+            Error(reason) -> {
+              io.debug(reason)
+              subs
+            }
+          }
+          #(t.Unbound(ret), subs, types)
         }
         source.Integer(_) -> #(t.Integer, subs, types)
         source.String(_) -> #(t.Binary, subs, types)
