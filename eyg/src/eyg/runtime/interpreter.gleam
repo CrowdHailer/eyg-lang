@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
@@ -36,9 +35,10 @@ pub fn run(source, env, term, extrinsic) {
     Value(term) -> Ok(term)
     Abort(failure) -> Error(failure)
     Effect(label, lifted, _) -> Error(UnhandledEffect(label, lifted))
-    Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
+    Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
+    // other runtime errors return error, maybe this should be the same
     Async(_, _) ->
-      todo("cannot return async value some sync run. This effect would not be allowed by type system")
+      panic("cannot return async value some sync run. This effect would not be allowed by type system")
   }
 }
 
@@ -67,7 +67,7 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     Abort(failure) -> promise.resolve(Error(failure))
     Effect(label, lifted, _) ->
       promise.resolve(Error(UnhandledEffect(label, lifted)))
-    Cont(_, _) -> todo("should have evaluated and not be a Cont at all")
+    Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     Async(p, k) ->
       promise.await(
         p,

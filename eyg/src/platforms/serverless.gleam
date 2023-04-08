@@ -2,21 +2,18 @@ import gleam/io
 import plinth/nodejs/fs
 import gleam/javascript/promise.{Promise}
 import eygir/expression as e
-import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import eyg/analysis/inference
 import harness/stdlib
 import harness/effect
 import gleam/javascript
 import eygir/decode
-import eyg/runtime/standard
 
 pub fn run(source, _) {
   let store = javascript.make_reference(source)
-  let #(types, _values) = stdlib.lib()
+  // let #(types, _values) = stdlib.lib()
 
   // prog is new on every request could store eval'd in store
-  let prog = e.Apply(e.Select("web"), javascript.dereference(store))
+  // let prog = e.Apply(e.Select("web"), javascript.dereference(store))
 
   // let inferred = inference.infer(types, prog, standard.web(), t.Closed)
   // Inference is just handled on page load

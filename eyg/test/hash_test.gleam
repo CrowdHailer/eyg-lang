@@ -25,7 +25,7 @@ pub fn linear(source) {
       linear(then):bit_string,
     >>
     e.Integer(value) -> <<5, value:32>>
-    _ -> todo
+    _ -> panic
   }
 }
 
@@ -56,23 +56,23 @@ pub fn decode(bytes) {
     <<5, value:32, rest:binary>> -> Ok(#(e.Integer(value), rest))
     _ -> {
       io.debug(bytes)
-      todo("some bytes")
+      panic("some bytes")
     }
   }
 }
 
-external fn log(a) -> Nil =
+pub external fn log(a) -> Nil =
   "" "console.log"
 
 // hash and digest
 external fn hash(BitString) -> String =
   "./node_ffi.js" "hash"
 
-fn gather_hash(source) {
+pub fn gather_hash(source) {
   case source {
     <<1, x, rest:binary>> -> {
       use part <- result.then(bit_string.slice(rest, 0, x))
-      Ok(log(hash(<<1, x, part:bit_string>>)))
+      Ok(hash(<<1, x, part:bit_string>>))
     }
 
     // TODO need a pop function that doesn't turn to string, i.e.utf16 on JS
@@ -82,7 +82,8 @@ fn gather_hash(source) {
       use #(value, rest) <- result.then(decode(rest))
       use #(then, rest) <- result.then(decode(rest))
       Ok(#(e.Let(label, value, then), rest))
-      todo
+      |> io.debug
+      panic("not done")
     }
   }
   //   Ok(#(e.Variable(label), rest))
@@ -108,6 +109,6 @@ pub fn round_trip_test() -> Nil {
   |> should.equal(Ok(#(tree, <<>>)))
 
   //   gather_hash(<<1, 1, "ab":utf8>>)
-  gather_hash(source)
-  todo
+  // gather_hash(source)
+  // TODO not really useful
 }

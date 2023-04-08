@@ -1,22 +1,16 @@
 import gleam/io
 import gleam/list
-import gleam/map.{Map}
+import gleam/map
 import gleam/option
 import gleam/result
-import gleam/set.{Set}
+import gleam/set
 import gleam/setx
-import gleam/javascript
-import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
 import eyg/analysis/scheme.{Scheme}
-import eyg/analysis/env
 import eyg/analysis/unification
 import eyg/incremental/source
-import eyg/incremental/cursor
 
-pub type Cache =
-  #(sub.Substitutions, Map(Int, Map(Map(String, Scheme), t.Term)))
 
 fn from_end(items, i) {
   list.at(items, list.length(items) - 1 - i)
@@ -134,7 +128,7 @@ pub fn cached(
               let t = unification.instantiate(scheme, count)
               #(t, subs, types)
             }
-            Error(Nil) -> todo("no var")
+            Error(Nil) -> panic("no var in env need to add errors but return normal type")
           }
         source.Let(x, value, then) -> {
           let #(t1, subs, types) =

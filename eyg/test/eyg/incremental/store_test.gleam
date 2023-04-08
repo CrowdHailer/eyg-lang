@@ -69,7 +69,7 @@ pub fn function_unification_test() {
   should.equal(map.size(s.free), 9)
   should.equal(map.size(s.types), 9)
 
-  todo("not here because type_ doesn't work to just reach in")
+  panic("not here because type_ doesn't work to just reach in")
   // hash of type or id includes free
   // TODO need type in tree, and errors
 
@@ -115,8 +115,8 @@ pub fn let_test() {
   should.equal(root, 10)
   should.equal(map.size(s.source), 11)
 
-  let assert Ok(#(t, s, _)) = store.free(s, root, [])
-  // should.equal(t, t.Integer)
+  let assert Ok(#(f, s, _)) = store.free(s, root, [])
+  should.equal(f, set.new())
   should.equal(map.size(s.free), 11)
   // Where is it going wrong
   should.equal(map.size(s.types), 0)

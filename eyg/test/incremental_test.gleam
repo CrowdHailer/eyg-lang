@@ -1,17 +1,11 @@
 import gleam/io
 import gleam/list
-import gleam/map.{Map}
-import gleam/option
-import gleam/result
-import gleam/set.{Set}
-import gleam/setx
+import gleam/map
+import gleam/set
 import gleam/javascript
 import eygir/expression as e
-import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
-import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/env
-import eyg/analysis/unification
 import eyg/incremental/source
 import eyg/incremental/cursor
 import eyg/incremental/inference
@@ -62,12 +56,10 @@ pub fn two_test() {
 
   let #(t2, subs, cache) =
     inference.cached(root, refs, f2, cache, env.empty(), subs, count)
-  io.debug(t2)
+  io.debug(#(t2, subs, cache))
 }
 
 // TODO printing map in node
 // TODO binary-size in JS match
 
-pub fn all_test() {
-  todo
-}
+

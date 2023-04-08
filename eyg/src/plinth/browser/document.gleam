@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/dynamic.{Dynamic}
 import gleam/option.{Option}
 

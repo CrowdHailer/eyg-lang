@@ -13,7 +13,7 @@ pub fn zip_match(node, path_element) {
     Call(_, index), 1 -> index
     _, _ -> {
       io.debug(#(node, path_element))
-      todo("no_zip_match")
+      panic("no_zip_match")
     }
   }
 }
@@ -77,7 +77,7 @@ fn do_replace(old, new, zoom, rev) {
         Fn(param, body) if body == old -> Fn(param, new)
         Call(func, arg) if func == old -> Call(new, arg)
         Call(func, arg) if arg == old -> Call(func, new)
-        _ -> todo("Can't have a path into literal")
+        _ -> panic("Can't have a path into literal so invalid path, TODO make return error, cursor is invalid")
       }
       let new = list.length(rev)
       let rev = [exp, ..rev]

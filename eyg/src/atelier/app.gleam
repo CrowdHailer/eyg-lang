@@ -5,24 +5,17 @@ import gleam/int
 import gleam/list
 import gleam/map
 import gleam/option.{None, Option, Some}
-import gleam/set
 import gleam/string
 import gleam/fetch
 import gleam/http
 import gleam/http/request
-import gleam/javascript
 import lustre/cmd
 import atelier/transform.{Act}
 import eygir/expression as e
 import eygir/encode
 import eyg/analysis/inference
 import eyg/runtime/standard
-import eyg/incremental/source as incremental
-import eyg/incremental/inference as new_i
-import eyg/incremental/cursor
 import eyg/incremental/store
-import eyg/analysis/substitutions as sub
-import eyg/analysis/env
 
 pub type WorkSpace {
   WorkSpace(
@@ -36,7 +29,6 @@ pub type WorkSpace {
       List(#(e.Expression, List(Int))),
       List(#(e.Expression, List(Int))),
     ),
-    incremental: new_i.Cache,
   )
 }
 
@@ -63,7 +55,7 @@ pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
 
-  let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+  // let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
   let start = pnow()
   let #(root, s) = store.load(store.empty(), source)
   io.debug(#(
@@ -74,151 +66,153 @@ pub fn init(source) {
     map.size(s.free),
   ))
 
-  let start = pnow()
-  let assert Ok(#(vars, s, x)) = store.free(s, root, [])
-  // OK map works
-  io.debug(#("othr", list.length(x)))
-  // TODO i think should be same size
-  io.debug(#(
-    "memoizing free took ms:",
-    pnow() - start,
-    map.size(s.source),
-    map.size(s.free),
-    vars
-    |> set.to_list,
-  ))
-  io.debug(map.get(s.source, root))
-  io.debug(map.get(s.source, root - 1))
-  io.debug(map.get(s.source, root - 2))
-  io.debug(map.get(s.source, root - 3))
-  io.debug(map.get(s.source, root - 4))
-  io.debug(map.get(s.source, 0))
-  io.debug(map.get(s.source, 1))
+  // let start = pnow()
+  // let assert Ok(#(vars, s, x)) = store.free(s, root, [])
+  // // OK map works
+  // io.debug(#("othr", list.length(x)))
+  // // TODO i think should be same size
+  // io.debug(#(
+  //   "memoizing free took ms:",
+  //   pnow() - start,
+  //   map.size(s.source),
+  //   map.size(s.free),
+  //   vars
+  //   |> set.to_list,
+  // ))
+  // io.debug(map.get(s.source, root))
+  // io.debug(map.get(s.source, root - 1))
+  // io.debug(map.get(s.source, root - 2))
+  // io.debug(map.get(s.source, root - 3))
+  // io.debug(map.get(s.source, root - 4))
+  // io.debug(map.get(s.source, 0))
+  // io.debug(map.get(s.source, 1))
 
-  io.debug(map.get(s.free, root))
-  io.debug(map.get(s.free, root - 1))
-  io.debug(map.get(s.free, root - 2))
-  io.debug(map.get(s.free, root - 3))
-  io.debug(map.get(s.free, root - 4))
-  io.debug(map.get(s.free, 0))
-  io.debug(map.get(s.free, 1))
+  // io.debug(map.get(s.free, root))
+  // io.debug(map.get(s.free, root - 1))
+  // io.debug(map.get(s.free, root - 2))
+  // io.debug(map.get(s.free, root - 3))
+  // io.debug(map.get(s.free, root - 4))
+  // io.debug(map.get(s.free, 0))
+  // io.debug(map.get(s.free, 1))
 
-  io.debug("====================")
-  // Not all in a line
+  // io.debug("====================")
+  // // Not all in a line
 
-  let at = map.size(s.source) - map.size(s.free)
-  io.debug(#(map.get(s.free, at - 100), at - 100))
-  io.debug(#(map.get(s.free, at), at))
-  io.debug(#(map.get(s.free, at + 1), at + 1))
-  io.debug("====================")
+  // let at = map.size(s.source) - map.size(s.free)
+  // io.debug(#(map.get(s.free, at - 100), at - 100))
+  // io.debug(#(map.get(s.free, at), at))
+  // io.debug(#(map.get(s.free, at + 1), at + 1))
+  // io.debug("====================")
 
-  // io.debug(#("free--", map.get(s.free, 5757)))
-  io.debug(list.length(map.to_list(s.source)))
+  // // io.debug(#("free--", map.get(s.free, 5757)))
+  // io.debug(list.length(map.to_list(s.source)))
 
-  io.debug(list.length(map.to_list(s.free)))
-  todo("wat")
+  // io.debug(list.length(map.to_list(s.free)))
+  // todo("wat")
 
-  let start = pnow()
-  let assert Ok(#(t, s)) = store.type_(s, root)
-  // TODO i think should be same size
-  io.debug(#(
-    "typing took ms:",
-    pnow() - start,
-    map.size(s.source),
-    map.size(s.free),
-    map.size(s.types),
-    t,
-  ))
+  // let start = pnow()
+  // let assert Ok(#(t, s)) = store.type_(s, root)
+  // // TODO i think should be same size
+  // io.debug(#(
+  //   "typing took ms:",
+  //   pnow() - start,
+  //   map.size(s.source),
+  //   map.size(s.free),
+  //   map.size(s.types),
+  //   t,
+  // ))
 
-  let start = pnow()
-  let assert Ok(c) = store.cursor(s, root, path)
-  io.debug(#("building store.cursor took ms:", pnow() - start))
-  // io.debug(c)
-  let start = pnow()
-  let assert Ok(#(root_, s)) = store.replace(s, c, incremental.String("hello"))
-  io.debug(#(
-    "updating store.replace took ms:",
-    pnow() - start,
-    map.size(s.source),
-    map.size(s.free),
-    map.size(s.types),
-  ))
-  let start = pnow()
-  let assert Ok(#(t, s)) = store.type_(s, root_)
-  // TODO i think should be same size
-  io.debug(#(
-    "typing took ms:",
-    pnow() - start,
-    map.size(s.source),
-    map.size(s.free),
-    map.size(s.types),
-    t,
-  ))
+  // let start = pnow()
+  // let assert Ok(c) = store.cursor(s, root, path)
+  // io.debug(#("building store.cursor took ms:", pnow() - start))
+  // // io.debug(c)
+  // let start = pnow()
+  // let assert Ok(#(root_, s)) = store.replace(s, c, incremental.String("hello"))
+  // io.debug(#(
+  //   "updating store.replace took ms:",
+  //   pnow() - start,
+  //   map.size(s.source),
+  //   map.size(s.free),
+  //   map.size(s.types),
+  // ))
+  // let start = pnow()
+  // let assert Ok(#(t, s)) = store.type_(s, root_)
+  // // TODO i think should be same size
+  // io.debug(#(
+  //   "typing took ms:",
+  //   pnow() - start,
+  //   map.size(s.source),
+  //   map.size(s.free),
+  //   map.size(s.types),
+  //   t,
+  // ))
 
   // not helpful
   // list.map(map.to_list(s.types), io.debug)
   io.debug("------------------------")
 
-  let start = pnow()
-  let #(root, refs) = incremental.from_tree(source)
-  io.debug(#("building incremental took ms:", pnow() - start, list.length(refs)))
-  let start = pnow()
-  let #(root, refs_map) = incremental.from_tree_map(source)
-  io.debug(#(
-    "building incremental map took ms:",
-    pnow() - start,
-    map.size(refs_map),
-  ))
+  // let start = pnow()
+  // let #(root, refs) = incremental.from_tree(source)
+  // io.debug(#("building incremental took ms:", pnow() - start, list.length(refs)))
+  // let start = pnow()
+  // let #(root, refs_map) = incremental.from_tree_map(source)
+  // io.debug(#(
+  //   "building incremental map took ms:",
+  //   pnow() - start,
+  //   map.size(refs_map),
+  // ))
 
-  let start = pnow()
-  let f = new_i.free(refs, [])
-  io.debug(#("finding free took ms:", pnow() - start))
-  let start = pnow()
-  let fm = new_i.free_map(refs, map.new())
-  io.debug(#("finding free took ms:", pnow() - start))
+  // let start = pnow()
+  // let f = new_i.free(refs, [])
+  // io.debug(#("finding free took ms:", pnow() - start))
+  // let start = pnow()
+  // let fm = new_i.free_map(refs, map.new())
+  // io.debug(#("finding free took ms:", pnow() - start))
 
-  let count = javascript.make_reference(0)
-  let start = pnow()
-  let #(t, s, cache) =
-    new_i.cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
-  io.debug(#("initial type check took ms:", pnow() - start))
+  // let count = javascript.make_reference(0)
+  // let start = pnow()
+  // let #(t, s, cache) =
+  //   new_i.cached(root, refs, f, map.new(), env.empty(), sub.none(), count)
+  // io.debug(#("initial type check took ms:", pnow() - start))
 
-  let start = pnow()
-  let c = cursor.at(path, root, refs)
-  io.debug(#("building cursor took ms:", pnow() - start))
-  io.debug(c)
+  // let start = pnow()
+  // let c = cursor.at(path, root, refs)
+  // io.debug(#("building cursor took ms:", pnow() - start))
+  // io.debug(c)
 
-  let start = pnow()
-  let refs_map =
-    list.index_map(refs, fn(i, r) { #(i, r) })
-    |> map.from_list()
-  io.debug(#("list to map took ms:", pnow() - start))
+  // let start = pnow()
+  // let refs_map =
+  //   list.index_map(refs, fn(i, r) { #(i, r) })
+  //   |> map.from_list()
+  // io.debug(#("list to map took ms:", pnow() - start))
 
-  let start = pnow()
-  let #(x, refs) = cursor.replace(e.Binary("hello"), c, refs)
-  io.debug(#("replacing at cursor took ms:", pnow() - start))
-  io.debug(x)
+  // let start = pnow()
+  // let #(x, refs) = cursor.replace(e.Binary("hello"), c, refs)
+  // io.debug(#("replacing at cursor took ms:", pnow() - start))
+  // io.debug(x)
 
   //   let start = pnow()
   // let #(x, refs) = cursor.replace_map(e.Binary("hello"), c, refs_map)
   // io.debug(#("replacing at cursor took ms:", pnow() - start))
   // io.debug(x)
 
-  let start = pnow()
-  let f2 = new_i.free(refs, f)
-  io.debug(#("f2 took ms:", pnow() - start))
-  let #(t, s, cache) = new_i.cached(root, refs, f, cache, env.empty(), s, count)
-  io.debug(#("partial type check took ms:", pnow() - start))
-  let start = pnow()
-  let fm2 = new_i.free_map(refs, fm)
-  io.debug(#("finding fm2 took ms:", pnow() - start))
+  // let start = pnow()
+  // let f2 = new_i.free(refs, f)
+  // io.debug(#("f2 took ms:", pnow() - start))
+  
+
+  // let #(t, s, cache) = new_i.cached(root, refs, f, cache, env.empty(), s, count)
+  // io.debug(#("partial type check took ms:", pnow() - start))
+  // let start = pnow()
+  // let fm2 = new_i.free_map(refs, fm)
+  // io.debug(#("finding fm2 took ms:", pnow() - start))
 
   let start = pnow()
   let inferred = Some(standard.infer(source))
   io.debug(#("standard infer took ms:", pnow() - start))
 
   // Have inference work once for showing elements but need to also background this
-  WorkSpace([], source, inferred, mode, None, None, #([], []), #(s, cache))
+  WorkSpace([], source, inferred, mode, None, None, #([], []))
 }
 
 pub fn update(state: WorkSpace, action) {

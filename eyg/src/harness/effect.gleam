@@ -3,7 +3,6 @@ import gleam/map
 import gleam/fetch
 import gleam/http.{Get}
 import gleam/http/request
-import gleam/http/response
 import gleam/javascript/promise.{try_await}
 import eyg/analysis/typ as t
 import plinth/browser/window
@@ -52,13 +51,21 @@ pub fn http() {
     t.unit,
     fn(request, k) {
       use method <- cast.field("method", cast.any, request)
+      io.debug(method)
       use scheme <- cast.field("scheme", cast.any, request)
+      io.debug(scheme)
       use host <- cast.field("host", cast.string, request)
+      io.debug(host)
       use port <- cast.field("port", cast.any, request)
+      io.debug(port)
       use path <- cast.field("path", cast.string, request)
+      io.debug(path)
       use query <- cast.field("query", cast.any, request)
+      io.debug(query)
       use headers <- cast.field("headers", cast.any, request)
+      io.debug(headers)
       use body <- cast.field("body", cast.any, request)
+      io.debug(body)
 
       let request =
         request.new()

@@ -4,10 +4,9 @@ import plinth/nodejs
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import eyg/analysis/inference
 import harness/stdlib
 import harness/effect
-import gleam/javascript/promise.{Promise}
+import gleam/javascript/promise
 
 fn handlers() {
   effect.init()
@@ -22,9 +21,9 @@ pub fn typ() {
 }
 
 pub fn run(source, args) {
-  let #(types, _values) = stdlib.lib()
+  // let #(types, _values) = stdlib.lib()
   let prog = e.Apply(e.Select("cli"), source)
-  let hrstart = nodejs.start()
+  // let hrstart = nodejs.start()
 
   use code <- // let inferred = inference.infer(types, prog, typ(), t.Closed)
   // let hrend = nodejs.duration(hrstart)

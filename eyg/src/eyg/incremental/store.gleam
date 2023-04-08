@@ -88,7 +88,7 @@ pub fn free(
       case after - before {
         0 -> {
           io.debug(#(node, before, root))
-          todo("this shouldn't happen")
+          panic("this shouldn't happen as adding a new item should always make the map bigger")
           // and it doesn't
           Nil
         }
@@ -120,7 +120,7 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
               let t = unification.instantiate(scheme, store.counter)
               Ok(#(t, store))
             }
-            Error(Nil) -> todo("no var in env")
+            Error(Nil) -> panic("no var in env, this should return an ok value from do_type function but needs to add an error to the list type info")
           }
         }
         source.Let(x, value, then) -> {
@@ -203,7 +203,7 @@ fn do_replace(old_id, new_id, zoom, store: Store) {
         source.Fn(param, body) if body == old_id -> source.Fn(param, new_id)
         source.Call(func, arg) if func == old_id -> source.Call(new_id, arg)
         source.Call(func, arg) if arg == old_id -> source.Call(func, new_id)
-        _ -> todo("Can't have a path into literal")
+        _ -> panic("Can't have a path into literal")
       }
       let new_id = map.size(store.source)
       let source = map.insert(store.source, new_id, exp)
