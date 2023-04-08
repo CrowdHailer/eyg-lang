@@ -84,6 +84,7 @@ pub fn let_literal_test() {
   should.equal(t, t.Binary)
   should.equal(map.size(s.free), 3)
   should.equal(map.size(s.types), 3)
+  io.debug(#("============",store.ref_group(s) |> map.to_list))
 
   let assert Ok(c) = store.cursor(s, root, [0])
   let assert Ok(node) = store.focus(s, c)
@@ -108,6 +109,7 @@ pub fn let_literal_test() {
 
   should.equal(map.size(s.free), 7)
   should.equal(map.size(s.types), 7)
+  io.debug(#("============",store.ref_group(s) |> map.to_list))
 }
 
 pub fn fn_poly_test() {
@@ -183,5 +185,7 @@ pub fn branched_apply_test() {
   let assert Ok(#(t, s)) = store.type_(s, root)
   should.equal(map.size(s.types), 10)
   io.debug(s.substitutions.terms |> map.to_list)
+  io.debug(#("============",store.ref_group(s) |> map.to_list))
   should.equal(t, t.Integer)
+  panic
 }

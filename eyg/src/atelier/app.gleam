@@ -66,19 +66,29 @@ pub fn init(source) {
     map.size(s.free),
   ))
 
-  // let start = pnow()
-  // let assert Ok(#(vars, s, x)) = store.free(s, root, [])
+    let start = pnow()
+  let doubled = store.ref_group(s)
+  io.debug(#(
+    "doubled took ms:",
+    pnow() - start,
+    map.size(doubled),
+    map.to_list(doubled)
+  ))
+
+
+  let start = pnow()
+  let assert Ok(#(vars, s, x)) = store.free(s, root, [])
   // // OK map works
   // io.debug(#("othr", list.length(x)))
   // // TODO i think should be same size
-  // io.debug(#(
-  //   "memoizing free took ms:",
-  //   pnow() - start,
-  //   map.size(s.source),
-  //   map.size(s.free),
-  //   vars
-  //   |> set.to_list,
-  // ))
+  io.debug(#(
+    "memoizing free took ms:",
+    pnow() - start,
+    map.size(s.source),
+    map.size(s.free),
+    // vars
+    // |> set.to_list,
+  ))
   // io.debug(map.get(s.source, root))
   // io.debug(map.get(s.source, root - 1))
   // io.debug(map.get(s.source, root - 2))

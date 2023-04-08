@@ -34,11 +34,12 @@ pub fn empty() {
   )
 }
 
+
+
 pub fn load(store: Store, tree) {
+  let ref = javascript.make_reference(0)
   // maybe just include the exp
-  let #(exp, acc) = source.do_from_tree_map(tree, store.source)
-  let index = map.size(acc)
-  let source = map.insert(acc, index, exp)
+  let #(index, source) = source.do_from_tree_map(tree, store.source, ref)
   #(index, Store(..store, source: source))
 }
 
@@ -227,4 +228,37 @@ pub fn replace(store: Store, cursor, exp) {
 
 pub fn focus(store: Store, c) {
   map.get(store.source, cursor.inner(c))
+}
+
+pub fn ref_group(store: Store)  {
+  let child_refs = list.flat_map(map.to_list(store.source),fn(entry) {
+    let #(_ref, node) = entry
+    case node {
+        // source.Var(String)
+  source.Fn(_, child) -> [#(child, entry)]
+  source.Let(_, c1, c2)-> [#(c1, entry), #(c2, entry)]
+  source.Call(c1, c2)-> [#(c1, entry), #(c2, entry)]
+  _ -> []
+  // source.Integer(Int)
+  // source.String(String)
+  // source.Tail
+  // source.Cons
+  // source.Vacant(comment: String)
+  // source.Empty
+  // source.Extend(label: String)
+  // source.Select(label: String)
+  // source.Overwrite(label: String)
+  // source.Tag(label: String)
+  // source.Case(label: String)
+  // source.NoCases
+  // source.Perform(label: String)
+  // source.Handle(label: String)
+  // source.Builtin(identifier: String)
+    }
+  })
+  // Makes sense there should be one thing, the root that is not referenced, one more for each cursor update
+  io.debug(#("child refs", list.length(child_refs), map.size(store.source)))
+  child_refs
+  |> list.group(fn(x) {x.0})
+  |> map.filter(fn(_, v) {list.length(v) < 1})
 }

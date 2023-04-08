@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/map
+import gleam/javascript
 import eygir/expression as e
 
 pub type Expression {
@@ -75,33 +76,33 @@ pub fn from_tree(tree) {
   let source = list.reverse([exp, ..acc])
   #(index, source)
 }
+fn next(ref) {
+  javascript.update_reference(ref, fn(x) { x + 1 })
+}
 
-pub fn do_from_tree_map(tree, acc) {
+fn push(x, ref) { 
+  let #(node, source) = x
+  let index = next(ref)
+  let source = map.insert(source, index, node)
+  #(index, source)
+ }
+
+pub fn do_from_tree_map(tree, acc, ref) -> #(Int, map.Map(Int, Expression)) {
   case tree {
     e.Variable(label) -> #(Var(label), acc)
     e.Lambda(label, body) -> {
-      let #(node, acc) = do_from_tree_map(body, acc)
-      let index = map.size(acc)
-      let acc = map.insert(acc, index, node)
+      let #(index, acc) = do_from_tree_map(body, acc, ref)
       #(Fn(label, index), acc)
     }
     e.Let(label, value, then) -> {
-      let #(then, acc) = do_from_tree_map(then, acc)
-      let then_index = map.size(acc)
-      let acc = map.insert(acc, then_index, then)
-      let #(value, acc) = do_from_tree_map(value, acc)
-      let value_index = map.size(acc)
-      let acc = map.insert(acc, value_index, value)
-      #(Let(label, value_index, then_index), acc)
+      let #(then, acc) = do_from_tree_map(then, acc, ref)
+      let #(value, acc) = do_from_tree_map(value, acc, ref)
+      #(Let(label, value, then), acc)
     }
     e.Apply(func, arg) -> {
-      let #(arg, acc) = do_from_tree_map(arg, acc)
-      let arg_index = map.size(acc)
-      let acc = map.insert(acc, arg_index, arg)
-      let #(func, acc) = do_from_tree_map(func, acc)
-      let func_index = map.size(acc)
-      let acc = map.insert(acc, func_index, func)
-      #(Call(func_index, arg_index), acc)
+      let #(arg, acc) = do_from_tree_map(arg, acc, ref)
+      let #(func, acc) = do_from_tree_map(func, acc, ref)
+      #(Call(func, arg), acc)
     }
     e.Binary(value) -> #(String(value), acc)
     e.Integer(value) -> #(Integer(value), acc)
@@ -119,11 +120,10 @@ pub fn do_from_tree_map(tree, acc) {
     e.Handle(label) -> #(Handle(label), acc)
     e.Builtin(identifier) -> #(Builtin(identifier), acc)
   }
+  |> push(ref)
 }
 
 pub fn from_tree_map(tree) {
-  let #(exp, acc) = do_from_tree_map(tree, map.new())
-  let index = map.size(acc)
-  let source = map.insert(acc, index, exp)
+  let #(index, source) = do_from_tree_map(tree, map.new(), javascript.make_reference(0))
   #(index, source)
 }
