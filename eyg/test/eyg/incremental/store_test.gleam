@@ -8,6 +8,9 @@ import eyg/incremental/store
 import eyg/incremental/cursor
 import gleeunit/should
 
+// TODO printing map in node
+// TODO binary-size in JS match
+
 pub fn literal_test() {
   let s = store.empty()
 
