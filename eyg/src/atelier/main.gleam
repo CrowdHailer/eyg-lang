@@ -14,8 +14,7 @@ pub fn main(source) {
   let assert Ok(dispatch) =
     lustre.application(#(app.init(source), cmd.none()), app.update, root.render)
     |> lustre.start("#app")
-
-  listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
+  // listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
 }
 
 // js(all ffi's) files need to be top level
