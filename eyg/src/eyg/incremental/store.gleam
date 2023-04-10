@@ -34,8 +34,6 @@ pub fn empty() {
   )
 }
 
-
-
 pub fn load(store: Store, tree) {
   let ref = javascript.make_reference(0)
   // maybe just include the exp
@@ -89,13 +87,77 @@ pub fn free(
       case after - before {
         0 -> {
           io.debug(#(node, before, root))
-          panic("this shouldn't happen as adding a new item should always make the map bigger")
+          panic(
+            "this shouldn't happen as adding a new item should always make the map bigger",
+          )
           // and it doesn't
           Nil
         }
         1 -> Nil
       }
       Ok(#(vars, store, acc))
+    }
+  }
+}
+
+pub fn free_m(store: Store, root) -> Result(#(Set(String), Store), Nil) {
+  io.debug(root)
+  case map.get(store.free, 0) {
+    Ok(_) -> {
+      io.debug("found")
+      Nil
+    }
+    Error(_) -> Nil
+  }
+  case map.get(store.free, root) {
+    Ok(vars) -> {
+      io.debug(#(
+        "found----",
+        root,
+        map.get(store.source, root),
+        map.size(store.free),
+      ))
+      Ok(#(vars, store))
+    }
+    Error(Nil) -> {
+      use node <- result.then(map.get(store.source, root))
+      use #(vars, store) <- result.then(case node {
+        source.Var(x) -> Ok(#(setx.singleton(x), store))
+        source.Fn(x, ref) -> {
+          use #(vars, store) <- result.then(free_m(store, ref))
+          Ok(#(set.delete(vars, x), store))
+        }
+        source.Let(x, ref_v, ref_t) -> {
+          use #(value, store) <- result.then(free_m(store, ref_v))
+          use #(then, store) <- result.then(free_m(store, ref_t))
+          let vars = set.union(value, set.delete(then, x))
+          Ok(#(vars, store))
+        }
+        source.Call(ref_func, ref_arg) -> {
+          use #(func, store) <- result.then(free_m(store, ref_func))
+          use #(arg, store) <- result.then(free_m(store, ref_arg))
+          let vars = set.union(func, arg)
+          Ok(#(vars, store))
+        }
+        _ -> Ok(#(set.new(), store))
+      })
+      let before = map.size(store.free)
+      io.debug(#("insert", root))
+      let free = map.insert(store.free, root, vars)
+      let store = Store(..store, free: free)
+      let after = map.size(store.free)
+      case after - before {
+        0 -> {
+          io.debug(#(node, before, root))
+          panic(
+            "this shouldn't happen as adding a new item should always make the map bigger",
+          )
+          // and it doesn't
+          Nil
+        }
+        1 -> Nil
+      }
+      Ok(#(vars, store))
     }
   }
 }
@@ -121,7 +183,10 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
               let t = unification.instantiate(scheme, store.counter)
               Ok(#(t, store))
             }
-            Error(Nil) -> panic("no var in env, this should return an ok value from do_type function but needs to add an error to the list type info")
+            Error(Nil) ->
+              panic(
+                "no var in env, this should return an ok value from do_type function but needs to add an error to the list type info",
+              )
           }
         }
         source.Let(x, value, then) -> {
@@ -230,15 +295,21 @@ pub fn focus(store: Store, c) {
   map.get(store.source, cursor.inner(c))
 }
 
-pub fn ref_group(store: Store)  {
-  let child_refs = list.flat_map(map.to_list(store.source),fn(entry) {
-    let #(_ref, node) = entry
-    case node {
-        // source.Var(String)
-  source.Fn(_, child) -> [#(child, entry)]
-  source.Let(_, c1, c2)-> [#(c1, entry), #(c2, entry)]
-  source.Call(c1, c2)-> [#(c1, entry), #(c2, entry)]
-  _ -> []
+pub fn ref_group(store: Store) {
+  let child_refs =
+    list.flat_map(
+      map.to_list(store.source),
+      fn(entry) {
+        let #(_ref, node) = entry
+        case node {
+          // source.Var(String)
+          source.Fn(_, child) -> [#(child, entry)]
+          source.Let(_, c1, c2) -> [#(c1, entry), #(c2, entry)]
+          source.Call(c1, c2) -> [#(c1, entry), #(c2, entry)]
+          _ -> []
+        }
+      },
+    )
   // source.Integer(Int)
   // source.String(String)
   // source.Tail
@@ -254,11 +325,9 @@ pub fn ref_group(store: Store)  {
   // source.Perform(label: String)
   // source.Handle(label: String)
   // source.Builtin(identifier: String)
-    }
-  })
   // Makes sense there should be one thing, the root that is not referenced, one more for each cursor update
   io.debug(#("child refs", list.length(child_refs), map.size(store.source)))
   child_refs
-  |> list.group(fn(x) {x.0})
-  |> map.filter(fn(_, v) {list.length(v) < 1})
+  |> list.group(fn(x) { x.0 })
+  |> map.filter(fn(_, v) { list.length(v) < 1 })
 }
