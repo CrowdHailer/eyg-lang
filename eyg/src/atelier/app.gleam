@@ -55,7 +55,7 @@ pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
 
-  // let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+  let path = [1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
   let start = pnow()
   let #(root, s) = store.load(store.empty(), source)
   io.debug(#(
@@ -77,66 +77,32 @@ pub fn init(source) {
 
 
   let start = pnow()
-  let assert Ok(#(vars, s, x)) = store.free(s, root, [])
-  // // OK map works
-  // io.debug(#("othr", list.length(x)))
-  // // TODO i think should be same size
+  let assert Ok(#(vars, s)) = store.free(s, root)
   io.debug(#(
     "memoizing free took ms:",
     pnow() - start,
     map.size(s.source),
     map.size(s.free),
-    // vars
-    // |> set.to_list,
   ))
-  // io.debug(map.get(s.source, root))
-  // io.debug(map.get(s.source, root - 1))
-  // io.debug(map.get(s.source, root - 2))
-  // io.debug(map.get(s.source, root - 3))
-  // io.debug(map.get(s.source, root - 4))
-  // io.debug(map.get(s.source, 0))
-  // io.debug(map.get(s.source, 1))
 
-  // io.debug(map.get(s.free, root))
-  // io.debug(map.get(s.free, root - 1))
-  // io.debug(map.get(s.free, root - 2))
-  // io.debug(map.get(s.free, root - 3))
-  // io.debug(map.get(s.free, root - 4))
-  // io.debug(map.get(s.free, 0))
-  // io.debug(map.get(s.free, 1))
-
-  // io.debug("====================")
-  // // Not all in a line
-
-  // let at = map.size(s.source) - map.size(s.free)
-  // io.debug(#(map.get(s.free, at - 100), at - 100))
-  // io.debug(#(map.get(s.free, at), at))
-  // io.debug(#(map.get(s.free, at + 1), at + 1))
-  // io.debug("====================")
-
-  // // io.debug(#("free--", map.get(s.free, 5757)))
-  // io.debug(list.length(map.to_list(s.source)))
-
-  // io.debug(list.length(map.to_list(s.free)))
-  // todo("wat")
-
-  // let start = pnow()
-  // let assert Ok(#(t, s)) = store.type_(s, root)
-  // // TODO i think should be same size
-  // io.debug(#(
-  //   "typing took ms:",
-  //   pnow() - start,
-  //   map.size(s.source),
-  //   map.size(s.free),
-  //   map.size(s.types),
-  //   t,
-  // ))
+  let start = pnow()
+  let assert Ok(#(t, s)) = store.type_(s, root)
+  // TODO i think should be same size
+  io.debug(#(
+    "typing took ms:",
+    pnow() - start,
+    map.size(s.source),
+    map.size(s.free),
+    map.size(s.types),
+    t,
+  ))
 
   // let start = pnow()
   // let assert Ok(c) = store.cursor(s, root, path)
   // io.debug(#("building store.cursor took ms:", pnow() - start))
   // // io.debug(c)
   // let start = pnow()
+  // TODO need to time new typing
   // let assert Ok(#(root_, s)) = store.replace(s, c, incremental.String("hello"))
   // io.debug(#(
   //   "updating store.replace took ms:",
@@ -147,7 +113,6 @@ pub fn init(source) {
   // ))
   // let start = pnow()
   // let assert Ok(#(t, s)) = store.type_(s, root_)
-  // // TODO i think should be same size
   // io.debug(#(
   //   "typing took ms:",
   //   pnow() - start,

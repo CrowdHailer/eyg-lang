@@ -41,122 +41,33 @@ pub fn load(store: Store, tree) {
   #(index, Store(..store, source: source))
 }
 
-pub fn free(
-  store: Store,
-  root,
-  acc,
-) -> Result(#(Set(String), Store, List(#(Int, Set(String)))), Nil) {
+pub fn free(store: Store, root) -> Result(#(Set(String), Store), Nil) {
   case map.get(store.free, root) {
-    Ok(vars) -> {
-      io.debug(#(
-        "found----",
-        root,
-        map.get(store.source, root),
-        map.size(store.free),
-        list.length(acc),
-      ))
-      Ok(#(vars, store, acc))
-    }
-    Error(Nil) -> {
-      use node <- result.then(map.get(store.source, root))
-      use #(vars, store, acc) <- result.then(case node {
-        source.Var(x) -> Ok(#(setx.singleton(x), store, acc))
-        source.Fn(x, ref) -> {
-          use #(vars, store, acc) <- result.then(free(store, ref, acc))
-          Ok(#(set.delete(vars, x), store, acc))
-        }
-        source.Let(x, ref_v, ref_t) -> {
-          use #(value, store, acc) <- result.then(free(store, ref_v, acc))
-          use #(then, store, acc) <- result.then(free(store, ref_t, acc))
-          let vars = set.union(value, set.delete(then, x))
-          Ok(#(vars, store, acc))
-        }
-        source.Call(ref_func, ref_arg) -> {
-          use #(func, store, acc) <- result.then(free(store, ref_func, acc))
-          use #(arg, store, acc) <- result.then(free(store, ref_arg, acc))
-          let vars = set.union(func, arg)
-          Ok(#(vars, store, acc))
-        }
-        _ -> Ok(#(set.new(), store, acc))
-      })
-      let before = map.size(store.free)
-      let free = map.insert(store.free, root, vars)
-      let acc = [#(root, vars), ..acc]
-      let store = Store(..store, free: free)
-      let after = map.size(store.free)
-      case after - before {
-        0 -> {
-          io.debug(#(node, before, root))
-          panic(
-            "this shouldn't happen as adding a new item should always make the map bigger",
-          )
-          // and it doesn't
-          Nil
-        }
-        1 -> Nil
-      }
-      Ok(#(vars, store, acc))
-    }
-  }
-}
-
-pub fn free_m(store: Store, root) -> Result(#(Set(String), Store), Nil) {
-  io.debug(root)
-  case map.get(store.free, 0) {
-    Ok(_) -> {
-      io.debug("found")
-      Nil
-    }
-    Error(_) -> Nil
-  }
-  case map.get(store.free, root) {
-    Ok(vars) -> {
-      io.debug(#(
-        "found----",
-        root,
-        map.get(store.source, root),
-        map.size(store.free),
-      ))
-      Ok(#(vars, store))
-    }
+    Ok(vars) -> Ok(#(vars, store))
     Error(Nil) -> {
       use node <- result.then(map.get(store.source, root))
       use #(vars, store) <- result.then(case node {
         source.Var(x) -> Ok(#(setx.singleton(x), store))
         source.Fn(x, ref) -> {
-          use #(vars, store) <- result.then(free_m(store, ref))
+          use #(vars, store) <- result.then(free(store, ref))
           Ok(#(set.delete(vars, x), store))
         }
         source.Let(x, ref_v, ref_t) -> {
-          use #(value, store) <- result.then(free_m(store, ref_v))
-          use #(then, store) <- result.then(free_m(store, ref_t))
+          use #(value, store) <- result.then(free(store, ref_v))
+          use #(then, store) <- result.then(free(store, ref_t))
           let vars = set.union(value, set.delete(then, x))
           Ok(#(vars, store))
         }
         source.Call(ref_func, ref_arg) -> {
-          use #(func, store) <- result.then(free_m(store, ref_func))
-          use #(arg, store) <- result.then(free_m(store, ref_arg))
+          use #(func, store) <- result.then(free(store, ref_func))
+          use #(arg, store) <- result.then(free(store, ref_arg))
           let vars = set.union(func, arg)
           Ok(#(vars, store))
         }
         _ -> Ok(#(set.new(), store))
       })
-      let before = map.size(store.free)
-      io.debug(#("insert", root))
       let free = map.insert(store.free, root, vars)
       let store = Store(..store, free: free)
-      let after = map.size(store.free)
-      case after - before {
-        0 -> {
-          io.debug(#(node, before, root))
-          panic(
-            "this shouldn't happen as adding a new item should always make the map bigger",
-          )
-          // and it doesn't
-          Nil
-        }
-        1 -> Nil
-      }
       Ok(#(vars, store))
     }
   }
@@ -170,7 +81,7 @@ pub fn type_(store: Store, root) {
 
 // Error only for invalid ref
 pub fn do_type(env, ref, store: Store) -> Result(_, _) {
-  use #(vars, store, _) <- result.then(free(store, ref, []))
+  use #(vars, store) <- result.then(free(store, ref))
   let required = map.take(env, set.to_list(vars))
   case inference.cache_lookup(store.types, ref, required) {
     Ok(t) -> Ok(#(t, store))

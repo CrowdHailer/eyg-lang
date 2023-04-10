@@ -1,10 +1,7 @@
 import gleam/io
-import gleam/int
-import gleam/list
 import gleam/map
 import gleam/set
 import eygir/expression as e
-import eygir/decode
 import eyg/analysis/typ as t
 import eyg/incremental/source
 import eyg/incremental/store
@@ -20,7 +17,7 @@ pub fn literal_test() {
   let #(ref_binary, s) = store.load(s, tree)
   should.equal(ref_binary, 0)
   //   should.equal(store.tree(s, ref_binary), Ok(tree))
-  let assert Ok(#(free, s, _)) = store.free(s, ref_binary, [])
+  let assert Ok(#(free, s)) = store.free(s, ref_binary)
   should.equal(map.size(s.free), 1)
   should.equal(free, set.new())
   let assert Ok(#(t, s)) = store.type_(s, ref_binary)
@@ -29,7 +26,7 @@ pub fn literal_test() {
 
   let #(ref_integer, s) = store.load(s, e.Integer(5))
   should.equal(ref_integer, 1)
-  let assert Ok(#(free, s, _)) = store.free(s, ref_integer, [])
+  let assert Ok(#(free, s)) = store.free(s, ref_integer)
   should.equal(map.size(s.free), 2)
   should.equal(free, set.new())
   let assert Ok(#(t, s)) = store.type_(s, ref_integer)
@@ -213,7 +210,7 @@ pub fn branched_apply_test() {
   let assert Ok(c) = store.cursor(s, root, [])
   let assert Ok(node) = store.focus(s, c)
   should.equal(node, source.Let("id", 8, 6))
-  let assert Ok(#(vars, s, _acc)) = store.free(s, root, [])
+  let assert Ok(#(vars, s)) = store.free(s, root)
   should.equal(vars, set.new())
   should.equal(map.size(s.free), 10)
   should.equal(map.size(s.types), 0)
@@ -233,66 +230,7 @@ pub fn branched_apply_test() {
   panic
 }
 
-pub fn debug_test() {
-  map.new()
-  |> map.insert(22, Nil)
-  |> map.insert(21, Nil)
-  |> map.insert(23, Nil)
-  |> map.insert(18, Nil)
-  |> map.insert(17, Nil)
-  |> map.insert(19, Nil)
-  |> map.insert(14, Nil)
-  |> map.insert(13, Nil)
-  |> map.insert(15, Nil)
-  |> map.insert(10, Nil)
-  |> map.insert(9, Nil)
-  |> map.insert(11, Nil)
-  |> map.insert(6, Nil)
-  |> map.insert(5, Nil)
-  |> map.insert(7, Nil)
-  |> map.insert(2, Nil)
-  |> map.insert(1, Nil)
-  |> map.insert(3, Nil)
-  |> map.get(0)
-  |> io.debug
-  todo
-}
 
-pub fn debug_test_o() {
-  let s = store.empty()
 
-  // ok
-  // {foo: "foo", {bar: "bar", {}}}
-  // let assert Ok(tree) =
-  // "{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"equal\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"debug\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"fix\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"capture\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"serialize\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"u\"}}}}}}"
-  // not ok
-  // {foo: "foo", {bar: "bar", {bar: "bar", {}}}}
-  let assert Ok(tree) =
-    "{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"equal\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"debug\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"fix\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"capture\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"serialize\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"foo\"},\"a\":{\"0\":\"s\",\"v\":\"b\"}},\"a\":{\"0\":\"u\"}}}}}}}"
-    |> decode.from_json
-  // |> io.debug
 
-  let #(root, s) = store.load(s, tree)
-  // should.equal(root, 24)
-  should.equal(map.size(s.source), 25)
-  // let assert Ok(#(free, s, _)) = store.free(s, root, [])
-  should.equal(map.size(s.free), 0)
-  let assert Ok(#(free, s)) = store.free_m(s, root)
 
-  map.size(s.free)
-  |> io.debug
-  map.to_list(s.source)
-  |> list.sort(by_first)
-  |> list.map(io.debug)
-  map.to_list(s.free)
-  |> list.sort(by_first)
-  |> list.map(io.debug)
-  // should.equal(, 25)
-  store.ref_group(s)
-  |> io.debug
-  // todo
-}
-
-pub fn by_first(x: #(Int, _), y: #(Int, _)) {
-  int.compare(x.0, y.0)
-}
