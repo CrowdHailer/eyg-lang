@@ -48,7 +48,7 @@ pub fn capture(term) {
     }
     r.Defunc(switch) -> capture_defunc(switch)
     r.Promise(_) ->
-      todo("not capturing promise, yet. Can be done making serialize async")
+      panic("not capturing promise, yet. Can be done making serialize async")
   }
 }
 
@@ -74,7 +74,7 @@ fn capture_defunc(switch) {
       // possibly we do nothing as the context of the handler has been lost
       // Resume needs to be an expression I think
       e.Apply(e.Handle(label), capture(handler))
-      todo("not idea how to capture the func here")
+      panic("not idea how to capture the func here, is it even possible")
     }
     r.Builtin(identifier, args) ->
       list.fold(

@@ -1,12 +1,9 @@
-import gleam/io
 import gleam/list
-import gleam/map
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter as r
 import eyg/runtime/capture
-import gleam/javascript/promise
 import harness/ffi/cast
 import plinth/browser/window
 
