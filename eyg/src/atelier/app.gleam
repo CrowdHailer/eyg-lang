@@ -16,6 +16,8 @@ import eygir/encode
 import eyg/analysis/inference
 import eyg/runtime/standard
 import eyg/incremental/store
+import plinth/javascript/map as mutable_map
+
 
 pub type WorkSpace {
   WorkSpace(
@@ -83,6 +85,15 @@ pub fn init(source) {
     pnow() - start,
     map.size(s.source),
     map.size(s.free),
+  ))
+
+    let start = pnow()
+  let assert Ok(#(vars, s)) = store.free_mut(s, root)
+  io.debug(#(
+    "memoizing free mut took ms:",
+    pnow() - start,
+    map.size(s.source),
+    mutable_map.size(s.free_mut),
   ))
 
   let start = pnow()

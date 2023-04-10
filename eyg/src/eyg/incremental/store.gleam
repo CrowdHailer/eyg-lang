@@ -13,11 +13,13 @@ import eyg/analysis/unification
 import eyg/incremental/source
 import eyg/incremental/inference
 import eyg/incremental/cursor
+import plinth/javascript/map as mutable_map
 
 pub type Store {
   Store(
     source: Map(Int, source.Expression),
     free: Map(Int, Set(String)),
+    free_mut: mutable_map.MutableMap(Int, Set(String)),
     types: Map(Int, Map(Map(String, Scheme), t.Term)),
     substitutions: sub.Substitutions,
     counter: javascript.Reference(Int),
@@ -28,6 +30,7 @@ pub fn empty() {
   Store(
     source: map.new(),
     free: map.new(),
+    free_mut: mutable_map.new(),
     types: map.new(),
     substitutions: sub.none(),
     counter: javascript.make_reference(0),
@@ -72,6 +75,39 @@ pub fn free(store: Store, root) -> Result(#(Set(String), Store), Nil) {
     }
   }
 }
+
+pub fn free_mut(store: Store, root) -> Result(#(Set(String), Store), Nil) {
+  case mutable_map.get(store.free_mut, root) {
+    Ok(vars) -> Ok(#(vars, store))
+    Error(Nil) -> {
+      use node <- result.then(map.get(store.source, root))
+      use #(vars, store) <- result.then(case node {
+        source.Var(x) -> Ok(#(setx.singleton(x), store))
+        source.Fn(x, ref) -> {
+          use #(vars, store) <- result.then(free_mut(store, ref))
+          Ok(#(set.delete(vars, x), store))
+        }
+        source.Let(x, ref_v, ref_t) -> {
+          use #(value, store) <- result.then(free_mut(store, ref_v))
+          use #(then, store) <- result.then(free_mut(store, ref_t))
+          let vars = set.union(value, set.delete(then, x))
+          Ok(#(vars, store))
+        }
+        source.Call(ref_func, ref_arg) -> {
+          use #(func, store) <- result.then(free_mut(store, ref_func))
+          use #(arg, store) <- result.then(free_mut(store, ref_arg))
+          let vars = set.union(func, arg)
+          Ok(#(vars, store))
+        }
+        _ -> Ok(#(set.new(), store))
+      })
+      let free = mutable_map.set(store.free_mut, root, vars)
+      // let store = Store(..store, free: free)
+      Ok(#(vars, store))
+    }
+  }
+}
+
 
 pub fn type_(store: Store, root) {
   use #(unresolved, store) <- result.then(do_type(map.new(), root, store))
