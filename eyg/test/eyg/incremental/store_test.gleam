@@ -84,11 +84,6 @@ pub fn let_literal_test() {
   should.equal(t, t.Binary)
   should.equal(map.size(s.free), 3)
   should.equal(map.size(s.types), 3)
-  io.debug(#(
-    "============",
-    store.ref_group(s)
-    |> map.to_list,
-  ))
 
   let assert Ok(c) = store.cursor(s, root, [0])
   let assert Ok(node) = store.focus(s, c)
@@ -102,7 +97,7 @@ pub fn let_literal_test() {
   let assert Ok(#(root2, s)) = store.replace(s, c, source.Empty)
   should.equal(map.size(s.source), 7)
   // source increase by path length + 1
-  // free and types are lazy so stay at 4
+  // free and types are lazy so stay at previous value
   should.equal(map.size(s.free), 3)
   should.equal(map.size(s.types), 3)
 
@@ -113,11 +108,6 @@ pub fn let_literal_test() {
 
   should.equal(map.size(s.free), 7)
   should.equal(map.size(s.types), 7)
-  io.debug(#(
-    "============",
-    store.ref_group(s)
-    |> map.to_list,
-  ))
 }
 
 pub fn fn_poly_test() {

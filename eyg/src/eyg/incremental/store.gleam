@@ -242,6 +242,7 @@ pub fn focus(store: Store, c) {
   map.get(store.source, cursor.inner(c))
 }
 
+// used for debugging maps. there should be only one reference to a node in a store with a single root.
 pub fn ref_group(store: Store) {
   let child_refs =
     list.flat_map(
@@ -257,23 +258,6 @@ pub fn ref_group(store: Store) {
         }
       },
     )
-  // source.Integer(Int)
-  // source.String(String)
-  // source.Tail
-  // source.Cons
-  // source.Vacant(comment: String)
-  // source.Empty
-  // source.Extend(label: String)
-  // source.Select(label: String)
-  // source.Overwrite(label: String)
-  // source.Tag(label: String)
-  // source.Case(label: String)
-  // source.NoCases
-  // source.Perform(label: String)
-  // source.Handle(label: String)
-  // source.Builtin(identifier: String)
-  // Makes sense there should be one thing, the root that is not referenced, one more for each cursor update
-  io.debug(#("child refs", list.length(child_refs), map.size(store.source)))
   child_refs
   |> list.group(fn(x) { x.0 })
   |> map.filter(fn(_, v) { list.length(v) < 1 })
