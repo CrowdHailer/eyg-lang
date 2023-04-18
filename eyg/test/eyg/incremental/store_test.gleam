@@ -3,6 +3,7 @@ import gleam/map
 import gleam/set
 import eygir/expression as e
 import eyg/analysis/typ as t
+import eyg/analysis/inference
 import eyg/incremental/source
 import eyg/incremental/store
 import gleeunit/should
@@ -211,11 +212,16 @@ pub fn branched_apply_test() {
     s.substitutions.terms
     |> map.to_list,
   )
-  io.debug(#(
-    "============",
-    store.ref_group(s)
-    |> map.to_list,
-  ))
+
+  let sub = inference.infer(map.new(), tree, t.Unbound(-1), t.Open(-2))
+  io.debug(sub.substitutions.terms |> map.to_list)
+
+  inference.sound(sub)
+  |> should.equal(Ok(Nil))
+
+  inference.type_of(sub, [])
+  |> io.debug
+
   should.equal(t, t.Integer)
   panic
 }

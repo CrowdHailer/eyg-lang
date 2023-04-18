@@ -11,6 +11,7 @@ import eyg/analysis/substitutions as sub
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
 import eyg/incremental/source
+import eyg/analysis/env
 import eyg/incremental/inference
 import eyg/incremental/cursor
 import plinth/javascript/map as mutable_map
@@ -137,9 +138,15 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
           }
         }
         source.Let(x, value, then) -> {
-          use #(t1, store) <- result.then(do_type(env, value, store))
-          let scheme = unification.generalise(env, t1)
-          let env = map.insert(env, x, scheme)
+          // Alg J single substitutions no what we have
+          // Should I throw away caching when there are free type variables, because they wont be the same
+          // however std will always be free
+          // all of std and other projects should trivially remain. and without free variables
+          // changing std if only extending types should have no changes in project
+          use #(t1, store): #(_, Store) <- result.then(do_type(env, value, store))
+          let scheme = unification.generalise(env.apply(store.substitutions, env), sub.apply(store.substitutions,t1))
+          // is this env.apply twice necessary
+          let env = env.apply(store.substitutions, map.insert(env, x, scheme))
           do_type(env, then, store)
         }
         source.Fn(x, body) -> {
