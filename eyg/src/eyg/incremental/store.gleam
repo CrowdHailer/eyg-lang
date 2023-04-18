@@ -18,6 +18,7 @@ import plinth/javascript/map as mutable_map
 pub type Store {
   Store(
     source: Map(Int, source.Expression),
+    source_id_tracker: javascript.Reference(Int),
     free: Map(Int, Set(String)),
     free_mut: mutable_map.MutableMap(Int, Set(String)),
     types: Map(Int, Map(Map(String, Scheme), t.Term)),
@@ -29,6 +30,7 @@ pub type Store {
 pub fn empty() {
   Store(
     source: map.new(),
+    source_id_tracker: javascript.make_reference(0),
     free: map.new(),
     free_mut: mutable_map.new(),
     types: map.new(),
@@ -38,9 +40,7 @@ pub fn empty() {
 }
 
 pub fn load(store: Store, tree) {
-  let ref = javascript.make_reference(0)
-  // maybe just include the exp
-  let #(index, source) = source.do_from_tree_map(tree, store.source, ref)
+  let #(index, source) = source.do_from_tree_map(tree, store.source, store.source_id_tracker)
   #(index, Store(..store, source: source))
 }
 
