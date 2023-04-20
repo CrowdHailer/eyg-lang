@@ -1,14 +1,19 @@
+import gleam/io
 import gleam/map
 import gleam/set
 import gleam/setx
 import eygir/expression as e
 import eyg/analysis/typ.{ftv} as t
+import eyg/analysis/jm/type_
 import eyg/analysis/env
 import eyg/analysis/inference.{infer, type_of}
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
 import gleeunit/should
+import eyg/incremental/store
+import eyg/analysis/jm/infer as jm
+import eyg/analysis/jm/type_ as jmt
 
 pub fn resolve(inf: inference.Infered, typ) {
   unification.resolve(inf.substitutions, typ)
@@ -55,6 +60,34 @@ pub fn free_type_variables_test() {
   |> should.equal(set.from_list([t.Term(1), t.Term(2), t.Effect(3)]))
 }
 
+fn jm(exp, type_, eff) { 
+  let #(root, store) = store.load(store.empty(), exp)
+
+  let sub = map.new()
+  let next = 0
+  let env = map.new()
+  let source = store.source
+  let ref = root
+  let types = map.new()
+
+  let k = fn(x){x}
+  let #(sub, _next, types) = jm.infer(sub, next, env, source, ref, type_, eff, types, k)
+  io.debug(sub |> map.to_list)
+  io.debug(types |> map.to_list)
+  io.debug("=-----")
+  case map.get(types, root) {
+    Ok(Ok(t)) -> Ok(jmt.resolve(t, sub))
+    Ok(Error(reason)) -> Error(reason)
+    // DOes panic expression print message
+    Error(_) -> {
+      io.debug(root)
+      io.debug(source |> map.to_list)
+      io.debug(types |> map.to_list)
+      todo("no typr")
+    }
+  }
+}
+
 // Primitive
 pub fn binary_test() {
   let exp = e.Binary("hi")
@@ -71,11 +104,13 @@ pub fn binary_test() {
   let sub = infer(env, exp, typ, eff)
   let assert t.Binary = resolve(sub, typ)
   let assert Ok(t.Binary) = type_of(sub, [])
+  let assert Ok(type_.String) = jm(exp, type_.Var(-1), type_.Empty)
 
   // incorrect type
   let typ = t.Integer
   let sub = infer(env, exp, typ, eff)
   let assert Error(_) = type_of(sub, [])
+  let assert Error(type_.Missing) = jm(exp, type_.Integer, type_.Empty)
 }
 
 pub fn integer_test() {
@@ -138,6 +173,10 @@ pub fn primitive_list_test() {
   let eff = t.Closed
   let sub = infer(env, exp, typ, eff)
   let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
+  let assert Ok(type_.LinkedList(type_.Integer)) = jm(exp, type_.Var(-1), type_.Empty)
+  |> io.debug
+  // THere is an error missing and the principle is wrong
+
   let assert Ok(t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary))) =
     type_of(sub, [0])
   let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [1])
