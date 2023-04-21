@@ -72,7 +72,7 @@ fn jm(exp, type_, eff) {
 
   let k = fn(x){x}
   let #(sub, _next, types) = jm.infer(sub, next, env, source, ref, type_, eff, types, k)
-  io.debug(sub |> map.to_list)
+  io.debug(#("sub", sub |> map.to_list))
   io.debug(types |> map.to_list)
   io.debug("=-----")
   case map.get(types, root) {

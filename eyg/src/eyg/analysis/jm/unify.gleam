@@ -3,16 +3,18 @@ import gleam/map
 import eyg/analysis/jm/type_ as t
 
 pub fn unify(t1, t2, s)  {
+  io.debug("????????????????")
     do_unify([#(t1, t2)], s)   
 }
-
+// I dont think this is the same as described because we don't keep lookup to original i.
 // s is a function from var -> t
 fn do_unify(constraints, s)  {
+  io.debug(constraints)
   // Have to try and substitute at every point because new substitutions can come into existance
   case constraints {
     [] -> Ok(s)
-    [#(t.Var(i), t.Var(infer)), ..constraints] -> do_unify(constraints, s)
-    [#(t.Var(i), t1), ..constraints] | [#(t1, t.Var(i)), ..constraints] -> case map.get(s, i) {
+    [#(t.Var(i), t.Var(j)), ..constraints] if i == j -> do_unify(constraints, s)
+    [#(t.Var(i), t1), ..constraints] | [#(t1, t.Var(i)), ..constraints] -> case map.get(s, i) |> io.debug {
       Ok(t2) -> do_unify([#(t1, t2),..constraints], s) 
       Error(Nil) -> do_unify(constraints, map.insert(s, i, t1))
     }

@@ -143,7 +143,8 @@ pub fn do_type(env, ref, store: Store) -> Result(_, _) {
           // however std will always be free
           // all of std and other projects should trivially remain. and without free variables
           // changing std if only extending types should have no changes in project
-          use #(t1, store): #(_, Store) <- result.then(do_type(env, value, store))
+          use #(t1, store) <- result.then(do_type(env, value, store))
+          let store: Store  = store
           let scheme = unification.generalise(env.apply(store.substitutions, env), sub.apply(store.substitutions,t1))
           // is this env.apply twice necessary
           let env = env.apply(store.substitutions, map.insert(env, x, scheme))

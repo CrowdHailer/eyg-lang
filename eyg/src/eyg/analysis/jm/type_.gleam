@@ -54,9 +54,14 @@ pub fn apply(s, type_) {
 
 pub fn resolve(t, s) {
   case t {
-    Var(a) ->
-      map.get(s, a)
-      |> result.unwrap(t)
+    // Var(a) ->
+    //   map.get(s, a)
+    //   |> result.unwrap(t)
+    Var(a) -> case map.get(s, a) {
+      // recursive resolve needed for non direct unification
+      Ok(u) -> resolve(u, s)
+      Error(Nil) -> t
+    }
     Fun(u, v, w) -> Fun(resolve(u, s), resolve(v, s), resolve(w, s))
     String | Integer | Empty -> t
     LinkedList(element) -> LinkedList(resolve(element, s))
