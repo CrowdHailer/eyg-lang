@@ -17,6 +17,8 @@ import eyg/analysis/inference
 import eyg/runtime/standard
 import eyg/incremental/store
 import plinth/javascript/map as mutable_map
+import eyg/analysis/jm/infer as jm
+import eyg/analysis/jm/type_ as jmt
 
 
 pub type WorkSpace {
@@ -108,6 +110,25 @@ pub fn init(source) {
     t,
   ))
 
+
+  let _ = {
+    let sub = map.new()
+    let next = 0
+    let env = map.new()
+    let source = s.source
+    let ref = root
+    let type_ = jmt.Var(-1)
+    let eff = jmt.Empty
+    let types = map.new()
+    let k = fn(x){x}
+    let start = pnow()
+    let #(sub, _next, typesjm) = jm.infer(sub, next, env, source, ref, type_, eff, types, k)
+    io.debug(#(
+      "typing jm took ms:",
+      pnow() - start,
+      map.size(typesjm),
+    ))
+  }
   // let start = pnow()
   // let assert Ok(c) = store.cursor(s, root, path)
   // io.debug(#("building store.cursor took ms:", pnow() - start))

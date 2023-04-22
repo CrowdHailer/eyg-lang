@@ -59,9 +59,8 @@ fn extend(env, label, scheme) {
  }
 
 pub fn unify_at(type_, found, sub, next, types, ref) {
-  io.debug(#(type_, found))
-  case unify.unify(type_, found, sub) {
-    Ok(s) -> #(s, next, map.insert(types, ref, Ok(type_))) 
+  case unify.unify(type_, found, sub, next) {
+    Ok(#(s, next)) -> #(s, next, map.insert(types, ref, Ok(type_))) 
     Error(_) -> #(sub, next, map.insert(types, ref, Error(t.Missing)))
   }
 }
@@ -83,11 +82,9 @@ pub fn infer(sub, next, env, source, ref, type_, eff, types, k) {
         }
       }
       e.Call(e1, e2) -> {
-        io.debug(#(type_, e1, e2))
         // can't error
         let types = map.insert(types, ref, Ok(type_))
         let #(arg, next) = t.fresh(next)
-        io.debug(arg)
         use #(sub, next, types) <- infer(sub, next, env, source, e1, t.Fun(arg, eff, type_), eff, types)
         use #(sub, next, types) <- infer(sub, next, env, source, e2, arg, eff, types)
         k(#(sub, next, types))
@@ -126,7 +123,6 @@ fn primitive(exp, next) {
 
   e.Tail -> t.tail(next)
   e.Cons -> t.cons(next)
-  |> io.debug
   e.Vacant(_comment) -> t.fresh(next)
 
   // Record
@@ -145,8 +141,10 @@ fn primitive(exp, next) {
 
   e.Handle(label) -> t.handle(label, next)
 
-  // e.Builtin(identifier) 
-  _ -> todo("pull from old inference")
+  // TODO use real builtins
+  e.Builtin(identifier) -> t.fresh(next)
+  // _ -> todo("pull from old inference")
+  
  }
 }
 // errors should be both wrong f and wrong arg
