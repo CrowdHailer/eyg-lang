@@ -2,6 +2,7 @@ import gleam/io
 import gleam/map
 import gleam/result
 import eyg/analysis/jm/type_ as t
+import eyg/analysis/jm/error
 
 pub fn unify(t1, t2, s, next)  {
   do_unify([#(t1, t2)], s, next)   
@@ -33,7 +34,7 @@ fn do_unify(constraints, s, next)  {
       use #(lift2, reply2, tail2, s, next) <- result.then(rewrite_effect(label1, row2, s, next))
       do_unify([#(lift1, lift2), #(reply1, reply2), #(tail1, tail2), ..cs], s, next)
     }
-    _ -> Error(Nil)
+    [#(t1, t2), ..] -> Error(error.TypeMismatch(t1, t2))
   }
 }
 
@@ -42,7 +43,7 @@ fn do_unify(constraints, s, next)  {
 
 fn rewrite_row(new_label, row, s, next) { 
   case row {
-    t.Empty -> Error(Nil) 
+    t.Empty -> Error(error.RowMismatch(new_label)) 
     t.RowExtend(label, value, tail) if label == new_label -> 
       Ok(#(value, tail, s, next))
     t.Var(a) -> {
@@ -55,13 +56,13 @@ fn rewrite_row(new_label, row, s, next) {
       use #(value_new, tail_new, s, next) <- result.then(rewrite_row(new_label, tail, s, next))
       Ok(#(value_new, t.RowExtend(label, value, tail_new), s, next))
     }
-    _ -> Error(Nil)
+    _ -> Error(error.InvalidTail(row))
   }
 }
 
 fn rewrite_effect(new_label, effect, s, next) { 
   case effect {
-    t.Empty -> Error(Nil) 
+    t.Empty -> Error(error.RowMismatch(new_label)) 
     t.EffectExtend(label, #(lift, reply), tail) if label == new_label -> 
       Ok(#(lift, reply, tail, s, next))
     t.Var(a) -> {
@@ -75,6 +76,6 @@ fn rewrite_effect(new_label, effect, s, next) {
       use #(lift_new, reply_new, tail_new, s, next) <- result.then(rewrite_effect(new_label, tail, s, next))
       Ok(#(lift_new, reply_new, t.EffectExtend(label, field, tail_new), s, next))
     }
-    _ -> Error(Nil)
+    _ -> Error(error.InvalidTail(effect))
   }
 }

@@ -3,6 +3,7 @@ import gleam/list
 import gleam/map
 import gleam/set
 import eyg/incremental/source as e
+import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/env
 import eyg/analysis/jm/unify
@@ -37,11 +38,11 @@ fn extend(env, label, scheme) {
 fn unify_at(type_, found, sub, next, types, ref) {
   case unify.unify(type_, found, sub, next) {
     Ok(#(s, next)) -> #(s, next, map.insert(types, ref, Ok(type_))) 
-    Error(_) -> #(sub, next, map.insert(types, ref, Error(t.Missing)))
+    Error(reason) -> #(sub, next, map.insert(types, ref, Error(#(reason, type_, found))))
   }
 }
 
-type State = #(t.Substitutions, Int, map.Map(Int, Result(t.Type, t.Reason)))
+type State = #(t.Substitutions, Int, map.Map(Int, Result(t.Type, #(error.Reason, t.Type, t.Type))))
 
 type Run {
   Cont(State, fn(State) -> Run)
@@ -70,7 +71,7 @@ fn step(sub, next, env, source, ref, type_, eff, types, k) {
             Cont(unify_at(type_, found, sub, next, types, ref), k)
           }
           Error(Nil) -> {
-            let types = map.insert(types, ref, todo)
+            let types = map.insert(types, ref, Error(#(error.MissingVariable(x), type_, t.Var(-100))))
             Cont(#(sub, next, types), k)
           }
         }

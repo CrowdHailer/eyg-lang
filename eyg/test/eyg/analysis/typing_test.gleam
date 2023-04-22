@@ -14,6 +14,7 @@ import gleeunit/should
 import eyg/incremental/store
 import eyg/analysis/jm/infer as jm
 import eyg/analysis/jm/type_ as jmt
+import eyg/analysis/jm/error as jm_error
 
 pub fn resolve(inf: inference.Infered, typ) {
   unification.resolve(inf.substitutions, typ)
@@ -106,7 +107,7 @@ pub fn binary_test() {
   let typ = t.Integer
   let sub = infer(env, exp, typ, eff)
   let assert Error(_) = type_of(sub, [])
-  let assert Error(type_.Missing) = jm(exp, type_.Integer, type_.Empty)
+  let assert Error(#(jm_error.TypeMismatch(jmt.Integer, jmt.String), jmt.Integer, jmt.String)) = jm(exp, type_.Integer, type_.Empty)
 }
 
 pub fn integer_test() {

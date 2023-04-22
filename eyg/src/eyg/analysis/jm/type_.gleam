@@ -17,12 +17,7 @@ pub type Type {
   EffectExtend(String, #(Type, Type), Type)
 }
 
-
 pub type Substitutions = map.Map(Int, Type)
-
-pub type Reason {
-  Missing
-}
 
 pub fn ftv(type_) {
   case type_ {
