@@ -120,14 +120,34 @@ pub fn init(source) {
     let type_ = jmt.Var(-1)
     let eff = jmt.Empty
     let types = map.new()
-    let k = fn(x){x}
     let start = pnow()
-    let #(sub, _next, typesjm) = jm.infer(sub, next, env, source, ref, type_, eff, types, k)
+    let #(sub, _next, typesjm) = jm.infer(sub, next, env, source, ref, type_, eff, types)
     io.debug(#(
       "typing jm took ms:",
       pnow() - start,
       map.size(typesjm),
     ))
+    let assert Ok(Ok(t)) = map.get(typesjm, 100)
+    io.debug(jmt.resolve(t, sub))
+    let assert Ok(Ok(t)) = map.get(typesjm, 0)
+    io.debug(jmt.resolve(t, sub))
+    let assert Ok(Ok(t)) = map.get(typesjm, 1)
+    io.debug(jmt.resolve(t, sub))
+    let assert Ok(Ok(t)) = map.get(typesjm, 2)
+    io.debug(jmt.resolve(t, sub))
+
+
+    list.map(map.to_list(typesjm), fn(r) {
+      let #(id, r) = r
+      case r {
+        Ok(_) -> Nil
+        Error(reason) -> {
+          io.debug(reason)
+          Nil
+        }
+
+      }
+    })
   }
   // let start = pnow()
   // let assert Ok(c) = store.cursor(s, root, path)
