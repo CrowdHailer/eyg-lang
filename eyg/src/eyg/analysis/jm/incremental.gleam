@@ -13,6 +13,8 @@ pub fn infer(sub, next, env, source, ref, type_, eff, types) {
   loop(step(sub, next, env, source, ref, type_, eff, types, Done))
 }
 
+// TODO occurs in and recursive row check
+
 fn step(sub, next, env, source, ref, type_, eff, types, k) {
   case map.get(source, ref) {
     Error(Nil) -> Cont(#(sub, next, types), k) 
@@ -30,7 +32,7 @@ fn step(sub, next, env, source, ref, type_, eff, types, k) {
         let #(arg, next) = t.fresh(next)
         let #(new_eff, next) = t.fresh(next)
         let #(ret, next) = t.fresh(next)
-        let #(sub, next, types) = unify_at(type_, t.Fun(arg, eff, ret), sub, next, types, ref) 
+        let #(sub, next, types) = unify_at(type_, t.Fun(arg, new_eff, ret), sub, next, types, ref) 
         let env = extend(env, x, mono(arg))
         use #(sub, next, types) <- step(sub, next, env, source, e1, ret, new_eff, types)
         Cont(#(sub, next, types), k)
@@ -85,10 +87,7 @@ fn primitive(exp, next) {
 fn fetch(env, x, sub, next, types, ref, type_, k) {
   case map.get(env, x) {
     Ok(scheme) ->  {
-      io.debug(#(x, scheme))
       let #(found, next) = instantiate(scheme, next)
-      io.debug(found)
-      io.debug(next)
       Cont(unify_at(type_, found, sub, next, types, ref), k)
     }
     Error(Nil) -> {
