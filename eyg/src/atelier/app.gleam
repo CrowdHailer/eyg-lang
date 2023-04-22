@@ -99,17 +99,17 @@ pub fn init(source) {
     mutable_map.size(s.free_mut),
   ))
 
-  let start = pnow()
-  let assert Ok(#(t, s)) = store.type_(s, root)
-  // TODO i think should be same size
-  io.debug(#(
-    "typing took ms:",
-    pnow() - start,
-    map.size(s.source),
-    map.size(s.free),
-    map.size(s.types),
-    t,
-  ))
+  // let start = pnow()
+  // let assert Ok(#(t, s)) = store.type_(s, root)
+  // // TODO i think should be same size
+  // io.debug(#(
+  //   "typing took ms:",
+  //   pnow() - start,
+  //   map.size(s.source),
+  //   map.size(s.free),
+  //   map.size(s.types),
+  //   t,
+  // ))
 
 
   let _ = {
@@ -128,7 +128,7 @@ pub fn init(source) {
       pnow() - start,
       map.size(typesjm),
     ))
-    let assert Ok(Ok(t)) = map.get(typesjm, 100)
+    let assert Ok(Ok(t)) = map.get(typesjm, 6010)
     io.debug(jmt.resolve(t, sub))
     let assert Ok(Ok(t)) = map.get(typesjm, 0)
     io.debug(jmt.resolve(t, sub))
@@ -138,28 +138,32 @@ pub fn init(source) {
     io.debug(jmt.resolve(t, sub))
 
 
+    io.debug("================")
     list.map(map.to_list(typesjm), fn(r) {
       let #(id, r) = r
       case r {
         Ok(_) -> Nil
         Error(reason) -> {
-          io.debug(reason)
+          io.debug(map.get(s.source, id))
+          // io.debug(reason)
+          io.debug(jmt.resolve_error(reason, sub))
           Nil
         }
 
       }
     })
+    io.debug("================")
 
-    // new map of types because non function not generic.
-    // TODO should this be the case add to gleam explainers
-    let types = map.new()
-    let start = pnow()
-    let #(sub, _next, typesjm) = jm_tree.infer(sub, next, env, source, [], type_, eff, types)
-    io.debug(#(
-      "typing jm took ms:",
-      pnow() - start,
-      map.size(typesjm),
-    ))
+    // // new map of types because non function not generic.
+    // // TODO should this be the case add to gleam explainers
+    // let types = map.new()
+    // let start = pnow()
+    // let #(sub, _next, typesjm) = jm_tree.infer(sub, next, env, source, [], type_, eff, types)
+    // io.debug(#(
+    //   "typing jm took ms:",
+    //   pnow() - start,
+    //   map.size(typesjm),
+    // ))
   }
   // let start = pnow()
   // let assert Ok(c) = store.cursor(s, root, path)

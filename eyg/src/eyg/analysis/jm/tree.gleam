@@ -8,6 +8,8 @@ import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/env
 import eyg/analysis/jm/unify
 import eyg/analysis/jm/infer.{ instantiate, generalise, unify_at, extend, mono}
+import eyg/analysis/typ as old_t
+
 
 pub type State = #(t.Substitutions, Int, map.Map(List(Int), Result(t.Type, #(error.Reason, t.Type, t.Type))))
 
@@ -29,7 +31,7 @@ pub fn infer(sub, next, env, exp, path, type_, eff, types) {
 }
 
 fn step(sub, next, env, exp, path, type_, eff, types, k) {
-    io.debug(exp)
+    // io.debug(exp)
    case exp {
       e.Variable(x) -> {
         case map.get(env, x) {
@@ -100,13 +102,10 @@ fn primitive(exp, next) {
 
   // Effect
   e.Perform(label) -> t.perform(label, next)
-
   e.Handle(label) -> t.handle(label, next)
 
   // TODO use real builtins
   e.Builtin(identifier) -> t.fresh(next)
-  // _ -> todo("pull from old inference")
-  
+  // _ -> todo("pull from old inference") 
  }
 }
-// errors should be both wrong f and wrong arg

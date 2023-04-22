@@ -70,6 +70,11 @@ pub fn resolve(t, s) {
   }
 }
 
+pub fn resolve_error(reason, s) {
+  let #(x, t1, t2) = reason
+  #(resolve(t1, s), resolve(t2, s))
+}
+
 pub fn fresh(next)  {
   #(Var(next), next + 1)
 }
@@ -174,3 +179,11 @@ pub fn handle(label, next) {
 pub const unit = Record(Empty)
 
 pub const boolean = Union(RowExtend("True", unit, RowExtend("False", unit, Empty)))
+
+pub fn result(value, reason) {
+  Union(RowExtend("Ok", value, RowExtend("Error", reason, Empty)))
+}
+
+pub fn option(value) {
+  Union(RowExtend("Some", value, RowExtend("None", unit, Empty)))
+}

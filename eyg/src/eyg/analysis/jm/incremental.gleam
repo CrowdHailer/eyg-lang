@@ -7,7 +7,7 @@ import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/env
 import eyg/analysis/jm/unify
-import eyg/analysis/jm/infer.{Cont, loop, instantiate, generalise, unify_at, extend, mono, Done}
+import eyg/analysis/jm/infer.{Cont, loop, instantiate, generalise, unify_at, extend, mono, Done, builtins}
 
 pub fn infer(sub, next, env, source, ref, type_, eff, types) {
   loop(step(sub, next, env, source, ref, type_, eff, types, Done))
@@ -17,18 +17,7 @@ fn step(sub, next, env, source, ref, type_, eff, types, k) {
   case map.get(source, ref) {
     Error(Nil) -> Cont(#(sub, next, types), k) 
     Ok(exp) -> case exp {
-      e.Var(x) -> {
-        case map.get(env, x) {
-          Ok(scheme) ->  {
-            let #(found, next) = instantiate(scheme, next)
-            Cont(unify_at(type_, found, sub, next, types, ref), k)
-          }
-          Error(Nil) -> {
-            let types = map.insert(types, ref, Error(#(error.MissingVariable(x), type_, t.Var(-100))))
-            Cont(#(sub, next, types), k)
-          }
-        }
-      }
+      e.Var(x) -> fetch(env, x, sub, next, types, ref, type_, k)
       e.Call(e1, e2) -> {
         // can't error
         let types = map.insert(types, ref, Ok(type_))
@@ -55,6 +44,7 @@ fn step(sub, next, env, source, ref, type_, eff, types, k) {
         use #(sub, next, types) <- step(sub, next, env, source, e2, type_, eff, types)
         Cont(#(sub, next, types), k)
       }
+      e.Builtin(identifier) -> fetch(builtins(), identifier, sub, next, types, ref, type_, k)
       literal -> {
         let #(found, next) = primitive(literal, next)
         Cont(unify_at(type_, found, sub, next, types, ref), k)
@@ -65,7 +55,7 @@ fn step(sub, next, env, source, ref, type_, eff, types, k) {
 
 fn primitive(exp, next) { 
  case exp {
-  e.Var(_) | e.Call(_,_) | e.Fn(_,_) | e.Let(_,_,_) -> panic("not a literal")
+  e.Var(_) | e.Call(_,_) | e.Fn(_,_) | e.Let(_,_,_) | e.Builtin(_) -> panic("not a literal")
   e.String(_) -> #(t.String, next)
   e.Integer(_) -> #(t.Integer, next)
 
@@ -89,10 +79,19 @@ fn primitive(exp, next) {
 
   e.Handle(label) -> t.handle(label, next)
 
-  // TODO use real builtins
-  e.Builtin(identifier) -> t.fresh(next)
-  // _ -> todo("pull from old inference")
-  
- }
+  }
 }
-// errors should be both wrong f and wrong arg
+
+fn fetch(env, x, sub, next, types, ref, type_, k) {
+  case map.get(env, x) {
+    Ok(scheme) ->  {
+      let #(found, next) = instantiate(scheme, next)
+      Cont(unify_at(type_, found, sub, next, types, ref), k)
+    }
+    Error(Nil) -> {
+      let types = map.insert(types, ref, Error(#(error.MissingVariable(x), type_, t.Var(-100))))
+      Cont(#(sub, next, types), k)
+    }
+  }
+}
+
