@@ -4,43 +4,19 @@ import gleam/map
 import gleam/set
 import eyg/incremental/source as e
 import eyg/analysis/jm/type_ as t
+import eyg/analysis/jm/env
 import eyg/analysis/jm/unify
 
 fn mono(type_)  {
   #([], type_)
 }
 
-fn scheme_ftv(scheme) {
-  let #(forall, typ) = scheme
-  set.drop(t.ftv(typ), forall)
-}
-
-fn scheme_apply(sub, scheme) {
-  let #(forall, typ) = scheme
-  #(forall, t.apply(map.drop(sub, forall), typ))
-}
-
-type TypeEnv =
-  map.Map(String, #(List(Int), t.Type))
-
-
-// TypeEnv
-fn env_ftv(env: TypeEnv) {
-  map.fold(
-    env,
-    set.new(),
-    fn(state, _k, scheme) { set.union(state, scheme_ftv(scheme)) },
-  )
-}
-
-fn env_apply(sub, env) {
-  map.map_values(env, fn(_k, scheme) { scheme_apply(sub, scheme) })
-}
-
+// reference substitution env and type.
+// causes circular dependencies to move to any other file
 fn generalise(sub, env, t)  {
-  let env = env_apply(sub, env)
+  let env = env.apply(sub, env)
   let t = t.apply(sub, t)
-  let forall = set.drop(t.ftv(t), set.to_list(env_ftv(env)))
+  let forall = set.drop(t.ftv(t), set.to_list(env.ftv(env)))
   #(set.to_list(forall), t)
 }
 
@@ -56,7 +32,7 @@ fn instantiate(scheme, next) {
 
 fn extend(env, label, scheme) { 
   map.insert(env, label, scheme)
- }
+}
 
 fn unify_at(type_, found, sub, next, types, ref) {
   case unify.unify(type_, found, sub, next) {
@@ -65,7 +41,8 @@ fn unify_at(type_, found, sub, next, types, ref) {
   }
 }
 
-type State = #(map.Map(Int, t.Type), Int, map.Map(Int, Result(t.Type, t.Reason)))
+type State = #(t.Substitutions, Int, map.Map(Int, Result(t.Type, t.Reason)))
+
 type Run {
   Cont(State, fn(State) -> Run)
   Done(State)
@@ -167,13 +144,3 @@ fn primitive(exp, next) {
 // errors should be both wrong f and wrong arg
 
 
-// Can have fast inference if existing before
-// reuse next and t maybe
-// returning a type is good but I need to return a list of errors at least
-// can't unify binary to an error
-
-// we've got J with early return as an option
-// need a building state for speed.
-// Test infer not this one
-// Test jm
-// Write up wand

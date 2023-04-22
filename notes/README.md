@@ -39,3 +39,13 @@ This type is not constructable within the lambda calculus
 #### Let Rec
 
 Every Let could test to see if let rec is used.
+
+## Incremental type checking
+
+J with early return is an option
+
+Unison hashes only terms without Free variables
+There is the other paper that does both but building up the whole tree is tricky because the env at any given point depends on the tree so can't be cached through modifications
+
+### Differential Datalog
+
