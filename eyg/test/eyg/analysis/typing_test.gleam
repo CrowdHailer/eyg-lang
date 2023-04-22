@@ -71,9 +71,6 @@ fn jm(exp, type_, eff) {
   let types = map.new()
 
   let #(sub, _next, types) = jm.infer(sub, next, env, source, ref, type_, eff, types)
-  io.debug(#("sub", sub |> map.to_list))
-  io.debug(types |> map.to_list)
-  io.debug("=-----")
   case map.get(types, root) {
     Ok(Ok(t)) -> Ok(jmt.resolve(t, sub))
     Ok(Error(reason)) -> Error(reason)
