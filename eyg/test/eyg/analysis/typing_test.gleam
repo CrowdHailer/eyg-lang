@@ -12,7 +12,7 @@ import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
 import gleeunit/should
 import eyg/incremental/store
-import eyg/analysis/jm/infer as jm
+import eyg/analysis/jm/incremental as jm
 import eyg/analysis/jm/type_ as jmt
 import eyg/analysis/jm/error as jm_error
 

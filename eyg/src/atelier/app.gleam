@@ -17,7 +17,8 @@ import eyg/analysis/inference
 import eyg/runtime/standard
 import eyg/incremental/store
 import plinth/javascript/map as mutable_map
-import eyg/analysis/jm/infer as jm
+import eyg/analysis/jm/incremental as jm
+import eyg/analysis/jm/tree as jm_tree
 import eyg/analysis/jm/type_ as jmt
 
 
@@ -115,13 +116,13 @@ pub fn init(source) {
     let sub = map.new()
     let next = 0
     let env = map.new()
-    let source = s.source
+    let source_map = s.source
     let ref = root
     let type_ = jmt.Var(-1)
     let eff = jmt.Empty
     let types = map.new()
     let start = pnow()
-    let #(sub, _next, typesjm) = jm.infer(sub, next, env, source, ref, type_, eff, types)
+    let #(sub, _next, typesjm) = jm.infer(sub, next, env, source_map, ref, type_, eff, types)
     io.debug(#(
       "typing jm took ms:",
       pnow() - start,
@@ -148,6 +149,17 @@ pub fn init(source) {
 
       }
     })
+
+    // new map of types because non function not generic.
+    // TODO should this be the case add to gleam explainers
+    let types = map.new()
+    let start = pnow()
+    let #(sub, _next, typesjm) = jm_tree.infer(sub, next, env, source, [], type_, eff, types)
+    io.debug(#(
+      "typing jm took ms:",
+      pnow() - start,
+      map.size(typesjm),
+    ))
   }
   // let start = pnow()
   // let assert Ok(c) = store.cursor(s, root, path)
