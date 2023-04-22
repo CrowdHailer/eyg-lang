@@ -36,7 +36,11 @@ pub fn ftv(type_) {
 
 pub fn apply(s, type_) {
   case type_ {
-    Var(a) -> result.unwrap(map.get(s, a), type_)
+    // This is recursive, get to the bottom of this
+    Var(a) -> case map.get(s, a) {
+      Ok(new) -> apply(s, new)
+      Error(Nil) -> type_
+    }
     Fun(from, effects, to) ->
       Fun(apply(s, from), apply(s, effects), apply(s, to))
     Integer | String -> type_
@@ -46,7 +50,6 @@ pub fn apply(s, type_) {
     Empty -> type_
     RowExtend(label, value, rest) -> RowExtend(label, apply(s, value), apply(s, rest))
     EffectExtend(label, #(lift, reply), rest) -> EffectExtend(label, #(apply(s, lift), apply(s, reply)), apply(s, rest))
-
   }
 }
 

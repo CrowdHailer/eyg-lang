@@ -5,6 +5,7 @@ import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/error
 
 pub fn unify(t1, t2, s, next)  {
+  io.debug(#(t1,t2))
   do_unify([#(t1, t2)], s, next)   
 }
 // I dont think this is the same as described because we don't keep lookup to original i.

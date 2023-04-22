@@ -28,11 +28,11 @@ fn step(sub, next, env, source, ref, type_, eff, types, k) {
       }
       e.Fn(x, e1) -> {
         let #(arg, next) = t.fresh(next)
-        let #(eff, next) = t.fresh(next)
+        let #(new_eff, next) = t.fresh(next)
         let #(ret, next) = t.fresh(next)
         let #(sub, next, types) = unify_at(type_, t.Fun(arg, eff, ret), sub, next, types, ref) 
         let env = extend(env, x, mono(arg))
-        use #(sub, next, types) <- step(sub, next, env, source, e1, ret, eff, types)
+        use #(sub, next, types) <- step(sub, next, env, source, e1, ret, new_eff, types)
         Cont(#(sub, next, types), k)
       }
       e.Let(x, e1, e2) -> {
@@ -85,7 +85,10 @@ fn primitive(exp, next) {
 fn fetch(env, x, sub, next, types, ref, type_, k) {
   case map.get(env, x) {
     Ok(scheme) ->  {
+      io.debug(#(x, scheme))
       let #(found, next) = instantiate(scheme, next)
+      io.debug(found)
+      io.debug(next)
       Cont(unify_at(type_, found, sub, next, types, ref), k)
     }
     Error(Nil) -> {

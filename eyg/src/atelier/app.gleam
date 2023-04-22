@@ -128,7 +128,7 @@ pub fn init(source) {
       pnow() - start,
       map.size(typesjm),
     ))
-    let assert Ok(Ok(t)) = map.get(typesjm, 6010)
+    let assert Ok(Ok(t)) = map.get(typesjm, root)
     io.debug(jmt.resolve(t, sub))
     let assert Ok(Ok(t)) = map.get(typesjm, 0)
     io.debug(jmt.resolve(t, sub))

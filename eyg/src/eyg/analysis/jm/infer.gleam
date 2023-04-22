@@ -21,9 +21,13 @@ pub fn mono(type_)  {
 // reference substitution env and type.
 // causes circular dependencies to move to any other file
 pub fn generalise(sub, env, t)  {
+  io.debug("gen")
+  io.debug(#(sub |> map.to_list, env |> map.to_list, t))
   let env = env.apply(sub, env)
   let t = t.apply(sub, t)
+  io.debug(t)
   let forall = set.drop(t.ftv(t), set.to_list(env.ftv(env)))
+  io.debug(forall)
   #(set.to_list(forall), t)
 }
 
