@@ -78,9 +78,7 @@ fn primitive(exp, next) {
 
   // Effect
   e.Perform(label) -> t.perform(label, next)
-
   e.Handle(label) -> t.handle(label, next)
-
   }
 }
 

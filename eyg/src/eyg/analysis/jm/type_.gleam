@@ -75,7 +75,7 @@ pub fn resolve(t, s) {
 
 pub fn resolve_error(reason, s) {
   let #(x, t1, t2) = reason
-  #(resolve(t1, s), resolve(t2, s))
+  #(x, resolve(t1, s), resolve(t2, s))
 }
 
 pub fn fresh(next)  {

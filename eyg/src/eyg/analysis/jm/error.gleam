@@ -6,4 +6,5 @@ pub type Reason {
   TypeMismatch(t.Type, t.Type)
   RowMismatch(String)
   InvalidTail(t.Type)
+  RecursiveType
 }

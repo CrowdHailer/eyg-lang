@@ -131,6 +131,7 @@ pub fn init(source) {
     let assert Ok(Ok(t)) = map.get(typesjm, root)
     io.debug(jmt.resolve(t, sub))
     let assert Ok(Ok(t)) = map.get(typesjm, 0)
+    |> io.debug
     io.debug(jmt.resolve(t, sub))
     let assert Ok(Ok(t)) = map.get(typesjm, 1)
     io.debug(jmt.resolve(t, sub))
