@@ -1,5 +1,4 @@
 import gleam/map
-import gleam/result
 import gleam/set
 import gleam/setx
 
@@ -17,7 +16,8 @@ pub type Type {
   EffectExtend(String, #(Type, Type), Type)
 }
 
-pub type Substitutions = map.Map(Int, Type)
+pub type Substitutions =
+  map.Map(Int, Type)
 
 pub fn ftv(type_) {
   case type_ {
@@ -30,17 +30,19 @@ pub fn ftv(type_) {
     Union(row) -> ftv(row)
     Empty -> set.new()
     RowExtend(_label, value, rest) -> set.union(ftv(value), ftv(rest))
-    EffectExtend(_label, #(lift, reply), rest) -> set.union(set.union(ftv(lift), ftv(reply)), ftv(rest))
+    EffectExtend(_label, #(lift, reply), rest) ->
+      set.union(set.union(ftv(lift), ftv(reply)), ftv(rest))
   }
 }
 
 pub fn apply(s, type_) {
   case type_ {
     // This is recursive, get to the bottom of this
-    Var(a) -> case map.get(s, a) {
-      Ok(new) -> apply(s, new)
-      Error(Nil) -> type_
-    }
+    Var(a) ->
+      case map.get(s, a) {
+        Ok(new) -> apply(s, new)
+        Error(Nil) -> type_
+      }
     Fun(from, effects, to) ->
       Fun(apply(s, from), apply(s, effects), apply(s, to))
     Integer | String -> type_
@@ -48,8 +50,10 @@ pub fn apply(s, type_) {
     Record(row) -> Record(apply(s, row))
     Union(row) -> Union(apply(s, row))
     Empty -> type_
-    RowExtend(label, value, rest) -> RowExtend(label, apply(s, value), apply(s, rest))
-    EffectExtend(label, #(lift, reply), rest) -> EffectExtend(label, #(apply(s, lift), apply(s, reply)), apply(s, rest))
+    RowExtend(label, value, rest) ->
+      RowExtend(label, apply(s, value), apply(s, rest))
+    EffectExtend(label, #(lift, reply), rest) ->
+      EffectExtend(label, #(apply(s, lift), apply(s, reply)), apply(s, rest))
   }
 }
 
@@ -58,18 +62,20 @@ pub fn resolve(t, s) {
     // Var(a) ->
     //   map.get(s, a)
     //   |> result.unwrap(t)
-    Var(a) -> case map.get(s, a) {
-      // recursive resolve needed for non direct unification
-      Ok(u) -> resolve(u, s)
-      Error(Nil) -> t
-    }
+    Var(a) ->
+      case map.get(s, a) {
+        // recursive resolve needed for non direct unification
+        Ok(u) -> resolve(u, s)
+        Error(Nil) -> t
+      }
     Fun(u, v, w) -> Fun(resolve(u, s), resolve(v, s), resolve(w, s))
     String | Integer | Empty -> t
     LinkedList(element) -> LinkedList(resolve(element, s))
     Record(u) -> Record(resolve(u, s))
     Union(u) -> Union(resolve(u, s))
-    RowExtend(label, u, v) ->  RowExtend(label, resolve(u, s), resolve(v, s))
-    EffectExtend(label, #(u, v), w) -> EffectExtend(label, #(resolve(u, s), resolve(v, s)), resolve(w, s))
+    RowExtend(label, u, v) -> RowExtend(label, resolve(u, s), resolve(v, s))
+    EffectExtend(label, #(u, v), w) ->
+      EffectExtend(label, #(resolve(u, s), resolve(v, s)), resolve(w, s))
   }
 }
 
@@ -78,11 +84,11 @@ pub fn resolve_error(reason, s) {
   #(x, resolve(t1, s), resolve(t2, s))
 }
 
-pub fn fresh(next)  {
+pub fn fresh(next) {
   #(Var(next), next + 1)
 }
 
-pub fn tail(next)  {
+pub fn tail(next) {
   let #(item, next) = fresh(next)
   #(LinkedList(item), next)
 }
@@ -104,7 +110,8 @@ pub fn extend(label, next) {
   let #(rest, next) = fresh(next)
   let #(e1, next) = fresh(next)
   let #(e2, next) = fresh(next)
-  let t = Fun(value, e1, Fun(Record(rest), e2, Record(RowExtend(label, value, rest))))
+  let t =
+    Fun(value, e1, Fun(Record(rest), e2, Record(RowExtend(label, value, rest))))
   #(t, next)
 }
 
@@ -122,7 +129,16 @@ pub fn overwrite(label, next) {
   let #(rest, next) = fresh(next)
   let #(e1, next) = fresh(next)
   let #(e2, next) = fresh(next)
-  let t = Fun(new, e1, Fun(Record(RowExtend(label, old, rest)), e2, Record(RowExtend(label, new, rest))))
+  let t =
+    Fun(
+      new,
+      e1,
+      Fun(
+        Record(RowExtend(label, old, rest)),
+        e2,
+        Record(RowExtend(label, new, rest)),
+      ),
+    )
   #(t, next)
 }
 
@@ -181,7 +197,9 @@ pub fn handle(label, next) {
 
 pub const unit = Record(Empty)
 
-pub const boolean = Union(RowExtend("True", unit, RowExtend("False", unit, Empty)))
+pub const boolean = Union(
+  RowExtend("True", unit, RowExtend("False", unit, Empty)),
+)
 
 pub fn result(value, reason) {
   Union(RowExtend("Ok", value, RowExtend("Error", reason, Empty)))

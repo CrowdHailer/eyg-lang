@@ -18,9 +18,7 @@ import eyg/runtime/standard
 import eyg/incremental/store
 import plinth/javascript/map as mutable_map
 import eyg/analysis/jm/incremental as jm
-import eyg/analysis/jm/tree as jm_tree
 import eyg/analysis/jm/type_ as jmt
-
 
 pub type WorkSpace {
   WorkSpace(
@@ -71,15 +69,14 @@ pub fn init(source) {
     map.size(s.free),
   ))
 
-    let start = pnow()
+  let start = pnow()
   let doubled = store.ref_group(s)
   io.debug(#(
     "doubled took ms:",
     pnow() - start,
     map.size(doubled),
-    map.to_list(doubled)
+    map.to_list(doubled),
   ))
-
 
   let start = pnow()
   let assert Ok(#(vars, s)) = store.free(s, root)
@@ -90,7 +87,7 @@ pub fn init(source) {
     map.size(s.free),
   ))
 
-    let start = pnow()
+  let start = pnow()
   let assert Ok(#(vars, s)) = store.free_mut(s, root)
   io.debug(#(
     "memoizing free mut took ms:",
@@ -111,7 +108,6 @@ pub fn init(source) {
   //   t,
   // ))
 
-
   let _ = {
     let sub = map.new()
     let next = 0
@@ -119,53 +115,53 @@ pub fn init(source) {
     let source_map = s.source
     let ref = root
     let type_ = jmt.Var(-1)
-    let eff = jmt.Empty
+    let eff = jmt.Var(-2)
     let types = map.new()
     let start = pnow()
-    let #(sub, _next, typesjm) = jm.infer(sub, next, env, source_map, ref, type_, eff, types)
-    io.debug(#(
-      "typing jm took ms:",
-      pnow() - start,
-      map.size(typesjm),
-    ))
+    let #(sub, _next, typesjm) =
+      jm.infer(sub, next, env, source_map, ref, type_, eff, types)
+    io.debug(#("typing jm took ms:", pnow() - start, map.size(typesjm)))
     let assert Ok(Ok(t)) = map.get(typesjm, root)
     io.debug(jmt.resolve(t, sub))
-    let assert Ok(Ok(t)) = map.get(typesjm, 0)
-    |> io.debug
+    let assert Ok(Ok(t)) =
+      map.get(typesjm, 0)
+      |> io.debug
     io.debug(jmt.resolve(t, sub))
     let assert Ok(Ok(t)) = map.get(typesjm, 1)
     io.debug(jmt.resolve(t, sub))
     let assert Ok(Ok(t)) = map.get(typesjm, 2)
     io.debug(jmt.resolve(t, sub))
 
-
     io.debug("================")
-    list.map(map.to_list(typesjm), fn(r) {
-      let #(id, r) = r
-      case r {
-        Ok(_) -> Nil
-        Error(reason) -> {
-          io.debug(map.get(s.source, id))
-          // io.debug(reason)
-          io.debug(jmt.resolve_error(reason, sub))
-          Nil
+    list.map(
+      map.to_list(typesjm),
+      fn(r) {
+        let #(id, r) = r
+        case r {
+          Ok(_) -> Nil
+          Error(reason) -> {
+            io.debug(map.get(s.source, id))
+            // io.debug(reason)
+            io.debug(jmt.resolve_error(reason, sub))
+            Nil
+          }
         }
+      },
+    )
 
-      }
-    })
     io.debug("================")
-
-    // // new map of types because non function not generic.
-    // // TODO should this be the case add to gleam explainers
-    // let types = map.new()
-    // let start = pnow()
-    // let #(sub, _next, typesjm) = jm_tree.infer(sub, next, env, source, [], type_, eff, types)
-    // io.debug(#(
-    //   "typing jm took ms:",
-    //   pnow() - start,
-    //   map.size(typesjm),
-    // ))
   }
+
+  // // new map of types because non function not generic.
+  // // TODO should this be the case add to gleam explainers
+  // let types = map.new()
+  // let start = pnow()
+  // let #(sub, _next, typesjm) = jm_tree.infer(sub, next, env, source, [], type_, eff, types)
+  // io.debug(#(
+  //   "typing jm took ms:",
+  //   pnow() - start,
+  //   map.size(typesjm),
+  // ))
   // let start = pnow()
   // let assert Ok(c) = store.cursor(s, root, path)
   // io.debug(#("building store.cursor took ms:", pnow() - start))
@@ -243,7 +239,6 @@ pub fn init(source) {
   // let start = pnow()
   // let f2 = new_i.free(refs, f)
   // io.debug(#("f2 took ms:", pnow() - start))
-  
 
   // let #(t, s, cache) = new_i.cached(root, refs, f, cache, env.empty(), s, count)
   // io.debug(#("partial type check took ms:", pnow() - start))

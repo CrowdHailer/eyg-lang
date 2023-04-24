@@ -2,7 +2,8 @@ import gleam/map
 import gleam/set
 import eyg/analysis/jm/type_ as t
 
-pub type Scheme = #(List(Int), t.Type)
+pub type Scheme =
+  #(List(Int), t.Type)
 
 pub fn ftv(scheme) {
   let #(forall, typ) = scheme
