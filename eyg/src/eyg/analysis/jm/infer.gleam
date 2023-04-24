@@ -36,7 +36,6 @@ pub fn instantiate(scheme, next) {
   #(type_, next)
 }
 
-
 pub fn extend(env, label, scheme) { 
   map.insert(env, label, scheme)
 }

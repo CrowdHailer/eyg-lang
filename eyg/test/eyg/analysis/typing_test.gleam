@@ -171,7 +171,6 @@ pub fn primitive_list_test() {
   let sub = infer(env, exp, typ, eff)
   let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
   let assert Ok(type_.LinkedList(type_.Integer)) = jm(exp, type_.Var(-1), type_.Empty)
-  |> io.debug
   // THere is an error missing and the principle is wrong
 
   let assert Ok(t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary))) =
@@ -197,6 +196,7 @@ pub fn variables_test() {
   let typ = t.Unbound(1)
   let sub = infer(env, exp, typ, eff)
   let assert t.Binary = resolve(sub, typ)
+  let assert Ok(type_.String) = jm(exp, type_.Var(-1), type_.Empty)
   let assert Ok(t.Binary) = type_of(sub, [0])
   let assert Ok(t.Binary) = type_of(sub, [1])
 }
@@ -213,6 +213,7 @@ pub fn function_test() {
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
   let assert t.Fun(t.Unbound(_), t.Open(_), t.Binary) = resolve(sub, typ)
+  let assert Ok(type_.Fun(type_.Var(_), type_.Var(_), type_.String)) = jm(exp, type_.Var(-1), type_.Empty)
 }
 
 pub fn pure_function_test() {
@@ -226,6 +227,8 @@ pub fn pure_function_test() {
   should.equal(x, y)
   let assert Ok(t.Unbound(z)) = type_of(sub, [0])
   should.equal(x, z)
+  let assert Ok(type_.Fun(type_.Var(x), type_.Var(_), type_.Var(y))) = jm(exp, type_.Var(-1), type_.Empty)
+  should.equal(x, y)
 }
 
 pub fn pure_function_call_test() {
@@ -240,6 +243,7 @@ pub fn pure_function_call_test() {
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
   let assert t.Binary = resolve(sub, typ)
+  let assert Ok(type_.String) = jm(exp, type_.Var(-1), type_.Empty)
 }
 
 // call generic could be a test row(a = id(Int) b = id(Int))
@@ -265,6 +269,7 @@ pub fn select_test() {
     resolve(sub, typ)
   should.equal(a, b)
   should.equal(l, "foo")
+  let assert Ok(type_.Fun(type_.Record(type_.RowExtend("foo", type_.Var(x), type_.Var(_y))), type_.Var(_z), type_.Var(a))) = jm(exp, type_.Var(-1), type_.Empty)
 
   let exp = e.Apply(exp, e.Variable("x"))
   let env = env.empty()
@@ -358,6 +363,10 @@ pub fn collect_effects_test() {
   let assert Ok(#(t.Unbound(lift2), t.Unbound(ret2))) = field(raised, "Log")
   should.equal(ret1, lift2)
   should.equal(ret2, final)
+
+  let exp = e.Lambda("_", exp)
+  let assert Ok(type_.String) = jm(exp, type_.Var(-1), type_.Empty)
+  |> io.debug
 }
 
 pub fn anony_test() {
