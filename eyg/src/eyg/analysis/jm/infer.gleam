@@ -93,12 +93,19 @@ pub fn builtins()  {
 
 fn extend_b(env, key, t) { 
   let scheme = generalise( map.new(), map.new(), t)
+  case key == "should_render" {
+    False -> Nil
+    True -> {
+      io.debug(#(key, scheme, t))
+      Nil
+    }
+  }
   extend(env, key, scheme)
 }
 
 // THere could be part of std
 pub fn equal()  {
-  t.Fun(t.Var(0), t.Var(1), t.Var(0))
+  t.Fun(t.Var(0), t.Var(1), t.Fun(t.Var(0), t.Var(2), t.boolean))
 }
 
 pub fn debug()  {

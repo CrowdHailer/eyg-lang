@@ -86,6 +86,13 @@ fn fetch(env, x, sub, next, types, ref, type_, k) {
   case map.get(env, x) {
     Ok(scheme) ->  {
       let #(found, next) = instantiate(scheme, next)
+      case x == "should_render" {
+        False -> Nil
+        True -> {
+          io.debug(#(x, found, next))
+          Nil
+        }
+      }
       Cont(unify_at(type_, found, sub, next, types, ref), k)
     }
     Error(Nil) -> {
