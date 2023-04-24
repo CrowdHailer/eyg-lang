@@ -7,11 +7,11 @@
 
 ### Algorithms
 
-Simple Lambda calculus is easily type checked. 
+Simple Lambda calculus is easily type checked.
 Most of the below algorithms handle extension of at least let polymorphism
 
 
-#### Algorithm W 
+#### Algorithm W
 Explained in Hindley Milner Paper
 
 Uses composition of substitutions
@@ -19,7 +19,7 @@ Uses composition of substitutions
 #### Algorithm J
 Explained in Hindley Milner Paper
 
-Uses a single global substitution. The global substitution doesn't have to 
+Uses a single global substitution. The global substitution doesn't have to
 
 ### Algorithm M
 Adds expected type as argument to algorithm.
@@ -39,6 +39,15 @@ This type is not constructable within the lambda calculus
 #### Let Rec
 
 Every Let could test to see if let rec is used.
+
+#### Extensible Records and Unions
+
+using Row types
+
+#### Effect types
+
+- [ ] How do we get polymorphic functions in effect types.
+Can we use these to compile builtins.
 
 ## Incremental type checking
 
