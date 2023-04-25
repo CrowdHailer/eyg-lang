@@ -1,13 +1,16 @@
 import gleam/io
+import gleam/option
 import lustre/element.{div}
 import lustre/attribute.{attribute, autofocus, class}
 import lustre/event.{on_keydown}
+import eyg/incremental/source
 import atelier/app
 import atelier/view/projection
 import atelier/view/pallet
 
 // maybe belongs in procejection .render
 pub fn render(state: app.WorkSpace) {
+  let assert Ok(tree) = source.to_tree(state.source, state.root)
   div(
     [
       on_keydown(app.Keypress),
@@ -19,9 +22,10 @@ pub fn render(state: app.WorkSpace) {
     ],
     [
       div([class("expand")], []),
-      projection.render(state.source, state.selection, state.inferred),
+      // pass through inferred
+      projection.render(tree, state.selection, option.None),
       div([class("expand")], []),
-      pallet.render(state, state.inferred),
+      pallet.render(state),
     ],
   )
 }

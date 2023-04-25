@@ -27,13 +27,43 @@ pub fn generalise(sub, env, t) {
 }
 
 pub fn instantiate(scheme, next) {
+  let next = next + 1000
   let #(forall, type_) = scheme
+  // io.debug(next)
   let s =
     list.index_map(forall, fn(i, old) { #(old, t.Var(next + i)) })
     |> map.from_list()
   let next = next + list.length(forall)
-  let type_ = t.apply(s, type_)
+  // io.debug(#(next, forall, type_))
+  // io.debug("applying")
+  // io.debug(s |> map.to_list)
+  // Apply is actually on a recursive substitution, composing SHOULD update all values to make it a single call
+  let type_ = apply_once(s, type_)
+    // io.debug("applyed")
+
   #(type_, next)
+}
+
+fn apply_once(s, type_) {
+  case type_ {
+    // This is recursive, get to the bottom of this
+    t.Var(a) ->
+      case map.get(s, a) {
+        Ok(new) -> new
+        Error(Nil) -> type_
+      }
+    t.Fun(from, effects, to) ->
+      t.Fun(apply_once(s, from), apply_once(s, effects), apply_once(s, to))
+    t.Integer | t.String -> type_
+    t.LinkedList(element) -> t.LinkedList(apply_once(s, element))
+    t.Record(row) -> t.Record(apply_once(s, row))
+    t.Union(row) -> t.Union(apply_once(s, row))
+    t.Empty -> type_
+    t.RowExtend(label, value, rest) ->
+      t.RowExtend(label, apply_once(s, value), apply_once(s, rest))
+    t.EffectExtend(label, #(lift, reply), rest) ->
+      t.EffectExtend(label, #(apply_once(s, lift), apply_once(s, reply)), apply_once(s, rest))
+  }
 }
 
 pub fn extend(env, label, scheme) {
@@ -100,13 +130,6 @@ pub fn builtins() {
 
 fn extend_b(env, key, t) {
   let scheme = generalise(map.new(), map.new(), t)
-  case key == "equal" {
-    False -> Nil
-    True -> {
-      io.debug(#("------------>>>", key, scheme, t))
-      Nil
-    }
-  }
   extend(env, key, scheme)
 }
 

@@ -1,4 +1,5 @@
 // command pallet
+import gleam/io
 import gleam/dynamic
 import gleam/list
 import gleam/map
@@ -8,19 +9,22 @@ import lustre/element.{div, input, span, text, textarea}
 import lustre/event.{on_click}
 import lustre/attribute.{class, classes}
 import eyg/analysis/inference
+import eyg/incremental/cursor
+import eyg/analysis/jm/error
+import eyg/analysis/jm/type_ as t
 import atelier/app.{ClickOption, SelectNode}
-import atelier/view/typ
+import atelier/view/type_
 import atelier/inventory
 
-pub fn render(state: app.WorkSpace, inferred) {
+pub fn render(state: app.WorkSpace) {
   div(
     [class("cover bg-gray-100")],
     case state.mode {
       app.WriteLabel(value, _) -> render_label(value)
-      app.WriteTerm(value, _) -> render_variable(value, inferred, state)
+      app.WriteTerm(value, _) -> render_variable(value, state)
       app.WriteNumber(number, _) -> render_number(number)
       app.WriteText(value, _) -> render_text(value)
-      _ -> render_navigate(inferred, state)
+      _ -> render_navigate(state)
     },
   )
 }
@@ -37,37 +41,38 @@ fn render_label(value) {
 }
 
 fn render_variable(
-  value,
-  inferred: option.Option(inference.Infered),
-  state: app.WorkSpace,
+  value,  state: app.WorkSpace,
 ) {
   [
     div(
       [],
-      case inferred {
-        Some(inferred) ->
-          case inventory.variables_at(inferred.environments, state.selection) {
-            // using spaces because we are in pre tag and text based
-            // not in pre tag here
-            Ok(options) ->
-              list.map(
-                options,
-                fn(option) {
-                  let #(t, term) = option
-                  span(
-                    [
-                      class("rounded bg-blue-100 p-1"),
-                      on_click(ClickOption(term)),
-                    ],
-                    [text(t)],
-                  )
-                },
-              )
-              |> list.intersperse(text(" "))
-            Error(_) -> [text("no env")]
-          }
-        None -> []
-      },
+      []
+      // case inferred {
+      //   Some(inferred) ->
+      //     // TODO use inferred but we dont have the whole env map.
+      //     []
+      //     // case inventory.variables_at(inferred.environments, state.selection) {
+      //     //   // using spaces because we are in pre tag and text based
+      //     //   // not in pre tag here
+      //     //   Ok(options) ->
+      //     //     list.map(
+      //     //       options,
+      //     //       fn(option) {
+      //     //         let #(t, term) = option
+      //     //         span(
+      //     //           [
+      //     //             class("rounded bg-blue-100 p-1"),
+      //     //             on_click(ClickOption(term)),
+      //     //           ],
+      //     //           [text(t)],
+      //     //         )
+      //     //       },
+      //     //     )
+      //     //     |> list.intersperse(text(" "))
+      //     //   Error(_) -> [text("no env")]
+      //     // }
+      //   None -> []
+      // },
     ),
     input([
       class("border w-full"),
@@ -114,10 +119,11 @@ fn render_text(value) {
   ]
 }
 
-fn render_navigate(inferred, state: app.WorkSpace) {
+fn render_navigate(state: app.WorkSpace) {
+   let #(sub, _next, types) = state.inferred
   [
-    case inferred {
-      Some(inferred) -> render_errors(inferred)
+    case types {
+      Some(types) -> render_errors(types)
       None -> span([], [])
     },
     div(
@@ -126,13 +132,19 @@ fn render_navigate(inferred, state: app.WorkSpace) {
         span(
           [],
           [
-            case inferred {
-              Some(inferred) ->
+            case types {
+              Some(types) ->
                 text(string.append(
                   ":",
-                  inferred
-                  |> inference.type_of(state.selection)
-                  |> typ.render(),
+                  {
+                    let assert Ok(c) = cursor.at(state.selection, state.root, state.source)
+                    let id = cursor.inner(c)
+                    let assert Ok(type_) = map.get(types, id)
+                    case type_ {
+                      Ok(type_) -> type_.render_type(t.resolve( type_, sub))
+                      Error(#(reason, t1, t2)) -> type_.render_failure(reason, t.resolve(t1, sub), t.resolve(t2, sub))
+                    }
+                  }
                 ))
               None -> span([], [text("type checking")])
             },
@@ -151,10 +163,10 @@ fn render_navigate(inferred, state: app.WorkSpace) {
   ]
 }
 
-fn render_errors(inferred: inference.Infered) {
+fn render_errors(types) {
   let errors =
     list.filter_map(
-      map.to_list(inferred.types),
+      map.to_list(types),
       fn(el) {
         let #(k, v) = el
         case v {
@@ -173,12 +185,22 @@ fn render_errors(inferred: inference.Infered) {
           errors,
           fn(err) {
             let #(path, reason) = err
+            // TODO real path
+            let path = []
             div(
               [classes([#("cursor-pointer", True)]), on_click(SelectNode(path))],
-              [text(typ.render_failure(reason))],
+              [text(render_failure(reason))],
             )
           },
         ),
       )
+  }
+}
+
+pub fn render_failure(reason)  {
+  let #(reason, _,_) = reason
+  case reason {
+    error.RecursiveType -> "recursive type" 
+    _ -> "other error"
   }
 }

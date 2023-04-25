@@ -81,7 +81,6 @@ fn step(sub, next, env, source, ref, type_, eff, types, k) {
             types,
           )
           let env = extend(env, x, generalise(sub, env, inner))
-          io.debug(#("gen", x))
           use #(sub, next, types) <- step(
             sub,
             next,
@@ -135,14 +134,16 @@ fn primitive(exp, next) {
 fn fetch(env, x, sub, next, types, ref, type_, k) {
   case map.get(env, x) {
     Ok(scheme) -> {
+      // io.debug("found")
       let #(found, next) = instantiate(scheme, next)
-      case x == "equal" {
-        False -> Nil
-        True -> {
-          io.debug(#("!!!!", scheme, x, found, next))
-          Nil
-        }
-      }
+      // io.debug("instanted")
+      // case x == "equal" {
+      //   False -> Nil
+      //   True -> {
+      //     io.debug(#("!!!!", scheme, x, found, next))
+      //     Nil
+      //   }
+      // }
       Cont(unify_at(type_, found, sub, next, types, ref), k)
     }
     Error(Nil) -> {
