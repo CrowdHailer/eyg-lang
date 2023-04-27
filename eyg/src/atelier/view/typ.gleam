@@ -6,6 +6,7 @@ import eyg/analysis/typ as t
 import eyg/analysis/unification
 import eyg/analysis/substitutions as sub
 
+// Keep for old kinded version
 // Do we have a general need for type debug functionality
 pub fn render(type_info) {
   case type_info {

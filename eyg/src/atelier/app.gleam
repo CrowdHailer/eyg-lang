@@ -3,6 +3,7 @@ import gleam/result
 import gleam/io
 import gleam/int
 import gleam/list
+import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
 import gleam/fetch
@@ -10,17 +11,34 @@ import gleam/http
 import gleam/http/request
 import lustre/cmd
 import atelier/transform.{Act}
-import eygir/expression as e
+import eyg/incremental/source as e
+import eyg/incremental/cursor
 import eygir/encode
 import eyg/analysis/inference
 import eyg/runtime/standard
+import eyg/incremental/store
+import plinth/javascript/map as mutable_map
+import eyg/analysis/jm/incremental as jm
+import eyg/analysis/jm/type_ as jmt
+import eyg/analysis/jm/error
+import eyg/analysis/jm/tree
 
 pub type WorkSpace {
   WorkSpace(
     selection: List(Int),
-    source: e.Expression,
-    inferred: Option(inference.Infered),
+    source: e.Source,
+    root: Int,
+    // TODO call acc
+    inferred: #(
+      map.Map(Int, jmt.Type),
+      Int,
+      Option(
+        map.Map(Int, Result(jmt.Type, #(error.Reason, jmt.Type, jmt.Type))),
+      ),
+    ),
     mode: Mode,
+    // copy pasting makes the id get reused that will change the type or have the type used more than once in a tree
+    // Need to not type things with free variables/types
     yanked: Option(e.Expression),
     error: Option(String),
     history: #(
@@ -31,11 +49,11 @@ pub type WorkSpace {
 }
 
 pub type Mode {
-  Navigate(actions: transform.Act)
-  WriteLabel(value: String, commit: fn(String) -> e.Expression)
-  WriteText(value: String, commit: fn(String) -> e.Expression)
-  WriteNumber(value: Int, commit: fn(Int) -> e.Expression)
-  WriteTerm(value: String, commit: fn(e.Expression) -> e.Expression)
+  Navigate(cursor: cursor.Cursor)
+  WriteLabel(value: String, commit: fn(String) -> #(Int, e.Source))
+  WriteText(value: String, commit: fn(String) -> #(Int, e.Source))
+  WriteNumber(value: Int, commit: fn(Int) -> #(Int, e.Source))
+  WriteTerm(value: String, commit: fn(e.Expression) -> #(Int, e.Source))
 }
 
 pub type Action {
@@ -46,14 +64,80 @@ pub type Action {
   ClickOption(chosen: e.Expression)
 }
 
-pub fn init(source) {
-  let assert Ok(act) = transform.prepare(source, [])
-  let mode = Navigate(act)
+external fn pnow() -> Int =
+  "" "performance.now"
+
+pub fn init(tree) {
+  let start = pnow()
+  // TODO don't use store with mutable ref typing and free is unused
+  let #(root, s) = store.load(store.empty(), tree)
+  let source = s.source
+  io.debug(#(
+    "loading store took ms:",
+    pnow() - start,
+    root,
+    map.size(s.source),
+    map.size(s.free),
+  ))
+
+  let sub = map.new()
+  let next = 0
+  let env = map.new()
+  // TODO type for editor
+  let type_ = jmt.Var(-1)
+  let eff = jmt.Var(-2)
+  let types = map.new()
+
+  let start = pnow()
+  let #(sub, next, typesjm) as acc =
+    jm.infer(sub, next, env, source, root, type_, eff, types)
+
+  io.debug(#("typing jm took ms:", pnow() - start, map.size(typesjm)))
+  list.map(
+    map.to_list(typesjm),
+    fn(r) {
+      let #(id, r) = r
+      case r {
+        Ok(_) -> Nil
+        Error(reason) -> {
+          io.debug("================ type error")
+          io.debug(map.get(s.source, id))
+          // io.debug(reason)
+          io.debug(jmt.resolve_error(reason, sub))
+          Nil
+        }
+      }
+    },
+  )
+
+  let _ = {
+    // TODO type for editor
+    let type_ = jmt.Var(-1)
+    let eff = jmt.Var(-2)
+
+    let start = pnow()
+    let #(sub, next, types) = tree.infer(tree, type_, eff)
+    io.debug(#("typing jm took ms:", pnow() - start, map.size(types)))
+    types
+    |> map.to_list
+    |> list.filter_map(fn(z) {
+      let #(p, r) = z
+      case r {
+        Ok(_) -> Error(Nil)
+        Error(reason) -> Ok(io.debug(reason))
+      }
+    })
+  }
+  io.debug("d000---")
+  // cusor at root doesn't ever error
+  let assert Ok(c) = cursor.at([], root, source)
+  let mode = Navigate(c)
   // Have inference work once for showing elements but need to also background this
   WorkSpace(
     [],
     source,
-    Some(standard.infer(source)),
+    root,
+    #(sub, next, Some(typesjm)),
     mode,
     None,
     None,
@@ -99,8 +183,8 @@ pub fn update(state: WorkSpace, action) {
 }
 
 pub fn select_node(state, path) {
-  let WorkSpace(source: source, ..) = state
-  let assert Ok(act) = transform.prepare(source, path)
+  let WorkSpace(source: source, root: root, ..) = state
+  let assert Ok(act) = cursor.at(path, root, source)
   let mode = Navigate(act)
   let state = WorkSpace(..state, source: source, selection: path, mode: mode)
 
@@ -115,35 +199,35 @@ pub fn keypress(key, state: WorkSpace) {
   let r = case state.mode, key {
     // save in this state only because q is a normal letter needed when entering text
     Navigate(_act), "q" -> save(state)
-    Navigate(act), "w" -> call_with(act, state)
+    // Navigate(act), "w" -> call_with(act, state)
     Navigate(act), "e" -> Ok(assign_to(act, state))
-    Navigate(act), "r" -> record(act, state)
-    Navigate(act), "t" -> Ok(tag(act, state))
-    Navigate(act), "y" -> Ok(copy(act, state))
-    // copy paste quite rare so we use upper case. might be best as command
-    Navigate(act), "Y" -> paste(act, state)
-    Navigate(act), "u" -> unwrap(act, state)
-    Navigate(act), "i" -> insert(act, state)
-    Navigate(act), "o" -> overwrite(act, state)
-    Navigate(act), "p" -> Ok(perform(act, state))
+    // Navigate(act), "r" -> record(act, state)
+    // Navigate(act), "t" -> Ok(tag(act, state))
+    // Navigate(act), "y" -> Ok(copy(act, state))
+    // // copy paste quite rare so we use upper case. might be best as command
+    // Navigate(act), "Y" -> paste(act, state)
+    // Navigate(act), "u" -> unwrap(act, state)
+    // Navigate(act), "i" -> insert(act, state)
+    // Navigate(act), "o" -> overwrite(act, state)
+    // Navigate(act), "p" -> Ok(perform(act, state))
     Navigate(_act), "a" -> increase(state)
     Navigate(act), "s" -> decrease(act, state)
     Navigate(act), "d" -> delete(act, state)
-    Navigate(act), "f" -> Ok(abstract(act, state))
-    Navigate(act), "g" -> select(act, state)
-    Navigate(act), "h" -> handle(act, state)
-    // Navigate(act), "j" -> ("down probably not")
-    // Navigate(act), "k" -> ("up probably not")
-    // Navigate(act), "l" -> ("right probably not")
-    Navigate(_act), "z" -> undo(state)
-    Navigate(_act), "Z" -> redo(state)
-    Navigate(act), "x" -> list(act, state)
-    Navigate(act), "c" -> call(act, state)
-    Navigate(act), "v" -> Ok(variable(act, state))
-    Navigate(act), "b" -> Ok(binary(act, state))
-    Navigate(act), "n" -> Ok(number(act, state))
-    Navigate(act), "m" -> match(act, state)
-    Navigate(act), "M" -> nocases(act, state)
+    // Navigate(act), "f" -> Ok(abstract(act, state))
+    // Navigate(act), "g" -> select(act, state)
+    // Navigate(act), "h" -> handle(act, state)
+    // // Navigate(act), "j" -> ("down probably not")
+    // // Navigate(act), "k" -> ("up probably not")
+    // // Navigate(act), "l" -> ("right probably not")
+    // Navigate(_act), "z" -> undo(state)
+    // Navigate(_act), "Z" -> redo(state)
+    // Navigate(act), "x" -> list(act, state)
+    // Navigate(act), "c" -> call(act, state)
+    // Navigate(act), "v" -> Ok(variable(act, state))
+    // Navigate(act), "b" -> Ok(binary(act, state))
+    // Navigate(act), "n" -> Ok(number(act, state))
+    // Navigate(act), "m" -> match(act, state)
+    // Navigate(act), "M" -> nocases(act, state)
     // Navigate(act), " " -> ("space follow suggestion next error")
     Navigate(_), _ -> Error("no action for keypress")
     // Other mode
@@ -160,12 +244,17 @@ pub fn keypress(key, state: WorkSpace) {
     WriteText(_, _), _k -> Ok(state)
     WriteTerm(new, commit), k if k == "Enter" -> {
       let assert [var, ..selects] = string.split(new, ".")
+      case selects {
+        [] -> Nil
+        _ -> todo("handle dot vars")
+      }
       let expression =
-        list.fold(
-          selects,
-          e.Variable(var),
-          fn(acc, select) { e.Apply(e.Select(select), acc) },
-        )
+        // list.fold(
+        //   selects,
+        //   e.Variable(var),
+        //   fn(acc, select) { e.Apply(e.Select(select), acc) },
+        // )
+        e.Var(var)
       let source = commit(expression)
       update_source(state, source)
     }
@@ -189,328 +278,363 @@ fn save(state: WorkSpace) {
     |> request.set_host("localhost:5000")
     |> request.set_path("/save")
     |> request.prepend_header("content-type", "application/json")
-    |> request.set_body(encode.to_json(state.source))
+  todo("finish saving")
+  // |> request.set_body(encode.to_json(state.source))
 
   fetch.send(request)
   |> io.debug
   Ok(state)
 }
 
-fn call_with(act: Act, state) {
-  let source = act.update(e.Apply(e.Vacant(""), act.target))
-  update_source(state, source)
-}
+// fn call_with(act: Act, state) {
+//   let source = act.update(e.Apply(e.Vacant(""), act.target))
+//   update_source(state, source)
+// }
 
 // e is essentially line above on a let statement.
 // nested lets can only be created from the value on the right.
 // moving something to a module might just have to be copy paste
-fn assign_to(act: Act, state) {
-  let commit = case act.target {
+fn assign_to(c, state: WorkSpace) {
+  let assert Ok(exp) = cursor.expression(c, state.source)
+  let #(hole, source) = e.insert(state.source, e.Vacant(""))
+  let commit = case exp {
     e.Let(_, _, _) -> fn(text) {
-      act.update(e.Let(text, e.Vacant(""), act.target))
+      // TODO needs a tree replace
+      // easier to insert tree but only if no reference to the old stuff
+      let assert Ok(r) =
+        store.replace(source, c, e.Let(text, hole, cursor.inner(c)))
+      r
     }
     // normally I want to add something above
-    exp -> fn(text) { act.update(e.Let(text, e.Vacant(""), exp)) }
+    exp -> fn(text) {
+      // always the same
+      // act.update(e.Let(text, e.Vacant(""), exp)) }
+      let assert Ok(r) =
+        store.replace(source, c, e.Let(text, hole, cursor.inner(c)))
+      r
+    }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-fn record(act: Act, state) {
-  case act.target {
-    e.Vacant(_comment) ->
-      act.update(e.Empty)
-      |> update_source(state, _)
-    e.Empty as exp | e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
-      let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Extend(text), e.Vacant("")), exp))
-      }
-      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
-    }
-    exp -> {
-      let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Extend(text), exp), e.Empty))
-      }
-      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
-    }
-  }
-}
+// fn record(act: Act, state) {
+//   case act.target {
+//     e.Vacant(_comment) ->
+//       act.update(e.Empty)
+//       |> update_source(state, _)
+//     e.Empty as exp | e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
+//       let commit = fn(text) {
+//         act.update(e.Apply(e.Apply(e.Extend(text), e.Vacant("")), exp))
+//       }
+//       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+//     }
+//     exp -> {
+//       let commit = fn(text) {
+//         act.update(e.Apply(e.Apply(e.Extend(text), exp), e.Empty))
+//       }
+//       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+//     }
+//   }
+// }
 
-fn tag(act: Act, state) {
-  let commit = case act.target {
-    e.Vacant(_comment) -> fn(text) { act.update(e.Tag(text)) }
-    exp -> fn(text) { act.update(e.Apply(e.Tag(text), exp)) }
-  }
-  WorkSpace(..state, mode: WriteLabel("", commit))
-}
+// fn tag(act: Act, state) {
+//   let commit = case act.target {
+//     e.Vacant(_comment) -> fn(text) { act.update(e.Tag(text)) }
+//     exp -> fn(text) { act.update(e.Apply(e.Tag(text), exp)) }
+//   }
+//   WorkSpace(..state, mode: WriteLabel("", commit))
+// }
 
-fn copy(act: Act, state) {
-  WorkSpace(..state, yanked: Some(act.target))
-}
+// fn copy(act: Act, state) {
+//   WorkSpace(..state, yanked: Some(act.target))
+// }
 
-fn paste(act: Act, state: WorkSpace) {
-  case state.yanked {
-    Some(snippet) -> {
-      let source = act.update(snippet)
-      update_source(state, source)
-    }
-    None -> Error("nothing on clipboard")
-  }
-}
+// fn paste(act: Act, state: WorkSpace) {
+//   case state.yanked {
+//     Some(snippet) -> {
+//       let source = act.update(snippet)
+//       update_source(state, source)
+//     }
+//     None -> Error("nothing on clipboard")
+//   }
+// }
 
-fn unwrap(act: Act, state) {
-  case act.parent {
-    None -> Error("top level")
-    Some(#(_i, _list, _, parent_update)) -> {
-      let source = parent_update(act.target)
-      update_source(state, source)
-    }
-  }
-}
+// fn unwrap(act: Act, state) {
+//   case act.parent {
+//     None -> Error("top level")
+//     Some(#(_i, _list, _, parent_update)) -> {
+//       let source = parent_update(act.target)
+//       update_source(state, source)
+//     }
+//   }
+// }
 
-fn insert(act: Act, state) {
-  let write = fn(text, build) {
-    WriteLabel(text, fn(new) { act.update(build(new)) })
-  }
-  use mode <- result.then(case act.target {
-    e.Variable(value) -> Ok(write(value, e.Variable(_)))
-    e.Lambda(param, body) -> Ok(write(param, e.Lambda(_, body)))
-    e.Apply(_, _) -> Error("no insert option for apply")
-    e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
+// fn insert(act: Act, state) {
+//   let write = fn(text, build) {
+//     WriteLabel(text, fn(new) { act.update(build(new)) })
+//   }
+//   use mode <- result.then(case act.target {
+//     e.Variable(value) -> Ok(write(value, e.Variable(_)))
+//     e.Lambda(param, body) -> Ok(write(param, e.Lambda(_, body)))
+//     e.Apply(_, _) -> Error("no insert option for apply")
+//     e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
 
-    e.Binary(value) ->
-      Ok(WriteText(value, fn(new) { act.update(e.Binary(new)) }))
-    e.Integer(value) ->
-      Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
-    e.Tail | e.Cons -> Error("there is no insert for lists")
-    e.Vacant(comment) -> Ok(write(comment, e.Vacant))
-    e.Empty -> Error("empty record no insert")
-    e.Extend(label) -> Ok(write(label, e.Extend))
-    e.Select(label) -> Ok(write(label, e.Select))
-    e.Overwrite(label) -> Ok(write(label, e.Overwrite))
-    e.Tag(label) -> Ok(write(label, e.Tag))
-    e.Case(label) -> Ok(write(label, e.Case))
-    e.NoCases -> Error("no cases")
-    e.Perform(label) -> Ok(write(label, e.Perform))
-    e.Handle(label) -> Ok(write(label, e.Handle))
-    e.Builtin(_) -> Error("no insert option for builtin, use stdlib references")
-  })
+//     e.Binary(value) ->
+//       Ok(WriteText(value, fn(new) { act.update(e.Binary(new)) }))
+//     e.Integer(value) ->
+//       Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
+//     e.Tail | e.Cons -> Error("there is no insert for lists")
+//     e.Vacant(comment) -> Ok(write(comment, e.Vacant))
+//     e.Empty -> Error("empty record no insert")
+//     e.Extend(label) -> Ok(write(label, e.Extend))
+//     e.Select(label) -> Ok(write(label, e.Select))
+//     e.Overwrite(label) -> Ok(write(label, e.Overwrite))
+//     e.Tag(label) -> Ok(write(label, e.Tag))
+//     e.Case(label) -> Ok(write(label, e.Case))
+//     e.NoCases -> Error("no cases")
+//     e.Perform(label) -> Ok(write(label, e.Perform))
+//     e.Handle(label) -> Ok(write(label, e.Handle))
+//     e.Builtin(_) -> Error("no insert option for builtin, use stdlib references")
+//   })
 
-  Ok(WorkSpace(..state, mode: mode))
-}
+//   Ok(WorkSpace(..state, mode: mode))
+// }
 
-fn overwrite(act: Act, state) {
-  case act.target {
-    e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
-      let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
-      }
-      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
-    }
-    exp -> {
-      let commit = fn(text) {
-        // This is the same as above
-        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
-      }
-      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
-    }
-  }
-}
+// fn overwrite(act: Act, state) {
+//   case act.target {
+//     e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
+//       let commit = fn(text) {
+//         act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
+//       }
+//       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+//     }
+//     exp -> {
+//       let commit = fn(text) {
+//         // This is the same as above
+//         act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
+//       }
+//       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+//     }
+//   }
+// }
 
 fn increase(state: WorkSpace) {
   use selection <- result.then(case list.reverse(state.selection) {
     [_, ..rest] -> Ok(list.reverse(rest))
     [] -> Error("no increase")
   })
-  let assert Ok(act) = transform.prepare(state.source, selection)
-  Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
+  let assert Ok(c) = cursor.at(selection, state.root, state.source)
+  Ok(WorkSpace(..state, selection: selection, mode: Navigate(c)))
 }
 
 fn decrease(_act, state: WorkSpace) {
   let selection = list.append(state.selection, [0])
-  use act <- result.then(transform.prepare(state.source, selection))
-  Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
+  use c <- result.then(
+    cursor.at(selection, state.root, state.source)
+    |> result.map_error(fn(_: Nil) { "no valid decrease" }),
+  )
+  Ok(WorkSpace(..state, selection: selection, mode: Navigate(c)))
 }
 
-fn delete(act: Act, state) {
+fn delete(c, state: WorkSpace) {
   // an assignment vacant or not is always deleted.
   // when deleting with a vacant as a target there is no change
   // we can instead bump up the path
-  let source = case act.target {
-    e.Let(_label, _, then) -> act.update(then)
-    _ -> act.update(e.Vacant(""))
+  let start = pnow()
+  let assert Ok(exp) = cursor.expression(c, state.source)
+  let #(hole, source) = e.insert(state.source, e.Vacant(""))
+  let assert Ok(source) = case exp {
+    e.Let(_label, _, then) -> e.replace(source, c, then)
+    _ -> e.replace(source, c, hole)
   }
-  update_source(state, source)
+  let ret = update_source(state, source)
+  io.debug(#("normal update took ms:", pnow() - start))
+
+  ret
 }
 
-fn abstract(act: Act, state) {
-  let commit = case act.target {
-    e.Let(label, value, then) -> fn(text) {
-      act.update(e.Let(label, e.Lambda(text, value), then))
-    }
-    exp -> fn(text) { act.update(e.Lambda(text, exp)) }
-  }
-  WorkSpace(..state, mode: WriteLabel("", commit))
-}
+// fn abstract(act: Act, state) {
+//   let commit = case act.target {
+//     e.Let(label, value, then) -> fn(text) {
+//       act.update(e.Let(label, e.Lambda(text, value), then))
+//     }
+//     exp -> fn(text) { act.update(e.Lambda(text, exp)) }
+//   }
+//   WorkSpace(..state, mode: WriteLabel("", commit))
+// }
 
-fn select(act: Act, state) {
-  case act.target {
-    e.Let(_label, _value, _then) -> Error("can't get on let")
-    exp -> {
-      let commit = fn(text) { act.update(e.Apply(e.Select(text), exp)) }
-      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
-    }
-  }
-}
+// fn select(act: Act, state) {
+//   case act.target {
+//     e.Let(_label, _value, _then) -> Error("can't get on let")
+//     exp -> {
+//       let commit = fn(text) { act.update(e.Apply(e.Select(text), exp)) }
+//       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+//     }
+//   }
+// }
 
-fn handle(act: Act, state) {
-  case act.target {
-    e.Let(_label, _value, _then) -> Error("can't handle on let")
-    exp -> {
-      let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Handle(text), e.Vacant("")), exp))
-      }
-      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
-    }
-  }
-}
+// fn handle(act: Act, state) {
+//   case act.target {
+//     e.Let(_label, _value, _then) -> Error("can't handle on let")
+//     exp -> {
+//       let commit = fn(text) {
+//         act.update(e.Apply(e.Apply(e.Handle(text), e.Vacant("")), exp))
+//       }
+//       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+//     }
+//   }
+// }
 
-fn perform(act: Act, state) {
-  let commit = case act.target {
-    e.Let(label, _value, then) -> fn(text) {
-      act.update(e.Let(label, e.Perform(text), then))
-    }
-    _exp -> fn(text) { act.update(e.Perform(text)) }
-  }
-  WorkSpace(..state, mode: WriteLabel("", commit))
-}
+// fn perform(act: Act, state) {
+//   let commit = case act.target {
+//     e.Let(label, _value, then) -> fn(text) {
+//       act.update(e.Let(label, e.Perform(text), then))
+//     }
+//     _exp -> fn(text) { act.update(e.Perform(text)) }
+//   }
+//   WorkSpace(..state, mode: WriteLabel("", commit))
+// }
 
-fn undo(state: WorkSpace) {
-  case state.history {
-    #([], _) -> Error("No history")
-    #([#(source, selection), ..rest], forward) -> {
-      let history = #(rest, [#(state.source, state.selection), ..forward])
-      use act <- result.then(transform.prepare(source, selection))
-      // Has to already be in navigate mode to undo
-      let mode = Navigate(act)
-      Ok(
-        WorkSpace(
-          ..state,
-          source: source,
-          selection: selection,
-          mode: mode,
-          history: history,
-        ),
-      )
-    }
-  }
-}
+// fn undo(state: WorkSpace) {
+//   case state.history {
+//     #([], _) -> Error("No history")
+//     #([#(source, selection), ..rest], forward) -> {
+//       let history = #(rest, [#(state.source, state.selection), ..forward])
+//       use act <- result.then(transform.prepare(source, selection))
+//       // Has to already be in navigate mode to undo
+//       let mode = Navigate(act)
+//       Ok(
+//         WorkSpace(
+//           ..state,
+//           source: source,
+//           selection: selection,
+//           mode: mode,
+//           history: history,
+//         ),
+//       )
+//     }
+//   }
+// }
 
-fn redo(state: WorkSpace) {
-  case state.history {
-    #(_, []) -> Error("No redo")
-    #(backward, [#(source, selection), ..rest]) -> {
-      let history = #([#(state.source, state.selection), ..backward], rest)
-      use act <- result.then(transform.prepare(source, selection))
-      // Has to already be in navigate mode to undo
-      let mode = Navigate(act)
-      Ok(
-        WorkSpace(
-          ..state,
-          source: source,
-          selection: selection,
-          mode: mode,
-          history: history,
-        ),
-      )
-    }
-  }
-}
+// fn redo(state: WorkSpace) {
+//   case state.history {
+//     #(_, []) -> Error("No redo")
+//     #(backward, [#(source, selection), ..rest]) -> {
+//       let history = #([#(state.source, state.selection), ..backward], rest)
+//       use act <- result.then(transform.prepare(source, selection))
+//       // Has to already be in navigate mode to undo
+//       let mode = Navigate(act)
+//       Ok(
+//         WorkSpace(
+//           ..state,
+//           source: source,
+//           selection: selection,
+//           mode: mode,
+//           history: history,
+//         ),
+//       )
+//     }
+//   }
+// }
 
-fn list(act: Act, state) {
-  let new = case act.target {
-    e.Vacant(_comment) -> e.Tail
-    e.Tail | e.Apply(e.Apply(e.Cons, _), _) ->
-      e.Apply(e.Apply(e.Cons, e.Vacant("")), act.target)
-    _ -> e.Apply(e.Apply(e.Cons, act.target), e.Tail)
-  }
-  let source = act.update(new)
-  update_source(state, source)
-}
+// fn list(act: Act, state) {
+//   let new = case act.target {
+//     e.Vacant(_comment) -> e.Tail
+//     e.Tail | e.Apply(e.Apply(e.Cons, _), _) ->
+//       e.Apply(e.Apply(e.Cons, e.Vacant("")), act.target)
+//     _ -> e.Apply(e.Apply(e.Cons, act.target), e.Tail)
+//   }
+//   let source = act.update(new)
+//   update_source(state, source)
+// }
 
-fn call(act: Act, state) {
-  let source = act.update(e.Apply(act.target, e.Vacant("")))
-  update_source(state, source)
-}
+// fn call(act: Act, state) {
+//   let source = act.update(e.Apply(act.target, e.Vacant("")))
+//   update_source(state, source)
+// }
 
-fn variable(act: Act, state) {
-  let commit = case act.target {
-    e.Let(label, _value, then) -> fn(term) {
-      act.update(e.Let(label, term, then))
-    }
-    _exp -> fn(term) { act.update(term) }
-  }
-  WorkSpace(..state, mode: WriteTerm("", commit))
-}
+// fn variable(act: Act, state) {
+//   let commit = case act.target {
+//     e.Let(label, _value, then) -> fn(term) {
+//       act.update(e.Let(label, term, then))
+//     }
+//     _exp -> fn(term) { act.update(term) }
+//   }
+//   WorkSpace(..state, mode: WriteTerm("", commit))
+// }
 
-fn binary(act: Act, state) {
-  let commit = case act.target {
-    e.Let(label, _value, then) -> fn(text) {
-      act.update(e.Let(label, e.Binary(text), then))
-    }
-    _exp -> fn(text) { act.update(e.Binary(text)) }
-  }
-  WorkSpace(..state, mode: WriteText("", commit))
-}
+// fn binary(act: Act, state) {
+//   let commit = case act.target {
+//     e.Let(label, _value, then) -> fn(text) {
+//       act.update(e.Let(label, e.Binary(text), then))
+//     }
+//     _exp -> fn(text) { act.update(e.Binary(text)) }
+//   }
+//   WorkSpace(..state, mode: WriteText("", commit))
+// }
 
-fn number(act: Act, state) {
-  let #(v, commit) = case act.target {
-    e.Let(label, _value, then) -> #(
-      0,
-      fn(value) { act.update(e.Let(label, e.Integer(value), then)) },
-    )
-    e.Integer(value) -> #(value, fn(value) { act.update(e.Integer(value)) })
-    _exp -> #(0, fn(value) { act.update(e.Integer(value)) })
-  }
-  WorkSpace(..state, mode: WriteNumber(v, commit))
-}
+// fn number(act: Act, state) {
+//   let #(v, commit) = case act.target {
+//     e.Let(label, _value, then) -> #(
+//       0,
+//       fn(value) { act.update(e.Let(label, e.Integer(value), then)) },
+//     )
+//     e.Integer(value) -> #(value, fn(value) { act.update(e.Integer(value)) })
+//     _exp -> #(0, fn(value) { act.update(e.Integer(value)) })
+//   }
+//   WorkSpace(..state, mode: WriteNumber(v, commit))
+// }
 
-fn match(act: Act, state) {
-  let commit = case act.target {
-    // e.Let(label, value, then) -> fn(text) {
-    //   act.update(e.Let(label, e.Binary(text), then))
-    // }
-    // Match on original value should maybe be the arg? but I like promoting first class everything
-    exp -> fn(text) {
-      act.update(e.Apply(e.Apply(e.Case(text), e.Vacant("")), exp))
-    }
-  }
-  Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
-}
+// fn match(act: Act, state) {
+//   let commit = case act.target {
+//     // e.Let(label, value, then) -> fn(text) {
+//     //   act.update(e.Let(label, e.Binary(text), then))
+//     // }
+//     // Match on original value should maybe be the arg? but I like promoting first class everything
+//     exp -> fn(text) {
+//       act.update(e.Apply(e.Apply(e.Case(text), e.Vacant("")), exp))
+//     }
+//   }
+//   Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+// }
 
-fn nocases(act: Act, state) {
-  update_source(state, act.update(e.NoCases))
-}
+// fn nocases(act: Act, state) {
+//   update_source(state, act.update(e.NoCases))
+// }
 
 // app state actions maybe separate from ui but maybe ui files organised by mode
 // update source also ends the entry state
-fn update_source(state: WorkSpace, source) {
-  use act <- result.then(transform.prepare(source, state.selection))
-  let mode = Navigate(act)
-  let #(history, inferred) = case source == state.source {
-    True -> #(state.history, state.inferred)
-    False -> {
-      let #(backwards, _forwards) = state.history
-      let history = #([#(state.source, state.selection), ..backwards], [])
-      #(history, None)
-    }
-  }
-  Ok(
-    WorkSpace(
-      ..state,
-      source: source,
-      mode: mode,
-      history: history,
-      inferred: inferred,
-    ),
+fn update_source(state: WorkSpace, next) {
+  let #(root, source) = next
+  use cursor <- result.then(
+    cursor.at(state.selection, root, source)
+    |> result.map_error(fn(_: Nil) { "nope on the update" }),
   )
+
+  let mode = Navigate(cursor)
+  // let #(history, inferred) = case source == state.source {
+  //   True -> #(state.history, state.inferred)
+  //   False -> {
+  //     let #(backwards, _forwards) = state.history
+  //     let history = #([#(state.source, state.selection), ..backwards], [])
+  //     #(history, None)
+  //   }
+  // }
+
+  let sub = map.new()
+  let next = 0
+  let env = map.new()
+  // TODO type for editor
+  let type_ = jmt.Var(-1)
+  let eff = jmt.Var(-2)
+  let types = map.new()
+
+  let start = pnow()
+  let #(sub, _next, typesjm) =
+    jm.infer(sub, next, env, source, root, type_, eff, types)
+  io.debug(#("typing jm took ms:", pnow() - start, map.size(typesjm)))
+
+  Ok(WorkSpace(..state, source: source, root: root, mode: mode))
+  // history: history,
+  // inferred: inferred,
 }

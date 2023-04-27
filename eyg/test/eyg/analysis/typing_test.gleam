@@ -1,14 +1,20 @@
+import gleam/io
 import gleam/map
 import gleam/set
 import gleam/setx
 import eygir/expression as e
 import eyg/analysis/typ.{ftv} as t
+import eyg/analysis/jm/type_
 import eyg/analysis/env
 import eyg/analysis/inference.{infer, type_of}
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
 import gleeunit/should
+import eyg/incremental/store
+import eyg/analysis/jm/incremental as jm
+import eyg/analysis/jm/type_ as jmt
+import eyg/analysis/jm/error as jm_error
 
 pub fn resolve(inf: inference.Infered, typ) {
   unification.resolve(inf.substitutions, typ)
@@ -55,6 +61,37 @@ pub fn free_type_variables_test() {
   |> should.equal(set.from_list([t.Term(1), t.Term(2), t.Effect(3)]))
 }
 
+fn jm(exp, type_, eff) {
+  let #(root, store) = store.load(store.empty(), exp)
+
+  let sub = map.new()
+  let next = 0
+  let env = map.new()
+  let source = store.source
+  let ref = root
+  let types = map.new()
+
+  let #(sub, _next, types) =
+    jm.infer(sub, next, env, source, ref, type_, eff, types)
+  case map.get(types, root) {
+    Ok(Ok(t)) -> Ok(jmt.resolve(t, sub))
+    Ok(Error(reason)) -> Error(reason)
+    // DOes panic expression print message
+    Error(_) -> {
+      io.debug(root)
+      io.debug(
+        source
+        |> map.to_list,
+      )
+      io.debug(
+        types
+        |> map.to_list,
+      )
+      todo("no typr")
+    }
+  }
+}
+
 // Primitive
 pub fn binary_test() {
   let exp = e.Binary("hi")
@@ -71,11 +108,17 @@ pub fn binary_test() {
   let sub = infer(env, exp, typ, eff)
   let assert t.Binary = resolve(sub, typ)
   let assert Ok(t.Binary) = type_of(sub, [])
+  let assert Ok(type_.String) = jm(exp, type_.Var(-1), type_.Empty)
 
   // incorrect type
   let typ = t.Integer
   let sub = infer(env, exp, typ, eff)
   let assert Error(_) = type_of(sub, [])
+  let assert Error(#(
+    jm_error.TypeMismatch(jmt.Integer, jmt.String),
+    jmt.Integer,
+    jmt.String,
+  )) = jm(exp, type_.Integer, type_.Empty)
 }
 
 pub fn integer_test() {
@@ -128,6 +171,8 @@ pub fn empty_list_test() {
   let typ = t.Binary
   let sub = infer(env, exp, typ, eff)
   let assert Error(_) = type_of(sub, [])
+  let assert Ok(type_.LinkedList(type_.Var(_))) =
+    jm(exp, type_.Var(-1), type_.Empty)
 }
 
 pub fn primitive_list_test() {
@@ -138,6 +183,10 @@ pub fn primitive_list_test() {
   let eff = t.Closed
   let sub = infer(env, exp, typ, eff)
   let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [])
+  let assert Ok(type_.LinkedList(type_.Integer)) =
+    jm(exp, type_.Var(-1), type_.Empty)
+  // THere is an error missing and the principle is wrong
+
   let assert Ok(t.Fun(t.LinkedList(t.Binary), t.Closed, t.LinkedList(t.Binary))) =
     type_of(sub, [0])
   let assert Ok(t.LinkedList(t.Binary)) = type_of(sub, [1])
@@ -161,6 +210,7 @@ pub fn variables_test() {
   let typ = t.Unbound(1)
   let sub = infer(env, exp, typ, eff)
   let assert t.Binary = resolve(sub, typ)
+  let assert Ok(type_.String) = jm(exp, type_.Var(-1), type_.Empty)
   let assert Ok(t.Binary) = type_of(sub, [0])
   let assert Ok(t.Binary) = type_of(sub, [1])
 }
@@ -177,6 +227,8 @@ pub fn function_test() {
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
   let assert t.Fun(t.Unbound(_), t.Open(_), t.Binary) = resolve(sub, typ)
+  let assert Ok(type_.Fun(type_.Var(_), type_.Var(_), type_.String)) =
+    jm(exp, type_.Var(-1), type_.Empty)
 }
 
 pub fn pure_function_test() {
@@ -190,6 +242,9 @@ pub fn pure_function_test() {
   should.equal(x, y)
   let assert Ok(t.Unbound(z)) = type_of(sub, [0])
   should.equal(x, z)
+  let assert Ok(type_.Fun(type_.Var(x), type_.Var(_), type_.Var(y))) =
+    jm(exp, type_.Var(-1), type_.Empty)
+  should.equal(x, y)
 }
 
 pub fn pure_function_call_test() {
@@ -204,6 +259,7 @@ pub fn pure_function_call_test() {
   let typ = t.Unbound(-1)
   let sub = infer(env, exp, typ, eff)
   let assert t.Binary = resolve(sub, typ)
+  let assert Ok(type_.String) = jm(exp, type_.Var(-1), type_.Empty)
 }
 
 // call generic could be a test row(a = id(Int) b = id(Int))
@@ -229,6 +285,12 @@ pub fn select_test() {
     resolve(sub, typ)
   should.equal(a, b)
   should.equal(l, "foo")
+  let assert Ok(type_.Fun(
+    type_.Record(type_.RowExtend("foo", type_.Var(x), type_.Var(_y))),
+    type_.Var(_z),
+    type_.Var(a),
+  )) = jm(exp, type_.Var(-1), type_.Empty)
+  should.equal(x, a)
 
   let exp = e.Apply(exp, e.Variable("x"))
   let env = env.empty()
@@ -261,6 +323,14 @@ pub fn combine_select_test() {
   should.not_equal(x, y)
   let assert Ok(t.Unbound(z)) = field(row, "bar")
   should.equal(x, z)
+  let exp = e.Lambda("x", exp)
+  // TODO field fn that excepts Record only type_.field
+  // Proper double use in select statement test
+  // slim down saved.json
+  // All documentation of type systems in "mylang"
+  let assert Ok(type_.String) =
+    jm(exp, type_.Var(-1), type_.Empty)
+    |> io.debug
 }
 
 // Unions
@@ -322,6 +392,11 @@ pub fn collect_effects_test() {
   let assert Ok(#(t.Unbound(lift2), t.Unbound(ret2))) = field(raised, "Log")
   should.equal(ret1, lift2)
   should.equal(ret2, final)
+
+  let exp = e.Lambda("_", exp)
+  let assert Ok(type_.String) =
+    jm(exp, type_.Var(-1), type_.Empty)
+    |> io.debug
 }
 
 pub fn anony_test() {
