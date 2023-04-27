@@ -21,6 +21,8 @@ import plinth/javascript/map as mutable_map
 import eyg/analysis/jm/incremental as jm
 import eyg/analysis/jm/type_ as jmt
 import eyg/analysis/jm/error
+import eyg/analysis/jm/tree
+
 
 pub type WorkSpace {
   WorkSpace(
@@ -102,6 +104,25 @@ pub fn init(tree) {
       }
     },
   )
+
+  let _ =  {
+
+    // TODO type for editor
+    let type_ = jmt.Var(-1)
+    let eff = jmt.Var(-2)
+
+    let start = pnow()
+    let #(sub, next, types) = tree.infer(tree, type_, eff)
+    io.debug(#("typing jm took ms:", pnow() - start, map.size(types)))
+    types |> map.to_list |> list.filter_map(fn(z) {
+      let #(p, r) = z
+      case r {
+        Ok(_) -> Error(Nil)
+        Error(reason) -> Ok(io.debug(reason))
+      }
+    })
+  }
+  io.debug("d000---")
   // cusor at root doesn't ever error
   let assert Ok(c) = cursor.at([], root, source)
   let mode = Navigate(c)

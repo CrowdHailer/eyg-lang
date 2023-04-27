@@ -2,7 +2,7 @@ import gleam/map
 import eygir/expression as e
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/infer.{extend, generalise, instantiate, mono, unify_at}
+import eyg/analysis/jm/infer.{extend, generalise, instantiate, mono}
 
 pub type State =
   #(
@@ -24,20 +24,34 @@ pub fn loop(run) {
   }
 }
 
-pub fn infer(sub, next, env, exp, path, type_, eff, types) {
-  loop(step(sub, next, env, exp, path, type_, eff, types, Done))
+pub fn infer(exp, type_, eff) {
+  let sub = map.new()
+  let next = 0
+  let types = map.new()
+  let env = map.new()
+  // Switching path to integer took ~ 20% off the inference time 600ms to 500ms for 6000 nodes
+  let path = []
+  let acc = #(sub, next, types)
+  loop(step(acc, env, exp, path, type_, eff, Done))
 }
 
-fn step(sub, next, env, exp, path, type_, eff, types, k) {
-  // io.debug(exp)
+pub fn unify_at(acc, path, expected, found)  {
+  let #(sub, next, types)= acc
+  infer.unify_at(expected, found, sub, next, types, path)
+}
+
+fn step(acc, env, exp, path, type_, eff, k) {
   case exp {
     e.Variable(x) -> {
       case map.get(env, x) {
         Ok(scheme) -> {
+          let #(sub, next, types) = acc
           let #(found, next) = instantiate(scheme, next)
-          Cont(unify_at(type_, found, sub, next, types, path), k)
+          let acc = #(sub, next, types)
+          Cont(unify_at(acc, path, type_, found), k)
         }
         Error(Nil) -> {
+          let #(sub, next, types) = acc
           let types =
             map.insert(
               types,
@@ -50,79 +64,45 @@ fn step(sub, next, env, exp, path, type_, eff, types, k) {
     }
     e.Apply(e1, e2) -> {
       // can't error
+      let #(sub, next, types) = acc
       let types = map.insert(types, path, Ok(type_))
       let #(arg, next) = t.fresh(next)
-      use #(sub, next, types) <- step(
-        sub,
-        next,
-        env,
-        e1,
-        [0, ..path],
-        t.Fun(arg, eff, type_),
-        eff,
-        types,
-      )
-      use #(sub, next, types) <- step(
-        sub,
-        next,
-        env,
-        e2,
-        [1, ..path],
-        arg,
-        eff,
-        types,
-      )
-      Cont(#(sub, next, types), k)
+      let acc = #(sub, next, types)
+      let func = t.Fun(arg, eff, type_)
+      use acc <- step(acc, env, e1, [0, ..path], func, eff)
+      use acc <- step(acc, env, e2, [1, ..path], arg, eff)
+      Cont(acc, k)
     }
     e.Lambda(x, e1) -> {
+      let #(sub, next, types) = acc
       let #(arg, next) = t.fresh(next)
       let #(eff, next) = t.fresh(next)
       let #(ret, next) = t.fresh(next)
-      let #(sub, next, types) =
-        unify_at(type_, t.Fun(arg, eff, ret), sub, next, types, path)
+      let acc = #(sub, next, types)
+
+      let func = t.Fun(arg, eff, ret)
+      let acc = unify_at(acc, path, type_, func)
       let env = extend(env, x, mono(arg))
-      use #(sub, next, types) <- step(
-        sub,
-        next,
-        env,
-        e1,
-        [0, ..path],
-        ret,
-        eff,
-        types,
-      )
-      Cont(#(sub, next, types), k)
+      use acc <- step(acc, env, e1, [0, ..path], ret, eff)
+      Cont(acc, k)
     }
     e.Let(x, e1, e2) -> {
       // can't error
+      let #(sub, next, types) = acc
       let types = map.insert(types, path, Ok(type_))
       let #(inner, next) = t.fresh(next)
-      use #(sub, next, types) <- step(
-        sub,
-        next,
-        env,
-        e1,
-        [0, ..path],
-        inner,
-        eff,
-        types,
-      )
-      let env = extend(env, x, generalise(sub, env, inner))
-      use #(sub, next, types) <- step(
-        sub,
-        next,
-        env,
-        e2,
-        [1, ..path],
-        type_,
-        eff,
-        types,
-      )
-      Cont(#(sub, next, types), k)
+      let acc = #(sub, next, types)
+
+      use acc <- step(acc, env, e1, [0, ..path], inner, eff)
+      let env = extend(env, x, generalise(acc.0, env, inner))
+      use acc <- step(acc, env, e2, [1, ..path], type_, eff)
+      Cont(acc, k)
     }
     literal -> {
+      let #(sub, next, types) = acc
       let #(found, next) = primitive(literal, next)
-      Cont(unify_at(type_, found, sub, next, types, path), k)
+      let acc = #(sub, next, types)
+      Cont(unify_at(acc, path, type_, found), k)
     }
   }
 }
