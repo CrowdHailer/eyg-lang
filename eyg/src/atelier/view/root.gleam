@@ -10,8 +10,8 @@ import atelier/view/pallet
 pub fn render(state: app.WorkSpace) {
   div(
     [
-      on_keydown(app.Keypress),
-      attribute("tabIndex", "-1"),
+      // on_keydown(app.Keypress),
+      // attribute("tabIndex", "-1"),
       // autofocus attribute is not appearing on rendered element, is this because it's a div?
       // attribute("autoFocus", "100"),
       // autofocus(True),
