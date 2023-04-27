@@ -11,7 +11,6 @@ import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification
 import eyg/incremental/source
 
-
 fn from_end(items, i) {
   list.at(items, list.length(items) - 1 - i)
 }
@@ -128,7 +127,8 @@ pub fn cached(
               let t = unification.instantiate(scheme, count)
               #(t, subs, types)
             }
-            Error(Nil) -> panic("no var in env need to add errors but return normal type")
+            Error(Nil) ->
+              panic("no var in env need to add errors but return normal type")
           }
         source.Let(x, value, then) -> {
           let #(t1, subs, types) =

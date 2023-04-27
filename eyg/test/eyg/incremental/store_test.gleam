@@ -225,8 +225,3 @@
 //   should.equal(t, t.Integer)
 //   panic
 // }
-
-
-
-
-

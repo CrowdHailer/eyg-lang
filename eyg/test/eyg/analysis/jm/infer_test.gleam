@@ -16,16 +16,25 @@ import eyg/analysis/jm/incremental as jm
 import eyg/analysis/jm/type_ as jmt
 import eyg/analysis/jm/error as jm_error
 
-fn call2(f,a,b) { 
+fn call2(f, a, b) {
   e.Apply(e.Apply(f, a), b)
- }
+}
 
 pub fn example_test() {
-  let exp = e.Let(
-    "equal", e.Builtin("equal"), 
-    e.Let("_", call2(e.Variable("equal"), e.Binary(""), e.Binary("")),
-    e.Let("_", call2(e.Variable("equal"), e.Integer(1), e.Integer(1)),
-    e.Empty)))
+  let exp =
+    e.Let(
+      "equal",
+      e.Builtin("equal"),
+      e.Let(
+        "_",
+        call2(e.Variable("equal"), e.Binary(""), e.Binary("")),
+        e.Let(
+          "_",
+          call2(e.Variable("equal"), e.Integer(1), e.Integer(1)),
+          e.Empty,
+        ),
+      ),
+    )
 
   let #(root, store) = store.load(store.empty(), exp)
 
@@ -43,5 +52,4 @@ pub fn example_test() {
   // |> io.debug
   // io.debug(types |> map.to_list)
 }
-
 // TODO try and have test for recursive types in rows/effects

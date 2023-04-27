@@ -42,7 +42,8 @@ pub fn empty() {
 }
 
 pub fn load(store: Store, tree) {
-  let #(index, source) = source.do_from_tree_map(tree, store.source, store.source_id_tracker)
+  let #(index, source) =
+    source.do_from_tree_map(tree, store.source, store.source_id_tracker)
   #(index, Store(..store, source: source))
 }
 

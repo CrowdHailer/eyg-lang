@@ -1,9 +1,9 @@
-
 import eyg/incremental/source as e
 
 // constant folding and refernce
 
 pub fn foo_test(exp) -> Nil {
+  todo
   // case exp {
   //   e.Var(Term(hash))
   //   e.Var(Brujin(index))
@@ -16,11 +16,8 @@ pub fn foo_test(exp) -> Nil {
 }
 // i -> free vars
 
-
 // let y = 1
 // let x = y -> x = hash(1)
 
-
 // let f x -> 
 //   let y = x + 1
-

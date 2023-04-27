@@ -2,7 +2,7 @@ import gleam/map
 import eygir/expression as e
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/infer.{extend, generalise, instantiate, mono, builtins}
+import eyg/analysis/jm/infer.{builtins, extend, generalise, instantiate, mono}
 
 pub type State =
   #(
@@ -34,8 +34,6 @@ pub fn infer(exp, type_, eff) {
   let acc = #(sub, next, types)
   loop(step(acc, env, exp, path, type_, eff, Done))
 }
-
-
 
 fn step(acc, env, exp, path, type_, eff, k) {
   case exp {
@@ -88,8 +86,11 @@ fn step(acc, env, exp, path, type_, eff, k) {
 
 fn primitive(exp, next) {
   case exp {
-    e.Variable(_) | e.Apply(_, _) | e.Lambda(_, _) | e.Let(_, _, _) | e.Builtin(_) ->
-      panic("not a literal")
+    e.Variable(_)
+    | e.Apply(_, _)
+    | e.Lambda(_, _)
+    | e.Let(_, _, _)
+    | e.Builtin(_) -> panic("not a literal")
     e.Binary(_) -> #(t.String, next)
     e.Integer(_) -> #(t.Integer, next)
 
@@ -114,8 +115,7 @@ fn primitive(exp, next) {
   }
 }
 
-
-pub fn unify_at(acc, path, expected, found)  {
+pub fn unify_at(acc, path, expected, found) {
   let #(sub, next, types) = acc
   infer.unify_at(expected, found, sub, next, types, path)
 }

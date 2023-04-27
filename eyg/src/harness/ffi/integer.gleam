@@ -5,7 +5,7 @@ import harness/ffi/cast
 
 pub fn add() {
   let type_ =
-  // TODO not same effect
+    // TODO not same effect
     t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
   #(type_, r.Arity2(do_add))
 }

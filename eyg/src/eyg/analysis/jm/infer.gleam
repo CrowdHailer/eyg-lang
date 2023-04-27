@@ -39,7 +39,7 @@ pub fn instantiate(scheme, next) {
   // io.debug(s |> map.to_list)
   // Apply is actually on a recursive substitution, composing SHOULD update all values to make it a single call
   let type_ = apply_once(s, type_)
-    // io.debug("applyed")
+  // io.debug("applyed")
 
   #(type_, next)
 }
@@ -62,7 +62,11 @@ fn apply_once(s, type_) {
     t.RowExtend(label, value, rest) ->
       t.RowExtend(label, apply_once(s, value), apply_once(s, rest))
     t.EffectExtend(label, #(lift, reply), rest) ->
-      t.EffectExtend(label, #(apply_once(s, lift), apply_once(s, reply)), apply_once(s, rest))
+      t.EffectExtend(
+        label,
+        #(apply_once(s, lift), apply_once(s, reply)),
+        apply_once(s, rest),
+      )
   }
 }
 
@@ -119,7 +123,6 @@ pub fn fetch(env, x, sub, next, types, ref, type_, k) {
     }
   }
 }
-
 
 pub fn builtins() {
   map.new()

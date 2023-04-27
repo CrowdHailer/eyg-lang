@@ -2,7 +2,8 @@ import gleam/map
 import gleam/result
 import eyg/incremental/source as e
 
-pub type Cursor = #(List(Int), Int)
+pub type Cursor =
+  #(List(Int), Int)
 
 fn zip_match(node, path_element) {
   case node, path_element {

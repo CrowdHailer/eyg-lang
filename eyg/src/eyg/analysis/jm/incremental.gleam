@@ -4,7 +4,8 @@ import eyg/incremental/source as e
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/infer.{
-  Cont, Done, builtins, extend, generalise, instantiate, loop, mono, unify_at, fetch
+  Cont, Done, builtins, extend, fetch, generalise, instantiate, loop, mono,
+  unify_at,
 }
 
 pub fn infer(sub, next, env, source, ref, type_, eff, types) {
@@ -130,4 +131,3 @@ fn primitive(exp, next) {
     e.Handle(label) -> t.handle(label, next)
   }
 }
-

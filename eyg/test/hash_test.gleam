@@ -107,7 +107,6 @@ pub fn round_trip_test() -> Nil {
   let source = linear(tree)
   decode(source)
   |> should.equal(Ok(#(tree, <<>>)))
-
   //   gather_hash(<<1, 1, "ab":utf8>>)
   // gather_hash(source)
   // TODO not really useful

@@ -23,14 +23,19 @@ import eyg/analysis/jm/type_ as jmt
 import eyg/analysis/jm/error
 import eyg/analysis/jm/tree
 
-
 pub type WorkSpace {
   WorkSpace(
     selection: List(Int),
     source: e.Source,
     root: Int,
     // TODO call acc
-    inferred: #(map.Map(Int, jmt.Type), Int, Option(map.Map(Int, Result(jmt.Type, #(error.Reason, jmt.Type, jmt.Type))))),
+    inferred: #(
+      map.Map(Int, jmt.Type),
+      Int,
+      Option(
+        map.Map(Int, Result(jmt.Type, #(error.Reason, jmt.Type, jmt.Type))),
+      ),
+    ),
     mode: Mode,
     // copy pasting makes the id get reused that will change the type or have the type used more than once in a tree
     // Need to not type things with free variables/types
@@ -105,8 +110,7 @@ pub fn init(tree) {
     },
   )
 
-  let _ =  {
-
+  let _ = {
     // TODO type for editor
     let type_ = jmt.Var(-1)
     let eff = jmt.Var(-2)
@@ -114,7 +118,9 @@ pub fn init(tree) {
     let start = pnow()
     let #(sub, next, types) = tree.infer(tree, type_, eff)
     io.debug(#("typing jm took ms:", pnow() - start, map.size(types)))
-    types |> map.to_list |> list.filter_map(fn(z) {
+    types
+    |> map.to_list
+    |> list.filter_map(fn(z) {
       let #(p, r) = z
       case r {
         Ok(_) -> Error(Nil)
@@ -127,7 +133,16 @@ pub fn init(tree) {
   let assert Ok(c) = cursor.at([], root, source)
   let mode = Navigate(c)
   // Have inference work once for showing elements but need to also background this
-  WorkSpace([], source, root, #(sub, next, Some(typesjm)), mode, None, None, #([], []))
+  WorkSpace(
+    [],
+    source,
+    root,
+    #(sub, next, Some(typesjm)),
+    mode,
+    None,
+    None,
+    #([], []),
+  )
 }
 
 pub fn update(state: WorkSpace, action) {
@@ -229,10 +244,10 @@ pub fn keypress(key, state: WorkSpace) {
     WriteText(_, _), _k -> Ok(state)
     WriteTerm(new, commit), k if k == "Enter" -> {
       let assert [var, ..selects] = string.split(new, ".")
-        case selects {
-          [] -> Nil 
-          _ -> todo("handle dot vars")
-        }
+      case selects {
+        [] -> Nil
+        _ -> todo("handle dot vars")
+      }
       let expression =
         // list.fold(
         //   selects,
@@ -263,8 +278,8 @@ fn save(state: WorkSpace) {
     |> request.set_host("localhost:5000")
     |> request.set_path("/save")
     |> request.prepend_header("content-type", "application/json")
-    todo("finish saving")
-    // |> request.set_body(encode.to_json(state.source))
+  todo("finish saving")
+  // |> request.set_body(encode.to_json(state.source))
 
   fetch.send(request)
   |> io.debug
@@ -286,15 +301,16 @@ fn assign_to(c, state: WorkSpace) {
     e.Let(_, _, _) -> fn(text) {
       // TODO needs a tree replace
       // easier to insert tree but only if no reference to the old stuff
-      let assert Ok(r) = store.replace(source, c, e.Let(text, hole, cursor.inner(c)))
+      let assert Ok(r) =
+        store.replace(source, c, e.Let(text, hole, cursor.inner(c)))
       r
     }
     // normally I want to add something above
-    exp -> fn(text) { 
+    exp -> fn(text) {
       // always the same
       // act.update(e.Let(text, e.Vacant(""), exp)) }
-      let assert Ok(r) = 
-      store.replace(source, c, e.Let(text, hole, cursor.inner(c)))
+      let assert Ok(r) =
+        store.replace(source, c, e.Let(text, hole, cursor.inner(c)))
       r
     }
   }
@@ -413,7 +429,10 @@ fn increase(state: WorkSpace) {
 
 fn decrease(_act, state: WorkSpace) {
   let selection = list.append(state.selection, [0])
-  use c <- result.then(cursor.at(selection, state.root, state.source) |> result.map_error(fn(_: Nil) { "no valid decrease"}))
+  use c <- result.then(
+    cursor.at(selection, state.root, state.source)
+    |> result.map_error(fn(_: Nil) { "no valid decrease" }),
+  )
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(c)))
 }
 
@@ -587,8 +606,11 @@ fn delete(c, state: WorkSpace) {
 // update source also ends the entry state
 fn update_source(state: WorkSpace, next) {
   let #(root, source) = next
-  use cursor <- result.then(cursor.at(state.selection, root, source) |> result.map_error(fn(_:Nil) {"nope on the update"}))
-  
+  use cursor <- result.then(
+    cursor.at(state.selection, root, source)
+    |> result.map_error(fn(_: Nil) { "nope on the update" }),
+  )
+
   let mode = Navigate(cursor)
   // let #(history, inferred) = case source == state.source {
   //   True -> #(state.history, state.inferred)
@@ -611,15 +633,8 @@ fn update_source(state: WorkSpace, next) {
   let #(sub, _next, typesjm) =
     jm.infer(sub, next, env, source, root, type_, eff, types)
   io.debug(#("typing jm took ms:", pnow() - start, map.size(typesjm)))
-  
-  Ok(
-    WorkSpace(
-      ..state,
-      source: source,
-      root: root,
-      mode: mode,
-      // history: history,
-      // inferred: inferred,
-    ),
-  )
+
+  Ok(WorkSpace(..state, source: source, root: root, mode: mode))
+  // history: history,
+  // inferred: inferred,
 }

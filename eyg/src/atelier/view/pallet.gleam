@@ -40,40 +40,35 @@ fn render_label(value) {
   ]
 }
 
-fn render_variable(
-  value,  state: app.WorkSpace,
-) {
+fn render_variable(value, state: app.WorkSpace) {
   [
-    div(
-      [],
-      []
-      // case inferred {
-      //   Some(inferred) ->
-      //     // TODO use inferred but we dont have the whole env map.
-      //     []
-      //     // case inventory.variables_at(inferred.environments, state.selection) {
-      //     //   // using spaces because we are in pre tag and text based
-      //     //   // not in pre tag here
-      //     //   Ok(options) ->
-      //     //     list.map(
-      //     //       options,
-      //     //       fn(option) {
-      //     //         let #(t, term) = option
-      //     //         span(
-      //     //           [
-      //     //             class("rounded bg-blue-100 p-1"),
-      //     //             on_click(ClickOption(term)),
-      //     //           ],
-      //     //           [text(t)],
-      //     //         )
-      //     //       },
-      //     //     )
-      //     //     |> list.intersperse(text(" "))
-      //     //   Error(_) -> [text("no env")]
-      //     // }
-      //   None -> []
-      // },
-    ),
+    div([], []),
+    // case inferred {
+    //   Some(inferred) ->
+    //     // TODO use inferred but we dont have the whole env map.
+    //     []
+    //     // case inventory.variables_at(inferred.environments, state.selection) {
+    //     //   // using spaces because we are in pre tag and text based
+    //     //   // not in pre tag here
+    //     //   Ok(options) ->
+    //     //     list.map(
+    //     //       options,
+    //     //       fn(option) {
+    //     //         let #(t, term) = option
+    //     //         span(
+    //     //           [
+    //     //             class("rounded bg-blue-100 p-1"),
+    //     //             on_click(ClickOption(term)),
+    //     //           ],
+    //     //           [text(t)],
+    //     //         )
+    //     //       },
+    //     //     )
+    //     //     |> list.intersperse(text(" "))
+    //     //   Error(_) -> [text("no env")]
+    //     // }
+    //   None -> []
+    // },
     input([
       class("border w-full"),
       attribute.autofocus(True),
@@ -120,7 +115,7 @@ fn render_text(value) {
 }
 
 fn render_navigate(state: app.WorkSpace) {
-   let #(sub, _next, types) = state.inferred
+  let #(sub, _next, types) = state.inferred
   [
     case types {
       Some(types) -> render_errors(types)
@@ -137,14 +132,20 @@ fn render_navigate(state: app.WorkSpace) {
                 text(string.append(
                   ":",
                   {
-                    let assert Ok(c) = cursor.at(state.selection, state.root, state.source)
+                    let assert Ok(c) =
+                      cursor.at(state.selection, state.root, state.source)
                     let id = cursor.inner(c)
                     let assert Ok(type_) = map.get(types, id)
                     case type_ {
-                      Ok(type_) -> type_.render_type(t.resolve( type_, sub))
-                      Error(#(reason, t1, t2)) -> type_.render_failure(reason, t.resolve(t1, sub), t.resolve(t2, sub))
+                      Ok(type_) -> type_.render_type(t.resolve(type_, sub))
+                      Error(#(reason, t1, t2)) ->
+                        type_.render_failure(
+                          reason,
+                          t.resolve(t1, sub),
+                          t.resolve(t2, sub),
+                        )
                     }
-                  }
+                  },
                 ))
               None -> span([], [text("type checking")])
             },
@@ -197,10 +198,10 @@ fn render_errors(types) {
   }
 }
 
-pub fn render_failure(reason)  {
-  let #(reason, _,_) = reason
+pub fn render_failure(reason) {
+  let #(reason, _, _) = reason
   case reason {
-    error.RecursiveType -> "recursive type" 
+    error.RecursiveType -> "recursive type"
     _ -> "other error"
   }
 }
