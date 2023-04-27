@@ -7,9 +7,9 @@ import gleam/option.{None, Some}
 import lustre/element.{div, input, span, text, textarea}
 import lustre/event.{on_click}
 import lustre/attribute.{class, classes}
-import eyg/analysis/inference
+import eyg/analysis/jm/type_ as t
 import atelier/app.{ClickOption, SelectNode}
-import atelier/view/typ
+import atelier/view/type_
 import atelier/inventory
 
 pub fn render(state: app.WorkSpace, inferred) {
@@ -36,39 +36,34 @@ fn render_label(value) {
   ]
 }
 
-fn render_variable(
-  value,
-  inferred: option.Option(inference.Infered),
-  state: app.WorkSpace,
-) {
+fn render_variable(value, _inferred, _state: app.WorkSpace) {
   [
-    div(
-      [],
-      case inferred {
-        Some(inferred) ->
-          case inventory.variables_at(inferred.environments, state.selection) {
-            // using spaces because we are in pre tag and text based
-            // not in pre tag here
-            Ok(options) ->
-              list.map(
-                options,
-                fn(option) {
-                  let #(t, term) = option
-                  span(
-                    [
-                      class("rounded bg-blue-100 p-1"),
-                      on_click(ClickOption(term)),
-                    ],
-                    [text(t)],
-                  )
-                },
-              )
-              |> list.intersperse(text(" "))
-            Error(_) -> [text("no env")]
-          }
-        None -> []
-      },
-    ),
+    div([], []),
+    // TODO fix suggestion
+    // case inferred {
+    //   Some(inferred) ->
+    //     case inventory.variables_at(inferred.environments, state.selection) {
+    //       // using spaces because we are in pre tag and text based
+    //       // not in pre tag here
+    //       Ok(options) ->
+    //         list.map(
+    //           options,
+    //           fn(option) {
+    //             let #(t, term) = option
+    //             span(
+    //               [
+    //                 class("rounded bg-blue-100 p-1"),
+    //                 on_click(ClickOption(term)),
+    //               ],
+    //               [text(t)],
+    //             )
+    //           },
+    //         )
+    //         |> list.intersperse(text(" "))
+    //       Error(_) -> [text("no env")]
+    //     }
+    //   None -> []
+    // },
     input([
       class("border w-full"),
       attribute.autofocus(True),
@@ -127,12 +122,23 @@ fn render_navigate(inferred, state: app.WorkSpace) {
           [],
           [
             case inferred {
-              Some(inferred) ->
+              Some(#(sub, _next, types)) ->
                 text(string.append(
                   ":",
-                  inferred
-                  |> inference.type_of(state.selection)
-                  |> typ.render(),
+                  {
+                    case map.get(types, list.reverse(state.selection)) {
+                      Ok(inferred) ->
+                        case inferred {
+                          Ok(t) -> {
+                            let t = t.resolve(t, sub)
+                            type_.render_type(t)
+                          }
+
+                          Error(#(r, t1, t2)) -> type_.render_failure(r, t1, t2)
+                        }
+                      Error(Nil) -> "invalid selection"
+                    }
+                  },
                 ))
               None -> span([], [text("type checking")])
             },
@@ -151,15 +157,16 @@ fn render_navigate(inferred, state: app.WorkSpace) {
   ]
 }
 
-fn render_errors(inferred: inference.Infered) {
+fn render_errors(inferred) {
+  let #(_sub, _next, types) = inferred
   let errors =
     list.filter_map(
-      map.to_list(inferred.types),
+      map.to_list(types),
       fn(el) {
         let #(k, v) = el
         case v {
           Ok(_) -> Error(Nil)
-          Error(reason) -> Ok(#(k, reason))
+          Error(reason) -> Ok(#(list.reverse(k), reason))
         }
       },
     )
@@ -172,10 +179,10 @@ fn render_errors(inferred: inference.Infered) {
         list.map(
           errors,
           fn(err) {
-            let #(path, reason) = err
+            let #(path, #(reason, t1, t2)) = err
             div(
               [classes([#("cursor-pointer", True)]), on_click(SelectNode(path))],
-              [text(typ.render_failure(reason))],
+              [text(type_.render_failure(reason, t1, t2))],
             )
           },
         ),

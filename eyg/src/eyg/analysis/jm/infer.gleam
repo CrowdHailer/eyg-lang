@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/list
 import gleam/map
 import gleam/set
@@ -6,12 +5,6 @@ import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/env
 import eyg/analysis/jm/unify
-
-// import harness/ffi/core
-// import harness/ffi/integer
-// import harness/ffi/linked_list
-// import harness/ffi/string
-// import eyg/analysis/typ as old_t
 
 pub fn mono(type_) {
   #([], type_)
@@ -29,17 +22,12 @@ pub fn generalise(sub, env, t) {
 pub fn instantiate(scheme, next) {
   let next = next + 1000
   let #(forall, type_) = scheme
-  // io.debug(next)
   let s =
     list.index_map(forall, fn(i, old) { #(old, t.Var(next + i)) })
     |> map.from_list()
   let next = next + list.length(forall)
-  // io.debug(#(next, forall, type_))
-  // io.debug("applying")
-  // io.debug(s |> map.to_list)
   // Apply is actually on a recursive substitution, composing SHOULD update all values to make it a single call
   let type_ = apply_once(s, type_)
-  // io.debug("applyed")
 
   #(type_, next)
 }

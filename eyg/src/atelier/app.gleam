@@ -12,14 +12,14 @@ import lustre/cmd
 import atelier/transform.{Act}
 import eygir/expression as e
 import eygir/encode
-import eyg/analysis/inference
-import eyg/runtime/standard
+import eyg/analysis/jm/tree
+import eyg/analysis/jm/type_ as t
 
 pub type WorkSpace {
   WorkSpace(
     selection: List(Int),
     source: e.Expression,
-    inferred: Option(inference.Infered),
+    inferred: Option(tree.State),
     mode: Mode,
     yanked: Option(e.Expression),
     error: Option(String),
@@ -44,21 +44,24 @@ pub type Action {
   Commit
   SelectNode(path: List(Int))
   ClickOption(chosen: e.Expression)
+  TypesChecked(tree.State)
 }
 
 pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
   // Have inference work once for showing elements but need to also background this
-  WorkSpace(
-    [],
-    source,
-    Some(standard.infer(source)),
-    mode,
-    None,
-    None,
-    #([], []),
-  )
+  let types = infer(source)
+  WorkSpace([], source, Some(types), mode, None, None, #([], []))
+}
+
+fn infer(source) {
+  // let required = t.Record(t.RowExtend("cli", t.Var(-123), t.Var(-998)))
+  // t.RowExtend("web", t.Var(-298), t.Empty),
+  // TODO real types here - fix recursion
+  // TODO timing
+  let required = t.Var(-1)
+  tree.infer(source, required, t.Var(-2))
 }
 
 pub fn update(state: WorkSpace, action) {
@@ -95,6 +98,10 @@ pub fn update(state: WorkSpace, action) {
       #(workspace, cmd.none())
     }
     SelectNode(path) -> select_node(state, path)
+    TypesChecked(inferred) -> {
+      let state = WorkSpace(..state, inferred: Some(inferred))
+      #(state, cmd.none())
+    }
   }
 }
 
@@ -174,7 +181,14 @@ pub fn keypress(key, state: WorkSpace) {
 
   case r {
     // Always clear message on new keypress
-    Ok(state) -> #(WorkSpace(..state, error: None), cmd.none())
+    Ok(state) -> #(
+      WorkSpace(..state, error: None),
+      cmd.from(fn(dispatch) {
+        infer(state.source)
+        |> TypesChecked
+        |> dispatch()
+      }),
+    )
     Error(message) -> #(WorkSpace(..state, error: Some(message)), cmd.none())
   }
 }

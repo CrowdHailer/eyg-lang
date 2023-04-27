@@ -3,15 +3,15 @@ import gleam/list
 import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string
+import eyg/analysis/jm/type_ as t
 import lustre/element.{pre, span, text}
 import lustre/event.{on_click}
 import lustre/attribute.{class, classes, style}
 import eygir/expression as e
 import atelier/app.{SelectNode}
-import atelier/view/typ
-import eyg/analysis/inference
+import atelier/view/type_
 
-pub fn render(source, selection, inferred: Option(inference.Infered)) {
+pub fn render(source, selection, inferred) {
   let loc = Location([], Some(selection))
   pre(
     [style([#("cursor", "pointer")]), class("w-full max-w-6xl")],
@@ -344,10 +344,10 @@ fn assigment(label, value, then, br, loc, inferred) {
   [el, text(br), ..do_render(then, br, child(loc, 1), inferred)]
 }
 
-fn error(loc: Location, inferred: Option(inference.Infered)) {
+fn error(loc: Location, inferred) {
   case inferred {
-    Some(inferred) ->
-      case map.get(inferred.types, loc.path) {
+    Some(#(_sub, _next, types)) ->
+      case map.get(types, list.reverse(loc.path)) {
         Ok(Error(_)) -> True
         _ -> False
       }
@@ -381,7 +381,19 @@ fn vacant(comment, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
   let content = case inferred {
-    Some(inferred) -> typ.render(inference.type_of(inferred, loc.path))
+    Some(#(sub, _next, types)) ->
+      case map.get(types, list.reverse(loc.path)) {
+        Ok(inferred) ->
+          case inferred {
+            Ok(t) -> {
+              let t = t.resolve(t, sub)
+              type_.render_type(t)
+            }
+
+            Error(#(r, t1, t2)) -> type_.render_failure(r, t1, t2)
+          }
+        Error(Nil) -> "invalid selection"
+      }
     None ->
       case comment {
         "" -> "todo"
