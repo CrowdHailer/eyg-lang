@@ -78,7 +78,10 @@ fn render() {
       let assert r.Binary(page) = page
       case document.query_selector("#app") {
         Ok(Some(element)) -> document.set_html(element, page)
-        _ -> panic("could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render")
+        _ ->
+          panic(
+            "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render",
+          )
       }
       r.continue(k, r.unit)
     },
