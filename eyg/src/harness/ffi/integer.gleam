@@ -5,8 +5,7 @@ import harness/ffi/cast
 
 pub fn add() {
   let type_ =
-    // TODO not same effect
-    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(1), t.Integer))
   #(type_, r.Arity2(do_add))
 }
 
@@ -18,7 +17,7 @@ fn do_add(left, right, _builtins, k) {
 
 pub fn subtract() {
   let type_ =
-    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(1), t.Integer))
   #(type_, r.Arity2(do_subtract))
 }
 
@@ -30,7 +29,7 @@ fn do_subtract(left, right, _builtins, k) {
 
 pub fn multiply() {
   let type_ =
-    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(1), t.Integer))
   #(type_, r.Arity2(do_multiply))
 }
 
@@ -42,7 +41,7 @@ fn do_multiply(left, right, _builtins, k) {
 
 pub fn divide() {
   let type_ =
-    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(0), t.Integer))
+    t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(1), t.Integer))
   #(type_, r.Arity2(do_divide))
 }
 
