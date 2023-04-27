@@ -2,7 +2,7 @@ import gleam/map
 import eygir/expression as e
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/infer.{extend, generalise, instantiate, mono}
+import eyg/analysis/jm/infer.{extend, generalise, instantiate, mono, builtins}
 
 pub type State =
   #(
@@ -35,33 +35,11 @@ pub fn infer(exp, type_, eff) {
   loop(step(acc, env, exp, path, type_, eff, Done))
 }
 
-pub fn unify_at(acc, path, expected, found)  {
-  let #(sub, next, types)= acc
-  infer.unify_at(expected, found, sub, next, types, path)
-}
+
 
 fn step(acc, env, exp, path, type_, eff, k) {
   case exp {
-    e.Variable(x) -> {
-      case map.get(env, x) {
-        Ok(scheme) -> {
-          let #(sub, next, types) = acc
-          let #(found, next) = instantiate(scheme, next)
-          let acc = #(sub, next, types)
-          Cont(unify_at(acc, path, type_, found), k)
-        }
-        Error(Nil) -> {
-          let #(sub, next, types) = acc
-          let types =
-            map.insert(
-              types,
-              path,
-              Error(#(error.MissingVariable(x), type_, t.Var(-100))),
-            )
-          Cont(#(sub, next, types), k)
-        }
-      }
-    }
+    e.Variable(x) -> fetch(acc, path, env, x, type_, k)
     e.Apply(e1, e2) -> {
       // can't error
       let #(sub, next, types) = acc
@@ -98,6 +76,7 @@ fn step(acc, env, exp, path, type_, eff, k) {
       use acc <- step(acc, env, e2, [1, ..path], type_, eff)
       Cont(acc, k)
     }
+    e.Builtin(x) -> fetch(acc, path, builtins(), x, type_, k)
     literal -> {
       let #(sub, next, types) = acc
       let #(found, next) = primitive(literal, next)
@@ -109,7 +88,7 @@ fn step(acc, env, exp, path, type_, eff, k) {
 
 fn primitive(exp, next) {
   case exp {
-    e.Variable(_) | e.Apply(_, _) | e.Lambda(_, _) | e.Let(_, _, _) ->
+    e.Variable(_) | e.Apply(_, _) | e.Lambda(_, _) | e.Let(_, _, _) | e.Builtin(_) ->
       panic("not a literal")
     e.Binary(_) -> #(t.String, next)
     e.Integer(_) -> #(t.Integer, next)
@@ -132,9 +111,34 @@ fn primitive(exp, next) {
     // Effect
     e.Perform(label) -> t.perform(label, next)
     e.Handle(label) -> t.handle(label, next)
-
-    // TODO use real builtins
-    e.Builtin(identifier) -> t.fresh(next)
   }
-  // _ -> todo("pull from old inference")
+}
+
+
+pub fn unify_at(acc, path, expected, found)  {
+  let #(sub, next, types) = acc
+  infer.unify_at(expected, found, sub, next, types, path)
+}
+
+pub fn fetch(acc, path, env, x, type_, k) {
+  case map.get(env, x) {
+    Ok(scheme) -> {
+      let #(sub, next, types) = acc
+      let #(found, next) = instantiate(scheme, next)
+      let acc = #(sub, next, types)
+      Cont(unify_at(acc, path, type_, found), k)
+    }
+    Error(Nil) -> {
+      let #(sub, next, types) = acc
+      let #(unmatched, next) = t.fresh(next)
+      let types =
+        map.insert(
+          types,
+          path,
+          Error(#(error.MissingVariable(x), type_, unmatched)),
+        )
+      let acc = #(sub, next, types)
+      Cont(acc, k)
+    }
+  }
 }

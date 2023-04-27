@@ -101,6 +101,26 @@ pub fn loop(run) {
   }
 }
 
+pub fn fetch(env, x, sub, next, types, ref, type_, k) {
+  case map.get(env, x) {
+    Ok(scheme) -> {
+      let #(found, next) = instantiate(scheme, next)
+      Cont(unify_at(type_, found, sub, next, types, ref), k)
+    }
+    Error(Nil) -> {
+      let #(unmatched, next) = t.fresh(next)
+      let types =
+        map.insert(
+          types,
+          ref,
+          Error(#(error.MissingVariable(x), type_, unmatched)),
+        )
+      Cont(#(sub, next, types), k)
+    }
+  }
+}
+
+
 pub fn builtins() {
   map.new()
   |> extend_b("equal", equal())
