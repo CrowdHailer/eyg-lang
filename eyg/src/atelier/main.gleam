@@ -1,3 +1,4 @@
+import gleam/javascript/promise
 import lustre
 import lustre/cmd
 import atelier/app
@@ -11,10 +12,13 @@ import eygir/decode
 // load source can I use same static path i.e. /src/source.json
 pub fn main(source) {
   let assert Ok(source) = decode.from_json(source)
-  let assert Ok(dispatch) =
+  use dispatch <- promise.await(
     lustre.application(#(app.init(source), cmd.none()), app.update, root.render)
-    |> lustre.start("#app")
-  // listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
+    |> lustre.start("#app"),
+  )
+
+  listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
+  promise.resolve(Nil)
 }
 
 // js(all ffi's) files need to be top level
