@@ -106,7 +106,6 @@ pub fn update(state: WorkSpace, action) {
 }
 
 pub fn select_node(state, path) {
-  io.debug(state)
   let WorkSpace(source: source, ..) = state
   let assert Ok(act) = transform.prepare(source, path)
   let mode = Navigate(act)

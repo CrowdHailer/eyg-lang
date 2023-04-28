@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/javascript/promise
 import lustre
 import lustre/cmd
@@ -17,7 +16,6 @@ pub fn main(source) {
     lustre.application(#(app.init(source), cmd.none()), app.update, root.render)
     |> lustre.start("#app"),
   )
-  io.debug(dispatch)
 
   listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
   promise.resolve(Nil)
