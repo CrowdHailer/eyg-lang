@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/public/layout.css" />
+    <title>Document</title>
+    <style>
+      :root {
+        --neo-blue-1: #daf5f0;
+        --neo-blue-2: #a7dbd8;
+        --neo-blue-3: #87ceeb;
+
+        --neo-green-1: #b5d2ad;
+        --neo-green-2: #bafca2;
+        --neo-green-3: #90ee90;
+        --neo-green-4: #7fbc8c;
+
+        --neo-yellow-1: #fdfd96;
+        --neo-yellow-2: #ffdb58;
+        --neo-yellow-3: #f4d738;
+
+        --neo-orange-1: #f8d6b3;
+        --neo-orange-2: #ffa07a;
+        --neo-orange-3: #ff7a5c;
+        --neo-orange-4: #ff6b6b;
+
+        --neo-pink-1: #fcdfff;
+        --neo-pink-2: #ffc0cb;
+        --neo-pink-3: #ffb2ef;
+      }
+
+      .blue-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-blue-1),
+          var(--neo-blue-3)
+        );
+      }
+
+      .green-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-green-2),
+          var(--neo-green-3)
+        );
+      }
+
+      .yellow-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-yellow-1),
+          var(--neo-yellow-3)
+        );
+      }
+      .orange-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-orange-3),
+          var(--neo-orange-4)
+        );
+      }
+
+      .bg-blue-2 {
+        background-color: var(--neo-blue-2);
+      }
+      .bg-pink-1 {
+        background-color: var(--neo-pink-1);
+      }
+      .bg-pink-2 {
+        background-color: var(--neo-pink-2);
+      }
+      .bg-pink-3 {
+        background-color: var(--neo-pink-3);
+      }
+      .neo-shadow {
+        box-shadow: 6px 6px black;
+      }
+
+      .drop {
+        padding-bottom: 30px !important;
+      }
+      .drop + * > *:first-child > *:first-child {
+        margin-top: -30px !important;
+      }
+
+      h2 {
+        display: inline-block;
+        font-weight: bold;
+        font-size: 2em;
+        position: relative;
+        margin: 12px 0;
+        z-index: 1;
+      }
+
+      h2::after {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        padding: 0 4px;
+        transform: translateX(-4px);
+        border-radius: 3px;
+        content: "";
+        display: block;
+        height: 50%;
+        width: 100%;
+        background: var(--neo-green-4);
+        z-index: -1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="vstack wrap">
+      <header class="hstack yellow-gradient drop">
+        <div class="expand max-w-lg leading-loose">
+          <div
+            class="font-bold text-gray-400 border-l-8 border-black pl-2 -ml-4"
+          >
+            the AST is the interface
+          </div>
+          <ul class="underline">
+            <li>Embed anywhere</li>
+            <li>Hash compression</li>
+            <li>One program, many machines</li>
+          </ul>
+        </div>
+        <div
+          class="border-2 border-black bg-pink-3 my-10 rounded-2xl neo-shadow"
+        >
+          <div class="ml-5 mr-20">
+            <h3 class="font-bold text-gray-400">Eat Your Greens</h3>
+            <h1 class="text-2xl font-bold">EYG</h1>
+          </div>
+        </div>
+      </header>
+      <main class="expand w-full blue-gradient">
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack bg-white neo-shadow rounded-2xl py-2 px-8 mb-10 border border-black"
+          >
+            <pre>
+  let alice = {name: "Alice", age: 10}
+  let name = alice.name
+  let alice = {age: 95, ..alice}
+  let age = alice.age
+  let get_name = user -> user.name
+  let _ = get_name(alice)
+  let bob = {name: "Bob"}
+  let _ = get_name(bob)</pre
+            >
+            <pre class="pl-20 cover rounded">
+  *1
+  
+  
+  
+  
+  
+  <span class="text-indigo-700">define records</span>
+  *10        </pre>
+            <div class="expand"></div>
+          </div>
+        </div>
+        <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Total type interface</h2>
+        </div>
+        <div>Never crash</div>
+        <div class="max-w-3xl mx-auto">
+          <p>Never anotate</p>
+          <p>Never define, usage always uniquly defines types</p>
+          <p>If no error it never crashes. <strong>No exceptions</strong></p>
+          <p>No zero devision</p>
+          <p>No missing cases</p>
+        </div>
+
+        <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Embed anywhere</h2>
+        </div>
+        <!-- <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Elixir</h2>
+        </div> -->
+        <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Scripts</h2>
+        </div>
+
+        <div class="max-w-3xl w-full mx-auto">
+          <p class="max-w-lg">DSL's for embed are easy to make</p>
+          <!-- <header class="hstack green-gradient pb-16">hello</header> -->
+        </div>
+        <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Hash reference</h2>
+        </div>
+        <div
+          class="w-full max-w-3xl mx-auto hstack bg-white neo-shadow rounded-2xl py-2 px-8 mb-10 border border-black"
+        >
+          <pre>eyg run #121212</pre>
+          <div class="cover expand"></div>
+          <pre
+            class="pl-20 cover rounded"
+          ><span class="text-indigo-700">run any code with a hash reference</span></pre>
+        </div>
+
+        <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Universal apps</h2>
+        </div>
+        <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Self hosted</h2>
+        </div>
+        <p>learn about inference, interpretation, editor</p>
+      </main>
+      <div class="max-w-3xl mx-auto">
+        <h2 class="text-3xl">Embed anywhere</h2>
+      </div>
+    </div>
+  </body>
+</html>
