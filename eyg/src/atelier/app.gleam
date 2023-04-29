@@ -44,18 +44,17 @@ pub type Action {
   Commit
   SelectNode(path: List(Int))
   ClickOption(chosen: e.Expression)
-  TypesChecked(tree.State)
 }
 
 pub fn init(source) {
   let assert Ok(act) = transform.prepare(source, [])
   let mode = Navigate(act)
   // Have inference work once for showing elements but need to also background this
-  let types = infer(source)
+  let types = do_infer(source)
   WorkSpace([], source, Some(types), mode, None, None, #([], []))
 }
 
-fn infer(source) {
+fn do_infer(source) {
   // let required = t.Record(t.RowExtend("cli", t.Var(-123), t.Var(-998)))
   // t.RowExtend("web", t.Var(-298), t.Empty),
   // TODO real types here - fix recursion
@@ -98,11 +97,11 @@ pub fn update(state: WorkSpace, action) {
       #(workspace, cmd.none())
     }
     SelectNode(path) -> select_node(state, path)
-    TypesChecked(inferred) -> {
-      let state = WorkSpace(..state, inferred: Some(inferred))
-      #(state, cmd.none())
-    }
   }
+  // TypesChecked(inferred) -> {
+  //   let state = WorkSpace(..state, inferred: Some(inferred))
+  //   #(state, cmd.none())
+  // }
 }
 
 pub fn select_node(state, path) {
@@ -151,7 +150,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "n" -> Ok(number(act, state))
     Navigate(act), "m" -> match(act, state)
     Navigate(act), "M" -> nocases(act, state)
-    // Navigate(act), " " -> ("space follow suggestion next error")
+    Navigate(act), " " -> Ok(infer(state))
     Navigate(_), _ -> Error("no action for keypress")
     // Other mode
     WriteLabel(text, commit), k if k == "Enter" -> {
@@ -181,14 +180,12 @@ pub fn keypress(key, state: WorkSpace) {
 
   case r {
     // Always clear message on new keypress
-    Ok(state) -> #(
-      WorkSpace(..state, error: None),
-      cmd.from(fn(dispatch) {
-        infer(state.source)
-        |> TypesChecked
-        |> dispatch()
-      }),
-    )
+    Ok(state) -> #(WorkSpace(..state, error: None), cmd.none())
+    // cmd.from(fn(dispatch) {
+    //   infer(state.source)
+    //   |> TypesChecked
+    //   |> dispatch()
+    // }),
     Error(message) -> #(WorkSpace(..state, error: Some(message)), cmd.none())
   }
 }
@@ -503,6 +500,18 @@ fn match(act: Act, state) {
 
 fn nocases(act: Act, state) {
   update_source(state, act.update(e.NoCases))
+}
+
+fn infer(state: WorkSpace) {
+  case state.inferred {
+    // already inferred
+    Some(_) -> state
+    None -> {
+      let inferred = do_infer(state.source)
+      let state = WorkSpace(..state, inferred: Some(inferred))
+      state
+    }
+  }
 }
 
 // app state actions maybe separate from ui but maybe ui files organised by mode

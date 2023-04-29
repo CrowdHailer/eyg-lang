@@ -140,7 +140,7 @@ fn render_navigate(inferred, state: app.WorkSpace) {
                     }
                   },
                 ))
-              None -> span([], [text("type checking")])
+              None -> span([], [text("untyped")])
             },
           ],
         ),
