@@ -15,6 +15,7 @@
         --neo-blue-1: #daf5f0;
         --neo-blue-2: #a7dbd8;
         --neo-blue-3: #87ceeb;
+        --neo-blue-4: #69d2e7;
 
         --neo-green-1: #b5d2ad;
         --neo-green-2: #bafca2;
@@ -24,6 +25,7 @@
         --neo-yellow-1: #fdfd96;
         --neo-yellow-2: #ffdb58;
         --neo-yellow-3: #f4d738;
+        --neo-yellow-4: #e3a018;
 
         --neo-orange-1: #f8d6b3;
         --neo-orange-2: #ffa07a;
@@ -33,6 +35,12 @@
         --neo-pink-1: #fcdfff;
         --neo-pink-2: #ffc0cb;
         --neo-pink-3: #ffb2ef;
+        --neo-pink-4: #ff69b4;
+
+        --neo-purple-1: #e3dff2;
+        --neo-purple-2: #c4a1ff;
+        --neo-purple-3: #a388ee;
+        --neo-purple-4: #9723c9;
       }
 
       .blue-gradient {
@@ -65,9 +73,75 @@
           var(--neo-orange-4)
         );
       }
+      .purple-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-purple-1),
+          var(--neo-purple-3)
+        );
+      }
 
+      .text-blue-1 {
+        color: var(--neo-blue-1);
+      }
+      .text-blue-2 {
+        color: var(--neo-blue-2);
+      }
+      .text-blue-3 {
+        color: var(--neo-blue-3);
+      }
+      .text-blue-4 {
+        color: var(--neo-blue-4);
+      }
+      .text-pink-1 {
+        color: var(--neo-pink-1);
+      }
+      .text-pink-2 {
+        color: var(--neo-pink-2);
+      }
+      .text-pink-3 {
+        color: var(--neo-pink-3);
+      }
+      .text-pink-4 {
+        color: var(--neo-pink-4);
+      }
+      .text-green-1 {
+        color: var(--neo-green-1);
+      }
+      .text-green-2 {
+        color: var(--neo-green-2);
+      }
+      .text-green-3 {
+        color: var(--neo-green-3);
+      }
+      .text-green-4 {
+        color: var(--neo-green-4);
+      }
+
+      .text-orange-1 {
+        color: var(--neo-orange-1);
+      }
+      .text-orange-2 {
+        color: var(--neo-orange-2);
+      }
+      .text-orange-3 {
+        color: var(--neo-orange-3);
+      }
+      .text-orange-4 {
+        color: var(--neo-blue-4);
+      }
+
+      .bg-blue-1 {
+        background-color: var(--neo-blue-1);
+      }
       .bg-blue-2 {
         background-color: var(--neo-blue-2);
+      }
+      .bg-blue-3 {
+        background-color: var(--neo-blue-3);
+      }
+      .bg-blue-4 {
+        background-color: var(--neo-blue-4);
       }
       .bg-pink-1 {
         background-color: var(--neo-pink-1);
@@ -77,6 +151,13 @@
       }
       .bg-pink-3 {
         background-color: var(--neo-pink-3);
+      }
+
+      .bg-purple-3 {
+        background-color: var(--neo-purple-3);
+      }
+      .bg-purple-4 {
+        background-color: var(--neo-purple-4);
       }
       .neo-shadow {
         box-shadow: 6px 6px black;
@@ -91,11 +172,13 @@
 
       h2 {
         display: inline-block;
+        /* color: white; */
         font-weight: bold;
         font-size: 2em;
         position: relative;
-        margin: 12px 0;
+        margin: 20px 0;
         z-index: 1;
+        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
       }
 
       h2::after {
@@ -103,7 +186,7 @@
         bottom: 0;
         left: 0;
         padding: 0 4px;
-        transform: translateX(-4px);
+        transform: translateX(-14px);
         border-radius: 3px;
         content: "";
         display: block;
@@ -116,65 +199,90 @@
   </head>
   <body>
     <div class="vstack wrap">
-      <header class="hstack yellow-gradient drop">
-        <div class="expand max-w-lg leading-loose">
+      <header class="yellow-gradient drop w-full">
+        <div class="hstack max-w-3xl mx-auto">
+          <div class="expand leading-relaxed">
+            <div class="text-pink-4 border-l-8 border-white pl-2 -ml-4">
+              There is no <strong class="font-bold">syntax</strong> ...
+            </div>
+            <ul class="underline text-black">
+              <li>Embed anywhere</li>
+              <li>Hash compression</li>
+              <li>One program, many machines</li>
+            </ul>
+          </div>
           <div
-            class="font-bold text-gray-400 border-l-8 border-black pl-2 -ml-4"
+            class="border-2 border-black bg-purple-3 my-10 rounded-xl neo-shadow -mr-20"
           >
-            the AST is the interface
-          </div>
-          <ul class="underline">
-            <li>Embed anywhere</li>
-            <li>Hash compression</li>
-            <li>One program, many machines</li>
-          </ul>
-        </div>
-        <div
-          class="border-2 border-black bg-pink-3 my-10 rounded-2xl neo-shadow"
-        >
-          <div class="ml-5 mr-20">
-            <h3 class="font-bold text-gray-400">Eat Your Greens</h3>
-            <h1 class="text-2xl font-bold">EYG</h1>
+            <div class="ml-5 mr-24">
+              <h3 class="font-bold text-white">Eat Your Greens</h3>
+              <h1 class="text-2xl font-bold">EYG</h1>
+            </div>
           </div>
         </div>
+        <!-- <div class="max-w-3xl mx-auto">
+          <h1 class="text-2xl mb-4">hello</h1>
+        </div> -->
       </header>
-      <main class="expand w-full blue-gradient">
+      <div class="expand w-full blue-gradient drop">
+        <!-- div to push bg -->
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="hstack bg-white neo-shadow rounded-2xl py-2 px-8 mb-10 border border-black"
+            class="hstack wrap bg-white neo-shadow p-1 border-black px-4 rounded-xl"
           >
             <pre>
-  let alice = {name: "Alice", age: 10}
-  let name = alice.name
-  let alice = {age: 95, ..alice}
-  let age = alice.age
-  let get_name = user -> user.name
-  let _ = get_name(alice)
-  let bob = {name: "Bob"}
-  let _ = get_name(bob)</pre
+let alice = {name: "Alice", age: 10}
+let name = alice.name
+let alice = {age: 95, ..alice}
+let age = alice.age
+let get_name = user -> user.name
+let _ = get_name(alice)
+let bob = {name: "Bob"}
+let _ = get_name(bob)</pre
             >
-            <pre class="pl-20 cover rounded">
-  *1
-  
-  
-  
-  
-  
-  <span class="text-indigo-700">define records</span>
-  *10        </pre>
             <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              >
+*1
+
+
+
+
+
+<span class="text-orange-3">define records</span>
+*10         </pre>
+            </div>
           </div>
         </div>
-        <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Total type interface</h2>
+        <div class="max-w-3xl mx-auto px-4">
+          <h2 class="text-3xl">Run anywhere</h2>
+
+          <div class="max-w-3xl mx-auto">
+            <p
+              style="
+                font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial,
+                  sans-serif;
+              "
+            >
+              Lorem ipsum dolor sit amet, consectetur adipisicing elit.
+              Repellendus magni molestiae, totam saepe rerum fugiat delectus
+              laborum eos nihil natus ipsa sunt odio aspernatur sed id quidem,
+              enim laboriosam doloremque.
+            </p>
+          </div>
         </div>
-        <div>Never crash</div>
-        <div class="max-w-3xl mx-auto">
-          <p>Never anotate</p>
-          <p>Never define, usage always uniquly defines types</p>
-          <p>If no error it never crashes. <strong>No exceptions</strong></p>
-          <p>No zero devision</p>
-          <p>No missing cases</p>
+        <div class="max-w-3xl mx-auto px-4">
+          <h2 class="text-3xl">Total type interface</h2>
+          <div>Never crash</div>
+          <div class="max-w-3xl mx-auto">
+            <p>Never anotate</p>
+            <p>Never define, usage always uniquly defines types</p>
+            <p>If no error it never crashes. <strong>No exceptions</strong></p>
+            <p>No zero devision</p>
+            <p>No missing cases</p>
+          </div>
         </div>
 
         <div class="max-w-3xl mx-auto">
@@ -191,18 +299,41 @@
           <p class="max-w-lg">DSL's for embed are easy to make</p>
           <!-- <header class="hstack green-gradient pb-16">hello</header> -->
         </div>
+        <hr class="border-2 max-w-2xl mx-auto" />
         <div class="max-w-3xl mx-auto">
           <h2 class="text-3xl">Hash reference</h2>
         </div>
-        <div
+      </div>
+      <div class="expand w-full purple-gradient">
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack wrap bg-white neo-shadow p-1 border-black px-4 rounded-xl"
+          >
+            <pre>
+eyg run #121212
+eyg web #121212
+eyg check #121212
+            </pre>
+            <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              ><span class="text-orange-3">run any code with a hash reference</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="max-w-3xl mx-auto">
+          <h2 class="text-3xl">Hash reference</h2>
+        </div>
+        <!-- <div
           class="w-full max-w-3xl mx-auto hstack bg-white neo-shadow rounded-2xl py-2 px-8 mb-10 border border-black"
         >
-          <pre>eyg run #121212</pre>
+          <pre></pre>
           <div class="cover expand"></div>
           <pre
             class="pl-20 cover rounded"
           ><span class="text-indigo-700">run any code with a hash reference</span></pre>
-        </div>
+        </div> -->
 
         <div class="max-w-3xl mx-auto">
           <h2 class="text-3xl">Universal apps</h2>
@@ -211,7 +342,7 @@
           <h2 class="text-3xl">Self hosted</h2>
         </div>
         <p>learn about inference, interpretation, editor</p>
-      </main>
+      </div>
       <div class="max-w-3xl mx-auto">
         <h2 class="text-3xl">Embed anywhere</h2>
       </div>
