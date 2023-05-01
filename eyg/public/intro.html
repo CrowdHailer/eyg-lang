@@ -128,7 +128,7 @@
         color: var(--neo-orange-3);
       }
       .text-orange-4 {
-        color: var(--neo-blue-4);
+        color: var(--neo-orange-4);
       }
 
       .bg-blue-1 {
@@ -202,7 +202,7 @@
       h3.blocked {
         display: inline-block;
         /* color: white; */
-        font-weight: bold;
+        /* font-weight: bold; */
         font-size: 1.2em;
         position: relative;
         margin: 10px 0;
@@ -234,9 +234,10 @@
               There is no <strong class="font-bold">syntax</strong> ...
             </div>
             <ul class="underline text-black">
-              <li>Embed anywhere</li>
-              <li>Hash compression</li>
-              <li>One program, many machines</li>
+              <li>Run everywhere</li>
+              <!-- <li>Hash compression</li> -->
+              <!-- <li>One program, many machines</li> -->
+              <li>Never crash</li>
               <li>Structural editing</li>
             </ul>
           </div>
@@ -252,20 +253,19 @@
         <!-- <div class="max-w-3xl mx-auto">
           <h1 class="text-2xl mb-4">hello</h1>
         </div> -->
-        <div class="max-w-3xl mx-auto px-4">
+        <div class="max-w-3xl mx-auto px-4 my-4 text-xl">
           <!-- <p class="text-2xl text-right">Hello World</p> -->
-          <p class="my-4 text-xl">
-            Building a language ecosystem for run everywhere
-            <strong>never crash</strong>
-            programs.
+          <p class="">
+            Create programs that run <strong>everywhere</strong>
           </p>
+          <p class="">and <strong>never</strong> crash.</p>
         </div>
       </header>
       <div class="expand w-full blue-gradient drop">
         <!-- div to push bg -->
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="hstack wrap bg-white neo-shadow p-1 border-black border px-4 rounded-xl"
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
           >
             <pre>
 let server = request -> {
@@ -310,105 +310,132 @@ deploy by reference
                 width: 0;
                 transform: translateX(26px); /*! height: 0; */
               "
-              class="cover text-2xl text-gray-100"
+              class="cover text-2xl text-gray-800"
             >
               hello world
             </div>
           </div>
         </div>
-        <div class="max-w-3xl mx-auto px-4">
-          <h2 class="text-3xl">Run anywhere</h2>
 
-          <div class="max-w-3xl mx-auto">
-            <p class="text-lg">
-              Eyg is a family of languages that can be interpreted compiled and
-              embedded.
-            </p>
-            <p class="text-lg">
-              All parts of a program are seraializable and can be sent between
-              computers
-            </p>
-            <p class="text-lg">
-              Use tracking of effects so that code only uses functionality
-              available to it
-            </p>
-          </div>
-        </div>
-        <div class="max-w-3xl mx-auto px-4">
-          <h2 class="text-3xl">Total type interface</h2>
-          <div>Never crash</div>
-          <div class="max-w-3xl mx-auto">
-            <p>Never anotate</p>
-            <p>Never define, usage always uniquly defines types</p>
-            <p>If no error it never crashes. <strong>No exceptions</strong></p>
-            <p>No zero devision</p>
-            <p>No missing cases</p>
-          </div>
-        </div>
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">Run everywhere</h2>
+          <p>
+            Eyg programs can be run everywhere, on client and server as well as build scripts and embedded.
+            The Eyg language makes no assumptions about the runtime or platform a program will be run on.
+            All requirements a program has to the outside world are explicit and tracked using effect types.
+          </p>
 
-        <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Embed anywhere</h2>
-        </div>
-        <div class="max-w-3xl mx-auto">
-          <h3 class="blocked text-1xl">NEver</h3>
-        </div>
-        <!-- <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Elixir</h2>
-        </div> -->
-        <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Scripts</h2>
-        </div>
 
-        <div class="max-w-3xl w-full mx-auto">
-          <p class="max-w-lg">DSL's for embed are easy to make</p>
-          <!-- <header class="hstack green-gradient pb-16">hello</header> -->
-        </div>
-        <hr class="border-2 max-w-2xl mx-auto" />
-        <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Hash reference</h2>
+          <h2 class="text-3xl">Universal apps</h2>
+          <!-- hash reference -->
+          <p>
+            Every expression of an Eyg program is serializable and can be transmitted.
+            The ability to send functions over the wire allow the full lifecycle of an application to exist in a single program.
+          </p>
+          <h2 class="text-3xl">Syntax is optional</h2>
+          <p>
+            There are less than 20 different kinds of node in Eyg's abstract syntax tree (AST).
+            Unusually for a language this data structure is canonical format of an Eyg program,
+            Syntaxes are optional.
+          </p>
+          <p>
+            A simple AST makes implementing new platforms for Eyg very easy.
+          </p>
+          <!-- <hr class="border-2 max-w-2xl mx-auto" /> -->
+          <!-- <h2 class="text-3xl">Never crash</h2> -->
+          <div class="py-4"></div>
         </div>
       </div>
       <div class="expand w-full purple-gradient">
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="hstack wrap bg-white neo-shadow p-1 border-black px-4 rounded-xl"
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
           >
             <pre>
-eyg run #121212
-eyg web #121212
-eyg check #121212
-            </pre>
+let name = user -> {
+  let first = user.first
+  let second = user.second
+  string.concat([first, " ", second])
+}
+
+let _ = name(<span class="text-orange-3">{first: Binary, second: Binary, ..0}</span>)</pre>
             <div class="expand"></div>
             <div>
               <pre
                 class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
-              ><span class="text-orange-3">run any code with a hash reference</span></pre>
+              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
+-> Binary</span> -->declaration
+
+
+
+
+
+type suggestion</pre>
             </div>
           </div>
         </div>
-        <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Hash reference</h2>
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">Never crash</h2>
+          <p>
+            Guarantee that a program will never crash by running the Eyg type checker.
+            The Eyg type checker covers all features of the language,
+            are no zero division errors or missing cases.
+          </p>
+          <p>Holes are part of the language all features are suggestable</p>
         </div>
-        <!-- <div
-          class="w-full max-w-3xl mx-auto hstack bg-white neo-shadow rounded-2xl py-2 px-8 mb-10 border border-black"
-        >
-          <pre></pre>
-          <div class="cover expand"></div>
-          <pre
-            class="pl-20 cover rounded"
-          ><span class="text-indigo-700">run any code with a hash reference</span></pre>
-        </div> -->
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+          >
+            <pre>
+let _ = std.equal("bob", <span class="text-pink-4">Binary</span>)
+let _ = std.equal(5, <span class="text-pink-4">Integer</span>)</pre>
+            <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
+-> Binary</span> -->
 
-        <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Universal apps</h2>
+</pre>
+            </div>
+          </div>
         </div>
-        <div class="max-w-3xl mx-auto">
-          <h2 class="text-3xl">Self hosted</h2>
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">No type declaration</h2>
         </div>
-        <p>learn about inference, interpretation, editor</p>
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+          >
+            <pre>
+match {
+  Some x -> x
+  None _ -> 0
+}(<span class="text-orange-4">[Some: Integer | None _]</span>)</pre>
+            <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
+-> Binary</span> -->
+
+</pre>
+            </div>
+          </div>
+        </div>
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">Effect types</h2>
+          <p class="max-w-lg">DSL's for embed are easy to make</p>
+          <h2 class="text-3xl">Structural editor</h2>
+          <p>Learn all the keys</p>
+          <h2 class="text-3xl">Features</h2>
+          All the features
+          <p>Pages to learn about the implementation</p>
+        </div>
       </div>
-      <div class="max-w-3xl mx-auto">
-        <h2 class="text-3xl">Embed anywhere</h2>
+      <div class="max-w-3xl w-full mx-auto yellow-gradient">
+        <div class="text-3xl">Eyg</div>
       </div>
     </div>
   </body>
