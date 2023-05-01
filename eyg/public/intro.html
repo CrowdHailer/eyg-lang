@@ -170,18 +170,46 @@
         margin-top: -30px !important;
       }
 
+      body {
+        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+      }
+
       h2 {
         display: inline-block;
         /* color: white; */
         font-weight: bold;
         font-size: 2em;
         position: relative;
-        margin: 20px 0;
+        margin: 16px 0;
         z-index: 1;
-        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
       }
 
       h2::after {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        padding: 0 4px;
+        transform: translateX(-14px);
+        border-radius: 3px;
+        content: "";
+        display: block;
+        height: 50%;
+        width: 100%;
+        background: var(--neo-green-4);
+        z-index: -1;
+      }
+
+      h3.blocked {
+        display: inline-block;
+        /* color: white; */
+        font-weight: bold;
+        font-size: 1.2em;
+        position: relative;
+        margin: 10px 0;
+        z-index: 1;
+      }
+
+      h3.blocked::after {
         position: absolute;
         bottom: 0;
         left: 0;
@@ -209,6 +237,7 @@
               <li>Embed anywhere</li>
               <li>Hash compression</li>
               <li>One program, many machines</li>
+              <li>Structural editing</li>
             </ul>
           </div>
           <div
@@ -223,36 +252,67 @@
         <!-- <div class="max-w-3xl mx-auto">
           <h1 class="text-2xl mb-4">hello</h1>
         </div> -->
+        <div class="max-w-3xl mx-auto px-4">
+          <!-- <p class="text-2xl text-right">Hello World</p> -->
+          <p class="my-4 text-xl">
+            Building a language ecosystem for run everywhere
+            <strong>never crash</strong>
+            programs.
+          </p>
+        </div>
       </header>
       <div class="expand w-full blue-gradient drop">
         <!-- div to push bg -->
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="hstack wrap bg-white neo-shadow p-1 border-black px-4 rounded-xl"
+            class="hstack wrap bg-white neo-shadow p-1 border-black border px-4 rounded-xl"
           >
             <pre>
-let alice = {name: "Alice", age: 10}
-let name = alice.name
-let alice = {age: 95, ..alice}
-let age = alice.age
-let get_name = user -> user.name
-let _ = get_name(alice)
-let bob = {name: "Bob"}
-let _ = get_name(bob)</pre
+let server = request -> {
+  perform Log("request")
+  let client = dom -> {
+    let _ = perform Alert("hello")
+    perform Render("hey")
+  }
+}
+case eyg.check(server, type) {
+  Ok _ -> publish(server)
+  Error(reason) -> {
+    let _ = perform Log(reason)
+  }
+}</pre
             >
             <div class="expand"></div>
             <div>
               <pre
                 class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
               >
-*1
+run on server
+
+run on client
+effect available on client
+
+
+
+type check during build
+deploy by reference
 
 
 
 
-
-<span class="text-orange-3">define records</span>
-*10         </pre>
+</pre
+              >
+            </div>
+            <div
+              style="
+                writing-mode: sideways-lr; /*! position: absolute; */
+                left: -29px; /*! text-align: right; */
+                width: 0;
+                transform: translateX(26px); /*! height: 0; */
+              "
+              class="cover text-2xl text-gray-100"
+            >
+              hello world
             </div>
           </div>
         </div>
@@ -260,16 +320,17 @@ let _ = get_name(bob)</pre
           <h2 class="text-3xl">Run anywhere</h2>
 
           <div class="max-w-3xl mx-auto">
-            <p
-              style="
-                font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial,
-                  sans-serif;
-              "
-            >
-              Lorem ipsum dolor sit amet, consectetur adipisicing elit.
-              Repellendus magni molestiae, totam saepe rerum fugiat delectus
-              laborum eos nihil natus ipsa sunt odio aspernatur sed id quidem,
-              enim laboriosam doloremque.
+            <p class="text-lg">
+              Eyg is a family of languages that can be interpreted compiled and
+              embedded.
+            </p>
+            <p class="text-lg">
+              All parts of a program are seraializable and can be sent between
+              computers
+            </p>
+            <p class="text-lg">
+              Use tracking of effects so that code only uses functionality
+              available to it
             </p>
           </div>
         </div>
@@ -287,6 +348,9 @@ let _ = get_name(bob)</pre
 
         <div class="max-w-3xl mx-auto">
           <h2 class="text-3xl">Embed anywhere</h2>
+        </div>
+        <div class="max-w-3xl mx-auto">
+          <h3 class="blocked text-1xl">NEver</h3>
         </div>
         <!-- <div class="max-w-3xl mx-auto">
           <h2 class="text-3xl">Elixir</h2>
