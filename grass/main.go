@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+// Need persistent datastructures for env
+
 func main() {
 	var source Expression
 	fmt.Println("")
