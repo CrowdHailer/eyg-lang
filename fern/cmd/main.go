@@ -33,7 +33,7 @@ func main() {
 	s.SetCursorStyle(tcell.CursorStyleDefault)
 	s.ShowCursor(cursor.X, cursor.Y)
 
-	grid := fern.Draw(s, fern.Source())
+	grid, g2 := fern.Draw(s, fern.Source())
 
 	quit := make(chan struct{})
 	go func() {
@@ -45,16 +45,16 @@ func main() {
 
 				case tcell.KeyLeft:
 					cursor.X -= 1
-					render(s, *cursor, w, h, grid)
+					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyRight:
 					cursor.X += 1
-					render(s, *cursor, w, h, grid)
+					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyUp:
 					cursor.Y -= 1
-					render(s, *cursor, w, h, grid)
+					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyDown:
 					cursor.Y += 1
-					render(s, *cursor, w, h, grid)
+					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
 					close(quit)
 					return
@@ -70,16 +70,21 @@ func main() {
 	}()
 	<-quit
 	s.Fini()
-	fmt.Printf("%#v\n", grid[cursor.X][cursor.Y])
 }
 
-func render(s tcell.Screen, cursor fern.Point, w, h int, grid [][][]int) {
+func render(s tcell.Screen, cursor fern.Point, w, h int, grid [][][]int, g2 [][]int) {
 	s.ShowCursor(cursor.X, cursor.Y)
 	for i := 0; i < w; i++ {
 		s.SetContent(i+1, h-1, ' ', nil, tcell.StyleDefault)
 	}
 	for i, ch := range fmt.Sprintf("%#v", grid[cursor.X][cursor.Y]) {
 		s.SetContent(i+1, h-1, ch, nil, tcell.StyleDefault)
+	}
+	for i := 0; i < w; i++ {
+		s.SetContent(i+1, h-2, ' ', nil, tcell.StyleDefault)
+	}
+	for i, ch := range fmt.Sprintf("%d", g2[cursor.X][cursor.Y]) {
+		s.SetContent(i+1, h-2, ch, nil, tcell.StyleDefault)
 	}
 	s.Show()
 }

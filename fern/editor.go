@@ -20,13 +20,19 @@ type Editor struct {
 
 //
 
-func Draw(screen tcell.Screen, source Node) [][][]int {
+func Draw(screen tcell.Screen, source Node) ([][][]int, [][]int) {
 	w, h := screen.Size()
 	grid := make([][][]int, w)
 	for x := range grid {
 		grid[x] = make([][]int, h)
 
 	}
-	source.Draw(screen, &Point{}, &grid, []int{}, 0, false)
-	return grid
+	g2 := make([][]int, w)
+	for x := range g2 {
+		g2[x] = make([]int, h)
+
+	}
+	index := 0
+	source.Draw(screen, &Point{}, &grid, []int{}, &g2, &index, 0, false)
+	return grid, g2
 }
