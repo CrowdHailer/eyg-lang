@@ -160,6 +160,36 @@ func (String) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for String %d", c)
 }
 
+type Tail struct {
+}
+
+var _ Node = Tail{}
+
+func (Tail) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool) {
+	self := *index
+	*index++
+	WriteString(s, "[]", writer, grid, path, g2, self)
+}
+
+func (Tail) child(c int) (Node, func(Node) Node, error) {
+	return Var{}, nil, fmt.Errorf("invalid child id for Tail %d", c)
+}
+
+type Cons struct {
+}
+
+var _ Node = Cons{}
+
+func (Cons) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool) {
+	self := *index
+	*index++
+	WriteString(s, "cons", writer, grid, path, g2, self)
+}
+
+func (Cons) child(c int) (Node, func(Node) Node, error) {
+	return Var{}, nil, fmt.Errorf("invalid child id for Tail %d", c)
+}
+
 func WriteString(s tcell.Screen, content string, writer *Point, grid *[][][]int, path []int, g2 *[][]int, id int) {
 	for _, ch := range content {
 		s.SetContent(writer.X, writer.Y, ch, nil, tcell.StyleDefault)

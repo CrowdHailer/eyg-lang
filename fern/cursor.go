@@ -18,3 +18,12 @@ func zipper(source Node, path []int) (func(Node) Node, error) {
 		return n
 	}, nil
 }
+
+// (call, (call, cons, x), tail)
+// ((cons x) tail)
+// (reverse (uppercase "bob"))
+// ((map users) uppercase)
+
+// x -> pre on list
+// default is 5 -> [5] but also [1, 2] -> [1, [2]]
+// always add to list
