@@ -1,3 +1,7 @@
+```
+docker run -it -w /app -v ./fern:/app golang:1.20.4 bash
+```
+
 render text
 then scroll overflow
 

@@ -44,16 +44,16 @@ func main() {
 				switch ev.Key() {
 
 				case tcell.KeyLeft:
-					cursor.X -= 1
+					cursor.X = Max(cursor.X - 1, 0)
 					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyRight:
-					cursor.X += 1
+					cursor.X = Min(cursor.X + 1, w - 1)
 					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyUp:
-					cursor.Y -= 1
+					cursor.Y = Max(cursor.Y - 1, 0)
 					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyDown:
-					cursor.Y += 1
+					cursor.Y = Min(cursor.Y + 1, h - 1)
 					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
 					close(quit)
@@ -87,4 +87,20 @@ func render(s tcell.Screen, cursor fern.Point, w, h int, grid [][][]int, g2 [][]
 		s.SetContent(i+1, h-2, ch, nil, tcell.StyleDefault)
 	}
 	s.Show()
+}
+
+// Max returns the larger of x or y.
+func Max(x, y int) int {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+// Min returns the smaller of x or y.
+func Min(x, y int) int {
+	if x > y {
+		return y
+	}
+	return x
 }
