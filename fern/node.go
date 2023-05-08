@@ -9,6 +9,7 @@ import (
 type Node interface {
 	// could return list of strings
 	Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool)
+	child(int) (Node, func(Node) Node, error)
 }
 
 type Fn struct {
@@ -26,6 +27,13 @@ func (fn Fn) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2
 	WriteString(s, fn.param, writer, grid, path, g2, self)
 	WriteString(s, " -> ", writer, grid, path, g2, self)
 	fn.body.Draw(s, writer, grid, append(path, 0), g2, index, indent, true)
+}
+
+func (fn Fn) child(c int) (Node, func(Node) Node, error) {
+	if c == 0 {
+		return fn.body, func(n Node) Node { return Fn{fn.param, n} }, nil
+	}
+	return Var{}, nil, fmt.Errorf("invalid child id for fn %d", c)
 }
 
 // TODO How do I test
@@ -51,6 +59,16 @@ func (call Call) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int
 	WriteString(s, ")", writer, grid, path, g2, self)
 }
 
+func (call Call) child(c int) (Node, func(Node) Node, error) {
+	if c == 0 {
+		return call.fn, func(n Node) Node { return Call{n, call.arg} }, nil
+	}
+	if c == 1 {
+		return call.arg, func(n Node) Node { return Call{call.fn, n} }, nil
+	}
+	return Var{}, nil, fmt.Errorf("invalid child id for call %d", c)
+}
+
 type Var struct {
 	label string
 }
@@ -61,6 +79,9 @@ func (var_ Var) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int,
 	self := *index
 	*index++
 	WriteString(s, var_.label, writer, grid, path, g2, self)
+}
+func (var_ Var) child(c int) (Node, func(Node) Node, error) {
+	return Var{}, nil, fmt.Errorf("invalid child id for Var %d", c)
 }
 
 type Let struct {
@@ -95,6 +116,16 @@ func (let Let) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, 
 	let.then.Draw(s, writer, grid, append(path, 1), g2, index, indent, true)
 }
 
+func (let Let) child(c int) (Node, func(Node) Node, error) {
+	if c == 0 {
+		return let.value, func(n Node) Node { return Let{let.label, n, let.then} }, nil
+	}
+	if c == 1 {
+		return let.then, func(n Node) Node { return Let{let.label, let.value, n} }, nil
+	}
+	return Var{}, nil, fmt.Errorf("invalid child id for Let %d", c)
+}
+
 type Integer struct {
 	value int
 }
@@ -105,6 +136,10 @@ func (i Integer) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int
 	self := *index
 	*index++
 	WriteString(s, fmt.Sprintf("%d", i.value), writer, grid, path, g2, self)
+}
+
+func (Integer) child(c int) (Node, func(Node) Node, error) {
+	return Var{}, nil, fmt.Errorf("invalid child id for Integer %d", c)
 }
 
 type String struct {
@@ -119,6 +154,10 @@ func (str String) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []in
 	WriteString(s, "\"", writer, grid, path, g2, self)
 	WriteString(s, str.value, writer, grid, path, g2, self)
 	WriteString(s, "\"", writer, grid, path, g2, self)
+}
+
+func (String) child(c int) (Node, func(Node) Node, error) {
+	return Var{}, nil, fmt.Errorf("invalid child id for String %d", c)
 }
 
 func WriteString(s tcell.Screen, content string, writer *Point, grid *[][][]int, path []int, g2 *[][]int, id int) {
