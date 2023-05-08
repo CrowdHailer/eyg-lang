@@ -53,6 +53,32 @@ var _ Node = Call{}
 func (call Call) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool) {
 	self := *index
 	*index++
+	switch inner := call.fn.(type) {
+	case Call:
+		switch inner.fn.(type) {
+		case Cons:
+			WriteString(s, "[", writer, grid, path, g2, self)
+			// second call
+			*index++
+			// cons
+			*index++
+			next := *index
+			inner.arg.Draw(s, writer, grid, append(path, 0, 1), g2, index, indent, true)
+			// label block as true?
+			// turning x into tail makes no difference in cursor for , and value
+			// , comma points to first in pair of applies
+			// NO BECAUSE it's nested to 0,1 for value but commas are the apply thing
+			// making one element list special case that doesn't show up often
+			// child could draw comma is it's self at this point
+			// Render comma in the print list view.
+			WriteString(s, ", ", writer, grid, append(path, 1), g2, next)
+			call.arg.Draw(s, writer, grid, append(path, 1), g2, index, indent, true)
+			WriteString(s, "]", writer, grid, path, g2, self)
+			// Everything is a block (record, case, etc) cursor should keep track of last block
+			// Certain key commands should add in block
+			return
+		}
+	}
 	call.fn.Draw(s, writer, grid, append(path, 0), g2, index, indent, true)
 	WriteString(s, "(", writer, grid, path, g2, self)
 	call.arg.Draw(s, writer, grid, append(path, 1), g2, index, indent, true)
