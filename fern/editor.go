@@ -12,16 +12,16 @@ type Editor struct {
 	// ScrollX and Y for when it's too large
 }
 
-func Draw(screen tcell.Screen, source Node, selected []int) ([][][]int, [][]int) {
+func Draw(screen tcell.Screen, source Node, selected []int) ([][][]int, [][]ref) {
 	w, h := screen.Size()
 	grid := make([][][]int, w)
 	for x := range grid {
 		grid[x] = make([][]int, h)
 
 	}
-	g2 := make([][]int, w)
+	g2 := make([][]ref, w)
 	for x := range g2 {
-		g2[x] = make([]int, h)
+		g2[x] = make([]ref, h)
 
 	}
 	index := 0
@@ -125,22 +125,34 @@ func New(s tcell.Screen) {
 							render(s, *cursor, w, h, grid, g2)
 						}
 					} else {
+
 						path := grid[cursor.X][cursor.Y]
+						offset := g2[cursor.X][cursor.Y].offset
+						if offset < 0 {
+							break
+						}
 						target, c, err := zipper(source, path)
 						if err != nil {
 							fmt.Println(err.Error())
 						}
+						var new Node
 						switch t := target.(type) {
+						case Let:
+							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
+							new = Let{label, t.value, t.then}
+						case Vacant:
+							new = Vacant{t.note + string(ev.Rune())}
 						case String:
-							new := String{t.value + string(ev.Rune())}
-							source = c(new)
-							s.Clear()
-							cursor.X += 1
-							grid, g2 = Draw(s, source, selected)
-							render(s, *cursor, w, h, grid, g2)
+							value := t.value[:offset] + string(ev.Rune()) + t.value[offset:]
+							new = String{value}
 						default:
 							panic("not a node I expected")
 						}
+						source = c(new)
+						s.Clear()
+						cursor.X += 1
+						grid, g2 = Draw(s, source, selected)
+						render(s, *cursor, w, h, grid, g2)
 					}
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
 					if selected == nil {
@@ -165,7 +177,7 @@ func New(s tcell.Screen) {
 	s.Fini()
 }
 
-func render(s tcell.Screen, cursor Point, w, h int, grid [][][]int, g2 [][]int) {
+func render(s tcell.Screen, cursor Point, w, h int, grid [][][]int, g2 [][]ref) {
 	s.ShowCursor(cursor.X, cursor.Y)
 	for i := 0; i < w; i++ {
 		s.SetContent(i+1, h-1, ' ', nil, tcell.StyleDefault)

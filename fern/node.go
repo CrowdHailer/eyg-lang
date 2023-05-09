@@ -7,11 +7,20 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
+// TODO editing last charachter in string
 const red = 0xff0000
+const pink = 0xffb2ef
+const purple = 0xff00ee
+const green = 0x00ff00
+
+type ref struct {
+	index  int
+	offset int
+}
 
 type Node interface {
 	// could return list of strings
-	draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool)
+	draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool)
 	child(int) (Node, func(Node) Node, error)
 }
 
@@ -24,11 +33,11 @@ var _ Node = Fn{}
 
 // is there a way to make this all on the grid for lookup
 // Is there a node then continuation version of this draw
-func (fn Fn) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (fn Fn) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fn.param, writer, selected, grid, path, g2, self, tcell.StyleDefault)
-	WriteString(s, " -> ", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, fn.param, writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	WriteString(s, " -> ", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	fn.body.draw(s, writer, selected, grid, append(path, 0), g2, index, indent, true, false)
 }
 
@@ -47,7 +56,7 @@ type Call struct {
 var _ Node = Call{}
 
 // Only the brackets are the actual call node
-func (call Call) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (call Call) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	switch inner := call.fn.(type) {
@@ -55,7 +64,7 @@ func (call Call) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][
 		switch inner.fn.(type) {
 		case Cons:
 			if !list {
-				WriteString(s, "[", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+				WriteString(s, "[", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 			}
 			// second call
 			*index++
@@ -70,10 +79,10 @@ func (call Call) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][
 			// making one element list special case that doesn't show up often
 			// child could draw comma is it's self at this point
 			// Render comma in the print list view.
-			WriteString(s, ", ", writer, selected, grid, append(path, 1), g2, next, tcell.StyleDefault)
+			WriteString(s, ", ", writer, selected, grid, append(path, 1), g2, next, tcell.StyleDefault, false)
 			call.arg.draw(s, writer, selected, grid, append(path, 1), g2, index, indent, true, true)
 			if !list {
-				WriteString(s, "]", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+				WriteString(s, "]", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 			}
 			// Everything is a block (record, case, etc) cursor should keep track of last block
 			// Certain key commands should add in block
@@ -81,9 +90,9 @@ func (call Call) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][
 		}
 	}
 	call.fn.draw(s, writer, selected, grid, append(path, 0), g2, index, indent, true, false)
-	WriteString(s, "(", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, "(", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	call.arg.draw(s, writer, selected, grid, append(path, 1), g2, index, indent, true, false)
-	WriteString(s, ")", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, ")", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (call Call) child(c int) (Node, func(Node) Node, error) {
@@ -102,13 +111,13 @@ type Var struct {
 
 var _ Node = Var{}
 
-func (var_ Var) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (var_ Var) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	if list {
-		WriteString(s, "..", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+		WriteString(s, "..", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	}
-	WriteString(s, var_.label, writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, var_.label, writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 func (var_ Var) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Var %d", c)
@@ -122,27 +131,37 @@ type Let struct {
 
 var _ Node = Let{}
 
-func (let Let) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (let Let) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	// ++ only once a node
 	if list {
-		WriteString(s, "..", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+		WriteString(s, "..", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	}
 	if block {
-		WriteString(s, "{", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+		WriteString(s, "{", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 		indent += 2
 		writer.Y += 1
 		writer.X = indent
 		defer func() {
 			writer.Y += 1
 			writer.X = indent - 2
-			WriteString(s, "}", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+			WriteString(s, "}", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 		}()
 	}
-	WriteString(s, "let ", writer, selected, grid, path, g2, self, tcell.StyleDefault.Dim(true))
-	WriteString(s, let.label, writer, selected, grid, path, g2, self, tcell.StyleDefault)
-	WriteString(s, " = ", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, "let ", writer, selected, grid, path, g2, self, tcell.StyleDefault.Dim(true), false)
+	content := let.label
+	style := tcell.StyleDefault
+	if content == "" {
+		content = "_"
+		style = style.Foreground(tcell.NewHexColor(pink))
+	}
+	if reflect.DeepEqual(path, selected) {
+		style = style.Reverse(true)
+	}
+	WriteString(s, content, writer, selected, grid, path, g2, self, style, true)
+
+	WriteString(s, " = ", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	let.value.draw(s, writer, selected, grid, append(path, 0), g2, index, indent, true, false)
 	writer.Y += 1
 	writer.X = indent
@@ -165,14 +184,18 @@ type Vacant struct {
 
 var _ Node = Vacant{}
 
-func (v Vacant) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (v Vacant) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	content := v.note
 	if content == "" {
 		content = "todo"
 	}
-	WriteString(s, content, writer, selected, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(0xff0000)))
+	style := tcell.StyleDefault.Foreground(tcell.NewHexColor(red))
+	if reflect.DeepEqual(path, selected) {
+		style = style.Reverse(true)
+	}
+	WriteString(s, content, writer, selected, grid, path, g2, self, style, false)
 }
 
 func (Vacant) child(c int) (Node, func(Node) Node, error) {
@@ -185,10 +208,10 @@ type Integer struct {
 
 var _ Node = Integer{}
 
-func (i Integer) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (i Integer) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("%d", i.value), writer, selected, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(0xff00ee)))
+	WriteString(s, fmt.Sprintf("%d", i.value), writer, selected, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(purple)), false)
 }
 
 func (Integer) child(c int) (Node, func(Node) Node, error) {
@@ -201,15 +224,17 @@ type String struct {
 
 var _ Node = String{}
 
-func (str String) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (str String) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	style := tcell.StyleDefault.Foreground(tcell.NewHexColor(0x00ff00))
+	style := tcell.StyleDefault.Foreground(tcell.NewHexColor(green))
 	if reflect.DeepEqual(path, selected) {
 		style = style.Reverse(true)
 	}
-	content := fmt.Sprintf("\"%s\"", str.value)
-	WriteString(s, content, writer, selected, grid, path, g2, self, style)
+	WriteString(s, "\"", writer, selected, grid, path, g2, self, style, false)
+	WriteString(s, str.value, writer, selected, grid, path, g2, self, style, true)
+	WriteString(s, "\"", writer, selected, grid, path, g2, self, style, false)
+
 }
 
 func (String) child(c int) (Node, func(Node) Node, error) {
@@ -221,11 +246,11 @@ type Tail struct {
 
 var _ Node = Tail{}
 
-func (Tail) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (Tail) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	if !list {
-		WriteString(s, "[]", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+		WriteString(s, "[]", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	}
 }
 
@@ -238,10 +263,10 @@ type Cons struct {
 
 var _ Node = Cons{}
 
-func (Cons) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (Cons) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "cons", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, "cons", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (Cons) child(c int) (Node, func(Node) Node, error) {
@@ -253,10 +278,10 @@ type Empty struct {
 
 var _ Node = Empty{}
 
-func (Empty) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (Empty) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "{}", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, "{}", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (Empty) child(c int) (Node, func(Node) Node, error) {
@@ -269,10 +294,10 @@ type Extend struct {
 
 var _ Node = Extend{}
 
-func (e Extend) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (e Extend) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("+%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, fmt.Sprintf("+%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (Extend) child(c int) (Node, func(Node) Node, error) {
@@ -285,10 +310,10 @@ type Select struct {
 
 var _ Node = Select{}
 
-func (e Select) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (e Select) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf(".%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, fmt.Sprintf(".%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (Select) child(c int) (Node, func(Node) Node, error) {
@@ -301,10 +326,10 @@ type Overwrite struct {
 
 var _ Node = Overwrite{}
 
-func (e Overwrite) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (e Overwrite) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf(":%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, fmt.Sprintf(":%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (Overwrite) child(c int) (Node, func(Node) Node, error) {
@@ -317,14 +342,14 @@ type Tag struct {
 
 var _ Node = Tag{}
 
-func (t Tag) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (t Tag) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	label := t.label
 	if label == "" {
-		WriteString(s, "_", writer, selected, grid, path, g2, self, tcell.StyleDefault.Foreground(red).Dim(true))
+		WriteString(s, "_", writer, selected, grid, path, g2, self, tcell.StyleDefault.Foreground(red).Dim(true), false)
 	} else {
-		WriteString(s, label, writer, selected, grid, path, g2, self, tcell.StyleDefault)
+		WriteString(s, label, writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	}
 }
 
@@ -338,10 +363,10 @@ type Case struct {
 
 var _ Node = Case{}
 
-func (e Case) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (e Case) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("+%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, fmt.Sprintf("+%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (Case) child(c int) (Node, func(Node) Node, error) {
@@ -353,10 +378,10 @@ type NoCases struct {
 
 var _ Node = NoCases{}
 
-func (e NoCases) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (e NoCases) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "nocases", writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, "nocases", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (NoCases) child(c int) (Node, func(Node) Node, error) {
@@ -369,10 +394,10 @@ type perform struct {
 
 var _ Node = perform{}
 
-func (e perform) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (e perform) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("perform %s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, fmt.Sprintf("perform %s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (perform) child(c int) (Node, func(Node) Node, error) {
@@ -385,22 +410,25 @@ type Handle struct {
 
 var _ Node = Handle{}
 
-func (e Handle) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (e Handle) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("handle %s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, fmt.Sprintf("handle %s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
 func (Handle) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Handle %d", c)
 }
 
-func WriteString(s tcell.Screen, content string, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]int, id int, style tcell.Style) {
+func WriteString(s tcell.Screen, content string, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, id int, style tcell.Style, editable bool) {
 	// tcell.StyleDefault.
-	for _, ch := range content {
+	for offset, ch := range content {
 		s.SetContent(writer.X, writer.Y, ch, nil, style)
 		(*grid)[writer.X][writer.Y] = path
-		(*g2)[writer.X][writer.Y] = id
+		if !editable {
+			offset = -1
+		}
+		(*g2)[writer.X][writer.Y] = ref{id, offset}
 		writer.X++
 	}
 }
