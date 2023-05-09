@@ -10,6 +10,7 @@ import (
 // move cursor to beginning of element - maybe have a state that is at path
 // TODO undo and save
 // Python tui thing https://github.com/Textualize/textual#about
+// Don't wrap just go over the edge if content exists
 type Editor struct {
 	// ScrollX and Y for when it's too large
 }

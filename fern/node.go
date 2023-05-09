@@ -1,6 +1,7 @@
 package fern
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -22,6 +23,7 @@ type Node interface {
 	// could return list of strings
 	draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool)
 	child(int) (Node, func(Node) Node, error)
+	// MarshalJSON() ([]byte, error)
 }
 
 type Fn struct {
@@ -36,6 +38,7 @@ var _ Node = Fn{}
 func (fn Fn) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
+
 	WriteString(s, fn.param, writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	WriteString(s, " -> ", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	fn.body.draw(s, writer, selected, grid, append(path, 0), g2, index, indent, true, false)
@@ -46,6 +49,14 @@ func (fn Fn) child(c int) (Node, func(Node) Node, error) {
 		return fn.body, func(n Node) Node { return Fn{fn.param, n} }, nil
 	}
 	return Var{}, nil, fmt.Errorf("invalid child id for fn %d", c)
+}
+
+func (fn Fn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "v",
+		"l": fn.param,
+		"b": fn.body,
+	})
 }
 
 type Call struct {
@@ -287,6 +298,13 @@ func (String) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for String %d", c)
 }
 
+func (str String) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "v",
+		"s": str.value,
+	})
+}
+
 type Tail struct {
 }
 
@@ -468,6 +486,10 @@ func (e Handle) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]
 func (Handle) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Handle %d", c)
 }
+
+// If editable and selected simply add a space to the end
+// TODO have a mode bounding box Method that limits motion when editing label
+// Having a 2d grid to link path and index means we keep a lookup only for relevant nodes
 
 func WriteString(s tcell.Screen, content string, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, id int, style tcell.Style, editable bool) {
 	// tcell.StyleDefault.
