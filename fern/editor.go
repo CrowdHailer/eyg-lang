@@ -24,7 +24,7 @@ type Editor struct {
 
 //
 
-func Draw(screen tcell.Screen, source Node, selected int) ([][][]int, [][]int) {
+func Draw(screen tcell.Screen, source Node, selected []int) ([][][]int, [][]int) {
 	w, h := screen.Size()
 	grid := make([][][]int, w)
 	for x := range grid {
@@ -59,7 +59,7 @@ func New(s tcell.Screen) {
 	s.ShowCursor(cursor.X, cursor.Y)
 
 	source = Source()
-	selected := -1
+	var selected []int
 	grid, g2 := Draw(s, source, selected)
 
 	quit := make(chan struct{})
@@ -83,7 +83,7 @@ func New(s tcell.Screen) {
 					cursor.Y = Min(cursor.Y+1, h-1)
 					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyRune:
-					if selected == -1 {
+					if selected == nil {
 						path := grid[cursor.X][cursor.Y]
 						target, c, err := zipper(source, path)
 						if err != nil {
@@ -109,7 +109,7 @@ func New(s tcell.Screen) {
 							}
 							changed = true
 						case 'i':
-							selected = g2[cursor.X][cursor.Y]
+							selected = grid[cursor.X][cursor.Y]
 							changed = true
 						case 'c':
 							source = c(String{""})
@@ -134,14 +134,29 @@ func New(s tcell.Screen) {
 							render(s, *cursor, w, h, grid, g2)
 						}
 					} else {
-						fmt.Print(ev.Rune())
+						path := grid[cursor.X][cursor.Y]
+						target, c, err := zipper(source, path)
+						if err != nil {
+							fmt.Println(err.Error())
+						}
+						switch t := target.(type) {
+						case String:
+							new := String{t.value + string(ev.Rune())}
+							source = c(new)
+							s.Clear()
+							cursor.X += 1
+							grid, g2 = Draw(s, source, selected)
+							render(s, *cursor, w, h, grid, g2)
+						default:
+							panic("not a node I expected")
+						}
 					}
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
-					if selected == -1 {
+					if selected == nil {
 						close(quit)
 						return
 					}
-					selected = -1
+					selected = nil
 					s.Clear()
 					grid, g2 = Draw(s, source, selected)
 					render(s, *cursor, w, h, grid, g2)
