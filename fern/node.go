@@ -61,7 +61,7 @@ func (call Call) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][
 	*index++
 	switch inner := call.fn.(type) {
 	case Call:
-		switch inner.fn.(type) {
+		switch t := inner.fn.(type) {
 		case Cons:
 			if !list {
 				WriteString(s, "[", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
@@ -87,6 +87,43 @@ func (call Call) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][
 			// Everything is a block (record, case, etc) cursor should keep track of last block
 			// Certain key commands should add in block
 			return
+		case Extend:
+			if !list {
+				WriteString(s, "{", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+			}
+			// second call
+			*index++
+			// key
+			content := t.label
+			style := tcell.StyleDefault
+			if content == "" {
+				content = "_"
+				style = style.Foreground(tcell.NewHexColor(pink))
+			}
+			// TODO reuse path to block type node
+			if reflect.DeepEqual(append(path, 0, 0), selected) {
+				style = style.Reverse(true)
+			}
+			WriteString(s, content, writer, selected, grid, append(path, 0, 0), g2, *index, style, true)
+			WriteString(s, ": ", writer, selected, grid, append(path, 0, 0), g2, *index, tcell.StyleDefault, false)
+			*index++
+			next := *index
+			inner.arg.draw(s, writer, selected, grid, append(path, 0, 1), g2, index, indent, true, false)
+			// label block as true?
+			// turning x into tail makes no difference in cursor for , and value
+			// , comma points to first in pair of applies
+			// NO BECAUSE it's nested to 0,1 for value but commas are the apply thing
+			// making one element list special case that doesn't show up often
+			// child could draw comma is it's self at this point
+			// Render comma in the print list view.
+			WriteString(s, ", ", writer, selected, grid, append(path, 1), g2, next, tcell.StyleDefault, false)
+			call.arg.draw(s, writer, selected, grid, append(path, 1), g2, index, indent, true, true)
+			if !list {
+				WriteString(s, "}", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+			}
+			return
+			// case Overwrite:
+			// case Case:
 		}
 	}
 	call.fn.draw(s, writer, selected, grid, append(path, 0), g2, index, indent, true, false)
@@ -117,7 +154,16 @@ func (var_ Var) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]
 	if list {
 		WriteString(s, "..", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	}
-	WriteString(s, var_.label, writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	content := var_.label
+	style := tcell.StyleDefault
+	if content == "" {
+		content = "_"
+		style = style.Foreground(tcell.NewHexColor(pink))
+	}
+	if reflect.DeepEqual(path, selected) {
+		style = style.Reverse(true)
+	}
+	WriteString(s, content, writer, selected, grid, path, g2, self, style, true)
 }
 func (var_ Var) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Var %d", c)
@@ -281,7 +327,10 @@ var _ Node = Empty{}
 func (Empty) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "{}", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	// can draw commas in here
+	if !list {
+		WriteString(s, "{}", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	}
 }
 
 func (Empty) child(c int) (Node, func(Node) Node, error) {

@@ -113,10 +113,10 @@ func New(s tcell.Screen) {
 							}
 							changed = true
 						case 'v':
-							source = c(Var{"new_v"})
+							source = c(Var{""})
 							changed = true
 						case 'b':
-							source = c(String{""})
+							source = c(String{" "})
 							changed = true
 						}
 						if changed {
@@ -137,6 +137,9 @@ func New(s tcell.Screen) {
 						}
 						var new Node
 						switch t := target.(type) {
+						case Var:
+							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
+							new = Var{label}
 						case Let:
 							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
 							new = Let{label, t.value, t.then}
@@ -145,6 +148,9 @@ func New(s tcell.Screen) {
 						case String:
 							value := t.value[:offset] + string(ev.Rune()) + t.value[offset:]
 							new = String{value}
+						case Extend:
+							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
+							new = Extend{label}
 						default:
 							panic("not a node I expected")
 						}
