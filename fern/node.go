@@ -108,6 +108,9 @@ var _ Node = Var{}
 func (var_ Var) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
+	if list {
+		WriteString(s, "..", writer, grid, path, g2, self)
+	}
 	WriteString(s, var_.label, writer, grid, path, g2, self)
 }
 func (var_ Var) child(c int) (Node, func(Node) Node, error) {
@@ -126,6 +129,9 @@ func (let Let) Draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, 
 	self := *index
 	*index++
 	// ++ only once a node
+	if list {
+		WriteString(s, "..", writer, grid, path, g2, self)
+	}
 	if block {
 		WriteString(s, "{", writer, grid, path, g2, self)
 		indent += 2
