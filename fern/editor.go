@@ -37,7 +37,7 @@ func Draw(screen tcell.Screen, source Node) ([][][]int, [][]int) {
 
 	}
 	index := 0
-	source.Draw(screen, &Point{}, &grid, []int{}, &g2, &index, 0, false, false)
+	source.draw(screen, &Point{}, &grid, []int{}, &g2, &index, 0, false, false)
 	return grid, g2
 }
 
