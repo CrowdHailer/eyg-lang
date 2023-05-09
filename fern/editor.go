@@ -24,7 +24,7 @@ type Editor struct {
 
 //
 
-func Draw(screen tcell.Screen, source Node) ([][][]int, [][]int) {
+func Draw(screen tcell.Screen, source Node, selected int) ([][][]int, [][]int) {
 	w, h := screen.Size()
 	grid := make([][][]int, w)
 	for x := range grid {
@@ -37,7 +37,7 @@ func Draw(screen tcell.Screen, source Node) ([][][]int, [][]int) {
 
 	}
 	index := 0
-	source.draw(screen, &Point{}, &grid, []int{}, &g2, &index, 0, false, false)
+	source.draw(screen, &Point{}, selected, &grid, []int{}, &g2, &index, 0, false, false)
 	return grid, g2
 }
 
@@ -55,10 +55,12 @@ func New(s tcell.Screen) {
 	cursor := &Point{}
 
 	s.SetCursorStyle(tcell.CursorStyleDefault)
+	s.SetCursorStyle(tcell.CursorStyleSteadyBar)
 	s.ShowCursor(cursor.X, cursor.Y)
 
 	source = Source()
-	grid, g2 := Draw(s, source)
+	selected := -1
+	grid, g2 := Draw(s, source, selected)
 
 	quit := make(chan struct{})
 	go func() {
@@ -81,56 +83,68 @@ func New(s tcell.Screen) {
 					cursor.Y = Min(cursor.Y+1, h-1)
 					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyRune:
-					var next *Node
-					path := grid[cursor.X][cursor.Y]
-					target, c, err := zipper(source, path)
-					if err != nil {
-						fmt.Println(err.Error())
-					}
-					switch ev.Rune() {
-					case 'e':
-						n := c(Let{"", Vacant{""}, target})
-						next = &n
-					case 'r':
-						var n Node
-						if _, ok := target.(Vacant); ok {
-							n = c(Empty{})
-						} else {
-							n = c(Call{Call{Extend{""}, Vacant{""}}, target})
+					if selected == -1 {
+						path := grid[cursor.X][cursor.Y]
+						target, c, err := zipper(source, path)
+						if err != nil {
+							fmt.Println(err.Error())
 						}
-						next = &n
-					case 't':
-						var n Node
-						if _, ok := target.(Vacant); ok {
-							n = c(Tag{})
-						} else {
-							n = c(Call{Tag{""}, target})
+						changed := false
+						switch ev.Rune() {
+						case 'e':
+							source = c(Let{"", Vacant{""}, target})
+							changed = true
+						case 'r':
+							if _, ok := target.(Vacant); ok {
+								source = c(Empty{})
+							} else {
+								source = c(Call{Call{Extend{""}, Vacant{""}}, target})
+							}
+							changed = true
+						case 't':
+							if _, ok := target.(Vacant); ok {
+								source = c(Tag{})
+							} else {
+								source = c(Call{Tag{""}, target})
+							}
+							changed = true
+						case 'i':
+							selected = g2[cursor.X][cursor.Y]
+							changed = true
+						case 'c':
+							source = c(String{""})
+							changed = true
+						case 'x':
+							if _, ok := target.(Vacant); ok {
+								source = c(Empty{})
+							} else {
+								source = c(Call{Call{Cons{}, Vacant{""}}, target})
+							}
+							changed = true
+						case 'v':
+							source = c(Var{"new_v"})
+							changed = true
+						case 'b':
+							source = c(String{""})
+							changed = true
 						}
-						next = &n
-					case 'c':
-						n := c(String{""})
-						next = &n
-					case 'x':
-						var n Node
-						if _, ok := target.(Vacant); ok {
-							n = c(Empty{})
-						} else {
-							n = c(Call{Call{Cons{}, Vacant{""}}, target})
+						if changed {
+							s.Clear()
+							grid, g2 = Draw(s, source, selected)
+							render(s, *cursor, w, h, grid, g2)
 						}
-						next = &n
-					case 'v':
-						n := c(Var{"new_v"})
-						next = &n
-					}
-					if next != nil {
-						s.Clear()
-						grid, g2 = Draw(s, *next)
-						render(s, *cursor, w, h, grid, g2)
-
+					} else {
+						fmt.Print(ev.Rune())
 					}
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
-					close(quit)
-					return
+					if selected == -1 {
+						close(quit)
+						return
+					}
+					selected = -1
+					s.Clear()
+					grid, g2 = Draw(s, source, selected)
+					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyCtrlL:
 					s.Sync()
 				default:
