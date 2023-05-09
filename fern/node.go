@@ -165,7 +165,11 @@ var _ Node = Vacant{}
 func (v Vacant) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, v.note, writer, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(0xff0000)))
+	content := v.note
+	if content == "" {
+		content = "todo"
+	}
+	WriteString(s, content, writer, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(0xff0000)))
 }
 
 func (Vacant) child(c int) (Node, func(Node) Node, error) {

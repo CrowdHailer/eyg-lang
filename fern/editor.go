@@ -81,51 +81,32 @@ func New(s tcell.Screen) {
 					cursor.Y = Min(cursor.Y+1, h-1)
 					render(s, *cursor, w, h, grid, g2)
 				case tcell.KeyRune:
+					var next *Node
+					path := grid[cursor.X][cursor.Y]
+					target, c, err := zipper(source, path)
+					if err != nil {
+						fmt.Println(err.Error())
+					}
 					switch ev.Rune() {
 					case 'e':
-						s.Clear()
-						path := grid[cursor.X][cursor.Y]
-						then, c, err := zipper(source, path)
-						if err != nil {
-							fmt.Println(err.Error())
-						}
-						source = c(Let{"x", Var{"hole"}, then})
-						grid, g2 = Draw(s, source)
-						render(s, *cursor, w, h, grid, g2)
+						n := c(Let{"", Vacant{""}, target})
+						next = &n
 					case 'c':
-						s.Clear()
-						path := grid[cursor.X][cursor.Y]
-						_, c, err := zipper(source, path)
-						if err != nil {
-							fmt.Println(err.Error())
-						}
-						source = c(String{"new!!"})
-						// source = Call{Var{"x"}, Var{"y"}}
-						// cursor.Y = 10
-
-						grid, g2 = Draw(s, source)
-						render(s, *cursor, w, h, grid, g2)
+						n := c(String{""})
+						next = &n
 					case 'x':
 						// TODO Tail when vacant
-						s.Clear()
-						path := grid[cursor.X][cursor.Y]
-						tail, c, err := zipper(source, path)
-						if err != nil {
-							fmt.Println(err.Error())
-						}
-						source = c(Call{Call{Cons{}, Var{"hole"}}, tail})
-						grid, g2 = Draw(s, source)
-						render(s, *cursor, w, h, grid, g2)
+						n := c(Call{Call{Cons{}, Vacant{""}}, target})
+						next = &n
 					case 'v':
+						n := c(Var{"new_v"})
+						next = &n
+					}
+					if next != nil {
 						s.Clear()
-						path := grid[cursor.X][cursor.Y]
-						_, c, err := zipper(source, path)
-						if err != nil {
-							fmt.Println(err.Error())
-						}
-						source = c(Var{"new_v"})
-						grid, g2 = Draw(s, source)
+						grid, g2 = Draw(s, *next)
 						render(s, *cursor, w, h, grid, g2)
+
 					}
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
 					close(quit)
