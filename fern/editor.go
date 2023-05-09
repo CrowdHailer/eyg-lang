@@ -6,23 +6,11 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
+// TODO lookup all text box features
+// move cursor to beginning of element - maybe have a state that is at path
 type Editor struct {
 	// ScrollX and Y for when it's too large
 }
-
-// type point struct {
-// 	x int
-// 	y int
-// }
-
-// func Lookup(x, y int, paths map[point][]int) {
-// 	path, ok := paths[point{x, y}]
-// 	if !ok {
-// 		panic("out of range")
-// 	}
-// }
-
-//
 
 func Draw(screen tcell.Screen, source Node, selected []int) ([][][]int, [][]int) {
 	w, h := screen.Size()
@@ -111,8 +99,11 @@ func New(s tcell.Screen) {
 						case 'i':
 							selected = grid[cursor.X][cursor.Y]
 							changed = true
+						case 'd':
+							source = c(Vacant{})
+							changed = true
 						case 'c':
-							source = c(String{""})
+							source = c(Call{target, Vacant{}})
 							changed = true
 						case 'x':
 							if _, ok := target.(Vacant); ok {
