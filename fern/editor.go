@@ -9,6 +9,7 @@ import (
 // TODO lookup all text box features
 // move cursor to beginning of element - maybe have a state that is at path
 // TODO undo and save
+// Python tui thing https://github.com/Textualize/textual#about
 type Editor struct {
 	// ScrollX and Y for when it's too large
 }
