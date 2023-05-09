@@ -37,7 +37,7 @@ func Draw(screen tcell.Screen, source Node) ([][][]int, [][]int) {
 
 	}
 	index := 0
-	source.Draw(screen, &Point{}, &grid, []int{}, &g2, &index, 0, false)
+	source.Draw(screen, &Point{}, &grid, []int{}, &g2, &index, 0, false, false)
 	return grid, g2
 }
 
@@ -85,7 +85,7 @@ func New(s tcell.Screen) {
 					case 'c':
 						s.Clear()
 						path := grid[cursor.X][cursor.Y]
-						c, err := zipper(source, path)
+						_, c, err := zipper(source, path)
 						if err != nil {
 							fmt.Println(err.Error())
 						}
@@ -95,8 +95,16 @@ func New(s tcell.Screen) {
 
 						grid, g2 = Draw(s, source)
 						render(s, *cursor, w, h, grid, g2)
-					default:
-
+					case 'x':
+						s.Clear()
+						path := grid[cursor.X][cursor.Y]
+						tail, c, err := zipper(source, path)
+						if err != nil {
+							fmt.Println(err.Error())
+						}
+						source = c(Call{Call{Cons{}, Var{"hole"}}, tail})
+						grid, g2 = Draw(s, source)
+						render(s, *cursor, w, h, grid, g2)
 					}
 				case tcell.KeyEscape, tcell.KeyEnter, tcell.KeyCtrlC:
 					close(quit)
