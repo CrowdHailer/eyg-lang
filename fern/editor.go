@@ -91,12 +91,32 @@ func New(s tcell.Screen) {
 					case 'e':
 						n := c(Let{"", Vacant{""}, target})
 						next = &n
+					case 'r':
+						var n Node
+						if _, ok := target.(Vacant); ok {
+							n = c(Empty{})
+						} else {
+							n = c(Call{Call{Extend{""}, Vacant{""}}, target})
+						}
+						next = &n
+					case 't':
+						var n Node
+						if _, ok := target.(Vacant); ok {
+							n = c(Tag{})
+						} else {
+							n = c(Call{Tag{""}, target})
+						}
+						next = &n
 					case 'c':
 						n := c(String{""})
 						next = &n
 					case 'x':
-						// TODO Tail when vacant
-						n := c(Call{Call{Cons{}, Vacant{""}}, target})
+						var n Node
+						if _, ok := target.(Vacant); ok {
+							n = c(Empty{})
+						} else {
+							n = c(Call{Call{Cons{}, Vacant{""}}, target})
+						}
 						next = &n
 					case 'v':
 						n := c(Var{"new_v"})

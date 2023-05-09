@@ -6,6 +6,8 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
+const red = 0xff0000
+
 type Node interface {
 	// could return list of strings
 	draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool)
@@ -312,10 +314,15 @@ type Tag struct {
 
 var _ Node = Tag{}
 
-func (e Tag) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
+func (t Tag) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("%s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
+	label := t.label
+	if label == "" {
+		WriteString(s, "_", writer, grid, path, g2, self, tcell.StyleDefault.Foreground(red).Dim(true))
+	} else {
+		WriteString(s, label, writer, grid, path, g2, self, tcell.StyleDefault)
+	}
 }
 
 func (Tag) child(c int) (Node, func(Node) Node, error) {
