@@ -24,8 +24,8 @@ var _ Node = Fn{}
 func (fn Fn) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fn.param, writer, grid, path, g2, self)
-	WriteString(s, " -> ", writer, grid, path, g2, self)
+	WriteString(s, fn.param, writer, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, " -> ", writer, grid, path, g2, self, tcell.StyleDefault)
 	fn.body.draw(s, writer, grid, append(path, 0), g2, index, indent, true, false)
 }
 
@@ -52,7 +52,7 @@ func (call Call) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int
 		switch inner.fn.(type) {
 		case Cons:
 			if !list {
-				WriteString(s, "[", writer, grid, path, g2, self)
+				WriteString(s, "[", writer, grid, path, g2, self, tcell.StyleDefault)
 			}
 			// second call
 			*index++
@@ -67,10 +67,10 @@ func (call Call) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int
 			// making one element list special case that doesn't show up often
 			// child could draw comma is it's self at this point
 			// Render comma in the print list view.
-			WriteString(s, ", ", writer, grid, append(path, 1), g2, next)
+			WriteString(s, ", ", writer, grid, append(path, 1), g2, next, tcell.StyleDefault)
 			call.arg.draw(s, writer, grid, append(path, 1), g2, index, indent, true, true)
 			if !list {
-				WriteString(s, "]", writer, grid, path, g2, self)
+				WriteString(s, "]", writer, grid, path, g2, self, tcell.StyleDefault)
 			}
 			// Everything is a block (record, case, etc) cursor should keep track of last block
 			// Certain key commands should add in block
@@ -78,9 +78,9 @@ func (call Call) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int
 		}
 	}
 	call.fn.draw(s, writer, grid, append(path, 0), g2, index, indent, true, false)
-	WriteString(s, "(", writer, grid, path, g2, self)
+	WriteString(s, "(", writer, grid, path, g2, self, tcell.StyleDefault)
 	call.arg.draw(s, writer, grid, append(path, 1), g2, index, indent, true, false)
-	WriteString(s, ")", writer, grid, path, g2, self)
+	WriteString(s, ")", writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (call Call) child(c int) (Node, func(Node) Node, error) {
@@ -103,9 +103,9 @@ func (var_ Var) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int,
 	self := *index
 	*index++
 	if list {
-		WriteString(s, "..", writer, grid, path, g2, self)
+		WriteString(s, "..", writer, grid, path, g2, self, tcell.StyleDefault)
 	}
-	WriteString(s, var_.label, writer, grid, path, g2, self)
+	WriteString(s, var_.label, writer, grid, path, g2, self, tcell.StyleDefault)
 }
 func (var_ Var) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Var %d", c)
@@ -124,22 +124,22 @@ func (let Let) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, 
 	*index++
 	// ++ only once a node
 	if list {
-		WriteString(s, "..", writer, grid, path, g2, self)
+		WriteString(s, "..", writer, grid, path, g2, self, tcell.StyleDefault)
 	}
 	if block {
-		WriteString(s, "{", writer, grid, path, g2, self)
+		WriteString(s, "{", writer, grid, path, g2, self, tcell.StyleDefault)
 		indent += 2
 		writer.Y += 1
 		writer.X = indent
 		defer func() {
 			writer.Y += 1
 			writer.X = indent - 2
-			WriteString(s, "}", writer, grid, path, g2, self)
+			WriteString(s, "}", writer, grid, path, g2, self, tcell.StyleDefault)
 		}()
 	}
-	WriteString(s, "let ", writer, grid, path, g2, self)
-	WriteString(s, let.label, writer, grid, path, g2, self)
-	WriteString(s, " = ", writer, grid, path, g2, self)
+	WriteString(s, "let ", writer, grid, path, g2, self, tcell.StyleDefault.Dim(true))
+	WriteString(s, let.label, writer, grid, path, g2, self, tcell.StyleDefault)
+	WriteString(s, " = ", writer, grid, path, g2, self, tcell.StyleDefault)
 	let.value.draw(s, writer, grid, append(path, 0), g2, index, indent, true, false)
 	writer.Y += 1
 	writer.X = indent
@@ -165,7 +165,7 @@ var _ Node = Vacant{}
 func (v Vacant) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, v.note, writer, grid, path, g2, self)
+	WriteString(s, v.note, writer, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(0xff0000)))
 }
 
 func (Vacant) child(c int) (Node, func(Node) Node, error) {
@@ -181,7 +181,7 @@ var _ Node = Integer{}
 func (i Integer) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("%d", i.value), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf("%d", i.value), writer, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(0xff00ee)))
 }
 
 func (Integer) child(c int) (Node, func(Node) Node, error) {
@@ -197,9 +197,10 @@ var _ Node = String{}
 func (str String) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "\"", writer, grid, path, g2, self)
-	WriteString(s, str.value, writer, grid, path, g2, self)
-	WriteString(s, "\"", writer, grid, path, g2, self)
+	green := tcell.StyleDefault.Foreground(tcell.NewHexColor(0x00ff00))
+	WriteString(s, "\"", writer, grid, path, g2, self, green)
+	WriteString(s, str.value, writer, grid, path, g2, self, green)
+	WriteString(s, "\"", writer, grid, path, g2, self, green)
 }
 
 func (String) child(c int) (Node, func(Node) Node, error) {
@@ -215,7 +216,7 @@ func (Tail) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 
 	self := *index
 	*index++
 	if !list {
-		WriteString(s, "[]", writer, grid, path, g2, self)
+		WriteString(s, "[]", writer, grid, path, g2, self, tcell.StyleDefault)
 	}
 }
 
@@ -231,7 +232,7 @@ var _ Node = Cons{}
 func (Cons) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "cons", writer, grid, path, g2, self)
+	WriteString(s, "cons", writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Cons) child(c int) (Node, func(Node) Node, error) {
@@ -246,7 +247,7 @@ var _ Node = Empty{}
 func (Empty) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "{}", writer, grid, path, g2, self)
+	WriteString(s, "{}", writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Empty) child(c int) (Node, func(Node) Node, error) {
@@ -262,7 +263,7 @@ var _ Node = Extend{}
 func (e Extend) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("+%s", e.label), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf("+%s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Extend) child(c int) (Node, func(Node) Node, error) {
@@ -278,7 +279,7 @@ var _ Node = Select{}
 func (e Select) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf(".%s", e.label), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf(".%s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Select) child(c int) (Node, func(Node) Node, error) {
@@ -294,7 +295,7 @@ var _ Node = Overwrite{}
 func (e Overwrite) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf(":%s", e.label), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf(":%s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Overwrite) child(c int) (Node, func(Node) Node, error) {
@@ -310,7 +311,7 @@ var _ Node = Tag{}
 func (e Tag) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("%s", e.label), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf("%s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Tag) child(c int) (Node, func(Node) Node, error) {
@@ -326,7 +327,7 @@ var _ Node = Case{}
 func (e Case) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("+%s", e.label), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf("+%s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Case) child(c int) (Node, func(Node) Node, error) {
@@ -341,7 +342,7 @@ var _ Node = NoCases{}
 func (e NoCases) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, "nocases", writer, grid, path, g2, self)
+	WriteString(s, "nocases", writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (NoCases) child(c int) (Node, func(Node) Node, error) {
@@ -357,7 +358,7 @@ var _ Node = perform{}
 func (e perform) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("perform %s", e.label), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf("perform %s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (perform) child(c int) (Node, func(Node) Node, error) {
@@ -373,16 +374,17 @@ var _ Node = Handle{}
 func (e Handle) draw(s tcell.Screen, writer *Point, grid *[][][]int, path []int, g2 *[][]int, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("handle %s", e.label), writer, grid, path, g2, self)
+	WriteString(s, fmt.Sprintf("handle %s", e.label), writer, grid, path, g2, self, tcell.StyleDefault)
 }
 
 func (Handle) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Handle %d", c)
 }
 
-func WriteString(s tcell.Screen, content string, writer *Point, grid *[][][]int, path []int, g2 *[][]int, id int) {
+func WriteString(s tcell.Screen, content string, writer *Point, grid *[][][]int, path []int, g2 *[][]int, id int, style tcell.Style) {
+	// tcell.StyleDefault.
 	for _, ch := range content {
-		s.SetContent(writer.X, writer.Y, ch, nil, tcell.StyleDefault)
+		s.SetContent(writer.X, writer.Y, ch, nil, style)
 		(*grid)[writer.X][writer.Y] = path
 		(*g2)[writer.X][writer.Y] = id
 		writer.X++
