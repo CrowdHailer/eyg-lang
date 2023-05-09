@@ -211,7 +211,7 @@ func (let Let) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]i
 	let.value.draw(s, writer, selected, grid, append(path, 0), g2, index, indent, true, false)
 	writer.Y += 1
 	writer.X = indent
-	let.then.draw(s, writer, selected, grid, append(path, 1), g2, index, indent, true, false)
+	let.then.draw(s, writer, selected, grid, append(path, 1), g2, index, indent, false, false)
 }
 
 func (let Let) child(c int) (Node, func(Node) Node, error) {
