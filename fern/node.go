@@ -380,7 +380,18 @@ var _ Node = Overwrite{}
 func (e Overwrite) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf(":%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	content := e.label
+	style := tcell.StyleDefault
+	if content == "" {
+		content = "_"
+		style = style.Foreground(tcell.NewHexColor(pink))
+	}
+	if reflect.DeepEqual(path, selected) {
+		style = style.Reverse(true)
+	}
+	WriteString(s, ":", writer, selected, grid, path, g2, self, style, false)
+	WriteString(s, content, writer, selected, grid, path, g2, self, style, true)
+
 }
 
 func (Overwrite) child(c int) (Node, func(Node) Node, error) {
@@ -448,7 +459,17 @@ var _ Node = Perform{}
 func (e Perform) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf("perform %s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	content := e.label
+	style := tcell.StyleDefault
+	if content == "" {
+		content = "_"
+		style = style.Foreground(tcell.NewHexColor(pink))
+	}
+	if reflect.DeepEqual(path, selected) {
+		style = style.Reverse(true)
+	}
+	WriteString(s, "perform ", writer, selected, grid, path, g2, self, style.Dim(true), false)
+	WriteString(s, content, writer, selected, grid, path, g2, self, style, true)
 }
 
 func (Perform) child(c int) (Node, func(Node) Node, error) {

@@ -129,10 +129,20 @@ func New(s tcell.Screen, store Store) {
 						case 'Y':
 							source = c(yanked)
 							changed = true
+							// u -> don't really use and delete in labels might make more sense
 						case 'i':
 							// return update fn from path/node use in the saving state
 							// always needs to be string even for number
 							selected = grid[cursor.X][cursor.Y]
+							changed = true
+						case 'o':
+							// always have a target because the target should be a variable never a tail
+							source = c(Call{Call{Overwrite{""}, Vacant{""}}, target})
+							// unchanged false can be part of default maybe as i keys don't change source
+							changed = true
+						case 'p':
+							// could always call if value given
+							source = c(Perform{})
 							changed = true
 						case 'd':
 							source = c(Vacant{})
@@ -186,6 +196,15 @@ func New(s tcell.Screen, store Store) {
 						case Extend:
 							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
 							new = Extend{label}
+						case Overwrite:
+							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
+							new = Overwrite{label}
+						case Perform:
+							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
+							new = Perform{label}
+						case Handle:
+							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
+							new = Handle{label}
 						default:
 							panic("not a node I expected")
 						}
