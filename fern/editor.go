@@ -9,7 +9,7 @@ import (
 
 // TODO lookup all text box features
 // move cursor to beginning of element - maybe have a state that is at path
-// TODO undo
+// TODO undo number match
 // Python tui thing https://github.com/Textualize/textual#about
 // Don't wrap just go over the edge if content exists
 type Editor struct {
