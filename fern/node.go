@@ -37,8 +37,16 @@ var _ Node = Fn{}
 func (fn Fn) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-
-	WriteString(s, fn.param, writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	content := fn.param
+	style := tcell.StyleDefault
+	if content == "" {
+		content = "_"
+		style = style.Foreground(tcell.NewHexColor(pink))
+	}
+	if reflect.DeepEqual(path, selected) {
+		style = style.Reverse(true)
+	}
+	WriteString(s, content, writer, selected, grid, path, g2, self, style, true)
 	WriteString(s, " -> ", writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 	fn.body.draw(s, writer, selected, grid, append(path, 0), g2, index, indent, true, false)
 }
@@ -364,7 +372,17 @@ var _ Node = Select{}
 func (e Select) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
-	WriteString(s, fmt.Sprintf(".%s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
+	content := e.label
+	style := tcell.StyleDefault
+	if content == "" {
+		content = "_"
+		style = style.Foreground(tcell.NewHexColor(pink))
+	}
+	if reflect.DeepEqual(path, selected) {
+		style = style.Reverse(true)
+	}
+	WriteString(s, ".", writer, selected, grid, path, g2, self, style, false)
+	WriteString(s, content, writer, selected, grid, path, g2, self, style, true)
 }
 
 func (Select) child(c int) (Node, func(Node) Node, error) {

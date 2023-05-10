@@ -147,6 +147,16 @@ func New(s tcell.Screen, store Store) {
 						case 'd':
 							source = c(Vacant{})
 							changed = true
+						case 'f':
+							source = c(Fn{"", target})
+							changed = true
+						case 'g':
+							if _, ok := target.(Vacant); ok {
+								source = c(Select{})
+							} else {
+								source = c(Call{Select{""}, target})
+							}
+							changed = true
 						case 'c':
 							source = c(Call{target, Vacant{}})
 							changed = true
@@ -182,6 +192,9 @@ func New(s tcell.Screen, store Store) {
 						}
 						var new Node
 						switch t := target.(type) {
+						case Fn:
+							param := t.param[:offset] + string(ev.Rune()) + t.param[offset:]
+							new = Fn{param, t.body}
 						case Var:
 							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
 							new = Var{label}
@@ -196,6 +209,9 @@ func New(s tcell.Screen, store Store) {
 						case Extend:
 							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
 							new = Extend{label}
+						case Select:
+							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
+							new = Select{label}
 						case Overwrite:
 							label := t.label[:offset] + string(ev.Rune()) + t.label[offset:]
 							new = Overwrite{label}
