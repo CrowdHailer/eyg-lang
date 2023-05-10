@@ -80,19 +80,20 @@ func (Empty) MarshalJSON() ([]byte, error) {
 
 func (extend Extend) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"0": "v",
+		"0": "e",
 		"l": extend.label,
 	})
 }
 func (select_ Select) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"0": "v",
+		// g -> get
+		"0": "g",
 		"l": select_.label,
 	})
 }
 func (overwrite Overwrite) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"0": "v",
+		"0": "o",
 		"l": overwrite.label,
 	})
 }

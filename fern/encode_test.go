@@ -12,5 +12,11 @@ func Test_encoding(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println(string(bytes))
+	node, err := decode(bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Printf("%#v\n", node)
 	panic("s")
 }

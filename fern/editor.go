@@ -3,15 +3,13 @@ package fern
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/gdamore/tcell/v2"
 )
 
 // TODO lookup all text box features
 // move cursor to beginning of element - maybe have a state that is at path
-// TODO undo and save
+// TODO undo
 // Python tui thing https://github.com/Textualize/textual#about
 // Don't wrap just go over the edge if content exists
 type Editor struct {
@@ -35,7 +33,7 @@ func Draw(screen tcell.Screen, source Node, selected []int) ([][][]int, [][]ref)
 	return grid, g2
 }
 
-func New(s tcell.Screen) {
+func New(s tcell.Screen, store Store) {
 	source := Source()
 	w, h := s.Size()
 
@@ -52,7 +50,18 @@ func New(s tcell.Screen) {
 	s.SetCursorStyle(tcell.CursorStyleSteadyBar)
 	s.ShowCursor(cursor.X, cursor.Y)
 
-	source = Source()
+	raw, err := store.Load()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	source, err = decode(raw)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
 	var selected []int
 	grid, g2 := Draw(s, source, selected)
 
@@ -86,15 +95,14 @@ func New(s tcell.Screen) {
 						changed := false
 						switch ev.Rune() {
 						case 'q':
-							path, err := os.Getwd()
-							if err != nil {
-								fmt.Println(err.Error())
-							}
 							data, err := json.Marshal(source)
 							if err != nil {
 								fmt.Println(err.Error())
 							}
-							os.WriteFile(filepath.Join(path, "saved.json"), data, 0644)
+							err = store.Save(data)
+							if err != nil {
+								fmt.Println(err.Error())
+							}
 						case 'e':
 							source = c(Let{"", Vacant{""}, target})
 							changed = true

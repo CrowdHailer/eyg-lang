@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/midas-framework/project_wisdom/fern"
@@ -10,22 +11,37 @@ import (
 
 func main() {
 	tcell.SetEncodingFallback(tcell.EncodingFallbackASCII)
-	s, e := tcell.NewScreen()
-	if e != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", e)
+	screen, err := tcell.NewScreen()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	if e = s.Init(); e != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", e)
+	if err = screen.Init(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	w, h := s.Size()
 
-	if w == 0 || h == 0 {
-		return
+	dir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
+	path := filepath.Join(dir, "saved.json")
+	store := &fileStore{path}
 
-	s.SetStyle(tcell.StyleDefault)
-	s.Clear()
-	fern.New(s)
+	fern.New(screen, store)
+}
+
+type fileStore struct {
+	path string
+}
+
+var _ fern.Store = (*fileStore)(nil)
+
+func (store *fileStore) Load() ([]byte, error) {
+	return os.ReadFile(store.path)
+}
+
+func (store *fileStore) Save(data []byte) error {
+	return os.WriteFile(store.path, data, 0644)
 }
