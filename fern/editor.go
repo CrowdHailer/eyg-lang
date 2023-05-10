@@ -64,6 +64,7 @@ func New(s tcell.Screen, store Store) {
 
 	var selected []int
 	grid, g2 := Draw(s, source, selected)
+	var yanked Node = Vacant{}
 
 	quit := make(chan struct{})
 	go func() {
@@ -103,6 +104,9 @@ func New(s tcell.Screen, store Store) {
 							if err != nil {
 								fmt.Println(err.Error())
 							}
+						case 'w':
+							source = c(Call{Vacant{""}, target})
+							changed = true
 						case 'e':
 							source = c(Let{"", Vacant{""}, target})
 							changed = true
@@ -120,7 +124,14 @@ func New(s tcell.Screen, store Store) {
 								source = c(Call{Tag{""}, target})
 							}
 							changed = true
+						case 'y':
+							yanked = target
+						case 'Y':
+							source = c(yanked)
+							changed = true
 						case 'i':
+							// return update fn from path/node use in the saving state
+							// always needs to be string even for number
 							selected = grid[cursor.X][cursor.Y]
 							changed = true
 						case 'd':

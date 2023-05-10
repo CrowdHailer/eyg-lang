@@ -73,6 +73,8 @@ func decode(data []byte) (Node, error) {
 		return Tail{}, nil
 	case "c":
 		return Cons{}, nil
+	case "u":
+		return Empty{}, nil
 	case "e":
 		return Extend{e.Label}, nil
 	case "g":
