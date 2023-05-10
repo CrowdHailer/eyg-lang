@@ -1,7 +1,10 @@
 package fern
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -82,6 +85,16 @@ func New(s tcell.Screen) {
 						}
 						changed := false
 						switch ev.Rune() {
+						case 'q':
+							path, err := os.Getwd()
+							if err != nil {
+								fmt.Println(err.Error())
+							}
+							data, err := json.Marshal(source)
+							if err != nil {
+								fmt.Println(err.Error())
+							}
+							os.WriteFile(filepath.Join(path, "saved.json"), data, 0644)
 						case 'e':
 							source = c(Let{"", Vacant{""}, target})
 							changed = true

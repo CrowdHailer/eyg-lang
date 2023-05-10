@@ -1,7 +1,6 @@
 package fern
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -23,7 +22,7 @@ type Node interface {
 	// could return list of strings
 	draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool)
 	child(int) (Node, func(Node) Node, error)
-	// MarshalJSON() ([]byte, error)
+	MarshalJSON() ([]byte, error)
 }
 
 type Fn struct {
@@ -49,14 +48,6 @@ func (fn Fn) child(c int) (Node, func(Node) Node, error) {
 		return fn.body, func(n Node) Node { return Fn{fn.param, n} }, nil
 	}
 	return Var{}, nil, fmt.Errorf("invalid child id for fn %d", c)
-}
-
-func (fn Fn) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"0": "v",
-		"l": fn.param,
-		"b": fn.body,
-	})
 }
 
 type Call struct {
@@ -298,13 +289,6 @@ func (String) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for String %d", c)
 }
 
-func (str String) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"0": "v",
-		"s": str.value,
-	})
-}
-
 type Tail struct {
 }
 
@@ -455,19 +439,19 @@ func (NoCases) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for NoCases %d", c)
 }
 
-type perform struct {
+type Perform struct {
 	label string
 }
 
-var _ Node = perform{}
+var _ Node = Perform{}
 
-func (e perform) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e Perform) draw(s tcell.Screen, writer *Point, selected []int, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	WriteString(s, fmt.Sprintf("perform %s", e.label), writer, selected, grid, path, g2, self, tcell.StyleDefault, false)
 }
 
-func (perform) child(c int) (Node, func(Node) Node, error) {
+func (Perform) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for perform %d", c)
 }
 
