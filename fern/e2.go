@@ -3,17 +3,16 @@ package fern
 import (
 	"fmt"
 	"strings"
-
-	"github.com/gdamore/tcell/v2"
 )
 
 // view exhibit rendered
 // scene or panel page is the list of rendered
 type rendered struct {
 	charachter rune
-	style      tcell.Style
-	node       *int
-	offset     *int
+	// style      tcell.Style
+	path []int
+	// node   *int
+	offset int
 }
 
 // context i.e. context free grammer
@@ -51,30 +50,31 @@ type situ struct {
 	indent int
 	nested bool
 	block  bool
+	path   []int
 }
 
 // state with count, output, and mapping to info
 // len(info = count)
 // separate focus from highlight
-func (string_ String) render(situ situ, focus []int, output []rendered) ([]rendered, []string) {
-	// make a new pusher with offset counter inside
-	zero := 0
-	output = append(output, rendered{charachter: '"', offset: &zero})
-	// start := len(output)
-	// if targeted(focus) {
-	// }
-	for i, ch := range string_.value {
-		offset := i + 1
-		output = append(output, rendered{charachter: ch, offset: &offset})
-	}
-	output = append(output, rendered{charachter: '"'})
-	if !situ.nested {
-		output = append(output, rendered{charachter: '\n'})
-	}
-	// start := len(output)
+// func (string_ String) render(situ situ, focus []int, output []rendered) ([]rendered, []string) {
+// 	// make a new pusher with offset counter inside
+// 	zero := 0
+// 	output = append(output, rendered{charachter: '"', offset: &zero})
+// 	// start := len(output)
+// 	// if targeted(focus) {
+// 	// }
+// 	for i, ch := range string_.value {
+// 		offset := i + 1
+// 		output = append(output, rendered{charachter: ch, offset: &offset})
+// 	}
+// 	output = append(output, rendered{charachter: '"'})
+// 	if !situ.nested {
+// 		output = append(output, rendered{charachter: '\n'})
+// 	}
+// 	// start := len(output)
 
-	return nil, nil
-}
+// 	return nil, nil
+// }
 
 // y = count newlines
 // x = count back to newline
