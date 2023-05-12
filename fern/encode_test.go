@@ -18,5 +18,5 @@ func Test_encoding(t *testing.T) {
 	}
 
 	fmt.Printf("%#v\n", node)
-	panic("s")
+	// panic("s")
 }

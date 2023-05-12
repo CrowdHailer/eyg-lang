@@ -60,7 +60,7 @@ func (string_ String) render(situ situ, focus []int, output []rendered) ([]rende
 	// make a new pusher with offset counter inside
 	zero := 0
 	output = append(output, rendered{charachter: '"', offset: &zero})
-	start := len(output)
+	// start := len(output)
 	// if targeted(focus) {
 	// }
 	for i, ch := range string_.value {
@@ -71,7 +71,7 @@ func (string_ String) render(situ situ, focus []int, output []rendered) ([]rende
 	if !situ.nested {
 		output = append(output, rendered{charachter: '\n'})
 	}
-	start := len(output)
+	// start := len(output)
 
 	return nil, nil
 }
