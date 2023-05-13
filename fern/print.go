@@ -1,6 +1,8 @@
 package fern
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (node Fn) print(buffer *[]rendered, info map[string]int, s situ) {
 	printLabel(node.param, buffer, info, s)
@@ -21,6 +23,24 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 			*buffer = append(*buffer, rendered{'\n', append(s.path, 0), len(t.label)})
 		}
 		return
+	}
+	if inner, ok := node.fn.(Call); ok {
+		// TODO switches not if
+		if _, ok := inner.fn.(Cons); ok {
+			*buffer = append(*buffer, rendered{'[', s.path, 0})
+			// TODO real assert function
+			node.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 0, 1)})
+			// node.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 1)})
+			// *buffer = append(*buffer, rendered{'.', s.path, 0})
+
+			// printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0)})
+			// if !s.nested {
+			// 	*buffer = append(*buffer, rendered{'\n', append(s.path, 0), len(t.label)})
+			// }
+			return
+
+		}
+
 	}
 
 	node.fn.print(buffer, info, situ{s.indent, true, true, append(s.path, 0)})
@@ -57,20 +77,36 @@ func printNotNode(content string, buffer *[]rendered, s situ) {
 	}
 }
 
-// TODO test let
-// Test let with block
 func (node Let) print(buffer *[]rendered, info map[string]int, s situ) {
+	indent := s.indent
+	if s.block {
+		indent += 2
+		*buffer = append(*buffer, rendered{'{', nil, -1})
+		*buffer = append(*buffer, rendered{'\n', nil, -1})
+		for i := 0; i < indent; i++ {
+			*buffer = append(*buffer, rendered{' ', nil, -1})
+		}
+
+		defer func() {
+			// needs original depth indent
+			for i := 0; i < s.indent; i++ {
+				*buffer = append(*buffer, rendered{' ', nil, -1})
+			}
+			*buffer = append(*buffer, rendered{'}', nil, -1})
+			*buffer = append(*buffer, rendered{'\n', nil, -1})
+		}()
+	}
 	printNotNode("let ", buffer, s)
 	printLabel(node.label, buffer, info, s)
 	*buffer = append(*buffer, rendered{' ', s.path, len(node.label)})
 	*buffer = append(*buffer, rendered{'=', s.path, -1})
 	*buffer = append(*buffer, rendered{' ', s.path, -1})
-	node.value.print(buffer, info, situ{s.indent, false, true, append(s.path, 0)})
+	node.value.print(buffer, info, situ{indent, false, true, append(s.path, 0)})
 	// nested /false prints a new line
-	for i := 0; i < s.indent; i++ {
+	for i := 0; i < indent; i++ {
 		*buffer = append(*buffer, rendered{' ', nil, -1})
 	}
-	node.then.print(buffer, info, situ{s.indent, false, false, append(s.path, 1)})
+	node.then.print(buffer, info, situ{indent, false, false, append(s.path, 1)})
 }
 
 // TODO red

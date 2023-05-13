@@ -91,6 +91,7 @@ func TestPrinting(t *testing.T) {
 			},
 			map[string]int{"[]": 8},
 		},
+		// Fn test
 		{
 			Call{Var{"x"}, String{""}},
 			[]rendered{
@@ -164,7 +165,69 @@ func TestPrinting(t *testing.T) {
 			},
 			map[string]int{"[]": 4, "[0]": 8, "[1]": 14, "[1,0]": 18, "[1,1]": 20},
 		},
-		// TODO nested let
+		{
+			Let{"a", Let{"b", Integer{1}, Integer{2}}, Integer{3}},
+			[]rendered{
+				{'l', []int{}, -1},
+				{'e', []int{}, -1},
+				{'t', []int{}, -1},
+				{' ', []int{}, -1},
+				{'a', []int{}, 0},
+				{' ', []int{}, 1},
+				{'=', []int{}, -1},
+				{' ', []int{}, -1},
+				{'{', nil, -1},
+				{'\n', nil, -1},
+				{' ', nil, -1},
+				{' ', nil, -1},
+				{'l', []int{0}, -1},
+				{'e', []int{0}, -1},
+				{'t', []int{0}, -1},
+				{' ', []int{0}, -1},
+				{'b', []int{0}, 0},
+				{' ', []int{0}, 1},
+				{'=', []int{0}, -1},
+				{' ', []int{0}, -1},
+				{'1', []int{0, 0}, 0},
+				{'\n', []int{0, 0}, 1},
+				{' ', nil, -1},
+				{' ', nil, -1},
+				{'2', []int{0, 1}, 0},
+				{'\n', []int{0, 1}, 1},
+				{'}', nil, -1},
+				{'\n', nil, -1},
+				{'3', []int{1}, 0},
+				{'\n', []int{1}, 1},
+			},
+			map[string]int{"[]": 4, "[0]": 16, "[0,0]": 20, "[0,1]": 24, "[1]": 28},
+		},
+		// Sugar
+		{
+			// buld comma where
+			// [1, ]
+			// [1, ..x]
+			// , needs to be on call because may be block
+			// [{ .. }, 2]
+			// only top element and tail clickable
+			// press comma on brackets can't go into string because quotes separate but numbers can extend number
+			// [x] comma on tail -> [x, hole]
+			// [] comma on tail -> [hole]
+			// [a, b] comma on comma -> [a, hole, b] where what your on becomes is the call stack
+			Call{Call{Cons{}, Integer{1}}, Call{Call{Cons{}, Integer{2}}, Tail{}}},
+			[]rendered{
+				{'[', []int{}, 0},
+				{'1', []int{0, 1}, 0},
+				{',', []int{1}, 0},
+				{' ', []int{1}, 1},
+				// Nothing is zero widith so can check if at tail with offset > 2
+				// can start with '[' or ', '
+				{'2', []int{1, 0, 1}, 0}, // comma on number can make a list because that would be list in list
+				// make this one because try and not go up the list for edits
+				{']', []int{1}, 3}, // or should this be the call above with offset for insert
+				{'\n', []int{1}, 4},
+			},
+			map[string]int{"[]": 0, "[0, 1]": 1, "[1]": 2, "[1,0,1]": 4},
+		},
 		{
 			Call{Select{"a"}, Var{"x"}},
 			[]rendered{
@@ -177,12 +240,23 @@ func TestPrinting(t *testing.T) {
 			},
 			map[string]int{"[1]": 0, "[0]": 2},
 		},
-		// TODO select sugar
 		// TODO case statement
 	}
 
 	for _, tt := range tests {
 		rendered, info := Print(tt.source)
+		// could write a custom assert fn that only shows when needed
+		// debug := ""
+		// for _, x := range rendered {
+		// 	debug = debug + "|" + fmt.Sprintf("%#v\n", x.path)
+		// }
+		// fmt.Println(debug)
+		// debug = ""
+		// for _, x := range rendered {
+		// 	debug = debug + "|" + fmt.Sprintf("%d\n", x.offset)
+		// }
+		// fmt.Println(debug)
+
 		assert.Equal(t, tt.buffer, rendered)
 		assert.Equal(t, tt.info, info)
 	}
