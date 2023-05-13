@@ -114,7 +114,7 @@ func Draw(screen tcell.Screen, source Node, focus []int, mode mode) ([][][]int, 
 
 	}
 	index := 0
-	source.draw(screen, &Point{}, focus, mode, &grid, []int{}, &g2, &index, 0, false, false)
+	source.draw(screen, &Coordinate{}, focus, mode, &grid, []int{}, &g2, &index, 0, false, false)
 	return grid, g2
 }
 
@@ -129,7 +129,7 @@ func New(s tcell.Screen, store Store) {
 	s.SetStyle(tcell.StyleDefault)
 	s.Clear()
 
-	cursor := &Point{}
+	cursor := &Coordinate{}
 
 	s.SetCursorStyle(tcell.CursorStyleDefault)
 	s.SetCursorStyle(tcell.CursorStyleSteadyBar)
@@ -356,7 +356,7 @@ func New(s tcell.Screen, store Store) {
 	s.Fini()
 }
 
-func render(s tcell.Screen, cursor Point, w, h int, grid [][][]int, g2 [][]ref) {
+func render(s tcell.Screen, cursor Coordinate, w, h int, grid [][][]int, g2 [][]ref) {
 	s.ShowCursor(cursor.X, cursor.Y)
 	for i := 0; i < w; i++ {
 		s.SetContent(i, h-1, ' ', nil, tcell.StyleDefault)

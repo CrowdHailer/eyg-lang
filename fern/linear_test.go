@@ -1,10 +1,5 @@
 package fern
 
-import (
-	"fmt"
-	"testing"
-)
-
 type Expression interface {
 }
 
@@ -35,37 +30,6 @@ type Expression interface {
 // 	nested bool
 // 	indent int
 // }
-
-func (node String) print(buffer *[]rendered, info map[string]int, situ situ) {
-	*buffer = append(*buffer, rendered{charachter: '"', path: situ.path, offset: -1})
-	// start of active
-	info[pathToString(situ.path)] = len(*buffer)
-	for i, ch := range node.value {
-		*buffer = append(*buffer, rendered{charachter: ch, offset: i})
-	}
-	*buffer = append(*buffer, rendered{charachter: '"', path: situ.path, offset: len(node.value)})
-	if !situ.nested {
-		*buffer = append(*buffer, rendered{charachter: '\n', path: situ.path, offset: -1})
-	}
-}
-
-func pathToString(path []int) string {
-	out := "["
-	for i, p := range path {
-		if i != 0 {
-			out += ","
-		}
-		out += fmt.Sprintf("%d", p)
-	}
-	return out + "]"
-}
-
-func Print(node String) ([]rendered, map[string]int) {
-	buffer := []rendered{}
-	info := make(map[string]int)
-	node.print(&buffer, info, situ{path: []int{}})
-	return buffer, info
-}
 
 func (node Var) keyPress(ch rune, offset int) (Node, []int, int) {
 	switch ch {
@@ -111,10 +75,10 @@ func (node String) keyPress(ch rune, offset int) (String, int) {
 }
 
 type editor struct {
-	cursor Point
+	cursor Coordinate
 	panel  []rendered
-	shift  Point
-	size   Point
+	shift  Coordinate
+	size   Coordinate
 }
 
 func (e editor) keyPress(ch rune) {
@@ -129,7 +93,7 @@ func (e editor) keyPress(ch rune) {
 		panic("invalid path")
 	}
 	// TODO panel test
-	position := XYinPage(buffer, start+offset)
+	position := indexToCoordinate(buffer, start+offset)
 	if position.X < e.shift.X {
 		e.shift.X = position.X
 	}
@@ -145,39 +109,4 @@ func (e editor) keyPress(ch rune) {
 	// TODO print on screen
 	// cursor = position - shift
 	// point arithmatic in file
-}
-
-func XYinPage(buffer []rendered, index int) Point {
-	// can't use string because rendered
-	x := 0
-	y := 0
-	newline := false
-	for _, r := range buffer[:index+1] {
-		if newline {
-			x = 0
-			y += 1
-			newline = false
-		} else {
-			x += 1
-		}
-		if r.charachter == '\n' {
-			newline = true
-		}
-	}
-	return Point{x, y}
-}
-
-func TestPrinting(t *testing.T) {
-	source := String{"hey"}
-	buffer := []rendered{}
-	info := make(map[string]int)
-	source.print(&buffer, info, situ{path: []int{}})
-
-	fmt.Printf("%#v\n", info)
-
-	// screen 2x 2
-	// tests := []struct {
-	// 	source Node
-	// 	want []rendered
-	// }{}
 }

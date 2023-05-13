@@ -20,8 +20,9 @@ type ref struct {
 
 type Node interface {
 	// could return list of strings
-	draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool)
+	draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool)
 	child(int) (Node, func(Node) Node, error)
+	print(buffer *[]rendered, info map[string]int, situ situ)
 	MarshalJSON() ([]byte, error)
 }
 
@@ -34,7 +35,7 @@ var _ Node = Fn{}
 
 // is there a way to make this all on the grid for lookup
 // Is there a node then continuation version of this draw
-func (fn Fn) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (fn Fn) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	content := fn.param
@@ -66,7 +67,7 @@ type Call struct {
 var _ Node = Call{}
 
 // Only the brackets are the actual call node
-func (call Call) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (call Call) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	switch inner := call.fn.(type) {
@@ -158,7 +159,7 @@ type Var struct {
 
 var _ Node = Var{}
 
-func (var_ Var) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (var_ Var) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	if list {
@@ -187,7 +188,7 @@ type Let struct {
 
 var _ Node = Let{}
 
-func (let Let) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (let Let) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	// ++ only once a node
@@ -240,7 +241,7 @@ type Vacant struct {
 
 var _ Node = Vacant{}
 
-func (v Vacant) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (v Vacant) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	content := v.note
@@ -264,7 +265,7 @@ type Integer struct {
 
 var _ Node = Integer{}
 
-func (i Integer) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (i Integer) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	WriteString(s, fmt.Sprintf("%d", i.value), writer, focus, mode, grid, path, g2, self, tcell.StyleDefault.Foreground(tcell.NewHexColor(purple)), false)
@@ -280,7 +281,7 @@ type String struct {
 
 var _ Node = String{}
 
-func (str String) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (str String) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	style := tcell.StyleDefault.Foreground(tcell.NewHexColor(green))
@@ -302,7 +303,7 @@ type Tail struct {
 
 var _ Node = Tail{}
 
-func (Tail) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (Tail) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	if !list {
@@ -319,7 +320,7 @@ type Cons struct {
 
 var _ Node = Cons{}
 
-func (Cons) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (Cons) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	WriteString(s, "cons", writer, focus, mode, grid, path, g2, self, tcell.StyleDefault, false)
@@ -334,7 +335,7 @@ type Empty struct {
 
 var _ Node = Empty{}
 
-func (Empty) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (Empty) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	// can draw commas in here
@@ -353,7 +354,7 @@ type Extend struct {
 
 var _ Node = Extend{}
 
-func (e Extend) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e Extend) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	WriteString(s, fmt.Sprintf("+%s", e.label), writer, focus, mode, grid, path, g2, self, tcell.StyleDefault, false)
@@ -369,7 +370,7 @@ type Select struct {
 
 var _ Node = Select{}
 
-func (e Select) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e Select) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	content := e.label
@@ -395,7 +396,7 @@ type Overwrite struct {
 
 var _ Node = Overwrite{}
 
-func (e Overwrite) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e Overwrite) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	content := e.label
@@ -422,7 +423,7 @@ type Tag struct {
 
 var _ Node = Tag{}
 
-func (t Tag) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (t Tag) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	label := t.label
@@ -443,7 +444,7 @@ type Case struct {
 
 var _ Node = Case{}
 
-func (e Case) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e Case) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	WriteString(s, fmt.Sprintf("+%s", e.label), writer, focus, mode, grid, path, g2, self, tcell.StyleDefault, false)
@@ -458,7 +459,7 @@ type NoCases struct {
 
 var _ Node = NoCases{}
 
-func (e NoCases) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e NoCases) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	WriteString(s, "nocases", writer, focus, mode, grid, path, g2, self, tcell.StyleDefault.Dim(true), false)
@@ -474,7 +475,7 @@ type Perform struct {
 
 var _ Node = Perform{}
 
-func (e Perform) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e Perform) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	content := e.label
@@ -500,7 +501,7 @@ type Handle struct {
 
 var _ Node = Handle{}
 
-func (e Handle) draw(s tcell.Screen, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+func (e Handle) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
 	self := *index
 	*index++
 	WriteString(s, fmt.Sprintf("handle %s", e.label), writer, focus, mode, grid, path, g2, self, tcell.StyleDefault, false)
@@ -514,7 +515,7 @@ func (Handle) child(c int) (Node, func(Node) Node, error) {
 // TODO have a mode bounding box Method that limits motion when editing label
 // Having a 2d grid to link path and index means we keep a lookup only for relevant nodes
 
-func WriteString(s tcell.Screen, content string, writer *Point, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, id int, style tcell.Style, editable bool) {
+func WriteString(s tcell.Screen, content string, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, id int, style tcell.Style, editable bool) {
 	for offset, ch := range content {
 		s.SetContent(writer.X, writer.Y, ch, nil, style)
 		(*grid)[writer.X][writer.Y] = path
