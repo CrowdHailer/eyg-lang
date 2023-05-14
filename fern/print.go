@@ -63,7 +63,7 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 		return
 	}
 	if inner, ok := node.fn.(Call); ok {
-		// TODO switches not if
+		// TODO switches not if - maybe not if is list is a fn on call
 		if _, ok := inner.fn.(Cons); ok {
 			start := len(*buffer)
 			*buffer = append(*buffer, rendered{'[', s.path, 0})
