@@ -26,12 +26,14 @@ func printTail(node Node, buffer *[]rendered, info map[string]int, path []int, i
 				printTail(t.arg, buffer, info, path, indent, nested, start)
 			}
 		}
+		return
 	case Tail:
 		offset := len(*buffer) - start
 		*buffer = append(*buffer, rendered{']', path, offset})
 		if !nested {
 			*buffer = append(*buffer, rendered{'\n', path, offset + 1})
 		}
+		return
 	}
 	start2 := len(*buffer)
 	// Pressing comma on this makes a list in the tail position which is what we want
