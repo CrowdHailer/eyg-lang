@@ -22,7 +22,7 @@ func printTail(node Node, buffer *[]rendered, info map[string]int, path []int, i
 				start := len(*buffer)
 				*buffer = append(*buffer, rendered{',', path, 0})
 				*buffer = append(*buffer, rendered{' ', path, 1})
-				inner.arg.print(buffer, info, situ{indent, true, false, append(path, 0, 1)})
+				inner.arg.print(buffer, info, situ{indent, true, true, append(path, 0, 1)})
 				printTail(t.arg, buffer, info, path, indent, nested, start)
 			}
 		}
@@ -33,6 +33,20 @@ func printTail(node Node, buffer *[]rendered, info map[string]int, path []int, i
 			*buffer = append(*buffer, rendered{'\n', path, offset + 1})
 		}
 	}
+	start2 := len(*buffer)
+	// Pressing comma on this makes a list in the tail position which is what we want
+	// there is no choice between at element or tail position because it is not yet a lets itself.
+	*buffer = append(*buffer, rendered{',', path, 0})
+	*buffer = append(*buffer, rendered{' ', path, 1})
+	*buffer = append(*buffer, rendered{'.', path, 2})
+	*buffer = append(*buffer, rendered{'.', path, 3})
+	node.print(buffer, info, situ{indent, true, true, path})
+	offset := len(*buffer) - start2
+	*buffer = append(*buffer, rendered{']', path, offset})
+	if !nested {
+		*buffer = append(*buffer, rendered{'\n', path, offset + 1})
+	}
+
 }
 
 func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
@@ -51,7 +65,7 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 		if _, ok := inner.fn.(Cons); ok {
 			start := len(*buffer)
 			*buffer = append(*buffer, rendered{'[', s.path, 0})
-			inner.arg.print(buffer, info, situ{s.indent, true, false, append(s.path, 0, 1)})
+			inner.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 0, 1)})
 			printTail(node.arg, buffer, info, append(s.path, 1), s.indent, s.nested, start)
 			return
 		}

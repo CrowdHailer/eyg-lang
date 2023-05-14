@@ -229,7 +229,6 @@ func TestPrinting(t *testing.T) {
 			},
 			map[string]int{"[0,1]": 1, "[1,0,1]": 4},
 		},
-		// TODO test nested list
 		{
 			Call{Var{"x"}, Tail{}},
 			[]rendered{
@@ -239,6 +238,24 @@ func TestPrinting(t *testing.T) {
 				{']', []int{1}, 0},
 				{')', []int{}, 3},
 				{'\n', []int{}, 4},
+			},
+			map[string]int{"[]": 1, "[0]": 0, "[1]": 3},
+		},
+		{
+			Call{Call{Cons{}, Var{"x"}}, Var{"y"}},
+			[]rendered{
+				{'[', []int{}, 0},
+				{'x', []int{1, 0}, 0},
+				{',', []int{1}, -1},
+				{' ', []int{1}, 0},
+				{'.', []int{1}, 3},
+				{'.', []int{1}, 3},
+				// Doesn't work with offset in var an in tail at the same time
+				// should call always be -1 it's a text thing after all
+				// Only need is differationation between before and after
+				{'y', []int{1}, 3},
+				{']', []int{1}, 3},
+				{'\n', []int{1}, 4},
 			},
 			map[string]int{"[]": 1, "[0]": 0, "[1]": 3},
 		},
