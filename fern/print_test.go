@@ -1,6 +1,7 @@
 package fern
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -226,7 +227,20 @@ func TestPrinting(t *testing.T) {
 				{']', []int{1}, 3}, // or should this be the call above with offset for insert
 				{'\n', []int{1}, 4},
 			},
-			map[string]int{"[]": 0, "[0, 1]": 1, "[1]": 2, "[1,0,1]": 4},
+			map[string]int{"[0,1]": 1, "[1,0,1]": 4},
+		},
+		// TODO test nested list
+		{
+			Call{Var{"x"}, Tail{}},
+			[]rendered{
+				{'x', []int{0}, 0},
+				{'(', []int{}, 0},
+				{'[', []int{1}, -1},
+				{']', []int{1}, 0},
+				{')', []int{}, 3},
+				{'\n', []int{}, 4},
+			},
+			map[string]int{"[]": 1, "[0]": 0, "[1]": 3},
 		},
 		{
 			Call{Select{"a"}, Var{"x"}},
@@ -245,19 +259,50 @@ func TestPrinting(t *testing.T) {
 
 	for _, tt := range tests {
 		rendered, info := Print(tt.source)
-		// could write a custom assert fn that only shows when needed
-		// debug := ""
-		// for _, x := range rendered {
-		// 	debug = debug + "|" + fmt.Sprintf("%#v\n", x.path)
-		// }
-		// fmt.Println(debug)
-		// debug = ""
-		// for _, x := range rendered {
-		// 	debug = debug + "|" + fmt.Sprintf("%d\n", x.offset)
-		// }
-		// fmt.Println(debug)
 
-		assert.Equal(t, tt.buffer, rendered)
+		assertRendered(t, tt.buffer, rendered)
 		assert.Equal(t, tt.info, info)
 	}
+}
+
+func assertRendered(t *testing.T, expected, actual []rendered) {
+	expectedText := renderedText(expected)
+	actualText := renderedText(actual)
+	if expectedText != actualText {
+		t.Logf("Not equal:\nexpected: %s\nactual:   %s", expectedText, actualText)
+		t.Fail()
+	}
+
+	expectedPaths := renderedPaths(expected)
+	actualPaths := renderedPaths(actual)
+	assert.Equal(t, expectedPaths, actualPaths)
+
+	expectedOffsets := renderedOffsets(expected)
+	actualOffsets := renderedOffsets(actual)
+	assert.Equal(t, expectedOffsets, actualOffsets)
+}
+
+func renderedText(buffer []rendered) string {
+	out := ""
+	for _, r := range buffer {
+		out += string(r.charachter)
+	}
+	// Shows newline charachters
+	return fmt.Sprintf("%#v", out)
+}
+
+func renderedPaths(buffer []rendered) []string {
+	var out []string
+	for _, r := range buffer {
+		out = append(out, pathToString(r.path))
+	}
+	return out
+}
+
+func renderedOffsets(buffer []rendered) []int {
+	var out []int
+	for _, r := range buffer {
+		out = append(out, r.offset)
+	}
+	return out
 }

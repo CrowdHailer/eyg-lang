@@ -13,6 +13,28 @@ func (node Fn) print(buffer *[]rendered, info map[string]int, s situ) {
 	node.body.print(buffer, info, situ{s.indent, true, false, append(s.path, 0)})
 }
 
+func printTail(node Node, buffer *[]rendered, info map[string]int, path []int, indent int, nested bool, start int) {
+	switch t := node.(type) {
+	case Call:
+		// TODO wrap up this switching to a fn on call
+		if inner, ok := t.fn.(Call); ok {
+			if _, ok := inner.fn.(Cons); ok {
+				start := len(*buffer)
+				*buffer = append(*buffer, rendered{',', path, 0})
+				*buffer = append(*buffer, rendered{' ', path, 1})
+				inner.arg.print(buffer, info, situ{indent, true, false, append(path, 0, 1)})
+				printTail(t.arg, buffer, info, path, indent, nested, start)
+			}
+		}
+	case Tail:
+		offset := len(*buffer) - start
+		*buffer = append(*buffer, rendered{']', path, offset})
+		if !nested {
+			*buffer = append(*buffer, rendered{'\n', path, offset + 1})
+		}
+	}
+}
+
 func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 	if t, ok := node.fn.(Select); ok {
 		node.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 1)})
@@ -27,18 +49,11 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 	if inner, ok := node.fn.(Call); ok {
 		// TODO switches not if
 		if _, ok := inner.fn.(Cons); ok {
+			start := len(*buffer)
 			*buffer = append(*buffer, rendered{'[', s.path, 0})
-			// TODO real assert function
-			node.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 0, 1)})
-			// node.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 1)})
-			// *buffer = append(*buffer, rendered{'.', s.path, 0})
-
-			// printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0)})
-			// if !s.nested {
-			// 	*buffer = append(*buffer, rendered{'\n', append(s.path, 0), len(t.label)})
-			// }
+			inner.arg.print(buffer, info, situ{s.indent, true, false, append(s.path, 0, 1)})
+			printTail(node.arg, buffer, info, append(s.path, 1), s.indent, s.nested, start)
 			return
-
 		}
 
 	}
