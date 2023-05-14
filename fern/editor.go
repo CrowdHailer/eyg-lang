@@ -90,9 +90,6 @@ import (
 // How does language server automcomplete
 
 // Right now anything calls a draw because text updates in place
-type Editor struct {
-	// ScrollX and Y for when it's too large
-}
 
 type mode string
 

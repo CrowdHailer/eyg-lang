@@ -1,17 +1,11 @@
 package fern
 
-import (
-	"fmt"
-	"strings"
-)
-
 // view exhibit rendered
 // scene or panel page is the list of rendered
 type rendered struct {
 	character rune
 	// style      tcell.Style
-	path []int
-	// node   *int
+	path   []int
 	offset int
 }
 
@@ -23,22 +17,6 @@ type rendered struct {
 
 // ident path mode all needed, (block list)(sugar) also
 // linear iteration a real pain for call
-func (let Let) render() []rendered {
-	// boundingBox := situation.column, + var length + 1
-	for _, ch := range "let " {
-		fmt.Println(ch)
-	}
-	return nil
-}
-
-func (call Call) render() {
-	strings.Count("abc", "\n")
-	var f []rune
-	// arg := "hell0"
-	// var x []rune
-	var a rune
-	_ = append(f, a, a)
-}
 
 // linear walk through level on a line depth = new line and reduce ident
 // pass in *path if there render return cursor
