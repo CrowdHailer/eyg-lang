@@ -48,10 +48,54 @@ func printTail(node Node, buffer *[]rendered, info map[string]int, path []int, i
 	if !nested {
 		*buffer = append(*buffer, rendered{'\n', path, offset + 1})
 	}
+}
+
+func printExtension(node Node, buffer *[]rendered, info map[string]int, path []int, indent int, nested bool, start int) {
+	switch t := node.(type) {
+	case Call:
+		// TODO wrap up this switching to a fn on call
+		if inner, ok := t.fn.(Call); ok {
+			if group, ok := inner.fn.(Extend); ok {
+				start := len(*buffer)
+				*buffer = append(*buffer, rendered{',', path, 0})
+				*buffer = append(*buffer, rendered{' ', path, 1})
+				printLabel(group.label, buffer, info, situ{indent, false, false, append(path, 0, 0)})
+				// same comma logic here
+				*buffer = append(*buffer, rendered{':', path, 0})
+				*buffer = append(*buffer, rendered{' ', path, 1})
+
+				inner.arg.print(buffer, info, situ{indent, true, true, append(path, 0, 1)})
+				printTail(t.arg, buffer, info, path, indent, nested, start)
+			}
+		}
+		return
+	case Empty:
+		offset := len(*buffer) - start
+		*buffer = append(*buffer, rendered{'}', path, offset})
+		if !nested {
+			*buffer = append(*buffer, rendered{'\n', path, offset + 1})
+		}
+		return
+	}
+	// TODO do we make non record tails invlid
+	// start2 := len(*buffer)
+	// // Pressing comma on this makes a list in the tail position which is what we want
+	// // there is no choice between at element or tail position because it is not yet a lets itself.
+	// *buffer = append(*buffer, rendered{',', path, 0})
+	// *buffer = append(*buffer, rendered{' ', path, 1})
+	// *buffer = append(*buffer, rendered{'.', path, 2})
+	// *buffer = append(*buffer, rendered{'.', path, 3})
+	// node.print(buffer, info, situ{indent, true, true, path})
+	// offset := len(*buffer) - start2
+	// *buffer = append(*buffer, rendered{']', path, offset})
+	// if !nested {
+	// 	*buffer = append(*buffer, rendered{'\n', path, offset + 1})
+	// }
 
 }
 
 func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
+	// TODO switches not if - maybe not if is list is a fn on call
 	if t, ok := node.fn.(Select); ok {
 		node.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 1)})
 		*buffer = append(*buffer, rendered{'.', s.path, 0})
@@ -63,15 +107,24 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 		return
 	}
 	if inner, ok := node.fn.(Call); ok {
-		// TODO switches not if - maybe not if is list is a fn on call
-		if _, ok := inner.fn.(Cons); ok {
+		switch t := inner.fn.(type) {
+		case Cons:
 			start := len(*buffer)
 			*buffer = append(*buffer, rendered{'[', s.path, 0})
 			inner.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 0, 1)})
 			printTail(node.arg, buffer, info, append(s.path, 1), s.indent, s.nested, start)
 			return
+		case Extend:
+			start := len(*buffer)
+			*buffer = append(*buffer, rendered{'{', s.path, 0})
+			printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0, 0)})
+			// comma doesn't work on expand
+			*buffer = append(*buffer, rendered{':', s.path, 0})
+			*buffer = append(*buffer, rendered{' ', s.path, 0})
+			inner.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 0, 1)})
+			printExtension(node.arg, buffer, info, append(s.path, 1), s.indent, s.nested, start)
+			return
 		}
-
 	}
 
 	node.fn.print(buffer, info, situ{s.indent, true, true, append(s.path, 0)})

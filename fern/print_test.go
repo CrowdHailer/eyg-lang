@@ -271,6 +271,26 @@ func TestPrinting(t *testing.T) {
 			},
 			map[string]int{"[1]": 0, "[0]": 2},
 		},
+		{
+			Call{Call{Extend{"a"}, Integer{1}}, Call{Call{Extend{"b"}, Integer{2}}, Empty{}}},
+			[]rendered{
+				{'{', []int{}, 0},
+				{'a', []int{0, 0}, 0},
+				{':', []int{0, 0}, 1},
+				{' ', []int{}, 0},
+				{'1', []int{0, 1}, 0},
+				{',', []int{1}, 0},
+				{' ', []int{1}, 1},
+				{'b', []int{}, 0},
+				{':', []int{}, 0},
+				{' ', []int{}, 0},
+				{'2', []int{1, 0, 1}, 0}, // comma on number can make a list because that would be list in list
+				// make this one because try and not go up the list for edits
+				{'}', []int{1}, 3}, // or should this be the call above with offset for insert
+				{'\n', []int{1}, 4},
+			},
+			map[string]int{"[0,1]": 1, "[1,0,1]": 4},
+		},
 		// TODO case statement
 	}
 
