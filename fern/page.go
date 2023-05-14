@@ -18,7 +18,7 @@ func indexToCoordinate(buffer []rendered, index int) Coordinate {
 		} else {
 			x += 1
 		}
-		if r.charachter == '\n' {
+		if r.character == '\n' {
 			newline = true
 		}
 	}

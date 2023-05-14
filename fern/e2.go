@@ -8,7 +8,7 @@ import (
 // view exhibit rendered
 // scene or panel page is the list of rendered
 type rendered struct {
-	charachter rune
+	character rune
 	// style      tcell.Style
 	path []int
 	// node   *int

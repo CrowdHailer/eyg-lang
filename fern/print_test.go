@@ -302,7 +302,7 @@ func assertRendered(t *testing.T, expected, actual []rendered) {
 func renderedText(buffer []rendered) string {
 	out := ""
 	for _, r := range buffer {
-		out += string(r.charachter)
+		out += string(r.character)
 	}
 	// Shows newline charachters
 	return fmt.Sprintf("%#v", out)

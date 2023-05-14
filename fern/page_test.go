@@ -8,15 +8,15 @@ import (
 
 func TestIndexToCoordinate(t *testing.T) {
 	page := []rendered{
-		{charachter: 'a'},
-		{charachter: 'b'},
-		{charachter: '\n'},
-		{charachter: 'c'},
-		{charachter: '\n'},
-		{charachter: '\n'},
-		{charachter: 'd'},
-		{charachter: 'e'},
-		{charachter: '\n'},
+		{character: 'a'},
+		{character: 'b'},
+		{character: '\n'},
+		{character: 'c'},
+		{character: '\n'},
+		{character: '\n'},
+		{character: 'd'},
+		{character: 'e'},
+		{character: '\n'},
 	}
 
 	// screen 2x 2
