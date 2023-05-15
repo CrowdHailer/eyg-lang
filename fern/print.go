@@ -177,6 +177,7 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 			printTail(node.arg, buffer, info, append(s.path, 1), s.indent, s.nested, start)
 			return
 		case Extend:
+			// first round of printing is outside print extend because it doesn't need ", "
 			start := len(*buffer)
 			*buffer = append(*buffer, rendered{'{', s.path, 0, keywordStyle})
 			printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0, 0)}, tcell.StyleDefault)
@@ -185,6 +186,21 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 			*buffer = append(*buffer, rendered{' ', s.path, 0, keywordStyle})
 			inner.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 0, 1)})
 			printExtension(node.arg, buffer, info, append(s.path, 1), s.indent, s.nested, start)
+			return
+		case Case:
+			printNotNode("match {", buffer, s)
+			indent := s.indent + 2
+			*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
+			for i := 0; i < indent; i++ {
+				*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
+			}
+			// indent := indent + 2
+			printLabel("t.label", buffer, info, situ{indent, false, false, append(s.path, 0, 0)}, unionStyle)
+			*buffer = append(*buffer, rendered{' ', nil, len(t.label), unionStyle})
+
+			inner.arg.print(buffer, info, situ{indent, false, true, append(s.path, 0, 1)})
+			node.arg.print(buffer, info, situ{indent, false, true, append(s.path, 1)})
+
 			return
 		}
 	}
@@ -267,6 +283,7 @@ func printLabel(label string, buffer *[]rendered, info map[string]int, s situ, s
 	}
 }
 
+// ALso only needs the path
 func printNotNode(content string, buffer *[]rendered, s situ) {
 	for _, ch := range content {
 		*buffer = append(*buffer, rendered{ch, s.path, -1, keywordStyle})
@@ -356,7 +373,7 @@ func (node Vacant) keyPress(ch rune, offset int) (Node, []int, int) {
 		// is this a good character to have representing perform
 		// what would handle be
 		// TODO path into case
-		return Call{Call{Case{}, Fn{"", Vacant{}}}, Vacant{}}, []int{}, 0
+		return Call{Call{Case{}, Fn{"", Vacant{}}}, Vacant{}}, []int{0, 0}, 0
 
 	case '^':
 		// is this a good character to have representing perform
@@ -461,6 +478,9 @@ func (node String) keyPress(ch rune, offset int) (Node, []int, int) {
 func (node String) deleteCharachter(offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, 0
+	}
+	if offset == 0 && node.value == "" {
+		return Vacant{}, []int{}, offset
 	}
 	value, offset := backspaceAt(node.value, offset)
 	return String{value}, []int{}, offset
