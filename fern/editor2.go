@@ -1,6 +1,7 @@
 package fern
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gdamore/tcell/v2"
@@ -87,7 +88,6 @@ func Run(s tcell.Screen, store Store) {
 		ev := s.PollEvent()
 		switch ev := ev.(type) {
 		case *tcell.EventKey:
-			ctrl := ev.Modifiers()
 			switch ev.Key() {
 			case tcell.KeyLeft:
 				editor.moveCursor(Coordinate{-1, 0})
@@ -100,12 +100,27 @@ func Run(s tcell.Screen, store Store) {
 			case tcell.KeyRune:
 				editor.keyPress(ev.Rune())
 			case tcell.KeyEnter:
-				fmt.Println(ctrl)
 				editor.lineBelow()
-			case tcell.KeyEscape, tcell.KeyCtrlC:
-				return
+				// What is Backspace (not 2)
+			case tcell.KeyBackspace2:
+				editor.deleteCharachter()
+			case tcell.KeyCtrlS:
+				data, err := json.Marshal(editor.source)
+				if err != nil {
+					panic(err.Error())
+				}
+				err = store.Save(data)
+				if err != nil {
+					panic(err.Error())
+				}
+			case tcell.KeyCtrlD:
+				editor.deleteTarget()
+			case tcell.KeyCtrlF:
+				editor.function()
 			case tcell.KeyCtrlL:
 				s.Sync()
+			case tcell.KeyEscape, tcell.KeyCtrlC:
+				return
 			}
 		}
 		// TODO default
@@ -123,7 +138,6 @@ type editor struct {
 	info map[string]int
 }
 
-// TODO grid lookup from inpage
 // TODO block actions by going to start of line
 
 func NewEditor(w, h int, source Node) editor {
@@ -194,6 +208,65 @@ func (e *editor) lineBelow() {
 		new := Let{"", target, Vacant{}}
 		s := build(new)
 		e.updateSource(s, append(found.path, 1), 0)
+	}
+}
+
+func (e *editor) deleteCharachter() {
+	r := e.page.lookup[e.position.X][e.position.Y]
+	if r == nil {
+		return
+	}
+	target, build, err := zipper(e.source, r.path)
+	if err != nil {
+		panic("erorr making the zipper")
+	}
+
+	new, subPath, offset := target.deleteCharachter(r.offset)
+	s := build(new)
+	e.updateSource(s, append(r.path, subPath...), offset)
+}
+
+func (e *editor) deleteTarget() {
+	r := e.page.lookup[e.position.X][e.position.Y]
+	if r == nil {
+		return
+	}
+	target, build, err := zipper(e.source, r.path)
+	if err != nil {
+		panic("erorr making the zipper")
+	}
+
+	switch t := target.(type) {
+	case Let:
+		new := t.then
+		s := build(new)
+		e.updateSource(s, r.path, 0)
+	default:
+		new := Vacant{}
+		s := build(new)
+		e.updateSource(s, r.path, 0)
+	}
+}
+
+func (e *editor) function() {
+	r := e.page.lookup[e.position.X][e.position.Y]
+	if r == nil {
+		return
+	}
+	target, build, err := zipper(e.source, r.path)
+	if err != nil {
+		panic("erorr making the zipper")
+	}
+
+	switch t := target.(type) {
+	case Let:
+		new := Let{t.label, Fn{"", t.value}, t.then}
+		s := build(new)
+		e.updateSource(s, append(r.path, 0), 0)
+	default:
+		new := Fn{"", t}
+		s := build(new)
+		e.updateSource(s, r.path, 0)
 	}
 }
 

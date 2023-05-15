@@ -2,6 +2,7 @@ package fern
 
 import (
 	"fmt"
+	"strconv"
 	"unicode"
 
 	"github.com/gdamore/tcell/v2"
@@ -30,9 +31,9 @@ func (node Fn) print(buffer *[]rendered, info map[string]int, s situ) {
 	printLabel(node.param, buffer, info, s)
 	*buffer = append(*buffer, rendered{' ', s.path, len(node.param), keywordStyle})
 	*buffer = append(*buffer, rendered{'-', s.path, -1, keywordStyle})
-	*buffer = append(*buffer, rendered{'=', s.path, -1, keywordStyle})
+	*buffer = append(*buffer, rendered{'>', s.path, -1, keywordStyle})
 	*buffer = append(*buffer, rendered{' ', s.path, -1, keywordStyle})
-	node.body.print(buffer, info, situ{s.indent, true, false, append(s.path, 0)})
+	node.body.print(buffer, info, situ{s.indent, false, false, append(s.path, 0)})
 }
 
 // Each node can have it's own interpretation of what -1 means but this is a public iterface for other nodes like call
@@ -45,8 +46,23 @@ func (node Fn) keyPress(ch rune, offset int) (Node, []int, int) {
 	return Fn{param, node.body}, []int{}, offset + 1
 }
 
+func (node Fn) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	param, offset := backspaceAt(node.param, offset)
+	return Fn{param, node.body}, []int{}, offset
+}
+
 func insertRune(s string, at int, new rune) string {
 	return s[:at] + string(new) + s[at:]
+}
+
+func backspaceAt(s string, at int) (string, int) {
+	if at < 1 {
+		return s, 0
+	}
+	return s[:at-1] + s[at:], at - 1
 }
 
 func printTail(node Node, buffer *[]rendered, info map[string]int, path []int, indent int, nested bool, start int) {
@@ -181,6 +197,11 @@ func (node Call) keyPress(ch rune, offset int) (Node, []int, int) {
 	return node, []int{}, offset
 }
 
+func (node Call) deleteCharachter(offset int) (Node, []int, int) {
+	// TODO keypress on inner elements
+	return node, []int{}, offset
+}
+
 func (node Var) print(buffer *[]rendered, info map[string]int, s situ) {
 	printLabel(node.label, buffer, info, s)
 	if !s.nested {
@@ -195,6 +216,14 @@ func (node Var) keyPress(ch rune, offset int) (Node, []int, int) {
 	}
 	label := insertRune(node.label, offset, ch)
 	return Var{label}, []int{}, offset + 1
+}
+
+func (node Var) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Var{label}, []int{}, offset
 }
 
 // TODO take only path in args
@@ -251,6 +280,14 @@ func (node Let) keyPress(ch rune, offset int) (Node, []int, int) {
 	return Let{label, node.value, node.then}, []int{}, offset + 1
 }
 
+func (node Let) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Let{label, node.value, node.then}, []int{}, offset
+}
+
 func (node Vacant) print(buffer *[]rendered, info map[string]int, s situ) {
 	info[pathToString(s.path)] = len(*buffer)
 	content := node.note
@@ -270,6 +307,8 @@ func (node Vacant) keyPress(ch rune, offset int) (Node, []int, int) {
 		return node, []int{}, 0
 	}
 	switch ch {
+	case '"':
+		return String{}, []int{}, 0
 	case '[':
 		return Tail{}, []int{}, 0
 	case '{':
@@ -277,8 +316,8 @@ func (node Vacant) keyPress(ch rune, offset int) (Node, []int, int) {
 	case '=':
 		return Let{"", Vacant{}, Vacant{}}, []int{}, 0
 	}
-	if digit := ch - '0'; digit >= 0 && digit < 10 {
-		return Integer{int(digit)}, []int{}, 1
+	if digit, ok := runeToDigit(ch); ok {
+		return Integer{digit}, []int{}, 1
 	}
 	if unicode.IsLetter(ch) {
 		return Var{string(ch)}, []int{}, 1
@@ -286,7 +325,14 @@ func (node Vacant) keyPress(ch rune, offset int) (Node, []int, int) {
 	return node, []int{}, 0
 }
 
-// TODO purple
+func (node Vacant) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	note, offset := backspaceAt(node.note, offset)
+	return Vacant{note}, []int{}, offset
+}
+
 func (node Integer) print(buffer *[]rendered, info map[string]int, s situ) {
 	info[pathToString(s.path)] = len(*buffer)
 	content := fmt.Sprintf("%d", node.value)
@@ -302,9 +348,35 @@ func (node Integer) keyPress(ch rune, offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, 0
 	}
-	// TODO real behaviour
-	value := node.value * 10
-	return Integer{value}, []int{}, offset + 1
+	if _, ok := runeToDigit(ch); ok {
+		i64, err := strconv.ParseInt(insertRune(fmt.Sprintf("%d", node.value), offset, ch), 10, 64)
+		if err != nil {
+			// TODO log error
+			return node, []int{}, 0
+		}
+		return Integer{int(i64)}, []int{}, offset + 1
+	}
+	return node, []int{}, 0
+}
+
+func (node Integer) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	value, offset := backspaceAt(fmt.Sprintf("%d", node.value), offset)
+	i64, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		// TODO log error
+		return node, []int{}, 0
+	}
+	return Integer{int(i64)}, []int{}, offset
+}
+
+func runeToDigit(ch rune) (int, bool) {
+	if digit := ch - '0'; digit >= 0 && digit < 10 {
+		return int(digit), true
+	}
+	return 0, false
 }
 
 // Does this need to be *buffer
@@ -329,6 +401,14 @@ func (node String) keyPress(ch rune, offset int) (Node, []int, int) {
 	return String{value}, []int{}, offset + 1
 }
 
+func (node String) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	value, offset := backspaceAt(node.value, offset)
+	return String{value}, []int{}, offset
+}
+
 func (node Tail) print(buffer *[]rendered, info map[string]int, s situ) {
 	*buffer = append(*buffer, rendered{'[', s.path, -1, keywordStyle})
 	info[pathToString(s.path)] = len(*buffer)
@@ -349,6 +429,10 @@ func (node Tail) keyPress(ch rune, offset int) (Node, []int, int) {
 	return node, []int{}, 0
 }
 
+func (node Tail) deleteCharachter(offset int) (Node, []int, int) {
+	return node, []int{}, 0
+}
+
 func (node Cons) print(buffer *[]rendered, info map[string]int, s situ) {
 	printNotNode("cons", buffer, s)
 	if !s.nested {
@@ -357,6 +441,10 @@ func (node Cons) print(buffer *[]rendered, info map[string]int, s situ) {
 }
 
 func (node Cons) keyPress(ch rune, offset int) (Node, []int, int) {
+	return node, []int{}, 0
+}
+
+func (node Cons) deleteCharachter(offset int) (Node, []int, int) {
 	return node, []int{}, 0
 }
 
@@ -373,6 +461,10 @@ func (node Empty) keyPress(ch rune, offset int) (Node, []int, int) {
 	return node, []int{}, 0
 }
 
+func (node Empty) deleteCharachter(offset int) (Node, []int, int) {
+	return node, []int{}, 0
+}
+
 func (node Extend) print(buffer *[]rendered, info map[string]int, s situ) {
 	printNotNode("+", buffer, s)
 	printLabel(node.label, buffer, info, s)
@@ -380,12 +472,21 @@ func (node Extend) print(buffer *[]rendered, info map[string]int, s situ) {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
 }
+
 func (node Extend) keyPress(ch rune, offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, offset
 	}
 	label := insertRune(node.label, offset, ch)
 	return Extend{label}, []int{}, offset + 1
+}
+
+func (node Extend) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Extend{label}, []int{}, offset
 }
 
 func (node Select) print(buffer *[]rendered, info map[string]int, s situ) {
@@ -402,6 +503,14 @@ func (node Select) keyPress(ch rune, offset int) (Node, []int, int) {
 	}
 	label := insertRune(node.label, offset, ch)
 	return Select{label}, []int{}, offset + 1
+}
+
+func (node Select) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Select{label}, []int{}, offset
 }
 
 func (node Overwrite) print(buffer *[]rendered, info map[string]int, s situ) {
@@ -421,6 +530,14 @@ func (node Overwrite) keyPress(ch rune, offset int) (Node, []int, int) {
 	return Overwrite{label}, []int{}, offset + 1
 }
 
+func (node Overwrite) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Overwrite{label}, []int{}, offset
+}
+
 func (node Tag) print(buffer *[]rendered, info map[string]int, s situ) {
 	printLabel(node.label, buffer, info, s)
 	if !s.nested {
@@ -436,6 +553,14 @@ func (node Tag) keyPress(ch rune, offset int) (Node, []int, int) {
 	return Tag{label}, []int{}, offset + 1
 }
 
+func (node Tag) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Tag{label}, []int{}, offset
+}
+
 func (node Case) print(buffer *[]rendered, info map[string]int, s situ) {
 
 }
@@ -448,11 +573,23 @@ func (node Case) keyPress(ch rune, offset int) (Node, []int, int) {
 	return Case{label}, []int{}, offset + 1
 }
 
+func (node Case) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Case{label}, []int{}, offset
+}
+
 func (node NoCases) print(buffer *[]rendered, info map[string]int, s situ) {
 
 }
 
 func (node NoCases) keyPress(ch rune, offset int) (Node, []int, int) {
+	return node, []int{}, 0
+}
+
+func (node NoCases) deleteCharachter(offset int) (Node, []int, int) {
 	return node, []int{}, 0
 }
 
@@ -463,6 +600,7 @@ func (node Perform) print(buffer *[]rendered, info map[string]int, s situ) {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
 }
+
 func (node Perform) keyPress(ch rune, offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, offset
@@ -470,6 +608,15 @@ func (node Perform) keyPress(ch rune, offset int) (Node, []int, int) {
 	label := insertRune(node.label, offset, ch)
 	return Perform{label}, []int{}, offset + 1
 }
+
+func (node Perform) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Perform{label}, []int{}, offset
+}
+
 func (node Handle) print(buffer *[]rendered, info map[string]int, s situ) {
 	printNotNode("handle ", buffer, s)
 	printLabel(node.label, buffer, info, s)
@@ -477,12 +624,21 @@ func (node Handle) print(buffer *[]rendered, info map[string]int, s situ) {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
 }
+
 func (node Handle) keyPress(ch rune, offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, offset
 	}
 	label := insertRune(node.label, offset, ch)
 	return Handle{label}, []int{}, offset + 1
+}
+
+func (node Handle) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	return Handle{label}, []int{}, offset
 }
 
 func Print(node Node) ([]rendered, map[string]int) {

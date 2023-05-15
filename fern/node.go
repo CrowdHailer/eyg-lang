@@ -24,6 +24,7 @@ type Node interface {
 	child(int) (Node, func(Node) Node, error)
 	print(buffer *[]rendered, info map[string]int, situ situ)
 	keyPress(ch rune, offset int) (Node, []int, int)
+	deleteCharachter(offset int) (Node, []int, int)
 	MarshalJSON() ([]byte, error)
 }
 
