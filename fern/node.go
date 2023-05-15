@@ -23,6 +23,8 @@ type Node interface {
 	draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool)
 	child(int) (Node, func(Node) Node, error)
 	print(buffer *[]rendered, info map[string]int, situ situ)
+	// used by call
+	contentLength() int
 	keyPress(ch rune, offset int) (Node, []int, int)
 	deleteCharachter(offset int) (Node, []int, int)
 	MarshalJSON() ([]byte, error)
@@ -59,6 +61,10 @@ func (fn Fn) child(c int) (Node, func(Node) Node, error) {
 		return fn.body, func(n Node) Node { return Fn{fn.param, n} }, nil
 	}
 	return Var{}, nil, fmt.Errorf("invalid child id for fn %d", c)
+}
+
+func (fn Fn) contentLength() int {
+	return len(fn.param)
 }
 
 type Call struct {
@@ -155,6 +161,10 @@ func (call Call) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for call %d", c)
 }
 
+func (Call) contentLength() int {
+	return -1
+}
+
 type Var struct {
 	label string
 }
@@ -180,6 +190,10 @@ func (var_ Var) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode,
 }
 func (var_ Var) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Var %d", c)
+}
+
+func (node Var) contentLength() int {
+	return len(node.label)
 }
 
 type Let struct {
@@ -236,6 +250,9 @@ func (let Let) child(c int) (Node, func(Node) Node, error) {
 	}
 	return Var{}, nil, fmt.Errorf("invalid child id for Let %d", c)
 }
+func (node Let) contentLength() int {
+	return len(node.label)
+}
 
 type Vacant struct {
 	note string
@@ -261,6 +278,10 @@ func (Vacant) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Vacant %d", c)
 }
 
+func (node Vacant) contentLength() int {
+	return len(node.note)
+}
+
 type Integer struct {
 	value int
 }
@@ -275,6 +296,9 @@ func (i Integer) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode
 
 func (Integer) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Integer %d", c)
+}
+func (node Integer) contentLength() int {
+	return len(fmt.Sprintf("%d", node.value))
 }
 
 type String struct {
@@ -300,6 +324,10 @@ func (String) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for String %d", c)
 }
 
+func (node String) contentLength() int {
+	return len(node.value)
+}
+
 type Tail struct {
 }
 
@@ -317,6 +345,10 @@ func (Tail) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Tail %d", c)
 }
 
+func (node Tail) contentLength() int {
+	return 0
+}
+
 type Cons struct {
 }
 
@@ -330,6 +362,10 @@ func (Cons) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, gri
 
 func (Cons) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Tail %d", c)
+}
+
+func (node Cons) contentLength() int {
+	return 0
 }
 
 type Empty struct {
@@ -350,6 +386,10 @@ func (Empty) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Empty %d", c)
 }
 
+func (node Empty) contentLength() int {
+	return 0
+}
+
 type Extend struct {
 	label string
 }
@@ -364,6 +404,10 @@ func (e Extend) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode,
 
 func (Extend) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Extend %d", c)
+}
+
+func (node Extend) contentLength() int {
+	return len(node.label)
 }
 
 type Select struct {
@@ -390,6 +434,10 @@ func (e Select) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode,
 
 func (Select) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Select %d", c)
+}
+
+func (node Select) contentLength() int {
+	return len(node.label)
 }
 
 type Overwrite struct {
@@ -419,6 +467,10 @@ func (Overwrite) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Overwrite %d", c)
 }
 
+func (node Overwrite) contentLength() int {
+	return len(node.label)
+}
+
 type Tag struct {
 	label string
 }
@@ -440,6 +492,10 @@ func (Tag) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Tag %d", c)
 }
 
+func (node Tag) contentLength() int {
+	return len(node.label)
+}
+
 type Case struct {
 	label string
 }
@@ -456,6 +512,10 @@ func (Case) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Case %d", c)
 }
 
+func (node Case) contentLength() int {
+	return len(node.label)
+}
+
 type NoCases struct {
 }
 
@@ -469,6 +529,10 @@ func (e NoCases) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode
 
 func (NoCases) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for NoCases %d", c)
+}
+
+func (node NoCases) contentLength() int {
+	return -1
 }
 
 type Perform struct {
@@ -497,6 +561,10 @@ func (Perform) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for perform %d", c)
 }
 
+func (node Perform) contentLength() int {
+	return len(node.label)
+}
+
 type Handle struct {
 	label string
 }
@@ -511,6 +579,10 @@ func (e Handle) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode,
 
 func (Handle) child(c int) (Node, func(Node) Node, error) {
 	return Var{}, nil, fmt.Errorf("invalid child id for Handle %d", c)
+}
+
+func (node Handle) contentLength() int {
+	return len(node.label)
 }
 
 // If editable and focus, mode simply add a space to the end

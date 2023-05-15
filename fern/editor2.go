@@ -104,6 +104,12 @@ func Run(s tcell.Screen, store Store) {
 				// What is Backspace (not 2)
 			case tcell.KeyBackspace2:
 				editor.deleteCharachter()
+			case tcell.KeyCtrlW:
+				// Is there a transform primitive
+				editor.callWith()
+			case tcell.KeyCtrlE:
+				// Is there a transform primitive
+				editor.assignTo()
 			case tcell.KeyCtrlS:
 				data, err := json.Marshal(editor.source)
 				if err != nil {
@@ -224,6 +230,42 @@ func (e *editor) deleteCharachter() {
 	new, subPath, offset := target.deleteCharachter(r.offset)
 	s := build(new)
 	e.updateSource(s, append(r.path, subPath...), offset)
+}
+
+func (e *editor) callWith() {
+	r := e.page.lookup[e.position.X][e.position.Y]
+	if r == nil {
+		return
+	}
+	target, build, err := zipper(e.source, r.path)
+	if err != nil {
+		panic("erorr making the zipper")
+	}
+
+	switch t := target.(type) {
+	case Let:
+		new := Let{t.label, Call{Vacant{}, t.value}, t.then}
+		s := build(new)
+		e.updateSource(s, r.path, 0)
+	default:
+		new := Call{Vacant{}, t}
+		s := build(new)
+		e.updateSource(s, r.path, 0)
+	}
+}
+
+func (e *editor) assignTo() {
+	r := e.page.lookup[e.position.X][e.position.Y]
+	if r == nil {
+		return
+	}
+	target, build, err := zipper(e.source, r.path)
+	if err != nil {
+		panic("erorr making the zipper")
+	}
+	new := Let{"", target, Vacant{}}
+	s := build(new)
+	e.updateSource(s, r.path, 0)
 }
 
 func (e *editor) deleteTarget() {

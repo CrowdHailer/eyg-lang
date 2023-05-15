@@ -33,8 +33,10 @@ func (node Fn) print(buffer *[]rendered, info map[string]int, s situ) {
 	*buffer = append(*buffer, rendered{'-', s.path, -1, keywordStyle})
 	*buffer = append(*buffer, rendered{'>', s.path, -1, keywordStyle})
 	*buffer = append(*buffer, rendered{' ', s.path, -1, keywordStyle})
-	node.body.print(buffer, info, situ{s.indent, false, false, append(s.path, 0)})
+	node.body.print(buffer, info, situ{s.indent, s.nested, true, append(s.path, 0)})
 }
+
+// TODO call passing into function into number etc
 
 // Each node can have it's own interpretation of what -1 means but this is a public iterface for other nodes like call
 // Keeping print and keypress together because of offsets but maybe not needed
@@ -42,8 +44,11 @@ func (node Fn) keyPress(ch rune, offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, 0
 	}
-	param := insertRune(node.param, offset, ch)
-	return Fn{param, node.body}, []int{}, offset + 1
+	if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+		param := insertRune(node.param, offset, ch)
+		return Fn{param, node.body}, []int{}, offset + 1
+	}
+	return node, []int{}, 0
 }
 
 func (node Fn) deleteCharachter(offset int) (Node, []int, int) {
@@ -194,7 +199,13 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 
 func (node Call) keyPress(ch rune, offset int) (Node, []int, int) {
 	// TODO keypress on inner elements
-	return node, []int{}, offset
+	if offset == 0 {
+		inner, _, _ := node.fn.keyPress(ch, node.fn.contentLength())
+		return Call{inner, node.arg}, []int{}, 0
+	}
+	inner, _, _ := node.arg.keyPress(ch, node.arg.contentLength())
+	return Call{node.fn, inner}, []int{}, offset + 1
+	// return node, []int{}, offset
 }
 
 func (node Call) deleteCharachter(offset int) (Node, []int, int) {
@@ -214,8 +225,22 @@ func (node Var) keyPress(ch rune, offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, 0
 	}
-	label := insertRune(node.label, offset, ch)
-	return Var{label}, []int{}, offset + 1
+	if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+		label := insertRune(node.label, offset, ch)
+		return Var{label}, []int{}, offset + 1
+	}
+	if ch == '(' && offset == node.contentLength() {
+		return Call{node, Vacant{}}, []int{1}, 0
+	}
+	if ch == '.' && offset == node.contentLength() {
+		return Call{Select{}, node}, []int{0}, 0
+	}
+	if ch == '=' && offset == node.contentLength() {
+		// Sort of the same as control e
+		return Let{node.label, Vacant{}, Vacant{}}, []int{0}, 0
+	}
+
+	return node, []int{}, offset
 }
 
 func (node Var) deleteCharachter(offset int) (Node, []int, int) {
@@ -223,6 +248,9 @@ func (node Var) deleteCharachter(offset int) (Node, []int, int) {
 		return node, []int{}, 0
 	}
 	label, offset := backspaceAt(node.label, offset)
+	if label == "" {
+		return Vacant{}, []int{}, offset
+	}
 	return Var{label}, []int{}, offset
 }
 
@@ -364,6 +392,9 @@ func (node Integer) deleteCharachter(offset int) (Node, []int, int) {
 		return node, []int{}, 0
 	}
 	value, offset := backspaceAt(fmt.Sprintf("%d", node.value), offset)
+	if value == "" {
+		return Vacant{}, []int{}, 0
+	}
 	i64, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		// TODO log error
