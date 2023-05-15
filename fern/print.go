@@ -10,13 +10,18 @@ import (
 
 const blue3 = 0x87ceeb
 const green4 = 0x7fbc8c
+const yellow2 = 0xffdb58
 const orange4 = 0xff6b6b
+
+// const pink3 = 0xffb2ef
 const purple4 = 0x9723c9
 
 var keywordStyle = tcell.StyleDefault.Dim(true)
 var todoStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(orange4)).Bold(true)
 var intStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(purple4))
 var stringStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(green4))
+var unionStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(blue3))
+var effectStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(yellow2))
 
 // view exhibit rendered
 // scene or panel page is the list of rendered
@@ -28,7 +33,7 @@ type rendered struct {
 }
 
 func (node Fn) print(buffer *[]rendered, info map[string]int, s situ) {
-	printLabel(node.param, buffer, info, s)
+	printLabel(node.param, buffer, info, s, tcell.StyleDefault)
 	*buffer = append(*buffer, rendered{' ', s.path, len(node.param), keywordStyle})
 	*buffer = append(*buffer, rendered{'-', s.path, -1, keywordStyle})
 	*buffer = append(*buffer, rendered{'>', s.path, -1, keywordStyle})
@@ -116,7 +121,7 @@ func printExtension(node Node, buffer *[]rendered, info map[string]int, path []i
 				start := len(*buffer)
 				*buffer = append(*buffer, rendered{',', path, 0, keywordStyle})
 				*buffer = append(*buffer, rendered{' ', path, 1, keywordStyle})
-				printLabel(group.label, buffer, info, situ{indent, false, false, append(path, 0, 0)})
+				printLabel(group.label, buffer, info, situ{indent, false, false, append(path, 0, 0)}, tcell.StyleDefault)
 				// same comma logic here
 				*buffer = append(*buffer, rendered{':', path, 0, keywordStyle})
 				*buffer = append(*buffer, rendered{' ', path, 1, keywordStyle})
@@ -157,7 +162,7 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 		node.arg.print(buffer, info, situ{s.indent, true, true, append(s.path, 1)})
 		*buffer = append(*buffer, rendered{'.', s.path, 0, keywordStyle})
 
-		printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0)})
+		printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0)}, tcell.StyleDefault)
 		if !s.nested {
 			*buffer = append(*buffer, rendered{'\n', append(s.path, 0), len(t.label), keywordStyle})
 		}
@@ -174,7 +179,7 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 		case Extend:
 			start := len(*buffer)
 			*buffer = append(*buffer, rendered{'{', s.path, 0, keywordStyle})
-			printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0, 0)})
+			printLabel(t.label, buffer, info, situ{s.indent, false, false, append(s.path, 0, 0)}, tcell.StyleDefault)
 			// comma doesn't work on expand
 			*buffer = append(*buffer, rendered{':', s.path, 0, keywordStyle})
 			*buffer = append(*buffer, rendered{' ', s.path, 0, keywordStyle})
@@ -214,7 +219,7 @@ func (node Call) deleteCharachter(offset int) (Node, []int, int) {
 }
 
 func (node Var) print(buffer *[]rendered, info map[string]int, s situ) {
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, tcell.StyleDefault)
 	if !s.nested {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
@@ -255,10 +260,10 @@ func (node Var) deleteCharachter(offset int) (Node, []int, int) {
 }
 
 // TODO take only path in args
-func printLabel(label string, buffer *[]rendered, info map[string]int, s situ) {
+func printLabel(label string, buffer *[]rendered, info map[string]int, s situ, style tcell.Style) {
 	info[pathToString(s.path)] = len(*buffer)
 	for i, ch := range label {
-		*buffer = append(*buffer, rendered{ch, s.path, i, tcell.StyleDefault})
+		*buffer = append(*buffer, rendered{ch, s.path, i, style})
 	}
 }
 
@@ -288,7 +293,7 @@ func (node Let) print(buffer *[]rendered, info map[string]int, s situ) {
 		}()
 	}
 	printNotNode("let ", buffer, s)
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, tcell.StyleDefault)
 	*buffer = append(*buffer, rendered{' ', s.path, len(node.label), keywordStyle})
 	*buffer = append(*buffer, rendered{'=', s.path, -1, keywordStyle})
 	*buffer = append(*buffer, rendered{' ', s.path, -1, keywordStyle})
@@ -334,6 +339,8 @@ func (node Vacant) keyPress(ch rune, offset int) (Node, []int, int) {
 	if offset == -1 {
 		return node, []int{}, 0
 	}
+	// TODO use same actions in center of list
+	// . starts a tail
 	switch ch {
 	case '"':
 		return String{}, []int{}, 0
@@ -343,12 +350,21 @@ func (node Vacant) keyPress(ch rune, offset int) (Node, []int, int) {
 		return Empty{}, []int{}, 0
 	case '=':
 		return Let{"", Vacant{}, Vacant{}}, []int{}, 0
+		// Could be done with perform typed in
+		// auto suggestion if starting with p/perform
+	case '^':
+		// is this a good character to have representing perform
+		// what would handle be
+		return Perform{}, []int{}, 0
 	}
 	if digit, ok := runeToDigit(ch); ok {
 		return Integer{digit}, []int{}, 1
 	}
-	if unicode.IsLetter(ch) {
+	if unicode.IsLetter(ch) && unicode.IsLower(ch) {
 		return Var{string(ch)}, []int{}, 1
+	}
+	if unicode.IsLetter(ch) {
+		return Tag{string(ch)}, []int{}, 1
 	}
 	return node, []int{}, 0
 }
@@ -498,7 +514,7 @@ func (node Empty) deleteCharachter(offset int) (Node, []int, int) {
 
 func (node Extend) print(buffer *[]rendered, info map[string]int, s situ) {
 	printNotNode("+", buffer, s)
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, unionStyle)
 	if !s.nested {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
@@ -522,7 +538,7 @@ func (node Extend) deleteCharachter(offset int) (Node, []int, int) {
 
 func (node Select) print(buffer *[]rendered, info map[string]int, s situ) {
 	printNotNode(".", buffer, s)
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, tcell.StyleDefault)
 	if !s.nested {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
@@ -547,7 +563,7 @@ func (node Select) deleteCharachter(offset int) (Node, []int, int) {
 func (node Overwrite) print(buffer *[]rendered, info map[string]int, s situ) {
 	// is : better
 	printNotNode("=", buffer, s)
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, unionStyle)
 	if !s.nested {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
@@ -570,9 +586,9 @@ func (node Overwrite) deleteCharachter(offset int) (Node, []int, int) {
 }
 
 func (node Tag) print(buffer *[]rendered, info map[string]int, s situ) {
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, unionStyle)
 	if !s.nested {
-		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
+		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), tcell.StyleDefault})
 	}
 }
 
@@ -626,7 +642,7 @@ func (node NoCases) deleteCharachter(offset int) (Node, []int, int) {
 
 func (node Perform) print(buffer *[]rendered, info map[string]int, s situ) {
 	printNotNode("perform ", buffer, s)
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, effectStyle)
 	if !s.nested {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
@@ -650,7 +666,7 @@ func (node Perform) deleteCharachter(offset int) (Node, []int, int) {
 
 func (node Handle) print(buffer *[]rendered, info map[string]int, s situ) {
 	printNotNode("handle ", buffer, s)
-	printLabel(node.label, buffer, info, s)
+	printLabel(node.label, buffer, info, s, effectStyle)
 	if !s.nested {
 		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
 	}
