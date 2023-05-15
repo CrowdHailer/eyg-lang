@@ -29,7 +29,9 @@ func main() {
 	path := filepath.Join(dir, "saved.json")
 	store := &fileStore{path}
 
-	fern.New(screen, store)
+	// fern.New(screen, store)
+	fern.Run(screen, store)
+	screen.Fini()
 }
 
 type fileStore struct {

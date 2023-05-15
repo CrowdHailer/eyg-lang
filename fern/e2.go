@@ -1,14 +1,5 @@
 package fern
 
-// view exhibit rendered
-// scene or panel page is the list of rendered
-type rendered struct {
-	character rune
-	// style      tcell.Style
-	path   []int
-	offset int
-}
-
 // context i.e. context free grammer
 // situation, surroundings
 // location

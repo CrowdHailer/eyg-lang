@@ -23,6 +23,7 @@ type Node interface {
 	draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool)
 	child(int) (Node, func(Node) Node, error)
 	print(buffer *[]rendered, info map[string]int, situ situ)
+	keyPress(ch rune, offset int) (Node, []int, int)
 	MarshalJSON() ([]byte, error)
 }
 

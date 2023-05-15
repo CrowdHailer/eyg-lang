@@ -7,7 +7,7 @@ import (
 )
 
 func TestIndexToCoordinate(t *testing.T) {
-	page := []rendered{
+	rendered := []rendered{
 		{character: 'a'},
 		{character: 'b'},
 		{character: '\n'},
@@ -31,9 +31,14 @@ func TestIndexToCoordinate(t *testing.T) {
 		{1, 3},
 		{2, 3},
 	}
-	assert.Equal(t, len(page), len(tests))
+	assert.Equal(t, len(rendered), len(tests))
+	page := NewPage(rendered)
+	assert.Equal(t, 3, page.size.X)
+	assert.Equal(t, 4, page.size.Y)
 	for i, want := range tests {
-		got := indexToCoordinate(page, i)
+		got := page.coordinates[i]
 		assert.Equal(t, want, got)
+
+		assert.Equal(t, rendered[i].character, page.lookup[got.X][got.Y].character)
 	}
 }
