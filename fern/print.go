@@ -352,6 +352,12 @@ func (node Vacant) keyPress(ch rune, offset int) (Node, []int, int) {
 		return Let{"", Vacant{}, Vacant{}}, []int{}, 0
 		// Could be done with perform typed in
 		// auto suggestion if starting with p/perform
+	case '|':
+		// is this a good character to have representing perform
+		// what would handle be
+		// TODO path into case
+		return Call{Call{Case{}, Fn{"", Vacant{}}}, Vacant{}}, []int{}, 0
+
 	case '^':
 		// is this a good character to have representing perform
 		// what would handle be
@@ -389,6 +395,7 @@ func (node Integer) print(buffer *[]rendered, info map[string]int, s situ) {
 }
 
 func (node Integer) keyPress(ch rune, offset int) (Node, []int, int) {
+	// offset needs to be real negative number so tha position can be kept
 	if offset == -1 {
 		return node, []int{}, 0
 	}
@@ -400,7 +407,10 @@ func (node Integer) keyPress(ch rune, offset int) (Node, []int, int) {
 		}
 		return Integer{int(i64)}, []int{}, offset + 1
 	}
-	return node, []int{}, 0
+	if ch == '-' && offset == 0 && node.value > 0 {
+		return Integer{-node.value}, []int{}, 1
+	}
+	return node, []int{}, offset
 }
 
 func (node Integer) deleteCharachter(offset int) (Node, []int, int) {
@@ -609,7 +619,7 @@ func (node Tag) deleteCharachter(offset int) (Node, []int, int) {
 }
 
 func (node Case) print(buffer *[]rendered, info map[string]int, s situ) {
-
+	printNotNode("case ", buffer, s)
 }
 
 func (node Case) keyPress(ch rune, offset int) (Node, []int, int) {
@@ -629,7 +639,8 @@ func (node Case) deleteCharachter(offset int) (Node, []int, int) {
 }
 
 func (node NoCases) print(buffer *[]rendered, info map[string]int, s situ) {
-
+	// Should not node be Not label
+	printNotNode("perform ", buffer, s)
 }
 
 func (node NoCases) keyPress(ch rune, offset int) (Node, []int, int) {
