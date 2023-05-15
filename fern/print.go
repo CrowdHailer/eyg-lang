@@ -660,11 +660,24 @@ func (node Perform) print(buffer *[]rendered, info map[string]int, s situ) {
 }
 
 func (node Perform) keyPress(ch rune, offset int) (Node, []int, int) {
+	return labelKeyPress(node.label, ch, offset, func(s string) Node { return Perform{s} })
+}
+
+// This might only be perform and handle
+// let never has label on the end
+// select has ordering
+func labelKeyPress(label string, ch rune, offset int, build func(string) Node) (Node, []int, int) {
 	if offset == -1 {
-		return node, []int{}, offset
+		return build(label), []int{}, offset
 	}
-	label := insertRune(node.label, offset, ch)
-	return Perform{label}, []int{}, offset + 1
+	if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+		node := build(insertRune(label, offset, ch))
+		return node, []int{}, offset + 1
+	}
+	if ch == '(' && offset == len(label) {
+		return Call{build(label), Vacant{}}, []int{1}, 0
+	}
+	return build(label), []int{}, offset
 }
 
 func (node Perform) deleteCharachter(offset int) (Node, []int, int) {
