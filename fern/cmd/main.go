@@ -27,11 +27,16 @@ func main() {
 		os.Exit(1)
 	}
 	path := filepath.Join(dir, "saved.json")
+	// path := filepath.Join(dir, "../eyg/saved/saved.json")
 	store := &fileStore{path}
 
 	// fern.New(screen, store)
-	fern.Run(screen, store)
+	err = fern.Run(screen, store)
 	screen.Fini()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 }
 
 type fileStore struct {

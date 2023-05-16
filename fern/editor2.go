@@ -28,25 +28,23 @@ import (
 // TODO start app with rendeirng of code
 // block out tests that don't work and start editing
 
-func Run(s tcell.Screen, store Store) {
+func Run(s tcell.Screen, store Store) error {
 	w, h := s.Size()
 
 	if w == 0 || h == 0 {
-		return
+		return fmt.Errorf("zero sized screen")
 	}
 
 	s.SetStyle(tcell.StyleDefault)
 
 	raw, err := store.Load()
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	source, err := decode(raw)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	// editor will always have code, app might be in loading state
@@ -72,10 +70,10 @@ func Run(s tcell.Screen, store Store) {
 				}
 				r := editor.page.lookup[x][y]
 				if r == nil {
-					s.SetContent(x, y, ' ', []rune{}, tcell.StyleDefault)
+					s.SetContent(i, j, ' ', []rune{}, tcell.StyleDefault)
 					continue
 				}
-				s.SetContent(x, y, r.character, []rune{}, r.style)
+				s.SetContent(i, j, r.character, []rune{}, r.style)
 			}
 
 		}
@@ -97,6 +95,14 @@ func Run(s tcell.Screen, store Store) {
 				editor.moveCursor(Coordinate{0, -1})
 			case tcell.KeyDown:
 				editor.moveCursor(Coordinate{0, 1})
+			case tcell.KeyHome:
+				editor.moveCursor(Coordinate{-editor.size.X, 0})
+			case tcell.KeyEnd:
+				editor.moveCursor(Coordinate{editor.size.X, 0})
+			case tcell.KeyPgUp:
+				editor.moveCursor(Coordinate{0, -editor.size.Y})
+			case tcell.KeyPgDn:
+				editor.moveCursor(Coordinate{0, editor.size.Y})
 			case tcell.KeyRune:
 				editor.keyPress(ev.Rune())
 			case tcell.KeyEnter:
@@ -126,7 +132,7 @@ func Run(s tcell.Screen, store Store) {
 			case tcell.KeyCtrlL:
 				s.Sync()
 			case tcell.KeyEscape, tcell.KeyCtrlC:
-				return
+				return nil
 			}
 		}
 		// TODO default
@@ -163,16 +169,31 @@ func (e *editor) updateSource(source Node, focus []int, offset int) {
 	e.source = source
 	e.page = page
 	e.info = info
+	e.updateView()
 }
 
 func (e *editor) moveCursor(step Coordinate) {
 	x := e.position.X + step.X
-	if 0 <= x && x < e.page.size.X {
-		e.position.X = x
-	}
+	e.position.X = Min(Max(0, x), e.page.size.X)
+
 	y := e.position.Y + step.Y
-	if 0 <= y && y < e.page.size.Y {
-		e.position.Y = y
+	e.position.Y = Min(Max(0, y), e.page.size.Y)
+
+	e.updateView()
+}
+
+func (e *editor) updateView() {
+	if overflow := e.position.X - (e.size.X + e.shift.X) + 1; overflow > 0 {
+		e.shift.X += overflow
+	}
+	if overflow := e.position.X - e.shift.X; overflow < 0 {
+		e.shift.X += overflow
+	}
+	if overflow := e.position.Y - (e.size.Y + e.shift.Y) + 1; overflow > 0 {
+		e.shift.Y += overflow
+	}
+	if overflow := e.position.Y - e.shift.Y; overflow < 0 {
+		e.shift.Y += overflow
 	}
 }
 

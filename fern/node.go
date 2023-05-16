@@ -585,6 +585,26 @@ func (node Handle) contentLength() int {
 	return len(node.label)
 }
 
+type Builtin struct {
+	label string
+}
+
+var _ Node = Builtin{}
+
+func (e Builtin) draw(s tcell.Screen, writer *Coordinate, focus []int, mode mode, grid *[][][]int, path []int, g2 *[][]ref, index *int, indent int, block bool, list bool) {
+	self := *index
+	*index++
+	WriteString(s, fmt.Sprintf("handle %s", e.label), writer, focus, mode, grid, path, g2, self, tcell.StyleDefault, false)
+}
+
+func (Builtin) child(c int) (Node, func(Node) Node, error) {
+	return Var{}, nil, fmt.Errorf("invalid child id for Builtin %d", c)
+}
+
+func (node Builtin) contentLength() int {
+	return len(node.label)
+}
+
 // If editable and focus, mode simply add a space to the end
 // TODO have a mode bounding box Method that limits motion when editing label
 // Having a 2d grid to link path and index means we keep a lookup only for relevant nodes

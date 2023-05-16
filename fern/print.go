@@ -12,11 +12,11 @@ const blue3 = 0x87ceeb
 const green4 = 0x7fbc8c
 const yellow2 = 0xffdb58
 const orange4 = 0xff6b6b
-
-// const pink3 = 0xffb2ef
+const pink3 = 0xffb2ef
 const purple4 = 0x9723c9
 
 var keywordStyle = tcell.StyleDefault.Dim(true)
+var missingStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(pink3))
 var todoStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(orange4)).Bold(true)
 var intStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(purple4))
 var stringStyle = tcell.StyleDefault.Foreground(tcell.NewHexColor(green4))
@@ -156,6 +156,45 @@ func printExtension(node Node, buffer *[]rendered, info map[string]int, path []i
 
 }
 
+func printBranch(node Node, buffer *[]rendered, info map[string]int, path []int, indent int, nested bool) {
+	switch t := node.(type) {
+	case Call:
+		// parent handles indent same as in let
+		for i := 0; i < indent; i++ {
+			*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
+		}
+		// TODO wrap up this switching to a fn on call
+		if inner, ok := t.fn.(Call); ok {
+			if case_, ok := inner.fn.(Case); ok {
+				printLabel(case_.label, buffer, info, situ{indent, false, false, append(path, 0, 0)}, unionStyle)
+				*buffer = append(*buffer, rendered{' ', append(path, 0, 0), len(case_.label), unionStyle})
+				inner.arg.print(buffer, info, situ{indent, false, true, append(path, 0, 1)})
+				printBranch(t.arg, buffer, info, append(path, 1), indent, nested)
+				return
+			}
+		}
+	case NoCases:
+
+		// original indent
+		for i := 0; i < indent-2; i++ {
+			*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
+		}
+		*buffer = append(*buffer, rendered{'}', path, 0, keywordStyle})
+		if !nested {
+			*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
+		}
+		return
+	}
+	node.print(buffer, info, situ{indent, false, true, path})
+	for i := 0; i < indent-2; i++ {
+		*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
+	}
+	*buffer = append(*buffer, rendered{'}', nil, -1, keywordStyle})
+	if !nested {
+		*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
+	}
+}
+
 func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 	// TODO switches not if - maybe not if is list is a fn on call
 	if t, ok := node.fn.(Select); ok {
@@ -195,11 +234,16 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 				*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
 			}
 			// indent := indent + 2
-			printLabel("t.label", buffer, info, situ{indent, false, false, append(s.path, 0, 0)}, unionStyle)
-			*buffer = append(*buffer, rendered{' ', nil, len(t.label), unionStyle})
+			printLabel(t.label, buffer, info, situ{indent, false, false, append(s.path, 0, 0)}, unionStyle)
+			*buffer = append(*buffer, rendered{' ', append(s.path, 0, 0), len(t.label), unionStyle})
 
 			inner.arg.print(buffer, info, situ{indent, false, true, append(s.path, 0, 1)})
-			node.arg.print(buffer, info, situ{indent, false, true, append(s.path, 1)})
+			// parent handles indent same as in let
+			// for i := 0; i < indent; i++ {
+			// 	*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
+			// }
+			// node.arg.print(buffer, info, situ{indent, false, true, append(s.path, 1)})
+			printBranch(node.arg, buffer, info, append(s.path, 1), indent, s.nested)
 
 			return
 		}
@@ -278,6 +322,10 @@ func (node Var) deleteCharachter(offset int) (Node, []int, int) {
 // TODO take only path in args
 func printLabel(label string, buffer *[]rendered, info map[string]int, s situ, style tcell.Style) {
 	info[pathToString(s.path)] = len(*buffer)
+	if label == "" {
+		label = "_"
+		style = missingStyle
+	}
 	for i, ch := range label {
 		*buffer = append(*buffer, rendered{ch, s.path, i, style})
 	}
@@ -306,7 +354,9 @@ func (node Let) print(buffer *[]rendered, info map[string]int, s situ) {
 				*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
 			}
 			*buffer = append(*buffer, rendered{'}', nil, -1, keywordStyle})
-			*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
+			if !s.nested {
+				*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
+			}
 		}()
 	}
 	printNotNode("let ", buffer, s)
@@ -660,7 +710,7 @@ func (node Case) deleteCharachter(offset int) (Node, []int, int) {
 
 func (node NoCases) print(buffer *[]rendered, info map[string]int, s situ) {
 	// Should not node be Not label
-	printNotNode("perform ", buffer, s)
+	printNotNode("-----", buffer, s)
 }
 
 func (node NoCases) keyPress(ch rune, offset int) (Node, []int, int) {
@@ -730,6 +780,47 @@ func (node Handle) deleteCharachter(offset int) (Node, []int, int) {
 	}
 	label, offset := backspaceAt(node.label, offset)
 	return Handle{label}, []int{}, offset
+}
+
+func (node Builtin) print(buffer *[]rendered, info map[string]int, s situ) {
+	printLabel(node.label, buffer, info, s, tcell.StyleDefault)
+	if !s.nested {
+		*buffer = append(*buffer, rendered{'\n', s.path, len(node.label), keywordStyle})
+	}
+}
+
+func (node Builtin) keyPress(ch rune, offset int) (Node, []int, int) {
+
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+		label := insertRune(node.label, offset, ch)
+		return Builtin{label}, []int{}, offset + 1
+	}
+	if ch == '(' && offset == node.contentLength() {
+		return Call{node, Vacant{}}, []int{1}, 0
+	}
+	if ch == '.' && offset == node.contentLength() {
+		return Call{Select{}, node}, []int{0}, 0
+	}
+	if ch == '=' && offset == node.contentLength() {
+		// Sort of the same as control e
+		return Let{node.label, Vacant{}, Vacant{}}, []int{0}, 0
+	}
+
+	return node, []int{}, offset
+}
+
+func (node Builtin) deleteCharachter(offset int) (Node, []int, int) {
+	if offset == -1 {
+		return node, []int{}, 0
+	}
+	label, offset := backspaceAt(node.label, offset)
+	if label == "" {
+		return Vacant{}, []int{}, offset
+	}
+	return Builtin{label}, []int{}, offset
 }
 
 func Print(node Node) ([]rendered, map[string]int) {

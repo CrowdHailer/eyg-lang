@@ -91,6 +91,8 @@ func decode(data []byte) (Node, error) {
 		return Perform{e.Label}, nil
 	case "h":
 		return Handle{e.Label}, nil
+	case "b":
+		return Builtin{e.Label}, nil
 	}
 	return nil, fmt.Errorf("unknown node type %s", e.Key)
 }
