@@ -19,6 +19,7 @@ func Run(s tcell.Screen, store Store) error {
 		return fmt.Errorf("zero sized screen")
 	}
 
+	s.EnableMouse()
 	s.SetStyle(tcell.StyleDefault)
 
 	raw, err := store.Load()
@@ -38,6 +39,7 @@ func Run(s tcell.Screen, store Store) error {
 	if focus != nil {
 		message = fmt.Sprintf("%s@%d", pathToString(focus.path), focus.offset)
 	}
+	clicking := false
 	for {
 		// Don't check error as zero value is fine
 		for i := 0; i < editor.size.X; i++ {
@@ -130,6 +132,16 @@ func Run(s tcell.Screen, store Store) error {
 					message = fmt.Sprintf("%s@%d", pathToString(focus.path), focus.offset)
 				}
 			}
+		case *tcell.EventMouse:
+			// Because I have to track the delta this is quite different to how a browser
+			// interaction model would look
+			// building custom but with shared Eyg components on occasion
+			current := ev.Buttons() == tcell.Button1
+			if !clicking && current {
+				x, y := ev.Position()
+				editor.setCursor(x, y)
+			}
+			clicking = current
 		}
 	}
 }
@@ -164,20 +176,23 @@ func (e *editor) updateSource(source Node, focus []int, offset int) {
 	e.source = source
 	e.page = page
 	e.info = info
-	e.updateView()
+	e.updateShift()
 }
 
 func (e *editor) moveCursor(step Coordinate) {
 	x := e.position.X + step.X
-	e.position.X = Min(Max(0, x), e.page.size.X-1)
-
 	y := e.position.Y + step.Y
-	e.position.Y = Min(Max(0, y), e.page.size.Y-1)
-
-	e.updateView()
+	e.setCursor(x, y)
 }
 
-func (e *editor) updateView() {
+func (e *editor) setCursor(x, y int) {
+	e.position.X = Min(Max(0, x), e.page.size.X-1)
+	e.position.Y = Min(Max(0, y), e.page.size.Y-1)
+
+	e.updateShift()
+}
+
+func (e *editor) updateShift() {
 	if overflow := e.position.X - (e.size.X + e.shift.X) + 1; overflow > 0 {
 		e.shift.X += overflow
 	}
