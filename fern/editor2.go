@@ -7,26 +7,10 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-// maybe panel is a term for what we have
-// app
-// app.run
-// bubbel tea call it program
-
-// I think we should call app that takes over the terminal
-// TTY teletypewriter
-// Screen.takeover
-// App.Run
-
-// Panel. <- is this just the shape
-// start without code so we can show a loading screen
-
-//
-// editor.new(size: point)
-// set source
-// TODO!!!!! separation of screen from editor
-// TODO!!! separate edit panel from terminal application stuff
-// TODO start app with rendeirng of code
-// block out tests that don't work and start editing
+// There should separate terms for all the following
+// The fully rendered page of code
+// A view into that page, possibly the editor
+// The CLI application that controls the terminal - app
 
 func Run(s tcell.Screen, store Store) error {
 	w, h := s.Size()
@@ -47,18 +31,14 @@ func Run(s tcell.Screen, store Store) error {
 		return err
 	}
 
-	// editor will always have code, app might be in loading state
+	// editor will not always have code, app might be in loading state
 	editor := NewEditor(w, h-1, source)
+	message := ""
+	focus := editor.page.lookup[editor.position.X][editor.position.Y]
+	if focus != nil {
+		message = fmt.Sprintf("%s@%d", pathToString(focus.path), focus.offset)
+	}
 	for {
-
-		// TODO need to change this to a function that returns useful display position
-		// index to coordinate
-		// for i, r := range editor.page.buffer {
-		// 	// quicker ways might be to do all indexes to coordinate first
-		// 	inCode := editor.page.coordinates[i]
-		// 	inPage := Coordinate{inCode.X - editor.shift.X, inCode.Y - editor.shift.Y}
-		// 	s.SetContent(inPage.X, inPage.Y, r.character, []rune{}, tcell.StyleDefault)
-		// }
 		// Don't check error as zero value is fine
 		for i := 0; i < editor.size.X; i++ {
 			x := editor.shift.X + i
@@ -77,11 +57,7 @@ func Run(s tcell.Screen, store Store) error {
 			}
 
 		}
-		focus := editor.page.lookup[editor.position.X][editor.position.Y]
-		message := ""
-		if focus != nil {
-			message = fmt.Sprintf("%s@%d", pathToString(focus.path), focus.offset)
-		}
+
 		for i, ch := range message {
 			s.SetContent(i, editor.size.Y, ch, []rune{}, tcell.StyleDefault)
 		}
@@ -94,6 +70,7 @@ func Run(s tcell.Screen, store Store) error {
 			editor.position.Y-editor.shift.Y,
 		)
 		s.Show()
+		message = ""
 		ev := s.PollEvent()
 		switch ev := ev.(type) {
 		case *tcell.EventKey:
@@ -144,9 +121,16 @@ func Run(s tcell.Screen, store Store) error {
 				s.Sync()
 			case tcell.KeyEscape, tcell.KeyCtrlC:
 				return nil
+			default:
+				message = "sddsd"
+			}
+			if message == "" {
+				focus := editor.page.lookup[editor.position.X][editor.position.Y]
+				if focus != nil {
+					message = fmt.Sprintf("%s@%d", pathToString(focus.path), focus.offset)
+				}
 			}
 		}
-		// TODO default
 	}
 }
 
@@ -185,10 +169,10 @@ func (e *editor) updateSource(source Node, focus []int, offset int) {
 
 func (e *editor) moveCursor(step Coordinate) {
 	x := e.position.X + step.X
-	e.position.X = Min(Max(0, x), e.page.size.X)
+	e.position.X = Min(Max(0, x), e.page.size.X-1)
 
 	y := e.position.Y + step.Y
-	e.position.Y = Min(Max(0, y), e.page.size.Y)
+	e.position.Y = Min(Max(0, y), e.page.size.Y-1)
 
 	e.updateView()
 }
@@ -228,7 +212,7 @@ func (e *editor) lineBelow() {
 	var found rendered
 	for i := 0; i < 100; i++ {
 		r := e.page.lookup[i][e.position.Y]
-		if r != nil {
+		if r != nil && r.path != nil {
 			found = *r
 			break
 		}

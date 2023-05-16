@@ -64,6 +64,12 @@ func (node Fn) deleteCharachter(offset int) (Node, []int, int) {
 	return Fn{param, node.body}, []int{}, offset
 }
 
+func printIndent(buffer *[]rendered, indent int) {
+	for i := 0; i < indent; i++ {
+		*buffer = append(*buffer, rendered{' ', nil, -1, tcell.StyleDefault})
+	}
+}
+
 func insertRune(s string, at int, new rune) string {
 	return s[:at] + string(new) + s[at:]
 }
@@ -160,9 +166,7 @@ func printBranch(node Node, buffer *[]rendered, info map[string]int, path []int,
 	switch t := node.(type) {
 	case Call:
 		// parent handles indent same as in let
-		for i := 0; i < indent; i++ {
-			*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-		}
+		printIndent(buffer, indent)
 		// TODO wrap up this switching to a fn on call
 		if inner, ok := t.fn.(Call); ok {
 			if case_, ok := inner.fn.(Case); ok {
@@ -176,9 +180,7 @@ func printBranch(node Node, buffer *[]rendered, info map[string]int, path []int,
 	case NoCases:
 
 		// original indent
-		for i := 0; i < indent-2; i++ {
-			*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-		}
+		printIndent(buffer, indent-2)
 		*buffer = append(*buffer, rendered{'}', path, 0, keywordStyle})
 		if !nested {
 			*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
@@ -186,9 +188,8 @@ func printBranch(node Node, buffer *[]rendered, info map[string]int, path []int,
 		return
 	}
 	node.print(buffer, info, situ{indent, false, true, path})
-	for i := 0; i < indent-2; i++ {
-		*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-	}
+	// original indent
+	printIndent(buffer, indent-2)
 	*buffer = append(*buffer, rendered{'}', nil, -1, keywordStyle})
 	if !nested {
 		*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
@@ -230,19 +231,13 @@ func (node Call) print(buffer *[]rendered, info map[string]int, s situ) {
 			printNotNode("match {", buffer, s)
 			indent := s.indent + 2
 			*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
-			for i := 0; i < indent; i++ {
-				*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-			}
-			// indent := indent + 2
+			// original indent
+			printIndent(buffer, indent)
 			printLabel(t.label, buffer, info, situ{indent, false, false, append(s.path, 0, 0)}, unionStyle)
 			*buffer = append(*buffer, rendered{' ', append(s.path, 0, 0), len(t.label), unionStyle})
 
 			inner.arg.print(buffer, info, situ{indent, false, true, append(s.path, 0, 1)})
-			// parent handles indent same as in let
-			// for i := 0; i < indent; i++ {
-			// 	*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-			// }
-			// node.arg.print(buffer, info, situ{indent, false, true, append(s.path, 1)})
+
 			printBranch(node.arg, buffer, info, append(s.path, 1), indent, s.nested)
 
 			return
@@ -344,15 +339,12 @@ func (node Let) print(buffer *[]rendered, info map[string]int, s situ) {
 		indent += 2
 		*buffer = append(*buffer, rendered{'{', nil, -1, keywordStyle})
 		*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
-		for i := 0; i < indent; i++ {
-			*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-		}
+		// original indent
+		printIndent(buffer, indent)
 
 		defer func() {
 			// needs original depth indent
-			for i := 0; i < s.indent; i++ {
-				*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-			}
+			printIndent(buffer, s.indent)
 			*buffer = append(*buffer, rendered{'}', nil, -1, keywordStyle})
 			if !s.nested {
 				*buffer = append(*buffer, rendered{'\n', nil, -1, keywordStyle})
@@ -366,9 +358,7 @@ func (node Let) print(buffer *[]rendered, info map[string]int, s situ) {
 	*buffer = append(*buffer, rendered{' ', s.path, -1, keywordStyle})
 	node.value.print(buffer, info, situ{indent, false, true, append(s.path, 0)})
 	// nested /false prints a new line
-	for i := 0; i < indent; i++ {
-		*buffer = append(*buffer, rendered{' ', nil, -1, keywordStyle})
-	}
+	printIndent(buffer, indent)
 	node.then.print(buffer, info, situ{indent, false, false, append(s.path, 1)})
 }
 
