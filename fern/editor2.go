@@ -48,7 +48,7 @@ func Run(s tcell.Screen, store Store) error {
 	}
 
 	// editor will always have code, app might be in loading state
-	editor := NewEditor(w, h, source)
+	editor := NewEditor(w, h-1, source)
 	for {
 
 		// TODO need to change this to a function that returns useful display position
@@ -76,6 +76,17 @@ func Run(s tcell.Screen, store Store) error {
 				s.SetContent(i, j, r.character, []rune{}, r.style)
 			}
 
+		}
+		focus := editor.page.lookup[editor.position.X][editor.position.Y]
+		message := ""
+		if focus != nil {
+			message = fmt.Sprintf("%s@%d", pathToString(focus.path), focus.offset)
+		}
+		for i, ch := range message {
+			s.SetContent(i, editor.size.Y, ch, []rune{}, tcell.StyleDefault)
+		}
+		for i := len(message); i < editor.size.X; i++ {
+			s.SetContent(i, editor.size.Y, ' ', []rune{}, tcell.StyleDefault)
 		}
 
 		s.ShowCursor(
