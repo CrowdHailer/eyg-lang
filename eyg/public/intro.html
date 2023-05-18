@@ -255,9 +255,7 @@
         </div> -->
         <div class="max-w-3xl mx-auto px-4 my-4 text-xl">
           <!-- <p class="text-2xl text-right">Hello World</p> -->
-          <p class="">
-            Create programs that run <strong>everywhere</strong>
-          </p>
+          <p class="">Create programs that run <strong>everywhere</strong></p>
           <p class="">and <strong>never</strong> crash.</p>
         </div>
       </header>
@@ -329,23 +327,60 @@ deploy by reference
         <div class="max-w-3xl mx-auto px-4 text-xl">
           <h2 class="text-3xl">Run everywhere</h2>
           <p>
-            Eyg programs can be run everywhere, on client and server as well as build scripts and embedded.
-            The Eyg language makes no assumptions about the runtime or platform a program will be run on.
-            All requirements a program has to the outside world are explicit and tracked using effect types.
+            Eyg programs can be run everywhere, on client and server as well as
+            build scripts and embedded. The Eyg language makes no assumptions
+            about the runtime or platform a program will be run on. All
+            requirements a program has to the outside world are explicit and
+            tracked using effect types.
           </p>
-
 
           <h2 class="text-3xl">Universal apps</h2>
           <!-- hash reference -->
           <p>
-            Every expression of an Eyg program is serializable and can be transmitted.
-            The ability to send functions over the wire allow the full lifecycle of an application to exist in a single program.
+            Every expression of an Eyg program is serializable and can be
+            transmitted. The ability to send functions over the wire allow the
+            full lifecycle of an application to exist in a single program.
           </p>
+          <!-- Other choices are a span for every grid position = copies badly fixable with display none but overflow doesnt work -->
+          <!-- could have the above but truncate printing fixed maximum number of cells display none better -->
+          <!-- nearest to a TUI api in common with tcell but can just reuse common internals -->
+          <!-- from click workout pagePosition as int -> rendered node -->
+          <!-- individual span per node = Too many cells for big tree -->
+          <!-- Can have display done for all values after \n. means we need to reinvent scroll but copy works -->
+          <!-- Need to reinvent copy paste for overscroll -->
+          <!-- big style options box for transform, how does this work with keyboard shortcuts && insert or not mode -->
+          <!-- Insert mode is fastest for me -->
+          <!-- want to keep scroll bars out of text -->
+          <!-- Can do shrink and expand of tree based on hash because ok if it duplicates -->
+          <!-- matching transform in meta tree with list is easier -->
+          <div class="bg-white p-2">
+            <pre
+              data-easel="#"
+              class="overflow-scroll"
+              style="max-height: 3em"
+            ><span data-start="0">
+123
+s
+
+
+x = </span><span class="text-blue-400" data-start="12">4341</span><span>23 Lorem ipsum dolor sit amet consectetur adipisicing elit. Ad dolor odit tenetur consequatur rerum quisquam optio quibusdam ab cupiditate consequuntur laborum cum illum exercitationem voluptate, vitae, veritatis, maxime perspiciatis eos?
+</span></pre>
+          </div>
+          <hr />
+          <br />
+          <div class="bg-white p-2">
+            <pre contenteditable="true" onbeforeinput="return false">
+123
+<span style="display: none;"> </span><span >2</span><span style="display: none;"> </span>s
+x = <span class="text-blue-400" data-start="12">4341</span>23 
+</pre>
+          </div>
+          <script src="/public/easel.js" type="module" async defer></script>
           <h2 class="text-3xl">Syntax is optional</h2>
           <p>
-            There are less than 20 different kinds of node in Eyg's abstract syntax tree (AST).
-            Unusually for a language this data structure is canonical format of an Eyg program,
-            Syntaxes are optional.
+            There are less than 20 different kinds of node in Eyg's abstract
+            syntax tree (AST). Unusually for a language this data structure is
+            canonical format of an Eyg program, Syntaxes are optional.
           </p>
           <p>
             A simple AST makes implementing new platforms for Eyg very easy.
@@ -386,8 +421,8 @@ type suggestion</pre>
         <div class="max-w-3xl mx-auto px-4 text-xl">
           <h2 class="text-3xl">Never crash</h2>
           <p>
-            Guarantee that a program will never crash by running the Eyg type checker.
-            The Eyg type checker covers all features of the language,
+            Guarantee that a program will never crash by running the Eyg type
+            checker. The Eyg type checker covers all features of the language,
             are no zero division errors or missing cases.
           </p>
           <p>Holes are part of the language all features are suggestable</p>
