@@ -11,3 +11,9 @@ fn do_filter_errors(l, acc) {
 pub fn filter_errors(l) {
   do_filter_errors(l, [])
 }
+
+pub fn insert_at(list, position, new) {
+  let pre = list.take(list, position)
+  let post = list.drop(list, position)
+  list.flatten([pre, new, post])
+}

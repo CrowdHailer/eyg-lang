@@ -28,6 +28,9 @@ function handleInput(event, state) {
   // Always at least one range
   // If not zero range collapse to cursor
   const index = startIndex(event.getTargetRanges()[0]);
+  if (event.inputType == "insertText") {
+    return Easel.insert_text(state, event.data, index);
+  }
   if (event.inputType == "insertParagraph") {
     return Easel.insert_paragraph(index, state);
   }
@@ -43,9 +46,26 @@ function handleInput(event, state) {
 
 function resume(element) {
   let state = Easel.init();
+  let offset = 0;
   onbeforeinput = function (event) {
-    state = handleInput(event, state);
+    [state, offset] = handleInput(event, state);
+    console.log(offset);
     element.innerHTML = Easel.html(state);
+    let e = element.children[0];
+    let countdown = offset;
+    while (countdown > e.textContent.length) {
+      countdown -= e.textContent.length;
+      e = e.nextElementSibling;
+    }
+    console.log(countdown, offset);
+    event.preventDefault();
+    setTimeout(() => {
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      const range = this.document.createRange();
+      range.setStart(e, 1);
+      selection.addRange(range);
+    }, 1);
     return false;
   };
   element.innerHTML = Easel.html(state);

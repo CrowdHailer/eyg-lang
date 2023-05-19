@@ -41,6 +41,7 @@ func NewPage(buffer []rendered) page {
 		size.X = maxX + 1
 		size.Y = maxY + 1
 	}
+	// lookup goes from grid to rendered
 	lookup := make([][]*rendered, size.X)
 	for x := range lookup {
 		lookup[x] = make([]*rendered, size.Y)
