@@ -79,6 +79,21 @@ pub fn insert_text(state: Embed, data, start, end) {
           let label = stringx.replace_at(label, cut_start, cut_end, data)
           #(e.Let(label, value, then), cut_start + string.length(data))
         }
+        e.Vacant(_) ->
+          case data {
+            "\"" -> #(e.Binary(""), 0)
+            "[" -> #(e.Tail, 0)
+            "{" -> #(e.Empty, 0)
+            "=" -> #(e.Let("", e.Vacant(""), e.Vacant("")), 0)
+            "|" -> #(
+              e.Apply(e.Apply(e.Case(""), e.Vacant("")), e.Vacant("")),
+              0,
+            )
+            "^" -> #(e.Perform(""), 0)
+            // TODO digit 
+            // TODO unicode for var
+            _ -> #(target, cut_start)
+          }
         e.Binary(value) -> {
           let value = stringx.replace_at(value, cut_start, cut_end, data)
           #(e.Binary(value), cut_start + string.length(data))
