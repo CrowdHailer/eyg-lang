@@ -4,6 +4,7 @@ import gleam/listx
 import gleam/map
 import gleam/result
 import gleam/string
+import gleam/stringx
 import eygir/expression as e
 import easel/print
 
@@ -64,11 +65,12 @@ pub fn insert_text(state: Embed, data, index) {
   // always the same path
   let #(new, offset) = case target {
     e.Let(label, value, then) -> {
-      let label =
-        string.to_graphemes(label)
-        |> listx.insert_at(offset, string.to_graphemes(data))
-        |> string.concat
+      let label = stringx.insert_at(label, offset, data)
       #(e.Let(label, value, then), offset + string.length(data))
+    }
+    e.Binary(value) -> {
+      let value = stringx.insert_at(value, offset, data)
+      #(e.Binary(value), offset + string.length(data))
     }
     node -> #(node, offset)
   }
@@ -113,8 +115,14 @@ fn to_html(sections) {
     fn(acc, section) {
       let #(style, letters) = section
       let class = case style {
-        True -> "bold"
-        False -> "normal"
+        print.Default -> ""
+        print.Keyword -> "text-gray-500"
+        print.Missing -> "text-pink-3"
+        print.Hole -> "text-orange-4 font-bold"
+        print.Integer -> "text-purple-4"
+        print.String -> "text-green-4"
+        print.Union -> "text-blue-3"
+        print.Effect -> "text-yellow02"
       }
       string.concat([
         acc,
