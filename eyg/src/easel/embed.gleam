@@ -71,6 +71,10 @@ pub fn insert_text(state: Embed, data, start, end) {
       let assert Ok(#(target, rezip)) = zipper(state.source, path)
       // always the same path
       let #(new, offset) = case target {
+        e.Lambda(param, body) -> {
+          let param = stringx.replace_at(param, cut_start, cut_end, data)
+          #(e.Lambda(param, body), cut_start + string.length(data))
+        }
         e.Let(label, value, then) -> {
           let label = stringx.replace_at(label, cut_start, cut_end, data)
           #(e.Let(label, value, then), cut_start + string.length(data))
@@ -90,6 +94,26 @@ pub fn insert_text(state: Embed, data, start, end) {
       // update source source have a offset function
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(Embed(source, rendered), start + offset)
+    }
+  }
+}
+
+pub fn insert_function(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      let assert Ok(#(target, rezip)) = zipper(state.source, path)
+      let source = rezip(e.Lambda("", target))
+      // TODO move to update source
+      let rendered = print.print(source)
+      let assert Ok(start) =
+        map.get(rendered.1, print.path_to_string(list.append(path, [0])))
+      #(Embed(source, rendered), start)
     }
   }
 }

@@ -30,7 +30,11 @@ pub fn print(source) {
 fn do_print(source, situ, acc, info) {
   let Situ(path) = situ
   case source {
-    // e.Lambda(param, body) -> acc
+    e.Lambda(param, body) -> {
+      let #(acc, info) = print_with_offset(param, path, Default, acc, info)
+      let acc = print_keyword(" -> ", path, acc)
+      do_print(body, Situ(list.append(path, [0])), acc, info)
+    }
     // e.Call(func, arg) -> 
     e.Let(label, value, then) -> {
       let acc = print_keyword("let ", path, acc)
@@ -42,6 +46,7 @@ fn do_print(source, situ, acc, info) {
       do_print(then, Situ(list.append(path, [1])), acc, info)
     }
     // e.Variable(_) -> #(acc, info)
+    e.Vacant(_) -> print_with_offset("todo", path, Hole, acc, info)
     e.Binary(value) -> {
       let acc = [#("\"", path, -1, String), ..acc]
       // Maybe I don't need to append " if looking left

@@ -63,22 +63,44 @@ function resume(element) {
   element.onbeforeinput = function (event) {
     event.preventDefault();
     [state, offset] = handleInput(event, state);
-    element.innerHTML = Easel.html(state);
-    let e = element.children[0];
-    let countdown = offset;
-    while (countdown > e.textContent.length) {
-      console.log("inside");
-      countdown -= e.textContent.length;
-      e = e.nextElementSibling;
-    }
-    const range = window.getSelection().getRangeAt(0);
-    // range needs to be set on the text node
-    range.setStart(e.firstChild, countdown);
-    range.setEnd(e.firstChild, countdown);
+    updateElement(element, state, offset);
     return false;
+  };
+  element.onkeydown = function (event) {
+    if (event.ctrlKey && event.key == "f") {
+      event.preventDefault();
+      console.log(event, "ff");
+      const selection = window.getSelection();
+      console.log(selection, "sel");
+      const range = selection.getRangeAt(0);
+      const start = startIndex(range);
+      const end = endIndex(range);
+      console.log(start, end);
+      [state, offset] = Easel.insert_function(state, start, end);
+      updateElement(element, state, offset);
+      return false;
+    }
+    // console.log(event);
   };
   element.innerHTML = Easel.html(state);
   element.contentEditable = true;
+}
+
+function updateElement(element, state, offset) {
+  element.innerHTML = Easel.html(state);
+  if (offset == undefined) {
+    return;
+  }
+  let e = element.children[0];
+  let countdown = offset;
+  while (countdown > e.textContent.length) {
+    countdown -= e.textContent.length;
+    e = e.nextElementSibling;
+  }
+  const range = window.getSelection().getRangeAt(0);
+  // range needs to be set on the text node
+  range.setStart(e.firstChild, countdown);
+  range.setEnd(e.firstChild, countdown);
 }
 
 function start() {
