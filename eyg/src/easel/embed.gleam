@@ -19,7 +19,7 @@ pub type Embed {
 }
 
 pub fn source() {
-  e.Let("x", e.Binary("hello"), e.Let("y", e.Integer(100), e.Empty))
+  e.Let("foo", e.Binary("hello"), e.Let("y", e.Integer(100), e.Empty))
 }
 
 pub fn init() {
@@ -84,14 +84,20 @@ pub fn insert_text(state: Embed, data, index) {
 }
 
 pub fn insert_paragraph(index, state: Embed) {
-  // TODO look up in rendered
-  // offset and path and do action
-  // Need my list cursor
-  // let rendered = state.rendered
-  // let pre = list.take(rendered, index)
-  // let post = list.drop(rendered, index)
-  // Embed(list.flatten([pre, [], post]))
-  todo("paragrphj")
+  let assert Ok(#(_ch, path, offset, _style)) = list.at(state.rendered.0, index)
+  let assert Ok(#(target, rezip)) = zipper(state.source, path)
+
+  let new = case target {
+    e.Let(label, value, then) -> {
+      e.Let(label, value, e.Let("", e.Vacant(""), then))
+    }
+    node -> e.Let("", node, e.Vacant(""))
+  }
+  let source = rezip(new)
+  let rendered = print.print(source)
+  let assert Ok(start) =
+    map.get(rendered.1, print.path_to_string(list.append(path, [1])))
+  #(Embed(source, rendered), start)
 }
 
 pub fn html(embed: Embed) {

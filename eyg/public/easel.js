@@ -47,25 +47,21 @@ function handleInput(event, state) {
 function resume(element) {
   let state = Easel.init();
   let offset = 0;
-  onbeforeinput = function (event) {
+  element.onbeforeinput = function (event) {
+    event.preventDefault();
     [state, offset] = handleInput(event, state);
-    console.log(offset);
     element.innerHTML = Easel.html(state);
     let e = element.children[0];
     let countdown = offset;
     while (countdown > e.textContent.length) {
+      console.log("inside");
       countdown -= e.textContent.length;
       e = e.nextElementSibling;
     }
-    console.log(countdown, offset);
-    event.preventDefault();
-    setTimeout(() => {
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      const range = this.document.createRange();
-      range.setStart(e, 1);
-      selection.addRange(range);
-    }, 1);
+    const range = window.getSelection().getRangeAt(0);
+    // range needs to be set on the text node
+    range.setStart(e.firstChild, countdown);
+    range.setEnd(e.firstChild, countdown);
     return false;
   };
   element.innerHTML = Easel.html(state);
@@ -78,17 +74,3 @@ function start() {
 }
 
 start();
-
-// document.onselectionchange = function (event) {
-//     const selection = document.getSelection();
-//     // selection.anchorNode.parentElement.classList.toggle(
-//     //   "bg-blue-200"
-//     // );
-//     console.log(selection, "chan!!");
-//   };
-//   function foo(event) {
-
-//     const domRange = event.getTargetRanges()[0];
-//     console.log(domRange);
-//     return false;
-//   }
