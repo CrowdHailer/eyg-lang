@@ -59,30 +59,39 @@ fn do_zipper(expression, path, acc) {
   }
 }
 
-pub fn insert_text(state: Embed, data, index) {
-  let assert Ok(#(_ch, path, offset, _style)) = list.at(state.rendered.0, index)
-  let assert Ok(#(target, rezip)) = zipper(state.source, path)
-  // always the same path
-  let #(new, offset) = case target {
-    e.Let(label, value, then) -> {
-      let label = stringx.insert_at(label, offset, data)
-      #(e.Let(label, value, then), offset + string.length(data))
+pub fn insert_text(state: Embed, data, start, end) {
+  let assert Ok(#(_ch, path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 || cut_start < 0 {
+    True -> {
+      #(state, start)
     }
-    e.Binary(value) -> {
-      let value = stringx.insert_at(value, offset, data)
-      #(e.Binary(value), offset + string.length(data))
-    }
-    node -> #(node, offset)
-  }
-  let source = rezip(new)
-  // TODO move to update source
-  let rendered = print.print(source)
-  // zip and target
-  // io.debug(rendered)
+    _ -> {
+      let assert Ok(#(target, rezip)) = zipper(state.source, path)
+      // always the same path
+      let #(new, offset) = case target {
+        e.Let(label, value, then) -> {
+          let label = stringx.replace_at(label, cut_start, cut_end, data)
+          #(e.Let(label, value, then), cut_start + string.length(data))
+        }
+        e.Binary(value) -> {
+          let value = stringx.replace_at(value, cut_start, cut_end, data)
+          #(e.Binary(value), cut_start + string.length(data))
+        }
+        node -> #(node, cut_start)
+      }
+      let source = rezip(new)
+      // TODO move to update source
+      let rendered = print.print(source)
+      // zip and target
+      // io.debug(rendered)
 
-  // update source source have a offset function
-  let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-  #(Embed(source, rendered), start + offset)
+      // update source source have a offset function
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(Embed(source, rendered), start + offset)
+    }
+  }
 }
 
 pub fn insert_paragraph(index, state: Embed) {
