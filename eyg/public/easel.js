@@ -69,14 +69,22 @@ function resume(element) {
   element.onkeydown = function (event) {
     if (event.ctrlKey && event.key == "f") {
       event.preventDefault();
-      console.log(event, "ff");
       const selection = window.getSelection();
-      console.log(selection, "sel");
       const range = selection.getRangeAt(0);
       const start = startIndex(range);
       const end = endIndex(range);
-      console.log(start, end);
       [state, offset] = Easel.insert_function(state, start, end);
+      updateElement(element, state, offset);
+      return false;
+    }
+    if (event.ctrlKey && event.key == "j") {
+      event.preventDefault();
+      event.stopPropagation();
+      const selection = window.getSelection();
+      const range = selection.getRangeAt(0);
+      const start = startIndex(range);
+      const end = endIndex(range);
+      [state, offset] = Easel.call_with(state, start, end);
       updateElement(element, state, offset);
       return false;
     }

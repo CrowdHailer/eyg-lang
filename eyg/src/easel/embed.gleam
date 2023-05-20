@@ -1,8 +1,10 @@
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/map
 import gleam/result
+import gleam/regex
 import gleam/string
 import gleam/stringx
 import eygir/expression as e
@@ -79,24 +81,46 @@ pub fn insert_text(state: Embed, data, start, end) {
           let label = stringx.replace_at(label, cut_start, cut_end, data)
           #(e.Let(label, value, then), cut_start + string.length(data))
         }
+        e.Variable(label) -> {
+          let label = stringx.replace_at(label, cut_start, cut_end, data)
+          #(e.Variable(label), cut_start + string.length(data))
+        }
         e.Vacant(_) ->
           case data {
             "\"" -> #(e.Binary(""), 0)
             "[" -> #(e.Tail, 0)
             "{" -> #(e.Empty, 0)
+            // TODO need to add path to step in
+            "(" -> #(e.Apply(e.Vacant(""), e.Vacant("")), 0)
             "=" -> #(e.Let("", e.Vacant(""), e.Vacant("")), 0)
             "|" -> #(
               e.Apply(e.Apply(e.Case(""), e.Vacant("")), e.Vacant("")),
               0,
             )
             "^" -> #(e.Perform(""), 0)
-            // TODO digit 
-            // TODO unicode for var
-            _ -> #(target, cut_start)
+            _ -> {
+              let assert Ok(re) = regex.from_string("^[a-zA-Z]$")
+              case int.parse(data) {
+                Ok(number) -> #(e.Integer(number), string.length(data))
+                Error(Nil) ->
+                  case regex.check(re, data) {
+                    True -> #(e.Variable(data), string.length(data))
+                    _ -> #(target, cut_start)
+                  }
+              }
+            }
           }
         e.Binary(value) -> {
           let value = stringx.replace_at(value, cut_start, cut_end, data)
           #(e.Binary(value), cut_start + string.length(data))
+        }
+        e.Perform(label) -> {
+          let label = stringx.replace_at(label, cut_start, cut_end, data)
+          #(e.Perform(label), cut_start + string.length(data))
+        }
+        e.Handle(label) -> {
+          let label = stringx.replace_at(label, cut_start, cut_end, data)
+          #(e.Handle(label), cut_start + string.length(data))
         }
         node -> #(node, cut_start)
       }
@@ -124,6 +148,26 @@ pub fn insert_function(state: Embed, start, end) {
     False -> {
       let assert Ok(#(target, rezip)) = zipper(state.source, path)
       let source = rezip(e.Lambda("", target))
+      // TODO move to update source
+      let rendered = print.print(source)
+      let assert Ok(start) =
+        map.get(rendered.1, print.path_to_string(list.append(path, [0])))
+      #(Embed(source, rendered), start)
+    }
+  }
+}
+
+pub fn call_with(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      let assert Ok(#(target, rezip)) = zipper(state.source, path)
+      let source = rezip(e.Apply(e.Vacant(""), target))
       // TODO move to update source
       let rendered = print.print(source)
       let assert Ok(start) =
@@ -170,7 +214,8 @@ fn to_html(sections) {
         print.Integer -> "text-purple-4"
         print.String -> "text-green-4"
         print.Union -> "text-blue-3"
-        print.Effect -> "text-yellow02"
+        print.Effect -> "text-yellow-4"
+        print.Builtin -> "font-italic"
       }
       string.concat([
         acc,

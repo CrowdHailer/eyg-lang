@@ -13,6 +13,7 @@ pub type Style {
   String
   Union
   Effect
+  Builtin
 }
 
 pub type Rendered =
@@ -35,8 +36,16 @@ fn do_print(source, situ, br, acc, info) {
       let acc = print_keyword(" -> ", path, acc)
       print_block(body, Situ(list.append(path, [0])), br, acc, info)
     }
-    // TODO rest of expressions
-    // e.Call(func, arg) -> 
+    e.Apply(func, arg) -> {
+      let #(acc, info) =
+        print_block(func, Situ(list.append(path, [0])), br, acc, info)
+      let acc = print_keyword("(", path, acc)
+      let #(acc, info) =
+        print_block(arg, Situ(list.append(path, [1])), br, acc, info)
+
+      let acc = print_keyword(")", path, acc)
+      #(acc, info)
+    }
     e.Let(label, value, then) -> {
       let acc = print_keyword("let ", path, acc)
       let #(acc, info) = print_with_offset(label, path, Default, acc, info)
@@ -46,16 +55,67 @@ fn do_print(source, situ, br, acc, info) {
       let acc = print_keyword(br, path, acc)
       do_print(then, Situ(list.append(path, [1])), br, acc, info)
     }
-    // e.Variable(_) -> #(acc, info)
+    e.Variable(label) -> print_with_offset(label, path, Default, acc, info)
     e.Vacant(_) -> print_with_offset("todo", path, Hole, acc, info)
+    e.Integer(value) ->
+      print_with_offset(int.to_string(value), path, Integer, acc, info)
     e.Binary(value) -> {
       let acc = [#("\"", path, -1, String), ..acc]
       // Maybe I don't need to append " if looking left
       print_with_offset(string.append(value, "\""), path, String, acc, info)
     }
-    e.Integer(value) ->
-      print_with_offset(int.to_string(value), path, Integer, acc, info)
-    _ -> #(acc, info)
+    e.Tail -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc) + 1)
+      let acc = print_keyword("[]", path, acc)
+      #(acc, info)
+    }
+    e.Cons -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword("cons", path, acc)
+      #(acc, info)
+    }
+    e.Empty -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc) + 1)
+      let acc = print_keyword("{}", path, acc)
+      #(acc, info)
+    }
+    e.Extend(label) -> {
+      // TODO better name than union
+      let acc = [#("+", path, -1, Union), ..acc]
+      print_with_offset(label, path, Union, acc, info)
+    }
+    e.Select(label) -> {
+      // TODO better name than union
+      let acc = [#(".", path, -1, Union), ..acc]
+      print_with_offset(label, path, Union, acc, info)
+    }
+    e.Overwrite(label) -> {
+      // TODO better name than union
+      let acc = [#("=", path, -1, Union), ..acc]
+      print_with_offset(label, path, Union, acc, info)
+    }
+    e.Tag(label) -> {
+      let acc = [#("=", path, -1, Union), ..acc]
+      print_with_offset(label, path, Union, acc, info)
+    }
+    e.Case(label) -> {
+      let acc = [#("|", path, -1, Union), ..acc]
+      print_with_offset(label, path, Union, acc, info)
+    }
+    e.NoCases -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword("----", path, acc)
+      #(acc, info)
+    }
+    e.Perform(label) -> {
+      let acc = print_keyword("perform ", path, acc)
+      print_with_offset(label, path, Effect, acc, info)
+    }
+    e.Handle(label) -> {
+      let acc = print_keyword("handle ", path, acc)
+      print_with_offset(label, path, Effect, acc, info)
+    }
+    e.Builtin(value) -> print_with_offset(value, path, Builtin, acc, info)
   }
 }
 
