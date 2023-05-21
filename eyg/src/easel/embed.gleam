@@ -129,6 +129,18 @@ pub fn insert_text(state: Embed, data, start, end) {
           let value = stringx.replace_at(value, cut_start, cut_end, data)
           #(e.Binary(value), cut_start + string.length(data))
         }
+        e.Integer(value) -> {
+          case int.parse(data) {
+            Ok(_) -> {
+              let assert Ok(value) =
+                int.to_string(value)
+                |> stringx.replace_at(cut_start, cut_end, data)
+                |> int.parse()
+              #(e.Integer(value), cut_start + string.length(data))
+            }
+            Error(Nil) -> #(target, cut_start)
+          }
+        }
         e.Perform(label) -> {
           let label = stringx.replace_at(label, cut_start, cut_end, data)
           #(e.Perform(label), cut_start + string.length(data))
