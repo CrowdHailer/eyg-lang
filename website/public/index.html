@@ -22,11 +22,11 @@
               There is no <strong class="font-bold">syntax</strong> ...
             </div>
             <ul class="underline text-black">
-              <li>Run everywhere</li>
+              <li><a href="#run-everywhere">Run everywhere</a></li>
               <!-- <li>Hash compression</li> -->
               <!-- <li>One program, many machines</li> -->
-              <li>Never crash</li>
-              <li>Structural editing</li>
+              <li><a href="#never-crash">Never crash</a></li>
+              <li><a href="#structural-editing">Structural editing</a></li>
             </ul>
           </div>
           <div
@@ -49,6 +49,66 @@
       </header>
       <div class="expand w-full blue-gradient drop">
         <!-- div to push bg -->
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="wrap bg-white neo-shadow border-black border-2 rounded-xl overflow-hidden"
+          >
+            <pre
+              data-easel="#"
+              class="overflow-scroll outline-none w-full mt-1 mx-4"
+              style=""
+              spellcheck="false"
+            ></pre>
+            <div class="bg-purple-1 px-4 font-mono font-bold hidden">
+              insert
+            </div>
+          </div>
+          <!-- have a run button at the bottom which shows the file name before
+          running. <br />
+
+          Space on the right can highlight cursor and show types -->
+        </div>
+        <!-- video at top more code in sections -->
+        <!-- or walking text -->
+        <!-- Get it to Run -->
+        <!-- Then tutorial on key presses -->
+        <!-- Discover not Docs -->
+        <!-- Good for me to order priorities -->
+        <!-- Just really big code example. makes it nice over the color boundary -->
+        <!-- Show don't tell -->
+        <!-- many interpreters should exist, there repos should be the show of just using it -->
+        <!-- document the features. same sectons in gh md as in pages -->
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl" id="run-everywhere">Run everywhere</h2>
+          <p>
+            Eyg programs can be run everywhere, on client and server as well as
+            build scripts and embedded. The Eyg language makes no assumptions
+            about the runtime or platform a program will be run on. All
+            requirements a program has to the outside world are explicit and
+            tracked using effect types.
+          </p>
+
+          <h2 class="text-3xl">Universal apps</h2>
+          <!-- hash reference -->
+          <p>
+            Every expression of an Eyg program is serializable and can be
+            transmitted. The ability to send functions over the wire allow the
+            full lifecycle of an application to exist in a single program.
+          </p>
+          <!-- Other choices are a span for every grid position = copies badly fixable with display none but overflow doesnt work -->
+          <!-- could have the above but truncate printing fixed maximum number of cells display none better -->
+          <!-- nearest to a TUI api in common with tcell but can just reuse common internals -->
+          <!-- from click workout pagePosition as int -> rendered node -->
+          <!-- individual span per node = Too many cells for big tree -->
+          <!-- Can have display done for all values after \n. means we need to reinvent scroll but copy works -->
+          <!-- Need to reinvent copy paste for overscroll -->
+          <!-- big style options box for transform, how does this work with keyboard shortcuts && insert or not mode -->
+          <!-- Insert mode is fastest for me -->
+          <!-- want to keep scroll bars out of text -->
+          <!-- Can do shrink and expand of tree based on hash because ok if it duplicates -->
+          <!-- matching transform in meta tree with list is easier -->
+        </div>
+
         <div class="max-w-3xl w-full mx-auto">
           <div
             class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
@@ -102,66 +162,6 @@ deploy by reference
             </div>
           </div>
         </div>
-        <!-- video at top more code in sections -->
-        <!-- or walking text -->
-        <!-- Get it to Run -->
-        <!-- Then tutorial on key presses -->
-        <!-- Discover not Docs -->
-        <!-- Good for me to order priorities -->
-        <!-- Just really big code example. makes it nice over the color boundary -->
-        <!-- Show don't tell -->
-        <!-- many interpreters should exist, there repos should be the show of just using it -->
-        <!-- document the features. same sectons in gh md as in pages -->
-        <div class="max-w-3xl mx-auto px-4 text-xl">
-          <h2 class="text-3xl">Run everywhere</h2>
-          <p>
-            Eyg programs can be run everywhere, on client and server as well as
-            build scripts and embedded. The Eyg language makes no assumptions
-            about the runtime or platform a program will be run on. All
-            requirements a program has to the outside world are explicit and
-            tracked using effect types.
-          </p>
-
-          <h2 class="text-3xl">Universal apps</h2>
-          <!-- hash reference -->
-          <p>
-            Every expression of an Eyg program is serializable and can be
-            transmitted. The ability to send functions over the wire allow the
-            full lifecycle of an application to exist in a single program.
-          </p>
-          <!-- Other choices are a span for every grid position = copies badly fixable with display none but overflow doesnt work -->
-          <!-- could have the above but truncate printing fixed maximum number of cells display none better -->
-          <!-- nearest to a TUI api in common with tcell but can just reuse common internals -->
-          <!-- from click workout pagePosition as int -> rendered node -->
-          <!-- individual span per node = Too many cells for big tree -->
-          <!-- Can have display done for all values after \n. means we need to reinvent scroll but copy works -->
-          <!-- Need to reinvent copy paste for overscroll -->
-          <!-- big style options box for transform, how does this work with keyboard shortcuts && insert or not mode -->
-          <!-- Insert mode is fastest for me -->
-          <!-- want to keep scroll bars out of text -->
-          <!-- Can do shrink and expand of tree based on hash because ok if it duplicates -->
-          <!-- matching transform in meta tree with list is easier -->
-        </div>
-        <div class="max-w-3xl w-full mx-auto">
-          <div
-            class="wrap bg-white neo-shadow border-black border-2 rounded-xl overflow-hidden"
-          >
-            <pre
-              data-easel="#"
-              class="overflow-scroll outline-none w-full mt-1 mx-4"
-              style=""
-              spellcheck="false"
-            ></pre>
-            <div class="bg-purple-1 px-4 font-mono font-bold hidden">
-              insert
-            </div>
-          </div>
-          have a run button at the bottom which shows the file name before
-          running. <br />
-
-          Space on the right can highlight cursor and show types
-        </div>
-
         <div class="max-w-3xl mx-auto px-4 text-xl">
           <script src="/easel.js" type="module" async defer></script>
           <h2 class="text-3xl">Syntax is optional</h2>
@@ -207,7 +207,7 @@ type suggestion</pre>
           </div>
         </div>
         <div class="max-w-3xl mx-auto px-4 text-xl">
-          <h2 class="text-3xl">Never crash</h2>
+          <h2 class="text-3xl" id="never-crash">Never crash</h2>
           <p>
             Guarantee that a program will never crash by running the Eyg type
             checker. The Eyg type checker covers all features of the language,
@@ -259,7 +259,7 @@ match {
         <div class="max-w-3xl mx-auto px-4 text-xl">
           <h2 class="text-3xl">Effect types</h2>
           <p class="max-w-lg">DSL's for embed are easy to make</p>
-          <h2 class="text-3xl">Structural editor</h2>
+          <h2 class="text-3xl" id="structural-editing">Structural editor</h2>
           <p>Learn all the keys</p>
           <h2 class="text-3xl">Features</h2>
           All the features
