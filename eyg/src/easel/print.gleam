@@ -46,6 +46,8 @@ fn do_print(source, situ, br, acc, info) {
     e.Apply(func, arg) -> {
       let #(acc, info) =
         print_block(func, Situ(list.append(path, [0])), br, acc, info)
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+
       let acc = print_keyword("(", path, acc)
       let #(acc, info) =
         print_block(arg, Situ(list.append(path, [1])), br, acc, info)

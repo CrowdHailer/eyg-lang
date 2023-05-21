@@ -93,6 +93,9 @@ pub fn insert_text(state: Embed, data, start, end) {
         "[" -> list_element(state, start, end)
         "d" -> delete(state, start, end)
         "f" -> insert_function(state, start, end)
+        "g" -> select(state, start, end)
+        "c" -> call(state, start, end)
+
         // TODO reuse history and inference components
         // Reuse lookup of variables
         // Don't worry about big code blocks at this point, I can use my silly backwards editor
@@ -138,24 +141,24 @@ pub fn insert_text(state: Embed, data, start, end) {
           // always the same path
           let #(new, sub, offset) = case target {
             e.Lambda(param, body) -> {
-              let param = stringx.replace_at(param, cut_start, cut_end, data)
-              #(e.Lambda(param, body), [], cut_start + string.length(data))
+              let #(param, offset) = replace_at(param, cut_start, cut_end, data)
+              #(e.Lambda(param, body), [], offset)
             }
             e.Apply(e.Apply(e.Cons, _), _) -> {
               let new = e.Apply(e.Apply(e.Cons, e.Vacant("")), target)
               #(new, [0, 1], 0)
             }
             e.Let(label, value, then) -> {
-              let label = stringx.replace_at(label, cut_start, cut_end, data)
-              #(e.Let(label, value, then), [], cut_start + string.length(data))
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Let(label, value, then), [], offset)
             }
             e.Variable(label) -> {
-              let label = stringx.replace_at(label, cut_start, cut_end, data)
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               let new = case label {
                 "" -> e.Vacant("")
                 _ -> e.Variable(label)
               }
-              #(new, [], cut_start + string.length(data))
+              #(new, [], offset)
             }
             e.Vacant(_) ->
               case data {
@@ -212,13 +215,26 @@ pub fn insert_text(state: Embed, data, start, end) {
                 )
               }
             }
+            e.Extend(label) -> {
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Extend(label), [], offset)
+            }
+            e.Select(label) -> {
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Select(label), [], offset)
+            }
+            e.Overwrite(label) -> {
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Overwrite(label), [], offset)
+            }
+
             e.Perform(label) -> {
-              let label = stringx.replace_at(label, cut_start, cut_end, data)
-              #(e.Perform(label), [], cut_start + string.length(data))
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Perform(label), [], offset)
             }
             e.Handle(label) -> {
-              let label = stringx.replace_at(label, cut_start, cut_end, data)
-              #(e.Handle(label), [], cut_start + string.length(data))
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Handle(label), [], offset)
             }
             node -> {
               io.debug(#("nothing", node))
@@ -239,6 +255,12 @@ pub fn insert_text(state: Embed, data, start, end) {
       }
     }
   }
+}
+
+fn replace_at(label, start, end, data) {
+  let start = int.min(string.length(label), start)
+  let label = stringx.replace_at(label, start, end, data)
+  #(label, start + string.length(data))
 }
 
 fn run(state: Embed) {
@@ -333,6 +355,25 @@ pub fn insert_function(state: Embed, start, end) {
   }
 }
 
+pub fn select(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      let assert Ok(#(target, rezip)) = zipper(state.source, path)
+      let source = rezip(e.Apply(e.Select(""), target))
+      // TODO move to update source
+      let rendered = print.print(source)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(Embed(mode: Insert, source: source, rendered: rendered), start)
+    }
+  }
+}
+
 pub fn call_with(state: Embed, start, end) {
   let assert Ok(#(_ch, path, cut_start, _style)) =
     list.at(state.rendered.0, start)
@@ -348,6 +389,26 @@ pub fn call_with(state: Embed, start, end) {
       let rendered = print.print(source)
       let assert Ok(start) =
         map.get(rendered.1, print.path_to_string(list.append(path, [0])))
+      #(Embed(..state, source: source, rendered: rendered), start)
+    }
+  }
+}
+
+pub fn call(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      let assert Ok(#(target, rezip)) = zipper(state.source, path)
+      let source = rezip(e.Apply(target, e.Vacant("")))
+      // TODO move to update source
+      let rendered = print.print(source)
+      let assert Ok(start) =
+        map.get(rendered.1, print.path_to_string(list.append(path, [1])))
       #(Embed(..state, source: source, rendered: rendered), start)
     }
   }
