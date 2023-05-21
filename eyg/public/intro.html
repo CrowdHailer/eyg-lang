@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/public/layout.css" />
+    <title>Document</title>
+    <style>
+      :root {
+        --neo-blue-1: #daf5f0;
+        --neo-blue-2: #a7dbd8;
+        --neo-blue-3: #87ceeb;
+        --neo-blue-4: #69d2e7;
+
+        --neo-green-1: #b5d2ad;
+        --neo-green-2: #bafca2;
+        --neo-green-3: #90ee90;
+        --neo-green-4: #7fbc8c;
+
+        --neo-yellow-1: #fdfd96;
+        --neo-yellow-2: #ffdb58;
+        --neo-yellow-3: #f4d738;
+        --neo-yellow-4: #e3a018;
+
+        --neo-orange-1: #f8d6b3;
+        --neo-orange-2: #ffa07a;
+        --neo-orange-3: #ff7a5c;
+        --neo-orange-4: #ff6b6b;
+
+        --neo-pink-1: #fcdfff;
+        --neo-pink-2: #ffc0cb;
+        --neo-pink-3: #ffb2ef;
+        --neo-pink-4: #ff69b4;
+
+        --neo-purple-1: #e3dff2;
+        --neo-purple-2: #c4a1ff;
+        --neo-purple-3: #a388ee;
+        --neo-purple-4: #9723c9;
+      }
+
+      .blue-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-blue-1),
+          var(--neo-blue-3)
+        );
+      }
+
+      .green-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-green-2),
+          var(--neo-green-3)
+        );
+      }
+
+      .yellow-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-yellow-1),
+          var(--neo-yellow-3)
+        );
+      }
+      .orange-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-orange-3),
+          var(--neo-orange-4)
+        );
+      }
+      .purple-gradient {
+        background: linear-gradient(
+          0.25turn,
+          var(--neo-purple-1),
+          var(--neo-purple-3)
+        );
+      }
+
+      .text-blue-1 {
+        color: var(--neo-blue-1);
+      }
+      .text-blue-2 {
+        color: var(--neo-blue-2);
+      }
+      .text-blue-3 {
+        color: var(--neo-blue-3);
+      }
+      .text-blue-4 {
+        color: var(--neo-blue-4);
+      }
+      .text-green-1 {
+        color: var(--neo-green-1);
+      }
+      .text-green-2 {
+        color: var(--neo-green-2);
+      }
+      .text-green-3 {
+        color: var(--neo-green-3);
+      }
+      .text-green-4 {
+        color: var(--neo-green-4);
+      }
+
+      .text-yellow-1 {
+        color: var(--neo-yellow-1);
+      }
+      .text-yellow-2 {
+        color: var(--neo-yellow-2);
+      }
+      .text-yellow-3 {
+        color: var(--neo-yellow-3);
+      }
+      .text-yellow-4 {
+        color: var(--neo-yellow-4);
+      }
+
+      .text-orange-1 {
+        color: var(--neo-orange-1);
+      }
+      .text-orange-2 {
+        color: var(--neo-orange-2);
+      }
+      .text-orange-3 {
+        color: var(--neo-orange-3);
+      }
+      .text-orange-4 {
+        color: var(--neo-orange-4);
+      }
+
+      .text-pink-1 {
+        color: var(--neo-pink-1);
+      }
+      .text-pink-2 {
+        color: var(--neo-pink-2);
+      }
+      .text-pink-3 {
+        color: var(--neo-pink-3);
+      }
+      .text-pink-4 {
+        color: var(--neo-pink-4);
+      }
+
+      .text-purple-1 {
+        color: var(--neo-purple-1);
+      }
+      .text-purple-2 {
+        color: var(--neo-purple-2);
+      }
+      .text-purple-3 {
+        color: var(--neo-purple-3);
+      }
+      .text-purple-4 {
+        color: var(--neo-purple-4);
+      }
+
+      .bg-blue-1 {
+        background-color: var(--neo-blue-1);
+      }
+      .bg-blue-2 {
+        background-color: var(--neo-blue-2);
+      }
+      .bg-blue-3 {
+        background-color: var(--neo-blue-3);
+      }
+      .bg-blue-4 {
+        background-color: var(--neo-blue-4);
+      }
+      .bg-pink-1 {
+        background-color: var(--neo-pink-1);
+      }
+      .bg-pink-2 {
+        background-color: var(--neo-pink-2);
+      }
+      .bg-pink-3 {
+        background-color: var(--neo-pink-3);
+      }
+      .bg-purple-1 {
+        background-color: var(--neo-purple-1);
+      }
+      .bg-purple-2 {
+        background-color: var(--neo-purple-2);
+      }
+      .bg-purple-3 {
+        background-color: var(--neo-purple-3);
+      }
+      .bg-purple-4 {
+        background-color: var(--neo-purple-4);
+      }
+      .neo-shadow {
+        box-shadow: 6px 6px black;
+      }
+
+      .drop {
+        padding-bottom: 30px !important;
+      }
+      .drop + * > *:first-child > *:first-child {
+        margin-top: -30px !important;
+      }
+
+      body {
+        font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
+      }
+
+      h2 {
+        display: inline-block;
+        /* color: white; */
+        font-weight: bold;
+        font-size: 2em;
+        position: relative;
+        margin: 16px 0;
+        z-index: 1;
+      }
+
+      h2::after {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        padding: 0 4px;
+        transform: translateX(-14px);
+        border-radius: 3px;
+        content: "";
+        display: block;
+        height: 50%;
+        width: 100%;
+        background: var(--neo-green-4);
+        z-index: -1;
+      }
+
+      h3.blocked {
+        display: inline-block;
+        /* color: white; */
+        /* font-weight: bold; */
+        font-size: 1.2em;
+        position: relative;
+        margin: 10px 0;
+        z-index: 1;
+      }
+
+      h3.blocked::after {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        padding: 0 4px;
+        transform: translateX(-14px);
+        border-radius: 3px;
+        content: "";
+        display: block;
+        height: 50%;
+        width: 100%;
+        background: var(--neo-green-4);
+        z-index: -1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="vstack wrap">
+      <header class="yellow-gradient drop w-full">
+        <div class="hstack max-w-3xl mx-auto">
+          <div class="expand leading-relaxed">
+            <div class="text-pink-4 border-l-8 border-white pl-2 -ml-4">
+              There is no <strong class="font-bold">syntax</strong> ...
+            </div>
+            <ul class="underline text-black">
+              <li>Run everywhere</li>
+              <!-- <li>Hash compression</li> -->
+              <!-- <li>One program, many machines</li> -->
+              <li>Never crash</li>
+              <li>Structural editing</li>
+            </ul>
+          </div>
+          <div
+            class="border-2 border-black bg-purple-3 my-10 rounded-xl neo-shadow -mr-20"
+          >
+            <div class="ml-5 mr-24">
+              <h3 class="font-bold text-white">Eat Your Greens</h3>
+              <h1 class="text-2xl font-bold">EYG</h1>
+            </div>
+          </div>
+        </div>
+        <!-- <div class="max-w-3xl mx-auto">
+          <h1 class="text-2xl mb-4">hello</h1>
+        </div> -->
+        <div class="max-w-3xl mx-auto px-4 my-4 text-xl">
+          <!-- <p class="text-2xl text-right">Hello World</p> -->
+          <p class="">Create programs that run <strong>everywhere</strong></p>
+          <p class="">and <strong>never</strong> crash.</p>
+        </div>
+      </header>
+      <div class="expand w-full blue-gradient drop">
+        <!-- div to push bg -->
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+          >
+            <pre>
+let server = request -> {
+  perform Log("request")
+  let client = dom -> {
+    let _ = perform Alert("hello")
+    perform Render("hey")
+  }
+}
+case eyg.check(server, type) {
+  Ok _ -> publish(server)
+  Error(reason) -> {
+    let _ = perform Log(reason)
+  }
+}</pre
+            >
+            <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              >
+run on server
+
+run on client
+effect available on client
+
+
+
+type check during build
+deploy by reference
+
+
+
+
+</pre
+              >
+            </div>
+            <div
+              style="
+                writing-mode: sideways-lr; /*! position: absolute; */
+                left: -29px; /*! text-align: right; */
+                width: 0;
+                transform: translateX(26px); /*! height: 0; */
+              "
+              class="cover text-2xl text-gray-800"
+            >
+              hello world
+            </div>
+          </div>
+        </div>
+        <!-- video at top more code in sections -->
+        <!-- or walking text -->
+        <!-- Get it to Run -->
+        <!-- Then tutorial on key presses -->
+        <!-- Discover not Docs -->
+        <!-- Good for me to order priorities -->
+        <!-- Just really big code example. makes it nice over the color boundary -->
+        <!-- Show don't tell -->
+        <!-- many interpreters should exist, there repos should be the show of just using it -->
+        <!-- document the features. same sectons in gh md as in pages -->
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">Run everywhere</h2>
+          <p>
+            Eyg programs can be run everywhere, on client and server as well as
+            build scripts and embedded. The Eyg language makes no assumptions
+            about the runtime or platform a program will be run on. All
+            requirements a program has to the outside world are explicit and
+            tracked using effect types.
+          </p>
+
+          <h2 class="text-3xl">Universal apps</h2>
+          <!-- hash reference -->
+          <p>
+            Every expression of an Eyg program is serializable and can be
+            transmitted. The ability to send functions over the wire allow the
+            full lifecycle of an application to exist in a single program.
+          </p>
+          <!-- Other choices are a span for every grid position = copies badly fixable with display none but overflow doesnt work -->
+          <!-- could have the above but truncate printing fixed maximum number of cells display none better -->
+          <!-- nearest to a TUI api in common with tcell but can just reuse common internals -->
+          <!-- from click workout pagePosition as int -> rendered node -->
+          <!-- individual span per node = Too many cells for big tree -->
+          <!-- Can have display done for all values after \n. means we need to reinvent scroll but copy works -->
+          <!-- Need to reinvent copy paste for overscroll -->
+          <!-- big style options box for transform, how does this work with keyboard shortcuts && insert or not mode -->
+          <!-- Insert mode is fastest for me -->
+          <!-- want to keep scroll bars out of text -->
+          <!-- Can do shrink and expand of tree based on hash because ok if it duplicates -->
+          <!-- matching transform in meta tree with list is easier -->
+        </div>
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="wrap bg-white neo-shadow border-black border-2 rounded-xl overflow-hidden"
+          >
+            <pre
+              data-easel="#"
+              class="overflow-scroll outline-none w-full mt-1 mx-4"
+              style=""
+              spellcheck="false"
+            ></pre>
+            <div class="bg-purple-1 px-4 font-mono font-bold hidden">insert</div>
+          </div>
+          have a run button at the bottom which shows the file name before
+          running. <br />
+
+          Space on the right can highlight cursor and show types
+        </div>
+
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <script src="/public/easel.js" type="module" async defer></script>
+          <h2 class="text-3xl">Syntax is optional</h2>
+          <p>
+            There are less than 20 different kinds of node in Eyg's abstract
+            syntax tree (AST). Unusually for a language this data structure is
+            canonical format of an Eyg program, Syntaxes are optional.
+          </p>
+          <p>
+            A simple AST makes implementing new platforms for Eyg very easy.
+          </p>
+          <!-- <hr class="border-2 max-w-2xl mx-auto" /> -->
+          <!-- <h2 class="text-3xl">Never crash</h2> -->
+          <div class="py-4"></div>
+        </div>
+      </div>
+      <div class="expand w-full purple-gradient">
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+          >
+            <pre>
+let name = user -> {
+  let first = user.first
+  let second = user.second
+  string.concat([first, " ", second])
+}
+
+let _ = name(<span class="text-orange-3">{first: Binary, second: Binary, ..0}</span>)</pre>
+            <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
+-> Binary</span> -->declaration
+
+
+
+
+
+type suggestion</pre>
+            </div>
+          </div>
+        </div>
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">Never crash</h2>
+          <p>
+            Guarantee that a program will never crash by running the Eyg type
+            checker. The Eyg type checker covers all features of the language,
+            are no zero division errors or missing cases.
+          </p>
+          <p>Holes are part of the language all features are suggestable</p>
+        </div>
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+          >
+            <pre>
+let _ = std.equal("bob", <span class="text-pink-4">Binary</span>)
+let _ = std.equal(5, <span class="text-pink-4">Integer</span>)</pre>
+            <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
+-> Binary</span> -->
+
+</pre>
+            </div>
+          </div>
+        </div>
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">No type declaration</h2>
+        </div>
+        <div class="max-w-3xl w-full mx-auto">
+          <div
+            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+          >
+            <pre>
+match {
+  Some x -> x
+  None _ -> 0
+}(<span class="text-orange-4">[Some: Integer | None _]</span>)</pre>
+            <div class="expand"></div>
+            <div>
+              <pre
+                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
+              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
+-> Binary</span> -->
+
+</pre>
+            </div>
+          </div>
+        </div>
+        <div class="max-w-3xl mx-auto px-4 text-xl">
+          <h2 class="text-3xl">Effect types</h2>
+          <p class="max-w-lg">DSL's for embed are easy to make</p>
+          <h2 class="text-3xl">Structural editor</h2>
+          <p>Learn all the keys</p>
+          <h2 class="text-3xl">Features</h2>
+          All the features
+          <p>Pages to learn about the implementation</p>
+        </div>
+      </div>
+      <div class="max-w-3xl w-full mx-auto yellow-gradient">
+        <div class="text-3xl">Eyg</div>
+      </div>
+    </div>
+  </body>
+</html>

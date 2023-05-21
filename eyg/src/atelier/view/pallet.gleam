@@ -1,4 +1,5 @@
 // command pallet
+import gleam/io
 import gleam/dynamic
 import gleam/list
 import gleam/map
@@ -26,6 +27,7 @@ pub fn render(state: app.WorkSpace, inferred) {
 }
 
 fn render_label(value) {
+  io.debug(#("input", value))
   [
     input([
       class("border w-full"),
@@ -87,6 +89,7 @@ fn render_number(number) {
 
 // Do text areas have change event
 fn render_text(value) {
+  io.debug(#("textarea", value))
   [
     div(
       [
@@ -103,6 +106,7 @@ fn render_text(value) {
       attribute.rows(10),
       classes([#("w-full", True)]),
       attribute.autofocus(True),
+      // on_change internally
       event.on_input(fn(v) { app.Change(v) }),
       attribute.value(dynamic.from(value)),
     ]),
