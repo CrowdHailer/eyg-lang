@@ -9,6 +9,9 @@ import gleam/string
 import gleam/stringx
 import eygir/expression as e
 import easel/print
+import eyg/runtime/interpreter as r
+import harness/stdlib
+import harness/effect
 
 // Not a full app
 // Widget is another name element/panel
@@ -28,7 +31,15 @@ pub type Embed {
 }
 
 pub fn source() {
-  e.Let("foo", e.Binary("hello"), e.Let("y", e.Integer(100), e.Empty))
+  e.Let(
+    "message",
+    e.Binary("Hello, World!"),
+    e.Let(
+      "greet",
+      e.Lambda("message", e.Apply(e.Perform("Alert"), e.Variable("message"))),
+      e.Apply(e.Variable("greet"), e.Variable("message")),
+    ),
+  )
 }
 
 pub fn init() {
@@ -72,8 +83,14 @@ pub fn insert_text(state: Embed, data, start, end) {
   case state.mode {
     Command(_) -> {
       case data {
+        " " -> {
+          let message = run(state)
+          let state = Embed(..state, mode: Command(message))
+          #(state, start)
+        }
         "w" -> call_with(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
+        "d" -> delete(state, start, end)
         "f" -> insert_function(state, start, end)
         // TODO reuse history and inference components
         // Reuse lookup of variables
@@ -201,6 +218,60 @@ pub fn insert_text(state: Embed, data, start, end) {
   }
 }
 
+fn run(state: Embed) {
+  let #(_lift, _resume, handler) = effect.window_alert()
+
+  let handlers =
+    map.new()
+    |> map.insert("Alert", handler)
+  let env = stdlib.env()
+  case r.handle(r.eval(state.source, env, r.Value), env.builtins, handlers) {
+    r.Abort(reason) -> reason_to_string(reason)
+    r.Value(term) -> term_to_string(term)
+    _ -> panic("this should be tackled better in the run code")
+  }
+}
+
+fn reason_to_string(reason) {
+  case reason {
+    r.UndefinedVariable(var) -> string.append("variable undefined: ", var)
+    r.IncorrectTerm(expected, _got) ->
+      string.concat(["unexpected term, expected", expected])
+    r.MissingField(field) -> string.concat(["missing record field", field])
+    r.NoCases -> string.concat(["no cases matched"])
+    r.NotAFunction(term) -> "not a function"
+    r.UnhandledEffect(effect, _with) ->
+      string.concat(["unhandled effect ", effect])
+    r.Vacant(note) -> "tried to run a todo"
+  }
+}
+
+fn term_to_string(term) {
+  case term {
+    r.Binary(value) -> string.concat(["\"", value, "\""])
+    _ -> "non string term"
+  }
+}
+
+pub fn delete(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      let assert Ok(#(target, rezip)) = zipper(state.source, path)
+      let source = rezip(e.Vacant(""))
+      // TODO move to update source
+      let rendered = print.print(source)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(Embed(mode: Insert, source: source, rendered: rendered), start)
+    }
+  }
+}
+
 pub fn insert_function(state: Embed, start, end) {
   let assert Ok(#(_ch, path, cut_start, _style)) =
     list.at(state.rendered.0, start)
@@ -265,7 +336,13 @@ pub fn html(embed: Embed) {
 
 pub fn pallet(embed: Embed) {
   case embed.mode {
-    Command(warning) -> string.append(":", warning)
+    Command(warning) -> {
+      let message = case warning {
+        "" -> "press space to run"
+        message -> message
+      }
+      string.append(":", message)
+    }
     Insert -> "insert"
   }
 }

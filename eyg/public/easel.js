@@ -61,55 +61,59 @@ function handleInput(event, state) {
 function resume(element) {
   let state = Easel.init();
   let offset = 0;
-  element.onbeforeinput = function (event) {
-    event.preventDefault();
-    [state, offset] = handleInput(event, state);
-    updateElement(element, state, offset);
-    return false;
-  };
-  element.onkeydown = function (event) {
-    if (event.key == "Escape") {
-      state = Easel.escape(state);
-      const selection = window.getSelection();
-      const range = selection.getRangeAt(0);
-      const start = startIndex(range);
-      updateElement(element, state, start);
-    }
-    if (event.ctrlKey && event.key == "f") {
+  element.onclick = function () {
+    element.onbeforeinput = function (event) {
       event.preventDefault();
-      const selection = window.getSelection();
-      const range = selection.getRangeAt(0);
-      const start = startIndex(range);
-      const end = endIndex(range);
-      [state, offset] = Easel.insert_function(state, start, end);
+      [state, offset] = handleInput(event, state);
       updateElement(element, state, offset);
       return false;
-    }
-    if (event.ctrlKey && event.key == "j") {
-      event.preventDefault();
-      event.stopPropagation();
-      const selection = window.getSelection();
-      const range = selection.getRangeAt(0);
-      const start = startIndex(range);
-      const end = endIndex(range);
-      [state, offset] = Easel.call_with(state, start, end);
-      updateElement(element, state, offset);
-      return false;
-    }
-    console.log(event);
+    };
+    element.onkeydown = function (event) {
+      if (event.key == "Escape") {
+        state = Easel.escape(state);
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const start = startIndex(range);
+        updateElement(element, state, start);
+      }
+      if (event.ctrlKey && event.key == "f") {
+        event.preventDefault();
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const start = startIndex(range);
+        const end = endIndex(range);
+        [state, offset] = Easel.insert_function(state, start, end);
+        updateElement(element, state, offset);
+        return false;
+      }
+      if (event.ctrlKey && event.key == "j") {
+        event.preventDefault();
+        event.stopPropagation();
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const start = startIndex(range);
+        const end = endIndex(range);
+        [state, offset] = Easel.call_with(state, start, end);
+        updateElement(element, state, offset);
+        return false;
+      }
+      console.log(event);
+    };
+    element.onblur = function (event) {
+      // element.nextElementSibling.classList.add("hidden");
+      state = Easel.blur(state);
+      updateElement(element, state);
+    };
+    element.onfocus = function (event) {
+      // element.nextElementSibling.classList.remove("hidden");
+    };
+    element.onclick = undefined;
+    // Separate editor i.e. panel from pallet in ide/workshop
+    element.nextElementSibling.innerHTML = Easel.pallet(state);
   };
-  element.onblur = function (event) {
-    element.nextElementSibling.classList.add("hidden");
-    state = Easel.blur(state);
-    updateElement(element, state);
-  };
-  element.onfocus = function (event) {
-    element.nextElementSibling.classList.remove("hidden");
-  };
-
+  // maybe on focus should trigger setup
+  // maybe embed state should always be rehydrated but the click to edit is a part of that state
   element.innerHTML = Easel.html(state);
-  // Separate editor i.e. panel from pallet in ide/workshop
-  element.nextElementSibling.innerHTML = Easel.pallet(state);
   element.contentEditable = true;
 }
 
