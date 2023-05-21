@@ -90,6 +90,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         "w" -> call_with(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
+        "[" -> list_element(state, start, end)
         "d" -> delete(state, start, end)
         "f" -> insert_function(state, start, end)
         // TODO reuse history and inference components
@@ -135,51 +136,60 @@ pub fn insert_text(state: Embed, data, start, end) {
         _ -> {
           let assert Ok(#(target, rezip)) = zipper(state.source, path)
           // always the same path
-          let #(new, offset) = case target {
+          let #(new, sub, offset) = case target {
             e.Lambda(param, body) -> {
               let param = stringx.replace_at(param, cut_start, cut_end, data)
-              #(e.Lambda(param, body), cut_start + string.length(data))
+              #(e.Lambda(param, body), [], cut_start + string.length(data))
+            }
+            e.Apply(e.Apply(e.Cons, _), _) -> {
+              let new = e.Apply(e.Apply(e.Cons, e.Vacant("")), target)
+              #(new, [0, 1], 0)
             }
             e.Let(label, value, then) -> {
               let label = stringx.replace_at(label, cut_start, cut_end, data)
-              #(e.Let(label, value, then), cut_start + string.length(data))
+              #(e.Let(label, value, then), [], cut_start + string.length(data))
             }
             e.Variable(label) -> {
               let label = stringx.replace_at(label, cut_start, cut_end, data)
-              #(e.Variable(label), cut_start + string.length(data))
+              let new = case label {
+                "" -> e.Vacant("")
+                _ -> e.Variable(label)
+              }
+              #(new, [], cut_start + string.length(data))
             }
             e.Vacant(_) ->
               case data {
-                "\"" -> #(e.Binary(""), 0)
-                "[" -> #(e.Tail, 0)
-                "{" -> #(e.Empty, 0)
+                "\"" -> #(e.Binary(""), [], 0)
+                "[" -> #(e.Tail, [], 0)
+                "{" -> #(e.Empty, [], 0)
                 // TODO need to add path to step in
-                "(" -> #(e.Apply(e.Vacant(""), e.Vacant("")), 0)
-                "=" -> #(e.Let("", e.Vacant(""), e.Vacant("")), 0)
+                "(" -> #(e.Apply(e.Vacant(""), e.Vacant("")), [], 0)
+                "=" -> #(e.Let("", e.Vacant(""), e.Vacant("")), [], 0)
                 "|" -> #(
                   e.Apply(e.Apply(e.Case(""), e.Vacant("")), e.Vacant("")),
+                  [],
                   0,
                 )
-                "^" -> #(e.Perform(""), 0)
+                "^" -> #(e.Perform(""), [], 0)
                 _ -> {
                   let assert Ok(re) = regex.from_string("^[a-zA-Z]$")
                   case int.parse(data) {
-                    Ok(number) -> #(e.Integer(number), string.length(data))
+                    Ok(number) -> #(e.Integer(number), [], string.length(data))
                     Error(Nil) ->
                       case regex.check(re, data) {
-                        True -> #(e.Variable(data), string.length(data))
-                        _ -> #(target, cut_start)
+                        True -> #(e.Variable(data), [], string.length(data))
+                        _ -> #(target, [], cut_start)
                       }
                   }
                 }
               }
             e.Binary(value) -> {
               let value = stringx.replace_at(value, cut_start, cut_end, data)
-              #(e.Binary(value), cut_start + string.length(data))
+              #(e.Binary(value), [], cut_start + string.length(data))
             }
             e.Integer(value) -> {
               case data == "-" && cut_start == 0 {
-                True -> #(e.Integer(0 - value), 1)
+                True -> #(e.Integer(0 - value), [], 1)
                 False ->
                   case int.parse(data) {
                     Ok(_) -> {
@@ -187,21 +197,33 @@ pub fn insert_text(state: Embed, data, start, end) {
                         int.to_string(value)
                         |> stringx.replace_at(cut_start, cut_end, data)
                         |> int.parse()
-                      #(e.Integer(value), cut_start + string.length(data))
+                      #(e.Integer(value), [], cut_start + string.length(data))
                     }
-                    Error(Nil) -> #(target, cut_start)
+                    Error(Nil) -> #(target, [], cut_start)
                   }
+              }
+            }
+            e.Tail -> {
+              case data {
+                "," -> #(
+                  e.Apply(e.Apply(e.Cons, e.Vacant("")), e.Vacant("")),
+                  [0, 1],
+                  cut_start,
+                )
               }
             }
             e.Perform(label) -> {
               let label = stringx.replace_at(label, cut_start, cut_end, data)
-              #(e.Perform(label), cut_start + string.length(data))
+              #(e.Perform(label), [], cut_start + string.length(data))
             }
             e.Handle(label) -> {
               let label = stringx.replace_at(label, cut_start, cut_end, data)
-              #(e.Handle(label), cut_start + string.length(data))
+              #(e.Handle(label), [], cut_start + string.length(data))
             }
-            node -> #(node, cut_start)
+            node -> {
+              io.debug(#("nothing", node))
+              #(node, [], cut_start)
+            }
           }
           let source = rezip(new)
           // TODO move to update source
@@ -210,6 +232,7 @@ pub fn insert_text(state: Embed, data, start, end) {
           // io.debug(rendered)
 
           // update source source have a offset function
+          let path = list.append(path, sub)
           let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
           #(Embed(..state, source: source, rendered: rendered), start + offset)
         }
@@ -250,6 +273,25 @@ fn term_to_string(term) {
   case term {
     r.Binary(value) -> string.concat(["\"", value, "\""])
     _ -> "non string term"
+  }
+}
+
+pub fn list_element(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      let assert Ok(#(target, rezip)) = zipper(state.source, path)
+      let source = rezip(e.Apply(e.Apply(e.Cons, target), e.Tail))
+      // TODO move to update source
+      let rendered = print.print(source)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(Embed(mode: Insert, source: source, rendered: rendered), start)
+    }
   }
 }
 

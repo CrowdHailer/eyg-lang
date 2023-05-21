@@ -36,6 +36,13 @@ fn do_print(source, situ, br, acc, info) {
       let acc = print_keyword(" -> ", path, acc)
       print_block(body, Situ(list.append(path, [0])), br, acc, info)
     }
+    e.Apply(e.Apply(e.Cons, item), tail) -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword("[", path, acc)
+      let #(acc, info) =
+        print_block(item, Situ(list.append(path, [0, 1])), br, acc, info)
+      print_tail(tail, list.append(path, [1]), br, acc, info)
+    }
     e.Apply(func, arg) -> {
       let #(acc, info) =
         print_block(func, Situ(list.append(path, [0])), br, acc, info)
@@ -130,6 +137,30 @@ fn print_block(source, situ, br, acc, info) {
       #(acc, info)
     }
     _ -> do_print(source, situ, br, acc, info)
+  }
+}
+
+fn print_tail(exp, path, br, acc, info) {
+  case exp {
+    e.Tail -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword("]", path, acc)
+      #(acc, info)
+    }
+    e.Apply(e.Apply(e.Cons, item), tail) -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword(", ", path, acc)
+      let #(acc, info) =
+        print_block(item, Situ(list.append(path, [0, 1])), br, acc, info)
+      print_tail(tail, list.append(path, [1]), br, acc, info)
+    }
+    _ -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword(", ..", path, acc)
+      let #(acc, info) = print_block(exp, Situ(path: path), br, acc, info)
+      let acc = print_keyword("]", path, acc)
+      #(acc, info)
+    }
   }
 }
 
