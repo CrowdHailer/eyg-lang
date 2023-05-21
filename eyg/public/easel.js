@@ -2,7 +2,8 @@
 // other apps use run.js which runs a whole program but assumes it gets the window
 // easel is going to be run only in a given element, probably should look like qwik continuations
 // lots of work on resumable
-import * as Easel from "../build/eyg/easel/embed.mjs";
+// The server from the eyg project moved the build directory
+import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
 
 console.log("starting easel");
 
@@ -68,7 +69,7 @@ function resume(element) {
   };
   element.onkeydown = function (event) {
     if (event.key == "Escape") {
-      state = Easel.escape(state)
+      state = Easel.escape(state);
       const selection = window.getSelection();
       const range = selection.getRangeAt(0);
       const start = startIndex(range);
@@ -98,23 +99,23 @@ function resume(element) {
     console.log(event);
   };
   element.onblur = function (event) {
-    element.nextElementSibling.classList.add("hidden")
-    state = Easel.blur(state)
+    element.nextElementSibling.classList.add("hidden");
+    state = Easel.blur(state);
     updateElement(element, state);
-  }
+  };
   element.onfocus = function (event) {
-    element.nextElementSibling.classList.remove("hidden")
-  }
+    element.nextElementSibling.classList.remove("hidden");
+  };
 
   element.innerHTML = Easel.html(state);
   // Separate editor i.e. panel from pallet in ide/workshop
-  element.nextElementSibling.innerHTML = Easel.pallet(state)
+  element.nextElementSibling.innerHTML = Easel.pallet(state);
   element.contentEditable = true;
 }
 
 function updateElement(element, state, offset) {
   element.innerHTML = Easel.html(state);
-  element.nextElementSibling.innerHTML = Easel.pallet(state)
+  element.nextElementSibling.innerHTML = Easel.pallet(state);
   if (offset == undefined) {
     return;
   }
