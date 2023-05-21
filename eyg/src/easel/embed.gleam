@@ -368,7 +368,8 @@ pub fn select(state: Embed, start, end) {
       let source = rezip(e.Apply(e.Select(""), target))
       // TODO move to update source
       let rendered = print.print(source)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      let assert Ok(start) =
+        map.get(rendered.1, print.path_to_string(list.append(path, [0])))
       #(Embed(mode: Insert, source: source, rendered: rendered), start)
     }
   }

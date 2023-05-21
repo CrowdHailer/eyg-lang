@@ -36,6 +36,13 @@ fn do_print(source, situ, br, acc, info) {
       let acc = print_keyword(" -> ", path, acc)
       print_block(body, Situ(list.append(path, [0])), br, acc, info)
     }
+    e.Apply(e.Select(label), from) -> {
+      let #(acc, info) =
+        print_block(from, Situ(list.append(path, [1])), br, acc, info)
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword(".", path, acc)
+      print_with_offset(label, list.append(path, [0]), Default, acc, info)
+    }
     e.Apply(e.Apply(e.Cons, item), tail) -> {
       let info = map.insert(info, path_to_string(path), list.length(acc))
       let acc = print_keyword("[", path, acc)
