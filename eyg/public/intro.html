@@ -179,7 +179,12 @@
       .bg-pink-3 {
         background-color: var(--neo-pink-3);
       }
-
+      .bg-purple-1 {
+        background-color: var(--neo-purple-1);
+      }
+      .bg-purple-2 {
+        background-color: var(--neo-purple-2);
+      }
       .bg-purple-3 {
         background-color: var(--neo-purple-3);
       }
@@ -383,14 +388,15 @@ deploy by reference
         </div>
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+            class="wrap bg-white neo-shadow border-black border-2 rounded-xl overflow-hidden"
           >
             <pre
               data-easel="#"
-              class="overflow-scroll outline-none w-full"
+              class="overflow-scroll outline-none w-full mt-1 mx-4"
               style=""
               spellcheck="false"
             ></pre>
+            <div class="bg-purple-1 px-4 font-mono font-bold hidden">insert</div>
           </div>
           have a run button at the bottom which shows the file name before
           running. <br />

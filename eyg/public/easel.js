@@ -67,6 +67,13 @@ function resume(element) {
     return false;
   };
   element.onkeydown = function (event) {
+    if (event.key == "Escape") {
+      state = Easel.escape(state)
+      const selection = window.getSelection();
+      const range = selection.getRangeAt(0);
+      const start = startIndex(range);
+      updateElement(element, state, start);
+    }
     if (event.ctrlKey && event.key == "f") {
       event.preventDefault();
       const selection = window.getSelection();
@@ -88,14 +95,26 @@ function resume(element) {
       updateElement(element, state, offset);
       return false;
     }
-    // console.log(event);
+    console.log(event);
   };
+  element.onblur = function (event) {
+    element.nextElementSibling.classList.add("hidden")
+    state = Easel.blur(state)
+    updateElement(element, state);
+  }
+  element.onfocus = function (event) {
+    element.nextElementSibling.classList.remove("hidden")
+  }
+
   element.innerHTML = Easel.html(state);
+  // Separate editor i.e. panel from pallet in ide/workshop
+  element.nextElementSibling.innerHTML = Easel.pallet(state)
   element.contentEditable = true;
 }
 
 function updateElement(element, state, offset) {
   element.innerHTML = Easel.html(state);
+  element.nextElementSibling.innerHTML = Easel.pallet(state)
   if (offset == undefined) {
     return;
   }
