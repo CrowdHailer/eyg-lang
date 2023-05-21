@@ -1,0 +1,6 @@
+[build]
+command = """
+  cp -R public/* build/
+  echo foo > build/tmp.txt
+  """
+publish = "website/build"
