@@ -99,6 +99,10 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         False -> #(path, cut_start)
       }
+      // /Only move left if letter, not say comma, but is it weird to have commands available in insert mode
+      // probably but let's try and push as many things to insert mode do command mode not needed
+      // I would do this if CTRL functions not so overloaded
+      // key press on vacant same in insert and cmd mode
       let #(p2, cut_end) = case cut_end < 0 {
         True -> {
           let assert Ok(#(_ch, path, cut_end, _style)) =
@@ -157,15 +161,19 @@ pub fn insert_text(state: Embed, data, start, end) {
               #(e.Binary(value), cut_start + string.length(data))
             }
             e.Integer(value) -> {
-              case int.parse(data) {
-                Ok(_) -> {
-                  let assert Ok(value) =
-                    int.to_string(value)
-                    |> stringx.replace_at(cut_start, cut_end, data)
-                    |> int.parse()
-                  #(e.Integer(value), cut_start + string.length(data))
-                }
-                Error(Nil) -> #(target, cut_start)
+              case data == "-" && cut_start == 0 {
+                True -> #(e.Integer(0 - value), 1)
+                False ->
+                  case int.parse(data) {
+                    Ok(_) -> {
+                      let assert Ok(value) =
+                        int.to_string(value)
+                        |> stringx.replace_at(cut_start, cut_end, data)
+                        |> int.parse()
+                      #(e.Integer(value), cut_start + string.length(data))
+                    }
+                    Error(Nil) -> #(target, cut_start)
+                  }
               }
             }
             e.Perform(label) -> {
@@ -246,7 +254,7 @@ pub fn insert_paragraph(index, state: Embed) {
   let rendered = print.print(source)
   let assert Ok(start) =
     map.get(rendered.1, print.path_to_string(list.append(path, [1])))
-  #(Embed(..state, source: source, rendered: rendered), start)
+  #(Embed(mode: Insert, source: source, rendered: rendered), start)
 }
 
 pub fn html(embed: Embed) {
