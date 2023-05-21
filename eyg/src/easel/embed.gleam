@@ -62,9 +62,24 @@ fn do_zipper(expression, path, acc) {
 }
 
 pub fn insert_text(state: Embed, data, start, end) {
-  let assert Ok(#(_ch, path, cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  let rendered = state.rendered.0
+  let assert Ok(#(_ch, path, cut_start, _style)) = list.at(rendered, start)
+  let assert Ok(#(_ch, _, cut_end, _style)) = list.at(rendered, end)
+  let #(path, cut_start) = case cut_start < 0 {
+    True -> {
+      let assert Ok(#(_ch, path, cut_start, _style)) =
+        list.at(rendered, start - 1)
+      #(path, cut_start + 1)
+    }
+    False -> #(path, cut_start)
+  }
+  let #(p2, cut_end) = case cut_end < 0 {
+    True -> {
+      let assert Ok(#(_ch, path, cut_end, _style)) = list.at(rendered, end - 1)
+      #(path, cut_end + 1)
+    }
+    False -> #(path, cut_end)
+  }
   case path != p2 || cut_start < 0 {
     True -> {
       #(state, start)
@@ -230,7 +245,7 @@ fn to_html(sections) {
 }
 
 fn group(rendered: List(print.Rendered)) {
-  // list.fold(rendered, #([[first.0]], first.2), fn(state) { 
+  // list.fold(rendered, #([[first.0]], first.2), fn(state) {
   //   let #(store,)
   //  })
   case rendered {
