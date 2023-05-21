@@ -29,6 +29,18 @@ Various extensions exist, when considering extensions do they leave inference co
 
 - simple recursion split let rec tackle early from types https://link.springer.com/content/pdf/10.1007/978-3-030-45237-7_12.pdf
 
+Extending algorithm with Constraints Wand https://www.cs.uwyo.edu/~jlc/papers/CIE_2008.pdf
+Wand and polymorphism https://www.win.tue.nl/~hzantema/semssm.pdf
+
+Really nice W vs J write up https://www.ccs.neu.edu/home/amal/course/7480-s12/inference-notes.pdf
+
+J impl https://github.com/quasarbright/AlgorithmJ/blob/master/src/Static/Context.hs
+J fast imple with levels https://github.com/jfecher/algorithm-j/blob/master/j.ml
+ Best J explaination https://www.cl.cam.ac.uk/teaching/1415/L28/type-inference.pdf
+
+Worth a read = https://okmij.org/ftp/ML/generalization.html#history
+
+hm in go https://github.com/chewxy/hm Lazy copy all version of env
 
 ### Type vs Kind
 
@@ -197,3 +209,16 @@ More of a compilation concern
 Are continuations just first class control flow, do we need to call them effects as that is not really the case for for comprehensions
 Can we always CPS style with backpassing and perform is just bumping to the higher level
 If I want to handle a promise I need a different API http.get vs task.async(http.get)
+
+## Incremental
+- Compiler Design Module 1 : Compilation is partial evaluation of the Interpreter https://www.youtube.com/watch?v=x8klFfatAZg
+- incremental mini-caml
+- Using standard type algorithms incrementally. https://arxiv.org/pdf/1808.00225.pdf
+- Hashing modulo alpha equivalence https://simon.peytonjones.org/assets/pdfs/hashing-modulo-alpha.pdf
+  Implement alpha equivalence first. Do the same for unification and show in docs
+  Lots of pages i.e. /aplha-equivalence can be a redirect into bigger pages if need be
+- A systemic approach to incremental type checkers https://www.google.com/search?q=implementing+incremental+type+checker&sxsrf=APwXEde-IG4vs1MO8jXMerEzo3dPre7G_w%3A1680696597486&source=hp&ei=FWUtZIC6GomRxc8Pqv2y0AQ&iflsig=AOEireoAAAAAZC1zJb-pDnbR17uTsLv9osggz7O4auyE&ved=0ahUKEwjAmKnd2pL-AhWJSPEDHaq-DEoQ4dUDCAg&uact=5&oq=implementing+incremental+type+checker&gs_lcp=Cgdnd3Mtd2l6EAMyBQghEKABOgQIIxAnOgUIABCABDoLCC4QgAQQxwEQ0QM6BQguEIAEOgsILhCABBDHARCvAToOCC4QrwEQxwEQ1AIQgAQ6CggAEIAEEEYQ-QE6BwgAEIAEEAo6BggAEBYQHjoICAAQigUQhgM6CAgAEBYQHhAPOggIIRAWEB4QHToECCEQFToHCCEQoAEQClAAWNdAYOJBaAFwAHgBgAHuAYgB9RiSAQYyNi45LjKYAQCgAQE&sclient=gws-wiz#fpstate=ive&vld=cid:86a966b6,vid:1lL5KGVqMos
+
+## Flow analysis
+
+A typesystem equivlent to flow analysis
