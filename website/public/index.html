@@ -67,7 +67,7 @@
         <!-- div to push bg -->
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="wrap bg-white neo-shadow border-black border-2 rounded-xl overflow-hidden"
+            class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"
           >
             <pre
               data-easel="#hello"
@@ -95,7 +95,20 @@
         <!-- many interpreters should exist, there repos should be the show of just using it -->
         <!-- document the features. same sectons in gh md as in pages -->
         <div class="max-w-3xl mx-auto px-4 text-xl">
+          <p>
+            Read the section on
+            <strong
+              ><a href="#structural-editing">Structural editing</a></strong
+            >
+            to learn how to edit the code.
+          </p>
           <h2 class="text-3xl" id="run-everywhere">Run everywhere</h2>
+          <!-- <p>
+            <strong
+              >Including the browser, click the above example to edit and
+              run.</strong
+            >
+          </p> -->
           <p>
             Eyg programs can be run everywhere, on client and server as well as
             build scripts and embedded. The Eyg language makes no assumptions
@@ -274,9 +287,87 @@ match {
         </div>
         <div class="max-w-3xl mx-auto px-4 text-xl">
           <h2 class="text-3xl">Effect types</h2>
-          <p class="max-w-lg">DSL's for embed are easy to make</p>
+          <p class="max-w-lg">
+            All side effects are captured in the type system
+          </p>
           <h2 class="text-3xl" id="structural-editing">Structural editor</h2>
-          <p>Learn all the keys</p>
+          <!-- <h3 class="text-lg font-bold my-2">Two modes</h3> -->
+          <p>
+            Editing with the Eyg code editor is always in
+            <strong>command</strong> or <strong>insert</strong> mode.
+          </p>
+          <h3 class="font-bold mt-2">Insert mode</h3>
+          <p>
+            Insert mode allows you to edit all variables, strings, numbers and
+            label in the program. To enter insert mode press
+            <strong
+              class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+              >i</strong
+            >. To exit press
+            <strong
+              class="bg-gray-100 border border-black rounded w-10 inline-block text-center"
+              >Esc</strong
+            >
+          </p>
+          <h3 class="font-bold mt-2">Command mode</h3>
+          <p>
+            The more powerful is command mode and allows you to create new
+            sections of program faster. In this mode each key press will take
+            the currently targeted element. The target is the item under your
+            cursor and transform it. <em>This list is incomplete.</em>
+          </p>
+          <ul class="my-2">
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >w</strong
+              >
+              wrap the current expression as the arguments to a function call
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >i</strong
+              >
+              enter insert mode
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >d</strong
+              >
+              delete the current expression
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >f</strong
+              >
+              wrap the current expression as the body of a function
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >g</strong
+              >
+              select a record field from the expression
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >x</strong
+              >
+              wrap the current expression as the element of list
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >c</strong
+              >
+              call the current expression as a function
+            </li>
+          </ul>
+          <p></p>
           <h2 class="text-3xl">Features</h2>
           All the features
           <p>Pages to learn about the implementation</p>

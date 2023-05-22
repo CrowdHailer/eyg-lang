@@ -84,7 +84,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         "w" -> call_with(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
-        "[" -> list_element(state, start, end)
+        "[" | "x" -> list_element(state, start, end)
         "d" -> delete(state, start, end)
         "f" -> insert_function(state, start, end)
         "g" -> select(state, start, end)
