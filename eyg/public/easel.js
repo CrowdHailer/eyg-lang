@@ -4,6 +4,12 @@
 // lots of work on resumable
 // The server from the eyg project moved the build directory
 import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
+// Some stateful error with rollup happening here
+// import * as db2 from "./db/index.js";
+// console.log(db2);
+// let db = { hello: db2.hello };
+// console.log("yeeeee");
+// Object.assign(db, db2);
 
 console.log("starting easel");
 
@@ -58,8 +64,12 @@ function handleInput(event, state) {
 // exactly the same printing logic OR not using embed for new lines
 // if alway looking up before and after
 
-function resume(element) {
-  let state = Easel.init();
+async function resume(element) {
+  // not really a hash at this point just some key
+  const hash = element.dataset.easel.slice(1);
+  let response = await fetch("/db/" + hash + ".json");
+  let json = await response.json();
+  let state = Easel.init(json);
   let offset = 0;
   element.onclick = function () {
     element.onbeforeinput = function (event) {

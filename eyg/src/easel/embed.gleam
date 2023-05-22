@@ -8,10 +8,12 @@ import gleam/regex
 import gleam/string
 import gleam/stringx
 import eygir/expression as e
-import easel/print
+import eygir/encode
+import eygir/decode
 import eyg/runtime/interpreter as r
 import harness/stdlib
 import harness/effect
+import easel/print
 
 // Not a full app
 // Widget is another name element/panel
@@ -30,22 +32,10 @@ pub type Embed {
   )
 }
 
-pub fn source() {
-  e.Let(
-    "message",
-    e.Binary("Hello, World!"),
-    e.Let(
-      "greet",
-      e.Lambda("message", e.Apply(e.Perform("Alert"), e.Variable("message"))),
-      e.Apply(e.Variable("greet"), e.Variable("message")),
-    ),
-  )
-}
-
-pub fn init() {
-  let s = source()
-  let rendered = print.print(s)
-  Embed(Command(""), s, rendered)
+pub fn init(json) {
+  let assert Ok(source) = decode.decoder(json)
+  let rendered = print.print(source)
+  Embed(Command(""), source, rendered)
 }
 
 pub fn child(expression, index) {
@@ -86,6 +76,10 @@ pub fn insert_text(state: Embed, data, start, end) {
         " " -> {
           let message = run(state)
           let state = Embed(..state, mode: Command(message))
+          #(state, start)
+        }
+        "q" -> {
+          io.print(encode.to_json(state.source))
           #(state, start)
         }
         "w" -> call_with(state, start, end)
