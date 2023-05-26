@@ -3,6 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/map
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/regex
 import gleam/string
@@ -24,10 +25,20 @@ pub type Mode {
   Insert
 }
 
+pub type Path =
+  List(Int)
+
+pub type Edit =
+  #(e.Expression, Path, Bool)
+
+pub type History =
+  #(List(Edit), List(Edit))
+
 pub type Embed {
   Embed(
     mode: Mode,
     source: e.Expression,
+    history: History,
     rendered: #(List(print.Rendered), map.Map(String, Int)),
   )
 }
@@ -35,7 +46,7 @@ pub type Embed {
 pub fn init(json) {
   let assert Ok(source) = decode.decoder(json)
   let rendered = print.print(source)
-  Embed(Command(""), source, rendered)
+  Embed(Command(""), source, #([], []), rendered)
 }
 
 pub fn child(expression, index) {
@@ -88,6 +99,8 @@ pub fn insert_text(state: Embed, data, start, end) {
         "d" -> delete(state, start, end)
         "f" -> insert_function(state, start, end)
         "g" -> select(state, start, end)
+        "z" -> undo(state, start)
+        "Z" -> redo(state, start)
         "c" -> call(state, start, end)
 
         // TODO reuse history and inference components
@@ -133,60 +146,71 @@ pub fn insert_text(state: Embed, data, start, end) {
         _ -> {
           let assert Ok(#(target, rezip)) = zipper(state.source, path)
           // always the same path
-          let #(new, sub, offset) = case target {
+          let #(new, sub, offset, text_only) = case target {
             e.Lambda(param, body) -> {
               let #(param, offset) = replace_at(param, cut_start, cut_end, data)
-              #(e.Lambda(param, body), [], offset)
+              #(e.Lambda(param, body), [], offset, True)
             }
             e.Apply(e.Apply(e.Cons, _), _) -> {
               let new = e.Apply(e.Apply(e.Cons, e.Vacant("")), target)
-              #(new, [0, 1], 0)
+              #(new, [0, 1], 0, False)
             }
             e.Let(label, value, then) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Let(label, value, then), [], offset)
+              #(e.Let(label, value, then), [], offset, True)
             }
             e.Variable(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              let new = case label {
-                "" -> e.Vacant("")
-                _ -> e.Variable(label)
+              let #(new, text_only) = case label {
+                "" -> #(e.Vacant(""), False)
+                _ -> #(e.Variable(label), True)
               }
-              #(new, [], offset)
+              #(new, [], offset, text_only)
             }
             e.Vacant(_) ->
               case data {
-                "\"" -> #(e.Binary(""), [], 0)
-                "[" -> #(e.Tail, [], 0)
-                "{" -> #(e.Empty, [], 0)
+                "\"" -> #(e.Binary(""), [], 0, False)
+                "[" -> #(e.Tail, [], 0, False)
+                "{" -> #(e.Empty, [], 0, False)
                 // TODO need to add path to step in
-                "(" -> #(e.Apply(e.Vacant(""), e.Vacant("")), [], 0)
-                "=" -> #(e.Let("", e.Vacant(""), e.Vacant("")), [], 0)
+                "(" -> #(e.Apply(e.Vacant(""), e.Vacant("")), [], 0, False)
+                "=" -> #(e.Let("", e.Vacant(""), e.Vacant("")), [], 0, False)
                 "|" -> #(
                   e.Apply(e.Apply(e.Case(""), e.Vacant("")), e.Vacant("")),
                   [],
                   0,
+                  False,
                 )
-                "^" -> #(e.Perform(""), [], 0)
+                "^" -> #(e.Perform(""), [], 0, False)
                 _ -> {
                   let assert Ok(re) = regex.from_string("^[a-zA-Z]$")
                   case int.parse(data) {
-                    Ok(number) -> #(e.Integer(number), [], string.length(data))
+                    Ok(number) -> #(
+                      e.Integer(number),
+                      [],
+                      string.length(data),
+                      False,
+                    )
                     Error(Nil) ->
                       case regex.check(re, data) {
-                        True -> #(e.Variable(data), [], string.length(data))
-                        _ -> #(target, [], cut_start)
+                        True -> #(
+                          e.Variable(data),
+                          [],
+                          string.length(data),
+                          False,
+                        )
+                        _ -> #(target, [], cut_start, True)
                       }
                   }
                 }
               }
             e.Binary(value) -> {
               let value = stringx.replace_at(value, cut_start, cut_end, data)
-              #(e.Binary(value), [], cut_start + string.length(data))
+              #(e.Binary(value), [], cut_start + string.length(data), True)
             }
             e.Integer(value) -> {
               case data == "-" && cut_start == 0 {
-                True -> #(e.Integer(0 - value), [], 1)
+                True -> #(e.Integer(0 - value), [], 1, True)
                 False ->
                   case int.parse(data) {
                     Ok(_) -> {
@@ -194,9 +218,14 @@ pub fn insert_text(state: Embed, data, start, end) {
                         int.to_string(value)
                         |> stringx.replace_at(cut_start, cut_end, data)
                         |> int.parse()
-                      #(e.Integer(value), [], cut_start + string.length(data))
+                      #(
+                        e.Integer(value),
+                        [],
+                        cut_start + string.length(data),
+                        True,
+                      )
                     }
-                    Error(Nil) -> #(target, [], cut_start)
+                    Error(Nil) -> #(target, [], cut_start, False)
                   }
               }
             }
@@ -206,45 +235,67 @@ pub fn insert_text(state: Embed, data, start, end) {
                   e.Apply(e.Apply(e.Cons, e.Vacant("")), e.Vacant("")),
                   [0, 1],
                   cut_start,
+                  False,
                 )
               }
             }
             e.Extend(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Extend(label), [], offset)
+              #(e.Extend(label), [], offset, True)
             }
             e.Select(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Select(label), [], offset)
+              #(e.Select(label), [], offset, True)
             }
             e.Overwrite(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Overwrite(label), [], offset)
+              #(e.Overwrite(label), [], offset, True)
             }
 
             e.Perform(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Perform(label), [], offset)
+              #(e.Perform(label), [], offset, True)
             }
             e.Handle(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Handle(label), [], offset)
+              #(e.Handle(label), [], offset, True)
             }
             node -> {
               io.debug(#("nothing", node))
-              #(node, [], cut_start)
+              #(node, [], cut_start, False)
             }
           }
-          let source = rezip(new)
-          // TODO move to update source
-          let rendered = print.print(source)
-          // zip and target
-          // io.debug(rendered)
+          case target == new {
+            True -> #(state, start)
+            False -> {
+              let new = rezip(new)
+              let backwards = case state.history.1 {
+                [#(original, p, True), ..rest] if p == path && text_only -> {
+                  [#(original, path, True), ..rest]
+                }
+                _ -> [#(state.source, path, True), ..state.history.1]
+              }
+              let history = #([], backwards)
+              // TODO move to update source
+              let rendered = print.print(new)
+              // zip and target
+              // io.debug(rendered)
 
-          // update source source have a offset function
-          let path = list.append(path, sub)
-          let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-          #(Embed(..state, source: source, rendered: rendered), start + offset)
+              // update source source have a offset function
+              let path = list.append(path, sub)
+              let assert Ok(start) =
+                map.get(rendered.1, print.path_to_string(path))
+              #(
+                Embed(
+                  ..state,
+                  source: new,
+                  history: history,
+                  rendered: rendered,
+                ),
+                start + offset,
+              )
+            }
+          }
         }
       }
     }
@@ -301,12 +352,17 @@ pub fn list_element(state: Embed, start, end) {
       #(state, start)
     }
     False -> {
-      let assert Ok(#(target, rezip)) = zipper(state.source, path)
-      let source = rezip(e.Apply(e.Apply(e.Cons, target), e.Tail))
+      let source = state.source
+      let assert Ok(#(target, rezip)) = zipper(source, path)
+      let new = rezip(e.Apply(e.Apply(e.Cons, target), e.Tail))
+      let history = #([], [#(source, path, False), ..state.history.1])
       // TODO move to update source
-      let rendered = print.print(source)
+      let rendered = print.print(new)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(Embed(mode: Insert, source: source, rendered: rendered), start)
+      #(
+        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        start,
+      )
     }
   }
 }
@@ -320,12 +376,18 @@ pub fn delete(state: Embed, start, end) {
       #(state, start)
     }
     False -> {
-      let assert Ok(#(target, rezip)) = zipper(state.source, path)
-      let source = rezip(e.Vacant(""))
+      let source = state.source
+      let assert Ok(#(target, rezip)) = zipper(source, path)
+      let new = rezip(e.Vacant(""))
+      let history = #([], [#(source, path, False), ..state.history.1])
+
       // TODO move to update source
-      let rendered = print.print(source)
+      let rendered = print.print(new)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(Embed(mode: Insert, source: source, rendered: rendered), start)
+      #(
+        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        start,
+      )
     }
   }
 }
@@ -339,12 +401,18 @@ pub fn insert_function(state: Embed, start, end) {
       #(state, start)
     }
     False -> {
-      let assert Ok(#(target, rezip)) = zipper(state.source, path)
-      let source = rezip(e.Lambda("", target))
+      let source = state.source
+      let assert Ok(#(target, rezip)) = zipper(source, path)
+      let new = rezip(e.Lambda("", target))
+      let history = #([], [#(source, path, False), ..state.history.1])
+
       // TODO move to update source
-      let rendered = print.print(source)
+      let rendered = print.print(new)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(Embed(mode: Insert, source: source, rendered: rendered), start)
+      #(
+        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        start,
+      )
     }
   }
 }
@@ -358,13 +426,69 @@ pub fn select(state: Embed, start, end) {
       #(state, start)
     }
     False -> {
-      let assert Ok(#(target, rezip)) = zipper(state.source, path)
-      let source = rezip(e.Apply(e.Select(""), target))
+      let source = state.source
+      let assert Ok(#(target, rezip)) = zipper(source, path)
+      let new = rezip(e.Apply(e.Select(""), target))
+      let history = #([], [#(source, path, False), ..state.history.1])
+
       // TODO move to update source
-      let rendered = print.print(source)
+      let rendered = print.print(new)
       let assert Ok(start) =
         map.get(rendered.1, print.path_to_string(list.append(path, [0])))
-      #(Embed(mode: Insert, source: source, rendered: rendered), start)
+      #(
+        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        start,
+      )
+    }
+  }
+}
+
+pub fn undo(state: Embed, start) {
+  let assert Ok(#(_ch, current_path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  case state.history.1 {
+    [] -> #(Embed(..state, mode: Command("no undo available")), start)
+    [edit, ..backwards] -> {
+      let #(old, path, text_only) = edit
+      let rendered = print.print(old)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      let state =
+        Embed(
+          mode: Command(""),
+          source: old,
+          // I think text only get's off by one here
+          history: #(
+            [#(state.source, current_path, text_only), ..state.history.0],
+            backwards,
+          ),
+          rendered: rendered,
+        )
+      #(state, start)
+    }
+  }
+}
+
+pub fn redo(state: Embed, start) {
+  let assert Ok(#(_ch, current_path, cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  case state.history.0 {
+    [] -> #(Embed(..state, mode: Command("no redo available")), start)
+    [edit, ..forward] -> {
+      let #(other, path, text_only) = edit
+      let rendered = print.print(other)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      let state =
+        Embed(
+          mode: Command(""),
+          source: other,
+          // I think text only get's off by one here
+          history: #(
+            forward,
+            [#(state.source, current_path, text_only), ..state.history.1],
+          ),
+          rendered: rendered,
+        )
+      #(state, start)
     }
   }
 }
@@ -411,7 +535,8 @@ pub fn call(state: Embed, start, end) {
 
 pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(#(_ch, path, offset, _style)) = list.at(state.rendered.0, index)
-  let assert Ok(#(target, rezip)) = zipper(state.source, path)
+  let source = state.source
+  let assert Ok(#(target, rezip)) = zipper(source, path)
 
   let new = case target {
     e.Let(label, value, then) -> {
@@ -419,11 +544,16 @@ pub fn insert_paragraph(index, state: Embed) {
     }
     node -> e.Let("", node, e.Vacant(""))
   }
-  let source = rezip(new)
-  let rendered = print.print(source)
+  let new = rezip(new)
+  let history = #([], [#(source, path, False), ..state.history.1])
+
+  let rendered = print.print(new)
   let assert Ok(start) =
     map.get(rendered.1, print.path_to_string(list.append(path, [1])))
-  #(Embed(mode: Insert, source: source, rendered: rendered), start)
+  #(
+    Embed(mode: Insert, source: new, history: history, rendered: rendered),
+    start,
+  )
 }
 
 pub fn html(embed: Embed) {
