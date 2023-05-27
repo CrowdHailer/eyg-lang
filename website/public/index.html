@@ -10,7 +10,7 @@
     />
     <link rel="stylesheet" href="./layout.css" />
     <link rel="stylesheet" href="./neo.css" />
-
+    <script src="/easel.js" type="module" async defer></script>
     <title>Eyg</title>
   </head>
   <body>
@@ -192,7 +192,6 @@ deploy by reference
           </div>
         </div>
         <div class="max-w-3xl mx-auto px-4 text-xl">
-          <script src="/easel.js" type="module" async defer></script>
           <h2 class="text-3xl">Syntax is optional</h2>
           <p>
             There are less than 20 different kinds of node in Eyg's abstract
@@ -207,7 +206,8 @@ deploy by reference
           <div class="py-4"></div>
         </div>
       </div>
-      <div class="expand w-full purple-gradient">
+      <!-- <div class="expand w-full blue-gradient drop"></div> -->
+      <div class="expand w-full purple-gradient drop">
         <div class="max-w-3xl w-full mx-auto">
           <div
             class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"
@@ -234,19 +234,16 @@ deploy by reference
         </div>
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+            class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"
           >
-            <pre>
-let _ = std.equal("bob", <span class="text-pink-4">Binary</span>)
-let _ = std.equal(5, <span class="text-pink-4">Integer</span>)</pre>
-            <div class="expand"></div>
-            <div>
-              <pre
-                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
-              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
--> Binary</span> -->
-
-</pre>
+            <pre
+              data-easel="#holes"
+              class="overflow-auto outline-none w-full my-1 mx-4"
+              style=""
+              spellcheck="false"
+            ></pre>
+            <div class="bg-purple-1 px-4 font-mono font-bold">
+              click to edit & run
             </div>
           </div>
         </div>

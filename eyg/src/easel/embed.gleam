@@ -3,6 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/map
+import gleam/mapx
 import gleam/option.{None, Option, Some}
 import gleam/result
 import gleam/regex
@@ -39,7 +40,7 @@ pub type History =
 pub type Embed {
   Embed(
     mode: Mode,
-    std: Option(e.Expression),
+    std: Option(#(e.Expression, tree.State)),
     source: e.Expression,
     history: History,
     // use an auto infer option
@@ -48,20 +49,41 @@ pub type Embed {
   )
 }
 
-fn do_infer(source) {
-  // TODO real effects
-  tree.infer(source, t.Var(-1), t.Var(-2))
+// infer continuation
+fn do_infer(source, std) {
+  case std {
+    Some(#(e, state)) -> {
+      let #(sub, next, types) = state
+      let assert Ok(Ok(t)) = map.get(types, [])
+      let env = mapx.singleton("std", #([], t))
+      tree.infer_env(source, t.Var(-1), t.Var(-2), env, sub, next)
+    }
+    None ->
+      // TODO real effects
+      tree.infer(source, t.Var(-1), t.Var(-2))
+  }
 }
 
 pub fn init(json) {
   let assert Ok(source) = decode.decoder(json)
   // inferred std is cached
   let #(std, source) = case source {
-    e.Let("std", std, e.Lambda("_", body)) -> #(Some(std), body)
-    _ -> #(None, source)
+    e.Let("std", std, e.Lambda("_", body)) -> {
+      let state = tree.infer(std, t.Var(-3), t.Var(-4))
+      #(Some(#(std, state)), body)
+    }
+    e.Let("std", std, other) -> {
+      // Capture is capturing multiple times needs some tests
+      io.debug(other)
+      panic("sss")
+    }
+    _ -> {
+      io.debug(source)
+      #(None, source)
+    }
   }
   // can keep inferred in history
-  let inferred = do_infer(source)
+  let inferred = do_infer(source, std)
   let rendered = print.print(source, inferred)
   Embed(Command(""), std, source, #([], []), Some(inferred), rendered)
 }
@@ -294,7 +316,7 @@ pub fn insert_text(state: Embed, data, start, end) {
               }
               let history = #([], backwards)
               // TODO move to update source
-              let inferred = do_infer(new)
+              let inferred = do_infer(new, state.std)
 
               let rendered = print.print(new, inferred)
               // zip and target
@@ -331,7 +353,7 @@ fn run(state: Embed) {
   let #(_lift, _resume, handler) = effect.window_alert()
 
   let source = case state.std {
-    Some(std) -> e.Let("std", std, state.source)
+    Some(#(std, _)) -> e.Let("std", std, state.source)
     None -> state.source
   }
   let handlers =
@@ -381,7 +403,7 @@ pub fn list_element(state: Embed, start, end) {
       let new = rezip(e.Apply(e.Apply(e.Cons, target), e.Tail))
       let history = #([], [#(source, path, False), ..state.history.1])
       // TODO move to update source
-      let inferred = do_infer(new)
+      let inferred = do_infer(new, state.std)
       let rendered = print.print(new, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
@@ -413,7 +435,7 @@ pub fn delete(state: Embed, start, end) {
       let history = #([], [#(source, path, False), ..state.history.1])
 
       // TODO move to update source
-      let inferred = do_infer(new)
+      let inferred = do_infer(new, state.std)
       let rendered = print.print(new, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
@@ -445,7 +467,7 @@ pub fn insert_function(state: Embed, start, end) {
       let history = #([], [#(source, path, False), ..state.history.1])
 
       // TODO move to update source
-      let inferred = do_infer(new)
+      let inferred = do_infer(new, state.std)
       let rendered = print.print(new, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
@@ -477,7 +499,7 @@ pub fn select(state: Embed, start, end) {
       let history = #([], [#(source, path, False), ..state.history.1])
 
       // TODO move to update source
-      let inferred = do_infer(new)
+      let inferred = do_infer(new, state.std)
 
       let rendered = print.print(new, inferred)
       let assert Ok(start) =
@@ -503,7 +525,7 @@ pub fn undo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no undo available")), start)
     [edit, ..backwards] -> {
       let #(old, path, text_only) = edit
-      let inferred = do_infer(old)
+      let inferred = do_infer(old, state.std)
       let rendered = print.print(old, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
@@ -530,7 +552,7 @@ pub fn redo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no redo available")), start)
     [edit, ..forward] -> {
       let #(other, path, text_only) = edit
-      let inferred = do_infer(other)
+      let inferred = do_infer(other, state.std)
       let rendered = print.print(other, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
@@ -562,7 +584,7 @@ pub fn call_with(state: Embed, start, end) {
       let assert Ok(#(target, rezip)) = zipper(state.source, path)
       let source = rezip(e.Apply(e.Vacant(""), target))
       // TODO move to update source
-      let inferred = do_infer(source)
+      let inferred = do_infer(source, state.std)
 
       let rendered = print.print(source, inferred)
       let assert Ok(start) =
@@ -584,7 +606,7 @@ pub fn call(state: Embed, start, end) {
       let assert Ok(#(target, rezip)) = zipper(state.source, path)
       let source = rezip(e.Apply(target, e.Vacant("")))
       // TODO move to update source
-      let inferred = do_infer(source)
+      let inferred = do_infer(source, state.std)
 
       let rendered = print.print(source, inferred)
       let assert Ok(start) =
@@ -608,7 +630,7 @@ pub fn insert_paragraph(index, state: Embed) {
   let new = rezip(new)
   let history = #([], [#(source, path, False), ..state.history.1])
 
-  let inferred = do_infer(new)
+  let inferred = do_infer(new, state.std)
 
   let rendered = print.print(new, inferred)
   let assert Ok(start) =
