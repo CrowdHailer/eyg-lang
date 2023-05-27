@@ -15,6 +15,8 @@ import eyg/runtime/interpreter as r
 import harness/stdlib
 import harness/effect
 import easel/print
+import eyg/analysis/jm/tree
+import eyg/analysis/jm/type_ as t
 
 // Not a full app
 // Widget is another name element/panel
@@ -40,18 +42,28 @@ pub type Embed {
     std: Option(e.Expression),
     source: e.Expression,
     history: History,
+    // use an auto infer option
+    inferred: Option(tree.State),
     rendered: #(List(print.Rendered), map.Map(String, Int)),
   )
 }
 
+fn do_infer(source) {
+  // TODO real effects
+  tree.infer(source, t.Var(-1), t.Var(-2))
+}
+
 pub fn init(json) {
   let assert Ok(source) = decode.decoder(json)
+  // inferred std is cached
   let #(std, source) = case source {
     e.Let("std", std, e.Lambda("_", body)) -> #(Some(std), body)
     _ -> #(None, source)
   }
-  let rendered = print.print(source)
-  Embed(Command(""), std, source, #([], []), rendered)
+  // can keep inferred in history
+  let inferred = do_infer(source)
+  let rendered = print.print(source, inferred)
+  Embed(Command(""), std, source, #([], []), Some(inferred), rendered)
 }
 
 pub fn child(expression, index) {
@@ -282,7 +294,9 @@ pub fn insert_text(state: Embed, data, start, end) {
               }
               let history = #([], backwards)
               // TODO move to update source
-              let rendered = print.print(new)
+              let inferred = do_infer(new)
+
+              let rendered = print.print(new, inferred)
               // zip and target
               // io.debug(rendered)
 
@@ -367,7 +381,8 @@ pub fn list_element(state: Embed, start, end) {
       let new = rezip(e.Apply(e.Apply(e.Cons, target), e.Tail))
       let history = #([], [#(source, path, False), ..state.history.1])
       // TODO move to update source
-      let rendered = print.print(new)
+      let inferred = do_infer(new)
+      let rendered = print.print(new, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
         Embed(
@@ -398,7 +413,8 @@ pub fn delete(state: Embed, start, end) {
       let history = #([], [#(source, path, False), ..state.history.1])
 
       // TODO move to update source
-      let rendered = print.print(new)
+      let inferred = do_infer(new)
+      let rendered = print.print(new, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
         Embed(
@@ -429,7 +445,8 @@ pub fn insert_function(state: Embed, start, end) {
       let history = #([], [#(source, path, False), ..state.history.1])
 
       // TODO move to update source
-      let rendered = print.print(new)
+      let inferred = do_infer(new)
+      let rendered = print.print(new, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
         Embed(
@@ -460,7 +477,9 @@ pub fn select(state: Embed, start, end) {
       let history = #([], [#(source, path, False), ..state.history.1])
 
       // TODO move to update source
-      let rendered = print.print(new)
+      let inferred = do_infer(new)
+
+      let rendered = print.print(new, inferred)
       let assert Ok(start) =
         map.get(rendered.1, print.path_to_string(list.append(path, [0])))
       #(
@@ -484,7 +503,8 @@ pub fn undo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no undo available")), start)
     [edit, ..backwards] -> {
       let #(old, path, text_only) = edit
-      let rendered = print.print(old)
+      let inferred = do_infer(old)
+      let rendered = print.print(old, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -510,7 +530,8 @@ pub fn redo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no redo available")), start)
     [edit, ..forward] -> {
       let #(other, path, text_only) = edit
-      let rendered = print.print(other)
+      let inferred = do_infer(other)
+      let rendered = print.print(other, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -541,7 +562,9 @@ pub fn call_with(state: Embed, start, end) {
       let assert Ok(#(target, rezip)) = zipper(state.source, path)
       let source = rezip(e.Apply(e.Vacant(""), target))
       // TODO move to update source
-      let rendered = print.print(source)
+      let inferred = do_infer(source)
+
+      let rendered = print.print(source, inferred)
       let assert Ok(start) =
         map.get(rendered.1, print.path_to_string(list.append(path, [0])))
       #(Embed(..state, source: source, rendered: rendered), start)
@@ -561,7 +584,9 @@ pub fn call(state: Embed, start, end) {
       let assert Ok(#(target, rezip)) = zipper(state.source, path)
       let source = rezip(e.Apply(target, e.Vacant("")))
       // TODO move to update source
-      let rendered = print.print(source)
+      let inferred = do_infer(source)
+
+      let rendered = print.print(source, inferred)
       let assert Ok(start) =
         map.get(rendered.1, print.path_to_string(list.append(path, [1])))
       #(Embed(..state, source: source, rendered: rendered), start)
@@ -583,7 +608,9 @@ pub fn insert_paragraph(index, state: Embed) {
   let new = rezip(new)
   let history = #([], [#(source, path, False), ..state.history.1])
 
-  let rendered = print.print(new)
+  let inferred = do_infer(new)
+
+  let rendered = print.print(new, inferred)
   let assert Ok(start) =
     map.get(rendered.1, print.path_to_string(list.append(path, [1])))
   #(

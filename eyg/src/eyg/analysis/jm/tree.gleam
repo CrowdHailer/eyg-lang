@@ -24,15 +24,18 @@ pub fn loop(run) {
   }
 }
 
-pub fn infer(exp, type_, eff) {
+pub fn infer_env(exp, type_, eff, env) {
   let sub = map.new()
   let next = 0
   let types = map.new()
-  let env = map.new()
   // Switching path to integer took ~ 20% off the inference time 600ms to 500ms for 6000 nodes
   let path = []
   let acc = #(sub, next, types)
   loop(step(acc, env, exp, path, type_, eff, Done))
+}
+
+pub fn infer(exp, type_, eff) {
+  infer_env(exp, type_, eff, map.new())
 }
 
 fn step(acc, env, exp, path, type_, eff, k) {
