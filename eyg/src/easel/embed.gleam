@@ -346,10 +346,11 @@ fn reason_to_string(reason) {
 }
 
 fn term_to_string(term) {
-  case term {
-    r.Binary(value) -> string.concat(["\"", value, "\""])
-    _ -> "non string term"
-  }
+  r.to_string(term)
+  // case term {
+  //   r.Binary(value) -> string.concat(["\"", value, "\""])
+  //   _ -> "non string term"
+  // }
 }
 
 pub fn list_element(state: Embed, start, end) {
