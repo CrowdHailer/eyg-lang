@@ -210,28 +210,16 @@ deploy by reference
       <div class="expand w-full purple-gradient">
         <div class="max-w-3xl w-full mx-auto">
           <div
-            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
+            class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"
           >
-            <pre>
-let name = user -> {
-  let first = user.first
-  let second = user.second
-  string.concat([first, " ", second])
-}
-
-let _ = name(<span class="text-orange-3">{first: Binary, second: Binary, ..0}</span>)</pre>
-            <div class="expand"></div>
-            <div>
-              <pre
-                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
-              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
--> Binary</span> -->declaration
-
-
-
-
-
-type suggestion</pre>
+            <pre
+              data-easel="#infer"
+              class="overflow-auto outline-none w-full my-1 mx-4"
+              style=""
+              spellcheck="false"
+            ></pre>
+            <div class="bg-purple-1 px-4 font-mono font-bold">
+              click to edit & run
             </div>
           </div>
         </div>

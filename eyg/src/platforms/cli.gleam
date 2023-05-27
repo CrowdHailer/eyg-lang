@@ -7,6 +7,8 @@ import eyg/runtime/interpreter as r
 import harness/stdlib
 import harness/effect
 import gleam/javascript/promise
+import plinth/nodejs/fs
+import harness/ffi/cast
 
 fn handlers() {
   effect.init()
@@ -14,6 +16,7 @@ fn handlers() {
   |> effect.extend("HTTP", effect.http())
   |> effect.extend("Await", effect.await())
   |> effect.extend("Wait", effect.wait())
+  |> effect.extend("File_Write", file_write())
 }
 
 pub fn typ() {
@@ -54,4 +57,18 @@ pub fn run(source, args) {
   code
   |> nodejs.exit()
   promise.resolve(code)
+}
+
+fn file_write() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(request, k) {
+      use file <- cast.field("file", cast.string, request)
+      use content <- cast.field("content", cast.string, request)
+      fs.write_file_sync(file, content)
+      |> io.debug
+      r.continue(k, r.unit)
+    },
+  )
 }

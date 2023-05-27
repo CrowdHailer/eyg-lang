@@ -3,7 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/map
-import gleam/option.{None, Some}
+import gleam/option.{None, Option, Some}
 import gleam/result
 import gleam/regex
 import gleam/string
@@ -37,6 +37,7 @@ pub type History =
 pub type Embed {
   Embed(
     mode: Mode,
+    std: Option(e.Expression),
     source: e.Expression,
     history: History,
     rendered: #(List(print.Rendered), map.Map(String, Int)),
@@ -45,8 +46,12 @@ pub type Embed {
 
 pub fn init(json) {
   let assert Ok(source) = decode.decoder(json)
+  let #(std, source) = case source {
+    e.Let("std", std, e.Lambda("_", body)) -> #(Some(std), body)
+    _ -> #(None, source)
+  }
   let rendered = print.print(source)
-  Embed(Command(""), source, #([], []), rendered)
+  Embed(Command(""), std, source, #([], []), rendered)
 }
 
 pub fn child(expression, index) {
@@ -311,11 +316,15 @@ fn replace_at(label, start, end, data) {
 fn run(state: Embed) {
   let #(_lift, _resume, handler) = effect.window_alert()
 
+  let source = case state.std {
+    Some(std) -> e.Let("std", std, state.source)
+    None -> state.source
+  }
   let handlers =
     map.new()
     |> map.insert("Alert", handler)
   let env = stdlib.env()
-  case r.handle(r.eval(state.source, env, r.Value), env.builtins, handlers) {
+  case r.handle(r.eval(source, env, r.Value), env.builtins, handlers) {
     r.Abort(reason) -> reason_to_string(reason)
     r.Value(term) -> term_to_string(term)
     _ -> panic("this should be tackled better in the run code")
@@ -360,7 +369,13 @@ pub fn list_element(state: Embed, start, end) {
       let rendered = print.print(new)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
-        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
         start,
       )
     }
@@ -385,7 +400,13 @@ pub fn delete(state: Embed, start, end) {
       let rendered = print.print(new)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
-        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
         start,
       )
     }
@@ -410,7 +431,13 @@ pub fn insert_function(state: Embed, start, end) {
       let rendered = print.print(new)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
-        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
         start,
       )
     }
@@ -436,7 +463,13 @@ pub fn select(state: Embed, start, end) {
       let assert Ok(start) =
         map.get(rendered.1, print.path_to_string(list.append(path, [0])))
       #(
-        Embed(mode: Insert, source: new, history: history, rendered: rendered),
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
         start,
       )
     }
@@ -454,6 +487,7 @@ pub fn undo(state: Embed, start) {
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
+          ..state,
           mode: Command(""),
           source: old,
           // I think text only get's off by one here
@@ -479,6 +513,7 @@ pub fn redo(state: Embed, start) {
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
+          ..state,
           mode: Command(""),
           source: other,
           // I think text only get's off by one here
@@ -551,7 +586,13 @@ pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(start) =
     map.get(rendered.1, print.path_to_string(list.append(path, [1])))
   #(
-    Embed(mode: Insert, source: new, history: history, rendered: rendered),
+    Embed(
+      ..state,
+      mode: Insert,
+      source: new,
+      history: history,
+      rendered: rendered,
+    ),
     start,
   )
 }
