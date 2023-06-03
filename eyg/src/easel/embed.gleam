@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/listx
 import gleam/map
 import gleam/mapx
 import gleam/option.{None, Option, Some}
@@ -52,7 +51,7 @@ pub type Embed {
 // infer continuation
 fn do_infer(source, std) {
   case std {
-    Some(#(e, state)) -> {
+    Some(#(_e, state)) -> {
       let #(sub, next, types) = state
       let assert Ok(Ok(t)) = map.get(types, [])
       let env = mapx.singleton("std", #([], t))
@@ -72,7 +71,7 @@ pub fn init(json) {
       let state = tree.infer(std, t.Var(-3), t.Var(-4))
       #(Some(#(std, state)), body)
     }
-    e.Let("std", std, other) -> {
+    e.Let("std", _std, other) -> {
       // Capture is capturing multiple times needs some tests
       io.debug(other)
       panic("sss")
@@ -374,10 +373,11 @@ fn reason_to_string(reason) {
       string.concat(["unexpected term, expected", expected])
     r.MissingField(field) -> string.concat(["missing record field", field])
     r.NoCases -> string.concat(["no cases matched"])
-    r.NotAFunction(term) -> "not a function"
+    r.NotAFunction(term) ->
+      string.concat(["function expected got: ", term_to_string(term)])
     r.UnhandledEffect(effect, _with) ->
       string.concat(["unhandled effect ", effect])
-    r.Vacant(note) -> "tried to run a todo"
+    r.Vacant(note) -> string.concat(["tried to run a todo: ", note])
   }
 }
 
@@ -390,9 +390,9 @@ fn term_to_string(term) {
 }
 
 pub fn list_element(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, cut_start, _style)) =
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
   case path != p2 {
     True -> {
       #(state, start)
@@ -421,16 +421,16 @@ pub fn list_element(state: Embed, start, end) {
 }
 
 pub fn delete(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, cut_start, _style)) =
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
   case path != p2 {
     True -> {
       #(state, start)
     }
     False -> {
       let source = state.source
-      let assert Ok(#(target, rezip)) = zipper(source, path)
+      let assert Ok(#(_target, rezip)) = zipper(source, path)
       let new = rezip(e.Vacant(""))
       let history = #([], [#(source, path, False), ..state.history.1])
 
@@ -453,9 +453,9 @@ pub fn delete(state: Embed, start, end) {
 }
 
 pub fn insert_function(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, cut_start, _style)) =
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
   case path != p2 {
     True -> {
       #(state, start)
@@ -485,9 +485,9 @@ pub fn insert_function(state: Embed, start, end) {
 }
 
 pub fn select(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, cut_start, _style)) =
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
   case path != p2 {
     True -> {
       #(state, start)
@@ -519,7 +519,7 @@ pub fn select(state: Embed, start, end) {
 }
 
 pub fn undo(state: Embed, start) {
-  let assert Ok(#(_ch, current_path, cut_start, _style)) =
+  let assert Ok(#(_ch, current_path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
   case state.history.1 {
     [] -> #(Embed(..state, mode: Command("no undo available")), start)
@@ -546,7 +546,7 @@ pub fn undo(state: Embed, start) {
 }
 
 pub fn redo(state: Embed, start) {
-  let assert Ok(#(_ch, current_path, cut_start, _style)) =
+  let assert Ok(#(_ch, current_path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
   case state.history.0 {
     [] -> #(Embed(..state, mode: Command("no redo available")), start)
@@ -573,9 +573,9 @@ pub fn redo(state: Embed, start) {
 }
 
 pub fn call_with(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, cut_start, _style)) =
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
   case path != p2 {
     True -> {
       #(state, start)
@@ -595,9 +595,9 @@ pub fn call_with(state: Embed, start, end) {
 }
 
 pub fn call(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, cut_start, _style)) =
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, cut_end, _style)) = list.at(state.rendered.0, end)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
   case path != p2 {
     True -> {
       #(state, start)
@@ -617,7 +617,8 @@ pub fn call(state: Embed, start, end) {
 }
 
 pub fn insert_paragraph(index, state: Embed) {
-  let assert Ok(#(_ch, path, offset, _style)) = list.at(state.rendered.0, index)
+  let assert Ok(#(_ch, path, _offset, _style)) =
+    list.at(state.rendered.0, index)
   let source = state.source
   let assert Ok(#(target, rezip)) = zipper(source, path)
 
@@ -701,7 +702,7 @@ fn group(rendered: List(print.Rendered)) {
   //  })
   case rendered {
     [] -> []
-    [#(ch, _path, offset, style), ..rendered] ->
+    [#(ch, _path, _offset, style), ..rendered] ->
       do_group(rendered, [ch], [], style)
   }
 }

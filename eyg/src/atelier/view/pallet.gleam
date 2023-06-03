@@ -9,9 +9,10 @@ import lustre/element.{div, input, span, text, textarea}
 import lustre/event.{on_click}
 import lustre/attribute.{class, classes}
 import eyg/analysis/jm/type_ as t
-import atelier/app.{ClickOption, SelectNode}
+import atelier/app.{SelectNode}
 import atelier/view/type_
-import atelier/inventory
+
+// import atelier/inventory
 
 pub fn render(state: app.WorkSpace, inferred) {
   div(

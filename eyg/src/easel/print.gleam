@@ -247,7 +247,7 @@ pub fn print_keyword(keyword, path, acc) {
   )
 }
 
-pub fn print_with_offset(content, path, style, acc, info, analysis) {
+pub fn print_with_offset(content, path, style, acc, info, _analysis) {
   let info = map.insert(info, path_to_string(path), list.length(acc))
   let #(content, style) = case content {
     "" -> #("_", Missing)

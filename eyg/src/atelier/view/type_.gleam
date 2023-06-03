@@ -5,7 +5,7 @@ import gleam/string
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/error
 
-pub fn render_failure(reason, t1, t2) {
+pub fn render_failure(reason, _t1, _t2) {
   case reason {
     error.TypeMismatch(a, b) ->
       // need to shrink errors together

@@ -150,7 +150,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "n" -> Ok(number(act, state))
     Navigate(act), "m" -> match(act, state)
     Navigate(act), "M" -> nocases(act, state)
-    Navigate(act), " " -> Ok(infer(state))
+    Navigate(_act), " " -> Ok(infer(state))
     Navigate(_), _ -> Error("no action for keypress")
     // Other mode
     WriteLabel(text, commit), k if k == "Enter" -> {
