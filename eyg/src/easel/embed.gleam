@@ -136,10 +136,12 @@ pub fn insert_text(state: Embed, data, start, end) {
         // "r" -> assign_to(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
+        "p" -> perform(state, start, end)
         "s" -> string(state, start, end)
         "d" -> delete(state, start, end)
         "f" -> insert_function(state, start, end)
         "g" -> select(state, start, end)
+        "h" -> handle(state, start, end)
         "z" -> undo(state, start)
         "Z" -> redo(state, start)
         "c" -> call(state, start, end)
@@ -396,31 +398,49 @@ fn term_to_string(term) {
 pub fn list_element(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Apply(e.Cons, target), e.Tail), [])
+  #(e.Apply(e.Apply(e.Cons, target), e.Tail), state.mode, [])
+}
+
+pub fn perform(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  case target {
+    e.Vacant(_) -> #(e.Perform(""), Insert, [])
+    _ -> #(e.Apply(e.Perform(""), target), Insert, [0])
+  }
 }
 
 pub fn string(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Binary(""), [])
+  #(e.Binary(""), Insert, [])
 }
 
 pub fn delete(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Vacant(""), [])
+  #(e.Vacant(""), Insert, [])
 }
 
 pub fn insert_function(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Lambda("", target), [])
+  #(e.Lambda("", target), Insert, [])
 }
 
 pub fn select(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Select(""), target), [0])
+  #(e.Apply(e.Select(""), target), Insert, [0])
+}
+
+pub fn handle(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  case target {
+    e.Vacant(_) -> #(e.Handle(""), Insert, [])
+    _ -> #(e.Apply(e.Handle(""), target), Insert, [0])
+  }
 }
 
 pub fn undo(state: Embed, start) {
@@ -480,25 +500,25 @@ pub fn redo(state: Embed, start) {
 pub fn call_with(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Vacant(""), target), [0])
+  #(e.Apply(e.Vacant(""), target), state.mode, [0])
 }
 
 pub fn assign_to(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Let("", target, e.Vacant("")), [])
+  #(e.Let("", target, e.Vacant("")), Insert, [])
 }
 
 pub fn call(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(target, e.Vacant("")), [1])
+  #(e.Apply(target, e.Vacant("")), state.mode, [1])
 }
 
 pub fn number(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Integer(0), [])
+  #(e.Integer(0), Insert, [])
 }
 
 pub fn insert_paragraph(index, state: Embed) {
@@ -635,7 +655,7 @@ fn update_at(state: Embed, path, cb) {
   case zipper(source, path) {
     Error(Nil) -> panic("how did this happen need path back")
     Ok(#(target, rezip)) -> {
-      let #(updated, sub_path) = cb(target)
+      let #(updated, mode, sub_path) = cb(target)
       let new = rezip(updated)
       let history = #([], [#(source, path, False), ..state.history.1])
       let inferred = do_infer(new, state.std)
@@ -645,7 +665,7 @@ fn update_at(state: Embed, path, cb) {
       #(
         Embed(
           ..state,
-          mode: Insert,
+          mode: mode,
           source: new,
           history: history,
           rendered: rendered,
