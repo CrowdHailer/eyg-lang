@@ -133,6 +133,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         "w" -> call_with(state, start, end)
         "e" -> assign_to(state, start, end)
+        // "r" -> assign_to(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
         "s" -> string(state, start, end)
@@ -392,159 +393,33 @@ fn term_to_string(term) {
 }
 
 pub fn list_element(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      let source = state.source
-      let assert Ok(#(target, rezip)) = zipper(source, path)
-      let new = rezip(e.Apply(e.Apply(e.Cons, target), e.Tail))
-      let history = #([], [#(source, path, False), ..state.history.1])
-      // TODO move to update source
-      let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(
-        Embed(
-          ..state,
-          mode: Insert,
-          source: new,
-          history: history,
-          rendered: rendered,
-        ),
-        start,
-      )
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(e.Apply(e.Cons, target), e.Tail), [])
 }
 
 pub fn string(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      // should this only happen if the target is a whole
-      let source = state.source
-      let assert Ok(#(_target, rezip)) = zipper(source, path)
-      let new = rezip(e.Binary(""))
-      let history = #([], [#(source, path, False), ..state.history.1])
-      // TODO move to update source
-
-      let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(
-        Embed(
-          ..state,
-          mode: Insert,
-          source: new,
-          history: history,
-          rendered: rendered,
-        ),
-        start,
-      )
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use _target <- update_at(state, path)
+  #(e.Binary(""), [])
 }
 
 pub fn delete(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      let source = state.source
-      let assert Ok(#(_target, rezip)) = zipper(source, path)
-      let new = rezip(e.Vacant(""))
-      let history = #([], [#(source, path, False), ..state.history.1])
-
-      // TODO move to update source
-      let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(
-        Embed(..state, source: new, history: history, rendered: rendered),
-        start,
-      )
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use _target <- update_at(state, path)
+  #(e.Vacant(""), [])
 }
 
 pub fn insert_function(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      let source = state.source
-      let assert Ok(#(target, rezip)) = zipper(source, path)
-      let new = rezip(e.Lambda("", target))
-      let history = #([], [#(source, path, False), ..state.history.1])
-
-      // TODO move to update source
-      let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(
-        Embed(
-          ..state,
-          mode: Insert,
-          source: new,
-          history: history,
-          rendered: rendered,
-        ),
-        start,
-      )
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Lambda("", target), [])
 }
 
 pub fn select(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      let source = state.source
-      let assert Ok(#(target, rezip)) = zipper(source, path)
-      let new = rezip(e.Apply(e.Select(""), target))
-      let history = #([], [#(source, path, False), ..state.history.1])
-
-      // TODO move to update source
-      let inferred = do_infer(new, state.std)
-
-      let rendered = print.print(new, inferred)
-      let assert Ok(start) =
-        map.get(rendered.1, print.path_to_string(list.append(path, [0])))
-      #(
-        Embed(
-          ..state,
-          mode: Insert,
-          source: new,
-          history: history,
-          rendered: rendered,
-        ),
-        start,
-      )
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(e.Select(""), target), [0])
 }
 
 pub fn undo(state: Embed, start) {
@@ -602,89 +477,21 @@ pub fn redo(state: Embed, start) {
 }
 
 pub fn call_with(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      let source = state.source
-      let assert Ok(#(target, rezip)) = zipper(source, path)
-      let new = rezip(e.Apply(e.Vacant(""), target))
-      let history = #([], [#(source, path, False), ..state.history.1])
-      // TODO move to update source
-
-      let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(
-        Embed(
-          ..state,
-          mode: Insert,
-          source: new,
-          history: history,
-          rendered: rendered,
-        ),
-        start,
-      )
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(e.Vacant(""), target), [0])
 }
 
 pub fn assign_to(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      let source = state.source
-      let assert Ok(#(target, rezip)) = zipper(source, path)
-      let new = rezip(e.Let("", target, e.Vacant("")))
-      let history = #([], [#(source, path, False), ..state.history.1])
-      // TODO move to update source
-
-      let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
-      #(
-        Embed(
-          ..state,
-          mode: Insert,
-          source: new,
-          history: history,
-          rendered: rendered,
-        ),
-        start,
-      )
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Let("", target, e.Vacant("")), [])
 }
 
 pub fn call(state: Embed, start, end) {
-  let assert Ok(#(_ch, path, _cut_start, _style)) =
-    list.at(state.rendered.0, start)
-  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
-  case path != p2 {
-    True -> {
-      #(state, start)
-    }
-    False -> {
-      let assert Ok(#(target, rezip)) = zipper(state.source, path)
-      let source = rezip(e.Apply(target, e.Vacant("")))
-      // TODO move to update source
-      let inferred = do_infer(source, state.std)
-
-      let rendered = print.print(source, inferred)
-      let assert Ok(start) =
-        map.get(rendered.1, print.path_to_string(list.append(path, [1])))
-      #(Embed(..state, source: source, rendered: rendered), start)
-    }
-  }
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(target, e.Vacant("")), [1])
 }
 
 pub fn insert_paragraph(index, state: Embed) {
@@ -796,4 +603,48 @@ pub fn blur(state) {
 
 pub fn escape(state) {
   Embed(..state, mode: Command(""))
+}
+
+fn single_focus(state: Embed, start, end, cb) {
+  case list.at(state.rendered.0, start) {
+    Error(Nil) -> #(state, start)
+    Ok(#(_ch, path, _cut_start, _style)) -> {
+      case list.at(state.rendered.0, end) {
+        Error(Nil) -> #(state, start)
+        Ok(#(_ch, p2, _cut_end, _style)) ->
+          case path != p2 {
+            True -> {
+              #(state, start)
+            }
+            False -> cb(path)
+          }
+      }
+    }
+  }
+}
+
+fn update_at(state: Embed, path, cb) {
+  let source = state.source
+  case zipper(source, path) {
+    Error(Nil) -> panic("how did this happen need path back")
+    Ok(#(target, rezip)) -> {
+      let #(updated, sub_path) = cb(target)
+      let new = rezip(updated)
+      let history = #([], [#(source, path, False), ..state.history.1])
+      let inferred = do_infer(new, state.std)
+      let rendered = print.print(new, inferred)
+      let path = list.append(path, sub_path)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
+        start,
+      )
+    }
+  }
 }
