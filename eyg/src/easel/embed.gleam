@@ -132,8 +132,10 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start)
         }
         "w" -> call_with(state, start, end)
+        "e" -> assign_to(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
+        "s" -> string(state, start, end)
         "d" -> delete(state, start, end)
         "f" -> insert_function(state, start, end)
         "g" -> select(state, start, end)
@@ -420,6 +422,39 @@ pub fn list_element(state: Embed, start, end) {
   }
 }
 
+pub fn string(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      // should this only happen if the target is a whole
+      let source = state.source
+      let assert Ok(#(_target, rezip)) = zipper(source, path)
+      let new = rezip(e.Binary(""))
+      let history = #([], [#(source, path, False), ..state.history.1])
+      // TODO move to update source
+
+      let inferred = do_infer(new, state.std)
+      let rendered = print.print(new, inferred)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
+        start,
+      )
+    }
+  }
+}
+
 pub fn delete(state: Embed, start, end) {
   let assert Ok(#(_ch, path, _cut_start, _style)) =
     list.at(state.rendered.0, start)
@@ -439,13 +474,7 @@ pub fn delete(state: Embed, start, end) {
       let rendered = print.print(new, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
-        Embed(
-          ..state,
-          mode: Insert,
-          source: new,
-          history: history,
-          rendered: rendered,
-        ),
+        Embed(..state, source: new, history: history, rendered: rendered),
         start,
       )
     }
@@ -581,15 +610,57 @@ pub fn call_with(state: Embed, start, end) {
       #(state, start)
     }
     False -> {
-      let assert Ok(#(target, rezip)) = zipper(state.source, path)
-      let source = rezip(e.Apply(e.Vacant(""), target))
+      let source = state.source
+      let assert Ok(#(target, rezip)) = zipper(source, path)
+      let new = rezip(e.Apply(e.Vacant(""), target))
+      let history = #([], [#(source, path, False), ..state.history.1])
       // TODO move to update source
-      let inferred = do_infer(source, state.std)
 
-      let rendered = print.print(source, inferred)
-      let assert Ok(start) =
-        map.get(rendered.1, print.path_to_string(list.append(path, [0])))
-      #(Embed(..state, source: source, rendered: rendered), start)
+      let inferred = do_infer(new, state.std)
+      let rendered = print.print(new, inferred)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
+        start,
+      )
+    }
+  }
+}
+
+pub fn assign_to(state: Embed, start, end) {
+  let assert Ok(#(_ch, path, _cut_start, _style)) =
+    list.at(state.rendered.0, start)
+  let assert Ok(#(_ch, p2, _cut_end, _style)) = list.at(state.rendered.0, end)
+  case path != p2 {
+    True -> {
+      #(state, start)
+    }
+    False -> {
+      let source = state.source
+      let assert Ok(#(target, rezip)) = zipper(source, path)
+      let new = rezip(e.Let("", target, e.Vacant("")))
+      let history = #([], [#(source, path, False), ..state.history.1])
+      // TODO move to update source
+
+      let inferred = do_infer(new, state.std)
+      let rendered = print.print(new, inferred)
+      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      #(
+        Embed(
+          ..state,
+          mode: Insert,
+          source: new,
+          history: history,
+          rendered: rendered,
+        ),
+        start,
+      )
     }
   }
 }
