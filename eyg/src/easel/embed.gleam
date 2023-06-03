@@ -143,6 +143,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "z" -> undo(state, start)
         "Z" -> redo(state, start)
         "c" -> call(state, start, end)
+        "n" -> number(state, start, end)
 
         // TODO reuse history and inference components
         // Reuse lookup of variables
@@ -492,6 +493,12 @@ pub fn call(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
   #(e.Apply(target, e.Vacant("")), [1])
+}
+
+pub fn number(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use _target <- update_at(state, path)
+  #(e.Integer(0), [])
 }
 
 pub fn insert_paragraph(index, state: Embed) {
