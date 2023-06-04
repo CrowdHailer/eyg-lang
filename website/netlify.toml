@@ -3,7 +3,7 @@
 # builds easel in the eyg directory
 command = """
   cd ../eyg && 
-  wget -c https://github.com/gleam-lang/gleam/releases/download/v0.28.3/gleam-v0.28.3-x86_64-unknown-linux-musl.tar.gz -O - | tar -xz -C . &&
+  wget -c https://github.com/gleam-lang/gleam/releases/download/v0.29.0/gleam-v0.29.0-x86_64-unknown-linux-musl.tar.gz -O - | tar -xz -C . &&
   ./gleam --version &&
   ./gleam build &&
   ls . &&
