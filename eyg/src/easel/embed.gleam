@@ -46,6 +46,7 @@ pub type Embed {
     // use an auto infer option
     inferred: Option(tree.State),
     rendered: #(List(print.Rendered), map.Map(String, Int)),
+    focus: Option(List(Int)),
   )
 }
 
@@ -91,7 +92,7 @@ pub fn init(json) {
   // can keep inferred in history
   let inferred = do_infer(source, std)
   let rendered = print.print(source, inferred)
-  Embed(Command(""), std, source, #([], []), Some(inferred), rendered)
+  Embed(Command(""), std, source, #([], []), Some(inferred), rendered, None)
 }
 
 // can take position
@@ -710,40 +711,46 @@ pub fn html(embed: Embed) {
 // reuse single focus with error
 pub fn update_selection(state: Embed, start, end) {
   case list.at(state.rendered.0, start) {
-    Error(Nil) -> Embed(..state, mode: Command(""))
+    Error(Nil) -> Embed(..state, focus: None)
     Ok(#(_ch, path, _cut_start, _style, _err)) -> {
       case list.at(state.rendered.0, end) {
-        Error(Nil) -> Embed(..state, mode: Command(""))
+        Error(Nil) -> Embed(..state, focus: None)
         Ok(#(_ch, p2, _cut_end, _style, _err)) ->
           case path != p2 {
             True -> {
-              Embed(..state, mode: Command(""))
+              Embed(..state, focus: None)
             }
             False -> {
-              case state.inferred {
-                Some(types) -> {
-                  case print.type_at(path, types) {
-                    Ok(_) -> Embed(..state, mode: Command(""))
-                    Error(#(r, t1, t2)) -> {
-                      let msg = type_.render_failure(r, t1, t2)
-                      Embed(..state, mode: Command(msg))
-                    }
-                  }
-                }
-                None -> Embed(..state, mode: Command(""))
-              }
+              Embed(..state, focus: Some(path))
             }
           }
       }
     }
   }
+  //     }
+  //   }
+  // }
+  // None -> Embed(..state, path: None)
+  // }
 }
 
 pub fn pallet(embed: Embed) {
   case embed.mode {
     Command(warning) -> {
       let message = case warning {
-        "" -> "press space to run"
+        "" ->
+          case embed.inferred, embed.focus {
+            Some(types), Some(path) -> {
+              case print.type_at(path, types) {
+                Ok(_) -> "press space to run"
+                Error(#(r, t1, t2)) -> {
+                  type_.render_failure(r, t1, t2)
+                }
+              }
+            }
+            _, _ -> "press space to run"
+          }
+
         message -> message
       }
       string.append(":", message)
