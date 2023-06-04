@@ -158,12 +158,13 @@ pub fn insert_text(state: Embed, data, start, end) {
       }
     }
     Insert -> {
-      let assert Ok(#(_ch, path, cut_start, _style)) = list.at(rendered, start)
-      let assert Ok(#(_ch, _, cut_end, _style)) = list.at(rendered, end)
+      let assert Ok(#(_ch, path, cut_start, _style, _err)) =
+        list.at(rendered, start)
+      let assert Ok(#(_ch, _, cut_end, _style, _err)) = list.at(rendered, end)
       let is_letters = is_var(data) || is_tag(data)
       let #(path, cut_start) = case cut_start < 0 && is_letters {
         True -> {
-          let assert Ok(#(_ch, path, cut_start, _style)) =
+          let assert Ok(#(_ch, path, cut_start, _style, _err)) =
             list.at(rendered, start - 1)
           #(path, cut_start + 1)
         }
@@ -175,7 +176,7 @@ pub fn insert_text(state: Embed, data, start, end) {
       // key press on vacant same in insert and cmd mode
       let #(p2, cut_end) = case cut_end < 0 {
         True -> {
-          let assert Ok(#(_ch, path, cut_end, _style)) =
+          let assert Ok(#(_ch, path, cut_end, _style, _err)) =
             list.at(rendered, end - 1)
           #(path, cut_end + 1)
         }
@@ -496,7 +497,7 @@ fn term_to_string(term) {
 }
 
 pub fn undo(state: Embed, start) {
-  let assert Ok(#(_ch, current_path, _cut_start, _style)) =
+  let assert Ok(#(_ch, current_path, _cut_start, _style, _err)) =
     list.at(state.rendered.0, start)
   case state.history.1 {
     [] -> #(Embed(..state, mode: Command("no undo available")), start)
@@ -523,7 +524,7 @@ pub fn undo(state: Embed, start) {
 }
 
 pub fn redo(state: Embed, start) {
-  let assert Ok(#(_ch, current_path, _cut_start, _style)) =
+  let assert Ok(#(_ch, current_path, _cut_start, _style, _err)) =
     list.at(state.rendered.0, start)
   case state.history.0 {
     [] -> #(Embed(..state, mode: Command("no redo available")), start)
@@ -665,7 +666,7 @@ pub fn nocases(state: Embed, start, end) {
 }
 
 pub fn insert_paragraph(index, state: Embed) {
-  let assert Ok(#(_ch, path, _offset, _style)) =
+  let assert Ok(#(_ch, path, _offset, _style, _err)) =
     list.at(state.rendered.0, index)
   let source = state.source
   let assert Ok(#(target, rezip)) = zipper.at(source, path)
@@ -720,18 +721,24 @@ fn to_html(sections) {
     sections,
     "",
     fn(acc, section) {
-      let #(style, letters) = section
+      let #(style, err, letters) = section
       let class = case style {
-        print.Default -> ""
-        print.Keyword -> "text-gray-500"
-        print.Missing -> "text-pink-3"
-        print.Hole -> "text-orange-4 font-bold"
-        print.Integer -> "text-purple-4"
-        print.String -> "text-green-4"
-        print.Union -> "text-blue-3"
-        print.Effect -> "text-yellow-4"
-        print.Builtin -> "font-italic"
+        print.Default -> []
+        print.Keyword -> ["text-gray-500"]
+        print.Missing -> ["text-pink-3"]
+        print.Hole -> ["text-orange-4 font-bold"]
+        print.Integer -> ["text-purple-4"]
+        print.String -> ["text-green-4"]
+        print.Union -> ["text-blue-3"]
+        print.Effect -> ["text-yellow-4"]
+        print.Builtin -> ["font-italic"]
       }
+      let class =
+        case err {
+          False -> class
+          True -> list.append(class, ["border-b-2 border-orange-4"])
+        }
+        |> string.join(" ")
       string.concat([
         acc,
         "<span class=\"",
@@ -748,21 +755,29 @@ fn group(rendered: List(print.Rendered)) {
   // list.fold(rendered, #([[first.0]], first.2), fn(state) {
   //   let #(store,)
   //  })
+  io.debug(rendered)
   case rendered {
     [] -> []
-    [#(ch, _path, _offset, style), ..rendered] ->
-      do_group(rendered, [ch], [], style)
+    [#(ch, _path, _offset, style, err), ..rendered] ->
+      do_group(rendered, [ch], [], style, err)
   }
+  |> io.debug
 }
 
-fn do_group(rest, current, acc, style) {
+fn do_group(rest, current, acc, style, err) {
   case rest {
-    [] -> list.reverse([#(style, list.reverse(current)), ..acc])
-    [#(ch, _path, _offset, s), ..rest] ->
-      case s == style {
-        True -> do_group(rest, [ch, ..current], acc, style)
+    [] -> list.reverse([#(style, err, list.reverse(current)), ..acc])
+    [#(ch, _path, _offset, s, e), ..rest] ->
+      case s == style && e == err {
+        True -> do_group(rest, [ch, ..current], acc, style, err)
         False ->
-          do_group(rest, [ch], [#(style, list.reverse(current)), ..acc], s)
+          do_group(
+            rest,
+            [ch],
+            [#(style, err, list.reverse(current)), ..acc],
+            s,
+            e,
+          )
       }
   }
 }
@@ -778,10 +793,10 @@ pub fn escape(state) {
 fn single_focus(state: Embed, start, end, cb) {
   case list.at(state.rendered.0, start) {
     Error(Nil) -> #(state, start)
-    Ok(#(_ch, path, _cut_start, _style)) -> {
+    Ok(#(_ch, path, _cut_start, _style, _err)) -> {
       case list.at(state.rendered.0, end) {
         Error(Nil) -> #(state, start)
-        Ok(#(_ch, p2, _cut_end, _style)) ->
+        Ok(#(_ch, p2, _cut_end, _style, _err)) ->
           case path != p2 {
             True -> {
               #(state, start)
