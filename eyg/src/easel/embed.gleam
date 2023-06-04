@@ -71,6 +71,12 @@ pub fn init(json) {
       let state = tree.infer(std, t.Var(-3), t.Var(-4))
       #(Some(#(std, state)), body)
     }
+    // if don't capture std then add unit
+    e.Lambda("_", body) -> {
+      let std = e.Empty
+      let state = tree.infer(std, t.Var(-3), t.Var(-4))
+      #(Some(#(std, state)), body)
+    }
     e.Let("std", _std, other) -> {
       // Capture is capturing multiple times needs some tests
       io.debug(other)
