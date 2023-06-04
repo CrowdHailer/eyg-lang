@@ -273,7 +273,8 @@ fn print_extend(exp, path, br, acc, info, analysis) {
       let acc = print_keyword("}", path, acc)
       #(acc, info)
     }
-    e.Apply(e.Apply(e.Extend(label), item), tail) -> {
+    e.Apply(e.Apply(e.Extend(label), item), tail)
+    | e.Apply(e.Apply(e.Overwrite(label), item), tail) -> {
       let info = map.insert(info, path_to_string(path), list.length(acc))
       let acc = print_keyword(", ", path, acc)
       let #(acc, info) =

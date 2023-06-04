@@ -87,6 +87,11 @@ pub fn init(json) {
   Embed(Command(""), std, source, #([], []), Some(inferred), rendered)
 }
 
+fn is_var(value) {
+  let assert Ok(re) = regex.from_string("^[a-z_]$")
+  regex.check(re, value)
+}
+
 pub fn insert_text(state: Embed, data, start, end) {
   let rendered = state.rendered.0
   case state.mode {
@@ -193,13 +198,29 @@ pub fn insert_text(state: Embed, data, start, end) {
               #(e.Let(label, value, then), [], offset, True)
             }
             e.Variable(label) -> {
-              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              let #(new, text_only) = case label {
-                "" -> #(e.Vacant(""), False)
-                _ -> #(e.Variable(label), True)
+              case is_var(data) {
+                True -> {
+                  let #(label, offset) =
+                    replace_at(label, cut_start, cut_end, data)
+                  let #(new, text_only) = case label {
+                    "" -> #(e.Vacant(""), False)
+                    _ -> #(e.Variable(label), True)
+                  }
+                  #(new, [], offset, text_only)
+                }
+                False ->
+                  case data {
+                    "{" -> #(
+                      e.Apply(e.Apply(e.Overwrite(""), e.Vacant("")), target),
+                      [],
+                      0,
+                      False,
+                    )
+                    _ -> #(target, [], cut_start, True)
+                  }
               }
-              #(new, [], offset, text_only)
             }
+
             e.Vacant(_) ->
               case data {
                 "\"" -> #(e.Binary(""), [], 0, False)
@@ -216,7 +237,6 @@ pub fn insert_text(state: Embed, data, start, end) {
                 )
                 "^" -> #(e.Perform(""), [], 0, False)
                 _ -> {
-                  let assert Ok(re) = regex.from_string("^[a-zA-Z]$")
                   case int.parse(data) {
                     Ok(number) -> #(
                       e.Integer(number),
@@ -225,7 +245,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                       False,
                     )
                     Error(Nil) ->
-                      case regex.check(re, data) {
+                      case is_var(data) {
                         True -> #(
                           e.Variable(data),
                           [],
