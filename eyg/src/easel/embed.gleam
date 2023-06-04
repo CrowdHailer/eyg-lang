@@ -17,6 +17,7 @@ import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
 import easel/print
 import easel/zipper
+import atelier/view/type_
 
 // Not a full app
 // Widget is another name element/panel
@@ -421,7 +422,6 @@ pub fn insert_text(state: Embed, data, start, end) {
 
               let rendered = print.print(new, inferred)
               // zip and target
-              // io.debug(rendered)
 
               // update source source have a offset function
               let path = list.append(path, sub)
@@ -432,6 +432,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   ..state,
                   source: new,
                   history: history,
+                  inferred: Some(inferred),
                   rendered: rendered,
                 ),
                 start + offset,
@@ -516,6 +517,7 @@ pub fn undo(state: Embed, start) {
             [#(state.source, current_path, text_only), ..state.history.0],
             backwards,
           ),
+          inferred: Some(inferred),
           rendered: rendered,
         )
       #(state, start)
@@ -543,6 +545,7 @@ pub fn redo(state: Embed, start) {
             forward,
             [#(state.source, current_path, text_only), ..state.history.1],
           ),
+          inferred: Some(inferred),
           rendered: rendered,
         )
       #(state, start)
@@ -691,6 +694,7 @@ pub fn insert_paragraph(index, state: Embed) {
       mode: Insert,
       source: new,
       history: history,
+      inferred: Some(inferred),
       rendered: rendered,
     ),
     start,
@@ -701,6 +705,38 @@ pub fn html(embed: Embed) {
   embed.rendered.0
   |> group
   |> to_html()
+}
+
+// reuse single focus with error
+pub fn update_selection(state: Embed, start, end) {
+  case list.at(state.rendered.0, start) {
+    Error(Nil) -> Embed(..state, mode: Command(""))
+    Ok(#(_ch, path, _cut_start, _style, _err)) -> {
+      case list.at(state.rendered.0, end) {
+        Error(Nil) -> Embed(..state, mode: Command(""))
+        Ok(#(_ch, p2, _cut_end, _style, _err)) ->
+          case path != p2 {
+            True -> {
+              Embed(..state, mode: Command(""))
+            }
+            False -> {
+              case state.inferred {
+                Some(types) -> {
+                  case print.type_at(path, types) {
+                    Ok(_) -> Embed(..state, mode: Command(""))
+                    Error(#(r, t1, t2)) -> {
+                      let msg = type_.render_failure(r, t1, t2)
+                      Embed(..state, mode: Command(msg))
+                    }
+                  }
+                }
+                None -> Embed(..state, mode: Command(""))
+              }
+            }
+          }
+      }
+    }
+  }
 }
 
 pub fn pallet(embed: Embed) {
@@ -752,16 +788,11 @@ fn to_html(sections) {
 }
 
 fn group(rendered: List(print.Rendered)) {
-  // list.fold(rendered, #([[first.0]], first.2), fn(state) {
-  //   let #(store,)
-  //  })
-  io.debug(rendered)
   case rendered {
     [] -> []
     [#(ch, _path, _offset, style, err), ..rendered] ->
       do_group(rendered, [ch], [], style, err)
   }
-  |> io.debug
 }
 
 fn do_group(rest, current, acc, style, err) {
@@ -826,6 +857,7 @@ fn update_at(state: Embed, path, cb) {
           mode: mode,
           source: new,
           history: history,
+          inferred: Some(inferred),
           rendered: rendered,
         ),
         start,

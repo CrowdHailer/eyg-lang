@@ -125,6 +125,13 @@ async function resume(element) {
   // maybe embed state should always be rehydrated but the click to edit is a part of that state
   element.innerHTML = Easel.html(state);
   element.contentEditable = true;
+  return function (range) {
+    const start = startIndex(range);
+    const end = endIndex(range);
+    // console.log("handle selection change", start, end);
+    state = Easel.update_selection(state, start, end);
+    element.nextElementSibling.innerHTML = Easel.pallet(state);
+  };
 }
 
 function updateElement(element, state, offset) {
@@ -145,9 +152,24 @@ function updateElement(element, state, offset) {
   range.setEnd(e.firstChild, countdown);
 }
 
-function start() {
-  const elements = document.querySelectorAll("pre[data-easel]");
-  elements.forEach(resume);
+async function start() {
+  // https://gomakethings.com/converting-a-nodelist-to-an-array-with-vanilla-javascript/
+  const elements = Array.prototype.slice.call(
+    document.querySelectorAll("pre[data-easel]")
+  );
+  const states = await Promise.all(elements.map(resume));
+  // https://javascript.info/selection-range#selection-events
+  // only on document level
+  document.onselectionchange = function (event) {
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+    const container = range.startContainer;
+    const element = (
+      container.closest ? container : container.parentElement
+    ).closest("pre[data-easel]");
+    // console.log(element, );
+    states[elements.indexOf(element)](range);
+  };
 }
 
 start();

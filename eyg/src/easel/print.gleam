@@ -33,7 +33,7 @@ pub fn print(source, analysis: tree.State) {
   #(list.reverse(acc), info)
 }
 
-fn type_at(path, analysis) {
+pub fn type_at(path, analysis) {
   let #(sub, _next, types) = analysis
   let assert Ok(t) = map.get(types, list.reverse(path))
   t
