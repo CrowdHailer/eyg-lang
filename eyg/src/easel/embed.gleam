@@ -152,7 +152,8 @@ pub fn insert_text(state: Embed, data, start, end) {
     Insert -> {
       let assert Ok(#(_ch, path, cut_start, _style)) = list.at(rendered, start)
       let assert Ok(#(_ch, _, cut_end, _style)) = list.at(rendered, end)
-      let #(path, cut_start) = case cut_start < 0 {
+      let is_letters = is_var(data) || is_tag(data)
+      let #(path, cut_start) = case cut_start < 0 && is_letters {
         True -> {
           let assert Ok(#(_ch, path, cut_start, _style)) =
             list.at(rendered, start - 1)
@@ -173,11 +174,13 @@ pub fn insert_text(state: Embed, data, start, end) {
         False -> #(path, cut_end)
       }
       case path != p2 || cut_start < 0 {
+        // TODO need to think about commas in blocks?
         True -> {
           #(state, start)
         }
         _ -> {
           let assert Ok(#(target, rezip)) = zipper.at(state.source, path)
+          io.debug(target)
           // always the same path
           let #(new, sub, offset, text_only) = case target {
             e.Lambda(param, body) -> {
@@ -189,22 +192,41 @@ pub fn insert_text(state: Embed, data, start, end) {
               #(new, [0, 1], 0, False)
             }
             e.Apply(e.Apply(e.Extend(label), value), rest) -> {
-              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(
-                e.Apply(e.Apply(e.Extend(label), value), rest),
-                [],
-                offset,
-                True,
-              )
+              case data, cut_start <= 0 {
+                ",", True -> {
+                  let new = e.Apply(e.Apply(e.Extend(""), e.Vacant("")), target)
+                  #(new, [], 0, True)
+                }
+                _, _ -> {
+                  let #(label, offset) =
+                    replace_at(label, cut_start, cut_end, data)
+                  #(
+                    e.Apply(e.Apply(e.Extend(label), value), rest),
+                    [],
+                    offset,
+                    True,
+                  )
+                }
+              }
             }
             e.Apply(e.Apply(e.Overwrite(label), value), rest) -> {
-              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(
-                e.Apply(e.Apply(e.Overwrite(label), value), rest),
-                [],
-                offset,
-                True,
-              )
+              case data, cut_start <= 0 {
+                ",", True -> {
+                  let new =
+                    e.Apply(e.Apply(e.Overwrite(""), e.Vacant("")), target)
+                  #(new, [], 0, True)
+                }
+                _, _ -> {
+                  let #(label, offset) =
+                    replace_at(label, cut_start, cut_end, data)
+                  #(
+                    e.Apply(e.Apply(e.Overwrite(label), value), rest),
+                    [],
+                    offset,
+                    True,
+                  )
+                }
+              }
             }
             e.Let(label, value, then) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
@@ -334,6 +356,16 @@ pub fn insert_text(state: Embed, data, start, end) {
                   #(e.Tag(label), [], offset, True)
                 }
                 False -> #(target, [], cut_start, False)
+              }
+            }
+            e.Empty -> {
+              case data {
+                "," -> #(
+                  e.Apply(e.Apply(e.Extend(""), e.Vacant("")), e.Vacant("")),
+                  [0, 1],
+                  cut_start,
+                  False,
+                )
               }
             }
             e.Perform(label) -> {
