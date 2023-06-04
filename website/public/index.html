@@ -261,26 +261,6 @@ deploy by reference
             </div>
           </div>
         </div>
-        <div class="max-w-3xl w-full mx-auto">
-          <div
-            class="hstack wrap bg-white neo-shadow p-1 border-black border-2 px-4 rounded-xl"
-          >
-            <pre>
-match {
-  Some x -> x
-  None _ -> 0
-}(<span class="text-orange-4">[Some: Integer | None _]</span>)</pre>
-            <div class="expand"></div>
-            <div>
-              <pre
-                class="ml-4 pl-4 border-l border-dashed border-black text-green-4"
-              ><!-- <span class="text-orange-3">{first: Binary, second: Binary, ..0}
--> Binary</span> -->
-
-</pre>
-            </div>
-          </div>
-        </div>
         <div class="max-w-3xl mx-auto px-4 text-xl">
           <h2 class="text-3xl">Effect types</h2>
           <p class="max-w-lg">
@@ -428,9 +408,24 @@ match {
             <li>
               <strong
                 class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
-                >s</strong
+                >n</strong
               >
               Insert a number in place of the current expression
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >m</strong
+              >
+              Insert a match statement with the current expression as first
+              branch
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >M</strong
+              >
+              Close the current match expression
             </li>
           </ul>
           <p></p>

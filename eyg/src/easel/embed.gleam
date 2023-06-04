@@ -141,6 +141,8 @@ pub fn insert_text(state: Embed, data, start, end) {
         "Z" -> redo(state, start)
         "c" -> call(state, start, end)
         "n" -> number(state, start, end)
+        "m" -> match(state, start, end)
+        "M" -> nocases(state, start, end)
 
         // TODO reuse history and inference components
         // Reuse lookup of variables
@@ -648,6 +650,18 @@ pub fn number(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
   #(e.Integer(0), Insert, [])
+}
+
+pub fn match(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(e.Apply(e.Case(""), e.Vacant("")), target), Insert, [])
+}
+
+pub fn nocases(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use _target <- update_at(state, path)
+  #(e.NoCases, state.mode, [])
 }
 
 pub fn insert_paragraph(index, state: Embed) {

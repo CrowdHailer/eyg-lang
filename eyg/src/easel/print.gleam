@@ -353,8 +353,8 @@ fn print_match(exp, path, br, br_inner, acc, info, analysis) {
       #(acc, info)
     }
     e.Apply(e.Apply(e.Case(label), item), tail) -> {
-      let info = map.insert(info, path_to_string(path), list.length(acc))
       let acc = print_keyword(br_inner, path, acc)
+      let info = map.insert(info, path_to_string(path), list.length(acc))
       let #(acc, info) =
         print_with_offset(
           label,
@@ -385,10 +385,12 @@ fn print_match(exp, path, br, br_inner, acc, info, analysis) {
       )
     }
     _ -> {
+      let acc = print_keyword(br_inner, path, acc)
       let info = map.insert(info, path_to_string(path), list.length(acc))
       let #(acc, info) =
         print_block(exp, Situ(path: path), br, acc, info, analysis)
       let acc = print_keyword(br, path, acc)
+      let acc = print_keyword("}", path, acc)
       #(acc, info)
     }
   }
