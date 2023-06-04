@@ -133,9 +133,10 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         "w" -> call_with(state, start, end)
         "e" -> assign_to(state, start, end)
-        // "r" -> assign_to(state, start, end)
+        "r" -> extend(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
+        "o" -> overwrite(state, start, end)
         "p" -> perform(state, start, end)
         "s" -> string(state, start, end)
         "d" -> delete(state, start, end)
@@ -198,6 +199,24 @@ pub fn insert_text(state: Embed, data, start, end) {
             e.Apply(e.Apply(e.Cons, _), _) -> {
               let new = e.Apply(e.Apply(e.Cons, e.Vacant("")), target)
               #(new, [0, 1], 0, False)
+            }
+            e.Apply(e.Apply(e.Extend(label), value), rest) -> {
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(
+                e.Apply(e.Apply(e.Extend(label), value), rest),
+                [],
+                offset,
+                True,
+              )
+            }
+            e.Apply(e.Apply(e.Overwrite(label), value), rest) -> {
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(
+                e.Apply(e.Apply(e.Overwrite(label), value), rest),
+                [],
+                offset,
+                True,
+              )
             }
             e.Let(label, value, then) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
@@ -375,9 +394,14 @@ fn run(state: Embed) {
 fn reason_to_string(reason) {
   case reason {
     r.UndefinedVariable(var) -> string.append("variable undefined: ", var)
-    r.IncorrectTerm(expected, _got) ->
-      string.concat(["unexpected term, expected", expected])
-    r.MissingField(field) -> string.concat(["missing record field", field])
+    r.IncorrectTerm(expected, got) ->
+      string.concat([
+        "unexpected term, expected: ",
+        expected,
+        " got: ",
+        term_to_string(got),
+      ])
+    r.MissingField(field) -> string.concat(["missing record field: ", field])
     r.NoCases -> string.concat(["no cases matched"])
     r.NotAFunction(term) ->
       string.concat(["function expected got: ", term_to_string(term)])
@@ -393,54 +417,6 @@ fn term_to_string(term) {
   //   r.Binary(value) -> string.concat(["\"", value, "\""])
   //   _ -> "non string term"
   // }
-}
-
-pub fn list_element(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use target <- update_at(state, path)
-  #(e.Apply(e.Apply(e.Cons, target), e.Tail), state.mode, [])
-}
-
-pub fn perform(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use target <- update_at(state, path)
-  case target {
-    e.Vacant(_) -> #(e.Perform(""), Insert, [])
-    _ -> #(e.Apply(e.Perform(""), target), Insert, [0])
-  }
-}
-
-pub fn string(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use _target <- update_at(state, path)
-  #(e.Binary(""), Insert, [])
-}
-
-pub fn delete(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use _target <- update_at(state, path)
-  #(e.Vacant(""), Insert, [])
-}
-
-pub fn insert_function(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use target <- update_at(state, path)
-  #(e.Lambda("", target), Insert, [])
-}
-
-pub fn select(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use target <- update_at(state, path)
-  #(e.Apply(e.Select(""), target), Insert, [0])
-}
-
-pub fn handle(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use target <- update_at(state, path)
-  case target {
-    e.Vacant(_) -> #(e.Handle(""), Insert, [])
-    _ -> #(e.Apply(e.Handle(""), target), Insert, [0])
-  }
 }
 
 pub fn undo(state: Embed, start) {
@@ -507,6 +483,71 @@ pub fn assign_to(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
   #(e.Let("", target, e.Vacant("")), Insert, [])
+}
+
+pub fn extend(state: Embed, start, end) {
+  io.debug("extend")
+  use path <- single_focus(state, start, end)
+  io.debug(path)
+  use target <- update_at(state, path)
+  case target {
+    e.Vacant("") -> #(e.Empty, state.mode, [])
+    _ -> #(e.Apply(e.Apply(e.Extend(""), e.Vacant("")), target), Insert, [])
+  }
+}
+
+pub fn overwrite(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(e.Apply(e.Overwrite(""), e.Vacant("")), target), Insert, [])
+}
+
+pub fn perform(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  case target {
+    e.Vacant(_) -> #(e.Perform(""), Insert, [])
+    _ -> #(e.Apply(e.Perform(""), target), Insert, [0])
+  }
+}
+
+pub fn string(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use _target <- update_at(state, path)
+  #(e.Binary(""), Insert, [])
+}
+
+pub fn delete(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use _target <- update_at(state, path)
+  #(e.Vacant(""), state.mode, [])
+}
+
+pub fn insert_function(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Lambda("", target), Insert, [])
+}
+
+pub fn select(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(e.Select(""), target), Insert, [0])
+}
+
+pub fn handle(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  case target {
+    e.Vacant(_) -> #(e.Handle(""), Insert, [])
+    _ -> #(e.Apply(e.Handle(""), target), Insert, [0])
+  }
+}
+
+pub fn list_element(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Apply(e.Apply(e.Cons, target), e.Tail), state.mode, [])
 }
 
 pub fn call(state: Embed, start, end) {

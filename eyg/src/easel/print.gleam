@@ -69,6 +69,33 @@ fn do_print(source, situ, br, acc, info, analysis) {
         )
       print_tail(tail, list.append(path, [1]), br, acc, info, analysis)
     }
+    // It works using both here because a record should always end in empty
+    // and overwrite always a variable
+    e.Apply(e.Apply(e.Extend(label), item), tail)
+    | e.Apply(e.Apply(e.Overwrite(label), item), tail) -> {
+      // let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword("{", path, acc)
+      let #(acc, info) =
+        print_with_offset(
+          label,
+          list.append(path, []),
+          Union,
+          acc,
+          info,
+          analysis,
+        )
+      let acc = print_keyword(": ", path, acc)
+      let #(acc, info) =
+        print_block(
+          item,
+          Situ(list.append(path, [0, 1])),
+          br,
+          acc,
+          info,
+          analysis,
+        )
+      print_extend(tail, list.append(path, [1]), br, acc, info, analysis)
+    }
     e.Apply(func, arg) -> {
       let #(acc, info) =
         print_block(func, Situ(list.append(path, [0])), br, acc, info, analysis)
@@ -234,6 +261,48 @@ fn print_tail(exp, path, br, acc, info, analysis) {
       let #(acc, info) =
         print_block(exp, Situ(path: path), br, acc, info, analysis)
       let acc = print_keyword("]", path, acc)
+      #(acc, info)
+    }
+  }
+}
+
+fn print_extend(exp, path, br, acc, info, analysis) {
+  case exp {
+    e.Empty -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword("}", path, acc)
+      #(acc, info)
+    }
+    e.Apply(e.Apply(e.Extend(label), item), tail) -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword(", ", path, acc)
+      let #(acc, info) =
+        print_with_offset(
+          label,
+          list.append(path, []),
+          Union,
+          acc,
+          info,
+          analysis,
+        )
+      let acc = print_keyword(": ", path, acc)
+      let #(acc, info) =
+        print_block(
+          item,
+          Situ(list.append(path, [0, 1])),
+          br,
+          acc,
+          info,
+          analysis,
+        )
+      print_extend(tail, list.append(path, [1]), br, acc, info, analysis)
+    }
+    _ -> {
+      let info = map.insert(info, path_to_string(path), list.length(acc))
+      let acc = print_keyword(", ..", path, acc)
+      let #(acc, info) =
+        print_block(exp, Situ(path: path), br, acc, info, analysis)
+      let acc = print_keyword("}", path, acc)
       #(acc, info)
     }
   }
