@@ -87,9 +87,21 @@ pub fn init(json) {
   Embed(Command(""), std, source, #([], []), Some(inferred), rendered)
 }
 
+// can take position
 fn is_var(value) {
   let assert Ok(re) = regex.from_string("^[a-z_]$")
-  regex.check(re, value)
+  case value {
+    "" -> True
+    _ -> regex.check(re, value)
+  }
+}
+
+fn is_tag(value) {
+  let assert Ok(re) = regex.from_string("^[A-Za-z]$")
+  case value {
+    "" -> True
+    _ -> regex.check(re, value)
+  }
 }
 
 pub fn insert_text(state: Embed, data, start, end) {
@@ -109,6 +121,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "w" -> call_with(state, start, end)
         "e" -> assign_to(state, start, end)
         "r" -> extend(state, start, end)
+        "t" -> tag(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
         "o" -> overwrite(state, start, end)
@@ -252,7 +265,16 @@ pub fn insert_text(state: Embed, data, start, end) {
                           string.length(data),
                           False,
                         )
-                        _ -> #(target, [], cut_start, True)
+                        False ->
+                          case is_tag(data) {
+                            True -> #(
+                              e.Tag(data),
+                              [],
+                              string.length(data),
+                              False,
+                            )
+                            False -> #(target, [], cut_start, True)
+                          }
                       }
                   }
                 }
@@ -304,7 +326,16 @@ pub fn insert_text(state: Embed, data, start, end) {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               #(e.Overwrite(label), [], offset, True)
             }
-
+            e.Tag(label) -> {
+              case is_tag(data) {
+                True -> {
+                  let #(label, offset) =
+                    replace_at(label, cut_start, cut_end, data)
+                  #(e.Tag(label), [], offset, True)
+                }
+                False -> #(target, [], cut_start, False)
+              }
+            }
             e.Perform(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               #(e.Perform(label), [], offset, True)
@@ -478,13 +509,20 @@ pub fn assign_to(state: Embed, start, end) {
 }
 
 pub fn extend(state: Embed, start, end) {
-  io.debug("extend")
   use path <- single_focus(state, start, end)
-  io.debug(path)
   use target <- update_at(state, path)
   case target {
     e.Vacant("") -> #(e.Empty, state.mode, [])
     _ -> #(e.Apply(e.Apply(e.Extend(""), e.Vacant("")), target), Insert, [])
+  }
+}
+
+pub fn tag(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  case target {
+    // e.Vacant("") -> #(e.Empty, state.mode, [])
+    _ -> #(e.Apply(e.Tag(""), target), Insert, [0])
   }
 }
 

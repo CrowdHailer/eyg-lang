@@ -195,7 +195,8 @@ fn do_print(source, situ, br, acc, info, analysis) {
       print_with_offset(label, path, Union, acc, info, analysis)
     }
     e.Tag(label) -> {
-      let acc = [#("=", path, -1, Union), ..acc]
+      // The idea was marking something as a tag
+      // let acc = [#("=", path, -1, Union), ..acc]
       print_with_offset(label, path, Union, acc, info, analysis)
     }
     e.Case(label) -> {
