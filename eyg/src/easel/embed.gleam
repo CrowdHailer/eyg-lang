@@ -4,7 +4,6 @@ import gleam/list
 import gleam/map
 import gleam/mapx
 import gleam/option.{None, Option, Some}
-import gleam/result
 import gleam/regex
 import gleam/string
 import gleam/stringx
@@ -14,9 +13,10 @@ import eygir/decode
 import eyg/runtime/interpreter as r
 import harness/stdlib
 import harness/effect
-import easel/print
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
+import easel/print
+import easel/zipper
 
 // Not a full app
 // Widget is another name element/panel
@@ -85,36 +85,6 @@ pub fn init(json) {
   let inferred = do_infer(source, std)
   let rendered = print.print(source, inferred)
   Embed(Command(""), std, source, #([], []), Some(inferred), rendered)
-}
-
-pub fn child(expression, index) {
-  case expression, index {
-    e.Lambda(param, body), 0 -> Ok(#(body, e.Lambda(param, _)))
-    e.Apply(func, arg), 0 -> Ok(#(func, e.Apply(_, arg)))
-    e.Apply(func, arg), 1 -> Ok(#(arg, e.Apply(func, _)))
-    e.Let(label, value, then), 0 -> Ok(#(value, e.Let(label, _, then)))
-    e.Let(label, value, then), 1 -> Ok(#(then, e.Let(label, value, _)))
-    _, _ -> Error(Nil)
-  }
-  // This is one of the things that would be harder with overwrite having children
-}
-
-pub fn zipper(expression, path) {
-  do_zipper(expression, path, [])
-}
-
-fn do_zipper(expression, path, acc) {
-  case path {
-    [] ->
-      Ok(#(
-        expression,
-        fn(new) { list.fold(acc, new, fn(element, build) { build(element) }) },
-      ))
-    [index, ..path] -> {
-      use #(child, rebuild) <- result.then(child(expression, index))
-      do_zipper(child, path, [rebuild, ..acc])
-    }
-  }
 }
 
 pub fn insert_text(state: Embed, data, start, end) {
@@ -189,7 +159,7 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start)
         }
         _ -> {
-          let assert Ok(#(target, rezip)) = zipper(state.source, path)
+          let assert Ok(#(target, rezip)) = zipper.at(state.source, path)
           // always the same path
           let #(new, sub, offset, text_only) = case target {
             e.Lambda(param, body) -> {
@@ -473,6 +443,8 @@ pub fn redo(state: Embed, start) {
   }
 }
 
+// update_at is a utility that might get extracted to transform
+// but focus and state are all part of this specific embed model
 pub fn call_with(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
@@ -566,7 +538,7 @@ pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(#(_ch, path, _offset, _style)) =
     list.at(state.rendered.0, index)
   let source = state.source
-  let assert Ok(#(target, rezip)) = zipper(source, path)
+  let assert Ok(#(target, rezip)) = zipper.at(source, path)
 
   let new = case target {
     e.Let(label, value, then) -> {
@@ -693,7 +665,7 @@ fn single_focus(state: Embed, start, end, cb) {
 
 fn update_at(state: Embed, path, cb) {
   let source = state.source
-  case zipper(source, path) {
+  case zipper.at(source, path) {
     Error(Nil) -> panic("how did this happen need path back")
     Ok(#(target, rezip)) -> {
       let #(updated, mode, sub_path) = cb(target)
