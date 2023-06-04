@@ -342,6 +342,16 @@ pub fn insert_text(state: Embed, data, start, end) {
                 )
               }
             }
+            e.Empty -> {
+              case data {
+                "," -> #(
+                  e.Apply(e.Apply(e.Extend(""), e.Vacant("")), e.Vacant("")),
+                  [0, 1],
+                  cut_start,
+                  False,
+                )
+              }
+            }
             e.Extend(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               #(e.Extend(label), [], offset, True)
@@ -364,14 +374,19 @@ pub fn insert_text(state: Embed, data, start, end) {
                 False -> #(target, [], cut_start, False)
               }
             }
-            e.Empty -> {
-              case data {
-                "," -> #(
-                  e.Apply(e.Apply(e.Extend(""), e.Vacant("")), e.Vacant("")),
-                  [0, 1],
-                  cut_start,
-                  False,
-                )
+            e.Apply(e.Apply(e.Case(label), value), rest) -> {
+              case is_tag(data) {
+                True -> {
+                  let #(label, offset) =
+                    replace_at(label, cut_start, cut_end, data)
+                  #(
+                    e.Apply(e.Apply(e.Case(label), value), rest),
+                    [],
+                    offset,
+                    True,
+                  )
+                }
+                False -> #(target, [], cut_start, False)
               }
             }
             e.Perform(label) -> {
@@ -585,10 +600,15 @@ pub fn string(state: Embed, start, end) {
   #(e.Binary(""), Insert, [])
 }
 
+// shift d for delete line
 pub fn delete(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
-  use _target <- update_at(state, path)
-  #(e.Vacant(""), state.mode, [])
+  use target <- update_at(state, path)
+  case target {
+    e.Let(_, _, then) -> #(then, state.mode, [])
+    e.Apply(e.Apply(e.Case(_), _), then) -> #(then, state.mode, [])
+    _ -> #(e.Vacant(""), state.mode, [])
+  }
 }
 
 pub fn insert_function(state: Embed, start, end) {
