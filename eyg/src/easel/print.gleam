@@ -407,7 +407,7 @@ fn print_match(exp, path, br, br_inner, acc, info, analysis) {
       let acc = print_keyword(br_inner, path, acc, err)
       let info = map.insert(info, path_to_string(path), list.length(acc))
       let #(acc, info) =
-        print_block(exp, Situ(path: path), br, acc, info, analysis)
+        print_block(exp, Situ(path: path), br_inner, acc, info, analysis)
       let acc = print_keyword(br, path, acc, err)
       let acc = print_keyword("}", path, acc, err)
       #(acc, info)
