@@ -13,17 +13,19 @@
     <script src="/easel.js" async defer></script>
     <title>Editor</title>
   </head>
-  <body>
-    <h1>Editor</h1>
-    <div class="max-w-3xl w-full mx-auto">
+  <body class="green-gradient">
+    <!-- Load data easel=fullscreen -->
+    <!-- renders and key stuff -->
+    <div class="flex flex-col max-h-screen min-h-screen max-w-5xl mx-auto p-2">
       <div
-        class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"
+        class="flex-1 vstack wrap bg-white neo-shadow border-black border-2 mb-2 mr-2 rounded-xl overflow-hidden"
       >
         <pre
-          class="overflow-auto outline-none w-full my-1 mx-4"
+          class="expand overflow-auto outline-none w-full my-1 mx-4 px-4"
           spellcheck="false"
-        ><button data-action="load">load</button></pre>
-        <div class="bg-purple-1 px-4 font-mono font-bold">
+        ><button class="" data-action="load"><div class="bg-gray-500 p-2 rounded">load</div></button></pre>
+        <!-- w-full should be cover but that ends up being no padding -->
+        <div class="w-full bg-purple-1 px-4 font-mono font-bold">
           click to edit & run
         </div>
       </div>

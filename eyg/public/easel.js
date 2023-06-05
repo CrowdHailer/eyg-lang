@@ -191,9 +191,9 @@ start();
 // full page routing for selection change reference with ID
 // put more in plinth
 // options list of enum/go fn types or all the options fixed.
-function startLoader(element) {
-  console.log(element);
-  element.onclick = async function (event) {
+function startLoader(button) {
+  console.log(button);
+  button.onclick = async function (event) {
     // chrome only
     // firefox support is for originprivatefilesystem and drag and drop blobs
     // show dir for db of stuff only
@@ -210,7 +210,25 @@ function startLoader(element) {
     await writableStream.write(data);
     let state = Easel.init(json);
     let offset = 0;
-    element.parentElement.innerHTML = "<pre>" + Easel.html(state) + "</pre>";
-    element.contentEditable = true;
+    // button is the button
+    const pre = button.parentElement;
+    pre.contentEditable = true;
+    pre.innerHTML = Easel.html(state);
+
+    pre.onbeforeinput = function (event) {
+      console.log(event);
+      [state, offset] = handleInput(event, state);
+      updateElement(pre, state, offset);
+      return false;
+    };
+    pre.onkeydown = function (event) {
+      if (event.key == "Escape") {
+        state = Easel.escape(state);
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const start = startIndex(range);
+        updateElement(pre, state, start);
+      }
+    };
   };
 }
