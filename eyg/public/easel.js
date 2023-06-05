@@ -153,6 +153,9 @@ function updateElement(element, state, offset) {
 }
 
 async function start() {
+  // doesn't work for type module
+  // can have a #hash to run or a data-entry for an if statement
+  // console.log(document.currentScript);
   // https://gomakethings.com/converting-a-nodelist-to-an-array-with-vanilla-javascript/
   const elements = Array.prototype.slice.call(
     document.querySelectorAll("pre[data-easel]")
@@ -167,9 +170,47 @@ async function start() {
     const element = (
       container.closest ? container : container.parentElement
     ).closest("pre[data-easel]");
+    // adding after the fact i.e. in response to a load button gets them out of order
+    //
     // console.log(element, );
-    states[elements.indexOf(element)](range);
+    const index = elements.indexOf(element);
+    if (index < 0) {
+      return;
+    }
+    states[index](range);
   };
+
+  const loaders = Array.prototype.slice.call(
+    document.querySelectorAll('button[data-action="load"]')
+  );
+  loaders.map(startLoader);
 }
 
 start();
+
+// full page routing for selection change reference with ID
+// put more in plinth
+// options list of enum/go fn types or all the options fixed.
+function startLoader(element) {
+  console.log(element);
+  element.onclick = async function (event) {
+    // chrome only
+    // firefox support is for originprivatefilesystem and drag and drop blobs
+    // show dir for db of stuff only
+    // const [dir] = await window.showDirectoryPicker();
+    // console.log(dir);
+    const [fileHandle] = await window.showOpenFilePicker();
+    const file = await fileHandle.getFile();
+    // .json not available
+    const json = JSON.parse(await file.text());
+    const writableStream = await fileHandle.createWritable();
+    const data = new Blob([JSON.stringify({ foo: 2 }, null, 2)], {
+      type: "application/json",
+    });
+    await writableStream.write(data);
+    let state = Easel.init(json);
+    let offset = 0;
+    element.parentElement.innerHTML = "<pre>" + Easel.html(state) + "</pre>";
+    element.contentEditable = true;
+  };
+}
