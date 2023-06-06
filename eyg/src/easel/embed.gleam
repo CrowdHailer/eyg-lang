@@ -24,10 +24,16 @@ import atelier/view/type_
 // Embed if I have a separate app file
 // TODO svelte memoisation of print OR collapse nodes
 // TODO auto infer if using the same state, maybe part of history API
-// TODO hash/name for restart/resumption in client
+// TODO hash/name for restart/resumption in client (qwikloader)
 // TODO easil document.query selector general restart
 // TODO document hash watch registering, maybe not needed with global handlers
-//
+// debounce, frp in use
+// Do a print function that goes to HTML from tree directly
+// bg highlight selection or error as in aterlier
+// debounce move to opening
+// unwrap/copy+paste
+// Can a match be dynamic I think no
+// press a increases selection but uses browser selection
 
 pub type Mode {
   Command(warning: String)
@@ -46,6 +52,7 @@ pub type History =
 pub type Embed {
   Embed(
     mode: Mode,
+    yanked: Option(e.Expression),
     std: Option(#(e.Expression, tree.State)),
     source: e.Expression,
     history: History,
@@ -98,7 +105,16 @@ pub fn init(json) {
   // can keep inferred in history
   let inferred = do_infer(source, std)
   let rendered = print.print(source, inferred)
-  Embed(Command(""), std, source, #([], []), Some(inferred), rendered, None)
+  Embed(
+    Command(""),
+    None,
+    std,
+    source,
+    #([], []),
+    Some(inferred),
+    rendered,
+    None,
+  )
 }
 
 // can take position
@@ -136,6 +152,8 @@ pub fn insert_text(state: Embed, data, start, end) {
         "e" -> assign_to(state, start, end)
         "r" -> extend(state, start, end)
         "t" -> tag(state, start, end)
+        "y" -> copy(state, start, end)
+        "Y" -> paste(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
         "o" -> overwrite(state, start, end)
@@ -590,6 +608,24 @@ pub fn tag(state: Embed, start, end) {
     // e.Vacant("") -> #(e.Empty, state.mode, [])
     _ -> #(e.Apply(e.Tag(""), target), Insert, [0])
   }
+}
+
+fn copy(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+
+  case zipper.at(state.source, path) {
+    Error(Nil) -> panic("how did this happen need path back")
+    Ok(#(target, _rezip)) -> {
+      #(Embed(..state, yanked: Some(target)), start)
+    }
+  }
+}
+
+fn paste(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  // TODO return error for nothing on clip board
+  #(option.unwrap(state.yanked, target), state.mode, [])
 }
 
 pub fn overwrite(state: Embed, start, end) {

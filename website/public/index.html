@@ -12,6 +12,20 @@
     <link rel="stylesheet" href="./neo.css" />
     <script src="/easel.js" type="module" async defer></script>
     <title>Eyg</title>
+    <!-- Does work can pair this up with "a" to increase selection "l" -> "e" for line then assignment -->
+    <!-- <style>
+      ::-moz-selection { /* Code for Firefox */
+        color: red;
+        /* background: yellow; */
+        border-bottom: 2px solid black !important;
+      }
+
+      ::selection {
+        color: red;
+        background: yellow;
+        border-bottom: 2px solid black !important;
+      }
+    </style> -->
   </head>
   <body>
     <div class="vstack wrap">
@@ -317,9 +331,23 @@ deploy by reference
             <li>
               <strong
                 class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
-                >r</strong
+                >t</strong
               >
               Tag the current expression
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >y</strong
+              >
+              Copy to clip board current selection
+            </li>
+            <li>
+              <strong
+                class="bg-gray-100 border border-black rounded w-6 inline-block text-center"
+                >e</strong
+              >
+              Replace current selection with contents of clipboard
             </li>
             <li>
               <strong
