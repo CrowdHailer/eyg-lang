@@ -8,6 +8,7 @@ import eyg/runtime/interpreter as r
 import eyg/analysis/typ as t
 import harness/effect
 import harness/stdlib
+import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/javascript/promisex
 import harness/ffi/cast
@@ -47,8 +48,9 @@ pub fn run() {
     _ -> {
       io.debug("no script to run")
 
-      let assert Ok(elements) =
+      let elements =
         document.query_selector_all("script[type=\"editor/eygir\"]")
+        |> array.to_list()
       list.map(
         elements,
         fn(el) {

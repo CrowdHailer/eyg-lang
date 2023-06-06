@@ -4,12 +4,15 @@
 // lots of work on resumable
 // The server from the eyg project moved the build directory
 import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
+import * as Experiment from "../build/dev/javascript/eyg/experiment.mjs";
 // Some stateful error with rollup happening here
 // import * as db2 from "./db/index.js";
 // console.log(db2);
 // let db = { hello: db2.hello };
 // console.log("yeeeee");
 // Object.assign(db, db2);
+
+Experiment.run();
 
 console.log("starting easel");
 
