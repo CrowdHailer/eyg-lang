@@ -33,6 +33,10 @@ export function querySelectorAll(query) {
   return Array.from(document.querySelectorAll(query));
 }
 
+export function setAttribute(element, name, value) {
+  element.setAttribute(name, value);
+}
+
 export function append(parent, child) {
   parent.append(child);
 }

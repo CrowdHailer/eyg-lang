@@ -34,6 +34,7 @@ import atelier/view/type_
 // unwrap/copy+paste
 // Can a match be dynamic I think no
 // press a increases selection but uses browser selection
+// ardunio/structured text auto reload OR gateway for OPCUA using erlang
 
 pub type Mode {
   Command(warning: String)

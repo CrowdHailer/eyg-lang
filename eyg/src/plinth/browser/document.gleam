@@ -19,10 +19,13 @@ pub fn query_selector(selector) -> Result(Option(Element), _) {
 pub external fn query_selector_all(String) -> Array(Element) =
   "../../plinth_ffi.js" "querySelectorAll"
 
-// -------- Elements -------- 
+// -------- Elements --------
 
 pub external fn create_element(String) -> Element =
   "" "document.createElement"
+
+pub external fn set_attribute(Element, String, String) -> Nil =
+  "../../plinth_ffi.js" "setAttribute"
 
 pub external fn append(Element, Element) -> Nil =
   "../../plinth_ffi.js" "append"
