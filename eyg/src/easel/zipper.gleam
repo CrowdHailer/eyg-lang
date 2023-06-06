@@ -2,7 +2,10 @@ import gleam/list
 import gleam/result
 import eygir/expression as e
 
-pub fn at(expression, path) {
+pub type Zipper =
+  #(e.Expression, fn(e.Expression) -> e.Expression)
+
+pub fn at(expression, path) -> Result(Zipper, Nil) {
   do_zipper(expression, path, [])
 }
 

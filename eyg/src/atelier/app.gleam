@@ -9,7 +9,7 @@ import gleam/fetch
 import gleam/http
 import gleam/http/request
 import lustre/cmd
-import atelier/transform.{Act}
+import easel/zipper
 import eygir/expression as e
 import eygir/encode
 import eyg/analysis/jm/tree
@@ -31,7 +31,7 @@ pub type WorkSpace {
 }
 
 pub type Mode {
-  Navigate(actions: transform.Act)
+  Navigate(actions: zipper.Zipper)
   WriteLabel(value: String, commit: fn(String) -> e.Expression)
   WriteText(value: String, commit: fn(String) -> e.Expression)
   WriteNumber(value: Int, commit: fn(Int) -> e.Expression)
@@ -47,7 +47,7 @@ pub type Action {
 }
 
 pub fn init(source) {
-  let assert Ok(act) = transform.prepare(source, [])
+  let assert Ok(act) = prepare(source, [])
   let mode = Navigate(act)
   // Have inference work once for showing elements but need to also background this
   let types = do_infer(source)
@@ -106,7 +106,7 @@ pub fn update(state: WorkSpace, action) {
 
 pub fn select_node(state, path) {
   let WorkSpace(source: source, ..) = state
-  let assert Ok(act) = transform.prepare(source, path)
+  let assert Ok(act) = prepare(source, path)
   let mode = Navigate(act)
   let state = WorkSpace(..state, source: source, selection: path, mode: mode)
 
@@ -207,91 +207,89 @@ fn save(state: WorkSpace) {
   Ok(state)
 }
 
-fn call_with(act: Act, state) {
-  let source = act.update(e.Apply(e.Vacant(""), act.target))
+fn call_with(zipper: zipper.Zipper, state) {
+  let source = zipper.1(e.Apply(e.Vacant(""), zipper.0))
   update_source(state, source)
 }
 
 // e is essentially line above on a let statement.
 // nested lets can only be created from the value on the right.
 // moving something to a module might just have to be copy paste
-fn assign_to(act: Act, state) {
-  let commit = case act.target {
-    e.Let(_, _, _) -> fn(text) {
-      act.update(e.Let(text, e.Vacant(""), act.target))
-    }
+fn assign_to(zipper: zipper.Zipper, state) {
+  let commit = case zipper.0 {
+    e.Let(_, _, _) -> fn(text) { zipper.1(e.Let(text, e.Vacant(""), zipper.0)) }
     // normally I want to add something above
-    exp -> fn(text) { act.update(e.Let(text, e.Vacant(""), exp)) }
+    exp -> fn(text) { zipper.1(e.Let(text, e.Vacant(""), exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-fn record(act: Act, state) {
-  case act.target {
+fn record(zipper: zipper.Zipper, state) {
+  case zipper.0 {
     e.Vacant(_comment) ->
-      act.update(e.Empty)
+      zipper.1(e.Empty)
       |> update_source(state, _)
     e.Empty as exp | e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
       let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Extend(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Extend(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
     exp -> {
       let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Extend(text), exp), e.Empty))
+        zipper.1(e.Apply(e.Apply(e.Extend(text), exp), e.Empty))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
   }
 }
 
-fn tag(act: Act, state) {
-  let commit = case act.target {
-    e.Vacant(_comment) -> fn(text) { act.update(e.Tag(text)) }
-    exp -> fn(text) { act.update(e.Apply(e.Tag(text), exp)) }
+fn tag(zipper: zipper.Zipper, state) {
+  let commit = case zipper.0 {
+    e.Vacant(_comment) -> fn(text) { zipper.1(e.Tag(text)) }
+    exp -> fn(text) { zipper.1(e.Apply(e.Tag(text), exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-fn copy(act: Act, state) {
-  WorkSpace(..state, yanked: Some(act.target))
+fn copy(zipper: zipper.Zipper, state) {
+  WorkSpace(..state, yanked: Some(zipper.0))
 }
 
-fn paste(act: Act, state: WorkSpace) {
+fn paste(zipper: zipper.Zipper, state: WorkSpace) {
   case state.yanked {
     Some(snippet) -> {
-      let source = act.update(snippet)
+      let source = zipper.1(snippet)
       update_source(state, source)
     }
     None -> Error("nothing on clipboard")
   }
 }
 
-fn unwrap(act: Act, state) {
-  case act.parent {
-    None -> Error("top level")
-    Some(#(_i, _list, _, parent_update)) -> {
-      let source = parent_update(act.target)
-      update_source(state, source)
-    }
-  }
+fn unwrap(zipper: zipper.Zipper, state) {
+  todo("zipper needs to expose parent")
+  // case act.parent {
+  //   None -> Error("top level")
+  //   Some(#(_i, _list, _, parent_update)) -> {
+  //     let source = parent_update(zipper.0)
+  //     update_source(state, source)
+  //   }
+  // }
 }
 
-fn insert(act: Act, state) {
+fn insert(zipper: zipper.Zipper, state) {
   let write = fn(text, build) {
-    WriteLabel(text, fn(new) { act.update(build(new)) })
+    WriteLabel(text, fn(new) { zipper.1(build(new)) })
   }
-  use mode <- result.then(case act.target {
+  use mode <- result.then(case zipper.0 {
     e.Variable(value) -> Ok(write(value, e.Variable(_)))
     e.Lambda(param, body) -> Ok(write(param, e.Lambda(_, body)))
     e.Apply(_, _) -> Error("no insert option for apply")
     e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
 
-    e.Binary(value) ->
-      Ok(WriteText(value, fn(new) { act.update(e.Binary(new)) }))
+    e.Binary(value) -> Ok(WriteText(value, fn(new) { zipper.1(e.Binary(new)) }))
     e.Integer(value) ->
-      Ok(WriteNumber(value, fn(new) { act.update(e.Integer(new)) }))
+      Ok(WriteNumber(value, fn(new) { zipper.1(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
     e.Vacant(comment) -> Ok(write(comment, e.Vacant))
     e.Empty -> Error("empty record no insert")
@@ -309,18 +307,18 @@ fn insert(act: Act, state) {
   Ok(WorkSpace(..state, mode: mode))
 }
 
-fn overwrite(act: Act, state) {
-  case act.target {
+fn overwrite(zipper: zipper.Zipper, state) {
+  case zipper.0 {
     e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
       let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
     exp -> {
       let commit = fn(text) {
         // This is the same as above
-        act.update(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -332,65 +330,65 @@ fn increase(state: WorkSpace) {
     [_, ..rest] -> Ok(list.reverse(rest))
     [] -> Error("no increase")
   })
-  let assert Ok(act) = transform.prepare(state.source, selection)
+  let assert Ok(act) = prepare(state.source, selection)
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 
 fn decrease(_act, state: WorkSpace) {
   let selection = list.append(state.selection, [0])
-  use act <- result.then(transform.prepare(state.source, selection))
+  use act <- result.then(prepare(state.source, selection))
   Ok(WorkSpace(..state, selection: selection, mode: Navigate(act)))
 }
 
-fn delete(act: Act, state) {
+fn delete(zipper: zipper.Zipper, state) {
   // an assignment vacant or not is always deleted.
   // when deleting with a vacant as a target there is no change
   // we can instead bump up the path
-  let source = case act.target {
-    e.Let(_label, _, then) -> act.update(then)
-    _ -> act.update(e.Vacant(""))
+  let source = case zipper.0 {
+    e.Let(_label, _, then) -> zipper.1(then)
+    _ -> zipper.1(e.Vacant(""))
   }
   update_source(state, source)
 }
 
-fn abstract(act: Act, state) {
-  let commit = case act.target {
+fn abstract(zipper: zipper.Zipper, state) {
+  let commit = case zipper.0 {
     e.Let(label, value, then) -> fn(text) {
-      act.update(e.Let(label, e.Lambda(text, value), then))
+      zipper.1(e.Let(label, e.Lambda(text, value), then))
     }
-    exp -> fn(text) { act.update(e.Lambda(text, exp)) }
+    exp -> fn(text) { zipper.1(e.Lambda(text, exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
-fn select(act: Act, state) {
-  case act.target {
+fn select(zipper: zipper.Zipper, state) {
+  case zipper.0 {
     e.Let(_label, _value, _then) -> Error("can't get on let")
     exp -> {
-      let commit = fn(text) { act.update(e.Apply(e.Select(text), exp)) }
+      let commit = fn(text) { zipper.1(e.Apply(e.Select(text), exp)) }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
   }
 }
 
-fn handle(act: Act, state) {
-  case act.target {
+fn handle(zipper: zipper.Zipper, state) {
+  case zipper.0 {
     e.Let(_label, _value, _then) -> Error("can't handle on let")
     exp -> {
       let commit = fn(text) {
-        act.update(e.Apply(e.Apply(e.Handle(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Handle(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
   }
 }
 
-fn perform(act: Act, state) {
-  let commit = case act.target {
+fn perform(zipper: zipper.Zipper, state) {
+  let commit = case zipper.0 {
     e.Let(label, _value, then) -> fn(text) {
-      act.update(e.Let(label, e.Perform(text), then))
+      zipper.1(e.Let(label, e.Perform(text), then))
     }
-    _exp -> fn(text) { act.update(e.Perform(text)) }
+    _exp -> fn(text) { zipper.1(e.Perform(text)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
@@ -400,7 +398,8 @@ fn undo(state: WorkSpace) {
     #([], _) -> Error("No history")
     #([#(source, selection), ..rest], forward) -> {
       let history = #(rest, [#(state.source, state.selection), ..forward])
-      use act <- result.then(transform.prepare(source, selection))
+      use act <- result.then(prepare(source, selection))
+
       // Has to already be in navigate mode to undo
       let mode = Navigate(act)
       Ok(
@@ -421,7 +420,7 @@ fn redo(state: WorkSpace) {
     #(_, []) -> Error("No redo")
     #(backward, [#(source, selection), ..rest]) -> {
       let history = #([#(state.source, state.selection), ..backward], rest)
-      use act <- result.then(transform.prepare(source, selection))
+      use act <- result.then(prepare(source, selection))
       // Has to already be in navigate mode to undo
       let mode = Navigate(act)
       Ok(
@@ -437,69 +436,69 @@ fn redo(state: WorkSpace) {
   }
 }
 
-fn list(act: Act, state) {
-  let new = case act.target {
+fn list(zipper: zipper.Zipper, state) {
+  let new = case zipper.0 {
     e.Vacant(_comment) -> e.Tail
     e.Tail | e.Apply(e.Apply(e.Cons, _), _) ->
-      e.Apply(e.Apply(e.Cons, e.Vacant("")), act.target)
-    _ -> e.Apply(e.Apply(e.Cons, act.target), e.Tail)
+      e.Apply(e.Apply(e.Cons, e.Vacant("")), zipper.0)
+    _ -> e.Apply(e.Apply(e.Cons, zipper.0), e.Tail)
   }
-  let source = act.update(new)
+  let source = zipper.1(new)
   update_source(state, source)
 }
 
-fn call(act: Act, state) {
-  let source = act.update(e.Apply(act.target, e.Vacant("")))
+fn call(zipper: zipper.Zipper, state) {
+  let source = zipper.1(e.Apply(zipper.0, e.Vacant("")))
   update_source(state, source)
 }
 
-fn variable(act: Act, state) {
-  let commit = case act.target {
+fn variable(zipper: zipper.Zipper, state) {
+  let commit = case zipper.0 {
     e.Let(label, _value, then) -> fn(term) {
-      act.update(e.Let(label, term, then))
+      zipper.1(e.Let(label, term, then))
     }
-    _exp -> fn(term) { act.update(term) }
+    _exp -> fn(term) { zipper.1(term) }
   }
   WorkSpace(..state, mode: WriteTerm("", commit))
 }
 
-fn binary(act: Act, state) {
-  let commit = case act.target {
+fn binary(zipper: zipper.Zipper, state) {
+  let commit = case zipper.0 {
     e.Let(label, _value, then) -> fn(text) {
-      act.update(e.Let(label, e.Binary(text), then))
+      zipper.1(e.Let(label, e.Binary(text), then))
     }
-    _exp -> fn(text) { act.update(e.Binary(text)) }
+    _exp -> fn(text) { zipper.1(e.Binary(text)) }
   }
   WorkSpace(..state, mode: WriteText("", commit))
 }
 
-fn number(act: Act, state) {
-  let #(v, commit) = case act.target {
+fn number(zipper: zipper.Zipper, state) {
+  let #(v, commit) = case zipper.0 {
     e.Let(label, _value, then) -> #(
       0,
-      fn(value) { act.update(e.Let(label, e.Integer(value), then)) },
+      fn(value) { zipper.1(e.Let(label, e.Integer(value), then)) },
     )
-    e.Integer(value) -> #(value, fn(value) { act.update(e.Integer(value)) })
-    _exp -> #(0, fn(value) { act.update(e.Integer(value)) })
+    e.Integer(value) -> #(value, fn(value) { zipper.1(e.Integer(value)) })
+    _exp -> #(0, fn(value) { zipper.1(e.Integer(value)) })
   }
   WorkSpace(..state, mode: WriteNumber(v, commit))
 }
 
-fn match(act: Act, state) {
-  let commit = case act.target {
+fn match(zipper: zipper.Zipper, state) {
+  let commit = case zipper.0 {
     // e.Let(label, value, then) -> fn(text) {
-    //   act.update(e.Let(label, e.Binary(text), then))
+    //   zipper.1(e.Let(label, e.Binary(text), then))
     // }
     // Match on original value should maybe be the arg? but I like promoting first class everything
     exp -> fn(text) {
-      act.update(e.Apply(e.Apply(e.Case(text), e.Vacant("")), exp))
+      zipper.1(e.Apply(e.Apply(e.Case(text), e.Vacant("")), exp))
     }
   }
   Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
 }
 
-fn nocases(act: Act, state) {
-  update_source(state, act.update(e.NoCases))
+fn nocases(zipper: zipper.Zipper, state) {
+  update_source(state, zipper.1(e.NoCases))
 }
 
 fn infer(state: WorkSpace) {
@@ -514,10 +513,15 @@ fn infer(state: WorkSpace) {
   }
 }
 
+pub fn prepare(exp, selection) {
+  zipper.at(exp, selection)
+  |> result.map_error(fn(_: Nil) { "invalid_path" })
+}
+
 // app state actions maybe separate from ui but maybe ui files organised by mode
 // update source also ends the entry state
 fn update_source(state: WorkSpace, source) {
-  use act <- result.then(transform.prepare(source, state.selection))
+  use act <- result.then(prepare(source, state.selection))
   let mode = Navigate(act)
   let #(history, inferred) = case source == state.source {
     True -> #(state.history, state.inferred)

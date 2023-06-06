@@ -22,6 +22,12 @@ import atelier/view/type_
 // Not a full app
 // Widget is another name element/panel
 // Embed if I have a separate app file
+// TODO svelte memoisation of print OR collapse nodes
+// TODO auto infer if using the same state, maybe part of history API
+// TODO hash/name for restart/resumption in client
+// TODO easil document.query selector general restart
+// TODO document hash watch registering, maybe not needed with global handlers
+//
 
 pub type Mode {
   Command(warning: String)
