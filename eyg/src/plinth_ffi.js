@@ -45,6 +45,14 @@ export function insertAfter(e, text) {
   e.insertAdjacentHTML("afterend", text);
 }
 
+export function insertElementAfter(target, element) {
+  target.insertAdjacentElement("afterend", element);
+}
+
+export function remove(e) {
+  e.remove();
+}
+
 export function map_new() {
   return new Map();
 }

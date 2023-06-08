@@ -30,6 +30,13 @@ pub external fn set_attribute(Element, String, String) -> Nil =
 pub external fn append(Element, Element) -> Nil =
   "../../plinth_ffi.js" "append"
 
+// append works on children, not referenced in block components
+pub external fn insert_element_after(Element, Element) -> Nil =
+  "../../plinth_ffi.js" "insertElementAfter"
+
+pub external fn remove(Element) -> Nil =
+  "../../plinth_ffi.js" "remove"
+
 // -------- Other --------
 pub external fn insert_after(Element, String) -> Nil =
   "../../plinth_ffi.js" "insertAfter"
