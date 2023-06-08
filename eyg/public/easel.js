@@ -5,6 +5,8 @@
 // The server from the eyg project moved the build directory
 import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
 import * as Experiment from "../build/dev/javascript/eyg/experiment.mjs";
+import * as Observable from "../build/dev/javascript/eyg/observable.mjs";
+
 // Some stateful error with rollup happening here
 // import * as db2 from "./db/index.js";
 // console.log(db2);
@@ -12,7 +14,8 @@ import * as Experiment from "../build/dev/javascript/eyg/experiment.mjs";
 // console.log("yeeeee");
 // Object.assign(db, db2);
 
-Experiment.run();
+// Experiment.run();
+Observable.run();
 
 console.log("starting easel");
 
