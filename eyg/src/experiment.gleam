@@ -254,10 +254,9 @@ pub fn run() {
       promise.resolve(Nil)
     },
   )
-
   // todo
   // io.debug(page()("foo"))
 
   // panic
-  todo("end of run")
+  // todo("end of run")
 }
