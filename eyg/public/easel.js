@@ -6,6 +6,8 @@
 import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
 import * as Experiment from "../build/dev/javascript/eyg/experiment.mjs";
 import * as Observable from "../build/dev/javascript/eyg/observable.mjs";
+import * as Signal from "../build/dev/javascript/eyg/signal.mjs";
+
 
 // Some stateful error with rollup happening here
 // import * as db2 from "./db/index.js";
@@ -15,7 +17,7 @@ import * as Observable from "../build/dev/javascript/eyg/observable.mjs";
 // Object.assign(db, db2);
 
 // Experiment.run();
-Observable.run();
+Signal.run();
 
 console.log("starting easel");
 
