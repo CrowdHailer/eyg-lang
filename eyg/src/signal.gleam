@@ -109,8 +109,75 @@ fn p(children) {
   el("p", [], children)
 }
 
-fn if_(predicate, true, false) {
-  todo
+fn match(create) {
+  let pin = document.create_element("span")
+  let #(elements, try_update) = create()
+
+  let elements_ref = javascript.make_reference(elements)
+  let try_update_ref = javascript.make_reference(try_update)
+  let update = fn() {
+    case javascript.dereference(try_update_ref)() {
+      Ok(Nil) -> Nil
+      Error(Nil) -> {
+        list.map(javascript.dereference(elements_ref), document.remove)
+        let #(elements, try_update) = create()
+        list.fold(
+          elements,
+          pin,
+          fn(acc, new) {
+            document.insert_element_after(acc, new)
+            new
+          },
+        )
+        javascript.set_reference(elements_ref, elements)
+        javascript.set_reference(try_update_ref, try_update)
+        Nil
+      }
+    }
+  }
+  // weird but after try_update we only have one update
+  [#(pin, update), ..list.map(elements, fn(e) { #(e, fn() { Nil }) })]
+}
+
+fn if_(predicate, true true, false false) {
+  match(fn() { if_create(predicate, true, false) })
+}
+
+fn if_create(predicate, true, false) {
+  case predicate() {
+    True -> {
+      let #(elements, updates) = list.unzip(true)
+      let update = fn() {
+        list.map(updates, fn(u) { u() })
+        Nil
+      }
+      let try_update = fn() {
+        case predicate() {
+          True -> Ok(update())
+          False -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
+    False -> {
+      let #(elements, updates) = list.unzip(false)
+      let update = fn() {
+        list.map(updates, fn(u) { u() })
+        Nil
+      }
+      let try_update = fn() {
+        case predicate() {
+          False -> Ok(update())
+          True -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
+  }
+}
+
+fn option(option, some some, none none) {
+  match(fn() { option_create(option, some, none) })
 }
 
 fn option_create(option, some, none) {
@@ -152,36 +219,6 @@ fn option_create(option, some, none) {
   }
 }
 
-fn option(option, some some, none none) {
-  let pin = document.create_element("span")
-  let #(elements, try_update) = option_create(option, some, none)
-
-  let elements_ref = javascript.make_reference(elements)
-  let try_update_ref = javascript.make_reference(try_update)
-  let update = fn() {
-    case javascript.dereference(try_update_ref)() {
-      Ok(Nil) -> Nil
-      Error(Nil) -> {
-        list.map(javascript.dereference(elements_ref), document.remove)
-        let #(elements, try_update) = option_create(option, some, none)
-        list.fold(
-          elements,
-          pin,
-          fn(acc, new) {
-            document.insert_element_after(acc, new)
-            new
-          },
-        )
-        javascript.set_reference(elements_ref, elements)
-        javascript.set_reference(try_update_ref, try_update)
-        Nil
-      }
-    }
-  }
-  // weird but after try_update we only have one update
-  [#(pin, update), ..list.map(elements, fn(e) { #(e, fn() { Nil }) })]
-}
-
 pub type State {
   State(greeting: String, active: Bool, session: Option(String))
 }
@@ -206,7 +243,14 @@ pub fn run() {
             }),
             click(static("foo")),
           ],
-          [text(greeting), text(static("world"))],
+          [
+            text(greeting),
+            ..if_(
+              fn() { option.is_some(props().session) },
+              true: [text(static("world"))],
+              false: [text(static("world!!"))],
+            )
+          ],
         ),
         ..option(
           session,
