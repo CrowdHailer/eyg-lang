@@ -57,15 +57,46 @@ fn text(signal) {
   #(text, update)
 }
 
-fn p(children) {
-  let element = document.create_element("p")
-  let #(children, updates) = list.unzip(children)
+fn el(tag, attributes, children) {
+  let element = document.create_element(tag)
+  let attr_updates = list.map(attributes, fn(a) { a(element) })
+  let #(children, children_updates) = list.unzip(children)
   list.map(children, document.append(element, _))
+
   let update = fn() {
-    list.map(updates, fn(u) { u() })
+    list.map(attr_updates, fn(u) { u() })
+    list.map(children_updates, fn(u) { u() })
     Nil
   }
+  // always return try_update
+  // but weird silent failure if out of place
+  // fn(){list.try_all(updates, exec)}
   #(element, update)
+}
+
+fn class(signal) {
+  fn(element) {
+    let current = signal()
+    let value = javascript.make_reference(current)
+    let do_update = document.set_attribute(element, "class", _)
+    let update = fn() {
+      let latest = signal()
+      case latest == javascript.dereference(value) {
+        True -> Nil
+        False -> do_update(latest)
+      }
+    }
+    do_update(current)
+    update
+  }
+}
+
+fn p(children) {
+  el("p", [], children)
+}
+
+fn if_(predicate, true, false) {
+  todo
 }
 
 fn option_create(option, some, none) {
@@ -144,16 +175,24 @@ pub type State {
 // list of updates, how does svelte batch updates
 
 pub fn run() {
-  let assert [target, ..] =
-    array.to_list(document.query_selector_all("[data-easel=\"large\"]"))
-
   let page =
     component(fn(props: Signal(State)) {
       let greeting = fn() { props().greeting }
       let session = fn() { props().session }
 
       [
-        p([text(greeting), text(static("world"))]),
+        el(
+          "p",
+          [
+            class(fn() {
+              case props().active {
+                True -> "font-bold"
+                False -> ""
+              }
+            }),
+          ],
+          [text(greeting), text(static("world"))],
+        ),
         ..option(
           session,
           some: fn(session_id) { [text(session_id), text(greeting)] },
@@ -161,6 +200,8 @@ pub fn run() {
         )
       ]
     })
+  let assert [target, ..] =
+    array.to_list(document.query_selector_all("[data-easel=\"large\"]"))
 
   let #(elements, update) =
     page(State(greeting: "hello", active: False, session: None))
