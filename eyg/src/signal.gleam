@@ -50,7 +50,10 @@ fn text(signal) {
     let latest = signal()
     case latest == javascript.dereference(value) {
       True -> Nil
-      False -> do_update(latest)
+      False -> {
+        javascript.set_reference(value, latest)
+        do_update(latest)
+      }
     }
   }
   do_update(current)
@@ -74,21 +77,32 @@ fn el(tag, attributes, children) {
   #(element, update)
 }
 
-fn class(signal) {
+fn attribute(key, signal) {
   fn(element) {
     let current = signal()
     let value = javascript.make_reference(current)
-    let do_update = document.set_attribute(element, "class", _)
+    let do_update = document.set_attribute(element, key, _)
     let update = fn() {
       let latest = signal()
       case latest == javascript.dereference(value) {
         True -> Nil
-        False -> do_update(latest)
+        False -> {
+          javascript.set_reference(value, latest)
+          do_update(latest)
+        }
       }
     }
     do_update(current)
     update
   }
+}
+
+fn class(signal) {
+  attribute("class", signal)
+}
+
+fn click(signal) {
+  attribute("data-click", signal)
 }
 
 fn p(children) {
@@ -190,6 +204,7 @@ pub fn run() {
                 False -> ""
               }
             }),
+            click(static("foo")),
           ],
           [text(greeting), text(static("world"))],
         ),
@@ -200,19 +215,30 @@ pub fn run() {
         )
       ]
     })
+  let #(state, set_state) =
+    make(State(greeting: "hello", active: False, session: None))
+  let #(elements, update) = page(state())
+  let update_state = fn(f) {
+    let new = f(state())
+    set_state(new)
+    update(new)
+  }
+
   let assert [target, ..] =
     array.to_list(document.query_selector_all("[data-easel=\"large\"]"))
 
-  let #(elements, update) =
-    page(State(greeting: "hello", active: False, session: None))
+  document.on_click(fn(event) {
+    console.log(event)
+    update_state(fn(s) { State(..s, active: !s.active) })
+  })
   list.map(elements, document.append(target, _))
-  // console.log(array.from_list(elements))
+
   use _ <- promise.await(promisex.wait(1000))
-  update(State(greeting: "hello!", active: True, session: Some("foooo")))
+  update_state(fn(s) { State(..s, session: Some("foo")) })
   use _ <- promise.await(promisex.wait(1000))
-  update(State(greeting: "hello!", active: True, session: Some("bar")))
+  update_state(fn(s) { State(..s, session: Some("bar")) })
   use _ <- promise.await(promisex.wait(1000))
-  update(State(greeting: "done", active: True, session: Some("bar")))
+  update_state(fn(s) { State(..s, greeting: "done") })
 
   // console.log(array.from_list(elements))
   promise.resolve(Nil)
