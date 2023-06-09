@@ -240,28 +240,78 @@ fn fragment(children) {
     list.map(updates, fn(u) { u() })
     Nil
   }
-  #(elements, todo)
+  #(elements, update)
 }
 
 fn expression_create(exp, var, lambda, apply, let_, integer, binary) {
   case exp() {
     e.Variable(label) -> {
-      let #(elements, update) = fragment(var(fn() { todo }))
+      let #(get, set) = make(label)
+      let #(elements, update) = fragment(var(get))
+      let try_update = fn() {
+        case exp() {
+          e.Variable(new) -> {
+            set(new)
+            Ok(update())
+          }
+          _ -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
+    e.Lambda(label, body) -> {
+      let #(get_label, set_label) = make(label)
+      let #(get_body, set_body) = make(body)
+      let #(elements, update) = fragment(lambda(get_label, get_body))
+      let try_update = fn() {
+        case exp() {
+          e.Lambda(label, body) -> {
+            set_label(label)
+            set_body(body)
+
+            Ok(update())
+          }
+          _ -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
     }
     _ -> panic
   }
 }
 
 pub type State {
-  State(greeting: String, active: Bool, session: Option(String))
+  State(
+    greeting: String,
+    active: Bool,
+    session: Option(String),
+    source: e.Expression,
+  )
 }
 
 // list of updates, how does svelte batch updates
+
+fn projection(exp) {
+  // This is going to be a problem recursivly will blow the stack
+  expression(
+    exp,
+    var: fn(label) { [text(label), text(static("  "))] },
+    lambda: fn(label, body) {
+      [text(label), text(static(" lambda ")), ..projection(body)]
+    },
+    apply: fn() { todo },
+    let_: fn() { todo },
+    integer: fn() { todo },
+    binary: fn() { todo },
+  )
+}
 
 pub fn run() {
   let page =
     component(fn(props: Signal(State)) {
       let greeting = fn() { props().greeting }
+      // form below needed if signals are results
+      // let greeting = map(props, fn(p) { p.greeting })
       let session = fn() { props().session }
 
       [
@@ -285,6 +335,7 @@ pub fn run() {
             )
           ],
         ),
+        p(projection(fn() { props().source })),
         ..option(
           session,
           some: fn(session_id) { [text(session_id), text(greeting)] },
@@ -292,8 +343,14 @@ pub fn run() {
         )
       ]
     })
+
   let #(state, set_state) =
-    make(State(greeting: "hello", active: False, session: None))
+    make(State(
+      greeting: "hello",
+      active: False,
+      session: None,
+      source: e.Lambda("x", e.Variable("x")),
+    ))
   let #(elements, update) = page(state())
   let update_state = fn(f) {
     let new = f(state())
@@ -311,11 +368,23 @@ pub fn run() {
   list.map(elements, document.append(target, _))
 
   use _ <- promise.await(promisex.wait(1000))
-  update_state(fn(s) { State(..s, session: Some("foo")) })
+  update_state(fn(s) {
+    State(
+      ..s,
+      session: Some("foo"),
+      source: e.Lambda("x", e.Lambda("y", e.Variable("y"))),
+    )
+  })
   use _ <- promise.await(promisex.wait(1000))
   update_state(fn(s) { State(..s, session: Some("bar")) })
   use _ <- promise.await(promisex.wait(1000))
-  update_state(fn(s) { State(..s, greeting: "done") })
+  update_state(fn(s) {
+    State(
+      ..s,
+      greeting: "done",
+      source: e.Lambda("x", e.Lambda("y", e.Variable("z"))),
+    )
+  })
 
   // console.log(array.from_list(elements))
   promise.resolve(Nil)
