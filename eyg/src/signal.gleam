@@ -7,6 +7,7 @@ import gleam/javascript/promise
 import plinth/browser/console
 import plinth/browser/document
 import plinth/javascript/promisex
+import eygir/expression as e
 
 pub type Signal(a) =
   fn() -> a
@@ -216,6 +217,38 @@ fn option_create(option, some, none) {
       }
       #(elements, try_update)
     }
+  }
+}
+
+fn expression(
+  exp,
+  var var,
+  lambda lambda,
+  apply apply,
+  let_ let_,
+  integer integer,
+  binary binary,
+) {
+  match(fn() {
+    expression_create(exp, var, lambda, apply, let_, integer, binary)
+  })
+}
+
+fn fragment(children) {
+  let #(elements, updates) = list.unzip(children)
+  let update = fn() {
+    list.map(updates, fn(u) { u() })
+    Nil
+  }
+  #(elements, todo)
+}
+
+fn expression_create(exp, var, lambda, apply, let_, integer, binary) {
+  case exp() {
+    e.Variable(label) -> {
+      let #(elements, update) = fragment(var(fn() { todo }))
+    }
+    _ -> panic
   }
 }
 
