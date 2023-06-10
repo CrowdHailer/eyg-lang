@@ -9,3 +9,6 @@ npm i -g sirv-cli
 ```
 
 What is best practise for make files bin scripts in a mono repo?
+
+lenses etc
+https://www.youtube.com/watch?v=geV8F59q48E

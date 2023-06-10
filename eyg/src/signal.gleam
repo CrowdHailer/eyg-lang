@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/option.{None, Option, Some}
 import gleam/javascript
@@ -8,6 +9,7 @@ import plinth/browser/console
 import plinth/browser/document
 import plinth/javascript/promisex
 import eygir/expression as e
+import eygir/decode
 
 pub type Signal(a) =
   fn() -> a
@@ -276,7 +278,85 @@ fn expression_create(exp, var, lambda, apply, let_, integer, binary) {
       }
       #(elements, try_update)
     }
-    _ -> panic
+    e.Apply(func, body) -> {
+      let #(get_func, set_func) = make(func)
+      let #(get_body, set_body) = make(body)
+      let #(elements, update) = fragment(apply(get_func, get_body))
+      let try_update = fn() {
+        case exp() {
+          e.Apply(func, body) -> {
+            set_func(func)
+            set_body(body)
+
+            Ok(update())
+          }
+          _ -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
+    e.Let(label, value, then) -> {
+      let #(get_label, set_label) = make(label)
+      let #(get_value, set_value) = make(value)
+      let #(get_then, set_then) = make(then)
+
+      let #(elements, update) = fragment(let_(get_label, get_value, get_then))
+      let try_update = fn() {
+        case exp() {
+          e.Let(label, value, then) -> {
+            set_label(label)
+            set_value(value)
+            set_then(then)
+
+            Ok(update())
+          }
+          _ -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
+    e.Integer(value) -> {
+      let #(get, set) = make(value)
+      let #(elements, update) = fragment(integer(get))
+      let try_update = fn() {
+        case exp() {
+          e.Integer(new) -> {
+            set(new)
+            Ok(update())
+          }
+          _ -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
+    e.Binary(value) -> {
+      let #(get, set) = make(value)
+      let #(elements, update) = fragment(binary(get))
+      let try_update = fn() {
+        case exp() {
+          e.Binary(new) -> {
+            set(new)
+            Ok(update())
+          }
+          _ -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
+    _ -> {
+      // let #(get, set) = make(value)
+      let #(elements, update) = fragment([text(static("unknown"))])
+      let try_update = fn() {
+        case exp() {
+          // e.Binary(new) -> {
+          //   set(new)
+          //   Ok(update())
+          // }
+          _ -> Error(Nil)
+        }
+      }
+      #(elements, try_update)
+    }
   }
 }
 
@@ -299,11 +379,29 @@ fn projection(exp) {
     lambda: fn(label, body) {
       [text(label), text(static(" lambda ")), ..projection(body)]
     },
-    apply: fn() { todo },
-    let_: fn() { todo },
-    integer: fn() { todo },
-    binary: fn() { todo },
+    apply: fn(func, arg) { list.append(projection(func), projection(arg)) },
+    let_: fn(label, value, then) {
+      let elements =
+        [text(static("let ")), text(label)]
+        |> list.append(projection(value))
+        |> list.append([text(static("\n"))])
+        |> list.append(projection(then))
+      io.debug(list.length(elements))
+      elements
+    },
+    integer: fn(value) { [text(fn() { int.to_string(value()) })] },
+    binary: fn(value) { [text(static("\"")), text(value), text(static("\""))] },
   )
+}
+
+// app is the stateful bit.
+pub fn app(json) {
+  let assert Ok(source) = decode.decoder(json)
+  // component is actually context
+  let page = component(fn(exp) { projection(exp) })
+  let #(signal, set) = make(source)
+  let #(elements, update) = page(signal())
+  #(array.from_list(elements), update)
 }
 
 pub fn run() {

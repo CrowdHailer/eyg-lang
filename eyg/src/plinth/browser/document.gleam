@@ -60,6 +60,7 @@ pub fn set_html(el: Element, value: String) {
   do_set(el, "innerHTML", dynamic.from(value))
 }
 
+// TODO fix proper action or add event listener
 pub external fn on_click(fn(String) -> Nil) -> Nil =
   "../../plinth_ffi.js" "onClick"
 
