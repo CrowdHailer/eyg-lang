@@ -1,3 +1,4 @@
+// Slow due to a lot of calls to list.map
 import gleam/io
 import gleam/int
 import gleam/list
@@ -401,6 +402,14 @@ pub fn app(json) {
   let page = component(fn(exp) { projection(exp) })
   let #(signal, set) = make(source)
   let #(elements, update) = page(signal())
+  promise.map(
+    promisex.wait(2000),
+    fn(_) {
+      let assert e.Let(label, std, rest) = source
+      let exp = e.Let(label, e.Vacant(""), rest)
+      update(exp)
+    },
+  )
   #(array.from_list(elements), update)
 }
 

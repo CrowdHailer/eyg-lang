@@ -8,7 +8,6 @@ import * as Experiment from "../build/dev/javascript/eyg/experiment.mjs";
 import * as Observable from "../build/dev/javascript/eyg/observable.mjs";
 import * as Signal from "../build/dev/javascript/eyg/signal.mjs";
 
-
 // Some stateful error with rollup happening here
 // import * as db2 from "./db/index.js";
 // console.log(db2);
@@ -199,7 +198,7 @@ start();
 // full page routing for selection change reference with ID
 // put more in plinth
 // options list of enum/go fn types or all the options fixed.
-function startLoader(button) {
+async function startLoader(button) {
   console.log(button);
   button.onclick = async function (event) {
     // chrome only
@@ -211,10 +210,16 @@ function startLoader(button) {
     const file = await fileHandle.getFile();
     // .json not available
     const json = JSON.parse(await file.text());
-    const [elements, update] = Signal.app(json)
-    console.log(elements)
+    const [elements, update] = Signal.app(json);
+    console.log(elements);
     const pre = button.parentElement;
-    pre.append( ...elements)
+    pre.append(...elements);
+    console.log("before");
+
+    await new Promise(function (resolve) {
+      setTimeout(resolve, 1000);
+    });
+    console.log("done");
     // const writableStream = await fileHandle.createWritable();
     // const data = new Blob([JSON.stringify({ foo: 2 }, null, 2)], {
     //   type: "application/json",
