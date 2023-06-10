@@ -210,42 +210,48 @@ async function startLoader(button) {
     const file = await fileHandle.getFile();
     // .json not available
     const json = JSON.parse(await file.text());
-    const [elements, update] = Signal.app(json);
-    console.log(elements);
-    const pre = button.parentElement;
-    pre.append(...elements);
-    console.log("before");
 
-    await new Promise(function (resolve) {
-      setTimeout(resolve, 1000);
-    });
-    console.log("done");
+    // signal approach -------------
+    // const [elements, update] = Signal.app(json);
+    // console.log(elements);
+    // const pre = button.parentElement;
+    // pre.append(...elements);
+    // console.log("before");
+
+    // await new Promise(function (resolve) {
+    //   setTimeout(resolve, 1000);
+    // });
+    // console.log("done");
+    // -------------------------
+    // file write
     // const writableStream = await fileHandle.createWritable();
     // const data = new Blob([JSON.stringify({ foo: 2 }, null, 2)], {
     //   type: "application/json",
     // });
     // await writableStream.write(data);
-    // let state = Easel.init(json);
-    // let offset = 0;
-    // // button is the button
-    // const pre = button.parentElement;
-    // pre.contentEditable = true;
-    // pre.innerHTML = Easel.html(state);
+    // --------------
 
-    // pre.onbeforeinput = function (event) {
-    //   console.log(event);
-    //   [state, offset] = handleInput(event, state);
-    //   updateElement(pre, state, offset);
-    //   return false;
-    // };
-    // pre.onkeydown = function (event) {
-    //   if (event.key == "Escape") {
-    //     state = Easel.escape(state);
-    //     const selection = window.getSelection();
-    //     const range = selection.getRangeAt(0);
-    //     const start = startIndex(range);
-    //     updateElement(pre, state, start);
-    //   }
-    // };
+    let state = Easel.init(json);
+    let offset = 0;
+    // button is the button
+    const pre = button.parentElement;
+    pre.contentEditable = true;
+    pre.innerHTML = Easel.html(state);
+
+    pre.onbeforeinput = function (event) {
+      console.log(event);
+      [state, offset] = handleInput(event, state);
+      updateElement(pre, state, offset);
+      return false;
+    };
+    pre.onkeydown = function (event) {
+      if (event.key == "Escape") {
+        state = Easel.escape(state);
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const start = startIndex(range);
+        updateElement(pre, state, start);
+      }
+    };
   };
 }

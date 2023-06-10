@@ -70,3 +70,19 @@ export function map_get(map, key) {
 export function map_size(map) {
   return map.size;
 }
+
+export function array_graphmemes(string) {
+  return [...string];
+}
+
+// https://stackoverflow.com/questions/1966476/how-can-i-process-each-letter-of-text-using-javascript
+export function foldGraphmemes(string, initial, f) {
+  let value = initial;
+  // for (const ch of string) {
+  //   value = f(value, ch);
+  // }
+  [...string].forEach((c, i) => {
+    value = f(value, c, i);
+  });
+  return value;
+}

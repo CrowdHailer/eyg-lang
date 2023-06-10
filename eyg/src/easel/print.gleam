@@ -1,8 +1,10 @@
+// up to 91% of time is joining lists
 import gleam/int
 import gleam/list
 import gleam/map
 import gleam/result
 import gleam/string
+import gleam/stringx
 import eygir/expression as e
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
@@ -416,8 +418,10 @@ fn print_match(exp, path, br, br_inner, acc, info, analysis) {
 }
 
 pub fn print_keyword(keyword, path, acc, err) {
-  list.fold(
-    string.to_graphemes(keyword),
+  // list.fold(
+  //   string.to_graphemes(keyword),
+  stringx.fold_graphmemes(
+    keyword,
     acc,
     fn(acc, ch) { [#(ch, path, -1, Keyword, err), ..acc] },
   )
@@ -430,8 +434,11 @@ pub fn print_with_offset(content, path, style, err, acc, info, _analysis) {
     _ -> #(content, style)
   }
   let acc =
-    list.index_fold(
-      string.to_graphemes(content),
+  // TODO work out total effect of stringx here
+    stringx.index_fold_graphmemes(
+      // list.index_fold(
+      //   string.to_graphemes(content),
+      content,
       acc,
       fn(acc, ch, i) { [#(ch, path, i, style, err), ..acc] },
     )

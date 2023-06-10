@@ -15,3 +15,9 @@ pub fn replace_at(original, from, to, new) {
   list.flatten([pre, string.to_graphemes(new), post])
   |> string.concat
 }
+
+pub external fn fold_graphmemes(String, a, fn(a, String) -> a) -> a =
+  "../plinth_ffi.js" "foldGraphmemes"
+
+pub external fn index_fold_graphmemes(String, a, fn(a, String, Int) -> a) -> a =
+  "../plinth_ffi.js" "foldGraphmemes"
