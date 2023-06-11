@@ -10,6 +10,7 @@ import lustre/attribute.{class, classes, style}
 import eygir/expression as e
 import atelier/app.{SelectNode}
 import atelier/view/type_
+import easel/location.{Location, child, focused, open}
 
 pub fn render(source, selection, inferred) {
   let loc = Location([], Some(selection))
@@ -458,36 +459,4 @@ fn handle(label, loc, inferred) {
 
   [click(loc), classes(highlight(target, alert))]
   |> span([span([class("text-gray-400")], [text("handle ")]), text(label)])
-}
-
-// location is separate to path, extract but it may be view layer only.
-pub type Location {
-  Location(path: List(Int), selection: Option(List(Int)))
-}
-
-fn open(location) {
-  let Location(selection: selection, ..) = location
-  case selection {
-    None -> False
-    Some(_) -> True
-  }
-}
-
-fn focused(location) {
-  let Location(selection: selection, ..) = location
-  case selection {
-    Some([]) -> True
-    _ -> False
-  }
-}
-
-// call location.step
-fn child(location, i) {
-  let Location(path: path, selection: selection) = location
-  let path = list.append(path, [i])
-  let selection = case selection {
-    Some([j, ..inner]) if i == j -> Some(inner)
-    _ -> None
-  }
-  Location(path, selection)
 }

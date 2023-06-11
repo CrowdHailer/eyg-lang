@@ -9,11 +9,10 @@
 // TODO vs not printing the whole editor
 
 type Open {
-    All
-    None
-    Selection()
+  All
+  None
+  Selection
 }
-
 // Test with a better than element index i.e. counting all previous mechanism for lookup.
 // info is a lookup from path to element
 // if we know we can lookup by id, where id is the bounding box <span><kw>let </kw><span label><> block is body<>
