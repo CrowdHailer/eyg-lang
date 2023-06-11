@@ -28,8 +28,8 @@ pub type Style {
 pub type Rendered =
   #(String, List(Int), Int, Style, Bool)
 
-pub fn print(source, analysis: tree.State) {
-  let loc = Location([], Some([0, 0, 0]))
+pub fn print(source, selection, analysis: tree.State) {
+  let loc = Location([], selection)
   let #(acc, info) = do_print(source, loc, "\n", [], map.new(), analysis)
   #(list.reverse(acc), info)
 }

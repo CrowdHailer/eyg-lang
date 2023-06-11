@@ -105,7 +105,7 @@ pub fn init(json) {
   }
   // can keep inferred in history
   let inferred = do_infer(source, std)
-  let rendered = print.print(source, inferred)
+  let rendered = print.print(source, None, inferred)
   Embed(
     Command(""),
     None,
@@ -446,7 +446,7 @@ pub fn insert_text(state: Embed, data, start, end) {
               // TODO move to update source
               let inferred = do_infer(new, state.std)
 
-              let rendered = print.print(new, inferred)
+              let rendered = print.print(new, state.focus, inferred)
               // zip and target
 
               // update source source have a offset function
@@ -531,7 +531,7 @@ pub fn undo(state: Embed, start) {
     [edit, ..backwards] -> {
       let #(old, path, text_only) = edit
       let inferred = do_infer(old, state.std)
-      let rendered = print.print(old, inferred)
+      let rendered = print.print(old, state.focus, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -559,7 +559,7 @@ pub fn redo(state: Embed, start) {
     [edit, ..forward] -> {
       let #(other, path, text_only) = edit
       let inferred = do_infer(other, state.std)
-      let rendered = print.print(other, inferred)
+      let rendered = print.print(other, state.focus, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -729,7 +729,7 @@ pub fn insert_paragraph(index, state: Embed) {
 
   let inferred = do_infer(new, state.std)
 
-  let rendered = print.print(new, inferred)
+  let rendered = print.print(new, state.focus, inferred)
   let assert Ok(start) =
     map.get(rendered.1, print.path_to_string(list.append(path, [1])))
   #(
@@ -898,7 +898,7 @@ fn update_at(state: Embed, path, cb) {
       let new = rezip(updated)
       let history = #([], [#(source, path, False), ..state.history.1])
       let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
+      let rendered = print.print(new, state.focus, inferred)
       let path = list.append(path, sub_path)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
@@ -907,6 +907,12 @@ fn update_at(state: Embed, path, cb) {
           mode: mode,
           source: new,
           history: history,
+          // TODO linger for infer
+          // TODO linger for open editor
+          // TODO place for editor utils location path etc
+          // type check is needed for any infer change on labels
+          // Proper entry for all my apps plinth for selection chagne etc
+          // ideadlly start super fast in web worker
           inferred: Some(inferred),
           rendered: rendered,
         ),

@@ -182,6 +182,9 @@ async function start() {
     // console.log(element, );
     const index = elements.indexOf(element);
     if (index < 0) {
+      if (window.globalSelectionHandler) {
+        window.globalSelectionHandler(range);
+      }
       return;
     }
     states[index](range);
@@ -237,6 +240,13 @@ async function startLoader(button) {
     const pre = button.parentElement;
     pre.contentEditable = true;
     pre.innerHTML = Easel.html(state);
+    window.globalSelectionHandler = function (range) {
+      const start = startIndex(range);
+      const end = endIndex(range);
+      // console.log("handle selection change", start, end);
+      state = Easel.update_selection(state, start, end);
+      pre.nextElementSibling.innerHTML = Easel.pallet(state);
+    };
 
     pre.onbeforeinput = function (event) {
       console.log(event);
