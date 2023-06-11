@@ -13,6 +13,9 @@ export function onClick(f) {
     }
   };
 }
+// above is a version of global handling of clicks but that in an app or area of activity
+// or should it be qwik is global
+// BUT the above function can only be called once so it need to be start of loader run setup
 
 export function onKeyDown(f) {
   document.onkeydown = function (event) {
@@ -51,6 +54,19 @@ export function insertElementAfter(target, element) {
 
 export function remove(e) {
   e.remove();
+}
+
+// -------- element properties --------
+
+export function dataset(el) {
+  return el.dataset;
+}
+
+export function datasetGet(el, key) {
+  if (key in el.dataset) {
+    return new Ok(el.dataset[key]);
+  }
+  return new Error(undefined);
 }
 
 export function map_new() {

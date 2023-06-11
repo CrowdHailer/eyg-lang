@@ -4,6 +4,7 @@
 // lots of work on resumable
 // The server from the eyg project moved the build directory
 import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
+import * as Loader from "../build/dev/javascript/eyg/easel/loader.mjs";
 import * as Experiment from "../build/dev/javascript/eyg/experiment.mjs";
 import * as Observable from "../build/dev/javascript/eyg/observable.mjs";
 import * as Signal from "../build/dev/javascript/eyg/signal.mjs";
@@ -16,7 +17,7 @@ import * as Signal from "../build/dev/javascript/eyg/signal.mjs";
 // Object.assign(db, db2);
 
 // Experiment.run();
-Signal.run();
+// Signal.run();
 
 console.log("starting easel");
 
@@ -265,3 +266,5 @@ async function startLoader(button) {
     };
   };
 }
+
+Loader.run();

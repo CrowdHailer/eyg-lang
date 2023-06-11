@@ -37,6 +37,11 @@ pub external fn insert_element_after(Element, Element) -> Nil =
 pub external fn remove(Element) -> Nil =
   "../../plinth_ffi.js" "remove"
 
+// -------- Elements Attributes --------
+
+pub external fn dataset_get(Element, String) -> Result(String, Nil) =
+  "../../plinth_ffi.js" "datasetGet"
+
 // -------- Other --------
 pub external fn insert_after(Element, String) -> Nil =
   "../../plinth_ffi.js" "insertAfter"
