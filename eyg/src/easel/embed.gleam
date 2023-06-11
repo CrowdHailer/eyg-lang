@@ -64,7 +64,7 @@ pub type Embed {
     std: Option(#(e.Expression, tree.State)),
     source: e.Expression,
     history: History,
-    // use an auto infer option
+    auto_infer: Bool,
     inferred: Option(tree.State),
     rendered: #(List(print.Rendered), map.Map(String, Int)),
     focus: Option(List(Int)),
@@ -89,7 +89,7 @@ fn do_infer(source, std) {
 pub fn fullscreen(root) {
   let source = e.Vacant("")
   let inferred = do_infer(source, None)
-  let rendered = print.print(source, None, inferred)
+  let rendered = print.print(source, None, Some(inferred))
   let state =
     Embed(
       Command(""),
@@ -97,6 +97,7 @@ pub fn fullscreen(root) {
       None,
       source,
       #([], []),
+      False,
       Some(inferred),
       rendered,
       None,
@@ -123,9 +124,11 @@ pub fn fullscreen(root) {
                   javascript.update_reference(
                     ref,
                     fn(state: Embed) {
+                      // always infer at the start
                       let inferred = do_infer(source, state.std)
 
-                      let rendered = print.print(source, Some([]), inferred)
+                      let rendered =
+                        print.print(source, Some([]), Some(inferred))
                       let assert Ok(start) =
                         map.get(rendered.1, print.path_to_string([]))
 
@@ -191,7 +194,14 @@ pub fn fullscreen(root) {
       case
         case document.key(event) {
           "Escape" -> {
-            javascript.update_reference(ref, escape)
+            javascript.update_reference(
+              ref,
+              fn(s) {
+                let s = escape(s)
+                render_page(root, 1, s)
+                s
+              },
+            )
             Ok(Nil)
           }
           _ -> Error(Nil)
@@ -288,13 +298,14 @@ pub fn init(json) {
   }
   // can keep inferred in history
   let inferred = do_infer(source, std)
-  let rendered = print.print(source, None, inferred)
+  let rendered = print.print(source, None, Some(inferred))
   Embed(
     Command(""),
     None,
     std,
     source,
     #([], []),
+    True,
     Some(inferred),
     rendered,
     None,
@@ -627,7 +638,11 @@ pub fn insert_text(state: Embed, data, start, end) {
               }
               let history = #([], backwards)
               // TODO move to update source
-              let inferred = do_infer(new, state.std)
+
+              let inferred = case state.auto_infer {
+                True -> Some(do_infer(new, state.std))
+                False -> None
+              }
 
               let rendered = print.print(new, state.focus, inferred)
               // zip and target
@@ -641,7 +656,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   ..state,
                   source: new,
                   history: history,
-                  inferred: Some(inferred),
+                  inferred: inferred,
                   rendered: rendered,
                 ),
                 start + offset,
@@ -713,7 +728,11 @@ pub fn undo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no undo available")), start)
     [edit, ..backwards] -> {
       let #(old, path, text_only) = edit
-      let inferred = do_infer(old, state.std)
+      // TODO put inference in history
+      let inferred = case state.auto_infer {
+        True -> Some(do_infer(old, state.std))
+        False -> None
+      }
       let rendered = print.print(old, state.focus, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
@@ -726,7 +745,7 @@ pub fn undo(state: Embed, start) {
             [#(state.source, current_path, text_only), ..state.history.0],
             backwards,
           ),
-          inferred: Some(inferred),
+          inferred: inferred,
           rendered: rendered,
         )
       #(state, start)
@@ -741,7 +760,10 @@ pub fn redo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no redo available")), start)
     [edit, ..forward] -> {
       let #(other, path, text_only) = edit
-      let inferred = do_infer(other, state.std)
+      let inferred = case state.auto_infer {
+        True -> Some(do_infer(other, state.std))
+        False -> None
+      }
       let rendered = print.print(other, state.focus, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
@@ -754,7 +776,7 @@ pub fn redo(state: Embed, start) {
             forward,
             [#(state.source, current_path, text_only), ..state.history.1],
           ),
-          inferred: Some(inferred),
+          inferred: inferred,
           rendered: rendered,
         )
       #(state, start)
@@ -910,7 +932,10 @@ pub fn insert_paragraph(index, state: Embed) {
   let new = rezip(new)
   let history = #([], [#(source, path, False), ..state.history.1])
 
-  let inferred = do_infer(new, state.std)
+  let inferred = case state.auto_infer {
+    True -> Some(do_infer(new, state.std))
+    False -> None
+  }
 
   let rendered = print.print(new, state.focus, inferred)
   let assert Ok(start) =
@@ -921,7 +946,7 @@ pub fn insert_paragraph(index, state: Embed) {
       mode: Insert,
       source: new,
       history: history,
-      inferred: Some(inferred),
+      inferred: inferred,
       rendered: rendered,
     ),
     start,
@@ -966,12 +991,13 @@ pub fn pallet(embed: Embed) {
       let message = case warning {
         "" ->
           case embed.inferred, embed.focus {
-            Some(types), Some(path) -> {
+            types, Some(path) -> {
               case print.type_at(path, types) {
-                Ok(_) -> "press space to run"
-                Error(#(r, t1, t2)) -> {
+                Some(Ok(_)) -> "press space to run"
+                Some(Error(#(r, t1, t2))) -> {
                   type_.render_failure(r, t1, t2)
                 }
+                None -> "press space to type check"
               }
             }
             _, _ -> "press space to run"
@@ -1080,7 +1106,10 @@ fn update_at(state: Embed, path, cb) {
       let #(updated, mode, sub_path) = cb(target)
       let new = rezip(updated)
       let history = #([], [#(source, path, False), ..state.history.1])
-      let inferred = do_infer(new, state.std)
+      let inferred = case state.auto_infer {
+        True -> Some(do_infer(new, state.std))
+        False -> None
+      }
       let rendered = print.print(new, state.focus, inferred)
       let path = list.append(path, sub_path)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
@@ -1096,7 +1125,7 @@ fn update_at(state: Embed, path, cb) {
           // type check is needed for any infer change on labels
           // Proper entry for all my apps plinth for selection chagne etc
           // ideadlly start super fast in web worker
-          inferred: Some(inferred),
+          inferred: inferred,
           rendered: rendered,
         ),
         start,

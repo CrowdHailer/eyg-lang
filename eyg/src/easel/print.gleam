@@ -2,7 +2,7 @@
 import gleam/int
 import gleam/list
 import gleam/map
-import gleam/option.{Some}
+import gleam/option.{None, Option, Some}
 import gleam/result
 import gleam/string
 import gleam/stringx
@@ -28,20 +28,32 @@ pub type Style {
 pub type Rendered =
   #(String, List(Int), Int, Style, Bool)
 
-pub fn print(source, selection, analysis: tree.State) {
+pub fn print(source, selection, analysis: Option(tree.State)) {
   let loc = Location([], selection)
   let #(acc, info) = do_print(source, loc, "\n", [], map.new(), analysis)
   #(list.reverse(acc), info)
 }
 
 pub fn type_at(path, analysis) {
-  let #(sub, _next, types) = analysis
-  let assert Ok(t) = map.get(types, list.reverse(path))
-  t
+  case analysis {
+    Some(analysis) -> {
+      let #(sub, _next, types) = analysis
+      let assert Ok(t) = map.get(types, list.reverse(path))
+      Some(t)
+    }
+    None -> None
+  }
+}
+
+fn is_error(path, analysis) {
+  case type_at(path, analysis) {
+    Some(t) -> result.is_error(t)
+    None -> False
+  }
 }
 
 fn do_print(source, loc: Location, br, acc, info, analysis) {
-  let err = result.is_error(type_at(loc.path, analysis))
+  let err = is_error(loc.path, analysis)
   case source {
     e.Lambda(param, body) -> {
       let #(acc, info) =
@@ -149,18 +161,21 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     e.Variable(label) ->
       print_with_offset(label, loc, Default, err, acc, info, analysis)
     e.Vacant(_) -> {
-      let #(sub, _next, types) = analysis
-      let content = case map.get(types, list.reverse(loc.path)) {
-        Error(Nil) -> "todo"
-        Ok(inferred) ->
-          case inferred {
-            Ok(t) -> {
-              let t = t.resolve(t, sub)
-              type_.render_type(t)
-            }
+      let content = case analysis {
+        Some(#(sub, _next, types)) ->
+          case map.get(types, list.reverse(loc.path)) {
+            Error(Nil) -> "todo"
+            Ok(inferred) ->
+              case inferred {
+                Ok(t) -> {
+                  let t = t.resolve(t, sub)
+                  type_.render_type(t)
+                }
 
-            Error(#(r, t1, t2)) -> type_.render_failure(r, t1, t2)
+                Error(#(r, t1, t2)) -> type_.render_failure(r, t1, t2)
+              }
           }
+        None -> "todo"
       }
       print_with_offset(content, loc, Hole, err, acc, info, analysis)
     }
@@ -247,7 +262,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
 }
 
 fn print_block(source, loc, br, acc, info, analysis) {
-  let err = result.is_error(type_at(loc.path, analysis))
+  let err = is_error(loc.path, analysis)
   case source {
     e.Let(_, _, _) -> {
       case location.open(loc) {
@@ -272,7 +287,7 @@ fn print_block(source, loc, br, acc, info, analysis) {
 }
 
 fn print_tail(exp, loc, br, acc, info, analysis) {
-  let err = result.is_error(type_at(loc.path, analysis))
+  let err = is_error(loc.path, analysis)
   case exp {
     e.Tail -> {
       let info = map.insert(info, path_to_string(loc.path), list.length(acc))
@@ -304,7 +319,7 @@ fn print_tail(exp, loc, br, acc, info, analysis) {
 }
 
 fn print_extend(exp, loc, br, acc, info, analysis) {
-  let err = result.is_error(type_at(loc.path, analysis))
+  let err = is_error(loc.path, analysis)
   case exp {
     e.Empty -> {
       let info = map.insert(info, path_to_string(loc.path), list.length(acc))
@@ -340,7 +355,7 @@ fn print_extend(exp, loc, br, acc, info, analysis) {
 }
 
 fn print_match(exp, loc, br, br_inner, acc, info, analysis) {
-  let err = result.is_error(type_at(loc.path, analysis))
+  let err = is_error(loc.path, analysis)
   case exp {
     e.NoCases -> {
       let acc = print_keyword(br, loc, acc, err)
