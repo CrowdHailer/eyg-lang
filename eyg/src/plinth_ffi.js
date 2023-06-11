@@ -45,6 +45,10 @@ export function preventDefault(event) {
 export function eventKey(event) {
   return event.key;
 }
+
+export function getTargetRange(event) {
+  return event.getTargetRanges()[0];
+}
 // -------- window/file --------
 
 export function getFile(fileHandle) {

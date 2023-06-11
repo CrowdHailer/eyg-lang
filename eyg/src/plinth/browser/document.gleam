@@ -60,6 +60,10 @@ pub external fn target(Event) -> Element =
 pub external fn key(Event) -> String =
   "../../plinth_ffi.js" "eventKey"
 
+// returns the first only
+pub external fn get_target_range(Event) -> Nil =
+  "../../plinth_ffi.js" "getTargetRange"
+
 pub external fn prevent_default(Event) -> Nil =
   "../../plinth_ffi.js" "preventDefault"
 

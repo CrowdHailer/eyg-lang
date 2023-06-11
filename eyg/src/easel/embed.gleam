@@ -135,18 +135,7 @@ pub fn fullscreen(root) {
                           inferred: Some(inferred),
                           rendered: rendered,
                         )
-                      let content =
-                        string.concat([
-                          "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4 px-4\" contenteditable spellcheck=\"false\">",
-                          html(state),
-                          "</pre>",
-                          "<div class=\"w-full bg-purple-1 px-4 font-mono font-bold\">",
-                          "click to edit & run",
-                          "</div>",
-                        ])
-                      document.set_html(root, content)
-                      let assert Ok(pre) = document.query_selector(root, "pre")
-                      io.debug(pre)
+                      render_page(root, start, state)
                       state
                     },
                   )
@@ -171,9 +160,27 @@ pub fn fullscreen(root) {
     "beforeinput",
     fn(event) {
       document.prevent_default(event)
-      // handle element
+      let range = document.get_target_range(event)
+      handle_input(
+        event,
+        fn(data, start, end) {
+          javascript.update_reference(
+            ref,
+            fn(state) {
+              let #(state, start) = insert_text(state, data, start, end)
+              render_page(root, start, state)
+              state
+            },
+          )
+          Nil
+        },
+        fn(start) {
+          io.debug(#(start))
+          Nil
+        },
+      )
       // update
-      console.log(event)
+      console.log(range)
     },
   )
   document.add_event_listener(
@@ -215,6 +222,32 @@ pub fn fullscreen(root) {
   )
   Nil
 }
+
+fn render_page(root, start, state) {
+  let content =
+    string.concat([
+      "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4 px-4\" contenteditable spellcheck=\"false\">",
+      html(state),
+      "</pre>",
+      "<div class=\"w-full bg-purple-1 px-4 font-mono font-bold\">",
+      pallet(state),
+      "</div>",
+    ])
+  document.set_html(root, content)
+  let assert Ok(pre) = document.query_selector(root, "pre")
+  place_cursor(pre, start)
+}
+
+pub external fn handle_input(
+  document.Event,
+  insert_text: fn(String, Int, Int) -> Nil,
+  insert_paragraph: fn(Int) -> Nil,
+) -> Nil =
+  "../easel_ffi.js" "handleInput"
+
+// relies on a flat list of spans
+pub external fn place_cursor(document.Element, Int) -> Nil =
+  "../easel_ffi.js" "placeCursor"
 
 pub fn init(json) {
   let assert Ok(source) = decode.decoder(json)
