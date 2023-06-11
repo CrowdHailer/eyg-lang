@@ -54,7 +54,6 @@ export function placeCursor(pre, offset) {
   console.log(range, "range", countdown);
   // range needs to be set on the text node
   console.log("dinal", e.firstChild, countdown);
-  //   TODO should be countdown
-  range.setStart(e.firstChild, 0);
-  range.setEnd(e.firstChild, 0);
+  range.setStart(e.firstChild, countdown);
+  range.setEnd(e.firstChild, countdown);
 }

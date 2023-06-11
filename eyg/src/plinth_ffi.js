@@ -104,6 +104,10 @@ export function closest(element, query) {
   return new Error();
 }
 
+export function nextElementSibling(el) {
+  return el.nextElementSibling;
+}
+
 export function setAttribute(element, name, value) {
   element.setAttribute(name, value);
 }

@@ -22,6 +22,9 @@ pub external fn query_selector_all(String) -> Array(Element) =
 pub external fn closest(Element, String) -> Result(Element, Nil) =
   "../../plinth_ffi.js" "closest"
 
+pub external fn next_element_sibling(Element) -> Element =
+  "../../plinth_ffi.js" "nextElementSibling"
+
 // -------- Elements --------
 
 pub external fn create_element(String) -> Element =

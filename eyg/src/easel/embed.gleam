@@ -21,6 +21,7 @@ import easel/zipper
 import atelier/view/type_
 import gleam/javascript
 import gleam/javascript/promise
+import plinth/javascript/promisex
 import plinth/browser/window
 import plinth/browser/document
 import plinth/browser/console
@@ -224,16 +225,28 @@ pub fn fullscreen(root) {
 }
 
 fn render_page(root, start, state) {
-  let content =
-    string.concat([
-      "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4 px-4\" contenteditable spellcheck=\"false\">",
-      html(state),
-      "</pre>",
-      "<div class=\"w-full bg-purple-1 px-4 font-mono font-bold\">",
-      pallet(state),
-      "</div>",
-    ])
-  document.set_html(root, content)
+  case document.query_selector(root, "pre") {
+    Ok(pre) -> {
+      // updating the contenteditable node messes with cursor placing
+      document.set_html(pre, html(state))
+      let pallet_span = document.next_element_sibling(pre)
+      document.set_html(pallet_span, pallet(state))
+    }
+
+    Error(Nil) -> {
+      let content =
+        string.concat([
+          "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4 px-4\" contenteditable spellcheck=\"false\">",
+          html(state),
+          "</pre>",
+          "<div class=\"w-full bg-purple-1 px-4 font-mono font-bold\">",
+          pallet(state),
+          "</div>",
+        ])
+      document.set_html(root, content)
+    }
+  }
+
   let assert Ok(pre) = document.query_selector(root, "pre")
   place_cursor(pre, start)
 }
