@@ -18,6 +18,11 @@ import eyg/analysis/jm/type_ as t
 import easel/print
 import easel/zipper
 import atelier/view/type_
+import gleam/javascript
+import gleam/javascript/promise
+import plinth/browser/window
+import plinth/browser/document
+import plinth/browser/console
 
 // Not a full app
 // Widget is another name element/panel
@@ -77,6 +82,112 @@ fn do_infer(source, std) {
       // TODO real effects
       tree.infer(source, t.Var(-1), t.Var(-2))
   }
+}
+
+pub fn fullscreen(root) {
+  let source = e.Vacant("")
+  let inferred = do_infer(source, None)
+  let rendered = print.print(source, None, inferred)
+  let state =
+    Embed(
+      Command(""),
+      None,
+      None,
+      source,
+      #([], []),
+      Some(inferred),
+      rendered,
+      None,
+    )
+  let ref = javascript.make_reference(state)
+  document.add_event_listener(
+    root,
+    "click",
+    fn(event) {
+      let target = document.target(event)
+      case document.closest(target, "[data-click]") {
+        Ok(element) -> {
+          let assert Ok(handle) = document.dataset_get(element, "click")
+          case handle {
+            "load" -> {
+              promise.map(
+                window.show_open_file_picker(),
+                fn(value) {
+                  let #(file_handle) = value
+                  use file <- promise.map(window.get_file(file_handle))
+                  use text <- promise.map(window.file_text(file))
+                  let assert Ok(source) = decode.from_json(text)
+                  console.log(#(source, "dooooo"))
+
+                  javascript.update_reference(
+                    ref,
+                    fn(state: Embed) {
+                      let inferred = do_infer(source, state.std)
+
+                      let rendered = print.print(source, Some([]), inferred)
+                      let assert Ok(start) =
+                        map.get(rendered.1, print.path_to_string([]))
+                      // #(
+                      //   ,
+                      //   start,
+                      // )
+                      // todo position cusor
+                      let state =
+                        Embed(
+                          ..state,
+                          source: source,
+                          inferred: Some(inferred),
+                          rendered: rendered,
+                        )
+                      let content =
+                        string.concat([
+                          "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4 px-4\" contenteditable spellcheck=\"false\">",
+                          html(state),
+                          "</pre>",
+                          "<div class=\"w-full bg-purple-1 px-4 font-mono font-bold\">",
+                          "click to edit & run",
+                          "</div>",
+                        ])
+                      document.set_html(root, content)
+                      state
+                    },
+                  )
+
+                  todo("more loading")
+                },
+              )
+              Nil
+            }
+            _ -> {
+              io.debug(handle)
+              Nil
+            }
+          }
+          Nil
+        }
+        Error(Nil) -> Nil
+      }
+    },
+  )
+  document.add_event_listener(
+    root,
+    "beforeinput",
+    fn(event) {
+      document.prevent_default(event)
+      console.log(event)
+    },
+  )
+  document.add_event_listener(
+    // event can have phantom type which is the internal event type
+    document.document(),
+    "selectionchange",
+    console.log,
+  )
+  document.set_html(
+    root,
+    "<div data-click=\"load\" class=\"cover expand vstack pointer\"><span>click to load</span></div>",
+  )
+  Nil
 }
 
 pub fn init(json) {

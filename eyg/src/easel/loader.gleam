@@ -1,6 +1,8 @@
 import gleam/io
+import gleam/javascript
 import gleam/javascript/array
 import plinth/browser/document
+import easel/embed
 
 // TODO this is what boots up all the scripts eventually based on hashes. for now we key switch on strings
 
@@ -19,15 +21,10 @@ pub fn run() {
 fn start(container) {
   let assert Ok(program) = document.dataset_get(container, "run")
   case program {
-    "editor" -> start_editor(container)
+    "editor" -> embed.fullscreen(container)
     _ -> {
       io.debug(#("unknown program", program))
       Nil
     }
   }
-}
-
-fn start_editor(root) {
-  document.set_html(root, "<span>click to load</span>")
-  Nil
 }

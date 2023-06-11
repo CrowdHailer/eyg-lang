@@ -6,6 +6,8 @@ pub external type Document
 
 pub external type Element
 
+pub external type Event
+
 // -------- Search --------
 external fn do_query_selector(String) -> Dynamic =
   "" "document.querySelector"
@@ -16,8 +18,14 @@ pub fn query_selector(selector) -> Result(Option(Element), _) {
   ))
 }
 
+pub external fn document() -> Element =
+  "../../plinth_ffi.js" "doc"
+
 pub external fn query_selector_all(String) -> Array(Element) =
   "../../plinth_ffi.js" "querySelectorAll"
+
+pub external fn closest(Element, String) -> Result(Element, Nil) =
+  "../../plinth_ffi.js" "closest"
 
 // -------- Elements --------
 
@@ -42,7 +50,23 @@ pub external fn remove(Element) -> Nil =
 pub external fn dataset_get(Element, String) -> Result(String, Nil) =
   "../../plinth_ffi.js" "datasetGet"
 
+// -------- Event --------
+
+pub external fn add_event_listener(
+  Element,
+  String,
+  fn(Event) -> Nil,
+) -> fn() -> Nil =
+  "../../plinth_ffi.js" "addEventListener"
+
+pub external fn target(Event) -> Element =
+  "../../plinth_ffi.js" "target"
+
+pub external fn prevent_default(Event) -> Element =
+  "../../plinth_ffi.js" "preventDefault"
+
 // -------- Other --------
+
 pub external fn insert_after(Element, String) -> Nil =
   "../../plinth_ffi.js" "insertAfter"
 

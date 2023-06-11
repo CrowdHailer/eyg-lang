@@ -28,12 +28,47 @@ export function onKeyDown(f) {
   };
 }
 
+export function addEventListener(el, type, listener) {
+  el.addEventListener(type, listener);
+  return function () {
+    el.removeEventListener(type, listener);
+  };
+}
+
+export function target(event) {
+  return event.target;
+}
+export function preventDefault(event) {
+  return event.preventDefault();
+}
+// -------- window --------
+
+export function getFile(fileHandle) {
+  return fileHandle.getFile();
+}
+
+export function fileText(file) {
+  return file.text();
+}
+
 // -------- document --------
 
 // could use array from in Gleam code but don't want to return dynamic to represent elementList
 // directly typing array of elements is cleanest
 export function querySelectorAll(query) {
   return Array.from(document.querySelectorAll(query));
+}
+
+export function doc() {
+  return document;
+}
+
+export function closest(element, query) {
+  let r = element.closest(query);
+  if (r) {
+    return new Ok(r);
+  }
+  return new Error();
 }
 
 export function setAttribute(element, name, value) {
