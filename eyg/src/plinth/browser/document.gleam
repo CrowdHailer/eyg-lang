@@ -9,14 +9,9 @@ pub external type Element
 pub external type Event
 
 // -------- Search --------
-external fn do_query_selector(String) -> Dynamic =
-  "" "document.querySelector"
 
-pub fn query_selector(selector) -> Result(Option(Element), _) {
-  dynamic.optional(fn(e) { Ok(dynamic.unsafe_coerce(e)) })(do_query_selector(
-    selector,
-  ))
-}
+pub external fn query_selector(Element, String) -> Result(Element, Nil) =
+  "../../plinth_ffi.js" "querySelector"
 
 pub external fn document() -> Element =
   "../../plinth_ffi.js" "doc"
@@ -62,7 +57,10 @@ pub external fn add_event_listener(
 pub external fn target(Event) -> Element =
   "../../plinth_ffi.js" "target"
 
-pub external fn prevent_default(Event) -> Element =
+pub external fn key(Event) -> String =
+  "../../plinth_ffi.js" "eventKey"
+
+pub external fn prevent_default(Event) -> Nil =
   "../../plinth_ffi.js" "preventDefault"
 
 // -------- Other --------

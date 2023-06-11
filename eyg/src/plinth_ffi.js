@@ -41,7 +41,11 @@ export function target(event) {
 export function preventDefault(event) {
   return event.preventDefault();
 }
-// -------- window --------
+
+export function eventKey(event) {
+  return event.key;
+}
+// -------- window/file --------
 
 export function getFile(fileHandle) {
   return fileHandle.getFile();
@@ -51,8 +55,33 @@ export function fileText(file) {
   return file.text();
 }
 
+// -------- window/selection --------
+
+export function getSelection() {
+  const selection = window.getSelection();
+  if (!selection) {
+    return new Error();
+  }
+  return new Ok(selection);
+}
+
+export function getRangeAt(selection, index) {
+  const range = selection.getRangeAt(0);
+  if (!range) {
+    return new Error();
+  }
+  return new Ok(range);
+}
+
 // -------- document --------
 
+export function querySelector(el, query) {
+  let found = el.querySelector(query);
+  if (!found) {
+    return new Error();
+  }
+  return new Ok(found);
+}
 // could use array from in Gleam code but don't want to return dynamic to represent elementList
 // directly typing array of elements is cleanest
 export function querySelectorAll(query) {

@@ -5,6 +5,7 @@ import gleam/map
 import gleam/mapx
 import gleam/option.{None, Option, Some}
 import gleam/regex
+import gleam/result
 import gleam/string
 import gleam/stringx
 import eygir/expression as e
@@ -117,7 +118,6 @@ pub fn fullscreen(root) {
                   use file <- promise.map(window.get_file(file_handle))
                   use text <- promise.map(window.file_text(file))
                   let assert Ok(source) = decode.from_json(text)
-                  console.log(#(source, "dooooo"))
 
                   javascript.update_reference(
                     ref,
@@ -127,11 +127,7 @@ pub fn fullscreen(root) {
                       let rendered = print.print(source, Some([]), inferred)
                       let assert Ok(start) =
                         map.get(rendered.1, print.path_to_string([]))
-                      // #(
-                      //   ,
-                      //   start,
-                      // )
-                      // todo position cusor
+
                       let state =
                         Embed(
                           ..state,
@@ -149,13 +145,14 @@ pub fn fullscreen(root) {
                           "</div>",
                         ])
                       document.set_html(root, content)
+                      let assert Ok(pre) = document.query_selector(root, "pre")
+                      io.debug(pre)
                       state
                     },
                   )
-
-                  todo("more loading")
                 },
               )
+
               Nil
             }
             _ -> {
@@ -174,14 +171,43 @@ pub fn fullscreen(root) {
     "beforeinput",
     fn(event) {
       document.prevent_default(event)
+      // handle element
+      // update
       console.log(event)
+    },
+  )
+  document.add_event_listener(
+    root,
+    "keydown",
+    fn(event) {
+      case
+        case document.key(event) {
+          "Escape" -> {
+            javascript.update_reference(ref, escape)
+            Ok(Nil)
+          }
+          _ -> Error(Nil)
+        }
+      {
+        Ok(Nil) -> document.prevent_default(event)
+        Error(Nil) -> Nil
+      }
     },
   )
   document.add_event_listener(
     // event can have phantom type which is the internal event type
     document.document(),
     "selectionchange",
-    console.log,
+    fn(_event) {
+      let r = {
+        use selection <- result.then(window.get_selection())
+        use range <- result.then(window.get_range_at(selection, 0))
+        Ok(range)
+      }
+
+      io.debug(r)
+      Nil
+    },
   )
   document.set_html(
     root,
