@@ -226,10 +226,23 @@ pub fn fullscreen(root) {
       let r = {
         use selection <- result.then(window.get_selection())
         use range <- result.then(window.get_range_at(selection, 0))
-        Ok(range)
+        let start = start_index(range)
+        let end = end_index(range)
+        javascript.update_reference(
+          ref,
+          fn(state) {
+            let state = update_selection(state, start, end)
+            io.debug(pallet(state))
+            case document.query_selector(root, "pre + *") {
+              Ok(pallet_el) -> document.set_html(pallet_el, pallet(state))
+              Error(Nil) -> Nil
+            }
+            state
+          },
+        )
+        Ok(Nil)
       }
 
-      io.debug(r)
       Nil
     },
   )
@@ -240,13 +253,19 @@ pub fn fullscreen(root) {
   Nil
 }
 
+external fn start_index(window.Range) -> Int =
+  "../easel_ffi.js" "startIndex"
+
+external fn end_index(window.Range) -> Int =
+  "../easel_ffi.js" "endIndex"
+
 fn render_page(root, start, state) {
   case document.query_selector(root, "pre") {
     Ok(pre) -> {
       // updating the contenteditable node messes with cursor placing
       document.set_html(pre, html(state))
-      let pallet_span = document.next_element_sibling(pre)
-      document.set_html(pallet_span, pallet(state))
+      let pallet_el = document.next_element_sibling(pre)
+      document.set_html(pallet_el, pallet(state))
     }
 
     Error(Nil) -> {
