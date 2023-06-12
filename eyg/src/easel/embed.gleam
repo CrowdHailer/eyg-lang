@@ -145,7 +145,61 @@ pub fn fullscreen(root) {
                   )
                 },
               )
+              document.add_event_listener(
+                // event can have phantom type which is the internal event type
+                document.document(),
+                "selectionchange",
+                fn(_event) {
+                  let r = {
+                    use selection <- result.then(window.get_selection())
+                    use range <- result.then(window.get_range_at(selection, 0))
+                    let start = start_index(range)
+                    let end = end_index(range)
+                    javascript.update_reference(
+                      ref,
+                      fn(state) {
+                        let state = update_selection(state, start, end)
+                        // case document.query_selector(root, "pre + *") {
+                        //   Ok(pallet_el) -> document.set_html(pallet_el, pallet(state))
+                        //   Error(Nil) -> Nil
+                        // }
+                        let rendered =
+                          print.print(
+                            state.source,
+                            state.focus,
+                            state.auto_infer,
+                            state.inferred,
+                          )
+                        case rendered == state.rendered {
+                          True -> {
+                            io.debug("no focus change")
+                            state
+                          }
+                          False -> {
+                            let assert Ok(start) =
+                              map.get(
+                                rendered.1,
+                                print.path_to_string(option.unwrap(
+                                  state.focus,
+                                  [],
+                                )),
+                              )
 
+                            let state = Embed(..state, rendered: rendered)
+                            render_page(root, start, state)
+                            state
+                          }
+                        }
+                      },
+                    )
+
+                    // linger("fooo")
+                    Ok(Nil)
+                  }
+
+                  Nil
+                },
+              )
               Nil
             }
             _ -> {
@@ -221,34 +275,8 @@ pub fn fullscreen(root) {
       }
     },
   )
-  document.add_event_listener(
-    // event can have phantom type which is the internal event type
-    document.document(),
-    "selectionchange",
-    fn(_event) {
-      let r = {
-        use selection <- result.then(window.get_selection())
-        use range <- result.then(window.get_range_at(selection, 0))
-        let start = start_index(range)
-        let end = end_index(range)
-        javascript.update_reference(
-          ref,
-          fn(state) {
-            let state = update_selection(state, start, end)
-            io.debug(pallet(state))
-            case document.query_selector(root, "pre + *") {
-              Ok(pallet_el) -> document.set_html(pallet_el, pallet(state))
-              Error(Nil) -> Nil
-            }
-            state
-          },
-        )
-        Ok(Nil)
-      }
+  let linger = debounce(fn(m) { io.debug(#("lingered", m)) }, 200)
 
-      Nil
-    },
-  )
   document.set_html(
     root,
     "<div data-click=\"load\" class=\"cover expand vstack pointer\"><span>click to load</span></div>",
@@ -261,6 +289,9 @@ external fn start_index(window.Range) -> Int =
 
 external fn end_index(window.Range) -> Int =
   "../easel_ffi.js" "endIndex"
+
+external fn debounce(fn(a) -> b, Int) -> fn(a) -> Nil =
+  "../easel_ffi.js" "debounce"
 
 fn render_page(root, start, state) {
   case document.query_selector(root, "pre") {
@@ -1012,11 +1043,6 @@ pub fn update_selection(state: Embed, start, end) {
       }
     }
   }
-  //     }
-  //   }
-  // }
-  // None -> Embed(..state, path: None)
-  // }
 }
 
 pub fn pallet(embed: Embed) {
