@@ -146,6 +146,36 @@ pub fn fullscreen(root) {
                       state
                     },
                   )
+                  // TODO move this onto main
+                  case document.query_selector(root, "pre") {
+                    Ok(pre) -> {
+                      document.add_event_listener(
+                        pre,
+                        "blur",
+                        fn(_) {
+                          io.debug("blurred")
+                          javascript.update_reference(
+                            ref,
+                            fn(state) {
+                              // updating the contenteditable node messes with cursor placing
+                              let state = blur(state)
+                              document.set_html(pre, html(state))
+                              let pallet_el = document.next_element_sibling(pre)
+                              document.set_html(pallet_el, pallet(state))
+                              state
+                            },
+                          )
+
+                          Nil
+                        },
+                      )
+                      Nil
+                    }
+                    _ -> {
+                      io.debug("expected a pre to be available")
+                      Nil
+                    }
+                  }
                 },
               )
               document.add_event_listener(
