@@ -193,7 +193,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       let acc = [#("\"", loc.path, -1, String, err), ..acc]
       // Maybe I don't need to append " if looking left
       print_with_offset(
-        string.append(value, "\""),
+        string.append(escape_html(value), "\""),
         loc,
         String,
         err,
@@ -259,6 +259,13 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     e.Builtin(value) ->
       print_with_offset(value, loc, Builtin, err, acc, info, analysis)
   }
+}
+
+fn escape_html(source) {
+  source
+  |> string.replace("&", "&amp;")
+  |> string.replace("<", "&lt;")
+  |> string.replace(">", "&gt;")
 }
 
 fn print_block(source, loc, br, acc, info, analysis) {

@@ -26,7 +26,6 @@ import plinth/browser/window
 import plinth/browser/document
 import plinth/browser/console
 
-// TODO escape html in string/binaries
 // TODO remove last run information when moving cursor
 // TODO fix pressing space to typecheck
 // Not a full app
@@ -982,16 +981,21 @@ pub fn nocases(state: Embed, start, end) {
 }
 
 pub fn insert_paragraph(index, state: Embed) {
-  let assert Ok(#(_ch, path, _offset, _style, _err)) =
+  let assert Ok(#(_ch, path, offset, _style, _err)) =
     list.at(state.rendered.0, index)
   let source = state.source
   let assert Ok(#(target, rezip)) = zipper.at(source, path)
 
-  let new = case target {
-    e.Let(label, value, then) -> {
-      e.Let(label, value, e.Let("", e.Vacant(""), then))
+  let #(new, sub, offset) = case target {
+    e.Binary(content) -> {
+      // needs end for large enter, needs to be insert mode only
+      let #(content, offset) = replace_at(content, offset, offset, "\n")
+      #(e.Binary(content), [], offset)
     }
-    node -> e.Let("", node, e.Vacant(""))
+    e.Let(label, value, then) -> {
+      #(e.Let(label, value, e.Let("", e.Vacant(""), then)), [1], 0)
+    }
+    node -> #(e.Let("", node, e.Vacant("")), [1], 0)
   }
   let new = rezip(new)
   let history = #([], [#(source, path, False), ..state.history.1])
@@ -1006,7 +1010,7 @@ pub fn insert_paragraph(index, state: Embed) {
 
   let rendered = print.print(new, Some(path), state.auto_infer, inferred)
   let assert Ok(start) =
-    map.get(rendered.1, print.path_to_string(list.append(path, [1])))
+    map.get(rendered.1, print.path_to_string(list.append(path, sub)))
   #(
     Embed(
       ..state,
@@ -1017,7 +1021,7 @@ pub fn insert_paragraph(index, state: Embed) {
       rendered: rendered,
       focus: Some(path),
     ),
-    start,
+    start + offset,
   )
 }
 
