@@ -164,7 +164,6 @@ pub fn fullscreen(root) {
     "beforeinput",
     fn(event) {
       document.prevent_default(event)
-      let range = document.get_target_range(event)
       handle_input(
         event,
         fn(data, start, end) {
@@ -179,12 +178,19 @@ pub fn fullscreen(root) {
           Nil
         },
         fn(start) {
+          javascript.update_reference(
+            ref,
+            fn(state) {
+              let #(state, start) = insert_paragraph(start, state)
+              render_page(root, start, state)
+              state
+            },
+          )
+          // todo pragraph
           io.debug(#(start))
           Nil
         },
       )
-      // update
-      console.log(range)
     },
   )
   document.add_event_listener(
@@ -644,7 +650,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                 False -> None
               }
 
-              let rendered = print.print(new, state.focus, inferred)
+              let rendered = print.print(new, Some(path), inferred)
               // zip and target
 
               // update source source have a offset function
@@ -657,6 +663,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   source: new,
                   history: history,
                   inferred: inferred,
+                  focus: Some(path),
                   rendered: rendered,
                 ),
                 start + offset,
@@ -932,12 +939,15 @@ pub fn insert_paragraph(index, state: Embed) {
   let new = rezip(new)
   let history = #([], [#(source, path, False), ..state.history.1])
 
-  let inferred = case state.auto_infer {
+  let inferred = case
+    state.auto_infer
+    |> io.debug
+  {
     True -> Some(do_infer(new, state.std))
     False -> None
   }
 
-  let rendered = print.print(new, state.focus, inferred)
+  let rendered = print.print(new, Some(path), inferred)
   let assert Ok(start) =
     map.get(rendered.1, print.path_to_string(list.append(path, [1])))
   #(
@@ -948,6 +958,7 @@ pub fn insert_paragraph(index, state: Embed) {
       history: history,
       inferred: inferred,
       rendered: rendered,
+      focus: Some(path),
     ),
     start,
   )
