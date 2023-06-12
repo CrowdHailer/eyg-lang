@@ -153,16 +153,6 @@ start();
 //     let state = Easel.init(json);
 //     let offset = 0;
 //     // button is the button
-//     const pre = button.parentElement;
-//     pre.contentEditable = true;
-//     pre.innerHTML = Easel.html(state);
-//     window.globalSelectionHandler = function (range) {
-//       const start = ffi.startIndex(range);
-//       const end = ffi.endIndex(range);
-//       // console.log("handle selection change", start, end);
-//       state = Easel.update_selection(state, start, end);
-//       pre.nextElementSibling.innerHTML = Easel.pallet(state);
-//     };
 
 //     pre.onkeydown = function (event) {
 //       if (event.key == "Escape") {

@@ -204,7 +204,10 @@ pub fn fullscreen(root) {
               ref,
               fn(s) {
                 let s = escape(s)
-                render_page(root, 1, s)
+                case document.query_selector(root, "pre + *") {
+                  Ok(pallet_el) -> document.set_html(pallet_el, pallet(state))
+                  Error(Nil) -> Nil
+                }
                 s
               },
             )
