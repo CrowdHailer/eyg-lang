@@ -1,3 +1,4 @@
+import gleam/bit_string
 import gleam/io
 import gleam/int
 import gleam/list
@@ -390,6 +391,54 @@ fn is_tag(value) {
   }
 }
 
+fn program(source) -> BitString {
+  case source {
+    // Boolean(True) -> <<boolean, 1:32>>
+    e.Apply(func, arg) -> <<
+      program(arg):bit_string,
+      program(func):bit_string,
+      2,
+      0:32,
+    >>
+    e.Let(label, value, then) -> <<
+      program(value):bit_string,
+      3,
+      bit_string.from_string(label):bit_string,
+      program(then):bit_string,
+    >>
+    e.Variable(label) -> <<4, bit_string.from_string(label):bit_string>>
+    // Builtin(func) -> <<builtin, builtin_key(func):32>>
+    // Boolean(False) -> <<boolean, 0:32>>
+    // Boolean(True) -> <<boolean, 1:32>>
+    e.Integer(value) -> <<1, value:32>>
+    e.Builtin("int_add") -> <<100, 0:32>>
+    _ -> {
+      io.debug(#("unexpected", source))
+      panic("not supported")
+    }
+  }
+}
+
+pub fn do_render_as_tc(program, buffer, count) -> String {
+  case program {
+    <<>> -> buffer
+    <<item, program:binary>> -> {
+      let buffer =
+        string.concat([
+          buffer,
+          "\n",
+          "prgrm[",
+          int.to_string(count),
+          "] := ",
+          int.to_string(item),
+          ";",
+        ])
+      let count = count + 1
+      do_render_as_tc(program, buffer, count)
+    }
+  }
+}
+
 pub fn insert_text(state: Embed, data, start, end) {
   let rendered = state.rendered.0
   case state.mode {
@@ -402,6 +451,18 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         "q" -> {
           io.print(encode.to_json(state.source))
+          let assert Ok(pre) =
+            document.query_selector(document.document(), "pre")
+          promise.map(
+            promisex.wait(1000),
+            fn(_) {
+              state.source
+              |> program
+              |> do_render_as_tc("", 0)
+              |> io.debug()
+              |> document.set_text(pre, _)
+            },
+          )
           #(state, start)
         }
         "w" -> call_with(state, start, end)
