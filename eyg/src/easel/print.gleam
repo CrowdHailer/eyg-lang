@@ -28,8 +28,8 @@ pub type Style {
 pub type Rendered =
   #(String, List(Int), Int, Style, Bool)
 
-pub fn print(source, selection, analysis: Option(tree.State)) {
-  let loc = Location([], selection)
+pub fn print(source, selection, always, analysis: Option(tree.State)) {
+  let loc = Location([], selection, always)
   let #(acc, info) = do_print(source, loc, "\n", [], map.new(), analysis)
   #(list.reverse(acc), info)
 }
@@ -401,7 +401,7 @@ fn print_match(exp, loc, br, br_inner, acc, info, analysis) {
 }
 
 pub fn print_keyword(keyword, loc, acc, err) {
-  let Location(path, _) = loc
+  let Location(path: path, ..) = loc
   // list.fold(
   //   string.to_graphemes(keyword),
   stringx.fold_graphmemes(
@@ -412,7 +412,7 @@ pub fn print_keyword(keyword, loc, acc, err) {
 }
 
 pub fn print_with_offset(content, loc, style, err, acc, info, _analysis) {
-  let Location(path, _) = loc
+  let Location(path: path, ..) = loc
   let info = map.insert(info, path_to_string(loc.path), list.length(acc))
   let #(content, style) = case content {
     "" -> #("_", Missing)

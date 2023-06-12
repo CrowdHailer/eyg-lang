@@ -43,17 +43,13 @@ export function handleInput(event, insert_text, insert_paragraph) {
 
 export function placeCursor(pre, offset) {
   let e = pre.children[0];
-  console.log(pre == document.querySelector("pre"));
   let countdown = offset;
   while (countdown > e.textContent.length) {
-    console.log("sdsdsds", e, countdown);
     countdown -= e.textContent.length;
     e = e.nextElementSibling;
   }
   const range = window.getSelection().getRangeAt(0);
-  console.log(range, "range", countdown);
   // range needs to be set on the text node
-  console.log("dinal", e.firstChild, countdown);
   range.setStart(e.firstChild, countdown);
   range.setEnd(e.firstChild, countdown);
 }

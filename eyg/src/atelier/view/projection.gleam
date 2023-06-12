@@ -13,7 +13,7 @@ import atelier/view/type_
 import easel/location.{Location, child, focused, open}
 
 pub fn render(source, selection, inferred) {
-  let loc = Location([], Some(selection))
+  let loc = Location([], Some(selection), False)
   pre(
     [style([#("cursor", "pointer")]), class("w-full max-w-6xl")],
     do_render(source, "\n", loc, inferred),

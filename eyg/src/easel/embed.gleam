@@ -89,7 +89,7 @@ fn do_infer(source, std) {
 pub fn fullscreen(root) {
   let source = e.Vacant("")
   let inferred = do_infer(source, None)
-  let rendered = print.print(source, None, Some(inferred))
+  let rendered = print.print(source, None, False, Some(inferred))
   let state =
     Embed(
       Command(""),
@@ -128,7 +128,7 @@ pub fn fullscreen(root) {
                       let inferred = do_infer(source, state.std)
 
                       let rendered =
-                        print.print(source, Some([]), Some(inferred))
+                        print.print(source, Some([]), False, Some(inferred))
                       let assert Ok(start) =
                         map.get(rendered.1, print.path_to_string([]))
 
@@ -326,7 +326,7 @@ pub fn init(json) {
   }
   // can keep inferred in history
   let inferred = do_infer(source, std)
-  let rendered = print.print(source, None, Some(inferred))
+  let rendered = print.print(source, None, True, Some(inferred))
   Embed(
     Command(""),
     None,
@@ -672,7 +672,8 @@ pub fn insert_text(state: Embed, data, start, end) {
                 False -> None
               }
 
-              let rendered = print.print(new, Some(path), inferred)
+              let rendered =
+                print.print(new, Some(path), state.auto_infer, inferred)
               // zip and target
 
               // update source source have a offset function
@@ -762,7 +763,7 @@ pub fn undo(state: Embed, start) {
         True -> Some(do_infer(old, state.std))
         False -> None
       }
-      let rendered = print.print(old, state.focus, inferred)
+      let rendered = print.print(old, state.focus, state.auto_infer, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -793,7 +794,7 @@ pub fn redo(state: Embed, start) {
         True -> Some(do_infer(other, state.std))
         False -> None
       }
-      let rendered = print.print(other, state.focus, inferred)
+      let rendered = print.print(other, state.focus, state.auto_infer, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -969,7 +970,7 @@ pub fn insert_paragraph(index, state: Embed) {
     False -> None
   }
 
-  let rendered = print.print(new, Some(path), inferred)
+  let rendered = print.print(new, Some(path), state.auto_infer, inferred)
   let assert Ok(start) =
     map.get(rendered.1, print.path_to_string(list.append(path, [1])))
   #(
@@ -1143,7 +1144,7 @@ fn update_at(state: Embed, path, cb) {
         True -> Some(do_infer(new, state.std))
         False -> None
       }
-      let rendered = print.print(new, state.focus, inferred)
+      let rendered = print.print(new, state.focus, state.auto_infer, inferred)
       let path = list.append(path, sub_path)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
