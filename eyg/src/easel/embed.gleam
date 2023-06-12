@@ -26,6 +26,9 @@ import plinth/browser/window
 import plinth/browser/document
 import plinth/browser/console
 
+// TODO escape html in string/binaries
+// TODO remove last run information when moving cursor
+// TODO fix pressing space to typecheck
 // Not a full app
 // Widget is another name element/panel
 // Embed if I have a separate app file
