@@ -2,7 +2,7 @@
 
 - [ ] Read crafting interpreters implement in Zig/Go
 - [ ] Do lambda lift alpha etc in Eyg
-- [ ] TODO pages in standard Eyg interpreter etc in Go/Nim/Zig
+- [ ] pages in standard Eyg interpreter etc in Go/Nim/Zig
 
 need flat tree to implement in EYG without recursive data structures.
 

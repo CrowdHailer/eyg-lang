@@ -5,6 +5,7 @@ import gleam/map
 import gleam/mapx
 import gleam/option.{None, Option, Some}
 import gleam/regex
+import gleam/result
 import gleam/string
 import gleam/stringx
 import eygir/expression as e
@@ -18,7 +19,12 @@ import eyg/analysis/jm/type_ as t
 import easel/print
 import easel/zipper
 import atelier/view/type_
+import gleam/javascript
+import gleam/javascript/promise
+import plinth/browser/window
+import plinth/browser/document
 
+// TODO remove last run information when moving cursor
 // Not a full app
 // Widget is another name element/panel
 // Embed if I have a separate app file
@@ -57,7 +63,7 @@ pub type Embed {
     std: Option(#(e.Expression, tree.State)),
     source: e.Expression,
     history: History,
-    // use an auto infer option
+    auto_infer: Bool,
     inferred: Option(tree.State),
     rendered: #(List(print.Rendered), map.Map(String, Int)),
     focus: Option(List(Int)),
@@ -74,10 +80,284 @@ fn do_infer(source, std) {
       tree.infer_env(source, t.Var(-1), t.Var(-2), env, sub, next)
     }
     None ->
-      // TODO real effects
+      // open effects for now, will be environment dependent
       tree.infer(source, t.Var(-1), t.Var(-2))
   }
 }
+
+pub fn fullscreen(root) {
+  let source = e.Vacant("")
+  let inferred = do_infer(source, None)
+  let rendered = print.print(source, None, False, Some(inferred))
+  let state =
+    Embed(
+      Command(""),
+      None,
+      None,
+      source,
+      #([], []),
+      False,
+      Some(inferred),
+      rendered,
+      None,
+    )
+  let ref = javascript.make_reference(state)
+  document.add_event_listener(
+    root,
+    "click",
+    fn(event) {
+      let target = document.target(event)
+      case document.closest(target, "[data-click]") {
+        Ok(element) -> {
+          let assert Ok(handle) = document.dataset_get(element, "click")
+          case handle {
+            "load" -> {
+              promise.map(
+                window.show_open_file_picker(),
+                fn(result) {
+                  case result {
+                    Ok(#(file_handle)) -> {
+                      use file <- promise.await(window.get_file(file_handle))
+                      use text <- promise.map(window.file_text(file))
+                      let assert Ok(source) = decode.from_json(text)
+
+                      javascript.update_reference(
+                        ref,
+                        fn(state: Embed) {
+                          // always infer at the start
+                          let inferred = do_infer(source, state.std)
+
+                          let rendered =
+                            print.print(source, Some([]), False, Some(inferred))
+                          let assert Ok(start) =
+                            map.get(rendered.1, print.path_to_string([]))
+
+                          let state =
+                            Embed(
+                              ..state,
+                              source: source,
+                              inferred: Some(inferred),
+                              rendered: rendered,
+                            )
+                          render_page(root, start, state)
+                          state
+                        },
+                      )
+                      case document.query_selector(root, "pre") {
+                        Ok(pre) -> {
+                          document.add_event_listener(
+                            pre,
+                            "blur",
+                            fn(_) {
+                              io.debug("blurred")
+                              javascript.update_reference(
+                                ref,
+                                fn(state) {
+                                  // updating the contenteditable node messes with cursor placing
+                                  let state = blur(state)
+                                  document.set_html(pre, html(state))
+                                  let pallet_el =
+                                    document.next_element_sibling(pre)
+                                  document.set_html(pallet_el, pallet(state))
+                                  state
+                                },
+                              )
+
+                              Nil
+                            },
+                          )
+                          Nil
+                        }
+                        _ -> {
+                          io.debug("expected a pre to be available")
+                          Nil
+                        }
+                      }
+                    }
+
+                    Error(Nil) -> {
+                      io.debug("no file opened")
+                      promise.resolve(Nil)
+                    }
+                  }
+                },
+              )
+              document.add_event_listener(
+                // event can have phantom type which is the internal event type
+                document.document(),
+                "selectionchange",
+                fn(_event) {
+                  let _ = {
+                    use selection <- result.then(window.get_selection())
+                    use range <- result.then(window.get_range_at(selection, 0))
+                    let start = start_index(range)
+                    let end = end_index(range)
+                    javascript.update_reference(
+                      ref,
+                      fn(state) {
+                        let state = update_selection(state, start, end)
+                        let rendered =
+                          print.print(
+                            state.source,
+                            state.focus,
+                            state.auto_infer,
+                            state.inferred,
+                          )
+                        case rendered == state.rendered {
+                          True -> {
+                            io.debug("no focus change")
+                            state
+                          }
+                          False -> {
+                            let assert Ok(start) =
+                              map.get(
+                                rendered.1,
+                                print.path_to_string(option.unwrap(
+                                  state.focus,
+                                  [],
+                                )),
+                              )
+
+                            let state = Embed(..state, rendered: rendered)
+                            render_page(root, start, state)
+                            state
+                          }
+                        }
+                      },
+                    )
+
+                    Ok(Nil)
+                  }
+
+                  Nil
+                },
+              )
+              Nil
+            }
+            _ -> {
+              io.debug(handle)
+              Nil
+            }
+          }
+          Nil
+        }
+        Error(Nil) -> Nil
+      }
+    },
+  )
+  document.add_event_listener(
+    root,
+    "beforeinput",
+    fn(event) {
+      document.prevent_default(event)
+      handle_input(
+        event,
+        fn(data, start, end) {
+          javascript.update_reference(
+            ref,
+            fn(state) {
+              let #(state, start) = insert_text(state, data, start, end)
+              render_page(root, start, state)
+              state
+            },
+          )
+          Nil
+        },
+        fn(start) {
+          javascript.update_reference(
+            ref,
+            fn(state) {
+              let #(state, start) = insert_paragraph(start, state)
+              render_page(root, start, state)
+              state
+            },
+          )
+          // todo pragraph
+          io.debug(#(start))
+          Nil
+        },
+      )
+    },
+  )
+  document.add_event_listener(
+    root,
+    "keydown",
+    fn(event) {
+      case
+        case document.key(event) {
+          "Escape" -> {
+            javascript.update_reference(
+              ref,
+              fn(s) {
+                let s = escape(s)
+                case document.query_selector(root, "pre + *") {
+                  Ok(pallet_el) -> document.set_html(pallet_el, pallet(state))
+                  Error(Nil) -> Nil
+                }
+                s
+              },
+            )
+            Ok(Nil)
+          }
+          _ -> Error(Nil)
+        }
+      {
+        Ok(Nil) -> document.prevent_default(event)
+        Error(Nil) -> Nil
+      }
+    },
+  )
+
+  document.set_html(
+    root,
+    "<div data-click=\"load\" class=\"cover expand vstack pointer\"><span>click to load</span></div>",
+  )
+  Nil
+}
+
+external fn start_index(window.Range) -> Int =
+  "../easel_ffi.js" "startIndex"
+
+external fn end_index(window.Range) -> Int =
+  "../easel_ffi.js" "endIndex"
+
+fn render_page(root, start, state) {
+  case document.query_selector(root, "pre") {
+    Ok(pre) -> {
+      // updating the contenteditable node messes with cursor placing
+      document.set_html(pre, html(state))
+      let pallet_el = document.next_element_sibling(pre)
+      document.set_html(pallet_el, pallet(state))
+    }
+
+    Error(Nil) -> {
+      let content =
+        string.concat([
+          "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4 px-4\" contenteditable spellcheck=\"false\">",
+          html(state),
+          "</pre>",
+          "<div class=\"w-full bg-purple-1 px-4 font-mono font-bold\">",
+          pallet(state),
+          "</div>",
+        ])
+      document.set_html(root, content)
+    }
+  }
+
+  let assert Ok(pre) = document.query_selector(root, "pre")
+  place_cursor(pre, start)
+}
+
+pub external fn handle_input(
+  document.Event,
+  insert_text: fn(String, Int, Int) -> Nil,
+  insert_paragraph: fn(Int) -> Nil,
+) -> Nil =
+  "../easel_ffi.js" "handleInput"
+
+// relies on a flat list of spans
+pub external fn place_cursor(document.Element, Int) -> Nil =
+  "../easel_ffi.js" "placeCursor"
 
 pub fn init(json) {
   let assert Ok(source) = decode.decoder(json)
@@ -105,13 +385,14 @@ pub fn init(json) {
   }
   // can keep inferred in history
   let inferred = do_infer(source, std)
-  let rendered = print.print(source, inferred)
+  let rendered = print.print(source, None, True, Some(inferred))
   Embed(
     Command(""),
     None,
     std,
     source,
     #([], []),
+    True,
     Some(inferred),
     rendered,
     None,
@@ -141,9 +422,19 @@ pub fn insert_text(state: Embed, data, start, end) {
     Command(_) -> {
       case data {
         " " -> {
-          let message = run(state)
-          let state = Embed(..state, mode: Command(message))
-          #(state, start)
+          case state.inferred {
+            Some(_) -> {
+              let message = run(state)
+              let state = Embed(..state, mode: Command(message))
+              #(state, start)
+            }
+            None -> {
+              let inferred = do_infer(state.source, state.std)
+              let state =
+                Embed(..state, mode: Command(""), inferred: Some(inferred))
+              #(state, start)
+            }
+          }
         }
         "q" -> {
           io.print(encode.to_json(state.source))
@@ -444,9 +735,14 @@ pub fn insert_text(state: Embed, data, start, end) {
               }
               let history = #([], backwards)
               // TODO move to update source
-              let inferred = do_infer(new, state.std)
 
-              let rendered = print.print(new, inferred)
+              let inferred = case state.auto_infer {
+                True -> Some(do_infer(new, state.std))
+                False -> None
+              }
+
+              let rendered =
+                print.print(new, Some(path), state.auto_infer, inferred)
               // zip and target
 
               // update source source have a offset function
@@ -458,7 +754,8 @@ pub fn insert_text(state: Embed, data, start, end) {
                   ..state,
                   source: new,
                   history: history,
-                  inferred: Some(inferred),
+                  inferred: inferred,
+                  focus: Some(path),
                   rendered: rendered,
                 ),
                 start + offset,
@@ -530,8 +827,12 @@ pub fn undo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no undo available")), start)
     [edit, ..backwards] -> {
       let #(old, path, text_only) = edit
-      let inferred = do_infer(old, state.std)
-      let rendered = print.print(old, inferred)
+      // TODO put inference in history
+      let inferred = case state.auto_infer {
+        True -> Some(do_infer(old, state.std))
+        False -> None
+      }
+      let rendered = print.print(old, state.focus, state.auto_infer, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -543,7 +844,7 @@ pub fn undo(state: Embed, start) {
             [#(state.source, current_path, text_only), ..state.history.0],
             backwards,
           ),
-          inferred: Some(inferred),
+          inferred: inferred,
           rendered: rendered,
         )
       #(state, start)
@@ -558,8 +859,11 @@ pub fn redo(state: Embed, start) {
     [] -> #(Embed(..state, mode: Command("no redo available")), start)
     [edit, ..forward] -> {
       let #(other, path, text_only) = edit
-      let inferred = do_infer(other, state.std)
-      let rendered = print.print(other, inferred)
+      let inferred = case state.auto_infer {
+        True -> Some(do_infer(other, state.std))
+        False -> None
+      }
+      let rendered = print.print(other, state.focus, state.auto_infer, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
@@ -571,7 +875,7 @@ pub fn redo(state: Embed, start) {
             forward,
             [#(state.source, current_path, text_only), ..state.history.1],
           ),
-          inferred: Some(inferred),
+          inferred: inferred,
           rendered: rendered,
         )
       #(state, start)
@@ -713,35 +1017,47 @@ pub fn nocases(state: Embed, start, end) {
 }
 
 pub fn insert_paragraph(index, state: Embed) {
-  let assert Ok(#(_ch, path, _offset, _style, _err)) =
+  let assert Ok(#(_ch, path, offset, _style, _err)) =
     list.at(state.rendered.0, index)
   let source = state.source
   let assert Ok(#(target, rezip)) = zipper.at(source, path)
 
-  let new = case target {
-    e.Let(label, value, then) -> {
-      e.Let(label, value, e.Let("", e.Vacant(""), then))
+  let #(new, sub, offset) = case target {
+    e.Binary(content) -> {
+      // needs end for large enter, needs to be insert mode only
+      let #(content, offset) = replace_at(content, offset, offset, "\n")
+      #(e.Binary(content), [], offset)
     }
-    node -> e.Let("", node, e.Vacant(""))
+    e.Let(label, value, then) -> {
+      #(e.Let(label, value, e.Let("", e.Vacant(""), then)), [1], 0)
+    }
+    node -> #(e.Let("", node, e.Vacant("")), [1], 0)
   }
   let new = rezip(new)
   let history = #([], [#(source, path, False), ..state.history.1])
 
-  let inferred = do_infer(new, state.std)
+  let inferred = case
+    state.auto_infer
+    |> io.debug
+  {
+    True -> Some(do_infer(new, state.std))
+    False -> None
+  }
 
-  let rendered = print.print(new, inferred)
+  let rendered = print.print(new, Some(path), state.auto_infer, inferred)
   let assert Ok(start) =
-    map.get(rendered.1, print.path_to_string(list.append(path, [1])))
+    map.get(rendered.1, print.path_to_string(list.append(path, sub)))
   #(
     Embed(
       ..state,
       mode: Insert,
       source: new,
       history: history,
-      inferred: Some(inferred),
+      inferred: inferred,
       rendered: rendered,
+      focus: Some(path),
     ),
-    start,
+    start + offset,
   )
 }
 
@@ -770,11 +1086,6 @@ pub fn update_selection(state: Embed, start, end) {
       }
     }
   }
-  //     }
-  //   }
-  // }
-  // None -> Embed(..state, path: None)
-  // }
 }
 
 pub fn pallet(embed: Embed) {
@@ -783,12 +1094,13 @@ pub fn pallet(embed: Embed) {
       let message = case warning {
         "" ->
           case embed.inferred, embed.focus {
-            Some(types), Some(path) -> {
+            types, Some(path) -> {
               case print.type_at(path, types) {
-                Ok(_) -> "press space to run"
-                Error(#(r, t1, t2)) -> {
+                Some(Ok(_)) -> "press space to run"
+                Some(Error(#(r, t1, t2))) -> {
                   type_.render_failure(r, t1, t2)
                 }
+                None -> "press space to type check"
               }
             }
             _, _ -> "press space to run"
@@ -815,7 +1127,7 @@ fn to_html(sections) {
         print.Hole -> ["text-orange-4 font-bold"]
         print.Integer -> ["text-purple-4"]
         print.String -> ["text-green-4"]
-        print.Union -> ["text-blue-3"]
+        print.Label -> ["text-blue-3"]
         print.Effect -> ["text-yellow-4"]
         print.Builtin -> ["font-italic"]
       }
@@ -897,8 +1209,11 @@ fn update_at(state: Embed, path, cb) {
       let #(updated, mode, sub_path) = cb(target)
       let new = rezip(updated)
       let history = #([], [#(source, path, False), ..state.history.1])
-      let inferred = do_infer(new, state.std)
-      let rendered = print.print(new, inferred)
+      let inferred = case state.auto_infer {
+        True -> Some(do_infer(new, state.std))
+        False -> None
+      }
+      let rendered = print.print(new, state.focus, state.auto_infer, inferred)
       let path = list.append(path, sub_path)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
       #(
@@ -907,7 +1222,13 @@ fn update_at(state: Embed, path, cb) {
           mode: mode,
           source: new,
           history: history,
-          inferred: Some(inferred),
+          // TODO linger for infer
+          // TODO linger for open editor
+          // TODO place for editor utils location path etc
+          // type check is needed for any infer change on labels
+          // Proper entry for all my apps plinth for selection chagne etc
+          // ideadlly start super fast in web worker
+          inferred: inferred,
           rendered: rendered,
         ),
         start,

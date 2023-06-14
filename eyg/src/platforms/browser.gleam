@@ -28,8 +28,13 @@ fn handlers() {
 }
 
 pub fn run() {
-  case document.query_selector("script[type=\"application/eygir\"]") {
-    Ok(Some(el)) ->
+  case
+    document.query_selector(
+      document.document(),
+      "script[type=\"application/eygir\"]",
+    )
+  {
+    Ok(el) ->
       case decode.from_json(window.decode_uri(document.inner_text(el))) {
         Ok(continuation) ->
           case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
@@ -78,8 +83,8 @@ fn render() {
     t.unit,
     fn(page, k) {
       let assert r.Binary(page) = page
-      case document.query_selector("#app") {
-        Ok(Some(element)) -> document.set_html(element, page)
+      case document.query_selector(document.document(), "#app") {
+        Ok(element) -> document.set_html(element, page)
         _ ->
           panic(
             "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render",

@@ -4,65 +4,22 @@
 // lots of work on resumable
 // The server from the eyg project moved the build directory
 import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
-import * as Experiment from "../build/dev/javascript/eyg/experiment.mjs";
-import * as Observable from "../build/dev/javascript/eyg/observable.mjs";
-import * as Signal from "../build/dev/javascript/eyg/signal.mjs";
-
-// Some stateful error with rollup happening here
-// import * as db2 from "./db/index.js";
-// console.log(db2);
-// let db = { hello: db2.hello };
-// console.log("yeeeee");
-// Object.assign(db, db2);
-
-// Experiment.run();
-Signal.run();
+import * as Loader from "../build/dev/javascript/eyg/easel/loader.mjs";
+import * as ffi from "../build/dev/javascript/eyg/easel_ffi.js";
 
 console.log("starting easel");
-
-// element and node are the same thing when talking about an HTML element
-// Text node is not an element
-// the closest function exists only on elements
-function elementIndex(node) {
-  const startElement =
-    node.nodeType == Node.TEXT_NODE ? node.parentElement : node;
-  let count = 0;
-  let e = startElement.previousElementSibling;
-  while (e) {
-    count += e.textContent.length;
-    e = e.previousElementSibling;
-  }
-  return count;
-}
-
-function startIndex(range) {
-  return elementIndex(range.startContainer) + range.startOffset;
-}
-
-function endIndex(range) {
-  return elementIndex(range.endContainer) + range.endOffset;
-}
-
 function handleInput(event, state) {
-  // Always at least one range
-  // If not zero range collapse to cursor
-  const range = event.getTargetRanges()[0];
-  const start = startIndex(range);
-  const end = endIndex(range);
-  if (event.inputType == "insertText") {
-    return Easel.insert_text(state, event.data, start, end);
-  }
-  if (event.inputType == "insertParagraph") {
-    return Easel.insert_paragraph(start, state);
-  }
-  if (
-    event.inputType == "deleteContentBackward" ||
-    event.inputType == "deleteContentForward"
-  ) {
-    return Easel.insert_text(state, "", start, end);
-  }
-  console.log(start, event);
-  return state;
+  return (
+    ffi.handleInput(
+      event,
+      function (data, start, end) {
+        return Easel.insert_text(state, data, start, end);
+      },
+      function (start) {
+        Easel.insert_paragraph(start, state);
+      }
+    ) || state
+  );
 }
 
 // grid of positions from print is not need instead I need to lookup which element has nearest data id and offset
@@ -90,15 +47,15 @@ async function resume(element) {
         state = Easel.escape(state);
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
-        const start = startIndex(range);
+        const start = ffi.startIndex(range);
         updateElement(element, state, start);
       }
       if (event.ctrlKey && event.key == "f") {
         event.preventDefault();
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
-        const start = startIndex(range);
-        const end = endIndex(range);
+        const start = ffi.startIndex(range);
+        const end = ffi.endIndex(range);
         [state, offset] = Easel.insert_function(state, start, end);
         updateElement(element, state, offset);
         return false;
@@ -108,8 +65,8 @@ async function resume(element) {
         event.stopPropagation();
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
-        const start = startIndex(range);
-        const end = endIndex(range);
+        const start = ffi.startIndex(range);
+        const end = ffi.endIndex(range);
         [state, offset] = Easel.call_with(state, start, end);
         updateElement(element, state, offset);
         return false;
@@ -133,8 +90,8 @@ async function resume(element) {
   element.innerHTML = Easel.html(state);
   element.contentEditable = true;
   return function (range) {
-    const start = startIndex(range);
-    const end = endIndex(range);
+    const start = ffi.startIndex(range);
+    const end = ffi.endIndex(range);
     // console.log("handle selection change", start, end);
     state = Easel.update_selection(state, start, end);
     element.nextElementSibling.innerHTML = Easel.pallet(state);
@@ -147,16 +104,7 @@ function updateElement(element, state, offset) {
   if (offset == undefined) {
     return;
   }
-  let e = element.children[0];
-  let countdown = offset;
-  while (countdown > e.textContent.length) {
-    countdown -= e.textContent.length;
-    e = e.nextElementSibling;
-  }
-  const range = window.getSelection().getRangeAt(0);
-  // range needs to be set on the text node
-  range.setStart(e.firstChild, countdown);
-  range.setEnd(e.firstChild, countdown);
+  ffi.placeCursor(element, offset);
 }
 
 async function start() {
@@ -182,76 +130,40 @@ async function start() {
     // console.log(element, );
     const index = elements.indexOf(element);
     if (index < 0) {
+      if (window.globalSelectionHandler) {
+        window.globalSelectionHandler(range);
+      }
       return;
     }
     states[index](range);
   };
-
-  const loaders = Array.prototype.slice.call(
-    document.querySelectorAll('button[data-action="load"]')
-  );
-  loaders.map(startLoader);
 }
 
 start();
 
-// full page routing for selection change reference with ID
-// put more in plinth
-// options list of enum/go fn types or all the options fixed.
-async function startLoader(button) {
-  console.log(button);
-  button.onclick = async function (event) {
-    // chrome only
-    // firefox support is for originprivatefilesystem and drag and drop blobs
-    // show dir for db of stuff only
-    // const [dir] = await window.showDirectoryPicker();
-    // console.log(dir);
-    const [fileHandle] = await window.showOpenFilePicker();
-    const file = await fileHandle.getFile();
-    // .json not available
-    const json = JSON.parse(await file.text());
+// -------------------------
+// file write
+// const writableStream = await fileHandle.createWritable();
+// const data = new Blob([JSON.stringify({ foo: 2 }, null, 2)], {
+//   type: "application/json",
+// });
+// await writableStream.write(data);
+// --------------
 
-    // signal approach -------------
-    // const [elements, update] = Signal.app(json);
-    // console.log(elements);
-    // const pre = button.parentElement;
-    // pre.append(...elements);
-    // console.log("before");
+//     let state = Easel.init(json);
+//     let offset = 0;
+//     // button is the button
 
-    // await new Promise(function (resolve) {
-    //   setTimeout(resolve, 1000);
-    // });
-    // console.log("done");
-    // -------------------------
-    // file write
-    // const writableStream = await fileHandle.createWritable();
-    // const data = new Blob([JSON.stringify({ foo: 2 }, null, 2)], {
-    //   type: "application/json",
-    // });
-    // await writableStream.write(data);
-    // --------------
+//     pre.onkeydown = function (event) {
+//       if (event.key == "Escape") {
+//         state = Easel.escape(state);
+//         const selection = window.getSelection();
+//         const range = selection.getRangeAt(0);
+//         const start = ffi.startIndex(range);
+//         updateElement(pre, state, start);
+//       }
+//     };
+//   };
+// }
 
-    let state = Easel.init(json);
-    let offset = 0;
-    // button is the button
-    const pre = button.parentElement;
-    pre.contentEditable = true;
-    pre.innerHTML = Easel.html(state);
-
-    pre.onbeforeinput = function (event) {
-      console.log(event);
-      [state, offset] = handleInput(event, state);
-      updateElement(pre, state, offset);
-      return false;
-    };
-    pre.onkeydown = function (event) {
-      if (event.key == "Escape") {
-        state = Easel.escape(state);
-        const selection = window.getSelection();
-        const range = selection.getRangeAt(0);
-        const start = startIndex(range);
-        updateElement(pre, state, start);
-      }
-    };
-  };
-}
+Loader.run();

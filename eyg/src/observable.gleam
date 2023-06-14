@@ -4,7 +4,6 @@ import gleam/option.{None, Option, Some}
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
-import plinth/browser/console
 import plinth/browser/document
 import plinth/javascript/promisex
 
@@ -94,7 +93,7 @@ pub fn option(
   some some: fn(Observable(a)) -> List(document.Element),
   none none: List(document.Element),
 ) {
-  // TODO should be empty text node
+  // svelte uses empty text node for pin, so it doesn't effect element order for styling
   let pin = document.create_element("span")
   let create = fn(option: Option(a)) {
     case option {
@@ -160,9 +159,6 @@ pub fn option(
 
   [pin, ..elements]
 }
-
-// TODO fix references to always be latest and use a get function
-// keep observers in scope to throw away subscription
 
 pub type State {
   State(greeting: String, active: Bool, session: Option(String))
