@@ -88,7 +88,7 @@ pub type DBView {
   DBView(triple_count: Int, attribute_suggestions: List(#(String, Int)))
 }
 
-// TODO need variant3
+// need variant3 if we want to use codec more
 // value_suggestions: List(#(String, Int, Nil)),
 
 pub fn db_view() {

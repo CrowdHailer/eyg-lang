@@ -1,5 +1,4 @@
 import gleam/io
-import gleam/javascript
 import gleam/javascript/array
 import plinth/browser/document
 import easel/embed

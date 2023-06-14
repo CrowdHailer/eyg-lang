@@ -20,7 +20,7 @@ pub type Style {
   Hole
   Integer
   String
-  Union
+  Label
   Effect
   Builtin
 }
@@ -97,7 +97,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       // let info = map.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("{", loc, acc, err)
       let #(acc, info) =
-        print_with_offset(label, loc, Union, err, acc, info, analysis)
+        print_with_offset(label, loc, Label, err, acc, info, analysis)
       let acc = print_keyword(": ", loc, acc, err)
       let #(acc, info) =
         print_block(
@@ -115,7 +115,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       let br_inner = string.append(br, "  ")
       let acc = print_keyword(br_inner, loc, acc, err)
       let #(acc, info) =
-        print_with_offset(label, loc, Union, err, acc, info, analysis)
+        print_with_offset(label, loc, Label, err, acc, info, analysis)
       let acc = print_keyword(" ", loc, acc, err)
       let #(acc, info) =
         print_block(
@@ -220,28 +220,25 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       #(acc, info)
     }
     e.Extend(label) -> {
-      // TODO better name than union
-      let acc = [#("+", loc.path, -1, Union, err), ..acc]
-      print_with_offset(label, loc, Union, err, acc, info, analysis)
+      let acc = [#("+", loc.path, -1, Label, err), ..acc]
+      print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
     e.Select(label) -> {
-      // TODO better name than union
-      let acc = [#(".", loc.path, -1, Union, err), ..acc]
-      print_with_offset(label, loc, Union, err, acc, info, analysis)
+      let acc = [#(".", loc.path, -1, Label, err), ..acc]
+      print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
     e.Overwrite(label) -> {
-      // TODO better name than union
-      let acc = [#("=", loc.path, -1, Union, err), ..acc]
-      print_with_offset(label, loc, Union, err, acc, info, analysis)
+      let acc = [#("=", loc.path, -1, Label, err), ..acc]
+      print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
     e.Tag(label) -> {
       // The idea was marking something as a tag
-      // let acc = [#("=", loc.path, -1, Union), ..acc]
-      print_with_offset(label, loc, Union, err, acc, info, analysis)
+      // let acc = [#("=", loc.path, -1, Label), ..acc]
+      print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
     e.Case(label) -> {
-      let acc = [#("|", loc.path, -1, Union, err), ..acc]
-      print_with_offset(label, loc, Union, err, acc, info, analysis)
+      let acc = [#("|", loc.path, -1, Label, err), ..acc]
+      print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
     e.NoCases -> {
       let info = map.insert(info, path_to_string(loc.path), list.length(acc))
@@ -338,7 +335,7 @@ fn print_extend(exp, loc, br, acc, info, analysis) {
       let info = map.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(", ", loc, acc, err)
       let #(acc, info) =
-        print_with_offset(label, loc, Union, err, acc, info, analysis)
+        print_with_offset(label, loc, Label, err, acc, info, analysis)
       let acc = print_keyword(": ", loc, acc, err)
       let #(acc, info) =
         print_block(
@@ -375,7 +372,7 @@ fn print_match(exp, loc, br, br_inner, acc, info, analysis) {
       let acc = print_keyword(br_inner, loc, acc, err)
       let info = map.insert(info, path_to_string(loc.path), list.length(acc))
       let #(acc, info) =
-        print_with_offset(label, loc, Union, err, acc, info, analysis)
+        print_with_offset(label, loc, Label, err, acc, info, analysis)
       let acc = print_keyword(" ", loc, acc, err)
       let #(acc, info) =
         print_block(
@@ -426,7 +423,6 @@ pub fn print_with_offset(content, loc, style, err, acc, info, _analysis) {
     _ -> #(content, style)
   }
   let acc =
-    // TODO work out total effect of stringx here
     stringx.index_fold_graphmemes(
       // list.index_fold(
       //   string.to_graphemes(content),

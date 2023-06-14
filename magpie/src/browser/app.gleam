@@ -465,7 +465,7 @@ fn render_edit(mode, db: serialize.DBView) {
                           case k {
                             0 -> []
                             1 -> db.attribute_suggestions
-                            // TODO value_suggestions
+                            //  value_suggestions are not implemented as there are too many of them
                             2 -> []
                           }
                           |> list.filter(fn(pair) {

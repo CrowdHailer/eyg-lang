@@ -19,8 +19,8 @@ pub external type FileHandle
 // firefox support is for originprivatefilesystem and drag and drop blobs
 // show dir for db of stuff only
 
-pub external fn show_open_file_picker() -> Promise(#(FileHandle)) =
-  "" "showOpenFilePicker"
+pub external fn show_open_file_picker() -> Promise(Result(#(FileHandle), Nil)) =
+  "../../plinth_ffi.js" "showOpenFilePicker"
 
 pub external type File
 

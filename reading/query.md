@@ -27,7 +27,7 @@ There are efforts to describe UI in datalog but also to define user interaction
 https://datalogui.dev/
 https://github.com/datalogui/datalog
 
-TODO investigate go datalog version
+There is a go datalog version
 A go datalog thing
 https://github.com/google/mangle
 

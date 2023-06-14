@@ -135,8 +135,8 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     }
     e.Apply(func, arg) -> {
       let t = t.Unbound(fresh(ref))
-      // TODO fix this so that dont need self unify to add path to sub
       // just point path to typ at top of do_infer but need to check map for errors separatly
+      // unify with self needed to add to type dictionary, not problem with inference jm
       let s0 = unify(typ, typ, ref, path)
       let s1 = do_infer(env, func, t.Fun(t, eff, typ), eff, ref, [0, ..path])
       let s1 = compose(s1, s0)
@@ -182,7 +182,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
           [1, ..path],
         )
       compose(s2, s1)
-      // TODO remove but needed for path to typ to exist in state
+      // needed for path to typ to exist in state, not part of inference jm
       |> compose(unify(typ, typ, ref, path))
     }
     // Primitive

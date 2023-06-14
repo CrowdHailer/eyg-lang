@@ -48,7 +48,7 @@ pub fn web() {
                       t.option(t.Binary),
                       t.Extend(
                         "headers",
-                        // TODO tuple of headers
+                        // I don't have tuples for a list of headers so this is not yet implemented
                         t.LinkedList(t.Binary),
                         t.Extend("body", t.Binary, t.Closed),
                       ),

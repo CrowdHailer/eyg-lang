@@ -21,13 +21,10 @@ import easel/zipper
 import atelier/view/type_
 import gleam/javascript
 import gleam/javascript/promise
-import plinth/javascript/promisex
 import plinth/browser/window
 import plinth/browser/document
-import plinth/browser/console
 
 // TODO remove last run information when moving cursor
-// TODO fix pressing space to typecheck
 // Not a full app
 // Widget is another name element/panel
 // Embed if I have a separate app file
@@ -83,7 +80,7 @@ fn do_infer(source, std) {
       tree.infer_env(source, t.Var(-1), t.Var(-2), env, sub, next)
     }
     None ->
-      // TODO real effects
+      // open effects for now, will be environment dependent
       tree.infer(source, t.Var(-1), t.Var(-2))
   }
 }
@@ -117,34 +114,72 @@ pub fn fullscreen(root) {
             "load" -> {
               promise.map(
                 window.show_open_file_picker(),
-                fn(value) {
-                  let #(file_handle) = value
-                  use file <- promise.map(window.get_file(file_handle))
-                  use text <- promise.map(window.file_text(file))
-                  let assert Ok(source) = decode.from_json(text)
+                fn(result) {
+                  case result {
+                    Ok(#(file_handle)) -> {
+                      use file <- promise.await(window.get_file(file_handle))
+                      use text <- promise.map(window.file_text(file))
+                      let assert Ok(source) = decode.from_json(text)
 
-                  javascript.update_reference(
-                    ref,
-                    fn(state: Embed) {
-                      // always infer at the start
-                      let inferred = do_infer(source, state.std)
+                      javascript.update_reference(
+                        ref,
+                        fn(state: Embed) {
+                          // always infer at the start
+                          let inferred = do_infer(source, state.std)
 
-                      let rendered =
-                        print.print(source, Some([]), False, Some(inferred))
-                      let assert Ok(start) =
-                        map.get(rendered.1, print.path_to_string([]))
+                          let rendered =
+                            print.print(source, Some([]), False, Some(inferred))
+                          let assert Ok(start) =
+                            map.get(rendered.1, print.path_to_string([]))
 
-                      let state =
-                        Embed(
-                          ..state,
-                          source: source,
-                          inferred: Some(inferred),
-                          rendered: rendered,
-                        )
-                      render_page(root, start, state)
-                      state
-                    },
-                  )
+                          let state =
+                            Embed(
+                              ..state,
+                              source: source,
+                              inferred: Some(inferred),
+                              rendered: rendered,
+                            )
+                          render_page(root, start, state)
+                          state
+                        },
+                      )
+                      case document.query_selector(root, "pre") {
+                        Ok(pre) -> {
+                          document.add_event_listener(
+                            pre,
+                            "blur",
+                            fn(_) {
+                              io.debug("blurred")
+                              javascript.update_reference(
+                                ref,
+                                fn(state) {
+                                  // updating the contenteditable node messes with cursor placing
+                                  let state = blur(state)
+                                  document.set_html(pre, html(state))
+                                  let pallet_el =
+                                    document.next_element_sibling(pre)
+                                  document.set_html(pallet_el, pallet(state))
+                                  state
+                                },
+                              )
+
+                              Nil
+                            },
+                          )
+                          Nil
+                        }
+                        _ -> {
+                          io.debug("expected a pre to be available")
+                          Nil
+                        }
+                      }
+                    }
+
+                    Error(Nil) -> {
+                      io.debug("no file opened")
+                      promise.resolve(Nil)
+                    }
+                  }
                 },
               )
               document.add_event_listener(
@@ -152,7 +187,7 @@ pub fn fullscreen(root) {
                 document.document(),
                 "selectionchange",
                 fn(_event) {
-                  let r = {
+                  let _ = {
                     use selection <- result.then(window.get_selection())
                     use range <- result.then(window.get_range_at(selection, 0))
                     let start = start_index(range)
@@ -161,10 +196,6 @@ pub fn fullscreen(root) {
                       ref,
                       fn(state) {
                         let state = update_selection(state, start, end)
-                        // case document.query_selector(root, "pre + *") {
-                        //   Ok(pallet_el) -> document.set_html(pallet_el, pallet(state))
-                        //   Error(Nil) -> Nil
-                        // }
                         let rendered =
                           print.print(
                             state.source,
@@ -195,7 +226,6 @@ pub fn fullscreen(root) {
                       },
                     )
 
-                    // linger("fooo")
                     Ok(Nil)
                   }
 
@@ -277,7 +307,6 @@ pub fn fullscreen(root) {
       }
     },
   )
-  let linger = debounce(fn(m) { io.debug(#("lingered", m)) }, 200)
 
   document.set_html(
     root,
@@ -291,9 +320,6 @@ external fn start_index(window.Range) -> Int =
 
 external fn end_index(window.Range) -> Int =
   "../easel_ffi.js" "endIndex"
-
-external fn debounce(fn(a) -> b, Int) -> fn(a) -> Nil =
-  "../easel_ffi.js" "debounce"
 
 fn render_page(root, start, state) {
   case document.query_selector(root, "pre") {
@@ -396,9 +422,19 @@ pub fn insert_text(state: Embed, data, start, end) {
     Command(_) -> {
       case data {
         " " -> {
-          let message = run(state)
-          let state = Embed(..state, mode: Command(message))
-          #(state, start)
+          case state.inferred {
+            Some(_) -> {
+              let message = run(state)
+              let state = Embed(..state, mode: Command(message))
+              #(state, start)
+            }
+            None -> {
+              let inferred = do_infer(state.source, state.std)
+              let state =
+                Embed(..state, mode: Command(""), inferred: Some(inferred))
+              #(state, start)
+            }
+          }
         }
         "q" -> {
           io.print(encode.to_json(state.source))
@@ -1091,7 +1127,7 @@ fn to_html(sections) {
         print.Hole -> ["text-orange-4 font-bold"]
         print.Integer -> ["text-purple-4"]
         print.String -> ["text-green-4"]
-        print.Union -> ["text-blue-3"]
+        print.Label -> ["text-blue-3"]
         print.Effect -> ["text-yellow-4"]
         print.Builtin -> ["font-italic"]
       }

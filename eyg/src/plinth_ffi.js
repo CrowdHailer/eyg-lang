@@ -51,6 +51,14 @@ export function getTargetRange(event) {
 }
 // -------- window/file --------
 
+export async function showOpenFilePicker(options) {
+  try {
+    return new Ok(await window.showOpenFilePicker());
+  } catch (error) {
+    return new Error();
+  }
+}
+
 export function getFile(fileHandle) {
   return fileHandle.getFile();
 }
