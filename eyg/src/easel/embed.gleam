@@ -20,11 +20,13 @@ import easel/print
 import easel/zipper
 import atelier/view/type_
 import gleam/javascript
+import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/browser/window
 import plinth/browser/document
 
 // TODO remove last run information when moving cursor
+// TODO have a program in the editor at startup
 // Not a full app
 // Widget is another name element/panel
 // Embed if I have a separate app file
@@ -37,7 +39,6 @@ import plinth/browser/document
 // Do a print function that goes to HTML from tree directly
 // bg highlight selection or error as in aterlier
 // debounce move to opening
-// unwrap/copy+paste
 // Can a match be dynamic I think no
 // press a increases selection but uses browser selection
 // ardunio/structured text auto reload OR gateway for OPCUA using erlang
@@ -435,6 +436,40 @@ pub fn insert_text(state: Embed, data, start, end) {
               #(state, start)
             }
           }
+        }
+        // Putting in state locked can work with using an series of promises to compose actios
+        "Q" -> {
+          promise.await(
+            window.show_save_file_picker(),
+            fn(result) {
+              case
+                result
+                |> io.debug
+              {
+                Ok(file_handle) -> {
+                  use writable <- promise.await(window.create_writable(
+                    file_handle,
+                  ))
+                  io.debug(writable)
+                  let blob =
+                    window.blob(
+                      array.from_list([encode.to_json(state.source)]),
+                      "application/json",
+                    )
+                  io.debug(blob)
+                  use _ <- promise.await(window.write(writable, blob))
+                  use _ <- promise.await(window.close(writable))
+                  promise.resolve(Nil)
+                }
+                Error(Nil) -> {
+                  io.debug("no file  to save selected")
+                  promise.resolve(Nil)
+                }
+              }
+            },
+          )
+
+          #(state, start)
         }
         "q" -> {
           io.print(encode.to_json(state.source))

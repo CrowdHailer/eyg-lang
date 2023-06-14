@@ -59,12 +59,38 @@ export async function showOpenFilePicker(options) {
   }
 }
 
+export async function showSaveFilePicker(options) {
+  try {
+    return new Ok(await window.showSaveFilePicker());
+  } catch (error) {
+    return new Error();
+  }
+}
+
 export function getFile(fileHandle) {
   return fileHandle.getFile();
 }
 
 export function fileText(file) {
   return file.text();
+}
+
+// works on file handles from opening but requires more permissions.
+export function createWritable(fileHandle) {
+  return fileHandle.createWritable();
+}
+
+export function write(writableStream, blob) {
+  return writableStream.write(blob);
+}
+export function close(writableStream) {
+  return writableStream.close();
+}
+
+export function blob(strings, arg) {
+  return new Blob(strings, {
+      type: arg,
+    })
 }
 
 // -------- window/selection --------

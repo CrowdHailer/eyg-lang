@@ -1,3 +1,4 @@
+import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 
 pub external fn alert(String) -> Nil =
@@ -19,8 +20,12 @@ pub external type FileHandle
 // firefox support is for originprivatefilesystem and drag and drop blobs
 // show dir for db of stuff only
 
+// single tuple is hack for list of files
 pub external fn show_open_file_picker() -> Promise(Result(#(FileHandle), Nil)) =
   "../../plinth_ffi.js" "showOpenFilePicker"
+
+pub external fn show_save_file_picker() -> Promise(Result(FileHandle, Nil)) =
+  "../../plinth_ffi.js" "showSaveFilePicker"
 
 pub external type File
 
@@ -29,6 +34,24 @@ pub external fn get_file(FileHandle) -> Promise(File) =
 
 pub external fn file_text(File) -> Promise(String) =
   "../../plinth_ffi.js" "fileText"
+
+pub external type FileSystemWritableFileStream
+
+pub external fn create_writable(
+  FileHandle,
+) -> Promise(FileSystemWritableFileStream) =
+  "../../plinth_ffi.js" "createWritable"
+
+pub external type Blob
+
+pub external fn blob(Array(String), String) -> Blob =
+  "../../plinth_ffi.js" "blob"
+
+pub external fn write(FileSystemWritableFileStream, Blob) -> Promise(Nil) =
+  "../../plinth_ffi.js" "write"
+
+pub external fn close(FileSystemWritableFileStream) -> Promise(Nil) =
+  "../../plinth_ffi.js" "close"
 
 // selection and ranges
 
