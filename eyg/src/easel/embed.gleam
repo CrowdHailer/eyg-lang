@@ -27,6 +27,7 @@ import plinth/browser/document
 
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup
+// TODO multiline text messing with count
 // Not a full app
 // Widget is another name element/panel
 // Embed if I have a separate app file
