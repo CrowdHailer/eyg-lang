@@ -1,6 +1,5 @@
 import gleam/io
 import gleam/list
-import gleam/option.{Some}
 import eygir/decode
 import plinth/browser/window
 import plinth/browser/document

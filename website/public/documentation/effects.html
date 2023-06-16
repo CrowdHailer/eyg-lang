@@ -1,4 +1,11 @@
-<div  class="vstack bg-gray-50 wrap"><div  class="loose doc"><h1  class="text-2xl">Effects</h1><h2  class="text-lg max-w-2xl mx-auto">Choose</h2><p  class="max-w-2xl mx-auto">A random choice. 
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="/public/layout.css" />
+  <script src="/public/run.js" type="module" async defer></script>
+</head><body ><div  class="vstack bg-gray-50 wrap"><div  class="loose doc"><h1  class="text-2xl">Effects</h1><h2  class="text-lg max-w-2xl mx-auto">Choose</h2><p  class="max-w-2xl mx-auto">A random choice. 
 Implementations can be handled to always return a fixed value or from a list or all.
 
 The value passed when invoking the Choose effect is unit i.e. an empty record as behaviour is not defined by the caller of choose</p><pre  class="bg-gray-200">_ -> {
@@ -59,4 +66,4 @@ I'm not sure of naming here. Can I use Error for the union type i.e. in Ok | Err
     let return = run({})
     {return: return, logs: []}
   })
-}}</pre><h2  class="text-lg max-w-2xl mx-auto">Async Await</h2><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div><span  class="expand"></span><footer  class="bg-gray-800 cover">language</footer></div>
+}}</pre><h2  class="text-lg max-w-2xl mx-auto">Async Await</h2><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div><span  class="expand"></span><footer  class="bg-gray-800 cover">language</footer></div></body>
