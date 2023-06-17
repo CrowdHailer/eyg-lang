@@ -1,11 +1,18 @@
 <!DOCTYPE html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <link href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css" rel="stylesheet"/>
-  <link rel="stylesheet" href="/public/layout.css" />
-  <script src="/public/run.js" type="module" async defer></script>
-</head><body ><div  class="vstack bg-gray-50 wrap"><div  class="loose doc"><h1  class="text-2xl">Language</h1><a  href="/documentation/effects" class="text-blue-500 underline">Effects</a><h2  class="text-lg max-w-2xl mx-auto">Introduction</h2><p  class="max-w-2xl mx-auto">This language is an experiment in making a highly portable functional language. The syntax shown below only illustrates the features of the language, it is only one of many possible projections to view a program. Creating programs is not done by editing text files instead a structured editor is needed.</p><p  class="max-w-2xl mx-auto">The language has both a compiler and interpreter, either or even both can be used in one program.
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/layout.css" />
+    <link rel="stylesheet" href="/neo.css" />
+    <script src="/easel.js" async defer></script>
+    <title>Editor</title>
+  </head><body ><div  class="vstack bg-gray-50 wrap"><div  class="loose doc"><h1  class="text-2xl">Language</h1><a  href="/documentation/effects" class="text-blue-500 underline">Effects</a><h2  class="text-lg max-w-2xl mx-auto">Introduction</h2><p  class="max-w-2xl mx-auto">This language is an experiment in making a highly portable functional language. The syntax shown below only illustrates the features of the language, it is only one of many possible projections to view a program. Creating programs is not done by editing text files instead a structured editor is needed.</p><p  class="max-w-2xl mx-auto">The language has both a compiler and interpreter, either or even both can be used in one program.
 Anonymous functions can be captured, serialised and sent to other computers. 
 For example a client and server app can be written as one function.</p><pre  class="bg-gray-200">_ -> {
   let html = vacant
