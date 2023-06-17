@@ -1178,11 +1178,18 @@ fn to_html(sections) {
         "<span class=\"",
         class,
         "\">",
-        string.concat(letters),
+        escape_html(string.concat(letters)),
         "</span>",
       ])
     },
   )
+}
+
+fn escape_html(source) {
+  source
+  |> string.replace("&", "&amp;")
+  |> string.replace("<", "&lt;")
+  |> string.replace(">", "&gt;")
 }
 
 fn group(rendered: List(print.Rendered)) {

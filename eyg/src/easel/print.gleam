@@ -192,8 +192,9 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     e.Binary(value) -> {
       let acc = [#("\"", loc.path, -1, String, err), ..acc]
       // Maybe I don't need to append " if looking left
+      // Dont escape html here as messes up index's when looking up element
       print_with_offset(
-        string.append(escape_html(value), "\""),
+        string.append(value, "\""),
         loc,
         String,
         err,
@@ -256,13 +257,6 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     e.Builtin(value) ->
       print_with_offset(value, loc, Builtin, err, acc, info, analysis)
   }
-}
-
-fn escape_html(source) {
-  source
-  |> string.replace("&", "&amp;")
-  |> string.replace("<", "&lt;")
-  |> string.replace(">", "&gt;")
 }
 
 fn print_block(source, loc, br, acc, info, analysis) {
