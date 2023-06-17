@@ -39,10 +39,10 @@ let </span><span class="">greet</span><span class="text-gray-500"> = </span><spa
           running. <br />
 
           Space on the right can highlight cursor and show types -->
-        </div><h2  class="text-lg max-w-2xl mx-auto">Choose</h2><p  class="max-w-2xl mx-auto">A random choice. 
+        </div><div  class="max-w-3xl w-full mx-auto"><h2 >Choose</h2></div><p  class="max-w-2xl mx-auto">A random choice. 
 Implementations can be handled to always return a fixed value or from a list or all.
 
-The value passed when invoking the Choose effect is unit i.e. an empty record as behaviour is not defined by the caller of choose</p><pre  class="bg-gray-200">_ -> {
+The value passed when invoking the Choose effect is unit i.e. an empty record as behaviour is not defined by the caller of choose</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let choose = _ -> perform Choose({})
   let always = value -> handle Choose(_arg -> resume -> resume(value))
   let _ = always(True({}))(_ -> {
@@ -52,9 +52,9 @@ The value passed when invoking the Choose effect is unit i.e. an empty record as
   })
   let _ = "[True, True]"
   vacant
-}</pre><p  class="max-w-2xl mx-auto">choose both by resuming the exec function multiple times
+}</pre></div></div><p  class="max-w-2xl mx-auto">choose both by resuming the exec function multiple times
 
-Need to wrap the exec function to return a list of it's value so that it can be concatenated in the handler</p><pre  class="bg-gray-200">_ -> {
+Need to wrap the exec function to return a list of it's value so that it can be concatenated in the handler</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let concat = vacant
   let choose = _ -> perform Choose({})
   let both = exec -> {
@@ -71,9 +71,9 @@ Need to wrap the exec function to return a list of it's value so that it can be 
     [first, second]
   })
   "[[True, True], [True, False], [False, True], [False, False]"
-}</pre><h2  class="text-lg max-w-2xl mx-auto">Fail</h2><p  class="max-w-2xl mx-auto">Short circuit execution with a failure.
+}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >Fail</h2></div><p  class="max-w-2xl mx-auto">Short circuit execution with a failure.
 
-I'm not sure of naming here. Can I use Error for the union type i.e. in Ok | Error at the same time as it for the Effect</p><pre  class="bg-gray-200">_ -> {
+I'm not sure of naming here. Can I use Error for the union type i.e. in Ok | Error at the same time as it for the Effect</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let result = {
     let ok = Ok
     let error = Error
@@ -90,8 +90,8 @@ I'm not sure of naming here. Can I use Error for the union type i.e. in Ok | Err
     {fail: fail, expect: expect, rescue: rescue}
   }
   vacant
-}</pre><h2  class="text-lg max-w-2xl mx-auto">Log</h2><p  class="max-w-2xl mx-auto">Logs are an effect
-</p><pre  class="bg-gray-200">{log: term -> perform Log(term), capture: {
+}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >Log</h2></div><p  class="max-w-2xl mx-auto">Logs are an effect
+</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">{log: term -> perform Log(term), capture: {
   let handler = message -> k -> {
     let inner = k({})
     {logs: [message, ..inner.logs], ..inner}
@@ -100,4 +100,4 @@ I'm not sure of naming here. Can I use Error for the union type i.e. in Ok | Err
     let return = run({})
     {return: return, logs: []}
   })
-}}</pre><h2  class="text-lg max-w-2xl mx-auto">Async Await</h2><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div></div></body>
+}}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >Async Await</h2></div><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div></div></body>

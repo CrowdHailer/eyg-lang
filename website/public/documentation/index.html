@@ -28,52 +28,52 @@
               <h1 class="text-2xl font-bold">EYG</h1>
             </div>
           </div>
-        </div><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h1 ></h1><span  class="expand"></span></div></header><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h1>TODO title</h1></div><div  class="expand w-full blue-gradient drop"><h1  class="text-2xl">Language</h1><a  href="/documentation/effects" class="text-blue-500 underline">Effects</a><h2  class="text-lg max-w-2xl mx-auto">Introduction</h2><p  class="max-w-2xl mx-auto">This language is an experiment in making a highly portable functional language. The syntax shown below only illustrates the features of the language, it is only one of many possible projections to view a program. Creating programs is not done by editing text files instead a structured editor is needed.</p><p  class="max-w-2xl mx-auto">The language has both a compiler and interpreter, either or even both can be used in one program.
+        </div><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h1 ></h1><span  class="expand"></span></div></header><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h1>TODO title</h1></div><div  class="expand w-full blue-gradient drop"><h1  class="text-2xl">Language</h1><a  href="/documentation/effects" class="text-blue-500 underline">Effects</a><div  class="max-w-3xl w-full mx-auto"><h2 >Introduction</h2></div><p  class="max-w-2xl mx-auto">This language is an experiment in making a highly portable functional language. The syntax shown below only illustrates the features of the language, it is only one of many possible projections to view a program. Creating programs is not done by editing text files instead a structured editor is needed.</p><p  class="max-w-2xl mx-auto">The language has both a compiler and interpreter, either or even both can be used in one program.
 Anonymous functions can be captured, serialised and sent to other computers. 
-For example a client and server app can be written as one function.</p><pre  class="bg-gray-200">_ -> {
+For example a client and server app can be written as one function.</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let html = vacant
   request -> client -> {
     let method = request.method
     let handle_click = perform Alert(method)
     html.button("click")(handle_click)
   }
-}</pre><p  class="max-w-2xl mx-auto">A fully exhaustive type checker exists for the language. i.e. if the checks pass it is guaranteed not to crash.
+}</pre></div></div><p  class="max-w-2xl mx-auto">A fully exhaustive type checker exists for the language. i.e. if the checks pass it is guaranteed not to crash.
 This can be optionally run, it's not worth type checking a build script you get the same error anyway.
 It's possible to type check a single function.</p><p  class="max-w-2xl mx-auto">Because the type system is complete and structural no type ever needs to be declared up front and no annotation is required, in fact annotation is not supported in the language.
 This choice is to make programmers never need to think about types.
 Type annotations are possible in the editor but they are only a debug tool and not committed to the source.</p><p  class="max-w-2xl mx-auto">The type system contains extensible records and unions as well as an algebraic effect system. 
 These three components are all built on row types, using the same approach for each keeps the implementation simple.
 </p><p  class="max-w-2xl mx-auto">All of the goals of the language are achieved by having the Abstract Syntax Tree (AST) of the language be the public interface and keeping that interface as small as possible.
-There are currently only 19 different node types that make up the AST.</p><pre  class="bg-gray-200">_ -> {
+There are currently only 19 different node types that make up the AST.</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let string = vacant
   let welcome = person -> {
     let message = string.append("Hello ")(person)
     perform Log(message)
   }
   welcome("Alan")
-}</pre><h2  class="text-lg max-w-2xl mx-auto">literal</h2><pre  class="bg-gray-200">_ -> {
+}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >literal</h2></div><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let i = 100
   let s = "hello"
   let list = [1, 2]
   {}
-}</pre><h2  class="text-lg max-w-2xl mx-auto">functions</h2><p  class="max-w-2xl mx-auto">All functions are anonymous.
+}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >functions</h2></div><p  class="max-w-2xl mx-auto">All functions are anonymous.
 Functions are first class an can be returned by other functions.
-There is no support for multi-argument functions, to accept multiple arguments a function must return a function, and is therefore automatically curried</p><pre  class="bg-gray-200">_ -> {
+There is no support for multi-argument functions, to accept multiple arguments a function must return a function, and is therefore automatically curried</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let single = x -> [x]
   let _ = single(10)
   let double = x -> y -> [x, y]
   let _ = double(1)(2)
   let start_with_one = double(1)
   start_with_one(7)
-}</pre><h2  class="text-lg max-w-2xl mx-auto">Let bindings</h2><p  class="max-w-2xl mx-auto">A value can be given a name using let. 
-Names can be reused by later let bindings, but the values contained are immutable, meaning the values themselves cannot be changed.</p><pre  class="bg-gray-200">_ -> {
+}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >Let bindings</h2></div><p  class="max-w-2xl mx-auto">A value can be given a name using let. 
+Names can be reused by later let bindings, but the values contained are immutable, meaning the values themselves cannot be changed.</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let a = 1
   let b = a
   let a = 2
   b
-}</pre><h2  class="text-lg max-w-2xl mx-auto">Records</h2><p  class="max-w-2xl mx-auto">Records are used to store multiple values with a name. 
+}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >Records</h2></div><p  class="max-w-2xl mx-auto">Records are used to store multiple values with a name. 
 Typing is structural and so there is no need to define types a head of time.
-Because typing is structural any record with the fields required by a function can be passed to that function</p><pre  class="bg-gray-200">a -> {
+Because typing is structural any record with the fields required by a function can be passed to that function</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">a -> {
   let alice = {name: "Alice", age: 10}
   let name = alice.name
   let alice = {age: 11, ..alice}
@@ -83,7 +83,7 @@ Because typing is structural any record with the fields required by a function c
   let bob = {name: "Bob"}
   let _ = get_name(bob)
   {}
-}</pre><h2  class="text-lg max-w-2xl mx-auto">Unions</h2><p  class="max-w-2xl mx-auto">Unions are tagged unions, they are extensible. Case statements are first class i.e. it is possible to compose them.</p><pre  class="bg-gray-200">_ -> {
+}</pre></div></div><div  class="max-w-3xl w-full mx-auto"><h2 >Unions</h2></div><p  class="max-w-2xl mx-auto">Unions are tagged unions, they are extensible. Case statements are first class i.e. it is possible to compose them.</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let ok = Ok(5)
   let unwrap = fallback -> match {
     Ok value -> value
@@ -91,14 +91,14 @@ Because typing is structural any record with the fields required by a function c
   }
   let _ = unwrap(0)(ok)
   {}
-}</pre><p  class="max-w-2xl mx-auto">matches can be open</p><pre  class="bg-gray-200">_ -> {
+}</pre></div></div><p  class="max-w-2xl mx-auto">matches can be open</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let multiline = match {
     Let _ -> True({})
     _other -> False({})
   }
   {}
-}</pre><p  class="max-w-2xl mx-auto">matches can be composed
-</p><pre  class="bg-gray-200">_ -> {
+}</pre></div></div><p  class="max-w-2xl mx-auto">matches can be composed
+</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let pets = match {
     Cat _ -> "felix"
     Dog _ -> "fido"
@@ -111,4 +111,4 @@ Because typing is structural any record with the fields required by a function c
     pets
   }
   {}
-}</pre></div></div></body>
+}</pre></div></div></div></div></body>
