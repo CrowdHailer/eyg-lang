@@ -28,7 +28,18 @@
               <h1 class="text-2xl font-bold">EYG</h1>
             </div>
           </div>
-        </div><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h1 >Effects</h1><span  class="expand"></span></div></header><div  class="vstack bg-gray-50 wrap"><div  class="loose doc"><h2  class="text-lg max-w-2xl mx-auto">Choose</h2><p  class="max-w-2xl mx-auto">A random choice. 
+        </div><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h1 >Effects</h1><span  class="expand"></span></div></header><div  class="expand w-full blue-gradient drop"><div class="max-w-3xl w-full mx-auto">
+          <div class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden">
+            <pre data-easel="#hello" class="overflow-auto outline-none w-full my-1 mx-4" spellcheck="false" contenteditable="true"><span class="text-gray-500">let </span><span class="">message</span><span class="text-gray-500"> = </span><span class="text-green-4">"Hello, World!"</span><span class="text-gray-500">
+let </span><span class="">greet</span><span class="text-gray-500"> = </span><span class="">message</span><span class="text-gray-500"> -&gt; perform </span><span class="text-yellow-4">Alert</span><span class="text-gray-500">(</span><span class="">message</span><span class="text-gray-500">)
+</span><span class="">greet</span><span class="text-gray-500">(</span><span class="">message</span><span class="text-gray-500">)</span></pre>
+            <div class="bg-purple-1 px-4 font-mono font-bold">:press space to run</div>
+          </div>
+          <!-- have a run button at the bottom which shows the file name before
+          running. <br />
+
+          Space on the right can highlight cursor and show types -->
+        </div><h2  class="text-lg max-w-2xl mx-auto">Choose</h2><p  class="max-w-2xl mx-auto">A random choice. 
 Implementations can be handled to always return a fixed value or from a list or all.
 
 The value passed when invoking the Choose effect is unit i.e. an empty record as behaviour is not defined by the caller of choose</p><pre  class="bg-gray-200">_ -> {
@@ -89,4 +100,4 @@ I'm not sure of naming here. Can I use Error for the union type i.e. in Ok | Err
     let return = run({})
     {return: return, logs: []}
   })
-}}</pre><h2  class="text-lg max-w-2xl mx-auto">Async Await</h2><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div><span  class="expand"></span><footer  class="bg-gray-800 cover">language</footer></div></div></body>
+}}</pre><h2  class="text-lg max-w-2xl mx-auto">Async Await</h2><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div></div></body>
