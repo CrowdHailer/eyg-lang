@@ -15,6 +15,7 @@ fn start(container) {
   let assert Ok(program) = document.dataset_get(container, "ready")
   case program {
     "editor" -> embed.fullscreen(container)
+    "snippet" -> embed.snippet(container)
     _ -> {
       io.debug(#("unknown program", program))
       Nil

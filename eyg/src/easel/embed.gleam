@@ -361,6 +361,24 @@ pub external fn handle_input(
 pub external fn place_cursor(document.Element, Int) -> Nil =
   "../easel_ffi.js" "placeCursor"
 
+pub fn snippet(root) {
+  // TODO remove init and resume because they need to call out to the server
+  // TODO make a components lib in webside
+  io.debug("start snippet")
+  case document.query_selector(root, "script[type=\"application/eygir\"]") {
+    Ok(script) -> {
+      let assert Ok(source) = decode.from_json(document.inner_text(script))
+      source
+      |> io.debug
+      Nil
+    }
+    Error(Nil) -> {
+      io.debug("nothing found")
+      Nil
+    }
+  }
+}
+
 pub fn init(json) {
   let assert Ok(source) = decode.decoder(json)
   // inferred std is cached
