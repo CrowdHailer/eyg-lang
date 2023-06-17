@@ -418,6 +418,10 @@ fn is_tag(value) {
   }
 }
 
+fn is_num(value) {
+  result.is_ok(int.parse(value))
+}
+
 pub fn insert_text(state: Embed, data, start, end) {
   let rendered = state.rendered.0
   case state.mode {
@@ -515,7 +519,7 @@ pub fn insert_text(state: Embed, data, start, end) {
       let assert Ok(#(_ch, path, cut_start, _style, _err)) =
         list.at(rendered, start)
       let assert Ok(#(_ch, _, cut_end, _style, _err)) = list.at(rendered, end)
-      let is_letters = is_var(data) || is_tag(data)
+      let is_letters = is_var(data) || is_tag(data) || is_num(data)
       let #(path, cut_start) = case cut_start < 0 && is_letters {
         True -> {
           let assert Ok(#(_ch, path, cut_start, _style, _err)) =
@@ -596,7 +600,7 @@ pub fn insert_text(state: Embed, data, start, end) {
               #(e.Let(label, value, then), [], offset, True)
             }
             e.Variable(label) -> {
-              case is_var(data) {
+              case is_var(data) || is_num(data) && cut_start > 0 {
                 True -> {
                   let #(label, offset) =
                     replace_at(label, cut_start, cut_end, data)
@@ -1025,7 +1029,12 @@ pub fn handle(state: Embed, start, end) {
 pub fn list_element(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Apply(e.Cons, target), e.Tail), state.mode, [])
+  // without this vacant case how do you make an empty list
+  let new = case target {
+    e.Vacant(_) -> e.Tail
+    _ -> e.Apply(e.Apply(e.Cons, target), e.Tail)
+  }
+  #(new, state.mode, [])
 }
 
 pub fn call(state: Embed, start, end) {
