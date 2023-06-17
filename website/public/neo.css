@@ -140,7 +140,7 @@
   .text-purple-4 {
     color: var(--neo-purple-4);
   }
- 
+
   .bg-blue-1 {
     background-color: var(--neo-blue-1);
   }
@@ -271,7 +271,7 @@
     --tw-border-opacity: 1;
     border-color: var(--neo-purple-4);
   }
- 
+
   .neo-shadow {
     box-shadow: 6px 6px black;
   }
@@ -291,7 +291,7 @@
     display: inline-block;
     /* color: white; */
     font-weight: bold;
-    font-size: 2em;
+    font-size: 1.5em;
     position: relative;
     margin: 16px 0;
     z-index: 1;
