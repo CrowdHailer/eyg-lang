@@ -237,7 +237,7 @@ pub fn fullscreen(root) {
               Nil
             }
             _ -> {
-              io.debug(handle)
+              io.debug(#("unknown click", handle))
               Nil
             }
           }
@@ -312,7 +312,7 @@ pub fn fullscreen(root) {
 
   document.set_html(
     root,
-    "<div data-click=\"load\" class=\"cover expand vstack pointer\"><span>click to load</span></div>",
+    "<div  class=\"cover expand vstack pointer\"><div class=\"cover text-center cursor-pointer\" data-click=\"load\">click to load</div><div class=\"cover text-center cursor-pointer hidden\" data-click=\"new\">start new</div></div>",
   )
   Nil
 }
