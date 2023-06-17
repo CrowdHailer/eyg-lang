@@ -39,6 +39,10 @@ export function handleInput(event, insert_text, insert_paragraph) {
   ) {
     return insert_text("", start, end);
   }
+  if (event.inputType == "insertFromPaste") {
+    return insert_text(event.dataTransfer.getData("text"), start, end);
+  }
+  console.log(event);
 }
 
 export function placeCursor(pre, offset) {
@@ -54,10 +58,12 @@ export function placeCursor(pre, offset) {
   range.setEnd(e.firstChild, countdown);
 }
 
-export function debounce(func, timeout = 300){
+export function debounce(func, timeout = 300) {
   let timer;
   return (...args) => {
     clearTimeout(timer);
-    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    timer = setTimeout(() => {
+      func.apply(this, args);
+    }, timeout);
   };
 }
