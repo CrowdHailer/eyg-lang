@@ -11,8 +11,27 @@
     <link rel="stylesheet" href="/layout.css" />
     <link rel="stylesheet" href="/neo.css" />
     <script src="/easel.js" async defer></script>
-    <title>Editor</title>
-  </head><body ><div  class="vstack bg-gray-50 wrap"><div  class="loose doc"><h1  class="text-2xl">Effects</h1><h2  class="text-lg max-w-2xl mx-auto">Choose</h2><p  class="max-w-2xl mx-auto">A random choice. 
+    <title>Documentation - Eyg</title>
+  </head><body ><div  class="vstack wrap"><header  class="yellow-gradient drop w-full"><div class="hstack max-w-3xl mx-auto">
+          <div class="expand leading-relaxed">
+            <div class="text-pink-4 border-l-8 border-white pl-2 -ml-2">
+              There is no <strong class="font-bold">syntax</strong> ...
+            </div>
+            <ul class="underline text-black pl-2">
+              <li><a href="/">Home</a></li>
+              <li><a href="/documentation">Documentation</a></li>
+            </ul>
+          </div>
+          <div class="border-2 border-black bg-purple-3 my-10 rounded-xl neo-shadow -mr-20">
+            <div class="ml-5 mr-24">
+              <h3 class="font-bold text-white">Eat Your Greens</h3>
+              <h1 class="text-2xl font-bold">EYG</h1>
+            </div>
+          </div>
+        </div><div class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap">
+            <h1>TODO title</h1>
+            <span class="expand"></span>
+          </div></header><div  class="vstack bg-gray-50 wrap"><div  class="loose doc"><h2  class="text-lg max-w-2xl mx-auto">Choose</h2><p  class="max-w-2xl mx-auto">A random choice. 
 Implementations can be handled to always return a fixed value or from a list or all.
 
 The value passed when invoking the Choose effect is unit i.e. an empty record as behaviour is not defined by the caller of choose</p><pre  class="bg-gray-200">_ -> {
@@ -73,4 +92,4 @@ I'm not sure of naming here. Can I use Error for the union type i.e. in Ok | Err
     let return = run({})
     {return: return, logs: []}
   })
-}}</pre><h2  class="text-lg max-w-2xl mx-auto">Async Await</h2><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div><span  class="expand"></span><footer  class="bg-gray-800 cover">language</footer></div></body>
+}}</pre><h2  class="text-lg max-w-2xl mx-auto">Async Await</h2><p  class="max-w-2xl mx-auto">Both async and await are implemented as effects and can be caught for test purposes</p></div><span  class="expand"></span><footer  class="bg-gray-800 cover">language</footer></div></div></body>
