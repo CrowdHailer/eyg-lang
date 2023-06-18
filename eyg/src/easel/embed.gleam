@@ -318,7 +318,7 @@ fn render_page(root, start, state) {
     Error(Nil) -> {
       let content =
         string.concat([
-          "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4 px-4\" contenteditable spellcheck=\"false\">",
+          "<pre class=\"expand overflow-auto outline-none w-full my-1 mx-4\" contenteditable spellcheck=\"false\">",
           html(state),
           "</pre>",
           "<div class=\"w-full bg-purple-1 px-4 font-mono font-bold\">",
