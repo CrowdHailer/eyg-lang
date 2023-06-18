@@ -45,14 +45,12 @@ Implementations can be handled to always return a fixed value or from a list or 
 The value passed when invoking the Choose effect is unit i.e. an empty record as behaviour is not defined by the caller of choose</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden" data-ready="snippet"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let choose = _ -> perform Choose({})
   let always = value -> handle Choose(_arg -> resume -> resume(value))
-  let _ = always(True({}))(_ -> {
+  always(True({}))(_ -> {
     let first = choose({})
     let second = choose({})
     [first, second]
   })
-  let _ = "[True, True]"
-  vacant
-}</pre><div  class="bg-purple-1 px-4 font-mono font-bold">:</div><script  type="application/eygir">{"0":"f","l":"_","b":{"0":"l","l":"choose","v":{"0":"f","l":"_","b":{"0":"a","f":{"0":"p","l":"Choose"},"a":{"0":"u"}}},"t":{"0":"l","l":"always","v":{"0":"f","l":"value","b":{"0":"a","f":{"0":"h","l":"Choose"},"a":{"0":"f","l":"_arg","b":{"0":"f","l":"resume","b":{"0":"a","f":{"0":"v","l":"resume"},"a":{"0":"v","l":"value"}}}}}},"t":{"0":"l","l":"_","v":{"0":"a","f":{"0":"a","f":{"0":"v","l":"always"},"a":{"0":"a","f":{"0":"t","l":"True"},"a":{"0":"u"}}},"a":{"0":"f","l":"_","b":{"0":"l","l":"first","v":{"0":"a","f":{"0":"v","l":"choose"},"a":{"0":"u"}},"t":{"0":"l","l":"second","v":{"0":"a","f":{"0":"v","l":"choose"},"a":{"0":"u"}},"t":{"0":"a","f":{"0":"a","f":{"0":"c"},"a":{"0":"v","l":"first"}},"a":{"0":"a","f":{"0":"a","f":{"0":"c"},"a":{"0":"v","l":"second"}},"a":{"0":"ta"}}}}}}},"t":{"0":"l","l":"_","v":{"0":"s","v":"[True, True]"},"t":{"0":"z","c":""}}}}}}</script></div></div><p  class="max-w-3xl w-full mx-auto px-4 text-lg">choose both by resuming the exec function multiple times
+}</pre><div  class="bg-purple-1 px-4 font-mono font-bold">:</div><script  type="application/eygir">{"0":"f","l":"_","b":{"0":"l","l":"choose","v":{"0":"f","l":"_","b":{"0":"a","f":{"0":"p","l":"Choose"},"a":{"0":"u"}}},"t":{"0":"l","l":"always","v":{"0":"f","l":"value","b":{"0":"a","f":{"0":"h","l":"Choose"},"a":{"0":"f","l":"_arg","b":{"0":"f","l":"resume","b":{"0":"a","f":{"0":"v","l":"resume"},"a":{"0":"v","l":"value"}}}}}},"t":{"0":"a","f":{"0":"a","f":{"0":"v","l":"always"},"a":{"0":"a","f":{"0":"t","l":"True"},"a":{"0":"u"}}},"a":{"0":"f","l":"_","b":{"0":"l","l":"first","v":{"0":"a","f":{"0":"v","l":"choose"},"a":{"0":"u"}},"t":{"0":"l","l":"second","v":{"0":"a","f":{"0":"v","l":"choose"},"a":{"0":"u"}},"t":{"0":"a","f":{"0":"a","f":{"0":"c"},"a":{"0":"v","l":"first"}},"a":{"0":"a","f":{"0":"a","f":{"0":"c"},"a":{"0":"v","l":"second"}},"a":{"0":"ta"}}}}}}}}}}</script></div></div><p  class="max-w-3xl w-full mx-auto px-4 text-lg">choose both by resuming the exec function multiple times
 
 Need to wrap the exec function to return a list of it's value so that it can be concatenated in the handler</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden" data-ready="snippet"><pre  class="overflow-auto outline-none w-full my-1 mx-4">_ -> {
   let concat = vacant

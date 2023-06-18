@@ -352,22 +352,23 @@ pub fn snippet(root) {
     Ok(script) -> {
       let assert Ok(source) = decode.from_json(document.inner_text(script))
       // always infer at the start
-      let inferred = do_infer(source, None)
+      let #(std, source) = gather_std(source)
+      let inferred = do_infer(source, std)
 
       let rendered = print.print(source, Some([]), False, Some(inferred))
       let assert Ok(start) = map.get(rendered.1, print.path_to_string([]))
 
       let state =
         Embed(
-          Command(""),
-          None,
-          None,
-          source,
-          #([], []),
-          True,
-          Some(inferred),
-          rendered,
-          None,
+          mode: Command(""),
+          yanked: None,
+          std: std,
+          source: source,
+          history: #([], []),
+          auto_infer: True,
+          inferred: Some(inferred),
+          rendered: rendered,
+          focus: None,
         )
       document.set_html(root, "")
       start_easel_at(root, start, state)
@@ -381,10 +382,8 @@ pub fn snippet(root) {
   }
 }
 
-pub fn init(json) {
-  let assert Ok(source) = decode.decoder(json)
-  // inferred std is cached
-  let #(std, source) = case source {
+fn gather_std(source) {
+  case source {
     e.Let("std", std, e.Lambda("_", body)) -> {
       let state = tree.infer(std, t.Var(-3), t.Var(-4))
       #(Some(#(std, state)), body)
@@ -405,6 +404,12 @@ pub fn init(json) {
       #(None, source)
     }
   }
+}
+
+pub fn init(json) {
+  let assert Ok(source) = decode.decoder(json)
+  // inferred std is cached
+  let #(std, source) = gather_std(source)
   // can keep inferred in history
   let inferred = do_infer(source, std)
   let rendered = print.print(source, None, True, Some(inferred))
