@@ -513,6 +513,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "Y" -> paste(state, start, end)
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
+        "," -> extend_list(state, start, end)
         "o" -> overwrite(state, start, end)
         "p" -> perform(state, start, end)
         "s" -> string(state, start, end)
@@ -1058,6 +1059,18 @@ pub fn list_element(state: Embed, start, end) {
   let new = case target {
     e.Vacant(_) -> e.Tail
     _ -> e.Apply(e.Apply(e.Cons, target), e.Tail)
+  }
+  #(new, state.mode, [])
+}
+
+pub fn extend_list(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  // without this vacant case how do you make an empty list
+  let new = case target {
+    e.Apply(e.Apply(e.Cons, _), _) ->
+      e.Apply(e.Apply(e.Cons, e.Vacant("")), target)
+    _ -> target
   }
   #(new, state.mode, [])
 }
