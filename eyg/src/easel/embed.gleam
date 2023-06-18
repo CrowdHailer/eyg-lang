@@ -28,6 +28,7 @@ import plinth/browser/document
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup
 // TODO print large arrays on multiple lines
+// TODO multi line string can collapse with ... outside quote marks
 // Not a full app
 // Widget is another name element/panel
 // Embed if I have a separate app file
@@ -88,22 +89,6 @@ fn do_infer(source, std) {
 }
 
 pub fn fullscreen(root) {
-  let source = e.Vacant("")
-  let inferred = do_infer(source, None)
-  let rendered = print.print(source, None, False, Some(inferred))
-  let state =
-    Embed(
-      Command(""),
-      None,
-      None,
-      source,
-      #([], []),
-      False,
-      Some(inferred),
-      rendered,
-      None,
-    )
-  let ref = javascript.make_reference(state)
   document.add_event_listener(
     root,
     "click",
@@ -123,28 +108,38 @@ pub fn fullscreen(root) {
                       use text <- promise.map(window.file_text(file))
                       let assert Ok(source) = decode.from_json(text)
 
-                      javascript.update_reference(
-                        ref,
-                        fn(state: Embed) {
+                      let ref =
+                        javascript.make_reference(
                           // always infer at the start
-                          let inferred = do_infer(source, state.std)
+                          {
+                            let inferred = do_infer(source, None)
 
-                          let rendered =
-                            print.print(source, Some([]), False, Some(inferred))
-                          let assert Ok(start) =
-                            map.get(rendered.1, print.path_to_string([]))
+                            let rendered =
+                              print.print(
+                                source,
+                                Some([]),
+                                False,
+                                Some(inferred),
+                              )
+                            let assert Ok(start) =
+                              map.get(rendered.1, print.path_to_string([]))
 
-                          let state =
-                            Embed(
-                              ..state,
-                              source: source,
-                              inferred: Some(inferred),
-                              rendered: rendered,
-                            )
-                          render_page(root, start, state)
-                          state
-                        },
-                      )
+                            let state =
+                              Embed(
+                                Command(""),
+                                None,
+                                None,
+                                source,
+                                #([], []),
+                                False,
+                                Some(inferred),
+                                rendered,
+                                None,
+                              )
+                            render_page(root, start, state)
+                            state
+                          },
+                        )
                       case document.query_selector(root, "pre") {
                         Ok(pre) -> {
                           document.add_event_listener(
@@ -175,6 +170,128 @@ pub fn fullscreen(root) {
                           Nil
                         }
                       }
+                      document.add_event_listener(
+                        // event can have phantom type which is the internal event type
+                        document.document(),
+                        "selectionchange",
+                        fn(_event) {
+                          let _ = {
+                            use selection <- result.then(window.get_selection())
+                            use range <- result.then(window.get_range_at(
+                              selection,
+                              0,
+                            ))
+                            let start = start_index(range)
+                            let end = end_index(range)
+                            javascript.update_reference(
+                              ref,
+                              fn(state) {
+                                let state = update_selection(state, start, end)
+                                let rendered =
+                                  print.print(
+                                    state.source,
+                                    state.focus,
+                                    state.auto_infer,
+                                    state.inferred,
+                                  )
+                                case rendered == state.rendered {
+                                  True -> {
+                                    io.debug("no focus change")
+                                    state
+                                  }
+                                  False -> {
+                                    let assert Ok(start) =
+                                      map.get(
+                                        rendered.1,
+                                        print.path_to_string(option.unwrap(
+                                          state.focus,
+                                          [],
+                                        )),
+                                      )
+
+                                    let state =
+                                      Embed(..state, rendered: rendered)
+                                    render_page(root, start, state)
+                                    state
+                                  }
+                                }
+                              },
+                            )
+
+                            Ok(Nil)
+                          }
+
+                          Nil
+                        },
+                      )
+                      document.add_event_listener(
+                        root,
+                        "beforeinput",
+                        fn(event) {
+                          document.prevent_default(event)
+                          handle_input(
+                            event,
+                            fn(data, start, end) {
+                              javascript.update_reference(
+                                ref,
+                                fn(state) {
+                                  let #(state, start) =
+                                    insert_text(state, data, start, end)
+                                  render_page(root, start, state)
+                                  state
+                                },
+                              )
+                              Nil
+                            },
+                            fn(start) {
+                              javascript.update_reference(
+                                ref,
+                                fn(state) {
+                                  let #(state, start) =
+                                    insert_paragraph(start, state)
+                                  render_page(root, start, state)
+                                  state
+                                },
+                              )
+                              // todo pragraph
+                              io.debug(#(start))
+                              Nil
+                            },
+                          )
+                        },
+                      )
+                      document.add_event_listener(
+                        root,
+                        "keydown",
+                        fn(event) {
+                          case
+                            case document.key(event) {
+                              "Escape" -> {
+                                javascript.update_reference(
+                                  ref,
+                                  fn(s) {
+                                    let s = escape(s)
+                                    case
+                                      document.query_selector(root, "pre + *")
+                                    {
+                                      Ok(pallet_el) ->
+                                        document.set_html(pallet_el, pallet(s))
+                                      Error(Nil) -> Nil
+                                    }
+                                    s
+                                  },
+                                )
+                                Ok(Nil)
+                              }
+                              _ -> Error(Nil)
+                            }
+                          {
+                            Ok(Nil) -> document.prevent_default(event)
+                            Error(Nil) -> Nil
+                          }
+                        },
+                      )
+                      Nil
                     }
 
                     Error(Nil) -> {
@@ -184,56 +301,7 @@ pub fn fullscreen(root) {
                   }
                 },
               )
-              document.add_event_listener(
-                // event can have phantom type which is the internal event type
-                document.document(),
-                "selectionchange",
-                fn(_event) {
-                  let _ = {
-                    use selection <- result.then(window.get_selection())
-                    use range <- result.then(window.get_range_at(selection, 0))
-                    let start = start_index(range)
-                    let end = end_index(range)
-                    javascript.update_reference(
-                      ref,
-                      fn(state) {
-                        let state = update_selection(state, start, end)
-                        let rendered =
-                          print.print(
-                            state.source,
-                            state.focus,
-                            state.auto_infer,
-                            state.inferred,
-                          )
-                        case rendered == state.rendered {
-                          True -> {
-                            io.debug("no focus change")
-                            state
-                          }
-                          False -> {
-                            let assert Ok(start) =
-                              map.get(
-                                rendered.1,
-                                print.path_to_string(option.unwrap(
-                                  state.focus,
-                                  [],
-                                )),
-                              )
 
-                            let state = Embed(..state, rendered: rendered)
-                            render_page(root, start, state)
-                            state
-                          }
-                        }
-                      },
-                    )
-
-                    Ok(Nil)
-                  }
-
-                  Nil
-                },
-              )
               Nil
             }
             _ -> {
@@ -243,68 +311,6 @@ pub fn fullscreen(root) {
           }
           Nil
         }
-        Error(Nil) -> Nil
-      }
-    },
-  )
-  document.add_event_listener(
-    root,
-    "beforeinput",
-    fn(event) {
-      document.prevent_default(event)
-      handle_input(
-        event,
-        fn(data, start, end) {
-          javascript.update_reference(
-            ref,
-            fn(state) {
-              let #(state, start) = insert_text(state, data, start, end)
-              render_page(root, start, state)
-              state
-            },
-          )
-          Nil
-        },
-        fn(start) {
-          javascript.update_reference(
-            ref,
-            fn(state) {
-              let #(state, start) = insert_paragraph(start, state)
-              render_page(root, start, state)
-              state
-            },
-          )
-          // todo pragraph
-          io.debug(#(start))
-          Nil
-        },
-      )
-    },
-  )
-  document.add_event_listener(
-    root,
-    "keydown",
-    fn(event) {
-      case
-        case document.key(event) {
-          "Escape" -> {
-            javascript.update_reference(
-              ref,
-              fn(s) {
-                let s = escape(s)
-                case document.query_selector(root, "pre + *") {
-                  Ok(pallet_el) -> document.set_html(pallet_el, pallet(state))
-                  Error(Nil) -> Nil
-                }
-                s
-              },
-            )
-            Ok(Nil)
-          }
-          _ -> Error(Nil)
-        }
-      {
-        Ok(Nil) -> document.prevent_default(event)
         Error(Nil) -> Nil
       }
     },
