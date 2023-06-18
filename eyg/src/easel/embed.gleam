@@ -88,233 +88,207 @@ fn do_infer(source, std) {
   }
 }
 
-pub fn fullscreen(root) {
-  document.add_event_listener(
-    root,
-    "click",
-    fn(event) {
-      let target = document.target(event)
-      case document.closest(target, "[data-click]") {
-        Ok(element) -> {
-          let assert Ok(handle) = document.dataset_get(element, "click")
-          case handle {
-            "load" -> {
-              promise.map(
-                window.show_open_file_picker(),
-                fn(result) {
-                  case result {
-                    Ok(#(file_handle)) -> {
-                      use file <- promise.await(window.get_file(file_handle))
-                      use text <- promise.map(window.file_text(file))
-                      let assert Ok(source) = decode.from_json(text)
+fn nearest_click_handler(event) {
+  let target = document.target(event)
+  case document.closest(target, "[data-click]") {
+    Ok(element) -> {
+      // Because the closest element is chosen to have data-click this get must return ok
+      let assert Ok(handle) = document.dataset_get(element, "click")
+      Ok(handle)
+    }
+    Error(Nil) -> Error(Nil)
+  }
+}
 
-                      let ref =
-                        javascript.make_reference(
-                          // always infer at the start
-                          {
-                            let inferred = do_infer(source, None)
+fn load_source() {
+  use #(file_handle) <- promise.try_await(window.show_open_file_picker())
+  use file <- promise.await(window.get_file(file_handle))
+  use text <- promise.map(window.file_text(file))
+  let assert Ok(source) = decode.from_json(text)
+  Ok(source)
+}
 
-                            let rendered =
-                              print.print(
-                                source,
-                                Some([]),
-                                False,
-                                Some(inferred),
-                              )
-                            let assert Ok(start) =
-                              map.get(rendered.1, print.path_to_string([]))
+pub fn handle_click(root, event) {
+  case nearest_click_handler(event) {
+    Ok("load") -> {
+      promise.map_try(
+        load_source(),
+        fn(source) {
+          // always infer at the start
+          let inferred = do_infer(source, None)
 
-                            let state =
-                              Embed(
-                                Command(""),
-                                None,
-                                None,
-                                source,
-                                #([], []),
-                                False,
-                                Some(inferred),
-                                rendered,
-                                None,
-                              )
-                            render_page(root, start, state)
-                            state
-                          },
-                        )
-                      case document.query_selector(root, "pre") {
-                        Ok(pre) -> {
-                          document.add_event_listener(
-                            pre,
-                            "blur",
-                            fn(_) {
-                              io.debug("blurred")
-                              javascript.update_reference(
-                                ref,
-                                fn(state) {
-                                  // updating the contenteditable node messes with cursor placing
-                                  let state = blur(state)
-                                  document.set_html(pre, html(state))
-                                  let pallet_el =
-                                    document.next_element_sibling(pre)
-                                  document.set_html(pallet_el, pallet(state))
-                                  state
-                                },
-                              )
+          let rendered = print.print(source, Some([]), False, Some(inferred))
+          let assert Ok(start) = map.get(rendered.1, print.path_to_string([]))
 
-                              Nil
-                            },
-                          )
-                          Nil
-                        }
-                        _ -> {
-                          io.debug("expected a pre to be available")
-                          Nil
-                        }
-                      }
-                      document.add_event_listener(
-                        // event can have phantom type which is the internal event type
-                        document.document(),
-                        "selectionchange",
-                        fn(_event) {
-                          let _ = {
-                            use selection <- result.then(window.get_selection())
-                            use range <- result.then(window.get_range_at(
-                              selection,
-                              0,
-                            ))
-                            let start = start_index(range)
-                            let end = end_index(range)
-                            javascript.update_reference(
-                              ref,
-                              fn(state) {
-                                let state = update_selection(state, start, end)
-                                let rendered =
-                                  print.print(
-                                    state.source,
-                                    state.focus,
-                                    state.auto_infer,
-                                    state.inferred,
-                                  )
-                                case rendered == state.rendered {
-                                  True -> {
-                                    io.debug("no focus change")
-                                    state
-                                  }
-                                  False -> {
-                                    let assert Ok(start) =
-                                      map.get(
-                                        rendered.1,
-                                        print.path_to_string(option.unwrap(
-                                          state.focus,
-                                          [],
-                                        )),
-                                      )
+          let state =
+            Embed(
+              Command(""),
+              None,
+              None,
+              source,
+              #([], []),
+              False,
+              Some(inferred),
+              rendered,
+              None,
+            )
+          render_page(root, start, state)
+          let ref = javascript.make_reference(state)
+          case document.query_selector(root, "pre") {
+            Ok(pre) -> {
+              document.add_event_listener(
+                pre,
+                "blur",
+                fn(_) {
+                  io.debug("blurred")
+                  javascript.update_reference(
+                    ref,
+                    fn(state) {
+                      // updating the contenteditable node messes with cursor placing
+                      let state = blur(state)
+                      document.set_html(pre, html(state))
+                      let pallet_el = document.next_element_sibling(pre)
+                      document.set_html(pallet_el, pallet(state))
+                      state
+                    },
+                  )
 
-                                    let state =
-                                      Embed(..state, rendered: rendered)
-                                    render_page(root, start, state)
-                                    state
-                                  }
-                                }
-                              },
-                            )
-
-                            Ok(Nil)
-                          }
-
-                          Nil
-                        },
-                      )
-                      document.add_event_listener(
-                        root,
-                        "beforeinput",
-                        fn(event) {
-                          document.prevent_default(event)
-                          handle_input(
-                            event,
-                            fn(data, start, end) {
-                              javascript.update_reference(
-                                ref,
-                                fn(state) {
-                                  let #(state, start) =
-                                    insert_text(state, data, start, end)
-                                  render_page(root, start, state)
-                                  state
-                                },
-                              )
-                              Nil
-                            },
-                            fn(start) {
-                              javascript.update_reference(
-                                ref,
-                                fn(state) {
-                                  let #(state, start) =
-                                    insert_paragraph(start, state)
-                                  render_page(root, start, state)
-                                  state
-                                },
-                              )
-                              // todo pragraph
-                              io.debug(#(start))
-                              Nil
-                            },
-                          )
-                        },
-                      )
-                      document.add_event_listener(
-                        root,
-                        "keydown",
-                        fn(event) {
-                          case
-                            case document.key(event) {
-                              "Escape" -> {
-                                javascript.update_reference(
-                                  ref,
-                                  fn(s) {
-                                    let s = escape(s)
-                                    case
-                                      document.query_selector(root, "pre + *")
-                                    {
-                                      Ok(pallet_el) ->
-                                        document.set_html(pallet_el, pallet(s))
-                                      Error(Nil) -> Nil
-                                    }
-                                    s
-                                  },
-                                )
-                                Ok(Nil)
-                              }
-                              _ -> Error(Nil)
-                            }
-                          {
-                            Ok(Nil) -> document.prevent_default(event)
-                            Error(Nil) -> Nil
-                          }
-                        },
-                      )
-                      Nil
-                    }
-
-                    Error(Nil) -> {
-                      io.debug("no file opened")
-                      promise.resolve(Nil)
-                    }
-                  }
+                  Nil
                 },
               )
-
               Nil
             }
             _ -> {
-              io.debug(#("unknown click", handle))
+              io.debug("expected a pre to be available")
               Nil
             }
           }
-          Nil
-        }
-        Error(Nil) -> Nil
-      }
-    },
-  )
+          document.add_event_listener(
+            // event can have phantom type which is the internal event type
+            document.document(),
+            "selectionchange",
+            fn(_event) {
+              let _ = {
+                use selection <- result.then(window.get_selection())
+                use range <- result.then(window.get_range_at(selection, 0))
+                let start = start_index(range)
+                let end = end_index(range)
+                javascript.update_reference(
+                  ref,
+                  fn(state) {
+                    let state = update_selection(state, start, end)
+                    let rendered =
+                      print.print(
+                        state.source,
+                        state.focus,
+                        state.auto_infer,
+                        state.inferred,
+                      )
+                    case rendered == state.rendered {
+                      True -> {
+                        io.debug("no focus change")
+                        state
+                      }
+                      False -> {
+                        let assert Ok(start) =
+                          map.get(
+                            rendered.1,
+                            print.path_to_string(option.unwrap(state.focus, [])),
+                          )
+
+                        let state = Embed(..state, rendered: rendered)
+                        render_page(root, start, state)
+                        state
+                      }
+                    }
+                  },
+                )
+
+                Ok(Nil)
+              }
+
+              Nil
+            },
+          )
+          document.add_event_listener(
+            root,
+            "beforeinput",
+            fn(event) {
+              document.prevent_default(event)
+              handle_input(
+                event,
+                fn(data, start, end) {
+                  javascript.update_reference(
+                    ref,
+                    fn(state) {
+                      let #(state, start) = insert_text(state, data, start, end)
+                      render_page(root, start, state)
+                      state
+                    },
+                  )
+                  Nil
+                },
+                fn(start) {
+                  javascript.update_reference(
+                    ref,
+                    fn(state) {
+                      let #(state, start) = insert_paragraph(start, state)
+                      render_page(root, start, state)
+                      state
+                    },
+                  )
+                  // todo pragraph
+                  io.debug(#(start))
+                  Nil
+                },
+              )
+            },
+          )
+          document.add_event_listener(
+            root,
+            "keydown",
+            fn(event) {
+              case
+                case document.key(event) {
+                  "Escape" -> {
+                    javascript.update_reference(
+                      ref,
+                      fn(s) {
+                        let s = escape(s)
+                        case document.query_selector(root, "pre + *") {
+                          Ok(pallet_el) ->
+                            document.set_html(pallet_el, pallet(s))
+                          Error(Nil) -> Nil
+                        }
+                        s
+                      },
+                    )
+                    Ok(Nil)
+                  }
+                  _ -> Error(Nil)
+                }
+              {
+                Ok(Nil) -> document.prevent_default(event)
+                Error(Nil) -> Nil
+              }
+            },
+          )
+          Ok(Nil)
+        },
+      )
+
+      Nil
+    }
+    Ok(_) -> {
+      io.debug(#("unknown click", handle))
+      Nil
+    }
+    Error(Nil) -> Nil
+  }
+}
+
+pub fn fullscreen(root) {
+  document.add_event_listener(root, "click", handle_click(root, _))
 
   document.set_html(
     root,
