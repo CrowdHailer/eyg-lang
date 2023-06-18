@@ -52,10 +52,14 @@ export function placeCursor(pre, offset) {
     countdown -= e.textContent.length;
     e = e.nextElementSibling;
   }
-  const range = window.getSelection().getRangeAt(0);
+  const range = document.createRange();
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+
   // range needs to be set on the text node
   range.setStart(e.firstChild, countdown);
   range.setEnd(e.firstChild, countdown);
+  selection.addRange(range);
 }
 
 export function debounce(func, timeout = 300) {
