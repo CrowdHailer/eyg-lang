@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/int
 import gleam/map
 import gleam/fetch
 import gleam/http.{Get}
@@ -41,6 +42,20 @@ pub fn window_alert() {
       use message <- cast.string(message)
       window.alert(message)
       r.continue(k, r.unit)
+    },
+  )
+}
+
+pub fn choose() {
+  #(
+    t.unit,
+    t.boolean,
+    fn(message, k) {
+      let value = case int.random(0, 2) {
+        0 -> r.false
+        1 -> r.true
+      }
+      r.continue(k, value)
     },
   )
 }

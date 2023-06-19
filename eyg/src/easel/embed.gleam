@@ -850,6 +850,7 @@ fn run(state: Embed) {
   let handlers =
     map.new()
     |> map.insert("Alert", handler)
+    |> map.insert("Choose", effect.choose().2)
   let env = stdlib.env()
   case r.handle(r.eval(source, env, r.Value), env.builtins, handlers) {
     r.Abort(reason) -> reason_to_string(reason)
@@ -872,6 +873,8 @@ fn reason_to_string(reason) {
     r.NoCases -> string.concat(["no cases matched"])
     r.NotAFunction(term) ->
       string.concat(["function expected got: ", term_to_string(term)])
+    r.UnhandledEffect("Abort", reason) ->
+      string.concat(["Aborted with reason: ", term_to_string(reason)])
     r.UnhandledEffect(effect, _with) ->
       string.concat(["unhandled effect ", effect])
     r.Vacant(note) -> string.concat(["tried to run a todo: ", note])
