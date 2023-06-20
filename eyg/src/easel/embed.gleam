@@ -384,7 +384,8 @@ pub fn snippet(root) {
 
 fn gather_std(source) {
   case source {
-    e.Let("std", std, e.Lambda("_", body)) -> {
+    e.Let("std", std, e.Lambda("_", body))
+    | e.Let("std", std, e.Let("std", _std, e.Lambda("_", body))) -> {
       let state = tree.infer(std, t.Var(-3), t.Var(-4))
       #(Some(#(std, state)), body)
     }
