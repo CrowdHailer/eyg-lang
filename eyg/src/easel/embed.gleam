@@ -514,6 +514,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "i" -> #(Embed(..state, mode: Insert), start)
         "[" | "x" -> list_element(state, start, end)
         "," -> extend_list(state, start, end)
+        "." -> spread_list(state, start, end)
         "o" -> overwrite(state, start, end)
         "p" -> perform(state, start, end)
         "s" -> string(state, start, end)
@@ -1029,6 +1030,9 @@ pub fn delete(state: Embed, start, end) {
   use target <- update_at(state, path)
   case target {
     e.Let(_, _, then) -> #(then, state.mode, [])
+    e.Apply(e.Apply(e.Cons, _), rest) -> #(rest, state.mode, [])
+    e.Apply(e.Apply(e.Extend(_), _), rest) -> #(rest, state.mode, [])
+    e.Apply(e.Apply(e.Overwrite(_), _), rest) -> #(rest, state.mode, [])
     e.Apply(e.Apply(e.Case(_), _), then) -> #(then, state.mode, [])
     _ -> #(e.Vacant(""), state.mode, [])
   }
@@ -1071,8 +1075,20 @@ pub fn extend_list(state: Embed, start, end) {
   use target <- update_at(state, path)
   // without this vacant case how do you make an empty list
   let new = case target {
-    e.Apply(e.Apply(e.Cons, _), _) ->
+    e.Apply(e.Apply(e.Cons, _), _) | e.Tail ->
       e.Apply(e.Apply(e.Cons, e.Vacant("")), target)
+    _ -> target
+  }
+  #(new, state.mode, [])
+}
+
+pub fn spread_list(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  // without this vacant case how do you make an empty list
+  let new = case target {
+    e.Apply(e.Apply(e.Cons, item), e.Tail) -> item
+    e.Tail -> e.Vacant("")
     _ -> target
   }
   #(new, state.mode, [])
@@ -1316,7 +1332,6 @@ fn update_at(state: Embed, path, cb) {
           source: new,
           history: history,
           // TODO linger for infer
-          // TODO linger for open editor
           // TODO place for editor utils location path etc
           // type check is needed for any infer change on labels
           // Proper entry for all my apps plinth for selection chagne etc
