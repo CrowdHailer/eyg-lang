@@ -1,5 +1,7 @@
+import gleam/io
 import gleam/list
 import gleam/result
+import gleam/set
 import eygir/expression as e
 import eyg/runtime/interpreter as r
 
@@ -32,7 +34,8 @@ pub fn capture(term) {
       // Note env list has variables multiple times and we need to find first only
       let assert Ok(env) =
         list.try_map(
-          vars_used(body, [arg]),
+          vars_used(body, [arg], set.new())
+          |> set.to_list(),
           fn(var) {
             use term <- result.then(list.key_find(env, var))
             Ok(#(var, term))
@@ -85,20 +88,26 @@ fn capture_defunc(switch) {
   }
 }
 
-fn vars_used(exp, env) {
+// env is the environment at this in a walk through the tree so these should not be added
+fn vars_used(exp, env, found) {
   case exp {
     // This filter only works when built in functions are not renamed.
-    e.Variable("ffi_" <> _) -> []
+    e.Variable("ffi_" <> _) -> found
     e.Variable(v) ->
       case list.contains(env, v) {
-        True -> []
-        False -> [v]
+        True -> found
+        False -> set.insert(found, v)
       }
-    e.Lambda(param, body) -> vars_used(body, [param, ..env])
-    e.Apply(func, arg) -> list.append(vars_used(func, env), vars_used(arg, env))
+    e.Lambda(param, body) -> vars_used(body, [param, ..env], found)
+    e.Apply(func, arg) -> {
+      let found = vars_used(func, env, found)
+      vars_used(arg, env, found)
+    }
     // in recursive label also overwritten in value
-    e.Let(label, value, then) ->
-      list.append(vars_used(value, env), vars_used(then, [label, ..env]))
-    _ -> []
+    e.Let(label, value, then) -> {
+      let found = vars_used(value, env, found)
+      vars_used(then, [label, ..env], found)
+    }
+    _ -> found
   }
 }

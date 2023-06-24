@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/map
 import eygir/expression as e
 import eyg/runtime/interpreter as r
@@ -63,6 +64,15 @@ pub fn nested_fn_test() {
     ),
   )
   |> should.equal(r.Value(r.LinkedList([r.Binary("A"), r.Binary("B")])))
+}
+
+// This test makes sure the term is captured only once 
+pub fn env_capture_test() {
+  let func = e.Lambda("_", e.Let("_", e.Variable("std"), e.Variable("std")))
+  let exp = e.Let("std", e.Binary("Standard"), func)
+  let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
+  capture.capture(term)
+  |> should.equal(exp)
 }
 
 pub fn let_capture_test() {
