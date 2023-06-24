@@ -1,7 +1,10 @@
 import gleam/io
+import gleam/int
+import gleam/list
 import gleam/map
 import gleam/string
 import gleam/javascript/array
+import gleam/javascript
 import plinth/browser/document
 import easel/embed
 import eygir/decode
@@ -42,24 +45,75 @@ fn applet(root) {
       {
         let assert r.Value(term) = r.eval(source, stdlib.env(), r.Value)
         use func <- cast.field("func", cast.any, term)
+        use arg <- cast.field("arg", cast.any, term)
         // run func arg can be a thing
         // weird return wrapping for cast
         // stdlib only builtins used
         let builtins = stdlib.env().builtins
+        let actions = javascript.make_reference([])
         let handlers =
           map.new()
-          // |> map.insert("Alert", handler)
-          |> map.insert("Log", console_log().2)
-        let assert r.Value(page) =
-          r.handle(
-            r.eval_call(func, r.unit, builtins, r.Value),
-            builtins,
-            handlers,
+          |> map.insert(
+            "Update",
+            fn(action, k) {
+              let saved = javascript.dereference(actions)
+              let id = int.to_string(list.length(saved))
+              let saved = [action, ..saved]
+              javascript.set_reference(actions, saved)
+              r.continue(k, r.Binary(id))
+            },
           )
-        use initial <- cast.string(page)
-        document.set_html(root, initial)
-        initial
+          |> map.insert("Log", console_log().2)
+        let state = javascript.make_reference(arg)
+        let render = fn() {
+          let current = javascript.dereference(state)
+          let result =
+            r.handle(
+              r.eval_call(func, current, builtins, r.Value),
+              builtins,
+              handlers,
+            )
+          let _ = case result {
+            r.Value(r.Binary(page)) -> document.set_html(root, page)
+            _ -> {
+              io.debug(#("unexpected", result))
+              panic("nope")
+            }
+          }
+        }
 
+        document.add_event_listener(
+          root,
+          "click",
+          fn(event) {
+            case nearest_click_handler(event) {
+              Ok(id) -> {
+                case
+                  list.at(list.reverse(javascript.dereference(actions)), id)
+                {
+                  Ok(code) -> {
+                    // handle effects
+                    let current = javascript.dereference(state)
+                    // io.debug(javascript.dereference(actions))
+                    let assert r.Value(next) =
+                      r.eval_call(code, current, builtins, r.Value)
+                    javascript.set_reference(state, next)
+                    javascript.set_reference(actions, [])
+                    render()
+                    Nil
+                  }
+                  Error(Nil) -> {
+                    io.debug("should have been ref")
+                    Nil
+                  }
+                }
+                Nil
+              }
+              Error(Nil) -> Nil
+            }
+          },
+        )
+        render()
         r.Value(func)
       }
       Nil
@@ -68,6 +122,24 @@ fn applet(root) {
       io.debug("no applet code")
       Nil
     }
+  }
+}
+
+fn nearest_click_handler(event) {
+  let target = document.target(event)
+  case document.closest(target, "[data-click]") {
+    Ok(element) -> {
+      // Because the closest element is chosen to have data-click this get must return ok
+      let assert Ok(handle) = document.dataset_get(element, "click")
+      case int.parse(handle) {
+        Ok(id) -> Ok(id)
+        Error(Nil) -> {
+          io.debug(#("not an id", handle))
+          Error(Nil)
+        }
+      }
+    }
+    Error(Nil) -> Error(Nil)
   }
 }
 
