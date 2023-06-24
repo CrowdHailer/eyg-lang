@@ -75,6 +75,43 @@ pub fn env_capture_test() {
   |> should.equal(exp)
 }
 
+pub fn transient_env_capture_test() {
+  let func = e.Lambda("_", e.Variable("std"))
+  let exp =
+    e.Let(
+      "std",
+      e.Binary("Standard"),
+      e.Let(
+        "mod",
+        func,
+        e.Lambda("_", e.Let("_", e.Variable("mod"), e.Variable("std"))),
+      ),
+    )
+
+  let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
+  capture.capture(term)
+  |> io.debug
+}
+
+pub fn serialize_html_test() {
+  let exp = e.Let("a", e.Binary("<"), e.Lambda("_", e.Variable("a")))
+  let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
+  capture.capture(term)
+  |> io.debug
+  todo
+}
+
+// let a = 3
+// let f1 = _ -> a
+// let a = 5
+// let f2 = _ -> a
+// [f1,f2]
+// // hash runtime
+
+// let x = 1
+// let y = _ -> x
+// _ -> [x,y]
+
 pub fn let_capture_test() {
   let exp = e.Let("a", e.Binary("external"), e.Lambda("_", e.Variable("a")))
 

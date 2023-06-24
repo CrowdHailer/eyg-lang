@@ -1,3 +1,5 @@
+import gleam/list
+
 pub type Expression {
   Variable(label: String)
   Lambda(label: String, body: Expression)
@@ -38,3 +40,14 @@ pub const unit = Empty
 pub const true = Apply(Tag("True"), unit)
 
 pub const false = Apply(Tag("False"), unit)
+
+pub fn list(items) {
+  do_list(list.reverse(items), Tail)
+}
+
+pub fn do_list(reversed, acc) {
+  case reversed {
+    [item, ..rest] -> do_list(rest, Apply(Apply(Cons, item), acc))
+    [] -> acc
+  }
+}

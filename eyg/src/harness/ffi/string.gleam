@@ -4,7 +4,7 @@ import eyg/runtime/interpreter as r
 import harness/ffi/cast
 
 pub fn append() {
-  let type_ = t.Fun(t.Binary, t.Open(0), t.Fun(t.Binary, t.Open(0), t.Binary))
+  let type_ = t.Fun(t.Binary, t.Open(0), t.Fun(t.Binary, t.Open(1), t.Binary))
   #(type_, r.Arity2(do_append))
 }
 
@@ -42,4 +42,22 @@ pub fn length() {
 pub fn do_length(value, _builtins, k) {
   use value <- cast.string(value)
   r.continue(k, r.Integer(string.length(value)))
+}
+
+pub fn replace() {
+  let type_ =
+    t.Fun(
+      t.Binary,
+      t.Open(0),
+      t.Fun(t.Binary, t.Open(1), t.Fun(t.Binary, t.Open(1), t.Binary)),
+    )
+  #(type_, r.Arity3(do_replace))
+}
+
+pub fn do_replace(in, from, to, _builtins, k) {
+  use in <- cast.string(in)
+  use from <- cast.string(from)
+  use to <- cast.string(to)
+
+  r.continue(k, r.Binary(string.replace(in, from, to)))
 }

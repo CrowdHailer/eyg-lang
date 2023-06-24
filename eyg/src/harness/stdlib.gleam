@@ -41,6 +41,7 @@ pub fn lib() {
   |> extend("int_to_string", integer.to_string())
   // string
   |> extend("string_append", string.append())
+  |> extend("string_replace", string.replace())
   |> extend("string_uppercase", string.uppercase())
   |> extend("string_lowercase", string.lowercase())
   |> extend("string_length", string.length())

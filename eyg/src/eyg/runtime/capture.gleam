@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/listx
 import gleam/result
 import gleam/set
 import eygir/expression as e
@@ -32,8 +33,8 @@ pub fn capture(term) {
     r.Tagged(label, value) -> e.Apply(e.Tag(label), capture(value))
     r.Function(arg, body, env) -> {
       // Note env list has variables multiple times and we need to find first only
-      let assert Ok(env) =
-        list.try_map(
+      let env =
+        list.filter_map(
           vars_used(body, [arg], set.new())
           |> set.to_list(),
           fn(var) {
@@ -41,6 +42,7 @@ pub fn capture(term) {
             Ok(#(var, term))
           },
         )
+      let env = flatten_env(env)
       // universal code from before
       // https://github.com/midas-framework/project_wisdom/pull/47/files#diff-a06143ff39109126525a296ab03fc419ba2d5da20aac75ca89477bebe9cf3fee
       // shake code
@@ -52,6 +54,47 @@ pub fn capture(term) {
     r.Defunc(switch) -> capture_defunc(switch)
     r.Promise(_) ->
       panic("not capturing promise, yet. Can be done making serialize async")
+  }
+}
+
+pub fn flatten_env(env) {
+  do_flatten_env(list.reverse(env), [])
+}
+
+pub fn do_flatten_env(reversed, done) {
+  case reversed {
+    [] -> done
+    [#(key, term), ..rest] -> {
+      let done = [#(key, flatten_term(term, done)), ..done]
+      do_flatten_env(rest, done)
+    }
+  }
+}
+
+pub fn flatten_term(exp, done) {
+  case exp {
+    r.Function(arg, body, env) -> {
+      let env =
+        list.filter(
+          env,
+          fn(x) {
+            let #(var, value) = x
+            case list.key_find(done, var) {
+              Ok(v) if v == value -> False
+              _ -> True
+            }
+          },
+        )
+      r.Function(arg, body, env)
+    }
+
+    r.LinkedList(items) -> {
+      r.LinkedList(list.map(items, flatten_term(_, done)))
+    }
+    r.Tagged(key, exp) -> r.Tagged(key, flatten_term(exp, done))
+    r.Record(fields) -> r.Record(listx.value_map(fields, flatten_term(_, done)))
+
+    _ -> exp
   }
 }
 

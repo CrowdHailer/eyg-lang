@@ -131,6 +131,7 @@ pub fn builtins() {
   |> extend_b("int_to_string", to_string())
   // string
   |> extend_b("string_append", append())
+  |> extend_b("string_replace", replace())
   |> extend_b("string_uppercase", uppercase())
   |> extend_b("string_lowercase", lowercase())
   |> extend_b("string_length", length())
@@ -199,6 +200,14 @@ pub fn to_string() {
 
 pub fn append() {
   t.Fun(t.String, t.Var(0), t.Fun(t.String, t.Var(1), t.String))
+}
+
+pub fn replace() {
+  t.Fun(
+    t.String,
+    t.Var(0),
+    t.Fun(t.String, t.Var(1), t.Fun(t.String, t.Var(2), t.String)),
+  )
 }
 
 pub fn uppercase() {

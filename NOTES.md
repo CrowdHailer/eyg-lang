@@ -383,6 +383,10 @@ let with_counter = fn(current) handle {
 }(0)
 ```
 
+inner Log must get out
+ state -> exec -> handle Inc(...)(handle Get(... )(_ -> exec))
+shallow becomes a recursive type
+
 Deep handler means always providing a state even for effects that don't need it.
 First class continuation are slightly messier to wrap
 ```js

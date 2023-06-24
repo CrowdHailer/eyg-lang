@@ -17,3 +17,13 @@ pub fn insert_at(list, position, new) {
   let post = list.drop(list, position)
   list.flatten([pre, new, post])
 }
+
+pub fn value_map(l, f) {
+  list.map(
+    l,
+    fn(field) {
+      let #(k, v) = field
+      #(k, f(v))
+    },
+  )
+}
