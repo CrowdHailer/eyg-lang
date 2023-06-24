@@ -153,6 +153,42 @@
   .bg-blue-4 {
     background-color: var(--neo-blue-4);
   }
+  .bg-green-1 {
+    background-color: var(--neo-green-1);
+  }
+  .bg-green-2 {
+    background-color: var(--neo-green-2);
+  }
+  .bg-green-3 {
+    background-color: var(--neo-green-3);
+  }
+  .bg-green-4 {
+    background-color: var(--neo-green-4);
+  }
+  .bg-yellow-1 {
+    background-color: var(--neo-yellow-1);
+  }
+  .bg-yellow-2 {
+    background-color: var(--neo-yellow-2);
+  }
+  .bg-yellow-3 {
+    background-color: var(--neo-yellow-3);
+  }
+  .bg-yellow-4 {
+    background-color: var(--neo-yellow-4);
+  }
+  .bg-orange-1 {
+    background-color: var(--neo-orange-1);
+  }
+  .bg-orange-2 {
+    background-color: var(--neo-orange-2);
+  }
+  .bg-orange-3 {
+    background-color: var(--neo-orange-3);
+  }
+  .bg-orange-4 {
+    background-color: var(--neo-orange-4);
+  }
   .bg-pink-1 {
     background-color: var(--neo-pink-1);
   }
