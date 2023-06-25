@@ -116,13 +116,20 @@ fn capture_defunc(switch) {
     r.Perform0(label) -> e.Perform(label)
     r.Handle0(label) -> e.Handle(label)
     r.Handle1(label, handler) -> e.Apply(e.Handle(label), capture(handler))
-    r.Shallow0(label) -> e.Shallow(label)
-    r.Shallow1(label, handler) -> e.Apply(e.Shallow(label), capture(handler))
     r.Resume(label, handler, _resume) -> {
       // possibly we do nothing as the context of the handler has been lost
       // Resume needs to be an expression I think
       e.Apply(e.Handle(label), capture(handler))
       panic("not idea how to capture the func here, is it even possible")
+    }
+    r.Shallow0(label) -> e.Shallow(label)
+    r.Shallow1(label, handler) -> e.Apply(e.Shallow(label), capture(handler))
+    r.ShallowResume(_resume) -> {
+      // possibly we do nothing as the context of the handler has been lost
+      // Resume needs to be an expression I think
+      panic(
+        "not idea how to capture the func here, is it even possible: shallow",
+      )
     }
     r.Builtin(identifier, args) ->
       list.fold(

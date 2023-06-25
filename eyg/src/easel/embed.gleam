@@ -1073,6 +1073,7 @@ pub fn shallow(state: Embed, start, end) {
     _ -> #(e.Apply(e.Shallow(""), target), Insert, [0])
   }
 }
+
 pub fn list_element(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)

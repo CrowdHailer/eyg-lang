@@ -129,9 +129,10 @@ pub type Switch {
   Perform0(String)
   Handle0(String)
   Handle1(String, Term)
+  Resume(String, Term, fn(Term) -> Return)
   Shallow0(String)
   Shallow1(String, Term)
-  Resume(String, Term, fn(Term) -> Return)
+  ShallowResume(fn(Term) -> Return)
   Builtin(String, List(Term))
 }
 
@@ -237,6 +238,11 @@ fn step_call(f, arg, builtins, k) {
         Perform0(label) -> perform(label, arg, k)
         Handle0(label) -> continue(k, Defunc(Handle1(label, arg)))
         Handle1(label, handler) -> runner(label, handler, arg, builtins, k)
+        // Ok so I am lost as to why resume works or is it even needed
+        // I think it is in the situation where someone serializes a
+        // partially applied continuation function in handler
+        Resume(label, handler, resume) ->
+          handled(label, handler, k, loop(resume(arg)), builtins)
         Shallow0(label) -> continue(k, Defunc(Shallow1(label, arg)))
         Shallow1(label, handler) ->
           shallow(
@@ -246,11 +252,7 @@ fn step_call(f, arg, builtins, k) {
             eval_call(arg, Record([]), builtins, Value),
             builtins,
           )
-        // Ok so I am lost as to why resume works or is it even needed
-        // I think it is in the situation where someone serializes a
-        // partially applied continuation function in handler
-        Resume(label, handler, resume) ->
-          handled(label, handler, k, loop(resume(arg)), builtins)
+        ShallowResume(resume) -> shallow_resume(k, loop(resume(arg)), builtins)
         Builtin(key, applied) ->
           call_builtin(key, list.append(applied, [arg]), builtins, k)
       }
@@ -425,6 +427,23 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
   }
 }
 
+fn shallow_resume(outer_k, thing, builtins) -> Return {
+  case thing {
+    Value(v) -> continue(outer_k, v)
+    Cont(term, k) -> Cont(term, k)
+    // Not equal to this effect
+    Effect(l, lifted, resume) ->
+      Effect(
+        l,
+        lifted,
+        fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) },
+      )
+    Async(exec, resume) ->
+      Async(exec, fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) })
+    Abort(reason) -> Abort(reason)
+  }
+}
+
 fn shallow(label, handler, outer_k, thing, builtins) -> Return {
   case thing {
     Effect(l, lifted, resume) if l == label -> {
@@ -435,8 +454,7 @@ fn shallow(label, handler, outer_k, thing, builtins) -> Return {
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        // Defunc(Resume(label, handler, resume)),
-        todo("sss"),
+        Defunc(ShallowResume(resume)),
         builtins,
       )
 
