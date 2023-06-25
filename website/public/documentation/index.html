@@ -28,23 +28,7 @@
               <h1 class="text-4xl sm:text-6xl font-bold">EYG</h1>
             </div>
           </div>
-        </div><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h2 ></h2><span  class="expand"></span></div></header><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h1>TODO title</h1></div><div  class="expand w-full blue-gradient drop"><h1  class="text-2xl">Language</h1><a  href="/documentation/effects" class="text-blue-500 underline">Effects</a><div  class="max-w-3xl w-full mx-auto"><h2  class="mx-4">Introduction</h2></div><p  class="max-w-3xl w-full mx-auto my-4 px-4 text-lg">This language is an experiment in making a highly portable functional language. The syntax shown below only illustrates the features of the language, it is only one of many possible projections to view a program. Creating programs is not done by editing text files instead a structured editor is needed.</p><p  class="max-w-3xl w-full mx-auto my-4 px-4 text-lg">The language has both a compiler and interpreter, either or even both can be used in one program.
-Anonymous functions can be captured, serialised and sent to other computers. 
-For example a client and server app can be written as one function.</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden" data-ready="snippet"><pre  class="overflow-auto outline-none my-1 px-4">_ -> {
-  let html = vacant
-  request -> client -> {
-    let method = request.method
-    let handle_click = perform Alert(method)
-    html.button("click")(handle_click)
-  }
-}</pre><div  class="bg-purple-1 px-4 font-mono font-bold">:</div><script  type="application/eygir">{"0":"f","l":"_","b":{"0":"l","l":"html","v":{"0":"z","c":""},"t":{"0":"f","l":"request","b":{"0":"f","l":"client","b":{"0":"l","l":"method","v":{"0":"a","f":{"0":"g","l":"method"},"a":{"0":"v","l":"request"}},"t":{"0":"l","l":"handle_click","v":{"0":"a","f":{"0":"p","l":"Alert"},"a":{"0":"v","l":"method"}},"t":{"0":"a","f":{"0":"a","f":{"0":"a","f":{"0":"g","l":"button"},"a":{"0":"v","l":"html"}},"a":{"0":"s","v":"click"}},"a":{"0":"v","l":"handle_click"}}}}}}}}</script></div></div><p  class="max-w-3xl w-full mx-auto my-4 px-4 text-lg">A fully exhaustive type checker exists for the language. i.e. if the checks pass it is guaranteed not to crash.
-This can be optionally run, it's not worth type checking a build script you get the same error anyway.
-It's possible to type check a single function.</p><p  class="max-w-3xl w-full mx-auto my-4 px-4 text-lg">Because the type system is complete and structural no type ever needs to be declared up front and no annotation is required, in fact annotation is not supported in the language.
-This choice is to make programmers never need to think about types.
-Type annotations are possible in the editor but they are only a debug tool and not committed to the source.</p><p  class="max-w-3xl w-full mx-auto my-4 px-4 text-lg">The type system contains extensible records and unions as well as an algebraic effect system. 
-These three components are all built on row types, using the same approach for each keeps the implementation simple.
-</p><p  class="max-w-3xl w-full mx-auto my-4 px-4 text-lg">All of the goals of the language are achieved by having the Abstract Syntax Tree (AST) of the language be the public interface and keeping that interface as small as possible.
-There are currently only 19 different node types that make up the AST.</p><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden" data-ready="snippet"><pre  class="overflow-auto outline-none my-1 px-4">_ -> {
+        </div><div  class="max-w-3xl mx-auto px-4 my-4 text-xl hstack wrap"><h2 >Documentation</h2><span  class="expand"></span></div></header><div  class="expand w-full blue-gradient drop"><div  class="max-w-3xl w-full mx-auto"><div  class="wrap bg-white neo-shadow border-black border-2 mb-2 rounded-xl overflow-hidden" data-ready="snippet"><pre  class="overflow-auto outline-none my-1 px-4">_ -> {
   let string = vacant
   let welcome = person -> {
     let message = string.append("Hello ")(person)
