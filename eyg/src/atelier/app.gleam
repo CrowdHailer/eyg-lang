@@ -300,6 +300,7 @@ fn insert(zipper: zipper.Zipper, state) {
     e.NoCases -> Error("no cases")
     e.Perform(label) -> Ok(write(label, e.Perform))
     e.Handle(label) -> Ok(write(label, e.Handle))
+    e.Shallow(label) -> Ok(write(label, e.Shallow))
     e.Builtin(_) -> Error("no insert option for builtin, use stdlib references")
   })
 

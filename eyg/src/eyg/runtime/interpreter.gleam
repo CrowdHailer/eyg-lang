@@ -129,6 +129,8 @@ pub type Switch {
   Perform0(String)
   Handle0(String)
   Handle1(String, Term)
+  Shallow0(String)
+  Shallow1(String, Term)
   Resume(String, Term, fn(Term) -> Return)
   Builtin(String, List(Term))
 }
@@ -235,6 +237,15 @@ fn step_call(f, arg, builtins, k) {
         Perform0(label) -> perform(label, arg, k)
         Handle0(label) -> continue(k, Defunc(Handle1(label, arg)))
         Handle1(label, handler) -> runner(label, handler, arg, builtins, k)
+        Shallow0(label) -> continue(k, Defunc(Shallow1(label, arg)))
+        Shallow1(label, handler) ->
+          shallow(
+            label,
+            handler,
+            k,
+            eval_call(arg, Record([]), builtins, Value),
+            builtins,
+          )
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
@@ -324,6 +335,7 @@ fn step(exp: e.Expression, env: Env, k) {
     e.Case(label) -> continue(k, Defunc(Match0(label)))
     e.NoCases -> continue(k, Defunc(NoCases0))
     e.Handle(label) -> continue(k, Defunc(Handle0(label)))
+    e.Shallow(label) -> continue(k, Defunc(Shallow0(label)))
     e.Builtin(identifier) -> continue(k, Defunc(Builtin(identifier, [])))
   }
 }
@@ -408,6 +420,41 @@ fn handled(label, handler, outer_k, thing, builtins) -> Return {
       Async(
         exec,
         fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
+      )
+    Abort(reason) -> Abort(reason)
+  }
+}
+
+fn shallow(label, handler, outer_k, thing, builtins) -> Return {
+  case thing {
+    Effect(l, lifted, resume) if l == label -> {
+      use partial <- step_call(handler, lifted, builtins)
+
+      use applied <- step_call(
+        partial,
+        // Ok so I am lost as to why resume works or is it even needed
+        // I think it is in the situation where someone serializes a
+        // partially applied continuation function in handler
+        // Defunc(Resume(label, handler, resume)),
+        todo("sss"),
+        builtins,
+      )
+
+      continue(outer_k, applied)
+    }
+    Value(v) -> continue(outer_k, v)
+    Cont(term, k) -> Cont(term, k)
+    // Not equal to this effect
+    Effect(l, lifted, resume) ->
+      Effect(
+        l,
+        lifted,
+        fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
+      )
+    Async(exec, resume) ->
+      Async(
+        exec,
+        fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
       )
     Abort(reason) -> Abort(reason)
   }

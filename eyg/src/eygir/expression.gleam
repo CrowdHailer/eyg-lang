@@ -32,6 +32,9 @@ pub type Expression {
   // do/act/effect(effect is a verb and noun)
   Perform(label: String)
   Handle(label: String)
+  // Experiment in stateful Effects
+  Shallow(label: String)
+
   Builtin(identifier: String)
 }
 

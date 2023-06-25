@@ -174,6 +174,10 @@ pub fn handler_no_effect_test() {
 
   r.eval(source, env.empty(), r.Value)
   |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
+
+  let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+  r.eval(source, env.empty(), r.Value)
+  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
 }
 
 pub fn handle_early_return_effect_test() {
