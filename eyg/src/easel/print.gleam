@@ -254,6 +254,10 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       let acc = print_keyword("handle ", loc, acc, err)
       print_with_offset(label, loc, Effect, err, acc, info, analysis)
     }
+    e.Shallow(label) -> {
+      let acc = print_keyword("shallow ", loc, acc, err)
+      print_with_offset(label, loc, Effect, err, acc, info, analysis)
+    }
     e.Builtin(value) ->
       print_with_offset(value, loc, Builtin, err, acc, info, analysis)
   }

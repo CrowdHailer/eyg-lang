@@ -174,6 +174,12 @@ pub fn handler_no_effect_test() {
 
   r.eval(source, env.empty(), r.Value)
   |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
+
+  // shallow
+  let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+
+  r.eval(source, env.empty(), r.Value)
+  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
 }
 
 pub fn handle_early_return_effect_test() {
@@ -181,6 +187,11 @@ pub fn handle_early_return_effect_test() {
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
   let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Binary("Bad thing")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+
+  r.eval(source, env.empty(), r.Value)
+  |> should.equal(r.Value(r.Tagged("Error", r.Binary("Bad thing"))))
+
+  let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
   r.eval(source, env.empty(), r.Value)
   |> should.equal(r.Value(r.Tagged("Error", r.Binary("Bad thing"))))
@@ -215,6 +226,14 @@ pub fn handle_resume_test() {
     #("value", r.Integer(100)),
     #("log", r.Binary("my message")),
   ])))
+
+  let source = e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
+
+  r.eval(source, env.empty(), r.Value)
+  |> should.equal(r.Value(r.Record([
+    #("value", r.Integer(100)),
+    #("log", r.Binary("my message")),
+  ])))
 }
 
 pub fn ignore_other_effect_test() {
@@ -229,6 +248,18 @@ pub fn ignore_other_effect_test() {
       ),
     )
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+
+  let assert r.Effect("Foo", lifted, k) = r.eval(source, env.empty(), r.Value)
+  lifted
+  |> should.equal(r.Record([]))
+  // calling k should fall throu
+  // Should test wrapping binary here to check K works properly
+  k(r.Binary("reply"))
+  |> r.loop
+  |> should.equal(r.Value(r.Record([#("foo", r.Binary("reply"))])))
+
+  // SHALLOW
+  let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
   let assert r.Effect("Foo", lifted, k) = r.eval(source, env.empty(), r.Value)
   lifted
@@ -339,12 +370,29 @@ pub fn multiple_resumptions_test() {
       ]),
     ),
   ])))
+  // TODO shallow multiple test
 }
 
-pub fn handler_doesnt_continue_test() {
+pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
   let handler =
     e.Apply(
       e.Handle("Log"),
+      e.Lambda("lift", e.Lambda("k", e.Binary("Caught"))),
+    )
+  let source =
+    e.Let(
+      "_",
+      e.Apply(handler, e.Lambda("_", e.Binary("Original"))),
+      e.Apply(e.Perform("Log"), e.Binary("outer")),
+    )
+  let assert r.Effect("Log", r.Binary("outer"), k) =
+    r.eval(source, env.empty(), r.Value)
+  k(r.Record([]))
+  |> should.equal(r.Value(r.Record([])))
+
+  let handler =
+    e.Apply(
+      e.Shallow("Log"),
       e.Lambda("lift", e.Lambda("k", e.Binary("Caught"))),
     )
   let source =
@@ -362,6 +410,30 @@ pub fn handler_doesnt_continue_test() {
 pub fn handler_is_applied_after_other_effects_test() {
   let handler =
     e.Apply(e.Handle("Fail"), e.Lambda("lift", e.Lambda("k", e.Integer(-1))))
+  let exec =
+    e.Lambda(
+      "_",
+      e.Let(
+        "_",
+        e.Apply(e.Perform("Log"), e.Binary("my log")),
+        e.Let(
+          "_",
+          e.Apply(e.Perform("Fail"), e.Binary("some error")),
+          e.Binary("done"),
+        ),
+      ),
+    )
+
+  let source = e.Apply(handler, exec)
+  let assert r.Effect("Log", r.Binary("my log"), k) =
+    r.eval(source, env.empty(), r.Value)
+
+  k(r.Record([]))
+  |> r.loop
+  |> should.equal(r.Value(r.Integer(-1)))
+
+  let handler =
+    e.Apply(e.Shallow("Fail"), e.Lambda("lift", e.Lambda("k", e.Integer(-1))))
   let exec =
     e.Lambda(
       "_",

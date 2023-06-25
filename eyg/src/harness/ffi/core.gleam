@@ -191,6 +191,7 @@ fn expression_to_language(exp) {
 
     e.Perform(label) -> [r.Tagged("Perform", r.Binary(label))]
     e.Handle(label) -> [r.Tagged("Handle", r.Binary(label))]
+    e.Shallow(label) -> [r.Tagged("Shallow", r.Binary(label))]
     e.Builtin(identifier) -> [r.Tagged("Builtin", r.Binary(identifier))]
   }
 }

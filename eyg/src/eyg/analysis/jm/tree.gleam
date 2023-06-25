@@ -113,6 +113,8 @@ fn primitive(exp, next) {
     // Effect
     e.Perform(label) -> t.perform(label, next)
     e.Handle(label) -> t.handle(label, next)
+    // TODO actual shallow type checking
+    e.Shallow(label) -> t.handle(label, next)
   }
 }
 

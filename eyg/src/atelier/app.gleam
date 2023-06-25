@@ -137,6 +137,7 @@ pub fn keypress(key, state: WorkSpace) {
     Navigate(act), "f" -> Ok(abstract(act, state))
     Navigate(act), "g" -> select(act, state)
     Navigate(act), "h" -> handle(act, state)
+    Navigate(act), "H" -> shallow(act, state)
     // Navigate(act), "j" -> ("down probably not")
     // Navigate(act), "k" -> ("up probably not")
     // Navigate(act), "l" -> ("right probably not")
@@ -300,6 +301,7 @@ fn insert(zipper: zipper.Zipper, state) {
     e.NoCases -> Error("no cases")
     e.Perform(label) -> Ok(write(label, e.Perform))
     e.Handle(label) -> Ok(write(label, e.Handle))
+    e.Shallow(label) -> Ok(write(label, e.Shallow))
     e.Builtin(_) -> Error("no insert option for builtin, use stdlib references")
   })
 
@@ -376,6 +378,18 @@ fn handle(zipper: zipper.Zipper, state) {
     exp -> {
       let commit = fn(text) {
         zipper.1(e.Apply(e.Apply(e.Handle(text), e.Vacant("")), exp))
+      }
+      Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
+    }
+  }
+}
+
+fn shallow(zipper: zipper.Zipper, state) {
+  case zipper.0 {
+    e.Let(_label, _value, _then) -> Error("can't shallow on let")
+    exp -> {
+      let commit = fn(text) {
+        zipper.1(e.Apply(e.Apply(e.Shallow(text), e.Vacant("")), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
