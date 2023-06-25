@@ -24,6 +24,8 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/browser/window
 import plinth/browser/document
+import plinth/browser/console
+import platforms/browser
 
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup
@@ -858,10 +860,18 @@ fn run(state: Embed) {
     map.new()
     |> map.insert("Alert", handler)
     |> map.insert("Choose", effect.choose().2)
+    |> map.insert("HTTP", effect.http().2)
+    |> map.insert("Await", effect.await().2)
+    |> map.insert("Async", browser.async().2)
+    |> map.insert("Log", effect.debug_logger().2)
   let env = stdlib.env()
   case r.handle(r.eval(source, env, r.Value), env.builtins, handlers) {
     r.Abort(reason) -> reason_to_string(reason)
     r.Value(term) -> term_to_string(term)
+    r.Async(p, k) -> {
+      promise.map(p, fn(x) { console.log(x) })
+      "Promise"
+    }
     _ -> panic("this should be tackled better in the run code")
   }
 }
