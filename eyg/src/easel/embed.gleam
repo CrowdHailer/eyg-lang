@@ -523,6 +523,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "f" -> insert_function(state, start, end)
         "g" -> select(state, start, end)
         "h" -> handle(state, start, end)
+        "H" -> shallow(state, start, end)
         "z" -> undo(state, start)
         "Z" -> redo(state, start)
         "c" -> call(state, start, end)
@@ -785,6 +786,10 @@ pub fn insert_text(state: Embed, data, start, end) {
             e.Handle(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               #(e.Handle(label), [], offset, True)
+            }
+            e.Shallow(label) -> {
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Shallow(label), [], offset, True)
             }
             node -> {
               io.debug(#("nothing", node))
@@ -1060,6 +1065,14 @@ pub fn handle(state: Embed, start, end) {
   }
 }
 
+pub fn shallow(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  case target {
+    e.Vacant(_) -> #(e.Shallow(""), Insert, [])
+    _ -> #(e.Apply(e.Shallow(""), target), Insert, [0])
+  }
+}
 pub fn list_element(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)

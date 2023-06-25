@@ -143,6 +143,7 @@ pub fn perform(label, ref) {
   Fun(arg, Extend(label, #(arg, ret), tail), ret)
 }
 
+// reused for shallow
 pub fn handle(label, ref) {
   let ret = Unbound(fresh(ref))
   let lift = Unbound(fresh(ref))
