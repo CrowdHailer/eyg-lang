@@ -70,6 +70,8 @@ pub type Embed {
     history: History,
     auto_infer: Bool,
     inferred: Option(tree.State),
+    // not actually used but I think useful for clearing run value
+    returned: Option(r.Return),
     rendered: #(List(print.Rendered), map.Map(String, Int)),
     focus: Option(List(Int)),
   )
@@ -124,15 +126,16 @@ pub fn handle_click(root, event) {
 
           let state =
             Embed(
-              Command(""),
-              None,
-              None,
-              source,
-              #([], []),
-              False,
-              Some(inferred),
-              rendered,
-              None,
+              mode: Command(""),
+              yanked: None,
+              std: None,
+              source: source,
+              history: #([], []),
+              auto_infer: False,
+              inferred: Some(inferred),
+              returned: None,
+              rendered: rendered,
+              focus: None,
             )
           start_easel_at(root, start, state)
           Ok(Nil)
@@ -239,8 +242,30 @@ pub fn start_easel_at(root, start, state) {
           javascript.update_reference(
             ref,
             fn(state) {
-              let #(state, start) = insert_text(state, data, start, end)
+              // pass in updeate ref
+              let #(state, start, actions) =
+                insert_text(state, data, start, end)
               render_page(root, start, state)
+              io.debug(actions)
+              list.map(
+                actions,
+                fn(updater) {
+                  promise.map(
+                    updater,
+                    fn(updater) {
+                      javascript.update_reference(
+                        ref,
+                        fn(state) {
+                          let state = updater(state)
+                          io.debug("lots of update")
+                          render_page(root, start, state)
+                          state
+                        },
+                      )
+                    },
+                  )
+                },
+              )
               state
             },
           )
@@ -369,12 +394,12 @@ pub fn snippet(root) {
           history: #([], []),
           auto_infer: True,
           inferred: Some(inferred),
+          returned: None,
           rendered: rendered,
           focus: None,
         )
       document.set_html(root, "")
       start_easel_at(root, start, state)
-      Ok(Nil)
       Nil
     }
     Error(Nil) -> {
@@ -417,15 +442,16 @@ pub fn init(json) {
   let inferred = do_infer(source, std)
   let rendered = print.print(source, None, True, Some(inferred))
   Embed(
-    Command(""),
-    None,
-    std,
-    source,
-    #([], []),
-    True,
-    Some(inferred),
-    rendered,
-    None,
+    mode: Command(""),
+    yanked: None,
+    std: std,
+    source: source,
+    history: #([], []),
+    auto_infer: True,
+    inferred: Some(inferred),
+    returned: None,
+    rendered: rendered,
+    focus: None,
   )
 }
 
@@ -458,15 +484,15 @@ pub fn insert_text(state: Embed, data, start, end) {
         " " -> {
           case state.inferred {
             Some(_) -> {
-              let message = run(state)
+              let #(message, actions) = run(state)
               let state = Embed(..state, mode: Command(message))
-              #(state, start)
+              #(state, start, actions)
             }
             None -> {
               let inferred = do_infer(state.source, state.std)
               let state =
                 Embed(..state, mode: Command(""), inferred: Some(inferred))
-              #(state, start)
+              #(state, start, [])
             }
           }
         }
@@ -502,11 +528,11 @@ pub fn insert_text(state: Embed, data, start, end) {
             },
           )
 
-          #(state, start)
+          #(state, start, [])
         }
         "q" -> {
           io.print(encode.to_json(state.source))
-          #(state, start)
+          #(state, start, [])
         }
         "w" -> call_with(state, start, end)
         "e" -> assign_to(state, start, end)
@@ -514,7 +540,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "t" -> tag(state, start, end)
         "y" -> copy(state, start, end)
         "Y" -> paste(state, start, end)
-        "i" -> #(Embed(..state, mode: Insert), start)
+        "i" -> #(Embed(..state, mode: Insert), start, [])
         "[" | "x" -> list_element(state, start, end)
         "," -> extend_list(state, start, end)
         "." -> spread_list(state, start, end)
@@ -542,7 +568,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         // terminal at the bottom can have a line buffer for reading input
         key -> {
           let mode = Command(string.append("no command for key ", key))
-          #(Embed(..state, mode: mode), start)
+          #(Embed(..state, mode: mode), start, [])
         }
       }
     }
@@ -574,7 +600,7 @@ pub fn insert_text(state: Embed, data, start, end) {
       case path != p2 || cut_start < 0 {
         // TODO need to think about commas in blocks?
         True -> {
-          #(state, start)
+          #(state, start, [])
         }
         _ -> {
           let assert Ok(#(target, rezip)) = zipper.at(state.source, path)
@@ -799,7 +825,7 @@ pub fn insert_text(state: Embed, data, start, end) {
             }
           }
           case target == new {
-            True -> #(state, start)
+            True -> #(state, start, [])
             False -> {
               let new = rezip(new)
               let backwards = case state.history.1 {
@@ -834,6 +860,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   rendered: rendered,
                 ),
                 start + offset,
+                [],
               )
             }
           }
@@ -866,12 +893,33 @@ fn run(state: Embed) {
     |> map.insert("Log", effect.debug_logger().2)
   let env = stdlib.env()
   case r.handle(r.eval(source, env, r.Value), env.builtins, handlers) {
-    r.Abort(reason) -> reason_to_string(reason)
-    r.Value(term) -> term_to_string(term)
+    r.Abort(reason) -> #(reason_to_string(reason), [])
+    r.Value(term) -> #(term_to_string(term), [])
+    // Only render promises if we are in Async return.
+    // returning a promise as a value should be rendered as a promise value
     r.Async(p, k) -> {
-      promise.map(p, fn(x) { console.log(x) })
-      "Promise"
+      let p = await_on_async(p, k, env, handlers)
+      let p =
+        promise.map(
+          p,
+          fn(string) { fn(state) { Embed(..state, mode: Command(string)) } },
+        )
+      #("Running", [p])
     }
+    _ -> panic("this should be tackled better in the run code")
+  }
+}
+
+fn await_on_async(p, k, env: r.Env, handlers) {
+  use value <- promise.await(p)
+  let return = r.handle(k(value), env.builtins, handlers)
+  case return {
+    r.Abort(reason) -> promise.resolve(reason_to_string(reason))
+    r.Value(term) -> {
+      io.debug(term)
+      promise.resolve(term_to_string(term))
+    }
+    r.Async(p, k) -> await_on_async(p, k, env, handlers)
     _ -> panic("this should be tackled better in the run code")
   }
 }
@@ -900,17 +948,13 @@ fn reason_to_string(reason) {
 
 fn term_to_string(term) {
   r.to_string(term)
-  // case term {
-  //   r.Binary(value) -> string.concat(["\"", value, "\""])
-  //   _ -> "non string term"
-  // }
 }
 
 pub fn undo(state: Embed, start) {
   let assert Ok(#(_ch, current_path, _cut_start, _style, _err)) =
     list.at(state.rendered.0, start)
   case state.history.1 {
-    [] -> #(Embed(..state, mode: Command("no undo available")), start)
+    [] -> #(Embed(..state, mode: Command("no undo available")), start, [])
     [edit, ..backwards] -> {
       let #(old, path, text_only) = edit
       // TODO put inference in history
@@ -933,7 +977,7 @@ pub fn undo(state: Embed, start) {
           inferred: inferred,
           rendered: rendered,
         )
-      #(state, start)
+      #(state, start, [])
     }
   }
 }
@@ -942,7 +986,7 @@ pub fn redo(state: Embed, start) {
   let assert Ok(#(_ch, current_path, _cut_start, _style, _err)) =
     list.at(state.rendered.0, start)
   case state.history.0 {
-    [] -> #(Embed(..state, mode: Command("no redo available")), start)
+    [] -> #(Embed(..state, mode: Command("no redo available")), start, [])
     [edit, ..forward] -> {
       let #(other, path, text_only) = edit
       let inferred = case state.auto_infer {
@@ -964,7 +1008,7 @@ pub fn redo(state: Embed, start) {
           inferred: inferred,
           rendered: rendered,
         )
-      #(state, start)
+      #(state, start, [])
     }
   }
 }
@@ -1007,7 +1051,7 @@ fn copy(state: Embed, start, end) {
   case zipper.at(state.source, path) {
     Error(Nil) -> panic("how did this happen need path back")
     Ok(#(target, _rezip)) -> {
-      #(Embed(..state, yanked: Some(target)), start)
+      #(Embed(..state, yanked: Some(target)), start, [])
     }
   }
 }
@@ -1319,14 +1363,14 @@ pub fn escape(state) {
 
 fn single_focus(state: Embed, start, end, cb) {
   case list.at(state.rendered.0, start) {
-    Error(Nil) -> #(state, start)
+    Error(Nil) -> #(state, start, [])
     Ok(#(_ch, path, _cut_start, _style, _err)) -> {
       case list.at(state.rendered.0, end) {
-        Error(Nil) -> #(state, start)
+        Error(Nil) -> #(state, start, [])
         Ok(#(_ch, p2, _cut_end, _style, _err)) ->
           case path != p2 {
             True -> {
-              #(state, start)
+              #(state, start, [])
             }
             False -> cb(path)
           }
@@ -1365,6 +1409,7 @@ fn update_at(state: Embed, path, cb) {
           rendered: rendered,
         ),
         start,
+        [],
       )
     }
   }
