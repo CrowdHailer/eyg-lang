@@ -536,6 +536,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         "w" -> call_with(state, start, end)
         "e" -> assign_to(state, start, end)
+        "E" -> assign_before(state, start, end)
         "r" -> extend(state, start, end)
         "t" -> tag(state, start, end)
         "y" -> copy(state, start, end)
@@ -1025,6 +1026,12 @@ pub fn assign_to(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
   #(e.Let("", target, e.Vacant("")), Insert, [])
+}
+
+pub fn assign_before(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Let("", e.Vacant(""), target), Insert, [])
 }
 
 pub fn extend(state: Embed, start, end) {
