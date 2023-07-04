@@ -133,6 +133,7 @@ pub fn builtins() {
   // string
   |> extend_b("string_append", append())
   |> extend_b("string_replace", replace())
+  |> extend_b("string_split", split())
   |> extend_b("string_uppercase", uppercase())
   |> extend_b("string_lowercase", lowercase())
   |> extend_b("string_length", length())
@@ -215,6 +216,24 @@ pub fn replace() {
     t.Fun(t.String, t.Var(1), t.Fun(t.String, t.Var(2), t.String)),
   )
 }
+
+pub fn split() {
+  t.Fun(
+    t.String,
+    t.Var(0),
+    t.Fun(
+      t.String,
+      t.Var(1),
+      t.Record(t.RowExtend(
+        "head",
+        t.String,
+        t.RowExtend("tail", t.LinkedList(t.String), t.Empty),
+      )),
+    ),
+  )
+}
+
+// append(append(foo, x), bar)
 
 pub fn uppercase() {
   t.Fun(t.String, t.Var(0), t.String)

@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/string
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
@@ -12,6 +13,25 @@ pub fn do_append(left, right, _builtins, k) {
   use left <- cast.string(left)
   use right <- cast.string(right)
   r.continue(k, r.Binary(string.append(left, right)))
+}
+
+pub fn split() {
+  let type_ =
+    t.Fun(
+      t.Binary,
+      t.Open(0),
+      t.Fun(t.Binary, t.Open(1), t.LinkedList(t.Binary)),
+    )
+  #(type_, r.Arity2(do_split))
+}
+
+pub fn do_split(s, pattern, _builtins, k) {
+  use s <- cast.string(s)
+  use pattern <- cast.string(pattern)
+  let [first, ..parts] = string.split(s, pattern)
+  let parts = r.LinkedList(list.map(parts, r.Binary))
+
+  r.continue(k, r.Record([#("head", r.Binary(first)), #("tail", parts)]))
 }
 
 pub fn uppercase() {
