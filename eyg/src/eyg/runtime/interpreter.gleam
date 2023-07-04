@@ -269,7 +269,7 @@ pub type Arity {
   )
 }
 
-fn call_builtin(key, applied, builtins, kont) {
+pub fn call_builtin(key, applied, builtins, kont) {
   case map.get(builtins, key) {
     Ok(func) ->
       case func, applied {
@@ -304,7 +304,7 @@ pub type Env {
   Env(scope: List(#(String, Term)), builtins: map.Map(String, Arity))
 }
 
-fn step(exp: e.Expression, env: Env, k) {
+pub fn step(exp: e.Expression, env: Env, k) {
   case exp {
     e.Lambda(param, body) -> continue(k, Function(param, body, env.scope))
     e.Apply(f, arg) ->
