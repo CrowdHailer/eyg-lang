@@ -2,8 +2,10 @@ import gleam/map
 import eyg/analysis/typ as t
 import eyg/analysis/inference
 import eyg/runtime/interpreter as r
+import eyg/runtime/capture
 import eygir/expression as e
 import harness/stdlib
+import harness/ffi/core.{expression_to_language}
 import gleeunit/should
 
 pub fn unequal_test() {
@@ -145,4 +147,26 @@ pub fn recursive_sum_test() {
 
   r.eval(prog, stdlib.env(), r.Value)
   |> should.equal(r.Value(r.Integer(4)))
+}
+
+pub fn eval_test() {
+  let value = e.Binary("foo")
+
+  let prog =
+    value
+    |> expression_to_language()
+    |> r.LinkedList()
+    |> capture.capture()
+    |> e.Apply(e.Builtin("eval"), _)
+  // This is old style inference not JM
+  // let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
+
+  // inference.sound(sub)
+  // |> should.equal(Ok(Nil))
+
+  // inference.type_of(sub, [])
+  // |> should.equal(Ok(t.boolean))
+
+  r.eval(prog, stdlib.env(), r.Value)
+  |> should.equal(r.Value(r.Binary("foo")))
 }

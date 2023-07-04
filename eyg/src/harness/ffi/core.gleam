@@ -1,10 +1,16 @@
+import gleam/io
 import gleam/list
+import gleam/map
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter as r
 import eyg/runtime/capture
 import harness/ffi/cast
+import harness/env.{extend, init}
+import harness/ffi/integer
+import harness/ffi/linked_list
+import harness/ffi/string
 import plinth/browser/window
 
 pub fn equal() {
@@ -61,6 +67,49 @@ pub fn fixed() {
   )
 }
 
+pub fn eval() {
+  let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
+
+  #(type_, r.Arity1(do_eval))
+}
+
+pub fn lib() {
+  init()
+  |> extend("equal", equal())
+  |> extend("debug", debug())
+  |> extend("fix", fix())
+  |> extend("fixed", fixed())
+  |> extend("serialize", serialize())
+  |> extend("capture", capture())
+  |> extend("encode_uri", encode_uri())
+  // integer
+  |> extend("int_add", integer.add())
+  |> extend("int_subtract", integer.subtract())
+  |> extend("int_multiply", integer.multiply())
+  |> extend("int_divide", integer.divide())
+  |> extend("int_absolute", integer.absolute())
+  |> extend("int_parse", integer.parse())
+  |> extend("int_to_string", integer.to_string())
+  // string
+  |> extend("string_append", string.append())
+  |> extend("string_replace", string.replace())
+  |> extend("string_uppercase", string.uppercase())
+  |> extend("string_lowercase", string.lowercase())
+  |> extend("string_length", string.length())
+  // list
+  |> extend("list_pop", linked_list.pop())
+  |> extend("list_fold", linked_list.fold())
+}
+
+pub fn do_eval(source, _builtins, k) {
+  use source <- cast.list(source)
+  case language_to_expression(source) {
+    Ok(expression) ->
+      r.eval(expression, r.Env([], lib().1), fn(term) { k(r.ok(term)) })
+    Error(_) -> k(r.error(r.unit))
+  }
+}
+
 // This should be replaced by capture which returns ast
 pub fn serialize() {
   let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Binary)
@@ -104,7 +153,7 @@ pub fn do_capture(term, _builtins, k) {
 //     })
 //   }
 // vacant is not a type checker error it's a query we can use
-//   _ -> 
+//   _ ->
 // }
 // Let label -> rest -> block(indent)(rest)(value -> {
 //   expression(then -> {
@@ -114,7 +163,7 @@ pub fn do_capture(term, _builtins, k) {
 //     done(list.append())
 //   }
 // })
-// Apply -> source -> 
+// Apply -> source ->
 //  match {
 //    _ -> block(ident)(source)
 // }
@@ -123,7 +172,7 @@ pub fn do_capture(term, _builtins, k) {
 // block(indent + 2) then(expression)
 
 // could be term to lang
-// Defunc continuation 
+// Defunc continuation
 // recursive data structure vs list
 // recusive correct by construction
 // could just read till next end term
@@ -145,7 +194,7 @@ pub fn do_capture(term, _builtins, k) {
 // is there an elegant write once I think it pairs with defunc'd
 // rendering? is it that interesting to do twice?
 // TODO have a single code element that renders the value
-fn expression_to_language(exp) {
+pub fn expression_to_language(exp) {
   case exp {
     e.Variable(label) -> [r.Tagged("Variable", r.Binary(label))]
     e.Lambda(label, body) -> {
@@ -193,6 +242,60 @@ fn expression_to_language(exp) {
     e.Handle(label) -> [r.Tagged("Handle", r.Binary(label))]
     e.Shallow(label) -> [r.Tagged("Shallow", r.Binary(label))]
     e.Builtin(identifier) -> [r.Tagged("Builtin", r.Binary(identifier))]
+  }
+}
+
+pub fn language_to_expression(source) {
+  do_language_to_expression(source, fn(x, _) { Ok(x) })
+}
+
+fn do_language_to_expression(term, k) {
+  case term {
+    [r.Tagged("Variable", r.Binary(label)), ..rest] -> {
+      k(e.Variable(label), rest)
+    }
+    [r.Tagged("Lambda", r.Binary(label)), ..rest] -> {
+      use body, rest <- do_language_to_expression(rest)
+      k(e.Lambda(label, body), rest)
+    }
+    [r.Tagged("Apply", r.Record([])), ..rest] -> {
+      use func, rest <- do_language_to_expression(rest)
+      use arg, rest <- do_language_to_expression(rest)
+      k(e.Apply(func, arg), rest)
+    }
+    [r.Tagged("Let", r.Binary(label)), ..rest] -> {
+      use value, rest <- do_language_to_expression(rest)
+      use then, rest <- do_language_to_expression(rest)
+      k(e.Let(label, value, then), rest)
+    }
+
+    [r.Tagged("Integer", r.Integer(value)), ..rest] -> k(e.Integer(value), rest)
+    [r.Tagged("Binary", r.Binary(value)), ..rest] -> k(e.Binary(value), rest)
+
+    [r.Tagged("Tail", r.Record([])), ..rest] -> k(e.Tail, rest)
+    [r.Tagged("Cons", r.Record([])), ..rest] -> k(e.Cons, rest)
+
+    [r.Tagged("Vacant", r.Binary(comment)), ..rest] ->
+      k(e.Vacant(comment), rest)
+
+    [r.Tagged("Empty", r.Record([])), ..rest] -> k(e.Empty, rest)
+    [r.Tagged("Extend", r.Binary(label)), ..rest] -> k(e.Extend(label), rest)
+    [r.Tagged("Select", r.Binary(label)), ..rest] -> k(e.Select(label), rest)
+    [r.Tagged("Overwrite", r.Binary(label)), ..rest] ->
+      k(e.Overwrite(label), rest)
+    [r.Tagged("Tag", r.Binary(label)), ..rest] -> k(e.Tag(label), rest)
+    [r.Tagged("Case", r.Binary(label)), ..rest] -> k(e.Case(label), rest)
+    [r.Tagged("NoCases", r.Record([])), ..rest] -> k(e.NoCases, rest)
+
+    [r.Tagged("Perform", r.Binary(label)), ..rest] -> k(e.Perform(label), rest)
+    [r.Tagged("Handle", r.Binary(label)), ..rest] -> k(e.Handle(label), rest)
+    [r.Tagged("Shallow", r.Binary(label)), ..rest] -> k(e.Shallow(label), rest)
+    [r.Tagged("Builtin", r.Binary(identifier)), ..rest] ->
+      k(e.Builtin(identifier), rest)
+    remaining -> {
+      io.debug(#("remaining values", remaining))
+      Error("too many expressions")
+    }
   }
 }
 

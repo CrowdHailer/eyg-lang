@@ -117,6 +117,7 @@ pub fn builtins() {
   |> extend_b("equal", equal())
   |> extend_b("debug", debug())
   |> extend_b("fix", fix())
+  |> extend_b("eval", eval())
   // |> extend_b("fixed", fixed())
   |> extend_b("serialize", serialize())
   |> extend_b("capture", capture())
@@ -156,6 +157,11 @@ pub fn debug() {
 
 pub fn fix() {
   t.Fun(t.Fun(t.Var(0), t.Var(1), t.Var(0)), t.Var(2), t.Var(0))
+}
+
+pub fn eval() {
+  // TODO raise eval effect
+  t.Fun(t.Var(0), t.Var(1), t.Var(2))
 }
 
 pub fn serialize() {

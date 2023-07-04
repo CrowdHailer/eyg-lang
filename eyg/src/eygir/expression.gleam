@@ -54,3 +54,7 @@ pub fn do_list(reversed, acc) {
     [] -> acc
   }
 }
+
+pub fn tagged(tag, value) {
+  Apply(Tag(tag), value)
+}
