@@ -170,7 +170,7 @@ pub fn to_string(term) {
       |> string.concat
     Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
     Function(param, _, _) -> string.concat(["(", param, ") -> { ... }"])
-    Defunc(_) -> string.concat(["Defunc: "])
+    Defunc(d) -> string.concat(["Defunc: ", string.inspect(d)])
     Promise(_) -> string.concat(["Promise: "])
   }
 }
