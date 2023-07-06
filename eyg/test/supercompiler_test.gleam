@@ -14,5 +14,4 @@ pub fn supercompiler_test() {
 
   eval(e.Apply(e.Builtin("string_uppercase"), e.Binary("hello")))
   |> should.equal(e.Binary("HELLO"))
-  todo
 }
