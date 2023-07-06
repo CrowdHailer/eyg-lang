@@ -1,3 +1,4 @@
+import gleam/io
 import eygir/expression as e
 import eyg/supercompiler.{eval}
 import gleeunit/should
@@ -13,5 +14,6 @@ pub fn supercompiler_test() {
   |> should.equal(e.Binary("hello"))
 
   eval(e.Apply(e.Builtin("string_uppercase"), e.Binary("hello")))
+  |> io.debug
   |> should.equal(e.Binary("HELLO"))
 }
