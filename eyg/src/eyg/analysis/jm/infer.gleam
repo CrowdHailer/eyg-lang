@@ -162,7 +162,7 @@ pub fn fix() {
 
 pub fn eval() {
   // TODO raise eval effect
-  t.Fun(t.Var(0), t.Var(1), t.Var(2))
+  t.Fun(t.Var(0), t.Var(1), t.result(t.Var(2), t.unit))
 }
 
 pub fn serialize() {

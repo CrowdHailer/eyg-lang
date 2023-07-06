@@ -26,6 +26,7 @@ import plinth/browser/window
 import plinth/browser/document
 import plinth/browser/console
 import platforms/browser
+import eyg/supercompiler
 
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup
@@ -490,6 +491,9 @@ pub fn insert_text(state: Embed, data, start, end) {
             }
             None -> {
               let inferred = do_infer(state.source, state.std)
+              io.debug("supercompile")
+              supercompiler.eval(state.source)
+              |> io.debug
               let state =
                 Embed(..state, mode: Command(""), inferred: Some(inferred))
               #(state, start, [])
