@@ -52,3 +52,8 @@ pub fn variable_shadowing_test() {
   ))
   |> should.equal(e.Lambda("x", e.Variable("x")))
 }
+
+
+// in language helper for list
+// lang_eval
+// check that error is in the right place

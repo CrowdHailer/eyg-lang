@@ -10,6 +10,9 @@ import eyg/runtime/capture
 import harness/stdlib
 import harness/ffi/core
 
+// reuse runtime interpreter add residual
+// does wrapping in let give the right thing
+// I think we pass k through builtins because of fold when you go back into program that might throw an effect like break
 pub type Control {
   E(e.Expression)
   V(Value)
@@ -82,6 +85,8 @@ pub fn step(control, env, k) {
         Defunc(func, applied) -> {
           let applied = list.append(applied, [arg])
           case func, applied {
+            // Can't use builtin because need reference to label
+            // could take label and return anon function but then not capturable
             Tag(label), [x] -> K(V(Tagged(label, x)), env, k)
             // don't pass k or env to builtin?
             Builtin(Arity1(impl)), [x] -> impl(x, env, k)
