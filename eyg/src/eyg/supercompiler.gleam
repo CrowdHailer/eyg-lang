@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
@@ -13,69 +14,32 @@ pub type Control {
   V(Value)
 }
 
-//   Fn(String, Control, List(#(String, Control)))
-//   Residual(String)
+type Env =
+  List(#(String, Value))
 
 pub type Arity {
-
   // I don;t want to pass in env here but I need it to be able to pass it to K
-  Arity1(
-    fn(Value, List(#(String, Value)), fn(Value, List(#(String, Value))) -> K) ->
-      K,
-  )
+  Arity1(fn(Value, Env, fn(Value, Env) -> K) -> K)
+  Arity2(fn(Value, Value, Env, fn(Value, Env) -> K) -> K)
+  Arity3(fn(Value, Value, Value, Env, fn(Value, Env) -> K) -> K)
 }
 
 pub type Value {
+  Integer(Int)
   Binary(String)
-  Fn(String, e.Expression, List(#(String, Value)))
+  Fn(String, e.Expression, Env)
   Defunc(Arity, List(Value))
   Residual(e.Expression)
 }
 
 pub type K {
   Done(e.Expression)
-  K(Control, List(#(String, Value)), fn(Value, List(#(String, Value))) -> K)
+  K(Control, Env, fn(Value, Env) -> K)
 }
 
-// normal CEK eval keep path to returned function/ NO I think supercompilation is the way
-// let print = fmt(foo) types from runtime
-// let x = 5
-// fn x -> x  needs to not return 5
-// 
-// let x = 4
-// let x = y
-// x needs to not return 4
-
-// f x
-// let y = x + x
-// let z = 100
-// let z = x()
-// let _ = log(z)
-// y
-
-// value is always used if residual is an effect or it is a function that could effect
-
-//   pop residual here 
-// let is always something i.e. some other residual or an expression
-// let is long residual don't want to copy everywhere
-// keep tree the same keep let if then is not residual
-// create let at beginning of lambda if residual is large
-
-// The whole point of the supercompilation is to hit apply in lambdas
-// i.e.
-// fn -> fmt("%s")("hey") == fn -> "hey"
-// let x = 1
-// fn y -> add(x + x)(y + y)
-// use makes continuations explicit in AST and so supercompilation easier
-
-// Eval is not the goal instead it is fmt and JSON.decode
-// with type providers the transpiler knew all the providers
-// I need to have libraries for decode without extending the core
 pub fn step(control, env, k) {
-  //   io.debug(#("--", control, env, k))
   case control {
     E(e.Variable(var)) -> {
-      // I think error if we insert residuals in all fns
       let assert Ok(value) = list.key_find(env, var)
       K(V(value), env, k)
     }
@@ -93,12 +57,11 @@ pub fn step(control, env, k) {
           let applied = list.append(applied, [arg])
           case arity, applied {
             Arity1(impl), [x] -> impl(x, env, k)
+            Arity2(impl), [x, y] -> impl(x, y, env, k)
+            Arity3(impl), [x, y, z] -> impl(x, y, z, env, k)
             _, args -> K(V(Defunc(arity, applied)), env, k)
           }
         }
-
-        // Arity2(impl), [x, y] -> impl(x, y, builtins, kont)
-        // Arity3(impl), [x, y, z] -> impl(x, y, z, builtins, kont)
         _ -> {
           io.debug(func)
           todo("in apply")
@@ -109,6 +72,7 @@ pub fn step(control, env, k) {
       use value, env <- K(E(body), env)
       K(E(then), [#(label, value), ..env], k)
     }
+    E(e.Integer(i)) -> K(V(Integer(i)), env, k)
     E(e.Binary(b)) -> K(V(Binary(b)), env, k)
     E(e.Builtin(key)) -> K(V(Defunc(builtin(key), [])), env, k)
     V(value) -> k(value, env)
@@ -119,9 +83,32 @@ pub fn step(control, env, k) {
   }
 }
 
+fn to_expression(value) {
+  case value {
+    Integer(i) -> e.Integer(i)
+    Binary(b) -> e.Binary(b)
+    Fn(param, body, _env) -> e.Lambda(param, body)
+    Defunc(arity, applied) -> todo("defunc")
+    Residual(exp) -> exp
+  }
+}
+
+pub fn eval(exp) {
+  do_eval(E(exp), [], fn(value, _e) { Done(to_expression(value)) })
+}
+
+fn do_eval(control, e, k) {
+  case step(control, e, k) {
+    Done(value) -> value
+    K(control, e, k) -> do_eval(control, e, k)
+  }
+}
+
 fn builtin(key) {
   case key {
     "string_uppercase" -> Arity1(do_uppercase)
+    "integer_absolute" -> Arity1(do_absolute)
+    "integer_add" -> Arity2(do_add)
   }
 }
 
@@ -134,39 +121,27 @@ pub fn do_uppercase(v, env, k) {
   k(v, env)
 }
 
+pub fn do_absolute(v, env, k) {
+  let v = case v {
+    Integer(i) -> Integer(int.absolute_value(i))
+    Residual(e) -> Residual(e.Apply(e.Builtin("integer_absolute"), e))
+    _ -> panic("invalid")
+  }
+  k(v, env)
+}
+
+pub fn do_add(x, y, env, k) {
+  let v = case x, y {
+    Integer(i), Integer(j) -> Integer(i + j)
+    Residual(x), Integer(j) ->
+      Residual(e.Apply(e.Apply(e.Builtin("integer_add"), x), e.Integer(j)))
+    Integer(i), Residual(y) ->
+      Residual(e.Apply(e.Apply(e.Builtin("integer_add"), e.Integer(i)), y))
+    Residual(x), Residual(y) ->
+      Residual(e.Apply(e.Apply(e.Builtin("integer_add"), x), y))
+    _, _ -> panic("invalid")
+  }
+  k(v, env)
+}
 // NEED to pass expression to Defuncs
 // do_match
-
-fn to_expression(value) {
-  case value {
-    Binary(b) -> e.Binary(b)
-    Residual(exp) -> exp
-    _ -> {
-      io.debug(value)
-      panic("sdsd")
-    }
-  }
-}
-
-pub fn eval(exp) {
-  do_eval(
-    E(exp),
-    [],
-    fn(value, _e) {
-      Done(case value {
-        // E(exp) -> exp
-        Binary(value) -> e.Binary(value)
-        Fn(_, _, _) -> todo("end with fn")
-        Residual(_) -> todo("residual")
-        Defunc(_, _) -> todo("defun")
-      })
-    },
-  )
-}
-
-fn do_eval(control, e, k) {
-  case step(control, e, k) {
-    Done(value) -> value
-    K(control, e, k) -> do_eval(control, e, k)
-  }
-}
