@@ -137,6 +137,7 @@ pub fn builtins() {
   |> extend_b("string_uppercase", uppercase())
   |> extend_b("string_lowercase", lowercase())
   |> extend_b("string_length", length())
+  |> extend_b("pop_grapheme", pop_grapheme())
   // list
   |> extend_b("list_pop", pop())
   |> extend_b("list_fold", fold())
@@ -245,6 +246,16 @@ pub fn lowercase() {
 
 pub fn length() {
   t.Fun(t.String, t.Var(0), t.Integer)
+}
+
+pub fn pop_grapheme() {
+  let parts =
+    t.Record(t.RowExtend(
+      "head",
+      t.String,
+      t.RowExtend("tail", t.String, t.Empty),
+    ))
+  t.Fun(t.String, t.Var(0), t.result(parts, t.unit))
 }
 
 pub fn pop() {

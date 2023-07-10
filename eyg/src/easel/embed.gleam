@@ -538,6 +538,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "e" -> assign_to(state, start, end)
         "E" -> assign_before(state, start, end)
         "r" -> extend(state, start, end)
+        "R" -> extender(state, start, end)
         "t" -> tag(state, start, end)
         "y" -> copy(state, start, end)
         "Y" -> paste(state, start, end)
@@ -808,6 +809,16 @@ pub fn insert_text(state: Embed, data, start, end) {
                 False -> #(target, [], cut_start, False)
               }
             }
+            e.Case(label) -> {
+              case is_tag(data) {
+                True -> {
+                  let #(label, offset) =
+                    replace_at(label, cut_start, cut_end, data)
+                  #(e.Case(label), [], offset, True)
+                }
+                False -> #(target, [], cut_start, False)
+              }
+            }
             e.Perform(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               #(e.Perform(label), [], offset, True)
@@ -1041,6 +1052,12 @@ pub fn extend(state: Embed, start, end) {
     e.Vacant("") -> #(e.Empty, state.mode, [])
     _ -> #(e.Apply(e.Apply(e.Extend(""), e.Vacant("")), target), Insert, [])
   }
+}
+
+pub fn extender(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  #(e.Extend(""), state.mode, [])
 }
 
 pub fn tag(state: Embed, start, end) {

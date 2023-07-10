@@ -64,6 +64,23 @@ pub fn do_length(value, _builtins, k) {
   r.continue(k, r.Integer(string.length(value)))
 }
 
+pub fn pop_grapheme() {
+  let parts =
+    t.Record(t.Extend("head", t.Binary, t.Extend("tail", t.Binary, t.Closed)))
+  let type_ = t.Fun(t.Binary, t.Open(1), t.result(parts, t.unit))
+  #(type_, r.Arity1(do_pop_grapheme))
+}
+
+fn do_pop_grapheme(term, _builtins, k) {
+  use string <- cast.string(term)
+  let return = case string.pop_grapheme(string) {
+    Error(Nil) -> r.error(r.unit)
+    Ok(#(head, tail)) ->
+      r.ok(r.Record([#("head", r.Binary(head)), #("tail", r.Binary(tail))]))
+  }
+  r.continue(k, return)
+}
+
 pub fn replace() {
   let type_ =
     t.Fun(

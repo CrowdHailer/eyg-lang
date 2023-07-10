@@ -97,6 +97,7 @@ pub fn lib() {
   |> extend("string_uppercase", string.uppercase())
   |> extend("string_lowercase", string.lowercase())
   |> extend("string_length", string.length())
+  |> extend("pop_grapheme", string.pop_grapheme())
   // list
   |> extend("list_pop", linked_list.pop())
   |> extend("list_fold", linked_list.fold())

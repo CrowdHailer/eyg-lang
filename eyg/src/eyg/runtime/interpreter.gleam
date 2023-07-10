@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
@@ -74,6 +75,7 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
       promise.await(
         p,
         fn(return) {
+          io.debug(map.keys(extrinsic))
           flatten_promise(
             handle(k(return), env.builtins, extrinsic),
             env,
