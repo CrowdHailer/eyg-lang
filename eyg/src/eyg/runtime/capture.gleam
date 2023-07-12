@@ -74,7 +74,11 @@ fn do_capture(term, env) {
             let #(var, term) = new
             let #(exp, env) = do_capture(term, env)
             case list.key_find(env, var) {
-              Ok(_) -> todo
+              Ok(old) if old == exp -> env
+              Ok(old) -> {
+                io.debug(#(old, exp))
+                todo
+              }
               Error(Nil) -> [#(var, exp), ..env]
             }
           },
@@ -260,37 +264,6 @@ fn do_vars_used(exp, env, found) {
 // // let a = huge
 // // let f1 _ -> a
 // // let f2 _ -> f
-
-// // pub fn double_catch_test() {
-// //   let exp =
-// //     e.Let(
-// //       "std",
-// //       e.Binary("Standard"),
-// //       e.Let(
-// //         "f0",
-// //         e.Lambda("_", e.Variable("std")),
-// //         e.Let(
-// //           "f1",
-// //           e.Lambda("_", e.Variable("f0")),
-// //           e.Let(
-// //             "f2",
-// //             e.Lambda("_", e.Variable("std")),
-// //             e.list([e.Variable("f1"), e.Variable("f2")]),
-// //           ),
-// //         ),
-// //       ),
-// //     )
-// //   let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
-// //   io.debug(term)
-// //   io.debug("============")
-// //   let #(exp, env) = capture(term, [])
-// //   exp
-// //   |> io.debug
-// //   env
-// //   |> io.debug
-
-// //   todo
-// // }
 
 // // let a = 3
 // // let f1 = _ -> a

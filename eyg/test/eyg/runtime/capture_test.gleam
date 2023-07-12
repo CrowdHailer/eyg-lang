@@ -129,6 +129,54 @@ pub fn renamed_test_test() {
   |> should.equal(r.Value(r.Binary("second")))
 }
 
+pub fn only_needed_values_captured_test() {
+  let exp =
+    e.Let(
+      "a",
+      e.Binary("ignore"),
+      e.Let(
+        "b",
+        e.Lambda("_", e.Variable("a")),
+        e.Let("c", e.Binary("yes"), e.Lambda("_", e.Variable("c"))),
+      ),
+    )
+  let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
+  capture.capture(term)
+  |> should.equal(e.Let("c", e.Binary("yes"), e.Lambda("_", e.Variable("c"))))
+}
+
+pub fn double_catch_test() {
+  let exp =
+    e.Let(
+      "std",
+      e.Binary("Standard"),
+      e.Let(
+        "f0",
+        e.Lambda("_", e.Variable("std")),
+        e.Let(
+          "f1",
+          e.Lambda("_", e.Variable("f0")),
+          e.Let(
+            "f2",
+            e.Lambda("_", e.Variable("std")),
+            e.list([e.Variable("f1"), e.Variable("f2")]),
+          ),
+        ),
+      ),
+    )
+  // TODO simpler i.e. no f0 nesting here
+  let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
+  io.debug(term)
+  io.debug("============")
+  let exp =
+    capture.capture(term)
+    |> r.eval(env.empty(), r.Value)
+    |> should.equal(r.Value(term))
+    |> io.debug
+
+  todo
+}
+
 // pub fn fn_in_env_test() -> Nil {
 //   let exp =
 //     e.Let(
