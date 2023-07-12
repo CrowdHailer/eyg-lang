@@ -1,4 +1,5 @@
 import gleam/int
+import gleam/result
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
@@ -9,10 +10,17 @@ pub fn add() {
   #(type_, r.Arity2(do_add))
 }
 
-fn do_add(left, right, _builtins, k) {
-  use left <- cast.integer(left)
-  use right <- cast.integer(right)
-  r.continue(k, r.Integer(left + right))
+fn require(result, env, k, then) {
+  case result {
+    Ok(value) -> then(value)
+    Error(reason) -> r.prim(r.Abort(reason), env, k)
+  }
+}
+
+fn do_add(left, right, env, k) {
+  use left <- require(cast.integer(left), env, k)
+  use right <- require(cast.integer(right), env, k)
+  r.prim(r.Value(r.Integer(left + right)), env, k)
 }
 
 pub fn subtract() {
@@ -21,10 +29,10 @@ pub fn subtract() {
   #(type_, r.Arity2(do_subtract))
 }
 
-fn do_subtract(left, right, _builtins, k) {
-  use left <- cast.integer(left)
-  use right <- cast.integer(right)
-  r.continue(k, r.Integer(left - right))
+fn do_subtract(left, right, env, k) {
+  use left <- require(cast.integer(left), env, k)
+  use right <- require(cast.integer(right), env, k)
+  r.prim(r.Value(r.Integer(left - right)), env, k)
 }
 
 pub fn multiply() {
@@ -33,10 +41,10 @@ pub fn multiply() {
   #(type_, r.Arity2(do_multiply))
 }
 
-fn do_multiply(left, right, _builtins, k) {
-  use left <- cast.integer(left)
-  use right <- cast.integer(right)
-  r.continue(k, r.Integer(left * right))
+fn do_multiply(left, right, env, k) {
+  use left <- require(cast.integer(left), env, k)
+  use right <- require(cast.integer(right), env, k)
+  r.prim(r.Value(r.Integer(left * right)), env, k)
 }
 
 pub fn divide() {
@@ -45,10 +53,10 @@ pub fn divide() {
   #(type_, r.Arity2(do_divide))
 }
 
-fn do_divide(left, right, _builtins, k) {
-  use left <- cast.integer(left)
-  use right <- cast.integer(right)
-  r.continue(k, r.Integer(left / right))
+fn do_divide(left, right, env, k) {
+  use left <- require(cast.integer(left), env, k)
+  use right <- require(cast.integer(right), env, k)
+  r.prim(r.Value(r.Integer(left / right)), env, k)
 }
 
 pub fn absolute() {
@@ -56,9 +64,9 @@ pub fn absolute() {
   #(type_, r.Arity1(do_absolute))
 }
 
-fn do_absolute(x, _builtins, k) {
-  use x <- cast.integer(x)
-  r.continue(k, r.Integer(int.absolute_value(x)))
+fn do_absolute(x, env, k) {
+  use x <- require(cast.integer(x), env, k)
+  r.prim(r.Value(r.Integer(int.absolute_value(x))), env, k)
 }
 
 pub fn parse() {
@@ -66,13 +74,14 @@ pub fn parse() {
   #(type_, r.Arity1(do_parse))
 }
 
-fn do_parse(raw, _builtins, k) {
-  use raw <- cast.string(raw)
+fn do_parse(raw, env, k) {
+  use raw <- require(cast.string(raw), env, k)
   case int.parse(raw) {
     Ok(i) -> r.ok(r.Integer(i))
     Error(Nil) -> r.error(r.unit)
   }
-  |> r.continue(k, _)
+  |> r.Value
+  |> r.prim(env, k)
 }
 
 pub fn to_string() {
@@ -80,7 +89,7 @@ pub fn to_string() {
   #(type_, r.Arity1(do_to_string))
 }
 
-fn do_to_string(x, _builtins, k) {
-  use x <- cast.integer(x)
-  r.continue(k, r.Binary(int.to_string(x)))
+fn do_to_string(x, env, k) {
+  use x <- require(cast.integer(x), env, k)
+  r.prim(r.Value(r.Binary(int.to_string(x))), env, k)
 }

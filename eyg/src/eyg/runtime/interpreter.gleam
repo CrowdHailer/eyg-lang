@@ -17,18 +17,17 @@ pub type Failure {
   MissingField(String)
 }
 
+fn done(value) {
+  Done(Value(value))
+}
+
 pub fn run(source, env, term, extrinsic) {
   case
     eval(
       source,
       env,
-      fn(f) {
-        handle(
-          eval_call(f, term, env.builtins, Value(_)),
-          env.builtins,
-          extrinsic,
-        )
-      },
+      // fn(f) { handle(eval_call(f, term, env, done), env.builtins, extrinsic) },
+      todo("foo"),
     )
   {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
@@ -37,7 +36,7 @@ pub fn run(source, env, term, extrinsic) {
     Value(term) -> Ok(term)
     Abort(failure) -> Error(failure)
     Effect(label, lifted, _) -> Error(UnhandledEffect(label, lifted))
-    Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
+    // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     // other runtime errors return error, maybe this should be the same
     Async(_, _) ->
       panic(
@@ -52,13 +51,8 @@ pub fn run_async(source, env, term, extrinsic) {
       eval(
         source,
         env,
-        fn(f) {
-          handle(
-            eval_call(f, term, env.builtins, Value(_)),
-            env.builtins,
-            extrinsic,
-          )
-        },
+        // fn(f) { handle(eval_call(f, term, env, done), env.builtins, extrinsic) },
+        todo("run async"),
       ),
       // break the loop
       env.builtins,
@@ -76,7 +70,7 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     Abort(failure) -> promise.resolve(Error(failure))
     Effect(label, lifted, _) ->
       promise.resolve(Error(UnhandledEffect(label, lifted)))
-    Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
+    // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     Async(p, k) ->
       promise.await(
         p,
@@ -99,12 +93,12 @@ pub fn handle(return, builtins, extrinsic) {
     Effect(label, term, k) ->
       case map.get(extrinsic, label) {
         Ok(handler) ->
-          // handle(eval_call(handler, term, builtins, k), builtins, extrinsic)
+          // handle(eval_call(handler, term, env, k), builtins, extrinsic)
           handle(handler(term, k), builtins, extrinsic)
         Error(Nil) -> Abort(UnhandledEffect(label, term))
       }
     Value(term) -> Value(term)
-    Cont(term, k) -> handle(k(term), builtins, extrinsic)
+    // Cont(term, k) -> handle(k(term), builtins, extrinsic)
     Abort(failure) -> Abort(failure)
     Async(promise, k) -> Async(promise, k)
   }
@@ -206,166 +200,191 @@ pub type Return {
   // Cont is needed to break the stack (with loop).
   // I could remove Value and always return a result from run, but that would make it not easy to check correct Effects in tests.
   Value(term: Term)
-  Cont(term: Term, k: fn(Term) -> Return)
 
   Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
   Abort(Failure)
   Async(promise: JSPromise(Term), k: fn(Term) -> Return)
 }
 
-pub fn continue(k, term) {
-  Cont(term, k)
-}
-
-pub fn eval_call(f, arg, builtins, k) {
-  loop(step_call(f, arg, builtins, k))
+pub fn eval_call(f, arg, env, k) {
+  // allways produces value even if abort
+  let #(c, e, k) = step_call(f, arg, env, k)
+  loop(c, e, k)
 }
 
 pub external fn trace() -> String =
   "" "console.trace"
 
-fn step_call(f, arg, builtins, k) {
-  // console.log (#(f, arg, trace()))
+fn step_call(f, arg, env: Env, k) {
   case f {
-    Function(param, body, env) -> {
-      let env = [#(param, arg), ..env]
-      step(body, Env(env, builtins), k)
+    Function(param, body, captured) -> {
+      let env = Env([#(param, arg), ..captured], env.builtins)
+      #(E(body), env, k)
     }
     // builtin needs to return result for the case statement
     Defunc(switch) ->
       case switch {
-        Cons0 -> continue(k, Defunc(Cons1(arg)))
-        Cons1(value) -> cons(value, arg, k)
-        Extend0(label) -> continue(k, Defunc(Extend1(label, arg)))
-        Extend1(label, value) -> extend(label, value, arg, k)
-        Overwrite0(label) -> continue(k, Defunc(Overwrite1(label, arg)))
-        Overwrite1(label, value) -> overwrite(label, value, arg, k)
-        Select0(label) -> select(label, arg, k)
-        Tag0(label) -> continue(k, Tagged(label, arg))
-        Match0(label) -> continue(k, Defunc(Match1(label, arg)))
-        Match1(label, branch) -> continue(k, Defunc(Match2(label, branch, arg)))
-        Match2(label, branch, rest) ->
-          match(label, branch, rest, arg, builtins, k)
-        NoCases0 -> Abort(NoCases)
+        Cons0 -> #(V(Value(Defunc(Cons1(arg)))), env, k)
+        Cons1(value) -> prim(cons(value, arg), env, k)
+        Extend0(label) -> #(V(Value(Defunc(Extend1(label, arg)))), env, k)
+        Extend1(label, value) -> prim(extend(label, value, arg), env, k)
+        Overwrite0(label) -> #(V(Value(Defunc(Overwrite1(label, arg)))), env, k)
+        Overwrite1(label, value) -> prim(overwrite(label, value, arg), env, k)
+        Select0(label) -> prim(select(label, arg), env, k)
+        Tag0(label) -> prim(Value(Tagged(label, arg)), env, k)
+        Match0(label) -> #(V(Value(Defunc(Match1(label, arg)))), env, k)
+        Match1(label, branch) -> #(
+          V(Value(Defunc(Match2(label, branch, arg)))),
+          env,
+          k,
+        )
+        Match2(label, branch, rest) -> todo("match")
+        // match(label, branch, rest, arg, env, k)
+        NoCases0 -> prim(Abort(NoCases), env, k)
         Perform0(label) -> perform(label, arg, k)
-        Handle0(label) -> continue(k, Defunc(Handle1(label, arg)))
-        Handle1(label, handler) -> runner(label, handler, arg, builtins, k)
+        Handle0(label) -> #(V(Value(Defunc(Handle1(label, arg)))), env, k)
+        Handle1(label, handler) -> {
+          todo("handler")
+        }
+        // runner(label, handler, arg, env, k)
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        Resume(label, handler, resume) ->
-          handled(label, handler, k, loop(resume(arg)), builtins)
-        Shallow0(label) -> continue(k, Defunc(Shallow1(label, arg)))
-        Shallow1(label, handler) ->
-          shallow(
-            label,
-            handler,
-            k,
-            eval_call(arg, Record([]), builtins, Value),
-            builtins,
-          )
-        ShallowResume(resume) -> shallow_resume(k, loop(resume(arg)), builtins)
+        Resume(label, handler, resume) -> todo("resume")
+        // handled(label, handler, k, loop(resume(arg)), builtins)
+        Shallow0(label) -> #(V(Value(Defunc(Shallow1(label, arg)))), env, k)
+        Shallow1(label, handler) -> todo("shallow1")
+        // shallow(
+        //   label,
+        //   handler,
+        //   k,
+        //   eval_call(arg, Record([]), builtins, Value),
+        //   builtins,
+        // )
+        ShallowResume(resume) -> todo("shhresume")
+        //  shallow_resume(k, loop(resume(arg)), builtins)
         Builtin(key, applied) ->
-          call_builtin(key, list.append(applied, [arg]), builtins, k)
+          call_builtin(key, list.append(applied, [arg]), env, k)
       }
 
-    term -> Abort(NotAFunction(term))
+    term -> prim(Abort(NotAFunction(term)), env, k)
   }
 }
 
-pub type Arity {
-  Arity1(fn(Term, map.Map(String, Arity), fn(Term) -> Return) -> Return)
-  Arity2(fn(Term, Term, map.Map(String, Arity), fn(Term) -> Return) -> Return)
-  Arity3(
-    fn(Term, Term, Term, map.Map(String, Arity), fn(Term) -> Return) -> Return,
-  )
+pub fn prim(return, env, k) {
+  #(V(return), env, k)
 }
 
-fn call_builtin(key, applied, builtins, kont) {
-  case map.get(builtins, key) {
+pub type Always =
+  #(Control, Env, fn(Term) -> StepR)
+
+pub type Arity {
+  Arity1(fn(Term, Env, fn(Term) -> StepR) -> Always)
+  Arity2(fn(Term, Term, Env, fn(Term) -> StepR) -> Always)
+  Arity3(fn(Term, Term, Term, Env, fn(Term) -> StepR) -> Always)
+}
+
+fn call_builtin(key, applied, env: Env, kont) -> Always {
+  case map.get(env.builtins, key) {
     Ok(func) ->
       case func, applied {
-        Arity1(impl), [x] -> impl(x, builtins, kont)
-        Arity2(impl), [x, y] -> impl(x, y, builtins, kont)
-        Arity3(impl), [x, y, z] -> impl(x, y, z, builtins, kont)
-        _, args -> continue(kont, Defunc(Builtin(key, args)))
+        Arity1(impl), [x] -> impl(x, env, kont)
+        Arity2(impl), [x, y] -> impl(x, y, env, kont)
+        Arity3(impl), [x, y, z] -> impl(x, y, z, env, kont)
+        _, args -> #(V(Value(Defunc(Builtin(key, args)))), env, kont)
       }
-
-    Error(Nil) -> Abort(UndefinedVariable(key))
+    Error(Nil) -> prim(Abort(UndefinedVariable(key)), env, kont)
   }
 }
 
 // In interpreter because circular dependencies interpreter -> spec -> stdlib/linked list
 
+pub type Control {
+  E(e.Expression)
+  V(Return)
+}
+
+// TODO rename when I fix return
+pub type StepR {
+  K(Control, Env, fn(Term) -> StepR)
+  Done(Return)
+}
+
+pub fn eval(exp: e.Expression, env, k) {
+  loop(E(exp), env, k)
+}
+
 // Loop is always tail recursive.
 // It is used to string individual steps into an eval call.
 // If not separated the eval implementation causes stack overflows.
 // This is because eval needs references to itself in continuations.
-pub fn loop(return) {
-  case return {
-    Cont(term, k) -> loop(k(term))
-    return -> return
+pub fn loop(c, e, k) {
+  case step(c, e, k) {
+    K(c, e, k) -> loop(c, e, k)
+    Done(return) -> return
   }
-}
-
-pub fn eval(exp: e.Expression, env, k) {
-  loop(step(exp, env, k))
 }
 
 pub type Env {
   Env(scope: List(#(String, Term)), builtins: map.Map(String, Arity))
 }
 
-fn step(exp: e.Expression, env: Env, k) {
+fn step(exp, env: Env, k) {
   case exp {
-    e.Lambda(param, body) -> continue(k, Function(param, body, env.scope))
-    e.Apply(f, arg) ->
-      step(f, env, fn(f) { step(arg, env, step_call(f, _, env.builtins, k)) })
-    e.Variable(x) ->
-      case list.key_find(env.scope, x) {
-        Ok(term) -> continue(k, term)
+    E(e.Lambda(param, body)) ->
+      K(V(Value(Function(param, body, env.scope))), env, k)
+    E(e.Apply(f, arg)) -> {
+      use f <- K(E(f), env)
+      use arg <- K(E(arg), env)
+      let #(c, e, k) = step_call(f, arg, env, k)
+      K(c, e, k)
+    }
+    // step(f, env, fn(f) { step(arg, env, step_call(f, _, env.builtins, k)) })
+    E(e.Variable(x)) -> {
+      let return = case list.key_find(env.scope, x) {
+        Ok(term) -> Value(term)
         Error(Nil) -> Abort(UndefinedVariable(x))
       }
-    e.Let(var, value, then) ->
-      step(
-        value,
-        env,
-        fn(term) {
-          let env = Env(..env, scope: [#(var, term), ..env.scope])
-          step(then, env, k)
-        },
-      )
-    e.Integer(value) -> continue(k, Integer(value))
-    e.Binary(value) -> continue(k, Binary(value))
-    e.Tail -> continue(k, LinkedList([]))
-    e.Cons -> continue(k, Defunc(Cons0))
-    e.Vacant(comment) -> Abort(Vacant(comment))
-    e.Select(label) -> continue(k, Defunc(Select0(label)))
-    e.Tag(label) -> continue(k, Defunc(Tag0(label)))
-    e.Perform(label) -> continue(k, Defunc(Perform0(label)))
-    e.Empty -> continue(k, Record([]))
-    e.Extend(label) -> continue(k, Defunc(Extend0(label)))
-    e.Overwrite(label) -> continue(k, Defunc(Overwrite0(label)))
-    e.Case(label) -> continue(k, Defunc(Match0(label)))
-    e.NoCases -> continue(k, Defunc(NoCases0))
-    e.Handle(label) -> continue(k, Defunc(Handle0(label)))
-    e.Shallow(label) -> continue(k, Defunc(Shallow0(label)))
-    e.Builtin(identifier) -> continue(k, Defunc(Builtin(identifier, [])))
+      K(V(return), env, k)
+    }
+    E(e.Let(var, value, then)) -> {
+      use value <- K(E(value), env)
+      let env = Env(..env, scope: [#(var, value), ..env.scope])
+      K(E(then), env, k)
+    }
+    E(e.Integer(value)) -> K(V(Value(Integer(value))), env, k)
+    E(e.Binary(value)) -> K(V(Value(Binary(value))), env, k)
+    E(e.Tail) -> K(V(Value(LinkedList([]))), env, k)
+    E(e.Cons) -> K(V(Value(Defunc(Cons0))), env, k)
+    E(e.Vacant(comment)) -> K(V(Abort(Vacant(comment))), env, k)
+    E(e.Select(label)) -> K(V(Value(Defunc(Select0(label)))), env, k)
+    E(e.Tag(label)) -> K(V(Value(Defunc(Tag0(label)))), env, k)
+    E(e.Perform(label)) -> K(V(Value(Defunc(Perform0(label)))), env, k)
+    E(e.Empty) -> K(V(Value(Record([]))), env, k)
+    E(e.Extend(label)) -> K(V(Value(Defunc(Extend0(label)))), env, k)
+    E(e.Overwrite(label)) -> K(V(Value(Defunc(Overwrite0(label)))), env, k)
+    E(e.Case(label)) -> K(V(Value(Defunc(Match0(label)))), env, k)
+    E(e.NoCases) -> K(V(Value(Defunc(NoCases0))), env, k)
+    E(e.Handle(label)) -> K(V(Value(Defunc(Handle0(label)))), env, k)
+    E(e.Shallow(label)) -> K(V(Value(Defunc(Shallow0(label)))), env, k)
+    E(e.Builtin(identifier)) ->
+      K(V(Value(Defunc(Builtin(identifier, [])))), env, k)
+    V(Value(value)) -> k(value)
   }
 }
 
-fn cons(item, tail, k) {
+fn cons(item, tail) {
   case tail {
-    LinkedList(elements) -> continue(k, LinkedList([item, ..elements]))
+    LinkedList(elements) -> Value(LinkedList([item, ..elements]))
     term -> Abort(IncorrectTerm("LinkedList", term))
   }
 }
 
-fn select(label, arg, k) {
+fn select(label, arg) {
   case arg {
     Record(fields) ->
       case list.key_find(fields, label) {
-        Ok(value) -> continue(k, value)
+        Ok(value) -> Value(value)
         Error(Nil) -> Abort(MissingField(label))
       }
     term -> Abort(IncorrectTerm(string.append("Record -select", label), term))
@@ -373,129 +392,129 @@ fn select(label, arg, k) {
 }
 
 fn perform(label, lift, resume) {
-  Effect(label, lift, resume)
+  todo("perform")
+  // Effect(label, lift, resume)
 }
 
-fn extend(label, value, rest, k) {
+fn extend(label, value, rest) {
   case rest {
-    Record(fields) -> continue(k, Record([#(label, value), ..fields]))
+    Record(fields) -> Value(Record([#(label, value), ..fields]))
     term -> Abort(IncorrectTerm("Record -extend", term))
   }
 }
 
-fn overwrite(label, value, rest, k) {
+fn overwrite(label, value, rest) {
   case rest {
     Record(fields) ->
       case list.key_pop(fields, label) {
-        Ok(#(_old, fields)) -> continue(k, Record([#(label, value), ..fields]))
+        Ok(#(_old, fields)) -> Value(Record([#(label, value), ..fields]))
         Error(Nil) -> Abort(MissingField(label))
       }
     term -> Abort(IncorrectTerm("Record -overwrite", term))
   }
 }
 
-fn match(label, matched, otherwise, value, builtins, k) {
+fn match(label, matched, otherwise, value, env, k) {
   case value {
     Tagged(l, term) ->
       case l == label {
-        True -> step_call(matched, term, builtins, k)
-        False -> step_call(otherwise, value, builtins, k)
+        // TODO E/V
+        True -> step_call(matched, term, env, k)
+        False -> step_call(otherwise, value, env, k)
       }
-    term -> Abort(IncorrectTerm("Tagged", term))
+    term -> prim(Abort(IncorrectTerm("Tagged", term)), env, k)
   }
 }
 
 fn handled(label, handler, outer_k, thing, builtins) -> Return {
-  case thing {
-    Effect(l, lifted, resume) if l == label -> {
-      use partial <- step_call(handler, lifted, builtins)
+  todo
+  // case thing {
+  //   Effect(l, lifted, resume) if l == label -> {
+  //     use partial <- step_call(handler, lifted, builtins)
 
-      use applied <- step_call(
-        partial,
-        // Ok so I am lost as to why resume works or is it even needed
-        // I think it is in the situation where someone serializes a
-        // partially applied continuation function in handler
-        Defunc(Resume(label, handler, resume)),
-        builtins,
-      )
+  //     use applied <- step_call(
+  //       partial,
+  //       // Ok so I am lost as to why resume works or is it even needed
+  //       // I think it is in the situation where someone serializes a
+  //       // partially applied continuation function in handler
+  //       Defunc(Resume(label, handler, resume)),
+  //       builtins,
+  //     )
 
-      continue(outer_k, applied)
-    }
-    Value(v) -> continue(outer_k, v)
-    Cont(term, k) -> Cont(term, k)
-    // Not equal to this effect
-    Effect(l, lifted, resume) ->
-      Effect(
-        l,
-        lifted,
-        fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
-      )
-    Async(exec, resume) ->
-      Async(
-        exec,
-        fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
-      )
-    Abort(reason) -> Abort(reason)
-  }
+  //     continue(outer_k, applied)
+  //   }
+  //   Value(v) -> continue(outer_k, v)
+  //   Cont(term, k) -> Cont(term, k)
+  //   // Not equal to this effect
+  //   Effect(l, lifted, resume) ->
+  //     Effect(
+  //       l,
+  //       lifted,
+  //       fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
+  //     )
+  //   Async(exec, resume) ->
+  //     Async(
+  //       exec,
+  //       fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
+  //     )
+  //   Abort(reason) -> Abort(reason)
+  // }
 }
 
 fn shallow_resume(outer_k, thing, builtins) -> Return {
-  case thing {
-    Value(v) -> continue(outer_k, v)
-    Cont(term, k) -> Cont(term, k)
-    // Not equal to this effect
-    Effect(l, lifted, resume) ->
-      Effect(
-        l,
-        lifted,
-        fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) },
-      )
-    Async(exec, resume) ->
-      Async(exec, fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) })
-    Abort(reason) -> Abort(reason)
-  }
+  todo
+  // case thing {
+  //   Value(v) -> continue(outer_k, v)
+  //   Cont(term, k) -> Cont(term, k)
+  //   // Not equal to this effect
+  //   Effect(l, lifted, resume) ->
+  //     Effect(
+  //       l,
+  //       lifted,
+  //       fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) },
+  //     )
+  //   Async(exec, resume) ->
+  //     Async(exec, fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) })
+  //   Abort(reason) -> Abort(reason)
+  // }
 }
 
 fn shallow(label, handler, outer_k, thing, builtins) -> Return {
-  case thing {
-    Effect(l, lifted, resume) if l == label -> {
-      use partial <- step_call(handler, lifted, builtins)
+  todo
+  // case thing {
+  //   Effect(l, lifted, resume) if l == label -> {
+  //     use partial <- step_call(handler, lifted, builtins)
 
-      use applied <- step_call(
-        partial,
-        // Ok so I am lost as to why resume works or is it even needed
-        // I think it is in the situation where someone serializes a
-        // partially applied continuation function in handler
-        Defunc(ShallowResume(resume)),
-        builtins,
-      )
+  //     use applied <- step_call(
+  //       partial,
+  //       // Ok so I am lost as to why resume works or is it even needed
+  //       // I think it is in the situation where someone serializes a
+  //       // partially applied continuation function in handler
+  //       Defunc(ShallowResume(resume)),
+  //       builtins,
+  //     )
 
-      continue(outer_k, applied)
-    }
-    Value(v) -> continue(outer_k, v)
-    Cont(term, k) -> Cont(term, k)
-    // Not equal to this effect
-    Effect(l, lifted, resume) ->
-      Effect(
-        l,
-        lifted,
-        fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
-      )
-    Async(exec, resume) ->
-      Async(
-        exec,
-        fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
-      )
-    Abort(reason) -> Abort(reason)
-  }
+  //     continue(outer_k, applied)
+  //   }
+  //   Value(v) -> continue(outer_k, v)
+  //   Cont(term, k) -> Cont(term, k)
+  //   // Not equal to this effect
+  //   Effect(l, lifted, resume) ->
+  //     Effect(
+  //       l,
+  //       lifted,
+  //       fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
+  //     )
+  //   Async(exec, resume) ->
+  //     Async(
+  //       exec,
+  //       fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
+  //     )
+  //   Abort(reason) -> Abort(reason)
+  // }
 }
 
-pub fn runner(label, handler, exec, builtins, k) {
-  handled(
-    label,
-    handler,
-    k,
-    eval_call(exec, Record([]), builtins, Value),
-    builtins,
-  )
+pub fn runner(label, handler, exec, env, k) {
+  todo
+  // handled(label, handler, k, eval_call(exec, Record([]), env, Value), builtins)
 }

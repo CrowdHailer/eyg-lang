@@ -29,7 +29,8 @@ pub fn debug_logger() {
     t.unit,
     fn(message, k) {
       io.debug(message)
-      r.continue(k, r.unit)
+      // r.continue(k, r.unit)
+      todo
     },
   )
 }
@@ -39,9 +40,10 @@ pub fn window_alert() {
     t.Binary,
     t.unit,
     fn(message, k) {
-      use message <- cast.string(message)
-      window.alert(message)
-      r.continue(k, r.unit)
+      // use message <- cast.string(message)
+      // window.alert(message)
+      // r.continue(k, r.unit)
+      todo("sn alert")
     },
   )
 }
@@ -55,7 +57,8 @@ pub fn choose() {
         0 -> r.false
         1 -> r.true
       }
-      r.continue(k, value)
+      // r.continue(k, value)
+      todo
     },
   )
 }
@@ -65,41 +68,43 @@ pub fn http() {
     t.Binary,
     t.unit,
     fn(request, k) {
-      use method <- cast.field("method", cast.any, request)
-      io.debug(method)
-      use scheme <- cast.field("scheme", cast.any, request)
-      io.debug(scheme)
-      use host <- cast.field("host", cast.string, request)
-      io.debug(host)
-      use port <- cast.field("port", cast.any, request)
-      io.debug(port)
-      use path <- cast.field("path", cast.string, request)
-      io.debug(path)
-      use query <- cast.field("query", cast.any, request)
-      io.debug(query)
-      use headers <- cast.field("headers", cast.any, request)
-      io.debug(headers)
-      use body <- cast.field("body", cast.any, request)
-      io.debug(body)
+      // TODO reinstate
+      // use method <- cast.field("method", cast.any, request)
+      // io.debug(method)
+      // use scheme <- cast.field("scheme", cast.any, request)
+      // io.debug(scheme)
+      // use host <- cast.field("host", cast.string, request)
+      // io.debug(host)
+      // use port <- cast.field("port", cast.any, request)
+      // io.debug(port)
+      // use path <- cast.field("path", cast.string, request)
+      // io.debug(path)
+      // use query <- cast.field("query", cast.any, request)
+      // io.debug(query)
+      // use headers <- cast.field("headers", cast.any, request)
+      // io.debug(headers)
+      // use body <- cast.field("body", cast.any, request)
+      // io.debug(body)
 
-      let request =
-        request.new()
-        |> request.set_method(Get)
-        |> request.set_host(host)
-        |> request.set_path(path)
-      let promise =
-        try_await(
-          fetch.send(request),
-          fn(response) { fetch.read_text_body(response) },
-        )
-        |> promise.map(fn(response) {
-          case response {
-            Ok(response) -> r.Binary(response.body)
-            Error(_) -> r.Binary("bad response")
-          }
-        })
+      // let request =
+      //   request.new()
+      //   |> request.set_method(Get)
+      //   |> request.set_host(host)
+      //   |> request.set_path(path)
+      // let promise =
+      //   try_await(
+      //     fetch.send(request),
+      //     fn(response) { fetch.read_text_body(response) },
+      //   )
+      //   |> promise.map(fn(response) {
+      //     case response {
+      //       Ok(response) -> r.Binary(response.body)
+      //       Error(_) -> r.Binary("bad response")
+      //     }
+      //   })
 
-      r.continue(k, r.Promise(promise))
+      // r.continue(k, r.Promise(promise))
+      todo("dddeft")
     },
   )
 }
@@ -110,8 +115,9 @@ pub fn await() {
     t.Binary,
     t.unit,
     fn(promise, k) {
-      use js_promise <- cast.promise(promise)
-      r.Async(js_promise, k)
+      // use js_promise <- cast.promise(promise)
+      // r.Async(js_promise, k)
+      todo("foo")
     },
   )
 }
