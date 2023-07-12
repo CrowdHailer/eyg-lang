@@ -164,35 +164,41 @@ pub fn double_catch_test() {
         ),
       ),
     )
-  // TODO simpler i.e. no f0 nesting here
   let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
-  io.debug(term)
-  io.debug("============")
   let exp =
     capture.capture(term)
-    |> r.eval(env.empty(), r.Value)
-    |> should.equal(r.Value(term))
-    |> io.debug
-
-  todo
+    |> should.equal(e.Let(
+      "std",
+      e.Binary("Standard"),
+      e.Let(
+        "f0",
+        e.Lambda("_", e.Variable("std")),
+        // Always inlineing functions can make output quite large, although much smaller without environment.
+        // A possible solution is to always lambda lift if assuming function are large parts of AST
+        e.list([
+          e.Lambda("_", e.Variable("f0")),
+          e.Lambda("_", e.Variable("std")),
+        ]),
+      ),
+    ))
 }
 
-// pub fn fn_in_env_test() -> Nil {
-//   let exp =
-//     e.Let(
-//       "a",
-//       e.Binary("value"),
-//       e.Let(
-//         "a",
-//         e.Lambda("_", e.Variable("a")),
-//         e.Lambda("_", e.Apply(e.Variable("a"), e.Empty)),
-//       ),
-//     )
-//   let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
-//   capture.capture(term)
-//   |> r.eval(env.empty(), r.eval_call(_, r.Record([]), map.new(), r.Value))
-//   |> should.equal(r.Value(r.Binary("value")))
-// }
+pub fn fn_in_env_test() {
+  let exp =
+    e.Let(
+      "a",
+      e.Binary("value"),
+      e.Let(
+        "a",
+        e.Lambda("_", e.Variable("a")),
+        e.Lambda("_", e.Apply(e.Variable("a"), e.Empty)),
+      ),
+    )
+  let assert r.Value(term) = r.eval(exp, env.empty(), r.Value)
+  capture.capture(term)
+  |> r.eval(env.empty(), r.eval_call(_, r.Record([]), map.new(), r.Value))
+  |> should.equal(r.Value(r.Binary("value")))
+}
 
 pub fn tagged_test() {
   let exp = e.Tag("Ok")

@@ -5,6 +5,7 @@ import gleam/map
 import gleam/string
 import eygir/expression as e
 import gleam/javascript/promise.{Promise as JSPromise}
+import plinth/browser/console
 
 pub type Failure {
   NotAFunction(Term)
@@ -47,16 +48,21 @@ pub fn run(source, env, term, extrinsic) {
 
 pub fn run_async(source, env, term, extrinsic) {
   let ret =
-    eval(
-      source,
-      env,
-      fn(f) {
-        handle(
-          eval_call(f, term, env.builtins, Value(_)),
-          env.builtins,
-          extrinsic,
-        )
-      },
+    handle(
+      eval(
+        source,
+        env,
+        fn(f) {
+          handle(
+            eval_call(f, term, env.builtins, Value(_)),
+            env.builtins,
+            extrinsic,
+          )
+        },
+      ),
+      // break the loop
+      env.builtins,
+      extrinsic,
     )
   flatten_promise(ret, env, extrinsic)
 }
@@ -215,7 +221,11 @@ pub fn eval_call(f, arg, builtins, k) {
   loop(step_call(f, arg, builtins, k))
 }
 
+pub external fn trace() -> String =
+  "" "console.trace"
+
 fn step_call(f, arg, builtins, k) {
+  // console.log (#(f, arg, trace()))
   case f {
     Function(param, body, env) -> {
       let env = [#(param, arg), ..env]

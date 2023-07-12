@@ -1,8 +1,10 @@
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/result
 import gleam/set
+import gleam/string
 import eygir/expression as e
 import eyg/runtime/interpreter as r
 
@@ -66,25 +68,69 @@ fn do_capture(term, env) {
             Ok(#(var, term))
           },
         )
-      let env =
+      let #(env, wrapped) =
         list.fold(
           captured,
-          env,
-          fn(env, new) {
+          #(env, []),
+          fn(state, new) {
+            let #(env, wrapped) = state
             let #(var, term) = new
+            // This should also not capture the reused terms inside the env
+            // could special rule std by passing in as an argument
             let #(exp, env) = do_capture(term, env)
             case list.key_find(env, var) {
-              Ok(old) if old == exp -> env
+              Ok(old) if old == exp -> #(env, wrapped)
               Ok(old) -> {
-                io.debug(#(old, exp))
-                todo
+                let pre =
+                  list.filter(
+                    env,
+                    fn(e: #(String, _)) {
+                      string.starts_with(e.0, string.append(var, "#")) && e.1 == exp
+                    },
+                  )
+                case pre {
+                  [] -> {
+                    let scoped_var =
+                      string.concat([var, "#", int.to_string(list.length(env))])
+                    let assert Error(Nil) = list.key_find(env, scoped_var)
+                    let wrapped = [#(scoped_var, var), ..wrapped]
+                    let env = [#(scoped_var, exp), ..env]
+                    #(env, wrapped)
+                  }
+                  [#(scoped_var, _)] -> #(env, [#(scoped_var, var), ..wrapped])
+                }
               }
-              Error(Nil) -> [#(var, exp), ..env]
+
+              Error(Nil) -> #([#(var, exp), ..env], wrapped)
             }
           },
         )
+      // todo key_filter
+      let all =
+        list.filter(
+          env,
+          fn(e: #(String, _)) { string.starts_with(e.0, "std#") },
+        )
+      all
+      |> list.length
+      |> io.debug
+      case list.first(all) {
+        Ok(#(_, v)) ->
+          list.map(all, fn(element: #(_, _)) { element.1 == v })
+          |> io.debug
+        Error(Nil) -> []
+      }
 
       let exp = e.Lambda(arg, body)
+      let exp =
+        list.fold(
+          wrapped,
+          exp,
+          fn(exp, pair) {
+            let #(scoped_var, var) = pair
+            e.Let(var, e.Variable(scoped_var), exp)
+          },
+        )
       #(exp, env)
     }
     r.Defunc(switch) -> capture_defunc(switch, env)
