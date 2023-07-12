@@ -75,9 +75,14 @@ fn do_capture(term, env) {
           fn(state, new) {
             let #(env, wrapped) = state
             let #(var, term) = new
+            io.debug(var)
             // This should also not capture the reused terms inside the env
             // could special rule std by passing in as an argument
-            let #(exp, env) = do_capture(term, env)
+            // 
+            let #(exp, env) = case var {
+              // "std" -> #(e.Binary("I AM STD"), env)
+              _ -> do_capture(term, env)
+            }
             case list.key_find(env, var) {
               Ok(old) if old == exp -> #(env, wrapped)
               Ok(old) -> {
@@ -243,66 +248,6 @@ fn do_vars_used(exp, env, found) {
     _ -> found
   }
 }
-// Duplicate needed name
-// fn capture(term, env) {
-//   case term {
-//     r.LinkedList(items) ->
-//       list.fold_right(
-//         items,
-//         #(e.Tail, env),
-//         fn(state, item) {
-//           let #(tail, env) = state
-//           let #(item, env) = capture(item, env)
-//           let exp = e.Apply(e.Apply(e.Cons, item), tail)
-//           #(exp, env)
-//         },
-//       )
-//     r.Function(param, body, captured) -> {
-//       // capture.vars_used(body, [param], set.new())
-//       let #(r.Function(param, body, []), env) =
-//         capture_fn(param, body, captured, env)
-//       #(e.Lambda(param, body), env)
-//     }
-//     _ -> todo("cp")
-//   }
-// }
-
-// fn capture_fn(param, body, captured, env) -> #(r.Term, _) {
-//   let captured =
-//     list.filter_map(
-//       // Should I capture in order used
-//       capture.vars_used(body, [param], set.new())
-//       |> set.to_list(),
-//       fn(var) {
-//         use term <- result.then(list.key_find(captured, var))
-//         Ok(#(var, term))
-//       },
-//     )
-
-//   let env =
-//     list.fold(
-//       captured,
-//       env,
-//       fn(env, item) {
-//         let #(var, value) = item
-//         case list.key_find(env, var) {
-//           // first order keys in the map then render to prevent dedupe. but if same value already equal
-//           Ok(v) if v == value -> env
-//           Ok(_) -> todo("conflict")
-//           Error(Nil) ->
-//             case value {
-//               r.Function(param, body, captured) -> {
-//                 let #(value, env) = capture_fn(param, body, captured, env)
-//                 [#(var, value), ..env]
-//               }
-//               _ -> [item, ..env]
-//             }
-//         }
-//       },
-//     )
-//   #(r.Function(param, body, []), env)
-// }
-
 // // Test top level var shadowing
 // // Test nested shadowing
 
