@@ -47,9 +47,8 @@ pub fn fix() {
   #(type_, r.Arity1(do_fix))
 }
 
-fn do_fix(builder, builtins, k) {
-  // r.eval_call(builder, r.Defunc(r.Builtin("fixed", [builder])), builtins, k)
-  todo("do fix")
+fn do_fix(builder, env, k) {
+  r.step_call(builder, r.Defunc(r.Builtin("fixed", [builder])), env, k)
 }
 
 pub fn fixed() {
@@ -58,14 +57,17 @@ pub fn fixed() {
   // value produced by the fix action
   #(
     t.Unbound(0),
-    r.Arity2(fn(builder, arg, builtins, k) {
-      // r.eval_call(
-      //   builder,
-      //   r.Defunc(r.Builtin("fixed", [builder])),
-      //   builtins,
-      //   r.eval_call(_, arg, builtins, k),
-      // )
-      todo("fixed")
+    r.Arity2(fn(builder, arg, env, k) {
+      r.step_call(
+        builder,
+        // always pass a reference to itself
+        r.Defunc(r.Builtin("fixed", [builder])),
+        env,
+        fn(partial) {
+          let #(c, e, k) = r.step_call(partial, arg, env, k)
+          r.K(c, e, k)
+        },
+      )
     }),
   )
 }

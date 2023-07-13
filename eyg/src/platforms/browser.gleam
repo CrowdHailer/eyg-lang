@@ -110,7 +110,7 @@ pub fn async() {
         |> promise.await(fn(_: Nil) {
           let ret =
             r.handle(
-              r.eval_call(exec, r.unit, env.builtins, r.Value(_)),
+              r.eval_call(exec, r.unit, env, r.done),
               env.builtins,
               extrinsic,
             )
@@ -126,7 +126,7 @@ pub fn async() {
           }
         })
 
-      r.continue(k, r.Promise(promise))
+      r.prim(r.Value(r.Promise(promise)), env, k)
     },
   )
 }
@@ -143,8 +143,9 @@ fn listen() {
     t.unit,
     t.unit,
     fn(sub, k) {
-      use event <- cast.field("event", cast.string, sub)
-      use handle <- cast.field("handler", cast.any, sub)
+      let env = todo("wwhres env is it stdlib?")
+      use event <- cast.require(cast.field("event", cast.string, sub), env, k)
+      use handle <- cast.require(cast.field("handler", cast.any, sub), env, k)
 
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
@@ -154,7 +155,7 @@ fn listen() {
         fn(_) {
           let ret =
             r.handle(
-              r.eval_call(handle, r.unit, env.builtins, r.Value(_)),
+              r.eval_call(handle, r.unit, env, r.done),
               env.builtins,
               extrinsic,
             )
@@ -162,7 +163,7 @@ fn listen() {
           Nil
         },
       )
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), env, k)
     },
   )
 }
@@ -181,9 +182,9 @@ fn on_click() {
         let arg = window.decode_uri(arg)
         let assert Ok(arg) = decode.from_json(arg)
 
-        do_handle(arg, handle, env.builtins, extrinsic)
+        do_handle(arg, handle, env, extrinsic)
       })
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), env, k)
     },
   )
 }
@@ -197,9 +198,9 @@ fn on_keydown() {
       let #(_, extrinsic) = handlers()
 
       document.on_keydown(fn(k) {
-        do_handle(e.Binary(k), handle, env.builtins, extrinsic)
+        do_handle(e.Binary(k), handle, env, extrinsic)
       })
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), env, k)
     },
   )
 }
@@ -208,11 +209,7 @@ fn do_handle(arg, handle, builtins, extrinsic) {
   let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.done)
   // pass as general term to program arg or fn
   let ret =
-    r.handle(
-      r.eval_call(handle, arg, builtins, r.Value(_)),
-      builtins,
-      extrinsic,
-    )
+    r.handle(r.eval_call(handle, arg, builtins, r.done), builtins, extrinsic)
   case ret {
     r.Value(_) -> Nil
     _ -> {

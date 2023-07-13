@@ -38,7 +38,14 @@ pub fn simple_fn_test() {
 
   let assert r.Value(term) = r.eval(exp, env.empty(), r.done)
   capture.capture(term)
-  |> r.eval(env.empty(), r.eval_call(_, r.Record([]), map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Binary("hello")))
 }
 
@@ -59,12 +66,21 @@ pub fn nested_fn_test() {
   capture.capture(term)
   |> r.eval(
     env.empty(),
-    r.eval_call(
-      _,
-      r.Binary("A"),
-      map.new(),
-      r.eval_call(_, r.Binary("B"), map.new(), r.done),
-    ),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) =
+        r.step_call(
+          f,
+          r.Binary("A"),
+          env.empty(),
+          fn(f) {
+            // env should probably come from capture
+            let #(c, e, k) = r.step_call(f, r.Binary("B"), env.empty(), r.done)
+            r.K(c, e, k)
+          },
+        )
+      r.K(c, e, k)
+    },
   )
   |> should.equal(r.Value(r.LinkedList([r.Binary("A"), r.Binary("B")])))
 }
@@ -74,7 +90,14 @@ pub fn single_let_capture_test() {
 
   let assert r.Value(term) = r.eval(exp, env.empty(), r.done)
   capture.capture(term)
-  |> r.eval(env.empty(), r.eval_call(_, r.Record([]), map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Binary("external")))
 }
 
@@ -125,7 +148,14 @@ pub fn renamed_test_test() {
 
   let assert r.Value(term) = r.eval(exp, env.empty(), r.done)
   capture.capture(term)
-  |> r.eval(env.empty(), r.eval_call(_, r.Record([]), map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Binary("second")))
 }
 
@@ -196,17 +226,33 @@ pub fn fn_in_env_test() {
     )
   let assert r.Value(term) = r.eval(exp, env.empty(), r.done)
   capture.capture(term)
-  |> r.eval(env.empty(), r.eval_call(_, r.Record([]), map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Binary("value")))
 }
 
 pub fn tagged_test() {
   let exp = e.Tag("Ok")
-  let assert r.Value(term) = r.eval(exp, env.empty(), r.done)
+  let env = env.empty()
+  let assert r.Value(term) = r.eval(exp, env, r.done)
 
   let arg = r.Binary("later")
   capture.capture(term)
-  |> r.eval(env.empty(), r.eval_call(_, arg, map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    // doesn't put the arg anywhere in the tree but it's not part of original expression tree anyway
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, arg, env, r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Tagged("Ok", arg)))
 }
 
@@ -225,12 +271,26 @@ pub fn case_test() {
 
   let arg = r.Tagged("Ok", r.Record([]))
   next
-  |> r.eval(env.empty(), r.eval_call(_, arg, map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Binary("good")))
 
   let arg = r.Tagged("Error", r.Record([]))
   next
-  |> r.eval(env.empty(), r.eval_call(_, arg, map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Binary("bad")))
 }
 
@@ -248,7 +308,21 @@ pub fn partial_case_test() {
   next
   |> r.eval(
     env.empty(),
-    r.eval_call(_, rest, map.new(), r.eval_call(_, arg, map.new(), r.done)),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) =
+        r.step_call(
+          f,
+          rest,
+          env.empty(),
+          fn(f) {
+            // env should probably come from capture
+            let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
+            r.K(c, e, k)
+          },
+        )
+      r.K(c, e, k)
+    },
   )
   |> should.equal(r.Value(r.Binary("good")))
 
@@ -256,7 +330,21 @@ pub fn partial_case_test() {
   next
   |> r.eval(
     env.empty(),
-    r.eval_call(_, rest, map.new(), r.eval_call(_, arg, map.new(), r.done)),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) =
+        r.step_call(
+          f,
+          rest,
+          env.empty(),
+          fn(f) {
+            // env should probably come from capture
+            let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
+            r.K(c, e, k)
+          },
+        )
+      r.K(c, e, k)
+    },
   )
   |> should.equal(r.Value(r.Binary("bad")))
 }
@@ -277,14 +365,28 @@ pub fn handler_test() {
   let assert r.Value(exec) = r.eval(exec, env.empty(), r.done)
 
   next
-  |> r.eval(env.empty(), r.eval_call(_, exec, map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, exec, env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Tagged("Ok", r.Binary("some string"))))
 
   let exec = e.Lambda("_", e.Apply(e.Perform("Abort"), e.Binary("failure")))
   let assert r.Value(exec) = r.eval(exec, env.empty(), r.done)
 
   next
-  |> r.eval(env.empty(), r.eval_call(_, exec, map.new(), r.done))
+  |> r.eval(
+    env.empty(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, exec, env.empty(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Tagged("Error", r.Binary("failure"))))
 }
 
@@ -310,7 +412,7 @@ pub fn handler_test() {
 //   let next = capture.capture(term)
 
 //   next
-//   |> r.eval(env.empty(), r.eval_call(_, r.Binary("fooo"), map.new(), r.done))
+//   |> r.eval(env.empty(), r.eval_call(_, r.Binary("fooo"), env.empty(), r.done))
 //   // This should return a effect of subsequent logs, I don't know how to do this
 // }
 
@@ -330,12 +432,17 @@ pub fn builtin_arity1_test() {
   next
   |> r.eval(
     stdlib.env(),
-    r.eval_call(
-      _,
-      r.LinkedList([r.Integer(1), r.Integer(2)]),
-      stdlib.env().builtins,
-      r.Value,
-    ),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) =
+        r.step_call(
+          f,
+          r.LinkedList([r.Integer(1), r.Integer(2)]),
+          env.empty(),
+          r.done,
+        )
+      r.K(c, e, k)
+    },
   )
   |> should.equal(r.Value(split))
 
@@ -365,14 +472,26 @@ pub fn builtin_arity3_test() {
   next
   |> r.eval(
     stdlib.env(),
-    r.eval_call(_, r.Binary("not a function"), stdlib.env().builtins, r.done),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) =
+        r.step_call(f, r.Binary("not a function"), env.empty(), r.done)
+      r.K(c, e, k)
+    },
   )
   |> should.equal(r.Abort(r.NotAFunction(r.Binary("not a function"))))
 
   let reduce_exp = e.Lambda("el", e.Lambda("acc", e.Variable("el")))
   let assert r.Value(reduce) = r.eval(reduce_exp, stdlib.env(), r.done)
   next
-  |> r.eval(stdlib.env(), r.eval_call(_, reduce, stdlib.env().builtins, r.done))
+  |> r.eval(
+    stdlib.env(),
+    fn(f) {
+      // env should probably come from capture
+      let #(c, e, k) = r.step_call(f, reduce, stdlib.env(), r.done)
+      r.K(c, e, k)
+    },
+  )
   |> should.equal(r.Value(r.Integer(2)))
 
   // same as complete eval

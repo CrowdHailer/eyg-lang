@@ -43,13 +43,14 @@ fn applet(root) {
       let assert Ok(source) =
         decode.from_json(string.replace(document.inner_text(script), "\\/", "/"))
       {
-        let assert r.Value(term) = r.eval(source, stdlib.env(), r.done)
-        use func <- cast.field("func", cast.any, term)
-        use arg <- cast.field("arg", cast.any, term)
+        let env = stdlib.env()
+        let k = r.done
+        let assert r.Value(term) = r.eval(source, env, k)
+        use func <- cast.require(cast.field("func", cast.any, term), env, k)
+        use arg <- cast.require(cast.field("arg", cast.any, term), env, k)
         // run func arg can be a thing
         // weird return wrapping for cast
         // stdlib only builtins used
-        let builtins = stdlib.env().builtins
         let actions = javascript.make_reference([])
         let handlers =
           map.new()
@@ -60,7 +61,7 @@ fn applet(root) {
               let id = int.to_string(list.length(saved))
               let saved = [action, ..saved]
               javascript.set_reference(actions, saved)
-              r.continue(k, r.Binary(id))
+              r.prim(r.Value(r.Binary(id)), env, k)
             },
           )
           |> map.insert("Log", console_log().2)
@@ -68,11 +69,7 @@ fn applet(root) {
         let render = fn() {
           let current = javascript.dereference(state)
           let result =
-            r.handle(
-              r.eval_call(func, current, builtins, r.done),
-              builtins,
-              handlers,
-            )
+            r.handle(r.eval_call(func, current, env, r.done), env, handlers)
           let _ = case result {
             r.Value(r.Binary(page)) -> document.set_html(root, page)
             _ -> {
@@ -96,7 +93,7 @@ fn applet(root) {
                     let current = javascript.dereference(state)
                     // io.debug(javascript.dereference(actions))
                     let assert r.Value(next) =
-                      r.eval_call(code, current, builtins, r.done)
+                      r.eval_call(code, current, env, r.done)
                     javascript.set_reference(state, next)
                     javascript.set_reference(actions, [])
                     render()
@@ -114,7 +111,7 @@ fn applet(root) {
           },
         )
         render()
-        r.Value(func)
+        r.prim(r.Value(func), env, k)
       }
       Nil
     }
@@ -148,9 +145,10 @@ pub fn console_log() {
     t.String,
     t.unit,
     fn(message, k) {
-      use message <- cast.string(message)
+      let env = todo("one more env")
+      use message <- cast.require(cast.string(message), env, k)
       console.log(message)
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), env, k)
     },
   )
 }

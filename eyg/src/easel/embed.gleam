@@ -910,13 +910,14 @@ fn run(state: Embed) {
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
     r.Async(p, k) -> {
-      let p = await_on_async(p, k, env, handlers)
-      let p =
-        promise.map(
-          p,
-          fn(string) { fn(state) { Embed(..state, mode: Command(string)) } },
-        )
-      #("Running", [p])
+      // let p = await_on_async(p, k, env, handlers)
+      // let p =
+      //   promise.map(
+      //     p,
+      //     fn(string) { fn(state) { Embed(..state, mode: Command(string)) } },
+      //   )
+      // #("Running", [p])
+      todo("ggg")
     }
     _ -> panic("this should be tackled better in the run code")
   }
@@ -931,7 +932,8 @@ fn await_on_async(p, k, env: r.Env, handlers) {
       io.debug(term)
       promise.resolve(term_to_string(term))
     }
-    r.Async(p, k) -> await_on_async(p, k, env, handlers)
+    // TODO
+    // r.Async(p, k) -> await_on_async(p, k, env, handlers)
     _ -> panic("this should be tackled better in the run code")
   }
 }

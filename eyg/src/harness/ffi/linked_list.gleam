@@ -52,15 +52,28 @@ pub fn fold_impl(list, initial, func, env, k) {
 }
 
 pub fn do_fold(elements, state, f, env, k) {
-  todo("do fold")
-  // case elements {
-  //   [] -> r.continue(k, state)
-  //   [e, ..rest] ->
-  //     r.eval_call(
-  //       f,
-  //       e,
-  //       env,
-  //       r.eval_call(_, state, env, do_fold(rest, _, f, env, k)),
-  //     )
-  // }
+  case elements {
+    [] -> r.prim(r.Value(state), env, k)
+    // r.continue(k, state)
+    [element, ..rest] ->
+      r.step_call(
+        f,
+        element,
+        env,
+        // r.eval_call(_, state, env, do_fold(rest, _, f, env, k)),
+        fn(partial) {
+          let #(c, e, k) =
+            r.step_call(
+              partial,
+              state,
+              env,
+              fn(state) {
+                let #(c, e, k) = do_fold(rest, state, f, env, k)
+                r.K(c, e, k)
+              },
+            )
+          r.K(c, e, k)
+        },
+      )
+  }
 }

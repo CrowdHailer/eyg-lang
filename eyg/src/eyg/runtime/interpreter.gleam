@@ -17,6 +17,9 @@ pub type Failure {
   MissingField(String)
 }
 
+// TODO separate interpreter from runner
+// TODO separate async run from async eval
+
 pub fn done(value) {
   Done(Value(value))
 }
@@ -26,8 +29,13 @@ pub fn run(source, env, term, extrinsic) {
     eval(
       source,
       env,
-      // fn(f) { handle(eval_call(f, term, env, done), env.builtins, extrinsic) },
-      todo("foo"),
+      fn(f) {
+        // This could return step call but then env/extrinsic would be the same for initial and args
+        eval_call(f, term, env, done)
+        // extrinsic
+        |> handle(env.builtins, extrinsic)
+        |> Done
+      },
     )
   {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
@@ -35,7 +43,7 @@ pub fn run(source, env, term, extrinsic) {
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> Ok(term)
     Abort(failure) -> Error(failure)
-    Effect(label, lifted, _) -> Error(UnhandledEffect(label, lifted))
+    Effect(label, lifted, _env, _k) -> Error(UnhandledEffect(label, lifted))
     // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     // other runtime errors return error, maybe this should be the same
     Async(_, _) ->
@@ -46,19 +54,20 @@ pub fn run(source, env, term, extrinsic) {
 }
 
 pub fn run_async(source, env, term, extrinsic) {
-  let ret =
-    handle(
-      eval(
-        source,
-        env,
-        // fn(f) { handle(eval_call(f, term, env, done), env.builtins, extrinsic) },
-        todo("run async"),
-      ),
-      // break the loop
-      env.builtins,
-      extrinsic,
-    )
-  flatten_promise(ret, env, extrinsic)
+  // let ret =
+  //   handle(
+  //     eval(
+  //       source,
+  //       env,
+  //       // fn(f) { handle(eval_call(f, term, env, done), env.builtins, extrinsic) },
+  //       todo("run async"),
+  //     ),
+  //     // break the loop
+  //     env.builtins,
+  //     extrinsic,
+  //   )
+  // flatten_promise(ret, env, extrinsic)
+  todo("extrinsic map of K's")
 }
 
 pub fn flatten_promise(ret, env: Env, extrinsic) {
@@ -68,16 +77,14 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> promise.resolve(Ok(term))
     Abort(failure) -> promise.resolve(Error(failure))
-    Effect(label, lifted, _) ->
+    Effect(label, lifted, _env, _k) ->
       promise.resolve(Error(UnhandledEffect(label, lifted)))
-    // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     Async(p, k) ->
       promise.await(
         p,
         fn(return) {
-          io.debug(map.keys(extrinsic))
           flatten_promise(
-            handle(k(return), env.builtins, extrinsic),
+            handle(loop(V(Value(return)), env, done), env.builtins, extrinsic),
             env,
             extrinsic,
           )
@@ -90,11 +97,14 @@ pub fn handle(return, builtins, extrinsic) {
   case return {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
-    Effect(label, term, k) ->
+    Effect(label, term, env, k) ->
       case map.get(extrinsic, label) {
-        Ok(handler) ->
-          // handle(eval_call(handler, term, env, k), builtins, extrinsic)
-          handle(handler(term, k), builtins, extrinsic)
+        Ok(handler) -> {
+          // handler only gets env in captured fn's
+          let #(c, e, k) = handler(term, k)
+          let return = loop(c, e, k)
+          handle(return, builtins, extrinsic)
+        }
         Error(Nil) -> Abort(UnhandledEffect(label, term))
       }
     Value(term) -> Value(term)
@@ -131,7 +141,7 @@ pub type Switch {
   Perform0(String)
   Handle0(String)
   Handle1(String, Term)
-  Resume(String, Term, fn(Term) -> Return)
+  Resume(String, Term, fn(Term) -> #(Control, Env, fn(Term) -> StepR))
   Shallow0(String)
   Shallow1(String, Term)
   ShallowResume(fn(Term) -> Return)
@@ -201,9 +211,9 @@ pub type Return {
   // I could remove Value and always return a result from run, but that would make it not easy to check correct Effects in tests.
   Value(term: Term)
 
-  Effect(label: String, lifted: Term, continuation: fn(Term) -> Return)
+  Effect(label: String, lifted: Term, env: Env, continuation: fn(Term) -> StepR)
   Abort(Failure)
-  Async(promise: JSPromise(Term), k: fn(Term) -> Return)
+  Async(promise: JSPromise(Term), k: fn(Term) -> StepR)
 }
 
 pub fn eval_call(f, arg, env, k) {
@@ -215,7 +225,7 @@ pub fn eval_call(f, arg, env, k) {
 pub external fn trace() -> String =
   "" "console.trace"
 
-fn step_call(f, arg, env: Env, k) {
+pub fn step_call(f, arg, env: Env, k) {
   case f {
     Function(param, body, captured) -> {
       let env = Env([#(param, arg), ..captured], env.builtins)
@@ -238,20 +248,17 @@ fn step_call(f, arg, env: Env, k) {
           env,
           k,
         )
-        Match2(label, branch, rest) -> todo("match")
-        // match(label, branch, rest, arg, env, k)
+        Match2(label, branch, rest) -> match(label, branch, rest, arg, env, k)
         NoCases0 -> prim(Abort(NoCases), env, k)
-        Perform0(label) -> perform(label, arg, k)
+        // env is part of k
+        Perform0(label) -> #(V(Effect(label, arg, env, k)), env, done)
         Handle0(label) -> #(V(Value(Defunc(Handle1(label, arg)))), env, k)
-        Handle1(label, handler) -> {
-          todo("handler")
-        }
-        // runner(label, handler, arg, env, k)
+        Handle1(label, handler) -> runner(label, handler, arg, env, k)
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        Resume(label, handler, resume) -> todo("resume")
-        // handled(label, handler, k, loop(resume(arg)), builtins)
+        Resume(label, handler, resume) -> resume(arg)
+
         Shallow0(label) -> #(V(Value(Defunc(Shallow1(label, arg)))), env, k)
         Shallow1(label, handler) -> todo("shallow1")
         // shallow(
@@ -370,6 +377,7 @@ fn step(exp, env: Env, k) {
     E(e.Builtin(identifier)) ->
       K(V(Value(Defunc(Builtin(identifier, [])))), env, k)
     V(Value(value)) -> k(value)
+    V(other) -> Done(other)
   }
 }
 
@@ -389,11 +397,6 @@ fn select(label, arg) {
       }
     term -> Abort(IncorrectTerm(string.append("Record -select", label), term))
   }
-}
-
-fn perform(label, lift, resume) {
-  todo("perform")
-  // Effect(label, lift, resume)
 }
 
 fn extend(label, value, rest) {
@@ -426,39 +429,88 @@ fn match(label, matched, otherwise, value, env, k) {
   }
 }
 
-fn handled(label, handler, outer_k, thing, builtins) -> Return {
-  todo
-  // case thing {
-  //   Effect(l, lifted, resume) if l == label -> {
-  //     use partial <- step_call(handler, lifted, builtins)
+pub fn runner(label, handler, exec, env, k) {
+  handled(label, handler, k, eval_call(exec, Record([]), env, done), env)
+  // TODO remove eval_call and return control
+}
 
-  //     use applied <- step_call(
-  //       partial,
-  //       // Ok so I am lost as to why resume works or is it even needed
-  //       // I think it is in the situation where someone serializes a
-  //       // partially applied continuation function in handler
-  //       Defunc(Resume(label, handler, resume)),
-  //       builtins,
-  //     )
+fn handled(label, handler, outer_k, thing, outer_env) {
+  case thing {
+    Effect(l, lifted, env, resume) if l == label -> {
+      let #(c, e, k) =
+        step_call(
+          handler,
+          lifted,
+          outer_env,
+          fn(partial) {
+            let #(c, e, k) =
+              step_call(
+                partial,
+                // Ok so I am lost as to why resume works or is it even needed
+                // I think it is in the situation where someone serializes a
+                // partially applied continuation function in handler
 
-  //     continue(outer_k, applied)
-  //   }
-  //   Value(v) -> continue(outer_k, v)
-  //   Cont(term, k) -> Cont(term, k)
-  //   // Not equal to this effect
-  //   Effect(l, lifted, resume) ->
-  //     Effect(
-  //       l,
-  //       lifted,
-  //       fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
-  //     )
-  //   Async(exec, resume) ->
-  //     Async(
-  //       exec,
-  //       fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
-  //     )
-  //   Abort(reason) -> Abort(reason)
-  // }
+                Defunc(Resume(
+                  label,
+                  handler,
+                  fn(arg) {
+                    #(
+                      V(Value(arg)),
+                      env,
+                      fn(arg) {
+                        let #(c, e, k) =
+                          // I'm really not sure about this
+                          handled(
+                            label,
+                            handler,
+                            outer_k,
+                            loop(V(Value(arg)), env, outer_k),
+                            outer_env,
+                          )
+                        K(c, e, k)
+                      },
+                    )
+                  },
+                )),
+                outer_env,
+                fn(applied) { K(V(Value(applied)), outer_env, outer_k) },
+              )
+            K(c, e, k)
+          },
+        )
+
+      #(c, e, k)
+    }
+    Value(v) -> #(V(Value(v)), outer_env, outer_k)
+    // Not equal to this effect
+    Effect(l, lifted, captured_env, resume) -> {
+      let eff =
+        Effect(
+          l,
+          lifted,
+          captured_env,
+          fn(x) {
+            let thing = case resume(x) {
+              K(c, e, k) -> loop(c, e, k)
+              Done(return) -> return
+            }
+            let #(c, e, k) = handled(label, handler, outer_k, thing, outer_env)
+            K(c, e, k)
+          },
+        )
+      #(V(eff), outer_env, outer_k)
+    }
+    // Async(exec, resume) ->
+    //   Async(
+    //     exec,
+    //     fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
+    //   )
+    // Abort(reason) -> Abort(reason)
+    _ -> {
+      io.debug(thing)
+      todo("deep handler")
+    }
+  }
 }
 
 fn shallow_resume(outer_k, thing, builtins) -> Return {
@@ -512,9 +564,4 @@ fn shallow(label, handler, outer_k, thing, builtins) -> Return {
   //     )
   //   Abort(reason) -> Abort(reason)
   // }
-}
-
-pub fn runner(label, handler, exec, env, k) {
-  todo
-  // handled(label, handler, k, eval_call(exec, Record([]), env, Value), builtins)
 }
