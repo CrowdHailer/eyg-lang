@@ -64,11 +64,16 @@ fn file_write() {
     t.Binary,
     t.unit,
     fn(request, k) {
-      use file <- cast.field("file", cast.string, request)
-      use content <- cast.field("content", cast.string, request)
+      let env = todo("ANOTHER env")
+      use file <- cast.require(cast.field("file", cast.string, request), env, k)
+      use content <- cast.require(
+        cast.field("content", cast.string, request),
+        env,
+        k,
+      )
       fs.write_file_sync(file, content)
       |> io.debug
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), env, k)
     },
   )
 }

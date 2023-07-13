@@ -14,6 +14,6 @@ pub fn add_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   |> should.equal(r.Value(r.Integer(3)))
 }

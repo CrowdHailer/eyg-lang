@@ -17,7 +17,7 @@ pub type Failure {
   MissingField(String)
 }
 
-fn done(value) {
+pub fn done(value) {
   Done(Value(value))
 }
 

@@ -14,14 +14,14 @@ pub fn pop() {
   #(type_, r.Arity1(do_pop))
 }
 
-fn do_pop(term, _builtins, k) {
-  use elements <- cast.list(term)
+fn do_pop(term, env, k) {
+  use elements <- cast.require(cast.list(term), env, k)
   let return = case elements {
     [] -> r.error(r.unit)
     [head, ..tail] ->
       r.ok(r.Record([#("head", head), #("tail", r.LinkedList(tail))]))
   }
-  r.continue(k, return)
+  r.prim(r.Value(return), env, k)
 }
 
 pub fn fold() {
@@ -46,20 +46,21 @@ pub fn fold() {
   #(type_, r.Arity3(fold_impl))
 }
 
-pub fn fold_impl(list, initial, func, builtins, k) {
-  use elements <- cast.list(list)
-  do_fold(elements, initial, func, builtins, k)
+pub fn fold_impl(list, initial, func, env, k) {
+  use elements <- cast.require(cast.list(list), env, k)
+  do_fold(elements, initial, func, env, k)
 }
 
-pub fn do_fold(elements, state, f, builtins, k) {
-  case elements {
-    [] -> r.continue(k, state)
-    [e, ..rest] ->
-      r.eval_call(
-        f,
-        e,
-        builtins,
-        r.eval_call(_, state, builtins, do_fold(rest, _, f, builtins, k)),
-      )
-  }
+pub fn do_fold(elements, state, f, env, k) {
+  todo("do fold")
+  // case elements {
+  //   [] -> r.continue(k, state)
+  //   [e, ..rest] ->
+  //     r.eval_call(
+  //       f,
+  //       e,
+  //       env,
+  //       r.eval_call(_, state, env, do_fold(rest, _, f, env, k)),
+  //     )
+  // }
 }

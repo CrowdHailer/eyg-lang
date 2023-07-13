@@ -10,16 +10,9 @@ pub fn add() {
   #(type_, r.Arity2(do_add))
 }
 
-fn require(result, env, k, then) {
-  case result {
-    Ok(value) -> then(value)
-    Error(reason) -> r.prim(r.Abort(reason), env, k)
-  }
-}
-
 fn do_add(left, right, env, k) {
-  use left <- require(cast.integer(left), env, k)
-  use right <- require(cast.integer(right), env, k)
+  use left <- cast.require(cast.integer(left), env, k)
+  use right <- cast.require(cast.integer(right), env, k)
   r.prim(r.Value(r.Integer(left + right)), env, k)
 }
 
@@ -30,8 +23,8 @@ pub fn subtract() {
 }
 
 fn do_subtract(left, right, env, k) {
-  use left <- require(cast.integer(left), env, k)
-  use right <- require(cast.integer(right), env, k)
+  use left <- cast.require(cast.integer(left), env, k)
+  use right <- cast.require(cast.integer(right), env, k)
   r.prim(r.Value(r.Integer(left - right)), env, k)
 }
 
@@ -42,8 +35,8 @@ pub fn multiply() {
 }
 
 fn do_multiply(left, right, env, k) {
-  use left <- require(cast.integer(left), env, k)
-  use right <- require(cast.integer(right), env, k)
+  use left <- cast.require(cast.integer(left), env, k)
+  use right <- cast.require(cast.integer(right), env, k)
   r.prim(r.Value(r.Integer(left * right)), env, k)
 }
 
@@ -54,8 +47,8 @@ pub fn divide() {
 }
 
 fn do_divide(left, right, env, k) {
-  use left <- require(cast.integer(left), env, k)
-  use right <- require(cast.integer(right), env, k)
+  use left <- cast.require(cast.integer(left), env, k)
+  use right <- cast.require(cast.integer(right), env, k)
   r.prim(r.Value(r.Integer(left / right)), env, k)
 }
 
@@ -65,7 +58,7 @@ pub fn absolute() {
 }
 
 fn do_absolute(x, env, k) {
-  use x <- require(cast.integer(x), env, k)
+  use x <- cast.require(cast.integer(x), env, k)
   r.prim(r.Value(r.Integer(int.absolute_value(x))), env, k)
 }
 
@@ -75,7 +68,7 @@ pub fn parse() {
 }
 
 fn do_parse(raw, env, k) {
-  use raw <- require(cast.string(raw), env, k)
+  use raw <- cast.require(cast.string(raw), env, k)
   case int.parse(raw) {
     Ok(i) -> r.ok(r.Integer(i))
     Error(Nil) -> r.error(r.unit)
@@ -90,6 +83,6 @@ pub fn to_string() {
 }
 
 fn do_to_string(x, env, k) {
-  use x <- require(cast.integer(x), env, k)
+  use x <- cast.require(cast.integer(x), env, k)
   r.prim(r.Value(r.Binary(int.to_string(x))), env, k)
 }

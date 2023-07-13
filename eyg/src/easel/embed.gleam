@@ -904,7 +904,7 @@ fn run(state: Embed) {
     |> map.insert("Async", browser.async().2)
     |> map.insert("Log", effect.debug_logger().2)
   let env = stdlib.env()
-  case r.handle(r.eval(source, env, r.Value), env.builtins, handlers) {
+  case r.handle(r.eval(source, env, r.done), env.builtins, handlers) {
     r.Abort(reason) -> #(reason_to_string(reason), [])
     r.Value(term) -> #(term_to_string(term), [])
     // Only render promises if we are in Async return.

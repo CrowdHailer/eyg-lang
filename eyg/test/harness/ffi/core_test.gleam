@@ -18,7 +18,7 @@ pub fn unequal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   |> should.equal(r.Value(r.false))
 }
 
@@ -33,7 +33,7 @@ pub fn equal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   |> should.equal(r.Value(r.true))
 }
 
@@ -53,7 +53,7 @@ pub fn debug_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Binary))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   // value is serialized as binary, hence the quotes
   |> should.equal(r.Value(r.Binary("\"foo\"")))
 }
@@ -67,7 +67,7 @@ pub fn simple_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Binary))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   |> should.equal(r.Value(r.Binary("foo")))
 }
 
@@ -91,7 +91,7 @@ pub fn no_recursive_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   |> should.equal(r.Value(r.Integer(1)))
 }
 
@@ -145,7 +145,7 @@ pub fn recursive_sum_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   |> should.equal(r.Value(r.Integer(4)))
 }
 
@@ -167,6 +167,6 @@ pub fn eval_test() {
   // inference.type_of(sub, [])
   // |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, stdlib.env(), r.Value)
+  r.eval(prog, stdlib.env(), r.done)
   |> should.equal(r.Value(r.Binary("foo")))
 }

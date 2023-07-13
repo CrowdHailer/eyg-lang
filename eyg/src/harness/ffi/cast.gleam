@@ -28,11 +28,11 @@ pub fn list(term) {
   }
 }
 
-pub fn field(key, inner, term, k) {
+pub fn field(key, inner, term) {
   case term {
     r.Record(fields) ->
       case list.key_find(fields, key) {
-        Ok(value) -> inner(value, k)
+        Ok(value) -> inner(value)
         Error(Nil) -> Error(r.MissingField(key))
       }
     _ -> Error(r.IncorrectTerm("Record", term))
@@ -43,5 +43,12 @@ pub fn promise(term) {
   case term {
     r.Promise(js_promise) -> Ok(js_promise)
     _ -> Error(r.IncorrectTerm("Promise", term))
+  }
+}
+
+pub fn require(result, env, k, then) {
+  case result {
+    Ok(value) -> then(value)
+    Error(reason) -> r.prim(r.Abort(reason), env, k)
   }
 }

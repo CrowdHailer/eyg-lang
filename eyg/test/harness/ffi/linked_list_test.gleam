@@ -25,6 +25,6 @@ pub fn fold_test() {
       e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Binary("initial")),
       reducer,
     )
-  r.eval(source, stdlib.env(), r.Value)
+  r.eval(source, stdlib.env(), r.done)
   |> should.equal(r.Value(r.Binary("initialfizzbuzz")))
 }

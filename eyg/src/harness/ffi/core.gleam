@@ -19,12 +19,13 @@ pub fn equal() {
   #(type_, r.Arity2(do_equal))
 }
 
-fn do_equal(left, right, _builtins, k) {
+fn do_equal(left, right, env, k) {
   case left == right {
     True -> r.true
     False -> r.false
   }
-  |> r.continue(k, _)
+  |> r.Value
+  |> r.prim(env, k)
 }
 
 pub fn debug() {
@@ -32,8 +33,8 @@ pub fn debug() {
   #(type_, r.Arity1(do_debug))
 }
 
-fn do_debug(term, _builtins, k) {
-  r.continue(k, r.Binary(r.to_string(term)))
+fn do_debug(term, env, k) {
+  r.prim(r.Value(r.Binary(r.to_string(term))), env, k)
 }
 
 pub fn fix() {
@@ -47,7 +48,8 @@ pub fn fix() {
 }
 
 fn do_fix(builder, builtins, k) {
-  r.eval_call(builder, r.Defunc(r.Builtin("fixed", [builder])), builtins, k)
+  // r.eval_call(builder, r.Defunc(r.Builtin("fixed", [builder])), builtins, k)
+  todo("do fix")
 }
 
 pub fn fixed() {
@@ -57,12 +59,13 @@ pub fn fixed() {
   #(
     t.Unbound(0),
     r.Arity2(fn(builder, arg, builtins, k) {
-      r.eval_call(
-        builder,
-        r.Defunc(r.Builtin("fixed", [builder])),
-        builtins,
-        r.eval_call(_, arg, builtins, k),
-      )
+      // r.eval_call(
+      //   builder,
+      //   r.Defunc(r.Builtin("fixed", [builder])),
+      //   builtins,
+      //   r.eval_call(_, arg, builtins, k),
+      // )
+      todo("fixed")
     }),
   )
 }
@@ -103,16 +106,19 @@ pub fn lib() {
   |> extend("list_fold", linked_list.fold())
 }
 
-pub fn do_eval(source, _builtins, k) {
-  use source <- cast.list(source)
+pub fn do_eval(source, env, k) {
+  use source <- cast.require(cast.list(source), env, k)
   case language_to_expression(source) {
-    Ok(expression) ->
-      r.eval(
-        expression,
-        r.Env([], lib().1),
-        fn(term) { r.continue(k, r.ok(term)) },
-      )
-    Error(_) -> r.continue(k, r.error(r.unit))
+    Ok(expression) -> {
+      let value =
+        r.eval(
+          expression,
+          r.Env([], lib().1),
+          fn(term) { r.K(r.V(r.Value(r.ok(term))), env, k) },
+        )
+      r.prim(value, env, k)
+    }
+    Error(_) -> r.prim(r.Value(r.error(r.unit)), env, k)
   }
 }
 
@@ -123,9 +129,9 @@ pub fn serialize() {
   #(type_, r.Arity1(do_serialize))
 }
 
-pub fn do_serialize(term, _builtins, k) {
+pub fn do_serialize(term, env, k) {
   let exp = capture.capture(term)
-  r.continue(k, r.Binary(encode.to_json(exp)))
+  r.prim(r.Value(r.Binary(encode.to_json(exp))), env, k)
 }
 
 pub fn capture() {
@@ -135,9 +141,9 @@ pub fn capture() {
   #(type_, r.Arity1(do_capture))
 }
 
-pub fn do_capture(term, _builtins, k) {
+pub fn do_capture(term, env, k) {
   let exp = capture.capture(term)
-  r.continue(k, r.LinkedList(expression_to_language(exp)))
+  r.prim(r.Value(r.LinkedList(expression_to_language(exp))), env, k)
 }
 
 // block needs squashing with row on the front
@@ -310,7 +316,7 @@ pub fn encode_uri() {
   #(type_, r.Arity1(do_encode_uri))
 }
 
-pub fn do_encode_uri(term, _builtins, k) {
-  use unencoded <- cast.string(term)
-  r.continue(k, r.Binary(window.encode_uri(unencoded)))
+pub fn do_encode_uri(term, env, k) {
+  use unencoded <- cast.require(cast.string(term), env, k)
+  r.prim(r.Value(r.Binary(window.encode_uri(unencoded))), env, k)
 }

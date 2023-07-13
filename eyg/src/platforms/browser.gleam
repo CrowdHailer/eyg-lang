@@ -89,7 +89,8 @@ fn render() {
             "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render",
           )
       }
-      r.continue(k, r.unit)
+      let env = todo("renderenc")
+      r.prim(r.Value(r.unit), env, k)
     },
   )
 }
@@ -204,7 +205,7 @@ fn on_keydown() {
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {
-  let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.Value)
+  let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.done)
   // pass as general term to program arg or fn
   let ret =
     r.handle(

@@ -127,9 +127,10 @@ pub fn wait() {
     t.Integer,
     t.unit,
     fn(milliseconds, k) {
-      use milliseconds <- cast.integer(milliseconds)
+      let env = todo("where is env")
+      use milliseconds <- cast.require(cast.integer(milliseconds), env, k)
       let p = promisex.wait(milliseconds)
-      r.continue(k, r.Promise(promise.map(p, fn(_) { r.unit })))
+      r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), env, k)
     },
   )
 }

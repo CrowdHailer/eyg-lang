@@ -43,7 +43,7 @@ fn applet(root) {
       let assert Ok(source) =
         decode.from_json(string.replace(document.inner_text(script), "\\/", "/"))
       {
-        let assert r.Value(term) = r.eval(source, stdlib.env(), r.Value)
+        let assert r.Value(term) = r.eval(source, stdlib.env(), r.done)
         use func <- cast.field("func", cast.any, term)
         use arg <- cast.field("arg", cast.any, term)
         // run func arg can be a thing
@@ -69,7 +69,7 @@ fn applet(root) {
           let current = javascript.dereference(state)
           let result =
             r.handle(
-              r.eval_call(func, current, builtins, r.Value),
+              r.eval_call(func, current, builtins, r.done),
               builtins,
               handlers,
             )
@@ -96,7 +96,7 @@ fn applet(root) {
                     let current = javascript.dereference(state)
                     // io.debug(javascript.dereference(actions))
                     let assert r.Value(next) =
-                      r.eval_call(code, current, builtins, r.Value)
+                      r.eval_call(code, current, builtins, r.done)
                     javascript.set_reference(state, next)
                     javascript.set_reference(actions, [])
                     render()
