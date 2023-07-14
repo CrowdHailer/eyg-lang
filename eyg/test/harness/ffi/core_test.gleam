@@ -168,5 +168,5 @@ pub fn eval_test() {
   // |> should.equal(Ok(t.boolean))
 
   r.eval(prog, stdlib.env(), r.done)
-  |> should.equal(r.Value(r.Binary("foo")))
+  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("foo"))))
 }

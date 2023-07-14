@@ -417,8 +417,9 @@ pub fn handler_test() {
 // }
 
 pub fn builtin_arity1_test() {
+  let env = stdlib.env()
   let exp = e.Builtin("list_pop")
-  let assert r.Value(term) = r.eval(exp, stdlib.env(), r.done)
+  let assert r.Value(term) = r.eval(exp, env, r.done)
   let next = capture.capture(term)
 
   let split =
@@ -431,16 +432,11 @@ pub fn builtin_arity1_test() {
     )
   next
   |> r.eval(
-    stdlib.env(),
+    env,
     fn(f) {
-      // env should probably come from capture
+      // env should probably come from capture      
       let #(c, e, k) =
-        r.step_call(
-          f,
-          r.LinkedList([r.Integer(1), r.Integer(2)]),
-          env.empty(),
-          r.done,
-        )
+        r.step_call(f, r.LinkedList([r.Integer(1), r.Integer(2)]), env, r.done)
       r.K(c, e, k)
     },
   )
@@ -460,35 +456,35 @@ pub fn builtin_arity1_test() {
 }
 
 pub fn builtin_arity3_test() {
+  let env = stdlib.env()
   let list =
     e.Apply(
       e.Apply(e.Cons, e.Integer(1)),
       e.Apply(e.Apply(e.Cons, e.Integer(2)), e.Tail),
     )
   let exp = e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Integer(0))
-  let assert r.Value(term) = r.eval(exp, stdlib.env(), r.done)
+  let assert r.Value(term) = r.eval(exp, env, r.done)
   let next = capture.capture(term)
 
   next
   |> r.eval(
-    stdlib.env(),
+    env,
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) =
-        r.step_call(f, r.Binary("not a function"), env.empty(), r.done)
+      let #(c, e, k) = r.step_call(f, r.Binary("not a function"), env, r.done)
       r.K(c, e, k)
     },
   )
   |> should.equal(r.Abort(r.NotAFunction(r.Binary("not a function"))))
 
   let reduce_exp = e.Lambda("el", e.Lambda("acc", e.Variable("el")))
-  let assert r.Value(reduce) = r.eval(reduce_exp, stdlib.env(), r.done)
+  let assert r.Value(reduce) = r.eval(reduce_exp, env, r.done)
   next
   |> r.eval(
-    stdlib.env(),
+    env,
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, reduce, stdlib.env(), r.done)
+      let #(c, e, k) = r.step_call(f, reduce, env, r.done)
       r.K(c, e, k)
     },
   )
@@ -496,6 +492,6 @@ pub fn builtin_arity3_test() {
 
   // same as complete eval
   let exp = e.Apply(exp, reduce_exp)
-  r.eval(exp, stdlib.env(), r.done)
+  r.eval(exp, env, r.done)
   |> should.equal(r.Value(r.Integer(2)))
 }
