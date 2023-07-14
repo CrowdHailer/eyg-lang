@@ -17,6 +17,7 @@ import harness/effect
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/infer
 import eyg/analysis/jm/type_ as t
+import eyg/analysis/jm/env as tenv
 import easel/print
 import easel/zipper
 import atelier/view/type_
@@ -67,7 +68,7 @@ pub type Embed {
   Embed(
     mode: Mode,
     yanked: Option(e.Expression),
-    env: r.Env,
+    env: #(r.Env, t.Substitutions, Int, tenv.Env),
     source: e.Expression,
     history: History,
     auto_infer: Bool,
@@ -80,8 +81,9 @@ pub type Embed {
 }
 
 // infer continuation
-fn do_infer(source, std) {
-  tree.infer(source, t.Var(-1), t.Var(-2)).0
+fn do_infer(source, cache) {
+  let #(_env, sub, next, tenv) = cache
+  tree.infer_env(source, t.Var(-10), t.Var(-11), tenv, sub, next).0
 }
 
 fn nearest_click_handler(event) {
@@ -104,27 +106,40 @@ fn load_source() {
   Ok(source)
 }
 
+// This is used in the editor when loading from file
 pub fn handle_click(root, event) {
   case nearest_click_handler(event) {
     Ok("load") -> {
       promise.map_try(
         load_source(),
         fn(source) {
-          // always infer at the start
-          let inferred = do_infer(source, None)
+          // let #(#(sub, next, _types), envs) =
+          //   tree.infer(source, t.Var(-1), t.Var(-2))
+          // let #(r.Value(r.Function(_, source, _e2, rev)), env) =
+          //   r.resumable(source, stdlib.env(), r.done)
+          // let assert Ok(tenv) = map.get(envs, rev)
+          let env = stdlib.env()
+          let sub = map.new()
+          let next = 0
+          let tenv = map.new()
+          let cache = #(env, sub, next, tenv)
+          let inferred =
+            Some(
+              tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0,
+            )
 
-          let rendered = print.print(source, Some([]), False, Some(inferred))
+          let rendered = print.print(source, Some([]), False, inferred)
           let assert Ok(start) = map.get(rendered.1, print.path_to_string([]))
 
           let state =
             Embed(
               mode: Command(""),
               yanked: None,
-              env: env.empty(),
+              env: cache,
               source: source,
               history: #([], []),
               auto_infer: False,
-              inferred: Some(inferred),
+              inferred: inferred,
               returned: None,
               rendered: rendered,
               focus: None,
@@ -372,16 +387,13 @@ pub fn snippet(root) {
       let assert Ok(source) = decode.from_json(document.inner_text(script))
       // always infer at the start
 
-      let #(#(sub, next, types), envs) =
+      let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let #(r.Value(r.Function(_, source, e2, rev)), env) =
+      let #(r.Value(r.Function(_, source, _e2, rev)), env) =
         r.resumable(source, stdlib.env(), r.done)
-      io.debug(rev)
-      // let inferred = None
-      // let tenv = runtime_to_type_env(env)
       let assert Ok(tenv) = map.get(envs, rev)
       let inferred =
-        Some(tree.infer_env(source, t.Var(-1), t.Var(-2), tenv, sub, next).0)
+        Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
       let rendered = print.print(source, Some([]), False, inferred)
       let assert Ok(start) = map.get(rendered.1, print.path_to_string([]))
@@ -390,7 +402,7 @@ pub fn snippet(root) {
         Embed(
           mode: Command(""),
           yanked: None,
-          env: env,
+          env: #(env, sub, next, tenv),
           source: source,
           history: #([], []),
           auto_infer: True,
@@ -415,21 +427,31 @@ pub fn init(json) {
   io.debug("init easil")
   let assert Ok(source) = decode.decoder(json)
   let env = stdlib.env()
-  let #(source, env) = case r.resumable(source, stdlib.env(), r.done) {
-    #(r.Value(r.Function(_, source, e2, path)), env) -> {
-      io.debug(path)
-      #(source, env)
-    }
-    _ -> #(source, env)
-  }
+  let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
+  let #(env, source, sub, next, tenv) = case
+    r.resumable(source, stdlib.env(), r.done)
+  {
+    #(r.Value(r.Function(_, source, _, rev)), env) -> {
+      let tenv = case map.get(envs, rev) {
+        Ok(tenv) -> tenv
+        Error(Nil) -> {
+          io.debug(#("no env foud at rev", rev))
+          map.new()
+        }
+      }
+      #(env, source, sub, next, tenv)
+    }
+    _ -> #(env, source, map.new(), 0, map.new())
+  }
+  let cache = #(env, sub, next, tenv)
   // can keep inferred in history
-  let inferred = do_infer(source, None)
+  let inferred = do_infer(source, cache)
   let rendered = print.print(source, None, True, Some(inferred))
   Embed(
     mode: Command(""),
     yanked: None,
-    env: env,
+    env: cache,
     source: source,
     history: #([], []),
     auto_infer: True,
@@ -474,8 +496,7 @@ pub fn insert_text(state: Embed, data, start, end) {
               #(state, start, actions)
             }
             None -> {
-              // TODO real env
-              let inferred = do_infer(state.source, None)
+              let inferred = do_infer(state.source, state.env)
               let state =
                 Embed(..state, mode: Command(""), inferred: Some(inferred))
               #(state, start, [])
@@ -836,8 +857,7 @@ pub fn insert_text(state: Embed, data, start, end) {
               // TODO move to update source
 
               let inferred = case state.auto_infer {
-                // TODO real env
-                True -> Some(do_infer(new, None))
+                True -> Some(do_infer(new, state.env))
                 False -> None
               }
 
@@ -879,7 +899,7 @@ fn run(state: Embed) {
   let #(_lift, _resume, handler) = effect.window_alert()
 
   let source = state.source
-  let env = state.env
+  let #(env, _sub, _next, _tenv) = state.env
   let handlers =
     map.new()
     |> map.insert("Alert", handler)
@@ -912,21 +932,6 @@ fn run(state: Embed) {
 
       #("Running", [p])
     }
-    _ -> panic("this should be tackled better in the run code")
-  }
-}
-
-fn await_on_async(p, k, env: r.Env, handlers) {
-  use value <- promise.await(p)
-  let return = r.handle(k(value), env.builtins, handlers)
-  case return {
-    r.Abort(reason) -> promise.resolve(reason_to_string(reason))
-    r.Value(term) -> {
-      io.debug(term)
-      promise.resolve(term_to_string(term))
-    }
-    // TODO
-    // r.Async(p, k) -> await_on_async(p, k, env, handlers)
     _ -> panic("this should be tackled better in the run code")
   }
 }
@@ -966,8 +971,7 @@ pub fn undo(state: Embed, start) {
       let #(old, path, text_only) = edit
       // TODO put inference in history
       let inferred = case state.auto_infer {
-        // TODO pass real env
-        True -> Some(do_infer(old, None))
+        True -> Some(do_infer(old, state.env))
         False -> None
       }
       let rendered = print.print(old, state.focus, state.auto_infer, inferred)
@@ -998,8 +1002,7 @@ pub fn redo(state: Embed, start) {
     [edit, ..forward] -> {
       let #(other, path, text_only) = edit
       let inferred = case state.auto_infer {
-        // TODO pass real env
-        True -> Some(do_infer(other, None))
+        True -> Some(do_infer(other, state.env))
         False -> None
       }
       let rendered = print.print(other, state.focus, state.auto_infer, inferred)
@@ -1232,8 +1235,7 @@ pub fn insert_paragraph(index, state: Embed) {
     state.auto_infer
     |> io.debug
   {
-    // TODO real env
-    True -> Some(do_infer(new, None))
+    True -> Some(do_infer(new, state.env))
     False -> None
   }
 
@@ -1410,8 +1412,7 @@ fn update_at(state: Embed, path, cb) {
       let new = rezip(updated)
       let history = #([], [#(source, path, False), ..state.history.1])
       let inferred = case state.auto_infer {
-        // TODO pass real env
-        True -> Some(do_infer(new, None))
+        True -> Some(do_infer(new, state.env))
         False -> None
       }
       let rendered = print.print(new, state.focus, state.auto_infer, inferred)
