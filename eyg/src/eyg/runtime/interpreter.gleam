@@ -54,20 +54,23 @@ pub fn run(source, env, term, extrinsic) {
 }
 
 pub fn run_async(source, env, term, extrinsic) {
-  // let ret =
-  //   handle(
-  //     eval(
-  //       source,
-  //       env,
-  //       // fn(f) { handle(eval_call(f, term, env, done), env.builtins, extrinsic) },
-  //       todo("run async"),
-  //     ),
-  //     // break the loop
-  //     env.builtins,
-  //     extrinsic,
-  //   )
-  // flatten_promise(ret, env, extrinsic)
-  todo("extrinsic map of K's")
+  let ret =
+    handle(
+      eval(
+        source,
+        env,
+        fn(f) {
+          // This could return step call but then env/extrinsic would be the same for initial and args
+          eval_call(f, term, env, done)
+          // extrinsic
+          |> handle(env.builtins, extrinsic)
+          |> Done
+        },
+      ),
+      env.builtins,
+      extrinsic,
+    )
+  flatten_promise(ret, env, extrinsic)
 }
 
 pub fn flatten_promise(ret, env: Env, extrinsic) {
@@ -84,7 +87,7 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
         p,
         fn(return) {
           flatten_promise(
-            handle(loop(V(Value(return)), env, done), env.builtins, extrinsic),
+            handle(loop(V(Value(return)), env, k), env.builtins, extrinsic),
             env,
             extrinsic,
           )

@@ -10,6 +10,7 @@ import plinth/browser/window
 import plinth/javascript/promisex
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
+import harness/ffi/env
 
 pub fn init() {
   #(t.Closed, map.new())
@@ -28,9 +29,9 @@ pub fn debug_logger() {
     t.Binary,
     t.unit,
     fn(message, k) {
-      io.debug(message)
-      // r.continue(k, r.unit)
-      todo
+      // TODO don;t need env as value doesnt' modify it
+      let env = env.empty()
+      r.prim(r.Value(r.unit), env, k)
     },
   )
 }
@@ -68,43 +69,55 @@ pub fn http() {
     t.Binary,
     t.unit,
     fn(request, k) {
-      // TODO reinstate
-      // use method <- cast.field("method", cast.any, request)
-      // io.debug(method)
-      // use scheme <- cast.field("scheme", cast.any, request)
-      // io.debug(scheme)
-      // use host <- cast.field("host", cast.string, request)
-      // io.debug(host)
-      // use port <- cast.field("port", cast.any, request)
-      // io.debug(port)
-      // use path <- cast.field("path", cast.string, request)
-      // io.debug(path)
-      // use query <- cast.field("query", cast.any, request)
-      // io.debug(query)
-      // use headers <- cast.field("headers", cast.any, request)
-      // io.debug(headers)
-      // use body <- cast.field("body", cast.any, request)
-      // io.debug(body)
+      let env = env.empty()
+      // TODO reinstate ENV
+      use method <- cast.require(
+        cast.field("method", cast.any, request),
+        env,
+        k,
+      )
+      io.debug(method)
+      use scheme <- cast.require(
+        cast.field("scheme", cast.any, request),
+        env,
+        k,
+      )
+      io.debug(scheme)
+      use host <- cast.require(cast.field("host", cast.string, request), env, k)
+      io.debug(host)
+      use port <- cast.require(cast.field("port", cast.any, request), env, k)
+      io.debug(port)
+      use path <- cast.require(cast.field("path", cast.string, request), env, k)
+      io.debug(path)
+      use query <- cast.require(cast.field("query", cast.any, request), env, k)
+      io.debug(query)
+      use headers <- cast.require(
+        cast.field("headers", cast.any, request),
+        env,
+        k,
+      )
+      io.debug(headers)
+      use body <- cast.require(cast.field("body", cast.any, request), env, k)
+      io.debug(body)
 
-      // let request =
-      //   request.new()
-      //   |> request.set_method(Get)
-      //   |> request.set_host(host)
-      //   |> request.set_path(path)
-      // let promise =
-      //   try_await(
-      //     fetch.send(request),
-      //     fn(response) { fetch.read_text_body(response) },
-      //   )
-      //   |> promise.map(fn(response) {
-      //     case response {
-      //       Ok(response) -> r.Binary(response.body)
-      //       Error(_) -> r.Binary("bad response")
-      //     }
-      //   })
+      let request =
+        request.new()
+        |> request.set_method(Get)
+        |> request.set_host(host)
+        |> request.set_path(path)
+      let promise =
+        try_await(
+          fetch.send(request),
+          fn(response) { fetch.read_text_body(response) },
+        )
+        |> promise.map(fn(response) {
+          case response {
+            Ok(response) -> r.Binary(response.body)
+            Error(_) -> r.Binary("bad response")
+          }
+        })
 
-      // r.continue(k, r.Promise(promise))
-      todo("dddeft")
+      r.prim(r.Value(r.Promise(promise)), env, k)
     },
   )
 }
@@ -115,9 +128,10 @@ pub fn await() {
     t.Binary,
     t.unit,
     fn(promise, k) {
-      // use js_promise <- cast.promise(promise)
-      // r.Async(js_promise, k)
-      todo("foo")
+      let env = env.empty()
+      // TODO env
+      use js_promise <- cast.require(cast.promise(promise), env, k)
+      r.prim(r.Async(js_promise, k), env, r.done)
     },
   )
 }
