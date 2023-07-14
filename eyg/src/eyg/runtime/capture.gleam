@@ -58,7 +58,7 @@ fn do_capture(term, env) {
     // https://github.com/midas-framework/project_wisdom/pull/47/files#diff-a06143ff39109126525a296ab03fc419ba2d5da20aac75ca89477bebe9cf3fee
     // shake code
     // https://github.com/midas-framework/project_wisdom/pull/57/files#diff-d576d15df2bd35cb961bc2edd513c97027ef52ce19daf5d303f45bd11b327604
-    r.Function(arg, body, captured) -> {
+    r.Function(arg, body, captured, _) -> {
       // Note captured list has variables multiple times and we need to find first only
       let captured =
         list.filter_map(

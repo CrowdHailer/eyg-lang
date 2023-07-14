@@ -42,8 +42,9 @@ pub fn simple_fn_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) =
+        r.step_call(f, r.Record([]), [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("hello")))
@@ -68,18 +69,20 @@ pub fn nested_fn_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) =
+      let #(c, rev, e, k) =
         r.step_call(
           f,
           r.Binary("A"),
+          [],
           env.empty(),
           fn(f) {
             // env should probably come from capture
-            let #(c, e, k) = r.step_call(f, r.Binary("B"), env.empty(), r.done)
-            r.K(c, e, k)
+            let #(c, rev, e, k) =
+              r.step_call(f, r.Binary("B"), [], env.empty(), r.done)
+            r.K(c, rev, e, k)
           },
         )
-      r.K(c, e, k)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.LinkedList([r.Binary("A"), r.Binary("B")])))
@@ -94,8 +97,9 @@ pub fn single_let_capture_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) =
+        r.step_call(f, r.Record([]), [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("external")))
@@ -152,8 +156,9 @@ pub fn renamed_test_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) =
+        r.step_call(f, r.Record([]), [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("second")))
@@ -230,8 +235,9 @@ pub fn fn_in_env_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, r.Record([]), env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) =
+        r.step_call(f, r.Record([]), [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("value")))
@@ -249,8 +255,8 @@ pub fn tagged_test() {
     // doesn't put the arg anywhere in the tree but it's not part of original expression tree anyway
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, arg, env, r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) = r.step_call(f, arg, [], env, r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Tagged("Ok", arg)))
@@ -275,8 +281,8 @@ pub fn case_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) = r.step_call(f, arg, [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("good")))
@@ -287,8 +293,8 @@ pub fn case_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) = r.step_call(f, arg, [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("bad")))
@@ -310,18 +316,19 @@ pub fn partial_case_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) =
+      let #(c, rev, e, k) =
         r.step_call(
           f,
           rest,
+          [],
           env.empty(),
           fn(f) {
             // env should probably come from capture
-            let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
-            r.K(c, e, k)
+            let #(c, rev, e, k) = r.step_call(f, arg, [], env.empty(), r.done)
+            r.K(c, rev, e, k)
           },
         )
-      r.K(c, e, k)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("good")))
@@ -332,18 +339,19 @@ pub fn partial_case_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) =
+      let #(c, rev, e, k) =
         r.step_call(
           f,
           rest,
+          [],
           env.empty(),
           fn(f) {
             // env should probably come from capture
-            let #(c, e, k) = r.step_call(f, arg, env.empty(), r.done)
-            r.K(c, e, k)
+            let #(c, rev, e, k) = r.step_call(f, arg, [], env.empty(), r.done)
+            r.K(c, rev, e, k)
           },
         )
-      r.K(c, e, k)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Binary("bad")))
@@ -369,8 +377,8 @@ pub fn handler_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, exec, env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) = r.step_call(f, exec, [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Tagged("Ok", r.Binary("some string"))))
@@ -383,8 +391,8 @@ pub fn handler_test() {
     env.empty(),
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, exec, env.empty(), r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) = r.step_call(f, exec, [], env.empty(), r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Tagged("Error", r.Binary("failure"))))
@@ -412,7 +420,7 @@ pub fn handler_test() {
 //   let next = capture.capture(term)
 
 //   next
-//   |> r.eval(env.empty(), r.eval_call(_, r.Binary("fooo"), env.empty(), r.done))
+//   |> r.eval(env.empty(), r.eval_call(_, r.Binary("fooo"), [], env.empty(), r.done))
 //   // This should return a effect of subsequent logs, I don't know how to do this
 // }
 
@@ -435,9 +443,15 @@ pub fn builtin_arity1_test() {
     env,
     fn(f) {
       // env should probably come from capture      
-      let #(c, e, k) =
-        r.step_call(f, r.LinkedList([r.Integer(1), r.Integer(2)]), env, r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) =
+        r.step_call(
+          f,
+          r.LinkedList([r.Integer(1), r.Integer(2)]),
+          [],
+          env,
+          r.done,
+        )
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(split))
@@ -471,8 +485,9 @@ pub fn builtin_arity3_test() {
     env,
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, r.Binary("not a function"), env, r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) =
+        r.step_call(f, r.Binary("not a function"), [], env, r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Abort(r.NotAFunction(r.Binary("not a function"))))
@@ -484,8 +499,8 @@ pub fn builtin_arity3_test() {
     env,
     fn(f) {
       // env should probably come from capture
-      let #(c, e, k) = r.step_call(f, reduce, env, r.done)
-      r.K(c, e, k)
+      let #(c, rev, e, k) = r.step_call(f, reduce, [], env, r.done)
+      r.K(c, rev, e, k)
     },
   )
   |> should.equal(r.Value(r.Integer(2)))

@@ -9,6 +9,7 @@ import harness/effect
 import gleam/javascript/promise
 import plinth/nodejs/fs
 import harness/ffi/cast
+import harness/ffi/env
 
 fn handlers() {
   effect.init()
@@ -64,16 +65,24 @@ fn file_write() {
     t.Binary,
     t.unit,
     fn(request, k) {
-      let env = todo("ANOTHER env")
-      use file <- cast.require(cast.field("file", cast.string, request), env, k)
-      use content <- cast.require(
-        cast.field("content", cast.string, request),
+      let env = env.empty()
+      let rev = []
+      use file <- cast.require(
+        cast.field("file", cast.string, request),
+        rev,
         env,
         k,
       )
+      use content <- cast.require(
+        cast.field("content", cast.string, request),
+        rev,
+        env,
+        k,
+      )
+      io.debug(file)
       fs.write_file_sync(file, content)
       |> io.debug
-      r.prim(r.Value(r.unit), env, k)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }

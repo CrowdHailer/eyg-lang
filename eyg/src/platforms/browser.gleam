@@ -11,6 +11,7 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/javascript/promisex
 import harness/ffi/cast
+import harness/ffi/env
 import eygir/expression as e
 
 fn handlers() {
@@ -81,6 +82,8 @@ fn render() {
     t.Binary,
     t.unit,
     fn(page, k) {
+      let env = env.empty()
+      let rev = []
       let assert r.Binary(page) = page
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
@@ -89,8 +92,7 @@ fn render() {
             "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render",
           )
       }
-      let env = todo("renderenc")
-      r.prim(r.Value(r.unit), env, k)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -101,6 +103,7 @@ pub fn async() {
     t.unit,
     fn(exec, k) {
       let env = stdlib.env()
+      let rev = []
       let #(_, extrinsic) =
         handlers()
         |> effect.extend("Await", effect.await())
@@ -126,7 +129,7 @@ pub fn async() {
           }
         })
 
-      r.prim(r.Value(r.Promise(promise)), env, k)
+      r.prim(r.Value(r.Promise(promise)), rev, env, k)
     },
   )
 }
@@ -143,9 +146,20 @@ fn listen() {
     t.unit,
     t.unit,
     fn(sub, k) {
-      let env = todo("wwhres env is it stdlib?")
-      use event <- cast.require(cast.field("event", cast.string, sub), env, k)
-      use handle <- cast.require(cast.field("handler", cast.any, sub), env, k)
+      let env = env.empty()
+      let rev = []
+      use event <- cast.require(
+        cast.field("event", cast.string, sub),
+        rev,
+        env,
+        k,
+      )
+      use handle <- cast.require(
+        cast.field("handler", cast.any, sub),
+        rev,
+        env,
+        k,
+      )
 
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
@@ -163,7 +177,7 @@ fn listen() {
           Nil
         },
       )
-      r.prim(r.Value(r.unit), env, k)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -176,6 +190,7 @@ fn on_click() {
     t.unit,
     fn(handle, k) {
       let env = stdlib.env()
+      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_click(fn(arg) {
@@ -184,7 +199,7 @@ fn on_click() {
 
         do_handle(arg, handle, env, extrinsic)
       })
-      r.prim(r.Value(r.unit), env, k)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -195,12 +210,13 @@ fn on_keydown() {
     t.unit,
     fn(handle, k) {
       let env = stdlib.env()
+      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_keydown(fn(k) {
         do_handle(e.Binary(k), handle, env, extrinsic)
       })
-      r.prim(r.Value(r.unit), env, k)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }

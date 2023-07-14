@@ -44,10 +44,16 @@ fn applet(root) {
         decode.from_json(string.replace(document.inner_text(script), "\\/", "/"))
       {
         let env = stdlib.env()
+        let rev = []
         let k = r.done
         let assert r.Value(term) = r.eval(source, env, k)
-        use func <- cast.require(cast.field("func", cast.any, term), env, k)
-        use arg <- cast.require(cast.field("arg", cast.any, term), env, k)
+        use func <- cast.require(
+          cast.field("func", cast.any, term),
+          rev,
+          env,
+          k,
+        )
+        use arg <- cast.require(cast.field("arg", cast.any, term), rev, env, k)
         // run func arg can be a thing
         // weird return wrapping for cast
         // stdlib only builtins used
@@ -61,7 +67,7 @@ fn applet(root) {
               let id = int.to_string(list.length(saved))
               let saved = [action, ..saved]
               javascript.set_reference(actions, saved)
-              r.prim(r.Value(r.Binary(id)), env, k)
+              r.prim(r.Value(r.Binary(id)), rev, env, k)
             },
           )
           |> map.insert("Log", console_log().2)
@@ -111,7 +117,7 @@ fn applet(root) {
           },
         )
         render()
-        r.prim(r.Value(func), env, k)
+        r.prim(r.Value(func), rev, env, k)
       }
       Nil
     }
@@ -145,10 +151,11 @@ pub fn console_log() {
     t.String,
     t.unit,
     fn(message, k) {
-      let env = todo("one more env")
-      use message <- cast.require(cast.string(message), env, k)
+      let env = env.empty()
+      let rev = []
+      use message <- cast.require(cast.string(message), rev, env, k)
       console.log(message)
-      r.prim(r.Value(r.unit), env, k)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }

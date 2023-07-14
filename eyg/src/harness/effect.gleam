@@ -29,9 +29,11 @@ pub fn debug_logger() {
     t.Binary,
     t.unit,
     fn(message, k) {
-      // TODO don;t need env as value doesnt' modify it
       let env = env.empty()
-      r.prim(r.Value(r.unit), env, k)
+      let rev = []
+      io.print(r.to_string(message))
+      io.print("\n")
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -41,10 +43,11 @@ pub fn window_alert() {
     t.Binary,
     t.unit,
     fn(message, k) {
-      // use message <- cast.string(message)
-      // window.alert(message)
-      // r.continue(k, r.unit)
-      todo("sn alert")
+      let env = env.empty()
+      let rev = []
+      use message <- cast.require(cast.string(message), rev, env, k)
+      window.alert(message)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -54,12 +57,13 @@ pub fn choose() {
     t.unit,
     t.boolean,
     fn(message, k) {
+      let env = env.empty()
+      let rev = []
       let value = case int.random(0, 2) {
         0 -> r.false
         1 -> r.true
       }
-      // r.continue(k, value)
-      todo
+      r.prim(r.Value(value), rev, env, k)
     },
   )
 }
@@ -70,34 +74,62 @@ pub fn http() {
     t.unit,
     fn(request, k) {
       let env = env.empty()
-      // TODO reinstate ENV
+      let rev = []
       use method <- cast.require(
         cast.field("method", cast.any, request),
+        rev,
         env,
         k,
       )
       io.debug(method)
       use scheme <- cast.require(
         cast.field("scheme", cast.any, request),
+        rev,
         env,
         k,
       )
       io.debug(scheme)
-      use host <- cast.require(cast.field("host", cast.string, request), env, k)
+      use host <- cast.require(
+        cast.field("host", cast.string, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(host)
-      use port <- cast.require(cast.field("port", cast.any, request), env, k)
+      use port <- cast.require(
+        cast.field("port", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(port)
-      use path <- cast.require(cast.field("path", cast.string, request), env, k)
+      use path <- cast.require(
+        cast.field("path", cast.string, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(path)
-      use query <- cast.require(cast.field("query", cast.any, request), env, k)
+      use query <- cast.require(
+        cast.field("query", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(query)
       use headers <- cast.require(
         cast.field("headers", cast.any, request),
+        rev,
         env,
         k,
       )
       io.debug(headers)
-      use body <- cast.require(cast.field("body", cast.any, request), env, k)
+      use body <- cast.require(
+        cast.field("body", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(body)
 
       let request =
@@ -117,7 +149,7 @@ pub fn http() {
           }
         })
 
-      r.prim(r.Value(r.Promise(promise)), env, k)
+      r.prim(r.Value(r.Promise(promise)), rev, env, k)
     },
   )
 }
@@ -129,9 +161,9 @@ pub fn await() {
     t.unit,
     fn(promise, k) {
       let env = env.empty()
-      // TODO env
-      use js_promise <- cast.require(cast.promise(promise), env, k)
-      r.prim(r.Async(js_promise, k), env, r.done)
+      let rev = []
+      use js_promise <- cast.require(cast.promise(promise), rev, env, k)
+      r.prim(r.Async(js_promise, k), rev, env, r.done)
     },
   )
 }
@@ -141,10 +173,11 @@ pub fn wait() {
     t.Integer,
     t.unit,
     fn(milliseconds, k) {
-      let env = todo("where is env")
-      use milliseconds <- cast.require(cast.integer(milliseconds), env, k)
+      let env = env.empty()
+      let rev = []
+      use milliseconds <- cast.require(cast.integer(milliseconds), rev, env, k)
       let p = promisex.wait(milliseconds)
-      r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), env, k)
+      r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
     },
   )
 }
