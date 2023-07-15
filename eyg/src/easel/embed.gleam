@@ -914,7 +914,7 @@ fn run(state: Embed) {
     r.Value(term) -> #(term_to_string(term), [])
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
-    r.Async(p, k) -> {
+    r.Async(p, _, _, _) -> {
       let p =
         promise.map(
           r.flatten_promise(ret, env, handlers),

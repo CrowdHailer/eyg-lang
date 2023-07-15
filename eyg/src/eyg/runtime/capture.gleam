@@ -201,7 +201,7 @@ fn capture_defunc(switch, env) {
       let exp = e.Apply(e.Shallow(label), handler)
       #(exp, env)
     }
-    r.ShallowResume(_resume) -> {
+    r.ShallowResume(_resume, _, _) -> {
       // possibly we do nothing as the context of the handler has been lost
       // Resume needs to be an expression I think
       panic(

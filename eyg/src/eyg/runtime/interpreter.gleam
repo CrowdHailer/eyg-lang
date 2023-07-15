@@ -47,7 +47,7 @@ pub fn run(source, env, term, extrinsic) {
       Error(UnhandledEffect(label, lifted))
     // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     // other runtime errors return error, maybe this should be the same
-    Async(_, _) ->
+    Async(_, _, _, _) ->
       panic(
         "cannot return async value some sync run. This effect would not be allowed by type system",
       )
@@ -83,11 +83,11 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     Abort(failure) -> promise.resolve(Error(failure))
     Effect(label, lifted, _rev, _env, _k) ->
       promise.resolve(Error(UnhandledEffect(label, lifted)))
-    Async(p, k) ->
+    Async(p, rev, env, k) ->
       promise.await(
         p,
         fn(return) {
-          let next = loop(V(Value(return)), [], env, k)
+          let next = loop(V(Value(return)), rev, env, k)
           flatten_promise(handle(next, env.builtins, extrinsic), env, extrinsic)
         },
       )
@@ -109,9 +109,8 @@ pub fn handle(return, builtins, extrinsic) {
         Error(Nil) -> Abort(UnhandledEffect(label, term))
       }
     Value(term) -> Value(term)
-    // Cont(term, k) -> handle(k(term), builtins, extrinsic)
     Abort(failure) -> Abort(failure)
-    Async(promise, k) -> Async(promise, k)
+    Async(promise, rev, env, k) -> Async(promise, rev, env, k)
   }
 }
 
@@ -150,7 +149,7 @@ pub type Switch {
   Resume(String, Term, fn(Term) -> Always)
   Shallow0(String)
   Shallow1(String, Term)
-  ShallowResume(fn(Term) -> Return)
+  ShallowResume(List(Int), Env, fn(Term) -> StepR)
   Builtin(String, List(Term))
 }
 
@@ -225,7 +224,12 @@ pub type Return {
     continuation: fn(Term) -> StepR,
   )
   Abort(Failure)
-  Async(promise: JSPromise(Term), k: fn(Term) -> StepR)
+  Async(
+    promise: JSPromise(Term),
+    rev: List(Int),
+    env: Env,
+    k: fn(Term) -> StepR,
+  )
 }
 
 pub fn eval_call(f, arg, env, k) {
@@ -285,15 +289,13 @@ pub fn step_call(f, arg, rev, env: Env, k) {
           env,
           k,
         )
-        Shallow1(label, handler) -> todo("shallow1")
-        // shallow(
-        //   label,
-        //   handler,
-        //   k,
-        //   eval_call(arg, Record([]), builtins, Value),
-        //   builtins,
-        // )
-        ShallowResume(resume) -> todo("shhresume")
+        Shallow1(label, handler) -> {
+          // exec = arg
+          let #(c, rev, env, k) = step_call(arg, Record([]), rev, env, k)
+          let thing = loop(c, rev, env, k)
+          shallow(label, handler, thing, rev, env, k)
+        }
+        ShallowResume(_, _, _) -> todo("shhresume")
         //  shallow_resume(k, loop(resume(arg)), builtins)
         Builtin(key, applied) ->
           call_builtin(key, list.append(applied, [arg]), rev, env, k)
@@ -579,37 +581,70 @@ fn shallow_resume(outer_k, thing, builtins) -> Return {
   // }
 }
 
-fn shallow(label, handler, outer_k, thing, builtins) -> Return {
-  todo
-  // case thing {
-  //   Effect(l, lifted, resume) if l == label -> {
-  //     use partial <- step_call(handler, lifted, builtins)
+// somewhere this needs outer k
+fn shallow(label, handler, thing, outer_rev, outer_env, outer_k) -> Always {
+  case thing {
+    Effect(l, lifted, rev, env, k) if l == label -> {
+      use partial <- step_call(handler, lifted, rev, env)
+      let #(c, rev, e, k) =
+        step_call(
+          partial,
+          // Ok so I am lost as to why resume works or is it even needed
+          // I think it is in the situation where someone serializes a
+          // partially applied continuation function in handler
+          Defunc(ShallowResume(rev, env, k)),
+          rev,
+          env,
+          fn(applied) { K(V(Value(applied)), rev, env, k) },
+        )
+      K(c, rev, e, k)
+    }
+    // continue(outer_k, applied)
+    Value(v) -> #(V(Value(v)), outer_rev, outer_env, outer_k)
+    Effect(l, lifted, rev, env, k) -> {
+      let value =
+        Effect(
+          l,
+          lifted,
+          rev,
+          env,
+          fn(x) {
+            let #(c, rev, e, k) =
+              shallow(
+                label,
+                handler,
+                loop(V(Value(x)), rev, env, k),
+                outer_rev,
+                outer_env,
+                outer_k,
+              )
+            K(c, rev, e, k)
+          },
+        )
+      #(V(value), outer_rev, outer_env, outer_k)
+    }
+    Async(p, rev, env, k) -> {
+      let value =
+        Async(
+          p,
+          rev,
+          env,
+          fn(x) {
+            let #(c, rev, e, k) =
+              shallow(
+                label,
+                handler,
+                loop(V(Value(x)), rev, env, k),
+                outer_rev,
+                outer_env,
+                outer_k,
+              )
+            K(c, rev, e, k)
+          },
+        )
+      #(V(value), outer_rev, outer_env, outer_k)
+    }
 
-  //     use applied <- step_call(
-  //       partial,
-  //       // Ok so I am lost as to why resume works or is it even needed
-  //       // I think it is in the situation where someone serializes a
-  //       // partially applied continuation function in handler
-  //       Defunc(ShallowResume(resume)),
-  //       builtins,
-  //     )
-
-  //     continue(outer_k, applied)
-  //   }
-  //   Value(v) -> continue(outer_k, v)
-  //   Cont(term, k) -> Cont(term, k)
-  //   // Not equal to this effect
-  //   Effect(l, lifted, resume) ->
-  //     Effect(
-  //       l,
-  //       lifted,
-  //       fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
-  //     )
-  //   Async(exec, resume) ->
-  //     Async(
-  //       exec,
-  //       fn(x) { shallow(label, handler, outer_k, loop(resume(x)), builtins) },
-  //     )
-  //   Abort(reason) -> Abort(reason)
-  // }
+    Abort(reason) -> #(V(Abort(reason)), outer_rev, outer_env, outer_k)
+  }
 }

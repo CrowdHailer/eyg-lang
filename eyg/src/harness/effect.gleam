@@ -163,7 +163,7 @@ pub fn await() {
       let env = env.empty()
       let rev = []
       use js_promise <- cast.require(cast.promise(promise), rev, env, k)
-      r.prim(r.Async(js_promise, k), rev, env, r.done)
+      r.prim(r.Async(js_promise, rev, env, k), rev, env, r.done)
     },
   )
 }
