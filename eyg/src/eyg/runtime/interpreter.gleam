@@ -277,7 +277,7 @@ pub fn step_call(f, arg, rev, env: Env, k) {
         // env is part of k
         Perform0(label) -> #(V(Effect(label, arg, rev, env, k)), rev, env, done)
         Handle0(label) -> #(V(Value(Defunc(Handle1(label, arg)))), rev, env, k)
-        Handle1(label, handler) -> runner(label, handler, arg, rev, env, k)
+        Handle1(label, handler) -> do_handle(label, handler, arg, rev, env, k)
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
@@ -472,21 +472,26 @@ fn match(label, matched, otherwise, value, rev, env, k) {
   }
 }
 
-pub fn runner(label, handler, exec, rev, env, k) {
-  handled(label, handler, k, eval_call(exec, Record([]), env, done), rev, env)
-  // TODO remove eval_call and return control
+// rename handle and move the handle for runner with handles out
+pub fn do_handle(label, handler, exec, rev, env, k) {
+  // loop eval and stop early
+  let #(c, rev, e, k) = step_call(exec, Record([]), rev, env, done)
+  let return = loop(c, rev, e, k)
+  handled(label, handler, return, rev, env, k)
 }
 
-fn handled(label, handler, outer_k, thing, rev, outer_env) {
+fn handled(label, handler, thing, outer_rev, outer_env, outer_k) {
   // path is ignored in here
+  // TODO the resume function needs to have a handle wrapped
+  // TODO try the in env approach
   case thing {
-    Effect(l, lifted, rev, env, resume) if l == label -> {
+    Effect(l, lifted, rev, env, k) if l == label -> {
       let #(c, rev, e, k) =
         step_call(
           handler,
           lifted,
           rev,
-          outer_env,
+          env,
           fn(partial) {
             let #(c, rev, e, k) =
               step_call(
@@ -509,10 +514,10 @@ fn handled(label, handler, outer_k, thing, rev, outer_env) {
                           handled(
                             label,
                             handler,
-                            outer_k,
                             loop(V(Value(arg)), [9889], env, outer_k),
-                            rev,
+                            outer_rev,
                             outer_env,
+                            outer_k,
                           )
                         K(c, [9112], e, k)
                       },
@@ -544,7 +549,7 @@ fn handled(label, handler, outer_k, thing, rev, outer_env) {
               Done(return) -> return
             }
             let #(c, rev, e, k) =
-              handled(label, handler, outer_k, thing, rev, outer_env)
+              handled(label, handler, thing, outer_rev, outer_env, outer_k)
             K(c, [], e, k)
           },
         )
@@ -597,7 +602,7 @@ fn shallow(label, handler, thing, outer_rev, outer_env, outer_k) -> Always {
           env,
           fn(applied) { K(V(Value(applied)), rev, env, k) },
         )
-      K(c, rev, e, k)
+      K(c, outer_rev, outer_env, outer_k)
     }
     // continue(outer_k, applied)
     Value(v) -> #(V(Value(v)), outer_rev, outer_env, outer_k)

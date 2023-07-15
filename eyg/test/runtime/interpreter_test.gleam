@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/map
 import gleam/javascript/promise
 import gleeunit/should
