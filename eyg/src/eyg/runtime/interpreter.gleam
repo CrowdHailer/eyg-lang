@@ -514,7 +514,7 @@ fn handled(label, handler, thing, outer_rev, outer_env, outer_k) {
                           handled(
                             label,
                             handler,
-                            loop(V(Value(arg)), [9889], env, outer_k),
+                            loop(V(Value(arg)), [9889], env, k),
                             outer_rev,
                             outer_env,
                             outer_k,
@@ -534,7 +534,7 @@ fn handled(label, handler, thing, outer_rev, outer_env, outer_k) {
 
       #(c, rev, e, k)
     }
-    Value(v) -> #(V(Value(v)), [22_234], outer_env, outer_k)
+    Value(v) -> #(V(Value(v)), outer_rev, outer_env, outer_k)
     // Not equal to this effect
     Effect(l, lifted, rev, captured_env, resume) -> {
       let eff =
@@ -553,7 +553,7 @@ fn handled(label, handler, thing, outer_rev, outer_env, outer_k) {
             K(c, [], e, k)
           },
         )
-      #(V(eff), [222], outer_env, outer_k)
+      #(V(eff), outer_rev, outer_env, outer_k)
     }
     // Async(exec, resume) ->
     //   Async(
@@ -590,7 +590,7 @@ fn shallow_resume(outer_k, thing, builtins) -> Return {
 fn shallow(label, handler, thing, outer_rev, outer_env, outer_k) -> Always {
   case thing {
     Effect(l, lifted, rev, env, k) if l == label -> {
-      use partial <- step_call(handler, lifted, rev, env)
+      use partial <- step_call(handler, lifted, outer_rev, outer_env)
       let #(c, rev, e, k) =
         step_call(
           partial,
@@ -598,8 +598,8 @@ fn shallow(label, handler, thing, outer_rev, outer_env, outer_k) -> Always {
           // I think it is in the situation where someone serializes a
           // partially applied continuation function in handler
           Defunc(ShallowResume(rev, env, k)),
-          rev,
-          env,
+          outer_rev,
+          outer_env,
           fn(applied) { K(V(Value(applied)), rev, env, k) },
         )
       K(c, outer_rev, outer_env, outer_k)
