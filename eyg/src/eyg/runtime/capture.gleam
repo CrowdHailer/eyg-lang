@@ -77,7 +77,7 @@ fn do_capture(term, env) {
             let #(var, term) = new
             // This should also not capture the reused terms inside the env
             // could special rule std by passing in as an argument
-            // 
+            //
             let #(exp, env) = case var {
               // "std" -> #(e.Binary("I AM STD"), env)
               _ -> do_capture(term, env)
@@ -184,13 +184,6 @@ fn capture_defunc(switch, env) {
       let #(handler, env) = do_capture(handler, env)
       let exp = e.Apply(e.Shallow(label), handler)
       #(exp, env)
-    }
-    r.ShallowResume(_resume, _, _) -> {
-      // possibly we do nothing as the context of the handler has been lost
-      // Resume needs to be an expression I think
-      panic(
-        "not idea how to capture the func here, is it even possible: shallow",
-      )
     }
     r.Builtin(identifier, args) ->
       list.fold(

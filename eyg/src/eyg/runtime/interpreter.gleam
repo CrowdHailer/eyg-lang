@@ -149,7 +149,6 @@ pub type Switch {
   Resume(List(Int), Env, fn(Term) -> StepR)
   Shallow0(String)
   Shallow1(String, Term)
-  ShallowResume(List(Int), Env, fn(Term) -> StepR)
   Builtin(String, List(Term))
 }
 
@@ -295,8 +294,6 @@ pub fn step_call(f, arg, rev, env: Env, k) {
         Shallow1(label, handler) -> {
           shallow(label, handler, arg, rev, env, k)
         }
-        ShallowResume(_, _, _) -> todo("shhresume")
-        //  shallow_resume(k, loop(resume(arg)), builtins)
         Builtin(key, applied) ->
           call_builtin(key, list.append(applied, [arg]), rev, env, k)
       }
@@ -511,7 +508,8 @@ pub fn perform(label, arg, i_rev, i_env, i_k) {
 
 // rename handle and move the handle for runner with handles out
 pub fn do_handle(label, handle, exec, rev, env: Env, k) {
-  let handler = #(label, #(handle, rev, env, k, False))
+  // this passes both  tests with done or k
+  let handler = #(label, #(handle, rev, env, done, False))
   let handlers = [handler, ..env.handlers]
   let env = Env(..env, handlers: handlers)
   step_call(exec, Record([]), rev, env, k)
@@ -519,7 +517,8 @@ pub fn do_handle(label, handle, exec, rev, env: Env, k) {
 
 // somewhere this needs outer k
 fn shallow(label, handle, exec, rev, env: Env, k) -> Always {
-  let handler = #(label, #(handle, rev, env, k, True))
+  // this passes both  tests with done or k
+  let handler = #(label, #(handle, rev, env, done, True))
   let handlers = [handler, ..env.handlers]
   let env = Env(..env, handlers: handlers)
   step_call(exec, Record([]), rev, env, k)
