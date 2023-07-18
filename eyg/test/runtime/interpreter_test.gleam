@@ -11,7 +11,7 @@ import platforms/browser
 
 pub fn variable_test() {
   let source = e.Variable("x")
-  r.eval(source, r.Env([#("x", r.Binary("assigned"))], map.new()), r.done)
+  r.eval(source, r.Env([#("x", r.Binary("assigned"))], map.new(), []), r.done)
   |> should.equal(r.Value(r.Binary("assigned")))
 }
 
@@ -19,7 +19,7 @@ pub fn function_test() {
   let body = e.Variable("x")
   let source = e.Lambda("x", body)
   let scope = [#("foo", r.Binary("assigned"))]
-  let env = r.Env(scope, map.new())
+  let env = r.Env(scope, map.new(), [])
   r.eval(source, env, r.done)
   |> should.equal(r.Value(r.Function("x", body, scope, [])))
 }

@@ -65,7 +65,7 @@ fn server_run(prog, method, scheme, host, path, query, body) {
       #("query", r.Binary(query)),
       #("body", r.Binary(body)),
     ])
-  let env = r.Env([], values)
+  let env = r.Env([], values, [])
   use ret <- promise.map(r.run_async(prog, env, request, handlers().1))
   case ret {
     Ok(return) ->

@@ -116,7 +116,7 @@ pub fn do_eval(source, rev, env, k) {
       let value =
         r.eval(
           expression,
-          r.Env([], lib().1),
+          r.Env([], lib().1, []),
           fn(term) { r.K(r.V(r.Value(r.ok(term))), rev, env, k) },
         )
       r.prim(value, rev, env, k)

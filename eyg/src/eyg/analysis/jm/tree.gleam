@@ -62,7 +62,6 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
       let #(eff, next) = t.fresh(next)
       let #(ret, next) = t.fresh(next)
       let acc = #(sub, next, types)
-      io.debug(rev)
       let envs = map.insert(envs, rev, env)
 
       let func = t.Fun(arg, eff, ret)

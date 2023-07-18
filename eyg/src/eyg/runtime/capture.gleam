@@ -75,7 +75,6 @@ fn do_capture(term, env) {
           fn(state, new) {
             let #(env, wrapped) = state
             let #(var, term) = new
-            io.debug(var)
             // This should also not capture the reused terms inside the env
             // could special rule std by passing in as an argument
             // 
@@ -110,21 +109,6 @@ fn do_capture(term, env) {
             }
           },
         )
-      // todo key_filter
-      let all =
-        list.filter(
-          env,
-          fn(e: #(String, _)) { string.starts_with(e.0, "std#") },
-        )
-      all
-      |> list.length
-      |> io.debug
-      case list.first(all) {
-        Ok(#(_, v)) ->
-          list.map(all, fn(element: #(_, _)) { element.1 == v })
-          |> io.debug
-        Error(Nil) -> []
-      }
 
       let exp = e.Lambda(arg, body)
       let exp =
@@ -189,10 +173,10 @@ fn capture_defunc(switch, env) {
     r.Resume(label, handler, _resume) -> {
       // possibly we do nothing as the context of the handler has been lost
       // Resume needs to be an expression I think
-      let #(handler, env) = do_capture(handler, env)
+      // let #(handler, env) = do_capture(handler, env)
 
-      let exp = e.Apply(e.Handle(label), handler)
-      #(exp, env)
+      // let exp = e.Apply(e.Handle(label), handler)
+      // #(exp, env)
       panic("not idea how to capture the func here, is it even possible")
     }
     r.Shallow0(label) -> #(e.Shallow(label), env)

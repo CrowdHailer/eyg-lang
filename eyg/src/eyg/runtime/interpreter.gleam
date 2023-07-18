@@ -146,7 +146,7 @@ pub type Switch {
   Perform0(String)
   Handle0(String)
   Handle1(String, Term)
-  Resume(String, Term, fn(Term) -> Always)
+  Resume(List(Int), Env, fn(Term) -> StepR)
   Shallow0(String)
   Shallow1(String, Term)
   ShallowResume(List(Int), Env, fn(Term) -> StepR)
@@ -244,7 +244,7 @@ pub external fn trace() -> String =
 pub fn step_call(f, arg, rev, env: Env, k) {
   case f {
     Function(param, body, captured, rev) -> {
-      let env = Env([#(param, arg), ..captured], env.builtins)
+      let env = Env(..env, scope: [#(param, arg), ..captured])
       #(E(body), rev, env, k)
     }
     // builtin needs to return result for the case statement
@@ -275,13 +275,16 @@ pub fn step_call(f, arg, rev, env: Env, k) {
           match(label, branch, rest, arg, rev, env, k)
         NoCases0 -> prim(Abort(NoCases), rev, env, k)
         // env is part of k
-        Perform0(label) -> #(V(Effect(label, arg, rev, env, k)), rev, env, done)
+        Perform0(label) -> perform(label, arg, rev, env, k)
         Handle0(label) -> #(V(Value(Defunc(Handle1(label, arg)))), rev, env, k)
         Handle1(label, handler) -> do_handle(label, handler, arg, rev, env, k)
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        Resume(label, handler, resume) -> resume(arg)
+        Resume(rev, i_env, i_k) -> {
+          let assert Value(done) = loop(V(Value(arg)), rev, i_env, i_k)
+          #(V(Value(done)), rev, env, k)
+        }
 
         Shallow0(label) -> #(
           V(Value(Defunc(Shallow1(label, arg)))),
@@ -290,10 +293,7 @@ pub fn step_call(f, arg, rev, env: Env, k) {
           k,
         )
         Shallow1(label, handler) -> {
-          // exec = arg
-          let #(c, rev, env, k) = step_call(arg, Record([]), rev, env, k)
-          let thing = loop(c, rev, env, k)
-          shallow(label, handler, thing, rev, env, k)
+          shallow(label, handler, arg, rev, env, k)
         }
         ShallowResume(_, _, _) -> todo("shhresume")
         //  shallow_resume(k, loop(resume(arg)), builtins)
@@ -375,7 +375,11 @@ pub fn resumable(exp: e.Expression, env, k) {
 }
 
 pub type Env {
-  Env(scope: List(#(String, Term)), builtins: map.Map(String, Arity))
+  Env(
+    scope: List(#(String, Term)),
+    builtins: map.Map(String, Arity),
+    handlers: List(#(String, #(Term, List(Int), Env, fn(Term) -> StepR, Bool))),
+  )
 }
 
 fn step(exp, rev, env: Env, k) {
@@ -472,184 +476,51 @@ fn match(label, matched, otherwise, value, rev, env, k) {
   }
 }
 
-// rename handle and move the handle for runner with handles out
-pub fn do_handle(label, handler, exec, rev, env, k) {
-  // loop eval and stop early
-  let #(c, rev, e, k) = step_call(exec, Record([]), rev, env, done)
-  let return = loop(c, rev, e, k)
-  handled(label, handler, return, rev, env, k)
-}
-
-fn handled(label, handler, thing, outer_rev, outer_env, outer_k) {
-  // path is ignored in here
-  // TODO the resume function needs to have a handle wrapped
-  // TODO try the in env approach
-  case thing {
-    Effect(l, lifted, rev, env, k) if l == label -> {
-      let #(c, rev, e, k) =
-        step_call(
-          handler,
-          lifted,
-          rev,
-          env,
-          fn(partial) {
-            let #(c, rev, e, k) =
-              step_call(
-                partial,
-                // Ok so I am lost as to why resume works or is it even needed
-                // I think it is in the situation where someone serializes a
-                // partially applied continuation function in handler
-
-                Defunc(Resume(
-                  label,
-                  handler,
-                  fn(arg) {
-                    #(
-                      V(Value(arg)),
-                      rev,
-                      env,
-                      fn(arg) {
-                        let #(c, rev, e, k) =
-                          // I'm really not sure about this
-                          handled(
-                            label,
-                            handler,
-                            loop(V(Value(arg)), [9889], env, k),
-                            outer_rev,
-                            outer_env,
-                            outer_k,
-                          )
-                        K(c, [9112], e, k)
-                      },
-                    )
-                  },
-                )),
-                [222],
-                outer_env,
-                fn(applied) { K(V(Value(applied)), [23], outer_env, outer_k) },
-              )
-            K(c, [88_776], e, k)
-          },
-        )
-
-      #(c, rev, e, k)
+pub fn perform(label, arg, i_rev, i_env, i_k) {
+  let Env(handlers: handlers, ..) = i_env
+  case list.key_find(handlers, label) {
+    Ok(#(handle, rev, env, k, shallow)) -> {
+      case shallow {
+        True -> {
+          let assert Ok(#(_, handlers)) = list.key_pop(handlers, label)
+          handlers
+        }
+        False -> handlers
+      }
+      let i_env = Env(..i_env, handlers: handlers)
+      let resume = Defunc(Resume(i_rev, i_env, i_k))
+      step_call(
+        handle,
+        arg,
+        rev,
+        env,
+        fn(partial) {
+          let #(c, rev, e, k) = step_call(partial, resume, rev, env, k)
+          K(c, rev, e, k)
+        },
+      )
     }
-    Value(v) -> #(V(Value(v)), outer_rev, outer_env, outer_k)
-    // Not equal to this effect
-    Effect(l, lifted, rev, captured_env, resume) -> {
-      let eff =
-        Effect(
-          l,
-          lifted,
-          rev,
-          captured_env,
-          fn(x) {
-            let thing = case resume(x) {
-              K(c, p, e, k) -> loop(c, p, e, k)
-              Done(return) -> return
-            }
-            let #(c, rev, e, k) =
-              handled(label, handler, thing, outer_rev, outer_env, outer_k)
-            K(c, [], e, k)
-          },
-        )
-      #(V(eff), outer_rev, outer_env, outer_k)
-    }
-    // Async(exec, resume) ->
-    //   Async(
-    //     exec,
-    //     fn(x) { handled(label, handler, outer_k, loop(resume(x)), builtins) },
-    //   )
-    // Abort(reason) -> Abort(reason)
-    _ -> {
-      io.debug(thing)
-      todo("deep handler")
-    }
+    Error(Nil) -> #(
+      V(Effect(label, arg, i_rev, i_env, i_k)),
+      i_rev,
+      i_env,
+      done,
+    )
   }
 }
 
-fn shallow_resume(outer_k, thing, builtins) -> Return {
-  todo
-  // case thing {
-  //   Value(v) -> continue(outer_k, v)
-  //   Cont(term, k) -> Cont(term, k)
-  //   // Not equal to this effect
-  //   Effect(l, lifted, resume) ->
-  //     Effect(
-  //       l,
-  //       lifted,
-  //       fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) },
-  //     )
-  //   Async(exec, resume) ->
-  //     Async(exec, fn(x) { shallow_resume(outer_k, loop(resume(x)), builtins) })
-  //   Abort(reason) -> Abort(reason)
-  // }
+// rename handle and move the handle for runner with handles out
+pub fn do_handle(label, handle, exec, rev, env: Env, k) {
+  let handler = #(label, #(handle, rev, env, k, False))
+  let handlers = [handler, ..env.handlers]
+  let env = Env(..env, handlers: handlers)
+  step_call(exec, Record([]), rev, env, k)
 }
 
 // somewhere this needs outer k
-fn shallow(label, handler, thing, outer_rev, outer_env, outer_k) -> Always {
-  case thing {
-    Effect(l, lifted, rev, env, k) if l == label -> {
-      use partial <- step_call(handler, lifted, outer_rev, outer_env)
-      let #(c, rev, e, k) =
-        step_call(
-          partial,
-          // Ok so I am lost as to why resume works or is it even needed
-          // I think it is in the situation where someone serializes a
-          // partially applied continuation function in handler
-          Defunc(ShallowResume(rev, env, k)),
-          outer_rev,
-          outer_env,
-          fn(applied) { K(V(Value(applied)), rev, env, k) },
-        )
-      K(c, outer_rev, outer_env, outer_k)
-    }
-    // continue(outer_k, applied)
-    Value(v) -> #(V(Value(v)), outer_rev, outer_env, outer_k)
-    Effect(l, lifted, rev, env, k) -> {
-      let value =
-        Effect(
-          l,
-          lifted,
-          rev,
-          env,
-          fn(x) {
-            let #(c, rev, e, k) =
-              shallow(
-                label,
-                handler,
-                loop(V(Value(x)), rev, env, k),
-                outer_rev,
-                outer_env,
-                outer_k,
-              )
-            K(c, rev, e, k)
-          },
-        )
-      #(V(value), outer_rev, outer_env, outer_k)
-    }
-    Async(p, rev, env, k) -> {
-      let value =
-        Async(
-          p,
-          rev,
-          env,
-          fn(x) {
-            let #(c, rev, e, k) =
-              shallow(
-                label,
-                handler,
-                loop(V(Value(x)), rev, env, k),
-                outer_rev,
-                outer_env,
-                outer_k,
-              )
-            K(c, rev, e, k)
-          },
-        )
-      #(V(value), outer_rev, outer_env, outer_k)
-    }
-
-    Abort(reason) -> #(V(Abort(reason)), outer_rev, outer_env, outer_k)
-  }
+fn shallow(label, handle, exec, rev, env: Env, k) -> Always {
+  let handler = #(label, #(handle, rev, env, k, True))
+  let handlers = [handler, ..env.handlers]
+  let env = Env(..env, handlers: handlers)
+  step_call(exec, Record([]), rev, env, k)
 }
