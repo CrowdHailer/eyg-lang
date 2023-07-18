@@ -442,7 +442,7 @@ pub fn builtin_arity1_test() {
   |> r.eval(
     env,
     fn(f) {
-      // env should probably come from capture      
+      // env should probably come from capture
       let #(c, rev, e, k) =
         r.step_call(
           f,
@@ -490,7 +490,7 @@ pub fn builtin_arity3_test() {
       r.K(c, rev, e, k)
     },
   )
-  |> should.equal(r.Abort(r.NotAFunction(r.Binary("not a function"))))
+  |> should.equal(r.Abort(r.NotAFunction(r.Binary("not a function")), []))
 
   let reduce_exp = e.Lambda("el", e.Lambda("acc", e.Variable("el")))
   let assert r.Value(reduce) = r.eval(reduce_exp, env, r.done)

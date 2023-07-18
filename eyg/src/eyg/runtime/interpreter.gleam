@@ -42,9 +42,9 @@ pub fn run(source, env, term, extrinsic) {
     // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> Ok(term)
-    Abort(failure) -> Error(failure)
-    Effect(label, lifted, _rev, _env, _k) ->
-      Error(UnhandledEffect(label, lifted))
+    Abort(failure, path) -> Error(#(failure, path))
+    Effect(label, lifted, rev, _env, _k) ->
+      Error(#(UnhandledEffect(label, lifted), rev))
     // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     // other runtime errors return error, maybe this should be the same
     Async(_, _, _, _) ->
@@ -80,9 +80,9 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
     // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> promise.resolve(Ok(term))
-    Abort(failure) -> promise.resolve(Error(failure))
-    Effect(label, lifted, _rev, _env, _k) ->
-      promise.resolve(Error(UnhandledEffect(label, lifted)))
+    Abort(failure, path) -> promise.resolve(Error(#(failure, path)))
+    Effect(label, lifted, rev, _env, _k) ->
+      promise.resolve(Error(#(UnhandledEffect(label, lifted), rev)))
     Async(p, rev, env, k) ->
       promise.await(
         p,
@@ -106,10 +106,10 @@ pub fn handle(return, builtins, extrinsic) {
           let return = loop(c, [], e, k)
           handle(return, builtins, extrinsic)
         }
-        Error(Nil) -> Abort(UnhandledEffect(label, term))
+        Error(Nil) -> Abort(UnhandledEffect(label, term), rev)
       }
     Value(term) -> Value(term)
-    Abort(failure) -> Abort(failure)
+    Abort(failure, rev) -> Abort(failure, rev)
     Async(promise, rev, env, k) -> Async(promise, rev, env, k)
   }
 }
@@ -222,7 +222,7 @@ pub type Return {
     env: Env,
     continuation: fn(Term) -> StepR,
   )
-  Abort(Failure)
+  Abort(reason: Failure, rev: List(Int))
   Async(
     promise: JSPromise(Term),
     rev: List(Int),
@@ -250,9 +250,10 @@ pub fn step_call(f, arg, rev, env: Env, k) {
     Defunc(switch) ->
       case switch {
         Cons0 -> #(V(Value(Defunc(Cons1(arg)))), rev, env, k)
-        Cons1(value) -> prim(cons(value, arg), rev, env, k)
+        Cons1(value) -> prim(cons(value, arg, rev), rev, env, k)
         Extend0(label) -> #(V(Value(Defunc(Extend1(label, arg)))), rev, env, k)
-        Extend1(label, value) -> prim(extend(label, value, arg), rev, env, k)
+        Extend1(label, value) ->
+          prim(extend(label, value, arg, rev), rev, env, k)
         Overwrite0(label) -> #(
           V(Value(Defunc(Overwrite1(label, arg)))),
           [],
@@ -260,8 +261,8 @@ pub fn step_call(f, arg, rev, env: Env, k) {
           k,
         )
         Overwrite1(label, value) ->
-          prim(overwrite(label, value, arg), rev, env, k)
-        Select0(label) -> prim(select(label, arg), rev, env, k)
+          prim(overwrite(label, value, arg, rev), rev, env, k)
+        Select0(label) -> prim(select(label, arg, rev), rev, env, k)
         Tag0(label) -> prim(Value(Tagged(label, arg)), rev, env, k)
         Match0(label) -> #(V(Value(Defunc(Match1(label, arg)))), rev, env, k)
         Match1(label, branch) -> #(
@@ -272,7 +273,7 @@ pub fn step_call(f, arg, rev, env: Env, k) {
         )
         Match2(label, branch, rest) ->
           match(label, branch, rest, arg, rev, env, k)
-        NoCases0 -> prim(Abort(NoCases), rev, env, k)
+        NoCases0 -> prim(Abort(NoCases, rev), rev, env, k)
         // env is part of k
         Perform0(label) -> perform(label, arg, rev, env, k)
         Handle0(label) -> #(V(Value(Defunc(Handle1(label, arg)))), rev, env, k)
@@ -298,7 +299,7 @@ pub fn step_call(f, arg, rev, env: Env, k) {
           call_builtin(key, list.append(applied, [arg]), rev, env, k)
       }
 
-    term -> prim(Abort(NotAFunction(term)), rev, env, k)
+    term -> prim(Abort(NotAFunction(term), rev), rev, env, k)
   }
 }
 
@@ -325,7 +326,7 @@ fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
         Arity3(impl), [x, y, z] -> impl(x, y, z, rev, env, kont)
         _, args -> #(V(Value(Defunc(Builtin(key, args)))), rev, env, kont)
       }
-    Error(Nil) -> prim(Abort(UndefinedVariable(key)), rev, env, kont)
+    Error(Nil) -> prim(Abort(UndefinedVariable(key), rev), rev, env, kont)
   }
 }
 
@@ -394,7 +395,7 @@ fn step(exp, rev, env: Env, k) {
     E(e.Variable(x)) -> {
       let return = case list.key_find(env.scope, x) {
         Ok(term) -> Value(term)
-        Error(Nil) -> Abort(UndefinedVariable(x))
+        Error(Nil) -> Abort(UndefinedVariable(x), rev)
       }
       K(V(return), rev, env, k)
     }
@@ -407,7 +408,7 @@ fn step(exp, rev, env: Env, k) {
     E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
     E(e.Tail) -> K(V(Value(LinkedList([]))), rev, env, k)
     E(e.Cons) -> K(V(Value(Defunc(Cons0))), rev, env, k)
-    E(e.Vacant(comment)) -> K(V(Abort(Vacant(comment))), rev, env, k)
+    E(e.Vacant(comment)) -> K(V(Abort(Vacant(comment), rev)), rev, env, k)
     E(e.Select(label)) -> K(V(Value(Defunc(Select0(label)))), rev, env, k)
     E(e.Tag(label)) -> K(V(Value(Defunc(Tag0(label)))), rev, env, k)
     E(e.Perform(label)) -> K(V(Value(Defunc(Perform0(label)))), rev, env, k)
@@ -421,55 +422,59 @@ fn step(exp, rev, env: Env, k) {
     E(e.Builtin(identifier)) ->
       K(V(Value(Defunc(Builtin(identifier, [])))), rev, env, k)
     V(Value(value)) -> k(value)
+    // Other could be any kind of Halt function and always get a path
     V(other) -> Done(other)
   }
 }
 
-fn cons(item, tail) {
+fn cons(item, tail, rev) {
   case tail {
     LinkedList(elements) -> Value(LinkedList([item, ..elements]))
-    term -> Abort(IncorrectTerm("LinkedList", term))
+    term -> Abort(IncorrectTerm("LinkedList", term), rev)
   }
 }
 
-fn select(label, arg) {
+fn select(label, arg, rev) {
   case arg {
     Record(fields) ->
       case list.key_find(fields, label) {
         Ok(value) -> Value(value)
-        Error(Nil) -> Abort(MissingField(label))
+        Error(Nil) -> Abort(MissingField(label), rev)
       }
-    term -> Abort(IncorrectTerm(string.append("Record -select", label), term))
+    term ->
+      Abort(IncorrectTerm(string.append("Record -select", label), term), rev)
   }
 }
 
-fn extend(label, value, rest) {
+fn extend(label, value, rest, rev) {
   case rest {
     Record(fields) -> Value(Record([#(label, value), ..fields]))
-    term -> Abort(IncorrectTerm("Record -extend", term))
+    term -> Abort(IncorrectTerm("Record -extend", term), rev)
   }
 }
 
-fn overwrite(label, value, rest) {
+fn overwrite(label, value, rest, rev) {
   case rest {
     Record(fields) ->
       case list.key_pop(fields, label) {
         Ok(#(_old, fields)) -> Value(Record([#(label, value), ..fields]))
-        Error(Nil) -> Abort(MissingField(label))
+        Error(Nil) -> Abort(MissingField(label), rev)
       }
-    term -> Abort(IncorrectTerm("Record -overwrite", term))
+    term -> Abort(IncorrectTerm("Record -overwrite", term), rev)
   }
 }
 
 fn match(label, matched, otherwise, value, rev, env, k) {
+  console.log(label)
+  console.log(matched)
+  console.log(otherwise)
   case value {
     Tagged(l, term) ->
       case l == label {
-        // TODO E/V
         True -> step_call(matched, term, rev, env, k)
         False -> step_call(otherwise, value, rev, env, k)
       }
-    term -> prim(Abort(IncorrectTerm("Tagged", term)), rev, env, k)
+    term -> prim(Abort(IncorrectTerm("Tagged", term), rev), rev, env, k)
   }
 }
 
