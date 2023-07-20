@@ -116,7 +116,7 @@ pub fn handle_click(root, event) {
           // let #(#(sub, next, _types), envs) =
           //   tree.infer(source, t.Var(-1), t.Var(-2))
           // let #(r.Value(r.Function(_, source, _e2, rev)), env) =
-          //   r.resumable(source, stdlib.env(), r.done)
+          //   r.resumable(source, stdlib.env(), None)
           // let assert Ok(tenv) = map.get(envs, rev)
           let env = stdlib.env()
           let sub = map.new()
@@ -390,7 +390,7 @@ pub fn snippet(root) {
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
       let #(r.Value(r.Function(_, source, _e2, rev)), env) =
-        r.resumable(source, stdlib.env(), r.done)
+        r.resumable(source, stdlib.env(), None)
       let assert Ok(tenv) = map.get(envs, rev)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
@@ -430,7 +430,7 @@ pub fn init(json) {
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
   let #(env, source, sub, next, tenv) = case
-    r.resumable(source, stdlib.env(), r.done)
+    r.resumable(source, stdlib.env(), None)
   {
     #(r.Value(r.Function(_, source, _, rev)), env) -> {
       let tenv = case map.get(envs, rev) {
@@ -908,7 +908,7 @@ fn run(state: Embed) {
     |> map.insert("Await", effect.await().2)
     |> map.insert("Async", browser.async().2)
     |> map.insert("Log", effect.debug_logger().2)
-  let ret = r.handle(r.eval(source, env, r.done), env.builtins, handlers)
+  let ret = r.handle(r.eval(source, env, None), env.builtins, handlers)
   case ret {
     r.Abort(reason, rev) -> #(reason_to_string(reason), [])
     r.Value(term) -> #(term_to_string(term), [])

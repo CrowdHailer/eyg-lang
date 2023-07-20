@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/int
 import gleam/map
+import gleam/option.{None}
 import gleam/fetch
 import gleam/http.{Get}
 import gleam/http/request
@@ -163,7 +164,7 @@ pub fn await() {
       let env = env.empty()
       let rev = []
       use js_promise <- cast.require(cast.promise(promise), rev, env, k)
-      r.prim(r.Async(js_promise, rev, env, k), rev, env, r.done)
+      r.prim(r.Async(js_promise, rev, env, k), rev, env, None)
     },
   )
 }

@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
 import gleam/map
+import gleam/option.{None, Some}
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
@@ -64,10 +65,11 @@ pub fn fixed() {
         r.Defunc(r.Builtin("fixed", [builder])),
         rev,
         env,
-        fn(partial) {
-          let #(c, rev, e, k) = r.step_call(partial, arg, rev, env, k)
-          r.K(c, rev, e, k)
-        },
+        // fn(partial) {
+        //   let #(c, rev, e, k) = r.step_call(partial, arg, rev, env, k)
+        //   r.K(c, rev, e, k)
+        // },
+        Some(r.CallWith(arg, rev, env, k)),
       )
     }),
   )
@@ -117,7 +119,9 @@ pub fn do_eval(source, rev, env, k) {
         r.eval(
           expression,
           r.Env([], lib().1),
-          fn(term) { r.K(r.V(r.Value(r.ok(term))), rev, env, k) },
+          // fn(term) { r.K(r.V(r.Value(r.ok(term))), rev, env, k) },
+
+          todo("wrap in ok"),
         )
       r.prim(value, rev, env, k)
     }

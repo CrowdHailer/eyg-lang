@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/option.{None}
 import eygir/decode
 import plinth/browser/window
 import plinth/browser/document
@@ -113,7 +114,7 @@ pub fn async() {
         |> promise.await(fn(_: Nil) {
           let ret =
             r.handle(
-              r.eval_call(exec, r.unit, env, r.done),
+              r.eval_call(exec, r.unit, env, None),
               env.builtins,
               extrinsic,
             )
@@ -169,7 +170,7 @@ fn listen() {
         fn(_) {
           let ret =
             r.handle(
-              r.eval_call(handle, r.unit, env, r.done),
+              r.eval_call(handle, r.unit, env, None),
               env.builtins,
               extrinsic,
             )
@@ -222,10 +223,10 @@ fn on_keydown() {
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {
-  let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.done)
+  let assert r.Value(arg) = r.eval(arg, stdlib.env(), None)
   // pass as general term to program arg or fn
   let ret =
-    r.handle(r.eval_call(handle, arg, builtins, r.done), builtins, extrinsic)
+    r.handle(r.eval_call(handle, arg, builtins, None), builtins, extrinsic)
   case ret {
     r.Value(_) -> Nil
     _ -> {

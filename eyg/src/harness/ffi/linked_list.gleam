@@ -55,27 +55,27 @@ pub fn do_fold(elements, state, f, rev, env, k) {
   case elements {
     [] -> r.prim(r.Value(state), rev, env, k)
     // r.continue(k, state)
-    [element, ..rest] ->
-      r.step_call(
-        f,
-        element,
-        rev,
-        env,
-        // r.eval_call(_, state, env, do_fold(rest, _, f,rev, env, k)),
-        fn(partial) {
-          let #(c, rev, e, k) =
-            r.step_call(
-              partial,
-              state,
-              rev,
-              env,
-              fn(state) {
-                let #(c, rev, e, k) = do_fold(rest, state, f, rev, env, k)
-                r.K(c, rev, e, k)
-              },
-            )
-          r.K(c, rev, e, k)
-        },
-      )
+    [element, ..rest] -> todo("no idea on fold")
   }
+  // r.step_call(
+  //   f,
+  //   element,
+  //   rev,
+  //   env,
+  //   // r.eval_call(_, state, env, do_fold(rest, _, f,rev, env, k)),
+  //   fn(partial) {
+  //     let #(c, rev, e, k) =
+  //       r.step_call(
+  //         partial,
+  //         state,
+  //         rev,
+  //         env,
+  //         fn(state) {
+  //           let #(c, rev, e, k) = do_fold(rest, state, f, rev, env, k)
+  //           r.K(c, rev, e, k)
+  //         },
+  //       )
+  //     r.K(c, rev, e, k)
+  //   },
+  // )
 }

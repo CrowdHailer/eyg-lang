@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/map
+import gleam/option.{None}
 import gleam/javascript/promise
 import gleeunit/should
 import eygir/expression as e
@@ -11,7 +12,7 @@ import platforms/browser
 
 pub fn variable_test() {
   let source = e.Variable("x")
-  r.eval(source, r.Env([#("x", r.Binary("assigned"))], map.new()), r.done)
+  r.eval(source, r.Env([#("x", r.Binary("assigned"))], map.new()), None)
   |> should.equal(r.Value(r.Binary("assigned")))
 }
 
@@ -20,13 +21,13 @@ pub fn function_test() {
   let source = e.Lambda("x", body)
   let scope = [#("foo", r.Binary("assigned"))]
   let env = r.Env(scope, map.new())
-  r.eval(source, env, r.done)
+  r.eval(source, env, None)
   |> should.equal(r.Value(r.Function("x", body, scope, [])))
 }
 
 pub fn function_application_test() {
   let source = e.Apply(e.Lambda("x", e.Binary("body")), e.Integer(0))
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Binary("body")))
 
   let source =
@@ -35,33 +36,33 @@ pub fn function_application_test() {
       e.Lambda("x", e.Variable("x")),
       e.Apply(e.Variable("id"), e.Integer(0)),
     )
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Integer(0)))
 }
 
 pub fn builtin_application_test() {
   let source = e.Apply(e.Builtin("string_uppercase"), e.Binary("hello"))
 
-  r.eval(source, stdlib.env(), r.done)
+  r.eval(source, stdlib.env(), None)
   |> should.equal(r.Value(r.Binary("HELLO")))
 }
 
 // primitive
 pub fn create_a_binary_test() {
   let source = e.Binary("hello")
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Binary("hello")))
 }
 
 pub fn create_an_integer_test() {
   let source = e.Integer(5)
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Integer(5)))
 }
 
 pub fn record_creation_test() {
   let source = e.Empty
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Record([])))
 
   let source =
@@ -69,9 +70,9 @@ pub fn record_creation_test() {
       e.Apply(e.Extend("foo"), e.Binary("FOO")),
       e.Apply(e.Apply(e.Extend("bar"), e.Integer(0)), e.Empty),
     )
-  r.eval(e.Apply(e.Select("foo"), source), env.empty(), r.done)
+  r.eval(e.Apply(e.Select("foo"), source), env.empty(), None)
   |> should.equal(r.Value(r.Binary("FOO")))
-  r.eval(e.Apply(e.Select("bar"), source), env.empty(), r.done)
+  r.eval(e.Apply(e.Select("bar"), source), env.empty(), None)
   |> should.equal(r.Value(r.Integer(0)))
 }
 
@@ -86,11 +87,11 @@ pub fn case_test() {
     )
 
   let source = e.Apply(switch, e.Apply(e.Tag("Some"), e.Binary("foo")))
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Binary("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("None"), e.Empty))
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Binary("else")))
 }
 
@@ -103,7 +104,7 @@ pub fn rasing_effect_test() {
     )
   // TODO test lifing in the right plce
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
   lifted
   |> should.equal(r.Integer(1))
   let assert r.Effect("Bar", lifted, rev, env, k) =
@@ -123,12 +124,12 @@ pub fn effect_in_case_test() {
     )
 
   let source = e.Apply(switch, e.Apply(e.Tag("Ok"), e.Binary("foo")))
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Binary("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Binary("nope")))
   let assert r.Effect("Raise", lifted, _rev, _env, _k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
   lifted
   |> should.equal(r.Binary("nope"))
 }
@@ -160,7 +161,7 @@ pub fn effect_in_builtin_test() {
       reducer,
     )
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, stdlib.env(), r.done)
+    r.eval(source, stdlib.env(), None)
   lifted
   |> should.equal(r.Binary("fizz"))
   let assert r.Effect("Foo", lifted, rev, env, k) =
@@ -177,13 +178,13 @@ pub fn handler_no_effect_test() {
   let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Binary("mystring")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
 
   // shallow
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
 }
 
@@ -193,12 +194,12 @@ pub fn handle_early_return_effect_test() {
   let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Binary("Bad thing")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Tagged("Error", r.Binary("Bad thing"))))
 
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Tagged("Error", r.Binary("Bad thing"))))
 }
 
@@ -226,7 +227,7 @@ pub fn handle_resume_test() {
     )
   let source = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
 
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Record([
     #("value", r.Integer(100)),
     #("log", r.Binary("my message")),
@@ -234,7 +235,7 @@ pub fn handle_resume_test() {
 
   let source = e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
 
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Record([
     #("value", r.Integer(100)),
     #("log", r.Binary("my message")),
@@ -255,7 +256,7 @@ pub fn ignore_other_effect_test() {
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
   lifted
   |> should.equal(r.Record([]))
   // calling k should fall throu
@@ -267,7 +268,7 @@ pub fn ignore_other_effect_test() {
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
   lifted
   |> should.equal(r.Record([]))
   // calling k should fall throu
@@ -287,7 +288,7 @@ pub fn multiple_effects_test() {
     )
 
   let assert r.Effect("Choose", lifted, rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
   lifted
   |> should.equal(r.Record([]))
 
@@ -333,7 +334,7 @@ pub fn multiple_resumptions_test() {
       ),
     )
   let source = e.Apply(handle, raise)
-  r.eval(source, env.empty(), r.done)
+  r.eval(source, env.empty(), None)
   // Not sure this is the correct value but it checks regressions
   |> should.equal(r.Value(term: r.Record(fields: [
     #(
@@ -391,7 +392,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(e.Perform("Log"), e.Binary("outer")),
     )
   let assert r.Effect("Log", r.Binary("outer"), rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
 
@@ -407,7 +408,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(e.Perform("Log"), e.Binary("outer")),
     )
   let assert r.Effect("Log", r.Binary("outer"), rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
 }
@@ -431,7 +432,7 @@ pub fn handler_is_applied_after_other_effects_test() {
 
   let source = e.Apply(handler, exec)
   let assert r.Effect("Log", r.Binary("my log"), rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Integer(-1)))
@@ -454,7 +455,7 @@ pub fn handler_is_applied_after_other_effects_test() {
 
   let source = e.Apply(handler, exec)
   let assert r.Effect("Log", r.Binary("my log"), rev, env, k) =
-    r.eval(source, env.empty(), r.done)
+    r.eval(source, env.empty(), None)
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Integer(-1)))

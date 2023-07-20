@@ -2,6 +2,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
+import gleam/option.{None}
 import gleam/string
 import gleam/javascript/array
 import gleam/javascript
@@ -45,7 +46,7 @@ fn applet(root) {
       {
         let env = stdlib.env()
         let rev = []
-        let k = r.done
+        let k = None
         let assert r.Value(term) = r.eval(source, env, k)
         use func <- cast.require(
           cast.field("func", cast.any, term),
@@ -75,7 +76,7 @@ fn applet(root) {
         let render = fn() {
           let current = javascript.dereference(state)
           let result =
-            r.handle(r.eval_call(func, current, env, r.done), env, handlers)
+            r.handle(r.eval_call(func, current, env, None), env, handlers)
           let _ = case result {
             r.Value(r.Binary(page)) -> document.set_html(root, page)
             _ -> {
@@ -99,7 +100,7 @@ fn applet(root) {
                     let current = javascript.dereference(state)
                     // io.debug(javascript.dereference(actions))
                     let assert r.Value(next) =
-                      r.eval_call(code, current, env, r.done)
+                      r.eval_call(code, current, env, None)
                     javascript.set_reference(state, next)
                     javascript.set_reference(actions, [])
                     render()

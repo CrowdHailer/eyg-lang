@@ -2,6 +2,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
+import gleam/option.{None, Option, Some}
 import gleam/string
 import eygir/expression as e
 import gleam/javascript/promise.{Promise as JSPromise}
@@ -20,22 +21,20 @@ pub type Failure {
 // TODO separate interpreter from runner
 // TODO separate async run from async eval
 
-pub fn done(value) {
-  Done(Value(value))
-}
-
 pub fn run(source, env, term, extrinsic) {
   case
     eval(
       source,
       env,
-      fn(f) {
-        // This could return step call but then env/extrinsic would be the same for initial and args
-        eval_call(f, term, env, done)
-        // extrinsic
-        |> handle(env.builtins, extrinsic)
-        |> Done
-      },
+      // None
+      // fn(f) {
+      //   // This could return step call but then env/extrinsic would be the same for initial and args
+      //   eval_call(f, term, env, None)
+      //   // extrinsic
+      //   |> handle(env.builtins, extrinsic)
+      //   |> Done
+      // },
+      todo("some vlue for apply"),
     )
   {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
@@ -60,13 +59,14 @@ pub fn run_async(source, env, term, extrinsic) {
       eval(
         source,
         env,
-        fn(f) {
-          // This could return step call but then env/extrinsic would be the same for initial and args
-          eval_call(f, term, env, done)
-          // extrinsic
-          |> handle(env.builtins, extrinsic)
-          |> Done
-        },
+        // fn(f) {
+        //   // This could return step call but then env/extrinsic would be the same for initial and args
+        //   eval_call(f, term, env, None)
+        //   // extrinsic
+        //   |> handle(env.builtins, extrinsic)
+        //   |> Done
+        // },
+        todo("some valu with callla"),
       ),
       env.builtins,
       extrinsic,
@@ -146,10 +146,23 @@ pub type Switch {
   Perform0(String)
   Handle0(String)
   Handle1(String, Term)
-  Resume(List(Int), Env, fn(Term) -> StepR)
+  Resume(List(Int), Env, Option(Kont))
   Shallow0(String)
   Shallow1(String, Term)
   Builtin(String, List(Term))
+}
+
+pub type Path =
+  List(Int)
+
+// Keep Option(Kont) outside
+pub type Kont {
+  // arg path then call path
+  Arg(e.Expression, Path, Path, Env, Option(Kont))
+  Apply(Term, Path, Env, Option(Kont))
+  Assign(String, e.Expression, Path, Env, Option(Kont))
+  CallWith(Term, Path, Env, Option(Kont))
+  Delimit(String, Option(Kont))
 }
 
 pub const unit = Record([])
@@ -220,18 +233,13 @@ pub type Return {
     lifted: Term,
     rev: List(Int),
     env: Env,
-    continuation: fn(Term) -> StepR,
+    continuation: Option(Kont),
   )
   Abort(reason: Failure, rev: List(Int))
-  Async(
-    promise: JSPromise(Term),
-    rev: List(Int),
-    env: Env,
-    k: fn(Term) -> StepR,
-  )
+  Async(promise: JSPromise(Term), rev: List(Int), env: Env, k: Option(Kont))
 }
 
-pub fn eval_call(f, arg, env, k) {
+pub fn eval_call(f, arg, env, k: Option(Kont)) {
   // allways produces value even if abort
   let #(c, rev, e, k) = step_call(f, arg, [], env, k)
   loop(c, rev, e, k)
@@ -240,7 +248,7 @@ pub fn eval_call(f, arg, env, k) {
 pub external fn trace() -> String =
   "" "console.trace"
 
-pub fn step_call(f, arg, rev, env: Env, k) {
+pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
   case f {
     Function(param, body, captured, rev) -> {
       let env = Env(..env, scope: [#(param, arg), ..captured])
@@ -308,12 +316,12 @@ pub fn prim(return, rev, env, k) {
 }
 
 pub type Always =
-  #(Control, List(Int), Env, fn(Term) -> StepR)
+  #(Control, List(Int), Env, Option(Kont))
 
 pub type Arity {
-  Arity1(fn(Term, List(Int), Env, fn(Term) -> StepR) -> Always)
-  Arity2(fn(Term, Term, List(Int), Env, fn(Term) -> StepR) -> Always)
-  Arity3(fn(Term, Term, Term, List(Int), Env, fn(Term) -> StepR) -> Always)
+  Arity1(fn(Term, List(Int), Env, Option(Kont)) -> Always)
+  Arity2(fn(Term, Term, List(Int), Env, Option(Kont)) -> Always)
+  Arity3(fn(Term, Term, Term, List(Int), Env, Option(Kont)) -> Always)
 }
 
 fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
@@ -339,7 +347,7 @@ pub type Control {
 
 // TODO rename when I fix return
 pub type StepR {
-  K(Control, List(Int), Env, fn(Term) -> StepR)
+  K(Control, List(Int), Env, Option(Kont))
   Done(Return)
 }
 
@@ -381,13 +389,9 @@ fn step(exp, rev, env: Env, k) {
     E(e.Lambda(param, body)) ->
       K(V(Value(Function(param, body, env.scope, rev))), rev, env, k)
     E(e.Apply(f, arg)) -> {
-      use f <- K(E(f), [0, ..rev], env)
-      use arg <- K(E(arg), [1, ..rev], env)
-      // if f is a function going to switch path else is new defunc value at same location
-      let #(c, rev, e, k) = step_call(f, arg, rev, env, k)
-      K(c, rev, e, k)
+      K(E(f), [0, ..rev], env, Some(Arg(f, [1, ..rev], rev, env, k)))
     }
-    // step(f, env, fn(f) { step(arg, env, step_call(f, _, env.builtins, k)) })
+
     E(e.Variable(x)) -> {
       let return = case list.key_find(env.scope, x) {
         Ok(term) -> Value(term)
@@ -396,10 +400,9 @@ fn step(exp, rev, env: Env, k) {
       K(V(return), rev, env, k)
     }
     E(e.Let(var, value, then)) -> {
-      use value <- K(E(value), [0, ..rev], env)
-      let env = Env(..env, scope: [#(var, value), ..env.scope])
-      K(E(then), [1, ..rev], env, k)
+      K(E(value), [0, ..rev], env, Some(Assign(var, then, [1, ..rev], env, k)))
     }
+
     E(e.Integer(value)) -> K(V(Value(Integer(value))), rev, env, k)
     E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
     E(e.Tail) -> K(V(Value(LinkedList([]))), rev, env, k)
@@ -417,10 +420,41 @@ fn step(exp, rev, env: Env, k) {
     E(e.Shallow(label)) -> K(V(Value(Defunc(Shallow0(label)))), rev, env, k)
     E(e.Builtin(identifier)) ->
       K(V(Value(Defunc(Builtin(identifier, [])))), rev, env, k)
-    V(Value(value)) -> k(value)
+    V(Value(value)) -> apply_k(value, k)
     // Other could be any kind of Halt function and always get a path
     V(other) -> Done(other)
   }
+}
+
+fn apply_k(value, k) {
+  case k {
+    Some(k) ->
+      case k {
+        Assign(label, then, rev, env, k) -> {
+          let env = Env(..env, scope: [#(label, value), ..env.scope])
+          K(E(then), [1, ..rev], env, k)
+        }
+        Arg(arg, rev, call_rev, env, k) ->
+          K(E(arg), rev, env, Some(Apply(value, call_rev, env, k)))
+        Apply(f, rev, env, k) -> {
+          let #(c, rev, e, k) = step_call(f, value, rev, env, k)
+          K(c, rev, e, k)
+        }
+        CallWith(arg, rev, env, k) -> {
+          let #(c, rev, e, k) = step_call(value, arg, rev, env, k)
+          K(c, rev, e, k)
+        }
+        Delimit(_, k) -> {
+          apply_k(value, k)
+        }
+      }
+    None -> Done(Value(value))
+  }
+  // use f <- K(E(f), [0, ..rev], env)
+  // use arg <- K(E(arg), [1, ..rev], env)
+  // // if f is a function going to switch path else is new defunc value at same location
+
+  // step(f, env, fn(f) { step(arg, env, step_call(f, _, env.builtins, k)) })
 }
 
 fn cons(item, tail, rev) {
@@ -474,8 +508,26 @@ fn match(label, matched, otherwise, value, rev, env, k) {
   }
 }
 
-pub fn perform(label, arg, i_rev, i_env, i_k) {
-  todo("perform")
+fn do_pop(k, label, popped) {
+  case k {
+    Some(k) ->
+      case k {
+        Delimit(l, rest) if l == label -> Ok(#(popped, rest))
+        _ -> todo("do pop")
+      }
+    None -> Error(Nil)
+  }
+}
+
+fn pop(k, label) {
+  do_pop(k, label, None)
+}
+
+pub fn perform(label, arg, rev, env, k) {
+  case pop(k, label) {
+    Ok(#(popped, rest)) -> todo("popped")
+    Error(Nil) -> #(V(Effect(label, arg, rev, env, k)), rev, env, None)
+  }
   // let Env(handlers: handlers, ..) = i_env
   // case list.key_find(handlers, label) {
   //   Ok(#(handle, rev, env, k, shallow)) -> {

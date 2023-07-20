@@ -1,4 +1,5 @@
 import gleam/map
+import gleam/option.{None}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eyg/analysis/inference
@@ -14,6 +15,6 @@ pub fn add_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), r.done)
+  r.eval(prog, stdlib.env(), None)
   |> should.equal(r.Value(r.Integer(3)))
 }
