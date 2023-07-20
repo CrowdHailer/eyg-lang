@@ -422,7 +422,7 @@ fn apply_k(value, k) {
       case switch {
         Assign(label, then, rev, env) -> {
           let env = Env(..env, scope: [#(label, value), ..env.scope])
-          K(E(then), [1, ..rev], env, k)
+          K(E(then), rev, env, k)
         }
         Arg(arg, rev, call_rev, env) ->
           K(E(arg), rev, env, Some(Kont(Apply(value, call_rev, env), k)))
