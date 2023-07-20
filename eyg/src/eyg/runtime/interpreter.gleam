@@ -23,18 +23,10 @@ pub type Failure {
 
 pub fn run(source, env, term, extrinsic) {
   case
-    eval(
-      source,
-      env,
-      // None
-      // fn(f) {
-      //   // This could return step call but then env/extrinsic would be the same for initial and args
-      //   eval_call(f, term, env, None)
-      //   // extrinsic
-      //   |> handle(env.builtins, extrinsic)
-      //   |> Done
-      // },
-      todo("some vlue for apply"),
+    handle(
+      eval(source, env, Some(Kont(CallWith(term, [], env), None))),
+      env.builtins,
+      extrinsic,
     )
   {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
@@ -56,18 +48,7 @@ pub fn run(source, env, term, extrinsic) {
 pub fn run_async(source, env, term, extrinsic) {
   let ret =
     handle(
-      eval(
-        source,
-        env,
-        // fn(f) {
-        //   // This could return step call but then env/extrinsic would be the same for initial and args
-        //   eval_call(f, term, env, None)
-        //   // extrinsic
-        //   |> handle(env.builtins, extrinsic)
-        //   |> Done
-        // },
-        todo("some valu with callla"),
-      ),
+      eval(source, env, Some(Kont(CallWith(term, [], env), None))),
       env.builtins,
       extrinsic,
     )

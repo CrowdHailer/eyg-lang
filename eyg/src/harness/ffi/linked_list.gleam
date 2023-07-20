@@ -1,3 +1,4 @@
+import gleam/option.{None, Some}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
@@ -54,28 +55,24 @@ pub fn fold_impl(list, initial, func, rev, env, k) {
 pub fn do_fold(elements, state, f, rev, env, k) {
   case elements {
     [] -> r.prim(r.Value(state), rev, env, k)
-    // r.continue(k, state)
-    [element, ..rest] -> todo("no idea on fold")
+    [element, ..rest] -> {
+      r.step_call(
+        f,
+        element,
+        rev,
+        env,
+        Some(r.Kont(
+          r.CallWith(state, rev, env),
+          Some(r.Kont(
+            r.Apply(
+              r.Defunc(r.Builtin("list_fold", [r.LinkedList(rest)])),
+              rev,
+              env,
+            ),
+            Some(r.Kont(r.CallWith(f, rev, env), k)),
+          )),
+        )),
+      )
+    }
   }
-  // r.step_call(
-  //   f,
-  //   element,
-  //   rev,
-  //   env,
-  //   // r.eval_call(_, state, env, do_fold(rest, _, f,rev, env, k)),
-  //   fn(partial) {
-  //     let #(c, rev, e, k) =
-  //       r.step_call(
-  //         partial,
-  //         state,
-  //         rev,
-  //         env,
-  //         fn(state) {
-  //           let #(c, rev, e, k) = do_fold(rest, state, f, rev, env, k)
-  //           r.K(c, rev, e, k)
-  //         },
-  //       )
-  //     r.K(c, rev, e, k)
-  //   },
-  // )
 }
