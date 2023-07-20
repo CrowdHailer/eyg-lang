@@ -1,3 +1,4 @@
+import gleam/option.{None, Some}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
@@ -14,14 +15,14 @@ pub fn pop() {
   #(type_, r.Arity1(do_pop))
 }
 
-fn do_pop(term, _builtins, k) {
-  use elements <- cast.list(term)
+fn do_pop(term, rev, env, k) {
+  use elements <- cast.require(cast.list(term), rev, env, k)
   let return = case elements {
     [] -> r.error(r.unit)
     [head, ..tail] ->
       r.ok(r.Record([#("head", head), #("tail", r.LinkedList(tail))]))
   }
-  r.continue(k, return)
+  r.prim(r.Value(return), rev, env, k)
 }
 
 pub fn fold() {
@@ -46,20 +47,32 @@ pub fn fold() {
   #(type_, r.Arity3(fold_impl))
 }
 
-pub fn fold_impl(list, initial, func, builtins, k) {
-  use elements <- cast.list(list)
-  do_fold(elements, initial, func, builtins, k)
+pub fn fold_impl(list, initial, func, rev, env, k) {
+  use elements <- cast.require(cast.list(list), rev, env, k)
+  do_fold(elements, initial, func, rev, env, k)
 }
 
-pub fn do_fold(elements, state, f, builtins, k) {
+pub fn do_fold(elements, state, f, rev, env, k) {
   case elements {
-    [] -> r.continue(k, state)
-    [e, ..rest] ->
-      r.eval_call(
+    [] -> r.prim(r.Value(state), rev, env, k)
+    [element, ..rest] -> {
+      r.step_call(
         f,
-        e,
-        builtins,
-        r.eval_call(_, state, builtins, do_fold(rest, _, f, builtins, k)),
+        element,
+        rev,
+        env,
+        Some(r.Kont(
+          r.CallWith(state, rev, env),
+          Some(r.Kont(
+            r.Apply(
+              r.Defunc(r.Builtin("list_fold", [r.LinkedList(rest)])),
+              rev,
+              env,
+            ),
+            Some(r.Kont(r.CallWith(f, rev, env), k)),
+          )),
+        )),
       )
+    }
   }
 }

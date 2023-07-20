@@ -1,8 +1,10 @@
+import gleam/io
 import gleam/map
 import eygir/expression as e
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/infer.{builtins, extend, generalise, instantiate, mono}
+import eyg/analysis/jm/env
 
 pub type State =
   #(
@@ -11,16 +13,19 @@ pub type State =
     map.Map(List(Int), Result(t.Type, #(error.Reason, t.Type, t.Type))),
   )
 
+pub type Envs =
+  map.Map(List(Int), env.Env)
+
 pub type Run {
-  Cont(State, fn(State) -> Run)
-  Done(State)
+  Cont(State, Envs, fn(State, Envs) -> Run)
+  Done(State, Envs)
 }
 
 // this is required to make the infer function tail recursive
 pub fn loop(run) {
   case run {
-    Done(state) -> state
-    Cont(state, k) -> loop(k(state))
+    Done(state, envs) -> #(state, envs)
+    Cont(state, envs, k) -> loop(k(state, envs))
   }
 }
 
@@ -29,26 +34,27 @@ pub fn infer_env(exp, type_, eff, env, sub, next) {
   // Switching path to integer took ~ 20% off the inference time 600ms to 500ms for 6000 nodes
   let path = []
   let acc = #(sub, next, types)
-  loop(step(acc, env, exp, path, type_, eff, Done))
+  let envs = map.new()
+  loop(step(acc, env, envs, exp, path, type_, eff, Done))
 }
 
 pub fn infer(exp, type_, eff) {
   infer_env(exp, type_, eff, map.new(), map.new(), 0)
 }
 
-fn step(acc, env, exp, path, type_, eff, k) {
+fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
   case exp {
-    e.Variable(x) -> fetch(acc, path, env, x, type_, k)
+    e.Variable(x) -> fetch(acc, rev, env, x, type_, envs, k)
     e.Apply(e1, e2) -> {
       // can't error
       let #(sub, next, types) = acc
-      let types = map.insert(types, path, Ok(type_))
+      let types = map.insert(types, rev, Ok(type_))
       let #(arg, next) = t.fresh(next)
       let acc = #(sub, next, types)
       let func = t.Fun(arg, eff, type_)
-      use acc <- step(acc, env, e1, [0, ..path], func, eff)
-      use acc <- step(acc, env, e2, [1, ..path], arg, eff)
-      Cont(acc, k)
+      use acc, envs <- step(acc, env, envs, e1, [0, ..rev], func, eff)
+      use acc, envs <- step(acc, env, envs, e2, [1, ..rev], arg, eff)
+      Cont(acc, envs, k)
     }
     e.Lambda(x, e1) -> {
       let #(sub, next, types) = acc
@@ -56,31 +62,32 @@ fn step(acc, env, exp, path, type_, eff, k) {
       let #(eff, next) = t.fresh(next)
       let #(ret, next) = t.fresh(next)
       let acc = #(sub, next, types)
+      let envs = map.insert(envs, rev, env)
 
       let func = t.Fun(arg, eff, ret)
-      let acc = unify_at(acc, path, type_, func)
+      let acc = unify_at(acc, rev, type_, func)
       let env = extend(env, x, mono(arg))
-      use acc <- step(acc, env, e1, [0, ..path], ret, eff)
-      Cont(acc, k)
+      use acc, envs <- step(acc, env, envs, e1, [0, ..rev], ret, eff)
+      Cont(acc, envs, k)
     }
     e.Let(x, e1, e2) -> {
       // can't error
       let #(sub, next, types) = acc
-      let types = map.insert(types, path, Ok(type_))
+      let types = map.insert(types, rev, Ok(type_))
       let #(inner, next) = t.fresh(next)
       let acc = #(sub, next, types)
 
-      use acc <- step(acc, env, e1, [0, ..path], inner, eff)
+      use acc, envs <- step(acc, env, envs, e1, [0, ..rev], inner, eff)
       let env = extend(env, x, generalise(acc.0, env, inner))
-      use acc <- step(acc, env, e2, [1, ..path], type_, eff)
-      Cont(acc, k)
+      use acc, envs <- step(acc, env, envs, e2, [1, ..rev], type_, eff)
+      Cont(acc, envs, k)
     }
-    e.Builtin(x) -> fetch(acc, path, builtins(), x, type_, k)
+    e.Builtin(x) -> fetch(acc, rev, builtins(), x, type_, envs, k)
     literal -> {
       let #(sub, next, types) = acc
       let #(found, next) = primitive(literal, next)
       let acc = #(sub, next, types)
-      Cont(unify_at(acc, path, type_, found), k)
+      Cont(unify_at(acc, rev, type_, found), envs, k)
     }
   }
 }
@@ -123,13 +130,13 @@ pub fn unify_at(acc, path, expected, found) {
   infer.unify_at(expected, found, sub, next, types, path)
 }
 
-pub fn fetch(acc, path, env, x, type_, k) {
+pub fn fetch(acc, path, env, x, type_, envs, k) {
   case map.get(env, x) {
     Ok(scheme) -> {
       let #(sub, next, types) = acc
       let #(found, next) = instantiate(scheme, next)
       let acc = #(sub, next, types)
-      Cont(unify_at(acc, path, type_, found), k)
+      Cont(unify_at(acc, path, type_, found), envs, k)
     }
     Error(Nil) -> {
       let #(sub, next, types) = acc
@@ -141,7 +148,7 @@ pub fn fetch(acc, path, env, x, type_, k) {
           Error(#(error.MissingVariable(x), type_, unmatched)),
         )
       let acc = #(sub, next, types)
-      Cont(acc, k)
+      Cont(acc, envs, k)
     }
   }
 }

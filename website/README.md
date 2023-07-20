@@ -12,3 +12,26 @@ What is best practise for make files bin scripts in a mono repo?
 
 lenses etc
 https://www.youtube.com/watch?v=geV8F59q48E
+
+
+### Issues building the website.
+
+Right now I blow the stack when evaluating json decoding.
+I don't tail optimise in my eyg code but I also think the interpreter is not correctly tail call opimised
+
+I can build the website with
+```
+(cd eyg; node --stack-size=2000 ./build/dev/javascript/eyg/gleam.main.mjs cli website)
+```
+
+there is also a gleam run cli fetch to demonstrate that fetching works
+
+How do I catch an environment properly I'm not sure,
+however I could ship an env in the response.
+
+Pass list till env and then build up the value after
+
+There is no clever capture the function with stuff inplace, instead we just have to pull std from a library
+So just collect everything in the client is the only way forward
+
+putting JSON in the embed program still blows the stack

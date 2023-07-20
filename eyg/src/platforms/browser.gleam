@@ -1,5 +1,6 @@
 import gleam/io
 import gleam/list
+import gleam/option.{None}
 import eygir/decode
 import plinth/browser/window
 import plinth/browser/document
@@ -11,6 +12,7 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/javascript/promisex
 import harness/ffi/cast
+import harness/ffi/env
 import eygir/expression as e
 
 fn handlers() {
@@ -81,6 +83,8 @@ fn render() {
     t.Binary,
     t.unit,
     fn(page, k) {
+      let env = env.empty()
+      let rev = []
       let assert r.Binary(page) = page
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
@@ -89,7 +93,7 @@ fn render() {
             "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render",
           )
       }
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -100,6 +104,7 @@ pub fn async() {
     t.unit,
     fn(exec, k) {
       let env = stdlib.env()
+      let rev = []
       let #(_, extrinsic) =
         handlers()
         |> effect.extend("Await", effect.await())
@@ -109,7 +114,7 @@ pub fn async() {
         |> promise.await(fn(_: Nil) {
           let ret =
             r.handle(
-              r.eval_call(exec, r.unit, env.builtins, r.Value(_)),
+              r.eval_call(exec, r.unit, env, None),
               env.builtins,
               extrinsic,
             )
@@ -125,7 +130,7 @@ pub fn async() {
           }
         })
 
-      r.continue(k, r.Promise(promise))
+      r.prim(r.Value(r.Promise(promise)), rev, env, k)
     },
   )
 }
@@ -142,8 +147,20 @@ fn listen() {
     t.unit,
     t.unit,
     fn(sub, k) {
-      use event <- cast.field("event", cast.string, sub)
-      use handle <- cast.field("handler", cast.any, sub)
+      let env = env.empty()
+      let rev = []
+      use event <- cast.require(
+        cast.field("event", cast.string, sub),
+        rev,
+        env,
+        k,
+      )
+      use handle <- cast.require(
+        cast.field("handler", cast.any, sub),
+        rev,
+        env,
+        k,
+      )
 
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
@@ -153,7 +170,7 @@ fn listen() {
         fn(_) {
           let ret =
             r.handle(
-              r.eval_call(handle, r.unit, env.builtins, r.Value(_)),
+              r.eval_call(handle, r.unit, env, None),
               env.builtins,
               extrinsic,
             )
@@ -161,7 +178,7 @@ fn listen() {
           Nil
         },
       )
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -174,15 +191,16 @@ fn on_click() {
     t.unit,
     fn(handle, k) {
       let env = stdlib.env()
+      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_click(fn(arg) {
         let arg = window.decode_uri(arg)
         let assert Ok(arg) = decode.from_json(arg)
 
-        do_handle(arg, handle, env.builtins, extrinsic)
+        do_handle(arg, handle, env, extrinsic)
       })
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -193,25 +211,22 @@ fn on_keydown() {
     t.unit,
     fn(handle, k) {
       let env = stdlib.env()
+      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_keydown(fn(k) {
-        do_handle(e.Binary(k), handle, env.builtins, extrinsic)
+        do_handle(e.Binary(k), handle, env, extrinsic)
       })
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {
-  let assert r.Value(arg) = r.eval(arg, stdlib.env(), r.Value)
+  let assert r.Value(arg) = r.eval(arg, stdlib.env(), None)
   // pass as general term to program arg or fn
   let ret =
-    r.handle(
-      r.eval_call(handle, arg, builtins, r.Value(_)),
-      builtins,
-      extrinsic,
-    )
+    r.handle(r.eval_call(handle, arg, builtins, None), builtins, extrinsic)
   case ret {
     r.Value(_) -> Nil
     _ -> {

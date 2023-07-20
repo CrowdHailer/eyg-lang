@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/int
 import gleam/map
+import gleam/option.{None}
 import gleam/fetch
 import gleam/http.{Get}
 import gleam/http/request
@@ -10,6 +11,7 @@ import plinth/browser/window
 import plinth/javascript/promisex
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
+import harness/ffi/env
 
 pub fn init() {
   #(t.Closed, map.new())
@@ -28,8 +30,11 @@ pub fn debug_logger() {
     t.Binary,
     t.unit,
     fn(message, k) {
-      io.debug(message)
-      r.continue(k, r.unit)
+      let env = env.empty()
+      let rev = []
+      io.print(r.to_string(message))
+      io.print("\n")
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -39,9 +44,11 @@ pub fn window_alert() {
     t.Binary,
     t.unit,
     fn(message, k) {
-      use message <- cast.string(message)
+      let env = env.empty()
+      let rev = []
+      use message <- cast.require(cast.string(message), rev, env, k)
       window.alert(message)
-      r.continue(k, r.unit)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
@@ -51,11 +58,13 @@ pub fn choose() {
     t.unit,
     t.boolean,
     fn(message, k) {
+      let env = env.empty()
+      let rev = []
       let value = case int.random(0, 2) {
         0 -> r.false
         1 -> r.true
       }
-      r.continue(k, value)
+      r.prim(r.Value(value), rev, env, k)
     },
   )
 }
@@ -65,21 +74,63 @@ pub fn http() {
     t.Binary,
     t.unit,
     fn(request, k) {
-      use method <- cast.field("method", cast.any, request)
+      let env = env.empty()
+      let rev = []
+      use method <- cast.require(
+        cast.field("method", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(method)
-      use scheme <- cast.field("scheme", cast.any, request)
+      use scheme <- cast.require(
+        cast.field("scheme", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(scheme)
-      use host <- cast.field("host", cast.string, request)
+      use host <- cast.require(
+        cast.field("host", cast.string, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(host)
-      use port <- cast.field("port", cast.any, request)
+      use port <- cast.require(
+        cast.field("port", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(port)
-      use path <- cast.field("path", cast.string, request)
+      use path <- cast.require(
+        cast.field("path", cast.string, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(path)
-      use query <- cast.field("query", cast.any, request)
+      use query <- cast.require(
+        cast.field("query", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(query)
-      use headers <- cast.field("headers", cast.any, request)
+      use headers <- cast.require(
+        cast.field("headers", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(headers)
-      use body <- cast.field("body", cast.any, request)
+      use body <- cast.require(
+        cast.field("body", cast.any, request),
+        rev,
+        env,
+        k,
+      )
       io.debug(body)
 
       let request =
@@ -99,7 +150,7 @@ pub fn http() {
           }
         })
 
-      r.continue(k, r.Promise(promise))
+      r.prim(r.Value(r.Promise(promise)), rev, env, k)
     },
   )
 }
@@ -110,8 +161,10 @@ pub fn await() {
     t.Binary,
     t.unit,
     fn(promise, k) {
-      use js_promise <- cast.promise(promise)
-      r.Async(js_promise, k)
+      let env = env.empty()
+      let rev = []
+      use js_promise <- cast.require(cast.promise(promise), rev, env, k)
+      r.prim(r.Async(js_promise, rev, env, k), rev, env, None)
     },
   )
 }
@@ -121,9 +174,11 @@ pub fn wait() {
     t.Integer,
     t.unit,
     fn(milliseconds, k) {
-      use milliseconds <- cast.integer(milliseconds)
+      let env = env.empty()
+      let rev = []
+      use milliseconds <- cast.require(cast.integer(milliseconds), rev, env, k)
       let p = promisex.wait(milliseconds)
-      r.continue(k, r.Promise(promise.map(p, fn(_) { r.unit })))
+      r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
     },
   )
 }

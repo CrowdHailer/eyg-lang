@@ -1,3 +1,4 @@
+import gleam/option.{None}
 import eygir/expression as e
 import eyg/runtime/interpreter as r
 import harness/stdlib
@@ -7,6 +8,6 @@ pub fn string_append_test() {
   let key = "string_append"
   let source =
     e.Apply(e.Apply(e.Builtin(key), e.Binary("fizz")), e.Binary("buzz"))
-  r.eval(source, stdlib.env(), r.Value)
+  r.eval(source, stdlib.env(), None)
   |> should.equal(r.Value(r.Binary("fizzbuzz")))
 }
