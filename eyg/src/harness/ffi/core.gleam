@@ -69,7 +69,7 @@ pub fn fixed() {
         //   let #(c, rev, e, k) = r.step_call(partial, arg, rev, env, k)
         //   r.K(c, rev, e, k)
         // },
-        Some(r.CallWith(arg, rev, env, k)),
+        Some(r.Kont(r.CallWith(arg, rev, env), k)),
       )
     }),
   )
@@ -119,7 +119,7 @@ pub fn do_eval(source, rev, env, k) {
         r.eval(
           expression,
           r.Env([], lib().1),
-          Some(r.Apply(r.Defunc(r.Tag0("Ok")), rev, env, k)),
+          Some(r.Kont(r.Apply(r.Defunc(r.Tag0("Ok")), rev, env), k)),
         )
       r.prim(value, rev, env, k)
     }

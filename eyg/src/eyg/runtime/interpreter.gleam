@@ -146,7 +146,7 @@ pub type Switch {
   Perform0(String)
   Handle0(String)
   Handle1(String, Term)
-  Resume(List(Int), Env, Option(Kont))
+  Resume(Option(Kont), List(Int), Env)
   Shallow0(String)
   Shallow1(String, Term)
   Builtin(String, List(Term))
@@ -156,13 +156,17 @@ pub type Path =
   List(Int)
 
 // Keep Option(Kont) outside
-pub type Kont {
+pub type Kontinue {
   // arg path then call path
-  Arg(e.Expression, Path, Path, Env, Option(Kont))
-  Apply(Term, Path, Env, Option(Kont))
-  Assign(String, e.Expression, Path, Env, Option(Kont))
-  CallWith(Term, Path, Env, Option(Kont))
-  Delimit(String, Option(Kont))
+  Arg(e.Expression, Path, Path, Env)
+  Apply(Term, Path, Env)
+  Assign(String, e.Expression, Path, Env)
+  CallWith(Term, Path, Env)
+  Delimit(String, Term, Path, Env, Bool)
+}
+
+pub type Kont {
+  Kont(Kontinue, Option(Kont))
 }
 
 pub const unit = Record([])
@@ -285,13 +289,13 @@ pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
         // env is part of k
         Perform0(label) -> perform(label, arg, rev, env, k)
         Handle0(label) -> #(V(Value(Defunc(Handle1(label, arg)))), rev, env, k)
-        Handle1(label, handler) -> do_handle(label, handler, arg, rev, env, k)
+        Handle1(label, handler) -> deep(label, handler, arg, rev, env, k)
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        Resume(rev, i_env, i_k) -> {
-          let assert Value(done) = loop(V(Value(arg)), rev, i_env, i_k)
-          #(V(Value(done)), rev, env, k)
+        Resume(popped, rev, env) -> {
+          let k = move(popped, k)
+          #(V(Value(arg)), rev, env, k)
         }
 
         Shallow0(label) -> #(
@@ -389,7 +393,7 @@ fn step(exp, rev, env: Env, k) {
     E(e.Lambda(param, body)) ->
       K(V(Value(Function(param, body, env.scope, rev))), rev, env, k)
     E(e.Apply(f, arg)) -> {
-      K(E(f), [0, ..rev], env, Some(Arg(arg, [1, ..rev], rev, env, k)))
+      K(E(f), [0, ..rev], env, Some(Kont(Arg(arg, [1, ..rev], rev, env), k)))
     }
 
     E(e.Variable(x)) -> {
@@ -400,7 +404,12 @@ fn step(exp, rev, env: Env, k) {
       K(V(return), rev, env, k)
     }
     E(e.Let(var, value, then)) -> {
-      K(E(value), [0, ..rev], env, Some(Assign(var, then, [1, ..rev], env, k)))
+      K(
+        E(value),
+        [0, ..rev],
+        env,
+        Some(Kont(Assign(var, then, [1, ..rev], env), k)),
+      )
     }
 
     E(e.Integer(value)) -> K(V(Value(Integer(value))), rev, env, k)
@@ -428,33 +437,28 @@ fn step(exp, rev, env: Env, k) {
 
 fn apply_k(value, k) {
   case k {
-    Some(k) ->
-      case k {
-        Assign(label, then, rev, env, k) -> {
+    Some(Kont(switch, k)) ->
+      case switch {
+        Assign(label, then, rev, env) -> {
           let env = Env(..env, scope: [#(label, value), ..env.scope])
           K(E(then), [1, ..rev], env, k)
         }
-        Arg(arg, rev, call_rev, env, k) ->
-          K(E(arg), rev, env, Some(Apply(value, call_rev, env, k)))
-        Apply(f, rev, env, k) -> {
+        Arg(arg, rev, call_rev, env) ->
+          K(E(arg), rev, env, Some(Kont(Apply(value, call_rev, env), k)))
+        Apply(f, rev, env) -> {
           let #(c, rev, e, k) = step_call(f, value, rev, env, k)
           K(c, rev, e, k)
         }
-        CallWith(arg, rev, env, k) -> {
+        CallWith(arg, rev, env) -> {
           let #(c, rev, e, k) = step_call(value, arg, rev, env, k)
           K(c, rev, e, k)
         }
-        Delimit(_, k) -> {
+        Delimit(_, _, _, _, _) -> {
           apply_k(value, k)
         }
       }
     None -> Done(Value(value))
   }
-  // use f <- K(E(f), [0, ..rev], env)
-  // use arg <- K(E(arg), [1, ..rev], env)
-  // // if f is a function going to switch path else is new defunc value at same location
-
-  // step(f, env, fn(f) { step(arg, env, step_call(f, _, env.builtins, k)) })
 }
 
 fn cons(item, tail, rev) {
@@ -509,8 +513,10 @@ fn do_pop(k, label, popped) {
   case k {
     Some(k) ->
       case k {
-        Delimit(l, rest) if l == label -> Ok(#(popped, rest))
-        _ -> todo("do pop")
+        Kont(Delimit(l, h, rev, e, shallow), rest) if l == label ->
+          Ok(#(popped, h, rev, e, rest, shallow))
+        Kont(kontinue, rest) ->
+          do_pop(rest, label, Some(Kont(kontinue, popped)))
       }
     None -> Error(Nil)
   }
@@ -520,59 +526,43 @@ fn pop(k, label) {
   do_pop(k, label, None)
 }
 
-pub fn perform(label, arg, rev, env, k) {
-  case pop(k, label) {
-    Ok(#(popped, rest)) -> todo("popped")
-    Error(Nil) -> #(V(Effect(label, arg, rev, env, k)), rev, env, None)
+fn move(delimited, acc) {
+  case delimited {
+    None -> acc
+    Some(Kont(step, rest)) -> move(rest, Some(Kont(step, acc)))
   }
-  // let Env(handlers: handlers, ..) = i_env
-  // case list.key_find(handlers, label) {
-  //   Ok(#(handle, rev, env, k, shallow)) -> {
-  //     case shallow {
-  //       True -> {
-  //         let assert Ok(#(_, handlers)) = list.key_pop(handlers, label)
-  //         handlers
-  //       }
-  //       False -> handlers
-  //     }
-  //     let i_env = Env(..i_env, handlers: handlers)
-  //     let resume = Defunc(Resume(i_rev, i_env, i_k))
-  //     step_call(
-  //       handle,
-  //       arg,
-  //       rev,
-  //       env,
-  //       fn(partial) {
-  //         let #(c, rev, e, k) = step_call(partial, resume, rev, env, k)
-  //         K(c, rev, e, k)
-  //       },
-  //     )
-  //   }
-  //   Error(Nil) -> #(
-  //     V(Effect(label, arg, i_rev, i_env, i_k)),
-  //     i_rev,
-  //     i_env,
-  //     done,
-  //   )
-  // }
+}
+
+pub fn perform(label, arg, i_rev, i_env, k) {
+  case pop(k, label) {
+    Ok(#(popped, h, rev, e, k, shallow)) -> {
+      let resume = case shallow {
+        True -> Defunc(Resume(popped, i_rev, i_env))
+        False -> {
+          let popped = Some(Kont(Delimit(label, h, rev, e, False), popped))
+          Defunc(Resume(popped, i_rev, i_env))
+        }
+      }
+      let k =
+        Some(Kont(
+          CallWith(arg, rev, e),
+          Some(Kont(CallWith(resume, rev, e), k)),
+        ))
+      #(V(Value(h)), rev, e, k)
+    }
+    // TODO move grabbing path and env to Halt
+    Error(Nil) -> #(V(Effect(label, arg, i_rev, i_env, k)), i_rev, i_env, None)
+  }
 }
 
 // rename handle and move the handle for runner with handles out
-pub fn do_handle(label, handle, exec, rev, env: Env, k) {
-  // this passes both  tests with done or k
-  // let handler = #(label, #(handle, rev, env, done, False))
-  // let handlers = [handler, ..env.handlers]
-  // let env = Env(..env, handlers: handlers)
-  // step_call(exec, Record([]), rev, env, k)
-  todo("handle")
+pub fn deep(label, handle, exec, rev, env, k) {
+  let k = Some(Kont(Delimit(label, handle, rev, env, False), k))
+  step_call(exec, Record([]), rev, env, k)
 }
 
 // somewhere this needs outer k
 fn shallow(label, handle, exec, rev, env: Env, k) -> Always {
-  todo("shallow")
-  // this passes both  tests with done or k
-  // let handler = #(label, #(handle, rev, env, done, True))
-  // let handlers = [handler, ..env.handlers]
-  // let env = Env(..env, handlers: handlers)
-  // step_call(exec, Record([]), rev, env, k)
+  let k = Some(Kont(Delimit(label, handle, rev, env, True), k))
+  step_call(exec, Record([]), rev, env, k)
 }
