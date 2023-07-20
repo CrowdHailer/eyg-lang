@@ -119,9 +119,7 @@ pub fn do_eval(source, rev, env, k) {
         r.eval(
           expression,
           r.Env([], lib().1),
-          // fn(term) { r.K(r.V(r.Value(r.ok(term))), rev, env, k) },
-
-          todo("wrap in ok"),
+          Some(r.Apply(r.Defunc(r.Tag0("Ok")), rev, env, k)),
         )
       r.prim(value, rev, env, k)
     }

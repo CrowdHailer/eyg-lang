@@ -389,7 +389,7 @@ fn step(exp, rev, env: Env, k) {
     E(e.Lambda(param, body)) ->
       K(V(Value(Function(param, body, env.scope, rev))), rev, env, k)
     E(e.Apply(f, arg)) -> {
-      K(E(f), [0, ..rev], env, Some(Arg(f, [1, ..rev], rev, env, k)))
+      K(E(f), [0, ..rev], env, Some(Arg(arg, [1, ..rev], rev, env, k)))
     }
 
     E(e.Variable(x)) -> {
@@ -495,9 +495,6 @@ fn overwrite(label, value, rest, rev) {
 }
 
 fn match(label, matched, otherwise, value, rev, env, k) {
-  console.log(label)
-  console.log(matched)
-  console.log(otherwise)
   case value {
     Tagged(l, term) ->
       case l == label {
