@@ -373,11 +373,7 @@ pub fn resumable(exp: e.Expression, env, k) {
 }
 
 pub type Env {
-  Env(
-    scope: List(#(String, Term)),
-    builtins: map.Map(String, Arity),
-    handlers: List(#(String, #(Term, List(Int), Env, fn(Term) -> StepR, Bool))),
-  )
+  Env(scope: List(#(String, Term)), builtins: map.Map(String, Arity))
 }
 
 fn step(exp, rev, env: Env, k) {
@@ -479,52 +475,55 @@ fn match(label, matched, otherwise, value, rev, env, k) {
 }
 
 pub fn perform(label, arg, i_rev, i_env, i_k) {
-  let Env(handlers: handlers, ..) = i_env
-  case list.key_find(handlers, label) {
-    Ok(#(handle, rev, env, k, shallow)) -> {
-      case shallow {
-        True -> {
-          let assert Ok(#(_, handlers)) = list.key_pop(handlers, label)
-          handlers
-        }
-        False -> handlers
-      }
-      let i_env = Env(..i_env, handlers: handlers)
-      let resume = Defunc(Resume(i_rev, i_env, i_k))
-      step_call(
-        handle,
-        arg,
-        rev,
-        env,
-        fn(partial) {
-          let #(c, rev, e, k) = step_call(partial, resume, rev, env, k)
-          K(c, rev, e, k)
-        },
-      )
-    }
-    Error(Nil) -> #(
-      V(Effect(label, arg, i_rev, i_env, i_k)),
-      i_rev,
-      i_env,
-      done,
-    )
-  }
+  todo("perform")
+  // let Env(handlers: handlers, ..) = i_env
+  // case list.key_find(handlers, label) {
+  //   Ok(#(handle, rev, env, k, shallow)) -> {
+  //     case shallow {
+  //       True -> {
+  //         let assert Ok(#(_, handlers)) = list.key_pop(handlers, label)
+  //         handlers
+  //       }
+  //       False -> handlers
+  //     }
+  //     let i_env = Env(..i_env, handlers: handlers)
+  //     let resume = Defunc(Resume(i_rev, i_env, i_k))
+  //     step_call(
+  //       handle,
+  //       arg,
+  //       rev,
+  //       env,
+  //       fn(partial) {
+  //         let #(c, rev, e, k) = step_call(partial, resume, rev, env, k)
+  //         K(c, rev, e, k)
+  //       },
+  //     )
+  //   }
+  //   Error(Nil) -> #(
+  //     V(Effect(label, arg, i_rev, i_env, i_k)),
+  //     i_rev,
+  //     i_env,
+  //     done,
+  //   )
+  // }
 }
 
 // rename handle and move the handle for runner with handles out
 pub fn do_handle(label, handle, exec, rev, env: Env, k) {
   // this passes both  tests with done or k
-  let handler = #(label, #(handle, rev, env, done, False))
-  let handlers = [handler, ..env.handlers]
-  let env = Env(..env, handlers: handlers)
-  step_call(exec, Record([]), rev, env, k)
+  // let handler = #(label, #(handle, rev, env, done, False))
+  // let handlers = [handler, ..env.handlers]
+  // let env = Env(..env, handlers: handlers)
+  // step_call(exec, Record([]), rev, env, k)
+  todo("handle")
 }
 
 // somewhere this needs outer k
 fn shallow(label, handle, exec, rev, env: Env, k) -> Always {
+  todo("shallow")
   // this passes both  tests with done or k
-  let handler = #(label, #(handle, rev, env, done, True))
-  let handlers = [handler, ..env.handlers]
-  let env = Env(..env, handlers: handlers)
-  step_call(exec, Record([]), rev, env, k)
+  // let handler = #(label, #(handle, rev, env, done, True))
+  // let handlers = [handler, ..env.handlers]
+  // let env = Env(..env, handlers: handlers)
+  // step_call(exec, Record([]), rev, env, k)
 }

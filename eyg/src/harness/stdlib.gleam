@@ -8,5 +8,5 @@ pub fn lib() {
 }
 
 pub fn env() {
-  r.Env([], lib().1, [])
+  r.Env([], lib().1)
 }
