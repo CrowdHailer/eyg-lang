@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
@@ -6,7 +5,6 @@ import gleam/option.{None, Option, Some}
 import gleam/string
 import eygir/expression as e
 import gleam/javascript/promise.{Promise as JSPromise}
-import plinth/browser/console
 
 pub type Failure {
   NotAFunction(Term)
@@ -229,9 +227,6 @@ pub fn eval_call(f, arg, env, k: Option(Kont)) {
   let #(c, rev, e, k) = step_call(f, arg, [], env, k)
   loop(c, rev, e, k)
 }
-
-pub external fn trace() -> String =
-  "" "console.trace"
 
 pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
   case f {

@@ -1,13 +1,13 @@
-pub external type MutableMap(k, v)
+pub type MutableMap(k, v)
 
-pub external fn new() -> MutableMap(k, v) =
-  "../../plinth_ffi.js" "map_new"
+@external(javascript, "../../plinth_ffi.js", "map_new")
+pub fn new() -> MutableMap(k, v)
 
-pub external fn set(MutableMap(k, v), k, v) -> MutableMap(k, v) =
-  "../../plinth_ffi.js" "map_set"
+@external(javascript, "../../plinth_ffi.js", "map_set")
+pub fn set(a: MutableMap(k, v), b: k, c: v) -> MutableMap(k, v)
 
-pub external fn get(MutableMap(k, v), k) -> Result(v, Nil) =
-  "../../plinth_ffi.js" "map_get"
+@external(javascript, "../../plinth_ffi.js", "map_get")
+pub fn get(a: MutableMap(k, v), b: k) -> Result(v, Nil)
 
-pub external fn size(MutableMap(k, v)) -> Int =
-  "../../plinth_ffi.js" "map_size"
+@external(javascript, "../../plinth_ffi.js", "map_size")
+pub fn size(a: MutableMap(k, v)) -> Int

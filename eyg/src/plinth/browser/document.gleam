@@ -1,102 +1,92 @@
 import gleam/dynamic.{Dynamic}
-import gleam/option.{Option}
+import gleam/option
 import gleam/javascript/array.{Array}
 
-pub external type Document
+pub type Document
 
-pub external type Element
+pub type Element
 
-pub external type Event
+pub type Event
 
 // -------- Search --------
 
-pub external fn query_selector(Element, String) -> Result(Element, Nil) =
-  "../../plinth_ffi.js" "querySelector"
+@external(javascript, "../../plinth_ffi.js", "querySelector")
+pub fn query_selector(a: Element, b: String) -> Result(Element, Nil)
 
-pub external fn document() -> Element =
-  "../../plinth_ffi.js" "doc"
+@external(javascript, "../../plinth_ffi.js", "doc")
+pub fn document() -> Element
 
-pub external fn query_selector_all(String) -> Array(Element) =
-  "../../plinth_ffi.js" "querySelectorAll"
+@external(javascript, "../../plinth_ffi.js", "querySelectorAll")
+pub fn query_selector_all(a: String) -> Array(Element)
 
-pub external fn closest(Element, String) -> Result(Element, Nil) =
-  "../../plinth_ffi.js" "closest"
+@external(javascript, "../../plinth_ffi.js", "closest")
+pub fn closest(a: Element, b: String) -> Result(Element, Nil)
 
-pub external fn next_element_sibling(Element) -> Element =
-  "../../plinth_ffi.js" "nextElementSibling"
+@external(javascript, "../../plinth_ffi.js", "nextElementSibling")
+pub fn next_element_sibling(a: Element) -> Element
 
 // -------- Elements --------
 
-pub external fn create_element(String) -> Element =
-  "" "document.createElement"
+@external(javascript, "../../plinth_ffi.js", "createElement")
+pub fn create_element(a: String) -> Element
 
-pub external fn set_attribute(Element, String, String) -> Nil =
-  "../../plinth_ffi.js" "setAttribute"
+@external(javascript, "../../plinth_ffi.js", "setAttribute")
+pub fn set_attribute(a: Element, b: String, c: String) -> Nil
 
-pub external fn append(Element, Element) -> Nil =
-  "../../plinth_ffi.js" "append"
+@external(javascript, "../../plinth_ffi.js", "append")
+pub fn append(a: Element, b: Element) -> Nil
 
 // append works on children, not referenced in block components
-pub external fn insert_element_after(Element, Element) -> Nil =
-  "../../plinth_ffi.js" "insertElementAfter"
+@external(javascript, "../../plinth_ffi.js", "insertElementAfter")
+pub fn insert_element_after(a: Element, b: Element) -> Nil
 
-pub external fn remove(Element) -> Nil =
-  "../../plinth_ffi.js" "remove"
+@external(javascript, "../../plinth_ffi.js", "remove")
+pub fn remove(a: Element) -> Nil
 
 // -------- Elements Attributes --------
 
-pub external fn dataset_get(Element, String) -> Result(String, Nil) =
-  "../../plinth_ffi.js" "datasetGet"
+@external(javascript, "../../plinth_ffi.js", "datasetGet")
+pub fn dataset_get(a: Element, b: String) -> Result(String, Nil)
 
 // -------- Event --------
 
-pub external fn add_event_listener(
-  Element,
-  String,
-  fn(Event) -> Nil,
-) -> fn() -> Nil =
-  "../../plinth_ffi.js" "addEventListener"
+@external(javascript, "../../plinth_ffi.js", "addEventListener")
+pub fn add_event_listener(
+  a: Element,
+  b: String,
+  c: fn(Event) -> Nil,
+) -> fn() -> Nil
 
-pub external fn target(Event) -> Element =
-  "../../plinth_ffi.js" "target"
+@external(javascript, "../../plinth_ffi.js", "target")
+pub fn target(a: Event) -> Element
 
-pub external fn key(Event) -> String =
-  "../../plinth_ffi.js" "eventKey"
+@external(javascript, "../../plinth_ffi.js", "eventKey")
+pub fn key(a: Event) -> String
 
 // returns the first only
-pub external fn get_target_range(Event) -> Nil =
-  "../../plinth_ffi.js" "getTargetRange"
+@external(javascript, "../../plinth_ffi.js", "getTargetRange")
+pub fn get_target_range(a: Event) -> Nil
 
-pub external fn prevent_default(Event) -> Nil =
-  "../../plinth_ffi.js" "preventDefault"
+@external(javascript, "../../plinth_ffi.js", "preventDefault")
+pub fn prevent_default(a: Event) -> Nil
 
 // -------- Other --------
 
-pub external fn insert_after(Element, String) -> Nil =
-  "../../plinth_ffi.js" "insertAfter"
+@external(javascript, "../../plinth_ffi.js", "insertAfter")
+pub fn insert_after(a: Element, b: String) -> Nil
 
-external fn do_get(any, String) -> Dynamic =
-  "" "Reflect.get"
+@external(javascript, "../../plinth_ffi.js", "innerText")
+pub fn inner_text(el: Element) -> String
 
-pub fn inner_text(el: Element) -> String {
-  let assert Ok(text) = dynamic.string(do_get(el, "innerText"))
-  text
-}
+@external(javascript, "../../plinth_ffi.js", "setInnerText")
+pub fn set_text(el: Element, value: String) -> Nil
 
-external fn do_set(any, String, Dynamic) -> Nil =
-  "" "Reflect.set"
-
-pub fn set_text(el: Element, value: String) {
-  do_set(el, "innerText", dynamic.from(value))
-}
-
-pub fn set_html(el: Element, value: String) {
-  do_set(el, "innerHTML", dynamic.from(value))
-}
+@external(javascript, "../../plinth_ffi.js", "setInnerHTML")
+pub fn set_html(el: Element, value: String) -> Nil
 
 // TODO fix proper action or add event listener
-pub external fn on_click(fn(String) -> Nil) -> Nil =
-  "../../plinth_ffi.js" "onClick"
+@external(javascript, "../../plinth_ffi.js", "onClick")
+pub fn on_click(a: fn(String) -> Nil) -> Nil
 
-pub external fn on_keydown(fn(String) -> Nil) -> Nil =
-  "../../plinth_ffi.js" "onKeyDown"
+@external(javascript, "../../plinth_ffi.js", "onKeyDown")
+pub fn on_keydown(a: fn(String) -> Nil) -> Nil

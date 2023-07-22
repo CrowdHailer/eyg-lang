@@ -1,2 +1,2 @@
-pub external fn log(a) -> Nil =
-  "" "console.log"
+@external(javascript, "../../plinth_ffi.js", "log")
+pub fn log(a: a) -> Nil

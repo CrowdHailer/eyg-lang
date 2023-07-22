@@ -1,5 +1,5 @@
-external fn do_read_file_sync(String, String) -> String =
-  "fs" "readFileSync"
+@external(javascript, "fs", "readFileSync")
+fn do_read_file_sync(a: String, b: String) -> String
 
 /// Returns the contents of the path as a string.
 pub fn read_file_sync(path: String) -> String {
@@ -7,5 +7,5 @@ pub fn read_file_sync(path: String) -> String {
 }
 
 /// Write a string to a file.
-pub external fn write_file_sync(path: String, content: String) -> Nil =
-  "fs" "writeFileSync"
+@external(javascript, "fs", "writeFileSync")
+pub fn write_file_sync(path path: String, content content: String) -> Nil

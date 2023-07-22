@@ -81,8 +81,8 @@ fn server_run(prog, method, scheme, host, path, query, body) {
   }
 }
 
-external fn do_serve(
-  fn(String, String, String, String, String, String) -> Promise(String),
-  fn(String) -> Nil,
-) -> Nil =
-  "../entry.js" "serve"
+@external(javascript, "../entry.js", "serve")
+fn do_serve(
+  a: fn(String, String, String, String, String, String) -> Promise(String),
+  b: fn(String) -> Nil,
+) -> Nil

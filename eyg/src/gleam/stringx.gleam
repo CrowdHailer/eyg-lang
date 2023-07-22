@@ -16,8 +16,8 @@ pub fn replace_at(original, from, to, new) {
   |> string.concat
 }
 
-pub external fn fold_graphmemes(String, a, fn(a, String) -> a) -> a =
-  "../plinth_ffi.js" "foldGraphmemes"
+@external(javascript, "../plinth_ffi.js", "foldGraphmemes")
+pub fn fold_graphmemes(a: String, b: a, c: fn(a, String) -> a) -> a
 
-pub external fn index_fold_graphmemes(String, a, fn(a, String, Int) -> a) -> a =
-  "../plinth_ffi.js" "foldGraphmemes"
+@external(javascript, "../plinth_ffi.js", "foldGraphmemes")
+pub fn index_fold_graphmemes(a: String, b: a, c: fn(a, String, Int) -> a) -> a

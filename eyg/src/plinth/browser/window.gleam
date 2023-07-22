@@ -1,66 +1,64 @@
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 
-pub external fn alert(String) -> Nil =
-  "" "alert"
+@external(javascript, "../../plinth_ffi.js", "alert")
+pub fn alert(a: String) -> Nil
 
-pub external fn add_event_listener(String, fn(Nil) -> Nil) -> Nil =
-  "" "addEventListener"
+@external(javascript, "../../plinth_ffi.js", "addEventListener")
+pub fn add_event_listener(a: String, b: fn(Nil) -> Nil) -> Nil
 
-pub external fn encode_uri(String) -> String =
-  "" "encodeURI"
+@external(javascript, "../../plinth_ffi.js", "encodeURI")
+pub fn encode_uri(a: String) -> String
 
-pub external fn decode_uri(String) -> String =
-  "" "decodeURI"
+@external(javascript, "../../plinth_ffi.js", "decodeURI")
+pub fn decode_uri(a: String) -> String
 
 // files
-pub external type FileHandle
+pub type FileHandle
 
 // chrome only
 // firefox support is for originprivatefilesystem and drag and drop blobs
 // show dir for db of stuff only
 
 // single tuple is hack for list of files
-pub external fn show_open_file_picker() -> Promise(Result(#(FileHandle), Nil)) =
-  "../../plinth_ffi.js" "showOpenFilePicker"
+@external(javascript, "../../plinth_ffi.js", "showOpenFilePicker")
+pub fn show_open_file_picker() -> Promise(Result(#(FileHandle), Nil))
 
-pub external fn show_save_file_picker() -> Promise(Result(FileHandle, Nil)) =
-  "../../plinth_ffi.js" "showSaveFilePicker"
+@external(javascript, "../../plinth_ffi.js", "showSaveFilePicker")
+pub fn show_save_file_picker() -> Promise(Result(FileHandle, Nil))
 
-pub external type File
+pub type File
 
-pub external fn get_file(FileHandle) -> Promise(File) =
-  "../../plinth_ffi.js" "getFile"
+@external(javascript, "../../plinth_ffi.js", "getFile")
+pub fn get_file(a: FileHandle) -> Promise(File)
 
-pub external fn file_text(File) -> Promise(String) =
-  "../../plinth_ffi.js" "fileText"
+@external(javascript, "../../plinth_ffi.js", "fileText")
+pub fn file_text(a: File) -> Promise(String)
 
-pub external type FileSystemWritableFileStream
+pub type FileSystemWritableFileStream
 
-pub external fn create_writable(
-  FileHandle,
-) -> Promise(FileSystemWritableFileStream) =
-  "../../plinth_ffi.js" "createWritable"
+@external(javascript, "../../plinth_ffi.js", "createWritable")
+pub fn create_writable(a: FileHandle) -> Promise(FileSystemWritableFileStream)
 
-pub external type Blob
+pub type Blob
 
-pub external fn blob(Array(String), String) -> Blob =
-  "../../plinth_ffi.js" "blob"
+@external(javascript, "../../plinth_ffi.js", "blob")
+pub fn blob(a: Array(String), b: String) -> Blob
 
-pub external fn write(FileSystemWritableFileStream, Blob) -> Promise(Nil) =
-  "../../plinth_ffi.js" "write"
+@external(javascript, "../../plinth_ffi.js", "write")
+pub fn write(a: FileSystemWritableFileStream, b: Blob) -> Promise(Nil)
 
-pub external fn close(FileSystemWritableFileStream) -> Promise(Nil) =
-  "../../plinth_ffi.js" "close"
+@external(javascript, "../../plinth_ffi.js", "close")
+pub fn close(a: FileSystemWritableFileStream) -> Promise(Nil)
 
 // selection and ranges
 
-pub external type Selection
+pub type Selection
 
-pub external fn get_selection() -> Result(Selection, Nil) =
-  "../../plinth_ffi.js" "getSelection"
+@external(javascript, "../../plinth_ffi.js", "getSelection")
+pub fn get_selection() -> Result(Selection, Nil)
 
-pub external type Range
+pub type Range
 
-pub external fn get_range_at(Selection, Int) -> Result(Range, Nil) =
-  "../../plinth_ffi.js" "getRangeAt"
+@external(javascript, "../../plinth_ffi.js", "getRangeAt")
+pub fn get_range_at(a: Selection, b: Int) -> Result(Range, Nil)

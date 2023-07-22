@@ -23,5 +23,5 @@ pub fn main(source) {
 
 // js(all ffi's) files need to be top level
 // careful is a js not mjs file
-external fn listen_keypress(fn(string) -> Nil) -> Nil =
-  "../browser_ffi.js" "listenKeypress"
+@external(javascript, "../browser_ffi.js", "listenKeypress")
+fn listen_keypress(a: fn(string) -> Nil) -> Nil

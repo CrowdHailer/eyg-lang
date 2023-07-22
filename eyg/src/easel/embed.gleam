@@ -334,11 +334,11 @@ pub fn fullscreen(root) {
   Nil
 }
 
-external fn start_index(window.Range) -> Int =
-  "../easel_ffi.js" "startIndex"
+@external(javascript, "../easel_ffi.js", "startIndex")
+fn start_index(a: window.Range) -> Int
 
-external fn end_index(window.Range) -> Int =
-  "../easel_ffi.js" "endIndex"
+@external(javascript, "../easel_ffi.js", "endIndex")
+fn end_index(a: window.Range) -> Int
 
 fn render_page(root, start, state) {
   case document.query_selector(root, "pre") {
@@ -367,16 +367,16 @@ fn render_page(root, start, state) {
   place_cursor(pre, start)
 }
 
-pub external fn handle_input(
-  document.Event,
-  insert_text: fn(String, Int, Int) -> Nil,
-  insert_paragraph: fn(Int) -> Nil,
-) -> Nil =
-  "../easel_ffi.js" "handleInput"
+@external(javascript, "../easel_ffi.js", "handleInput")
+pub fn handle_input(
+  a: document.Event,
+  insert_text insert_text: fn(String, Int, Int) -> Nil,
+  insert_paragraph insert_paragraph: fn(Int) -> Nil,
+) -> Nil
 
 // relies on a flat list of spans
-pub external fn place_cursor(document.Element, Int) -> Nil =
-  "../easel_ffi.js" "placeCursor"
+@external(javascript, "../easel_ffi.js", "placeCursor")
+pub fn place_cursor(a: document.Element, b: Int) -> Nil
 
 pub fn snippet(root) {
   // TODO remove init and resume because they need to call out to the server
