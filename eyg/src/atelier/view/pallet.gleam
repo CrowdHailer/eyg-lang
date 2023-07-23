@@ -5,7 +5,8 @@ import gleam/list
 import gleam/map
 import gleam/string
 import gleam/option.{None, Some}
-import lustre/element.{div, input, span, text, textarea}
+import lustre/element/html.{div, input, span, textarea}
+import lustre/element.{text}
 import lustre/event.{on_click}
 import lustre/attribute.{class, classes}
 import eyg/analysis/jm/type_ as t

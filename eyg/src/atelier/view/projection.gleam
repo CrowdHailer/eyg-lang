@@ -4,7 +4,8 @@ import gleam/map
 import gleam/option.{None, Some}
 import gleam/string
 import eyg/analysis/jm/type_ as t
-import lustre/element.{pre, span, text}
+import lustre/element/html.{pre, span}
+import lustre/element.{text}
 import lustre/event.{on_click}
 import lustre/attribute.{class, classes, style}
 import eygir/expression as e

@@ -1,4 +1,4 @@
-import lustre/element.{div}
+import lustre/element/html.{div}
 import lustre/attribute.{class}
 import atelier/app
 import atelier/view/projection

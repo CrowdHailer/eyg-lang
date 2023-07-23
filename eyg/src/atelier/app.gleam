@@ -8,7 +8,7 @@ import gleam/string
 import gleam/fetch
 import gleam/http
 import gleam/http/request
-import lustre/cmd
+import lustre/effect as cmd
 import easel/zipper
 import eygir/expression as e
 import eygir/encode
