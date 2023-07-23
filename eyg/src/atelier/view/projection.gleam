@@ -1,7 +1,7 @@
 import gleam/int
 import gleam/list
 import gleam/map
-import gleam/option.{None, Option, Some}
+import gleam/option.{None, Some}
 import gleam/string
 import eyg/analysis/jm/type_ as t
 import lustre/element.{pre, span, text}

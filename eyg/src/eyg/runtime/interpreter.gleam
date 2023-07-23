@@ -50,10 +50,10 @@ pub fn run_async(source, env, term, extrinsic) {
       env.builtins,
       extrinsic,
     )
-  flatten_promise(ret, env, extrinsic)
+  flatten_promise(ret, extrinsic)
 }
 
-pub fn flatten_promise(ret, env: Env, extrinsic) {
+pub fn flatten_promise(ret, extrinsic) {
   case ret {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
     // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
@@ -67,7 +67,7 @@ pub fn flatten_promise(ret, env: Env, extrinsic) {
         p,
         fn(return) {
           let next = loop(V(Value(return)), rev, env, k)
-          flatten_promise(handle(next, env.builtins, extrinsic), env, extrinsic)
+          flatten_promise(handle(next, env.builtins, extrinsic), extrinsic)
         },
       )
   }
@@ -77,12 +77,12 @@ pub fn handle(return, builtins, extrinsic) {
   case return {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
-    Effect(label, term, rev, env, k) ->
+    Effect(label, term, rev, _env, k) ->
       case map.get(extrinsic, label) {
         Ok(handler) -> {
           // handler only gets env in captured fn's
           let #(c, rev, e, k) = handler(term, k)
-          let return = loop(c, [], e, k)
+          let return = loop(c, rev, e, k)
           handle(return, builtins, extrinsic)
         }
         Error(Nil) -> Abort(UnhandledEffect(label, term), rev)

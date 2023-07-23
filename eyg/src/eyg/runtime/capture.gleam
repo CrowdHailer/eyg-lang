@@ -1,9 +1,6 @@
-import gleam/io
 import gleam/int
 import gleam/list
-import gleam/listx
 import gleam/result
-import gleam/set
 import gleam/string
 import eygir/expression as e
 import eyg/runtime/interpreter as r
@@ -84,7 +81,7 @@ fn do_capture(term, env) {
             }
             case list.key_find(env, var) {
               Ok(old) if old == exp -> #(env, wrapped)
-              Ok(old) -> {
+              Ok(_other) -> {
                 let pre =
                   list.filter(
                     env,
@@ -170,13 +167,7 @@ fn capture_defunc(switch, env) {
       let exp = e.Apply(e.Handle(label), handler)
       #(exp, env)
     }
-    r.Resume(label, handler, _resume) -> {
-      // possibly we do nothing as the context of the handler has been lost
-      // Resume needs to be an expression I think
-      // let #(handler, env) = do_capture(handler, env)
-
-      // let exp = e.Apply(e.Handle(label), handler)
-      // #(exp, env)
+    r.Resume(_label, _handler, _resume) -> {
       panic("not idea how to capture the func here, is it even possible")
     }
     r.Shallow0(label) -> #(e.Shallow(label), env)

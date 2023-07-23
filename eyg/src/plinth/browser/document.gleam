@@ -1,5 +1,3 @@
-import gleam/dynamic.{Dynamic}
-import gleam/option
 import gleam/javascript/array.{Array}
 
 pub type Document

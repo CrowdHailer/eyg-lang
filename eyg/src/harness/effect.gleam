@@ -57,7 +57,7 @@ pub fn choose() {
   #(
     t.unit,
     t.boolean,
-    fn(message, k) {
+    fn(_, k) {
       let env = env.empty()
       let rev = []
       let value = case int.random(0, 2) {

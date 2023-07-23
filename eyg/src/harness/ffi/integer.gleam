@@ -1,5 +1,4 @@
 import gleam/int
-import gleam/result
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast

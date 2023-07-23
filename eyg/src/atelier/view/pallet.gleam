@@ -176,7 +176,7 @@ fn render_errors(inferred) {
       },
     )
 
-  case list.length(errors) != 0 {
+  case errors != [] {
     False -> span([], [])
     True ->
       div(

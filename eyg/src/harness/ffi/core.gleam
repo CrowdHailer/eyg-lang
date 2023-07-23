@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/map
-import gleam/option.{None, Some}
+import gleam/option.{Some}
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode

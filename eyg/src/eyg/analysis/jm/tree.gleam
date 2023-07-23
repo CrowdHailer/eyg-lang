@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/map
 import eygir/expression as e
 import eyg/analysis/jm/error

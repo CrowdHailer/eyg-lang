@@ -1,4 +1,4 @@
-import gleam/option.{None, Some}
+import gleam/option.{Some}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast

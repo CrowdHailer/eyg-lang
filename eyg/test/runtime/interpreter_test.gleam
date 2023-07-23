@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/map
 import gleam/option.{None}
 import gleam/javascript/promise

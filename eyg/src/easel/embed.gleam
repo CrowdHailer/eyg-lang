@@ -2,7 +2,6 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/map
-import gleam/mapx
 import gleam/option.{None, Option, Some}
 import gleam/regex
 import gleam/result
@@ -15,7 +14,6 @@ import eyg/runtime/interpreter as r
 import harness/stdlib
 import harness/effect
 import eyg/analysis/jm/tree
-import eyg/analysis/jm/infer
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/env as tenv
 import easel/print
@@ -26,9 +24,7 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/browser/window
 import plinth/browser/document
-import plinth/browser/console
 import platforms/browser
-import harness/ffi/env
 
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup
@@ -910,17 +906,17 @@ fn run(state: Embed) {
     |> map.insert("Log", effect.debug_logger().2)
   let ret = r.handle(r.eval(source, env, None), env.builtins, handlers)
   case ret {
-    r.Abort(reason, rev) -> #(reason_to_string(reason), [])
+    r.Abort(reason, _rev) -> #(reason_to_string(reason), [])
     r.Value(term) -> #(term_to_string(term), [])
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
-    r.Async(p, _, _, _) -> {
+    r.Async(_, _, _, _) -> {
       let p =
         promise.map(
-          r.flatten_promise(ret, env, handlers),
+          r.flatten_promise(ret, handlers),
           fn(final) {
             let message = case final {
-              Error(#(reason, rev)) -> reason_to_string(reason)
+              Error(#(reason, _rev)) -> reason_to_string(reason)
               Ok(term) -> {
                 io.debug(term)
                 term_to_string(term)
@@ -1056,7 +1052,7 @@ pub fn extend(state: Embed, start, end) {
 
 pub fn extender(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
-  use target <- update_at(state, path)
+  use _target <- update_at(state, path)
   #(e.Extend(""), state.mode, [])
 }
 

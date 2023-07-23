@@ -1,7 +1,6 @@
 import gleam/map
 import gleam/set
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
 import eyg/analysis/scheme.{Scheme}
 
 pub fn init() {

@@ -266,8 +266,9 @@ fn paste(zipper: zipper.Zipper, state: WorkSpace) {
   }
 }
 
-fn unwrap(zipper: zipper.Zipper, state) {
-  todo as "zipper needs to expose parent"
+fn unwrap(_zipper: zipper.Zipper, _state) {
+  // I'm not really missing this
+  panic as "zipper needs to expose parent"
   // case act.parent {
   //   None -> Error("top level")
   //   Some(#(_i, _list, _, parent_update)) -> {

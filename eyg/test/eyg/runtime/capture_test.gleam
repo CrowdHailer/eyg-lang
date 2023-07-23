@@ -1,9 +1,5 @@
-import gleam/io
-import gleam/list
 import gleam/map
 import gleam/option.{None, Some}
-import gleam/result
-import gleam/set
 import eygir/expression as e
 import eyg/runtime/interpreter as r
 import eyg/runtime/capture
@@ -167,22 +163,18 @@ pub fn double_catch_test() {
       ),
     )
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
-  let exp =
-    capture.capture(term)
-    |> should.equal(e.Let(
-      "std",
-      e.Binary("Standard"),
-      e.Let(
-        "f0",
-        e.Lambda("_", e.Variable("std")),
-        // Always inlineing functions can make output quite large, although much smaller without environment.
-        // A possible solution is to always lambda lift if assuming function are large parts of AST
-        e.list([
-          e.Lambda("_", e.Variable("f0")),
-          e.Lambda("_", e.Variable("std")),
-        ]),
-      ),
-    ))
+  capture.capture(term)
+  |> should.equal(e.Let(
+    "std",
+    e.Binary("Standard"),
+    e.Let(
+      "f0",
+      e.Lambda("_", e.Variable("std")),
+      // Always inlineing functions can make output quite large, although much smaller without environment.
+      // A possible solution is to always lambda lift if assuming function are large parts of AST
+      e.list([e.Lambda("_", e.Variable("f0")), e.Lambda("_", e.Variable("std"))]),
+    ),
+  ))
 }
 
 pub fn fn_in_env_test() {

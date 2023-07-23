@@ -37,7 +37,7 @@ pub fn print(source, selection, always, analysis: Option(tree.State)) {
 pub fn type_at(path, analysis) {
   case analysis {
     Some(analysis) -> {
-      let #(sub, _next, types) = analysis
+      let #(_sub, _next, types) = analysis
       let assert Ok(t) = map.get(types, list.reverse(path))
       Some(t)
     }

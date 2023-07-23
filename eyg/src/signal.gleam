@@ -346,7 +346,7 @@ fn expression_create(exp, var, lambda, apply, let_, integer, binary) {
     }
     _ -> {
       // let #(get, set) = make(value)
-      let #(elements, update) = fragment([text(static("unknown"))])
+      let #(elements, _update) = fragment([text(static("unknown"))])
       let try_update = fn() {
         case exp() {
           // e.Binary(new) -> {
@@ -400,12 +400,12 @@ pub fn app(json) {
   let assert Ok(source) = decode.decoder(json)
   // component is actually context
   let page = component(fn(exp) { projection(exp) })
-  let #(signal, set) = make(source)
+  let #(signal, _set) = make(source)
   let #(elements, update) = page(signal())
   promise.map(
     promisex.wait(2000),
     fn(_) {
-      let assert e.Let(label, std, rest) = source
+      let assert e.Let(label, _std, rest) = source
       let exp = e.Let(label, e.Vacant(""), rest)
       update(exp)
     },

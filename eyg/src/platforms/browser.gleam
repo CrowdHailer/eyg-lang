@@ -118,7 +118,7 @@ pub fn async() {
               env.builtins,
               extrinsic,
             )
-          r.flatten_promise(ret, env, extrinsic)
+          r.flatten_promise(ret, extrinsic)
         })
         |> promise.map(fn(result) {
           case result {
