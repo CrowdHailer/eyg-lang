@@ -102,7 +102,6 @@ pub fn rasing_effect_test() {
       e.Apply(e.Perform("Foo"), e.Integer(1)),
       e.Apply(e.Perform("Bar"), e.Variable("a")),
     )
-  // TODO test lifing in the right plce
   let assert r.Effect("Foo", lifted, rev, env, k) =
     r.eval(source, env.empty(), None)
   lifted
@@ -376,7 +375,6 @@ pub fn multiple_resumptions_test() {
       ]),
     ),
   ])))
-  // TODO shallow multiple test
 }
 
 pub fn handler_doesnt_continue_to_effect_then_in_let_test() {

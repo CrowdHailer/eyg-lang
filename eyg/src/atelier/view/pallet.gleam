@@ -42,7 +42,7 @@ fn render_label(value) {
 fn render_variable(value, _inferred, _state: app.WorkSpace) {
   [
     div([], []),
-    // TODO fix suggestion
+    //  suggestion has been removed because there is no map of env's in the tree
     // case inferred {
     //   Some(inferred) ->
     //     case inventory.variables_at(inferred.environments, state.selection) {

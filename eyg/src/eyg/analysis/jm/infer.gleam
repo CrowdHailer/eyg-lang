@@ -162,7 +162,7 @@ pub fn fix() {
 }
 
 pub fn eval() {
-  // TODO raise eval effect
+  // could raise eval effect to ensure type checking is sound
   t.Fun(t.Var(0), t.Var(1), t.Var(2))
 }
 
