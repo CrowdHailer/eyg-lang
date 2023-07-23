@@ -10,7 +10,7 @@ pub type Failure {
   NotAFunction(Term)
   UndefinedVariable(String)
   Vacant(comment: String)
-  NoCases
+  NoMatch
   UnhandledEffect(String, Term)
   IncorrectTerm(expected: String, got: Term)
   MissingField(String)
@@ -105,30 +105,23 @@ pub type Term {
     env: List(#(String, Term)),
     path: List(Int),
   )
-  Defunc(Switch)
+  Defunc(Switch, List(Term))
   Promise(JSPromise(Term))
 }
 
 pub type Switch {
-  Cons0
-  Cons1(Term)
-  Extend0(String)
-  Extend1(String, Term)
-  Overwrite0(String)
-  Overwrite1(String, Term)
-  Select0(String)
-  Tag0(String)
-  Match0(String)
-  Match1(String, Term)
-  Match2(String, Term, Term)
-  NoCases0
-  Perform0(String)
-  Handle0(String)
-  Handle1(String, Term)
+  Cons
+  Extend(String)
+  Overwrite(String)
+  Select(String)
+  Tag(String)
+  Match(String)
+  NoCases
+  Perform(String)
+  Handle(String)
   Resume(Option(Kont), List(Int), Env)
-  Shallow0(String)
-  Shallow1(String, Term)
-  Builtin(String, List(Term))
+  Shallow(String)
+  Builtin(String)
 }
 
 pub type Path =
@@ -182,7 +175,7 @@ pub fn to_string(term) {
       |> string.concat
     Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
     Function(param, _, _, _) -> string.concat(["(", param, ") -> { ... }"])
-    Defunc(d) -> string.concat(["Defunc: ", string.inspect(d)])
+    Defunc(d, []) -> string.concat(["Defunc: ", string.inspect(d)])
     Promise(_) -> string.concat(["Promise: "])
   }
 }
@@ -235,56 +228,38 @@ pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
       #(E(body), rev, env, k)
     }
     // builtin needs to return result for the case statement
-    Defunc(switch) ->
-      case switch {
-        Cons0 -> #(V(Value(Defunc(Cons1(arg)))), rev, env, k)
-        Cons1(value) -> prim(cons(value, arg, rev), rev, env, k)
-        Extend0(label) -> #(V(Value(Defunc(Extend1(label, arg)))), rev, env, k)
-        Extend1(label, value) ->
+    Defunc(switch, applied) ->
+      case switch, applied {
+        Cons, [item] -> prim(cons(item, arg, rev), rev, env, k)
+        Extend(label), [value] ->
           prim(extend(label, value, arg, rev), rev, env, k)
-        Overwrite0(label) -> #(
-          V(Value(Defunc(Overwrite1(label, arg)))),
-          [],
-          env,
-          k,
-        )
-        Overwrite1(label, value) ->
+        Overwrite(label), [value] ->
           prim(overwrite(label, value, arg, rev), rev, env, k)
-        Select0(label) -> prim(select(label, arg, rev), rev, env, k)
-        Tag0(label) -> prim(Value(Tagged(label, arg)), rev, env, k)
-        Match0(label) -> #(V(Value(Defunc(Match1(label, arg)))), rev, env, k)
-        Match1(label, branch) -> #(
-          V(Value(Defunc(Match2(label, branch, arg)))),
-          rev,
-          env,
-          k,
-        )
-        Match2(label, branch, rest) ->
+        Select(label), [] -> prim(select(label, arg, rev), rev, env, k)
+        Tag(label), [] -> prim(Value(Tagged(label, arg)), rev, env, k)
+        Match(label), [branch, rest] ->
           match(label, branch, rest, arg, rev, env, k)
-        NoCases0 -> prim(Abort(NoCases, rev), rev, env, k)
+        NoCases, [] -> prim(Abort(NoMatch, rev), rev, env, k)
         // env is part of k
-        Perform0(label) -> perform(label, arg, rev, env, k)
-        Handle0(label) -> #(V(Value(Defunc(Handle1(label, arg)))), rev, env, k)
-        Handle1(label, handler) -> deep(label, handler, arg, rev, env, k)
+        Perform(label), [] -> perform(label, arg, rev, env, k)
+        Handle(label), [handler] -> deep(label, handler, arg, rev, env, k)
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        Resume(popped, rev, env) -> {
+        Resume(popped, rev, env), [] -> {
           let k = move(popped, k)
           #(V(Value(arg)), rev, env, k)
         }
-
-        Shallow0(label) -> #(
-          V(Value(Defunc(Shallow1(label, arg)))),
-          rev,
-          env,
-          k,
-        )
-        Shallow1(label, handler) -> {
+        Shallow(label), [handler] -> {
           shallow(label, handler, arg, rev, env, k)
         }
-        Builtin(key, applied) ->
+        Builtin(key), applied ->
           call_builtin(key, list.append(applied, [arg]), rev, env, k)
+
+        switch, _ -> {
+          let applied = list.append(applied, [arg])
+          #(V(Value(Defunc(switch, applied))), rev, env, k)
+        }
       }
 
     term -> prim(Abort(NotAFunction(term), rev), rev, env, k)
@@ -312,7 +287,7 @@ fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
         Arity1(impl), [x] -> impl(x, rev, env, kont)
         Arity2(impl), [x, y] -> impl(x, y, rev, env, kont)
         Arity3(impl), [x, y, z] -> impl(x, y, z, rev, env, kont)
-        _, args -> #(V(Value(Defunc(Builtin(key, args)))), rev, env, kont)
+        _, args -> #(V(Value(Defunc(Builtin(key), applied))), rev, env, kont)
       }
     Error(Nil) -> prim(Abort(UndefinedVariable(key), rev), rev, env, kont)
   }
@@ -391,20 +366,21 @@ fn step(exp, rev, env: Env, k) {
     E(e.Integer(value)) -> K(V(Value(Integer(value))), rev, env, k)
     E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
     E(e.Tail) -> K(V(Value(LinkedList([]))), rev, env, k)
-    E(e.Cons) -> K(V(Value(Defunc(Cons0))), rev, env, k)
+    E(e.Cons) -> K(V(Value(Defunc(Cons, []))), rev, env, k)
     E(e.Vacant(comment)) -> K(V(Abort(Vacant(comment), rev)), rev, env, k)
-    E(e.Select(label)) -> K(V(Value(Defunc(Select0(label)))), rev, env, k)
-    E(e.Tag(label)) -> K(V(Value(Defunc(Tag0(label)))), rev, env, k)
-    E(e.Perform(label)) -> K(V(Value(Defunc(Perform0(label)))), rev, env, k)
+    E(e.Select(label)) -> K(V(Value(Defunc(Select(label), []))), rev, env, k)
+    E(e.Tag(label)) -> K(V(Value(Defunc(Tag(label), []))), rev, env, k)
+    E(e.Perform(label)) -> K(V(Value(Defunc(Perform(label), []))), rev, env, k)
     E(e.Empty) -> K(V(Value(Record([]))), rev, env, k)
-    E(e.Extend(label)) -> K(V(Value(Defunc(Extend0(label)))), rev, env, k)
-    E(e.Overwrite(label)) -> K(V(Value(Defunc(Overwrite0(label)))), rev, env, k)
-    E(e.Case(label)) -> K(V(Value(Defunc(Match0(label)))), rev, env, k)
-    E(e.NoCases) -> K(V(Value(Defunc(NoCases0))), rev, env, k)
-    E(e.Handle(label)) -> K(V(Value(Defunc(Handle0(label)))), rev, env, k)
-    E(e.Shallow(label)) -> K(V(Value(Defunc(Shallow0(label)))), rev, env, k)
+    E(e.Extend(label)) -> K(V(Value(Defunc(Extend(label), []))), rev, env, k)
+    E(e.Overwrite(label)) ->
+      K(V(Value(Defunc(Overwrite(label), []))), rev, env, k)
+    E(e.Case(label)) -> K(V(Value(Defunc(Match(label), []))), rev, env, k)
+    E(e.NoCases) -> K(V(Value(Defunc(NoCases, []))), rev, env, k)
+    E(e.Handle(label)) -> K(V(Value(Defunc(Handle(label), []))), rev, env, k)
+    E(e.Shallow(label)) -> K(V(Value(Defunc(Shallow(label), []))), rev, env, k)
     E(e.Builtin(identifier)) ->
-      K(V(Value(Defunc(Builtin(identifier, [])))), rev, env, k)
+      K(V(Value(Defunc(Builtin(identifier), []))), rev, env, k)
     V(Value(value)) -> apply_k(value, k)
     // Other could be any kind of Halt function and always get a path
     V(other) -> Done(other)
@@ -513,10 +489,10 @@ pub fn perform(label, arg, i_rev, i_env, k) {
   case pop(k, label) {
     Ok(#(popped, h, rev, e, k, shallow)) -> {
       let resume = case shallow {
-        True -> Defunc(Resume(popped, i_rev, i_env))
+        True -> Defunc(Resume(popped, i_rev, i_env), [])
         False -> {
           let popped = Some(Kont(Delimit(label, h, rev, e, False), popped))
-          Defunc(Resume(popped, i_rev, i_env))
+          Defunc(Resume(popped, i_rev, i_env), [])
         }
       }
       let k =

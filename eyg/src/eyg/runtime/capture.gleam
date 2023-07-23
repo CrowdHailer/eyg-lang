@@ -119,75 +119,40 @@ fn do_capture(term, env) {
         )
       #(exp, env)
     }
-    r.Defunc(switch) -> capture_defunc(switch, env)
+    r.Defunc(switch, applied) -> capture_defunc(switch, applied, env)
     r.Promise(_) ->
       panic("not capturing promise, yet. Can be done making serialize async")
   }
 }
 
-fn capture_defunc(switch, env) {
-  case switch {
-    r.Cons0 -> #(e.Cons, env)
-    r.Cons1(item) -> {
-      let #(item, env) = do_capture(item, env)
-      let exp = e.Apply(e.Cons, item)
-      #(exp, env)
-    }
-    r.Extend0(label) -> #(e.Extend(label), env)
-    r.Extend1(label, value) -> {
-      let #(value, env) = do_capture(value, env)
-      let exp = e.Apply(e.Extend(label), value)
-      #(exp, env)
-    }
-    r.Overwrite0(label) -> #(e.Overwrite(label), env)
-    r.Overwrite1(label, value) -> {
-      let #(value, env) = do_capture(value, env)
-      let exp = e.Apply(e.Overwrite(label), value)
-      #(exp, env)
-    }
-    r.Select0(label) -> #(e.Select(label), env)
-    r.Tag0(label) -> #(e.Tag(label), env)
-    r.Match0(label) -> #(e.Case(label), env)
-    r.Match1(label, value) -> {
-      let #(value, env) = do_capture(value, env)
-      let exp = e.Apply(e.Case(label), value)
-      #(exp, env)
-    }
-    r.Match2(label, value, matched) -> {
-      let #(value, env) = do_capture(value, env)
-      let #(matched, env) = do_capture(matched, env)
-      let exp = e.Apply(e.Apply(e.Case(label), value), matched)
-      #(exp, env)
-    }
-    r.NoCases0 -> #(e.NoCases, env)
-    r.Perform0(label) -> #(e.Perform(label), env)
-    r.Handle0(label) -> #(e.Handle(label), env)
-    r.Handle1(label, handler) -> {
-      let #(handler, env) = do_capture(handler, env)
-      let exp = e.Apply(e.Handle(label), handler)
-      #(exp, env)
-    }
+fn capture_defunc(switch, args, env) {
+  let exp = case switch {
+    r.Cons -> e.Cons
+    r.Extend(label) -> e.Extend(label)
+    r.Overwrite(label) -> e.Overwrite(label)
+    r.Select(label) -> e.Select(label)
+    r.Tag(label) -> e.Tag(label)
+    r.Match(label) -> e.Case(label)
+    r.NoCases -> e.NoCases
+    r.Perform(label) -> e.Perform(label)
+    r.Handle(label) -> e.Handle(label)
     r.Resume(_label, _handler, _resume) -> {
       panic("not idea how to capture the func here, is it even possible")
     }
-    r.Shallow0(label) -> #(e.Shallow(label), env)
-    r.Shallow1(label, handler) -> {
-      let #(handler, env) = do_capture(handler, env)
-      let exp = e.Apply(e.Shallow(label), handler)
-      #(exp, env)
-    }
-    r.Builtin(identifier, args) ->
-      list.fold(
-        args,
-        #(e.Builtin(identifier), env),
-        fn(state, arg) {
-          let #(exp, env) = state
-          let #(arg, env) = do_capture(arg, env)
-          let exp = e.Apply(exp, arg)
-          #(exp, env)
-        },
-      )
+    r.Shallow(label) -> e.Shallow(label)
+    r.Builtin(identifier) -> e.Builtin(identifier)
   }
+
+  list.fold(
+    args,
+    #(exp, env),
+    fn(state, arg) {
+      let #(exp, env) = state
+      let #(arg, env) = do_capture(arg, env)
+      let exp = e.Apply(exp, arg)
+      #(exp, env)
+    },
+  )
 }
 
 fn vars_used(exp, env) {

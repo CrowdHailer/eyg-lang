@@ -48,7 +48,7 @@ pub fn fix() {
 }
 
 fn do_fix(builder, rev, env, k) {
-  r.step_call(builder, r.Defunc(r.Builtin("fixed", [builder])), rev, env, k)
+  r.step_call(builder, r.Defunc(r.Builtin("fixed"), [builder]), rev, env, k)
 }
 
 pub fn fixed() {
@@ -61,7 +61,7 @@ pub fn fixed() {
       r.step_call(
         builder,
         // always pass a reference to itself
-        r.Defunc(r.Builtin("fixed", [builder])),
+        r.Defunc(r.Builtin("fixed"), [builder]),
         rev,
         env,
         // fn(partial) {
@@ -118,7 +118,7 @@ pub fn do_eval(source, rev, env, k) {
         r.eval(
           expression,
           r.Env([], lib().1),
-          Some(r.Kont(r.Apply(r.Defunc(r.Tag0("Ok")), rev, env), k)),
+          Some(r.Kont(r.Apply(r.Defunc(r.Tag("Ok"), []), rev, env), k)),
         )
       r.prim(value, rev, env, k)
     }

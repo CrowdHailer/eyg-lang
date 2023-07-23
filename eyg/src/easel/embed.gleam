@@ -943,7 +943,7 @@ fn reason_to_string(reason) {
         term_to_string(got),
       ])
     r.MissingField(field) -> string.concat(["missing record field: ", field])
-    r.NoCases -> string.concat(["no cases matched"])
+    r.NoMatch -> string.concat(["no cases matched"])
     r.NotAFunction(term) ->
       string.concat(["function expected got: ", term_to_string(term)])
     r.UnhandledEffect("Abort", reason) ->
