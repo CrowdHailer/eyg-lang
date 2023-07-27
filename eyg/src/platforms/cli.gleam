@@ -2,6 +2,7 @@ import gleam/io
 import gleam/list
 import plinth/nodejs
 import eygir/expression as e
+import eygir/decode
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/stdlib
@@ -9,6 +10,7 @@ import harness/effect
 import gleam/javascript/promise
 import plinth/nodejs/fs
 import harness/ffi/cast
+import harness/ffi/core
 import harness/ffi/env
 
 fn handlers() {
@@ -18,6 +20,7 @@ fn handlers() {
   |> effect.extend("Await", effect.await())
   |> effect.extend("Wait", effect.wait())
   |> effect.extend("File_Write", file_write())
+  |> effect.extend("Read_Source", read_source())
 }
 
 pub fn typ() {
@@ -83,6 +86,31 @@ fn file_write() {
       fs.write_file_sync(file, content)
       |> io.debug
       r.prim(r.Value(r.unit), rev, env, k)
+    },
+  )
+}
+
+// Don't need the detail of decoding JSON in EYG as will move away from it.
+fn read_source() {
+  #(
+    t.Binary,
+    t.result(t.Binary, t.unit),
+    fn(file, k) {
+      let env = env.empty()
+      let rev = []
+
+      use file <- cast.require(cast.string(file), rev, env, k)
+      let json = fs.read_file_sync(file)
+      case decode.from_json(json) {
+        Ok(exp) ->
+          r.prim(
+            r.Value(r.LinkedList(core.expression_to_language(exp))),
+            rev,
+            env,
+            k,
+          )
+        Error(_) -> r.prim(r.Value(r.unit), rev, env, k)
+      }
     },
   )
 }

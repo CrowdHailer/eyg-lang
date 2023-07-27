@@ -1,0 +1,9 @@
+{
+  "name": "wisdom",
+  "scripts": {
+    "start": "node main.mjs"
+  },
+  "dependencies": {
+    "cozo-node": "^0.7.2"
+  }
+}
