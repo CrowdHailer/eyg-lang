@@ -2,49 +2,7 @@ import { CozoDb } from "cozo-node";
 import { readFileSync } from "fs";
 
 export async function run() {
-  //   const movies = (await import("../magpie/src/movies.mjs")).movies();
-  const data = readFileSync("../eyg/saved/saved.json", "utf8");
-
-  const triples = [];
-  const todo = [[[], JSON.parse(data)]];
-  //   can count through indexes
-  //  TODO gleam buildup <- yes and point to correct children
-  // map should be built up
-  //   I think each node should have children as attributes
-  // Same node can have more than one parent
-  // particularly when hashing or with partial update
-  //   We loose information in parent if we don't have it as child. i.e. value and then are both children of let
-  let id = 0;
-  while (todo.length > 0) {
-    const [path, node] = todo.pop();
-    const {
-      0: exp,
-      l: label,
-      v: value,
-      t: then,
-      b: body,
-      f: func,
-      a: arg,
-      c: comment,
-    } = node;
-    if (exp == "v") {
-      triples.push(
-        [id, "expression", "Variable"],
-        [id, "path", path.join(",")]
-      );
-      todo.push([path.concat(1), then], [path.concat(0), value]);
-    }
-    if (exp == "l") {
-      triples.push(
-        [id, "expression", "Let"],
-        [id, "label", label],
-        [id, "path", path.join(",")]
-      );
-      todo.push([path.concat(1), then], [path.concat(0), value]);
-    }
-    id = id + 1;
-  }
-
+  const triples = JSON.parse(readFileSync("./tmp.db.json", "utf8"));
   const db = new CozoDb();
   await db.run(":create eav {e: Int, a: String, v: Any}");
   try {
@@ -53,9 +11,48 @@ export async function run() {
     });
     console.log(
       await db.run(
-        "?[label, path] := *eav[id, 'label', label], *eav[id, 'path', path]"
+        "?[label] := *eav[id, 'label', label],\
+        *eav[id, 'expression', 'Let'],\
+        *eav[id, 'value', vid],\
+        *eav[valueId, 'expression', 'String'],\
+        valueId == vid"
       )
     );
+    console.log(
+      await db.run(
+        "?[content] := *eav[id, 'label', label],\
+        *eav[id, 'expression', 'Let'],\
+        *eav[id, 'value', vid],\
+        *eav[valueId, 'expression', 'String'],\
+        *eav[valueId, 'value', content],\
+        valueId == vid,\
+        label == '_'"
+      )
+    );
+    console.log(
+      await db.run(
+        "?[vid, exp] := *eav[id, 'label', label],\
+        *eav[id, 'expression', 'Let'],\
+        *eav[id, 'value', vid],\
+        *eav[valueId, 'expression', exp],\
+        valueId == vid,\
+        label == 'x'"
+      )
+    );
+    console.log(
+      await db.run(
+        "parent[id, child] := *eav[id, 'expression', 'Let'],\
+        *eav[id, 'value', child] or *eav[id, 'then', child]\
+        \
+        ?[x, label, d] := parent[x,y],*eav[x, 'label', label],\
+        d = y - x,\
+        d > 1\
+        :sort -d\
+        :limit 20"
+      )
+    );
+    // is there a child of function we can build, i.e. find all children of x
+    // Print rich what do I know about this view
   } catch (error) {
     console.error(error.display);
   }

@@ -1,4 +1,10 @@
 # Project wisdom
+
+(cd eyg; gleam run cli cozo ./saved/saved.json)
+
+(cd wisdom; npm start)
+
+
 Getting more from data
 
 ![Connecting the dots](https://pbs.twimg.com/media/CbbJaG0XEAAOsoW?format=jpg&name=medium)
