@@ -6,6 +6,8 @@ The name is a reference to the idea that eating your greens is good for you but 
 
 I have experimented with this priciple in building actor systems, datalog engines but most work is now focused on [Eyg](https://eyg.run). A language for programs that are fully explicit in all side-effects and therefore easier to run any where.
 
+[![video introduction](https://videoapi-muybridge.vimeocdn.com/animated-thumbnails/image/4c0396bb-b75b-4e16-80fe-72a18e8dc725.gif?ClientID=vimeo-core-prod&Date=1690784024&Signature=e9dff0472fadd261013891cb2ab7d332486d3185)](https://vimeo.com/848449632?share=copy)
+
 ## Development
 
 I post videos (2-10 min) of features as I develop them https://petersaxton.uk/log/.
