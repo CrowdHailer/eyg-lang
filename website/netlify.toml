@@ -9,7 +9,24 @@ command = """
   ls . &&
   ls ./build &&
   npx rollup -f iife -i ./public/easel.js -o ../website/build/easel.js &&
-  cd ../website
+
+  echo 'main built' &&
+  npm i
+
+  ./gleam run cli cozo ./saved/saved.json &&
+  cd .. &&
+  mkdir cozy/build &&
+  cp wisdom/tmp.db.json cozy/build/db.json &&
+  (cd cozy;
+    npm i &&
+    npx rollup --config rollup.config.mjs && 
+    cp index.html build/index.html && 
+    cp node_modules/cozo-lib-wasm/cozo_lib_wasm_bg.wasm build 
+  ) &&
+
+  cd website &&
+  mkdir build/explore &&
+  cp -R ../cozy/build build/explore &&
   cp -R public/* build/
   """
 publish = "build"

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>view</title>
+    <script type="module" src="./bundle.js"></script>
+    <link
+      href="https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link href="https://eyg.run/layout.css" rel="stylesheet" />
+    <link href="https://eyg.run/neo.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="vstack">
+      <header class="cover max-w-3xl p-2">
+        <h1 class="text-2xl px-2">AST Query</h1>
+        <p>
+          Set up to run over all the full database of EYG source code;
+          <span id="count"></span>
+        </p>
+      </header>
+      <div class="expand cover max-w-3xl">
+        <form class="px-2" id="form">
+          <textarea
+            class="border-2 neo-shadow w-full"
+            rows="5"
+            id="query"
+            spellcheck="false"
+          >
+?[label] := *eav[id, 'label', label],
+*eav[id, 'expression', 'Let'],
+*eav[id, 'value', vid],
+*eav[valueId, 'expression', 'String'],
+valueId == vid</textarea
+          >
+          <div class="text-right">
+            <button
+              class="my-2 border-1 border-purple-500 purple-gradient neo-shadow px-2"
+              type="submit"
+            >
+              Run
+            </button>
+          </div>
+        </form>
+        <div class="px-2">
+          <div class="bg-gray-100 min-h-4 p-1" id="output"></div>
+        </div>
+        <div class="px-2">
+          <h3 class="text-lg">Examples</h3>
+          <p class="italic">Click to load</p>
+          <p class="mt-4">The name of all strings in let assignments</p>
+          <pre class="p-1 border cursor-pointer">
+?[label] := *eav[id, 'label', label],
+*eav[id, 'expression', 'Let'],
+*eav[id, 'value', vid],
+*eav[valueId, 'expression', 'String'],
+valueId == vid</pre
+          >
+          <p class="mt-4">Type of every expression assigned to a variable x</p>
+          <pre class="p-1 border cursor-pointer">
+?[vid, exp] := *eav[id, 'label', label],
+*eav[id, 'expression', 'Let'],
+*eav[id, 'value', vid],
+*eav[valueId, 'expression', exp],
+valueId == vid,
+label == 'x'</pre
+          >
+          <p class="mt-4">
+            The largest let statments order by number of AST nodes in the
+            assignment expression
+          </p>
+          <pre class="p-1 border cursor-pointer">
+parent[id, child] := *eav[id, 'expression', 'Let'],
+*eav[id, 'value', child] or *eav[id, 'then', child]
+
+?[x, label, d] := parent[x,y],*eav[x, 'label', label],
+d = y - x,
+d > 1
+:sort -d
+:limit 20</pre
+          >
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
