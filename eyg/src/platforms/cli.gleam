@@ -8,7 +8,7 @@ import harness/stdlib
 import harness/effect
 import gleam/javascript/promise
 import plinth/javascript/big_int
-import plinth/nodejs/fs
+import plinth/node/fs
 import plinth/node/process
 import harness/ffi/cast
 import harness/ffi/core
