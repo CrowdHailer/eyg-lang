@@ -1,6 +1,5 @@
 import gleam/io
 import gleam/list
-import plinth/nodejs
 import eygir/expression as e
 import eygir/decode
 import eyg/analysis/typ as t
@@ -8,7 +7,9 @@ import eyg/runtime/interpreter as r
 import harness/stdlib
 import harness/effect
 import gleam/javascript/promise
+import plinth/javascript/big_int
 import plinth/nodejs/fs
+import plinth/node/process
 import harness/ffi/cast
 import harness/ffi/core
 import harness/ffi/env
@@ -38,7 +39,7 @@ pub fn run(source, args) {
   // console.info("Inference time (hr): %ds %dms", hrend)
   promise.await(case Ok(Nil) {
     Ok(Nil) -> {
-      let hrstart = nodejs.start()
+      let hrstart = process.hrtime()
       use ret <- promise.map(r.run_async(
         prog,
         stdlib.env(),
@@ -48,8 +49,8 @@ pub fn run(source, args) {
 
       io.debug(ret)
       let assert Ok(r.Integer(return)) = ret
-      let hrend = nodejs.duration(hrstart)
-      io.debug(#("run", hrend))
+      let hrend = process.hrtime()
+      io.debug(#("run", big_int.subtract(hrend, hrstart)))
       return
     }
     Error(reasons) -> {
@@ -59,7 +60,7 @@ pub fn run(source, args) {
     }
   })
   code
-  |> nodejs.exit()
+  |> process.exit()
   promise.resolve(code)
 }
 

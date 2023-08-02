@@ -1,15 +1,16 @@
 import gleam/io
 import gleam/list
-import plinth/nodejs
+import plinth/node/process
 import plinth/nodejs/fs
 import eygir/decode
 import platforms/cli
 import platforms/serverless
+import gleam/javascript/array
 import gleam/javascript/promise
 
 // zero arity
 pub fn main() {
-  do_main(list.drop(nodejs.args(), 2))
+  do_main(list.drop(array.to_list(process.argv()), 2))
 }
 
 // exit can't be used on serverless because the run function returns with the server as a promise
@@ -23,7 +24,7 @@ pub fn do_main(args) {
     ["web", ..rest] -> serverless.run(source, rest)
     _ -> {
       io.debug(#("no runner for: ", args))
-      nodejs.exit(1)
+      process.exit(1)
       promise.resolve(1)
     }
   }

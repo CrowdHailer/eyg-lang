@@ -10,6 +10,7 @@ gleam_bitwise = "~> 1.2"
 lustre = "~> 3.0.0-rc.2"
 gleam_json = "~> 0.5"
 gleam_fetch = "~> 0.1"
+plinth = {path = "../plinth"}
 
 [dev-dependencies]
 gleeunit = "~> 0.6"
