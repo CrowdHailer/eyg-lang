@@ -16,8 +16,12 @@ export function log(value) {
   console.log(value);
 }
 
-export function wait(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+export function newPromise(executor) {
+  return new Promise((resolve) => executor(resolve));
+}
+
+export function setTimeout(callback, delay) {
+  global.setTimeout(callback, delay);
 }
 
 export function onClick(f) {
