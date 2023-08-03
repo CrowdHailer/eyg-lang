@@ -15,6 +15,7 @@ services:
       - gen:/opt/app/editor/src/gen
       - eyg_gen:/opt/app/eyg/gen
       - ../plinth:/opt/app/plinth
+      - ../javascript:/opt/app/javascript
     # network_mode unavailable on mac
     # network_mode: host
     # can't have port here because need to start two services

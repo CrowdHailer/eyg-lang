@@ -5,7 +5,7 @@ target = "javascript"
 description = "Abstract Syntax Tree tools"
 [dependencies]
 gleam_stdlib = "~> 0.20"
-gleam_javascript = "~> 0.1"
+gleam_javascript = {path = "../javascript"}
 gleam_bitwise = "~> 1.2"
 lustre = "~> 3.0.0-rc.2"
 gleam_json = "~> 0.5"
