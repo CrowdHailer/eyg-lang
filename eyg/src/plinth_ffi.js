@@ -20,10 +20,6 @@ export function newPromise(executor) {
   return new Promise((resolve) => executor(resolve));
 }
 
-export function setTimeout(callback, delay) {
-  global.setTimeout(callback, delay);
-}
-
 export function onClick(f) {
   document.onclick = function (event) {
     let arg = event.target.closest("[data-click]")?.dataset?.click;
@@ -207,24 +203,6 @@ export function datasetGet(el, key) {
     return new Ok(el.dataset[key]);
   }
   return new Error(undefined);
-}
-
-export function map_new() {
-  return new Map();
-}
-
-export function map_set(map, key, value) {
-  return map.set(key, value);
-}
-
-export function map_get(map, key) {
-  if (map.has(key)) {
-    return new Ok(map.get(key));
-  }
-  return new Error(undefined);
-}
-export function map_size(map) {
-  return map.size;
 }
 
 export function array_graphmemes(string) {

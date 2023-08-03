@@ -6,7 +6,7 @@ import gleam/option.{None, Option, Some}
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
-import plinth/browser/console
+import plinth/javascript/console
 import plinth/browser/document
 import plinth/javascript/promisex
 import eygir/expression as e
