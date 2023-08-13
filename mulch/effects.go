@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ func (i *Perform) step(e E, k K) (C, E, K) {
 	return k.compute(i, e)
 }
 
-func (i *Perform) debug() string {
+func (i *Perform) Debug() string {
 	return fmt.Sprintf("^%s", i.label)
 }
 
@@ -38,7 +38,7 @@ func (r *Resume) call(arg Value, _ E, k K) (C, E, K) {
 	return arg, r.e, k
 }
 
-func (i *Resume) debug() string {
+func (i *Resume) Debug() string {
 	return "resume"
 }
 
@@ -103,7 +103,7 @@ func (value *Shallow) call(arg Value, e E, k K) (C, E, K) {
 	}
 	panic("shouldnt get here")
 }
-func (i *Shallow) debug() string {
+func (i *Shallow) Debug() string {
 	return fmt.Sprintf("shallow %s", i.label)
 }
 
@@ -138,9 +138,9 @@ func (value *Handle) call(arg Value, e E, k K) (C, E, K) {
 	panic("not doing shouldnt get here yet")
 }
 
-func (i *Handle) debug() string {
+func (i *Handle) Debug() string {
 	if i.handle != nil {
-		return fmt.Sprintf("deep %s(%s)", i.label, i.handle.debug())
+		return fmt.Sprintf("deep %s(%s)", i.label, i.handle.Debug())
 
 	}
 	return fmt.Sprintf("deep %s", i.label)

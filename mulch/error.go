@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import "fmt"
 
@@ -6,8 +6,12 @@ type Error struct {
 	reason Reason
 }
 
+func (err *Error) Reason() string {
+	return err.reason.debug()
+}
+
 func (h *Error) step(E, K) (C, E, K) {
-	panic("")
+	panic("tried to step an error value")
 }
 
 type Reason interface {
@@ -19,7 +23,7 @@ type NotAFunction struct {
 }
 
 func (e *NotAFunction) debug() string {
-	return fmt.Sprintf("Not a function: %s", e.value.debug())
+	return fmt.Sprintf("Not a function: %s", e.value.Debug())
 }
 
 type UndefinedVariable struct {
@@ -51,7 +55,7 @@ type NotAnInteger struct {
 }
 
 func (e *NotAnInteger) debug() string {
-	return fmt.Sprintf("Not an integer: %s", e.value.debug())
+	return fmt.Sprintf("Not an integer: %s", e.value.Debug())
 }
 
 type NotAString struct {
@@ -59,7 +63,7 @@ type NotAString struct {
 }
 
 func (e *NotAString) debug() string {
-	return fmt.Sprintf("Not a string: %s", e.value.debug())
+	return fmt.Sprintf("Not a string: %s", e.value.Debug())
 }
 
 type NotAList struct {
@@ -67,7 +71,7 @@ type NotAList struct {
 }
 
 func (e *NotAList) debug() string {
-	return fmt.Sprintf("Not a list: %s", e.value.debug())
+	return fmt.Sprintf("Not a list: %s", e.value.Debug())
 }
 
 type NotARecord struct {
@@ -75,7 +79,7 @@ type NotARecord struct {
 }
 
 func (e *NotARecord) debug() string {
-	return fmt.Sprintf("Not a record: %s", e.value.debug())
+	return fmt.Sprintf("Not a record: %s", e.value.Debug())
 }
 
 type NotATagged struct {
@@ -83,7 +87,7 @@ type NotATagged struct {
 }
 
 func (e *NotATagged) debug() string {
-	return fmt.Sprintf("Not a tagged value: %s", e.value.debug())
+	return fmt.Sprintf("Not a tagged value: %s", e.value.Debug())
 }
 
 type MissingField struct {
@@ -92,7 +96,7 @@ type MissingField struct {
 }
 
 func (e *MissingField) debug() string {
-	return fmt.Sprintf("Missing field: %s in %s", e.label, e.value.debug())
+	return fmt.Sprintf("Missing field: %s in %s", e.label, e.value.Debug())
 }
 
 type UnhandledEffect struct {
@@ -101,5 +105,5 @@ type UnhandledEffect struct {
 }
 
 func (e *UnhandledEffect) debug() string {
-	return fmt.Sprintf("unhandled effect: %s with: %s", e.label, e.lift.debug())
+	return fmt.Sprintf("unhandled effect: %s with: %s", e.label, e.lift.Debug())
 }

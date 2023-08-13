@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ func (value *Empty) call(_arg Value, e E, k K) (C, E, K) {
 	return &Error{&NotAFunction{value}}, e, k
 }
 
-func (value *Empty) debug() string {
+func (value *Empty) Debug() string {
 	return "{}"
 }
 
@@ -44,7 +44,7 @@ func (value *Extend) call(arg Value, e E, k K) (C, E, K) {
 	return &Error{&NotAFunction{value}}, e, k
 }
 
-func (record *Extend) debug() string {
+func (record *Extend) Debug() string {
 	// return fmt.Sprintf("+%s", value.label)
 	items := []string{}
 out:
@@ -54,7 +54,7 @@ out:
 			items = append(items, fmt.Sprintf("(%s) ->", record.label))
 			break out
 		}
-		items = append(items, fmt.Sprintf("%s: %s", record.label, record.item.debug()))
+		items = append(items, fmt.Sprintf("%s: %s", record.label, record.item.Debug()))
 		switch r := record.rest.(type) {
 		case *Extend:
 			record = r
@@ -64,7 +64,7 @@ out:
 			items = append(items, ".._")
 			break out
 		default:
-			items = append(items, fmt.Sprintf("..%s", r.debug()))
+			items = append(items, fmt.Sprintf("..%s", r.Debug()))
 			break out
 		}
 	}
@@ -98,7 +98,7 @@ func (value *Select) call(arg Value, e E, k K) (C, E, K) {
 	}
 }
 
-func (value *Select) debug() string {
+func (value *Select) Debug() string {
 	return fmt.Sprintf(".%s", value.label)
 }
 
@@ -120,7 +120,7 @@ func (value *Overwrite) call(arg Value, e E, k K) (C, E, K) {
 	return &Extend{value.label, value.item, arg}, e, k
 }
 
-func (value *Overwrite) debug() string {
+func (value *Overwrite) Debug() string {
 	return fmt.Sprintf(":=%s", value.label)
 }
 

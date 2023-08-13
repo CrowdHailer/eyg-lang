@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ func (tail *Tail) call(_arg Value, e E, k K) (C, E, K) {
 	return &Error{&NotAFunction{tail}}, e, k
 }
 
-func (tail *Tail) debug() string {
+func (tail *Tail) Debug() string {
 	return "[]"
 }
 
@@ -45,14 +45,14 @@ func (c *Cons) call(arg Value, env E, k K) (C, E, K) {
 	return &Error{&NotAFunction{c}}, env, k
 }
 
-func (list *Cons) debug() string {
+func (list *Cons) Debug() string {
 	items := []string{}
 out:
 	for {
 		if list.item == nil {
 			items = append(items, "_")
 		} else {
-			items = append(items, list.item.debug())
+			items = append(items, list.item.Debug())
 		}
 		switch l := list.tail.(type) {
 		case *Cons:
@@ -63,7 +63,7 @@ out:
 			items = append(items, ".._")
 			break out
 		default:
-			items = append(items, fmt.Sprintf("..%s", l.debug()))
+			items = append(items, fmt.Sprintf("..%s", l.Debug()))
 			break out
 		}
 	}

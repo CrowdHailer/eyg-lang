@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"fmt"
@@ -30,7 +30,7 @@ func (value *Arity1) call(arg Value, e E, k K) (C, E, K) {
 	return value.impl(arg, e, k)
 }
 
-func (value *Arity1) debug() string {
+func (value *Arity1) Debug() string {
 	return "Arity1"
 }
 
@@ -51,7 +51,7 @@ func (value *Arity2) call(arg Value, e E, k K) (C, E, K) {
 	}
 	return value.impl(value.arg1, arg, e, k)
 }
-func (value *Arity2) debug() string {
+func (value *Arity2) Debug() string {
 	return "Arity2"
 }
 
@@ -78,7 +78,7 @@ func (value *Arity3) call(arg Value, e E, k K) (C, E, K) {
 	}
 	return value.impl(value.arg1, value.arg2, arg, e, k)
 }
-func (value *Arity3) debug() string {
+func (value *Arity3) Debug() string {
 	return "Arity3"
 }
 
@@ -116,7 +116,7 @@ func language_to_term(value Value) (C, Value) {
 				identifier := item.value.(*String).value
 				return &Builtin{identifier}, list.tail
 			default:
-				fmt.Println(item.debug())
+				fmt.Println(item.Debug())
 				panic("sss")
 			}
 		}
@@ -149,14 +149,14 @@ var builtins = map[string]Value{
 		return &Tag{"False", &Empty{}}, e, k
 	}},
 	"debug": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
-		return &String{v.debug()}, e, k
+		return &String{v.Debug()}, e, k
 	}},
 	"fix": &Arity1{impl: func(builder Value, e E, k K) (C, E, K) {
 		return builder.call(fixed(builder), e, k)
 	}},
 	"eval": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		source, _ := language_to_term(v)
-		result, err := eval(source, &Stack{&Apply{&Tag{"Ok", nil}, e}, &Done{}})
+		result, err := Eval(source, &Stack{&Apply{&Tag{"Ok", nil}, e}, &Done{}})
 		if err != nil {
 			return err, e, k
 		}

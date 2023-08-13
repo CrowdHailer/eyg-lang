@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import "fmt"
 
@@ -8,7 +8,7 @@ type C interface {
 type Value interface {
 	C
 	call(Value, E, K) (C, E, K)
-	debug() string
+	Debug() string
 }
 
 type E interface {
@@ -45,7 +45,7 @@ func (c *Closure) call(arg Value, _ E, k K) (C, E, K) {
 	return c.lambda.body, e, k
 }
 
-func (c *Closure) debug() string {
+func (c *Closure) Debug() string {
 	return fmt.Sprintf("(%s) -> { ... }", c.lambda.label)
 }
 
@@ -119,7 +119,7 @@ func (v *Vacant) step(e E, k K) (C, E, K) {
 	return &Error{&NotImplemented{v.comment}}, e, k
 }
 
-func eval(c C, k K) (Value, *Error) {
+func Eval(c C, k K) (Value, *Error) {
 	var e E = emptyEnv()
 	for {
 		c, e, k = c.step(e, k)

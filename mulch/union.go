@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import "fmt"
 
@@ -20,11 +20,11 @@ func (value *Tag) call(arg Value, e E, k K) (C, E, K) {
 	return &Error{&NotAFunction{value}}, e, k
 }
 
-func (value *Tag) debug() string {
+func (value *Tag) Debug() string {
 	if value.value == nil {
 		return value.label
 	}
-	return fmt.Sprintf("%s(%s)", value.label, value.value.debug())
+	return fmt.Sprintf("%s(%s)", value.label, value.value.Debug())
 }
 
 type Case struct {
@@ -58,7 +58,7 @@ func (case_ *Case) call(arg Value, e E, k K) (C, E, K) {
 	return case_.otherwise.call(tagged, e, k)
 }
 
-func (value *Case) debug() string {
+func (value *Case) Debug() string {
 	return fmt.Sprintf("case %s", value.label)
 }
 
@@ -72,6 +72,6 @@ func (value *NoCases) call(arg Value, e E, k K) (C, E, K) {
 	return &Error{&NoMatch{}}, e, k
 }
 
-func (value *NoCases) debug() string {
+func (value *NoCases) Debug() string {
 	return "nocases"
 }

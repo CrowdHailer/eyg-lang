@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"fmt"
@@ -10,11 +10,11 @@ import (
 // really only returns value or error
 func external(label string, lift Value) C {
 	if label == "Log" {
-		fmt.Printf("LOG: %s\n", lift.debug())
+		fmt.Printf("LOG: %s\n", lift.Debug())
 		return &Empty{}
 	}
 	if label == "Alert" {
-		fmt.Printf("ALERT: %s\n", lift.debug())
+		fmt.Printf("ALERT: %s\n", lift.Debug())
 		return &Empty{}
 	}
 	if label == "Wait" {

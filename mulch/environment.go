@@ -1,4 +1,4 @@
-package main
+package mulch
 
 type Env struct {
 	key   string

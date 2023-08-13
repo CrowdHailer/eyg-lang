@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import "fmt"
 
@@ -16,6 +16,6 @@ func (s *String) call(_arg Value, env E, k K) (C, E, K) {
 	return &Error{&NotAFunction{s}}, env, k
 }
 
-func (s *String) debug() string {
+func (s *String) Debug() string {
 	return fmt.Sprintf(`"%s"`, s.value)
 }

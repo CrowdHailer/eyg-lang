@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"bufio"
@@ -37,7 +37,7 @@ func repl() {
 				continue
 			}
 			e = e1
-			fmt.Println(value.debug())
+			fmt.Println(value.Debug())
 		default:
 			fmt.Println("dunno")
 			continue

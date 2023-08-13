@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"fmt"
@@ -13,12 +13,12 @@ func TestInfer(t *testing.T) {
 	// json, err := os.ReadFile("../website/public/db/infer.json")
 	json, err := os.ReadFile("../eyg/saved/saved.json")
 	assert.NoError(t, err)
-	source, err := decode(json)
+	source, err := Decode(json)
 	assert.NoError(t, err)
 
-	value, fail := eval(source, &Stack{&Apply{&Select{"cli"}, emptyEnv()}, &Stack{&CallWith{&Cons{&String{"test"}, &Tail{}}}, &Done{}}})
+	value, fail := Eval(source, &Stack{&Apply{&Select{"cli"}, emptyEnv()}, &Stack{&CallWith{&Cons{&String{"test"}, &Tail{}}}, &Done{}}})
 	if value != nil {
-		fmt.Printf("Value %#v\n", value.debug())
+		fmt.Printf("Value %#v\n", value.Debug())
 	}
 	if fail != nil {
 		fmt.Printf("FAIL %#v\n", fail.reason.debug())

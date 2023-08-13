@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"encoding/json"
@@ -18,7 +18,7 @@ type encoded struct {
 }
 
 // recursive, is continuation for looping a good style in go or is it just a hammer
-func decode(data []byte) (C, error) {
+func Decode(data []byte) (C, error) {
 	var e encoded
 	err := json.Unmarshal(data, &e)
 	if err != nil {
@@ -26,17 +26,17 @@ func decode(data []byte) (C, error) {
 	}
 	switch e.Key {
 	case "f":
-		body, err := decode(e.Body)
+		body, err := Decode(e.Body)
 		if err != nil {
 			return nil, err
 		}
 		return &Lambda{e.Label, body}, nil
 	case "a":
-		fn, err := decode(e.Fn)
+		fn, err := Decode(e.Fn)
 		if err != nil {
 			return nil, err
 		}
-		arg, err := decode(e.Arg)
+		arg, err := Decode(e.Arg)
 		if err != nil {
 			return nil, err
 		}
@@ -44,11 +44,11 @@ func decode(data []byte) (C, error) {
 	case "v":
 		return &Variable{e.Label}, nil
 	case "l":
-		value, err := decode(e.Value)
+		value, err := Decode(e.Value)
 		if err != nil {
 			return nil, err
 		}
-		then, err := decode(e.Then)
+		then, err := Decode(e.Then)
 		if err != nil {
 			return nil, err
 		}

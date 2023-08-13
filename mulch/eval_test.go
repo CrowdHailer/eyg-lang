@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import (
 	"fmt"
@@ -63,7 +63,7 @@ func TestStandardPrograms(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			source := readSource(t, tt.sourceFile)
-			got, err := eval(source, &Done{})
+			got, err := Eval(source, &Done{})
 			if err != nil {
 				fmt.Println(err.reason.debug())
 			}
@@ -78,7 +78,7 @@ func readSource(t *testing.T, sourceFile string) C {
 	if err != nil {
 		t.Fatal(err)
 	}
-	source, err := decode(json)
+	source, err := Decode(json)
 	if err != nil {
 		t.Fatal(err)
 	}

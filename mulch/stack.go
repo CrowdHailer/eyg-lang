@@ -1,4 +1,4 @@
-package main
+package mulch
 
 import "fmt"
 
@@ -50,9 +50,9 @@ func stacktrace(k K) {
 		case *Arg:
 			fmt.Printf("[%3d] Arg fn %f\n", i, line.value)
 		case *Apply:
-			fmt.Printf("[%3d] Call fn %s\n", i, line.fn.debug())
+			fmt.Printf("[%3d] Call fn %s\n", i, line.fn.Debug())
 		case *CallWith:
-			fmt.Printf("[%3d] Call with arg %s\n", i, line.value.debug())
+			fmt.Printf("[%3d] Call with arg %s\n", i, line.value.Debug())
 		case *Shallow:
 			fmt.Printf("[%3d] Shallow %s\n", i, line.label)
 		case *Handle:
