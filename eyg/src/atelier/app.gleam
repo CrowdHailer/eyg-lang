@@ -59,7 +59,8 @@ fn do_infer(source) {
   // t.RowExtend("web", t.Var(-298), t.Empty),
   //  real types should be used here if this editor is salvaged
   let required = t.Var(-1)
-  tree.infer(source, required, t.Var(-2)).0
+  let #(state, _envs) = tree.infer(source, required, t.Var(-2))
+  state
 }
 
 pub fn update(state: WorkSpace, action) {
