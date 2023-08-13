@@ -1,4 +1,4 @@
-FROM ghcr.io/gleam-lang/gleam:v0.30.2-node
+FROM ghcr.io/gleam-lang/gleam:v0.30.5-node
 
 COPY . /opt/app
 WORKDIR /opt/app/eyg
