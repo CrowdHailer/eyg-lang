@@ -58,7 +58,7 @@ func (p *Perform) call(lift Value, e E, k K) (C, E, K) {
 	for {
 		switch stack := outer.(type) {
 		case *Done:
-			handler, ok := stack.external[p.label]
+			handler, ok := stack.External[p.label]
 			if !ok {
 				return &Error{&UnhandledEffect{p.label, lift}}, e, k
 			}

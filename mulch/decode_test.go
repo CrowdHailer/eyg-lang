@@ -16,7 +16,7 @@ func TestInfer(t *testing.T) {
 	source, err := Decode(json)
 	assert.NoError(t, err)
 
-	value, fail := Eval(source, &Stack{&Apply{&Select{"cli"}, emptyEnv()}, &Stack{&CallWith{&Cons{&String{"test"}, &Tail{}}}, &Done{standard}}})
+	value, fail := Eval(source, &Stack{&Apply{&Select{"cli"}, emptyEnv()}, &Stack{&CallWith{&Cons{&String{"test"}, &Tail{}}}, &Done{Standard}}})
 	if value != nil {
 		fmt.Printf("Value %#v\n", value.Debug())
 	}

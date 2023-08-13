@@ -8,7 +8,7 @@ import (
 )
 
 // really only returns value or error
-var standard = map[string]func(Value) C{
+var Standard = map[string]func(Value) C{
 	"Log": func(lift Value) C {
 		fmt.Printf("LOG: %s\n", lift.Debug())
 		return &Empty{}

@@ -27,7 +27,7 @@ func main() {
 		fmt.Printf("error decoding program source from '%s' \n", file)
 		return
 	}
-	value, fail := mulch.Eval(source, &mulch.Done{})
+	value, fail := mulch.Eval(source, &mulch.Done{External: mulch.Standard})
 	if fail != nil {
 		fmt.Println(fail.Reason())
 		return
