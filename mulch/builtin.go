@@ -98,10 +98,10 @@ func language_to_term(value Value) (C, Value) {
 		case *Tag:
 			switch item.label {
 			case "Variable":
-				label := item.value.(*String).value
+				label := item.value.(*String).Value
 				return &Variable{label}, list.tail
 			case "Lambda":
-				param := item.value.(*String).value
+				param := item.value.(*String).Value
 				body, rest := language_to_term(list.tail)
 				return &Lambda{param, body}, rest
 			case "Apply":
@@ -110,10 +110,10 @@ func language_to_term(value Value) (C, Value) {
 				arg, rest := language_to_term(rest)
 				return &Call{fn, arg}, rest
 			case "Binary":
-				value := item.value.(*String).value
+				value := item.value.(*String).Value
 				return &String{value}, list.tail
 			case "Builtin":
-				identifier := item.value.(*String).value
+				identifier := item.value.(*String).Value
 				return &Builtin{identifier}, list.tail
 			default:
 				fmt.Println(item.Debug())
@@ -220,14 +220,14 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{&NotAString{v}}, e, k
 		}
-		return &String{strings.ToUpper(s.value)}, e, k
+		return &String{strings.ToUpper(s.Value)}, e, k
 	}},
 	"string_lowercase": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
 			return &Error{&NotAString{v}}, e, k
 		}
-		return &String{strings.ToLower(s.value)}, e, k
+		return &String{strings.ToLower(s.Value)}, e, k
 	}},
 	"string_append": &Arity2{impl: func(left, right Value, e E, k K) (C, E, K) {
 		l, ok := left.(*String)
@@ -238,7 +238,7 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{&NotAString{right}}, e, k
 		}
-		return &String{l.value + r.value}, e, k
+		return &String{l.Value + r.Value}, e, k
 
 	}},
 	"string_split": &Arity2{impl: func(str, pattern Value, e E, k K) (C, E, K) {
@@ -250,7 +250,7 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{}, e, k
 		}
-		parts := strings.Split(s.value, p.value)
+		parts := strings.Split(s.Value, p.Value)
 		h := parts[0]
 		t := parts[1:]
 		var tail Value = &Tail{}
@@ -282,7 +282,7 @@ func popGrapheme(v Value, e E, k K) (C, E, K) {
 	if !ok {
 		return &Error{}, e, k
 	}
-	res := strings.SplitN(s.value, "", 2)
+	res := strings.SplitN(s.Value, "", 2)
 	if len(res) == 0 {
 		return &Tag{"Error", &Empty{}}, e, k
 	}

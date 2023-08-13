@@ -23,8 +23,8 @@ type K interface {
 }
 
 type Lambda struct {
-	label string
-	body  C
+	Label string
+	Body  C
 }
 
 func (lambda *Lambda) step(e E, k K) (C, E, K) {
@@ -41,43 +41,43 @@ func (closure *Closure) step(e E, k K) (C, E, K) {
 }
 
 func (c *Closure) call(arg Value, _ E, k K) (C, E, K) {
-	e := c.env.put(c.lambda.label, arg)
-	return c.lambda.body, e, k
+	e := c.env.put(c.lambda.Label, arg)
+	return c.lambda.Body, e, k
 }
 
 func (c *Closure) Debug() string {
-	return fmt.Sprintf("(%s) -> { ... }", c.lambda.label)
+	return fmt.Sprintf("(%s) -> { ... }", c.lambda.Label)
 }
 
 type Call struct {
-	fn  C
-	arg C
+	Fn  C
+	Arg C
 }
 
 func (exp *Call) step(e E, k K) (C, E, K) {
-	return exp.fn, e, &Stack{&Arg{exp.arg, e}, k}
+	return exp.Fn, e, &Stack{&Arg{exp.Arg, e}, k}
 }
 
 type Variable struct {
-	label string
+	Label string
 }
 
 func (exp *Variable) step(e E, k K) (C, E, K) {
-	value, ok := e.get(exp.label)
+	value, ok := e.get(exp.Label)
 	if !ok {
-		return &Error{&UndefinedVariable{exp.label}}, e, k
+		return &Error{&UndefinedVariable{exp.Label}}, e, k
 	}
 	return value, e, k
 }
 
 type Let struct {
-	label string
-	value C
-	then  C
+	Label string
+	Value C
+	Then  C
 }
 
 func (exp *Let) step(e E, k K) (C, E, K) {
-	return exp.value, e, &Stack{&Assign{exp.label, exp.then, e}, k}
+	return exp.Value, e, &Stack{&Assign{exp.Label, exp.Then, e}, k}
 }
 
 type Assign struct {
