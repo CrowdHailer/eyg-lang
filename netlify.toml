@@ -1,4 +1,3 @@
-# Having this file at the top means only a single application can be deployed
 [build]
 # use an eyg shell script here, install binary runner
 # builds easel in the eyg directory
