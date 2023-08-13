@@ -13,7 +13,7 @@ import harness/ffi/cast
 import eyg/runtime/interpreter as r
 import harness/ffi/env
 import harness/stdlib
-import plinth/browser/console
+import plinth/javascript/console
 import eyg/analysis/jm/type_ as t
 
 pub fn run() {

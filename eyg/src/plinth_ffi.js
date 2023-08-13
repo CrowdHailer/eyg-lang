@@ -1,23 +1,23 @@
 import { Ok, Error } from "./gleam.mjs";
 
 export function alert(message) {
-  window.alert(message)
+  window.alert(message);
 }
 
 export function encodeURI(value) {
-  return window.encodeURI(value)
+  return window.encodeURI(value);
 }
 
 export function decodeURI(value) {
-  return window.decodeURI(value)
+  return window.decodeURI(value);
 }
 
 export function log(value) {
-  console.log(value)
+  console.log(value);
 }
 
-export function wait(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+export function newPromise(executor) {
+  return new Promise((resolve) => executor(resolve));
 }
 
 export function onClick(f) {
@@ -105,8 +105,8 @@ export function close(writableStream) {
 
 export function blob(strings, arg) {
   return new Blob(strings, {
-      type: arg,
-    })
+    type: arg,
+  });
 }
 
 // -------- window/selection --------
@@ -174,19 +174,18 @@ export function insertAfter(e, text) {
   e.insertAdjacentHTML("afterend", text);
 }
 
-
 export function insertElementAfter(target, element) {
   target.insertAdjacentElement("afterend", element);
 }
 
 export function innerText(e) {
-  return e.innerText
+  return e.innerText;
 }
 export function setInnerText(e, text) {
-  e.innerText = text
+  e.innerText = text;
 }
 export function setInnerHTML(e, content) {
-  e.innerHTML = content
+  e.innerHTML = content;
 }
 
 export function remove(e) {
@@ -206,24 +205,6 @@ export function datasetGet(el, key) {
   return new Error(undefined);
 }
 
-export function map_new() {
-  return new Map();
-}
-
-export function map_set(map, key, value) {
-  return map.set(key, value);
-}
-
-export function map_get(map, key) {
-  if (map.has(key)) {
-    return new Ok(map.get(key));
-  }
-  return new Error(undefined);
-}
-export function map_size(map) {
-  return map.size;
-}
-
 export function array_graphmemes(string) {
   return [...string];
 }
@@ -238,9 +219,4 @@ export function foldGraphmemes(string, initial, f) {
     value = f(value, c, i);
   });
   return value;
-}
-
-
-export function argv(index) {
-  return process.argv.slice(index)
 }

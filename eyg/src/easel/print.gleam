@@ -263,7 +263,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
   }
 }
 
-fn print_block(source, loc, br, acc, info, analysis) {
+fn print_block(source, loc: Location, br, acc, info, analysis) {
   let err = is_error(loc.path, analysis)
   case source {
     e.Let(_, _, _) -> {

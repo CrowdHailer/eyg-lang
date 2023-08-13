@@ -1,5 +1,5 @@
 import gleam/io
-import plinth/nodejs/fs
+import plinth/node/fs
 import gleam/javascript/promise.{Promise}
 import eygir/expression as e
 import eyg/runtime/interpreter as r
