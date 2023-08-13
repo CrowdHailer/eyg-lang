@@ -2,16 +2,14 @@
 # use an eyg shell script here, install binary runner
 # builds easel in the eyg directory
 command = """
-  cd ../eyg && 
-  wget -c https://github.com/gleam-lang/gleam/releases/download/v0.30.2/gleam-v0.30.2-x86_64-unknown-linux-musl.tar.gz -O - | tar -xz -C . &&
+  cd eyg && 
+  wget -c https://github.com/gleam-lang/gleam/releases/download/v0.30.5/gleam-v0.30.5-x86_64-unknown-linux-musl.tar.gz -O - | tar -xz -C . &&
   ./gleam --version &&
   ./gleam build &&
-  ls . &&
-  ls ./build &&
+  npm i
   npx rollup -f iife -i ./public/easel.js -o ../website/build/easel.js &&
 
-  echo 'main built' &&
-  npm i
+  echo 'eyg built' &&
 
   ./gleam run cli cozo ./saved/saved.json &&
   cd .. &&
@@ -29,4 +27,4 @@ command = """
   cp -R ../cozy/build build/explore &&
   cp -R public/* build/
   """
-publish = "build"
+publish = "website/build"
