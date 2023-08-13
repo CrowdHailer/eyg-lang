@@ -58,7 +58,11 @@ func (p *Perform) call(lift Value, e E, k K) (C, E, K) {
 	for {
 		switch stack := outer.(type) {
 		case *Done:
-			return external(p.label, lift), e, k
+			handler, ok := stack.external[p.label]
+			if !ok {
+				return &Error{&UnhandledEffect{p.label, lift}}, e, k
+			}
+			return handler(lift), e, k
 		case *Stack:
 			current := stack.k
 			outer = stack.rest

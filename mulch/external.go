@@ -8,27 +8,28 @@ import (
 )
 
 // really only returns value or error
-func external(label string, lift Value) C {
-	if label == "Log" {
+var standard = map[string]func(Value) C{
+	"Log": func(lift Value) C {
 		fmt.Printf("LOG: %s\n", lift.Debug())
 		return &Empty{}
-	}
-	if label == "Alert" {
+	},
+
+	"Alert": func(lift Value) C {
 		fmt.Printf("ALERT: %s\n", lift.Debug())
 		return &Empty{}
-	}
-	if label == "Wait" {
+	},
+	"Wait": func(lift Value) C {
 		m, ok := lift.(*Integer)
 		if !ok {
 			return &Error{&NotAnInteger{lift}}
 		}
 		time.Sleep(time.Duration(m.value) * time.Millisecond)
 		return &Empty{}
-	}
-	if label == "Await" {
+	},
+	"Await": func(lift Value) C {
 		return lift
-	}
-	if label == "HTTP" {
+	},
+	"HTTP": func(lift Value) C {
 		// Can I make this less repetitive
 		m, ok := field(lift, "method")
 		if !ok {
@@ -77,7 +78,5 @@ func external(label string, lift Value) C {
 		}
 
 		return &String{string(body)}
-	}
-
-	return &Error{&UnhandledEffect{label, lift}}
+	},
 }

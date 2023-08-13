@@ -8,6 +8,7 @@ type Stack struct {
 }
 
 type Done struct {
+	external map[string]func(Value) C
 }
 
 var _ K = (*Stack)(nil)
