@@ -1,4 +1,4 @@
-package main
+package mulch
 
 type Env struct {
 	key   string
@@ -10,7 +10,7 @@ func emptyEnv() *Env {
 	return nil
 }
 
-func (env *Env) push(key string, value Value) *Env {
+func (env *Env) put(key string, value Value) E {
 	return &Env{key, value, env}
 }
 
