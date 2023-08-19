@@ -1,44 +1,147 @@
 package main
 
-import "mulch"
+import (
+	"bytes"
+	"flag"
+	"fmt"
+	"go/ast"
+	"go/printer"
+	"go/token"
+	"mulch"
+	"os"
+	"strconv"
+)
 
-// a = {foo: "string"}
-// a.foo
+// theres some clever thing with a global stack
+// push it and then there will be a pop and run.
+// what does nested apply look like
 
-type Extend struct {
-	label string
-	value any
-	rest  any
+func transpile(exp mulch.C) ast.Expr {
+	switch e := exp.(type) {
+	case *mulch.Variable:
+		return &ast.Ident{Name: e.Label}
+	case *mulch.Lambda:
+		return &ast.Ident{Name: "ALm"}
+	case *mulch.Call:
+		cast := &ast.TypeAssertExpr{X: transpile(e.Fn), Type: &ast.FuncType{
+			Params: &ast.FieldList{List: []*ast.Field{
+				{Type: &ast.Ident{Name: "any"}},
+			}},
+			Results: &ast.FieldList{List: []*ast.Field{
+				{Type: &ast.Ident{Name: "any"}},
+			}},
+		}}
+		return &ast.CallExpr{Fun: cast, Args: []ast.Expr{transpile(e.Arg)}}
+	case *mulch.Let:
+		k := &ast.FuncLit{
+			Type: &ast.FuncType{Params: &ast.FieldList{List: []*ast.Field{
+				{Names: []*ast.Ident{{Name: e.Label}}, Type: &ast.Ident{Name: "any"}},
+			}}},
+			Body: &ast.BlockStmt{List: []ast.Stmt{
+				&ast.ExprStmt{X: transpile(e.Then)},
+				// &ast.BasicLit{Kind: token.INT, Value: "asc"},
+				// &ast.ReturnStmt{Results: []ast.Expr{&ast.Ident{Name: "foo"}}},
+			}}}
+		return &ast.CallExpr{Fun: k, Args: []ast.Expr{transpile(e.Value)}}
+	case *mulch.Integer:
+		return integer_(int(e.Value))
+	case *mulch.String:
+		return string_(e.Value)
+	case *mulch.Empty:
+		return &ast.CompositeLit{Type: &ast.Ident{Name: "empty"}}
+	}
+	fmt.Printf("%#v\n", exp)
+	panic("unknown thing")
 }
-type Empty struct {
-}
-func (self*Empty)record() (Record, error)  {
-	return self, nil
+
+// func function() ast.Expr {
+
+// }
+// 	err := printer.Fprint(buf, token.NewFileSet(), &ast.FuncLit{
+// 		Type: &ast.FuncType{Params: &ast.FieldList{}},
+// 		Body: &ast.BlockStmt{List: []ast.Stmt{
+// 			// &ast.DeclStmt{Decl: }
+// 			&ast.AssignStmt{
+// 				Lhs: []ast.Expr{&ast.Ident{Name: "foo"}},
+// 				Tok: token.DEFINE,
+// 				Rhs: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "asc"}},
+// 			},
+// 			// &ast.BasicLit{Kind: token.INT, Value: "asc"},
+// 			&ast.ReturnStmt{Results: []ast.Expr{&ast.Ident{Name: "foo"}}},
+// 		}}})
+
+func integer_(v int) ast.Expr {
+	return &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(v)}
 }
 
-func get(value any, label string) {
-
+func string_(v string) ast.Expr {
+	return &ast.BasicLit{Kind: token.STRING, Value: v}
 }
-// interface as record
-// immutable data structures
-// overwrite
-// get
-// extend
 
-// CPS for effects
-// ban handlers means transpile pull out the handler from the top level
+func printAsFile(code ast.Expr) (string, error) {
+	buf := new(bytes.Buffer)
+	dump := &ast.File{
+		Name: &ast.Ident{Name: "testdata"},
+		Decls: []ast.Decl{
+			&ast.FuncDecl{
+				Name: &ast.Ident{Name: "Run"},
+				Type: &ast.FuncType{},
+				Body: &ast.BlockStmt{List: []ast.Stmt{&ast.ExprStmt{X: code}}},
+			},
+		},
+	}
+	err := printer.Fprint(buf, token.NewFileSet(), dump)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
 
 func main() {
-	a := Extend{"foo", "string", Empty{}}
-	// a.get("foo")
-	get(a, "foo")
+	flag.Parse()
+	args := flag.Args()
 
-	
-	var source mulch.C
-	switch exp := source.(type) {
-	case *mulch.Select:
-		fn(value) {
-			value.(*Extend)
-		}
+	if len(args) != 1 {
+		fmt.Println("provide a file to execute")
+		return
 	}
+	file := args[0]
+	json, err := os.ReadFile(file)
+	if err != nil {
+		fmt.Printf("error reading file '%s' \n", file)
+		return
+	}
+	source, err := mulch.Decode(json)
+	if err != nil {
+		fmt.Printf("error decoding program source from '%s' \n", file)
+		return
+	}
+	fmt.Printf("%#v\n", source)
+	contents, err := printAsFile(transpile(source))
+	os.WriteFile("source.go", []byte(contents), 0644)
 }
+
+// type Extend struct {
+// 	label string
+// 	value any
+// 	rest  any
+// }
+// type Empty struct {
+// }
+
+// func (self *Empty) record() (Record, error) {
+// 	return self, nil
+// }
+
+// func get(value any, label string) {
+
+// }
+
+// // interface as record
+// // immutable data structures
+// // overwrite
+// // get
+// // extend
+
+// // CPS for effects
+// // ban handlers means transpile pull out the handler from the top level

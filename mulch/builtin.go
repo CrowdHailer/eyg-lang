@@ -195,7 +195,7 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{&NotAnInteger{y}}, e, k
 		}
-		return &Integer{a.value + b.value}, e, k
+		return &Integer{a.Value + b.Value}, e, k
 	}},
 	"int_subtract": &Arity2{impl: func(x, y Value, e E, k K) (C, E, K) {
 		a, ok := x.(*Integer)
@@ -206,14 +206,14 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{&NotAnInteger{y}}, e, k
 		}
-		return &Integer{a.value - b.value}, e, k
+		return &Integer{a.Value - b.Value}, e, k
 	}},
 	"int_to_string": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		i, ok := v.(*Integer)
 		if !ok {
 			return &Error{&NotAnInteger{v}}, e, k
 		}
-		return &String{fmt.Sprintf("%d", i.value)}, e, k
+		return &String{fmt.Sprintf("%d", i.Value)}, e, k
 	}},
 	"string_uppercase": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)

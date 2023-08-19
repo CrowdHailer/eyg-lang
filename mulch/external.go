@@ -23,7 +23,7 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotAnInteger{lift}}
 		}
-		time.Sleep(time.Duration(m.value) * time.Millisecond)
+		time.Sleep(time.Duration(m.Value) * time.Millisecond)
 		return &Empty{}
 	},
 	"Await": func(lift Value) C {
