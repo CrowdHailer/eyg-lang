@@ -7,13 +7,13 @@ import (
 )
 
 type Builtin struct {
-	id string
+	Id string
 }
 
 func (exp *Builtin) step(e E, k K) (C, E, K) {
-	value, ok := builtins[exp.id]
+	value, ok := builtins[exp.Id]
 	if !ok {
-		return &Error{&UndefinedVariable{exp.id}}, e, k
+		return &Error{&UndefinedVariable{exp.Id}}, e, k
 	}
 	return k.compute(value, e)
 }

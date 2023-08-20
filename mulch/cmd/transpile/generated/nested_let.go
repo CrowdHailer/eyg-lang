@@ -1,16 +1,9 @@
 package generated
 
-func Run2(done func(any)) {
-	then(5, func(x any) {
-		then(2, func(x any) {
-			then(x, done)
+func NestedLet(_k K) {
+	then(2, func(a any) {
+		then(1, func(a any) {
+			then(a, _k)
 		})
 	})
 }
-
-// func R()  {
-// 	I(5)
-// 	.then(func(x any) {
-
-// 	})
-// }

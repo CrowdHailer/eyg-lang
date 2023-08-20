@@ -2,11 +2,9 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"go/ast"
 	"go/printer"
 	"go/token"
-	"log"
 	"mulch"
 	"mulch/cmd/transpile/generated"
 	"os"
@@ -15,95 +13,127 @@ import (
 	"github.com/tj/assert"
 )
 
-func TestExample(t *testing.T) {
+// func TestFunctionCall(t *testing.T) {
+// 	source := &mulch.Call{&mulch.Variable{"f"}, &mulch.Integer{1}}
+// 	code := print(t, transpile(source))
+// 	assert.Equal(t, "then(f, _k).(func(any, K))(then(1, _k), _k)", code)
+
+// }
+
+func print(t *testing.T, code ast.Expr) string {
+	buf := new(bytes.Buffer)
+	err := printer.Fprint(buf, token.NewFileSet(), code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
+}
+func TestParamInEnv(t *testing.T) {
+	var result any
+	generated.ParamInEnv(func(v any) { result = v })
+	assert.Equal(t, 2, result)
+}
+
+func TestEnvironmentCapture(t *testing.T) {
 	var result any
 	generated.EnvironmentCapture(func(v any) { result = v })
 	assert.Equal(t, 1, result)
 }
-
-func TestStandardPrograms(t *testing.T) {
-	tests := []struct {
-		name       string
-		sourceFile string
-		want       mulch.Value
-	}{
-		{
-			name:       "environment capture",
-			sourceFile: "../../test/environment_capture.json",
-			want:       &mulch.Integer{1},
-		},
-		// {
-		// 	name:       "parameter added to environment",
-		// 	sourceFile: "./test/param_in_env.json",
-		// 	want:       &Integer{2},
-		// },
-		// {
-		// 	name:       "nested apply",
-		// 	sourceFile: "./test/nested_apply.json",
-		// 	want:       &Integer{4},
-		// },
-		// {
-		// 	name:       "nested let",
-		// 	sourceFile: "./test/nested_let.json",
-		// 	want:       &Integer{1},
-		// },
-		// {
-		// 	name:       "evaluate exec function",
-		// 	sourceFile: "./test/effects/evaluate_exec_function.json",
-		// 	want:       &Tag{"Ok", &Integer{5}},
-		// },
-		// {
-		// 	name:       "evaluate handle",
-		// 	sourceFile: "./test/effects/evaluate_handle.json",
-		// 	want:       &Tag{"Error", &String{"bang!!"}},
-		// },
-		// {
-		// 	name:       "continue exec",
-		// 	sourceFile: "./test/effects/continue_exec.json",
-		// 	want:       &Tag{"Tagged", &Integer{1}},
-		// },
-		// {
-		// 	name:       "multiple perform",
-		// 	sourceFile: "./test/effects/multiple_perform.json",
-		// 	want:       &Cons{&Integer{1}, &Cons{&Integer{2}, &Tail{}}},
-		// },
-		// {
-		// 	name:       "multiple resume",
-		// 	sourceFile: "./test/effects/multiple_resume.json",
-		// 	want:       &Cons{&Integer{2}, &Cons{&Integer{3}, &Tail{}}},
-		// },
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			source := readSource(t, tt.sourceFile)
-			code := transpile(source)
-			buf := new(bytes.Buffer)
-			dump := &ast.File{
-				Name: &ast.Ident{Name: "testdata"},
-				Decls: []ast.Decl{
-					&ast.FuncDecl{
-						Name: &ast.Ident{Name: "bob"},
-						Type: &ast.FuncType{},
-						Body: &ast.BlockStmt{List: []ast.Stmt{&ast.ExprStmt{X: code}}},
-					},
-				},
-			}
-			err := printer.Fprint(buf, token.NewFileSet(), dump)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Println(buf.String())
-			panic("rad source")
-			got, fail := mulch.Eval(source, &mulch.Done{})
-			if fail != nil {
-				// fmt.Println(fail.reason.debug())
-				t.Fatal(fail)
-			}
-			assert.Nil(t, fail)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+func TestNestedLet(t *testing.T) {
+	var result any
+	generated.NestedLet(func(v any) { result = v })
+	assert.Equal(t, 1, result)
 }
+
+func TestNestedApply(t *testing.T) {
+	var result any
+	generated.NestedApply(func(v any) { result = v })
+	assert.Equal(t, 4, result)
+}
+
+// func TestStandardPrograms(t *testing.T) {
+// 	tests := []struct {
+// 		name       string
+// 		sourceFile string
+// 		want       mulch.Value
+// 	}{
+// 		{
+// 			name:       "environment capture",
+// 			sourceFile: "../../test/environment_capture.json",
+// 			want:       &mulch.Integer{1},
+// 		},
+// 		// {
+// 		// 	name:       "parameter added to environment",
+// 		// 	sourceFile: "./test/param_in_env.json",
+// 		// 	want:       &Integer{2},
+// 		// },
+// 		// {
+// 		// 	name:       "nested apply",
+// 		// 	sourceFile: "./test/nested_apply.json",
+// 		// 	want:       &Integer{4},
+// 		// },
+// 		// {
+// 		// 	name:       "nested let",
+// 		// 	sourceFile: "./test/nested_let.json",
+// 		// 	want:       &Integer{1},
+// 		// },
+// 		// {
+// 		// 	name:       "evaluate exec function",
+// 		// 	sourceFile: "./test/effects/evaluate_exec_function.json",
+// 		// 	want:       &Tag{"Ok", &Integer{5}},
+// 		// },
+// 		// {
+// 		// 	name:       "evaluate handle",
+// 		// 	sourceFile: "./test/effects/evaluate_handle.json",
+// 		// 	want:       &Tag{"Error", &String{"bang!!"}},
+// 		// },
+// 		// {
+// 		// 	name:       "continue exec",
+// 		// 	sourceFile: "./test/effects/continue_exec.json",
+// 		// 	want:       &Tag{"Tagged", &Integer{1}},
+// 		// },
+// 		// {
+// 		// 	name:       "multiple perform",
+// 		// 	sourceFile: "./test/effects/multiple_perform.json",
+// 		// 	want:       &Cons{&Integer{1}, &Cons{&Integer{2}, &Tail{}}},
+// 		// },
+// 		// {
+// 		// 	name:       "multiple resume",
+// 		// 	sourceFile: "./test/effects/multiple_resume.json",
+// 		// 	want:       &Cons{&Integer{2}, &Cons{&Integer{3}, &Tail{}}},
+// 		// },
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			source := readSource(t, tt.sourceFile)
+// 			code := transpile(source)
+// 			buf := new(bytes.Buffer)
+// 			dump := &ast.File{
+// 				Name: &ast.Ident{Name: "testdata"},
+// 				Decls: []ast.Decl{
+// 					&ast.FuncDecl{
+// 						Name: &ast.Ident{Name: "bob"},
+// 						Type: &ast.FuncType{},
+// 						Body: &ast.BlockStmt{List: []ast.Stmt{&ast.ExprStmt{X: code}}},
+// 					},
+// 				},
+// 			}
+// 			err := printer.Fprint(buf, token.NewFileSet(), dump)
+// 			if err != nil {
+// 				log.Fatal(err)
+// 			}
+// 			fmt.Println(buf.String())
+// 			panic("rad source")
+// 			got, fail := mulch.Eval(source, &mulch.Done{})
+// 			if fail != nil {
+// 				// fmt.Println(fail.reason.debug())
+// 				t.Fatal(fail)
+// 			}
+// 			assert.Nil(t, fail)
+// 			assert.Equal(t, tt.want, got)
+// 		})
+// 	}
+// }
 
 func readSource(t *testing.T, sourceFile string) mulch.C {
 	json, err := os.ReadFile(sourceFile)

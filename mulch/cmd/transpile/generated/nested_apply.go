@@ -1,20 +1,29 @@
 package generated
 
-// Needs currying
-func R(k func(any)) {
-	then(1, func(_1 any) {
-		then(2, func(_2 any) {
-			add(_1, _2, func(_3 any) {
-				then(3, func(_4 any) {
-					add(_3, _4, k)
+func NestedApply(_k K) {
+	then(int_subtract, func(_fn any) {
+		then(int_add, func(_fn any) {
+			then(3, func(_arg any) {
+				_fn.(func(any, K))(_arg, func(_fn any) {
+					then(4, func(_arg any) {
+						_fn.(func(any, K))(_arg, func(_arg any) {
+							_fn.(func(any, K))(_arg, func(_fn any) {
+								then(int_add, func(_fn any) {
+									then(1, func(_arg any) {
+										_fn.(func(any, K))(_arg, func(_fn any) {
+											then(2, func(_arg any) {
+												_fn.(func(any, K))(_arg, func(_arg any) {
+													_fn.(func(any, K))(_arg, _k)
+												})
+											})
+										})
+									})
+								})
+							})
+						})
+					})
 				})
 			})
 		})
 	})
-}
-
-func add(v1, v2 any, k func(any)) {
-	x := v1.(int)
-	y := v2.(int)
-	k(x + y)
 }

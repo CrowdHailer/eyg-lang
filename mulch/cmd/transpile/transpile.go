@@ -9,7 +9,11 @@ import (
 	"go/token"
 	"mulch"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+
+	"github.com/iancoleman/strcase"
 )
 
 // theres some clever thing with a global stack
@@ -21,48 +25,75 @@ var ktype = &ast.FuncType{
 	// Results: &ast.FieldList{List: []*ast.Field{{Type: any}}},
 }
 
-func transpile(exp mulch.C) ast.Expr {
-
+// arg counter
+// need mapping
+// gleam js mapping with use
+func end(exp ast.Expr, k ast.Expr) *ast.CallExpr {
+	return &ast.CallExpr{Fun: &ast.Ident{Name: "then"}, Args: []ast.Expr{exp, k}}
+}
+func transpile(exp mulch.C, k ast.Expr) ast.Expr {
 	switch e := exp.(type) {
 	case *mulch.Variable:
-		return &ast.Ident{Name: e.Label}
+		return end(&ast.Ident{Name: e.Label}, k)
 	case *mulch.Lambda:
-		return &ast.FuncLit{
+		return end(&ast.FuncLit{
 			Type: &ast.FuncType{
 				Params: &ast.FieldList{List: []*ast.Field{
 					{Names: []*ast.Ident{{Name: e.Label}}, Type: value},
 					{Names: []*ast.Ident{{Name: "_k"}}, Type: &ast.Ident{Name: "K"}},
 				}}},
 			Body: &ast.BlockStmt{List: []ast.Stmt{
-				&ast.ExprStmt{X: &ast.CallExpr{Fun: &ast.Ident{Name: "then"}, Args: []ast.Expr{transpile(e.Body), &ast.Ident{Name: "_k"}}}},
+				&ast.ExprStmt{X: transpile(e.Body, &ast.Ident{Name: "_k"})},
 			}},
-		}
+		}, k)
 	case *mulch.Call:
-		cast := &ast.TypeAssertExpr{X: transpile(e.Fn), Type: &ast.FuncType{
-			Params: &ast.FieldList{List: []*ast.Field{
-				{Type: value},
-				{Type: &ast.Ident{Name: "K"}},
-			}},
-		}}
-		return &ast.CallExpr{Fun: cast, Args: []ast.Expr{transpile(e.Arg), &ast.Ident{Name: "_k"}}}
+		// knormalisation
+		return transpile(e.Fn, &ast.FuncLit{
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{List: []*ast.Field{{Names: []*ast.Ident{{Name: "_fn"}}, Type: value}}},
+			},
+			Body: &ast.BlockStmt{List: []ast.Stmt{
+				&ast.ExprStmt{X: transpile(e.Arg, &ast.FuncLit{
+					Type: &ast.FuncType{
+						Params: &ast.FieldList{List: []*ast.Field{{Names: []*ast.Ident{{Name: "_arg"}}, Type: value}}},
+					},
+					Body: &ast.BlockStmt{List: []ast.Stmt{
+						&ast.ExprStmt{X: &ast.CallExpr{
+							Fun: &ast.TypeAssertExpr{X: &ast.Ident{Name: "_fn"}, Type: &ast.FuncType{
+								Params: &ast.FieldList{List: []*ast.Field{
+									{Type: value},
+									{Type: &ast.Ident{Name: "K"}},
+								}},
+							}},
+							Args: []ast.Expr{
+								&ast.Ident{Name: "_arg"},
+								k,
+							},
+						},
+						},
+					}}})},
+			}}})
 	case *mulch.Let:
-		k := &ast.FuncLit{
+		k2 := &ast.FuncLit{
 			Type: &ast.FuncType{Params: &ast.FieldList{List: []*ast.Field{
 				{Names: []*ast.Ident{{Name: e.Label}}, Type: &ast.Ident{Name: "any"}},
 			}}},
 			Body: &ast.BlockStmt{List: []ast.Stmt{
-				&ast.ExprStmt{X: transpile(e.Then)},
+				&ast.ExprStmt{X: transpile(e.Then, k)},
 				// &ast.BasicLit{Kind: token.INT, Value: "asc"},
 				// &ast.ReturnStmt{Results: []ast.Expr{&ast.Ident{Name: "foo"}}},
 			}}}
-		return &ast.CallExpr{Fun: &ast.Ident{Name: "then"}, Args: []ast.Expr{transpile(e.Value), k}}
+		return transpile(e.Value, k2)
 	case *mulch.Integer:
-		return integer_(int(e.Value))
+		return end(integer_(int(e.Value)), k)
 	case *mulch.String:
-		return string_(e.Value)
+		return end(string_(e.Value), k)
 	case *mulch.Empty:
-		return &ast.CompositeLit{Type: &ast.Ident{Name: "empty"}}
+		return end(&ast.CompositeLit{Type: &ast.Ident{Name: "empty"}}, k)
+	case *mulch.Builtin:
+		return end(&ast.Ident{Name: e.Id}, k)
 	}
+
 	fmt.Printf("%#v\n", exp)
 	panic("unknown thing")
 }
@@ -91,7 +122,7 @@ func string_(v string) ast.Expr {
 	return &ast.BasicLit{Kind: token.STRING, Value: v}
 }
 
-func printAsFile(code ast.Expr) (string, error) {
+func printAsFile(code ast.Expr, fnName string) (string, error) {
 	buf := new(bytes.Buffer)
 	dump := &ast.File{
 		Name: &ast.Ident{Name: "generated"},
@@ -104,7 +135,7 @@ func printAsFile(code ast.Expr) (string, error) {
 			// 	&ast.TypeSpec{Name: &ast.Ident{Name: "K"}, Assign: token.NoPos, Type: ktype},
 			// }},
 			&ast.FuncDecl{
-				Name: &ast.Ident{Name: "EnvironmentCapture"},
+				Name: &ast.Ident{Name: fnName},
 				Type: &ast.FuncType{
 					Params: &ast.FieldList{List: []*ast.Field{{Names: []*ast.Ident{{Name: "_k"}}, Type: &ast.Ident{Name: "K"}}}},
 				},
@@ -151,8 +182,13 @@ func main() {
 		return
 	}
 	fmt.Printf("%#v\n", source)
-	contents, err := printAsFile(transpile(source))
-	os.WriteFile("environment_capture.go", []byte(contents), 0644)
+	name := strings.TrimSuffix(filepath.Base(file), ".json")
+	// fnName := strings.ReplaceAll(name, "_", "")
+	fnName := strcase.ToCamel(name)
+	out := fmt.Sprintf("%s.go", name)
+
+	contents, err := printAsFile(transpile(source, &ast.Ident{Name: "_k"}), fnName)
+	os.WriteFile(out, []byte(contents), 0644)
 }
 
 // type Extend struct {
