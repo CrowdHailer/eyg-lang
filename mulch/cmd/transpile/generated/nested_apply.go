@@ -1,8 +1,4 @@
-package testdata
-
-func then(any, func(any)) {
-	panic("todo")
-}
+package generated
 
 // Needs currying
 func R(k func(any)) {

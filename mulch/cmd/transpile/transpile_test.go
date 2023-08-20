@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"log"
 	"mulch"
+	"mulch/cmd/transpile/generated"
 	"os"
 	"testing"
 
@@ -15,13 +16,9 @@ import (
 )
 
 func TestExample(t *testing.T) {
-	var value any
-	func(x any) {
-		func(x any) {
-			value = x
-		}(2)
-	}(1)
-	assert.Equal(t, 2, value)
+	var result any
+	generated.EnvironmentCapture(func(v any) { result = v })
+	assert.Equal(t, 1, result)
 }
 
 func TestStandardPrograms(t *testing.T) {
@@ -120,13 +117,13 @@ func readSource(t *testing.T, sourceFile string) mulch.C {
 	return source
 }
 
-func perform(label string, v any, k func(any) any) {
-	panic("perform")
-}
+// func perform(label string, v any, k func(any) any) {
+// 	panic("perform")
+// }
 
-func doSelect(v, k any) {
+// func doSelect(v, k any) {
 
-}
+// }
 
 // I previously had a bunch of nested ks
 

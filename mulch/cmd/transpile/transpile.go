@@ -15,23 +15,36 @@ import (
 // theres some clever thing with a global stack
 // push it and then there will be a pop and run.
 // what does nested apply look like
+var value = &ast.Ident{Name: "any"}
+var ktype = &ast.FuncType{
+	Params: &ast.FieldList{List: []*ast.Field{{Type: value}}},
+	// Results: &ast.FieldList{List: []*ast.Field{{Type: any}}},
+}
 
 func transpile(exp mulch.C) ast.Expr {
+
 	switch e := exp.(type) {
 	case *mulch.Variable:
 		return &ast.Ident{Name: e.Label}
 	case *mulch.Lambda:
-		return &ast.Ident{Name: "ALm"}
+		return &ast.FuncLit{
+			Type: &ast.FuncType{
+				Params: &ast.FieldList{List: []*ast.Field{
+					{Names: []*ast.Ident{{Name: e.Label}}, Type: value},
+					{Names: []*ast.Ident{{Name: "_k"}}, Type: &ast.Ident{Name: "K"}},
+				}}},
+			Body: &ast.BlockStmt{List: []ast.Stmt{
+				&ast.ExprStmt{X: &ast.CallExpr{Fun: &ast.Ident{Name: "then"}, Args: []ast.Expr{transpile(e.Body), &ast.Ident{Name: "_k"}}}},
+			}},
+		}
 	case *mulch.Call:
 		cast := &ast.TypeAssertExpr{X: transpile(e.Fn), Type: &ast.FuncType{
 			Params: &ast.FieldList{List: []*ast.Field{
-				{Type: &ast.Ident{Name: "any"}},
-			}},
-			Results: &ast.FieldList{List: []*ast.Field{
-				{Type: &ast.Ident{Name: "any"}},
+				{Type: value},
+				{Type: &ast.Ident{Name: "K"}},
 			}},
 		}}
-		return &ast.CallExpr{Fun: cast, Args: []ast.Expr{transpile(e.Arg)}}
+		return &ast.CallExpr{Fun: cast, Args: []ast.Expr{transpile(e.Arg), &ast.Ident{Name: "_k"}}}
 	case *mulch.Let:
 		k := &ast.FuncLit{
 			Type: &ast.FuncType{Params: &ast.FieldList{List: []*ast.Field{
@@ -42,7 +55,7 @@ func transpile(exp mulch.C) ast.Expr {
 				// &ast.BasicLit{Kind: token.INT, Value: "asc"},
 				// &ast.ReturnStmt{Results: []ast.Expr{&ast.Ident{Name: "foo"}}},
 			}}}
-		return &ast.CallExpr{Fun: k, Args: []ast.Expr{transpile(e.Value)}}
+		return &ast.CallExpr{Fun: &ast.Ident{Name: "then"}, Args: []ast.Expr{transpile(e.Value), k}}
 	case *mulch.Integer:
 		return integer_(int(e.Value))
 	case *mulch.String:
@@ -81,13 +94,34 @@ func string_(v string) ast.Expr {
 func printAsFile(code ast.Expr) (string, error) {
 	buf := new(bytes.Buffer)
 	dump := &ast.File{
-		Name: &ast.Ident{Name: "testdata"},
+		Name: &ast.Ident{Name: "generated"},
 		Decls: []ast.Decl{
+			// &ast.DeclStmt{
+			// 	Decl: &ast.TypeSpec{Name: ast.NewIdent("K"), Assign: token.NoPos, Type: ktype},
+			// },
+			// &ast.GenDecl{Tok: token.TYPE, Specs: []ast.Spec{
+
+			// 	&ast.TypeSpec{Name: &ast.Ident{Name: "K"}, Assign: token.NoPos, Type: ktype},
+			// }},
 			&ast.FuncDecl{
-				Name: &ast.Ident{Name: "Run"},
-				Type: &ast.FuncType{},
+				Name: &ast.Ident{Name: "EnvironmentCapture"},
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{List: []*ast.Field{{Names: []*ast.Ident{{Name: "_k"}}, Type: &ast.Ident{Name: "K"}}}},
+				},
 				Body: &ast.BlockStmt{List: []ast.Stmt{&ast.ExprStmt{X: code}}},
 			},
+			// &ast.FuncDecl{
+			// 	Name: &ast.Ident{Name: "then"},
+			// 	Type: &ast.FuncType{
+			// 		Params: &ast.FieldList{List: []*ast.Field{
+			// 			{Names: []*ast.Ident{{Name: "value"}}, Type: value},
+			// 			{Names: []*ast.Ident{{Name: "k"}}, Type: &ast.Ident{Name: "K"}},
+			// 		}},
+			// 	},
+			// 	Body: &ast.BlockStmt{List: []ast.Stmt{
+			// 		&ast.ExprStmt{X: &ast.CallExpr{Fun: &ast.Ident{Name: "k"}, Args: []ast.Expr{&ast.Ident{Name: "value"}}}},
+			// 	}},
+			// },
 		},
 	}
 	err := printer.Fprint(buf, token.NewFileSet(), dump)
@@ -118,7 +152,7 @@ func main() {
 	}
 	fmt.Printf("%#v\n", source)
 	contents, err := printAsFile(transpile(source))
-	os.WriteFile("source.go", []byte(contents), 0644)
+	os.WriteFile("environment_capture.go", []byte(contents), 0644)
 }
 
 // type Extend struct {

@@ -1,14 +1,13 @@
-package testdata
+package generated
 
-func bob() {
-	func(a any) {
-		func(f any) {
-			func(a any) {
-				f.(func(any) any)(empty{})
-			}(2)
-		}(panic(""))
-	}(1)
-}
-
-type empty struct {
+func EnvironmentCapture(_k K) {
+	then(1, func(a any) {
+		then(func(_ any, _k K) {
+			then(a, _k)
+		}, func(f any) {
+			then(2, func(a any) {
+				f.(func(any, K))(empty{}, _k)
+			})
+		})
+	})
 }

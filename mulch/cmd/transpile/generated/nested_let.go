@@ -1,6 +1,6 @@
-package testdata
+package generated
 
-func Run(done func(any)) {
+func Run2(done func(any)) {
 	then(5, func(x any) {
 		then(2, func(x any) {
 			then(x, done)
