@@ -13,6 +13,8 @@ import (
 	"github.com/tj/assert"
 )
 
+// Need to check block for nested let
+
 // func TestFunctionCall(t *testing.T) {
 // 	source := &mulch.Call{&mulch.Variable{"f"}, &mulch.Integer{1}}
 // 	code := print(t, transpile(source))
@@ -49,6 +51,12 @@ func TestNestedApply(t *testing.T) {
 	var result any
 	generated.NestedApply(func(v any) { result = v })
 	assert.Equal(t, 4, result)
+}
+
+func TestRecordSelect(t *testing.T) {
+	var result any
+	generated.RecordSelect(func(v any) { result = v })
+	assert.Equal(t, "hey", result)
 }
 
 // func TestStandardPrograms(t *testing.T) {

@@ -89,7 +89,11 @@ func transpile(exp mulch.C, k ast.Expr) ast.Expr {
 	case *mulch.String:
 		return end(string_(e.Value), k)
 	case *mulch.Empty:
-		return end(&ast.CompositeLit{Type: &ast.Ident{Name: "empty"}}, k)
+		return end(&ast.CallExpr{Fun: &ast.Ident{Name: "__empty"}, Args: []ast.Expr{}}, k)
+	case *mulch.Extend:
+		return end(&ast.CallExpr{Fun: &ast.Ident{Name: "__extend"}, Args: []ast.Expr{string_(e.Label)}}, k)
+	case *mulch.Select:
+		return end(&ast.CallExpr{Fun: &ast.Ident{Name: "__select"}, Args: []ast.Expr{string_(e.Label)}}, k)
 	case *mulch.Builtin:
 		return end(&ast.Ident{Name: e.Id}, k)
 	}
@@ -98,28 +102,14 @@ func transpile(exp mulch.C, k ast.Expr) ast.Expr {
 	panic("unknown thing")
 }
 
-// func function() ast.Expr {
-
-// }
-// 	err := printer.Fprint(buf, token.NewFileSet(), &ast.FuncLit{
-// 		Type: &ast.FuncType{Params: &ast.FieldList{}},
-// 		Body: &ast.BlockStmt{List: []ast.Stmt{
-// 			// &ast.DeclStmt{Decl: }
-// 			&ast.AssignStmt{
-// 				Lhs: []ast.Expr{&ast.Ident{Name: "foo"}},
-// 				Tok: token.DEFINE,
-// 				Rhs: []ast.Expr{&ast.BasicLit{Kind: token.INT, Value: "asc"}},
-// 			},
-// 			// &ast.BasicLit{Kind: token.INT, Value: "asc"},
-// 			&ast.ReturnStmt{Results: []ast.Expr{&ast.Ident{Name: "foo"}}},
-// 		}}})
+// TODO fix and fold
 
 func integer_(v int) ast.Expr {
 	return &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(v)}
 }
 
 func string_(v string) ast.Expr {
-	return &ast.BasicLit{Kind: token.STRING, Value: v}
+	return &ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("\"%s\"", v)}
 }
 
 func printAsFile(code ast.Expr, fnName string) (string, error) {
@@ -190,28 +180,3 @@ func main() {
 	contents, err := printAsFile(transpile(source, &ast.Ident{Name: "_k"}), fnName)
 	os.WriteFile(out, []byte(contents), 0644)
 }
-
-// type Extend struct {
-// 	label string
-// 	value any
-// 	rest  any
-// }
-// type Empty struct {
-// }
-
-// func (self *Empty) record() (Record, error) {
-// 	return self, nil
-// }
-
-// func get(value any, label string) {
-
-// }
-
-// // interface as record
-// // immutable data structures
-// // overwrite
-// // get
-// // extend
-
-// // CPS for effects
-// // ban handlers means transpile pull out the handler from the top level
