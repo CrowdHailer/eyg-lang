@@ -201,7 +201,6 @@ This doesn't work for structural typing.
 
 ## CPS
 More of a compilation concern
-- https://matt.might.net/articles/cps-conversion/ How to compile with continuations
 - https://dev.to/yelouafi/algebraic-effects-in-javascript-part-2---capturing-continuations-with-generators-13da most thorough explaination with continuations
 - https://github.com/phenax/algebraic-effects Library using generators and yield does it allow multiple resumption
 - https://nythrox.github.io/effects.js/#/algeff Other JS library
