@@ -101,12 +101,12 @@ func (k *Arg) compute(value Value, _ E, rest K) (C, E, K) {
 }
 
 type Apply struct {
-	fn  Value
-	env E
+	Fn  Value
+	Env E
 }
 
 func (k *Apply) compute(value Value, env E, rest K) (C, E, K) {
-	return k.fn.call(value, k.env, rest)
+	return k.Fn.call(value, k.Env, rest)
 }
 
 type Vacant struct {

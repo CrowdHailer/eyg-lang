@@ -7,3 +7,6 @@ raspberry pi go unikernel goodness.
 
 transpiling needs generics, not if arbitrary `any`s everywhere
 peg grammer
+
+what happens if main function finishess
+include the scan loop

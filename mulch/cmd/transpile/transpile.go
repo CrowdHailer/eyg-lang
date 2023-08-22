@@ -19,6 +19,8 @@ import (
 // theres some clever thing with a global stack
 // push it and then there will be a pop and run.
 // what does nested apply look like
+// CPS transformation for transpilation
+
 var value = &ast.Ident{Name: "any"}
 var ktype = &ast.FuncType{
 	Params: &ast.FieldList{List: []*ast.Field{{Type: value}}},

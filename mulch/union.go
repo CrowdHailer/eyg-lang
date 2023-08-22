@@ -3,7 +3,7 @@ package mulch
 import "fmt"
 
 type Tag struct {
-	label string
+	Label string
 	value Value
 }
 
@@ -22,9 +22,9 @@ func (value *Tag) call(arg Value, e E, k K) (C, E, K) {
 
 func (value *Tag) Debug() string {
 	if value.value == nil {
-		return value.label
+		return value.Label
 	}
-	return fmt.Sprintf("%s(%s)", value.label, value.value.Debug())
+	return fmt.Sprintf("%s(%s)", value.Label, value.value.Debug())
 }
 
 type Case struct {
@@ -52,7 +52,7 @@ func (case_ *Case) call(arg Value, e E, k K) (C, E, K) {
 	if !ok {
 		return &Error{&NotATagged{arg}}, e, k
 	}
-	if tagged.label == case_.label {
+	if tagged.Label == case_.label {
 		return case_.branch.call(tagged.value, e, k)
 	}
 	return case_.otherwise.call(tagged, e, k)

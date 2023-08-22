@@ -94,27 +94,27 @@ func fixed(builder Value) Value {
 func language_to_term(value Value) (C, Value) {
 	switch list := value.(type) {
 	case *Cons:
-		switch item := list.item.(type) {
+		switch item := list.Item.(type) {
 		case *Tag:
-			switch item.label {
+			switch item.Label {
 			case "Variable":
 				label := item.value.(*String).Value
-				return &Variable{label}, list.tail
+				return &Variable{label}, list.Tail
 			case "Lambda":
 				param := item.value.(*String).Value
-				body, rest := language_to_term(list.tail)
+				body, rest := language_to_term(list.Tail)
 				return &Lambda{param, body}, rest
 			case "Apply":
 				_ = item.value.(*Empty)
-				fn, rest := language_to_term(list.tail)
+				fn, rest := language_to_term(list.Tail)
 				arg, rest := language_to_term(rest)
 				return &Call{fn, arg}, rest
 			case "Binary":
 				value := item.value.(*String).Value
-				return &String{value}, list.tail
+				return &String{value}, list.Tail
 			case "Builtin":
 				identifier := item.value.(*String).Value
-				return &Builtin{identifier}, list.tail
+				return &Builtin{identifier}, list.Tail
 			default:
 				fmt.Println(item.Debug())
 				panic("sss")
@@ -180,7 +180,7 @@ var builtins = map[string]Value{
 		case *Tail:
 			return &Tag{"Error", &Empty{}}, e, k
 		case *Cons:
-			return &Tag{"Ok", &Extend{"head", list.item, &Extend{"tail", list.tail, &Empty{}}}}, e, k
+			return &Tag{"Ok", &Extend{"head", list.Item, &Extend{"tail", list.Tail, &Empty{}}}}, e, k
 		default:
 			return &Error{&NotAList{value}}, e, k
 		}
@@ -272,7 +272,7 @@ func do_fold(list, acc, fn Value, e E, k K) (C, E, K) {
 	case *Tail:
 		return acc, e, k
 	case *Cons:
-		return fn, e, &Stack{&CallWith{l.item}, &Stack{&CallWith{acc}, &Stack{&Apply{&Arity3{l.tail, nil, do_fold}, e}, &Stack{&CallWith{fn}, k}}}}
+		return fn, e, &Stack{&CallWith{l.Item}, &Stack{&CallWith{acc}, &Stack{&Apply{&Arity3{l.Tail, nil, do_fold}, e}, &Stack{&CallWith{fn}, k}}}}
 	}
 	panic("list_fold")
 }

@@ -39,7 +39,7 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotATagged{m}}
 		}
-		fmt.Println(method.label)
+		fmt.Println(method.Label)
 		h, ok := field(lift, "host")
 		if !ok {
 			return &Error{&MissingField{"host", lift}}

@@ -32,8 +32,8 @@ func (r *Resume) call(arg Value, _ E, k K) (C, E, K) {
 			break
 		}
 		stack := reversed.(*Stack)
-		k = &Stack{stack.k, k}
-		reversed = stack.rest
+		k = &Stack{stack.K, k}
+		reversed = stack.Rest
 	}
 	return arg, r.e, k
 }
@@ -43,11 +43,11 @@ func (i *Resume) Debug() string {
 }
 
 type CallWith struct {
-	value Value
+	Value Value
 }
 
 func (k *CallWith) compute(v Value, e E, rest K) (C, E, K) {
-	return v.call(k.value, e, rest)
+	return v.call(k.Value, e, rest)
 }
 
 func (p *Perform) call(lift Value, e E, k K) (C, E, K) {
@@ -64,8 +64,8 @@ func (p *Perform) call(lift Value, e E, k K) (C, E, K) {
 			}
 			return handler(lift), e, k
 		case *Stack:
-			current := stack.k
-			outer = stack.rest
+			current := stack.K
+			outer = stack.Rest
 			if delimiter, ok := current.(*Handle); ok && delimiter.label == p.Label {
 				reversed = &Stack{current, reversed}
 				resume := &Resume{e, reversed}

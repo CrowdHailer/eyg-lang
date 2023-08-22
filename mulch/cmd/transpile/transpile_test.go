@@ -14,6 +14,7 @@ import (
 )
 
 // Need to check block for nested let
+// flat .then
 
 // func TestFunctionCall(t *testing.T) {
 // 	source := &mulch.Call{&mulch.Variable{"f"}, &mulch.Integer{1}}
