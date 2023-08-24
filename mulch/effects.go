@@ -5,7 +5,7 @@ import (
 )
 
 type Perform struct {
-	label string
+	Label string
 }
 
 func (i *Perform) step(e E, k K) (C, E, K) {
@@ -13,7 +13,7 @@ func (i *Perform) step(e E, k K) (C, E, K) {
 }
 
 func (i *Perform) Debug() string {
-	return fmt.Sprintf("^%s", i.label)
+	return fmt.Sprintf("^%s", i.Label)
 }
 
 type Resume struct {
@@ -32,8 +32,8 @@ func (r *Resume) call(arg Value, _ E, k K) (C, E, K) {
 			break
 		}
 		stack := reversed.(*Stack)
-		k = &Stack{stack.k, k}
-		reversed = stack.rest
+		k = &Stack{stack.K, k}
+		reversed = stack.Rest
 	}
 	return arg, r.e, k
 }
@@ -43,11 +43,11 @@ func (i *Resume) Debug() string {
 }
 
 type CallWith struct {
-	value Value
+	Value Value
 }
 
 func (k *CallWith) compute(v Value, e E, rest K) (C, E, K) {
-	return v.call(k.value, e, rest)
+	return v.call(k.Value, e, rest)
 }
 
 func (p *Perform) call(lift Value, e E, k K) (C, E, K) {
@@ -58,20 +58,20 @@ func (p *Perform) call(lift Value, e E, k K) (C, E, K) {
 	for {
 		switch stack := outer.(type) {
 		case *Done:
-			handler, ok := stack.External[p.label]
+			handler, ok := stack.External[p.Label]
 			if !ok {
-				return &Error{&UnhandledEffect{p.label, lift}}, e, k
+				return &Error{&UnhandledEffect{p.Label, lift}}, e, k
 			}
 			return handler(lift), e, k
 		case *Stack:
-			current := stack.k
-			outer = stack.rest
-			if delimiter, ok := current.(*Handle); ok && delimiter.label == p.label {
+			current := stack.K
+			outer = stack.Rest
+			if delimiter, ok := current.(*Handle); ok && delimiter.label == p.Label {
 				reversed = &Stack{current, reversed}
 				resume := &Resume{e, reversed}
 				return delimiter.handle, delimiter.e, &Stack{&CallWith{lift}, &Stack{&CallWith{resume}, outer}}
 			}
-			if delimiter, ok := current.(*Shallow); ok && delimiter.label == p.label {
+			if delimiter, ok := current.(*Shallow); ok && delimiter.label == p.Label {
 				resume := &Resume{e, reversed}
 				return delimiter.handle, delimiter.e, &Stack{&CallWith{lift}, &Stack{&CallWith{resume}, outer}}
 			}

@@ -15,12 +15,12 @@ func TestList(t *testing.T) {
 	defunc := (C)(source)
 	partial, _, _ := defunc.(Value).call(&Integer{1}, e, k)
 	list, _, _ := partial.(Value).call(&Tail{}, e, k)
-	assert.Nil(t, defunc.(*Cons).item)
-	assert.Nil(t, defunc.(*Cons).tail)
+	assert.Nil(t, defunc.(*Cons).Item)
+	assert.Nil(t, defunc.(*Cons).Tail)
 
-	assert.NotNil(t, partial.(*Cons).item)
-	assert.Nil(t, partial.(*Cons).tail)
+	assert.NotNil(t, partial.(*Cons).Item)
+	assert.Nil(t, partial.(*Cons).Tail)
 
-	assert.NotNil(t, list.(*Cons).item)
-	assert.NotNil(t, list.(*Cons).tail)
+	assert.NotNil(t, list.(*Cons).Item)
+	assert.NotNil(t, list.(*Cons).Tail)
 }

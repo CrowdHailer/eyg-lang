@@ -7,13 +7,13 @@ import (
 )
 
 type Builtin struct {
-	id string
+	Id string
 }
 
 func (exp *Builtin) step(e E, k K) (C, E, K) {
-	value, ok := builtins[exp.id]
+	value, ok := builtins[exp.Id]
 	if !ok {
-		return &Error{&UndefinedVariable{exp.id}}, e, k
+		return &Error{&UndefinedVariable{exp.Id}}, e, k
 	}
 	return k.compute(value, e)
 }
@@ -94,27 +94,27 @@ func fixed(builder Value) Value {
 func language_to_term(value Value) (C, Value) {
 	switch list := value.(type) {
 	case *Cons:
-		switch item := list.item.(type) {
+		switch item := list.Item.(type) {
 		case *Tag:
-			switch item.label {
+			switch item.Label {
 			case "Variable":
-				label := item.value.(*String).value
-				return &Variable{label}, list.tail
+				label := item.value.(*String).Value
+				return &Variable{label}, list.Tail
 			case "Lambda":
-				param := item.value.(*String).value
-				body, rest := language_to_term(list.tail)
+				param := item.value.(*String).Value
+				body, rest := language_to_term(list.Tail)
 				return &Lambda{param, body}, rest
 			case "Apply":
 				_ = item.value.(*Empty)
-				fn, rest := language_to_term(list.tail)
+				fn, rest := language_to_term(list.Tail)
 				arg, rest := language_to_term(rest)
 				return &Call{fn, arg}, rest
 			case "Binary":
-				value := item.value.(*String).value
-				return &String{value}, list.tail
+				value := item.value.(*String).Value
+				return &String{value}, list.Tail
 			case "Builtin":
-				identifier := item.value.(*String).value
-				return &Builtin{identifier}, list.tail
+				identifier := item.value.(*String).Value
+				return &Builtin{identifier}, list.Tail
 			default:
 				fmt.Println(item.Debug())
 				panic("sss")
@@ -180,7 +180,7 @@ var builtins = map[string]Value{
 		case *Tail:
 			return &Tag{"Error", &Empty{}}, e, k
 		case *Cons:
-			return &Tag{"Ok", &Extend{"head", list.item, &Extend{"tail", list.tail, &Empty{}}}}, e, k
+			return &Tag{"Ok", &Extend{"head", list.Item, &Extend{"tail", list.Tail, &Empty{}}}}, e, k
 		default:
 			return &Error{&NotAList{value}}, e, k
 		}
@@ -195,7 +195,7 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{&NotAnInteger{y}}, e, k
 		}
-		return &Integer{a.value + b.value}, e, k
+		return &Integer{a.Value + b.Value}, e, k
 	}},
 	"int_subtract": &Arity2{impl: func(x, y Value, e E, k K) (C, E, K) {
 		a, ok := x.(*Integer)
@@ -206,28 +206,28 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{&NotAnInteger{y}}, e, k
 		}
-		return &Integer{a.value - b.value}, e, k
+		return &Integer{a.Value - b.Value}, e, k
 	}},
 	"int_to_string": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		i, ok := v.(*Integer)
 		if !ok {
 			return &Error{&NotAnInteger{v}}, e, k
 		}
-		return &String{fmt.Sprintf("%d", i.value)}, e, k
+		return &String{fmt.Sprintf("%d", i.Value)}, e, k
 	}},
 	"string_uppercase": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
 			return &Error{&NotAString{v}}, e, k
 		}
-		return &String{strings.ToUpper(s.value)}, e, k
+		return &String{strings.ToUpper(s.Value)}, e, k
 	}},
 	"string_lowercase": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
 			return &Error{&NotAString{v}}, e, k
 		}
-		return &String{strings.ToLower(s.value)}, e, k
+		return &String{strings.ToLower(s.Value)}, e, k
 	}},
 	"string_append": &Arity2{impl: func(left, right Value, e E, k K) (C, E, K) {
 		l, ok := left.(*String)
@@ -238,7 +238,7 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{&NotAString{right}}, e, k
 		}
-		return &String{l.value + r.value}, e, k
+		return &String{l.Value + r.Value}, e, k
 
 	}},
 	"string_split": &Arity2{impl: func(str, pattern Value, e E, k K) (C, E, K) {
@@ -250,7 +250,7 @@ var builtins = map[string]Value{
 		if !ok {
 			return &Error{}, e, k
 		}
-		parts := strings.Split(s.value, p.value)
+		parts := strings.Split(s.Value, p.Value)
 		h := parts[0]
 		t := parts[1:]
 		var tail Value = &Tail{}
@@ -272,7 +272,7 @@ func do_fold(list, acc, fn Value, e E, k K) (C, E, K) {
 	case *Tail:
 		return acc, e, k
 	case *Cons:
-		return fn, e, &Stack{&CallWith{l.item}, &Stack{&CallWith{acc}, &Stack{&Apply{&Arity3{l.tail, nil, do_fold}, e}, &Stack{&CallWith{fn}, k}}}}
+		return fn, e, &Stack{&CallWith{l.Item}, &Stack{&CallWith{acc}, &Stack{&Apply{&Arity3{l.Tail, nil, do_fold}, e}, &Stack{&CallWith{fn}, k}}}}
 	}
 	panic("list_fold")
 }
@@ -282,7 +282,7 @@ func popGrapheme(v Value, e E, k K) (C, E, K) {
 	if !ok {
 		return &Error{}, e, k
 	}
-	res := strings.SplitN(s.value, "", 2)
+	res := strings.SplitN(s.Value, "", 2)
 	if len(res) == 0 {
 		return &Tag{"Error", &Empty{}}, e, k
 	}

@@ -21,8 +21,8 @@ func (tail *Tail) Debug() string {
 }
 
 type Cons struct {
-	item Value
-	tail Value
+	Item Value
+	Tail Value
 }
 
 func (i *Cons) step(e E, k K) (C, E, K) {
@@ -30,16 +30,16 @@ func (i *Cons) step(e E, k K) (C, E, K) {
 }
 
 func (c *Cons) call(arg Value, env E, k K) (C, E, K) {
-	if c.item == nil {
+	if c.Item == nil {
 		d := *c
-		d.item = arg
+		d.Item = arg
 		return &d, env, k
 	}
 	// this allows improper lists could fix and bunch onto real list
 	// Don't have tail in cons should return new data type
-	if c.tail == nil {
+	if c.Tail == nil {
 		d := *c
-		d.tail = arg
+		d.Tail = arg
 		return &d, env, k
 	}
 	return &Error{&NotAFunction{c}}, env, k
@@ -49,12 +49,12 @@ func (list *Cons) Debug() string {
 	items := []string{}
 out:
 	for {
-		if list.item == nil {
+		if list.Item == nil {
 			items = append(items, "_")
 		} else {
-			items = append(items, list.item.Debug())
+			items = append(items, list.Item.Debug())
 		}
-		switch l := list.tail.(type) {
+		switch l := list.Tail.(type) {
 		case *Cons:
 			list = l
 		case *Tail:

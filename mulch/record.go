@@ -20,7 +20,7 @@ func (value *Empty) Debug() string {
 }
 
 type Extend struct {
-	label string
+	Label string
 	item  Value
 	// improper record possible
 	rest Value
@@ -51,10 +51,10 @@ out:
 	for {
 		if record.item == nil {
 			// could be {a .._,_}
-			items = append(items, fmt.Sprintf("(%s) ->", record.label))
+			items = append(items, fmt.Sprintf("(%s) ->", record.Label))
 			break out
 		}
-		items = append(items, fmt.Sprintf("%s: %s", record.label, record.item.Debug()))
+		items = append(items, fmt.Sprintf("%s: %s", record.Label, record.item.Debug()))
 		switch r := record.rest.(type) {
 		case *Extend:
 			record = r
@@ -72,7 +72,7 @@ out:
 }
 
 type Select struct {
-	label string
+	Label string
 }
 
 func (record *Select) step(e E, k K) (C, E, K) {
@@ -85,9 +85,9 @@ func (value *Select) call(arg Value, e E, k K) (C, E, K) {
 		switch a := arg.(type) {
 		case *Empty:
 			fmt.Printf("env in select %#v", e)
-			return &Error{&MissingField{value.label, intitial}}, e, k
+			return &Error{&MissingField{value.Label, intitial}}, e, k
 		case *Extend:
-			if a.label == value.label {
+			if a.Label == value.Label {
 				return a.item, e, k
 			}
 			arg = a.rest
@@ -99,7 +99,7 @@ func (value *Select) call(arg Value, e E, k K) (C, E, K) {
 }
 
 func (value *Select) Debug() string {
-	return fmt.Sprintf(".%s", value.label)
+	return fmt.Sprintf(".%s", value.Label)
 }
 
 type Overwrite struct {
@@ -129,7 +129,7 @@ func field(value Value, f string) (Value, bool) {
 	if !ok {
 		return nil, false
 	}
-	if record.label == f {
+	if record.Label == f {
 		return record.item, true
 	}
 	return field(record.rest, f)

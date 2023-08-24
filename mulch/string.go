@@ -3,7 +3,7 @@ package mulch
 import "fmt"
 
 type String struct {
-	value string
+	Value string
 }
 
 var _ Value = (*String)(nil)
@@ -17,5 +17,5 @@ func (s *String) call(_arg Value, env E, k K) (C, E, K) {
 }
 
 func (s *String) Debug() string {
-	return fmt.Sprintf(`"%s"`, s.value)
+	return fmt.Sprintf(`"%s"`, s.Value)
 }

@@ -23,7 +23,7 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotAnInteger{lift}}
 		}
-		time.Sleep(time.Duration(m.value) * time.Millisecond)
+		time.Sleep(time.Duration(m.Value) * time.Millisecond)
 		return &Empty{}
 	},
 	"Await": func(lift Value) C {
@@ -39,7 +39,7 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotATagged{m}}
 		}
-		fmt.Println(method.label)
+		fmt.Println(method.Label)
 		h, ok := field(lift, "host")
 		if !ok {
 			return &Error{&MissingField{"host", lift}}
@@ -58,7 +58,7 @@ var Standard = map[string]func(Value) C{
 			return &Error{&NotAString{p}}
 		}
 		fmt.Println(path)
-		req, err := http.NewRequest("GET", fmt.Sprintf("https://%s%s", host.value, path.value), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("https://%s%s", host.Value, path.Value), nil)
 		if err != nil {
 			fmt.Println(err.Error())
 			panic("should be ok to make reqyest")
