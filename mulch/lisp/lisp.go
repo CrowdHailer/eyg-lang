@@ -100,6 +100,10 @@ func ReadFromTokens(tokens []string) (mulch.C, []string, error) {
 		tokens = rest
 		return &mulch.Lambda{Label: label, Body: body}, tokens, nil
 	}
+	if strings.HasPrefix(t, "|") {
+		label := t[1:]
+		return &mulch.Case{Label: label}, tokens, nil
+	}
 	parts := strings.Split(t, ".")
 	var exp mulch.C = &mulch.Variable{Label: parts[0]}
 	for _, p := range parts[1:] {

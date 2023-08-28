@@ -77,3 +77,6 @@ func main() {
 	}
 	fmt.Println(value.Debug())
 }
+
+// save to underscore variable
+// or load up recent

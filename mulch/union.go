@@ -28,7 +28,7 @@ func (value *Tag) Debug() string {
 }
 
 type Case struct {
-	label     string
+	Label     string
 	branch    Value
 	otherwise Value
 }
@@ -52,14 +52,14 @@ func (case_ *Case) call(arg Value, e E, k K) (C, E, K) {
 	if !ok {
 		return &Error{&NotATagged{arg}}, e, k
 	}
-	if tagged.Label == case_.label {
+	if tagged.Label == case_.Label {
 		return case_.branch.call(tagged.value, e, k)
 	}
 	return case_.otherwise.call(tagged, e, k)
 }
 
 func (value *Case) Debug() string {
-	return fmt.Sprintf("case %s", value.label)
+	return fmt.Sprintf("case %s", value.Label)
 }
 
 type NoCases struct{}
