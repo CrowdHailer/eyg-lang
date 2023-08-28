@@ -3,11 +3,11 @@ package mulch
 import "fmt"
 
 type Error struct {
-	reason Reason
+	R Reason
 }
 
 func (err *Error) Reason() string {
-	return err.reason.debug()
+	return err.R.debug()
 }
 
 func (h *Error) step(E, K) (C, E, K) {
@@ -100,10 +100,10 @@ func (e *MissingField) debug() string {
 }
 
 type UnhandledEffect struct {
-	label string
-	lift  Value
+	Label string
+	Lift  Value
 }
 
 func (e *UnhandledEffect) debug() string {
-	return fmt.Sprintf("unhandled effect: %s with: %s", e.label, e.lift.Debug())
+	return fmt.Sprintf("unhandled effect: %s with: %s", e.Label, e.Lift.Debug())
 }

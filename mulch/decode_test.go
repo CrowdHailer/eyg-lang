@@ -21,7 +21,7 @@ func TestInfer(t *testing.T) {
 		fmt.Printf("Value %#v\n", value.Debug())
 	}
 	if fail != nil {
-		fmt.Printf("FAIL %#v\n", fail.reason.debug())
+		fmt.Printf("FAIL %#v\n", fail.R.debug())
 	}
 	assert.Nil(t, fail)
 	assert.Equal(t, &Integer{0}, value)

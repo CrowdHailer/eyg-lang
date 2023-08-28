@@ -65,7 +65,7 @@ func TestStandardPrograms(t *testing.T) {
 			source := readSource(t, tt.sourceFile)
 			got, err := Eval(source, &Done{})
 			if err != nil {
-				fmt.Println(err.reason.debug())
+				fmt.Println(err.R.debug())
 			}
 			assert.Nil(t, err)
 			assert.Equal(t, tt.want, got)
