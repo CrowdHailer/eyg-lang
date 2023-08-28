@@ -9,10 +9,17 @@ import (
 )
 
 func TestParseLiterals(t *testing.T) {
-	assert.Equal(t, &mulch.Integer{Value: 123}, lisp.Parse("123"))
-	assert.Equal(t, &mulch.String{Value: "abc"}, lisp.Parse("\"abc\""))
-	// square brackets for lists
-	assert.Equal(t, &mulch.Variable{Label: "x"}, lisp.Parse("x"))
+	exp, err := lisp.Parse("123")
+	assert.NoError(t, err)
+	assert.Equal(t, &mulch.Integer{Value: 123}, exp)
+
+	exp, err = lisp.Parse("\"abc\"")
+	assert.NoError(t, err)
+	assert.Equal(t, &mulch.String{Value: "abc"}, exp)
+
+	exp, err = lisp.Parse("x")
+	assert.NoError(t, err)
+	assert.Equal(t, &mulch.Variable{Label: "x"}, exp)
 }
 
 func TestFunctionCalls(t *testing.T) {
@@ -23,7 +30,10 @@ func TestFunctionCalls(t *testing.T) {
 		},
 		Arg: &mulch.Integer{Value: 1},
 	}
-	assert.Equal(t, expected, lisp.Parse("(foo a 1)"))
+	exp, err := lisp.Parse("(foo a 1)")
+	assert.NoError(t, err)
+	assert.Equal(t, expected, exp)
+
 	expected = &mulch.Call{
 		Fn: &mulch.Variable{Label: "foo"},
 		Arg: &mulch.Call{
@@ -31,7 +41,10 @@ func TestFunctionCalls(t *testing.T) {
 			Arg: &mulch.Integer{Value: 1},
 		},
 	}
-	assert.Equal(t, expected, lisp.Parse("(foo (x 1))"))
+	exp, err = lisp.Parse("(foo (x 1))")
+	assert.NoError(t, err)
+	assert.Equal(t, expected, exp)
+
 	expected = &mulch.Call{
 		Fn: &mulch.Call{
 			Fn: &mulch.Variable{Label: "foo"},
@@ -44,16 +57,22 @@ func TestFunctionCalls(t *testing.T) {
 
 		Arg: &mulch.Integer{Value: 2},
 	}
-	assert.Equal(t, expected, lisp.Parse("(foo (x 1) 2)"))
+	exp, err = lisp.Parse("(foo (x 1) 2)")
+	assert.NoError(t, err)
+	assert.Equal(t, expected, exp)
 }
 
 func TestUnit(t *testing.T) {
-	assert.Equal(t, &mulch.Empty{}, lisp.Parse("()"))
+	exp, err := lisp.Parse("()")
+	assert.NoError(t, err)
+	assert.Equal(t, &mulch.Empty{}, exp)
 }
 
 func TestList(t *testing.T) {
 	var expected mulch.C = &mulch.Tail{}
-	assert.Equal(t, expected, lisp.Parse("[]"))
+	exp, err := lisp.Parse("[]")
+	assert.NoError(t, err)
+	assert.Equal(t, expected, exp)
 
 	expected = &mulch.Call{
 		Fn: &mulch.Call{
@@ -70,10 +89,14 @@ func TestList(t *testing.T) {
 	}
 
 	// no commas
-	assert.Equal(t, expected, lisp.Parse("[1 2]"))
+	exp, err = lisp.Parse("[1 2]")
+	assert.NoError(t, err)
+	assert.Equal(t, expected, exp)
 }
 
 func TestSelect(t *testing.T) {
 	expected := &mulch.Call{Fn: &mulch.Select{Label: "foo"}, Arg: &mulch.Variable{Label: "x"}}
-	assert.Equal(t, expected, lisp.Parse("x.foo"))
+	exp, err := lisp.Parse("x.foo")
+	assert.NoError(t, err)
+	assert.Equal(t, expected, exp)
 }

@@ -25,7 +25,11 @@ func repl() {
 		if err != nil {
 			panic(err)
 		}
-		source := lisp.Parse(input)
+		source, err := lisp.Parse(input)
+		if err != nil {
+			fmt.Printf("failed to parse input: %s", err.Error())
+			continue
+		}
 		var k = &mulch.Done{}
 		// Pass in script value for scripting
 		// save program state as script
