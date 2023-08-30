@@ -78,3 +78,7 @@ func main() {
 
 // save to underscore variable
 // or load up recent
+// zip
+
+// https://github.com/golang/go/issues/15108
+// go to build go
