@@ -1,11 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"mulch"
 	"mulch/lisp"
-	"os"
+
+	"github.com/chzyer/readline"
 )
 
 // Need persistent datastructures for env
@@ -16,15 +16,26 @@ func main() {
 
 func repl() {
 	fmt.Println("read")
-	in := bufio.NewReader(os.Stdin)
-	input := ""
+	// in := bufio.NewReader(os.Stdin)
+	// input := ""
+	rl, err := readline.New("> ")
+	if err != nil {
+		panic(err)
+	}
+	defer rl.Close()
 
 	// var e E = emptyEnv()
-	for input != "." {
-		input, err := in.ReadString('\n')
-		if err != nil {
-			panic(err)
+	// for input != "." {
+
+	for {
+		input, err := rl.Readline()
+		if err != nil { // io.EOF
+			break
 		}
+		// input, err := in.ReadString('\n')
+		// if err != nil {
+		// 	panic(err)
+		// }
 		source, err := lisp.Parse(input)
 		if err != nil {
 			fmt.Printf("failed to parse input: %s", err.Error())
