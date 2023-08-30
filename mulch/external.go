@@ -79,4 +79,58 @@ var Standard = map[string]func(Value) C{
 
 		return &String{string(body)}
 	},
+	"Serve": func(lift Value) C {
+		p, ok := field(lift, "port")
+		if !ok {
+			return &Error{&MissingField{"p", lift}}
+		}
+		port, ok := p.(*Integer)
+		if !ok {
+			return &Error{&NotAString{p}}
+		}
+		// fmt.Println(port)
+		h, ok := field(lift, "handler")
+		if !ok {
+			return &Error{&MissingField{"handler", lift}}
+		}
+		handler, ok := h.(*Closure)
+		if !ok {
+			return &Error{&NotAString{p}}
+		}
+		// fmt.Println(handler)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// call root because we know always the right type
+			// unhandled effect always possible
+			value, fail := Eval(handler, &Stack{
+				K:    &CallWith{Value: &String{"hello"}},
+				Rest: &Done{External: nil},
+			})
+			if fail != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				io.WriteString(w, fail.Reason())
+				return
+			}
+			raw, ok := value.(*String)
+			if !ok {
+				w.WriteHeader(http.StatusInternalServerError)
+				io.WriteString(w, value.Debug())
+				return
+			}
+			io.WriteString(w, raw.Value)
+		})
+		go func() {
+			err := http.ListenAndServe(fmt.Sprintf(":%d", port.Value), mux)
+			if err != nil {
+				panic("no binding")
+			}
+			fmt.Println("listening")
+		}()
+		return &Empty{}
+	},
 }
+
+// function to close server
+// need
+// run test

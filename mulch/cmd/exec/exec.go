@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"mulch"
 	"mulch/lisp"
 	"os"
 
+	"github.com/chzyer/readline"
 	"golang.org/x/exp/slices"
 )
 
@@ -42,19 +42,17 @@ func main() {
 		},
 	})
 	if fail != nil {
+		rl, err := readline.New("> ")
+		if err != nil {
+			panic(err)
+		}
+		defer rl.Close()
 		if r, ok := fail.R.(*mulch.UnhandledEffect); ok && r.Label == "Prompt" {
-			// source := lisp.Parse(input)
-			// fmt.Printf("%#v %#v\n", e, k)
-			// panic("Will continue")
-			in := bufio.NewReader(os.Stdin)
-			input := ""
-
-			// var e E = emptyEnv()
-			for input != "." {
+			for {
 				fmt.Print("> ")
-				input, err := in.ReadString('\n')
-				if err != nil {
-					panic(err)
+				input, err := rl.Readline()
+				if err != nil { // io.EOF
+					break
 				}
 				source, err := lisp.Parse(input)
 				if err != nil {
@@ -64,7 +62,7 @@ func main() {
 				// var k = &mulch.Done{}
 				// Pass in script value for scripting
 				// save program state as script
-				value, fail, e, k = mulch.ContinueEval(source, e, k)
+				value, fail, e, _ = mulch.ContinueEval(source, e, k)
 				if fail != nil {
 					fmt.Println(fail.Reason())
 					continue
