@@ -16,7 +16,7 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, s)
 	})
-	err := http.ListenAndServe(":8080", mux)
+	err := http.ListenAndServe("0.0.0.0:8080", mux)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
