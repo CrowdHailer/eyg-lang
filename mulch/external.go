@@ -58,7 +58,54 @@ var Standard = map[string]func(Value) C{
 			return &Error{&NotAString{p}}
 		}
 		fmt.Println(path)
+		h, ok = field(lift, "headers")
+		if !ok {
+			return &Error{&MissingField{"headers", lift}}
+		}
+		var headers []struct {
+			k string
+			v string
+		}
+
+	Outer:
+		for {
+			switch list := h.(type) {
+			case *Cons:
+				item := list.Item
+				k, ok := field(item, "key")
+				if !ok {
+					return &Error{&MissingField{"key", lift}}
+				}
+				key, ok := k.(*String)
+				if !ok {
+					return &Error{&NotAString{k}}
+				}
+				v, ok := field(item, "value")
+				if !ok {
+					return &Error{&MissingField{"value", lift}}
+				}
+				value, ok := v.(*String)
+				if !ok {
+					return &Error{&NotAString{v}}
+				}
+				headers = append(headers, struct {
+					k string
+					v string
+				}{k: key.Value, v: value.Value})
+				h = list.Tail
+			case *Tail:
+				break Outer
+			default:
+				return &Error{&NotAList{h}}
+			}
+		}
+		fmt.Printf("headers %#v\n", headers)
+
 		req, err := http.NewRequest("GET", fmt.Sprintf("https://%s%s", host.Value, path.Value), nil)
+		for _, h := range headers {
+			req.Header.Set(h.k, h.v)
+		}
+
 		if err != nil {
 			fmt.Println(err.Error())
 			panic("should be ok to make reqyest")
