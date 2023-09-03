@@ -16,7 +16,10 @@ Choices are fly.io or github.com.
 
 ### Building
 
+https://github.com/settings/tokens
+
 ```
+export CR_PAT=!!
 docker build -f docker/serverless.Dockerfile -t serverless .
 docker tag serverless ghcr.io/crowdhailer/eyg-lang:latest
 echo $CR_PAT | docker login ghcr.io -u crowdhailer --password-stdin

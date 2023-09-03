@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"mulch"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,15 +13,29 @@ import (
 	"time"
 )
 
-//go:embed source.eyg.json
-var s string
-
 func main() {
-	fmt.Println(s)
+	file := "/bin/source.eyg.json"
+	json, err := os.ReadFile(file)
+	if err != nil {
+		fmt.Printf("error reading file '%s' \n", file)
+		return
+	}
+	source, err := mulch.Decode(json)
+	if err != nil {
+		fmt.Printf("error decoding program source from '%s' \n", file)
+		return
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, s)
+		value, fail := mulch.Eval(source, &mulch.Stack{K: &mulch.CallWith{Value: &mulch.Empty{}}, Rest: &mulch.Done{External: mulch.Standard}})
+		if fail != nil {
+			io.WriteString(w, fail.Reason())
+			return
+		}
+		io.WriteString(w, value.Debug())
 	})
+
 	server := &http.Server{Addr: "0.0.0.0:8080", Handler: mux}
 	go func() {
 		err := server.ListenAndServe()
