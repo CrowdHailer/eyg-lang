@@ -85,8 +85,8 @@ curl -i -X POST \
       ],
       "files": [
         {
-          "guest_path": "/app/cmd/serverless/source.eyg.json",
-          "raw_value": "aGVsbG8gd29ybGQK"
+          "guest_path": "/bin/source.eyg.json",
+          "raw_value": "eyIwIjoiZiIsImwiOiJfIiwiYiI6eyIwIjoicyIsInYiOiJIZWxsbywgZGVwbG95In19"
         }
       ]
     }
