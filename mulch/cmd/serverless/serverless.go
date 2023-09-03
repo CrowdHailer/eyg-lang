@@ -28,7 +28,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		value, fail := mulch.Eval(source, &mulch.Stack{K: &mulch.CallWith{Value: &mulch.Empty{}}, Rest: &mulch.Done{External: mulch.Standard}})
+		value, fail := mulch.Eval(source, &mulch.Stack{
+			K:    &mulch.CallWith{Value: &mulch.Empty{}},
+			Rest: &mulch.Done{External: mulch.Standard},
+		})
 		if fail != nil {
 			io.WriteString(w, fail.Reason())
 			return

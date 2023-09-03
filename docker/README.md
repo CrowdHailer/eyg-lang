@@ -1,7 +1,5 @@
 # Docker
 
-TODO try read at startup
-
 Docker is a useful entry point into external systems, i.e. hosting on fly.
 It is quite heavy weight and better solutions might be to compile to native but at the moment that is more work for me.
 
@@ -19,10 +17,12 @@ Choices are fly.io or github.com.
 https://github.com/settings/tokens
 
 ```
-export CR_PAT=!!
+export CR_PAT=TOKEN
+echo $CR_PAT | docker login ghcr.io -u crowdhailer --password-stdin
+
 docker build -f docker/serverless.Dockerfile -t serverless .
 docker tag serverless ghcr.io/crowdhailer/eyg-lang:latest
-echo $CR_PAT | docker login ghcr.io -u crowdhailer --password-stdin
+
 docker push ghcr.io/crowdhailer/eyg-lang:latest
 ```
 
