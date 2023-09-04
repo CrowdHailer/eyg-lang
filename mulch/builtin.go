@@ -2,6 +2,7 @@ package mulch
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -168,10 +169,7 @@ var builtins = map[string]Value{
 		fmt.Printf("%#v", v)
 		panic("capture")
 	}},
-	"serialize": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
-		fmt.Printf("%#v", v)
-		panic("serialize")
-	}},
+	"serialize": &Arity1{impl: doSerialize},
 	"encode_uri": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
 		fmt.Printf("%#v", v)
 		panic("encode_uri")
@@ -301,4 +299,81 @@ func popGrapheme(v Value, e E, k K) (C, E, K) {
 		tail = res[1]
 	}
 	return &Tag{"Ok", &Extend{"head", &String{head}, &Extend{"tail", &String{tail}, &Empty{}}}}, e, k
+}
+
+func capture_term(value Value) C {
+	switch v := value.(type) {
+	case *String:
+		return v
+	case *Closure:
+		return v.lambda
+	}
+	panic("unknown value")
+}
+
+func doSerialize(v Value, e E, k K) (C, E, K) {
+	tree := capture_term(v).(*Lambda)
+	encoded, err := tree.MarshalJSON()
+	if err != nil {
+		panic("bad serialization")
+	}
+	return &String{Value: string(encoded)}, e, k
+}
+
+// copied from fern
+func (fn *Lambda) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "f",
+		"l": fn.Label,
+		"b": fn.Body,
+	})
+}
+
+func (call *Call) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		// a -> apply
+		"0": "a",
+		"f": call.Fn,
+		"a": call.Arg,
+	})
+}
+
+func (var_ *Variable) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "v",
+		"l": var_.Label,
+	})
+}
+
+func (let *Let) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "l",
+		"l": let.Label,
+		"v": let.Value,
+		"t": let.Then,
+	})
+}
+
+// // CSV.Yaml file defining grammer of encoding, but will probably end up as binary
+// func (vacant Vacant) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal(map[string]interface{}{
+// 		// z -> zero
+// 		"0": "z",
+// 		// comment
+// 		"c": vacant.note,
+// 	})
+// }
+
+func (integer *Integer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "i",
+		"v": integer.Value,
+	})
+}
+
+func (str String) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "s",
+		"v": str.Value,
+	})
 }

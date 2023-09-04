@@ -40,7 +40,6 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotATagged{m}}
 		}
-		fmt.Println(method.Label)
 		h, ok := field(lift, "host")
 		if !ok {
 			return &Error{&MissingField{"host", lift}}
@@ -49,7 +48,6 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotAString{h}}
 		}
-		fmt.Println(host)
 		p, ok := field(lift, "path")
 		if !ok {
 			return &Error{&MissingField{"path", lift}}
@@ -58,7 +56,6 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotAString{p}}
 		}
-		fmt.Println(path)
 		h, ok = field(lift, "headers")
 		if !ok {
 			return &Error{&MissingField{"headers", lift}}
@@ -109,7 +106,6 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&NotAString{b}}
 		}
-		fmt.Println(rbody)
 
 		req, err := http.NewRequest(
 			strings.ToUpper(method.Label),
