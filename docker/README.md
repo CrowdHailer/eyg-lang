@@ -44,8 +44,9 @@ export FLY_API_TOKEN=$(fly auth token)
 
 curl -i -X GET \
   -H "Authorization: Bearer ${FLY_API_TOKEN}" \
-  -H "Content-Type: application/json" \
   "${FLY_API_HOSTNAME}/v1/apps/wandering-cloud-7964/machines/5683d927a14948"
+
+(fly.update_machine token "wandering-cloud-7964" "5683d927a14948" (lambda "x" (var "x")))
 
 curl -i -X POST \
   -H "Authorization: Bearer ${FLY_API_TOKEN}" \

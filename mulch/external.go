@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -100,8 +101,20 @@ var Standard = map[string]func(Value) C{
 			}
 		}
 		fmt.Printf("headers %#v\n", headers)
+		b, ok := field(lift, "body")
+		if !ok {
+			return &Error{&MissingField{"body", lift}}
+		}
+		rbody, ok := b.(*String)
+		if !ok {
+			return &Error{&NotAString{b}}
+		}
+		fmt.Println(rbody)
 
-		req, err := http.NewRequest("GET", fmt.Sprintf("https://%s%s", host.Value, path.Value), nil)
+		req, err := http.NewRequest(
+			strings.ToUpper(method.Label),
+			fmt.Sprintf("https://%s%s", host.Value, path.Value),
+			strings.NewReader(rbody.Value))
 		for _, h := range headers {
 			req.Header.Set(h.k, h.v)
 		}
@@ -148,10 +161,34 @@ var Standard = map[string]func(Value) C{
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+			var req Record = &Empty{}
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				fmt.Println(err.Error())
+				panic("bad response data")
+			}
+			req = req.Extend("body", &String{Value: string(body)})
+			var headers Value = &Tail{}
+			for k, v := range r.Header {
+				var header Record = &Empty{}
+				header = header.Extend("value", &String{Value: v[0]})
+				header = header.Extend("key", &String{Value: k})
+				headers = &Cons{Item: header, Tail: headers}
+			}
+			req = req.Extend("headers", headers)
+			req = req.Extend("query", &String{Value: r.URL.RawQuery})
+			req = req.Extend("path", &String{Value: r.URL.Path})
+			// not r.URL.Host
+			// https://stackoverflow.com/questions/42921567/what-is-the-difference-between-host-and-url-host-for-golang-http-request
+			req = req.Extend("host", &String{Value: r.Host})
+			req = req.Extend("scheme", &String{Value: r.URL.Scheme})
+			req = req.Extend("method", &Tag{Label: r.Method, Value: &Empty{}})
+
 			// call root because we know always the right type
 			// unhandled effect always possible
 			value, fail := Eval(handler, &Stack{
-				K:    &CallWith{Value: &String{"hello"}},
+				K:    &CallWith{Value: req},
 				Rest: &Done{External: nil},
 			})
 			if fail != nil {

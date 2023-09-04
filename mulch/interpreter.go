@@ -139,12 +139,12 @@ func EvalResumable(c C, k K) (Value, *Error, E, K) {
 
 func ContinueEval(c C, e E, k K) (Value, *Error, E, K) {
 	for {
-		c, e, k = c.step(e, k)
 		if err, ok := c.(*Error); ok {
 			return nil, err, e, k
 		}
 		if value, ok := c.(Value); ok && k.done() {
 			return value, nil, e, k
 		}
+		c, e, k = c.step(e, k)
 	}
 }

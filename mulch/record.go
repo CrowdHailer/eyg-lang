@@ -124,6 +124,18 @@ func (value *Overwrite) Debug() string {
 	return fmt.Sprintf(":=%s", value.label)
 }
 
+type Record interface {
+	Value
+	Extend(label string, item Value) Record
+}
+
+func (value *Empty) Extend(label string, item Value) Record {
+	return &Extend{Label: label, item: item, rest: value}
+}
+func (value *Extend) Extend(label string, item Value) Record {
+	return &Extend{Label: label, item: item, rest: value}
+}
+
 func field(value Value, f string) (Value, bool) {
 	record, ok := value.(*Extend)
 	if !ok {

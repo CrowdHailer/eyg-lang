@@ -4,7 +4,7 @@ import "fmt"
 
 type Tag struct {
 	Label string
-	value Value
+	Value Value
 }
 
 func (value *Tag) step(e E, k K) (C, E, K) {
@@ -12,19 +12,19 @@ func (value *Tag) step(e E, k K) (C, E, K) {
 }
 
 func (value *Tag) call(arg Value, e E, k K) (C, E, K) {
-	if value.value == nil {
+	if value.Value == nil {
 		new := *value
-		new.value = arg
+		new.Value = arg
 		return &new, e, k
 	}
 	return &Error{&NotAFunction{value}}, e, k
 }
 
 func (value *Tag) Debug() string {
-	if value.value == nil {
+	if value.Value == nil {
 		return value.Label
 	}
-	return fmt.Sprintf("%s(%s)", value.Label, value.value.Debug())
+	return fmt.Sprintf("%s(%s)", value.Label, value.Value.Debug())
 }
 
 type Case struct {
@@ -53,7 +53,7 @@ func (case_ *Case) call(arg Value, e E, k K) (C, E, K) {
 		return &Error{&NotATagged{arg}}, e, k
 	}
 	if tagged.Label == case_.Label {
-		return case_.branch.call(tagged.value, e, k)
+		return case_.branch.call(tagged.Value, e, k)
 	}
 	return case_.otherwise.call(tagged, e, k)
 }

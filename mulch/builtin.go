@@ -1,6 +1,7 @@
 package mulch
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"strings"
@@ -98,22 +99,22 @@ func language_to_term(value Value) (C, Value) {
 		case *Tag:
 			switch item.Label {
 			case "Variable":
-				label := item.value.(*String).Value
+				label := item.Value.(*String).Value
 				return &Variable{label}, list.Tail
 			case "Lambda":
-				param := item.value.(*String).Value
+				param := item.Value.(*String).Value
 				body, rest := language_to_term(list.Tail)
 				return &Lambda{param, body}, rest
 			case "Apply":
-				_ = item.value.(*Empty)
+				_ = item.Value.(*Empty)
 				fn, rest := language_to_term(list.Tail)
 				arg, rest := language_to_term(rest)
 				return &Call{fn, arg}, rest
 			case "Binary":
-				value := item.value.(*String).Value
+				value := item.Value.(*String).Value
 				return &String{value}, list.Tail
 			case "Builtin":
-				identifier := item.value.(*String).Value
+				identifier := item.Value.(*String).Value
 				return &Builtin{identifier}, list.Tail
 			default:
 				fmt.Println(item.Debug())
@@ -265,6 +266,14 @@ var builtins = map[string]Value{
 		panic("string_replace")
 	}},
 	"pop_grapheme": &Arity1{impl: popGrapheme},
+	"base64_encode": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+		s, ok := v.(*String)
+		if !ok {
+			return &Error{}, e, k
+		}
+		encoded := base64.StdEncoding.EncodeToString([]byte(s.Value))
+		return &String{Value: encoded}, e, k
+	}},
 }
 
 func do_fold(list, acc, fn Value, e E, k K) (C, E, K) {

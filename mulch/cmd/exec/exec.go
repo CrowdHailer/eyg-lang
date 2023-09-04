@@ -34,51 +34,71 @@ func main() {
 		list = &mulch.Cons{Item: &mulch.String{Value: a}, Tail: list}
 	}
 
-	value, fail, e, k := mulch.EvalResumable(source, &mulch.Stack{
+	shell, err := Start(source, list)
+	if err != nil {
+		fmt.Printf("failed to start shell: %s\n", err.Error())
+		return
+	}
+	rl, err := readline.New("> ")
+	if err != nil {
+		fmt.Printf("failed to read input: %s\n", err.Error())
+		return
+	}
+	defer rl.Close()
+	for {
+		fmt.Print("> ")
+		input, err := rl.Readline()
+		if err != nil { // io.EOF
+			break
+		}
+		source, err := lisp.Parse(input)
+		if err != nil {
+			fmt.Printf("failed to parse input: %s\n", err.Error())
+			continue
+		}
+		value, fail := shell.Continue(source)
+		if fail != nil {
+			fmt.Println(fail.Reason())
+			continue
+		}
+		fmt.Println(value.Debug())
+	}
+}
+
+type Shell struct {
+	e mulch.E
+	k mulch.K
+}
+
+func Start(source mulch.C, list mulch.Value) (*Shell, error) {
+	value, fail, e, _ := mulch.EvalResumable(source, &mulch.Stack{
 		K: &mulch.Apply{Fn: &mulch.Select{Label: "exec"}, Env: nil},
 		Rest: &mulch.Stack{
 			K:    &mulch.CallWith{Value: list},
 			Rest: &mulch.Done{External: mulch.Standard},
 		},
 	})
-	if fail != nil {
-		rl, err := readline.New("> ")
-		if err != nil {
-			panic(err)
-		}
-		defer rl.Close()
-		if r, ok := fail.R.(*mulch.UnhandledEffect); ok && r.Label == "Prompt" {
-			for {
-				fmt.Print("> ")
-				input, err := rl.Readline()
-				if err != nil { // io.EOF
-					break
-				}
-				source, err := lisp.Parse(input)
-				if err != nil {
-					fmt.Printf("failed to parse input: %s\n", err.Error())
-					continue
-				}
-				// var k = &mulch.Done{}
-				// Pass in script value for scripting
-				// save program state as script
-				value, fail, e, _ = mulch.ContinueEval(source, e, k)
-				if fail != nil {
-					fmt.Println(fail.Reason())
-					continue
-				}
-				fmt.Println(value.Debug())
-			}
-		}
-		fmt.Printf("failed: %s\n", fail.Reason())
-		return
+	if fail == nil {
+		return nil, fmt.Errorf("did not reach a prompt value=%s", value.Debug())
 	}
-	fmt.Println(value.Debug())
+	if _, ok := fail.R.(*mulch.UnhandledEffect); !ok {
+		fmt.Printf("%#v\n", value)
+		return nil, fmt.Errorf("error reason=%s", fail.Reason())
+	}
+	if eff, ok := fail.R.(*mulch.UnhandledEffect); ok && eff.Label != "Prompt" {
+		fmt.Printf("%#v\n", value)
+		return nil, fmt.Errorf("unhandled effect label=%s lift=%s", eff.Label, eff.Lift.Debug())
+	}
+	return &Shell{e: e, k: &mulch.Done{External: mulch.Standard}}, nil
 }
 
-// save to underscore variable
-// or load up recent
-// zip
+func (shell *Shell) Continue(source mulch.C) (mulch.Value, *mulch.Error) {
+	value, fail, e, _ := mulch.ContinueEval(source, shell.e, shell.k)
+	if _, ok := source.(*mulch.Let); ok {
+		shell.e = e
+	}
+	return value, fail
+}
 
 // https://github.com/golang/go/issues/15108
 // go to build go

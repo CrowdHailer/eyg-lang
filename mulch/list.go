@@ -3,6 +3,8 @@ package mulch
 import (
 	"fmt"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 type Tail struct {
@@ -68,4 +70,13 @@ out:
 		}
 	}
 	return fmt.Sprintf("[%s]", strings.Join(items, ", "))
+}
+
+func List(items []Value) Value {
+	slices.Reverse(items)
+	var list Value = &Tail{}
+	for _, item := range items {
+		list = &Cons{Item: item, Tail: list}
+	}
+	return list
 }
