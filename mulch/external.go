@@ -115,10 +115,6 @@ var Standard = map[string]func(Value) C{
 			req.Header.Set(h.k, h.v)
 		}
 
-		if err != nil {
-			fmt.Println(err.Error())
-			panic("should be ok to make reqyest")
-		}
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
@@ -158,33 +154,10 @@ var Standard = map[string]func(Value) C{
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
-			var req Record = &Empty{}
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				fmt.Println(err.Error())
-				panic("bad response data")
-			}
-			req = req.Extend("body", &String{Value: string(body)})
-			var headers Value = &Tail{}
-			for k, v := range r.Header {
-				var header Record = &Empty{}
-				header = header.Extend("value", &String{Value: v[0]})
-				header = header.Extend("key", &String{Value: k})
-				headers = &Cons{Item: header, Tail: headers}
-			}
-			req = req.Extend("headers", headers)
-			req = req.Extend("query", &String{Value: r.URL.RawQuery})
-			req = req.Extend("path", &String{Value: r.URL.Path})
-			// not r.URL.Host
-			// https://stackoverflow.com/questions/42921567/what-is-the-difference-between-host-and-url-host-for-golang-http-request
-			req = req.Extend("host", &String{Value: r.Host})
-			req = req.Extend("scheme", &String{Value: r.URL.Scheme})
-			req = req.Extend("method", &Tag{Label: r.Method, Value: &Empty{}})
-
 			// call root because we know always the right type
 			// unhandled effect always possible
 			value, fail := Eval(handler, &Stack{
-				K:    &CallWith{Value: req},
+				K:    &CallWith{Value: RequestToLanguage(r)},
 				Rest: &Done{External: nil},
 			})
 			if fail != nil {
@@ -214,3 +187,29 @@ var Standard = map[string]func(Value) C{
 // function to close server
 // need
 // run test
+
+func RequestToLanguage(r *http.Request) Value {
+	var req Record = &Empty{}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println(err.Error())
+		panic("bad request data")
+	}
+	req = req.Extend("body", &String{Value: string(body)})
+	var headers Value = &Tail{}
+	for k, v := range r.Header {
+		var header Record = &Empty{}
+		header = header.Extend("value", &String{Value: v[0]})
+		header = header.Extend("key", &String{Value: k})
+		headers = &Cons{Item: header, Tail: headers}
+	}
+	req = req.Extend("headers", headers)
+	req = req.Extend("query", &String{Value: r.URL.RawQuery})
+	req = req.Extend("path", &String{Value: r.URL.Path})
+	// not r.URL.Host
+	// https://stackoverflow.com/questions/42921567/what-is-the-difference-between-host-and-url-host-for-golang-http-request
+	req = req.Extend("host", &String{Value: r.Host})
+	req = req.Extend("scheme", &String{Value: r.URL.Scheme})
+	req = req.Extend("method", &Tag{Label: r.Method, Value: &Empty{}})
+	return req
+}

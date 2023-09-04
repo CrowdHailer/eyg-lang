@@ -46,7 +46,7 @@ curl -i -X GET \
   -H "Authorization: Bearer ${FLY_API_TOKEN}" \
   "${FLY_API_HOSTNAME}/v1/apps/wandering-cloud-7964/machines/5683d927a14948"
 
-(fly.update_machine token "wandering-cloud-7964" "5683d927a14948" (lambda "x" (var "x")))
+(fly.update_machine token "wandering-cloud-7964" "5683d927a14948" (std.serialize (fn x x)))
 
 curl -i -X POST \
   -H "Authorization: Bearer ${FLY_API_TOKEN}" \

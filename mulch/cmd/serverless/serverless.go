@@ -29,7 +29,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		value, fail := mulch.Eval(source, &mulch.Stack{
-			K:    &mulch.CallWith{Value: &mulch.Empty{}},
+			K:    &mulch.CallWith{Value: mulch.RequestToLanguage(r)},
 			Rest: &mulch.Done{External: mulch.Standard},
 		})
 		if fail != nil {
