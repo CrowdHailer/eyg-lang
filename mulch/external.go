@@ -1,6 +1,8 @@
 package mulch
 
 import (
+	"archive/zip"
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -182,6 +184,62 @@ var Standard = map[string]func(Value) C{
 		}()
 		return &Empty{}
 	},
+	// https://golang.cafe/blog/golang-zip-file-example.html
+	"Zip": func(lift Value) C {
+		buf := new(bytes.Buffer)
+		zipWriter := zip.NewWriter(buf)
+		fail := castList(lift, func(item Value) *Error {
+			n, ok := field(item, "name")
+			if !ok {
+				return &Error{&MissingField{"name", item}}
+			}
+			name, ok := n.(*String)
+			if !ok {
+				return &Error{&NotAString{n}}
+			}
+			c, ok := field(item, "content")
+			if !ok {
+				return &Error{&MissingField{"content", item}}
+			}
+			content, ok := c.(*String)
+			if !ok {
+				return &Error{&NotAString{c}}
+			}
+			w1, err := zipWriter.Create(name.Value)
+			if err != nil {
+				panic(err)
+			}
+
+			if _, err := w1.Write([]byte(content.Value)); err != nil {
+				panic(err)
+			}
+
+			return nil
+		})
+		zipWriter.Close()
+		if fail != nil {
+			return fail
+		}
+		return &String{buf.String()}
+	},
+}
+
+func castList(value Value, then func(Value) *Error) *Error {
+	list := value
+	for {
+		switch l := list.(type) {
+		case *Cons:
+			err := then(l.Item)
+			if err != nil {
+				return err
+			}
+			list = l.Tail
+		case *Tail:
+			return nil
+		default:
+			return &Error{&NotAList{list}}
+		}
+	}
 }
 
 // function to close server
