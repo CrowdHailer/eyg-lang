@@ -39,14 +39,9 @@ func main() {
 		io.WriteString(w, value.Debug())
 	})
 
-	server := &http.Server{Addr: "0.0.0.0:8080", Handler: mux}
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			fmt.Println(err.Error())
-		}
+	// ignore stopped realy on log
+	shutdown, _ := mulch.ListenAndServe("0.0.0.0:8080", mux)
 
-	}()
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
@@ -54,7 +49,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := server.Shutdown(ctx); err != nil {
+	if err := shutdown(ctx); err != nil {
 		fmt.Println(err.Error())
 	}
 }

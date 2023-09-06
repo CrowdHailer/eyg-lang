@@ -21,7 +21,7 @@ func (exp *Builtin) step(e E, k K) (C, E, K) {
 }
 
 type Arity1 struct {
-	impl func(Value, E, K) (C, E, K)
+	Impl func(Value, E, K) (C, E, K)
 }
 
 func (value *Arity1) step(e E, k K) (C, E, K) {
@@ -29,7 +29,7 @@ func (value *Arity1) step(e E, k K) (C, E, K) {
 }
 
 func (value *Arity1) call(arg Value, e E, k K) (C, E, K) {
-	return value.impl(arg, e, k)
+	return value.Impl(arg, e, k)
 }
 
 func (value *Arity1) Debug() string {
@@ -87,7 +87,7 @@ func (value *Arity3) Debug() string {
 // function that returns a function etc ugly and lots of es,ks
 
 func fixed(builder Value) Value {
-	return &Arity1{impl: func(arg Value, e E, k K) (C, E, K) {
+	return &Arity1{Impl: func(arg Value, e E, k K) (C, E, K) {
 		c, e, k := builder.call(fixed(builder), e, k)
 		return c, e, &Stack{&CallWith{arg}, k}
 	}}
@@ -150,13 +150,13 @@ var builtins = map[string]Value{
 		}
 		return &Tag{"False", &Empty{}}, e, k
 	}},
-	"debug": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"debug": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		return &String{v.Debug()}, e, k
 	}},
-	"fix": &Arity1{impl: func(builder Value, e E, k K) (C, E, K) {
+	"fix": &Arity1{Impl: func(builder Value, e E, k K) (C, E, K) {
 		return builder.call(fixed(builder), e, k)
 	}},
-	"eval": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"eval": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		source, _ := language_to_term(v)
 		result, err := Eval(source, &Stack{&Apply{&Tag{"Ok", nil}, e}, &Done{}})
 		if err != nil {
@@ -165,16 +165,16 @@ var builtins = map[string]Value{
 		// fmt.Println(rest.debug())
 		return result, e, k
 	}},
-	"capture": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"capture": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		fmt.Printf("%#v", v)
 		panic("capture")
 	}},
-	"serialize": &Arity1{impl: doSerialize},
-	"encode_uri": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"serialize": &Arity1{Impl: doSerialize},
+	"encode_uri": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		fmt.Printf("%#v", v)
 		panic("encode_uri")
 	}},
-	"list_pop": &Arity1{impl: func(value Value, e E, k K) (C, E, K) {
+	"list_pop": &Arity1{Impl: func(value Value, e E, k K) (C, E, K) {
 		switch list := value.(type) {
 		case *Tail:
 			return &Tag{"Error", &Empty{}}, e, k
@@ -207,21 +207,21 @@ var builtins = map[string]Value{
 		}
 		return &Integer{a.Value - b.Value}, e, k
 	}},
-	"int_to_string": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"int_to_string": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		i, ok := v.(*Integer)
 		if !ok {
 			return &Error{&NotAnInteger{v}}, e, k
 		}
 		return &String{fmt.Sprintf("%d", i.Value)}, e, k
 	}},
-	"string_uppercase": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"string_uppercase": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
 			return &Error{&NotAString{v}}, e, k
 		}
 		return &String{strings.ToUpper(s.Value)}, e, k
 	}},
-	"string_lowercase": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"string_lowercase": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
 			return &Error{&NotAString{v}}, e, k
@@ -259,12 +259,12 @@ var builtins = map[string]Value{
 		value := &Extend{"head", &String{h}, &Extend{"tail", tail, &Empty{}}}
 		return value, e, k
 	}},
-	"string_replace": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"string_replace": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		fmt.Printf("%#v", v)
 		panic("string_replace")
 	}},
-	"pop_grapheme": &Arity1{impl: popGrapheme},
-	"base64_encode": &Arity1{impl: func(v Value, e E, k K) (C, E, K) {
+	"pop_grapheme": &Arity1{Impl: popGrapheme},
+	"base64_encode": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
 			return &Error{}, e, k

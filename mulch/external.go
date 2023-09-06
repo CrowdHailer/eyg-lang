@@ -3,6 +3,7 @@ package mulch
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -175,14 +176,16 @@ var Standard = map[string]func(Value) C{
 			}
 			io.WriteString(w, raw.Value)
 		})
-		go func() {
-			err := http.ListenAndServe(fmt.Sprintf(":%d", port.Value), mux)
-			if err != nil {
-				panic("no binding")
+
+		shutdown, _ := ListenAndServe(fmt.Sprintf(":%d", port.Value), mux)
+		return &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := shutdown(ctx); err != nil {
+				return &Error{&MissingField{"TODO new error needed for external service", lift}}, e, k
 			}
-			fmt.Println("listening")
-		}()
-		return &Empty{}
+			return &Empty{}, e, k
+		}}
 	},
 	// https://golang.cafe/blog/golang-zip-file-example.html
 	"Zip": func(lift Value) C {
