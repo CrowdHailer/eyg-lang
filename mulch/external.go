@@ -33,6 +33,7 @@ var Standard = map[string]func(Value) C{
 	"Await": func(lift Value) C {
 		return lift
 	},
+	// httpbin testing
 	"HTTP": func(lift Value) C {
 		// Can I make this less repetitive
 		m, ok := field(lift, "method")
@@ -100,7 +101,6 @@ var Standard = map[string]func(Value) C{
 				return &Error{&NotAList{h}}
 			}
 		}
-		fmt.Printf("headers %#v\n", headers)
 		b, ok := field(lift, "body")
 		if !ok {
 			return &Error{&MissingField{"body", lift}}
@@ -121,18 +121,10 @@ var Standard = map[string]func(Value) C{
 		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println(err.Error())
-			panic("bad response")
+			return ErrorVariant(&String{Value: err.Error()})
 		}
 
-		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println(err.Error())
-			panic("bad response data")
-		}
-
-		return &String{string(body)}
+		return Ok(ResponseFromNative(resp))
 	},
 	"Serve": func(lift Value) C {
 		p, ok := field(lift, "port")
@@ -245,26 +237,16 @@ func castList(value Value, then func(Value) *Error) *Error {
 	}
 }
 
-// function to close server
-// need
-// run test
-
 func RequestToLanguage(r *http.Request) Value {
 	var req Record = &Empty{}
+	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		fmt.Println(err.Error())
 		panic("bad request data")
 	}
 	req = req.Extend("body", &String{Value: string(body)})
-	var headers Value = &Tail{}
-	for k, v := range r.Header {
-		var header Record = &Empty{}
-		header = header.Extend("value", &String{Value: v[0]})
-		header = header.Extend("key", &String{Value: k})
-		headers = &Cons{Item: header, Tail: headers}
-	}
-	req = req.Extend("headers", headers)
+	req = req.Extend("headers", HeadersFromNative(r.Header))
 	req = req.Extend("query", &String{Value: r.URL.RawQuery})
 	req = req.Extend("path", &String{Value: r.URL.Path})
 	// not r.URL.Host
@@ -273,4 +255,28 @@ func RequestToLanguage(r *http.Request) Value {
 	req = req.Extend("scheme", &String{Value: r.URL.Scheme})
 	req = req.Extend("method", &Tag{Label: r.Method, Value: &Empty{}})
 	return req
+}
+
+func ResponseFromNative(r *http.Response) Value {
+	var resp Record = &Empty{}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println(err.Error())
+		panic("bad request data")
+	}
+	resp = resp.Extend("body", &String{Value: string(body)})
+	resp = resp.Extend("headers", HeadersFromNative(r.Header))
+	resp = resp.Extend("status", &Integer{int32(r.StatusCode)})
+	return resp
+}
+
+func HeadersFromNative(native http.Header) Value {
+	var headers Value = &Tail{}
+	for k, v := range native {
+		var header Record = &Empty{}
+		header = header.Extend("value", &String{Value: v[0]})
+		header = header.Extend("key", &String{Value: k})
+		headers = &Cons{Item: header, Tail: headers}
+	}
+	return headers
 }

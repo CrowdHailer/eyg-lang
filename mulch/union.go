@@ -75,3 +75,11 @@ func (value *NoCases) call(arg Value, e E, k K) (C, E, K) {
 func (value *NoCases) Debug() string {
 	return "nocases"
 }
+
+func Ok(v Value) Value {
+	return &Tag{Label: "Ok", Value: v}
+}
+
+func ErrorVariant(v Value) Value {
+	return &Tag{Label: "Error", Value: v}
+}
