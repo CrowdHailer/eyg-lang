@@ -243,11 +243,11 @@ var builtins = map[string]Value{
 	"string_split": &Arity2{impl: func(str, pattern Value, e E, k K) (C, E, K) {
 		s, ok := str.(*String)
 		if !ok {
-			return &Error{}, e, k
+			return &Error{&NotAString{str}}, e, k
 		}
 		p, ok := pattern.(*String)
 		if !ok {
-			return &Error{}, e, k
+			return &Error{&NotAString{pattern}}, e, k
 		}
 		parts := strings.Split(s.Value, p.Value)
 		h := parts[0]
@@ -267,7 +267,7 @@ var builtins = map[string]Value{
 	"base64_encode": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
-			return &Error{}, e, k
+			return &Error{&NotAString{v}}, e, k
 		}
 		encoded := base64.StdEncoding.EncodeToString([]byte(s.Value))
 		return &String{Value: encoded}, e, k
@@ -288,7 +288,7 @@ func do_fold(list, acc, fn Value, e E, k K) (C, E, K) {
 func popGrapheme(v Value, e E, k K) (C, E, K) {
 	s, ok := v.(*String)
 	if !ok {
-		return &Error{}, e, k
+		return &Error{&NotAString{v}}, e, k
 	}
 	res := strings.SplitN(s.Value, "", 2)
 	if len(res) == 0 {
