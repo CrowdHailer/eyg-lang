@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/skratchdot/open-golang/open"
 )
 
 // really only returns value or error
@@ -216,6 +218,14 @@ var Standard = map[string]func(Value) C{
 			return fail
 		}
 		return &String{buf.String()}
+	},
+	"Open": func(v Value) C {
+		url, ok := v.(*String)
+		if !ok {
+			return &Error{&NotAString{v}}
+		}
+		open.Run(url.Value)
+		return &String{Value: "opened"}
 	},
 }
 

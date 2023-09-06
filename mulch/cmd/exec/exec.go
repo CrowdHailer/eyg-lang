@@ -58,6 +58,7 @@ func main() {
 		}
 		value, fail := shell.Continue(source)
 		if fail != nil {
+			fmt.Printf("%#v %#v\n", value, fail)
 			fmt.Println(fail.Reason())
 			continue
 		}
