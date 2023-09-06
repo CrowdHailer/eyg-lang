@@ -281,6 +281,7 @@ func do_fold(list, acc, fn Value, e E, k K) (C, E, K) {
 	case *Cons:
 		return fn, e, &Stack{&CallWith{l.Item}, &Stack{&CallWith{acc}, &Stack{&Apply{&Arity3{l.Tail, nil, do_fold}, e}, &Stack{&CallWith{fn}, k}}}}
 	}
+	fmt.Printf("%#v\n", list)
 	panic("list_fold")
 }
 
