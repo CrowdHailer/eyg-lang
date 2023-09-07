@@ -13,13 +13,14 @@ import (
 	"github.com/skratchdot/open-golang/open"
 )
 
+func doLog(lift Value) C {
+	fmt.Printf("LOG: %s\n", lift.Debug())
+	return &Empty{}
+}
+
 // really only returns value or error
 var Standard = map[string]func(Value) C{
-	"Log": func(lift Value) C {
-		fmt.Printf("LOG: %s\n", lift.Debug())
-		return &Empty{}
-	},
-
+	"Log": doLog,
 	"Alert": func(lift Value) C {
 		fmt.Printf("ALERT: %s\n", lift.Debug())
 		return &Empty{}
@@ -154,12 +155,14 @@ var Standard = map[string]func(Value) C{
 			// call root because we know always the right type
 			// unhandled effect always possible
 			value, fail := Eval(handler, &Stack{
-				K:    &CallWith{Value: RequestToLanguage(r)},
-				Rest: &Done{External: nil},
-			})
+				K: &CallWith{Value: RequestToLanguage(r)},
+				Rest: &Done{External: map[string]func(Value) C{
+					"Log": doLog},
+				}})
 			if fail != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				io.WriteString(w, fail.Reason())
+				fmt.Println(fail.Reason())
 				return
 			}
 			raw, ok := value.(*String)
