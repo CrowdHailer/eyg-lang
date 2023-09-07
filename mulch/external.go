@@ -214,6 +214,7 @@ var Standard = map[string]func(Value) C{
 			return nil
 		})
 		zipWriter.Close()
+		// not a string
 		if fail != nil {
 			return fail
 		}
