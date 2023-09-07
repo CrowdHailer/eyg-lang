@@ -259,9 +259,21 @@ var builtins = map[string]Value{
 		value := &Extend{"head", &String{h}, &Extend{"tail", tail, &Empty{}}}
 		return value, e, k
 	}},
-	"string_replace": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
-		fmt.Printf("%#v", v)
-		panic("string_replace")
+	"string_replace": &Arity3{impl: func(str, pattern, with Value, e E, k K) (C, E, K) {
+		s, ok := str.(*String)
+		if !ok {
+			return &Error{&NotAString{str}}, e, k
+		}
+		p, ok := pattern.(*String)
+		if !ok {
+			return &Error{&NotAString{pattern}}, e, k
+		}
+		w, ok := with.(*String)
+		if !ok {
+			return &Error{&NotAString{with}}, e, k
+		}
+		updated := strings.ReplaceAll(s.Value, p.Value, w.Value)
+		return &String{Value: updated}, e, k
 	}},
 	"pop_grapheme": &Arity1{Impl: popGrapheme},
 	"base64_encode": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
