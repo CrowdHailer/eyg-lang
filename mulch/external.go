@@ -108,15 +108,20 @@ var Standard = map[string]func(Value) C{
 		if !ok {
 			return &Error{&MissingField{"body", lift}}
 		}
-		rbody, ok := b.(*String)
-		if !ok {
+		var reader io.Reader
+		switch rbody := b.(type) {
+		case *String:
+			reader = strings.NewReader(rbody.Value)
+		case *Binary:
+			reader = bytes.NewReader(rbody.Value)
+		default:
 			return &Error{&NotAString{b}}
 		}
 
 		req, err := http.NewRequest(
 			strings.ToUpper(method.Label),
 			fmt.Sprintf("https://%s%s", host.Value, path.Value),
-			strings.NewReader(rbody.Value))
+			reader)
 		for _, h := range headers {
 			req.Header.Set(h.k, h.v)
 		}
@@ -221,6 +226,7 @@ var Standard = map[string]func(Value) C{
 		if fail != nil {
 			return fail
 		}
+		// return &Binary{buf.Bytes()}
 		return &String{buf.String()}
 	},
 	"Open": func(v Value) C {

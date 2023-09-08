@@ -316,77 +316,36 @@ func popGrapheme(v Value, e E, k K) (C, E, K) {
 
 func capture_term(value Value) C {
 	switch v := value.(type) {
-	case *String:
-		return v
+	// ignores env
 	case *Closure:
 		return v.lambda
+	case *Integer:
+		return v
+	case *String:
+		return v
+	case *Empty:
+		return v
+	case *Extend:
+		var out C = &Extend{Label: v.Label}
+		if v.item != nil {
+			out = &Call{Fn: out, Arg: capture_term(v.item)}
+		}
+		if v.rest != nil {
+			out = &Call{Fn: out, Arg: capture_term(v.rest)}
+		}
+		return out
+
 	}
+	fmt.Println(value.Debug())
 	panic("unknown value")
 }
 
 func doSerialize(v Value, e E, k K) (C, E, K) {
-	tree := capture_term(v).(*Lambda)
-	encoded, err := tree.MarshalJSON()
+	tree := capture_term(v)
+	fmt.Printf("%#v\n", tree)
+	encoded, err := json.Marshal(tree)
 	if err != nil {
 		panic("bad serialization")
 	}
 	return &String{Value: string(encoded)}, e, k
-}
-
-// copied from fern
-func (fn *Lambda) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"0": "f",
-		"l": fn.Label,
-		"b": fn.Body,
-	})
-}
-
-func (call *Call) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		// a -> apply
-		"0": "a",
-		"f": call.Fn,
-		"a": call.Arg,
-	})
-}
-
-func (var_ *Variable) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"0": "v",
-		"l": var_.Label,
-	})
-}
-
-func (let *Let) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"0": "l",
-		"l": let.Label,
-		"v": let.Value,
-		"t": let.Then,
-	})
-}
-
-// // CSV.Yaml file defining grammer of encoding, but will probably end up as binary
-// func (vacant Vacant) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal(map[string]interface{}{
-// 		// z -> zero
-// 		"0": "z",
-// 		// comment
-// 		"c": vacant.note,
-// 	})
-// }
-
-func (integer *Integer) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"0": "i",
-		"v": integer.Value,
-	})
-}
-
-func (str String) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"0": "s",
-		"v": str.Value,
-	})
 }
