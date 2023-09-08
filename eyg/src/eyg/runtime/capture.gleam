@@ -181,21 +181,3 @@ fn do_vars_used(exp, env, found) {
     _ -> found
   }
 }
-// // Test top level var shadowing
-// // Test nested shadowing
-
-// // let a = 1
-// // let a = huge
-// // let f1 _ -> a
-// // let f2 _ -> f
-
-// // let a = 3
-// // let f1 = _ -> a
-// // let a = 5
-// // let f2 = _ -> a
-// // [f1,f2]
-// // // hash runtime
-
-// // let x = 1
-// // let y = _ -> x
-// // _ -> [x,y]

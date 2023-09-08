@@ -18,6 +18,104 @@ func doLog(lift Value) C {
 	return &Empty{}
 }
 
+func doHTTP(lift Value) C {
+	// Can I make this less repetitive
+	m, ok := field(lift, "method")
+	if !ok {
+		return &Error{&MissingField{"method", lift}}
+	}
+	method, ok := m.(*Tag)
+	if !ok {
+		return &Error{&NotATagged{m}}
+	}
+	h, ok := field(lift, "host")
+	if !ok {
+		return &Error{&MissingField{"host", lift}}
+	}
+	host, ok := h.(*String)
+	if !ok {
+		return &Error{&NotAString{h}}
+	}
+	p, ok := field(lift, "path")
+	if !ok {
+		return &Error{&MissingField{"path", lift}}
+	}
+	path, ok := p.(*String)
+	if !ok {
+		return &Error{&NotAString{p}}
+	}
+	h, ok = field(lift, "headers")
+	if !ok {
+		return &Error{&MissingField{"headers", lift}}
+	}
+	var headers []struct {
+		k string
+		v string
+	}
+
+Outer:
+	for {
+		switch list := h.(type) {
+		case *Cons:
+			item := list.Item
+			k, ok := field(item, "key")
+			if !ok {
+				return &Error{&MissingField{"key", lift}}
+			}
+			key, ok := k.(*String)
+			if !ok {
+				return &Error{&NotAString{k}}
+			}
+			v, ok := field(item, "value")
+			if !ok {
+				return &Error{&MissingField{"value", lift}}
+			}
+			value, ok := v.(*String)
+			if !ok {
+				return &Error{&NotAString{v}}
+			}
+			headers = append(headers, struct {
+				k string
+				v string
+			}{k: key.Value, v: value.Value})
+			h = list.Tail
+		case *Tail:
+			break Outer
+		default:
+			return &Error{&NotAList{h}}
+		}
+	}
+	b, ok := field(lift, "body")
+	if !ok {
+		return &Error{&MissingField{"body", lift}}
+	}
+	var reader io.Reader
+	switch rbody := b.(type) {
+	case *String:
+		reader = strings.NewReader(rbody.Value)
+	case *Binary:
+		reader = bytes.NewReader(rbody.Value)
+	default:
+		return &Error{&NotAString{b}}
+	}
+
+	req, err := http.NewRequest(
+		strings.ToUpper(method.Label),
+		fmt.Sprintf("https://%s%s", host.Value, path.Value),
+		reader)
+	for _, h := range headers {
+		req.Header.Set(h.k, h.v)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ErrorVariant(&String{Value: err.Error()})
+	}
+
+	return Ok(ResponseFromNative(resp))
+}
+
 // really only returns value or error
 var Standard = map[string]func(Value) C{
 	"Log": doLog,
@@ -37,103 +135,7 @@ var Standard = map[string]func(Value) C{
 		return lift
 	},
 	// httpbin testing
-	"HTTP": func(lift Value) C {
-		// Can I make this less repetitive
-		m, ok := field(lift, "method")
-		if !ok {
-			return &Error{&MissingField{"method", lift}}
-		}
-		method, ok := m.(*Tag)
-		if !ok {
-			return &Error{&NotATagged{m}}
-		}
-		h, ok := field(lift, "host")
-		if !ok {
-			return &Error{&MissingField{"host", lift}}
-		}
-		host, ok := h.(*String)
-		if !ok {
-			return &Error{&NotAString{h}}
-		}
-		p, ok := field(lift, "path")
-		if !ok {
-			return &Error{&MissingField{"path", lift}}
-		}
-		path, ok := p.(*String)
-		if !ok {
-			return &Error{&NotAString{p}}
-		}
-		h, ok = field(lift, "headers")
-		if !ok {
-			return &Error{&MissingField{"headers", lift}}
-		}
-		var headers []struct {
-			k string
-			v string
-		}
-
-	Outer:
-		for {
-			switch list := h.(type) {
-			case *Cons:
-				item := list.Item
-				k, ok := field(item, "key")
-				if !ok {
-					return &Error{&MissingField{"key", lift}}
-				}
-				key, ok := k.(*String)
-				if !ok {
-					return &Error{&NotAString{k}}
-				}
-				v, ok := field(item, "value")
-				if !ok {
-					return &Error{&MissingField{"value", lift}}
-				}
-				value, ok := v.(*String)
-				if !ok {
-					return &Error{&NotAString{v}}
-				}
-				headers = append(headers, struct {
-					k string
-					v string
-				}{k: key.Value, v: value.Value})
-				h = list.Tail
-			case *Tail:
-				break Outer
-			default:
-				return &Error{&NotAList{h}}
-			}
-		}
-		b, ok := field(lift, "body")
-		if !ok {
-			return &Error{&MissingField{"body", lift}}
-		}
-		var reader io.Reader
-		switch rbody := b.(type) {
-		case *String:
-			reader = strings.NewReader(rbody.Value)
-		case *Binary:
-			reader = bytes.NewReader(rbody.Value)
-		default:
-			return &Error{&NotAString{b}}
-		}
-
-		req, err := http.NewRequest(
-			strings.ToUpper(method.Label),
-			fmt.Sprintf("https://%s%s", host.Value, path.Value),
-			reader)
-		for _, h := range headers {
-			req.Header.Set(h.k, h.v)
-		}
-
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			return ErrorVariant(&String{Value: err.Error()})
-		}
-
-		return Ok(ResponseFromNative(resp))
-	},
+	"HTTP": doHTTP,
 	"Serve": func(lift Value) C {
 		p, ok := field(lift, "port")
 		if !ok {
@@ -162,7 +164,9 @@ var Standard = map[string]func(Value) C{
 			value, fail := Eval(handler, &Stack{
 				K: &CallWith{Value: RequestToLanguage(r)},
 				Rest: &Done{External: map[string]func(Value) C{
-					"Log": doLog},
+					"Log":  doLog,
+					"HTTP": doHTTP,
+				},
 				}})
 			if fail != nil {
 				w.WriteHeader(http.StatusInternalServerError)
