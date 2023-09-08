@@ -1,0 +1,11 @@
+(let client (netlify token))
+(.status (expect (client.deploy client.scratch (spa (fn x x)))))
+
+(.status (expect (client.deploy client.scratch [(file "index.html" (app simple)) (file "_headers" _headers)])))
+
+(let client (fly.auth "test"))
+<!-- need to capture environment here -->
+(client.update_machine fly.app fly.machine (fn _ (app simple)))
+
+
+(facilities.dnsimple.auth 1)
