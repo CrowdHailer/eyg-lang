@@ -162,7 +162,6 @@ var builtins = map[string]Value{
 		if err != nil {
 			return err, e, k
 		}
-		// fmt.Println(rest.debug())
 		return result, e, k
 	}},
 	"capture": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {

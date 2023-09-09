@@ -28,5 +28,27 @@ func TestLiteralCapture(t *testing.T) {
 			Extend("bar", &String{"inner"})))
 
 	checkTerm(t, &Tag{"Outer", &Tag{"Inner", &Integer{0}}})
-	panic("more test")
+}
+
+func TestSimpleFunction(t *testing.T) {
+	exp := &Lambda{"_", &String{"Hello"}}
+	value, fail := Eval(exp, &Done{})
+	assert.Nil(t, fail)
+	caught := captureTerm(value)
+	value, fail = Eval(caught, &Stack{&CallWith{&Empty{}}, &Done{}})
+	assert.Nil(t, fail)
+	assert.Equal(t, &String{"Hello"}, value)
+	// panic("more test")
+}
+
+// TODO nested let
+func TestSingleLetCapture(t *testing.T) {
+	exp := &Let{"s", &String{"External"}, &Lambda{"_", &Variable{"a"}}}
+	value, fail := Eval(exp, &Done{})
+	assert.Nil(t, fail)
+	caught := captureTerm(value)
+
+	value, fail = Eval(caught, &Stack{&CallWith{&Empty{}}, &Done{}})
+	assert.Nil(t, fail)
+	assert.Equal(t, &String{"Hello"}, value)
 }
