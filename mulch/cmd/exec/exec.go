@@ -6,6 +6,7 @@ import (
 	"mulch"
 	"mulch/lisp"
 	"os"
+	"strings"
 
 	"github.com/chzyer/readline"
 	"golang.org/x/exp/slices"
@@ -17,15 +18,34 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 
-	file := "../eyg/saved/saved.json"
-	json, err := os.ReadFile(file)
+	envFile := ".env"
+	raw, err := os.ReadFile(envFile)
 	if err != nil {
-		fmt.Printf("error reading file '%s' \n", file)
+		fmt.Printf("error reading envFile '%s' \n", envFile)
+		return
+	}
+	var env mulch.Record = &mulch.Empty{}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) < 2 {
+			fmt.Printf("invalid env line: %v\n", line)
+			continue
+		}
+		env = env.Extend(parts[0], &mulch.String{Value: parts[1]})
+	}
+
+	sourceFile := "../eyg/saved/saved.json"
+	json, err := os.ReadFile(sourceFile)
+	if err != nil {
+		fmt.Printf("error reading file '%s' \n", sourceFile)
 		return
 	}
 	source, err := mulch.Decode(json)
 	if err != nil {
-		fmt.Printf("error decoding program source from '%s' \n", file)
+		fmt.Printf("error decoding program source from '%s' \n", sourceFile)
 		return
 	}
 	slices.Reverse(args)
@@ -34,7 +54,11 @@ func main() {
 		list = &mulch.Cons{Item: &mulch.String{Value: a}, Tail: list}
 	}
 
-	shell, err := Start(source, list)
+	exterior := mulch.Standard
+	exterior["Env"] = func(v mulch.Value) mulch.C {
+		return env
+	}
+	shell, err := Start(source, list, exterior)
 	if err != nil {
 		fmt.Printf("failed to start shell: %s\n", err.Error())
 		return
@@ -71,12 +95,12 @@ type Shell struct {
 	k mulch.K
 }
 
-func Start(source mulch.C, list mulch.Value) (*Shell, error) {
+func Start(source mulch.C, list mulch.Value, exterior map[string]func(mulch.Value) mulch.C) (*Shell, error) {
 	value, fail, e, _ := mulch.EvalResumable(source, &mulch.Stack{
 		K: &mulch.Apply{Fn: &mulch.Select{Label: "exec"}, Env: nil},
 		Rest: &mulch.Stack{
 			K:    &mulch.CallWith{Value: list},
-			Rest: &mulch.Done{External: mulch.Standard},
+			Rest: &mulch.Done{External: exterior},
 		},
 	})
 	if fail == nil {

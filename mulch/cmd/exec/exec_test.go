@@ -24,7 +24,7 @@ var testSource mulch.C = &mulch.Call{
 }
 
 func start(t *testing.T) *Shell {
-	shell, err := Start(testSource, &mulch.Tail{})
+	shell, err := Start(testSource, &mulch.Tail{}, mulch.Standard)
 	assert.NoError(t, err)
 	return shell
 }
