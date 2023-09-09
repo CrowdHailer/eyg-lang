@@ -122,13 +122,13 @@ func (v *Vacant) step(e E, k K) (C, E, K) {
 func Eval(c C, k K) (Value, *Error) {
 	var e E = emptyEnv()
 	for {
-		c, e, k = c.step(e, k)
 		if err, ok := c.(*Error); ok {
 			return nil, err
 		}
 		if value, ok := c.(Value); ok && k.done() {
 			return value, nil
 		}
+		c, e, k = c.step(e, k)
 	}
 }
 
