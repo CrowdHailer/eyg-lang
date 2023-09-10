@@ -93,7 +93,7 @@ func fixed(builder Value) Value {
 	}}
 }
 
-func language_to_term(value Value) (C, Value) {
+func language_to_tree(value Value) (Exp, Value) {
 	switch list := value.(type) {
 	case *Cons:
 		switch item := list.Item.(type) {
@@ -104,12 +104,12 @@ func language_to_term(value Value) (C, Value) {
 				return &Variable{label}, list.Tail
 			case "Lambda":
 				param := item.Value.(*String).Value
-				body, rest := language_to_term(list.Tail)
+				body, rest := language_to_tree(list.Tail)
 				return &Lambda{param, body}, rest
 			case "Apply":
 				_ = item.Value.(*Empty)
-				fn, rest := language_to_term(list.Tail)
-				arg, rest := language_to_term(rest)
+				fn, rest := language_to_tree(list.Tail)
+				arg, rest := language_to_tree(rest)
 				return &Call{fn, arg}, rest
 			case "Binary":
 				value := item.Value.(*String).Value
@@ -157,7 +157,7 @@ var builtins = map[string]Value{
 		return builder.call(fixed(builder), e, k)
 	}},
 	"eval": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
-		source, _ := language_to_term(v)
+		source, _ := language_to_tree(v)
 		result, err := Eval(source, &Stack{&Apply{&Tag{"Ok", nil}, e}, &Done{}})
 		if err != nil {
 			return err, e, k

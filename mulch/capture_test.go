@@ -62,7 +62,7 @@ func TestSingleLetCapture(t *testing.T) {
 }
 
 func TestDuplicateCapture(t *testing.T) {
-	var exp C = &Lambda{"_", &Let{"_", &Variable{"std"}, &Variable{"std"}}}
+	var exp Exp = &Lambda{"_", &Let{"_", &Variable{"std"}, &Variable{"std"}}}
 	exp = &Let{"std", &String{"Standard"}, exp}
 	value, fail := Eval(exp, &Done{})
 	assert.Nil(t, fail)
@@ -71,7 +71,7 @@ func TestDuplicateCapture(t *testing.T) {
 }
 
 func TestCaptureShadowedVariable(t *testing.T) {
-	var exp C = &Let{"a", &String{"First"},
+	var exp Exp = &Let{"a", &String{"First"},
 		&Let{"a", &String{"Second"},
 			&Lambda{"_", &Variable{"a"}},
 		},
@@ -85,7 +85,7 @@ func TestCaptureShadowedVariable(t *testing.T) {
 }
 
 func TestOnlyNeededValuesAreCaptured(t *testing.T) {
-	var exp C = &Let{"a", &String{"ignore"},
+	var exp Exp = &Let{"a", &String{"ignore"},
 		&Let{"b", &Lambda{"_", &Variable{"a"}},
 			&Let{"c", &String{"Yes"},
 				&Lambda{"_", &Variable{"c"}},
@@ -101,20 +101,22 @@ func TestOnlyNeededValuesAreCaptured(t *testing.T) {
 }
 
 func TestCaptureEnvOfFunctionInEnv(t *testing.T) {
-	var exp C = &Let{"a", &String{"Value"},
+	var exp Exp = &Let{"a", &String{"Value"},
 		&Let{"a", &Lambda{"_1", &Variable{"a"}},
 			&Lambda{"_2", &Call{&Variable{"a"}, &Empty{}}},
 		},
 	}
 	value, fail := Eval(exp, &Done{})
-	fmt.Println(value.Debug())
+	// fmt.Println(value.Debug())
 	assert.Nil(t, fail)
 	caught := captureTerm(value)
+	// assert.Equal(t, exp, caught)
 	final, fail := Eval(caught, &Stack{&CallWith{&Empty{}}, &Done{}})
-	fmt.Println(final.Debug())
+	if fail != nil {
+		fmt.Println(fail.Reason())
+	}
 	assert.Nil(t, fail)
+
+	fmt.Println(final.Debug())
 	assert.Equal(t, &String{"Value"}, final)
-	// assert.Equal(t, &Let{"c", &String{"Yes"},
-	// 	&Lambda{"_", &Variable{"c"}},
-	// }, caught)
 }

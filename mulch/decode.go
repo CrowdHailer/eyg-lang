@@ -18,7 +18,7 @@ type encoded struct {
 }
 
 // recursive, is continuation for looping a good style in go or is it just a hammer
-func Decode(data []byte) (C, error) {
+func Decode(data []byte) (Exp, error) {
 	var e encoded
 	err := json.Unmarshal(data, &e)
 	if err != nil {

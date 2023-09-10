@@ -5,10 +5,15 @@ import "fmt"
 type C interface {
 	step(E, K) (C, E, K)
 }
+
 type Value interface {
 	C
 	call(Value, E, K) (C, E, K)
 	Debug() string
+}
+type Exp interface {
+	C
+	MarshalJSON() ([]byte, error)
 }
 
 type E interface {
@@ -24,7 +29,7 @@ type K interface {
 
 type Lambda struct {
 	Label string
-	Body  C
+	Body  Exp
 }
 
 func (lambda *Lambda) step(e E, k K) (C, E, K) {
@@ -50,8 +55,8 @@ func (c *Closure) Debug() string {
 }
 
 type Call struct {
-	Fn  C
-	Arg C
+	Fn  Exp
+	Arg Exp
 }
 
 func (exp *Call) step(e E, k K) (C, E, K) {
@@ -72,8 +77,8 @@ func (exp *Variable) step(e E, k K) (C, E, K) {
 
 type Let struct {
 	Label string
-	Value C
-	Then  C
+	Value Exp
+	Then  Exp
 }
 
 func (exp *Let) step(e E, k K) (C, E, K) {
@@ -82,7 +87,7 @@ func (exp *Let) step(e E, k K) (C, E, K) {
 
 type Assign struct {
 	label string
-	then  C
+	then  Exp
 	env   E
 }
 
@@ -92,7 +97,7 @@ func (k *Assign) compute(value Value, _ E, rest K) (C, E, K) {
 }
 
 type Arg struct {
-	value C
+	value Exp
 	env   E
 }
 

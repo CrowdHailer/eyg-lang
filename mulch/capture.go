@@ -2,35 +2,70 @@ package mulch
 
 import (
 	"fmt"
+	"strings"
 
 	"golang.org/x/exp/slices"
 )
 
 func captureTerm(value Value) C {
-	exp, env := doCaptureTerm(value, emptyEnv())
-	for {
-		if env == nil {
-			return exp
-		}
-		exp = &Let{env.key, env.value, exp}
-		env = env.next
+	exp, env := doCaptureTerm(value, make(map[string]Exp))
+	fmt.Printf("%#v\n", env)
+	fmt.Printf("%#v\n", exp)
+
+	for key, assigned := range env {
+		exp = &Let{key, assigned, exp}
 	}
+	// fmt.Printf("%#v\n", exp)
+
+	return exp
+	// for {
+	// 	if env == nil {
+	// 		return exp
+	// 	}
+	// 	exp = &Let{env.key, env.value, exp}
+	// 	env = env.next
+	// }
 }
 
-func doCaptureTerm(value Value, env *Env) (C, *Env) {
+type expEnv struct {
+	key string
+	exp Exp
+}
+
+func doCaptureTerm(value Value, env map[string]Exp) (Exp, map[string]Exp) {
 	switch v := value.(type) {
 	case *Closure:
-		captured := emptyEnv()
-		free := freeVariables(v.lambda)
-		for _, f := range free {
-			fmt.Println(f)
-			bound, ok := v.env.get(f)
+		var lambda Exp = v.lambda
+		frees := freeVariables(v.lambda)
+		for _, free := range frees {
+			fmt.Println(free)
+			bound, ok := v.env.get(free)
 			if !ok {
 				continue
 			}
-			captured = &Env{f, bound, captured}
+			boundExp, e := doCaptureTerm(bound, env)
+			env = e
+			if old, found := env[free]; found {
+				if old == boundExp {
+					continue
+				}
+				// look if variable is aready under any existing name
+				var namespacedLabel string
+				for key, exp := range env {
+					if strings.HasPrefix(key, free+"#") && exp == boundExp {
+						namespacedLabel = key
+						break
+					}
+				}
+				if namespacedLabel == "" {
+					namespacedLabel = fmt.Sprintf("%s#%d", free, len(env))
+					env[namespacedLabel] = boundExp
+				}
+				lambda = &Let{free, &Variable{namespacedLabel}, lambda}
+			}
+			env[free] = boundExp
 		}
-		return v.lambda, captured
+		return lambda, env
 	case *Integer:
 		return v, env
 	case *String:
@@ -38,7 +73,7 @@ func doCaptureTerm(value Value, env *Env) (C, *Env) {
 	case *Tail:
 		return v, env
 	case *Cons:
-		var out C = &Cons{}
+		var out Exp = &Cons{}
 		if v.Item != nil {
 			arg, e := doCaptureTerm(v.Item, env)
 			env = e
@@ -53,7 +88,7 @@ func doCaptureTerm(value Value, env *Env) (C, *Env) {
 	case *Empty:
 		return v, env
 	case *Extend:
-		var out C = &Extend{Label: v.Label}
+		var out Exp = &Extend{Label: v.Label}
 		if v.item != nil {
 			item, e := doCaptureTerm(v.item, env)
 			env = e
@@ -70,7 +105,7 @@ func doCaptureTerm(value Value, env *Env) (C, *Env) {
 	case *Overwrite:
 		return v, env
 	case *Tag:
-		var out C = &Tag{Label: v.Label}
+		var out Exp = &Tag{Label: v.Label}
 		if v.Value != nil {
 			value, e := doCaptureTerm(v.Value, env)
 			env = e
@@ -78,7 +113,7 @@ func doCaptureTerm(value Value, env *Env) (C, *Env) {
 		}
 		return out, env
 	case *Case:
-		var out C = &Case{Label: v.Label}
+		var out Exp = &Case{Label: v.Label}
 		if v.branch != nil {
 			branch, e := doCaptureTerm(v.branch, env)
 			env = e

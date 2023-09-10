@@ -133,6 +133,12 @@ func (handle Handle) MarshalJSON() ([]byte, error) {
 		"l": handle.label,
 	})
 }
+func (handle Shallow) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"0": "hs",
+		"l": handle.label,
+	})
+}
 
 func (builtin Builtin) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{

@@ -81,6 +81,7 @@ fn do_capture(term, env) {
             }
             case list.key_find(env, var) {
               Ok(old) if old == exp -> #(env, wrapped)
+              // look for anything else matching the variable because then it might have already the expression
               Ok(_other) -> {
                 let pre =
                   list.filter(
