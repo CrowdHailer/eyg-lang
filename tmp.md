@@ -1,7 +1,7 @@
 (let client (netlify.auth 1))
 (.status (expect (client.deploy client.scratch (spa (fn x x)))))
 
-(.status (expect (client.deploy client.scratch [(file "index.html" (app simple)) (file "_headers" _headers)])))
+(.status (expect (client.deploy client.scratch [(file "index.html" (app reactive.app)) (file "_headers" _headers)])))
 
 (let client (fly.auth "test"))
 <!-- need to capture environment here -->
@@ -11,3 +11,5 @@
 (facilities.dnsimple.auth 1)
 
 ((fn x ((fn _ x.request) (x.reply "hello"))) (expect (^Await (^Receive 8080))))
+
+(let server (fn req (!string_append "hey" req.query)))

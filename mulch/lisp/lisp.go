@@ -121,6 +121,10 @@ func ReadFromTokens(tokens []string) (mulch.Exp, []string, error) {
 		label := t[1:]
 		return &mulch.Perform{Label: label}, tokens, nil
 	}
+	if strings.HasPrefix(t, "!") {
+		id := t[1:]
+		return &mulch.Builtin{Id: id}, tokens, nil
+	}
 	parts := strings.Split(t, ".")
 	var exp mulch.Exp = &mulch.Variable{Label: parts[0]}
 	for _, p := range parts[1:] {

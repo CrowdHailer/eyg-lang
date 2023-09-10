@@ -81,7 +81,7 @@ func main() {
 		}
 		value, fail := shell.Continue(source)
 		if fail != nil {
-			fmt.Printf("%#v %#v\n", value, fail)
+			// fmt.Printf("%#v %#v\n", value, fail)
 			fmt.Println(fail.Reason())
 			continue
 		}
@@ -118,7 +118,9 @@ func Start(source mulch.C, list mulch.Value, exterior map[string]func(mulch.Valu
 
 func (shell *Shell) Continue(source mulch.C) (mulch.Value, *mulch.Error) {
 	value, fail, e, _ := mulch.ContinueEval(source, shell.e, shell.k)
-	if _, ok := source.(*mulch.Let); ok {
+	// only update e if no error otherwise will get a deep end.
+	// should probably map list to prompt
+	if _, ok := source.(*mulch.Let); ok && fail == nil {
 		shell.e = e
 	}
 	return value, fail
