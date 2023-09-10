@@ -22,7 +22,6 @@ func main() {
 	raw, err := os.ReadFile(envFile)
 	if err != nil {
 		fmt.Printf("error reading envFile '%s' \n", envFile)
-		return
 	}
 	var env mulch.Record = &mulch.Empty{}
 	for _, line := range strings.Split(string(raw), "\n") {

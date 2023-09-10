@@ -14,7 +14,7 @@ import (
 // (a b c) Apply(Apply(a, b), c)
 // (a (b c)) Apply(a, Apply(b,c))
 
-func Parse(raw string) (mulch.C, error) {
+func Parse(raw string) (mulch.Exp, error) {
 	tokens := []string{}
 	for _, t := range tokenize(raw) {
 		t = strings.TrimSpace(t)
@@ -31,7 +31,7 @@ func Parse(raw string) (mulch.C, error) {
 	return exp, nil
 }
 
-func ReadFromTokens(tokens []string) (mulch.C, []string, error) {
+func ReadFromTokens(tokens []string) (mulch.Exp, []string, error) {
 	if len(tokens) == 0 {
 		return nil, nil, fmt.Errorf("unexpected end of input")
 	}
@@ -46,7 +46,7 @@ func ReadFromTokens(tokens []string) (mulch.C, []string, error) {
 	}
 
 	if t == "(" {
-		exps := []mulch.C{}
+		exps := []mulch.Exp{}
 		for {
 			t = tokens[0]
 			if t == ")" {
@@ -69,14 +69,14 @@ func ReadFromTokens(tokens []string) (mulch.C, []string, error) {
 		}
 	}
 	if t == "[" {
-		exps := []mulch.C{}
+		exps := []mulch.Exp{}
 		for {
 			t = tokens[0]
 			if t == "]" {
 				if len(exps) == 0 {
 					return &mulch.Tail{}, tokens[1:], nil
 				}
-				var acc mulch.C = &mulch.Tail{}
+				var acc mulch.Exp = &mulch.Tail{}
 				slices.Reverse(exps)
 				for _, i := range exps {
 					acc = &mulch.Call{Fn: &mulch.Call{Fn: &mulch.Cons{}, Arg: i}, Arg: acc}
@@ -122,7 +122,7 @@ func ReadFromTokens(tokens []string) (mulch.C, []string, error) {
 		return &mulch.Perform{Label: label}, tokens, nil
 	}
 	parts := strings.Split(t, ".")
-	var exp mulch.C = &mulch.Variable{Label: parts[0]}
+	var exp mulch.Exp = &mulch.Variable{Label: parts[0]}
 	for _, p := range parts[1:] {
 		exp = &mulch.Call{Fn: &mulch.Select{Label: p}, Arg: exp}
 	}

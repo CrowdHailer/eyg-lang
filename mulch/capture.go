@@ -8,62 +8,66 @@ import (
 )
 
 func captureTerm(value Value) C {
-	exp, env := doCaptureTerm(value, make(map[string]Exp))
-	fmt.Printf("%#v\n", env)
-	fmt.Printf("%#v\n", exp)
+	exp, env := doCaptureTerm(value, expEnv{})
 
-	for key, assigned := range env {
-		exp = &Let{key, assigned, exp}
+	slices.Reverse(env)
+	for _, item := range env {
+		exp = &Let{item.key, item.exp, exp}
 	}
-	// fmt.Printf("%#v\n", exp)
 
 	return exp
-	// for {
-	// 	if env == nil {
-	// 		return exp
-	// 	}
-	// 	exp = &Let{env.key, env.value, exp}
-	// 	env = env.next
-	// }
+
 }
 
-type expEnv struct {
+type expEnvItem struct {
 	key string
 	exp Exp
 }
 
-func doCaptureTerm(value Value, env map[string]Exp) (Exp, map[string]Exp) {
+type expEnv []expEnvItem
+
+func (self expEnv) find(key string) (Exp, bool) {
+	for _, item := range self {
+		if item.key == key {
+			return item.exp, true
+		}
+	}
+	return nil, false
+}
+
+// env needs to stay orderd
+func doCaptureTerm(value Value, env expEnv) (Exp, expEnv) {
 	switch v := value.(type) {
 	case *Closure:
 		var lambda Exp = v.lambda
 		frees := freeVariables(v.lambda)
 		for _, free := range frees {
-			fmt.Println(free)
 			bound, ok := v.env.get(free)
 			if !ok {
 				continue
 			}
 			boundExp, e := doCaptureTerm(bound, env)
 			env = e
-			if old, found := env[free]; found {
+			if old, found := env.find(free); found {
 				if old == boundExp {
 					continue
 				}
 				// look if variable is aready under any existing name
 				var namespacedLabel string
-				for key, exp := range env {
-					if strings.HasPrefix(key, free+"#") && exp == boundExp {
-						namespacedLabel = key
+				for _, item := range env {
+					if strings.HasPrefix(item.key, free+"#") && item.exp == boundExp {
+						namespacedLabel = item.key
 						break
 					}
 				}
 				if namespacedLabel == "" {
 					namespacedLabel = fmt.Sprintf("%s#%d", free, len(env))
-					env[namespacedLabel] = boundExp
+					env = append(env, expEnvItem{namespacedLabel, boundExp})
 				}
 				lambda = &Let{free, &Variable{namespacedLabel}, lambda}
+				continue
 			}
-			env[free] = boundExp
+			env = append(env, expEnvItem{free, boundExp})
 		}
 		return lambda, env
 	case *Integer:
