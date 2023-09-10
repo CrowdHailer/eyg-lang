@@ -9,3 +9,5 @@
 
 
 (facilities.dnsimple.auth 1)
+
+((fn x ((fn _ x.request) (x.reply "hello"))) (expect (^Await (^Receive 8080))))

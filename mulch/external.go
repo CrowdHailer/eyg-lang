@@ -132,6 +132,9 @@ var Standard = map[string]func(Value) C{
 		return &Empty{}
 	},
 	"Await": func(lift Value) C {
+		if p, ok := lift.(*Promise); ok {
+			return <-p.Value
+		}
 		return lift
 	},
 	// httpbin testing
@@ -143,7 +146,7 @@ var Standard = map[string]func(Value) C{
 		}
 		port, ok := p.(*Integer)
 		if !ok {
-			return &Error{&NotAString{p}}
+			return &Error{&NotAnInteger{p}}
 		}
 		// fmt.Println(port)
 		h, ok := field(lift, "handler")
@@ -192,6 +195,38 @@ var Standard = map[string]func(Value) C{
 			}
 			return &Empty{}, e, k
 		}}
+	},
+	"Receive": func(lift Value) C {
+		port, ok := lift.(*Integer)
+		if !ok {
+			return &Error{&NotAString{lift}}
+		}
+		shutdown, toHandle, error := ListenAndServeOnce(fmt.Sprintf(":%d", port.Value))
+		ch := make(chan Value, 1)
+		go func() {
+			select {
+			case in := <-toHandle:
+				ch <- Ok((&Empty{}).
+					Extend("request", RequestToLanguage(in.r)).
+					Extend("reply", &Arity1{func(v Value, e E, k K) (C, E, K) {
+						reply, ok := v.(*String)
+						fmt.Printf("reply %s, ok %v", v, ok)
+						if !ok {
+							in.done <- struct{}{}
+							io.WriteString(in.w, "Error")
+							return &Error{&NotAString{v}}, e, k
+						}
+						io.WriteString(in.w, reply.Value)
+						in.done <- struct{}{}
+						time.Sleep(1 * time.Second)
+						shutdown(context.Background())
+						return &Empty{}, e, k
+					}}))
+			case err := <-error:
+				ch <- ErrorVariant(&String{err.Error()})
+			}
+		}()
+		return &Promise{ch}
 	},
 	// https://golang.cafe/blog/golang-zip-file-example.html
 	"Zip": func(lift Value) C {
