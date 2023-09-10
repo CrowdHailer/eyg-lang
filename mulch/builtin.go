@@ -313,62 +313,6 @@ func popGrapheme(v Value, e E, k K) (C, E, K) {
 	return &Tag{"Ok", &Extend{"head", &String{head}, &Extend{"tail", &String{tail}, &Empty{}}}}, e, k
 }
 
-func captureTerm(value Value) C {
-	switch v := value.(type) {
-	// TODO ignores env
-	case *Closure:
-		return v.lambda
-	case *Integer:
-		return v
-	case *String:
-		return v
-	case *Tail:
-		return v
-	case *Cons:
-		var out C = &Cons{}
-		if v.Item != nil {
-			out = &Call{Fn: out, Arg: captureTerm(v.Item)}
-		}
-		if v.Tail != nil {
-			out = &Call{Fn: out, Arg: captureTerm(v.Tail)}
-		}
-		return out
-	case *Empty:
-		return v
-	case *Extend:
-		var out C = &Extend{Label: v.Label}
-		if v.item != nil {
-			out = &Call{Fn: out, Arg: captureTerm(v.item)}
-		}
-		if v.rest != nil {
-			out = &Call{Fn: out, Arg: captureTerm(v.rest)}
-		}
-		return out
-	case *Select:
-		return v
-	case *Overwrite:
-		return v
-	case *Tag:
-		var out C = &Tag{Label: v.Label}
-		if v.Value != nil {
-			out = &Call{Fn: out, Arg: captureTerm(v.Value)}
-		}
-		return out
-	case *Case:
-		var out C = &Case{Label: v.Label}
-		if v.branch != nil {
-			out = &Call{Fn: out, Arg: captureTerm(v.branch)}
-		}
-		if v.otherwise != nil {
-			out = &Call{Fn: out, Arg: captureTerm(v.otherwise)}
-		}
-		return out
-	}
-	fmt.Println(value.Debug())
-	fmt.Printf("%#v\n", value)
-	panic("unknown value")
-}
-
 func doSerialize(v Value, e E, k K) (C, E, K) {
 	tree := captureTerm(v)
 	fmt.Printf("%#v\n", tree)

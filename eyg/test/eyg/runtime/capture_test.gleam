@@ -113,7 +113,7 @@ pub fn ordered_fn_capture_test() {
   |> should.equal(exp)
 }
 
-pub fn renamed_test_test() {
+pub fn capture_shadowed_variable_test() {
   let exp =
     e.Let(
       "a",

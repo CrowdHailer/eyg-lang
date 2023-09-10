@@ -14,6 +14,11 @@ func roundTrip(term Value) (Value, *Error) {
 func checkTerm(t *testing.T, original Value) {
 	tripped, err := roundTrip(original)
 	assert.Nil(t, err)
+	// needs deep equal
+	// if original != tripped {
+	// 	fmt.Println(original.Debug())
+	// 	fmt.Println(tripped.Debug())
+	// }
 	assert.Equal(t, original, tripped)
 }
 func TestLiteralCapture(t *testing.T) {
@@ -22,6 +27,8 @@ func TestLiteralCapture(t *testing.T) {
 	checkTerm(t, List([]Value{}))
 	checkTerm(t, List([]Value{&Integer{1}, &Integer{2}}))
 	checkTerm(t, &Empty{})
+	checkTerm(t, (&Empty{}).
+		Extend("foo", &String{"hej"}))
 	checkTerm(t, (&Empty{}).
 		Extend("foo", &String{"hej"}).
 		Extend("nested", (&Empty{}).
@@ -43,12 +50,51 @@ func TestSimpleFunction(t *testing.T) {
 
 // TODO nested let
 func TestSingleLetCapture(t *testing.T) {
-	exp := &Let{"s", &String{"External"}, &Lambda{"_", &Variable{"a"}}}
+	exp := &Let{"a", &String{"External"}, &Lambda{"_", &Variable{"a"}}}
 	value, fail := Eval(exp, &Done{})
 	assert.Nil(t, fail)
 	caught := captureTerm(value)
 
 	value, fail = Eval(caught, &Stack{&CallWith{&Empty{}}, &Done{}})
 	assert.Nil(t, fail)
-	assert.Equal(t, &String{"Hello"}, value)
+	assert.Equal(t, &String{"External"}, value)
+}
+
+func TestDuplicateCapture(t *testing.T) {
+	var exp C = &Lambda{"_", &Let{"_", &Variable{"std"}, &Variable{"std"}}}
+	exp = &Let{"std", &String{"Standard"}, exp}
+	value, fail := Eval(exp, &Done{})
+	assert.Nil(t, fail)
+	caught := captureTerm(value)
+	assert.Equal(t, exp, caught)
+}
+
+func TestCaptureShadowedVariable(t *testing.T) {
+	var exp C = &Let{"a", &String{"First"},
+		&Let{"a", &String{"Second"},
+			&Lambda{"_", &Variable{"a"}},
+		},
+	}
+	value, fail := Eval(exp, &Done{})
+	assert.Nil(t, fail)
+	caught := captureTerm(value)
+	assert.Equal(t, &Let{"a", &String{"Second"},
+		&Lambda{"_", &Variable{"a"}},
+	}, caught)
+}
+
+func TestOnlyNeededValuesAreCaptured(t *testing.T) {
+	var exp C = &Let{"a", &String{"ignore"},
+		&Let{"b", &Lambda{"_", &Variable{"a"}},
+			&Let{"c", &String{"Yes"},
+				&Lambda{"_", &Variable{"c"}},
+			},
+		},
+	}
+	value, fail := Eval(exp, &Done{})
+	assert.Nil(t, fail)
+	caught := captureTerm(value)
+	assert.Equal(t, &Let{"c", &String{"Yes"},
+		&Lambda{"_", &Variable{"c"}},
+	}, caught)
 }
