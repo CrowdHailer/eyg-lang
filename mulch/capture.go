@@ -129,6 +129,8 @@ func doCaptureTerm(value Value, env expEnv) (Exp, expEnv) {
 			out = &Call{Fn: out, Arg: otherwise}
 		}
 		return out, env
+	case *Perform:
+		return v, env
 	case *Defunc:
 		var out Exp = &Builtin{v.Id}
 		args := v.args

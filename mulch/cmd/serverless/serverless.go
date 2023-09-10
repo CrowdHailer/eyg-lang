@@ -36,6 +36,10 @@ func main() {
 			io.WriteString(w, fail.Reason())
 			return
 		}
+		if body, ok := value.(*mulch.String); ok {
+			io.WriteString(w, body.Value)
+			return
+		}
 		io.WriteString(w, value.Debug())
 	})
 
