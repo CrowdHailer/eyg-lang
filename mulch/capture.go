@@ -2,6 +2,7 @@ package mulch
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -55,7 +56,8 @@ func doCaptureTerm(value Value, env expEnv) (Exp, expEnv) {
 				// look if variable is aready under any existing name
 				var namespacedLabel string
 				for _, item := range env {
-					if strings.HasPrefix(item.key, free+"#") && item.exp == boundExp {
+					// would be better with hash equal
+					if strings.HasPrefix(item.key, free+"#") && reflect.DeepEqual(item.exp, boundExp) {
 						namespacedLabel = item.key
 						break
 					}

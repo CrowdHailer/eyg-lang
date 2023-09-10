@@ -386,7 +386,6 @@ func popGrapheme(v Value, e E, k K) (C, E, K) {
 
 func doSerialize(v Value, e E, k K) (C, E, K) {
 	tree := captureTerm(v)
-	fmt.Printf("%#v\n", tree)
 	encoded, err := json.Marshal(tree)
 	if err != nil {
 		panic("bad serialization")

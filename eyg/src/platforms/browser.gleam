@@ -28,6 +28,7 @@ fn handlers() {
   |> effect.extend("OnKeyDown", on_keydown())
 }
 
+// used in layout.page -> used in dashboard
 pub fn run() {
   case
     document.query_selector(

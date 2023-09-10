@@ -13,3 +13,5 @@
 ((fn x ((fn _ x.request) (x.reply "hello"))) (expect (^Await (^Receive 8080))))
 
 (let server (fn req (!string_append "hey" req.query)))
+
+(let server (fn req (std.string.append "hey" req.query)))
