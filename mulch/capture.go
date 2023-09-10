@@ -23,7 +23,7 @@ func doCaptureTerm(value Value, env *Env) (C, *Env) {
 		captured := emptyEnv()
 		free := freeVariables(v.lambda)
 		for _, f := range free {
-			fmt.Printf("ss")
+			fmt.Println(f)
 			bound, ok := v.env.get(f)
 			if !ok {
 				continue

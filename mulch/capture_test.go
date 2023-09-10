@@ -1,6 +1,7 @@
 package mulch
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/tj/assert"
@@ -97,4 +98,23 @@ func TestOnlyNeededValuesAreCaptured(t *testing.T) {
 	assert.Equal(t, &Let{"c", &String{"Yes"},
 		&Lambda{"_", &Variable{"c"}},
 	}, caught)
+}
+
+func TestCaptureEnvOfFunctionInEnv(t *testing.T) {
+	var exp C = &Let{"a", &String{"Value"},
+		&Let{"a", &Lambda{"_1", &Variable{"a"}},
+			&Lambda{"_2", &Call{&Variable{"a"}, &Empty{}}},
+		},
+	}
+	value, fail := Eval(exp, &Done{})
+	fmt.Println(value.Debug())
+	assert.Nil(t, fail)
+	caught := captureTerm(value)
+	final, fail := Eval(caught, &Stack{&CallWith{&Empty{}}, &Done{}})
+	fmt.Println(final.Debug())
+	assert.Nil(t, fail)
+	assert.Equal(t, &String{"Value"}, final)
+	// assert.Equal(t, &Let{"c", &String{"Yes"},
+	// 	&Lambda{"_", &Variable{"c"}},
+	// }, caught)
 }
