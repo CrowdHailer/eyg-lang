@@ -1,4 +1,4 @@
-(let client (netlify token))
+(let client (netlify.auth 1))
 (.status (expect (client.deploy client.scratch (spa (fn x x)))))
 
 (.status (expect (client.deploy client.scratch [(file "index.html" (app simple)) (file "_headers" _headers)])))
