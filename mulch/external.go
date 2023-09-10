@@ -210,7 +210,6 @@ var Standard = map[string]func(Value) C{
 					Extend("request", RequestToLanguage(in.r)).
 					Extend("reply", &Arity1{func(v Value, e E, k K) (C, E, K) {
 						reply, ok := v.(*String)
-						fmt.Printf("reply %s, ok %v", v, ok)
 						if !ok {
 							in.done <- struct{}{}
 							io.WriteString(in.w, "Error")
