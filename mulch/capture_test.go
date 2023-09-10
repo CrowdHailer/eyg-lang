@@ -107,20 +107,25 @@ func TestCaptureEnvOfFunctionInEnv(t *testing.T) {
 		},
 	}
 	value, fail := Eval(exp, &Done{})
-	fmt.Println(value.Debug())
 	assert.Nil(t, fail)
 	caught := captureTerm(value)
-	fmt.Printf("---------%#v\n", caught.(*Let))
-	fmt.Printf("---------%#v\n", caught.(*Let).Then)
-	// fmt.Printf("---------%#v\n", caught.(*Let).Value.(*Lambda).Body)
-	// assert.Equal(t, exp, caught)
 	final, fail := Eval(caught, &Stack{&CallWith{&Empty{}}, &Done{}})
 	if fail != nil {
 		fmt.Println(fail.Reason())
 	}
 	assert.Nil(t, fail)
-	fmt.Println(final.Debug())
-
-	fmt.Println(final.Debug())
 	assert.Equal(t, &String{"Value"}, final)
+}
+
+func TestArity1Builtin(t *testing.T) {
+	exp := &Builtin{"string_uppercase"}
+	value, fail := Eval(exp, &Done{})
+	assert.Nil(t, fail)
+	caught := captureTerm(value)
+	final, fail := Eval(caught, &Stack{&CallWith{&String{"hey"}}, &Done{}})
+	if fail != nil {
+		fmt.Println(fail.Reason())
+	}
+	assert.Nil(t, fail)
+	assert.Equal(t, &String{"HEY"}, final)
 }

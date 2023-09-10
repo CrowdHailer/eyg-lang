@@ -129,6 +129,15 @@ func doCaptureTerm(value Value, env expEnv) (Exp, expEnv) {
 			out = &Call{Fn: out, Arg: otherwise}
 		}
 		return out, env
+	case *Defunc:
+		var out Exp = &Builtin{v.Id}
+		args := v.args
+		for i := len(args); 0 < i; i-- {
+			arg, e := doCaptureTerm(args[i-1], env)
+			env = e
+			out = &Call{Fn: out, Arg: arg}
+		}
+		return out, env
 	}
 	fmt.Println(value.Debug())
 	fmt.Printf("%#v\n", value)

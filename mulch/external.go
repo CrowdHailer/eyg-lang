@@ -187,14 +187,14 @@ var Standard = map[string]func(Value) C{
 		})
 
 		shutdown, _ := ListenAndServe(fmt.Sprintf(":%d", port.Value), mux)
-		return &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
+		return &Defunc{"TODO serve", []Value{}, &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			if err := shutdown(ctx); err != nil {
 				return &Error{&MissingField{"TODO new error needed for external service", lift}}, e, k
 			}
 			return &Empty{}, e, k
-		}}
+		}}}
 	},
 	"Receive": func(lift Value) C {
 		port, ok := lift.(*Integer)
@@ -208,7 +208,7 @@ var Standard = map[string]func(Value) C{
 			case in := <-toHandle:
 				ch <- Ok((&Empty{}).
 					Extend("request", RequestToLanguage(in.r)).
-					Extend("reply", &Arity1{func(v Value, e E, k K) (C, E, K) {
+					Extend("reply", &Defunc{"TODO servereply", []Value{}, &Arity1{func(v Value, e E, k K) (C, E, K) {
 						reply, ok := v.(*String)
 						if !ok {
 							in.done <- struct{}{}
@@ -220,7 +220,7 @@ var Standard = map[string]func(Value) C{
 						time.Sleep(1 * time.Second)
 						shutdown(context.Background())
 						return &Empty{}, e, k
-					}}))
+					}}}))
 			case err := <-error:
 				ch <- ErrorVariant(&String{err.Error()})
 			}

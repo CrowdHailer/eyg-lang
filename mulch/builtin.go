@@ -6,56 +6,122 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"golang.org/x/exp/slices"
 )
 
 type Builtin struct {
 	Id string
 }
 
-func (exp *Builtin) step(e E, k K) (C, E, K) {
-	value, ok := builtins[exp.Id]
-	if !ok {
-		return &Error{&UndefinedVariable{exp.Id}}, e, k
+var _ Exp = (*Builtin)(nil)
+
+type Defunc struct {
+	Id   string
+	args []Value
+	impl Impl
+}
+
+func (d *Defunc) step(e E, k K) (C, E, K) {
+	return k.compute(d, e)
+}
+
+func (d *Defunc) call(arg Value, e E, k K) (C, E, K) {
+	switch impl := d.impl.(type) {
+	case *Arity1:
+		return impl.Impl(arg, e, k)
+	case *Arity2:
+		args := append(slices.Clone(d.args), arg)
+		if len(args) < 2 {
+			return &Defunc{d.Id, args, d.impl}, e, k
+		}
+		return impl.impl(args[0], args[1], e, k)
+	case *Arity3:
+		args := append(slices.Clone(d.args), arg)
+		if len(args) < 3 {
+			return &Defunc{d.Id, args, d.impl}, e, k
+		}
+		return impl.impl(args[0], args[1], args[2], e, k)
+	default:
+		args := append(slices.Clone(d.args), arg)
+		return &Defunc{d.Id, args, d.impl}, e, k
 	}
-	return k.compute(value, e)
+}
+func (d *Defunc) Debug() string {
+	args := make([]string, d.impl.size())
+	for i := range args {
+		args[i] = ".."
+	}
+	for i, v := range d.args {
+		args[i] = v.Debug()
+	}
+
+	return fmt.Sprintf("Defunc %s (%s)", d.Id, strings.Join(args, ", "))
+}
+
+type Impl interface {
+	// call(arg Value, e E, k K) (C, E, K)
+	size() int
+}
+
+var _ Value = (*Defunc)(nil)
+
+// Call a defunc
+
+func (exp *Builtin) step(e E, k K) (C, E, K) {
+	id := exp.Id
+	impl, ok := builtins[id]
+	if !ok {
+		return &Error{&UndefinedVariable{id}}, e, k
+	}
+	return &Defunc{id, []Value{}, impl}, e, k
 }
 
 type Arity1 struct {
 	Impl func(Value, E, K) (C, E, K)
 }
 
-func (value *Arity1) step(e E, k K) (C, E, K) {
-	return k.compute(value, e)
+// func (value *Arity1) step(e E, k K) (C, E, K) {
+// 	return k.compute(value, e)
+// }
+
+// func (value *Arity1) call(arg Value, e E, k K) (C, E, K) {
+// 	return value.Impl(arg, e, k)
+// }
+
+func (value *Arity1) size() int {
+	return 1
 }
 
-func (value *Arity1) call(arg Value, e E, k K) (C, E, K) {
-	return value.Impl(arg, e, k)
-}
-
-func (value *Arity1) Debug() string {
-	return "Arity1"
-}
+// func (value *Arity1) Debug() string {
+// 	return "Arity1"
+// }
 
 type Arity2 struct {
 	arg1 Value
 	impl func(Value, Value, E, K) (C, E, K)
 }
 
-func (value *Arity2) step(e E, k K) (C, E, K) {
-	return k.compute(value, e)
+// func (value *Arity2) step(e E, k K) (C, E, K) {
+// 	return k.compute(value, e)
+// }
+
+// func (value *Arity2) call(arg Value, e E, k K) (C, E, K) {
+// 	if value.arg1 == nil {
+// 		new := *value
+// 		new.arg1 = arg
+// 		return &new, e, k
+// 	}
+// 	return value.impl(value.arg1, arg, e, k)
+// }
+
+func (value *Arity2) size() int {
+	return 2
 }
 
-func (value *Arity2) call(arg Value, e E, k K) (C, E, K) {
-	if value.arg1 == nil {
-		new := *value
-		new.arg1 = arg
-		return &new, e, k
-	}
-	return value.impl(value.arg1, arg, e, k)
-}
-func (value *Arity2) Debug() string {
-	return "Arity2"
-}
+// func (value *Arity2) Debug() string {
+// 	return "Arity2"
+// }
 
 type Arity3 struct {
 	arg1 Value
@@ -63,34 +129,39 @@ type Arity3 struct {
 	impl func(Value, Value, Value, E, K) (C, E, K)
 }
 
-func (value *Arity3) step(e E, k K) (C, E, K) {
-	return k.compute(value, e)
-}
+// func (value *Arity3) step(e E, k K) (C, E, K) {
+// 	return k.compute(value, e)
+// }
 
-func (value *Arity3) call(arg Value, e E, k K) (C, E, K) {
-	if value.arg1 == nil {
-		new := *value
-		new.arg1 = arg
-		return &new, e, k
-	}
-	if value.arg2 == nil {
-		new := *value
-		new.arg2 = arg
-		return &new, e, k
-	}
-	return value.impl(value.arg1, value.arg2, arg, e, k)
-}
-func (value *Arity3) Debug() string {
-	return "Arity3"
+// func (value *Arity3) call(arg Value, e E, k K) (C, E, K) {
+// 	if value.arg1 == nil {
+// 		new := *value
+// 		new.arg1 = arg
+// 		return &new, e, k
+// 	}
+// 	if value.arg2 == nil {
+// 		new := *value
+// 		new.arg2 = arg
+// 		return &new, e, k
+// 	}
+// 	return value.impl(value.arg1, value.arg2, arg, e, k)
+// }
+
+// func (value *Arity3) Debug() string {
+// 	return "Arity3"
+// }
+
+func (value *Arity3) size() int {
+	return 3
 }
 
 // function that returns a function etc ugly and lots of es,ks
 
 func fixed(builder Value) Value {
-	return &Arity1{Impl: func(arg Value, e E, k K) (C, E, K) {
+	return &Defunc{"fixed", []Value{}, &Arity1{Impl: func(arg Value, e E, k K) (C, E, K) {
 		c, e, k := builder.call(fixed(builder), e, k)
 		return c, e, &Stack{&CallWith{arg}, k}
-	}}
+	}}}
 }
 
 func language_to_tree(value Value) (Exp, Value) {
@@ -142,7 +213,7 @@ func equal(v1, v2 Value) bool {
 	// }
 }
 
-var builtins = map[string]Value{
+var builtins = map[string]Impl{
 	"equal": &Arity2{impl: func(v1, v2 Value, e E, k K) (C, E, K) {
 		// Is there a nice way to do equality
 		if equal(v1, v2) {
@@ -183,7 +254,7 @@ var builtins = map[string]Value{
 			return &Error{&NotAList{value}}, e, k
 		}
 	}},
-	"list_fold": &Arity3{impl: do_fold},
+	"list_fold": &Arity3{impl: doFold},
 	"int_add": &Arity2{impl: func(x, y Value, e E, k K) (C, E, K) {
 		a, ok := x.(*Integer)
 		if !ok {
@@ -285,12 +356,12 @@ var builtins = map[string]Value{
 	}},
 }
 
-func do_fold(list, acc, fn Value, e E, k K) (C, E, K) {
+func doFold(list, acc, fn Value, e E, k K) (C, E, K) {
 	switch l := list.(type) {
 	case *Tail:
 		return acc, e, k
 	case *Cons:
-		return fn, e, &Stack{&CallWith{l.Item}, &Stack{&CallWith{acc}, &Stack{&Apply{&Arity3{l.Tail, nil, do_fold}, e}, &Stack{&CallWith{fn}, k}}}}
+		return fn, e, &Stack{&CallWith{l.Item}, &Stack{&CallWith{acc}, &Stack{&Apply{&Defunc{"list_fold", []Value{l.Tail}, &Arity3{l.Tail, nil, doFold}}, e}, &Stack{&CallWith{fn}, k}}}}
 	}
 	fmt.Printf("%#v\n", list)
 	panic("list_fold")
