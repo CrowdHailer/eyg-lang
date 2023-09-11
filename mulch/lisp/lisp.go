@@ -107,7 +107,16 @@ func ReadFromTokens(tokens []string) (mulch.Exp, []string, error) {
 			return nil, nil, err
 		}
 		tokens = rest
-		return &mulch.Let{Label: label, Value: body, Then: &mulch.Variable{Label: label}}, tokens, nil
+		var then mulch.Exp
+		if len(tokens) > 0 && tokens[0] != ")" {
+			then, tokens, err = ReadFromTokens(tokens)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			then = &mulch.Variable{Label: label}
+		}
+		return &mulch.Let{Label: label, Value: body, Then: then}, tokens, nil
 	}
 	if strings.HasPrefix(t, "|") {
 		label := t[1:]

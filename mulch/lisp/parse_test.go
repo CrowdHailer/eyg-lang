@@ -68,8 +68,26 @@ func TestUnit(t *testing.T) {
 	assert.Equal(t, &mulch.Empty{}, exp)
 }
 
+func TestLetStatement(t *testing.T) {
+	exp, err := lisp.Parse("(let x 5)")
+	assert.NoError(t, err)
+	assert.Equal(t, &mulch.Let{
+		Label: "x",
+		Value: &mulch.Integer{Value: 5},
+		Then:  &mulch.Variable{Label: "x"},
+	}, exp)
+
+	exp, err = lisp.Parse("(let x 5 2)")
+	assert.NoError(t, err)
+	assert.Equal(t, &mulch.Let{
+		Label: "x",
+		Value: &mulch.Integer{Value: 5},
+		Then:  &mulch.Integer{Value: 2},
+	}, exp)
+}
+
 func TestList(t *testing.T) {
-	var expected mulch.C = &mulch.Tail{}
+	var expected mulch.Exp = &mulch.Tail{}
 	exp, err := lisp.Parse("[]")
 	assert.NoError(t, err)
 	assert.Equal(t, expected, exp)

@@ -15,3 +15,9 @@
 (let server (fn req (!string_append "hey" req.query)))
 
 (let server (fn req (std.string.append "hey" req.query)))
+
+(let x (let _ (^Log "yo") (let _ (^Log "second"))))
+
+List with effect types
+OR
+deploying a continuation
