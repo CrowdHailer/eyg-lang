@@ -21,3 +21,4 @@
 List with effect types
 OR
 deploying a continuation
+lisp docs, everything first class so partial cases, but need record syntax

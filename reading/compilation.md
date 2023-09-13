@@ -9,7 +9,7 @@ Transpilation gives me concurrency and arduino (tinygo) does the actually compil
 
 Crafting interpreters goes via a VM, and implemented in GO. !!!!!!!!!! (could just follow this then immutable beans)
 
-- https://github.com/hurryabit/pukeko A toy compiler based on SPJ's "The Implementation of Functional Programming Languages"
+- https://github.com/hurryabit/pukeko A toy compiler based on SPJ's "The Implementation of Functional Programming Languages" LAZY and loads of different machines
 
 ## General optimisations
 - https://compiler.club/compiling-lambda-calculus/
@@ -43,3 +43,8 @@ GC is very part of compilation but only interesting if going the compilation rou
 
 
 https://matt.might.net/articles/cps-conversion/ How to compile with continuations
+
+
+https://www.microsoft.com/en-us/research/wp-content/uploads/2016/08/algeff-tr-2016-1.pdf In practice though we wish to simplify the types more
+and leave out ‘obvious’ polymorphism. In Koka we adopted
+two extra type rules to achieve this
