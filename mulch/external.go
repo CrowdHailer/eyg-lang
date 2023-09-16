@@ -44,6 +44,19 @@ func doHTTP(lift Value) C {
 	if !ok {
 		return &Error{&NotAString{p}}
 	}
+	q, ok := field(lift, "query")
+	if !ok {
+		return &Error{&MissingField{"query", lift}}
+	}
+	query := ""
+
+	// TODO is this some none or empty string?
+	if qstring, ok := q.(*String); ok && qstring.Value != "" {
+		query = "?" + qstring.Value
+	}
+	// if !ok {
+	// 	return &Error{&NotAString{q}}
+	// }
 	h, ok = field(lift, "headers")
 	if !ok {
 		return &Error{&MissingField{"headers", lift}}
@@ -101,7 +114,7 @@ Outer:
 
 	req, err := http.NewRequest(
 		strings.ToUpper(method.Label),
-		fmt.Sprintf("https://%s%s", host.Value, path.Value),
+		fmt.Sprintf("https://%s%s%s", host.Value, path.Value, query),
 		reader)
 	for _, h := range headers {
 		req.Header.Set(h.k, h.v)

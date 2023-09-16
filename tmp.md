@@ -22,3 +22,17 @@ List with effect types
 OR
 deploying a continuation
 lisp docs, everything first class so partial cases, but need record syntax
+
+
+(let client (facilities.google.auth 1))
+(client.send "peter@petersaxton.uk" "somemessage")
+(client.events "2023-10-10T00:00:00Z")
+((.events (facilities.google.auth 1)) "2023-10-10T00:00:00Z") 
+
+
+From: peterhsaxton@gmail.com
+To: some@one.com
+Content-Type: text/html; charset=utf-8
+
+hello there
+
