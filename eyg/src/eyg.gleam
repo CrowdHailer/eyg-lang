@@ -5,6 +5,7 @@ import plinth/node/fs
 import eygir/decode
 import platforms/cli
 import platforms/serverless
+import platforms/shell
 import gleam/javascript/array
 import gleam/javascript/promise
 
@@ -22,6 +23,7 @@ pub fn do_main(args) {
   case args {
     ["cli", ..rest] -> cli.run(source, rest)
     ["web", ..rest] -> serverless.run(source, rest)
+    ["exec", ..rest] -> shell.run(source, rest)
     _ -> {
       io.debug(#("no runner for: ", args))
       process.exit(1)
