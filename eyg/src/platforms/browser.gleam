@@ -30,6 +30,33 @@ fn handlers() {
   |> effect.extend("OnKeyDown", on_keydown())
 }
 
+pub fn do_run(raw) -> Nil {
+  case decode.from_json(window.decode_uri(raw)) {
+    Ok(continuation) -> {
+      // io.debug(continuation)
+      let env = r.Env(scope: [], builtins: stdlib.lib().1)
+      // let k = Some(r.Kont(r.CallWith(r.Record([]), [], env), None))
+      promise.map(
+        r.run_async(continuation, env, r.Record([]), handlers().1),
+        io.debug,
+      )
+      // todo as "real"
+      Nil
+    }
+    // case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
+    //   Ok(_) -> Nil
+    //   err -> {
+    //     io.debug(#("return", stdlib.env(), err))
+    //     Nil
+    //   }
+    // }
+    Error(reason) -> {
+      io.debug(reason)
+      Nil
+    }
+  }
+}
+
 pub fn run() {
   let found =
     document.query_selector(
@@ -38,31 +65,7 @@ pub fn run() {
     )
   case found {
     Ok(el) -> {
-      case decode.from_json(window.decode_uri(document.inner_text(el))) {
-        Ok(continuation) -> {
-          // io.debug(continuation)
-          let env = r.Env(scope: [], builtins: stdlib.lib().1)
-          // let k = Some(r.Kont(r.CallWith(r.Record([]), [], env), None))
-          promise.map(
-            r.run_async(continuation, env, r.Record([]), handlers().1),
-            io.debug,
-          )
-          // todo as "real"
-          Nil
-        }
-        // case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
-        //   Ok(_) -> Nil
-        //   err -> {
-        //     io.debug(#("return", stdlib.env(), err))
-        //     Nil
-        //   }
-        // }
-        Error(reason) -> {
-          io.debug(reason)
-          Nil
-        }
-      }
-      Nil
+      do_run(document.inner_text(el))
     }
     Error(Nil) -> old_run()
   }
