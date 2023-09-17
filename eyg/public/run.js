@@ -1,4 +1,4 @@
-import { run } from "../build/eyg/platforms/browser.mjs";
+import { run } from "../build/dev/javascript/eyg/platforms/browser.mjs";
 
 // console.log(document.currentScript);
 run();

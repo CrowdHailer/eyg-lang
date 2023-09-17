@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None}
+import gleam/map
+import gleam/option.{None, Some}
 import eygir/decode
 import plinth/browser/window
 import plinth/browser/document
@@ -22,14 +23,53 @@ fn handlers() {
   |> effect.extend("HTTP", effect.http())
   |> effect.extend("Render", render())
   |> effect.extend("Wait", effect.wait())
+  |> effect.extend("Await", effect.await())
   |> effect.extend("Async", async())
   |> effect.extend("Listen", listen())
   |> effect.extend("OnClick", on_click())
   |> effect.extend("OnKeyDown", on_keydown())
 }
 
-// used in layout.page -> used in dashboard
 pub fn run() {
+  let found =
+    document.query_selector(
+      document.document(),
+      "script[type=\"application/eygir.json\"]",
+    )
+  case found {
+    Ok(el) -> {
+      case decode.from_json(window.decode_uri(document.inner_text(el))) {
+        Ok(continuation) -> {
+          // io.debug(continuation)
+          let env = r.Env(scope: [], builtins: stdlib.lib().1)
+          // let k = Some(r.Kont(r.CallWith(r.Record([]), [], env), None))
+          promise.map(
+            r.run_async(continuation, env, r.Record([]), handlers().1),
+            io.debug,
+          )
+          // todo as "real"
+          Nil
+        }
+        // case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
+        //   Ok(_) -> Nil
+        //   err -> {
+        //     io.debug(#("return", stdlib.env(), err))
+        //     Nil
+        //   }
+        // }
+        Error(reason) -> {
+          io.debug(reason)
+          Nil
+        }
+      }
+      Nil
+    }
+    Error(Nil) -> old_run()
+  }
+}
+
+// used in layout.page -> used in dashboard
+fn old_run() {
   case
     document.query_selector(
       document.document(),
@@ -42,7 +82,7 @@ pub fn run() {
           case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
             Ok(_) -> Nil
             err -> {
-              io.debug(#("return", err))
+              io.debug(#("return", stdlib.env(), err))
               Nil
             }
           }

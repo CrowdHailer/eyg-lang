@@ -13,3 +13,5 @@ What is best practise for make files bin scripts in a mono repo?
 lenses etc
 https://www.youtube.com/watch?v=geV8F59q48E
 
+
+(cd eyg; gleam format && gleam build && npx rollup -c rollup.config.js -f iife -i ./public/run.js -o ../website/build/run.js) && (cd website; cp -R public/* build/ && npx sirv ./build --dev --host 0.0.0.0 --port 5000)

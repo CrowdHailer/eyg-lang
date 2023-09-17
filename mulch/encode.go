@@ -142,7 +142,7 @@ func (handle Shallow) MarshalJSON() ([]byte, error) {
 
 func (builtin Builtin) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"0": "v",
+		"0": "b",
 		"l": builtin.Id,
 	})
 }

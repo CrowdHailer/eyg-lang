@@ -1,3 +1,5 @@
+(let stop (serve 8080 (fn _ (browser.continue (fn _ (^Log "hey"))))))
+
 (let client (netlify.auth 1))
 (.status (expect (client.deploy client.scratch (spa (fn x x)))))
 
