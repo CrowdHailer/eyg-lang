@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
@@ -118,7 +118,7 @@ pub fn do_eval(source, rev, env, k) {
         r.eval(
           expression,
           r.Env([], lib().1),
-          Some(r.Kont(r.Apply(r.Defunc(r.Tag("Ok"), []), rev, env), k)),
+          Some(r.Kont(r.Apply(r.Defunc(r.Tag("Ok"), []), rev, env), None)),
         )
       r.prim(value, rev, env, k)
     }

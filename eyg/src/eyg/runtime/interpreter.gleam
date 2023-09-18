@@ -316,7 +316,6 @@ pub fn eval(exp: e.Expression, env, k) {
 // If not separated the eval implementation causes stack overflows.
 // This is because eval needs references to itself in continuations.
 pub fn loop(c, p, e, k) {
-  // io.debug(c)
   case step(c, p, e, k) {
     K(c, p, e, k) -> loop(c, p, e, k)
     Done(return) -> return
