@@ -1,4 +1,4 @@
-import gleam/io
+import plinth/javascript/console
 import gleam/int
 import gleam/list
 import gleam/map
@@ -32,7 +32,7 @@ pub fn run(source, env, term, extrinsic) {
     // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> Ok(term)
-    Abort(failure, path) -> Error(#(failure, path))
+    Abort(failure, path, _env, _k) -> Error(#(failure, path))
     Effect(label, lifted, rev, _env, _k) ->
       Error(#(UnhandledEffect(label, lifted), rev))
     // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
@@ -60,7 +60,7 @@ pub fn flatten_promise(ret, extrinsic) {
     // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> promise.resolve(Ok(term))
-    Abort(failure, path) -> promise.resolve(Error(#(failure, path)))
+    Abort(failure, path, _env, _k) -> promise.resolve(Error(#(failure, path)))
     Effect(label, lifted, rev, _env, _k) ->
       promise.resolve(Error(#(UnhandledEffect(label, lifted), rev)))
     Async(p, rev, env, k) ->
@@ -78,7 +78,7 @@ pub fn handle(return, builtins, extrinsic) {
   case return {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
-    Effect(label, term, rev, _env, k) ->
+    Effect(label, term, rev, env, k) ->
       case map.get(extrinsic, label) {
         Ok(handler) -> {
           // handler only gets env in captured fn's
@@ -86,10 +86,10 @@ pub fn handle(return, builtins, extrinsic) {
           let return = loop(c, rev, e, k)
           handle(return, builtins, extrinsic)
         }
-        Error(Nil) -> Abort(UnhandledEffect(label, term), rev)
+        Error(Nil) -> Abort(UnhandledEffect(label, term), rev, env, k)
       }
     Value(term) -> Value(term)
-    Abort(failure, rev) -> Abort(failure, rev)
+    Abort(failure, rev, env, k) -> Abort(failure, rev, env, k)
     Async(promise, rev, env, k) -> Async(promise, rev, env, k)
   }
 }
@@ -212,7 +212,7 @@ pub type Return {
     env: Env,
     continuation: Option(Kont),
   )
-  Abort(reason: Failure, rev: List(Int))
+  Abort(reason: Failure, rev: List(Int), env: Env, k: Option(Kont))
   Async(promise: JSPromise(Term), rev: List(Int), env: Env, k: Option(Kont))
 }
 
@@ -231,16 +231,16 @@ pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
     // builtin needs to return result for the case statement
     Defunc(switch, applied) ->
       case switch, applied {
-        Cons, [item] -> prim(cons(item, arg, rev), rev, env, k)
+        Cons, [item] -> prim(cons(item, arg, rev, env, k), rev, env, k)
         Extend(label), [value] ->
-          prim(extend(label, value, arg, rev), rev, env, k)
+          prim(extend(label, value, arg, rev, env, k), rev, env, k)
         Overwrite(label), [value] ->
-          prim(overwrite(label, value, arg, rev), rev, env, k)
-        Select(label), [] -> prim(select(label, arg, rev), rev, env, k)
+          prim(overwrite(label, value, arg, rev, env, k), rev, env, k)
+        Select(label), [] -> prim(select(label, arg, rev, env, k), rev, env, k)
         Tag(label), [] -> prim(Value(Tagged(label, arg)), rev, env, k)
         Match(label), [branch, rest] ->
           match(label, branch, rest, arg, rev, env, k)
-        NoCases, [] -> prim(Abort(NoMatch, rev), rev, env, k)
+        NoCases, [] -> prim(Abort(NoMatch, rev, env, k), rev, env, k)
         // env is part of k
         Perform(label), [] -> perform(label, arg, rev, env, k)
         Handle(label), [handler] -> deep(label, handler, arg, rev, env, k)
@@ -263,7 +263,7 @@ pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
         }
       }
 
-    term -> prim(Abort(NotAFunction(term), rev), rev, env, k)
+    term -> prim(Abort(NotAFunction(term), rev, env, k), rev, env, k)
   }
 }
 
@@ -290,7 +290,8 @@ fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
         Arity3(impl), [x, y, z] -> impl(x, y, z, rev, env, kont)
         _, args -> #(V(Value(Defunc(Builtin(key), applied))), rev, env, kont)
       }
-    Error(Nil) -> prim(Abort(UndefinedVariable(key), rev), rev, env, kont)
+    Error(Nil) ->
+      prim(Abort(UndefinedVariable(key), rev, env, kont), rev, env, kont)
   }
 }
 
@@ -316,7 +317,8 @@ pub fn eval(exp: e.Expression, env, k) {
 // If not separated the eval implementation causes stack overflows.
 // This is because eval needs references to itself in continuations.
 pub fn loop(c, p, e, k) {
-  case step(c, p, e, k) {
+  let next = step(c, p, e, k)
+  case next {
     K(c, p, e, k) -> loop(c, p, e, k)
     Done(return) -> return
   }
@@ -351,7 +353,7 @@ fn step(exp, rev, env: Env, k) {
     E(e.Variable(x)) -> {
       let return = case list.key_find(env.scope, x) {
         Ok(term) -> Value(term)
-        Error(Nil) -> Abort(UndefinedVariable(x), rev)
+        Error(Nil) -> Abort(UndefinedVariable(x), rev, env, k)
       }
       K(V(return), rev, env, k)
     }
@@ -368,7 +370,8 @@ fn step(exp, rev, env: Env, k) {
     E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
     E(e.Tail) -> K(V(Value(LinkedList([]))), rev, env, k)
     E(e.Cons) -> K(V(Value(Defunc(Cons, []))), rev, env, k)
-    E(e.Vacant(comment)) -> K(V(Abort(Vacant(comment), rev)), rev, env, k)
+    E(e.Vacant(comment)) ->
+      K(V(Abort(Vacant(comment), rev, env, k)), rev, env, k)
     E(e.Select(label)) -> K(V(Value(Defunc(Select(label), []))), rev, env, k)
     E(e.Tag(label)) -> K(V(Value(Defunc(Tag(label), []))), rev, env, k)
     E(e.Perform(label)) -> K(V(Value(Defunc(Perform(label), []))), rev, env, k)
@@ -414,40 +417,45 @@ fn apply_k(value, k) {
   }
 }
 
-fn cons(item, tail, rev) {
+fn cons(item, tail, rev, env, k) {
   case tail {
     LinkedList(elements) -> Value(LinkedList([item, ..elements]))
-    term -> Abort(IncorrectTerm("LinkedList", term), rev)
+    term -> Abort(IncorrectTerm("LinkedList", term), rev, env, k)
   }
 }
 
-fn select(label, arg, rev) {
+fn select(label, arg, rev, env, k) {
   case arg {
     Record(fields) ->
       case list.key_find(fields, label) {
         Ok(value) -> Value(value)
-        Error(Nil) -> Abort(MissingField(label), rev)
+        Error(Nil) -> Abort(MissingField(label), rev, env, k)
       }
     term ->
-      Abort(IncorrectTerm(string.append("Record -select", label), term), rev)
+      Abort(
+        IncorrectTerm(string.append("Record -select", label), term),
+        rev,
+        env,
+        k,
+      )
   }
 }
 
-fn extend(label, value, rest, rev) {
+fn extend(label, value, rest, rev, env, k) {
   case rest {
     Record(fields) -> Value(Record([#(label, value), ..fields]))
-    term -> Abort(IncorrectTerm("Record -extend", term), rev)
+    term -> Abort(IncorrectTerm("Record -extend", term), rev, env, k)
   }
 }
 
-fn overwrite(label, value, rest, rev) {
+fn overwrite(label, value, rest, rev, env, k) {
   case rest {
     Record(fields) ->
       case list.key_pop(fields, label) {
         Ok(#(_old, fields)) -> Value(Record([#(label, value), ..fields]))
-        Error(Nil) -> Abort(MissingField(label), rev)
+        Error(Nil) -> Abort(MissingField(label), rev, env, k)
       }
-    term -> Abort(IncorrectTerm("Record -overwrite", term), rev)
+    term -> Abort(IncorrectTerm("Record -overwrite", term), rev, env, k)
   }
 }
 
@@ -458,7 +466,7 @@ fn match(label, matched, otherwise, value, rev, env, k) {
         True -> step_call(matched, term, rev, env, k)
         False -> step_call(otherwise, value, rev, env, k)
       }
-    term -> prim(Abort(IncorrectTerm("Tagged", term), rev), rev, env, k)
+    term -> prim(Abort(IncorrectTerm("Tagged", term), rev, env, k), rev, env, k)
   }
 }
 

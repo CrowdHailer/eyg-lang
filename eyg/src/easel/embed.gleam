@@ -906,7 +906,7 @@ fn run(state: Embed) {
     |> map.insert("Log", effect.debug_logger().2)
   let ret = r.handle(r.eval(source, env, None), env.builtins, handlers)
   case ret {
-    r.Abort(reason, _rev) -> #(reason_to_string(reason), [])
+    r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
     r.Value(term) -> #(term_to_string(term), [])
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
