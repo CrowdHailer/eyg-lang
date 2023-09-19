@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/map
 import gleam/option.{None}
 import eyg/analysis/typ as t
@@ -170,4 +171,12 @@ pub fn eval_test() {
 
   r.eval(prog, stdlib.env(), None)
   |> should.equal(r.Value(r.Tagged("Ok", r.Binary("foo"))))
+}
+
+pub fn language_to_expression_test() {
+  core.expression_to_language(e.Apply(e.Variable("x"), e.Integer(1)))
+  |> io.debug
+  |> core.language_to_expression()
+  |> io.debug()
+  todo
 }

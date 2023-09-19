@@ -309,8 +309,8 @@ fn do_language_to_expression(term, k) {
     [r.Tagged("Builtin", r.Binary(identifier)), ..rest] ->
       k(e.Builtin(identifier), rest)
     remaining -> {
-      io.debug(#("remaining values", remaining))
-      Error("too many expressions")
+      io.debug(#("remaining values", remaining, k))
+      Error("error debuggin expressions")
     }
   }
 }

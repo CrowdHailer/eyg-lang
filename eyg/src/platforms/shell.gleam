@@ -6,6 +6,7 @@ import eyg/runtime/interpreter as r
 import harness/stdlib
 import plinth/javascript/console
 import gleam/javascript/array
+import eygir/expression as e
 import harness/effect
 import harness/ffi/core
 
@@ -77,11 +78,7 @@ pub fn run(source, args) {
 fn read(rl, parser, env, k) {
   use answer <- promise.await(question(rl, "> "))
   let assert Ok(r.LinkedList(cmd)) = parser(answer)
-  console.log(array.from_list(cmd))
-  let assert Ok(code) =
-    core.language_to_expression(cmd)
-    |> io.debug
-  io.debug(code)
+  let assert Ok(code) = core.language_to_expression(cmd)
   r.eval(code, env, None)
   |> console.log
   case answer == "" {
