@@ -79,7 +79,7 @@ fn read(rl, parser, env, k) {
   use answer <- promise.await(question(rl, "> "))
   let assert Ok(r.LinkedList(cmd)) = parser(answer)
   let assert Ok(code) = core.language_to_expression(cmd)
-  r.eval(code, env, None)
+  r.handle(r.eval(code, env, None), env.builtins, handlers().1)
   |> console.log
   case answer == "" {
     True -> promise.resolve(0)
