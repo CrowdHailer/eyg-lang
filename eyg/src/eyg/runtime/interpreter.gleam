@@ -54,15 +54,22 @@ pub fn run_async(source, env, term, extrinsic) {
   flatten_promise(ret, extrinsic)
 }
 
+// not really eval as includes handlers
+pub fn eval_async(source, env, extrinsic) {
+  let ret = handle(eval(source, env, None), env.builtins, extrinsic)
+  flatten_promise(ret, extrinsic)
+}
+
 pub fn flatten_promise(ret, extrinsic) {
   case ret {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
     // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> promise.resolve(Ok(term))
-    Abort(failure, path, _env, _k) -> promise.resolve(Error(#(failure, path)))
-    Effect(label, lifted, rev, _env, _k) ->
-      promise.resolve(Error(#(UnhandledEffect(label, lifted), rev)))
+    Abort(failure, path, env, _k) ->
+      promise.resolve(Error(#(failure, path, env)))
+    Effect(label, lifted, rev, env, _k) ->
+      promise.resolve(Error(#(UnhandledEffect(label, lifted), rev, env)))
     Async(p, rev, env, k) ->
       promise.await(
         p,
@@ -176,7 +183,13 @@ pub fn to_string(term) {
       |> string.concat
     Tagged(label, value) -> string.concat([label, "(", to_string(value), ")"])
     Function(param, _, _, _) -> string.concat(["(", param, ") -> { ... }"])
-    Defunc(d, []) -> string.concat(["Defunc: ", string.inspect(d)])
+    Defunc(d, args) ->
+      string.concat([
+        "Defunc: ",
+        string.inspect(d),
+        " ",
+        ..list.intersperse(list.map(args, to_string), ", ")
+      ])
     Promise(_) -> string.concat(["Promise: "])
   }
 }

@@ -916,7 +916,7 @@ fn run(state: Embed) {
           r.flatten_promise(ret, handlers),
           fn(final) {
             let message = case final {
-              Error(#(reason, _rev)) -> reason_to_string(reason)
+              Error(#(reason, _rev, _env)) -> reason_to_string(reason)
               Ok(term) -> {
                 io.debug(term)
                 term_to_string(term)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -283,6 +284,17 @@ var builtins = map[string]Impl{
 			return &Error{&NotAnInteger{v}}, e, k
 		}
 		return &String{fmt.Sprintf("%d", i.Value)}, e, k
+	}},
+	"int_parse": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
+		raw, ok := v.(*String)
+		if !ok {
+			return &Error{&NotAString{v}}, e, k
+		}
+		i, err := strconv.Atoi(raw.Value)
+		if err != nil {
+			return &Tag{"Error", &Empty{}}, e, k
+		}
+		return &Tag{"Ok", &Integer{int32(i)}}, e, k
 	}},
 	"string_uppercase": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)

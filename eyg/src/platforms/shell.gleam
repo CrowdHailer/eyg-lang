@@ -27,6 +27,7 @@ fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("HTTP", effect.http())
+  |> effect.extend("Open", effect.open())
   |> effect.extend("Await", effect.await())
   |> effect.extend("Wait", effect.wait())
   // |> effect.extend("File_Write", file_write())
@@ -38,7 +39,7 @@ pub fn run(source, args) {
   let k_parser =
     Some(r.Kont(
       r.Apply(r.Defunc(r.Select("lisp"), []), [], env),
-      Some(r.Kont(r.Apply(r.Defunc(r.Select("parse"), []), [], env), None)),
+      Some(r.Kont(r.Apply(r.Defunc(r.Select("prompt"), []), [], env), None)),
     ))
   let assert r.Value(parser) =
     r.handle(r.eval(source, env, k_parser), map.new(), handlers().1)
@@ -70,19 +71,31 @@ pub fn run(source, args) {
   // need term-> code
 
   let rl = create_interface(fn(_) { #([], "") })
-  use _ <- promise.await(read(rl, parser, env, k))
+  use status <- promise.await(read(rl, parser, env, k))
   close(rl)
-  promise.resolve(0)
+  promise.resolve(status)
 }
 
 fn read(rl, parser, env, k) {
   use answer <- promise.await(question(rl, "> "))
   let assert Ok(r.LinkedList(cmd)) = parser(answer)
   let assert Ok(code) = core.language_to_expression(cmd)
-  r.handle(r.eval(code, env, None), env.builtins, handlers().1)
-  |> console.log
-  case answer == "" {
+  case code == e.Empty {
     True -> promise.resolve(0)
-    False -> read(rl, parser, env, k)
+    False -> {
+      use ret <- promise.await(r.eval_async(code, env, handlers().1))
+      let env = case ret {
+        Ok(value) -> {
+          console.log(r.to_string(value))
+          env
+        }
+        Error(#(r.UnhandledEffect("Prompt", _lift), _rev, env)) -> env
+        Error(other) -> {
+          console.log(other)
+          env
+        }
+      }
+      read(rl, parser, env, k)
+    }
   }
 }

@@ -1,9 +1,12 @@
 import gleam/io
 import gleam/int
+import gleam/list
 import gleam/map
 import gleam/option.{None}
+import gleam/result
+import gleam/string
 import gleam/fetch
-import gleam/http.{Get}
+import gleam/http
 import gleam/http/request
 import gleam/javascript/promise.{try_await}
 import eyg/analysis/typ as t
@@ -82,62 +85,85 @@ pub fn http() {
         env,
         k,
       )
-      io.debug(method)
+      let assert r.Tagged(method, _) = method
+      let method = case string.uppercase(method) {
+        "GET" -> http.Get
+        "POST" -> http.Post
+      }
       use scheme <- cast.require(
         cast.field("scheme", cast.any, request),
         rev,
         env,
         k,
       )
-      io.debug(scheme)
       use host <- cast.require(
         cast.field("host", cast.string, request),
         rev,
         env,
         k,
       )
-      io.debug(host)
       use port <- cast.require(
         cast.field("port", cast.any, request),
         rev,
         env,
         k,
       )
-      io.debug(port)
       use path <- cast.require(
         cast.field("path", cast.string, request),
         rev,
         env,
         k,
       )
-      io.debug(path)
       use query <- cast.require(
         cast.field("query", cast.any, request),
         rev,
         env,
         k,
       )
-      io.debug(query)
       use headers <- cast.require(
-        cast.field("headers", cast.any, request),
+        cast.field("headers", cast.list, request),
         rev,
         env,
         k,
       )
-      io.debug(headers)
+      let assert Ok(headers) =
+        list.try_map(
+          headers,
+          fn(h) {
+            use k <- result.try(r.field(h, "key"))
+            let assert r.Binary(k) = k
+            use value <- result.try(r.field(h, "value"))
+            let assert r.Binary(value) = value
+
+            Ok(#(k, value))
+          },
+        )
+
       use body <- cast.require(
         cast.field("body", cast.any, request),
         rev,
         env,
         k,
       )
-      io.debug(body)
 
       let request =
         request.new()
-        |> request.set_method(Get)
+        |> request.set_method(method)
         |> request.set_host(host)
         |> request.set_path(path)
+      // TODO decide on option typing
+      // |> request.set_query(query)
+
+      let request =
+        list.fold(
+          headers,
+          request,
+          fn(req, h) {
+            let #(k, v) = h
+            request.set_header(req, k, v)
+          },
+        )
+
       let promise =
         try_await(
           fetch.send(request),
@@ -145,12 +171,48 @@ pub fn http() {
         )
         |> promise.map(fn(response) {
           case response {
-            Ok(response) -> r.Binary(response.body)
+            Ok(response) -> {
+              let resp =
+                r.ok(r.Record([
+                  #("status", r.Integer(response.status)),
+                  #(
+                    "headers",
+                    r.LinkedList(list.map(
+                      response.headers,
+                      fn(h) {
+                        let #(k, v) = h
+                        r.Record([
+                          #("key", r.Binary(k)),
+                          #("value", r.Binary(v)),
+                        ])
+                      },
+                    )),
+                  ),
+                  #("body", r.Binary(response.body)),
+                ]))
+              resp
+            }
+
             Error(_) -> r.Binary("bad response")
           }
         })
 
       r.prim(r.Value(r.Promise(promise)), rev, env, k)
+    },
+  )
+}
+
+pub fn open() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(target, k) {
+      let env = env.empty()
+      let rev = []
+
+      use target <- cast.require(cast.string(target), rev, env, k)
+      io.debug(target)
+      r.prim(r.Value(r.unit), rev, env, k)
     },
   )
 }
