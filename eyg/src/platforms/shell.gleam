@@ -31,7 +31,9 @@ fn handlers() {
   |> effect.extend("Await", effect.await())
   |> effect.extend("Wait", effect.wait())
   // |> effect.extend("File_Write", file_write())
-  // |> effect.extend("Read_Source", read_source())
+  |> effect.extend("Read_Source", effect.read_source())
+  |> effect.extend("LoadDB", effect.load_db())
+  |> effect.extend("QueryDB", effect.query_db())
 }
 
 pub fn run(source, args) {
@@ -60,7 +62,7 @@ pub fn run(source, args) {
     ))
   let assert r.Abort(reason, _rev, env, k) =
     r.handle(r.eval(source, env, k), map.new(), handlers().1)
-  console.log(reason)
+  // console.log(reason)
 
   // loop_till
   // needs a different value for handler

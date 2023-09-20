@@ -1,3 +1,11 @@
+let s (^Read_Source "./saved/saved.json")
+let db (cozo s)
+(std.string.length db)
+
+(^Await (^LoadDB "[]"))
+(^Await (^QueryDB "?[] <- [['hello', 'world!']]"))
+(^Await (^QueryDB "?[label] := *eav[id, 'label', label], *eav[id, 'expression', 'Let'],"))
+
 (let stop (serve 8080 (fn _ (browser.continue (fn _ (^Log "hey"))))))
 
 (let client (netlify.auth 1))

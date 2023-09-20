@@ -15,6 +15,9 @@ import plinth/javascript/promisex
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 import harness/ffi/env
+import plinth/node/fs
+import eygir/decode
+import harness/ffi/core
 
 pub fn init() {
   #(t.Closed, map.new())
@@ -241,6 +244,65 @@ pub fn wait() {
       use milliseconds <- cast.require(cast.integer(milliseconds), rev, env, k)
       let p = promisex.wait(milliseconds)
       r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
+    },
+  )
+}
+
+// Don't need the detail of decoding JSON in EYG as will move away from it.
+pub fn read_source() {
+  #(
+    t.Binary,
+    t.result(t.Binary, t.unit),
+    fn(file, k) {
+      let env = env.empty()
+      let rev = []
+
+      use file <- cast.require(cast.string(file), rev, env, k)
+      let json = fs.read_file_sync(file)
+      case decode.from_json(json) {
+        Ok(exp) ->
+          r.prim(
+            r.Value(r.LinkedList(core.expression_to_language(exp))),
+            rev,
+            env,
+            k,
+          )
+        Error(_) -> r.prim(r.Value(r.unit), rev, env, k)
+      }
+    },
+  )
+}
+
+@external(javascript, "../cozo_ffi.js", "load")
+fn load(triples: String) -> promise.Promise(Nil)
+
+@external(javascript, "../cozo_ffi.js", "query")
+fn run_query(query: String) -> promise.Promise(String)
+
+pub fn load_db() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(triples, k) {
+      let env = env.empty()
+      let rev = []
+      use triples <- cast.require(cast.string(triples), rev, env, k)
+      let p = load(triples)
+      r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
+    },
+  )
+}
+
+pub fn query_db() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(query, k) {
+      let env = env.empty()
+      let rev = []
+      use query <- cast.require(cast.string(query), rev, env, k)
+      let p = run_query(query)
+      r.prim(r.Value(r.Promise(promise.map(p, r.Binary))), rev, env, k)
     },
   )
 }

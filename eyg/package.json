@@ -5,6 +5,8 @@
     },
     "dependencies": {
         "cors": "^2.8.5",
+        "cozo-lib-wasm": "^0.7.5",
+        "cozo-node": "^0.7.5",
         "express": "^4.18.2",
         "open": "^9.1.0"
     },
