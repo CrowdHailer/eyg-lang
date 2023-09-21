@@ -7,10 +7,10 @@ description = "Abstract Syntax Tree tools"
 gleam_stdlib = "~> 0.20"
 gleam_javascript = "~> 0.6"
 gleam_bitwise = "~> 1.2"
-lustre = "~> 3.0.0-rc.2"
+lustre = "~> 3.0.0"
 gleam_json = "~> 0.5"
 gleam_fetch = "~> 0.1"
-plinth = "~> 0.1.1"
+plinth = "~> 0.1.3"
 
 [dev-dependencies]
 gleeunit = "~> 0.6"

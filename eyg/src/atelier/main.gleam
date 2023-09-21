@@ -14,11 +14,11 @@ pub fn main(source) {
   let assert Ok(source) = decode.from_json(source)
   use dispatch <- result.then(
     lustre.application(
-      fn() { #(app.init(source), cmd.none()) },
+      fn(_flags) { #(app.init(source), cmd.none()) },
       app.update,
       root.render,
     )
-    |> lustre.start("#app"),
+    |> lustre.start("#app", Nil),
   )
 
   listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
