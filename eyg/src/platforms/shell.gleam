@@ -32,6 +32,7 @@ fn handlers() {
   |> effect.extend("Await", effect.await())
   |> effect.extend("Wait", effect.wait())
   |> effect.extend("Serve", http.serve())
+  |> effect.extend("Receive", http.receive())
   // |> effect.extend("File_Write", file_write())
   |> effect.extend("Read_Source", effect.read_source())
   |> effect.extend("LoadDB", effect.load_db())
