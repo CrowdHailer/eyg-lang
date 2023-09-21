@@ -214,11 +214,27 @@ pub fn open() {
       let rev = []
 
       use target <- cast.require(cast.string(target), rev, env, k)
+      // io.debug()
+      let p = open_browser(target)
       io.debug(target)
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.prim(
+        r.Value(r.Promise(promise.map(
+          p,
+          fn(terminate) {
+            io.debug(terminate)
+            r.unit
+          },
+        ))),
+        rev,
+        env,
+        k,
+      )
     },
   )
 }
+
+@external(javascript, "open", "default")
+pub fn open_browser(target: String) -> promise.Promise(Nil)
 
 // Needs to be builtin effect not just handler so that correct external handlers can be applied.
 pub fn await() {

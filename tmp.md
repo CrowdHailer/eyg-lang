@@ -2,7 +2,7 @@ let s (^Read_Source "./saved/saved.json")
 let db (cozo s)
 (std.string.length db)
 
-(^Await (^LoadDB "[]"))
+(^Await (^LoadDB db))
 (^Await (^QueryDB "?[] <- [['hello', 'world!']]"))
 (^Await (^QueryDB "?[label] := *eav[id, 'label', label], *eav[id, 'expression', 'Let'],"))
 
