@@ -9,8 +9,7 @@ export function serve(port, handler) {
     const query = i > 0 ? req.url.substr(i + 1) : undefined;
 
     const reqbody = req.body instanceof Buffer ? req.body.toString() : "";
-    console.log();
-    const [status, headers, body] = handler(
+    const [status, headers, body] = handler([
       req.method,
       req.protocol,
       req.headers.host,
@@ -18,8 +17,8 @@ export function serve(port, handler) {
       req.path,
       query,
       // TODO headers
-      reqbody
-    );
+      reqbody,
+    ]);
     res.send(body);
   });
   const server = app.listen(port);
@@ -31,8 +30,13 @@ export async function receive(port) {
   const p = new Promise(function (resolve) {
     app.use(express.raw({ type: "*/*", limit: "1mb" }));
     app.use(async (req, res) => {
-      resolve(toRequest(req));
-      res.send("yo");
+      resolve([
+        toRequest(req),
+        function (response) {
+          console.log(response);
+          res.send("y!!o");
+        },
+      ]);
     });
   });
   const server = app.listen(port, () => {

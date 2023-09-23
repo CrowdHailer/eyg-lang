@@ -54,7 +54,10 @@ pub fn run(source, args) {
       r.loop(r.V(r.Value(parser)), [], env, k)
     case tag {
       "Ok" -> r.field(value, "value")
-      "Error" -> todo as "error"
+      "Error" -> {
+        console.log(value)
+        todo as "error"
+      }
     }
   }
 
