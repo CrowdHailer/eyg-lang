@@ -34,4 +34,8 @@ WORKDIR /opt/app/eyg
 # RUN npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js
 # CMD gleam run web
 
-# gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js && gleam run web
+# gleam format && \
+# gleam build && \
+# npx rollup -f iife -i ./build/dev/javascript/eyg/bundle.js -o public/bundle.js && \
+# npx rollup -f iife -i ./build/dev/javascript/eyg/worker.js -o public/worker.js && \
+# gleam run web
