@@ -1,6 +1,9 @@
 import gleam/dynamic.{Dynamic}
+import gleam/io
+import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import plinth/javascript/console
 import eyg/analysis/typ as t
@@ -33,8 +36,6 @@ pub fn serve() {
           port,
           fn(raw) {
             let req = request(raw)
-            // console.log(req)
-            // console.log(handler)
             let assert r.Value(resp) =
               r.loop(
                 r.V(r.Value(handler)),
@@ -42,16 +43,23 @@ pub fn serve() {
                 env,
                 Some(r.Kont(r.CallWith(req, rev, env), None)),
               )
-            // r.eval(handler, env, None)
-            // mulch returns string but type check properly for record
-            r.to_string(resp)
-            |> console.log()
-            // TODO record
-            // fn to resturn resp and reply, BUT how to small step
-            // if put in kontinutation then cant serialize continuations
-            let assert r.Binary(page) = resp
+            let assert Ok(r.Integer(status)) = r.field(resp, "status")
+            let assert Ok(r.LinkedList(headers)) = r.field(resp, "headers")
+            let assert Ok(r.Binary(body)) = r.field(resp, "body")
 
-            #(200, [200], "Hello")
+            let headers =
+              list.map(
+                headers,
+                fn(term) {
+                  let assert Ok(r.Binary(key)) = r.field(term, "key")
+                  let assert Ok(r.Binary(value)) = r.field(term, "value")
+
+                  #(key, value)
+                },
+              )
+              |> array.from_list()
+
+            #(status, headers, body)
           },
         )
       r.prim(r.Value(r.unit), rev, env, k)
@@ -94,7 +102,6 @@ type RawRequest =
   #(String, String, String, String, Dynamic, String)
 
 fn request(raw: RawRequest) {
-  console.log(raw)
   let #(method, protocol, host, path, query, body) = raw
   let method = case string.uppercase(method) {
     "GET" -> r.Tagged("GET", r.unit)
@@ -137,10 +144,10 @@ fn request(raw: RawRequest) {
 fn do_serve(
   port: Int,
   // TODO make request type problay in tuple here
-  handler: fn(RawRequest) -> #(Int, List(Int), String),
+  handler: fn(RawRequest) -> #(Int, Array(#(String, String)), String),
 ) -> Nil
 
 @external(javascript, "../../express_ffi.mjs", "receive")
 fn do_receive(
   port: Int,
-) -> Promise(#(RawRequest, fn(#(Int, List(Int), String)) -> Nil))
+) -> Promise(#(RawRequest, fn(#(Int, Array(#(String, String)), String)) -> Nil))
