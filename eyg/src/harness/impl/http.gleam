@@ -34,7 +34,6 @@ pub fn serve() {
         env,
         k,
       )
-      console.log(port)
       let id =
         do_serve(
           port,
@@ -84,7 +83,6 @@ pub fn receive() {
     fn(lift, k) {
       let env = env.empty()
       let rev = []
-      console.log(lift)
       use port <- cast.require(
         cast.field("port", cast.integer, lift),
         rev,
@@ -119,7 +117,7 @@ pub fn receive() {
                   |> effect.extend("Log", effect.debug_logger())
                 }.1,
               )
-
+            io.debug(reply)
             let assert Ok(resp) = r.field(reply, "response")
             let assert Ok(data) = r.field(reply, "data")
 

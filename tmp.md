@@ -16,13 +16,13 @@ let db (cozo s)
 (let stop (serve 8080 (fn _ (browser.continue (fn _ (^Log "hey"))))))
 
 ## Netlify
-(let client (netlify.auth 1))
+let client (facilities.netlify.auth 1)
 (.status (expect (client.deploy client.scratch (spa (fn x x)))))
 
 (.status (expect (client.deploy client.scratch [(file "index.html" (app reactive.app)) (file "_headers" _headers)])))
 
 ## Fly
-(let client (fly.auth "test"))
+let client (facilities.fly.auth "test")
 <!-- need to capture environment here -->
 (client.update_machine fly.app fly.machine (fn _ (app simple)))
 
