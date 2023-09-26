@@ -1,5 +1,7 @@
 import express from "express";
 
+const servers = [];
+
 export function serve(port, handler) {
   const app = express();
   app.use(express.raw({ type: "*/*", limit: "1mb" }));
@@ -7,21 +9,29 @@ export function serve(port, handler) {
     toResponse(handler(toRequest(req)), res);
   });
   const server = app.listen(port);
-  return server.close;
+  const id = servers.length;
+  servers.push(server);
+  return id;
 }
 
-export async function receive(port) {
+// addressing servers by server id should eventually be a general sending message to a process
+export function stopServer(id) {
+  const server = servers[id];
+  server.close();
+}
+
+export async function receive(port, handler) {
   const app = express();
   const p = new Promise(function (resolve) {
     app.use(express.raw({ type: "*/*", limit: "1mb" }));
     app.use(async (req, res) => {
-      resolve([
-        toRequest(req),
-        function (response) {
-          console.log(response);
-          res.send("y!!o");
-        },
-      ]);
+      const [response, maybeData] = handler(toRequest(req));
+      // relies on there being no zero key in a none
+      const data = maybeData["0"];
+      if (data != undefined) {
+        resolve(data);
+      }
+      toResponse(response, res);
     });
   });
   const server = app.listen(port, () => {
@@ -45,7 +55,7 @@ function toRequest(req) {
     // path is always without query
     req.path,
     query,
-    // TODO headers
+    Object.entries(req.headers),
     reqbody,
   ];
 }
@@ -55,6 +65,5 @@ function toResponse([status, headers, body], res) {
   headers.forEach(([k, v]) => {
     res.set(k, v);
   });
-  res.set("foo", "bar");
   res.send(body);
 }

@@ -1,15 +1,19 @@
 import gleam/dynamic.{Dynamic}
 import gleam/io
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/map
+// nullable fn for casting option
+import gleam/option.{None, Option, Some}
 import gleam/string
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 import plinth/javascript/console
+import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 import harness/ffi/env
+import harness/effect
 
 pub fn serve() {
   #(
@@ -31,37 +35,43 @@ pub fn serve() {
         k,
       )
       console.log(port)
-      let stop =
+      let id =
         do_serve(
           port,
           fn(raw) {
-            let req = request(raw)
+            let req = to_request(raw)
             let assert r.Value(resp) =
-              r.loop(
-                r.V(r.Value(handler)),
+              r.handle(
+                r.loop(
+                  r.V(r.Value(handler)),
+                  [],
+                  env,
+                  Some(r.Kont(r.CallWith(req, rev, env), None)),
+                ),
                 [],
-                env,
-                Some(r.Kont(r.CallWith(req, rev, env), None)),
+                {
+                  effect.init()
+                  |> effect.extend("Log", effect.debug_logger())
+                }.1,
               )
-            let assert Ok(r.Integer(status)) = r.field(resp, "status")
-            let assert Ok(r.LinkedList(headers)) = r.field(resp, "headers")
-            let assert Ok(r.Binary(body)) = r.field(resp, "body")
-
-            let headers =
-              list.map(
-                headers,
-                fn(term) {
-                  let assert Ok(r.Binary(key)) = r.field(term, "key")
-                  let assert Ok(r.Binary(value)) = r.field(term, "value")
-
-                  #(key, value)
-                },
-              )
-              |> array.from_list()
-
-            #(status, headers, body)
+            from_response(resp)
           },
         )
+      let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
+      r.prim(r.Value(r.Function("_", body, [], [])), rev, env, k)
+    },
+  )
+}
+
+pub fn stop_server() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(lift, k) {
+      let env = env.empty()
+      let rev = []
+      use id <- cast.require(cast.integer(lift), rev, env, k)
+      do_stop(id)
       r.prim(r.Value(r.unit), rev, env, k)
     },
   )
@@ -75,34 +85,65 @@ pub fn receive() {
       let env = env.empty()
       let rev = []
       console.log(lift)
-      use port <- cast.require(cast.integer(lift), rev, env, k)
-      console.log(port)
-      let p = do_receive(port)
-      r.prim(
-        r.Value(r.Promise(promise.map(
-          p,
-          fn(input) {
-            let #(raw, reply) = input
-            r.ok(r.Record([
-              #("request", request(raw)),
-              // TODO how do I pass a builtin fn back
-              #("reply", r.Defunc(r.Builtin("!NOTSerializabe"), [])),
-            ]))
-          },
-        ))),
+      use port <- cast.require(
+        cast.field("port", cast.integer, lift),
         rev,
         env,
         k,
       )
+      console.log(port)
+      use handler <- cast.require(
+        cast.field("handler", cast.any, lift),
+        rev,
+        env,
+        k,
+      )
+      // function pass in raw return on option or re run
+      // return blah or nil using dynamic
+      let p =
+        do_receive(
+          port,
+          fn(raw) {
+            let req = to_request(raw)
+            let assert r.Value(reply) =
+              r.handle(
+                r.loop(
+                  r.V(r.Value(handler)),
+                  [],
+                  env,
+                  Some(r.Kont(r.CallWith(req, rev, env), None)),
+                ),
+                [],
+                {
+                  effect.init()
+                  |> effect.extend("Log", effect.debug_logger())
+                }.1,
+              )
+
+            let assert Ok(resp) = r.field(reply, "response")
+            let assert Ok(data) = r.field(reply, "data")
+
+            let data = case data {
+              r.Tagged("Some", value) -> Some(value)
+              r.Tagged("None", _) -> None
+              _ -> panic("unexpected data return")
+            }
+            #(from_response(resp), data)
+          },
+        )
+      r.prim(r.Value(r.Promise(p)), rev, env, k)
     },
   )
 }
 
 type RawRequest =
-  #(String, String, String, String, Dynamic, String)
+  #(String, String, String, String, Dynamic, Array(#(String, String)), String)
 
-fn request(raw: RawRequest) {
-  let #(method, protocol, host, path, query, body) = raw
+type RawResponse =
+  #(Int, Array(#(String, String)), String)
+
+fn to_request(raw: RawRequest) {
+  let #(method, protocol, host, path, query, headers, body) = raw
   let method = case string.uppercase(method) {
     "GET" -> r.Tagged("GET", r.unit)
     "POST" -> r.Tagged("POST", r.unit)
@@ -127,7 +168,14 @@ fn request(raw: RawRequest) {
     Some(query) -> r.Tagged("Some", r.Binary(query))
     None -> r.Tagged("None", r.unit)
   }
-  // TODO headers
+  let headers =
+    headers
+    |> array.to_list
+    |> list.map(fn(tuple) {
+      let #(key, value) = tuple
+      r.Record([#("key", r.Binary(key)), #("value", r.Binary(value))])
+    })
+    |> r.LinkedList
   let body = r.Binary(body)
 
   r.Record([
@@ -136,18 +184,39 @@ fn request(raw: RawRequest) {
     #("host", host),
     #("path", path),
     #("query", query),
+    #("headers", headers),
     #("body", body),
   ])
 }
 
+fn from_response(response) {
+  let assert Ok(r.Integer(status)) = r.field(response, "status")
+  let assert Ok(r.LinkedList(headers)) = r.field(response, "headers")
+  let assert Ok(r.Binary(body)) = r.field(response, "body")
+
+  let headers =
+    list.map(
+      headers,
+      fn(term) {
+        let assert Ok(r.Binary(key)) = r.field(term, "key")
+        let assert Ok(r.Binary(value)) = r.field(term, "value")
+
+        #(key, value)
+      },
+    )
+    |> array.from_list()
+
+  #(status, headers, body)
+}
+
 @external(javascript, "../../express_ffi.mjs", "serve")
-fn do_serve(
-  port: Int,
-  // TODO make request type problay in tuple here
-  handler: fn(RawRequest) -> #(Int, Array(#(String, String)), String),
-) -> Nil
+fn do_serve(port: Int, handler: fn(RawRequest) -> RawResponse) -> Int
+
+@external(javascript, "../../express_ffi.mjs", "stopServer")
+fn do_stop(id: Int) -> Nil
 
 @external(javascript, "../../express_ffi.mjs", "receive")
 fn do_receive(
   port: Int,
-) -> Promise(#(RawRequest, fn(#(Int, Array(#(String, String)), String)) -> Nil))
+  handler: fn(RawRequest) -> #(RawResponse, Option(a)),
+) -> Promise(a)

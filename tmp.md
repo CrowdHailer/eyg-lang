@@ -1,3 +1,10 @@
+## Serving
+let stop (serve 5000 (fn request (let _ (^Log request.path) (std.http.ok (std.http.html "hello")))))
+
+let data (^Await (receive 5000 try_receive))
+
+## DB AST
+
 let s (^Read_Source "./saved/saved.json")
 let db (cozo s)
 (std.string.length db)
