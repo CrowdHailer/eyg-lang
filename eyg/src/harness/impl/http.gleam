@@ -117,7 +117,6 @@ pub fn receive() {
                   |> effect.extend("Log", effect.debug_logger())
                 }.1,
               )
-            io.debug(reply)
             let assert Ok(resp) = r.field(reply, "response")
             let assert Ok(data) = r.field(reply, "data")
 
