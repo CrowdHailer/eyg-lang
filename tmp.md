@@ -17,6 +17,7 @@ let db (cozo s)
 
 ## Netlify
 let client (facilities.netlify.auth 1)
+(.status (expect (client.deploy client.scratch [(file "index.html" "Yo") (file "_headers" _headers)])))
 (.status (expect (client.deploy client.scratch (spa (fn x x)))))
 
 (.status (expect (client.deploy client.scratch [(file "index.html" (app reactive.app)) (file "_headers" _headers)])))
