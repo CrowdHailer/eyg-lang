@@ -23,9 +23,9 @@ let client (facilities.netlify.auth 1)
 (.status (expect (client.deploy client.scratch [(file "index.html" (app reactive.app)) (file "_headers" _headers)])))
 
 ## Fly
-let client (facilities.fly.auth "test")
-<!-- need to capture environment here -->
-(client.update_machine fly.app fly.machine (fn _ (app simple)))
+let client (facilities.fly.auth "local")
+(^Await (client.update_machine facilities.fly.app facilities.fly.machine (fn _ "Yo")))
+(client.update_machine facilities.fly.app facilities.fly.machine (fn _ (app simple)))
 
 
 (facilities.dnsimple.auth 1)

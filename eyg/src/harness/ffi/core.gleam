@@ -1,3 +1,5 @@
+import gleam/bit_string
+import gleam/base
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
@@ -89,6 +91,7 @@ pub fn lib() {
   |> extend("serialize", serialize())
   |> extend("capture", capture())
   |> extend("encode_uri", encode_uri())
+  |> extend("base64_encode", base64_encode())
   // integer
   |> extend("int_add", integer.add())
   |> extend("int_subtract", integer.subtract())
@@ -323,4 +326,22 @@ pub fn encode_uri() {
 pub fn do_encode_uri(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
   r.prim(r.Value(r.Binary(window.encode_uri(unencoded))), rev, env, k)
+}
+
+pub fn base64_encode() {
+  let type_ = t.Fun(t.Binary, t.Open(-1), t.Binary)
+  #(type_, r.Arity1(do_base64_encode))
+}
+
+pub fn do_base64_encode(term, rev, env, k) {
+  use unencoded <- cast.require(cast.string(term), rev, env, k)
+  r.prim(
+    r.Value(r.Binary(io.debug(base.encode64(
+      bit_string.from_string(unencoded),
+      True,
+    )))),
+    rev,
+    env,
+    k,
+  )
 }
