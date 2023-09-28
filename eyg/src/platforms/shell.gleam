@@ -34,10 +34,12 @@ fn handlers() {
   |> effect.extend("Serve", http.serve())
   |> effect.extend("StopServer", http.stop_server())
   |> effect.extend("Receive", http.receive())
-  // |> effect.extend("File_Write", file_write())
+  |> effect.extend("File_Write", effect.file_write())
+  |> effect.extend("File_Read", effect.file_read())
   |> effect.extend("Read_Source", effect.read_source())
   |> effect.extend("LoadDB", effect.load_db())
   |> effect.extend("QueryDB", effect.query_db())
+  |> effect.extend("Zip", effect.zip())
 }
 
 pub fn run(source, args) {

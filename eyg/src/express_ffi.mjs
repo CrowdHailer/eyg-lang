@@ -6,7 +6,7 @@ export function serve(port, handler) {
   const app = express();
   app.use(express.raw({ type: "*/*", limit: "1mb" }));
   app.use(async (req, res) => {
-    toResponse(handler(toRequest(req)), res);
+    toResponse(await handler(toRequest(req)), res);
   });
   const server = app.listen(port);
   const id = servers.length;

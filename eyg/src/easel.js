@@ -3,9 +3,9 @@
 // easel is going to be run only in a given element, probably should look like qwik continuations
 // lots of work on resumable
 // The server from the eyg project moved the build directory
-import * as Easel from "../build/dev/javascript/eyg/easel/embed.mjs";
-import * as Loader from "../build/dev/javascript/eyg/easel/loader.mjs";
-import * as ffi from "../build/dev/javascript/eyg/easel_ffi.js";
+import * as Easel from "./easel/embed.mjs";
+import * as Loader from "./easel/loader.mjs";
+import * as ffi from "./easel_ffi.js";
 
 console.log("starting easel");
 function handleInput(event, state) {

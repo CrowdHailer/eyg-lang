@@ -14,13 +14,14 @@ import eyg/runtime/interpreter as r
 import harness/ffi/cast
 import harness/ffi/env
 import harness/effect
+import harness/stdlib
 
 pub fn serve() {
   #(
     t.Binary,
     t.unit,
     fn(lift, k) {
-      let env = env.empty()
+      let env = stdlib.env()
       let rev = []
       use port <- cast.require(
         cast.field("port", cast.integer, lift),
@@ -39,21 +40,38 @@ pub fn serve() {
           port,
           fn(raw) {
             let req = to_request(raw)
-            let assert r.Value(resp) =
-              r.handle(
-                r.loop(
-                  r.V(r.Value(handler)),
+
+            promise.map(
+              r.flatten_promise(
+                r.handle(
+                  r.loop(
+                    r.V(r.Value(handler)),
+                    [],
+                    env,
+                    Some(r.Kont(r.CallWith(req, rev, env), None)),
+                  ),
                   [],
-                  env,
-                  Some(r.Kont(r.CallWith(req, rev, env), None)),
+                  {
+                    effect.init()
+                    |> effect.extend("Log", effect.debug_logger())
+                    |> effect.extend("HTTP", effect.http())
+                    |> effect.extend("Await", effect.await())
+                    |> effect.extend("Wait", effect.wait())
+                  }.1,
                 ),
-                [],
                 {
                   effect.init()
                   |> effect.extend("Log", effect.debug_logger())
+                  |> effect.extend("HTTP", effect.http())
+                  |> effect.extend("Await", effect.await())
+                  |> effect.extend("Wait", effect.wait())
                 }.1,
-              )
-            from_response(resp)
+              ),
+              fn(resp) {
+                let assert Ok(resp) = resp
+                from_response(resp)
+              },
+            )
           },
         )
       let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
@@ -67,7 +85,7 @@ pub fn stop_server() {
     t.Binary,
     t.unit,
     fn(lift, k) {
-      let env = env.empty()
+      let env = stdlib.env()
       let rev = []
       use id <- cast.require(cast.integer(lift), rev, env, k)
       do_stop(id)
@@ -81,7 +99,7 @@ pub fn receive() {
     t.Binary,
     t.unit,
     fn(lift, k) {
-      let env = env.empty()
+      let env = stdlib.env()
       let rev = []
       use port <- cast.require(
         cast.field("port", cast.integer, lift),
@@ -115,6 +133,9 @@ pub fn receive() {
                 {
                   effect.init()
                   |> effect.extend("Log", effect.debug_logger())
+                  |> effect.extend("HTTP", effect.http())
+                  |> effect.extend("Await", effect.await())
+                  |> effect.extend("Wait", effect.wait())
                 }.1,
               )
             let assert Ok(resp) = r.field(reply, "response")
@@ -207,7 +228,7 @@ fn from_response(response) {
 }
 
 @external(javascript, "../../express_ffi.mjs", "serve")
-fn do_serve(port: Int, handler: fn(RawRequest) -> RawResponse) -> Int
+fn do_serve(port: Int, handler: fn(RawRequest) -> Promise(RawResponse)) -> Int
 
 @external(javascript, "../../express_ffi.mjs", "stopServer")
 fn do_stop(id: Int) -> Nil

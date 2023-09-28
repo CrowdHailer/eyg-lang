@@ -1,17 +1,21 @@
 {
-    "type": "module",
-    "scripts": {
-        "test": "sh bin/test.sh"
-    },
-    "dependencies": {
-        "cors": "^2.8.5",
-        "cozo-lib-wasm": "^0.7.5",
-        "cozo-node": "^0.7.5",
-        "express": "^4.18.2",
-        "open": "^9.1.0"
-    },
-    "devDependencies": {
-        "@rollup/plugin-json": "^6.0.0",
-        "rollup": "^3.10.0"
-    }
+  "type": "module",
+  "scripts": {
+    "prebuild:atelier": "gleam build",
+    "build:atelier": "npx rollup -f iife -i ./build/dev/javascript/eyg/atelier.js -o build/bundle/atelier.js",
+    "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",
+    "build:easel": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "cors": "^2.8.5",
+    "cozo-lib-wasm": "^0.7.5",
+    "cozo-node": "^0.7.5",
+    "express": "^4.18.2",
+    "open": "^9.1.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-json": "^6.0.0",
+    "rollup": "^3.10.0"
+  }
 }

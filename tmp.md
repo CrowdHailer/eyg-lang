@@ -7,7 +7,7 @@ let data (^Await (receive 5000 try_receive))
 
 let s (^Read_Source "./saved/saved.json")
 let db (cozo s)
-(std.string.length db)
+(std.string.length db)  
 
 (^Await (^LoadDB db))
 (^Await (^QueryDB "?[] <- [['hello', 'world!']]"))
@@ -16,8 +16,10 @@ let db (cozo s)
 (let stop (serve 8080 (fn _ (browser.continue (fn _ (^Log "hey"))))))
 
 ## Netlify
-let client (facilities.netlify.auth 1)
-(.status (expect (client.deploy client.scratch [(file "index.html" "Yo") (file "_headers" _headers)])))
+let client (facilities.netlify.auth {})
+(.status (expect (^Await (client.deploy client.scratch [(file "index.html" "Yo!") (file "_headers" "/*.html\n  content-type: text/html")]))))
+weird happenings with _headers
+(file "_headers" _headers)])))
 (.status (expect (client.deploy client.scratch (spa (fn x x)))))
 
 (.status (expect (client.deploy client.scratch [(file "index.html" (app reactive.app)) (file "_headers" _headers)])))

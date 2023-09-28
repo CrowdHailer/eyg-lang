@@ -4,7 +4,6 @@ import plinth/node/process
 import plinth/node/fs
 import eygir/decode
 import platforms/cli
-import platforms/serverless
 import platforms/shell
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -14,7 +13,7 @@ pub fn main() {
   do_main(list.drop(array.to_list(process.argv()), 2))
 }
 
-// exit can't be used on serverless because the run function returns with the server as a promise
+// exit can't be used onfunction returns of as a promise
 // need to await or work off promises
 pub fn do_main(args) {
   let json = fs.read_file_sync("saved/saved.json")
@@ -22,7 +21,6 @@ pub fn do_main(args) {
 
   case args {
     ["cli", ..rest] -> cli.run(source, rest)
-    ["web", ..rest] -> serverless.run(source, rest)
     ["exec", ..rest] -> shell.run(source, rest)
     _ -> {
       io.debug(#("no runner for: ", args))

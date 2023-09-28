@@ -8,6 +8,7 @@ import gleam/string
 import gleam/fetch
 import gleam/http
 import gleam/http/request
+import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{try_await}
 import eyg/analysis/typ as t
 import plinth/browser/window
@@ -148,14 +149,18 @@ pub fn http() {
         env,
         k,
       )
+      // TODO fix binary or string
+      let assert r.Binary(body) = body
 
       let request =
         request.new()
         |> request.set_method(method)
         |> request.set_host(host)
         |> request.set_path(path)
-      // TODO decide on option typing
-      // |> request.set_query(query)
+        // TODO decide on option typing for query
+        // need set query string
+        // |> request.set_query(query)
+        |> request.set_body(body)
 
       let request =
         list.fold(
@@ -289,6 +294,46 @@ pub fn read_source() {
   )
 }
 
+pub fn file_read() {
+  #(
+    t.Binary,
+    t.result(t.Binary, t.unit),
+    fn(file, k) {
+      let env = env.empty()
+      let rev = []
+
+      use file <- cast.require(cast.string(file), rev, env, k)
+      let content = fs.read_file_sync(file)
+      r.prim(r.Value(r.Binary(content)), rev, env, k)
+    },
+  )
+}
+
+pub fn file_write() {
+  #(
+    t.Binary,
+    t.unit,
+    fn(request, k) {
+      let env = env.empty()
+      let rev = []
+      use file <- cast.require(
+        cast.field("file", cast.string, request),
+        rev,
+        env,
+        k,
+      )
+      use content <- cast.require(
+        cast.field("content", cast.string, request),
+        rev,
+        env,
+        k,
+      )
+      fs.write_file_sync(file, content)
+      r.prim(r.Value(r.unit), rev, env, k)
+    },
+  )
+}
+
 @external(javascript, "../cozo_ffi.js", "load")
 fn load(triples: String) -> promise.Promise(Nil)
 
@@ -322,3 +367,40 @@ pub fn query_db() {
     },
   )
 }
+
+// adm-zip is dependency free
+// jszip use packo a port of zlib with other compression
+pub fn zip() {
+  #(
+    t.LinkedList(t.Record(t.Extend(
+      "name",
+      t.Binary,
+      t.Extend("content", t.Binary, t.Open(-1)),
+    ))),
+    t.unit,
+    fn(query, k) {
+      let env = env.empty()
+      let rev = []
+      use items <- cast.require(cast.list(query), rev, env, k)
+      let assert Ok(items) =
+        list.try_map(
+          items,
+          fn(value) {
+            use name <- result.then(r.field(value, "name"))
+            let assert r.Binary(name) = name
+            use content <- result.then(r.field(value, "content"))
+            let assert r.Binary(content) = content
+
+            Ok(#(name, content))
+          },
+        )
+
+      let zipped = do_zip(array.from_list(items))
+
+      r.prim(r.Value(r.Binary(zipped)), rev, env, k)
+    },
+  )
+}
+
+@external(javascript, "../zip_ffi.js", "zip")
+fn do_zip(items: Array(#(String, String))) -> String

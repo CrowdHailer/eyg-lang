@@ -18,7 +18,7 @@ fn handlers() {
   |> effect.extend("HTTP", effect.http())
   |> effect.extend("Await", effect.await())
   |> effect.extend("Wait", effect.wait())
-  |> effect.extend("File_Write", file_write())
+  |> effect.extend("File_Write", effect.file_write())
   |> effect.extend("Read_Source", effect.read_source())
 }
 
@@ -60,31 +60,4 @@ pub fn run(source, args) {
   code
   |> process.exit()
   promise.resolve(code)
-}
-
-fn file_write() {
-  #(
-    t.Binary,
-    t.unit,
-    fn(request, k) {
-      let env = env.empty()
-      let rev = []
-      use file <- cast.require(
-        cast.field("file", cast.string, request),
-        rev,
-        env,
-        k,
-      )
-      use content <- cast.require(
-        cast.field("content", cast.string, request),
-        rev,
-        env,
-        k,
-      )
-      io.debug(file)
-      fs.write_file_sync(file, content)
-      |> io.debug
-      r.prim(r.Value(r.unit), rev, env, k)
-    },
-  )
 }
