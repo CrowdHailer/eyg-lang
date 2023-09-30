@@ -13,6 +13,8 @@ let db (cozo s)
 (^Await (^LoadDB db))
 (^Await (^QueryDB "?[] <- [['hello', 'world!']]"))
 (^Await (^QueryDB "?[label] := *eav[id, 'label', label], *eav[id, 'expression', 'Let'],"))
+(^Await (^QueryDB "?[id, comment] := *eav[id, 'comment', comment], *eav[id, 'expression', 'Vacant'],"))
+(^Await (^QueryDB "?[id] := *eav[id, a, attr], *eav[id, 'expression', 'Vacant'],"))
 
 (let stop (serve 8080 (fn _ (browser.continue (fn _ (^Log "hey"))))))
 
