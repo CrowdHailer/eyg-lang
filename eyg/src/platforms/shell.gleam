@@ -51,15 +51,21 @@ pub fn run(source, args) {
     ))
   let assert r.Value(parser) =
     r.handle(r.eval(source, env, k_parser), map.new(), handlers().1)
-  let parser = fn(raw) {
-    let k = Some(r.Kont(r.CallWith(r.Binary(raw), [], env), None))
-    let assert r.Value(r.Tagged(tag, value)) =
-      r.loop(r.V(r.Value(parser)), [], env, k)
-    case tag {
-      "Ok" -> r.field(value, "value")
-      "Error" -> {
-        console.log(value)
-        todo as "error"
+  let parser = fn(prompt) {
+    fn(raw) {
+      let k =
+        Some(r.Kont(
+          r.CallWith(r.Binary(prompt), [], env),
+          Some(r.Kont(r.CallWith(r.Binary(raw), [], env), None)),
+        ))
+      let assert r.Value(r.Tagged(tag, value)) =
+        r.loop(r.V(r.Value(parser)), [], env, k)
+      case tag {
+        "Ok" -> r.field(value, "value")
+        "Error" -> {
+          console.log(value)
+          todo as "error"
+        }
       }
     }
   }
@@ -69,44 +75,40 @@ pub fn run(source, args) {
       r.Apply(r.Defunc(r.Select("exec"), []), [], env),
       Some(r.Kont(r.CallWith(r.Record([]), [], env), None)),
     ))
-  let assert r.Abort(reason, _rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Prompt", prompt), _rev, env, k) =
     r.handle(r.eval(source, env, k), map.new(), handlers().1)
-  // console.log(reason)
 
-  // loop_till
-  // needs a different value for handler
-  // handler doesn't need builtins
-  // Async doesn't rev,e,k if passed in normal stop
-  // eval_async pass in handler
-  // prompt fn would need to call returned value from prompt effect if using
-  // need term-> code
+  let assert r.Binary(prompt) = prompt
 
   let rl = create_interface(fn(_) { #([], "") })
-  use status <- promise.await(read(rl, parser, env, k))
+  use status <- promise.await(read(rl, parser, env, k, prompt))
   close(rl)
   promise.resolve(status)
 }
 
-fn read(rl, parser, env, k) {
-  use answer <- promise.await(question(rl, "> "))
-  let assert Ok(r.LinkedList(cmd)) = parser(answer)
+fn read(rl, parser, env, k, prompt) {
+  use answer <- promise.await(question(rl, prompt))
+  let assert Ok(r.LinkedList(cmd)) = parser(prompt)(answer)
   let assert Ok(code) = core.language_to_expression(cmd)
   case code == e.Empty {
     True -> promise.resolve(0)
     False -> {
       use ret <- promise.await(r.eval_async(code, env, handlers().1))
-      let env = case ret {
+      let #(env, prompt) = case ret {
         Ok(value) -> {
           console.log(r.to_string(value))
-          env
+          #(env, prompt)
         }
-        Error(#(r.UnhandledEffect("Prompt", _lift), _rev, env)) -> env
+        Error(#(r.UnhandledEffect("Prompt", lift), _rev, env)) -> {
+          let assert r.Binary(prompt) = lift
+          #(env, prompt)
+        }
         Error(other) -> {
           console.log(other)
-          env
+          #(env, prompt)
         }
       }
-      read(rl, parser, env, k)
+      read(rl, parser, env, k, prompt)
     }
   }
 }
