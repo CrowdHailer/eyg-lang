@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/list
 import plinth/node/process
-import plinth/node/fs
+import simplifile
 import eygir/decode
 import platforms/cli
 import platforms/shell
@@ -16,7 +16,7 @@ pub fn main() {
 // exit can't be used onfunction returns of as a promise
 // need to await or work off promises
 pub fn do_main(args) {
-  let json = fs.read_file_sync("saved/saved.json")
+  let assert Ok(json) = simplifile.read("saved/saved.json")
   let assert Ok(source) = decode.from_json(json)
 
   case args {

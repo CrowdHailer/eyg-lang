@@ -10,13 +10,13 @@ import gleam/http
 import gleam/http/request
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{try_await}
+import simplifile
 import eyg/analysis/typ as t
 import plinth/browser/window
 import plinth/javascript/promisex
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 import harness/ffi/env
-import plinth/node/fs
 import eygir/decode
 import harness/ffi/core
 
@@ -279,16 +279,19 @@ pub fn read_source() {
       let rev = []
 
       use file <- cast.require(cast.string(file), rev, env, k)
-      let json = fs.read_file_sync(file)
-      case decode.from_json(json) {
-        Ok(exp) ->
-          r.prim(
-            r.Value(r.LinkedList(core.expression_to_language(exp))),
-            rev,
-            env,
-            k,
-          )
-        Error(_) -> r.prim(r.Value(r.unit), rev, env, k)
+      case simplifile.read(file) {
+        Ok(json) ->
+          case decode.from_json(json) {
+            Ok(exp) ->
+              r.prim(
+                r.Value(r.ok(r.LinkedList(core.expression_to_language(exp)))),
+                rev,
+                env,
+                k,
+              )
+            Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
+          }
+        Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
       }
     },
   )
@@ -303,8 +306,10 @@ pub fn file_read() {
       let rev = []
 
       use file <- cast.require(cast.string(file), rev, env, k)
-      let content = fs.read_file_sync(file)
-      r.prim(r.Value(r.Binary(content)), rev, env, k)
+      case simplifile.read(file) {
+        Ok(content) -> r.prim(r.Value(r.ok(r.Binary(content))), rev, env, k)
+        Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
+      }
     },
   )
 }
@@ -328,7 +333,7 @@ pub fn file_write() {
         env,
         k,
       )
-      fs.write_file_sync(file, content)
+      let assert Ok(_) = simplifile.write(content, file)
       r.prim(r.Value(r.unit), rev, env, k)
     },
   )
