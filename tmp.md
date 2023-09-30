@@ -58,4 +58,3 @@ To: some@one.com
 Content-Type: text/html; charset=utf-8
 
 hello there
-
