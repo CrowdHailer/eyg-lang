@@ -59,6 +59,26 @@ pub fn do_lowercase(value, rev, env, k) {
   r.prim(r.Value(r.Binary(string.lowercase(value))), rev, env, k)
 }
 
+pub fn ends_with() {
+  let type_ =
+    t.Fun(
+      t.Binary,
+      t.Open(0),
+      t.Fun(t.Binary, t.Open(1), t.result(t.Binary, t.unit)),
+    )
+  #(type_, r.Arity2(do_ends_with))
+}
+
+pub fn do_ends_with(value, suffix, rev, env, k) {
+  use value <- cast.require(cast.string(value), rev, env, k)
+  use suffix <- cast.require(cast.string(suffix), rev, env, k)
+  let ret = case string.split_once(value, suffix) {
+    Ok(#(pre, "")) -> r.ok(r.Binary(pre))
+    _ -> r.error(r.unit)
+  }
+  r.prim(r.Value(ret), rev, env, k)
+}
+
 pub fn length() {
   let type_ = t.Fun(t.Binary, t.Open(0), t.Integer)
   #(type_, r.Arity1(do_length))

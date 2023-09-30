@@ -106,6 +106,7 @@ pub fn lib() {
   |> extend("string_replace", string.replace())
   |> extend("string_uppercase", string.uppercase())
   |> extend("string_lowercase", string.lowercase())
+  |> extend("string_ends_with", string.ends_with())
   |> extend("string_length", string.length())
   |> extend("pop_grapheme", string.pop_grapheme())
   // list
