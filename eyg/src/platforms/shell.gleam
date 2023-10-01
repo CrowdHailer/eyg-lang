@@ -1,3 +1,4 @@
+import gleam/dynamic
 import gleam/io
 import gleam/int
 import gleam/list
@@ -8,6 +9,7 @@ import gleam/javascript/promise
 import eyg/runtime/interpreter as r
 import harness/stdlib
 import plinth/javascript/console
+import gleam/json
 import gleam/javascript/array
 import eygir/expression as e
 import harness/effect
@@ -152,38 +154,78 @@ fn print(value) {
             #(headers, rows_rev)
           },
         )
+
       let rows = list.reverse(rows_rev)
-      let rows =
-        list.map(
+      print_rows_and_headers(headers, rows)
+    }
+    r.Binary("{\"headers\":[" <> _ as encoded) -> {
+      let decoder =
+        dynamic.decode2(
+          fn(a, b) { #(a, b) },
+          dynamic.field("headers", dynamic.list(dynamic.string)),
+          dynamic.field("rows", dynamic.list(dynamic.list(Ok))),
+        )
+      // TODO move to cozo lib
+      let assert Ok(#(headers, rows)) = json.decode(encoded, decoder)
+      let headers = list.map(headers, fn(h) { #(h, string.length(h)) })
+
+      let #(headers, rows_rev) =
+        list.fold(
           rows,
-          fn(row) {
+          #(headers, []),
+          fn(acc, row) {
+            let #(headers, rows_rev) = acc
             let assert Ok(row) = list.strict_zip(headers, row)
-            let row =
+            let #(headers, row) =
               list.map(
                 row,
-                fn(part) {
-                  let #(#(_, size), value) = part
-                  string.pad_right(value, size, " ")
+                fn(r) {
+                  let #(#(key, size), value) = r
+                  let value = string.inspect(value)
+                  let size = int.max(size, string.length(value))
+                  #(#(key, size), value)
                 },
               )
-              |> string.join(" | ")
-            string.concat(["| ", row, " |"])
+              |> list.unzip()
+            #(headers, [row, ..rows_rev])
           },
         )
-      let headers =
-        list.map(
-          headers,
-          fn(h) {
-            let #(k, size) = h
-            string.pad_right(k, size, " ")
-          },
-        )
-        |> string.join(" | ")
-      let headers = string.concat(["| ", headers, " |"])
-      io.println(headers)
-      list.map(rows, io.println)
-      Nil
+      let rows = list.reverse(rows_rev)
+      print_rows_and_headers(headers, rows)
     }
     _ -> io.println(r.to_string(value))
   }
+}
+
+fn print_rows_and_headers(headers, rows) -> Nil {
+  let rows =
+    list.map(
+      rows,
+      fn(row) {
+        let assert Ok(row) = list.strict_zip(headers, row)
+        let row =
+          list.map(
+            row,
+            fn(part) {
+              let #(#(_, size), value) = part
+              string.pad_right(value, size, " ")
+            },
+          )
+          |> string.join(" | ")
+        string.concat(["| ", row, " |"])
+      },
+    )
+  let headers =
+    list.map(
+      headers,
+      fn(h) {
+        let #(k, size) = h
+        string.pad_right(k, size, " ")
+      },
+    )
+    |> string.join(" | ")
+  let headers = string.concat(["| ", headers, " |"])
+  io.println(headers)
+  list.map(rows, io.println)
+  Nil
 }

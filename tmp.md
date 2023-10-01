@@ -7,7 +7,7 @@ let stop (serve 5000 (static (projects.website.build "")))
 ## DB AST
 
 let s (^Read_Source "./saved/saved.json")
-let db (cozo s)
+let db (cozo.ast s)
 (std.string.length db)  
 
 (^Await (^LoadDB db))
@@ -15,6 +15,9 @@ let db (cozo s)
 (^Await (^QueryDB "?[label] := *eav[id, 'label', label], *eav[id, 'expression', 'Let'],"))
 (^Await (^QueryDB "?[id, comment] := *eav[id, 'comment', comment], *eav[id, 'expression', 'Vacant'],"))
 (^Await (^QueryDB "?[id] := *eav[id, a, attr], *eav[id, 'expression', 'Vacant'],"))
+
+(^Await (^LoadDB (cozo.ast (std.capture file))))
+(^Await (^QueryDB "?[id, attr] := *eav[id, 'label', attr], *eav[id, 'expression', 'Lambda'],"))
 
 (let stop (serve 8080 (fn _ (browser.continue (fn _ (^Log "hey"))))))
 
