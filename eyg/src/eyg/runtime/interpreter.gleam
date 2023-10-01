@@ -215,8 +215,8 @@ pub fn reason_to_string(reason) {
       string.concat(["function expected got: ", to_string(term)])
     UnhandledEffect("Abort", reason) ->
       string.concat(["Aborted with reason: ", to_string(reason)])
-    UnhandledEffect(effect, _with) ->
-      string.concat(["unhandled effect ", effect])
+    UnhandledEffect(effect, lift) ->
+      string.concat(["unhandled effect ", effect, "(", to_string(lift), ")"])
     Vacant(note) -> string.concat(["tried to run a todo: ", note])
   }
 }
