@@ -11,7 +11,7 @@ pub type Failure {
   NotAFunction(Term)
   UndefinedVariable(String)
   Vacant(comment: String)
-  NoMatch
+  NoMatch(term: Term)
   UnhandledEffect(String, Term)
   IncorrectTerm(expected: String, got: Term)
   MissingField(String)
@@ -210,7 +210,7 @@ pub fn reason_to_string(reason) {
         to_string(got),
       ])
     MissingField(field) -> string.concat(["missing record field: ", field])
-    NoMatch -> string.concat(["no cases matched"])
+    NoMatch(term) -> string.concat(["no cases matched for: ", to_string(term)])
     NotAFunction(term) ->
       string.concat(["function expected got: ", to_string(term)])
     UnhandledEffect("Abort", reason) ->
@@ -275,7 +275,7 @@ pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
         Tag(label), [] -> prim(Value(Tagged(label, arg)), rev, env, k)
         Match(label), [branch, rest] ->
           match(label, branch, rest, arg, rev, env, k)
-        NoCases, [] -> prim(Abort(NoMatch, rev, env, k), rev, env, k)
+        NoCases, [] -> prim(Abort(NoMatch(arg), rev, env, k), rev, env, k)
         // env is part of k
         Perform(label), [] -> perform(label, arg, rev, env, k)
         Handle(label), [handler] -> deep(label, handler, arg, rev, env, k)

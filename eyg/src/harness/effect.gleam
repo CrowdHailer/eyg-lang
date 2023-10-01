@@ -152,6 +152,7 @@ pub fn http() {
       // TODO fix binary or string
       let assert r.Binary(body) = body
 
+      io.debug(query)
       let request =
         request.new()
         |> request.set_method(method)
