@@ -199,6 +199,28 @@ fn field_to_string(field) {
   string.concat([k, ": ", to_string(v)])
 }
 
+pub fn reason_to_string(reason) {
+  case reason {
+    UndefinedVariable(var) -> string.append("variable undefined: ", var)
+    IncorrectTerm(expected, got) ->
+      string.concat([
+        "unexpected term, expected: ",
+        expected,
+        " got: ",
+        to_string(got),
+      ])
+    MissingField(field) -> string.concat(["missing record field: ", field])
+    NoMatch -> string.concat(["no cases matched"])
+    NotAFunction(term) ->
+      string.concat(["function expected got: ", to_string(term)])
+    UnhandledEffect("Abort", reason) ->
+      string.concat(["Aborted with reason: ", to_string(reason)])
+    UnhandledEffect(effect, _with) ->
+      string.concat(["unhandled effect ", effect])
+    Vacant(note) -> string.concat(["tried to run a todo: ", note])
+  }
+}
+
 pub fn field(term, field) {
   case term {
     Record(fields) ->

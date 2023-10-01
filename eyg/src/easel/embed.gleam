@@ -933,25 +933,7 @@ fn run(state: Embed) {
 }
 
 fn reason_to_string(reason) {
-  case reason {
-    r.UndefinedVariable(var) -> string.append("variable undefined: ", var)
-    r.IncorrectTerm(expected, got) ->
-      string.concat([
-        "unexpected term, expected: ",
-        expected,
-        " got: ",
-        term_to_string(got),
-      ])
-    r.MissingField(field) -> string.concat(["missing record field: ", field])
-    r.NoMatch -> string.concat(["no cases matched"])
-    r.NotAFunction(term) ->
-      string.concat(["function expected got: ", term_to_string(term)])
-    r.UnhandledEffect("Abort", reason) ->
-      string.concat(["Aborted with reason: ", term_to_string(reason)])
-    r.UnhandledEffect(effect, _with) ->
-      string.concat(["unhandled effect ", effect])
-    r.Vacant(note) -> string.concat(["tried to run a todo: ", note])
-  }
+  r.reason_to_string(reason)
 }
 
 fn term_to_string(term) {

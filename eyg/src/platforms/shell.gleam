@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/map
 import gleam/option.{None, Some}
+import gleam/string
 import gleam/javascript/promise
 import eyg/runtime/interpreter as r
 import harness/stdlib
@@ -103,8 +104,8 @@ fn read(rl, parser, env, k, prompt) {
           let assert r.Binary(prompt) = lift
           #(env, prompt)
         }
-        Error(other) -> {
-          console.log(other)
+        Error(#(reason, _rev, _env)) -> {
+          console.log(string.concat(["!! ", r.reason_to_string(reason)]))
           #(env, prompt)
         }
       }
