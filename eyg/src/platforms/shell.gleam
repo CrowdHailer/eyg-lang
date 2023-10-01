@@ -1,4 +1,6 @@
 import gleam/io
+import gleam/int
+import gleam/list
 import gleam/map
 import gleam/option.{None, Some}
 import gleam/string
@@ -97,7 +99,7 @@ fn read(rl, parser, env, k, prompt) {
       use ret <- promise.await(r.eval_async(code, env, handlers().1))
       let #(env, prompt) = case ret {
         Ok(value) -> {
-          console.log(r.to_string(value))
+          print(value)
           #(env, prompt)
         }
         Error(#(r.UnhandledEffect("Prompt", lift), _rev, env)) -> {
@@ -111,5 +113,77 @@ fn read(rl, parser, env, k, prompt) {
       }
       read(rl, parser, env, k, prompt)
     }
+  }
+}
+
+fn print(value) {
+  case value {
+    r.LinkedList([r.Record(fields), ..] as records) -> {
+      let headers =
+        list.map(
+          fields,
+          fn(field) {
+            let #(key, _value) = field
+            #(key, string.length(key))
+          },
+        )
+
+      let #(headers, rows_rev) =
+        list.fold(
+          records,
+          #(headers, []),
+          fn(acc, rec) {
+            let #(headers, rows_rev) = acc
+            let #(reversed_col, headers) =
+              list.map_fold(
+                headers,
+                [],
+                fn(acc, header) {
+                  let #(key, size) = header
+                  let assert Ok(value) = r.field(rec, key)
+                  let value = r.to_string(value)
+                  let size = int.max(size, string.length(value))
+                  let header = #(key, size)
+                  let acc = [value, ..acc]
+                  #(acc, header)
+                },
+              )
+            let rows_rev = [list.reverse(reversed_col), ..rows_rev]
+            #(headers, rows_rev)
+          },
+        )
+      let rows = list.reverse(rows_rev)
+      let rows =
+        list.map(
+          rows,
+          fn(row) {
+            let assert Ok(row) = list.strict_zip(headers, row)
+            let row =
+              list.map(
+                row,
+                fn(part) {
+                  let #(#(_, size), value) = part
+                  string.pad_right(value, size, " ")
+                },
+              )
+              |> string.join(" | ")
+            string.concat(["| ", row, " |"])
+          },
+        )
+      let headers =
+        list.map(
+          headers,
+          fn(h) {
+            let #(k, size) = h
+            string.pad_right(k, size, " ")
+          },
+        )
+        |> string.join(" | ")
+      let headers = string.concat(["| ", headers, " |"])
+      io.println(headers)
+      list.map(rows, io.println)
+      Nil
+    }
+    _ -> io.println(r.to_string(value))
   }
 }

@@ -32,8 +32,11 @@ let client (facilities.fly.auth "local")
 (^Await (client.update_machine facilities.fly.app facilities.fly.machine (fn _ "Yo")))
 (client.update_machine facilities.fly.app facilities.fly.machine (fn _ (app simple)))
 
-
+## DNSimple 
 (facilities.dnsimple.auth 1)
+let client (facilities.dnsimple.auth {})
+(expect (client.records dnsimple_me "petersaxton.uk"))
+
 
 ((fn x ((fn _ x.request) (x.reply "hello"))) (expect (^Await (^Receive 8080))))
 
