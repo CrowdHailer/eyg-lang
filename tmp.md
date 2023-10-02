@@ -3,6 +3,7 @@ let stop (serve 5000 (fn request (let _ (^Log request.path) (std.http.ok (std.ht
 
 let data (^Await (receive 5000 try_receive))
 let stop (serve 5000 (static (projects.website.build "")))
+let stop (serve 5000 (multi_tenent [{key "localhost:5000" value projects.laura}]))
 
 ## DB AST
 

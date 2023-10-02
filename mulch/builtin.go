@@ -214,19 +214,25 @@ func equal(v1, v2 Value) bool {
 	// }
 }
 
+var true_ = &Tag{"True", &Empty{}}
+var false_ = &Tag{"False", &Empty{}}
+
 var builtins = map[string]Impl{
 	"equal": &Arity2{impl: func(v1, v2 Value, e E, k K) (C, E, K) {
 		// Is there a nice way to do equality
 		if equal(v1, v2) {
-			return &Tag{"True", &Empty{}}, e, k
+			return true_, e, k
 		}
-		return &Tag{"False", &Empty{}}, e, k
+		return false_, e, k
 	}},
 	"debug": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		return &String{v.Debug()}, e, k
 	}},
 	"fix": &Arity1{Impl: func(builder Value, e E, k K) (C, E, K) {
 		return builder.call(fixed(builder), e, k)
+	}},
+	"fixed": &Arity2{impl: func(builder, arg Value, e E, k K) (C, E, K) {
+		return builder.call(fixed(builder), e, &Stack{&CallWith{arg}, k})
 	}},
 	"eval": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		source, _ := language_to_tree(v)
@@ -303,6 +309,13 @@ var builtins = map[string]Impl{
 		}
 		return &String{strings.ToUpper(s.Value)}, e, k
 	}},
+	"string_length": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
+		s, ok := v.(*String)
+		if !ok {
+			return &Error{&NotAString{v}}, e, k
+		}
+		return &Integer{int32(len(s.Value))}, e, k
+	}},
 	"string_lowercase": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {
 		s, ok := v.(*String)
 		if !ok {
@@ -356,6 +369,21 @@ var builtins = map[string]Impl{
 		}
 		updated := strings.ReplaceAll(s.Value, p.Value, w.Value)
 		return &String{Value: updated}, e, k
+	}},
+	"string_ends_with": &Arity2{impl: func(str, pattern Value, e E, k K) (C, E, K) {
+		s, ok := str.(*String)
+		if !ok {
+			return &Error{&NotAString{str}}, e, k
+		}
+		p, ok := pattern.(*String)
+		if !ok {
+			return &Error{&NotAString{pattern}}, e, k
+		}
+
+		if strings.HasSuffix(s.Value, p.Value) {
+			return true_, e, k
+		}
+		return false_, e, k
 	}},
 	"pop_grapheme": &Arity1{Impl: popGrapheme},
 	"base64_encode": &Arity1{Impl: func(v Value, e E, k K) (C, E, K) {

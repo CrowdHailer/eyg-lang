@@ -3,6 +3,7 @@ import gleam/base
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string as gleam_string
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
@@ -74,6 +75,24 @@ pub fn fixed() {
       )
     }),
   )
+  //   #(
+  //   t.Unbound(0),
+  //   r.Arity1(fn(builder, rev, env, k) {
+  //     r.step_call(
+  //       builder,
+  //       // always pass a reference to itself
+  //       r.Defunc(r.Builtin("fixed"), [builder]),
+  //       rev,
+  //       env,
+  //       // fn(partial) {
+  //       //   let #(c, rev, e, k) = r.step_call(partial, arg, rev, env, k)
+  //       //   r.K(c, rev, e, k)
+  //       // },
+  //       // Some(r.Kont(r.CallWith(arg, rev, env), k)),
+  //       k
+  //     )
+  //   }),
+  // )
 }
 
 pub fn eval() {
@@ -337,10 +356,11 @@ pub fn base64_encode() {
 pub fn do_base64_encode(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
   r.prim(
-    r.Value(r.Binary(io.debug(base.encode64(
-      bit_string.from_string(unencoded),
-      True,
-    )))),
+    r.Value(r.Binary(gleam_string.replace(
+      base.encode64(bit_string.from_string(unencoded), True),
+      "\r\n",
+      "",
+    ))),
     rev,
     env,
     k,
