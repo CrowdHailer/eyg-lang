@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "serve": " sirv . --dev --host 0.0.0.0 --port 5000"
+  },
+  "devDependencies": {
+    "sirv-cli": "^2.0.2"
+  }
+}
