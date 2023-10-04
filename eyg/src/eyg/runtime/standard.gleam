@@ -1,7 +1,6 @@
 import eyg/analysis/inference
 import eyg/analysis/typ as t
 import harness/stdlib
-import platforms/cli
 
 pub fn web() {
   t.Fun(
@@ -76,7 +75,7 @@ pub fn infer(prog) {
   inference.infer(
     stdlib.lib().0,
     prog,
-    t.Record(t.Extend("cli", cli.typ(), t.Extend("web", web(), t.Closed))),
+    t.Record(t.Extend("web", web(), t.Closed)),
     t.Closed,
   )
 }

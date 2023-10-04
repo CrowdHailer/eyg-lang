@@ -55,8 +55,6 @@ pub fn init(source) {
 }
 
 fn do_infer(source) {
-  // let required = t.Record(t.RowExtend("cli", t.Var(-123), t.Var(-998)))
-  // t.RowExtend("web", t.Var(-298), t.Empty),
   //  real types should be used here if this editor is salvaged
   let required = t.Var(-1)
   let #(state, _envs) = tree.infer(source, required, t.Var(-2))

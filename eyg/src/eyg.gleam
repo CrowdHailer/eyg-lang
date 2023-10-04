@@ -3,7 +3,6 @@ import gleam/list
 import plinth/node/process
 import simplifile
 import eygir/decode
-import platforms/cli
 import platforms/shell
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -20,7 +19,6 @@ pub fn do_main(args) {
   let assert Ok(source) = decode.from_json(json)
 
   case args {
-    ["cli", ..rest] -> cli.run(source, rest)
     ["exec", ..rest] -> shell.run(source, rest)
     _ -> {
       io.debug(#("no runner for: ", args))
