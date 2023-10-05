@@ -359,7 +359,7 @@ pub fn loop(c, p, e, k) {
   }
 }
 
-fn loop_till(c, p, e, k) {
+pub fn loop_till(c, p, e, k) {
   case step(c, p, e, k) {
     K(c, p, e, k) -> loop_till(c, p, e, k)
     Done(return) -> {
