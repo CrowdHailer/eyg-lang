@@ -7,8 +7,8 @@ import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/javascript/console
-import plinth/browser/document
-import plinth/javascript/promisex
+import old_plinth/browser/document
+import old_plinth/javascript/promisex
 import eygir/expression as e
 import eygir/decode
 

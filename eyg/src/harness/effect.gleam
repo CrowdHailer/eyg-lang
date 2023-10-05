@@ -12,8 +12,8 @@ import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{try_await}
 import simplifile
 import eyg/analysis/typ as t
-import plinth/browser/window
-import plinth/javascript/promisex
+import old_plinth/browser/window
+import old_plinth/javascript/promisex
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
 import harness/ffi/env

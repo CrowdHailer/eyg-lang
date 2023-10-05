@@ -5,6 +5,9 @@ let data (^Await (receive 5000 try_receive))
 let stop (serve 5000 (static (projects.website.build "")))
 let stop (serve 5000 (multi_tenent [{key "localhost:5000" value projects.laura}]))
 
+
+let stop (serve 5000 ctrl.serve)
+
 ## DB AST
 
 let s (^Read_Source "./saved/saved.json")
@@ -20,7 +23,6 @@ let db (cozo.ast s)
 (^Await (^LoadDB (cozo.ast (std.capture file))))
 (^Await (^QueryDB "?[id, attr] := *eav[id, 'label', attr], *eav[id, 'expression', 'Lambda'],"))
 
-(let stop (serve 8080 (fn _ (browser.continue (fn _ (^Log "hey"))))))
 
 ## Netlify
 let client (facilities.netlify.auth {})

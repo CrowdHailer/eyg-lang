@@ -6,7 +6,7 @@ import gleam/option.{None}
 import gleam/string
 import gleam/javascript/array
 import gleam/javascript
-import plinth/browser/document
+import old_plinth/browser/document
 import easel/embed
 import eygir/decode
 import harness/ffi/cast

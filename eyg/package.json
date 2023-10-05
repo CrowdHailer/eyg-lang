@@ -4,7 +4,8 @@
     "prebuild:atelier": "gleam build",
     "build:atelier": "npx rollup -f iife -i ./build/dev/javascript/eyg/atelier.js -o build/bundle/atelier.js",
     "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",
-    "build:easel": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js"
+    "build:easel": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js",
+    "build:resume": "npx rollup -f iife -i ./build/dev/javascript/eyg/resume.js -o build/bundle/resume.js"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

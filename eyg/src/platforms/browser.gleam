@@ -3,15 +3,15 @@ import gleam/list
 import gleam/map
 import gleam/option.{None, Some}
 import eygir/decode
-import plinth/browser/window
-import plinth/browser/document
+import old_plinth/browser/window
+import old_plinth/browser/document
 import eyg/runtime/interpreter as r
 import eyg/analysis/typ as t
 import harness/effect
 import harness/stdlib
 import gleam/javascript/array
 import gleam/javascript/promise
-import plinth/javascript/promisex
+import old_plinth/javascript/promisex
 import harness/ffi/cast
 import harness/ffi/env
 import eygir/expression as e

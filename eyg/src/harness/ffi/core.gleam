@@ -14,7 +14,7 @@ import harness/env.{extend, init}
 import harness/ffi/integer
 import harness/ffi/linked_list
 import harness/ffi/string
-import plinth/browser/window
+import old_plinth/browser/window
 
 pub fn equal() {
   let type_ =

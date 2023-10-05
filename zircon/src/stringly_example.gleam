@@ -1,5 +1,5 @@
-import plinth/browser/document
-import plinth/browser/element
+import old_plinth/browser/document
+import old_plinth/browser/element
 import stringly as h
 
 fn page(x) {

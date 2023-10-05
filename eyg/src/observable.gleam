@@ -4,8 +4,8 @@ import gleam/option.{None, Option, Some}
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
-import plinth/browser/document
-import plinth/javascript/promisex
+import old_plinth/browser/document
+import old_plinth/javascript/promisex
 
 // I think these are observable not signals because subscription rather than get in a call
 

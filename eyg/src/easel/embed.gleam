@@ -22,8 +22,8 @@ import atelier/view/type_
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
-import plinth/browser/window
-import plinth/browser/document
+import old_plinth/browser/window
+import old_plinth/browser/document
 import platforms/browser
 
 // TODO remove last run information when moving cursor

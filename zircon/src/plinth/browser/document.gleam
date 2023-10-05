@@ -1,5 +1,5 @@
 import gleam/javascript/array.{Array}
-import plinth/browser/element.{Element}
+import old_plinth/browser/element.{Element}
 
 @external(javascript, "../../document_ffi.mjs", "querySelector")
 pub fn query_selector(selector: String) -> Result(Element, Nil)
