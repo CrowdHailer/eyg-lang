@@ -136,7 +136,7 @@ func (value *Extend) Extend(label string, item Value) Record {
 	return &Extend{Label: label, item: item, rest: value}
 }
 
-func field(value Value, f string) (Value, bool) {
+func Field(value Value, f string) (Value, bool) {
 	record, ok := value.(*Extend)
 	if !ok {
 		return nil, false
@@ -144,5 +144,5 @@ func field(value Value, f string) (Value, bool) {
 	if record.Label == f {
 		return record.item, true
 	}
-	return field(record.rest, f)
+	return Field(record.rest, f)
 }

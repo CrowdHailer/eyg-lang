@@ -20,7 +20,7 @@ func doLog(lift Value) C {
 
 func doHTTP(lift Value) C {
 	// Can I make this less repetitive
-	m, ok := field(lift, "method")
+	m, ok := Field(lift, "method")
 	if !ok {
 		return &Error{&MissingField{"method", lift}}
 	}
@@ -28,7 +28,7 @@ func doHTTP(lift Value) C {
 	if !ok {
 		return &Error{&NotATagged{m}}
 	}
-	h, ok := field(lift, "host")
+	h, ok := Field(lift, "host")
 	if !ok {
 		return &Error{&MissingField{"host", lift}}
 	}
@@ -36,7 +36,7 @@ func doHTTP(lift Value) C {
 	if !ok {
 		return &Error{&NotAString{h}}
 	}
-	p, ok := field(lift, "path")
+	p, ok := Field(lift, "path")
 	if !ok {
 		return &Error{&MissingField{"path", lift}}
 	}
@@ -44,7 +44,7 @@ func doHTTP(lift Value) C {
 	if !ok {
 		return &Error{&NotAString{p}}
 	}
-	q, ok := field(lift, "query")
+	q, ok := Field(lift, "query")
 	if !ok {
 		return &Error{&MissingField{"query", lift}}
 	}
@@ -57,7 +57,7 @@ func doHTTP(lift Value) C {
 	// if !ok {
 	// 	return &Error{&NotAString{q}}
 	// }
-	h, ok = field(lift, "headers")
+	h, ok = Field(lift, "headers")
 	if !ok {
 		return &Error{&MissingField{"headers", lift}}
 	}
@@ -71,7 +71,7 @@ Outer:
 		switch list := h.(type) {
 		case *Cons:
 			item := list.Item
-			k, ok := field(item, "key")
+			k, ok := Field(item, "key")
 			if !ok {
 				return &Error{&MissingField{"key", lift}}
 			}
@@ -79,7 +79,7 @@ Outer:
 			if !ok {
 				return &Error{&NotAString{k}}
 			}
-			v, ok := field(item, "value")
+			v, ok := Field(item, "value")
 			if !ok {
 				return &Error{&MissingField{"value", lift}}
 			}
@@ -98,7 +98,7 @@ Outer:
 			return &Error{&NotAList{h}}
 		}
 	}
-	b, ok := field(lift, "body")
+	b, ok := Field(lift, "body")
 	if !ok {
 		return &Error{&MissingField{"body", lift}}
 	}
@@ -153,7 +153,7 @@ var Standard = map[string]func(Value) C{
 	// httpbin testing
 	"HTTP": doHTTP,
 	"Serve": func(lift Value) C {
-		p, ok := field(lift, "port")
+		p, ok := Field(lift, "port")
 		if !ok {
 			return &Error{&MissingField{"p", lift}}
 		}
@@ -162,7 +162,7 @@ var Standard = map[string]func(Value) C{
 			return &Error{&NotAnInteger{p}}
 		}
 		// fmt.Println(port)
-		h, ok := field(lift, "handler")
+		h, ok := Field(lift, "handler")
 		if !ok {
 			return &Error{&MissingField{"handler", lift}}
 		}
@@ -245,7 +245,7 @@ var Standard = map[string]func(Value) C{
 		buf := new(bytes.Buffer)
 		zipWriter := zip.NewWriter(buf)
 		fail := castList(lift, func(item Value) *Error {
-			n, ok := field(item, "name")
+			n, ok := Field(item, "name")
 			if !ok {
 				return &Error{&MissingField{"name", item}}
 			}
@@ -253,7 +253,7 @@ var Standard = map[string]func(Value) C{
 			if !ok {
 				return &Error{&NotAString{n}}
 			}
-			c, ok := field(item, "content")
+			c, ok := Field(item, "content")
 			if !ok {
 				return &Error{&MissingField{"content", item}}
 			}

@@ -36,10 +36,19 @@ func main() {
 			io.WriteString(w, fail.Reason())
 			return
 		}
-		if body, ok := value.(*mulch.String); ok {
-			io.WriteString(w, body.Value)
-			return
+
+		if b, ok := mulch.Field(value, "body"); ok {
+			if body, ok := b.(*mulch.String); ok {
+				if s, ok := mulch.Field(value, "status"); ok {
+					if status, ok := s.(*mulch.Integer); ok {
+						w.WriteHeader(int(status.Value))
+						io.WriteString(w, body.Value)
+						return
+					}
+				}
+			}
 		}
+		w.WriteHeader(http.StatusInternalServerError)
 		io.WriteString(w, value.Debug())
 	})
 
