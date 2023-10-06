@@ -7,6 +7,7 @@ let stop (serve 5000 (multi_tenent [{key "localhost:5000" value projects.laura}]
 
 
 let stop (serve 5000 ctrl.serve)
+let stop (serve_page 5000 projects.counters)
 
 ## DB AST
 
