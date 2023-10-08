@@ -55,7 +55,7 @@ pub fn run(source, args) {
       Some(r.Kont(r.Apply(r.Defunc(r.Select("prompt"), []), [], env), None)),
     ))
   let assert r.Value(parser) =
-    r.handle(r.eval(source, env, k_parser), map.new(), handlers().1)
+    r.handle(r.eval(source, env, k_parser), handlers().1)
   let parser = fn(prompt) {
     fn(raw) {
       let k =
@@ -81,7 +81,7 @@ pub fn run(source, args) {
       Some(r.Kont(r.CallWith(r.Record([]), [], env), None)),
     ))
   let assert r.Abort(r.UnhandledEffect("Prompt", prompt), _rev, env, k) =
-    r.handle(r.eval(source, env, k), map.new(), handlers().1)
+    r.handle(r.eval(source, env, k), handlers().1)
 
   let assert r.Binary(prompt) = prompt
 

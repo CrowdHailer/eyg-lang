@@ -50,7 +50,6 @@ pub fn serve() {
                     env,
                     Some(r.Kont(r.CallWith(req, rev, env), None)),
                   ),
-                  [],
                   {
                     effect.init()
                     |> effect.extend("Log", effect.debug_logger())
@@ -129,7 +128,6 @@ pub fn receive() {
                   env,
                   Some(r.Kont(r.CallWith(req, rev, env), None)),
                 ),
-                [],
                 {
                   effect.init()
                   |> effect.extend("Log", effect.debug_logger())

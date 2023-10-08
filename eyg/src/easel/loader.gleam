@@ -75,8 +75,7 @@ fn applet(root) {
         let state = javascript.make_reference(arg)
         let render = fn() {
           let current = javascript.dereference(state)
-          let result =
-            r.handle(r.eval_call(func, current, env, None), env, handlers)
+          let result = r.handle(r.eval_call(func, current, env, None), handlers)
           let _ = case result {
             r.Value(r.Binary(page)) -> document.set_html(root, page)
             _ -> {

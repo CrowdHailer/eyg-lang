@@ -24,7 +24,6 @@ pub fn run(source, env, term, extrinsic) {
   case
     handle(
       eval(source, env, Some(Kont(CallWith(term, [], env), None))),
-      env.builtins,
       extrinsic,
     )
   {
@@ -48,7 +47,6 @@ pub fn run_async(source, env, term, extrinsic) {
   let ret =
     handle(
       eval(source, env, Some(Kont(CallWith(term, [], env), None))),
-      env.builtins,
       extrinsic,
     )
   flatten_promise(ret, extrinsic)
@@ -56,7 +54,7 @@ pub fn run_async(source, env, term, extrinsic) {
 
 // not really eval as includes handlers
 pub fn eval_async(source, env, extrinsic) {
-  let ret = handle(eval(source, env, None), env.builtins, extrinsic)
+  let ret = handle(eval(source, env, None), extrinsic)
   flatten_promise(ret, extrinsic)
 }
 
@@ -75,13 +73,13 @@ pub fn flatten_promise(ret, extrinsic) {
         p,
         fn(return) {
           let next = loop(V(Value(return)), rev, env, k)
-          flatten_promise(handle(next, env.builtins, extrinsic), extrinsic)
+          flatten_promise(handle(next, extrinsic), extrinsic)
         },
       )
   }
 }
 
-pub fn handle(return, builtins, extrinsic) {
+pub fn handle(return, extrinsic) {
   case return {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
@@ -91,7 +89,7 @@ pub fn handle(return, builtins, extrinsic) {
           // handler only gets env in captured fn's
           let #(c, rev, e, k) = handler(term, k)
           let return = loop(c, rev, e, k)
-          handle(return, builtins, extrinsic)
+          handle(return, extrinsic)
         }
         Error(Nil) -> Abort(UnhandledEffect(label, term), rev, env, k)
       }

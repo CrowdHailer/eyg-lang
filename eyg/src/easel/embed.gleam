@@ -904,7 +904,7 @@ fn run(state: Embed) {
     |> map.insert("Await", effect.await().2)
     |> map.insert("Async", browser.async().2)
     |> map.insert("Log", effect.debug_logger().2)
-  let ret = r.handle(r.eval(source, env, None), env.builtins, handlers)
+  let ret = r.handle(r.eval(source, env, None), handlers)
   case ret {
     r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
     r.Value(term) -> #(term_to_string(term), [])
