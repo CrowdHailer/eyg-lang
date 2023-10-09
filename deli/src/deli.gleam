@@ -1,90 +1,43 @@
-import gleam/dynamic.{Dynamic}
 import gleam/io
-import gleam/list
-
-// pub type Foo(x) {
-//   Thing(x)
-//   Base(Foo(Nil))
-// }
-
-pub type Ctrl {
-  Pure(Int)
-  Yield(marker: String, op: fn(fn(Int) -> Ctrl) -> Ctrl, cont: fn(Int) -> Ctrl)
-}
-
-fn kcompose(g, f) {
-  fn(x) {
-    f(x)
-    |> bind(g)
-  }
-}
-
-fn bind(ctl, f) -> Ctrl {
-  case ctl {
-    Pure(x) -> f(x)
-    Yield(m, op, cont) -> Yield(m, op, kcompose(f, cont))
-  }
-}
-
-pub fn yield(marker, op) {
-  Yield(marker, op, Pure)
-}
-
-pub fn prompt(marker, action) {
-  mprompt(marker, action())
-}
-
-pub fn mprompt(marker, ctl) {
-  case ctl {
-    Pure(x) -> Pure(x)
-    Yield(m, op, cont) -> {
-      let cont = fn(x) { mprompt(marker, cont(x)) }
-      case marker == m {
-        True -> op(cont)
-        False -> Yield(m, op, cont)
-      }
-    }
-  }
-}
+import deli/ctl
+import deli/mon.{bind, perform, pure}
 
 pub fn main() {
-  run()
+  mon.run({
+    use a <- bind(pure(5))
+    use b <- bind(perform("read", 0))
+    use _ <- bind(perform("log", a))
+    use c <- bind(perform("read", 2))
+
+    pure(a + b + c)
+  })
+  |> io.debug
+
+  mon.run({ bind(pure(5), j1) })
   |> io.debug
   io.println("Hello from deli!")
 }
 
-fn run() {
-  prompt(
-    "read",
-    fn() {
-      use a <- bind(Pure(5))
-      use b <- bind(yield("read", fn(k) { k(2) }))
-      Pure(a + b)
-    },
-  )
+fn j1(a) {
+  // saturated and doesn't escape but not a tail
+  bind(perform("read", 0), fn(x) { j2(a, x) })
 }
 
-// read the paper I just discovered -> write down join point
-// Evv is recursive has own under value in list
-// Code transformation is too not use a yield if that handler is tail recursive
-
-// e has to be a fn taking evidence and returning ctrl
-fn handle(marker, h, e, w) {
-  case e {
-    Pure(x) -> Pure(x)
-    Yield(m, f, k) if m != marker -> Yield(m, f, todo)
-    Yield(m, f, k) -> todo
+fn j1a(a, w) {
+  case perform("read", 0)(w) {
+    mon.Pure(x) -> j2(a, x)(w)
+    mon.Yield(m, op, cont) -> mon.Yield(m, op, fn(x) { bind(j2(a, x), cont) })
   }
 }
 
-fn perform(marker, value, evidence) {
-  let assert Ok(#(_, f)) = list.at(evidence, 0)
-  // f needs to be under reduced evidence
-  Yield(marker, fn(k) { f(value, k) }, fn(x) { Pure(x) })
+fn j2(a, b) {
+  bind(perform("log", a), fn(_) { j3(a, b) })
 }
 
-// cont: fn(r) -> Ctrl(a, r),
+fn j3(a, b) {
+  bind(perform("read", 2), fn(c) { j4(a, b, c) })
+}
 
-fn add(a, b) {
-  Pure(a + b)
+fn j4(a, b, c) {
+  pure(a + b + c)
 }
