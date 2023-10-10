@@ -16,8 +16,8 @@ pub fn integer(term) {
 
 pub fn string(term) {
   case term {
-    r.Binary(value) -> Ok(value)
-    _ -> Error(r.IncorrectTerm("Binary", term))
+    r.Str(value) -> Ok(value)
+    _ -> Error(r.IncorrectTerm("String", term))
   }
 }
 

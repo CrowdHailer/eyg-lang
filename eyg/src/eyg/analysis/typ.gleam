@@ -13,7 +13,7 @@ pub type Row(kind) {
 pub type Term {
   Unbound(Int)
   Integer
-  Binary
+  Str
   LinkedList(Term)
   Fun(Term, Row(#(Term, Term)), Term)
   // Row parameterised by T for effects
@@ -30,7 +30,7 @@ pub type Variable {
 pub fn ftv(typ) {
   case typ {
     Unbound(x) -> setx.singleton(Term(x))
-    Integer | Binary -> set.new()
+    Integer | Str -> set.new()
     LinkedList(element) -> ftv(element)
     Record(row) -> ftv_row(row)
     Union(row) -> ftv_row(row)

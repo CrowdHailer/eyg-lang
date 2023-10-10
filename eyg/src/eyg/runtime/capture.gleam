@@ -22,7 +22,7 @@ pub fn capture(term) {
 fn do_capture(term, env) {
   case term {
     r.Integer(value) -> #(e.Integer(value), env)
-    r.Binary(value) -> #(e.Binary(value), env)
+    r.Str(value) -> #(e.Str(value), env)
     r.LinkedList(items) ->
       list.fold_right(
         items,
@@ -76,7 +76,7 @@ fn do_capture(term, env) {
             // could special rule std by passing in as an argument
             //
             let #(exp, env) = case var {
-              // "std" -> #(e.Binary("I AM STD"), env)
+              // "std" -> #(e.Str("I AM STD"), env)
               _ -> do_capture(term, env)
             }
             case list.key_find(env, var) {

@@ -330,12 +330,12 @@ fn expression_create(exp, var, lambda, apply, let_, integer, binary) {
       }
       #(elements, try_update)
     }
-    e.Binary(value) -> {
+    e.Str(value) -> {
       let #(get, set) = make(value)
       let #(elements, update) = fragment(binary(get))
       let try_update = fn() {
         case exp() {
-          e.Binary(new) -> {
+          e.Str(new) -> {
             set(new)
             Ok(update())
           }
@@ -349,7 +349,7 @@ fn expression_create(exp, var, lambda, apply, let_, integer, binary) {
       let #(elements, _update) = fragment([text(static("unknown"))])
       let try_update = fn() {
         case exp() {
-          // e.Binary(new) -> {
+          // e.Str(new) -> {
           //   set(new)
           //   Ok(update())
           // }

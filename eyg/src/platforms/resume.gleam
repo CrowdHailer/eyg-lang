@@ -23,7 +23,7 @@ fn handle_click(event, states) {
   use key <- result.then(element.get_attribute(target, "on:click"))
   use #(action, env) <- result.then(map.get(states, container))
   // TODO get attribute and multiple sources
-  let k = Some(r.Kont(r.CallWith(r.Binary(key), [], env), None))
+  let k = Some(r.Kont(r.CallWith(r.Str(key), [], env), None))
   let rev = []
   let #(answer, env) = r.loop_till(r.V(action), rev, env, k)
   // console.log(answer)
@@ -32,7 +32,7 @@ fn handle_click(event, states) {
   case term {
     r.Tagged("Ok", return) -> {
       // console.log(r.to_string(return))
-      let assert Ok(r.Binary(content)) = r.field(return, "content")
+      let assert Ok(r.Str(content)) = r.field(return, "content")
       let assert Ok(action) = r.field(return, "action")
       element.set_inner_html(container, content)
       // Need native map because js objects are deep equal true
@@ -107,7 +107,7 @@ pub fn run() {
   //           Ok(target) ->
   //             case element.closest(target, "[r\\:container]") {
   //               Ok(container) -> {
-  //                 let k = Some(r.Kont(r.CallWith(r.Binary("0"), [], env), None))
+  //                 let k = Some(r.Kont(r.CallWith(r.Str("0"), [], env), None))
   //                 let c = javascript.dereference(ref)
   //                 let #(answer, _) = r.loop_till(r.V(c), rev, env, k)
   //                 // console.log(answer)
@@ -116,7 +116,7 @@ pub fn run() {
   //                 case term {
   //                   r.Tagged("Ok", return) -> {
   //                     // console.log(r.to_string(return))
-  //                     let assert Ok(r.Binary(content)) =
+  //                     let assert Ok(r.Str(content)) =
   //                       r.field(return, "content")
   //                     let assert Ok(action) = r.field(return, "action")
   //                     javascript.set_reference(ref, r.Value(action))
@@ -165,13 +165,13 @@ pub fn run() {
   //                 // env needs builtins
   //                 let env = stdlib.env()
   //                 let rev = []
-  //                 let k = Some(r.Kont(r.CallWith(r.Binary("0"), [], env), None))
+  //                 let k = Some(r.Kont(r.CallWith(r.Str("0"), [], env), None))
   //                 let answer = r.eval(source, env, k)
   //                 // console.log(answer)
   //                 let assert r.Value(term) = answer
   //                 // console.log(r.to_string(term))
   //                 case term {
-  //                   r.Tagged("Ok", r.Binary(content)) ->
+  //                   r.Tagged("Ok", r.Str(content)) ->
   //                     element.set_inner_html(container, content)
   //                   _ -> {
   //                     console.log("bad stuff")

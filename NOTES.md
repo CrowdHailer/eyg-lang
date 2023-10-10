@@ -94,7 +94,7 @@ e.g. variables can't be the empty string so no need for a discard or optional ty
 
 - Call All Code program, not code it's made up of a tree. ended up being source. What does unison call it all
 - Call parts of it routines. they are named functions that are returened callable as `bin foo args`
-- PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Binary)
+- PolyType could like in a type.gleam file and be used under t alias t.Generalised(t.Str)
 - write up argument for identity function https://dev.to/rekreanto/why-it-is-impossible-to-write-an-identity-function-in-javascript-and-how-to-do-it-anyway-2j51#section-1
 
       All less important that a cool spreadsheety program
@@ -302,7 +302,6 @@ Raising is simple design descision
 
 ```js
 perform("Log")
-// fn(Binary) -> <Log Binary | e> Nil
 
 fn log(message) {
   perform("Log", message)

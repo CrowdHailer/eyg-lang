@@ -29,7 +29,7 @@ pub fn render_type(typ) {
   case typ {
     t.Unbound(i) -> int.to_string(i)
     t.Integer -> "Integer"
-    t.Binary -> "Binary"
+    t.Str -> "String"
     t.LinkedList(el) -> string.concat(["List(", render_type(el), ")"])
     t.Fun(from, effects, to) ->
       string.concat([
@@ -104,7 +104,7 @@ fn collect_effect(eff, acc) {
 fn do_used_in_type(used, type_) {
   case type_ {
     t.Unbound(i) -> set.insert(used, i)
-    t.Integer | t.Binary -> used
+    t.Integer | t.Str -> used
     t.LinkedList(el) -> do_used_in_type(used, el)
     t.Fun(arg, effect, ret) ->
       used

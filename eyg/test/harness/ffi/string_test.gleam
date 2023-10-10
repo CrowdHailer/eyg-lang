@@ -6,8 +6,7 @@ import gleeunit/should
 
 pub fn string_append_test() {
   let key = "string_append"
-  let source =
-    e.Apply(e.Apply(e.Builtin(key), e.Binary("fizz")), e.Binary("buzz"))
+  let source = e.Apply(e.Apply(e.Builtin(key), e.Str("fizz")), e.Str("buzz"))
   r.eval(source, stdlib.env(), None)
-  |> should.equal(r.Value(r.Binary("fizzbuzz")))
+  |> should.equal(r.Value(r.Str("fizzbuzz")))
 }

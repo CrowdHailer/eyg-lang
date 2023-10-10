@@ -62,7 +62,7 @@ fn do_absolute(x, rev, env, k) {
 }
 
 pub fn parse() {
-  let type_ = t.Fun(t.Binary, t.Open(0), t.Integer)
+  let type_ = t.Fun(t.Str, t.Open(0), t.Integer)
   #(type_, r.Arity1(do_parse))
 }
 
@@ -77,11 +77,11 @@ fn do_parse(raw, rev, env, k) {
 }
 
 pub fn to_string() {
-  let type_ = t.Fun(t.Integer, t.Open(0), t.Binary)
+  let type_ = t.Fun(t.Integer, t.Open(0), t.Str)
   #(type_, r.Arity1(do_to_string))
 }
 
 fn do_to_string(x, rev, env, k) {
   use x <- cast.require(cast.integer(x), rev, env, k)
-  r.prim(r.Value(r.Binary(int.to_string(x))), rev, env, k)
+  r.prim(r.Value(r.Str(int.to_string(x))), rev, env, k)
 }

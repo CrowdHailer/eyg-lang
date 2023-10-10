@@ -18,7 +18,7 @@ import harness/stdlib
 
 pub fn serve() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(lift, k) {
       let env = stdlib.env()
@@ -81,7 +81,7 @@ pub fn serve() {
 
 pub fn stop_server() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(lift, k) {
       let env = stdlib.env()
@@ -95,7 +95,7 @@ pub fn stop_server() {
 
 pub fn receive() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(lift, k) {
       let env = stdlib.env()
@@ -171,17 +171,17 @@ fn to_request(raw: RawRequest) {
     "OPTIONS" -> r.Tagged("OPTIONS", r.unit)
     "PATCH" -> r.Tagged("PATCH", r.unit)
 
-    other -> r.Tagged("OTHER", r.Binary(other))
+    other -> r.Tagged("OTHER", r.Str(other))
   }
   let scheme = case protocol {
     "http" -> r.Tagged("http", r.unit)
     "https" -> r.Tagged("https", r.unit)
   }
-  let host = r.Binary(host)
-  let path = r.Binary(path)
+  let host = r.Str(host)
+  let path = r.Str(path)
   let assert Ok(query) = dynamic.optional(dynamic.string)(query)
   let query = case query {
-    Some(query) -> r.Tagged("Some", r.Binary(query))
+    Some(query) -> r.Tagged("Some", r.Str(query))
     None -> r.Tagged("None", r.unit)
   }
   let headers =
@@ -189,10 +189,10 @@ fn to_request(raw: RawRequest) {
     |> array.to_list
     |> list.map(fn(tuple) {
       let #(key, value) = tuple
-      r.Record([#("key", r.Binary(key)), #("value", r.Binary(value))])
+      r.Record([#("key", r.Str(key)), #("value", r.Str(value))])
     })
     |> r.LinkedList
-  let body = r.Binary(body)
+  let body = r.Str(body)
 
   r.Record([
     #("method", method),
@@ -208,14 +208,14 @@ fn to_request(raw: RawRequest) {
 fn from_response(response) {
   let assert Ok(r.Integer(status)) = r.field(response, "status")
   let assert Ok(r.LinkedList(headers)) = r.field(response, "headers")
-  let assert Ok(r.Binary(body)) = r.field(response, "body")
+  let assert Ok(r.Str(body)) = r.field(response, "body")
 
   let headers =
     list.map(
       headers,
       fn(term) {
-        let assert Ok(r.Binary(key)) = r.field(term, "key")
-        let assert Ok(r.Binary(value)) = r.field(term, "value")
+        let assert Ok(r.Str(key)) = r.field(term, "key")
+        let assert Ok(r.Str(value)) = r.field(term, "value")
 
         #(key, value)
       },

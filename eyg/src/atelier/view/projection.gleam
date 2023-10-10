@@ -32,7 +32,7 @@ pub fn do_render(exp, br, loc, inferred) {
     e.Apply(func, arg) -> call(func, arg, br, loc, inferred)
     e.Let(label, value, then) ->
       assigment(label, value, then, br, loc, inferred)
-    e.Binary(value) -> [string(value, loc, inferred)]
+    e.Str(value) -> [string(value, loc, inferred)]
     e.Integer(value) -> [integer(value, loc, inferred)]
     e.Tail -> [
       span(

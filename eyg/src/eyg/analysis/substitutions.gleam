@@ -90,7 +90,7 @@ pub fn apply(sub: Substitutions, typ) {
       t.Fun(apply(sub, from), apply_effects(sub, effects), apply(sub, to))
     t.Record(row) -> t.Record(apply_row(sub, row))
     t.Union(row) -> t.Union(apply_row(sub, row))
-    t.Integer | t.Binary -> typ
+    t.Integer | t.Str -> typ
     t.LinkedList(element) -> t.LinkedList(apply(sub, element))
   }
 }

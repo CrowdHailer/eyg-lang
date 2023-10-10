@@ -101,7 +101,7 @@ pub fn handle(return, extrinsic) {
 
 pub type Term {
   Integer(value: Int)
-  Binary(value: String)
+  Str(value: String)
   LinkedList(elements: List(Term))
   Record(fields: List(#(String, Term)))
   Tagged(label: String, value: Term)
@@ -165,7 +165,7 @@ pub fn error(reason) {
 pub fn to_string(term) {
   case term {
     Integer(value) -> int.to_string(value)
-    Binary(value) -> string.concat(["\"", value, "\""])
+    Str(value) -> string.concat(["\"", value, "\""])
     LinkedList(items) ->
       list.map(items, to_string)
       |> list.intersperse(", ")
@@ -400,7 +400,7 @@ fn step(exp, rev, env: Env, k) {
     }
 
     E(e.Integer(value)) -> K(V(Value(Integer(value))), rev, env, k)
-    E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
+    E(e.Str(value)) -> K(V(Value(Str(value))), rev, env, k)
     E(e.Tail) -> K(V(Value(LinkedList([]))), rev, env, k)
     E(e.Cons) -> K(V(Value(Defunc(Cons, []))), rev, env, k)
     E(e.Vacant(comment)) ->

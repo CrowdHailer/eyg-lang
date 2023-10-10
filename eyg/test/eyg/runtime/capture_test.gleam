@@ -19,24 +19,24 @@ fn check_term(term) {
 
 pub fn literal_test() {
   check_term(r.Integer(0))
-  check_term(r.Binary("hello"))
+  check_term(r.Str("hello"))
   check_term(r.LinkedList([]))
   check_term(r.LinkedList([r.Integer(1), r.Integer(2)]))
   check_term(r.Record([]))
   check_term(r.Record([
-    #("foo", r.Binary("hey")),
-    #("nested", r.Record([#("bar", r.Binary("inner"))])),
+    #("foo", r.Str("hey")),
+    #("nested", r.Record([#("bar", r.Str("inner"))])),
   ]))
   check_term(r.Tagged("Outer", r.Tagged("Inner", r.Integer(0))))
 }
 
 pub fn simple_fn_test() {
-  let exp = e.Lambda("_", e.Binary("hello"))
+  let exp = e.Lambda("_", e.Str("hello"))
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
   |> r.run(env.empty(), r.Record([]), map.new())
-  |> should.equal(Ok(r.Binary("hello")))
+  |> should.equal(Ok(r.Str("hello")))
 }
 
 pub fn nested_fn_test() {
@@ -60,26 +60,26 @@ pub fn nested_fn_test() {
     captured,
     e,
     Some(r.Kont(
-      r.CallWith(r.Binary("A"), [], e),
-      Some(r.Kont(r.CallWith(r.Binary("B"), [], e), None)),
+      r.CallWith(r.Str("A"), [], e),
+      Some(r.Kont(r.CallWith(r.Str("B"), [], e), None)),
     )),
   )
-  |> should.equal(r.Value(r.LinkedList([r.Binary("A"), r.Binary("B")])))
+  |> should.equal(r.Value(r.LinkedList([r.Str("A"), r.Str("B")])))
 }
 
 pub fn single_let_capture_test() {
-  let exp = e.Let("a", e.Binary("external"), e.Lambda("_", e.Variable("a")))
+  let exp = e.Let("a", e.Str("external"), e.Lambda("_", e.Variable("a")))
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
   |> r.run(env.empty(), r.Record([]), map.new())
-  |> should.equal(Ok(r.Binary("external")))
+  |> should.equal(Ok(r.Str("external")))
 }
 
 // This test makes sure a given env value is captured only once
 pub fn duplicate_capture_test() {
   let func = e.Lambda("_", e.Let("_", e.Variable("std"), e.Variable("std")))
-  let exp = e.Let("std", e.Binary("Standard"), func)
+  let exp = e.Let("std", e.Str("Standard"), func)
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
   |> should.equal(exp)
@@ -89,10 +89,10 @@ pub fn ordered_capture_test() {
   let exp =
     e.Let(
       "a",
-      e.Binary("A"),
+      e.Str("A"),
       e.Let(
         "b",
-        e.Binary("B"),
+        e.Str("B"),
         e.Lambda("_", e.Let("inner", e.Variable("a"), e.Variable("b"))),
       ),
     )
@@ -105,7 +105,7 @@ pub fn ordered_fn_capture_test() {
   let exp =
     e.Let(
       "a",
-      e.Binary("A"),
+      e.Str("A"),
       e.Let("b", e.Lambda("_", e.Variable("a")), e.Lambda("_", e.Variable("b"))),
     )
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
@@ -117,37 +117,37 @@ pub fn capture_shadowed_variable_test() {
   let exp =
     e.Let(
       "a",
-      e.Binary("first"),
-      e.Let("a", e.Binary("second"), e.Lambda("_", e.Variable("a"))),
+      e.Str("first"),
+      e.Let("a", e.Str("second"), e.Lambda("_", e.Variable("a"))),
     )
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
   |> r.run(env.empty(), r.Record([]), map.new())
-  |> should.equal(Ok(r.Binary("second")))
+  |> should.equal(Ok(r.Str("second")))
 }
 
 pub fn only_needed_values_captured_test() {
   let exp =
     e.Let(
       "a",
-      e.Binary("ignore"),
+      e.Str("ignore"),
       e.Let(
         "b",
         e.Lambda("_", e.Variable("a")),
-        e.Let("c", e.Binary("yes"), e.Lambda("_", e.Variable("c"))),
+        e.Let("c", e.Str("yes"), e.Lambda("_", e.Variable("c"))),
       ),
     )
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
-  |> should.equal(e.Let("c", e.Binary("yes"), e.Lambda("_", e.Variable("c"))))
+  |> should.equal(e.Let("c", e.Str("yes"), e.Lambda("_", e.Variable("c"))))
 }
 
 pub fn double_catch_test() {
   let exp =
     e.Let(
       "std",
-      e.Binary("Standard"),
+      e.Str("Standard"),
       e.Let(
         "f0",
         e.Lambda("_", e.Variable("std")),
@@ -166,7 +166,7 @@ pub fn double_catch_test() {
   capture.capture(term)
   |> should.equal(e.Let(
     "std",
-    e.Binary("Standard"),
+    e.Str("Standard"),
     e.Let(
       "f0",
       e.Lambda("_", e.Variable("std")),
@@ -181,7 +181,7 @@ pub fn fn_in_env_test() {
   let exp =
     e.Let(
       "a",
-      e.Binary("value"),
+      e.Str("value"),
       e.Let(
         "a",
         e.Lambda("_", e.Variable("a")),
@@ -191,7 +191,7 @@ pub fn fn_in_env_test() {
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
   |> r.run(env.empty(), r.Record([]), map.new())
-  |> should.equal(Ok(r.Binary("value")))
+  |> should.equal(Ok(r.Str("value")))
 }
 
 pub fn tagged_test() {
@@ -199,7 +199,7 @@ pub fn tagged_test() {
   let env = env.empty()
   let assert r.Value(term) = r.eval(exp, env, None)
 
-  let arg = r.Binary("later")
+  let arg = r.Str("later")
   capture.capture(term)
   |> r.run(env.empty(), arg, map.new())
   |> should.equal(Ok(r.Tagged("Ok", arg)))
@@ -208,11 +208,8 @@ pub fn tagged_test() {
 pub fn case_test() {
   let exp =
     e.Apply(
-      e.Apply(e.Case("Ok"), e.Lambda("_", e.Binary("good"))),
-      e.Apply(
-        e.Apply(e.Case("Error"), e.Lambda("_", e.Binary("bad"))),
-        e.NoCases,
-      ),
+      e.Apply(e.Case("Ok"), e.Lambda("_", e.Str("good"))),
+      e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Str("bad"))), e.NoCases),
     )
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
@@ -221,20 +218,20 @@ pub fn case_test() {
   let arg = r.Tagged("Ok", r.Record([]))
   next
   |> r.run(env.empty(), arg, map.new())
-  |> should.equal(Ok(r.Binary("good")))
+  |> should.equal(Ok(r.Str("good")))
 
   let arg = r.Tagged("Error", r.Record([]))
   next
   |> r.run(env.empty(), arg, map.new())
-  |> should.equal(Ok(r.Binary("bad")))
+  |> should.equal(Ok(r.Str("bad")))
 }
 
 pub fn partial_case_test() {
-  let exp = e.Apply(e.Case("Ok"), e.Lambda("_", e.Binary("good")))
+  let exp = e.Apply(e.Case("Ok"), e.Lambda("_", e.Str("good")))
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   let rest =
-    e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Binary("bad"))), e.NoCases)
+    e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Str("bad"))), e.NoCases)
   let assert r.Value(rest) = r.eval(rest, env.empty(), None)
 
   let next = capture.capture(term)
@@ -249,7 +246,7 @@ pub fn partial_case_test() {
       Some(r.Kont(r.CallWith(arg, [], e), None)),
     )),
   )
-  |> should.equal(r.Value(r.Binary("good")))
+  |> should.equal(r.Value(r.Str("good")))
 
   let arg = r.Tagged("Error", r.Record([]))
   r.eval(
@@ -260,7 +257,7 @@ pub fn partial_case_test() {
       Some(r.Kont(r.CallWith(arg, [], e), None)),
     )),
   )
-  |> should.equal(r.Value(r.Binary("bad")))
+  |> should.equal(r.Value(r.Str("bad")))
 }
 
 pub fn handler_test() {
@@ -275,19 +272,19 @@ pub fn handler_test() {
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   let next = capture.capture(term)
 
-  let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Binary("some string")))
+  let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Str("some string")))
   let assert r.Value(exec) = r.eval(exec, env.empty(), None)
 
   next
   |> r.run(env.empty(), exec, map.new())
-  |> should.equal(Ok(r.Tagged("Ok", r.Binary("some string"))))
+  |> should.equal(Ok(r.Tagged("Ok", r.Str("some string"))))
 
-  let exec = e.Lambda("_", e.Apply(e.Perform("Abort"), e.Binary("failure")))
+  let exec = e.Lambda("_", e.Apply(e.Perform("Abort"), e.Str("failure")))
   let assert r.Value(exec) = r.eval(exec, env.empty(), None)
 
   next
   |> r.run(env.empty(), exec, map.new())
-  |> should.equal(Ok(r.Tagged("Error", r.Binary("failure"))))
+  |> should.equal(Ok(r.Tagged("Error", r.Str("failure"))))
 }
 
 // pub fn capture_resume_test() {
@@ -303,8 +300,8 @@ pub fn handler_test() {
 //       "_",
 //       e.Let(
 //         "_",
-//         e.Apply(e.Perform("Log"), e.Binary("first")),
-//         e.Let("_", e.Apply(e.Perform("Log"), e.Binary("second")), e.Integer(0)),
+//         e.Apply(e.Perform("Log"), e.Str("first")),
+//         e.Let("_", e.Apply(e.Perform("Log"), e.Str("second")), e.Integer(0)),
 //       ),
 //     )
 //   let exp = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
@@ -312,7 +309,7 @@ pub fn handler_test() {
 //   let next = capture.capture(term)
 
 //   next
-//   |> r.eval(env.empty(), r.eval_call(_, r.Binary("fooo"), [], env.empty(), None))
+//   |> r.eval(env.empty(), r.eval_call(_, r.Str("fooo"), [], env.empty(), None))
 //   // This should return a effect of subsequent logs, I don't know how to do this
 // }
 
@@ -359,8 +356,8 @@ pub fn builtin_arity3_test() {
   let next = capture.capture(term)
 
   next
-  |> r.run(env, r.Binary("not a function"), map.new())
-  |> should.equal(Error(#(r.NotAFunction(r.Binary("not a function")), [])))
+  |> r.run(env, r.Str("not a function"), map.new())
+  |> should.equal(Error(#(r.NotAFunction(r.Str("not a function")), [])))
 
   let reduce_exp = e.Lambda("el", e.Lambda("acc", e.Variable("el")))
   let assert r.Value(reduce) = r.eval(reduce_exp, env, None)

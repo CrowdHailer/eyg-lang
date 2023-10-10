@@ -34,7 +34,7 @@ pub fn extend(state, label, parts) {
 
 pub fn debug_logger() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(message, k) {
       let env = env.empty()
@@ -48,7 +48,7 @@ pub fn debug_logger() {
 
 pub fn window_alert() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(message, k) {
       let env = env.empty()
@@ -78,7 +78,7 @@ pub fn choose() {
 
 pub fn http() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(request, k) {
       let env = env.empty()
@@ -135,9 +135,9 @@ pub fn http() {
           headers,
           fn(h) {
             use k <- result.try(r.field(h, "key"))
-            let assert r.Binary(k) = k
+            let assert r.Str(k) = k
             use value <- result.try(r.field(h, "value"))
-            let assert r.Binary(value) = value
+            let assert r.Str(value) = value
 
             Ok(#(k, value))
           },
@@ -150,7 +150,7 @@ pub fn http() {
         k,
       )
       // TODO fix binary or string
-      let assert r.Binary(body) = body
+      let assert r.Str(body) = body
 
       let request =
         request.new()
@@ -189,19 +189,16 @@ pub fn http() {
                       response.headers,
                       fn(h) {
                         let #(k, v) = h
-                        r.Record([
-                          #("key", r.Binary(k)),
-                          #("value", r.Binary(v)),
-                        ])
+                        r.Record([#("key", r.Str(k)), #("value", r.Str(v))])
                       },
                     )),
                   ),
-                  #("body", r.Binary(response.body)),
+                  #("body", r.Str(response.body)),
                 ]))
               resp
             }
 
-            Error(_) -> r.Binary("bad response")
+            Error(_) -> r.Str("bad response")
           }
         })
 
@@ -212,7 +209,7 @@ pub fn http() {
 
 pub fn open() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(target, k) {
       let env = env.empty()
@@ -244,7 +241,7 @@ pub fn open_browser(target: String) -> promise.Promise(Nil)
 // Needs to be builtin effect not just handler so that correct external handlers can be applied.
 pub fn await() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(promise, k) {
       let env = env.empty()
@@ -272,8 +269,8 @@ pub fn wait() {
 // Don't need the detail of decoding JSON in EYG as will move away from it.
 pub fn read_source() {
   #(
-    t.Binary,
-    t.result(t.Binary, t.unit),
+    t.Str,
+    t.result(t.Str, t.unit),
     fn(file, k) {
       let env = env.empty()
       let rev = []
@@ -299,15 +296,15 @@ pub fn read_source() {
 
 pub fn file_read() {
   #(
-    t.Binary,
-    t.result(t.Binary, t.unit),
+    t.Str,
+    t.result(t.Str, t.unit),
     fn(file, k) {
       let env = env.empty()
       let rev = []
 
       use file <- cast.require(cast.string(file), rev, env, k)
       case simplifile.read(file) {
-        Ok(content) -> r.prim(r.Value(r.ok(r.Binary(content))), rev, env, k)
+        Ok(content) -> r.prim(r.Value(r.ok(r.Str(content))), rev, env, k)
         Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
       }
     },
@@ -316,7 +313,7 @@ pub fn file_read() {
 
 pub fn file_write() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(request, k) {
       let env = env.empty()
@@ -347,7 +344,7 @@ fn run_query(query: String) -> promise.Promise(String)
 
 pub fn load_db() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(triples, k) {
       let env = env.empty()
@@ -361,14 +358,14 @@ pub fn load_db() {
 
 pub fn query_db() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(query, k) {
       let env = env.empty()
       let rev = []
       use query <- cast.require(cast.string(query), rev, env, k)
       let p = run_query(query)
-      r.prim(r.Value(r.Promise(promise.map(p, r.Binary))), rev, env, k)
+      r.prim(r.Value(r.Promise(promise.map(p, r.Str))), rev, env, k)
     },
   )
 }
@@ -379,8 +376,8 @@ pub fn zip() {
   #(
     t.LinkedList(t.Record(t.Extend(
       "name",
-      t.Binary,
-      t.Extend("content", t.Binary, t.Open(-1)),
+      t.Str,
+      t.Extend("content", t.Str, t.Open(-1)),
     ))),
     t.unit,
     fn(query, k) {
@@ -392,9 +389,9 @@ pub fn zip() {
           items,
           fn(value) {
             use name <- result.then(r.field(value, "name"))
-            let assert r.Binary(name) = name
+            let assert r.Str(name) = name
             use content <- result.then(r.field(value, "content"))
-            let assert r.Binary(content) = content
+            let assert r.Str(content) = content
 
             Ok(#(name, content))
           },
@@ -402,7 +399,7 @@ pub fn zip() {
 
       let zipped = do_zip(array.from_list(items))
 
-      r.prim(r.Value(r.Binary(zipped)), rev, env, k)
+      r.prim(r.Value(r.Str(zipped)), rev, env, k)
     },
   )
 }

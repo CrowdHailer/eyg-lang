@@ -3,19 +3,19 @@ import eygir/expression as e
 import atelier/app
 
 pub fn call_test() {
-  let source = e.Let("x", e.Binary("initial"), e.Variable("x"))
+  let source = e.Let("x", e.Str("initial"), e.Variable("x"))
   let initial = app.init(source)
 
   // update value of let
   let #(state, _cmd) = app.select_node(initial, [0])
   let #(state, _cmd) = app.keypress("w", state)
-  e.Let("x", e.Apply(e.Vacant(""), e.Binary("initial")), e.Variable("x"))
+  e.Let("x", e.Apply(e.Vacant(""), e.Str("initial")), e.Variable("x"))
   |> should.equal(state.source)
 
   // update final statement
   let #(state, _cmd) = app.select_node(initial, [1])
   let #(state, _cmd) = app.keypress("w", state)
-  e.Let("x", e.Binary("initial"), e.Apply(e.Vacant(""), e.Variable("x")))
+  e.Let("x", e.Str("initial"), e.Apply(e.Vacant(""), e.Variable("x")))
   |> should.equal(state.source)
 }
 
@@ -44,13 +44,13 @@ pub fn insert_parameter_test() {
 
   // test let
   let source =
-    e.Let("_", e.Let("x", e.Binary("stuff"), e.Vacant("")), e.Vacant(""))
+    e.Let("_", e.Let("x", e.Str("stuff"), e.Vacant("")), e.Vacant(""))
   let initial = app.init(source)
 
   let #(state, _cmd) = app.select_node(initial, [0])
   let #(state, _cmd) = app.keypress("i", state)
   let assert app.WriteLabel(initial, commit) = state.mode
   should.equal(initial, "x")
-  e.Let("_", e.Let("foo", e.Binary("stuff"), e.Vacant("")), e.Vacant(""))
+  e.Let("_", e.Let("foo", e.Str("stuff"), e.Vacant("")), e.Vacant(""))
   |> should.equal(commit("foo"))
 }

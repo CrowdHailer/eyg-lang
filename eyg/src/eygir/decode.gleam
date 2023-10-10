@@ -35,7 +35,7 @@ pub fn decoder(x) {
     "i" | "integer" ->
       decode1(e.Integer, any([field("value", int), field("v", int)]))
     "s" | "binary" ->
-      decode1(e.Binary, any([field("value", string), field("v", string)]))
+      decode1(e.Str, any([field("value", string), field("v", string)]))
     "ta" | "tail" -> fn(_) { Ok(e.Tail) }
     "c" | "cons" -> fn(_) { Ok(e.Cons) }
     "z" | "vacant" ->

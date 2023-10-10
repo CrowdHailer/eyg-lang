@@ -124,12 +124,12 @@ fn old_run() {
 
 fn render() {
   #(
-    t.Binary,
+    t.Str,
     t.unit,
     fn(page, k) {
       let env = env.empty()
       let rev = []
-      let assert r.Binary(page) = page
+      let assert r.Str(page) = page
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
         _ ->
@@ -248,9 +248,7 @@ fn on_keydown() {
       let rev = []
       let #(_, extrinsic) = handlers()
 
-      document.on_keydown(fn(k) {
-        do_handle(e.Binary(k), handle, env, extrinsic)
-      })
+      document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
       r.prim(r.Value(r.unit), rev, env, k)
     },
   )

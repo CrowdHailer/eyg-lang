@@ -6,24 +6,24 @@ pub fn web() {
   t.Fun(
     t.Record(t.Extend(
       "method",
-      t.Binary,
+      t.Str,
       t.Extend(
         "scheme",
-        t.Binary,
+        t.Str,
         t.Extend(
           "host",
-          t.Binary,
+          t.Str,
           t.Extend(
             "path",
-            t.Binary,
-            t.Extend("query", t.Binary, t.Extend("body", t.Binary, t.Closed)),
+            t.Str,
+            t.Extend("query", t.Str, t.Extend("body", t.Str, t.Closed)),
           ),
         ),
       ),
     )),
     t.Extend(
       "Log",
-      #(t.Binary, t.Record(t.Closed)),
+      #(t.Str, t.Record(t.Closed)),
       t.Extend(
         "HTTP",
         #(
@@ -35,21 +35,21 @@ pub fn web() {
               t.Union(t.Extend("HTTPS", t.unit, t.Closed)),
               t.Extend(
                 "host",
-                t.Binary,
+                t.Str,
                 t.Extend(
                   "port",
                   t.option(t.Integer),
                   t.Extend(
                     "path",
-                    t.Binary,
+                    t.Str,
                     t.Extend(
                       "query",
-                      t.option(t.Binary),
+                      t.option(t.Str),
                       t.Extend(
                         "headers",
                         // I don't have tuples for a list of headers so this is not yet implemented
-                        t.LinkedList(t.Binary),
-                        t.Extend("body", t.Binary, t.Closed),
+                        t.LinkedList(t.Str),
+                        t.Extend("body", t.Str, t.Closed),
                       ),
                     ),
                   ),
@@ -67,7 +67,7 @@ pub fn web() {
         ),
       ),
     ),
-    t.Record(t.Extend("body", t.Binary, t.Closed)),
+    t.Record(t.Extend("body", t.Str, t.Closed)),
   )
 }
 

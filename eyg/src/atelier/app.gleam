@@ -287,7 +287,7 @@ fn insert(zipper: zipper.Zipper, state) {
     e.Apply(_, _) -> Error("no insert option for apply")
     e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
 
-    e.Binary(value) -> Ok(WriteText(value, fn(new) { zipper.1(e.Binary(new)) }))
+    e.Str(value) -> Ok(WriteText(value, fn(new) { zipper.1(e.Str(new)) }))
     e.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { zipper.1(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
@@ -478,9 +478,9 @@ fn variable(zipper: zipper.Zipper, state) {
 fn binary(zipper: zipper.Zipper, state) {
   let commit = case zipper.0 {
     e.Let(label, _value, then) -> fn(text) {
-      zipper.1(e.Let(label, e.Binary(text), then))
+      zipper.1(e.Let(label, e.Str(text), then))
     }
-    _exp -> fn(text) { zipper.1(e.Binary(text)) }
+    _exp -> fn(text) { zipper.1(e.Str(text)) }
   }
   WorkSpace(..state, mode: WriteText("", commit))
 }
@@ -500,7 +500,7 @@ fn number(zipper: zipper.Zipper, state) {
 fn match(zipper: zipper.Zipper, state) {
   let commit = case zipper.0 {
     // e.Let(label, value, then) -> fn(text) {
-    //   zipper.1(e.Let(label, e.Binary(text), then))
+    //   zipper.1(e.Let(label, e.Str(text), then))
     // }
     // Match on original value should maybe be the arg? but I like promoting first class everything
     exp -> fn(text) {

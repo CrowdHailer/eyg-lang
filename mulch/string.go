@@ -22,7 +22,6 @@ func (s *String) Debug() string {
 	return fmt.Sprintf(`"%s"`, s.Value)
 }
 
-// Not actually used yet
 type Binary struct {
 	Value []byte
 }

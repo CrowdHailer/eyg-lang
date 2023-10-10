@@ -8,7 +8,7 @@ pub type Expression {
 
   // Primitive
   Integer(value: Int)
-  Binary(value: String)
+  Str(value: String)
 
   Tail
   // type system won't allow improper list

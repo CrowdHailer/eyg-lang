@@ -25,8 +25,7 @@ pub fn unequal_test() {
 }
 
 pub fn equal_test() {
-  let prog =
-    e.Apply(e.Apply(e.Builtin("equal"), e.Binary("foo")), e.Binary("foo"))
+  let prog = e.Apply(e.Apply(e.Builtin("equal"), e.Str("foo")), e.Str("foo"))
   let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
@@ -45,7 +44,7 @@ pub fn debug_test() {
     e.Let(
       "_",
       e.Apply(e.Builtin("debug"), e.Integer(10)),
-      e.Apply(e.Builtin("debug"), e.Binary("foo")),
+      e.Apply(e.Builtin("debug"), e.Str("foo")),
     )
   let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
 
@@ -53,24 +52,24 @@ pub fn debug_test() {
   |> should.equal(Ok(Nil))
 
   inference.type_of(sub, [])
-  |> should.equal(Ok(t.Binary))
+  |> should.equal(Ok(t.Str))
 
   r.eval(prog, stdlib.env(), None)
   // value is serialized as binary, hence the quotes
-  |> should.equal(r.Value(r.Binary("\"foo\"")))
+  |> should.equal(r.Value(r.Str("\"foo\"")))
 }
 
 pub fn simple_fix_test() {
-  let prog = e.Apply(e.Builtin("fix"), e.Lambda("_", e.Binary("foo")))
+  let prog = e.Apply(e.Builtin("fix"), e.Lambda("_", e.Str("foo")))
   let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
   |> should.equal(Ok(Nil))
   inference.type_of(sub, [])
-  |> should.equal(Ok(t.Binary))
+  |> should.equal(Ok(t.Str))
 
   r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.Binary("foo")))
+  |> should.equal(r.Value(r.Str("foo")))
 }
 
 pub fn no_recursive_fix_test() {
@@ -152,7 +151,7 @@ pub fn recursive_sum_test() {
 }
 
 pub fn eval_test() {
-  let value = e.Binary("foo")
+  let value = e.Str("foo")
 
   let prog =
     value
@@ -170,7 +169,7 @@ pub fn eval_test() {
   // |> should.equal(Ok(t.boolean))
 
   r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("foo"))))
+  |> should.equal(r.Value(r.Tagged("Ok", r.Str("foo"))))
 }
 
 pub fn language_to_expression_test() {

@@ -32,12 +32,12 @@ fn do_equal(left, right, rev, env, k) {
 }
 
 pub fn debug() {
-  let type_ = t.Fun(t.Unbound(0), t.Open(1), t.Binary)
+  let type_ = t.Fun(t.Unbound(0), t.Open(1), t.Str)
   #(type_, r.Arity1(do_debug))
 }
 
 fn do_debug(term, rev, env, k) {
-  r.prim(r.Value(r.Binary(r.to_string(term))), rev, env, k)
+  r.prim(r.Value(r.Str(r.to_string(term))), rev, env, k)
 }
 
 pub fn fix() {
@@ -151,14 +151,14 @@ pub fn do_eval(source, rev, env, k) {
 
 // This should be replaced by capture which returns ast
 pub fn serialize() {
-  let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Binary)
+  let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Str)
 
   #(type_, r.Arity1(do_serialize))
 }
 
 pub fn do_serialize(term, rev, env, k) {
   let exp = capture.capture(term)
-  r.prim(r.Value(r.Binary(encode.to_json(exp))), rev, env, k)
+  r.prim(r.Value(r.Str(encode.to_json(exp))), rev, env, k)
 }
 
 pub fn capture() {
@@ -235,9 +235,9 @@ pub fn do_capture(term, rev, env, k) {
 // TODO have a single code element that renders the value
 pub fn expression_to_language(exp) {
   case exp {
-    e.Variable(label) -> [r.Tagged("Variable", r.Binary(label))]
+    e.Variable(label) -> [r.Tagged("Variable", r.Str(label))]
     e.Lambda(label, body) -> {
-      let head = r.Tagged("Lambda", r.Binary(label))
+      let head = r.Tagged("Lambda", r.Str(label))
       let rest = expression_to_language(body)
       [head, ..rest]
     }
@@ -251,7 +251,7 @@ pub fn expression_to_language(exp) {
       [head, ..rest]
     }
     e.Let(label, definition, body) -> {
-      let head = r.Tagged("Let", r.Binary(label))
+      let head = r.Tagged("Let", r.Str(label))
       [
         head,
         ..list.append(
@@ -262,25 +262,25 @@ pub fn expression_to_language(exp) {
     }
 
     e.Integer(value) -> [r.Tagged("Integer", r.Integer(value))]
-    e.Binary(value) -> [r.Tagged("Binary", r.Binary(value))]
+    e.Str(value) -> [r.Tagged("String", r.Str(value))]
 
     e.Tail -> [r.Tagged("Tail", r.Record([]))]
     e.Cons -> [r.Tagged("Cons", r.Record([]))]
 
-    e.Vacant(comment) -> [r.Tagged("Vacant", r.Binary(comment))]
+    e.Vacant(comment) -> [r.Tagged("Vacant", r.Str(comment))]
 
     e.Empty -> [r.Tagged("Empty", r.Record([]))]
-    e.Extend(label) -> [r.Tagged("Extend", r.Binary(label))]
-    e.Select(label) -> [r.Tagged("Select", r.Binary(label))]
-    e.Overwrite(label) -> [r.Tagged("Overwrite", r.Binary(label))]
-    e.Tag(label) -> [r.Tagged("Tag", r.Binary(label))]
-    e.Case(label) -> [r.Tagged("Case", r.Binary(label))]
+    e.Extend(label) -> [r.Tagged("Extend", r.Str(label))]
+    e.Select(label) -> [r.Tagged("Select", r.Str(label))]
+    e.Overwrite(label) -> [r.Tagged("Overwrite", r.Str(label))]
+    e.Tag(label) -> [r.Tagged("Tag", r.Str(label))]
+    e.Case(label) -> [r.Tagged("Case", r.Str(label))]
     e.NoCases -> [r.Tagged("NoCases", r.Record([]))]
 
-    e.Perform(label) -> [r.Tagged("Perform", r.Binary(label))]
-    e.Handle(label) -> [r.Tagged("Handle", r.Binary(label))]
-    e.Shallow(label) -> [r.Tagged("Shallow", r.Binary(label))]
-    e.Builtin(identifier) -> [r.Tagged("Builtin", r.Binary(identifier))]
+    e.Perform(label) -> [r.Tagged("Perform", r.Str(label))]
+    e.Handle(label) -> [r.Tagged("Handle", r.Str(label))]
+    e.Shallow(label) -> [r.Tagged("Shallow", r.Str(label))]
+    e.Builtin(identifier) -> [r.Tagged("Builtin", r.Str(identifier))]
   }
 }
 
@@ -290,10 +290,10 @@ pub fn language_to_expression(source) {
 
 fn do_language_to_expression(term, k) {
   case term {
-    [r.Tagged("Variable", r.Binary(label)), ..rest] -> {
+    [r.Tagged("Variable", r.Str(label)), ..rest] -> {
       k(e.Variable(label), rest)
     }
-    [r.Tagged("Lambda", r.Binary(label)), ..rest] -> {
+    [r.Tagged("Lambda", r.Str(label)), ..rest] -> {
       use body, rest <- do_language_to_expression(rest)
       k(e.Lambda(label, body), rest)
     }
@@ -302,34 +302,32 @@ fn do_language_to_expression(term, k) {
       use arg, rest <- do_language_to_expression(rest)
       k(e.Apply(func, arg), rest)
     }
-    [r.Tagged("Let", r.Binary(label)), ..rest] -> {
+    [r.Tagged("Let", r.Str(label)), ..rest] -> {
       use value, rest <- do_language_to_expression(rest)
       use then, rest <- do_language_to_expression(rest)
       k(e.Let(label, value, then), rest)
     }
 
     [r.Tagged("Integer", r.Integer(value)), ..rest] -> k(e.Integer(value), rest)
-    [r.Tagged("Binary", r.Binary(value)), ..rest] -> k(e.Binary(value), rest)
+    [r.Tagged("String", r.Str(value)), ..rest] -> k(e.Str(value), rest)
 
     [r.Tagged("Tail", r.Record([])), ..rest] -> k(e.Tail, rest)
     [r.Tagged("Cons", r.Record([])), ..rest] -> k(e.Cons, rest)
 
-    [r.Tagged("Vacant", r.Binary(comment)), ..rest] ->
-      k(e.Vacant(comment), rest)
+    [r.Tagged("Vacant", r.Str(comment)), ..rest] -> k(e.Vacant(comment), rest)
 
     [r.Tagged("Empty", r.Record([])), ..rest] -> k(e.Empty, rest)
-    [r.Tagged("Extend", r.Binary(label)), ..rest] -> k(e.Extend(label), rest)
-    [r.Tagged("Select", r.Binary(label)), ..rest] -> k(e.Select(label), rest)
-    [r.Tagged("Overwrite", r.Binary(label)), ..rest] ->
-      k(e.Overwrite(label), rest)
-    [r.Tagged("Tag", r.Binary(label)), ..rest] -> k(e.Tag(label), rest)
-    [r.Tagged("Case", r.Binary(label)), ..rest] -> k(e.Case(label), rest)
+    [r.Tagged("Extend", r.Str(label)), ..rest] -> k(e.Extend(label), rest)
+    [r.Tagged("Select", r.Str(label)), ..rest] -> k(e.Select(label), rest)
+    [r.Tagged("Overwrite", r.Str(label)), ..rest] -> k(e.Overwrite(label), rest)
+    [r.Tagged("Tag", r.Str(label)), ..rest] -> k(e.Tag(label), rest)
+    [r.Tagged("Case", r.Str(label)), ..rest] -> k(e.Case(label), rest)
     [r.Tagged("NoCases", r.Record([])), ..rest] -> k(e.NoCases, rest)
 
-    [r.Tagged("Perform", r.Binary(label)), ..rest] -> k(e.Perform(label), rest)
-    [r.Tagged("Handle", r.Binary(label)), ..rest] -> k(e.Handle(label), rest)
-    [r.Tagged("Shallow", r.Binary(label)), ..rest] -> k(e.Shallow(label), rest)
-    [r.Tagged("Builtin", r.Binary(identifier)), ..rest] ->
+    [r.Tagged("Perform", r.Str(label)), ..rest] -> k(e.Perform(label), rest)
+    [r.Tagged("Handle", r.Str(label)), ..rest] -> k(e.Handle(label), rest)
+    [r.Tagged("Shallow", r.Str(label)), ..rest] -> k(e.Shallow(label), rest)
+    [r.Tagged("Builtin", r.Str(identifier)), ..rest] ->
       k(e.Builtin(identifier), rest)
     remaining -> {
       io.debug(#("remaining values", remaining, k))
@@ -339,24 +337,24 @@ fn do_language_to_expression(term, k) {
 }
 
 pub fn encode_uri() {
-  let type_ = t.Fun(t.Binary, t.Open(-1), t.Binary)
+  let type_ = t.Fun(t.Str, t.Open(-1), t.Str)
   #(type_, r.Arity1(do_encode_uri))
 }
 
 pub fn do_encode_uri(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
-  r.prim(r.Value(r.Binary(window.encode_uri(unencoded))), rev, env, k)
+  r.prim(r.Value(r.Str(window.encode_uri(unencoded))), rev, env, k)
 }
 
 pub fn base64_encode() {
-  let type_ = t.Fun(t.Binary, t.Open(-1), t.Binary)
+  let type_ = t.Fun(t.Str, t.Open(-1), t.Str)
   #(type_, r.Arity1(do_base64_encode))
 }
 
 pub fn do_base64_encode(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
   r.prim(
-    r.Value(r.Binary(gleam_string.replace(
+    r.Value(r.Str(gleam_string.replace(
       base.encode64(bit_string.from_string(unencoded), True),
       "\r\n",
       "",

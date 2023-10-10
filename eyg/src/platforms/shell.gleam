@@ -60,8 +60,8 @@ pub fn run(source, args) {
     fn(raw) {
       let k =
         Some(r.Kont(
-          r.CallWith(r.Binary(prompt), [], env),
-          Some(r.Kont(r.CallWith(r.Binary(raw), [], env), None)),
+          r.CallWith(r.Str(prompt), [], env),
+          Some(r.Kont(r.CallWith(r.Str(raw), [], env), None)),
         ))
       let assert r.Value(r.Tagged(tag, value)) =
         r.loop(r.V(r.Value(parser)), [], env, k)
@@ -83,7 +83,7 @@ pub fn run(source, args) {
   let assert r.Abort(r.UnhandledEffect("Prompt", prompt), _rev, env, k) =
     r.handle(r.eval(source, env, k), handlers().1)
 
-  let assert r.Binary(prompt) = prompt
+  let assert r.Str(prompt) = prompt
 
   let rl = create_interface(fn(_) { #([], "") })
   use status <- promise.await(read(rl, parser, env, k, prompt))
@@ -105,7 +105,7 @@ fn read(rl, parser, env, k, prompt) {
           #(env, prompt)
         }
         Error(#(r.UnhandledEffect("Prompt", lift), _rev, env)) -> {
-          let assert r.Binary(prompt) = lift
+          let assert r.Str(prompt) = lift
           #(env, prompt)
         }
         Error(#(reason, _rev, _env)) -> {
@@ -158,7 +158,7 @@ fn print(value) {
       let rows = list.reverse(rows_rev)
       print_rows_and_headers(headers, rows)
     }
-    r.Binary("{\"headers\":[" <> _ as encoded) -> {
+    r.Str("{\"headers\":[" <> _ as encoded) -> {
       let decoder =
         dynamic.decode2(
           fn(a, b) { #(a, b) },

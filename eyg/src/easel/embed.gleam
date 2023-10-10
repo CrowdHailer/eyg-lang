@@ -687,7 +687,7 @@ pub fn insert_text(state: Embed, data, start, end) {
 
             e.Vacant(_) ->
               case data {
-                "\"" -> #(e.Binary(""), [], 0, False)
+                "\"" -> #(e.Str(""), [], 0, False)
                 "[" -> #(e.Tail, [], 0, False)
                 "{" -> #(e.Empty, [], 0, False)
                 // TODO need to add path to step in
@@ -730,9 +730,9 @@ pub fn insert_text(state: Embed, data, start, end) {
                   }
                 }
               }
-            e.Binary(value) -> {
+            e.Str(value) -> {
               let value = stringx.replace_at(value, cut_start, cut_end, data)
-              #(e.Binary(value), [], cut_start + string.length(data), True)
+              #(e.Str(value), [], cut_start + string.length(data), True)
             }
             e.Integer(value) -> {
               case data == "-" && cut_start == 0 {
@@ -1083,7 +1083,7 @@ pub fn perform(state: Embed, start, end) {
 pub fn string(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Binary(""), Insert, [])
+  #(e.Str(""), Insert, [])
 }
 
 // shift d for delete line
@@ -1196,10 +1196,10 @@ pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(#(target, rezip)) = zipper.at(source, path)
 
   let #(new, sub, offset) = case target {
-    e.Binary(content) -> {
+    e.Str(content) -> {
       // needs end for large enter, needs to be insert mode only
       let #(content, offset) = replace_at(content, offset, offset, "\n")
-      #(e.Binary(content), [], offset)
+      #(e.Str(content), [], offset)
     }
     e.Let(label, value, then) -> {
       #(e.Let(label, value, e.Let("", e.Vacant(""), then)), [1], 0)

@@ -183,7 +183,7 @@ func language_to_tree(value Value) (Exp, Value) {
 				fn, rest := language_to_tree(list.Tail)
 				arg, rest := language_to_tree(rest)
 				return &Call{fn, arg}, rest
-			case "Binary":
+			case "String":
 				value := item.Value.(*String).Value
 				return &String{value}, list.Tail
 			case "Builtin":

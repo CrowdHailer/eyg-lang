@@ -65,7 +65,7 @@ pub fn unify(t1, t2, ref) -> Result(_, _) {
       Ok(sub.compose(s4, s3))
     }
     t.Unbound(u), t | t, t.Unbound(u) -> varbind(u, t)
-    t.Binary, t.Binary -> Ok(sub.none())
+    t.Str, t.Str -> Ok(sub.none())
     t.Integer, t.Integer -> Ok(sub.none())
     t.LinkedList(i1), t.LinkedList(i2) -> unify(i1, i2, ref)
     t.Record(r1), t.Record(r2) -> unify_row(r1, r2, ref)
@@ -167,7 +167,7 @@ pub fn resolve(s, typ) {
     t.Unbound(a) ->
       map.get(terms, a)
       |> result.unwrap(typ)
-    t.Binary | t.Integer -> typ
+    t.Str | t.Integer -> typ
     t.LinkedList(element) -> t.LinkedList(resolve(s, element))
     t.Fun(t, e, u) -> t.Fun(resolve(s, t), resolve_effect(s, e), resolve(s, u))
     t.Record(r) -> t.Record(resolve_row(s, r))

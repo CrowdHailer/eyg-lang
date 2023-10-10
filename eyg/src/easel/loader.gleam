@@ -68,7 +68,7 @@ fn applet(root) {
               let id = int.to_string(list.length(saved))
               let saved = [action, ..saved]
               javascript.set_reference(actions, saved)
-              r.prim(r.Value(r.Binary(id)), rev, env, k)
+              r.prim(r.Value(r.Str(id)), rev, env, k)
             },
           )
           |> map.insert("Log", console_log().2)
@@ -77,7 +77,7 @@ fn applet(root) {
           let current = javascript.dereference(state)
           let result = r.handle(r.eval_call(func, current, env, None), handlers)
           let _ = case result {
-            r.Value(r.Binary(page)) -> document.set_html(root, page)
+            r.Value(r.Str(page)) -> document.set_html(root, page)
             _ -> {
               io.debug(#("unexpected", result))
               panic("nope")

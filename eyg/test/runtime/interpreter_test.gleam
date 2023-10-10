@@ -11,23 +11,23 @@ import platforms/browser
 
 pub fn variable_test() {
   let source = e.Variable("x")
-  r.eval(source, r.Env([#("x", r.Binary("assigned"))], map.new()), None)
-  |> should.equal(r.Value(r.Binary("assigned")))
+  r.eval(source, r.Env([#("x", r.Str("assigned"))], map.new()), None)
+  |> should.equal(r.Value(r.Str("assigned")))
 }
 
 pub fn function_test() {
   let body = e.Variable("x")
   let source = e.Lambda("x", body)
-  let scope = [#("foo", r.Binary("assigned"))]
+  let scope = [#("foo", r.Str("assigned"))]
   let env = r.Env(scope, map.new())
   r.eval(source, env, None)
   |> should.equal(r.Value(r.Function("x", body, scope, [])))
 }
 
 pub fn function_application_test() {
-  let source = e.Apply(e.Lambda("x", e.Binary("body")), e.Integer(0))
+  let source = e.Apply(e.Lambda("x", e.Str("body")), e.Integer(0))
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Binary("body")))
+  |> should.equal(r.Value(r.Str("body")))
 
   let source =
     e.Let(
@@ -40,17 +40,17 @@ pub fn function_application_test() {
 }
 
 pub fn builtin_application_test() {
-  let source = e.Apply(e.Builtin("string_uppercase"), e.Binary("hello"))
+  let source = e.Apply(e.Builtin("string_uppercase"), e.Str("hello"))
 
   r.eval(source, stdlib.env(), None)
-  |> should.equal(r.Value(r.Binary("HELLO")))
+  |> should.equal(r.Value(r.Str("HELLO")))
 }
 
 // primitive
 pub fn create_a_binary_test() {
-  let source = e.Binary("hello")
+  let source = e.Str("hello")
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Binary("hello")))
+  |> should.equal(r.Value(r.Str("hello")))
 }
 
 pub fn create_an_integer_test() {
@@ -66,11 +66,11 @@ pub fn record_creation_test() {
 
   let source =
     e.Apply(
-      e.Apply(e.Extend("foo"), e.Binary("FOO")),
+      e.Apply(e.Extend("foo"), e.Str("FOO")),
       e.Apply(e.Apply(e.Extend("bar"), e.Integer(0)), e.Empty),
     )
   r.eval(e.Apply(e.Select("foo"), source), env.empty(), None)
-  |> should.equal(r.Value(r.Binary("FOO")))
+  |> should.equal(r.Value(r.Str("FOO")))
   r.eval(e.Apply(e.Select("bar"), source), env.empty(), None)
   |> should.equal(r.Value(r.Integer(0)))
 }
@@ -79,19 +79,16 @@ pub fn case_test() {
   let switch =
     e.Apply(
       e.Apply(e.Case("Some"), e.Lambda("x", e.Variable("x"))),
-      e.Apply(
-        e.Apply(e.Case("None"), e.Lambda("_", e.Binary("else"))),
-        e.NoCases,
-      ),
+      e.Apply(e.Apply(e.Case("None"), e.Lambda("_", e.Str("else"))), e.NoCases),
     )
 
-  let source = e.Apply(switch, e.Apply(e.Tag("Some"), e.Binary("foo")))
+  let source = e.Apply(switch, e.Apply(e.Tag("Some"), e.Str("foo")))
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Binary("foo")))
+  |> should.equal(r.Value(r.Str("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("None"), e.Empty))
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Binary("else")))
+  |> should.equal(r.Value(r.Str("else")))
 }
 
 pub fn rasing_effect_test() {
@@ -106,9 +103,9 @@ pub fn rasing_effect_test() {
   lifted
   |> should.equal(r.Integer(1))
   let assert r.Effect("Bar", lifted, rev, env, k) =
-    r.loop(r.V(r.Value(r.Binary("reply"))), rev, env, k)
+    r.loop(r.V(r.Value(r.Str("reply"))), rev, env, k)
   lifted
-  |> should.equal(r.Binary("reply"))
+  |> should.equal(r.Str("reply"))
   let assert r.Value(term) = r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   term
   |> should.equal(r.Record([]))
@@ -121,22 +118,22 @@ pub fn effect_in_case_test() {
       e.Apply(e.Apply(e.Case("Error"), e.Perform("Raise")), e.NoCases),
     )
 
-  let source = e.Apply(switch, e.Apply(e.Tag("Ok"), e.Binary("foo")))
+  let source = e.Apply(switch, e.Apply(e.Tag("Ok"), e.Str("foo")))
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Binary("foo")))
+  |> should.equal(r.Value(r.Str("foo")))
 
-  let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Binary("nope")))
+  let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Str("nope")))
   let assert r.Effect("Raise", lifted, _rev, _env, _k) =
     r.eval(source, env.empty(), None)
   lifted
-  |> should.equal(r.Binary("nope"))
+  |> should.equal(r.Str("nope"))
 }
 
 pub fn effect_in_builtin_test() {
   let list =
     e.Apply(
-      e.Apply(e.Cons, e.Binary("fizz")),
-      e.Apply(e.Apply(e.Cons, e.Binary("buzz")), e.Tail),
+      e.Apply(e.Cons, e.Str("fizz")),
+      e.Apply(e.Apply(e.Cons, e.Str("buzz")), e.Tail),
     )
   let reducer =
     e.Lambda(
@@ -155,50 +152,50 @@ pub fn effect_in_builtin_test() {
     )
   let source =
     e.Apply(
-      e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Binary("initial")),
+      e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Str("initial")),
       reducer,
     )
   let assert r.Effect("Foo", lifted, rev, env, k) =
     r.eval(source, stdlib.env(), None)
   lifted
-  |> should.equal(r.Binary("fizz"))
+  |> should.equal(r.Str("fizz"))
   let assert r.Effect("Foo", lifted, rev, env, k) =
     r.loop(r.V(r.Value(r.unit)), rev, env, k)
   lifted
-  |> should.equal(r.Binary("buzz"))
+  |> should.equal(r.Str("buzz"))
   r.loop(r.V(r.Value(r.unit)), rev, env, k)
-  |> should.equal(r.Value(r.Binary("initialfizzbuzz")))
+  |> should.equal(r.Value(r.Str("initialfizzbuzz")))
 }
 
 pub fn handler_no_effect_test() {
   let handler =
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
-  let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Binary("mystring")))
+  let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Str("mystring")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
+  |> should.equal(r.Value(r.Tagged("Ok", r.Str("mystring"))))
 
   // shallow
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Tagged("Ok", r.Binary("mystring"))))
+  |> should.equal(r.Value(r.Tagged("Ok", r.Str("mystring"))))
 }
 
 pub fn handle_early_return_effect_test() {
   let handler =
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
-  let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Binary("Bad thing")))
+  let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Str("Bad thing")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Tagged("Error", r.Binary("Bad thing"))))
+  |> should.equal(r.Value(r.Tagged("Error", r.Str("Bad thing"))))
 
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Tagged("Error", r.Binary("Bad thing"))))
+  |> should.equal(r.Value(r.Tagged("Error", r.Str("Bad thing"))))
 }
 
 pub fn handle_resume_test() {
@@ -217,18 +214,14 @@ pub fn handle_resume_test() {
   let exec =
     e.Lambda(
       "_",
-      e.Let(
-        "_",
-        e.Apply(e.Perform("Log"), e.Binary("my message")),
-        e.Integer(100),
-      ),
+      e.Let("_", e.Apply(e.Perform("Log"), e.Str("my message")), e.Integer(100)),
     )
   let source = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
 
   r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Record([
     #("value", r.Integer(100)),
-    #("log", r.Binary("my message")),
+    #("log", r.Str("my message")),
   ])))
 
   let source = e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
@@ -236,7 +229,7 @@ pub fn handle_resume_test() {
   r.eval(source, env.empty(), None)
   |> should.equal(r.Value(r.Record([
     #("value", r.Integer(100)),
-    #("log", r.Binary("my message")),
+    #("log", r.Str("my message")),
   ])))
 }
 
@@ -259,8 +252,8 @@ pub fn ignore_other_effect_test() {
   |> should.equal(r.Record([]))
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
-  r.loop(r.V(r.Value(r.Binary("reply"))), rev, env, k)
-  |> should.equal(r.Value(r.Record([#("foo", r.Binary("reply"))])))
+  r.loop(r.V(r.Value(r.Str("reply"))), rev, env, k)
+  |> should.equal(r.Value(r.Record([#("foo", r.Str("reply"))])))
 
   // SHALLOW
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
@@ -271,8 +264,8 @@ pub fn ignore_other_effect_test() {
   |> should.equal(r.Record([]))
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
-  r.loop(r.V(r.Value(r.Binary("reply"))), rev, env, k)
-  |> should.equal(r.Value(r.Record([#("foo", r.Binary("reply"))])))
+  r.loop(r.V(r.Value(r.Str("reply"))), rev, env, k)
+  |> should.equal(r.Value(r.Record([#("foo", r.Str("reply"))])))
 }
 
 pub fn multiple_effects_test() {
@@ -291,14 +284,14 @@ pub fn multiple_effects_test() {
   |> should.equal(r.Record([]))
 
   let assert r.Effect("Choose", lifted, rev, env, k) =
-    r.loop(r.V(r.Value(r.Binary("True"))), rev, env, k)
+    r.loop(r.V(r.Value(r.Str("True"))), rev, env, k)
   lifted
   |> should.equal(r.Record([]))
 
-  r.loop(r.V(r.Value(r.Binary("False"))), rev, env, k)
+  r.loop(r.V(r.Value(r.Str("False"))), rev, env, k)
   |> should.equal(r.Value(r.Record([
-    #("a", r.Binary("True")),
-    #("b", r.Binary("False")),
+    #("a", r.Str("True")),
+    #("b", r.Str("False")),
   ])))
 }
 
@@ -378,33 +371,27 @@ pub fn multiple_resumptions_test() {
 
 pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
   let handler =
-    e.Apply(
-      e.Handle("Log"),
-      e.Lambda("lift", e.Lambda("k", e.Binary("Caught"))),
-    )
+    e.Apply(e.Handle("Log"), e.Lambda("lift", e.Lambda("k", e.Str("Caught"))))
   let source =
     e.Let(
       "_",
-      e.Apply(handler, e.Lambda("_", e.Binary("Original"))),
-      e.Apply(e.Perform("Log"), e.Binary("outer")),
+      e.Apply(handler, e.Lambda("_", e.Str("Original"))),
+      e.Apply(e.Perform("Log"), e.Str("outer")),
     )
-  let assert r.Effect("Log", r.Binary("outer"), rev, env, k) =
+  let assert r.Effect("Log", r.Str("outer"), rev, env, k) =
     r.eval(source, env.empty(), None)
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
 
   let handler =
-    e.Apply(
-      e.Shallow("Log"),
-      e.Lambda("lift", e.Lambda("k", e.Binary("Caught"))),
-    )
+    e.Apply(e.Shallow("Log"), e.Lambda("lift", e.Lambda("k", e.Str("Caught"))))
   let source =
     e.Let(
       "_",
-      e.Apply(handler, e.Lambda("_", e.Binary("Original"))),
-      e.Apply(e.Perform("Log"), e.Binary("outer")),
+      e.Apply(handler, e.Lambda("_", e.Str("Original"))),
+      e.Apply(e.Perform("Log"), e.Str("outer")),
     )
-  let assert r.Effect("Log", r.Binary("outer"), rev, env, k) =
+  let assert r.Effect("Log", r.Str("outer"), rev, env, k) =
     r.eval(source, env.empty(), None)
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
@@ -418,17 +405,17 @@ pub fn handler_is_applied_after_other_effects_test() {
       "_",
       e.Let(
         "_",
-        e.Apply(e.Perform("Log"), e.Binary("my log")),
+        e.Apply(e.Perform("Log"), e.Str("my log")),
         e.Let(
           "_",
-          e.Apply(e.Perform("Fail"), e.Binary("some error")),
-          e.Binary("done"),
+          e.Apply(e.Perform("Fail"), e.Str("some error")),
+          e.Str("done"),
         ),
       ),
     )
 
   let source = e.Apply(handler, exec)
-  let assert r.Effect("Log", r.Binary("my log"), rev, env, k) =
+  let assert r.Effect("Log", r.Str("my log"), rev, env, k) =
     r.eval(source, env.empty(), None)
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
@@ -441,17 +428,17 @@ pub fn handler_is_applied_after_other_effects_test() {
       "_",
       e.Let(
         "_",
-        e.Apply(e.Perform("Log"), e.Binary("my log")),
+        e.Apply(e.Perform("Log"), e.Str("my log")),
         e.Let(
           "_",
-          e.Apply(e.Perform("Fail"), e.Binary("some error")),
-          e.Binary("done"),
+          e.Apply(e.Perform("Fail"), e.Str("some error")),
+          e.Str("done"),
         ),
       ),
     )
 
   let source = e.Apply(handler, exec)
-  let assert r.Effect("Log", r.Binary("my log"), rev, env, k) =
+  let assert r.Effect("Log", r.Str("my log"), rev, env, k) =
     r.eval(source, env.empty(), None)
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
@@ -467,10 +454,10 @@ fn handlers() {
 
 pub fn async_test() {
   let source =
-    e.Lambda("_", e.Apply(e.Perform("Async"), e.Lambda("_", e.Binary("later"))))
+    e.Lambda("_", e.Apply(e.Perform("Async"), e.Lambda("_", e.Str("later"))))
   let assert Ok(r.Promise(p)) =
     r.run(source, stdlib.env(), r.unit, handlers().1)
   use value <- promise.map(p)
   value
-  |> should.equal(r.Binary("later"))
+  |> should.equal(r.Str("later"))
 }
