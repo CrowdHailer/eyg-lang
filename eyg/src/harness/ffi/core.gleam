@@ -111,6 +111,8 @@ pub fn lib() {
   |> extend("capture", capture())
   |> extend("encode_uri", encode_uri())
   |> extend("base64_encode", base64_encode())
+  // binary
+  |> extend("binary_from_integers", binary_from_integers())
   // integer
   |> extend("int_add", integer.add())
   |> extend("int_subtract", integer.subtract())
@@ -365,4 +367,23 @@ pub fn do_base64_encode(term, rev, env, k) {
     env,
     k,
   )
+}
+
+pub fn binary_from_integers() {
+  let type_ = t.Fun(t.LinkedList(t.Integer), t.Open(-1), t.Binary)
+  #(type_, r.Arity1(do_binary_from_integers))
+}
+
+pub fn do_binary_from_integers(term, rev, env, k) {
+  use parts <- cast.require(cast.list(term), rev, env, k)
+  let content =
+    list.fold(
+      list.reverse(parts),
+      <<>>,
+      fn(acc, el) {
+        let assert r.Integer(i) = el
+        <<i, acc:bit_string>>
+      },
+    )
+  r.prim(r.Value(r.Binary(content)), rev, env, k)
 }
