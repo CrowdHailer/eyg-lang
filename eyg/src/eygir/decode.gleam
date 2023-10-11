@@ -1,3 +1,4 @@
+import gleam/base
 import gleam/result
 import gleam/dynamic.{
   DecodeError, any, decode1, decode2, decode3, field, int, string,
@@ -7,6 +8,14 @@ import eygir/expression as e
 
 fn label() {
   any([field("label", string), field("l", string)])
+}
+
+fn base_encoded(value) {
+  use encoded <- result.then(string(value))
+  result.map_error(
+    base.decode64(encoded),
+    fn(_) { [dynamic.DecodeError("base64 encoded", encoded, [""])] },
+  )
 }
 
 pub fn decoder(x) {
@@ -32,6 +41,12 @@ pub fn decoder(x) {
         any([field("value", decoder), field("v", decoder)]),
         any([field("then", decoder), field("t", decoder)]),
       )
+    "x" ->
+      decode1(
+        e.Binary,
+        any([field("value", base_encoded), field("v", base_encoded)]),
+      )
+
     "i" | "integer" ->
       decode1(e.Integer, any([field("value", int), field("v", int)]))
     "s" | "binary" ->

@@ -100,6 +100,7 @@ pub fn handle(return, extrinsic) {
 }
 
 pub type Term {
+  Binary(value: BitString)
   Integer(value: Int)
   Str(value: String)
   LinkedList(elements: List(Term))
@@ -164,6 +165,7 @@ pub fn error(reason) {
 // This might not give in runtime core, more runtime presentation
 pub fn to_string(term) {
   case term {
+    Binary(value) -> e.print_bit_string(value)
     Integer(value) -> int.to_string(value)
     Str(value) -> string.concat(["\"", value, "\""])
     LinkedList(items) ->
@@ -399,6 +401,7 @@ fn step(exp, rev, env: Env, k) {
       )
     }
 
+    E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
     E(e.Integer(value)) -> K(V(Value(Integer(value))), rev, env, k)
     E(e.Str(value)) -> K(V(Value(Str(value))), rev, env, k)
     E(e.Tail) -> K(V(Value(LinkedList([]))), rev, env, k)

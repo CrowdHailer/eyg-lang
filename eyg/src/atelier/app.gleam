@@ -287,6 +287,7 @@ fn insert(zipper: zipper.Zipper, state) {
     e.Apply(_, _) -> Error("no insert option for apply")
     e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
 
+    e.Binary(value) -> Error("no insert option for binary")
     e.Str(value) -> Ok(WriteText(value, fn(new) { zipper.1(e.Str(new)) }))
     e.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { zipper.1(e.Integer(new)) }))

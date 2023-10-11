@@ -167,7 +167,7 @@ pub fn resolve(s, typ) {
     t.Unbound(a) ->
       map.get(terms, a)
       |> result.unwrap(typ)
-    t.Str | t.Integer -> typ
+    t.Binary | t.Str | t.Integer -> typ
     t.LinkedList(element) -> t.LinkedList(resolve(s, element))
     t.Fun(t, e, u) -> t.Fun(resolve(s, t), resolve_effect(s, e), resolve(s, u))
     t.Record(r) -> t.Record(resolve_row(s, r))

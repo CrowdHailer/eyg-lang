@@ -12,6 +12,7 @@ pub type Row(kind) {
 
 pub type Term {
   Unbound(Int)
+  Binary
   Integer
   Str
   LinkedList(Term)
@@ -30,7 +31,7 @@ pub type Variable {
 pub fn ftv(typ) {
   case typ {
     Unbound(x) -> setx.singleton(Term(x))
-    Integer | Str -> set.new()
+    Binary | Integer | Str -> set.new()
     LinkedList(element) -> ftv(element)
     Record(row) -> ftv_row(row)
     Union(row) -> ftv_row(row)

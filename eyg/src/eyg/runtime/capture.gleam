@@ -21,6 +21,7 @@ pub fn capture(term) {
 
 fn do_capture(term, env) {
   case term {
+    r.Binary(value) -> #(e.Binary(value), env)
     r.Integer(value) -> #(e.Integer(value), env)
     r.Str(value) -> #(e.Str(value), env)
     r.LinkedList(items) ->

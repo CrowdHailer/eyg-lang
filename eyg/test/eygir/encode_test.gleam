@@ -20,6 +20,7 @@ pub fn expression_test() {
   check_encoding(e.Lambda("x", e.Variable("x")))
   check_encoding(e.Apply(e.Lambda("x", e.Variable("x")), e.Str("foo")))
   check_encoding(e.Let("x", e.Str("hi"), e.Variable("x")))
+  check_encoding(e.Binary(<<1>>))
   check_encoding(e.Integer(5))
   check_encoding(e.Str("hello"))
   check_encoding(e.Tail)

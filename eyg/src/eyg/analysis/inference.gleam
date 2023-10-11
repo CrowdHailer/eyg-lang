@@ -186,6 +186,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       |> compose(unify(typ, typ, ref, path))
     }
     // Primitive
+    e.Binary(_) -> unify(typ, t.Binary, ref, path)
     e.Str(_) -> unify(typ, t.Str, ref, path)
     e.Integer(_) -> unify(typ, t.Integer, ref, path)
     e.Tail -> unify(typ, t.tail(ref), ref, path)

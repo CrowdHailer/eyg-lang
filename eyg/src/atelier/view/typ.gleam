@@ -28,6 +28,7 @@ pub fn render_failure(f) {
 pub fn render_type(typ) {
   case typ {
     t.Unbound(i) -> int.to_string(i)
+    t.Binary -> "Binary"
     t.Integer -> "Integer"
     t.Str -> "String"
     t.LinkedList(el) -> string.concat(["List(", render_type(el), ")"])
@@ -104,7 +105,7 @@ fn collect_effect(eff, acc) {
 fn do_used_in_type(used, type_) {
   case type_ {
     t.Unbound(i) -> set.insert(used, i)
-    t.Integer | t.Str -> used
+    t.Binary | t.Integer | t.Str -> used
     t.LinkedList(el) -> do_used_in_type(used, el)
     t.Fun(arg, effect, ret) ->
       used

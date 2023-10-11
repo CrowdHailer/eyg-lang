@@ -98,6 +98,8 @@ fn primitive(exp, next) {
     | e.Lambda(_, _)
     | e.Let(_, _, _)
     | e.Builtin(_) -> panic("not a literal")
+
+    e.Binary(_) -> #(t.Binary, next)
     e.Str(_) -> #(t.String, next)
     e.Integer(_) -> #(t.Integer, next)
 

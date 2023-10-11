@@ -1,3 +1,4 @@
+import gleam/base
 import gleam/json.{int, object, string}
 import eygir/expression as e
 
@@ -9,6 +10,10 @@ fn label(value) {
   #("l", string(value))
 }
 
+fn bytes(b) {
+  string(base.encode64(b, True))
+}
+
 pub fn encode(exp) {
   case exp {
     e.Variable(x) -> node("v", [label(x)])
@@ -18,6 +23,8 @@ pub fn encode(exp) {
     e.Let(x, value, then) ->
       [label(x), #("v", encode(value)), #("t", encode(then))]
       |> node("l", _)
+    // b already taken when adding binary
+    e.Binary(b) -> node("x", [#("v", bytes(b))])
     e.Integer(i) -> node("i", [#("v", int(i))])
     // string
     e.Str(s) -> node("s", [#("v", string(s))])

@@ -560,6 +560,7 @@ pub fn insert_text(state: Embed, data, start, end) {
         "z" -> undo(state, start)
         "Z" -> redo(state, start)
         "c" -> call(state, start, end)
+        "b" -> binary(state, start, end)
         "n" -> number(state, start, end)
         "m" -> match(state, start, end)
         "M" -> nocases(state, start, end)
@@ -1084,6 +1085,12 @@ pub fn string(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
   #(e.Str(""), Insert, [])
+}
+
+pub fn binary(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use _target <- update_at(state, path)
+  #(e.Binary(<<1, 10, 100>>), Insert, [])
 }
 
 // shift d for delete line

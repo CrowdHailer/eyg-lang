@@ -1,4 +1,23 @@
+import gleam/int
 import gleam/list
+import gleam/string
+
+// this prints in the eyg format,
+// doesn't belong in this file but was the first sensible place to store the function
+pub fn print_bit_string(value) {
+  bit_string_to_integers(value, [])
+  |> list.map(int.to_string)
+  |> string.join(" ")
+  |> string.append(">")
+  |> string.append("<", _)
+}
+
+fn bit_string_to_integers(value, acc) {
+  case value {
+    <<>> -> list.reverse(acc)
+    <<byte, rest:binary>> -> bit_string_to_integers(rest, [byte, ..acc])
+  }
+}
 
 pub type Expression {
   Variable(label: String)
@@ -7,6 +26,8 @@ pub type Expression {
   Let(label: String, definition: Expression, body: Expression)
 
   // Primitive
+  // TODO encode/decode
+  Binary(value: BitString)
   Integer(value: Int)
   Str(value: String)
 

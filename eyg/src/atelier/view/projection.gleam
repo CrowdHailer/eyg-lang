@@ -32,6 +32,7 @@ pub fn do_render(exp, br, loc, inferred) {
     e.Apply(func, arg) -> call(func, arg, br, loc, inferred)
     e.Let(label, value, then) ->
       assigment(label, value, then, br, loc, inferred)
+    e.Binary(value) -> [binary(value, loc, inferred)]
     e.Str(value) -> [string(value, loc, inferred)]
     e.Integer(value) -> [integer(value, loc, inferred)]
     e.Tail -> [
@@ -356,6 +357,14 @@ fn error(loc: Location, inferred) {
       }
     None -> False
   }
+}
+
+fn binary(value, loc, inferred) {
+  let target = focused(loc)
+  let alert = error(loc, inferred)
+  let content = e.print_bit_string(value)
+  [click(loc), classes([#("text-green-500", True), ..highlight(target, alert)])]
+  |> span([text(content)])
 }
 
 fn string(value, loc, inferred) {

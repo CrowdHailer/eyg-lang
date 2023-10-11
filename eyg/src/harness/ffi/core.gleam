@@ -261,6 +261,7 @@ pub fn expression_to_language(exp) {
       ]
     }
 
+    e.Binary(value) -> [r.Tagged("Binary", r.Binary(value))]
     e.Integer(value) -> [r.Tagged("Integer", r.Integer(value))]
     e.Str(value) -> [r.Tagged("String", r.Str(value))]
 
@@ -310,6 +311,7 @@ fn do_language_to_expression(term, k) {
 
     [r.Tagged("Integer", r.Integer(value)), ..rest] -> k(e.Integer(value), rest)
     [r.Tagged("String", r.Str(value)), ..rest] -> k(e.Str(value), rest)
+    [r.Tagged("Binary", r.Binary(value)), ..rest] -> k(e.Binary(value), rest)
 
     [r.Tagged("Tail", r.Record([])), ..rest] -> k(e.Tail, rest)
     [r.Tagged("Cons", r.Record([])), ..rest] -> k(e.Cons, rest)

@@ -42,7 +42,7 @@ fn apply_once(s, type_) {
       }
     t.Fun(from, effects, to) ->
       t.Fun(apply_once(s, from), apply_once(s, effects), apply_once(s, to))
-    t.Integer | t.String -> type_
+    t.Binary | t.Integer | t.String -> type_
     t.LinkedList(element) -> t.LinkedList(apply_once(s, element))
     t.Record(row) -> t.Record(apply_once(s, row))
     t.Union(row) -> t.Union(apply_once(s, row))

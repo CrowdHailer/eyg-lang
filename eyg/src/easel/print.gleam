@@ -179,6 +179,17 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       }
       print_with_offset(content, loc, Hole, err, acc, info, analysis)
     }
+    // TODO fix this acc needs to look like string
+    e.Binary(value) ->
+      print_with_offset(
+        e.print_bit_string(value),
+        loc,
+        Integer,
+        err,
+        acc,
+        info,
+        analysis,
+      )
     e.Integer(value) ->
       print_with_offset(
         int.to_string(value),

@@ -5,6 +5,7 @@ import gleam/setx
 pub type Type {
   Var(Int)
   Fun(Type, Type, Type)
+  Binary
   Integer
   String
   LinkedList(Type)
@@ -24,7 +25,7 @@ pub fn ftv(type_) {
     Var(a) -> setx.singleton(a)
     Fun(from, effects, to) ->
       set.union(set.union(ftv(from), ftv(effects)), ftv(to))
-    Integer | String -> set.new()
+    Binary | Integer | String -> set.new()
     LinkedList(element) -> ftv(element)
     Record(row) -> ftv(row)
     Union(row) -> ftv(row)
@@ -45,7 +46,7 @@ pub fn apply(s, type_) {
       }
     Fun(from, effects, to) ->
       Fun(apply(s, from), apply(s, effects), apply(s, to))
-    Integer | String -> type_
+    Binary | Integer | String -> type_
     LinkedList(element) -> LinkedList(apply(s, element))
     Record(row) -> Record(apply(s, row))
     Union(row) -> Union(apply(s, row))
@@ -69,7 +70,7 @@ pub fn resolve(t, s) {
         Error(Nil) -> t
       }
     Fun(u, v, w) -> Fun(resolve(u, s), resolve(v, s), resolve(w, s))
-    String | Integer | Empty -> t
+    Binary | String | Integer | Empty -> t
     LinkedList(element) -> LinkedList(resolve(element, s))
     Record(u) -> Record(resolve(u, s))
     Union(u) -> Union(resolve(u, s))

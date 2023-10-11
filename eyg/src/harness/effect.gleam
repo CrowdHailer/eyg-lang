@@ -305,7 +305,10 @@ pub fn file_read() {
       use file <- cast.require(cast.string(file), rev, env, k)
       case simplifile.read(file) {
         Ok(content) -> r.prim(r.Value(r.ok(r.Str(content))), rev, env, k)
-        Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
+        Error(_) -> {
+          io.debug(#("failed to read", file))
+          r.prim(r.Value(r.error(r.unit)), rev, env, k)
+        }
       }
     },
   )
