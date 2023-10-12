@@ -15,6 +15,7 @@ import harness/ffi/integer
 import harness/ffi/linked_list
 import harness/ffi/string
 import old_plinth/browser/window
+import plinth/javascript/console
 
 pub fn equal() {
   let type_ =
@@ -133,19 +134,22 @@ pub fn lib() {
   // list
   |> extend("list_pop", linked_list.pop())
   |> extend("list_fold", linked_list.fold())
+  |> extend("eval", eval())
 }
 
 pub fn do_eval(source, rev, env, k) {
   use source <- cast.require(cast.list(source), rev, env, k)
   case language_to_expression(source) {
     Ok(expression) -> {
-      let value =
+      // must be value otherwise/effect continuations need sorting
+      let assert r.Value(value) =
         r.eval(
           expression,
           r.Env([], lib().1),
           Some(r.Kont(r.Apply(r.Defunc(r.Tag("Ok"), []), rev, env), None)),
         )
-      r.prim(value, rev, env, k)
+      // console.log(value)
+      r.prim(r.Value(value), rev, env, k)
     }
     Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
   }
@@ -288,7 +292,92 @@ pub fn expression_to_language(exp) {
 }
 
 pub fn language_to_expression(source) {
-  do_language_to_expression(source, fn(x, _) { Ok(x) })
+  // This stack overflows on resolving the built up k
+  // do_language_to_expression(source, fn(x, _) { Ok(x) })
+  Ok(stack_language_to_expression(source, []))
+}
+
+fn stack_language_to_expression(source, stack) {
+  let [node, ..source] = source
+  let #(exp, stack) = step(node, stack)
+  case exp {
+    Some(exp) ->
+      case apply(exp, stack) {
+        Ok(exp) -> {
+          exp
+        }
+        Error(stack) -> stack_language_to_expression(source, stack)
+      }
+    None -> stack_language_to_expression(source, stack)
+  }
+}
+
+fn apply(exp, stack) {
+  case stack {
+    [] -> Ok(exp)
+    [DoBody(label), ..stack] -> apply(e.Lambda(label, exp), stack)
+    [DoFunc, ..stack] -> Error([DoArg(exp), ..stack])
+    [DoArg(func), ..stack] -> apply(e.Apply(func, exp), stack)
+    [DoValue(label), ..stack] -> Error([DoThen(label, exp), ..stack])
+    [DoThen(label, value), ..stack] -> apply(e.Let(label, value, exp), stack)
+  }
+}
+
+type NativeStack {
+  DoBody(String)
+  DoFunc
+  DoArg(e.Expression)
+  DoValue(String)
+  DoThen(String, e.Expression)
+}
+
+fn step(node, stack) {
+  case node {
+    r.Tagged("Variable", r.Str(label)) -> {
+      #(Some(e.Variable(label)), stack)
+    }
+    r.Tagged("Lambda", r.Str(label)) -> {
+      #(None, [DoBody(label), ..stack])
+    }
+    r.Tagged("Apply", r.Record([])) -> {
+      // use arg, rest <- do_language_to_expression(rest)
+      #(None, [DoFunc, ..stack])
+    }
+    r.Tagged("Let", r.Str(label)) -> {
+      // use then, rest <- do_language_to_expression(rest)
+      #(None, [DoValue(label), ..stack])
+    }
+
+    r.Tagged("Integer", r.Integer(value)) -> #(Some(e.Integer(value)), stack)
+    r.Tagged("String", r.Str(value)) -> #(Some(e.Str(value)), stack)
+    r.Tagged("Binary", r.Binary(value)) -> #(Some(e.Binary(value)), stack)
+
+    r.Tagged("Tail", r.Record([])) -> #(Some(e.Tail), stack)
+    r.Tagged("Cons", r.Record([])) -> #(Some(e.Cons), stack)
+
+    r.Tagged("Vacant", r.Str(comment)) -> #(Some(e.Vacant(comment)), stack)
+
+    r.Tagged("Empty", r.Record([])) -> #(Some(e.Empty), stack)
+    r.Tagged("Extend", r.Str(label)) -> #(Some(e.Extend(label)), stack)
+    r.Tagged("Select", r.Str(label)) -> #(Some(e.Select(label)), stack)
+    r.Tagged("Overwrite", r.Str(label)) -> #(Some(e.Overwrite(label)), stack)
+    r.Tagged("Tag", r.Str(label)) -> #(Some(e.Tag(label)), stack)
+    r.Tagged("Case", r.Str(label)) -> #(Some(e.Case(label)), stack)
+    r.Tagged("NoCases", r.Record([])) -> #(Some(e.NoCases), stack)
+
+    r.Tagged("Perform", r.Str(label)) -> #(Some(e.Perform(label)), stack)
+    r.Tagged("Handle", r.Str(label)) -> #(Some(e.Handle(label)), stack)
+    r.Tagged("Shallow", r.Str(label)) -> #(Some(e.Shallow(label)), stack)
+    r.Tagged("Builtin", r.Str(identifier)) -> #(
+      Some(e.Builtin(identifier)),
+      stack,
+    )
+    remaining -> {
+      io.debug(#("remaining values", remaining, stack))
+      Error("error debuggin expressions")
+      panic("bad decodeding")
+    }
+  }
 }
 
 fn do_language_to_expression(term, k) {
