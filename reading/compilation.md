@@ -48,3 +48,48 @@ https://matt.might.net/articles/cps-conversion/ How to compile with continuation
 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/08/algeff-tr-2016-1.pdf In practice though we wish to simplify the types more
 and leave out ‘obvious’ polymorphism. In Koka we adopted
 two extra type rules to achieve this
+
+
+Working out a normalisation
+
+A,A,a,b,c
+
+A,a,b,c + Func
+a,b,c + Func,Func
+b,c, + Arg(a),Func
+c + Arg(x) + Let(x),A,a,b
++  +  Let(x),A,a,b
+
+
+let x = a b
+x c
+---
+
+A,a,A,b,c
+a,A,b,c + Func
+A,b,c + Arg(a)
+b,c + Func,Arg(a)
+c + Arg(b),Arg(a)
+
+let x = b c
+a x
+
+
+-- list
+
+A,A,Cons,x,T
+Cons,x,T + Func,Func
+x,T + Arg(Cons),Func
+T, Cons1(x)
+
+T Cons1,Cons1()
+
+-- select
+A,Select(x),y
+Select(x),y + Func
+
+
+
+-- let
+
+L(x),
