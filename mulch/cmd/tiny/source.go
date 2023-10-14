@@ -9,7 +9,7 @@ func Source() any {
 	_ = _1
 	var _2 any = __perform("LED").(func(any) any)(core.Tag("False").(func(any) any)(core.Empty()))
 	_ = _2
-	var _3 any = __perform("Wait").(func(any) any)(2000)
+	var _3 any = __perform("Wait").(func(any) any)(200)
 	_ = _3
 	return core.Empty()
 }

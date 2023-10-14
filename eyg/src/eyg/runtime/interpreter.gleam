@@ -502,7 +502,10 @@ fn match(label, matched, otherwise, value, rev, env, k) {
         True -> step_call(matched, term, rev, env, k)
         False -> step_call(otherwise, value, rev, env, k)
       }
-    term -> prim(Abort(IncorrectTerm("Tagged", term), rev, env, k), rev, env, k)
+    term -> {
+      let message = string.concat(["Tagged |", label])
+      prim(Abort(IncorrectTerm(message, term), rev, env, k), rev, env, k)
+    }
   }
 }
 
