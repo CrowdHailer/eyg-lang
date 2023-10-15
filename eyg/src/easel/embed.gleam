@@ -557,8 +557,10 @@ pub fn insert_text(state: Embed, data, start, end) {
         "g" -> select(state, start, end)
         "h" -> handle(state, start, end)
         "H" -> shallow(state, start, end)
+        "j" -> builtin(state, start, end)
         "z" -> undo(state, start)
         "Z" -> redo(state, start)
+        // "x" -> ALREADY USED as list
         "c" -> call(state, start, end)
         "b" -> binary(state, start, end)
         "n" -> number(state, start, end)
@@ -835,6 +837,10 @@ pub fn insert_text(state: Embed, data, start, end) {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               #(e.Shallow(label), [], offset, True)
             }
+            e.Builtin(label) -> {
+              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
+              #(e.Builtin(label), [], offset, True)
+            }
             node -> {
               io.debug(#("nothing", node))
               #(node, [], cut_start, False)
@@ -1001,6 +1007,15 @@ pub fn redo(state: Embed, start) {
         )
       #(state, start, [])
     }
+  }
+}
+
+pub fn builtin(state: Embed, start, end) {
+  use path <- single_focus(state, start, end)
+  use target <- update_at(state, path)
+  case target {
+    e.Vacant(_) -> #(e.Builtin(""), Insert, [])
+    _ -> #(e.Apply(e.Builtin(""), target), Insert, [0])
   }
 }
 
@@ -1309,7 +1324,7 @@ fn to_html(sections) {
         print.String -> ["text-green-4"]
         print.Label -> ["text-blue-3"]
         print.Effect -> ["text-yellow-4"]
-        print.Builtin -> ["font-italic"]
+        print.Builtin -> ["italic underline"]
       }
       let class =
         case err {
