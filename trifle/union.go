@@ -21,6 +21,9 @@ func Case(label string, match any, other any) any {
 	}
 }
 
+var True = &Tagged{"True", &Empty{}}
+var False = &Tagged{"False", &Empty{}}
+
 func CastBool(value any) bool {
 	tagged := value.(*Tagged)
 	if tagged.Label == "True" {

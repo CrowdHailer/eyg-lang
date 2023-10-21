@@ -6,7 +6,7 @@ Generate using compiler
 
 `lsusb`
 
-`ls -l /dev/serial `
+`ls -l /dev/serial/by-id `
 gets the tty
 from page
 https://tinygo.org/docs/reference/microcontrollers/arduino-mega2560/
@@ -15,6 +15,10 @@ https://tinygo.org/docs/reference/microcontrollers/arduino-mega2560/
 The tiny program blinks
 ```
 (cd mulch; tinygo flash -target=arduino-mega2560 -size=full -port=/dev/ttyACM0 ./cmd/tiny)
+```
+
+```
+(trifle.build {})
 ```
 
 see sizes

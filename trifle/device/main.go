@@ -40,6 +40,17 @@ func main() {
 		}
 		return k(&t.Empty{})
 	}
+	pin9 := machine.D9
+	pin9.Configure(machine.PinConfig{Mode: machine.PinInputPullup})
+
+	setPin9 := func(on any, k func(any) any) any {
+		value := pin9.Get()
+		if value == true {
+			return k(t.True)
+		} else {
+			return k(t.False)
+		}
+	}
 
 	for {
 		w := []t.Evidence{
@@ -47,6 +58,7 @@ func main() {
 			{"Log", log},
 			{"LED", setLED},
 			{"Wait", wait},
+			{"Pin9", setPin9},
 		}
 		t.Execute(w, run)
 		// r := t.Execute(w, run)
