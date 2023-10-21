@@ -35,6 +35,23 @@ pub fn do_split(s, pattern, rev, env, k) {
   )
 }
 
+pub fn split_once() {
+  let type_ =
+    t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.LinkedList(t.Str)))
+  #(type_, r.Arity2(do_split_once))
+}
+
+pub fn do_split_once(s, pattern, rev, env, k) {
+  use s <- cast.require(cast.string(s), rev, env, k)
+  use pattern <- cast.require(cast.string(pattern), rev, env, k)
+  let value = case string.split_once(s, pattern) {
+    Ok(#(pre, post)) ->
+      r.ok(r.Record([#("pre", r.Str(pre)), #("post", r.Str(post))]))
+    Error(Nil) -> r.error(r.unit)
+  }
+  r.prim(r.Value(value), rev, env, k)
+}
+
 pub fn uppercase() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Str)
   #(type_, r.Arity1(do_uppercase))
@@ -53,6 +70,22 @@ pub fn lowercase() {
 pub fn do_lowercase(value, rev, env, k) {
   use value <- cast.require(cast.string(value), rev, env, k)
   r.prim(r.Value(r.Str(string.lowercase(value))), rev, env, k)
+}
+
+pub fn starts_with() {
+  let type_ =
+    t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.result(t.Str, t.unit)))
+  #(type_, r.Arity2(do_starts_with))
+}
+
+pub fn do_starts_with(value, prefix, rev, env, k) {
+  use value <- cast.require(cast.string(value), rev, env, k)
+  use prefix <- cast.require(cast.string(prefix), rev, env, k)
+  let ret = case string.split_once(value, prefix) {
+    Ok(#("", post)) -> r.ok(r.Str(post))
+    _ -> r.error(r.unit)
+  }
+  r.prim(r.Value(ret), rev, env, k)
 }
 
 pub fn ends_with() {

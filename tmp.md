@@ -58,6 +58,19 @@ OR
 deploying a continuation
 lisp docs, everything first class so partial cases, but need record syntax
 
+```
+fn (state, ch) {
+    match state {
+        ReadText(state) -> read_text(state, ch)
+        ReadTag(state) -> read_tag(state, ch)
+    }
+}
+
+match {
+    ReadText read_text
+    ReadTag read_tag
+}
+```
 
 (let client (facilities.google.auth 1))
 (client.send "peter@petersaxton.uk" "somemessage")
