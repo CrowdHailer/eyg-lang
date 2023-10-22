@@ -10,8 +10,8 @@ gleam_bitwise = "~> 1.2"
 lustre = "~> 3.0.0"
 gleam_json = "~> 0.5"
 gleam_fetch = "~> 0.1"
-plinth = "~> 0.1.4"
-# plinth = {path= "../../plinth"}
+# plinth = "~> 0.1.4"
+plinth = {path= "../../plinth"}
 simplifile = "~> 0.1"
 
 [dev-dependencies]

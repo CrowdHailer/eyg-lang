@@ -5,6 +5,7 @@ let data (^Await (receive 5000 try_receive))
 let stop (serve 5000 (static (projects.website.build "")))
 let stop (serve 5000 (multi_tenent [{key "localhost:5000" value projects.laura}]))
 
+let stop (serve 5000 (static [(file "/index.html" "<html><body>hey<script src=/trifle.js></script></body></html>") (file "/trifle.js" (expect (^File_Read "../eyg/build/bundle/trifle.js")))]))
 
 let stop (serve 5000 ctrl.serve)
 let stop (serve_page 5000 projects.counters)
