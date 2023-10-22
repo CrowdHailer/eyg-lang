@@ -1,3 +1,15 @@
+## Recipe
+
+let body (.body (expect (^Await (^HTTP (std.http.get "gleam.run")))))
+let nodes (parse_html body)
+let filter (std.list.filter (fn node (|Element (fn value (std.equal value.tag "a")) (fn _ false) node.node)))
+(std.list.map as (fn a a.parent))
+
+Need a filter_map -> maybe always this way
+
+is  if an interesting functio
+(std.list.filter (std.equal 2)  [2])
+
 ## Serving
 let stop (serve 5000 (fn request (let _ (^Log request.path) (std.http.ok (std.http.html "hello")))))
 
@@ -13,7 +25,7 @@ let stop (serve_page 5000 projects.counters)
 
 let s (^Read_Source "./saved/saved.json")
 let db (cozo.ast s)
-(std.string.length db)  
+(std.string.length db)
 
 (^Await (^LoadDB db))
 (^Await (^QueryDB "?[] <- [['hello', 'world!']]"))
@@ -39,7 +51,7 @@ let client (facilities.fly.auth "local")
 (^Await (client.update_machine facilities.fly.app facilities.fly.machine (fn _ "Yo")))
 (client.update_machine facilities.fly.app facilities.fly.machine (fn _ (app simple)))
 
-## DNSimple 
+## DNSimple
 (facilities.dnsimple.auth 1)
 let client (facilities.dnsimple.auth {})
 (expect (client.records dnsimple_me "petersaxton.uk"))
@@ -59,14 +71,45 @@ deploying a continuation
 lisp docs, everything first class so partial cases, but need record syntax
 
 ```
-fn (state, ch) {
+// read_text and read_tag are arity2 curried functions
+
+let update = fn (state, char) {
     match state {
-        ReadText(state) -> read_text(state, ch)
-        ReadTag(state) -> read_tag(state, ch)
+        ReadText(params) -> read_text(params, char)
+        ReadTag(params) -> read_tag(params, char)
     }
 }
 
-match {
+// extract call with char arg
+
+let update = fn (state, char) {
+    match state {
+        ReadText(params) -> read_text(params)
+        ReadTag(params) -> read_tag(params)
+    }(char)
+}
+
+// return a function that accepts char later
+
+let update = fn (state) {
+    match state {
+        ReadText(params) -> read_text(params)
+        ReadTag(params) -> read_tag(params)
+    }
+}
+
+// branches are function calls
+
+let update = fn (state) {
+    match state {
+        ReadText read_text
+        ReadTag read_tag
+    }
+}
+
+// matches are first class
+
+let update = match {
     ReadText read_text
     ReadTag read_tag
 }
@@ -75,7 +118,7 @@ match {
 (let client (facilities.google.auth 1))
 (client.send "peter@petersaxton.uk" "somemessage")
 (client.events "2023-10-10T00:00:00Z")
-((.events (facilities.google.auth 1)) "2023-10-10T00:00:00Z") 
+((.events (facilities.google.auth 1)) "2023-10-10T00:00:00Z")
 
 
 From: peterhsaxton@gmail.com
