@@ -145,6 +145,7 @@ fn print(value) {
                   let assert Ok(value) = r.field(rec, key)
                   let value = r.to_string(value)
                   let size = int.max(size, string.length(value))
+                  let size = int.min(20, size)
                   let header = #(key, size)
                   let acc = [value, ..acc]
                   #(acc, header)
@@ -183,6 +184,7 @@ fn print(value) {
                   let #(#(key, size), value) = r
                   let value = string.inspect(value)
                   let size = int.max(size, string.length(value))
+                  let size = int.min(20, size)
                   #(#(key, size), value)
                 },
               )
@@ -209,6 +211,7 @@ fn print_rows_and_headers(headers, rows) -> Nil {
             fn(part) {
               let #(#(_, size), value) = part
               string.pad_right(value, size, " ")
+              |> string.slice(0, size)
             },
           )
           |> string.join(" | ")
