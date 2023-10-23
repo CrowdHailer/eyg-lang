@@ -7,6 +7,14 @@ let filter (std.list.filter (fn node (|Element (fn value (std.equal value.tag "a
 
 Need a filter_map -> maybe always this way
 
+let body (.body (expect (^Await (^HTTP (std.http.path (std.http.get "www.simplyrecipes.com") "/copycat-chipotle-chicken-recipe-7967281")))))
+let body (.body (expect (^Await (^HTTP (std.http.path (std.http.get "www.bbcgoodfood.com") "/recipes/naughty-chocolate-fudge-cake")))))
+Note this needs the singular parser
+
+let ld (.pre (expect (std.string.split_once (.post (expect (std.string.split_once (.post (expect (std.string.split_once body "ld+json"))) ">"))) "<")))
+let parse (json.parse (json.list (json.object (json.field "@type" json.string json.end (fn f {field f})))))
+
+https://www.bbcgoodfood.com/recipes/naughty-chocolate-fudge-cake
 is  if an interesting functio
 (std.list.filter (std.equal 2)  [2])
 
