@@ -11,8 +11,8 @@ let body (.body (expect (^Await (^HTTP (std.http.path (std.http.get "www.simplyr
 let body (.body (expect (^Await (^HTTP (std.http.path (std.http.get "www.bbcgoodfood.com") "/recipes/naughty-chocolate-fudge-cake")))))
 Note this needs the singular parser
 
-let ld (.pre (expect (std.string.split_once (.post (expect (std.string.split_once (.post (expect (std.string.split_once body "ld+json"))) ">"))) "<")))
-let parse (json.parse (json.list (json.object (json.field "@type" json.string json.end (fn f {field f})))))
+let data (.head (expect (std.list.pop (projects.recipe.process "www.simplyrecipes.com/copycat-chipotle-chicken-recipe-7967281"))))
+let triples (json.triples data)
 
 https://www.bbcgoodfood.com/recipes/naughty-chocolate-fudge-cake
 is  if an interesting functio
