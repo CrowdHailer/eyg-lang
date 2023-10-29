@@ -389,6 +389,10 @@ pub fn query_db() {
                       use value <- result.map(dynamic.string(raw))
                       r.Str(value)
                     },
+                    fn(raw) {
+                      use value <- result.map(dynamic.list(dynamic.string)(raw))
+                      r.LinkedList(list.map(value, r.Str))
+                    },
                   ]))),
                 ),
               )
