@@ -12,7 +12,12 @@ let body (.body (expect (^Await (^HTTP (std.http.path (std.http.get "www.bbcgood
 Note this needs the singular parser
 
 let data (.head (expect (std.list.pop (projects.recipe.process "www.simplyrecipes.com/copycat-chipotle-chicken-recipe-7967281"))))
+let data (.head (expect (std.list.pop (projects.recipe.process "www.bbcgoodfood.com/recipes/naughty-chocolate-fudge-cake"))))
 let triples (json.triples data)
+(^Await (^LoadDB triples))
+let steps (^Await (^QueryDB "?[e,v] := *eav[e, x, 'HowToStep'], *eav[e, 'text', v]"))
+(std.list.map steps .v)
+// need to fix arrays but also null in db
 
 https://www.bbcgoodfood.com/recipes/naughty-chocolate-fudge-cake
 is  if an interesting functio
@@ -33,9 +38,9 @@ let stop (serve_page 5000 projects.counters)
 
 let s (^Read_Source "./saved/saved.json")
 let db (cozo.ast s)
+(^Await (^LoadDB db))
 (std.string.length db)
 
-(^Await (^LoadDB db))
 (^Await (^QueryDB "?[] <- [['hello', 'world!']]"))
 (^Await (^QueryDB "?[label] := *eav[id, 'label', label], *eav[id, 'expression', 'Let'],"))
 (^Await (^QueryDB "?[id, comment] := *eav[id, 'comment', comment], *eav[id, 'expression', 'Vacant'],"))

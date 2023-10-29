@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/dynamic
 import gleam/int
 import gleam/list
 import gleam/map
@@ -10,6 +11,7 @@ import gleam/http
 import gleam/http/request
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{try_await}
+import gleam/json
 import simplifile
 import eyg/analysis/typ as t
 import old_plinth/browser/window
@@ -216,14 +218,13 @@ pub fn open() {
       let rev = []
 
       use target <- cast.require(cast.string(target), rev, env, k)
-      // io.debug()
       let p = open_browser(target)
       io.debug(target)
       r.prim(
         r.Value(r.Promise(promise.map(
           p,
           fn(terminate) {
-            io.debug(terminate)
+            // io.debug(terminate)
             r.unit
           },
         ))),
@@ -368,7 +369,42 @@ pub fn query_db() {
       let rev = []
       use query <- cast.require(cast.string(query), rev, env, k)
       let p = run_query(query)
-      r.prim(r.Value(r.Promise(promise.map(p, r.Str))), rev, env, k)
+
+      let p =
+        promise.map(
+          p,
+          fn(raw) {
+            let decoder =
+              dynamic.decode2(
+                fn(a, b) { #(a, b) },
+                dynamic.field("headers", dynamic.list(dynamic.string)),
+                dynamic.field(
+                  "rows",
+                  dynamic.list(dynamic.list(dynamic.any([
+                    fn(raw) {
+                      use value <- result.map(dynamic.int(raw))
+                      r.Integer(value)
+                    },
+                    fn(raw) {
+                      use value <- result.map(dynamic.string(raw))
+                      r.Str(value)
+                    },
+                  ]))),
+                ),
+              )
+            let assert Ok(#(headers, rows)) = json.decode(raw, decoder)
+            list.map(
+              rows,
+              fn(row) {
+                let assert Ok(fields) = list.strict_zip(headers, row)
+                r.Record(fields)
+              },
+            )
+            |> r.LinkedList
+          },
+        )
+
+      r.prim(r.Value(r.Promise(p)), rev, env, k)
     },
   )
 }
