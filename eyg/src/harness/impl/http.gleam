@@ -56,6 +56,8 @@ pub fn serve() {
                     |> effect.extend("HTTP", effect.http())
                     |> effect.extend("Await", effect.await())
                     |> effect.extend("Wait", effect.wait())
+                    |> effect.extend("LoadDB", effect.load_db())
+                    |> effect.extend("QueryDB", effect.query_db())
                   }.1,
                 ),
                 {
@@ -64,6 +66,8 @@ pub fn serve() {
                   |> effect.extend("HTTP", effect.http())
                   |> effect.extend("Await", effect.await())
                   |> effect.extend("Wait", effect.wait())
+                  |> effect.extend("LoadDB", effect.load_db())
+                  |> effect.extend("QueryDB", effect.query_db())
                 }.1,
               ),
               fn(resp) {
