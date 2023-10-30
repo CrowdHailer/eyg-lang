@@ -71,8 +71,13 @@ pub fn serve() {
                 }.1,
               ),
               fn(resp) {
-                let assert Ok(resp) = resp
-                from_response(resp)
+                case resp {
+                  Ok(resp) -> from_response(resp)
+                  Error(#(reason, _path, _env)) -> {
+                    io.debug(r.reason_to_string(reason))
+                    #(500, array.from_list([]), "Server error")
+                  }
+                }
               },
             )
           },

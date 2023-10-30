@@ -469,7 +469,7 @@ fn select(label, arg, rev, env, k) {
       }
     term ->
       Abort(
-        IncorrectTerm(string.append("Record -select", label), term),
+        IncorrectTerm(string.append("Record (-select) ", label), term),
         rev,
         env,
         k,
@@ -480,7 +480,7 @@ fn select(label, arg, rev, env, k) {
 fn extend(label, value, rest, rev, env, k) {
   case rest {
     Record(fields) -> Value(Record([#(label, value), ..fields]))
-    term -> Abort(IncorrectTerm("Record -extend", term), rev, env, k)
+    term -> Abort(IncorrectTerm("Record (-extend) ", term), rev, env, k)
   }
 }
 
@@ -491,7 +491,7 @@ fn overwrite(label, value, rest, rev, env, k) {
         Ok(#(_old, fields)) -> Value(Record([#(label, value), ..fields]))
         Error(Nil) -> Abort(MissingField(label), rev, env, k)
       }
-    term -> Abort(IncorrectTerm("Record -overwrite", term), rev, env, k)
+    term -> Abort(IncorrectTerm("Record (-overwrite) ", term), rev, env, k)
   }
 }
 
