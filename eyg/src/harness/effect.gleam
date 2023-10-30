@@ -200,7 +200,7 @@ pub fn http() {
               resp
             }
 
-            Error(_) -> r.Str("bad response")
+            Error(_) -> r.error(r.Str("bad response"))
           }
         })
 
