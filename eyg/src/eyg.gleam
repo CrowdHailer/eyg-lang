@@ -19,7 +19,7 @@ pub fn do_main(args) {
   let assert Ok(source) = decode.from_json(json)
 
   case args {
-    ["exec", ..rest] -> shell.run(source, rest)
+    ["exec", ..] -> shell.run(source)
     _ -> {
       io.debug(#("no runner for: ", args))
       process.exit(1)

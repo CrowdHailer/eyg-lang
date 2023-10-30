@@ -2,15 +2,14 @@ import gleam/dynamic
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/map
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
 import gleam/javascript/promise
 import eyg/runtime/interpreter as r
 import harness/stdlib
 import plinth/javascript/console
 import gleam/json
-import gleam/javascript/array
 import eygir/expression as e
 import harness/effect
 import harness/ffi/core
@@ -47,7 +46,7 @@ fn handlers() {
   |> effect.extend("Zip", effect.zip())
 }
 
-pub fn run(source, args) {
+pub fn run(source) {
   let env = r.Env(scope: [], builtins: stdlib.lib().1)
   let k_parser =
     Some(r.Kont(
@@ -66,10 +65,13 @@ pub fn run(source, args) {
       let assert r.Value(r.Tagged(tag, value)) =
         r.loop(r.V(r.Value(parser)), [], env, k)
       case tag {
-        "Ok" -> r.field(value, "value")
+        "Ok" ->
+          result.replace_error(
+            r.field(value, "value"),
+            "no value field in parsed value",
+          )
         "Error" -> {
-          console.log(value)
-          todo as "error"
+          Error(r.to_string(value))
         }
       }
     }
@@ -93,26 +95,33 @@ pub fn run(source, args) {
 
 fn read(rl, parser, env, k, prompt) {
   use answer <- promise.await(question(rl, prompt))
-  let assert Ok(r.LinkedList(cmd)) = parser(prompt)(answer)
-  let assert Ok(code) = core.language_to_expression(cmd)
-  case code == e.Empty {
-    True -> promise.resolve(0)
-    False -> {
-      use ret <- promise.await(r.eval_async(code, env, handlers().1))
-      let #(env, prompt) = case ret {
-        Ok(value) -> {
-          print(value)
-          #(env, prompt)
-        }
-        Error(#(r.UnhandledEffect("Prompt", lift), _rev, env)) -> {
-          let assert r.Str(prompt) = lift
-          #(env, prompt)
-        }
-        Error(#(reason, _rev, _env)) -> {
-          console.log(string.concat(["!! ", r.reason_to_string(reason)]))
-          #(env, prompt)
+  case parser(prompt)(answer) {
+    Ok(r.LinkedList(cmd)) -> {
+      let assert Ok(code) = core.language_to_expression(cmd)
+      case code == e.Empty {
+        True -> promise.resolve(0)
+        False -> {
+          use ret <- promise.await(r.eval_async(code, env, handlers().1))
+          let #(env, prompt) = case ret {
+            Ok(value) -> {
+              print(value)
+              #(env, prompt)
+            }
+            Error(#(r.UnhandledEffect("Prompt", lift), _rev, env)) -> {
+              let assert r.Str(prompt) = lift
+              #(env, prompt)
+            }
+            Error(#(reason, _rev, _env)) -> {
+              console.log(string.concat(["!! ", r.reason_to_string(reason)]))
+              #(env, prompt)
+            }
+          }
+          read(rl, parser, env, k, prompt)
         }
       }
+    }
+    Error(reason) -> {
+      io.debug(string.append("failed to parse input ", reason))
       read(rl, parser, env, k, prompt)
     }
   }
