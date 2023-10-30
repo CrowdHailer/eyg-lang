@@ -111,6 +111,7 @@ pub fn lib() {
   |> extend("serialize", serialize())
   |> extend("capture", capture())
   |> extend("encode_uri", encode_uri())
+  |> extend("decode_uri_component", decode_uri_component())
   |> extend("base64_encode", base64_encode())
   // binary
   |> extend("binary_from_integers", binary_from_integers())
@@ -429,6 +430,16 @@ fn do_language_to_expression(term, k) {
       Error("error debuggin expressions")
     }
   }
+}
+
+pub fn decode_uri_component() {
+  let type_ = t.Fun(t.Str, t.Open(-1), t.Str)
+  #(type_, r.Arity1(do_decode_uri_component))
+}
+
+pub fn do_decode_uri_component(term, rev, env, k) {
+  use unencoded <- cast.require(cast.string(term), rev, env, k)
+  r.prim(r.Value(r.Str(window.decode_uri_component(unencoded))), rev, env, k)
 }
 
 pub fn encode_uri() {

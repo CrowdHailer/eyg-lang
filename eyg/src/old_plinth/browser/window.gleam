@@ -13,6 +13,9 @@ pub fn encode_uri(a: String) -> String
 @external(javascript, "../../plinth_ffi.js", "decodeURI")
 pub fn decode_uri(a: String) -> String
 
+@external(javascript, "../../plinth_ffi.js", "decodeURIComponent")
+pub fn decode_uri_component(a: String) -> String
+
 // files
 pub type FileHandle
 

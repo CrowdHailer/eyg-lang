@@ -5,11 +5,15 @@ export function alert(message) {
 }
 
 export function encodeURI(value) {
-  return window.encodeURI(value);
+  return globalThis.encodeURI(value);
 }
 
 export function decodeURI(value) {
-  return window.decodeURI(value);
+  return globalThis.decodeURI(value);
+}
+
+export function decodeURIComponent(value) {
+  return globalThis.decodeURIComponent(value);
 }
 
 export function log(value) {
