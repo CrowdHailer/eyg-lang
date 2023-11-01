@@ -18,6 +18,14 @@ pub fn do_main(args) {
   let assert Ok(json) = simplifile.read("saved/saved.json")
   let assert Ok(source) = decode.from_json(json)
 
+  // heroku copy all files use gleam run
+  // in browser but proxy in netlify
+  // copy build directory but how do I make exec look the same
+  //   - JSON is not copied in build step
+  // Go style serverless
+  // What is the common entry point I want
+  // recipe is an app, service worker makes js necessay, query string params are also only interesting if rendered with JS
+
   case args {
     ["exec", ..] -> shell.run(source)
     _ -> {
