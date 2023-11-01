@@ -1,3 +1,4 @@
+import gleam/option.{Option}
 import gleam/javascript/array.{Array}
 import gleam/javascript/promise.{Promise}
 
@@ -15,6 +16,13 @@ pub fn decode_uri(a: String) -> String
 
 @external(javascript, "../../plinth_ffi.js", "decodeURIComponent")
 pub fn decode_uri_component(a: String) -> String
+
+// Not sure it's worth returning location as a Gleam URL because all  components are optional
+// however page must have an origin/protocol but it might be file based.
+// Nice having a simple location effect in eyg
+
+@external(javascript, "../../plinth_ffi.js", "locationSearch")
+pub fn location_search() -> Result(String, Nil)
 
 // files
 pub type FileHandle

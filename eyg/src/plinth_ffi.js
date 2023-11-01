@@ -16,8 +16,13 @@ export function decodeURIComponent(value) {
   return globalThis.decodeURIComponent(value);
 }
 
-export function log(value) {
-  console.log(value);
+export function locationSearch() {
+  const search = globalThis.location.search;
+  if (search == "") {
+    return new Error()
+  } else {
+    return new Ok(search.slice(1))
+  }
 }
 
 export function newPromise(executor) {

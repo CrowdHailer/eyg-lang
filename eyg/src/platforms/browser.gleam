@@ -26,6 +26,7 @@ fn handlers() {
   |> effect.extend("Await", effect.await())
   |> effect.extend("Async", async())
   |> effect.extend("Listen", listen())
+  |> effect.extend("LocationSearch", location_search())
   |> effect.extend("OnClick", on_click())
   |> effect.extend("OnKeyDown", on_keydown())
 }
@@ -213,6 +214,23 @@ fn listen() {
         },
       )
       r.prim(r.Value(r.unit), rev, env, k)
+    },
+  )
+}
+
+fn location_search() {
+  #(
+    t.unit,
+    t.unit,
+    fn(_, k) {
+      let env = env.empty()
+      let rev = []
+      let value = case window.location_search() {
+        Ok(str) -> r.ok(r.Str(str))
+        Error(_) -> r.error(r.unit)
+      }
+
+      r.prim(r.Value(value), rev, env, k)
     },
   )
 }
