@@ -12,6 +12,7 @@ import harness/stdlib
 import gleam/javascript/array
 import gleam/javascript/promise
 import old_plinth/javascript/promisex
+import plinth/javascript/console
 import harness/ffi/cast
 import harness/ffi/env
 import eygir/expression as e
@@ -134,10 +135,9 @@ fn render() {
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
         _ ->
-          panic(
-            "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render",
-          )
+          todo as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
       }
+
       r.prim(r.Value(r.unit), rev, env, k)
     },
   )
@@ -163,8 +163,9 @@ pub fn async() {
         |> promise.map(fn(result) {
           case result {
             Ok(term) -> term
-            Error(reason) -> {
-              io.debug(reason)
+            Error(#(reason, _path, _env)) -> {
+              // has all the path and env in cant' debug
+              console.log(r.reason_to_string(reason))
               panic("this shouldn't fail")
             }
           }
