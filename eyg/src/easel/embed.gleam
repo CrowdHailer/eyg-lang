@@ -9,6 +9,7 @@ import gleam/string
 import gleam/stringx
 import gleam/http
 import gleam/http/request
+import gleam/http/response
 import gleam/fetch
 import eygir/expression as e
 import eygir/encode
@@ -538,20 +539,31 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         "q" -> {
           let dump = encode.to_json(state.source)
+          // io.print(dump)
           let request =
             request.new()
+            |> request.set_method(http.Post)
             |> request.set_scheme(http.Http)
             |> request.set_host("localhost:8080")
             |> request.set_path("/save")
             |> request.set_body(dump)
-          io.debug(request)
-          fetch.send(request)
-          |> io.debug
-          io.print(dump)
-
-          let mode = Command("no command for key ")
-          #(Embed(..state, mode: mode), start, [])
+          promise.map(
+            fetch.send(request),
+            fn(response) {
+              case response {
+                Ok(response.Response(status: 200, ..)) -> {
+                  Nil
+                }
+                _ -> {
+                  io.debug("failed to save")
+                  Nil
+                }
+              }
+            },
+          )
+          #(state, start, [])
         }
+
         "w" -> call_with(state, start, end)
         "e" -> assign_to(state, start, end)
         "E" -> assign_before(state, start, end)

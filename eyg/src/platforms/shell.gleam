@@ -93,8 +93,7 @@ pub fn run(source) {
     create_interface(
       fn(_) { #(array.from_list([]), "") },
       array.from_list([
-        "(.test (source {}) {})",
-        "let stop (serve 8080 (static (projects.website.build \"\")))",
+        "(.test (source {}) {})", "let stop (projects.website.local 8080)",
         "let me (personal {})",
         "(let p (.projects (source {})) legit.run p.recipe.tests)",
       ]),
