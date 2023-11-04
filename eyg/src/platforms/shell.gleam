@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
+import gleam/javascript/array.{Array}
 import gleam/javascript/promise
 import eyg/runtime/interpreter as r
 import harness/stdlib
@@ -19,7 +20,8 @@ pub type Interface
 
 @external(javascript, "../plinth_readlines_ffi.js", "createInterface")
 pub fn create_interface(
-  completer: fn(String) -> #(List(String), String),
+  completer: fn(String) -> #(Array(String), String),
+  history: Array(String),
 ) -> Interface
 
 @external(javascript, "../plinth_readlines_ffi.js", "question")
@@ -87,7 +89,14 @@ pub fn run(source) {
 
   let assert r.Str(prompt) = prompt
 
-  let rl = create_interface(fn(_) { #([], "") })
+  let rl =
+    create_interface(
+      fn(_) { #(array.from_list([]), "") },
+      array.from_list([
+        "(.test (source {}) {})", "let me (personal {})",
+        "(let p (.projects (source {})) legit.run p.recipe.tests)",
+      ]),
+    )
   use status <- promise.await(read(rl, parser, env, k, prompt))
   close(rl)
   promise.resolve(status)

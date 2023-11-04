@@ -1,6 +1,3 @@
-## dev
-(let p (.projects (source {})) (legit.run p.recipe.tests))
-
 ## Recipe
 
 let body (.body (expect (^Await (^HTTP (std.http.get "gleam.run")))))
