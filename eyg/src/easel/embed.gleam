@@ -7,6 +7,9 @@ import gleam/regex
 import gleam/result
 import gleam/string
 import gleam/stringx
+import gleam/http
+import gleam/http/request
+import gleam/fetch
 import eygir/expression as e
 import eygir/encode
 import eygir/decode
@@ -534,8 +537,20 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start, [])
         }
         "q" -> {
-          io.print(encode.to_json(state.source))
-          #(state, start, [])
+          let dump = encode.to_json(state.source)
+          let request =
+            request.new()
+            |> request.set_scheme(http.Http)
+            |> request.set_host("localhost:8080")
+            |> request.set_path("/save")
+            |> request.set_body(dump)
+          io.debug(request)
+          fetch.send(request)
+          |> io.debug
+          io.print(dump)
+
+          let mode = Command("no command for key ")
+          #(Embed(..state, mode: mode), start, [])
         }
         "w" -> call_with(state, start, end)
         "e" -> assign_to(state, start, end)
