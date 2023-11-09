@@ -14,6 +14,8 @@ unify has to apply to all remaining rules
 unify(left, right, s, next)
 where do I need to apply to keep the new things coming in
 
+khoury explains threading S through. 
+Is there a fold version
 
 Lambda calculus
 
