@@ -116,6 +116,7 @@ pub fn lib() {
   // binary
   |> extend("binary_from_integers", binary_from_integers())
   // integer
+  |> extend("int_compare", integer.compare())
   |> extend("int_add", integer.add())
   |> extend("int_subtract", integer.subtract())
   |> extend("int_multiply", integer.multiply())

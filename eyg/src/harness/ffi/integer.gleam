@@ -1,7 +1,37 @@
 import gleam/int
+import gleam/order.{Eq, Gt, Lt}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
+
+pub fn compare() {
+  let type_ =
+    t.Fun(
+      t.Integer,
+      t.Open(0),
+      t.Fun(
+        t.Integer,
+        t.Open(1),
+        t.Union(t.Extend(
+          "Lt",
+          t.unit,
+          t.Extend("Eq", t.unit, t.Extend("Gt", t.unit, t.Closed)),
+        )),
+      ),
+    )
+  #(type_, r.Arity2(do_compare))
+}
+
+fn do_compare(left, right, rev, env, k) {
+  use left <- cast.require(cast.integer(left), rev, env, k)
+  use right <- cast.require(cast.integer(right), rev, env, k)
+  let return = case int.compare(left, right) {
+    Lt -> r.Tagged("Lt", r.unit)
+    Eq -> r.Tagged("Eq", r.unit)
+    Gt -> r.Tagged("Gt", r.unit)
+  }
+  r.prim(r.Value(return), rev, env, k)
+}
 
 pub fn add() {
   let type_ =
@@ -48,7 +78,11 @@ pub fn divide() {
 fn do_divide(left, right, rev, env, k) {
   use left <- cast.require(cast.integer(left), rev, env, k)
   use right <- cast.require(cast.integer(right), rev, env, k)
-  r.prim(r.Value(r.Integer(left / right)), rev, env, k)
+  let value = case right {
+    0 -> r.error(r.unit)
+    _ -> r.ok(r.Integer(left / right))
+  }
+  r.prim(r.Value(value), rev, env, k)
 }
 
 pub fn absolute() {
