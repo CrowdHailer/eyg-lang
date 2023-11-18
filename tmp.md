@@ -1,3 +1,5 @@
+(std.list.map (inference.infer [] (std.capture stockholm)) (fn x {type x}))
+
 ## Recipe
 
 let body (.body (expect (^Await (^HTTP (std.http.get "gleam.run")))))
