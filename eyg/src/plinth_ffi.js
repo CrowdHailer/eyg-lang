@@ -19,9 +19,9 @@ export function decodeURIComponent(value) {
 export function locationSearch() {
   const search = globalThis.location.search;
   if (search == "") {
-    return new Error()
+    return new Error();
   } else {
-    return new Ok(search.slice(1))
+    return new Ok(search.slice(1));
   }
 }
 
@@ -49,6 +49,17 @@ export function onKeyDown(f) {
     // event.key
     // if (arg) {
     f(event.key);
+    // }
+  };
+}
+
+export function onChange(f) {
+  document.onchange = function (event) {
+    // let arg = event.target.closest("[data-keydown]")?.dataset?.click;
+    // can deserialize in language
+    // event.key
+    // if (arg) {
+    f(event.target.value);
     // }
   };
 }

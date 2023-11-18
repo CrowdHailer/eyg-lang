@@ -30,7 +30,15 @@ fn handlers() {
   |> effect.extend("LocationSearch", location_search())
   |> effect.extend("OnClick", on_click())
   |> effect.extend("OnKeyDown", on_keydown())
+  // on change is global
+  |> effect.extend("OnChange", on_change())
 }
+
+// change with reference and then re rendering/ I can use proper diffing a.la. lustre
+// want to keep serialize ability of things including events and reference to elements
+// 1. listen on global
+// 2. trigger on events but pull value
+// 3. think about making events better type
 
 pub fn do_run(raw) -> Nil {
   case decode.from_json(window.decode_uri(raw)) {
@@ -268,6 +276,21 @@ fn on_keydown() {
       let #(_, extrinsic) = handlers()
 
       document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
+      r.prim(r.Value(r.unit), rev, env, k)
+    },
+  )
+}
+
+fn on_change() {
+  #(
+    t.unit,
+    t.unit,
+    fn(handle, k) {
+      let env = stdlib.env()
+      let rev = []
+      let #(_, extrinsic) = handlers()
+
+      document.on_change(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
       r.prim(r.Value(r.unit), rev, env, k)
     },
   )
