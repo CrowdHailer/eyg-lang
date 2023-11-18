@@ -122,8 +122,8 @@ fn read(rl, parser, env, k, prompt) {
               let assert r.Str(prompt) = lift
               #(env, prompt)
             }
-            Error(#(reason, _rev, _env)) -> {
-              console.log(string.concat(["!! ", r.reason_to_string(reason)]))
+            Error(#(reason, rev, _env)) -> {
+              console.log(string.concat(["!! ", r.reason_to_string(reason), "at: ", path_to_string(list.reverse(rev))]))
               #(env, prompt)
             }
           }
@@ -137,6 +137,12 @@ fn read(rl, parser, env, k, prompt) {
     }
   }
 }
+
+pub fn path_to_string(path) {
+  list.map(path, int.to_string)
+  |> string.join(",")
+}
+
 
 fn print(value) {
   case value {

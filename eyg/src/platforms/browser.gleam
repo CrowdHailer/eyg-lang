@@ -40,6 +40,8 @@ fn handlers() {
 // 2. trigger on events but pull value
 // 3. think about making events better type
 
+// capturing things is too large
+
 pub fn do_run(raw) -> Nil {
   case decode.from_json(window.decode_uri(raw)) {
     Ok(continuation) -> {
