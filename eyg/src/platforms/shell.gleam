@@ -94,7 +94,9 @@ pub fn run(source) {
       fn(_) { #(array.from_list([]), "") },
       array.from_list([
         "(.test (source {}) {})",
-        "let stop_editor (projects.website.local 8080)", "let me (personal {})",
+        "let stop_editor (projects.website.local 8080)", 
+        "(let s (source {}) (s.projects.explain.spike {}))",
+        "let me (personal {})",
         "let stop ((let s (source {}) s.projects.explain.local) 5000)",
         "(let p (.projects (source {})) legit.run p.recipe.tests)",
       ]),
