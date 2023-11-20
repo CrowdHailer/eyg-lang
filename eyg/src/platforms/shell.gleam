@@ -125,7 +125,7 @@ fn read(rl, parser, env, k, prompt) {
               #(env, prompt)
             }
             Error(#(reason, rev, _env)) -> {
-              console.log(string.concat(["!! ", r.reason_to_string(reason), "at: ", path_to_string(list.reverse(rev))]))
+              console.log(string.concat(["!! ", r.reason_to_string(reason), " at: ", path_to_string(list.reverse(rev))]))
               #(env, prompt)
             }
           }
