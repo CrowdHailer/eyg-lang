@@ -146,12 +146,21 @@ pub fn do_eval(source, rev, env, k) {
   case language_to_expression(source) {
     Ok(expression) -> {
       // must be value otherwise/effect continuations need sorting
-      let assert r.Value(value) =
+      let result =
         r.eval(
           expression,
           r.Env([], lib().1),
           Some(r.Kont(r.Apply(r.Defunc(r.Tag("Ok"), []), rev, env), None)),
         )
+        let value = case result {
+          r.Value(value) -> value 
+          _ -> {
+            console.log("failed to run expression")
+            console.log(expression)
+            console.log(result)
+            r.error(r.unit)
+          }
+        }
       // console.log(value)
       r.prim(r.Value(value), rev, env, k)
     }
