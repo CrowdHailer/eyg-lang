@@ -94,6 +94,7 @@ pub fn run(source) {
       fn(_) { #(array.from_list([]), "") },
       array.from_list([
         "(.test (source {}) {})",
+        "(let s (source {}) (s.projects.inference.test {}))",
         "let stop_editor (projects.website.local 8080)", 
         "(let s (source {}) (s.projects.explain.spike {}))",
         "let me (personal {})",
