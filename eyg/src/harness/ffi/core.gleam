@@ -152,15 +152,15 @@ pub fn do_eval(source, rev, env, k) {
           r.Env([], lib().1),
           Some(r.Kont(r.Apply(r.Defunc(r.Tag("Ok"), []), rev, env), None)),
         )
-        let value = case result {
-          r.Value(value) -> value 
-          _ -> {
-            console.log("failed to run expression")
-            console.log(expression)
-            console.log(result)
-            r.error(r.unit)
-          }
+      let value = case result {
+        r.Value(value) -> value
+        _ -> {
+          console.log("failed to run expression")
+          console.log(expression)
+          console.log(result)
+          r.error(r.unit)
         }
+      }
       // console.log(value)
       r.prim(r.Value(value), rev, env, k)
     }

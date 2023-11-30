@@ -95,7 +95,7 @@ pub fn run(source) {
       array.from_list([
         "(.test (source {}) {})",
         "(let s (source {}) (s.projects.inference.test {}))",
-        "let stop_editor (projects.website.local 8080)", 
+        "let stop_editor (projects.website.local 8080)",
         "(let s (source {}) (s.projects.explain.spike {}))",
         "let me (personal {})",
         "let stop ((let s (source {}) s.projects.explain.local) 5000)",
@@ -126,7 +126,12 @@ fn read(rl, parser, env, k, prompt) {
               #(env, prompt)
             }
             Error(#(reason, rev, _env)) -> {
-              console.log(string.concat(["!! ", r.reason_to_string(reason), " at: ", path_to_string(list.reverse(rev))]))
+              console.log(string.concat([
+                "!! ",
+                r.reason_to_string(reason),
+                " at: ",
+                path_to_string(list.reverse(rev)),
+              ]))
               #(env, prompt)
             }
           }
@@ -145,7 +150,6 @@ pub fn path_to_string(path) {
   list.map(path, int.to_string)
   |> string.join(",")
 }
-
 
 fn print(value) {
   case value {
