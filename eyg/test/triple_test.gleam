@@ -8,8 +8,11 @@ import gleam/javascript
 import gleam/javascript/array.{Array}
 import gleeunit/should
 
+// TODO needs to be top level or bundled with source when building
 external fn do_movies() -> Array(#(Int, String, Dynamic)) =
-  "/opt/app/magpie/src/movies.mjs" "movies"
+  "/Users/petersaxton/src/github.com/crowdhailer/eyg-lang/magpie/src/movies.mjs" "movies"
+
+// "/opt/app/magpie/src/movies.mjs" "movies"
 
 pub type Value {
   B(Bool)
@@ -342,17 +345,15 @@ pub fn match_test() {
       use <- match(arnold, c("person/name"), string(c("Arnold Schwarzenegger")))
       use <- match(movie, c("movie/cast"), int(arnold))
       use <- match(movie, c("movie/title"), string(movie_title))
-    //   note if don't use right type then no results
+      //   note if don't use right type then no results
       use <- match(movie, c("movie/director"), int(director))
       use <- match(director, c("person/name"), string(director_name))
       done()
     })
   io.debug(q(movies))
-
-
-// done needs to take things that are already values
-// use filter(move, greater_than(5))
-// use assign(bob, value(foo)) foo needs to exist otherwise this isfull scale unification
+  // done needs to take things that are already values
+  // use filter(move, greater_than(5))
+  // use assign(bob, value(foo)) foo needs to exist otherwise this isfull scale unification
 
   //     let q =
   //     find2(fn(id, year) {
