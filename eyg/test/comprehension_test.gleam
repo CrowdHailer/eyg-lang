@@ -28,3 +28,9 @@ pub fn return_test() -> Nil {
   }
   |> should.equal(2)
 }
+
+pub fn other_test()  {
+  use acc, row <- list.fold([[1],[2],[3]], 0)
+  use acc, item <- list.fold(row, acc)
+  acc + item
+}
