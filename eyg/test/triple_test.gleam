@@ -10,9 +10,9 @@ import gleeunit/should
 
 // TODO needs to be top level or bundled with source when building
 external fn do_movies() -> Array(#(Int, String, Dynamic)) =
-  "/Users/petersaxton/src/github.com/crowdhailer/eyg-lang/magpie/src/movies.mjs" "movies"
+  "/opt/app/magpie/src/movies.mjs" "movies"
 
-// "/opt/app/magpie/src/movies.mjs" "movies"
+// "/Users/petersaxton/src/github.com/crowdhailer/eyg-lang/magpie/src/movies.mjs" "movies"
 
 pub type Value {
   B(Bool)

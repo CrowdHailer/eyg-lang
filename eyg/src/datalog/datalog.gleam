@@ -63,6 +63,8 @@ pub fn fresh(k) {
   }
 }
 
+// opposite is match
+
 pub fn not(rule, k) {
   fn(state) {
     case rule(fn() { fn(_state) { [Ok(Nil)] } })(state) {
@@ -95,7 +97,6 @@ fn resolve(term: Term(a), state: State) -> Result(a, Nil) {
 
 pub fn return(term) {
   fn(state: State) { [resolve(term, state)] }
-  // |> result.map(dynamic.unsafe_coerce),
 }
 
 pub fn return2(
@@ -111,7 +112,6 @@ pub fn return2(
       },
     ]
   }
-  // |> result.map(dynamic.unsafe_coerce),
 }
 
 // builders

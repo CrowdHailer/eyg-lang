@@ -2,6 +2,18 @@ import gleam/string
 import datalog/datalog.{Constant as C, fresh, not, return, return2, transform}
 import gleeunit/should
 
+// rules facts/rules https://flix.dev/paper/oopsla2020a.pdf
+// syntax section
+// Fact vs Rule (Constraint)
+
+// reuse rules, predicate/transform and type safety
+// or and recursion
+
+// a :- b(3)
+
+// percival has a syntax explaining what is needed
+
+// an ignore key is useful, IF not named fields
 // datalog match or
 // single context to next
 
@@ -123,62 +135,3 @@ pub fn transformation_test() {
   datalog.run(q)
   |> should.equal(Ok(["B"]))
 }
-//   let r = run(q)
-//   io.debug(r)
-//   //       use  <- predicate({
-//   //       use x <- value(to)
-//   //       use y <- value(from)
-//   //       x + y  == 1
-//   //     })
-
-//   //     use<- value(to, fn(x) {value(fn(y) {
-//   //       case x > y {
-//   // True -> yield()
-//   //       }
-//   //     })})
-//   // let q = {
-//   //   use movie_id <- fresh()
-//   //   use actor_name <- fresh()
-
-//   //   use <- cast(movie_id, actor_name)
-//   //   use loud <- map(actor_name, string.uppercase)
-//   //   use <- equal(b(True), mapped())
-//   //   find2(movie_title, director_name)
-//   // }
-//   //   always pass in fns so don't need use
-// }
-// // pass in db or facts in db or run?
-// // db1/2 is possible
-// fn foo() {
-//   let q = {
-//     use <- edge("x", "y")
-//     fn(x) { x }
-//   }
-// }
-
-// fn cast(movie_id, actor_name, k) {
-//   use actor_id <- fresh()
-//   use <- db(actor_id, "", actor_name)
-//   use <- db(movie_id, "", actor_id)
-//   k()
-// }
-
-// fn directed_by(movie_id, director_name, k) {
-//   use actor_id <- fresh()
-//   use <- db(actor_id, "", director_name)
-//   use <- db(movie_id, "", actor_id)
-//   k()
-// }
-
-// pub fn datalog_test() {
-//   let q = {
-//     use movie_id <- fresh()
-//     use actor_name <- fresh()
-
-//     use <- cast(movie_id, actor_name)
-//     use loud <- map(actor_name, string.uppercase)
-//     use <- equal(b(True), mapped())
-//     find2(movie_title, director_name)
-//   }
-//   //   always pass in fns so don't need use
-// }
