@@ -1,7 +1,4 @@
-import gleam/io
 import gleam/list
-import gleam/string
-import gleam/javascript
 import gleeunit/should
 
 fn from(items, cb) {
@@ -26,31 +23,31 @@ fn where(predicate, cb) {
   }
 }
 
-fn count(k, cb) {
+pub fn count(k, cb) {
   let r = cb(1)
   //   io.debug(#(thing, r))
   [#(k, r)]
 }
 
-fn group_by(k, cb) {
+pub fn group_by(k, cb) {
   let r = cb(0)
   //   io.debug(#(thing, r))
   [#(k, r)]
 }
 
 pub fn join_test() {
-  let user_teams =
-    {
-      use u <- from(users)
-      use t <- from(teams)
-      use m <- from(memberships)
-      use <- join(u.id, m.user)
-      use <- join(t.id, m.team)
-      use <- where(u.age > 18)
+  let user_teams = {
+    use u <- from(users)
+    use t <- from(teams)
+    use m <- from(memberships)
+    use <- join(u.id, m.user)
+    use <- join(t.id, m.team)
+    use <- where(u.age > 18)
 
-      yield(#(u.name, u.age, t.id))
-    }
-    |> io.debug
+    yield(#(u.name, u.age, t.id))
+  }
+  user_teams
+  |> should.equal([#("Bob", 55, 1)])
   //   {
   //     use u <- from(users)
   //     use total <- count(u.id)

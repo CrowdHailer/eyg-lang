@@ -1,8 +1,8 @@
 // up to 91% of time is joining lists
 import gleam/int
 import gleam/list
-import gleam/map
-import gleam/option.{None, Option, Some}
+import gleam/dict
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/stringx
@@ -11,7 +11,7 @@ import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
 // reuse aterlier type
 import atelier/view/type_
-import easel/location.{Location}
+import easel/location.{type Location, Location}
 
 pub type Style {
   Default
@@ -30,7 +30,7 @@ pub type Rendered =
 
 pub fn print(source, selection, always, analysis: Option(tree.State)) {
   let loc = Location([], selection, always)
-  let #(acc, info) = do_print(source, loc, "\n", [], map.new(), analysis)
+  let #(acc, info) = do_print(source, loc, "\n", [], dict.new(), analysis)
   #(list.reverse(acc), info)
 }
 
@@ -38,7 +38,7 @@ pub fn type_at(path, analysis) {
   case analysis {
     Some(analysis) -> {
       let #(_sub, _next, types) = analysis
-      let assert Ok(t) = map.get(types, list.reverse(path))
+      let assert Ok(t) = dict.get(types, list.reverse(path))
       Some(t)
     }
     None -> None
@@ -64,7 +64,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     e.Apply(e.Select(label), from) -> {
       let #(acc, info) =
         print_block(from, location.child(loc, 1), br, acc, info, analysis)
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(".", loc, acc, err)
       print_with_offset(
         label,
@@ -77,7 +77,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       )
     }
     e.Apply(e.Apply(e.Cons, item), tail) -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("[", loc, acc, err)
       let #(acc, info) =
         print_block(
@@ -94,7 +94,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     // and overwrite always a variable
     e.Apply(e.Apply(e.Extend(label), item), tail)
     | e.Apply(e.Apply(e.Overwrite(label), item), tail) -> {
-      // let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      // let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("{", loc, acc, err)
       let #(acc, info) =
         print_with_offset(label, loc, Label, err, acc, info, analysis)
@@ -139,7 +139,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     e.Apply(func, arg) -> {
       let #(acc, info) =
         print_block(func, location.child(loc, 0), br, acc, info, analysis)
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
 
       let acc = print_keyword("(", loc, acc, err)
       let #(acc, info) =
@@ -163,7 +163,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     e.Vacant(_) -> {
       let content = case analysis {
         Some(#(sub, _next, types)) ->
-          case map.get(types, list.reverse(loc.path)) {
+          case dict.get(types, list.reverse(loc.path)) {
             Error(Nil) -> "todo"
             Ok(inferred) ->
               case inferred {
@@ -216,18 +216,18 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     }
     e.Tail -> {
       let info =
-        map.insert(info, path_to_string(loc.path), list.length(acc) + 1)
+        dict.insert(info, path_to_string(loc.path), list.length(acc) + 1)
       let acc = print_keyword("[]", loc, acc, err)
       #(acc, info)
     }
     e.Cons -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("cons", loc, acc, err)
       #(acc, info)
     }
     e.Empty -> {
       let info =
-        map.insert(info, path_to_string(loc.path), list.length(acc) + 1)
+        dict.insert(info, path_to_string(loc.path), list.length(acc) + 1)
       let acc = print_keyword("{}", loc, acc, err)
       #(acc, info)
     }
@@ -253,7 +253,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
     e.NoCases -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("----", loc, acc, err)
       #(acc, info)
     }
@@ -289,7 +289,7 @@ fn print_block(source, loc: Location, br, acc, info, analysis) {
         }
         False -> {
           let info =
-            map.insert(info, path_to_string(loc.path), list.length(acc))
+            dict.insert(info, path_to_string(loc.path), list.length(acc))
           let acc = print_keyword("{ ... }", loc, acc, err)
           #(acc, info)
         }
@@ -303,12 +303,12 @@ fn print_tail(exp, loc, br, acc, info, analysis) {
   let err = is_error(loc.path, analysis)
   case exp {
     e.Tail -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("]", loc, acc, err)
       #(acc, info)
     }
     e.Apply(e.Apply(e.Cons, item), tail) -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(", ", loc, acc, err)
       let #(acc, info) =
         print_block(
@@ -322,7 +322,7 @@ fn print_tail(exp, loc, br, acc, info, analysis) {
       print_tail(tail, location.child(loc, 1), br, acc, info, analysis)
     }
     _ -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(", ..", loc, acc, err)
       let #(acc, info) = print_block(exp, loc, br, acc, info, analysis)
       let acc = print_keyword("]", loc, acc, err)
@@ -335,13 +335,13 @@ fn print_extend(exp, loc, br, acc, info, analysis) {
   let err = is_error(loc.path, analysis)
   case exp {
     e.Empty -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("}", loc, acc, err)
       #(acc, info)
     }
     e.Apply(e.Apply(e.Extend(label), item), tail)
     | e.Apply(e.Apply(e.Overwrite(label), item), tail) -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(", ", loc, acc, err)
       let #(acc, info) =
         print_with_offset(label, loc, Label, err, acc, info, analysis)
@@ -358,7 +358,7 @@ fn print_extend(exp, loc, br, acc, info, analysis) {
       print_extend(tail, location.child(loc, 1), br, acc, info, analysis)
     }
     _ -> {
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(", ..", loc, acc, err)
       let #(acc, info) = print_block(exp, loc, br, acc, info, analysis)
       let acc = print_keyword("}", loc, acc, err)
@@ -372,14 +372,14 @@ fn print_match(exp, loc, br, br_inner, acc, info, analysis) {
   case exp {
     e.NoCases -> {
       let acc = print_keyword(br, loc, acc, err)
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
 
       let acc = print_keyword("}", loc, acc, err)
       #(acc, info)
     }
     e.Apply(e.Apply(e.Case(label), item), tail) -> {
       let acc = print_keyword(br_inner, loc, acc, err)
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let #(acc, info) =
         print_with_offset(label, loc, Label, err, acc, info, analysis)
       let acc = print_keyword(" ", loc, acc, err)
@@ -404,7 +404,7 @@ fn print_match(exp, loc, br, br_inner, acc, info, analysis) {
     }
     _ -> {
       let acc = print_keyword(br_inner, loc, acc, err)
-      let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+      let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let #(acc, info) = print_block(exp, loc, br_inner, acc, info, analysis)
       let acc = print_keyword(br, loc, acc, err)
       let acc = print_keyword("}", loc, acc, err)
@@ -417,16 +417,14 @@ pub fn print_keyword(keyword, loc, acc, err) {
   let Location(path: path, ..) = loc
   // list.fold(
   //   string.to_graphemes(keyword),
-  stringx.fold_graphmemes(
-    keyword,
-    acc,
-    fn(acc, ch) { [#(ch, path, -1, Keyword, err), ..acc] },
-  )
+  stringx.fold_graphmemes(keyword, acc, fn(acc, ch) {
+    [#(ch, path, -1, Keyword, err), ..acc]
+  })
 }
 
 pub fn print_with_offset(content, loc, style, err, acc, info, _analysis) {
   let Location(path: path, ..) = loc
-  let info = map.insert(info, path_to_string(loc.path), list.length(acc))
+  let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
   let #(content, style) = case content {
     "" -> #("_", Missing)
     _ -> #(content, style)

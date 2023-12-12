@@ -1,16 +1,14 @@
 import gleam/io
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{type Dynamic}
 import gleam/list
-import gleam/option.{None, Option, Some}
-import gleam/string
+import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/javascript
-import gleam/javascript/array.{Array}
+import gleam/javascript/array.{type Array}
 import gleeunit/should
 
 // TODO needs to be top level or bundled with source when building
-external fn do_movies() -> Array(#(Int, String, Dynamic)) =
-  "/opt/app/magpie/src/movies.mjs" "movies"
+@external(javascript, "/opt/app/magpie/src/movies.mjs", "movies")
+fn do_movies() -> Array(#(Int, String, Dynamic))
 
 // "/Users/petersaxton/src/github.com/crowdhailer/eyg-lang/magpie/src/movies.mjs" "movies"
 
@@ -25,11 +23,13 @@ pub fn movies() {
   array.to_list(do_movies())
   |> list.try_map(fn(r) {
     let #(e, a, v) = r
-    use v <- result.then(dynamic.any([
-      dynamic.decode1(B, dynamic.bool),
-      dynamic.decode1(I, dynamic.int),
-      dynamic.decode1(S, dynamic.string),
-    ])(v))
+    use v <- result.then(
+      dynamic.any([
+        dynamic.decode1(B, dynamic.bool),
+        dynamic.decode1(I, dynamic.int),
+        dynamic.decode1(S, dynamic.string),
+      ])(v),
+    )
     Ok(#(e, a, v))
   })
 }
@@ -103,7 +103,7 @@ fn match(e: Match(c, Int), a: Match(c, String), v, k) {
 }
 
 fn done() {
-  fn(triples, contexts) { contexts }
+  fn(_triples, contexts) { contexts }
 }
 
 fn find(
@@ -112,14 +112,16 @@ fn find(
 ) {
   fn(triples) {
     let contexts =
-      query(Variable(fn(state, value) {
-        let #(a) = state
-        case a {
-          None -> Ok(#(Some(value)))
-          Some(v) if v == value -> Ok(#(Some(value)))
-          _ -> Error(Nil)
-        }
-      }))(triples, [#(None)])
+      query(
+        Variable(fn(state, value) {
+          let #(a) = state
+          case a {
+            None -> Ok(#(Some(value)))
+            Some(v) if v == value -> Ok(#(Some(value)))
+            _ -> Error(Nil)
+          }
+        }),
+      )(triples, [#(None)])
     contexts
     |> list.try_map(fn(c) {
       case c.0 {
@@ -309,14 +311,15 @@ fn string(match) {
 // cant have unused vars in this approach or with nested calls to var because each builds a tuple in return tyupe
 pub fn match_test() {
   let assert Ok(movies) = movies()
-  // io.debug(movies())
+
   let q =
     find(fn(id) {
       use <- match(id, c("movie/year"), c(I(1987)))
       done()
     })
 
-  io.debug(q(movies))
+  q(movies)
+  |> should.equal(Ok([202, 203, 204]))
 
   let q =
     find2(fn(id, year) {
@@ -324,21 +327,34 @@ pub fn match_test() {
       use <- match(id, c("movie/year"), int(year))
       done()
     })
-  io.debug(q(movies))
+  q(movies)
+  |> should.equal(Ok([#(214, 1979)]))
 
   let q =
     find2(fn(attr, value) {
       use <- match(c(200), attr, string(value))
       done()
     })
-  io.debug(q(movies))
+  q(movies)
+  |> should.equal(Ok([#("movie/title", "The Terminator")]))
 
   let q =
     find2(fn(attr, value) {
       use <- match(c(200), attr, value)
       done()
     })
-  io.debug(q(movies))
+  q(movies)
+  |> should.equal(
+    Ok([
+      #("movie/title", S("The Terminator")),
+      #("movie/year", I(1984)),
+      #("movie/director", I(100)),
+      #("movie/cast", I(101)),
+      #("movie/cast", I(102)),
+      #("movie/cast", I(103)),
+      #("movie/sequel", I(207)),
+    ]),
+  )
 
   let q =
     find5(fn(arnold, movie, movie_title, director, director_name) {
@@ -350,7 +366,16 @@ pub fn match_test() {
       use <- match(director, c("person/name"), string(director_name))
       done()
     })
-  io.debug(q(movies))
+  q(movies)
+  |> should.equal(
+    Ok([
+      #(101, 200, "The Terminator", 100, "James Cameron"),
+      #(101, 202, "Predator", 108, "John McTiernan"),
+      #(101, 205, "Commando", 119, "Mark L. Lester"),
+      #(101, 207, "Terminator 2: Judgment Day", 100, "James Cameron"),
+      #(101, 208, "Terminator 3: Rise of the Machines", 127, "Jonathan Mostow"),
+    ]),
+  )
   // done needs to take things that are already values
   // use filter(move, greater_than(5))
   // use assign(bob, value(foo)) foo needs to exist otherwise this isfull scale unification
@@ -360,8 +385,6 @@ pub fn match_test() {
   //       use <- match(id, c("movie/year"), c(I(1987)))
   //       done()
   //     })
-
-  //   io.debug(q(movies))
 
   //   todo as "triiiples"
 }

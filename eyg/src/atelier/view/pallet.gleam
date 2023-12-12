@@ -2,7 +2,7 @@
 import gleam/io
 import gleam/dynamic
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/string
 import gleam/option.{None, Some}
 import lustre/element/html.{div, input, span, textarea}
@@ -16,16 +16,13 @@ import atelier/view/type_
 // import atelier/inventory
 
 pub fn render(state: app.WorkSpace, inferred) {
-  div(
-    [class("cover bg-gray-100")],
-    case state.mode {
-      app.WriteLabel(value, _) -> render_label(value)
-      app.WriteTerm(value, _) -> render_variable(value, inferred, state)
-      app.WriteNumber(number, _) -> render_number(number)
-      app.WriteText(value, _) -> render_text(value)
-      _ -> render_navigate(inferred, state)
-    },
-  )
+  div([class("cover bg-gray-100")], case state.mode {
+    app.WriteLabel(value, _) -> render_label(value)
+    app.WriteTerm(value, _) -> render_variable(value, inferred, state)
+    app.WriteNumber(number, _) -> render_number(number)
+    app.WriteText(value, _) -> render_text(value)
+    _ -> render_navigate(inferred, state)
+  })
 }
 
 fn render_label(value) {
@@ -121,77 +118,61 @@ fn render_navigate(inferred, state: app.WorkSpace) {
       Some(inferred) -> render_errors(inferred)
       None -> span([], [])
     },
-    div(
-      [class("hstack")],
-      [
-        span(
-          [],
-          [
-            case inferred {
-              Some(#(sub, _next, types)) ->
-                text(string.append(
-                  ":",
-                  {
-                    case map.get(types, list.reverse(state.selection)) {
-                      Ok(inferred) ->
-                        case inferred {
-                          Ok(t) -> {
-                            let t = t.resolve(t, sub)
-                            type_.render_type(t)
-                          }
+    div([class("hstack")], [
+      span([], [
+        case inferred {
+          Some(#(sub, _next, types)) ->
+            text(
+              string.append(":", {
+                case dict.get(types, list.reverse(state.selection)) {
+                  Ok(inferred) ->
+                    case inferred {
+                      Ok(t) -> {
+                        let t = t.resolve(t, sub)
+                        type_.render_type(t)
+                      }
 
-                          Error(#(r, t1, t2)) -> type_.render_failure(r, t1, t2)
-                        }
-                      Error(Nil) -> "invalid selection"
+                      Error(#(r, t1, t2)) -> type_.render_failure(r, t1, t2)
                     }
-                  },
-                ))
-              None -> span([], [text("untyped")])
-            },
-          ],
-        ),
-        span([class("expand")], []),
-        span(
-          [class("text-red-500")],
-          case state.error {
-            Some(message) -> [text(message)]
-            None -> []
-          },
-        ),
-      ],
-    ),
+                  Error(Nil) -> "invalid selection"
+                }
+              }),
+            )
+          None -> span([], [text("untyped")])
+        },
+      ]),
+      span([class("expand")], []),
+      span([class("text-red-500")], case state.error {
+        Some(message) -> [text(message)]
+        None -> []
+      }),
+    ]),
   ]
 }
 
 fn render_errors(inferred) {
   let #(_sub, _next, types) = inferred
   let errors =
-    list.filter_map(
-      map.to_list(types),
-      fn(el) {
-        let #(k, v) = el
-        case v {
-          Ok(_) -> Error(Nil)
-          Error(reason) -> Ok(#(list.reverse(k), reason))
-        }
-      },
-    )
+    list.filter_map(dict.to_list(types), fn(el) {
+      let #(k, v) = el
+      case v {
+        Ok(_) -> Error(Nil)
+        Error(reason) -> Ok(#(list.reverse(k), reason))
+      }
+    })
 
   case errors != [] {
     False -> span([], [])
     True ->
       div(
         [classes([#("cover bg-red-300", True)])],
-        list.map(
-          errors,
-          fn(err) {
-            let #(path, #(reason, t1, t2)) = err
-            div(
-              [classes([#("cursor-pointer", True)]), on_click(SelectNode(path))],
-              [text(type_.render_failure(reason, t1, t2))],
-            )
-          },
-        ),
+        list.map(errors, fn(err) {
+          let #(path, #(reason, t1, t2)) = err
+          div(
+            [classes([#("cursor-pointer", True)]), on_click(SelectNode(path))],
+            [text(type_.render_failure(reason, t1, t2))],
+          )
+        }),
       )
   }
 }

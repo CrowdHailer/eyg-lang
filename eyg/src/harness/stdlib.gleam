@@ -1,5 +1,4 @@
 import eyg/runtime/interpreter as r
-import harness/env.{extend}
 import harness/ffi/core
 
 pub fn lib() {

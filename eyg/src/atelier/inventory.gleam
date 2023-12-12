@@ -1,6 +1,6 @@
 import gleam/result
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/string
 import eygir/expression as e
 import eyg/analysis/typ as t
@@ -10,13 +10,13 @@ import eyg/analysis/scheme.{Scheme}
 // inventory catalog roster haystack
 
 pub fn variables_at(environments, path) {
-  use environment <- result.then(map.get(environments, path))
+  use environment <- result.then(dict.get(environments, path))
   Ok(variables(environment))
 }
 
 fn variables(environment) {
   environment
-  |> map.to_list
+  |> dict.to_list
   |> list.map(fn(pair) {
     let #(key, Scheme(_, type_)) = pair
     case string.starts_with(key, "ffi_") {

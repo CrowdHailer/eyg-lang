@@ -1,4 +1,4 @@
-import gleam/base
+import gleam/bit_array
 import gleam/result
 import gleam/dynamic.{
   DecodeError, any, decode1, decode2, decode3, field, int, string,
@@ -12,10 +12,9 @@ fn label() {
 
 fn base_encoded(value) {
   use encoded <- result.then(string(value))
-  result.map_error(
-    base.decode64(encoded),
-    fn(_) { [dynamic.DecodeError("base64 encoded", encoded, [""])] },
-  )
+  result.map_error(bit_array.base64_decode(encoded), fn(_) {
+    [dynamic.DecodeError("base64 encoded", encoded, [""])]
+  })
 }
 
 pub fn decoder(x) {

@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import gleam/set
 import eyg/analysis/jm/type_ as t
 
@@ -12,5 +12,5 @@ pub fn ftv(scheme) {
 
 pub fn apply(sub, scheme) {
   let #(forall, typ) = scheme
-  #(forall, t.apply(map.drop(sub, forall), typ))
+  #(forall, t.apply(dict.drop(sub, forall), typ))
 }

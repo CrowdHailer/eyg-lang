@@ -1,11 +1,10 @@
-import plinth/javascript/console
 import gleam/int
 import gleam/list
-import gleam/map
-import gleam/option.{None, Option, Some}
+import gleam/dict
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import eygir/expression as e
-import gleam/javascript/promise.{Promise as JSPromise}
+import gleam/javascript/promise.{type Promise as JSPromise}
 
 pub type Failure {
   NotAFunction(Term)
@@ -69,13 +68,10 @@ pub fn flatten_promise(ret, extrinsic) {
     Effect(label, lifted, rev, env, _k) ->
       promise.resolve(Error(#(UnhandledEffect(label, lifted), rev, env)))
     Async(p, rev, env, k) ->
-      promise.await(
-        p,
-        fn(return) {
-          let next = loop(V(Value(return)), rev, env, k)
-          flatten_promise(handle(next, extrinsic), extrinsic)
-        },
-      )
+      promise.await(p, fn(return) {
+        let next = loop(V(Value(return)), rev, env, k)
+        flatten_promise(handle(next, extrinsic), extrinsic)
+      })
   }
 }
 
@@ -84,7 +80,7 @@ pub fn handle(return, extrinsic) {
     // Don't have stateful handlers because extrinsic handlers can hold references to
     // mutable state db files etc
     Effect(label, term, rev, env, k) ->
-      case map.get(extrinsic, label) {
+      case dict.get(extrinsic, label) {
         Ok(handler) -> {
           // handler only gets env in captured fn's
           let #(c, rev, e, k) = handler(term, k)
@@ -100,7 +96,7 @@ pub fn handle(return, extrinsic) {
 }
 
 pub type Term {
-  Binary(value: BitString)
+  Binary(value: BitArray)
   Integer(value: Int)
   Str(value: String)
   LinkedList(elements: List(Term))
@@ -316,14 +312,14 @@ pub type Arity {
 }
 
 fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
-  case map.get(env.builtins, key) {
+  case dict.get(env.builtins, key) {
     Ok(func) ->
       case func, applied {
         // pretty sure impl wont use path
         Arity1(impl), [x] -> impl(x, rev, env, kont)
         Arity2(impl), [x, y] -> impl(x, y, rev, env, kont)
         Arity3(impl), [x, y, z] -> impl(x, y, z, rev, env, kont)
-        _, args -> #(V(Value(Defunc(Builtin(key), applied))), rev, env, kont)
+        _, _args -> #(V(Value(Defunc(Builtin(key), applied))), rev, env, kont)
       }
     Error(Nil) ->
       prim(Abort(UndefinedVariable(key), rev, env, kont), rev, env, kont)
@@ -374,7 +370,7 @@ pub fn resumable(exp: e.Expression, env, k) {
 }
 
 pub type Env {
-  Env(scope: List(#(String, Term)), builtins: map.Map(String, Arity))
+  Env(scope: List(#(String, Term)), builtins: dict.Dict(String, Arity))
 }
 
 fn step(exp, rev, env: Env, k) {
@@ -544,9 +540,7 @@ pub fn perform(label, arg, i_rev, i_env, k) {
         }
       }
       let k =
-        Some(Kont(
-          CallWith(arg, rev, e),
-          Some(Kont(CallWith(resume, rev, e), k)),
+        Some(Kont(CallWith(arg, rev, e), Some(Kont(CallWith(resume, rev, e), k)),
         ))
       #(V(Value(h)), rev, e, k)
     }

@@ -1,18 +1,16 @@
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{type Dynamic}
 import gleam/io
 import gleam/list
-import gleam/map
 // nullable fn for casting option
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/string
-import gleam/javascript/array.{Array}
-import gleam/javascript/promise.{Promise}
+import gleam/javascript/array.{type Array}
+import gleam/javascript/promise.{type Promise}
 import plinth/javascript/console
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
-import harness/ffi/env
 import harness/effect
 import harness/stdlib
 
@@ -36,30 +34,17 @@ pub fn serve() {
         k,
       )
       let id =
-        do_serve(
-          port,
-          fn(raw) {
-            let req = to_request(raw)
+        do_serve(port, fn(raw) {
+          let req = to_request(raw)
 
-            promise.map(
-              r.flatten_promise(
-                r.handle(
-                  r.loop(
-                    r.V(r.Value(handler)),
-                    [],
-                    env,
-                    Some(r.Kont(r.CallWith(req, rev, env), None)),
-                  ),
-                  {
-                    effect.init()
-                    |> effect.extend("Log", effect.debug_logger())
-                    |> effect.extend("HTTP", effect.http())
-                    |> effect.extend("File_Write", effect.file_write())
-                    |> effect.extend("Await", effect.await())
-                    |> effect.extend("Wait", effect.wait())
-                    |> effect.extend("LoadDB", effect.load_db())
-                    |> effect.extend("QueryDB", effect.query_db())
-                  }.1,
+          promise.map(
+            r.flatten_promise(
+              r.handle(
+                r.loop(
+                  r.V(r.Value(handler)),
+                  [],
+                  env,
+                  Some(r.Kont(r.CallWith(req, rev, env), None)),
                 ),
                 {
                   effect.init()
@@ -72,18 +57,28 @@ pub fn serve() {
                   |> effect.extend("QueryDB", effect.query_db())
                 }.1,
               ),
-              fn(resp) {
-                case resp {
-                  Ok(resp) -> from_response(resp)
-                  Error(#(reason, _path, _env)) -> {
-                    io.debug(r.reason_to_string(reason))
-                    #(500, array.from_list([]), "Server error")
-                  }
+              {
+                effect.init()
+                |> effect.extend("Log", effect.debug_logger())
+                |> effect.extend("HTTP", effect.http())
+                |> effect.extend("File_Write", effect.file_write())
+                |> effect.extend("Await", effect.await())
+                |> effect.extend("Wait", effect.wait())
+                |> effect.extend("LoadDB", effect.load_db())
+                |> effect.extend("QueryDB", effect.query_db())
+              }.1,
+            ),
+            fn(resp) {
+              case resp {
+                Ok(resp) -> from_response(resp)
+                Error(#(reason, _path, _env)) -> {
+                  io.debug(r.reason_to_string(reason))
+                  #(500, array.from_list([]), "Server error")
                 }
-              },
-            )
-          },
-        )
+              }
+            },
+          )
+        })
       let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
       r.prim(r.Value(r.Function("_", body, [], [])), rev, env, k)
     },
@@ -127,37 +122,34 @@ pub fn receive() {
       // function pass in raw return on option or re run
       // return blah or nil using dynamic
       let p =
-        do_receive(
-          port,
-          fn(raw) {
-            let req = to_request(raw)
-            let assert r.Value(reply) =
-              r.handle(
-                r.loop(
-                  r.V(r.Value(handler)),
-                  [],
-                  env,
-                  Some(r.Kont(r.CallWith(req, rev, env), None)),
-                ),
-                {
-                  effect.init()
-                  |> effect.extend("Log", effect.debug_logger())
-                  |> effect.extend("HTTP", effect.http())
-                  |> effect.extend("Await", effect.await())
-                  |> effect.extend("Wait", effect.wait())
-                }.1,
-              )
-            let assert Ok(resp) = r.field(reply, "response")
-            let assert Ok(data) = r.field(reply, "data")
+        do_receive(port, fn(raw) {
+          let req = to_request(raw)
+          let assert r.Value(reply) =
+            r.handle(
+              r.loop(
+                r.V(r.Value(handler)),
+                [],
+                env,
+                Some(r.Kont(r.CallWith(req, rev, env), None)),
+              ),
+              {
+                effect.init()
+                |> effect.extend("Log", effect.debug_logger())
+                |> effect.extend("HTTP", effect.http())
+                |> effect.extend("Await", effect.await())
+                |> effect.extend("Wait", effect.wait())
+              }.1,
+            )
+          let assert Ok(resp) = r.field(reply, "response")
+          let assert Ok(data) = r.field(reply, "data")
 
-            let data = case data {
-              r.Tagged("Some", value) -> Some(value)
-              r.Tagged("None", _) -> None
-              _ -> panic("unexpected data return")
-            }
-            #(from_response(resp), data)
-          },
-        )
+          let data = case data {
+            r.Tagged("Some", value) -> Some(value)
+            r.Tagged("None", _) -> None
+            _ -> panic("unexpected data return")
+          }
+          #(from_response(resp), data)
+        })
       r.prim(r.Value(r.Promise(p)), rev, env, k)
     },
   )
@@ -187,6 +179,7 @@ fn to_request(raw: RawRequest) {
   let scheme = case protocol {
     "http" -> r.Tagged("http", r.unit)
     "https" -> r.Tagged("https", r.unit)
+    _ -> panic as string.concat(["unexpect protocol in request: ", protocol])
   }
   let host = r.Str(host)
   let path = r.Str(path)
@@ -222,15 +215,12 @@ fn from_response(response) {
   let assert Ok(r.Str(body)) = r.field(response, "body")
 
   let headers =
-    list.map(
-      headers,
-      fn(term) {
-        let assert Ok(r.Str(key)) = r.field(term, "key")
-        let assert Ok(r.Str(value)) = r.field(term, "value")
+    list.map(headers, fn(term) {
+      let assert Ok(r.Str(key)) = r.field(term, "key")
+      let assert Ok(r.Str(value)) = r.field(term, "value")
 
-        #(key, value)
-      },
-    )
+      #(key, value)
+    })
     |> array.from_list()
 
   #(status, headers, body)

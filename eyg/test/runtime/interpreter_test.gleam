@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import gleam/option.{None}
 import gleam/javascript/promise
 import gleeunit/should
@@ -11,7 +11,7 @@ import platforms/browser
 
 pub fn variable_test() {
   let source = e.Variable("x")
-  r.eval(source, r.Env([#("x", r.Str("assigned"))], map.new()), None)
+  r.eval(source, r.Env([#("x", r.Str("assigned"))], dict.new()), None)
   |> should.equal(r.Value(r.Str("assigned")))
 }
 
@@ -19,7 +19,7 @@ pub fn function_test() {
   let body = e.Variable("x")
   let source = e.Lambda("x", body)
   let scope = [#("foo", r.Str("assigned"))]
-  let env = r.Env(scope, map.new())
+  let env = r.Env(scope, dict.new())
   r.eval(source, env, None)
   |> should.equal(r.Value(r.Function("x", body, scope, [])))
 }
@@ -219,18 +219,20 @@ pub fn handle_resume_test() {
   let source = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
 
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Record([
-    #("value", r.Integer(100)),
-    #("log", r.Str("my message")),
-  ])))
+  |> should.equal(
+    r.Value(
+      r.Record([#("value", r.Integer(100)), #("log", r.Str("my message"))]),
+    ),
+  )
 
   let source = e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
 
   r.eval(source, env.empty(), None)
-  |> should.equal(r.Value(r.Record([
-    #("value", r.Integer(100)),
-    #("log", r.Str("my message")),
-  ])))
+  |> should.equal(
+    r.Value(
+      r.Record([#("value", r.Integer(100)), #("log", r.Str("my message"))]),
+    ),
+  )
 }
 
 pub fn ignore_other_effect_test() {
@@ -289,10 +291,9 @@ pub fn multiple_effects_test() {
   |> should.equal(r.Record([]))
 
   r.loop(r.V(r.Value(r.Str("False"))), rev, env, k)
-  |> should.equal(r.Value(r.Record([
-    #("a", r.Str("True")),
-    #("b", r.Str("False")),
-  ])))
+  |> should.equal(
+    r.Value(r.Record([#("a", r.Str("True")), #("b", r.Str("False"))])),
+  )
 }
 
 pub fn multiple_resumptions_test() {
@@ -327,46 +328,50 @@ pub fn multiple_resumptions_test() {
   let source = e.Apply(handle, raise)
   r.eval(source, env.empty(), None)
   // Not sure this is the correct value but it checks regressions
-  |> should.equal(r.Value(term: r.Record(fields: [
-    #(
-      "first",
-      r.Record([
+  |> should.equal(
+    r.Value(
+      term: r.Record(fields: [
         #(
           "first",
           r.Record([
-            #("a", r.Tagged("True", r.Record([]))),
-            #("b", r.Tagged("True", r.Record([]))),
+            #(
+              "first",
+              r.Record([
+                #("a", r.Tagged("True", r.Record([]))),
+                #("b", r.Tagged("True", r.Record([]))),
+              ]),
+            ),
+            #(
+              "second",
+              r.Record([
+                #("a", r.Tagged("True", r.Record([]))),
+                #("b", r.Tagged("False", r.Record([]))),
+              ]),
+            ),
           ]),
         ),
         #(
           "second",
           r.Record([
-            #("a", r.Tagged("True", r.Record([]))),
-            #("b", r.Tagged("False", r.Record([]))),
+            #(
+              "first",
+              r.Record([
+                #("a", r.Tagged("False", r.Record([]))),
+                #("b", r.Tagged("True", r.Record([]))),
+              ]),
+            ),
+            #(
+              "second",
+              r.Record([
+                #("a", r.Tagged("False", r.Record([]))),
+                #("b", r.Tagged("False", r.Record([]))),
+              ]),
+            ),
           ]),
         ),
       ]),
     ),
-    #(
-      "second",
-      r.Record([
-        #(
-          "first",
-          r.Record([
-            #("a", r.Tagged("False", r.Record([]))),
-            #("b", r.Tagged("True", r.Record([]))),
-          ]),
-        ),
-        #(
-          "second",
-          r.Record([
-            #("a", r.Tagged("False", r.Record([]))),
-            #("b", r.Tagged("False", r.Record([]))),
-          ]),
-        ),
-      ]),
-    ),
-  ])))
+  )
 }
 
 pub fn handler_doesnt_continue_to_effect_then_in_let_test() {

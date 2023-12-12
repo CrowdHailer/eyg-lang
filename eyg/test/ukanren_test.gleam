@@ -1,6 +1,5 @@
-import gleam/io
 import gleam/list
-import gleam/map.{Map}
+import gleam/dict.{type Dict}
 
 type Value {
   I(Int)
@@ -17,17 +16,17 @@ fn i(x) {
 
 type State {
   // note this walks rather than updates on creation
-  State(count: Int, substitutions: Map(Int, Term))
+  State(count: Int, substitutions: Dict(Int, Term))
 }
 
 fn empty() {
-  State(0, map.new())
+  State(0, dict.new())
 }
 
 fn walk(term, subs) {
   case term {
     Variable(x) ->
-      case map.get(subs, x) {
+      case dict.get(subs, x) {
         Ok(term) -> walk(term, subs)
         Error(Nil) -> term
       }
@@ -47,7 +46,7 @@ fn unify(u, v, subs) {
   let v = walk(v, subs)
   case u, v {
     Variable(x), Variable(y) if x == y -> Ok(subs)
-    Variable(x), other | other, Variable(x) -> Ok(map.insert(subs, x, other))
+    Variable(x), other | other, Variable(x) -> Ok(dict.insert(subs, x, other))
     Constant(x), Constant(y) if x == y -> Ok(subs)
     _, _ -> Error(Nil)
   }
@@ -90,7 +89,5 @@ pub fn kanren_test() {
   }
 
   goal(empty())
-  |> io.debug
-
-  todo as "kanren"
+  Nil
 }

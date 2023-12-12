@@ -1,6 +1,6 @@
 import gleam/int
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/option.{None, Some}
 import gleam/string
 import eyg/analysis/jm/type_ as t
@@ -11,7 +11,7 @@ import lustre/attribute.{class, classes, style}
 import eygir/expression as e
 import atelier/app.{SelectNode}
 import atelier/view/type_
-import easel/location.{Location, child, focused, open}
+import easel/location.{type Location, Location, child, focused, open}
 
 pub fn render(source, selection, inferred) {
   let loc = Location([], Some(selection), False)
@@ -144,7 +144,15 @@ fn lambda(param, body, br, loc, inferred) {
   ])
 }
 
-fn render_branch(label, then, else, br, loc_branch, loc_else, inferred) {
+fn render_branch(
+  label,
+  then,
+  otherwise,
+  br,
+  loc_branch,
+  loc_otherwise,
+  inferred,
+) {
   let loc_match = child(loc_branch, 0)
   let loc_then = child(loc_branch, 1)
   let match =
@@ -163,22 +171,24 @@ fn render_branch(label, then, else, br, loc_branch, loc_else, inferred) {
       [classes(highlight(focused(loc_branch), error(loc_branch, inferred)))],
       [match, text(" "), ..branch],
     ),
-    ..case else {
+    ..case otherwise {
       e.NoCases -> [
         text(br),
-        span([class("text-gray-400"), click(loc_else)], [text("-- closed --")]),
+        span([class("text-gray-400"), click(loc_otherwise)], [
+          text("-- closed --"),
+        ]),
       ]
-      e.Apply(e.Apply(e.Case(label), then), else) ->
+      e.Apply(e.Apply(e.Case(label), then), otherwise) ->
         render_branch(
           label,
           then,
-          else,
+          otherwise,
           br,
-          child(loc_else, 0),
-          child(loc_else, 1),
+          child(loc_otherwise, 0),
+          child(loc_otherwise, 1),
           inferred,
         )
-      _ -> [text(br), ..do_render(else, br, loc_else, inferred)]
+      _ -> [text(br), ..do_render(otherwise, br, loc_otherwise, inferred)]
     }
   ]
 }
@@ -195,14 +205,14 @@ fn call(func, arg, br, loc, inferred) {
   let inner = case func, arg {
     e.Apply(e.Case(label), then), arg -> {
       let loc_branch = child(loc, 0)
-      let loc_else = child(loc, 1)
-      case open(loc_branch) || open(loc_else) {
+      let loc_otherwise = child(loc, 1)
+      case open(loc_branch) || open(loc_otherwise) {
         True -> {
           let pre = [
-            span(
-              [click(loc)],
-              [span([class("text-gray-400")], [text("match")]), text(" {")],
-            ),
+            span([click(loc)], [
+              span([class("text-gray-400")], [text("match")]),
+              text(" {"),
+            ]),
           ]
           let branches =
             render_branch(
@@ -211,17 +221,17 @@ fn call(func, arg, br, loc, inferred) {
               arg,
               string.append(br, "  "),
               loc_branch,
-              loc_else,
+              loc_otherwise,
               inferred,
             )
           let post = [text(br), text("}")]
           list.flatten([pre, branches, post])
         }
         False -> [
-          span(
-            [click(loc_branch)],
-            [span([class("text-gray-400")], [text("match")]), text(" { ... }")],
-          ),
+          span([click(loc_branch)], [
+            span([class("text-gray-400")], [text("match")]),
+            text(" { ... }"),
+          ]),
         ]
       }
     }
@@ -261,13 +271,10 @@ fn call(func, arg, br, loc, inferred) {
       }
 
       let rendered =
-        list.map(
-          list.reverse(elements),
-          fn(pair) {
-            let #(loc, e) = pair
-            render_block(e, br_inner, loc, inferred)
-          },
-        )
+        list.map(list.reverse(elements), fn(pair) {
+          let #(loc, e) = pair
+          render_block(e, br_inner, loc, inferred)
+        })
         |> list.flatten
         |> list.intersperse(text(separator))
 
@@ -323,11 +330,10 @@ fn call(func, arg, br, loc, inferred) {
 fn gather_list(tail, loc, acc) {
   case tail {
     e.Apply(e.Apply(e.Cons, element), tail) ->
-      gather_list(
-        tail,
-        child(loc, 1),
-        [#(child(child(loc, 0), 1), element), ..acc],
-      )
+      gather_list(tail, child(loc, 1), [
+        #(child(child(loc, 0), 1), element),
+        ..acc
+      ])
     e.Tail -> #(acc, None)
     other -> #(acc, Some(#(other, loc)))
   }
@@ -338,10 +344,11 @@ fn assigment(label, value, then, br, loc, inferred) {
   let alert = error(loc, inferred)
 
   let assignment = [
-    span(
-      [click(loc)],
-      [span([class("text-gray-400")], [text("let ")]), text(label), text(" = ")],
-    ),
+    span([click(loc)], [
+      span([class("text-gray-400")], [text("let ")]),
+      text(label),
+      text(" = "),
+    ]),
     ..render_block(value, br, child(loc, 0), inferred)
   ]
   let el = span([classes(highlight(active, alert))], assignment)
@@ -351,7 +358,7 @@ fn assigment(label, value, then, br, loc, inferred) {
 fn error(loc: Location, inferred) {
   case inferred {
     Some(#(_sub, _next, types)) ->
-      case map.get(types, list.reverse(loc.path)) {
+      case dict.get(types, list.reverse(loc.path)) {
         Ok(Error(_)) -> True
         _ -> False
       }
@@ -394,7 +401,7 @@ fn vacant(comment, loc, inferred) {
   let alert = error(loc, inferred)
   let content = case inferred {
     Some(#(sub, _next, types)) ->
-      case map.get(types, list.reverse(loc.path)) {
+      case dict.get(types, list.reverse(loc.path)) {
         Ok(inferred) ->
           case inferred {
             Ok(t) -> {

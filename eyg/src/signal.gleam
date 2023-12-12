@@ -2,7 +2,7 @@
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -125,14 +125,10 @@ fn match(create) {
       Error(Nil) -> {
         list.map(javascript.dereference(elements_ref), document.remove)
         let #(elements, try_update) = create()
-        list.fold(
-          elements,
-          pin,
-          fn(acc, new) {
-            document.insert_element_after(acc, new)
-            new
-          },
-        )
+        list.fold(elements, pin, fn(acc, new) {
+          document.insert_element_after(acc, new)
+          new
+        })
         javascript.set_reference(elements_ref, elements)
         javascript.set_reference(try_update_ref, try_update)
         Nil
@@ -402,14 +398,11 @@ pub fn app(json) {
   let page = component(fn(exp) { projection(exp) })
   let #(signal, _set) = make(source)
   let #(elements, update) = page(signal())
-  promise.map(
-    promisex.wait(2000),
-    fn(_) {
-      let assert e.Let(label, _std, rest) = source
-      let exp = e.Let(label, e.Vacant(""), rest)
-      update(exp)
-    },
-  )
+  promise.map(promisex.wait(2000), fn(_) {
+    let assert e.Let(label, _std, rest) = source
+    let exp = e.Let(label, e.Vacant(""), rest)
+    update(exp)
+  })
   #(array.from_list(elements), update)
 }
 

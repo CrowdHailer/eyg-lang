@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import gleam/result
 import gleam/set
 import eyg/analysis/jm/type_ as t
@@ -22,7 +22,7 @@ fn do_unify(constraints, s, next) {
         t.Var(i), t1 | t1, t.Var(i) ->
           case set.contains(t.ftv(t1), i) {
             True -> Error(error.RecursiveType)
-            False -> do_unify(rest, map.insert(s, i, t1), next)
+            False -> do_unify(rest, dict.insert(s, i, t1), next)
           }
         t.Fun(a1, e1, r1), t.Fun(a2, e2, r2) ->
           do_unify([#(a1, a2), #(e1, e2), #(r1, r2), ..rest], s, next)
@@ -42,7 +42,7 @@ fn do_unify(constraints, s, next) {
           ))
           // case tail1 {
           //   t.Var(x) -> {
-          //     io.debug(#("---->", map.get(s, x)))
+          //     io.debug(#("---->", dict.get(s, x)))
           //     Nil
           //   }
           // _ -> Nil
@@ -79,7 +79,7 @@ fn rewrite_row(new_label, row, s, next) {
     t.Var(a) -> {
       let #(value, next) = t.fresh(next)
       let #(tail, next) = t.fresh(next)
-      let s = map.insert(s, a, t.RowExtend(new_label, value, tail))
+      let s = dict.insert(s, a, t.RowExtend(new_label, value, tail))
       Ok(#(value, tail, s, next))
     }
     t.RowExtend(label, value, tail) -> {
@@ -104,16 +104,13 @@ fn rewrite_effect(new_label, effect, s, next) {
       let #(lift, next) = t.fresh(next)
       let #(reply, next) = t.fresh(next)
       let #(tail, next) = t.fresh(next)
-      let s = map.insert(s, a, t.EffectExtend(new_label, #(lift, reply), tail))
+      let s = dict.insert(s, a, t.EffectExtend(new_label, #(lift, reply), tail))
       Ok(#(lift, reply, tail, s, next))
     }
     t.EffectExtend(label, field, tail) -> {
-      use #(lift_new, reply_new, tail_new, s, next) <- result.then(rewrite_effect(
-        new_label,
-        tail,
-        s,
-        next,
-      ))
+      use #(lift_new, reply_new, tail_new, s, next) <- result.then(
+        rewrite_effect(new_label, tail, s, next),
+      )
       Ok(#(lift_new, reply_new, t.EffectExtend(label, field, tail_new), s, next))
     }
     _ -> Error(error.InvalidTail(effect))

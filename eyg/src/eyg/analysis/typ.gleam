@@ -125,9 +125,9 @@ pub fn case_(label, ref) {
   let e4 = Open(fresh(ref))
   let e5 = Open(fresh(ref))
   let branch = Fun(t, e1, ret)
-  let else = Fun(Union(r), e2, ret)
+  let otherwise = Fun(Union(r), e2, ret)
   let exec = Fun(Union(Extend(label, t, r)), e3, ret)
-  Fun(branch, e4, Fun(else, e5, exec))
+  Fun(branch, e4, Fun(otherwise, e5, exec))
 }
 
 pub fn nocases(ref) {

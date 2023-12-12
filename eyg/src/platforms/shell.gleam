@@ -5,7 +5,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
-import gleam/javascript/array.{Array}
+import gleam/javascript/array.{type Array}
 import gleam/javascript/promise
 import eyg/runtime/interpreter as r
 import harness/stdlib
@@ -75,6 +75,7 @@ pub fn run(source) {
         "Error" -> {
           Error(r.to_string(value))
         }
+        _ -> panic as string.concat(["unexpected tag value: ", tag])
       }
     }
   }
@@ -110,7 +111,8 @@ pub fn run(source) {
 fn read(rl, parser, env, k, prompt) {
   use answer <- promise.await(question(rl, prompt))
   case parser(prompt)(answer) {
-    Ok(r.LinkedList(cmd)) -> {
+    Ok(term) -> {
+      let assert r.LinkedList(cmd) = term
       let assert Ok(code) = core.language_to_expression(cmd)
       case code == e.Empty {
         True -> promise.resolve(0)
@@ -126,12 +128,14 @@ fn read(rl, parser, env, k, prompt) {
               #(env, prompt)
             }
             Error(#(reason, rev, _env)) -> {
-              console.log(string.concat([
-                "!! ",
-                r.reason_to_string(reason),
-                " at: ",
-                path_to_string(list.reverse(rev)),
-              ]))
+              console.log(
+                string.concat([
+                  "!! ",
+                  r.reason_to_string(reason),
+                  " at: ",
+                  path_to_string(list.reverse(rev)),
+                ]),
+              )
               #(env, prompt)
             }
           }
@@ -155,39 +159,28 @@ fn print(value) {
   case value {
     r.LinkedList([r.Record(fields), ..] as records) -> {
       let headers =
-        list.map(
-          fields,
-          fn(field) {
-            let #(key, _value) = field
-            #(key, string.length(key))
-          },
-        )
+        list.map(fields, fn(field) {
+          let #(key, _value) = field
+          #(key, string.length(key))
+        })
 
       let #(headers, rows_rev) =
-        list.fold(
-          records,
-          #(headers, []),
-          fn(acc, rec) {
-            let #(headers, rows_rev) = acc
-            let #(reversed_col, headers) =
-              list.map_fold(
-                headers,
-                [],
-                fn(acc, header) {
-                  let #(key, size) = header
-                  let assert Ok(value) = r.field(rec, key)
-                  let value = r.to_string(value)
-                  let size = int.max(size, string.length(value))
-                  let size = int.min(20, size)
-                  let header = #(key, size)
-                  let acc = [value, ..acc]
-                  #(acc, header)
-                },
-              )
-            let rows_rev = [list.reverse(reversed_col), ..rows_rev]
-            #(headers, rows_rev)
-          },
-        )
+        list.fold(records, #(headers, []), fn(acc, rec) {
+          let #(headers, rows_rev) = acc
+          let #(reversed_col, headers) =
+            list.map_fold(headers, [], fn(acc, header) {
+              let #(key, size) = header
+              let assert Ok(value) = r.field(rec, key)
+              let value = r.to_string(value)
+              let size = int.max(size, string.length(value))
+              let size = int.min(20, size)
+              let header = #(key, size)
+              let acc = [value, ..acc]
+              #(acc, header)
+            })
+          let rows_rev = [list.reverse(reversed_col), ..rows_rev]
+          #(headers, rows_rev)
+        })
 
       let rows = list.reverse(rows_rev)
       print_rows_and_headers(headers, rows)
@@ -204,27 +197,20 @@ fn print(value) {
       let headers = list.map(headers, fn(h) { #(h, string.length(h)) })
 
       let #(headers, rows_rev) =
-        list.fold(
-          rows,
-          #(headers, []),
-          fn(acc, row) {
-            let #(headers, rows_rev) = acc
-            let assert Ok(row) = list.strict_zip(headers, row)
-            let #(headers, row) =
-              list.map(
-                row,
-                fn(r) {
-                  let #(#(key, size), value) = r
-                  let value = string.inspect(value)
-                  let size = int.max(size, string.length(value))
-                  let size = int.min(20, size)
-                  #(#(key, size), value)
-                },
-              )
-              |> list.unzip()
-            #(headers, [row, ..rows_rev])
-          },
-        )
+        list.fold(rows, #(headers, []), fn(acc, row) {
+          let #(headers, rows_rev) = acc
+          let assert Ok(row) = list.strict_zip(headers, row)
+          let #(headers, row) =
+            list.map(row, fn(r) {
+              let #(#(key, size), value) = r
+              let value = string.inspect(value)
+              let size = int.max(size, string.length(value))
+              let size = int.min(20, size)
+              #(#(key, size), value)
+            })
+            |> list.unzip()
+          #(headers, [row, ..rows_rev])
+        })
       let rows = list.reverse(rows_rev)
       print_rows_and_headers(headers, rows)
     }
@@ -234,31 +220,22 @@ fn print(value) {
 
 fn print_rows_and_headers(headers, rows) -> Nil {
   let rows =
-    list.map(
-      rows,
-      fn(row) {
-        let assert Ok(row) = list.strict_zip(headers, row)
-        let row =
-          list.map(
-            row,
-            fn(part) {
-              let #(#(_, size), value) = part
-              string.pad_right(value, size, " ")
-              |> string.slice(0, size)
-            },
-          )
-          |> string.join(" | ")
-        string.concat(["| ", row, " |"])
-      },
-    )
+    list.map(rows, fn(row) {
+      let assert Ok(row) = list.strict_zip(headers, row)
+      let row =
+        list.map(row, fn(part) {
+          let #(#(_, size), value) = part
+          string.pad_right(value, size, " ")
+          |> string.slice(0, size)
+        })
+        |> string.join(" | ")
+      string.concat(["| ", row, " |"])
+    })
   let headers =
-    list.map(
-      headers,
-      fn(h) {
-        let #(k, size) = h
-        string.pad_right(k, size, " ")
-      },
-    )
+    list.map(headers, fn(h) {
+      let #(k, size) = h
+      string.pad_right(k, size, " ")
+    })
     |> string.join(" | ")
   let headers = string.concat(["| ", headers, " |"])
   io.println(headers)

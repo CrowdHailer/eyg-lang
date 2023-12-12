@@ -1,17 +1,17 @@
 import gleam/list
-import gleam/map.{Map}
+import gleam/dict.{type Dict}
 import eyg/analysis/typ as t
 
 pub type Substitutions {
   Substitutions(
-    terms: Map(Int, t.Term),
-    rows: Map(Int, t.Row(t.Term)),
-    effects: Map(Int, t.Row(#(t.Term, t.Term))),
+    terms: Dict(Int, t.Term),
+    rows: Dict(Int, t.Row(t.Term)),
+    effects: Dict(Int, t.Row(#(t.Term, t.Term))),
   )
 }
 
 pub fn none() {
-  Substitutions(map.new(), map.new(), map.new())
+  Substitutions(dict.new(), dict.new(), dict.new())
 }
 
 // Look like set singleton
@@ -32,57 +32,53 @@ pub fn effect(var, effect) {
 
 pub fn insert_term(sub, var, term) {
   let Substitutions(terms, rows, effects) = sub
-  Substitutions(map.insert(terms, var, term), rows, effects)
+  Substitutions(dict.insert(terms, var, term), rows, effects)
 }
 
 pub fn insert_row(sub, var, row) {
   let Substitutions(terms, rows, effects) = sub
-  Substitutions(terms, map.insert(rows, var, row), effects)
+  Substitutions(terms, dict.insert(rows, var, row), effects)
 }
 
 pub fn insert_effect(sub, var, effect) {
   let Substitutions(terms, rows, effects) = sub
-  Substitutions(terms, rows, map.insert(effects, var, effect))
+  Substitutions(terms, rows, dict.insert(effects, var, effect))
 }
 
 pub fn compose(sub1: Substitutions, sub2: Substitutions) {
   let terms =
-    map.merge(
-      map.map_values(sub2.terms, fn(_k, v) { apply(sub1, v) }),
+    dict.merge(
+      dict.map_values(sub2.terms, fn(_k, v) { apply(sub1, v) }),
       sub1.terms,
     )
   let rows =
-    map.merge(
-      map.map_values(sub2.rows, fn(_k, v) { apply_row(sub1, v) }),
+    dict.merge(
+      dict.map_values(sub2.rows, fn(_k, v) { apply_row(sub1, v) }),
       sub1.rows,
     )
   let effects =
-    map.merge(
-      map.map_values(sub2.effects, fn(_k, v) { apply_effects(sub1, v) }),
+    dict.merge(
+      dict.map_values(sub2.effects, fn(_k, v) { apply_effects(sub1, v) }),
       sub1.effects,
     )
   Substitutions(terms, rows, effects)
 }
 
 pub fn drop(sub: Substitutions, vars) {
-  list.fold(
-    vars,
-    sub,
-    fn(sub, var) {
-      let Substitutions(terms, rows, effects) = sub
-      case var {
-        t.Term(x) -> Substitutions(map.drop(terms, [x]), rows, effects)
-        t.Row(x) -> Substitutions(terms, map.drop(rows, [x]), effects)
-        t.Effect(x) -> Substitutions(terms, rows, map.drop(effects, [x]))
-      }
-    },
-  )
+  list.fold(vars, sub, fn(sub, var) {
+    let Substitutions(terms, rows, effects) = sub
+    case var {
+      t.Term(x) -> Substitutions(dict.drop(terms, [x]), rows, effects)
+      t.Row(x) -> Substitutions(terms, dict.drop(rows, [x]), effects)
+      t.Effect(x) -> Substitutions(terms, rows, dict.drop(effects, [x]))
+    }
+  })
 }
 
 pub fn apply(sub: Substitutions, typ) {
   case typ {
     t.Unbound(x) ->
-      case map.get(sub.terms, x) {
+      case dict.get(sub.terms, x) {
         Ok(replace) -> replace
         Error(Nil) -> typ
       }
@@ -99,7 +95,7 @@ pub fn apply_row(sub: Substitutions, row) {
   case row {
     t.Closed -> t.Closed
     t.Open(x) ->
-      case map.get(sub.rows, x) {
+      case dict.get(sub.rows, x) {
         Ok(replace) -> replace
         Error(Nil) -> row
       }
@@ -112,7 +108,7 @@ pub fn apply_effects(sub: Substitutions, effect) {
   case effect {
     t.Closed -> t.Closed
     t.Open(x) ->
-      case map.get(sub.effects, x) {
+      case dict.get(sub.effects, x) {
         Ok(replace) -> replace
         Error(Nil) -> effect
       }

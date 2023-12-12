@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import gleam/option.{None, Some}
 import eygir/expression as e
 import eyg/runtime/interpreter as r
@@ -23,10 +23,12 @@ pub fn literal_test() {
   check_term(r.LinkedList([]))
   check_term(r.LinkedList([r.Integer(1), r.Integer(2)]))
   check_term(r.Record([]))
-  check_term(r.Record([
-    #("foo", r.Str("hey")),
-    #("nested", r.Record([#("bar", r.Str("inner"))])),
-  ]))
+  check_term(
+    r.Record([
+      #("foo", r.Str("hey")),
+      #("nested", r.Record([#("bar", r.Str("inner"))])),
+    ]),
+  )
   check_term(r.Tagged("Outer", r.Tagged("Inner", r.Integer(0))))
 }
 
@@ -35,7 +37,7 @@ pub fn simple_fn_test() {
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
-  |> r.run(env.empty(), r.Record([]), map.new())
+  |> r.run(env.empty(), r.Record([]), dict.new())
   |> should.equal(Ok(r.Str("hello")))
 }
 
@@ -72,7 +74,7 @@ pub fn single_let_capture_test() {
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
-  |> r.run(env.empty(), r.Record([]), map.new())
+  |> r.run(env.empty(), r.Record([]), dict.new())
   |> should.equal(Ok(r.Str("external")))
 }
 
@@ -123,7 +125,7 @@ pub fn capture_shadowed_variable_test() {
 
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
-  |> r.run(env.empty(), r.Record([]), map.new())
+  |> r.run(env.empty(), r.Record([]), dict.new())
   |> should.equal(Ok(r.Str("second")))
 }
 
@@ -190,7 +192,7 @@ pub fn fn_in_env_test() {
     )
   let assert r.Value(term) = r.eval(exp, env.empty(), None)
   capture.capture(term)
-  |> r.run(env.empty(), r.Record([]), map.new())
+  |> r.run(env.empty(), r.Record([]), dict.new())
   |> should.equal(Ok(r.Str("value")))
 }
 
@@ -201,7 +203,7 @@ pub fn tagged_test() {
 
   let arg = r.Str("later")
   capture.capture(term)
-  |> r.run(env.empty(), arg, map.new())
+  |> r.run(env.empty(), arg, dict.new())
   |> should.equal(Ok(r.Tagged("Ok", arg)))
 }
 
@@ -217,12 +219,12 @@ pub fn case_test() {
 
   let arg = r.Tagged("Ok", r.Record([]))
   next
-  |> r.run(env.empty(), arg, map.new())
+  |> r.run(env.empty(), arg, dict.new())
   |> should.equal(Ok(r.Str("good")))
 
   let arg = r.Tagged("Error", r.Record([]))
   next
-  |> r.run(env.empty(), arg, map.new())
+  |> r.run(env.empty(), arg, dict.new())
   |> should.equal(Ok(r.Str("bad")))
 }
 
@@ -276,14 +278,14 @@ pub fn handler_test() {
   let assert r.Value(exec) = r.eval(exec, env.empty(), None)
 
   next
-  |> r.run(env.empty(), exec, map.new())
+  |> r.run(env.empty(), exec, dict.new())
   |> should.equal(Ok(r.Tagged("Ok", r.Str("some string"))))
 
   let exec = e.Lambda("_", e.Apply(e.Perform("Abort"), e.Str("failure")))
   let assert r.Value(exec) = r.eval(exec, env.empty(), None)
 
   next
-  |> r.run(env.empty(), exec, map.new())
+  |> r.run(env.empty(), exec, dict.new())
   |> should.equal(Ok(r.Tagged("Error", r.Str("failure"))))
 }
 
@@ -328,7 +330,7 @@ pub fn builtin_arity1_test() {
       ]),
     )
   next
-  |> r.run(env, r.LinkedList([r.Integer(1), r.Integer(2)]), map.new())
+  |> r.run(env, r.LinkedList([r.Integer(1), r.Integer(2)]), dict.new())
   |> should.equal(Ok(split))
 
   // same as complete eval
@@ -356,13 +358,13 @@ pub fn builtin_arity3_test() {
   let next = capture.capture(term)
 
   next
-  |> r.run(env, r.Str("not a function"), map.new())
+  |> r.run(env, r.Str("not a function"), dict.new())
   |> should.equal(Error(#(r.NotAFunction(r.Str("not a function")), [])))
 
   let reduce_exp = e.Lambda("el", e.Lambda("acc", e.Variable("el")))
   let assert r.Value(reduce) = r.eval(reduce_exp, env, None)
   next
-  |> r.run(env, reduce, map.new())
+  |> r.run(env, reduce, dict.new())
   |> should.equal(Ok(r.Integer(2)))
 
   // same as complete eval

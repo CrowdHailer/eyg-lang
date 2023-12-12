@@ -1,7 +1,6 @@
-import gleam/dynamic.{Dynamic}
-import gleam/io
+import gleam/dynamic.{type Dynamic}
 import gleam/list
-import gleam/map.{Map}
+import gleam/dict.{type Dict}
 import gleam/result
 
 // ast
@@ -19,14 +18,14 @@ fn dynamify(term) {
 }
 
 pub type Substitutions =
-  Map(Int, Term(Dynamic))
+  Dict(Int, Term(Dynamic))
 
 fn unify(a: Term(t), b: Term(u), substitutions: Substitutions) {
   case walk(dynamify(a), substitutions), walk(dynamify(b), substitutions) {
     // Covers variable and constant case
     a, b if a == b -> Ok(substitutions)
     Variable(x), other | other, Variable(x) ->
-      Ok(map.insert(substitutions, x, dynamify(other)))
+      Ok(dict.insert(substitutions, x, dynamify(other)))
     _, _ -> Error(Nil)
   }
 }
@@ -42,7 +41,7 @@ pub type State {
 pub fn walk(term, subs) -> Term(Dynamic) {
   case term {
     Variable(x) ->
-      case map.get(subs, x) {
+      case dict.get(subs, x) {
         Ok(term) -> walk(term, subs)
         Error(Nil) -> term
       }
@@ -51,7 +50,7 @@ pub fn walk(term, subs) -> Term(Dynamic) {
 }
 
 pub fn run(q: fn(State) -> List(Result(a, b))) -> Result(List(a), b) {
-  list.try_map(q(State(0, map.new())), fn(r) { r })
+  list.try_map(q(State(0, dict.new())), fn(r) { r })
 }
 
 //queries
@@ -121,14 +120,11 @@ pub fn facts2(facts) {
     fn(state: State) {
       let context = state.substitutions
       let contexts =
-        list.filter_map(
-          facts,
-          fn(fact: #(_, _)) {
-            use context <- result.then(unify(a, Constant(fact.0), context))
-            use context <- result.then(unify(b, Constant(fact.1), context))
-            Ok(context)
-          },
-        )
+        list.filter_map(facts, fn(fact: #(_, _)) {
+          use context <- result.then(unify(a, Constant(fact.0), context))
+          use context <- result.then(unify(b, Constant(fact.1), context))
+          Ok(context)
+        })
       list.flat_map(contexts, fn(c) { k()(State(state.count, c)) })
     }
   }

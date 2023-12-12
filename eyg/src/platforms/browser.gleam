@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/map
-import gleam/option.{None, Some}
+import gleam/option.{None}
 import eygir/decode
 import old_plinth/browser/window
 import old_plinth/browser/document
@@ -113,22 +112,19 @@ fn old_run() {
       let elements =
         document.query_selector_all("script[type=\"editor/eygir\"]")
         |> array.to_list()
-      list.map(
-        elements,
-        fn(el) {
-          case decode.from_json(window.decode_uri(document.inner_text(el))) {
-            Ok(c) -> {
-              io.debug(c)
-              document.insert_after(el, "<p>Nice</p>")
-              Nil
-            }
-            Error(reason) -> {
-              io.debug(reason)
-              Nil
-            }
+      list.map(elements, fn(el) {
+        case decode.from_json(window.decode_uri(document.inner_text(el))) {
+          Ok(c) -> {
+            io.debug(c)
+            document.insert_after(el, "<p>Nice</p>")
+            Nil
           }
-        },
-      )
+          Error(reason) -> {
+            io.debug(reason)
+            Nil
+          }
+        }
+      })
       Nil
     }
   }
@@ -145,7 +141,7 @@ fn render() {
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
         _ ->
-          todo as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
+          panic as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
       }
 
       r.prim(r.Value(r.unit), rev, env, k)
@@ -216,14 +212,11 @@ fn listen() {
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
 
-      window.add_event_listener(
-        event,
-        fn(_) {
-          let ret = r.handle(r.eval_call(handle, r.unit, env, None), extrinsic)
-          io.debug(ret)
-          Nil
-        },
-      )
+      window.add_event_listener(event, fn(_) {
+        let ret = r.handle(r.eval_call(handle, r.unit, env, None), extrinsic)
+        io.debug(ret)
+        Nil
+      })
       r.prim(r.Value(r.unit), rev, env, k)
     },
   )

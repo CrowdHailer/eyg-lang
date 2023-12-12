@@ -9,8 +9,8 @@ pub fn shrink_test() -> Nil {
     t.Record(t.Extend("foo", t.Unbound(101), t.Closed)),
   ))
   |> should.equal(t.Fun(
-    t.Unbound(0),
-    t.Open(1),
-    t.Record(t.Extend("foo", t.Unbound(0), t.Closed)),
+    t.Unbound(1),
+    t.Open(0),
+    t.Record(t.Extend("foo", t.Unbound(1), t.Closed)),
   ))
 }

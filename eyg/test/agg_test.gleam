@@ -1,8 +1,4 @@
-import gleam/io
 import gleam/list
-import gleam/map
-import gleam/string
-import gleam/javascript
 import gleeunit/should
 
 pub type Return(k, v) {
@@ -10,10 +6,10 @@ pub type Return(k, v) {
   Group(key: k, value: v)
 }
 
-fn undone(wrapped) {
-  let assert Done(v) = wrapped
-  #(Nil, v)
-}
+// fn undone(wrapped) {
+//   let assert Done(v) = wrapped
+//   #(Nil, v)
+// }
 
 // fn from(items, cb) {
 //   let tmp = list.flat_map(items, cb)
@@ -43,21 +39,13 @@ fn from(items, cb) {
     [] -> []
     [first, ..rest] -> {
       let #(state, push) = cb(first)
-      list.fold(
-        rest,
-        state,
-        fn(state, next) {
-          let assert #([v], _) = cb(next)
-          push(state, v)
-        },
-      )
+      list.fold(rest, state, fn(state, next) {
+        let assert #([v], _) = cb(next)
+        push(state, v)
+      })
     }
   }
   //   state
-}
-
-fn group(k, v) {
-  [#(k, v)]
 }
 
 fn yield(v) {
@@ -69,8 +57,7 @@ pub fn join_test() {
     use u <- from(users)
     yield(u.id)
   }
-  |> io.debug
-  panic
+  |> should.equal([3, 2, 1])
 }
 
 // pub fn foo() -> Nil {
@@ -112,8 +99,8 @@ pub type Team {
   Team(id: Int)
 }
 
-const users = [User(1, "Bob", 55), User(2, "Tim", 5), User(3, "Alice", 5)]
+pub const users = [User(1, "Bob", 55), User(2, "Tim", 5), User(3, "Alice", 5)]
 
-const memberships = [Membership(1, 1)]
+pub const memberships = [Membership(1, 1)]
 
-const teams = [Team(1)]
+pub const teams = [Team(1)]

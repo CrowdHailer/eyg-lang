@@ -1,5 +1,4 @@
-import gleam/io
-import gleam/map
+import gleam/dict
 import gleam/option.{None}
 import eyg/analysis/typ as t
 import eyg/analysis/inference
@@ -12,7 +11,7 @@ import gleeunit/should
 
 pub fn unequal_test() {
   let prog = e.Apply(e.Apply(e.Builtin("equal"), e.Integer(1)), e.Integer(2))
-  let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
+  let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
   |> should.equal(Ok(Nil))
@@ -26,7 +25,7 @@ pub fn unequal_test() {
 
 pub fn equal_test() {
   let prog = e.Apply(e.Apply(e.Builtin("equal"), e.Str("foo")), e.Str("foo"))
-  let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
+  let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
   |> should.equal(Ok(Nil))
@@ -46,7 +45,7 @@ pub fn debug_test() {
       e.Apply(e.Builtin("debug"), e.Integer(10)),
       e.Apply(e.Builtin("debug"), e.Str("foo")),
     )
-  let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
+  let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
   |> should.equal(Ok(Nil))
@@ -61,7 +60,7 @@ pub fn debug_test() {
 
 pub fn simple_fix_test() {
   let prog = e.Apply(e.Builtin("fix"), e.Lambda("_", e.Str("foo")))
-  let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
+  let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
   |> should.equal(Ok(Nil))
@@ -78,14 +77,12 @@ pub fn no_recursive_fix_test() {
       "fix",
       e.Builtin("fix"),
       e.Apply(
-        e.Apply(
-          e.Variable("fix"),
-          e.Lambda("_", e.Lambda("x", e.Variable("x"))),
+        e.Apply(e.Variable("fix"), e.Lambda("_", e.Lambda("x", e.Variable("x"))),
         ),
         e.Integer(1),
       ),
     )
-  let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
+  let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
   |> should.equal(Ok(Nil))
@@ -139,7 +136,7 @@ pub fn recursive_sum_test() {
     )
   let prog =
     e.Apply(e.Apply(e.Apply(e.Builtin("fix"), sum), e.Integer(0)), list)
-  let sub = inference.infer(map.new(), prog, t.Unbound(-10), t.Closed)
+  let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
   |> should.equal(Ok(Nil))
@@ -160,7 +157,7 @@ pub fn eval_test() {
     |> capture.capture()
     |> e.Apply(e.Builtin("eval"), _)
   // This is old style inference not JM
-  // let sub = inference.infer(map.new(), prog, t.Unbound(-1), t.Open(-2))
+  // let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   // inference.sound(sub)
   // |> should.equal(Ok(Nil))
@@ -174,8 +171,6 @@ pub fn eval_test() {
 
 pub fn language_to_expression_test() {
   core.expression_to_language(e.Apply(e.Variable("x"), e.Integer(1)))
-  |> io.debug
   |> core.language_to_expression()
-  |> io.debug()
-  todo
+  |> should.equal(Ok(e.Apply(e.Variable("x"), e.Integer(1))))
 }

@@ -24,7 +24,7 @@ pub fn split() {
 pub fn do_split(s, pattern, rev, env, k) {
   use s <- cast.require(cast.string(s), rev, env, k)
   use pattern <- cast.require(cast.string(pattern), rev, env, k)
-  let [first, ..parts] = string.split(s, pattern)
+  let assert [first, ..parts] = string.split(s, pattern)
   let parts = r.LinkedList(list.map(parts, r.Str))
 
   r.prim(

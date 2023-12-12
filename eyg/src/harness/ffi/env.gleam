@@ -1,6 +1,6 @@
-import gleam/map
+import gleam/dict
 import eyg/runtime/interpreter as r
 
 pub fn empty() {
-  r.Env([], map.new())
+  r.Env([], dict.new())
 }

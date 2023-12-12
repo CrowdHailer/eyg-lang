@@ -15,7 +15,7 @@ pub fn print_bit_string(value) {
 fn bit_string_to_integers(value, acc) {
   case value {
     <<>> -> list.reverse(acc)
-    <<byte, rest:binary>> -> bit_string_to_integers(rest, [byte, ..acc])
+    <<byte, rest:bytes>> -> bit_string_to_integers(rest, [byte, ..acc])
   }
 }
 
@@ -27,7 +27,7 @@ pub type Expression {
 
   // Primitive
   // TODO encode/decode
-  Binary(value: BitString)
+  Binary(value: BitArray)
   Integer(value: Int)
   Str(value: String)
 

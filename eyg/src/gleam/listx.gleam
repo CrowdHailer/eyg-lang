@@ -19,11 +19,8 @@ pub fn insert_at(list, position, new) {
 }
 
 pub fn value_map(l, f) {
-  list.map(
-    l,
-    fn(field) {
-      let #(k, v) = field
-      #(k, f(v))
-    },
-  )
+  list.map(l, fn(field) {
+    let #(k, v) = field
+    #(k, f(v))
+  })
 }

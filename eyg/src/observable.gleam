@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -30,10 +30,9 @@ pub fn make(initial: a) -> #(Observable(a), fn(a) -> Nil) {
       True -> Nil
       False -> {
         javascript.set_reference(value, new)
-        list.map(
-          javascript.dereference(observers),
-          fn(observer) { observer(new) },
-        )
+        list.map(javascript.dereference(observers), fn(observer) {
+          observer(new)
+        })
         Nil
       }
     }
@@ -142,14 +141,10 @@ pub fn option(
       Error(Nil) -> {
         list.map(javascript.dereference(elements_ref), document.remove)
         let #(elements, try_update) = create(new)
-        list.fold(
-          elements,
-          pin,
-          fn(acc, new) {
-            document.insert_element_after(acc, new)
-            new
-          },
-        )
+        list.fold(elements, pin, fn(acc, new) {
+          document.insert_element_after(acc, new)
+          new
+        })
         javascript.set_reference(elements_ref, elements)
         javascript.set_reference(try_update_ref, try_update)
         Nil

@@ -1,13 +1,13 @@
 import gleam/io
 import gleam/list
-import gleam/map.{Map}
-import gleam/mapx
+import gleam/dict.{type Dict}
+import gleam/dictx
 import gleam/result
 import gleam/string
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
-import eyg/analysis/scheme.{Scheme}
+import eyg/analysis/scheme.{type Scheme, Scheme}
 import eyg/analysis/env
 import eyg/analysis/unification.{fresh, generalise, instantiate}
 import gleam/javascript
@@ -17,13 +17,13 @@ pub type Infered {
   // result could be separate map of errors
   Infered(
     substitutions: sub.Substitutions,
-    types: Map(List(Int), Result(t.Term, unification.Failure)),
-    environments: Map(List(Int), Map(String, Scheme)),
+    types: Dict(List(Int), Result(t.Term, unification.Failure)),
+    environments: Dict(List(Int), Dict(String, Scheme)),
   )
 }
 
 pub fn type_of(inf: Infered, path) {
-  let r = case map.get(inf.types, path) {
+  let r = case dict.get(inf.types, path) {
     Ok(r) -> r
     Error(Nil) -> {
       io.debug(path)
@@ -37,8 +37,8 @@ pub fn type_of(inf: Infered, path) {
 }
 
 pub fn sound(inferred: Infered) {
-  let errors = map.filter(inferred.types, fn(_k, v) { result.is_error(v) })
-  case map.size(errors) == 0 {
+  let errors = dict.filter(inferred.types, fn(_k, v) { result.is_error(v) })
+  case dict.size(errors) == 0 {
     True -> Ok(Nil)
     False -> Error(errors)
   }
@@ -63,43 +63,43 @@ fn env_apply(inf: Infered, env) {
 fn compose(inf1: Infered, inf2: Infered) {
   Infered(
     sub.compose(inf1.substitutions, inf2.substitutions),
-    map.merge(inf1.types, inf2.types),
-    map.merge(inf1.environments, inf2.environments),
+    dict.merge(inf1.types, inf2.types),
+    dict.merge(inf1.environments, inf2.environments),
   )
 }
 
 fn unify(t1, t2, ref, path) {
   case unification.unify(t1, t2, ref) {
-    Ok(s) -> Infered(s, mapx.singleton(list.reverse(path), Ok(t1)), map.new())
+    Ok(s) -> Infered(s, dictx.singleton(list.reverse(path), Ok(t1)), dict.new())
     Error(reason) ->
       Infered(
         sub.none(),
-        mapx.singleton(list.reverse(path), Error(reason)),
-        map.new(),
+        dictx.singleton(list.reverse(path), Error(reason)),
+        dict.new(),
       )
   }
 }
 
 // fn unify_row(r1, r2, ref, path) {
 //   case unification.unify_row(r1, r2, ref) {
-//     Ok(s) -> Infered(s, map.new(), map.new())
+//     Ok(s) -> Infered(s, dict.new(), dict.new())
 //     Error(reason) ->
 //       Infered(
 //         sub.none(),
-//         mapx.singleton(list.reverse(path), Error(reason)),
-//         map.new(),
+//         dictx.singleton(list.reverse(path), Error(reason)),
+//         dict.new(),
 //       )
 //   }
 // }
 
 // fn unify_effects(e1, e2, ref, path) {
 //   case unification.unify_effects(e1, e2, ref) {
-//     Ok(s) -> Infered(s, map.new(), map.new())
+//     Ok(s) -> Infered(s, dict.new(), dict.new())
 //     Error(reason) ->
 //       Infered(
 //         sub.none(),
-//         mapx.singleton(list.reverse(path), Error(reason)),
-//         map.new(),
+//         dictx.singleton(list.reverse(path), Error(reason)),
+//         dict.new(),
 //       )
 //   }
 // }
@@ -121,16 +121,9 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       let s1 = unify(typ, t.Fun(t, r, u), ref, path)
       let env =
         env_apply(s1, env)
-        |> map.insert(arg, Scheme([], apply(s1, t)))
+        |> dict.insert(arg, Scheme([], apply(s1, t)))
       let s2 =
-        do_infer(
-          env,
-          body,
-          apply(s1, u),
-          apply_effects(s1, r),
-          ref,
-          [0, ..path],
-        )
+        do_infer(env, body, apply(s1, u), apply_effects(s1, r), ref, [0, ..path])
       compose(s2, s1)
     }
     e.Apply(func, arg) -> {
@@ -152,7 +145,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
       compose(s2, s1)
     }
     e.Variable(x) ->
-      case map.get(env, x) {
+      case dict.get(env, x) {
         Ok(scheme) -> {
           let t = instantiate(scheme, ref)
           unify(typ, t, ref, path)
@@ -160,27 +153,23 @@ fn do_infer(env, exp, typ, eff, ref, path) {
         Error(Nil) ->
           Infered(
             sub.none(),
-            mapx.singleton(
+            dictx.singleton(
               list.reverse(path),
               Error(unification.MissingVariable(x)),
             ),
-            map.new(),
+            dict.new(),
           )
       }
     e.Let(x, value, then) -> {
       let t = t.Unbound(fresh(ref))
       let s1 = do_infer(env, value, t, eff, ref, [0, ..path])
       let scheme = generalise(env_apply(s1, env), apply(s1, t))
-      let env = env_apply(s1, map.insert(env, x, scheme))
+      let env = env_apply(s1, dict.insert(env, x, scheme))
       let s2 =
-        do_infer(
-          env,
-          then,
-          apply(s1, typ),
-          apply_effects(s1, eff),
-          ref,
-          [1, ..path],
-        )
+        do_infer(env, then, apply(s1, typ), apply_effects(s1, eff), ref, [
+          1,
+          ..path
+        ])
       compose(s2, s1)
       // needed for path to typ to exist in state, not part of inference jm
       |> compose(unify(typ, typ, ref, path))
@@ -194,8 +183,8 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     e.Vacant(_comment) ->
       Infered(
         sub.none(),
-        mapx.singleton(list.reverse(path), Ok(typ)),
-        map.new(),
+        dictx.singleton(list.reverse(path), Ok(typ)),
+        dict.new(),
       )
 
     // Record
@@ -217,25 +206,27 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     e.Shallow(label) -> unify(typ, t.handle(label, ref), ref, path)
 
     e.Builtin(identifier) ->
-      case map.get(stdlib.lib().0, identifier) {
+      case dict.get(stdlib.lib().0, identifier) {
         Ok(scheme) -> unify(typ, instantiate(scheme, ref), ref, path)
         Error(Nil) ->
           Infered(
             sub.none(),
-            mapx.singleton(
+            dictx.singleton(
               list.reverse(path),
-              Error(unification.MissingVariable(string.append(
-                "Builtin: ",
-                identifier,
-              ))),
+              Error(
+                unification.MissingVariable(string.append(
+                  "Builtin: ",
+                  identifier,
+                )),
+              ),
             ),
-            map.new(),
+            dict.new(),
           )
       }
   }
   |> compose(Infered(
     sub.none(),
-    map.new(),
-    mapx.singleton(list.reverse(path), env),
+    dict.new(),
+    dictx.singleton(list.reverse(path), env),
   ))
 }

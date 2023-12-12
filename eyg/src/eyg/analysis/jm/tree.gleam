@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import eygir/expression as e
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
@@ -9,11 +9,11 @@ pub type State =
   #(
     t.Substitutions,
     Int,
-    map.Map(List(Int), Result(t.Type, #(error.Reason, t.Type, t.Type))),
+    dict.Dict(List(Int), Result(t.Type, #(error.Reason, t.Type, t.Type))),
   )
 
 pub type Envs =
-  map.Map(List(Int), env.Env)
+  dict.Dict(List(Int), env.Env)
 
 pub type Run {
   Cont(State, Envs, fn(State, Envs) -> Run)
@@ -29,16 +29,16 @@ pub fn loop(run) {
 }
 
 pub fn infer_env(exp, type_, eff, env, sub, next) {
-  let types = map.new()
+  let types = dict.new()
   // Switching path to integer took ~ 20% off the inference time 600ms to 500ms for 6000 nodes
   let path = []
   let acc = #(sub, next, types)
-  let envs = map.new()
+  let envs = dict.new()
   loop(step(acc, env, envs, exp, path, type_, eff, Done))
 }
 
 pub fn infer(exp, type_, eff) {
-  infer_env(exp, type_, eff, map.new(), map.new(), 0)
+  infer_env(exp, type_, eff, dict.new(), dict.new(), 0)
 }
 
 fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
@@ -47,7 +47,7 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
     e.Apply(e1, e2) -> {
       // can't error
       let #(sub, next, types) = acc
-      let types = map.insert(types, rev, Ok(type_))
+      let types = dict.insert(types, rev, Ok(type_))
       let #(arg, next) = t.fresh(next)
       let acc = #(sub, next, types)
       let func = t.Fun(arg, eff, type_)
@@ -61,7 +61,7 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
       let #(eff, next) = t.fresh(next)
       let #(ret, next) = t.fresh(next)
       let acc = #(sub, next, types)
-      let envs = map.insert(envs, rev, env)
+      let envs = dict.insert(envs, rev, env)
 
       let func = t.Fun(arg, eff, ret)
       let acc = unify_at(acc, rev, type_, func)
@@ -72,7 +72,7 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
     e.Let(x, e1, e2) -> {
       // can't error
       let #(sub, next, types) = acc
-      let types = map.insert(types, rev, Ok(type_))
+      let types = dict.insert(types, rev, Ok(type_))
       let #(inner, next) = t.fresh(next)
       let acc = #(sub, next, types)
 
@@ -132,7 +132,7 @@ pub fn unify_at(acc, path, expected, found) {
 }
 
 pub fn fetch(acc, path, env, x, type_, envs, k) {
-  case map.get(env, x) {
+  case dict.get(env, x) {
     Ok(scheme) -> {
       let #(sub, next, types) = acc
       let #(found, next) = instantiate(scheme, next)
@@ -143,7 +143,7 @@ pub fn fetch(acc, path, env, x, type_, envs, k) {
       let #(sub, next, types) = acc
       let #(unmatched, next) = t.fresh(next)
       let types =
-        map.insert(
+        dict.insert(
           types,
           path,
           Error(#(error.MissingVariable(x), type_, unmatched)),

@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/set
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
@@ -24,7 +24,7 @@ pub fn instantiate(scheme, next) {
   let #(forall, type_) = scheme
   let s =
     list.index_map(forall, fn(i, old) { #(old, t.Var(next + i)) })
-    |> map.from_list()
+    |> dict.from_list()
   let next = next + list.length(forall)
   // Apply is actually on a recursive substitution, composing SHOULD update all values to make it a single call
   let type_ = apply_once(s, type_)
@@ -36,7 +36,7 @@ fn apply_once(s, type_) {
   case type_ {
     // This is recursive, get to the bottom of this
     t.Var(a) ->
-      case map.get(s, a) {
+      case dict.get(s, a) {
         Ok(new) -> new
         Error(Nil) -> type_
       }
@@ -59,16 +59,16 @@ fn apply_once(s, type_) {
 }
 
 pub fn extend(env, label, scheme) {
-  map.insert(env, label, scheme)
+  dict.insert(env, label, scheme)
 }
 
 pub fn unify_at(type_, found, sub, next, types, ref) {
   case unify.unify(type_, found, sub, next) {
-    Ok(#(s, next)) -> #(s, next, map.insert(types, ref, Ok(type_)))
+    Ok(#(s, next)) -> #(s, next, dict.insert(types, ref, Ok(type_)))
     Error(reason) -> #(
       sub,
       next,
-      map.insert(types, ref, Error(#(reason, type_, found))),
+      dict.insert(types, ref, Error(#(reason, type_, found))),
     )
   }
 }
@@ -77,7 +77,7 @@ pub type State =
   #(
     t.Substitutions,
     Int,
-    map.Map(Int, Result(t.Type, #(error.Reason, t.Type, t.Type))),
+    dict.Dict(Int, Result(t.Type, #(error.Reason, t.Type, t.Type))),
   )
 
 pub type Run {
@@ -94,7 +94,7 @@ pub fn loop(run) {
 }
 
 pub fn fetch(env, x, sub, next, types, ref, type_, k) {
-  case map.get(env, x) {
+  case dict.get(env, x) {
     Ok(scheme) -> {
       let #(found, next) = instantiate(scheme, next)
       Cont(unify_at(type_, found, sub, next, types, ref), k)
@@ -102,7 +102,7 @@ pub fn fetch(env, x, sub, next, types, ref, type_, k) {
     Error(Nil) -> {
       let #(unmatched, next) = t.fresh(next)
       let types =
-        map.insert(
+        dict.insert(
           types,
           ref,
           Error(#(error.MissingVariable(x), type_, unmatched)),
@@ -113,7 +113,7 @@ pub fn fetch(env, x, sub, next, types, ref, type_, k) {
 }
 
 pub fn builtins() {
-  map.new()
+  dict.new()
   |> extend_b("equal", equal())
   |> extend_b("debug", debug())
   |> extend_b("fix", fix())
@@ -144,7 +144,7 @@ pub fn builtins() {
 }
 
 fn extend_b(env, key, t) {
-  let scheme = generalise(map.new(), map.new(), t)
+  let scheme = generalise(dict.new(), dict.new(), t)
   extend(env, key, scheme)
 }
 

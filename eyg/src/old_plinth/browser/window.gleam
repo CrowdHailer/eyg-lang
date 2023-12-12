@@ -1,6 +1,5 @@
-import gleam/option.{Option}
-import gleam/javascript/array.{Array}
-import gleam/javascript/promise.{Promise}
+import gleam/javascript/array.{type Array}
+import gleam/javascript/promise.{type Promise}
 
 @external(javascript, "../../plinth_ffi.js", "alert")
 pub fn alert(a: String) -> Nil

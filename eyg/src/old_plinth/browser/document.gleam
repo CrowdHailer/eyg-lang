@@ -1,4 +1,4 @@
-import gleam/javascript/array.{Array}
+import gleam/javascript/array.{type Array}
 
 pub type Document
 

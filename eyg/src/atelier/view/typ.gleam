@@ -154,15 +154,12 @@ pub fn shrink_to(type_, _i) {
   let used = used_in_type(type_)
   used
   |> set.to_list
-  |> list.index_fold(
-    sub.none(),
-    fn(s, used, i) {
-      // Simple implementation is to add a translation for every kind
-      s
-      |> sub.insert_term(used, t.Unbound(i))
-      |> sub.insert_row(used, t.Open(i))
-      |> sub.insert_effect(used, t.Open(i))
-    },
-  )
+  |> list.index_fold(sub.none(), fn(s, used, i) {
+    // Simple implementation is to add a translation for every kind
+    s
+    |> sub.insert_term(used, t.Unbound(i))
+    |> sub.insert_row(used, t.Open(i))
+    |> sub.insert_effect(used, t.Open(i))
+  })
   |> sub.apply(type_)
 }

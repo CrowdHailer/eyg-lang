@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/option.{None}
 import gleam/string
 import gleam/javascript/array
@@ -48,11 +48,7 @@ fn applet(root) {
         let rev = []
         let k = None
         let assert r.Value(term) = r.eval(source, env, k)
-        use func <- cast.require(
-          cast.field("func", cast.any, term),
-          rev,
-          env,
-          k,
+        use func <- cast.require(cast.field("func", cast.any, term), rev, env, k,
         )
         use arg <- cast.require(cast.field("arg", cast.any, term), rev, env, k)
         // run func arg can be a thing
@@ -60,18 +56,15 @@ fn applet(root) {
         // stdlib only builtins used
         let actions = javascript.make_reference([])
         let handlers =
-          map.new()
-          |> map.insert(
-            "Update",
-            fn(action, k) {
-              let saved = javascript.dereference(actions)
-              let id = int.to_string(list.length(saved))
-              let saved = [action, ..saved]
-              javascript.set_reference(actions, saved)
-              r.prim(r.Value(r.Str(id)), rev, env, k)
-            },
-          )
-          |> map.insert("Log", console_log().2)
+          dict.new()
+          |> dict.insert("Update", fn(action, k) {
+            let saved = javascript.dereference(actions)
+            let id = int.to_string(list.length(saved))
+            let saved = [action, ..saved]
+            javascript.set_reference(actions, saved)
+            r.prim(r.Value(r.Str(id)), rev, env, k)
+          })
+          |> dict.insert("Log", console_log().2)
         let state = javascript.make_reference(arg)
         let render = fn() {
           let current = javascript.dereference(state)
@@ -85,37 +78,31 @@ fn applet(root) {
           }
         }
 
-        document.add_event_listener(
-          root,
-          "click",
-          fn(event) {
-            case nearest_click_handler(event) {
-              Ok(id) -> {
-                case
-                  list.at(list.reverse(javascript.dereference(actions)), id)
-                {
-                  Ok(code) -> {
-                    // handle effects
-                    let current = javascript.dereference(state)
-                    // io.debug(javascript.dereference(actions))
-                    let assert r.Value(next) =
-                      r.eval_call(code, current, env, None)
-                    javascript.set_reference(state, next)
-                    javascript.set_reference(actions, [])
-                    render()
-                    Nil
-                  }
-                  Error(Nil) -> {
-                    io.debug("should have been ref")
-                    Nil
-                  }
+        document.add_event_listener(root, "click", fn(event) {
+          case nearest_click_handler(event) {
+            Ok(id) -> {
+              case list.at(list.reverse(javascript.dereference(actions)), id) {
+                Ok(code) -> {
+                  // handle effects
+                  let current = javascript.dereference(state)
+                  // io.debug(javascript.dereference(actions))
+                  let assert r.Value(next) =
+                    r.eval_call(code, current, env, None)
+                  javascript.set_reference(state, next)
+                  javascript.set_reference(actions, [])
+                  render()
+                  Nil
                 }
-                Nil
+                Error(Nil) -> {
+                  io.debug("should have been ref")
+                  Nil
+                }
               }
-              Error(Nil) -> Nil
+              Nil
             }
-          },
-        )
+            Error(Nil) -> Nil
+          }
+        })
         render()
         r.prim(r.Value(func), rev, env, k)
       }

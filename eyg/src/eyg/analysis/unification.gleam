@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/set
 import gleam/result
 import eyg/analysis/typ as t
@@ -86,10 +86,7 @@ fn rewrite_row(row, new_label, ref) {
       Ok(#(t, r, s))
     }
     t.Extend(label, field, tail) -> {
-      use #(field1, tail1, subs) <- result.then(rewrite_row(
-        tail,
-        new_label,
-        ref,
+      use #(field1, tail1, subs) <- result.then(rewrite_row(tail, new_label, ref,
       ))
       Ok(#(field1, t.Extend(label, field, tail1), subs))
     }
@@ -165,7 +162,7 @@ pub fn resolve(s, typ) {
   let sub.Substitutions(terms: terms, ..) = s
   case typ {
     t.Unbound(a) ->
-      map.get(terms, a)
+      dict.get(terms, a)
       |> result.unwrap(typ)
     t.Binary | t.Str | t.Integer -> typ
     t.LinkedList(element) -> t.LinkedList(resolve(s, element))
@@ -179,7 +176,7 @@ pub fn resolve_row(sub: sub.Substitutions, row) {
   case row {
     t.Closed -> row
     t.Open(r) ->
-      map.get(sub.rows, r)
+      dict.get(sub.rows, r)
       |> result.unwrap(row)
     t.Extend(label, value, tail) ->
       t.Extend(label, resolve(sub, value), resolve_row(sub, tail))
@@ -190,7 +187,7 @@ pub fn resolve_effect(sub: sub.Substitutions, effects) {
   case effects {
     t.Closed -> effects
     t.Open(r) ->
-      map.get(sub.effects, r)
+      dict.get(sub.effects, r)
       |> result.unwrap(effects)
     t.Extend(label, #(lift, reply), tail) -> {
       let effect = #(resolve(sub, lift), resolve(sub, reply))

@@ -1,5 +1,4 @@
-import gleam/bit_string
-import gleam/base
+import gleam/bit_array
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
@@ -311,7 +310,7 @@ pub fn language_to_expression(source) {
 }
 
 fn stack_language_to_expression(source, stack) {
-  let [node, ..source] = source
+  let assert [node, ..source] = source
   let #(exp, stack) = step(node, stack)
   case exp {
     Some(exp) ->
@@ -387,7 +386,7 @@ fn step(node, stack) {
     )
     remaining -> {
       io.debug(#("remaining values", remaining, stack))
-      Error("error debuggin expressions")
+      // Error("error debuggin expressions")
       panic("bad decodeding")
     }
   }
@@ -470,11 +469,13 @@ pub fn base64_encode() {
 pub fn do_base64_encode(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
   r.prim(
-    r.Value(r.Str(gleam_string.replace(
-      base.encode64(bit_string.from_string(unencoded), True),
-      "\r\n",
-      "",
-    ))),
+    r.Value(
+      r.Str(gleam_string.replace(
+        bit_array.base64_encode(bit_array.from_string(unencoded), True),
+        "\r\n",
+        "",
+      )),
+    ),
     rev,
     env,
     k,
@@ -489,13 +490,9 @@ pub fn binary_from_integers() {
 pub fn do_binary_from_integers(term, rev, env, k) {
   use parts <- cast.require(cast.list(term), rev, env, k)
   let content =
-    list.fold(
-      list.reverse(parts),
-      <<>>,
-      fn(acc, el) {
-        let assert r.Integer(i) = el
-        <<i, acc:bit_string>>
-      },
-    )
+    list.fold(list.reverse(parts), <<>>, fn(acc, el) {
+      let assert r.Integer(i) = el
+      <<i, acc:bits>>
+    })
   r.prim(r.Value(r.Binary(content)), rev, env, k)
 }

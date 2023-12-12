@@ -3,7 +3,7 @@ import gleam/result
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/fetch
 import gleam/http
@@ -166,11 +166,9 @@ pub fn keypress(key, state: WorkSpace) {
     WriteTerm(new, commit), k if k == "Enter" -> {
       let assert [var, ..selects] = string.split(new, ".")
       let expression =
-        list.fold(
-          selects,
-          e.Variable(var),
-          fn(acc, select) { e.Apply(e.Select(select), acc) },
-        )
+        list.fold(selects, e.Variable(var), fn(acc, select) {
+          e.Apply(e.Select(select), acc)
+        })
       let source = commit(expression)
       update_source(state, source)
     }
@@ -287,7 +285,7 @@ fn insert(zipper: zipper.Zipper, state) {
     e.Apply(_, _) -> Error("no insert option for apply")
     e.Let(var, body, then) -> Ok(write(var, e.Let(_, body, then)))
 
-    e.Binary(value) -> Error("no insert option for binary")
+    e.Binary(_value) -> Error("no insert option for binary")
     e.Str(value) -> Ok(WriteText(value, fn(new) { zipper.1(e.Str(new)) }))
     e.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { zipper.1(e.Integer(new)) }))

@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import gleam/set
 import gleam/setx
 import eygir/expression as e
@@ -233,7 +233,7 @@ pub fn select_test() {
   let exp = e.Apply(exp, e.Variable("x"))
   let env = env.empty()
   let x = Scheme([], t.Record(t.Extend("foo", t.Str, t.Closed)))
-  let env = map.insert(env, "x", x)
+  let env = dict.insert(env, "x", x)
 
   let sub = infer(env, exp, typ, eff)
 
@@ -249,7 +249,7 @@ pub fn combine_select_test() {
     )
   let env = env.empty()
   let x = Scheme([], t.Unbound(-2))
-  let env = map.insert(env, "x", x)
+  let env = dict.insert(env, "x", x)
   let typ = t.Unbound(-1)
   let eff = t.Closed
 

@@ -1,8 +1,8 @@
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/map
-import gleam/option.{None, Option, Some}
+import gleam/dict
+import gleam/option.{type Option, None, Some}
 import gleam/regex
 import gleam/result
 import gleam/string
@@ -75,7 +75,7 @@ pub type Embed {
     inferred: Option(tree.State),
     // not actually used but I think useful for clearing run value
     returned: Option(r.Return),
-    rendered: #(List(print.Rendered), map.Map(String, Int)),
+    rendered: #(List(print.Rendered), dict.Dict(String, Int)),
     focus: Option(List(Int)),
   )
 }
@@ -110,44 +110,39 @@ fn load_source() {
 pub fn handle_click(root, event) {
   case nearest_click_handler(event) {
     Ok("load") -> {
-      promise.map_try(
-        load_source(),
-        fn(source) {
-          // let #(#(sub, next, _types), envs) =
-          //   tree.infer(source, t.Var(-1), t.Var(-2))
-          // let #(r.Value(r.Function(_, source, _e2, rev)), env) =
-          //   r.resumable(source, stdlib.env(), None)
-          // let assert Ok(tenv) = map.get(envs, rev)
-          let env = stdlib.env()
-          let sub = map.new()
-          let next = 0
-          let tenv = map.new()
-          let cache = #(env, sub, next, tenv)
-          let inferred =
-            Some(
-              tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0,
-            )
+      promise.map_try(load_source(), fn(source) {
+        // let #(#(sub, next, _types), envs) =
+        //   tree.infer(source, t.Var(-1), t.Var(-2))
+        // let #(r.Value(r.Function(_, source, _e2, rev)), env) =
+        //   r.resumable(source, stdlib.env(), None)
+        // let assert Ok(tenv) = dict.get(envs, rev)
+        let env = stdlib.env()
+        let sub = dict.new()
+        let next = 0
+        let tenv = dict.new()
+        let cache = #(env, sub, next, tenv)
+        let inferred =
+          Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
-          let rendered = print.print(source, Some([]), False, inferred)
-          let assert Ok(start) = map.get(rendered.1, print.path_to_string([]))
+        let rendered = print.print(source, Some([]), False, inferred)
+        let assert Ok(start) = dict.get(rendered.1, print.path_to_string([]))
 
-          let state =
-            Embed(
-              mode: Command(""),
-              yanked: None,
-              env: cache,
-              source: source,
-              history: #([], []),
-              auto_infer: False,
-              inferred: inferred,
-              returned: None,
-              rendered: rendered,
-              focus: None,
-            )
-          start_easel_at(root, start, state)
-          Ok(Nil)
-        },
-      )
+        let state =
+          Embed(
+            mode: Command(""),
+            yanked: None,
+            env: cache,
+            source: source,
+            history: #([], []),
+            auto_infer: False,
+            inferred: inferred,
+            returned: None,
+            rendered: rendered,
+            focus: None,
+          )
+        start_easel_at(root, start, state)
+        Ok(Nil)
+      })
 
       Nil
     }
@@ -164,26 +159,19 @@ pub fn start_easel_at(root, start, state) {
   let ref = javascript.make_reference(state)
   case document.query_selector(root, "pre") {
     Ok(pre) -> {
-      document.add_event_listener(
-        pre,
-        "blur",
-        fn(_) {
-          io.debug("blurred")
-          javascript.update_reference(
-            ref,
-            fn(state) {
-              // updating the contenteditable node messes with cursor placing
-              let state = blur(state)
-              document.set_html(pre, html(state))
-              let pallet_el = document.next_element_sibling(pre)
-              document.set_html(pallet_el, pallet(state))
-              state
-            },
-          )
+      document.add_event_listener(pre, "blur", fn(_) {
+        io.debug("blurred")
+        javascript.update_reference(ref, fn(state) {
+          // updating the contenteditable node messes with cursor placing
+          let state = blur(state)
+          document.set_html(pre, html(state))
+          let pallet_el = document.next_element_sibling(pre)
+          document.set_html(pallet_el, pallet(state))
+          state
+        })
 
-          Nil
-        },
-      )
+        Nil
+      })
       Nil
     }
     _ -> {
@@ -201,36 +189,33 @@ pub fn start_easel_at(root, start, state) {
         use range <- result.then(window.get_range_at(selection, 0))
         let start = start_index(range)
         let end = end_index(range)
-        javascript.update_reference(
-          ref,
-          fn(state) {
-            let state = update_selection(state, start, end)
-            let rendered =
-              print.print(
-                state.source,
-                state.focus,
-                state.auto_infer,
-                state.inferred,
-              )
-            case rendered == state.rendered {
-              True -> {
-                io.debug("no focus change")
-                state
-              }
-              False -> {
-                let assert Ok(start) =
-                  map.get(
-                    rendered.1,
-                    print.path_to_string(option.unwrap(state.focus, [])),
-                  )
-
-                let state = Embed(..state, rendered: rendered)
-                render_page(root, start, state)
-                state
-              }
+        javascript.update_reference(ref, fn(state) {
+          let state = update_selection(state, start, end)
+          let rendered =
+            print.print(
+              state.source,
+              state.focus,
+              state.auto_infer,
+              state.inferred,
+            )
+          case rendered == state.rendered {
+            True -> {
+              io.debug("no focus change")
+              state
             }
-          },
-        )
+            False -> {
+              let assert Ok(start) =
+                dict.get(
+                  rendered.1,
+                  print.path_to_string(option.unwrap(state.focus, [])),
+                )
+
+              let state = Embed(..state, rendered: rendered)
+              render_page(root, start, state)
+              state
+            }
+          }
+        })
 
         Ok(Nil)
       }
@@ -238,90 +223,63 @@ pub fn start_easel_at(root, start, state) {
       Nil
     },
   )
-  document.add_event_listener(
-    root,
-    "beforeinput",
-    fn(event) {
-      document.prevent_default(event)
-      handle_input(
-        event,
-        fn(data, start, end) {
-          javascript.update_reference(
-            ref,
-            fn(state) {
-              // pass in updeate ref
-              let #(state, start, actions) =
-                insert_text(state, data, start, end)
-              render_page(root, start, state)
-              io.debug(actions)
-              list.map(
-                actions,
-                fn(updater) {
-                  promise.map(
-                    updater,
-                    fn(updater) {
-                      javascript.update_reference(
-                        ref,
-                        fn(state) {
-                          let state = updater(state)
-                          io.debug("lots of update")
-                          render_page(root, start, state)
-                          state
-                        },
-                      )
-                    },
-                  )
-                },
-              )
-              state
-            },
-          )
-          Nil
-        },
-        fn(start) {
-          javascript.update_reference(
-            ref,
-            fn(state) {
-              let #(state, start) = insert_paragraph(start, state)
-              render_page(root, start, state)
-              state
-            },
-          )
-          // todo pragraph
-          io.debug(#(start))
-          Nil
-        },
-      )
-    },
-  )
-  document.add_event_listener(
-    root,
-    "keydown",
-    fn(event) {
-      case
-        case document.key(event) {
-          "Escape" -> {
-            javascript.update_reference(
-              ref,
-              fn(s) {
-                let s = escape(s)
-                case document.query_selector(root, "pre + *") {
-                  Ok(pallet_el) -> document.set_html(pallet_el, pallet(s))
-                  Error(Nil) -> Nil
-                }
-                s
-              },
-            )
-            Ok(Nil)
-          }
-          _ -> Error(Nil)
+  document.add_event_listener(root, "beforeinput", fn(event) {
+    document.prevent_default(event)
+    handle_input(
+      event,
+      fn(data, start, end) {
+        javascript.update_reference(ref, fn(state) {
+          // pass in updeate ref
+          let #(state, start, actions) = insert_text(state, data, start, end)
+          render_page(root, start, state)
+          io.debug(actions)
+          list.map(actions, fn(updater) {
+            promise.map(updater, fn(updater) {
+              javascript.update_reference(ref, fn(state) {
+                let state = updater(state)
+                io.debug("lots of update")
+                render_page(root, start, state)
+                state
+              })
+            })
+          })
+          state
+        })
+        Nil
+      },
+      fn(start) {
+        javascript.update_reference(ref, fn(state) {
+          let #(state, start) = insert_paragraph(start, state)
+          render_page(root, start, state)
+          state
+        })
+        // todo pragraph
+        io.debug(#(start))
+        Nil
+      },
+    )
+  })
+  document.add_event_listener(root, "keydown", fn(event) {
+    case
+      case document.key(event) {
+        "Escape" -> {
+          javascript.update_reference(ref, fn(s) {
+            let s = escape(s)
+            case document.query_selector(root, "pre + *") {
+              Ok(pallet_el) -> document.set_html(pallet_el, pallet(s))
+              Error(Nil) -> Nil
+            }
+            s
+          })
+          Ok(Nil)
         }
-      {
-        Ok(Nil) -> document.prevent_default(event)
-        Error(Nil) -> Nil
+        _ -> Error(Nil)
       }
-    },
-  )
+    {
+      Ok(Nil) -> document.prevent_default(event)
+      Error(Nil) -> Nil
+    }
+  })
 }
 
 pub fn fullscreen(root) {
@@ -389,14 +347,14 @@ pub fn snippet(root) {
 
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let #(r.Value(r.Function(_, source, _e2, rev)), env) =
+      let assert #(r.Value(r.Function(_, source, _e2, rev)), env) =
         r.resumable(source, stdlib.env(), None)
-      let assert Ok(tenv) = map.get(envs, rev)
+      let assert Ok(tenv) = dict.get(envs, rev)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
       let rendered = print.print(source, Some([]), False, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string([]))
+      let assert Ok(start) = dict.get(rendered.1, print.path_to_string([]))
 
       let state =
         Embed(
@@ -433,16 +391,16 @@ pub fn init(json) {
     r.resumable(source, stdlib.env(), None)
   {
     #(r.Value(r.Function(_, source, _, rev)), env) -> {
-      let tenv = case map.get(envs, rev) {
+      let tenv = case dict.get(envs, rev) {
         Ok(tenv) -> tenv
         Error(Nil) -> {
           io.debug(#("no env foud at rev", rev))
-          map.new()
+          dict.new()
         }
       }
       #(env, source, sub, next, tenv)
     }
-    _ -> #(env, source, map.new(), 0, map.new())
+    _ -> #(env, source, dict.new(), 0, dict.new())
   }
   let cache = #(env, sub, next, tenv)
   // can keep inferred in history
@@ -505,35 +463,31 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         // Putting in state locked can work with using an series of promises to compose actios
         "Q" -> {
-          promise.await(
-            window.show_save_file_picker(),
-            fn(result) {
-              case
-                result
-                |> io.debug
-              {
-                Ok(file_handle) -> {
-                  use writable <- promise.await(window.create_writable(
-                    file_handle,
-                  ))
-                  io.debug(writable)
-                  let blob =
-                    window.blob(
-                      array.from_list([encode.to_json(state.source)]),
-                      "application/json",
-                    )
-                  io.debug(blob)
-                  use _ <- promise.await(window.write(writable, blob))
-                  use _ <- promise.await(window.close(writable))
-                  promise.resolve(Nil)
-                }
-                Error(Nil) -> {
-                  io.debug("no file  to save selected")
-                  promise.resolve(Nil)
-                }
+          promise.await(window.show_save_file_picker(), fn(result) {
+            case
+              result
+              |> io.debug
+            {
+              Ok(file_handle) -> {
+                use writable <- promise.await(window.create_writable(file_handle,
+                ))
+                io.debug(writable)
+                let blob =
+                  window.blob(
+                    array.from_list([encode.to_json(state.source)]),
+                    "application/json",
+                  )
+                io.debug(blob)
+                use _ <- promise.await(window.write(writable, blob))
+                use _ <- promise.await(window.close(writable))
+                promise.resolve(Nil)
               }
-            },
-          )
+              Error(Nil) -> {
+                io.debug("no file  to save selected")
+                promise.resolve(Nil)
+              }
+            }
+          })
 
           #(state, start, [])
         }
@@ -547,20 +501,17 @@ pub fn insert_text(state: Embed, data, start, end) {
             |> request.set_host("localhost:8080")
             |> request.set_path("/save")
             |> request.set_body(dump)
-          promise.map(
-            fetch.send(request),
-            fn(response) {
-              case response {
-                Ok(response.Response(status: 200, ..)) -> {
-                  Nil
-                }
-                _ -> {
-                  io.debug("failed to save")
-                  Nil
-                }
+          promise.map(fetch.send(request), fn(response) {
+            case response {
+              Ok(response.Response(status: 200, ..)) -> {
+                Nil
               }
-            },
-          )
+              _ -> {
+                io.debug("failed to save")
+                Nil
+              }
+            }
+          })
           #(state, start, [])
         }
 
@@ -793,6 +744,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   cut_start,
                   False,
                 )
+                _ -> #(target, [], cut_start, True)
               }
             }
             e.Empty -> {
@@ -803,6 +755,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   cut_start,
                   False,
                 )
+                _ -> #(target, [], cut_start, True)
               }
             }
             e.Extend(label) -> {
@@ -898,7 +851,7 @@ pub fn insert_text(state: Embed, data, start, end) {
               // update source source have a offset function
               let path = list.append(path, sub)
               let assert Ok(start) =
-                map.get(rendered.1, print.path_to_string(path))
+                dict.get(rendered.1, print.path_to_string(path))
               #(
                 Embed(
                   ..state,
@@ -931,13 +884,13 @@ fn run(state: Embed) {
   let source = state.source
   let #(env, _sub, _next, _tenv) = state.env
   let handlers =
-    map.new()
-    |> map.insert("Alert", handler)
-    |> map.insert("Choose", effect.choose().2)
-    |> map.insert("HTTP", effect.http().2)
-    |> map.insert("Await", effect.await().2)
-    |> map.insert("Async", browser.async().2)
-    |> map.insert("Log", effect.debug_logger().2)
+    dict.new()
+    |> dict.insert("Alert", handler)
+    |> dict.insert("Choose", effect.choose().2)
+    |> dict.insert("HTTP", effect.http().2)
+    |> dict.insert("Await", effect.await().2)
+    |> dict.insert("Async", browser.async().2)
+    |> dict.insert("Log", effect.debug_logger().2)
   let ret = r.handle(r.eval(source, env, None), handlers)
   case ret {
     r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
@@ -946,19 +899,16 @@ fn run(state: Embed) {
     // returning a promise as a value should be rendered as a promise value
     r.Async(_, _, _, _) -> {
       let p =
-        promise.map(
-          r.flatten_promise(ret, handlers),
-          fn(final) {
-            let message = case final {
-              Error(#(reason, _rev, _env)) -> reason_to_string(reason)
-              Ok(term) -> {
-                io.debug(term)
-                term_to_string(term)
-              }
+        promise.map(r.flatten_promise(ret, handlers), fn(final) {
+          let message = case final {
+            Error(#(reason, _rev, _env)) -> reason_to_string(reason)
+            Ok(term) -> {
+              io.debug(term)
+              term_to_string(term)
             }
-            fn(state) { Embed(..state, mode: Command(message)) }
-          },
-        )
+          }
+          fn(state) { Embed(..state, mode: Command(message)) }
+        })
 
       #("Running", [p])
     }
@@ -987,7 +937,7 @@ pub fn undo(state: Embed, start) {
         False -> None
       }
       let rendered = print.print(old, state.focus, state.auto_infer, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      let assert Ok(start) = dict.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
           ..state,
@@ -1018,7 +968,7 @@ pub fn redo(state: Embed, start) {
         False -> None
       }
       let rendered = print.print(other, state.focus, state.auto_infer, inferred)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      let assert Ok(start) = dict.get(rendered.1, print.path_to_string(path))
       let state =
         Embed(
           ..state,
@@ -1268,7 +1218,7 @@ pub fn insert_paragraph(index, state: Embed) {
 
   let rendered = print.print(new, Some(path), state.auto_infer, inferred)
   let assert Ok(start) =
-    map.get(rendered.1, print.path_to_string(list.append(path, sub)))
+    dict.get(rendered.1, print.path_to_string(list.append(path, sub)))
   #(
     Embed(
       ..state,
@@ -1337,38 +1287,34 @@ pub fn pallet(embed: Embed) {
 }
 
 fn to_html(sections) {
-  list.fold(
-    sections,
-    "",
-    fn(acc, section) {
-      let #(style, err, letters) = section
-      let class = case style {
-        print.Default -> []
-        print.Keyword -> ["text-gray-500"]
-        print.Missing -> ["text-pink-3"]
-        print.Hole -> ["text-orange-4 font-bold"]
-        print.Integer -> ["text-purple-4"]
-        print.String -> ["text-green-4"]
-        print.Label -> ["text-blue-3"]
-        print.Effect -> ["text-yellow-4"]
-        print.Builtin -> ["italic underline"]
+  list.fold(sections, "", fn(acc, section) {
+    let #(style, err, letters) = section
+    let class = case style {
+      print.Default -> []
+      print.Keyword -> ["text-gray-500"]
+      print.Missing -> ["text-pink-3"]
+      print.Hole -> ["text-orange-4 font-bold"]
+      print.Integer -> ["text-purple-4"]
+      print.String -> ["text-green-4"]
+      print.Label -> ["text-blue-3"]
+      print.Effect -> ["text-yellow-4"]
+      print.Builtin -> ["italic underline"]
+    }
+    let class =
+      case err {
+        False -> class
+        True -> list.append(class, ["border-b-2 border-orange-4"])
       }
-      let class =
-        case err {
-          False -> class
-          True -> list.append(class, ["border-b-2 border-orange-4"])
-        }
-        |> string.join(" ")
-      string.concat([
-        acc,
-        "<span class=\"",
-        class,
-        "\">",
-        escape_html(string.concat(letters)),
-        "</span>",
-      ])
-    },
-  )
+      |> string.join(" ")
+    string.concat([
+      acc,
+      "<span class=\"",
+      class,
+      "\">",
+      escape_html(string.concat(letters)),
+      "</span>",
+    ])
+  })
 }
 
 fn escape_html(source) {
@@ -1444,7 +1390,7 @@ fn update_at(state: Embed, path, cb) {
       }
       let rendered = print.print(new, state.focus, state.auto_infer, inferred)
       let path = list.append(path, sub_path)
-      let assert Ok(start) = map.get(rendered.1, print.path_to_string(path))
+      let assert Ok(start) = dict.get(rendered.1, print.path_to_string(path))
       #(
         Embed(
           ..state,

@@ -1,4 +1,4 @@
-import gleam/base
+import gleam/bit_array
 import gleam/json.{int, object, string}
 import eygir/expression as e
 
@@ -11,7 +11,7 @@ fn label(value) {
 }
 
 fn bytes(b) {
-  string(base.encode64(b, True))
+  string(bit_array.base64_encode(b, True))
 }
 
 pub fn encode(exp) {

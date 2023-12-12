@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import gleam/set
 import gleam/setx
 
@@ -18,7 +18,7 @@ pub type Type {
 }
 
 pub type Substitutions =
-  map.Map(Int, Type)
+  dict.Dict(Int, Type)
 
 pub fn ftv(type_) {
   case type_ {
@@ -40,7 +40,7 @@ pub fn apply(s, type_) {
   case type_ {
     // This is recursive, get to the bottom of this
     Var(a) ->
-      case map.get(s, a) {
+      case dict.get(s, a) {
         Ok(new) -> apply(s, new)
         Error(Nil) -> type_
       }
@@ -61,10 +61,10 @@ pub fn apply(s, type_) {
 pub fn resolve(t, s) {
   case t {
     // Var(a) ->
-    //   map.get(s, a)
+    //   dict.get(s, a)
     //   |> result.unwrap(t)
     Var(a) ->
-      case map.get(s, a) {
+      case dict.get(s, a) {
         // recursive resolve needed for non direct unification
         Ok(u) -> resolve(u, s)
         Error(Nil) -> t
@@ -161,9 +161,9 @@ pub fn case_(label, next) {
   let #(e4, next) = fresh(next)
   let #(e5, next) = fresh(next)
   let branch = Fun(value, e1, ret)
-  let else = Fun(Union(rest), e2, ret)
+  let otherwise = Fun(Union(rest), e2, ret)
   let exec = Fun(Union(RowExtend(label, value, rest)), e3, ret)
-  let t = Fun(branch, e4, Fun(else, e5, exec))
+  let t = Fun(branch, e4, Fun(otherwise, e5, exec))
   #(t, next)
 }
 

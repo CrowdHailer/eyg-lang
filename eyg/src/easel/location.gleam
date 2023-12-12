@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 
 // TODO could be extracted to a path toolkit
 // location is separate to path, extract but it may be view layer only.

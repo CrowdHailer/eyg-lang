@@ -2,14 +2,14 @@ import gleam/io
 import gleam/dynamic
 import gleam/int
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/option.{None}
 import gleam/result
 import gleam/string
 import gleam/fetch
 import gleam/http
 import gleam/http/request
-import gleam/javascript/array.{Array}
+import gleam/javascript/array.{type Array}
 import gleam/javascript/promise.{try_await}
 import gleam/json
 import simplifile
@@ -23,14 +23,14 @@ import eygir/decode
 import harness/ffi/core
 
 pub fn init() {
-  #(t.Closed, map.new())
+  #(t.Closed, dict.new())
 }
 
 pub fn extend(state, label, parts) {
   let #(eff, handlers) = state
   let #(from, to, handler) = parts
   let eff = t.Extend(label, #(from, to), eff)
-  let handlers = map.insert(handlers, label, handler)
+  let handlers = dict.insert(handlers, label, handler)
   #(eff, handlers)
 }
 
@@ -72,6 +72,7 @@ pub fn choose() {
       let value = case int.random(0, 2) {
         0 -> r.false
         1 -> r.true
+        _ -> panic as "integer outside expected range"
       }
       r.prim(r.Value(value), rev, env, k)
     },
@@ -95,8 +96,9 @@ pub fn http() {
       let method = case string.uppercase(method) {
         "GET" -> http.Get
         "POST" -> http.Post
+        _ -> panic as string.concat(["unknown method: ", method])
       }
-      use scheme <- cast.require(
+      use _scheme <- cast.require(
         cast.field("scheme", cast.any, request),
         rev,
         env,
@@ -108,7 +110,7 @@ pub fn http() {
         env,
         k,
       )
-      use port <- cast.require(
+      use _port <- cast.require(
         cast.field("port", cast.any, request),
         rev,
         env,
@@ -120,7 +122,7 @@ pub fn http() {
         env,
         k,
       )
-      use query <- cast.require(
+      use _query <- cast.require(
         cast.field("query", cast.any, request),
         rev,
         env,
@@ -133,17 +135,14 @@ pub fn http() {
         k,
       )
       let assert Ok(headers) =
-        list.try_map(
-          headers,
-          fn(h) {
-            use k <- result.try(r.field(h, "key"))
-            let assert r.Str(k) = k
-            use value <- result.try(r.field(h, "value"))
-            let assert r.Str(value) = value
+        list.try_map(headers, fn(h) {
+          use k <- result.try(r.field(h, "key"))
+          let assert r.Str(k) = k
+          use value <- result.try(r.field(h, "value"))
+          let assert r.Str(value) = value
 
-            Ok(#(k, value))
-          },
-        )
+          Ok(#(k, value))
+        })
 
       use body <- cast.require(
         cast.field("body", cast.any, request),
@@ -165,38 +164,34 @@ pub fn http() {
         |> request.set_body(body)
 
       let request =
-        list.fold(
-          headers,
-          request,
-          fn(req, h) {
-            let #(k, v) = h
-            request.set_header(req, k, v)
-          },
-        )
+        list.fold(headers, request, fn(req, h) {
+          let #(k, v) = h
+          request.set_header(req, k, v)
+        })
 
       let promise =
-        try_await(
-          fetch.send(request),
-          fn(response) { fetch.read_text_body(response) },
-        )
+        try_await(fetch.send(request), fn(response) {
+          fetch.read_text_body(response)
+        })
         |> promise.map(fn(response) {
           case response {
             Ok(response) -> {
               let resp =
-                r.ok(r.Record([
-                  #("status", r.Integer(response.status)),
-                  #(
-                    "headers",
-                    r.LinkedList(list.map(
-                      response.headers,
-                      fn(h) {
-                        let #(k, v) = h
-                        r.Record([#("key", r.Str(k)), #("value", r.Str(v))])
-                      },
-                    )),
-                  ),
-                  #("body", r.Str(response.body)),
-                ]))
+                r.ok(
+                  r.Record([
+                    #("status", r.Integer(response.status)),
+                    #(
+                      "headers",
+                      r.LinkedList(
+                        list.map(response.headers, fn(h) {
+                          let #(k, v) = h
+                          r.Record([#("key", r.Str(k)), #("value", r.Str(v))])
+                        }),
+                      ),
+                    ),
+                    #("body", r.Str(response.body)),
+                  ]),
+                )
               resp
             }
 
@@ -221,13 +216,7 @@ pub fn open() {
       let p = open_browser(target)
       io.debug(target)
       r.prim(
-        r.Value(r.Promise(promise.map(
-          p,
-          fn(terminate) {
-            // io.debug(terminate)
-            r.unit
-          },
-        ))),
+        r.Value(r.Promise(promise.map(p, fn(_terminate) { r.unit }))),
         rev,
         env,
         k,
@@ -371,42 +360,41 @@ pub fn query_db() {
       let p = run_query(query)
 
       let p =
-        promise.map(
-          p,
-          fn(raw) {
-            let decoder =
-              dynamic.decode2(
-                fn(a, b) { #(a, b) },
-                dynamic.field("headers", dynamic.list(dynamic.string)),
-                dynamic.field(
-                  "rows",
-                  dynamic.list(dynamic.list(dynamic.any([
-                    fn(raw) {
-                      use value <- result.map(dynamic.int(raw))
-                      r.Integer(value)
-                    },
-                    fn(raw) {
-                      use value <- result.map(dynamic.string(raw))
-                      r.Str(value)
-                    },
-                    fn(raw) {
-                      use value <- result.map(dynamic.list(dynamic.string)(raw))
-                      r.LinkedList(list.map(value, r.Str))
-                    },
-                  ]))),
+        promise.map(p, fn(raw) {
+          let decoder =
+            dynamic.decode2(
+              fn(a, b) { #(a, b) },
+              dynamic.field("headers", dynamic.list(dynamic.string)),
+              dynamic.field(
+                "rows",
+                dynamic.list(
+                  dynamic.list(
+                    dynamic.any([
+                      fn(raw) {
+                        use value <- result.map(dynamic.int(raw))
+                        r.Integer(value)
+                      },
+                      fn(raw) {
+                        use value <- result.map(dynamic.string(raw))
+                        r.Str(value)
+                      },
+                      fn(raw) {
+                        use value <- result.map(dynamic.list(dynamic.string)(raw,
+                        ))
+                        r.LinkedList(list.map(value, r.Str))
+                      },
+                    ]),
+                  ),
                 ),
-              )
-            let assert Ok(#(headers, rows)) = json.decode(raw, decoder)
-            list.map(
-              rows,
-              fn(row) {
-                let assert Ok(fields) = list.strict_zip(headers, row)
-                r.Record(fields)
-              },
+              ),
             )
-            |> r.LinkedList
-          },
-        )
+          let assert Ok(#(headers, rows)) = json.decode(raw, decoder)
+          list.map(rows, fn(row) {
+            let assert Ok(fields) = list.strict_zip(headers, row)
+            r.Record(fields)
+          })
+          |> r.LinkedList
+        })
 
       r.prim(r.Value(r.Promise(p)), rev, env, k)
     },
@@ -417,28 +405,23 @@ pub fn query_db() {
 // jszip use packo a port of zlib with other compression
 pub fn zip() {
   #(
-    t.LinkedList(t.Record(t.Extend(
-      "name",
-      t.Str,
-      t.Extend("content", t.Str, t.Open(-1)),
-    ))),
+    t.LinkedList(
+      t.Record(t.Extend("name", t.Str, t.Extend("content", t.Str, t.Open(-1)))),
+    ),
     t.unit,
     fn(query, k) {
       let env = env.empty()
       let rev = []
       use items <- cast.require(cast.list(query), rev, env, k)
       let assert Ok(items) =
-        list.try_map(
-          items,
-          fn(value) {
-            use name <- result.then(r.field(value, "name"))
-            let assert r.Str(name) = name
-            use content <- result.then(r.field(value, "content"))
-            let assert r.Str(content) = content
+        list.try_map(items, fn(value) {
+          use name <- result.then(r.field(value, "name"))
+          let assert r.Str(name) = name
+          use content <- result.then(r.field(value, "content"))
+          let assert r.Str(content) = content
 
-            Ok(#(name, content))
-          },
-        )
+          Ok(#(name, content))
+        })
 
       let zipped = do_zip(array.from_list(items))
 
