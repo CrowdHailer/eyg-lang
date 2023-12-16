@@ -1,11 +1,11 @@
 // erlang doesn't have good yaml libs but using it would get me a shell to try it in.
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{type Dynamic}
 import gleam/io
 import gleam/list
 import gleam/result
 import gleam/javascript
-import gleam/javascript/array.{Array}
-import magpie/store/in_memory.{B, I, L, S, Triple}
+import gleam/javascript/array.{type Array}
+import magpie/store/in_memory.{type Triple, B, I, L, S}
 
 @external(javascript, "js-yaml", "load")
 fn load_yaml(file: String) -> Dynamic

@@ -1,8 +1,8 @@
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/result
-import magpie/store/in_memory.{B, I, L, S}
-import gleam/javascript/array.{Array}
+import magpie/store/in_memory.{B, I, S}
+import gleam/javascript/array.{type Array}
 
 @external(javascript, "../../movies.mjs", "movies")
 fn do_movies() -> Array(#(Int, String, Dynamic))

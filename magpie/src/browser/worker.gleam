@@ -1,5 +1,5 @@
 import gleam/io
-import gleam/dynamic.{Dynamic}
+import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/map
 import gleam/json

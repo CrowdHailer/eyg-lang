@@ -4,7 +4,7 @@ import gleam/map
 import gleam/result
 import gleam/string
 // probably the query shouldn't depend on store details
-import magpie/store/in_memory.{B, I, L, S, Triple}
+import magpie/store/in_memory.{type Triple, B, I, L, S}
 
 pub fn v(var) {
   Variable(var)

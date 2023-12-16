@@ -2,7 +2,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/string
-import gleam/javascript/array.{Array}
+import gleam/javascript/array.{type Array}
 import plinth/node/process
 import magpie/sources/yaml
 import magpie/query.{i, s, v}

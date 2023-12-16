@@ -2,7 +2,7 @@ import gleam/dynamic
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import lustre

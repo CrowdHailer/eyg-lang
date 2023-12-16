@@ -2,6 +2,7 @@ name = "magpie"
 version = "0.1.0"
 description = "Find shiny things"
 target = "javascript"
+gleam = ">= 0.32.0"
 
 # Fill out these fields if you intend to generate HTML documentation or publish
 # your project to the Hex package manager.

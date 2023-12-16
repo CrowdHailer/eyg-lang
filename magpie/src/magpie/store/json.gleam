@@ -1,6 +1,6 @@
 import gleam/dynamic
 import gleam/json
-import magpie/store/in_memory.{B, I, L, S, Triple}
+import magpie/store/in_memory.{type Triple, B, I, L, S}
 
 fn dump_value(value) {
   case value {

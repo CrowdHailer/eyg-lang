@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/map.{Map}
+import gleam/map.{type Map}
 import gleam/option.{None, Some}
 
 pub type Value {

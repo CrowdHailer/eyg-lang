@@ -1,6 +1,6 @@
 import gleam/map
 import magpie/query.{Constant, Variable, i, s, v}
-import magpie/store/in_memory.{B, I, L, S}
+import magpie/store/in_memory.{I, S}
 import magpie/sources/movies.{movies}
 import gleeunit/should
 
