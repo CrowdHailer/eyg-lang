@@ -1,8 +1,13 @@
+import lustre/effect
 import datalog/ast
 import datalog/ast/builder.{fact, i, n, rule, v, y}
 
 pub type Model {
   Model(sections: List(Section))
+}
+
+pub type Wrap {
+  Wrap(fn(Model) -> #(Model, effect.Effect(Wrap)))
 }
 
 pub type Section {

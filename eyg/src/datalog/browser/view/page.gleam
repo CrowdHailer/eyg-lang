@@ -2,6 +2,7 @@ import gleam/list
 import gleam/listx
 import lustre/element.{text}
 import lustre/attribute.{class}
+import lustre/effect
 import lustre/element/html.{button, div, p}
 import lustre/event.{on_click}
 import datalog/ast
@@ -9,7 +10,7 @@ import datalog/browser/app/model.{Model}
 import datalog/browser/view/source
 import datalog/browser/view/query
 
-pub fn render(model) {
+pub fn render(model) -> element.Element(model.Wrap) {
   let Model(sections) = model
   div([class("vstack wrap")], [
     // div([class("absolute  bottom-0 left-0 right-0 top-0")], []),
@@ -32,8 +33,10 @@ fn section(index, section) {
   [
     case section {
       model.Query(q) -> query.render(index, q)
+
       model.Source(relation, table) -> source.render(index, relation, table)
       model.Paragraph(content) -> p([], [text(content)])
+      _ -> todo
     },
     menu(index),
   ]
@@ -45,7 +48,7 @@ fn menu(index) {
     button(
       [
         class("cursor bg-green-300 rounded"),
-        on_click(insert_source(_, index + 1)),
+        on_click(model.Wrap(insert_source(_, index + 1))),
       ],
       [text("new source")],
     ),
@@ -56,5 +59,5 @@ fn insert_source(model, index) {
   let Model(sections) = model
   let new = model.Source("Foo", [[ast.I(2), ast.I(100), ast.S("hey")]])
   let sections = listx.insert_at(sections, index, [new])
-  Model(..model, sections: sections)
+  #(Model(..model, sections: sections), effect.none())
 }
