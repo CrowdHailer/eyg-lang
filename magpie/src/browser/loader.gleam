@@ -2,8 +2,8 @@ import gleam/dynamic.{Dynamic}
 import magpie/store/json
 import magpie/store/in_memory
 
-external fn raw_db() -> Dynamic =
-  "../db.mjs" "data"
+@external(javascript, "../db.mjs", "data")
+fn raw_db() -> Dynamic
 
 pub fn triples() {
   let assert Ok(triples) = json.decoder()(raw_db())

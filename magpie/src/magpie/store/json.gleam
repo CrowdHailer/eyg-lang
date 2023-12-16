@@ -22,9 +22,7 @@ fn value() {
       dynamic.decode1(I, dynamic.field("i", dynamic.int)),
       dynamic.decode1(S, dynamic.field("s", dynamic.string)),
       dynamic.decode1(L, dynamic.field("l", dynamic.list(value()))),
-    ])(
-      x,
-    )
+    ])(x)
   }
 }
 

@@ -9,17 +9,17 @@ import magpie/store/in_memory
 import browser/loader
 import browser/serialize
 
-// move to plinth
-pub external type Worker
+// TODO move to plinth
+pub type Worker
 
-pub external fn start_worker(String) -> Worker =
-  "../browser_ffi.mjs" "startWorker"
+@external(javascript, "../browser_ffi.mjs", "startWorker")
+pub fn start_worker(file: String) -> Worker
 
-pub external fn post_message(Worker, json.Json) -> Nil =
-  "../browser_ffi.mjs" "postMessage"
+@external(javascript, "../browser_ffi.mjs", "postMessage")
+pub fn post_message(worker: Worker, message: json.Json) -> Nil
 
-pub external fn on_message(Worker, fn(Dynamic) -> a) -> Nil =
-  "../browser_ffi.mjs" "onMessage"
+@external(javascript, "../browser_ffi.mjs", "onMessage")
+pub fn on_message(worker: Worker, handle: fn(Dynamic) -> a) -> Nil
 
 pub fn run(self: Worker) {
   let db = loader.db()
@@ -46,17 +46,14 @@ pub fn run(self: Worker) {
     )),
   )
 
-  on_message(
-    self,
-    fn(data) {
-      case serialize.query().decode(data) {
-        Ok(serialize.Query(from, patterns)) -> {
-          let result = query.run(from, patterns, db)
-          post_message(self, serialize.relations().encode(result))
-        }
-        Error(_) -> todo("couldn't decode")
+  on_message(self, fn(data) {
+    case serialize.query().decode(data) {
+      Ok(serialize.Query(from, patterns)) -> {
+        let result = query.run(from, patterns, db)
+        post_message(self, serialize.relations().encode(result))
       }
-    },
-  )
+      Error(_) -> todo("couldn't decode")
+    }
+  })
   // This should eventually move to plinth
 }

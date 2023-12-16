@@ -50,9 +50,9 @@ pub fn match_part(match, part, context) {
 }
 
 pub fn match_pattern(pattern: Pattern, triple: Triple, context) {
-  try context = match_part(pattern.0, I(triple.0), context)
-  try context = match_part(pattern.1, S(triple.1), context)
-  try context = match_part(pattern.2, triple.2, context)
+  use context <- result.then(match_part(pattern.0, I(triple.0), context))
+  use context <- result.then(match_part(pattern.1, S(triple.1), context))
+  use context <- result.then(match_part(pattern.2, triple.2, context))
   Ok(context)
 }
 
@@ -72,32 +72,24 @@ pub fn relevant_triples(db: in_memory.DB, pattern) {
 }
 
 pub fn where(patterns, db) {
-  list.fold(
-    patterns,
-    [map.new()],
-    fn(contexts, pattern) {
-      list.map(contexts, single(pattern, db, _))
-      |> list.flatten
-    },
-  )
+  list.fold(patterns, [map.new()], fn(contexts, pattern) {
+    list.map(contexts, single(pattern, db, _))
+    |> list.flatten
+  })
 }
 
 fn actualize(context: map.Map(String, in_memory.Value), find) {
-  list.map(
-    find,
-    fn(f) {
-      case map.get(context, f) {
-        Ok(r) -> r
-        Error(Nil) -> {
-          io.debug(string.concat([
-            "actualize failed due to invalid find key: ",
-            f,
-          ]))
-          todo("fail")
-        }
+  list.map(find, fn(f) {
+    case map.get(context, f) {
+      Ok(r) -> r
+      Error(Nil) -> {
+        io.debug(
+          string.concat(["actualize failed due to invalid find key: ", f]),
+        )
+        todo("fail")
       }
-    },
-  )
+    }
+  })
 }
 
 pub fn run(find, patterns, db) {

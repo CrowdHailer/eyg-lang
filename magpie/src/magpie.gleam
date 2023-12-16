@@ -3,33 +3,31 @@ import gleam/int
 import gleam/list
 import gleam/string
 import gleam/javascript/array.{Array}
+import plinth/node/process
 import magpie/sources/yaml
 import magpie/query.{i, s, v}
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/store/json
 import magpie/sources/movies
 
-pub external fn read_dir_sync(String) -> String =
-  "fs" "readdirSync"
+@external(javascript, "fs", "readdirSync")
+pub fn read_dir_sync(dir: String) -> String
 
-pub external fn glob(String) -> Array(String) =
-  "./magpie_ffi.mjs" "sync"
+@external(javascript, "./magpie_ffi.mjs", "sync")
+pub fn glob(glob: String) -> Array(String)
 
-external fn write_file_sync(String, String) -> String =
-  "fs" "writeFileSync"
+@external(javascript, "fs", "writeFileSync")
+fn write_file_sync(file: String, content: String) -> String
 
 // web worker for loading
 // boolean and int editing
-
-external fn do_args(Int) -> Array(String) =
-  "" "process.argv.slice"
 
 /// Returns a list containing the command-line arguments passed when the Node.js process was launched.
 /// The first element will be `process.execPath`.
 /// The second element will be the path to the JavaScript file being executed.
 /// The remaining elements will be any additional command-line arguments.
 pub fn args() {
-  array.to_list(do_args(0))
+  array.to_list(process.argv())
 }
 
 pub fn main() {
@@ -65,15 +63,12 @@ pub fn main() {
 }
 
 pub fn print(relations) {
-  list.each(
-    relations,
-    fn(relation) {
-      relation
-      |> list.map(print_value)
-      |> string.join(", ")
-      |> io.println
-    },
-  )
+  list.each(relations, fn(relation) {
+    relation
+    |> list.map(print_value)
+    |> string.join(", ")
+    |> io.println
+  })
 }
 
 fn print_value(value) {

@@ -52,10 +52,12 @@ pub fn loading_nested_test() {
         buz: 2
     "
   yaml.parse_one(source)
-  |> should.equal(Ok([
-    #(1, "bar", I(2)),
-    #(2, "baz", I(1)),
-    #(2, "buz", I(2)),
-    #(0, "foo", I(1)),
-  ]))
+  |> should.equal(
+    Ok([
+      #(1, "bar", I(2)),
+      #(2, "baz", I(1)),
+      #(2, "buz", I(2)),
+      #(0, "foo", I(1)),
+    ]),
+  )
 }

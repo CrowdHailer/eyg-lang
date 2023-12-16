@@ -30,11 +30,9 @@ fn push(current, t) {
 }
 
 fn index(triples, by) {
-  list.fold(
-    triples,
-    map.new(),
-    fn(acc, t: Triple) { map.update(acc, by(t), push(_, t)) },
-  )
+  list.fold(triples, map.new(), fn(acc, t: Triple) {
+    map.update(acc, by(t), push(_, t))
+  })
 }
 
 pub fn create_db(triples) {

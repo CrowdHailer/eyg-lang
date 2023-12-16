@@ -71,11 +71,7 @@ pub fn query() {
     let Query(f, p) = value
     q(f, p)
   })
-  |> codec.variant2(
-    "",
-    Query,
-    codec.list(codec.string()),
-    codec.list(pattern()),
+  |> codec.variant2("", Query, codec.list(codec.string()), codec.list(pattern()),
   )
   |> codec.construct()
 }

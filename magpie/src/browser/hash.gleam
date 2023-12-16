@@ -1,5 +1,6 @@
 import gleam/int
 import gleam/list
+import gleam/result
 import gleam/string
 import magpie/query
 import magpie/store/in_memory.{B, I, L, S}
@@ -62,13 +63,10 @@ fn encode_one(query) {
   let #(where, vars) = do_encode_where(where, #([], []))
   let where = string.join(where, ",")
   let find =
-    list.map(
-      find,
-      fn(f) {
-        let assert Ok(i) = index(vars, f)
-        int.to_string(i)
-      },
-    )
+    list.map(find, fn(f) {
+      let assert Ok(i) = index(vars, f)
+      int.to_string(i)
+    })
     |> string.join(",")
   string.concat([where, ":", find])
 }
@@ -83,29 +81,29 @@ fn do_decode_where(parts, matches, vars) {
         list.append(vars, [var]),
       )
     ["r" <> i, ..rest] -> {
-      try i = case int.parse(i) {
+      use i <- result.then(case int.parse(i) {
         Ok(i) -> Ok(i)
         Error(Nil) -> Error("could parse ref as int")
-      }
-      try var = case list.at(vars, i) {
+      })
+      use var <- result.then(case list.at(vars, i) {
         Ok(v) -> Ok(v)
         Error(Nil) -> Error("could not find var")
-      }
+      })
       do_decode_where(rest, list.append(matches, [query.Variable(var)]), vars)
     }
     ["b" <> b, ..rest] -> {
-      try b = case b {
+      use b <- result.then(case b {
         "t" -> Ok(True)
         "f" -> Ok(False)
         _ -> Error("not a boolean value")
-      }
+      })
       do_decode_where(rest, list.append(matches, [query.b(b)]), vars)
     }
     ["i" <> i, ..rest] -> {
-      try i = case int.parse(i) {
+      use i <- result.then(case int.parse(i) {
         Ok(i) -> Ok(i)
         Error(Nil) -> Error("not an integer value")
-      }
+      })
       do_decode_where(rest, list.append(matches, [query.i(i)]), vars)
     }
     ["s" <> s, ..rest] ->
@@ -122,18 +120,19 @@ fn do_bundle_pattern(parts, patterns) {
 }
 
 fn decode_one(str) {
-  try #(where, find) = case string.split(str, ":") {
+  use #(where, find) <- result.then(case string.split(str, ":") {
     [where, find] -> Ok(#(where, find))
     _ -> Error("incorrect : in hash")
-  }
-  try #(where, vars) =
+  })
+  use #(where, vars) <- result.then(
     case where {
       "" -> []
       _ -> string.split(where, ",")
     }
-    |> do_decode_where([], [])
-  try where = do_bundle_pattern(where, [])
-  try find =
+    |> do_decode_where([], []),
+  )
+  use where <- result.then(do_bundle_pattern(where, []))
+  use find <- result.then(
     case find {
       "" -> []
       _ -> string.split(find, ",")
@@ -143,17 +142,16 @@ fn decode_one(str) {
         Ok(i) -> Ok(i)
         Error(Nil) -> Error("not an int in find value")
       }
-    })
-  try find =
-    list.try_map(
-      find,
-      fn(i) {
-        case list.at(vars, i) {
-          Ok(v) -> Ok(v)
-          Error(Nil) -> Error("no variable for index")
-        }
-      },
-    )
+    }),
+  )
+  use find <- result.then(
+    list.try_map(find, fn(i) {
+      case list.at(vars, i) {
+        Ok(v) -> Ok(v)
+        Error(Nil) -> Error("no variable for index")
+      }
+    }),
+  )
   Ok(#(find, where))
 }
 

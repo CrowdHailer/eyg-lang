@@ -20,3 +20,7 @@ export function onMessage(worker, callback) {
     callback(msg.data);
   });
 }
+
+export function addEventListener(event, handler) {
+  return window.addEventListener(event, handler);
+}

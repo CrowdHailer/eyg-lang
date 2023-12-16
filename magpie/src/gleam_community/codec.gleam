@@ -1,14 +1,14 @@
 // IMPORTS ---------------------------------------------------------------------
 
-import gleam/dynamic.{DecodeError as DynamicError, Dynamic}
+import gleam/dynamic.{type DecodeError as DynamicError, type Dynamic}
 import gleam/function
-import gleam/json.{DecodeError as JsonError, Json}
+import gleam/json.{type DecodeError as JsonError, type Json}
 import gleam/list
-import gleam/map.{Map}
-import gleam/option.{Option}
+import gleam/map.{type Map}
+import gleam/option.{type Option}
 import gleam/pair
 import gleam/result
-import gleam/string_builder.{StringBuilder}
+import gleam/string_builder.{type StringBuilder}
 import gleam/int
 
 // TYPES -----------------------------------------------------------------------
@@ -197,16 +197,11 @@ pub fn variant1(
   value: fn(a) -> value,
   codec: Codec(a),
 ) -> Builder(b, value) {
-  variant(
-    builder,
-    tag,
-    fn(f) { fn(a) { f([encode_json(a, codec)]) } },
-    fn(dyn) {
-      dyn
-      |> dynamic.field("0", codec.decode)
-      |> result.map(value)
-    },
-  )
+  variant(builder, tag, fn(f) { fn(a) { f([encode_json(a, codec)]) } }, fn(dyn) {
+    dyn
+    |> dynamic.field("0", codec.decode)
+    |> result.map(value)
+  })
 }
 
 ///
@@ -233,19 +228,16 @@ pub fn variant2(
 ///
 ///
 pub fn construct(builder: Builder(fn(a) -> Json, a)) -> Codec(a) {
-  Codec(
-    encode: builder.match,
-    decode: fn(dyn) {
-      dyn
-      |> dynamic.field("$", dynamic.string)
-      |> result.then(fn(tag) {
-        case map.get(builder.decoder, tag) {
-          Ok(decoder) -> decoder(dyn)
-          Error(_) -> Error([])
-        }
-      })
-    },
-  )
+  Codec(encode: builder.match, decode: fn(dyn) {
+    dyn
+    |> dynamic.field("$", dynamic.string)
+    |> result.then(fn(tag) {
+      case map.get(builder.decoder, tag) {
+        Ok(decoder) -> decoder(dyn)
+        Error(_) -> Error([])
+      }
+    })
+  })
 }
 
 // QUERIES ---------------------------------------------------------------------

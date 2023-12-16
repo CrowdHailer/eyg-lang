@@ -3,7 +3,8 @@
     "compile": "gleam build",
     "bundle:app": "npx rollup -f iife -i ./build/dev/javascript/magpie/app.js -o public/app.js",
     "bundle:worker": "npx rollup -f iife -i ./build/dev/javascript/magpie/worker.js -o public/worker.js",
-    "build": "npm run bundle:app && npm run bundle:worker"
+    "build": "npm run bundle:app && npm run bundle:worker",
+    "start": "sirv ./public --dev --host 0.0.0.0 --port 5000"
   },
   "dependencies": {
     "glob": "^8.1.0",
