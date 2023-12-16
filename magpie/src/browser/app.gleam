@@ -11,6 +11,7 @@ import lustre/element.{text}
 import lustre/element/html as el
 import lustre/event
 import lustre/attribute.{class}
+import plinth/browser/window
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/query.{v}
 import browser/hash
@@ -33,15 +34,12 @@ fn map_at(items, i, f) {
   Ok(list.flatten([pre, [f(item)], post]))
 }
 
-@external(javascript, "../browser_ffi.mjs", "addEventListener")
-fn add_event_listener(event: String, listener: fn(Nil) -> Nil) -> Nil
-
 pub fn run() {
   let assert Ok(dispatch) =
     lustre.application(init, update, render)
     |> lustre.start("#app", Nil)
 
-  add_event_listener("hashchange", fn(_) { dispatch(HashChange) })
+  window.add_event_listener("hashchange", fn(_) { dispatch(HashChange) })
 }
 
 pub type MatchSelection {

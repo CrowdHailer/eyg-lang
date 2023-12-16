@@ -4,6 +4,7 @@ import gleam/list
 import gleam/result
 import gleam/javascript
 import gleam/javascript/array.{type Array}
+import plinth/node/fs
 import magpie/store/in_memory.{type Triple, B, I, L, S}
 
 @external(javascript, "js-yaml", "load")
@@ -16,15 +17,16 @@ pub fn entries(object) {
   array.to_list(do_entries(object))
 }
 
-@external(javascript, "fs", "readFileSync")
-fn read_file_sync(file: String, encoding: String) -> String
-
 pub fn read_files(files) {
   let ref = javascript.make_reference(0)
   let assert Ok(read) =
     list.try_map(files, fn(f) {
-      let source = read_file_sync(f, "utf8")
+      use source <- result.then(
+        fs.read_file_sync(f)
+        |> result.replace_error("failed to read file"),
+      )
       parse(source, ref)
+      |> result.replace_error("failed to parse source")
     })
   list.flatten(read)
   |> in_memory.create_db

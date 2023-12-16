@@ -3,6 +3,7 @@ import gleam/int
 import gleam/list
 import gleam/string
 import gleam/javascript/array.{type Array}
+import plinth/node/fs
 import plinth/node/process
 import magpie/sources/yaml
 import magpie/store/in_memory.{B, I, L, S}
@@ -14,9 +15,6 @@ pub fn read_dir_sync(dir: String) -> String
 
 @external(javascript, "./magpie_ffi.mjs", "sync")
 pub fn glob(glob: String) -> Array(String)
-
-@external(javascript, "fs", "writeFileSync")
-fn write_file_sync(file: String, content: String) -> String
 
 // web worker for loading
 // boolean and int editing
@@ -51,8 +49,10 @@ pub fn main() {
       json.to_string(db.triples),
       "\n}",
     ])
-  write_file_sync("build/dev/javascript/magpie/db.mjs", content)
-  write_file_sync("public/db.json", json.to_string(db.triples))
+  let assert Ok(Nil) =
+    fs.write_file_sync("build/dev/javascript/magpie/db.mjs", content)
+  let assert Ok(Nil) =
+    fs.write_file_sync("public/db.json", json.to_string(db.triples))
   Nil
 }
 
