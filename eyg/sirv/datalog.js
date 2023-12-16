@@ -224,6 +224,24 @@
     return do_reverse(xs);
   }
 
+  function first(list) {
+    if (list.hasLength(0)) {
+      return new Error(undefined);
+    } else if (list.atLeastLength(1)) {
+      let x = list.head;
+      return new Ok(x);
+    } else {
+      throw makeError(
+        "case_no_match",
+        "gleam/list",
+        215,
+        "first",
+        "No case clause matched",
+        { values: [list] }
+      )
+    }
+  }
+
   function do_map(loop$list, loop$fun, loop$acc) {
     while (true) {
       let list = loop$list;
@@ -285,6 +303,119 @@
 
   function index_map(list, fun) {
     return do_index_map(list, fun, 0, toList([]));
+  }
+
+  function drop(loop$list, loop$n) {
+    while (true) {
+      let list = loop$list;
+      let n = loop$n;
+      let $ = n <= 0;
+      if ($) {
+        return list;
+      } else if (!$) {
+        if (list.hasLength(0)) {
+          return toList([]);
+        } else if (list.atLeastLength(1)) {
+          let xs = list.tail;
+          loop$list = xs;
+          loop$n = n - 1;
+        } else {
+          throw makeError(
+            "case_no_match",
+            "gleam/list",
+            553,
+            "drop",
+            "No case clause matched",
+            { values: [list] }
+          )
+        }
+      } else {
+        throw makeError(
+          "case_no_match",
+          "gleam/list",
+          550,
+          "drop",
+          "No case clause matched",
+          { values: [$] }
+        )
+      }
+    }
+  }
+
+  function do_take(loop$list, loop$n, loop$acc) {
+    while (true) {
+      let list = loop$list;
+      let n = loop$n;
+      let acc = loop$acc;
+      let $ = n <= 0;
+      if ($) {
+        return reverse(acc);
+      } else if (!$) {
+        if (list.hasLength(0)) {
+          return reverse(acc);
+        } else if (list.atLeastLength(1)) {
+          let x = list.head;
+          let xs = list.tail;
+          loop$list = xs;
+          loop$n = n - 1;
+          loop$acc = toList([x], acc);
+        } else {
+          throw makeError(
+            "case_no_match",
+            "gleam/list",
+            564,
+            "do_take",
+            "No case clause matched",
+            { values: [list] }
+          )
+        }
+      } else {
+        throw makeError(
+          "case_no_match",
+          "gleam/list",
+          561,
+          "do_take",
+          "No case clause matched",
+          { values: [$] }
+        )
+      }
+    }
+  }
+
+  function take(list, n) {
+    return do_take(list, n, toList([]));
+  }
+
+  function do_append_acc(loop$first, loop$second) {
+    while (true) {
+      let first = loop$first;
+      let second = loop$second;
+      if (first.hasLength(0)) {
+        return second;
+      } else if (first.atLeastLength(1)) {
+        let item = first.head;
+        let rest$1 = first.tail;
+        loop$first = rest$1;
+        loop$second = toList([item], second);
+      } else {
+        throw makeError(
+          "case_no_match",
+          "gleam/list",
+          635,
+          "do_append_acc",
+          "No case clause matched",
+          { values: [first] }
+        )
+      }
+    }
+  }
+
+  function do_append(first, second) {
+    return do_append_acc(reverse(first), second);
+  }
+
+  function append(first, second) {
+    return do_append(first, second);
   }
 
   function reverse_and_prepend(loop$prefix, loop$suffix) {
@@ -386,6 +517,26 @@
     }
   }
 
+  function at(list, index) {
+    let $ = index >= 0;
+    if ($) {
+      let _pipe = list;
+      let _pipe$1 = drop(_pipe, index);
+      return first(_pipe$1);
+    } else if (!$) {
+      return new Error(undefined);
+    } else {
+      throw makeError(
+        "case_no_match",
+        "gleam/list",
+        1144,
+        "at",
+        "No case clause matched",
+        { values: [$] }
+      )
+    }
+  }
+
   function map(result, fun) {
     if (result.isOk()) {
       let x = result[0];
@@ -405,8 +556,53 @@
     }
   }
 
+  function try$(result, fun) {
+    if (result.isOk()) {
+      let x = result[0];
+      return fun(x);
+    } else if (!result.isOk()) {
+      let e = result[0];
+      return new Error(e);
+    } else {
+      throw makeError(
+        "case_no_match",
+        "gleam/result",
+        162,
+        "try",
+        "No case clause matched",
+        { values: [result] }
+      )
+    }
+  }
+
+  function then$(result, fun) {
+    return try$(result, fun);
+  }
+
+  function replace_error(result, error) {
+    if (result.isOk()) {
+      let x = result[0];
+      return new Ok(x);
+    } else if (!result.isOk()) {
+      return new Error(error);
+    } else {
+      throw makeError(
+        "case_no_match",
+        "gleam/result",
+        428,
+        "replace_error",
+        "No case clause matched",
+        { values: [result] }
+      )
+    }
+  }
+
   function from(a) {
     return identity(a);
+  }
+
+  function compose(fun1, fun2) {
+    return (a) => { return fun2(fun1(a)); };
   }
 
   class Effect extends CustomType {
@@ -805,8 +1001,26 @@
     }
   }
 
+  class Event extends CustomType {
+    constructor(x0, x1) {
+      super();
+      this[0] = x0;
+      this[1] = x1;
+    }
+  }
+
   function attribute(name, value) {
     return new Attribute(name, from(value), false);
+  }
+
+  function on$1(name, handler) {
+    return new Event(
+      "on" + name,
+      compose(
+        handler,
+        (_capture) => { return replace_error(_capture, undefined); },
+      ),
+    );
   }
 
   function class$(name) {
@@ -941,6 +1155,14 @@
     }
   }
 
+  class Source extends CustomType {
+    constructor(relation, table) {
+      super();
+      this.relation = relation;
+      this.table = table;
+    }
+  }
+
   class Paragraph extends CustomType {
     constructor(x0) {
       super();
@@ -952,7 +1174,7 @@
     return new Model(
       toList([
         new Paragraph(
-          "f the top-level goal clause is read as the denial of the problem, then the empty clause represents false and the proof of the empty clause is a refutation of the denial of the problem. If the top-level goal clause is read as the problem itself, then the empty clause represents true, and the proof of the empty clause is a proof that the problem has a solution.\nThe solution of the problem is a substitution of terms for the variables X in the top-level goal clause, which can be extracted from the resolution proof. Used in this way, goal clauses are similar to conjunctive queries in relational databases, and Horn clause logic is equivalent in computational power to a universal Turing machine.\nVan Emden and Kowalski (1976) investigated the model-theoretic properties of Horn clauses in the context of logic programming, showing that every set of definite clauses D has a unique minimal model M. An atomic formula A is logically implied by D if and only if A is true in M. It follows that a problem P represented by an existentially quantified conjunction of positive literals is logically implied by D if and only if P is true in M. The minimal model semantics of Horn clauses is the basis for the stable model semantics of logic programs.[8] ",
+          "f the top-level goal clause is read as the denial of the problem, then the empty clause represents false and the proof of the empty clause is a refutation of the denial of the problem. If the top-level goal clause is read as the problem itself, then the empty clause represents true, and the proof of the empty clause is a proof that the problem has a solution.",
         ),
         new Query(
           toList([
@@ -1012,7 +1234,35 @@
     return element("span", attrs, children);
   }
 
-  function literal(value) {
+  function table(attrs, children) {
+    return element("table", attrs, children);
+  }
+
+  function tbody(attrs, children) {
+    return element("tbody", attrs, children);
+  }
+
+  function td(attrs, children) {
+    return element("td", attrs, children);
+  }
+
+  function tr(attrs, children) {
+    return element("tr", attrs, children);
+  }
+
+  function button(attrs, children) {
+    return element("button", attrs, children);
+  }
+
+  function on(name, handler) {
+    return on$1(name, handler);
+  }
+
+  function on_click(msg) {
+    return on("click", (_) => { return new Ok(msg); });
+  }
+
+  function render$3(value) {
     if (value instanceof B && value[0]) {
       return text("true");
     } else if (value instanceof B && !value[0]) {
@@ -1021,14 +1271,14 @@
       let i = value[0];
       return text(to_string(i));
     } else if (value instanceof S) {
-      value[0];
-      return text("some string");
+      let s = value[0];
+      return text(s);
     } else {
       throw makeError(
         "case_no_match",
-        "datalog/browser/view/query",
-        78,
-        "literal",
+        "datalog/browser/view/value",
+        6,
+        "render",
         "No case clause matched",
         { values: [value] }
       )
@@ -1043,13 +1293,13 @@
           let var$ = t.label;
           return text(var$);
         } else if (t instanceof Literal) {
-          let value = t.value;
-          return literal(value);
+          let v = t.value;
+          return render$3(v);
         } else {
           throw makeError(
             "case_no_match",
             "datalog/browser/view/query",
-            69,
+            70,
             "",
             "No case clause matched",
             { values: [t] }
@@ -1065,7 +1315,7 @@
       throw makeError(
         "assignment_no_match",
         "datalog/browser/view/query",
-        54,
+        55,
         "atom",
         "Assignment pattern did not match",
         { value: a }
@@ -1112,7 +1362,7 @@
       throw makeError(
         "case_no_match",
         "datalog/browser/view/query",
-        43,
+        44,
         "body_atom",
         "No case clause matched",
         { values: [negated] }
@@ -1139,12 +1389,12 @@
     );
   }
 
-  function constraint(index, c) {
+  function constraint(_, c) {
     if (!(c instanceof Constraint)) {
       throw makeError(
         "assignment_no_match",
         "datalog/browser/view/query",
-        18,
+        19,
         "constraint",
         "Assignment pattern did not match",
         { value: c }
@@ -1159,7 +1409,7 @@
     }
   }
 
-  function render$1(i, constraints) {
+  function render$2(i, constraints) {
     let constraints$1 = index_map(constraints, constraint);
     return div(
       toList([class$("cover")]),
@@ -1170,23 +1420,163 @@
     );
   }
 
-  function section(index, section) {
-    if (section instanceof Query) {
-      let q = section[0];
-      return render$1(index, q);
-    } else if (section instanceof Paragraph) {
-      let content = section[0];
-      return p(toList([]), toList([text(content)]));
-    } else {
+  function insert_at(list, position, new$) {
+    let pre = take(list, position);
+    let post = drop(list, position);
+    return flatten(toList([pre, new$, post]));
+  }
+
+  function map_at(items, i, f) {
+    return then$(
+      at(items, i),
+      (item) => {
+        let pre = take(items, i);
+        let post = drop(items, i + 1);
+        return new Ok(flatten(toList([pre, toList([f(item)]), post])));
+      },
+    );
+  }
+
+  function add_row(model, index) {
+    if (!(model instanceof Model)) {
       throw makeError(
-        "case_no_match",
-        "datalog/browser/view/page",
-        29,
-        "",
-        "No case clause matched",
-        { values: [section] }
+        "assignment_no_match",
+        "datalog/browser/view/source",
+        25,
+        "add_row",
+        "Assignment pattern did not match",
+        { value: model }
       )
     }
+    let sections = model.sections;
+    let $ = map_at(
+      sections,
+      index,
+      (section) => {
+        if (!(section instanceof Source)) {
+          throw makeError(
+            "assignment_no_match",
+            "datalog/browser/view/source",
+            28,
+            "",
+            "Assignment pattern did not match",
+            { value: section }
+          )
+        }
+        let r = section.relation;
+        let table$1 = section.table;
+        return new Source(r, append(table$1, table$1));
+      },
+    );
+    if (!$.isOk()) {
+      throw makeError(
+        "assignment_no_match",
+        "datalog/browser/view/source",
+        26,
+        "add_row",
+        "Assignment pattern did not match",
+        { value: $ }
+      )
+    }
+    let sections$1 = $[0];
+    return model.withFields({ sections: sections$1 });
+  }
+
+  function cell(v) {
+    let t = render$3(v);
+    return td(toList([]), toList([t]));
+  }
+
+  function row(values) {
+    return tr(toList([]), map$1(values, cell));
+  }
+
+  function display(values) {
+    return table(toList([]), toList([tbody(toList([]), map$1(values, row))]));
+  }
+
+  function render$1(index, relation, values) {
+    return div(
+      toList([class$("cover")]),
+      toList([
+        text("source"),
+        display(values),
+        div(
+          toList([
+            class$("cusor bg-purple-300"),
+            on_click((_capture) => { return add_row(_capture, index); }),
+          ]),
+          toList([text("add row")]),
+        ),
+      ]),
+    );
+  }
+
+  function insert_source(model, index) {
+    if (!(model instanceof Model)) {
+      throw makeError(
+        "assignment_no_match",
+        "datalog/browser/view/page",
+        56,
+        "insert_source",
+        "Assignment pattern did not match",
+        { value: model }
+      )
+    }
+    let sections = model.sections;
+    let new$ = new Source(
+      "Foo",
+      toList([toList([new I(2), new I(100), new S("hey")])]),
+    );
+    let sections$1 = insert_at(sections, index, toList([new$]));
+    return model.withFields({ sections: sections$1 });
+  }
+
+  function menu(index) {
+    return div(
+      toList([class$("hstack")]),
+      toList([
+        button(
+          toList([class$("cursor bg-green-300 rounded")]),
+          toList([text("new plaintext")]),
+        ),
+        button(
+          toList([
+            class$("cursor bg-green-300 rounded"),
+            on_click((_capture) => { return insert_source(_capture, index + 1); }),
+          ]),
+          toList([text("new source")]),
+        ),
+      ]),
+    );
+  }
+
+  function section(index, section) {
+    return toList([
+      (() => {
+        if (section instanceof Query) {
+          let q = section[0];
+          return render$2(index, q);
+        } else if (section instanceof Source) {
+          let relation = section.relation;
+          let table = section.table;
+          return render$1(index, relation, table);
+        } else if (section instanceof Paragraph) {
+          let content = section[0];
+          return p(toList([]), toList([text(content)]));
+        } else {
+          throw makeError(
+            "case_no_match",
+            "datalog/browser/view/page",
+            33,
+            "",
+            "No case clause matched",
+            { values: [section] }
+          )
+        }
+      })(),
+      menu(index),
+    ]);
   }
 
   function render(model) {
@@ -1194,7 +1584,7 @@
       throw makeError(
         "assignment_no_match",
         "datalog/browser/view/page",
-        10,
+        13,
         "render",
         "Assignment pattern did not match",
         { value: model }
@@ -1205,22 +1595,11 @@
       toList([class$("vstack wrap")]),
       toList([
         div(
-          toList([class$("absolute  bottom-0 left-0 right-0 top-0")]),
-          toList([]),
-        ),
-        div(
-          toList([class$("absolute border p-4 bg-white w-full max-w-xl rounded")]),
-          toList([
-            p(toList([]), toList([text("floating modal")])),
-            p(toList([]), toList([text("floating modal")])),
-          ]),
-        ),
-        div(
           toList([
             attribute("tabindex", "-1"),
             class$("vstack w-full max-w-2xl mx-auto"),
           ]),
-          index_map(sections, section),
+          flatten(index_map(sections, section)),
         ),
       ]),
     );
