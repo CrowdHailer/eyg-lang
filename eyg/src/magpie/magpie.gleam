@@ -14,7 +14,6 @@ import magpie/sources/movies
 @external(javascript, "../magpie_ffi.mjs", "sync")
 pub fn glob(glob: String) -> Array(String)
 
-
 pub fn main(args) {
   let db = case args {
     ["movies"] -> movies.movies()

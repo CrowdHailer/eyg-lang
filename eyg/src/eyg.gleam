@@ -29,7 +29,7 @@ pub fn do_main(args) {
 
   case args {
     ["exec", ..] -> shell.run(source)
-    [magpie,..rest] -> magpie.main(rest)
+    [magpie, ..rest] -> magpie.main(rest)
     _ -> {
       io.debug(#("no runner for: ", args))
       process.exit(1)

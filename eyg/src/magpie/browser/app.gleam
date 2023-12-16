@@ -2,8 +2,8 @@ import gleam/dynamic
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/listx
 import gleam/option.{type Option, None, Some}
-import gleam/result
 import gleam/string
 import lustre
 import lustre/effect as cmd
@@ -17,22 +17,6 @@ import magpie/store/in_memory.{B, I, L, S}
 import magpie/query.{v}
 import magpie/browser/hash
 import magpie/browser/serialize
-
-// At the top to get generic
-// TODO listx
-fn delete_at(items, i) {
-  let pre = list.take(items, i)
-  let post = list.drop(items, i + 1)
-  list.flatten([pre, post])
-}
-
-// TODO listx
-fn map_at(items, i, f) {
-  use item <- result.then(list.at(items, i))
-  let pre = list.take(items, i)
-  let post = list.drop(items, i + 1)
-  Ok(list.flatten([pre, [f(item)], post]))
-}
 
 pub fn run() {
   let assert Ok(dispatch) =
@@ -154,7 +138,7 @@ pub fn update(state: App, action) {
 
       let assert App(DB(db, Ready, view), queries, _mode) = state
       let assert Ok(queries) =
-        map_at(queries, i, fn(q) {
+        listx.map_at(queries, i, fn(q) {
           let #(#(from, where), _cache) = q
 
           worker.post_message(
@@ -168,7 +152,7 @@ pub fn update(state: App, action) {
     QueryResult(relations) -> {
       let assert App(DB(db, Querying(i), view), queries, _mode) = state
       let assert Ok(queries) =
-        map_at(queries, i, fn(q) {
+        listx.map_at(queries, i, fn(q) {
           let #(#(from, where), _cache) = q
           #(#(from, where), Some(relations))
         })
@@ -181,7 +165,7 @@ pub fn update(state: App, action) {
     }
     DeleteQuery(i) -> {
       let assert App(db, queries, mode) = state
-      let queries = delete_at(queries, i)
+      let queries = listx.delete_at(queries, i)
       #(App(db, queries, mode), update_hash(queries))
     }
     AddVariable(i) -> {
@@ -191,7 +175,7 @@ pub fn update(state: App, action) {
     SelectVariable(var) -> {
       let assert App(db, queries, ChooseVariable(i)) = state
       let assert Ok(queries) =
-        map_at(queries, i, fn(q) {
+        listx.map_at(queries, i, fn(q) {
           let #(#(find, where), _) = q
           let find = [var, ..find]
           #(#(find, where), None)
@@ -201,16 +185,16 @@ pub fn update(state: App, action) {
     DeleteVariable(i, j) -> {
       let assert App(db, queries, _) = state
       let assert Ok(queries) =
-        map_at(queries, i, fn(q) {
+        listx.map_at(queries, i, fn(q) {
           let #(#(find, where), _) = q
-          #(#(delete_at(find, j), where), None)
+          #(#(listx.delete_at(find, j), where), None)
         })
       #(App(db, queries, OverView), update_hash(queries))
     }
     AddPattern(i) -> {
       let assert App(db, queries, _) = state
       let assert Ok(queries) =
-        map_at(queries, i, fn(q) {
+        listx.map_at(queries, i, fn(q) {
           let #(#(find, where), _) = q
           let pattern = #(v("_"), v("_"), v("_"))
           let where = [pattern, ..where]
@@ -255,10 +239,10 @@ pub fn update(state: App, action) {
         ConstBoolean(bool) -> query.b(bool)
       }
       let assert Ok(queries) =
-        map_at(queries, i, fn(q) {
+        listx.map_at(queries, i, fn(q) {
           let #(#(find, where), _cache) = q
           let assert Ok(where) =
-            map_at(where, j, fn(pattern: query.Pattern) {
+            listx.map_at(where, j, fn(pattern: query.Pattern) {
               case k {
                 0 -> #(match, pattern.1, pattern.2)
                 1 -> #(pattern.0, match, pattern.2)
@@ -274,9 +258,9 @@ pub fn update(state: App, action) {
     DeletePattern(i, j) -> {
       let assert App(db, queries, _) = state
       let assert Ok(queries) =
-        map_at(queries, i, fn(q) {
+        listx.map_at(queries, i, fn(q) {
           let #(#(find, where), _) = q
-          #(#(find, delete_at(where, j)), None)
+          #(#(find, listx.delete_at(where, j)), None)
         })
       #(App(db, queries, OverView), update_hash(queries))
     }
