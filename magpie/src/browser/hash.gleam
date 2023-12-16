@@ -30,7 +30,7 @@ fn add_match(match, variables) {
         B(False) -> "bf"
         I(i) -> string.append("i", int.to_string(i))
         S(s) -> string.append("s", s)
-        L(_) -> todo("list in queries")
+        L(_) -> panic("list in queries")
       },
       [],
     )
@@ -108,6 +108,7 @@ fn do_decode_where(parts, matches, vars) {
     }
     ["s" <> s, ..rest] ->
       do_decode_where(rest, list.append(matches, [query.s(s)]), vars)
+    _ -> panic("invalid part")
   }
 }
 

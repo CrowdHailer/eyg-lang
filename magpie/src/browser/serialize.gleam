@@ -45,7 +45,7 @@ pub fn value() {
       in_memory.B(value) -> b(value)
       in_memory.I(value) -> i(value)
       in_memory.S(value) -> s(value)
-      _ -> todo("no lists in dataset and no custom4 in codec")
+      _ -> panic("no lists in dataset and no custom4 in codec")
     }
   })
   |> codec.variant1("B", in_memory.B, bool())

@@ -1,6 +1,5 @@
 // erlang doesn't have good yaml libs but using it would get me a shell to try it in.
 import gleam/dynamic.{type Dynamic}
-import gleam/io
 import gleam/list
 import gleam/result
 import gleam/javascript

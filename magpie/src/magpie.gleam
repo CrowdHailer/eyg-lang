@@ -5,7 +5,6 @@ import gleam/string
 import gleam/javascript/array.{type Array}
 import plinth/node/process
 import magpie/sources/yaml
-import magpie/query.{i, s, v}
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/store/json
 import magpie/sources/movies
@@ -43,6 +42,7 @@ pub fn main() {
       glob("../../../northvolt/system-config/nodesets/**/system.yml")
       |> array.to_list
       |> yaml.read_files
+    _ -> panic("need an argument when building state")
   }
 
   let content =
@@ -52,12 +52,6 @@ pub fn main() {
       "\n}",
     ])
   write_file_sync("build/dev/javascript/magpie/db.mjs", content)
-  let content =
-    string.concat([
-      "export function data(){\n  return ",
-      json.to_string(db.triples),
-      "\n}",
-    ])
   write_file_sync("public/db.json", json.to_string(db.triples))
   Nil
 }
@@ -76,7 +70,7 @@ fn print_value(value) {
     B(False) -> "False"
     B(True) -> "True"
     I(i) -> int.to_string(i)
-    L(l) -> "[todo]"
+    L(_l) -> "[TODO]"
     S(s) -> string.concat(["\"", s, "\""])
   }
 }

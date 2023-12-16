@@ -1,11 +1,8 @@
-import gleam/io
 import gleam/dynamic.{type Dynamic}
 import gleam/list
 import gleam/dict
 import gleam/json
-import gleam/javascript/promise.{try_await}
 import magpie/query
-import magpie/store/in_memory
 import browser/loader
 import browser/serialize
 
@@ -29,15 +26,15 @@ pub fn run(self: Worker) {
       let #(key, triples) = pair
       #(key, list.length(triples))
     })
-  let value_suggestions =
-    dict.to_list(db.value_index)
-    |> list.filter_map(fn(pair) {
-      let #(key, triples) = pair
-      case key {
-        in_memory.S(value) -> Ok(#(value, list.length(triples)))
-        _ -> Error(Nil)
-      }
-    })
+  // let value_suggestions =
+  //   dict.to_list(db.value_index)
+  //   |> list.filter_map(fn(pair) {
+  //     let #(key, triples) = pair
+  //     case key {
+  //       in_memory.S(value) -> Ok(#(value, list.length(triples)))
+  //       _ -> Error(Nil)
+  //     }
+  //   })
   post_message(
     self,
     serialize.db_view().encode(serialize.DBView(
@@ -52,7 +49,7 @@ pub fn run(self: Worker) {
         let result = query.run(from, patterns, db)
         post_message(self, serialize.relations().encode(result))
       }
-      Error(_) -> todo("couldn't decode")
+      Error(_) -> panic("couldn't decode")
     }
   })
   // This should eventually move to plinth

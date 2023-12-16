@@ -86,7 +86,7 @@ fn actualize(context: dict.Dict(String, in_memory.Value), find) {
         io.debug(
           string.concat(["actualize failed due to invalid find key: ", f]),
         )
-        todo("fail")
+        panic("fail")
       }
     }
   })

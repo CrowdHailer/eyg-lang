@@ -147,7 +147,6 @@ pub fn update(state: App, action) {
     HashChange -> {
       let state = case state {
         App(db, _queries, _mode) -> App(db, queries(), OverView)
-        other -> other
       }
       #(state, cmd.none())
     }
@@ -229,12 +228,14 @@ pub fn update(state: App, action) {
         0 -> pattern.0
         1 -> pattern.1
         2 -> pattern.2
+        _ -> panic("no higher index in triple")
       }
       let selection = case match {
         query.Variable(var) -> Variable(var)
         query.Constant(S(value)) -> ConstString(value)
         query.Constant(I(value)) -> ConstInteger(Some(value))
         query.Constant(B(value)) -> ConstBoolean(value)
+        _ -> panic("list match change not supported")
       }
 
       let mode = UpdateMatch(i, j, k, selection)
@@ -263,6 +264,7 @@ pub fn update(state: App, action) {
                 0 -> #(match, pattern.1, pattern.2)
                 1 -> #(pattern.0, match, pattern.2)
                 2 -> #(pattern.0, pattern.1, match)
+                _ -> panic("no higher index in query")
               }
             })
           #(#(find, where), None)
@@ -285,7 +287,7 @@ pub fn update(state: App, action) {
         Variable(_) -> Variable(new)
         ConstString(_) -> ConstString(new)
         ConstInteger(_) -> ConstInteger(option.from_result(int.parse(new)))
-        ConstBoolean(_) -> todo("shouldn't happend because check change")
+        ConstBoolean(_) -> panic("shouldn't happend because check change")
       }
       #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
@@ -293,7 +295,7 @@ pub fn update(state: App, action) {
       let assert App(db, queries, UpdateMatch(i, j, k, selection)) = state
       let selection = case selection {
         ConstBoolean(_) -> ConstBoolean(new)
-        _ -> todo("shouldn't happend because input change")
+        _ -> panic("shouldn't happend because input change")
       }
       #(App(db, queries, UpdateMatch(i, j, k, selection)), cmd.none())
     }
@@ -414,9 +416,10 @@ fn render_edit(mode, db: serialize.DBView) {
                           1 -> db.attribute_suggestions
                           //  value_suggestions are not implemented as there are too many of them
                           2 -> []
+                          _ -> panic("no higher index")
                         }
                         |> list.filter(fn(pair) {
-                          let #(key, count) = pair
+                          let #(key, _count) = pair
                           string.starts_with(key, value)
                         })
 
@@ -714,7 +717,7 @@ fn print_value(value) {
     B(False) -> "False"
     B(True) -> "True"
     I(i) -> int.to_string(i)
-    L(l) -> "[todo]"
+    L(_l) -> "[TODO]"
     S(s) -> string.concat(["\"", s, "\""])
   }
 }
@@ -744,7 +747,7 @@ pub fn render_results(find, results, db) {
   ])
 }
 
-fn render_doc(value, db) {
+fn render_doc(value, _db) {
   case value {
     // TODO reenable entity_index but needs codec support
     // I(ref) ->
