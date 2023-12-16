@@ -11,11 +11,11 @@ import lustre/element.{text}
 import lustre/element/html as el
 import lustre/event
 import lustre/attribute.{class}
+import plinth/browser/worker.{type Worker}
 import plinth/browser/window
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/query.{v}
 import browser/hash
-import browser/worker
 import browser/serialize
 
 // At the top to get generic
@@ -62,7 +62,7 @@ pub type DBState {
 }
 
 pub type DB {
-  DB(worker: worker.Worker, working: DBState, db_view: serialize.DBView)
+  DB(worker: Worker, working: DBState, db_view: serialize.DBView)
 }
 
 pub type App {
@@ -100,11 +100,12 @@ pub type Action {
 // choice in edit match, or form submit info in discord
 
 pub fn init(_) {
-  let w = worker.start_worker("./worker.js")
+  let assert Ok(w) = worker.new("./worker.js")
   #(
     App(DB(w, Indexing, serialize.DBView(0, [])), queries(), OverView),
     cmd.from(fn(dispatch) {
       worker.on_message(w, fn(raw) {
+        let raw = dynamic.from(raw)
         case serialize.db_view().decode(raw) {
           Ok(db_view) -> dispatch(Indexed(db_view))
           Error(_) ->

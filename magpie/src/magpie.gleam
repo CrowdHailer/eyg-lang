@@ -10,9 +10,7 @@ import magpie/store/in_memory.{B, I, L, S}
 import magpie/store/json
 import magpie/sources/movies
 
-@external(javascript, "fs", "readdirSync")
-pub fn read_dir_sync(dir: String) -> String
-
+// glob is using an external dependency so will not be part of plinth
 @external(javascript, "./magpie_ffi.mjs", "sync")
 pub fn glob(glob: String) -> Array(String)
 

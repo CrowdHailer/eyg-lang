@@ -16,8 +16,8 @@ gleam_stdlib = "~> 0.26"
 gleam_javascript = "~> 0.4"
 gleam_json = "~> 0.5"
 lustre = "~> 3.0"
-# plinth = "~> 0.1"
-plinth = {path= "../../plinth"}
+plinth = "~> 0.1.6"
+# plinth = {path= "../../plinth"}
 
 [dev-dependencies]
 gleeunit = "~> 0.9"
