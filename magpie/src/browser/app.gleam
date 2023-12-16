@@ -748,7 +748,7 @@ fn render_doc(value, db) {
   case value {
     // TODO reenable entity_index but needs codec support
     // I(ref) ->
-    //   case map.get(db.entity_index, ref) {
+    //   case dict.get(db.entity_index, ref) {
     //     Ok(parts) ->
     //       el.details(
     //         [],

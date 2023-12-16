@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/dynamic.{type Dynamic}
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/json
 import gleam/javascript/promise.{try_await}
 import magpie/query
@@ -24,13 +24,13 @@ pub fn on_message(worker: Worker, handle: fn(Dynamic) -> a) -> Nil
 pub fn run(self: Worker) {
   let db = loader.db()
   let attribute_suggestions =
-    map.to_list(db.attribute_index)
+    dict.to_list(db.attribute_index)
     |> list.map(fn(pair) {
       let #(key, triples) = pair
       #(key, list.length(triples))
     })
   let value_suggestions =
-    map.to_list(db.value_index)
+    dict.to_list(db.value_index)
     |> list.filter_map(fn(pair) {
       let #(key, triples) = pair
       case key {

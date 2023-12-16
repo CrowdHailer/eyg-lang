@@ -1,4 +1,4 @@
-import gleam/map
+import gleam/dict
 import magpie/query.{Constant, Variable, i, s, v}
 import magpie/store/in_memory.{I, S}
 import magpie/sources/movies.{movies}
@@ -6,8 +6,8 @@ import gleeunit/should
 
 // part of mapx on cleanup branch
 fn singleton(key, value) {
-  map.new()
-  |> map.insert(key, value)
+  dict.new()
+  |> dict.insert(key, value)
 }
 
 pub fn match_pattern_test() {
@@ -17,9 +17,9 @@ pub fn match_pattern_test() {
     singleton("movie", I(200)),
   )
   |> should.equal(Ok(
-    map.new()
-    |> map.insert("movie", I(200))
-    |> map.insert("director", I(100)),
+    dict.new()
+    |> dict.insert("movie", I(200))
+    |> dict.insert("director", I(100)),
   ))
 
   query.match_pattern(
@@ -31,7 +31,7 @@ pub fn match_pattern_test() {
 }
 
 pub fn query_single_test() {
-  query.single(#(v("movie"), s("movie/year"), i(1987)), movies(), map.new())
+  query.single(#(v("movie"), s("movie/year"), i(1987)), movies(), dict.new())
   |> should.equal([
     singleton("movie", I(202)),
     singleton("movie", I(203)),
@@ -49,10 +49,10 @@ pub fn query_where_test() {
     movies(),
   )
   |> should.equal([
-    map.new()
-    |> map.insert("movie", I(200))
-    |> map.insert("director", I(100))
-    |> map.insert("directorName", S("James Cameron")),
+    dict.new()
+    |> dict.insert("movie", I(200))
+    |> dict.insert("director", I(100))
+    |> dict.insert("directorName", S("James Cameron")),
   ])
 }
 

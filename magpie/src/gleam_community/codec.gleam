@@ -4,7 +4,7 @@ import gleam/dynamic.{type DecodeError as DynamicError, type Dynamic}
 import gleam/function
 import gleam/json.{type DecodeError as JsonError, type Json}
 import gleam/list
-import gleam/map.{type Map}
+import gleam/dict.{type Dict}
 import gleam/option.{type Option}
 import gleam/pair
 import gleam/result
@@ -45,7 +45,7 @@ pub type Codec(a) {
 ///
 ///
 pub opaque type Builder(match, a) {
-  Builder(match: match, decoder: Map(String, Decoder(a)))
+  Builder(match: match, decoder: Dict(String, Decoder(a)))
 }
 
 ///
@@ -122,11 +122,11 @@ pub fn optional(codec: Codec(a)) -> Codec(Option(a)) {
 
 ///
 ///
-pub fn object(codec: Codec(a)) -> Codec(Map(String, a)) {
+pub fn object(codec: Codec(a)) -> Codec(Dict(String, a)) {
   let encoder = fn(inner) {
     fn(map) {
       map
-      |> map.to_list
+      |> dict.to_list
       |> list.map(pair.map_second(_, inner))
       |> json.object
     }
@@ -141,7 +141,7 @@ pub fn object(codec: Codec(a)) -> Codec(Map(String, a)) {
 pub fn custom1(
   match: fn(a, value) -> Json,
 ) -> Builder(fn(a) -> fn(value) -> Json, value) {
-  Builder(function.curry2(match), map.new())
+  Builder(function.curry2(match), dict.new())
 }
 
 ///
@@ -149,7 +149,7 @@ pub fn custom1(
 pub fn custom2(
   match: fn(a, b, value) -> Json,
 ) -> Builder(fn(a) -> fn(b) -> fn(value) -> Json, value) {
-  Builder(function.curry3(match), map.new())
+  Builder(function.curry3(match), dict.new())
 }
 
 ///
@@ -157,7 +157,7 @@ pub fn custom2(
 pub fn custom3(
   match: fn(a, b, c, value) -> Json,
 ) -> Builder(fn(a) -> fn(b) -> fn(c) -> fn(value) -> Json, value) {
-  Builder(function.curry4(match), map.new())
+  Builder(function.curry4(match), dict.new())
 }
 
 fn variant(
@@ -175,7 +175,7 @@ fn variant(
 
   Builder(
     match: builder.match(matcher(encode)),
-    decoder: map.insert(builder.decoder, tag, decoder),
+    decoder: dict.insert(builder.decoder, tag, decoder),
   )
 }
 
@@ -232,7 +232,7 @@ pub fn construct(builder: Builder(fn(a) -> Json, a)) -> Codec(a) {
     dyn
     |> dynamic.field("$", dynamic.string)
     |> result.then(fn(tag) {
-      case map.get(builder.decoder, tag) {
+      case dict.get(builder.decoder, tag) {
         Ok(decoder) -> decoder(dyn)
         Error(_) -> Error([])
       }

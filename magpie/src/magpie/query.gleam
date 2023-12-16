@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/map
+import gleam/dict
 import gleam/result
 import gleam/string
 // probably the query shouldn't depend on store details
@@ -42,9 +42,9 @@ pub fn match_part(match, part, context) {
         False -> Error(Nil)
       }
     Variable(var) ->
-      case map.get(context, var) {
+      case dict.get(context, var) {
         Ok(constant) -> match_part(Constant(constant), part, context)
-        Error(Nil) -> Ok(map.insert(context, var, part))
+        Error(Nil) -> Ok(dict.insert(context, var, part))
       }
   }
 }
@@ -63,24 +63,24 @@ pub fn single(pattern, db, context) {
 
 pub fn relevant_triples(db: in_memory.DB, pattern) {
   case pattern {
-    #(Constant(I(id)), _, _) -> map.get(db.entity_index, id)
-    #(_, Constant(S(attr)), _) -> map.get(db.attribute_index, attr)
-    #(_, _, Constant(value)) -> map.get(db.value_index, value)
+    #(Constant(I(id)), _, _) -> dict.get(db.entity_index, id)
+    #(_, Constant(S(attr)), _) -> dict.get(db.attribute_index, attr)
+    #(_, _, Constant(value)) -> dict.get(db.value_index, value)
     _ -> Error(Nil)
   }
   |> result.unwrap(db.triples)
 }
 
 pub fn where(patterns, db) {
-  list.fold(patterns, [map.new()], fn(contexts, pattern) {
+  list.fold(patterns, [dict.new()], fn(contexts, pattern) {
     list.map(contexts, single(pattern, db, _))
     |> list.flatten
   })
 }
 
-fn actualize(context: map.Map(String, in_memory.Value), find) {
+fn actualize(context: dict.Dict(String, in_memory.Value), find) {
   list.map(find, fn(f) {
-    case map.get(context, f) {
+    case dict.get(context, f) {
       Ok(r) -> r
       Error(Nil) -> {
         io.debug(

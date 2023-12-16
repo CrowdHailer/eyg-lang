@@ -1,5 +1,5 @@
 import gleam/list
-import gleam/map.{type Map}
+import gleam/dict.{type Dict}
 import gleam/option.{None, Some}
 
 pub type Value {
@@ -15,9 +15,9 @@ pub type Triple =
 pub type DB {
   DB(
     triples: List(Triple),
-    entity_index: Map(Int, List(Triple)),
-    attribute_index: Map(String, List(Triple)),
-    value_index: Map(Value, List(Triple)),
+    entity_index: Dict(Int, List(Triple)),
+    attribute_index: Dict(String, List(Triple)),
+    value_index: Dict(Value, List(Triple)),
   )
 }
 
@@ -30,8 +30,8 @@ fn push(current, t) {
 }
 
 fn index(triples, by) {
-  list.fold(triples, map.new(), fn(acc, t: Triple) {
-    map.update(acc, by(t), push(_, t))
+  list.fold(triples, dict.new(), fn(acc, t: Triple) {
+    dict.update(acc, by(t), push(_, t))
   })
 }
 
