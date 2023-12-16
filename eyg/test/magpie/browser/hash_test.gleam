@@ -1,5 +1,5 @@
 import magpie/query
-import browser/hash
+import magpie/browser/hash
 import gleeunit/should
 
 pub fn round_trip(query) {

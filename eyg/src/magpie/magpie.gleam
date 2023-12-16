@@ -3,31 +3,20 @@ import gleam/int
 import gleam/list
 import gleam/string
 import gleam/javascript/array.{type Array}
+import gleam/javascript/promise
 import plinth/node/fs
-import plinth/node/process
 import magpie/sources/yaml
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/store/json
 import magpie/sources/movies
 
 // glob is using an external dependency so will not be part of plinth
-@external(javascript, "./magpie_ffi.mjs", "sync")
+@external(javascript, "../magpie_ffi.mjs", "sync")
 pub fn glob(glob: String) -> Array(String)
 
-// web worker for loading
-// boolean and int editing
 
-/// Returns a list containing the command-line arguments passed when the Node.js process was launched.
-/// The first element will be `process.execPath`.
-/// The second element will be the path to the JavaScript file being executed.
-/// The remaining elements will be any additional command-line arguments.
-pub fn args() {
-  array.to_list(process.argv())
-}
-
-pub fn main() {
-  io.debug("start")
-  let db = case list.drop(args(), 2) {
+pub fn main(args) {
+  let db = case args {
     ["movies"] -> movies.movies()
     ["fleet"] ->
       // #vvalues,sversion,vversion,r0,sdriver,slitmus:1&vvalues,sdriver,vdriver,r0,sversion,vversion,r0,sreplicaCount,i0:1,2
@@ -48,10 +37,8 @@ pub fn main() {
       "\n}",
     ])
   let assert Ok(Nil) =
-    fs.write_file_sync("build/dev/javascript/magpie/db.mjs", content)
-  let assert Ok(Nil) =
-    fs.write_file_sync("public/db.json", json.to_string(db.triples))
-  Nil
+    fs.write_file_sync("build/dev/javascript/eyg/magpie/db.mjs", content)
+  promise.resolve(0)
 }
 
 pub fn print(relations) {

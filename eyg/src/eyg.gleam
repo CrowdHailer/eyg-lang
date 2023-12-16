@@ -6,6 +6,7 @@ import eygir/decode
 import platforms/shell
 import gleam/javascript/array
 import gleam/javascript/promise
+import magpie/magpie
 
 // zero arity
 pub fn main() {
@@ -28,6 +29,7 @@ pub fn do_main(args) {
 
   case args {
     ["exec", ..] -> shell.run(source)
+    [magpie,..rest] -> magpie.main(rest)
     _ -> {
       io.debug(#("no runner for: ", args))
       process.exit(1)

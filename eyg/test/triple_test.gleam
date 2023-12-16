@@ -7,7 +7,7 @@ import gleam/javascript/array.{type Array}
 import gleeunit/should
 
 // TODO needs to be top level or bundled with source when building
-@external(javascript, "/opt/app/magpie/src/movies.mjs", "movies")
+@external(javascript, "/opt/app/eyg/src/movies.mjs", "movies")
 fn do_movies() -> Array(#(Int, String, Dynamic))
 
 // "/Users/petersaxton/src/github.com/crowdhailer/eyg-lang/magpie/src/movies.mjs" "movies"

@@ -15,8 +15,8 @@ import plinth/browser/worker.{type Worker}
 import plinth/browser/window
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/query.{v}
-import browser/hash
-import browser/serialize
+import magpie/browser/hash
+import magpie/browser/serialize
 
 // At the top to get generic
 // TODO listx
@@ -122,10 +122,10 @@ pub fn init(_) {
   )
 }
 
-@external(javascript, "../browser_ffi.mjs", "getHash")
+@external(javascript, "../../magpie_browser_ffi.mjs", "getHash")
 fn get_hash() -> String
 
-@external(javascript, "../browser_ffi.mjs", "setHash")
+@external(javascript, "../../magpie_browser_ffi.mjs", "setHash")
 fn set_hash(hash: String) -> Nil
 
 fn update_hash(queries) {

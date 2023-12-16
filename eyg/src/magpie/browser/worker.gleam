@@ -3,8 +3,8 @@ import gleam/list
 import gleam/dict
 import plinth/browser/worker.{type Worker}
 import magpie/query
-import browser/loader
-import browser/serialize
+import magpie/browser/loader
+import magpie/browser/serialize
 
 pub fn run(self: Worker) {
   let db = loader.db()

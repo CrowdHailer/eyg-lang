@@ -5,7 +5,11 @@
     "build:atelier": "npx rollup -f iife -i ./build/dev/javascript/eyg/atelier.js -o build/bundle/atelier.js",
     "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",
     "build:easel": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js",
-    "build:resume": "npx rollup -f iife -i ./build/dev/javascript/eyg/resume.js -o build/bundle/resume.js"
+    "build:resume": "npx rollup -f iife -i ./build/dev/javascript/eyg/resume.js -o build/bundle/resume.js",
+    "build:magpie:app": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_app.js -o build/bundle/app.js",
+    "build:magpie:worker": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_worker.js -o build/bundle/worker.js",
+    "build:magpie": "npm run build:magpie:worker && npm run build:magpie:app",
+    "start:magpie": "gleam build && npm run build:magpie && rm -rf sirv && mkdir sirv && cp build/bundle/app.js build/bundle/worker.js src/magpie/index.html sirv && npx sirv sirv --host 0.0.0.0 --port 5000"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
@@ -13,6 +17,8 @@
     "cozo-lib-wasm": "^0.7.5",
     "cozo-node": "^0.7.5",
     "express": "^4.18.2",
+    "glob": "^8.1.0",
+    "js-yaml": "^4.1.0",
     "open": "^9.1.0"
   },
   "devDependencies": {
