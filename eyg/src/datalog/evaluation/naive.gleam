@@ -84,56 +84,121 @@ pub fn walk(term, subs) -> ast.Term {
   }
 }
 
-pub fn step(initial, rules) {
-  list.try_fold(rules, initial, fn(db, rule) {
-    let ast.Constraint(head, body) = rule
-    // name all the stepss
+fn match_atom(atom, db, subs) {
+  let ast.Atom(r, patterns) = atom
+  let rows = result.unwrap(dict.get(db, r), [])
+  use values <- list.flat_map(rows)
+  let assert Ok(pairs) = list.strict_zip(patterns, values)
+  let unified =
+    list.try_fold(pairs, subs, fn(subs, pair) {
+      let #(p, value) = pair
+      unify(p, ast.Literal(value), subs)
+    })
+  case unified {
+    Ok(subs) -> [subs]
+    Error(Nil) -> []
+  }
+}
 
-    let constraints = {
-      use #(_negated, ast.Atom(r, patterns)) <- list.flat_map(body)
-      use values <- list.map(
-        dict.get(initial, r)
-        |> result.unwrap([]),
-      )
-      let assert Ok(pairs) = list.strict_zip(patterns, values)
-      io.debug(pairs)
-      pairs
+fn match_body(body, subss, db) {
+  case body {
+    [] -> subss
+    [#(False, atom), ..rest] -> {
+      let subss = list.flat_map(subss, match_atom(atom, db, _))
+      match_body(rest, subss, db)
     }
-    io.debug(constraints)
-    list.try_fold(constraints, db, fn(db, constraints) {
-      let r =
-        list.try_fold(constraints, dict.new(), fn(subs, constraint) {
-          let #(a, b) = constraint
-          unify(a, ast.Literal(b), subs)
-        })
-      case r {
-        Ok(subs) -> {
-          let values =
-            list.try_map(head.terms, fn(t) {
-              case walk(t, subs) {
-                ast.Literal(v) -> Ok(v)
-                ast.Variable(var) -> Error(UnboundVariable(var))
-              }
-            })
-          case values {
-            Ok(values) ->
-              Ok(
-                dict.update(db, head.relation, fn(previous) {
-                  let previous = case previous {
-                    None -> []
-                    Some(x) -> x
-                  }
+  }
+}
 
-                  [values, ..previous]
-                }),
-              )
-            Error(reason) -> Error(reason)
-          }
-        }
-        Error(Nil) -> Ok(db)
+fn resolve(terms, subs) {
+  list.try_map(terms, fn(t) {
+    case walk(t, subs) {
+      ast.Literal(v) -> Ok(v)
+      ast.Variable(var) -> Error(UnboundVariable(var))
+    }
+  })
+}
+
+fn apply_rule(rule, db) {
+  let ast.Constraint(head, body) = rule
+
+  let subss = match_body(body, [dict.new()], db)
+
+  let ast.Atom(r, terms) = head
+  use values <- result.map(list.try_map(subss, resolve(terms, _)))
+  #(r, values)
+}
+
+fn push_rows(db, r, rows) {
+  dict.update(db, r, fn(previous) {
+    let previous = case previous {
+      Some(p) -> p
+      None -> []
+    }
+    list.fold(rows, previous, fn(p, row) {
+      case list.contains(p, row) {
+        True -> p
+        False -> [row, ..p]
       }
     })
   })
+}
+
+pub fn step(initial, rules) {
+  list.try_fold(rules, initial, fn(db, rule) {
+    // always use initial for applying rule
+    use #(r, new) <- result.map(apply_rule(rule, initial))
+    push_rows(db, r, new)
+  })
+  // list.try_fold(rules, initial, fn(db, rule) {
+  //   let ast.Constraint(head, body) = rule
+  //   // name all the stepss
+
+  //   let constraints = {
+  //     use #(_negated, ast.Atom(r, patterns)) <- list.flat_map(body)
+  //     use values <- list.map(
+  //       dict.get(initial, r)
+  //       |> result.unwrap([]),
+  //     )
+  //     let assert Ok(pairs) = list.strict_zip(patterns, values)
+  //     io.debug(pairs)
+  //     pairs
+  //   }
+  //   io.debug(constraints)
+  //   list.try_fold(constraints, db, fn(db, constraints) {
+  //     let r =
+  //       list.try_fold(constraints, dict.new(), fn(subs, constraint) {
+  //         let #(a, b) = constraint
+  //         unify(a, ast.Literal(b), subs)
+  //       })
+  //     case r {
+  //       Ok(subs) -> {
+  //         let values =
+  //           list.try_map(head.terms, fn(t) {
+  //             case walk(t, subs) {
+  //               ast.Literal(v) -> Ok(v)
+  //               ast.Variable(var) -> Error(UnboundVariable(var))
+  //             }
+  //           })
+  //         case values {
+  //           Ok(values) ->
+  //             Ok(
+  //               dict.update(db, head.relation, fn(previous) {
+  //                 let previous = case previous {
+  //                   None -> []
+  //                   Some(x) -> x
+  //                 }
+
+  //                 [values, ..previous]
+  //               }),
+  //             )
+  //           Error(reason) -> Error(reason)
+  //         }
+  //       }
+  //       Error(Nil) -> Ok(db)
+  //     }
+  //   })
+  // })
 }
 
 pub fn run(program) {
@@ -141,16 +206,17 @@ pub fn run(program) {
   let db: DB = dict.new()
 
   let #(facts, rules) = do_separate([], [], constraints)
-  // io.debug(facts)
 
   use db <- result.then(populate(db, facts))
-  step(db, rules)
-  // |> io.debug
-  //   todo
-  //     todo
-  //     loop through constraints in program
-  //     add to db
-  //     if body then match to existing and repeat
+  loop(db, rules)
+}
 
-  //     flat map with bindings
+fn loop(db, rules) {
+  use next <- result.then(step(db, rules))
+  case next == db {
+    True -> Ok(next)
+    False -> {
+      loop(next, rules)
+    }
+  }
 }
