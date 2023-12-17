@@ -107,6 +107,14 @@ fn match_body(body, subss, db) {
       let subss = list.flat_map(subss, match_atom(atom, db, _))
       match_body(rest, subss, db)
     }
+    [#(True, atom), ..rest] -> {
+      list.flat_map(subss, fn(subs) {
+        case match_atom(atom, db, subs) {
+          [] -> match_body(rest, [subs], db)
+          _ -> []
+        }
+      })
+    }
   }
 }
 

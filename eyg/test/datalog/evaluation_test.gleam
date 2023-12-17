@@ -142,21 +142,22 @@ pub fn recursive_rule_test() {
     [ast.I(4), ast.I(4)],
   ])
 }
-// pub fn single_negation_test() {
-//   let x = v("x")
-//   let p =
-//     ast.Program([
-//       fact("A", [i(1)]),
-//       fact("B", [i(1)]),
-//       fact("A", [i(2)]),
-//       rule("J", [x], [y("A", [x]), n("B", [x])]),
-//     ])
 
-//   let assert Ok(db) = run(p)
+pub fn single_negation_test() {
+  let x = v("x")
+  let p =
+    ast.Program([
+      fact("A", [i(1)]),
+      fact("B", [i(1)]),
+      fact("A", [i(2)]),
+      rule("J", [x], [y("A", [x]), n("B", [x])]),
+    ])
 
-//   dict.size(db)
-//   |> should.equal(3)
-//   let assert Ok(rows) = dict.get(db, "J")
-//   rows
-//   |> should.equal([[ast.I(2)]])
-// }
+  let assert Ok(db) = run(p)
+
+  dict.size(db)
+  |> should.equal(3)
+  let assert Ok(rows) = dict.get(db, "J")
+  rows
+  |> should.equal([[ast.I(2)]])
+}
