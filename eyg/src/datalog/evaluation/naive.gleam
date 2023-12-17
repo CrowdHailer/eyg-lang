@@ -1,5 +1,4 @@
 import gleam/dict.{type Dict}
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
@@ -94,7 +93,6 @@ pub fn step(initial, rules) {
       pairs
     }
     list.fold(constraints, db, fn(db, constraints) {
-      io.debug(constraints)
       let r =
         list.try_fold(constraints, dict.new(), fn(subs, constraint) {
           let #(a, b) = constraint
@@ -118,7 +116,6 @@ pub fn step(initial, rules) {
                   }
                 }
               })
-            io.debug(values)
             [values, ..previous]
           })
         }
@@ -142,11 +139,11 @@ pub fn run(program) {
   let db: DB = dict.new()
 
   let #(facts, rules) = do_separate([], [], constraints)
-  io.debug(facts)
+  // io.debug(facts)
 
   let db = populate(db, facts)
   step(db, rules)
-  |> io.debug
+  // |> io.debug
   //   todo
   //     todo
   //     loop through constraints in program

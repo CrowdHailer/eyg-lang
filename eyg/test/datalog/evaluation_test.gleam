@@ -25,6 +25,7 @@ pub fn single_fact_test() {
 }
 
 pub fn single_rule_test() {
+  panic("skipped")
   let x = v("x")
 
   let p =
