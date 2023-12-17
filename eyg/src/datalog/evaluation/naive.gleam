@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
@@ -6,6 +7,10 @@ import datalog/ast
 
 pub type DB =
   Dict(String, List(List(ast.Value)))
+
+pub type Reason {
+  UnboundVariable(label: String)
+}
 
 // inference should be row types against the name. facts are closed and bodys are open
 // not much unification if the head is also an open row. do we want all fields to be the same. probably
@@ -36,15 +41,15 @@ fn do_separate(facts, rules, constraints) {
 fn is_literal(term) {
   case term {
     ast.Literal(value) -> Ok(value)
-    _ -> Error(Nil)
+    ast.Variable(var) -> Error(UnboundVariable(var))
   }
 }
 
 fn populate(db, facts) {
   case facts {
-    [] -> db
+    [] -> Ok(db)
     [ast.Atom(relation, terms), ..rest] -> {
-      let assert Ok(values) = list.try_map(terms, is_literal)
+      use values <- result.then(list.try_map(terms, is_literal))
       let db =
         dict.update(db, relation, fn(found) {
           let previous = case found {
@@ -80,8 +85,9 @@ pub fn walk(term, subs) -> ast.Term {
 }
 
 pub fn step(initial, rules) {
-  list.fold(rules, initial, fn(db, rule) {
+  list.try_fold(rules, initial, fn(db, rule) {
     let ast.Constraint(head, body) = rule
+    // name all the stepss
 
     let constraints = {
       use #(_negated, ast.Atom(r, patterns)) <- list.flat_map(body)
@@ -90,9 +96,11 @@ pub fn step(initial, rules) {
         |> result.unwrap([]),
       )
       let assert Ok(pairs) = list.strict_zip(patterns, values)
+      io.debug(pairs)
       pairs
     }
-    list.fold(constraints, db, fn(db, constraints) {
+    io.debug(constraints)
+    list.try_fold(constraints, db, fn(db, constraints) {
       let r =
         list.try_fold(constraints, dict.new(), fn(subs, constraint) {
           let #(a, b) = constraint
@@ -100,38 +108,32 @@ pub fn step(initial, rules) {
         })
       case r {
         Ok(subs) -> {
-          dict.update(db, head.relation, fn(previous) {
-            let previous = case previous {
-              None -> []
-              Some(x) -> x
-            }
-            let values =
-              list.map(head.terms, fn(t) {
-                case walk(t, subs) {
-                  ast.Literal(v) -> v
-                  ast.Variable(_l) -> {
-                    // let assert Ok(v) = walk(subs, l)
-                    // v
-                    panic
+          let values =
+            list.try_map(head.terms, fn(t) {
+              case walk(t, subs) {
+                ast.Literal(v) -> Ok(v)
+                ast.Variable(var) -> Error(UnboundVariable(var))
+              }
+            })
+          case values {
+            Ok(values) ->
+              Ok(
+                dict.update(db, head.relation, fn(previous) {
+                  let previous = case previous {
+                    None -> []
+                    Some(x) -> x
                   }
-                }
-              })
-            [values, ..previous]
-          })
+
+                  [values, ..previous]
+                }),
+              )
+            Error(reason) -> Error(reason)
+          }
         }
-        Error(Nil) -> db
+        Error(Nil) -> Ok(db)
       }
     })
   })
-  //   todo
-  // let bindings =
-  //   list.fold(body, dict.new(), fn(bindings, atom) {
-  //     let assert #(False, ast.Atom(relation, terms)) = atom
-  //     let values =
-  //       dict.get(db, relation)
-  //       |> result.unwrap([])
-
-  //   })
 }
 
 pub fn run(program) {
@@ -141,7 +143,7 @@ pub fn run(program) {
   let #(facts, rules) = do_separate([], [], constraints)
   // io.debug(facts)
 
-  let db = populate(db, facts)
+  use db <- result.then(populate(db, facts))
   step(db, rules)
   // |> io.debug
   //   todo

@@ -29,31 +29,32 @@ pub fn render(i, constraints, r) {
       Error(parser.TokenError(got)) -> [
         div([class("bg-red-300")], [text("invalid token"), text(got)]),
       ]
-      Error(parser.ParseError(expected, _)) -> [
+      Error(parser.ParseError(expected, got)) -> [
         div([class("bg-red-300")], [
           text("parse error expected: "),
           text(string.join(expected, ", ")),
+          text(string.inspect(got)),
         ]),
       ]
     }
   ])
 }
 
-fn results(tables) {
-  let tables = dict.to_list(tables)
+fn results(result) {
+  case result {
+    Ok(tables) -> {
+      let tables = dict.to_list(tables)
 
-  div(
-    [],
-    list.map(tables, fn(t) {
-      let #(r, values) = t
-      div([], [div([], [text(r)]), source.display(values)])
-    }),
-  )
-  // case result {
-  //   Ok(tables) -> {
-  //   }
-  //   Error(_) -> div([], [text("results")])
-  // }
+      div(
+        [],
+        list.map(tables, fn(t) {
+          let #(r, values) = t
+          div([], [div([], [text(r)]), source.display(values)])
+        }),
+      )
+    }
+    Error(_) -> div([], [text("results")])
+  }
 }
 
 fn handle_edit(text, index) {
