@@ -32,7 +32,7 @@ pub fn render(model) -> element.Element(model.Wrap) {
 fn section(index, section) {
   [
     case section {
-      model.Query(q) -> query.render(index, q)
+      model.Query(q, r) -> query.render(index, q, r)
 
       model.Source(relation, table) -> source.render(index, relation, table)
       model.Paragraph(content) -> p([], [text(content)])

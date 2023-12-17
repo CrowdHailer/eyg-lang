@@ -1,18 +1,81 @@
+import gleam/io
+import gleam/dict
 import gleam/int
 import gleam/list
+import gleam/listx
+import gleam/string
 import lustre/attribute.{class}
+import lustre/effect
 import lustre/element.{text}
-import lustre/element/html.{br, div, span}
+import lustre/element/html.{br, div, span, textarea}
+import lustre/event.{on_input}
+import datalog/evaluation/naive
 import datalog/ast
+import datalog/ast/parser
+import datalog/browser/app/model.{Model}
 import datalog/browser/view/value
+import datalog/browser/view/source
 
-pub fn render(i, constraints) {
-  let constraints = list.index_map(constraints, constraint)
+pub fn render(i, constraints, r) {
+  let constraint_els = list.index_map(constraints, constraint)
   div([class("cover")], [
     span([], [text(int.to_string(i))]),
     br([]),
-    ..constraints
+    div([], constraint_els),
+    results(naive.run(ast.Program(constraints))),
+    textarea([class("w-full border"), on_input(handle_edit(_, i))]),
+    ..case r {
+      Ok(Nil) -> []
+      Error(parser.TokenError(got)) -> [
+        div([class("bg-red-300")], [text("invalid token"), text(got)]),
+      ]
+      Error(parser.ParseError(expected, _)) -> [
+        div([class("bg-red-300")], [
+          text("parse error expected: "),
+          text(string.join(expected, ", ")),
+        ]),
+      ]
+    }
   ])
+}
+
+fn results(tables) {
+  let tables = dict.to_list(tables)
+
+  div(
+    [],
+    list.map(tables, fn(t) {
+      let #(r, values) = t
+      div([], [div([], [text(r)]), source.display(values)])
+    }),
+  )
+  // case result {
+  //   Ok(tables) -> {
+  //   }
+  //   Error(_) -> div([], [text("results")])
+  // }
+}
+
+fn handle_edit(text, index) {
+  model.Wrap(fn(model) {
+    let Model(sections) = model
+    let assert Ok(sections) =
+      listx.map_at(sections, index, fn(s) {
+        case parser.parse(text) {
+          Ok(program) -> {
+            let assert model.Query(prog, state) = s
+            model.Query(program, Ok(Nil))
+          }
+          Error(reason) -> {
+            let assert model.Query(prog, state) = s
+            model.Query(prog, Error(reason))
+          }
+        }
+      })
+
+    let model = Model(sections)
+    #(model, effect.none())
+  })
 }
 
 fn constraint(_index, c) {

@@ -7,8 +7,12 @@ import datalog/ast
 
 pub fn parse(raw) {
   use tokens <- result.then(do_tokenise([], raw))
-  //   io.debug(tokens)
   do_read_constraints([], tokens)
+}
+
+pub type ParseError {
+  ParseError(expected: List(String), found: List(Token))
+  TokenError(String)
 }
 
 fn do_read_constraints(constraints, tokens) {
@@ -23,13 +27,11 @@ fn do_read_constraints(constraints, tokens) {
         }
         [Stop, ..tokens] ->
           Ok(#(ast.Constraint(ast.Atom(relation, terms), []), tokens))
+        _ -> Error(ParseError(["binding stop"], tokens))
       })
       do_read_constraints([c, ..constraints], tokens)
     }
-    _ -> {
-      io.debug(tokens)
-      panic as "other"
-    }
+    _ -> Error(ParseError(["label"], tokens))
   }
 }
 
@@ -43,10 +45,7 @@ fn do_read_body(atoms, tokens) {
       case tokens {
         [Stop, ..tokens] -> Ok(#(list.reverse(atoms), tokens))
         [Comma, ..tokens] -> do_read_body(atoms, tokens)
-        _ -> {
-          io.debug(tokens)
-          panic as "other"
-        }
+        _ -> Error(ParseError([". ,"], tokens))
       }
     }
     [Not, Label(relation), LeftRound, ..tokens] -> {
@@ -56,16 +55,10 @@ fn do_read_body(atoms, tokens) {
       case tokens {
         [Stop, ..tokens] -> Ok(#(list.reverse(atoms), tokens))
         [Comma, ..tokens] -> do_read_body(atoms, tokens)
-        _ -> {
-          io.debug(tokens)
-          panic as "other"
-        }
+        _ -> Error(ParseError([". ,"], tokens))
       }
     }
-    _ -> {
-      io.debug(tokens)
-      panic as "other"
-    }
+    _ -> Error(ParseError(["label not"], tokens))
   }
 }
 
@@ -80,14 +73,11 @@ fn do_read_terms(terms, tokens) {
       do_read_terms([ast.Variable(l), ..terms], tokens)
     [Label(l), RightRound, ..tokens] ->
       Ok(#(list.reverse([ast.Variable(l), ..terms]), tokens))
-    _ -> {
-      io.debug(tokens)
-      panic
-    }
+    _ -> Error(ParseError(["label boolean number string"], tokens))
   }
 }
 
-type Token {
+pub type Token {
   Label(String)
   Not
   Comma
@@ -107,7 +97,7 @@ const letters = [
 
 const digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-fn do_tokenise(tokens, rest: String) {
+fn do_tokenise(tokens, rest) -> Result(List(Token), ParseError) {
   case rest {
     "" -> Ok(list.reverse(tokens))
     " " <> rest | "\t" <> rest | "\n" <> rest | "\r" <> rest ->
@@ -125,7 +115,10 @@ fn do_tokenise(tokens, rest: String) {
       do_tokenise([Literal(ast.S(value)), ..tokens], rest)
     }
     _ -> {
-      use #(ch, rest) <- result.then(string.pop_grapheme(rest))
+      use #(ch, rest) <- result.then(
+        string.pop_grapheme(rest)
+        |> result.replace_error(TokenError(rest)),
+      )
       case list.contains(letters, ch) {
         True -> {
           use #(label, rest) <- result.then(do_label([ch], rest))
@@ -138,7 +131,7 @@ fn do_tokenise(tokens, rest: String) {
               let assert Ok(number) = int.parse(raw)
               do_tokenise([Literal(ast.I(number)), ..tokens], rest)
             }
-            False -> Error(Nil)
+            False -> Error(TokenError(rest))
           }
       }
     }
@@ -169,7 +162,7 @@ fn do_digit(gathered, buffer) {
 
 fn do_string(gathered, rest) {
   case rest {
-    "" -> Error(Nil)
+    "" -> Error(TokenError(rest))
     "\"" <> rest -> Ok(#(string.concat(list.reverse(gathered)), rest))
     "\\\\" <> rest -> do_string(["\\", ..gathered], rest)
     "\\\"" <> rest -> do_string(["\"", ..gathered], rest)

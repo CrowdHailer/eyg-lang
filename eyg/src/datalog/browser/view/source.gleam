@@ -74,7 +74,7 @@ fn add_row(model, index) {
   #(Model(..model, sections: sections), effect.none())
 }
 
-fn display(values) {
+pub fn display(values) {
   table([], [tbody([], list.map(values, row))])
 }
 
