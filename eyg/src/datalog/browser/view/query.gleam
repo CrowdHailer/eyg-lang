@@ -1,43 +1,102 @@
 import gleam/io
 import gleam/dict
+import gleam/dynamic
 import gleam/int
 import gleam/list
 import gleam/listx
+import gleam/option.{None, Some}
 import gleam/string
-import lustre/attribute.{class}
+import lustre/attribute.{class, value}
 import lustre/effect
 import lustre/element.{text}
 import lustre/element/html.{br, div, span, textarea}
-import lustre/event.{on_input}
+import lustre/event.{on_blur, on_click, on_input}
 import datalog/evaluation/naive
 import datalog/ast
 import datalog/ast/parser
-import datalog/browser/app/model.{Model}
+import datalog/browser/app/model.{Model, Wrap}
 import datalog/browser/view/value
 import datalog/browser/view/source
 
-pub fn render(i, constraints, r) {
+fn edit_query(index) {
+  Wrap(fn(model) {
+    let assert Ok(model.Query(constraints, _)) = list.at(model.sections, index)
+    let content = list.map(constraints, constraint_text)
+    let lines = list.length(content)
+    let content =
+      list.intersperse(content, "\r")
+      |> string.concat
+
+    let model = Model(..model, editing: Some(#(index, content, Ok(Nil))))
+    #(model, effect.none())
+  })
+}
+
+fn commit_changes() {
+  Wrap(fn(model) {
+    let assert Model(sections, Some(#(id, text, state))) = model
+    case state {
+      Ok(_) -> {
+        let assert Ok(sections) =
+          listx.map_at(sections, id, fn(section) {
+            let assert Ok(constraints) = parser.parse(text)
+            model.Query(constraints, Ok(dict.new()))
+          })
+          // TODO run sections
+        #(Model(sections, None), effect.none())
+      }
+      Error(_) -> #(model, effect.none())
+    }
+  })
+}
+
+pub fn render(i, constraints, r, output) {
   let constraint_els = list.index_map(constraints, constraint)
-  div([class("cover")], [
-    span([], [text(int.to_string(i))]),
-    br([]),
-    div([], constraint_els),
-    results(naive.run(ast.Program(constraints))),
-    textarea([class("w-full border"), on_input(handle_edit(_, i))]),
-    ..case r {
-      Ok(Nil) -> []
-      Error(parser.TokenError(got)) -> [
-        div([class("bg-red-300")], [text("invalid token"), text(got)]),
-      ]
-      Error(parser.ParseError(expected, got)) -> [
-        div([class("bg-red-300")], [
-          text("parse error expected: "),
-          text(string.join(expected, ", ")),
-          text(string.inspect(got)),
+  div([class("cover")], case r {
+    None -> [
+      div(
+        [
+          class("p-4 bg-yellow-100 shadow cursor-pointer"),
+          on_click(edit_query(i)),
+        ],
+        constraint_els,
+      ),
+      results(output),
+    ]
+    Some(#(content, r)) -> {
+      let lines =
+        string.split(content, ".")
+        |> list.length
+      // already one extra section than number or newlines. there was an issue with \r
+      let rows = int.to_string(lines)
+      [
+        div([class("p-2 bg-yellow-100 shadow cursor-pointer")], [
+          textarea([
+            class("w-full bg-transparent p-2"),
+            value(dynamic.from(content)),
+            attribute.attribute("rows", rows),
+            attribute.attribute("autofocus", "true"),
+            // attribute.autofocus(True),
+            on_input(handle_edit(_)),
+            on_blur(commit_changes()),
+          ]),
+          ..case r {
+            Ok(Nil) -> []
+            Error(parser.TokenError(got)) -> [
+              div([class("bg-red-300")], [text("invalid token"), text(got)]),
+            ]
+            Error(parser.ParseError(expected, got)) -> [
+              div([class("bg-red-300")], [
+                text("parse error expected: "),
+                text(string.join(expected, ", ")),
+                text(string.inspect(got)),
+              ]),
+            ]
+          }
         ]),
       ]
     }
-  ])
+  })
 }
 
 fn results(result) {
@@ -53,30 +112,71 @@ fn results(result) {
         }),
       )
     }
-    Error(_) -> div([], [text("results")])
+    Error(naive.UnboundVariable(var)) ->
+      div([class("bg-red-200 shadow py-2 px-4")], [
+        text(
+          string.concat([
+            "failed to answer query because of unbound variable: ",
+            var,
+          ]),
+        ),
+      ])
   }
 }
 
-fn handle_edit(text, index) {
+fn handle_edit(text) {
   model.Wrap(fn(model) {
-    let Model(sections) = model
-    let assert Ok(sections) =
-      listx.map_at(sections, index, fn(s) {
-        case parser.parse(text) {
-          Ok(program) -> {
-            let assert model.Query(prog, state) = s
-            model.Query(program, Ok(Nil))
-          }
-          Error(reason) -> {
-            let assert model.Query(prog, state) = s
-            model.Query(prog, Error(reason))
-          }
-        }
-      })
+    let Model(editing: Some(#(i, _, _)), ..) = model
+    let state = case parser.parse(text) {
+      Ok(program) -> {
+        Ok(Nil)
+      }
+      Error(reason) -> Error(reason)
+    }
 
-    let model = Model(sections)
+    let model = Model(..model, editing: Some(#(i, text, state)))
     #(model, effect.none())
   })
+}
+
+fn constraint_text(c) {
+  let ast.Constraint(head, body) = c
+  case body {
+    [] -> string.append(atom_text(head), ".")
+    _ -> string.concat([atom_text(head), " :- ", body_text(body), "."])
+  }
+}
+
+fn body_text(body) {
+  list.map(body, fn(b_atom) {
+    let #(negated, atom) = b_atom
+    let prefix = case negated {
+      True -> "not "
+      False -> ""
+    }
+    string.append(prefix, atom_text(atom))
+  })
+  |> list.intersperse(", ")
+  |> string.concat
+}
+
+fn atom_text(atom) {
+  let ast.Atom(r, terms) = atom
+  let terms =
+    list.map(terms, term_text)
+    |> list.intersperse(", ")
+    |> string.concat
+  string.concat([r, "(", terms, ")"])
+}
+
+fn term_text(term) {
+  case term {
+    ast.Variable(var) -> var
+    ast.Literal(ast.B(True)) -> "true"
+    ast.Literal(ast.B(False)) -> "false"
+    ast.Literal(ast.I(value)) -> int.to_string(value)
+    ast.Literal(ast.S(value)) -> string.concat(["\"", value, "\""])
+  }
 }
 
 fn constraint(_index, c) {

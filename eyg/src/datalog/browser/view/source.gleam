@@ -53,7 +53,7 @@ pub fn render(index, relation, values) {
               model,
               effect.from(fn(d) {
                 // io.debug(d)
-                d(model.Wrap(fn(m) { #(model.Model([]), effect.none()) }))
+                d(model.Wrap(fn(m) { #(model, effect.none()) }))
                 Nil
               }),
             )
@@ -65,7 +65,7 @@ pub fn render(index, relation, values) {
 }
 
 fn add_row(model, index) {
-  let Model(sections) = model
+  let Model(sections: sections, ..) = model
   let assert Ok(sections) =
     listx.map_at(sections, index, fn(section) {
       let assert Source(r, table) = section

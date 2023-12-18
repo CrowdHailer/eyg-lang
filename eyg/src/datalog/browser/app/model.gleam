@@ -1,47 +1,83 @@
+import gleam/dict
+import gleam/list
+import gleam/option.{type Option, None}
+import gleam/string
 import lustre/effect
 import datalog/ast
 import datalog/ast/parser
 import datalog/ast/builder.{fact, i, n, rule, v, y}
-
-pub type Model {
-  Model(sections: List(Section))
-}
+import datalog/evaluation/naive
 
 pub type Wrap {
   Wrap(fn(Model) -> #(Model, effect.Effect(Wrap)))
 }
 
+pub type Model {
+  Model(
+    sections: List(Section),
+    editing: Option(#(Int, String, Result(Nil, parser.ParseError))),
+  )
+}
+
 pub type Section {
-  Query(List(ast.Constraint), Result(Nil, parser.ParseError))
+  Query(query: List(ast.Constraint), output: Result(naive.DB, naive.Reason))
   Source(relation: String, table: List(List(ast.Value)))
   Paragraph(String)
 }
 
 pub fn initial() {
-  Model([
-    Paragraph(
-      "f the top-level goal clause is read as the denial of the problem, then the empty clause represents false and the proof of the empty clause is a refutation of the denial of the problem. If the top-level goal clause is read as the problem itself, then the empty clause represents true, and the proof of the empty clause is a proof that the problem has a solution.",
-    ),
-    Query([fact("Edge", [i(1), i(2)]), fact("Edge", [i(7), i(3)])], Ok(Nil)),
-    Paragraph(
-      "lorem simsadf asjdf a.fiuwjfiowqej  vs.df.asdf.aweifqjhwoefj sf  sdf ds f sdf sd f sdf
-  aefdsdfj;fi waepfjlla   a f af awefqafoh;dlfdsf",
-    ),
-    {
-      let x1 = v("x")
-      let x2 = v("y")
-      let x3 = v("z")
+  Model(
+    run_queries([
       Query(
-        [rule("Path", [x1], [y("Edge", [x1, x2]), y("Path", [x2, x3])])],
-        Ok(Nil),
-      )
-    },
-    {
-      let x1 = v("x")
-      Query(
-        [rule("Foo", [x1], [y("Edge", [x1, i(2)]), n("Path", [x1, x1])])],
-        Ok(Nil),
-      )
-    },
-  ])
+        [
+          fact("Edge", [i(1), i(2)]),
+          fact("Edge", [i(2), i(3)]),
+          fact("Edge", [i(3), i(4)]),
+          fact("Edge", [i(7), i(3)]),
+        ],
+        Ok(dict.new()),
+      ),
+      {
+        let x1 = v("x")
+        let x2 = v("y")
+        let x3 = v("z")
+        Query(
+          [
+            rule("Path", [x1, x2], [y("Edge", [x1, x2])]),
+            rule("Path", [x1, x3], [y("Edge", [x1, x2]), y("Path", [x2, x3])]),
+          ],
+          Ok(dict.new()),
+        )
+      },
+      {
+        let x1 = v("x")
+        Query(
+          [rule("Foo", [x1], [y("Edge", [x1, i(2)]), n("Path", [x1, x1])])],
+          Ok(dict.new()),
+        )
+      },
+    ]),
+    None,
+  )
+}
+
+pub fn run_queries(sections) {
+  let #(_, sections) =
+    list.map_fold(sections, [], fn(all, section) {
+      case section {
+        Query(constraints, _) -> {
+          let #(all, r) = {
+            let a = list.append(all, constraints)
+            // Don't add constraints if fails
+            case naive.run(ast.Program(a)) {
+              Ok(r) -> #(a, Ok(r))
+              Error(reason) -> #(all, Error(reason))
+            }
+          }
+          #(all, Query(constraints, r))
+        }
+        s -> #(all, s)
+      }
+    })
+  sections
 }
