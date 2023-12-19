@@ -1,6 +1,8 @@
 import gleam/dynamic
 import gleam/list
 import gleam/dict
+import gleam_community/codec
+import gleam/json
 import plinth/browser/worker.{type Worker}
 import magpie/query
 import magpie/browser/loader
@@ -25,18 +27,21 @@ pub fn run(self: Worker) {
   //   })
   worker.post_message(
     self,
-    serialize.db_view().encode(serialize.DBView(
-      list.length(db.triples),
-      attribute_suggestions,
+    json.string(codec.encode_string(
+      serialize.DBView(list.length(db.triples), attribute_suggestions),
+      serialize.db_view(),
     )),
   )
 
   worker.on_message(self, fn(data) {
-    let data = dynamic.from(data)
-    case serialize.query().decode(data) {
+    let data = dynamic.unsafe_coerce(dynamic.from(data))
+    case codec.decode_string(data, serialize.query()) {
       Ok(serialize.Query(from, patterns)) -> {
         let result = query.run(from, patterns, db)
-        worker.post_message(self, serialize.relations().encode(result))
+        worker.post_message(
+          self,
+          json.string(codec.encode_string(result, serialize.relations())),
+        )
       }
       Error(_) -> panic("couldn't decode")
     }

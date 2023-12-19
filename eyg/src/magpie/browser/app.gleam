@@ -5,6 +5,8 @@ import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/string
+import gleam/json
+import gleam_community/codec
 import lustre
 import lustre/effect as cmd
 import lustre/element.{text}
@@ -89,11 +91,11 @@ pub fn init(_) {
     App(DB(w, Indexing, serialize.DBView(0, [])), queries(), OverView),
     cmd.from(fn(dispatch) {
       worker.on_message(w, fn(raw) {
-        let raw = dynamic.from(raw)
-        case serialize.db_view().decode(raw) {
+        let Ok(raw) = dynamic.string(dynamic.from(raw))
+        case codec.decode_string(raw, serialize.db_view()) {
           Ok(db_view) -> dispatch(Indexed(db_view))
           Error(_) ->
-            case serialize.relations().decode(raw) {
+            case codec.decode_string(raw, serialize.relations()) {
               Ok(relations) -> dispatch(QueryResult(relations))
               Error(_) -> {
                 io.debug(#("unexpected message", raw))
@@ -143,7 +145,10 @@ pub fn update(state: App, action) {
 
           worker.post_message(
             db,
-            serialize.query().encode(serialize.Query(from, where)),
+            json.string(codec.encode_string(
+              serialize.Query(from, where),
+              serialize.query(),
+            )),
           )
           #(#(from, where), None)
         })
@@ -566,14 +571,14 @@ fn where_vars(where) {
 }
 
 fn render_query(mode, connection, db) {
-  fn(i, state) {
+  fn(state, i) {
     let #(query, cache) = state
     let #(find, where): #(_, List(query.Pattern)) = query
 
     el.div([class("border-b-2")], [
       el.div([], [
         el.span([class("font-bold")], [text("find: ")]),
-        ..list.index_map(find, fn(j, v) {
+        ..list.index_map(find, fn(v, j) {
           el.button([event.on_click(DeleteVariable(i, j))], [render_var(v)])
         })
         |> list.intersperse(text(" "))
@@ -618,7 +623,7 @@ fn render_query(mode, connection, db) {
       ]),
       el.div(
         [class("pl-4")],
-        list.index_map(where, fn(j, pattern) {
+        list.index_map(where, fn(pattern, j) {
           el.div([], [
             el.span([], [text("[")]),
             render_match(pattern.0, i, j, 0),

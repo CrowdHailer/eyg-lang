@@ -16,6 +16,8 @@ plinth = "~> 0.1.6"
 # plinth = {path= "../../plinth"}
 simplifile = "~> 1.0"
 gleam_http = "~> 3.5"
+gleam_community_codec = {path= "../../codec"}
+
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

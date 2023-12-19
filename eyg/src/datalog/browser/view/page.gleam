@@ -32,7 +32,7 @@ pub fn render(model) -> element.Element(model.Wrap) {
 }
 
 fn section(editing) {
-  fn(index, section) {
+  fn(section, index) {
     [
       case section {
         model.Query(q, output) -> {

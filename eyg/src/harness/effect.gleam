@@ -69,7 +69,7 @@ pub fn choose() {
     fn(_, k) {
       let env = env.empty()
       let rev = []
-      let value = case int.random(0, 2) {
+      let value = case int.random(2) {
         0 -> r.false
         1 -> r.true
         _ -> panic as "integer outside expected range"

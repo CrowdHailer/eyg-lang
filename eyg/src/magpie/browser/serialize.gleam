@@ -40,40 +40,43 @@ pub fn pattern() {
 }
 
 pub fn value() {
-  codec.custom3(fn(b, i, s, value) {
-    case value {
-      in_memory.B(value) -> b(value)
-      in_memory.I(value) -> i(value)
-      in_memory.S(value) -> s(value)
-      _ -> panic("no lists in dataset and no custom4 in codec")
-    }
-  })
-  |> codec.variant1("B", in_memory.B, bool())
-  |> codec.variant1("I", in_memory.I, codec.int())
-  |> codec.variant1("S", in_memory.S, codec.string())
-  |> codec.construct()
+  todo
+  // codec.custom3(fn(b, i, s, value) {
+  //   case value {
+  //     in_memory.B(value) -> b(value)
+  //     in_memory.I(value) -> i(value)
+  //     in_memory.S(value) -> s(value)
+  //     _ -> panic("no lists in dataset and no custom4 in codec")
+  //   }
+  // })
+  // |> codec.variant1("B", in_memory.B, bool())
+  // |> codec.variant1("I", in_memory.I, codec.int())
+  // |> codec.variant1("S", in_memory.S, codec.string())
+  // |> codec.construct()
 }
 
 pub fn match() {
-  codec.custom2(fn(variable, constant, value) {
-    case value {
-      query.Variable(var) -> variable(var)
-      query.Constant(value) -> constant(value)
-    }
-  })
-  |> codec.variant1("V", query.Variable, codec.string())
-  |> codec.variant1("C", query.Constant, value())
-  |> codec.construct()
+  todo
+  // codec.custom2(fn(variable, constant, value) {
+  //   case value {
+  //     query.Variable(var) -> variable(var)
+  //     query.Constant(value) -> constant(value)
+  //   }
+  // })
+  // |> codec.variant1("V", query.Variable, codec.string())
+  // |> codec.variant1("C", query.Constant, value())
+  // |> codec.construct()
 }
 
 pub fn query() {
-  codec.custom1(fn(q, value) {
-    let Query(f, p) = value
-    q(f, p)
-  })
-  |> codec.variant2("", Query, codec.list(codec.string()), codec.list(pattern()),
-  )
-  |> codec.construct()
+  todo
+  // codec.custom1(fn(q, value) {
+  //   let Query(f, p) = value
+  //   q(f, p)
+  // })
+  // |> codec.variant2("", Query, codec.list(codec.string()), codec.list(pattern()),
+  // )
+  // |> codec.construct()
 }
 
 pub fn relations() {
@@ -87,17 +90,18 @@ pub type DBView {
 // need variant3 if we want to use codec more
 // value_suggestions: List(#(String, Int, Nil)),
 
-pub fn db_view() {
-  codec.custom1(fn(q, value) {
-    let DBView(triple_count, attribute_suggestions) = value
-    q(triple_count, attribute_suggestions)
-  })
-  |> codec.variant2(
-    "",
-    DBView,
-    codec.int(),
-    codec.list(tuple2(codec.string(), codec.int())),
-  )
-  // codec.list(tuple3(codec.string(), codec.int(), codec.succeed(Nil))),
-  |> codec.construct()
+pub fn db_view() -> codec.Codec(DBView) {
+  todo
+  // codec.custom1(fn(q, value) {
+  //   let DBView(triple_count, attribute_suggestions) = value
+  //   q(triple_count, attribute_suggestions)
+  // })
+  // |> codec.variant2(
+  //   "",
+  //   DBView,
+  //   codec.int(),
+  //   codec.list(tuple2(codec.string(), codec.int())),
+  // )
+  // // codec.list(tuple3(codec.string(), codec.int(), codec.succeed(Nil))),
+  // |> codec.construct()
 }

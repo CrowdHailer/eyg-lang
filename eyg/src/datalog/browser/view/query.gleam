@@ -42,7 +42,7 @@ fn commit_changes() {
             let assert Ok(constraints) = parser.parse(text)
             model.Query(constraints, Ok(dict.new()))
           })
-          // TODO run sections
+        // TODO run sections
         #(Model(sections, None), effect.none())
       }
       Error(_) -> #(model, effect.none())
@@ -179,7 +179,7 @@ fn term_text(term) {
   }
 }
 
-fn constraint(_index, c) {
+fn constraint(c, _index) {
   let ast.Constraint(head, body) = c
   case body {
     [] -> fact(head)
