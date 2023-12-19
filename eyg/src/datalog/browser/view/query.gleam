@@ -42,8 +42,7 @@ fn commit_changes() {
             let assert Ok(constraints) = parser.parse(text)
             model.Query(constraints, Ok(dict.new()))
           })
-        // TODO run sections
-        #(Model(sections, None), effect.none())
+        #(Model(model.run_queries(sections), None), effect.none())
       }
       Error(_) -> #(model, effect.none())
     }
