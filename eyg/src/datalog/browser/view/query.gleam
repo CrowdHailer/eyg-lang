@@ -59,7 +59,7 @@ pub fn render(i, constraints, r, output) {
         ],
         constraint_els,
       ),
-      results(output),
+      results(output, constraints),
     ]
     Some(#(content, r)) -> {
       let lines =
@@ -97,10 +97,11 @@ pub fn render(i, constraints, r, output) {
   })
 }
 
-fn results(result) {
+fn results(result, constraints) {
   case result {
     Ok(tables) -> {
-      let tables = dict.to_list(tables)
+      let relations = ast.relations(constraints)
+      let tables = dict.to_list(dict.take(tables, relations))
 
       div(
         [],

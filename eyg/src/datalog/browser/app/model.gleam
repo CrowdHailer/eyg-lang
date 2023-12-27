@@ -1,12 +1,17 @@
+import gleam/io
 import gleam/dict
 import gleam/list
+import gleam/listx
 import gleam/option.{type Option, None}
 import gleam/string
+import gleam/uri
+import gleam/fetch
 import gleam/http/request.{type Request}
+import gleam/javascript/promise
 import lustre/effect
 import datalog/ast
 import datalog/ast/parser
-import datalog/ast/builder.{fact, i, n, rule, v, y}
+import datalog/ast/builder.{fact, i, n, rule, s, v, y}
 import datalog/evaluation/naive
 
 pub type Wrap {
@@ -37,6 +42,27 @@ pub type Section {
 pub fn initial() {
   Model(
     run_queries([
+      RemoteSource(
+        {
+          let assert Ok(request) =
+            request.from_uri({
+              let assert Ok(source) =
+                uri.parse("http://localhost:5010/examples/movies.csv")
+              source
+            })
+          request
+        },
+        "DB",
+        [],
+      ),
+      Query(
+        {
+          let attr = v("attr")
+          let v = v("value")
+          [rule("Attr", [attr, v], [y("DB", [s("200"), attr, v])])]
+        },
+        Ok(dict.new()),
+      ),
       Query(
         [
           fact("Edge", [i(1), i(2)]),
@@ -70,6 +96,26 @@ pub fn initial() {
   )
 }
 
+pub fn update_table(state, index, new) {
+  let Model(sections, mode) = state
+  let assert Ok(sections) =
+    listx.map_at(sections, index, fn(s) {
+      let assert RemoteSource(req, r, _old) = s
+      RemoteSource(req, r, new)
+    })
+  Model(run_queries(sections), mode)
+}
+
+pub fn fetch_source(req) {
+  use response <- promise.try_await(fetch.send(req))
+  use response <- promise.map_try(fetch.read_text_body(response))
+
+  let lines = string.split(response.body, "\n")
+  let data = list.map(lines, string.split(_, ","))
+  let table = list.map(data, list.map(_, ast.S))
+  Ok(table)
+}
+
 pub fn run_queries(sections) {
   let #(_, sections) =
     list.map_fold(sections, [], fn(all, section) {
@@ -84,6 +130,14 @@ pub fn run_queries(sections) {
             }
           }
           #(all, Query(constraints, r))
+        }
+        RemoteSource(_, relation, table) -> {
+          let constraints =
+            list.map(table, fn(row) {
+              fact(relation, list.map(row, ast.Literal))
+            })
+          let all = list.append(all, constraints)
+          #(all, section)
         }
         s -> #(all, s)
       }

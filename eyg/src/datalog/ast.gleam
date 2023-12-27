@@ -1,3 +1,5 @@
+import gleam/list
+
 pub type Program {
   // constraints are facts (without a body) or rules
   // percival calls all constraints rules
@@ -25,4 +27,17 @@ pub type Value {
   B(Bool)
   S(String)
   I(Int)
+}
+
+// helpers
+
+pub fn relations(constraints) {
+  list.fold(constraints, [], fn(acc, c: Constraint) {
+    let relation = c.head.relation
+    case list.contains(acc, relation) {
+      True -> acc
+      False -> [relation, ..acc]
+    }
+  })
+  |> list.reverse
 }

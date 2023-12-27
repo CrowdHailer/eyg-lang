@@ -71,32 +71,17 @@ fn submit_remote(state) {
   let sections = listx.insert_at(sections, i, [model.RemoteSource(req, "", [])])
   let state = Model(sections, model.Viewing)
   // keep request in location for remote
-  let task = fetch.send(req)
   #(
     state,
     effect.from(fn(dispatch) {
-      promise.await(task, fn(r) {
-        let assert Ok(r) = r
-        use r <- promise.map(fetch.read_text_body(r))
-        let assert Ok(r) = r
-
-        let lines = string.split(r.body, "\n")
-        let data = list.map(lines, string.split(_, ","))
-        let table = list.map(data, list.map(_, ast.S))
-        io.debug(table)
-        // string split twice works. but how do I put it into the types
+      promise.map_try(model.fetch_source(req), fn(table) {
         dispatch(
           model.Wrap(fn(state) {
-            let Model(sections, mode) = state
-            let assert Ok(sections) =
-              listx.map_at(sections, i, fn(s) {
-                let assert model.RemoteSource(req, r, _old) = s
-                model.RemoteSource(req, r, table)
-              })
-            let state = Model(sections, mode)
+            let state = model.update_table(state, i, table)
             #(state, effect.none())
           }),
         )
+        Ok(Nil)
       })
       // should I trigger promise from in here or not
       Nil

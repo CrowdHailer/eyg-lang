@@ -1,3 +1,5 @@
+import gleam/list
+import gleam/javascript/promise
 import lustre
 import lustre/effect
 import datalog/browser/app/model
@@ -10,7 +12,34 @@ pub fn run() {
 }
 
 fn init(_) {
-  #(model.initial(), effect.none())
+  let state = model.initial()
+  let tasks =
+    list.index_map(state.sections, fn(section, index) {
+      case section {
+        model.RemoteSource(req, _, _) -> {
+          let task = fn(dispatch) {
+            promise.map(model.fetch_source(req), fn(r) {
+              case r {
+                Ok(table) ->
+                  dispatch(
+                    model.Wrap(fn(state) {
+                      let state = model.update_table(state, index, table)
+                      #(state, effect.none())
+                    }),
+                  )
+                Error(_) -> todo("what went wrong")
+              }
+            })
+            Nil
+          }
+
+          [effect.from(task)]
+        }
+        _ -> []
+      }
+    })
+    |> list.flatten
+  #(state, effect.batch(tasks))
 }
 
 fn update(model, msg: model.Wrap) {
