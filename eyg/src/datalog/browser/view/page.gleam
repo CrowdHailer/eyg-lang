@@ -22,21 +22,23 @@ import datalog/browser/view/remote
 
 pub fn render(model) -> element.Element(model.Wrap) {
   let Model(sections, mode) = model
-  div([class("vstack wrap")], [
+  div(
+    // need outer div for float and absolute
+    [class("vstack orange-gradient")],
     // div([class("absolute  bottom-0 left-0 right-0 top-0")], []),
     // div([class("absolute border p-4 bg-white w-full max-w-xl rounded")], [
     //   p([], [text("floating modal")]),
     //   p([], [text("floating modal")]),
     // ]),
-    div(
-      [
-        // on_keydown(fn(key) { fn(state) { state + 1 } }),
-        // attribute.attribute("tabindex", "-1"),
-        class("vstack w-full max-w-2xl mx-auto"),
-      ],
-      list.flatten(list.index_map(sections, section(mode))),
-    ),
-  ])
+    // div(
+    //   [
+    //     // on_keydown(fn(key) { fn(state) { state + 1 } }),
+    //     // attribute.attribute("tabindex", "-1"),
+    //     class("vstack w-full max-w-2xl mx-auto"),
+    //   ],
+    list.flatten(list.index_map(sections, section(mode))),
+  )
+  // ),
 }
 
 fn section(mode) {
@@ -121,28 +123,30 @@ fn subsection(index, mode) {
         text("source selection"),
       ])
     _ ->
-      div([class("hstack")], [
+      div([class("hstack tight")], [
+        div([class("expand rounded bg-black")], []),
         button(
           [
-            class("cursor bg-green-300 rounded"),
+            class("cursor mx-2 blue-gradient neo-shadow border rounded"),
             on_click(model.Wrap(insert_query(_, index + 1))),
           ],
           [text("new plaintext")],
         ),
         button(
           [
-            class("cursor bg-green-300 rounded"),
+            class("cursor mx-2 blue-gradient neo-shadow border rounded"),
             on_click(model.Wrap(insert_source(_, index + 1))),
           ],
           [text("new source")],
         ),
         button(
           [
-            class("cursor bg-green-300 rounded"),
+            class("cursor mx-2 blue-gradient neo-shadow border rounded"),
             on_click(model.Wrap(fetch_source(_, index))),
           ],
           [text("add source")],
         ),
+        div([class("expand rounded bg-black")], []),
       ])
   }
 }

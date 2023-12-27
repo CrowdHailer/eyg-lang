@@ -60,6 +60,13 @@
       var(--neo-orange-4)
     );
   }
+  .pink-gradient {
+    background: linear-gradient(
+      0.25turn,
+      var(--neo-pink-2),
+      var(--neo-pink-3)
+    );
+  }
   .purple-gradient {
     background: linear-gradient(
       0.25turn,

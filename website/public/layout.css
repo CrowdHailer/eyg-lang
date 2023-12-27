@@ -79,6 +79,9 @@ body > .vstack, .screen > .vstack {
   padding: var(--space) calc(var(--space) * 0.5);
 }
 
+.hstack.tight > * {
+  padding: calc(var(--space) * 0.2) calc(var(--space) * 0.3);
+}
 .hstack.wrap > * {
   padding: 0;
 }

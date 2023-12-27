@@ -50,51 +50,61 @@ fn commit_changes() {
 
 pub fn render(i, constraints, r, output) {
   let constraint_els = list.index_map(constraints, constraint)
-  div([class("cover")], case r {
-    None -> [
-      div(
-        [
-          class("p-4 bg-yellow-100 shadow cursor-pointer"),
-          on_click(edit_query(i)),
-        ],
-        constraint_els,
+  div(
+    [
+      class(
+        "vstack left wrap left bg-white border-2 border-black rounded w-full neo-shadow",
       ),
-      results(output, constraints),
-    ]
-    Some(#(content, r)) -> {
-      let lines =
-        string.split(content, ".")
-        |> list.length
-      // already one extra section than number or newlines. there was an issue with \r
-      let rows = int.to_string(lines)
-      [
-        div([class("p-2 bg-yellow-100 shadow cursor-pointer")], [
-          textarea([
-            class("w-full bg-transparent p-2"),
-            value(dynamic.from(content)),
-            attribute.attribute("rows", rows),
-            attribute.attribute("autofocus", "true"),
-            // attribute.autofocus(True),
-            on_input(handle_edit(_)),
-            on_blur(commit_changes()),
-          ]),
-          ..case r {
-            Ok(Nil) -> []
-            Error(parser.TokenError(got)) -> [
-              div([class("bg-red-300")], [text("invalid token"), text(got)]),
-            ]
-            Error(parser.ParseError(expected, got)) -> [
-              div([class("bg-red-300")], [
-                text("parse error expected: "),
-                text(string.join(expected, ", ")),
-                text(string.inspect(got)),
+    ],
+    [
+      div([class("hstack tight")], [
+        div([class("bg-black text-white font-bold")], [text("Query")]),
+        div([class("expand cover bg-orange-2")], []),
+      ]),
+      ..case r {
+        None -> [
+          div(
+            [class("w-full cursor-pointer"), on_click(edit_query(i))],
+            constraint_els,
+          ),
+          results(output, constraints),
+        ]
+        Some(#(content, r)) -> {
+          let lines =
+            string.split(content, ".")
+            |> list.length
+          // already one extra section than number or newlines. there was an issue with \r
+          let rows = int.to_string(lines)
+          [
+            div([class("p-2 bg-yellow-100 shadow cursor-pointer")], [
+              textarea([
+                class("w-full bg-transparent p-2"),
+                value(dynamic.from(content)),
+                attribute.attribute("rows", rows),
+                attribute.attribute("autofocus", "true"),
+                // attribute.autofocus(True),
+                on_input(handle_edit(_)),
+                on_blur(commit_changes()),
               ]),
-            ]
-          }
-        ]),
-      ]
-    }
-  })
+              ..case r {
+                Ok(Nil) -> []
+                Error(parser.TokenError(got)) -> [
+                  div([class("bg-red-300")], [text("invalid token"), text(got)]),
+                ]
+                Error(parser.ParseError(expected, got)) -> [
+                  div([class("bg-red-300")], [
+                    text("parse error expected: "),
+                    text(string.join(expected, ", ")),
+                    text(string.inspect(got)),
+                  ]),
+                ]
+              }
+            ]),
+          ]
+        }
+      }
+    ],
+  )
 }
 
 fn results(result, constraints) {
