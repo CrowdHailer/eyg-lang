@@ -8,6 +8,7 @@ import gleam/uri
 import gleam/fetch
 import gleam/http/request.{type Request}
 import gleam/javascript/promise
+import gsv
 import lustre/effect
 import datalog/ast
 import datalog/ast/parser
@@ -110,6 +111,7 @@ pub fn fetch_source(req) {
   use response <- promise.try_await(fetch.send(req))
   use response <- promise.map_try(fetch.read_text_body(response))
 
+  // gsv doesn't like the something in the valid movies.csv file
   let lines = string.split(response.body, "\n")
   let data = list.map(lines, string.split(_, ","))
   let table = list.map(data, list.map(_, ast.S))

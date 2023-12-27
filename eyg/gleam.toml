@@ -17,6 +17,8 @@ plinth = "~> 0.1.6"
 simplifile = "~> 1.0"
 gleam_http = "~> 3.5"
 gleam_community_codec = {path= "../../codec"}
+# gsv = "~> 0.1"
+gsv = {path= "../../gsv"}
 
 
 [dev-dependencies]
