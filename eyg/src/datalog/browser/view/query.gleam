@@ -22,27 +22,26 @@ fn edit_query(index) {
   Wrap(fn(model) {
     let assert Ok(model.Query(constraints, _)) = list.at(model.sections, index)
     let content = list.map(constraints, constraint_text)
-    let lines = list.length(content)
     let content =
       list.intersperse(content, "\r")
       |> string.concat
 
-    let model = Model(..model, editing: Some(#(index, content, Ok(Nil))))
+    let model = Model(..model, mode: model.Editing(index, content, Ok(Nil)))
     #(model, effect.none())
   })
 }
 
 fn commit_changes() {
   Wrap(fn(model) {
-    let assert Model(sections, Some(#(id, text, state))) = model
+    let assert Model(sections, model.Editing(id, text, state)) = model
     case state {
       Ok(_) -> {
         let assert Ok(sections) =
-          listx.map_at(sections, id, fn(section) {
+          listx.map_at(sections, id, fn(_section) {
             let assert Ok(constraints) = parser.parse(text)
             model.Query(constraints, Ok(dict.new()))
           })
-        #(Model(model.run_queries(sections), None), effect.none())
+        #(Model(model.run_queries(sections), model.Viewing), effect.none())
       }
       Error(_) -> #(model, effect.none())
     }
@@ -125,7 +124,7 @@ fn results(result) {
 
 fn handle_edit(text) {
   model.Wrap(fn(model) {
-    let Model(editing: Some(#(i, _, _)), ..) = model
+    let assert Model(mode: model.Editing(i, _, _), ..) = model
     let state = case parser.parse(text) {
       Ok(program) -> {
         Ok(Nil)
@@ -133,7 +132,7 @@ fn handle_edit(text) {
       Error(reason) -> Error(reason)
     }
 
-    let model = Model(..model, editing: Some(#(i, text, state)))
+    let model = Model(..model, mode: model.Editing(i, text, state))
     #(model, effect.none())
   })
 }

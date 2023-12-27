@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/list
 import gleam/option.{type Option, None}
 import gleam/string
+import gleam/http/request.{type Request}
 import lustre/effect
 import datalog/ast
 import datalog/ast/parser
@@ -13,15 +14,23 @@ pub type Wrap {
 }
 
 pub type Model {
-  Model(
-    sections: List(Section),
-    editing: Option(#(Int, String, Result(Nil, parser.ParseError))),
-  )
+  Model(sections: List(Section), mode: Mode)
+}
+
+pub type Mode {
+  Viewing
+  Editing(target: Int, raw: String, parsed: Result(Nil, parser.ParseError))
+  SouceSelection(target: Int, raw: String)
 }
 
 pub type Section {
   Query(query: List(ast.Constraint), output: Result(naive.DB, naive.Reason))
   Source(relation: String, table: List(List(ast.Value)))
+  RemoteSource(
+    request: Request(String),
+    relation: String,
+    data: List(List(ast.Value)),
+  )
   Paragraph(String)
 }
 
@@ -57,7 +66,7 @@ pub fn initial() {
         )
       },
     ]),
-    None,
+    Viewing,
   )
 }
 
