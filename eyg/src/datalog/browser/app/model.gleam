@@ -8,7 +8,6 @@ import gleam/uri
 import gleam/fetch
 import gleam/http/request.{type Request}
 import gleam/javascript/promise
-import gsv
 import lustre/effect
 import datalog/ast
 import datalog/ast/parser
@@ -27,6 +26,7 @@ pub type Mode {
   Viewing
   Editing(target: Int, raw: String, parsed: Result(Nil, parser.ParseError))
   SouceSelection(target: Int, raw: String)
+  GoogleOAuth(target: Int)
 }
 
 pub type Section {
@@ -138,6 +138,15 @@ pub fn run_queries(sections) {
             list.map(table, fn(row) {
               fact(relation, list.map(row, ast.Literal))
             })
+          let all = list.append(all, constraints)
+          #(all, section)
+        }
+        Source(relation, table) -> {
+          let constraints =
+            list.map(table, fn(row) {
+              fact(relation, list.map(row, ast.Literal))
+            })
+          // io.debug(constraints)
           let all = list.append(all, constraints)
           #(all, section)
         }

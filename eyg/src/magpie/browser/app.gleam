@@ -108,6 +108,7 @@ pub fn init(_) {
   )
 }
 
+// TODO remove use plinth
 @external(javascript, "../../magpie_browser_ffi.mjs", "getHash")
 fn get_hash() -> String
 

@@ -1,19 +1,25 @@
 import gleam/io
 import gleam/dynamic
 import gleam/dict
+import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/string
-import gleam/uri
+import gleam/uri.{Uri}
 import gleam/http/request
 import gleam/fetch
 import gleam/javascript/promise
+import old_plinth/javascript/promisex
 import lustre/element.{text}
-import lustre/attribute.{class}
+import lustre/attribute.{class, src}
 import lustre/effect
-import lustre/element/html.{button, div, form, input, p}
+import lustre/element/html.{button, div, form, iframe, input, p}
 import lustre/event.{on_click, on_input}
+import plinth/javascript/global
+import plinth/browser/window
+import facilities/google/event as g_event
 import datalog/ast
 import datalog/browser/app/model.{Model}
 import datalog/browser/view/source
@@ -122,6 +128,13 @@ fn subsection(index, mode) {
         ),
         text("source selection"),
       ])
+    model.GoogleOAuth(i) if i == index -> div([class("border cover")], [])
+    // iframe doesnt work
+    // iframe([
+    //   src(
+    //     "https://accounts.google.com/o/oauth2/auth?client_id=419853920596-v2vh33r5h796q8fjvdu5f4ve16t91rkd.apps.googleusercontent.com&response_type=token&redirect_uri=http://localhost:8080&state=123&scope=https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly",
+    //   ),
+    // ]),
     _ ->
       div([class("hstack tight")], [
         div([class("expand rounded bg-black")], []),
@@ -146,6 +159,13 @@ fn subsection(index, mode) {
           ],
           [text("add source")],
         ),
+        button(
+          [
+            class("cursor mx-2 blue-gradient neo-shadow border rounded"),
+            on_click(model.Wrap(google_oauth(_, index + 1))),
+          ],
+          [text("calendar events")],
+        ),
         div([class("expand rounded bg-black")], []),
       ])
   }
@@ -168,4 +188,126 @@ fn insert_source(model, index) {
 fn fetch_source(model, index) {
   let mode = model.SouceSelection(index, "")
   #(Model(..model, mode: mode), effect.none())
+}
+
+fn google_oauth(model, index) {
+  let mode = model.GoogleOAuth(index)
+  #(
+    Model(..model, mode: mode),
+    effect.from(fn(d) {
+      let space = #(
+        window.outer_width(window.self()),
+        window.outer_height(window.self()),
+      )
+      let frame = #(600, 700)
+      let #(#(offset_x, offset_y), #(inner_x, inner_y)) = center(frame, space)
+      let features =
+        string.concat([
+          "popup",
+          ",width=",
+          int.to_string(inner_x),
+          ",height=",
+          int.to_string(inner_y),
+          ",left=",
+          int.to_string(offset_x),
+          ",top=",
+          int.to_string(offset_y),
+        ])
+
+      let assert Ok(popup) =
+        window.open(
+          "https://accounts.google.com/o/oauth2/auth?client_id=419853920596-v2vh33r5h796q8fjvdu5f4ve16t91rkd.apps.googleusercontent.com&response_type=token&redirect_uri=http://localhost:8080&state=123&scope=https://www.googleapis.com/auth/calendar.events.readonly",
+          //  https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly
+          "_blank",
+          features,
+        )
+
+      use token <- promisex.aside(monitor_auth(popup, 500))
+      use events <- promise.map_try(calendar_events(token))
+      d(
+        model.Wrap(fn(state) {
+          let Model(sections, mode) = state
+          let events =
+            list.map(events, fn(e) {
+              let g_event.Event(summary, location, start, end) = e
+              [
+                ast.S(summary),
+                ast.S(option.unwrap(location, "")),
+                ast.S(case start {
+                  g_event.Date(s) -> s
+                  g_event.Datetime(s) -> s
+                }),
+                ast.S(case end {
+                  g_event.Date(s) -> s
+                  g_event.Datetime(s) -> s
+                }),
+              ]
+            })
+
+          let sections =
+            listx.insert_at(sections, index, [model.Source("Calendar", events)])
+          #(Model(sections, mode), effect.none())
+        }),
+      )
+      Ok(Nil)
+    }),
+  )
+}
+
+// ask about tup2
+fn tup2(a, b) {
+  #(a, b)
+}
+
+fn calendar_events(token) {
+  let r =
+    request.new()
+    |> request.set_host("www.googleapis.com")
+    |> request.set_path(
+      string.concat([
+        "/calendar/v3/calendars/", "peterhsaxton@gmail.com", "/events",
+      ]),
+    )
+    |> request.set_query([#("timeMin", "2024-01-01T00:00:00Z")])
+    |> request.prepend_header("Authorization", string.append("Bearer ", token))
+  use resp <- promise.try_await(fetch.send(r))
+  case resp.status {
+    200 -> {
+      use resp <- promise.map_try(fetch.read_json_body(resp))
+      dynamic.field("items", dynamic.list(g_event.decode_event))(resp.body)
+      |> result.map_error(fn(err) {
+        io.debug(err)
+        io.debug(resp.body)
+        todo
+      })
+    }
+    _ -> panic("bad resp from events")
+  }
+}
+
+fn center(inner, outer) {
+  let #(inner_x, inner_y) = inner
+  let #(outer_x, outer_y) = outer
+
+  let inner_x = int.min(inner_x, outer_x)
+  let inner_y = int.min(inner_y, outer_y)
+
+  let offset_x = { outer_x - inner_x } / 2
+  let offset_y = { outer_y - inner_y } / 2
+
+  #(#(offset_x, offset_y), #(inner_x, inner_y))
+}
+
+fn monitor_auth(popup, wait) {
+  use Nil <- promise.await(promisex.wait(wait))
+  let location = window.location_of(popup)
+  case uri.parse(location) {
+    Ok(Uri(fragment: Some(fragment), ..)) -> {
+      let assert Ok(parts) = uri.parse_query(fragment)
+      let assert Ok(access_token) = list.key_find(parts, "access_token")
+      window.close(popup)
+      promise.resolve(access_token)
+    }
+    _ -> monitor_auth(popup, wait)
+  }
 }

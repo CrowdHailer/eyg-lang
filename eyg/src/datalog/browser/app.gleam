@@ -2,13 +2,22 @@ import gleam/list
 import gleam/javascript/promise
 import lustre
 import lustre/effect
+import plinth/browser/window
 import datalog/browser/app/model
 import datalog/browser/view/page
 
 pub fn run() {
-  let app = lustre.application(init, update, page.render)
-  let assert Ok(_) = lustre.start(app, "body > *", Nil)
-  Nil
+  case window.get_hash() {
+    Ok(value) -> {
+      5
+      Nil
+    }
+    Error(_) -> {
+      let app = lustre.application(init, update, page.render)
+      let assert Ok(_) = lustre.start(app, "body > *", Nil)
+      Nil
+    }
+  }
 }
 
 fn init(_) {
