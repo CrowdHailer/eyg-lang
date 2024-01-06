@@ -31,7 +31,7 @@ pub type Mode {
 
 pub type Section {
   Query(query: List(ast.Constraint), output: Result(naive.DB, naive.Reason))
-  Source(relation: String, table: List(List(ast.Value)))
+  Source(relation: String, headings: List(String), table: List(List(ast.Value)))
   RemoteSource(
     request: Request(String),
     relation: String,
@@ -141,7 +141,7 @@ pub fn run_queries(sections) {
           let all = list.append(all, constraints)
           #(all, section)
         }
-        Source(relation, table) -> {
+        Source(relation, _headings, table) -> {
           let constraints =
             list.map(table, fn(row) {
               fact(relation, list.map(row, ast.Literal))

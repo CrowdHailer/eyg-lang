@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/dynamic
 import gleam/dict
+import gleam/float
 import gleam/int
 import gleam/list
 import gleam/listx
@@ -8,6 +9,7 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/uri.{Uri}
+import gleam/http
 import gleam/http/request
 import gleam/fetch
 import gleam/javascript/promise
@@ -18,8 +20,10 @@ import lustre/effect
 import lustre/element/html.{button, div, form, iframe, input, p}
 import lustre/event.{on_click, on_input}
 import plinth/javascript/global
+import plinth/javascript/storage
 import plinth/browser/window
 import facilities/google/event as g_event
+import facilities/accu_weather/daily_forecast
 import datalog/ast
 import datalog/browser/app/model.{Model}
 import datalog/browser/view/source
@@ -60,7 +64,8 @@ fn section(mode) {
           query.render(index, q, state, output)
         }
 
-        model.Source(relation, table) -> source.render(index, relation, table)
+        model.Source(relation, headings, table) ->
+          source.render(index, relation, headings, table)
         model.Paragraph(content) -> p([], [text(content)])
         model.RemoteSource(request, relation, data) ->
           remote.render(request, relation, data)
@@ -128,7 +133,7 @@ fn subsection(index, mode) {
         ),
         text("source selection"),
       ])
-    model.GoogleOAuth(i) if i == index -> div([class("border cover")], [])
+    // model.GoogleOAuth(i) if i == index -> div([class("border cover")], [])
     // iframe doesnt work
     // iframe([
     //   src(
@@ -166,6 +171,13 @@ fn subsection(index, mode) {
           ],
           [text("calendar events")],
         ),
+        button(
+          [
+            class("cursor mx-2 blue-gradient neo-shadow border rounded"),
+            on_click(model.Wrap(accu_weather(_, index + 1))),
+          ],
+          [text("Get weather")],
+        ),
         div([class("expand rounded bg-black")], []),
       ])
   }
@@ -180,7 +192,10 @@ fn insert_query(model, index) {
 
 fn insert_source(model, index) {
   let Model(sections, ..) = model
-  let new = model.Source("Foo", [[ast.I(2), ast.I(100), ast.S("hey")]])
+  let new =
+    model.Source("Foo", ["bob TODO i don't think used"], [
+      [ast.I(2), ast.I(100), ast.S("hey")],
+    ])
   let sections = listx.insert_at(sections, index, [new])
   #(Model(..model, sections: sections), effect.none())
 }
@@ -244,8 +259,11 @@ fn google_oauth(model, index) {
               ]
             })
 
+          let headings = ["sumamry", "location", "start", "end"]
           let sections =
-            listx.insert_at(sections, index, [model.Source("Calendar", events)])
+            listx.insert_at(sections, index, [
+              model.Source("Calendar", headings, events),
+            ])
           #(Model(sections, mode), effect.none())
         }),
       )
@@ -283,6 +301,79 @@ fn calendar_events(token) {
     }
     _ -> panic("bad resp from events")
   }
+}
+
+fn accu_weather(model, index) {
+  #(
+    model,
+    effect.from(fn(d) {
+      io.debug("weather")
+      let assert Ok(s) = storage.local()
+      let key = case storage.get_item(s, "ACCU_WEATHER_KEY") {
+        Error(Nil) -> panic("no key")
+        Ok(key) -> key
+      }
+      let stockholm_key = "314929"
+      // essentially discusting website
+      let r =
+        request.new()
+        |> request.set_scheme(http.Http)
+        |> request.set_host("dataservice.accuweather.com")
+        |> request.set_path(
+          string.concat(["/forecasts/v1/daily/5day/", stockholm_key]),
+        )
+        |> request.set_query([
+          #("apikey", key),
+          #("metric", "true"),
+          #("details", "true"),
+        ])
+      use resp <- promisex.aside(fetch.send(r))
+      use resp <- result.map(resp)
+      let task = case resp.status {
+        200 -> {
+          use resp <- promise.map_try(fetch.read_json_body(resp))
+          io.debug(resp.body)
+          dynamic.field(
+            "DailyForecasts",
+            dynamic.list(daily_forecast.decode_daily_forcast),
+          )(resp.body)
+          |> result.map_error(fn(err) {
+            io.debug(err)
+            io.debug(resp.body)
+            todo
+          })
+        }
+        _ -> panic("bad resp from events")
+      }
+      use data <- promise.map_try(task)
+      d(
+        model.Wrap(fn(state) {
+          let Model(sections, mode) = state
+          let events =
+            list.map(data, fn(daily: daily_forecast.DailyForecast) {
+              [
+                ast.S(daily.date),
+                ast.I(float.round(daily.minimum_temperature)),
+                ast.I(float.round(daily.maximum_temperature)),
+                ast.I(daily.day.precipitation_probability),
+                ast.I(daily.night.precipitation_probability),
+              ]
+            })
+
+          let headings = [
+            "date", "maximum", "minumum", "chance of rain (day)",
+            "chance of rain (night)",
+          ]
+          let sections =
+            listx.insert_at(sections, index, [
+              model.Source("Calendar", headings, events),
+            ])
+          #(Model(sections, mode), effect.none())
+        }),
+      )
+      Ok(Nil)
+    }),
+  )
 }
 
 fn center(inner, outer) {

@@ -113,11 +113,12 @@ fn results(result, constraints) {
       let relations = ast.relations(constraints)
       let tables = dict.to_list(dict.take(tables, relations))
 
+      // TODO get headings of names in relation
       div(
         [],
         list.map(tables, fn(t) {
           let #(r, values) = t
-          div([], [div([], [text(r)]), source.display(values)])
+          div([], [div([], [text(r)]), source.display([], values)])
         }),
       )
     }

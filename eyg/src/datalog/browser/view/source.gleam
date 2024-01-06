@@ -8,7 +8,9 @@ import gleam/javascript/promise
 import lustre/attribute.{class, readonly, value}
 import lustre/effect
 import lustre/element.{text}
-import lustre/element/html.{br, div, input, span, table, tbody, td, tr}
+import lustre/element/html.{
+  br, div, input, span, table, tbody, td, th, thead, tr,
+}
 import lustre/event.{on_click, on_input}
 import datalog/browser/file
 import datalog/browser/app/model.{Model, Source}
@@ -17,7 +19,7 @@ import datalog/browser/view/value
 
 // import magpie/sources/yaml
 
-pub fn render(index, relation, values) {
+pub fn render(index, relation, headings, values) {
   div(
     [
       class(
@@ -33,13 +35,13 @@ pub fn render(index, relation, values) {
           value(dynamic.from(relation)),
         ]),
       ]),
-      display(values),
-      // div(
-      //   [class("cusor bg-purple-300"), on_click(model.Wrap(add_row(_, index)))],
-      //   [text("add row")],
-      // ),
+      display(headings, values),
     ],
   )
+  // div(
+  //   [class("cusor bg-purple-300"), on_click(model.Wrap(add_row(_, index)))],
+  //   [text("add row")],
+  // ),
   // css 
   // on drop look at file extension
   // input([
@@ -83,14 +85,20 @@ fn add_row(model, index) {
   let Model(sections: sections, ..) = model
   let assert Ok(sections) =
     listx.map_at(sections, index, fn(section) {
-      let assert Source(r, table) = section
-      Source(r, list.append(table, table))
+      let assert Source(r, headings, table) = section
+      Source(r, headings, list.append(table, table))
     })
   #(Model(..model, sections: sections), effect.none())
 }
 
-pub fn display(values) {
-  table([], [tbody([], list.map(values, row))])
+pub fn display(headings, values) {
+  table([], [
+    thead(
+      [class("bg-gray-200")],
+      list.map(headings, fn(h) { th([class("px-2")], [text(h)]) }),
+    ),
+    tbody([], list.map(values, row)),
+  ])
 }
 
 fn row(values) {
@@ -99,5 +107,5 @@ fn row(values) {
 
 fn cell(v) {
   let t = value.render(v)
-  td([], [t])
+  td([class("border text-right px-2")], [t])
 }

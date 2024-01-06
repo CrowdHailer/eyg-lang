@@ -8,7 +8,7 @@ pub fn reference_source_in_query_test() {
   let v1 = v("v1")
   let query = [rule("Foo", [v1], [y("Calendar", [v1])])]
   let sections = [
-    model.Source("Calendar", [[ast.S("jog")]]),
+    model.Source("Calendar", ["detail"], [[ast.S("jog")]]),
     model.Query(query, Ok(dict.new())),
   ]
   let assert [source, query_section] = model.run_queries(sections)

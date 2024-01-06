@@ -17,7 +17,6 @@ pub type DateOrDatetime {
 }
 
 pub fn decode_event(raw) {
-  io.debug(raw)
   dynamic.decode4(
     Event,
     dynamic.field("summary", dynamic.string),
