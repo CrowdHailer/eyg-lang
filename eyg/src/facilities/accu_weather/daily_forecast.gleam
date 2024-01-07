@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/dynamic
 import gleam/option.{type Option}
 
@@ -23,7 +22,6 @@ pub type Detail {
 }
 
 pub fn decode_daily_forcast(raw) {
-  io.debug(raw)
   dynamic.decode7(
     DailyForecast,
     dynamic.field("Date", dynamic.string),
@@ -42,8 +40,7 @@ pub fn decode_daily_forcast(raw) {
   )(raw)
 }
 
-pub fn decode_detail(raw) {
-  io.debug(raw)
+fn decode_detail(raw) {
   dynamic.decode3(
     Detail,
     dynamic.field("PrecipitationProbability", dynamic.int),

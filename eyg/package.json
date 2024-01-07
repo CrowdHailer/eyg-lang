@@ -11,7 +11,9 @@
     "build:magpie": "npm run build:magpie:worker && npm run build:magpie:app",
     "start:magpie": "gleam build && npm run build:magpie && rm -rf sirv && mkdir sirv && cp build/bundle/app.js build/bundle/worker.js src/magpie/index.html sirv && npx sirv sirv --host 0.0.0.0 --port 5000",
     "build:datalog": "npx rollup -f iife -i ./build/dev/javascript/eyg/datalog.js -o build/bundle/datalog.js",
-    "start:datalog": "gleam format && gleam build && npm run build:datalog && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/datalog/index.html build/bundle/datalog.js src/datalog/examples sirv && npx sirv sirv --host 0.0.0.0 --port 8080"
+    "start:datalog": "gleam format && gleam build && npm run build:datalog && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/datalog/index.html build/bundle/datalog.js src/datalog/examples sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
+    "build:dashboard": "npx rollup -f iife -i ./build/dev/javascript/eyg/dashboard.js -o build/bundle/dashboard.js",
+    "start:dashboard": "gleam format && gleam build && npm run build:dashboard && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/dashboard/index.html build/bundle/dashboard.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080"
   },
   "dependencies": {
     "adm-zip": "^0.5.10",

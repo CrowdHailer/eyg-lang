@@ -23,6 +23,7 @@ import plinth/javascript/global
 import plinth/javascript/storage
 import plinth/browser/window
 import facilities/google/event as g_event
+import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 import datalog/ast
 import datalog/browser/app/model.{Model}
@@ -313,39 +314,10 @@ fn accu_weather(model, index) {
         Error(Nil) -> panic("no key")
         Ok(key) -> key
       }
-      let stockholm_key = "314929"
-      // essentially discusting website
-      let r =
-        request.new()
-        |> request.set_scheme(http.Http)
-        |> request.set_host("dataservice.accuweather.com")
-        |> request.set_path(
-          string.concat(["/forecasts/v1/daily/5day/", stockholm_key]),
-        )
-        |> request.set_query([
-          #("apikey", key),
-          #("metric", "true"),
-          #("details", "true"),
-        ])
-      use resp <- promisex.aside(fetch.send(r))
-      use resp <- result.map(resp)
-      let task = case resp.status {
-        200 -> {
-          use resp <- promise.map_try(fetch.read_json_body(resp))
-          io.debug(resp.body)
-          dynamic.field(
-            "DailyForecasts",
-            dynamic.list(daily_forecast.decode_daily_forcast),
-          )(resp.body)
-          |> result.map_error(fn(err) {
-            io.debug(err)
-            io.debug(resp.body)
-            todo
-          })
-        }
-        _ -> panic("bad resp from events")
-      }
-      use data <- promise.map_try(task)
+
+      let task = accu_weather.five_day_forecast(key, accu_weather.stockholm_key)
+      use data <- promisex.aside(task)
+      use data <- result.map(data)
       d(
         model.Wrap(fn(state) {
           let Model(sections, mode) = state
@@ -371,9 +343,9 @@ fn accu_weather(model, index) {
           #(Model(sections, mode), effect.none())
         }),
       )
-      Ok(Nil)
     }),
   )
+  // Ok(Nil)
 }
 
 fn center(inner, outer) {
