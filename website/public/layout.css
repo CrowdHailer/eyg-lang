@@ -75,6 +75,10 @@ body > .vstack, .screen > .vstack {
   align-items: center;
   justify-content: center;
 }
+body > .hstack, .screen > .hstack {
+  min-height: 100vh;
+}
+
 .hstack > * {
   padding: var(--space) calc(var(--space) * 0.5);
 }

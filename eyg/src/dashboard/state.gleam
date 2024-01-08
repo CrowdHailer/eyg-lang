@@ -2,13 +2,13 @@ import gleam/io
 import lustre/effect
 import old_plinth/javascript/promisex
 import plinth/javascript/global
-import plinth/javascript/date
+import plinth/javascript/date.{type Date}
 import plinth/javascript/storage
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 
 pub type State {
-  State(now: #(Int, Int, Bool), forecast: List(daily_forecast.DailyForecast))
+  State(now: Date, forecast: List(daily_forecast.DailyForecast))
 }
 
 pub fn init(_) {
@@ -18,8 +18,7 @@ pub fn init(_) {
     Ok(accu_weather_key) -> accu_weather_key
   }
 
-  let now = coerce_time(date.now())
-  let state = State(now, [])
+  let state = State(date.now(), [])
   #(
     state,
     effect.batch([
@@ -60,22 +59,11 @@ fn watch_time(dispatch) {
     fn(_) {
       dispatch(
         Wrap(fn(state) {
-          let now = coerce_time(date.now())
-          let state = State(..state, now: now)
+          let state = State(..state, now: date.now())
           #(state, effect.from(watch_time))
         }),
       )
     },
     1000,
   )
-}
-
-fn coerce_time(d) {
-  let hours = date.hours(d)
-  let #(hours, pm) = case hours > 12 {
-    True -> #(hours - 12, True)
-    False -> #(hours, False)
-  }
-  let minutes = date.minutes(d)
-  #(hours, minutes, pm)
 }
