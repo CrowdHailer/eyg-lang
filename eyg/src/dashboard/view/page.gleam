@@ -1,12 +1,20 @@
+import gleam/io
 import gleam/float
 import gleam/int
 import gleam/list
+import gleam/javascript/promise
 import plinth/javascript/date
-import dashboard/state.{State}
-import lustre/attribute.{class}
+import plinth/browser/document
+import plinth/browser/element as dom_element
+import plinth/browser/window
+import plinth/javascript/storage
+import lustre/attribute.{class, id}
 import lustre/element.{text}
 import lustre/element/html.{button, div, form, iframe, input, p, span}
+import lustre/effect
+import lustre/event.{on_click}
 import facilities/accu_weather/daily_forecast.{DailyForecast}
+import dashboard/state.{State, Wrap}
 
 fn coerce_time(d) {
   let hours = date.hours(d)
@@ -19,22 +27,75 @@ fn coerce_time(d) {
 }
 
 pub fn render(state) {
-  let State(now, forecasts) = state
+  let State(now, accu_weather_key, forecasts) = state
+  // save sets value in storage and then reloads the page
+  case accu_weather_key {
+    Error(Nil) ->
+      div([id("root"), class("vstack")], [
+        div([class("bg-gray-400 border rounded")], [
+          div([class("p-4")], [
+            div([], [text("input key")]),
+            div([], [input([id("key-input")])]),
+            div([], [
+              button(
+                [
+                  on_click(
+                    Wrap(fn(state) {
+                      io.debug("save")
+                      let assert Ok(input) =
+                        document.query_selector("#key-input")
+                      let assert Ok(value) = dom_element.value(input)
+                      io.debug(value)
+                      let assert Ok(s) = storage.local()
+                      let assert Ok(Nil) =
+                        storage.set_item(s, "ACCU_WEATHER_KEY", value)
+                      // d(Wrap(todo))
+                      window.reload()
+                      #(state, effect.none())
+                    }),
+                  ),
+                ],
+                [text("save")],
+              ),
+            ]),
+          ]),
+        ]),
+      ])
+    Ok(_) -> display(now, forecasts)
+  }
+}
+
+fn display(now, forecasts) {
   let #(hours, minutes, pm) = coerce_time(now)
-  let assert [today, ..later] = forecasts
-  div([class("hstack bg-yellow-200")], [
+  div([id("root"), class("hstack bg-yellow-200")], [
     div([class("cover expand")], [
       div([class("vstack")], [
-        div([class("text-9xl")], [
-          text(int.to_string(hours)),
-          text(":"),
-          // text(" "),
-          text(int.to_string(minutes)),
-          text(case pm {
-            True -> " pm"
-            False -> " am"
-          }),
-        ]),
+        div(
+          [
+            class("text-9xl"),
+            on_click(
+              Wrap(fn(state) {
+                let assert Ok(root) = document.query_selector("#root")
+                promise.map(dom_element.request_fullscreen(root), fn(r) {
+                  io.debug(r)
+                })
+                promise.map(window.request_wake_lock(), io.debug)
+                io.debug("noo")
+                #(state, effect.none())
+              }),
+            ),
+          ],
+          [
+            text(int.to_string(hours)),
+            text(":"),
+            // text(" "),
+            text(int.to_string(minutes)),
+            text(case pm {
+              True -> " pm"
+              False -> " am"
+            }),
+          ],
+        ),
         div([class("text-3xl")], [
           text(day_of_the_week(date.day(now))),
           text(" "),
@@ -44,29 +105,33 @@ pub fn render(state) {
         ]),
       ]),
     ]),
-    div([class("vstack right")], [
-      div([class("text-right my-6 mx-4")], {
-        let DailyForecast(d, sunrise, sunset, low, high, day, night) = today
-        let daily_forecast.Detail(precipitation, _, _) = day
-        [
-          div([class("text-4xl ")], [
-            text("Today "),
-            text(float.to_string(high)),
-            text("° "),
-            text(int.to_string(day.precipitation_probability)),
-            text("%"),
-          ]),
-          div([class("text-2xl text-gray-800")], [
-            text("Tonight "),
-            text(float.to_string(low)),
-            text("° "),
-            text(int.to_string(night.precipitation_probability)),
-            text("%"),
-          ]),
-        ]
-      }),
-      ..list.map(later, forecast)
-    ]),
+    case forecasts {
+      [today, ..later] ->
+        div([class("vstack right")], [
+          div([class("text-right my-6 mx-4")], {
+            let DailyForecast(d, sunrise, sunset, low, high, day, night) = today
+            let daily_forecast.Detail(precipitation, _, _) = day
+            [
+              div([class("text-4xl ")], [
+                text("Today "),
+                text(float.to_string(high)),
+                text("° "),
+                text(int.to_string(day.precipitation_probability)),
+                text("%"),
+              ]),
+              div([class("text-2xl text-gray-800")], [
+                text("Tonight "),
+                text(float.to_string(low)),
+                text("° "),
+                text(int.to_string(night.precipitation_probability)),
+                text("%"),
+              ]),
+            ]
+          }),
+          ..list.map(later, forecast)
+        ])
+      _ -> div([], [text("no forecast")])
+    },
     div([class("bg-yellow-100 border-l-8 border-yellow-900 cover")], []),
   ])
 }

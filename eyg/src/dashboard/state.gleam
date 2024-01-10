@@ -1,28 +1,31 @@
 import gleam/io
+import gleam/javascript/promise
 import lustre/effect
 import old_plinth/javascript/promisex
 import plinth/javascript/global
 import plinth/javascript/date.{type Date}
 import plinth/javascript/storage
+import plinth/browser/document
+import plinth/browser/element
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 
 pub type State {
-  State(now: Date, forecast: List(daily_forecast.DailyForecast))
+  State(
+    now: Date,
+    accu_weather: Result(String, Nil),
+    forecast: List(daily_forecast.DailyForecast),
+  )
 }
 
 pub fn init(_) {
   let assert Ok(s) = storage.local()
-  let accu_weather_key = case storage.get_item(s, "ACCU_WEATHER_KEY") {
-    Error(Nil) -> panic("no accu_weather_key")
-    Ok(accu_weather_key) -> accu_weather_key
-  }
+  let accu_weather_key = storage.get_item(s, "ACCU_WEATHER_KEY")
+  let state = State(date.now(), accu_weather_key, [])
 
-  let state = State(date.now(), [])
-  #(
-    state,
-    effect.batch([
-      effect.from(watch_time),
+  let tasks = case accu_weather_key {
+    Error(Nil) -> []
+    Ok(accu_weather_key) -> [
       effect.from(fn(dispatch) {
         let task =
           accu_weather.five_day_forecast(
@@ -39,8 +42,11 @@ pub fn init(_) {
           }),
         )
       }),
-    ]),
-  )
+    ]
+  }
+  let tasks = [effect.from(watch_time), ..tasks]
+
+  #(state, effect.batch(tasks))
 }
 
 pub type Wrap {
