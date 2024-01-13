@@ -20,7 +20,9 @@ pub type State {
 
 pub fn init(_) {
   let assert Ok(s) = storage.local()
-  let accu_weather_key = storage.get_item(s, "ACCU_WEATHER_KEY")
+  // let accu_weather_key = storage.get_item(s, "ACCU_WEATHER_KEY")
+  // Committed to source deliberatly I will rely on rate limiting and mint a new one when needed
+  let accu_weather_key = Ok("IU5BBrAzQkxuDQxXrzRDwgE1j8TguZco")
   let state = State(date.now(), accu_weather_key, [])
 
   let tasks = case accu_weather_key {

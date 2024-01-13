@@ -26,7 +26,6 @@ pub fn try_await(p, to_error, k) {
 pub fn five_day_forecast(api_key, location_key) {
   let r =
     request.new()
-    |> request.set_scheme(http.Http)
     |> request.set_host("dataservice.accuweather.com")
     |> request.set_path(
       string.concat(["/forecasts/v1/daily/5day/", location_key]),
