@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/option.{type Option, None}
 import gleam/javascript/promise
 import lustre/effect
 import old_plinth/javascript/promisex
@@ -15,6 +16,7 @@ pub type State {
     now: Date,
     accu_weather: Result(String, Nil),
     forecast: List(daily_forecast.DailyForecast),
+    timer: Option(Int),
   )
 }
 
@@ -23,7 +25,7 @@ pub fn init(_) {
   // let accu_weather_key = storage.get_item(s, "ACCU_WEATHER_KEY")
   // Committed to source deliberatly I will rely on rate limiting and mint a new one when needed
   let accu_weather_key = Ok("IU5BBrAzQkxuDQxXrzRDwgE1j8TguZco")
-  let state = State(date.now(), accu_weather_key, [])
+  let state = State(date.now(), accu_weather_key, [], None)
 
   let tasks = case accu_weather_key {
     Error(Nil) -> []
