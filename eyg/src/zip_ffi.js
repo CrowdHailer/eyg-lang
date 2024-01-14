@@ -3,8 +3,8 @@ import AdmZip from "adm-zip";
 
 export function zip(items) {
   const zip = new AdmZip();
-  items.forEach(([file, content]) => {
-    zip.addFile(file, content);
+  items.forEach(([file, bitArray]) => {
+    zip.addFile(file, bitArray.buffer);
   });
   let buffer = zip.toBuffer();
   return buffer;

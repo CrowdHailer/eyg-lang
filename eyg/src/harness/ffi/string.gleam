@@ -1,3 +1,4 @@
+import gleam/bit_array
 import gleam/list
 import gleam/string
 import eyg/analysis/typ as t
@@ -147,4 +148,15 @@ pub fn do_replace(in, from, to, rev, env, k) {
   use to <- cast.require(cast.string(to), rev, env, k)
 
   r.prim(r.Value(r.Str(string.replace(in, from, to))), rev, env, k)
+}
+
+pub fn to_binary() {
+  let type_ = t.Fun(t.Str, t.Open(0), t.Binary)
+  #(type_, r.Arity1(do_to_binary))
+}
+
+pub fn do_to_binary(in, rev, env, k) {
+  use in <- cast.require(cast.string(in), rev, env, k)
+
+  r.prim(r.Value(r.Binary(bit_array.from_string(in))), rev, env, k)
 }

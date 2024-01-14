@@ -293,10 +293,10 @@ pub fn file_read() {
       let rev = []
 
       use file <- cast.require(cast.string(file), rev, env, k)
-      case simplifile.read(file) {
-        Ok(content) -> r.prim(r.Value(r.ok(r.Str(content))), rev, env, k)
-        Error(_) -> {
-          io.debug(#("failed to read", file))
+      case simplifile.read_bits(file) {
+        Ok(content) -> r.prim(r.Value(r.ok(r.Binary(content))), rev, env, k)
+        Error(reason) -> {
+          io.debug(#("failed to read", file, reason))
           r.prim(r.Value(r.error(r.unit)), rev, env, k)
         }
       }
@@ -406,7 +406,8 @@ pub fn query_db() {
 pub fn zip() {
   #(
     t.LinkedList(
-      t.Record(t.Extend("name", t.Str, t.Extend("content", t.Str, t.Open(-1)))),
+      t.Record(t.Extend("name", t.Str, t.Extend("content", t.Binary, t.Open(-1)),
+      )),
     ),
     t.unit,
     fn(query, k) {
@@ -418,7 +419,7 @@ pub fn zip() {
           use name <- result.then(r.field(value, "name"))
           let assert r.Str(name) = name
           use content <- result.then(r.field(value, "content"))
-          let assert r.Str(content) = content
+          let assert r.Binary(content) = content
 
           Ok(#(name, content))
         })
@@ -431,4 +432,4 @@ pub fn zip() {
 }
 
 @external(javascript, "../zip_ffi.js", "zip")
-fn do_zip(items: Array(#(String, String))) -> String
+fn do_zip(items: Array(#(String, BitArray))) -> String

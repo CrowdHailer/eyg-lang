@@ -134,6 +134,7 @@ pub fn lib() {
   |> extend("string_ends_with", string.ends_with())
   |> extend("string_length", string.length())
   |> extend("pop_grapheme", string.pop_grapheme())
+  |> extend("string_to_binary", string.to_binary())
   // list
   |> extend("list_pop", linked_list.pop())
   |> extend("list_fold", linked_list.fold())
