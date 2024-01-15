@@ -109,11 +109,11 @@ pub fn rasing_effect_test() {
       e.Apply(e.Perform("Foo"), e.Integer(1)),
       e.Apply(e.Perform("Bar"), e.Variable("a")),
     )
-  let assert r.Effect("Foo", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Foo", lifted), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Integer(1))
-  let assert r.Effect("Bar", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Bar", lifted), rev, env, k) =
     r.loop(r.V(r.Value(r.Str("reply"))), rev, env, k)
   lifted
   |> should.equal(r.Str("reply"))
@@ -134,7 +134,7 @@ pub fn effect_in_case_test() {
   |> should.equal(r.Value(r.Str("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Str("nope")))
-  let assert r.Effect("Raise", lifted, _rev, _env, _k) =
+  let assert r.Abort(r.UnhandledEffect("Raise", lifted), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Str("nope"))
@@ -166,11 +166,11 @@ pub fn effect_in_builtin_test() {
       e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Str("initial")),
       reducer,
     )
-  let assert r.Effect("Foo", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Foo", lifted), rev, env, k) =
     r.eval(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Str("fizz"))
-  let assert r.Effect("Foo", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Foo", lifted), rev, env, k) =
     r.loop(r.V(r.Value(r.unit)), rev, env, k)
   lifted
   |> should.equal(r.Str("buzz"))
@@ -259,7 +259,7 @@ pub fn ignore_other_effect_test() {
     )
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
-  let assert r.Effect("Foo", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Foo", lifted), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Record([]))
@@ -271,7 +271,7 @@ pub fn ignore_other_effect_test() {
   // SHALLOW
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
-  let assert r.Effect("Foo", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Foo", lifted), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Record([]))
@@ -291,12 +291,12 @@ pub fn multiple_effects_test() {
       ),
     )
 
-  let assert r.Effect("Choose", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Choose", lifted), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Record([]))
 
-  let assert r.Effect("Choose", lifted, rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Choose", lifted), rev, env, k) =
     r.loop(r.V(r.Value(r.Str("True"))), rev, env, k)
   lifted
   |> should.equal(r.Record([]))
@@ -394,7 +394,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(handler, e.Lambda("_", e.Str("Original"))),
       e.Apply(e.Perform("Log"), e.Str("outer")),
     )
-  let assert r.Effect("Log", r.Str("outer"), rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Log", r.Str("outer")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
@@ -407,7 +407,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(handler, e.Lambda("_", e.Str("Original"))),
       e.Apply(e.Perform("Log"), e.Str("outer")),
     )
-  let assert r.Effect("Log", r.Str("outer"), rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Log", r.Str("outer")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
@@ -431,7 +431,7 @@ pub fn handler_is_applied_after_other_effects_test() {
     )
 
   let source = e.Apply(handler, exec)
-  let assert r.Effect("Log", r.Str("my log"), rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Log", r.Str("my log")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
@@ -454,7 +454,7 @@ pub fn handler_is_applied_after_other_effects_test() {
     )
 
   let source = e.Apply(handler, exec)
-  let assert r.Effect("Log", r.Str("my log"), rev, env, k) =
+  let assert r.Abort(r.UnhandledEffect("Log", r.Str("my log")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
@@ -473,6 +473,7 @@ pub fn async_test() {
     e.Lambda("_", e.Apply(e.Perform("Async"), e.Lambda("_", e.Str("later"))))
   let assert Ok(r.Promise(p)) =
     r.run(source, stdlib.env(), r.unit, handlers().1)
+  // |> io.debug
   use value <- promise.map(p)
   value
   |> should.equal(r.Str("later"))

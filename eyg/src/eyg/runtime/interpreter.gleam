@@ -21,13 +21,10 @@ pub type Failure {
 
 pub fn run(source, env, term, extrinsic) {
   case
-    handle(
-      eval(
-        source,
-        env,
-        Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
-      ),
-      extrinsic,
+    eval(
+      source,
+      env,
+      Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
     )
   {
     // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
@@ -35,8 +32,6 @@ pub fn run(source, env, term, extrinsic) {
     // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> Ok(term)
     Abort(failure, path, _env, _k) -> Error(#(failure, path))
-    Effect(label, lifted, rev, _env, _k) ->
-      Error(#(UnhandledEffect(label, lifted), rev))
     // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
     // other runtime errors return error, maybe this should be the same
     Async(_, _, _, _) ->
@@ -73,8 +68,6 @@ pub fn flatten_promise(ret, extrinsic) {
     Value(term) -> promise.resolve(Ok(term))
     Abort(failure, path, env, _k) ->
       promise.resolve(Error(#(failure, path, env)))
-    Effect(label, lifted, rev, env, _k) ->
-      promise.resolve(Error(#(UnhandledEffect(label, lifted), rev, env)))
     Async(p, rev, env, k) ->
       promise.await(p, fn(return) {
         let next = loop(V(Value(return)), rev, env, k)
@@ -85,18 +78,6 @@ pub fn flatten_promise(ret, extrinsic) {
 
 pub fn handle(return, extrinsic) {
   case return {
-    // Don't have stateful handlers because extrinsic handlers can hold references to
-    // mutable state db files etc
-    Effect(label, term, rev, env, k) ->
-      case dict.get(extrinsic, label) {
-        Ok(handler) -> {
-          // handler only gets env in captured fn's
-          let #(c, rev, e, k) = handler(term, k)
-          let return = loop(c, rev, e, k)
-          handle(return, extrinsic)
-        }
-        Error(Nil) -> Abort(UnhandledEffect(label, term), rev, env, k)
-      }
     Value(term) -> Value(term)
     Abort(failure, rev, env, k) -> Abort(failure, rev, env, k)
     Async(promise, rev, env, k) -> Async(promise, rev, env, k)
@@ -248,13 +229,6 @@ pub type Return {
   // I could remove Value and always return a result from run, but that would make it not easy to check correct Effects in tests.
   Value(term: Term)
 
-  Effect(
-    label: String,
-    lifted: Term,
-    rev: List(Int),
-    env: Env,
-    continuation: Stack,
-  )
   Abort(reason: Failure, rev: List(Int), env: Env, k: Stack)
   Async(promise: JSPromise(Term), rev: List(Int), env: Env, k: Stack)
 }
@@ -512,21 +486,6 @@ fn match(label, matched, otherwise, value, rev, env, k) {
   }
 }
 
-fn do_pop(k, label, popped) {
-  case k {
-    Stack(Delimit(l, h, rev, e, shallow), rest) if l == label ->
-      Ok(#(popped, h, rev, e, rest, shallow))
-    Stack(kontinue, rest) -> do_pop(rest, label, Stack(kontinue, popped))
-    // TODO look up extrinsic
-    WillRenameAsDone(_) -> Error(Nil)
-  }
-}
-
-fn pop(k, label) {
-  // TODO does this need extrinsic
-  do_pop(k, label, WillRenameAsDone(dict.new()))
-}
-
 fn move(delimited, acc) {
   case delimited {
     WillRenameAsDone(_) -> acc
@@ -534,28 +493,45 @@ fn move(delimited, acc) {
   }
 }
 
-pub fn perform(label, arg, i_rev, i_env, k: Stack) {
-  case pop(k, label) {
-    Ok(#(popped, h, rev, e, k, shallow)) -> {
-      let resume = case shallow {
-        True -> Defunc(Resume(popped, i_rev, i_env), [])
-        False -> {
-          let popped = Stack(Delimit(label, h, rev, e, False), popped)
-          Defunc(Resume(popped, i_rev, i_env), [])
-        }
-      }
-      let k = Stack(CallWith(arg, rev, e), Stack(CallWith(resume, rev, e), k))
+fn do_perform(label, arg, i_rev, i_env, k, acc) {
+  case k {
+    Stack(Delimit(l, h, rev, e, True), rest) if l == label -> {
+      let resume = Defunc(Resume(acc, i_rev, i_env), [])
+      let k =
+        Stack(CallWith(arg, rev, e), Stack(CallWith(resume, rev, e), rest))
       #(V(Value(h)), rev, e, k)
     }
-    // TODO move grabbing path and env to Halt
-    // TODO lookup extrinsic
-    Error(Nil) -> #(
-      V(Effect(label, arg, i_rev, i_env, k)),
-      i_rev,
-      i_env,
-      WillRenameAsDone(dict.new()),
-    )
+    Stack(Delimit(l, h, rev, e, False), rest) if l == label -> {
+      let acc = Stack(Delimit(label, h, rev, e, False), acc)
+      let resume = Defunc(Resume(acc, i_rev, i_env), [])
+      let k =
+        Stack(CallWith(arg, rev, e), Stack(CallWith(resume, rev, e), rest))
+      #(V(Value(h)), rev, e, k)
+    }
+    Stack(kontinue, rest) ->
+      do_perform(label, arg, i_rev, i_env, rest, Stack(kontinue, acc))
+    WillRenameAsDone(extrinsic) -> {
+      case dict.get(extrinsic, label) {
+        Ok(handler) -> handler(arg, k)
+        Error(Nil) -> #(
+          V(Abort(
+            UnhandledEffect(label, arg),
+            i_rev,
+            i_env,
+            // inefficient to move back in error case
+            move(acc, WillRenameAsDone(dict.new())),
+          )),
+          i_rev,
+          i_env,
+          k,
+        )
+      }
+    }
   }
+}
+
+pub fn perform(label, arg, i_rev, i_env, k: Stack) {
+  do_perform(label, arg, i_rev, i_env, k, WillRenameAsDone(dict.new()))
 }
 
 // rename handle and move the handle for runner with handles out
