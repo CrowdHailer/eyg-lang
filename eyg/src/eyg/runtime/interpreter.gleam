@@ -20,16 +20,18 @@ pub fn eval_async(source, env, k) {
   flatten_promise(eval(source, env, k))
 }
 
+// TODO stop being public
 pub fn flatten_promise(ret) {
   case ret {
     Value(term) -> promise.resolve(Ok(term))
-    Abort(failure, path, env, _k) ->
-      promise.resolve(Error(#(failure, path, env)))
-    Async(p, rev, env, k) ->
+    Abort(UnhandledEffect("Await", Promise(p)), rev, env, k) -> {
       promise.await(p, fn(return) {
         let next = loop(V(Value(return)), rev, env, k)
         flatten_promise(next)
       })
+    }
+    Abort(failure, path, env, _k) ->
+      promise.resolve(Error(#(failure, path, env)))
   }
 }
 
@@ -171,15 +173,8 @@ pub fn field(term, field) {
 }
 
 pub type Return {
-  // It's messy to have Value and Cont, but I don't know how to do this in a tail recursive way
-  // This problem will hopefully go away as I build a more sophisticated interpreter.
-  // Value is needed for returning from eval/run
-  // Cont is needed to break the stack (with loop).
-  // I could remove Value and always return a result from run, but that would make it not easy to check correct Effects in tests.
   Value(term: Term)
-
   Abort(reason: Failure, rev: List(Int), env: Env, k: Stack)
-  Async(promise: JSPromise(Term), rev: List(Int), env: Env, k: Stack)
 }
 
 pub fn eval_call(f, arg, env, k: Stack) {

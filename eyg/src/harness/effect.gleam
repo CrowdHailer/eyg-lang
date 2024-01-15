@@ -237,7 +237,7 @@ pub fn await() {
       let rev = []
       use js_promise <- cast.require(cast.promise(promise), rev, env, k)
       r.prim(
-        r.Async(js_promise, rev, env, k),
+        r.Abort(r.UnhandledEffect("Await", r.Promise(js_promise)), rev, env, k),
         rev,
         env,
         r.WillRenameAsDone(dict.new()),

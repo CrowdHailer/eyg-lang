@@ -1,5 +1,4 @@
 import gleam/dict
-import gleam/option.{None}
 import eygir/expression as e
 import eyg/runtime/interpreter as r
 import harness/stdlib

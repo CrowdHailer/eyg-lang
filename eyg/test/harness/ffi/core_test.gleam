@@ -1,5 +1,4 @@
 import gleam/dict
-import gleam/option.{None}
 import eyg/analysis/typ as t
 import eyg/analysis/inference
 import eyg/runtime/interpreter as r

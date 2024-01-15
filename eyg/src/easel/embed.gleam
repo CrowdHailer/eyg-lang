@@ -895,11 +895,10 @@ fn run(state: Embed) {
     |> dict.insert("Log", effect.debug_logger().2)
   let ret = r.eval(source, env, r.WillRenameAsDone(handlers))
   case ret {
-    r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
-    r.Value(term) -> #(term_to_string(term), [])
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
-    r.Async(_, _, _, _) -> {
+    // could allow await effect by assuming is in async context
+    r.Abort(r.UnhandledEffect("Await", r.Promise(_p)), _, _, _) -> {
       let p =
         promise.map(r.flatten_promise(ret), fn(final) {
           let message = case final {
@@ -914,7 +913,8 @@ fn run(state: Embed) {
 
       #("Running", [p])
     }
-    _ -> panic("this should be tackled better in the run code")
+    r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
+    r.Value(term) -> #(term_to_string(term), [])
   }
 }
 
