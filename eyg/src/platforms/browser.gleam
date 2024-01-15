@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/io
 import gleam/list
 import gleam/option.{None}
@@ -46,7 +47,7 @@ pub fn do_run(raw) -> Nil {
     Ok(continuation) -> {
       // io.debug(continuation)
       let env = r.Env(scope: [], builtins: stdlib.lib().1)
-      // let k = Some(r.Kont(r.CallWith(r.Record([]), [], env), None))
+      // let k = Some(r.Stack(r.CallWith(r.Record([]), [], env), None))
       promise.map(
         r.run_async(continuation, env, r.Record([]), handlers().1),
         io.debug,
@@ -163,7 +164,11 @@ pub fn async() {
       let promise =
         promisex.wait(0)
         |> promise.await(fn(_: Nil) {
-          let ret = r.handle(r.eval_call(exec, r.unit, env, None), extrinsic)
+          let ret =
+            r.handle(
+              r.eval_call(exec, r.unit, env, r.WillRenameAsDone(extrinsic)),
+              extrinsic,
+            )
           r.flatten_promise(ret, extrinsic)
         })
         |> promise.map(fn(result) {
@@ -213,7 +218,11 @@ fn listen() {
       let #(_, extrinsic) = handlers()
 
       window.add_event_listener(event, fn(_) {
-        let ret = r.handle(r.eval_call(handle, r.unit, env, None), extrinsic)
+        let ret =
+          r.handle(
+            r.eval_call(handle, r.unit, env, r.WillRenameAsDone(extrinsic)),
+            extrinsic,
+          )
         io.debug(ret)
         Nil
       })
@@ -292,9 +301,14 @@ fn on_change() {
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {
-  let assert r.Value(arg) = r.eval(arg, stdlib.env(), None)
+  let assert r.Value(arg) =
+    r.eval(arg, stdlib.env(), r.WillRenameAsDone(dict.new()))
   // pass as general term to program arg or fn
-  let ret = r.handle(r.eval_call(handle, arg, builtins, None), extrinsic)
+  let ret =
+    r.handle(
+      r.eval_call(handle, arg, builtins, r.WillRenameAsDone(extrinsic)),
+      extrinsic,
+    )
   case ret {
     r.Value(_) -> Nil
     _ -> {

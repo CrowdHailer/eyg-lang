@@ -1,5 +1,4 @@
 import gleam/dict
-import gleam/option.{None}
 import gleam/javascript/promise
 import gleeunit/should
 import eygir/expression as e
@@ -11,7 +10,11 @@ import platforms/browser
 
 pub fn variable_test() {
   let source = e.Variable("x")
-  r.eval(source, r.Env([#("x", r.Str("assigned"))], dict.new()), None)
+  r.eval(
+    source,
+    r.Env([#("x", r.Str("assigned"))], dict.new()),
+    r.WillRenameAsDone(dict.new()),
+  )
   |> should.equal(r.Value(r.Str("assigned")))
 }
 
@@ -20,13 +23,13 @@ pub fn function_test() {
   let source = e.Lambda("x", body)
   let scope = [#("foo", r.Str("assigned"))]
   let env = r.Env(scope, dict.new())
-  r.eval(source, env, None)
+  r.eval(source, env, r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Function("x", body, scope, [])))
 }
 
 pub fn function_application_test() {
   let source = e.Apply(e.Lambda("x", e.Str("body")), e.Integer(0))
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Str("body")))
 
   let source =
@@ -35,33 +38,33 @@ pub fn function_application_test() {
       e.Lambda("x", e.Variable("x")),
       e.Apply(e.Variable("id"), e.Integer(0)),
     )
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Integer(0)))
 }
 
 pub fn builtin_application_test() {
   let source = e.Apply(e.Builtin("string_uppercase"), e.Str("hello"))
 
-  r.eval(source, stdlib.env(), None)
+  r.eval(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Str("HELLO")))
 }
 
 // primitive
 pub fn create_a_binary_test() {
   let source = e.Str("hello")
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Str("hello")))
 }
 
 pub fn create_an_integer_test() {
   let source = e.Integer(5)
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Integer(5)))
 }
 
 pub fn record_creation_test() {
   let source = e.Empty
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Record([])))
 
   let source =
@@ -69,9 +72,17 @@ pub fn record_creation_test() {
       e.Apply(e.Extend("foo"), e.Str("FOO")),
       e.Apply(e.Apply(e.Extend("bar"), e.Integer(0)), e.Empty),
     )
-  r.eval(e.Apply(e.Select("foo"), source), env.empty(), None)
+  r.eval(
+    e.Apply(e.Select("foo"), source),
+    env.empty(),
+    r.WillRenameAsDone(dict.new()),
+  )
   |> should.equal(r.Value(r.Str("FOO")))
-  r.eval(e.Apply(e.Select("bar"), source), env.empty(), None)
+  r.eval(
+    e.Apply(e.Select("bar"), source),
+    env.empty(),
+    r.WillRenameAsDone(dict.new()),
+  )
   |> should.equal(r.Value(r.Integer(0)))
 }
 
@@ -83,11 +94,11 @@ pub fn case_test() {
     )
 
   let source = e.Apply(switch, e.Apply(e.Tag("Some"), e.Str("foo")))
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Str("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("None"), e.Empty))
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Str("else")))
 }
 
@@ -99,7 +110,7 @@ pub fn rasing_effect_test() {
       e.Apply(e.Perform("Bar"), e.Variable("a")),
     )
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Integer(1))
   let assert r.Effect("Bar", lifted, rev, env, k) =
@@ -119,12 +130,12 @@ pub fn effect_in_case_test() {
     )
 
   let source = e.Apply(switch, e.Apply(e.Tag("Ok"), e.Str("foo")))
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Str("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Str("nope")))
   let assert r.Effect("Raise", lifted, _rev, _env, _k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Str("nope"))
 }
@@ -156,7 +167,7 @@ pub fn effect_in_builtin_test() {
       reducer,
     )
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, stdlib.env(), None)
+    r.eval(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Str("fizz"))
   let assert r.Effect("Foo", lifted, rev, env, k) =
@@ -173,13 +184,13 @@ pub fn handler_no_effect_test() {
   let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Str("mystring")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Tagged("Ok", r.Str("mystring"))))
 
   // shallow
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Tagged("Ok", r.Str("mystring"))))
 }
 
@@ -189,12 +200,12 @@ pub fn handle_early_return_effect_test() {
   let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Str("Bad thing")))
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Tagged("Error", r.Str("Bad thing"))))
 
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Tagged("Error", r.Str("Bad thing"))))
 }
 
@@ -218,7 +229,7 @@ pub fn handle_resume_test() {
     )
   let source = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
 
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(
     r.Value(
       r.Record([#("value", r.Integer(100)), #("log", r.Str("my message"))]),
@@ -227,7 +238,7 @@ pub fn handle_resume_test() {
 
   let source = e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
 
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   |> should.equal(
     r.Value(
       r.Record([#("value", r.Integer(100)), #("log", r.Str("my message"))]),
@@ -249,7 +260,7 @@ pub fn ignore_other_effect_test() {
   let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
 
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Record([]))
   // calling k should fall throu
@@ -261,7 +272,7 @@ pub fn ignore_other_effect_test() {
   let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
 
   let assert r.Effect("Foo", lifted, rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Record([]))
   // calling k should fall throu
@@ -281,7 +292,7 @@ pub fn multiple_effects_test() {
     )
 
   let assert r.Effect("Choose", lifted, rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   lifted
   |> should.equal(r.Record([]))
 
@@ -326,7 +337,7 @@ pub fn multiple_resumptions_test() {
       ),
     )
   let source = e.Apply(handle, raise)
-  r.eval(source, env.empty(), None)
+  r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   // Not sure this is the correct value but it checks regressions
   |> should.equal(
     r.Value(
@@ -384,7 +395,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(e.Perform("Log"), e.Str("outer")),
     )
   let assert r.Effect("Log", r.Str("outer"), rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
 
@@ -397,7 +408,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(e.Perform("Log"), e.Str("outer")),
     )
   let assert r.Effect("Log", r.Str("outer"), rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
 }
@@ -421,7 +432,7 @@ pub fn handler_is_applied_after_other_effects_test() {
 
   let source = e.Apply(handler, exec)
   let assert r.Effect("Log", r.Str("my log"), rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Integer(-1)))
@@ -444,7 +455,7 @@ pub fn handler_is_applied_after_other_effects_test() {
 
   let source = e.Apply(handler, exec)
   let assert r.Effect("Log", r.Str("my log"), rev, env, k) =
-    r.eval(source, env.empty(), None)
+    r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
 
   r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
   |> should.equal(r.Value(r.Integer(-1)))

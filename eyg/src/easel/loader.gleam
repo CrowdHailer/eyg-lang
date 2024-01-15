@@ -46,7 +46,7 @@ fn applet(root) {
       {
         let env = stdlib.env()
         let rev = []
-        let k = None
+        let k = r.WillRenameAsDone(dict.new())
         let assert r.Value(term) = r.eval(source, env, k)
         use func <- cast.require(cast.field("func", cast.any, term), rev, env, k,
         )
@@ -68,7 +68,11 @@ fn applet(root) {
         let state = javascript.make_reference(arg)
         let render = fn() {
           let current = javascript.dereference(state)
-          let result = r.handle(r.eval_call(func, current, env, None), handlers)
+          let result =
+            r.handle(
+              r.eval_call(func, current, env, r.WillRenameAsDone(handlers)),
+              handlers,
+            )
           let _ = case result {
             r.Value(r.Str(page)) -> document.set_html(root, page)
             _ -> {
@@ -87,7 +91,12 @@ fn applet(root) {
                   let current = javascript.dereference(state)
                   // io.debug(javascript.dereference(actions))
                   let assert r.Value(next) =
-                    r.eval_call(code, current, env, None)
+                    r.eval_call(
+                      code,
+                      current,
+                      env,
+                      r.WillRenameAsDone(dict.new()),
+                    )
                   javascript.set_reference(state, next)
                   javascript.set_reference(actions, [])
                   render()

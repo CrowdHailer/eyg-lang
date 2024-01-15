@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/dynamic
 import gleam/io
 import gleam/int
@@ -51,19 +52,25 @@ fn handlers() {
 pub fn run(source) {
   let env = r.Env(scope: [], builtins: stdlib.lib().1)
   let k_parser =
-    Some(r.Kont(
+    r.Stack(
       r.Apply(r.Defunc(r.Select("lisp"), []), [], env),
-      Some(r.Kont(r.Apply(r.Defunc(r.Select("prompt"), []), [], env), None)),
-    ))
+      r.Stack(
+        r.Apply(r.Defunc(r.Select("prompt"), []), [], env),
+        r.WillRenameAsDone(handlers().1),
+      ),
+    )
   let assert r.Value(parser) =
     r.handle(r.eval(source, env, k_parser), handlers().1)
   let parser = fn(prompt) {
     fn(raw) {
       let k =
-        Some(r.Kont(
+        r.Stack(
           r.CallWith(r.Str(prompt), [], env),
-          Some(r.Kont(r.CallWith(r.Str(raw), [], env), None)),
-        ))
+          r.Stack(
+            r.CallWith(r.Str(raw), [], env),
+            r.WillRenameAsDone(dict.new()),
+          ),
+        )
       let assert r.Value(r.Tagged(tag, value)) =
         r.loop(r.V(r.Value(parser)), [], env, k)
       case tag {
@@ -81,10 +88,10 @@ pub fn run(source) {
   }
 
   let k =
-    Some(r.Kont(
+    r.Stack(
       r.Apply(r.Defunc(r.Select("exec"), []), [], env),
-      Some(r.Kont(r.CallWith(r.Record([]), [], env), None)),
-    ))
+      r.Stack(r.CallWith(r.Record([]), [], env), r.WillRenameAsDone(dict.new())),
+    )
   let assert r.Abort(r.UnhandledEffect("Prompt", prompt), _rev, env, k) =
     r.handle(r.eval(source, env, k), handlers().1)
 

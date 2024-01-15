@@ -61,17 +61,17 @@ pub fn do_fold(elements, state, f, rev, env, k) {
         element,
         rev,
         env,
-        Some(r.Kont(
+        r.Stack(
           r.CallWith(state, rev, env),
-          Some(r.Kont(
+          r.Stack(
             r.Apply(
               r.Defunc(r.Builtin("list_fold"), [r.LinkedList(rest)]),
               rev,
               env,
             ),
-            Some(r.Kont(r.CallWith(f, rev, env), k)),
-          )),
-        )),
+            r.Stack(r.CallWith(f, rev, env), k),
+          ),
+        ),
       )
     }
   }

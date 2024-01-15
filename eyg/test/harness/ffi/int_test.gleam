@@ -1,5 +1,4 @@
 import gleam/dict
-import gleam/option.{None}
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
 import eyg/analysis/inference
@@ -15,6 +14,6 @@ pub fn add_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), None)
+  r.eval(prog, stdlib.env(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Integer(3)))
 }

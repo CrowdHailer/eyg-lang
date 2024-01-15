@@ -348,7 +348,7 @@ pub fn snippet(root) {
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
       let assert #(r.Value(r.Function(_, source, _e2, rev)), env) =
-        r.resumable(source, stdlib.env(), None)
+        r.resumable(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
       let assert Ok(tenv) = dict.get(envs, rev)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
@@ -388,7 +388,7 @@ pub fn init(json) {
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
   let #(env, source, sub, next, tenv) = case
-    r.resumable(source, stdlib.env(), None)
+    r.resumable(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
   {
     #(r.Value(r.Function(_, source, _, rev)), env) -> {
       let tenv = case dict.get(envs, rev) {
@@ -893,7 +893,8 @@ fn run(state: Embed) {
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)
-  let ret = r.handle(r.eval(source, env, None), handlers)
+  let ret =
+    r.handle(r.eval(source, env, r.WillRenameAsDone(handlers)), handlers)
   case ret {
     r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
     r.Value(term) -> #(term_to_string(term), [])

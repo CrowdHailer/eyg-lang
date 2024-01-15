@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/list
 import gleam/javascript/map
 import gleam/option.{None, Some}
@@ -20,7 +21,8 @@ fn handle_click(event, states) {
   use key <- result.then(element.get_attribute(target, "on:click"))
   use #(action, env) <- result.then(map.get(states, container))
   // TODO get attribute and multiple sources
-  let k = Some(r.Kont(r.CallWith(r.Str(key), [], env), None))
+  let k =
+    r.Stack(r.CallWith(r.Str(key), [], env), r.WillRenameAsDone(dict.new()))
   let rev = []
   let #(answer, env) = r.loop_till(r.V(action), rev, env, k)
   // console.log(answer)
@@ -54,7 +56,8 @@ pub fn run() {
         |> result.map_error(fn(_) { Nil }),
       )
       let env = stdlib.env()
-      let #(action, env) = r.resumable(source, env, None)
+      let #(action, env) =
+        r.resumable(source, env, r.WillRenameAsDone(dict.new()))
       Ok(#(container, #(action, env)))
     })
     |> list.fold(map.new(), fn(map, item) {
@@ -90,7 +93,7 @@ pub fn run() {
   //           Ok(target) ->
   //             case element.closest(target, "[r\\:container]") {
   //               Ok(container) -> {
-  //                 let k = Some(r.Kont(r.CallWith(r.Str("0"), [], env), None))
+  //                 let k = Some(r.Stack(r.CallWith(r.Str("0"), [], env), None))
   //                 let c = javascript.dereference(ref)
   //                 let #(answer, _) = r.loop_till(r.V(c), rev, env, k)
   //                 // console.log(answer)
@@ -148,7 +151,7 @@ pub fn run() {
   //                 // env needs builtins
   //                 let env = stdlib.env()
   //                 let rev = []
-  //                 let k = Some(r.Kont(r.CallWith(r.Str("0"), [], env), None))
+  //                 let k = Some(r.Stack(r.CallWith(r.Str("0"), [], env), None))
   //                 let answer = r.eval(source, env, k)
   //                 // console.log(answer)
   //                 let assert r.Value(term) = answer

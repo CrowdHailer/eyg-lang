@@ -36,7 +36,17 @@ pub fn serve() {
       let id =
         do_serve(port, fn(raw) {
           let req = to_request(raw)
-
+          let extrinsic =
+            {
+              effect.init()
+              |> effect.extend("Log", effect.debug_logger())
+              |> effect.extend("HTTP", effect.http())
+              |> effect.extend("File_Write", effect.file_write())
+              |> effect.extend("Await", effect.await())
+              |> effect.extend("Wait", effect.wait())
+              |> effect.extend("LoadDB", effect.load_db())
+              |> effect.extend("QueryDB", effect.query_db())
+            }.1
           promise.map(
             r.flatten_promise(
               r.handle(
@@ -44,29 +54,14 @@ pub fn serve() {
                   r.V(r.Value(handler)),
                   [],
                   env,
-                  Some(r.Kont(r.CallWith(req, rev, env), None)),
+                  r.Stack(
+                    r.CallWith(req, rev, env),
+                    r.WillRenameAsDone(extrinsic),
+                  ),
                 ),
-                {
-                  effect.init()
-                  |> effect.extend("Log", effect.debug_logger())
-                  |> effect.extend("HTTP", effect.http())
-                  |> effect.extend("File_Write", effect.file_write())
-                  |> effect.extend("Await", effect.await())
-                  |> effect.extend("Wait", effect.wait())
-                  |> effect.extend("LoadDB", effect.load_db())
-                  |> effect.extend("QueryDB", effect.query_db())
-                }.1,
+                extrinsic,
               ),
-              {
-                effect.init()
-                |> effect.extend("Log", effect.debug_logger())
-                |> effect.extend("HTTP", effect.http())
-                |> effect.extend("File_Write", effect.file_write())
-                |> effect.extend("Await", effect.await())
-                |> effect.extend("Wait", effect.wait())
-                |> effect.extend("LoadDB", effect.load_db())
-                |> effect.extend("QueryDB", effect.query_db())
-              }.1,
+              extrinsic,
             ),
             fn(resp) {
               case resp {
@@ -124,21 +119,24 @@ pub fn receive() {
       let p =
         do_receive(port, fn(raw) {
           let req = to_request(raw)
+          let extrinsic =
+            {
+              effect.init()
+              |> effect.extend("Log", effect.debug_logger())
+              |> effect.extend("HTTP", effect.http())
+              |> effect.extend("Await", effect.await())
+              |> effect.extend("Wait", effect.wait())
+            }.1
           let assert r.Value(reply) =
             r.handle(
               r.loop(
                 r.V(r.Value(handler)),
                 [],
                 env,
-                Some(r.Kont(r.CallWith(req, rev, env), None)),
+                r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic),
+                ),
               ),
-              {
-                effect.init()
-                |> effect.extend("Log", effect.debug_logger())
-                |> effect.extend("HTTP", effect.http())
-                |> effect.extend("Await", effect.await())
-                |> effect.extend("Wait", effect.wait())
-              }.1,
+              extrinsic,
             )
           let assert Ok(resp) = r.field(reply, "response")
           let assert Ok(data) = r.field(reply, "data")

@@ -1,6 +1,6 @@
 import gleam/int
 import gleam/list
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import eygir/expression as e
@@ -22,7 +22,11 @@ pub type Failure {
 pub fn run(source, env, term, extrinsic) {
   case
     handle(
-      eval(source, env, Some(Kont(CallWith(term, [], env), None))),
+      eval(
+        source,
+        env,
+        Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
+      ),
       extrinsic,
     )
   {
@@ -45,7 +49,11 @@ pub fn run(source, env, term, extrinsic) {
 pub fn run_async(source, env, term, extrinsic) {
   let ret =
     handle(
-      eval(source, env, Some(Kont(CallWith(term, [], env), None))),
+      eval(
+        source,
+        env,
+        Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
+      ),
       extrinsic,
     )
   flatten_promise(ret, extrinsic)
@@ -53,7 +61,7 @@ pub fn run_async(source, env, term, extrinsic) {
 
 // not really eval as includes handlers
 pub fn eval_async(source, env, extrinsic) {
-  let ret = handle(eval(source, env, None), extrinsic)
+  let ret = handle(eval(source, env, WillRenameAsDone(extrinsic)), extrinsic)
   flatten_promise(ret, extrinsic)
 }
 
@@ -122,7 +130,7 @@ pub type Switch {
   NoCases
   Perform(String)
   Handle(String)
-  Resume(Option(Kont), List(Int), Env)
+  Resume(Stack, List(Int), Env)
   Shallow(String)
   Builtin(String)
 }
@@ -130,7 +138,7 @@ pub type Switch {
 pub type Path =
   List(Int)
 
-// Keep Option(Kont) outside
+// Keep Stack) outsie
 pub type Kontinue {
   // arg path then call path
   Arg(e.Expression, Path, Path, Env)
@@ -140,8 +148,12 @@ pub type Kontinue {
   Delimit(String, Term, Path, Env, Bool)
 }
 
-pub type Kont {
-  Kont(Kontinue, Option(Kont))
+pub type Stack {
+  Stack(Kontinue, Stack)
+  // TODO actually a function
+  WillRenameAsDone(
+    Dict(String, fn(Term, Stack) -> #(Control, List(Int), Env, Stack)),
+  )
 }
 
 pub const unit = Record([])
@@ -241,19 +253,19 @@ pub type Return {
     lifted: Term,
     rev: List(Int),
     env: Env,
-    continuation: Option(Kont),
+    continuation: Stack,
   )
-  Abort(reason: Failure, rev: List(Int), env: Env, k: Option(Kont))
-  Async(promise: JSPromise(Term), rev: List(Int), env: Env, k: Option(Kont))
+  Abort(reason: Failure, rev: List(Int), env: Env, k: Stack)
+  Async(promise: JSPromise(Term), rev: List(Int), env: Env, k: Stack)
 }
 
-pub fn eval_call(f, arg, env, k: Option(Kont)) {
+pub fn eval_call(f, arg, env, k: Stack) {
   // allways produces value even if abort
   let #(c, rev, e, k) = step_call(f, arg, [], env, k)
   loop(c, rev, e, k)
 }
 
-pub fn step_call(f, arg, rev, env: Env, k: Option(Kont)) {
+pub fn step_call(f, arg, rev, env: Env, k: Stack) {
   case f {
     Function(param, body, captured, rev) -> {
       let env = Env(..env, scope: [#(param, arg), ..captured])
@@ -303,12 +315,12 @@ pub fn prim(return, rev, env, k) {
 }
 
 pub type Always =
-  #(Control, List(Int), Env, Option(Kont))
+  #(Control, List(Int), Env, Stack)
 
 pub type Arity {
-  Arity1(fn(Term, List(Int), Env, Option(Kont)) -> Always)
-  Arity2(fn(Term, Term, List(Int), Env, Option(Kont)) -> Always)
-  Arity3(fn(Term, Term, Term, List(Int), Env, Option(Kont)) -> Always)
+  Arity1(fn(Term, List(Int), Env, Stack) -> Always)
+  Arity2(fn(Term, Term, List(Int), Env, Stack) -> Always)
+  Arity3(fn(Term, Term, Term, List(Int), Env, Stack) -> Always)
 }
 
 fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
@@ -335,7 +347,7 @@ pub type Control {
 
 // TODO rename when I fix return
 pub type StepR {
-  K(Control, List(Int), Env, Option(Kont))
+  K(Control, List(Int), Env, Stack)
   Done(Return)
 }
 
@@ -378,7 +390,7 @@ fn step(exp, rev, env: Env, k) {
     E(e.Lambda(param, body)) ->
       K(V(Value(Function(param, body, env.scope, rev))), rev, env, k)
     E(e.Apply(f, arg)) -> {
-      K(E(f), [0, ..rev], env, Some(Kont(Arg(arg, [1, ..rev], rev, env), k)))
+      K(E(f), [0, ..rev], env, Stack(Arg(arg, [1, ..rev], rev, env), k))
     }
 
     E(e.Variable(x)) -> {
@@ -389,12 +401,7 @@ fn step(exp, rev, env: Env, k) {
       K(V(return), rev, env, k)
     }
     E(e.Let(var, value, then)) -> {
-      K(
-        E(value),
-        [0, ..rev],
-        env,
-        Some(Kont(Assign(var, then, [1, ..rev], env), k)),
-      )
+      K(E(value), [0, ..rev], env, Stack(Assign(var, then, [1, ..rev], env), k))
     }
 
     E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
@@ -425,14 +432,14 @@ fn step(exp, rev, env: Env, k) {
 
 fn apply_k(value, k) {
   case k {
-    Some(Kont(switch, k)) ->
+    Stack(switch, k) ->
       case switch {
         Assign(label, then, rev, env) -> {
           let env = Env(..env, scope: [#(label, value), ..env.scope])
           K(E(then), rev, env, k)
         }
         Arg(arg, rev, call_rev, env) ->
-          K(E(arg), rev, env, Some(Kont(Apply(value, call_rev, env), k)))
+          K(E(arg), rev, env, Stack(Apply(value, call_rev, env), k))
         Apply(f, rev, env) -> {
           let #(c, rev, e, k) = step_call(f, value, rev, env, k)
           K(c, rev, e, k)
@@ -445,7 +452,7 @@ fn apply_k(value, k) {
           apply_k(value, k)
         }
       }
-    None -> Done(Value(value))
+    WillRenameAsDone(_) -> Done(Value(value))
   }
 }
 
@@ -507,56 +514,58 @@ fn match(label, matched, otherwise, value, rev, env, k) {
 
 fn do_pop(k, label, popped) {
   case k {
-    Some(k) ->
-      case k {
-        Kont(Delimit(l, h, rev, e, shallow), rest) if l == label ->
-          Ok(#(popped, h, rev, e, rest, shallow))
-        Kont(kontinue, rest) ->
-          do_pop(rest, label, Some(Kont(kontinue, popped)))
-      }
-    None -> Error(Nil)
+    Stack(Delimit(l, h, rev, e, shallow), rest) if l == label ->
+      Ok(#(popped, h, rev, e, rest, shallow))
+    Stack(kontinue, rest) -> do_pop(rest, label, Stack(kontinue, popped))
+    // TODO look up extrinsic
+    WillRenameAsDone(_) -> Error(Nil)
   }
 }
 
 fn pop(k, label) {
-  do_pop(k, label, None)
+  // TODO does this need extrinsic
+  do_pop(k, label, WillRenameAsDone(dict.new()))
 }
 
 fn move(delimited, acc) {
   case delimited {
-    None -> acc
-    Some(Kont(step, rest)) -> move(rest, Some(Kont(step, acc)))
+    WillRenameAsDone(_) -> acc
+    Stack(step, rest) -> move(rest, Stack(step, acc))
   }
 }
 
-pub fn perform(label, arg, i_rev, i_env, k) {
+pub fn perform(label, arg, i_rev, i_env, k: Stack) {
   case pop(k, label) {
     Ok(#(popped, h, rev, e, k, shallow)) -> {
       let resume = case shallow {
         True -> Defunc(Resume(popped, i_rev, i_env), [])
         False -> {
-          let popped = Some(Kont(Delimit(label, h, rev, e, False), popped))
+          let popped = Stack(Delimit(label, h, rev, e, False), popped)
           Defunc(Resume(popped, i_rev, i_env), [])
         }
       }
-      let k =
-        Some(Kont(CallWith(arg, rev, e), Some(Kont(CallWith(resume, rev, e), k)),
-        ))
+      let k = Stack(CallWith(arg, rev, e), Stack(CallWith(resume, rev, e), k))
       #(V(Value(h)), rev, e, k)
     }
     // TODO move grabbing path and env to Halt
-    Error(Nil) -> #(V(Effect(label, arg, i_rev, i_env, k)), i_rev, i_env, None)
+    // TODO lookup extrinsic
+    Error(Nil) -> #(
+      V(Effect(label, arg, i_rev, i_env, k)),
+      i_rev,
+      i_env,
+      WillRenameAsDone(dict.new()),
+    )
   }
 }
 
 // rename handle and move the handle for runner with handles out
 pub fn deep(label, handle, exec, rev, env, k) {
-  let k = Some(Kont(Delimit(label, handle, rev, env, False), k))
+  let k = Stack(Delimit(label, handle, rev, env, False), k)
   step_call(exec, Record([]), rev, env, k)
 }
 
 // somewhere this needs outer k
 fn shallow(label, handle, exec, rev, env: Env, k) -> Always {
-  let k = Some(Kont(Delimit(label, handle, rev, env, True), k))
+  let k = Stack(Delimit(label, handle, rev, env, True), k)
   step_call(exec, Record([]), rev, env, k)
 }

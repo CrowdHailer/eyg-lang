@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/option.{None}
 import eygir/expression as e
 import eyg/runtime/interpreter as r
@@ -26,6 +27,6 @@ pub fn fold_test() {
       e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Str("initial")),
       reducer,
     )
-  r.eval(source, stdlib.env(), None)
+  r.eval(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
   |> should.equal(r.Value(r.Str("initialfizzbuzz")))
 }
