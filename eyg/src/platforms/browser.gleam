@@ -94,8 +94,17 @@ fn old_run() {
     Ok(el) ->
       case decode.from_json(window.decode_uri(document.inner_text(el))) {
         Ok(continuation) ->
-          case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
-            Ok(_) -> Nil
+          case
+            r.eval(
+              continuation,
+              stdlib.env(),
+              r.Stack(
+                r.CallWith(r.Record([]), [], stdlib.env()),
+                r.WillRenameAsDone(handlers().1),
+              ),
+            )
+          {
+            r.Value(_) -> Nil
             err -> {
               io.debug(#("return", stdlib.env(), err))
               Nil

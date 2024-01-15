@@ -15,31 +15,6 @@ pub type Failure {
   MissingField(String)
 }
 
-// TODO separate interpreter from runner
-// TODO separate async run from async eval
-
-pub fn run(source, env, term, extrinsic) {
-  case
-    eval(
-      source,
-      env,
-      Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
-    )
-  {
-    // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
-    // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
-    // The eval fn above could use Not a Function Error in any case which is not a Function
-    Value(term) -> Ok(term)
-    Abort(failure, path, _env, _k) -> Error(#(failure, path))
-    // Cont(_, _) -> panic("should have evaluated and not be a Cont at all")
-    // other runtime errors return error, maybe this should be the same
-    Async(_, _, _, _) ->
-      panic(
-        "cannot return async value some sync run. This effect would not be allowed by type system",
-      )
-  }
-}
-
 pub fn run_async(source, env, term, extrinsic) {
   let ret =
     eval(

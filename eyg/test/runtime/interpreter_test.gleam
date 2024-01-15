@@ -471,8 +471,15 @@ fn handlers() {
 pub fn async_test() {
   let source =
     e.Lambda("_", e.Apply(e.Perform("Async"), e.Lambda("_", e.Str("later"))))
-  let assert Ok(r.Promise(p)) =
-    r.run(source, stdlib.env(), r.unit, handlers().1)
+  let assert r.Value(r.Promise(p)) =
+    r.eval(
+      source,
+      stdlib.env(),
+      r.Stack(
+        r.CallWith(r.unit, [], stdlib.env()),
+        r.WillRenameAsDone(handlers().1),
+      ),
+    )
   // |> io.debug
   use value <- promise.map(p)
   value
