@@ -49,17 +49,12 @@ pub fn serve() {
             }.1
           promise.map(
             r.flatten_promise(
-              r.handle(
-                r.loop(
-                  r.V(r.Value(handler)),
-                  [],
-                  env,
-                  r.Stack(
-                    r.CallWith(req, rev, env),
-                    r.WillRenameAsDone(extrinsic),
-                  ),
+              r.loop(
+                r.V(r.Value(handler)),
+                [],
+                env,
+                r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic),
                 ),
-                extrinsic,
               ),
               extrinsic,
             ),
@@ -128,15 +123,11 @@ pub fn receive() {
               |> effect.extend("Wait", effect.wait())
             }.1
           let assert r.Value(reply) =
-            r.handle(
-              r.loop(
-                r.V(r.Value(handler)),
-                [],
-                env,
-                r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic),
-                ),
-              ),
-              extrinsic,
+            r.loop(
+              r.V(r.Value(handler)),
+              [],
+              env,
+              r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic)),
             )
           let assert Ok(resp) = r.field(reply, "response")
           let assert Ok(data) = r.field(reply, "data")

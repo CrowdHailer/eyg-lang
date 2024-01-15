@@ -165,10 +165,7 @@ pub fn async() {
         promisex.wait(0)
         |> promise.await(fn(_: Nil) {
           let ret =
-            r.handle(
-              r.eval_call(exec, r.unit, env, r.WillRenameAsDone(extrinsic)),
-              extrinsic,
-            )
+            r.eval_call(exec, r.unit, env, r.WillRenameAsDone(extrinsic))
           r.flatten_promise(ret, extrinsic)
         })
         |> promise.map(fn(result) {
@@ -219,10 +216,7 @@ fn listen() {
 
       window.add_event_listener(event, fn(_) {
         let ret =
-          r.handle(
-            r.eval_call(handle, r.unit, env, r.WillRenameAsDone(extrinsic)),
-            extrinsic,
-          )
+          r.eval_call(handle, r.unit, env, r.WillRenameAsDone(extrinsic))
         io.debug(ret)
         Nil
       })
@@ -304,11 +298,7 @@ fn do_handle(arg, handle, builtins, extrinsic) {
   let assert r.Value(arg) =
     r.eval(arg, stdlib.env(), r.WillRenameAsDone(dict.new()))
   // pass as general term to program arg or fn
-  let ret =
-    r.handle(
-      r.eval_call(handle, arg, builtins, r.WillRenameAsDone(extrinsic)),
-      extrinsic,
-    )
+  let ret = r.eval_call(handle, arg, builtins, r.WillRenameAsDone(extrinsic))
   case ret {
     r.Value(_) -> Nil
     _ -> {

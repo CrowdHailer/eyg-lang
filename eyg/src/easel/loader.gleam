@@ -69,10 +69,7 @@ fn applet(root) {
         let render = fn() {
           let current = javascript.dereference(state)
           let result =
-            r.handle(
-              r.eval_call(func, current, env, r.WillRenameAsDone(handlers)),
-              handlers,
-            )
+            r.eval_call(func, current, env, r.WillRenameAsDone(handlers))
           let _ = case result {
             r.Value(r.Str(page)) -> document.set_html(root, page)
             _ -> {

@@ -59,8 +59,7 @@ pub fn run(source) {
         r.WillRenameAsDone(handlers().1),
       ),
     )
-  let assert r.Value(parser) =
-    r.handle(r.eval(source, env, k_parser), handlers().1)
+  let assert r.Value(parser) = r.eval(source, env, k_parser)
   let parser = fn(prompt) {
     fn(raw) {
       let k =
@@ -90,10 +89,13 @@ pub fn run(source) {
   let k =
     r.Stack(
       r.Apply(r.Defunc(r.Select("exec"), []), [], env),
-      r.Stack(r.CallWith(r.Record([]), [], env), r.WillRenameAsDone(dict.new())),
+      r.Stack(
+        r.CallWith(r.Record([]), [], env),
+        r.WillRenameAsDone(handlers().1),
+      ),
     )
   let assert r.Abort(r.UnhandledEffect("Prompt", prompt), _rev, env, k) =
-    r.handle(r.eval(source, env, k), handlers().1)
+    r.eval(source, env, k)
 
   let assert r.Str(prompt) = prompt
 

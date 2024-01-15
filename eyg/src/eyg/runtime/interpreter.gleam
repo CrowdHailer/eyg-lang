@@ -1,7 +1,6 @@
 import gleam/int
 import gleam/list
 import gleam/dict.{type Dict}
-import gleam/option.{type Option, None, Some}
 import gleam/string
 import eygir/expression as e
 import gleam/javascript/promise.{type Promise as JSPromise}
@@ -43,20 +42,17 @@ pub fn run(source, env, term, extrinsic) {
 
 pub fn run_async(source, env, term, extrinsic) {
   let ret =
-    handle(
-      eval(
-        source,
-        env,
-        Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
-      ),
-      extrinsic,
+    eval(
+      source,
+      env,
+      Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
     )
   flatten_promise(ret, extrinsic)
 }
 
 // not really eval as includes handlers
 pub fn eval_async(source, env, extrinsic) {
-  let ret = handle(eval(source, env, WillRenameAsDone(extrinsic)), extrinsic)
+  let ret = eval(source, env, WillRenameAsDone(extrinsic))
   flatten_promise(ret, extrinsic)
 }
 
@@ -71,16 +67,8 @@ pub fn flatten_promise(ret, extrinsic) {
     Async(p, rev, env, k) ->
       promise.await(p, fn(return) {
         let next = loop(V(Value(return)), rev, env, k)
-        flatten_promise(handle(next, extrinsic), extrinsic)
+        flatten_promise(next, extrinsic)
       })
-  }
-}
-
-pub fn handle(return, extrinsic) {
-  case return {
-    Value(term) -> Value(term)
-    Abort(failure, rev, env, k) -> Abort(failure, rev, env, k)
-    Async(promise, rev, env, k) -> Async(promise, rev, env, k)
   }
 }
 

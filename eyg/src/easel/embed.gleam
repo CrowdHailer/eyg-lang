@@ -893,8 +893,7 @@ fn run(state: Embed) {
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)
-  let ret =
-    r.handle(r.eval(source, env, r.WillRenameAsDone(handlers)), handlers)
+  let ret = r.eval(source, env, r.WillRenameAsDone(handlers))
   case ret {
     r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
     r.Value(term) -> #(term_to_string(term), [])
