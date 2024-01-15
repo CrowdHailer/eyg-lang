@@ -13,7 +13,7 @@ import plinth/javascript/storage
 import plinth/browser/audio
 import lustre/attribute.{class, id}
 import lustre/element.{text}
-import lustre/element/html.{button, div, form, iframe, input, p, span}
+import lustre/element/html.{button, div, form, hr, iframe, input, p, span}
 import lustre/effect
 import lustre/event.{on_click}
 import facilities/accu_weather/daily_forecast.{DailyForecast}
@@ -30,7 +30,7 @@ fn coerce_time(d) {
 }
 
 pub fn render(state) {
-  let State(now, accu_weather_key, forecasts, timer) = state
+  let State(now, accu_weather_key, forecasts, buses, timer) = state
   // save sets value in storage and then reloads the page
   case accu_weather_key {
     Error(Nil) ->
@@ -64,11 +64,11 @@ pub fn render(state) {
           ]),
         ]),
       ])
-    Ok(_) -> display(now, forecasts, timer)
+    Ok(_) -> display(now, forecasts, buses, timer)
   }
 }
 
-fn display(now, forecasts, timer) {
+fn display(now, forecasts, buses, timer) {
   let #(hours, minutes, pm) = coerce_time(now)
   div([id("root"), class("hstack bg-yellow-200")], [
     case timer {
@@ -129,6 +129,14 @@ fn display(now, forecasts, timer) {
           text(" "),
           text(month_of_the_year(date.month(now))),
         ]),
+        hr([class("w-full")]),
+        div(
+          [],
+          list.map(buses, fn(b) {
+            let #(destination, display) = b
+            div([], [text(destination), text(" "), text(display)])
+          }),
+        ),
       ]),
     ]),
     case forecasts {

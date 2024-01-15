@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/list
 import gleam/option.{type Option, None}
 import gleam/javascript/promise
 import lustre/effect
@@ -10,12 +11,14 @@ import plinth/browser/document
 import plinth/browser/element
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
+import facilities/trafiklab/realtidsinformation_4 as rt4
 
 pub type State {
   State(
     now: Date,
     accu_weather: Result(String, Nil),
     forecast: List(daily_forecast.DailyForecast),
+    departures: List(#(String, String)),
     timer: Option(Int),
   )
 }
@@ -25,7 +28,7 @@ pub fn init(_) {
   // let accu_weather_key = storage.get_item(s, "ACCU_WEATHER_KEY")
   // Committed to source deliberatly I will rely on rate limiting and mint a new one when needed
   let accu_weather_key = Ok("IU5BBrAzQkxuDQxXrzRDwgE1j8TguZco")
-  let state = State(date.now(), accu_weather_key, [], None)
+  let state = State(date.now(), accu_weather_key, [], [], None)
 
   let tasks = case accu_weather_key {
     Error(Nil) -> []
@@ -48,7 +51,7 @@ pub fn init(_) {
       }),
     ]
   }
-  let tasks = [effect.from(watch_time), ..tasks]
+  let tasks = [effect.from(watch_time), effect.from(fetch_departures), ..tasks]
 
   #(state, effect.batch(tasks))
 }
@@ -75,5 +78,40 @@ fn watch_time(dispatch) {
       )
     },
     1000,
+  )
+}
+
+fn fetch_departures(dispatch) {
+  use data <- promisex.aside(rt4.departures(
+    "b8aa9e4c5e9741ca87f4371c93d0c4f6",
+    rt4.eyvind_johnsons_gata,
+    120,
+  ))
+  dispatch(
+    Wrap(fn(state) {
+      let state = case data {
+        Ok(buses) -> {
+          let to_town =
+            list.filter(buses, fn(b: rt4.BusDeparture) {
+              b.journey_direction == 1
+            })
+          let departures =
+            list.map(to_town, fn(b: rt4.BusDeparture) {
+              #(b.destination, b.display)
+            })
+          State(..state, departures: departures)
+        }
+        Error(reason) -> {
+          io.debug(reason)
+          state
+        }
+      }
+      #(
+        state,
+        effect.from(fn(dispatch) {
+          global.set_timeout(fn(_) { fetch_departures(dispatch) }, 60_000)
+        }),
+      )
+    }),
   )
 }
