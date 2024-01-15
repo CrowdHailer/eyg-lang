@@ -1,7 +1,6 @@
 import gleam/dict
 import gleam/list
 import gleam/javascript/map
-import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/javascript

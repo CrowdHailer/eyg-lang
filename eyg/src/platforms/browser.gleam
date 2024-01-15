@@ -1,7 +1,6 @@
 import gleam/dict
 import gleam/io
 import gleam/list
-import gleam/option.{None}
 import eygir/decode
 import old_plinth/browser/window
 import old_plinth/browser/document

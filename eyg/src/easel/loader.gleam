@@ -2,7 +2,6 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/dict
-import gleam/option.{None}
 import gleam/string
 import gleam/javascript/array
 import gleam/javascript

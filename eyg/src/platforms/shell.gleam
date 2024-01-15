@@ -3,7 +3,6 @@ import gleam/dynamic
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/javascript/array.{type Array}
