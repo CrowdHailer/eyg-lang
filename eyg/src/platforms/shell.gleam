@@ -126,7 +126,11 @@ fn read(rl, parser, env, k, prompt) {
       case code == e.Empty {
         True -> promise.resolve(0)
         False -> {
-          use ret <- promise.await(r.eval_async(code, env, handlers().1))
+          use ret <- promise.await(r.eval_async(
+            code,
+            env,
+            r.WillRenameAsDone(handlers().1),
+          ))
           let #(env, prompt) = case ret {
             Ok(value) -> {
               print(value)

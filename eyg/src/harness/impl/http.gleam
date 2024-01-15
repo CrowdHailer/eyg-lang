@@ -48,16 +48,12 @@ pub fn serve() {
               |> effect.extend("QueryDB", effect.query_db())
             }.1
           promise.map(
-            r.flatten_promise(
-              r.loop(
-                r.V(r.Value(handler)),
-                [],
-                env,
-                r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic),
-                ),
-              ),
-              extrinsic,
-            ),
+            r.flatten_promise(r.loop(
+              r.V(r.Value(handler)),
+              [],
+              env,
+              r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic)),
+            )),
             fn(resp) {
               case resp {
                 Ok(resp) -> from_response(resp)

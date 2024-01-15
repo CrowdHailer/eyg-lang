@@ -49,7 +49,15 @@ pub fn do_run(raw) -> Nil {
       let env = r.Env(scope: [], builtins: stdlib.lib().1)
       // let k = Some(r.Stack(r.CallWith(r.Record([]), [], env), None))
       promise.map(
-        r.run_async(continuation, env, r.Record([]), handlers().1),
+        // ,
+        r.eval_async(
+          continuation,
+          env,
+          r.Stack(
+            r.CallWith(r.Record([]), [], env),
+            r.WillRenameAsDone(handlers().1),
+          ),
+        ),
         io.debug,
       )
       // todo as "real"
@@ -175,7 +183,7 @@ pub fn async() {
         |> promise.await(fn(_: Nil) {
           let ret =
             r.eval_call(exec, r.unit, env, r.WillRenameAsDone(extrinsic))
-          r.flatten_promise(ret, extrinsic)
+          r.flatten_promise(ret)
         })
         |> promise.map(fn(result) {
           case result {

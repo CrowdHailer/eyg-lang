@@ -901,7 +901,7 @@ fn run(state: Embed) {
     // returning a promise as a value should be rendered as a promise value
     r.Async(_, _, _, _) -> {
       let p =
-        promise.map(r.flatten_promise(ret, handlers), fn(final) {
+        promise.map(r.flatten_promise(ret), fn(final) {
           let message = case final {
             Error(#(reason, _rev, _env)) -> reason_to_string(reason)
             Ok(term) -> {

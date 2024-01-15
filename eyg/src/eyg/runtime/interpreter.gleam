@@ -15,34 +15,20 @@ pub type Failure {
   MissingField(String)
 }
 
-pub fn run_async(source, env, term, extrinsic) {
-  let ret =
-    eval(
-      source,
-      env,
-      Stack(CallWith(term, [], env), WillRenameAsDone(extrinsic)),
-    )
-  flatten_promise(ret, extrinsic)
-}
-
 // not really eval as includes handlers
-pub fn eval_async(source, env, extrinsic) {
-  let ret = eval(source, env, WillRenameAsDone(extrinsic))
-  flatten_promise(ret, extrinsic)
+pub fn eval_async(source, env, k) {
+  flatten_promise(eval(source, env, k))
 }
 
-pub fn flatten_promise(ret, extrinsic) {
+pub fn flatten_promise(ret) {
   case ret {
-    // could eval the f and return it by wrapping in a value and then separetly calling eval call in handle
-    // Can I have a type called Running, that has a Cont but not Value, and separaetly Return with Value and not Cont
-    // The eval fn above could use Not a Function Error in any case which is not a Function
     Value(term) -> promise.resolve(Ok(term))
     Abort(failure, path, env, _k) ->
       promise.resolve(Error(#(failure, path, env)))
     Async(p, rev, env, k) ->
       promise.await(p, fn(return) {
         let next = loop(V(Value(return)), rev, env, k)
-        flatten_promise(next, extrinsic)
+        flatten_promise(next)
       })
   }
 }
