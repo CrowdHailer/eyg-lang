@@ -1,6 +1,7 @@
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/io
 import gleam/list
+import gleam/result
 import eygir/decode
 import old_plinth/browser/window
 import old_plinth/browser/document
@@ -151,16 +152,13 @@ fn render() {
     t.Str,
     t.unit,
     fn(page, k) {
-      let env = env.empty()
-      let rev = []
       let assert r.Str(page) = page
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
         _ ->
           panic as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
       }
-
-      r.K(r.V(r.unit), rev, env, k)
+      Ok(r.unit)
     },
   )
 }
@@ -171,7 +169,6 @@ pub fn async() {
     t.unit,
     fn(exec, k) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) =
         handlers()
         |> effect.extend("Await", effect.await())
@@ -194,7 +191,7 @@ pub fn async() {
           }
         })
 
-      r.K(r.V(r.Promise(promise)), rev, env, k)
+      Ok(r.Promise(promise))
     },
   )
 }
@@ -211,20 +208,8 @@ fn listen() {
     t.unit,
     t.unit,
     fn(sub, k) {
-      let env = env.empty()
-      let rev = []
-      use event <- cast.require(
-        cast.field("event", cast.string, sub),
-        rev,
-        env,
-        k,
-      )
-      use handle <- cast.require(
-        cast.field("handler", cast.any, sub),
-        rev,
-        env,
-        k,
-      )
+      use event <- result.then(cast.field("event", cast.string, sub))
+      use handle <- result.then(cast.field("handler", cast.any, sub))
 
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
@@ -235,7 +220,7 @@ fn listen() {
         io.debug(ret)
         Nil
       })
-      r.K(r.V(r.unit), rev, env, k)
+      Ok(r.unit)
     },
   )
 }
@@ -245,14 +230,11 @@ fn location_search() {
     t.unit,
     t.unit,
     fn(_, k) {
-      let env = env.empty()
-      let rev = []
       let value = case window.location_search() {
         Ok(str) -> r.ok(r.Str(str))
         Error(_) -> r.error(r.unit)
       }
-
-      r.K(r.V(value), rev, env, k)
+      Ok(value)
     },
   )
 }
@@ -265,7 +247,6 @@ fn on_click() {
     t.unit,
     fn(handle, k) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_click(fn(arg) {
@@ -274,7 +255,7 @@ fn on_click() {
 
         do_handle(arg, handle, env, extrinsic)
       })
-      r.K(r.V(r.unit), rev, env, k)
+      Ok(r.unit)
     },
   )
 }
@@ -285,11 +266,10 @@ fn on_keydown() {
     t.unit,
     fn(handle, k) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      r.K(r.V(r.unit), rev, env, k)
+      Ok(r.unit)
     },
   )
 }
@@ -300,11 +280,10 @@ fn on_change() {
     t.unit,
     fn(handle, k) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_change(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      r.K(r.V(r.unit), rev, env, k)
+      Ok(r.unit)
     },
   )
 }

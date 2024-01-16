@@ -1,4 +1,4 @@
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/io
 import gleam/int
@@ -30,7 +30,7 @@ pub fn question(interface: Interface, prompt: String) -> promise.Promise(String)
 @external(javascript, "../plinth_readlines_ffi.js", "close")
 pub fn close(interface: Interface) -> promise.Promise(String)
 
-fn handlers() {
+fn handlers() -> #(_, Dict(String, r.Extrinsic)) {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("HTTP", effect.http())

@@ -3,6 +3,7 @@ import gleam/io
 import gleam/list
 // nullable fn for casting option
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import gleam/javascript/array.{type Array}
 import gleam/javascript/promise.{type Promise}
@@ -21,18 +22,8 @@ pub fn serve() {
     fn(lift, k) {
       let env = stdlib.env()
       let rev = []
-      use port <- cast.require(
-        cast.field("port", cast.integer, lift),
-        rev,
-        env,
-        k,
-      )
-      use handler <- cast.require(
-        cast.field("handler", cast.any, lift),
-        rev,
-        env,
-        k,
-      )
+      use port <- result.then(cast.field("port", cast.integer, lift))
+      use handler <- result.then(cast.field("handler", cast.any, lift))
       let id =
         do_serve(port, fn(raw) {
           let req = to_request(raw)
@@ -66,7 +57,7 @@ pub fn serve() {
           )
         })
       let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
-      r.K(r.V(r.Function("_", body, [], [])), rev, env, k)
+      Ok(r.Function("_", body, [], []))
     },
   )
 }
@@ -76,11 +67,9 @@ pub fn stop_server() {
     t.Str,
     t.unit,
     fn(lift, k) {
-      let env = stdlib.env()
-      let rev = []
-      use id <- cast.require(cast.integer(lift), rev, env, k)
+      use id <- result.then(cast.integer(lift))
       do_stop(id)
-      r.K(r.V(r.unit), rev, env, k)
+      Ok(r.unit)
     },
   )
 }
@@ -92,19 +81,9 @@ pub fn receive() {
     fn(lift, k) {
       let env = stdlib.env()
       let rev = []
-      use port <- cast.require(
-        cast.field("port", cast.integer, lift),
-        rev,
-        env,
-        k,
-      )
+      use port <- result.then(cast.field("port", cast.integer, lift))
       console.log(port)
-      use handler <- cast.require(
-        cast.field("handler", cast.any, lift),
-        rev,
-        env,
-        k,
-      )
+      use handler <- result.then(cast.field("handler", cast.any, lift))
       // function pass in raw return on option or re run
       // return blah or nil using dynamic
       let p =
@@ -135,7 +114,7 @@ pub fn receive() {
           }
           #(from_response(resp), data)
         })
-      r.K(r.V(r.Promise(p)), rev, env, k)
+      Ok(r.Promise(p))
     },
   )
 }

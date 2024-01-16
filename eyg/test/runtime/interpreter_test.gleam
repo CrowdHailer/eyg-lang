@@ -1,4 +1,4 @@
-import gleam/dict
+import gleam/dict.{type Dict}
 import gleam/javascript/promise
 import gleeunit/should
 import eygir/expression as e
@@ -463,7 +463,7 @@ pub fn handler_is_applied_after_other_effects_test() {
 
 // async/task
 
-fn handlers() {
+fn handlers() -> #(_, Dict(String, r.Extrinsic)) {
   effect.init()
   |> effect.extend("Async", browser.async())
 }

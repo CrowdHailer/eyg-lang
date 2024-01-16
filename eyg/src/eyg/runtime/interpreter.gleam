@@ -73,10 +73,12 @@ pub type Kontinue {
   Delimit(String, Term, Path, Env, Bool)
 }
 
+pub type Extrinsic =
+  fn(Term, Stack) -> Result(Term, Failure)
+
 pub type Stack {
   Stack(Kontinue, Stack)
-  // TODO actually a function
-  WillRenameAsDone(Dict(String, fn(Term, Stack) -> StepR))
+  WillRenameAsDone(Dict(String, Extrinsic))
 }
 
 pub const unit = Record([])
@@ -427,16 +429,16 @@ fn do_perform(label, arg, i_rev, i_env, k, acc) {
     Stack(kontinue, rest) ->
       do_perform(label, arg, i_rev, i_env, rest, Stack(kontinue, acc))
     WillRenameAsDone(extrinsic) -> {
+      // inefficient to move back in error case
+      let original_k = move(acc, WillRenameAsDone(dict.new()))
       case dict.get(extrinsic, label) {
-        Ok(handler) -> handler(arg, k)
+        Ok(handler) ->
+          case handler(arg, k) {
+            Ok(term) -> K(V(term), i_rev, i_env, original_k)
+            Error(reason) -> Done(Abort(reason, i_rev, i_env, original_k))
+          }
         Error(Nil) ->
-          Done(Abort(
-            UnhandledEffect(label, arg),
-            i_rev,
-            i_env,
-            // inefficient to move back in error case
-            move(acc, WillRenameAsDone(dict.new())),
-          ))
+          Done(Abort(UnhandledEffect(label, arg), i_rev, i_env, original_k))
       }
     }
   }

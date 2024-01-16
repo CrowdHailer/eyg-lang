@@ -2,6 +2,7 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/dict
+import gleam/result
 import gleam/string
 import gleam/javascript/array
 import gleam/javascript
@@ -61,7 +62,7 @@ fn applet(root) {
             let id = int.to_string(list.length(saved))
             let saved = [action, ..saved]
             javascript.set_reference(actions, saved)
-            r.K(r.V(r.Str(id)), rev, env, k)
+            Ok(r.Str(id))
           })
           |> dict.insert("Log", console_log().2)
         let state = javascript.make_reference(arg)
@@ -143,11 +144,9 @@ pub fn console_log() {
     t.String,
     t.unit,
     fn(message, k) {
-      let env = env.empty()
-      let rev = []
-      use message <- cast.require(cast.string(message), rev, env, k)
+      use message <- result.then(cast.string(message))
       console.log(message)
-      r.K(r.V(r.unit), rev, env, k)
+      Ok(r.unit)
     },
   )
 }
