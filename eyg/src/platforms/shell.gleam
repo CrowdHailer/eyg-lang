@@ -69,8 +69,7 @@ pub fn run(source) {
             r.WillRenameAsDone(dict.new()),
           ),
         )
-      let assert r.Value(r.Tagged(tag, value)) =
-        r.loop(r.V(r.Value(parser)), [], env, k)
+      let assert r.Value(r.Tagged(tag, value)) = r.loop(r.V(parser), [], env, k)
       case tag {
         "Ok" ->
           result.replace_error(

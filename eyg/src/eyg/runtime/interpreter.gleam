@@ -26,7 +26,7 @@ pub fn flatten_promise(ret) {
     Value(term) -> promise.resolve(Ok(term))
     Abort(UnhandledEffect("Await", Promise(p)), rev, env, k) -> {
       promise.await(p, fn(return) {
-        let next = loop(V(Value(return)), rev, env, k)
+        let next = loop(V(return), rev, env, k)
         flatten_promise(next)
       })
     }
@@ -62,6 +62,7 @@ pub type Switch {
   NoCases
   Perform(String)
   Handle(String)
+  // env needs terms/value and values need terms/env
   Resume(Stack, List(Int), Env)
   Shallow(String)
   Builtin(String)
@@ -83,9 +84,7 @@ pub type Kontinue {
 pub type Stack {
   Stack(Kontinue, Stack)
   // TODO actually a function
-  WillRenameAsDone(
-    Dict(String, fn(Term, Stack) -> #(Control, List(Int), Env, Stack)),
-  )
+  WillRenameAsDone(Dict(String, fn(Term, Stack) -> StepR))
 }
 
 pub const unit = Record([])
@@ -177,17 +176,18 @@ pub type Return {
   Abort(reason: Failure, rev: List(Int), env: Env, k: Stack)
 }
 
-pub fn eval_call(f, arg, env, k: Stack) {
-  // allways produces value even if abort
-  let #(c, rev, e, k) = step_call(f, arg, [], env, k)
-  loop(c, rev, e, k)
+pub fn eval_call(f, arg, env, k) {
+  case step_call(f, arg, [], env, k) {
+    K(c, rev, e, k) -> loop(c, rev, e, k)
+    Done(ret) -> ret
+  }
 }
 
 pub fn step_call(f, arg, rev, env: Env, k: Stack) {
   case f {
     Function(param, body, captured, rev) -> {
       let env = Env(..env, scope: [#(param, arg), ..captured])
-      #(E(body), rev, env, k)
+      K(E(body), rev, env, k)
     }
     // builtin needs to return result for the case statement
     Defunc(switch, applied) ->
@@ -210,7 +210,7 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
         // partially applied continuation function in handler
         Resume(popped, rev, env), [] -> {
           let k = move(popped, k)
-          #(V(Value(arg)), rev, env, k)
+          K(V(arg), rev, env, k)
         }
         Shallow(label), [handler] -> {
           shallow(label, handler, arg, rev, env, k)
@@ -220,28 +220,31 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
 
         switch, _ -> {
           let applied = list.append(applied, [arg])
-          #(V(Value(Defunc(switch, applied))), rev, env, k)
+          K(V(Defunc(switch, applied)), rev, env, k)
         }
       }
 
-    term -> prim(Abort(NotAFunction(term), rev, env, k), rev, env, k)
+    term -> Done(Abort(NotAFunction(term), rev, env, k))
   }
 }
 
 pub fn prim(return, rev, env, k) {
-  #(V(return), rev, env, k)
+  case return {
+    Value(term) -> K(V(term), rev, env, k)
+    _ -> Done(return)
+  }
 }
 
 pub type Always =
   #(Control, List(Int), Env, Stack)
 
 pub type Arity {
-  Arity1(fn(Term, List(Int), Env, Stack) -> Always)
-  Arity2(fn(Term, Term, List(Int), Env, Stack) -> Always)
-  Arity3(fn(Term, Term, Term, List(Int), Env, Stack) -> Always)
+  Arity1(fn(Term, List(Int), Env, Stack) -> StepR)
+  Arity2(fn(Term, Term, List(Int), Env, Stack) -> StepR)
+  Arity3(fn(Term, Term, Term, List(Int), Env, Stack) -> StepR)
 }
 
-fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
+fn call_builtin(key, applied, rev, env: Env, kont) -> StepR {
   case dict.get(env.builtins, key) {
     Ok(func) ->
       case func, applied {
@@ -249,10 +252,9 @@ fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
         Arity1(impl), [x] -> impl(x, rev, env, kont)
         Arity2(impl), [x, y] -> impl(x, y, rev, env, kont)
         Arity3(impl), [x, y, z] -> impl(x, y, z, rev, env, kont)
-        _, _args -> #(V(Value(Defunc(Builtin(key), applied))), rev, env, kont)
+        _, _args -> K(V(Defunc(Builtin(key), applied)), rev, env, kont)
       }
-    Error(Nil) ->
-      prim(Abort(UndefinedVariable(key), rev, env, kont), rev, env, kont)
+    Error(Nil) -> Done(Abort(UndefinedVariable(key), rev, env, kont))
   }
 }
 
@@ -260,7 +262,7 @@ fn call_builtin(key, applied, rev, env: Env, kont) -> Always {
 
 pub type Control {
   E(e.Expression)
-  V(Return)
+  V(Term)
 }
 
 // TODO rename when I fix return
@@ -289,7 +291,7 @@ pub fn loop_till(c, p, e, k) {
   case step(c, p, e, k) {
     K(c, p, e, k) -> loop_till(c, p, e, k)
     Done(return) -> {
-      let assert True = V(return) == c
+      // let assert True = V(return) == c
       #(return, e)
     }
   }
@@ -306,45 +308,38 @@ pub type Env {
 fn step(exp, rev, env: Env, k) {
   case exp {
     E(e.Lambda(param, body)) ->
-      K(V(Value(Function(param, body, env.scope, rev))), rev, env, k)
+      K(V(Function(param, body, env.scope, rev)), rev, env, k)
     E(e.Apply(f, arg)) -> {
       K(E(f), [0, ..rev], env, Stack(Arg(arg, [1, ..rev], rev, env), k))
     }
-
-    E(e.Variable(x)) -> {
-      let return = case list.key_find(env.scope, x) {
-        Ok(term) -> Value(term)
-        Error(Nil) -> Abort(UndefinedVariable(x), rev, env, k)
+    E(e.Variable(x)) ->
+      case list.key_find(env.scope, x) {
+        Ok(term) -> K(V(term), rev, env, k)
+        Error(Nil) -> Done(Abort(UndefinedVariable(x), rev, env, k))
       }
-      K(V(return), rev, env, k)
-    }
     E(e.Let(var, value, then)) -> {
       K(E(value), [0, ..rev], env, Stack(Assign(var, then, [1, ..rev], env), k))
     }
 
-    E(e.Binary(value)) -> K(V(Value(Binary(value))), rev, env, k)
-    E(e.Integer(value)) -> K(V(Value(Integer(value))), rev, env, k)
-    E(e.Str(value)) -> K(V(Value(Str(value))), rev, env, k)
-    E(e.Tail) -> K(V(Value(LinkedList([]))), rev, env, k)
-    E(e.Cons) -> K(V(Value(Defunc(Cons, []))), rev, env, k)
-    E(e.Vacant(comment)) ->
-      K(V(Abort(Vacant(comment), rev, env, k)), rev, env, k)
-    E(e.Select(label)) -> K(V(Value(Defunc(Select(label), []))), rev, env, k)
-    E(e.Tag(label)) -> K(V(Value(Defunc(Tag(label), []))), rev, env, k)
-    E(e.Perform(label)) -> K(V(Value(Defunc(Perform(label), []))), rev, env, k)
-    E(e.Empty) -> K(V(Value(Record([]))), rev, env, k)
-    E(e.Extend(label)) -> K(V(Value(Defunc(Extend(label), []))), rev, env, k)
-    E(e.Overwrite(label)) ->
-      K(V(Value(Defunc(Overwrite(label), []))), rev, env, k)
-    E(e.Case(label)) -> K(V(Value(Defunc(Match(label), []))), rev, env, k)
-    E(e.NoCases) -> K(V(Value(Defunc(NoCases, []))), rev, env, k)
-    E(e.Handle(label)) -> K(V(Value(Defunc(Handle(label), []))), rev, env, k)
-    E(e.Shallow(label)) -> K(V(Value(Defunc(Shallow(label), []))), rev, env, k)
+    E(e.Binary(value)) -> K(V(Binary(value)), rev, env, k)
+    E(e.Integer(value)) -> K(V(Integer(value)), rev, env, k)
+    E(e.Str(value)) -> K(V(Str(value)), rev, env, k)
+    E(e.Tail) -> K(V(LinkedList([])), rev, env, k)
+    E(e.Cons) -> K(V(Defunc(Cons, [])), rev, env, k)
+    E(e.Vacant(comment)) -> Done(Abort(Vacant(comment), rev, env, k))
+    E(e.Select(label)) -> K(V(Defunc(Select(label), [])), rev, env, k)
+    E(e.Tag(label)) -> K(V(Defunc(Tag(label), [])), rev, env, k)
+    E(e.Perform(label)) -> K(V(Defunc(Perform(label), [])), rev, env, k)
+    E(e.Empty) -> K(V(Record([])), rev, env, k)
+    E(e.Extend(label)) -> K(V(Defunc(Extend(label), [])), rev, env, k)
+    E(e.Overwrite(label)) -> K(V(Defunc(Overwrite(label), [])), rev, env, k)
+    E(e.Case(label)) -> K(V(Defunc(Match(label), [])), rev, env, k)
+    E(e.NoCases) -> K(V(Defunc(NoCases, [])), rev, env, k)
+    E(e.Handle(label)) -> K(V(Defunc(Handle(label), [])), rev, env, k)
+    E(e.Shallow(label)) -> K(V(Defunc(Shallow(label), [])), rev, env, k)
     E(e.Builtin(identifier)) ->
-      K(V(Value(Defunc(Builtin(identifier), []))), rev, env, k)
-    V(Value(value)) -> apply_k(value, k)
-    // Other could be any kind of Halt function and always get a path
-    V(other) -> Done(other)
+      K(V(Defunc(Builtin(identifier), [])), rev, env, k)
+    V(value) -> apply_k(value, k)
   }
 }
 
@@ -358,14 +353,8 @@ fn apply_k(value, k) {
         }
         Arg(arg, rev, call_rev, env) ->
           K(E(arg), rev, env, Stack(Apply(value, call_rev, env), k))
-        Apply(f, rev, env) -> {
-          let #(c, rev, e, k) = step_call(f, value, rev, env, k)
-          K(c, rev, e, k)
-        }
-        CallWith(arg, rev, env) -> {
-          let #(c, rev, e, k) = step_call(value, arg, rev, env, k)
-          K(c, rev, e, k)
-        }
+        Apply(f, rev, env) -> step_call(f, value, rev, env, k)
+        CallWith(arg, rev, env) -> step_call(value, arg, rev, env, k)
         Delimit(_, _, _, _, _) -> {
           apply_k(value, k)
         }
@@ -425,7 +414,7 @@ fn match(label, matched, otherwise, value, rev, env, k) {
       }
     term -> {
       let message = string.concat(["Tagged |", label])
-      prim(Abort(IncorrectTerm(message, term), rev, env, k), rev, env, k)
+      Done(Abort(IncorrectTerm(message, term), rev, env, k))
     }
   }
 }
@@ -443,32 +432,28 @@ fn do_perform(label, arg, i_rev, i_env, k, acc) {
       let resume = Defunc(Resume(acc, i_rev, i_env), [])
       let k =
         Stack(CallWith(arg, rev, e), Stack(CallWith(resume, rev, e), rest))
-      #(V(Value(h)), rev, e, k)
+      K(V(h), rev, e, k)
     }
     Stack(Delimit(l, h, rev, e, False), rest) if l == label -> {
       let acc = Stack(Delimit(label, h, rev, e, False), acc)
       let resume = Defunc(Resume(acc, i_rev, i_env), [])
       let k =
         Stack(CallWith(arg, rev, e), Stack(CallWith(resume, rev, e), rest))
-      #(V(Value(h)), rev, e, k)
+      K(V(h), rev, e, k)
     }
     Stack(kontinue, rest) ->
       do_perform(label, arg, i_rev, i_env, rest, Stack(kontinue, acc))
     WillRenameAsDone(extrinsic) -> {
       case dict.get(extrinsic, label) {
         Ok(handler) -> handler(arg, k)
-        Error(Nil) -> #(
-          V(Abort(
+        Error(Nil) ->
+          Done(Abort(
             UnhandledEffect(label, arg),
             i_rev,
             i_env,
             // inefficient to move back in error case
             move(acc, WillRenameAsDone(dict.new())),
-          )),
-          i_rev,
-          i_env,
-          k,
-        )
+          ))
       }
     }
   }
@@ -485,7 +470,7 @@ pub fn deep(label, handle, exec, rev, env, k) {
 }
 
 // somewhere this needs outer k
-fn shallow(label, handle, exec, rev, env: Env, k) -> Always {
+fn shallow(label, handle, exec, rev, env: Env, k) {
   let k = Stack(Delimit(label, handle, rev, env, True), k)
   step_call(exec, Record([]), rev, env, k)
 }

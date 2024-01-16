@@ -49,7 +49,7 @@ pub fn serve() {
             }.1
           promise.map(
             r.flatten_promise(r.loop(
-              r.V(r.Value(handler)),
+              r.V(handler),
               [],
               env,
               r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic)),
@@ -120,7 +120,7 @@ pub fn receive() {
             }.1
           let assert r.Value(reply) =
             r.loop(
-              r.V(r.Value(handler)),
+              r.V(handler),
               [],
               env,
               r.Stack(r.CallWith(req, rev, env), r.WillRenameAsDone(extrinsic)),

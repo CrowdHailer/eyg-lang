@@ -114,10 +114,10 @@ pub fn rasing_effect_test() {
   lifted
   |> should.equal(r.Integer(1))
   let assert r.Abort(r.UnhandledEffect("Bar", lifted), rev, env, k) =
-    r.loop(r.V(r.Value(r.Str("reply"))), rev, env, k)
+    r.loop(r.V(r.Str("reply")), rev, env, k)
   lifted
   |> should.equal(r.Str("reply"))
-  let assert r.Value(term) = r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
+  let assert r.Value(term) = r.loop(r.V(r.Record([])), rev, env, k)
   term
   |> should.equal(r.Record([]))
 }
@@ -171,10 +171,10 @@ pub fn effect_in_builtin_test() {
   lifted
   |> should.equal(r.Str("fizz"))
   let assert r.Abort(r.UnhandledEffect("Foo", lifted), rev, env, k) =
-    r.loop(r.V(r.Value(r.unit)), rev, env, k)
+    r.loop(r.V(r.unit), rev, env, k)
   lifted
   |> should.equal(r.Str("buzz"))
-  r.loop(r.V(r.Value(r.unit)), rev, env, k)
+  r.loop(r.V(r.unit), rev, env, k)
   |> should.equal(r.Value(r.Str("initialfizzbuzz")))
 }
 
@@ -265,7 +265,7 @@ pub fn ignore_other_effect_test() {
   |> should.equal(r.Record([]))
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
-  r.loop(r.V(r.Value(r.Str("reply"))), rev, env, k)
+  r.loop(r.V(r.Str("reply")), rev, env, k)
   |> should.equal(r.Value(r.Record([#("foo", r.Str("reply"))])))
 
   // SHALLOW
@@ -277,7 +277,7 @@ pub fn ignore_other_effect_test() {
   |> should.equal(r.Record([]))
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
-  r.loop(r.V(r.Value(r.Str("reply"))), rev, env, k)
+  r.loop(r.V(r.Str("reply")), rev, env, k)
   |> should.equal(r.Value(r.Record([#("foo", r.Str("reply"))])))
 }
 
@@ -297,11 +297,11 @@ pub fn multiple_effects_test() {
   |> should.equal(r.Record([]))
 
   let assert r.Abort(r.UnhandledEffect("Choose", lifted), rev, env, k) =
-    r.loop(r.V(r.Value(r.Str("True"))), rev, env, k)
+    r.loop(r.V(r.Str("True")), rev, env, k)
   lifted
   |> should.equal(r.Record([]))
 
-  r.loop(r.V(r.Value(r.Str("False"))), rev, env, k)
+  r.loop(r.V(r.Str("False")), rev, env, k)
   |> should.equal(
     r.Value(r.Record([#("a", r.Str("True")), #("b", r.Str("False"))])),
   )
@@ -396,7 +396,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
     )
   let assert r.Abort(r.UnhandledEffect("Log", r.Str("outer")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
-  r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
+  r.loop(r.V(r.Record([])), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
 
   let handler =
@@ -409,7 +409,7 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
     )
   let assert r.Abort(r.UnhandledEffect("Log", r.Str("outer")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
-  r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
+  r.loop(r.V(r.Record([])), rev, env, k)
   |> should.equal(r.Value(r.Record([])))
 }
 
@@ -434,7 +434,7 @@ pub fn handler_is_applied_after_other_effects_test() {
   let assert r.Abort(r.UnhandledEffect("Log", r.Str("my log")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
 
-  r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
+  r.loop(r.V(r.Record([])), rev, env, k)
   |> should.equal(r.Value(r.Integer(-1)))
 
   let handler =
@@ -457,7 +457,7 @@ pub fn handler_is_applied_after_other_effects_test() {
   let assert r.Abort(r.UnhandledEffect("Log", r.Str("my log")), rev, env, k) =
     r.eval(source, env.empty(), r.WillRenameAsDone(dict.new()))
 
-  r.loop(r.V(r.Value(r.Record([]))), rev, env, k)
+  r.loop(r.V(r.Record([])), rev, env, k)
   |> should.equal(r.Value(r.Integer(-1)))
 }
 

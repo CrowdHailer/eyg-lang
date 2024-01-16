@@ -34,7 +34,7 @@ fn handle_click(event, states) {
       let assert Ok(action) = r.field(return, "action")
       element.set_inner_html(container, content)
       // Need native map because js objects are deep equal true
-      Ok(map.set(states, container, #(r.Value(action), env)))
+      Ok(map.set(states, container, #(action, env)))
     }
     _ -> {
       console.log("bad stuff")
@@ -55,7 +55,7 @@ pub fn run() {
         |> result.map_error(fn(_) { Nil }),
       )
       let env = stdlib.env()
-      let #(action, env) =
+      let assert #(r.Value(action), env) =
         r.resumable(source, env, r.WillRenameAsDone(dict.new()))
       Ok(#(container, #(action, env)))
     })
