@@ -192,16 +192,15 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
     // builtin needs to return result for the case statement
     Defunc(switch, applied) ->
       case switch, applied {
-        Cons, [item] -> prim(cons(item, arg, rev, env, k), rev, env, k)
-        Extend(label), [value] ->
-          prim(extend(label, value, arg, rev, env, k), rev, env, k)
+        Cons, [item] -> prim(cons(item, arg), rev, env, k)
+        Extend(label), [value] -> prim(extend(label, value, arg), rev, env, k)
         Overwrite(label), [value] ->
-          prim(overwrite(label, value, arg, rev, env, k), rev, env, k)
-        Select(label), [] -> prim(select(label, arg, rev, env, k), rev, env, k)
-        Tag(label), [] -> prim(Value(Tagged(label, arg)), rev, env, k)
+          prim(overwrite(label, value, arg), rev, env, k)
+        Select(label), [] -> prim(select(label, arg), rev, env, k)
+        Tag(label), [] -> K(V(Tagged(label, arg)), rev, env, k)
         Match(label), [branch, rest] ->
           match(label, branch, rest, arg, rev, env, k)
-        NoCases, [] -> prim(Abort(NoMatch(arg), rev, env, k), rev, env, k)
+        NoCases, [] -> Done(Abort(NoMatch(arg), rev, env, k))
         // env is part of k
         Perform(label), [] -> perform(label, arg, rev, env, k)
         Handle(label), [handler] -> deep(label, handler, arg, rev, env, k)
@@ -228,15 +227,12 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
   }
 }
 
-pub fn prim(return, rev, env, k) {
+fn prim(return, rev, env, k) {
   case return {
-    Value(term) -> K(V(term), rev, env, k)
-    _ -> Done(return)
+    Ok(term) -> K(V(term), rev, env, k)
+    Error(reason) -> Done(Abort(reason, rev, env, k))
   }
 }
-
-pub type Always =
-  #(Control, List(Int), Env, Stack)
 
 pub type Arity {
   Arity1(fn(Term, List(Int), Env, Stack) -> StepR)
@@ -248,7 +244,8 @@ fn call_builtin(key, applied, rev, env: Env, kont) -> StepR {
   case dict.get(env.builtins, key) {
     Ok(func) ->
       case func, applied {
-        // pretty sure impl wont use path
+        // impl uses path to build stack when calling functions passed in
+        // might not need it as fn's keep track of path
         Arity1(impl), [x] -> impl(x, rev, env, kont)
         Arity2(impl), [x, y] -> impl(x, y, rev, env, kont)
         Arity3(impl), [x, y, z] -> impl(x, y, z, rev, env, kont)
@@ -363,45 +360,40 @@ fn apply_k(value, k) {
   }
 }
 
-fn cons(item, tail, rev, env, k) {
+fn cons(item, tail) {
   case tail {
-    LinkedList(elements) -> Value(LinkedList([item, ..elements]))
-    term -> Abort(IncorrectTerm("LinkedList", term), rev, env, k)
+    LinkedList(elements) -> Ok(LinkedList([item, ..elements]))
+    term -> Error(IncorrectTerm("LinkedList", term))
   }
 }
 
-fn select(label, arg, rev, env, k) {
+fn select(label, arg) {
   case arg {
     Record(fields) ->
       case list.key_find(fields, label) {
-        Ok(value) -> Value(value)
-        Error(Nil) -> Abort(MissingField(label), rev, env, k)
+        Ok(value) -> Ok(value)
+        Error(Nil) -> Error(MissingField(label))
       }
     term ->
-      Abort(
-        IncorrectTerm(string.append("Record (-select) ", label), term),
-        rev,
-        env,
-        k,
-      )
+      Error(IncorrectTerm(string.append("Record (-select) ", label), term))
   }
 }
 
-fn extend(label, value, rest, rev, env, k) {
+fn extend(label, value, rest) {
   case rest {
-    Record(fields) -> Value(Record([#(label, value), ..fields]))
-    term -> Abort(IncorrectTerm("Record (-extend) ", term), rev, env, k)
+    Record(fields) -> Ok(Record([#(label, value), ..fields]))
+    term -> Error(IncorrectTerm("Record (-extend) ", term))
   }
 }
 
-fn overwrite(label, value, rest, rev, env, k) {
+fn overwrite(label, value, rest) {
   case rest {
     Record(fields) ->
       case list.key_pop(fields, label) {
-        Ok(#(_old, fields)) -> Value(Record([#(label, value), ..fields]))
-        Error(Nil) -> Abort(MissingField(label), rev, env, k)
+        Ok(#(_old, fields)) -> Ok(Record([#(label, value), ..fields]))
+        Error(Nil) -> Error(MissingField(label))
       }
-    term -> Abort(IncorrectTerm("Record (-overwrite) ", term), rev, env, k)
+    term -> Error(IncorrectTerm("Record (-overwrite) ", term))
   }
 }
 

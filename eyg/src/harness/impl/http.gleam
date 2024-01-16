@@ -66,7 +66,7 @@ pub fn serve() {
           )
         })
       let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
-      r.prim(r.Value(r.Function("_", body, [], [])), rev, env, k)
+      r.K(r.V(r.Function("_", body, [], [])), rev, env, k)
     },
   )
 }
@@ -80,7 +80,7 @@ pub fn stop_server() {
       let rev = []
       use id <- cast.require(cast.integer(lift), rev, env, k)
       do_stop(id)
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -135,7 +135,7 @@ pub fn receive() {
           }
           #(from_response(resp), data)
         })
-      r.prim(r.Value(r.Promise(p)), rev, env, k)
+      r.K(r.V(r.Promise(p)), rev, env, k)
     },
   )
 }

@@ -161,7 +161,7 @@ fn render() {
           panic as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
       }
 
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -195,7 +195,7 @@ pub fn async() {
           }
         })
 
-      r.prim(r.Value(r.Promise(promise)), rev, env, k)
+      r.K(r.V(r.Promise(promise)), rev, env, k)
     },
   )
 }
@@ -236,7 +236,7 @@ fn listen() {
         io.debug(ret)
         Nil
       })
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -253,7 +253,7 @@ fn location_search() {
         Error(_) -> r.error(r.unit)
       }
 
-      r.prim(r.Value(value), rev, env, k)
+      r.K(r.V(value), rev, env, k)
     },
   )
 }
@@ -275,7 +275,7 @@ fn on_click() {
 
         do_handle(arg, handle, env, extrinsic)
       })
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -290,7 +290,7 @@ fn on_keydown() {
       let #(_, extrinsic) = handlers()
 
       document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -305,7 +305,7 @@ fn on_change() {
       let #(_, extrinsic) = handlers()
 
       document.on_change(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }

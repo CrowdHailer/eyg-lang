@@ -28,8 +28,8 @@ fn do_equal(left, right, rev, env, k) {
     True -> r.true
     False -> r.false
   }
-  |> r.Value
-  |> r.prim(rev, env, k)
+  |> r.V
+  |> r.K(rev, env, k)
 }
 
 pub fn debug() {
@@ -38,7 +38,7 @@ pub fn debug() {
 }
 
 fn do_debug(term, rev, env, k) {
-  r.prim(r.Value(r.Str(r.to_string(term))), rev, env, k)
+  r.K(r.V(r.Str(r.to_string(term))), rev, env, k)
 }
 
 pub fn fix() {
@@ -166,9 +166,9 @@ pub fn do_eval(source, rev, env, k) {
         }
       }
       // console.log(value)
-      r.prim(r.Value(value), rev, env, k)
+      r.K(r.V(value), rev, env, k)
     }
-    Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
+    Error(_) -> r.K(r.V(r.error(r.unit)), rev, env, k)
   }
 }
 
@@ -181,7 +181,7 @@ pub fn serialize() {
 
 pub fn do_serialize(term, rev, env, k) {
   let exp = capture.capture(term)
-  r.prim(r.Value(r.Str(encode.to_json(exp))), rev, env, k)
+  r.K(r.V(r.Str(encode.to_json(exp))), rev, env, k)
 }
 
 pub fn capture() {
@@ -193,7 +193,7 @@ pub fn capture() {
 
 pub fn do_capture(term, rev, env, k) {
   let exp = capture.capture(term)
-  r.prim(r.Value(r.LinkedList(expression_to_language(exp))), rev, env, k)
+  r.K(r.V(r.LinkedList(expression_to_language(exp))), rev, env, k)
 }
 
 // block needs squashing with row on the front
@@ -453,7 +453,7 @@ pub fn decode_uri_component() {
 
 pub fn do_decode_uri_component(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
-  r.prim(r.Value(r.Str(window.decode_uri_component(unencoded))), rev, env, k)
+  r.K(r.V(r.Str(window.decode_uri_component(unencoded))), rev, env, k)
 }
 
 pub fn encode_uri() {
@@ -463,7 +463,7 @@ pub fn encode_uri() {
 
 pub fn do_encode_uri(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
-  r.prim(r.Value(r.Str(window.encode_uri(unencoded))), rev, env, k)
+  r.K(r.V(r.Str(window.encode_uri(unencoded))), rev, env, k)
 }
 
 pub fn base64_encode() {
@@ -473,8 +473,8 @@ pub fn base64_encode() {
 
 pub fn do_base64_encode(term, rev, env, k) {
   use unencoded <- cast.require(cast.string(term), rev, env, k)
-  r.prim(
-    r.Value(
+  r.K(
+    r.V(
       r.Str(gleam_string.replace(
         bit_array.base64_encode(bit_array.from_string(unencoded), True),
         "\r\n",
@@ -499,5 +499,5 @@ pub fn do_binary_from_integers(term, rev, env, k) {
       let assert r.Integer(i) = el
       <<i, acc:bits>>
     })
-  r.prim(r.Value(r.Binary(content)), rev, env, k)
+  r.K(r.V(r.Binary(content)), rev, env, k)
 }

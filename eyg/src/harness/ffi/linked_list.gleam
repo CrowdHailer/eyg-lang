@@ -22,7 +22,7 @@ fn do_pop(term, rev, env, k) {
     [head, ..tail] ->
       r.ok(r.Record([#("head", head), #("tail", r.LinkedList(tail))]))
   }
-  r.prim(r.Value(return), rev, env, k)
+  r.K(r.V(return), rev, env, k)
 }
 
 pub fn fold() {
@@ -54,7 +54,7 @@ pub fn fold_impl(list, initial, func, rev, env, k) {
 
 pub fn do_fold(elements, state, f, rev, env, k) {
   case elements {
-    [] -> r.prim(r.Value(state), rev, env, k)
+    [] -> r.K(r.V(state), rev, env, k)
     [element, ..rest] -> {
       r.step_call(
         f,

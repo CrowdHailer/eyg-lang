@@ -42,7 +42,7 @@ pub fn debug_logger() {
       let rev = []
       io.print(r.to_string(message))
       io.print("\n")
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -56,7 +56,7 @@ pub fn window_alert() {
       let rev = []
       use message <- cast.require(cast.string(message), rev, env, k)
       window.alert(message)
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -73,7 +73,7 @@ pub fn choose() {
         1 -> r.true
         _ -> panic as "integer outside expected range"
       }
-      r.prim(r.Value(value), rev, env, k)
+      r.K(r.V(value), rev, env, k)
     },
   )
 }
@@ -198,7 +198,7 @@ pub fn http() {
           }
         })
 
-      r.prim(r.Value(r.Promise(promise)), rev, env, k)
+      r.K(r.V(r.Promise(promise)), rev, env, k)
     },
   )
 }
@@ -214,11 +214,7 @@ pub fn open() {
       use target <- cast.require(cast.string(target), rev, env, k)
       let p = open_browser(target)
       io.debug(target)
-      r.prim(
-        r.Value(r.Promise(promise.map(p, fn(_terminate) { r.unit }))),
-        rev,
-        env,
-        k,
+      r.K(r.V(r.Promise(promise.map(p, fn(_terminate) { r.unit }))), rev, env, k,
       )
     },
   )
@@ -236,12 +232,12 @@ pub fn await() {
       let env = env.empty()
       let rev = []
       use js_promise <- cast.require(cast.promise(promise), rev, env, k)
-      r.prim(
-        r.Abort(r.UnhandledEffect("Await", r.Promise(js_promise)), rev, env, k),
+      r.Done(r.Abort(
+        r.UnhandledEffect("Await", r.Promise(js_promise)),
         rev,
         env,
-        r.WillRenameAsDone(dict.new()),
-      )
+        k,
+      ))
     },
   )
 }
@@ -255,7 +251,7 @@ pub fn wait() {
       let rev = []
       use milliseconds <- cast.require(cast.integer(milliseconds), rev, env, k)
       let p = promisex.wait(milliseconds)
-      r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
+      r.K(r.V(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
     },
   )
 }
@@ -274,15 +270,15 @@ pub fn read_source() {
         Ok(json) ->
           case decode.from_json(json) {
             Ok(exp) ->
-              r.prim(
-                r.Value(r.ok(r.LinkedList(core.expression_to_language(exp)))),
+              r.K(
+                r.V(r.ok(r.LinkedList(core.expression_to_language(exp)))),
                 rev,
                 env,
                 k,
               )
-            Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
+            Error(_) -> r.K(r.V(r.error(r.unit)), rev, env, k)
           }
-        Error(_) -> r.prim(r.Value(r.error(r.unit)), rev, env, k)
+        Error(_) -> r.K(r.V(r.error(r.unit)), rev, env, k)
       }
     },
   )
@@ -298,10 +294,10 @@ pub fn file_read() {
 
       use file <- cast.require(cast.string(file), rev, env, k)
       case simplifile.read_bits(file) {
-        Ok(content) -> r.prim(r.Value(r.ok(r.Binary(content))), rev, env, k)
+        Ok(content) -> r.K(r.V(r.ok(r.Binary(content))), rev, env, k)
         Error(reason) -> {
           io.debug(#("failed to read", file, reason))
-          r.prim(r.Value(r.error(r.unit)), rev, env, k)
+          r.K(r.V(r.error(r.unit)), rev, env, k)
         }
       }
     },
@@ -328,7 +324,7 @@ pub fn file_write() {
         k,
       )
       let assert Ok(_) = simplifile.write(content, file)
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }
@@ -348,7 +344,7 @@ pub fn load_db() {
       let rev = []
       use triples <- cast.require(cast.string(triples), rev, env, k)
       let p = load(triples)
-      r.prim(r.Value(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
+      r.K(r.V(r.Promise(promise.map(p, fn(_) { r.unit }))), rev, env, k)
     },
   )
 }
@@ -400,7 +396,7 @@ pub fn query_db() {
           |> r.LinkedList
         })
 
-      r.prim(r.Value(r.Promise(p)), rev, env, k)
+      r.K(r.V(r.Promise(p)), rev, env, k)
     },
   )
 }
@@ -430,7 +426,7 @@ pub fn zip() {
 
       let zipped = do_zip(array.from_list(items))
 
-      r.prim(r.Value(r.Str(zipped)), rev, env, k)
+      r.K(r.V(r.Str(zipped)), rev, env, k)
     },
   )
 }

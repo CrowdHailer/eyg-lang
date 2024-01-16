@@ -30,7 +30,7 @@ fn do_compare(left, right, rev, env, k) {
     Eq -> r.Tagged("Eq", r.unit)
     Gt -> r.Tagged("Gt", r.unit)
   }
-  r.prim(r.Value(return), rev, env, k)
+  r.K(r.V(return), rev, env, k)
 }
 
 pub fn add() {
@@ -42,7 +42,7 @@ pub fn add() {
 fn do_add(left, right, rev, env, k) {
   use left <- cast.require(cast.integer(left), rev, env, k)
   use right <- cast.require(cast.integer(right), rev, env, k)
-  r.prim(r.Value(r.Integer(left + right)), rev, env, k)
+  r.K(r.V(r.Integer(left + right)), rev, env, k)
 }
 
 pub fn subtract() {
@@ -54,7 +54,7 @@ pub fn subtract() {
 fn do_subtract(left, right, rev, env, k) {
   use left <- cast.require(cast.integer(left), rev, env, k)
   use right <- cast.require(cast.integer(right), rev, env, k)
-  r.prim(r.Value(r.Integer(left - right)), rev, env, k)
+  r.K(r.V(r.Integer(left - right)), rev, env, k)
 }
 
 pub fn multiply() {
@@ -66,7 +66,7 @@ pub fn multiply() {
 fn do_multiply(left, right, rev, env, k) {
   use left <- cast.require(cast.integer(left), rev, env, k)
   use right <- cast.require(cast.integer(right), rev, env, k)
-  r.prim(r.Value(r.Integer(left * right)), rev, env, k)
+  r.K(r.V(r.Integer(left * right)), rev, env, k)
 }
 
 pub fn divide() {
@@ -82,7 +82,7 @@ fn do_divide(left, right, rev, env, k) {
     0 -> r.error(r.unit)
     _ -> r.ok(r.Integer(left / right))
   }
-  r.prim(r.Value(value), rev, env, k)
+  r.K(r.V(value), rev, env, k)
 }
 
 pub fn absolute() {
@@ -92,7 +92,7 @@ pub fn absolute() {
 
 fn do_absolute(x, rev, env, k) {
   use x <- cast.require(cast.integer(x), rev, env, k)
-  r.prim(r.Value(r.Integer(int.absolute_value(x))), rev, env, k)
+  r.K(r.V(r.Integer(int.absolute_value(x))), rev, env, k)
 }
 
 pub fn parse() {
@@ -106,8 +106,8 @@ fn do_parse(raw, rev, env, k) {
     Ok(i) -> r.ok(r.Integer(i))
     Error(Nil) -> r.error(r.unit)
   }
-  |> r.Value
-  |> r.prim(rev, env, k)
+  |> r.V
+  |> r.K(rev, env, k)
 }
 
 pub fn to_string() {
@@ -117,5 +117,5 @@ pub fn to_string() {
 
 fn do_to_string(x, rev, env, k) {
   use x <- cast.require(cast.integer(x), rev, env, k)
-  r.prim(r.Value(r.Str(int.to_string(x))), rev, env, k)
+  r.K(r.V(r.Str(int.to_string(x))), rev, env, k)
 }

@@ -49,6 +49,6 @@ pub fn promise(term) {
 pub fn require(result, rev, env, k, then) {
   case result {
     Ok(value) -> then(value)
-    Error(reason) -> r.prim(r.Abort(reason, rev, env, k), rev, env, k)
+    Error(reason) -> r.Done(r.Abort(reason, rev, env, k))
   }
 }

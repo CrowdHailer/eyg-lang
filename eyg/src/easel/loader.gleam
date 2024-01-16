@@ -61,7 +61,7 @@ fn applet(root) {
             let id = int.to_string(list.length(saved))
             let saved = [action, ..saved]
             javascript.set_reference(actions, saved)
-            r.prim(r.Value(r.Str(id)), rev, env, k)
+            r.K(r.V(r.Str(id)), rev, env, k)
           })
           |> dict.insert("Log", console_log().2)
         let state = javascript.make_reference(arg)
@@ -109,7 +109,7 @@ fn applet(root) {
           }
         })
         render()
-        r.prim(r.Value(func), rev, env, k)
+        r.K(r.V(func), rev, env, k)
       }
       Nil
     }
@@ -147,7 +147,7 @@ pub fn console_log() {
       let rev = []
       use message <- cast.require(cast.string(message), rev, env, k)
       console.log(message)
-      r.prim(r.Value(r.unit), rev, env, k)
+      r.K(r.V(r.unit), rev, env, k)
     },
   )
 }

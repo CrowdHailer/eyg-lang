@@ -13,7 +13,7 @@ pub fn append() {
 pub fn do_append(left, right, rev, env, k) {
   use left <- cast.require(cast.string(left), rev, env, k)
   use right <- cast.require(cast.string(right), rev, env, k)
-  r.prim(r.Value(r.Str(string.append(left, right))), rev, env, k)
+  r.K(r.V(r.Str(string.append(left, right))), rev, env, k)
 }
 
 pub fn split() {
@@ -28,12 +28,7 @@ pub fn do_split(s, pattern, rev, env, k) {
   let assert [first, ..parts] = string.split(s, pattern)
   let parts = r.LinkedList(list.map(parts, r.Str))
 
-  r.prim(
-    r.Value(r.Record([#("head", r.Str(first)), #("tail", parts)])),
-    rev,
-    env,
-    k,
-  )
+  r.K(r.V(r.Record([#("head", r.Str(first)), #("tail", parts)])), rev, env, k)
 }
 
 pub fn split_once() {
@@ -50,7 +45,7 @@ pub fn do_split_once(s, pattern, rev, env, k) {
       r.ok(r.Record([#("pre", r.Str(pre)), #("post", r.Str(post))]))
     Error(Nil) -> r.error(r.unit)
   }
-  r.prim(r.Value(value), rev, env, k)
+  r.K(r.V(value), rev, env, k)
 }
 
 pub fn uppercase() {
@@ -60,7 +55,7 @@ pub fn uppercase() {
 
 pub fn do_uppercase(value, rev, env, k) {
   use value <- cast.require(cast.string(value), rev, env, k)
-  r.prim(r.Value(r.Str(string.uppercase(value))), rev, env, k)
+  r.K(r.V(r.Str(string.uppercase(value))), rev, env, k)
 }
 
 pub fn lowercase() {
@@ -70,7 +65,7 @@ pub fn lowercase() {
 
 pub fn do_lowercase(value, rev, env, k) {
   use value <- cast.require(cast.string(value), rev, env, k)
-  r.prim(r.Value(r.Str(string.lowercase(value))), rev, env, k)
+  r.K(r.V(r.Str(string.lowercase(value))), rev, env, k)
 }
 
 pub fn starts_with() {
@@ -86,7 +81,7 @@ pub fn do_starts_with(value, prefix, rev, env, k) {
     Ok(#("", post)) -> r.ok(r.Str(post))
     _ -> r.error(r.unit)
   }
-  r.prim(r.Value(ret), rev, env, k)
+  r.K(r.V(ret), rev, env, k)
 }
 
 pub fn ends_with() {
@@ -102,7 +97,7 @@ pub fn do_ends_with(value, suffix, rev, env, k) {
     Ok(#(pre, "")) -> r.ok(r.Str(pre))
     _ -> r.error(r.unit)
   }
-  r.prim(r.Value(ret), rev, env, k)
+  r.K(r.V(ret), rev, env, k)
 }
 
 pub fn length() {
@@ -112,7 +107,7 @@ pub fn length() {
 
 pub fn do_length(value, rev, env, k) {
   use value <- cast.require(cast.string(value), rev, env, k)
-  r.prim(r.Value(r.Integer(string.length(value))), rev, env, k)
+  r.K(r.V(r.Integer(string.length(value))), rev, env, k)
 }
 
 pub fn pop_grapheme() {
@@ -129,7 +124,7 @@ fn do_pop_grapheme(term, rev, env, k) {
     Ok(#(head, tail)) ->
       r.ok(r.Record([#("head", r.Str(head)), #("tail", r.Str(tail))]))
   }
-  r.prim(r.Value(return), rev, env, k)
+  r.K(r.V(return), rev, env, k)
 }
 
 pub fn replace() {
@@ -147,7 +142,7 @@ pub fn do_replace(in, from, to, rev, env, k) {
   use from <- cast.require(cast.string(from), rev, env, k)
   use to <- cast.require(cast.string(to), rev, env, k)
 
-  r.prim(r.Value(r.Str(string.replace(in, from, to))), rev, env, k)
+  r.K(r.V(r.Str(string.replace(in, from, to))), rev, env, k)
 }
 
 pub fn to_binary() {
@@ -158,5 +153,5 @@ pub fn to_binary() {
 pub fn do_to_binary(in, rev, env, k) {
   use in <- cast.require(cast.string(in), rev, env, k)
 
-  r.prim(r.Value(r.Binary(bit_array.from_string(in))), rev, env, k)
+  r.K(r.V(r.Binary(bit_array.from_string(in))), rev, env, k)
 }
