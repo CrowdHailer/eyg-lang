@@ -57,7 +57,7 @@ fn applet(root) {
         let actions = javascript.make_reference([])
         let handlers =
           dict.new()
-          |> dict.insert("Update", fn(action, k) {
+          |> dict.insert("Update", fn(action) {
             let saved = javascript.dereference(actions)
             let id = int.to_string(list.length(saved))
             let saved = [action, ..saved]
@@ -143,7 +143,7 @@ pub fn console_log() {
   #(
     t.String,
     t.unit,
-    fn(message, k) {
+    fn(message) {
       use message <- result.then(cast.string(message))
       console.log(message)
       Ok(r.unit)

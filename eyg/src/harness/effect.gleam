@@ -17,7 +17,6 @@ import old_plinth/browser/window
 import old_plinth/javascript/promisex
 import eyg/runtime/interpreter as r
 import harness/ffi/cast
-import harness/ffi/env
 import eygir/decode
 import harness/ffi/core
 
@@ -37,7 +36,7 @@ pub fn debug_logger() {
   #(
     t.Str,
     t.unit,
-    fn(message, k) {
+    fn(message) {
       io.print(r.to_string(message))
       io.print("\n")
       Ok(r.unit)
@@ -49,7 +48,7 @@ pub fn window_alert() {
   #(
     t.Str,
     t.unit,
-    fn(message, k) {
+    fn(message) {
       use message <- result.then(cast.string(message))
       window.alert(message)
       Ok(r.unit)
@@ -61,7 +60,7 @@ pub fn choose() {
   #(
     t.unit,
     t.boolean,
-    fn(_, k) {
+    fn(_) {
       let value = case int.random(2) {
         0 -> r.false
         1 -> r.true
@@ -76,7 +75,7 @@ pub fn http() {
   #(
     t.Str,
     t.unit,
-    fn(request, k) {
+    fn(request) {
       use method <- result.then(cast.field("method", cast.any, request))
       let assert r.Tagged(method, _) = method
       let method = case string.uppercase(method) {
@@ -159,7 +158,7 @@ pub fn open() {
   #(
     t.Str,
     t.unit,
-    fn(target, k) {
+    fn(target) {
       use target <- result.then(cast.string(target))
       let p = open_browser(target)
       io.debug(target)
@@ -176,7 +175,7 @@ pub fn await() {
   #(
     t.Str,
     t.unit,
-    fn(promise, k) {
+    fn(promise) {
       use js_promise <- result.then(cast.promise(promise))
       Error(r.UnhandledEffect("Await", r.Promise(js_promise)))
     },
@@ -187,7 +186,7 @@ pub fn wait() {
   #(
     t.Integer,
     t.unit,
-    fn(milliseconds, k) {
+    fn(milliseconds) {
       use milliseconds <- result.then(cast.integer(milliseconds))
       let p = promisex.wait(milliseconds)
       Ok(r.Promise(promise.map(p, fn(_) { r.unit })))
@@ -200,7 +199,7 @@ pub fn read_source() {
   #(
     t.Str,
     t.result(t.Str, t.unit),
-    fn(file, k) {
+    fn(file) {
       use file <- result.then(cast.string(file))
       case simplifile.read(file) {
         Ok(json) ->
@@ -218,7 +217,7 @@ pub fn file_read() {
   #(
     t.Str,
     t.result(t.Str, t.unit),
-    fn(file, k) {
+    fn(file) {
       use file <- result.then(cast.string(file))
       case simplifile.read_bits(file) {
         Ok(content) -> Ok(r.ok(r.Binary(content)))
@@ -235,7 +234,7 @@ pub fn file_write() {
   #(
     t.Str,
     t.unit,
-    fn(request, k) {
+    fn(request) {
       use file <- result.then(cast.field("file", cast.string, request))
       use content <- result.then(cast.field("content", cast.string, request))
       let assert Ok(_) = simplifile.write(content, file)
@@ -254,7 +253,7 @@ pub fn load_db() {
   #(
     t.Str,
     t.unit,
-    fn(triples, k) {
+    fn(triples) {
       use triples <- result.then(cast.string(triples))
       let p = load(triples)
       Ok(r.Promise(promise.map(p, fn(_) { r.unit })))
@@ -266,7 +265,7 @@ pub fn query_db() {
   #(
     t.Str,
     t.unit,
-    fn(query, k) {
+    fn(query) {
       use query <- result.then(cast.string(query))
       let p = run_query(query)
 
@@ -321,7 +320,7 @@ pub fn zip() {
       )),
     ),
     t.unit,
-    fn(query, k) {
+    fn(query) {
       use items <- result.then(cast.list(query))
       let assert Ok(items) =
         list.try_map(items, fn(value) {

@@ -14,7 +14,6 @@ import gleam/javascript/promise
 import old_plinth/javascript/promisex
 import plinth/javascript/console
 import harness/ffi/cast
-import harness/ffi/env
 import eygir/expression as e
 
 fn handlers() {
@@ -151,7 +150,7 @@ fn render() {
   #(
     t.Str,
     t.unit,
-    fn(page, k) {
+    fn(page) {
       let assert r.Str(page) = page
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
@@ -167,7 +166,7 @@ pub fn async() {
   #(
     t.unit,
     t.unit,
-    fn(exec, k) {
+    fn(exec) {
       let env = stdlib.env()
       let #(_, extrinsic) =
         handlers()
@@ -207,7 +206,7 @@ fn listen() {
   #(
     t.unit,
     t.unit,
-    fn(sub, k) {
+    fn(sub) {
       use event <- result.then(cast.field("event", cast.string, sub))
       use handle <- result.then(cast.field("handler", cast.any, sub))
 
@@ -229,7 +228,7 @@ fn location_search() {
   #(
     t.unit,
     t.unit,
-    fn(_, k) {
+    fn(_) {
       let value = case window.location_search() {
         Ok(str) -> r.ok(r.Str(str))
         Error(_) -> r.error(r.unit)
@@ -245,7 +244,7 @@ fn on_click() {
   #(
     t.unit,
     t.unit,
-    fn(handle, k) {
+    fn(handle) {
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
 
@@ -264,7 +263,7 @@ fn on_keydown() {
   #(
     t.unit,
     t.unit,
-    fn(handle, k) {
+    fn(handle) {
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
 
@@ -278,7 +277,7 @@ fn on_change() {
   #(
     t.unit,
     t.unit,
-    fn(handle, k) {
+    fn(handle) {
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
 

@@ -19,7 +19,7 @@ pub fn serve() {
   #(
     t.Str,
     t.unit,
-    fn(lift, k) {
+    fn(lift) {
       let env = stdlib.env()
       let rev = []
       use port <- result.then(cast.field("port", cast.integer, lift))
@@ -66,7 +66,7 @@ pub fn stop_server() {
   #(
     t.Str,
     t.unit,
-    fn(lift, k) {
+    fn(lift) {
       use id <- result.then(cast.integer(lift))
       do_stop(id)
       Ok(r.unit)
@@ -78,7 +78,7 @@ pub fn receive() {
   #(
     t.Str,
     t.unit,
-    fn(lift, k) {
+    fn(lift) {
       let env = stdlib.env()
       let rev = []
       use port <- result.then(cast.field("port", cast.integer, lift))

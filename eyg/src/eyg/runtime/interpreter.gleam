@@ -74,7 +74,7 @@ pub type Kontinue {
 }
 
 pub type Extrinsic =
-  fn(Term, Stack) -> Result(Term, Failure)
+  fn(Term) -> Result(Term, Failure)
 
 pub type Stack {
   Stack(Kontinue, Stack)
@@ -184,6 +184,7 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
       K(E(body), rev, env, k)
     }
     // builtin needs to return result for the case statement
+    // Resume/Shallow/Deep need access to k nothing needs access to env but extension might change that
     Defunc(switch, applied) ->
       case switch, applied {
         Cons, [item] -> prim(cons(item, arg), rev, env, k)
@@ -204,9 +205,7 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
           let k = move(popped, k)
           K(V(arg), rev, env, k)
         }
-        Shallow(label), [handler] -> {
-          shallow(label, handler, arg, rev, env, k)
-        }
+        Shallow(label), [handler] -> shallow(label, handler, arg, rev, env, k)
         Builtin(key), applied ->
           call_builtin(key, list.append(applied, [arg]), rev, env, k)
 
@@ -432,8 +431,10 @@ fn do_perform(label, arg, i_rev, i_env, k, acc) {
       // inefficient to move back in error case
       let original_k = move(acc, WillRenameAsDone(dict.new()))
       case dict.get(extrinsic, label) {
+        // handler is assumed to be simple. Value -> Value
+        // if access to env/k is needed i.e. debug, should intercept at loop level
         Ok(handler) ->
-          case handler(arg, k) {
+          case handler(arg) {
             Ok(term) -> K(V(term), i_rev, i_env, original_k)
             Error(reason) -> Done(Abort(reason, i_rev, i_env, original_k))
           }
