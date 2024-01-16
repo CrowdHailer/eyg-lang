@@ -48,15 +48,14 @@ pub fn do_run(raw) -> Nil {
       let env = r.Env(scope: [], builtins: stdlib.lib().1)
       // let k = Some(r.Stack(r.CallWith(r.Record([]), [], env), None))
       promise.map(
-        // ,
-        r.eval_async(
+        r.await(r.eval(
           continuation,
           env,
           r.Stack(
             r.CallWith(r.Record([]), [], env),
             r.WillRenameAsDone(handlers().1),
           ),
-        ),
+        )),
         io.debug,
       )
       // todo as "real"
@@ -182,12 +181,12 @@ pub fn async() {
         |> promise.await(fn(_: Nil) {
           let ret =
             r.eval_call(exec, r.unit, env, r.WillRenameAsDone(extrinsic))
-          r.flatten_promise(ret)
+          r.await(ret)
         })
         |> promise.map(fn(result) {
           case result {
-            Ok(term) -> term
-            Error(#(reason, _path, _env)) -> {
+            r.Value(term) -> term
+            r.Abort(reason, _path, _env, _k) -> {
               // has all the path and env in cant' debug
               console.log(r.reason_to_string(reason))
               panic("this shouldn't fail")

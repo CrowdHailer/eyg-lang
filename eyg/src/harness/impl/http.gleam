@@ -48,7 +48,7 @@ pub fn serve() {
               |> effect.extend("QueryDB", effect.query_db())
             }.1
           promise.map(
-            r.flatten_promise(r.loop(
+            r.await(r.loop(
               r.V(handler),
               [],
               env,
@@ -56,8 +56,8 @@ pub fn serve() {
             )),
             fn(resp) {
               case resp {
-                Ok(resp) -> from_response(resp)
-                Error(#(reason, _path, _env)) -> {
+                r.Value(resp) -> from_response(resp)
+                r.Abort(reason, _path, _env, _k) -> {
                   io.debug(r.reason_to_string(reason))
                   #(500, array.from_list([]), "Server error")
                 }

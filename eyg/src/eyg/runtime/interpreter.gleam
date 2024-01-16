@@ -15,23 +15,15 @@ pub type Failure {
   MissingField(String)
 }
 
-// not really eval as includes handlers
-pub fn eval_async(source, env, k) {
-  flatten_promise(eval(source, env, k))
-}
-
-// TODO stop being public
-pub fn flatten_promise(ret) {
+// Solves the situation that JavaScript suffers from coloured functions
+// To eval code that may be async needs to return a promise of a result
+pub fn await(ret) {
   case ret {
-    Value(term) -> promise.resolve(Ok(term))
     Abort(UnhandledEffect("Await", Promise(p)), rev, env, k) -> {
-      promise.await(p, fn(return) {
-        let next = loop(V(return), rev, env, k)
-        flatten_promise(next)
-      })
+      use return <- promise.await(p)
+      await(loop(V(return), rev, env, k))
     }
-    Abort(failure, path, env, _k) ->
-      promise.resolve(Error(#(failure, path, env)))
+    other -> promise.resolve(other)
   }
 }
 
@@ -201,7 +193,6 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
         Match(label), [branch, rest] ->
           match(label, branch, rest, arg, rev, env, k)
         NoCases, [] -> Done(Abort(NoMatch(arg), rev, env, k))
-        // env is part of k
         Perform(label), [] -> perform(label, arg, rev, env, k)
         Handle(label), [handler] -> deep(label, handler, arg, rev, env, k)
         // Ok so I am lost as to why resume works or is it even needed

@@ -124,21 +124,19 @@ fn read(rl, parser, env, k, prompt) {
       case code == e.Empty {
         True -> promise.resolve(0)
         False -> {
-          use ret <- promise.await(r.eval_async(
-            code,
-            env,
-            r.WillRenameAsDone(handlers().1),
-          ))
+          use ret <- promise.await(
+            r.await(r.eval(code, env, r.WillRenameAsDone(handlers().1))),
+          )
           let #(env, prompt) = case ret {
-            Ok(value) -> {
+            r.Value(value) -> {
               print(value)
               #(env, prompt)
             }
-            Error(#(r.UnhandledEffect("Prompt", lift), _rev, env)) -> {
+            r.Abort(r.UnhandledEffect("Prompt", lift), _rev, env, _k) -> {
               let assert r.Str(prompt) = lift
               #(env, prompt)
             }
-            Error(#(reason, rev, _env)) -> {
+            r.Abort(reason, rev, _env, _k) -> {
               console.log(
                 string.concat([
                   "!! ",

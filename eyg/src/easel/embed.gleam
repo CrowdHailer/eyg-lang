@@ -900,10 +900,10 @@ fn run(state: Embed) {
     // could allow await effect by assuming is in async context
     r.Abort(r.UnhandledEffect("Await", r.Promise(_p)), _, _, _) -> {
       let p =
-        promise.map(r.flatten_promise(ret), fn(final) {
+        promise.map(r.await(ret), fn(final) {
           let message = case final {
-            Error(#(reason, _rev, _env)) -> reason_to_string(reason)
-            Ok(term) -> {
+            r.Abort(reason, _rev, _env, _k) -> reason_to_string(reason)
+            r.Value(term) -> {
               io.debug(term)
               term_to_string(term)
             }
