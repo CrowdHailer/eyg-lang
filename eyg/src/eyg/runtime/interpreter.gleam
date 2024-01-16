@@ -55,7 +55,8 @@ pub type Switch {
   Perform(String)
   Handle(String)
   // env needs terms/value and values need terms/env
-  Resume(Stack, List(Int), Env)
+  // reversed has no reference to extrinsic, might be different context
+  Resume(reversed: List(Kontinue), List(Int), Env)
   Shallow(String)
   Builtin(String)
 }
@@ -201,10 +202,7 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
         // Ok so I am lost as to why resume works or is it even needed
         // I think it is in the situation where someone serializes a
         // partially applied continuation function in handler
-        Resume(popped, rev, env), [] -> {
-          let k = move(popped, k)
-          K(V(arg), rev, env, k)
-        }
+        Resume(popped, rev, env), [] -> K(V(arg), rev, env, move(popped, k))
         Shallow(label), [handler] -> shallow(label, handler, arg, rev, env, k)
         Builtin(key), applied ->
           call_builtin(key, list.append(applied, [arg]), rev, env, k)
@@ -405,8 +403,8 @@ fn match(label, matched, otherwise, value, rev, env, k) {
 
 fn move(delimited, acc) {
   case delimited {
-    WillRenameAsDone(_) -> acc
-    Stack(step, rest) -> move(rest, Stack(step, acc))
+    [] -> acc
+    [step, ..rest] -> move(rest, Stack(step, acc))
   }
 }
 
@@ -419,14 +417,14 @@ fn do_perform(label, arg, i_rev, i_env, k, acc) {
       K(V(h), rev, e, k)
     }
     Stack(Delimit(l, h, rev, e, False), rest) if l == label -> {
-      let acc = Stack(Delimit(label, h, rev, e, False), acc)
+      let acc = [Delimit(label, h, rev, e, False), ..acc]
       let resume = Defunc(Resume(acc, i_rev, i_env), [])
       let k =
         Stack(CallWith(arg, rev, e), Stack(CallWith(resume, rev, e), rest))
       K(V(h), rev, e, k)
     }
     Stack(kontinue, rest) ->
-      do_perform(label, arg, i_rev, i_env, rest, Stack(kontinue, acc))
+      do_perform(label, arg, i_rev, i_env, rest, [kontinue, ..acc])
     WillRenameAsDone(extrinsic) -> {
       // inefficient to move back in error case
       let original_k = move(acc, WillRenameAsDone(dict.new()))
@@ -446,7 +444,7 @@ fn do_perform(label, arg, i_rev, i_env, k, acc) {
 }
 
 pub fn perform(label, arg, i_rev, i_env, k: Stack) {
-  do_perform(label, arg, i_rev, i_env, k, WillRenameAsDone(dict.new()))
+  do_perform(label, arg, i_rev, i_env, k, [])
 }
 
 // rename handle and move the handle for runner with handles out
