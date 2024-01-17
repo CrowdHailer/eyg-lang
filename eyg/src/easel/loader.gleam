@@ -9,8 +9,9 @@ import gleam/javascript
 import old_plinth/browser/document
 import easel/embed
 import eygir/decode
-import harness/ffi/cast
+import eyg/runtime/cast
 import eyg/runtime/interpreter as r
+import eyg/runtime/value as v
 import harness/ffi/env
 import harness/stdlib
 import plinth/javascript/console
@@ -46,11 +47,10 @@ fn applet(root) {
       {
         let env = stdlib.env()
         let rev = []
-        let k = r.WillRenameAsDone(dict.new())
-        let assert r.Value(term) = r.eval(source, env, k)
-        use func <- cast.require(cast.field("func", cast.any, term), rev, env, k,
-        )
-        use arg <- cast.require(cast.field("arg", cast.any, term), rev, env, k)
+        let k = r.Empty(dict.new())
+        let assert Ok(term) = r.eval(source, env, k)
+        use func <- result.then(cast.field("func", cast.any, term))
+        use arg <- result.then(cast.field("arg", cast.any, term))
         // run func arg can be a thing
         // weird return wrapping for cast
         // stdlib only builtins used
@@ -62,16 +62,15 @@ fn applet(root) {
             let id = int.to_string(list.length(saved))
             let saved = [action, ..saved]
             javascript.set_reference(actions, saved)
-            Ok(r.Str(id))
+            Ok(v.Str(id))
           })
           |> dict.insert("Log", console_log().2)
         let state = javascript.make_reference(arg)
         let render = fn() {
           let current = javascript.dereference(state)
-          let result =
-            r.eval_call(func, current, env, r.WillRenameAsDone(handlers))
+          let result = r.eval_call(func, current, env, r.Empty(handlers))
           let _ = case result {
-            r.Value(r.Str(page)) -> document.set_html(root, page)
+            Ok(v.Str(page)) -> document.set_html(root, page)
             _ -> {
               io.debug(#("unexpected", result))
               panic("nope")
@@ -87,13 +86,8 @@ fn applet(root) {
                   // handle effects
                   let current = javascript.dereference(state)
                   // io.debug(javascript.dereference(actions))
-                  let assert r.Value(next) =
-                    r.eval_call(
-                      code,
-                      current,
-                      env,
-                      r.WillRenameAsDone(dict.new()),
-                    )
+                  let assert Ok(next) =
+                    r.eval_call(code, current, env, r.Empty(dict.new()))
                   javascript.set_reference(state, next)
                   javascript.set_reference(actions, [])
                   render()
@@ -110,7 +104,7 @@ fn applet(root) {
           }
         })
         render()
-        r.K(r.V(func), rev, env, k)
+        Ok(#(r.V(func), rev, env, k))
       }
       Nil
     }
@@ -144,9 +138,9 @@ pub fn console_log() {
     t.String,
     t.unit,
     fn(message) {
-      use message <- result.then(cast.string(message))
+      use message <- result.then(cast.as_string(message))
       console.log(message)
-      Ok(r.unit)
+      Ok(v.unit)
     },
   )
 }

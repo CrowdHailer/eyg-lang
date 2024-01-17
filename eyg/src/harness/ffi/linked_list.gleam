@@ -1,7 +1,8 @@
-import gleam/option.{Some}
+import gleam/result
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import harness/ffi/cast
+import eyg/runtime/value as v
+import eyg/runtime/cast
 
 pub fn pop() {
   let parts =
@@ -16,13 +17,13 @@ pub fn pop() {
 }
 
 fn do_pop(term, rev, env, k) {
-  use elements <- cast.require(cast.list(term), rev, env, k)
+  use elements <- result.then(cast.as_list(term))
   let return = case elements {
-    [] -> r.error(r.unit)
+    [] -> v.error(v.unit)
     [head, ..tail] ->
-      r.ok(r.Record([#("head", head), #("tail", r.LinkedList(tail))]))
+      v.ok(v.Record([#("head", head), #("tail", v.LinkedList(tail))]))
   }
-  r.K(r.V(return), rev, env, k)
+  Ok(#(r.V(return), rev, env, k))
 }
 
 pub fn fold() {
@@ -48,13 +49,13 @@ pub fn fold() {
 }
 
 pub fn fold_impl(list, initial, func, rev, env, k) {
-  use elements <- cast.require(cast.list(list), rev, env, k)
+  use elements <- result.then(cast.as_list(list))
   do_fold(elements, initial, func, rev, env, k)
 }
 
 pub fn do_fold(elements, state, f, rev, env, k) {
   case elements {
-    [] -> r.K(r.V(state), rev, env, k)
+    [] -> Ok(#(r.V(state), rev, env, k))
     [element, ..rest] -> {
       r.step_call(
         f,
@@ -65,7 +66,7 @@ pub fn do_fold(elements, state, f, rev, env, k) {
           r.CallWith(state, rev, env),
           r.Stack(
             r.Apply(
-              r.Defunc(r.Builtin("list_fold"), [r.LinkedList(rest)]),
+              v.Partial(v.Builtin("list_fold"), [v.LinkedList(rest)]),
               rev,
               env,
             ),

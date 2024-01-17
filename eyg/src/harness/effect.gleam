@@ -15,8 +15,9 @@ import simplifile
 import eyg/analysis/typ as t
 import old_plinth/browser/window
 import old_plinth/javascript/promisex
-import eyg/runtime/interpreter as r
-import harness/ffi/cast
+import eyg/runtime/value as v
+import eyg/runtime/break
+import eyg/runtime/cast
 import eygir/decode
 import harness/ffi/core
 
@@ -37,9 +38,9 @@ pub fn debug_logger() {
     t.Str,
     t.unit,
     fn(message) {
-      io.print(r.to_string(message))
+      io.print(v.debug(message))
       io.print("\n")
-      Ok(r.unit)
+      Ok(v.unit)
     },
   )
 }
@@ -49,9 +50,9 @@ pub fn window_alert() {
     t.Str,
     t.unit,
     fn(message) {
-      use message <- result.then(cast.string(message))
+      use message <- result.then(cast.as_string(message))
       window.alert(message)
-      Ok(r.unit)
+      Ok(v.unit)
     },
   )
 }
@@ -62,8 +63,8 @@ pub fn choose() {
     t.boolean,
     fn(_) {
       let value = case int.random(2) {
-        0 -> r.false
-        1 -> r.true
+        0 -> v.false
+        1 -> v.true
         _ -> panic as "integer outside expected range"
       }
       Ok(value)
@@ -77,31 +78,28 @@ pub fn http() {
     t.unit,
     fn(request) {
       use method <- result.then(cast.field("method", cast.any, request))
-      let assert r.Tagged(method, _) = method
+      let assert v.Tagged(method, _) = method
       let method = case string.uppercase(method) {
         "GET" -> http.Get
         "POST" -> http.Post
         _ -> panic as string.concat(["unknown method: ", method])
       }
       use _scheme <- result.then(cast.field("scheme", cast.any, request))
-      use host <- result.then(cast.field("host", cast.string, request))
+      use host <- result.then(cast.field("host", cast.as_string, request))
       use _port <- result.then(cast.field("port", cast.any, request))
-      use path <- result.then(cast.field("path", cast.string, request))
+      use path <- result.then(cast.field("path", cast.as_string, request))
       use _query <- result.then(cast.field("query", cast.any, request))
-      use headers <- result.then(cast.field("headers", cast.list, request))
+      use headers <- result.then(cast.field("headers", cast.as_list, request))
       let assert Ok(headers) =
         list.try_map(headers, fn(h) {
-          use k <- result.try(r.field(h, "key"))
-          let assert r.Str(k) = k
-          use value <- result.try(r.field(h, "value"))
-          let assert r.Str(value) = value
-
+          use k <- result.try(cast.field("key", cast.as_string, h))
+          use value <- result.try(cast.field("value", cast.as_string, h))
           Ok(#(k, value))
         })
 
       use body <- result.then(cast.field("body", cast.any, request))
       // TODO fix binary or string
-      let assert r.Str(body) = body
+      let assert v.Str(body) = body
 
       let request =
         request.new()
@@ -127,29 +125,29 @@ pub fn http() {
           case response {
             Ok(response) -> {
               let resp =
-                r.ok(
-                  r.Record([
-                    #("status", r.Integer(response.status)),
+                v.ok(
+                  v.Record([
+                    #("status", v.Integer(response.status)),
                     #(
                       "headers",
-                      r.LinkedList(
+                      v.LinkedList(
                         list.map(response.headers, fn(h) {
                           let #(k, v) = h
-                          r.Record([#("key", r.Str(k)), #("value", r.Str(v))])
+                          v.Record([#("key", v.Str(k)), #("value", v.Str(v))])
                         }),
                       ),
                     ),
-                    #("body", r.Str(response.body)),
+                    #("body", v.Str(response.body)),
                   ]),
                 )
               resp
             }
 
-            Error(_) -> r.error(r.Str("bad response"))
+            Error(_) -> v.error(v.Str("bad response"))
           }
         })
 
-      Ok(r.Promise(promise))
+      Ok(v.Promise(promise))
     },
   )
 }
@@ -159,10 +157,10 @@ pub fn open() {
     t.Str,
     t.unit,
     fn(target) {
-      use target <- result.then(cast.string(target))
+      use target <- result.then(cast.as_string(target))
       let p = open_browser(target)
       io.debug(target)
-      Ok(r.Promise(promise.map(p, fn(_terminate) { r.unit })))
+      Ok(v.Promise(promise.map(p, fn(_terminate) { v.unit })))
     },
   )
 }
@@ -176,8 +174,8 @@ pub fn await() {
     t.Str,
     t.unit,
     fn(promise) {
-      use js_promise <- result.then(cast.promise(promise))
-      Error(r.UnhandledEffect("Await", r.Promise(js_promise)))
+      use js_promise <- result.then(cast.as_promise(promise))
+      Error(break.UnhandledEffect("Await", v.Promise(js_promise)))
     },
   )
 }
@@ -187,9 +185,9 @@ pub fn wait() {
     t.Integer,
     t.unit,
     fn(milliseconds) {
-      use milliseconds <- result.then(cast.integer(milliseconds))
+      use milliseconds <- result.then(cast.as_integer(milliseconds))
       let p = promisex.wait(milliseconds)
-      Ok(r.Promise(promise.map(p, fn(_) { r.unit })))
+      Ok(v.Promise(promise.map(p, fn(_) { v.unit })))
     },
   )
 }
@@ -200,14 +198,14 @@ pub fn read_source() {
     t.Str,
     t.result(t.Str, t.unit),
     fn(file) {
-      use file <- result.then(cast.string(file))
+      use file <- result.then(cast.as_string(file))
       case simplifile.read(file) {
         Ok(json) ->
           case decode.from_json(json) {
-            Ok(exp) -> Ok(r.ok(r.LinkedList(core.expression_to_language(exp))))
-            Error(_) -> Ok(r.error(r.unit))
+            Ok(exp) -> Ok(v.ok(v.LinkedList(core.expression_to_language(exp))))
+            Error(_) -> Ok(v.error(v.unit))
           }
-        Error(_) -> Ok(r.error(r.unit))
+        Error(_) -> Ok(v.error(v.unit))
       }
     },
   )
@@ -218,12 +216,12 @@ pub fn file_read() {
     t.Str,
     t.result(t.Str, t.unit),
     fn(file) {
-      use file <- result.then(cast.string(file))
+      use file <- result.then(cast.as_string(file))
       case simplifile.read_bits(file) {
-        Ok(content) -> Ok(r.ok(r.Binary(content)))
+        Ok(content) -> Ok(v.ok(v.Binary(content)))
         Error(reason) -> {
           io.debug(#("failed to read", file, reason))
-          Ok(r.error(r.unit))
+          Ok(v.error(v.unit))
         }
       }
     },
@@ -235,10 +233,10 @@ pub fn file_write() {
     t.Str,
     t.unit,
     fn(request) {
-      use file <- result.then(cast.field("file", cast.string, request))
-      use content <- result.then(cast.field("content", cast.string, request))
+      use file <- result.then(cast.field("file", cast.as_string, request))
+      use content <- result.then(cast.field("content", cast.as_string, request))
       let assert Ok(_) = simplifile.write(content, file)
-      Ok(r.unit)
+      Ok(v.unit)
     },
   )
 }
@@ -254,9 +252,9 @@ pub fn load_db() {
     t.Str,
     t.unit,
     fn(triples) {
-      use triples <- result.then(cast.string(triples))
+      use triples <- result.then(cast.as_string(triples))
       let p = load(triples)
-      Ok(r.Promise(promise.map(p, fn(_) { r.unit })))
+      Ok(v.Promise(promise.map(p, fn(_) { v.unit })))
     },
   )
 }
@@ -266,7 +264,7 @@ pub fn query_db() {
     t.Str,
     t.unit,
     fn(query) {
-      use query <- result.then(cast.string(query))
+      use query <- result.then(cast.as_string(query))
       let p = run_query(query)
 
       let p =
@@ -282,16 +280,16 @@ pub fn query_db() {
                     dynamic.any([
                       fn(raw) {
                         use value <- result.map(dynamic.int(raw))
-                        r.Integer(value)
+                        v.Integer(value)
                       },
                       fn(raw) {
                         use value <- result.map(dynamic.string(raw))
-                        r.Str(value)
+                        v.Str(value)
                       },
                       fn(raw) {
                         use value <- result.map(dynamic.list(dynamic.string)(raw,
                         ))
-                        r.LinkedList(list.map(value, r.Str))
+                        v.LinkedList(list.map(value, v.Str))
                       },
                     ]),
                   ),
@@ -301,12 +299,12 @@ pub fn query_db() {
           let assert Ok(#(headers, rows)) = json.decode(raw, decoder)
           list.map(rows, fn(row) {
             let assert Ok(fields) = list.strict_zip(headers, row)
-            r.Record(fields)
+            v.Record(fields)
           })
-          |> r.LinkedList
+          |> v.LinkedList
         })
 
-      Ok(r.Promise(p))
+      Ok(v.Promise(p))
     },
   )
 }
@@ -321,19 +319,17 @@ pub fn zip() {
     ),
     t.unit,
     fn(query) {
-      use items <- result.then(cast.list(query))
+      use items <- result.then(cast.as_list(query))
       let assert Ok(items) =
         list.try_map(items, fn(value) {
-          use name <- result.then(r.field(value, "name"))
-          let assert r.Str(name) = name
-          use content <- result.then(r.field(value, "content"))
-          let assert r.Binary(content) = content
-
+          use name <- result.then(cast.field("name", cast.as_string, value))
+          use content <- result.then(cast.field("content", cast.as_binary, value,
+          ))
           Ok(#(name, content))
         })
 
       let zipped = do_zip(array.from_list(items))
-      Ok(r.Str(zipped))
+      Ok(v.Str(zipped))
     },
   )
 }

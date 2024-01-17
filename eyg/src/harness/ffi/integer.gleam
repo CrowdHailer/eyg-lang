@@ -1,8 +1,10 @@
 import gleam/int
 import gleam/order.{Eq, Gt, Lt}
+import gleam/result
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter as r
-import harness/ffi/cast
+import eyg/runtime/value as v
+import eyg/runtime/cast
 
 pub fn compare() {
   let type_ =
@@ -23,14 +25,14 @@ pub fn compare() {
 }
 
 fn do_compare(left, right, rev, env, k) {
-  use left <- cast.require(cast.integer(left), rev, env, k)
-  use right <- cast.require(cast.integer(right), rev, env, k)
+  use left <- result.then(cast.as_integer(left))
+  use right <- result.then(cast.as_integer(right))
   let return = case int.compare(left, right) {
-    Lt -> r.Tagged("Lt", r.unit)
-    Eq -> r.Tagged("Eq", r.unit)
-    Gt -> r.Tagged("Gt", r.unit)
+    Lt -> v.Tagged("Lt", v.unit)
+    Eq -> v.Tagged("Eq", v.unit)
+    Gt -> v.Tagged("Gt", v.unit)
   }
-  r.K(r.V(return), rev, env, k)
+  Ok(#(r.V(return), rev, env, k))
 }
 
 pub fn add() {
@@ -40,9 +42,9 @@ pub fn add() {
 }
 
 fn do_add(left, right, rev, env, k) {
-  use left <- cast.require(cast.integer(left), rev, env, k)
-  use right <- cast.require(cast.integer(right), rev, env, k)
-  r.K(r.V(r.Integer(left + right)), rev, env, k)
+  use left <- result.then(cast.as_integer(left))
+  use right <- result.then(cast.as_integer(right))
+  Ok(#(r.V(v.Integer(left + right)), rev, env, k))
 }
 
 pub fn subtract() {
@@ -52,9 +54,9 @@ pub fn subtract() {
 }
 
 fn do_subtract(left, right, rev, env, k) {
-  use left <- cast.require(cast.integer(left), rev, env, k)
-  use right <- cast.require(cast.integer(right), rev, env, k)
-  r.K(r.V(r.Integer(left - right)), rev, env, k)
+  use left <- result.then(cast.as_integer(left))
+  use right <- result.then(cast.as_integer(right))
+  Ok(#(r.V(v.Integer(left - right)), rev, env, k))
 }
 
 pub fn multiply() {
@@ -64,9 +66,9 @@ pub fn multiply() {
 }
 
 fn do_multiply(left, right, rev, env, k) {
-  use left <- cast.require(cast.integer(left), rev, env, k)
-  use right <- cast.require(cast.integer(right), rev, env, k)
-  r.K(r.V(r.Integer(left * right)), rev, env, k)
+  use left <- result.then(cast.as_integer(left))
+  use right <- result.then(cast.as_integer(right))
+  Ok(#(r.V(v.Integer(left * right)), rev, env, k))
 }
 
 pub fn divide() {
@@ -76,13 +78,13 @@ pub fn divide() {
 }
 
 fn do_divide(left, right, rev, env, k) {
-  use left <- cast.require(cast.integer(left), rev, env, k)
-  use right <- cast.require(cast.integer(right), rev, env, k)
+  use left <- result.then(cast.as_integer(left))
+  use right <- result.then(cast.as_integer(right))
   let value = case right {
-    0 -> r.error(r.unit)
-    _ -> r.ok(r.Integer(left / right))
+    0 -> v.error(v.unit)
+    _ -> v.ok(v.Integer(left / right))
   }
-  r.K(r.V(value), rev, env, k)
+  Ok(#(r.V(value), rev, env, k))
 }
 
 pub fn absolute() {
@@ -91,8 +93,8 @@ pub fn absolute() {
 }
 
 fn do_absolute(x, rev, env, k) {
-  use x <- cast.require(cast.integer(x), rev, env, k)
-  r.K(r.V(r.Integer(int.absolute_value(x))), rev, env, k)
+  use x <- result.then(cast.as_integer(x))
+  Ok(#(r.V(v.Integer(int.absolute_value(x))), rev, env, k))
 }
 
 pub fn parse() {
@@ -101,13 +103,12 @@ pub fn parse() {
 }
 
 fn do_parse(raw, rev, env, k) {
-  use raw <- cast.require(cast.string(raw), rev, env, k)
-  case int.parse(raw) {
-    Ok(i) -> r.ok(r.Integer(i))
-    Error(Nil) -> r.error(r.unit)
+  use raw <- result.then(cast.as_string(raw))
+  let value = case int.parse(raw) {
+    Ok(i) -> v.ok(v.Integer(i))
+    Error(Nil) -> v.error(v.unit)
   }
-  |> r.V
-  |> r.K(rev, env, k)
+  Ok(#(r.V(value), rev, env, k))
 }
 
 pub fn to_string() {
@@ -116,6 +117,6 @@ pub fn to_string() {
 }
 
 fn do_to_string(x, rev, env, k) {
-  use x <- cast.require(cast.integer(x), rev, env, k)
-  r.K(r.V(r.Str(int.to_string(x))), rev, env, k)
+  use x <- result.then(cast.as_integer(x))
+  Ok(#(r.V(v.Str(int.to_string(x))), rev, env, k))
 }

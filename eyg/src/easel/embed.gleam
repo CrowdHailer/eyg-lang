@@ -15,6 +15,8 @@ import eygir/expression as e
 import eygir/encode
 import eygir/decode
 import eyg/runtime/interpreter as r
+import eyg/runtime/value as v
+import eyg/runtime/break
 import harness/stdlib
 import harness/effect
 import eyg/analysis/jm/tree
@@ -113,7 +115,7 @@ pub fn handle_click(root, event) {
       promise.map_try(load_source(), fn(source) {
         // let #(#(sub, next, _types), envs) =
         //   tree.infer(source, t.Var(-1), t.Var(-2))
-        // let #(r.Value(r.Function(_, source, _e2, rev)), env) =
+        // let #(Ok(v.Closure(_, source, _e2, rev)), env) =
         //   r.resumable(source, stdlib.env(), None)
         // let assert Ok(tenv) = dict.get(envs, rev)
         let env = stdlib.env()
@@ -347,8 +349,8 @@ pub fn snippet(root) {
 
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let assert #(r.Value(r.Function(_, source, _e2, rev)), env) =
-        r.resumable(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
+      let assert Ok(v.Closure(_, source, _e2, rev)) =
+        r.eval(source, stdlib.env(), r.Empty(dict.new()))
       let assert Ok(tenv) = dict.get(envs, rev)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
@@ -360,7 +362,7 @@ pub fn snippet(root) {
         Embed(
           mode: Command(""),
           yanked: None,
-          env: #(env, sub, next, tenv),
+          env: #(todo("env not needed"), sub, next, tenv),
           source: source,
           history: #([], []),
           auto_infer: True,
@@ -388,9 +390,9 @@ pub fn init(json) {
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
   let #(env, source, sub, next, tenv) = case
-    r.resumable(source, stdlib.env(), r.WillRenameAsDone(dict.new()))
+    r.eval(source, stdlib.env(), r.Empty(dict.new()))
   {
-    #(r.Value(r.Function(_, source, _, rev)), env) -> {
+    Ok(v.Closure(_, source, env, rev)) -> {
       let tenv = case dict.get(envs, rev) {
         Ok(tenv) -> tenv
         Error(Nil) -> {
@@ -398,7 +400,8 @@ pub fn init(json) {
           dict.new()
         }
       }
-      #(env, source, sub, next, tenv)
+
+      #(stdlib.env(), source, sub, next, tenv)
     }
     _ -> #(env, source, dict.new(), 0, dict.new())
   }
@@ -893,17 +896,17 @@ fn run(state: Embed) {
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)
-  let ret = r.eval(source, env, r.WillRenameAsDone(handlers))
+  let ret = r.eval(source, env, r.Empty(handlers))
   case ret {
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
     // could allow await effect by assuming is in async context
-    r.Abort(r.UnhandledEffect("Await", r.Promise(_p)), _, _, _) -> {
+    Error(#(break.UnhandledEffect("Await", v.Promise(_p)), _, _, _)) -> {
       let p =
         promise.map(r.await(ret), fn(final) {
           let message = case final {
-            r.Abort(reason, _rev, _env, _k) -> reason_to_string(reason)
-            r.Value(term) -> {
+            Error(#(reason, _rev, _env, _k)) -> reason_to_string(reason)
+            Ok(term) -> {
               io.debug(term)
               term_to_string(term)
             }
@@ -913,17 +916,17 @@ fn run(state: Embed) {
 
       #("Running", [p])
     }
-    r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
-    r.Value(term) -> #(term_to_string(term), [])
+    Error(#(reason, _rev, _env, _k)) -> #(reason_to_string(reason), [])
+    Ok(term) -> #(term_to_string(term), [])
   }
 }
 
 fn reason_to_string(reason) {
-  r.reason_to_string(reason)
+  break.reason_to_string(reason)
 }
 
 fn term_to_string(term) {
-  r.to_string(term)
+  v.debug(term)
 }
 
 pub fn undo(state: Embed, start) {

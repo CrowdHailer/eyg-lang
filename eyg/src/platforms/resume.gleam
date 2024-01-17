@@ -11,6 +11,8 @@ import plinth/browser/event
 import plinth/javascript/console
 import eygir/decode
 import eyg/runtime/interpreter as r
+import eyg/runtime/value as v
+import eyg/runtime/cast
 import harness/stdlib
 
 fn handle_click(event, states) {
@@ -20,18 +22,17 @@ fn handle_click(event, states) {
   use key <- result.then(element.get_attribute(target, "on:click"))
   use #(action, env) <- result.then(map.get(states, container))
   // TODO get attribute and multiple sources
-  let k =
-    r.Stack(r.CallWith(r.Str(key), [], env), r.WillRenameAsDone(dict.new()))
+  let k = r.Stack(r.CallWith(v.Str(key), [], env), r.Empty(dict.new()))
   let rev = []
-  let #(answer, env) = r.loop_till(r.V(action), rev, env, k)
+  let answer = r.loop(r.step(r.V(action), rev, env, k))
   // console.log(answer)
-  let assert r.Value(term) = answer
-  // console.log(r.to_string(term))
+  let assert Ok(term) = answer
+  // console.log(v.debug(term))
   case term {
-    r.Tagged("Ok", return) -> {
-      // console.log(r.to_string(return))
-      let assert Ok(r.Str(content)) = r.field(return, "content")
-      let assert Ok(action) = r.field(return, "action")
+    v.Tagged("Ok", return) -> {
+      // console.log(v.debug(return))
+      let assert Ok(content) = cast.field("content", cast.as_string, return)
+      let assert Ok(action) = cast.field("action", cast.any, return)
       element.set_inner_html(container, content)
       // Need native map because js objects are deep equal true
       Ok(map.set(states, container, #(action, env)))
@@ -55,8 +56,8 @@ pub fn run() {
         |> result.map_error(fn(_) { Nil }),
       )
       let env = stdlib.env()
-      let assert #(r.Value(action), env) =
-        r.resumable(source, env, r.WillRenameAsDone(dict.new()))
+      let assert Ok(action) = r.eval(source, env, r.Empty(dict.new()))
+      // TODO remove env, it doesn't matter call to step_call
       Ok(#(container, #(action, env)))
     })
     |> list.fold(map.new(), fn(map, item) {
@@ -92,19 +93,19 @@ pub fn run() {
   //           Ok(target) ->
   //             case element.closest(target, "[r\\:container]") {
   //               Ok(container) -> {
-  //                 let k = Some(r.Stack(r.CallWith(r.Str("0"), [], env), None))
+  //                 let k = Some(r.Stack(r.CallWith(v.Str("0"), [], env), None))
   //                 let c = javascript.dereference(ref)
   //                 let #(answer, _) = r.loop_till(r.V(c), rev, env, k)
   //                 // console.log(answer)
-  //                 let assert r.Value(term) = answer
-  //                 // console.log(r.to_string(term))
+  //                 let assert Ok(term) = answer
+  //                 // console.log(v.debug(term))
   //                 case term {
-  //                   r.Tagged("Ok", return) -> {
-  //                     // console.log(r.to_string(return))
-  //                     let assert Ok(r.Str(content)) =
+  //                   v.Tagged("Ok", return) -> {
+  //                     // console.log(v.debug(return))
+  //                     let assert Ok(v.Str(content)) =
   //                       r.field(return, "content")
   //                     let assert Ok(action) = r.field(return, "action")
-  //                     javascript.set_reference(ref, r.Value(action))
+  //                     javascript.set_reference(ref, Ok(action))
   //                     element.set_inner_html(container, content)
   //                   }
   //                   _ -> {
@@ -150,13 +151,13 @@ pub fn run() {
   //                 // env needs builtins
   //                 let env = stdlib.env()
   //                 let rev = []
-  //                 let k = Some(r.Stack(r.CallWith(r.Str("0"), [], env), None))
+  //                 let k = Some(r.Stack(r.CallWith(v.Str("0"), [], env), None))
   //                 let answer = r.eval(source, env, k)
   //                 // console.log(answer)
-  //                 let assert r.Value(term) = answer
-  //                 // console.log(r.to_string(term))
+  //                 let assert Ok(term) = answer
+  //                 // console.log(v.debug(term))
   //                 case term {
-  //                   r.Tagged("Ok", r.Str(content)) ->
+  //                   v.Tagged("Ok", v.Str(content)) ->
   //                     element.set_inner_html(container, content)
   //                   _ -> {
   //                     console.log("bad stuff")
