@@ -2,7 +2,6 @@ import gleam/list
 import gleam/dict.{type Dict}
 import gleam/result
 import eygir/expression as e
-import gleam/javascript/promise
 import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/cast
@@ -59,51 +58,22 @@ pub type Kontinue {
 pub type Extrinsic =
   fn(Value) -> Result(Value, Reason)
 
-// loop and eval go to runner as you'd build a new one
-pub fn eval(exp, env, k) {
-  loop(try(do_eval(exp, [], env, k)))
-}
-
-// TODO potentially remove, or accept multiple arguments
-pub fn eval_call(f, arg, env, k) {
-  loop(try(apply(f, [], env, CallWith(arg, [], env), k)))
-}
-
-// Solves the situation that JavaScript suffers from coloured functions
-// To eval code that may be async needs to return a promise of a result
-pub fn await(ret) {
-  case ret {
-    Error(#(break.UnhandledEffect("Await", v.Promise(p)), rev, env, k)) -> {
-      use return <- promise.await(p)
-      await(loop(step(V(return), rev, env, k)))
-    }
-    other -> promise.resolve(other)
-  }
-}
-
-pub fn loop(next) {
-  case next {
-    Loop(c, rev, e, k) -> loop(step(c, rev, e, k))
-    Break(result) -> result
-  }
-}
-
 pub fn step(c, rev, env, k) {
   case c, k {
-    E(exp), k -> try(do_eval(exp, rev, env, k))
+    E(exp), k -> try(eval(exp, rev, env, k))
     V(value), Empty(_) -> Break(Ok(value))
     V(value), Stack(k, rest) -> try(apply(value, rev, env, k, rest))
   }
 }
 
-fn try(return) {
+pub fn try(return) {
   case return {
     Ok(#(c, rev, e, k)) -> Loop(c, rev, e, k)
     Error(info) -> Break(Error(info))
   }
 }
 
-fn do_eval(exp, rev, env: Env, k) {
+pub fn eval(exp, rev, env: Env, k) {
   let value = fn(value) { Ok(#(V(value), rev, env, k)) }
   case exp {
     e.Lambda(param, body) ->
@@ -144,7 +114,7 @@ fn do_eval(exp, rev, env: Env, k) {
   |> result.map_error(fn(reason) { #(reason, rev, env, k) })
 }
 
-fn apply(value, rev, env, k, rest) {
+pub fn apply(value, rev, env, k, rest) {
   case k {
     Assign(label, then, rev, env) -> {
       let env = Env(..env, scope: [#(label, value), ..env.scope])
@@ -152,14 +122,14 @@ fn apply(value, rev, env, k, rest) {
     }
     Arg(arg, rev, call_rev, env) ->
       Ok(#(E(arg), rev, env, Stack(Apply(value, call_rev, env), rest)))
-    Apply(f, rev, env) -> step_call(f, value, rev, env, rest)
-    CallWith(arg, rev, env) -> step_call(value, arg, rev, env, rest)
+    Apply(f, rev, env) -> call(f, value, rev, env, rest)
+    CallWith(arg, rev, env) -> call(value, arg, rev, env, rest)
     Delimit(_, _, _, _, _) -> Ok(#(V(value), rev, env, rest))
   }
   |> result.map_error(fn(reason) { #(reason, rev, env, Stack(k, rest)) })
 }
 
-pub fn step_call(f, arg, rev, env: Env, k: Stack) {
+pub fn call(f, arg, rev, env: Env, k: Stack) {
   case f {
     v.Closure(param, body, captured, rev) -> {
       let env = Env(..env, scope: [#(param, arg), ..captured])
@@ -197,8 +167,8 @@ pub fn step_call(f, arg, rev, env: Env, k: Stack) {
         v.Match(label), [branch, otherwise] -> {
           use #(l, inner) <- result.then(cast.as_tagged(arg))
           case l == label {
-            True -> step_call(branch, inner, rev, env, k)
-            False -> step_call(otherwise, arg, rev, env, k)
+            True -> call(branch, inner, rev, env, k)
+            False -> call(otherwise, arg, rev, env, k)
           }
         }
         v.NoCases, [] -> Error(break.NoMatch(arg))
@@ -281,11 +251,11 @@ pub fn perform(label, arg, i_rev, i_env, k: Stack) {
 // rename handle and move the handle for runner with handles out
 pub fn deep(label, handle, exec, rev, env, k) {
   let k = Stack(Delimit(label, handle, rev, env, False), k)
-  step_call(exec, v.unit, rev, env, k)
+  call(exec, v.unit, rev, env, k)
 }
 
 // somewhere this needs outer k
 fn shallow(label, handle, exec, rev, env: Env, k) {
   let k = Stack(Delimit(label, handle, rev, env, True), k)
-  step_call(exec, v.unit, rev, env, k)
+  call(exec, v.unit, rev, env, k)
 }

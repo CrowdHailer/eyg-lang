@@ -10,7 +10,8 @@ import old_plinth/browser/document
 import easel/embed
 import eygir/decode
 import eyg/runtime/cast
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import harness/ffi/env
 import harness/stdlib
@@ -47,8 +48,8 @@ fn applet(root) {
       {
         let env = stdlib.env()
         let rev = []
-        let k = r.Empty(dict.new())
-        let assert Ok(term) = r.eval(source, env, k)
+        let k = dict.new()
+        let assert Ok(term) = r.execute(source, env, k)
         use func <- result.then(cast.field("func", cast.any, term))
         use arg <- result.then(cast.field("arg", cast.any, term))
         // run func arg can be a thing
@@ -68,7 +69,7 @@ fn applet(root) {
         let state = javascript.make_reference(arg)
         let render = fn() {
           let current = javascript.dereference(state)
-          let result = r.eval_call(func, current, env, r.Empty(handlers))
+          let result = r.resume(func, [current], env, handlers)
           let _ = case result {
             Ok(v.Str(page)) -> document.set_html(root, page)
             _ -> {
@@ -87,7 +88,7 @@ fn applet(root) {
                   let current = javascript.dereference(state)
                   // io.debug(javascript.dereference(actions))
                   let assert Ok(next) =
-                    r.eval_call(code, current, env, r.Empty(dict.new()))
+                    r.resume(code, [current], env, dict.new())
                   javascript.set_reference(state, next)
                   javascript.set_reference(actions, [])
                   render()
@@ -104,7 +105,7 @@ fn applet(root) {
           }
         })
         render()
-        Ok(#(r.V(func), rev, env, k))
+        Ok(#(state.V(func), rev, env, k))
       }
       Nil
     }

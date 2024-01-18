@@ -39,17 +39,6 @@ pub type Switch(context) {
   Builtin(String)
 }
 
-pub fn field(term, field) {
-  case term {
-    Record(fields) ->
-      case list.key_find(fields, field) {
-        Ok(value) -> Ok(value)
-        Error(Nil) -> Error(Nil)
-      }
-    _ -> Error(Nil)
-  }
-}
-
 // This might not give in runtime core, more runtime presentation
 pub fn debug(term) {
   case term {

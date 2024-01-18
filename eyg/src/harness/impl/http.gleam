@@ -10,7 +10,7 @@ import gleam/javascript/promise.{type Promise}
 import plinth/javascript/console
 import eygir/expression as e
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/cast
@@ -23,7 +23,6 @@ pub fn serve() {
     t.unit,
     fn(lift) {
       let env = stdlib.env()
-      let rev = []
       use port <- result.then(cast.field("port", cast.as_integer, lift))
       use handler <- result.then(cast.field("handler", cast.any, lift))
       let id =
@@ -40,25 +39,17 @@ pub fn serve() {
               |> effect.extend("LoadDB", effect.load_db())
               |> effect.extend("QueryDB", effect.query_db())
             }.1
-          promise.map(
-            r.await(
-              r.loop(r.step(
-                r.V(handler),
-                [],
-                env,
-                r.Stack(r.CallWith(req, rev, env), r.Empty(extrinsic)),
-              )),
-            ),
-            fn(resp) {
-              case resp {
-                Ok(resp) -> from_response(resp)
-                Error(#(reason, _path, _env, _k)) -> {
-                  io.debug(break.reason_to_string(reason))
-                  #(500, array.from_list([]), "Server error")
-                }
+          promise.map(r.await(r.resume(handler, [req], env, extrinsic)), fn(
+            resp,
+          ) {
+            case resp {
+              Ok(resp) -> from_response(resp)
+              Error(#(reason, _path, _env, _k)) -> {
+                io.debug(break.reason_to_string(reason))
+                #(500, array.from_list([]), "Server error")
               }
-            },
-          )
+            }
+          })
         })
       let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
       Ok(v.Closure("_", body, [], []))
@@ -84,7 +75,6 @@ pub fn receive() {
     t.unit,
     fn(lift) {
       let env = stdlib.env()
-      let rev = []
       use port <- result.then(cast.field("port", cast.as_integer, lift))
       console.log(port)
       use handler <- result.then(cast.field("handler", cast.any, lift))
@@ -101,13 +91,7 @@ pub fn receive() {
               |> effect.extend("Await", effect.await())
               |> effect.extend("Wait", effect.wait())
             }.1
-          let assert Ok(reply) =
-            r.loop(r.step(
-              r.V(handler),
-              [],
-              env,
-              r.Stack(r.CallWith(req, rev, env), r.Empty(extrinsic)),
-            ))
+          let assert Ok(reply) = r.resume(handler, [req], env, extrinsic)
           let assert Ok(resp) = cast.field("response", cast.any, reply)
           let assert Ok(data) = cast.field("data", cast.as_tagged, reply)
 

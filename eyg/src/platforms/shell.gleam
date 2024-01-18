@@ -1,4 +1,4 @@
-import gleam/dict.{type Dict}
+import gleam/dict
 import gleam/dynamic
 import gleam/io
 import gleam/int
@@ -7,7 +7,8 @@ import gleam/result
 import gleam/string
 import gleam/javascript/array.{type Array}
 import gleam/javascript/promise
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/cast
@@ -33,7 +34,7 @@ pub fn question(interface: Interface, prompt: String) -> promise.Promise(String)
 @external(javascript, "../plinth_readlines_ffi.js", "close")
 pub fn close(interface: Interface) -> promise.Promise(String)
 
-fn handlers() -> #(_, Dict(String, r.Extrinsic)) {
+fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("HTTP", effect.http())
@@ -52,25 +53,15 @@ fn handlers() -> #(_, Dict(String, r.Extrinsic)) {
 }
 
 pub fn run(source) {
-  let env = r.Env(scope: [], builtins: stdlib.lib().1)
-  let k_parser =
-    r.Stack(
-      r.Apply(v.Partial(v.Select("lisp"), []), [], env),
-      r.Stack(
-        r.Apply(v.Partial(v.Select("prompt"), []), [], env),
-        r.Empty(handlers().1),
-      ),
-    )
-  let assert Ok(parser) = r.eval(source, env, k_parser)
+  let env = state.Env(scope: [], builtins: stdlib.lib().1)
+  let assert Ok(parser) = r.execute(source, env, handlers().1)
+  let assert Ok(lisp) = cast.field("list", cast.any, parser)
+  let assert Ok(parser) = cast.field("prompt", cast.any, lisp)
   let parser = fn(prompt) {
     fn(raw) {
-      let k =
-        r.Stack(
-          r.CallWith(v.Str(prompt), [], env),
-          r.Stack(r.CallWith(v.Str(raw), [], env), r.Empty(dict.new())),
-        )
-      let assert Ok(v.Tagged(tag, value)) =
-        r.loop(r.step(r.V(parser), [], env, k))
+      let k = dict.new()
+      let args = [v.Str(prompt), v.Str(raw)]
+      let assert Ok(v.Tagged(tag, value)) = r.resume(parser, args, env, k)
       case tag {
         "Ok" ->
           result.replace_error(
@@ -85,13 +76,10 @@ pub fn run(source) {
     }
   }
 
-  let k =
-    r.Stack(
-      r.Apply(v.Partial(v.Select("exec"), []), [], env),
-      r.Stack(r.CallWith(v.unit, [], env), r.Empty(handlers().1)),
-    )
+  let assert Ok(prog) = r.execute(source, env, handlers().1)
+  let assert Ok(exec) = cast.field("exec", cast.any, prog)
   let assert Error(#(break.UnhandledEffect("Prompt", prompt), _rev, env, k)) =
-    r.eval(source, env, k)
+    r.resume(exec, [v.unit], env, handlers().1)
 
   let assert v.Str(prompt) = prompt
 
@@ -122,9 +110,7 @@ fn read(rl, parser, env, k, prompt) {
       case code == e.Empty {
         True -> promise.resolve(0)
         False -> {
-          use ret <- promise.await(
-            r.await(r.eval(code, env, r.Empty(handlers().1))),
-          )
+          use ret <- promise.await(r.await(r.execute(code, env, handlers().1)))
           let #(env, prompt) = case ret {
             Ok(value) -> {
               print(value)

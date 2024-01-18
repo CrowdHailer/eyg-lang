@@ -8,7 +8,8 @@ import gleam/string as gleam_string
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eyg/runtime/capture
 import eyg/runtime/cast
@@ -22,7 +23,7 @@ import plinth/javascript/console
 pub fn equal() {
   let type_ =
     t.Fun(t.Unbound(0), t.Open(1), t.Fun(t.Unbound(0), t.Open(2), t.boolean))
-  #(type_, r.Arity2(do_equal))
+  #(type_, state.Arity2(do_equal))
 }
 
 fn do_equal(left, right, rev, env, k) {
@@ -30,16 +31,16 @@ fn do_equal(left, right, rev, env, k) {
     True -> v.true
     False -> v.false
   }
-  Ok(#(r.V(value), rev, env, k))
+  Ok(#(state.V(value), rev, env, k))
 }
 
 pub fn debug() {
   let type_ = t.Fun(t.Unbound(0), t.Open(1), t.Str)
-  #(type_, r.Arity1(do_debug))
+  #(type_, state.Arity1(do_debug))
 }
 
 fn do_debug(term, rev, env, k) {
-  Ok(#(r.V(v.Str(v.debug(term))), rev, env, k))
+  Ok(#(state.V(v.Str(v.debug(term))), rev, env, k))
 }
 
 pub fn fix() {
@@ -49,11 +50,11 @@ pub fn fix() {
       t.Open(-3),
       t.Unbound(-1),
     )
-  #(type_, r.Arity1(do_fix))
+  #(type_, state.Arity1(do_fix))
 }
 
 fn do_fix(builder, rev, env, k) {
-  r.step_call(builder, v.Partial(v.Builtin("fixed"), [builder]), rev, env, k)
+  state.call(builder, v.Partial(v.Builtin("fixed"), [builder]), rev, env, k)
 }
 
 pub fn fixed() {
@@ -62,35 +63,35 @@ pub fn fixed() {
   // value produced by the fix action
   #(
     t.Unbound(0),
-    r.Arity2(fn(builder, arg, rev, env, k) {
-      r.step_call(
+    state.Arity2(fn(builder, arg, rev, env, k) {
+      state.call(
         builder,
         // always pass a reference to itself
         v.Partial(v.Builtin("fixed"), [builder]),
         rev,
         env,
         // fn(partial) {
-        //   let #(c, rev, e, k) = r.step_call(partial, arg, rev, env, k)
-        //   r.K(c, rev, e, k)
+        //   let #(c, rev, e, k) = state.call(partial, arg, rev, env, k)
+        //   state.K(c, rev, e, k)
         // },
-        r.Stack(r.CallWith(arg, rev, env), k),
+        state.Stack(state.CallWith(arg, rev, env), k),
       )
     }),
   )
   //   #(
   //   t.Unbound(0),
-  //   r.Arity1(fn(builder, rev, env, k) {
-  //     r.step_call(
+  //   state.Arity1(fn(builder, rev, env, k) {
+  //     state.call(
   //       builder,
   //       // always pass a reference to itself
   //       v.Partial(v.Builtin("fixed"), [builder]),
   //       rev,
   //       env,
   //       // fn(partial) {
-  //       //   let #(c, rev, e, k) = r.step_call(partial, arg, rev, env, k)
-  //       //   r.K(c, rev, e, k)
+  //       //   let #(c, rev, e, k) = state.call(partial, arg, rev, env, k)
+  //       //   state.K(c, rev, e, k)
   //       // },
-  //       // Some(r.Stack(r.CallWith(arg, rev, env), k)),
+  //       // Some(state.Stack(state.CallWith(arg, rev, env), k)),
   //       k
   //     )
   //   }),
@@ -100,7 +101,7 @@ pub fn fixed() {
 pub fn eval() {
   let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
 
-  #(type_, r.Arity1(do_eval))
+  #(type_, state.Arity1(do_eval))
 }
 
 pub fn lib() {
@@ -148,17 +149,9 @@ pub fn do_eval(source, rev, env, k) {
   case language_to_expression(source) {
     Ok(expression) -> {
       // must be value otherwise/effect continuations need sorting
-      let result =
-        r.eval(
-          expression,
-          r.Env([], lib().1),
-          r.Stack(
-            r.Apply(v.Partial(v.Tag("Ok"), []), rev, env),
-            r.Empty(dict.new()),
-          ),
-        )
+      let result = r.execute(expression, state.Env([], lib().1), dict.new())
       let value = case result {
-        Ok(value) -> value
+        Ok(value) -> v.ok(value)
         _ -> {
           console.log("failed to run expression")
           console.log(expression)
@@ -167,9 +160,9 @@ pub fn do_eval(source, rev, env, k) {
         }
       }
       // console.log(value)
-      Ok(#(r.V(value), rev, env, k))
+      Ok(#(state.V(value), rev, env, k))
     }
-    Error(_) -> Ok(#(r.V(v.error(v.unit)), rev, env, k))
+    Error(_) -> Ok(#(state.V(v.error(v.unit)), rev, env, k))
   }
 }
 
@@ -177,24 +170,24 @@ pub fn do_eval(source, rev, env, k) {
 pub fn serialize() {
   let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Str)
 
-  #(type_, r.Arity1(do_serialize))
+  #(type_, state.Arity1(do_serialize))
 }
 
 pub fn do_serialize(term, rev, env, k) {
   let exp = capture.capture(term)
-  Ok(#(r.V(v.Str(encode.to_json(exp))), rev, env, k))
+  Ok(#(state.V(v.Str(encode.to_json(exp))), rev, env, k))
 }
 
 pub fn capture() {
   // TODO need enum type
   let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
 
-  #(type_, r.Arity1(do_capture))
+  #(type_, state.Arity1(do_capture))
 }
 
 pub fn do_capture(term, rev, env, k) {
   let exp = capture.capture(term)
-  Ok(#(r.V(v.LinkedList(expression_to_language(exp))), rev, env, k))
+  Ok(#(state.V(v.LinkedList(expression_to_language(exp))), rev, env, k))
 }
 
 // block needs squashing with row on the front
@@ -451,27 +444,27 @@ fn do_language_to_expression(term, k) {
 
 pub fn decode_uri_component() {
   let type_ = t.Fun(t.Str, t.Open(-1), t.Str)
-  #(type_, r.Arity1(do_decode_uri_component))
+  #(type_, state.Arity1(do_decode_uri_component))
 }
 
 pub fn do_decode_uri_component(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(r.V(v.Str(window.decode_uri_component(unencoded))), rev, env, k))
+  Ok(#(state.V(v.Str(window.decode_uri_component(unencoded))), rev, env, k))
 }
 
 pub fn encode_uri() {
   let type_ = t.Fun(t.Str, t.Open(-1), t.Str)
-  #(type_, r.Arity1(do_encode_uri))
+  #(type_, state.Arity1(do_encode_uri))
 }
 
 pub fn do_encode_uri(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(r.V(v.Str(window.encode_uri(unencoded))), rev, env, k))
+  Ok(#(state.V(v.Str(window.encode_uri(unencoded))), rev, env, k))
 }
 
 pub fn base64_encode() {
   let type_ = t.Fun(t.Str, t.Open(-1), t.Str)
-  #(type_, r.Arity1(do_base64_encode))
+  #(type_, state.Arity1(do_base64_encode))
 }
 
 pub fn do_base64_encode(term, rev, env, k) {
@@ -482,12 +475,12 @@ pub fn do_base64_encode(term, rev, env, k) {
       "\r\n",
       "",
     ))
-  Ok(#(r.V(value), rev, env, k))
+  Ok(#(state.V(value), rev, env, k))
 }
 
 pub fn binary_from_integers() {
   let type_ = t.Fun(t.LinkedList(t.Integer), t.Open(-1), t.Binary)
-  #(type_, r.Arity1(do_binary_from_integers))
+  #(type_, state.Arity1(do_binary_from_integers))
 }
 
 pub fn do_binary_from_integers(term, rev, env, k) {
@@ -497,5 +490,5 @@ pub fn do_binary_from_integers(term, rev, env, k) {
       let assert v.Integer(i) = el
       <<i, acc:bits>>
     })
-  Ok(#(r.V(v.Binary(content)), rev, env, k))
+  Ok(#(state.V(v.Binary(content)), rev, env, k))
 }

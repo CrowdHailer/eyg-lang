@@ -1,6 +1,6 @@
 import gleam/result
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eyg/runtime/cast
 
@@ -13,7 +13,7 @@ pub fn pop() {
     ))
   let type_ =
     t.Fun(t.LinkedList(t.Unbound(0)), t.Open(1), t.result(parts, t.unit))
-  #(type_, r.Arity1(do_pop))
+  #(type_, state.Arity1(do_pop))
 }
 
 fn do_pop(term, rev, env, k) {
@@ -23,7 +23,7 @@ fn do_pop(term, rev, env, k) {
     [head, ..tail] ->
       v.ok(v.Record([#("head", head), #("tail", v.LinkedList(tail))]))
   }
-  Ok(#(r.V(return), rev, env, k))
+  Ok(#(state.V(return), rev, env, k))
 }
 
 pub fn fold() {
@@ -45,7 +45,7 @@ pub fn fold() {
         ),
       ),
     )
-  #(type_, r.Arity3(fold_impl))
+  #(type_, state.Arity3(fold_impl))
 }
 
 pub fn fold_impl(list, initial, func, rev, env, k) {
@@ -55,22 +55,22 @@ pub fn fold_impl(list, initial, func, rev, env, k) {
 
 pub fn do_fold(elements, state, f, rev, env, k) {
   case elements {
-    [] -> Ok(#(r.V(state), rev, env, k))
+    [] -> Ok(#(state.V(state), rev, env, k))
     [element, ..rest] -> {
-      r.step_call(
+      state.call(
         f,
         element,
         rev,
         env,
-        r.Stack(
-          r.CallWith(state, rev, env),
-          r.Stack(
-            r.Apply(
+        state.Stack(
+          state.CallWith(state, rev, env),
+          state.Stack(
+            state.Apply(
               v.Partial(v.Builtin("list_fold"), [v.LinkedList(rest)]),
               rev,
               env,
             ),
-            r.Stack(r.CallWith(f, rev, env), k),
+            state.Stack(state.CallWith(f, rev, env), k),
           ),
         ),
       )

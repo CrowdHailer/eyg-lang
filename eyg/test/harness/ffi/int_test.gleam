@@ -1,6 +1,6 @@
 import gleam/dict
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eyg/analysis/inference
 import eygir/expression as e
@@ -15,6 +15,6 @@ pub fn add_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), r.Empty(dict.new()))
+  r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(3)))
 }

@@ -14,7 +14,8 @@ import gleam/fetch
 import eygir/expression as e
 import eygir/encode
 import eygir/decode
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eyg/runtime/break
 import harness/stdlib
@@ -70,13 +71,13 @@ pub type Embed {
   Embed(
     mode: Mode,
     yanked: Option(e.Expression),
-    env: #(r.Env, t.Substitutions, Int, tenv.Env),
+    env: #(state.Env, t.Substitutions, Int, tenv.Env),
     source: e.Expression,
     history: History,
     auto_infer: Bool,
     inferred: Option(tree.State),
     // not actually used but I think useful for clearing run value
-    returned: Option(r.Return),
+    returned: Option(state.Return),
     rendered: #(List(print.Rendered), dict.Dict(String, Int)),
     focus: Option(List(Int)),
   )
@@ -350,7 +351,7 @@ pub fn snippet(root) {
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
       let assert Ok(v.Closure(_, source, _e2, rev)) =
-        r.eval(source, stdlib.env(), r.Empty(dict.new()))
+        r.execute(source, stdlib.env(), dict.new())
       let assert Ok(tenv) = dict.get(envs, rev)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
@@ -390,7 +391,7 @@ pub fn init(json) {
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
   let #(env, source, sub, next, tenv) = case
-    r.eval(source, stdlib.env(), r.Empty(dict.new()))
+    r.execute(source, stdlib.env(), dict.new())
   {
     Ok(v.Closure(_, source, env, rev)) -> {
       let tenv = case dict.get(envs, rev) {
@@ -896,7 +897,7 @@ fn run(state: Embed) {
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)
-  let ret = r.eval(source, env, r.Empty(handlers))
+  let ret = r.execute(source, env, handlers)
   case ret {
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value

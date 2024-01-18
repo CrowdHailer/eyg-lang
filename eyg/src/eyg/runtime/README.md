@@ -1,11 +1,17 @@
 # CEK interpreted runtime
 
+Env is not really used in resume but if true it needs removing,
+probably can also remove env from run helper in capture test
+
 Exposes small step semantics by using the `step` function.
 This returns the `Next` type which either breaks or continues the loop.
 Break is a better word that halt or stop because execution can be resumed.
 
 Separating the small steps from the runner allows alternative execution modes.
 i.e. single step debugger, or live coding examples.
+
+The `state.gleam` module contains all the small step semantics, `eval` and `apply`
+The `runner.gleam` module contains full execution that loops through the small steps to completion
 
 *Is there a card version of the small step execution,
 maybe but I haven't worked out copying a function to a closure*
@@ -52,3 +58,10 @@ To prevent circular dependencies the `Value` type is parameterised by a Context 
 It should be possible to change a resumption into source code, a function to call the continuation with passed in value.
 This would remove the circular dependency but would require expensive translation for all resumptions,
 it would however allow capturing and serialising of resumptions, which currently panics
+
+Cons and all AST literals could be a builtin functions,
+but they are not because they introduce new value types.
+The whole interpreter could be parameterised over primitive type.
+
+A primitive could be a fn that represents calling the primitive,
+but I think we are deconstructing back to lambda calculus where everything represented by a function

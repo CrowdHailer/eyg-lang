@@ -1,11 +1,12 @@
-import gleam/dict.{type Dict}
+import gleam/dict
 import gleam/io
 import gleam/list
 import gleam/result
 import eygir/decode
 import old_plinth/browser/window
 import old_plinth/browser/document
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/analysis/typ as t
@@ -46,27 +47,15 @@ fn handlers() {
 pub fn do_run(raw) -> Nil {
   case decode.from_json(window.decode_uri(raw)) {
     Ok(continuation) -> {
-      // io.debug(continuation)
-      let env = r.Env(scope: [], builtins: stdlib.lib().1)
-      // let k = Some(r.Stack(r.CallWith(v.unit, [], env), None))
+      let env = state.Env(scope: [], builtins: stdlib.lib().1)
+      let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
       promise.map(
-        r.await(r.eval(
-          continuation,
-          env,
-          r.Stack(r.CallWith(v.unit, [], env), r.Empty(handlers().1)),
-        )),
+        r.await(r.resume(continuation, [v.unit], env, handlers().1)),
         io.debug,
       )
       // todo as "real"
       Nil
     }
-    // case r.run(continuation, stdlib.env(), v.unit, handlers().1) {
-    //   Ok(_) -> Nil
-    //   err -> {
-    //     io.debug(#("return", stdlib.env(), err))
-    //     Nil
-    //   }
-    // }
     Error(reason) -> {
       io.debug(reason)
       Nil
@@ -98,23 +87,19 @@ fn old_run() {
   {
     Ok(el) ->
       case decode.from_json(window.decode_uri(document.inner_text(el))) {
-        Ok(continuation) ->
-          case
-            r.eval(
-              continuation,
-              stdlib.env(),
-              r.Stack(
-                r.CallWith(v.unit, [], stdlib.env()),
-                r.Empty(handlers().1),
-              ),
-            )
-          {
+        Ok(f) -> {
+          let env = stdlib.env()
+          let assert Ok(f) = r.execute(f, env, handlers().1)
+          let ret = r.resume(f, [v.unit], env, handlers().1)
+          case ret {
             Ok(_) -> Nil
             err -> {
               io.debug(#("return", stdlib.env(), err))
               Nil
             }
           }
+        }
+
         Error(reason) -> {
           io.debug(reason)
           Nil
@@ -174,8 +159,7 @@ pub fn async() {
       let promise =
         promisex.wait(0)
         |> promise.await(fn(_: Nil) {
-          let ret = r.eval_call(exec, v.unit, env, r.Empty(extrinsic))
-          r.await(ret)
+          r.await(r.resume(exec, [v.unit], env, extrinsic))
         })
         |> promise.map(fn(result) {
           case result {
@@ -212,7 +196,7 @@ fn listen() {
       let #(_, extrinsic) = handlers()
 
       window.add_event_listener(event, fn(_) {
-        let ret = r.eval_call(handle, v.unit, env, r.Empty(extrinsic))
+        let ret = r.resume(handle, [v.unit], env, extrinsic)
         io.debug(ret)
         Nil
       })
@@ -285,15 +269,9 @@ fn on_change() {
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {
-  let assert Ok(arg) = r.eval(arg, stdlib.env(), r.Empty(dict.new()))
+  let assert Ok(arg) = r.execute(arg, stdlib.env(), dict.new())
   // pass as general term to program arg or fn
-  let ret =
-    r.loop(r.step(
-      r.V(handle),
-      [],
-      builtins,
-      r.Stack(r.CallWith(arg, [], builtins), r.Empty(extrinsic)),
-    ))
+  let ret = r.resume(handle, [arg], builtins, extrinsic)
   case ret {
     Ok(_) -> Nil
     _ -> {
