@@ -1,28 +1,10 @@
 import { Ok, Error } from "./gleam.mjs";
 
-export function encodeURI(value) {
-  return globalThis.encodeURI(value);
-}
-
-export function decodeURI(value) {
-  return globalThis.decodeURI(value);
-}
-
-export function decodeURIComponent(value) {
-  return globalThis.decodeURIComponent(value);
-}
-
-export function locationSearch() {
-  const search = globalThis.location.search;
-  if (search == "") {
-    return new Error();
-  } else {
-    return new Ok(search.slice(1));
-  }
-}
-
-export function newPromise(executor) {
-  return new Promise((resolve) => executor(resolve));
+export function addEventListener(el, type, listener) {
+  el.addEventListener(type, listener);
+  return function () {
+    el.removeEventListener(type, listener);
+  };
 }
 
 export function onClick(f) {
@@ -57,13 +39,6 @@ export function onChange(f) {
     // if (arg) {
     f(event.target.value);
     // }
-  };
-}
-
-export function addEventListener(el, type, listener) {
-  el.addEventListener(type, listener);
-  return function () {
-    el.removeEventListener(type, listener);
   };
 }
 

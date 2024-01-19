@@ -3,7 +3,8 @@ import gleam/io
 import gleam/list
 import gleam/result
 import eygir/decode
-import old_plinth/browser/window
+import plinth/javascript/global
+import plinth/browser/window
 import old_plinth/browser/document
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
@@ -45,7 +46,7 @@ fn handlers() {
 // capturing things is too large
 
 pub fn do_run(raw) -> Nil {
-  case decode.from_json(window.decode_uri(raw)) {
+  case decode.from_json(global.decode_uri(raw)) {
     Ok(continuation) -> {
       let env = state.Env(scope: [], builtins: stdlib.lib().1)
       let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
@@ -86,7 +87,7 @@ fn old_run() {
     )
   {
     Ok(el) ->
-      case decode.from_json(window.decode_uri(document.inner_text(el))) {
+      case decode.from_json(global.decode_uri(document.inner_text(el))) {
         Ok(f) -> {
           let env = stdlib.env()
           let assert Ok(f) = r.execute(f, env, handlers().1)
@@ -113,7 +114,7 @@ fn old_run() {
         document.query_selector_all("script[type=\"editor/eygir\"]")
         |> array.to_list()
       list.map(elements, fn(el) {
-        case decode.from_json(window.decode_uri(document.inner_text(el))) {
+        case decode.from_json(global.decode_uri(document.inner_text(el))) {
           Ok(c) -> {
             io.debug(c)
             document.insert_after(el, "<p>Nice</p>")
@@ -195,7 +196,7 @@ fn listen() {
 
 fn location_search() {
   #(t.unit, t.unit, fn(_) {
-    let value = case window.location_search() {
+    let value = case window.get_search() {
       Ok(str) -> v.ok(v.Str(str))
       Error(_) -> v.error(v.unit)
     }
@@ -211,7 +212,7 @@ fn on_click() {
     let #(_, extrinsic) = handlers()
 
     document.on_click(fn(arg) {
-      let arg = window.decode_uri(arg)
+      let arg = global.decode_uri(arg)
       let assert Ok(arg) = decode.from_json(arg)
 
       do_handle(arg, handle, env, extrinsic)

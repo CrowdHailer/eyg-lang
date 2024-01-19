@@ -5,6 +5,9 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string as gleam_string
+import plinth/browser/window
+import plinth/javascript/global
+import plinth/javascript/console
 import eygir/expression as e
 import eyg/analysis/typ as t
 import eygir/encode
@@ -17,8 +20,6 @@ import harness/env.{extend, init}
 import harness/ffi/integer
 import harness/ffi/linked_list
 import harness/ffi/string
-import old_plinth/browser/window
-import plinth/javascript/console
 
 pub fn equal() {
   let type_ =
@@ -449,7 +450,7 @@ pub fn decode_uri_component() {
 
 pub fn do_decode_uri_component(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(state.V(v.Str(window.decode_uri_component(unencoded))), rev, env, k))
+  Ok(#(state.V(v.Str(global.decode_uri_component(unencoded))), rev, env, k))
 }
 
 pub fn encode_uri() {
@@ -459,7 +460,7 @@ pub fn encode_uri() {
 
 pub fn do_encode_uri(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(state.V(v.Str(window.encode_uri(unencoded))), rev, env, k))
+  Ok(#(state.V(v.Str(global.encode_uri(unencoded))), rev, env, k))
 }
 
 pub fn base64_encode() {
