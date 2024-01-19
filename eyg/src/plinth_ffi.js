@@ -1,9 +1,5 @@
 import { Ok, Error } from "./gleam.mjs";
 
-export function alert(message) {
-  window.alert(message);
-}
-
 export function encodeURI(value) {
   return globalThis.encodeURI(value);
 }

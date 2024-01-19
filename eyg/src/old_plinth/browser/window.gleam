@@ -1,9 +1,3 @@
-import gleam/javascript/array.{type Array}
-import gleam/javascript/promise.{type Promise}
-
-@external(javascript, "../../plinth_ffi.js", "alert")
-pub fn alert(a: String) -> Nil
-
 @external(javascript, "../../plinth_ffi.js", "addEventListener")
 pub fn add_event_listener(a: String, b: fn(Nil) -> Nil) -> Nil
 
