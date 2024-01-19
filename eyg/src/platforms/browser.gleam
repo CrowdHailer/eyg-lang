@@ -15,7 +15,7 @@ import harness/effect
 import harness/stdlib
 import gleam/javascript/array
 import gleam/javascript/promise
-import old_plinth/javascript/promisex
+import gleam/javascript/promisex
 import plinth/javascript/console
 import eyg/runtime/cast
 import eygir/expression as e

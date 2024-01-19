@@ -12,7 +12,6 @@ import lustre/element/html.{
   br, div, input, span, table, tbody, td, th, thead, tr,
 }
 import lustre/event.{on_click, on_input}
-import datalog/browser/file
 import datalog/browser/app/model.{Model, Source}
 import datalog/ast
 import datalog/browser/view/value

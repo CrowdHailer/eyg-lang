@@ -13,7 +13,7 @@ import gleam/http
 import gleam/http/request
 import gleam/fetch
 import gleam/javascript/promise
-import old_plinth/javascript/promisex
+import gleam/javascript/promisex
 import lustre/element.{text}
 import lustre/attribute.{class, src}
 import lustre/effect

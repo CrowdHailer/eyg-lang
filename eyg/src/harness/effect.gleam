@@ -14,7 +14,7 @@ import gleam/json
 import simplifile
 import eyg/analysis/typ as t
 import plinth/browser/window
-import old_plinth/javascript/promisex
+import gleam/javascript/promisex
 import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/cast

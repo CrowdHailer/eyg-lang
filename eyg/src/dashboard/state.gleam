@@ -3,7 +3,7 @@ import gleam/list
 import gleam/option.{type Option, None}
 import gleam/javascript/promise
 import lustre/effect
-import old_plinth/javascript/promisex
+import gleam/javascript/promisex
 import plinth/javascript/global
 import plinth/javascript/date.{type Date}
 import plinth/javascript/storage
