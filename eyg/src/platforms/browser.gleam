@@ -1,10 +1,14 @@
+import gleam/dict
 import gleam/io
 import gleam/list
-import gleam/option.{None}
+import gleam/result
 import eygir/decode
 import old_plinth/browser/window
 import old_plinth/browser/document
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import eyg/runtime/break
 import eyg/analysis/typ as t
 import harness/effect
 import harness/stdlib
@@ -12,8 +16,7 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import old_plinth/javascript/promisex
 import plinth/javascript/console
-import harness/ffi/cast
-import harness/ffi/env
+import eyg/runtime/cast
 import eygir/expression as e
 
 fn handlers() {
@@ -44,23 +47,15 @@ fn handlers() {
 pub fn do_run(raw) -> Nil {
   case decode.from_json(window.decode_uri(raw)) {
     Ok(continuation) -> {
-      // io.debug(continuation)
-      let env = r.Env(scope: [], builtins: stdlib.lib().1)
-      // let k = Some(r.Kont(r.CallWith(r.Record([]), [], env), None))
+      let env = state.Env(scope: [], builtins: stdlib.lib().1)
+      let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
       promise.map(
-        r.run_async(continuation, env, r.Record([]), handlers().1),
+        r.await(r.resume(continuation, [v.unit], env, handlers().1)),
         io.debug,
       )
       // todo as "real"
       Nil
     }
-    // case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
-    //   Ok(_) -> Nil
-    //   err -> {
-    //     io.debug(#("return", stdlib.env(), err))
-    //     Nil
-    //   }
-    // }
     Error(reason) -> {
       io.debug(reason)
       Nil
@@ -92,14 +87,19 @@ fn old_run() {
   {
     Ok(el) ->
       case decode.from_json(window.decode_uri(document.inner_text(el))) {
-        Ok(continuation) ->
-          case r.run(continuation, stdlib.env(), r.Record([]), handlers().1) {
+        Ok(f) -> {
+          let env = stdlib.env()
+          let assert Ok(f) = r.execute(f, env, handlers().1)
+          let ret = r.resume(f, [v.unit], env, handlers().1)
+          case ret {
             Ok(_) -> Nil
             err -> {
               io.debug(#("return", stdlib.env(), err))
               Nil
             }
           }
+        }
+
         Error(reason) -> {
           io.debug(reason)
           Nil
@@ -134,17 +134,14 @@ fn render() {
   #(
     t.Str,
     t.unit,
-    fn(page, k) {
-      let env = env.empty()
-      let rev = []
-      let assert r.Str(page) = page
+    fn(page) {
+      let assert v.Str(page) = page
       case document.query_selector(document.document(), "#app") {
         Ok(element) -> document.set_html(element, page)
         _ ->
           panic as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
       }
-
-      r.prim(r.Value(r.unit), rev, env, k)
+      Ok(v.unit)
     },
   )
 }
@@ -153,9 +150,8 @@ pub fn async() {
   #(
     t.unit,
     t.unit,
-    fn(exec, k) {
+    fn(exec) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) =
         handlers()
         |> effect.extend("Await", effect.await())
@@ -163,21 +159,20 @@ pub fn async() {
       let promise =
         promisex.wait(0)
         |> promise.await(fn(_: Nil) {
-          let ret = r.handle(r.eval_call(exec, r.unit, env, None), extrinsic)
-          r.flatten_promise(ret, extrinsic)
+          r.await(r.resume(exec, [v.unit], env, extrinsic))
         })
         |> promise.map(fn(result) {
           case result {
             Ok(term) -> term
-            Error(#(reason, _path, _env)) -> {
+            Error(#(reason, _path, _env, _k)) -> {
               // has all the path and env in cant' debug
-              console.log(r.reason_to_string(reason))
+              console.log(break.reason_to_string(reason))
               panic("this shouldn't fail")
             }
           }
         })
 
-      r.prim(r.Value(r.Promise(promise)), rev, env, k)
+      Ok(v.Promise(promise))
     },
   )
 }
@@ -193,31 +188,19 @@ fn listen() {
   #(
     t.unit,
     t.unit,
-    fn(sub, k) {
-      let env = env.empty()
-      let rev = []
-      use event <- cast.require(
-        cast.field("event", cast.string, sub),
-        rev,
-        env,
-        k,
-      )
-      use handle <- cast.require(
-        cast.field("handler", cast.any, sub),
-        rev,
-        env,
-        k,
-      )
+    fn(sub) {
+      use event <- result.then(cast.field("event", cast.as_string, sub))
+      use handle <- result.then(cast.field("handler", cast.any, sub))
 
       let env = stdlib.env()
       let #(_, extrinsic) = handlers()
 
       window.add_event_listener(event, fn(_) {
-        let ret = r.handle(r.eval_call(handle, r.unit, env, None), extrinsic)
+        let ret = r.resume(handle, [v.unit], env, extrinsic)
         io.debug(ret)
         Nil
       })
-      r.prim(r.Value(r.unit), rev, env, k)
+      Ok(v.unit)
     },
   )
 }
@@ -226,15 +209,12 @@ fn location_search() {
   #(
     t.unit,
     t.unit,
-    fn(_, k) {
-      let env = env.empty()
-      let rev = []
+    fn(_) {
       let value = case window.location_search() {
-        Ok(str) -> r.ok(r.Str(str))
-        Error(_) -> r.error(r.unit)
+        Ok(str) -> v.ok(v.Str(str))
+        Error(_) -> v.error(v.unit)
       }
-
-      r.prim(r.Value(value), rev, env, k)
+      Ok(value)
     },
   )
 }
@@ -245,9 +225,8 @@ fn on_click() {
   #(
     t.unit,
     t.unit,
-    fn(handle, k) {
+    fn(handle) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_click(fn(arg) {
@@ -256,7 +235,7 @@ fn on_click() {
 
         do_handle(arg, handle, env, extrinsic)
       })
-      r.prim(r.Value(r.unit), rev, env, k)
+      Ok(v.unit)
     },
   )
 }
@@ -265,13 +244,12 @@ fn on_keydown() {
   #(
     t.unit,
     t.unit,
-    fn(handle, k) {
+    fn(handle) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      r.prim(r.Value(r.unit), rev, env, k)
+      Ok(v.unit)
     },
   )
 }
@@ -280,23 +258,22 @@ fn on_change() {
   #(
     t.unit,
     t.unit,
-    fn(handle, k) {
+    fn(handle) {
       let env = stdlib.env()
-      let rev = []
       let #(_, extrinsic) = handlers()
 
       document.on_change(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      r.prim(r.Value(r.unit), rev, env, k)
+      Ok(v.unit)
     },
   )
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {
-  let assert r.Value(arg) = r.eval(arg, stdlib.env(), None)
+  let assert Ok(arg) = r.execute(arg, stdlib.env(), dict.new())
   // pass as general term to program arg or fn
-  let ret = r.handle(r.eval_call(handle, arg, builtins, None), extrinsic)
+  let ret = r.resume(handle, [arg], builtins, extrinsic)
   case ret {
-    r.Value(_) -> Nil
+    Ok(_) -> Nil
     _ -> {
       io.debug(ret)
       Nil

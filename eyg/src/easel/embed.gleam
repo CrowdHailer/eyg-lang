@@ -14,7 +14,10 @@ import gleam/fetch
 import eygir/expression as e
 import eygir/encode
 import eygir/decode
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import eyg/runtime/break
 import harness/stdlib
 import harness/effect
 import eyg/analysis/jm/tree
@@ -68,13 +71,13 @@ pub type Embed {
   Embed(
     mode: Mode,
     yanked: Option(e.Expression),
-    env: #(r.Env, t.Substitutions, Int, tenv.Env),
+    env: #(state.Env, t.Substitutions, Int, tenv.Env),
     source: e.Expression,
     history: History,
     auto_infer: Bool,
     inferred: Option(tree.State),
     // not actually used but I think useful for clearing run value
-    returned: Option(r.Return),
+    returned: Option(state.Return),
     rendered: #(List(print.Rendered), dict.Dict(String, Int)),
     focus: Option(List(Int)),
   )
@@ -113,7 +116,7 @@ pub fn handle_click(root, event) {
       promise.map_try(load_source(), fn(source) {
         // let #(#(sub, next, _types), envs) =
         //   tree.infer(source, t.Var(-1), t.Var(-2))
-        // let #(r.Value(r.Function(_, source, _e2, rev)), env) =
+        // let #(Ok(v.Closure(_, source, _e2, rev)), env) =
         //   r.resumable(source, stdlib.env(), None)
         // let assert Ok(tenv) = dict.get(envs, rev)
         let env = stdlib.env()
@@ -347,8 +350,8 @@ pub fn snippet(root) {
 
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let assert #(r.Value(r.Function(_, source, _e2, rev)), env) =
-        r.resumable(source, stdlib.env(), None)
+      let assert Ok(v.Closure(_, source, _e2, rev)) =
+        r.execute(source, stdlib.env(), dict.new())
       let assert Ok(tenv) = dict.get(envs, rev)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
@@ -360,7 +363,7 @@ pub fn snippet(root) {
         Embed(
           mode: Command(""),
           yanked: None,
-          env: #(env, sub, next, tenv),
+          env: #(todo("env not needed"), sub, next, tenv),
           source: source,
           history: #([], []),
           auto_infer: True,
@@ -388,9 +391,9 @@ pub fn init(json) {
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
   let #(env, source, sub, next, tenv) = case
-    r.resumable(source, stdlib.env(), None)
+    r.execute(source, stdlib.env(), dict.new())
   {
-    #(r.Value(r.Function(_, source, _, rev)), env) -> {
+    Ok(v.Closure(_, source, env, rev)) -> {
       let tenv = case dict.get(envs, rev) {
         Ok(tenv) -> tenv
         Error(Nil) -> {
@@ -398,7 +401,8 @@ pub fn init(json) {
           dict.new()
         }
       }
-      #(env, source, sub, next, tenv)
+
+      #(stdlib.env(), source, sub, next, tenv)
     }
     _ -> #(env, source, dict.new(), 0, dict.new())
   }
@@ -893,17 +897,16 @@ fn run(state: Embed) {
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)
-  let ret = r.handle(r.eval(source, env, None), handlers)
+  let ret = r.execute(source, env, handlers)
   case ret {
-    r.Abort(reason, _rev, _env, _k) -> #(reason_to_string(reason), [])
-    r.Value(term) -> #(term_to_string(term), [])
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
-    r.Async(_, _, _, _) -> {
+    // could allow await effect by assuming is in async context
+    Error(#(break.UnhandledEffect("Await", v.Promise(_p)), _, _, _)) -> {
       let p =
-        promise.map(r.flatten_promise(ret, handlers), fn(final) {
+        promise.map(r.await(ret), fn(final) {
           let message = case final {
-            Error(#(reason, _rev, _env)) -> reason_to_string(reason)
+            Error(#(reason, _rev, _env, _k)) -> reason_to_string(reason)
             Ok(term) -> {
               io.debug(term)
               term_to_string(term)
@@ -914,16 +917,17 @@ fn run(state: Embed) {
 
       #("Running", [p])
     }
-    _ -> panic("this should be tackled better in the run code")
+    Error(#(reason, _rev, _env, _k)) -> #(reason_to_string(reason), [])
+    Ok(term) -> #(term_to_string(term), [])
   }
 }
 
 fn reason_to_string(reason) {
-  r.reason_to_string(reason)
+  break.reason_to_string(reason)
 }
 
 fn term_to_string(term) {
-  r.to_string(term)
+  v.debug(term)
 }
 
 pub fn undo(state: Embed, start) {

@@ -1,8 +1,8 @@
 import gleam/dict
-import gleam/option.{None}
 import eyg/analysis/typ as t
 import eyg/analysis/inference
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/value as v
 import eyg/runtime/capture
 import eygir/expression as e
 import harness/stdlib
@@ -19,8 +19,8 @@ pub fn unequal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.false))
+  r.execute(prog, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.false))
 }
 
 pub fn equal_test() {
@@ -33,8 +33,8 @@ pub fn equal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.true))
+  r.execute(prog, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.true))
 }
 
 // also tests generalization of builtins
@@ -53,9 +53,9 @@ pub fn debug_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
-  r.eval(prog, stdlib.env(), None)
+  r.execute(prog, stdlib.env(), dict.new())
   // value is serialized as binary, hence the quotes
-  |> should.equal(r.Value(r.Str("\"foo\"")))
+  |> should.equal(Ok(v.Str("\"foo\"")))
 }
 
 pub fn simple_fix_test() {
@@ -67,8 +67,8 @@ pub fn simple_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
-  r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.Str("foo")))
+  r.execute(prog, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.Str("foo")))
 }
 
 pub fn no_recursive_fix_test() {
@@ -89,8 +89,8 @@ pub fn no_recursive_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.Integer(1)))
+  r.execute(prog, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.Integer(1)))
 }
 
 pub fn recursive_sum_test() {
@@ -143,8 +143,8 @@ pub fn recursive_sum_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.Integer(4)))
+  r.execute(prog, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.Integer(4)))
 }
 
 pub fn eval_test() {
@@ -153,7 +153,7 @@ pub fn eval_test() {
   let prog =
     value
     |> expression_to_language()
-    |> r.LinkedList()
+    |> v.LinkedList()
     |> capture.capture()
     |> e.Apply(e.Builtin("eval"), _)
   // This is old style inference not JM
@@ -165,8 +165,8 @@ pub fn eval_test() {
   // inference.type_of(sub, [])
   // |> should.equal(Ok(t.boolean))
 
-  r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.Tagged("Ok", r.Str("foo"))))
+  r.execute(prog, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.Tagged("Ok", v.Str("foo"))))
 }
 
 pub fn language_to_expression_test() {

@@ -1,7 +1,8 @@
-import gleam/option.{Some}
+import gleam/result
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
-import harness/ffi/cast
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import eyg/runtime/cast
 
 pub fn pop() {
   let parts =
@@ -12,17 +13,17 @@ pub fn pop() {
     ))
   let type_ =
     t.Fun(t.LinkedList(t.Unbound(0)), t.Open(1), t.result(parts, t.unit))
-  #(type_, r.Arity1(do_pop))
+  #(type_, state.Arity1(do_pop))
 }
 
 fn do_pop(term, rev, env, k) {
-  use elements <- cast.require(cast.list(term), rev, env, k)
+  use elements <- result.then(cast.as_list(term))
   let return = case elements {
-    [] -> r.error(r.unit)
+    [] -> v.error(v.unit)
     [head, ..tail] ->
-      r.ok(r.Record([#("head", head), #("tail", r.LinkedList(tail))]))
+      v.ok(v.Record([#("head", head), #("tail", v.LinkedList(tail))]))
   }
-  r.prim(r.Value(return), rev, env, k)
+  Ok(#(state.V(return), rev, env, k))
 }
 
 pub fn fold() {
@@ -44,34 +45,34 @@ pub fn fold() {
         ),
       ),
     )
-  #(type_, r.Arity3(fold_impl))
+  #(type_, state.Arity3(fold_impl))
 }
 
 pub fn fold_impl(list, initial, func, rev, env, k) {
-  use elements <- cast.require(cast.list(list), rev, env, k)
+  use elements <- result.then(cast.as_list(list))
   do_fold(elements, initial, func, rev, env, k)
 }
 
 pub fn do_fold(elements, state, f, rev, env, k) {
   case elements {
-    [] -> r.prim(r.Value(state), rev, env, k)
+    [] -> Ok(#(state.V(state), rev, env, k))
     [element, ..rest] -> {
-      r.step_call(
+      state.call(
         f,
         element,
         rev,
         env,
-        Some(r.Kont(
-          r.CallWith(state, rev, env),
-          Some(r.Kont(
-            r.Apply(
-              r.Defunc(r.Builtin("list_fold"), [r.LinkedList(rest)]),
+        state.Stack(
+          state.CallWith(state, rev, env),
+          state.Stack(
+            state.Apply(
+              v.Partial(v.Builtin("list_fold"), [v.LinkedList(rest)]),
               rev,
               env,
             ),
-            Some(r.Kont(r.CallWith(f, rev, env), k)),
-          )),
-        )),
+            state.Stack(state.CallWith(f, rev, env), k),
+          ),
+        ),
       )
     }
   }

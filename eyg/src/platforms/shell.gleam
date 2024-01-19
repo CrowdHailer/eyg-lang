@@ -1,13 +1,17 @@
+import gleam/dict
 import gleam/dynamic
 import gleam/io
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/javascript/array.{type Array}
 import gleam/javascript/promise
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import eyg/runtime/break
+import eyg/runtime/cast
 import harness/stdlib
 import plinth/javascript/console
 import gleam/json
@@ -49,46 +53,35 @@ fn handlers() {
 }
 
 pub fn run(source) {
-  let env = r.Env(scope: [], builtins: stdlib.lib().1)
-  let k_parser =
-    Some(r.Kont(
-      r.Apply(r.Defunc(r.Select("lisp"), []), [], env),
-      Some(r.Kont(r.Apply(r.Defunc(r.Select("prompt"), []), [], env), None)),
-    ))
-  let assert r.Value(parser) =
-    r.handle(r.eval(source, env, k_parser), handlers().1)
+  let env = state.Env(scope: [], builtins: stdlib.lib().1)
+  let assert Ok(parser) = r.execute(source, env, handlers().1)
+  let assert Ok(lisp) = cast.field("lisp", cast.any, parser)
+  let assert Ok(parser) = cast.field("prompt", cast.any, lisp)
   let parser = fn(prompt) {
     fn(raw) {
-      let k =
-        Some(r.Kont(
-          r.CallWith(r.Str(prompt), [], env),
-          Some(r.Kont(r.CallWith(r.Str(raw), [], env), None)),
-        ))
-      let assert r.Value(r.Tagged(tag, value)) =
-        r.loop(r.V(r.Value(parser)), [], env, k)
+      let k = dict.new()
+      let args = [v.Str(prompt), v.Str(raw)]
+      let assert Ok(v.Tagged(tag, value)) = r.resume(parser, args, env, k)
       case tag {
         "Ok" ->
           result.replace_error(
-            r.field(value, "value"),
+            cast.field("value", cast.any, value),
             "no value field in parsed value",
           )
         "Error" -> {
-          Error(r.to_string(value))
+          Error(v.debug(value))
         }
         _ -> panic as string.concat(["unexpected tag value: ", tag])
       }
     }
   }
 
-  let k =
-    Some(r.Kont(
-      r.Apply(r.Defunc(r.Select("exec"), []), [], env),
-      Some(r.Kont(r.CallWith(r.Record([]), [], env), None)),
-    ))
-  let assert r.Abort(r.UnhandledEffect("Prompt", prompt), _rev, env, k) =
-    r.handle(r.eval(source, env, k), handlers().1)
+  let assert Ok(prog) = r.execute(source, env, handlers().1)
+  let assert Ok(exec) = cast.field("exec", cast.any, prog)
+  let assert Error(#(break.UnhandledEffect("Prompt", prompt), _rev, env, k)) =
+    r.resume(exec, [v.unit], env, handlers().1)
 
-  let assert r.Str(prompt) = prompt
+  let assert v.Str(prompt) = prompt
 
   let rl =
     create_interface(
@@ -112,26 +105,26 @@ fn read(rl, parser, env, k, prompt) {
   use answer <- promise.await(question(rl, prompt))
   case parser(prompt)(answer) {
     Ok(term) -> {
-      let assert r.LinkedList(cmd) = term
+      let assert v.LinkedList(cmd) = term
       let assert Ok(code) = core.language_to_expression(cmd)
       case code == e.Empty {
         True -> promise.resolve(0)
         False -> {
-          use ret <- promise.await(r.eval_async(code, env, handlers().1))
+          use ret <- promise.await(r.await(r.execute(code, env, handlers().1)))
           let #(env, prompt) = case ret {
             Ok(value) -> {
               print(value)
               #(env, prompt)
             }
-            Error(#(r.UnhandledEffect("Prompt", lift), _rev, env)) -> {
-              let assert r.Str(prompt) = lift
+            Error(#(break.UnhandledEffect("Prompt", lift), _rev, env, _k)) -> {
+              let assert v.Str(prompt) = lift
               #(env, prompt)
             }
-            Error(#(reason, rev, _env)) -> {
+            Error(#(reason, rev, _env, _k)) -> {
               console.log(
                 string.concat([
                   "!! ",
-                  r.reason_to_string(reason),
+                  break.reason_to_string(reason),
                   " at: ",
                   path_to_string(list.reverse(rev)),
                 ]),
@@ -157,7 +150,7 @@ pub fn path_to_string(path) {
 
 fn print(value) {
   case value {
-    r.LinkedList([r.Record(fields), ..] as records) -> {
+    v.LinkedList([v.Record(fields), ..] as records) -> {
       let headers =
         list.map(fields, fn(field) {
           let #(key, _value) = field
@@ -170,8 +163,8 @@ fn print(value) {
           let #(reversed_col, headers) =
             list.map_fold(headers, [], fn(acc, header) {
               let #(key, size) = header
-              let assert Ok(value) = r.field(rec, key)
-              let value = r.to_string(value)
+              let assert Ok(value) = cast.field(key, cast.any, rec)
+              let value = v.debug(value)
               let size = int.max(size, string.length(value))
               let size = int.min(20, size)
               let header = #(key, size)
@@ -185,7 +178,7 @@ fn print(value) {
       let rows = list.reverse(rows_rev)
       print_rows_and_headers(headers, rows)
     }
-    r.Str("{\"headers\":[" <> _ as encoded) -> {
+    v.Str("{\"headers\":[" <> _ as encoded) -> {
       let decoder =
         dynamic.decode2(
           fn(a, b) { #(a, b) },
@@ -214,7 +207,7 @@ fn print(value) {
       let rows = list.reverse(rows_rev)
       print_rows_and_headers(headers, rows)
     }
-    _ -> io.println(r.to_string(value))
+    _ -> io.println(v.debug(value))
   }
 }
 

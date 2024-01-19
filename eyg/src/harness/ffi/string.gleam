@@ -1,135 +1,137 @@
 import gleam/bit_array
 import gleam/list
+import gleam/result
 import gleam/string
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
-import harness/ffi/cast
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import eyg/runtime/cast
 
 pub fn append() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.Str))
-  #(type_, r.Arity2(do_append))
+  #(type_, state.Arity2(do_append))
 }
 
 pub fn do_append(left, right, rev, env, k) {
-  use left <- cast.require(cast.string(left), rev, env, k)
-  use right <- cast.require(cast.string(right), rev, env, k)
-  r.prim(r.Value(r.Str(string.append(left, right))), rev, env, k)
+  use left <- result.then(cast.as_string(left))
+  use right <- result.then(cast.as_string(right))
+  Ok(#(state.V(v.Str(string.append(left, right))), rev, env, k))
 }
 
 pub fn split() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.LinkedList(t.Str)))
-  #(type_, r.Arity2(do_split))
+  #(type_, state.Arity2(do_split))
 }
 
 pub fn do_split(s, pattern, rev, env, k) {
-  use s <- cast.require(cast.string(s), rev, env, k)
-  use pattern <- cast.require(cast.string(pattern), rev, env, k)
+  use s <- result.then(cast.as_string(s))
+  use pattern <- result.then(cast.as_string(pattern))
   let assert [first, ..parts] = string.split(s, pattern)
-  let parts = r.LinkedList(list.map(parts, r.Str))
+  let parts = v.LinkedList(list.map(parts, v.Str))
 
-  r.prim(
-    r.Value(r.Record([#("head", r.Str(first)), #("tail", parts)])),
+  Ok(#(
+    state.V(v.Record([#("head", v.Str(first)), #("tail", parts)])),
     rev,
     env,
     k,
-  )
+  ))
 }
 
 pub fn split_once() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.LinkedList(t.Str)))
-  #(type_, r.Arity2(do_split_once))
+  #(type_, state.Arity2(do_split_once))
 }
 
 pub fn do_split_once(s, pattern, rev, env, k) {
-  use s <- cast.require(cast.string(s), rev, env, k)
-  use pattern <- cast.require(cast.string(pattern), rev, env, k)
+  use s <- result.then(cast.as_string(s))
+  use pattern <- result.then(cast.as_string(pattern))
   let value = case string.split_once(s, pattern) {
     Ok(#(pre, post)) ->
-      r.ok(r.Record([#("pre", r.Str(pre)), #("post", r.Str(post))]))
-    Error(Nil) -> r.error(r.unit)
+      v.ok(v.Record([#("pre", v.Str(pre)), #("post", v.Str(post))]))
+    Error(Nil) -> v.error(v.unit)
   }
-  r.prim(r.Value(value), rev, env, k)
+  Ok(#(state.V(value), rev, env, k))
 }
 
 pub fn uppercase() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Str)
-  #(type_, r.Arity1(do_uppercase))
+  #(type_, state.Arity1(do_uppercase))
 }
 
 pub fn do_uppercase(value, rev, env, k) {
-  use value <- cast.require(cast.string(value), rev, env, k)
-  r.prim(r.Value(r.Str(string.uppercase(value))), rev, env, k)
+  use value <- result.then(cast.as_string(value))
+  Ok(#(state.V(v.Str(string.uppercase(value))), rev, env, k))
 }
 
 pub fn lowercase() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Str)
-  #(type_, r.Arity1(do_lowercase))
+  #(type_, state.Arity1(do_lowercase))
 }
 
 pub fn do_lowercase(value, rev, env, k) {
-  use value <- cast.require(cast.string(value), rev, env, k)
-  r.prim(r.Value(r.Str(string.lowercase(value))), rev, env, k)
+  use value <- result.then(cast.as_string(value))
+  Ok(#(state.V(v.Str(string.lowercase(value))), rev, env, k))
 }
 
 pub fn starts_with() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.result(t.Str, t.unit)))
-  #(type_, r.Arity2(do_starts_with))
+  #(type_, state.Arity2(do_starts_with))
 }
 
 pub fn do_starts_with(value, prefix, rev, env, k) {
-  use value <- cast.require(cast.string(value), rev, env, k)
-  use prefix <- cast.require(cast.string(prefix), rev, env, k)
+  use value <- result.then(cast.as_string(value))
+  use prefix <- result.then(cast.as_string(prefix))
   let ret = case string.split_once(value, prefix) {
-    Ok(#("", post)) -> r.ok(r.Str(post))
-    _ -> r.error(r.unit)
+    Ok(#("", post)) -> v.ok(v.Str(post))
+    _ -> v.error(v.unit)
   }
-  r.prim(r.Value(ret), rev, env, k)
+  Ok(#(state.V(ret), rev, env, k))
 }
 
 pub fn ends_with() {
   let type_ =
     t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.result(t.Str, t.unit)))
-  #(type_, r.Arity2(do_ends_with))
+  #(type_, state.Arity2(do_ends_with))
 }
 
 pub fn do_ends_with(value, suffix, rev, env, k) {
-  use value <- cast.require(cast.string(value), rev, env, k)
-  use suffix <- cast.require(cast.string(suffix), rev, env, k)
+  use value <- result.then(cast.as_string(value))
+  use suffix <- result.then(cast.as_string(suffix))
   let ret = case string.split_once(value, suffix) {
-    Ok(#(pre, "")) -> r.ok(r.Str(pre))
-    _ -> r.error(r.unit)
+    Ok(#(pre, "")) -> v.ok(v.Str(pre))
+    _ -> v.error(v.unit)
   }
-  r.prim(r.Value(ret), rev, env, k)
+  Ok(#(state.V(ret), rev, env, k))
 }
 
 pub fn length() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Integer)
-  #(type_, r.Arity1(do_length))
+  #(type_, state.Arity1(do_length))
 }
 
 pub fn do_length(value, rev, env, k) {
-  use value <- cast.require(cast.string(value), rev, env, k)
-  r.prim(r.Value(r.Integer(string.length(value))), rev, env, k)
+  use value <- result.then(cast.as_string(value))
+  Ok(#(state.V(v.Integer(string.length(value))), rev, env, k))
 }
 
 pub fn pop_grapheme() {
   let parts =
     t.Record(t.Extend("head", t.Str, t.Extend("tail", t.Str, t.Closed)))
   let type_ = t.Fun(t.Str, t.Open(1), t.result(parts, t.unit))
-  #(type_, r.Arity1(do_pop_grapheme))
+  #(type_, state.Arity1(do_pop_grapheme))
 }
 
 fn do_pop_grapheme(term, rev, env, k) {
-  use string <- cast.require(cast.string(term), rev, env, k)
+  use string <- result.then(cast.as_string(term))
   let return = case string.pop_grapheme(string) {
-    Error(Nil) -> r.error(r.unit)
+    Error(Nil) -> v.error(v.unit)
     Ok(#(head, tail)) ->
-      r.ok(r.Record([#("head", r.Str(head)), #("tail", r.Str(tail))]))
+      v.ok(v.Record([#("head", v.Str(head)), #("tail", v.Str(tail))]))
   }
-  r.prim(r.Value(return), rev, env, k)
+  Ok(#(state.V(return), rev, env, k))
 }
 
 pub fn replace() {
@@ -139,24 +141,24 @@ pub fn replace() {
       t.Open(0),
       t.Fun(t.Str, t.Open(1), t.Fun(t.Str, t.Open(1), t.Str)),
     )
-  #(type_, r.Arity3(do_replace))
+  #(type_, state.Arity3(do_replace))
 }
 
 pub fn do_replace(in, from, to, rev, env, k) {
-  use in <- cast.require(cast.string(in), rev, env, k)
-  use from <- cast.require(cast.string(from), rev, env, k)
-  use to <- cast.require(cast.string(to), rev, env, k)
+  use in <- result.then(cast.as_string(in))
+  use from <- result.then(cast.as_string(from))
+  use to <- result.then(cast.as_string(to))
 
-  r.prim(r.Value(r.Str(string.replace(in, from, to))), rev, env, k)
+  Ok(#(state.V(v.Str(string.replace(in, from, to))), rev, env, k))
 }
 
 pub fn to_binary() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Binary)
-  #(type_, r.Arity1(do_to_binary))
+  #(type_, state.Arity1(do_to_binary))
 }
 
 pub fn do_to_binary(in, rev, env, k) {
-  use in <- cast.require(cast.string(in), rev, env, k)
+  use in <- result.then(cast.as_string(in))
 
-  r.prim(r.Value(r.Binary(bit_array.from_string(in))), rev, env, k)
+  Ok(#(state.V(v.Binary(bit_array.from_string(in))), rev, env, k))
 }

@@ -2,16 +2,17 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/dict
-import gleam/option.{None}
+import gleam/result
 import gleam/string
 import gleam/javascript/array
 import gleam/javascript
 import old_plinth/browser/document
 import easel/embed
 import eygir/decode
-import harness/ffi/cast
-import eyg/runtime/interpreter as r
-import harness/ffi/env
+import eyg/runtime/cast
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
 import harness/stdlib
 import plinth/javascript/console
 import eyg/analysis/jm/type_ as t
@@ -46,31 +47,30 @@ fn applet(root) {
       {
         let env = stdlib.env()
         let rev = []
-        let k = None
-        let assert r.Value(term) = r.eval(source, env, k)
-        use func <- cast.require(cast.field("func", cast.any, term), rev, env, k,
-        )
-        use arg <- cast.require(cast.field("arg", cast.any, term), rev, env, k)
+        let k = dict.new()
+        let assert Ok(term) = r.execute(source, env, k)
+        use func <- result.then(cast.field("func", cast.any, term))
+        use arg <- result.then(cast.field("arg", cast.any, term))
         // run func arg can be a thing
         // weird return wrapping for cast
         // stdlib only builtins used
         let actions = javascript.make_reference([])
         let handlers =
           dict.new()
-          |> dict.insert("Update", fn(action, k) {
+          |> dict.insert("Update", fn(action) {
             let saved = javascript.dereference(actions)
             let id = int.to_string(list.length(saved))
             let saved = [action, ..saved]
             javascript.set_reference(actions, saved)
-            r.prim(r.Value(r.Str(id)), rev, env, k)
+            Ok(v.Str(id))
           })
           |> dict.insert("Log", console_log().2)
         let state = javascript.make_reference(arg)
         let render = fn() {
           let current = javascript.dereference(state)
-          let result = r.handle(r.eval_call(func, current, env, None), handlers)
+          let result = r.resume(func, [current], env, handlers)
           let _ = case result {
-            r.Value(r.Str(page)) -> document.set_html(root, page)
+            Ok(v.Str(page)) -> document.set_html(root, page)
             _ -> {
               io.debug(#("unexpected", result))
               panic("nope")
@@ -86,8 +86,8 @@ fn applet(root) {
                   // handle effects
                   let current = javascript.dereference(state)
                   // io.debug(javascript.dereference(actions))
-                  let assert r.Value(next) =
-                    r.eval_call(code, current, env, None)
+                  let assert Ok(next) =
+                    r.resume(code, [current], env, dict.new())
                   javascript.set_reference(state, next)
                   javascript.set_reference(actions, [])
                   render()
@@ -104,7 +104,7 @@ fn applet(root) {
           }
         })
         render()
-        r.prim(r.Value(func), rev, env, k)
+        Ok(#(state.V(func), rev, env, k))
       }
       Nil
     }
@@ -137,12 +137,10 @@ pub fn console_log() {
   #(
     t.String,
     t.unit,
-    fn(message, k) {
-      let env = env.empty()
-      let rev = []
-      use message <- cast.require(cast.string(message), rev, env, k)
+    fn(message) {
+      use message <- result.then(cast.as_string(message))
       console.log(message)
-      r.prim(r.Value(r.unit), rev, env, k)
+      Ok(v.unit)
     },
   )
 }

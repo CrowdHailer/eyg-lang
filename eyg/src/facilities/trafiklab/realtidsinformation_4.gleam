@@ -26,7 +26,7 @@ pub fn try_await(p, to_error, k) {
 // https://api.sl.se/api2/realtimedeparturesV4.json?key=b8aa9e4c5e9741ca87f4371c93d0c4f6&siteid=1254&timewindow=120
 pub fn departures(api_key, site_id, time_window) {
   let r =
-//   can't test locally because cors no set for use with localhost:8080
+    //   can't test locally because cors no set for use with localhost:8080
     request.new()
     |> request.set_host("tools.petersaxton.uk")
     |> request.set_path("/proxy/api.sl.se/api2/realtimedeparturesV4.json")

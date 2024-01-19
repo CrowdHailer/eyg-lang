@@ -1,6 +1,7 @@
-import gleam/option.{None}
+import gleam/dict
 import eygir/expression as e
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/value as v
 import harness/stdlib
 import gleeunit/should
 
@@ -26,6 +27,6 @@ pub fn fold_test() {
       e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Str("initial")),
       reducer,
     )
-  r.eval(source, stdlib.env(), None)
-  |> should.equal(r.Value(r.Str("initialfizzbuzz")))
+  r.execute(source, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.Str("initialfizzbuzz")))
 }

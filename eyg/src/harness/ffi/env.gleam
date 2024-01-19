@@ -1,6 +1,6 @@
 import gleam/dict
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/state
 
 pub fn empty() {
-  r.Env([], dict.new())
+  state.Env([], dict.new())
 }

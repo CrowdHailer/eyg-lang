@@ -3,7 +3,7 @@ import gleam/list
 import gleam/result
 import gleam/string
 import eygir/expression as e
-import eyg/runtime/interpreter as r
+import eyg/runtime/value as v
 
 pub fn capture(term) {
   // env is reversed with first needed deepest
@@ -17,17 +17,17 @@ pub fn capture(term) {
 
 fn do_capture(term, env) {
   case term {
-    r.Binary(value) -> #(e.Binary(value), env)
-    r.Integer(value) -> #(e.Integer(value), env)
-    r.Str(value) -> #(e.Str(value), env)
-    r.LinkedList(items) ->
+    v.Binary(value) -> #(e.Binary(value), env)
+    v.Integer(value) -> #(e.Integer(value), env)
+    v.Str(value) -> #(e.Str(value), env)
+    v.LinkedList(items) ->
       list.fold_right(items, #(e.Tail, env), fn(state, item) {
         let #(tail, env) = state
         let #(item, env) = do_capture(item, env)
         let exp = e.Apply(e.Apply(e.Cons, item), tail)
         #(exp, env)
       })
-    r.Record(fields) ->
+    v.Record(fields) ->
       list.fold_right(fields, #(e.Empty, env), fn(state, pair) {
         let #(label, item) = pair
         let #(record, env) = state
@@ -35,7 +35,7 @@ fn do_capture(term, env) {
         let exp = e.Apply(e.Apply(e.Extend(label), item), record)
         #(exp, env)
       })
-    r.Tagged(label, value) -> {
+    v.Tagged(label, value) -> {
       let #(value, env) = do_capture(value, env)
       let exp = e.Apply(e.Tag(label), value)
       #(exp, env)
@@ -44,7 +44,7 @@ fn do_capture(term, env) {
     // https://github.com/midas-framework/project_wisdom/pull/47/files#diff-a06143ff39109126525a296ab03fc419ba2d5da20aac75ca89477bebe9cf3fee
     // shake code
     // https://github.com/midas-framework/project_wisdom/pull/57/files#diff-d576d15df2bd35cb961bc2edd513c97027ef52ce19daf5d303f45bd11b327604
-    r.Function(arg, body, captured, _) -> {
+    v.Closure(arg, body, captured, _) -> {
       // Note captured list has variables multiple times and we need to find first only
       let captured =
         list.filter_map(vars_used(body, [arg]), fn(var) {
@@ -96,28 +96,28 @@ fn do_capture(term, env) {
         })
       #(exp, env)
     }
-    r.Defunc(switch, applied) -> capture_defunc(switch, applied, env)
-    r.Promise(_) ->
+    v.Partial(switch, applied) -> capture_defunc(switch, applied, env)
+    v.Promise(_) ->
       panic("not capturing promise, yet. Can be done making serialize async")
   }
 }
 
 fn capture_defunc(switch, args, env) {
   let exp = case switch {
-    r.Cons -> e.Cons
-    r.Extend(label) -> e.Extend(label)
-    r.Overwrite(label) -> e.Overwrite(label)
-    r.Select(label) -> e.Select(label)
-    r.Tag(label) -> e.Tag(label)
-    r.Match(label) -> e.Case(label)
-    r.NoCases -> e.NoCases
-    r.Perform(label) -> e.Perform(label)
-    r.Handle(label) -> e.Handle(label)
-    r.Resume(_label, _handler, _resume) -> {
+    v.Cons -> e.Cons
+    v.Extend(label) -> e.Extend(label)
+    v.Overwrite(label) -> e.Overwrite(label)
+    v.Select(label) -> e.Select(label)
+    v.Tag(label) -> e.Tag(label)
+    v.Match(label) -> e.Case(label)
+    v.NoCases -> e.NoCases
+    v.Perform(label) -> e.Perform(label)
+    v.Handle(label) -> e.Handle(label)
+    v.Resume(_) -> {
       panic("not idea how to capture the func here, is it even possible")
     }
-    r.Shallow(label) -> e.Shallow(label)
-    r.Builtin(identifier) -> e.Builtin(identifier)
+    v.Shallow(label) -> e.Shallow(label)
+    v.Builtin(identifier) -> e.Builtin(identifier)
   }
 
   list.fold(args, #(exp, env), fn(state, arg) {

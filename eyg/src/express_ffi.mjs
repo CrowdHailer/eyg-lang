@@ -65,5 +65,5 @@ function toResponse([status, headers, body], res) {
   headers.forEach(([k, v]) => {
     res.set(k, v);
   });
-  res.send(body);
+  res.send(Buffer.from(body.buffer));
 }

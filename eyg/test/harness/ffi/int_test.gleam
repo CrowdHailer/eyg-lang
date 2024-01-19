@@ -1,7 +1,7 @@
 import gleam/dict
-import gleam/option.{None}
 import eyg/analysis/typ as t
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/value as v
 import eyg/analysis/inference
 import eygir/expression as e
 import harness/stdlib
@@ -15,6 +15,6 @@ pub fn add_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  r.eval(prog, stdlib.env(), None)
-  |> should.equal(r.Value(r.Integer(3)))
+  r.execute(prog, stdlib.env(), dict.new())
+  |> should.equal(Ok(v.Integer(3)))
 }

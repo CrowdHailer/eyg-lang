@@ -1,4 +1,4 @@
-import eyg/runtime/interpreter as r
+import eyg/runtime/interpreter/state
 import harness/ffi/core
 
 pub fn lib() {
@@ -8,5 +8,5 @@ pub fn lib() {
 }
 
 pub fn env() {
-  r.Env([], lib().1)
+  state.Env([], lib().1)
 }
