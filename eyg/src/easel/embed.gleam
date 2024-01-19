@@ -1,3 +1,4 @@
+import gleam/bit_array
 import gleam/io
 import gleam/int
 import gleam/list
@@ -29,7 +30,10 @@ import atelier/view/type_
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
-import old_plinth/browser/window
+import plinth/browser/file_system
+import plinth/browser/file
+// import plinth/browser/blob
+import old_plinth/browser/window as old_window
 import old_plinth/browser/document
 import platforms/browser
 
@@ -102,9 +106,10 @@ fn nearest_click_handler(event) {
 }
 
 fn load_source() {
-  use #(file_handle) <- promise.try_await(window.show_open_file_picker())
-  use file <- promise.await(window.get_file(file_handle))
-  use text <- promise.map(window.file_text(file))
+  use file_handles <- promise.try_await(file_system.show_open_file_picker())
+  let assert [file_handle] = array.to_list(file_handles)
+  use file <- promise.try_await(file_system.get_file(file_handle))
+  use text <- promise.map(file.text(file))
   let assert Ok(source) = decode.from_json(text)
   Ok(source)
 }
@@ -188,8 +193,8 @@ pub fn start_easel_at(root, start, state) {
     "selectionchange",
     fn(_event) {
       let _ = {
-        use selection <- result.then(window.get_selection())
-        use range <- result.then(window.get_range_at(selection, 0))
+        use selection <- result.then(old_window.get_selection())
+        use range <- result.then(old_window.get_range_at(selection, 0))
         let start = start_index(range)
         let end = end_index(range)
         javascript.update_reference(ref, fn(state) {
@@ -296,10 +301,10 @@ pub fn fullscreen(root) {
 }
 
 @external(javascript, "../easel_ffi.js", "startIndex")
-fn start_index(a: window.Range) -> Int
+fn start_index(a: old_window.Range) -> Int
 
 @external(javascript, "../easel_ffi.js", "endIndex")
-fn end_index(a: window.Range) -> Int
+fn end_index(a: old_window.Range) -> Int
 
 fn render_page(root, start, state) {
   case document.query_selector(root, "pre") {
@@ -467,28 +472,26 @@ pub fn insert_text(state: Embed, data, start, end) {
         }
         // Putting in state locked can work with using an series of promises to compose actios
         "Q" -> {
-          promise.await(window.show_save_file_picker(), fn(result) {
+          promise.await(file_system.show_save_file_picker(), fn(result) {
             case
               result
               |> io.debug
             {
               Ok(file_handle) -> {
-                use writable <- promise.await(window.create_writable(file_handle,
+                use writable <- promise.try_await(file_system.create_writable(
+                  file_handle,
                 ))
                 io.debug(writable)
-                let blob =
-                  window.blob(
-                    array.from_list([encode.to_json(state.source)]),
-                    "application/json",
-                  )
-                io.debug(blob)
-                use _ <- promise.await(window.write(writable, blob))
-                use _ <- promise.await(window.close(writable))
-                promise.resolve(Nil)
+                let content =
+                  bit_array.from_string(encode.to_json(state.source))
+                // let blob = blob.new(content, "application/json")
+                use _ <- promise.await(file_system.write(writable, content))
+                use _ <- promise.await(file_system.close(writable))
+                promise.resolve(Ok(Nil))
               }
-              Error(Nil) -> {
-                io.debug("no file  to save selected")
-                promise.resolve(Nil)
+              Error(reason) -> {
+                io.debug(#("no file  to save selected", reason))
+                promise.resolve(Ok(Nil))
               }
             }
           })
@@ -981,10 +984,10 @@ pub fn redo(state: Embed, start) {
           mode: Command(""),
           source: other,
           // I think text only get's off by one here
-          history: #(
-            forward,
-            [#(state.source, current_path, text_only), ..state.history.1],
-          ),
+          history: #(forward, [
+            #(state.source, current_path, text_only),
+            ..state.history.1
+          ]),
           inferred: inferred,
           rendered: rendered,
         )

@@ -23,13 +23,10 @@ pub fn literal_query_test() {
 
 pub fn reused_variables_test() {
   let qs = [
-    #(
-      ["a", "b", "c"],
-      [
-        #(query.v("a"), query.v("b"), query.v("a")),
-        #(query.v("b"), query.v("c"), query.v("c")),
-      ],
-    ),
+    #(["a", "b", "c"], [
+      #(query.v("a"), query.v("b"), query.v("a")),
+      #(query.v("b"), query.v("c"), query.v("c")),
+    ]),
   ]
   qs
   |> round_trip

@@ -131,50 +131,42 @@ fn old_run() {
 }
 
 fn render() {
-  #(
-    t.Str,
-    t.unit,
-    fn(page) {
-      let assert v.Str(page) = page
-      case document.query_selector(document.document(), "#app") {
-        Ok(element) -> document.set_html(element, page)
-        _ ->
-          panic as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
-      }
-      Ok(v.unit)
-    },
-  )
+  #(t.Str, t.unit, fn(page) {
+    let assert v.Str(page) = page
+    case document.query_selector(document.document(), "#app") {
+      Ok(element) -> document.set_html(element, page)
+      _ ->
+        panic as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
+    }
+    Ok(v.unit)
+  })
 }
 
 pub fn async() {
-  #(
-    t.unit,
-    t.unit,
-    fn(exec) {
-      let env = stdlib.env()
-      let #(_, extrinsic) =
-        handlers()
-        |> effect.extend("Await", effect.await())
-      // always needs to be executed later so make wrapped as promise from the start
-      let promise =
-        promisex.wait(0)
-        |> promise.await(fn(_: Nil) {
-          r.await(r.resume(exec, [v.unit], env, extrinsic))
-        })
-        |> promise.map(fn(result) {
-          case result {
-            Ok(term) -> term
-            Error(#(reason, _path, _env, _k)) -> {
-              // has all the path and env in cant' debug
-              console.log(break.reason_to_string(reason))
-              panic("this shouldn't fail")
-            }
+  #(t.unit, t.unit, fn(exec) {
+    let env = stdlib.env()
+    let #(_, extrinsic) =
+      handlers()
+      |> effect.extend("Await", effect.await())
+    // always needs to be executed later so make wrapped as promise from the start
+    let promise =
+      promisex.wait(0)
+      |> promise.await(fn(_: Nil) {
+        r.await(r.resume(exec, [v.unit], env, extrinsic))
+      })
+      |> promise.map(fn(result) {
+        case result {
+          Ok(term) -> term
+          Error(#(reason, _path, _env, _k)) -> {
+            // has all the path and env in cant' debug
+            console.log(break.reason_to_string(reason))
+            panic("this shouldn't fail")
           }
-        })
+        }
+      })
 
-      Ok(v.Promise(promise))
-    },
-  )
+    Ok(v.Promise(promise))
+  })
 }
 
 // maybe on click is a better abstraction
@@ -185,87 +177,67 @@ pub fn async() {
 // single extrinsic for listen is a good idea because internally we can build event handlers for on click etc
 // need key value for qwik style continuations on the click
 fn listen() {
-  #(
-    t.unit,
-    t.unit,
-    fn(sub) {
-      use event <- result.then(cast.field("event", cast.as_string, sub))
-      use handle <- result.then(cast.field("handler", cast.any, sub))
+  #(t.unit, t.unit, fn(sub) {
+    use event <- result.then(cast.field("event", cast.as_string, sub))
+    use handle <- result.then(cast.field("handler", cast.any, sub))
 
-      let env = stdlib.env()
-      let #(_, extrinsic) = handlers()
+    let env = stdlib.env()
+    let #(_, extrinsic) = handlers()
 
-      window.add_event_listener(event, fn(_) {
-        let ret = r.resume(handle, [v.unit], env, extrinsic)
-        io.debug(ret)
-        Nil
-      })
-      Ok(v.unit)
-    },
-  )
+    window.add_event_listener(event, fn(_) {
+      let ret = r.resume(handle, [v.unit], env, extrinsic)
+      io.debug(ret)
+      Nil
+    })
+    Ok(v.unit)
+  })
 }
 
 fn location_search() {
-  #(
-    t.unit,
-    t.unit,
-    fn(_) {
-      let value = case window.location_search() {
-        Ok(str) -> v.ok(v.Str(str))
-        Error(_) -> v.error(v.unit)
-      }
-      Ok(value)
-    },
-  )
+  #(t.unit, t.unit, fn(_) {
+    let value = case window.location_search() {
+      Ok(str) -> v.ok(v.Str(str))
+      Error(_) -> v.error(v.unit)
+    }
+    Ok(value)
+  })
 }
 
 // different to listen because replaces handler
 
 fn on_click() {
-  #(
-    t.unit,
-    t.unit,
-    fn(handle) {
-      let env = stdlib.env()
-      let #(_, extrinsic) = handlers()
+  #(t.unit, t.unit, fn(handle) {
+    let env = stdlib.env()
+    let #(_, extrinsic) = handlers()
 
-      document.on_click(fn(arg) {
-        let arg = window.decode_uri(arg)
-        let assert Ok(arg) = decode.from_json(arg)
+    document.on_click(fn(arg) {
+      let arg = window.decode_uri(arg)
+      let assert Ok(arg) = decode.from_json(arg)
 
-        do_handle(arg, handle, env, extrinsic)
-      })
-      Ok(v.unit)
-    },
-  )
+      do_handle(arg, handle, env, extrinsic)
+    })
+    Ok(v.unit)
+  })
 }
 
 fn on_keydown() {
-  #(
-    t.unit,
-    t.unit,
-    fn(handle) {
-      let env = stdlib.env()
-      let #(_, extrinsic) = handlers()
+  #(t.unit, t.unit, fn(handle) {
+    let env = stdlib.env()
+    let #(_, extrinsic) = handlers()
 
-      document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      Ok(v.unit)
-    },
-  )
+    document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
+    Ok(v.unit)
+  })
 }
 
 fn on_change() {
-  #(
-    t.unit,
-    t.unit,
-    fn(handle) {
-      let env = stdlib.env()
-      let #(_, extrinsic) = handlers()
+  #(t.unit, t.unit, fn(handle) {
+    let env = stdlib.env()
+    let #(_, extrinsic) = handlers()
 
-      document.on_change(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
-      Ok(v.unit)
-    },
-  )
+    document.on_change(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
+    Ok(v.unit)
+  })
 }
 
 fn do_handle(arg, handle, builtins, extrinsic) {

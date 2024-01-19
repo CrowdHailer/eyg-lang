@@ -16,7 +16,9 @@ import eyg/runtime/cast
 import harness/stdlib
 
 fn handle_click(event, states) {
-  use target <- result.then(element.closest(event.target(event), "*[on\\:click]",
+  use target <- result.then(element.closest(
+    event.target(event),
+    "*[on\\:click]",
   ))
   use container <- result.then(element.closest(target, "[r\\:container]"))
   use key <- result.then(element.get_attribute(target, "on:click"))

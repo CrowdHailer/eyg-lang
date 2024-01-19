@@ -86,7 +86,10 @@ fn rewrite_row(row, new_label, ref) {
       Ok(#(t, r, s))
     }
     t.Extend(label, field, tail) -> {
-      use #(field1, tail1, subs) <- result.then(rewrite_row(tail, new_label, ref,
+      use #(field1, tail1, subs) <- result.then(rewrite_row(
+        tail,
+        new_label,
+        ref,
       ))
       Ok(#(field1, t.Extend(label, field, tail1), subs))
     }

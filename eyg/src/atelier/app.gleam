@@ -486,10 +486,9 @@ fn binary(zipper: zipper.Zipper, state) {
 
 fn number(zipper: zipper.Zipper, state) {
   let #(v, commit) = case zipper.0 {
-    e.Let(label, _value, then) -> #(
-      0,
-      fn(value) { zipper.1(e.Let(label, e.Integer(value), then)) },
-    )
+    e.Let(label, _value, then) -> #(0, fn(value) {
+      zipper.1(e.Let(label, e.Integer(value), then))
+    })
     e.Integer(value) -> #(value, fn(value) { zipper.1(e.Integer(value)) })
     _exp -> #(0, fn(value) { zipper.1(e.Integer(value)) })
   }

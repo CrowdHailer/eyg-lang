@@ -77,7 +77,9 @@ pub fn no_recursive_fix_test() {
       "fix",
       e.Builtin("fix"),
       e.Apply(
-        e.Apply(e.Variable("fix"), e.Lambda("_", e.Lambda("x", e.Variable("x"))),
+        e.Apply(
+          e.Variable("fix"),
+          e.Lambda("_", e.Lambda("x", e.Variable("x"))),
         ),
         e.Integer(1),
       ),

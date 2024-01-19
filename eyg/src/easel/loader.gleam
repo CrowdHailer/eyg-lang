@@ -134,13 +134,9 @@ fn nearest_click_handler(event) {
 }
 
 pub fn console_log() {
-  #(
-    t.String,
-    t.unit,
-    fn(message) {
-      use message <- result.then(cast.as_string(message))
-      console.log(message)
-      Ok(v.unit)
-    },
-  )
+  #(t.String, t.unit, fn(message) {
+    use message <- result.then(cast.as_string(message))
+    console.log(message)
+    Ok(v.unit)
+  })
 }

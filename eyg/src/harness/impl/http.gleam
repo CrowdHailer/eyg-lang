@@ -19,97 +19,79 @@ import harness/effect
 import harness/stdlib
 
 pub fn serve() {
-  #(
-    t.Str,
-    t.unit,
-    fn(lift) {
-      let env = stdlib.env()
-      use port <- result.then(cast.field("port", cast.as_integer, lift))
-      use handler <- result.then(cast.field("handler", cast.any, lift))
-      let id =
-        do_serve(port, fn(raw) {
-          let req = to_request(raw)
-          let extrinsic =
-            {
-              effect.init()
-              |> effect.extend("Log", effect.debug_logger())
-              |> effect.extend("HTTP", effect.http())
-              |> effect.extend("File_Write", effect.file_write())
-              |> effect.extend("Await", effect.await())
-              |> effect.extend("Wait", effect.wait())
-              |> effect.extend("LoadDB", effect.load_db())
-              |> effect.extend("QueryDB", effect.query_db())
-            }.1
-          promise.map(r.await(r.resume(handler, [req], env, extrinsic)), fn(
-            resp,
-          ) {
-            case resp {
-              Ok(resp) -> from_response(resp)
-              Error(#(reason, _path, _env, _k)) -> {
-                io.debug(break.reason_to_string(reason))
-                #(
-                  500,
-                  array.from_list([]),
-                  bit_array.from_string("Server error"),
-                )
-              }
+  #(t.Str, t.unit, fn(lift) {
+    let env = stdlib.env()
+    use port <- result.then(cast.field("port", cast.as_integer, lift))
+    use handler <- result.then(cast.field("handler", cast.any, lift))
+    let id =
+      do_serve(port, fn(raw) {
+        let req = to_request(raw)
+        let extrinsic =
+          {
+            effect.init()
+            |> effect.extend("Log", effect.debug_logger())
+            |> effect.extend("HTTP", effect.http())
+            |> effect.extend("File_Write", effect.file_write())
+            |> effect.extend("Await", effect.await())
+            |> effect.extend("Wait", effect.wait())
+            |> effect.extend("LoadDB", effect.load_db())
+            |> effect.extend("QueryDB", effect.query_db())
+          }.1
+        promise.map(r.await(r.resume(handler, [req], env, extrinsic)), fn(resp) {
+          case resp {
+            Ok(resp) -> from_response(resp)
+            Error(#(reason, _path, _env, _k)) -> {
+              io.debug(break.reason_to_string(reason))
+              #(500, array.from_list([]), bit_array.from_string("Server error"))
             }
-          })
+          }
         })
-      let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
-      Ok(v.Closure("_", body, [], []))
-    },
-  )
+      })
+    let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
+    Ok(v.Closure("_", body, [], []))
+  })
 }
 
 pub fn stop_server() {
-  #(
-    t.Str,
-    t.unit,
-    fn(lift) {
-      use id <- result.then(cast.as_integer(lift))
-      do_stop(id)
-      Ok(v.unit)
-    },
-  )
+  #(t.Str, t.unit, fn(lift) {
+    use id <- result.then(cast.as_integer(lift))
+    do_stop(id)
+    Ok(v.unit)
+  })
 }
 
 pub fn receive() {
-  #(
-    t.Str,
-    t.unit,
-    fn(lift) {
-      let env = stdlib.env()
-      use port <- result.then(cast.field("port", cast.as_integer, lift))
-      console.log(port)
-      use handler <- result.then(cast.field("handler", cast.any, lift))
-      // function pass in raw return on option or re run
-      // return blah or nil using dynamic
-      let p =
-        do_receive(port, fn(raw) {
-          let req = to_request(raw)
-          let extrinsic =
-            {
-              effect.init()
-              |> effect.extend("Log", effect.debug_logger())
-              |> effect.extend("HTTP", effect.http())
-              |> effect.extend("Await", effect.await())
-              |> effect.extend("Wait", effect.wait())
-            }.1
-          let assert Ok(reply) = r.resume(handler, [req], env, extrinsic)
-          let assert Ok(resp) = cast.field("response", cast.any, reply)
-          let assert Ok(data) = cast.field("data", cast.as_tagged, reply)
+  #(t.Str, t.unit, fn(lift) {
+    let env = stdlib.env()
+    use port <- result.then(cast.field("port", cast.as_integer, lift))
+    console.log(port)
+    use handler <- result.then(cast.field("handler", cast.any, lift))
+    // function pass in raw return on option or re run
+    // return blah or nil using dynamic
+    let p =
+      do_receive(port, fn(raw) {
+        let req = to_request(raw)
+        let extrinsic =
+          {
+            effect.init()
+            |> effect.extend("Log", effect.debug_logger())
+            |> effect.extend("HTTP", effect.http())
+            |> effect.extend("Await", effect.await())
+            |> effect.extend("Wait", effect.wait())
+          }.1
+        let assert Ok(reply) = r.resume(handler, [req], env, extrinsic)
+        let assert Ok(resp) = cast.field("response", cast.any, reply)
+        let assert Ok(data) = cast.field("data", cast.as_tagged, reply)
 
-          let data = case data {
-            #("Some", value) -> Some(value)
-            #("None", _) -> None
-            _ -> panic("unexpected data return")
-          }
-          #(from_response(resp), data)
-        })
-      Ok(v.Promise(p))
-    },
-  )
+        let data = case data {
+          #("Some", value) -> Some(value)
+          #("None", _) -> None
+          _ -> panic("unexpected data return")
+        }
+        #(from_response(resp), data)
+      })
+    Ok(v.Promise(p))
+  })
 }
 
 type RawRequest =
@@ -167,13 +149,14 @@ fn to_request(raw: RawRequest) {
 }
 
 // TODO remove handles some old fallbacks in the saved.json
-fn binary_or_string(raw)  {
+fn binary_or_string(raw) {
   case cast.as_binary(raw) {
     Ok(value) -> Ok(value)
-    Error(reason) -> case cast.as_string(raw) {
-      Ok(s) -> Ok(bit_array.from_string(s))
-      Error(_) ->  Error(reason)
-    }
+    Error(reason) ->
+      case cast.as_string(raw) {
+        Ok(s) -> Ok(bit_array.from_string(s))
+        Error(_) -> Error(reason)
+      }
   }
 }
 

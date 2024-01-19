@@ -23,44 +23,6 @@ pub fn decode_uri_component(a: String) -> String
 @external(javascript, "../../plinth_ffi.js", "locationSearch")
 pub fn location_search() -> Result(String, Nil)
 
-// files
-pub type FileHandle
-
-// chrome only
-// firefox support is for originprivatefilesystem and drag and drop blobs
-// show dir for db of stuff only
-
-// single tuple is hack for list of files
-@external(javascript, "../../plinth_ffi.js", "showOpenFilePicker")
-pub fn show_open_file_picker() -> Promise(Result(#(FileHandle), Nil))
-
-@external(javascript, "../../plinth_ffi.js", "showSaveFilePicker")
-pub fn show_save_file_picker() -> Promise(Result(FileHandle, Nil))
-
-pub type File
-
-@external(javascript, "../../plinth_ffi.js", "getFile")
-pub fn get_file(a: FileHandle) -> Promise(File)
-
-@external(javascript, "../../plinth_ffi.js", "fileText")
-pub fn file_text(a: File) -> Promise(String)
-
-pub type FileSystemWritableFileStream
-
-@external(javascript, "../../plinth_ffi.js", "createWritable")
-pub fn create_writable(a: FileHandle) -> Promise(FileSystemWritableFileStream)
-
-pub type Blob
-
-@external(javascript, "../../plinth_ffi.js", "blob")
-pub fn blob(a: Array(String), b: String) -> Blob
-
-@external(javascript, "../../plinth_ffi.js", "write")
-pub fn write(a: FileSystemWritableFileStream, b: Blob) -> Promise(Nil)
-
-@external(javascript, "../../plinth_ffi.js", "close")
-pub fn close(a: FileSystemWritableFileStream) -> Promise(Nil)
-
 // selection and ranges
 
 pub type Selection

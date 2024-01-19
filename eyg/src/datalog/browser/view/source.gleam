@@ -64,7 +64,6 @@ pub fn render(index, relation, headings, values) {
   //     //   https://github.com/rollup/plugins/tree/master/packages/node-resolve
   //     //   yaml.parse_one(t)
   //     //   |> io.debug
-  //     //   file is a type of blob
   //     Ok(
   //       model.Wrap(fn(model) {
   //         #(

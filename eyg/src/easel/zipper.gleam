@@ -12,10 +12,11 @@ pub fn at(expression, path) -> Result(Zipper, Nil) {
 fn do_zipper(expression, path, acc) {
   case path {
     [] ->
-      Ok(#(
-        expression,
-        fn(new) { list.fold(acc, new, fn(element, build) { build(element) }) },
-      ))
+      Ok(
+        #(expression, fn(new) {
+          list.fold(acc, new, fn(element, build) { build(element) })
+        }),
+      )
     [index, ..path] -> {
       use #(child, rebuild) <- result.then(child(expression, index))
       do_zipper(child, path, [rebuild, ..acc])

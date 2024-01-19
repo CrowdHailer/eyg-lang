@@ -34,14 +34,11 @@ fn component(create) {
       list.map(updates, fn(u) { u() })
       Nil
     }
-    #(
-      elements,
-      fn(value) {
-        set(value)
-        // set in request animation frame
-        update()
-      },
-    )
+    #(elements, fn(value) {
+      set(value)
+      // set in request animation frame
+      update()
+    })
   }
 }
 

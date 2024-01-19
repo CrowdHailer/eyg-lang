@@ -16,13 +16,10 @@ pub fn make(initial: a) -> #(Observable(a), fn(a) -> Nil) {
   let value = javascript.make_reference(initial)
   let observers = javascript.make_reference([])
 
-  let observable = #(
-    initial,
-    fn(sub) {
-      javascript.update_reference(observers, list.prepend(_, sub))
-      Nil
-    },
-  )
+  let observable = #(initial, fn(sub) {
+    javascript.update_reference(observers, list.prepend(_, sub))
+    Nil
+  })
   // bit weird that we don't update the value in tuple but we can't
   // observable only used to build subscriptions
   let set = fn(new) {
@@ -98,9 +95,8 @@ pub fn option(
     case option {
       Some(value) -> {
         #(
-          some(#(
-            value,
-            fn(sub) {
+          some(
+            #(value, fn(sub) {
               // keep observers in this component scope
               observable.1(fn(outer) {
                 case outer {
@@ -108,8 +104,8 @@ pub fn option(
                   None -> Nil
                 }
               })
-            },
-          )),
+            }),
+          ),
           fn(new) {
             case new {
               Some(_) -> Ok(Nil)
@@ -119,15 +115,12 @@ pub fn option(
         )
       }
 
-      None -> #(
-        none,
-        fn(new) {
-          case new {
-            None -> Ok(Nil)
-            Some(_) -> Error(Nil)
-          }
-        },
-      )
+      None -> #(none, fn(new) {
+        case new {
+          None -> Ok(Nil)
+          Some(_) -> Error(Nil)
+        }
+      })
     }
   }
   let #(elements, try_update) = create(observable.0)

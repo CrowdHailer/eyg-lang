@@ -76,7 +76,8 @@ fn string(raw) {
 fn list(ref) {
   fn(raw) {
     use pairs <- result.then(
-      dynamic.list(dynamic.any([bool, int, string, list(ref), object(ref)]))(raw,
+      dynamic.list(dynamic.any([bool, int, string, list(ref), object(ref)]))(
+        raw,
       ),
     )
     let #(value, sub) =
