@@ -13,11 +13,8 @@ import platforms/browser
 
 pub fn variable_test() {
   let source = e.Variable("x")
-  r.execute(
-    source,
-    state.Env([#("x", v.Str("assigned"))], dict.new()),
-    dict.new(),
-  )
+  let env = state.Env([#("x", v.Str("assigned"))], dict.new())
+  r.execute(source, env, dict.new())
   |> should.equal(Ok(v.Str("assigned")))
 }
 
@@ -129,7 +126,7 @@ pub fn effect_in_case_test() {
   |> should.equal(Ok(v.Str("foo")))
 
   let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Str("nope")))
-  let assert Error(#(break.UnhandledEffect("Raise", lifted), rev, env, k)) =
+  let assert Error(#(break.UnhandledEffect("Raise", lifted), _rev, _env, _k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
   |> should.equal(v.Str("nope"))

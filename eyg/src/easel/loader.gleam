@@ -13,7 +13,6 @@ import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import harness/ffi/env
 import harness/stdlib
 import plinth/javascript/console
 import eyg/analysis/jm/type_ as t

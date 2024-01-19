@@ -55,7 +55,7 @@ fn handlers() {
 pub fn run(source) {
   let env = state.Env(scope: [], builtins: stdlib.lib().1)
   let assert Ok(parser) = r.execute(source, env, handlers().1)
-  let assert Ok(lisp) = cast.field("list", cast.any, parser)
+  let assert Ok(lisp) = cast.field("lisp", cast.any, parser)
   let assert Ok(parser) = cast.field("prompt", cast.any, lisp)
   let parser = fn(prompt) {
     fn(raw) {

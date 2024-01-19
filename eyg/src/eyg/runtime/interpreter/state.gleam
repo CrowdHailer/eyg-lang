@@ -126,7 +126,7 @@ pub fn apply(value, rev, env, k, rest) {
     CallWith(arg, rev, env) -> call(value, arg, rev, env, rest)
     Delimit(_, _, _, _, _) -> Ok(#(V(value), rev, env, rest))
   }
-  |> result.map_error(fn(reason) { #(reason, rev, env, Stack(k, rest)) })
+  |> result.map_error(fn(reason) { #(reason, rev, env, rest) })
 }
 
 pub fn call(f, arg, rev, env: Env, k: Stack) {
@@ -231,7 +231,7 @@ fn do_perform(label, arg, i_rev, i_env, k, acc) {
       do_perform(label, arg, i_rev, i_env, rest, [kontinue, ..acc])
     Empty(extrinsic) -> {
       // inefficient to move back in error case
-      let original_k = move(acc, Empty(dict.new()))
+      let original_k = move(acc, Empty(extrinsic))
       case dict.get(extrinsic, label) {
         Ok(handler) ->
           case handler(arg) {

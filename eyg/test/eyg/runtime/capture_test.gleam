@@ -35,6 +35,7 @@ pub fn literal_test() {
 
 pub fn run(source, env, args, extrinsic) {
   case r.execute(source, env, extrinsic) {
+    // env not needed in resume but it is in the original execute call, for builtins
     Ok(f) -> r.resume(f, args, env, extrinsic)
     Error(reason) -> Error(reason)
   }
@@ -235,17 +236,17 @@ pub fn partial_case_test() {
   let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
   let rest =
     e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Str("bad"))), e.NoCases)
-  let assert Ok(_rest) = r.execute(rest, env.empty(), dict.new())
+  let assert Ok(rest) = r.execute(rest, env.empty(), dict.new())
 
   let next = capture.capture(term)
 
   let arg = v.Tagged("Ok", v.unit)
   let e = env.empty()
-  run(next, e, [arg], dict.new())
+  run(next, e, [rest, arg], dict.new())
   |> should.equal(Ok(v.Str("good")))
 
   let arg = v.Tagged("Error", v.unit)
-  run(next, e, [arg], dict.new())
+  run(next, e, [rest, arg], dict.new())
   |> should.equal(Ok(v.Str("bad")))
 }
 

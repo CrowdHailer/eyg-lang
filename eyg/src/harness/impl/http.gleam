@@ -1,3 +1,4 @@
+import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/io
 import gleam/list
@@ -46,7 +47,11 @@ pub fn serve() {
               Ok(resp) -> from_response(resp)
               Error(#(reason, _path, _env, _k)) -> {
                 io.debug(break.reason_to_string(reason))
-                #(500, array.from_list([]), "Server error")
+                #(
+                  500,
+                  array.from_list([]),
+                  bit_array.from_string("Server error"),
+                )
               }
             }
           })
@@ -111,7 +116,7 @@ type RawRequest =
   #(String, String, String, String, Dynamic, Array(#(String, String)), String)
 
 type RawResponse =
-  #(Int, Array(#(String, String)), String)
+  #(Int, Array(#(String, String)), BitArray)
 
 fn to_request(raw: RawRequest) {
   let #(method, protocol, host, path, query, headers, body) = raw
@@ -161,10 +166,21 @@ fn to_request(raw: RawRequest) {
   ])
 }
 
+// TODO remove handles some old fallbacks in the saved.json
+fn binary_or_string(raw)  {
+  case cast.as_binary(raw) {
+    Ok(value) -> Ok(value)
+    Error(reason) -> case cast.as_string(raw) {
+      Ok(s) -> Ok(bit_array.from_string(s))
+      Error(_) ->  Error(reason)
+    }
+  }
+}
+
 fn from_response(response) {
   let assert Ok(status) = cast.field("status", cast.as_integer, response)
   let assert Ok(headers) = cast.field("headers", cast.as_list, response)
-  let assert Ok(body) = cast.field("body", cast.as_string, response)
+  let assert Ok(body) = cast.field("body", binary_or_string, response)
 
   let headers =
     list.map(headers, fn(term) {
