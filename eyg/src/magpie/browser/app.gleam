@@ -91,7 +91,7 @@ pub fn init(_) {
     App(DB(w, Indexing, serialize.DBView(0, [])), queries(), OverView),
     cmd.from(fn(dispatch) {
       worker.on_message(w, fn(raw) {
-        let Ok(raw) = dynamic.string(dynamic.from(raw))
+        let assert Ok(raw) = dynamic.string(dynamic.from(raw))
         case codec.decode_string(raw, serialize.db_view()) {
           Ok(db_view) -> dispatch(Indexed(db_view))
           Error(_) ->
@@ -107,10 +107,6 @@ pub fn init(_) {
     }),
   )
 }
-
-// TODO remove use plinth
-@external(javascript, "../../magpie_browser_ffi.mjs", "getHash")
-fn get_hash() -> String
 
 @external(javascript, "../../magpie_browser_ffi.mjs", "setHash")
 fn set_hash(hash: String) -> Nil
@@ -504,7 +500,8 @@ fn render_edit(mode, db: serialize.DBView) {
 }
 
 fn queries() {
-  case hash.decode(get_hash()) {
+  let assert Ok(h) = window.get_hash()
+  case hash.decode(h) {
     Ok(q) -> q
     Error(reason) -> {
       io.debug(reason)
