@@ -73,12 +73,15 @@ fn display(now, forecasts, buses, timer) {
   div([id("root"), class("hstack bg-yellow-200")], [
     case timer {
       None ->
-        div([class("expand")], [
+        div([class("expand text-2xl")], [
           div([class("")], [
             button([on_click(Wrap(start_timer(5000)))], [text("5 seconds")]),
           ]),
           div([class("")], [
             button([on_click(Wrap(start_timer(60_000)))], [text("1 minute")]),
+          ]),
+          div([class("")], [
+            button([on_click(Wrap(start_timer(180_000)))], [text("Porridge !!")]),
           ]),
           div([class("")], [
             button([on_click(Wrap(start_timer(5 * 60_000)))], [
@@ -92,7 +95,9 @@ fn display(now, forecasts, buses, timer) {
           ]),
         ])
       Some(milliseconds) ->
-        div([class("expand")], [text(int.to_string(milliseconds / 1000))])
+        div([class("expand text-3xl")], [
+          text(int.to_string(milliseconds / 1000)),
+        ])
     },
     div([class("cover expand")], [
       div([class("vstack")], [
@@ -131,7 +136,7 @@ fn display(now, forecasts, buses, timer) {
         ]),
         hr([class("w-full")]),
         div(
-          [],
+          [class("text-2xl")],
           list.map(buses, fn(b) {
             let #(destination, display) = b
             div([], [text(destination), text(" "), text(display)])
