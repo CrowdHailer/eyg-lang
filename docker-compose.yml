@@ -15,6 +15,7 @@ services:
       - gen:/opt/app/editor/src/gen
       - eyg_gen:/opt/app/eyg/gen
       - ../plinth:/opt/plinth
+      - ../glance:/opt/glance
       - ../codec:/opt/codec
       - ../PRM:/opt/PRM
       - ../javascript:/opt/javascript
