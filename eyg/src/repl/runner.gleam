@@ -2,7 +2,8 @@ import gleam/dict
 import gleam/float
 import gleam/int
 import gleam/io
-import gleam/option.{None}
+import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import glance as g
 
@@ -47,7 +48,13 @@ fn do_eval(exp, env, ks) {
     g.Panic(message) -> todo("message")
     g.Todo(message) -> todo("todo message")
     g.Tuple([]) -> apply(T([]), env, ks)
-    // g.Tuple(elements) -> do_eval[Apply(Builtin(TupleConstructor()))]
+    g.Tuple([first, ..elements]) ->
+      do_eval(first, env, [BuildTuple(elements, []), ..ks])
+    g.TupleIndex(exp, index) -> do_eval(exp, env, [AccessIndex(index), ..ks])
+    g.List([], None) -> apply(L([]), env, ks)
+    g.List([], Some(exp)) -> do_eval(exp, env, [Append([]), ..ks])
+    g.List([first, ..elements], tail) ->
+      do_eval(first, env, [BuildList(elements, [], tail), ..ks])
     // g.List()
     g.Fn(args, _annotation, body) -> apply(Closure(args, body, env), env, ks)
     // TODO real arguments
@@ -73,6 +80,25 @@ fn apply(value, env, ks) {
       apply(next, env, ks)
     }
     [Arg(exp), ..ks] -> do_eval(exp, env, [Apply(value), ..ks])
+    [BuildTuple([], gathered), ..ks] ->
+      apply(T(list.reverse([value, ..gathered])), env, ks)
+    [BuildTuple([next, ..remaining], gathered), ..ks] ->
+      do_eval(next, env, [BuildTuple(remaining, [value, ..gathered]), ..ks])
+    [AccessIndex(index), ..ks] -> {
+      let assert T(elements) = value
+      let assert Ok(element) = list.at(elements, index)
+      apply(element, env, ks)
+    }
+    [BuildList([], gathered, None), ..ks] ->
+      apply(L(list.reverse([value, ..gathered])), env, ks)
+    [BuildList([], gathered, Some(tail)), ..ks] ->
+      do_eval(tail, env, [Append([value, ..gathered]), ..ks])
+    [BuildList([next, ..remaining], gathered, tail), ..ks] ->
+      do_eval(next, env, [BuildList(remaining, [value, ..gathered], tail), ..ks])
+    [Append(gathered), ..ks] -> {
+      let assert L(elements) = value
+      apply(L(list.append(list.reverse(gathered), elements)), env, ks)
+    }
     _ -> {
       io.debug(#(value, ks))
       todo("bad apply")
@@ -240,6 +266,7 @@ pub type Value {
   B(Bool)
   S(String)
   T(List(Value))
+  L(List(Value))
   Closure(List(g.FnParameter), List(g.Statement), dict.Dict(String, Value))
   Builtin(Arity, List(Value))
 }
@@ -253,4 +280,12 @@ pub type Arity {
 pub type K {
   Apply(Value)
   Arg(g.Expression)
+  BuildTuple(expressions: List(g.Expression), values: List(Value))
+  AccessIndex(Int)
+  BuildList(
+    expressions: List(g.Expression),
+    values: List(Value),
+    tail: Option(g.Expression),
+  )
+  Append(values: List(Value))
 }
