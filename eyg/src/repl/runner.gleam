@@ -130,6 +130,7 @@ fn do_eval(exp, env, ks) {
     // TODO real arguments
     // TODO handle labeled arguments
     g.Call(function, args) -> do_eval(function, env, [Args(args), ..ks])
+    // g.BitString(segments) ->
     g.BinaryOperator(name, left, right) -> {
       let right = case name {
         g.Pipe ->

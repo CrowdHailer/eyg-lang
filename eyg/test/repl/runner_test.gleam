@@ -290,6 +290,14 @@ pub fn function_capture_test() {
   |> should.equal(Ok(I(-8)))
 }
 
+// TODO rename bitarray
+// Do not support for now
+// pub fn bit_string_test() {
+//   "<<>>"
+//   |> exec()
+//   |> should.equal(Ok(I(-8)))
+// }
+
 pub fn bin_op_test() {
   "1 + 2"
   |> exec()
@@ -357,7 +365,7 @@ pub fn assertion_test() {
 
   "let assert 2 = 1"
   |> exec()
-  |> should.equal(Error(runner.FailedAssignment(g.PatternInt(2), I(1))))
+  |> should.equal(Error(runner.FailedAssignment(glance.PatternInt("2"), I(1))))
 }
 
 pub fn undefined_variable_test() {
