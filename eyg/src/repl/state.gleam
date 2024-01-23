@@ -1,3 +1,4 @@
+import gleam/dict.{type Dict}
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None}
@@ -12,13 +13,19 @@ import plinth/browser/element
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 import facilities/trafiklab/realtidsinformation_4 as rt4
+import repl/runner.{type Value}
 
 pub type State {
-  State(statement: String, history: List(#(String, String)))
+  State(
+    scope: Dict(String, runner.Value),
+    statement: String,
+    execute_error: Option(runner.Reason),
+    history: List(#(String, String)),
+  )
 }
 
 pub fn init(_) {
-  let state = State("", [])
+  let state = State(dict.new(), "", None, [])
   #(state, effect.batch([]))
 }
 

@@ -1,20 +1,31 @@
 import gleam/io
 import gleam/dict
 import gleam/list
+import gleam/option.{None, Some}
 import glance
 import glexer
-import repl/runner.{F, I, L, S, T}
+import repl/runner.{Closure, F, I, L, S, T}
 import plinth/javascript/console
 import gleeunit/should
 
-fn exec(src) {
-  let assert Ok(#(statement, rest)) =
+fn exec_with(src, env) {
+  let env = dict.from_list(env)
+  let parsed =
     glexer.new(src)
     |> glexer.lex
     |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-    |> glance.statement
-  // |> io.debug
-  runner.exec(statement, dict.new())
+    |> runner.statements([], _)
+  case parsed {
+    Ok(#(statements, _, rest)) -> runner.exec(statements, env)
+    Error(reason) -> {
+      io.debug(reason)
+      panic("not parsed")
+    }
+  }
+}
+
+fn exec(src) {
+  exec_with(src, [])
 }
 
 pub fn literal_test() {
@@ -33,11 +44,6 @@ pub fn literal_test() {
   "\"hello\""
   |> exec()
   |> should.equal(Ok(S("hello")))
-//   How do we make sure named arguments go to the right place if using native
-  console.log(Ok(""))
-  console.log(Ok)
-  console.log(runner.I(1))
-  console.log(runner.Append([]))
 }
 
 pub fn number_negation_test() {
@@ -45,9 +51,21 @@ pub fn number_negation_test() {
   |> exec()
   |> should.equal(Ok(I(-1)))
 
+  "-{1 + 1}"
+  |> exec()
+  |> should.equal(Ok(I(-2)))
+
   "-1.0"
   |> exec()
   |> should.equal(Ok(F(-1.0)))
+}
+
+pub fn number_negation_fail_test() {
+  "-\"a\""
+  |> exec()
+  |> should.equal(
+    Error(runner.IncorrectTerm(expected: "Integer or Float", got: S("a"))),
+  )
 }
 
 // pub fn bool_negation_test() {
@@ -57,7 +75,92 @@ pub fn number_negation_test() {
 //   //   |> should.equal(Ok(I(-1)))
 // }
 
-// todo block
+// pub fn panic_test() {
+//   // has message
+//   "panic(\"bad\")"
+//   |> exec()
+//   |> should.equal(Error(runner.Panic(Some("bad"))))
+
+//   // captures Env
+//   "let x = 5
+//   panic"
+//   |> exec()
+//   |> should.equal(Ok(I(5)))
+
+//   // captures continuation
+//   "panic
+//   100"
+//   |> exec()
+//   |> should.equal(Ok(I(5)))
+
+//   // evals message
+//   "panic(\"very\" <> \"bad\")"
+//   |> exec()
+//   |> should.equal(Ok(I(5)))
+
+//   // requires string message
+//   "panic(3)"
+//   |> exec()
+//   |> should.equal(Ok(I(5)))
+// }
+
+pub fn todo_test() {
+  // has message
+  "todo(\"bad\")"
+  |> exec()
+  |> should.equal(Error(runner.Todo(Some("bad"))))
+
+  // captures Env
+  "let x = 5
+  todo"
+  |> exec()
+  |> should.equal(Error(runner.Todo(None)))
+
+  // captures continuation
+  "todo
+  100"
+  |> exec()
+  |> should.equal(Error(runner.Todo(None)))
+
+  // evals message
+  "todo(\"very\" <> \"bad\")"
+  |> exec()
+  |> should.equal(Error(runner.Todo(None)))
+
+  // requires string message
+  "todo(3)"
+  |> exec()
+  |> should.equal(Error(runner.Todo(None)))
+}
+
+pub fn block_test() {
+  "{ 5 }"
+  |> exec()
+  |> should.equal(Ok(I(5)))
+
+  "3 + { 5 }"
+  |> exec()
+  |> should.equal(Ok(I(8)))
+
+  "3 * { 5 + 1 }"
+  |> exec()
+  |> should.equal(Ok(I(18)))
+
+  "{ 5
+   \"hey\" }"
+  |> exec()
+  |> should.equal(Ok(S("hey")))
+
+  "{ 1 + 1
+   7}"
+  |> exec()
+  |> should.equal(Ok(I(7)))
+
+  "{ 7
+   1 + 1}"
+  |> exec()
+  |> should.equal(Ok(I(2)))
+}
 
 pub fn tuple_test() {
   "#()"
@@ -81,6 +184,16 @@ pub fn tuple_index_test() {
   "#(1, 2.0).1"
   |> exec()
   |> should.equal(Ok(F(2.0)))
+}
+
+pub fn tuple_index_error_test() {
+  "\"a\".0"
+  |> exec()
+  |> should.equal(Error(runner.IncorrectTerm("Tuple", S("a"))))
+
+  "#().2"
+  |> exec()
+  |> should.equal(Error(runner.OutOfRange(0, 2)))
 }
 
 pub fn list_test() {
@@ -112,10 +225,69 @@ pub fn list_tail_test() {
   |> should.equal(Ok(L([I(1), I(2), I(3)])))
 }
 
-pub fn record_creation_test() {
-  "1(1)"
+pub fn improper_list_test() {
+  "[1,..2]"
   |> exec()
-  |> should.equal(Ok(L([I(1)])))
+  |> should.equal(Error(runner.IncorrectTerm("List", I(2))))
+}
+
+// pub fn record_creation_test() {
+//   "1(1)"
+//   |> exec()
+//   |> should.equal(Ok(L([I(1)])))
+//   How do we make sure named arguments go to the right place if using native
+// console.log(Ok(""))
+// console.log(Ok)
+// console.log(runner.I(1))
+// console.log(runner.Append([]))
+// }
+
+// Nil/Bool
+
+pub fn function_test() {
+  // TODO glance should error Empty fn would get formatted as having a todo
+  "fn() { }"
+  |> exec()
+  |> should.equal(Ok(Closure([], [], dict.from_list([]))))
+
+  "fn() { 5 }()"
+  |> exec()
+  |> should.equal(Ok(I(5)))
+
+  "fn(x) { x + 1 }(10)"
+  |> exec()
+  |> should.equal(Ok(I(11)))
+
+  "fn(x, y) { x + y }(10, 5)"
+  |> exec()
+  |> should.equal(Ok(I(15)))
+}
+
+pub fn function_error_test() {
+  "1()"
+  |> exec()
+  |> should.equal(Error(runner.NotAFunction(I(1))))
+
+  "fn(){ 5 }(1, 2)"
+  |> exec()
+  |> should.equal(Error(runner.IncorrectArity(0, 2)))
+}
+
+pub fn function_capture_test() {
+  "let x = fn(x, y, z) { x - y * 2 }
+  x(_,3,2)(1)"
+  |> exec()
+  |> should.equal(Ok(I(-5)))
+
+  "let x = fn(x, y, z) { x - y * 2 }
+  x(4,_,5)(10)"
+  |> exec()
+  |> should.equal(Ok(I(-16)))
+
+  "let x = fn(x, y, z) { x - y * 2 }
+  x(6,7,_)(2)"
+  |> exec()
+  |> should.equal(Ok(I(-8)))
 }
 
 pub fn bin_op_test() {
@@ -126,4 +298,97 @@ pub fn bin_op_test() {
   "1.0 +. 2.0"
   |> exec()
   |> should.equal(Ok(F(3.0)))
+}
+
+pub fn bin_op_fail_test() {
+  "1 + #()"
+  |> exec()
+  |> should.equal(Error(runner.IncorrectTerm("Integer", T([]))))
+}
+
+pub fn pipe_test() -> Nil {
+  "let a = fn(x) { x }
+  3 |> a"
+  |> exec()
+  |> should.equal(Ok(I(3)))
+
+  "let a = fn(x) { x }
+  3 |> a()"
+  |> exec()
+  |> should.equal(Ok(I(3)))
+}
+
+pub fn pipe_to_capture_test() -> Nil {
+  "let a = fn(x, y) { x - y }
+  3 |> a(_, 1)"
+  |> exec()
+  |> should.equal(Ok(I(2)))
+
+  "let a = fn(x, y) { x - y }
+  3 |> a(1, _)"
+  |> exec()
+  |> should.equal(Ok(I(-2)))
+}
+
+pub fn let_assignment_test() {
+  "let x = 1
+  x"
+  |> exec()
+  |> should.equal(Ok(I(1)))
+
+  "let x = 1
+  let y = 2
+  x + y"
+  |> exec()
+  |> should.equal(Ok(I(3)))
+
+  "let x = 1
+  let x = 2
+  x"
+  |> exec()
+  |> should.equal(Ok(I(2)))
+}
+
+pub fn undefined_variable_test() {
+  "x"
+  |> exec()
+  |> should.equal(Error(runner.UndefinedVariable("x")))
+}
+
+pub fn finish_on_assignment_test() {
+  "let x = 5"
+  |> exec()
+  |> should.equal(Error(runner.Finished(dict.from_list([#("x", I(5))]))))
+}
+
+// todo assert assignment
+
+pub fn use_test() {
+  // "use <- a()
+  // 3"
+  // needs to be a function that calls x
+  // |> exec_with([#("a", runner.Builtin(runner.Arity1(Ok)))])
+  // |> should.equal(Error(runner.Finished(dict.from_list([#("x", I(5))]))))
+
+  // only callback
+  "use <- fn(f){ f() }
+  3"
+  |> exec()
+  |> should.equal(Ok(I(3)))
+
+  "use <- fn(f){ f() }()
+  3"
+  |> exec()
+  |> should.equal(Ok(I(3)))
+
+  // extra args
+  "use <- fn(a, f){ a + f() }(2)
+  3"
+  |> exec()
+  |> should.equal(Ok(I(5)))
+
+  "use a, b <- fn(f){ f(1, 2) }
+  #(a, b)"
+  |> exec()
+  |> should.equal(Ok(T([I(1), I(2)])))
 }

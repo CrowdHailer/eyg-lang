@@ -4,6 +4,7 @@ import gleam/int
 import gleam/dict
 import gleam/dynamic
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 import glexer
 import glance
@@ -16,7 +17,7 @@ import repl/runner
 import repl/state.{State, Wrap}
 
 pub fn render(state) {
-  let State(statement, history) = state
+  let State(scope, statement, reason, history) = state
   div([class("vstack")], [
     div([class("hstack rounded-lg max-w-2xl glass")], [
       div([class("cover")], [span([class("font-bold")], [text("Gleam REPL")])]),
@@ -42,6 +43,19 @@ pub fn render(state) {
               ]),
             ],
           ),
+          ..case reason {
+            Some(bad) -> [
+              div(
+                [
+                  class(
+                    "border-b border-red-600 ml-4 mt-4 p-1 rounded-md text-gray-300 text-red-400 text-white",
+                  ),
+                ],
+                [text(string.inspect(bad))],
+              ),
+            ]
+            None -> []
+          }
         ]),
       ),
     ]),
@@ -62,13 +76,14 @@ fn render_history(history) {
 }
 
 fn execute_statement(state) {
-  let State(src, history) = state
-  let assert Ok(#(statement, rest)) =
+  let State(scope, src, _reason, history) = state
+  let assert Ok(#(statements, _, rest)) =
     glexer.new(src)
     |> glexer.lex
     |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-    |> glance.statement
-  case runner.exec(statement, dict.new()) {
+    // TODO remove list it's an internal accumulator
+    |> runner.statements([], _)
+  case runner.exec(statements, scope) {
     Ok(value) -> {
       let output = case value {
         runner.I(x) -> int.to_string(x)
@@ -78,10 +93,14 @@ fn execute_statement(state) {
         runner.T(elements) -> "recursive print needed"
         runner.Closure(_, _, _) -> "closure"
       }
-      #(State("", [#(src, output), ..history]), effect.none())
+      #(State(scope, "", None, [#(src, output), ..history]), effect.none())
+    }
+    Error(runner.Finished(scope)) -> {
+      let state = State(scope, "", None, [#(src, ""), ..history])
+      #(state, effect.none())
     }
     Error(reason) -> {
-      io.debug(reason)
+      let state = State(scope, src, Some(reason), history)
       #(state, effect.none())
     }
   }
