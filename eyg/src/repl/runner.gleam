@@ -17,6 +17,7 @@ pub type Reason {
   OutOfRange(size: Int, given: Int)
   NoMatch(term: Value)
   IncorrectTerm(expected: String, got: Value)
+  FailedAssignment(pattern: g.Pattern, value: Value)
   MissingField(String)
   Finished(Dict(String, Value))
 }
@@ -47,7 +48,8 @@ pub fn exec(statements: List(g.Statement), env) -> Result(_, Reason) {
 fn do_exec(statement, env, ks) {
   case statement {
     g.Expression(exp) -> do_eval(exp, env, ks)
-    g.Assignment(g.Let, pattern, _annotation, exp) -> {
+    // We do the same 
+    g.Assignment(_kind, pattern, _annotation, exp) -> {
       let ks = [Assign(pattern), ..ks]
       do_eval(exp, env, ks)
     }
@@ -150,6 +152,22 @@ fn do_eval(exp, env, ks) {
   }
 }
 
+fn assign_pattern(env, pattern, value) {
+  case pattern {
+    g.PatternVariable(name) -> {
+      Ok(dict.insert(env, name, value))
+    }
+    g.PatternInt(i) ->
+      case value {
+        I(expected) ->
+          case int.to_string(expected) == i {
+            True -> Ok(env)
+            False -> Error(FailedAssignment(pattern, value))
+          }
+      }
+  }
+}
+
 fn apply(value, env, ks) {
   case ks {
     [] -> Ok(value)
@@ -158,19 +176,11 @@ fn apply(value, env, ks) {
         [] -> ks
         _ -> [Continue(rest), ..ks]
       }
-      let env = case pattern {
-        g.PatternVariable(name) -> {
-          dict.insert(env, name, value)
-        }
-      }
+      use env <- try(assign_pattern(env, pattern, value))
       do_exec(statement, env, ks)
     }
     [Assign(pattern), ..ks] -> {
-      let env = case pattern {
-        g.PatternVariable(name) -> {
-          dict.insert(env, name, value)
-        }
-      }
+      use env <- try(assign_pattern(env, pattern, value))
       Error(Finished(env))
     }
     [Args([]), ..ks] -> {
@@ -381,10 +391,7 @@ fn bin_impl(name) {
       use b <- try(as_float(b))
       apply(B(a >. b), env, ks)
     }
-    g.Pipe -> fn(passed, f, env, ks) {
-      io.debug(f)
-      call(f, [passed], env, ks)
-    }
+    g.Pipe -> fn(passed, f, env, ks) { call(f, [passed], env, ks) }
     g.AddInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))

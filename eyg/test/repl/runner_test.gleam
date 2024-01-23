@@ -349,6 +349,17 @@ pub fn let_assignment_test() {
   |> should.equal(Ok(I(2)))
 }
 
+pub fn assertion_test() {
+  "let assert 1 = 1
+  2"
+  |> exec()
+  |> should.equal(Ok(I(2)))
+
+  "let assert 2 = 1"
+  |> exec()
+  |> should.equal(Error(runner.FailedAssignment(g.PatternInt(2), I(1))))
+}
+
 pub fn undefined_variable_test() {
   "x"
   |> exec()
