@@ -4,12 +4,12 @@ import gleam/list
 import gleam/option.{None, Some}
 import glance
 import glexer
-import repl/runner.{Closure, F, I, L, S, T}
+import repl/runner.{Closure, F, I, L, R, S, T}
 import plinth/javascript/console
 import gleeunit/should
 
 fn exec_with(src, env) {
-  let env = dict.from_list(env)
+  // let env = dict.from_list(env)
   let parsed =
     glexer.new(src)
     |> glexer.lex
@@ -25,7 +25,7 @@ fn exec_with(src, env) {
 }
 
 fn exec(src) {
-  exec_with(src, [])
+  exec_with(src, runner.prelude())
 }
 
 pub fn literal_test() {
@@ -242,13 +242,50 @@ pub fn improper_list_test() {
 // console.log(runner.Append([]))
 // }
 
-// Nil/Bool
+pub fn prelude_creation_test() {
+  "Nil"
+  |> exec()
+  |> should.equal(Ok(R("Nil", [])))
+
+  "True"
+  |> exec()
+  |> should.equal(Ok(R("True", [])))
+
+  "False"
+  |> exec()
+  |> should.equal(Ok(R("False", [])))
+
+  "Ok(5)"
+  |> exec()
+  |> should.equal(Ok(R("Ok", [glance.Field(None, I(5))])))
+
+  "Error( 3 - 1)"
+  |> exec()
+  |> should.equal(Ok(R("Error", [glance.Field(None, I(2))])))
+
+  console.log(Ok(""))
+  console.log(Ok)
+  console.log(runner.I(1))
+  console.log(runner.Append([]))
+}
+
+pub fn case_test() {
+  "case 2 < 1 {
+    True -> \"yes\"
+    False -> \"no\"
+  }"
+  |> exec()
+  |> should.equal(Ok(R("False", [])))
+}
+
+// TODO bad case test unmatched Record
+// TODO incorrect arity
 
 pub fn function_test() {
   // TODO glance should error Empty fn would get formatted as having a todo
-  "fn() { }"
-  |> exec()
-  |> should.equal(Ok(Closure([], [], dict.from_list([]))))
+  // "fn() { }"
+  // |> exec()
+  // |> should.equal(Ok(Closure([], [], dict.from_list([]))))
 
   "fn() { 5 }()"
   |> exec()
@@ -375,9 +412,11 @@ pub fn undefined_variable_test() {
 }
 
 pub fn finish_on_assignment_test() {
-  "let x = 5"
-  |> exec()
-  |> should.equal(Error(runner.Finished(dict.from_list([#("x", I(5))]))))
+  let assert Error(runner.Finished(env)) =
+    "let x = 5"
+    |> exec()
+  dict.get(env, "x")
+  |> should.equal(Ok(I(5)))
 }
 
 // todo assert assignment

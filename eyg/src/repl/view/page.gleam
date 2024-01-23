@@ -88,9 +88,10 @@ fn execute_statement(state) {
       let output = case value {
         runner.I(x) -> int.to_string(x)
         runner.F(x) -> float.to_string(x)
-        runner.B(x) -> string.inspect(x)
         runner.S(x) -> string.inspect(x)
         runner.T(elements) -> "recursive print needed"
+        runner.R("True", []) -> "True"
+        runner.R("False", []) -> "False"
         runner.Closure(_, _, _) -> "closure"
       }
       #(State(scope, "", None, [#(src, output), ..history]), effect.none())

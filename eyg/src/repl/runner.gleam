@@ -7,6 +7,21 @@ import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import glance as g
 
+pub fn prelude() {
+  // todo module for prelude namespacing
+  dict.from_list([
+    #("Nil", R("Nil", [])),
+    #("True", R("True", [])),
+    #("False", R("False", [])),
+    // probably a record fn needed
+    #("Ok", Builtin(Arity1(fn(v, env, ks) { Ok(R("Ok", [g.Field(None, v)])) }))),
+    #(
+      "Error",
+      Builtin(Arity1(fn(v, env, ks) { Ok(R("Error", [g.Field(None, v)])) })),
+    ),
+  ])
+}
+
 // move to reason.gleam after moving out value.gleam
 pub type Reason {
   NotAFunction(Value)
@@ -48,7 +63,7 @@ pub fn exec(statements: List(g.Statement), env) -> Result(_, Reason) {
 fn do_exec(statement, env, ks) {
   case statement {
     g.Expression(exp) -> do_eval(exp, env, ks)
-    // We do the same 
+    // We do the same
     g.Assignment(_kind, pattern, _annotation, exp) -> {
       let ks = [Assign(pattern), ..ks]
       do_eval(exp, env, ks)
@@ -88,9 +103,6 @@ fn do_eval(exp, env, ks) {
       apply(F(v), env, ks)
     }
     g.String(raw) -> apply(S(raw), env, ks)
-    // Why are these not their own type
-    g.Variable("True") -> apply(B(True), env, ks)
-    g.Variable("False") -> apply(B(False), env, ks)
     g.Variable(var) -> {
       case dict.get(env, var) {
         Ok(value) -> apply(value, env, ks)
@@ -121,7 +133,10 @@ fn do_eval(exp, env, ks) {
     g.List([], Some(exp)) -> do_eval(exp, env, [Append([]), ..ks])
     g.List([first, ..elements], tail) ->
       do_eval(first, env, [BuildList(elements, [], tail), ..ks])
-    // g.List()
+    g.Case([first, ..subjects], clauses) -> {
+      let ks = [BuildSubjects(subjects, [], clauses), ..ks]
+      do_eval(first, env, ks)
+    }
     g.Fn(args, _annotation, body) -> apply(Closure(args, body, env), env, ks)
     g.FnCapture(None, f, left, right) -> {
       let ks = [CaptureArgs(left, right), ..ks]
@@ -153,6 +168,14 @@ fn do_eval(exp, env, ks) {
   }
 }
 
+// Think it makes sense to have bind/match in value.gleam
+// with separate testing
+// Whole effects proposal can be walk through here
+
+// TODO caring about modlue to match on.
+// TODO error handling for case statements
+// TODO checking on multiple patterns
+// TODO testing on guards
 fn assign_pattern(env, pattern, value) {
   case pattern {
     g.PatternVariable(name) -> {
@@ -166,6 +189,10 @@ fn assign_pattern(env, pattern, value) {
             False -> Error(FailedAssignment(pattern, value))
           }
       }
+    _ -> {
+      io.debug(#("unsupported pat", pattern))
+      panic
+    }
   }
 }
 
@@ -272,6 +299,29 @@ fn apply(value, env, ks) {
       use elements <- try(as_list(value))
       apply(L(list.append(list.reverse(gathered), elements)), env, ks)
     }
+    // Should subjects also be non empty list
+    [BuildSubjects([next, ..expressions], values, clauses), ..ks] -> {
+      let ks = [BuildSubjects(expressions, [value, ..values], clauses), ..ks]
+      do_eval(next, env, ks)
+    }
+    [BuildSubjects([], values, clauses), ..ks] -> {
+      let values = [value, ..values]
+      // TODO walk through each match and extend environment,
+      // same code as matching patterns for bindings
+      // strict zip to check arity
+      io.debug(clauses)
+      list.find_map(clauses, fn(clause) {
+        let assert Ok(bindings) = list.strict_zip(clause.patterns, values)
+        let assert Ok(env) =
+          list.try_fold(bindings, env, fn(env, binding) {
+            // doesn't handle or pattern
+            let assert #([pattern], value) = binding
+            assign_pattern(env, pattern, value)
+          })
+        do_eval(clause.body, env, ks)
+      })
+      |> result.replace_error(NoMatch(S("TODO")))
+    }
     [Continue([statement, ..rest]), ..ks] -> {
       let ks = case rest {
         [] -> ks
@@ -335,7 +385,7 @@ fn negate_number(in, env, ks) {
 
 fn negate_bool(in, env, ks) {
   use in <- try(as_boolean(in))
-  Ok(B(!in))
+  Ok(from_bool(!in))
 }
 
 fn bin_impl(name) {
@@ -343,54 +393,54 @@ fn bin_impl(name) {
     g.And -> fn(a, b, env, ks) {
       use a <- try(as_boolean(a))
       use b <- try(as_boolean(b))
-      apply(B(a && b), env, ks)
+      apply(from_bool(a && b), env, ks)
     }
     g.Or -> fn(a, b, env, ks) {
       use a <- try(as_boolean(a))
       use b <- try(as_boolean(b))
-      apply(B(a || b), env, ks)
+      apply(from_bool(a || b), env, ks)
     }
-    g.Eq -> fn(a, b, env, ks) { apply(B(a == b), env, ks) }
-    g.NotEq -> fn(a, b, env, ks) { apply(B(a != b), env, ks) }
+    g.Eq -> fn(a, b, env, ks) { apply(from_bool(a == b), env, ks) }
+    g.NotEq -> fn(a, b, env, ks) { apply(from_bool(a != b), env, ks) }
     g.LtInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(B(a < b), env, ks)
+      apply(from_bool(a < b), env, ks)
     }
     g.LtEqInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(B(a <= b), env, ks)
+      apply(from_bool(a <= b), env, ks)
     }
     g.LtFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(B(a <. b), env, ks)
+      apply(from_bool(a <. b), env, ks)
     }
     g.LtEqFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(B(a <=. b), env, ks)
+      apply(from_bool(a <=. b), env, ks)
     }
     g.GtEqInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(B(a >= b), env, ks)
+      apply(from_bool(a >= b), env, ks)
     }
     g.GtInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(B(a > b), env, ks)
+      apply(from_bool(a > b), env, ks)
     }
     g.GtEqFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(B(a >=. b), env, ks)
+      apply(from_bool(a >=. b), env, ks)
     }
     g.GtFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(B(a >. b), env, ks)
+      apply(from_bool(a >. b), env, ks)
     }
     g.Pipe -> fn(passed, f, env, ks) { call(f, [passed], env, ks) }
     g.AddInt -> fn(a, b, env, ks) {
@@ -462,8 +512,16 @@ fn as_float(value) {
 
 fn as_boolean(value) {
   case value {
-    B(value) -> Ok(value)
+    R("True", []) -> Ok(True)
+    R("False", []) -> Ok(False)
     _ -> Error(IncorrectTerm("Boolean", value))
+  }
+}
+
+fn from_bool(raw) {
+  case raw {
+    True -> R("True", [])
+    False -> R("False", [])
   }
 }
 
@@ -494,10 +552,10 @@ type Env =
 pub type Value {
   I(Int)
   F(Float)
-  B(Bool)
   S(String)
   T(List(Value))
   L(List(Value))
+  R(String, List(g.Field(Value)))
   Closure(List(g.FnParameter), List(g.Statement), Env)
   Captured(function: Value, before: List(Value), after: List(Value))
   Builtin(Arity)
@@ -541,5 +599,10 @@ pub type K {
     tail: Option(g.Expression),
   )
   Append(values: List(Value))
+  BuildSubjects(
+    expressions: List(g.Expression),
+    values: List(Value),
+    clauses: List(g.Clause),
+  )
   Continue(List(g.Statement))
 }
