@@ -89,6 +89,11 @@ fn display(now, forecasts, buses, timer) {
             ]),
           ]),
           div([class("")], [
+            button([on_click(Wrap(start_timer(10 * 60_000)))], [
+              text("10 minutes"),
+            ]),
+          ]),
+          div([class("")], [
             button([on_click(Wrap(start_timer(20 * 60_000)))], [
               text("20 minutes"),
             ]),
