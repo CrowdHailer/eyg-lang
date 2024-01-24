@@ -275,11 +275,72 @@ pub fn case_test() {
     False -> \"no\"
   }"
   |> exec()
-  |> should.equal(Ok(R("False", [])))
+  |> should.equal(Ok(S("no")))
+
+  "case 1 < 2 {
+    True -> \"yes\"
+    False -> \"no\"
+  }"
+  |> exec()
+  |> should.equal(Ok(S("yes")))
+
+  "case Nil {
+    True -> \"yes\"
+    False -> \"no\"
+  }"
+  |> exec()
+  |> should.equal(Error(runner.NoMatch([R("Nil", [])])))
+
+  "case 23 {
+    True -> \"yes\"
+    False -> \"no\"
+  }"
+  |> exec()
+  // TODO maybe should be incorrect term
+  |> should.equal(Error(runner.NoMatch([I(23)])))
+}
+
+pub fn case_binding_test() {
+  "case Ok(2) {
+    Ok(x) -> x
+  }"
+  |> exec()
+  |> should.equal(Ok(I(2)))
+}
+
+pub fn case_multiple_binding_test() {
+  "case 1, 2 {
+    x, y -> #(x, y)
+  }"
+  |> exec()
+  |> should.equal(Ok(T([I(1), I(2)])))
+}
+
+pub fn incorrect_arity_case_test() {
+  let assert Error(_) =
+    "case 1, 2 {
+    _ -> Nil
+  }"
+    |> exec()
+  // TDO
+  // |> should.equal(Ok(T([I(1), I(2)])))
+}
+
+pub fn multiple_patterns_test() {
+  "case 1, 2 {
+    3, y | 1, y -> y
+  }"
+  |> exec()
+  |> should.equal(Ok(I(2)))
+
+  "case Error(5) {
+  Ok(x) | Error(x) -> x
+  }"
+  |> exec()
+  |> should.equal(Ok(I(5)))
 }
 
 // TODO bad case test unmatched Record
-// TODO incorrect arity
 
 pub fn function_test() {
   // TODO glance should error Empty fn would get formatted as having a todo

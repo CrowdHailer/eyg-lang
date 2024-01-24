@@ -5,6 +5,7 @@ import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
+import gleam/string
 import glance as g
 
 pub fn prelude() {
@@ -14,10 +15,17 @@ pub fn prelude() {
     #("True", R("True", [])),
     #("False", R("False", [])),
     // probably a record fn needed
-    #("Ok", Builtin(Arity1(fn(v, env, ks) { Ok(R("Ok", [g.Field(None, v)])) }))),
+    #(
+      "Ok",
+      Builtin(
+        Arity1(fn(v, env, ks) { apply(R("Ok", [g.Field(None, v)]), env, ks) }),
+      ),
+    ),
     #(
       "Error",
-      Builtin(Arity1(fn(v, env, ks) { Ok(R("Error", [g.Field(None, v)])) })),
+      Builtin(
+        Arity1(fn(v, env, ks) { apply(R("Error", [g.Field(None, v)]), env, ks) }),
+      ),
     ),
   ])
 }
@@ -30,7 +38,7 @@ pub type Reason {
   Panic(message: Option(String))
   Todo(message: Option(String))
   OutOfRange(size: Int, given: Int)
-  NoMatch(term: Value)
+  NoMatch(values: List(Value))
   IncorrectTerm(expected: String, got: Value)
   FailedAssignment(pattern: g.Pattern, value: Value)
   MissingField(String)
@@ -172,27 +180,102 @@ fn do_eval(exp, env, ks) {
 // with separate testing
 // Whole effects proposal can be walk through here
 
-// TODO caring about modlue to match on.
-// TODO error handling for case statements
-// TODO checking on multiple patterns
-// TODO testing on guards
 fn assign_pattern(env, pattern, value) {
-  case pattern {
-    g.PatternVariable(name) -> {
-      Ok(dict.insert(env, name, value))
-    }
-    g.PatternInt(i) ->
-      case value {
-        I(expected) ->
-          case int.to_string(expected) == i {
-            True -> Ok(env)
-            False -> Error(FailedAssignment(pattern, value))
-          }
+  case pattern, value {
+    g.PatternDiscard(_name), _any -> Ok(env)
+    g.PatternVariable(name), any -> Ok(dict.insert(env, name, any))
+    g.PatternInt(i), I(expected) ->
+      case int.to_string(expected) == i {
+        True -> Ok(env)
+        False -> Error(FailedAssignment(pattern, value))
       }
-    _ -> {
+    g.PatternInt(_), unexpected -> Error(IncorrectTerm("Int", unexpected))
+    g.PatternFloat(i), F(given) ->
+      case float.to_string(given) == i {
+        True -> Ok(env)
+        False -> Error(FailedAssignment(pattern, value))
+      }
+    g.PatternFloat(_), unexpected -> Error(IncorrectTerm("Float", unexpected))
+    g.PatternString(i), S(given) ->
+      case given == i {
+        True -> Ok(env)
+        False -> Error(FailedAssignment(pattern, value))
+      }
+    g.PatternString(_), unexpected -> Error(IncorrectTerm("String", unexpected))
+    g.PatternConcatenate(left, assignment), S(given) ->
+      case string.split_once(given, left) {
+        Ok(#("", rest)) ->
+          case assignment {
+            g.Discarded(_) -> Ok(env)
+            g.Named(name) -> Ok(dict.insert(env, name, S(rest)))
+          }
+        Error(Nil) -> Error(FailedAssignment(pattern, value))
+      }
+    g.PatternConcatenate(_, _), unexpected ->
+      Error(IncorrectTerm("String", unexpected))
+    g.PatternTuple(patterns), T(elements) -> {
+      case list.strict_zip(patterns, elements) {
+        // TODO make a do match function
+        Ok(pairs) ->
+          list.try_fold(pairs, env, fn(env, pair) {
+            let #(p, v) = pair
+            assign_pattern(env, p, v)
+          })
+        Error(_) -> Error(FailedAssignment(pattern, value))
+      }
+    }
+    g.PatternTuple(_), unexpected -> Error(IncorrectTerm("Tuple", unexpected))
+    g.PatternList(patterns, tail), L(values) -> {
+      use #(env, remaining) <- try(match_elements(env, patterns, values))
+      case tail, remaining {
+        Some(p), remaining -> assign_pattern(env, p, L(remaining))
+        None, [] -> Ok(env)
+        _, _ -> Error(IncorrectTerm("Empty list", L(remaining)))
+      }
+    }
+    g.PatternList(patterns, tail), unexpected ->
+      Error(IncorrectTerm("List", unexpected))
+    // List zip with leftovrs
+    g.PatternConstructor(None, constuctor, args, False), R(name, fields) -> {
+      // TODO extend with module
+      use env <- try(case constuctor == name {
+        True ->
+          case list.strict_zip(args, fields) {
+            Ok(pairs) ->
+              list.try_fold(pairs, env, fn(env, pair) {
+                let #(g.Field(None, p), g.Field(None, value)) = pair
+                assign_pattern(env, p, value)
+              })
+            Error(_) ->
+              Error(IncorrectArity(list.length(args), list.length(fields)))
+          }
+        False -> Error(FailedAssignment(pattern, value))
+      })
+      Ok(env)
+    }
+    g.PatternConstructor(None, _, _, False), unexpected ->
+      Error(IncorrectTerm("Custom Type", unexpected))
+    g.PatternBitString(_segments), _ -> {
       io.debug(#("unsupported pat", pattern))
       panic
     }
+    g.PatternAssignment(pattern, name), _ -> {
+      use env <- try(assign_pattern(env, pattern, value))
+      Ok(dict.insert(env, name, value))
+    }
+  }
+}
+
+// recursive because zipping does favor one over run.
+// in this case too many elements is ok with tail but not too many patterns
+fn match_elements(env, patterns, values) {
+  case patterns, values {
+    [], values -> Ok(#(env, values))
+    [p, ..patterns], [v, ..values] -> {
+      use env <- try(assign_pattern(env, p, v))
+      match_elements(env, patterns, values)
+    }
+    [p, ..], [] -> Error(FailedAssignment(p, L([])))
   }
 }
 
@@ -304,23 +387,31 @@ fn apply(value, env, ks) {
       let ks = [BuildSubjects(expressions, [value, ..values], clauses), ..ks]
       do_eval(next, env, ks)
     }
+
+    // TODO caring about modlue to match on.
+    // TODO testing on guards
     [BuildSubjects([], values, clauses), ..ks] -> {
-      let values = [value, ..values]
-      // TODO walk through each match and extend environment,
-      // same code as matching patterns for bindings
-      // strict zip to check arity
-      io.debug(clauses)
+      let values = list.reverse([value, ..values])
       list.find_map(clauses, fn(clause) {
-        let assert Ok(bindings) = list.strict_zip(clause.patterns, values)
-        let assert Ok(env) =
-          list.try_fold(bindings, env, fn(env, binding) {
-            // doesn't handle or pattern
-            let assert #([pattern], value) = binding
-            assign_pattern(env, pattern, value)
-          })
-        do_eval(clause.body, env, ks)
+        list.find_map(clause.patterns, fn(patterns) {
+          use bindings <- try(
+            list.strict_zip(patterns, values)
+            |> result.replace_error(IncorrectArity(
+              list.length(patterns),
+              list.length(values),
+            )),
+          )
+          use env <- try(
+            list.try_fold(bindings, env, fn(env, binding) {
+              let #(pattern, value) = binding
+              assign_pattern(env, pattern, value)
+            }),
+          )
+          do_eval(clause.body, env, ks)
+        })
       })
-      |> result.replace_error(NoMatch(S("TODO")))
+      // TODO think about having proper error from inside match
+      |> result.replace_error(NoMatch(values))
     }
     [Continue([statement, ..rest]), ..ks] -> {
       let ks = case rest {
@@ -561,6 +652,7 @@ pub type Value {
   Builtin(Arity)
 }
 
+// Need builtins to be string  based before we can extract
 pub type Arity {
   TupleConstructor(size: Int, gathered: List(Value))
   Arity1(fn(Value, Env, List(K)) -> Result(Value, Reason))
