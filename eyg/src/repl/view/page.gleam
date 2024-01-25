@@ -13,6 +13,7 @@ import lustre/element.{text}
 import lustre/element/html.{button, div, form, hr, iframe, input, p, span}
 import lustre/effect
 import lustre/event.{on_click}
+import repl/reader
 import repl/runner
 import repl/state.{State, Wrap}
 
@@ -77,12 +78,7 @@ fn render_history(history) {
 
 fn execute_statement(state) {
   let State(scope, src, _reason, history) = state
-  let assert Ok(#(statements, _, rest)) =
-    glexer.new(src)
-    |> glexer.lex
-    |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-    // TODO remove list it's an internal accumulator
-    |> runner.statements([], _)
+  let assert Ok(reader.Statements(statements)) = reader.parse(src)
   case runner.exec(statements, scope) {
     Ok(value) -> {
       let output = case value {

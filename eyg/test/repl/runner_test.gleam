@@ -4,19 +4,16 @@ import gleam/list
 import gleam/option.{None, Some}
 import glance
 import glexer
+import repl/reader
 import repl/runner.{Closure, F, I, L, R, S, T}
 import plinth/javascript/console
 import gleeunit/should
 
 fn exec_with(src, env) {
   // let env = dict.from_list(env)
-  let parsed =
-    glexer.new(src)
-    |> glexer.lex
-    |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-    |> runner.statements([], _)
+  let parsed = reader.parse(src)
   case parsed {
-    Ok(#(statements, _, rest)) -> runner.exec(statements, env)
+    Ok(reader.Statements(statements)) -> runner.exec(statements, env)
     Error(reason) -> {
       io.debug(reason)
       panic("not parsed")
@@ -360,6 +357,26 @@ pub fn function_test() {
   |> exec()
   |> should.equal(Ok(I(15)))
 }
+
+// pub fn demo_tets() {
+//   fn(a x, b y) { x - y }(1, 2)
+//   |> should.equal(23)
+// }
+
+// Argument labels
+// https://johndoneth.github.io/gleam-playground/?s=JYWwDg9gTgLgBAcwDYFMCGID0TgGcYBQBAxhAHb5wwQD6OlAvHAEwnmVQoBuKUuKcJgG0AjABpmAXSJgArgCM4AMzLKIEABRo4ADzFxFATwCUcAN4E4uuAFo4hggF8ZC5apBpgZDaYup4SuqCblq6%2Bka%2BltZ2Ds5WgZryAFws%2BmgpIsZOQA%3D
+// pub fn named_function_test() {
+//   "fn(a x, b y) { x - y }(1, 2)"
+//   |> exec()
+//   |> should.equal(Ok(I(5)))
+//   // "fn(a x, b y) { x - y }(1, b: 2)"
+//   // |> exec()
+//   // |> should.equal(Ok(I(11)))
+
+//   // "fn(x, y) { x + y }(10, 5)"
+//   // |> exec()
+//   // |> should.equal(Ok(I(15)))
+// }
 
 pub fn function_error_test() {
   "1()"

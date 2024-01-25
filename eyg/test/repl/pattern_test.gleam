@@ -4,18 +4,15 @@ import gleam/list
 import gleam/option.{None, Some}
 import glance
 import glexer
+import repl/reader
 import repl/runner.{Closure, F, I, L, R, S, T}
 import gleeunit/should
 
 fn exec_with(src, env) {
   // let env = dict.from_list(env)
-  let parsed =
-    glexer.new(src)
-    |> glexer.lex
-    |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-    |> runner.statements([], _)
+  let parsed = reader.parse(src)
   case parsed {
-    Ok(#(statements, _, rest)) -> runner.exec(statements, env)
+    Ok(reader.Statements(statements)) -> runner.exec(statements, env)
     Error(reason) -> {
       io.debug(reason)
       panic("not parsed")

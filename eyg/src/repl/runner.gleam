@@ -6,6 +6,8 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
+import glexer
+import glexer/token as t
 import glance as g
 
 pub fn prelude() {
@@ -30,6 +32,28 @@ pub fn prelude() {
   ])
 }
 
+pub type Value {
+  I(Int)
+  F(Float)
+  S(String)
+  T(List(Value))
+  L(List(Value))
+  R(String, List(g.Field(Value)))
+  Closure(List(g.FnParameter), List(g.Statement), Env)
+  // this will be module env
+  ClosureLabeled(List(g.FunctionParameter), List(g.Statement), Env)
+  Captured(function: Value, before: List(Value), after: List(Value))
+  Builtin(Arity)
+  Module(Dict(String, Value))
+}
+
+// Need builtins to be string  based before we can extract
+pub type Arity {
+  TupleConstructor(size: Int, gathered: List(Value))
+  Arity1(fn(Value, Env, List(K)) -> Result(Value, Reason))
+  Arity2(fn(Value, Value, Env, List(K)) -> Result(Value, Reason))
+}
+
 // move to reason.gleam after moving out value.gleam
 pub type Reason {
   NotAFunction(Value)
@@ -45,18 +69,16 @@ pub type Reason {
   Finished(Dict(String, Value))
 }
 
-// glance parses statements assuming a block
-pub fn statements(acc, tokens) {
-  case g.statement(tokens) {
-    Ok(#(statement, rest)) -> {
-      let acc = [statement, ..acc]
-      case rest {
-        [] -> Ok(#(list.reverse(acc), Nil, Nil))
-        _ -> statements(acc, rest)
-      }
-    }
-    Error(reason) -> Error(reason)
-  }
+pub fn module(src) {
+  // TODO update env with imports
+  use mod <- try(g.module(src))
+  let fns =
+    list.map(mod.functions, fn(definition) {
+      let g.Definition([], f) = definition
+      #(f.name, ClosureLabeled(f.parameters, f.body, dict.new()))
+    })
+
+  Ok(Module(dict.from_list(fns)))
 }
 
 pub fn exec(statements: List(g.Statement), env) -> Result(_, Reason) {
@@ -639,25 +661,6 @@ fn as_list(value) {
 
 type Env =
   dict.Dict(String, Value)
-
-pub type Value {
-  I(Int)
-  F(Float)
-  S(String)
-  T(List(Value))
-  L(List(Value))
-  R(String, List(g.Field(Value)))
-  Closure(List(g.FnParameter), List(g.Statement), Env)
-  Captured(function: Value, before: List(Value), after: List(Value))
-  Builtin(Arity)
-}
-
-// Need builtins to be string  based before we can extract
-pub type Arity {
-  TupleConstructor(size: Int, gathered: List(Value))
-  Arity1(fn(Value, Env, List(K)) -> Result(Value, Reason))
-  Arity2(fn(Value, Value, Env, List(K)) -> Result(Value, Reason))
-}
 
 pub type K {
   Assign(pattern: g.Pattern)
