@@ -77,27 +77,30 @@ fn render_history(history) {
 }
 
 fn execute_statement(state) {
-  let State(scope, src, _reason, history) = state
-  let assert Ok(reader.Statements(statements)) = reader.parse(src)
-  case runner.exec(statements, scope) {
-    Ok(value) -> {
+  let State(state, src, _reason, history) = state
+  let assert Ok(term) = reader.parse(src)
+  case runner.read(term, state) {
+    Ok(#(value, state)) -> {
       let output = case value {
-        runner.I(x) -> int.to_string(x)
-        runner.F(x) -> float.to_string(x)
-        runner.S(x) -> string.inspect(x)
-        runner.T(elements) -> "recursive print needed"
-        runner.R("True", []) -> "True"
-        runner.R("False", []) -> "False"
-        runner.Closure(_, _, _) -> "closure"
+        Some(runner.I(x)) -> int.to_string(x)
+        Some(runner.F(x)) -> float.to_string(x)
+        Some(runner.S(x)) -> string.inspect(x)
+        Some(runner.T(elements)) -> "recursive print needed"
+        Some(runner.R("True", [])) -> "True"
+        Some(runner.R("False", [])) -> "False"
+        Some(runner.Closure(_, _, _)) -> "closure"
+        Some(item) -> string.inspect(item)
+        None -> ""
       }
-      #(State(scope, "", None, [#(src, output), ..history]), effect.none())
+      #(State(state, "", None, [#(src, output), ..history]), effect.none())
     }
-    Error(runner.Finished(scope)) -> {
-      let state = State(scope, "", None, [#(src, ""), ..history])
-      #(state, effect.none())
-    }
+    // TODO should be handled in runner
+    // Error(runner.Finished(scope)) -> {
+    //   let state = State(scope, "", None, [#(src, ""), ..history])
+    //   #(state, effect.none())
+    // }
     Error(reason) -> {
-      let state = State(scope, src, Some(reason), history)
+      let state = State(state, src, Some(reason), history)
       #(state, effect.none())
     }
   }

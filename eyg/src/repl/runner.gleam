@@ -9,6 +9,7 @@ import gleam/string
 import glexer
 import glexer/token as t
 import glance as g
+import repl/reader
 
 pub fn prelude() {
   // todo module for prelude namespacing
@@ -32,6 +33,38 @@ pub fn prelude() {
   ])
 }
 
+pub type State =
+  #(Dict(String, Value), Dict(String, g.Module))
+
+pub fn init(scope, modules) {
+  #(scope, modules)
+}
+
+pub fn read(term, state) {
+  let #(scope, modules) = state
+  case term {
+    reader.Import(module, binding, []) -> {
+      case dict.get(modules, module) {
+        Ok(module) -> {
+          let scope = dict.insert(scope, binding, Module(module))
+          Ok(#(None, #(scope, modules)))
+        }
+        Error(Nil) -> {
+          Error(UnknownModule(module))
+        }
+      }
+    }
+    reader.Statements(statements) -> {
+      use value <- try(exec(statements, scope))
+      Ok(#(Some(value), state))
+    }
+    _ -> {
+      io.debug(term)
+      panic as "not suppred in read"
+    }
+  }
+}
+
 pub type Value {
   I(Int)
   F(Float)
@@ -44,7 +77,7 @@ pub type Value {
   ClosureLabeled(List(g.FunctionParameter), List(g.Statement), Env)
   Captured(function: Value, before: List(Value), after: List(Value))
   Builtin(Arity)
-  Module(Dict(String, Value))
+  Module(g.Module)
 }
 
 // Need builtins to be string  based before we can extract
@@ -67,19 +100,20 @@ pub type Reason {
   FailedAssignment(pattern: g.Pattern, value: Value)
   MissingField(String)
   Finished(Dict(String, Value))
+  UnknownModule(String)
 }
 
-pub fn module(src) {
-  // TODO update env with imports
-  use mod <- try(g.module(src))
-  let fns =
-    list.map(mod.functions, fn(definition) {
-      let g.Definition([], f) = definition
-      #(f.name, ClosureLabeled(f.parameters, f.body, dict.new()))
-    })
+// pub fn module(src) {
+//   // TODO update env with imports
+//   use mod <- try(g.module(src))
+//   let fns =
+//     list.map(mod.functions, fn(definition) {
+//       let g.Definition([], f) = definition
+//       #(f.name, ClosureLabeled(f.parameters, f.body, dict.new()))
+//     })
 
-  Ok(Module(dict.from_list(fns)))
-}
+//   Ok(Module(dict.from_list(fns)))
+// }
 
 pub fn exec(statements: List(g.Statement), env) -> Result(_, Reason) {
   let [statement, ..rest] = statements
@@ -163,6 +197,8 @@ fn do_eval(exp, env, ks) {
     g.List([], Some(exp)) -> do_eval(exp, env, [Append([]), ..ks])
     g.List([first, ..elements], tail) ->
       do_eval(first, env, [BuildList(elements, [], tail), ..ks])
+    g.FieldAccess(container, label) ->
+      do_eval(container, env, [Access(label), ..ks])
     g.Case([first, ..subjects], clauses) -> {
       let ks = [BuildSubjects(subjects, [], clauses), ..ks]
       do_eval(first, env, ks)
@@ -193,7 +229,7 @@ fn do_eval(exp, env, ks) {
     }
     _ -> {
       io.debug(#("unsupported ", exp))
-      todo("not supported")
+      todo as "not supported"
     }
   }
 }
@@ -404,13 +440,33 @@ fn apply(value, env, ks) {
       use elements <- try(as_list(value))
       apply(L(list.append(list.reverse(gathered), elements)), env, ks)
     }
+    [Access(field), ..ks] -> {
+      let assert Module(module) = value
+      let functions =
+        list.map(module.functions, fn(f) {
+          let g.Definition(
+            _,
+            g.Function(
+              name: name,
+              publicity: public,
+              parameters: parameters,
+              body: body,
+              ..,
+            ),
+          ) = f
+          // TODO not empty env,probably module
+          #(name, ClosureLabeled(parameters, body, dict.new()))
+        })
+      let assert Ok(value) = list.key_find(functions, field)
+      apply(value, env, ks)
+    }
     // Should subjects also be non empty list
     [BuildSubjects([next, ..expressions], values, clauses), ..ks] -> {
       let ks = [BuildSubjects(expressions, [value, ..values], clauses), ..ks]
       do_eval(next, env, ks)
     }
 
-    // TODO caring about modlue to match on.
+    // TODO caring about module to match on.
     // TODO testing on guards
     [BuildSubjects([], values, clauses), ..ks] -> {
       let values = list.reverse([value, ..values])
@@ -467,6 +523,34 @@ fn call(func, args, env, ks) {
               dict.insert(acc, k, value)
             })
           do_exec(body, env, ks)
+        }
+        // TODO why is this not Nil or with values
+        Error(list.LengthMismatch) ->
+          Error(IncorrectArity(list.length(names), list.length(args)))
+      }
+    }
+    // CAn we always use function parameters
+    ClosureLabeled(params, body, captures), args -> {
+      let names =
+        list.map(params, fn(p: g.FunctionParameter) {
+          case p.name {
+            g.Named(name) -> name
+          }
+        })
+      // TODO deduplicate with args above but need to add label handling
+      case list.strict_zip(names, args) {
+        Ok(entries) -> {
+          let env =
+            list.fold(entries, env, fn(acc, new) {
+              let #(k, value) = new
+              dict.insert(acc, k, value)
+            })
+          let [statement, ..rest] = body
+          let ks = case rest {
+            [] -> []
+            rest -> [Continue(rest), ..ks]
+          }
+          do_exec(statement, env, ks)
         }
         // TODO why is this not Nil or with values
         Error(list.LengthMismatch) ->
@@ -693,6 +777,7 @@ pub type K {
     values: List(Value),
     tail: Option(g.Expression),
   )
+  Access(field: String)
   Append(values: List(Value))
   BuildSubjects(
     expressions: List(g.Expression),

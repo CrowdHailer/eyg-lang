@@ -18,6 +18,10 @@ pub type Term {
   Statements(List(g.Statement))
 }
 
+pub fn module(src) {
+  g.module(src)
+}
+
 pub fn tokens(src) {
   glexer.new(src)
   |> glexer.lex
