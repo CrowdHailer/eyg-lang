@@ -356,6 +356,17 @@ pub fn function_test() {
   "fn(x, y) { x + y }(10, 5)"
   |> exec()
   |> should.equal(Ok(I(15)))
+
+  "fn(x, y) {
+    x + y
+    1
+  }(10, 5)"
+  |> exec()
+  |> should.equal(Ok(I(1)))
+
+  "fn(_) { 5 }(2)"
+  |> exec()
+  |> should.equal(Ok(I(5)))
 }
 
 // pub fn demo_tets() {
@@ -386,6 +397,36 @@ pub fn function_error_test() {
   "fn(){ 5 }(1, 2)"
   |> exec()
   |> should.equal(Error(runner.IncorrectArity(0, 2)))
+
+  "fn(x){ 5 }(b: 1)"
+  |> exec()
+  |> should.equal(Error(runner.MissingField("b")))
+}
+
+pub fn top_function_test() {
+  let state = #(dict.new(), dict.new())
+  let line = "fn foo(a x, b y) { x - y }"
+  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(_, state)) = runner.read(term, state)
+
+  let line = "foo(3, 2)"
+  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(Some(value), state)) = runner.read(term, state)
+  value
+  |> should.equal(I(1))
+}
+
+pub fn top_function_named_args_test() {
+  let state = #(dict.new(), dict.new())
+  let line = "fn foo(a x, b y) { x - y }"
+  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(_, state)) = runner.read(term, state)
+
+  let line = "foo(b: 3, a: 2)"
+  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(Some(value), state)) = runner.read(term, state)
+  value
+  |> should.equal(I(1))
 }
 
 pub fn function_capture_test() {

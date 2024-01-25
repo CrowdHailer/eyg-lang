@@ -54,6 +54,12 @@ pub fn read(term, state) {
         }
       }
     }
+    reader.Function(name, parameters, body) -> {
+      let value = ClosureLabeled(parameters, body, scope)
+      let scope = dict.insert(scope, name, value)
+      let state = #(scope, modules)
+      Ok(#(Some(value), state))
+    }
     reader.Statements(statements) -> {
       use value <- try(exec(statements, scope))
       Ok(#(Some(value), state))
@@ -148,11 +154,6 @@ fn do_exec(statement, env, ks) {
       let ks = [Args(args), ..ks]
       do_eval(exp, env, ks)
     }
-
-    _ -> {
-      io.debug(statement)
-      todo("not supported")
-    }
   }
 }
 
@@ -175,9 +176,15 @@ fn do_eval(exp, env, ks) {
     }
     // TODO rename Negate number
     g.NegateInt(exp) ->
-      do_eval(exp, env, [Apply(Builtin(Arity1(negate_number)), [], []), ..ks])
+      do_eval(exp, env, [
+        Apply(Builtin(Arity1(negate_number)), None, [], []),
+        ..ks
+      ])
     g.NegateBool(exp) ->
-      do_eval(exp, env, [Apply(Builtin(Arity1(negate_bool)), [], []), ..ks])
+      do_eval(exp, env, [
+        Apply(Builtin(Arity1(negate_bool)), None, [], []),
+        ..ks
+      ])
     // Has to be at least one statement
     // exec block fn
     g.Block([statement, ..rest]) -> {
@@ -355,19 +362,18 @@ fn apply(value, env, ks) {
     [Args([]), ..ks] -> {
       call(value, [], env, ks)
     }
-    [Args([g.Field(None, exp), ..rest]), ..ks] -> {
-      let rest = list.map(rest, fn(a: g.Field(_)) { a.item })
-      let ks = [Apply(value, rest, []), ..ks]
+    [Args([g.Field(label, exp), ..rest]), ..ks] -> {
+      let ks = [Apply(value, label, rest, []), ..ks]
       do_eval(exp, env, ks)
     }
-    [Apply(func, remaining, evaluated), ..ks] -> {
-      let evaluated = list.reverse([value, ..evaluated])
+    [Apply(func, label, remaining, evaluated), ..ks] -> {
+      let evaluated = list.reverse([g.Field(label, value), ..evaluated])
       case remaining {
         [] -> {
           call(func, evaluated, env, ks)
         }
-        [exp, ..remaining] -> {
-          let ks = [Apply(func, remaining, evaluated), ..ks]
+        [g.Field(label, exp), ..remaining] -> {
+          let ks = [Apply(func, label, remaining, evaluated), ..ks]
           do_eval(exp, env, ks)
         }
       }
@@ -500,29 +506,67 @@ fn apply(value, env, ks) {
     }
     _ -> {
       io.debug(#(value, ks, "---------"))
-      todo("bad apply")
+      todo as "bad apply"
+    }
+  }
+}
+
+// TODO return unmatched params because we need that for record
+// do_pair_args returns empty incorrect arity that is fixed
+fn pair_args(params, args, acc) {
+  case args {
+    [g.Field(None, value), ..args] -> {
+      case params {
+        [g.Field(_, g.Discarded(_)), ..params] -> pair_args(params, args, [])
+        [g.Field(_, g.Named(name)), ..params] ->
+          pair_args(params, args, [#(name, value)])
+      }
+    }
+    [g.Field(Some(label), value), ..args] -> {
+      // create a version of try pop
+      // list._pop(params, )
+      todo
     }
   }
 }
 
 fn call(func, args, env, ks) {
   case func, args {
-    Closure(params, [body], captured), args -> {
+    // TODO test multistatement body
+    Closure(params, body, captured), args -> {
       // as long as closure keeps returning itself until full of arguments
       let names =
         list.map(params, fn(p: g.FnParameter) {
           case p.name {
-            g.Named(name) -> name
+            g.Named(name) -> Some(name)
+            g.Discarded(_) -> None
           }
         })
       case list.strict_zip(names, args) {
         Ok(entries) -> {
-          let env =
-            list.fold(entries, env, fn(acc, new) {
-              let #(k, value) = new
-              dict.insert(acc, k, value)
-            })
-          do_exec(body, env, ks)
+          use env <- try(
+            list.try_fold(entries, env, fn(acc, new) {
+              // can't have named fields here
+              case new {
+                #(k, g.Field(None, value)) -> {
+                  let env = case k {
+                    None -> env
+                    Some(k) -> dict.insert(acc, k, value)
+                  }
+                  Ok(env)
+                }
+
+                #(_k, g.Field(Some(label), _value)) ->
+                  Error(MissingField(label))
+              }
+            }),
+          )
+          let [statement, ..rest] = body
+          let ks = case rest {
+            [] -> ks
+            rest -> [Continue(rest), ..ks]
+          }
+          do_exec(statement, env, ks)
         }
         // TODO why is this not Nil or with values
         Error(list.LengthMismatch) ->
@@ -542,7 +586,8 @@ fn call(func, args, env, ks) {
         Ok(entries) -> {
           let env =
             list.fold(entries, env, fn(acc, new) {
-              let #(k, value) = new
+              // This is what we are testing
+              let #(k, g.Field(None, value)) = new
               dict.insert(acc, k, value)
             })
           let [statement, ..rest] = body
@@ -558,14 +603,20 @@ fn call(func, args, env, ks) {
       }
     }
     Captured(f, left, right), args -> {
-      let assert [arg] = args
-      let args = list.flatten([left, [arg], right])
+      // is named args supported for capture
+      let assert [g.Field(None, arg)] = args
+      let args =
+        list.flatten([left, [arg], right])
+        |> list.map(g.Field(None, _))
       call(f, args, env, ks)
     }
     Builtin(Arity1(impl)), [a] -> {
+      let assert g.Field(None, a) = a
       impl(a, env, ks)
     }
     Builtin(Arity2(impl)), [a, b] -> {
+      let assert g.Field(None, a) = a
+      let assert g.Field(None, b) = b
       impl(a, b, env, ks)
     }
     other, _ -> Error(NotAFunction(other))
@@ -639,7 +690,9 @@ fn bin_impl(name) {
       use b <- try(as_float(b))
       apply(from_bool(a >. b), env, ks)
     }
-    g.Pipe -> fn(passed, f, env, ks) { call(f, [passed], env, ks) }
+    g.Pipe -> fn(passed, f, env, ks) {
+      call(f, [g.Field(None, passed)], env, ks)
+    }
     g.AddInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
@@ -750,8 +803,9 @@ pub type K {
   Assign(pattern: g.Pattern)
   Apply(
     function: Value,
-    expressions: List(g.Expression),
-    evaluated: List(Value),
+    label: Option(String),
+    expressions: List(g.Field(g.Expression)),
+    evaluated: List(g.Field(Value)),
   )
   Args(List(g.Field(g.Expression)))
   CaptureArgs(
