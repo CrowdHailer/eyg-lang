@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import glexer
@@ -9,6 +9,7 @@ import glance as g
 
 pub type Term {
   Import(module: String, binding: String, unqualified: List(#(String, String)))
+  CustomType(List(#(String, List(Option(String)))))
   Constant(name: String, expression: g.Expression)
   Function(
     name: String,
@@ -65,11 +66,21 @@ pub fn parse(lines) {
     //   use #(module, tokens) <- result.try(result)
     //   slurp(module, [], tokens)
     // }
-    // [#(t.Type, _), ..tokens] -> {
-    //   let result = type_definition(module, attributes, Private, False, tokens)
-    //   use #(module, tokens) <- result.try(result)
-    //   slurp(module, [], tokens)
-    // }
+    [#(t.Type, _), ..tokens] -> {
+      let module = g.Module([], [], [], [], [], [], [])
+      let result = g.type_definition(module, [], g.Private, False, tokens)
+      use #(module, tokens) <- result.try(result)
+      let variants =
+        list.flat_map(module.custom_types, fn(definition) {
+          let g.Definition(_, g.CustomType(variants: variants, ..)) = definition
+          list.map(variants, fn(v) {
+            let g.Variant(name, fields) = v
+            let labels = list.map(fields, fn(f: g.Field(_)) { f.label })
+            #(name, labels)
+          })
+        })
+      Ok(CustomType(variants))
+    }
     [#(t.Pub, _), #(t.Const, _), ..tokens] -> {
       let result = g.do_const_definition(g.Public, tokens)
       use #(c, tokens) <- result.try(result)

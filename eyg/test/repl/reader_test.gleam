@@ -38,8 +38,6 @@ pub fn import_aliased_fields_test() {
   )
 }
 
-// TODO custom type
-
 pub fn public_constant_test() {
   "pub const x = 5"
   |> reader.parse()

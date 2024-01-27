@@ -40,19 +40,39 @@ pub fn init(scope, modules) {
   #(scope, modules)
 }
 
+// could return bindings not env
 pub fn read(term, state) {
   let #(scope, modules) = state
   case term {
-    reader.Import(module, binding, []) -> {
+    reader.Import(module, binding, unqualified) -> {
       case dict.get(modules, module) {
         Ok(module) -> {
           let scope = dict.insert(scope, binding, Module(module))
+          let scope =
+            list.fold(unqualified, scope, fn(scope, extra) {
+              let #(field, name) = extra
+              let assert Ok(value) = access_module(module, field)
+              dict.insert(scope, name, value)
+            })
           Ok(#(None, #(scope, modules)))
         }
         Error(Nil) -> {
           Error(UnknownModule(module))
         }
       }
+    }
+    reader.CustomType(variants) -> {
+      let scope =
+        list.fold(variants, scope, fn(scope, variant) {
+          let #(name, fields) = variant
+          let value = case fields {
+            [] -> R(name, [])
+            _ -> Constructor(name, fields)
+          }
+          dict.insert(scope, name, value)
+        })
+      let state = #(scope, modules)
+      Ok(#(None, state))
     }
     reader.Function(name, parameters, body) -> {
       let value = ClosureLabeled(parameters, body, scope)
@@ -463,41 +483,8 @@ fn apply(value, env, ks) {
     }
     [Access(field), ..ks] -> {
       let assert Module(module) = value
-      let functions =
-        list.map(module.functions, fn(f) {
-          let g.Definition(
-            _,
-            g.Function(
-              name: name,
-              publicity: public,
-              parameters: parameters,
-              body: body,
-              ..,
-            ),
-          ) = f
-          // TODO not empty env,probably module
-          #(name, ClosureLabeled(parameters, body, dict.new()))
-        })
-      case list.key_find(functions, field) {
-        Ok(value) -> apply(value, env, ks)
-        // TODO need to be careful for public and not when in module
-        Error(Nil) -> {
-          let constructors =
-            list.flat_map(module.custom_types, fn(definition) {
-              let g.Definition(_, g.CustomType(variants: variants, ..)) =
-                definition
-              list.map(variants, fn(v) {
-                let g.Variant(name, fields) = v
-                let labels = list.map(fields, fn(f: g.Field(_)) { f.label })
-                #(name, Constructor(name, labels))
-              })
-            })
-          // |> io.debug()
-          case list.key_find(constructors, field) {
-            Ok(value) -> apply(value, env, ks)
-          }
-        }
-      }
+      use value <- try(access_module(module, field))
+      apply(value, env, ks)
     }
     [RecordUpdate(module, constructor, updates), ..ks] -> {
       use original <- try(case value {
@@ -571,6 +558,43 @@ fn apply(value, env, ks) {
     _ -> {
       io.debug(#(value, ks, "---------"))
       todo as "bad apply"
+    }
+  }
+}
+
+fn access_module(module: g.Module, field) {
+  let functions =
+    list.map(module.functions, fn(f) {
+      let g.Definition(
+        _,
+        g.Function(
+          name: name,
+          publicity: public,
+          parameters: parameters,
+          body: body,
+          ..,
+        ),
+      ) = f
+      // TODO not empty env,probably module
+      #(name, ClosureLabeled(parameters, body, dict.new()))
+    })
+  case list.key_find(functions, field) {
+    Ok(value) -> Ok(value)
+    // TODO need to be careful for public and not when in module
+    Error(Nil) -> {
+      let constructors =
+        list.flat_map(module.custom_types, fn(definition) {
+          let g.Definition(_, g.CustomType(variants: variants, ..)) = definition
+          list.map(variants, fn(v) {
+            let g.Variant(name, fields) = v
+            let labels = list.map(fields, fn(f: g.Field(_)) { f.label })
+            #(name, Constructor(name, labels))
+          })
+        })
+      // |> io.debug()
+      case list.key_find(constructors, field) {
+        Ok(value) -> Ok(value)
+      }
     }
   }
 }

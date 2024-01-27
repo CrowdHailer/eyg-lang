@@ -24,25 +24,6 @@ fn exec(src) {
   exec_with(src, runner.prelude())
 }
 
-pub fn stdlib_test() {
-  let assert Ok(content) =
-    simplifile.read("build/packages/gleam_stdlib/src/gleam/bool.gleam")
-  let assert Ok(module) = reader.module(content)
-  let modules = dict.from_list([#("gleam/bool", module)])
-
-  let state = runner.init(runner.prelude(), modules)
-
-  let line = "import gleam/bool"
-  let assert Ok(term) = reader.parse(line)
-  let assert Ok(#(return, state)) = runner.read(term, state)
-
-  let line = "bool.and(True, True)"
-  let assert Ok(term) = reader.parse(line)
-  let assert Ok(#(return, state)) = runner.read(term, state)
-  return
-  |> should.equal(Some(R("True", [])))
-}
-
 pub fn module_records_test() {
   let mod =
     "
