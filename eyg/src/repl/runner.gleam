@@ -61,8 +61,14 @@ pub fn read(term, state) {
       Ok(#(Some(value), state))
     }
     reader.Statements(statements) -> {
-      use value <- try(exec(statements, scope))
-      Ok(#(Some(value), state))
+      case exec(statements, scope) {
+        Ok(value) -> Ok(#(Some(value), state))
+        Error(Finished(scope)) -> {
+          let state = #(scope, modules)
+          Ok(#(None, state))
+        }
+        Error(reason) -> Error(reason)
+      }
     }
     _ -> {
       io.debug(term)
@@ -207,6 +213,14 @@ fn do_eval(exp, env, ks) {
       do_eval(first, env, [BuildList(elements, [], tail), ..ks])
     g.FieldAccess(container, label) ->
       do_eval(container, env, [Access(label), ..ks])
+    // g.RecordUpdate(mod, constructor, original, [#(label, exp), ..rest]) -> {
+    //   let assert R("", fields) = original
+    //   let ks = [Update(constructor, fields, label, rest, []), ..ks]
+    //   do_eval(exp, env, ks)
+    // }
+    g.RecordUpdate(mod, constructor, exp, fields) -> {
+      do_eval(exp, env, [RecordUpdate(mod, constructor, fields), ..ks])
+    }
     g.Case([first, ..subjects], clauses) -> {
       let ks = [BuildSubjects(subjects, [], clauses), ..ks]
       do_eval(first, env, ks)
@@ -482,6 +496,37 @@ fn apply(value, env, ks) {
           case list.key_find(constructors, field) {
             Ok(value) -> apply(value, env, ks)
           }
+        }
+      }
+    }
+    [RecordUpdate(module, constructor, updates), ..ks] -> {
+      use original <- try(case value {
+        // TODO module match
+        R(c, fields) if c == constructor -> Ok(fields)
+      })
+      // _ -> Error(IncorrectTerm(constructor,value))
+      case updates {
+        [#(label, exp), ..updates] -> {
+          let ks = [Update(constructor, original, label, updates), ..ks]
+          do_eval(exp, env, ks)
+        }
+        [] -> todo as "done update"
+      }
+    }
+    [Update(constructor, current, label, updates), ..ks] -> {
+      // This doesn't error if one is misisng
+      let current =
+        list.map(current, fn(field) {
+          case field {
+            g.Field(Some(k), _old) if k == label -> g.Field(Some(k), value)
+            _ -> field
+          }
+        })
+      case updates {
+        [] -> apply(R(constructor, current), env, ks)
+        [#(label, exp), ..updates] -> {
+          let ks = [Update(constructor, current, label, updates), ..ks]
+          do_eval(exp, env, ks)
         }
       }
     }
@@ -884,6 +929,18 @@ pub type K {
     label: Option(String),
     expressions: List(g.Field(g.Expression)),
     evaluated: List(g.Field(Value)),
+  )
+  RecordUpdate(
+    module: Option(String),
+    constructor: String,
+    fields: List(#(String, g.Expression)),
+  )
+  Update(
+    // module: Option(String)
+    constuctor: String,
+    original: List(g.Field(Value)),
+    current: String,
+    expressions: List(#(String, g.Expression)),
   )
   Args(List(g.Field(g.Expression)))
   CaptureArgs(
