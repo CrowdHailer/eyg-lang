@@ -511,22 +511,45 @@ fn apply(value, env, ks) {
   }
 }
 
+fn do_pop_parameter(params, label: String, acc) {
+  case params {
+    [] -> Error(MissingField(label))
+    [g.FunctionParameter(Some(l), name, _type), ..params] if l == label ->
+      Ok(#(name, list.append(list.reverse(acc), params)))
+    [param, ..params] -> do_pop_parameter(params, label, [param, ..acc])
+  }
+}
+
+fn pop_parameter(params, label) {
+  do_pop_parameter(params, label, [])
+}
+
 // TODO return unmatched params because we need that for record
 // do_pair_args returns empty incorrect arity that is fixed
-fn pair_args(params, args, acc) {
+fn pair_args(params: List(g.FunctionParameter), args: List(g.Field(Value)), env) {
   case args {
     [g.Field(None, value), ..args] -> {
       case params {
-        [g.Field(_, g.Discarded(_)), ..params] -> pair_args(params, args, [])
-        [g.Field(_, g.Named(name)), ..params] ->
-          pair_args(params, args, [#(name, value)])
+        // [g.Field(_, g.Discarded(_)), ..params] -> pair_args(params, args, [])
+        [g.FunctionParameter(_, name, _type), ..params] -> {
+          let env = case name {
+            g.Named(name) -> [#(name, value), ..env]
+            g.Discarded(_) -> env
+          }
+          pair_args(params, args, env)
+        }
+        [] -> Error(IncorrectArity(0, 0))
       }
     }
     [g.Field(Some(label), value), ..args] -> {
-      // create a version of try pop
-      // list._pop(params, )
-      todo
+      use #(name, params) <- try(pop_parameter(params, label))
+      let env = case name {
+        g.Named(name) -> [#(name, value), ..env]
+        g.Discarded(_) -> env
+      }
+      pair_args(params, args, env)
     }
+    [] -> Ok(#(list.reverse(env), params))
   }
 }
 
@@ -575,20 +598,12 @@ fn call(func, args, env, ks) {
     }
     // CAn we always use function parameters
     ClosureLabeled(params, body, captures), args -> {
-      let names =
-        list.map(params, fn(p: g.FunctionParameter) {
-          case p.name {
-            g.Named(name) -> name
-          }
-        })
       // TODO deduplicate with args above but need to add label handling
-      case list.strict_zip(names, args) {
-        Ok(entries) -> {
+      case pair_args(params, args, []) {
+        Ok(#(bindings, [])) -> {
           let env =
-            list.fold(entries, env, fn(acc, new) {
-              // This is what we are testing
-              let #(k, g.Field(None, value)) = new
-              dict.insert(acc, k, value)
+            list.fold(bindings, env, fn(env, new: #(_, _)) {
+              dict.insert(env, new.0, new.1)
             })
           let [statement, ..rest] = body
           let ks = case rest {
@@ -597,10 +612,15 @@ fn call(func, args, env, ks) {
           }
           do_exec(statement, env, ks)
         }
-        // TODO why is this not Nil or with values
-        Error(list.LengthMismatch) ->
-          Error(IncorrectArity(list.length(names), list.length(args)))
+        Ok(#(_, _remaining)) ->
+          Error(IncorrectArity(list.length(params), list.length(args)))
+        // Looses size information in pairing
+        Error(IncorrectArity(0, 0)) ->
+          Error(IncorrectArity(list.length(params), list.length(args)))
+
+        Error(reason) -> Error(reason)
       }
+      // Error(IncorrectArity(list.length(names), list.length(args)))
     }
     Captured(f, left, right), args -> {
       // is named args supported for capture
