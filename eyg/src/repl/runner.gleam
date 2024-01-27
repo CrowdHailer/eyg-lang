@@ -78,6 +78,7 @@ pub type Value {
   T(List(Value))
   L(List(Value))
   R(String, List(g.Field(Value)))
+  Constructor(String, List(Option(String)))
   Closure(List(g.FnParameter), List(g.Statement), Env)
   // this will be module env
   ClosureLabeled(List(g.FunctionParameter), List(g.Statement), Env)
@@ -463,8 +464,26 @@ fn apply(value, env, ks) {
           // TODO not empty env,probably module
           #(name, ClosureLabeled(parameters, body, dict.new()))
         })
-      let assert Ok(value) = list.key_find(functions, field)
-      apply(value, env, ks)
+      case list.key_find(functions, field) {
+        Ok(value) -> apply(value, env, ks)
+        // TODO need to be careful for public and not when in module
+        Error(Nil) -> {
+          let constructors =
+            list.flat_map(module.custom_types, fn(definition) {
+              let g.Definition(_, g.CustomType(variants: variants, ..)) =
+                definition
+              list.map(variants, fn(v) {
+                let g.Variant(name, fields) = v
+                let labels = list.map(fields, fn(f: g.Field(_)) { f.label })
+                #(name, Constructor(name, labels))
+              })
+            })
+          // |> io.debug()
+          case list.key_find(constructors, field) {
+            Ok(value) -> apply(value, env, ks)
+          }
+        }
+      }
     }
     // Should subjects also be non empty list
     [BuildSubjects([next, ..expressions], values, clauses), ..ks] -> {
@@ -630,6 +649,15 @@ fn call(func, args, env, ks) {
         |> list.map(g.Field(None, _))
       call(f, args, env, ks)
     }
+    // All unlabelled must go first
+    Constructor(name, fields), args -> {
+      case constuct_fields(fields, args, []) {
+        Ok(fields) -> apply(R(name, fields), env, ks)
+        Error(IncorrectArity(_, _)) ->
+          Error(IncorrectArity(list.length(fields), list.length(args)))
+        Error(reason) -> Error(reason)
+      }
+    }
     Builtin(Arity1(impl)), [a] -> {
       let assert g.Field(None, a) = a
       impl(a, env, ks)
@@ -640,6 +668,36 @@ fn call(func, args, env, ks) {
       impl(a, b, env, ks)
     }
     other, _ -> Error(NotAFunction(other))
+  }
+}
+
+fn constuct_fields(fields, args, acc) {
+  case args, fields {
+    [], [] -> Ok(list.reverse(acc))
+    [g.Field(None, value), ..args], [field, ..fields] -> {
+      let acc = [g.Field(field, value), ..acc]
+      constuct_fields(fields, args, acc)
+    }
+    // go through in field order
+    [g.Field(Some(for_error), _), ..], [Some(label), ..fields] -> {
+      case pop_field(args, label, []) {
+        Ok(#(value, args)) -> {
+          let acc = [g.Field(Some(label), value), ..acc]
+          constuct_fields(fields, args, acc)
+        }
+        Error(Nil) -> Error(MissingField(for_error))
+      }
+    }
+    _, _ -> Error(IncorrectArity(0, 0))
+  }
+}
+
+fn pop_field(fields, label, acc) {
+  case fields {
+    [g.Field(Some(l), value), ..rest] if l == label ->
+      Ok(#(value, list.append(list.reverse(acc), rest)))
+    [popped, ..fields] -> pop_field(fields, label, [popped, ..acc])
+    [] -> Error(Nil)
   }
 }
 

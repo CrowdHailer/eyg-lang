@@ -2,6 +2,7 @@ import gleam/io
 import gleam/dict
 import gleam/option.{None, Some}
 import gleam/string
+import glance
 import repl/runner.{Closure, F, I, L, R, S, T}
 import repl/reader
 import simplifile
@@ -41,19 +42,58 @@ pub fn stdlib_test() {
   return
   |> should.equal(Some(R("True", [])))
 }
-// TODO read bool module
-// pub fn module_test() {
-//   let mod =
-//     "
-//     pub fn foo(a x, b, y) {
-//       x - y
-//     }"
-//   let assert Ok(m) =
-//     runner.module(mod)
-//     |> io.debug
 
-//   "import lib/foo"
-//   |> reader.parse()
-//   |> io.debug
-//   // |> should.equal(Ok(I(1)))
-// }
+pub fn module_records_test() {
+  let mod =
+    "
+    pub type Foo {
+      Foo(a: Int, b: String)
+    }"
+  let assert Ok(m) = reader.module(mod)
+
+  let modules = dict.from_list([#("lib/foo", m)])
+  let initial = runner.init(dict.new(), modules)
+
+  let line = "import lib/foo"
+  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(None, state)) = runner.read(term, initial)
+
+  let line = "foo.Foo(2, \"\")"
+  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(return, _)) = runner.read(term, state)
+  return
+  |> should.equal(
+    Some(
+      R("Foo", [glance.Field(Some("a"), I(2)), glance.Field(Some("b"), S(""))]),
+    ),
+  )
+
+  let line = "foo.Foo(2, b: \"\")"
+  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(return, _)) = runner.read(term, state)
+  return
+  |> should.equal(
+    Some(
+      R("Foo", [glance.Field(Some("a"), I(2)), glance.Field(Some("b"), S(""))]),
+    ),
+  )
+
+  let line = "foo.Foo(2, c: \"\")"
+  let assert Ok(term) = reader.parse(line)
+  let assert Error(reason) = runner.read(term, state)
+  reason
+  |> should.equal(runner.MissingField("c"))
+
+  let line = "foo.Foo(2, \"\", 4)"
+  let assert Ok(term) = reader.parse(line)
+  let assert Error(reason) = runner.read(term, state)
+  reason
+  |> should.equal(runner.IncorrectArity(2, 3))
+
+  let line = "foo.Foo(2)"
+  let assert Ok(term) = reader.parse(line)
+  let assert Error(reason) = runner.read(term, state)
+  reason
+  |> should.equal(runner.IncorrectArity(2, 1))
+}
+// TODO test unlabelled
