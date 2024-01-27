@@ -10,7 +10,9 @@ import glexer
 import glance
 import lustre/attribute.{class, id}
 import lustre/element.{text}
-import lustre/element/html.{button, div, form, hr, iframe, input, p, span}
+import lustre/element/html.{
+  button, div, form, hr, iframe, input, p, pre, span, textarea,
+}
 import lustre/effect
 import lustre/event.{on_click}
 import repl/reader
@@ -29,18 +31,30 @@ pub fn render(state) {
             [class("hstack wrap"), event.on_submit(Wrap(execute_statement))],
             [
               span([class("mr-2")], [text(">")]),
-              input([
+              textarea([
                 event.on_input(fn(value) {
                   Wrap(fn(state) {
                     #(State(..state, statement: value), effect.none())
                   })
                 }),
                 attribute.value(dynamic.from(statement)),
+                attribute.attribute("rows", {
+                  let lines =
+                    string.split(statement, "\n")
+                    |> list.length
+                  // already one extra section than number or newlines. there was an issue with \r
+                  int.to_string(lines)
+                }),
                 // attribute.autofocus(True),
                 attribute.attribute("autofocus", "true"),
                 class(
                   "w-full bg-transparent border-b border-gray-500 focus:border-gray-200 outline-none",
                 ),
+              ]),
+              div([], [
+                button([class("p-1 bg-orange-3 text-white rounded")], [
+                  text("run"),
+                ]),
               ]),
             ],
           ),
@@ -68,8 +82,8 @@ fn render_history(history) {
     let #(code, answer) = h
     [
       div([class("hstack wrap")], [
-        span([class("mr-2")], [text(">")]),
-        span([class("expand")], [text(code)]),
+        // span([class("mr-2")], [text(">")]),
+        pre([class("expand")], [text("> "), text(code)]),
       ]),
       div([], [text(answer)]),
     ]
@@ -82,16 +96,10 @@ fn execute_statement(state) {
   case runner.read(term, state) {
     Ok(#(value, state)) -> {
       let output = case value {
-        Some(runner.I(x)) -> int.to_string(x)
-        Some(runner.F(x)) -> float.to_string(x)
-        Some(runner.S(x)) -> string.inspect(x)
-        Some(runner.T(elements)) -> "recursive print needed"
-        Some(runner.R("True", [])) -> "True"
-        Some(runner.R("False", [])) -> "False"
-        Some(runner.Closure(_, _, _)) -> "closure"
-        Some(item) -> string.inspect(item)
+        Some(value) -> render_value(value)
         None -> ""
       }
+
       #(State(state, "", None, [#(src, output), ..history]), effect.none())
     }
     // TODO should be handled in runner
@@ -103,5 +111,31 @@ fn execute_statement(state) {
       let state = State(state, src, Some(reason), history)
       #(state, effect.none())
     }
+  }
+}
+
+pub fn render_value(value) {
+  case value {
+    runner.I(x) -> int.to_string(x)
+    runner.F(x) -> float.to_string(x)
+    runner.S(x) -> string.inspect(x)
+    runner.T(elements) -> "recursive print needed"
+    runner.R(constructor, []) -> constructor
+    runner.R(constructor, fields) -> {
+      let parts =
+        list.map(fields, fn(f) {
+          let glance.Field(label, value) = f
+          case label {
+            Some(label) -> string.concat([label, ": ", render_value(value)])
+            None -> render_value(value)
+          }
+        })
+        |> list.intersperse(", ")
+      list.flatten([[constructor, "("], parts, [")"]])
+      |> string.concat
+    }
+    runner.Constructor(label, _) -> label
+    runner.Closure(_, _, _) -> "closure"
+    item -> string.inspect(item)
   }
 }
