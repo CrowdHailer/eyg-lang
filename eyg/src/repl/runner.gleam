@@ -103,6 +103,7 @@ pub type Reason {
   MissingField(String)
   Finished(Dict(String, Value))
   UnknownModule(String)
+  Unsupported(String)
 }
 
 pub fn exec(statements: List(g.Statement), env) -> Result(_, Reason) {

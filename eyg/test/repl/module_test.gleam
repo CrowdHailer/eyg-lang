@@ -21,11 +21,11 @@ pub fn module_records_test() {
   let initial = runner.init(dict.new(), modules)
 
   let line = "import lib/foo"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(None, state)) = runner.read(term, initial)
 
   let line = "foo.Foo(2, \"\")"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(return, _)) = runner.read(term, state)
   return
   |> should.equal(
@@ -35,7 +35,7 @@ pub fn module_records_test() {
   )
 
   let line = "foo.Foo(2, b: \"\")"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(return, _)) = runner.read(term, state)
   return
   |> should.equal(
@@ -45,19 +45,19 @@ pub fn module_records_test() {
   )
 
   let line = "foo.Foo(2, c: \"\")"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
   |> should.equal(runner.MissingField("c"))
 
   let line = "foo.Foo(2, \"\", 4)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
   |> should.equal(runner.IncorrectArity(2, 3))
 
   let line = "foo.Foo(2)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
   |> should.equal(runner.IncorrectArity(2, 1))
@@ -75,15 +75,15 @@ pub fn module_record_override_test() {
   let initial = runner.init(dict.new(), modules)
 
   let line = "import lib/foo"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(None, state)) = runner.read(term, initial)
 
   let line = "let x = foo.Foo(2, \"\")"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(return, state)) = runner.read(term, state)
 
   let line = "foo.Foo(..x, b: \"h\", a: 4)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(return, _)) = runner.read(term, state)
   return
   |> should.equal(
@@ -93,7 +93,7 @@ pub fn module_record_override_test() {
   )
 
   let line = "foo.Foo(2, c: \"\")"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
   |> should.equal(runner.MissingField("c"))

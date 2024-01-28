@@ -11,7 +11,7 @@ fn exec_with(src, env) {
   // let env = dict.from_list(env)
   let parsed = reader.parse(src)
   case parsed {
-    Ok(reader.Statements(statements)) -> runner.exec(statements, env)
+    Ok(#(reader.Statements(statements), [])) -> runner.exec(statements, env)
     Error(reason) -> {
       io.debug(reason)
       panic("not parsed")

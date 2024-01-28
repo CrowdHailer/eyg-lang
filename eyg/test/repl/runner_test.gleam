@@ -11,7 +11,7 @@ fn exec_with(src, env) {
   // let env = dict.from_list(env)
   let parsed = reader.parse(src)
   case parsed {
-    Ok(reader.Statements(statements)) -> runner.exec(statements, env)
+    Ok(#(reader.Statements(statements), [])) -> runner.exec(statements, env)
     Error(reason) -> {
       io.debug(reason)
       panic("not parsed")
@@ -86,10 +86,9 @@ pub fn panic_test() {
   |> exec()
   |> should.equal(Error(runner.Panic(Some("bad"))))
   // TODO
-  // "panic as \"very \" <> \"bad\""
+  // "panic as { \"very \" <> \"bad\" }"
   // |> exec()
   // |> should.equal(Error(runner.Panic(Some("bad"))))
-
   // TODO
   // "panic as x"
   // |> exec()
@@ -351,41 +350,41 @@ pub fn function_error_test() {
 pub fn top_function_test() {
   let state = #(dict.new(), dict.new())
   let line = "fn foo(a x, b y) { x - y }"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(_, initial)) = runner.read(term, state)
 
   let line = "foo(7, 6)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(Some(value), _)) = runner.read(term, initial)
   value
   |> should.equal(I(1))
 
   let line = "foo(b: 3, a: 2)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(Some(value), _)) = runner.read(term, initial)
   value
   |> should.equal(I(-1))
 
   let line = "foo(4, b: 8)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Ok(#(Some(value), _)) = runner.read(term, initial)
   value
   |> should.equal(I(-4))
 
   let line = "foo(4, c: 8)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, initial)
   reason
   |> should.equal(runner.MissingField("c"))
 
   let line = "foo(4)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, initial)
   reason
   |> should.equal(runner.IncorrectArity(2, 1))
 
   let line = "foo(4, 3, 2)"
-  let assert Ok(term) = reader.parse(line)
+  let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, initial)
   reason
   |> should.equal(runner.IncorrectArity(2, 3))

@@ -6,6 +6,7 @@ import gleam/string
 import glexer
 import glexer/token as t
 import glance as g
+import repl/reason as r
 
 pub type Term {
   Import(module: String, binding: String, unqualified: List(#(String, String)))
@@ -29,15 +30,19 @@ pub fn tokens(src) {
   |> list.filter(fn(pair) { !g.is_whitespace(pair.0) })
 }
 
+pub type Reason {
+  Unsupported(String)
+  ParseFail(g.Error)
+}
+
 pub fn parse(lines) {
   let ts = tokens(lines)
   case ts {
-    // [#(t.At, _), ..tokens] -> {
-    //   use #(attribute, tokens) <- result.try(attribute(tokens))
-    //   slurp(module, [attribute, ..attributes], tokens)
-    // }
+    [#(t.At, _), ..] -> {
+      Error(Unsupported("attributes"))
+    }
     [#(t.Import, _), ..tokens] -> {
-      let result = g.do_import_statement(tokens)
+      let result = result.map_error(g.do_import_statement(tokens), ParseFail)
       use #(import_, tokens) <- result.try(result)
       let g.Import(module, alias, _types, values) = import_
       let binding = case alias {
@@ -53,7 +58,8 @@ pub fn parse(lines) {
           let label = option.unwrap(label, field)
           #(field, label)
         })
-      Ok(Import(module, binding, unqualified))
+      let import_ = Import(module, binding, unqualified)
+      Ok(#(import_, tokens))
     }
     // Not supported because how do we handle the type parameters and aliases
     // [#(t.Pub, _), #(t.Type, _), ..tokens] -> {
@@ -68,7 +74,11 @@ pub fn parse(lines) {
     // }
     [#(t.Type, _), ..tokens] -> {
       let module = g.Module([], [], [], [], [], [], [])
-      let result = g.type_definition(module, [], g.Private, False, tokens)
+      let result =
+        result.map_error(
+          g.type_definition(module, [], g.Private, False, tokens),
+          ParseFail,
+        )
       use #(module, tokens) <- result.try(result)
       let variants =
         list.flat_map(module.custom_types, fn(definition) {
@@ -79,34 +89,46 @@ pub fn parse(lines) {
             #(name, labels)
           })
         })
-      Ok(CustomType(variants))
+      Ok(#(CustomType(variants), tokens))
     }
     [#(t.Pub, _), #(t.Const, _), ..tokens] -> {
-      let result = g.do_const_definition(g.Public, tokens)
+      let result =
+        result.map_error(g.do_const_definition(g.Public, tokens), ParseFail)
       use #(c, tokens) <- result.try(result)
-      Ok(Constant(c.name, c.value))
+      Ok(#(Constant(c.name, c.value), tokens))
     }
     [#(t.Const, _), ..tokens] -> {
-      let result = g.do_const_definition(g.Private, tokens)
+      let result =
+        result.map_error(g.do_const_definition(g.Private, tokens), ParseFail)
       use #(c, tokens) <- result.try(result)
-      Ok(Constant(c.name, c.value))
+      Ok(#(Constant(c.name, c.value), tokens))
     }
 
     [#(t.Pub, start), #(t.Fn, _), #(t.Name(name), _), ..tokens] -> {
       let glexer.Position(start) = start
-      let result = g.do_function_definition(g.Public, name, start, tokens)
+      let result =
+        result.map_error(
+          g.do_function_definition(g.Public, name, start, tokens),
+          ParseFail,
+        )
       use #(f, tokens) <- result.try(result)
-      Ok(Function(f.name, f.parameters, f.body))
+      let function = Function(f.name, f.parameters, f.body)
+      Ok(#(function, tokens))
     }
     [#(t.Fn, start), #(t.Name(name), _), ..tokens] -> {
       let glexer.Position(start) = start
-      let result = g.do_function_definition(g.Private, name, start, tokens)
+      let result =
+        result.map_error(
+          g.do_function_definition(g.Private, name, start, tokens),
+          ParseFail,
+        )
       use #(f, tokens) <- result.try(result)
-      Ok(Function(f.name, f.parameters, f.body))
+      let function = Function(f.name, f.parameters, f.body)
+      Ok(#(function, tokens))
     }
     _ -> {
       use #(statements, _, tokens) <- result.try(statements([], ts))
-      Ok(Statements(statements))
+      Ok(#(Statements(statements), tokens))
     }
   }
 }
@@ -118,10 +140,10 @@ pub fn statements(acc, tokens) {
     Ok(#(statement, rest)) -> {
       let acc = [statement, ..acc]
       case rest {
-        [] -> Ok(#(list.reverse(acc), Nil, Nil))
+        [] -> Ok(#(list.reverse(acc), Nil, []))
         _ -> statements(acc, rest)
       }
     }
-    Error(reason) -> Error(reason)
+    Error(reason) -> Error(ParseFail(reason))
   }
 }

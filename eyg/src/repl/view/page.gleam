@@ -92,7 +92,7 @@ fn render_history(history) {
 
 fn execute_statement(state) {
   let State(state, src, _reason, history) = state
-  let assert Ok(term) = reader.parse(src)
+  let assert Ok(#(term, _)) = reader.parse(src)
   case runner.read(term, state) {
     Ok(#(value, state)) -> {
       let output = case value {
