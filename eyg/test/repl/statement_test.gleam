@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/dict
 import gleam/option.{None, Some}
 import simplifile
@@ -154,4 +153,39 @@ pub fn named_record_fields_test() {
   let assert Error(reason) = runner.read(term, initial)
   reason
   |> should.equal(runner.IncorrectTerm("Record", v.S("")))
+}
+
+pub fn constant_test() {
+  let initial = runner.init(dict.new(), dict.new())
+  let assert Ok(term) = reader.parse("pub const x = 5")
+  let assert Ok(#(_, initial)) = runner.read(term, initial)
+
+  let assert Ok(term) = reader.parse("x")
+  let assert Ok(#(return, _)) = runner.read(term, initial)
+  return
+  |> should.equal(Some(v.I(5)))
+}
+
+pub fn recursive_function_test() {
+  let initial = runner.init(dict.new(), dict.new())
+  let assert Ok(term) =
+    reader.parse(
+      "pub fn count(items, total) {
+        case items {
+          [] -> total
+          [_, ..items] -> count(items, total + 1)
+        }
+      }",
+    )
+  let assert Ok(#(_, initial)) = runner.read(term, initial)
+
+  let assert Ok(term) = reader.parse("count([], 0)")
+  let assert Ok(#(return, _)) = runner.read(term, initial)
+  return
+  |> should.equal(Some(v.I(0)))
+
+  let assert Ok(term) = reader.parse("count([10, 20], 0)")
+  let assert Ok(#(return, _)) = runner.read(term, initial)
+  return
+  |> should.equal(Some(v.I(2)))
 }

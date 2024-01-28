@@ -62,8 +62,14 @@ pub fn read(term, state) {
       let state = #(scope, modules)
       Ok(#(None, state))
     }
+    reader.Constant(name, exp) -> {
+      use value <- try(do_eval(exp, scope, []))
+      let scope = dict.insert(scope, name, value)
+      let state = #(scope, modules)
+      Ok(#(Some(value), state))
+    }
     reader.Function(name, parameters, body) -> {
-      let value = v.ClosureLabeled(parameters, body, scope)
+      let value = v.NamedClosure(parameters, body, scope)
       let scope = dict.insert(scope, name, value)
       let state = #(scope, modules)
       Ok(#(Some(value), state))
@@ -77,10 +83,6 @@ pub fn read(term, state) {
         }
         Error(reason) -> Error(reason)
       }
-    }
-    _ -> {
-      io.debug(term)
-      panic as "not suppred in read"
     }
   }
 }
@@ -528,7 +530,7 @@ fn access_module(module: g.Module, field) {
         ),
       ) = f
       // TODO not empty env,probably module
-      #(name, v.ClosureLabeled(parameters, body, dict.new()))
+      #(name, v.NamedClosure(parameters, body, dict.new()))
     })
   case list.key_find(functions, field) {
     Ok(value) -> Ok(value)
@@ -637,7 +639,7 @@ fn call(func, args, env, ks) {
       }
     }
     // CAn we always use function parameters
-    v.ClosureLabeled(params, body, captures), args -> {
+    v.NamedClosure(params, body, captures), args -> {
       // TODO deduplicate with args above but need to add label handling
       case pair_args(params, args, []) {
         Ok(#(bindings, [])) -> {
@@ -907,9 +909,6 @@ fn as_list(value) {
     _ -> Error(IncorrectTerm("List", value))
   }
 }
-
-type Env =
-  dict.Dict(String, Value)
 
 pub type K {
   Assign(pattern: g.Pattern)

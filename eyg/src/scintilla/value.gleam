@@ -17,7 +17,7 @@ pub type Value {
   NegateBool
   Closure(List(g.FnParameter), List(g.Statement), Env)
   // this will be module env
-  ClosureLabeled(List(g.FunctionParameter), List(g.Statement), Env)
+  NamedClosure(List(g.FunctionParameter), List(g.Statement), Env)
   Captured(function: Value, before: List(Value), after: List(Value))
   BinaryOperator(g.BinaryOperator)
   Module(g.Module)
