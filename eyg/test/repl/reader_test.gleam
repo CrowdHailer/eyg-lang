@@ -1,13 +1,6 @@
-import gleam/io
-import gleam/dict
-import gleam/list
 import gleam/option.{None, Some}
-import gleam/string
 import glance
-import glexer
-import repl/runner.{Closure, F, I, L, R, S, T}
 import repl/reader
-import plinth/javascript/console
 import gleeunit/should
 
 pub fn simple_import_test() {

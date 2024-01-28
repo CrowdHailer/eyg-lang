@@ -2,10 +2,9 @@ import gleam/io
 import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
-import glance
-import glexer
+import scintilla/value.{Closure, F, I, L, R, S, T}
 import repl/reader
-import repl/runner.{Closure, F, I, L, R, S, T}
+import repl/runner
 import gleeunit/should
 
 fn exec_with(src, env) {

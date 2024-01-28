@@ -14,7 +14,7 @@ import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 import facilities/trafiklab/realtidsinformation_4 as rt4
 import repl/reader
-import repl/runner.{type Value}
+import repl/runner
 
 pub type State {
   State(

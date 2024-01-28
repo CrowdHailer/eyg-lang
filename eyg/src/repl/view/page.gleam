@@ -6,7 +6,6 @@ import gleam/dynamic
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import glexer
 import glance
 import lustre/attribute.{class, id}
 import lustre/element.{text}
@@ -18,6 +17,7 @@ import lustre/event.{on_click}
 import repl/reader
 import repl/runner
 import repl/state.{State, Wrap}
+import scintilla/value as v
 
 pub fn render(state) {
   let State(scope, statement, reason, history) = state
@@ -116,12 +116,12 @@ fn execute_statement(state) {
 
 pub fn render_value(value) {
   case value {
-    runner.I(x) -> int.to_string(x)
-    runner.F(x) -> float.to_string(x)
-    runner.S(x) -> string.inspect(x)
-    runner.T(elements) -> "recursive print needed"
-    runner.R(constructor, []) -> constructor
-    runner.R(constructor, fields) -> {
+    v.I(x) -> int.to_string(x)
+    v.F(x) -> float.to_string(x)
+    v.S(x) -> string.inspect(x)
+    v.T(elements) -> "recursive print needed"
+    v.R(constructor, []) -> constructor
+    v.R(constructor, fields) -> {
       let parts =
         list.map(fields, fn(f) {
           let glance.Field(label, value) = f
@@ -134,8 +134,8 @@ pub fn render_value(value) {
       list.flatten([[constructor, "("], parts, [")"]])
       |> string.concat
     }
-    runner.Constructor(label, _) -> label
-    runner.Closure(_, _, _) -> "closure"
+    v.Constructor(label, _) -> label
+    v.Closure(_, _, _) -> "closure"
     item -> string.inspect(item)
   }
 }

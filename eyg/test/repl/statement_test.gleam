@@ -3,8 +3,9 @@ import gleam/io
 import gleam/option.{None, Some}
 import simplifile
 import glance as g
+import scintilla/value.{I, R}
 import repl/reader
-import repl/runner.{I, R}
+import repl/runner
 import gleeunit/should
 
 const bool_mod = "build/packages/gleam_stdlib/src/gleam/bool.gleam"

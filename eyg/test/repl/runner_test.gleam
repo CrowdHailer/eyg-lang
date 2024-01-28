@@ -3,9 +3,9 @@ import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import glance
-import glexer
+import scintilla/value.{Closure, F, I, L, R, S, T}
 import repl/reader
-import repl/runner.{Closure, F, I, L, R, S, T}
+import repl/runner
 import plinth/javascript/console
 import gleeunit/should
 
@@ -262,7 +262,7 @@ pub fn prelude_creation_test() {
 
   console.log(Ok(""))
   console.log(Ok)
-  console.log(runner.I(1))
+  console.log(I(1))
   console.log(runner.Append([]))
 }
 
