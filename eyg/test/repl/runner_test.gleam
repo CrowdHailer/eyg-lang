@@ -3,6 +3,7 @@ import gleam/dict
 import gleam/option.{None, Some}
 import glance
 import scintilla/value.{F, I, L, R, S, T}
+import scintilla/reason as r
 import repl/reader
 import repl/runner
 import gleeunit/should
@@ -59,7 +60,7 @@ pub fn number_negation_fail_test() {
   "-\"a\""
   |> exec()
   |> should.equal(
-    Error(runner.IncorrectTerm(expected: "Integer or Float", got: S("a"))),
+    Error(r.IncorrectTerm(expected: "Integer or Float", got: S("a"))),
   )
 }
 
@@ -74,21 +75,21 @@ pub fn bool_negation_test() {
 
   "!3"
   |> exec()
-  |> should.equal(Error(runner.IncorrectTerm(expected: "Boolean", got: I(3))))
+  |> should.equal(Error(r.IncorrectTerm(expected: "Boolean", got: I(3))))
 }
 
 pub fn panic_test() {
   "panic"
   |> exec()
-  |> should.equal(Error(runner.Panic(None)))
+  |> should.equal(Error(r.Panic(None)))
 
   "panic as \"bad\""
   |> exec()
-  |> should.equal(Error(runner.Panic(Some("bad"))))
+  |> should.equal(Error(r.Panic(Some("bad"))))
   // TODO
   // "panic as { \"very \" <> \"bad\" }"
   // |> exec()
-  // |> should.equal(Error(runner.Panic(Some("bad"))))
+  // |> should.equal(Error(r.Panic(Some("bad"))))
   // TODO
   // "panic as x"
   // |> exec()
@@ -99,17 +100,17 @@ pub fn todo_test() {
   // has message
   "todo(\"bad\")"
   |> exec()
-  |> should.equal(Error(runner.Todo(Some("bad"))))
+  |> should.equal(Error(r.Todo(Some("bad"))))
 
   // evals message
   "todo(\"very\" <> \"bad\")"
   |> exec()
-  |> should.equal(Error(runner.Todo(None)))
+  |> should.equal(Error(r.Todo(None)))
 
   // requires string message
   "todo(3)"
   |> exec()
-  |> should.equal(Error(runner.Todo(None)))
+  |> should.equal(Error(r.Todo(None)))
 }
 
 pub fn block_test() {
@@ -168,11 +169,11 @@ pub fn tuple_index_test() {
 pub fn tuple_index_error_test() {
   "\"a\".0"
   |> exec()
-  |> should.equal(Error(runner.IncorrectTerm("Tuple", S("a"))))
+  |> should.equal(Error(r.IncorrectTerm("Tuple", S("a"))))
 
   "#().2"
   |> exec()
-  |> should.equal(Error(runner.OutOfRange(0, 2)))
+  |> should.equal(Error(r.OutOfRange(0, 2)))
 }
 
 pub fn list_test() {
@@ -207,7 +208,7 @@ pub fn list_tail_test() {
 pub fn improper_list_test() {
   "[1,..2]"
   |> exec()
-  |> should.equal(Error(runner.IncorrectTerm("List", I(2))))
+  |> should.equal(Error(r.IncorrectTerm("List", I(2))))
 }
 
 pub fn prelude_creation_test() {
@@ -252,7 +253,7 @@ pub fn case_test() {
     False -> \"no\"
   }"
   |> exec()
-  |> should.equal(Error(runner.NoMatch([R("Nil", [])])))
+  |> should.equal(Error(r.NoMatch([R("Nil", [])])))
 
   "case 23 {
     True -> \"yes\"
@@ -260,7 +261,7 @@ pub fn case_test() {
   }"
   |> exec()
   // TODO maybe should be incorrect term
-  |> should.equal(Error(runner.NoMatch([I(23)])))
+  |> should.equal(Error(r.NoMatch([I(23)])))
 }
 
 pub fn case_binding_test() {
@@ -336,15 +337,15 @@ pub fn function_test() {
 pub fn function_error_test() {
   "1()"
   |> exec()
-  |> should.equal(Error(runner.NotAFunction(I(1))))
+  |> should.equal(Error(r.NotAFunction(I(1))))
 
   "fn(){ 5 }(1, 2)"
   |> exec()
-  |> should.equal(Error(runner.IncorrectArity(0, 2)))
+  |> should.equal(Error(r.IncorrectArity(0, 2)))
 
   "fn(x){ 5 }(b: 1)"
   |> exec()
-  |> should.equal(Error(runner.MissingField("b")))
+  |> should.equal(Error(r.MissingField("b")))
 }
 
 pub fn top_function_test() {
@@ -375,19 +376,19 @@ pub fn top_function_test() {
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, initial)
   reason
-  |> should.equal(runner.MissingField("c"))
+  |> should.equal(r.MissingField("c"))
 
   let line = "foo(4)"
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, initial)
   reason
-  |> should.equal(runner.IncorrectArity(2, 1))
+  |> should.equal(r.IncorrectArity(2, 1))
 
   let line = "foo(4, 3, 2)"
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, initial)
   reason
-  |> should.equal(runner.IncorrectArity(2, 3))
+  |> should.equal(r.IncorrectArity(2, 3))
 }
 
 pub fn function_capture_test() {
@@ -428,7 +429,7 @@ pub fn bin_op_test() {
 pub fn bin_op_fail_test() {
   "1 + #()"
   |> exec()
-  |> should.equal(Error(runner.IncorrectTerm("Integer", T([]))))
+  |> should.equal(Error(r.IncorrectTerm("Integer", T([]))))
 }
 
 pub fn pipe_test() -> Nil {
@@ -482,17 +483,17 @@ pub fn assertion_test() {
 
   "let assert 2 = 1"
   |> exec()
-  |> should.equal(Error(runner.FailedAssignment(glance.PatternInt("2"), I(1))))
+  |> should.equal(Error(r.FailedAssignment(glance.PatternInt("2"), I(1))))
 }
 
 pub fn undefined_variable_test() {
   "x"
   |> exec()
-  |> should.equal(Error(runner.UndefinedVariable("x")))
+  |> should.equal(Error(r.UndefinedVariable("x")))
 }
 
 pub fn finish_on_assignment_test() {
-  let assert Error(runner.Finished(env)) =
+  let assert Error(r.Finished(env)) =
     "let x = 5"
     |> exec()
   dict.get(env, "x")
@@ -506,7 +507,7 @@ pub fn use_test() {
   // 3"
   // needs to be a function that calls x
   // |> exec_with([#("a", runner.Builtin(runner.Arity1(Ok)))])
-  // |> should.equal(Error(runner.Finished(dict.from_list([#("x", I(5))]))))
+  // |> should.equal(Error(r.Finished(dict.from_list([#("x", I(5))]))))
 
   // only callback
   "use <- fn(f){ f() }

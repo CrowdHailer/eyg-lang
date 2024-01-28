@@ -3,6 +3,7 @@ import gleam/option.{None, Some}
 import simplifile
 import glance as g
 import scintilla/value as v
+import scintilla/reason as r
 import repl/reader
 import repl/runner
 import gleeunit/should
@@ -48,7 +49,7 @@ pub fn import_aliased_module_test() {
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
-  |> should.equal(runner.UndefinedVariable("bool"))
+  |> should.equal(r.UndefinedVariable("bool"))
 }
 
 pub fn import_unqualified_module_test() {
@@ -72,7 +73,7 @@ pub fn import_unqualified_module_test() {
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
-  |> should.equal(runner.UndefinedVariable("and"))
+  |> should.equal(r.UndefinedVariable("and"))
 
   let line = "or(True, True)"
   let assert Ok(#(term, [])) = reader.parse(line)
@@ -147,12 +148,12 @@ pub fn named_record_fields_test() {
   let assert Ok(#(term, [])) = reader.parse("let x = Rec(b: 2.0, a: 1) x.c")
   let assert Error(reason) = runner.read(term, initial)
   reason
-  |> should.equal(runner.MissingField("c"))
+  |> should.equal(r.MissingField("c"))
 
   let assert Ok(#(term, [])) = reader.parse("\"\".c")
   let assert Error(reason) = runner.read(term, initial)
   reason
-  |> should.equal(runner.IncorrectTerm("Record", v.S("")))
+  |> should.equal(r.IncorrectTerm("Record", v.S("")))
 }
 
 pub fn constant_test() {

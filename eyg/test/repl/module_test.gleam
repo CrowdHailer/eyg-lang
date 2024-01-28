@@ -4,6 +4,7 @@ import gleam/option.{None, Some}
 import gleam/string
 import glance
 import scintilla/value.{Closure, F, I, L, R, S, T}
+import scintilla/reason as r
 import repl/runner
 import repl/reader
 import plinth/javascript/console
@@ -48,19 +49,19 @@ pub fn module_records_test() {
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
-  |> should.equal(runner.MissingField("c"))
+  |> should.equal(r.MissingField("c"))
 
   let line = "foo.Foo(2, \"\", 4)"
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
-  |> should.equal(runner.IncorrectArity(2, 3))
+  |> should.equal(r.IncorrectArity(2, 3))
 
   let line = "foo.Foo(2)"
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
-  |> should.equal(runner.IncorrectArity(2, 1))
+  |> should.equal(r.IncorrectArity(2, 1))
 }
 
 pub fn module_record_override_test() {
@@ -96,6 +97,6 @@ pub fn module_record_override_test() {
   let assert Ok(#(term, [])) = reader.parse(line)
   let assert Error(reason) = runner.read(term, state)
   reason
-  |> should.equal(runner.MissingField("c"))
+  |> should.equal(r.MissingField("c"))
 }
 // TODO test unlabelled

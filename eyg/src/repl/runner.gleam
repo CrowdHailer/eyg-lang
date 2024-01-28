@@ -8,6 +8,7 @@ import gleam/result.{try}
 import gleam/string
 import glance as g
 import scintilla/value.{type Value} as v
+import scintilla/reason as r
 import repl/reader
 
 pub fn prelude() {
@@ -45,7 +46,7 @@ pub fn read(term, state) {
           Ok(#(None, #(scope, modules)))
         }
         Error(Nil) -> {
-          Error(UnknownModule(module))
+          Error(r.UnknownModule(module))
         }
       }
     }
@@ -81,7 +82,7 @@ pub fn read(term, state) {
     reader.Statements(statements) -> {
       case exec(statements, scope) {
         Ok(value) -> Ok(#(Some(value), state))
-        Error(Finished(scope)) -> {
+        Error(r.Finished(scope)) -> {
           let state = #(scope, modules)
           Ok(#(None, state))
         }
@@ -89,25 +90,6 @@ pub fn read(term, state) {
       }
     }
   }
-}
-
-// Need builtins to be string  based before we can extract
-
-// move to reason.gleam after moving out value.gleam
-pub type Reason {
-  NotAFunction(Value)
-  IncorrectArity(expected: Int, given: Int)
-  UndefinedVariable(String)
-  Panic(message: Option(String))
-  Todo(message: Option(String))
-  OutOfRange(size: Int, given: Int)
-  NoMatch(values: List(Value))
-  IncorrectTerm(expected: String, got: Value)
-  FailedAssignment(pattern: g.Pattern, value: Value)
-  MissingField(String)
-  Finished(Dict(String, Value))
-  UnknownModule(String)
-  Unsupported(String)
 }
 
 pub fn exec(statements: List(g.Statement), env) {
@@ -119,7 +101,7 @@ pub fn exec(statements: List(g.Statement), env) {
   do_exec(statement, env, ks)
 }
 
-fn do_exec(statement, env, ks) -> Result(Value, Reason) {
+fn do_exec(statement, env, ks) {
   case statement {
     g.Expression(exp) -> loop(next(eval(exp, env, ks)))
     // We do the same
@@ -165,7 +147,7 @@ pub type Scope =
 
 pub type Next {
   Loop(Control, Scope, List(K))
-  Break(Result(Value, #(Reason, Scope, List(K))))
+  Break(Result(Value, #(r.Reason, Scope, List(K))))
 }
 
 pub fn step(c, env, ks) {
@@ -199,11 +181,7 @@ fn push_statements(statements, env, ks) {
   }
 }
 
-fn eval(
-  exp,
-  env,
-  ks,
-) -> Result(#(Control, Scope, List(K)), #(Reason, Scope, List(K))) {
+fn eval(exp, env, ks) {
   case exp {
     g.Int(raw) -> {
       let assert Ok(v) = int.parse(raw)
@@ -217,7 +195,7 @@ fn eval(
     g.Variable(var) -> {
       case dict.get(env, var) {
         Ok(value) -> Ok(#(V(value), env, ks))
-        Error(Nil) -> Error(UndefinedVariable(var))
+        Error(Nil) -> Error(r.UndefinedVariable(var))
       }
     }
     g.NegateInt(exp) ->
@@ -225,8 +203,8 @@ fn eval(
     g.NegateBool(exp) ->
       Ok(#(E(exp), env, [Apply(v.NegateBool, None, [], []), ..ks]))
     g.Block(statements) -> push_statements(statements, env, ks)
-    g.Panic(message) -> Error(Panic(message))
-    g.Todo(message) -> Error(Todo(message))
+    g.Panic(message) -> Error(r.Panic(message))
+    g.Todo(message) -> Error(r.Todo(message))
     g.Tuple([]) -> Ok(#(V(v.T([])), env, ks))
     g.Tuple([first, ..elements]) ->
       Ok(#(E(first), env, [BuildTuple(elements, []), ..ks]))
@@ -285,21 +263,22 @@ fn assign_pattern(env, pattern, value) {
     g.PatternInt(i), v.I(expected) ->
       case int.to_string(expected) == i {
         True -> Ok(env)
-        False -> Error(FailedAssignment(pattern, value))
+        False -> Error(r.FailedAssignment(pattern, value))
       }
-    g.PatternInt(_), unexpected -> Error(IncorrectTerm("Int", unexpected))
+    g.PatternInt(_), unexpected -> Error(r.IncorrectTerm("Int", unexpected))
     g.PatternFloat(i), v.F(given) ->
       case float.to_string(given) == i {
         True -> Ok(env)
-        False -> Error(FailedAssignment(pattern, value))
+        False -> Error(r.FailedAssignment(pattern, value))
       }
-    g.PatternFloat(_), unexpected -> Error(IncorrectTerm("Float", unexpected))
+    g.PatternFloat(_), unexpected -> Error(r.IncorrectTerm("Float", unexpected))
     g.PatternString(i), v.S(given) ->
       case given == i {
         True -> Ok(env)
-        False -> Error(FailedAssignment(pattern, value))
+        False -> Error(r.FailedAssignment(pattern, value))
       }
-    g.PatternString(_), unexpected -> Error(IncorrectTerm("String", unexpected))
+    g.PatternString(_), unexpected ->
+      Error(r.IncorrectTerm("String", unexpected))
     g.PatternConcatenate(left, assignment), v.S(given) ->
       case string.split_once(given, left) {
         Ok(#("", rest)) ->
@@ -307,10 +286,10 @@ fn assign_pattern(env, pattern, value) {
             g.Discarded(_) -> Ok(env)
             g.Named(name) -> Ok(dict.insert(env, name, v.S(rest)))
           }
-        Error(Nil) -> Error(FailedAssignment(pattern, value))
+        Error(Nil) -> Error(r.FailedAssignment(pattern, value))
       }
     g.PatternConcatenate(_, _), unexpected ->
-      Error(IncorrectTerm("String", unexpected))
+      Error(r.IncorrectTerm("String", unexpected))
     g.PatternTuple(patterns), v.T(elements) -> {
       case list.strict_zip(patterns, elements) {
         // TODO make a do match function
@@ -319,20 +298,20 @@ fn assign_pattern(env, pattern, value) {
             let #(p, v) = pair
             assign_pattern(env, p, v)
           })
-        Error(_) -> Error(FailedAssignment(pattern, value))
+        Error(_) -> Error(r.FailedAssignment(pattern, value))
       }
     }
-    g.PatternTuple(_), unexpected -> Error(IncorrectTerm("Tuple", unexpected))
+    g.PatternTuple(_), unexpected -> Error(r.IncorrectTerm("Tuple", unexpected))
     g.PatternList(patterns, tail), v.L(values) -> {
       use #(env, remaining) <- try(match_elements(env, patterns, values))
       case tail, remaining {
         Some(p), remaining -> assign_pattern(env, p, v.L(remaining))
         None, [] -> Ok(env)
-        _, _ -> Error(IncorrectTerm("Empty list", v.L(remaining)))
+        _, _ -> Error(r.IncorrectTerm("Empty list", v.L(remaining)))
       }
     }
     g.PatternList(patterns, tail), unexpected ->
-      Error(IncorrectTerm("List", unexpected))
+      Error(r.IncorrectTerm("List", unexpected))
     // List zip with leftovrs
     g.PatternConstructor(None, constuctor, args, False), v.R(name, fields) -> {
       // TODO extend with module
@@ -345,14 +324,14 @@ fn assign_pattern(env, pattern, value) {
                 assign_pattern(env, p, value)
               })
             Error(_) ->
-              Error(IncorrectArity(list.length(args), list.length(fields)))
+              Error(r.IncorrectArity(list.length(args), list.length(fields)))
           }
-        False -> Error(FailedAssignment(pattern, value))
+        False -> Error(r.FailedAssignment(pattern, value))
       })
       Ok(env)
     }
     g.PatternConstructor(None, _, _, False), unexpected ->
-      Error(IncorrectTerm("Custom Type", unexpected))
+      Error(r.IncorrectTerm("Custom Type", unexpected))
     g.PatternBitString(_segments), _ -> {
       io.debug(#("unsupported pat", pattern))
       panic
@@ -373,7 +352,7 @@ fn match_elements(env, patterns, values) {
       use env <- try(assign_pattern(env, p, v))
       match_elements(env, patterns, values)
     }
-    [p, ..], [] -> Error(FailedAssignment(p, v.L([])))
+    [p, ..], [] -> Error(r.FailedAssignment(p, v.L([])))
   }
 }
 
@@ -383,7 +362,7 @@ fn apply(value, env, k, ks) {
       use env <- try(assign_pattern(env, pattern, value))
       case ks {
         [Continue(statements), ..ks] -> push_statements(statements, env, ks)
-        [] -> Error(Finished(env))
+        [] -> Error(r.Finished(env))
       }
     }
     Args([]) -> {
@@ -459,7 +438,7 @@ fn apply(value, env, k, ks) {
       use elements <- try(as_tuple(value))
       use element <- try(
         list.at(elements, index)
-        |> result.replace_error(OutOfRange(list.length(elements), index)),
+        |> result.replace_error(r.OutOfRange(list.length(elements), index)),
       )
       Ok(#(V(element), env, ks))
     }
@@ -481,7 +460,7 @@ fn apply(value, env, k, ks) {
         v.R(_, fields) -> {
           find_field(fields, field)
         }
-        other -> Error(IncorrectTerm("Record", other))
+        other -> Error(r.IncorrectTerm("Record", other))
       })
       Ok(#(V(value), env, ks))
     }
@@ -529,7 +508,7 @@ fn apply(value, env, k, ks) {
         list.find_map(clause.patterns, fn(patterns) {
           use bindings <- try(
             list.strict_zip(patterns, values)
-            |> result.replace_error(IncorrectArity(
+            |> result.replace_error(r.IncorrectArity(
               list.length(patterns),
               list.length(values),
             )),
@@ -544,7 +523,7 @@ fn apply(value, env, k, ks) {
         })
       })
       // TODO think about having proper error from inside match
-      |> result.replace_error(NoMatch(values))
+      |> result.replace_error(r.NoMatch(values))
     }
     Continue(statements) -> push_statements(statements, env, ks)
     _ -> {
@@ -594,7 +573,7 @@ fn access_module(module: g.Module, field) {
 
 fn do_pop_parameter(params, label: String, acc) {
   case params {
-    [] -> Error(MissingField(label))
+    [] -> Error(r.MissingField(label))
     [g.FunctionParameter(Some(l), name, _type), ..params] if l == label ->
       Ok(#(name, list.append(list.reverse(acc), params)))
     [param, ..params] -> do_pop_parameter(params, label, [param, ..acc])
@@ -619,7 +598,7 @@ fn pair_args(params: List(g.FunctionParameter), args: List(g.Field(Value)), env)
           }
           pair_args(params, args, env)
         }
-        [] -> Error(IncorrectArity(0, 0))
+        [] -> Error(r.IncorrectArity(0, 0))
       }
     }
     [g.Field(Some(label), value), ..args] -> {
@@ -634,9 +613,8 @@ fn pair_args(params: List(g.FunctionParameter), args: List(g.Field(Value)), env)
   }
 }
 
-fn call(func, args, env, ks) -> Result(#(Control, Scope, List(K)), Reason) {
+fn call(func, args, env, ks) {
   case func, args {
-    // TODO test multistatement body
     v.Closure(params, body, captured), args -> {
       // as long as closure keeps returning itself until full of arguments
       let names =
@@ -661,7 +639,7 @@ fn call(func, args, env, ks) -> Result(#(Control, Scope, List(K)), Reason) {
                 }
 
                 #(_k, g.Field(Some(label), _value)) ->
-                  Error(MissingField(label))
+                  Error(r.MissingField(label))
               }
             }),
           )
@@ -669,7 +647,7 @@ fn call(func, args, env, ks) -> Result(#(Control, Scope, List(K)), Reason) {
         }
         // TODO why is this not Nil or with values
         Error(list.LengthMismatch) ->
-          Error(IncorrectArity(list.length(names), list.length(args)))
+          Error(r.IncorrectArity(list.length(names), list.length(args)))
       }
     }
     // CAn we always use function parameters
@@ -684,14 +662,14 @@ fn call(func, args, env, ks) -> Result(#(Control, Scope, List(K)), Reason) {
           push_statements(body, env, ks)
         }
         Ok(#(_, _remaining)) ->
-          Error(IncorrectArity(list.length(params), list.length(args)))
+          Error(r.IncorrectArity(list.length(params), list.length(args)))
         // Looses size information in pairing
-        Error(IncorrectArity(0, 0)) ->
-          Error(IncorrectArity(list.length(params), list.length(args)))
+        Error(r.IncorrectArity(0, 0)) ->
+          Error(r.IncorrectArity(list.length(params), list.length(args)))
 
         Error(reason) -> Error(reason)
       }
-      // Error(IncorrectArity(list.length(names), list.length(args)))
+      // Error(r.IncorrectArity(list.length(names), list.length(args)))
     }
     v.Captured(f, left, right), args -> {
       // is named args supported for capture
@@ -705,8 +683,8 @@ fn call(func, args, env, ks) -> Result(#(Control, Scope, List(K)), Reason) {
     v.Constructor(name, fields), args -> {
       case constuct_fields(fields, args, []) {
         Ok(fields) -> Ok(#(V(v.R(name, fields)), env, ks))
-        Error(IncorrectArity(_, _)) ->
-          Error(IncorrectArity(list.length(fields), list.length(args)))
+        Error(r.IncorrectArity(_, _)) ->
+          Error(r.IncorrectArity(list.length(fields), list.length(args)))
         Error(reason) -> Error(reason)
       }
     }
@@ -724,7 +702,7 @@ fn call(func, args, env, ks) -> Result(#(Control, Scope, List(K)), Reason) {
       let assert g.Field(None, b) = b
       impl(a, b, env, ks)
     }
-    other, _ -> Error(NotAFunction(other))
+    other, _ -> Error(r.NotAFunction(other))
   }
 }
 
@@ -742,10 +720,10 @@ fn constuct_fields(fields, args, acc) {
           let acc = [g.Field(Some(label), value), ..acc]
           constuct_fields(fields, args, acc)
         }
-        Error(Nil) -> Error(MissingField(for_error))
+        Error(Nil) -> Error(r.MissingField(for_error))
       }
     }
-    _, _ -> Error(IncorrectArity(0, 0))
+    _, _ -> Error(r.IncorrectArity(0, 0))
   }
 }
 
@@ -762,7 +740,7 @@ fn find_field(fields, label) {
   case fields {
     [g.Field(Some(l), value), ..] if l == label -> Ok(value)
     [_, ..fields] -> find_field(fields, label)
-    [] -> Error(MissingField(label))
+    [] -> Error(r.MissingField(label))
   }
 }
 
@@ -770,7 +748,7 @@ fn negate_number(in, env, ks) {
   case in {
     v.I(v) -> Ok(#(V(v.I(-v)), env, ks))
     v.F(v) -> Ok(#(V(v.F(-1.0 *. v)), env, ks))
-    _ -> Error(IncorrectTerm("Integer or Float", in))
+    _ -> Error(r.IncorrectTerm("Integer or Float", in))
   }
 }
 
@@ -892,14 +870,14 @@ fn bin_impl(name) {
 fn as_integer(value) {
   case value {
     v.I(value) -> Ok(value)
-    _ -> Error(IncorrectTerm("Integer", value))
+    _ -> Error(r.IncorrectTerm("Integer", value))
   }
 }
 
 fn as_float(value) {
   case value {
     v.F(value) -> Ok(value)
-    _ -> Error(IncorrectTerm("Float", value))
+    _ -> Error(r.IncorrectTerm("Float", value))
   }
 }
 
@@ -907,7 +885,7 @@ fn as_boolean(value) {
   case value {
     v.R("True", []) -> Ok(True)
     v.R("False", []) -> Ok(False)
-    _ -> Error(IncorrectTerm("Boolean", value))
+    _ -> Error(r.IncorrectTerm("Boolean", value))
   }
 }
 
@@ -921,21 +899,21 @@ fn from_bool(raw) {
 fn as_string(value) {
   case value {
     v.S(value) -> Ok(value)
-    _ -> Error(IncorrectTerm("String", value))
+    _ -> Error(r.IncorrectTerm("String", value))
   }
 }
 
 fn as_tuple(value) {
   case value {
     v.T(elements) -> Ok(elements)
-    _ -> Error(IncorrectTerm("Tuple", value))
+    _ -> Error(r.IncorrectTerm("Tuple", value))
   }
 }
 
 fn as_list(value) {
   case value {
     v.L(elements) -> Ok(elements)
-    _ -> Error(IncorrectTerm("List", value))
+    _ -> Error(r.IncorrectTerm("List", value))
   }
 }
 

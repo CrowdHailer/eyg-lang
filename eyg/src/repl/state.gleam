@@ -13,6 +13,7 @@ import plinth/browser/element
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 import facilities/trafiklab/realtidsinformation_4 as rt4
+import scintilla/reason as r
 import repl/reader
 import repl/runner
 
@@ -20,7 +21,7 @@ pub type State {
   State(
     scope: runner.State,
     statement: String,
-    execute_error: Option(runner.Reason),
+    execute_error: Option(r.Reason),
     history: List(#(String, String)),
   )
 }
