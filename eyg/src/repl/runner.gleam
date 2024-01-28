@@ -63,10 +63,14 @@ pub fn read(term, state) {
       Ok(#(None, state))
     }
     reader.Constant(name, exp) -> {
-      use value <- try(do_eval(exp, scope, []))
-      let scope = dict.insert(scope, name, value)
-      let state = #(scope, modules)
-      Ok(#(Some(value), state))
+      case loop(next(eval(exp, scope, []))) {
+        Ok(value) -> {
+          let scope = dict.insert(scope, name, value)
+          let state = #(scope, modules)
+          Ok(#(Some(value), state))
+        }
+        Error(#(reason, _, _)) -> Error(reason)
+      }
     }
     reader.Function(name, parameters, body) -> {
       let value = v.NamedClosure(parameters, body, scope)
@@ -106,7 +110,7 @@ pub type Reason {
   Unsupported(String)
 }
 
-pub fn exec(statements: List(g.Statement), env) -> Result(_, Reason) {
+pub fn exec(statements: List(g.Statement), env) {
   let [statement, ..rest] = statements
   let ks = case rest {
     [] -> []
@@ -115,13 +119,13 @@ pub fn exec(statements: List(g.Statement), env) -> Result(_, Reason) {
   do_exec(statement, env, ks)
 }
 
-fn do_exec(statement, env, ks) {
+fn do_exec(statement, env, ks) -> Result(Value, Reason) {
   case statement {
-    g.Expression(exp) -> do_eval(exp, env, ks)
+    g.Expression(exp) -> loop(next(eval(exp, env, ks)))
     // We do the same
     g.Assignment(_kind, pattern, _annotation, exp) -> {
       let ks = [Assign(pattern), ..ks]
-      do_eval(exp, env, ks)
+      loop(next(eval(exp, env, ks)))
     }
     // TODO why no patterns in fns but there are patterns in use?
     g.Use(patterns, func) -> {
@@ -137,73 +141,116 @@ fn do_exec(statement, env, ks) {
         other -> #(other, [last_arg])
       }
       let ks = [Args(args), ..ks]
-      do_eval(exp, env, ks)
+      loop(next(eval(exp, env, ks)))
+    }
+  }
+  |> result.map_error(fn(e: #(_, _, _)) { e.0 })
+}
+
+// TODO remove to runner
+pub fn loop(next) {
+  case next {
+    Loop(c, e, k) -> loop(step(c, e, k))
+    Break(result) -> result
+  }
+}
+
+pub type Control {
+  E(g.Expression)
+  V(Value)
+}
+
+pub type Scope =
+  Dict(String, Value)
+
+pub type Next {
+  Loop(Control, Scope, List(K))
+  Break(Result(Value, #(Reason, Scope, List(K))))
+}
+
+pub fn step(c, env, ks) {
+  case c, ks {
+    E(exp), ks -> next(eval(exp, env, ks))
+    V(value), [] -> Break(Ok(value))
+    V(value), [k, ..rest] -> next(apply(value, env, k, rest))
+  }
+}
+
+pub fn next(return) {
+  case return {
+    Ok(#(c, e, k)) -> Loop(c, e, k)
+    Error(info) -> Break(Error(info))
+  }
+}
+
+fn push_statements(statements, env, ks) {
+  // Has to be at least one statement
+  let assert [statement, ..rest] = statements
+  let ks = case rest {
+    [] -> ks
+    _ -> [Continue(rest), ..ks]
+  }
+  case statement {
+    g.Expression(exp) -> Ok(#(E(exp), env, ks))
+    g.Assignment(_kind, pattern, _annotation, exp) -> {
+      let ks = [Assign(pattern), ..ks]
+      Ok(#(E(exp), env, ks))
     }
   }
 }
 
-fn do_eval(exp, env, ks) {
+fn eval(
+  exp,
+  env,
+  ks,
+) -> Result(#(Control, Scope, List(K)), #(Reason, Scope, List(K))) {
   case exp {
     g.Int(raw) -> {
       let assert Ok(v) = int.parse(raw)
-      apply(v.I(v), env, ks)
+      Ok(#(V(v.I(v)), env, ks))
     }
     g.Float(raw) -> {
       let assert Ok(v) = float.parse(raw)
-      apply(v.F(v), env, ks)
+      Ok(#(V(v.F(v)), env, ks))
     }
-    g.String(raw) -> apply(v.S(raw), env, ks)
+    g.String(raw) -> Ok(#(V(v.S(raw)), env, ks))
     g.Variable(var) -> {
       case dict.get(env, var) {
-        Ok(value) -> apply(value, env, ks)
+        Ok(value) -> Ok(#(V(value), env, ks))
         Error(Nil) -> Error(UndefinedVariable(var))
       }
     }
     g.NegateInt(exp) ->
-      do_eval(exp, env, [Apply(v.NegateInt, None, [], []), ..ks])
+      Ok(#(E(exp), env, [Apply(v.NegateInt, None, [], []), ..ks]))
     g.NegateBool(exp) ->
-      do_eval(exp, env, [Apply(v.NegateBool, None, [], []), ..ks])
-    // Has to be at least one statement
-    // exec block fn
-    g.Block([statement, ..rest]) -> {
-      let ks = case rest {
-        [] -> ks
-        _ -> [Continue(rest), ..ks]
-      }
-      do_exec(statement, env, ks)
-    }
+      Ok(#(E(exp), env, [Apply(v.NegateBool, None, [], []), ..ks]))
+    g.Block(statements) -> push_statements(statements, env, ks)
     g.Panic(message) -> Error(Panic(message))
     g.Todo(message) -> Error(Todo(message))
-    g.Tuple([]) -> apply(v.T([]), env, ks)
+    g.Tuple([]) -> Ok(#(V(v.T([])), env, ks))
     g.Tuple([first, ..elements]) ->
-      do_eval(first, env, [BuildTuple(elements, []), ..ks])
-    g.TupleIndex(exp, index) -> do_eval(exp, env, [AccessIndex(index), ..ks])
-    g.List([], None) -> apply(v.L([]), env, ks)
-    g.List([], Some(exp)) -> do_eval(exp, env, [Append([]), ..ks])
+      Ok(#(E(first), env, [BuildTuple(elements, []), ..ks]))
+    g.TupleIndex(exp, index) -> Ok(#(E(exp), env, [AccessIndex(index), ..ks]))
+    g.List([], None) -> Ok(#(V(v.L([])), env, ks))
+    g.List([], Some(exp)) -> Ok(#(E(exp), env, [Append([]), ..ks]))
     g.List([first, ..elements], tail) ->
-      do_eval(first, env, [BuildList(elements, [], tail), ..ks])
+      Ok(#(E(first), env, [BuildList(elements, [], tail), ..ks]))
     g.FieldAccess(container, label) ->
-      do_eval(container, env, [Access(label), ..ks])
-    // g.RecordUpdate(mod, constructor, original, [#(label, exp), ..rest]) -> {
-    //   let assert v.R("", fields) = original
-    //   let ks = [Update(constructor, fields, label, rest, []), ..ks]
-    //   do_eval(exp, env, ks)
-    // }
+      Ok(#(E(container), env, [Access(label), ..ks]))
     g.RecordUpdate(mod, constructor, exp, fields) -> {
-      do_eval(exp, env, [RecordUpdate(mod, constructor, fields), ..ks])
+      Ok(#(E(exp), env, [RecordUpdate(mod, constructor, fields), ..ks]))
     }
     g.Case([first, ..subjects], clauses) -> {
       let ks = [BuildSubjects(subjects, [], clauses), ..ks]
-      do_eval(first, env, ks)
+      Ok(#(E(first), env, ks))
     }
-    g.Fn(args, _annotation, body) -> apply(v.Closure(args, body, env), env, ks)
+    g.Fn(args, _annotation, body) ->
+      Ok(#(V(v.Closure(args, body, env)), env, ks))
     g.FnCapture(None, f, left, right) -> {
       let ks = [CaptureArgs(left, right), ..ks]
-      do_eval(f, env, ks)
+      Ok(#(E(f), env, ks))
     }
-    // TODO real arguments
-    // TODO handle labeled arguments
-    g.Call(function, args) -> do_eval(function, env, [Args(args), ..ks])
+    g.Call(function, args) -> Ok(#(E(function), env, [Args(args), ..ks]))
     // g.BitString(segments) ->
     g.BinaryOperator(name, left, right) -> {
       let right = case name {
@@ -217,13 +264,14 @@ fn do_eval(exp, env, ks) {
       }
       let value = v.BinaryOperator(name)
       let ks = [Args([g.Field(None, left), g.Field(None, right)]), ..ks]
-      apply(value, env, ks)
+      Ok(#(V(value), env, ks))
     }
     _ -> {
       io.debug(#("unsupported ", exp))
       todo as "not supported"
     }
   }
+  |> result.map_error(fn(reason) { #(reason, env, ks) })
 }
 
 // Think it makes sense to have bind/match in value.gleam
@@ -329,29 +377,23 @@ fn match_elements(env, patterns, values) {
   }
 }
 
-fn apply(value, env, ks) {
-  case ks {
-    [] -> Ok(value)
-    [Assign(pattern), Continue([statement, ..rest]), ..ks] -> {
-      let ks = case rest {
-        [] -> ks
-        _ -> [Continue(rest), ..ks]
+fn apply(value, env, k, ks) {
+  case k {
+    Assign(pattern) -> {
+      use env <- try(assign_pattern(env, pattern, value))
+      case ks {
+        [Continue(statements), ..ks] -> push_statements(statements, env, ks)
+        [] -> Error(Finished(env))
       }
-      use env <- try(assign_pattern(env, pattern, value))
-      do_exec(statement, env, ks)
     }
-    [Assign(pattern), ..ks] -> {
-      use env <- try(assign_pattern(env, pattern, value))
-      Error(Finished(env))
-    }
-    [Args([]), ..ks] -> {
+    Args([]) -> {
       call(value, [], env, ks)
     }
-    [Args([g.Field(label, exp), ..rest]), ..ks] -> {
+    Args([g.Field(label, exp), ..rest]) -> {
       let ks = [Apply(value, label, rest, []), ..ks]
-      do_eval(exp, env, ks)
+      Ok(#(E(exp), env, ks))
     }
-    [Apply(func, label, remaining, evaluated), ..ks] -> {
+    Apply(func, label, remaining, evaluated) -> {
       let evaluated = list.reverse([g.Field(label, value), ..evaluated])
       case remaining {
         [] -> {
@@ -359,79 +401,81 @@ fn apply(value, env, ks) {
         }
         [g.Field(label, exp), ..remaining] -> {
           let ks = [Apply(func, label, remaining, evaluated), ..ks]
-          do_eval(exp, env, ks)
+          Ok(#(E(exp), env, ks))
         }
       }
     }
-    [CaptureArgs([first, ..before], after), ..ks] -> {
+    CaptureArgs([first, ..before], after) -> {
       let ks = [BuildBefore(value, before, [], after), ..ks]
       let g.Field(None, first) = first
-      do_eval(first, env, ks)
+      Ok(#(E(first), env, ks))
     }
-    [CaptureArgs([], [first, ..after]), ..ks] -> {
+    CaptureArgs([], [first, ..after]) -> {
       let ks = [BuildAfter(value, [], after, []), ..ks]
       let g.Field(None, first) = first
-      do_eval(first, env, ks)
+      Ok(#(E(first), env, ks))
     }
-    [CaptureArgs([], []), ..ks] -> {
+    CaptureArgs([], []) -> {
       // No need to create a capture value as unwrapped at call time
-      apply(value, env, ks)
+      Ok(#(V(value), env, ks))
     }
-    [BuildBefore(f, [first, ..expressions], values, after), ..ks] -> {
+    BuildBefore(f, [first, ..expressions], values, after) -> {
       let values = [value, ..values]
       let ks = [BuildBefore(f, expressions, values, after), ..ks]
       let g.Field(None, first) = first
-      do_eval(first, env, ks)
+      Ok(#(E(first), env, ks))
     }
-    [BuildBefore(f, [], values, after), ..ks] -> {
+    BuildBefore(f, [], values, after) -> {
       let values = [value, ..values]
       case after {
         [] -> {
           let before = list.reverse(values)
-          apply(v.Captured(f, before, []), env, ks)
+          Ok(#(V(v.Captured(f, before, [])), env, ks))
         }
         [first, ..expressions] -> {
           let ks = [BuildAfter(f, values, expressions, []), ..ks]
           let g.Field(None, first) = first
-          do_eval(first, env, ks)
+          Ok(#(E(first), env, ks))
         }
       }
     }
-    [BuildAfter(f, before, [first, ..expressions], values), ..ks] -> {
+    BuildAfter(f, before, [first, ..expressions], values) -> {
       let values = [value, ..values]
       let ks = [BuildAfter(f, before, expressions, values), ..ks]
       let g.Field(None, first) = first
-      do_eval(first, env, ks)
+      Ok(#(E(first), env, ks))
     }
-    [BuildAfter(f, before, [], values), ..ks] -> {
+    BuildAfter(f, before, [], values) -> {
       let before = list.reverse(before)
       let after = list.reverse([value, ..values])
-      apply(v.Captured(f, before, after), env, ks)
+      Ok(#(V(v.Captured(f, before, after)), env, ks))
     }
 
-    [BuildTuple([], gathered), ..ks] ->
-      apply(v.T(list.reverse([value, ..gathered])), env, ks)
-    [BuildTuple([next, ..remaining], gathered), ..ks] ->
-      do_eval(next, env, [BuildTuple(remaining, [value, ..gathered]), ..ks])
-    [AccessIndex(index), ..ks] -> {
+    BuildTuple([], gathered) ->
+      Ok(#(V(v.T(list.reverse([value, ..gathered]))), env, ks))
+    BuildTuple([next, ..remaining], gathered) ->
+      Ok(#(E(next), env, [BuildTuple(remaining, [value, ..gathered]), ..ks]))
+    AccessIndex(index) -> {
       use elements <- try(as_tuple(value))
       use element <- try(
         list.at(elements, index)
         |> result.replace_error(OutOfRange(list.length(elements), index)),
       )
-      apply(element, env, ks)
+      Ok(#(V(element), env, ks))
     }
-    [BuildList([], gathered, None), ..ks] ->
-      apply(v.L(list.reverse([value, ..gathered])), env, ks)
-    [BuildList([], gathered, Some(tail)), ..ks] ->
-      do_eval(tail, env, [Append([value, ..gathered]), ..ks])
-    [BuildList([next, ..remaining], gathered, tail), ..ks] ->
-      do_eval(next, env, [BuildList(remaining, [value, ..gathered], tail), ..ks])
-    [Append(gathered), ..ks] -> {
+    BuildList([], gathered, None) ->
+      Ok(#(V(v.L(list.reverse([value, ..gathered]))), env, ks))
+    BuildList([], gathered, Some(tail)) ->
+      Ok(#(E(tail), env, [Append([value, ..gathered]), ..ks]))
+    BuildList([next, ..remaining], gathered, tail) ->
+      Ok(
+        #(E(next), env, [BuildList(remaining, [value, ..gathered], tail), ..ks]),
+      )
+    Append(gathered) -> {
       use elements <- try(as_list(value))
-      apply(v.L(list.append(list.reverse(gathered), elements)), env, ks)
+      Ok(#(V(v.L(list.append(list.reverse(gathered), elements))), env, ks))
     }
-    [Access(field), ..ks] -> {
+    Access(field) -> {
       use value <- try(case value {
         v.Module(module) -> access_module(module, field)
         v.R(_, fields) -> {
@@ -439,23 +483,22 @@ fn apply(value, env, ks) {
         }
         other -> Error(IncorrectTerm("Record", other))
       })
-      apply(value, env, ks)
+      Ok(#(V(value), env, ks))
     }
-    [RecordUpdate(module, constructor, updates), ..ks] -> {
+    RecordUpdate(module, constructor, updates) -> {
       use original <- try(case value {
         // TODO module match
         v.R(c, fields) if c == constructor -> Ok(fields)
       })
-      // _ -> Error(IncorrectTerm(constructor,value))
       case updates {
         [#(label, exp), ..updates] -> {
           let ks = [Update(constructor, original, label, updates), ..ks]
-          do_eval(exp, env, ks)
+          Ok(#(E(exp), env, ks))
         }
         [] -> todo as "done update"
       }
     }
-    [Update(constructor, current, label, updates), ..ks] -> {
+    Update(constructor, current, label, updates) -> {
       // This doesn't error if one is misisng
       let current =
         list.map(current, fn(field) {
@@ -465,22 +508,22 @@ fn apply(value, env, ks) {
           }
         })
       case updates {
-        [] -> apply(v.R(constructor, current), env, ks)
+        [] -> Ok(#(V(v.R(constructor, current)), env, ks))
         [#(label, exp), ..updates] -> {
           let ks = [Update(constructor, current, label, updates), ..ks]
-          do_eval(exp, env, ks)
+          Ok(#(E(exp), env, ks))
         }
       }
     }
     // Should subjects also be non empty list
-    [BuildSubjects([next, ..expressions], values, clauses), ..ks] -> {
+    BuildSubjects([next, ..expressions], values, clauses) -> {
       let ks = [BuildSubjects(expressions, [value, ..values], clauses), ..ks]
-      do_eval(next, env, ks)
+      Ok(#(E(next), env, ks))
     }
 
     // TODO caring about module to match on.
     // TODO testing on guards
-    [BuildSubjects([], values, clauses), ..ks] -> {
+    BuildSubjects([], values, clauses) -> {
       let values = list.reverse([value, ..values])
       list.find_map(clauses, fn(clause) {
         list.find_map(clause.patterns, fn(patterns) {
@@ -497,24 +540,19 @@ fn apply(value, env, ks) {
               assign_pattern(env, pattern, value)
             }),
           )
-          do_eval(clause.body, env, ks)
+          Ok(#(E(clause.body), env, ks))
         })
       })
       // TODO think about having proper error from inside match
       |> result.replace_error(NoMatch(values))
     }
-    [Continue([statement, ..rest]), ..ks] -> {
-      let ks = case rest {
-        [] -> ks
-        _ -> [Continue(rest), ..ks]
-      }
-      do_exec(statement, env, ks)
-    }
+    Continue(statements) -> push_statements(statements, env, ks)
     _ -> {
-      io.debug(#(value, ks, "---------"))
+      io.debug(#(value, k, ks, "---------"))
       todo as "bad apply"
     }
   }
+  |> result.map_error(fn(reason) { #(reason, env, ks) })
 }
 
 fn access_module(module: g.Module, field) {
@@ -596,7 +634,7 @@ fn pair_args(params: List(g.FunctionParameter), args: List(g.Field(Value)), env)
   }
 }
 
-fn call(func, args, env, ks) {
+fn call(func, args, env, ks) -> Result(#(Control, Scope, List(K)), Reason) {
   case func, args {
     // TODO test multistatement body
     v.Closure(params, body, captured), args -> {
@@ -627,12 +665,7 @@ fn call(func, args, env, ks) {
               }
             }),
           )
-          let [statement, ..rest] = body
-          let ks = case rest {
-            [] -> ks
-            rest -> [Continue(rest), ..ks]
-          }
-          do_exec(statement, env, ks)
+          push_statements(body, env, ks)
         }
         // TODO why is this not Nil or with values
         Error(list.LengthMismatch) ->
@@ -648,12 +681,7 @@ fn call(func, args, env, ks) {
             list.fold(bindings, env, fn(env, new: #(_, _)) {
               dict.insert(env, new.0, new.1)
             })
-          let [statement, ..rest] = body
-          let ks = case rest {
-            [] -> []
-            rest -> [Continue(rest), ..ks]
-          }
-          do_exec(statement, env, ks)
+          push_statements(body, env, ks)
         }
         Ok(#(_, _remaining)) ->
           Error(IncorrectArity(list.length(params), list.length(args)))
@@ -676,7 +704,7 @@ fn call(func, args, env, ks) {
     // All unlabelled must go first
     v.Constructor(name, fields), args -> {
       case constuct_fields(fields, args, []) {
-        Ok(fields) -> apply(v.R(name, fields), env, ks)
+        Ok(fields) -> Ok(#(V(v.R(name, fields)), env, ks))
         Error(IncorrectArity(_, _)) ->
           Error(IncorrectArity(list.length(fields), list.length(args)))
         Error(reason) -> Error(reason)
@@ -740,15 +768,15 @@ fn find_field(fields, label) {
 
 fn negate_number(in, env, ks) {
   case in {
-    v.I(v) -> apply(v.I(-v), env, ks)
-    v.F(v) -> apply(v.F(-1.0 *. v), env, ks)
+    v.I(v) -> Ok(#(V(v.I(-v)), env, ks))
+    v.F(v) -> Ok(#(V(v.F(-1.0 *. v)), env, ks))
     _ -> Error(IncorrectTerm("Integer or Float", in))
   }
 }
 
 fn negate_bool(in, env, ks) {
   use in <- try(as_boolean(in))
-  apply(from_bool(!in), env, ks)
+  Ok(#(V(from_bool(!in)), env, ks))
 }
 
 fn bin_impl(name) {
@@ -756,54 +784,54 @@ fn bin_impl(name) {
     g.And -> fn(a, b, env, ks) {
       use a <- try(as_boolean(a))
       use b <- try(as_boolean(b))
-      apply(from_bool(a && b), env, ks)
+      Ok(#(V(from_bool(a && b)), env, ks))
     }
     g.Or -> fn(a, b, env, ks) {
       use a <- try(as_boolean(a))
       use b <- try(as_boolean(b))
-      apply(from_bool(a || b), env, ks)
+      Ok(#(V(from_bool(a || b)), env, ks))
     }
-    g.Eq -> fn(a, b, env, ks) { apply(from_bool(a == b), env, ks) }
-    g.NotEq -> fn(a, b, env, ks) { apply(from_bool(a != b), env, ks) }
+    g.Eq -> fn(a, b, env, ks) { Ok(#(V(from_bool(a == b)), env, ks)) }
+    g.NotEq -> fn(a, b, env, ks) { Ok(#(V(from_bool(a != b)), env, ks)) }
     g.LtInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(from_bool(a < b), env, ks)
+      Ok(#(V(from_bool(a < b)), env, ks))
     }
     g.LtEqInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(from_bool(a <= b), env, ks)
+      Ok(#(V(from_bool(a <= b)), env, ks))
     }
     g.LtFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(from_bool(a <. b), env, ks)
+      Ok(#(V(from_bool(a <. b)), env, ks))
     }
     g.LtEqFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(from_bool(a <=. b), env, ks)
+      Ok(#(V(from_bool(a <=. b)), env, ks))
     }
     g.GtEqInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(from_bool(a >= b), env, ks)
+      Ok(#(V(from_bool(a >= b)), env, ks))
     }
     g.GtInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(from_bool(a > b), env, ks)
+      Ok(#(V(from_bool(a > b)), env, ks))
     }
     g.GtEqFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(from_bool(a >=. b), env, ks)
+      Ok(#(V(from_bool(a >=. b)), env, ks))
     }
     g.GtFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(from_bool(a >. b), env, ks)
+      Ok(#(V(from_bool(a >. b)), env, ks))
     }
     g.Pipe -> fn(passed, f, env, ks) {
       call(f, [g.Field(None, passed)], env, ks)
@@ -811,52 +839,52 @@ fn bin_impl(name) {
     g.AddInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(v.I(a + b), env, ks)
+      Ok(#(V(v.I(a + b)), env, ks))
     }
     g.AddFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(v.F(a +. b), env, ks)
+      Ok(#(V(v.F(a +. b)), env, ks))
     }
     g.SubInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(v.I(a - b), env, ks)
+      Ok(#(V(v.I(a - b)), env, ks))
     }
     g.SubFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(v.F(a -. b), env, ks)
+      Ok(#(V(v.F(a -. b)), env, ks))
     }
     g.MultInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(v.I(a * b), env, ks)
+      Ok(#(V(v.I(a * b)), env, ks))
     }
     g.MultFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(v.F(a *. b), env, ks)
+      Ok(#(V(v.F(a *. b)), env, ks))
     }
     g.DivInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(v.I(a / b), env, ks)
+      Ok(#(V(v.I(a / b)), env, ks))
     }
     g.DivFloat -> fn(a, b, env, ks) {
       use a <- try(as_float(a))
       use b <- try(as_float(b))
-      apply(v.F(a /. b), env, ks)
+      Ok(#(V(v.F(a /. b)), env, ks))
     }
     g.RemainderInt -> fn(a, b, env, ks) {
       use a <- try(as_integer(a))
       use b <- try(as_integer(b))
-      apply(v.I(a % b), env, ks)
+      Ok(#(V(v.I(a % b)), env, ks))
     }
     g.Concatenate -> fn(a, b, env, ks) {
       use a <- try(as_string(a))
       use b <- try(as_string(b))
-      apply(v.S(a <> b), env, ks)
+      Ok(#(V(v.S(a <> b)), env, ks))
     }
   }
 }

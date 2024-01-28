@@ -390,8 +390,6 @@ pub fn top_function_test() {
   |> should.equal(runner.IncorrectArity(2, 3))
 }
 
-// TODO records
-
 pub fn function_capture_test() {
   "let x = fn(x, y, z) { x - y * 2 }
   x(_,3,2)(1)"

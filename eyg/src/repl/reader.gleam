@@ -6,7 +6,6 @@ import gleam/string
 import glexer
 import glexer/token as t
 import glance as g
-import repl/reason as r
 
 pub type Term {
   Import(module: String, binding: String, unqualified: List(#(String, String)))
