@@ -36,11 +36,8 @@ pub type Reason {
 }
 
 pub fn parse(lines) {
-  let ts = tokens(lines)
-  case ts {
-    [#(t.At, _), ..] -> {
-      Error(Unsupported("attributes"))
-    }
+  case tokens(lines) {
+    [#(t.At, _), ..] -> Error(Unsupported("attributes"))
     [#(t.Import, _), ..tokens] -> {
       let result = result.map_error(g.do_import_statement(tokens), ParseFail)
       use #(import_, tokens) <- result.try(result)
@@ -126,7 +123,7 @@ pub fn parse(lines) {
       let function = Function(f.name, f.parameters, f.body)
       Ok(#(function, tokens))
     }
-    _ -> {
+    ts -> {
       use #(statements, _, tokens) <- result.try(statements([], ts))
       Ok(#(Statements(statements), tokens))
     }
