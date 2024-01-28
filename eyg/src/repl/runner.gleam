@@ -12,17 +12,6 @@ import scintilla/reason as r
 import scintilla/cast
 import repl/reader
 
-pub fn prelude() {
-  // todo module for prelude namespacing
-  dict.from_list([
-    #("Nil", v.R("Nil", [])),
-    #("True", v.R("True", [])),
-    #("False", v.R("False", [])),
-    #("Ok", v.Constructor("Ok", [None])),
-    #("Error", v.Constructor("Error", [None])),
-  ])
-}
-
 pub type State =
   #(Dict(String, Value), Dict(String, g.Module))
 

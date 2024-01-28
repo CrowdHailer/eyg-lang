@@ -4,6 +4,7 @@ import simplifile
 import glance as g
 import scintilla/value as v
 import scintilla/reason as r
+import scintilla/prelude
 import repl/reader
 import repl/runner
 import gleeunit/should
@@ -15,7 +16,7 @@ pub fn import_module_test() {
   let assert Ok(module) = reader.module(content)
   let modules = dict.from_list([#("gleam/bool", module)])
 
-  let state = runner.init(runner.prelude(), modules)
+  let state = runner.init(prelude.scope(), modules)
 
   let line = "import gleam/bool"
   let assert Ok(#(term, [])) = reader.parse(line)
@@ -33,7 +34,7 @@ pub fn import_aliased_module_test() {
   let assert Ok(module) = reader.module(content)
   let modules = dict.from_list([#("gleam/bool", module)])
 
-  let state = runner.init(runner.prelude(), modules)
+  let state = runner.init(prelude.scope(), modules)
 
   let line = "import gleam/bool as b"
   let assert Ok(#(term, [])) = reader.parse(line)
@@ -57,7 +58,7 @@ pub fn import_unqualified_module_test() {
   let assert Ok(module) = reader.module(content)
   let modules = dict.from_list([#("gleam/bool", module)])
 
-  let state = runner.init(runner.prelude(), modules)
+  let state = runner.init(prelude.scope(), modules)
 
   let line = "import gleam/bool.{and as alltogether, or}"
   let assert Ok(#(term, [])) = reader.parse(line)

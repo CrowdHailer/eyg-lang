@@ -23,6 +23,8 @@ pub type Value {
   Module(g.Module)
 }
 
+pub const nil = R("Nil", [])
+
 pub const true = R("True", [])
 
 pub const false = R("False", [])

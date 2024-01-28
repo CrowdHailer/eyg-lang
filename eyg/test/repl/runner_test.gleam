@@ -4,6 +4,7 @@ import gleam/option.{None, Some}
 import glance
 import scintilla/value.{F, I, L, R, S, T}
 import scintilla/reason as r
+import scintilla/prelude
 import repl/reader
 import repl/runner
 import gleeunit/should
@@ -21,7 +22,7 @@ fn exec_with(src, env) {
 }
 
 fn exec(src) {
-  exec_with(src, runner.prelude())
+  exec_with(src, prelude.scope())
 }
 
 pub fn literal_test() {

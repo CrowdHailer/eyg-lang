@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option.{None, Some}
 import scintilla/value.{Closure, F, I, L, R, S, T}
 import scintilla/reason as r
+import scintilla/prelude
 import repl/reader
 import repl/runner
 import gleeunit/should
@@ -183,40 +184,40 @@ pub fn list_spread_pattern_test() {
 pub fn enum_match_test() {
   let assert Error(r.Finished(_env)) =
     "let True = True"
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 
   let assert Error(r.FailedAssignment(_, _)) =
     "let True = False"
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 
   let assert Error(r.IncorrectTerm("Custom Type", _)) =
     "let True = \"hey\""
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 }
 
 pub fn record_match_test() {
   let assert Error(r.Finished(_env)) =
     "let Ok(1) = Ok(1)"
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 
   let assert Error(r.Finished(env)) =
     "let Ok(x) = Ok(1)"
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 
   dict.get(env, "x")
   |> should.equal(Ok(I(1)))
 
   let assert Error(r.IncorrectArity(0, 1)) =
     "let Ok() = Ok(2)"
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 
   let assert Error(r.FailedAssignment(_, _)) =
     "let Ok(1) = Ok(2)"
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 
   let assert Error(r.IncorrectTerm("Custom Type", _)) =
     "let Ok(_) = \"hey\""
-    |> exec_with(runner.prelude())
+    |> exec_with(prelude.scope())
 }
 
 // TODO named args and spread

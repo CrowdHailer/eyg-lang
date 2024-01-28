@@ -14,6 +14,7 @@ import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 import facilities/trafiklab/realtidsinformation_4 as rt4
 import scintilla/reason as r
+import scintilla/prelude
 import repl/reader
 import repl/runner
 
@@ -30,7 +31,7 @@ pub fn init(_) {
   let assert Ok(m) = reader.module(bool_module)
   let state =
     State(
-      runner.init(runner.prelude(), dict.from_list([#("gleam/bool", m)])),
+      runner.init(prelude.scope(), dict.from_list([#("gleam/bool", m)])),
       "",
       None,
       [],
