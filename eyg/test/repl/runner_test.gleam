@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/dict
 import gleam/option.{None, Some}
+import gleam/result
 import glance
 import scintilla/value.{F, I, L, R, S, T}
 import scintilla/reason as r
@@ -13,7 +14,9 @@ fn exec_with(src, env) {
   // let env = dict.from_list(env)
   let parsed = reader.parse(src)
   case parsed {
-    Ok(#(reader.Statements(statements), [])) -> runner.exec(statements, env)
+    Ok(#(reader.Statements(statements), [])) ->
+      runner.exec(statements, env)
+      |> result.map_error(fn(e: #(_, _, _)) { e.0 })
     Error(reason) -> {
       io.debug(reason)
       panic("not parsed")

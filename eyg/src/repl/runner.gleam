@@ -71,7 +71,10 @@ pub fn read(term, state) {
       Ok(#(Some(value), state))
     }
     reader.Statements(statements) -> {
-      case exec(statements, scope) {
+      case
+        exec(statements, scope)
+        |> result.map_error(fn(e: #(_, _, _)) { e.0 })
+      {
         Ok(value) -> Ok(#(Some(value), state))
         Error(r.Finished(scope)) -> {
           let state = #(scope, modules)
@@ -83,13 +86,12 @@ pub fn read(term, state) {
   }
 }
 
-// TODO make eval available
+pub fn eval(exp, env) {
+  loop(state.next(state.eval(exp, env, [])))
+}
 
-// This should be a list of statements from glance
 pub fn exec(statements, env) {
   loop(state.next(state.push_statements(statements, env, [])))
-  // TODO remove this error
-  |> result.map_error(fn(e: #(_, _, _)) { e.0 })
 }
 
 pub fn loop(next) {
