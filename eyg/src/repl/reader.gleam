@@ -37,9 +37,9 @@ pub fn parse(lines) {
     //   slurp(module, [attribute, ..attributes], tokens)
     // }
     [#(t.Import, _), ..tokens] -> {
-      let result = g.do_import_statement([], tokens)
-      use #(g.Definition([], definition), tokens) <- result.try(result)
-      let g.Import(module, alias, _types, values) = definition
+      let result = g.do_import_statement(tokens)
+      use #(import_, tokens) <- result.try(result)
+      let g.Import(module, alias, _types, values) = import_
       let binding = case alias {
         Some(label) -> label
         None -> {
