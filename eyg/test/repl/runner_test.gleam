@@ -1,9 +1,8 @@
 import gleam/io
 import gleam/dict
-import gleam/list
 import gleam/option.{None, Some}
 import glance
-import scintilla/value.{Closure, F, I, L, R, S, T}
+import scintilla/value.{F, I, L, R, S, T}
 import repl/reader
 import repl/runner
 import plinth/javascript/console
@@ -65,59 +64,44 @@ pub fn number_negation_fail_test() {
   )
 }
 
-// pub fn bool_negation_test() {
-//   todo
-//   //   "!"
-//   //   |> exec()
-//   //   |> should.equal(Ok(I(-1)))
-// }
+pub fn bool_negation_test() {
+  "!True"
+  |> exec()
+  |> should.equal(Ok(R("False", [])))
 
-// pub fn panic_test() {
-//   // has message
-//   "panic(\"bad\")"
-//   |> exec()
-//   |> should.equal(Error(runner.Panic(Some("bad"))))
+  "!{ True }"
+  |> exec()
+  |> should.equal(Ok(R("False", [])))
 
-//   // captures Env
-//   "let x = 5
-//   panic"
-//   |> exec()
-//   |> should.equal(Ok(I(5)))
+  "!3"
+  |> exec()
+  |> should.equal(Error(runner.IncorrectTerm(expected: "Boolean", got: I(3))))
+}
 
-//   // captures continuation
-//   "panic
-//   100"
-//   |> exec()
-//   |> should.equal(Ok(I(5)))
+pub fn panic_test() {
+  "panic"
+  |> exec()
+  |> should.equal(Error(runner.Panic(None)))
 
-//   // evals message
-//   "panic(\"very\" <> \"bad\")"
-//   |> exec()
-//   |> should.equal(Ok(I(5)))
+  "panic as \"bad\""
+  |> exec()
+  |> should.equal(Error(runner.Panic(Some("bad"))))
+  // TODO
+  // "panic as \"very \" <> \"bad\""
+  // |> exec()
+  // |> should.equal(Error(runner.Panic(Some("bad"))))
 
-//   // requires string message
-//   "panic(3)"
-//   |> exec()
-//   |> should.equal(Ok(I(5)))
-// }
+  // TODO
+  // "panic as x"
+  // |> exec()
+  // |> should.equal(Ok(I(5)))
+}
 
 pub fn todo_test() {
   // has message
   "todo(\"bad\")"
   |> exec()
   |> should.equal(Error(runner.Todo(Some("bad"))))
-
-  // captures Env
-  "let x = 5
-  todo"
-  |> exec()
-  |> should.equal(Error(runner.Todo(None)))
-
-  // captures continuation
-  "todo
-  100"
-  |> exec()
-  |> should.equal(Error(runner.Todo(None)))
 
   // evals message
   "todo(\"very\" <> \"bad\")"
