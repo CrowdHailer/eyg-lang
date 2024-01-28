@@ -6,6 +6,7 @@ import gleam/string
 import glexer
 import glexer/token as t
 import glance as g
+import scintilla/read
 
 pub type Term {
   Import(module: String, binding: String, unqualified: List(#(String, String)))
@@ -123,23 +124,11 @@ pub fn parse(lines) {
       Ok(#(function, tokens))
     }
     ts -> {
-      use #(statements, _, tokens) <- result.try(statements([], ts))
-      Ok(#(Statements(statements), tokens))
+      use statements <- result.try(result.map_error(
+        read.statements(ts),
+        ParseFail,
+      ))
+      Ok(#(Statements(statements), []))
     }
-  }
-}
-
-// The statements fn in glance looks for closing right brace
-// glance parses statements assuming a block
-pub fn statements(acc, tokens) {
-  case g.statement(tokens) {
-    Ok(#(statement, rest)) -> {
-      let acc = [statement, ..acc]
-      case rest {
-        [] -> Ok(#(list.reverse(acc), Nil, []))
-        _ -> statements(acc, rest)
-      }
-    }
-    Error(reason) -> Error(ParseFail(reason))
   }
 }
