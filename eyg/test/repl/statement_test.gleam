@@ -1,9 +1,9 @@
-import gleam/dict
 import gleam/io
+import gleam/dict
 import gleam/option.{None, Some}
 import simplifile
 import glance as g
-import scintilla/value.{I, R}
+import scintilla/value as v
 import repl/reader
 import repl/runner
 import gleeunit/should
@@ -19,13 +19,13 @@ pub fn import_module_test() {
 
   let line = "import gleam/bool"
   let assert Ok(term) = reader.parse(line)
-  let assert Ok(#(return, state)) = runner.read(term, state)
+  let assert Ok(#(None, state)) = runner.read(term, state)
 
   let line = "bool.and(True, True)"
   let assert Ok(term) = reader.parse(line)
-  let assert Ok(#(return, state)) = runner.read(term, state)
+  let assert Ok(#(return, _state)) = runner.read(term, state)
   return
-  |> should.equal(Some(R("True", [])))
+  |> should.equal(Some(v.R("True", [])))
 }
 
 pub fn import_aliased_module_test() {
@@ -37,13 +37,13 @@ pub fn import_aliased_module_test() {
 
   let line = "import gleam/bool as b"
   let assert Ok(term) = reader.parse(line)
-  let assert Ok(#(return, state)) = runner.read(term, state)
+  let assert Ok(#(None, state)) = runner.read(term, state)
 
   let line = "b.and(True, True)"
   let assert Ok(term) = reader.parse(line)
   let assert Ok(#(return, state)) = runner.read(term, state)
   return
-  |> should.equal(Some(R("True", [])))
+  |> should.equal(Some(v.R("True", [])))
 
   let line = "bool.and(True, True)"
   let assert Ok(term) = reader.parse(line)
@@ -61,13 +61,13 @@ pub fn import_unqualified_module_test() {
 
   let line = "import gleam/bool.{and as alltogether, or}"
   let assert Ok(term) = reader.parse(line)
-  let assert Ok(#(return, state)) = runner.read(term, state)
+  let assert Ok(#(None, state)) = runner.read(term, state)
 
   let line = "alltogether(True, True)"
   let assert Ok(term) = reader.parse(line)
   let assert Ok(#(return, state)) = runner.read(term, state)
   return
-  |> should.equal(Some(R("True", [])))
+  |> should.equal(Some(v.R("True", [])))
 
   let line = "and(True, True)"
   let assert Ok(term) = reader.parse(line)
@@ -79,13 +79,13 @@ pub fn import_unqualified_module_test() {
   let assert Ok(term) = reader.parse(line)
   let assert Ok(#(return, state)) = runner.read(term, state)
   return
-  |> should.equal(Some(R("True", [])))
+  |> should.equal(Some(v.R("True", [])))
 
   let line = "bool.negate(True)"
   let assert Ok(term) = reader.parse(line)
-  let assert Ok(#(return, state)) = runner.read(term, state)
+  let assert Ok(#(return, _state)) = runner.read(term, state)
   return
-  |> should.equal(Some(R("False", [])))
+  |> should.equal(Some(v.R("False", [])))
 }
 
 pub fn custom_enum_test() {
@@ -97,13 +97,13 @@ pub fn custom_enum_test() {
     B
   }",
     )
-  let assert Ok(#(return, state)) = runner.read(term, state)
+  let assert Ok(#(None, state)) = runner.read(term, state)
 
   let assert Ok(term) = reader.parse("A")
   let assert Ok(#(return, _)) = runner.read(term, state)
 
   return
-  |> should.equal(Some(R("A", [])))
+  |> should.equal(Some(v.R("A", [])))
 }
 
 pub fn custom_record_test() {
@@ -114,11 +114,44 @@ pub fn custom_record_test() {
     Wrap(Int)
   }",
     )
-  let assert Ok(#(return, state)) = runner.read(term, state)
+  let assert Ok(#(None, state)) = runner.read(term, state)
 
   let assert Ok(term) = reader.parse("Wrap(2)")
   let assert Ok(#(return, _)) = runner.read(term, state)
 
   return
-  |> should.equal(Some(R("Wrap", [g.Field(None, I(2))])))
+  |> should.equal(Some(v.R("Wrap", [g.Field(None, v.I(2))])))
+}
+
+pub fn named_record_fields_test() {
+  let initial = runner.init(dict.new(), dict.new())
+  let assert Ok(term) =
+    reader.parse(
+      "type Rec {
+    Rec(a: Int, b: Float)
+  }",
+    )
+  let assert Ok(#(None, initial)) = runner.read(term, initial)
+
+  let assert Ok(term) = reader.parse("Rec(b: 2.0, a: 1)")
+  let assert Ok(#(return, _)) = runner.read(term, initial)
+  return
+  |> should.equal(
+    Some(v.R("Rec", [g.Field(Some("a"), v.I(1)), g.Field(Some("b"), v.F(2.0))])),
+  )
+
+  let assert Ok(term) = reader.parse("let x = Rec(b: 2.0, a: 1) x.a")
+  let assert Ok(#(return, _)) = runner.read(term, initial)
+  return
+  |> should.equal(Some(v.I(1)))
+
+  let assert Ok(term) = reader.parse("let x = Rec(b: 2.0, a: 1) x.c")
+  let assert Error(reason) = runner.read(term, initial)
+  reason
+  |> should.equal(runner.MissingField("c"))
+
+  let assert Ok(term) = reader.parse("\"\".c")
+  let assert Error(reason) = runner.read(term, initial)
+  reason
+  |> should.equal(runner.IncorrectTerm("Record", v.S("")))
 }

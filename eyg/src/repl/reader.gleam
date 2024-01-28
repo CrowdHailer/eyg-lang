@@ -125,7 +125,3 @@ pub fn statements(acc, tokens) {
     Error(reason) -> Error(reason)
   }
 }
-
-pub fn eval(term, environment) {
-  todo
-}

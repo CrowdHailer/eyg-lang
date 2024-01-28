@@ -5,7 +5,6 @@ import glance
 import scintilla/value.{F, I, L, R, S, T}
 import repl/reader
 import repl/runner
-import plinth/javascript/console
 import gleeunit/should
 
 fn exec_with(src, env) {
@@ -212,17 +211,6 @@ pub fn improper_list_test() {
   |> should.equal(Error(runner.IncorrectTerm("List", I(2))))
 }
 
-// pub fn record_creation_test() {
-//   "1(1)"
-//   |> exec()
-//   |> should.equal(Ok(L([I(1)])))
-//   How do we make sure named arguments go to the right place if using native
-// console.log(Ok(""))
-// console.log(Ok)
-// console.log(runner.I(1))
-// console.log(runner.Append([]))
-// }
-
 pub fn prelude_creation_test() {
   "Nil"
   |> exec()
@@ -243,11 +231,6 @@ pub fn prelude_creation_test() {
   "Error( 3 - 1)"
   |> exec()
   |> should.equal(Ok(R("Error", [glance.Field(None, I(2))])))
-
-  console.log(Ok(""))
-  console.log(Ok)
-  console.log(I(1))
-  console.log(runner.Append([]))
 }
 
 pub fn case_test() {
@@ -321,8 +304,6 @@ pub fn multiple_patterns_test() {
   |> should.equal(Ok(I(5)))
 }
 
-// TODO bad case test unmatched Record
-
 pub fn function_test() {
   // TODO glance should error Empty fn would get formatted as having a todo
   // "fn() { }"
@@ -352,26 +333,6 @@ pub fn function_test() {
   |> exec()
   |> should.equal(Ok(I(5)))
 }
-
-// pub fn demo_tets() {
-//   fn(a x, b y) { x - y }(1, 2)
-//   |> should.equal(23)
-// }
-
-// Argument labels
-// https://johndoneth.github.io/gleam-playground/?s=JYWwDg9gTgLgBAcwDYFMCGID0TgGcYBQBAxhAHb5wwQD6OlAvHAEwnmVQoBuKUuKcJgG0AjABpmAXSJgArgCM4AMzLKIEABRo4ADzFxFATwCUcAN4E4uuAFo4hggF8ZC5apBpgZDaYup4SuqCblq6%2Bka%2BltZ2Ds5WgZryAFws%2BmgpIsZOQA%3D
-// pub fn named_function_test() {
-//   "fn(a x, b y) { x - y }(1, 2)"
-//   |> exec()
-//   |> should.equal(Ok(I(5)))
-//   // "fn(a x, b y) { x - y }(1, b: 2)"
-//   // |> exec()
-//   // |> should.equal(Ok(I(11)))
-
-//   // "fn(x, y) { x + y }(10, 5)"
-//   // |> exec()
-//   // |> should.equal(Ok(I(15)))
-// }
 
 pub fn function_error_test() {
   "1()"

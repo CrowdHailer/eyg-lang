@@ -429,8 +429,13 @@ fn apply(value, env, ks) {
       apply(v.L(list.append(list.reverse(gathered), elements)), env, ks)
     }
     [Access(field), ..ks] -> {
-      let assert v.Module(module) = value
-      use value <- try(access_module(module, field))
+      use value <- try(case value {
+        v.Module(module) -> access_module(module, field)
+        v.R(_, fields) -> {
+          find_field(fields, field)
+        }
+        other -> Error(IncorrectTerm("Record", other))
+      })
       apply(value, env, ks)
     }
     [RecordUpdate(module, constructor, updates), ..ks] -> {
@@ -719,6 +724,14 @@ fn pop_field(fields, label, acc) {
       Ok(#(value, list.append(list.reverse(acc), rest)))
     [popped, ..fields] -> pop_field(fields, label, [popped, ..acc])
     [] -> Error(Nil)
+  }
+}
+
+fn find_field(fields, label) {
+  case fields {
+    [g.Field(Some(l), value), ..] if l == label -> Ok(value)
+    [_, ..fields] -> find_field(fields, label)
+    [] -> Error(MissingField(label))
   }
 }
 
