@@ -20,12 +20,12 @@ import repl/state.{State, Wrap}
 import scintilla/value as v
 
 pub fn render(state) {
-  let State(scope, statement, reason, history) = state
+  let State(scope, statement, bindings, reason, history) = state
   div([class("vstack")], [
-    div([class("hstack rounded-lg max-w-2xl glass")], [
+    div([class("hstack rounded-lg max-w-4xl glass")], [
       div([class("cover")], [span([class("font-bold")], [text("Gleam REPL")])]),
       div(
-        [class("expand bg-gray-700 rounded-lg m-4 text-gray-300")],
+        [class("expand cover bg-gray-700 rounded-lg my-2 text-gray-300")],
         list.append(render_history(history), [
           form(
             [class("hstack wrap"), event.on_submit(Wrap(execute_statement))],
@@ -73,6 +73,27 @@ pub fn render(state) {
           }
         ]),
       ),
+      div([class("expand cover bg-white m-2 rounded-lg")], [
+        div(
+          [],
+          list.map(bindings, fn(binding) {
+            div(
+              [],
+              list.flat_map(binding, fn(binding) {
+                let #(label, value) = binding
+                [
+                  span([], [
+                    text(label),
+                    text(" = "),
+                    text(render_value(value)),
+                    text(","),
+                  ]),
+                ]
+              }),
+            )
+          }),
+        ),
+      ]),
     ]),
   ])
 }
@@ -91,16 +112,19 @@ fn render_history(history) {
 }
 
 fn execute_statement(state) {
-  let State(state, src, _reason, history) = state
+  let State(state, src, bindings, _reason, history) = state
   let assert Ok(#(term, _)) = reader.parse(src)
-  case runner.read(term, state) {
+  case runner.read_live(term, state) {
     Ok(#(value, state)) -> {
-      let output = case value {
-        Some(value) -> render_value(value)
-        None -> ""
+      let #(output, bindings) = case value {
+        Some(#(value, bindings)) -> #(render_value(value), bindings)
+        None -> #("", bindings)
       }
 
-      #(State(state, "", None, [#(src, output), ..history]), effect.none())
+      #(
+        State(state, "", bindings, None, [#(src, output), ..history]),
+        effect.none(),
+      )
     }
     // TODO should be handled in runner
     // Error(runner.Finished(scope)) -> {
@@ -108,7 +132,7 @@ fn execute_statement(state) {
     //   #(state, effect.none())
     // }
     Error(reason) -> {
-      let state = State(state, src, Some(reason), history)
+      let state = State(state, src, bindings, Some(reason), history)
       #(state, effect.none())
     }
   }
@@ -120,6 +144,14 @@ pub fn render_value(value) {
     v.F(x) -> float.to_string(x)
     v.S(x) -> string.inspect(x)
     v.T(elements) -> "recursive print needed"
+    v.L(items) ->
+      string.concat([
+        "[",
+        list.map(items, render_value)
+        |> list.intersperse(", ")
+        |> string.concat,
+        "]",
+      ])
     v.R(constructor, []) -> constructor
     v.R(constructor, fields) -> {
       let parts =
@@ -136,6 +168,19 @@ pub fn render_value(value) {
     }
     v.Constructor(label, _) -> label
     v.Closure(_, _, _) -> "closure"
+    v.NamedClosure(args, _body, _env) ->
+      string.concat([
+        "fn ",
+        "(",
+        list.map(args, fn(p: glance.FunctionParameter) {
+          option.unwrap(p.label, case p.name {
+            glance.Named(name) | glance.Discarded(name) -> name
+          })
+        })
+        |> list.intersperse(", ")
+        |> string.concat(),
+        ")",
+      ])
     item -> string.inspect(item)
   }
 }

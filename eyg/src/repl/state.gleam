@@ -13,6 +13,7 @@ import plinth/browser/element
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 import facilities/trafiklab/realtidsinformation_4 as rt4
+import scintilla/value as v
 import scintilla/reason as r
 import scintilla/prelude
 import repl/reader
@@ -22,6 +23,7 @@ pub type State {
   State(
     scope: runner.State,
     statement: String,
+    variables: List(List(#(String, v.Value))),
     execute_error: Option(r.Reason),
     history: List(#(String, String)),
   )
@@ -33,6 +35,7 @@ pub fn init(_) {
     State(
       runner.init(prelude.scope(), dict.from_list([#("gleam/bool", m)])),
       "",
+      [],
       None,
       [],
     )

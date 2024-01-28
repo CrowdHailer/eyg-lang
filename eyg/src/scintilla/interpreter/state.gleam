@@ -146,7 +146,7 @@ pub fn eval(exp, env, ks) {
 // with separate testing
 // Whole effects proposal can be walk through here
 
-fn assign_pattern(env, pattern, value) {
+pub fn assign_pattern(env, pattern, value) {
   case pattern, value {
     g.PatternDiscard(_name), _any -> Ok(env)
     g.PatternVariable(name), any -> Ok(dict.insert(env, name, any))
