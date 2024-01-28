@@ -6,8 +6,6 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
-import glexer
-import glexer/token as t
 import glance as g
 import repl/reader
 
@@ -17,19 +15,8 @@ pub fn prelude() {
     #("Nil", R("Nil", [])),
     #("True", R("True", [])),
     #("False", R("False", [])),
-    // probably a record fn needed
-    #(
-      "Ok",
-      Builtin(
-        Arity1(fn(v, env, ks) { apply(R("Ok", [g.Field(None, v)]), env, ks) }),
-      ),
-    ),
-    #(
-      "Error",
-      Builtin(
-        Arity1(fn(v, env, ks) { apply(R("Error", [g.Field(None, v)]), env, ks) }),
-      ),
-    ),
+    #("Ok", Constructor("Ok", [None])),
+    #("Error", Constructor("Error", [None])),
   ])
 }
 
@@ -99,26 +86,23 @@ pub fn read(term, state) {
 
 pub type Value {
   I(Int)
+  NegateInt
   F(Float)
   S(String)
   T(List(Value))
   L(List(Value))
   R(String, List(g.Field(Value)))
   Constructor(String, List(Option(String)))
+  NegateBool
   Closure(List(g.FnParameter), List(g.Statement), Env)
   // this will be module env
   ClosureLabeled(List(g.FunctionParameter), List(g.Statement), Env)
   Captured(function: Value, before: List(Value), after: List(Value))
-  Builtin(Arity)
+  BinaryOperator(g.BinaryOperator)
   Module(g.Module)
 }
 
 // Need builtins to be string  based before we can extract
-pub type Arity {
-  TupleConstructor(size: Int, gathered: List(Value))
-  Arity1(fn(Value, Env, List(K)) -> Result(Value, Reason))
-  Arity2(fn(Value, Value, Env, List(K)) -> Result(Value, Reason))
-}
 
 // move to reason.gleam after moving out value.gleam
 pub type Reason {
@@ -201,17 +185,10 @@ fn do_eval(exp, env, ks) {
         Error(Nil) -> Error(UndefinedVariable(var))
       }
     }
-    // TODO rename Negate number
     g.NegateInt(exp) ->
-      do_eval(exp, env, [
-        Apply(Builtin(Arity1(negate_number)), None, [], []),
-        ..ks
-      ])
+      do_eval(exp, env, [Apply(NegateInt, None, [], []), ..ks])
     g.NegateBool(exp) ->
-      do_eval(exp, env, [
-        Apply(Builtin(Arity1(negate_bool)), None, [], []),
-        ..ks
-      ])
+      do_eval(exp, env, [Apply(NegateBool, None, [], []), ..ks])
     // Has to be at least one statement
     // exec block fn
     g.Block([statement, ..rest]) -> {
@@ -264,8 +241,7 @@ fn do_eval(exp, env, ks) {
           }
         _ -> right
       }
-      let impl = bin_impl(name)
-      let value = Builtin(Arity2(impl))
+      let value = BinaryOperator(name)
       let ks = [Args([g.Field(None, left), g.Field(None, right)]), ..ks]
       apply(value, env, ks)
     }
@@ -727,11 +703,16 @@ fn call(func, args, env, ks) {
         Error(reason) -> Error(reason)
       }
     }
-    Builtin(Arity1(impl)), [a] -> {
+    NegateInt, [a] -> {
       let assert g.Field(None, a) = a
-      impl(a, env, ks)
+      negate_number(a, env, ks)
     }
-    Builtin(Arity2(impl)), [a, b] -> {
+    NegateBool, [a] -> {
+      let assert g.Field(None, a) = a
+      negate_bool(a, env, ks)
+    }
+    BinaryOperator(op), [a, b] -> {
+      let impl = bin_impl(op)
       let assert g.Field(None, a) = a
       let assert g.Field(None, b) = b
       impl(a, b, env, ks)
@@ -772,15 +753,15 @@ fn pop_field(fields, label, acc) {
 
 fn negate_number(in, env, ks) {
   case in {
-    I(v) -> Ok(I(-v))
-    F(v) -> Ok(F(-1.0 *. v))
+    I(v) -> apply(I(-v), env, ks)
+    F(v) -> apply(F(-1.0 *. v), env, ks)
     _ -> Error(IncorrectTerm("Integer or Float", in))
   }
 }
 
 fn negate_bool(in, env, ks) {
   use in <- try(as_boolean(in))
-  Ok(from_bool(!in))
+  apply(from_bool(!in), env, ks)
 }
 
 fn bin_impl(name) {
