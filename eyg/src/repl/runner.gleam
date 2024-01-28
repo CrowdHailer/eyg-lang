@@ -9,6 +9,7 @@ import gleam/string
 import glance as g
 import scintilla/value.{type Value} as v
 import scintilla/reason as r
+import scintilla/cast
 import repl/reader
 
 pub fn prelude() {
@@ -435,7 +436,7 @@ fn apply(value, env, k, ks) {
     BuildTuple([next, ..remaining], gathered) ->
       Ok(#(E(next), env, [BuildTuple(remaining, [value, ..gathered]), ..ks]))
     AccessIndex(index) -> {
-      use elements <- try(as_tuple(value))
+      use elements <- try(cast.as_tuple(value))
       use element <- try(
         list.at(elements, index)
         |> result.replace_error(r.OutOfRange(list.length(elements), index)),
@@ -451,7 +452,7 @@ fn apply(value, env, k, ks) {
         #(E(next), env, [BuildList(remaining, [value, ..gathered], tail), ..ks]),
       )
     Append(gathered) -> {
-      use elements <- try(as_list(value))
+      use elements <- try(cast.as_list(value))
       Ok(#(V(v.L(list.append(list.reverse(gathered), elements))), env, ks))
     }
     Access(field) -> {
@@ -753,167 +754,117 @@ fn negate_number(in, env, ks) {
 }
 
 fn negate_bool(in, env, ks) {
-  use in <- try(as_boolean(in))
-  Ok(#(V(from_bool(!in)), env, ks))
+  use in <- try(cast.as_boolean(in))
+  Ok(#(V(v.bool(!in)), env, ks))
 }
 
 fn bin_impl(name) {
   case name {
     g.And -> fn(a, b, env, ks) {
-      use a <- try(as_boolean(a))
-      use b <- try(as_boolean(b))
-      Ok(#(V(from_bool(a && b)), env, ks))
+      use a <- try(cast.as_boolean(a))
+      use b <- try(cast.as_boolean(b))
+      Ok(#(V(v.bool(a && b)), env, ks))
     }
     g.Or -> fn(a, b, env, ks) {
-      use a <- try(as_boolean(a))
-      use b <- try(as_boolean(b))
-      Ok(#(V(from_bool(a || b)), env, ks))
+      use a <- try(cast.as_boolean(a))
+      use b <- try(cast.as_boolean(b))
+      Ok(#(V(v.bool(a || b)), env, ks))
     }
-    g.Eq -> fn(a, b, env, ks) { Ok(#(V(from_bool(a == b)), env, ks)) }
-    g.NotEq -> fn(a, b, env, ks) { Ok(#(V(from_bool(a != b)), env, ks)) }
+    g.Eq -> fn(a, b, env, ks) { Ok(#(V(v.bool(a == b)), env, ks)) }
+    g.NotEq -> fn(a, b, env, ks) { Ok(#(V(v.bool(a != b)), env, ks)) }
     g.LtInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
-      Ok(#(V(from_bool(a < b)), env, ks))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
+      Ok(#(V(v.bool(a < b)), env, ks))
     }
     g.LtEqInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
-      Ok(#(V(from_bool(a <= b)), env, ks))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
+      Ok(#(V(v.bool(a <= b)), env, ks))
     }
     g.LtFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
-      Ok(#(V(from_bool(a <. b)), env, ks))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
+      Ok(#(V(v.bool(a <. b)), env, ks))
     }
     g.LtEqFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
-      Ok(#(V(from_bool(a <=. b)), env, ks))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
+      Ok(#(V(v.bool(a <=. b)), env, ks))
     }
     g.GtEqInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
-      Ok(#(V(from_bool(a >= b)), env, ks))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
+      Ok(#(V(v.bool(a >= b)), env, ks))
     }
     g.GtInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
-      Ok(#(V(from_bool(a > b)), env, ks))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
+      Ok(#(V(v.bool(a > b)), env, ks))
     }
     g.GtEqFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
-      Ok(#(V(from_bool(a >=. b)), env, ks))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
+      Ok(#(V(v.bool(a >=. b)), env, ks))
     }
     g.GtFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
-      Ok(#(V(from_bool(a >. b)), env, ks))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
+      Ok(#(V(v.bool(a >. b)), env, ks))
     }
     g.Pipe -> fn(passed, f, env, ks) {
       call(f, [g.Field(None, passed)], env, ks)
     }
     g.AddInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
       Ok(#(V(v.I(a + b)), env, ks))
     }
     g.AddFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
       Ok(#(V(v.F(a +. b)), env, ks))
     }
     g.SubInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
       Ok(#(V(v.I(a - b)), env, ks))
     }
     g.SubFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
       Ok(#(V(v.F(a -. b)), env, ks))
     }
     g.MultInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
       Ok(#(V(v.I(a * b)), env, ks))
     }
     g.MultFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
       Ok(#(V(v.F(a *. b)), env, ks))
     }
     g.DivInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
       Ok(#(V(v.I(a / b)), env, ks))
     }
     g.DivFloat -> fn(a, b, env, ks) {
-      use a <- try(as_float(a))
-      use b <- try(as_float(b))
+      use a <- try(cast.as_float(a))
+      use b <- try(cast.as_float(b))
       Ok(#(V(v.F(a /. b)), env, ks))
     }
     g.RemainderInt -> fn(a, b, env, ks) {
-      use a <- try(as_integer(a))
-      use b <- try(as_integer(b))
+      use a <- try(cast.as_integer(a))
+      use b <- try(cast.as_integer(b))
       Ok(#(V(v.I(a % b)), env, ks))
     }
     g.Concatenate -> fn(a, b, env, ks) {
-      use a <- try(as_string(a))
-      use b <- try(as_string(b))
+      use a <- try(cast.as_string(a))
+      use b <- try(cast.as_string(b))
       Ok(#(V(v.S(a <> b)), env, ks))
     }
-  }
-}
-
-fn as_integer(value) {
-  case value {
-    v.I(value) -> Ok(value)
-    _ -> Error(r.IncorrectTerm("Integer", value))
-  }
-}
-
-fn as_float(value) {
-  case value {
-    v.F(value) -> Ok(value)
-    _ -> Error(r.IncorrectTerm("Float", value))
-  }
-}
-
-fn as_boolean(value) {
-  case value {
-    v.R("True", []) -> Ok(True)
-    v.R("False", []) -> Ok(False)
-    _ -> Error(r.IncorrectTerm("Boolean", value))
-  }
-}
-
-fn from_bool(raw) {
-  case raw {
-    True -> v.R("True", [])
-    False -> v.R("False", [])
-  }
-}
-
-fn as_string(value) {
-  case value {
-    v.S(value) -> Ok(value)
-    _ -> Error(r.IncorrectTerm("String", value))
-  }
-}
-
-fn as_tuple(value) {
-  case value {
-    v.T(elements) -> Ok(elements)
-    _ -> Error(r.IncorrectTerm("Tuple", value))
-  }
-}
-
-fn as_list(value) {
-  case value {
-    v.L(elements) -> Ok(elements)
-    _ -> Error(r.IncorrectTerm("List", value))
   }
 }
 

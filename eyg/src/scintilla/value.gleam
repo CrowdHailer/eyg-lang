@@ -22,3 +22,14 @@ pub type Value {
   BinaryOperator(g.BinaryOperator)
   Module(g.Module)
 }
+
+pub const true = R("True", [])
+
+pub const false = R("False", [])
+
+pub fn bool(raw) {
+  case raw {
+    True -> true
+    False -> false
+  }
+}
