@@ -197,7 +197,7 @@ pub fn assign_pattern(env, pattern, value) {
       case tail, remaining {
         Some(p), remaining -> assign_pattern(env, p, v.L(remaining))
         None, [] -> Ok(env)
-        _, _ -> Error(r.IncorrectTerm("Empty list", v.L(remaining)))
+        _, _ -> Error(r.FailedAssignment(pattern, value))
       }
     }
     g.PatternList(patterns, tail), unexpected ->
@@ -629,7 +629,7 @@ fn negate_number(in, env, ks) {
   case in {
     v.I(v) -> Ok(#(V(v.I(-v)), env, ks))
     v.F(v) -> Ok(#(V(v.F(-1.0 *. v)), env, ks))
-    _ -> Error(r.IncorrectTerm("Integer or Float", in))
+    _ -> Error(r.IncorrectTerm("Integer", in))
   }
 }
 
