@@ -6,7 +6,6 @@ import gleam/string
 import glexer
 import glexer/token as t
 import glance as g
-import scintilla/read
 
 pub type Term {
   Import(module: String, binding: String, unqualified: List(#(String, String)))
@@ -124,10 +123,7 @@ pub fn parse(lines) {
       Ok(#(function, tokens))
     }
     ts -> {
-      use statements <- result.try(result.map_error(
-        read.statements(ts),
-        ParseFail,
-      ))
+      use statements <- result.try(result.map_error(g.statements(ts), ParseFail))
       Ok(#(Statements(statements), []))
     }
   }

@@ -3,7 +3,6 @@ import gleam/list
 import glexer
 import glance
 import scintilla/value as v
-import scintilla/read
 import repl/runner as r_runner
 import gleeunit/should
 
@@ -11,7 +10,7 @@ fn exec(src, env) {
   glexer.new(src)
   |> glexer.lex()
   |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-  |> read.statements()
+  |> glance.statements()
   |> should.be_ok()
   |> r_runner.live_exec(env)
 }

@@ -7,14 +7,13 @@ import scintilla/value as v
 import scintilla/reason as r
 import scintilla/prelude
 import scintilla/interpreter/runner
-import scintilla/read
 import gleeunit/should
 
 fn exec(src, env) {
   glexer.new(src)
   |> glexer.lex()
   |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-  |> read.statements()
+  |> glance.statements()
   |> should.be_ok()
   |> runner.exec(env)
 }

@@ -7,7 +7,6 @@ import scintilla/value.{F, I, L, R, S, T}
 import scintilla/reason as r
 import scintilla/prelude
 import scintilla/interpreter/runner
-import scintilla/read
 import repl/reader
 import repl/runner as r_runner
 import gleeunit/should
@@ -16,7 +15,7 @@ fn exec(src, env) {
   glexer.new(src)
   |> glexer.lex()
   |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
-  |> read.statements()
+  |> glance.statements()
   |> should.be_ok()
   |> runner.exec(env)
 }
