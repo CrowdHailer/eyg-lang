@@ -175,6 +175,20 @@ pub fn live_loop(next, logs) {
             _ -> logs
           }
         }
+        state.V(v), [state.Apply(func, label, [], args), ..] -> {
+          let args = list.reverse([g.Field(label, v), ..args])
+          case state.call(func, args, dict.new(), []) {
+            Ok(#(_, env, _)) -> [dict.to_list(env), ..logs]
+            _ -> logs
+          }
+        }
+        // I want to do this with a general apply statement but can't work out how to clear existing env from captured fn
+        state.V(v), [state.BuildSubjects([], values, clauses) as k, ..] -> {
+          case state.apply(v, dict.new(), k, []) {
+            Ok(#(_, env, _)) -> [dict.to_list(env), ..logs]
+            _ -> logs
+          }
+        }
         _, _ -> logs
       }
       live_loop(state.step(c, e, ks), logs)

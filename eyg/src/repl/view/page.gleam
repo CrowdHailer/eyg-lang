@@ -48,7 +48,7 @@ pub fn render(state) {
                 // attribute.autofocus(True),
                 attribute.attribute("autofocus", "true"),
                 class(
-                  "w-full bg-transparent border-b border-gray-500 focus:border-gray-200 outline-none",
+                  "w-full bg-transparent border-b border-gray-500 focus:border-gray-200 outline-none font-mono",
                 ),
               ]),
               div([], [
@@ -86,7 +86,7 @@ pub fn render(state) {
                     text(label),
                     text(" = "),
                     text(render_value(value)),
-                    text(","),
+                    text(", "),
                   ]),
                 ]
               }),

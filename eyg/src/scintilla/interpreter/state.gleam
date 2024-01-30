@@ -246,7 +246,7 @@ fn match_elements(env, patterns, values) {
   }
 }
 
-fn apply(value, env, k, ks) {
+pub fn apply(value, env, k, ks) {
   case k {
     Assign(pattern) -> {
       use env <- try(assign_pattern(env, pattern, value))
@@ -504,7 +504,7 @@ fn pair_args(params: List(g.FunctionParameter), args: List(g.Field(Value)), env)
   }
 }
 
-fn call(func, args, env, ks) {
+pub fn call(func, args, env, ks) {
   case func, args {
     v.Closure(params, body, captured), args -> {
       // as long as closure keeps returning itself until full of arguments
