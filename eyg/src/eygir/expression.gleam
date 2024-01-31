@@ -76,6 +76,26 @@ pub fn do_list(reversed, acc) {
   }
 }
 
+pub fn record(items) {
+  do_record(list.reverse(items), Empty)
+}
+
+pub fn do_record(reversed, acc) {
+  case reversed {
+    [#(label, value), ..rest] ->
+      do_record(rest, Apply(Apply(Extend(label), value), acc))
+    [] -> acc
+  }
+}
+
+pub fn do_overwrite(reversed, acc) {
+  case reversed {
+    [#(label, value), ..rest] ->
+      do_overwrite(rest, Apply(Apply(Overwrite(label), value), acc))
+    [] -> acc
+  }
+}
+
 pub fn tagged(tag, value) {
   Apply(Tag(tag), value)
 }
