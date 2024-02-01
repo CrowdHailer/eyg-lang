@@ -16,4 +16,5 @@ pub type Reason {
   MissingField(String)
   Finished(Dict(String, Value))
   UnknownModule(String)
+  Unsupported(String)
 }

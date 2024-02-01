@@ -29,102 +29,87 @@ pub fn tokens(src) {
   |> list.filter(fn(pair) { !g.is_whitespace(pair.0) })
 }
 
-pub type Reason {
-  Unsupported(String)
-  ParseFail(g.Error)
-}
-
 pub fn parse(lines) {
-  case tokens(lines) {
-    [#(t.At, _), ..] -> Error(Unsupported("attributes"))
-    [#(t.Import, _), ..tokens] -> {
-      let result = result.map_error(g.do_import_statement(tokens), ParseFail)
-      use #(import_, tokens) <- result.try(result)
-      let g.Import(module, alias, _types, values) = import_
-      let binding = case alias {
-        Some(label) -> label
-        None -> {
-          let assert [label, ..] = list.reverse(string.split(module, "/"))
-          label
-        }
-      }
-      let unqualified =
-        list.map(values, fn(v) {
-          let g.UnqualifiedImport(field, label) = v
-          let label = option.unwrap(label, field)
-          #(field, label)
-        })
-      let import_ = Import(module, binding, unqualified)
-      Ok(#(import_, tokens))
-    }
-    // Not supported because how do we handle the type parameters and aliases
-    // [#(t.Pub, _), #(t.Type, _), ..tokens] -> {
-    //   let result = type_definition(module, attributes, Public, False, tokens)
-    //   use #(module, tokens) <- result.try(result)
-    //   slurp(module, [], tokens)
-    // }
-    // [#(t.Pub, _), #(t.Opaque, _), #(t.Type, _), ..tokens] -> {
-    //   let result = type_definition(module, attributes, Public, True, tokens)
-    //   use #(module, tokens) <- result.try(result)
-    //   slurp(module, [], tokens)
-    // }
-    [#(t.Type, _), ..tokens] -> {
-      let module = g.Module( [], [], [], [], [])
-      let result =
-        result.map_error(
-          g.type_definition(module, [], g.Private, False, tokens),
-          ParseFail,
-        )
-      use #(module, tokens) <- result.try(result)
-      let variants =
-        list.flat_map(module.custom_types, fn(definition) {
-          let g.Definition(_, g.CustomType(variants: variants, ..)) = definition
-          list.map(variants, fn(v) {
-            let g.Variant(name, fields) = v
-            let labels = list.map(fields, fn(f: g.Field(_)) { f.label })
-            #(name, labels)
-          })
-        })
-      Ok(#(CustomType(variants), tokens))
-    }
-    [#(t.Pub, _), #(t.Const, _), ..tokens] -> {
-      let result =
-        result.map_error(g.do_const_definition(g.Public, tokens), ParseFail)
-      use #(c, tokens) <- result.try(result)
-      Ok(#(Constant(c.name, c.value), tokens))
-    }
-    [#(t.Const, _), ..tokens] -> {
-      let result =
-        result.map_error(g.do_const_definition(g.Private, tokens), ParseFail)
-      use #(c, tokens) <- result.try(result)
-      Ok(#(Constant(c.name, c.value), tokens))
-    }
-
-    [#(t.Pub, start), #(t.Fn, _), #(t.Name(name), _), ..tokens] -> {
-      let glexer.Position(start) = start
-      let result =
-        result.map_error(
-          g.do_function_definition(g.Public, name, start, tokens),
-          ParseFail,
-        )
-      use #(f, tokens) <- result.try(result)
-      let function = Function(f.name, f.parameters, f.body)
-      Ok(#(function, tokens))
-    }
-    [#(t.Fn, start), #(t.Name(name), _), ..tokens] -> {
-      let glexer.Position(start) = start
-      let result =
-        result.map_error(
-          g.do_function_definition(g.Private, name, start, tokens),
-          ParseFail,
-        )
-      use #(f, tokens) <- result.try(result)
-      let function = Function(f.name, f.parameters, f.body)
-      Ok(#(function, tokens))
-    }
-    ts -> {
-      use statements <- result.try(result.map_error(g.statements(lines), ParseFail))
-      Ok(#(Statements(statements), []))
-    }
-  }
+  g.declaration(tokens(lines))
 }
+// pub fn parse(lines) {
+//   case g.declaration(tokens(lines)) {
+//     [#(t.Import, _), ..tokens] -> {
+//       let result = result.map_error(g.do_import_statement(tokens), ParseFail)
+//       use #(import_, tokens) <- result.try(result)
+//       let g.Import(module, alias, _types, values) = import_
+
+//       let import_ = Import(module, binding, unqualified)
+//       Ok(#(import_, tokens))
+//     }
+//     // Not supported because how do we handle the type parameters and aliases
+//     // [#(t.Pub, _), #(t.Type, _), ..tokens] -> {
+//     //   let result = type_definition(module, attributes, Public, False, tokens)
+//     //   use #(module, tokens) <- result.try(result)
+//     //   slurp(module, [], tokens)
+//     // }
+//     // [#(t.Pub, _), #(t.Opaque, _), #(t.Type, _), ..tokens] -> {
+//     //   let result = type_definition(module, attributes, Public, True, tokens)
+//     //   use #(module, tokens) <- result.try(result)
+//     //   slurp(module, [], tokens)
+//     // }
+//     [#(t.Type, _), ..tokens] -> {
+//       let module = g.Module( [], [], [], [], [])
+//       let result =
+//         result.map_error(
+//           g.type_definition(module, [], g.Private, False, tokens),
+//           ParseFail,
+//         )
+//       use #(module, tokens) <- result.try(result)
+//       let variants =
+//         list.flat_map(module.custom_types, fn(definition) {
+//           let g.Definition(_, g.CustomType(variants: variants, ..)) = definition
+//           list.map(variants, fn(v) {
+//             let g.Variant(name, fields) = v
+//             let labels = list.map(fields, fn(f: g.Field(_)) { f.label })
+//             #(name, labels)
+//           })
+//         })
+//       Ok(#(CustomType(variants), tokens))
+//     }
+//     [#(t.Pub, _), #(t.Const, _), ..tokens] -> {
+//       let result =
+//         result.map_error(g.do_const_definition(g.Public, tokens), ParseFail)
+//       use #(c, tokens) <- result.try(result)
+//       Ok(#(Constant(c.name, c.value), tokens))
+//     }
+//     [#(t.Const, _), ..tokens] -> {
+//       let result =
+//         result.map_error(g.do_const_definition(g.Private, tokens), ParseFail)
+//       use #(c, tokens) <- result.try(result)
+//       Ok(#(Constant(c.name, c.value), tokens))
+//     }
+
+//     [#(t.Pub, start), #(t.Fn, _), #(t.Name(name), _), ..tokens] -> {
+//       let glexer.Position(start) = start
+//       let result =
+//         result.map_error(
+//           g.do_function_definition(g.Public, name, start, tokens),
+//           ParseFail,
+//         )
+//       use #(f, tokens) <- result.try(result)
+//       let function = Function(f.name, f.parameters, f.body)
+//       Ok(#(function, tokens))
+//     }
+//     [#(t.Fn, start), #(t.Name(name), _), ..tokens] -> {
+//       let glexer.Position(start) = start
+//       let result =
+//         result.map_error(
+//           g.do_function_definition(g.Private, name, start, tokens),
+//           ParseFail,
+//         )
+//       use #(f, tokens) <- result.try(result)
+//       let function = Function(f.name, f.parameters, f.body)
+//       Ok(#(function, tokens))
+//     }
+//     ts -> {
+//       use statements <- result.try(result.map_error(g.statements(lines), ParseFail))
+//       Ok(#(Statements(statements), []))
+//     }
+//   }
+// }

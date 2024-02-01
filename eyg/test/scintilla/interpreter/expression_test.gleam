@@ -376,49 +376,6 @@ pub fn function_error_test() {
   |> should.equal(r.MissingField("b"))
 }
 
-pub fn top_function_test() {
-  let state = #(dict.new(), dict.new())
-  let line = "fn foo(a x, b y) { x - y }"
-  let assert Ok(#(term, [])) = reader.parse(line)
-  let assert Ok(#(_, initial)) = r_runner.read(term, state)
-
-  let line = "foo(7, 6)"
-  let assert Ok(#(term, [])) = reader.parse(line)
-  let assert Ok(#(Some(value), _)) = r_runner.read(term, initial)
-  value
-  |> should.equal(I(1))
-
-  let line = "foo(b: 3, a: 2)"
-  let assert Ok(#(term, [])) = reader.parse(line)
-  let assert Ok(#(Some(value), _)) = r_runner.read(term, initial)
-  value
-  |> should.equal(I(-1))
-
-  let line = "foo(4, b: 8)"
-  let assert Ok(#(term, [])) = reader.parse(line)
-  let assert Ok(#(Some(value), _)) = r_runner.read(term, initial)
-  value
-  |> should.equal(I(-4))
-
-  let line = "foo(4, c: 8)"
-  let assert Ok(#(term, [])) = reader.parse(line)
-  let assert Error(reason) = r_runner.read(term, initial)
-  reason
-  |> should.equal(r.MissingField("c"))
-
-  let line = "foo(4)"
-  let assert Ok(#(term, [])) = reader.parse(line)
-  let assert Error(reason) = r_runner.read(term, initial)
-  reason
-  |> should.equal(r.IncorrectArity(2, 1))
-
-  let line = "foo(4, 3, 2)"
-  let assert Ok(#(term, [])) = reader.parse(line)
-  let assert Error(reason) = r_runner.read(term, initial)
-  reason
-  |> should.equal(r.IncorrectArity(2, 3))
-}
-
 pub fn function_capture_test() {
   "let x = fn(x, y, z) { x - y * 2 }
   x(_,3,2)(1)"

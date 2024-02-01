@@ -21,26 +21,9 @@ pub fn init(scope, modules) {
 }
 
 // could return bindings not env
-pub fn read(term, state) {
+pub fn read(declaration, state) {
   let #(scope, modules) = state
-  case term {
-    reader.Import(module, binding, unqualified) -> {
-      case dict.get(modules, module) {
-        Ok(module) -> {
-          let scope = dict.insert(scope, binding, v.Module(module))
-          let scope =
-            list.fold(unqualified, scope, fn(scope, extra) {
-              let #(field, name) = extra
-              let assert Ok(value) = state.access_module(module, field)
-              dict.insert(scope, name, value)
-            })
-          Ok(#(None, #(scope, modules)))
-        }
-        Error(Nil) -> {
-          Error(r.UnknownModule(module))
-        }
-      }
-    }
+  case declaration {
     reader.CustomType(variants) -> {
       let scope =
         list.fold(variants, scope, fn(scope, variant) {
@@ -91,71 +74,73 @@ pub fn read(term, state) {
 
 // TODO deduplicate with read
 pub fn read_live(term, state) {
-  let #(scope, modules) = state
-  case term {
-    reader.Import(module, binding, unqualified) -> {
-      case dict.get(modules, module) {
-        Ok(module) -> {
-          let scope = dict.insert(scope, binding, v.Module(module))
-          let scope =
-            list.fold(unqualified, scope, fn(scope, extra) {
-              let #(field, name) = extra
-              let assert Ok(value) = state.access_module(module, field)
-              dict.insert(scope, name, value)
-            })
-          Ok(#(None, #(scope, modules)))
-        }
-        Error(Nil) -> {
-          Error(r.UnknownModule(module))
-        }
-      }
-    }
-    reader.CustomType(variants) -> {
-      let scope =
-        list.fold(variants, scope, fn(scope, variant) {
-          let #(name, fields) = variant
-          let value = case fields {
-            [] -> v.R(name, [])
-            _ -> v.Constructor(name, fields)
-          }
-          dict.insert(scope, name, value)
-        })
-      let state = #(scope, modules)
-      Ok(#(None, state))
-    }
-    reader.Constant(name, exp) -> {
-      let #(return, logs) =
-        live_loop(state.next(state.eval(exp, scope, [])), [])
-      case return {
-        Ok(value) -> {
-          let scope = dict.insert(scope, name, value)
-          let state = #(scope, modules)
-          Ok(#(Some(#(value, logs)), state))
-        }
-        Error(#(reason, _, _)) -> Error(reason)
-      }
-    }
-    reader.Function(name, parameters, body) -> {
-      let value = v.NamedClosure(parameters, body, scope)
-      let scope = dict.insert(scope, name, value)
-      let state = #(scope, modules)
-      Ok(#(Some(#(value, [])), state))
-    }
-    reader.Statements(statements) -> {
-      let #(return, logs) = live_exec(statements, scope)
-      case
-        return
-        |> result.map_error(fn(e: #(_, _, _)) { e.0 })
-      {
-        Ok(value) -> Ok(#(Some(#(value, logs)), state))
-        Error(r.Finished(scope)) -> {
-          let state = #(scope, modules)
-          Ok(#(None, state))
-        }
-        Error(reason) -> Error(reason)
-      }
-    }
-  }
+  todo
+  // todo
+  // let #(scope, modules) = state
+  // case term {
+  //   reader.Import(module, binding, unqualified) -> {
+  //     case dict.get(modules, module) {
+  //       Ok(module) -> {
+  //         let scope = dict.insert(scope, binding, v.Module(module))
+  //         let scope =
+  //           list.fold(unqualified, scope, fn(scope, extra) {
+  //             let #(field, name) = extra
+  //             let assert Ok(value) = state.access_module(module, field)
+  //             dict.insert(scope, name, value)
+  //           })
+  //         Ok(#(None, #(scope, modules)))
+  //       }
+  //       Error(Nil) -> {
+  //         Error(r.UnknownModule(module))
+  //       }
+  //     }
+  //   }
+  //   reader.CustomType(variants) -> {
+  //     let scope =
+  //       list.fold(variants, scope, fn(scope, variant) {
+  //         let #(name, fields) = variant
+  //         let value = case fields {
+  //           [] -> v.R(name, [])
+  //           _ -> v.Constructor(name, fields)
+  //         }
+  //         dict.insert(scope, name, value)
+  //       })
+  //     let state = #(scope, modules)
+  //     Ok(#(None, state))
+  //   }
+  //   reader.Constant(name, exp) -> {
+  //     let #(return, logs) =
+  //       live_loop(state.next(state.eval(exp, scope, [])), [])
+  //     case return {
+  //       Ok(value) -> {
+  //         let scope = dict.insert(scope, name, value)
+  //         let state = #(scope, modules)
+  //         Ok(#(Some(#(value, logs)), state))
+  //       }
+  //       Error(#(reason, _, _)) -> Error(reason)
+  //     }
+  //   }
+  //   reader.Function(name, parameters, body) -> {
+  //     let value = v.NamedClosure(parameters, body, scope)
+  //     let scope = dict.insert(scope, name, value)
+  //     let state = #(scope, modules)
+  //     Ok(#(Some(#(value, [])), state))
+  //   }
+  //   reader.Statements(statements) -> {
+  //     let #(return, logs) = live_exec(statements, scope)
+  //     case
+  //       return
+  //       |> result.map_error(fn(e: #(_, _, _)) { e.0 })
+  //     {
+  //       Ok(value) -> Ok(#(Some(#(value, logs)), state))
+  //       Error(r.Finished(scope)) -> {
+  //         let state = #(scope, modules)
+  //         Ok(#(None, state))
+  //       }
+  //       Error(reason) -> Error(reason)
+  //     }
+  //   }
+  // }
 }
 
 pub fn live_exec(statements, env) {
