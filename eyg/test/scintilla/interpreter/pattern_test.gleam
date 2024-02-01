@@ -10,9 +10,7 @@ import scintilla/interpreter/runner
 import gleeunit/should
 
 fn exec(src, env) {
-  glexer.new(src)
-  |> glexer.lex()
-  |> list.filter(fn(pair) { !glance.is_whitespace(pair.0) })
+  src
   |> glance.statements()
   |> should.be_ok()
   |> runner.exec(env)

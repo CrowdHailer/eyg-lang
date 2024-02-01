@@ -69,7 +69,7 @@ pub fn parse(lines) {
     //   slurp(module, [], tokens)
     // }
     [#(t.Type, _), ..tokens] -> {
-      let module = g.Module([], [], [], [], [], [], [])
+      let module = g.Module( [], [], [], [], [])
       let result =
         result.map_error(
           g.type_definition(module, [], g.Private, False, tokens),
@@ -123,7 +123,7 @@ pub fn parse(lines) {
       Ok(#(function, tokens))
     }
     ts -> {
-      use statements <- result.try(result.map_error(g.statements(ts), ParseFail))
+      use statements <- result.try(result.map_error(g.statements(lines), ParseFail))
       Ok(#(Statements(statements), []))
     }
   }
