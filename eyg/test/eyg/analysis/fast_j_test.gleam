@@ -5,6 +5,7 @@ import eyg/parse/lexer
 import eyg/parse/parser
 import gleeunit/should
 import eyg/analysis/fast_j as j
+import eyg/analysis/fast_j/debug
 
 fn parse(src) {
   src
@@ -36,16 +37,54 @@ fn drop_env(results) {
 fn do_render(results) {
   list.map(results, fn(r) {
     let #(type_, eff) = r
-    #(result.map(type_, j.render_type), j.render_effects(eff))
+    #(result.map(type_, debug.render_type), debug.render_effects(eff))
   })
 }
 
-pub fn literal_test() {
+pub fn integer_literal_test() {
   "5"
   |> parse
   |> j.infer
   |> do_resolve()
-  |> should.equal([#(Ok(j.Integer), j.Empty, [])])
+  |> drop_env()
+  |> do_render()
+  |> should.equal([#(Ok("Integer"), "<>")])
+}
+
+pub fn string_literal_test() {
+  "\"hello\""
+  |> parse
+  |> j.infer
+  |> do_resolve()
+  |> drop_env()
+  |> do_render()
+  |> should.equal([#(Ok("String"), "<>")])
+}
+
+// TODO binary needs parsing
+
+pub fn list_literal_test() {
+  "[]"
+  |> parse
+  |> j.infer
+  |> do_resolve()
+  |> drop_env()
+  |> do_render()
+  |> should.equal([#(Ok("List(0)"), "<>")])
+
+  "[3]"
+  |> parse
+  |> j.infer
+  |> do_resolve()
+  |> drop_env()
+  |> do_render()
+  |> should.equal([
+    #(Ok("List(Integer)"), "<>"),
+    #(Ok("(List(Integer)) -> <> List(Integer)"), "<>"),
+    #(Ok("(Integer) -> <> (List(Integer)) -> <> List(Integer)"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("List(Integer)"), "<>"),
+  ])
 }
 
 pub fn pure_function_test() {
@@ -112,32 +151,16 @@ pub fn combine_effect_test() {
   |> parse
   |> j.infer
   |> do_resolve()
+  |> drop_env()
+  |> do_render()
   |> should.equal([
-    #(Ok(j.Var(5)), j.Empty, []),
-    #(Ok(j.Var(1)), j.EffectExtend("Log", #(j.String, j.Var(1)), j.Empty), []),
-    #(
-      Ok(j.Fun(
-        j.String,
-        j.EffectExtend("Log", #(j.String, j.Var(1)), j.Empty),
-        j.Var(1),
-      )),
-      j.Empty,
-      [],
-    ),
-    #(Ok(j.String), j.Empty, []),
-    #(Ok(j.Var(5)), j.EffectExtend("Foo", #(j.Integer, j.Var(5)), j.Empty), [
-      #("x", j.Var(#(True, 1))),
-    ]),
-    #(
-      Ok(j.Fun(
-        j.Integer,
-        j.EffectExtend("Foo", #(j.Integer, j.Var(5)), j.Empty),
-        j.Var(5),
-      )),
-      j.Empty,
-      [#("x", j.Var(#(True, 1)))],
-    ),
-    #(Ok(j.Integer), j.Empty, [#("x", j.Var(#(True, 1)))]),
+    #(Ok("7"), "<>"),
+    #(Ok("11"), "<Log(String, 11), Log(Integer, 7), ..12>"),
+    #(Ok("(String) -> <Log(String, 11), Log(Integer, 7), ..12> 11"), "<>"),
+    #(Ok("String"), "<>"),
+    #(Ok("7"), "<Foo(Integer, 7), Foo(String, 11), ..12>"),
+    #(Ok("(Integer) -> <Foo(Integer, 7), Foo(String, 11), ..12> 7"), "<>"),
+    #(Ok("Integer"), "<>"),
   ])
 }
 

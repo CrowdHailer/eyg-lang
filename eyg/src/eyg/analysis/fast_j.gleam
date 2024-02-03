@@ -1,3 +1,4 @@
+// TODO rename level_j
 import gleam/dict.{type Dict}
 import gleam/io
 import gleam/int
@@ -11,106 +12,13 @@ pub type Type(var) {
   Binary
   Integer
   String
-  LinkedList(Type(var))
+  List(Type(var))
   // Types Record/Union must be Empty/Extend/Var
   Record(Type(var))
   Union(Type(var))
   Empty
   RowExtend(String, Type(var), Type(var))
   EffectExtend(String, #(Type(var), Type(var)), Type(var))
-}
-
-pub fn render_type(typ) {
-  case typ {
-    Var(i) -> int.to_string(i)
-    Integer -> "Integer"
-    String -> "String"
-    LinkedList(el) -> string.concat(["List(", render_type(el), ")"])
-    Fun(from, effects, to) ->
-      string.concat([
-        "(",
-        render_type(from),
-        ") -> ",
-        render_effects(effects),
-        " ",
-        render_type(to),
-      ])
-    Union(row) ->
-      string.concat([
-        "[",
-        string.concat(
-          render_row(row)
-          |> list.intersperse(" | "),
-        ),
-        "]",
-      ])
-    Record(row) ->
-      string.concat([
-        "{",
-        string.concat(
-          render_row(row)
-          |> list.intersperse(", "),
-        ),
-        "}",
-      ])
-    // Rows can be rendered as any mismatch in errors
-    EffectExtend(_, _, _) -> string.concat(["<", render_effects(typ), ">"])
-    row -> {
-      string.concat([
-        "{",
-        render_row(row)
-        |> string.join(""),
-        "}",
-      ])
-    }
-  }
-}
-
-fn render_row(r) -> List(String) {
-  case r {
-    Empty -> []
-    Var(i) -> [string.append("..", int.to_string(i))]
-    RowExtend(label, value, tail) -> {
-      let field = string.concat([label, ": ", render_type(value)])
-      [field, ..render_row(tail)]
-    }
-    _ -> ["not a valid row"]
-  }
-}
-
-pub fn render_effects(effects) {
-  case effects {
-    Var(i) -> string.concat(["<..", int.to_string(i), ">"])
-    Empty -> "<>"
-    EffectExtend(label, #(lift, resume), tail) ->
-      string.concat([
-        "<",
-        string.join(
-          collect_effect(tail, [render_effect(label, lift, resume)])
-          |> list.reverse,
-          ", ",
-        ),
-        ">",
-      ])
-    _ -> "not a valid effect"
-  }
-}
-
-fn render_effect(label, lift, resume) {
-  string.concat([label, "(", render_type(lift), ", ", render_type(resume), ")"])
-}
-
-fn collect_effect(eff, acc) {
-  case eff {
-    EffectExtend(label, #(lift, resume), tail) ->
-      collect_effect(tail, [render_effect(label, lift, resume), ..acc])
-    Var(i) -> [string.append("..", int.to_string(i)), ..acc]
-    Empty -> acc
-    _ -> {
-      io.debug("unexpected effect")
-      acc
-    }
-  }
 }
 
 pub type Binding {
@@ -320,6 +228,19 @@ fn do_infer(source, env, s) {
     }
     e.Integer(_) -> #(s, Integer, Empty, [#(Ok(Integer), Empty, env)])
     e.Str(_) -> #(s, String, Empty, [#(Ok(String), Empty, env)])
+    e.Tail -> {
+      let #(s, el) = newvar(s)
+      #(s, List(el), Empty, [#(Ok(List(el)), Empty, env)])
+    }
+    e.Cons -> {
+      let #(s, el) = newvar(s)
+      let list = List(el)
+
+      #(s, Fun(el, Empty, Fun(list, Empty, list)), Empty, [
+        #(Ok(Fun(el, Empty, Fun(list, Empty, list))), Empty, env),
+      ])
+      // TODO move to primitive
+    }
     e.Perform(label) -> {
       let #(s, arg) = newvar(s)
       // Do this one level lower, but Do row rewriting
@@ -353,6 +274,7 @@ pub fn resolve(type_, bindings) {
     Integer -> Integer
     String -> String
     Empty -> Empty
+    List(el) -> List(resolve(el, bindings))
     EffectExtend(label, #(lift, reply), rest) ->
       EffectExtend(
         label,
@@ -375,23 +297,54 @@ fn find(type_, s: State) {
 
 fn unify(t1, t2, s: State) {
   case t1, find(t1, s), t2, find(t2, s) {
-    // TODO if they are the same
     _, Ok(Bound(t1)), _, _ -> unify(t1, t2, s)
     _, _, _, Ok(Bound(t2)) -> unify(t1, t2, s)
+    Var(i), _, Var(j), _ if i == j -> s
     Var(i), Ok(Unbound(level)), other, _ | other, _, Var(i), Ok(Unbound(level)) -> {
       // TODO OCCURS CHECK
-      let bindings = dict.insert(s.bindings, i, Bound(other))
-      State(..s, bindings: bindings)
+      State(..s, bindings: dict.insert(s.bindings, i, Bound(other)))
     }
     Fun(arg1, eff1, ret1), _, Fun(arg2, eff2, ret2), _ -> {
       let s = unify(arg1, arg2, s)
       let s = unify(eff1, eff2, s)
       let s = unify(ret1, ret2, s)
+      s
     }
+    List(el1), _, List(el2), _ -> unify(el1, el2, s)
     Empty, _, Empty, _ -> s
+    EffectExtend(l1, #(lift1, reply1), r1), _, other, _
+    | other, _, EffectExtend(l1, #(lift1, reply1), r1), _ -> {
+      let assert Ok(#(#(lift2, reply2), r2, s)) = rewrite_effect(l1, other, s)
+      let s = unify(lift1, lift2, s)
+      let s = unify(reply1, reply2, s)
+      let s = unify(r1, r2, s)
+      s
+    }
     _, _, _, _ -> {
       io.debug(#("unifying", t1, t2))
       panic as "something"
     }
+  }
+}
+
+fn rewrite_effect(required, type_, s) {
+  case type_ {
+    Empty -> Error(Nil)
+    EffectExtend(l, eff, rest) if l == required -> Ok(#(eff, rest, s))
+    EffectExtend(l, other_eff, rest) -> {
+      let assert Ok(#(eff, new_tail, s)) = rewrite_effect(l, rest, s)
+      // use #(eff, new_tail, s) <-  try(rewrite_effect(l, rest, s))
+      let rest = EffectExtend(required, other_eff, new_tail)
+      Ok(#(eff, rest, s))
+    }
+    Var(i) -> {
+      let #(s, lift) = newvar(s)
+      let #(s, reply) = newvar(s)
+      let #(s, rest) = newvar(s)
+      let type_ = EffectExtend(required, #(lift, reply), rest)
+      let s = State(..s, bindings: dict.insert(s.bindings, i, Bound(type_)))
+      Ok(#(#(lift, reply), rest, s))
+    }
+    _ -> Error(Nil)
   }
 }
