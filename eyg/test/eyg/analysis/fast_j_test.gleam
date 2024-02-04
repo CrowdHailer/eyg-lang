@@ -41,43 +41,110 @@ fn do_render(results) {
   })
 }
 
-pub fn integer_literal_test() {
+fn calc(source) {
+  source
+  |> parse
+  |> j.infer
+  |> do_resolve()
+  |> drop_env()
+  |> do_render()
+}
+
+pub fn variable_test() {
+  "x"
+  |> calc()
+  |> should.equal([#(Error(j.MissingVariable("x")), "<>")])
+}
+
+pub fn literal_test() {
   "5"
-  |> parse
-  |> j.infer
-  |> do_resolve()
-  |> drop_env()
-  |> do_render()
+  |> calc()
   |> should.equal([#(Ok("Integer"), "<>")])
-}
 
-pub fn string_literal_test() {
   "\"hello\""
-  |> parse
-  |> j.infer
-  |> do_resolve()
-  |> drop_env()
-  |> do_render()
+  |> calc()
   |> should.equal([#(Ok("String"), "<>")])
+  // TODO binary needs parsing
 }
 
-// TODO binary needs parsing
+pub fn function_test() {
+  "(_) -> { 5 }"
+  |> calc()
+  |> should.equal([#(Ok("(0) -> <> Integer"), "<>"), #(Ok("Integer"), "<>")])
 
-pub fn list_literal_test() {
+  "(x) -> { x }(5)"
+  |> calc()
+  |> should.equal([
+    #(Ok("Integer"), "<>"),
+    #(Ok("(Integer) -> <> Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+  ])
+
+  "(x, _) -> {
+    x
+  }(1, \"\")"
+  |> calc()
+  |> should.equal([
+    #(Ok("Integer"), "<>"),
+    #(Ok("(String) -> <> Integer"), "<>"),
+    #(Ok("(Integer) -> <> (String) -> <> Integer"), "<>"),
+    #(Ok("(String) -> <> Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("String"), "<>"),
+  ])
+
+  "(_, z) -> {
+    z
+  }(1, \"\")"
+  |> calc()
+  |> should.equal([
+    #(Ok("String"), "<>"),
+    #(Ok("(String) -> <> String"), "<>"),
+    #(Ok("(Integer) -> <> (String) -> <> String"), "<>"),
+    #(Ok("(String) -> <> String"), "<>"),
+    #(Ok("String"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("String"), "<>"),
+  ])
+}
+
+pub fn let_test() {
+  "let x = 5
+  let y = \"\"
+  x"
+  |> calc()
+  |> should.equal([
+    #(Ok("Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("String"), "<>"),
+    #(Ok("Integer"), "<>"),
+  ])
+
+  "let x = 5
+  let x = \"\"
+  x"
+  |> calc()
+  |> should.equal([
+    #(Ok("String"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("String"), "<>"),
+    #(Ok("String"), "<>"),
+    #(Ok("String"), "<>"),
+  ])
+}
+
+// compound types
+
+pub fn list_test() {
   "[]"
-  |> parse
-  |> j.infer
-  |> do_resolve()
-  |> drop_env()
-  |> do_render()
+  |> calc()
   |> should.equal([#(Ok("List(0)"), "<>")])
 
   "[3]"
-  |> parse
-  |> j.infer
-  |> do_resolve()
-  |> drop_env()
-  |> do_render()
+  |> calc()
   |> should.equal([
     #(Ok("List(Integer)"), "<>"),
     #(Ok("(List(Integer)) -> <> List(Integer)"), "<>"),
@@ -87,23 +154,49 @@ pub fn list_literal_test() {
   ])
 }
 
-pub fn pure_function_test() {
-  "(_) -> 5"
-  |> parse
-  |> j.infer
-  |> do_resolve()
-  |> should.equal([
-    #(Ok(j.Fun(j.Var(0), j.Empty, j.Integer)), j.Empty, []),
-    #(Ok(j.Integer), j.Empty, [#("_", j.Var(#(False, 0)))]),
-  ])
+pub fn record_test() {
+  "{}"
+  |> calc()
+  |> should.equal([#(Ok("{}"), "<>")])
 
-  "(x) -> x"
-  |> parse
-  |> j.infer
-  |> do_resolve()
+  "{a: 3}"
+  |> calc()
   |> should.equal([
-    #(Ok(j.Fun(j.Var(0), j.Empty, j.Var(0))), j.Empty, []),
-    #(Ok(j.Var(0)), j.Empty, [#("x", j.Var(#(False, 0)))]),
+    #(Ok("{a: Integer}"), "<>"),
+    #(Ok("({}) -> <> {a: Integer}"), "<>"),
+    #(Ok("(Integer) -> <> ({}) -> <> {a: Integer}"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("{}"), "<>"),
+  ])
+}
+
+pub fn tag_test() {
+  "Ok"
+  |> calc()
+  |> should.equal([#(Ok("(0) -> <> [Ok: 0 | ..1]"), "<>")])
+
+  "Ok(8)"
+  |> calc()
+  |> should.equal([
+    #(Ok("[Ok: Integer | ..1]"), "<>"),
+    #(Ok("(Integer) -> <> [Ok: Integer | ..1]"), "<>"),
+    #(Ok("Integer"), "<>"),
+  ])
+}
+
+pub fn builtin_test() {
+  "!integer_add"
+  |> calc()
+  |> should.equal([#(Ok("(Integer) -> <> (Integer) -> <> Integer"), "<>")])
+
+  "!integer_add(1, 2)"
+  |> calc()
+  |> should.equal([
+    #(Ok("Integer"), "<>"),
+    #(Ok("(Integer) -> <> Integer"), "<>"),
+    #(Ok("(Integer) -> <> (Integer) -> <> Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
   ])
 }
 

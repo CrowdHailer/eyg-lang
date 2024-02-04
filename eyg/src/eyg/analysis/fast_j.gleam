@@ -6,6 +6,14 @@ import gleam/list
 import gleam/string
 import eygir/expression as e
 
+pub type Reason {
+  MissingVariable(String)
+  // TypeMismatch(t.Type, t.Type)
+  // RowMismatch(String)
+  // InvalidTail(t.Type)
+  // RecursiveType
+}
+
 pub type Type(var) {
   Var(key: var)
   Fun(Type(var), Type(var), Type(var))
@@ -85,6 +93,8 @@ fn gen(type_, s: State) {
       Fun(arg, eff, ret)
     }
     Integer -> Integer
+    Binary -> Binary
+    String -> String
     Empty -> Empty
     _ -> {
       io.debug(#("gen", type_))
@@ -122,6 +132,8 @@ fn do_instantiate(poly, subst, state) {
       #(Fun(arg, eff, ret), subst, state)
     }
     Integer -> #(Integer, subst, state)
+    Binary -> #(Binary, subst, state)
+    String -> #(String, subst, state)
     Empty -> #(Empty, subst, state)
     _ -> {
       io.debug(#("do_inst", poly))
@@ -180,7 +192,7 @@ fn do_infer(source, env, s) {
 
         Error(Nil) -> {
           let #(s, type_) = newvar(s)
-          #(s, type_, Empty, [#(Error(Nil), Empty, env)])
+          #(s, type_, Empty, [#(Error(MissingVariable(x)), Empty, env)])
         }
       }
     e.Lambda(x, body) -> {
@@ -227,6 +239,7 @@ fn do_infer(source, env, s) {
       #(s, ty_then, eff_then, [#(Ok(ty_then), Empty, env), ..inner])
     }
     e.Integer(_) -> #(s, Integer, Empty, [#(Ok(Integer), Empty, env)])
+    e.Binary(_) -> #(s, String, Empty, [#(Ok(Binary), Empty, env)])
     e.Str(_) -> #(s, String, Empty, [#(Ok(String), Empty, env)])
     e.Tail -> {
       let #(s, el) = newvar(s)
@@ -235,12 +248,27 @@ fn do_infer(source, env, s) {
     e.Cons -> {
       let #(s, el) = newvar(s)
       let list = List(el)
-
-      #(s, Fun(el, Empty, Fun(list, Empty, list)), Empty, [
-        #(Ok(Fun(el, Empty, Fun(list, Empty, list))), Empty, env),
-      ])
+      let type_ = pure2(el, list, list)
+      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
       // TODO move to primitive
     }
+    e.Empty -> #(s, Record(Empty), Empty, [#(Ok(Record(Empty)), Empty, env)])
+
+    e.Extend(label) -> {
+      let #(s, field) = newvar(s)
+      let #(s, rest) = newvar(s)
+
+      let type_ =
+        pure2(field, Record(rest), Record(RowExtend(label, field, rest)))
+      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+    }
+    e.Tag(label) -> {
+      let #(s, inner) = newvar(s)
+      let #(s, rest) = newvar(s)
+      let type_ = pure1(inner, Union(RowExtend(label, inner, rest)))
+      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+    }
+
     e.Perform(label) -> {
       let #(s, arg) = newvar(s)
       // Do this one level lower, but Do row rewriting
@@ -249,10 +277,28 @@ fn do_infer(source, env, s) {
       let type_ = Fun(arg, EffectExtend(label, #(arg, ret), rest), ret)
       #(s, type_, Empty, [#(Ok(type_), Empty, env)])
     }
+    e.Builtin(label) -> {
+      let type_ = primitive(label)
+      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+    }
     _ -> {
       io.debug(source)
       panic as "unspeorted"
     }
+  }
+}
+
+fn pure1(arg1, ret) {
+  Fun(arg1, Empty, ret)
+}
+
+fn pure2(arg1, arg2, ret) {
+  Fun(arg1, Empty, Fun(arg2, Empty, ret))
+}
+
+fn primitive(name) {
+  case name {
+    "integer_add" -> pure2(Integer, Integer, Integer)
   }
 }
 
@@ -275,6 +321,10 @@ pub fn resolve(type_, bindings) {
     String -> String
     Empty -> Empty
     List(el) -> List(resolve(el, bindings))
+    Record(rows) -> Record(resolve(rows, bindings))
+    Union(rows) -> Union(resolve(rows, bindings))
+    RowExtend(label, field, rest) ->
+      RowExtend(label, resolve(field, bindings), resolve(rest, bindings))
     EffectExtend(label, #(lift, reply), rest) ->
       EffectExtend(
         label,
@@ -310,8 +360,13 @@ fn unify(t1, t2, s: State) {
       let s = unify(ret1, ret2, s)
       s
     }
+    Integer, _, Integer, _ -> s
+    Binary, _, Binary, _ -> s
+    String, _, String, _ -> s
+
     List(el1), _, List(el2), _ -> unify(el1, el2, s)
     Empty, _, Empty, _ -> s
+    Record(rows1), _, Record(rows2), _ -> unify(rows1, rows2, s)
     EffectExtend(l1, #(lift1, reply1), r1), _, other, _
     | other, _, EffectExtend(l1, #(lift1, reply1), r1), _ -> {
       let assert Ok(#(#(lift2, reply2), r2, s)) = rewrite_effect(l1, other, s)

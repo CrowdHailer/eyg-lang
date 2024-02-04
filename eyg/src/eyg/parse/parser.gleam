@@ -35,6 +35,16 @@ fn one_pattern(tokens) {
   }
 }
 
+pub fn do_patterns(tokens, acc) {
+  use #(pattern, tokens) <- try(one_pattern(tokens))
+  let acc = [pattern, ..acc]
+  use #(#(next, _), rest) <- try(pop(tokens))
+  case next {
+    t.Comma -> do_patterns(rest, acc)
+    t.RightParen -> Ok(#(acc, rest))
+  }
+}
+
 pub fn expression(tokens) {
   use #(#(token, start), rest) <- try(pop(tokens))
 
@@ -62,22 +72,30 @@ pub fn expression(tokens) {
       Ok(#(exp, rest))
     }
     t.LeftParen -> {
-      use #(pattern, rest) <- try(one_pattern(rest))
+      use #(patterns_reversed, rest) <- try(do_patterns(rest, []))
       use rest <- try(case rest {
-        [#(t.RightParen, _), #(t.RightArrow, _), ..rest] -> Ok(rest)
+        [#(t.RightArrow, _), #(t.LeftBrace, _), ..rest] -> Ok(rest)
       })
       use #(body, rest) <- try(expression(rest))
-      let exp = case pattern {
-        Assign(label) -> e.Lambda(label, body)
-        Destructure(matches) ->
-          e.Lambda(
-            "$",
-            list.fold(matches, body, fn(acc, pair) {
-              let #(field, var) = pair
-              e.Let(var, e.Apply(e.Select(field), e.Variable("$")), acc)
-            }),
-          )
-      }
+      use rest <- try(case rest {
+        [#(t.RightBrace, _), ..rest] -> Ok(rest)
+      })
+
+      let exp =
+        list.fold(patterns_reversed, body, fn(body, pattern) {
+          case pattern {
+            Assign(label) -> e.Lambda(label, body)
+            Destructure(matches) ->
+              e.Lambda(
+                "$",
+                list.fold(matches, body, fn(acc, pair) {
+                  let #(field, var) = pair
+                  e.Let(var, e.Apply(e.Select(field), e.Variable("$")), acc)
+                }),
+              )
+          }
+        })
+
       Ok(#(exp, rest))
     }
     t.Integer(raw) -> {
@@ -116,6 +134,11 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Uppername(label), _), ..rest] -> Ok(#(e.Shallow(label), rest))
       }
+    t.Bang ->
+      case rest {
+        [#(t.Name(label), _), ..rest] -> Ok(#(e.Builtin(label), rest))
+      }
+
     _ -> {
       io.debug(token)
       todo as "unexpected token"
@@ -154,12 +177,13 @@ fn do_pattern(tokens, acc) {
 
 fn after_expression(exp, rest) {
   case rest {
-    [#(t.RightArrow, _), ..rest] -> {
-      use #(body, rest) <- try(expression(rest))
-      case exp {
-        e.Variable(label) -> Ok(#(e.Lambda(label, body), rest))
-      }
-    }
+    // This clause is backtracing even if only one node, is it worth having
+    // [#(t.RightArrow, _), ..rest] -> {
+    //   use #(body, rest) <- try(expression(rest))
+    //   case exp {
+    //     e.Variable(label) -> Ok(#(e.Lambda(label, body), rest))
+    //   }
+    // }
     [#(t.LeftParen, _), ..rest] -> {
       use #(arg, rest) <- try(expression(rest))
       use #(args, rest) <- try(do_args(rest, [arg]))

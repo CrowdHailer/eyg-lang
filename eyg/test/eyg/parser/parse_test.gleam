@@ -24,21 +24,32 @@ pub fn literal_test() {
 }
 
 pub fn lambda_test() {
-  "x -> 5"
+  // Stop supporting
+  // "x -> 5"
+  // |> lexer.lex()
+  // |> parser.parse()
+  // |> should.be_ok()
+  // |> should.equal(e.Lambda("x", e.Integer(5)))
+
+  // need brackets otherwise `(f) -> f(3)` is ambiguous `(f) -> { f(3) }` `(f) -> { f }(3)`
+  "(x) -> { 5 }"
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
   |> should.equal(e.Lambda("x", e.Integer(5)))
 
-  "(x) -> 5"
+  "(x, y) -> { 5 }"
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
-  |> should.equal(e.Lambda("x", e.Integer(5)))
+  |> should.equal(e.Lambda("x", e.Lambda("y", e.Integer(5))))
 }
 
+// Need a way to mark body
+
 pub fn fn_pattern_test() {
-  "({x: a, y: b}) -> 5"
+  // Need both brackets if allowing multiple args
+  "({x: a, y: b}) -> { 5 }"
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
@@ -108,7 +119,7 @@ pub fn let_test() -> Nil {
     e.Apply(e.Select("foo"), e.Variable("x")),
   ))
 
-  "let x = 
+  "let x =
     let y = 3
     y
    x"
@@ -321,9 +332,9 @@ pub fn match_test() {
   |> should.be_ok()
   |> should.equal(e.Apply(e.NoCases, e.Variable("x")))
 
-  "match { 
+  "match {
     Ok x
-    Error y -> y
+    Error(y) -> { y }
   }"
   |> lexer.lex()
   |> parser.parse()
@@ -333,8 +344,8 @@ pub fn match_test() {
     e.Apply(e.Apply(e.Case("Error"), e.Lambda("y", e.Variable("y"))), e.NoCases),
   ))
 
-  "match { 
-    User({name, age}) -> age
+  "match {
+    User({name, age}) -> { age }
   }"
   |> lexer.lex()
   |> parser.parse()

@@ -19,6 +19,7 @@ pub type Token {
   Colon
   RightArrow
   Minus
+  Bang
 
   LeftParen
   RightParen

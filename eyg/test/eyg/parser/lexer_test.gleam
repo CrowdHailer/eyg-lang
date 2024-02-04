@@ -23,7 +23,7 @@ pub fn grouping_test() {
 }
 
 pub fn punctuation_test() {
-  "= -> , . : "
+  "= -> , . : !"
   |> lexer.lex
   |> should.equal([
     #(t.Equal, 0),
@@ -31,6 +31,7 @@ pub fn punctuation_test() {
     #(t.Comma, 5),
     #(t.Dot, 7),
     #(t.Colon, 9),
+    #(t.Bang, 11),
   ])
 }
 
