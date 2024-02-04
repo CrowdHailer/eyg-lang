@@ -14,14 +14,20 @@ fn parse(src) {
   |> should.be_ok()
 }
 
-fn do_resolve(return: #(List(#(_, _, _, _)), _)) {
-  let #(acc, bindings) = return
-  list.map(acc, fn(node) {
-    let #(error, typed, effect, env) = node
-    let typed = j.resolve(typed, bindings)
-    let effect = j.resolve(effect, bindings)
-    #(error, typed, effect, env)
-  })
+fn do_resolve(return: #(List(#(_, _, _, _)), j.State)) {
+  let #(acc, state) = return
+  let #(s, acc) =
+    list.map_fold(acc, state, fn(s, node) {
+      let #(error, typed, effect, env) = node
+      // let #(s, typed) = j.instantiate(scheme, s)
+      // TODO do I need state
+      let typed = j.resolve(typed, s.bindings)
+      // let #(s, effect) = j.instantiate(effect, s)
+
+      let effect = j.resolve(effect, s.bindings)
+      #(s, #(error, typed, effect, env))
+    })
+  acc
 }
 
 fn drop_env(results) {
@@ -183,6 +189,24 @@ pub fn list_test() {
   ])
 }
 
+// Testing such that the env has no effects drives the effects of fns being empty not that we can ignore them
+// well we can but only by getting more info lost with generalising
+
+// In apply doing only close means that types keep unifying for the lift and lower types
+// Show typing example where an error use of a return type leaves it as e but if fixed it gets found properly
+
+// TODO some tests with fn capture
+// let x
+// let f = (_) -> { x }
+
+// TODO do types in a webpage
+// source, tree, types
+// highlight each case where and effect is created do lines from selection to the correct part of the tree
+// do not wrap unless hovering on the types
+
+// try and write the algorithm in eyg
+// potentially try the interpreter
+
 pub fn list_polymorphism_test() {
   "let x = 5
   let l = [x]
@@ -214,8 +238,24 @@ pub fn list_polymorphism_test() {
     ),
     ok("(3) -> <> 3", "<>"),
     ok("3", "<>"),
+    // Tail element below. it is typed because no generalisation/instantiation
+    // Will always get List(x) if only looking in
     ok("List((3) -> <> 3)", "<>"),
     ok("List((8) -> <> 8)", "<>"),
+    [
+      #(Ok(Nil), "List((8) -> <..9> 8)", "<>"),
+      #(Ok(Nil), "List((1) -> <..2> 1)", "<>"),
+      #(Ok(Nil), "(List((1) -> <..2> 1)) -> <> List((1) -> <..2> 1)", "<>"),
+      #(
+        Ok(Nil),
+        "((1) -> <..2> 1) -> <> (List((1) -> <..2> 1)) -> <> List((1) -> <..2> 1)",
+        "<>",
+      ),
+      #(Ok(Nil), "(1) -> <..2> 1", "<>"),
+      #(Ok(Nil), "1", "<>"),
+      #(Ok(Nil), "List((1) -> <..2> 1)", "<>"),
+      #(Ok(Nil), "List((8) -> <..9> 8)", "<>"),
+    ],
   ])
 }
 
@@ -328,13 +368,13 @@ pub fn combine_effect_test() {
   }"
   |> calc(j.Var(-1))
   |> should.equal([
-    #(Ok(Nil), "(0) -> <Log(String, 11), Foo(Integer, 8)> 8", "<>"),
-    #(Ok(Nil), "8", "<>"),
-    #(Ok(Nil), "11", "<Log(String, 11)>"),
-    #(Ok(Nil), "(String) -> <Log(String, 11)> 11", "<>"),
+    #(Ok(Nil), "(15) -> <Log(String, 16), Foo(Integer, 17)> 17", "<>"),
+    #(Ok(Nil), "18", "<>"),
+    #(Ok(Nil), "19", "<Log(String, 20)>"),
+    #(Ok(Nil), "(21) -> <Log(21, 22)> 22", "<>"),
     #(Ok(Nil), "String", "<>"),
-    #(Ok(Nil), "8", "<Foo(Integer, 8)>"),
-    #(Ok(Nil), "(Integer) -> <Foo(Integer, 8)> 8", "<>"),
+    #(Ok(Nil), "23", "<Foo(Integer, 24)>"),
+    #(Ok(Nil), "(25) -> <Foo(25, 26)> 26", "<>"),
     #(Ok(Nil), "Integer", "<>"),
   ])
 
@@ -358,7 +398,7 @@ pub fn combine_with_pure_test() {
       x
     }(5)
     perform Log(\"info\")
-  }"
+  }(1)"
   |> calc(j.Empty)
   |> should.equal([
     #(Ok(Nil), "(0) -> <Log(String, 7)> 7", "<>"),
@@ -370,29 +410,60 @@ pub fn combine_with_pure_test() {
     #(Ok(Nil), "7", "<Log(String, 7)>"),
     #(Ok(Nil), "(String) -> <Log(String, 7)> 7", "<>"),
     #(Ok(Nil), "String", "<>"),
+    //
+    #(Ok(Nil), "(0) -> <Log(String, 7), ..8> 7", "<>"),
+    #(Ok(Nil), "7", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "(Integer) -> <Log(String, 7), ..8> Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "7", "<Log(String, 7)>"),
+    #(Ok(Nil), "(String) -> <Log(String, 7), ..8> 7", "<>"),
+    #(Ok(Nil), "String", "<>"),
+    //
+    #(Ok(Nil), "7", "<Log(String, 7)>"),
+    #(Ok(Nil), "(Integer) -> <Log(String, 7), ..8> 7", "<>"),
+    #(Ok(Nil), "7", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "(Integer) -> <Log(String, 7), ..8> Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "7", "<Log(String, 7)>"),
+    #(Ok(Nil), "(String) -> <Log(String, 7), ..8> 7", "<>"),
+    #(Ok(Nil), "String", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
   ])
 }
 
 pub fn combine_unknown_effect_test() {
   "(f) -> {
     let x = f(\"info\")
-    perform Foo(5)
+    let _ = perform Foo(5)
+    !integer_add(perform Foo(5))
   }"
   |> calc(j.Var(-1))
   |> should.equal([
-    ok(
-      "((String) -> <Foo(Integer, 5), ..4> 2) -> <Foo(Integer, 5), ..4> 5",
+    #(
+      Ok(Nil),
+      "((String) -> <Foo(Integer, Integer), ..6> 2) -> <Foo(Integer, Integer), ..6> (Integer) -> <> Integer",
       "<>",
     ),
-    #(Ok(Nil), "5", "<>"),
-    #(Ok(Nil), "2", "<Foo(Integer, 5), ..4>"),
-    #(Ok(Nil), "(String) -> <Foo(Integer, 5), ..4> 2", "<>"),
+    #(Ok(Nil), "(Integer) -> <> Integer", "<>"),
+    #(Ok(Nil), "2", "<>"),
+    #(Ok(Nil), "(String) -> <Foo(Integer, Integer), ..6> 2", "<>"),
     #(Ok(Nil), "String", "<>"),
-    #(Ok(Nil), "5", "<Foo(Integer, 5)>"),
-    #(Ok(Nil), "(Integer) -> <Foo(Integer, 5)> 5", "<>"),
+    #(Ok(Nil), "(Integer) -> <> Integer", "<>"),
+    #(Ok(Nil), "Integer", "<Foo(Integer, Integer)>"),
+    #(Ok(Nil), "(Integer) -> <Foo(Integer, Integer), ..6> Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "(Integer) -> <> Integer", "<>"),
+    #(Ok(Nil), "(Integer) -> <> (Integer) -> <> Integer", "<>"),
+    #(Ok(Nil), "Integer", "<Foo(Integer, Integer)>"),
+    #(Ok(Nil), "(Integer) -> <Foo(Integer, Integer), ..6> Integer", "<>"),
     #(Ok(Nil), "Integer", "<>"),
   ])
 
+  // ],
   "(f) -> {
     f(perform Log(\"info\"))
   }"
@@ -435,24 +506,24 @@ pub fn poly_in_effect_test() {
   }"
   |> calc(j.Empty)
   |> should.equal([
-    #(Ok(Nil), "(0) -> <> 19", "<>"),
-    #(Ok(Nil), "19", "<>"),
-    #(Ok(Nil), "((Integer) -> <..5> 4) -> <> 4", "<>"),
-    #(Ok(Nil), "4", "<..3>"),
-    #(Ok(Nil), "(Integer) -> <..5> 4", "<>"),
+    #(Ok(Nil), "(31) -> <Bar(Integer, 32), Foo(Integer, 33)> 33", "<>"),
+    #(Ok(Nil), "31", "<>"),
+    #(Ok(Nil), "((Integer) -> <..31> 32) -> <..31> 32", "<>"),
+    #(Ok(Nil), "31", "<>"),
+    #(Ok(Nil), "(Integer) -> <..3> 4", "<>"),
     #(Ok(Nil), "Integer", "<>"),
-    #(Ok(Nil), "19", "<>"),
-    #(Ok(Nil), "7", "<>"),
-    #(Ok(Nil), "((Integer) -> <..6> 7) -> <..8> 7", "<>"),
-    #(Ok(Nil), "(Integer) -> <> 7", "<>"),
-    #(Ok(Nil), "7", "<Bar(Integer, 7)>"),
-    #(Ok(Nil), "(Integer) -> <Bar(Integer, 7)> 7", "<>"),
+    #(Ok(Nil), "31", "<>"),
+    #(Ok(Nil), "31", "<Bar(Integer, 31), ..32>"),
+    #(Ok(Nil), "((Integer) -> <..31> 32) -> <..31> 32", "<>"),
+    #(Ok(Nil), "(31) -> <Bar(Integer, 32)> 32", "<>"),
+    #(Ok(Nil), "31", "<Bar(Integer, 31)>"),
+    #(Ok(Nil), "(31) -> <Bar(31, 32)> 32", "<>"),
     #(Ok(Nil), "Integer", "<>"),
-    #(Ok(Nil), "19", "<>"),
-    #(Ok(Nil), "((Integer) -> <..18> 19) -> <..20> 19", "<>"),
-    #(Ok(Nil), "(Integer) -> <> 19", "<>"),
-    #(Ok(Nil), "19", "<Foo(Integer, 19)>"),
-    #(Ok(Nil), "(Integer) -> <Foo(Integer, 19)> 19", "<>"),
+    #(Ok(Nil), "31", "<Foo(Integer, 31), ..32>"),
+    #(Ok(Nil), "((Integer) -> <..31> 32) -> <..31> 32", "<>"),
+    #(Ok(Nil), "(31) -> <Foo(Integer, 32)> 32", "<>"),
+    #(Ok(Nil), "31", "<Foo(Integer, 31)>"),
+    #(Ok(Nil), "(31) -> <Foo(31, 32)> 32", "<>"),
     #(Ok(Nil), "Integer", "<>"),
   ])
 }

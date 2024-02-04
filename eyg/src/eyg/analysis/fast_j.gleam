@@ -2,6 +2,14 @@
 // if you close for env you need to open at var
 // closing doesn't work to slim down list of functions, theres a con contra thing here
 // maybe when printing we can see what happens
+// schema is not useful because in cases when unknown f is called (f) -> { f(x) } when using schema
+// you lose all relation between what you see for f and f(x)
+// this does mean things that are obvious i.e. (x) -> {x} end up will all extra ancilory info
+// in essence you are looking at type of hole and not mininmal type fo thing
+// could save both
+// Let's are very ugly because is final expression return
+
+// schema for looking in type for looking out
 // TODO rename level_j
 import gleam/dict.{type Dict}
 import gleam/io
@@ -45,7 +53,7 @@ pub fn new_state() {
 
 pub fn infer(source, eff, state) {
   let #(state, _type, _eff, acc) = do_infer(source, [], eff, state)
-  #(acc, state.bindings)
+  #(acc, state)
 }
 
 fn new(state: State, v) {
@@ -118,11 +126,7 @@ fn gen(type_, s: State) {
   }
 }
 
-fn instantiate(poly, state) {
-  // case poly {
-  //   // How do I make this the same quantification
-  //   Var(#(True, i)) ->
-  // }
+pub fn instantiate(poly, state) {
   let #(mono, _, state) = do_instantiate(poly, dict.new(), state)
   #(state, mono)
 }
@@ -267,11 +271,7 @@ fn do_infer(source, env, eff, s) {
       case list.key_find(env, x) {
         Ok(scheme) -> {
           let #(s, type_) = instantiate(scheme, s)
-          // I do open at apply
           let #(s, type_) = open(type_, s)
-          // io.debug(#(x, scheme, type_))
-
-          // type_ is already closed in the environment
           #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
         }
 
@@ -288,36 +288,18 @@ fn do_infer(source, env, eff, s) {
         do_infer(body, [#(x, dont(type_x)), ..env], type_eff, s)
 
       let type_ = Fun(type_x, type_eff, type_r)
-
-      #(s, type_, eff, [#(Ok(Nil), close(type_, s), Empty, env), ..inner])
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env), ..inner])
     }
     e.Apply(fun, arg) -> {
       let s = enter_level(s)
+      // I think these effects ar passed through because they are for creating the fn not calling it
       let #(s, ty_fun, eff, inner_fun) = do_infer(fun, env, eff, s)
       let #(s, ty_arg, eff, inner_arg) = do_infer(arg, env, eff, s)
       let inner = list.append(inner_fun, inner_arg)
 
-      // io.debug(resolve(ty_fun, s.bindings))
       let #(s, ty_ret) = newvar(s)
-      // TODO close ty_fun potentially with open vs of fun
-      let raised = case resolve(ty_fun, s.bindings) {
-        // |> io.debug
-        Fun(arg, eff, ret) -> {
-          let #(last, mapped) = open_eff(eff)
-          case last {
-            Ok(i) ->
-              case set.contains(set.union(ftv(arg), ftv(ret)), i) {
-                True -> eff
-                False -> mapped
-              }
-            // This should never be the error eff
-            Error(Nil) -> eff
-          }
-        }
-        _ -> eff
-      }
-      // |> io.debug
       let #(s, test_eff) = newvar(s)
+
       let #(s, result) = case unify(Fun(ty_arg, test_eff, ty_ret), ty_fun, s) {
         Ok(s) -> #(s, Ok(Nil))
         Error(reason) -> #(s, Error(reason))
@@ -326,14 +308,20 @@ fn do_infer(source, env, eff, s) {
       // resolve(ty_fun, s.bindings)
       // Enter the level as though it was a let
       let s = exit_level(s)
-      ty_fun
-      |> io.debug
-      |> gen(s)
-      |> io.debug
+      let assert Fun(_, raised, scheme_ret) = close(ty_fun, s)
+
+      let #(s, result) = case unify(test_eff, eff, s) {
+        Ok(s) -> #(s, Ok(Nil))
+        Error(reason) -> #(s, result.or(result, Error(reason)))
+      }
+      // ty_fun
+      // |> io.debug
+      // |> gen(s)
+      // |> io.debug
       // |> instantiate(s)
       // |> io.debug
 
-      #(s, ty_ret, eff, [#(result, close(ty_ret, s), raised, env), ..inner])
+      #(s, ty_ret, eff, [#(result, ty_ret, raised, env), ..inner])
     }
     // This has two places that create effects but in the acc I don't want any effects
     e.Let(label, value, then) -> {
@@ -341,6 +329,7 @@ fn do_infer(source, env, eff, s) {
       let #(s, ty_value, eff, inner_value) = do_infer(value, env, eff, s)
       let s = exit_level(s)
       let sch_value = gen(close(ty_value, s), s)
+
       let #(s, ty_then, eff, inner_then) =
         do_infer(then, [#(label, sch_value), ..env], eff, s)
       let inner = list.append(inner_value, inner_then)
@@ -353,6 +342,7 @@ fn do_infer(source, env, eff, s) {
       let #(s, el) = newvar(s)
       #(s, List(el), eff, [#(Ok(Nil), List(el), Empty, env)])
     }
+
     e.Cons -> {
       let #(s, el) = newvar(s)
       let list = List(el)
@@ -361,11 +351,9 @@ fn do_infer(source, env, eff, s) {
       // TODO move to primitive
     }
     e.Empty -> #(s, Record(Empty), eff, [#(Ok(Nil), Record(Empty), Empty, env)])
-
     e.Extend(label) -> {
       let #(s, field) = newvar(s)
       let #(s, rest) = newvar(s)
-
       let type_ =
         pure2(field, Record(rest), Record(RowExtend(label, field, rest)))
       #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
@@ -373,7 +361,6 @@ fn do_infer(source, env, eff, s) {
     e.Select(label) -> {
       let #(s, field) = newvar(s)
       let #(s, rest) = newvar(s)
-
       let type_ = pure1(Record(RowExtend(label, field, rest)), field)
       #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
@@ -383,16 +370,23 @@ fn do_infer(source, env, eff, s) {
       let type_ = pure1(inner, Union(RowExtend(label, inner, rest)))
       #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
-
     e.Perform(label) -> {
-      let #(s, arg) = newvar(s)
-      // Do this one level lower, but Do row rewriting
-      let #(s, rest) = newvar(s)
-      let #(s, ret) = newvar(s)
-      let type_ = Fun(arg, EffectExtend(label, #(arg, ret), rest), ret)
-      let closed = Fun(arg, EffectExtend(label, #(arg, ret), Empty), ret)
-
-      #(s, type_, eff, [#(Ok(Nil), closed, Empty, env)])
+      // define it closed because will be opend
+      let scheme =
+        Fun(
+          Var(#(True, 0)),
+          EffectExtend(label, #(Var(#(True, 0)), Var(#(True, 1))), Empty),
+          Var(#(True, 1)),
+        )
+      // let #(s, arg) = newvar(s)
+      // // Do this one level lower, but Do row rewriting
+      // let #(s, rest) = newvar(s)
+      // let #(s, ret) = newvar(s)
+      // let type_ = Fun(arg, EffectExtend(label, #(arg, ret), rest), ret)
+      // let closed = Fun(arg, EffectExtend(label, #(arg, ret), Empty), ret)
+      let #(s, type_) = instantiate(scheme, s)
+      let #(s, type_) = open(type_, s)
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
     e.Builtin(label) -> {
       let result = primitive(label)
@@ -403,7 +397,6 @@ fn do_infer(source, env, eff, s) {
           #(Error(reason), s, type_)
         }
       }
-
       #(s, type_, eff, [#(result, type_, Empty, env)])
     }
     _ -> {
