@@ -183,6 +183,42 @@ pub fn list_test() {
   ])
 }
 
+pub fn list_polymorphism_test() {
+  "let x = 5
+  let l = [x]
+  l"
+  |> calc(j.Empty)
+  |> should.equal([
+    ok("List(Integer)", "<>"),
+    ok("Integer", "<>"),
+    ok("List(Integer)", "<>"),
+    ok("List(Integer)", "<>"),
+    ok("(List(Integer)) -> <> List(Integer)", "<>"),
+    ok("(Integer) -> <> (List(Integer)) -> <> List(Integer)", "<>"),
+    ok("Integer", "<>"),
+    ok("List(Integer)", "<>"),
+    ok("List(Integer)", "<>"),
+  ])
+
+  "let l = [(x) -> { x }]
+  l"
+  |> calc(j.Empty)
+  |> should.equal([
+    ok("List((5) -> <> 5)", "<>"),
+    ok("List((1) -> <> 1)", "<>"),
+    ok("(List((1) -> <> 1)) -> <> List((1) -> <> 1)", "<>"),
+    #(
+      Ok(Nil),
+      "((1) -> <> 1) -> <> (List((1) -> <> 1)) -> <> List((1) -> <> 1)",
+      "<>",
+    ),
+    ok("(1) -> <> 1", "<>"),
+    ok("1", "<>"),
+    ok("List((1) -> <> 1)", "<>"),
+    ok("List((5) -> <> 5)", "<>"),
+  ])
+}
+
 pub fn record_test() {
   "{}"
   |> calc(j.Empty)

@@ -96,9 +96,19 @@ fn gen(type_, s: State) {
     Binary -> Binary
     String -> String
     Empty -> Empty
-    _ -> {
-      io.debug(#("gen", type_))
-      panic as "gen"
+    List(el) -> List(gen(el, s))
+    Record(rows) -> Record(gen(rows, s))
+    Union(rows) -> Union(gen(rows, s))
+    RowExtend(label, field, rest) -> {
+      let field = gen(field, s)
+      let rest = gen(rest, s)
+      RowExtend(label, field, rest)
+    }
+    EffectExtend(label, #(lift, reply), rest) -> {
+      let lift = gen(lift, s)
+      let reply = gen(reply, s)
+      let rest = gen(rest, s)
+      EffectExtend(label, #(lift, reply), rest)
     }
   }
 }
