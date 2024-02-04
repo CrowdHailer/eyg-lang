@@ -233,6 +233,25 @@ fn ftv(type_) {
 
 // close should be done at a level
 
+// TODO move to levels
+fn close(type_, s: State) {
+  case resolve(type_, s.bindings) {
+    Fun(arg, eff, ret) -> {
+      let #(last, mapped) = open_eff(eff)
+      let eff = case last {
+        Ok(i) ->
+          case set.contains(set.union(ftv(arg), ftv(ret)), i) {
+            True -> eff
+            False -> mapped
+          }
+        Error(Nil) -> eff
+      }
+      Fun(arg, eff, ret)
+    }
+    _ -> type_
+  }
+}
+
 // Dont try and be cleever with putting on acc as
 // really large effect envs still often put nothin on the acc
 fn do_infer(source, env, eff, s) {
@@ -252,27 +271,13 @@ fn do_infer(source, env, eff, s) {
       }
     e.Lambda(x, body) -> {
       let #(s, type_x) = newvar(s)
-      let #(s, type_r, eff, inner) =
-        do_infer(body, [#(x, dont(type_x)), ..env], eff, s)
-      let type_ = Fun(type_x, eff, type_r)
-      let recorded = {
-        let s: State = s
-        let eff = resolve(eff, s.bindings)
-        let type_x = resolve(type_x, s.bindings)
-        let type_r = resolve(type_r, s.bindings)
+      let #(s, type_eff) = newvar(s)
 
-        let #(last, mapped) = open_eff(eff)
-        let eff = case last {
-          Ok(i) ->
-            case set.contains(set.union(ftv(type_x), ftv(type_r)), i) {
-              True -> eff
-              False -> mapped
-            }
-          Error(Nil) -> eff
-        }
-        Fun(type_x, eff, type_r)
-      }
-      #(s, type_, eff, [#(Ok(Nil), recorded, Empty, env), ..inner])
+      let #(s, type_r, eff, inner) =
+        do_infer(body, [#(x, dont(type_x)), ..env], type_eff, s)
+      let type_ = Fun(type_x, type_eff, type_r)
+
+      #(s, type_, eff, [#(Ok(Nil), close(type_, s), Empty, env), ..inner])
     }
     e.Apply(fun, arg) -> {
       let #(s, ty_fun, eff, inner_fun) = do_infer(fun, env, eff, s)
