@@ -262,6 +262,13 @@ fn do_infer(source, env, s) {
         pure2(field, Record(rest), Record(RowExtend(label, field, rest)))
       #(s, type_, Empty, [#(Ok(type_), Empty, env)])
     }
+    e.Select(label) -> {
+      let #(s, field) = newvar(s)
+      let #(s, rest) = newvar(s)
+
+      let type_ = pure1(Record(RowExtend(label, field, rest)), field)
+      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+    }
     e.Tag(label) -> {
       let #(s, inner) = newvar(s)
       let #(s, rest) = newvar(s)
@@ -367,6 +374,13 @@ fn unify(t1, t2, s: State) {
     List(el1), _, List(el2), _ -> unify(el1, el2, s)
     Empty, _, Empty, _ -> s
     Record(rows1), _, Record(rows2), _ -> unify(rows1, rows2, s)
+    RowExtend(l1, field1, rest1), _, other, _
+    | other, _, RowExtend(l1, field1, rest1), _ -> {
+      let assert Ok(#(field2, rest2, s)) = rewrite_row(l1, other, s)
+      let s = unify(field1, field2, s)
+      let s = unify(rest1, rest2, s)
+      s
+    }
     EffectExtend(l1, #(lift1, reply1), r1), _, other, _
     | other, _, EffectExtend(l1, #(lift1, reply1), r1), _ -> {
       let assert Ok(#(#(lift2, reply2), r2, s)) = rewrite_effect(l1, other, s)
@@ -379,6 +393,26 @@ fn unify(t1, t2, s: State) {
       io.debug(#("unifying", t1, t2))
       panic as "something"
     }
+  }
+}
+
+fn rewrite_row(required, type_, s) {
+  case type_ {
+    Empty -> Error(Nil)
+    RowExtend(l, field, rest) if l == required -> Ok(#(field, rest, s))
+    RowExtend(l, other_field, rest) -> {
+      let assert Ok(#(field, new_tail, s)) = rewrite_row(l, rest, s)
+      let rest = RowExtend(required, other_field, new_tail)
+      Ok(#(field, rest, s))
+    }
+    Var(i) -> {
+      let #(s, field) = newvar(s)
+      let #(s, rest) = newvar(s)
+      let type_ = RowExtend(required, field, rest)
+      let s = State(..s, bindings: dict.insert(s.bindings, i, Bound(type_)))
+      Ok(#(field, rest, s))
+    }
+    _ -> Error(Nil)
   }
 }
 

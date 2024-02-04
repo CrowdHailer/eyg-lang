@@ -136,6 +136,25 @@ pub fn let_test() {
   ])
 }
 
+pub fn let_polymorphism_test() {
+  "let f = (x) -> { x }
+  let y = f(3)
+  f(\"hey\")"
+  |> calc()
+  |> should.equal([
+    #(Ok("String"), "<>"),
+    #(Ok("(0) -> <> 0"), "<>"),
+    #(Ok("0"), "<>"),
+    #(Ok("String"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("(Integer) -> <> Integer"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("String"), "<>"),
+    #(Ok("(String) -> <> String"), "<>"),
+    #(Ok("String"), "<>"),
+  ])
+}
+
 // compound types
 
 pub fn list_test() {
@@ -170,6 +189,37 @@ pub fn record_test() {
   ])
 }
 
+pub fn select_test() {
+  "{name: 5}.name"
+  |> calc()
+  |> should.equal([
+    #(Ok("Integer"), "<>"),
+    #(Ok("({name: Integer}) -> <> Integer"), "<>"),
+    #(Ok("{name: Integer}"), "<>"),
+    #(Ok("({}) -> <> {name: Integer}"), "<>"),
+    #(Ok("(Integer) -> <> ({}) -> <> {name: Integer}"), "<>"),
+    #(Ok("Integer"), "<>"),
+    #(Ok("{}"), "<>"),
+  ])
+
+  "x.name"
+  |> calc()
+  |> should.equal([
+    #(Ok("0"), "<>"),
+    #(Ok("({name: 0, ..1}) -> <> 0"), "<>"),
+    #(Error(j.MissingVariable("x")), "<>"),
+  ])
+
+  "{}.name"
+  |> calc()
+  |> should.equal([
+    #(Ok("0"), "<>"),
+    #(Ok("({name: 0, ..1}) -> <> 0"), "<>"),
+    #(Error(j.MissingVariable("x")), "<>"),
+  ])
+  // cant have bare .name because white space will join it to previous thing
+}
+
 pub fn tag_test() {
   "Ok"
   |> calc()
@@ -197,28 +247,6 @@ pub fn builtin_test() {
     #(Ok("(Integer) -> <> (Integer) -> <> Integer"), "<>"),
     #(Ok("Integer"), "<>"),
     #(Ok("Integer"), "<>"),
-  ])
-}
-
-pub fn let_polymorphism_test() {
-  "let f = (x) -> x
-  let y = f(3)
-  f(\"hey\")"
-  |> parse
-  |> j.infer
-  |> do_resolve()
-  |> drop_env()
-  |> should.equal([
-    #(Ok(j.String), j.Empty),
-    #(Ok(j.Fun(j.Var(0), j.Empty, j.Var(0))), j.Empty),
-    #(Ok(j.Var(0)), j.Empty),
-    #(Ok(j.String), j.Empty),
-    #(Ok(j.Integer), j.Empty),
-    #(Ok(j.Fun(j.Integer, j.Empty, j.Integer)), j.Empty),
-    #(Ok(j.Integer), j.Empty),
-    #(Ok(j.String), j.Empty),
-    #(Ok(j.Fun(j.String, j.Empty, j.String)), j.Empty),
-    #(Ok(j.String), j.Empty),
   ])
 }
 
