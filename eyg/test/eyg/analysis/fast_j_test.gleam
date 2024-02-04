@@ -77,7 +77,7 @@ pub fn literal_test() {
   // TODO binary needs parsing
 }
 
-pub fn function_test() {
+pub fn this_function_test() {
   "(_) -> { 5 }"
   |> calc(j.Empty)
   |> should.equal([ok("(0) -> <> Integer", "<>"), ok("Integer", "<>")])
@@ -204,18 +204,18 @@ pub fn list_polymorphism_test() {
   l"
   |> calc(j.Empty)
   |> should.equal([
-    ok("List((6) -> <> 6)", "<>"),
-    ok("List((1) -> <> 1)", "<>"),
-    ok("(List((1) -> <> 1)) -> <> List((1) -> <> 1)", "<>"),
+    ok("List((8) -> <> 8)", "<>"),
+    ok("List((3) -> <> 3)", "<>"),
+    ok("(List((3) -> <> 3)) -> <> List((3) -> <> 3)", "<>"),
     #(
       Ok(Nil),
-      "((1) -> <> 1) -> <> (List((1) -> <> 1)) -> <> List((1) -> <> 1)",
+      "((3) -> <> 3) -> <> (List((3) -> <> 3)) -> <> List((3) -> <> 3)",
       "<>",
     ),
-    ok("(1) -> <> 1", "<>"),
-    ok("1", "<>"),
-    ok("List((1) -> <> 1)", "<>"),
-    ok("List((6) -> <> 6)", "<>"),
+    ok("(3) -> <> 3", "<>"),
+    ok("3", "<>"),
+    ok("List((3) -> <> 3)", "<>"),
+    ok("List((8) -> <> 8)", "<>"),
   ])
 }
 
@@ -258,6 +258,7 @@ pub fn select_test() {
 
   "{}.name"
   |> calc(j.Empty)
+  // You could unify with return type if it exists
   |> should.equal([
     #(Error(j.MissingRow("name")), "2", "<>"),
     #(Ok(Nil), "({name: 0, ..1}) -> <> 0", "<>"),
@@ -351,6 +352,27 @@ pub fn combine_effect_test() {
   ])
 }
 
+pub fn combine_with_pure_test() {
+  "(_) -> {
+    let _ = (x) -> {
+      x
+    }(5)
+    perform Log(\"info\")
+  }"
+  |> calc(j.Empty)
+  |> should.equal([
+    #(Ok(Nil), "(0) -> <Log(String, 7)> 7", "<>"),
+    #(Ok(Nil), "7", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "(Integer) -> <> Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "7", "<Log(String, 7)>"),
+    #(Ok(Nil), "(String) -> <Log(String, 7)> 7", "<>"),
+    #(Ok(Nil), "String", "<>"),
+  ])
+}
+
 pub fn combine_unknown_effect_test() {
   "(f) -> {
     let x = f(\"info\")
@@ -413,35 +435,26 @@ pub fn poly_in_effect_test() {
   }"
   |> calc(j.Empty)
   |> should.equal([
-    #(Ok(Nil), "(0) -> <> 15", "<>"),
-    #(Ok(Nil), "15", "<>"),
-    #(Ok(Nil), "((Integer) -> <..3> 4) -> <..3> 4", "<>"),
+    #(Ok(Nil), "(0) -> <> 19", "<>"),
+    #(Ok(Nil), "19", "<>"),
+    #(Ok(Nil), "((Integer) -> <..5> 4) -> <> 4", "<>"),
     #(Ok(Nil), "4", "<..3>"),
-    #(Ok(Nil), "(Integer) -> <..3> 4", "<>"),
+    #(Ok(Nil), "(Integer) -> <..5> 4", "<>"),
     #(Ok(Nil), "Integer", "<>"),
-    #(Ok(Nil), "15", "<>"),
-    #(Ok(Nil), "6", "<Bar(Integer, 6), ..10>"),
-    #(
-      Ok(Nil),
-      "((Integer) -> <Bar(Integer, 6), ..10> 6) -> <Bar(Integer, 6), ..10> 6",
-      "<>",
-    ),
-    #(Ok(Nil), "(Integer) -> <Bar(Integer, 6)> 6", "<>"),
-    #(Ok(Nil), "6", "<Bar(Integer, 6)>"),
-    #(Ok(Nil), "(Integer) -> <Bar(Integer, 6)> 6", "<>"),
+    #(Ok(Nil), "19", "<>"),
+    #(Ok(Nil), "7", "<>"),
+    #(Ok(Nil), "((Integer) -> <..6> 7) -> <..8> 7", "<>"),
+    #(Ok(Nil), "(Integer) -> <> 7", "<>"),
+    #(Ok(Nil), "7", "<Bar(Integer, 7)>"),
+    #(Ok(Nil), "(Integer) -> <Bar(Integer, 7)> 7", "<>"),
     #(Ok(Nil), "Integer", "<>"),
-    #(Ok(Nil), "15", "<Foo(Integer, 15), ..19>"),
-    #(
-      Ok(Nil),
-      "((Integer) -> <Foo(Integer, 15), ..19> 15) -> <Foo(Integer, 15), ..19> 15",
-      "<>",
-    ),
-    #(Ok(Nil), "(Integer) -> <Foo(Integer, 15)> 15", "<>"),
-    #(Ok(Nil), "15", "<Foo(Integer, 15)>"),
-    #(Ok(Nil), "(Integer) -> <Foo(Integer, 15)> 15", "<>"),
+    #(Ok(Nil), "19", "<>"),
+    #(Ok(Nil), "((Integer) -> <..18> 19) -> <..20> 19", "<>"),
+    #(Ok(Nil), "(Integer) -> <> 19", "<>"),
+    #(Ok(Nil), "19", "<Foo(Integer, 19)>"),
+    #(Ok(Nil), "(Integer) -> <Foo(Integer, 19)> 19", "<>"),
     #(Ok(Nil), "Integer", "<>"),
   ])
-  todo as "shouldn error"
 }
 // This is worth having because polymorphism doesn't happen for parameter fn
 // pub fn poly_in_effect_unification_test() {
