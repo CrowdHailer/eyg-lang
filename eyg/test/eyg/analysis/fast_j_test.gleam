@@ -258,6 +258,10 @@ pub fn builtin_test() {
     ok("Integer", "<>"),
     ok("Integer", "<>"),
   ])
+
+  "!not_a_thing"
+  |> calc(j.Empty)
+  |> should.equal([#(Error(j.MissingVariable("not_a_thing")), "0", "<>")])
 }
 
 pub fn perform_test() {

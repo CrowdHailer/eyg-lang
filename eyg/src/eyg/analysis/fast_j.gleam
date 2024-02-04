@@ -1,11 +1,9 @@
 // TODO rename level_j
 import gleam/dict.{type Dict}
 import gleam/io
-import gleam/int
 import gleam/list
 import gleam/result.{try}
 import gleam/set
-import gleam/string
 import eygir/expression as e
 
 pub type Reason {
@@ -45,7 +43,7 @@ pub fn new_state() {
 }
 
 pub fn infer(source, eff, state) {
-  let #(state, type_, eff_, acc) = do_infer(source, [], eff, state)
+  let #(state, _type, _eff, acc) = do_infer(source, [], eff, state)
   #(acc, state.bindings)
 }
 
@@ -60,10 +58,6 @@ fn new(state: State, v) {
 
 pub fn newvar(state) {
   new(state, Var)
-}
-
-fn newparam(state) {
-  new(state, fn(tv) { Var(#(False, tv)) })
 }
 
 fn enter_level(state: State) {
@@ -141,9 +135,28 @@ fn do_instantiate(poly, subst, state) {
     Binary -> #(Binary, subst, state)
     String -> #(String, subst, state)
     Empty -> #(Empty, subst, state)
-    _ -> {
-      io.debug(#("do_inst", poly))
-      panic as "inst"
+    List(el) -> {
+      let #(el, subst, state) = do_instantiate(el, subst, state)
+      #(List(el), subst, state)
+    }
+    Record(rows) -> {
+      let #(rows, subst, state) = do_instantiate(rows, subst, state)
+      #(Record(rows), subst, state)
+    }
+    Union(rows) -> {
+      let #(rows, subst, state) = do_instantiate(rows, subst, state)
+      #(Union(rows), subst, state)
+    }
+    RowExtend(label, field, rest) -> {
+      let #(field, subst, state) = do_instantiate(field, subst, state)
+      let #(rest, subst, state) = do_instantiate(rest, subst, state)
+      #(RowExtend(label, field, rest), subst, state)
+    }
+    EffectExtend(label, #(lift, reply), rest) -> {
+      let #(lift, subst, state) = do_instantiate(lift, subst, state)
+      let #(reply, subst, state) = do_instantiate(reply, subst, state)
+      let #(rest, subst, state) = do_instantiate(rest, subst, state)
+      #(EffectExtend(label, #(lift, reply), rest), subst, state)
     }
   }
 }
@@ -351,8 +364,16 @@ fn do_infer(source, env, eff, s) {
       #(s, type_, eff, [#(Ok(Nil), closed, Empty, env)])
     }
     e.Builtin(label) -> {
-      let type_ = primitive(label)
-      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
+      let result = primitive(label)
+      let #(result, s, type_) = case result {
+        Ok(type_) -> #(Ok(Nil), s, type_)
+        Error(reason) -> {
+          let #(s, type_) = newvar(s)
+          #(Error(reason), s, type_)
+        }
+      }
+
+      #(s, type_, eff, [#(result, type_, Empty, env)])
     }
     _ -> {
       io.debug(source)
@@ -371,7 +392,8 @@ fn pure2(arg1, arg2, ret) {
 
 fn primitive(name) {
   case name {
-    "integer_add" -> pure2(Integer, Integer, Integer)
+    "integer_add" -> Ok(pure2(Integer, Integer, Integer))
+    _ -> Error(MissingVariable(name))
   }
 }
 
@@ -392,6 +414,7 @@ pub fn resolve(type_, bindings) {
         resolve(ret, bindings),
       )
     Integer -> Integer
+    Binary -> Binary
     String -> String
     Empty -> Empty
     List(el) -> List(resolve(el, bindings))
@@ -405,17 +428,13 @@ pub fn resolve(type_, bindings) {
         #(resolve(lift, bindings), resolve(reply, bindings)),
         resolve(rest, bindings),
       )
-    _ -> {
-      io.debug(type_)
-      panic as "resolve"
-    }
   }
 }
 
 fn find(type_, s: State) {
   case type_ {
     Var(i) -> dict.get(s.bindings, i)
-    other -> Error(Nil)
+    _other -> Error(Nil)
   }
 }
 
@@ -425,6 +444,7 @@ fn unify(t1, t2, s: State) {
     _, _, _, Ok(Bound(t2)) -> unify(t1, t2, s)
     Var(i), _, Var(j), _ if i == j -> Ok(s)
     Var(i), Ok(Unbound(level)), other, _ | other, _, Var(i), Ok(Unbound(level)) -> {
+      // io.debug(#(level, other, find(other, s)))
       // TODO OCCURS CHECK
       Ok(State(..s, bindings: dict.insert(s.bindings, i, Bound(other))))
     }
