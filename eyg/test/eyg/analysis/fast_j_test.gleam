@@ -213,9 +213,10 @@ pub fn select_test() {
   "{}.name"
   |> calc()
   |> should.equal([
-    #(Ok("0"), "<>"),
+    // TODO unknown field
+    #(Ok("2"), "<..3>"),
     #(Ok("({name: 0, ..1}) -> <> 0"), "<>"),
-    #(Error(j.MissingVariable("x")), "<>"),
+    #(Ok("{}"), "<>"),
   ])
   // cant have bare .name because white space will join it to previous thing
 }

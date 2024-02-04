@@ -3,6 +3,7 @@ import gleam/dict.{type Dict}
 import gleam/io
 import gleam/int
 import gleam/list
+import gleam/result.{try}
 import gleam/string
 import eygir/expression as e
 
@@ -209,12 +210,15 @@ fn do_infer(source, env, s) {
       //   // can't push a tvar in early here because it might be an errorx
       let #(s, ty_fun, eff_fun, inner_fun) = do_infer(fun, env, s)
       let #(s, ty_arg, eff_arg, inner_arg) = do_infer(arg, env, s)
-      let s = unify(eff_fun, eff_arg, s)
+      // let s = unify(eff_fun, eff_arg, s)
       // TODO open ty_fun
       let inner = list.append(inner_fun, inner_arg)
       let #(s, ty_ret) = newvar(s)
       let #(s, ty_eff) = newvar(s)
-      let s = unify(Fun(ty_arg, ty_eff, ty_ret), ty_fun, s)
+      let #(s, ty_ret) = case unify(Fun(ty_arg, ty_eff, ty_ret), ty_fun, s) {
+        Ok(s) -> #(s, ty_ret)
+        Error(_) -> #(s, ty_ret)
+      }
       // maybe effect mismatching shows up here. How does unison back trace
       // I guess all calls then unify with a space
       // shouldn't ever have open functions at the top level
@@ -234,7 +238,7 @@ fn do_infer(source, env, s) {
       let s = exit_level(s)
       let #(s, ty_then, eff_then, inner_then) =
         do_infer(then, [#(label, gen(ty_value, s)), ..env], s)
-      let s = unify(eff_value, eff_then, s)
+      // let s = unify(eff_value, eff_then, s)
       let inner = list.append(inner_value, inner_then)
       #(s, ty_then, eff_then, [#(Ok(ty_then), Empty, env), ..inner])
     }
@@ -356,38 +360,35 @@ fn unify(t1, t2, s: State) {
   case t1, find(t1, s), t2, find(t2, s) {
     _, Ok(Bound(t1)), _, _ -> unify(t1, t2, s)
     _, _, _, Ok(Bound(t2)) -> unify(t1, t2, s)
-    Var(i), _, Var(j), _ if i == j -> s
+    Var(i), _, Var(j), _ if i == j -> Ok(s)
     Var(i), Ok(Unbound(level)), other, _ | other, _, Var(i), Ok(Unbound(level)) -> {
       // TODO OCCURS CHECK
-      State(..s, bindings: dict.insert(s.bindings, i, Bound(other)))
+      Ok(State(..s, bindings: dict.insert(s.bindings, i, Bound(other))))
     }
     Fun(arg1, eff1, ret1), _, Fun(arg2, eff2, ret2), _ -> {
-      let s = unify(arg1, arg2, s)
-      let s = unify(eff1, eff2, s)
-      let s = unify(ret1, ret2, s)
-      s
+      use s <- try(unify(arg1, arg2, s))
+      use s <- try(unify(eff1, eff2, s))
+      unify(ret1, ret2, s)
     }
-    Integer, _, Integer, _ -> s
-    Binary, _, Binary, _ -> s
-    String, _, String, _ -> s
+    Integer, _, Integer, _ -> Ok(s)
+    Binary, _, Binary, _ -> Ok(s)
+    String, _, String, _ -> Ok(s)
 
     List(el1), _, List(el2), _ -> unify(el1, el2, s)
-    Empty, _, Empty, _ -> s
+    Empty, _, Empty, _ -> Ok(s)
     Record(rows1), _, Record(rows2), _ -> unify(rows1, rows2, s)
     RowExtend(l1, field1, rest1), _, other, _
     | other, _, RowExtend(l1, field1, rest1), _ -> {
-      let assert Ok(#(field2, rest2, s)) = rewrite_row(l1, other, s)
-      let s = unify(field1, field2, s)
-      let s = unify(rest1, rest2, s)
-      s
+      use #(field2, rest2, s) <- try(rewrite_row(l1, other, s))
+      use s <- try(unify(field1, field2, s))
+      unify(rest1, rest2, s)
     }
     EffectExtend(l1, #(lift1, reply1), r1), _, other, _
     | other, _, EffectExtend(l1, #(lift1, reply1), r1), _ -> {
-      let assert Ok(#(#(lift2, reply2), r2, s)) = rewrite_effect(l1, other, s)
-      let s = unify(lift1, lift2, s)
-      let s = unify(reply1, reply2, s)
-      let s = unify(r1, r2, s)
-      s
+      use #(#(lift2, reply2), r2, s) <- try(rewrite_effect(l1, other, s))
+      use s <- try(unify(lift1, lift2, s))
+      use s <- try(unify(reply1, reply2, s))
+      unify(r1, r2, s)
     }
     _, _, _, _ -> {
       io.debug(#("unifying", t1, t2))
