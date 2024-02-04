@@ -4,13 +4,14 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/result.{try}
+import gleam/set
 import gleam/string
 import eygir/expression as e
 
 pub type Reason {
   MissingVariable(String)
-  // TypeMismatch(t.Type, t.Type)
-  // RowMismatch(String)
+  TypeMismatch(Type(Int), Type(Int))
+  MissingRow(String)
   // InvalidTail(t.Type)
   // RecursiveType
 }
@@ -35,12 +36,16 @@ pub type Binding {
   Bound(Type(Int))
 }
 
-type State {
+pub type State {
   State(current_typevar: Int, current_level: Int, bindings: Dict(Int, Binding))
 }
 
-pub fn infer(source) {
-  let #(state, type_, eff_, acc) = do_infer(source, [], State(0, 1, dict.new()))
+pub fn new_state() {
+  State(0, 1, dict.new())
+}
+
+pub fn infer(source, eff, state) {
+  let #(state, type_, eff_, acc) = do_infer(source, [], eff, state)
   #(acc, state.bindings)
 }
 
@@ -53,7 +58,7 @@ fn new(state: State, v) {
   #(state, t)
 }
 
-fn newvar(state) {
+pub fn newvar(state) {
   new(state, Var)
 }
 
@@ -177,86 +182,141 @@ fn open(type_, s) {
   }
 }
 
+fn open_eff(eff) {
+  case eff {
+    Var(x) -> #(Ok(x), Empty)
+    EffectExtend(l, f, tail) -> {
+      let #(result, tail) = open_eff(tail)
+      #(result, EffectExtend(l, f, tail))
+    }
+    _ -> #(Error(Nil), eff)
+  }
+}
+
+fn ftv(type_) {
+  case type_ {
+    Var(x) -> set.from_list([x])
+    Fun(arg, eff, ret) -> set.union(ftv(arg), set.union(ftv(eff), ftv(ret)))
+    Integer | Binary | String -> set.new()
+    List(el) -> ftv(el)
+    Record(rows) -> ftv(rows)
+    Union(inner) -> ftv(inner)
+    Empty -> set.new()
+    RowExtend(_, field, tail) -> set.union(ftv(field), ftv(tail))
+    EffectExtend(_, #(lift, reply), tail) ->
+      set.union(ftv(lift), set.union(ftv(reply), ftv(tail)))
+  }
+}
+
 // close should be done at a level
 
 // Dont try and be cleever with putting on acc as
 // really large effect envs still often put nothin on the acc
-fn do_infer(source, env, s) {
+fn do_infer(source, env, eff, s) {
   case source {
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(scheme) -> {
           let #(s, type_) = instantiate(scheme, s)
           // let #(s, type_) = open(type_, s)
-          #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+          #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
         }
 
         Error(Nil) -> {
           let #(s, type_) = newvar(s)
-          #(s, type_, Empty, [#(Error(MissingVariable(x)), Empty, env)])
+          #(s, type_, eff, [#(Error(MissingVariable(x)), type_, Empty, env)])
         }
       }
     e.Lambda(x, body) -> {
       let #(s, type_x) = newvar(s)
       let #(s, type_r, eff, inner) =
-        do_infer(body, [#(x, dont(type_x)), ..env], s)
+        do_infer(body, [#(x, dont(type_x)), ..env], eff, s)
       let type_ = Fun(type_x, eff, type_r)
-      #(s, type_, Empty, [#(Ok(type_), Empty, env), ..inner])
+      let recorded = {
+        let s: State = s
+        let eff = resolve(eff, s.bindings)
+        let type_x = resolve(type_x, s.bindings)
+        let type_r = resolve(type_r, s.bindings)
+
+        let #(last, mapped) = open_eff(eff)
+        let eff = case last {
+          Ok(i) ->
+            case set.contains(set.union(ftv(type_x), ftv(type_r)), i) {
+              True -> eff
+              False -> mapped
+            }
+          Error(Nil) -> eff
+        }
+        Fun(type_x, eff, type_r)
+      }
+      #(s, type_, eff, [#(Ok(Nil), recorded, Empty, env), ..inner])
     }
     e.Apply(fun, arg) -> {
-      // if arg and or fun have created effects then we need to unify the danger is in closing
-      // can only close when we have
-      //   // type is ret effect is args
-      //   // can't push a tvar in early here because it might be an errorx
-      let #(s, ty_fun, eff_fun, inner_fun) = do_infer(fun, env, s)
-      let #(s, ty_arg, eff_arg, inner_arg) = do_infer(arg, env, s)
-      // let s = unify(eff_fun, eff_arg, s)
-      // TODO open ty_fun
+      let #(s, ty_fun, eff, inner_fun) = do_infer(fun, env, eff, s)
+      let #(s, ty_arg, eff, inner_arg) = do_infer(arg, env, eff, s)
       let inner = list.append(inner_fun, inner_arg)
+
       let #(s, ty_ret) = newvar(s)
-      let #(s, ty_eff) = newvar(s)
-      let #(s, ty_ret) = case unify(Fun(ty_arg, ty_eff, ty_ret), ty_fun, s) {
-        Ok(s) -> #(s, ty_ret)
-        Error(_) -> #(s, ty_ret)
+      // TODO close ty_fun potentially with open vs of fun
+      let raised = case resolve(ty_fun, s.bindings) {
+        Fun(arg, eff, ret) -> {
+          let #(last, mapped) = open_eff(eff)
+          case last {
+            Ok(i) ->
+              case set.contains(set.union(ftv(arg), ftv(ret)), i) {
+                True -> eff
+                False -> mapped
+              }
+            Error(Nil) -> eff
+          }
+        }
+        _ -> eff
       }
-      // maybe effect mismatching shows up here. How does unison back trace
-      // I guess all calls then unify with a space
-      // shouldn't ever have open functions at the top level
-      // Could return a non empty list and always push so that I don't need to assert on list when final thing returns
-
-      // unify_effect just does nothing if closed
-      // but they are not always aditive what if I have a function that takes an f as an arg that should be closed
-      // grow effects is noth the same as unify
+      // let #(s, raised) = {
+      //   let s = enter_level(s)
+      //   let #(s, test_eff) = newvar(s)
+      //   let s = exit_level(s)
+      //   case unify(Fun(ty_arg, test_eff, ty_ret), ty_fun, s) {
+      //     Ok(s) -> {
+      //       // io.debug(resolve(test_eff, s.bindings))
+      //       // io.debug(s.bindings)
+      //       #(s, Nil)
+      //     }
+      //     _ -> todo as "blah"
+      //   }
       // }
+      let #(s, result) = case unify(Fun(ty_arg, eff, ty_ret), ty_fun, s) {
+        Ok(s) -> #(s, Ok(Nil))
+        Error(reason) -> #(s, Error(reason))
+      }
 
-      #(s, ty_ret, ty_eff, [#(Ok(ty_ret), ty_eff, env), ..inner])
+      #(s, ty_ret, eff, [#(result, ty_ret, raised, env), ..inner])
     }
     // This has two places that create effects but in the acc I don't want any effects
     e.Let(label, value, then) -> {
       let s = enter_level(s)
-      let #(s, ty_value, eff_value, inner_value) = do_infer(value, env, s)
+      let #(s, ty_value, eff, inner_value) = do_infer(value, env, eff, s)
       let s = exit_level(s)
-      let #(s, ty_then, eff_then, inner_then) =
-        do_infer(then, [#(label, gen(ty_value, s)), ..env], s)
-      // let s = unify(eff_value, eff_then, s)
+      let #(s, ty_then, eff, inner_then) =
+        do_infer(then, [#(label, gen(ty_value, s)), ..env], eff, s)
       let inner = list.append(inner_value, inner_then)
-      #(s, ty_then, eff_then, [#(Ok(ty_then), Empty, env), ..inner])
+      #(s, ty_then, eff, [#(Ok(Nil), ty_then, Empty, env), ..inner])
     }
-    e.Integer(_) -> #(s, Integer, Empty, [#(Ok(Integer), Empty, env)])
-    e.Binary(_) -> #(s, String, Empty, [#(Ok(Binary), Empty, env)])
-    e.Str(_) -> #(s, String, Empty, [#(Ok(String), Empty, env)])
+    e.Integer(_) -> #(s, Integer, eff, [#(Ok(Nil), Integer, Empty, env)])
+    e.Binary(_) -> #(s, String, eff, [#(Ok(Nil), Binary, Empty, env)])
+    e.Str(_) -> #(s, String, eff, [#(Ok(Nil), String, Empty, env)])
     e.Tail -> {
       let #(s, el) = newvar(s)
-      #(s, List(el), Empty, [#(Ok(List(el)), Empty, env)])
+      #(s, List(el), eff, [#(Ok(Nil), List(el), Empty, env)])
     }
     e.Cons -> {
       let #(s, el) = newvar(s)
       let list = List(el)
       let type_ = pure2(el, list, list)
-      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
       // TODO move to primitive
     }
-    e.Empty -> #(s, Record(Empty), Empty, [#(Ok(Record(Empty)), Empty, env)])
+    e.Empty -> #(s, Record(Empty), eff, [#(Ok(Nil), Record(Empty), Empty, env)])
 
     e.Extend(label) -> {
       let #(s, field) = newvar(s)
@@ -264,20 +324,20 @@ fn do_infer(source, env, s) {
 
       let type_ =
         pure2(field, Record(rest), Record(RowExtend(label, field, rest)))
-      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
     e.Select(label) -> {
       let #(s, field) = newvar(s)
       let #(s, rest) = newvar(s)
 
       let type_ = pure1(Record(RowExtend(label, field, rest)), field)
-      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
     e.Tag(label) -> {
       let #(s, inner) = newvar(s)
       let #(s, rest) = newvar(s)
       let type_ = pure1(inner, Union(RowExtend(label, inner, rest)))
-      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
 
     e.Perform(label) -> {
@@ -286,11 +346,13 @@ fn do_infer(source, env, s) {
       let #(s, rest) = newvar(s)
       let #(s, ret) = newvar(s)
       let type_ = Fun(arg, EffectExtend(label, #(arg, ret), rest), ret)
-      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+      let closed = Fun(arg, EffectExtend(label, #(arg, ret), Empty), ret)
+
+      #(s, type_, eff, [#(Ok(Nil), closed, Empty, env)])
     }
     e.Builtin(label) -> {
       let type_ = primitive(label)
-      #(s, type_, Empty, [#(Ok(type_), Empty, env)])
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
     _ -> {
       io.debug(source)
@@ -316,6 +378,7 @@ fn primitive(name) {
 pub fn resolve(type_, bindings) {
   case type_ {
     Var(i) -> {
+      // TODO minus numbers might get
       let assert Ok(binding) = dict.get(bindings, i)
       case binding {
         Bound(type_) -> resolve(type_, bindings)
@@ -377,6 +440,7 @@ fn unify(t1, t2, s: State) {
     List(el1), _, List(el2), _ -> unify(el1, el2, s)
     Empty, _, Empty, _ -> Ok(s)
     Record(rows1), _, Record(rows2), _ -> unify(rows1, rows2, s)
+    Union(rows1), _, Union(rows2), _ -> unify(rows1, rows2, s)
     RowExtend(l1, field1, rest1), _, other, _
     | other, _, RowExtend(l1, field1, rest1), _ -> {
       use #(field2, rest2, s) <- try(rewrite_row(l1, other, s))
@@ -390,16 +454,13 @@ fn unify(t1, t2, s: State) {
       use s <- try(unify(reply1, reply2, s))
       unify(r1, r2, s)
     }
-    _, _, _, _ -> {
-      io.debug(#("unifying", t1, t2))
-      panic as "something"
-    }
+    _, _, _, _ -> Error(TypeMismatch(t1, t2))
   }
 }
 
 fn rewrite_row(required, type_, s) {
   case type_ {
-    Empty -> Error(Nil)
+    Empty -> Error(MissingRow(required))
     RowExtend(l, field, rest) if l == required -> Ok(#(field, rest, s))
     RowExtend(l, other_field, rest) -> {
       let assert Ok(#(field, new_tail, s)) = rewrite_row(l, rest, s)
@@ -413,18 +474,19 @@ fn rewrite_row(required, type_, s) {
       let s = State(..s, bindings: dict.insert(s.bindings, i, Bound(type_)))
       Ok(#(field, rest, s))
     }
-    _ -> Error(Nil)
+    // _ -> Error(TypeMismatch(RowExtend(required, type_, Empty), type_))
+    _ -> panic as "bad row"
   }
 }
 
 fn rewrite_effect(required, type_, s) {
   case type_ {
-    Empty -> Error(Nil)
+    Empty -> Error(MissingRow(required))
     EffectExtend(l, eff, rest) if l == required -> Ok(#(eff, rest, s))
     EffectExtend(l, other_eff, rest) -> {
-      let assert Ok(#(eff, new_tail, s)) = rewrite_effect(l, rest, s)
+      let assert Ok(#(eff, new_tail, s)) = rewrite_effect(required, rest, s)
       // use #(eff, new_tail, s) <-  try(rewrite_effect(l, rest, s))
-      let rest = EffectExtend(required, other_eff, new_tail)
+      let rest = EffectExtend(l, other_eff, new_tail)
       Ok(#(eff, rest, s))
     }
     Var(i) -> {
@@ -435,6 +497,7 @@ fn rewrite_effect(required, type_, s) {
       let s = State(..s, bindings: dict.insert(s.bindings, i, Bound(type_)))
       Ok(#(#(lift, reply), rest, s))
     }
-    _ -> Error(Nil)
+    // _ -> Error(TypeMismatch(EffectExtend(required, type_, Empty), type_))
+    _ -> panic as "bad effect"
   }
 }
