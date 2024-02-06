@@ -10,9 +10,33 @@
 // Let's are very ugly because is final expression return
 
 // schema for looking in type for looking out
+// We can close type_ after looking internally becuase the information is not useful where as for effect fields they still get added
+// Can't close if type is in env
+// Can only close if would also generalise
+// Do one level higher
+
+// Testing such that the env has no effects drives the effects of fns being empty not that we can ignore them
+// well we can but only by getting more info lost with generalising
+
+// In apply doing only close means that types keep unifying for the lift and lower types
+// Show typing example where an error use of a return type leaves it as e but if fixed it gets found properly
+
+// TODO some tests with fn capture
+// let x
+// let f = (_) -> { x }
+
+// TODO do types in a webpage
+// source, tree, types
+// highlight each case where and effect is created do lines from selection to the correct part of the tree
+// do not wrap unless hovering on the types
+
+// try and write the algorithm in eyg
+// potentially try the interpreter
+
 // TODO rename level_j
 import gleam/dict.{type Dict}
 import gleam/io
+import gleam/int
 import gleam/list
 import gleam/result.{try}
 import gleam/set
@@ -214,17 +238,6 @@ fn open(type_, s) {
   }
 }
 
-fn open_eff(eff) {
-  case eff {
-    Var(x) -> #(Ok(x), Empty)
-    EffectExtend(l, f, tail) -> {
-      let #(result, tail) = open_eff(tail)
-      #(result, EffectExtend(l, f, tail))
-    }
-    _ -> #(Error(Nil), eff)
-  }
-}
-
 fn ftv(type_) {
   case type_ {
     Var(x) -> set.from_list([x])
@@ -244,22 +257,43 @@ fn ftv(type_) {
 fn close(type_, s: State) {
   case resolve(type_, s.bindings) {
     Fun(arg, eff, ret) -> {
-      let eff = close_eff(arg, eff, ret)
+      let eff = close_eff(arg, eff, ret, s)
       Fun(arg, eff, close(ret, s))
     }
     _ -> type_
   }
 }
 
-fn close_eff(arg, eff, ret) {
-  let #(last, mapped) = open_eff(eff)
+fn close_eff(arg, eff, ret, s: State) {
+  let #(last, mapped) = eff_tail(eff)
   case last {
-    Ok(i) ->
-      case set.contains(set.union(ftv(arg), ftv(ret)), i) {
-        True -> eff
-        False -> mapped
+    Ok(i) -> {
+      // //  can only close if would also generalise
+      let assert Ok(Unbound(l)) = dict.get(s.bindings, i)
+      // io.debug(#(l, s.current_level))
+      //   case  {
+      //      -> 
+      //   }
+      case
+        !set.contains(set.union(ftv(arg), ftv(ret)), i)
+        && l > s.current_level
+      {
+        True -> mapped
+        False -> eff
       }
+    }
     Error(Nil) -> eff
+  }
+}
+
+fn eff_tail(eff) {
+  case eff {
+    Var(x) -> #(Ok(x), Empty)
+    EffectExtend(l, f, tail) -> {
+      let #(result, tail) = eff_tail(tail)
+      #(result, EffectExtend(l, f, tail))
+    }
+    _ -> #(Error(Nil), eff)
   }
 }
 
@@ -270,8 +304,10 @@ fn do_infer(source, env, eff, s) {
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(scheme) -> {
+          // io.debug(scheme)
           let #(s, type_) = instantiate(scheme, s)
           let #(s, type_) = open(type_, s)
+          // io.debug(type_)
           #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
         }
 
@@ -282,16 +318,18 @@ fn do_infer(source, env, eff, s) {
       }
     e.Lambda(x, body) -> {
       let #(s, type_x) = newvar(s)
+      let s = enter_level(s)
       let #(s, type_eff) = newvar(s)
 
       let #(s, type_r, type_eff, inner) =
         do_infer(body, [#(x, dont(type_x)), ..env], type_eff, s)
 
       let type_ = Fun(type_x, type_eff, type_r)
-      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env), ..inner])
+      let s = exit_level(s)
+      let record = close(type_, s)
+      #(s, type_, eff, [#(Ok(Nil), record, Empty, env), ..inner])
     }
     e.Apply(fun, arg) -> {
-      let s = enter_level(s)
       // I think these effects ar passed through because they are for creating the fn not calling it
       let #(s, ty_fun, eff, inner_fun) = do_infer(fun, env, eff, s)
       let #(s, ty_arg, eff, inner_arg) = do_infer(arg, env, eff, s)
@@ -304,23 +342,20 @@ fn do_infer(source, env, eff, s) {
         Ok(s) -> #(s, Ok(Nil))
         Error(reason) -> #(s, Error(reason))
       }
-      // I smaller tests to check this is true
-      // resolve(ty_fun, s.bindings)
-      // Enter the level as though it was a let
-      let s = exit_level(s)
-      let assert Fun(_, raised, scheme_ret) = close(ty_fun, s)
+
+      // Can close as if it was a let statement above, schema might be interesting
+      let assert Fun(_, raised, _) = close(ty_fun, exit_level(s))
 
       let #(s, result) = case unify(test_eff, eff, s) {
-        Ok(s) -> #(s, Ok(Nil))
-        Error(reason) -> #(s, result.or(result, Error(reason)))
+        Ok(s) -> #(s, result)
+        // First error, is there a result.and function
+        Error(reason) -> #(s, case result {
+          Ok(Nil) -> Error(reason)
+          Error(reason) -> Error(reason)
+        })
       }
-      // ty_fun
-      // |> io.debug
-      // |> gen(s)
-      // |> io.debug
-      // |> instantiate(s)
-      // |> io.debug
 
+      // This returns the raised effect even if error
       #(s, ty_ret, eff, [#(result, ty_ret, raised, env), ..inner])
     }
     // This has two places that create effects but in the acc I don't want any effects
@@ -378,15 +413,9 @@ fn do_infer(source, env, eff, s) {
           EffectExtend(label, #(Var(#(True, 0)), Var(#(True, 1))), Empty),
           Var(#(True, 1)),
         )
-      // let #(s, arg) = newvar(s)
-      // // Do this one level lower, but Do row rewriting
-      // let #(s, rest) = newvar(s)
-      // let #(s, ret) = newvar(s)
-      // let type_ = Fun(arg, EffectExtend(label, #(arg, ret), rest), ret)
-      // let closed = Fun(arg, EffectExtend(label, #(arg, ret), Empty), ret)
       let #(s, type_) = instantiate(scheme, s)
-      let #(s, type_) = open(type_, s)
-      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
+      let #(s, t) = open(type_, s)
+      #(s, t, eff, [#(Ok(Nil), type_, Empty, env)])
     }
     e.Builtin(label) -> {
       let result = primitive(label)
@@ -405,6 +434,8 @@ fn do_infer(source, env, eff, s) {
     }
   }
 }
+
+// const extend = 
 
 fn pure1(arg1, ret) {
   Fun(arg1, Empty, ret)
@@ -462,12 +493,54 @@ fn find(type_, s: State) {
   }
 }
 
+fn occurs_and_levels(i, level, type_, s: State) {
+  case type_ {
+    Var(j) if i == j -> panic as "recursive"
+    Var(j) -> {
+      let assert Ok(binding) = dict.get(s.bindings, j)
+      case binding {
+        Unbound(l) -> {
+          let l = int.min(l, level)
+          let bindings = dict.insert(s.bindings, j, Unbound(l))
+          State(..s, bindings: bindings)
+        }
+        Bound(type_) -> occurs_and_levels(i, level, type_, s)
+      }
+    }
+    Fun(arg, eff, ret) -> {
+      let s = occurs_and_levels(i, level, arg, s)
+      let s = occurs_and_levels(i, level, eff, s)
+      let s = occurs_and_levels(i, level, ret, s)
+      s
+    }
+    Integer -> s
+    Binary -> s
+    String -> s
+    List(el) -> occurs_and_levels(i, level, el, s)
+    Record(row) -> occurs_and_levels(i, level, row, s)
+    Union(row) -> occurs_and_levels(i, level, row, s)
+    Empty -> s
+    RowExtend(_, field, rest) -> {
+      let s = occurs_and_levels(i, level, field, s)
+      let s = occurs_and_levels(i, level, rest, s)
+      s
+    }
+    EffectExtend(_, #(lift, reply), rest) -> {
+      let s = occurs_and_levels(i, level, lift, s)
+      let s = occurs_and_levels(i, level, reply, s)
+      let s = occurs_and_levels(i, level, rest, s)
+      s
+    }
+  }
+}
+
 fn unify(t1, t2, s: State) {
   case t1, find(t1, s), t2, find(t2, s) {
     _, Ok(Bound(t1)), _, _ -> unify(t1, t2, s)
     _, _, _, Ok(Bound(t2)) -> unify(t1, t2, s)
     Var(i), _, Var(j), _ if i == j -> Ok(s)
     Var(i), Ok(Unbound(level)), other, _ | other, _, Var(i), Ok(Unbound(level)) -> {
+      let s = occurs_and_levels(i, level, other, s)
       // io.debug(#(level, other, find(other, s)))
       // TODO OCCURS CHECK
       Ok(State(..s, bindings: dict.insert(s.bindings, i, Bound(other))))
@@ -523,7 +596,7 @@ fn rewrite_row(required, type_, s) {
   }
 }
 
-fn rewrite_effect(required, type_, s) {
+fn rewrite_effect(required, type_, s: State) {
   case type_ {
     Empty -> Error(MissingRow(required))
     EffectExtend(l, eff, rest) if l == required -> Ok(#(eff, rest, s))
@@ -536,7 +609,16 @@ fn rewrite_effect(required, type_, s) {
     Var(i) -> {
       let #(s, lift) = newvar(s)
       let #(s, reply) = newvar(s)
-      let #(s, rest) = newvar(s)
+
+      let assert Ok(Unbound(level)) = dict.get(s.bindings, i)
+      // let #(s, rest) = newvar(s)
+      let State(tvar, level, bindings) = s
+      let rest = Var(tvar)
+      let bindings = dict.insert(bindings, tvar, Unbound(level))
+      let tvar = tvar + 1
+      let s = State(tvar, level, bindings)
+      // #(s, t)
+
       let type_ = EffectExtend(required, #(lift, reply), rest)
       let s = State(..s, bindings: dict.insert(s.bindings, i, Bound(type_)))
       Ok(#(#(lift, reply), rest, s))
