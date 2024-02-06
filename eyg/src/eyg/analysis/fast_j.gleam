@@ -346,14 +346,21 @@ fn do_infer(source, env, eff, s) {
       // It doesn't matter if the eftects are in arg because we apply the arg here
       // so we're only interested in final effects
       let #(last, mapped) = eff_tail(resolve(test_eff, s.bindings))
-      let raised = case last {
-        Error(Nil) -> test_eff
+      let #(s, raised) = case last {
+        Error(Nil) -> #(s, test_eff)
         Ok(i) -> {
           let assert Ok(binding) = dict.get(s.bindings, i)
           let level = s.current_level - 1
           case binding {
-            Unbound(l) if l > level -> mapped
-            _ -> test_eff
+            Unbound(l) if l > level -> {
+              // let s =
+              //   State(..s, bindings: dict.insert(s.bindings, i, Bound(Empty)))
+              // can't make this bindings because i could have meaning from elsewhere but it seems like we should be able to
+
+              // Maybe when generalising we map to all possible instantiations might be pure everywhere
+              #(s, mapped)
+            }
+            _ -> #(s, test_eff)
           }
         }
       }
