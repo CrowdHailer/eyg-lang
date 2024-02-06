@@ -407,7 +407,7 @@ pub fn combine_with_pure_test() {
 }
 
 pub fn combine_unknown_effect_test() {
-  "(f) -> { 
+  "(f) -> {
     let x = f(\"info\")
     perform Foo(5)
   }"
@@ -474,6 +474,24 @@ pub fn first_class_function_with_effects_test() {
   ])
 }
 
+// How do I explain in the written word
+pub fn unify_fn_arg_test() {
+  "(_) -> {
+    (f) -> { f(1) }((x) -> { \"\" })
+  }"
+  |> calc(j.Empty)
+  |> should.equal([
+    #(Ok(Nil), "(0) -> <> String", "<>"),
+    #(Ok(Nil), "String", "<>"),
+    #(Ok(Nil), "((Integer) -> <..1> String) -> <..1> String", "<>"),
+    #(Ok(Nil), "String", "<..1>"),
+    #(Ok(Nil), "(Integer) -> <..1> String", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "(Integer) -> <> String", "<>"),
+    #(Ok(Nil), "String", "<>"),
+  ])
+}
+
 pub fn poly_in_effect_test() {
   "(_) -> {
     let do = (f) -> { f(1) }
@@ -489,8 +507,7 @@ pub fn poly_in_effect_test() {
     #(Ok(Nil), "(Integer) -> <..3> 4", "<>"),
     #(Ok(Nil), "Integer", "<>"),
     #(Ok(Nil), "29", "<>"),
-    // TODO why is this capturing everything
-    #(Ok(Nil), "7", "<Bar(Integer, 7), Foo(Integer, 29), ..30>"),
+    #(Ok(Nil), "7", "<Bar(Integer, 7)>"),
     #(
       Ok(Nil),
       "((Integer) -> <Bar(Integer, 7), Foo(Integer, 29), ..30> 7) -> <Bar(Integer, 7), Foo(Integer, 29), ..30> 7",
@@ -500,7 +517,7 @@ pub fn poly_in_effect_test() {
     #(Ok(Nil), "7", "<Bar(Integer, 7)>"),
     #(Ok(Nil), "(Integer) -> <Bar(Integer, 7)> 7", "<>"),
     #(Ok(Nil), "Integer", "<>"),
-    #(Ok(Nil), "29", "<Foo(Integer, 29), Bar(Integer, 7), ..30>"),
+    #(Ok(Nil), "29", "<Foo(Integer, 29)>"),
     #(
       Ok(Nil),
       "((Integer) -> <Foo(Integer, 29), Bar(Integer, 7), ..30> 29) -> <Foo(Integer, 29), Bar(Integer, 7), ..30> 29",
@@ -511,5 +528,4 @@ pub fn poly_in_effect_test() {
     #(Ok(Nil), "(Integer) -> <Foo(Integer, 29)> 29", "<>"),
     #(Ok(Nil), "Integer", "<>"),
   ])
-  todo as "take list item from list and look at the env"
 }

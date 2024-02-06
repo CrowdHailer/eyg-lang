@@ -268,12 +268,8 @@ fn close_eff(arg, eff, ret, s: State) {
   let #(last, mapped) = eff_tail(eff)
   case last {
     Ok(i) -> {
-      // //  can only close if would also generalise
+      //  can only close if would also generalise
       let assert Ok(Unbound(l)) = dict.get(s.bindings, i)
-      // io.debug(#(l, s.current_level))
-      //   case  {
-      //      -> 
-      //   }
       case
         !set.contains(set.union(ftv(arg), ftv(ret)), i)
         && l > s.current_level
@@ -331,6 +327,7 @@ fn do_infer(source, env, eff, s) {
     }
     e.Apply(fun, arg) -> {
       // I think these effects ar passed through because they are for creating the fn not calling it
+      let s = enter_level(s)
       let #(s, ty_fun, eff, inner_fun) = do_infer(fun, env, eff, s)
       let #(s, ty_arg, eff, inner_arg) = do_infer(arg, env, eff, s)
       let inner = list.append(inner_fun, inner_arg)
@@ -342,9 +339,24 @@ fn do_infer(source, env, eff, s) {
         Ok(s) -> #(s, Ok(Nil))
         Error(reason) -> #(s, Error(reason))
       }
-
+      let s = exit_level(s)
       // Can close as if it was a let statement above, schema might be interesting
-      let assert Fun(_, raised, _) = close(ty_fun, exit_level(s))
+
+      // At this point we just check that the effects would generalise a level up.
+      // It doesn't matter if the eftects are in arg because we apply the arg here
+      // so we're only interested in final effects
+      let #(last, mapped) = eff_tail(resolve(test_eff, s.bindings))
+      let raised = case last {
+        Error(Nil) -> test_eff
+        Ok(i) -> {
+          let assert Ok(binding) = dict.get(s.bindings, i)
+          let level = s.current_level - 1
+          case binding {
+            Unbound(l) if l > level -> mapped
+            _ -> test_eff
+          }
+        }
+      }
 
       let #(s, result) = case unify(test_eff, eff, s) {
         Ok(s) -> #(s, result)
@@ -434,8 +446,6 @@ fn do_infer(source, env, eff, s) {
     }
   }
 }
-
-// const extend = 
 
 fn pure1(arg1, ret) {
   Fun(arg1, Empty, ret)
