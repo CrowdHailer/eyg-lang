@@ -7,6 +7,7 @@ import gleam/io
 
 pub type Reason {
   UnexpectEnd
+  UnexpectedToken(token: t.Token, position: Int)
 }
 
 pub fn parse(tokens) {
@@ -32,16 +33,18 @@ fn one_pattern(tokens) {
       use #(matches, rest) <- try(do_pattern(rest, []))
       Ok(#(Destructure(matches), rest))
     }
+    _ -> fail(tokens)
   }
 }
 
 pub fn do_patterns(tokens, acc) {
   use #(pattern, tokens) <- try(one_pattern(tokens))
   let acc = [pattern, ..acc]
-  use #(#(next, _), rest) <- try(pop(tokens))
+  use #(#(next, start), rest) <- try(pop(tokens))
   case next {
     t.Comma -> do_patterns(rest, acc)
     t.RightParen -> Ok(#(acc, rest))
+    _ -> Error(UnexpectedToken(next, start))
   }
 }
 
@@ -54,6 +57,7 @@ pub fn expression(tokens) {
       use #(pattern, rest) <- try(one_pattern(rest))
       use rest <- try(case rest {
         [#(t.Equal, _), ..rest] -> Ok(rest)
+        _ -> fail(rest)
       })
       use #(value, rest) <- try(expression(rest))
       use #(then, rest) <- try(expression(rest))
@@ -75,10 +79,12 @@ pub fn expression(tokens) {
       use #(patterns_reversed, rest) <- try(do_patterns(rest, []))
       use rest <- try(case rest {
         [#(t.RightArrow, _), #(t.LeftBrace, _), ..rest] -> Ok(rest)
+        _ -> fail(rest)
       })
       use #(body, rest) <- try(expression(rest))
       use rest <- try(case rest {
         [#(t.RightBrace, _), ..rest] -> Ok(rest)
+        _ -> fail(rest)
       })
 
       let exp =
@@ -118,6 +124,7 @@ pub fn expression(tokens) {
               use #(exp, rest) <- try(clauses(rest))
               Ok(#(e.Apply(exp, subject), rest))
             }
+            _ -> fail(rest)
           }
         }
       }
@@ -125,25 +132,26 @@ pub fn expression(tokens) {
     t.Perform ->
       case rest {
         [#(t.Uppername(label), _), ..rest] -> Ok(#(e.Perform(label), rest))
+        _ -> fail(rest)
       }
     t.Handle ->
       case rest {
         [#(t.Uppername(label), _), ..rest] -> Ok(#(e.Handle(label), rest))
+        _ -> fail(rest)
       }
     t.Shallow ->
       case rest {
         [#(t.Uppername(label), _), ..rest] -> Ok(#(e.Shallow(label), rest))
+        _ -> fail(rest)
       }
     t.Bang ->
       case rest {
         [#(t.Name(label), _), ..rest] -> Ok(#(e.Builtin(label), rest))
+        _ -> fail(rest)
       }
-
-    _ -> {
-      io.debug(token)
-      todo as "unexpected token"
-    }
+    _ -> Error(UnexpectedToken(token, start))
   })
+
   after_expression(exp, rest)
 }
 
@@ -155,10 +163,7 @@ fn do_pattern(tokens, acc) {
       case rest {
         [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
         [#(t.Comma, _), ..rest] -> do_pattern(rest, acc)
-        _ -> {
-          io.debug(rest)
-          panic
-        }
+        _ -> fail(rest)
       }
     }
     [#(t.Name(field), _), ..rest] -> {
@@ -166,12 +171,10 @@ fn do_pattern(tokens, acc) {
       case rest {
         [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
         [#(t.Comma, _), ..rest] -> do_pattern(rest, acc)
-        _ -> {
-          io.debug(rest)
-          panic
-        }
+        _ -> fail(rest)
       }
     }
+    _ -> fail(tokens)
   }
 }
 
@@ -204,6 +207,14 @@ fn do_args(tokens, acc) {
       use #(arg, rest) <- try(expression(rest))
       do_args(rest, [arg, ..acc])
     }
+    _ -> fail(tokens)
+  }
+}
+
+fn fail(tokens) {
+  case tokens {
+    [] -> Error(UnexpectEnd)
+    [#(t, start), ..] -> Error(UnexpectedToken(t, start))
   }
 }
 
@@ -219,25 +230,30 @@ fn do_list(tokens, acc) {
       case rest {
         [#(t.Comma, _), #(t.DotDot, _), ..rest] -> {
           use #(tail, rest) <- try(expression(rest))
-          case rest {
-            [#(t.RightSquare, _), ..rest] -> Ok(#(e.do_list(acc, tail), rest))
+          use #(#(token, start), rest) <- try(pop(rest))
+          case token {
+            t.RightSquare -> Ok(#(e.do_list(acc, tail), rest))
+            _ -> Error(UnexpectedToken(token, start))
           }
         }
         [#(t.Comma, _), ..rest] -> do_list(rest, acc)
 
         [#(t.RightSquare, _), ..rest] -> Ok(#(e.do_list(acc, e.Tail), rest))
+        [#(t, start), ..] -> Error(UnexpectedToken(t, start))
+        [] -> Error(UnexpectEnd)
       }
     }
   }
 }
 
 fn do_record(rest, acc) {
-  use #(#(token, _), rest) <- try(pop(rest))
+  use #(#(token, start), rest) <- try(pop(rest))
   case token {
     t.RightBrace -> Ok(#(e.Empty, rest))
-    t.Name(label) ->
-      case rest {
-        [#(t.Colon, _), ..rest] -> {
+    t.Name(label) -> {
+      use #(#(token, start), rest) <- try(pop(rest))
+      case token {
+        t.Colon -> {
           use #(value, rest) <- try(expression(rest))
           let acc = [#(label, value), ..acc]
 
@@ -248,28 +264,30 @@ fn do_record(rest, acc) {
 
             [#(t.RightBrace, _), ..rest] ->
               Ok(#(e.do_record(acc, e.Empty), rest))
-            _ -> {
-              io.debug(#("fo", rest))
-              panic as "bad times"
-            }
+            _ -> fail(rest)
           }
         }
-        [#(t.Comma, _), ..rest] -> {
+        t.Comma -> {
           let acc = [#(label, e.Variable(label)), ..acc]
           do_record(rest, acc)
         }
-        [#(t.RightBrace, _), ..rest] -> {
+        t.RightBrace -> {
           let acc = [#(label, e.Variable(label)), ..acc]
           Ok(#(e.do_record(acc, e.Empty), rest))
         }
+        _ -> Error(UnexpectedToken(token, start))
       }
+    }
     t.DotDot -> {
       use #(value, rest) <- try(expression(rest))
-      use rest <- try(case rest {
-        [#(t.RightBrace, _), ..rest] -> Ok(rest)
+      use #(#(token, start), rest) <- try(pop(rest))
+      use rest <- try(case token {
+        t.RightBrace -> Ok(rest)
+        _ -> Error(UnexpectedToken(token, start))
       })
       Ok(#(e.do_overwrite(acc, value), rest))
     }
+    _ -> Error(UnexpectedToken(token, start))
   }
 }
 
@@ -284,13 +302,15 @@ fn clauses(tokens) {
 }
 
 fn do_clauses(tokens, acc) {
-  case tokens {
-    [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
-    [#(t.Uppername(label), _), ..rest] -> {
+  use #(#(token, start), rest) <- try(pop(tokens))
+  case token {
+    t.RightBrace -> Ok(#(acc, rest))
+    t.Uppername(label) -> {
       use #(branch, rest) <- try(expression(rest))
       let acc = [#(label, branch), ..acc]
       do_clauses(rest, acc)
     }
+    _ -> Error(UnexpectedToken(token, start))
   }
 }
 

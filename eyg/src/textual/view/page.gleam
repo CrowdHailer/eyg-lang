@@ -28,6 +28,10 @@ pub fn render(s) {
         [class("leading-none")],
         list.map(source, fn(x) { div([], [pre([], [text(x)])]) }),
       ),
+      p([], case err {
+        Ok(Nil) -> []
+        Error(reason) -> [text(string.inspect(reason))]
+      }),
     ]),
     div([class("cover")], [
       p([], [text("Inferred type")]),
