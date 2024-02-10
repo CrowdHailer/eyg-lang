@@ -61,9 +61,14 @@ pub fn render(s) {
     ]),
     // span([], [text(" ")]),
     // span([], [text(debug.render_effects(effect))]),
-    // TODO render errors
     // TODO live eval
     // TODO range to line
+    // Need position in file to tree 
+    // cli args for type checking
+    // cli for dump tree to file
+    // meta data in the tree means no need to build path in the interpreter
+    // could keep a tree of location information when parsing BUT if linear that just a case of building linear
+    // metadata could be linear position 
     div([class("expand cover")], [
       p([], [text("Effects")]),
       div(
