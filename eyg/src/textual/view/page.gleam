@@ -39,7 +39,13 @@ pub fn render(s) {
         [class("leading-none")],
         list.map(acc, fn(x) {
           let #(fail, type_, effect) = x
-          div([], [span([], [text(debug.render_type(type_))])])
+          case fail {
+            Ok(Nil) -> div([], [span([], [text(debug.render_type(type_))])])
+            Error(reason) ->
+              div([class("bg-red-300")], [
+                span([], [text(debug.render_reason(reason))]),
+              ])
+          }
         }),
       ),
     ]),
@@ -47,6 +53,7 @@ pub fn render(s) {
     // span([], [text(debug.render_effects(effect))]),
     // TODO render errors
     // TODO live eval
+    // TODO range to line
     div([class("expand cover")], [
       p([], [text("Effects")]),
       div(

@@ -50,6 +50,21 @@ pub fn render_type(typ) {
   }
 }
 
+pub fn render_reason(reason) {
+  case reason {
+    j.MissingVariable(label) ->
+      string.concat(["missing variable '", label, "'"])
+    j.MissingRow(label) -> string.concat(["missing row '", label, "'"])
+    j.TypeMismatch(expected, given) ->
+      string.concat([
+        "type missmatch given: ",
+        render_type(given),
+        " expected: ",
+        render_type(expected),
+      ])
+  }
+}
+
 fn render_row(r) -> List(String) {
   case r {
     j.Empty -> []
