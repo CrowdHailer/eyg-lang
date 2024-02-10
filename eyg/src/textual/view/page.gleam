@@ -15,11 +15,21 @@ pub fn render(s) {
     Error(reason) -> #(Error(reason), [], [])
   }
   div([class("hstack")], [
+    // container https://codersblock.com/blog/highlight-text-inside-a-textarea/
     div([class("expand cover bg-blue-100")], [
-      textarea([
-        class("w-full h-full p-2"),
-        value(dynamic.from(state.source(s))),
-        on_input(Input),
+      div([class("relative h-full bg-white rounded")], [
+        div([class("absolute left-0 right-0 p-2")], [
+          div([class("h-6")], [span([], [text(" ")])]),
+          div([class("h-6 bg-red-200")], [span([], [text(" ")])]),
+          div([class("h-6")], [span([], [text(" ")])]),
+        ]),
+        textarea([
+          class(
+            "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
+          ),
+          value(dynamic.from(state.source(s))),
+          on_input(Input),
+        ]),
       ]),
     ]),
     div([class("cover")], [
