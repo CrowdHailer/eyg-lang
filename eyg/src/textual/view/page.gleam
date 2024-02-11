@@ -1,18 +1,34 @@
+import gleam/io
 import gleam/dynamic
+import gleam/int
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
-import lustre/attribute.{class, value}
+import lustre/attribute.{class, classes, id, value}
 import lustre/element.{text}
 import lustre/element/html.{div, p, pre, span, textarea}
-import lustre/event.{on_input}
+import lustre/event.{on_click, on_input}
+import plinth/browser/event as evt
 import eygir/tree
 import eyg/analysis/fast_j/debug
-import textual/state.{Input}
+import textual/state.{Highlight, Input}
 
 pub fn render(s) {
-  let #(err, source, acc) = case state.information(s) {
-    Ok(#(source, acc)) -> #(Ok(Nil), tree.lines(source), acc)
-    Error(reason) -> #(Error(reason), [], [])
+  let #(err, source, spans, acc) = case state.information(s) {
+    Ok(#(source, spans, acc)) -> #(Ok(Nil), tree.lines(source), spans, acc)
+    Error(reason) -> #(Error(reason), [], [], [])
+  }
+  let focused = case s.cursor {
+    // TODO make full range selection
+    Some(cursor) ->
+      list.index_fold(spans, -1, fn(recent, span, i) {
+        let #(start, end) = span
+        case start <= cursor && cursor <= end {
+          True -> i
+          False -> recent
+        }
+      })
+    None -> -1
   }
   div([class("hstack")], [
     // container https://codersblock.com/blog/highlight-text-inside-a-textarea/
@@ -24,9 +40,16 @@ pub fn render(s) {
           div([class("h-6")], [span([], [text(" ")])]),
         ]),
         textarea([
+          id("source"),
           class(
             "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
           ),
+          // event.on("select", fn(e) {
+          //   let e = dynamic.unsafe_coerce(e)
+          //   io.debug(evt.target(e))
+          //   todo as "select"
+          // }),
+          // Ok(Select(e))
           value(dynamic.from(state.source(s))),
           on_input(Input),
         ]),
@@ -44,13 +67,32 @@ pub fn render(s) {
       }),
     ]),
     div([class("cover")], [
+      p([], [text("spans")]),
+      div(
+        [class("leading-none")],
+        list.map(spans, fn(span) {
+          let #(start, end) = span
+          div([], [
+            pre([on_click(Highlight(span))], [
+              text(int.to_string(start)),
+              text(" - "),
+              text(int.to_string(end)),
+            ]),
+          ])
+        }),
+      ),
+    ]),
+    div([class("cover")], [
       p([], [text("Inferred type")]),
       div(
         [class("leading-none")],
-        list.map(acc, fn(x) {
+        list.index_map(acc, fn(x, i) {
           let #(fail, type_, effect) = x
           case fail {
-            Ok(Nil) -> div([], [span([], [text(debug.render_type(type_))])])
+            Ok(Nil) ->
+              div([classes([#("bg-green-200", i == focused)])], [
+                span([], [text(debug.render_type(type_))]),
+              ])
             Error(reason) ->
               div([class("bg-red-300")], [
                 span([], [text(debug.render_reason(reason))]),
@@ -73,9 +115,9 @@ pub fn render(s) {
       p([], [text("Effects")]),
       div(
         [class("leading-none")],
-        list.map(acc, fn(x) {
+        list.index_map(acc, fn(x, i) {
           let #(fail, type_, effect) = x
-          div([], [
+          div([classes([#("bg-green-200", i == focused)])], [
             // span([], [text(debug.render_type(type_))]),
             // span([], [text(" ")]),
             span([], [text(debug.render_effects(effect))]),
