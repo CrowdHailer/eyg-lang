@@ -1,6 +1,9 @@
 import gleam/list
 import eygir/expression as e
 
+pub type Node(m) =
+  #(Expression(m), m)
+
 pub type Expression(m) {
   Variable(label: String)
   Lambda(label: String, body: #(Expression(m), m))
@@ -77,5 +80,43 @@ fn do_strip_meta(in, acc) {
     Shallow(label) -> #(e.Shallow(label), acc)
 
     Builtin(identifier) -> #(e.Builtin(identifier), acc)
+  }
+}
+
+pub fn add_meta(exp, meta) {
+  case exp {
+    e.Variable(label) -> #(Variable(label), meta)
+    e.Lambda(label, body) -> #(Lambda(label, add_meta(body, meta)), Nil)
+    e.Apply(func, arg) -> #(
+      Apply(add_meta(func, meta), add_meta(arg, Nil)),
+      Nil,
+    )
+    e.Let(label, value, body) -> #(
+      Let(label, add_meta(value, meta), add_meta(body, meta)),
+      Nil,
+    )
+
+    e.Binary(value) -> #(Binary(value), meta)
+    e.Integer(value) -> #(Integer(value), meta)
+    e.Str(value) -> #(Str(value), meta)
+
+    e.Tail -> #(Tail, meta)
+    e.Cons -> #(Cons, meta)
+
+    e.Vacant(comment) -> #(Vacant(comment), meta)
+
+    e.Empty -> #(Empty, meta)
+    e.Extend(label) -> #(Extend(label), meta)
+    e.Select(label) -> #(Select(label), meta)
+    e.Overwrite(label) -> #(Overwrite(label), meta)
+    e.Tag(label) -> #(Tag(label), meta)
+    e.Case(label) -> #(Case(label), meta)
+    e.NoCases -> #(NoCases, meta)
+
+    e.Perform(label) -> #(Perform(label), meta)
+    e.Handle(label) -> #(Handle(label), meta)
+    e.Shallow(label) -> #(Shallow(label), meta)
+
+    e.Builtin(identifier) -> #(Builtin(identifier), meta)
   }
 }

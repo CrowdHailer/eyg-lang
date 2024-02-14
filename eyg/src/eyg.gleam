@@ -3,6 +3,7 @@ import gleam/list
 import plinth/node/process
 import simplifile
 import eygir/decode
+import eyg/parse/expression as e
 import platforms/shell
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -28,7 +29,7 @@ pub fn do_main(args) {
   // recipe is an app, service worker makes js necessay, query string params are also only interesting if rendered with JS
 
   case args {
-    ["exec", ..] -> shell.run(source)
+    ["exec", ..] -> shell.run(e.add_meta(source, Nil))
     [magpie, ..rest] -> magpie.main(rest)
     _ -> {
       io.debug(#("no runner for: ", args))

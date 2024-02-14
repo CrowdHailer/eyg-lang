@@ -7,6 +7,7 @@ import gleam/result
 import gleam/string
 import gleam/stringx
 import eygir/expression as e
+import eyg/parse/expression as e2
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
 // reuse aterlier type
@@ -29,6 +30,7 @@ pub type Rendered =
   #(String, List(Int), Int, Style, Bool)
 
 pub fn print(source, selection, always, analysis: Option(tree.State)) {
+  let #(source, _) = e2.strip_meta(source)
   let loc = Location([], selection, always)
   let #(acc, info) = do_print(source, loc, "\n", [], dict.new(), analysis)
   #(list.reverse(acc), info)

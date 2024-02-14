@@ -15,7 +15,7 @@ pub fn append() {
 pub fn do_append(left, right, rev, env, k) {
   use left <- result.then(cast.as_string(left))
   use right <- result.then(cast.as_string(right))
-  Ok(#(state.V(v.Str(string.append(left, right))), rev, env, k))
+  Ok(#(state.V(v.Str(string.append(left, right))), env, k))
 }
 
 pub fn split() {
@@ -30,12 +30,7 @@ pub fn do_split(s, pattern, rev, env, k) {
   let assert [first, ..parts] = string.split(s, pattern)
   let parts = v.LinkedList(list.map(parts, v.Str))
 
-  Ok(#(
-    state.V(v.Record([#("head", v.Str(first)), #("tail", parts)])),
-    rev,
-    env,
-    k,
-  ))
+  Ok(#(state.V(v.Record([#("head", v.Str(first)), #("tail", parts)])), env, k))
 }
 
 pub fn split_once() {
@@ -52,7 +47,7 @@ pub fn do_split_once(s, pattern, rev, env, k) {
       v.ok(v.Record([#("pre", v.Str(pre)), #("post", v.Str(post))]))
     Error(Nil) -> v.error(v.unit)
   }
-  Ok(#(state.V(value), rev, env, k))
+  Ok(#(state.V(value), env, k))
 }
 
 pub fn uppercase() {
@@ -62,7 +57,7 @@ pub fn uppercase() {
 
 pub fn do_uppercase(value, rev, env, k) {
   use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.Str(string.uppercase(value))), rev, env, k))
+  Ok(#(state.V(v.Str(string.uppercase(value))), env, k))
 }
 
 pub fn lowercase() {
@@ -72,7 +67,7 @@ pub fn lowercase() {
 
 pub fn do_lowercase(value, rev, env, k) {
   use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.Str(string.lowercase(value))), rev, env, k))
+  Ok(#(state.V(v.Str(string.lowercase(value))), env, k))
 }
 
 pub fn starts_with() {
@@ -88,7 +83,7 @@ pub fn do_starts_with(value, prefix, rev, env, k) {
     Ok(#("", post)) -> v.ok(v.Str(post))
     _ -> v.error(v.unit)
   }
-  Ok(#(state.V(ret), rev, env, k))
+  Ok(#(state.V(ret), env, k))
 }
 
 pub fn ends_with() {
@@ -104,7 +99,7 @@ pub fn do_ends_with(value, suffix, rev, env, k) {
     Ok(#(pre, "")) -> v.ok(v.Str(pre))
     _ -> v.error(v.unit)
   }
-  Ok(#(state.V(ret), rev, env, k))
+  Ok(#(state.V(ret), env, k))
 }
 
 pub fn length() {
@@ -114,7 +109,7 @@ pub fn length() {
 
 pub fn do_length(value, rev, env, k) {
   use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.Integer(string.length(value))), rev, env, k))
+  Ok(#(state.V(v.Integer(string.length(value))), env, k))
 }
 
 pub fn pop_grapheme() {
@@ -131,7 +126,7 @@ fn do_pop_grapheme(term, rev, env, k) {
     Ok(#(head, tail)) ->
       v.ok(v.Record([#("head", v.Str(head)), #("tail", v.Str(tail))]))
   }
-  Ok(#(state.V(return), rev, env, k))
+  Ok(#(state.V(return), env, k))
 }
 
 pub fn replace() {
@@ -149,7 +144,7 @@ pub fn do_replace(in, from, to, rev, env, k) {
   use from <- result.then(cast.as_string(from))
   use to <- result.then(cast.as_string(to))
 
-  Ok(#(state.V(v.Str(string.replace(in, from, to))), rev, env, k))
+  Ok(#(state.V(v.Str(string.replace(in, from, to))), env, k))
 }
 
 pub fn to_binary() {
@@ -160,5 +155,5 @@ pub fn to_binary() {
 pub fn do_to_binary(in, rev, env, k) {
   use in <- result.then(cast.as_string(in))
 
-  Ok(#(state.V(v.Binary(bit_array.from_string(in))), rev, env, k))
+  Ok(#(state.V(v.Binary(bit_array.from_string(in))), env, k))
 }

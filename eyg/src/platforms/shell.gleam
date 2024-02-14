@@ -15,7 +15,7 @@ import eyg/runtime/cast
 import harness/stdlib
 import plinth/javascript/console
 import gleam/json
-import eygir/expression as e
+import eyg/parse/expression as e
 import harness/effect
 import harness/ffi/core
 import harness/impl/http
@@ -107,7 +107,7 @@ fn read(rl, parser, env, k, prompt) {
     Ok(term) -> {
       let assert v.LinkedList(cmd) = term
       let assert Ok(code) = core.language_to_expression(cmd)
-      case code == e.Empty {
+      case code == #(e.Empty, Nil) {
         True -> promise.resolve(0)
         False -> {
           use ret <- promise.await(r.await(r.execute(code, env, handlers().1)))
@@ -122,13 +122,10 @@ fn read(rl, parser, env, k, prompt) {
             }
             Error(#(reason, rev, _env, _k)) -> {
               console.log(
-                string.concat([
-                  "!! ",
-                  break.reason_to_string(reason),
-                  " at: ",
-                  path_to_string(list.reverse(rev)),
-                ]),
+                string.concat(["!! ", break.reason_to_string(reason), " at: "]),
               )
+              // TODO add path
+              // path_to_string(list.reverse(rev)),
               #(env, prompt)
             }
           }
