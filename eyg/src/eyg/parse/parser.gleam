@@ -1,5 +1,6 @@
 import gleam/int
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
 import eyg/parse/expression as e
@@ -22,16 +23,51 @@ pub fn parse(tokens) {
   }
 }
 
+pub type Span =
+  #(Int, Int)
+
+pub type Match =
+  #(#(String, Span), Option(#(Span, #(String, Span))))
+
 pub type Pattern {
   Assign(String)
-  Destructure(List(#(String, String, #(Int, Int))))
+  Destructure(List(Match))
+}
+
+fn do_destructure(tokens, acc) {
+  case tokens {
+    [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
+    // can be spaces between colon and rest
+    [#(t.Name(field), f), #(t.Colon, c), #(t.Name(var), v), ..rest] -> {
+      let field = #(field, #(f, f + string.length(field)))
+      let colon = #(c, c + 1)
+      let var = #(var, #(v, v + string.length(var)))
+      let acc = [#(field, Some(#(colon, var))), ..acc]
+
+      case rest {
+        [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
+        [#(t.Comma, _), ..rest] -> do_destructure(rest, acc)
+        _ -> fail(rest)
+      }
+    }
+    [#(t.Name(field), start), ..rest] -> {
+      let field = #(field, #(start, start + string.length(field)))
+      let acc = [#(field, None), ..acc]
+      case rest {
+        [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
+        [#(t.Comma, _), ..rest] -> do_destructure(rest, acc)
+        _ -> fail(rest)
+      }
+    }
+    _ -> fail(tokens)
+  }
 }
 
 fn one_pattern(tokens) {
   case tokens {
     [#(t.Name(label), _), ..rest] -> Ok(#(Assign(label), rest))
     [#(t.LeftBrace, _), ..rest] -> {
-      use #(matches, rest) <- try(do_pattern(rest, []))
+      use #(matches, rest) <- try(do_destructure(rest, []))
       Ok(#(Destructure(matches), rest))
     }
     _ -> fail(tokens)
@@ -47,6 +83,27 @@ pub fn do_patterns(tokens, acc) {
     t.RightParen -> Ok(#(acc, rest))
     _ -> Error(UnexpectedToken(next, start))
   }
+}
+
+pub fn destructured(matches: List(Match), term: #(e.Expression(_), Span)) {
+  list.fold(matches, term, fn(acc, pair) {
+    let #(field, assign) = pair
+    let #(field, fspan) = field
+    let #(cspan, #(var, vspan)) = case assign {
+      Some(#(cspan, #(var, vspan))) -> #(cspan, #(var, vspan))
+      None -> #(fspan, #(field, fspan))
+    }
+    let aspan = #(fspan.0, cspan.1)
+    let lspan = #(fspan.0, { term.1 }.1)
+    #(
+      e.Let(
+        var,
+        #(e.Apply(#(e.Select(field), fspan), #(e.Variable("$"), cspan)), aspan),
+        acc,
+      ),
+      lspan,
+    )
+  })
 }
 
 pub fn expression(tokens) {
@@ -70,24 +127,7 @@ pub fn expression(tokens) {
       let exp = case pattern {
         Assign(label) -> #(e.Let(label, value, then), span)
         Destructure(matches) -> #(
-          e.Let(
-            "$",
-            value,
-            list.fold(matches, then, fn(acc, pair) {
-              let #(field, var, span) = pair
-              #(
-                e.Let(
-                  var,
-                  #(
-                    e.Apply(#(e.Select(field), span), #(e.Variable("$"), span)),
-                    span,
-                  ),
-                  acc,
-                ),
-                span,
-              )
-            }),
-          ),
+          e.Let("$", value, destructured(matches, then)),
           span,
         )
       }
@@ -110,26 +150,7 @@ pub fn expression(tokens) {
           case pattern {
             Assign(label) -> #(e.Lambda(label, body), span)
             Destructure(matches) -> #(
-              e.Lambda(
-                "$",
-                list.fold(matches, body, fn(acc, pair) {
-                  let #(field, var, span) = pair
-                  #(
-                    e.Let(
-                      var,
-                      #(
-                        e.Apply(#(e.Select(field), span), #(
-                          e.Variable("$"),
-                          span,
-                        )),
-                        span,
-                      ),
-                      acc,
-                    ),
-                    span,
-                  )
-                }),
-              ),
+              e.Lambda("$", destructured(matches, body)),
               span,
             )
           }
@@ -146,8 +167,8 @@ pub fn expression(tokens) {
       let span = #(start, start + string.length(value) + 2)
       Ok(#(#(e.Str(value), span), rest))
     }
-    t.LeftSquare -> do_list(rest, [])
-    t.LeftBrace -> do_record(rest, [])
+    t.LeftSquare -> do_list(rest, start, [])
+    t.LeftBrace -> do_record(rest, start, [])
     t.Uppername(label) -> {
       let span = #(start, start + string.length(label))
 
@@ -210,40 +231,8 @@ pub fn expression(tokens) {
   after_expression(exp, rest)
 }
 
-fn do_pattern(tokens, acc) {
-  case tokens {
-    [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
-    [#(t.Name(field), start), #(t.Colon, _), #(t.Name(var), end), ..rest] -> {
-      let span = #(start, end + string.length(var))
-      let acc = [#(field, var, span), ..acc]
-      case rest {
-        [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
-        [#(t.Comma, _), ..rest] -> do_pattern(rest, acc)
-        _ -> fail(rest)
-      }
-    }
-    [#(t.Name(field), start), ..rest] -> {
-      let span = #(start, start + string.length(field))
-      let acc = [#(field, field, span), ..acc]
-      case rest {
-        [#(t.RightBrace, _), ..rest] -> Ok(#(acc, rest))
-        [#(t.Comma, _), ..rest] -> do_pattern(rest, acc)
-        _ -> fail(rest)
-      }
-    }
-    _ -> fail(tokens)
-  }
-}
-
 fn after_expression(exp, rest) {
   case rest {
-    // This clause is backtracing even if only one node, is it worth having
-    // [#(t.RightArrow, _), ..rest] -> {
-    //   use #(body, rest) <- try(expression(rest))
-    //   case exp {
-    //     e.Variable(label) -> Ok(#(e.Lambda(label, body), rest))
-    //   }
-    // }
     [#(t.LeftParen, start), ..rest] -> {
       use #(arg, rest) <- try(expression(rest))
       use #(args, end, rest) <- try(do_args(rest, [arg]))
@@ -286,17 +275,17 @@ fn fail(tokens) {
 }
 
 // this supports trailing comma
-fn do_list(tokens, acc) {
+fn do_list(tokens, start, acc) {
   // use #(t,rest)
   case tokens {
     [] -> Error(UnexpectEnd)
-    [#(t.RightSquare, start), ..rest] -> {
-      let span = #(start, start + 1)
+    [#(t.RightSquare, end), ..rest] -> {
+      let span = #(start, end + 1)
       Ok(#(build_list(acc, #(e.Tail, span)), rest))
     }
     _ -> {
       use #(item, rest) <- try(expression(tokens))
-      let acc = [item, ..acc]
+      let acc = [#(start, item), ..acc]
       case rest {
         [#(t.Comma, _), #(t.DotDot, _), ..rest] -> {
           use #(tail, rest) <- try(expression(rest))
@@ -306,7 +295,7 @@ fn do_list(tokens, acc) {
             _ -> Error(UnexpectedToken(token, start))
           }
         }
-        [#(t.Comma, _), ..rest] -> do_list(rest, acc)
+        [#(t.Comma, start), ..rest] -> do_list(rest, start, acc)
 
         [#(t.RightSquare, start), ..rest] -> {
           let span = #(start, start + 1)
@@ -321,25 +310,31 @@ fn do_list(tokens, acc) {
 
 pub fn build_list(reversed, acc) {
   case reversed {
-    [item, ..rest] -> {
+    [#(from, item), ..rest] -> {
       let #(_, #(_, c)) = acc
-      let #(_, #(a, b)) = item
+      let #(_, #(_, b)) = item
 
       build_list(
         rest,
-        #(e.Apply(#(e.Apply(#(e.Cons, #(a, a)), item), #(a, b)), acc), #(a, c)),
+        #(
+          e.Apply(
+            #(e.Apply(#(e.Cons, #(from, from + 1)), item), #(from, b)),
+            acc,
+          ),
+          #(from, c),
+        ),
       )
     }
     [] -> acc
   }
 }
 
-fn do_record(rest, acc) {
-  use #(#(token, start), rest) <- try(pop(rest))
+fn do_record(rest, start, acc) {
+  use #(#(token, end), rest) <- try(pop(rest))
   case token {
-    t.RightBrace -> Ok(#(#(e.Empty, #(start, start + 1)), rest))
+    t.RightBrace -> Ok(#(#(e.Empty, #(start, end + 1)), rest))
     t.Name(label) -> {
-      use #(#(token, start), rest) <- try(pop(rest))
+      use #(#(token, _start), rest) <- try(pop(rest))
       case token {
         t.Colon -> {
           use #(value, rest) <- try(expression(rest))
@@ -348,7 +343,7 @@ fn do_record(rest, acc) {
           // replace above with field function
 
           case rest {
-            [#(t.Comma, _), ..rest] -> do_record(rest, acc)
+            [#(t.Comma, start), ..rest] -> do_record(rest, start, acc)
 
             [#(t.RightBrace, _), ..rest] ->
               Ok(#(build_record(acc, e.Empty), rest))
@@ -363,7 +358,7 @@ fn do_record(rest, acc) {
             ),
             ..acc
           ]
-          do_record(rest, acc)
+          do_record(rest, start, acc)
         }
         t.RightBrace -> {
           let acc = [
@@ -396,7 +391,7 @@ fn build_record(_, _) {
 }
 
 fn build_overwrite(_, _) {
-  todo as "build record"
+  todo as "build overwrite"
 }
 
 fn clauses(tokens) {

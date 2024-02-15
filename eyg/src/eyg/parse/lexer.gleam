@@ -1,7 +1,6 @@
 import gleam/bit_array
 import gleam/io
 import gleam/list
-import gleam/result.{try}
 import gleam/string
 import eyg/parse/token as t
 
@@ -38,7 +37,7 @@ fn pop(raw, start) {
     "=" <> rest -> done(t.Equal, 1, rest)
     "->" <> rest -> done(t.RightArrow, 2, rest)
     "," <> rest -> done(t.Comma, 1, rest)
-    ".." <> rest -> done(t.DotDot, 1, rest)
+    ".." <> rest -> done(t.DotDot, 2, rest)
     "." <> rest -> done(t.Dot, 1, rest)
     ":" <> rest -> done(t.Colon, 1, rest)
     "-" <> rest -> done(t.Minus, 1, rest)
