@@ -357,13 +357,35 @@ pub fn list_test() {
       #(0, 6),
     ),
   )
-  // "[a(7), 8]"
-  // |> lexer.lex()
-  // |> parser.parse()
-  // |> should.be_ok()
-  // |> should.equal(
-  //   e.list([e.Apply(e.Variable("a"), e.Integer(7)), e.Integer(8)]),
-  // )
+
+  "[a(7), 8]"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(
+          e.Apply(
+            #(e.Cons, #(0, 1)),
+            #(e.Apply(#(e.Variable("a"), #(1, 2)), #(e.Integer(7), #(3, 4))), #(
+              1,
+              5,
+            )),
+          ),
+          #(0, 5),
+        ),
+        #(
+          e.Apply(
+            #(e.Apply(#(e.Cons, #(5, 6)), #(e.Integer(8), #(7, 8))), #(5, 8)),
+            #(e.Tail, #(8, 9)),
+          ),
+          #(5, 9),
+        ),
+      ),
+      #(0, 9),
+    ),
+  )
 }
 
 pub fn list_spread_test() {
@@ -380,14 +402,22 @@ pub fn list_spread_test() {
       #(0, 7),
     ),
   )
-  // "[1, ..x(5)]"
-  // |> lexer.lex()
-  // |> parser.parse()
-  // |> should.be_ok()
-  // |> should.equal(e.Apply(
-  //   e.Apply(e.Cons, e.Integer(1)),
-  //   e.Apply(e.Variable("x"), e.Integer(5)),
-  // ))
+  "[1, ..x(5)]"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(e.Apply(#(e.Cons, #(0, 1)), #(e.Integer(1), #(1, 2))), #(0, 2)),
+        #(e.Apply(#(e.Variable("x"), #(6, 7)), #(e.Integer(5), #(8, 9))), #(
+          6,
+          10,
+        )),
+      ),
+      #(0, 10),
+    ),
+  )
 }
 
 pub fn record_test() {
@@ -401,23 +431,22 @@ pub fn record_test() {
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
-  // |> should.equal(e.record([#("a", e.Integer(5)), #("b", e.Empty)]))
   |> should.equal(
     #(
       e.Apply(
-        #(e.Apply(#(e.Extend("a"), #(1, 2)), #(e.Integer(5), #(4, 5))), #(1, 2)),
+        #(e.Apply(#(e.Extend("a"), #(0, 3)), #(e.Integer(5), #(4, 5))), #(0, 5)),
         #(
           e.Apply(
-            #(e.Apply(#(e.Extend("b"), #(7, 8)), #(e.Empty, #(10, 12))), #(
-              7,
-              13,
+            #(e.Apply(#(e.Extend("b"), #(5, 9)), #(e.Empty, #(10, 12))), #(
+              5,
+              12,
             )),
             #(e.Empty, #(12, 13)),
           ),
-          #(7, 13),
+          #(5, 13),
         ),
       ),
-      #(1, 2),
+      #(0, 13),
     ),
   )
   // "{foo: x(2)}"
@@ -426,14 +455,34 @@ pub fn record_test() {
   // |> should.be_ok()
   // |> should.equal(e.record([#("foo", e.Apply(e.Variable("x"), e.Integer(2)))]))
 }
-// pub fn record_sugar_test() {
-//   "{a, b}"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.record([#("a", e.Variable("a")), #("b", e.Variable("b"))]))
-// }
 
+pub fn record_sugar_test() {
+  "{a, b}"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(e.Apply(#(e.Extend("a"), #(0, 2)), #(e.Variable("a"), #(1, 2))), #(
+          0,
+          2,
+        )),
+        #(
+          e.Apply(
+            #(
+              e.Apply(#(e.Extend("b"), #(2, 5)), #(e.Variable("b"), #(4, 5))),
+              #(2, 5),
+            ),
+            #(e.Empty, #(5, 6)),
+          ),
+          #(2, 6),
+        ),
+      ),
+      #(0, 6),
+    ),
+  )
+}
 // pub fn overwrite_test() -> Nil {
 //   "{a: 5, ..x}"
 //   |> lexer.lex()

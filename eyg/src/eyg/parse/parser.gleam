@@ -330,45 +330,52 @@ pub fn build_list(reversed, acc) {
 }
 
 fn do_record(rest, start, acc) {
-  use #(#(token, end), rest) <- try(pop(rest))
+  use #(#(token, kstart), rest) <- try(pop(rest))
   case token {
-    t.RightBrace -> Ok(#(#(e.Empty, #(start, end + 1)), rest))
+    t.RightBrace -> Ok(#(#(e.Empty, #(start, kstart + 1)), rest))
     t.Name(label) -> {
-      use #(#(token, _start), rest) <- try(pop(rest))
+      use #(#(token, next), rest) <- try(pop(rest))
       case token {
         t.Colon -> {
           use #(value, rest) <- try(expression(rest))
-          let acc = [#(label, value), ..acc]
+          let acc = [#(#(start, next + 1), label, value), ..acc]
 
           // replace above with field function
 
           case rest {
             [#(t.Comma, start), ..rest] -> do_record(rest, start, acc)
 
-            [#(t.RightBrace, _), ..rest] ->
-              Ok(#(build_record(acc, e.Empty), rest))
+            [#(t.RightBrace, start), ..rest] -> {
+              let span = #(start, start + 1)
+              Ok(#(build_record(acc, #(e.Empty, span)), rest))
+            }
             _ -> fail(rest)
           }
         }
         t.Comma -> {
           let acc = [
             #(
+              // kstart is the label starting position
+              #(start, kstart + string.length(label)),
               label,
-              #(e.Variable(label), #(start, start + string.length(label))),
+              #(e.Variable(label), #(kstart, kstart + string.length(label))),
             ),
             ..acc
           ]
-          do_record(rest, start, acc)
+          do_record(rest, next, acc)
         }
         t.RightBrace -> {
           let acc = [
             #(
+              #(start, kstart + string.length(label)),
               label,
-              #(e.Variable(label), #(start, start + string.length(label))),
+              #(e.Variable(label), #(kstart, kstart + string.length(label))),
             ),
             ..acc
           ]
-          Ok(#(build_record(acc, e.Empty), rest))
+          let span = #(next, next + 1)
+
+          Ok(#(build_record(acc, #(e.Empty, span)), rest))
         }
         _ -> Error(UnexpectedToken(token, start))
       }
@@ -386,8 +393,23 @@ fn do_record(rest, start, acc) {
   }
 }
 
-fn build_record(_, _) {
-  todo as "build record"
+pub fn build_record(reversed, acc) {
+  case reversed {
+    [#(span, label, item), ..rest] -> {
+      let #(_, #(_, c)) = acc
+      let #(_, #(_, b)) = item
+      let #(a, _) = span
+
+      build_record(
+        rest,
+        #(e.Apply(#(e.Apply(#(e.Extend(label), span), item), #(a, b)), acc), #(
+          a,
+          c,
+        )),
+      )
+    }
+    [] -> acc
+  }
 }
 
 fn build_overwrite(_, _) {
