@@ -483,6 +483,7 @@ pub fn record_sugar_test() {
     ),
   )
 }
+
 // pub fn overwrite_test() -> Nil {
 //   "{a: 5, ..x}"
 //   |> lexer.lex()
@@ -511,39 +512,59 @@ pub fn record_sugar_test() {
 //   ))
 // }
 
-// pub fn field_access_test() {
-//   "a.foo"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(e.Select("foo"), e.Variable("a")))
+pub fn field_access_test() {
+  "a.foo"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(e.Apply(#(e.Select("foo"), #(1, 5)), #(e.Variable("a"), #(0, 1))), #(0, 5)),
+  )
 
-//   "b(x).foo"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(
-//     e.Select("foo"),
-//     e.Apply(e.Variable("b"), e.Variable("x")),
-//   ))
+  "b(x).foo"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(e.Select("foo"), #(4, 8)),
+        #(e.Apply(#(e.Variable("b"), #(0, 1)), #(e.Variable("x"), #(2, 3))), #(
+          0,
+          4,
+        )),
+      ),
+      #(0, 8),
+    ),
+  )
 
-//   "a.foo(2)"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(
-//     e.Apply(e.Select("foo"), e.Variable("a")),
-//     e.Integer(2),
-//   ))
-// }
+  "a.foo(2)"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(e.Apply(#(e.Select("foo"), #(1, 5)), #(e.Variable("a"), #(0, 1))), #(
+          0,
+          5,
+        )),
+        #(e.Integer(2), #(6, 7)),
+      ),
+      #(0, 8),
+    ),
+  )
+}
 
-// pub fn tagged_test() {
-//   "Ok(2)"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(e.Tag("Ok"), e.Integer(2)))
-// }
+pub fn tagged_test() {
+  "Ok(2)"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(e.Apply(#(e.Tag("Ok"), #(0, 2)), #(e.Integer(2), #(3, 4))), #(0, 5)),
+  )
+}
 
 // pub fn match_test() {
 //   "match { }"
@@ -596,16 +617,21 @@ pub fn record_sugar_test() {
 //   ))
 // }
 
-// pub fn perform_test() {
-//   "perform Log"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Perform("Log"))
+pub fn perform_test() {
+  "perform Log"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(#(e.Perform("Log"), #(0, 11)))
 
-//   "perform Log(\"stop\")"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(e.Perform("Log"), e.Str("stop")))
-// }
+  "perform Log(\"stop\")"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(e.Apply(#(e.Perform("Log"), #(0, 11)), #(e.Str("stop"), #(12, 18))), #(
+      0,
+      19,
+    )),
+  )
+}
