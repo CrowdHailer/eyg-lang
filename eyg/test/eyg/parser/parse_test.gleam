@@ -566,56 +566,55 @@ pub fn tagged_test() {
   )
 }
 
-// pub fn match_test() {
-//   "match { }"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.NoCases)
+pub fn match_test() {
+  "match { }"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(#(e.NoCases, #(4, 8)))
+  //   "match x { }"
+  //   |> lexer.lex()
+  //   |> parser.parse()
+  //   |> should.be_ok()
+  //   |> should.equal(e.Apply(e.NoCases, e.Variable("x")))
 
-//   "match x { }"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(e.NoCases, e.Variable("x")))
+  //   "match {
+  //     Ok x
+  //     Error(y) -> { y }
+  //   }"
+  //   |> lexer.lex()
+  //   |> parser.parse()
+  //   |> should.be_ok()
+  //   |> should.equal(e.Apply(
+  //     e.Apply(e.Case("Ok"), e.Variable("x")),
+  //     e.Apply(e.Apply(e.Case("Error"), e.Lambda("y", e.Variable("y"))), e.NoCases),
+  //   ))
 
-//   "match {
-//     Ok x
-//     Error(y) -> { y }
-//   }"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(
-//     e.Apply(e.Case("Ok"), e.Variable("x")),
-//     e.Apply(e.Apply(e.Case("Error"), e.Lambda("y", e.Variable("y"))), e.NoCases),
-//   ))
-
-//   "match {
-//     User({name, age}) -> { age }
-//   }"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(
-//     e.Apply(
-//       e.Case("User"),
-//       e.Lambda(
-//         "$",
-//         e.Let(
-//           "name",
-//           e.Apply(e.Select("name"), e.Variable("$")),
-//           e.Let(
-//             "age",
-//             e.Apply(e.Select("age"), e.Variable("$")),
-//             e.Variable("age"),
-//           ),
-//         ),
-//       ),
-//     ),
-//     e.NoCases,
-//   ))
-// }
+  //   "match {
+  //     User({name, age}) -> { age }
+  //   }"
+  //   |> lexer.lex()
+  //   |> parser.parse()
+  //   |> should.be_ok()
+  //   |> should.equal(e.Apply(
+  //     e.Apply(
+  //       e.Case("User"),
+  //       e.Lambda(
+  //         "$",
+  //         e.Let(
+  //           "name",
+  //           e.Apply(e.Select("name"), e.Variable("$")),
+  //           e.Let(
+  //             "age",
+  //             e.Apply(e.Select("age"), e.Variable("$")),
+  //             e.Variable("age"),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //     e.NoCases,
+  //   ))
+}
 
 pub fn perform_test() {
   "perform Log"
