@@ -36,7 +36,6 @@ pub fn function_test() {
       body
       |> e2.add_meta(Nil),
       scope,
-      Nil,
     )),
   )
 }

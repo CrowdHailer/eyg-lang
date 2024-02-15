@@ -358,7 +358,7 @@ pub fn snippet(root) {
 
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let assert Ok(v.Closure(_, source, _e2, rev)) =
+      let assert Ok(v.Closure(_, source, _e2)) =
         r.execute(e2.add_meta(source, Nil), stdlib.env(), dict.new())
       // TODO reinstate
       // let assert Ok(tenv) = dict.get(envs, rev)
@@ -402,13 +402,13 @@ pub fn init(json) {
   let #(env, source, sub, next, tenv) = case
     r.execute(e2.add_meta(source, Nil), stdlib.env(), dict.new())
   {
-    Ok(v.Closure(_, source, env, rev)) -> {
+    Ok(v.Closure(_, source, env)) -> {
       let tenv = case
         dict.get(envs, todo as "push nils gives no useful value")
       {
         Ok(tenv) -> tenv
         Error(Nil) -> {
-          io.debug(#("no env foud at rev", rev))
+          io.debug(#("no env foud at rev"))
           dict.new()
         }
       }

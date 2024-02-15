@@ -16,8 +16,10 @@ pub type Value(m, context) {
     param: String,
     body: e.Node(m),
     env: List(#(String, Value(m, context))),
-    meta: m,
   )
+  // meta is in closure to extract types in env from type env
+  // this is rather than typechecking all the values in the env which themselves have an env
+  // wouldn't be needed if all the env checking had sensible has memoisation
   Partial(Switch(context), List(Value(m, context)))
   Promise(JSPromise(Value(m, context)))
 }
@@ -60,7 +62,7 @@ pub fn debug(term) {
       |> list.append(["}"])
       |> string.concat
     Tagged(label, value) -> string.concat([label, "(", debug(value), ")"])
-    Closure(param, _, _, _) -> string.concat(["(", param, ") -> { ... }"])
+    Closure(param, _, _) -> string.concat(["(", param, ") -> { ... }"])
     Partial(d, args) ->
       string.concat([
         "Partial: ",

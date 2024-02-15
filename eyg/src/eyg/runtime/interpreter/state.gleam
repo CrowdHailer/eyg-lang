@@ -75,8 +75,7 @@ pub fn eval(exp, env: Env(m), k) {
   let #(exp, meta) = exp
   let value = fn(value) { Ok(#(V(value), env, k)) }
   case exp {
-    e.Lambda(param, body) ->
-      Ok(#(V(v.Closure(param, body, env.scope, meta)), env, k))
+    e.Lambda(param, body) -> Ok(#(V(v.Closure(param, body, env.scope)), env, k))
 
     e.Apply(f, arg) -> Ok(#(E(f), env, Stack(Arg(arg, env), meta, k)))
 
@@ -126,7 +125,7 @@ pub fn apply(value, env, k, meta, rest) {
 
 pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
   case f {
-    v.Closure(param, body, captured, rev) -> {
+    v.Closure(param, body, captured) -> {
       let env = Env(..env, scope: [#(param, arg), ..captured])
       Ok(#(E(body), env, k))
     }

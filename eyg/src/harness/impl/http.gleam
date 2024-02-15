@@ -50,7 +50,7 @@ pub fn serve() {
       })
     let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
     let body = e2.add_meta(body, Nil)
-    Ok(v.Closure("_", body, [], Nil))
+    Ok(v.Closure("_", body, []))
   })
 }
 
