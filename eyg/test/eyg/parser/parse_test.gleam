@@ -263,31 +263,39 @@ pub fn let_record_test() -> Nil {
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
-  |> should.equal(#(
-    e.Let("$", #(e.Variable("rec"), #(13, 16)), #(
+  |> should.equal(
+    #(
       e.Let(
-        "x",
-        #(e.Apply(#(e.Select("x"), #(5, 6)), #(e.Variable("$"), #(5, 6))), #(
-          5,
-          6,
-        )),
+        "$",
+        #(e.Variable("rec"), #(13, 16)),
         #(
           e.Let(
-            "y",
+            "x",
             #(
-              e.Apply(#(e.Select("y"), #(8, 9)), #(e.Variable("$"), #(8, 9))),
-              #(8, 9),
+              e.Apply(#(e.Select("x"), #(5, 6)), #(e.Variable("$"), #(5, 6))),
+              #(5, 6),
             ),
-            #(e.Variable("a"), #(20, 21)),
+            #(
+              e.Let(
+                "y",
+                #(
+                  e.Apply(
+                    #(e.Select("y"), #(8, 9)),
+                    #(e.Variable("$"), #(8, 9)),
+                  ),
+                  #(8, 9),
+                ),
+                #(e.Variable("a"), #(20, 21)),
+              ),
+              #(8, 21),
+            ),
           ),
-          #(8, 21),
+          #(5, 21),
         ),
       ),
-      // This should go to end of let
-      #(5, 21),
-    )),
-    #(0, 21),
-  ))
+      #(0, 21),
+    ),
+  )
 
   "let {} = rec
    a"
@@ -449,11 +457,29 @@ pub fn record_test() {
       #(0, 13),
     ),
   )
-  // "{foo: x(2)}"
-  // |> lexer.lex()
-  // |> parser.parse()
-  // |> should.be_ok()
-  // |> should.equal(e.record([#("foo", e.Apply(e.Variable("x"), e.Integer(2)))]))
+
+  "{foo: x(2)}"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(
+          e.Apply(
+            #(e.Extend("foo"), #(0, 5)),
+            #(e.Apply(#(e.Variable("x"), #(6, 7)), #(e.Integer(2), #(8, 9))), #(
+              6,
+              10,
+            )),
+          ),
+          #(0, 10),
+        ),
+        #(e.Empty, #(10, 11)),
+      ),
+      #(0, 11),
+    ),
+  )
 }
 
 pub fn record_sugar_test() {
@@ -484,33 +510,48 @@ pub fn record_sugar_test() {
   )
 }
 
-// pub fn overwrite_test() -> Nil {
-//   "{a: 5, ..x}"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(
-//     e.Apply(e.Overwrite("a"), e.Integer(5)),
-//     e.Variable("x"),
-//   ))
+pub fn overwrite_test() -> Nil {
+  "{a: 5, ..x}"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(e.Apply(#(e.Overwrite("a"), #(0, 3)), #(e.Integer(5), #(4, 5))), #(
+          0,
+          5,
+        )),
+        #(e.Variable("x"), #(9, 10)),
+      ),
+      #(0, 10),
+    ),
+  )
+  "{..x}"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(#(e.Variable("x"), #(3, 4)))
+}
 
-//   "{..x}"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Variable("x"))
-// }
-
-// pub fn overwrite_sugar_test() -> Nil {
-//   "{a, ..x}"
-//   |> lexer.lex()
-//   |> parser.parse()
-//   |> should.be_ok()
-//   |> should.equal(e.Apply(
-//     e.Apply(e.Overwrite("a"), e.Variable("a")),
-//     e.Variable("x"),
-//   ))
-// }
+pub fn overwrite_sugar_test() -> Nil {
+  "{a, ..x}"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(e.Apply(#(e.Overwrite("a"), #(0, 2)), #(e.Variable("a"), #(1, 2))), #(
+          0,
+          2,
+        )),
+        #(e.Variable("x"), #(6, 7)),
+      ),
+      #(0, 7),
+    ),
+  )
+}
 
 pub fn field_access_test() {
   "a.foo"

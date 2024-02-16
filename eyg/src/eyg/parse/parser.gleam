@@ -384,6 +384,7 @@ fn do_record(rest, start, acc) {
       use #(value, rest) <- try(expression(rest))
       use #(#(token, start), rest) <- try(pop(rest))
       use rest <- try(case token {
+        // could include right brace in the tail for editing
         t.RightBrace -> Ok(rest)
         _ -> Error(UnexpectedToken(token, start))
       })
@@ -412,8 +413,23 @@ pub fn build_record(reversed, acc) {
   }
 }
 
-fn build_overwrite(_, _) {
-  todo as "build overwrite"
+pub fn build_overwrite(reversed, acc) {
+  case reversed {
+    [#(span, label, item), ..rest] -> {
+      let #(_, #(_, c)) = acc
+      let #(_, #(_, b)) = item
+      let #(a, _) = span
+
+      build_overwrite(
+        rest,
+        #(
+          e.Apply(#(e.Apply(#(e.Overwrite(label), span), item), #(a, b)), acc),
+          #(a, c),
+        ),
+      )
+    }
+    [] -> acc
+  }
 }
 
 fn clauses(tokens, start) {
