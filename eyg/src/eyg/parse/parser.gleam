@@ -177,14 +177,14 @@ pub fn expression(tokens) {
     t.Match -> {
       case rest {
         [#(t.LeftBrace, _), ..rest] -> {
-          use #(exp, _, rest) <- try(clauses(rest))
+          use #(exp, _, rest) <- try(clauses(rest, start))
           Ok(#(exp, rest))
         }
         _ -> {
           use #(subject, rest) <- try(expression(rest))
           case rest {
-            [#(t.LeftBrace, _), ..rest] -> {
-              use #(exp, end, rest) <- try(clauses(rest))
+            [#(t.LeftBrace, inner), ..rest] -> {
+              use #(exp, end, rest) <- try(clauses(rest, inner))
               let span = #(start, end)
               Ok(#(#(e.Apply(exp, subject), span), rest))
             }
@@ -416,31 +416,36 @@ fn build_overwrite(_, _) {
   todo as "build overwrite"
 }
 
-fn clauses(tokens) {
-  use #(clauses, tail, rest) <- try(do_clauses(tokens, []))
+fn clauses(tokens, start) {
+  use #(clauses, tail, rest) <- try(do_clauses(tokens, start, []))
   let #(_, #(_, end)) = tail
   let exp =
     list.fold(clauses, tail, fn(exp, clause) {
-      let #(label, start, branch) = clause
-      let case_ = #(e.Case(label), #(start, start + string.length(label)))
+      let #(start, label, cspan, branch) = clause
+      let case_ = #(e.Case(label), cspan)
       let #(_, #(_, branch_end)) = branch
-      let inner = #(e.Apply(case_, branch), #(start, branch_end))
+      let inner = #(e.Apply(case_, branch), #(cspan.0, branch_end))
       let #(_, #(_, final)) = tail
       #(e.Apply(inner, exp), #(start, final))
     })
   Ok(#(exp, end, rest))
 }
 
-fn do_clauses(tokens, acc) {
-  use #(#(token, start), rest) <- try(pop(tokens))
+fn do_clauses(tokens, start, acc) {
+  use #(#(token, clause), rest) <- try(pop(tokens))
   case token {
-    t.RightBrace -> Ok(#(acc, #(e.NoCases, #(start, start + 1)), rest))
+    t.RightBrace -> Ok(#(acc, #(e.NoCases, #(start, clause + 1)), rest))
     t.Uppername(label) -> {
       use #(branch, rest) <- try(expression(rest))
-      let acc = [#(label, start, branch), ..acc]
-      do_clauses(rest, acc)
+      let acc = [
+        #(start, label, #(clause, clause + string.length(label)), branch),
+        ..acc
+      ]
+      // peek
+      let assert [#(_, last), ..] = rest
+      do_clauses(rest, last, acc)
     }
-    _ -> Error(UnexpectedToken(token, start))
+    _ -> Error(UnexpectedToken(token, clause))
   }
 }
 

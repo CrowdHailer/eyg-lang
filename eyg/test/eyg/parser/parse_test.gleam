@@ -571,49 +571,46 @@ pub fn match_test() {
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
-  |> should.equal(#(e.NoCases, #(4, 8)))
-  //   "match x { }"
-  //   |> lexer.lex()
-  //   |> parser.parse()
-  //   |> should.be_ok()
-  //   |> should.equal(e.Apply(e.NoCases, e.Variable("x")))
+  |> should.equal(#(e.NoCases, #(0, 9)))
 
-  //   "match {
-  //     Ok x
-  //     Error(y) -> { y }
-  //   }"
-  //   |> lexer.lex()
-  //   |> parser.parse()
-  //   |> should.be_ok()
-  //   |> should.equal(e.Apply(
-  //     e.Apply(e.Case("Ok"), e.Variable("x")),
-  //     e.Apply(e.Apply(e.Case("Error"), e.Lambda("y", e.Variable("y"))), e.NoCases),
-  //   ))
-
-  //   "match {
-  //     User({name, age}) -> { age }
-  //   }"
-  //   |> lexer.lex()
-  //   |> parser.parse()
-  //   |> should.be_ok()
-  //   |> should.equal(e.Apply(
-  //     e.Apply(
-  //       e.Case("User"),
-  //       e.Lambda(
-  //         "$",
-  //         e.Let(
-  //           "name",
-  //           e.Apply(e.Select("name"), e.Variable("$")),
-  //           e.Let(
-  //             "age",
-  //             e.Apply(e.Select("age"), e.Variable("$")),
-  //             e.Variable("age"),
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //     e.NoCases,
-  //   ))
+  "match x { }"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(e.Apply(#(e.NoCases, #(8, 11)), #(e.Variable("x"), #(6, 7))), #(0, 11)),
+  )
+  "match {
+      Ok x
+      Error(y) -> { y }
+    }"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(
+    #(
+      e.Apply(
+        #(e.Apply(#(e.Case("Ok"), #(14, 16)), #(e.Variable("x"), #(17, 18))), #(
+          14,
+          18,
+        )),
+        #(
+          e.Apply(
+            #(
+              e.Apply(
+                #(e.Case("Error"), #(25, 30)),
+                #(e.Lambda("y", #(e.Variable("y"), #(39, 40))), #(30, 42)),
+              ),
+              #(25, 42),
+            ),
+            #(e.NoCases, #(47, 48)),
+          ),
+          #(25, 48),
+        ),
+      ),
+      #(0, 48),
+    ),
+  )
 }
 
 pub fn perform_test() {
