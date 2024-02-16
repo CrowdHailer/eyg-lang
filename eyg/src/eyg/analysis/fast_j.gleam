@@ -412,6 +412,23 @@ fn do_infer(source, env, eff, s) {
         pure2(field, Record(rest), Record(RowExtend(label, field, rest)))
       #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
     }
+    e.Overwrite(label) -> {
+      // If generating with indexes maybe it's easier to just newvar with state
+      let new = Var(#(True, 0))
+      let old = Var(#(True, 1))
+      let rest = Var(#(True, 2))
+
+      let #(s, type_) =
+        rename_primitive(
+          pure2(
+            new,
+            Record(RowExtend(label, old, rest)),
+            Record(RowExtend(label, new, rest)),
+          ),
+          s,
+        )
+      #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
+    }
     e.Select(label) -> {
       let #(s, field) = newvar(s)
       let #(s, rest) = newvar(s)
@@ -452,6 +469,10 @@ fn do_infer(source, env, eff, s) {
       panic as "unspeorted"
     }
   }
+}
+
+fn rename_primitive(scheme, s) {
+  instantiate(scheme, s)
 }
 
 fn pure1(arg1, ret) {
