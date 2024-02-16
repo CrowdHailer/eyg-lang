@@ -34,6 +34,11 @@
 // potentially try the interpreter
 
 // TODO rename level_j
+
+// Fast js is good for not exploring the whole environment. Maybe that is all it is good for
+// and passing abound a map of bindings is most sensible
+
+// TODO compiling live eval in textual
 import gleam/dict.{type Dict}
 import gleam/io
 import gleam/int
@@ -300,13 +305,10 @@ fn do_infer(source, env, eff, s) {
     e.Variable(x) ->
       case list.key_find(env, x) {
         Ok(scheme) -> {
-          // io.debug(scheme)
           let #(s, type_) = instantiate(scheme, s)
           let #(s, type_) = open(type_, s)
-          // io.debug(type_)
           #(s, type_, eff, [#(Ok(Nil), type_, Empty, env)])
         }
-
         Error(Nil) -> {
           let #(s, type_) = newvar(s)
           #(s, type_, eff, [#(Error(MissingVariable(x)), type_, Empty, env)])
