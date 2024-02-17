@@ -21,8 +21,6 @@
 // In apply doing only close means that types keep unifying for the lift and lower types
 // Show typing example where an error use of a return type leaves it as e but if fixed it gets found properly
 
-// TODO rename level_j
-
 // Fast js is good for not exploring the whole environment. Maybe that is all it is good for
 // and passing abound a map of bindings is most sensible
 
@@ -36,12 +34,8 @@ import gleam/set
 import eygir/expression as e
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
-
-pub type Reason {
-  MissingVariable(String)
-  TypeMismatch(binding.Mono, binding.Mono)
-  MissingRow(String)
-}
+import eyg/analysis/type_/binding/unify
+import eyg/analysis/type_/binding/error
 
 pub fn new_state() {
   dict.new()
@@ -91,7 +85,7 @@ fn ftv(type_) {
 
 // TODO move to levels
 fn close(type_, level, bindings) {
-  case resolve(type_, bindings) {
+  case binding.resolve(type_, bindings) {
     t.Fun(arg, eff, ret) -> {
       let eff = close_eff(arg, eff, ret, level, bindings)
       t.Fun(arg, eff, close(ret, level, bindings))
@@ -140,7 +134,7 @@ fn do_infer(source, env, eff, level, bindings) {
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
           #(bindings, type_, eff, [
-            #(Error(MissingVariable(x)), type_, t.Empty, env),
+            #(Error(error.MissingVariable(x)), type_, t.Empty, env),
           ])
         }
       }
@@ -172,7 +166,7 @@ fn do_infer(source, env, eff, level, bindings) {
       let #(test_eff, bindings) = binding.mono(level, bindings)
 
       let #(bindings, result) = case
-        unify(t.Fun(ty_arg, test_eff, ty_ret), ty_fun, level, bindings)
+        unify.unify(t.Fun(ty_arg, test_eff, ty_ret), ty_fun, level, bindings)
       {
         Ok(bindings) -> #(bindings, Ok(Nil))
         Error(reason) -> #(bindings, Error(reason))
@@ -184,7 +178,7 @@ fn do_infer(source, env, eff, level, bindings) {
       // At this point we just check that the effects would generalise a level up.
       // It doesn't matter if the eftects are in arg because we apply the arg here
       // so we're only interested in final effects
-      let #(last, mapped) = eff_tail(resolve(test_eff, bindings))
+      let #(last, mapped) = eff_tail(binding.resolve(test_eff, bindings))
       let raised = case last {
         Error(Nil) -> test_eff
         Ok(i) -> {
@@ -202,7 +196,9 @@ fn do_infer(source, env, eff, level, bindings) {
         }
       }
 
-      let #(bindings, result) = case unify(test_eff, eff, level, bindings) {
+      let #(bindings, result) = case
+        unify.unify(test_eff, eff, level, bindings)
+      {
         Ok(bindings) -> #(bindings, result)
         // First error, is there a result.and function
         Error(reason) -> #(bindings, case result {
@@ -305,201 +301,6 @@ fn perform(l) {
 fn builtin(name) {
   case name {
     "integer_add" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
-    _ -> Error(MissingVariable(name))
-  }
-}
-
-pub fn resolve(type_, bindings) {
-  case type_ {
-    t.Var(i) -> {
-      // TODO minus numbers might get
-      let assert Ok(binding) = dict.get(bindings, i)
-      case binding {
-        binding.Bound(type_) -> resolve(type_, bindings)
-        _ -> type_
-      }
-    }
-    t.Fun(arg, eff, ret) ->
-      t.Fun(
-        resolve(arg, bindings),
-        resolve(eff, bindings),
-        resolve(ret, bindings),
-      )
-    t.Integer -> t.Integer
-    t.Binary -> t.Binary
-    t.String -> t.String
-    t.Empty -> t.Empty
-    t.List(el) -> t.List(resolve(el, bindings))
-    t.Record(rows) -> t.Record(resolve(rows, bindings))
-    t.Union(rows) -> t.Union(resolve(rows, bindings))
-    t.RowExtend(label, field, rest) ->
-      t.RowExtend(label, resolve(field, bindings), resolve(rest, bindings))
-    t.EffectExtend(label, #(lift, reply), rest) ->
-      t.EffectExtend(
-        label,
-        #(resolve(lift, bindings), resolve(reply, bindings)),
-        resolve(rest, bindings),
-      )
-  }
-}
-
-fn find(type_, bindings) {
-  case type_ {
-    t.Var(i) -> dict.get(bindings, i)
-    _other -> Error(Nil)
-  }
-}
-
-fn occurs_and_levels(i, level, type_, bindings) {
-  case type_ {
-    t.Var(j) if i == j -> panic as "recursive"
-    t.Var(j) -> {
-      let assert Ok(binding) = dict.get(bindings, j)
-      case binding {
-        binding.Unbound(l) -> {
-          let l = int.min(l, level)
-          let bindings = dict.insert(bindings, j, binding.Unbound(l))
-          bindings
-        }
-        binding.Bound(type_) -> occurs_and_levels(i, level, type_, bindings)
-      }
-    }
-    t.Fun(arg, eff, ret) -> {
-      let bindings = occurs_and_levels(i, level, arg, bindings)
-      let bindings = occurs_and_levels(i, level, eff, bindings)
-      let bindings = occurs_and_levels(i, level, ret, bindings)
-      bindings
-    }
-    t.Integer -> bindings
-    t.Binary -> bindings
-    t.String -> bindings
-    t.List(el) -> occurs_and_levels(i, level, el, bindings)
-    t.Record(row) -> occurs_and_levels(i, level, row, bindings)
-    t.Union(row) -> occurs_and_levels(i, level, row, bindings)
-    t.Empty -> bindings
-    t.RowExtend(_, field, rest) -> {
-      let bindings = occurs_and_levels(i, level, field, bindings)
-      let bindings = occurs_and_levels(i, level, rest, bindings)
-      bindings
-    }
-    t.EffectExtend(_, #(lift, reply), rest) -> {
-      let bindings = occurs_and_levels(i, level, lift, bindings)
-      let bindings = occurs_and_levels(i, level, reply, bindings)
-      let bindings = occurs_and_levels(i, level, rest, bindings)
-      bindings
-    }
-  }
-}
-
-fn unify(t1, t2, level, bindings) {
-  case t1, find(t1, bindings), t2, find(t2, bindings) {
-    _, Ok(binding.Bound(t1)), _, _ -> unify(t1, t2, level, bindings)
-    _, _, _, Ok(binding.Bound(t2)) -> unify(t1, t2, level, bindings)
-    t.Var(i), _, t.Var(j), _ if i == j -> Ok(bindings)
-    t.Var(i), Ok(binding.Unbound(level)), other, _
-    | other, _, t.Var(i), Ok(binding.Unbound(level)) -> {
-      let bindings = occurs_and_levels(i, level, other, bindings)
-      Ok(dict.insert(bindings, i, binding.Bound(other)))
-    }
-    t.Fun(arg1, eff1, ret1), _, t.Fun(arg2, eff2, ret2), _ -> {
-      use bindings <- try(unify(arg1, arg2, level, bindings))
-      use bindings <- try(unify(eff1, eff2, level, bindings))
-      unify(ret1, ret2, level, bindings)
-    }
-    t.Integer, _, t.Integer, _ -> Ok(bindings)
-    t.Binary, _, t.Binary, _ -> Ok(bindings)
-    t.String, _, t.String, _ -> Ok(bindings)
-
-    t.List(el1), _, t.List(el2), _ -> unify(el1, el2, level, bindings)
-    t.Empty, _, t.Empty, _ -> Ok(bindings)
-    t.Record(rows1), _, t.Record(rows2), _ ->
-      unify(rows1, rows2, level, bindings)
-    t.Union(rows1), _, t.Union(rows2), _ -> unify(rows1, rows2, level, bindings)
-    t.RowExtend(l1, field1, rest1), _, other, _
-    | other, _, t.RowExtend(l1, field1, rest1), _ -> {
-      use #(field2, rest2, bindings) <- try(rewrite_row(
-        l1,
-        other,
-        level,
-        bindings,
-      ))
-      use bindings <- try(unify(field1, field2, level, bindings))
-      unify(rest1, rest2, level, bindings)
-    }
-    t.EffectExtend(l1, #(lift1, reply1), r1), _, other, _
-    | other, _, t.EffectExtend(l1, #(lift1, reply1), r1), _ -> {
-      use #(#(lift2, reply2), r2, bindings) <- try(rewrite_effect(
-        l1,
-        other,
-        level,
-        bindings,
-      ))
-      use bindings <- try(unify(lift1, lift2, level, bindings))
-      use bindings <- try(unify(reply1, reply2, level, bindings))
-      unify(r1, r2, level, bindings)
-    }
-    _, _, _, _ -> Error(TypeMismatch(t1, t2))
-  }
-}
-
-fn rewrite_row(required, type_, level, bindings) {
-  case type_ {
-    t.Empty -> Error(MissingRow(required))
-    t.RowExtend(l, field, rest) if l == required -> Ok(#(field, rest, bindings))
-    t.RowExtend(l, other_field, rest) -> {
-      use #(field, new_tail, bindings) <- try(rewrite_row(
-        l,
-        rest,
-        level,
-        bindings,
-      ))
-      let rest = t.RowExtend(required, other_field, new_tail)
-      Ok(#(field, rest, bindings))
-    }
-    t.Var(i) -> {
-      let #(field, bindings) = binding.mono(level, bindings)
-      let #(rest, bindings) = binding.mono(level, bindings)
-      let type_ = t.RowExtend(required, field, rest)
-      Ok(#(field, rest, dict.insert(bindings, i, binding.Bound(type_))))
-    }
-    // _ -> Error(TypeMismatch(t.RowExtend(required, type_, t.Empty), type_))
-    _ -> panic as "bad row"
-  }
-}
-
-fn rewrite_effect(required, type_, level, bindings) {
-  case type_ {
-    t.Empty -> Error(MissingRow(required))
-    t.EffectExtend(l, eff, rest) if l == required -> Ok(#(eff, rest, bindings))
-    t.EffectExtend(l, other_eff, rest) -> {
-      use #(eff, new_tail, bindings) <- try(rewrite_effect(
-        required,
-        rest,
-        level,
-        bindings,
-      ))
-      // use #(eff, new_tail, s) <-  try(rewrite_effect(l, rest, s))
-      let rest = t.EffectExtend(l, other_eff, new_tail)
-      Ok(#(eff, rest, bindings))
-    }
-    t.Var(i) -> {
-      let #(lift, bindings) = binding.mono(level, bindings)
-      let #(reply, bindings) = binding.mono(level, bindings)
-
-      let assert Ok(binding.Unbound(level)) = dict.get(bindings, i)
-      // let #(s, rest) = newvar(s)
-      // let State(tvar, level, bindings) = s
-      // let rest = t.Var(tvar)
-      // let bindings = dict.insert(bindings, tvar, binding.Unbound(level))
-      // let tvar = tvar + 1
-      // let s = State(tvar, level, bindings)
-      // #(s, t)
-      let #(rest, bindings) = binding.mono(level, bindings)
-
-      let type_ = t.EffectExtend(required, #(lift, reply), rest)
-      Ok(#(#(lift, reply), rest, dict.insert(bindings, i, binding.Bound(type_))))
-    }
-    // _ -> Error(TypeMismatch(EffectExtend(required, type_, t.Empty), type_))
-    _ -> panic as "bad effect"
+    _ -> Error(error.MissingVariable(name))
   }
 }

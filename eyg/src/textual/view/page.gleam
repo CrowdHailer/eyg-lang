@@ -10,7 +10,7 @@ import lustre/element/html.{div, p, pre, span, textarea}
 import lustre/event.{on_click, on_input}
 import plinth/browser/event as evt
 import eygir/tree
-import eyg/analysis/fast_j/debug
+import eyg/analysis/type_/binding/debug
 import textual/state.{Highlight, Input}
 
 pub fn render(s) {

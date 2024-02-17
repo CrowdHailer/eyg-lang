@@ -4,6 +4,7 @@ import gleam/list
 import gleam/string
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/fast_j as j
+import eyg/analysis/type_/binding/error
 
 pub fn render_type(typ) {
   case typ {
@@ -53,10 +54,10 @@ pub fn render_type(typ) {
 
 pub fn render_reason(reason) {
   case reason {
-    j.MissingVariable(label) ->
+    error.MissingVariable(label) ->
       string.concat(["missing variable '", label, "'"])
-    j.MissingRow(label) -> string.concat(["missing row '", label, "'"])
-    j.TypeMismatch(expected, given) ->
+    error.MissingRow(label) -> string.concat(["missing row '", label, "'"])
+    error.TypeMismatch(expected, given) ->
       string.concat([
         "type missmatch given: ",
         render_type(given),

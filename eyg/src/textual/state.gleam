@@ -10,6 +10,7 @@ import eyg/parse/expression
 import eyg/parse/lexer
 import eyg/parse/parser
 import eyg/analysis/type_/isomorphic as t
+import eyg/analysis/type_/binding
 import eyg/analysis/fast_j as j
 
 pub type State {
@@ -34,9 +35,9 @@ pub fn information(state) {
       let acc =
         list.map(acc, fn(node) {
           let #(error, typed, effect, env) = node
-          let typed = j.resolve(typed, bindings)
+          let typed = binding.resolve(typed, bindings)
 
-          let effect = j.resolve(effect, bindings)
+          let effect = binding.resolve(effect, bindings)
           #(error, typed, effect)
         })
       Ok(#(tree, spans, acc))

@@ -7,8 +7,9 @@ import eyg/parse/expression
 import gleeunit/should
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
-import eyg/analysis/fast_j as j
-import eyg/analysis/fast_j/debug
+import eyg/analysis/type_/binding/error
+import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/binding/debug
 
 fn parse(src) {
   src
@@ -29,10 +30,10 @@ fn do_resolve(return: #(List(#(_, _, _, _)), _)) {
       let #(error, typed, effect, env) = node
       // let #(s, typed) = j.instantiate(scheme, s)
       // TODO do I need state
-      let typed = j.resolve(typed, bindings)
+      let typed = binding.resolve(typed, bindings)
       // let #(s, effect) = j.instantiate(effect, s)
 
-      let effect = j.resolve(effect, bindings)
+      let effect = binding.resolve(effect, bindings)
       #(bindings, #(error, typed, effect, env))
     })
   acc
@@ -77,7 +78,7 @@ fn ok(type_, eff) {
 pub fn variable_test() {
   "x"
   |> calc(t.Empty)
-  |> should.equal([#(Error(j.MissingVariable("x")), "0", "<>")])
+  |> should.equal([#(Error(error.MissingVariable("x")), "0", "<>")])
 }
 
 pub fn literal_test() {
@@ -267,14 +268,14 @@ pub fn select_test() {
   |> should.equal([
     ok("0", "<>"),
     ok("({name: 0, ..1}) -> <> 0", "<>"),
-    #(Error(j.MissingVariable("x")), "{name: 0, ..1}", "<>"),
+    #(Error(error.MissingVariable("x")), "{name: 0, ..1}", "<>"),
   ])
 
   "{}.name"
   |> calc(t.Empty)
   // You could unify with return type if it exists
   |> should.equal([
-    #(Error(j.MissingRow("name")), "3", "<>"),
+    #(Error(error.MissingRow("name")), "3", "<>"),
     #(Ok(Nil), "({name: 0, ..1}) -> <> 0", "<>"),
     #(Ok(Nil), "{}", "<>"),
   ])
@@ -324,7 +325,7 @@ pub fn builtin_test() {
 
   "!not_a_thing"
   |> calc(t.Empty)
-  |> should.equal([#(Error(j.MissingVariable("not_a_thing")), "0", "<>")])
+  |> should.equal([#(Error(error.MissingVariable("not_a_thing")), "0", "<>")])
 }
 
 pub fn perform_test() {
@@ -343,7 +344,7 @@ pub fn perform_unifys_with_env_test() {
   "perform Log(5)"
   |> calc(t.EffectExtend("Log", #(t.String, t.Record(t.Empty)), t.Empty))
   |> should.equal([
-    #(Error(j.TypeMismatch(t.Integer, t.String)), "1", "<Log(Integer, 1)>"),
+    #(Error(error.TypeMismatch(t.Integer, t.String)), "1", "<Log(Integer, 1)>"),
     #(Ok(Nil), "(Integer) -> <Log(Integer, 1)> 1", "<>"),
     #(Ok(Nil), "Integer", "<>"),
   ])

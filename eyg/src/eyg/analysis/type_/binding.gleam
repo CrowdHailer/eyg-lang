@@ -23,6 +23,40 @@ pub fn mono(level, bindings) {
   #(t.Var(i), bindings)
 }
 
+pub fn resolve(type_, bindings) {
+  case type_ {
+    t.Var(i) -> {
+      // TODO minus numbers might get
+      let assert Ok(binding) = dict.get(bindings, i)
+      case binding {
+        Bound(type_) -> resolve(type_, bindings)
+        _ -> type_
+      }
+    }
+    t.Fun(arg, eff, ret) ->
+      t.Fun(
+        resolve(arg, bindings),
+        resolve(eff, bindings),
+        resolve(ret, bindings),
+      )
+    t.Integer -> t.Integer
+    t.Binary -> t.Binary
+    t.String -> t.String
+    t.Empty -> t.Empty
+    t.List(el) -> t.List(resolve(el, bindings))
+    t.Record(rows) -> t.Record(resolve(rows, bindings))
+    t.Union(rows) -> t.Union(resolve(rows, bindings))
+    t.RowExtend(label, field, rest) ->
+      t.RowExtend(label, resolve(field, bindings), resolve(rest, bindings))
+    t.EffectExtend(label, #(lift, reply), rest) ->
+      t.EffectExtend(
+        label,
+        #(resolve(lift, bindings), resolve(reply, bindings)),
+        resolve(rest, bindings),
+      )
+  }
+}
+
 pub fn poly(level, bindings) {
   let #(i, bindings) = new(level, bindings)
   #(t.Var(#(False, i)), bindings)
