@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/javascript as js
+import gleam/javascriptx as jsx
 import eyg/analysis/type_/isomorphic as t
 
 pub type Binding {
@@ -10,29 +11,29 @@ pub type Binding {
 pub type Mono =
   t.Type(js.Reference(Binding))
 
-pub type Quantified {
-  Quantified(Int)
-  Unquantified(js.Reference(Binding))
-}
+// pub type Quantified {
+//   Quantified(Int)
+//   Unquantified(js.Reference(Binding))
+// }
 
 // Keep poly as separate type, don't just make Quantified a binding option
 // to do so would loose a bunch of type safety at which point zig/wasm is an obvious choise
 // Maybe it was always an obvious choice if the problem is this thoroughly understood/fundamentally about the algorithm.
 
 pub type Poly =
-  t.Type(Quantified)
+  t.Type(#(Bool, js.Reference(Binding)))
 
 // TODO stye guide For single lines what about let g = gen(_, level)
 // Call it bike shed. ScooterTent
-fn gen(type_, level) {
+// Set Binding to Quantified then add to list
+// could just keep using ref, this might be a good place to put all instantiations for monomorpisatio
+pub fn gen(type_, level) {
   case type_ {
     t.Var(ref) ->
       case js.dereference(ref) {
         Bound(type_) -> gen(type_, level)
-        // could just keep using ref, this might be a good place to put all instantiations for monomorpisatio
-        Unbound(l) if l > level -> t.Var(Quantified(0))
-        // Set Binding to Quantified then add to list
-        Unbound(_) -> t.Var(Unquantified(ref))
+        Unbound(l) if l > level -> t.Var(#(True, ref))
+        Unbound(_) -> t.Var(#(False, ref))
       }
     t.Fun(arg, eff, ret) -> {
       let arg = gen(arg, level)
@@ -61,30 +62,36 @@ fn gen(type_, level) {
   }
 }
 
-// is there a neat way to tail cal optimise this Gleam style
 pub fn inst(poly, level) {
+  let #(mono, _) = do_inst(poly, level, [])
+  mono
+}
+
+// is there a neat way to tail cal optimise this Gleam style
+
+fn do_inst(poly, level, subs) {
   case poly {
-    t.Var(Quantified(ref)) -> {
+    t.Var(#(True, ref)) -> {
       let found =
-        list.find_map([], fn(sub) {
+        list.find_map(subs, fn(sub) {
           let #(original, replace) = sub
-          // let ref_equal(origial, ref)
-          Ok(replace)
+          case jsx.reference_equal(original, ref) {
+            True -> Ok(replace)
+            False -> Error(Nil)
+          }
         })
       case found {
-        Ok(mono) -> mono
+        Ok(mono) -> #(mono, subs)
         Error(Nil) -> {
-          let replace = t.Var(js.make_reference(Unbound(level)))
-          // Put original in subs
+          let new = t.Var(js.make_reference(Unbound(level)))
+          #(new, [#(ref, new), ..subs])
         }
       }
-      todo
-      // #(mono)
     }
-    t.Var(Unquantified(ref)) -> #(t.Var(ref))
+    t.Var(#(False, ref)) -> #(t.Var(ref), subs)
     t.List(el) -> {
-      let #(el) = inst(el, level)
-      #(t.List(el))
+      let #(el, subs) = do_inst(el, level, subs)
+      #(t.List(el), subs)
     }
     _ -> todo
   }
@@ -92,9 +99,19 @@ pub fn inst(poly, level) {
 
 // How to unnest the unification function
 // Start a something called gleam style
-fn unify(t1, t2) {
-  // TODO ref equality, can't be done on type because the function would need to take ref from inside var
-  // js.re
+// TODO ref equality, can't be done on type because the function would need to take ref from inside var
+pub fn unify(t1, t2) {
+  case t1, t2 {
+    t.Var(ref1), t.Var(ref2) ->
+      case jsx.reference_equal(ref1, ref2) {
+        True -> Ok(Nil)
+        False -> do_unify(t1, t2)
+      }
+    t1, t2 -> do_unify(t1, t2)
+  }
+}
+
+fn do_unify(t1, t2) {
   case t1, t2 {
     t.Var(ref1), t2 ->
       case js.dereference(ref1) {
