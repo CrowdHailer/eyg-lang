@@ -56,8 +56,7 @@ pub type Reason {
 }
 
 pub fn new_state() {
-  // State(0, 1, dict.new())
-  todo as "just bindings"
+  dict.new()
 }
 
 pub fn infer(source, eff, level, bindings) {
@@ -190,6 +189,7 @@ fn do_infer(source, env, eff, level, bindings) {
         Ok(bindings) -> #(bindings, Ok(Nil))
         Error(reason) -> #(bindings, Error(reason))
       }
+
       let level = level - 1
       // Can close as if it was a let statement above, schema might be interesting
 
@@ -231,7 +231,7 @@ fn do_infer(source, env, eff, level, bindings) {
     // This has two places that create effects but in the acc I don't want any effects
     e.Let(label, value, then) -> {
       let level = level + 1
-      let #(s, ty_value, eff, inner_value) =
+      let #(bindings, ty_value, eff, inner_value) =
         do_infer(value, env, eff, level, bindings)
       let level = level - 1
       let sch_value =
@@ -250,27 +250,27 @@ fn do_infer(source, env, eff, level, bindings) {
     ])
     e.Str(_) -> #(bindings, t.String, eff, [#(Ok(Nil), t.String, t.Empty, env)])
 
-    // e.Tail -> {
-    //   let #(s, el) = newvar(s)
-    //   #(s, List(el), eff, [#(Ok(Nil), List(el), t.Empty, env)])
-    // }
-    // e.Cons -> {
-    //   let #(s, el) = newvar(s)
-    //   let list = List(el)
-    //   let type_ = pure2(el, list, list)
-    //   #(s, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    //   // TODO move to primitive
-    // }
-    // e.Empty -> #(s, Record(Empty), eff, [
-    //   #(Ok(Nil), Record(Empty), t.Empty, env),
-    // ])
-    // e.Extend(label) -> {
-    //   let #(s, field) = newvar(s)
-    //   let #(s, rest) = newvar(s)
-    //   let type_ =
-    //     pure2(field, Record(rest), Record(RowExtend(label, field, rest)))
-    //   #(s, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    // }
+    e.Tail -> {
+      let #(el, bindings) = binding.mono(level, bindings)
+      #(bindings, t.List(el), eff, [#(Ok(Nil), t.List(el), t.Empty, env)])
+    }
+    e.Cons -> {
+      let #(el, bindings) = binding.mono(level, bindings)
+      let list = t.List(el)
+      let type_ = pure2(el, list, list)
+      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
+      // TODO move to primitive
+    }
+    e.Empty -> #(bindings, t.Record(t.Empty), eff, [
+      #(Ok(Nil), t.Record(t.Empty), t.Empty, env),
+    ])
+    e.Extend(label) -> {
+      let #(field, bindings) = binding.mono(level, bindings)
+      let #(rest, bindings) = binding.mono(level, bindings)
+      let type_ =
+        pure2(field, t.Record(rest), t.Record(t.RowExtend(label, field, rest)))
+      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
+    }
     // e.Overwrite(label) -> {
     //   // If generating with indexes maybe it's easier to just newvar with state
     //   let new = Var(#(True, 0))
@@ -287,41 +287,45 @@ fn do_infer(source, env, eff, level, bindings) {
     //     )
     //   #(s, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
     // }
-    // e.Select(label) -> {
-    //   let #(s, field) = newvar(s)
-    //   let #(s, rest) = newvar(s)
-    //   let type_ = pure1(Record(RowExtend(label, field, rest)), field)
-    //   #(s, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    // }
-    // e.Tag(label) -> {
-    //   let #(s, inner) = newvar(s)
-    //   let #(s, rest) = newvar(s)
-    //   let type_ = pure1(inner, Union(RowExtend(label, inner, rest)))
-    //   #(s, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    // }
-    // e.Perform(label) -> {
-    //   // define it closed because will be opend
-    //   let scheme =
-    //     Fun(
-    //       Var(#(True, 0)),
-    //       EffectExtend(label, #(Var(#(True, 0)), Var(#(True, 1))), t.Empty),
-    //       Var(#(True, 1)),
-    //     )
-    //   let #(s, type_) = binding.instantiate(scheme, s)
-    //   let #(s, t) = open(type_, s)
-    //   #(s, t, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    // }
-    // e.Builtin(label) -> {
-    //   let result = primitive(label)
-    //   let #(result, s, type_) = case result {
-    //     Ok(type_) -> #(Ok(Nil), s, type_)
-    //     Error(reason) -> {
-    //       let #(s, type_) = newvar(s)
-    //       #(Error(reason), s, type_)
-    //     }
-    //   }
-    //   #(s, type_, eff, [#(result, type_, t.Empty, env)])
-    // }
+    e.Select(label) -> {
+      let #(field, bindings) = binding.mono(level, bindings)
+      let #(rest, bindings) = binding.mono(level, bindings)
+      let type_ = pure1(t.Record(t.RowExtend(label, field, rest)), field)
+      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
+    }
+    e.Tag(label) -> {
+      let #(inner, bindings) = binding.mono(level, bindings)
+      let #(rest, bindings) = binding.mono(level, bindings)
+      let type_ = pure1(inner, t.Union(t.RowExtend(label, inner, rest)))
+      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
+    }
+    e.Perform(label) -> {
+      // define it closed because will be opend
+      let scheme =
+        t.Fun(
+          t.Var(#(True, 0)),
+          t.EffectExtend(
+            label,
+            #(t.Var(#(True, 0)), t.Var(#(True, 1))),
+            t.Empty,
+          ),
+          t.Var(#(True, 1)),
+        )
+      let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
+      let #(t, bindings) = open(type_, level, bindings)
+      #(bindings, t, eff, [#(Ok(Nil), type_, t.Empty, env)])
+    }
+    e.Builtin(label) -> {
+      let result = primitive(label)
+      let #(result, bindings, type_) = case result {
+        Ok(type_) -> #(Ok(Nil), bindings, type_)
+        Error(reason) -> {
+          let #(type_, bindings) = binding.mono(level, bindings)
+          #(Error(reason), bindings, type_)
+        }
+      }
+      #(bindings, type_, eff, [#(result, type_, t.Empty, env)])
+    }
     _ -> {
       io.debug(source)
       panic as "unspeorted"
@@ -441,8 +445,8 @@ fn unify(t1, t2, level, bindings) {
       Ok(dict.insert(bindings, i, binding.Bound(other)))
     }
     t.Fun(arg1, eff1, ret1), _, t.Fun(arg2, eff2, ret2), _ -> {
-      use s <- try(unify(arg1, arg2, level, bindings))
-      use s <- try(unify(eff1, eff2, level, bindings))
+      use bindings <- try(unify(arg1, arg2, level, bindings))
+      use bindings <- try(unify(eff1, eff2, level, bindings))
       unify(ret1, ret2, level, bindings)
     }
     t.Integer, _, t.Integer, _ -> Ok(bindings)
@@ -462,7 +466,7 @@ fn unify(t1, t2, level, bindings) {
         level,
         bindings,
       ))
-      use s <- try(unify(field1, field2, level, bindings))
+      use bindings <- try(unify(field1, field2, level, bindings))
       unify(rest1, rest2, level, bindings)
     }
     t.EffectExtend(l1, #(lift1, reply1), r1), _, other, _
@@ -473,8 +477,8 @@ fn unify(t1, t2, level, bindings) {
         level,
         bindings,
       ))
-      use s <- try(unify(lift1, lift2, level, bindings))
-      use s <- try(unify(reply1, reply2, level, bindings))
+      use bindings <- try(unify(lift1, lift2, level, bindings))
+      use bindings <- try(unify(reply1, reply2, level, bindings))
       unify(r1, r2, level, bindings)
     }
     _, _, _, _ -> Error(TypeMismatch(t1, t2))

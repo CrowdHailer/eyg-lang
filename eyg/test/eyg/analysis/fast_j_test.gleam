@@ -5,6 +5,8 @@ import eyg/parse/lexer
 import eyg/parse/parser
 import eyg/parse/expression
 import gleeunit/should
+import eyg/analysis/type_/isomorphic as t
+import eyg/analysis/type_/binding
 import eyg/analysis/fast_j as j
 import eyg/analysis/fast_j/debug
 
@@ -20,18 +22,18 @@ fn drop_meta(exp) {
   expression.strip_meta(exp).0
 }
 
-fn do_resolve(return: #(List(#(_, _, _, _)), j.State)) {
-  let #(acc, state) = return
+fn do_resolve(return: #(List(#(_, _, _, _)), _)) {
+  let #(acc, bindings) = return
   let #(_, acc) =
-    list.map_fold(acc, state, fn(s, node) {
+    list.map_fold(acc, bindings, fn(bindings, node) {
       let #(error, typed, effect, env) = node
       // let #(s, typed) = j.instantiate(scheme, s)
       // TODO do I need state
-      let typed = j.resolve(typed, s.bindings)
+      let typed = j.resolve(typed, bindings)
       // let #(s, effect) = j.instantiate(effect, s)
 
-      let effect = j.resolve(effect, s.bindings)
-      #(s, #(error, typed, effect, env))
+      let effect = j.resolve(effect, bindings)
+      #(bindings, #(error, typed, effect, env))
     })
   acc
 }
@@ -53,7 +55,7 @@ fn do_render(results) {
 fn calc(source, eff) {
   source
   |> parse
-  |> j.infer(eff, j.new_state())
+  |> j.infer(eff, 0, j.new_state())
   |> do_resolve()
   |> drop_env()
   |> do_render()
@@ -62,7 +64,7 @@ fn calc(source, eff) {
 fn do_calc(source, eff, state) {
   source
   |> parse
-  |> j.infer(eff, state)
+  |> j.infer(eff, 0, state)
   |> do_resolve()
   |> drop_env()
   |> do_render()
@@ -74,28 +76,28 @@ fn ok(type_, eff) {
 
 pub fn variable_test() {
   "x"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([#(Error(j.MissingVariable("x")), "0", "<>")])
 }
 
 pub fn literal_test() {
   "5"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([ok("Integer", "<>")])
 
   "\"hello\""
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([ok("String", "<>")])
   // TODO binary needs parsing
 }
 
 pub fn simple_function_test() {
   "(_) -> { 5 }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([ok("(0) -> <> Integer", "<>"), ok("Integer", "<>")])
 
   "(x) -> { x }(5)"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("Integer", "<>"),
     ok("(Integer) -> <> Integer", "<>"),
@@ -106,7 +108,7 @@ pub fn simple_function_test() {
   "(x, _) -> {
     x
   }(1, \"\")"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("Integer", "<>"),
     ok("(String) -> <> Integer", "<>"),
@@ -120,7 +122,7 @@ pub fn simple_function_test() {
   "(_, z) -> {
     z
   }(1, \"\")"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("String", "<>"),
     ok("(String) -> <> String", "<>"),
@@ -136,7 +138,7 @@ pub fn let_test() {
   "let x = 5
   let y = \"\"
   x"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("Integer", "<>"),
     ok("Integer", "<>"),
@@ -148,7 +150,7 @@ pub fn let_test() {
   "let x = 5
   let x = \"\"
   x"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("String", "<>"),
     ok("Integer", "<>"),
@@ -162,7 +164,7 @@ pub fn let_polymorphism_test() {
   "let f = (x) -> { x }
   let y = f(3)
   f(\"hey\")"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("String", "<>"),
     ok("(0) -> <> 0", "<>"),
@@ -181,11 +183,11 @@ pub fn let_polymorphism_test() {
 
 pub fn list_test() {
   "[]"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([ok("List(0)", "<>")])
 
   "[3]"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("List(Integer)", "<>"),
     ok("(List(Integer)) -> <> List(Integer)", "<>"),
@@ -199,7 +201,7 @@ pub fn list_polymorphism_test() {
   "let x = 5
   let l = [x]
   l"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("List(Integer)", "<>"),
     ok("Integer", "<>"),
@@ -214,7 +216,7 @@ pub fn list_polymorphism_test() {
 
   "let l = [(x) -> { x }]
   l"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(Ok(Nil), "List((8) -> <..9> 8)", "<>"),
     #(Ok(Nil), "List((1) -> <..2> 1)", "<>"),
@@ -233,11 +235,11 @@ pub fn list_polymorphism_test() {
 
 pub fn record_test() {
   "{}"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([ok("{}", "<>")])
 
   "{a: 3}"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("{a: Integer}", "<>"),
     ok("({}) -> <> {a: Integer}", "<>"),
@@ -249,7 +251,7 @@ pub fn record_test() {
 
 pub fn select_test() {
   "{name: 5}.name"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("Integer", "<>"),
     ok("({name: Integer}) -> <> Integer", "<>"),
@@ -261,7 +263,7 @@ pub fn select_test() {
   ])
 
   "x.name"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("0", "<>"),
     ok("({name: 0, ..1}) -> <> 0", "<>"),
@@ -269,7 +271,7 @@ pub fn select_test() {
   ])
 
   "{}.name"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   // You could unify with return type if it exists
   |> should.equal([
     #(Error(j.MissingRow("name")), "2", "<>"),
@@ -281,11 +283,11 @@ pub fn select_test() {
 
 pub fn tag_test() {
   "Ok"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([ok("(0) -> <> [Ok: 0 | ..1]", "<>")])
 
   "Ok(8)"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("[Ok: Integer | ..1]", "<>"),
     ok("(Integer) -> <> [Ok: Integer | ..1]", "<>"),
@@ -295,11 +297,11 @@ pub fn tag_test() {
 
 pub fn builtin_test() {
   "!integer_add"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([ok("(Integer) -> <> (Integer) -> <> Integer", "<>")])
 
   "!integer_add(1, 2)"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     ok("Integer", "<>"),
     ok("(Integer) -> <> Integer", "<>"),
@@ -309,7 +311,7 @@ pub fn builtin_test() {
   ])
 
   let state = j.new_state()
-  let #(state, var) = j.newvar(state)
+  let #(var, state) = binding.mono(0, state)
   "!integer_add(1, 2)"
   |> do_calc(var, state)
   |> should.equal([
@@ -321,13 +323,13 @@ pub fn builtin_test() {
   ])
 
   "!not_a_thing"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([#(Error(j.MissingVariable("not_a_thing")), "0", "<>")])
 }
 
 pub fn perform_test() {
   let state = j.new_state()
-  let #(state, var) = j.newvar(state)
+  let #(var, state) = binding.mono(0, state)
   "perform Log(\"thing\")"
   |> do_calc(var, state)
   |> should.equal([
@@ -339,9 +341,9 @@ pub fn perform_test() {
 
 pub fn perform_unifys_with_env_test() {
   "perform Log(5)"
-  |> calc(j.EffectExtend("Log", #(j.String, j.Record(j.Empty)), j.Empty))
+  |> calc(t.EffectExtend("Log", #(t.String, t.Record(t.Empty)), t.Empty))
   |> should.equal([
-    #(Error(j.TypeMismatch(j.Integer, j.String)), "1", "<Log(Integer, 1)>"),
+    #(Error(j.TypeMismatch(t.Integer, t.String)), "1", "<Log(Integer, 1)>"),
     #(Ok(Nil), "(Integer) -> <Log(Integer, 1)> 1", "<>"),
     #(Ok(Nil), "Integer", "<>"),
   ])
@@ -351,7 +353,7 @@ pub fn only_unknown_effect_test() {
   "(f) -> {
     f(5)
   }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(Ok(Nil), "((Integer) -> <..1> 2) -> <..1> 2", "<>"),
     #(Ok(Nil), "2", "<..1>"),
@@ -365,7 +367,7 @@ pub fn combine_effect_test() {
     let x = perform Log(\"info\")
     perform Foo(5)
   }"
-  |> calc(j.Var(-1))
+  |> calc(t.Var(-1))
   |> should.equal([
     #(Ok(Nil), "(0) -> <Log(String, 3), Foo(Integer, 13)> 13", "<>"),
     #(Ok(Nil), "13", "<>"),
@@ -380,7 +382,7 @@ pub fn combine_effect_test() {
   "(_) -> {
     perform Foo(perform Log(\"info\"))
   }"
-  |> calc(j.Var(-1))
+  |> calc(t.Var(-1))
   |> should.equal([
     #(Ok(Nil), "(0) -> <Log(String, 12), Foo(12, 13)> 13", "<>"),
     #(Ok(Nil), "13", "<Foo(12, 13)>"),
@@ -398,7 +400,7 @@ pub fn combine_with_pure_test() {
     }(5)
     perform Log(\"info\")
   }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(Ok(Nil), "(0) -> <Log(String, 7)> 7", "<>"),
     #(Ok(Nil), "7", "<>"),
@@ -417,7 +419,7 @@ pub fn combine_unknown_effect_test() {
     let x = f(\"info\")
     perform Foo(5)
   }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(
       Ok(Nil),
@@ -436,7 +438,7 @@ pub fn combine_unknown_effect_test() {
   "(f) -> {
     f(perform Log(\"info\"))
   }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(
       Ok(Nil),
@@ -453,7 +455,7 @@ pub fn combine_unknown_effect_test() {
 
 pub fn first_class_function_with_effects_test() {
   let state = j.new_state()
-  let #(state, var) = j.newvar(state)
+  let #(var, state) = binding.mono(0, state)
   "(f) -> {
     f({})
   }"
@@ -470,7 +472,7 @@ pub fn first_class_function_with_effects_test() {
       f({})
     }
   }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(Ok(Nil), "(({}) -> <..3> 4) -> <> (2) -> <..3> 4", "<>"),
     #(Ok(Nil), "(2) -> <..3> 4", "<>"),
@@ -485,7 +487,7 @@ pub fn unify_fn_arg_test() {
   "(_) -> {
     (f) -> { f(1) }((x) -> { \"\" })
   }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(Ok(Nil), "(0) -> <> String", "<>"),
     #(Ok(Nil), "String", "<>"),
@@ -504,7 +506,7 @@ pub fn poly_in_effect_test() {
     let _ = do((x) -> {  perform Bar(5)  })
     do((x) -> { perform Foo(5) })
   }"
-  |> calc(j.Empty)
+  |> calc(t.Empty)
   |> should.equal([
     #(Ok(Nil), "(0) -> <Bar(Integer, 7), Foo(Integer, 29)> 29", "<>"),
     #(Ok(Nil), "29", "<>"),
