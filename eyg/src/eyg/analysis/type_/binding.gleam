@@ -18,17 +18,17 @@ fn new(level, bindings) {
   #(i, bindings)
 }
 
-fn mono(level, bindings) {
+pub fn mono(level, bindings) {
   let #(i, bindings) = new(level, bindings)
   #(t.Var(i), bindings)
 }
 
-fn poly(level, bindings) {
+pub fn poly(level, bindings) {
   let #(i, bindings) = new(level, bindings)
   #(t.Var(#(False, i)), bindings)
 }
 
-fn gen(type_, level, bindings) {
+pub fn gen(type_, level, bindings) {
   case type_ {
     t.Var(i) -> {
       let assert Ok(binding) = dict.get(bindings, i)
@@ -70,7 +70,7 @@ fn gen(type_, level, bindings) {
 }
 
 pub fn instantiate(poly, level, bindings) {
-  let #(mono, _, bindings) = do_inst(poly, level, bindings, dict.new())
+  let #(mono, bindings, _) = do_inst(poly, level, bindings, dict.new())
   #(mono, bindings)
 }
 

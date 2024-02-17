@@ -9,6 +9,7 @@ import plinth/browser/element
 import eyg/parse/expression
 import eyg/parse/lexer
 import eyg/parse/parser
+import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/fast_j as j
 
 pub type State {
@@ -29,13 +30,13 @@ pub fn information(state) {
   case parse(source(state)) {
     Ok(tree) -> {
       let #(tree, spans) = expression.strip_meta(tree)
-      let #(acc, subs) = j.infer(tree, j.Empty, j.new_state())
+      let #(acc, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
       let acc =
         list.map(acc, fn(node) {
           let #(error, typed, effect, env) = node
-          let typed = j.resolve(typed, subs.bindings)
+          let typed = j.resolve(typed, bindings)
 
-          let effect = j.resolve(effect, subs.bindings)
+          let effect = j.resolve(effect, bindings)
           #(error, typed, effect)
         })
       Ok(#(tree, spans, acc))

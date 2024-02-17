@@ -2,15 +2,16 @@ import gleam/io
 import gleam/int
 import gleam/list
 import gleam/string
+import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/fast_j as j
 
 pub fn render_type(typ) {
   case typ {
-    j.Var(i) -> int.to_string(i)
-    j.Integer -> "Integer"
-    j.String -> "String"
-    j.List(el) -> string.concat(["List(", render_type(el), ")"])
-    j.Fun(from, effects, to) ->
+    t.Var(i) -> int.to_string(i)
+    t.Integer -> "Integer"
+    t.String -> "String"
+    t.List(el) -> string.concat(["List(", render_type(el), ")"])
+    t.Fun(from, effects, to) ->
       string.concat([
         "(",
         render_type(from),
@@ -19,7 +20,7 @@ pub fn render_type(typ) {
         " ",
         render_type(to),
       ])
-    j.Union(row) ->
+    t.Union(row) ->
       string.concat([
         "[",
         string.concat(
@@ -28,7 +29,7 @@ pub fn render_type(typ) {
         ),
         "]",
       ])
-    j.Record(row) ->
+    t.Record(row) ->
       string.concat([
         "{",
         string.concat(
@@ -38,7 +39,7 @@ pub fn render_type(typ) {
         "}",
       ])
     // Rows can be rendered as any mismatch in errors
-    j.EffectExtend(_, _, _) -> string.concat(["<", render_effects(typ), ">"])
+    t.EffectExtend(_, _, _) -> string.concat(["<", render_effects(typ), ">"])
     row -> {
       string.concat([
         "{",
@@ -67,9 +68,9 @@ pub fn render_reason(reason) {
 
 fn render_row(r) -> List(String) {
   case r {
-    j.Empty -> []
-    j.Var(i) -> [string.append("..", int.to_string(i))]
-    j.RowExtend(label, value, tail) -> {
+    t.Empty -> []
+    t.Var(i) -> [string.append("..", int.to_string(i))]
+    t.RowExtend(label, value, tail) -> {
       let field = string.concat([label, ": ", render_type(value)])
       [field, ..render_row(tail)]
     }
@@ -79,9 +80,9 @@ fn render_row(r) -> List(String) {
 
 pub fn render_effects(effects) {
   case effects {
-    j.Var(i) -> string.concat(["<..", int.to_string(i), ">"])
-    j.Empty -> "<>"
-    j.EffectExtend(label, #(lift, resume), tail) ->
+    t.Var(i) -> string.concat(["<..", int.to_string(i), ">"])
+    t.Empty -> "<>"
+    t.EffectExtend(label, #(lift, resume), tail) ->
       string.concat([
         "<",
         string.join(
@@ -101,10 +102,10 @@ fn render_effect(label, lift, resume) {
 
 fn collect_effect(eff, acc) {
   case eff {
-    j.EffectExtend(label, #(lift, resume), tail) ->
+    t.EffectExtend(label, #(lift, resume), tail) ->
       collect_effect(tail, [render_effect(label, lift, resume), ..acc])
-    j.Var(i) -> [string.append("..", int.to_string(i)), ..acc]
-    j.Empty -> acc
+    t.Var(i) -> [string.append("..", int.to_string(i)), ..acc]
+    t.Empty -> acc
     _ -> {
       io.debug("unexpected effect")
       acc
