@@ -218,18 +218,18 @@ pub fn list_polymorphism_test() {
   l"
   |> calc(t.Empty)
   |> should.equal([
-    #(Ok(Nil), "List((8) -> <..9> 8)", "<>"),
-    #(Ok(Nil), "List((1) -> <..2> 1)", "<>"),
-    #(Ok(Nil), "(List((1) -> <..2> 1)) -> <> List((1) -> <..2> 1)", "<>"),
+    #(Ok(Nil), "List((10) -> <..11> 10)", "<>"),
+    #(Ok(Nil), "List((3) -> <..4> 3)", "<>"),
+    #(Ok(Nil), "(List((3) -> <..4> 3)) -> <> List((3) -> <..4> 3)", "<>"),
     #(
       Ok(Nil),
-      "((1) -> <..2> 1) -> <> (List((1) -> <..2> 1)) -> <> List((1) -> <..2> 1)",
+      "((3) -> <..4> 3) -> <> (List((3) -> <..4> 3)) -> <> List((3) -> <..4> 3)",
       "<>",
     ),
-    #(Ok(Nil), "(1) -> <> 1", "<>"),
-    #(Ok(Nil), "1", "<>"),
-    #(Ok(Nil), "List((1) -> <..2> 1)", "<>"),
-    #(Ok(Nil), "List((8) -> <..9> 8)", "<>"),
+    #(Ok(Nil), "(3) -> <> 3", "<>"),
+    #(Ok(Nil), "3", "<>"),
+    #(Ok(Nil), "List((3) -> <..4> 3)", "<>"),
+    #(Ok(Nil), "List((10) -> <..11> 10)", "<>"),
   ])
 }
 
@@ -274,7 +274,7 @@ pub fn select_test() {
   |> calc(t.Empty)
   // You could unify with return type if it exists
   |> should.equal([
-    #(Error(j.MissingRow("name")), "2", "<>"),
+    #(Error(j.MissingRow("name")), "3", "<>"),
     #(Ok(Nil), "({name: 0, ..1}) -> <> 0", "<>"),
     #(Ok(Nil), "{}", "<>"),
   ])

@@ -21,18 +21,6 @@
 // In apply doing only close means that types keep unifying for the lift and lower types
 // Show typing example where an error use of a return type leaves it as e but if fixed it gets found properly
 
-// TODO some tests with fn capture
-// let x
-// let f = (_) -> { x }
-
-// TODO do types in a webpage
-// source, tree, types
-// highlight each case where and effect is created do lines from selection to the correct part of the tree
-// do not wrap unless hovering on the types
-
-// try and write the algorithm in eyg
-// potentially try the interpreter
-
 // TODO rename level_j
 
 // Fast js is good for not exploring the whole environment. Maybe that is all it is good for
@@ -204,8 +192,6 @@ fn do_infer(source, env, eff, level, bindings) {
           let level = level - 1
           case binding {
             binding.Unbound(l) if l > level -> {
-              // let s =
-              //   State(..s, bindings: dict.insert(s.bindings, i, Bound(Empty)))
               // can't make this bindings because i could have meaning from elsewhere but it seems like we should be able to
 
               // Maybe when generalising we map to all possible instantiations might be pure everywhere
@@ -224,9 +210,10 @@ fn do_infer(source, env, eff, level, bindings) {
           Error(reason) -> Error(reason)
         })
       }
+      let record = close(ty_ret, level, bindings)
 
       // This returns the raised effect even if error
-      #(bindings, ty_ret, eff, [#(result, ty_ret, raised, env), ..inner])
+      #(bindings, ty_ret, eff, [#(result, record, raised, env), ..inner])
     }
     // This has two places that create effects but in the acc I don't want any effects
     e.Let(label, value, then) -> {
@@ -242,90 +229,25 @@ fn do_infer(source, env, eff, level, bindings) {
       let inner = list.append(inner_value, inner_then)
       #(bindings, ty_then, eff, [#(Ok(Nil), ty_then, t.Empty, env), ..inner])
     }
-    e.Integer(_) -> #(bindings, t.Integer, eff, [
-      #(Ok(Nil), t.Integer, t.Empty, env),
-    ])
-    e.Binary(_) -> #(bindings, t.Binary, eff, [
-      #(Ok(Nil), t.Binary, t.Empty, env),
-    ])
-    e.Str(_) -> #(bindings, t.String, eff, [#(Ok(Nil), t.String, t.Empty, env)])
-
-    e.Tail -> {
-      let #(el, bindings) = binding.mono(level, bindings)
-      #(bindings, t.List(el), eff, [#(Ok(Nil), t.List(el), t.Empty, env)])
-    }
-    e.Cons -> {
-      let #(el, bindings) = binding.mono(level, bindings)
-      let list = t.List(el)
-      let type_ = pure2(el, list, list)
-      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-      // TODO move to primitive
-    }
-    e.Empty -> #(bindings, t.Record(t.Empty), eff, [
-      #(Ok(Nil), t.Record(t.Empty), t.Empty, env),
-    ])
-    e.Extend(label) -> {
-      let #(field, bindings) = binding.mono(level, bindings)
-      let #(rest, bindings) = binding.mono(level, bindings)
-      let type_ =
-        pure2(field, t.Record(rest), t.Record(t.RowExtend(label, field, rest)))
-      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    }
-    // e.Overwrite(label) -> {
-    //   // If generating with indexes maybe it's easier to just newvar with state
-    //   let new = Var(#(True, 0))
-    //   let old = Var(#(True, 1))
-    //   let rest = Var(#(True, 2))
-    //   let #(s, type_) =
-    //     rename_primitive(
-    //       pure2(
-    //         new,
-    //         Record(RowExtend(label, old, rest)),
-    //         Record(RowExtend(label, new, rest)),
-    //       ),
-    //       s,
-    //     )
-    //   #(s, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    // }
-    e.Select(label) -> {
-      let #(field, bindings) = binding.mono(level, bindings)
-      let #(rest, bindings) = binding.mono(level, bindings)
-      let type_ = pure1(t.Record(t.RowExtend(label, field, rest)), field)
-      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    }
-    e.Tag(label) -> {
-      let #(inner, bindings) = binding.mono(level, bindings)
-      let #(rest, bindings) = binding.mono(level, bindings)
-      let type_ = pure1(inner, t.Union(t.RowExtend(label, inner, rest)))
-      #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    }
-    e.Perform(label) -> {
-      // define it closed because will be opend
-      let scheme =
-        t.Fun(
-          t.Var(#(True, 0)),
-          t.EffectExtend(
-            label,
-            #(t.Var(#(True, 0)), t.Var(#(True, 1))),
-            t.Empty,
-          ),
-          t.Var(#(True, 1)),
-        )
-      let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
-      let #(t, bindings) = open(type_, level, bindings)
-      #(bindings, t, eff, [#(Ok(Nil), type_, t.Empty, env)])
-    }
-    e.Builtin(label) -> {
-      let result = primitive(label)
-      let #(result, bindings, type_) = case result {
-        Ok(type_) -> #(Ok(Nil), bindings, type_)
+    e.Integer(_) -> prim(t.Integer, env, eff, level, bindings)
+    e.Binary(_) -> prim(t.Binary, env, eff, level, bindings)
+    e.Str(_) -> prim(t.String, env, eff, level, bindings)
+    e.Tail -> prim(t.List(q(0)), env, eff, level, bindings)
+    e.Cons -> prim(cons(), env, eff, level, bindings)
+    e.Empty -> prim(t.Record(t.Empty), env, eff, level, bindings)
+    e.Extend(label) -> prim(extend(label), env, eff, level, bindings)
+    e.Overwrite(label) -> prim(overwrite(label), env, eff, level, bindings)
+    e.Select(label) -> prim(select(label), env, eff, level, bindings)
+    e.Tag(label) -> prim(tag(label), env, eff, level, bindings)
+    e.Perform(label) -> prim(perform(label), env, eff, level, bindings)
+    e.Builtin(identifier) ->
+      case builtin(identifier) {
+        Ok(poly) -> prim(poly, env, eff, level, bindings)
         Error(reason) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          #(Error(reason), bindings, type_)
+          #(bindings, type_, eff, [#(Error(reason), type_, t.Empty, env)])
         }
       }
-      #(bindings, type_, eff, [#(result, type_, t.Empty, env)])
-    }
     _ -> {
       io.debug(source)
       panic as "unspeorted"
@@ -333,8 +255,10 @@ fn do_infer(source, env, eff, level, bindings) {
   }
 }
 
-fn rename_primitive(scheme, level, bindings) {
-  binding.instantiate(scheme, level, bindings)
+fn prim(scheme, env, eff, level, bindings) {
+  let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
+  let #(t, bindings) = open(type_, level, bindings)
+  #(bindings, t, eff, [#(Ok(Nil), type_, t.Empty, env)])
 }
 
 fn pure1(arg1, ret) {
@@ -345,7 +269,40 @@ fn pure2(arg1, arg2, ret) {
   t.Fun(arg1, t.Empty, t.Fun(arg2, t.Empty, ret))
 }
 
-fn primitive(name) {
+// q for quantified
+fn q(i) {
+  t.Var(#(True, i))
+}
+
+fn cons() {
+  pure2(q(0), t.List(q(0)), t.List(q(0)))
+}
+
+fn extend(l) {
+  pure2(q(0), t.Record(q(1)), t.Record(t.RowExtend(l, q(0), q(1))))
+}
+
+fn overwrite(l) {
+  pure2(
+    q(0),
+    t.Record(t.RowExtend(l, q(1), q(2))),
+    t.Record(t.RowExtend(l, q(0), q(2))),
+  )
+}
+
+fn select(l) {
+  pure1(t.Record(t.RowExtend(l, q(0), q(1))), q(0))
+}
+
+fn tag(l) {
+  pure1(q(0), t.Union(t.RowExtend(l, q(0), q(1))))
+}
+
+fn perform(l) {
+  t.Fun(q(0), t.EffectExtend(l, #(q(0), q(1)), t.Empty), q(1))
+}
+
+fn builtin(name) {
   case name {
     "integer_add" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
     _ -> Error(MissingVariable(name))
