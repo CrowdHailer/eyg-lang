@@ -1,5 +1,4 @@
 import gleam/bit_array
-import gleam/io
 import gleam/list
 import gleam/string
 import eyg/parse/token as t
@@ -70,10 +69,7 @@ fn pop(raw, start) {
             False ->
               case is_upper_grapheme(g) {
                 True -> uppername(g, rest, done)
-                False -> {
-                  io.debug(raw)
-                  todo as "not"
-                }
+                False -> done(t.UnexpectedGrapheme(g), byte_size(g), rest)
               }
           }
         Error(Nil) -> Error(Nil)
@@ -88,12 +84,13 @@ fn string(buffer, rest, done) {
     "\\" <> rest ->
       case string.pop_grapheme(rest) {
         Ok(#(g, rest)) -> string(buffer <> "\\" <> g, rest, done)
-        Error(Nil) -> todo as "escapedend"
+        Error(Nil) -> string(buffer <> "\\", rest, done)
       }
     _ ->
       case string.pop_grapheme(rest) {
         Ok(#(g, rest)) -> string(buffer <> g, rest, done)
-        Error(Nil) -> todo as "unterminated"
+        Error(Nil) ->
+          done(t.UnterminatedString(buffer), byte_size(buffer) + 1, "")
       }
   }
 }
