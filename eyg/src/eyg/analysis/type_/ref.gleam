@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/list
 import gleam/javascript as js
 import gleam/javascriptx as jsx
@@ -99,7 +100,6 @@ fn do_inst(poly, level, subs) {
 
 // How to unnest the unification function
 // Start a something called gleam style
-// TODO ref equality, can't be done on type because the function would need to take ref from inside var
 pub fn unify(t1, t2) {
   case t1, t2 {
     t.Var(ref1), t.Var(ref2) ->
@@ -128,7 +128,45 @@ fn do_unify(t1, t2) {
 }
 
 fn bind(level, ref, type_) {
-  // todo occurs
+  occurs_and_levels(ref, level, type_)
   js.set_reference(ref, Bound(type_))
   Ok(Nil)
+}
+
+fn occurs_and_levels(ref, level, type_) {
+  case type_ {
+    t.Var(r) ->
+      case jsx.reference_equal(ref, r) {
+        True -> panic
+        False ->
+          case js.dereference(r) {
+            Unbound(l) -> {
+              js.set_reference(r, Unbound(int.min(l, level)))
+              Nil
+            }
+            Bound(type_) -> occurs_and_levels(ref, level, type_)
+          }
+      }
+    t.Fun(arg, eff, ret) -> {
+      occurs_and_levels(ref, level, arg)
+      occurs_and_levels(ref, level, eff)
+      occurs_and_levels(ref, level, ret)
+    }
+    t.Integer -> Nil
+    t.Binary -> Nil
+    t.String -> Nil
+    t.List(el) -> occurs_and_levels(ref, level, el)
+    t.Record(row) -> occurs_and_levels(ref, level, row)
+    t.Union(row) -> occurs_and_levels(ref, level, row)
+    t.Empty -> Nil
+    t.RowExtend(_, field, rest) -> {
+      occurs_and_levels(ref, level, field)
+      occurs_and_levels(ref, level, rest)
+    }
+    t.EffectExtend(_, #(lift, reply), rest) -> {
+      occurs_and_levels(ref, level, lift)
+      occurs_and_levels(ref, level, reply)
+      occurs_and_levels(ref, level, rest)
+    }
+  }
 }

@@ -581,8 +581,6 @@ fn unify(t1, t2, s: State) {
     Var(i), _, Var(j), _ if i == j -> Ok(s)
     Var(i), Ok(Unbound(level)), other, _ | other, _, Var(i), Ok(Unbound(level)) -> {
       let s = occurs_and_levels(i, level, other, s)
-      // io.debug(#(level, other, find(other, s)))
-      // TODO OCCURS CHECK
       Ok(State(..s, bindings: dict.insert(s.bindings, i, Bound(other))))
     }
     Fun(arg1, eff1, ret1), _, Fun(arg2, eff2, ret2), _ -> {
