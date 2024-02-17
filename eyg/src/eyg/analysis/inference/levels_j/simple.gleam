@@ -38,6 +38,16 @@ pub fn j(exp, env, level) {
       //   let env = [#(x, ref.gen(v, level)), ..env]
       j(then, env, level)
     }
-    _ -> todo
+    _ -> {
+      todo
+      // let new = t.newvar(level)
+      // let in = t.Record(t.RowExtend(x, t.newvar(level), rest))
+      // let out = t.Record(t.RowExtend(x, new, rest))
+      // t.Fun(new, t.Fun(in, out))
+    }
   }
 }
+// pub fn extend() -> Nil {
+//   let 
+//   s.fun(s.q(0), s.rec(s.row(x,)))
+// }
