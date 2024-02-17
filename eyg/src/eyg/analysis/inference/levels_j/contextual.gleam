@@ -264,6 +264,10 @@ fn pure2(arg1, arg2, ret) {
   t.Fun(arg1, t.Empty, t.Fun(arg2, t.Empty, ret))
 }
 
+fn pure3(arg1, arg2, arg3, ret) {
+  t.Fun(arg1, t.Empty, t.Fun(arg2, t.Empty, t.Fun(arg3, t.Empty, ret)))
+}
+
 // q for quantified
 fn q(i) {
   t.Var(#(True, i))
@@ -330,9 +334,28 @@ pub fn handle(label) {
   t.Fun(handler, t.Empty, t.Fun(exec, tail, return))
 }
 
+const unit = t.Record(t.Empty)
+
+const boolean = t.Union(
+  t.RowExtend("True", unit, t.RowExtend("False", unit, t.Empty)),
+)
+
+// equal fn should be open in fn that takes boolean and other union
 fn builtin(name) {
   case name {
-    "integer_add" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    "equal" -> Ok(pure2(q(0), q(0), boolean))
+    "int_add" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    "int_to_string" -> Ok(pure1(t.Integer, t.String))
+
+    "string_append" -> Ok(pure2(t.String, t.String, t.String))
+    "string_replace" -> Ok(pure3(t.String, t.String, t.String, t.String))
+    "string_uppercase" -> Ok(pure1(t.String, t.String))
+    "string_lowercase" -> Ok(pure1(t.String, t.String))
+
+    "list_fold" -> {
+      let reducer = t.Fun(q(0), q(2), t.Fun(q(1), q(2), q(1)))
+      Ok(pure2(t.List(q(0)), q(1), t.Fun(reducer, q(2), q(1))))
+    }
     _ -> Error(error.MissingVariable(name))
   }
 }
