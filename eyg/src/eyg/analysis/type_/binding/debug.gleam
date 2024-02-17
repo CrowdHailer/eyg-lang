@@ -3,7 +3,6 @@ import gleam/int
 import gleam/list
 import gleam/string
 import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/fast_j as j
 import eyg/analysis/type_/binding/error
 
 pub fn render_type(typ) {
@@ -64,6 +63,7 @@ pub fn render_reason(reason) {
         " expected: ",
         render_type(expected),
       ])
+    error.Recursive -> "Recursive"
   }
 }
 

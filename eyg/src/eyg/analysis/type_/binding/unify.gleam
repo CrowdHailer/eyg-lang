@@ -16,7 +16,7 @@ pub fn unify(t1, t2, level, bindings) {
     t.Var(i), _, t.Var(j), _ if i == j -> Ok(bindings)
     t.Var(i), Ok(binding.Unbound(level)), other, _
     | other, _, t.Var(i), Ok(binding.Unbound(level)) -> {
-      let bindings = occurs_and_levels(i, level, other, bindings)
+      use bindings <- try(occurs_and_levels(i, level, other, bindings))
       Ok(dict.insert(bindings, i, binding.Bound(other)))
     }
     t.Fun(arg1, eff1, ret1), _, t.Fun(arg2, eff2, ret2), _ -> {
@@ -69,41 +69,41 @@ fn find(type_, bindings) {
 
 fn occurs_and_levels(i, level, type_, bindings) {
   case type_ {
-    t.Var(j) if i == j -> panic as "recursive"
+    t.Var(j) if i == j -> Error(error.Recursive)
     t.Var(j) -> {
       let assert Ok(binding) = dict.get(bindings, j)
       case binding {
         binding.Unbound(l) -> {
           let l = int.min(l, level)
           let bindings = dict.insert(bindings, j, binding.Unbound(l))
-          bindings
+          Ok(bindings)
         }
         binding.Bound(type_) -> occurs_and_levels(i, level, type_, bindings)
       }
     }
     t.Fun(arg, eff, ret) -> {
-      let bindings = occurs_and_levels(i, level, arg, bindings)
-      let bindings = occurs_and_levels(i, level, eff, bindings)
-      let bindings = occurs_and_levels(i, level, ret, bindings)
-      bindings
+      use bindings <- try(occurs_and_levels(i, level, arg, bindings))
+      use bindings <- try(occurs_and_levels(i, level, eff, bindings))
+      use bindings <- try(occurs_and_levels(i, level, ret, bindings))
+      Ok(bindings)
     }
-    t.Integer -> bindings
-    t.Binary -> bindings
-    t.String -> bindings
+    t.Integer -> Ok(bindings)
+    t.Binary -> Ok(bindings)
+    t.String -> Ok(bindings)
     t.List(el) -> occurs_and_levels(i, level, el, bindings)
     t.Record(row) -> occurs_and_levels(i, level, row, bindings)
     t.Union(row) -> occurs_and_levels(i, level, row, bindings)
-    t.Empty -> bindings
+    t.Empty -> Ok(bindings)
     t.RowExtend(_, field, rest) -> {
-      let bindings = occurs_and_levels(i, level, field, bindings)
-      let bindings = occurs_and_levels(i, level, rest, bindings)
-      bindings
+      use bindings <- try(occurs_and_levels(i, level, field, bindings))
+      use bindings <- try(occurs_and_levels(i, level, rest, bindings))
+      Ok(bindings)
     }
     t.EffectExtend(_, #(lift, reply), rest) -> {
-      let bindings = occurs_and_levels(i, level, lift, bindings)
-      let bindings = occurs_and_levels(i, level, reply, bindings)
-      let bindings = occurs_and_levels(i, level, rest, bindings)
-      bindings
+      use bindings <- try(occurs_and_levels(i, level, lift, bindings))
+      use bindings <- try(occurs_and_levels(i, level, reply, bindings))
+      use bindings <- try(occurs_and_levels(i, level, rest, bindings))
+      Ok(bindings)
     }
   }
 }
@@ -152,18 +152,21 @@ fn rewrite_effect(required, type_, level, bindings) {
       let #(lift, bindings) = binding.mono(level, bindings)
       let #(reply, bindings) = binding.mono(level, bindings)
 
-      let assert Ok(binding.Unbound(level)) = dict.get(bindings, i)
-      // let #(s, rest) = newvar(s)
-      // let State(tvar, level, bindings) = s
-      // let rest = t.Var(tvar)
-      // let bindings = dict.insert(bindings, tvar, binding.Unbound(level))
-      // let tvar = tvar + 1
-      // let s = State(tvar, level, bindings)
-      // #(s, t)
-      let #(rest, bindings) = binding.mono(level, bindings)
+      case dict.get(bindings, i) {
+        Ok(binding.Unbound(level)) -> {
+          let #(rest, bindings) = binding.mono(level, bindings)
 
-      let type_ = t.EffectExtend(required, #(lift, reply), rest)
-      Ok(#(#(lift, reply), rest, dict.insert(bindings, i, binding.Bound(type_))))
+          let type_ = t.EffectExtend(required, #(lift, reply), rest)
+          Ok(#(
+            #(lift, reply),
+            rest,
+            dict.insert(bindings, i, binding.Bound(type_)),
+          ))
+        }
+        // Might get bound during tail rewrite
+        Ok(binding.Bound(type_)) ->
+          rewrite_effect(required, type_, level, bindings)
+      }
     }
     // _ -> Error(error.TypeMismatch(EffectExtend(required, type_, t.Empty), type_))
     _ -> panic as "bad effect"

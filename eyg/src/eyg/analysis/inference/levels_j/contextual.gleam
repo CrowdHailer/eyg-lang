@@ -225,6 +225,7 @@ fn do_infer(source, env, eff, level, bindings) {
       let inner = list.append(inner_value, inner_then)
       #(bindings, ty_then, eff, [#(Ok(Nil), ty_then, t.Empty, env), ..inner])
     }
+    e.Vacant(_) -> prim(q(0), env, eff, level, bindings)
     e.Integer(_) -> prim(t.Integer, env, eff, level, bindings)
     e.Binary(_) -> prim(t.Binary, env, eff, level, bindings)
     e.Str(_) -> prim(t.String, env, eff, level, bindings)
@@ -235,7 +236,12 @@ fn do_infer(source, env, eff, level, bindings) {
     e.Overwrite(label) -> prim(overwrite(label), env, eff, level, bindings)
     e.Select(label) -> prim(select(label), env, eff, level, bindings)
     e.Tag(label) -> prim(tag(label), env, eff, level, bindings)
+    e.Case(label) -> prim(case_(label), env, eff, level, bindings)
+    e.NoCases -> prim(nocases(), env, eff, level, bindings)
     e.Perform(label) -> prim(perform(label), env, eff, level, bindings)
+    e.Handle(label) -> prim(handle(label), env, eff, level, bindings)
+    // TODO actual inference
+    e.Shallow(label) -> prim(handle(label), env, eff, level, bindings)
     e.Builtin(identifier) ->
       case builtin(identifier) {
         Ok(poly) -> prim(poly, env, eff, level, bindings)
@@ -294,8 +300,41 @@ fn tag(l) {
   pure1(q(0), t.Union(t.RowExtend(l, q(0), q(1))))
 }
 
+pub fn case_(label) {
+  let inner = q(0)
+  let eff = q(1)
+  let return = q(2)
+  let tail = q(3)
+  let input = t.Union(t.RowExtend(label, inner, tail))
+  let branch = t.Fun(inner, eff, return)
+  let otherwise = t.Fun(t.Union(tail), eff, return)
+  let exec = t.Fun(t.Union(t.RowExtend(label, inner, tail)), eff, return)
+  pure2(branch, otherwise, exec)
+}
+
+pub fn nocases() {
+  pure1(t.Union(t.Empty), q(0))
+}
+
 fn perform(l) {
   t.Fun(q(0), t.EffectExtend(l, #(q(0), q(1)), t.Empty), q(1))
+}
+
+pub fn handle(label) {
+  let lift = q(0)
+  let reply = q(1)
+  let tail = q(2)
+  let return = q(3)
+  let kont = t.Fun(reply, tail, return)
+  let handler = t.Fun(lift, t.Empty, t.Fun(kont, tail, return))
+
+  let exec =
+    t.Fun(
+      t.Record(t.Empty),
+      t.EffectExtend(label, #(lift, reply), tail),
+      return,
+    )
+  t.Fun(handler, t.Empty, t.Fun(exec, tail, return))
 }
 
 fn builtin(name) {

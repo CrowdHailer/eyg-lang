@@ -4,4 +4,5 @@ pub type Reason {
   MissingVariable(String)
   TypeMismatch(binding.Mono, binding.Mono)
   MissingRow(String)
+  Recursive
 }
