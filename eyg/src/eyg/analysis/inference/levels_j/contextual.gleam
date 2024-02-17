@@ -25,11 +25,8 @@
 // and passing abound a map of bindings is most sensible
 
 // TODO compiling live eval in textual
-import gleam/dict.{type Dict}
-import gleam/io
-import gleam/int
+import gleam/dict
 import gleam/list
-import gleam/result.{try}
 import gleam/set
 import eygir/expression as e
 import eyg/analysis/type_/isomorphic as t
@@ -250,10 +247,6 @@ fn do_infer(source, env, eff, level, bindings) {
           #(bindings, type_, eff, [#(Error(reason), type_, t.Empty, env)])
         }
       }
-    _ -> {
-      io.debug(source)
-      panic as "unspeorted"
-    }
   }
 }
 
@@ -308,7 +301,7 @@ pub fn case_(label) {
   let input = t.Union(t.RowExtend(label, inner, tail))
   let branch = t.Fun(inner, eff, return)
   let otherwise = t.Fun(t.Union(tail), eff, return)
-  let exec = t.Fun(t.Union(t.RowExtend(label, inner, tail)), eff, return)
+  let exec = t.Fun(input, eff, return)
   pure2(branch, otherwise, exec)
 }
 

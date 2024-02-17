@@ -11,7 +11,7 @@ import eyg/parse/lexer
 import eyg/parse/parser
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
-import eyg/analysis/fast_j as j
+import eyg/analysis/inference/levels_j/contextual as j
 
 pub type State {
   State(source: String, cursor: Option(Int))
