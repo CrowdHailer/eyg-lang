@@ -1,5 +1,7 @@
+import gleam/bit_array
 import gleam/io
 import gleam/list
+import gleam/string
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import plinth/browser/document
@@ -27,6 +29,101 @@ fn parse(src) {
   |> parser.parse()
 }
 
+pub fn lines(source) {
+  list.reverse(do_lines(source, 0, 0, []))
+}
+
+fn do_lines(source, offset, start, acc) {
+  case source {
+    "\r\n" <> rest -> {
+      let offset = offset + 2
+      do_lines(rest, offset, offset, [start, ..acc])
+    }
+    "\n" <> rest -> {
+      let offset = offset + 1
+      do_lines(rest, offset, offset, [start, ..acc])
+    }
+    _ ->
+      case string.pop_grapheme(source) {
+        Ok(#(g, rest)) -> {
+          let offset = offset + byte_size(g)
+          do_lines(rest, offset, start, acc)
+        }
+        Error(Nil) -> [start, ..acc]
+      }
+  }
+}
+
+fn byte_size(string: String) -> Int {
+  bit_array.byte_size(<<string:utf8>>)
+}
+
+pub fn apply_span(lines, span, thing, acc) {
+  let #(from, to) = span
+  case lines {
+    // span is wholly before current line keep building accumulator
+    [#(start, values), ..rest] if to <= start -> {
+      let acc = [#(start, values), ..acc]
+      apply_span(rest, span, thing, acc)
+    }
+    // span totally after, keep looking 
+    [#(start, values), #(end, v), ..rest] if end <= from -> {
+      let acc = [#(start, values), ..acc]
+      apply_span([#(end, v), ..rest], span, thing, acc)
+    }
+    [#(start, values), ..rest] -> {
+      let values = [thing, ..values]
+      apply_span(rest, span, thing, [#(start, values), ..acc])
+    }
+    [] -> list.reverse(acc)
+  }
+}
+
+pub fn effect_lines(spans, acc) {
+  let assert Ok(pairs) = list.strict_zip(spans, acc)
+  let effects =
+    list.filter_map(pairs, fn(p) {
+      let #(span, #(_, _, effect)) = p
+      case effect {
+        t.Empty -> Error(Nil)
+        _ -> Ok(#(span, effect))
+      }
+    })
+}
+
+pub fn highlights(state, spans, acc) {
+  let with_effects =
+    list.fold(
+      effect_lines(spans, acc),
+      list.map(lines(source(state)), fn(x) { #(x, []) }),
+      fn(lines, sp) { apply_span(lines, sp.0, sp.1, []) },
+    )
+
+  list.map_fold(
+    with_effects,
+    #([], [
+      "bg-orange-2", "bg-green-1", "bg-purple-3", "bg-blue-2", "bg-yellow-3",
+    ]),
+    fn(acc, line) {
+      let #(_start, effects) = line
+      case effects {
+        [] -> #(acc, None)
+        [t.EffectExtend(label, _, _), ..] -> {
+          let #(keyed, left) = acc
+          case list.key_find(keyed, label) {
+            Ok(value) -> #(acc, Some(value))
+            Error(Nil) -> {
+              let assert [v, ..left] = left
+              let keyed = [#(label, v), ..keyed]
+              #(#(keyed, left), Some(v))
+            }
+          }
+        }
+      }
+    },
+  ).1
+}
+
 pub fn information(state) {
   case parse(source(state)) {
     Ok(tree) -> {
@@ -40,7 +137,8 @@ pub fn information(state) {
           let effect = binding.resolve(effect, bindings)
           #(error, typed, effect)
         })
-      Ok(#(tree, spans, acc))
+
+      Ok(#(highlights(state, spans, acc), tree, spans, acc))
     }
     Error(reason) -> Error(reason)
   }

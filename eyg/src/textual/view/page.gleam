@@ -14,9 +14,15 @@ import eyg/analysis/type_/binding/debug
 import textual/state.{Highlight, Input}
 
 pub fn render(s) {
-  let #(err, source, spans, acc) = case state.information(s) {
-    Ok(#(source, spans, acc)) -> #(Ok(Nil), tree.lines(source), spans, acc)
-    Error(reason) -> #(Error(reason), [], [], [])
+  let #(err, highlights, source, spans, acc) = case state.information(s) {
+    Ok(#(highlights, source, spans, acc)) -> #(
+      Ok(Nil),
+      highlights,
+      tree.lines(source),
+      spans,
+      acc,
+    )
+    Error(reason) -> #(Error(reason), [], [], [], [])
   }
   let focused = case s.cursor {
     // TODO make full range selection
@@ -34,11 +40,20 @@ pub fn render(s) {
     // container https://codersblock.com/blog/highlight-text-inside-a-textarea/
     div([class("expand cover bg-blue-100")], [
       div([class("relative h-full bg-white rounded")], [
-        div([class("absolute left-0 right-0 p-2")], [
-          div([class("h-6")], [span([], [text(" ")])]),
-          div([class("h-6 bg-red-200")], [span([], [text(" ")])]),
-          div([class("h-6")], [span([], [text(" ")])]),
-        ]),
+        div(
+          [class("absolute left-0 right-0 p-2")],
+          // [
+          //   div([class("h-6")], [span([], [text(" ")])]),
+          //   div([class("h-6 bg-red-200")], [span([], [text(" ")])]),
+          //   div([class("h-6")], [span([], [text(" ")])]),
+          // ]
+          list.map(highlights, fn(c) {
+            let cl =
+              option.unwrap(c, "")
+              |> string.append(" h-6")
+            div([class(cl)], [span([], [text(" ")])])
+          }),
+        ),
         textarea([
           id("source"),
           class(
