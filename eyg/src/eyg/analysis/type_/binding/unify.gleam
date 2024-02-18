@@ -114,12 +114,12 @@ fn rewrite_row(required, type_, level, bindings) {
     t.RowExtend(l, field, rest) if l == required -> Ok(#(field, rest, bindings))
     t.RowExtend(l, other_field, rest) -> {
       use #(field, new_tail, bindings) <- try(rewrite_row(
-        l,
+        required,
         rest,
         level,
         bindings,
       ))
-      let rest = t.RowExtend(required, other_field, new_tail)
+      let rest = t.RowExtend(l, other_field, new_tail)
       Ok(#(field, rest, bindings))
     }
     t.Var(i) -> {

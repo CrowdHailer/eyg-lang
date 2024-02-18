@@ -248,6 +248,37 @@ pub fn record_test() {
   ])
 }
 
+pub fn record_unification_test() {
+  "({a,b}) -> { a }({a: 1, b:\"\"}) "
+  |> calc(t.Empty)
+  |> should.equal([
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "({a: Integer, b: String}) -> <> Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "({a: Integer, b: String}) -> <> Integer", "<>"),
+    #(Ok(Nil), "{a: Integer, b: String}", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "String", "<>"),
+    #(Ok(Nil), "({b: String, a: Integer}) -> <> String", "<>"),
+    #(Ok(Nil), "{a: Integer, b: String}", "<>"),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "{a: Integer, b: String}", "<>"),
+    #(Ok(Nil), "({b: String}) -> <> {a: Integer, b: String}", "<>"),
+    #(
+      Ok(Nil),
+      "(Integer) -> <> ({b: String}) -> <> {a: Integer, b: String}",
+      "<>",
+    ),
+    #(Ok(Nil), "Integer", "<>"),
+    #(Ok(Nil), "{b: String}", "<>"),
+    #(Ok(Nil), "({}) -> <> {b: String}", "<>"),
+    #(Ok(Nil), "(String) -> <> ({}) -> <> {b: String}", "<>"),
+    #(Ok(Nil), "String", "<>"),
+    #(Ok(Nil), "{}", "<>"),
+  ])
+}
+
 pub fn select_test() {
   "{name: 5}.name"
   |> calc(t.Empty)
