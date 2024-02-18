@@ -336,12 +336,19 @@ pub fn handle(label) {
 
 const unit = t.Record(t.Empty)
 
-fn record(fields) {
-  list.fold(list.reverse(fields), t.Empty, fn(tail, row) {
+fn rows(rows) {
+  list.fold(list.reverse(rows), t.Empty, fn(tail, row) {
     let #(label, value) = row
     t.RowExtend(label, value, tail)
   })
-  |> t.Record
+}
+
+fn record(fields) {
+  t.Record(rows(fields))
+}
+
+fn union(fields) {
+  t.Union(rows(fields))
 }
 
 const boolean = t.Union(
@@ -364,12 +371,21 @@ fn builtin(name) {
     "serialize" -> Ok(pure1(q(0), t.String))
     "capture" -> Ok(pure1(q(0), q(1)))
     "encode_uri" -> Ok(pure1(t.String, t.String))
+    "decode_uri_component" -> Ok(pure1(t.String, t.String))
+    "base64_encode" -> Ok(pure1(t.Binary, t.String))
 
+    "binary_from_integers" -> Ok(pure1(t.List(t.Integer), t.Binary))
+
+    "int_compare" -> {
+      let return = union([#("Lt", unit), #("Eq", unit), #("Gt", unit)])
+      Ok(pure2(t.Integer, t.Integer, return))
+    }
     "int_add" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
     "int_subtract" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
     "int_multiply" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
     // TODO Error or effect
     "int_divide" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    "int_negate" -> Ok(pure1(t.Integer, t.Integer))
     "int_absolute" -> Ok(pure1(t.Integer, t.Integer))
     "int_parse" -> Ok(pure1(t.String, result(t.Integer, unit)))
     "int_to_string" -> Ok(pure1(t.Integer, t.String))
@@ -380,13 +396,20 @@ fn builtin(name) {
       let return = record([#("head", t.String), #("tail", t.List(t.String))])
       Ok(pure2(t.String, t.String, return))
     }
+    "string_split_once" -> {
+      let return = record([#("head", t.String), #("tail", t.String)])
+      Ok(pure2(t.String, t.String, result(return, unit)))
+    }
     "string_uppercase" -> Ok(pure1(t.String, t.String))
     "string_lowercase" -> Ok(pure1(t.String, t.String))
+    "string_starts_with" -> Ok(pure2(t.String, t.String, boolean))
+    "string_ends_with" -> Ok(pure2(t.String, t.String, boolean))
     "string_length" -> Ok(pure1(t.String, t.Integer))
     "pop_grapheme" -> {
       let return = record([#("head", t.String), #("tail", t.String)])
       Ok(pure1(t.String, result(return, unit)))
     }
+    "string_to_binary" -> Ok(pure1(t.String, t.Binary))
 
     "list_pop" -> {
       let return = record([#("head", q(0)), #("tail", t.List(q(0)))])
