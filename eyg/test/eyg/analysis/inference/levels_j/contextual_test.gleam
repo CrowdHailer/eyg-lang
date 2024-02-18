@@ -1,6 +1,4 @@
-import gleam/io
 import gleam/list
-import gleam/result
 import eyg/parse/lexer
 import eyg/parse/parser
 import eyg/parse/expression
@@ -297,11 +295,11 @@ pub fn tag_test() {
 }
 
 pub fn builtin_test() {
-  "!integer_add"
+  "!int_add"
   |> calc(t.Empty)
   |> should.equal([ok("(Integer) -> <> (Integer) -> <> Integer", "<>")])
 
-  "!integer_add(1, 2)"
+  "!int_add(1, 2)"
   |> calc(t.Empty)
   |> should.equal([
     ok("Integer", "<>"),
@@ -313,7 +311,7 @@ pub fn builtin_test() {
 
   let state = j.new_state()
   let #(var, state) = binding.mono(0, state)
-  "!integer_add(1, 2)"
+  "!int_add(1, 2)"
   |> do_calc(var, state)
   |> should.equal([
     #(Ok(Nil), "Integer", "<>"),

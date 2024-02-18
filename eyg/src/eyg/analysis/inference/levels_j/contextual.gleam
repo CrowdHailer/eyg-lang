@@ -336,22 +336,62 @@ pub fn handle(label) {
 
 const unit = t.Record(t.Empty)
 
+fn record(fields) {
+  list.fold(list.reverse(fields), t.Empty, fn(tail, row) {
+    let #(label, value) = row
+    t.RowExtend(label, value, tail)
+  })
+  |> t.Record
+}
+
 const boolean = t.Union(
   t.RowExtend("True", unit, t.RowExtend("False", unit, t.Empty)),
 )
+
+fn result(value, reason) {
+  t.Union(t.RowExtend("Ok", value, t.RowExtend("Error", reason, t.Empty)))
+}
 
 // equal fn should be open in fn that takes boolean and other union
 fn builtin(name) {
   case name {
     "equal" -> Ok(pure2(q(0), q(0), boolean))
+    "debug" -> Ok(pure1(q(0), t.String))
+    // if the passed in constructor raises an effect then fix does too
+    "fix" -> Ok(t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0)))
+    "eval" ->
+      Ok(t.Fun(q(0), t.EffectExtend("Eval", #(unit, unit), t.Empty), q(1)))
+    "serialize" -> Ok(pure1(q(0), t.String))
+    "capture" -> Ok(pure1(q(0), q(1)))
+    "encode_uri" -> Ok(pure1(t.String, t.String))
+
     "int_add" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    "int_subtract" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    "int_multiply" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    // TODO Error or effect
+    "int_divide" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    "int_absolute" -> Ok(pure1(t.Integer, t.Integer))
+    "int_parse" -> Ok(pure1(t.String, result(t.Integer, unit)))
     "int_to_string" -> Ok(pure1(t.Integer, t.String))
 
     "string_append" -> Ok(pure2(t.String, t.String, t.String))
     "string_replace" -> Ok(pure3(t.String, t.String, t.String, t.String))
+    "string_split" -> {
+      let return = record([#("head", t.String), #("tail", t.List(t.String))])
+      Ok(pure2(t.String, t.String, return))
+    }
     "string_uppercase" -> Ok(pure1(t.String, t.String))
     "string_lowercase" -> Ok(pure1(t.String, t.String))
+    "string_length" -> Ok(pure1(t.String, t.Integer))
+    "pop_grapheme" -> {
+      let return = record([#("head", t.String), #("tail", t.String)])
+      Ok(pure1(t.String, result(return, unit)))
+    }
 
+    "list_pop" -> {
+      let return = record([#("head", q(0)), #("tail", t.List(q(0)))])
+      Ok(pure1(t.List(q(0)), result(return, unit)))
+    }
     "list_fold" -> {
       let reducer = t.Fun(q(0), q(2), t.Fun(q(1), q(2), q(1)))
       Ok(pure2(t.List(q(0)), q(1), t.Fun(reducer, q(2), q(1))))
