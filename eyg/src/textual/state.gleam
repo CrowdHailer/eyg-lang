@@ -8,7 +8,7 @@ import plinth/browser/document
 import plinth/browser/selection
 import plinth/browser/range
 import plinth/browser/element
-import eyg/parse/expression
+import eygir/annotated
 import eyg/parse/lexer
 import eyg/parse/parser
 import eyg/analysis/type_/isomorphic as t
@@ -66,7 +66,7 @@ pub fn apply_span(lines, span, thing, acc) {
       let acc = [#(start, values), ..acc]
       apply_span(rest, span, thing, acc)
     }
-    // span totally after, keep looking 
+    // span totally after, keep looking
     [#(start, values), #(end, v), ..rest] if end <= from -> {
       let acc = [#(start, values), ..acc]
       apply_span([#(end, v), ..rest], span, thing, acc)
@@ -128,7 +128,7 @@ pub fn highlights(state, spans, acc) {
 pub fn information(state) {
   case parse(source(state)) {
     Ok(tree) -> {
-      let #(tree, spans) = expression.strip_meta(tree)
+      let #(tree, spans) = annotated.strip_annotation(tree)
       let #(acc, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
       let acc =
         list.map(acc, fn(node) {

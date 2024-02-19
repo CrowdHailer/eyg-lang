@@ -1,4 +1,4 @@
-import eyg/parse/expression as e
+import eygir/annotated as e
 import eyg/parse/lexer
 import eyg/parse/parser
 import gleeunit/should

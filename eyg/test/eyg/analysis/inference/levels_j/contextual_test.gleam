@@ -1,7 +1,7 @@
 import gleam/list
 import eyg/parse/lexer
 import eyg/parse/parser
-import eyg/parse/expression
+import eygir/annotated
 import gleeunit/should
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
@@ -14,11 +14,7 @@ fn parse(src) {
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
-  |> drop_meta()
-}
-
-fn drop_meta(exp) {
-  expression.strip_meta(exp).0
+  |> annotated.drop_annotation()
 }
 
 fn do_resolve(return: #(List(#(_, _, _, _)), _)) {

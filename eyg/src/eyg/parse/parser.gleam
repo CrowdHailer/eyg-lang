@@ -3,7 +3,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
-import eyg/parse/expression as e
+import eygir/annotated as e
 import eyg/parse/token as t
 import gleam/io
 
