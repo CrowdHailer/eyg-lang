@@ -89,7 +89,7 @@ pub fn destructured(matches: List(Match), term: #(e.Expression(_), Span)) {
   list.fold(matches, term, fn(acc, pair) {
     let #(field, assign) = pair
     let #(field, fspan) = field
-    let #(cspan, #(var, vspan)) = case assign {
+    let #(cspan, #(var, _vspan)) = case assign {
       Some(#(cspan, #(var, vspan))) -> #(cspan, #(var, vspan))
       None -> #(fspan, #(field, fspan))
     }
@@ -233,9 +233,9 @@ pub fn expression(tokens) {
 
 fn after_expression(exp, rest) {
   case rest {
-    [#(t.LeftParen, start), ..rest] -> {
+    [#(t.LeftParen, _start), ..rest] -> {
       use #(arg, rest) <- try(expression(rest))
-      use #(args, end, rest) <- try(do_args(rest, [arg]))
+      use #(args, _end, rest) <- try(do_args(rest, [arg]))
       let args = list.reverse(args)
       let exp =
         list.fold(args, exp, fn(acc, arg) {
