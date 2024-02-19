@@ -51,6 +51,7 @@ fn do_print(source) {
       #(first, list.append(rest, lines))
     }
 
+    e.Vacant(comment) -> #(string.concat(["vacant(", comment, ")"]), [])
     e.Integer(value) -> #(int.to_string(value), [])
     e.Str(content) -> #(string.concat(["\"", content, "\""]), [])
     e.Binary(content) -> #(string.inspect(content), [])
