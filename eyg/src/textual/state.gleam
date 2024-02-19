@@ -119,6 +119,7 @@ pub fn highlights(state, spans, acc) {
             }
           }
         }
+        [_, ..] -> #(acc, Some("bg-yellow-1"))
       }
     },
   ).1
