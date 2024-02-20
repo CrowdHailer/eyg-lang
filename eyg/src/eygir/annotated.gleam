@@ -29,6 +29,18 @@ pub type Expression(m) {
   Shallow(label: String)
 
   Builtin(identifier: String)
+  Query(List(Constraint(m)))
+  // Solve and project from Flix
+  Solve(relation: String)
+}
+
+pub type Constraint(m) {
+  Constraint(head: Atom(m), body: List(#(Bool, Atom(m))))
+}
+
+// Atoms are also caused Literals maybe goals
+pub type Atom(m) {
+  Atom(relation: String, terms: List(#(String, #(Expression(m), m))))
 }
 
 pub fn strip_annotation(in) {

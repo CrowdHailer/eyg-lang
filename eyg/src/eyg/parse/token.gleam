@@ -11,6 +11,8 @@ pub type Token {
   Deep
   Shallow
   Handle
+  Query
+  Solve
   // Having keyword token instead of using name prevents keywords used as names
   Equal
   Comma

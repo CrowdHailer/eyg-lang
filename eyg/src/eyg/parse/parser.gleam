@@ -225,6 +225,26 @@ pub fn expression(tokens) {
         }
         _ -> fail(rest)
       }
+    t.Query -> {
+      case rest {
+        [#(t.LeftBrace, end), ..rest] -> {
+          use #(constraints, rest) <- try(do_constraints(rest, []))
+          io.debug(constraints)
+          // panic
+          // let span = #(start, end + string.length(label))
+          Ok(#(#(e.Query(constraints), #(0, 0)), rest))
+        }
+        _ -> fail(rest)
+      }
+    }
+    t.Solve ->
+      case rest {
+        [#(t.Uppername(label), end), ..rest] -> {
+          let span = #(start, end + string.length(label))
+          Ok(#(#(e.Solve(label), span), rest))
+        }
+        _ -> fail(rest)
+      }
     _ -> Error(UnexpectedToken(token, start))
   })
 
@@ -462,6 +482,72 @@ fn do_clauses(tokens, start, acc) {
       do_clauses(rest, last, acc)
     }
     _ -> Error(UnexpectedToken(token, clause))
+  }
+}
+
+fn do_constraints(tokens, acc) {
+  case tokens {
+    [#(t.Uppername(relation), _), ..rest] -> {
+      case rest {
+        [#(t.LeftParen, _), ..rest] -> {
+          let assert Ok(#(props, rest)) = do_property(rest, [])
+          case rest {
+            [#(t.Dot, _), ..rest] ->
+              do_constraints(rest, [
+                e.Constraint(e.Atom(relation, props), []),
+                ..acc
+              ])
+          }
+          // io.debug(props)
+          // io.debug(rest)
+          // panic
+        }
+      }
+    }
+    [#(t.RightBrace, _), ..rest] -> Ok(#(list.reverse(acc), rest))
+    _ -> {
+      io.debug(tokens)
+      panic as "some constraints"
+    }
+  }
+}
+
+// pub type Term {
+//   Literal(value: e.Expression(m))
+//   Variable(label: String)
+// }
+
+// VERY VERY similar to do_destructure
+// Brace vs paren is different
+fn do_property(tokens, acc) {
+  case tokens {
+    [#(t.RightParen, _), ..rest] -> Ok(#(acc, rest))
+    // can be spaces between colon and rest
+    [#(t.Name(field), f), #(t.Colon, c), ..rest] -> {
+      use #(value, rest) <- try(expression(rest))
+      // TODO first class with metadata
+      // let field = #(field, #(f, f + string.length(field)))
+      let colon = #(c, c + 1)
+      // let var = #(var, #(v, v + string.length(var)))
+      let acc = [#(field, value), ..acc]
+
+      case rest {
+        [#(t.RightParen, _), ..rest] -> Ok(#(acc, rest))
+        [#(t.Comma, _), ..rest] -> do_property(rest, acc)
+        _ -> fail(rest)
+      }
+    }
+    [#(t.Name(field), start), ..rest] -> {
+      let span = #(start, start + string.length(field))
+      // let ffield = #(field, span)
+      let acc = [#(field, #(e.Variable(field), span)), ..acc]
+      case rest {
+        [#(t.RightParen, _), ..rest] -> Ok(#(acc, rest))
+        [#(t.Comma, _), ..rest] -> do_property(rest, acc)
+        _ -> fail(rest)
+      }
+    }
+    _ -> fail(tokens)
   }
 }
 

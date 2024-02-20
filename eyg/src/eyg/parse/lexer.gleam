@@ -48,6 +48,8 @@ fn pop(raw, start) {
     "deep" <> rest -> done(t.Deep, 4, rest)
     "shallow" <> rest -> done(t.Shallow, 7, rest)
     "handle" <> rest -> done(t.Handle, 6, rest)
+    "query" <> rest -> done(t.Query, 5, rest)
+    "solve" <> rest -> done(t.Solve, 5, rest)
 
     "\"" <> rest -> string("", rest, done)
 
