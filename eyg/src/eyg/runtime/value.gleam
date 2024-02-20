@@ -19,6 +19,7 @@ pub type Value(context) {
   )
   Partial(Switch(context), List(Value(context)))
   Promise(JSPromise(Value(context)))
+  DB(List(e.Constraint))
 }
 
 // context is a captured part of interpretation, it's type depends on implementation
@@ -37,6 +38,7 @@ pub type Switch(context) {
   Resume(context)
   Shallow(String)
   Builtin(String)
+  Solve(String)
 }
 
 // This might not give in runtime core, more runtime presentation

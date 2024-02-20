@@ -57,6 +57,20 @@ pub type Expression {
   Shallow(label: String)
 
   Builtin(identifier: String)
+
+  Query(List(Constraint))
+  // Solve and project from Flix
+  Solve(relation: String)
+}
+
+// first class is Compose for queries, Something for :-, And for Comma
+pub type Constraint {
+  Constraint(head: Atom, body: List(#(Bool, Atom)))
+}
+
+// Atoms are also caused Literals maybe goals
+pub type Atom {
+  Atom(relation: String, terms: List(#(String, Expression)))
 }
 
 pub const unit = Empty

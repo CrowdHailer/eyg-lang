@@ -6,6 +6,31 @@ i.e.
 Foo(x, y) :- Z(a), Z("s").
 ```
 
+:- e.If
+List
+(:-
+  (Parent {parent, child})
+  (Let {id: parent then: child}))
+
+(:-
+  (Path {from, to})
+  (Edge {from, to: via})
+  (Path {from: via, to}))
+Lisp for datalog is very far down the rabbit hole
+
+e.If(
+  )
+  can not first class
+fact = e.Atom("Foo"(e.RowExtend("x", 4, e.Empty)))
+
+Solve takes a DB(RowExtend("T", v,rest)) -> List(Record(v))
+Can write my own version of solve and get a promis
+
+What to do with variables not exposed? Via is essentially useless as just catches last route, AND duplicates Path in final output
+Having other fields duplicate in output is interesting when turning into list
+Variables definetly need to be passed in but maybe they can allways be a query for which you write your own sub query
+not doing to work for dynamic string/int etc values
+
 Crepe uses these positional arguments
 Percival uses named fields
 Both are from the same thesis https://www.ekzhang.com/assets/pdf/Senior_Thesis.pdf
@@ -34,10 +59,10 @@ Could you unify on non row values in Atom, yes should be able to
 
 The EAV model works on things not being required on all entities
 
-I want to write 
+I want to write
 Scoping in variables to the query is important in the bellow the address is neither in the HEAD or from the environment
 ```
-query address { 
+query address {
   :- Mail(from: address, ), Friend(email: address)
 }
 
@@ -52,16 +77,16 @@ BUT in an eav approach then V is all types
 In datomic everything is triples and the row typing is against that assumption
 We want this to type up nicely
 
-#{ 
+#{
     How would I do the size i.e. aggregation
-  Parent({child, parent}) :- Let({id: parent, then: child}). 
+  Parent({child, parent}) :- Let({id: parent, then: child}).
   Parent({child, parent}) :- Let({id: parent, value: child}).
 }
 
 This one assumed not too work because of typing `v`
-?(q) :- 
-  DB(e, a: "expression", v: Lambda), 
-  DB(e, a: "label", v: "x"). 
+?(q) :-
+  DB(e, a: "expression", v: Lambda),
+  DB(e, a: "label", v: "x").
 
 Start with solve as a keyword thing
 
@@ -79,14 +104,14 @@ solve("?", compose(q, db))
 
 ## Is unique index really important
 
-## Parsing 
+## Parsing
 Flix: https://dl.acm.org/doi/pdf/10.1145/3428193
 
 Flix allows rules to be defined outside of a block I don't know how this happens without backtracing
 
 I don't want things to be solved by back tracking
 
-i.e. 
+i.e.
 let r = Path(x,z) :- Edge(F).
 
 ```
@@ -141,7 +166,7 @@ table title as text down the side
 
 original magpie rendering is good for objects, but does that work if not objects.
 Shell or pulling into a language is far more interesting
-(# 
+(#
   (:- (path))
   (:- (path a b) :- (edge a b) | (edge a x) (edge x b))
 )

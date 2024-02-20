@@ -1,5 +1,7 @@
+import gleam/io
 import gleam/list
 import gleam/dict.{type Dict}
+import gleam/option.{None, Some}
 import gleam/result
 import eygir/expression as e
 import eyg/runtime/value as v
@@ -110,6 +112,14 @@ pub fn eval(exp, rev, env: Env, k) {
     e.Handle(label) -> value(v.Partial(v.Handle(label), []))
     e.Shallow(label) -> value(v.Partial(v.Shallow(label), []))
     e.Builtin(identifier) -> value(v.Partial(v.Builtin(identifier), []))
+    e.Query(q) -> {
+      // Nothing is evalled at this point, everything is effectivly lazy but we might need env for values
+      // Can we use Qmark for new query variables. or safe escaped variables
+      // Does flix allow variables in the scope
+      value(v.DB(q))
+    }
+    // cant be builtin because needs label
+    e.Solve(label) -> value(v.Partial(v.Solve(label), []))
   }
   |> result.map_error(fn(reason) { #(reason, rev, env, k) })
 }
@@ -179,7 +189,7 @@ pub fn call(f, arg, rev, env: Env, k: Stack) {
         v.Shallow(label), [handler] -> shallow(label, handler, arg, rev, env, k)
         v.Builtin(key), applied ->
           call_builtin(key, list.append(applied, [arg]), rev, env, k)
-
+        v.Solve(label), [] -> solve(label, arg, rev, env, k)
         switch, _ -> {
           let applied = list.append(applied, [arg])
           Ok(#(V(v.Partial(switch, applied)), rev, env, k))
@@ -258,4 +268,68 @@ pub fn deep(label, handle, exec, rev, env, k) {
 fn shallow(label, handle, exec, rev, env: Env, k) {
   let k = Stack(Delimit(label, handle, rev, env, True), k)
   call(exec, v.unit, rev, env, k)
+}
+
+fn solve(label, db, rev, env, k) {
+  let v.DB(constraints) = db
+  io.debug(#("solve", label, constraints))
+  let #(facts, rules) = separate(constraints)
+  io.debug(#("facts", facts))
+  let db = dict.new()
+  let db = populate(db, facts)
+  // Do we want to effect out? return a promise?
+  // All acceptable options
+  // We can pattern match on lists etc because we will have them
+
+  // easiest to test by just running stuff here
+  // result.unwrap(dict.get(db, label), v.LinkedList([]))
+  case dict.get(db, label) {
+    Ok(fields) -> {
+      let records = list.map(fields, v.Record)
+      Ok(#(V(v.LinkedList(records)), rev, env, k))
+    }
+    Error(Nil) -> Ok(#(V(v.LinkedList([])), rev, env, k))
+  }
+}
+
+fn separate(constraints) {
+  do_separate([], [], constraints)
+}
+
+fn do_separate(facts, rules, constraints) {
+  case constraints {
+    [constraint, ..rest] ->
+      case constraint {
+        e.Constraint(head, []) -> {
+          let facts = [head, ..facts]
+          do_separate(facts, rules, rest)
+        }
+        _ -> {
+          let rules = [constraint, ..rules]
+          do_separate(facts, rules, rest)
+        }
+      }
+    [] -> #(list.reverse(facts), list.reverse(rules))
+  }
+}
+
+fn populate(db, facts) {
+  list.fold(facts, db, fn(db, fact) {
+    let assert e.Atom(r, properties) = fact
+    // need evaling, in the appropriate context
+    let fields =
+      list.map(properties, fn(p) {
+        let #(k, exp) = p
+        // TODO recursive eval
+        let assert Ok(#(V(v), _, _, _)) =
+          eval(exp, [], Env([], dict.new()), Empty(dict.new()))
+        #(k, v)
+      })
+    dict.update(db, r, fn(found) {
+      case found {
+        None -> [fields]
+        Some(previous) -> [fields, ..previous]
+      }
+    })
+  })
 }

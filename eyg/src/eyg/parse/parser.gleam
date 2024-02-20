@@ -229,7 +229,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.LeftBrace, end), ..rest] -> {
           use #(constraints, rest) <- try(do_constraints(rest, []))
-          io.debug(constraints)
+          // io.debug(constraints)
           // panic
           // let span = #(start, end + string.length(label))
           Ok(#(#(e.Query(constraints), #(0, 0)), rest))

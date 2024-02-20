@@ -34,6 +34,7 @@ pub type Expression(m) {
   Solve(relation: String)
 }
 
+// first class is Compose for queries, Something for :-, And for Comma
 pub type Constraint(m) {
   Constraint(head: Atom(m), body: List(#(Bool, Atom(m))))
 }
@@ -43,7 +44,7 @@ pub type Atom(m) {
   Atom(relation: String, terms: List(#(String, #(Expression(m), m))))
 }
 
-pub fn strip_annotation(in) {
+pub fn strip_annotation(in) -> #(_, _) {
   let #(exp, acc) = do_strip_annotation(in, [])
   #(exp, list.reverse(acc))
 }
@@ -93,5 +94,32 @@ fn do_strip_annotation(in, acc) {
     Shallow(label) -> #(e.Shallow(label), acc)
 
     Builtin(identifier) -> #(e.Builtin(identifier), acc)
+    Query(constraints) -> #(
+      e.Query(
+        list.map(constraints, fn(c) {
+          let Constraint(head, body) = c
+          let head = strip_atom(head)
+          e.Constraint(
+            head,
+            list.map(body, fn(b) {
+              let #(negate, atom) = b
+              #(negate, strip_atom(atom))
+            }),
+          )
+        }),
+      ),
+      acc,
+    )
+    Solve(label) -> #(e.Solve(label), acc)
   }
+}
+
+fn strip_atom(a) {
+  let Atom(r, properties) = a
+  let properties =
+    list.map(properties, fn(p) {
+      let #(k, value) = p
+      #(k, drop_annotation(value))
+    })
+  e.Atom(r, properties)
 }
