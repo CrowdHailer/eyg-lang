@@ -17,8 +17,9 @@ fn parse(src) {
   |> annotated.drop_annotation()
 }
 
-fn do_resolve(return: #(List(#(_, _, _, _)), _)) {
+fn do_resolve(return) {
   let #(acc, bindings) = return
+  let acc = annotated.strip_annotation(acc).1
   let #(_, acc) =
     list.map_fold(acc, bindings, fn(bindings, node) {
       let #(error, typed, effect, env) = node

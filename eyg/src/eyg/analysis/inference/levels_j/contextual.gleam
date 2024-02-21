@@ -29,6 +29,7 @@ import gleam/dict
 import gleam/list
 import gleam/set
 import eygir/expression as e
+import eygir/annotated as a
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/unify
@@ -126,13 +127,13 @@ fn do_infer(source, env, eff, level, bindings) {
         Ok(scheme) -> {
           let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
           let #(type_, bindings) = open(type_, level, bindings)
-          #(bindings, type_, eff, [#(Ok(Nil), type_, t.Empty, env)])
+          let meta = #(Ok(Nil), type_, t.Empty, env)
+          #(bindings, type_, eff, #(a.Variable(x), meta))
         }
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          #(bindings, type_, eff, [
-            #(Error(error.MissingVariable(x)), type_, t.Empty, env),
-          ])
+          let meta = #(Error(error.MissingVariable(x)), type_, t.Empty, env)
+          #(bindings, type_, eff, #(a.Variable(x), meta))
         }
       }
     e.Lambda(x, body) -> {
@@ -148,16 +149,16 @@ fn do_infer(source, env, eff, level, bindings) {
       let type_ = t.Fun(type_x, type_eff, type_r)
       let level = level - 1
       let record = close(type_, level, bindings)
-      #(bindings, type_, eff, [#(Ok(Nil), record, t.Empty, env), ..inner])
+      let meta = #(Ok(Nil), record, t.Empty, env)
+      #(bindings, type_, eff, #(a.Lambda(x, inner), meta))
     }
     e.Apply(fun, arg) -> {
       // I think these effects ar passed through because they are for creating the fn not calling it
       let level = level + 1
-      let #(bindings, ty_fun, eff, inner_fun) =
+      let #(bindings, ty_fun, eff, fun) =
         do_infer(fun, env, eff, level, bindings)
-      let #(bindings, ty_arg, eff, inner_arg) =
+      let #(bindings, ty_arg, eff, arg) =
         do_infer(arg, env, eff, level, bindings)
-      let inner = list.append(inner_fun, inner_arg)
 
       let #(ty_ret, bindings) = binding.mono(level, bindings)
       let #(test_eff, bindings) = binding.mono(level, bindings)
@@ -204,56 +205,69 @@ fn do_infer(source, env, eff, level, bindings) {
         })
       }
       let record = close(ty_ret, level, bindings)
+      let meta = #(result, record, raised, env)
 
       // This returns the raised effect even if error
-      #(bindings, ty_ret, eff, [#(result, record, raised, env), ..inner])
+      #(bindings, ty_ret, eff, #(a.Apply(fun, arg), meta))
     }
     // This has two places that create effects but in the acc I don't want any effects
     e.Let(label, value, then) -> {
       let level = level + 1
-      let #(bindings, ty_value, eff, inner_value) =
+      let #(bindings, ty_value, eff, value) =
         do_infer(value, env, eff, level, bindings)
       let level = level - 1
       let sch_value =
         binding.gen(close(ty_value, level, bindings), level, bindings)
 
-      let #(bindings, ty_then, eff, inner_then) =
+      let #(bindings, ty_then, eff, then) =
         do_infer(then, [#(label, sch_value), ..env], eff, level, bindings)
-      let inner = list.append(inner_value, inner_then)
-      #(bindings, ty_then, eff, [#(Ok(Nil), ty_then, t.Empty, env), ..inner])
+      let meta = #(Ok(Nil), ty_then, t.Empty, env)
+      #(bindings, ty_then, eff, #(a.Let(label, value, then), meta))
     }
-    e.Vacant(_) -> prim(q(0), env, eff, level, bindings)
-    e.Integer(_) -> prim(t.Integer, env, eff, level, bindings)
-    e.Binary(_) -> prim(t.Binary, env, eff, level, bindings)
-    e.Str(_) -> prim(t.String, env, eff, level, bindings)
-    e.Tail -> prim(t.List(q(0)), env, eff, level, bindings)
-    e.Cons -> prim(cons(), env, eff, level, bindings)
-    e.Empty -> prim(t.Record(t.Empty), env, eff, level, bindings)
-    e.Extend(label) -> prim(extend(label), env, eff, level, bindings)
-    e.Overwrite(label) -> prim(overwrite(label), env, eff, level, bindings)
-    e.Select(label) -> prim(select(label), env, eff, level, bindings)
-    e.Tag(label) -> prim(tag(label), env, eff, level, bindings)
-    e.Case(label) -> prim(case_(label), env, eff, level, bindings)
-    e.NoCases -> prim(nocases(), env, eff, level, bindings)
-    e.Perform(label) -> prim(perform(label), env, eff, level, bindings)
-    e.Handle(label) -> prim(handle(label), env, eff, level, bindings)
+    e.Vacant(comment) ->
+      prim(q(0), env, eff, level, bindings, a.Vacant(comment))
+    e.Integer(value) ->
+      prim(t.Integer, env, eff, level, bindings, a.Integer(value))
+    e.Binary(value) ->
+      prim(t.Binary, env, eff, level, bindings, a.Binary(value))
+    e.Str(value) -> prim(t.String, env, eff, level, bindings, a.Str(value))
+    e.Tail -> prim(t.List(q(0)), env, eff, level, bindings, a.Tail)
+    e.Cons -> prim(cons(), env, eff, level, bindings, a.Cons)
+    e.Empty -> prim(t.Record(t.Empty), env, eff, level, bindings, a.Empty)
+    e.Extend(label) ->
+      prim(extend(label), env, eff, level, bindings, a.Extend(label))
+    e.Overwrite(label) ->
+      prim(overwrite(label), env, eff, level, bindings, a.Overwrite(label))
+    e.Select(label) ->
+      prim(select(label), env, eff, level, bindings, a.Select(label))
+    e.Tag(label) -> prim(tag(label), env, eff, level, bindings, a.Tag(label))
+    e.Case(label) ->
+      prim(case_(label), env, eff, level, bindings, a.Case(label))
+    e.NoCases -> prim(nocases(), env, eff, level, bindings, a.NoCases)
+    e.Perform(label) ->
+      prim(perform(label), env, eff, level, bindings, a.Perform(label))
+    e.Handle(label) ->
+      prim(handle(label), env, eff, level, bindings, a.Handle(label))
     // TODO actual inference
-    e.Shallow(label) -> prim(handle(label), env, eff, level, bindings)
+    e.Shallow(label) ->
+      prim(handle(label), env, eff, level, bindings, a.Shallow(label))
     e.Builtin(identifier) ->
       case builtin(identifier) {
-        Ok(poly) -> prim(poly, env, eff, level, bindings)
+        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(identifier))
         Error(reason) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          #(bindings, type_, eff, [#(Error(reason), type_, t.Empty, env)])
+          let meta = #(Error(reason), type_, t.Empty, env)
+          #(bindings, type_, eff, #(a.Builtin(identifier), meta))
         }
       }
   }
 }
 
-fn prim(scheme, env, eff, level, bindings) {
+fn prim(scheme, env, eff, level, bindings, exp) {
   let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
   let #(t, bindings) = open(type_, level, bindings)
-  #(bindings, t, eff, [#(Ok(Nil), type_, t.Empty, env)])
+  let meta = #(Ok(Nil), type_, t.Empty, env)
+  #(bindings, t, eff, #(exp, meta))
 }
 
 fn pure1(arg1, ret) {

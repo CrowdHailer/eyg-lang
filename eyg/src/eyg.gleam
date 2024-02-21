@@ -2,6 +2,7 @@ import gleam/io
 import gleam/list
 import plinth/node/process
 import simplifile
+import eygir/annotated
 import eygir/decode
 import platforms/shell
 import gleam/javascript/array
@@ -34,7 +35,8 @@ pub fn do_main(args) {
   case args {
     ["exec", ..] -> shell.run(source)
     ["infer"] -> {
-      let #(acc, bindings) = infer.infer(source, t.Empty, 0, infer.new_state())
+      let #(exp, bindings) = infer.infer(source, t.Empty, 0, infer.new_state())
+      let acc = annotated.strip_annotation(exp).1
       let errors =
         list.filter_map(acc, fn(row) {
           let #(result, _, _, _) = row

@@ -129,7 +129,8 @@ pub fn information(state) {
   case parse(source(state)) {
     Ok(tree) -> {
       let #(tree, spans) = annotated.strip_annotation(tree)
-      let #(acc, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
+      let #(exp, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
+      let acc = annotated.strip_annotation(exp).1
       let acc =
         list.map(acc, fn(node) {
           let #(error, typed, effect, env) = node

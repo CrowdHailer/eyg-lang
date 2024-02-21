@@ -1,3 +1,4 @@
+import gleam/dynamic
 import gleam/list
 import eygir/expression as e
 
@@ -81,5 +82,31 @@ fn do_strip_annotation(in, acc) {
     Shallow(label) -> #(e.Shallow(label), acc)
 
     Builtin(identifier) -> #(e.Builtin(identifier), acc)
+  }
+}
+
+pub fn map_annotation(
+  in: #(Expression(a), a),
+  f: fn(a) -> b,
+) -> #(Expression(b), b) {
+  let #(exp, meta) = in
+  case exp {
+    Lambda(label, body) -> {
+      let body = map_annotation(body, f)
+      #(Lambda(label, body), f(meta))
+    }
+    Apply(func, arg) -> {
+      let func = map_annotation(func, f)
+      let arg = map_annotation(arg, f)
+      #(Apply(func, arg), f(meta))
+    }
+    Let(label, value, then) -> {
+      let value = map_annotation(value, f)
+      let then = map_annotation(then, f)
+      #(Let(label, value, then), f(meta))
+    }
+    primitive -> {
+      #(dynamic.unsafe_coerce(dynamic.from(primitive)), f(meta))
+    }
   }
 }
