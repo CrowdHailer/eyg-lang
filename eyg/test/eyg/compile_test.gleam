@@ -164,7 +164,60 @@ pub fn compile_test() {
   |> a.drop_annotation()
   |> js.render()
   |> io.println
-  //   let source = #(a.Str("s"), t.Empty)
-  //   ir.k(source, True)
-  //   |> should.equal(source)
+
+  // TODO parse else branch
+  "match Ok(2) {
+    Ok(a) -> { a }
+    Error foo
+  }"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> js.render()
+  |> io.println
+
+  "match Ok(2) {
+    Ok(a) -> { a }
+    (x) -> { 0 }
+  }"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> js.render()
+  |> io.println
+
+  "{a: 1, ..let x = {a: 2} x}"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> js.render()
+  |> io.println
+
+  "{a: 1, ..(x) -> { {} }}"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> js.render()
+  |> io.println
 }
+// TODO test with eval

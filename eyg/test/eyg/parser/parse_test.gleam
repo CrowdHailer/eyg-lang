@@ -654,6 +654,17 @@ pub fn match_test() {
   )
 }
 
+pub fn open_match_test() {
+  "match Ok(2) {
+    Ok(a) -> { a }
+    (x) -> { 0 }
+  }"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(#(e.Perform("Log"), #(0, 11)))
+}
+
 pub fn perform_test() {
   "perform Log"
   |> lexer.lex()
