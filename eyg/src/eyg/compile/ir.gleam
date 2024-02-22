@@ -25,12 +25,8 @@ pub fn unnest(node) {
         f, #(a.Let(x, v, t), ml) -> #(a.Let(x, v, #(a.Apply(f, t), m)), ml)
         f, a -> #(a.Apply(f, a), m)
       }
-      // #(a.Apply(unnest(f), unnest(a)), m)
     }
-    n -> {
-      io.debug(#("none", n))
-      n
-    }
+    n -> n
   }
 }
 
@@ -122,7 +118,7 @@ fn do_k(node, safe, i) {
 //       let #(f, k) = effect_normal(f, k)
 //       let #(a, k) = effect_normal(a, k)
 //       //   case k {
-//       //     // [Value,.] ->  
+//       //     // [Value,.] ->
 //       //     // [Then]
 //       //   }
 //       todo

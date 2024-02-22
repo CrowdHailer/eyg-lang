@@ -6,6 +6,7 @@ import eyg/analysis/inference/levels_j/contextual as j
 import eygir/annotated as a
 import eyg/analysis/type_/binding
 import eyg/compile/ir
+import eyg/compile/js
 import gleeunit/should
 
 fn parse(src) {
@@ -16,7 +17,7 @@ fn parse(src) {
 }
 
 pub fn alpha_normalisation_let_test() {
-  "let x = 
+  "let x =
     let x = 2
     x
   x"
@@ -95,10 +96,74 @@ pub fn effect_not_lifting_test() {
   //   ir.k(source, True)
   //   |> should.equal(source)
 }
+
 // TODO just print all the javascript in textual
 
 pub fn compile_test() {
-  todo
+  "[1,2,3]"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> io.debug
+  |> js.render()
+  |> io.debug
+
+  "let x = [2]
+  x"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> io.debug
+  |> js.render()
+  |> io.println
+
+  // unnesting takes care of nested let
+  "let x = [let y = 5 y]
+  x"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> js.render()
+  |> io.println
+
+  "({x,y}) -> { 5 }"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> js.render()
+  |> io.println
+
+  "{ x, y: let z = 5 z }"
+  |> parse
+  |> a.drop_annotation()
+  |> j.infer(t.Empty, 0, j.new_state())
+  |> do_resolve()
+  |> ir.alpha
+  |> ir.k()
+  |> ir.unnest
+  |> a.drop_annotation()
+  |> js.render()
+  |> io.println
   //   let source = #(a.Str("s"), t.Empty)
   //   ir.k(source, True)
   //   |> should.equal(source)
