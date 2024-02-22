@@ -1,7 +1,6 @@
 import gleam/int
 import gleam/list
 import gleam/javascript as js
-import gleam/javascriptx as jsx
 import eyg/analysis/type_/isomorphic as t
 
 pub type Binding {
@@ -76,7 +75,7 @@ fn do_inst(poly, level, subs) {
       let found =
         list.find_map(subs, fn(sub) {
           let #(original, replace) = sub
-          case jsx.reference_equal(original, ref) {
+          case js.reference_equal(original, ref) {
             True -> Ok(replace)
             False -> Error(Nil)
           }
@@ -103,7 +102,7 @@ fn do_inst(poly, level, subs) {
 pub fn unify(t1, t2) {
   case t1, t2 {
     t.Var(ref1), t.Var(ref2) ->
-      case jsx.reference_equal(ref1, ref2) {
+      case js.reference_equal(ref1, ref2) {
         True -> Ok(Nil)
         False -> do_unify(t1, t2)
       }
@@ -136,7 +135,7 @@ fn bind(level, ref, type_) {
 fn occurs_and_levels(ref, level, type_) {
   case type_ {
     t.Var(r) ->
-      case jsx.reference_equal(ref, r) {
+      case js.reference_equal(ref, r) {
         True -> panic
         False ->
           case js.dereference(r) {
