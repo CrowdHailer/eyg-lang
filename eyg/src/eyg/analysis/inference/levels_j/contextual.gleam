@@ -54,7 +54,6 @@ fn ftv(type_) {
   }
 }
 
-// TODO move to levels
 fn close(type_, level, bindings) {
   case binding.resolve(type_, bindings) {
     t.Fun(arg, eff, ret) -> {
@@ -91,8 +90,6 @@ fn eff_tail(eff) {
   }
 }
 
-// Dont try and be cleever with putting on acc as
-// really large effect envs still often put nothin on the acc
 fn do_infer(source, env, eff, level, bindings) {
   case source {
     e.Variable(x) ->
@@ -126,7 +123,8 @@ fn do_infer(source, env, eff, level, bindings) {
       #(bindings, type_, eff, #(a.Lambda(x, inner), meta))
     }
     e.Apply(fun, arg) -> {
-      // I think these effects ar passed through because they are for creating the fn not calling it
+      // Effects are passed to inner infer because they are effect for creating evaluatin the func and arg,
+      // not the effect of applying them
       let level = level + 1
       let #(bindings, ty_fun, eff, fun) =
         do_infer(fun, env, eff, level, bindings)
@@ -144,8 +142,6 @@ fn do_infer(source, env, eff, level, bindings) {
       }
 
       let level = level - 1
-      // Can close as if it was a let statement above, schema might be interesting
-
       // At this point we just check that the effects would generalise a level up.
       // It doesn't matter if the eftects are in arg because we apply the arg here
       // so we're only interested in final effects
@@ -157,9 +153,6 @@ fn do_infer(source, env, eff, level, bindings) {
           let level = level - 1
           case binding {
             binding.Unbound(l) if l > level -> {
-              // can't make this bindings because i could have meaning from elsewhere but it seems like we should be able to
-
-              // Maybe when generalising we map to all possible instantiations might be pure everywhere
               mapped
             }
             _ -> test_eff
@@ -183,7 +176,6 @@ fn do_infer(source, env, eff, level, bindings) {
       // This returns the raised effect even if error
       #(bindings, ty_ret, eff, #(a.Apply(fun, arg), meta))
     }
-    // This has two places that create effects but in the acc I don't want any effects
     e.Let(label, value, then) -> {
       let level = level + 1
       let #(bindings, ty_value, eff, value) =
