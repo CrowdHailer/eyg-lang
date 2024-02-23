@@ -1,10 +1,6 @@
-import gleam/dict.{type Dict}
-import gleam/io
+import gleam/dict
 import gleam/int
-import gleam/list
 import gleam/result.{try}
-import gleam/set
-import eygir/expression as e
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
@@ -123,12 +119,12 @@ fn rewrite_row(required, type_, level, bindings) {
       Ok(#(field, rest, bindings))
     }
     t.Var(i) -> {
+      // Not sure why this is different to effects
       let #(field, bindings) = binding.mono(level, bindings)
       let #(rest, bindings) = binding.mono(level, bindings)
       let type_ = t.RowExtend(required, field, rest)
       Ok(#(field, rest, dict.insert(bindings, i, binding.Bound(type_))))
     }
-    // _ -> Error(error.TypeMismatch(t.RowExtend(required, type_, t.Empty), type_))
     _ -> panic as "bad row"
   }
 }
@@ -152,20 +148,17 @@ fn rewrite_effect(required, type_, level, bindings) {
       let #(lift, bindings) = binding.mono(level, bindings)
       let #(reply, bindings) = binding.mono(level, bindings)
 
-      case dict.get(bindings, i) {
-        Ok(binding.Unbound(level)) -> {
+      // Might get bound during tail rewrite
+      let assert Ok(binding) = dict.get(bindings, i)
+      case binding {
+        binding.Unbound(level) -> {
           let #(rest, bindings) = binding.mono(level, bindings)
 
           let type_ = t.EffectExtend(required, #(lift, reply), rest)
-          Ok(#(
-            #(lift, reply),
-            rest,
-            dict.insert(bindings, i, binding.Bound(type_)),
-          ))
+          let bindings = dict.insert(bindings, i, binding.Bound(type_))
+          Ok(#(#(lift, reply), rest, bindings))
         }
-        // Might get bound during tail rewrite
-        Ok(binding.Bound(type_)) ->
-          rewrite_effect(required, type_, level, bindings)
+        binding.Bound(type_) -> rewrite_effect(required, type_, level, bindings)
       }
     }
     // _ -> Error(error.TypeMismatch(EffectExtend(required, type_, t.Empty), type_))
