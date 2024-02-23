@@ -1,30 +1,3 @@
-// you can't open close in unification because will loose need for limited effects
-// if you close for env you need to open at var
-// closing doesn't work to slim down list of functions, theres a con contra thing here
-// maybe when printing we can see what happens
-// schema is not useful because in cases when unknown f is called (f) -> { f(x) } when using schema
-// you lose all relation between what you see for f and f(x)
-// this does mean things that are obvious i.e. (x) -> {x} end up will all extra ancilory info
-// in essence you are looking at type of hole and not mininmal type fo thing
-// could save both
-// Let's are very ugly because is final expression return
-
-// schema for looking in type for looking out
-// We can close type_ after looking internally becuase the information is not useful where as for effect fields they still get added
-// Can't close if type is in env
-// Can only close if would also generalise
-// Do one level higher
-
-// Testing such that the env has no effects drives the effects of fns being empty not that we can ignore them
-// well we can but only by getting more info lost with generalising
-
-// In apply doing only close means that types keep unifying for the lift and lower types
-// Show typing example where an error use of a return type leaves it as e but if fixed it gets found properly
-
-// Fast js is good for not exploring the whole environment. Maybe that is all it is good for
-// and passing abound a map of bindings is most sensible
-
-// TODO compiling live eval in textual
 import gleam/dict
 import gleam/list
 import gleam/set

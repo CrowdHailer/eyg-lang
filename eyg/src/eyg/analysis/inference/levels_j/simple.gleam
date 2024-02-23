@@ -47,7 +47,3 @@ pub fn j(exp, env, level) {
     }
   }
 }
-// pub fn extend() -> Nil {
-//   let 
-//   s.fun(s.q(0), s.rec(s.row(x,)))
-// }
