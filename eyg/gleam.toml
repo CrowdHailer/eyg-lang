@@ -7,7 +7,7 @@ gleam = ">= 0.32.0"
 
 [dependencies]
 gleam_stdlib = "~> 0.20"
-gleam_javascript = "~> 0.6"
+gleam_javascript = "~> 0.8"
 gleam_bitwise = "~> 1.2"
 lustre = "~> 3.0"
 gleam_json = "~> 0.5"

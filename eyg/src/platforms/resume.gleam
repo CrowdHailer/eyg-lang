@@ -10,7 +10,7 @@ import plinth/browser/element
 import plinth/browser/event
 import plinth/javascript/console
 import eygir/decode
-import eyg/parse/expression as e
+import eygir/annotated as e
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eyg/runtime/cast

@@ -9,7 +9,7 @@ import gleam/javascript
 import old_plinth/browser/document
 import easel/embed
 import eygir/decode
-import eyg/parse/expression as e
+import eygir/annotated as e
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state

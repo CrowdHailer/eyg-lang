@@ -15,7 +15,7 @@ import eyg/runtime/cast
 import harness/stdlib
 import plinth/javascript/console
 import gleam/json
-import eyg/parse/expression as e
+import eygir/annotated as e
 import harness/effect
 import harness/ffi/core
 import harness/impl/http

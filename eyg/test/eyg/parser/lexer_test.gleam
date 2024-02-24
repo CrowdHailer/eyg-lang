@@ -2,14 +2,6 @@ import eyg/parse/lexer
 import eyg/parse/token as t
 import gleeunit/should
 
-// import glexer
-
-// pub fn glexer_test() {
-//   glexer.lex("\\", glexer.new())
-//   |> should.equal([])
-//   todo
-// }
-
 pub fn grouping_test() {
   "( )"
   |> lexer.lex
@@ -104,4 +96,20 @@ pub fn call_test() {
     #(t.Integer("1"), 3),
     #(t.RightParen, 4),
   ])
+}
+
+pub fn unexpected_charachter_test() {
+  "`"
+  |> lexer.lex
+  |> should.equal([#(t.UnexpectedGrapheme("`"), 0)])
+}
+
+pub fn unterminated_string_test() {
+  "\"ab"
+  |> lexer.lex
+  |> should.equal([#(t.UnterminatedString("ab"), 0)])
+
+  "\"xy\\"
+  |> lexer.lex
+  |> should.equal([#(t.UnterminatedString("xy\\"), 0)])
 }

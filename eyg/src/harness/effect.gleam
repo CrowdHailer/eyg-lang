@@ -13,7 +13,7 @@ import gleam/javascript/promise.{try_await}
 import gleam/json
 import simplifile
 import eyg/analysis/typ as t
-import eyg/parse/expression as e
+import eygir/annotated as e
 import plinth/browser/window
 import gleam/javascript/promisex
 import eyg/runtime/value as v

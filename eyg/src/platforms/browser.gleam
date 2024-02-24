@@ -18,7 +18,7 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 import plinth/javascript/console
 import eyg/runtime/cast
-import eyg/parse/expression as e
+import eygir/annotated as e
 
 fn handlers() {
   effect.init()

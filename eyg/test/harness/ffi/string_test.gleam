@@ -1,6 +1,6 @@
 import gleam/dict
 import eygir/expression as e
-import eyg/parse/expression as e2
+import eygir/annotated as e2
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import harness/stdlib

@@ -2,7 +2,7 @@ import gleam/dict
 import gleam/javascript/promise
 import gleeunit/should
 import eygir/expression as e
-import eyg/parse/expression as e2
+import eygir/annotated as e2
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v

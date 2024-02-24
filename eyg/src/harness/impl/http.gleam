@@ -10,7 +10,7 @@ import gleam/javascript/array.{type Array}
 import gleam/javascript/promise.{type Promise}
 import plinth/javascript/console
 import eygir/expression as e
-import eyg/parse/expression as e2
+import eygir/annotated as e2
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v

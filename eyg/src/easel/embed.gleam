@@ -13,7 +13,7 @@ import gleam/http/request
 import gleam/http/response
 import gleam/fetch
 import eygir/expression as e
-import eyg/parse/expression as e2
+import eygir/annotated as e2
 import eygir/encode
 import eygir/decode
 import eyg/runtime/interpreter/runner as r
@@ -91,7 +91,7 @@ pub type Embed {
 // infer continuation
 fn do_infer(source, cache) {
   let #(_env, sub, next, tenv) = cache
-  let #(source, _) = e2.strip_meta(source)
+  let source = e2.drop_annotation(source)
   tree.infer_env(source, t.Var(-10), t.Var(-11), tenv, sub, next).0
 }
 
@@ -490,7 +490,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                 io.debug(writable)
                 let content =
                   bit_array.from_string(
-                    encode.to_json({ e2.strip_meta(state.source).0 }),
+                    encode.to_json({ e2.drop_annotation(state.source) }),
                   )
                 // let blob = blob.new(content, "application/json")
                 use _ <- promise.await(file_system.write(writable, content))
@@ -507,7 +507,7 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start, [])
         }
         "q" -> {
-          let dump = encode.to_json({ e2.strip_meta(state.source).0 })
+          let dump = encode.to_json({ e2.drop_annotation(state.source) })
           // io.print(dump)
           let request =
             request.new()

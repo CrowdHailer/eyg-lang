@@ -2,7 +2,7 @@ import gleam/list
 import gleam/dict.{type Dict}
 import gleam/result
 // import eygir/expression as e
-import eyg/parse/expression as e
+import eygir/annotated as e
 import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/cast

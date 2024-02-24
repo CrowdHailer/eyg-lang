@@ -20,6 +20,7 @@ pub type Token {
   RightArrow
   Minus
   Bang
+  Bar
 
   LeftParen
   RightParen
@@ -27,4 +28,8 @@ pub type Token {
   RightBrace
   LeftSquare
   RightSquare
+
+  // Invalid token
+  UnexpectedGrapheme(String)
+  UnterminatedString(String)
 }

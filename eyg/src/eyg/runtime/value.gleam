@@ -3,7 +3,7 @@ import gleam/list
 import gleam/string
 import gleam/javascript/promise.{type Promise as JSPromise}
 // import eygir/expression as e
-import eyg/parse/expression as e
+import eygir/annotated as e
 
 pub type Value(m, context) {
   Binary(value: BitArray)

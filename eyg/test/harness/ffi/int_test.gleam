@@ -4,7 +4,7 @@ import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eyg/analysis/inference
 import eygir/expression as e
-import eyg/parse/expression as e2
+import eygir/annotated as e2
 import harness/stdlib
 import gleeunit/should
 

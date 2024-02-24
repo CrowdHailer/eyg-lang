@@ -8,7 +8,7 @@ import gleam/string as gleam_string
 import plinth/browser/window
 import plinth/javascript/global
 import plinth/javascript/console
-import eyg/parse/expression as e
+import eygir/annotated as e
 import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter/runner as r
