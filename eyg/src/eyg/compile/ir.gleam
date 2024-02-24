@@ -40,13 +40,13 @@ fn do_alpha(node, env, i) {
   let #(exp, m) = node
   case exp {
     a.Let(x, value, then) -> {
-      let new = string.append("$a", int.to_string(i))
+      let new = string.concat([x, "$", int.to_string(i)])
       let #(value, i) = do_alpha(value, env, i + 1)
       let #(then, i) = do_alpha(then, [#(x, new), ..env], i + 1)
       #(#(a.Let(new, value, then), m), i)
     }
     a.Lambda(x, body) -> {
-      let new = string.append("$a", int.to_string(i))
+      let new = string.concat([x, "$", int.to_string(i)])
       let #(body, i) = do_alpha(body, [#(x, new), ..env], i + 1)
       #(#(a.Lambda(new, body), m), i)
     }

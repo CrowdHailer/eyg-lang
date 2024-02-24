@@ -183,7 +183,7 @@ pub fn compile_test() {
 
   "match Ok(2) {
     Ok(a) -> { a }
-    (x) -> { 0 }
+    | (x) -> { 0 }
   }"
   |> parse
   |> a.drop_annotation()
@@ -195,6 +195,7 @@ pub fn compile_test() {
   |> a.drop_annotation()
   |> js.render()
   |> io.println
+  io.println("---------------------")
 
   "{a: 1, ..let x = {a: 2} x}"
   |> parse

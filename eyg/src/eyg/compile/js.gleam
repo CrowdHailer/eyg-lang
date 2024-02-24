@@ -67,11 +67,23 @@ pub fn render(exp) {
       string.concat(["let ", x, " = ", render(value), ";\n", render(then)])
     }
     e.Integer(value) -> int.to_string(value)
-    _ -> {
-      io.debug(exp)
-      panic
-    }
+    e.Binary(_) -> "binary_not_supported"
+    e.Str(content) -> string.concat(["\"", escape_html(content), "\""])
+    e.Builtin(identifier) -> identifier
   }
+  // _ -> {
+  //   io.debug(exp)
+  //   panic
+  // }
+}
+
+fn escape_html(content) {
+  content
+  |> string.replace("\\", "\\\\")
+  |> string.replace("\"", "\\\"")
+  |> string.replace("&", "&amp;")
+  |> string.replace("<", "&lt;")
+  |> string.replace(">", "&gt;")
 }
 
 fn render_body(body) {

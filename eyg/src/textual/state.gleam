@@ -14,9 +14,16 @@ import eyg/parse/parser
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
 import eyg/analysis/inference/levels_j/contextual as j
+import eyg/compile/ir
+import eyg/compile/js
+
+pub type View {
+  Inference
+  Compilation
+}
 
 pub type State {
-  State(source: String, cursor: Option(Int))
+  State(source: String, cursor: Option(Int), view: View)
 }
 
 pub fn source(state: State) {
@@ -146,9 +153,31 @@ pub fn information(state) {
   }
 }
 
+pub fn compile(state) {
+  case parse(source(state)) {
+    Ok(tree) -> {
+      let #(tree, spans) = annotated.strip_annotation(tree)
+      let #(exp, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
+
+      let output =
+        annotated.map_annotation(exp, fn(types) {
+          let #(_, _, effect, _) = types
+          binding.resolve(effect, bindings)
+        })
+        |> ir.alpha
+        |> ir.k()
+        |> ir.unnest
+        |> annotated.drop_annotation()
+        |> js.render()
+      Ok(output)
+    }
+    Error(reason) -> Error(reason)
+  }
+}
+
 pub fn init(_) {
   #(
-    State("", None),
+    State("", None, Inference),
     effect.from(fn(d) {
       document.add_event_listener("selectionchange", fn(_) {
         // case selection.get_selection() {
@@ -180,6 +209,7 @@ pub type Update {
   Input(text: String)
   Cursor(start: Int)
   Highlight(#(Int, Int))
+  Switch(View)
 }
 
 pub fn update(state, msg) {
@@ -206,6 +236,10 @@ pub fn update(state, msg) {
           }
         }),
       )
+    }
+    Switch(to) -> {
+      let state = State(..state, view: to)
+      #(state, effect.none())
     }
   }
 }

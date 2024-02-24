@@ -11,9 +11,27 @@ import lustre/event.{on_click, on_input}
 import plinth/browser/event as evt
 import eygir/tree
 import eyg/analysis/type_/binding/debug
-import textual/state.{Highlight, Input}
+import textual/state.{Compilation, Highlight, Inference, Input, Switch}
 
-pub fn render(s) {
+pub fn render(s: state.State) {
+  div([class("vstack wrap")], [
+    div([class("hstack wrap")], [
+      div([class("expand")], []),
+      div([on_click(Switch(Inference))], [
+        span([class("m-2 inline-block font-bold")], [text("infer")]),
+      ]),
+      div([on_click(Switch(Compilation))], [
+        span([class("m-2 inline-block font-bold")], [text("compile")]),
+      ]),
+    ]),
+    case s.view {
+      Inference -> render_inference(s)
+      Compilation -> render_compilation(s)
+    },
+  ])
+}
+
+fn render_inference(s) {
   let #(err, highlights, source, spans, acc) = case state.information(s) {
     Ok(#(highlights, source, spans, acc)) -> #(
       Ok(Nil),
@@ -36,17 +54,14 @@ pub fn render(s) {
       })
     None -> -1
   }
-  div([class("hstack")], [
+  //  expand hstack and toggle to compile
+
+  div([class("hstack expand")], [
     // container https://codersblock.com/blog/highlight-text-inside-a-textarea/
     div([class("expand cover bg-blue-100")], [
       div([class("relative h-full bg-white rounded")], [
         div(
           [class("absolute left-0 right-0 p-2")],
-          // [
-          //   div([class("h-6")], [span([], [text(" ")])]),
-          //   div([class("h-6 bg-red-200")], [span([], [text(" ")])]),
-          //   div([class("h-6")], [span([], [text(" ")])]),
-          // ]
           list.map(highlights, fn(c) {
             let cl =
               option.unwrap(c, "")
@@ -116,12 +131,6 @@ pub fn render(s) {
         }),
       ),
     ]),
-    // span([], [text(" ")]),
-    // span([], [text(debug.render_effects(effect))]),
-    // TODO live eval
-    // TODO range to line
-    // Need position in file to tree 
-    // cli args for type checking
     // cli for dump tree to file
     // meta data in the tree means no need to build path in the interpreter
     // could keep a tree of location information when parsing BUT if linear that just a case of building linear
@@ -143,4 +152,31 @@ pub fn render(s) {
   ])
   //   Error(reason) -> p([], [text(string.inspect(reason))])
   // }
+}
+
+fn render_compilation(s) {
+  let result = state.compile(s)
+  div([class("hstack expand")], [
+    // container https://codersblock.com/blog/highlight-text-inside-a-textarea/
+    div([class("expand cover bg-blue-100")], [
+      div([class("relative h-full bg-white rounded")], [
+        div([class("absolute left-0 right-0 p-2")], []),
+        textarea([
+          id("source"),
+          class(
+            "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
+          ),
+          value(dynamic.from(state.source(s))),
+          on_input(Input),
+        ]),
+      ]),
+    ]),
+    div([class("cover expand")], [
+      p([], [text("Compiled")]),
+      p([], case result {
+        Ok(compiled) -> [pre([class("leading-none")], [text(compiled)])]
+        Error(reason) -> [text(string.inspect(reason))]
+      }),
+    ]),
+  ])
 }
