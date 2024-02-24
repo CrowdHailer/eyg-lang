@@ -448,7 +448,6 @@ fn clauses(tokens, start) {
 }
 
 fn do_clauses(tokens, start, acc) {
-  io.debug(tokens)
   use #(#(token, clause), rest) <- try(pop(tokens))
   case token {
     t.RightBrace -> Ok(#(acc, #(e.NoCases, #(start, clause + 1)), rest))
@@ -462,20 +461,16 @@ fn do_clauses(tokens, start, acc) {
       let assert [#(_, last), ..] = rest
       do_clauses(rest, last, acc)
     }
+    // Open function is parens that are treated as a call to the line above
     // uppername can never be a tag expression because return from Tag is not another fn
-    // _ -> Error(UnexpectedToken(token, clause))
-    _ -> {
-      // Open function is parens that are treated as a call to the line above
-      io.debug("floo")
-      io.debug(tokens)
-      use #(#(otherwise, _), rest) <- try(expression(tokens))
-      io.debug(rest)
+    t.Bar -> {
+      use #(#(otherwise, span), rest) <- try(expression(rest))
       case rest {
-        [#(t.RightBrace, _), ..rest] ->
-          Ok(#(acc, #(otherwise, #(start, clause + 1)), rest))
+        [#(t.RightBrace, _), ..rest] -> Ok(#(acc, #(otherwise, span), rest))
         _ -> fail(rest)
       }
     }
+    _ -> Error(UnexpectedToken(token, clause))
   }
 }
 

@@ -657,12 +657,32 @@ pub fn match_test() {
 pub fn open_match_test() {
   "match Ok(2) {
     Ok(a) -> { a }
-    (x) -> { 0 }
+    | (x) -> { 0 }
   }"
   |> lexer.lex()
   |> parser.parse()
   |> should.be_ok()
-  |> should.equal(#(e.Perform("Log"), #(0, 11)))
+  |> should.equal(
+    #(
+      e.Apply(
+        #(
+          e.Apply(
+            #(
+              e.Apply(
+                #(e.Case("Ok"), #(18, 20)),
+                #(e.Lambda("a", #(e.Variable("a"), #(29, 30))), #(20, 32)),
+              ),
+              #(18, 32),
+            ),
+            #(e.Lambda("x", #(e.Integer(0), #(48, 49))), #(39, 51)),
+          ),
+          #(12, 51),
+        ),
+        #(e.Apply(#(e.Tag("Ok"), #(6, 8)), #(e.Integer(2), #(9, 10))), #(6, 11)),
+      ),
+      #(0, 51),
+    ),
+  )
 }
 
 pub fn perform_test() {
