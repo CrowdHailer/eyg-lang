@@ -8,10 +8,12 @@ import lustre/attribute.{class, classes, id, value}
 import lustre/element.{text}
 import lustre/element/html.{div, p, pre, span, textarea}
 import lustre/event.{on_click, on_input}
-import plinth/browser/event as evt
 import eygir/tree
+import eyg/runtime/value as v
 import eyg/analysis/type_/binding/debug
-import textual/state.{Compilation, Highlight, Inference, Input, Switch}
+import textual/state.{
+  Compilation, Highlight, Inference, Input, Interpret, Switch,
+}
 
 pub fn render(s: state.State) {
   div([class("vstack wrap")], [
@@ -20,12 +22,16 @@ pub fn render(s: state.State) {
       div([on_click(Switch(Inference))], [
         span([class("m-2 inline-block font-bold")], [text("infer")]),
       ]),
+      div([on_click(Switch(Interpret))], [
+        span([class("m-2 inline-block font-bold")], [text("interpret")]),
+      ]),
       div([on_click(Switch(Compilation))], [
         span([class("m-2 inline-block font-bold")], [text("compile")]),
       ]),
     ]),
     case s.view {
       Inference -> render_inference(s)
+      Interpret -> render_interpretation(s)
       Compilation -> render_compilation(s)
     },
   ])
@@ -134,7 +140,7 @@ fn render_inference(s) {
     // cli for dump tree to file
     // meta data in the tree means no need to build path in the interpreter
     // could keep a tree of location information when parsing BUT if linear that just a case of building linear
-    // metadata could be linear position 
+    // metadata could be linear position
     div([class("expand cover")], [
       p([], [text("Effects")]),
       div(
@@ -152,6 +158,50 @@ fn render_inference(s) {
   ])
   //   Error(reason) -> p([], [text(string.inspect(reason))])
   // }
+}
+
+fn render_interpretation(s) {
+  let result = state.interpret(s)
+  div([class("hstack expand")], [
+    // container https://codersblock.com/blog/highlight-text-inside-a-textarea/
+    div([class("expand cover bg-blue-100")], [
+      div([class("relative h-full bg-white rounded")], [
+        div([class("absolute left-0 right-0 p-2")], []),
+        textarea([
+          id("source"),
+          class(
+            "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
+          ),
+          value(dynamic.from(state.source(s))),
+          on_input(Input),
+        ]),
+      ]),
+    ]),
+    div([class("cover expand")], [
+      // p([], [text("Interpretation")]),
+      div([], case result {
+        Ok(assignments) -> {
+          io.debug(assignments)
+          list.map(assignments, fn(a) {
+            let #(_line, assignments) = a
+            let t =
+              list.filter_map(assignments, fn(a) {
+                let #(k, value) = a
+                case k, value {
+                  "$", _ -> Error(Nil)
+                  _, v.Closure(_, _, _) -> Error(Nil)
+                  _, _ -> Ok(string.concat([k, " = ", v.debug(value)]))
+                }
+              })
+              |> list.intersperse(", ")
+              |> string.concat()
+            p([class("h-6")], [text(t)])
+          })
+        }
+        Error(reason) -> [text(string.inspect(reason))]
+      }),
+    ]),
+  ])
 }
 
 fn render_compilation(s) {
