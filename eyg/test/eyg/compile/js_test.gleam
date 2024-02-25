@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/dynamic
 import gleam/json
 import eyg/parse
@@ -229,5 +228,19 @@ pub fn first_class_case_test() {
     m(Ok(2))",
     "let m$0 = (function($) { switch ($.$T) {\ncase 'Ok':   return ((a$4) => {\n  return a$4;\n})($.$V)\ncase 'Error':   return ((_$9) => {\n  return 3;\n})($.$V)\n}});\nm$0({$T: \"Ok\", $V: 2})",
     2,
+  )
+}
+
+pub fn compile_builtin_test() {
+  // first branch
+  test_compilation(
+    "!integer_add(1, 2)",
+    "let integer_add = (x) => (y) => x + y;\ninteger_add(1)(2)",
+    3,
+  )
+  test_compilation(
+    "!list_fold([1, 2, 3], 0, !integer_add)",
+    "let list_fold = (items) => (acc) => (f) => {\n  let item;\n  while (items.length != 0) {\n    item = items[0];\n    items = items[1];\n    acc = f(acc)(item);\n  }\n  return acc\n};\nlet integer_add = (x) => (y) => x + y;\nlist_fold([1, [2, [3, []]]])(0)(integer_add)",
+    6,
   )
 }
