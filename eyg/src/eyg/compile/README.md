@@ -40,9 +40,9 @@ const yielding = false
 
 ((_$0) => {
   let x$1 = 1;
-  jump(f(""), (z$3) => {  
+  return may_lift(f(""), (z$3) => {  
     let y$7 = 1;
-    return perform("Log", z$3);
+    return lift("Log", z$3);
   }) 
 })
 

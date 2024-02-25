@@ -1,3 +1,5 @@
+import gleam/dynamic
+
 // selection and ranges
 
 pub type Selection
@@ -11,3 +13,6 @@ pub type Range
 
 @external(javascript, "../../plinth_ffi.js", "getRangeAt")
 pub fn get_range_at(a: Selection, b: Int) -> Result(Range, Nil)
+
+@external(javascript, "../../plinth_ffi.js", "eval_")
+pub fn eval(source: String) -> Result(dynamic.Dynamic, String)
