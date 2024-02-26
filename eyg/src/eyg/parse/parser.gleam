@@ -163,6 +163,17 @@ pub fn expression(tokens) {
       let span = #(start, start + string.length(raw))
       Ok(#(#(e.Integer(value), span), rest))
     }
+    t.Minus -> {
+      use #(#(next, from), rest) <- try(pop(rest))
+      case next {
+        t.Integer(raw) -> {
+          let assert Ok(value) = int.parse(raw)
+          let span = #(start, from + string.length(raw))
+          Ok(#(#(e.Integer(-1 * value), span), rest))
+        }
+        _ -> Error(UnexpectedToken(token, start))
+      }
+    }
     t.String(value) -> {
       let span = #(start, start + string.length(value) + 2)
       Ok(#(#(e.Str(value), span), rest))

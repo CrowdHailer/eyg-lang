@@ -171,7 +171,39 @@ fn render_branches(label, branch, otherwise, acc: String) {
 
 fn render_builtin(identifier) {
   case identifier {
-    "integer_add" -> "let integer_add = (x) => (y) => x + y"
+    "int_add" -> "let int_add = (x) => (y) => x + y"
+    "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
+    "int_multiply" -> "let int_multiply = (x) => (y) => x * y"
+    "int_divide" -> "let int_divide = (x) => (y) => Math.trunc(x / y)"
+    "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
+    "int_parse" ->
+      "let int_parse = (x) => {
+  const parsed = Number.parseInt(x, 10);
+  if (Number.isNaN(parsed)) {
+    return {$T: \"Error\", $V: {}};
+  }
+  return {$T: \"Ok\", $V: parsed}
+}"
+    "int_to_string" -> "let int_to_string = (x) => x.toString()"
+    "int_compare" ->
+      "let int_compare = (x) => (y) => {
+  if (x < y) return {$T: \"Lt\", $V: {}}
+  if (y > x) return {$T: \"Gt\", $V: {}}
+  return {$T: \"Eq\", $V: {}}
+}"
+    "string_append" -> "let string_append = (x) => (y) => x + y"
+    "string_uppercase" -> "let string_uppercase = (x) => x.toUpperCase()"
+    "string_lowercase" -> "let string_lowercase = (x) => x.toLowerCase()"
+    "string_starts_with" ->
+      "let string_starts_with = (x) => (y) => x.startsWith(y) ? {$T: \"Ok\", $V: x.slice(y.length)} : {$T: \"Error\", $V: {}}"
+    "string_ends_with" ->
+      "let string_ends_with = (x) => (y) => x.endsWith(y) ? {$T: \"Ok\", $V: x.slice(0, -y.length)} : {$T: \"Error\", $V: {}}"
+    "string_length" -> "let string_length = (x) => x.length"
+    "list_pop" ->
+      "let list_pop = (items) =>
+  items.length == 0
+  ? {$T: \"Error\", $V: {}}
+  : {$T: \"Ok\", $V: {head: items[0], tail: items[1]}}"
     "list_fold" ->
       "let list_fold = (items) => (acc) => (f) => {
   let item;

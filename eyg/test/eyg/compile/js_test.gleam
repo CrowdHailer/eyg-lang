@@ -19,6 +19,18 @@ fn test_compilation(source, js, evaled) {
   |> should.equal(dynamic.from(evaled))
 }
 
+fn test_eval(source, evaled) {
+  let generated =
+    source
+    |> parse.from_string()
+    |> should.be_ok()
+    |> compile.to_js()
+  generated
+  |> window.eval()
+  |> should.be_ok()
+  |> should.equal(dynamic.from(evaled))
+}
+
 pub fn literal_test() {
   test_compilation(
     "let num = 5
@@ -49,7 +61,7 @@ b$2",
   )
   // nesting is lifted
   test_compilation(
-    "let a = 
+    "let a =
       let b = 80
       b
     a",
@@ -106,19 +118,19 @@ pub fn record_test() {
   test_compilation("{}", "({})", json.object([]))
   test_compilation("{a: 4}.a", "({a: 4}).a", 4)
   test_compilation(
-    "let rec = {a: 1, b: 7} 
+    "let rec = {a: 1, b: 7}
     rec.a",
     "let rec$0 = ({a: 1, b: 7});\nrec$0.a",
     1,
   )
   test_compilation(
-    "let rec = {a: 1, b: 7} 
+    "let rec = {a: 1, b: 7}
     rec.b",
     "let rec$0 = ({a: 1, b: 7});\nrec$0.b",
     7,
   )
   test_compilation(
-    "let rec = {a: 1, b: {x: 5}} 
+    "let rec = {a: 1, b: {x: 5}}
     rec.b.x",
     "let rec$0 = ({a: 1, b: ({x: 5})});\nrec$0.b.x",
     5,
@@ -231,16 +243,58 @@ pub fn first_class_case_test() {
   )
 }
 
+fn tagged(label, value) {
+  json.object([#("$T", json.string(label)), #("$V", value)])
+}
+
+fn unit() {
+  json.object([])
+}
+
 pub fn compile_builtin_test() {
-  // first branch
+  // test_eval("!fix((f, ) -> {})", tagged("Lt", unit()))
+
+  test_eval("!int_compare(1, 2)", tagged("Lt", unit()))
   test_compilation(
-    "!integer_add(1, 2)",
-    "let integer_add = (x) => (y) => x + y;\ninteger_add(1)(2)",
+    "!int_add(1, 2)",
+    "let int_add = (x) => (y) => x + y;
+int_add(1)(2)",
     3,
   )
+  test_eval("!int_subtract(3, 2)", 1)
+  test_eval("!int_multiply(3, 2)", 6)
+  test_eval("!int_divide(7, 2)", 3)
+  test_eval("!int_absolute(-5)", 5)
+  test_eval("!int_parse(\"0\")", tagged("Ok", json.int(0)))
+  test_eval("!int_to_string(100)", "100")
+  test_eval("!string_append(\"ab\")(\"cd\")", "abcd")
+  // test_eval("!string_split", 1)
+  // test_eval("!string_split_once", 1)
+  // test_eval("!string_replace", 1)
+  test_eval("!string_uppercase(\"aBc\")", "ABC")
+  test_eval("!string_lowercase(\"XyZ\")", "xyz")
+  test_eval(
+    "!string_starts_with(\"Hello\")(\"H\")",
+    tagged("Ok", json.string("ello")),
+  )
+  test_eval("!string_ends_with(\"Hello\")(\"H\")", tagged("Error", unit()))
+  test_eval("!string_length(\"Yo\")", 2)
+  // test_eval("!pop_grapheme", 1)
+  // test_eval("!string_to_binary", 1)
+
+  test_eval(
+    "!list_pop([1, 2, 3])",
+    tagged(
+      "Ok",
+      json.object([
+        #("head", json.int(1)),
+        #("tail", dynamic.unsafe_coerce(dynamic.from(#(2, #(3, #()))))),
+      ]),
+    ),
+  )
   test_compilation(
-    "!list_fold([1, 2, 3], 0, !integer_add)",
-    "let list_fold = (items) => (acc) => (f) => {\n  let item;\n  while (items.length != 0) {\n    item = items[0];\n    items = items[1];\n    acc = f(acc)(item);\n  }\n  return acc\n};\nlet integer_add = (x) => (y) => x + y;\nlist_fold([1, [2, [3, []]]])(0)(integer_add)",
+    "!list_fold([1, 2, 3], 0, !int_add)",
+    "let list_fold = (items) => (acc) => (f) => {\n  let item;\n  while (items.length != 0) {\n    item = items[0];\n    items = items[1];\n    acc = f(acc)(item);\n  }\n  return acc\n};\nlet int_add = (x) => (y) => x + y;\nlist_fold([1, [2, [3, []]]])(0)(int_add)",
     6,
   )
 }

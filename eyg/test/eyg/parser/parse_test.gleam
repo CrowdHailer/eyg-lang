@@ -23,6 +23,14 @@ pub fn literal_test() {
   |> should.equal(#(e.Str("hello"), #(0, 7)))
 }
 
+pub fn negative_integer_test() {
+  "-100"
+  |> lexer.lex()
+  |> parser.parse()
+  |> should.be_ok()
+  |> should.equal(#(e.Integer(-100), #(0, 4)))
+}
+
 pub fn lambda_test() {
   "(x) -> { 5 }"
   |> lexer.lex()
