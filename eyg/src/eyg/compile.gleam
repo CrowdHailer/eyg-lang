@@ -11,6 +11,7 @@ pub fn to_js(program) {
   |> ir.alpha
   |> ir.k()
   |> ir.unnest
+  |> monadic()
   |> a.drop_annotation()
   |> js.render()
 }
@@ -25,4 +26,22 @@ fn infer_effects(program) {
     let #(_, _, effect, _) = types
     binding.resolve(effect, bindings)
   })
+}
+
+fn monadic(node) {
+  let #(exp, meta) = node
+  case exp {
+    a.Let(x, #(value, eff), then) ->
+      case eff {
+        t.Empty -> #(a.Let(x, #(value, t.Empty), monadic(then)), meta)
+        _ -> #(
+          a.Apply(
+            #(a.Apply(#(a.Builtin("bind"), t.Empty), #(value, eff)), t.Empty),
+            #(a.Lambda(x, monadic(then)), t.Empty),
+          ),
+          t.Empty,
+        )
+      }
+    _ -> #(exp, meta)
+  }
 }

@@ -14,8 +14,7 @@ import eyg/parse/parser
 import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
 import eyg/analysis/inference/levels_j/contextual as j
-import eyg/compile/ir
-import eyg/compile/js
+import eyg/compile
 
 pub type View {
   Inference
@@ -156,20 +155,20 @@ pub fn information(state) {
 pub fn compile(state) {
   case parse(source(state)) {
     Ok(tree) -> {
-      let #(tree, spans) = annotated.strip_annotation(tree)
-      let #(exp, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
+      // let #(tree, spans) = annotated.strip_annotation(tree)
+      // let #(exp, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
 
-      let output =
-        annotated.map_annotation(exp, fn(types) {
-          let #(_, _, effect, _) = types
-          binding.resolve(effect, bindings)
-        })
-        |> ir.alpha
-        |> ir.k()
-        |> ir.unnest
-        |> annotated.drop_annotation()
-        |> js.render()
-      Ok(output)
+      // let output =
+      //   annotated.map_annotation(exp, fn(types) {
+      //     let #(_, _, effect, _) = types
+      //     binding.resolve(effect, bindings)
+      //   })
+      //   |> ir.alpha
+      //   |> ir.k()
+      //   |> ir.unnest
+      //   |> annotated.drop_annotation()
+      //   |> js.render()
+      Ok(compile.to_js(tree))
     }
     Error(reason) -> Error(reason)
   }

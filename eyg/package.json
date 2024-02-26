@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
+    "test:eff": "node eff_test.js",
     "prebuild:atelier": "gleam build",
     "build:atelier": "npx rollup -f iife -i ./build/dev/javascript/eyg/atelier.js -o build/bundle/atelier.js",
     "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",

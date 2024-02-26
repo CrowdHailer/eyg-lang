@@ -13,7 +13,12 @@ import eygir/expression as e
 pub fn render(exp) {
   let used = builtins_used(exp, [])
 
-  [do_render(exp), ..list.map(used, render_builtin)]
+  let program = do_render(exp)
+  let program = case list.contains(used, "bind") {
+    False -> program
+    True -> string.concat(["run(", program, ")"])
+  }
+  [program, ..list.map(used, render_builtin)]
   |> list.reverse
   |> list.intersperse(";\n")
   |> string.concat
@@ -32,6 +37,8 @@ fn builtins_used(exp, acc) {
     e.Lambda(_, body) ->
       acc
       |> builtins_used(body, _)
+    // e.Builtin("bind") -> acc
+    e.Handle(label) -> ["handle", ..acc]
     e.Builtin(i) ->
       case list.contains(acc, i) {
         True -> acc
@@ -91,6 +98,8 @@ fn do_render(exp) {
       ["(function($) { switch ($.$T) {\n", branches, "}})"]
       |> string.concat()
     }
+    e.Apply(e.Apply(e.Builtin("bind"), value), then) ->
+      string.concat(["bind(", do_render(value), ", ", do_render(then), ")"])
     e.Apply(f, a) -> string.concat([do_render(f), "(", do_render(a), ")"])
     e.Variable(x) -> x
     e.Lambda(x, body) -> {
@@ -102,6 +111,8 @@ fn do_render(exp) {
     e.Integer(value) -> int.to_string(value)
     e.Binary(_) -> "binary_not_supported"
     e.Str(content) -> string.concat(["\"", escape_html(content), "\""])
+    e.Perform(label) -> string.concat(["perform (\"", label, "\")"])
+    e.Handle(label) -> string.concat(["handle (\"", label, "\")"])
     e.Builtin(identifier) -> identifier
   }
   // _ -> {
@@ -171,6 +182,39 @@ fn render_branches(label, branch, otherwise, acc: String) {
 
 fn render_builtin(identifier) {
   case identifier {
+    "bind" ->
+      "function Eff(label, value, k) {
+  this.label = label;
+  this.value = value;
+  this.k = k;
+}
+
+let bind = (m, then) => {
+  if (!(m instanceof Eff)) return then(m);
+  let k = (x) => bind(m.k(x), then);
+  return new Eff(m.label, m.value, k);
+};
+
+let perform = (label) => (value) => new Eff(label, value, (x) => x);
+
+let extrinsic = { Ask: (x) => 10, Log: (x) => console.log(x) };
+let run = (m) => {
+  while (m instanceof Eff) {
+    m = m.k(extrinsic[m.label](m.value));
+  }
+  return m;
+};"
+    "handle" ->
+      "let handle = (label) => (handler) => (exec) => {
+  return do_handle(label, handler, exec({}));
+};
+
+let do_handle = (label, handler, m) => {
+  if (!(m instanceof Eff)) return m;
+  let k = (x) => do_handle(label, handler, m.k(x));
+  if (m.label == label) return handler(m.value)(k);
+  return new Eff(m.label, m.value, k);
+};"
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
     "int_multiply" -> "let int_multiply = (x) => (y) => x * y"

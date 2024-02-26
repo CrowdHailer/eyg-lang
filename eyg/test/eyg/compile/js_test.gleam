@@ -243,6 +243,15 @@ pub fn first_class_case_test() {
   )
 }
 
+pub fn effect_test() {
+  test_eval(
+    "let x = perform Ask({})
+    let y = perform Ask({})
+    3",
+    2,
+  )
+}
+
 fn tagged(label, value) {
   json.object([#("$T", json.string(label)), #("$V", value)])
 }

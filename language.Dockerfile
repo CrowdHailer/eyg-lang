@@ -22,7 +22,7 @@ RUN gleam --version
 
 CMD ["gleam"]
 
-FROM node:20.5.1
+FROM node:21.6.2
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 # COPY --from=build /usr/local/cargo/bin/watchexec /bin

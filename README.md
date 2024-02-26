@@ -15,3 +15,35 @@ They are mostly intended as notes for myself, but are the closest thing you will
 
 If you want to chat I hang out in the [Gleam Discord](https://gleam.run/community/).
 If you to build anything in a safe functional expressive language, I would suggest use [Gleam](https://gleam.run/) instead. After all it's what I use.
+
+
+```rs
+let x = perform Ask({})
+let y = 2
+!int_add(x, y)
+```
+
+```js
+let bind = (m, then) => {
+  if !(m instanceof Eff) return then(m)
+  let k = (x) => bind(m.k(x), then)
+  return new Eff(m.label, m.value, k)
+}
+
+let perform = (label) => (value) => new Eff(label, value, (x) => x)
+
+let handle = (label) => (handler) => (exec) => {
+  let m = exec({})
+  if !(m instanceof Eff) return m
+  let k = (x) => do_handle(label, handler, m.k(x))
+  if m.label == label return handler(m.value)(k)
+  return new Eff(m.label, m.value, k)
+} 
+
+let  = {Ask: (x) => y}
+
+bind(perform("Ask", {}), (x) => {
+  let y = 2
+  !int_add(x, y)
+})
+```
