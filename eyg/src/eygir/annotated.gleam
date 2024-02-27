@@ -1,5 +1,9 @@
+import gleam/dynamic
 import gleam/list
 import eygir/expression as e
+
+pub type Node(m) =
+  #(Expression(m), m)
 
 pub type Expression(m) {
   Variable(label: String)
@@ -81,5 +85,69 @@ fn do_strip_annotation(in, acc) {
     Shallow(label) -> #(e.Shallow(label), acc)
 
     Builtin(identifier) -> #(e.Builtin(identifier), acc)
+  }
+}
+
+pub fn add_annotation(exp, meta) {
+  case exp {
+    e.Variable(label) -> #(Variable(label), meta)
+    e.Lambda(label, body) -> #(Lambda(label, add_annotation(body, meta)), Nil)
+    e.Apply(func, arg) -> #(
+      Apply(add_annotation(func, meta), add_annotation(arg, Nil)),
+      Nil,
+    )
+    e.Let(label, value, body) -> #(
+      Let(label, add_annotation(value, meta), add_annotation(body, meta)),
+      Nil,
+    )
+
+    e.Binary(value) -> #(Binary(value), meta)
+    e.Integer(value) -> #(Integer(value), meta)
+    e.Str(value) -> #(Str(value), meta)
+
+    e.Tail -> #(Tail, meta)
+    e.Cons -> #(Cons, meta)
+
+    e.Vacant(comment) -> #(Vacant(comment), meta)
+
+    e.Empty -> #(Empty, meta)
+    e.Extend(label) -> #(Extend(label), meta)
+    e.Select(label) -> #(Select(label), meta)
+    e.Overwrite(label) -> #(Overwrite(label), meta)
+    e.Tag(label) -> #(Tag(label), meta)
+    e.Case(label) -> #(Case(label), meta)
+    e.NoCases -> #(NoCases, meta)
+
+    e.Perform(label) -> #(Perform(label), meta)
+    e.Handle(label) -> #(Handle(label), meta)
+    e.Shallow(label) -> #(Shallow(label), meta)
+
+    e.Builtin(identifier) -> #(Builtin(identifier), meta)
+  }
+}
+
+pub fn map_annotation(
+  in: #(Expression(a), a),
+  f: fn(a) -> b,
+) -> #(Expression(b), b) {
+  let #(exp, meta) = in
+  case exp {
+    Lambda(label, body) -> {
+      let body = map_annotation(body, f)
+      #(Lambda(label, body), f(meta))
+    }
+    Apply(func, arg) -> {
+      let func = map_annotation(func, f)
+      let arg = map_annotation(arg, f)
+      #(Apply(func, arg), f(meta))
+    }
+    Let(label, value, then) -> {
+      let value = map_annotation(value, f)
+      let then = map_annotation(then, f)
+      #(Let(label, value, then), f(meta))
+    }
+    primitive -> {
+      #(dynamic.unsafe_coerce(dynamic.from(primitive)), f(meta))
+    }
   }
 }
