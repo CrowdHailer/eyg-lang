@@ -41,6 +41,7 @@ fn pop(raw, start) {
     ":" <> rest -> done(t.Colon, 1, rest)
     "-" <> rest -> done(t.Minus, 1, rest)
     "!" <> rest -> done(t.Bang, 1, rest)
+    "|" <> rest -> done(t.Bar, 1, rest)
 
     "let" <> rest -> done(t.Let, 3, rest)
     "match" <> rest -> done(t.Match, 5, rest)

@@ -20,6 +20,7 @@ pub type Token {
   RightArrow
   Minus
   Bang
+  Bar
 
   LeftParen
   RightParen

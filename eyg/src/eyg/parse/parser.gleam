@@ -163,6 +163,17 @@ pub fn expression(tokens) {
       let span = #(start, start + string.length(raw))
       Ok(#(#(e.Integer(value), span), rest))
     }
+    t.Minus -> {
+      use #(#(next, from), rest) <- try(pop(rest))
+      case next {
+        t.Integer(raw) -> {
+          let assert Ok(value) = int.parse(raw)
+          let span = #(start, from + string.length(raw))
+          Ok(#(#(e.Integer(-1 * value), span), rest))
+        }
+        _ -> Error(UnexpectedToken(token, start))
+      }
+    }
     t.String(value) -> {
       let span = #(start, start + string.length(value) + 2)
       Ok(#(#(e.Str(value), span), rest))
@@ -460,6 +471,15 @@ fn do_clauses(tokens, start, acc) {
       // peek
       let assert [#(_, last), ..] = rest
       do_clauses(rest, last, acc)
+    }
+    // Open function is parens that are treated as a call to the line above
+    // uppername can never be a tag expression because return from Tag is not another fn
+    t.Bar -> {
+      use #(#(otherwise, span), rest) <- try(expression(rest))
+      case rest {
+        [#(t.RightBrace, _), ..rest] -> Ok(#(acc, #(otherwise, span), rest))
+        _ -> fail(rest)
+      }
     }
     _ -> Error(UnexpectedToken(token, clause))
   }
