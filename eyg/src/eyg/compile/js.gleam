@@ -10,14 +10,22 @@ import gleam/list
 import gleam/string
 import eygir/expression as e
 
+// can't wrap program in `()` because js assumes expression and breaks with let
+// but also cant wrap in `{}` because in brackets is assuemd to be object
+fn assign_to(exp, label) {
+  case exp {
+    e.Let(x, v, t) -> e.Let(x, v, assign_to(t, label))
+    _ -> e.Let(label, exp, e.Apply(e.Builtin("run"), e.Variable(label)))
+  }
+}
+
 pub fn render(exp) {
   let used = builtins_used(exp, [])
 
-  let program = do_render(exp)
   let program = case list.contains(used, "bind") {
-    False -> program
+    False -> do_render(exp)
     // brackets to handle let statements, render with one extra indent
-    True -> string.concat(["run({", program, "})"])
+    True -> do_render(assign_to(exp, "program"))
   }
   [program, ..list.map(used, render_builtin)]
   |> list.reverse

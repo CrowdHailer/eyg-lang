@@ -247,8 +247,8 @@ pub fn effect_test() {
   test_eval(
     "let x = perform Ask({})
     let y = perform Ask({})
-    3",
-    2,
+    !int_add(x, y)",
+    20,
   )
 }
 
