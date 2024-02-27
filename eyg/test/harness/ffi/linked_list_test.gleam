@@ -28,7 +28,7 @@ pub fn fold_test() {
       e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Str("initial")),
       reducer,
     )
-  let source = e2.add_meta(source, Nil)
+  let source = e2.add_annotation(source, Nil)
 
   r.execute(source, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Str("initialfizzbuzz")))

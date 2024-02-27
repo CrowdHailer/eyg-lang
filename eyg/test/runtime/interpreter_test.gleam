@@ -15,7 +15,7 @@ import platforms/browser
 pub fn variable_test() {
   let source =
     e.Variable("x")
-    |> e2.add_meta(Nil)
+    |> e2.add_annotation(Nil)
   let env = state.Env([#("x", v.Str("assigned"))], dict.new())
   r.execute(source, env, dict.new())
   |> should.equal(Ok(v.Str("assigned")))
@@ -25,7 +25,7 @@ pub fn function_test() {
   let body = e.Variable("x")
   let source =
     e.Lambda("x", body)
-    |> e2.add_meta(Nil)
+    |> e2.add_annotation(Nil)
 
   let scope = [#("foo", v.Str("assigned"))]
   let env = state.Env(scope, dict.new())
@@ -34,7 +34,7 @@ pub fn function_test() {
     Ok(v.Closure(
       "x",
       body
-      |> e2.add_meta(Nil),
+      |> e2.add_annotation(Nil),
       scope,
     )),
   )
@@ -43,7 +43,7 @@ pub fn function_test() {
 pub fn function_application_test() {
   let source =
     e.Apply(e.Lambda("x", e.Str("body")), e.Integer(0))
-    |> e2.add_meta(Nil)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Str("body")))
@@ -54,7 +54,7 @@ pub fn function_application_test() {
       e.Lambda("x", e.Variable("x")),
       e.Apply(e.Variable("id"), e.Integer(0)),
     )
-    |> e2.add_meta(Nil)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Integer(0)))

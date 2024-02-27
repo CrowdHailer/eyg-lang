@@ -10,7 +10,7 @@ pub fn string_append_test() {
   let key = "string_append"
   let source = e.Apply(e.Apply(e.Builtin(key), e.Str("fizz")), e.Str("buzz"))
 
-  let source = e2.add_meta(source, Nil)
+  let source = e2.add_annotation(source, Nil)
   r.execute(source, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Str("fizzbuzz")))
 }

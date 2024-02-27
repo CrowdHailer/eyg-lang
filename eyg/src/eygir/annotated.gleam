@@ -88,16 +88,16 @@ fn do_strip_annotation(in, acc) {
   }
 }
 
-pub fn add_meta(exp, meta) {
+pub fn add_annotation(exp, meta) {
   case exp {
     e.Variable(label) -> #(Variable(label), meta)
-    e.Lambda(label, body) -> #(Lambda(label, add_meta(body, meta)), Nil)
+    e.Lambda(label, body) -> #(Lambda(label, add_annotation(body, meta)), Nil)
     e.Apply(func, arg) -> #(
-      Apply(add_meta(func, meta), add_meta(arg, Nil)),
+      Apply(add_annotation(func, meta), add_annotation(arg, Nil)),
       Nil,
     )
     e.Let(label, value, body) -> #(
-      Let(label, add_meta(value, meta), add_meta(body, meta)),
+      Let(label, add_annotation(value, meta), add_annotation(body, meta)),
       Nil,
     )
 

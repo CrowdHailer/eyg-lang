@@ -16,7 +16,7 @@ pub fn add_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(3)))
 }

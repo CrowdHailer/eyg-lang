@@ -49,7 +49,7 @@ pub fn serve() {
         })
       })
     let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
-    let body = e2.add_meta(body, Nil)
+    let body = e2.add_annotation(body, Nil)
     Ok(v.Closure("_", body, []))
   })
 }

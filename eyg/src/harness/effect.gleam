@@ -175,7 +175,9 @@ pub fn read_source() {
           Ok(exp) ->
             Ok(
               v.ok(
-                v.LinkedList(core.expression_to_language(e.add_meta(exp, Nil))),
+                v.LinkedList(
+                  core.expression_to_language(e.add_annotation(exp, Nil)),
+                ),
               ),
             )
           Error(_) -> Ok(v.error(v.unit))

@@ -20,7 +20,7 @@ pub fn unequal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.false))
 }
@@ -35,7 +35,7 @@ pub fn equal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.true))
 }
@@ -56,7 +56,7 @@ pub fn debug_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   // value is serialized as binary, hence the quotes
   |> should.equal(Ok(v.Str("\"foo\"")))
@@ -71,7 +71,7 @@ pub fn simple_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Str("foo")))
 }
@@ -96,7 +96,7 @@ pub fn no_recursive_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(1)))
 }
@@ -151,14 +151,14 @@ pub fn recursive_sum_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(4)))
 }
 
 pub fn eval_test() {
   let value = e.Str("foo")
-  let value = e2.add_meta(value, Nil)
+  let value = e2.add_annotation(value, Nil)
 
   let prog =
     value
@@ -175,16 +175,16 @@ pub fn eval_test() {
   // inference.type_of(sub, [])
   // |> should.equal(Ok(t.boolean))
 
-  let prog = e2.add_meta(prog, Nil)
+  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("foo"))))
 }
 
 pub fn language_to_expression_test() {
   e.Apply(e.Variable("x"), e.Integer(1))
-  |> e2.add_meta(Nil)
+  |> e2.add_annotation(Nil)
   |> core.expression_to_language()
   |> core.language_to_expression()
   |> should.be_ok
-  |> should.equal(e2.add_meta(e.Apply(e.Variable("x"), e.Integer(1)), Nil))
+  |> should.equal(e2.add_annotation(e.Apply(e.Variable("x"), e.Integer(1)), Nil))
 }

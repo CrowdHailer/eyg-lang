@@ -57,7 +57,7 @@ pub fn run() {
         |> result.map_error(fn(_) { Nil }),
       )
       let env = stdlib.env()
-      let source = e.add_meta(source, Nil)
+      let source = e.add_annotation(source, Nil)
       let assert Ok(action) = r.execute(source, env, dict.new())
       // TODO remove env, it doesn't matter call to call
       Ok(#(container, #(action, env)))
