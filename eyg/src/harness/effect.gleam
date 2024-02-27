@@ -21,6 +21,7 @@ import eyg/runtime/break
 import eyg/runtime/cast
 import eygir/decode
 import harness/ffi/core
+import old_plinth/browser/document
 
 pub fn init() {
   #(t.Closed, dict.new())

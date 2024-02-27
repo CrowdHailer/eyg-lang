@@ -179,26 +179,39 @@ fn render_interpretation(s) {
       ]),
     ]),
     div([class("cover expand")], [
-      div([], case result {
-        Ok(assignments) -> {
-          list.map(assignments, fn(a) {
-            let #(_line, assignments) = a
-            let t =
-              list.filter_map(assignments, fn(a) {
-                case a {
-                  Ok(#(k, value)) ->
-                    case k, value {
-                      "$", _ -> Error(Nil)
-                      _, v.Closure(_, _, _) -> Error(Nil)
-                      _, _ -> Ok(string.concat([k, " = ", v.debug(value)]))
+      div([class("vstack wrap")], case result {
+        Ok(#(assignments, page)) -> {
+          [
+            div(
+              [class("cover")],
+              list.map(assignments, fn(a) {
+                let #(_line, assignments) = a
+                let t =
+                  list.filter_map(list.reverse(assignments), fn(a) {
+                    case a {
+                      Ok(#(k, value)) ->
+                        case k, value {
+                          "$", _ -> Error(Nil)
+                          _, v.Closure(_, _, _) -> Error(Nil)
+                          _, _ -> Ok(string.concat([k, " = ", v.debug(value)]))
+                        }
+                      Error(reason) -> Ok(break.reason_to_string(reason))
                     }
-                  Error(reason) -> Ok(break.reason_to_string(reason))
-                }
-              })
-              |> list.intersperse(", ")
-              |> string.concat()
-            p([class("h-6")], [text(t)])
-          })
+                  })
+                  |> list.intersperse(", ")
+                  |> string.concat()
+                p([class("h-6")], [text(t)])
+              }),
+            ),
+            div(
+              [
+                id("sandbox"),
+                attribute.attribute("dangerous-unescaped-html", page),
+                class("bg-green-2 expand cover"),
+              ],
+              [],
+            ),
+          ]
         }
         Error(reason) -> [text(string.inspect(reason))]
       }),

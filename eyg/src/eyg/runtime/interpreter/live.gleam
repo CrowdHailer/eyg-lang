@@ -5,9 +5,8 @@ import eyg/runtime/interpreter/state as s
 import eyg/runtime/value as v
 import harness/stdlib
 
-pub fn execute(exp) {
+pub fn execute(exp, h) {
   let env = dynamic.unsafe_coerce(dynamic.from(stdlib.env()))
-  let h = dict.new()
   loop(s.step(s.E(exp), env, s.Empty(h)), [])
 }
 

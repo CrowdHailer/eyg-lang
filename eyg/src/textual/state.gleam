@@ -1,8 +1,11 @@
 import gleam/bit_array
+import gleam/dict
 import gleam/io
 import gleam/list
+import gleam/result
 import gleam/string
 import gleam/option.{type Option, None, Some}
+import gleam/javascript as js
 import lustre/effect
 import plinth/browser/document
 import plinth/browser/element
@@ -13,7 +16,10 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/compile
+import eyg/runtime/value as v
 import eyg/runtime/interpreter/live
+import harness/effect as impl
+import eyg/runtime/cast
 
 pub type View {
   Inference
@@ -152,9 +158,20 @@ pub fn information(state) {
 }
 
 pub fn interpret(state) {
+  let ref = js.make_reference("")
+  let h =
+    dict.from_list([
+      #("Log", impl.debug_logger().2),
+      #("Choose", impl.choose().2),
+      #("Render", fn(v) {
+        use content <- result.then(cast.as_string(v))
+        js.set_reference(ref, content)
+        Ok(v.unit)
+      }),
+    ])
   case parse(source(state)) {
     Ok(tree) -> {
-      let #(r, assignments) = live.execute(tree)
+      let #(r, assignments) = live.execute(tree, h)
       let lines = list.map(lines(source(state)), fn(x) { #(x, []) })
       let output =
         list.fold(assignments, lines, fn(lines, sp) {
@@ -165,7 +182,7 @@ pub fn interpret(state) {
         Error(#(reason, span, _env, _stack)) ->
           apply_span(output, span, Error(reason), [])
       }
-      Ok(output)
+      Ok(#(output, js.dereference(ref)))
     }
     Error(reason) -> Error(reason)
   }
