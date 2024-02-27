@@ -9,6 +9,7 @@ import gleam/javascript
 import old_plinth/browser/document
 import easel/embed
 import eygir/decode
+import eygir/annotated as e
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
@@ -48,6 +49,7 @@ fn applet(root) {
         let env = stdlib.env()
         let rev = []
         let k = dict.new()
+        let source = e.add_meta(source, Nil)
         let assert Ok(term) = r.execute(source, env, k)
         use func <- result.then(cast.field("func", cast.any, term))
         use arg <- result.then(cast.field("arg", cast.any, term))

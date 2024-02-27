@@ -8,7 +8,7 @@ import gleam/string as gleam_string
 import plinth/browser/window
 import plinth/javascript/global
 import plinth/javascript/console
-import eygir/expression as e
+import eygir/annotated as e
 import eyg/analysis/typ as t
 import eygir/encode
 import eyg/runtime/interpreter/runner as r
@@ -32,7 +32,7 @@ fn do_equal(left, right, rev, env, k) {
     True -> v.true
     False -> v.false
   }
-  Ok(#(state.V(value), rev, env, k))
+  Ok(#(state.V(value), env, k))
 }
 
 pub fn debug() {
@@ -41,7 +41,7 @@ pub fn debug() {
 }
 
 fn do_debug(term, rev, env, k) {
-  Ok(#(state.V(v.Str(v.debug(term))), rev, env, k))
+  Ok(#(state.V(v.Str(v.debug(term))), env, k))
 }
 
 pub fn fix() {
@@ -64,18 +64,18 @@ pub fn fixed() {
   // value produced by the fix action
   #(
     t.Unbound(0),
-    state.Arity2(fn(builder, arg, rev, env, k) {
+    state.Arity2(fn(builder, arg, meta, env, k) {
       state.call(
         builder,
         // always pass a reference to itself
         v.Partial(v.Builtin("fixed"), [builder]),
-        rev,
+        meta,
         env,
         // fn(partial) {
         //   let #(c, rev, e, k) = state.call(partial, arg, rev, env, k)
         //   state.K(c, rev, e, k)
         // },
-        state.Stack(state.CallWith(arg, rev, env), k),
+        state.Stack(state.CallWith(arg, env), meta, k),
       )
     }),
   )
@@ -161,9 +161,9 @@ pub fn do_eval(source, rev, env, k) {
         }
       }
       // console.log(value)
-      Ok(#(state.V(value), rev, env, k))
+      Ok(#(state.V(value), env, k))
     }
-    Error(_) -> Ok(#(state.V(v.error(v.unit)), rev, env, k))
+    Error(_) -> Ok(#(state.V(v.error(v.unit)), env, k))
   }
 }
 
@@ -176,7 +176,7 @@ pub fn serialize() {
 
 pub fn do_serialize(term, rev, env, k) {
   let exp = capture.capture(term)
-  Ok(#(state.V(v.Str(encode.to_json(exp))), rev, env, k))
+  Ok(#(state.V(v.Str(encode.to_json(exp))), env, k))
 }
 
 pub fn capture() {
@@ -188,7 +188,7 @@ pub fn capture() {
 
 pub fn do_capture(term, rev, env, k) {
   let exp = capture.capture(term)
-  Ok(#(state.V(v.LinkedList(expression_to_language(exp))), rev, env, k))
+  Ok(#(state.V(v.LinkedList(expression_to_language(exp))), env, k))
 }
 
 // block needs squashing with row on the front
@@ -252,6 +252,7 @@ pub fn do_capture(term, rev, env, k) {
 // rendering? is it that interesting to do twice?
 // TODO have a single code element that renders the value
 pub fn expression_to_language(exp) {
+  let #(exp, _meta) = exp
   case exp {
     e.Variable(label) -> [v.Tagged("Variable", v.Str(label))]
     e.Lambda(label, body) -> {
@@ -314,7 +315,7 @@ fn stack_language_to_expression(source, stack) {
   let #(exp, stack) = step(node, stack)
   case exp {
     Some(exp) ->
-      case apply(exp, stack) {
+      case apply(#(exp, Nil), stack) {
         Ok(exp) -> {
           exp
         }
@@ -327,20 +328,21 @@ fn stack_language_to_expression(source, stack) {
 fn apply(exp, stack) {
   case stack {
     [] -> Ok(exp)
-    [DoBody(label), ..stack] -> apply(e.Lambda(label, exp), stack)
+    [DoBody(label), ..stack] -> apply(#(e.Lambda(label, exp), Nil), stack)
     [DoFunc, ..stack] -> Error([DoArg(exp), ..stack])
-    [DoArg(func), ..stack] -> apply(e.Apply(func, exp), stack)
+    [DoArg(func), ..stack] -> apply(#(e.Apply(func, exp), Nil), stack)
     [DoValue(label), ..stack] -> Error([DoThen(label, exp), ..stack])
-    [DoThen(label, value), ..stack] -> apply(e.Let(label, value, exp), stack)
+    [DoThen(label, value), ..stack] ->
+      apply(#(e.Let(label, value, exp), Nil), stack)
   }
 }
 
-type NativeStack {
+type NativeStack(m) {
   DoBody(String)
   DoFunc
-  DoArg(e.Expression)
+  DoArg(e.Node(m))
   DoValue(String)
-  DoThen(String, e.Expression)
+  DoThen(String, e.Node(m))
 }
 
 fn step(node, stack) {
@@ -401,17 +403,17 @@ fn do_language_to_expression(term, k) {
     }
     [v.Tagged("Lambda", v.Str(label)), ..rest] -> {
       use body, rest <- do_language_to_expression(rest)
-      k(e.Lambda(label, body), rest)
+      k(e.Lambda(label, #(body, Nil)), rest)
     }
     [v.Tagged("Apply", v.Record([])), ..rest] -> {
       use func, rest <- do_language_to_expression(rest)
       use arg, rest <- do_language_to_expression(rest)
-      k(e.Apply(func, arg), rest)
+      k(e.Apply(#(func, Nil), #(arg, Nil)), rest)
     }
     [v.Tagged("Let", v.Str(label)), ..rest] -> {
       use value, rest <- do_language_to_expression(rest)
       use then, rest <- do_language_to_expression(rest)
-      k(e.Let(label, value, then), rest)
+      k(e.Let(label, #(value, Nil), #(then, Nil)), rest)
     }
 
     [v.Tagged("Integer", v.Integer(value)), ..rest] -> k(e.Integer(value), rest)
@@ -450,7 +452,7 @@ pub fn decode_uri_component() {
 
 pub fn do_decode_uri_component(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(state.V(v.Str(global.decode_uri_component(unencoded))), rev, env, k))
+  Ok(#(state.V(v.Str(global.decode_uri_component(unencoded))), env, k))
 }
 
 pub fn encode_uri() {
@@ -460,7 +462,7 @@ pub fn encode_uri() {
 
 pub fn do_encode_uri(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(state.V(v.Str(global.encode_uri(unencoded))), rev, env, k))
+  Ok(#(state.V(v.Str(global.encode_uri(unencoded))), env, k))
 }
 
 pub fn base64_encode() {
@@ -476,7 +478,7 @@ pub fn do_base64_encode(term, rev, env, k) {
       "\r\n",
       "",
     ))
-  Ok(#(state.V(value), rev, env, k))
+  Ok(#(state.V(value), env, k))
 }
 
 pub fn binary_from_integers() {
@@ -491,5 +493,5 @@ pub fn do_binary_from_integers(term, rev, env, k) {
       let assert v.Integer(i) = el
       <<i, acc:bits>>
     })
-  Ok(#(state.V(v.Binary(content)), rev, env, k))
+  Ok(#(state.V(v.Binary(content)), env, k))
 }

@@ -6,20 +6,21 @@ import eyg/runtime/interpreter/state
 
 // loop and eval go to runner as you'd build a new one
 pub fn execute(exp, env, h) {
-  loop(state.step(state.E(exp), [], env, state.Empty(h)))
+  loop(state.step(state.E(exp), env, state.Empty(h)))
 }
 
 pub fn resume(f, args, env, h) {
-  let k =
-    list.fold_right(args, state.Empty(h), fn(k, a) {
-      state.Stack(state.CallWith(a, [], env), k)
-    })
-  loop(state.step(state.V(f), [], env, k))
+  todo as "resume"
+  // let k =
+  //   list.fold_right(args, state.Empty(h), fn(k, a) {
+  //     state.Stack(state.CallWith(a, [], env), k)
+  //   })
+  // loop(state.step(state.V(f), [], env, k))
 }
 
 pub fn loop(next) {
   case next {
-    state.Loop(c, rev, e, k) -> loop(state.step(c, rev, e, k))
+    state.Loop(c, e, k) -> loop(state.step(c, e, k))
     state.Break(result) -> result
   }
 }
@@ -28,9 +29,9 @@ pub fn loop(next) {
 // To eval code that may be async needs to return a promise of a result
 pub fn await(ret) {
   case ret {
-    Error(#(break.UnhandledEffect("Await", v.Promise(p)), rev, env, k)) -> {
+    Error(#(break.UnhandledEffect("Await", v.Promise(p)), meta, env, k)) -> {
       use return <- promise.await(p)
-      await(loop(state.step(state.V(return), rev, env, k)))
+      await(loop(state.step(state.V(return), env, k)))
     }
     other -> promise.resolve(other)
   }

@@ -16,14 +16,14 @@ pub fn pop() {
   #(type_, state.Arity1(do_pop))
 }
 
-fn do_pop(term, rev, env, k) {
+fn do_pop(term, meta, env, k) {
   use elements <- result.then(cast.as_list(term))
   let return = case elements {
     [] -> v.error(v.unit)
     [head, ..tail] ->
       v.ok(v.Record([#("head", head), #("tail", v.LinkedList(tail))]))
   }
-  Ok(#(state.V(return), rev, env, k))
+  Ok(#(state.V(return), env, k))
 }
 
 pub fn fold() {
@@ -48,29 +48,30 @@ pub fn fold() {
   #(type_, state.Arity3(fold_impl))
 }
 
-pub fn fold_impl(list, initial, func, rev, env, k) {
+pub fn fold_impl(list, initial, func, meta, env, k) {
   use elements <- result.then(cast.as_list(list))
-  do_fold(elements, initial, func, rev, env, k)
+  do_fold(elements, initial, func, meta, env, k)
 }
 
-pub fn do_fold(elements, state, f, rev, env, k) {
+pub fn do_fold(elements, state, f, meta, env, k) {
   case elements {
-    [] -> Ok(#(state.V(state), rev, env, k))
+    [] -> Ok(#(state.V(state), env, k))
     [element, ..rest] -> {
       state.call(
         f,
         element,
-        rev,
+        meta,
         env,
         state.Stack(
-          state.CallWith(state, rev, env),
+          state.CallWith(state, env),
+          meta,
           state.Stack(
             state.Apply(
               v.Partial(v.Builtin("list_fold"), [v.LinkedList(rest)]),
-              rev,
               env,
             ),
-            state.Stack(state.CallWith(f, rev, env), k),
+            meta,
+            state.Stack(state.CallWith(f, env), meta, k),
           ),
         ),
       )

@@ -4,6 +4,7 @@ import plinth/node/process
 import simplifile
 import eygir/annotated
 import eygir/decode
+import eygir/annotated as e
 import platforms/shell
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -33,7 +34,7 @@ pub fn do_main(args) {
   // recipe is an app, service worker makes js necessay, query string params are also only interesting if rendered with JS
 
   case args {
-    ["exec", ..] -> shell.run(source)
+    ["exec", ..] -> shell.run(e.add_meta(source, Nil))
     ["infer"] -> {
       let #(exp, bindings) = infer.infer(source, t.Empty, 0, infer.new_state())
       let acc = annotated.strip_annotation(exp).1

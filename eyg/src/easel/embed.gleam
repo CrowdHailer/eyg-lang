@@ -13,6 +13,7 @@ import gleam/http/request
 import gleam/http/response
 import gleam/fetch
 import eygir/expression as e
+import eygir/annotated as e2
 import eygir/encode
 import eygir/decode
 import eyg/runtime/interpreter/runner as r
@@ -66,7 +67,7 @@ pub type Path =
   List(Int)
 
 pub type Edit =
-  #(e.Expression, Path, Bool)
+  #(e2.Node(Nil), Path, Bool)
 
 pub type History =
   #(List(Edit), List(Edit))
@@ -74,14 +75,14 @@ pub type History =
 pub type Embed {
   Embed(
     mode: Mode,
-    yanked: Option(e.Expression),
-    env: #(state.Env, t.Substitutions, Int, tenv.Env),
-    source: e.Expression,
+    yanked: Option(e2.Node(Nil)),
+    env: #(state.Env(Nil), t.Substitutions, Int, tenv.Env),
+    source: e2.Node(Nil),
     history: History,
     auto_infer: Bool,
     inferred: Option(tree.State),
     // not actually used but I think useful for clearing run value
-    returned: Option(state.Return),
+    returned: Option(state.Return(Nil)),
     rendered: #(List(print.Rendered), dict.Dict(String, Int)),
     focus: Option(List(Int)),
   )
@@ -90,6 +91,7 @@ pub type Embed {
 // infer continuation
 fn do_infer(source, cache) {
   let #(_env, sub, next, tenv) = cache
+  let source = e2.drop_annotation(source)
   tree.infer_env(source, t.Var(-10), t.Var(-11), tenv, sub, next).0
 }
 
@@ -132,6 +134,7 @@ pub fn handle_click(root, event) {
         let inferred =
           Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
+        let source = e2.add_meta(source, Nil)
         let rendered = print.print(source, Some([]), False, inferred)
         let assert Ok(start) = dict.get(rendered.1, print.path_to_string([]))
 
@@ -355,11 +358,12 @@ pub fn snippet(root) {
 
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let assert Ok(v.Closure(_, source, _e2, rev)) =
-        r.execute(source, stdlib.env(), dict.new())
-      let assert Ok(tenv) = dict.get(envs, rev)
-      let inferred =
-        Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
+      let assert Ok(v.Closure(_, source, _e2)) =
+        r.execute(e2.add_meta(source, Nil), stdlib.env(), dict.new())
+      // TODO reinstate
+      // let assert Ok(tenv) = dict.get(envs, rev)
+      let inferred = None
+      // Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
       let rendered = print.print(source, Some([]), False, inferred)
       let assert Ok(start) = dict.get(rendered.1, print.path_to_string([]))
@@ -368,7 +372,7 @@ pub fn snippet(root) {
         Embed(
           mode: Command(""),
           yanked: None,
-          env: #(todo("env not needed"), sub, next, tenv),
+          env: #(todo("env not needed"), sub, next, todo),
           source: source,
           history: #([], []),
           auto_infer: True,
@@ -396,20 +400,22 @@ pub fn init(json) {
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
   let #(env, source, sub, next, tenv) = case
-    r.execute(source, stdlib.env(), dict.new())
+    r.execute(e2.add_meta(source, Nil), stdlib.env(), dict.new())
   {
-    Ok(v.Closure(_, source, env, rev)) -> {
-      let tenv = case dict.get(envs, rev) {
+    Ok(v.Closure(_, source, env)) -> {
+      let tenv = case
+        dict.get(envs, todo as "push nils gives no useful value")
+      {
         Ok(tenv) -> tenv
         Error(Nil) -> {
-          io.debug(#("no env foud at rev", rev))
+          io.debug(#("no env foud at rev"))
           dict.new()
         }
       }
 
       #(stdlib.env(), source, sub, next, tenv)
     }
-    _ -> #(env, source, dict.new(), 0, dict.new())
+    _ -> #(env, e2.add_meta(source, Nil), dict.new(), 0, dict.new())
   }
   let cache = #(env, sub, next, tenv)
   // can keep inferred in history
@@ -483,7 +489,9 @@ pub fn insert_text(state: Embed, data, start, end) {
                 ))
                 io.debug(writable)
                 let content =
-                  bit_array.from_string(encode.to_json(state.source))
+                  bit_array.from_string(
+                    encode.to_json({ e2.drop_annotation(state.source) }),
+                  )
                 // let blob = blob.new(content, "application/json")
                 use _ <- promise.await(file_system.write(writable, content))
                 use _ <- promise.await(file_system.close(writable))
@@ -499,7 +507,7 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start, [])
         }
         "q" -> {
-          let dump = encode.to_json(state.source)
+          let dump = encode.to_json({ e2.drop_annotation(state.source) })
           // io.print(dump)
           let request =
             request.new()

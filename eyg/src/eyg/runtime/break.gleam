@@ -1,13 +1,13 @@
 import gleam/string
 import eyg/runtime/value.{type Value}
 
-pub type Reason(c) {
-  NotAFunction(Value(c))
+pub type Reason(m, c) {
+  NotAFunction(Value(m, c))
   UndefinedVariable(String)
   Vacant(comment: String)
-  NoMatch(term: Value(c))
-  UnhandledEffect(String, Value(c))
-  IncorrectTerm(expected: String, got: Value(c))
+  NoMatch(term: Value(m, c))
+  UnhandledEffect(String, Value(m, c))
+  IncorrectTerm(expected: String, got: Value(m, c))
   MissingField(String)
 }
 

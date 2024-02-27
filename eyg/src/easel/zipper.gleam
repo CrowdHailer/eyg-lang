@@ -5,23 +5,24 @@ import eygir/expression as e
 pub type Zipper =
   #(e.Expression, fn(e.Expression) -> e.Expression)
 
-pub fn at(expression, path) -> Result(Zipper, Nil) {
+pub fn at(expression, path) {
   do_zipper(expression, path, [])
 }
 
 fn do_zipper(expression, path, acc) {
-  case path {
-    [] ->
-      Ok(
-        #(expression, fn(new) {
-          list.fold(acc, new, fn(element, build) { build(element) })
-        }),
-      )
-    [index, ..path] -> {
-      use #(child, rebuild) <- result.then(child(expression, index))
-      do_zipper(child, path, [rebuild, ..acc])
-    }
-  }
+  todo as "zipper"
+  // case path {
+  //   [] ->
+  //     Ok(
+  //       #(expression, fn(new) {
+  //         list.fold(acc, new, fn(element, build) { build(element) })
+  //       }),
+  //     )
+  //   [index, ..path] -> {
+  //     use #(child, rebuild) <- result.then(child(expression, index))
+  //     do_zipper(child, path, [rebuild, ..acc])
+  //   }
+  // }
 }
 
 fn child(expression, index) {

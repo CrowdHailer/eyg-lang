@@ -18,7 +18,7 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 import plinth/javascript/console
 import eyg/runtime/cast
-import eygir/expression as e
+import eygir/annotated as e
 
 fn handlers() {
   effect.init()
@@ -49,6 +49,7 @@ pub fn do_run(raw) -> Nil {
   case decode.from_json(global.decode_uri(raw)) {
     Ok(continuation) -> {
       let env = state.Env(scope: [], builtins: stdlib.lib().1)
+      let continuation = e.add_meta(continuation, Nil)
       let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
       promise.map(
         r.await(r.resume(continuation, [v.unit], env, handlers().1)),
@@ -90,6 +91,7 @@ fn old_run() {
       case decode.from_json(global.decode_uri(document.inner_text(el))) {
         Ok(f) -> {
           let env = stdlib.env()
+          let f = e.add_meta(f, Nil)
           let assert Ok(f) = r.execute(f, env, handlers().1)
           let ret = r.resume(f, [v.unit], env, handlers().1)
           case ret {
@@ -215,6 +217,7 @@ fn on_click() {
       let arg = global.decode_uri(arg)
       let assert Ok(arg) = decode.from_json(arg)
 
+      let arg = e.add_meta(arg, Nil)
       do_handle(arg, handle, env, extrinsic)
     })
     Ok(v.unit)
@@ -226,7 +229,7 @@ fn on_keydown() {
     let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
-    document.on_keydown(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
+    document.on_keydown(fn(k) { r.resume(handle, [v.Str(k)], env, extrinsic) })
     Ok(v.unit)
   })
 }
@@ -236,7 +239,7 @@ fn on_change() {
     let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
-    document.on_change(fn(k) { do_handle(e.Str(k), handle, env, extrinsic) })
+    document.on_change(fn(k) { r.resume(handle, [v.Str(k)], env, extrinsic) })
     Ok(v.unit)
   })
 }

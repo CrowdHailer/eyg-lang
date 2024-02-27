@@ -5,8 +5,6 @@ import gleam/string
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import plinth/browser/document
-import plinth/browser/selection
-import plinth/browser/range
 import plinth/browser/element
 import eygir/annotated
 import eyg/parse/lexer
@@ -15,9 +13,11 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/type_/binding
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/compile
+import eyg/runtime/interpreter/live
 
 pub type View {
   Inference
+  Interpret
   Compilation
 }
 
@@ -87,14 +87,13 @@ pub fn apply_span(lines, span, thing, acc) {
 
 pub fn effect_lines(spans, acc) {
   let assert Ok(pairs) = list.strict_zip(spans, acc)
-  let effects =
-    list.filter_map(pairs, fn(p) {
-      let #(span, #(_, _, effect)) = p
-      case effect {
-        t.Empty -> Error(Nil)
-        _ -> Ok(#(span, effect))
-      }
-    })
+  list.filter_map(pairs, fn(p) {
+    let #(span, #(_, _, effect)) = p
+    case effect {
+      t.Empty -> Error(Nil)
+      _ -> Ok(#(span, effect))
+    }
+  })
 }
 
 pub fn highlights(state, spans, acc) {
@@ -152,22 +151,27 @@ pub fn information(state) {
   }
 }
 
+pub fn interpret(state) {
+  case parse(source(state)) {
+    Ok(tree) -> {
+      let #(_, assignments) = live.execute(tree)
+      io.debug(#("===", assignments))
+      let output =
+        list.fold(
+          assignments,
+          list.map(lines(source(state)), fn(x) { #(x, []) }),
+          fn(lines, sp) { apply_span(lines, sp.2, #(sp.0, sp.1), []) },
+        )
+      io.debug(#("out", output))
+      Ok(output)
+    }
+    Error(reason) -> Error(reason)
+  }
+}
+
 pub fn compile(state) {
   case parse(source(state)) {
     Ok(tree) -> {
-      // let #(tree, spans) = annotated.strip_annotation(tree)
-      // let #(exp, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
-
-      // let output =
-      //   annotated.map_annotation(exp, fn(types) {
-      //     let #(_, _, effect, _) = types
-      //     binding.resolve(effect, bindings)
-      //   })
-      //   |> ir.alpha
-      //   |> ir.k()
-      //   |> ir.unnest
-      //   |> annotated.drop_annotation()
-      //   |> js.render()
       Ok(compile.to_js(tree))
     }
     Error(reason) -> Error(reason)

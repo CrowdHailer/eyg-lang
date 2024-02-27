@@ -4,6 +4,7 @@ import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eyg/analysis/inference
 import eygir/expression as e
+import eygir/annotated as e2
 import harness/stdlib
 import gleeunit/should
 
@@ -15,6 +16,7 @@ pub fn add_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(3)))
 }

@@ -5,6 +5,7 @@ import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eyg/runtime/capture
 import eygir/expression as e
+import eygir/annotated as e2
 import harness/stdlib
 import harness/ffi/core.{expression_to_language}
 import gleeunit/should
@@ -19,6 +20,7 @@ pub fn unequal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.false))
 }
@@ -33,6 +35,7 @@ pub fn equal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.true))
 }
@@ -53,6 +56,7 @@ pub fn debug_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   // value is serialized as binary, hence the quotes
   |> should.equal(Ok(v.Str("\"foo\"")))
@@ -67,6 +71,7 @@ pub fn simple_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Str("foo")))
 }
@@ -91,6 +96,7 @@ pub fn no_recursive_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(1)))
 }
@@ -145,12 +151,14 @@ pub fn recursive_sum_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(4)))
 }
 
 pub fn eval_test() {
   let value = e.Str("foo")
+  let value = e2.add_meta(value, Nil)
 
   let prog =
     value
@@ -167,12 +175,16 @@ pub fn eval_test() {
   // inference.type_of(sub, [])
   // |> should.equal(Ok(t.boolean))
 
+  let prog = e2.add_meta(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("foo"))))
 }
 
 pub fn language_to_expression_test() {
-  core.expression_to_language(e.Apply(e.Variable("x"), e.Integer(1)))
+  e.Apply(e.Variable("x"), e.Integer(1))
+  |> e2.add_meta(Nil)
+  |> core.expression_to_language()
   |> core.language_to_expression()
-  |> should.equal(Ok(e.Apply(e.Variable("x"), e.Integer(1))))
+  |> should.be_ok
+  |> should.equal(e2.add_meta(e.Apply(e.Variable("x"), e.Integer(1)), Nil))
 }
