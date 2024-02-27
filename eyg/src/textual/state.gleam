@@ -154,15 +154,17 @@ pub fn information(state) {
 pub fn interpret(state) {
   case parse(source(state)) {
     Ok(tree) -> {
-      let #(_, assignments) = live.execute(tree)
-      io.debug(#("===", assignments))
+      let #(r, assignments) = live.execute(tree)
+      let lines = list.map(lines(source(state)), fn(x) { #(x, []) })
       let output =
-        list.fold(
-          assignments,
-          list.map(lines(source(state)), fn(x) { #(x, []) }),
-          fn(lines, sp) { apply_span(lines, sp.2, #(sp.0, sp.1), []) },
-        )
-      io.debug(#("out", output))
+        list.fold(assignments, lines, fn(lines, sp) {
+          apply_span(lines, sp.2, Ok(#(sp.0, sp.1)), [])
+        })
+      let output = case r {
+        Ok(_) -> output
+        Error(#(reason, span, _env, _stack)) ->
+          apply_span(output, span, Error(reason), [])
+      }
       Ok(output)
     }
     Error(reason) -> Error(reason)

@@ -10,6 +10,7 @@ import lustre/element/html.{div, p, pre, span, textarea}
 import lustre/event.{on_click, on_input}
 import eygir/tree
 import eyg/runtime/value as v
+import eyg/runtime/break
 import eyg/analysis/type_/binding/debug
 import textual/state.{
   Compilation, Highlight, Inference, Input, Interpret, Switch,
@@ -178,19 +179,20 @@ fn render_interpretation(s) {
       ]),
     ]),
     div([class("cover expand")], [
-      // p([], [text("Interpretation")]),
       div([], case result {
         Ok(assignments) -> {
-          io.debug(assignments)
           list.map(assignments, fn(a) {
             let #(_line, assignments) = a
             let t =
               list.filter_map(assignments, fn(a) {
-                let #(k, value) = a
-                case k, value {
-                  "$", _ -> Error(Nil)
-                  _, v.Closure(_, _, _) -> Error(Nil)
-                  _, _ -> Ok(string.concat([k, " = ", v.debug(value)]))
+                case a {
+                  Ok(#(k, value)) ->
+                    case k, value {
+                      "$", _ -> Error(Nil)
+                      _, v.Closure(_, _, _) -> Error(Nil)
+                      _, _ -> Ok(string.concat([k, " = ", v.debug(value)]))
+                    }
+                  Error(reason) -> Ok(break.reason_to_string(reason))
                 }
               })
               |> list.intersperse(", ")
