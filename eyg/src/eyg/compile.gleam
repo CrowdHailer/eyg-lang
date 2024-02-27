@@ -33,15 +33,20 @@ fn monadic(node) {
   case exp {
     a.Let(x, #(value, eff), then) ->
       case eff {
-        t.Empty -> #(a.Let(x, #(value, t.Empty), monadic(then)), meta)
+        t.Empty -> #(a.Let(x, monadic(#(value, t.Empty)), monadic(then)), meta)
         _ -> #(
           a.Apply(
-            #(a.Apply(#(a.Builtin("bind"), t.Empty), #(value, eff)), t.Empty),
+            #(
+              a.Apply(#(a.Builtin("bind"), t.Empty), monadic(#(value, eff))),
+              t.Empty,
+            ),
             #(a.Lambda(x, monadic(then)), t.Empty),
           ),
           t.Empty,
         )
       }
+    a.Apply(func, arg) -> #(a.Apply(monadic(func), monadic(arg)), meta)
+    a.Lambda(x, body) -> #(a.Lambda(x, monadic(body)), meta)
     _ -> #(exp, meta)
   }
 }

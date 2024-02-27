@@ -16,7 +16,8 @@ pub fn render(exp) {
   let program = do_render(exp)
   let program = case list.contains(used, "bind") {
     False -> program
-    True -> string.concat(["run(", program, ")"])
+    // brackets to handle let statements, render with one extra indent
+    True -> string.concat(["run({", program, "})"])
   }
   [program, ..list.map(used, render_builtin)]
   |> list.reverse
@@ -203,7 +204,7 @@ let run = (m) => {
     m = m.k(extrinsic[m.label](m.value));
   }
   return m;
-};"
+}"
     "handle" ->
       "let handle = (label) => (handler) => (exec) => {
   return do_handle(label, handler, exec({}));
@@ -214,7 +215,7 @@ let do_handle = (label, handler, m) => {
   let k = (x) => do_handle(label, handler, m.k(x));
   if (m.label == label) return handler(m.value)(k);
   return new Eff(m.label, m.value, k);
-};"
+}"
     "int_add" -> "let int_add = (x) => (y) => x + y"
     "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
     "int_multiply" -> "let int_multiply = (x) => (y) => x * y"
