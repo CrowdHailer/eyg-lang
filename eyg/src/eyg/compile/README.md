@@ -6,79 +6,20 @@ Compilation path follows two main resources.
 - [Generalized Evidence Passing for Effect Handler](https://www.microsoft.com/en-us/research/uploads/prod/2021/08/genev-icfp21.pdf)
   - Long version (https://www.microsoft.com/en-us/research/uploads/prod/2021/03/multip-tr-v4.pdf)
 
+The current implementation uses a `js` version of a monad, something is an instance of an `Eff` or not.
+If not is is assumed a value. This is similar to thinking of value or `null` being an `Option`.
 
-```
-(f) -> {
-  let x = 1
-  let z = f("")
-  let y = 1
-  perform Log(z)
-  
-}
-```
+This allows the transpiled JS to look as similar as possible to the original source.
+There is no lambda lifting or closure conversion and there is no global `yielding` variable.
+These are not necessary when relying on the dynamism of JS.
 
-```js
-const evv = []
-const yielding = false
+Such an implementation is ineffecient as it always bubbles the effect, there is no evidence passing.
+A future version could add the evidence vector and other optimisation, however:
+- readability would be effected.
+- performance should not be sort before measurement.
+- A fast interpreter with flat AST may be faster and simpler.
 
-((_$0) => {
-  let x$1 = 1;
-  let z$3 = f("")
+It's probably worth considering what compilation to tiny go or an arduino interpreter looks like.
 
-  // join point j10
-  let j10 = (z$3) => {  
-    let y$7 = 1;
-    return perform("Log", z$3);
-  }
-  return yielding ? push(j10) : j$10(z$3)
-})
-```
-
-```js
-let evv = []
-let yielding;
-
-((_$0) => {
-  let x$1 = 1;
-  return may_lift(f(""), (z$3) => {  
-    let y$7 = 1;
-    return lift("Log", z$3);
-  }) 
-})
-
-perform("Log", x, () => {
-  
-})
-
-// Is there a way to check for tail resumption if handler is passed as var and not AST?
-// Monad or pure by returning an `{$E "label"} object
-// TODO merge bubbled list when effect raised in resumption
-// Not tail resumptive
-function handle(label, handler, exec) {
-  evv = [{marker: label, handler}]
-  let value = exec({})
-  while (yielding && yielding.marker == label) {
-    value = yielding.op(resumable(yielding.bubbled))
-  }
-  return value
-}
-
-function lift(label, value) {
-  let marker = label
-  let op = "from evv"
-  let bubbled = []
-  yielding = true
-}
-
-function may_lift(value, then) {
-  if yielding {
-    yielding.bubbling = [then, evv];
-  } else {
-    return then(value)
-  }
-}
-```
-TODO test the library
-TODO add builtins from module
-Is it tail resumptive
-Did I build a pure yield version
+- Is there a way to check for tail resumption if handler is passed as var and not AST? 
+  This is needed if trying to optimise away bubbling in the general case
