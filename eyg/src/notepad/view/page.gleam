@@ -10,13 +10,18 @@ import lustre/event
 import notepad/state
 import notepad/view/helpers
 import morph/editable as e
+import notepad/view/code
+import morph/transform
 
 pub fn render(state: state.State) {
   h.div([a.class("vstack bg-orange-3 max-w-2xl")], [
     note(state.content, state.TextInput),
+    editor(),
     book(),
   ])
 }
+
+// TODO show that you can print more an more tree, limit on depth or total size
 
 // a separate component is possible if textarea is absolute,
 // a sized container is needed to grow into but it get rids of margin at bottom or container
@@ -40,12 +45,68 @@ pub fn note(content, on_input) {
   ])
 }
 
+fn push_render(m, zoom) {
+  case zoom {
+    [] -> m
+    [transform.CallFn(args), ..rest] -> {
+      push_render(code.render_call(m, code.render_args(args)), rest)
+    }
+    [transform.ListItem(pre, post), ..rest] -> {
+      let pre = list.map(pre, code.expression)
+      let post = list.map(post, code.expression)
+      push_render(code.render_list(list.flatten([pre, [m], post])), rest)
+    }
+    [transform.BlockTail(assigns), ..rest] -> {
+      let lines =
+        list.map(assigns, fn(a: #(String, e.Expression)) {
+          code.assign(a.0, a.1)
+        })
+        |> list.append([m])
+      case rest {
+        // escape early to not wrap block
+        [] -> code.Multi([], code.to_fat_lines(lines), [])
+      }
+    }
+  }
+}
+
+fn print(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    transform.Exp(exp) -> {
+      let core = code.expression(exp)
+      let highlighted = case core {
+        code.Single(spans) ->
+          code.Single([h.span([a.class("bg-green-3")], spans)])
+      }
+      push_render(highlighted, zoom)
+      |> code.to_fat_line
+    }
+  }
+}
+
+pub fn editor() {
+  let source =
+    e.Block(
+      [#("x", e.Integer(5))],
+      e.List([e.Call(e.Variable("f"), [e.String("hello")])], None),
+    )
+  let zip =
+    transform.focus_at(source, [1, 0, 0], [])
+    |> io.debug
+
+  h.div([a.class("bg-white rounded cover font-mono whitespace-pre border-2")], [
+    // nested to ignore effect from cover
+    h.div([], [print(zip)]),
+  ])
+}
+
 pub fn book() {
   h.div([a.class("bg-white rounded cover font-mono whitespace-pre")], [
     // nested to ignore effect from cover
     h.div(
       [],
-      top(e.Block(
+      code.top(e.Block(
         [
           #("my_int", e.Integer(2)),
           #("my_string", e.String("hello")),
@@ -115,201 +176,4 @@ pub fn book() {
       )),
     ),
   ])
-}
-
-fn assign(label, value) {
-  case expression(value) {
-    Single(spans) ->
-      Single([
-        h.span([], [text("let ")]),
-        h.span([a.class("text-blue-4")], [text(label)]),
-        h.span([], [text(" = ")]),
-        ..spans
-      ])
-    Multi(pre, inner, post) -> {
-      let pre = [
-        h.span([], [text("let ")]),
-        h.span([a.class("text-blue-4")], [text(label)]),
-        h.span([], [text(" = ")]),
-        ..pre
-      ]
-      Multi(pre, inner, post)
-    }
-  }
-}
-
-pub type Multiline(a) {
-  Multi(
-    List(element.Element(a)),
-    List(element.Element(a)),
-    List(element.Element(a)),
-  )
-  Single(List(element.Element(a)))
-}
-
-fn indent(inner) {
-  h.div([a.style([#("padding-left", "2ch")])], inner)
-}
-
-// wrap each line thing in it's own div
-fn to_fat_line(exp) {
-  case exp {
-    Single(spans) -> h.div([], spans)
-    Multi(pre, inner, post) ->
-      h.div([], [h.div([], pre), indent(inner), h.div([], post)])
-  }
-}
-
-fn to_fat_lines(lines) {
-  list.map(lines, to_fat_line)
-}
-
-fn top(code) {
-  case code {
-    e.Block(assigns, tail) -> block_content(assigns, tail)
-    exp -> [expression(exp)]
-  }
-  |> to_fat_lines()
-}
-
-fn block_content(assigns, tail) {
-  list.map(assigns, fn(a: #(String, e.Expression)) { assign(a.0, a.1) })
-  |> list.append([expression(tail)])
-}
-
-fn pattern(p) {
-  case p {
-    e.Bind(x) -> [h.span([], [text(x)])]
-    e.Destructure(fields) -> {
-      list.map(fields, fn(f) {
-        let #(field, var) = f
-        [
-          h.span([], [text(field)]),
-          h.span([], [text(": ")]),
-          h.span([], [text(var)]),
-        ]
-      })
-      |> list.intersperse([h.span([], [text(", ")])])
-      |> list.flatten
-      |> list.append([text("}")])
-      |> list.append([text("{")], _)
-    }
-  }
-}
-
-fn patterns(ps) {
-  list.map(ps, pattern)
-  |> list.intersperse([text(", ")])
-  |> list.flatten
-  |> list.append([text(")")])
-  |> list.append([text("(")], _)
-}
-
-// join function
-fn assume_single(m) {
-  case m {
-    Single(spans) -> Ok(spans)
-    _ -> Error(Nil)
-  }
-}
-
-fn postpend_span(m, span) {
-  case m {
-    Single(spans) -> Single(list.append(spans, [span]))
-    Multi(pre, inner, post) -> Multi(pre, inner, list.append(post, [span]))
-  }
-}
-
-fn expression(exp) {
-  case exp {
-    e.Block(assigns, tail) ->
-      Multi(
-        [h.span([], [text("{")])],
-        to_fat_lines(block_content(assigns, tail)),
-        [h.span([], [text("}")])],
-      )
-    e.Call(f, args) -> {
-      let assert [last, ..rest] = list.reverse(args)
-      let last = expression(last)
-      let rest = list.map(rest, expression)
-      let m = case list.try_map(rest, assume_single) {
-        Ok(spanss) ->
-          list.fold(spanss, last, fn(tail, spans) {
-            case tail {
-              Single(old) -> Single(list.flatten([spans, [text(", ")], old]))
-              Multi(pre, inner, post) ->
-                Multi(list.flatten([spans, [text(", ")], pre]), inner, post)
-            }
-          })
-
-        Error(Nil) -> {
-          let args =
-            list.reverse([last, ..rest])
-            |> list.map(postpend_span(_, text(",")))
-            |> to_fat_lines
-            |> Multi([], _, [])
-        }
-      }
-      let assert Single(fspans) = expression(f)
-      case m {
-        Single(spans) ->
-          Single(list.flatten([fspans, [text("(")], spans, [text(")")]]))
-        Multi(pre, inner, post) ->
-          Multi(
-            list.flatten([fspans, [text("(")], pre]),
-            inner,
-            list.append(post, [text(")")]),
-          )
-      }
-    }
-    // defninetly multiline don't wrap in double curlies
-    e.Function(args, e.Block(assigns, tail)) ->
-      Multi(
-        [h.span([], [text("("), text("arg"), text(") -> {")])],
-        to_fat_lines(block_content(assigns, tail)),
-        [h.span([], [text("}")])],
-      )
-    e.Function(args, body) -> {
-      let args = patterns(args)
-      case expression(body) {
-        Single(spans) ->
-          Single(list.flatten([args, [text(" -> { ")], spans, [text(" }")]]))
-        Multi(pre, inner, post) ->
-          Multi(
-            list.flatten([args, [text(" -> {")], pre]),
-            inner,
-            list.append(post, [text("}")]),
-          )
-      }
-    }
-    e.Variable(x) -> Single([h.span([a.class("text-gray-700")], [text(x)])])
-    e.List([], tail) -> Single([text("[]")])
-    e.List(items, tail) -> {
-      list.map(items, expression)
-      |> list.map(to_list_item)
-      |> Multi([text("[")], _, [text("]")])
-    }
-    e.Integer(v) ->
-      Single([h.span([a.class("text-purple-2")], [text(int.to_string(v))])])
-    e.String(v) ->
-      Single([
-        h.span([a.class("text-green-4")], [text("\""), text(v), text("\"")]),
-      ])
-
-    _ -> {
-      io.debug(exp)
-      panic as "exp"
-    }
-  }
-}
-
-fn to_list_item(m) {
-  case m {
-    Single(spans) -> Single(list.append(spans, [text(",")]))
-    Multi(pre, inner, post) -> {
-      let post = list.append(post, [text(",")])
-      Multi(pre, inner, post)
-    }
-  }
-  |> to_fat_line
 }
