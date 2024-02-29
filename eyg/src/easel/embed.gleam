@@ -37,6 +37,8 @@ import plinth/browser/file
 import old_plinth/browser/window as old_window
 import old_plinth/browser/document
 import platforms/browser
+import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/isomorphic as tj
 
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup
@@ -125,13 +127,17 @@ pub fn handle_click(root, event) {
         // let #(Ok(v.Closure(_, source, _e2, rev)), env) =
         //   r.resumable(source, stdlib.env(), None)
         // let assert Ok(tenv) = dict.get(envs, rev)
+        io.debug("inferring")
+        j.infer(source, tj.Empty, 0, j.new_state())
+        io.debug("inferred")
+
         let env = stdlib.env()
         let sub = dict.new()
         let next = 0
         let tenv = dict.new()
         let cache = #(env, sub, next, tenv)
-        let inferred =
-          Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
+        let inferred = None
+        //   Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
         let rendered = print.print(source, Some([]), False, inferred)
         let assert Ok(start) = dict.get(rendered.1, print.path_to_string([]))
