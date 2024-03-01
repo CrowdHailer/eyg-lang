@@ -116,6 +116,15 @@ pub fn render_args(args) {
   let assert [last, ..rest] = list.reverse(args)
   let last = expression(last)
   let rest = list.map(rest, expression)
+  render_args_rev(last, rest)
+}
+
+pub fn render_args_e(args) {
+  let assert [last, ..rest] = list.reverse(args)
+  render_args_rev(last, rest)
+}
+
+fn render_args_rev(last, rest) {
   let m = case list.try_map(rest, assume_single) {
     Ok(spanss) ->
       list.fold(spanss, last, fn(tail, spans) {

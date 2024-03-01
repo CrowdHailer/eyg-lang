@@ -16,7 +16,7 @@ import morph/transform
 pub fn render(state: state.State) {
   h.div([a.class("vstack bg-orange-3 max-w-2xl")], [
     note(state.content, state.TextInput),
-    editor(),
+    editor(state.zip),
     book(),
   ])
 }
@@ -51,6 +51,16 @@ fn push_render(m, zoom) {
     [transform.CallFn(args), ..rest] -> {
       push_render(code.render_call(m, code.render_args(args)), rest)
     }
+    [transform.CallArg(f, pre, post), ..rest] -> {
+      let pre = list.map(pre, code.expression)
+      let post = list.map(post, code.expression)
+      let args = list.flatten([pre, [m], post])
+      push_render(
+        code.render_call(code.expression(f), code.render_args_e(args)),
+        rest,
+      )
+    }
+
     [transform.ListItem(pre, post), ..rest] -> {
       let pre = list.map(pre, code.expression)
       let post = list.map(post, code.expression)
@@ -78,6 +88,10 @@ fn print(zip) {
       let highlighted = case core {
         code.Single(spans) ->
           code.Single([h.span([a.class("bg-green-3")], spans)])
+        code.Multi(pre, inner, post) -> {
+          // TODO better border
+          code.Multi(pre, [h.div([a.class("bg-green-3")], inner)], post)
+        }
       }
       push_render(highlighted, zoom)
       |> code.to_fat_line
@@ -85,19 +99,12 @@ fn print(zip) {
   }
 }
 
-pub fn editor() {
-  let source =
-    e.Block(
-      [#("x", e.Integer(5))],
-      e.List([e.Call(e.Variable("f"), [e.String("hello")])], None),
-    )
-  let zip =
-    transform.focus_at(source, [1, 0, 0], [])
-    |> io.debug
-
+pub fn editor(zip) {
   h.div([a.class("bg-white rounded cover font-mono whitespace-pre border-2")], [
     // nested to ignore effect from cover
-    h.div([], [print(zip)]),
+    h.div([a.attribute("tabindex", "0"), event.on_keydown(state.KeyDown)], [
+      print(zip),
+    ]),
   ])
 }
 

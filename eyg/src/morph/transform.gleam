@@ -33,7 +33,8 @@ fn split_around(items, at) {
 
 fn do_split_around(items, left, acc) {
   case items, left {
-    [item, ..after], 0 -> Ok(#(list.reverse(acc), item, after))
+    // pre is left reversed
+    [item, ..after], 0 -> Ok(#(acc, item, after))
     [item, ..after], i -> do_split_around(after, i - i, [item, ..acc])
   }
 }
@@ -95,6 +96,9 @@ pub fn focus_at(ast, path, acc) {
 //   }
 //  }
 
+pub type Zip =
+  #(Focus, List(Break))
+
 pub type Focus {
   Exp(e.Expression)
   LetAssign(
@@ -155,7 +159,7 @@ pub type Break {
 }
 
 // ok makes a lot of gc can pass 2 arg
-fn step(zip) {
+pub fn step(zip) {
   let #(focus, zoom) = zip
   case zoom {
     [] -> Error(Nil)
@@ -172,6 +176,9 @@ fn step(zip) {
 fn unbreak(exp, break) {
   case break {
     BlockTail(assigments) -> e.Block(assigments, exp)
+    CallFn(args) -> e.Call(exp, args)
+    CallArg(f, pre, post) -> e.Call(f, list.flatten([pre, [exp], post]))
+    ListItem(pre, post) -> e.List(list.flatten([pre, [exp], post]), None)
   }
 }
 
