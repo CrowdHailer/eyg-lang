@@ -190,7 +190,12 @@ pub fn step(zip) {
     [break, ..rest] -> {
       // do_step(focus,break,rest) to unnest
       let exp = case focus {
-        Exp(exp) -> Ok(#(Exp(unbreak(exp, break)), rest))
+        Exp(exp) ->
+          case break {
+            BlockValue(p, pre, post, then) ->
+              Ok(#(LetAssign(p, exp, pre, post, then), rest))
+            _ -> Ok(#(Exp(unbreak(exp, break)), rest))
+          }
         FnParam(p, pre, post, body) ->
           Ok(#(Exp(e.Function(gather_around(pre, p, post), body)), zoom))
       }

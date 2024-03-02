@@ -20,6 +20,16 @@ pub fn do_assign(pattern, exp) {
       h.span([a.class("text-blue-4")], [text(var)]),
       h.span([], [text(" = ")]),
     ]
+    e.Destructure(bindings) -> {
+      list.map(bindings, fn(b) {
+        let #(label, var) = b
+        [h.span([], [text(label), text(": "), text(var)])]
+      })
+      |> list.intersperse([h.span([], [text(", ")])])
+      |> list.flatten
+      |> list.append([h.span([], [text("let {")])], _)
+      |> list.append([h.span([], [text("} = ")])])
+    }
   }
 
   case exp {

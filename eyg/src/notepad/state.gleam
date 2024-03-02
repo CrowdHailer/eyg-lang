@@ -11,13 +11,16 @@ pub type State {
 pub fn init(_) {
   let source =
     e.Block(
-      [#(e.Bind("x"), e.Integer(5))],
+      [
+        #(e.Bind("x"), e.Integer(5)),
+        #(e.Destructure([#("x", "x"), #("y", "a")]), e.Integer(5)),
+      ],
       e.List(
         [e.Call(e.Variable("f"), [e.String("hello"), e.String("world")])],
         None,
       ),
     )
-  let zip = transform.focus_at(source, [1, 0, 0], [])
+  let zip = transform.focus_at(source, [1], [])
   #(State("hello", zip), effect.none())
 }
 
