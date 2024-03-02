@@ -54,11 +54,27 @@ fn push_render(m, zoom) {
     [transform.CallArg(f, pre, post), ..rest] -> {
       let pre = list.map(pre, code.expression)
       let post = list.map(post, code.expression)
-      let args = list.flatten([pre, [m], post])
+      let args = transform.gather_around(pre, m, post)
       push_render(
         code.render_call(code.expression(f), code.render_args_e(args)),
         rest,
       )
+    }
+    [transform.Body(args), ..rest] -> {
+      let patterns = code.patterns(args)
+      case m {
+        code.Single(spans) ->
+          code.Single(
+            list.flatten([patterns, [text(" -> { ")], spans, [text(" }")]]),
+          )
+        code.Multi(pre, inner, post) ->
+          code.Multi(
+            list.flatten([patterns, [text(" -> {")], pre]),
+            inner,
+            list.append(post, [text("}")]),
+          )
+      }
+      |> push_render(rest)
     }
 
     [transform.ListItem(pre, post), ..rest] -> {
@@ -66,16 +82,28 @@ fn push_render(m, zoom) {
       let post = list.map(post, code.expression)
       push_render(code.render_list(list.flatten([pre, [m], post])), rest)
     }
+    [transform.BlockValue(label, pre, post, then), ..rest] -> {
+      let pre = list.map(pre, do_assign)
+      let post = list.map(post, do_assign)
+      let assign = code.do_assign(label, m)
+      transform.gather_around(pre, assign, post)
+      |> list.append([code.expression(then)])
+      |> code.to_fat_lines()
+      |> code.Multi([], _, [])
+    }
+
     [transform.BlockTail(assigns), ..rest] -> {
       let lines =
-        list.map(assigns, fn(a: #(String, e.Expression)) {
-          code.assign(a.0, a.1)
-        })
+        list.map(assigns, do_assign)
         |> list.append([m])
       case rest {
         // escape early to not wrap block
         [] -> code.Multi([], code.to_fat_lines(lines), [])
       }
+    }
+    _ -> {
+      io.debug(zoom)
+      panic as "bad push"
     }
   }
 }
@@ -96,7 +124,57 @@ fn print(zip) {
       push_render(highlighted, zoom)
       |> code.to_fat_line
     }
+    transform.LetAssign(label, value, pre, post, then) -> {
+      let pre = list.map(pre, do_assign)
+      let post = list.map(post, do_assign)
+      let highlighted = case code.assign(label, value) {
+        code.Single(spans) ->
+          code.Single([h.span([a.class("bg-green-3")], spans)])
+        code.Multi(pre, inner, post) -> {
+          // TODO better border
+          code.Multi(pre, [h.div([a.class("bg-green-3")], inner)], post)
+        }
+      }
+      let block =
+        transform.gather_around(pre, highlighted, post)
+        |> list.append([code.expression(then)])
+        |> code.to_fat_lines
+        |> code.Multi([], _, [])
+      push_render(block, zoom)
+      |> code.to_fat_line
+    }
+    transform.FnParam(p, pre, post, body) -> {
+      let pre = list.map(pre, code.pattern)
+      let post = list.map(post, code.pattern)
+      let spans = code.pattern(p)
+      let p = [h.span([a.class("bg-purple-2")], spans)]
+      let patterns = transform.gather_around(pre, p, post)
+      let patterns = code.join_patterns(patterns)
+      let f = case code.expression(body) {
+        code.Single(spans) ->
+          code.Single(
+            list.flatten([patterns, [text(" -> { ")], spans, [text(" }")]]),
+          )
+        code.Multi(pre, inner, post) ->
+          code.Multi(
+            list.flatten([patterns, [text(" -> {")], pre]),
+            inner,
+            list.append(post, [text("}")]),
+          )
+      }
+      push_render(f, zoom)
+      |> code.to_fat_line
+    }
+    _ -> {
+      io.debug(zip)
+      panic as "bad print"
+    }
   }
+}
+
+fn do_assign(kv) {
+  let #(label, value) = kv
+  code.assign(label, value)
 }
 
 pub fn editor(zip) {

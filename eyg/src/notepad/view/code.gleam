@@ -10,7 +10,11 @@ import lustre/event
 import morph/editable as e
 
 pub fn assign(label, value) {
-  case expression(value) {
+  do_assign(label, expression(value))
+}
+
+pub fn do_assign(label, exp) {
+  case exp {
     Single(spans) ->
       Single([
         h.span([], [text("let ")]),
@@ -69,7 +73,7 @@ fn block_content(assigns, tail) {
   |> list.append([expression(tail)])
 }
 
-fn pattern(p) {
+pub fn pattern(p) {
   case p {
     e.Bind(x) -> [h.span([], [text(x)])]
     e.Destructure(fields) -> {
@@ -89,8 +93,13 @@ fn pattern(p) {
   }
 }
 
-fn patterns(ps) {
+pub fn patterns(ps) {
   list.map(ps, pattern)
+  |> join_patterns()
+}
+
+pub fn join_patterns(ps) {
+  ps
   |> list.intersperse([text(", ")])
   |> list.flatten
   |> list.append([text(")")])
@@ -192,6 +201,7 @@ pub fn expression(exp) {
           )
       }
     }
+    e.Vacant -> Single([h.span([a.class("text-red-700")], [text("Vacant")])])
     e.Variable(x) -> Single([h.span([a.class("text-gray-700")], [text(x)])])
     e.List([], tail) -> Single([text("[]")])
     e.List(items, tail) -> render_list(list.map(items, expression))

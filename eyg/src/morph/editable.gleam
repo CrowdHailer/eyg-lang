@@ -8,7 +8,6 @@ pub type Pattern {
 }
 
 pub type Expression {
-  // TODO block becomes pattern
   Variable(String)
   Block(List(#(String, Expression)), Expression)
   Call(Expression, List(Expression))
@@ -21,10 +20,6 @@ pub type Expression {
   Binary
   String(String)
 }
-
-// Dont want block wrap for every expression
-// pub type Block {
-// }
 
 pub fn from_annotated(node) {
   let #(exp, meta) = node
@@ -56,13 +51,6 @@ fn gather_arguments(node, acc) {
   }
 }
 
-//   case bindings {
-//     [] -> #(Bind(x),body)
-//     _ -> {
-//         // todo check free vars in gather
-//         #()
-//     }
-//   }
 fn gather_destructure(node, var, acc) {
   let #(exp, meta) = node
   case exp {

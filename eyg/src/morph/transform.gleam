@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/option.{None, Some}
 import gleam/order
 import gleam/int
@@ -39,6 +40,17 @@ fn do_split_around(items, left, acc) {
   }
 }
 
+fn move(a, b) {
+  case a {
+    [] -> b
+    [i, ..a] -> move(a, [i, ..b])
+  }
+}
+
+pub fn gather_around(pre, item, post) {
+  move(pre, [item, ..post])
+}
+
 pub fn focus_at(ast, path, acc) {
   case ast, path {
     exp, [] -> #(Exp(exp), acc)
@@ -48,13 +60,26 @@ pub fn focus_at(ast, path, acc) {
         False -> {
           let assert Ok(#(pre, #(x, value), post)) = split_around(assigns, i)
           case rest {
-            [] -> #(Labeled(x, value, pre, post), acc)
+            [] -> #(LetAssign(x, value, pre, post, then), acc)
             [0, ..rest] ->
               focus_at(value, rest, [BlockValue(x, pre, post, then), ..acc])
             _ -> panic
           }
         }
         _ -> panic
+      }
+    }
+    e.Function(params, body), [i, ..rest] -> {
+      case i == list.length(params) {
+        True -> focus_at(body, rest, [Body(params), ..acc])
+        False -> {
+          let Ok(#(pre, p, post)) = split_around(params, i)
+          case rest {
+            [] -> {
+              #(FnParam(p, pre, post, body), acc)
+            }
+          }
+        }
       }
     }
     e.Call(func, args), [0, ..rest] ->
@@ -82,19 +107,12 @@ pub fn focus_at(ast, path, acc) {
         _ -> panic
       }
     }
-    _, _ -> todo
+    _, _ -> {
+      io.debug(#(ast, path))
+      todo as "foxus_At"
+    }
   }
 }
-
-// tricky because need to reutrn a type for fields etc
-// fn child(exp,i) {
-//   case exp {
-//     e.Block(assigns, then) -> case int.compare(i, list.length(assigns)) {
-//         order.Lt -> todo
-//         order.Eq -> focus_at(then, rest, [BlockTail(assigns), ..acc])
-//       }
-//   }
-//  }
 
 pub type Zip =
   #(Focus, List(Break))
@@ -107,6 +125,12 @@ pub type Focus {
     pre: List(#(String, e.Expression)),
     post: List(#(String, e.Expression)),
     tail: e.Expression,
+  )
+  FnParam(
+    pattern: e.Pattern,
+    pre: List(e.Pattern),
+    post: List(e.Pattern),
+    body: e.Expression,
   )
   LetDestructureField(field: String, binding: String, pre: List(Nil))
   //   Does this need block pre and post?
@@ -166,9 +190,10 @@ pub fn step(zip) {
     [break, ..rest] -> {
       // do_step(focus,break,rest) to unnest
       let exp = case focus {
-        Exp(exp) -> unbreak(exp, break)
+        Exp(exp) -> Ok(#(Exp(unbreak(exp, break)), rest))
+        FnParam(p, pre, post, body) ->
+          Ok(#(Exp(e.Function(gather_around(pre, p, post), body)), zoom))
       }
-      Ok(#(Exp(exp), rest))
     }
   }
 }
@@ -176,75 +201,11 @@ pub fn step(zip) {
 fn unbreak(exp, break) {
   case break {
     BlockTail(assigments) -> e.Block(assigments, exp)
+    BlockValue(var, pre, post, then) ->
+      e.Block(gather_around(pre, #(var, exp), post), then)
     CallFn(args) -> e.Call(exp, args)
     CallArg(f, pre, post) -> e.Call(f, list.flatten([pre, [exp], post]))
+    Body(args) -> e.Function(args, exp)
     ListItem(pre, post) -> e.List(list.flatten([pre, [exp], post]), None)
   }
 }
-
-fn call(zip) {
-  let #(focus, zoom) = zip
-  case focus {
-    Exp(e) -> #(Exp(e.Vacant), [CallArg(e, [], []), ..zoom])
-  }
-}
-
-// I think we can render by reversing the list potentially even starting on pre and post
-fn line_above(zip) {
-  case zip {
-    #(Exp(tail), [BlockTail(lets), ..rest]) -> #(
-      LetAssign("", e.Vacant, lets, [], tail),
-      rest,
-    )
-    // If focus is on a block
-    #(Exp(tail), []) -> #(LetAssign("", e.Vacant, [], [], tail), [])
-    #(LetAssign(l, v, pre, post, tail), zoom) -> {
-      let post = [#(l, v), ..post]
-      #(LetAssign("", e.Vacant, pre, post, tail), zoom)
-    }
-    _ ->
-      case step(zip) {
-        Ok(zip) -> line_above(zip)
-      }
-  }
-}
-
-// line drag is possible then unwrap as an option
-// how to highlight some scribble SVG's would be good
-
-// can be done for call args etc
-fn add_member(zip) {
-  case zip {
-    #(Exp(list), zoom) -> todo
-    #(RecordField(label, value, pre, post), zoom) -> {
-      let pre = list.append(pre, [#(label, value)])
-      #(RecordField("", e.Vacant, pre, post), zoom)
-    }
-  }
-}
-// // defunctioning has been very useful for performance dont want recursive structure.
-// // dont want to make rebuild fns when introspecting tree of how we got here.
-
-// // TODO function to assign wherever
-// // return and shift return for line above below
-
-// fn drag_up(focus) {
-//     case focus {
-//         Assignment(_, [i,Block(lets,tail)]) ->
-//         // list.length and up
-//     }
-//  }
-
-//  fn spread_list(focus) {
-//     case focus {
-//         Expression(e.List())
-//         Expression(_, [i,Block(lets,tail)]) ->
-//         // list.length and up
-//     }
-//  }
-
-//  fn insert_right() {
-//     case focus {
-//          ->
-//     }
-//   }
