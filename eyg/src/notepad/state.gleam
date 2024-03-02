@@ -11,7 +11,7 @@ pub type State {
 pub fn init(_) {
   let source =
     e.Block(
-      [#("x", e.Integer(5))],
+      [#(e.Bind("x"), e.Integer(5))],
       e.List(
         [e.Call(e.Variable("f"), [e.String("hello"), e.String("world")])],
         None,

@@ -9,28 +9,22 @@ import lustre/element.{text}
 import lustre/event
 import morph/editable as e
 
-pub fn assign(label, value) {
-  do_assign(label, expression(value))
+pub fn assign(pattern, value) {
+  do_assign(pattern, expression(value))
 }
 
-pub fn do_assign(label, exp) {
+pub fn do_assign(pattern, exp) {
+  let assignment = case pattern {
+    e.Bind(var) -> [
+      h.span([], [text("let ")]),
+      h.span([a.class("text-blue-4")], [text(var)]),
+      h.span([], [text(" = ")]),
+    ]
+  }
+
   case exp {
-    Single(spans) ->
-      Single([
-        h.span([], [text("let ")]),
-        h.span([a.class("text-blue-4")], [text(label)]),
-        h.span([], [text(" = ")]),
-        ..spans
-      ])
-    Multi(pre, inner, post) -> {
-      let pre = [
-        h.span([], [text("let ")]),
-        h.span([a.class("text-blue-4")], [text(label)]),
-        h.span([], [text(" = ")]),
-        ..pre
-      ]
-      Multi(pre, inner, post)
-    }
+    Single(spans) -> Single(list.append(assignment, spans))
+    Multi(pre, inner, post) -> Multi(list.append(assignment, pre), inner, post)
   }
 }
 
@@ -69,8 +63,13 @@ pub fn top(code) {
 }
 
 fn block_content(assigns, tail) {
-  list.map(assigns, fn(a: #(String, e.Expression)) { assign(a.0, a.1) })
+  list.map(assigns, assign_pair)
   |> list.append([expression(tail)])
+}
+
+fn assign_pair(kv) {
+  let #(label, value) = kv
+  assign(label, value)
 }
 
 pub fn pattern(p) {

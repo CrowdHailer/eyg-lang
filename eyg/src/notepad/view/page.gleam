@@ -193,71 +193,83 @@ pub fn book() {
       [],
       code.top(e.Block(
         [
-          #("my_int", e.Integer(2)),
-          #("my_string", e.String("hello")),
-          #("simple_func", e.Function([e.Bind("x"), e.Bind("y")], e.Integer(4))),
+          #(e.Bind("my_int"), e.Integer(2)),
+          #(e.Bind("my_string"), e.String("hello")),
+          #(
+            e.Bind("simple_func"),
+            e.Function([e.Bind("x"), e.Bind("y")], e.Integer(4)),
+          ),
           // TODO don't have tuple in destruvture
           #(
-            "pattern_func",
+            e.Bind("pattern_func"),
             e.Function(
               [e.Destructure([#("x", "a")]), e.Destructure([#("y", "b")])],
               e.Integer(4),
             ),
           ),
           #(
-            "multiline_func",
-            e.Function([], e.Block([#("x", e.Integer(5))], e.Variable("y"))),
+            e.Bind("multiline_func"),
+            e.Function(
+              [],
+              e.Block([#(e.Bind("x"), e.Integer(5))], e.Variable("y")),
+            ),
           ),
-          #("nested_let", e.Block([#("x", e.Integer(5))], e.Variable("y"))),
-          #("empty_list", e.List([], None)),
-          #("simple_list", e.List([e.Integer(2), e.Variable("x")], None)),
           #(
-            "large_list",
+            e.Bind("nested_let"),
+            e.Block([#(e.Bind("x"), e.Integer(5))], e.Variable("y")),
+          ),
+          #(e.Bind("empty_list"), e.List([], None)),
+          #(
+            e.Bind("simple_list"),
+            e.List([e.Integer(2), e.Variable("x")], None),
+          ),
+          #(
+            e.Bind("large_list"),
             e.List(
               [
                 e.Integer(2),
-                e.Block([#("x", e.Integer(233))], e.String("Done!")),
+                e.Block([#(e.Bind("x"), e.Integer(233))], e.String("Done!")),
               ],
               None,
             ),
           ),
           #(
-            "multi_func",
+            e.Bind("multi_func"),
             e.Function(
               [e.Bind("x"), e.Bind("y")],
               e.List([e.Integer(2), e.Integer(3)], None),
             ),
           ),
           #(
-            "call simple",
+            e.Bind("call simple"),
             e.Call(e.Variable("f"), [e.Variable("x"), e.Integer(23)]),
           ),
           #(
-            "call_block_tail",
+            e.Bind("call_block_tail"),
             e.Call(e.Variable("f"), [
               e.Variable("x"),
               e.Function(
                 [e.Bind("x")],
-                e.Block([#("x", e.Integer(5))], e.Variable("y")),
+                e.Block([#(e.Bind("x"), e.Integer(5))], e.Variable("y")),
               ),
             ]),
           ),
           #(
-            "fat_call",
+            e.Bind("fat_call"),
             e.Call(e.Variable("f"), [
               e.Function(
                 [e.Bind("x")],
-                e.Block([#("x", e.Integer(5))], e.Variable("y")),
+                e.Block([#(e.Bind("x"), e.Integer(5))], e.Variable("y")),
               ),
               e.Function(
                 [e.Bind("x")],
-                e.Block([#("x", e.Integer(5))], e.Variable("y")),
+                e.Block([#(e.Bind("x"), e.Integer(5))], e.Variable("y")),
               ),
             ]),
           ),
         ],
         // ],
-        e.Function([], e.Block([#("x", e.Integer(5))], e.Variable("y"))),
+        e.Function([], e.Block([#(e.Bind("x"), e.Integer(5))], e.Variable("y"))),
       )),
     ),
   ])

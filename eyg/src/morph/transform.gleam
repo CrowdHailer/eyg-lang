@@ -120,10 +120,10 @@ pub type Zip =
 pub type Focus {
   Exp(e.Expression)
   LetAssign(
-    label: String,
+    pattern: e.Pattern,
     value: e.Expression,
-    pre: List(#(String, e.Expression)),
-    post: List(#(String, e.Expression)),
+    pre: List(#(e.Pattern, e.Expression)),
+    post: List(#(e.Pattern, e.Expression)),
     tail: e.Expression,
   )
   FnParam(
@@ -153,12 +153,12 @@ pub type Focus {
 
 pub type Break {
   BlockValue(
-    var: String,
-    pre: List(#(String, e.Expression)),
-    post: List(#(String, e.Expression)),
+    pattern: e.Pattern,
+    pre: List(#(e.Pattern, e.Expression)),
+    post: List(#(e.Pattern, e.Expression)),
     then: e.Expression,
   )
-  BlockTail(assignments: List(#(String, e.Expression)))
+  BlockTail(assignments: List(#(e.Pattern, e.Expression)))
   CallFn(args: List(e.Expression))
   CallArg(func: e.Expression, pre: List(e.Expression), post: List(e.Expression))
   Body(args: List(e.Pattern))

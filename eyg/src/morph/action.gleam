@@ -92,7 +92,7 @@ fn decrease(zip) {
 fn to_var(zip) {
   let #(focus, zoom) = zip
   case focus {
-    t.Exp(value) -> #(t.LetAssign("x", value, [], [], e.Vacant), zoom)
+    t.Exp(value) -> #(t.LetAssign(e.Bind(""), value, [], [], e.Vacant), zoom)
   }
 }
 
@@ -102,15 +102,15 @@ fn line_above(zip) {
       #(t.Exp(e.Vacant), [t.ListItem(pre, [x, ..post]), ..rest])
     }
     #(t.LetAssign(label, value, pre, post, then), rest) -> #(
-      t.LetAssign("", e.Vacant, pre, [#(label, value), ..post], then),
+      t.LetAssign(e.Bind(""), e.Vacant, pre, [#(label, value), ..post], then),
       rest,
     )
     #(t.Exp(then), [t.BlockTail(lets), ..rest]) -> #(
-      t.LetAssign("", e.Vacant, lets, [], then),
+      t.LetAssign(e.Bind(""), e.Vacant, lets, [], then),
       rest,
     )
     #(t.LetAssign(l, v, pre, post, then), rest) -> {
-      #(t.LetAssign("", e.Vacant, pre, [#(l, v), ..post], then), rest)
+      #(t.LetAssign(e.Bind(""), e.Vacant, pre, [#(l, v), ..post], then), rest)
     }
     _ -> {
       io.debug(zip)
