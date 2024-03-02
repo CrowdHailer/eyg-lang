@@ -16,7 +16,7 @@ import morph/transform
 pub fn render(state: state.State) {
   h.div([a.class("vstack bg-orange-3 max-w-2xl")], [
     note(state.content, state.TextInput),
-    editor(state.zip),
+    editor(state.zip, state.mode),
     book(),
   ])
 }
@@ -177,13 +177,49 @@ fn do_assign(kv) {
   code.assign(label, value)
 }
 
-pub fn editor(zip) {
-  h.div([a.class("bg-white rounded cover font-mono whitespace-pre border-2")], [
-    // nested to ignore effect from cover
-    h.div([a.attribute("tabindex", "0"), event.on_keydown(state.KeyDown)], [
-      print(zip),
-    ]),
-  ])
+pub fn editor(zip, mode) {
+  let #(hide, value) = case mode {
+    state.Command -> #(True, "")
+    state.Insert(value, _) -> #(False, value)
+  }
+
+  h.div(
+    [
+      a.class(
+        "relative bg-white rounded cover font-mono whitespace-pre border-2",
+      ),
+    ],
+    [
+      // Hidden is nested because vstack display overrides the hidden attribute
+      // And being a child of cover the margins are messed up
+      h.div([a.classes([#("hidden", hide)])], [
+        h.div(
+          [
+            a.class(
+              "absolute top-0 bottom-0 right-0 left-0 vstack wrap bg-white",
+            ),
+            // needed because I need no wrap sizing in layout.css
+            a.style([#("margin", "0")]),
+          ],
+          [
+            h.form([event.on_submit(state.ApplyChange)], [
+              h.input([
+                a.class("border"),
+                a.value(dynamic.from(value)),
+                a.autofocus(True),
+                event.on_input(state.TextChange),
+              ]),
+              h.button([a.type_("submit")], [text("apply")]),
+            ]),
+          ],
+        ),
+      ]),
+      // nested to ignore effect from cover
+      h.div([a.attribute("tabindex", "0"), event.on_keydown(state.KeyDown)], [
+        print(zip),
+      ]),
+    ],
+  )
 }
 
 pub fn book() {

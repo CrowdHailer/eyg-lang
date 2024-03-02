@@ -1,11 +1,17 @@
+import gleam/io
 import gleam/option.{None}
 import lustre/effect
 import morph/editable as e
 import morph/transform
 import morph/action
 
+pub type Mode {
+  Command
+  Insert(String, fn(String) -> transform.Zip)
+}
+
 pub type State {
-  State(content: String, zip: transform.Zip)
+  State(content: String, zip: transform.Zip, mode: Mode)
 }
 
 pub fn init(_) {
@@ -20,21 +26,43 @@ pub fn init(_) {
         None,
       ),
     )
-  let zip = transform.focus_at(source, [1], [])
-  #(State("hello", zip), effect.none())
+  let zip = transform.focus_at(source, [2, 0, 1], [])
+  #(State("hello", zip, Command), effect.none())
 }
 
 pub type TextInput {
   TextInput(String)
   KeyDown(String)
+  TextChange(String)
+  ApplyChange
 }
 
 pub fn update(state, message) {
   case message {
     TextInput(content) -> #(State(..state, content: content), effect.none())
     KeyDown(k) -> {
-      let zip = action.apply_key(k, state.zip)
-      #(State(..state, zip: zip), effect.none())
+      let state = case k {
+        "i" ->
+          case transform.text(state.zip) {
+            Ok(#(text, apply)) -> State(..state, mode: Insert(text, apply))
+          }
+        _ -> {
+          let zip = action.apply_key(k, state.zip)
+          State(..state, zip: zip)
+        }
+      }
+      #(state, effect.none())
+    }
+    TextChange(n) -> {
+      let assert Insert(_, apply) = state.mode
+      let mode = Insert(n, apply)
+      let state = State(..state, mode: mode)
+      #(state, effect.none())
+    }
+    ApplyChange -> {
+      let assert Insert(v, apply) = state.mode
+      let state = State(..state, mode: Command, zip: apply(v))
+      #(state, effect.none())
     }
   }
 }

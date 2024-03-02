@@ -149,6 +149,16 @@ pub type Focus {
   )
 }
 
+// scope is a bad name due to variable scope
+// lens?
+pub fn text(scope) {
+  let #(focus, zoom) = scope
+  case focus {
+    Exp(e.String(value)) ->
+      Ok(#(value, fn(new) { #(Exp(e.String(new)), zoom) }))
+  }
+}
+
 // does Field and Field split have the same kind
 
 pub type Break {
