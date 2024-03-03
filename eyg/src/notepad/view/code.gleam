@@ -8,49 +8,24 @@ import lustre/element/html as h
 import lustre/element.{text}
 import lustre/event
 import morph/editable as e
+import notepad/view/frame
 
 pub fn do_let(pattern, value) {
   let assignment = list.flatten([[text("let ")], pattern, [text(" = ")]])
-  prepend_spans(assignment, value)
+  frame.prepend_spans(assignment, value)
 }
 
 pub fn assign(p, value) {
   do_let(pattern(p), expression(value))
 }
 
-// component, block panel
-pub type Multiline(a) {
-  Multi(
-    List(element.Element(a)),
-    List(element.Element(a)),
-    List(element.Element(a)),
-  )
-  Single(List(element.Element(a)))
-}
-
-fn indent(inner) {
-  h.div([a.style([#("padding-left", "2ch")])], inner)
-}
-
-// wrap each line thing in it's own div
-pub fn to_fat_line(exp) {
-  case exp {
-    Single(spans) -> h.div([], spans)
-    Multi(pre, inner, post) ->
-      h.div([], [h.div([], pre), indent(inner), h.div([], post)])
-  }
-}
-
-pub fn to_fat_lines(lines) {
-  list.map(lines, to_fat_line)
-}
-
+// is for unwrapped block
 pub fn top(code) {
   case code {
     e.Block(assigns, tail) -> block_content(assigns, tail)
     exp -> [expression(exp)]
   }
-  |> to_fat_lines()
+  |> frame.to_fat_lines()
 }
 
 fn block_content(assigns, tail) {
@@ -99,21 +74,6 @@ pub fn join_patterns(ps) {
   |> list.append([text("(")], _)
 }
 
-// join function
-fn assume_single(m) {
-  case m {
-    Single(spans) -> Ok(spans)
-    _ -> Error(Nil)
-  }
-}
-
-fn postpend_span(m, span) {
-  case m {
-    Single(spans) -> Single(list.append(spans, [span]))
-    Multi(pre, inner, post) -> Multi(pre, inner, list.append(post, [span]))
-  }
-}
-
 pub fn render_args(args) {
   let assert [last, ..rest] = list.reverse(args)
   let last = expression(last)
@@ -127,45 +87,36 @@ pub fn render_args_e(args) {
 }
 
 fn render_args_rev(last, rest) {
-  case list.try_map(rest, assume_single) {
+  case frame.all_inline(rest) {
     Ok(spanss) ->
       list.fold(spanss, last, fn(tail, spans) {
-        case tail {
-          Single(old) -> Single(list.flatten([spans, [text(", ")], old]))
-          Multi(pre, inner, post) ->
-            Multi(list.flatten([spans, [text(", ")], pre]), inner, post)
-        }
+        tail
+        |> frame.prepend_spans([text(", ")], _)
+        |> frame.prepend_spans(spans, _)
       })
-
     Error(Nil) -> {
       list.reverse([last, ..rest])
-      |> list.map(postpend_span(_, text(",")))
-      |> to_fat_lines
-      |> Multi([], _, [])
+      |> list.map(frame.append_spans(_, [text(",")]))
+      |> frame.to_fat_lines
+      |> frame.Multiline([], _, [])
     }
   }
 }
 
 pub fn render_call(f, args) {
-  let assert Single(fspans) = f
-  case args {
-    Single(spans) ->
-      Single(list.flatten([fspans, [text("(")], spans, [text(")")]]))
-    Multi(pre, inner, post) ->
-      Multi(
-        list.flatten([fspans, [text("(")], pre]),
-        inner,
-        list.append(post, [text(")")]),
-      )
-  }
+  let assert frame.Inline(fspans) = f
+  args
+  |> frame.prepend_spans([text("(")], _)
+  |> frame.prepend_spans(fspans, _)
+  |> frame.append_spans([text(")")])
 }
 
 pub fn expression(exp) {
   case exp {
     e.Block(assigns, tail) ->
-      Multi(
+      frame.Multiline(
         [h.span([], [text("{")])],
-        to_fat_lines(block_content(assigns, tail)),
+        frame.to_fat_lines(block_content(assigns, tail)),
         [h.span([], [text("}")])],
       )
     e.Call(f, args) -> {
@@ -175,36 +126,31 @@ pub fn expression(exp) {
     }
     // defninetly multiline don't wrap in double curlies
     e.Function(args, e.Block(assigns, tail)) ->
-      Multi(
+      frame.Multiline(
         [h.span([], [text("("), text("arg"), text(") -> {")])],
-        to_fat_lines(block_content(assigns, tail)),
+        frame.to_fat_lines(block_content(assigns, tail)),
         [h.span([], [text("}")])],
       )
     e.Function(args, body) -> {
-      let args = patterns(args)
-      case expression(body) {
-        Single(spans) ->
-          Single(list.flatten([args, [text(" -> { ")], spans, [text(" }")]]))
-        Multi(pre, inner, post) ->
-          Multi(
-            list.flatten([args, [text(" -> {")], pre]),
-            inner,
-            list.append(post, [text("}")]),
-          )
-      }
+      render_function(patterns(args), expression(body))
     }
-    e.Vacant -> Single([h.span([a.class("text-red-700")], [text("Vacant")])])
-    e.Variable(x) -> Single([h.span([a.class("text-gray-700")], [text(x)])])
+    e.Vacant ->
+      frame.Inline([h.span([a.class("text-red-700")], [text("Vacant")])])
+    e.Variable(x) ->
+      frame.Inline([h.span([a.class("text-gray-700")], [text(x)])])
     e.Integer(v) ->
-      Single([h.span([a.class("text-purple-2")], [text(int.to_string(v))])])
+      frame.Inline([
+        h.span([a.class("text-purple-2")], [text(int.to_string(v))]),
+      ])
     e.String(v) ->
-      Single([
+      frame.Inline([
         h.span([a.class("text-green-4")], [text("\""), text(v), text("\"")]),
       ])
-    e.List([], tail) -> Single([text("[]")])
+    e.List([], tail) -> frame.Inline([text("[]")])
     e.List(items, tail) -> render_list(list.map(items, expression))
     e.Record(fields) -> render_record(list.map(fields, render_field))
-    e.Tag(label) -> Single([h.span([a.class("text-blue-900")], [text(label)])])
+    e.Tag(label) ->
+      frame.Inline([h.span([a.class("text-blue-900")], [text(label)])])
     _ -> {
       io.debug(exp)
       panic as "exp"
@@ -212,74 +158,64 @@ pub fn expression(exp) {
   }
 }
 
+pub fn render_function(args, body) {
+  body
+  // TODO handle spaces on wrapping
+  |> frame.prepend_spans([text(" -> { ")], _)
+  |> frame.prepend_spans(args, _)
+  |> frame.append_spans([text(" }")])
+}
+
 pub fn render_list(ms) {
   ms
   |> list.map(to_list_item)
-  |> Multi([text("[")], _, [text("]")])
+  |> frame.Multiline([text("[")], _, [text("]")])
 }
 
-fn to_list_item(m) {
-  case m {
-    Single(spans) -> Single(list.append(spans, [text(",")]))
-    Multi(pre, inner, post) -> {
-      let post = list.append(post, [text(",")])
-      Multi(pre, inner, post)
-    }
-  }
-  |> to_fat_line
-}
-
-pub fn all_single(ms) {
-  list.try_map(ms, assume_single)
+fn to_list_item(f) {
+  f
+  |> frame.append_spans([text(",")])
+  |> frame.to_fat_line
 }
 
 pub fn render_record(fields) {
-  let fields = list.map(fields, append_spans(_, [text(", ")]))
-  case all_single(fields) {
+  let fields = list.map(fields, frame.append_spans(_, [text(", ")]))
+  case frame.all_inline(fields) {
     Ok(spans) ->
-      Single(list.flatten([[text("{")], list.flatten(spans), [text("}")]]))
+      frame.Inline(
+        list.flatten([[text("{")], list.flatten(spans), [text("}")]]),
+      )
   }
 }
 
 pub fn render_field(field) {
   let #(label, value) = field
   let value = expression(value)
-  prepend_spans([h.span([], [text(label), text(": ")])], value)
+  frame.prepend_spans([h.span([], [text(label), text(": ")])], value)
 }
 
 pub fn render_case(top, branches, otherwise) {
-  let Single(spans) = top
+  let frame.Inline(spans) = top
   list.append(branches, case otherwise {
     Some(otherwise) -> [otherwise]
     None -> []
   })
-  |> to_fat_lines
-  |> Multi([text(" {")], _, [text("}")])
-  |> prepend_spans(spans, _)
-  |> prepend_spans([text("match ")], _)
+  |> frame.to_fat_lines
+  |> frame.Multiline([text(" {")], _, [text("}")])
+  |> frame.prepend_spans(spans, _)
+  |> frame.prepend_spans([text("match ")], _)
 }
 
 pub fn render_branch(field) {
   let #(label, value) = field
   let value = expression(value)
   let x =
-    prepend_spans([h.span([a.class("text-blue-700")], [text(label)])], value)
+    frame.prepend_spans(
+      [h.span([a.class("text-blue-700")], [text(label)])],
+      value,
+    )
   case x {
-    Single(spans) -> Multi([], [h.div([], spans)], [])
+    frame.Inline(spans) -> frame.Multiline([], [h.div([], spans)], [])
     frame -> frame
-  }
-}
-
-pub fn prepend_spans(new, m) {
-  case m {
-    Single(spans) -> Single(list.append(new, spans))
-    Multi(pre, inner, post) -> Multi(list.append(new, pre), inner, post)
-  }
-}
-
-pub fn append_spans(m, new) {
-  case m {
-    Single(spans) -> Single(list.append(spans, new))
-    Multi(pre, inner, post) -> Multi(list.append(pre, new), inner, post)
   }
 }

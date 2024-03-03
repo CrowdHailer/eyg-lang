@@ -12,6 +12,7 @@ import notepad/view/helpers
 import morph/editable as e
 import notepad/view/code
 import morph/transform as t
+import notepad/view/frame
 
 pub fn render(state: state.State) {
   h.div([a.class("vstack bg-orange-3 max-w-2xl")], [
@@ -61,19 +62,7 @@ fn push_render(m, zoom) {
       )
     }
     [t.Body(args), ..rest] -> {
-      let patterns = code.patterns(args)
-      case m {
-        code.Single(spans) ->
-          code.Single(
-            list.flatten([patterns, [text(" -> { ")], spans, [text(" }")]]),
-          )
-        code.Multi(pre, inner, post) ->
-          code.Multi(
-            list.flatten([patterns, [text(" -> {")], pre]),
-            inner,
-            list.append(post, [text("}")]),
-          )
-      }
+      code.render_function(code.patterns(args), m)
       |> push_render(rest)
     }
 
@@ -88,8 +77,8 @@ fn push_render(m, zoom) {
       let assign = code.do_let(code.pattern(p), m)
       t.gather_around(pre, assign, post)
       |> list.append([code.expression(then)])
-      |> code.to_fat_lines()
-      |> code.Multi([], _, [])
+      |> frame.to_fat_lines()
+      |> frame.Multiline([], _, [])
     }
 
     [t.BlockTail(assigns), ..rest] -> {
@@ -98,14 +87,14 @@ fn push_render(m, zoom) {
         |> list.append([m])
       case rest {
         // escape early to not wrap block
-        [] -> code.Multi([], code.to_fat_lines(lines), [])
+        [] -> frame.Multiline([], frame.to_fat_lines(lines), [])
       }
     }
     [t.CaseValue(top, label, pre, post, otherwise), ..rest] -> {
       let top = code.expression(top)
       let pre = list.map(pre, code.render_branch)
       let post = list.map(post, code.render_branch)
-      let branch = code.prepend_spans([text(label)], m)
+      let branch = frame.prepend_spans([text(label)], m)
       let otherwise = option.map(otherwise, code.expression)
 
       code.render_case(top, t.gather_around(pre, branch, post), otherwise)
@@ -123,16 +112,17 @@ fn print(zip) {
   case focus {
     t.Exp(exp) -> {
       let core = code.expression(exp)
+      // TODO move highlight
       let highlighted = case core {
-        code.Single(spans) ->
-          code.Single([h.span([a.class("bg-green-3")], spans)])
-        code.Multi(pre, inner, post) -> {
+        frame.Inline(spans) ->
+          frame.Inline([h.span([a.class("bg-green-3")], spans)])
+        frame.Multiline(pre, inner, post) -> {
           // TODO better border
-          code.Multi(pre, [h.div([a.class("bg-green-3")], inner)], post)
+          frame.Multiline(pre, [h.div([a.class("bg-green-3")], inner)], post)
         }
       }
       push_render(highlighted, zoom)
-      |> code.to_fat_line
+      |> frame.to_fat_line
     }
     t.Assign(detail, value, pre, post, then) -> {
       let pre = list.map(pre, do_assign)
@@ -171,10 +161,10 @@ fn print(zip) {
       let block =
         t.gather_around(pre, assign, post)
         |> list.append([code.expression(then)])
-        |> code.to_fat_lines
-        |> code.Multi([], _, [])
+        |> frame.to_fat_lines
+        |> frame.Multiline([], _, [])
       push_render(block, zoom)
-      |> code.to_fat_line
+      |> frame.to_fat_line
     }
     t.FnParam(p, pre, post, body) -> {
       let pre = list.map(pre, code.pattern)
@@ -183,20 +173,9 @@ fn print(zip) {
       let p = [h.span([a.class("bg-purple-2")], spans)]
       let patterns = t.gather_around(pre, p, post)
       let patterns = code.join_patterns(patterns)
-      let f = case code.expression(body) {
-        code.Single(spans) ->
-          code.Single(
-            list.flatten([patterns, [text(" -> { ")], spans, [text(" }")]]),
-          )
-        code.Multi(pre, inner, post) ->
-          code.Multi(
-            list.flatten([patterns, [text(" -> {")], pre]),
-            inner,
-            list.append(post, [text("}")]),
-          )
-      }
+      let f = code.render_function(patterns, code.expression(body))
       push_render(f, zoom)
-      |> code.to_fat_line
+      |> frame.to_fat_line
     }
     t.Labeled(label, value, pre, post) -> {
       let field = code.render_field(#(label, value))
@@ -204,12 +183,12 @@ fn print(zip) {
       let post = list.map(post, code.render_field)
       code.render_record(t.gather_around(pre, highlight(field), post))
       |> push_render(zoom)
-      |> code.to_fat_line
+      |> frame.to_fat_line
     }
     t.Label(label, value, pre, post, _) -> {
       let value = code.expression(value)
       let field =
-        code.prepend_spans(
+        frame.prepend_spans(
           [h.span([a.class("bg-green-3")], [text(label), text(": ")])],
           value,
         )
@@ -218,12 +197,12 @@ fn print(zip) {
       let post = list.map(post, code.render_field)
       code.render_record(t.gather_around(pre, field, post))
       |> push_render(zoom)
-      |> code.to_fat_line
+      |> frame.to_fat_line
     }
     t.Match(top, label, value, pre, post, otherwise) -> {
       let value = code.expression(value)
       let branch =
-        code.prepend_spans(
+        frame.prepend_spans(
           [h.span([a.class("bg-green-3")], [text(label)])],
           value,
         )
@@ -235,7 +214,7 @@ fn print(zip) {
         option.map(otherwise, code.expression),
       )
       |> push_render(zoom)
-      |> code.to_fat_line
+      |> frame.to_fat_line
     }
     _ -> {
       io.debug(zip)
@@ -244,12 +223,14 @@ fn print(zip) {
   }
 }
 
+// TODO move to a standard highlight function
 fn highlight(m) {
   case m {
-    code.Single(spans) -> code.Single([h.span([a.class("bg-green-3")], spans)])
-    code.Multi(pre, inner, post) -> {
+    frame.Inline(spans) ->
+      frame.Inline([h.span([a.class("bg-green-3")], spans)])
+    frame.Multiline(pre, inner, post) -> {
       // TODO better border
-      code.Multi(pre, [h.div([a.class("bg-green-3")], inner)], post)
+      frame.Multiline(pre, [h.div([a.class("bg-green-3")], inner)], post)
     }
   }
 }
