@@ -203,6 +203,14 @@ fn record(zip) {
     t.Exp(e.Vacant) -> #(t.Exp(e.Record([])), zoom)
     t.Exp(e.Record([])) -> #(t.Exp(e.Record([#("", e.Vacant)])), zoom)
     t.Exp(item) -> #(t.Exp(e.Record([#("field", item)])), zoom)
+    t.Assign(detail, value, pre, post, then) -> {
+      let detail = case detail {
+        t.AssignPattern(e.Bind(var)) -> t.AssignField(var, var, [], [])
+        t.AssignPattern(e.Destructure(fields)) ->
+          t.AssignField("f", "f", list.reverse(fields), [])
+      }
+      #(t.Assign(detail, value, pre, post, then), zoom)
+    }
     t.Labeled(l, v, pre, post) -> #(
       t.Labeled("new", e.Vacant, [#(l, v), ..pre], post),
       zoom,
