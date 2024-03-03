@@ -204,6 +204,22 @@ pub fn text(scope) {
   case focus {
     Exp(e.String(value)) ->
       Ok(#(value, fn(new) { #(Exp(e.String(new)), zoom) }))
+    Assign(detail, value, pre, post, then) -> {
+      let assert Ok(#(content, build)) = case detail {
+        AssignStatement(_) -> Error(Nil)
+        AssignPattern(e.Bind(var)) ->
+          Ok(#(var, fn(new) { AssignPattern(e.Bind(var)) }))
+        AssignField(label, var, pre, post) ->
+          Ok(#(label, fn(new) { AssignField(new, var, pre, post) }))
+        AssignBind(label, var, pre, post) ->
+          Ok(#(var, fn(new) { AssignBind(label, new, pre, post) }))
+      }
+      Ok(
+        #(content, fn(new) {
+          #(Assign(build(new), value, pre, post, then), zoom)
+        }),
+      )
+    }
   }
 }
 
