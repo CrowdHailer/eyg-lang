@@ -13,14 +13,15 @@ pub type Expression {
   Block(List(#(Pattern, Expression)), Expression)
   Call(Expression, List(Expression))
   Function(List(Pattern), Expression)
-  List(List(Expression), Option(Expression))
-  Record(List(#(String, Expression)))
-  Overwrite(List(#(String, Expression)), String)
-  Tag(String)
   Vacant
   Integer(Int)
   Binary(BitArray)
   String(String)
+  List(List(Expression), Option(Expression))
+  Record(List(#(String, Expression)))
+  Overwrite(List(#(String, Expression)), String)
+  Tag(String)
+  Case(Expression, List(#(String, Expression)), Option(Expression))
 }
 
 pub fn from_annotated(node) {

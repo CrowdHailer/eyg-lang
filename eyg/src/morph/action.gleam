@@ -5,8 +5,7 @@ import morph/editable as e
 import morph/transform as t
 
 // make morph transforms, does not include undo redo or types
-// TODO insert mode
-// clicking, eiter by full path or relative path
+// TODO clicking, eiter by full path or relative path
 // inline block so bground is not full still needs to be on new line
 pub fn apply_key(k, zip) {
   case k {
@@ -22,6 +21,7 @@ pub fn apply_key(k, zip) {
     "f" -> function(zip)
     "l" -> list(zip)
     "c" -> call(zip)
+    "m" -> match(zip)
 
     _ -> {
       io.debug(k)
@@ -87,6 +87,10 @@ fn move_right(zip) {
     #(t.FnParam(p, pre, [], body), rest) -> {
       let args = list.reverse([p, ..pre])
       #(t.Exp(body), [t.Body(args), ..rest])
+    }
+    #(t.Match(top, label, value, pre, post, otherwise), zoom) -> {
+      let zoom = [t.CaseValue(top, label, pre, post, otherwise), ..zoom]
+      #(t.Exp(value), zoom)
     }
   }
 }
@@ -224,5 +228,15 @@ fn tag(zip) {
   case focus {
     t.Exp(e.Vacant) -> #(t.Exp(e.Tag("")), zoom)
     t.Exp(inner) -> #(t.Exp(e.Tag("")), [t.CallFn([inner]), ..zoom])
+  }
+}
+
+fn match(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    t.Exp(exp) -> #(
+      t.Match(exp, "Ok", e.Function([e.Bind("_")], e.Vacant), [], [], None),
+      zoom,
+    )
   }
 }

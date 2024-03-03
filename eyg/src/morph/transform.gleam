@@ -1,5 +1,5 @@
 import gleam/io
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/order
 import gleam/int
 import gleam/list
@@ -191,6 +191,14 @@ pub type Focus {
     post: List(#(String, e.Expression)),
     for: WithLabel,
   )
+  Match(
+    top: e.Expression,
+    label: String,
+    branch: e.Expression,
+    pre: List(#(String, e.Expression)),
+    post: List(#(String, e.Expression)),
+    otherwise: Option(e.Expression),
+  )
 }
 
 pub type WithLabel {
@@ -256,7 +264,13 @@ pub type Break {
   // )
   // OverwriteLabel(value: e.Expression)
   // OverwriteTail
-  // CaseValue(label: String, pre: List(e.Expression), post: List(e.Expression))
+  CaseValue(
+    top: e.Expression,
+    label: String,
+    pre: List(#(String, e.Expression)),
+    post: List(#(String, e.Expression)),
+    otherwise: Option(e.Expression),
+  )
   // CaseLabel(value: e.Expression)
   // CaseTail
 }

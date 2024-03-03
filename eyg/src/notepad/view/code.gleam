@@ -247,6 +247,29 @@ pub fn render_field(field) {
   prepend_spans([h.span([], [text(label), text(": ")])], value)
 }
 
+pub fn render_case(top, branches, otherwise) {
+  let Single(spans) = top
+  list.append(branches, case otherwise {
+    Some(otherwise) -> [otherwise]
+    None -> []
+  })
+  |> to_fat_lines
+  |> Multi([text(" {")], _, [text("}")])
+  |> prepend_spans(spans, _)
+  |> prepend_spans([text("match ")], _)
+}
+
+pub fn render_branch(field) {
+  let #(label, value) = field
+  let value = expression(value)
+  let x =
+    prepend_spans([h.span([a.class("text-blue-700")], [text(label)])], value)
+  case x {
+    Single(spans) -> Multi([], [h.div([], spans)], [])
+    frame -> frame
+  }
+}
+
 pub fn prepend_spans(new, m) {
   case m {
     Single(spans) -> Single(list.append(new, spans))

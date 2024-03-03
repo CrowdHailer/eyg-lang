@@ -101,6 +101,16 @@ fn push_render(m, zoom) {
         [] -> code.Multi([], code.to_fat_lines(lines), [])
       }
     }
+    [t.CaseValue(top, label, pre, post, otherwise), ..rest] -> {
+      let top = code.expression(top)
+      let pre = list.map(pre, code.render_branch)
+      let post = list.map(post, code.render_branch)
+      let branch = code.prepend_spans([text(label)], m)
+      let otherwise = option.map(otherwise, code.expression)
+
+      code.render_case(top, t.gather_around(pre, branch, post), otherwise)
+      |> push_render(rest)
+    }
     _ -> {
       io.debug(zoom)
       panic as "bad push"
@@ -210,7 +220,23 @@ fn print(zip) {
       |> push_render(zoom)
       |> code.to_fat_line
     }
-
+    t.Match(top, label, value, pre, post, otherwise) -> {
+      let value = code.expression(value)
+      let branch =
+        code.prepend_spans(
+          [h.span([a.class("bg-green-3")], [text(label)])],
+          value,
+        )
+      let pre = list.map(pre, code.render_branch)
+      let post = list.map(post, code.render_branch)
+      code.render_case(
+        code.expression(top),
+        t.gather_around(pre, branch, post),
+        option.map(otherwise, code.expression),
+      )
+      |> push_render(zoom)
+      |> code.to_fat_line
+    }
     _ -> {
       io.debug(zip)
       panic as "bad print"
