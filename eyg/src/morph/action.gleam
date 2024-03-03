@@ -15,6 +15,7 @@ pub fn apply_key(k, zip) {
     "ArrowLeft" -> move_left(zip)
     "E" -> line_above(zip)
     "e" -> to_var(zip)
+    "r" -> record(zip)
     "a" -> increase(zip)
     "s" -> decrease(zip)
     "f" -> function(zip)
@@ -32,12 +33,19 @@ fn move_up(zip) {
   case zip {
     #(t.Exp(then), [t.BlockTail(assigns), ..rest]) -> {
       let assert [#(label, last), ..pre] = list.reverse(assigns)
-      #(t.Exp(last), [t.BlockValue(label, pre, [], then), ..rest])
+      #(t.LetAssign(label, last, pre, [], then), rest)
+      // #(t.Exp(last), [t.BlockValue(label, pre, [], then), ..rest])
     }
     #(t.LetAssign(label, value, [#(l, v), ..pre], post, then), rest) -> #(
       t.LetAssign(l, v, pre, [#(label, value), ..post], then),
       rest,
     )
+    _ -> {
+      io.debug(zip)
+      case t.step(zip) {
+        Ok(zip) -> move_up(zip)
+      }
+    }
   }
 }
 
@@ -82,6 +90,7 @@ fn decrease(zip) {
       #(t.Exp(v), [t.BlockValue(l, pre, post, then), ..zoom])
     }
     t.Exp(exp) -> t.focus_at(exp, [0], zoom)
+    t.Labeled(l, v, pre, post) -> #(t.Label(l, v, pre, post, t.Record), zoom)
     _ -> {
       io.debug(zip)
       panic as "decrease"
@@ -109,9 +118,6 @@ fn line_above(zip) {
       t.LetAssign(e.Bind(""), e.Vacant, lets, [], then),
       rest,
     )
-    #(t.LetAssign(l, v, pre, post, then), rest) -> {
-      #(t.LetAssign(e.Bind(""), e.Vacant, pre, [#(l, v), ..post], then), rest)
-    }
     _ -> {
       io.debug(zip)
       case t.step(zip) {
@@ -147,5 +153,18 @@ fn list(zip) {
   case focus {
     t.Exp(e.Vacant) -> #(t.Exp(e.List([], None)), zoom)
     t.Exp(item) -> #(t.Exp(e.List([item], None)), zoom)
+  }
+}
+
+fn record(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    t.Exp(e.Vacant) -> #(t.Exp(e.Record([])), zoom)
+    t.Exp(e.Record([])) -> #(t.Exp(e.Record([#("", e.Vacant)])), zoom)
+    t.Exp(item) -> #(t.Exp(e.Record([#("field", item)])), zoom)
+    t.Labeled(l, v, pre, post) -> #(
+      t.Labeled("new", e.Vacant, [#(l, v), ..pre], post),
+      zoom,
+    )
   }
 }

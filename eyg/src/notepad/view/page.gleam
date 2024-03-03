@@ -127,14 +127,8 @@ fn print(zip) {
     transform.LetAssign(label, value, pre, post, then) -> {
       let pre = list.map(pre, do_assign)
       let post = list.map(post, do_assign)
-      let highlighted = case code.assign(label, value) {
-        code.Single(spans) ->
-          code.Single([h.span([a.class("bg-green-3")], spans)])
-        code.Multi(pre, inner, post) -> {
-          // TODO better border
-          code.Multi(pre, [h.div([a.class("bg-green-3")], inner)], post)
-        }
-      }
+      let m = code.assign(label, value)
+      let highlighted = highlight(m)
       let block =
         transform.gather_around(pre, highlighted, post)
         |> list.append([code.expression(then)])
@@ -165,9 +159,42 @@ fn print(zip) {
       push_render(f, zoom)
       |> code.to_fat_line
     }
+    transform.Labeled(label, value, pre, post) -> {
+      let field = code.render_field(#(label, value))
+      let pre = list.map(pre, code.render_field)
+      let post = list.map(post, code.render_field)
+      code.render_record(transform.gather_around(pre, highlight(field), post))
+      |> push_render(zoom)
+      |> code.to_fat_line
+    }
+    transform.Label(label, value, pre, post, _) -> {
+      let value = code.expression(value)
+      let field =
+        code.prepend_spans(
+          [h.span([a.class("bg-green-3")], [text(label), text(": ")])],
+          value,
+        )
+
+      let pre = list.map(pre, code.render_field)
+      let post = list.map(post, code.render_field)
+      code.render_record(transform.gather_around(pre, field, post))
+      |> push_render(zoom)
+      |> code.to_fat_line
+    }
+
     _ -> {
       io.debug(zip)
       panic as "bad print"
+    }
+  }
+}
+
+fn highlight(m) {
+  case m {
+    code.Single(spans) -> code.Single([h.span([a.class("bg-green-3")], spans)])
+    code.Multi(pre, inner, post) -> {
+      // TODO better border
+      code.Multi(pre, [h.div([a.class("bg-green-3")], inner)], post)
     }
   }
 }

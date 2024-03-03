@@ -143,7 +143,7 @@ pub fn render_args_e(args) {
 }
 
 fn render_args_rev(last, rest) {
-  let m = case list.try_map(rest, assume_single) {
+  case list.try_map(rest, assume_single) {
     Ok(spanss) ->
       list.fold(spanss, last, fn(tail, spans) {
         case tail {
@@ -154,11 +154,10 @@ fn render_args_rev(last, rest) {
       })
 
     Error(Nil) -> {
-      let args =
-        list.reverse([last, ..rest])
-        |> list.map(postpend_span(_, text(",")))
-        |> to_fat_lines
-        |> Multi([], _, [])
+      list.reverse([last, ..rest])
+      |> list.map(postpend_span(_, text(",")))
+      |> to_fat_lines
+      |> Multi([], _, [])
     }
   }
 }
@@ -212,15 +211,15 @@ pub fn expression(exp) {
     }
     e.Vacant -> Single([h.span([a.class("text-red-700")], [text("Vacant")])])
     e.Variable(x) -> Single([h.span([a.class("text-gray-700")], [text(x)])])
-    e.List([], tail) -> Single([text("[]")])
-    e.List(items, tail) -> render_list(list.map(items, expression))
     e.Integer(v) ->
       Single([h.span([a.class("text-purple-2")], [text(int.to_string(v))])])
     e.String(v) ->
       Single([
         h.span([a.class("text-green-4")], [text("\""), text(v), text("\"")]),
       ])
-
+    e.List([], tail) -> Single([text("[]")])
+    e.List(items, tail) -> render_list(list.map(items, expression))
+    e.Record(fields) -> render_record(list.map(fields, render_field))
     _ -> {
       io.debug(exp)
       panic as "exp"
@@ -243,4 +242,36 @@ fn to_list_item(m) {
     }
   }
   |> to_fat_line
+}
+
+pub fn all_single(ms) {
+  list.try_map(ms, assume_single)
+}
+
+pub fn render_record(fields) {
+  let fields = list.map(fields, append_spans(_, [text(", ")]))
+  case all_single(fields) {
+    Ok(spans) ->
+      Single(list.flatten([[text("{")], list.flatten(spans), [text("}")]]))
+  }
+}
+
+pub fn render_field(field) {
+  let #(label, value) = field
+  let value = expression(value)
+  prepend_spans([h.span([], [text(label), text(": ")])], value)
+}
+
+pub fn prepend_spans(new, m) {
+  case m {
+    Single(spans) -> Single(list.append(new, spans))
+    Multi(pre, inner, post) -> Multi(list.append(new, pre), inner, post)
+  }
+}
+
+pub fn append_spans(m, new) {
+  case m {
+    Single(spans) -> Single(list.append(spans, new))
+    Multi(pre, inner, post) -> Multi(list.append(pre, new), inner, post)
+  }
 }
