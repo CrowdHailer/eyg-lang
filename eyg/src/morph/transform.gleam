@@ -36,7 +36,7 @@ fn do_split_around(items, left, acc) {
   case items, left {
     // pre is left reversed
     [item, ..after], 0 -> Ok(#(acc, item, after))
-    [item, ..after], i -> do_split_around(after, i - i, [item, ..acc])
+    [item, ..after], i -> do_split_around(after, i - 1, [item, ..acc])
   }
 }
 
@@ -61,12 +61,11 @@ pub fn focus_at(ast, path, acc) {
           let assert Ok(#(pre, #(x, value), post)) = split_around(assigns, i)
           case rest {
             [] -> #(LetAssign(x, value, pre, post, then), acc)
-            [0, ..rest] ->
+            [1, ..rest] ->
               focus_at(value, rest, [BlockValue(x, pre, post, then), ..acc])
-            _ -> panic
+            _ -> panic as "bad sub in block"
           }
         }
-        _ -> panic
       }
     }
     e.Function(params, body), [i, ..rest] -> {
@@ -95,16 +94,17 @@ pub fn focus_at(ast, path, acc) {
           let assert Ok(#(pre, value, post)) = split_around(items, i)
           focus_at(value, rest, [ListItem(pre, post), ..acc])
         }
-        _, _ -> panic
+        _, _ -> panic as "bad list"
       }
     }
     e.Record(fields), [i, ..rest] -> {
       let assert Ok(#(pre, #(label, value), post)) = split_around(fields, i)
       case rest {
         [] -> #(Labeled(label, value, pre, post), acc)
-        [0, ..rest] ->
+        [0] -> #(Label(label, value, pre, post, Record), acc)
+        [1, ..rest] ->
           focus_at(value, rest, [RecordValue(label, pre, post), ..acc])
-        _ -> panic
+        _ -> panic as "record focus"
       }
     }
     _, _ -> {
@@ -147,6 +147,17 @@ pub type Focus {
     pre: List(#(String, e.Expression)),
     post: List(#(String, e.Expression)),
   )
+  Label(
+    label: String,
+    value: e.Expression,
+    pre: List(#(String, e.Expression)),
+    post: List(#(String, e.Expression)),
+    for: WithLabel,
+  )
+}
+
+pub type WithLabel {
+  Record
 }
 
 // scope is a bad name due to variable scope
@@ -179,36 +190,49 @@ pub type Break {
     pre: List(#(String, e.Expression)),
     post: List(#(String, e.Expression)),
   )
-  SelectValue
-  OverwriteValue(
-    label: String,
-    pre: List(e.Expression),
-    post: List(e.Expression),
-  )
-  OverwriteLabel(value: e.Expression)
-  OverwriteTail
-  CaseValue(label: String, pre: List(e.Expression), post: List(e.Expression))
-  CaseLabel(value: e.Expression)
-  CaseTail
+  // SelectValue
+  // OverwriteValue(
+  //   label: String,
+  //   pre: List(e.Expression),
+  //   post: List(e.Expression),
+  // )
+  // OverwriteLabel(value: e.Expression)
+  // OverwriteTail
+  // CaseValue(label: String, pre: List(e.Expression), post: List(e.Expression))
+  // CaseLabel(value: e.Expression)
+  // CaseTail
 }
 
 // ok makes a lot of gc can pass 2 arg
 pub fn step(zip) {
   let #(focus, zoom) = zip
-  case zoom {
-    [] -> Error(Nil)
-    [break, ..rest] -> {
-      // do_step(focus,break,rest) to unnest
-      let exp = case focus {
-        Exp(exp) ->
+  case focus {
+    Exp(exp) ->
+      case zoom {
+        [] -> Error(Nil)
+        [break, ..rest] -> {
           case break {
             BlockValue(p, pre, post, then) ->
               Ok(#(LetAssign(p, exp, pre, post, then), rest))
             _ -> Ok(#(Exp(unbreak(exp, break)), rest))
           }
-        FnParam(p, pre, post, body) ->
-          Ok(#(Exp(e.Function(gather_around(pre, p, post), body)), zoom))
+        }
       }
+    LetAssign(pattern, value, pre, post, then) ->
+      Ok(#(
+        Exp(e.Block(gather_around(pre, #(pattern, value), post), then)),
+        zoom,
+      ))
+    FnParam(p, pre, post, body) ->
+      Ok(#(Exp(e.Function(gather_around(pre, p, post), body)), zoom))
+    // TODO use for
+    Label(l, value, pre, post, _for) ->
+      Ok(#(Labeled(l, value, pre, post), zoom))
+    Labeled(l, value, pre, post) ->
+      Ok(#(Exp(e.Record(gather_around(pre, #(l, value), post))), zoom))
+    _ -> {
+      io.debug(focus)
+      panic as "when stepping"
     }
   }
 }
@@ -221,6 +245,9 @@ fn unbreak(exp, break) {
     CallFn(args) -> e.Call(exp, args)
     CallArg(f, pre, post) -> e.Call(f, list.flatten([pre, [exp], post]))
     Body(args) -> e.Function(args, exp)
-    ListItem(pre, post) -> e.List(list.flatten([pre, [exp], post]), None)
+    ListItem(pre, post) -> e.List(gather_around(pre, exp, post), None)
+    ListTail(items) -> e.List(items, Some(exp))
+    RecordValue(label, pre, post) ->
+      e.Record(gather_around(pre, #(label, exp), post))
   }
 }
