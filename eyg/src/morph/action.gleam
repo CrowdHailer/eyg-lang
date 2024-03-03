@@ -32,12 +32,15 @@ pub fn apply_key(k, zip) {
 fn move_up(zip) {
   case zip {
     #(t.Exp(then), [t.BlockTail(assigns), ..rest]) -> {
-      let assert [#(label, last), ..pre] = list.reverse(assigns)
-      #(t.LetAssign(label, last, pre, [], then), rest)
+      let assert [#(pattern, last), ..pre] = list.reverse(assigns)
+      #(t.Assign(t.AssignStatement(pattern), last, pre, [], then), rest)
       // #(t.Exp(last), [t.BlockValue(label, pre, [], then), ..rest])
     }
-    #(t.LetAssign(label, value, [#(l, v), ..pre], post, then), rest) -> #(
-      t.LetAssign(l, v, pre, [#(label, value), ..post], then),
+    #(
+      t.Assign(t.AssignStatement(label), value, [#(l, v), ..pre], post, then),
+      rest,
+    ) -> #(
+      t.Assign(t.AssignStatement(l), v, pre, [#(label, value), ..post], then),
       rest,
     )
     _ -> {
@@ -50,7 +53,6 @@ fn move_up(zip) {
 }
 
 fn move_right(zip) {
-  io.debug(zip)
   case zip {
     #(t.Exp(f), [t.CallFn(args), ..rest]) -> {
       let assert [first, ..args] = args
@@ -58,6 +60,28 @@ fn move_right(zip) {
     }
     #(t.Exp(a), [t.CallArg(f, pre, [n, ..post]), ..rest]) -> {
       #(t.Exp(n), [t.CallArg(f, [a, ..pre], post), ..rest])
+    }
+    #(t.Assign(detail, value, pre, post, then), zoom) -> {
+      let same = t.Assign(_, value, pre, post, then)
+      case detail {
+        t.AssignStatement(_) -> panic as "too high to move right"
+        t.AssignPattern(pattern) -> #(t.Exp(value), [
+          t.BlockValue(pattern, pre, post, then),
+          ..zoom
+        ])
+        t.AssignField(label, var, pre, post) -> #(
+          same(t.AssignBind(label, var, pre, post)),
+          zoom,
+        )
+        t.AssignBind(label, var, pre, [#(l, v), ..post]) -> #(
+          same(t.AssignField(l, v, [#(label, var), ..pre], post)),
+          zoom,
+        )
+        t.AssignBind(label, var, pre_p, []) -> {
+          let pattern = e.Destructure(t.gather_around(pre_p, #(label, var), []))
+          #(t.Exp(value), [t.BlockValue(pattern, pre, post, then), ..zoom])
+        }
+      }
     }
     #(t.FnParam(p, pre, [], body), rest) -> {
       let args = list.reverse([p, ..pre])
@@ -86,8 +110,8 @@ fn increase(zip) {
 fn decrease(zip) {
   let #(focus, zoom) = zip
   case focus {
-    t.LetAssign(l, v, pre, post, then) -> {
-      #(t.Exp(v), [t.BlockValue(l, pre, post, then), ..zoom])
+    t.Assign(detail, v, pre, post, then) -> {
+      #(t.Assign(decrease_assign(detail), v, pre, post, then), zoom)
     }
     t.Exp(exp) -> t.focus_at(exp, [0], zoom)
     t.Labeled(l, v, pre, post) -> #(t.Label(l, v, pre, post, t.Record), zoom)
@@ -98,10 +122,21 @@ fn decrease(zip) {
   }
 }
 
+fn decrease_assign(detail) {
+  case detail {
+    t.AssignStatement(pattern) -> t.AssignPattern(pattern)
+    t.AssignPattern(e.Destructure([#(label, var), ..rest])) ->
+      t.AssignField(label, var, [], rest)
+  }
+}
+
 fn to_var(zip) {
   let #(focus, zoom) = zip
   case focus {
-    t.Exp(value) -> #(t.LetAssign(e.Bind(""), value, [], [], e.Vacant), zoom)
+    t.Exp(value) -> #(
+      t.Assign(t.AssignStatement(e.Bind("")), value, [], [], e.Vacant),
+      zoom,
+    )
   }
 }
 
@@ -110,12 +145,18 @@ fn line_above(zip) {
     #(t.Exp(x), [t.ListItem(pre, post), ..rest]) -> {
       #(t.Exp(e.Vacant), [t.ListItem(pre, [x, ..post]), ..rest])
     }
-    #(t.LetAssign(label, value, pre, post, then), rest) -> #(
-      t.LetAssign(e.Bind(""), e.Vacant, pre, [#(label, value), ..post], then),
+    #(t.Assign(t.AssignStatement(pattern), value, pre, post, then), rest) -> #(
+      t.Assign(
+        t.AssignStatement(e.Bind("")),
+        e.Vacant,
+        pre,
+        [#(pattern, value), ..post],
+        then,
+      ),
       rest,
     )
     #(t.Exp(then), [t.BlockTail(lets), ..rest]) -> #(
-      t.LetAssign(e.Bind(""), e.Vacant, lets, [], then),
+      t.Assign(t.AssignStatement(e.Bind("")), e.Vacant, lets, [], then),
       rest,
     )
     _ -> {

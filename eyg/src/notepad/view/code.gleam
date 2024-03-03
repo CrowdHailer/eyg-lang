@@ -9,33 +9,13 @@ import lustre/element.{text}
 import lustre/event
 import morph/editable as e
 
-pub fn assign(pattern, value) {
-  do_assign(pattern, expression(value))
+pub fn do_let(pattern, value) {
+  let assignment = list.flatten([[text("let ")], pattern, [text(" = ")]])
+  prepend_spans(assignment, value)
 }
 
-pub fn do_assign(pattern, exp) {
-  let assignment = case pattern {
-    e.Bind(var) -> [
-      h.span([], [text("let ")]),
-      h.span([a.class("text-blue-4")], [text(var)]),
-      h.span([], [text(" = ")]),
-    ]
-    e.Destructure(bindings) -> {
-      list.map(bindings, fn(b) {
-        let #(label, var) = b
-        [h.span([], [text(label), text(": "), text(var)])]
-      })
-      |> list.intersperse([h.span([], [text(", ")])])
-      |> list.flatten
-      |> list.append([h.span([], [text("let {")])], _)
-      |> list.append([h.span([], [text("} = ")])])
-    }
-  }
-
-  case exp {
-    Single(spans) -> Single(list.append(assignment, spans))
-    Multi(pre, inner, post) -> Multi(list.append(assignment, pre), inner, post)
-  }
+pub fn assign(p, value) {
+  do_let(pattern(p), expression(value))
 }
 
 pub type Multiline(a) {
@@ -86,20 +66,23 @@ pub fn pattern(p) {
   case p {
     e.Bind(x) -> [h.span([], [text(x)])]
     e.Destructure(fields) -> {
-      list.map(fields, fn(f) {
-        let #(field, var) = f
-        [
-          h.span([], [text(field)]),
-          h.span([], [text(": ")]),
-          h.span([], [text(var)]),
-        ]
-      })
-      |> list.intersperse([h.span([], [text(", ")])])
-      |> list.flatten
-      |> list.append([text("}")])
-      |> list.append([text("{")], _)
+      list.map(fields, do_field)
+      |> do_destructured
     }
   }
+}
+
+pub fn do_field(f) {
+  let #(field, var) = f
+  [h.span([], [text(field)]), h.span([], [text(": ")]), h.span([], [text(var)])]
+}
+
+pub fn do_destructured(fields) {
+  fields
+  |> list.intersperse([h.span([], [text(", ")])])
+  |> list.flatten
+  |> list.append([text("}")])
+  |> list.append([text("{")], _)
 }
 
 pub fn patterns(ps) {

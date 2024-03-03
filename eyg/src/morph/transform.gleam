@@ -60,14 +60,38 @@ pub fn focus_at(ast, path, acc) {
       case i == list.length(assigns) {
         True -> focus_at(then, rest, [BlockTail(assigns), ..acc])
         False -> {
-          let assert Ok(#(pre, #(x, value), post)) = split_around(assigns, i)
+          let assert Ok(#(pre, #(pattern, value), post)) =
+            split_around(assigns, i)
           case rest {
-            [] -> #(LetAssign(x, value, pre, post, then), acc)
-            // for direct bind just want to drop in
-            // for Destructure its the same For Let or Param
-            // [0] -> #(Pattern(x))
+            [] -> #(
+              Assign(AssignStatement(pattern), value, pre, post, then),
+              acc,
+            )
+            [0] -> #(
+              Assign(AssignPattern(pattern), value, pre, post, then),
+              acc,
+            )
+            [0, i] -> {
+              case pattern {
+                e.Destructure(fields) -> {
+                  let detail = {
+                    let assert Ok(#(pre, #(label, var), post)) =
+                      split_around(fields, i / 2)
+
+                    case i % 2 {
+                      0 -> AssignField(label, var, pre, post)
+                      1 -> AssignBind(label, var, pre, post)
+                    }
+                  }
+                  #(Assign(detail, value, pre, post, then), acc)
+                }
+              }
+            }
             [1, ..rest] ->
-              focus_at(value, rest, [BlockValue(x, pre, post, then), ..acc])
+              focus_at(value, rest, [
+                BlockValue(pattern, pre, post, then),
+                ..acc
+              ])
             _ -> panic as "bad sub in block"
           }
         }
@@ -122,10 +146,27 @@ pub fn focus_at(ast, path, acc) {
 pub type Zip =
   #(Focus, List(Break))
 
+pub type AssignFocus {
+  AssignStatement(e.Pattern)
+  AssignPattern(e.Pattern)
+  AssignField(
+    field: String,
+    var: String,
+    pre: List(#(String, String)),
+    post: List(#(String, String)),
+  )
+  AssignBind(
+    field: String,
+    var: String,
+    pre: List(#(String, String)),
+    post: List(#(String, String)),
+  )
+}
+
 pub type Focus {
   Exp(e.Expression)
-  LetAssign(
-    pattern: e.Pattern,
+  Assign(
+    focus: AssignFocus,
     value: e.Expression,
     pre: List(#(e.Pattern, e.Expression)),
     post: List(#(e.Pattern, e.Expression)),
@@ -136,15 +177,6 @@ pub type Focus {
     pre: List(e.Pattern),
     post: List(e.Pattern),
     body: e.Expression,
-  )
-  LetDestructureField(field: String, binding: String, pre: List(Nil))
-  //   Does this need block pre and post?
-  LetDestructureBinding(field: String)
-  RecordField(
-    label: String,
-    value: e.Expression,
-    pre: List(#(String, e.Expression)),
-    post: List(#(String, e.Expression)),
   )
   Labeled(
     label: String,
@@ -218,12 +250,12 @@ pub fn step(zip) {
         [break, ..rest] -> {
           case break {
             BlockValue(p, pre, post, then) ->
-              Ok(#(LetAssign(p, exp, pre, post, then), rest))
+              Ok(#(Assign(AssignStatement(p), exp, pre, post, then), rest))
             _ -> Ok(#(Exp(unbreak(exp, break)), rest))
           }
         }
       }
-    LetAssign(pattern, value, pre, post, then) ->
+    Assign(AssignStatement(pattern), value, pre, post, then) ->
       Ok(#(
         Exp(e.Block(gather_around(pre, #(pattern, value), post), then)),
         zoom,

@@ -102,7 +102,7 @@ pub fn let_pattern_test() {
     a"
     |> from_string()
 
-  let scope = focus_at(source, [0, 0])
+  let scope = focus_at(source, [0, 0, 3])
   scope.0
   |> should.equal(t.Exp(e.Record([])))
 }
