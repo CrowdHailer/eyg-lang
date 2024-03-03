@@ -18,6 +18,7 @@ pub fn assign(p, value) {
   do_let(pattern(p), expression(value))
 }
 
+// component, block panel
 pub type Multiline(a) {
   Multi(
     List(element.Element(a)),
@@ -203,6 +204,7 @@ pub fn expression(exp) {
     e.List([], tail) -> Single([text("[]")])
     e.List(items, tail) -> render_list(list.map(items, expression))
     e.Record(fields) -> render_record(list.map(fields, render_field))
+    e.Tag(label) -> Single([h.span([a.class("text-blue-900")], [text(label)])])
     _ -> {
       io.debug(exp)
       panic as "exp"

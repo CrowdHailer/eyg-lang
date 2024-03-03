@@ -202,8 +202,13 @@ pub type WithLabel {
 pub fn text(scope) {
   let #(focus, zoom) = scope
   case focus {
-    Exp(e.String(value)) ->
-      Ok(#(value, fn(new) { #(Exp(e.String(new)), zoom) }))
+    Exp(exp) -> {
+      let #(content, build) = case exp {
+        e.String(content) -> #(content, e.String)
+        e.Tag(content) -> #(content, e.Tag)
+      }
+      Ok(#(content, fn(new) { #(Exp(build(new)), zoom) }))
+    }
     Assign(detail, value, pre, post, then) -> {
       let assert Ok(#(content, build)) = case detail {
         AssignStatement(_) -> Error(Nil)

@@ -16,6 +16,7 @@ pub fn apply_key(k, zip) {
     "E" -> line_above(zip)
     "e" -> to_var(zip)
     "r" -> record(zip)
+    "t" -> tag(zip)
     "a" -> increase(zip)
     "s" -> decrease(zip)
     "f" -> function(zip)
@@ -215,5 +216,13 @@ fn record(zip) {
       t.Labeled("new", e.Vacant, [#(l, v), ..pre], post),
       zoom,
     )
+  }
+}
+
+fn tag(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    t.Exp(e.Vacant) -> #(t.Exp(e.Tag("")), zoom)
+    t.Exp(inner) -> #(t.Exp(e.Tag("")), [t.CallFn([inner]), ..zoom])
   }
 }

@@ -12,10 +12,11 @@ pub type Expression {
   Variable(String)
   Block(List(#(Pattern, Expression)), Expression)
   Call(Expression, List(Expression))
+  Function(List(Pattern), Expression)
   List(List(Expression), Option(Expression))
   Record(List(#(String, Expression)))
   Overwrite(List(#(String, Expression)), String)
-  Function(List(Pattern), Expression)
+  Tag(String)
   Vacant
   Integer(Int)
   Binary(BitArray)
@@ -45,6 +46,8 @@ pub fn from_annotated(node) {
     a.Integer(value) -> Integer(value)
     a.Binary(value) -> Binary(value)
     a.Str(value) -> String(value)
+
+    a.Tag(label) -> Tag(label)
     _ -> {
       io.debug(exp)
       panic as "failed from annotated"
