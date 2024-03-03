@@ -95,3 +95,14 @@ pub fn record_test() {
   rebuild(scope)
   |> should.equal(source)
 }
+
+pub fn let_pattern_test() {
+  let source =
+    "let {x, y: a} = {}
+    a"
+    |> from_string()
+
+  let scope = focus_at(source, [0, 0])
+  scope.0
+  |> should.equal(t.Exp(e.Record([])))
+}

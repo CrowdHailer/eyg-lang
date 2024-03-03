@@ -32,6 +32,8 @@ fn split_around(items, at) {
   do_split_around(items, at, [])
 }
 
+// TODO  Make a split type to reuse pre/post/value
+
 fn do_split_around(items, left, acc) {
   case items, left {
     // pre is left reversed
@@ -61,6 +63,9 @@ pub fn focus_at(ast, path, acc) {
           let assert Ok(#(pre, #(x, value), post)) = split_around(assigns, i)
           case rest {
             [] -> #(LetAssign(x, value, pre, post, then), acc)
+            // for direct bind just want to drop in
+            // for Destructure its the same For Let or Param
+            // [0] -> #(Pattern(x))
             [1, ..rest] ->
               focus_at(value, rest, [BlockValue(x, pre, post, then), ..acc])
             _ -> panic as "bad sub in block"

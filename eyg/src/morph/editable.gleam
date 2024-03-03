@@ -29,11 +29,7 @@ pub fn from_annotated(node) {
       let #(pattern, rest) = gather_destructure(body, x)
       gather_arguments(rest, [pattern])
     }
-    a.Let(x, value, then) -> {
-      let #(p, rest) = gather_destructure(value, x)
-      let value = from_annotated(rest)
-      gather_assignments(then, [#(p, value)])
-    }
+    a.Let(_x, _value, _then) -> gather_assignments(node, [])
     a.Apply(#(a.Apply(#(a.Cons, _), value), _), rest) ->
       gather_cons(rest, [from_annotated(value)])
     a.Tail -> List([], None)
@@ -49,6 +45,10 @@ pub fn from_annotated(node) {
     a.Integer(value) -> Integer(value)
     a.Binary(value) -> Binary(value)
     a.Str(value) -> String(value)
+    _ -> {
+      io.debug(exp)
+      panic as "failed from annotated"
+    }
   }
 }
 
@@ -105,8 +105,8 @@ fn gather_assignments(node, acc) {
   let #(exp, _meta) = node
   case exp {
     a.Let(x, value, then) -> {
-      let #(p, rest) = gather_destructure(value, x)
-      gather_assignments(then, [#(p, from_annotated(rest)), ..acc])
+      let #(p, then) = gather_destructure(then, x)
+      gather_assignments(then, [#(p, from_annotated(value)), ..acc])
     }
     _ -> {
       Block(list.reverse(acc), from_annotated(node))
