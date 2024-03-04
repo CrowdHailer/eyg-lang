@@ -243,8 +243,8 @@ pub fn render_break(break, inner) {
       render_list(t.gather_around(pre, inner, post))
     }
     t.BlockValue(p, pre, post, then) -> {
-      let pre = list.map(pre, do_assign)
-      let post = list.map(post, do_assign)
+      let pre = list.map(pre, assign_pair)
+      let post = list.map(post, assign_pair)
       let assign = do_let(pattern(p), inner)
       t.gather_around(pre, assign, post)
       |> list.append([expression(then)])
@@ -254,7 +254,7 @@ pub fn render_break(break, inner) {
 
     t.BlockTail(assigns) -> {
       let lines =
-        list.map(assigns, do_assign)
+        list.map(assigns, assign_pair)
         |> list.append([inner])
       // TODO remove work out tail
       // case rest {
@@ -282,9 +282,4 @@ pub fn render_break(break, inner) {
       panic as "bad push"
     }
   }
-}
-
-fn do_assign(kv) {
-  let #(label, value) = kv
-  assign(label, value)
 }

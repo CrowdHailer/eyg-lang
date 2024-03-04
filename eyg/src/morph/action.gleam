@@ -19,7 +19,7 @@ pub fn apply_key(k, zip) {
     "t" -> tag(zip)
     "a" -> increase(zip)
     "s" -> decrease(zip)
-    "f" -> function(zip)
+    // "f" -> function(zip)
     "l" -> list(zip)
     "c" -> call(zip)
     "m" -> match(zip)
@@ -231,14 +231,14 @@ fn line_above(zip) {
   }
 }
 
-fn function(zip) {
+// All functions curried so calling f on one should return existing function as argument
+pub fn function(zip) {
   let #(focus, zoom) = zip
   case focus {
-    t.Exp(e.Function(args, body)) -> #(
-      t.Exp(e.Function([e.Bind("xyz"), ..args], body)),
-      zoom,
-    )
-    t.Exp(body) -> #(t.Exp(e.Function([e.Bind("xyz")], body)), zoom)
+    t.Exp(e.Function(args, body)) -> fn(new) {
+      #(t.Exp(e.Function([e.Bind(new), ..args], body)), zoom)
+    }
+    t.Exp(body) -> fn(new) { #(t.Exp(e.Function([e.Bind(new)], body)), zoom) }
   }
 }
 

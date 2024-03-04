@@ -4,6 +4,8 @@ import lustre/element/html as h
 import lustre/element.{text}
 
 // component, block panel
+// enclosed bare clad
+// prepend spans doesnt work on bare item
 pub type Frame(a) {
   Multiline(
     List(element.Element(a)),
