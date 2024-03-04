@@ -19,6 +19,7 @@ pub fn apply_key(k, zip) {
     "t" -> tag(zip)
     "a" -> increase(zip)
     "s" -> decrease(zip)
+    "d" -> delete(zip)
     // "f" -> function(zip)
     "l" -> list(zip)
     "c" -> call(zip)
@@ -211,6 +212,26 @@ fn decrease(zip) {
       io.debug(zip)
       panic as "decrease"
     }
+  }
+}
+
+fn delete(zip) {
+  let #(focus, zoom) = zip
+  case focus, zoom {
+    t.Exp(e.Vacant), [t.ListItem(pre, [next, ..post]), ..zoom] -> {
+      #(t.Exp(next), [t.ListItem(pre, post), ..zoom])
+    }
+    t.Exp(e.Vacant), [t.CallArg(f, pre, [next, ..post]), ..zoom] -> {
+      #(t.Exp(next), [t.CallArg(f, pre, post), ..zoom])
+    }
+    t.Exp(e.Vacant), [t.CallArg(f, [next, ..pre], []), ..zoom] -> {
+      #(t.Exp(next), [t.CallArg(f, pre, []), ..zoom])
+    }
+    t.Exp(e.Vacant), [t.CallArg(f, [], []), ..zoom] -> {
+      #(t.Exp(e.Call(f, [e.Vacant])), zoom)
+    }
+
+    t.Exp(_), _ -> #(t.Exp(e.Vacant), zoom)
   }
 }
 
