@@ -136,6 +136,10 @@ pub fn focus_at(ast, path, acc) {
         _ -> panic as "record focus"
       }
     }
+    e.Case(top, matches, otherwise), [0, ..rest] -> {
+      let acc = [CaseTop(matches, otherwise), ..acc]
+      focus_at(top, rest, acc)
+    }
     _, _ -> {
       io.debug(#(ast, path))
       todo as "foxus_At"
@@ -241,6 +245,13 @@ pub fn text(scope) {
         }),
       )
     }
+    Match(top, label, branch, pre, post, otherwise) -> {
+      Ok(
+        #(label, fn(new) {
+          #(Match(top, new, branch, pre, post, otherwise), zoom)
+        }),
+      )
+    }
   }
 }
 
@@ -272,7 +283,11 @@ pub type Break {
   // )
   // OverwriteLabel(value: e.Expression)
   // OverwriteTail
-  CaseValue(
+  CaseTop(
+    branches: List(#(String, e.Expression)),
+    otherwise: Option(e.Expression),
+  )
+  CaseMatch(
     top: e.Expression,
     label: String,
     pre: List(#(String, e.Expression)),
@@ -337,7 +352,8 @@ fn unbreak(exp, break) {
     ListTail(items) -> e.List(items, Some(exp))
     RecordValue(label, pre, post) ->
       e.Record(gather_around(pre, #(label, exp), post))
-    CaseValue(top, label, pre, post, otherwise) -> {
+    CaseTop(matches, otherwise) -> e.Case(exp, matches, otherwise)
+    CaseMatch(top, label, pre, post, otherwise) -> {
       let branches = gather_around(pre, #(label, exp), post)
       e.Case(top, branches, otherwise)
     }

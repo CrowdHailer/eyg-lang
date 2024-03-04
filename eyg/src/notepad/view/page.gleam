@@ -132,7 +132,7 @@ fn print(zip) {
       let value = code.expression(value)
       let branch =
         frame.prepend_spans(
-          [h.span([a.class("bg-green-3")], [text(label)])],
+          [h.span([a.class("bg-green-3")], [text(label), text(" ")])],
           value,
         )
       let pre = list.map(pre, code.render_branch)
@@ -185,28 +185,33 @@ pub fn editor(zip, mode) {
     [
       // Hidden is nested because vstack display overrides the hidden attribute
       // And being a child of cover the margins are messed up
-      h.div([a.classes([#("hidden", hide)])], [
-        h.div(
-          [
-            a.class(
-              "absolute top-0 bottom-0 right-0 left-0 vstack wrap bg-white",
-            ),
-            // needed because I need no wrap sizing in layout.css
-            a.style([#("margin", "0")]),
-          ],
-          [
-            h.form([event.on_submit(state.ApplyChange)], [
-              h.input([
-                a.class("border"),
-                a.value(dynamic.from(value)),
-                a.autofocus(True),
-                event.on_input(state.TextChange),
+      // h.div([a.classes([#("hidden", hide)])], [
+      case hide {
+        False ->
+          h.div(
+            [
+              a.class(
+                "absolute top-0 bottom-0 right-0 left-0 vstack wrap bg-white",
+              ),
+              // needed because I need no wrap sizing in layout.css
+              a.style([#("margin", "0")]),
+            ],
+            [
+              h.form([event.on_submit(state.ApplyChange)], [
+                h.input([
+                  a.class("border"),
+                  a.value(dynamic.from(value)),
+                  // a.autofocus(True),
+                  a.attribute("autofocus", "true"),
+                  event.on_input(state.TextChange),
+                ]),
+                h.button([a.type_("submit")], [text("apply")]),
               ]),
-              h.button([a.type_("submit")], [text("apply")]),
-            ]),
-          ],
-        ),
-      ]),
+            ],
+          )
+        True -> h.div([], [])
+      },
+      // ]),
       // nested to ignore effect from cover
       h.div([a.attribute("tabindex", "0"), event.on_keydown(state.KeyDown)], [
         print(zip),

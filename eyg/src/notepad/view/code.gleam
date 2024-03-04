@@ -237,15 +237,10 @@ pub fn render_case(top, branches, otherwise) {
 pub fn render_branch(field) {
   let #(label, value) = field
   let value = expression(value)
-  let x =
-    frame.prepend_spans(
-      [h.span([a.class("text-blue-700")], [text(label)])],
-      value,
-    )
-  case x {
-    frame.Inline(spans) -> frame.Multiline([], [h.div([], spans)], [])
-    frame -> frame
-  }
+  frame.prepend_spans(
+    [h.span([a.class("text-blue-700")], [text(label), text(" ")])],
+    value,
+  )
 }
 
 pub fn render_break(break, inner) {
@@ -290,11 +285,16 @@ pub fn render_break(break, inner) {
       // }
       frame.Multiline([], frame.to_fat_lines(lines), [])
     }
-    t.CaseValue(top, label, pre, post, otherwise) -> {
+    t.CaseTop(matches, otherwise) -> {
+      let matches = list.map(matches, render_branch)
+      let otherwise = option.map(otherwise, expression)
+      render_case(inner, matches, otherwise)
+    }
+    t.CaseMatch(top, label, pre, post, otherwise) -> {
       let top = expression(top)
       let pre = list.map(pre, render_branch)
       let post = list.map(post, render_branch)
-      let branch = frame.prepend_spans([text(label)], inner)
+      let branch = frame.prepend_spans([text(label), text(" ")], inner)
       let otherwise = option.map(otherwise, expression)
 
       render_case(top, t.gather_around(pre, branch, post), otherwise)

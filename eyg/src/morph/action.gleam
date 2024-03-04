@@ -1,6 +1,6 @@
 import gleam/io
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import morph/editable as e
 import morph/transform as t
 
@@ -46,6 +46,16 @@ fn move_up(zip) {
       t.Assign(t.AssignStatement(l), v, pre, [#(label, value), ..post], then),
       rest,
     )
+    #(t.Match(top, label, branch, [new, ..pre], post, otherwise), rest) -> {
+      #(
+        t.Match(top, new.0, new.1, pre, [#(label, branch), ..post], otherwise),
+        rest,
+      )
+    }
+    #(t.Exp(otherwise), [t.CaseTail(top, [_, ..] as matches), ..rest]) -> {
+      let assert [#(label, branch), ..pre] = list.reverse(matches)
+      #(t.Match(top, label, branch, pre, [], Some(otherwise)), rest)
+    }
     _ -> {
       io.debug(zip)
       case t.step(zip) {
@@ -68,6 +78,17 @@ fn move_down(zip) {
       let assigns = t.gather_around(pre, #(p, value), [])
       #(t.Exp(then), [t.BlockTail(assigns), ..rest])
     }
+    #(t.Match(top, label, branch, pre, [new, ..post], otherwise), rest) -> {
+      #(
+        t.Match(top, new.0, new.1, [#(label, branch), ..pre], post, otherwise),
+        rest,
+      )
+    }
+    #(t.Match(top, label, branch, pre, [], Some(otherwise)), rest) -> {
+      let matches = list.reverse([#(label, branch), ..pre])
+      #(t.Exp(otherwise), [t.CaseTail(top, matches), ..rest])
+    }
+
     _ -> {
       case t.step(zip) {
         Ok(zip) -> move_down(zip)
@@ -117,8 +138,11 @@ fn move_right(zip) {
     #(t.Label(l, v, pre, post, for), rest) -> {
       #(t.Exp(v), [t.RecordValue(l, pre, post), ..rest])
     }
+    #(t.Exp(top), [t.CaseTop([#(label, branch), ..post], otherwise), ..rest]) -> {
+      #(t.Match(top, label, branch, [], post, otherwise), rest)
+    }
     #(t.Match(top, label, value, pre, post, otherwise), zoom) -> {
-      let zoom = [t.CaseValue(top, label, pre, post, otherwise), ..zoom]
+      let zoom = [t.CaseMatch(top, label, pre, post, otherwise), ..zoom]
       #(t.Exp(value), zoom)
     }
   }
@@ -160,6 +184,9 @@ fn move_left(zip) {
     #(t.Exp(body), [t.Body(args), ..rest]) -> {
       let [last, ..pre] = list.reverse(args)
       #(t.FnParam(last, pre, [], body), rest)
+    }
+    #(t.Exp(branch), [t.CaseMatch(top, l, pre, post, otherwise), ..rest]) -> {
+      #(t.Match(top, l, branch, pre, post, otherwise), rest)
     }
     #(t.FnParam(p, [next, ..pre], post, body), rest) -> {
       #(t.FnParam(next, pre, [p, ..post], body), rest)
