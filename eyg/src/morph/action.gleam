@@ -114,7 +114,9 @@ fn move_right(zip) {
     #(t.FnParam(p, pre, [next, ..post], body), rest) -> {
       #(t.FnParam(next, [p, ..pre], post, body), rest)
     }
-
+    #(t.Label(l, v, pre, post, for), rest) -> {
+      #(t.Exp(v), [t.RecordValue(l, pre, post), ..rest])
+    }
     #(t.Match(top, label, value, pre, post, otherwise), zoom) -> {
       let zoom = [t.CaseValue(top, label, pre, post, otherwise), ..zoom]
       #(t.Exp(value), zoom)

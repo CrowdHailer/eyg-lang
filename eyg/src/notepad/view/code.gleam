@@ -186,18 +186,33 @@ fn to_list_item(f) {
 }
 
 pub fn render_record(fields) {
-  let fields = list.map(fields, frame.append_spans(_, [text(", ")]))
+  let fields = case list.reverse(fields) {
+    [] -> []
+    [last, ..rest] -> {
+      let rest = list.map(rest, frame.append_spans(_, [text(", ")]))
+      list.reverse([last, ..rest])
+    }
+  }
   case frame.all_inline(fields) {
     Ok(spans) ->
       frame.Inline(
         list.flatten([[text("{")], list.flatten(spans), [text("}")]]),
       )
+    Error(Nil) -> {
+      let inner = frame.to_fat_lines(fields)
+      frame.Multiline([text("{")], inner, [text("}")])
+    }
   }
 }
 
 pub fn render_field(field) {
   let #(label, value) = field
   let value = expression(value)
+  frame.prepend_spans([h.span([], [text(label), text(": ")])], value)
+}
+
+pub fn do_render_field(field) {
+  let #(label, value) = field
   frame.prepend_spans([h.span([], [text(label), text(": ")])], value)
 }
 
@@ -241,6 +256,12 @@ pub fn render_break(break, inner) {
       let pre = list.map(pre, expression)
       let post = list.map(post, expression)
       render_list(t.gather_around(pre, inner, post))
+    }
+    t.RecordValue(l, pre, post) -> {
+      let pre = list.map(pre, render_field)
+      let post = list.map(post, render_field)
+      let inner = do_render_field(#(l, inner))
+      render_record(t.gather_around(pre, inner, post))
     }
     t.BlockValue(p, pre, post, then) -> {
       let pre = list.map(pre, assign_pair)
