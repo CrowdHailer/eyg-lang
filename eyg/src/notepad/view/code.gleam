@@ -8,6 +8,7 @@ import lustre/element/html as h
 import lustre/element.{text}
 import lustre/event
 import morph/editable as e
+import morph/transform as t
 import notepad/view/frame
 
 pub fn do_let(pattern, value) {
@@ -224,4 +225,66 @@ pub fn render_branch(field) {
     frame.Inline(spans) -> frame.Multiline([], [h.div([], spans)], [])
     frame -> frame
   }
+}
+
+pub fn render_break(break, inner) {
+  case break {
+    t.CallFn(args) -> render_call(inner, render_args(args))
+    t.CallArg(f, pre, post) -> {
+      let pre = list.map(pre, expression)
+      let post = list.map(post, expression)
+      let args = t.gather_around(pre, inner, post)
+      render_call(expression(f), render_args_e(args))
+    }
+    t.Body(args) -> render_function(patterns(args), inner)
+    t.ListItem(pre, post) -> {
+      let pre = list.map(pre, expression)
+      let post = list.map(post, expression)
+      render_list(t.gather_around(pre, inner, post))
+    }
+    t.BlockValue(p, pre, post, then) -> {
+      let pre = list.map(pre, do_assign)
+      let post = list.map(post, do_assign)
+      let assign = do_let(pattern(p), inner)
+      t.gather_around(pre, assign, post)
+      |> list.append([expression(then)])
+      |> frame.to_fat_lines()
+      |> frame.Multiline([], _, [])
+    }
+
+    t.BlockTail(assigns) -> {
+      let lines =
+        list.map(assigns, do_assign)
+        |> list.append([inner])
+      // TODO remove work out tail
+      // case rest {
+      //   // escape early to not wrap block
+      //   [] -> 
+      // }
+      frame.Multiline([], frame.to_fat_lines(lines), [])
+    }
+    t.CaseValue(top, label, pre, post, otherwise) -> {
+      let top = expression(top)
+      let pre = list.map(pre, render_branch)
+      let post = list.map(post, render_branch)
+      let branch = frame.prepend_spans([text(label)], inner)
+      let otherwise = option.map(otherwise, expression)
+
+      render_case(top, t.gather_around(pre, branch, post), otherwise)
+    }
+    t.CaseTail(top, matches) -> {
+      let top = expression(top)
+      let matches = list.map(matches, render_branch)
+      render_case(top, matches, Some(inner))
+    }
+    _ -> {
+      io.debug(break)
+      panic as "bad push"
+    }
+  }
+}
+
+fn do_assign(kv) {
+  let #(label, value) = kv
+  assign(label, value)
 }

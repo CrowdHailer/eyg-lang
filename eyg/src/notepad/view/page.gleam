@@ -46,69 +46,12 @@ pub fn note(content, on_input) {
   ])
 }
 
-fn push_render(m, zoom) {
+fn push_render(frame, zoom) {
   case zoom {
-    [] -> m
-    [t.CallFn(args), ..rest] -> {
-      push_render(code.render_call(m, code.render_args(args)), rest)
-    }
-    [t.CallArg(f, pre, post), ..rest] -> {
-      let pre = list.map(pre, code.expression)
-      let post = list.map(post, code.expression)
-      let args = t.gather_around(pre, m, post)
-      push_render(
-        code.render_call(code.expression(f), code.render_args_e(args)),
-        rest,
-      )
-    }
-    [t.Body(args), ..rest] -> {
-      code.render_function(code.patterns(args), m)
-      |> push_render(rest)
-    }
-
-    [t.ListItem(pre, post), ..rest] -> {
-      let pre = list.map(pre, code.expression)
-      let post = list.map(post, code.expression)
-      push_render(code.render_list(list.flatten([pre, [m], post])), rest)
-    }
-    [t.BlockValue(p, pre, post, then), ..rest] -> {
-      let pre = list.map(pre, do_assign)
-      let post = list.map(post, do_assign)
-      let assign = code.do_let(code.pattern(p), m)
-      t.gather_around(pre, assign, post)
-      |> list.append([code.expression(then)])
-      |> frame.to_fat_lines()
-      |> frame.Multiline([], _, [])
-    }
-
-    [t.BlockTail(assigns), ..rest] -> {
-      let lines =
-        list.map(assigns, do_assign)
-        |> list.append([m])
-      case rest {
-        // escape early to not wrap block
-        [] -> frame.Multiline([], frame.to_fat_lines(lines), [])
-      }
-    }
-    [t.CaseValue(top, label, pre, post, otherwise), ..rest] -> {
-      let top = code.expression(top)
-      let pre = list.map(pre, code.render_branch)
-      let post = list.map(post, code.render_branch)
-      let branch = frame.prepend_spans([text(label)], m)
-      let otherwise = option.map(otherwise, code.expression)
-
-      code.render_case(top, t.gather_around(pre, branch, post), otherwise)
-      |> push_render(rest)
-    }
-    [t.CaseTail(top, matches), ..rest] -> {
-      let top = code.expression(top)
-      let matches = list.map(matches, code.render_branch)
-      code.render_case(top, matches, Some(m))
-      |> push_render(rest)
-    }
-    _ -> {
-      io.debug(zoom)
-      panic as "bad push"
+    [] -> frame
+    [break, ..rest] -> {
+      let frame = code.render_break(break, frame)
+      push_render(frame, rest)
     }
   }
 }
