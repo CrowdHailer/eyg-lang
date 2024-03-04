@@ -24,6 +24,7 @@ pub fn render(state: state.State) {
 
 // TODO show that you can print more an more tree, limit on depth or total size
 // TODO click on page
+// TODO record in function
 
 // a separate component is possible if textarea is absolute,
 // a sized container is needed to grow into but it get rids of margin at bottom or container
@@ -60,18 +61,7 @@ fn push_render(frame, zoom) {
 fn print(zip) {
   let #(focus, zoom) = zip
   let frame = case focus {
-    t.Exp(exp) -> {
-      let core = code.expression(exp)
-      // TODO move highlight
-      let highlighted = case core {
-        frame.Inline(spans) ->
-          frame.Inline([h.span([a.class("bg-green-3")], spans)])
-        frame.Multiline(pre, inner, post) -> {
-          // TODO better border
-          frame.Multiline(pre, [h.div([a.class("bg-green-3")], inner)], post)
-        }
-      }
-    }
+    t.Exp(exp) -> highlight(code.expression(exp))
     t.Assign(detail, value, pre, post, then) -> {
       let pre = list.map(pre, do_assign)
       let post = list.map(post, do_assign)

@@ -36,7 +36,7 @@ pub fn prepend_spans(new, m) {
 pub fn append_spans(m, new) {
   case m {
     Inline(spans) -> Inline(list.append(spans, new))
-    Multiline(pre, inner, post) -> Multiline(list.append(pre, new), inner, post)
+    Multiline(pre, inner, post) -> Multiline(pre, inner, list.append(post, new))
   }
 }
 
