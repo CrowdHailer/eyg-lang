@@ -23,6 +23,7 @@ pub fn render(state: state.State) {
 }
 
 // TODO show that you can print more an more tree, limit on depth or total size
+// TODO click on page
 
 // a separate component is possible if textarea is absolute,
 // a sized container is needed to grow into but it get rids of margin at bottom or container
@@ -58,7 +59,7 @@ fn push_render(frame, zoom) {
 
 fn print(zip) {
   let #(focus, zoom) = zip
-  case focus {
+  let frame = case focus {
     t.Exp(exp) -> {
       let core = code.expression(exp)
       // TODO move highlight
@@ -70,8 +71,6 @@ fn print(zip) {
           frame.Multiline(pre, [h.div([a.class("bg-green-3")], inner)], post)
         }
       }
-      push_render(highlighted, zoom)
-      |> frame.to_fat_line
     }
     t.Assign(detail, value, pre, post, then) -> {
       let pre = list.map(pre, do_assign)
@@ -107,13 +106,10 @@ fn print(zip) {
         }
       }
 
-      let block =
-        t.gather_around(pre, assign, post)
-        |> list.append([code.expression(then)])
-        |> frame.to_fat_lines
-        |> frame.Multiline([], _, [])
-      push_render(block, zoom)
-      |> frame.to_fat_line
+      t.gather_around(pre, assign, post)
+      |> list.append([code.expression(then)])
+      |> frame.to_fat_lines
+      |> frame.Multiline([], _, [])
     }
     t.FnParam(p, pre, post, body) -> {
       let pre = list.map(pre, code.pattern)
@@ -122,17 +118,13 @@ fn print(zip) {
       let p = [h.span([a.class("bg-purple-2")], spans)]
       let patterns = t.gather_around(pre, p, post)
       let patterns = code.join_patterns(patterns)
-      let f = code.render_function(patterns, code.expression(body))
-      push_render(f, zoom)
-      |> frame.to_fat_line
+      code.render_function(patterns, code.expression(body))
     }
     t.Labeled(label, value, pre, post) -> {
       let field = code.render_field(#(label, value))
       let pre = list.map(pre, code.render_field)
       let post = list.map(post, code.render_field)
       code.render_record(t.gather_around(pre, highlight(field), post))
-      |> push_render(zoom)
-      |> frame.to_fat_line
     }
     t.Label(label, value, pre, post, _) -> {
       let value = code.expression(value)
@@ -145,8 +137,6 @@ fn print(zip) {
       let pre = list.map(pre, code.render_field)
       let post = list.map(post, code.render_field)
       code.render_record(t.gather_around(pre, field, post))
-      |> push_render(zoom)
-      |> frame.to_fat_line
     }
     t.Match(top, label, value, pre, post, otherwise) -> {
       let value = code.expression(value)
@@ -162,14 +152,15 @@ fn print(zip) {
         t.gather_around(pre, branch, post),
         option.map(otherwise, code.expression),
       )
-      |> push_render(zoom)
-      |> frame.to_fat_line
     }
     _ -> {
       io.debug(zip)
       panic as "bad print"
     }
   }
+  push_render(frame, zoom)
+  |> frame.to_fat_line
+  // TO fat line is very similar to top function
 }
 
 // TODO move to a standard highlight function
