@@ -22,6 +22,7 @@ pub fn apply_key(k, zip) {
     "l" -> list(zip)
     "c" -> call(zip)
     "m" -> match(zip)
+    "M" -> open_match(zip)
 
     _ -> {
       io.debug(k)
@@ -88,6 +89,10 @@ fn move_right(zip) {
       let args = list.reverse([p, ..pre])
       #(t.Exp(body), [t.Body(args), ..rest])
     }
+    #(t.FnParam(p, pre, [next, ..post], body), rest) -> {
+      #(t.FnParam(next, [p, ..pre], post, body), rest)
+    }
+
     #(t.Match(top, label, value, pre, post, otherwise), zoom) -> {
       let zoom = [t.CaseValue(top, label, pre, post, otherwise), ..zoom]
       #(t.Exp(value), zoom)
@@ -96,13 +101,19 @@ fn move_right(zip) {
 }
 
 fn move_left(zip) {
-  io.debug(zip)
   case zip {
     #(t.Exp(a), [t.CallArg(f, [], post), ..rest]) -> {
       #(t.Exp(f), [t.CallFn([a, ..post]), ..rest])
     }
     #(t.Exp(a), [t.CallArg(f, [n, ..pre], post), ..rest]) -> {
       #(t.Exp(n), [t.CallArg(f, pre, [a, ..post]), ..rest])
+    }
+    #(t.Exp(body), [t.Body(args), ..rest]) -> {
+      let [last, ..pre] = list.reverse(args)
+      #(t.FnParam(last, pre, [], body), rest)
+    }
+    #(t.FnParam(p, [next, ..pre], post, body), rest) -> {
+      #(t.FnParam(next, pre, [p, ..post], body), rest)
     }
   }
 }
@@ -176,6 +187,10 @@ fn line_above(zip) {
 fn function(zip) {
   let #(focus, zoom) = zip
   case focus {
+    t.Exp(e.Function(args, body)) -> #(
+      t.Exp(e.Function([e.Bind("xyz"), ..args], body)),
+      zoom,
+    )
     t.Exp(body) -> #(t.Exp(e.Function([e.Bind("xyz")], body)), zoom)
   }
 }
@@ -233,10 +248,28 @@ fn tag(zip) {
 
 fn match(zip) {
   let #(focus, zoom) = zip
+  let new = e.Function([e.Bind("_")], e.Vacant)
+  let focus = case focus {
+    t.Exp(exp) -> t.Match(exp, "Ok", new, [], [], None)
+    t.Match(top, label, branch, pre, post, otherwise) -> {
+      let post = [#(label, branch), ..post]
+      t.Match(top, "New", new, pre, post, otherwise)
+    }
+  }
+  #(focus, zoom)
+}
+
+fn open_match(zip) {
+  let #(focus, zoom) = zip
+  let new = e.Function([e.Bind("_")], e.Vacant)
   case focus {
-    t.Exp(exp) -> #(
-      t.Match(exp, "Ok", e.Function([e.Bind("_")], e.Vacant), [], [], None),
-      zoom,
-    )
+    t.Exp(e.Case(top, matches, None)) -> #(t.Exp(new), [
+      t.CaseTail(top, matches),
+      ..zoom
+    ])
+    t.Match(top, label, branch, pre, post, otherwise) -> {
+      let matches = t.gather_around(pre, #(label, branch), post)
+      #(t.Exp(new), [t.CaseTail(top, matches), ..zoom])
+    }
   }
 }

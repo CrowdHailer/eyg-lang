@@ -151,6 +151,12 @@ pub fn expression(exp) {
     e.Record(fields) -> render_record(list.map(fields, render_field))
     e.Tag(label) ->
       frame.Inline([h.span([a.class("text-blue-900")], [text(label)])])
+    e.Case(top, matches, otherwise) -> {
+      let top = expression(top)
+      let matches = list.map(matches, render_branch)
+      let otherwise = option.map(otherwise, expression)
+      render_case(top, matches, otherwise)
+    }
     _ -> {
       io.debug(exp)
       panic as "exp"

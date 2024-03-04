@@ -100,6 +100,12 @@ fn push_render(m, zoom) {
       code.render_case(top, t.gather_around(pre, branch, post), otherwise)
       |> push_render(rest)
     }
+    [t.CaseTail(top, matches), ..rest] -> {
+      let top = code.expression(top)
+      let matches = list.map(matches, code.render_branch)
+      code.render_case(top, matches, Some(m))
+      |> push_render(rest)
+    }
     _ -> {
       io.debug(zoom)
       panic as "bad push"

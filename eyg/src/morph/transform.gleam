@@ -271,8 +271,7 @@ pub type Break {
     post: List(#(String, e.Expression)),
     otherwise: Option(e.Expression),
   )
-  // CaseLabel(value: e.Expression)
-  // CaseTail
+  CaseTail(top: e.Expression, branches: List(#(String, e.Expression)))
 }
 
 // ok makes a lot of gc can pass 2 arg
@@ -302,6 +301,11 @@ pub fn step(zip) {
       Ok(#(Labeled(l, value, pre, post), zoom))
     Labeled(l, value, pre, post) ->
       Ok(#(Exp(e.Record(gather_around(pre, #(l, value), post))), zoom))
+    Match(top, label, branch, pre, post, otherwise) -> {
+      // match is a label and branch
+      let matches = gather_around(pre, #(label, branch), post)
+      Ok(#(Exp(e.Case(top, matches, otherwise)), zoom))
+    }
     _ -> {
       io.debug(focus)
       panic as "when stepping"
@@ -315,11 +319,16 @@ fn unbreak(exp, break) {
     BlockValue(var, pre, post, then) ->
       e.Block(gather_around(pre, #(var, exp), post), then)
     CallFn(args) -> e.Call(exp, args)
-    CallArg(f, pre, post) -> e.Call(f, list.flatten([pre, [exp], post]))
+    CallArg(f, pre, post) -> e.Call(f, gather_around(pre, exp, post))
     Body(args) -> e.Function(args, exp)
     ListItem(pre, post) -> e.List(gather_around(pre, exp, post), None)
     ListTail(items) -> e.List(items, Some(exp))
     RecordValue(label, pre, post) ->
       e.Record(gather_around(pre, #(label, exp), post))
+    CaseValue(top, label, pre, post, otherwise) -> {
+      let branches = gather_around(pre, #(label, exp), post)
+      e.Case(top, branches, otherwise)
+    }
+    CaseTail(top, branches) -> e.Case(top, branches, Some(exp))
   }
 }
