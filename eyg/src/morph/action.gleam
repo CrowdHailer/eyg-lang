@@ -14,7 +14,7 @@ pub fn apply_key(k, zip) {
     "ArrowRight" -> move_right(zip)
     "ArrowLeft" -> move_left(zip)
     "E" -> line_above(zip)
-    "e" -> to_var(zip)
+    // "e" -> to_var(zip)
     "r" -> record(zip)
     "t" -> tag(zip)
     "a" -> increase(zip)
@@ -195,13 +195,18 @@ fn decrease_assign(detail) {
   }
 }
 
-fn to_var(zip) {
+pub fn assign(zip) {
   let #(focus, zoom) = zip
-  case focus {
-    t.Exp(value) -> #(
-      t.Assign(t.AssignStatement(e.Bind("")), value, [], [], e.Vacant),
-      zoom,
-    )
+  case focus, zoom {
+    t.Exp(value), [t.BlockTail(assigns), ..zoom] -> fn(pattern) {
+      let assigns = list.append(assigns, [#(pattern, value)])
+      let zoom = [t.BlockTail(assigns), ..zoom]
+      #(t.Exp(e.Vacant), zoom)
+    }
+    t.Exp(value), _ -> fn(pattern) {
+      let zoom = [t.BlockTail([#(pattern, value)]), ..zoom]
+      #(t.Exp(e.Vacant), zoom)
+    }
   }
 }
 

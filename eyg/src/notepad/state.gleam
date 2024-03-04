@@ -42,6 +42,11 @@ pub fn update(state, message) {
     TextInput(content) -> #(State(..state, content: content), effect.none())
     KeyDown(k) -> {
       let state = case k {
+        "e" -> {
+          let rebuild = action.assign(state.zip)
+          let rebuild = fn(new) { rebuild(e.Bind(new)) }
+          State(..state, mode: Insert("", rebuild))
+        }
         "i" ->
           case transform.text(state.zip) {
             Ok(#(text, apply)) -> State(..state, mode: Insert(text, apply))
