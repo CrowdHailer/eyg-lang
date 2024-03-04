@@ -173,26 +173,32 @@ pub fn render_function(args, body) {
   |> frame.append_spans([text(" }")])
 }
 
-pub fn render_list(ms) {
-  ms
-  |> list.map(to_list_item)
-  |> frame.Multiline([text("[")], _, [text("]")])
-}
-
-fn to_list_item(f) {
-  f
-  |> frame.append_spans([text(",")])
-  |> frame.to_fat_line
-}
-
-pub fn render_record(fields) {
-  let fields = case list.reverse(fields) {
+fn delimit(frames, delimiter) {
+  case list.reverse(frames) {
     [] -> []
     [last, ..rest] -> {
-      let rest = list.map(rest, frame.append_spans(_, [text(", ")]))
+      let rest = list.map(rest, frame.append_spans(_, [text(delimiter)]))
       list.reverse([last, ..rest])
     }
   }
+}
+
+pub fn render_list(items) {
+  let items = delimit(items, ", ")
+  case frame.all_inline(items) {
+    Ok(spans) ->
+      frame.Inline(
+        list.flatten([[text("[")], list.flatten(spans), [text("]")]]),
+      )
+    Error(Nil) -> {
+      let inner = frame.to_fat_lines(items)
+      frame.Multiline([text("[")], inner, [text("]")])
+    }
+  }
+}
+
+pub fn render_record(fields) {
+  let fields = delimit(fields, ", ")
   case frame.all_inline(fields) {
     Ok(spans) ->
       frame.Inline(
