@@ -163,6 +163,14 @@ pub type AssignFocus {
   )
 }
 
+pub fn assigned_pattern(focus) {
+  case focus {
+    AssignStatement(p) | AssignPattern(p) -> p
+    AssignField(l, v, pre, post) | AssignBind(l, v, pre, post) ->
+      e.Destructure(gather_around(pre, #(l, v), post))
+  }
+}
+
 pub type Focus {
   Exp(e.Expression)
   Assign(
@@ -221,7 +229,7 @@ pub fn text(scope) {
       let assert Ok(#(content, build)) = case detail {
         AssignStatement(_) -> Error(Nil)
         AssignPattern(e.Bind(var)) ->
-          Ok(#(var, fn(new) { AssignPattern(e.Bind(var)) }))
+          Ok(#(var, fn(new) { AssignPattern(e.Bind(new)) }))
         AssignField(label, var, pre, post) ->
           Ok(#(label, fn(new) { AssignField(new, var, pre, post) }))
         AssignBind(label, var, pre, post) ->
@@ -289,9 +297,13 @@ pub fn step(zip) {
           }
         }
       }
-    Assign(AssignStatement(pattern), value, pre, post, then) ->
+    Assign(AssignStatement(p), value, pre, post, then) ->
+      Ok(#(Exp(e.Block(gather_around(pre, #(p, value), post), then)), zoom))
+    Assign(AssignPattern(p), value, pre, post, then) ->
+      Ok(#(Assign(AssignStatement(p), value, pre, post, then), zoom))
+    Assign(detail, value, pre, post, then) ->
       Ok(#(
-        Exp(e.Block(gather_around(pre, #(pattern, value), post), then)),
+        Assign(AssignPattern(assigned_pattern(detail)), value, pre, post, then),
         zoom,
       ))
     FnParam(p, pre, post, body) ->

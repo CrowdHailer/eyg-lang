@@ -10,6 +10,7 @@ import morph/transform as t
 pub fn apply_key(k, zip) {
   case k {
     "ArrowUp" -> move_up(zip)
+    "ArrowDown" -> move_down(zip)
     "ArrowRight" -> move_right(zip)
     "ArrowLeft" -> move_left(zip)
     "E" -> line_above(zip)
@@ -49,6 +50,27 @@ fn move_up(zip) {
       io.debug(zip)
       case t.step(zip) {
         Ok(zip) -> move_up(zip)
+      }
+    }
+  }
+}
+
+fn move_down(zip) {
+  case zip {
+    #(t.Assign(detail, value, pre, [new, ..post], then), rest) -> {
+      let p = t.assigned_pattern(detail)
+      let pre = [#(p, value), ..pre]
+
+      #(t.Assign(t.AssignStatement(new.0), new.1, pre, post, then), rest)
+    }
+    #(t.Assign(detail, value, pre, [], then), rest) -> {
+      let p = t.assigned_pattern(detail)
+      let assigns = t.gather_around(pre, #(p, value), [])
+      #(t.Exp(then), [t.BlockTail(assigns), ..rest])
+    }
+    _ -> {
+      case t.step(zip) {
+        Ok(zip) -> move_down(zip)
       }
     }
   }
@@ -102,6 +124,31 @@ fn move_right(zip) {
 
 fn move_left(zip) {
   case zip {
+    #(t.Exp(value), [t.BlockValue(pattern, pre, post, then), ..rest]) -> {
+      let detail = case pattern {
+        e.Bind(label) -> t.AssignPattern(pattern)
+        e.Destructure(bindings) -> {
+          let [#(label, var), ..pre] = list.reverse(bindings)
+          t.AssignBind(label, var, pre, [])
+        }
+      }
+      #(t.Assign(detail, value, pre, post, then), rest)
+    }
+    #(t.Assign(detail, value, pre, post, then), zoom) -> {
+      let same = t.Assign(_, value, pre, post, then)
+      case detail {
+        t.AssignStatement(_) | t.AssignPattern(_) ->
+          panic as "too high to move left"
+        t.AssignBind(label, var, pre, post) -> #(
+          same(t.AssignField(label, var, pre, post)),
+          zoom,
+        )
+        t.AssignField(label, var, [#(l, v), ..pre], post) -> #(
+          same(t.AssignBind(l, v, pre, [#(label, var), ..post])),
+          zoom,
+        )
+      }
+    }
     #(t.Exp(a), [t.CallArg(f, [], post), ..rest]) -> {
       #(t.Exp(f), [t.CallFn([a, ..post]), ..rest])
     }
