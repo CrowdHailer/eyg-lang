@@ -226,6 +226,7 @@ pub fn text(scope) {
       let #(content, build) = case exp {
         e.String(content) -> #(content, e.String)
         e.Tag(content) -> #(content, e.Tag)
+        e.Perform(label) -> #(label, e.Perform)
       }
       Ok(#(content, fn(new) { #(Exp(build(new)), zoom) }))
     }

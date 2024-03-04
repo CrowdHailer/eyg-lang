@@ -51,6 +51,10 @@ pub fn update(state, message) {
           case transform.text(state.zip) {
             Ok(#(text, apply)) -> State(..state, mode: Insert(text, apply))
           }
+        "p" -> {
+          let apply = action.perform(state.zip)
+          State(..state, mode: Insert("", apply))
+        }
         "f" -> {
           let rebuild = action.function(state.zip)
           State(..state, mode: Insert("", rebuild))

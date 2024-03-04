@@ -22,6 +22,7 @@ pub type Expression {
   Overwrite(List(#(String, Expression)), String)
   Tag(String)
   Case(Expression, List(#(String, Expression)), Option(Expression))
+  Perform(String)
 }
 
 pub fn from_annotated(node) {

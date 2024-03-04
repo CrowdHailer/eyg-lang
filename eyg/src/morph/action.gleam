@@ -215,6 +215,9 @@ fn decrease(zip) {
   }
 }
 
+// for predicate
+const vacant = e.Vacant
+
 fn delete(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
@@ -231,8 +234,28 @@ fn delete(zip) {
       #(t.Exp(e.Call(f, [e.Vacant])), zoom)
     }
 
-    t.Exp(_), _ -> #(t.Exp(e.Vacant), zoom)
+    t.Exp(x), _ if x != vacant -> #(t.Exp(e.Vacant), zoom)
+    t.Assign(t.AssignStatement(_), _, pre, [#(pattern, value), ..post], then), zoom -> #(
+      t.Assign(t.AssignStatement(pattern), value, pre, post, then),
+      zoom,
+    )
+    t.Assign(t.AssignStatement(_), _, [#(pattern, value), ..pre], [], then), zoom -> #(
+      t.Assign(t.AssignStatement(pattern), value, pre, [], then),
+      zoom,
+    )
+    t.Assign(t.AssignStatement(_), _, [], [], then), zoom -> #(
+      t.Exp(then),
+      zoom,
+    )
+    // if no left/right then step
+    _, _ -> {
+      io.debug(zip)
+      case t.step(zip) {
+        Ok(zip) -> zip
+      }
+    }
   }
+  // t.Assign(t.AssignField(_l,_v, pre,[next,..post]),value,)
 }
 
 fn decrease_assign(detail) {
@@ -372,6 +395,16 @@ fn open_match(zip) {
     t.Match(top, label, branch, pre, post, otherwise) -> {
       let matches = t.gather_around(pre, #(label, branch), post)
       #(t.Exp(new), [t.CaseTail(top, matches), ..zoom])
+    }
+  }
+}
+
+pub fn perform(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    t.Exp(e.Vacant) -> fn(new) { #(t.Exp(e.Perform(new)), zoom) }
+    t.Exp(inner) -> fn(new) {
+      #(t.Exp(e.Perform(new)), [t.CallFn([inner]), ..zoom])
     }
   }
 }

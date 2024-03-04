@@ -158,6 +158,11 @@ pub fn expression(exp) {
       let otherwise = option.map(otherwise, expression)
       render_case(top, matches, otherwise)
     }
+    e.Perform(label) ->
+      frame.Inline([
+        h.span([a.class("text-gray-700")], [text("perform ")]),
+        h.span([a.class("text-blue-900")], [text(label)]),
+      ])
     _ -> {
       io.debug(exp)
       panic as "exp"
