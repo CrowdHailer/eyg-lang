@@ -48,21 +48,33 @@ fn actions() {
     }),
     #("function", fn(zip) {
       let rebuild = action.function(zip)
+      update_focus()
       State(zip, RequireString("", rebuild))
+    }),
+    #("call function", fn(zip) {
+      let zip = action.call(zip)
+      State(zip, Navigate)
     }),
     #("let", fn(zip) {
       let rebuild = action.assign(zip)
+      update_focus()
       State(zip, RequireString("", fn(label) { rebuild(e.Bind(label)) }))
     }),
     #("let above", fn(zip) { todo }),
+    #("list", fn(zip) {
+      let zip = action.list(zip)
+      State(zip, Navigate)
+    }),
+    #("tag", fn(zip) {
+      let rebuild = action.tag(zip)
+      update_focus()
+      State(zip, RequireString("", fn(label) { rebuild(label) }))
+    }),
   ]
   // TODO require text
   // let rebuild = action.line_above(zip)
   // State(zip, RequireString("", fn(label) { rebuild(e.Bind(label)) }))
   // "call as argument",
-  // "call function",
-  // "list",
-  // "insert above",
 }
 
 fn update_focus() {

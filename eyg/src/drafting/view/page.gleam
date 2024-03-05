@@ -71,6 +71,7 @@ fn string_input(value) {
         a.class(
           "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
         ),
+        a.id("focus-input"),
         a.value(dynamic.from(value)),
         // a.autofocus(True),
         a.attribute("autofocus", "true"),

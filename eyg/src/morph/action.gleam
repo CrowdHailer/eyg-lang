@@ -16,7 +16,7 @@ pub fn apply_key(k, zip) {
     "E" -> line_above(zip)
     // "e" -> to_var(zip)
     "r" -> record(zip)
-    "t" -> tag(zip)
+    // "t" -> tag(zip)
     "a" -> increase(zip)
     "s" -> decrease(zip)
     "d" -> delete(zip)
@@ -321,7 +321,7 @@ pub fn function(zip) {
   }
 }
 
-fn call(zip) {
+pub fn call(zip) {
   case zip {
     #(t.Exp(e.Call(f, args)), rest) -> {
       #(t.Exp(e.Vacant), [t.CallArg(f, list.reverse(args), []), ..rest])
@@ -335,7 +335,7 @@ fn call(zip) {
   }
 }
 
-fn list(zip) {
+pub fn list(zip) {
   let #(focus, zoom) = zip
   case focus {
     t.Exp(e.Vacant) -> #(t.Exp(e.List([], None)), zoom)
@@ -364,11 +364,13 @@ fn record(zip) {
   }
 }
 
-fn tag(zip) {
+pub fn tag(zip) {
   let #(focus, zoom) = zip
   case focus {
-    t.Exp(e.Vacant) -> #(t.Exp(e.Tag("")), zoom)
-    t.Exp(inner) -> #(t.Exp(e.Tag("")), [t.CallFn([inner]), ..zoom])
+    t.Exp(e.Vacant) -> fn(new) { #(t.Exp(e.Tag(new)), zoom) }
+    t.Exp(inner) -> fn(new) {
+      #(t.Exp(e.Tag(new)), [t.CallFn([inner]), ..zoom])
+    }
   }
 }
 
