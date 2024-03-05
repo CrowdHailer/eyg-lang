@@ -218,7 +218,7 @@ fn decrease(zip) {
 // for predicate
 const vacant = e.Vacant
 
-fn delete(zip) {
+pub fn delete(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
     t.Exp(e.Vacant), [t.ListItem(pre, [next, ..post]), ..zoom] -> {
@@ -252,6 +252,7 @@ fn delete(zip) {
       io.debug(zip)
       case t.step(zip) {
         Ok(zip) -> zip
+        Error(Nil) -> zip
       }
     }
   }
