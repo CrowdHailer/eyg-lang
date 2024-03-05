@@ -33,7 +33,7 @@ pub fn apply_key(k, zip) {
   }
 }
 
-fn move_up(zip) {
+pub fn move_up(zip) {
   case zip {
     #(t.Exp(then), [t.BlockTail(assigns), ..rest]) -> {
       let assert [#(pattern, last), ..pre] = list.reverse(assigns)
@@ -66,7 +66,7 @@ fn move_up(zip) {
   }
 }
 
-fn move_down(zip) {
+pub fn move_down(zip) {
   case zip {
     #(t.Assign(detail, value, pre, [new, ..post], then), rest) -> {
       let p = t.assigned_pattern(detail)
@@ -98,7 +98,7 @@ fn move_down(zip) {
   }
 }
 
-fn move_right(zip) {
+pub fn move_right(zip) {
   case zip {
     #(t.Exp(f), [t.CallFn(args), ..rest]) -> {
       let assert [first, ..args] = args
@@ -149,7 +149,7 @@ fn move_right(zip) {
   }
 }
 
-fn move_left(zip) {
+pub fn move_left(zip) {
   case zip {
     #(t.Exp(value), [t.BlockValue(pattern, pre, post, then), ..rest]) -> {
       let detail = case pattern {
@@ -195,12 +195,12 @@ fn move_left(zip) {
   }
 }
 
-fn increase(zip) {
+pub fn increase(zip) {
   let assert Ok(zip) = t.step(zip)
   zip
 }
 
-fn decrease(zip) {
+pub fn decrease(zip) {
   let #(focus, zoom) = zip
   case focus {
     t.Assign(detail, v, pre, post, then) -> {
@@ -282,7 +282,7 @@ pub fn assign(zip) {
   }
 }
 
-fn line_above(zip) {
+pub fn line_above(zip) {
   case zip {
     #(t.Exp(x), [t.ListItem(pre, post), ..rest]) -> {
       #(t.Exp(e.Vacant), [t.ListItem(pre, [x, ..post]), ..rest])

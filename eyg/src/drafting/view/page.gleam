@@ -21,6 +21,7 @@ pub fn render(app) {
       [
         a.class("flex flex-col justify-center min-h-screen p-4"),
         a.style([#("align-items", "center")]),
+        a.id("code"),
         a.attribute("tabindex", "0"),
         event.on_keydown(state.KeyDown),
       ],
@@ -38,8 +39,10 @@ fn pallet(search, actions, index) {
         a.class(
           "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
         ),
+        a.id("focus-input"),
         a.value(dynamic.from(search)),
         // a.autofocus(True),
+        a.attribute("autocomplete", "off"),
         a.attribute("autofocus", "true"),
         event.on_keydown(state.KeyDown),
         event.on_input(state.UpdateInput),
@@ -97,11 +100,11 @@ fn overlay(content) {
         a.class(
           "absolute top-0 bottom-0 right-0 left-0 flex flex-col justify-center",
         ),
-        a.style([#("align-items", "center")]),
+        a.style([#("align-items", "center"), #("backdrop-filter", "blur(3px)")]),
       ],
       [
         h.div(
-          [a.class("bg-black text-white border-black max-w-4xl border w-full")],
+          [a.class("bg-black text-white border-black max-w-2xl border w-full")],
           content,
         ),
       ],

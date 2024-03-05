@@ -24,7 +24,6 @@ pub fn render(state: state.State) {
 
 // TODO select from record
 // TODO render annotated
-// TODO space cmd
 // TODO join_field needs to take span if used by expression and pattern
 // TODO show that you can print more an more tree, limit on depth or total size
 // TODO click on page

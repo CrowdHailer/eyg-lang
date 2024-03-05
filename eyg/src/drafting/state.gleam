@@ -2,6 +2,9 @@ import gleam/io
 import gleam/list
 import gleam/option.{None}
 import lustre/effect
+import plinth/browser/document
+import plinth/browser/element
+import plinth/browser/window
 import morph/editable as e
 import morph/transform
 import morph/action
@@ -51,11 +54,29 @@ fn actions() {
       let rebuild = action.assign(zip)
       State(zip, RequireString("", fn(label) { rebuild(e.Bind(label)) }))
     }),
+    #("let above", fn(zip) { todo }),
   ]
+  // TODO require text
+  // let rebuild = action.line_above(zip)
+  // State(zip, RequireString("", fn(label) { rebuild(e.Bind(label)) }))
   // "call as argument",
   // "call function",
   // "list",
   // "insert above",
+}
+
+fn update_focus() {
+  window.request_animation_frame(fn() {
+    case document.query_selector("#focus-input") {
+      Ok(el) -> {
+        element.focus(el)
+      }
+      _ -> {
+        let assert Ok(el) = document.query_selector("#code")
+        element.focus(el)
+      }
+    }
+  })
 }
 
 pub fn update(state, message) {
@@ -63,10 +84,29 @@ pub fn update(state, message) {
   case message {
     KeyDown(k) -> {
       let state = case mode, k {
-        Navigate, " " -> #(
-          State(..state, mode: Pallet("", actions(), 0)),
+        Navigate, " " -> {
+          update_focus()
+          #(State(..state, mode: Pallet("", actions(), 0)), effect.none())
+        }
+        Navigate, "a" -> #(State(action.increase(zip), mode), effect.none())
+        Navigate, "s" -> #(State(action.decrease(zip), mode), effect.none())
+        Navigate, "ArrowUp" -> #(
+          State(action.move_up(zip), mode),
           effect.none(),
         )
+        Navigate, "ArrowDown" -> #(
+          State(action.move_down(zip), mode),
+          effect.none(),
+        )
+        Navigate, "ArrowLeft" -> #(
+          State(action.move_left(zip), mode),
+          effect.none(),
+        )
+        Navigate, "ArrowRight" -> #(
+          State(action.move_right(zip), mode),
+          effect.none(),
+        )
+
         RequireString(_, _), _ -> #(state, effect.none())
         Pallet(search, actions, index), "ArrowUp" -> #(
           State(..state, mode: move_selection(search, actions, index, -1)),
@@ -79,8 +119,13 @@ pub fn update(state, message) {
       }
     }
     UpdateInput(value) -> update_input(state, value)
-    Do(action) -> #(action(zip), effect.none())
+    Do(action) -> {
+      update_focus()
+
+      #(action(zip), effect.none())
+    }
     DoIt -> {
+      update_focus()
       let assert RequireString(value, rebuild) = mode
       #(State(rebuild(value), Navigate), effect.none())
     }
