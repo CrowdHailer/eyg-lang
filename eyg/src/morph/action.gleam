@@ -400,7 +400,7 @@ pub fn tag(zip) {
   }
 }
 
-fn match(zip) {
+pub fn match(zip) {
   let #(focus, zoom) = zip
   let new = e.Function([e.Bind("_")], e.Vacant)
   let focus = case focus {
@@ -413,7 +413,7 @@ fn match(zip) {
   #(focus, zoom)
 }
 
-fn open_match(zip) {
+pub fn open_match(zip) {
   let #(focus, zoom) = zip
   let new = e.Function([e.Bind("_")], e.Vacant)
   case focus {

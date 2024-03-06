@@ -129,6 +129,24 @@ fn actions() {
       Some("t"),
     ),
     #(
+      "match",
+      fn(zip) {
+        let zip = action.match(zip)
+        update_focus()
+        State(zip, Navigate)
+      },
+      Some("m"),
+    ),
+    #(
+      "open match",
+      fn(zip) {
+        let zip = action.open_match(zip)
+        update_focus()
+        State(zip, Navigate)
+      },
+      Some("M"),
+    ),
+    #(
       "builtin",
       fn(zip) {
         let #(value, rebuild) = action.builtin(zip)

@@ -43,7 +43,15 @@ pub fn from_annotated(node) {
       gather_extends(rest, [#(l, from_annotated(value))])
     a.Empty -> Record([])
 
-    a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise) -> todo
+    a.Apply(
+      #(a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise), _),
+      value,
+    ) -> {
+      let value = from_annotated(value)
+      let #(matches, otherwise) =
+        gather_otherwise(otherwise, [#(l, from_annotated(branch))])
+      Case(value, matches, otherwise)
+    }
 
     a.Vacant(_) -> Vacant
     a.Variable(var) -> Variable(var)
@@ -69,7 +77,7 @@ fn gather_arguments(node, acc) {
       let #(pattern, rest) = gather_destructure(body, x)
       gather_arguments(rest, [pattern, ..acc])
     }
-    _ -> panic as "bad arguments"
+    _body -> Function(list.reverse(acc), from_annotated(node))
   }
 }
 
@@ -108,6 +116,16 @@ fn gather_extends(node, acc) {
       gather_extends(rest, [#(l, from_annotated(value)), ..acc])
     a.Empty -> Record(list.reverse(acc))
     _ -> panic as "bad extend"
+  }
+}
+
+fn gather_otherwise(node, acc) {
+  let #(exp, _meta) = node
+  case exp {
+    a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise) ->
+      gather_otherwise(otherwise, [#(l, from_annotated(branch)), ..acc])
+    a.NoCases -> #(list.reverse(acc), None)
+    _otherwise -> #(list.reverse(acc), Some(from_annotated(node)))
   }
 }
 

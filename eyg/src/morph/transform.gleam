@@ -141,6 +141,30 @@ pub fn focus_at(ast, path, acc) {
       let acc = [CaseTop(matches, otherwise), ..acc]
       focus_at(top, rest, acc)
     }
+    e.Case(top, matches, otherwise), [i, ..rest] -> {
+      let i = i - 1
+      case i == list.length(matches), otherwise {
+        True, Some(tail) ->
+          focus_at(tail, rest, [CaseTail(top, matches), ..acc])
+        False, _ -> {
+          let assert Ok(#(pre, #(label, branch), post)) =
+            split_around(matches, i)
+          case rest {
+            [] -> #(
+              Label(label, branch, pre, post, Case(branch, otherwise)),
+              acc,
+            )
+            [0, ..rest] ->
+              focus_at(branch, rest, [
+                CaseMatch(top, label, pre, post, otherwise),
+                ..acc
+              ])
+            _ -> panic as "bad branch"
+          }
+        }
+        _, _ -> panic as "bad case"
+      }
+    }
     _, _ -> {
       io.debug(#(ast, path))
       todo as "foxus_At"
@@ -216,6 +240,7 @@ pub type Focus {
 
 pub type WithLabel {
   Record
+  Case(top: e.Expression, otherwise: Option(e.Expression))
 }
 
 // scope is a bad name due to variable scope

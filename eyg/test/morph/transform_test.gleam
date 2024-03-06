@@ -106,3 +106,23 @@ pub fn let_pattern_test() {
   scope.0
   |> should.equal(t.Exp(e.Record([])))
 }
+
+pub fn case_test() {
+  let source =
+    "match x {
+      Ok(y) -> { y }
+      | (_) -> { 2 }
+    }"
+    |> from_string()
+  let scope = focus_at(source, [0])
+  scope.0
+  |> should.equal(t.Exp(e.Variable("x")))
+  rebuild(scope)
+  |> should.equal(source)
+
+  let scope = focus_at(source, [1, 0])
+  scope.0
+  |> should.equal(t.Exp(e.Function([e.Bind("y")], e.Variable("y"))))
+  rebuild(scope)
+  |> should.equal(source)
+}
