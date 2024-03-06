@@ -316,6 +316,14 @@ pub fn line_above(zip) {
   }
 }
 
+// always start from scratch
+pub fn variable(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    t.Exp(_) -> fn(x) { #(t.Exp(e.Variable(x)), zoom) }
+  }
+}
+
 // All functions curried so calling f on one should return existing function as argument
 pub fn function(zip) {
   let #(focus, zoom) = zip

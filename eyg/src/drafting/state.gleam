@@ -42,12 +42,29 @@ pub type Message {
 fn actions() {
   [
     #(
+      "insert mode",
+      fn(zip) {
+        let Ok(#(value, rebuild)) = transform.text(zip)
+        State(zip, RequireString(value, rebuild))
+      },
+      Some("i"),
+    ),
+    #(
       "delete",
       fn(zip) {
         let zip = action.delete(zip)
         State(zip, Navigate)
       },
       Some("d"),
+    ),
+    #(
+      "variable",
+      fn(zip) {
+        let rebuild = action.variable(zip)
+        update_focus()
+        State(zip, RequireString("", rebuild))
+      },
+      Some("v"),
     ),
     #(
       "function",

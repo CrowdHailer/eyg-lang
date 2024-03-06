@@ -1,6 +1,7 @@
 import gleam/io
 import gleam/option.{type Option, None, Some}
 import gleam/order
+import gleam/result.{try}
 import gleam/int
 import gleam/list
 import morph/editable as e
@@ -223,29 +224,36 @@ pub fn text(scope) {
   let #(focus, zoom) = scope
   case focus {
     Exp(exp) -> {
-      let #(content, build) = case exp {
-        e.String(content) -> #(content, e.String)
-        e.Tag(content) -> #(content, e.Tag)
-        e.Perform(label) -> #(label, e.Perform)
-      }
+      use #(content, build) <- try(case exp {
+        e.Variable(x) -> Ok(#(x, e.Variable))
+        e.String(content) -> Ok(#(content, e.String))
+        e.Tag(content) -> Ok(#(content, e.Tag))
+        e.Perform(label) -> Ok(#(label, e.Perform))
+        e.Builtin(identifier) -> Ok(#(identifier, e.Builtin))
+        _ -> Error(Nil)
+      })
       Ok(#(content, fn(new) { #(Exp(build(new)), zoom) }))
     }
     Assign(detail, value, pre, post, then) -> {
-      let assert Ok(#(content, build)) = case detail {
+      use #(content, build) <- try(case detail {
         AssignStatement(_) -> Error(Nil)
         AssignPattern(e.Bind(var)) ->
           Ok(#(var, fn(new) { AssignPattern(e.Bind(new)) }))
+        AssignPattern(e.Destructure(_)) -> Error(Nil)
         AssignField(label, var, pre, post) ->
           Ok(#(label, fn(new) { AssignField(new, var, pre, post) }))
         AssignBind(label, var, pre, post) ->
           Ok(#(var, fn(new) { AssignBind(label, new, pre, post) }))
-      }
+      })
       Ok(
         #(content, fn(new) {
           #(Assign(build(new), value, pre, post, then), zoom)
         }),
       )
     }
+    Label(label, value, pre, post, for) ->
+      Ok(#(label, fn(new) { #(Label(new, value, pre, post, for), zoom) }))
+    Labeled(_, _, _, _) -> Error(Nil)
     Match(top, label, branch, pre, post, otherwise) -> {
       Ok(
         #(label, fn(new) {
