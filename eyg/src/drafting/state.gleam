@@ -181,39 +181,6 @@ pub fn handle(state, message) {
       State(rebuild(value), Navigate)
     }
   }
-  //     TextInput(content) -> #(State(..state, content: content), effect.none())
-  //         "e" -> {
-  //           let rebuild = action.assign(state.zip)
-  //           let rebuild = fn(new) { rebuild(e.Bind(new)) }
-  //           State(..state, mode: Insert("", rebuild))
-  //         }
-  //         "i" ->
-  //           case transform.text(state.zip) {
-  //             Ok(#(text, apply)) -> State(..state, mode: Insert(text, apply))
-  //           }
-  //         "p" -> {
-  //           let apply = action.perform(state.zip)
-  //           State(..state, mode: Insert("", apply))
-  //         }
-  //         "f" -> {
-  //           let rebuild = action.function(state.zip)
-  //           State(..state, mode: Insert("", rebuild))
-  //         }
-  //         _ -> {
-  //           let zip = action.apply_key(k, state.zip)
-  //           State(..state, zip: zip)
-  //         }
-  //       }
-  //     TextChange(n) -> {
-  //       let assert Insert(_, apply) = state.mode
-  //       let mode = Insert(n, apply)
-  //       let state = State(..state, mode: mode)
-  //       #(state, effect.none())
-  //     }
-  //     ApplyChange -> {
-  //       let assert Insert(v, apply) = state.mode
-  //       let state = State(..state, mode: Command, zip: apply(v))
-  //       #(state, effect.none())
 }
 
 pub fn update(state, message) {
