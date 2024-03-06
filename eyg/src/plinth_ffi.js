@@ -1,13 +1,5 @@
 import { Ok, Error } from "./gleam.mjs";
 
-export function eval_(string) {
-  try {
-    return new Ok(eval(string));
-  } catch (error) {
-    return new Error(error.toString());
-  }
-}
-
 export function addEventListener(el, type, listener) {
   el.addEventListener(type, listener);
   return function () {
