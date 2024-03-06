@@ -7,6 +7,7 @@ import lustre/event
 import drafting/state as d
 import drafting/view/page
 import notepad/view/code
+import eyg/runtime/value as v
 import spotless/state
 
 pub fn render(app) {
@@ -23,7 +24,10 @@ pub fn render(app) {
               "max-w-2xl mx-auto mt-6 p-1 border-2 rounded border-blue-700 font-mono",
             ),
           ],
-          code.top(prog),
+          [
+            h.div([], code.top(prog)),
+            h.div([a.class("bg-gray-200")], [text(v.debug(value))]),
+          ],
         )
       }),
     ),
