@@ -33,8 +33,8 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/browser/file_system
 import plinth/browser/file
-// import plinth/browser/blob
-import old_plinth/browser/window as old_window
+import plinth/browser/selection
+import plinth/browser/range
 import old_plinth/browser/document
 import platforms/browser
 import eyg/analysis/inference/levels_j/contextual as j
@@ -200,8 +200,8 @@ pub fn start_easel_at(root, start, state) {
     "selectionchange",
     fn(_event) {
       let _ = {
-        use selection <- result.then(old_window.get_selection())
-        use range <- result.then(old_window.get_range_at(selection, 0))
+        use selection <- result.then(selection.get_selection())
+        use range <- result.then(selection.get_range_at(selection, 0))
         let start = start_index(range)
         let end = end_index(range)
         javascript.update_reference(ref, fn(state) {
@@ -307,11 +307,12 @@ pub fn fullscreen(root) {
   Nil
 }
 
+// These iterate through spans so needs some thought to change
 @external(javascript, "../easel_ffi.js", "startIndex")
-fn start_index(a: old_window.Range) -> Int
+fn start_index(a: range.Range) -> Int
 
 @external(javascript, "../easel_ffi.js", "endIndex")
-fn end_index(a: old_window.Range) -> Int
+fn end_index(a: range.Range) -> Int
 
 fn render_page(root, start, state) {
   case document.query_selector(root, "pre") {
