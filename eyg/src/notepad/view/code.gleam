@@ -163,6 +163,10 @@ pub fn expression(exp) {
         h.span([a.class("text-gray-700")], [text("perform ")]),
         h.span([a.class("text-blue-900")], [text(label)]),
       ])
+    e.Builtin(identifier) ->
+      frame.Inline([
+        h.span([a.class("text-orange-3")], [text("!"), text(identifier)]),
+      ])
     _ -> {
       io.debug(exp)
       panic as "exp"

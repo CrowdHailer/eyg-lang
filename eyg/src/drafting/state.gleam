@@ -64,7 +64,7 @@ fn actions() {
         let zip = action.call(zip)
         State(zip, Navigate)
       },
-      Some("w"),
+      Some("c"),
     ),
     #(
       "let",
@@ -76,6 +76,14 @@ fn actions() {
       Some("e"),
     ),
     #("let above", fn(zip) { todo }, None),
+    #(
+      "string",
+      fn(zip) {
+        let #(value, rebuild) = action.string(zip)
+        State(zip, RequireString(value, rebuild))
+      },
+      Some("\""),
+    ),
     #(
       "list",
       fn(zip) {
@@ -102,6 +110,14 @@ fn actions() {
         State(zip, RequireString("", fn(label) { rebuild(label) }))
       },
       Some("t"),
+    ),
+    #(
+      "builtin",
+      fn(zip) {
+        let #(value, rebuild) = action.builtin(zip)
+        State(zip, RequireString(value, rebuild))
+      },
+      Some("j"),
     ),
   ]
   // TODO require text

@@ -341,6 +341,16 @@ pub fn call(zip) {
   }
 }
 
+pub fn string(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    t.Exp(e.String(content)) -> #(content, fn(content) {
+      #(t.Exp(e.String(content)), zoom)
+    })
+    t.Exp(_) -> #("", fn(content) { #(t.Exp(e.String(content)), zoom) })
+  }
+}
+
 pub fn list(zip) {
   let #(focus, zoom) = zip
   case focus {
@@ -417,5 +427,15 @@ pub fn perform(zip) {
     t.Exp(inner) -> fn(new) {
       #(t.Exp(e.Perform(new)), [t.CallFn([inner]), ..zoom])
     }
+  }
+}
+
+pub fn builtin(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    t.Exp(e.Builtin(content)) -> #(content, fn(content) {
+      #(t.Exp(e.Builtin(content)), zoom)
+    })
+    t.Exp(_) -> #("", fn(content) { #(t.Exp(e.Builtin(content)), zoom) })
   }
 }

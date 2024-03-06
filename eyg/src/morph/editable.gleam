@@ -24,6 +24,7 @@ pub type Expression {
   Tag(String)
   Case(Expression, List(#(String, Expression)), Option(Expression))
   Perform(String)
+  Builtin(String)
 }
 
 pub fn from_annotated(node) {
@@ -51,6 +52,9 @@ pub fn from_annotated(node) {
     a.Str(value) -> String(value)
 
     a.Tag(label) -> Tag(label)
+    a.Perform(label) -> Perform(label)
+    a.Builtin(label) -> Builtin(label)
+
     _ -> {
       io.debug(exp)
       panic as "failed from annotated"
@@ -174,5 +178,6 @@ pub fn to_expression(source) {
 
     Tag(label) -> e.Tag(label)
     Perform(label) -> e.Perform(label)
+    Builtin(identifier) -> e.Builtin(identifier)
   }
 }
