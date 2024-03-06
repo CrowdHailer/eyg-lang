@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/list
+import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
@@ -40,7 +41,7 @@ pub fn surface(zip) {
 }
 
 pub fn pallet(search, actions, index) {
-  let assert Ok(#(_, current)) = list.at(actions, index)
+  let assert Ok(#(_, current, _)) = list.at(actions, index)
 
   h.form([event.on_submit(state.Do(current))], [
     h.div([a.class("w-full p-2")], []),
@@ -58,14 +59,30 @@ pub fn pallet(search, actions, index) {
     ]),
     h.hr([a.class("mx-40 my-3 border-green-700")]),
     ..list.index_map(actions, fn(action, i) {
-      let #(name, apply) = action
+      let #(name, apply, shortkey) = action
       h.div(
         [
-          a.class("px-4 py-2"),
+          a.class("px-4 py-2 flex"),
           a.classes([#("bg-gray-800", i == index)]),
           event.on_click(state.Do(apply)),
         ],
-        [text(name)],
+        [
+          h.span([], [text(name)]),
+          h.span([a.class("flex-grow")], []),
+          h.span([], case shortkey {
+            Some(k) -> [
+              h.span(
+                [
+                  a.class(
+                    "border rounded w-5 leading-snug inline-block font-mono text-center",
+                  ),
+                ],
+                [text(k)],
+              ),
+            ]
+            None -> []
+          }),
+        ],
       )
     })
   ])
