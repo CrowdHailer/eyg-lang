@@ -7,15 +7,21 @@ import morph/transform as t
 // make morph transforms, does not include undo redo or types
 // TODO clicking, eiter by full path or relative path
 // inline block so bground is not full still needs to be on new line
+pub type MaybeString {
+  NeedString(fn(String) -> t.Zip)
+  NoString(t.Zip)
+}
+
 pub fn apply_key(k, zip) {
   case k {
     "ArrowUp" -> move_up(zip)
     "ArrowDown" -> move_down(zip)
     "ArrowRight" -> move_right(zip)
     "ArrowLeft" -> move_left(zip)
+    // TODO needs an enum for list or done
     "E" -> line_above(zip)
     // "e" -> to_var(zip)
-    "r" -> record(zip)
+    // "r" -> record(zip)
     // "t" -> tag(zip)
     "a" -> increase(zip)
     "s" -> decrease(zip)
@@ -343,24 +349,26 @@ pub fn list(zip) {
   }
 }
 
-fn record(zip) {
+pub fn record(zip) {
   let #(focus, zoom) = zip
   case focus {
-    t.Exp(e.Vacant) -> #(t.Exp(e.Record([])), zoom)
-    t.Exp(e.Record([])) -> #(t.Exp(e.Record([#("", e.Vacant)])), zoom)
-    t.Exp(item) -> #(t.Exp(e.Record([#("field", item)])), zoom)
+    t.Exp(e.Vacant) -> NoString(#(t.Exp(e.Record([])), zoom))
+    t.Exp(e.Record([])) ->
+      NeedString(fn(new) { #(t.Exp(e.Record([#(new, e.Vacant)])), zoom) })
+    t.Exp(item) ->
+      NeedString(fn(new) { #(t.Exp(e.Record([#(new, item)])), zoom) })
     t.Assign(detail, value, pre, post, then) -> {
       let detail = case detail {
         t.AssignPattern(e.Bind(var)) -> t.AssignField(var, var, [], [])
         t.AssignPattern(e.Destructure(fields)) ->
           t.AssignField("f", "f", list.reverse(fields), [])
       }
-      #(t.Assign(detail, value, pre, post, then), zoom)
+      NoString(#(t.Assign(detail, value, pre, post, then), zoom))
     }
-    t.Labeled(l, v, pre, post) -> #(
-      t.Labeled("new", e.Vacant, [#(l, v), ..pre], post),
-      zoom,
-    )
+    t.Labeled(l, v, pre, post) ->
+      NeedString(fn(new) {
+        #(t.Labeled(new, e.Vacant, [#(l, v), ..pre], post), zoom)
+      })
   }
 }
 

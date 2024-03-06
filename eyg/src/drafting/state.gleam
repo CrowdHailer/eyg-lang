@@ -64,6 +64,12 @@ fn actions() {
       let zip = action.list(zip)
       State(zip, Navigate)
     }),
+    #("record", fn(zip) {
+      case action.record(zip) {
+        action.NeedString(rebuild) -> State(zip, RequireString("", rebuild))
+        action.NoString(zip) -> State(zip, Navigate)
+      }
+    }),
     #("tag", fn(zip) {
       let rebuild = action.tag(zip)
       update_focus()
@@ -113,6 +119,10 @@ pub fn handle(state, message) {
           State(..state, mode: move_selection(search, actions, index, 1))
         // let go till submit
         _, "Enter" -> state
+        a, b -> {
+          io.debug(#(a, b))
+          panic as "bad hanle"
+        }
       }
     }
     UpdateInput(value) -> update_input(state, value)
