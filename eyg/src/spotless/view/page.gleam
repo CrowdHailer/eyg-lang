@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/list
+import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
@@ -11,12 +12,12 @@ import eyg/runtime/value as v
 import spotless/state
 
 pub fn render(app) {
-  let state.State(previous, current) = app
+  let state.State(previous, current, error) = app
   // containter for relative positioning
   h.div([a.class("")], [
     h.div(
       [],
-      list.map(previous, fn(p) {
+      list.map(list.reverse(previous), fn(p) {
         let #(value, prog) = p
         h.div(
           [
@@ -41,7 +42,20 @@ pub fn render(app) {
       ],
     ),
     h.div([], case current.mode {
-      d.Navigate -> []
+      d.Navigate ->
+        case error {
+          Some(reason) -> [
+            h.div(
+              [
+                a.class(
+                  "bg-red-700 text-white border-black mx-auto max-w-2xl border w-full rounded",
+                ),
+              ],
+              [text(reason)],
+            ),
+          ]
+          None -> []
+        }
       d.Pallet(search, actions, index) ->
         overlay([
           page.pallet(search, actions, index)
@@ -59,15 +73,13 @@ pub fn render(app) {
 
 fn overlay(content) {
   [
-    h.div([a.class("")], [
-      h.div(
-        [
-          a.class(
-            "bg-black text-white border-black mx-auto max-w-2xl border w-full rounded",
-          ),
-        ],
-        content,
-      ),
-    ]),
+    h.div(
+      [
+        a.class(
+          "bg-black text-white border-black mx-auto max-w-2xl border w-full rounded",
+        ),
+      ],
+      content,
+    ),
   ]
 }

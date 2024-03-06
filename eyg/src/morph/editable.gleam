@@ -122,6 +122,57 @@ fn gather_assignments(node, acc) {
 
 pub fn to_expression(source) {
   case source {
-    List(item, None) -> e.Tail
+    Variable(x) -> e.Variable(x)
+    Call(f, args) ->
+      list.fold(args, to_expression(f), fn(acc, arg) {
+        let arg = to_expression(arg)
+        e.Apply(acc, arg)
+      })
+    Function(args, body) -> {
+      let body = to_expression(body)
+      list.fold_right(args, body, fn(acc, arg) {
+        let Bind(label) = arg
+        e.Lambda(label, acc)
+      })
+    }
+    List(items, tail) -> {
+      let tail =
+        tail
+        |> option.map(to_expression)
+        |> option.unwrap(e.Tail)
+      list.fold_right(items, tail, fn(acc, item) {
+        let item = to_expression(item)
+        e.Apply(e.Apply(e.Cons, item), acc)
+      })
+    }
+    Record(fields) -> {
+      list.fold_right(fields, e.Empty, fn(acc, field) {
+        let #(label, value) = field
+        let value = to_expression(value)
+        e.Apply(e.Apply(e.Extend(label), value), acc)
+      })
+    }
+    Case(top, matches, otherwise) -> {
+      let otherwise =
+        otherwise
+        |> option.map(to_expression)
+        |> option.unwrap(e.NoCases)
+      let matches =
+        list.fold_right(matches, e.Empty, fn(acc, match) {
+          let #(label, value) = match
+          let value = to_expression(value)
+          e.Apply(e.Apply(e.Case(label), value), acc)
+        })
+      let top = to_expression(top)
+      e.Apply(matches, top)
+    }
+    Vacant -> e.Vacant("TODO")
+    Variable(var) -> e.Variable(var)
+    Integer(value) -> e.Integer(value)
+    Binary(value) -> e.Binary(value)
+    String(value) -> e.Str(value)
+
+    Tag(label) -> e.Tag(label)
+    Perform(label) -> e.Perform(label)
   }
 }

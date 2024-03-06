@@ -2,7 +2,7 @@ import gleam/dict
 import gleam/dynamic
 import gleam/io
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{type Option, None, Some}
 import lustre/effect
 import plinth/browser/document
 import plinth/browser/element
@@ -13,16 +13,21 @@ import morph/transform
 import morph/action
 import eyg/runtime/value as v
 import eyg/runtime/interpreter/runner as r
+import eyg/runtime/break as fail
 import harness/stdlib
 import drafting/state as d
 
 pub type State {
-  State(previous: List(#(v.Value(Nil, Nil), e.Expression)), current: d.State)
+  State(
+    previous: List(#(v.Value(Nil, Nil), e.Expression)),
+    current: d.State,
+    error: Option(String),
+  )
 }
 
 pub fn init(_) {
   let current = d.new(e.Vacant)
-  #(State([], current), effect.none())
+  #(State([], current, None), effect.none())
 }
 
 pub type Message {
@@ -30,7 +35,7 @@ pub type Message {
 }
 
 pub fn update(state, message) {
-  let State(previous, current) = state
+  let State(previous, current, error) = state
   case message {
     Drafting(d.KeyDown("Enter")) -> {
       case current {
@@ -45,7 +50,13 @@ pub fn update(state, message) {
             Ok(value) -> {
               let value = dynamic.unsafe_coerce(dynamic.from(value))
               let previous = [#(value, editable), ..previous]
-              #(State(previous, d.new(e.Vacant)), effect.none())
+              #(State(previous, d.new(e.Vacant), None), effect.none())
+            }
+            Error(#(reason, _, _, _)) -> {
+              #(
+                State(previous, current, Some(fail.reason_to_string(reason))),
+                effect.none(),
+              )
             }
           }
         }
@@ -54,7 +65,7 @@ pub fn update(state, message) {
     }
     Drafting(m) -> {
       let current = d.handle(current, m)
-      #(State(previous, current), effect.none())
+      #(State(previous, current, None), effect.none())
     }
   }
 }
