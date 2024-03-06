@@ -22,10 +22,13 @@ pub type State {
   State(zip: transform.Zip, mode: Mode)
 }
 
+pub fn new(source) {
+  State(transform.focus_at(source, [], []), Navigate)
+}
+
 pub fn init(_) {
   let source = e.Vacant
-  let zip = transform.focus_at(source, [], [])
-  #(State(zip, Navigate), effect.none())
+  #(new(source), effect.none())
 }
 
 pub type Message {
@@ -34,11 +37,7 @@ pub type Message {
   UpdateInput(String)
   Do(fn(transform.Zip) -> State)
   DoIt
-  //   TextInput(String)
 }
-
-//   TextChange(String)
-//   ApplyChange
 
 fn actions() {
   [
@@ -91,55 +90,41 @@ fn update_focus() {
   })
 }
 
-pub fn update(state, message) {
+pub fn handle(state, message) {
   let State(mode: mode, zip: zip) = state
   case message {
     KeyDown(k) -> {
       let state = case mode, k {
         Navigate, " " -> {
           update_focus()
-          #(State(..state, mode: Pallet("", actions(), 0)), effect.none())
+          State(..state, mode: Pallet("", actions(), 0))
         }
-        Navigate, "a" -> #(State(action.increase(zip), mode), effect.none())
-        Navigate, "s" -> #(State(action.decrease(zip), mode), effect.none())
-        Navigate, "ArrowUp" -> #(
-          State(action.move_up(zip), mode),
-          effect.none(),
-        )
-        Navigate, "ArrowDown" -> #(
-          State(action.move_down(zip), mode),
-          effect.none(),
-        )
-        Navigate, "ArrowLeft" -> #(
-          State(action.move_left(zip), mode),
-          effect.none(),
-        )
-        Navigate, "ArrowRight" -> #(
-          State(action.move_right(zip), mode),
-          effect.none(),
-        )
+        Navigate, "a" -> State(action.increase(zip), mode)
+        Navigate, "s" -> State(action.decrease(zip), mode)
+        Navigate, "ArrowUp" -> State(action.move_up(zip), mode)
+        Navigate, "ArrowDown" -> State(action.move_down(zip), mode)
+        Navigate, "ArrowLeft" -> State(action.move_left(zip), mode)
+        Navigate, "ArrowRight" -> State(action.move_right(zip), mode)
 
-        RequireString(_, _), _ -> #(state, effect.none())
-        Pallet(search, actions, index), "ArrowUp" -> #(
-          State(..state, mode: move_selection(search, actions, index, -1)),
-          effect.none(),
-        )
-        Pallet(search, actions, index), "ArrowDown" -> #(
-          State(..state, mode: move_selection(search, actions, index, 1)),
-          effect.none(),
-        )
+        RequireString(_, _), _ -> state
+        Pallet(search, actions, index), "ArrowUp" ->
+          State(..state, mode: move_selection(search, actions, index, -1))
+        Pallet(search, actions, index), "ArrowDown" ->
+          State(..state, mode: move_selection(search, actions, index, 1))
+        // let go till submit
+        _, "Enter" -> state
       }
     }
     UpdateInput(value) -> update_input(state, value)
     Do(action) -> {
       update_focus()
 
-      #(action(zip), effect.none())
+      action(zip)
     }
     DoIt -> {
       update_focus()
       let assert RequireString(value, rebuild) = mode
-      #(State(rebuild(value), Navigate), effect.none())
+      State(rebuild(value), Navigate)
     }
   }
   //     TextInput(content) -> #(State(..state, content: content), effect.none())
@@ -177,16 +162,18 @@ pub fn update(state, message) {
   //       #(state, effect.none())
 }
 
+pub fn update(state, message) {
+  #(handle(state, message), effect.none())
+}
+
 fn update_input(state, value) {
   let State(mode: mode, ..) = state
   case mode {
     Pallet(_, actions, index) -> {
-      #(State(..state, mode: Pallet(value, actions, index)), effect.none())
+      State(..state, mode: Pallet(value, actions, index))
     }
-    RequireString(_, rebuild) -> #(
-      State(..state, mode: RequireString(value, rebuild)),
-      effect.none(),
-    )
+    RequireString(_, rebuild) ->
+      State(..state, mode: RequireString(value, rebuild))
   }
 }
 
