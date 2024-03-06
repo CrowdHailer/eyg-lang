@@ -298,6 +298,17 @@ pub type Break {
   CaseTail(top: e.Expression, branches: List(#(String, e.Expression)))
 }
 
+pub fn rebuild(zip) {
+  let #(focus, zoom) = zip
+  case focus, zoom {
+    Exp(e), [] -> e
+    _, _ -> {
+      let assert Ok(zip) = step(zip)
+      rebuild(zip)
+    }
+  }
+}
+
 // ok makes a lot of gc can pass 2 arg
 pub fn step(zip) {
   let #(focus, zoom) = zip

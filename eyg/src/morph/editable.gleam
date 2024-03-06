@@ -2,6 +2,7 @@ import gleam/io
 import gleam/option.{type Option, None, Some}
 import gleam/list
 import eygir/annotated as a
+import eygir/expression as e
 
 pub type Pattern {
   Bind(String)
@@ -116,5 +117,11 @@ fn gather_assignments(node, acc) {
     _ -> {
       Block(list.reverse(acc), from_annotated(node))
     }
+  }
+}
+
+pub fn to_expression(source) {
+  case source {
+    List(item, None) -> e.Tail
   }
 }

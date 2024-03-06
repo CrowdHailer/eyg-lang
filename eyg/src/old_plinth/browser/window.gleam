@@ -13,4 +13,3 @@ pub type Range
 
 @external(javascript, "../../plinth_ffi.js", "getRangeAt")
 pub fn get_range_at(a: Selection, b: Int) -> Result(Range, Nil)
-
