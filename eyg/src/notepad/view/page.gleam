@@ -169,10 +169,14 @@ pub fn print(zip) {
 fn highlight(m) {
   case m {
     frame.Inline(spans) ->
-      frame.Inline([h.span([a.class("bg-green-3")], spans)])
+      frame.Inline([h.span([a.class("border-green-600 border-2")], spans)])
     frame.Multiline(pre, inner, post) -> {
       // TODO better border
-      frame.Multiline(pre, [h.div([a.class("bg-green-3")], inner)], post)
+      frame.Multiline(
+        [h.span([a.class("border-green-600 border-2")], pre)],
+        [h.div([a.class("border-green-600 border-2")], inner)],
+        [h.span([a.class("border-green-600 border-2")], post)],
+      )
     }
   }
 }
