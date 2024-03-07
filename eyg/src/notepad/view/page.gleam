@@ -102,7 +102,7 @@ pub fn print(zip) {
       t.gather_around(pre, assign, post)
       |> list.append([code.expression(then)])
       |> frame.to_fat_lines
-      |> frame.Multiline([], _, [])
+      |> frame.Multiline([text("{")], _, [text("}")])
     }
     t.FnParam(p, pre, post, body) -> {
       let pre = list.map(pre, code.pattern)

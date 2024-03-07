@@ -1,12 +1,10 @@
 import gleam/io
-import gleam/dynamic
 import gleam/int
 import gleam/option.{None, Some}
 import gleam/list
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
-import lustre/event
 import morph/editable as e
 import morph/transform as t
 import notepad/view/frame
@@ -126,12 +124,13 @@ pub fn expression(exp) {
       render_call(f, args)
     }
     // defninetly multiline don't wrap in double curlies
-    e.Function(args, e.Block(assigns, tail)) ->
-      frame.Multiline(
-        [h.span([], [text("("), text("arg"), text(") -> {")])],
-        frame.to_fat_lines(block_content(assigns, tail)),
-        [h.span([], [text("}")])],
-      )
+    // e.Function(args, e.Block(assigns, tail)) ->
+    // render_function(patterns(args), block_content(assigns, tail))
+    // frame.Multiline(
+    //   [h.span([], [text("("), patterns(args), text(") -> {")])],
+    //   frame.to_fat_lines(block_content(assigns, tail)),
+    //   [h.span([], [text("}")])],
+    // )
     e.Function(args, body) -> {
       render_function(patterns(args), expression(body))
     }
@@ -177,9 +176,9 @@ pub fn expression(exp) {
 pub fn render_function(args, body) {
   body
   // TODO handle spaces on wrapping
-  |> frame.prepend_spans([text(" -> { ")], _)
+  |> frame.prepend_spans([text(" -> ")], _)
   |> frame.prepend_spans(args, _)
-  |> frame.append_spans([text(" }")])
+  // |> frame.append_spans([text(" }")])
 }
 
 fn delimit(frames, delimiter) {
@@ -280,7 +279,7 @@ pub fn render_break(break, inner) {
       t.gather_around(pre, assign, post)
       |> list.append([expression(then)])
       |> frame.to_fat_lines()
-      |> frame.Multiline([], _, [])
+      |> frame.Multiline([text("{")], _, [text("}")])
     }
 
     t.BlockTail(assigns) -> {
@@ -290,9 +289,9 @@ pub fn render_break(break, inner) {
       // TODO remove work out tail
       // case rest {
       //   // escape early to not wrap block
-      //   [] -> 
+      //   [] ->
       // }
-      frame.Multiline([], frame.to_fat_lines(lines), [])
+      frame.Multiline([text("{")], frame.to_fat_lines(lines), [text("}")])
     }
     t.CaseTop(matches, otherwise) -> {
       let matches = list.map(matches, render_branch)

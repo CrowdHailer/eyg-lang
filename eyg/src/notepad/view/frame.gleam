@@ -40,14 +40,6 @@ pub fn append_spans(m, new) {
   }
 }
 
-fn postpend_span(m, span) {
-  case m {
-    Inline(spans) -> Inline(list.append(spans, [span]))
-    Multiline(pre, inner, post) ->
-      Multiline(pre, inner, list.append(post, [span]))
-  }
-}
-
 // Call to_divs but its a single div
 // could return unwrapped divs but what about indent.
 // have indent as an option
@@ -55,6 +47,7 @@ fn postpend_span(m, span) {
 pub fn to_fat_line(exp) {
   case exp {
     Inline(spans) -> h.div([], spans)
+    Multiline([], inner, []) -> h.div([], inner)
     Multiline(pre, inner, post) ->
       h.div([], [h.div([], pre), indent(inner), h.div([], post)])
   }
