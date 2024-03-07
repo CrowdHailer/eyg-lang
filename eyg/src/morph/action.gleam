@@ -142,6 +142,15 @@ pub fn move_right(zip) {
     #(t.FnParam(t.AssignPattern(p), pre, [next, ..post], body), rest) -> {
       #(t.FnParam(t.AssignPattern(next), [p, ..pre], post, body), rest)
     }
+    #(t.FnParam(t.AssignField(l, x, pre_p, post_p), pre, post, body), rest) -> {
+      #(t.FnParam(t.AssignBind(l, x, pre_p, post_p), pre, post, body), rest)
+    }
+    // TODO movebind to right into body
+    #(t.FnParam(t.AssignBind(l, x, pre_p, []), pre, [], body), rest) -> {
+      let pattern = e.Destructure(t.gather_around(pre_p, #(l, x), []))
+      #(t.Exp(body), [t.Body(t.gather_around(pre, pattern, []))])
+    }
+
     #(t.Exp(exp), [t.ListItem(pre, [next, ..post], tail), ..rest]) -> #(
       t.Exp(next),
       [t.ListItem([exp, ..pre], post, tail), ..rest],
