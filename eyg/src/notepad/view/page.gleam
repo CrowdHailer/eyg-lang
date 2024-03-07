@@ -23,6 +23,8 @@ pub fn render(state: state.State) {
 }
 
 // TODO select from record
+// TODO remove t.Match for Label and call render_case
+// TODO use highlight_spans in the label and labelled rendering
 // TODO render annotated
 // TODO join_field needs to take span if used by expression and pattern
 // TODO show that you can print more an more tree, limit on depth or total size
