@@ -110,6 +110,14 @@ fn actions() {
       Some("l"),
     ),
     #(
+      "extend list",
+      fn(zip) {
+        let zip = action.extend_list(zip)
+        State(zip, Navigate)
+      },
+      Some(","),
+    ),
+    #(
       "record",
       fn(zip) {
         case action.record(zip) {

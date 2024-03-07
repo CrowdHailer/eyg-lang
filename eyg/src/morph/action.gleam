@@ -142,6 +142,10 @@ pub fn move_right(zip) {
     #(t.FnParam(p, pre, [next, ..post], body), rest) -> {
       #(t.FnParam(next, [p, ..pre], post, body), rest)
     }
+    #(t.Exp(exp), [t.ListItem(pre, [next, ..post]), ..rest]) -> #(t.Exp(next), [
+      t.ListItem([exp, ..pre], post),
+      ..rest
+    ])
     #(t.Label(l, v, pre, post, for), rest) -> {
       #(t.Exp(v), [t.RecordValue(l, pre, post), ..rest])
     }
@@ -192,6 +196,10 @@ pub fn move_left(zip) {
       let [last, ..pre] = list.reverse(args)
       #(t.FnParam(last, pre, [], body), rest)
     }
+    #(t.Exp(exp), [t.ListItem([next, ..pre], post), ..rest]) -> #(t.Exp(next), [
+      t.ListItem(pre, [exp, ..post]),
+      ..rest
+    ])
     #(t.Exp(branch), [t.CaseMatch(top, l, pre, post, otherwise), ..rest]) -> {
       #(t.Match(top, l, branch, pre, post, otherwise), rest)
     }
@@ -359,11 +367,27 @@ pub fn string(zip) {
   }
 }
 
+// This is create_list
 pub fn list(zip) {
   let #(focus, zoom) = zip
   case focus {
     t.Exp(e.Vacant) -> #(t.Exp(e.List([], None)), zoom)
     t.Exp(item) -> #(t.Exp(e.List([item], None)), zoom)
+  }
+}
+
+pub fn extend_list(zip) {
+  let #(focus, zoom) = zip
+  case focus, zoom {
+    t.Exp(e.List(items, tail)), _ -> #(t.Exp(e.Vacant), [
+      t.ListItem([], items),
+      ..zoom
+    ])
+
+    t.Exp(exp), [t.ListItem(pre, post), ..rest] -> #(t.Exp(e.Vacant), [
+      t.ListItem([exp, ..pre], post),
+      ..rest
+    ])
   }
 }
 
