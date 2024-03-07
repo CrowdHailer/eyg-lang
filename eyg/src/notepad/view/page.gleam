@@ -74,12 +74,12 @@ pub fn print(zip) {
       let assign = case detail {
         t.AssignStatement(pattern) -> highlight(code.assign(pattern, value))
         t.AssignPattern(pattern) -> {
-          let pattern = [h.span([a.class("bg-green-3")], code.pattern(pattern))]
+          let pattern = [highlight_spans(code.pattern(pattern))]
           code.do_let(pattern, code.expression(value))
         }
         t.AssignField(label, var, pre, post) -> {
           let spans = [
-            h.span([a.class("bg-blue-2")], [text(label)]),
+            highlight_spans([text(label)]),
             h.span([], [text(": ")]),
             h.span([], [text(var)]),
           ]
@@ -92,7 +92,7 @@ pub fn print(zip) {
           let spans = [
             h.span([], [text(label)]),
             h.span([], [text(": ")]),
-            h.span([a.class("bg-blue-2")], [text(var)]),
+            highlight_spans([text(var)]),
           ]
           let pre = list.map(pre, code.do_field)
           let post = list.map(post, code.do_field)
@@ -106,12 +106,11 @@ pub fn print(zip) {
       |> frame.to_fat_lines
       |> frame.Multiline([text("{")], _, [text("}")])
     }
-    t.FnParam(p, pre, post, body) -> {
+    t.FnParam(pattern, pre, post, body) -> {
       let pre = list.map(pre, code.pattern)
       let post = list.map(post, code.pattern)
-      let spans = code.pattern(p)
-      let p = [h.span([a.class("bg-purple-2")], spans)]
-      let patterns = t.gather_around(pre, p, post)
+      let pattern = [highlight_spans(code.pattern(pattern))]
+      let patterns = t.gather_around(pre, pattern, post)
       let patterns = code.join_patterns(patterns)
       code.render_function(patterns, code.expression(body))
     }
@@ -127,11 +126,8 @@ pub fn print(zip) {
     }
     t.Label(label, value, pre, post, for) -> {
       let value = code.expression(value)
-      let field =
-        frame.prepend_spans(
-          [h.span([a.class("bg-green-3")], [text(label), text(": ")])],
-          value,
-        )
+      let label = highlight_spans([text(label)])
+      let field = frame.prepend_spans([label, text(": ")], value)
 
       let pre = list.map(pre, code.render_field)
       let post = list.map(post, code.render_field)
@@ -145,10 +141,7 @@ pub fn print(zip) {
     t.Match(top, label, value, pre, post, otherwise) -> {
       let value = code.expression(value)
       let branch =
-        frame.prepend_spans(
-          [h.span([a.class("bg-green-3")], [text(label), text(" ")])],
-          value,
-        )
+        frame.prepend_spans([highlight_spans([text(label)]), text(" ")], value)
       let pre = list.map(pre, code.render_branch)
       let post = list.map(post, code.render_branch)
       code.render_case(
@@ -170,10 +163,8 @@ pub fn print(zip) {
 // TODO move to a standard highlight function
 fn highlight(m) {
   case m {
-    frame.Inline(spans) ->
-      frame.Inline([h.span([a.class("border-green-600 border-2")], spans)])
+    frame.Inline(spans) -> frame.Inline([highlight_spans(spans)])
     frame.Multiline(pre, inner, post) -> {
-      // TODO better border
       frame.Multiline(
         [h.span([a.class("border-green-600 border-2")], pre)],
         [h.div([a.class("border-green-600 border-2")], inner)],
@@ -181,6 +172,10 @@ fn highlight(m) {
       )
     }
   }
+}
+
+fn highlight_spans(spans) {
+  h.span([a.class("border-green-600 border-2")], spans)
 }
 
 fn do_assign(kv) {
