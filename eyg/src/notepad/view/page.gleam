@@ -113,13 +113,17 @@ pub fn print(zip) {
       let patterns = code.join_patterns(patterns)
       code.render_function(patterns, code.expression(body))
     }
-    t.Labeled(label, value, pre, post) -> {
+    t.Labeled(label, value, pre, post, for) -> {
       let field = code.render_field(#(label, value))
       let pre = list.map(pre, code.render_field)
       let post = list.map(post, code.render_field)
-      code.render_record(t.gather_around(pre, highlight(field), post))
+      let original = case for {
+        t.Record -> None
+        t.Overwrite(original) -> Some(code.expression(original))
+      }
+      code.render_record(t.gather_around(pre, highlight(field), post), original)
     }
-    t.Label(label, value, pre, post, _) -> {
+    t.Label(label, value, pre, post, for) -> {
       let value = code.expression(value)
       let field =
         frame.prepend_spans(
@@ -129,7 +133,12 @@ pub fn print(zip) {
 
       let pre = list.map(pre, code.render_field)
       let post = list.map(post, code.render_field)
-      code.render_record(t.gather_around(pre, field, post))
+      let original = case for {
+        t.Record -> None
+        t.Overwrite(original) -> Some(code.expression(original))
+      }
+
+      code.render_record(t.gather_around(pre, field, post), original)
     }
     t.Match(top, label, value, pre, post, otherwise) -> {
       let value = code.expression(value)

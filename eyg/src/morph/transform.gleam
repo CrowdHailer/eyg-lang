@@ -124,14 +124,24 @@ pub fn focus_at(ast, path, acc) {
         _, _ -> panic as "bad list"
       }
     }
-    e.Record(fields), [i, ..rest] -> {
-      let assert Ok(#(pre, #(label, value), post)) = split_around(fields, i)
-      case rest {
-        [] -> #(Labeled(label, value, pre, post), acc)
-        [0] -> #(Label(label, value, pre, post, Record), acc)
-        [1, ..rest] ->
-          focus_at(value, rest, [RecordValue(label, pre, post), ..acc])
-        _ -> panic as "record focus"
+    e.Record(fields, original), [i, ..rest] -> {
+      case i == list.length(fields), original {
+        True, Some(original) -> todo
+        False, _ -> {
+          let assert Ok(#(pre, #(label, value), post)) = split_around(fields, i)
+          let for = case original {
+            None -> Record
+            Some(original) -> Overwrite(original)
+          }
+          case rest {
+            [] -> #(Labeled(label, value, pre, post, for), acc)
+            [0] -> #(Label(label, value, pre, post, for), acc)
+            [1, ..rest] ->
+              focus_at(value, rest, [RecordValue(label, pre, post, for), ..acc])
+            _ -> panic as "record focus"
+          }
+        }
+        _, _ -> panic as "invalid record"
       }
     }
     e.Case(top, matches, otherwise), [0, ..rest] -> {
@@ -217,6 +227,7 @@ pub type Focus {
     value: e.Expression,
     pre: List(#(String, e.Expression)),
     post: List(#(String, e.Expression)),
+    for: WithLabel,
   )
   Label(
     label: String,
@@ -237,6 +248,7 @@ pub type Focus {
 
 pub type WithLabel {
   Record
+  Overwrite(original: e.Expression)
   Case(top: e.Expression, otherwise: Option(e.Expression))
 }
 
@@ -275,7 +287,7 @@ pub fn text(scope) {
     }
     Label(label, value, pre, post, for) ->
       Ok(#(label, fn(new) { #(Label(new, value, pre, post, for), zoom) }))
-    Labeled(_, _, _, _) -> Error(Nil)
+    Labeled(_, _, _, _, _) -> Error(Nil)
     Match(top, label, branch, pre, post, otherwise) -> {
       Ok(
         #(label, fn(new) {
@@ -309,15 +321,10 @@ pub type Break {
     label: String,
     pre: List(#(String, e.Expression)),
     post: List(#(String, e.Expression)),
+    for: WithLabel,
   )
   // SelectValue
-  // OverwriteValue(
-  //   label: String,
-  //   pre: List(e.Expression),
-  //   post: List(e.Expression),
-  // )
-  // OverwriteLabel(value: e.Expression)
-  // OverwriteTail
+  OverwriteTail(fields: List(#(String, e.Expression)))
   CaseTop(
     branches: List(#(String, e.Expression)),
     otherwise: Option(e.Expression),
@@ -370,10 +377,15 @@ pub fn step(zip) {
     FnParam(p, pre, post, body) ->
       Ok(#(Exp(e.Function(gather_around(pre, p, post), body)), zoom))
     // TODO use for
-    Label(l, value, pre, post, _for) ->
-      Ok(#(Labeled(l, value, pre, post), zoom))
-    Labeled(l, value, pre, post) ->
-      Ok(#(Exp(e.Record(gather_around(pre, #(l, value), post))), zoom))
+    Label(l, value, pre, post, for) ->
+      Ok(#(Labeled(l, value, pre, post, for), zoom))
+    Labeled(l, value, pre, post, for) -> {
+      let original = case for {
+        Record -> None
+        Overwrite(original) -> Some(original)
+      }
+      Ok(#(Exp(e.Record(gather_around(pre, #(l, value), post), original)), zoom))
+    }
     Match(top, label, branch, pre, post, otherwise) -> {
       // match is a label and branch
       let matches = gather_around(pre, #(label, branch), post)
@@ -396,8 +408,13 @@ fn unbreak(exp, break) {
     Body(args) -> e.Function(args, exp)
     ListItem(pre, post, tail) -> e.List(gather_around(pre, exp, post), tail)
     ListTail(items) -> e.List(items, Some(exp))
-    RecordValue(label, pre, post) ->
-      e.Record(gather_around(pre, #(label, exp), post))
+    RecordValue(label, pre, post, Record) ->
+      e.Record(gather_around(pre, #(label, exp), post), None)
+    RecordValue(label, pre, post, Overwrite(original)) ->
+      e.Record(gather_around(pre, #(label, exp), post), Some(original))
+    RecordValue(label, pre, post, Case(_, _)) -> panic as "dont happend I think"
+
+    OverwriteTail(fields) -> e.Record(list.reverse(fields), Some(exp))
     CaseTop(matches, otherwise) -> e.Case(exp, matches, otherwise)
     CaseMatch(top, label, pre, post, otherwise) -> {
       let branches = gather_around(pre, #(label, exp), post)

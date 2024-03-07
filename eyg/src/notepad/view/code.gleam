@@ -148,7 +148,11 @@ pub fn expression(exp) {
       ])
     e.List(items, tail) ->
       render_list(list.map(items, expression), option.map(tail, expression))
-    e.Record(fields) -> render_record(list.map(fields, render_field))
+    e.Record(fields, original) ->
+      render_record(
+        list.map(fields, render_field),
+        option.map(original, expression),
+      )
     e.Tag(label) ->
       frame.Inline([h.span([a.class("text-blue-900")], [text(label)])])
     e.Case(top, matches, otherwise) -> {
@@ -210,8 +214,14 @@ pub fn render_list(items, tail) {
   }
 }
 
-pub fn render_record(fields) {
+pub fn render_record(fields, original) {
+  let original = case original {
+    Some(original) -> [frame.prepend_spans([text("..")], original)]
+    None -> []
+  }
+  let fields = list.append(fields, original)
   let fields = delimit(fields, ", ")
+
   case frame.all_inline(fields) {
     Ok(spans) ->
       frame.Inline(
@@ -275,11 +285,19 @@ pub fn render_break(break, inner) {
       )
     }
     t.ListTail(items) -> render_list(list.map(items, expression), Some(inner))
-    t.RecordValue(l, pre, post) -> {
+    t.RecordValue(l, pre, post, for) -> {
       let pre = list.map(pre, render_field)
       let post = list.map(post, render_field)
       let inner = do_render_field(#(l, inner))
-      render_record(t.gather_around(pre, inner, post))
+      let original = case for {
+        t.Record -> None
+        t.Overwrite(original) -> Some(expression(original))
+      }
+      render_record(t.gather_around(pre, inner, post), original)
+    }
+    t.OverwriteTail(fields) -> {
+      let fields = list.map(list.reverse(fields), render_field)
+      render_record(fields, Some(inner))
     }
     t.BlockValue(p, pre, post, then) -> {
       let pre = list.map(pre, assign_pair)

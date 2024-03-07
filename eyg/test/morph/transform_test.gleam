@@ -1,4 +1,5 @@
 import gleam/io
+import gleam/option.{None}
 import morph/editable as e
 import morph/transform as t
 import eyg/parse
@@ -79,7 +80,7 @@ pub fn record_test() {
     |> from_string()
   let scope = focus_at(source, [0, 1])
   scope.0
-  |> should.equal(t.Exp(e.Record([])))
+  |> should.equal(t.Exp(e.Record([], None)))
   rebuild(scope)
   |> should.equal(source)
 
@@ -88,7 +89,7 @@ pub fn record_test() {
   |> should.equal(t.Label(
     "bar",
     e.Integer(1),
-    [#("foo", e.Record([]))],
+    [#("foo", e.Record([], None))],
     [],
     t.Record,
   ))
@@ -104,7 +105,7 @@ pub fn let_pattern_test() {
 
   let scope = focus_at(source, [0, 0, 3])
   scope.0
-  |> should.equal(t.Exp(e.Record([])))
+  |> should.equal(t.Exp(e.Record([], None)))
 }
 
 pub fn case_test() {

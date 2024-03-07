@@ -151,8 +151,12 @@ pub fn move_right(zip) {
       ..rest
     ])
     #(t.Label(l, v, pre, post, for), rest) -> {
-      #(t.Exp(v), [t.RecordValue(l, pre, post), ..rest])
+      #(t.Exp(v), [t.RecordValue(l, pre, post, for), ..rest])
     }
+    #(t.Exp(exp), [t.RecordValue(l, pre, [], t.Overwrite(new)), ..rest]) -> #(
+      t.Exp(new),
+      [t.OverwriteTail([#(l, exp), ..pre]), ..rest],
+    )
     #(t.Exp(top), [t.CaseTop([#(label, branch), ..post], otherwise), ..rest]) -> {
       #(t.Match(top, label, branch, [], post, otherwise), rest)
     }
@@ -208,6 +212,12 @@ pub fn move_left(zip) {
       let [next, ..pre] = list.reverse(items)
       #(t.Exp(next), [t.ListItem(pre, [], Some(exp)), ..rest])
     }
+    #(t.Exp(exp), [t.RecordValue(l, pre, post, for), ..rest]) -> {
+      #(t.Label(l, exp, pre, post, for), rest)
+    }
+    #(t.Exp(original), [t.OverwriteTail([#(l, next), ..pre]), ..rest]) -> {
+      #(t.Exp(next), [t.RecordValue(l, pre, [], t.Overwrite(original))])
+    }
     #(t.Exp(branch), [t.CaseMatch(top, l, pre, post, otherwise), ..rest]) -> {
       #(t.Match(top, l, branch, pre, post, otherwise), rest)
     }
@@ -229,7 +239,7 @@ pub fn decrease(zip) {
       #(t.Assign(decrease_assign(detail), v, pre, post, then), zoom)
     }
     t.Exp(exp) -> t.focus_at(exp, [0], zoom)
-    t.Labeled(l, v, pre, post) -> #(t.Label(l, v, pre, post, t.Record), zoom)
+    t.Labeled(l, v, pre, post, for) -> #(t.Label(l, v, pre, post, for), zoom)
     _ -> {
       io.debug(zip)
       panic as "decrease"
@@ -417,11 +427,11 @@ pub fn spread_list(zip) {
 pub fn record(zip) {
   let #(focus, zoom) = zip
   case focus {
-    t.Exp(e.Vacant) -> NoString(#(t.Exp(e.Record([])), zoom))
-    t.Exp(e.Record([])) ->
-      NeedString(fn(new) { #(t.Exp(e.Record([#(new, e.Vacant)])), zoom) })
+    t.Exp(e.Vacant) -> NoString(#(t.Exp(e.Record([], None)), zoom))
+    t.Exp(e.Record([], None)) ->
+      NeedString(fn(new) { #(t.Exp(e.Record([#(new, e.Vacant)], None)), zoom) })
     t.Exp(item) ->
-      NeedString(fn(new) { #(t.Exp(e.Record([#(new, item)])), zoom) })
+      NeedString(fn(new) { #(t.Exp(e.Record([#(new, item)], None)), zoom) })
     t.Assign(detail, value, pre, post, then) -> {
       let detail = case detail {
         t.AssignPattern(e.Bind(var)) -> t.AssignField(var, var, [], [])
@@ -430,10 +440,29 @@ pub fn record(zip) {
       }
       NoString(#(t.Assign(detail, value, pre, post, then), zoom))
     }
-    t.Labeled(l, v, pre, post) ->
+    t.Labeled(l, v, pre, post, for) ->
       NeedString(fn(new) {
-        #(t.Labeled(new, e.Vacant, [#(l, v), ..pre], post), zoom)
+        #(t.Labeled(new, e.Vacant, [#(l, v), ..pre], post, for), zoom)
       })
+  }
+}
+
+pub fn overwrite(zip) {
+  let #(focus, zoom) = zip
+  io.debug(focus)
+  case focus {
+    t.Exp(e.Vacant) | t.Exp(e.Record([], None)) -> fn(new) {
+      #(t.Exp(e.Vacant), [
+        t.RecordValue(new, [], [], t.Overwrite(e.Vacant)),
+        ..zoom
+      ])
+    }
+    t.Exp(e.Record(fields, None)) -> fn(new) {
+      #(t.Exp(e.Vacant), [t.OverwriteTail(list.reverse(fields)), ..zoom])
+    }
+    t.Exp(item) -> fn(new) {
+      #(t.Exp(e.Vacant), [t.RecordValue(new, [], [], t.Overwrite(item)), ..zoom])
+    }
   }
 }
 

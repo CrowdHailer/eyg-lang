@@ -19,7 +19,7 @@ pub type Expression {
   Binary(BitArray)
   String(String)
   List(List(Expression), Option(Expression))
-  Record(List(#(String, Expression)))
+  Record(List(#(String, Expression)), Option(Expression))
   Tag(String)
   Case(Expression, List(#(String, Expression)), Option(Expression))
   Perform(String)
@@ -40,7 +40,7 @@ pub fn from_annotated(node) {
 
     a.Apply(#(a.Apply(#(a.Extend(l), _), value), _), rest) ->
       gather_extends(rest, [#(l, from_annotated(value))])
-    a.Empty -> Record([])
+    a.Empty -> Record([], None)
 
     a.Apply(
       #(a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise), _),
@@ -113,7 +113,7 @@ fn gather_extends(node, acc) {
   case exp {
     a.Apply(#(a.Apply(#(a.Extend(l), _), value), _), rest) ->
       gather_extends(rest, [#(l, from_annotated(value)), ..acc])
-    a.Empty -> Record(list.reverse(acc))
+    a.Empty -> Record(list.reverse(acc), None)
     _ -> panic as "bad extend"
   }
 }
@@ -173,13 +173,21 @@ pub fn to_expression(source) {
         e.Apply(e.Apply(e.Cons, item), acc)
       })
     }
-    Record(fields) -> {
+    Record(fields, None) -> {
       list.fold_right(fields, e.Empty, fn(acc, field) {
         let #(label, value) = field
         let value = to_expression(value)
         e.Apply(e.Apply(e.Extend(label), value), acc)
       })
     }
+    Record(fields, Some(original)) -> {
+      list.fold_right(fields, to_expression(original), fn(acc, field) {
+        let #(label, value) = field
+        let value = to_expression(value)
+        e.Apply(e.Apply(e.Overwrite(label), value), acc)
+      })
+    }
+
     Case(top, matches, otherwise) -> {
       let otherwise =
         otherwise

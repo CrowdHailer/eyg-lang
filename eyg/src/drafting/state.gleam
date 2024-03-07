@@ -136,6 +136,15 @@ fn actions() {
       Some("r"),
     ),
     #(
+      "overwrite",
+      fn(zip) {
+        let rebuild = action.overwrite(zip)
+        update_focus()
+        State(zip, RequireString("", fn(label) { rebuild(label) }))
+      },
+      Some("o"),
+    ),
+    #(
       "tag",
       fn(zip) {
         let rebuild = action.tag(zip)
