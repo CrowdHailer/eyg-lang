@@ -72,6 +72,7 @@ pub fn print(zip) {
       let post = list.map(post, do_assign)
 
       let assign = case detail {
+        // get rid of assign statement then do_let goes on the outside
         t.AssignStatement(pattern) -> highlight(code.assign(pattern, value))
         t.AssignPattern(pattern) -> {
           let pattern = [highlight_spans(code.pattern(pattern))]
@@ -106,10 +107,35 @@ pub fn print(zip) {
       |> frame.to_fat_lines
       |> frame.Multiline([text("{")], _, [text("}")])
     }
-    t.FnParam(pattern, pre, post, body) -> {
+    t.FnParam(detail, pre, post, body) -> {
       let pre = list.map(pre, code.pattern)
       let post = list.map(post, code.pattern)
-      let pattern = [highlight_spans(code.pattern(pattern))]
+      let pattern = case detail {
+        t.AssignStatement(pattern) -> [highlight_spans(code.pattern(pattern))]
+        t.AssignPattern(pattern) -> {
+          [highlight_spans(code.pattern(pattern))]
+        }
+        t.AssignField(label, var, pre, post) -> {
+          let spans = [
+            highlight_spans([text(label)]),
+            h.span([], [text(": ")]),
+            h.span([], [text(var)]),
+          ]
+          let pre = list.map(pre, code.do_field)
+          let post = list.map(post, code.do_field)
+          code.do_destructured(t.gather_around(pre, spans, post))
+        }
+        t.AssignBind(label, var, pre, post) -> {
+          let spans = [
+            h.span([], [text(label)]),
+            h.span([], [text(": ")]),
+            highlight_spans([text(var)]),
+          ]
+          let pre = list.map(pre, code.do_field)
+          let post = list.map(post, code.do_field)
+          code.do_destructured(t.gather_around(pre, spans, post))
+        }
+      }
       let patterns = t.gather_around(pre, pattern, post)
       let patterns = code.join_patterns(patterns)
       code.render_function(patterns, code.expression(body))

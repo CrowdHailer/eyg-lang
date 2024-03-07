@@ -135,12 +135,12 @@ pub fn move_right(zip) {
         }
       }
     }
-    #(t.FnParam(p, pre, [], body), rest) -> {
+    #(t.FnParam(t.AssignPattern(p), pre, [], body), rest) -> {
       let args = list.reverse([p, ..pre])
       #(t.Exp(body), [t.Body(args), ..rest])
     }
-    #(t.FnParam(p, pre, [next, ..post], body), rest) -> {
-      #(t.FnParam(next, [p, ..pre], post, body), rest)
+    #(t.FnParam(t.AssignPattern(p), pre, [next, ..post], body), rest) -> {
+      #(t.FnParam(t.AssignPattern(next), [p, ..pre], post, body), rest)
     }
     #(t.Exp(exp), [t.ListItem(pre, [next, ..post], tail), ..rest]) -> #(
       t.Exp(next),
@@ -202,7 +202,7 @@ pub fn move_left(zip) {
     }
     #(t.Exp(body), [t.Body(args), ..rest]) -> {
       let [last, ..pre] = list.reverse(args)
-      #(t.FnParam(last, pre, [], body), rest)
+      #(t.FnParam(t.AssignPattern(last), pre, [], body), rest)
     }
     #(t.Exp(exp), [t.ListItem([next, ..pre], post, tail), ..rest]) -> #(
       t.Exp(next),
@@ -221,8 +221,8 @@ pub fn move_left(zip) {
     #(t.Exp(branch), [t.CaseMatch(top, l, pre, post, otherwise), ..rest]) -> {
       #(t.Match(top, l, branch, pre, post, otherwise), rest)
     }
-    #(t.FnParam(p, [next, ..pre], post, body), rest) -> {
-      #(t.FnParam(next, pre, [p, ..post], body), rest)
+    #(t.FnParam(t.AssignPattern(p), [next, ..pre], post, body), rest) -> {
+      #(t.FnParam(t.AssignPattern(next), pre, [p, ..post], body), rest)
     }
   }
 }
@@ -240,6 +240,10 @@ pub fn decrease(zip) {
     }
     t.Exp(exp) -> t.focus_at(exp, [0], zoom)
     t.Labeled(l, v, pre, post, for) -> #(t.Label(l, v, pre, post, for), zoom)
+    t.FnParam(detail, pre, post, body) -> #(
+      t.FnParam(decrease_assign(detail), pre, post, body),
+      zoom,
+    )
     _ -> {
       io.debug(zip)
       panic as "decrease"
@@ -440,6 +444,16 @@ pub fn record(zip) {
       }
       NoString(#(t.Assign(detail, value, pre, post, then), zoom))
     }
+    t.FnParam(t.AssignPattern(e.Bind(label)), pre, post, body) ->
+      NoString(#(
+        t.FnParam(
+          t.AssignPattern(e.Destructure([#(label, label)])),
+          pre,
+          post,
+          body,
+        ),
+        zoom,
+      ))
     t.Labeled(l, v, pre, post, for) ->
       NeedString(fn(new) {
         #(t.Labeled(new, e.Vacant, [#(l, v), ..pre], post, for), zoom)

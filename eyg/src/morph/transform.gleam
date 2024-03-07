@@ -104,7 +104,10 @@ pub fn focus_at(ast, path, acc) {
         True -> focus_at(body, rest, [Body(params), ..acc])
         False -> {
           let assert Ok(#(pre, p, post)) = split_around(params, i)
-          #(FnParam(p, pre, post, body), acc)
+          let detail = case rest {
+            [] -> AssignPattern(p)
+          }
+          #(FnParam(detail, pre, post, body), acc)
         }
       }
     }
@@ -217,7 +220,7 @@ pub type Focus {
     tail: e.Expression,
   )
   FnParam(
-    pattern: e.Pattern,
+    pattern: AssignFocus,
     pre: List(e.Pattern),
     post: List(e.Pattern),
     body: e.Expression,
@@ -374,9 +377,13 @@ pub fn step(zip) {
         Assign(AssignPattern(assigned_pattern(detail)), value, pre, post, then),
         zoom,
       ))
-    FnParam(p, pre, post, body) ->
+    FnParam(AssignPattern(p), pre, post, body) ->
       Ok(#(Exp(e.Function(gather_around(pre, p, post), body)), zoom))
-    // TODO use for
+    FnParam(detail, pre, post, body) ->
+      Ok(#(
+        FnParam(AssignPattern(assigned_pattern(detail)), pre, post, body),
+        zoom,
+      ))
     Label(l, value, pre, post, for) ->
       Ok(#(Labeled(l, value, pre, post, for), zoom))
     Labeled(l, value, pre, post, for) -> {
