@@ -141,6 +141,20 @@ fn gather_assignments(node, acc) {
   }
 }
 
+fn pattern_to_expression(p, exp) {
+  case p {
+    Bind(label) -> #(label, exp)
+    Destructure(ds) -> {
+      let exp =
+        list.fold_right(ds, exp, fn(acc, d) {
+          let #(label, var) = d
+          e.Let(var, e.Apply(e.Select(label), e.Variable("$")), acc)
+        })
+      #("$", exp)
+    }
+  }
+}
+
 pub fn to_expression(source) {
   case source {
     Variable(x) -> e.Variable(x)
@@ -152,15 +166,15 @@ pub fn to_expression(source) {
     Function(args, body) -> {
       let body = to_expression(body)
       list.fold_right(args, body, fn(acc, arg) {
-        let Bind(label) = arg
-        e.Lambda(label, acc)
+        let #(var, body) = pattern_to_expression(arg, acc)
+        e.Lambda(var, body)
       })
     }
     Block(assigns, then) -> {
       list.fold_right(assigns, to_expression(then), fn(acc, assign) {
         let #(pattern, value) = assign
-        let Bind(label) = pattern
-        e.Let(label, to_expression(value), acc)
+        let #(var, acc) = pattern_to_expression(pattern, acc)
+        e.Let(var, to_expression(value), acc)
       })
     }
     List(items, tail) -> {
