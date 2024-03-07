@@ -1,8 +1,6 @@
 import gleam/io
 import gleam/option.{type Option, None, Some}
-import gleam/order
 import gleam/result.{try}
-import gleam/int
 import gleam/list
 import morph/editable as e
 
@@ -40,6 +38,7 @@ fn do_split_around(items, left, acc) {
     // pre is left reversed
     [item, ..after], 0 -> Ok(#(acc, item, after))
     [item, ..after], i -> do_split_around(after, i - 1, [item, ..acc])
+    [], _ -> Error(Nil)
   }
 }
 
@@ -82,10 +81,12 @@ pub fn focus_at(ast, path, acc) {
                     case i % 2 {
                       0 -> AssignField(label, var, pre, post)
                       1 -> AssignBind(label, var, pre, post)
+                      _ -> panic as "impossible result"
                     }
                   }
                   #(Assign(detail, value, pre, post, then), acc)
                 }
+                _ -> panic as "bad pattern path"
               }
             }
             [1, ..rest] ->
@@ -102,12 +103,8 @@ pub fn focus_at(ast, path, acc) {
       case i == list.length(params) {
         True -> focus_at(body, rest, [Body(params), ..acc])
         False -> {
-          let Ok(#(pre, p, post)) = split_around(params, i)
-          case rest {
-            [] -> {
-              #(FnParam(p, pre, post, body), acc)
-            }
-          }
+          let assert Ok(#(pre, p, post)) = split_around(params, i)
+          #(FnParam(p, pre, post, body), acc)
         }
       }
     }
