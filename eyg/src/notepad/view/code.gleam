@@ -146,8 +146,8 @@ pub fn expression(exp) {
       frame.Inline([
         h.span([a.class("text-green-4")], [text("\""), text(v), text("\"")]),
       ])
-    e.List([], tail) -> frame.Inline([text("[]")])
-    e.List(items, tail) -> render_list(list.map(items, expression))
+    e.List(items, tail) ->
+      render_list(list.map(items, expression), option.map(tail, expression))
     e.Record(fields) -> render_record(list.map(fields, render_field))
     e.Tag(label) ->
       frame.Inline([h.span([a.class("text-blue-900")], [text(label)])])
@@ -191,7 +191,12 @@ fn delimit(frames, delimiter) {
   }
 }
 
-pub fn render_list(items) {
+pub fn render_list(items, tail) {
+  let tail = case tail {
+    Some(tail) -> [frame.prepend_spans([text("..")], tail)]
+    None -> []
+  }
+  let items = list.append(items, tail)
   let items = delimit(items, ", ")
   case frame.all_inline(items) {
     Ok(spans) ->
@@ -261,11 +266,15 @@ pub fn render_break(break, inner) {
       render_call(expression(f), render_args_e(args))
     }
     t.Body(args) -> render_function(patterns(args), inner)
-    t.ListItem(pre, post) -> {
+    t.ListItem(pre, post, tail) -> {
       let pre = list.map(pre, expression)
       let post = list.map(post, expression)
-      render_list(t.gather_around(pre, inner, post))
+      render_list(
+        t.gather_around(pre, inner, post),
+        option.map(tail, expression),
+      )
     }
+    t.ListTail(items) -> render_list(list.map(items, expression), Some(inner))
     t.RecordValue(l, pre, post) -> {
       let pre = list.map(pre, render_field)
       let post = list.map(post, render_field)
@@ -312,9 +321,9 @@ pub fn render_break(break, inner) {
       let matches = list.map(matches, render_branch)
       render_case(top, matches, Some(inner))
     }
-    _ -> {
-      io.debug(break)
-      panic as "bad push"
-    }
   }
+  // _ -> {
+  //   io.debug(break)
+  //   panic as "bad push"
+  // }
 }

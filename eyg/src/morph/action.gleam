@@ -142,8 +142,12 @@ pub fn move_right(zip) {
     #(t.FnParam(p, pre, [next, ..post], body), rest) -> {
       #(t.FnParam(next, [p, ..pre], post, body), rest)
     }
-    #(t.Exp(exp), [t.ListItem(pre, [next, ..post]), ..rest]) -> #(t.Exp(next), [
-      t.ListItem([exp, ..pre], post),
+    #(t.Exp(exp), [t.ListItem(pre, [next, ..post], tail), ..rest]) -> #(
+      t.Exp(next),
+      [t.ListItem([exp, ..pre], post, tail), ..rest],
+    )
+    #(t.Exp(exp), [t.ListItem(pre, [], Some(next)), ..rest]) -> #(t.Exp(next), [
+      t.ListTail(list.reverse([exp, ..pre])),
       ..rest
     ])
     #(t.Label(l, v, pre, post, for), rest) -> {
@@ -196,10 +200,14 @@ pub fn move_left(zip) {
       let [last, ..pre] = list.reverse(args)
       #(t.FnParam(last, pre, [], body), rest)
     }
-    #(t.Exp(exp), [t.ListItem([next, ..pre], post), ..rest]) -> #(t.Exp(next), [
-      t.ListItem(pre, [exp, ..post]),
-      ..rest
-    ])
+    #(t.Exp(exp), [t.ListItem([next, ..pre], post, tail), ..rest]) -> #(
+      t.Exp(next),
+      [t.ListItem(pre, [exp, ..post], tail), ..rest],
+    )
+    #(t.Exp(exp), [t.ListTail(items), ..rest]) -> {
+      let [next, ..pre] = list.reverse(items)
+      #(t.Exp(next), [t.ListItem(pre, [], Some(exp)), ..rest])
+    }
     #(t.Exp(branch), [t.CaseMatch(top, l, pre, post, otherwise), ..rest]) -> {
       #(t.Match(top, l, branch, pre, post, otherwise), rest)
     }
@@ -235,8 +243,8 @@ const vacant = e.Vacant
 pub fn delete(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    t.Exp(e.Vacant), [t.ListItem(pre, [next, ..post]), ..zoom] -> {
-      #(t.Exp(next), [t.ListItem(pre, post), ..zoom])
+    t.Exp(e.Vacant), [t.ListItem(pre, [next, ..post], tail), ..zoom] -> {
+      #(t.Exp(next), [t.ListItem(pre, post, tail), ..zoom])
     }
     t.Exp(e.Vacant), [t.CallArg(f, pre, [next, ..post]), ..zoom] -> {
       #(t.Exp(next), [t.CallArg(f, pre, post), ..zoom])
@@ -298,8 +306,8 @@ pub fn assign(zip) {
 
 pub fn line_above(zip) {
   case zip {
-    #(t.Exp(x), [t.ListItem(pre, post), ..rest]) -> {
-      #(t.Exp(e.Vacant), [t.ListItem(pre, [x, ..post]), ..rest])
+    #(t.Exp(x), [t.ListItem(pre, post, tail), ..rest]) -> {
+      #(t.Exp(e.Vacant), [t.ListItem(pre, [x, ..post], tail), ..rest])
     }
     #(t.Assign(t.AssignStatement(pattern), value, pre, post, then), rest) -> #(
       t.Assign(
@@ -380,12 +388,27 @@ pub fn extend_list(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
     t.Exp(e.List(items, tail)), _ -> #(t.Exp(e.Vacant), [
-      t.ListItem([], items),
+      t.ListItem([], items, tail),
       ..zoom
     ])
 
-    t.Exp(exp), [t.ListItem(pre, post), ..rest] -> #(t.Exp(e.Vacant), [
-      t.ListItem([exp, ..pre], post),
+    t.Exp(exp), [t.ListItem(pre, post, tail), ..rest] -> #(t.Exp(e.Vacant), [
+      t.ListItem([exp, ..pre], post, tail),
+      ..rest
+    ])
+  }
+}
+
+pub fn spread_list(zip) {
+  let #(focus, zoom) = zip
+  case focus, zoom {
+    t.Exp(e.List(items, None)), _ -> #(t.Exp(e.Vacant), [
+      t.ListTail(items),
+      ..zoom
+    ])
+
+    t.Exp(exp), [t.ListItem(pre, [], None), ..rest] -> #(t.Exp(e.Vacant), [
+      t.ListTail(list.reverse([exp, ..pre])),
       ..rest
     ])
   }

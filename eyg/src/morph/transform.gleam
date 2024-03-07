@@ -122,7 +122,7 @@ pub fn focus_at(ast, path, acc) {
         True, Some(tail) -> focus_at(tail, rest, [ListTail(items), ..acc])
         False, _ -> {
           let assert Ok(#(pre, value, post)) = split_around(items, i)
-          focus_at(value, rest, [ListItem(pre, post), ..acc])
+          focus_at(value, rest, [ListItem(pre, post, tail), ..acc])
         }
         _, _ -> panic as "bad list"
       }
@@ -302,7 +302,11 @@ pub type Break {
   CallFn(args: List(e.Expression))
   CallArg(func: e.Expression, pre: List(e.Expression), post: List(e.Expression))
   Body(args: List(e.Pattern))
-  ListItem(pre: List(e.Expression), post: List(e.Expression))
+  ListItem(
+    pre: List(e.Expression),
+    post: List(e.Expression),
+    tail: Option(e.Expression),
+  )
   ListTail(items: List(e.Expression))
   RecordValue(
     label: String,
@@ -393,7 +397,7 @@ fn unbreak(exp, break) {
     CallFn(args) -> e.Call(exp, args)
     CallArg(f, pre, post) -> e.Call(f, gather_around(pre, exp, post))
     Body(args) -> e.Function(args, exp)
-    ListItem(pre, post) -> e.List(gather_around(pre, exp, post), None)
+    ListItem(pre, post, tail) -> e.List(gather_around(pre, exp, post), tail)
     ListTail(items) -> e.List(items, Some(exp))
     RecordValue(label, pre, post) ->
       e.Record(gather_around(pre, #(label, exp), post))

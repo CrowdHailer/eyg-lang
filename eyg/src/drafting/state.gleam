@@ -118,6 +118,14 @@ fn actions() {
       Some(","),
     ),
     #(
+      "spread list",
+      fn(zip) {
+        let zip = action.spread_list(zip)
+        State(zip, Navigate)
+      },
+      Some("."),
+    ),
+    #(
       "record",
       fn(zip) {
         case action.record(zip) {
