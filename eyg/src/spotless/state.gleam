@@ -1,16 +1,11 @@
 import gleam/dict
 import gleam/dynamic
 import gleam/io
-import gleam/list
 import gleam/option.{type Option, None, Some}
 import lustre/effect
-import plinth/browser/document
-import plinth/browser/element
-import plinth/browser/window
 import eygir/annotated as a
 import morph/editable as e
 import morph/transform
-import morph/action
 import eyg/runtime/value as v
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/break as fail
@@ -35,7 +30,7 @@ pub type Message {
 }
 
 pub fn update(state, message) {
-  let State(previous, current, error) = state
+  let State(previous, current, _error) = state
   case message {
     Drafting(d.KeyDown("Enter")) -> {
       case current {
@@ -69,4 +64,4 @@ pub fn update(state, message) {
     }
   }
 }
-//       Navigate, "Enter" -> 
+//       Navigate, "Enter" ->

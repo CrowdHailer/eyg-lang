@@ -339,6 +339,48 @@ pub fn delete(zip) {
       t.Exp(then),
       zoom,
     )
+    t.FnParam(t.AssignPattern(_), pre, [pattern, ..post], body), _ -> #(
+      t.FnParam(t.AssignPattern(pattern), pre, post, body),
+      zoom,
+    )
+    t.FnParam(t.AssignPattern(_), [pattern, ..pre], [], body), _ -> #(
+      t.FnParam(t.AssignPattern(pattern), pre, [], body),
+      zoom,
+    )
+    t.FnParam(t.AssignField(_, _, pre_p, [#(l, x), ..post_p]), pre, post, body), _ -> #(
+      t.FnParam(t.AssignField(l, x, pre_p, post_p), pre, post, body),
+      zoom,
+    )
+    t.FnParam(t.AssignBind(_, _, pre_p, [#(l, x), ..post_p]), pre, post, body), _ -> #(
+      t.FnParam(t.AssignBind(l, x, pre_p, post_p), pre, post, body),
+      zoom,
+    )
+    t.FnParam(t.AssignField(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ -> #(
+      t.FnParam(t.AssignField(l, x, pre_p, []), pre, post, body),
+      zoom,
+    )
+    t.FnParam(t.AssignBind(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ -> #(
+      t.FnParam(t.AssignBind(l, x, pre_p, []), pre, post, body),
+      zoom,
+    )
+    t.Label(_, _, pre, [#(l, v), ..post], for), _ -> #(
+      t.Label(l, v, pre, post, for),
+      zoom,
+    )
+    t.Label(_, _, [#(l, v), ..pre], [], for), _ -> #(
+      t.Label(l, v, pre, [], for),
+      zoom,
+    )
+
+    t.Match(top, _, _, pre, [#(label, branch), ..post], otherwise), zoom -> #(
+      t.Match(top, label, branch, pre, post, otherwise),
+      zoom,
+    )
+    t.Match(top, _, _, [#(label, branch), ..pre], [], otherwise), zoom -> #(
+      t.Match(top, label, branch, pre, [], otherwise),
+      zoom,
+    )
+
     // if no left/right then step
     _, _ -> {
       io.debug(zip)
