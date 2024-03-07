@@ -112,8 +112,10 @@ fn actions() {
     #(
       "extend list",
       fn(zip) {
-        let zip = action.extend_list(zip)
-        State(zip, Navigate)
+        case action.extend_list(zip) {
+          action.NeedString(rebuild) -> State(zip, RequireString("", rebuild))
+          action.NoString(zip) -> State(zip, Navigate)
+        }
       },
       Some(","),
     ),
@@ -216,6 +218,7 @@ pub fn handle(state, message) {
         Navigate, "ArrowLeft" -> State(action.move_left(zip), mode)
         Navigate, "ArrowRight" -> State(action.move_right(zip), mode)
         _, "Enter" -> state
+        _, "Escape" -> State(..state, mode: Navigate)
         Navigate, other -> {
           let result =
             list.find_map(actions(), fn(a) {

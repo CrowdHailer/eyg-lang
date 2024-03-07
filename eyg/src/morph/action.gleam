@@ -44,7 +44,6 @@ pub fn move_up(zip) {
     #(t.Exp(then), [t.BlockTail(assigns), ..rest]) -> {
       let assert [#(pattern, last), ..pre] = list.reverse(assigns)
       #(t.Assign(t.AssignStatement(pattern), last, pre, [], then), rest)
-      // #(t.Exp(last), [t.BlockValue(label, pre, [], then), ..rest])
     }
     #(
       t.Assign(t.AssignStatement(label), value, [#(l, v), ..pre], post, then),
@@ -225,13 +224,17 @@ pub fn move_left(zip) {
       #(t.Label(l, exp, pre, post, for), rest)
     }
     #(t.Exp(original), [t.OverwriteTail([#(l, next), ..pre]), ..rest]) -> {
-      #(t.Exp(next), [t.RecordValue(l, pre, [], t.Overwrite(original))])
+      #(t.Exp(next), [t.RecordValue(l, pre, [], t.Overwrite(original)), ..rest])
     }
     #(t.Exp(branch), [t.CaseMatch(top, l, pre, post, otherwise), ..rest]) -> {
       #(t.Match(top, l, branch, pre, post, otherwise), rest)
     }
     #(t.FnParam(t.AssignPattern(p), [next, ..pre], post, body), rest) -> {
       #(t.FnParam(t.AssignPattern(next), pre, [p, ..post], body), rest)
+    }
+    _ -> {
+      io.debug(#("cant move left", zip))
+      zip
     }
   }
 }
@@ -410,15 +413,22 @@ pub fn list(zip) {
 pub fn extend_list(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    t.Exp(e.List(items, tail)), _ -> #(t.Exp(e.Vacant), [
-      t.ListItem([], items, tail),
-      ..zoom
-    ])
+    t.Exp(e.List(items, tail)), _ ->
+      NoString(#(t.Exp(e.Vacant), [t.ListItem([], items, tail), ..zoom]))
 
-    t.Exp(exp), [t.ListItem(pre, post, tail), ..rest] -> #(t.Exp(e.Vacant), [
-      t.ListItem([exp, ..pre], post, tail),
-      ..rest
-    ])
+    t.Exp(exp), [t.ListItem(pre, post, tail), ..rest] ->
+      NoString(
+        #(t.Exp(e.Vacant), [t.ListItem([exp, ..pre], post, tail), ..rest]),
+      )
+    t.Exp(e.Record(fields, original)), _ ->
+      NeedString(fn(new) {
+        let for = case original {
+          Some(original) -> t.Overwrite(original)
+          None -> t.Record
+        }
+        #(t.Exp(e.Vacant), [t.RecordValue(new, [], fields, for), ..zoom])
+      })
+    _, _ -> NoString(zip)
   }
 }
 
