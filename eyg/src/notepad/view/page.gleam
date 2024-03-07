@@ -24,12 +24,10 @@ pub fn render(state: state.State) {
 
 // TODO select from record
 // TODO remove t.Match for Label and call render_case
-// TODO use highlight_spans in the label and labelled rendering
-// TODO render annotated
 // TODO join_field needs to take span if used by expression and pattern
 // TODO show that you can print more an more tree, limit on depth or total size
 // TODO click on page
-// TODO record in function
+// Need Ok/Error in actions for filtering if it's possible
 
 // a separate component is possible if textarea is absolute,
 // a sized container is needed to grow into but it get rids of margin at bottom or container
