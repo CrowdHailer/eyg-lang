@@ -144,10 +144,29 @@ pub fn move_right(zip) {
     #(t.FnParam(t.AssignField(l, x, pre_p, post_p), pre, post, body), rest) -> {
       #(t.FnParam(t.AssignBind(l, x, pre_p, post_p), pre, post, body), rest)
     }
+    #(
+      t.FnParam(
+        t.AssignBind(l, x, pre_p, [#(l2, x2), ..post_p]),
+        pre,
+        post,
+        body,
+      ),
+      rest,
+    ) -> {
+      #(
+        t.FnParam(
+          t.AssignField(l2, x2, [#(l, x), ..pre_p], post_p),
+          pre,
+          post,
+          body,
+        ),
+        rest,
+      )
+    }
     // TODO movebind to right into body
     #(t.FnParam(t.AssignBind(l, x, pre_p, []), pre, [], body), rest) -> {
       let pattern = e.Destructure(t.gather_around(pre_p, #(l, x), []))
-      #(t.Exp(body), [t.Body(t.gather_around(pre, pattern, []))])
+      #(t.Exp(body), [t.Body(t.gather_around(pre, pattern, [])), ..rest])
     }
 
     #(t.Exp(exp), [t.ListItem(pre, [next, ..post], tail), ..rest]) -> #(
@@ -171,6 +190,10 @@ pub fn move_right(zip) {
     #(t.Match(top, label, value, pre, post, otherwise), zoom) -> {
       let zoom = [t.CaseMatch(top, label, pre, post, otherwise), ..zoom]
       #(t.Exp(value), zoom)
+    }
+    _ -> {
+      io.debug(#("cant move right", zip))
+      zip
     }
   }
 }
@@ -232,6 +255,27 @@ pub fn move_left(zip) {
     #(t.FnParam(t.AssignPattern(p), [next, ..pre], post, body), rest) -> {
       #(t.FnParam(t.AssignPattern(next), pre, [p, ..post], body), rest)
     }
+    #(t.FnParam(t.AssignBind(l, x, pre_p, post_p), pre, post, body), rest) -> #(
+      t.FnParam(t.AssignField(l, x, pre_p, post_p), pre, post, body),
+      rest,
+    )
+    #(
+      t.FnParam(
+        t.AssignField(l, x, [#(l2, x2), ..pre_p], post_p),
+        pre,
+        post,
+        body,
+      ),
+      rest,
+    ) -> #(
+      t.FnParam(
+        t.AssignBind(l2, x2, pre_p, [#(l, x), ..post_p]),
+        pre,
+        post,
+        body,
+      ),
+      rest,
+    )
     _ -> {
       io.debug(#("cant move left", zip))
       zip
@@ -427,6 +471,10 @@ pub fn extend_list(zip) {
           None -> t.Record
         }
         #(t.Exp(e.Vacant), [t.RecordValue(new, [], fields, for), ..zoom])
+      })
+    t.FnParam(t.AssignPattern(e.Destructure(fields)), pre, post, body), _ ->
+      NeedString(fn(new) {
+        #(t.FnParam(t.AssignBind(new, new, [], fields), pre, post, body), zoom)
       })
     _, _ -> NoString(zip)
   }

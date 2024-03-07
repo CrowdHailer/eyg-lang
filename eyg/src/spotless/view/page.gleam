@@ -1,10 +1,8 @@
-import gleam/dynamic
 import gleam/list
 import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
-import lustre/event
 import drafting/state as d
 import drafting/view/page
 import notepad/view/code
@@ -61,7 +59,7 @@ pub fn render(app) {
           page.pallet(search, actions, index)
           |> element.map(state.Drafting),
         ])
-      d.RequireString(value, rebuild) ->
+      d.RequireString(value, _rebuild) ->
         overlay([
           page.string_input(value)
           |> element.map(state.Drafting),

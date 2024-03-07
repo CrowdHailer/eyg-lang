@@ -255,6 +255,19 @@ pub type WithLabel {
   Case(top: e.Expression, otherwise: Option(e.Expression))
 }
 
+fn text_from_pattern(detail) {
+  case detail {
+    AssignStatement(_) -> Error(Nil)
+    AssignPattern(e.Bind(var)) ->
+      Ok(#(var, fn(new) { AssignPattern(e.Bind(new)) }))
+    AssignPattern(e.Destructure(_)) -> Error(Nil)
+    AssignField(label, var, pre, post) ->
+      Ok(#(label, fn(new) { AssignField(new, var, pre, post) }))
+    AssignBind(label, var, pre, post) ->
+      Ok(#(var, fn(new) { AssignBind(label, new, pre, post) }))
+  }
+}
+
 // scope is a bad name due to variable scope
 // lens?
 pub fn text(scope) {
@@ -272,21 +285,16 @@ pub fn text(scope) {
       Ok(#(content, fn(new) { #(Exp(build(new)), zoom) }))
     }
     Assign(detail, value, pre, post, then) -> {
-      use #(content, build) <- try(case detail {
-        AssignStatement(_) -> Error(Nil)
-        AssignPattern(e.Bind(var)) ->
-          Ok(#(var, fn(new) { AssignPattern(e.Bind(new)) }))
-        AssignPattern(e.Destructure(_)) -> Error(Nil)
-        AssignField(label, var, pre, post) ->
-          Ok(#(label, fn(new) { AssignField(new, var, pre, post) }))
-        AssignBind(label, var, pre, post) ->
-          Ok(#(var, fn(new) { AssignBind(label, new, pre, post) }))
-      })
+      use #(content, build) <- try(text_from_pattern(detail))
       Ok(
         #(content, fn(new) {
           #(Assign(build(new), value, pre, post, then), zoom)
         }),
       )
+    }
+    FnParam(detail, pre, post, body) -> {
+      use #(content, build) <- try(text_from_pattern(detail))
+      Ok(#(content, fn(new) { #(FnParam(build(new), pre, post, body), zoom) }))
     }
     Label(label, value, pre, post, for) ->
       Ok(#(label, fn(new) { #(Label(new, value, pre, post, for), zoom) }))

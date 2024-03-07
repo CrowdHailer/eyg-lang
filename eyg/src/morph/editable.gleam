@@ -208,7 +208,7 @@ pub fn to_expression(source) {
         |> option.map(to_expression)
         |> option.unwrap(e.NoCases)
       let matches =
-        list.fold_right(matches, e.Empty, fn(acc, match) {
+        list.fold_right(matches, otherwise, fn(acc, match) {
           let #(label, value) = match
           let value = to_expression(value)
           e.Apply(e.Apply(e.Case(label), value), acc)
@@ -217,7 +217,6 @@ pub fn to_expression(source) {
       e.Apply(matches, top)
     }
     Vacant -> e.Vacant("TODO")
-    Variable(var) -> e.Variable(var)
     Integer(value) -> e.Integer(value)
     Binary(value) -> e.Binary(value)
     String(value) -> e.Str(value)
