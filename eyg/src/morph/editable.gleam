@@ -20,7 +20,6 @@ pub type Expression {
   String(String)
   List(List(Expression), Option(Expression))
   Record(List(#(String, Expression)))
-  Overwrite(List(#(String, Expression)), String)
   Tag(String)
   Case(Expression, List(#(String, Expression)), Option(Expression))
   Perform(String)
@@ -155,6 +154,13 @@ pub fn to_expression(source) {
       list.fold_right(args, body, fn(acc, arg) {
         let Bind(label) = arg
         e.Lambda(label, acc)
+      })
+    }
+    Block(assigns, then) -> {
+      list.fold_right(assigns, to_expression(then), fn(acc, assign) {
+        let #(pattern, value) = assign
+        let Bind(label) = pattern
+        e.Let(label, to_expression(value), acc)
       })
     }
     List(items, tail) -> {
