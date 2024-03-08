@@ -10,16 +10,16 @@ import morph/projection
 import morph/action
 
 pub type Action =
-  #(String, fn(projection.Zip) -> State, Option(String))
+  #(String, fn(projection.Projection) -> State, Option(String))
 
 pub type Mode {
   Navigate
   Pallet(search: String, suggestions: List(Action), offset: Int)
-  RequireString(String, fn(String) -> projection.Zip)
+  RequireString(String, fn(String) -> projection.Projection)
 }
 
 pub type State {
-  State(zip: projection.Zip, mode: Mode)
+  State(zip: projection.Projection, mode: Mode)
 }
 
 pub fn new(source) {
@@ -35,7 +35,7 @@ pub type Message {
   KeyDown(String)
   // Update input handles all focused overlays
   UpdateInput(String)
-  Do(fn(projection.Zip) -> State)
+  Do(fn(projection.Projection) -> State)
   DoIt
 }
 

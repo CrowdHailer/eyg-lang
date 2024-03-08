@@ -5,18 +5,6 @@ import gleam/list
 import gleam/listx
 import morph/editable as e
 
-// listx.split_around can have then as 0 see func args so that you can match on beginning of list or empty for tail
-// can have a field focus with a type for bulding but maybe easier to stay concrete
-// TODO test focus to expression type one big tree is nice
-// TODO unzip must get to the same tree
-// TODO add height to multi so we can know when to stop
-
-// NO type inference addition
-
-// Need to print focus on no expression values
-
-// if empty we error but all my blocks must have a value, not true for lit
-
 pub fn focus_at(ast, path, acc) {
   case ast, path {
     exp, [] -> #(Exp(exp), acc)
@@ -143,7 +131,7 @@ pub fn focus_at(ast, path, acc) {
   }
 }
 
-pub type Zip =
+pub type Projection =
   #(Focus, List(Break))
 
 pub type AssignFocus {

@@ -27,6 +27,7 @@ district/situation
 ### Non goals
 
 - inference, loading, running, undo, redo, no mapping from text to position, suggestions, autocomplete
+- key bindins to given transforms
 
 ## Questions
 

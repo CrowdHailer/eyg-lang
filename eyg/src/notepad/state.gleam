@@ -7,11 +7,11 @@ import morph/action
 
 pub type Mode {
   Command
-  Insert(String, fn(String) -> projection.Zip)
+  Insert(String, fn(String) -> projection.Projection)
 }
 
 pub type State {
-  State(content: String, zip: projection.Zip, mode: Mode)
+  State(content: String, zip: projection.Projection, mode: Mode)
 }
 
 pub fn init(_) {
@@ -60,8 +60,10 @@ pub fn update(state, message) {
           State(..state, mode: Insert("", rebuild))
         }
         _ -> {
-          let zip = action.apply_key(k, state.zip)
-          State(..state, zip: zip)
+          // let zip = action.apply_key(k, state.zip)
+
+          // State(..state, zip: zip)
+          todo as "key bindings not part of morph"
         }
       }
       #(state, effect.none())
