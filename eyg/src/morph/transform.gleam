@@ -160,10 +160,6 @@ pub fn focus_at(ast, path, acc) {
           let assert Ok(#(pre, #(label, branch), post)) =
             split_around(matches, i)
           case rest {
-            [] -> #(
-              Label(label, branch, pre, post, Case(branch, otherwise)),
-              acc,
-            )
             [0, ..rest] ->
               focus_at(branch, rest, [
                 CaseMatch(top, label, pre, post, otherwise),
@@ -252,7 +248,6 @@ pub type Focus {
 pub type WithLabel {
   Record
   Overwrite(original: e.Expression)
-  Case(top: e.Expression, otherwise: Option(e.Expression))
 }
 
 fn text_from_pattern(detail) {
@@ -427,8 +422,6 @@ fn unbreak(exp, break) {
       e.Record(gather_around(pre, #(label, exp), post), None)
     RecordValue(label, pre, post, Overwrite(original)) ->
       e.Record(gather_around(pre, #(label, exp), post), Some(original))
-    RecordValue(label, pre, post, Case(_, _)) -> panic as "dont happend I think"
-
     OverwriteTail(fields) -> e.Record(list.reverse(fields), Some(exp))
     CaseTop(matches, otherwise) -> e.Case(exp, matches, otherwise)
     CaseMatch(top, label, pre, post, otherwise) -> {
