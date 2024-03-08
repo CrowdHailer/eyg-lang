@@ -3,7 +3,7 @@ import gleam/option.{None}
 import lustre/effect
 import morph/editable as e
 import morph/projection
-import morph/action
+import morph/transformation
 
 pub type Mode {
   Command
@@ -43,7 +43,7 @@ pub fn update(state, message) {
     KeyDown(k) -> {
       let state = case k {
         "e" -> {
-          let rebuild = action.assign(state.zip)
+          let rebuild = transformation.assign(state.zip)
           let rebuild = fn(new) { rebuild(e.Bind(new)) }
           State(..state, mode: Insert("", rebuild))
         }
@@ -52,15 +52,15 @@ pub fn update(state, message) {
             Ok(#(text, apply)) -> State(..state, mode: Insert(text, apply))
           }
         "p" -> {
-          let apply = action.perform(state.zip)
+          let apply = transformation.perform(state.zip)
           State(..state, mode: Insert("", apply))
         }
         "f" -> {
-          let rebuild = action.function(state.zip)
+          let rebuild = transformation.function(state.zip)
           State(..state, mode: Insert("", rebuild))
         }
         _ -> {
-          // let zip = action.apply_key(k, state.zip)
+          // let zip = transformation.apply_key(k, state.zip)
 
           // State(..state, zip: zip)
           todo as "key bindings not part of morph"
