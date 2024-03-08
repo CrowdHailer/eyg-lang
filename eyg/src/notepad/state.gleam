@@ -2,16 +2,16 @@ import gleam/io
 import gleam/option.{None}
 import lustre/effect
 import morph/editable as e
-import morph/transform
+import morph/projection
 import morph/action
 
 pub type Mode {
   Command
-  Insert(String, fn(String) -> transform.Zip)
+  Insert(String, fn(String) -> projection.Zip)
 }
 
 pub type State {
-  State(content: String, zip: transform.Zip, mode: Mode)
+  State(content: String, zip: projection.Zip, mode: Mode)
 }
 
 pub fn init(_) {
@@ -26,7 +26,7 @@ pub fn init(_) {
         None,
       ),
     )
-  let zip = transform.focus_at(source, [2, 0, 1], [])
+  let zip = projection.focus_at(source, [2, 0, 1], [])
   #(State("hello", zip, Command), effect.none())
 }
 
@@ -48,7 +48,7 @@ pub fn update(state, message) {
           State(..state, mode: Insert("", rebuild))
         }
         "i" ->
-          case transform.text(state.zip) {
+          case projection.text(state.zip) {
             Ok(#(text, apply)) -> State(..state, mode: Insert(text, apply))
           }
         "p" -> {

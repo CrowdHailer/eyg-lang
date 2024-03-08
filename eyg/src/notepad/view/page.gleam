@@ -3,6 +3,7 @@ import gleam/dynamic
 import gleam/int
 import gleam/option.{None, Some}
 import gleam/list
+import gleam/listx
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
@@ -11,7 +12,7 @@ import notepad/state
 import notepad/view/helpers
 import morph/editable as e
 import notepad/view/code
-import morph/transform as t
+import morph/projection as t
 import notepad/view/frame
 
 pub fn render(state: state.State) {
@@ -84,7 +85,8 @@ pub fn print(zip) {
           ]
           let pre = list.map(pre, code.do_field)
           let post = list.map(post, code.do_field)
-          let pattern = code.do_destructured(t.gather_around(pre, spans, post))
+          let pattern =
+            code.do_destructured(listx.gather_around(pre, spans, post))
           code.do_let(pattern, code.expression(value))
         }
         t.AssignBind(label, var, pre, post) -> {
@@ -95,12 +97,13 @@ pub fn print(zip) {
           ]
           let pre = list.map(pre, code.do_field)
           let post = list.map(post, code.do_field)
-          let pattern = code.do_destructured(t.gather_around(pre, spans, post))
+          let pattern =
+            code.do_destructured(listx.gather_around(pre, spans, post))
           code.do_let(pattern, code.expression(value))
         }
       }
 
-      t.gather_around(pre, assign, post)
+      listx.gather_around(pre, assign, post)
       |> list.append([code.expression(then)])
       |> frame.to_fat_lines
       |> frame.Multiline([text("{")], _, [text("}")])
@@ -121,7 +124,7 @@ pub fn print(zip) {
           ]
           let pre = list.map(pre, code.do_field)
           let post = list.map(post, code.do_field)
-          code.do_destructured(t.gather_around(pre, spans, post))
+          code.do_destructured(listx.gather_around(pre, spans, post))
         }
         t.AssignBind(label, var, pre, post) -> {
           let spans = [
@@ -131,10 +134,10 @@ pub fn print(zip) {
           ]
           let pre = list.map(pre, code.do_field)
           let post = list.map(post, code.do_field)
-          code.do_destructured(t.gather_around(pre, spans, post))
+          code.do_destructured(listx.gather_around(pre, spans, post))
         }
       }
-      let patterns = t.gather_around(pre, pattern, post)
+      let patterns = listx.gather_around(pre, pattern, post)
       let patterns = code.join_patterns(patterns)
       code.render_function(patterns, code.expression(body))
     }
@@ -146,7 +149,10 @@ pub fn print(zip) {
         t.Record -> None
         t.Overwrite(original) -> Some(code.expression(original))
       }
-      code.render_record(t.gather_around(pre, highlight(field), post), original)
+      code.render_record(
+        listx.gather_around(pre, highlight(field), post),
+        original,
+      )
     }
     t.Label(label, value, pre, post, for) -> {
       let value = code.expression(value)
@@ -160,7 +166,7 @@ pub fn print(zip) {
         t.Overwrite(original) -> Some(code.expression(original))
       }
 
-      code.render_record(t.gather_around(pre, field, post), original)
+      code.render_record(listx.gather_around(pre, field, post), original)
     }
     t.Match(top, label, value, pre, post, otherwise) -> {
       let value = code.expression(value)
@@ -170,7 +176,7 @@ pub fn print(zip) {
       let post = list.map(post, code.render_branch)
       code.render_case(
         code.expression(top),
-        t.gather_around(pre, branch, post),
+        listx.gather_around(pre, branch, post),
         option.map(otherwise, code.expression),
       )
     }

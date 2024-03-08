@@ -10,7 +10,7 @@ import lustre/effect
 import eygir/decode
 import eygir/annotated as a
 import morph/editable as e
-import morph/transform
+import morph/projection
 import eyg/runtime/value as v
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/break as fail
@@ -42,7 +42,7 @@ pub fn update(state, message) {
     Drafting(d.KeyDown("Enter")) -> {
       case current {
         d.State(zip, d.Navigate) -> {
-          let editable = transform.rebuild(zip)
+          let editable = projection.rebuild(zip)
           io.debug(editable)
           let source = e.to_expression(editable)
           io.debug(source)

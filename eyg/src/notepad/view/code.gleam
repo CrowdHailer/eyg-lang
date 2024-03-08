@@ -2,11 +2,12 @@ import gleam/io
 import gleam/int
 import gleam/option.{None, Some}
 import gleam/list
+import gleam/listx
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
 import morph/editable as e
-import morph/transform as t
+import morph/projection as t
 import notepad/view/frame
 
 pub fn do_let(pattern, value) {
@@ -295,7 +296,7 @@ pub fn render_break(break, inner) {
     t.CallArg(f, pre, post) -> {
       let pre = list.map(pre, expression)
       let post = list.map(post, expression)
-      let args = t.gather_around(pre, inner, post)
+      let args = listx.gather_around(pre, inner, post)
       render_call(expression(f), render_args_e(args))
     }
     t.Body(args) -> render_function(patterns(args), inner)
@@ -303,7 +304,7 @@ pub fn render_break(break, inner) {
       let pre = list.map(pre, expression)
       let post = list.map(post, expression)
       render_list(
-        t.gather_around(pre, inner, post),
+        listx.gather_around(pre, inner, post),
         option.map(tail, expression),
       )
     }
@@ -316,7 +317,7 @@ pub fn render_break(break, inner) {
         t.Record -> None
         t.Overwrite(original) -> Some(expression(original))
       }
-      render_record(t.gather_around(pre, inner, post), original)
+      render_record(listx.gather_around(pre, inner, post), original)
     }
     t.OverwriteTail(fields) -> {
       let fields = list.map(list.reverse(fields), render_field)
@@ -326,7 +327,7 @@ pub fn render_break(break, inner) {
       let pre = list.map(pre, assign_pair)
       let post = list.map(post, assign_pair)
       let assign = do_let(pattern(p), inner)
-      t.gather_around(pre, assign, post)
+      listx.gather_around(pre, assign, post)
       |> list.append([expression(then)])
       |> frame.to_fat_lines()
       |> frame.Multiline([text("{")], _, [text("}")])
@@ -355,7 +356,7 @@ pub fn render_break(break, inner) {
       let branch = frame.prepend_spans([text(label), text(" ")], inner)
       let otherwise = option.map(otherwise, expression)
 
-      render_case(top, t.gather_around(pre, branch, post), otherwise)
+      render_case(top, listx.gather_around(pre, branch, post), otherwise)
     }
     t.CaseTail(top, matches) -> {
       let top = expression(top)

@@ -2,21 +2,10 @@ import gleam/io
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/list
+import gleam/listx
 import morph/editable as e
 
-// from Embed drop for morph/notepad
-// inference, loading, running, undo, redo, no mapping from text to position, no pallet
-// or have everything in a command pallet and selection options, return continue fn and maybe label
-// really focus on transforms to make it worthwhile
-
-// block is interesting because how do yo address key or value I guess another kind of zipper
-// Type checking is not part of this if we make it fast
-// how do we link paths in is harder
-
-// press i starts insert mode
-// how do I render the tree, meta or from tree
-
-// split_around can have then as 0 see func args so that you can match on beginning of list or empty for tail
+// listx.split_around can have then as 0 see func args so that you can match on beginning of list or empty for tail
 // can have a field focus with a type for bulding but maybe easier to stay concrete
 // TODO test focus to expression type one big tree is nice
 // TODO unzip must get to the same tree
@@ -27,31 +16,6 @@ import morph/editable as e
 // Need to print focus on no expression values
 
 // if empty we error but all my blocks must have a value, not true for lit
-fn split_around(items, at) {
-  do_split_around(items, at, [])
-}
-
-// TODO  Make a split type to reuse pre/post/value
-
-fn do_split_around(items, left, acc) {
-  case items, left {
-    // pre is left reversed
-    [item, ..after], 0 -> Ok(#(acc, item, after))
-    [item, ..after], i -> do_split_around(after, i - 1, [item, ..acc])
-    [], _ -> Error(Nil)
-  }
-}
-
-fn move(a, b) {
-  case a {
-    [] -> b
-    [i, ..a] -> move(a, [i, ..b])
-  }
-}
-
-pub fn gather_around(pre, item, post) {
-  move(pre, [item, ..post])
-}
 
 pub fn focus_at(ast, path, acc) {
   case ast, path {
@@ -61,7 +25,7 @@ pub fn focus_at(ast, path, acc) {
         True -> focus_at(then, rest, [BlockTail(assigns), ..acc])
         False -> {
           let assert Ok(#(pre, #(pattern, value), post)) =
-            split_around(assigns, i)
+            listx.split_around(assigns, i)
           case rest {
             [] -> #(
               Assign(AssignStatement(pattern), value, pre, post, then),
@@ -76,7 +40,7 @@ pub fn focus_at(ast, path, acc) {
                 e.Destructure(fields) -> {
                   let detail = {
                     let assert Ok(#(pre, #(label, var), post)) =
-                      split_around(fields, i / 2)
+                      listx.split_around(fields, i / 2)
 
                     case i % 2 {
                       0 -> AssignField(label, var, pre, post)
@@ -103,7 +67,7 @@ pub fn focus_at(ast, path, acc) {
       case i == list.length(params) {
         True -> focus_at(body, rest, [Body(params), ..acc])
         False -> {
-          let assert Ok(#(pre, p, post)) = split_around(params, i)
+          let assert Ok(#(pre, p, post)) = listx.split_around(params, i)
           let detail = case rest {
             [] -> AssignPattern(p)
           }
@@ -114,14 +78,14 @@ pub fn focus_at(ast, path, acc) {
     e.Call(func, args), [0, ..rest] ->
       focus_at(func, rest, [CallFn(args), ..acc])
     e.Call(func, args), [i, ..rest] -> {
-      let assert Ok(#(pre, value, post)) = split_around(args, i - 1)
+      let assert Ok(#(pre, value, post)) = listx.split_around(args, i - 1)
       focus_at(value, rest, [CallArg(func, pre, post), ..acc])
     }
     e.List(items, tail), [i, ..rest] -> {
       case i == list.length(items), tail {
         True, Some(tail) -> focus_at(tail, rest, [ListTail(items), ..acc])
         False, _ -> {
-          let assert Ok(#(pre, value, post)) = split_around(items, i)
+          let assert Ok(#(pre, value, post)) = listx.split_around(items, i)
           focus_at(value, rest, [ListItem(pre, post, tail), ..acc])
         }
         _, _ -> panic as "bad list"
@@ -131,7 +95,8 @@ pub fn focus_at(ast, path, acc) {
       case i == list.length(fields), original {
         True, Some(original) -> todo
         False, _ -> {
-          let assert Ok(#(pre, #(label, value), post)) = split_around(fields, i)
+          let assert Ok(#(pre, #(label, value), post)) =
+            listx.split_around(fields, i)
           let for = case original {
             None -> Record
             Some(original) -> Overwrite(original)
@@ -158,7 +123,7 @@ pub fn focus_at(ast, path, acc) {
           focus_at(tail, rest, [CaseTail(top, matches), ..acc])
         False, _ -> {
           let assert Ok(#(pre, #(label, branch), post)) =
-            split_around(matches, i)
+            listx.split_around(matches, i)
           case rest {
             [0, ..rest] ->
               focus_at(branch, rest, [
@@ -202,7 +167,7 @@ pub fn assigned_pattern(focus) {
   case focus {
     AssignStatement(p) | AssignPattern(p) -> p
     AssignField(l, v, pre, post) | AssignBind(l, v, pre, post) ->
-      e.Destructure(gather_around(pre, #(l, v), post))
+      e.Destructure(listx.gather_around(pre, #(l, v), post))
   }
 }
 
@@ -372,7 +337,10 @@ pub fn step(zip) {
         }
       }
     Assign(AssignStatement(p), value, pre, post, then) ->
-      Ok(#(Exp(e.Block(gather_around(pre, #(p, value), post), then)), zoom))
+      Ok(#(
+        Exp(e.Block(listx.gather_around(pre, #(p, value), post), then)),
+        zoom,
+      ))
     Assign(AssignPattern(p), value, pre, post, then) ->
       Ok(#(Assign(AssignStatement(p), value, pre, post, then), zoom))
     Assign(detail, value, pre, post, then) ->
@@ -381,7 +349,7 @@ pub fn step(zip) {
         zoom,
       ))
     FnParam(AssignPattern(p), pre, post, body) ->
-      Ok(#(Exp(e.Function(gather_around(pre, p, post), body)), zoom))
+      Ok(#(Exp(e.Function(listx.gather_around(pre, p, post), body)), zoom))
     FnParam(detail, pre, post, body) ->
       Ok(#(
         FnParam(AssignPattern(assigned_pattern(detail)), pre, post, body),
@@ -394,11 +362,14 @@ pub fn step(zip) {
         Record -> None
         Overwrite(original) -> Some(original)
       }
-      Ok(#(Exp(e.Record(gather_around(pre, #(l, value), post), original)), zoom))
+      Ok(#(
+        Exp(e.Record(listx.gather_around(pre, #(l, value), post), original)),
+        zoom,
+      ))
     }
     Match(top, label, branch, pre, post, otherwise) -> {
       // match is a label and branch
-      let matches = gather_around(pre, #(label, branch), post)
+      let matches = listx.gather_around(pre, #(label, branch), post)
       Ok(#(Exp(e.Case(top, matches, otherwise)), zoom))
     }
     _ -> {
@@ -412,20 +383,21 @@ fn unbreak(exp, break) {
   case break {
     BlockTail(assigments) -> e.Block(assigments, exp)
     BlockValue(var, pre, post, then) ->
-      e.Block(gather_around(pre, #(var, exp), post), then)
+      e.Block(listx.gather_around(pre, #(var, exp), post), then)
     CallFn(args) -> e.Call(exp, args)
-    CallArg(f, pre, post) -> e.Call(f, gather_around(pre, exp, post))
+    CallArg(f, pre, post) -> e.Call(f, listx.gather_around(pre, exp, post))
     Body(args) -> e.Function(args, exp)
-    ListItem(pre, post, tail) -> e.List(gather_around(pre, exp, post), tail)
+    ListItem(pre, post, tail) ->
+      e.List(listx.gather_around(pre, exp, post), tail)
     ListTail(items) -> e.List(items, Some(exp))
     RecordValue(label, pre, post, Record) ->
-      e.Record(gather_around(pre, #(label, exp), post), None)
+      e.Record(listx.gather_around(pre, #(label, exp), post), None)
     RecordValue(label, pre, post, Overwrite(original)) ->
-      e.Record(gather_around(pre, #(label, exp), post), Some(original))
+      e.Record(listx.gather_around(pre, #(label, exp), post), Some(original))
     OverwriteTail(fields) -> e.Record(list.reverse(fields), Some(exp))
     CaseTop(matches, otherwise) -> e.Case(exp, matches, otherwise)
     CaseMatch(top, label, pre, post, otherwise) -> {
-      let branches = gather_around(pre, #(label, exp), post)
+      let branches = listx.gather_around(pre, #(label, exp), post)
       e.Case(top, branches, otherwise)
     }
     CaseTail(top, branches) -> e.Case(top, branches, Some(exp))

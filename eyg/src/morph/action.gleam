@@ -1,8 +1,9 @@
 import gleam/io
 import gleam/list
+import gleam/listx
 import gleam/option.{None, Some}
 import morph/editable as e
-import morph/transform as t
+import morph/projection as t
 
 // make morph transforms, does not include undo redo or types
 // TODO clicking, eiter by full path or relative path
@@ -81,7 +82,7 @@ pub fn move_down(zip) {
     }
     #(t.Assign(detail, value, pre, [], then), rest) -> {
       let p = t.assigned_pattern(detail)
-      let assigns = t.gather_around(pre, #(p, value), [])
+      let assigns = listx.gather_around(pre, #(p, value), [])
       #(t.Exp(then), [t.BlockTail(assigns), ..rest])
     }
     #(t.Match(top, label, branch, pre, [new, ..post], otherwise), rest) -> {
@@ -129,7 +130,8 @@ pub fn move_right(zip) {
           zoom,
         )
         t.AssignBind(label, var, pre_p, []) -> {
-          let pattern = e.Destructure(t.gather_around(pre_p, #(label, var), []))
+          let pattern =
+            e.Destructure(listx.gather_around(pre_p, #(label, var), []))
           #(t.Exp(value), [t.BlockValue(pattern, pre, post, then), ..zoom])
         }
       }
@@ -165,8 +167,8 @@ pub fn move_right(zip) {
     }
     // TODO movebind to right into body
     #(t.FnParam(t.AssignBind(l, x, pre_p, []), pre, [], body), rest) -> {
-      let pattern = e.Destructure(t.gather_around(pre_p, #(l, x), []))
-      #(t.Exp(body), [t.Body(t.gather_around(pre, pattern, [])), ..rest])
+      let pattern = e.Destructure(listx.gather_around(pre_p, #(l, x), []))
+      #(t.Exp(body), [t.Body(listx.gather_around(pre, pattern, [])), ..rest])
     }
 
     #(t.Exp(exp), [t.ListItem(pre, [next, ..post], tail), ..rest]) -> #(
@@ -621,7 +623,7 @@ pub fn open_match(zip) {
       ..zoom
     ])
     t.Match(top, label, branch, pre, post, otherwise) -> {
-      let matches = t.gather_around(pre, #(label, branch), post)
+      let matches = listx.gather_around(pre, #(label, branch), post)
       #(t.Exp(new), [t.CaseTail(top, matches), ..zoom])
     }
   }

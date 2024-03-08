@@ -6,24 +6,24 @@ import plinth/browser/document
 import plinth/browser/element
 import plinth/browser/window
 import morph/editable as e
-import morph/transform
+import morph/projection
 import morph/action
 
 pub type Action =
-  #(String, fn(transform.Zip) -> State, Option(String))
+  #(String, fn(projection.Zip) -> State, Option(String))
 
 pub type Mode {
   Navigate
   Pallet(search: String, suggestions: List(Action), offset: Int)
-  RequireString(String, fn(String) -> transform.Zip)
+  RequireString(String, fn(String) -> projection.Zip)
 }
 
 pub type State {
-  State(zip: transform.Zip, mode: Mode)
+  State(zip: projection.Zip, mode: Mode)
 }
 
 pub fn new(source) {
-  State(transform.focus_at(source, [], []), Navigate)
+  State(projection.focus_at(source, [], []), Navigate)
 }
 
 pub fn init(_) {
@@ -35,7 +35,7 @@ pub type Message {
   KeyDown(String)
   // Update input handles all focused overlays
   UpdateInput(String)
-  Do(fn(transform.Zip) -> State)
+  Do(fn(projection.Zip) -> State)
   DoIt
 }
 
@@ -44,7 +44,7 @@ fn actions() {
     #(
       "insert mode",
       fn(zip) {
-        let Ok(#(value, rebuild)) = transform.text(zip)
+        let Ok(#(value, rebuild)) = projection.text(zip)
         State(zip, RequireString(value, rebuild))
       },
       Some("i"),
