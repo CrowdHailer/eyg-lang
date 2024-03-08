@@ -6,7 +6,7 @@ import lustre/element.{text}
 import lustre/event
 import drafting/state as d
 import drafting/view/page
-import notepad/view/code
+import morph/lustre/render
 import eyg/runtime/value as v
 import spotless/state
 
@@ -19,7 +19,7 @@ pub fn render(app) {
       list.map(list.reverse(previous), fn(p) {
         let #(value, prog) = p
         h.div([a.class("mt-6 p-1 border-2 rounded border-blue-700 font-mono")], [
-          h.div([], code.top(prog)),
+          h.div([], render.top(prog)),
           h.div([a.class("bg-gray-200")], [text(v.debug(value))]),
         ])
       }),

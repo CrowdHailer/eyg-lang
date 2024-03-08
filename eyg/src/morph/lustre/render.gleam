@@ -8,7 +8,7 @@ import lustre/element/html as h
 import lustre/element.{text}
 import morph/editable as e
 import morph/projection as t
-import notepad/view/frame
+import morph/lustre/frame
 
 pub fn do_let(pattern, value) {
   let assignment = list.flatten([[text("let ")], pattern, [text(" = ")]])
@@ -203,23 +203,13 @@ pub fn render_function(args, body) {
   // |> frame.append_spans([text(" }")])
 }
 
-fn delimit(frames, delimiter) {
-  case list.reverse(frames) {
-    [] -> []
-    [last, ..rest] -> {
-      let rest = list.map(rest, frame.append_spans(_, [text(delimiter)]))
-      list.reverse([last, ..rest])
-    }
-  }
-}
-
 pub fn render_list(items, tail) {
   let tail = case tail {
     Some(tail) -> [frame.prepend_spans([text("..")], tail)]
     None -> []
   }
   let items = list.append(items, tail)
-  let items = delimit(items, ", ")
+  let items = frame.delimit(items, ", ")
   case frame.all_inline(items) {
     Ok(spans) ->
       frame.Inline(
@@ -238,7 +228,7 @@ pub fn render_record(fields, original) {
     None -> []
   }
   let fields = list.append(fields, original)
-  let fields = delimit(fields, ", ")
+  let fields = frame.delimit(fields, ", ")
 
   case frame.all_inline(fields) {
     Ok(spans) ->

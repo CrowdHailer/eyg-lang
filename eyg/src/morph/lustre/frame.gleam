@@ -40,6 +40,16 @@ pub fn append_spans(m, new) {
   }
 }
 
+pub fn delimit(frames, delimiter) {
+  case list.reverse(frames) {
+    [] -> []
+    [last, ..rest] -> {
+      let rest = list.map(rest, append_spans(_, [text(delimiter)]))
+      list.reverse([last, ..rest])
+    }
+  }
+}
+
 // Call to_divs but its a single div
 // could return unwrapped divs but what about indent.
 // have indent as an option
