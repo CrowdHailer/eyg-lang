@@ -5,7 +5,7 @@ import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
 import lustre/event
-import notepad/view/page
+import morph/lustre/render
 import drafting/state
 
 pub fn render(app) {
@@ -36,7 +36,7 @@ pub fn surface(zip) {
       event.on_keydown(state.KeyDown),
       a.id("code"),
     ],
-    [page.print(zip)],
+    [render.projection(zip)],
   )
 }
 

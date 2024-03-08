@@ -9,6 +9,7 @@ import lustre/element.{text}
 import morph/editable as e
 import morph/projection as t
 import morph/lustre/frame
+import morph/lustre/highlight
 
 pub fn do_let(pattern, value) {
   let assignment = list.flatten([[text("let ")], pattern, [text(" = ")]])
@@ -358,4 +359,144 @@ pub fn render_break(break, inner) {
   //   io.debug(break)
   //   panic as "bad push"
   // }
+}
+
+fn push_render(frame, zoom) {
+  case zoom {
+    [] -> frame
+    [break, ..rest] -> {
+      let frame = render_break(break, frame)
+      push_render(frame, rest)
+    }
+  }
+}
+
+pub fn projection(zip) -> element.Element(a) {
+  let #(focus, zoom) = zip
+  let frame = case focus {
+    t.Exp(exp) -> highlight.frame(expression(exp))
+    t.Assign(detail, value, pre, post, then) -> {
+      let pre = list.map(pre, do_assign)
+      let post = list.map(post, do_assign)
+
+      let assign = case detail {
+        // get rid of assign statement then do_let goes on the outside
+        t.AssignStatement(p) -> highlight.frame(assign(p, value))
+        t.AssignPattern(p) -> {
+          let p = [highlight.spans(pattern(p))]
+          do_let(p, expression(value))
+        }
+        t.AssignField(label, var, pre, post) -> {
+          let spans = [
+            highlight.spans([text(label)]),
+            h.span([], [text(": ")]),
+            h.span([], [text(var)]),
+          ]
+          let pre = list.map(pre, do_field)
+          let post = list.map(post, do_field)
+          let pattern = do_destructured(listx.gather_around(pre, spans, post))
+          do_let(pattern, expression(value))
+        }
+        t.AssignBind(label, var, pre, post) -> {
+          let spans = [
+            h.span([], [text(label)]),
+            h.span([], [text(": ")]),
+            highlight.spans([text(var)]),
+          ]
+          let pre = list.map(pre, do_field)
+          let post = list.map(post, do_field)
+          let pattern = do_destructured(listx.gather_around(pre, spans, post))
+          do_let(pattern, expression(value))
+        }
+      }
+
+      listx.gather_around(pre, assign, post)
+      |> list.append([expression(then)])
+      |> frame.to_fat_lines
+      |> frame.Multiline([text("{")], _, [text("}")])
+    }
+    t.FnParam(detail, pre, post, body) -> {
+      let pre = list.map(pre, pattern)
+      let post = list.map(post, pattern)
+      let pattern = case detail {
+        t.AssignStatement(p) -> [highlight.spans(pattern(p))]
+        t.AssignPattern(p) -> [highlight.spans(pattern(p))]
+
+        t.AssignField(label, var, pre, post) -> {
+          let spans = [
+            highlight.spans([text(label)]),
+            h.span([], [text(": ")]),
+            h.span([], [text(var)]),
+          ]
+          let pre = list.map(pre, do_field)
+          let post = list.map(post, do_field)
+          do_destructured(listx.gather_around(pre, spans, post))
+        }
+        t.AssignBind(label, var, pre, post) -> {
+          let spans = [
+            h.span([], [text(label)]),
+            h.span([], [text(": ")]),
+            highlight.spans([text(var)]),
+          ]
+          let pre = list.map(pre, do_field)
+          let post = list.map(post, do_field)
+          do_destructured(listx.gather_around(pre, spans, post))
+        }
+      }
+      let patterns = listx.gather_around(pre, pattern, post)
+      let patterns = join_patterns(patterns)
+      render_function(patterns, expression(body))
+    }
+    t.Labeled(label, value, pre, post, for) -> {
+      let field = render_field(#(label, value))
+      let pre = list.map(pre, render_field)
+      let post = list.map(post, render_field)
+      let original = case for {
+        t.Record -> None
+        t.Overwrite(original) -> Some(expression(original))
+      }
+      render_record(
+        listx.gather_around(pre, highlight.frame(field), post),
+        original,
+      )
+    }
+    t.Label(label, value, pre, post, for) -> {
+      let value = expression(value)
+      let label = highlight.spans([text(label)])
+      let field = frame.prepend_spans([label, text(": ")], value)
+
+      let pre = list.map(pre, render_field)
+      let post = list.map(post, render_field)
+      let original = case for {
+        t.Record -> None
+        t.Overwrite(original) -> Some(expression(original))
+      }
+
+      render_record(listx.gather_around(pre, field, post), original)
+    }
+    t.Match(top, label, value, pre, post, otherwise) -> {
+      let value = expression(value)
+      let branch =
+        frame.prepend_spans([highlight.spans([text(label)]), text(" ")], value)
+      let pre = list.map(pre, render_branch)
+      let post = list.map(post, render_branch)
+      render_case(
+        expression(top),
+        listx.gather_around(pre, branch, post),
+        option.map(otherwise, expression),
+      )
+    }
+    _ -> {
+      io.debug(zip)
+      panic as "bad projection"
+    }
+  }
+  push_render(frame, zoom)
+  |> frame.to_fat_line
+  // TO fat line is very similar to top function
+}
+
+fn do_assign(kv) {
+  let #(label, value) = kv
+  assign(label, value)
 }

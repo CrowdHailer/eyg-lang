@@ -23,7 +23,6 @@ pub fn render(state: state.State) {
   ])
 }
 
-// TODO select from record
 // TODO remove t.Match for Label and call render_case
 // TODO join_field needs to take span if used by expression and pattern
 // TODO show that you can print more an more tree, limit on depth or total size
@@ -50,172 +49,6 @@ pub fn note(content, on_input) {
       event.on_input(on_input),
     ]),
   ])
-}
-
-fn push_render(frame, zoom) {
-  case zoom {
-    [] -> frame
-    [break, ..rest] -> {
-      let frame = render.render_break(break, frame)
-      push_render(frame, rest)
-    }
-  }
-}
-
-pub fn print(zip) -> element.Element(a) {
-  let #(focus, zoom) = zip
-  let frame = case focus {
-    t.Exp(exp) -> highlight(render.expression(exp))
-    t.Assign(detail, value, pre, post, then) -> {
-      let pre = list.map(pre, do_assign)
-      let post = list.map(post, do_assign)
-
-      let assign = case detail {
-        // get rid of assign statement then do_let goes on the outside
-        t.AssignStatement(pattern) -> highlight(render.assign(pattern, value))
-        t.AssignPattern(pattern) -> {
-          let pattern = [highlight_spans(render.pattern(pattern))]
-          render.do_let(pattern, render.expression(value))
-        }
-        t.AssignField(label, var, pre, post) -> {
-          let spans = [
-            highlight_spans([text(label)]),
-            h.span([], [text(": ")]),
-            h.span([], [text(var)]),
-          ]
-          let pre = list.map(pre, render.do_field)
-          let post = list.map(post, render.do_field)
-          let pattern =
-            render.do_destructured(listx.gather_around(pre, spans, post))
-          render.do_let(pattern, render.expression(value))
-        }
-        t.AssignBind(label, var, pre, post) -> {
-          let spans = [
-            h.span([], [text(label)]),
-            h.span([], [text(": ")]),
-            highlight_spans([text(var)]),
-          ]
-          let pre = list.map(pre, render.do_field)
-          let post = list.map(post, render.do_field)
-          let pattern =
-            render.do_destructured(listx.gather_around(pre, spans, post))
-          render.do_let(pattern, render.expression(value))
-        }
-      }
-
-      listx.gather_around(pre, assign, post)
-      |> list.append([render.expression(then)])
-      |> frame.to_fat_lines
-      |> frame.Multiline([text("{")], _, [text("}")])
-    }
-    t.FnParam(detail, pre, post, body) -> {
-      let pre = list.map(pre, render.pattern)
-      let post = list.map(post, render.pattern)
-      let pattern = case detail {
-        t.AssignStatement(pattern) -> [highlight_spans(render.pattern(pattern))]
-        t.AssignPattern(pattern) -> {
-          [highlight_spans(render.pattern(pattern))]
-        }
-        t.AssignField(label, var, pre, post) -> {
-          let spans = [
-            highlight_spans([text(label)]),
-            h.span([], [text(": ")]),
-            h.span([], [text(var)]),
-          ]
-          let pre = list.map(pre, render.do_field)
-          let post = list.map(post, render.do_field)
-          render.do_destructured(listx.gather_around(pre, spans, post))
-        }
-        t.AssignBind(label, var, pre, post) -> {
-          let spans = [
-            h.span([], [text(label)]),
-            h.span([], [text(": ")]),
-            highlight_spans([text(var)]),
-          ]
-          let pre = list.map(pre, render.do_field)
-          let post = list.map(post, render.do_field)
-          render.do_destructured(listx.gather_around(pre, spans, post))
-        }
-      }
-      let patterns = listx.gather_around(pre, pattern, post)
-      let patterns = render.join_patterns(patterns)
-      render.render_function(patterns, render.expression(body))
-    }
-    t.Labeled(label, value, pre, post, for) -> {
-      let field = render.render_field(#(label, value))
-      let pre = list.map(pre, render.render_field)
-      let post = list.map(post, render.render_field)
-      let original = case for {
-        t.Record -> None
-        t.Overwrite(original) -> Some(render.expression(original))
-      }
-      render.render_record(
-        listx.gather_around(pre, highlight(field), post),
-        original,
-      )
-    }
-    t.Label(label, value, pre, post, for) -> {
-      let value = render.expression(value)
-      let label = highlight_spans([text(label)])
-      let field = frame.prepend_spans([label, text(": ")], value)
-
-      let pre = list.map(pre, render.render_field)
-      let post = list.map(post, render.render_field)
-      let original = case for {
-        t.Record -> None
-        t.Overwrite(original) -> Some(render.expression(original))
-      }
-
-      render.render_record(listx.gather_around(pre, field, post), original)
-    }
-    t.Match(top, label, value, pre, post, otherwise) -> {
-      let value = render.expression(value)
-      let branch =
-        frame.prepend_spans([highlight_spans([text(label)]), text(" ")], value)
-      let pre = list.map(pre, render.render_branch)
-      let post = list.map(post, render.render_branch)
-      render.render_case(
-        render.expression(top),
-        listx.gather_around(pre, branch, post),
-        option.map(otherwise, render.expression),
-      )
-    }
-    _ -> {
-      io.debug(zip)
-      panic as "bad print"
-    }
-  }
-  push_render(frame, zoom)
-  |> frame.to_fat_line
-  // TO fat line is very similar to top function
-}
-
-// TODO move to a standard highlight function
-fn highlight(m) {
-  case m {
-    frame.Inline(spans) -> frame.Inline([highlight_spans(spans)])
-    frame.Multiline(pre, inner, post) -> {
-      frame.Multiline(
-        [h.span([a.class("border-green-600 border-2")], pre)],
-        [
-          h.div(
-            [a.class("border-green-600 border-2"), a.id("highlighted")],
-            inner,
-          ),
-        ],
-        [h.span([a.class("border-green-600 border-2")], post)],
-      )
-    }
-  }
-}
-
-fn highlight_spans(spans) {
-  h.span([a.class("border-green-600 border-2"), a.id("highlighted")], spans)
-}
-
-fn do_assign(kv) {
-  let #(label, value) = kv
-  render.assign(label, value)
 }
 
 pub fn editor(zip, mode) {
@@ -262,7 +95,7 @@ pub fn editor(zip, mode) {
       // ]),
       // nested to ignore effect from cover
       h.div([a.attribute("tabindex", "0"), event.on_keydown(state.KeyDown)], [
-        print(zip),
+        render.projection(zip),
       ]),
     ],
   )
