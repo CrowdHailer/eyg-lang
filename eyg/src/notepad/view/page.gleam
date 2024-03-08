@@ -191,7 +191,12 @@ fn highlight(m) {
     frame.Multiline(pre, inner, post) -> {
       frame.Multiline(
         [h.span([a.class("border-green-600 border-2")], pre)],
-        [h.div([a.class("border-green-600 border-2")], inner)],
+        [
+          h.div(
+            [a.class("border-green-600 border-2"), a.id("highlighted")],
+            inner,
+          ),
+        ],
         [h.span([a.class("border-green-600 border-2")], post)],
       )
     }
@@ -199,7 +204,7 @@ fn highlight(m) {
 }
 
 fn highlight_spans(spans) {
-  h.span([a.class("border-green-600 border-2")], spans)
+  h.span([a.class("border-green-600 border-2"), a.id("highlighted")], spans)
 }
 
 fn do_assign(kv) {

@@ -202,6 +202,21 @@ fn update_focus() {
   })
 }
 
+fn scroll_to() {
+  window.request_animation_frame(fn() {
+    case document.query_selector("#highlighted") {
+      Ok(el) -> {
+        element.scroll_into_view(el)
+      }
+      _ -> {
+        io.debug(document.query_selector_all("#highlighted"))
+        io.debug("didn't find element")
+        Nil
+      }
+    }
+  })
+}
+
 pub fn handle(state, message) {
   let State(mode: mode, zip: zip) = state
   case message {
@@ -211,12 +226,30 @@ pub fn handle(state, message) {
           update_focus()
           State(..state, mode: Pallet("", actions(), 0))
         }
-        Navigate, "a" -> State(action.increase(zip), mode)
-        Navigate, "s" -> State(action.decrease(zip), mode)
-        Navigate, "ArrowUp" -> State(action.move_up(zip), mode)
-        Navigate, "ArrowDown" -> State(action.move_down(zip), mode)
-        Navigate, "ArrowLeft" -> State(action.move_left(zip), mode)
-        Navigate, "ArrowRight" -> State(action.move_right(zip), mode)
+        Navigate, "a" -> {
+          scroll_to()
+          State(action.increase(zip), mode)
+        }
+        Navigate, "s" -> {
+          scroll_to()
+          State(action.decrease(zip), mode)
+        }
+        Navigate, "ArrowUp" -> {
+          scroll_to()
+          State(action.move_up(zip), mode)
+        }
+        Navigate, "ArrowDown" -> {
+          scroll_to()
+          State(action.move_down(zip), mode)
+        }
+        Navigate, "ArrowLeft" -> {
+          scroll_to()
+          State(action.move_left(zip), mode)
+        }
+        Navigate, "ArrowRight" -> {
+          scroll_to()
+          State(action.move_right(zip), mode)
+        }
         _, "Enter" -> state
         _, "Escape" -> State(..state, mode: Navigate)
         Navigate, other -> {

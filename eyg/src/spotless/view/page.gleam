@@ -3,6 +3,7 @@ import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
+import lustre/event
 import drafting/state as d
 import drafting/view/page
 import notepad/view/code
@@ -17,28 +18,18 @@ pub fn render(app) {
       [],
       list.map(list.reverse(previous), fn(p) {
         let #(value, prog) = p
-        h.div(
-          [
-            a.class(
-              "max-w-2xl mx-auto mt-6 p-1 border-2 rounded border-blue-700 font-mono",
-            ),
-          ],
-          [
-            h.div([], code.top(prog)),
-            h.div([a.class("bg-gray-200")], [text(v.debug(value))]),
-          ],
-        )
+        h.div([a.class("mt-6 p-1 border-2 rounded border-blue-700 font-mono")], [
+          h.div([], code.top(prog)),
+          h.div([a.class("bg-gray-200")], [text(v.debug(value))]),
+        ])
       }),
     ),
-    h.div(
-      [a.class("max-w-2xl mx-auto mt-6 p-1 border-2 rounded border-blue-700")],
-      [
-        h.div([a.class("w-full max-w-4xl font-mono")], [
-          page.surface(current.zip)
-          |> element.map(state.Drafting),
-        ]),
-      ],
-    ),
+    h.div([a.class("mt-6 p-1 border-2 rounded border-blue-700")], [
+      h.div([a.class("font-mono")], [
+        page.surface(current.zip)
+        |> element.map(state.Drafting),
+      ]),
+    ]),
     h.div([], case current.mode {
       d.Navigate ->
         case error {
@@ -65,7 +56,13 @@ pub fn render(app) {
           |> element.map(state.Drafting),
         ])
     }),
-    h.div([], []),
+    h.div(
+      [
+        a.class("mx-auto max-w-2xl w-full text-right"),
+        event.on_click(state.LoadSource),
+      ],
+      [h.button([], [text("load source")])],
+    ),
   ])
 }
 

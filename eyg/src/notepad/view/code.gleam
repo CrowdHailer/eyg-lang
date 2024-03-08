@@ -142,6 +142,9 @@ pub fn expression(exp) {
       frame.Inline([
         h.span([a.class("text-purple-2")], [text(int.to_string(v))]),
       ])
+    e.Binary(_) ->
+      frame.Inline([h.span([a.class("text-orange-2")], [text("binary")])])
+
     e.String(v) ->
       frame.Inline([
         h.span([a.class("text-green-4")], [text("\""), text(v), text("\"")]),
@@ -153,6 +156,9 @@ pub fn expression(exp) {
         list.map(fields, render_field),
         option.map(original, expression),
       )
+    e.Select(from, label) ->
+      expression(from)
+      |> frame.append_spans([text("."), text(label)])
     e.Tag(label) ->
       frame.Inline([h.span([a.class("text-blue-900")], [text(label)])])
     e.Case(top, matches, otherwise) -> {
@@ -166,6 +172,17 @@ pub fn expression(exp) {
         h.span([a.class("text-gray-700")], [text("perform ")]),
         h.span([a.class("text-blue-900")], [text(label)]),
       ])
+    e.Deep(label) ->
+      frame.Inline([
+        h.span([a.class("text-gray-700")], [text("handle ")]),
+        h.span([a.class("text-blue-900")], [text(label)]),
+      ])
+    e.Shallow(label) ->
+      frame.Inline([
+        h.span([a.class("text-gray-700")], [text("shallow ")]),
+        h.span([a.class("text-blue-900")], [text(label)]),
+      ])
+
     e.Builtin(identifier) ->
       frame.Inline([
         h.span([a.class("text-orange-3")], [text("!"), text(identifier)]),
@@ -246,7 +263,13 @@ pub fn do_render_field(field) {
 }
 
 pub fn render_case(top, branches, otherwise) {
-  let frame.Inline(spans) = top
+  // let  = top
+  let spans = case top {
+    frame.Inline(spans) -> spans
+    _ -> {
+      [text("some big case")]
+    }
+  }
   list.append(branches, case otherwise {
     Some(otherwise) -> [otherwise]
     None -> []

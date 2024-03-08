@@ -2,7 +2,12 @@ import gleam/dict
 import gleam/dynamic
 import gleam/io
 import gleam/option.{type Option, None, Some}
+import gleam/javascript/array
+import gleam/javascript/promise
+import plinth/browser/file_system
+import plinth/browser/file
 import lustre/effect
+import eygir/decode
 import eygir/annotated as a
 import morph/editable as e
 import morph/transform
@@ -27,6 +32,8 @@ pub fn init(_) {
 
 pub type Message {
   Drafting(d.Message)
+  LoadSource
+  SourceLoaded(e.Expression)
 }
 
 pub fn update(state, message) {
@@ -61,6 +68,32 @@ pub fn update(state, message) {
     Drafting(m) -> {
       let current = d.handle(current, m)
       #(State(previous, current, None), effect.none())
+    }
+    LoadSource -> {
+      #(
+        state,
+        effect.from(fn(d) {
+          promise.try_await(file_system.show_open_file_picker(), fn(
+            file_handles,
+          ) {
+            let assert [file_handle] = array.to_list(file_handles)
+            use file <- promise.try_await(file_system.get_file(file_handle))
+            use text <- promise.map(file.text(file))
+            let assert Ok(source) = decode.from_json(text)
+            let source = a.add_annotation(source, Nil)
+            let source = e.from_annotated(source)
+            io.debug("done")
+            d(SourceLoaded(source))
+            Ok(Nil)
+          })
+
+          Nil
+        }),
+      )
+    }
+    SourceLoaded(source) -> {
+      let current = d.new(source)
+      #(State(state.previous, current, None), effect.none())
     }
   }
 }

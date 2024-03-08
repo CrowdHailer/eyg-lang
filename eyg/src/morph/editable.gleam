@@ -20,9 +20,12 @@ pub type Expression {
   String(String)
   List(List(Expression), Option(Expression))
   Record(List(#(String, Expression)), Option(Expression))
+  Select(Expression, String)
   Tag(String)
   Case(Expression, List(#(String, Expression)), Option(Expression))
   Perform(String)
+  Deep(String)
+  Shallow(String)
   Builtin(String)
 }
 
@@ -31,7 +34,7 @@ pub fn from_annotated(node) {
   case exp {
     a.Lambda(x, body) -> {
       let #(pattern, rest) = gather_destructure(body, x)
-      gather_arguments(rest, [pattern])
+      gather_parameters(rest, [pattern])
     }
     a.Let(_x, _value, _then) -> gather_assignments(node, [])
     a.Apply(#(a.Apply(#(a.Cons, _), value), _), rest) ->
@@ -42,6 +45,13 @@ pub fn from_annotated(node) {
       gather_extends(rest, [#(l, from_annotated(value))])
     a.Empty -> Record([], None)
 
+    a.Apply(#(a.Apply(#(a.Overwrite(l), _), value), _), rest) ->
+      gather_overwrite(rest, [#(l, from_annotated(value))])
+    a.Empty -> Record([], None)
+
+    a.Apply(#(a.Select(label), _), from) -> Select(from_annotated(from), label)
+    a.Select(label) -> Function([Bind("$")], Select(Variable("$"), label))
+
     a.Apply(
       #(a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise), _),
       value,
@@ -50,6 +60,19 @@ pub fn from_annotated(node) {
       let #(matches, otherwise) =
         gather_otherwise(otherwise, [#(l, from_annotated(branch))])
       Case(value, matches, otherwise)
+    }
+    a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise) -> {
+      // let value = from_annotated(value)
+      let #(matches, otherwise) =
+        gather_otherwise(otherwise, [#(l, from_annotated(branch))])
+      Function([Bind("$")], Case(Variable("$"), matches, otherwise))
+    }
+    a.Case(l) -> Variable("CASE!!")
+    // TODO nocases
+    a.NoCases -> Variable("NOCASE!!")
+
+    a.Apply(func, arg) -> {
+      gather_arguments(func, [from_annotated(arg)])
     }
 
     a.Vacant(_) -> Vacant
@@ -60,8 +83,10 @@ pub fn from_annotated(node) {
 
     a.Tag(label) -> Tag(label)
     a.Perform(label) -> Perform(label)
-    a.Builtin(label) -> Builtin(label)
+    a.Handle(label) -> Deep(label)
+    a.Shallow(label) -> Shallow(label)
 
+    a.Builtin(label) -> Builtin(label)
     _ -> {
       io.debug(exp)
       panic as "failed from annotated"
@@ -69,12 +94,12 @@ pub fn from_annotated(node) {
   }
 }
 
-fn gather_arguments(node, acc) {
+fn gather_parameters(node, acc) {
   let #(exp, _meta) = node
   case exp {
     a.Lambda(x, body) -> {
       let #(pattern, rest) = gather_destructure(body, x)
-      gather_arguments(rest, [pattern, ..acc])
+      gather_parameters(rest, [pattern, ..acc])
     }
     _body -> Function(list.reverse(acc), from_annotated(node))
   }
@@ -114,7 +139,17 @@ fn gather_extends(node, acc) {
     a.Apply(#(a.Apply(#(a.Extend(l), _), value), _), rest) ->
       gather_extends(rest, [#(l, from_annotated(value)), ..acc])
     a.Empty -> Record(list.reverse(acc), None)
-    _ -> panic as "bad extend"
+    // _ -> panic as "bad extend"
+    _ -> Record(list.reverse(acc), Some(Variable("Record extend")))
+  }
+}
+
+fn gather_overwrite(node, acc) {
+  let #(exp, _meta) = node
+  case exp {
+    a.Apply(#(a.Apply(#(a.Overwrite(l), _), value), _), rest) ->
+      gather_overwrite(rest, [#(l, from_annotated(value)), ..acc])
+    _ -> Record(list.reverse(acc), Some(from_annotated(node)))
   }
 }
 
@@ -138,6 +173,14 @@ fn gather_assignments(node, acc) {
     _ -> {
       Block(list.reverse(acc), from_annotated(node))
     }
+  }
+}
+
+fn gather_arguments(func, args) {
+  case func {
+    #(a.Apply(func, arg), _) ->
+      gather_arguments(func, [from_annotated(arg), ..args])
+    _ -> Call(from_annotated(func), list.reverse(args))
   }
 }
 
