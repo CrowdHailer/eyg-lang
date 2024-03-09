@@ -20,7 +20,6 @@ pub fn generalise(sub, env, t) {
 }
 
 pub fn instantiate(scheme, next) {
-  // TODO this is bad, I definelty use a 1000 points
   let next = next + 1000
   let #(forall, type_) = scheme
   let s =
