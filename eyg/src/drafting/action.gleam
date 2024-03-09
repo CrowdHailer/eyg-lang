@@ -1,4 +1,6 @@
 import gleam/result.{try}
+import morph/editable as e
+import morph/projection
 import morph/navigation
 import morph/transformation
 import drafting/session
@@ -42,6 +44,11 @@ pub fn delete(projection) {
   Ok(#(projection, session.Navigate))
 }
 
+pub fn edit(projection) {
+  use #(value, rebuild) <- try(projection.text(projection))
+  Ok(#(projection, session.EditString(value, rebuild)))
+}
+
 pub fn variable(projection) {
   use rebuild <- try(transformation.variable(projection))
   Ok(#(projection, session.EditString("", rebuild)))
@@ -50,4 +57,85 @@ pub fn variable(projection) {
 pub fn function(projection) {
   use rebuild <- try(transformation.function(projection))
   Ok(#(projection, session.EditString("", rebuild)))
+}
+
+pub fn call(projection) {
+  use projection <- try(transformation.call(projection))
+  Ok(#(projection, session.Navigate))
+}
+
+pub fn assign(projection) {
+  use rebuild <- try(transformation.assign(projection))
+  let rebuild = fn(new) { rebuild(e.Bind(new)) }
+  Ok(#(projection, session.EditString("", rebuild)))
+}
+
+pub fn assign_before(projection) {
+  use rebuild <- try(transformation.assign_before(projection))
+  let rebuild = fn(new) { rebuild(e.Bind(new)) }
+  Ok(#(projection, session.EditString("", rebuild)))
+}
+
+pub fn string(projection) {
+  use #(value, rebuild) <- try(transformation.string(projection))
+  Ok(#(projection, session.EditString(value, rebuild)))
+}
+
+pub fn list(projection) {
+  use projection <- try(transformation.list(projection))
+  Ok(#(projection, session.Navigate))
+}
+
+pub fn record(projection) {
+  use next <- try(transformation.record(projection))
+  case next {
+    transformation.NeedString(rebuild) -> #(
+      projection,
+      session.EditString("", rebuild),
+    )
+    transformation.NoString(projection) -> #(projection, session.Navigate)
+  }
+  |> Ok
+}
+
+pub fn overwrite(projection) {
+  use rebuild <- try(transformation.overwrite(projection))
+  Ok(#(projection, session.EditString("", rebuild)))
+}
+
+pub fn tag(projection) {
+  use rebuild <- try(transformation.tag(projection))
+  Ok(#(projection, session.EditString("", rebuild)))
+}
+
+pub fn match(projection) {
+  use rebuild <- try(transformation.match(projection))
+  Ok(#(projection, session.EditString("", rebuild)))
+}
+
+pub fn builtin(projection) {
+  use #(value, rebuild) <- try(transformation.builtin(projection))
+  Ok(#(projection, session.EditString(value, rebuild)))
+}
+
+pub fn extend(projection) {
+  use next <- try(transformation.extend(projection))
+  case next {
+    transformation.NeedString(rebuild) -> #(
+      projection,
+      session.EditString("", rebuild),
+    )
+    transformation.NoString(projection) -> #(projection, session.Navigate)
+  }
+  |> Ok
+}
+
+pub fn spread_list(projection) {
+  use projection <- try(transformation.spread_list(projection))
+  Ok(#(projection, session.Navigate))
+}
+
+pub fn open_match(projection) {
+  use projection <- try(transformation.open_match(projection))
+  Ok(#(projection, session.Navigate))
 }

@@ -115,30 +115,36 @@ pub fn assign(zip) {
   }
 }
 
-pub fn line_above(zip) {
+pub fn assign_before(zip) {
   case zip {
-    #(p.Exp(x), [p.ListItem(pre, post, tail), ..rest]) -> {
-      let zoom = [p.ListItem(pre, [x, ..post], tail), ..rest]
-      Ok(NoString(#(p.Exp(e.Vacant), zoom)))
-    }
+    // #(p.Exp(x), [p.ListItem(pre, post, tail), ..rest]) -> {
+    //   let zoom = [p.ListItem(pre, [x, ..post], tail), ..rest]
+    //   Ok(NoString(#(p.Exp(e.Vacant), zoom)))
+    // }
     #(p.Assign(p.AssignStatement(pattern), value, pre, post, then), rest) -> {
       let post = [#(pattern, value), ..post]
       let build = fn(new) {
-        let details = p.AssignStatement(e.Bind(new))
+        let details = p.AssignStatement(new)
         #(p.Assign(details, e.Vacant, pre, post, then), rest)
       }
-      Ok(NeedString(build))
+      Ok(build)
     }
     #(p.Exp(then), [p.BlockTail(lets), ..rest]) -> {
       let build = fn(new) {
-        let details = p.AssignStatement(e.Bind(new))
+        let details = p.AssignStatement(new)
         #(p.Assign(details, e.Vacant, lets, [], then), rest)
       }
-      Ok(NeedString(build))
+      Ok(build)
+    }
+    #(p.Exp(then), []) -> {
+      let build = fn(new) {
+        #(p.Exp(e.Vacant), [p.BlockValue(new, [], [], then)])
+      }
+      Ok(build)
     }
     _ -> {
       use zip <- try(p.step(zip))
-      line_above(zip)
+      assign_before(zip)
     }
   }
 }
@@ -197,29 +203,38 @@ pub fn list(zip) {
   }
 }
 
-pub fn extend_list(zip) {
+pub fn extend(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
     p.Exp(e.List(items, tail)), _ ->
-      NoString(#(p.Exp(e.Vacant), [p.ListItem([], items, tail), ..zoom]))
+      Ok(NoString(#(p.Exp(e.Vacant), [p.ListItem([], items, tail), ..zoom])))
 
     p.Exp(exp), [p.ListItem(pre, post, tail), ..rest] ->
-      NoString(
-        #(p.Exp(e.Vacant), [p.ListItem([exp, ..pre], post, tail), ..rest]),
+      Ok(
+        NoString(
+          #(p.Exp(e.Vacant), [p.ListItem([exp, ..pre], post, tail), ..rest]),
+        ),
       )
     p.Exp(e.Record(fields, original)), _ ->
-      NeedString(fn(new) {
-        let for = case original {
-          Some(original) -> p.Overwrite(original)
-          None -> p.Record
-        }
-        #(p.Exp(e.Vacant), [p.RecordValue(new, [], fields, for), ..zoom])
-      })
+      Ok(
+        NeedString(fn(new) {
+          let for = case original {
+            Some(original) -> p.Overwrite(original)
+            None -> p.Record
+          }
+          #(p.Exp(e.Vacant), [p.RecordValue(new, [], fields, for), ..zoom])
+        }),
+      )
     p.FnParam(p.AssignPattern(e.Destructure(fields)), pre, post, body), _ ->
-      NeedString(fn(new) {
-        #(p.FnParam(p.AssignBind(new, new, [], fields), pre, post, body), zoom)
-      })
-    _, _ -> NoString(zip)
+      Ok(
+        NeedString(fn(new) {
+          #(
+            p.FnParam(p.AssignBind(new, new, [], fields), pre, post, body),
+            zoom,
+          )
+        }),
+      )
+    _, _ -> Error(Nil)
   }
 }
 

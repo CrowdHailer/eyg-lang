@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{type Option, Some}
 import gleam/result.{try}
 import morph/projection.{type Projection}
+import drafting/view/utilities
 
 pub type Mode {
   Navigate
@@ -48,6 +49,8 @@ pub fn handle_key(bindings, key, projection) {
 
 pub fn handle(session, message) {
   let Session(bindings, projection, mode) = session
+  utilities.update_focus()
+  utilities.scroll_to()
   case mode, message {
     Navigate, KeyDown(" ") ->
       Ok(Session(..session, mode: SelectAction("", bindings, 0)))
@@ -75,8 +78,7 @@ pub fn handle(session, message) {
     }
     EditString(value, rebuild), DoIt ->
       Ok(Session(bindings, rebuild(value), Navigate))
-
-    _, _ -> panic
+    Navigate, DoIt -> panic as "nothing to do in navigate mode"
   }
 }
 

@@ -749,7 +749,8 @@ pub fn insert_text(state: Embed, data, start, end) {
                       #(
                         e.Integer(value),
                         [],
-                        cut_start + string.length(data),
+                        cut_start
+                        + string.length(data),
                         True,
                       )
                     }
@@ -882,7 +883,8 @@ pub fn insert_text(state: Embed, data, start, end) {
                   focus: Some(path),
                   rendered: rendered,
                 ),
-                start + offset,
+                start
+                + offset,
                 [],
               )
             }
@@ -1250,7 +1252,8 @@ pub fn insert_paragraph(index, state: Embed) {
       rendered: rendered,
       focus: Some(path),
     ),
-    start + offset,
+    start
+    + offset,
   )
 }
 

@@ -73,20 +73,19 @@ pub fn update(state, message) {
       #(
         state,
         effect.from(fn(d) {
-          promise.try_await(
-            file_system.show_open_file_picker(),
-            fn(file_handles) {
-              let assert [file_handle] = array.to_list(file_handles)
-              use file <- promise.try_await(file_system.get_file(file_handle))
-              use text <- promise.map(file.text(file))
-              let assert Ok(source) = decode.from_json(text)
-              let source = a.add_annotation(source, Nil)
-              let source = e.from_annotated(source)
-              io.debug("done")
-              d(SourceLoaded(source))
-              Ok(Nil)
-            },
-          )
+          promise.try_await(file_system.show_open_file_picker(), fn(
+            file_handles,
+          ) {
+            let assert [file_handle] = array.to_list(file_handles)
+            use file <- promise.try_await(file_system.get_file(file_handle))
+            use text <- promise.map(file.text(file))
+            let assert Ok(source) = decode.from_json(text)
+            let source = a.add_annotation(source, Nil)
+            let source = e.from_annotated(source)
+            io.debug("done")
+            d(SourceLoaded(source))
+            Ok(Nil)
+          })
 
           Nil
         }),

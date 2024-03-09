@@ -2,15 +2,6 @@ import gleam/option.{Some}
 import drafting/session.{Binding}
 import drafting/action
 
-// #(
-//   "insert mode",
-//   fn(zip) {
-//     let assert Ok(#(value, rebuild)) = projection.text(zip)
-//     State(zip, RequireString(value, rebuild))
-//   },
-//   Some("i"),
-// ),
-
 pub fn default() {
   [
     Binding("move up", action.move_up, Some("ArrowUp")),
@@ -20,119 +11,21 @@ pub fn default() {
     Binding("increase selection", action.increase, Some("a")),
     Binding("decrease selection", action.decrease, Some("s")),
     Binding("delete", action.delete, Some("d")),
+    Binding("edit", action.edit, Some("i")),
     Binding("insert variable", action.variable, Some("v")),
     Binding("create function", action.function, Some("f")),
+    Binding("call function", action.call, Some("c")),
+    Binding("let", action.assign, Some("e")),
+    Binding("let before", action.assign_before, Some("E")),
+    Binding("create string", action.string, Some("\"")),
+    Binding("create list", action.list, Some("l")),
+    Binding("create record", action.record, Some("r")),
+    Binding("create overwrite", action.overwrite, Some("o")),
+    Binding("create tag", action.tag, Some("t")),
+    Binding("create match", action.match, Some("m")),
+    Binding("create builtin", action.builtin, Some("j")),
+    Binding("extend", action.extend, Some(",")),
+    Binding("spread list", action.spread_list, Some(".")),
+    Binding("open match", action.open_match, Some("M")),
   ]
-  //   [
-
-  //     #(
-  //       "call function",
-  //       fn(zip) {
-  //         let assert Ok(zip) = transformation.call(zip)
-  //         State(zip, Navigate)
-  //       },
-  //       Some("c"),
-  //     ),
-  //     #(
-  //       "let",
-  //       fn(zip) {
-  //         let assert Ok(rebuild) = transformation.assign(zip)
-  //         update_focus()
-  //         State(zip, RequireString("", fn(label) { rebuild(e.Bind(label)) }))
-  //       },
-  //       Some("e"),
-  //     ),
-  //     #("let above", fn(zip) { todo }, None),
-  //     #(
-  //       "string",
-  //       fn(zip) {
-  //         let assert Ok(#(value, rebuild)) = transformation.string(zip)
-  //         State(zip, RequireString(value, rebuild))
-  //       },
-  //       Some("\""),
-  //     ),
-  //     #(
-  //       "list",
-  //       fn(zip) {
-  //         let assert Ok(zip) = transformation.list(zip)
-  //         State(zip, Navigate)
-  //       },
-  //       Some("l"),
-  //     ),
-  //     #(
-  //       "extend list",
-  //       fn(zip) {
-  //         case transformation.extend_list(zip) {
-  //           transformation.NeedString(rebuild) ->
-  //             State(zip, RequireString("", rebuild))
-  //           transformation.NoString(zip) -> State(zip, Navigate)
-  //         }
-  //       },
-  //       Some(","),
-  //     ),
-  //     #(
-  //       "spread list",
-  //       fn(zip) {
-  //         let assert Ok(zip) = transformation.spread_list(zip)
-  //         State(zip, Navigate)
-  //       },
-  //       Some("."),
-  //     ),
-  //     #(
-  //       "record",
-  //       fn(zip) {
-  //         case transformation.record(zip) {
-  //           Ok(transformation.NeedString(rebuild)) ->
-  //             State(zip, RequireString("", rebuild))
-  //           Ok(transformation.NoString(zip)) -> State(zip, Navigate)
-  //           _ -> panic as "no action for record"
-  //         }
-  //       },
-  //       Some("r"),
-  //     ),
-  //     #(
-  //       "overwrite",
-  //       fn(zip) {
-  //         let assert Ok(rebuild) = transformation.overwrite(zip)
-  //         update_focus()
-  //         State(zip, RequireString("", fn(label) { rebuild(label) }))
-  //       },
-  //       Some("o"),
-  //     ),
-  //     #(
-  //       "tag",
-  //       fn(zip) {
-  //         let assert Ok(rebuild) = transformation.tag(zip)
-  //         update_focus()
-  //         State(zip, RequireString("", fn(label) { rebuild(label) }))
-  //       },
-  //       Some("t"),
-  //     ),
-  //     #(
-  //       "match",
-  //       fn(zip) {
-  //         let assert Ok(rebuild) = transformation.match(zip)
-  //         update_focus()
-  //         State(zip, RequireString("", fn(label) { rebuild(label) }))
-  //       },
-  //       Some("m"),
-  //     ),
-  //     #(
-  //       "open match",
-  //       fn(zip) {
-  //         let assert Ok(zip) = transformation.open_match(zip)
-  //         update_focus()
-  //         State(zip, Navigate)
-  //       },
-  //       Some("M"),
-  //     ),
-  //     #(
-  //       "builtin",
-  //       fn(zip) {
-  //         let assert Ok(#(value, rebuild)) = transformation.builtin(zip)
-  //         State(zip, RequireString(value, rebuild))
-  //       },
-  //       Some("j"),
-  //     ),
-  //   ]
 }
