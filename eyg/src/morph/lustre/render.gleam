@@ -189,10 +189,6 @@ pub fn expression(exp) {
       frame.Inline([
         h.span([a.class("text-orange-3")], [text("!"), text(identifier)]),
       ])
-    _ -> {
-      io.debug(exp)
-      panic as "exp"
-    }
   }
 }
 
@@ -485,10 +481,6 @@ pub fn projection(zip) -> element.Element(a) {
         listx.gather_around(pre, branch, post),
         option.map(otherwise, expression),
       )
-    }
-    _ -> {
-      io.debug(zip)
-      panic as "bad projection"
     }
   }
   push_render(frame, zoom)

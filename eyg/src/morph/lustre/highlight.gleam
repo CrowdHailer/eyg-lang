@@ -1,17 +1,5 @@
-import gleam/io
-import gleam/dynamic
-import gleam/int
-import gleam/option.{None, Some}
-import gleam/list
-import gleam/listx
 import lustre/attribute as a
 import lustre/element/html as h
-import lustre/element.{text}
-import lustre/event
-import notepad/state
-import notepad/view/helpers
-import morph/editable as e
-import morph/projection as t
 import morph/lustre/frame
 
 pub fn frame(frame) {
