@@ -20,6 +20,7 @@ pub fn generalise(sub, env, t) {
 }
 
 pub fn instantiate(scheme, next) {
+  // TODO, I don't know why I increase this by 1000. I think it was for debugging and it should be removed
   let next = next + 1000
   let #(forall, type_) = scheme
   let s =
