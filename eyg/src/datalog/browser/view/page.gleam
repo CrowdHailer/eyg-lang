@@ -9,17 +9,15 @@ import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/uri.{Uri}
-import gleam/http
 import gleam/http/request
 import gleam/fetch
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import lustre/element.{text}
-import lustre/attribute.{class, src}
+import lustre/attribute.{class}
 import lustre/effect
-import lustre/element/html.{button, div, form, iframe, input, p}
+import lustre/element/html.{button, div, form, input, p}
 import lustre/event.{on_click, on_input}
-import plinth/javascript/global
 import plinth/javascript/storage
 import plinth/browser/window
 import facilities/google/event as g_event
@@ -271,11 +269,6 @@ fn google_oauth(model, index) {
       Ok(Nil)
     }),
   )
-}
-
-// ask about tup2
-fn tup2(a, b) {
-  #(a, b)
 }
 
 fn calendar_events(token) {

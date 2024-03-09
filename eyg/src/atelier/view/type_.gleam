@@ -56,7 +56,7 @@ pub fn render_type(typ) {
       string.concat([
         "{",
         render_row(row)
-        |> string.join(""),
+          |> string.join(""),
         "}",
       ])
     }

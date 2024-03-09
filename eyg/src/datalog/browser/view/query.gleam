@@ -207,7 +207,7 @@ fn rule(head, body) {
     list.flatten([
       [atom(head), text(" :- ")],
       list.map(body, body_atom)
-      |> list.intersperse(span([class("outline")], [text(", ")])),
+        |> list.intersperse(span([class("outline")], [text(", ")])),
       [br([])],
     ]),
   )

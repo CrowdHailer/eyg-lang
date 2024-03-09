@@ -123,11 +123,11 @@ fn do_render(exp) {
     e.Perform(label) -> string.concat(["perform (\"", label, "\")"])
     e.Handle(label) -> string.concat(["handle (\"", label, "\")"])
     e.Builtin(identifier) -> identifier
+    _ -> {
+      io.debug(exp)
+      panic as "unsupported compilation expression"
+    }
   }
-  // _ -> {
-  //   io.debug(exp)
-  //   panic
-  // }
 }
 
 fn escape_html(content) {

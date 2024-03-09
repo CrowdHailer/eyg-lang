@@ -2,8 +2,8 @@ import gleam/int
 import gleam/list
 import gleam/string
 import gleam/javascript/promise.{type Promise as JSPromise}
-// import eygir/expression as e
-import eygir/annotated as e
+import eygir/expression as e
+import eygir/annotated as a
 
 pub type Value(m, context) {
   Binary(value: BitArray)
@@ -14,7 +14,7 @@ pub type Value(m, context) {
   Tagged(label: String, value: Value(m, context))
   Closure(
     param: String,
-    body: e.Node(m),
+    body: a.Node(m),
     env: List(#(String, Value(m, context))),
   )
   // meta is in closure to extract types in env from type env
@@ -45,7 +45,7 @@ pub type Switch(context) {
 // This might not give in runtime core, more runtime presentation
 pub fn debug(term) {
   case term {
-    // Binary(value) -> e.print_bit_string(value)
+    Binary(value) -> e.print_bit_string(value)
     Integer(value) -> int.to_string(value)
     Str(value) -> string.concat(["\"", value, "\""])
     LinkedList(items) ->

@@ -9,7 +9,6 @@ import datalog/browser/view/page
 pub fn run() {
   case window.get_hash() {
     Ok(value) -> {
-      5
       Nil
     }
     Error(_) -> {

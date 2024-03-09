@@ -239,45 +239,45 @@ fn find5(
         }),
       )(triples, [#(None, None, None, None, None)])
     contexts
-    |> list.try_map(fn(
-      c: #(Option(_), Option(_), Option(_), Option(_), Option(_)),
-    ) {
-      case c.0 {
-        Some(v0) ->
-          case c.1 {
-            Some(v1) ->
-              case c.2 {
-                Some(v2) ->
-                  case c.3 {
-                    Some(v3) ->
-                      case c.4 {
-                        Some(v4) -> Ok(#(v0, v1, v2, v3, v4))
-                        None -> {
-                          io.debug(contexts)
-                          Error("query parameter not used")
+    |> list.try_map(
+      fn(c: #(Option(_), Option(_), Option(_), Option(_), Option(_))) {
+        case c.0 {
+          Some(v0) ->
+            case c.1 {
+              Some(v1) ->
+                case c.2 {
+                  Some(v2) ->
+                    case c.3 {
+                      Some(v3) ->
+                        case c.4 {
+                          Some(v4) -> Ok(#(v0, v1, v2, v3, v4))
+                          None -> {
+                            io.debug(contexts)
+                            Error("query parameter not used")
+                          }
                         }
+                      None -> {
+                        io.debug(contexts)
+                        Error("query parameter not used")
                       }
-                    None -> {
-                      io.debug(contexts)
-                      Error("query parameter not used")
                     }
+                  None -> {
+                    io.debug(contexts)
+                    Error("query parameter not used")
                   }
-                None -> {
-                  io.debug(contexts)
-                  Error("query parameter not used")
                 }
+              None -> {
+                io.debug(contexts)
+                Error("query parameter not used")
               }
-            None -> {
-              io.debug(contexts)
-              Error("query parameter not used")
             }
+          None -> {
+            io.debug(contexts)
+            Error("query parameter not used")
           }
-        None -> {
-          io.debug(contexts)
-          Error("query parameter not used")
         }
-      }
-    })
+      },
+    )
   }
 }
 
