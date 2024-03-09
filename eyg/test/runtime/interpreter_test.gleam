@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/javascript/promise
 import gleeunit/should
 import eygir/expression as e
+import eygir/annotated as e2
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
@@ -12,7 +13,9 @@ import harness/stdlib
 import platforms/browser
 
 pub fn variable_test() {
-  let source = e.Variable("x")
+  let source =
+    e.Variable("x")
+    |> e2.add_annotation(Nil)
   let env = state.Env([#("x", v.Str("assigned"))], dict.new())
   r.execute(source, env, dict.new())
   |> should.equal(Ok(v.Str("assigned")))
@@ -20,15 +23,28 @@ pub fn variable_test() {
 
 pub fn function_test() {
   let body = e.Variable("x")
-  let source = e.Lambda("x", body)
+  let source =
+    e.Lambda("x", body)
+    |> e2.add_annotation(Nil)
+
   let scope = [#("foo", v.Str("assigned"))]
   let env = state.Env(scope, dict.new())
   r.execute(source, env, dict.new())
-  |> should.equal(Ok(v.Closure("x", body, scope, [])))
+  |> should.equal(
+    Ok(v.Closure(
+      "x",
+      body
+      |> e2.add_annotation(Nil),
+      scope,
+    )),
+  )
 }
 
 pub fn function_application_test() {
-  let source = e.Apply(e.Lambda("x", e.Str("body")), e.Integer(0))
+  let source =
+    e.Apply(e.Lambda("x", e.Str("body")), e.Integer(0))
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Str("body")))
 
@@ -38,12 +54,16 @@ pub fn function_application_test() {
       e.Lambda("x", e.Variable("x")),
       e.Apply(e.Variable("id"), e.Integer(0)),
     )
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Integer(0)))
 }
 
 pub fn builtin_application_test() {
-  let source = e.Apply(e.Builtin("string_uppercase"), e.Str("hello"))
+  let source =
+    e.Apply(e.Builtin("string_uppercase"), e.Str("hello"))
+    |> e2.add_annotation(Nil)
 
   r.execute(source, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Str("HELLO")))
@@ -51,19 +71,28 @@ pub fn builtin_application_test() {
 
 // primitive
 pub fn create_a_binary_test() {
-  let source = e.Str("hello")
+  let source =
+    e.Str("hello")
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Str("hello")))
 }
 
 pub fn create_an_integer_test() {
-  let source = e.Integer(5)
+  let source =
+    e.Integer(5)
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Integer(5)))
 }
 
 pub fn record_creation_test() {
-  let source = e.Empty
+  let source =
+    e.Empty
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.unit))
 
@@ -72,9 +101,20 @@ pub fn record_creation_test() {
       e.Apply(e.Extend("foo"), e.Str("FOO")),
       e.Apply(e.Apply(e.Extend("bar"), e.Integer(0)), e.Empty),
     )
-  r.execute(e.Apply(e.Select("foo"), source), env.empty(), dict.new())
+
+  r.execute(
+    e.Apply(e.Select("foo"), source)
+    |> e2.add_annotation(Nil),
+    env.empty(),
+    dict.new(),
+  )
   |> should.equal(Ok(v.Str("FOO")))
-  r.execute(e.Apply(e.Select("bar"), source), env.empty(), dict.new())
+  r.execute(
+    e.Apply(e.Select("bar"), source)
+    |> e2.add_annotation(Nil),
+    env.empty(),
+    dict.new(),
+  )
   |> should.equal(Ok(v.Integer(0)))
 }
 
@@ -85,11 +125,17 @@ pub fn case_test() {
       e.Apply(e.Apply(e.Case("None"), e.Lambda("_", e.Str("else"))), e.NoCases),
     )
 
-  let source = e.Apply(switch, e.Apply(e.Tag("Some"), e.Str("foo")))
+  let source =
+    e.Apply(switch, e.Apply(e.Tag("Some"), e.Str("foo")))
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Str("foo")))
 
-  let source = e.Apply(switch, e.Apply(e.Tag("None"), e.Empty))
+  let source =
+    e.Apply(switch, e.Apply(e.Tag("None"), e.Empty))
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Str("else")))
 }
@@ -101,15 +147,17 @@ pub fn rasing_effect_test() {
       e.Apply(e.Perform("Foo"), e.Integer(1)),
       e.Apply(e.Perform("Bar"), e.Variable("a")),
     )
-  let assert Error(#(break.UnhandledEffect("Foo", lifted), rev, env, k)) =
+    |> e2.add_annotation(Nil)
+
+  let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
   |> should.equal(v.Integer(1))
-  let assert Error(#(break.UnhandledEffect("Bar", lifted), rev, env, k)) =
-    r.loop(state.step(state.V(v.Str("reply")), rev, env, k))
+  let assert Error(#(break.UnhandledEffect("Bar", lifted), Nil, env, k)) =
+    r.loop(state.step(state.V(v.Str("reply")), env, k))
   lifted
   |> should.equal(v.Str("reply"))
-  let assert Ok(term) = r.loop(state.step(state.V(v.unit), rev, env, k))
+  let assert Ok(term) = r.loop(state.step(state.V(v.unit), env, k))
   term
   |> should.equal(v.unit)
 }
@@ -121,11 +169,17 @@ pub fn effect_in_case_test() {
       e.Apply(e.Apply(e.Case("Error"), e.Perform("Raise")), e.NoCases),
     )
 
-  let source = e.Apply(switch, e.Apply(e.Tag("Ok"), e.Str("foo")))
+  let source =
+    e.Apply(switch, e.Apply(e.Tag("Ok"), e.Str("foo")))
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Str("foo")))
 
-  let source = e.Apply(switch, e.Apply(e.Tag("Error"), e.Str("nope")))
+  let source =
+    e.Apply(switch, e.Apply(e.Tag("Error"), e.Str("nope")))
+    |> e2.add_annotation(Nil)
+
   let assert Error(#(break.UnhandledEffect("Raise", lifted), _rev, _env, _k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
@@ -158,15 +212,17 @@ pub fn effect_in_builtin_test() {
       e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Str("initial")),
       reducer,
     )
-  let assert Error(#(break.UnhandledEffect("Foo", lifted), rev, env, k)) =
+    |> e2.add_annotation(Nil)
+
+  let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.execute(source, stdlib.env(), dict.new())
   lifted
   |> should.equal(v.Str("fizz"))
-  let assert Error(#(break.UnhandledEffect("Foo", lifted), rev, env, k)) =
-    r.loop(state.step(state.V(v.unit), rev, env, k))
+  let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
+    r.loop(state.step(state.V(v.unit), env, k))
   lifted
   |> should.equal(v.Str("buzz"))
-  r.loop(state.step(state.V(v.unit), rev, env, k))
+  r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.Str("initialfizzbuzz")))
 }
 
@@ -174,13 +230,17 @@ pub fn handler_no_effect_test() {
   let handler =
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
   let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Str("mystring")))
-  let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("mystring"))))
 
   // shallow
-  let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("mystring"))))
@@ -190,12 +250,16 @@ pub fn handle_early_return_effect_test() {
   let handler =
     e.Lambda("x", e.Lambda("k", e.Apply(e.Tag("Error"), e.Variable("x"))))
   let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Str("Bad thing")))
-  let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Tagged("Error", v.Str("Bad thing"))))
 
-  let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Tagged("Error", v.Str("Bad thing"))))
@@ -219,14 +283,18 @@ pub fn handle_resume_test() {
       "_",
       e.Let("_", e.Apply(e.Perform("Log"), e.Str("my message")), e.Integer(100)),
     )
-  let source = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Handle("Log"), handler), exec)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
     Ok(v.Record([#("value", v.Integer(100)), #("log", v.Str("my message"))])),
   )
 
-  let source = e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
+    |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
@@ -245,27 +313,31 @@ pub fn ignore_other_effect_test() {
         e.Empty,
       ),
     )
-  let source = e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
+    |> e2.add_annotation(Nil)
 
-  let assert Error(#(break.UnhandledEffect("Foo", lifted), rev, env, k)) =
+  let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
   |> should.equal(v.unit)
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
-  r.loop(state.step(state.V(v.Str("reply")), rev, env, k))
+  r.loop(state.step(state.V(v.Str("reply")), env, k))
   |> should.equal(Ok(v.Record([#("foo", v.Str("reply"))])))
 
   // SHALLOW
-  let source = e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+  let source =
+    e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
+    |> e2.add_annotation(Nil)
 
-  let assert Error(#(break.UnhandledEffect("Foo", lifted), rev, env, k)) =
+  let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
   |> should.equal(v.unit)
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
-  r.loop(state.step(state.V(v.Str("reply")), rev, env, k))
+  r.loop(state.step(state.V(v.Str("reply")), env, k))
   |> should.equal(Ok(v.Record([#("foo", v.Str("reply"))])))
 }
 
@@ -278,18 +350,19 @@ pub fn multiple_effects_test() {
         e.Empty,
       ),
     )
+    |> e2.add_annotation(Nil)
 
-  let assert Error(#(break.UnhandledEffect("Choose", lifted), rev, env, k)) =
+  let assert Error(#(break.UnhandledEffect("Choose", lifted), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
   |> should.equal(v.unit)
 
-  let assert Error(#(break.UnhandledEffect("Choose", lifted), rev, env, k)) =
-    r.loop(state.step(state.V(v.Str("True")), rev, env, k))
+  let assert Error(#(break.UnhandledEffect("Choose", lifted), Nil, env, k)) =
+    r.loop(state.step(state.V(v.Str("True")), env, k))
   lifted
   |> should.equal(v.unit)
 
-  r.loop(state.step(state.V(v.Str("False")), rev, env, k))
+  r.loop(state.step(state.V(v.Str("False")), env, k))
   |> should.equal(Ok(v.Record([#("a", v.Str("True")), #("b", v.Str("False"))])))
 }
 
@@ -322,7 +395,10 @@ pub fn multiple_resumptions_test() {
         ),
       ),
     )
-  let source = e.Apply(handle, raise)
+  let source =
+    e.Apply(handle, raise)
+    |> e2.add_annotation(Nil)
+
   r.execute(source, env.empty(), dict.new())
   // Not sure this is the correct value but it checks regressions
   |> should.equal(
@@ -380,9 +456,11 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(handler, e.Lambda("_", e.Str("Original"))),
       e.Apply(e.Perform("Log"), e.Str("outer")),
     )
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("outer")), rev, env, k)) =
+    |> e2.add_annotation(Nil)
+
+  let assert Error(#(break.UnhandledEffect("Log", v.Str("outer")), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
-  r.loop(state.step(state.V(v.unit), rev, env, k))
+  r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.unit))
 
   let handler =
@@ -393,9 +471,11 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       e.Apply(handler, e.Lambda("_", e.Str("Original"))),
       e.Apply(e.Perform("Log"), e.Str("outer")),
     )
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("outer")), rev, env, k)) =
+    |> e2.add_annotation(Nil)
+
+  let assert Error(#(break.UnhandledEffect("Log", v.Str("outer")), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
-  r.loop(state.step(state.V(v.unit), rev, env, k))
+  r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.unit))
 }
 
@@ -416,11 +496,14 @@ pub fn handler_is_applied_after_other_effects_test() {
       ),
     )
 
-  let source = e.Apply(handler, exec)
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("my log")), rev, env, k)) =
+  let source =
+    e.Apply(handler, exec)
+    |> e2.add_annotation(Nil)
+
+  let assert Error(#(break.UnhandledEffect("Log", v.Str("my log")), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
 
-  r.loop(state.step(state.V(v.unit), rev, env, k))
+  r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.Integer(-1)))
 
   let handler =
@@ -439,11 +522,14 @@ pub fn handler_is_applied_after_other_effects_test() {
       ),
     )
 
-  let source = e.Apply(handler, exec)
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("my log")), rev, env, k)) =
+  let source =
+    e.Apply(handler, exec)
+    |> e2.add_annotation(Nil)
+
+  let assert Error(#(break.UnhandledEffect("Log", v.Str("my log")), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
 
-  r.loop(state.step(state.V(v.unit), rev, env, k))
+  r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.Integer(-1)))
 }
 
@@ -457,7 +543,10 @@ fn handlers() {
 pub fn async_test() {
   let f =
     e.Lambda("_", e.Apply(e.Perform("Async"), e.Lambda("_", e.Str("later"))))
-  let source = e.Apply(f, e.unit)
+  let source =
+    e.Apply(f, e.unit)
+    |> e2.add_annotation(Nil)
+
   let assert Ok(v.Promise(p)) = r.execute(source, stdlib.env(), handlers().1)
   use value <- promise.map(p)
   value

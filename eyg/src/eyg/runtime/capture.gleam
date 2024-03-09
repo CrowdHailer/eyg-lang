@@ -3,6 +3,7 @@ import gleam/list
 import gleam/result
 import gleam/string
 import eygir/expression as e
+import eygir/annotated as a
 import eyg/runtime/value as v
 
 pub fn capture(term) {
@@ -44,8 +45,9 @@ fn do_capture(term, env) {
     // https://github.com/midas-framework/project_wisdom/pull/47/files#diff-a06143ff39109126525a296ab03fc419ba2d5da20aac75ca89477bebe9cf3fee
     // shake code
     // https://github.com/midas-framework/project_wisdom/pull/57/files#diff-d576d15df2bd35cb961bc2edd513c97027ef52ce19daf5d303f45bd11b327604
-    v.Closure(arg, body, captured, _) -> {
+    v.Closure(arg, body, captured) -> {
       // Note captured list has variables multiple times and we need to find first only
+      let body = a.drop_annotation(body)
       let captured =
         list.filter_map(vars_used(body, [arg]), fn(var) {
           use term <- result.then(list.key_find(captured, var))

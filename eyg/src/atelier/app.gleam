@@ -9,7 +9,7 @@ import gleam/fetch
 import gleam/http
 import gleam/http/request
 import lustre/effect as cmd
-import easel/zipper
+import easel/expression/zipper
 import eygir/expression as e
 import eygir/encode
 import eyg/analysis/jm/tree

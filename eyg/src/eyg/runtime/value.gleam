@@ -2,23 +2,26 @@ import gleam/int
 import gleam/list
 import gleam/string
 import gleam/javascript/promise.{type Promise as JSPromise}
-import eygir/expression as e
+// import eygir/expression as e
+import eygir/annotated as e
 
-pub type Value(context) {
+pub type Value(m, context) {
   Binary(value: BitArray)
   Integer(value: Int)
   Str(value: String)
-  LinkedList(elements: List(Value(context)))
-  Record(fields: List(#(String, Value(context))))
-  Tagged(label: String, value: Value(context))
+  LinkedList(elements: List(Value(m, context)))
+  Record(fields: List(#(String, Value(m, context))))
+  Tagged(label: String, value: Value(m, context))
   Closure(
     param: String,
-    body: e.Expression,
-    env: List(#(String, Value(context))),
-    path: List(Int),
+    body: e.Node(m),
+    env: List(#(String, Value(m, context))),
   )
-  Partial(Switch(context), List(Value(context)))
-  Promise(JSPromise(Value(context)))
+  // meta is in closure to extract types in env from type env
+  // this is rather than typechecking all the values in the env which themselves have an env
+  // wouldn't be needed if all the env checking had sensible has memoisation
+  Partial(Switch(context), List(Value(m, context)))
+  Promise(JSPromise(Value(m, context)))
 }
 
 // context is a captured part of interpretation, it's type depends on implementation
@@ -42,7 +45,7 @@ pub type Switch(context) {
 // This might not give in runtime core, more runtime presentation
 pub fn debug(term) {
   case term {
-    Binary(value) -> e.print_bit_string(value)
+    // Binary(value) -> e.print_bit_string(value)
     Integer(value) -> int.to_string(value)
     Str(value) -> string.concat(["\"", value, "\""])
     LinkedList(items) ->
@@ -59,7 +62,7 @@ pub fn debug(term) {
       |> list.append(["}"])
       |> string.concat
     Tagged(label, value) -> string.concat([label, "(", debug(value), ")"])
-    Closure(param, _, _, _) -> string.concat(["(", param, ") -> { ... }"])
+    Closure(param, _, _) -> string.concat(["(", param, ") -> { ... }"])
     Partial(d, args) ->
       string.concat([
         "Partial: ",

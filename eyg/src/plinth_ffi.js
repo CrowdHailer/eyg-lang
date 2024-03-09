@@ -1,13 +1,5 @@
 import { Ok, Error } from "./gleam.mjs";
 
-export function eval_(string) {
-  try {
-    return new Ok(eval(string));
-  } catch (error) {
-    return new Error(error.toString());
-  }
-}
-
 export function addEventListener(el, type, listener) {
   el.addEventListener(type, listener);
   return function () {
@@ -63,24 +55,6 @@ export function eventKey(event) {
 
 export function getTargetRange(event) {
   return event.getTargetRanges()[0];
-}
-
-// -------- window/selection --------
-
-export function getSelection() {
-  const selection = window.getSelection();
-  if (!selection) {
-    return new Error();
-  }
-  return new Ok(selection);
-}
-
-export function getRangeAt(selection, index) {
-  const range = selection.getRangeAt(0);
-  if (!range) {
-    return new Error();
-  }
-  return new Ok(range);
 }
 
 // -------- document --------

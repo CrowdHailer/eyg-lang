@@ -2,10 +2,16 @@ import gleam/io
 import gleam/list
 import plinth/node/process
 import simplifile
+import eygir/annotated
 import eygir/decode
+import eygir/annotated as e
 import platforms/shell
 import gleam/javascript/array
 import gleam/javascript/promise
+import plinth/javascript/console
+import eyg/analysis/type_/isomorphic as t
+import eyg/analysis/type_/binding/debug
+import eyg/analysis/inference/levels_j/contextual as infer
 import magpie/magpie
 
 // zero arity
@@ -28,8 +34,22 @@ pub fn do_main(args) {
   // recipe is an app, service worker makes js necessay, query string params are also only interesting if rendered with JS
 
   case args {
-    ["exec", ..] -> shell.run(source)
-    [magpie, ..rest] -> magpie.main(rest)
+    ["exec", ..] -> shell.run(e.add_annotation(source, Nil))
+    ["infer"] -> {
+      let #(exp, bindings) = infer.infer(source, t.Empty, 0, infer.new_state())
+      let acc = annotated.strip_annotation(exp).1
+      let errors =
+        list.filter_map(acc, fn(row) {
+          let #(result, _, _, _) = row
+          case result {
+            Ok(_) -> Error(Nil)
+            Error(reason) -> Ok(io.println(debug.render_reason(reason)))
+          }
+        })
+      io.debug(#(list.length(errors), list.length(acc)))
+      promise.resolve(0)
+    }
+    ["magpie", ..rest] -> magpie.main(rest)
     _ -> {
       io.debug(#("no runner for: ", args))
       process.exit(1)
