@@ -40,14 +40,25 @@ pub fn from_annotated(node) {
     a.Apply(#(a.Apply(#(a.Cons, _), value), _), rest) ->
       gather_cons(rest, [from_annotated(value)])
     a.Tail -> List([], None)
+    a.Cons -> {
+      io.debug("bare cons")
+      panic
+    }
 
     a.Apply(#(a.Apply(#(a.Extend(l), _), value), _), rest) ->
       gather_extends(rest, [#(l, from_annotated(value))])
     a.Empty -> Record([], None)
+    a.Extend(_) -> {
+      io.debug("bare extend")
+      panic
+    }
 
     a.Apply(#(a.Apply(#(a.Overwrite(l), _), value), _), rest) ->
       gather_overwrite(rest, [#(l, from_annotated(value))])
-    a.Empty -> Record([], None)
+    a.Overwrite(_) -> {
+      io.debug("bare overwrite")
+      panic
+    }
 
     a.Apply(#(a.Select(label), _), from) -> Select(from_annotated(from), label)
     a.Select(label) -> Function([Bind("$")], Select(Variable("$"), label))
@@ -67,9 +78,14 @@ pub fn from_annotated(node) {
         gather_otherwise(otherwise, [#(l, from_annotated(branch))])
       Function([Bind("$")], Case(Variable("$"), matches, otherwise))
     }
-    a.Case(l) -> Variable("CASE!!")
-    // TODO nocases
-    a.NoCases -> Variable("NOCASE!!")
+    a.Case(_) -> {
+      io.debug("bare case")
+      Variable("CASE!!")
+    }
+    a.NoCases -> {
+      io.debug("bare nocases")
+      Variable("NOCASE!!")
+    }
 
     a.Apply(func, arg) -> {
       gather_arguments(func, [from_annotated(arg)])
@@ -87,10 +103,6 @@ pub fn from_annotated(node) {
     a.Shallow(label) -> Shallow(label)
 
     a.Builtin(label) -> Builtin(label)
-    _ -> {
-      io.debug(exp)
-      panic as "failed from annotated"
-    }
   }
 }
 
@@ -230,6 +242,7 @@ pub fn to_expression(source) {
         e.Apply(e.Apply(e.Cons, item), acc)
       })
     }
+
     Record(fields, None) -> {
       list.fold_right(fields, e.Empty, fn(acc, field) {
         let #(label, value) = field
@@ -244,6 +257,7 @@ pub fn to_expression(source) {
         e.Apply(e.Apply(e.Overwrite(label), value), acc)
       })
     }
+    Select(from, label) -> e.Apply(e.Select(label), to_expression(from))
 
     Case(top, matches, otherwise) -> {
       let otherwise =
@@ -266,6 +280,8 @@ pub fn to_expression(source) {
 
     Tag(label) -> e.Tag(label)
     Perform(label) -> e.Perform(label)
+    Deep(label) -> e.Handle(label)
+    Shallow(label) -> e.Shallow(label)
     Builtin(identifier) -> e.Builtin(identifier)
   }
 }

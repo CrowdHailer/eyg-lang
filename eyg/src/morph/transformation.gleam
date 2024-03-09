@@ -5,15 +5,12 @@ import gleam/option.{None, Some}
 import morph/editable as e
 import morph/projection as p
 
-// make morph transforms, does not include undo redo or types
-// TODO clicking, eiter by full path or relative path
-// inline block so bground is not full still needs to be on new line
 pub type MaybeString {
   NeedString(fn(String) -> p.Projection)
   NoString(p.Projection)
 }
 
-// for predicate
+// for guard
 const vacant = e.Vacant
 
 pub fn delete(zip) {

@@ -360,10 +360,6 @@ pub fn step(zip) {
       let matches = listx.gather_around(pre, #(label, branch), post)
       Ok(#(Exp(e.Case(top, matches, otherwise)), zoom))
     }
-    _ -> {
-      io.debug(focus)
-      panic as "when stepping"
-    }
   }
 }
 

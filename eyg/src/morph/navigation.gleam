@@ -168,7 +168,7 @@ pub fn move_left(zip) {
   case zip {
     #(p.Exp(value), [p.BlockValue(pattern, pre, post, then), ..rest]) -> {
       let detail = case pattern {
-        e.Bind(label) -> p.AssignPattern(pattern)
+        e.Bind(_label) -> p.AssignPattern(pattern)
         e.Destructure(bindings) -> {
           let [#(label, var), ..pre] = list.reverse(bindings)
           p.AssignBind(label, var, pre, [])
