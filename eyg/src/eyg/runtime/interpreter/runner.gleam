@@ -10,12 +10,11 @@ pub fn execute(exp, env, h) {
 }
 
 pub fn resume(f, args, env, h) {
-  todo as "resume"
-  // let k =
-  //   list.fold_right(args, state.Empty(h), fn(k, a) {
-  //     state.Stack(state.CallWith(a, [], env), k)
-  //   })
-  // loop(state.step(state.V(f), [], env, k))
+  let k =
+    list.fold_right(args, state.Empty(h), fn(k, a) {
+      state.Stack(state.CallWith(a, env), Nil, k)
+    })
+  loop(state.step(state.V(f), env, k))
 }
 
 pub fn loop(next) {

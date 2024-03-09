@@ -229,7 +229,10 @@ fn on_keydown() {
     let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
-    document.on_keydown(fn(k) { r.resume(handle, [v.Str(k)], env, extrinsic) })
+    document.on_keydown(fn(k) {
+      let _ = r.resume(handle, [v.Str(k)], env, extrinsic)
+      Nil
+    })
     Ok(v.unit)
   })
 }
@@ -239,7 +242,10 @@ fn on_change() {
     let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
-    document.on_change(fn(k) { r.resume(handle, [v.Str(k)], env, extrinsic) })
+    document.on_change(fn(k) {
+      let _ = r.resume(handle, [v.Str(k)], env, extrinsic)
+      Nil
+    })
     Ok(v.unit)
   })
 }

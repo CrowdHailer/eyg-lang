@@ -188,6 +188,8 @@ pub fn capture() {
 
 pub fn do_capture(term, rev, env, k) {
   let exp = capture.capture(term)
+  // wasteful but ideally capture will return annotated in the future
+  let exp = e.add_annotation(exp, Nil)
   Ok(#(state.V(v.LinkedList(expression_to_language(exp))), env, k))
 }
 
