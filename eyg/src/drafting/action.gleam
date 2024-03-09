@@ -1,8 +1,7 @@
 import gleam/result.{try}
-import morph/projection
 import morph/navigation
 import morph/transformation
-import drafting/session.{type Session}
+import drafting/session
 
 // The return value of actions is one-one with the mode of the session
 // this is not perfect because all actions that haven't yet changed the projection have to return a projection
@@ -52,21 +51,3 @@ pub fn function(projection) {
   use rebuild <- try(transformation.function(projection))
   Ok(#(projection, session.EditString("", rebuild)))
 }
-//     #(
-//       "function",
-//       fn(zip) {
-//         let assert Ok(rebuild) = transformation.function(zip)
-//         update_focus()
-//         State(zip, RequireString("", rebuild))
-//       },
-//       Some("f"),
-//     ),
-//     #(
-//       "variable",
-//       fn(zip) {
-//         
-//         update_focus()
-//         State(zip, RequireString("", rebuild))
-//       },
-//       Some("v"),
-//     ),

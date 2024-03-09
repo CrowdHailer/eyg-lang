@@ -6,7 +6,6 @@ import lustre/element/html as h
 import lustre/element.{text}
 import lustre/event
 import morph/lustre/render
-import drafting/state
 import drafting/session
 
 pub fn render(app) {
@@ -17,7 +16,7 @@ pub fn render(app) {
       session.Navigate -> []
       session.SelectAction(search, actions, index) ->
         overlay([pallet(search, actions, index)])
-      session.EditString(value, rebuild) -> overlay([string_input(value)])
+      session.EditString(value, _rebuild) -> overlay([string_input(value)])
     }),
     h.div(
       [
@@ -58,7 +57,7 @@ pub fn pallet(search, actions, index) {
     ]),
     h.hr([a.class("mx-40 my-3 border-green-700")]),
     ..list.index_map(actions, fn(action, i) {
-      let session.Binding(name, apply, shortkey) = action
+      let session.Binding(name, _apply, shortkey) = action
       h.div(
         [a.class("px-4 py-2 flex"), a.classes([#("bg-gray-800", i == index)])],
         // event.on_click(state.Do(apply)),

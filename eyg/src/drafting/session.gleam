@@ -2,7 +2,6 @@ import gleam/list
 import gleam/option.{type Option, Some}
 import gleam/result.{try}
 import morph/projection.{type Projection}
-import drafting/view/utilities
 
 pub type Mode {
   Navigate
