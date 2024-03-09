@@ -15,18 +15,18 @@ import eyg/runtime/value as v
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/break as fail
 import harness/stdlib
-import drafting/state as d
+import drafting/session as d
 
 pub type State {
   State(
     previous: List(#(v.Value(Nil, Nil), e.Expression)),
-    current: d.State,
+    current: d.Session,
     error: Option(String),
   )
 }
 
 pub fn init(_) {
-  let current = d.new(e.Vacant)
+  let current = d.new([], e.Vacant)
   #(State([], current, None), effect.none())
 }
 
@@ -41,7 +41,7 @@ pub fn update(state, message) {
   case message {
     Drafting(d.KeyDown("Enter")) -> {
       case current {
-        d.State(zip, d.Navigate) -> {
+        d.Session(_, zip, d.Navigate) -> {
           let editable = projection.rebuild(zip)
           io.debug(editable)
           let source = e.to_expression(editable)
@@ -52,7 +52,7 @@ pub fn update(state, message) {
             Ok(value) -> {
               let value = dynamic.unsafe_coerce(dynamic.from(value))
               let previous = [#(value, editable), ..previous]
-              #(State(previous, d.new(e.Vacant), None), effect.none())
+              #(State(previous, d.new([], e.Vacant), None), effect.none())
             }
             Error(#(reason, _, _, _)) -> {
               #(
@@ -66,7 +66,7 @@ pub fn update(state, message) {
       }
     }
     Drafting(m) -> {
-      let current = d.handle(current, m)
+      let assert Ok(current) = d.handle(current, m)
       #(State(previous, current, None), effect.none())
     }
     LoadSource -> {
@@ -93,7 +93,7 @@ pub fn update(state, message) {
       )
     }
     SourceLoaded(source) -> {
-      let current = d.new(source)
+      let current = d.new([], source)
       #(State(state.previous, current, None), effect.none())
     }
   }

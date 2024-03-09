@@ -7,16 +7,17 @@ import lustre/element.{text}
 import lustre/event
 import morph/lustre/render
 import drafting/state
+import drafting/session
 
 pub fn render(app) {
-  let state.State(zip, mode) = app
+  let session.Session(_, zip, mode) = app
   // containter for relative positioning
   h.div([a.class("relative")], [
     h.div([], case mode {
-      state.Navigate -> []
-      state.Pallet(search, actions, index) ->
+      session.Navigate -> []
+      session.SelectAction(search, actions, index) ->
         overlay([pallet(search, actions, index)])
-      state.RequireString(value, rebuild) -> overlay([string_input(value)])
+      session.EditString(value, rebuild) -> overlay([string_input(value)])
     }),
     h.div(
       [
@@ -33,7 +34,7 @@ pub fn surface(zip) {
     [
       a.class("outline-none"),
       a.attribute("tabindex", "0"),
-      event.on_keydown(state.KeyDown),
+      event.on_keydown(session.KeyDown),
       a.id("code"),
     ],
     [render.projection(zip)],
@@ -41,9 +42,7 @@ pub fn surface(zip) {
 }
 
 pub fn pallet(search, actions, index) {
-  let assert Ok(#(_, current, _)) = list.at(actions, index)
-
-  h.form([event.on_submit(state.Do(current))], [
+  h.form([event.on_submit(session.DoIt)], [
     h.div([a.class("w-full p-2")], []),
     h.input([
       a.class(
@@ -54,18 +53,15 @@ pub fn pallet(search, actions, index) {
       // a.autofocus(True),
       a.attribute("autocomplete", "off"),
       a.attribute("autofocus", "true"),
-      event.on_keydown(state.KeyDown),
-      event.on_input(state.UpdateInput),
+      event.on_keydown(session.KeyDown),
+      event.on_input(session.UpdateInput),
     ]),
     h.hr([a.class("mx-40 my-3 border-green-700")]),
     ..list.index_map(actions, fn(action, i) {
-      let #(name, apply, shortkey) = action
+      let session.Binding(name, apply, shortkey) = action
       h.div(
-        [
-          a.class("px-4 py-2 flex"),
-          a.classes([#("bg-gray-800", i == index)]),
-          event.on_click(state.Do(apply)),
-        ],
+        [a.class("px-4 py-2 flex"), a.classes([#("bg-gray-800", i == index)])],
+        // event.on_click(state.Do(apply)),
         [
           h.span([], [text(name)]),
           h.span([a.class("flex-grow")], []),
@@ -89,7 +85,7 @@ pub fn pallet(search, actions, index) {
 }
 
 pub fn string_input(value) {
-  h.form([event.on_submit(state.DoIt)], [
+  h.form([event.on_submit(session.DoIt)], [
     h.div([a.class("w-full p-2")], []),
     h.input([
       a.class(
@@ -99,8 +95,8 @@ pub fn string_input(value) {
       a.value(dynamic.from(value)),
       // a.autofocus(True),
       a.attribute("autofocus", "true"),
-      event.on_keydown(state.KeyDown),
-      event.on_input(state.UpdateInput),
+      event.on_keydown(session.KeyDown),
+      event.on_input(session.UpdateInput),
     ]),
     h.hr([a.class("mx-40 my-3 border-green-700")]),
   ])

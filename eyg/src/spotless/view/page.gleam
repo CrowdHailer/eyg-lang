@@ -4,7 +4,7 @@ import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
 import lustre/event
-import drafting/state as d
+import drafting/session as d
 import drafting/view/page
 import morph/lustre/render
 import eyg/runtime/value as v
@@ -26,7 +26,7 @@ pub fn render(app) {
     ),
     h.div([a.class("mt-6 p-1 border-2 rounded border-blue-700")], [
       h.div([a.class("font-mono")], [
-        page.surface(current.zip)
+        page.surface(current.projection)
         |> element.map(state.Drafting),
       ]),
     ]),
@@ -45,12 +45,12 @@ pub fn render(app) {
           ]
           None -> []
         }
-      d.Pallet(search, actions, index) ->
+      d.SelectAction(search, actions, index) ->
         overlay([
-          page.pallet(search, actions, index)
+          page.pallet(search, todo, index)
           |> element.map(state.Drafting),
         ])
-      d.RequireString(value, _rebuild) ->
+      d.EditString(value, _rebuild) ->
         overlay([
           page.string_input(value)
           |> element.map(state.Drafting),
