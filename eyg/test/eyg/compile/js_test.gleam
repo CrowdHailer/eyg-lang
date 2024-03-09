@@ -2,7 +2,7 @@ import gleam/dynamic
 import gleam/json
 import eyg/parse
 import eyg/compile
-import old_plinth/browser/window
+import plinth/browser/window
 import gleeunit/should
 
 fn test_compilation(source, js, evaled) {
