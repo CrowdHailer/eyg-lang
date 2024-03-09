@@ -38,3 +38,27 @@ pub fn value_map(l, f) {
     #(k, f(v))
   })
 }
+
+pub fn move(a, b) {
+  case a {
+    [] -> b
+    [i, ..a] -> move(a, [i, ..b])
+  }
+}
+
+pub fn split_around(items, at) {
+  do_split_around(items, at, [])
+}
+
+fn do_split_around(items, left, acc) {
+  case items, left {
+    // pre is left reversed
+    [item, ..after], 0 -> Ok(#(acc, item, after))
+    [item, ..after], i -> do_split_around(after, i - 1, [item, ..acc])
+    [], _ -> Error(Nil)
+  }
+}
+
+pub fn gather_around(pre, item, post) {
+  move(pre, [item, ..post])
+}
