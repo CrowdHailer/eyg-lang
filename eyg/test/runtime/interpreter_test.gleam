@@ -34,7 +34,7 @@ pub fn function_test() {
     Ok(v.Closure(
       "x",
       body
-      |> e2.add_annotation(Nil),
+        |> e2.add_annotation(Nil),
       scope,
     )),
   )
@@ -104,14 +104,14 @@ pub fn record_creation_test() {
 
   r.execute(
     e.Apply(e.Select("foo"), source)
-    |> e2.add_annotation(Nil),
+      |> e2.add_annotation(Nil),
     env.empty(),
     dict.new(),
   )
   |> should.equal(Ok(v.Str("FOO")))
   r.execute(
     e.Apply(e.Select("bar"), source)
-    |> e2.add_annotation(Nil),
+      |> e2.add_annotation(Nil),
     env.empty(),
     dict.new(),
   )
