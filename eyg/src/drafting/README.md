@@ -1,6 +1,5 @@
 - all actions error with a reason
 - Validation failure can be part of an error i.e. we might need Uppercase strings or non empty
-- Utils are things that hit the page need to decide if we want to wrap them as effects
 - numbers
 - A way to look up builtins and/or share metadata for fitting into types
 - file called binding that links a key and string to an action
