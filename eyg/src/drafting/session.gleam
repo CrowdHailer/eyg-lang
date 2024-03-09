@@ -52,6 +52,7 @@ pub fn handle(session, message) {
   case mode, message {
     Navigate, KeyDown(" ") ->
       Ok(Session(..session, mode: SelectAction("", bindings, 0)))
+
     Navigate, KeyDown(key) -> handle_key(bindings, key, projection)
     // TODO use slice with pre and post, doesn't work for click maybe never do click
     SelectAction(search, actions, index), KeyDown("ArrowUp") ->

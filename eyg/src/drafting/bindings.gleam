@@ -11,12 +11,12 @@ import drafting/action
 //   Some("i"),
 // ),
 
-pub fn edit_value() {
-  todo
-}
-
 pub fn default() {
   [
+    Binding("move up", action.move_up, Some("ArrowUp")),
+    Binding("move down", action.move_down, Some("ArrowDown")),
+    Binding("move left", action.move_left, Some("ArrowLeft")),
+    Binding("move right", action.move_right, Some("ArrowRight")),
     Binding("increase selection", action.increase, Some("a")),
     Binding("decrease selection", action.decrease, Some("s")),
     Binding("delete", action.delete, Some("d")),

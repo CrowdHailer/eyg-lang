@@ -162,6 +162,7 @@ pub fn move_right(zip) {
       zip
     }
   }
+  |> Ok
 }
 
 pub fn move_left(zip) {
@@ -248,6 +249,7 @@ pub fn move_left(zip) {
       zip
     }
   }
+  |> Ok
 }
 
 pub fn increase(zip) {

@@ -10,6 +10,26 @@ import drafting/session.{type Session}
 
 // I don't want actions to return a reference to bindings so they cannot create a full session object
 
+pub fn move_up(projection) {
+  use projection <- try(navigation.move_up(projection))
+  Ok(#(projection, session.Navigate))
+}
+
+pub fn move_down(projection) {
+  use projection <- try(navigation.move_down(projection))
+  Ok(#(projection, session.Navigate))
+}
+
+pub fn move_left(projection) {
+  use projection <- try(navigation.move_left(projection))
+  Ok(#(projection, session.Navigate))
+}
+
+pub fn move_right(projection) {
+  use projection <- try(navigation.move_right(projection))
+  Ok(#(projection, session.Navigate))
+}
+
 pub fn increase(projection) {
   Ok(#(navigation.increase(projection), session.Navigate))
 }
