@@ -12,7 +12,7 @@ import eygir/tree
 import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/analysis/type_/binding/debug
-import textual/state.{
+import examine/state.{
   Compilation, Highlight, Inference, Input, Interpret, Switch,
 }
 
