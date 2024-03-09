@@ -58,6 +58,25 @@ pub fn focus_at(ast, path, acc) {
           let assert Ok(#(pre, p, post)) = listx.split_around(params, i)
           let detail = case rest {
             [] -> AssignPattern(p)
+            [i] -> {
+              case p {
+                e.Destructure(fields) -> {
+                  let detail = {
+                    let assert Ok(#(pre, #(label, var), post)) =
+                      listx.split_around(fields, i / 2)
+
+                    case i % 2 {
+                      0 -> AssignField(label, var, pre, post)
+                      1 -> AssignBind(label, var, pre, post)
+                      _ -> panic as "impossible result"
+                    }
+                  }
+                  detail
+                }
+                _ -> panic as "bad pattern path"
+              }
+            }
+            _ -> panic as "bad function path"
           }
           #(FnParam(detail, pre, post, body), acc)
         }
@@ -126,7 +145,7 @@ pub fn focus_at(ast, path, acc) {
     }
     _, _ -> {
       io.debug(#(ast, path))
-      todo as "foxus_At"
+      panic as "bad path into projection"
     }
   }
 }

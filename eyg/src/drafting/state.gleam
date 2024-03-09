@@ -45,7 +45,7 @@ fn actions() {
     #(
       "insert mode",
       fn(zip) {
-        let Ok(#(value, rebuild)) = projection.text(zip)
+        let assert Ok(#(value, rebuild)) = projection.text(zip)
         State(zip, RequireString(value, rebuild))
       },
       Some("i"),
@@ -61,7 +61,7 @@ fn actions() {
     #(
       "variable",
       fn(zip) {
-        let rebuild = transformation.variable(zip)
+        let assert Ok(rebuild) = transformation.variable(zip)
         update_focus()
         State(zip, RequireString("", rebuild))
       },
@@ -70,7 +70,7 @@ fn actions() {
     #(
       "function",
       fn(zip) {
-        let rebuild = transformation.function(zip)
+        let assert Ok(rebuild) = transformation.function(zip)
         update_focus()
         State(zip, RequireString("", rebuild))
       },
@@ -79,7 +79,7 @@ fn actions() {
     #(
       "call function",
       fn(zip) {
-        let zip = transformation.call(zip)
+        let assert Ok(zip) = transformation.call(zip)
         State(zip, Navigate)
       },
       Some("c"),
@@ -87,7 +87,7 @@ fn actions() {
     #(
       "let",
       fn(zip) {
-        let rebuild = transformation.assign(zip)
+        let assert Ok(rebuild) = transformation.assign(zip)
         update_focus()
         State(zip, RequireString("", fn(label) { rebuild(e.Bind(label)) }))
       },
@@ -97,7 +97,7 @@ fn actions() {
     #(
       "string",
       fn(zip) {
-        let #(value, rebuild) = transformation.string(zip)
+        let assert Ok(#(value, rebuild)) = transformation.string(zip)
         State(zip, RequireString(value, rebuild))
       },
       Some("\""),
@@ -105,7 +105,7 @@ fn actions() {
     #(
       "list",
       fn(zip) {
-        let zip = transformation.list(zip)
+        let assert Ok(zip) = transformation.list(zip)
         State(zip, Navigate)
       },
       Some("l"),
@@ -124,7 +124,7 @@ fn actions() {
     #(
       "spread list",
       fn(zip) {
-        let zip = transformation.spread_list(zip)
+        let assert Ok(zip) = transformation.spread_list(zip)
         State(zip, Navigate)
       },
       Some("."),
@@ -133,9 +133,10 @@ fn actions() {
       "record",
       fn(zip) {
         case transformation.record(zip) {
-          transformation.NeedString(rebuild) ->
+          Ok(transformation.NeedString(rebuild)) ->
             State(zip, RequireString("", rebuild))
-          transformation.NoString(zip) -> State(zip, Navigate)
+          Ok(transformation.NoString(zip)) -> State(zip, Navigate)
+          _ -> panic as "no action for record"
         }
       },
       Some("r"),
@@ -143,7 +144,7 @@ fn actions() {
     #(
       "overwrite",
       fn(zip) {
-        let rebuild = transformation.overwrite(zip)
+        let assert Ok(rebuild) = transformation.overwrite(zip)
         update_focus()
         State(zip, RequireString("", fn(label) { rebuild(label) }))
       },
@@ -152,7 +153,7 @@ fn actions() {
     #(
       "tag",
       fn(zip) {
-        let rebuild = transformation.tag(zip)
+        let assert Ok(rebuild) = transformation.tag(zip)
         update_focus()
         State(zip, RequireString("", fn(label) { rebuild(label) }))
       },
@@ -161,16 +162,16 @@ fn actions() {
     #(
       "match",
       fn(zip) {
-        let zip = transformation.match(zip)
+        let assert Ok(rebuild) = transformation.match(zip)
         update_focus()
-        State(zip, Navigate)
+        State(zip, RequireString("", fn(label) { rebuild(label) }))
       },
       Some("m"),
     ),
     #(
       "open match",
       fn(zip) {
-        let zip = transformation.open_match(zip)
+        let assert Ok(zip) = transformation.open_match(zip)
         update_focus()
         State(zip, Navigate)
       },
@@ -179,16 +180,12 @@ fn actions() {
     #(
       "builtin",
       fn(zip) {
-        let #(value, rebuild) = transformation.builtin(zip)
+        let assert Ok(#(value, rebuild)) = transformation.builtin(zip)
         State(zip, RequireString(value, rebuild))
       },
       Some("j"),
     ),
   ]
-  // TODO require text
-  // let rebuild = transformation.line_above(zip)
-  // State(zip, RequireString("", fn(label) { rebuild(e.Bind(label)) }))
-  // "call as argument",
 }
 
 fn update_focus() {
@@ -312,6 +309,7 @@ fn update_input(state, value) {
     }
     RequireString(_, rebuild) ->
       State(..state, mode: RequireString(value, rebuild))
+    _ -> panic as "never update input in Navigate"
   }
 }
 

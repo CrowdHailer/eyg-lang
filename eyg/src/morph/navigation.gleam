@@ -170,7 +170,7 @@ pub fn move_left(zip) {
       let detail = case pattern {
         e.Bind(_label) -> p.AssignPattern(pattern)
         e.Destructure(bindings) -> {
-          let [#(label, var), ..pre] = list.reverse(bindings)
+          let assert [#(label, var), ..pre] = list.reverse(bindings)
           p.AssignBind(label, var, pre, [])
         }
       }
@@ -189,6 +189,7 @@ pub fn move_left(zip) {
           same(p.AssignBind(l, v, pre, [#(label, var), ..post])),
           zoom,
         )
+        _ -> panic as "all ready left"
       }
     }
     #(p.Exp(a), [p.CallArg(f, [], post), ..rest]) -> {
@@ -198,7 +199,7 @@ pub fn move_left(zip) {
       #(p.Exp(n), [p.CallArg(f, pre, [a, ..post]), ..rest])
     }
     #(p.Exp(body), [p.Body(args), ..rest]) -> {
-      let [last, ..pre] = list.reverse(args)
+      let assert [last, ..pre] = list.reverse(args)
       #(p.FnParam(p.AssignPattern(last), pre, [], body), rest)
     }
     #(p.Exp(exp), [p.ListItem([next, ..pre], post, tail), ..rest]) -> #(
@@ -206,7 +207,7 @@ pub fn move_left(zip) {
       [p.ListItem(pre, [exp, ..post], tail), ..rest],
     )
     #(p.Exp(exp), [p.ListTail(items), ..rest]) -> {
-      let [next, ..pre] = list.reverse(items)
+      let assert [next, ..pre] = list.reverse(items)
       #(p.Exp(next), [p.ListItem(pre, [], Some(exp)), ..rest])
     }
     #(p.Exp(exp), [p.RecordValue(l, pre, post, for), ..rest]) -> {
@@ -278,5 +279,6 @@ fn decrease_assign(detail) {
     p.AssignStatement(pattern) -> p.AssignPattern(pattern)
     p.AssignPattern(e.Destructure([#(label, var), ..rest])) ->
       p.AssignField(label, var, [], rest)
+    _ -> panic as "can't decrease into assign"
   }
 }

@@ -2,6 +2,7 @@ import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
+import gleam/result.{try}
 import morph/editable as e
 import morph/projection as p
 
@@ -99,42 +100,45 @@ pub fn delete(zip) {
 pub fn assign(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    p.Exp(value), [p.BlockTail(assigns), ..zoom] -> fn(pattern) {
-      let assigns = list.append(assigns, [#(pattern, value)])
-      let zoom = [p.BlockTail(assigns), ..zoom]
-      #(p.Exp(e.Vacant), zoom)
-    }
-    p.Exp(value), _ -> fn(pattern) {
-      let zoom = [p.BlockTail([#(pattern, value)]), ..zoom]
-      #(p.Exp(e.Vacant), zoom)
-    }
+    p.Exp(value), [p.BlockTail(assigns), ..zoom] ->
+      Ok(fn(pattern) {
+        let assigns = list.append(assigns, [#(pattern, value)])
+        let zoom = [p.BlockTail(assigns), ..zoom]
+        #(p.Exp(e.Vacant), zoom)
+      })
+    p.Exp(value), _ ->
+      Ok(fn(pattern) {
+        let zoom = [p.BlockTail([#(pattern, value)]), ..zoom]
+        #(p.Exp(e.Vacant), zoom)
+      })
+    _, _ -> Error(Nil)
   }
 }
 
 pub fn line_above(zip) {
   case zip {
     #(p.Exp(x), [p.ListItem(pre, post, tail), ..rest]) -> {
-      #(p.Exp(e.Vacant), [p.ListItem(pre, [x, ..post], tail), ..rest])
+      let zoom = [p.ListItem(pre, [x, ..post], tail), ..rest]
+      Ok(NoString(#(p.Exp(e.Vacant), zoom)))
     }
-    #(p.Assign(p.AssignStatement(pattern), value, pre, post, then), rest) -> #(
-      p.Assign(
-        p.AssignStatement(e.Bind("")),
-        e.Vacant,
-        pre,
-        [#(pattern, value), ..post],
-        then,
-      ),
-      rest,
-    )
-    #(p.Exp(then), [p.BlockTail(lets), ..rest]) -> #(
-      p.Assign(p.AssignStatement(e.Bind("")), e.Vacant, lets, [], then),
-      rest,
-    )
-    _ -> {
-      io.debug(zip)
-      case p.step(zip) {
-        Ok(zip) -> line_above(zip)
+    #(p.Assign(p.AssignStatement(pattern), value, pre, post, then), rest) -> {
+      let post = [#(pattern, value), ..post]
+      let build = fn(new) {
+        let details = p.AssignStatement(e.Bind(new))
+        #(p.Assign(details, e.Vacant, pre, post, then), rest)
       }
+      Ok(NeedString(build))
+    }
+    #(p.Exp(then), [p.BlockTail(lets), ..rest]) -> {
+      let build = fn(new) {
+        let details = p.AssignStatement(e.Bind(new))
+        #(p.Assign(details, e.Vacant, lets, [], then), rest)
+      }
+      Ok(NeedString(build))
+    }
+    _ -> {
+      use zip <- try(p.step(zip))
+      line_above(zip)
     }
   }
 }
@@ -143,7 +147,8 @@ pub fn line_above(zip) {
 pub fn variable(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(_) -> fn(x) { #(p.Exp(e.Variable(x)), zoom) }
+    p.Exp(_) -> Ok(fn(x) { #(p.Exp(e.Variable(x)), zoom) })
+    _ -> Error(Nil)
   }
 }
 
@@ -151,34 +156,34 @@ pub fn variable(zip) {
 pub fn function(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Function(args, body)) -> fn(new) {
-      #(p.Exp(e.Function([e.Bind(new), ..args], body)), zoom)
-    }
-    p.Exp(body) -> fn(new) { #(p.Exp(e.Function([e.Bind(new)], body)), zoom) }
+    p.Exp(e.Function(args, body)) ->
+      Ok(fn(new) { #(p.Exp(e.Function([e.Bind(new), ..args], body)), zoom) })
+    p.Exp(body) ->
+      Ok(fn(new) { #(p.Exp(e.Function([e.Bind(new)], body)), zoom) })
+    _ -> Error(Nil)
   }
 }
 
 pub fn call(zip) {
   case zip {
-    #(p.Exp(e.Call(f, args)), rest) -> {
-      #(p.Exp(e.Vacant), [p.CallArg(f, list.reverse(args), []), ..rest])
-    }
-    #(p.Exp(f), [p.CallFn(args), ..rest]) -> {
-      #(p.Exp(e.Vacant), [p.CallArg(f, [], args), ..rest])
-    }
-    #(p.Exp(f), rest) -> {
-      #(p.Exp(e.Vacant), [p.CallArg(f, [], []), ..rest])
-    }
+    #(p.Exp(e.Call(f, args)), rest) ->
+      Ok(#(p.Exp(e.Vacant), [p.CallArg(f, list.reverse(args), []), ..rest]))
+
+    #(p.Exp(f), [p.CallFn(args), ..rest]) ->
+      Ok(#(p.Exp(e.Vacant), [p.CallArg(f, [], args), ..rest]))
+
+    #(p.Exp(f), rest) -> Ok(#(p.Exp(e.Vacant), [p.CallArg(f, [], []), ..rest]))
+    _ -> Error(Nil)
   }
 }
 
 pub fn string(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.String(content)) -> #(content, fn(content) {
-      #(p.Exp(e.String(content)), zoom)
-    })
-    p.Exp(_) -> #("", fn(content) { #(p.Exp(e.String(content)), zoom) })
+    p.Exp(e.String(content)) ->
+      Ok(#(content, fn(content) { #(p.Exp(e.String(content)), zoom) }))
+    p.Exp(_) -> Ok(#("", fn(content) { #(p.Exp(e.String(content)), zoom) }))
+    _ -> Error(Nil)
   }
 }
 
@@ -186,8 +191,9 @@ pub fn string(zip) {
 pub fn list(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant) -> #(p.Exp(e.List([], None)), zoom)
-    p.Exp(item) -> #(p.Exp(e.List([item], None)), zoom)
+    p.Exp(e.Vacant) -> Ok(#(p.Exp(e.List([], None)), zoom))
+    p.Exp(item) -> Ok(#(p.Exp(e.List([item], None)), zoom))
+    _ -> Error(Nil)
   }
 }
 
@@ -220,124 +226,139 @@ pub fn extend_list(zip) {
 pub fn spread_list(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    p.Exp(e.List(items, None)), _ -> #(p.Exp(e.Vacant), [
-      p.ListTail(items),
-      ..zoom
-    ])
-
-    p.Exp(exp), [p.ListItem(pre, [], None), ..rest] -> #(p.Exp(e.Vacant), [
-      p.ListTail(list.reverse([exp, ..pre])),
-      ..rest
-    ])
+    p.Exp(e.List(items, None)), _ ->
+      Ok(#(p.Exp(e.Vacant), [p.ListTail(items), ..zoom]))
+    p.Exp(exp), [p.ListItem(pre, [], None), ..rest] ->
+      Ok(#(p.Exp(e.Vacant), [p.ListTail(list.reverse([exp, ..pre])), ..rest]))
+    _, _ -> Error(Nil)
   }
 }
 
 pub fn record(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant) -> NoString(#(p.Exp(e.Record([], None)), zoom))
+    p.Exp(e.Vacant) -> Ok(NoString(#(p.Exp(e.Record([], None)), zoom)))
     p.Exp(e.Record([], None)) ->
-      NeedString(fn(new) { #(p.Exp(e.Record([#(new, e.Vacant)], None)), zoom) })
+      Ok(
+        NeedString(fn(new) {
+          #(p.Exp(e.Record([#(new, e.Vacant)], None)), zoom)
+        }),
+      )
     p.Exp(item) ->
-      NeedString(fn(new) { #(p.Exp(e.Record([#(new, item)], None)), zoom) })
+      Ok(NeedString(fn(new) { #(p.Exp(e.Record([#(new, item)], None)), zoom) }))
     p.Assign(detail, value, pre, post, then) -> {
       let detail = case detail {
         p.AssignPattern(e.Bind(var)) -> p.AssignField(var, var, [], [])
         p.AssignPattern(e.Destructure(fields)) ->
           p.AssignField("f", "f", list.reverse(fields), [])
+        _ -> panic as "cant build as record"
       }
-      NoString(#(p.Assign(detail, value, pre, post, then), zoom))
+      Ok(NoString(#(p.Assign(detail, value, pre, post, then), zoom)))
     }
     p.FnParam(p.AssignPattern(e.Bind(label)), pre, post, body) ->
-      NoString(#(
-        p.FnParam(
-          p.AssignPattern(e.Destructure([#(label, label)])),
-          pre,
-          post,
-          body,
-        ),
-        zoom,
-      ))
+      Ok(
+        NoString(#(
+          p.FnParam(
+            p.AssignPattern(e.Destructure([#(label, label)])),
+            pre,
+            post,
+            body,
+          ),
+          zoom,
+        )),
+      )
     p.Labeled(l, v, pre, post, for) ->
-      NeedString(fn(new) {
-        #(p.Labeled(new, e.Vacant, [#(l, v), ..pre], post, for), zoom)
-      })
+      Ok(
+        NeedString(fn(new) {
+          #(p.Labeled(new, e.Vacant, [#(l, v), ..pre], post, for), zoom)
+        }),
+      )
+    _ -> Error(Nil)
   }
 }
 
 pub fn overwrite(zip) {
   let #(focus, zoom) = zip
-  io.debug(focus)
   case focus {
-    p.Exp(e.Vacant) | p.Exp(e.Record([], None)) -> fn(new) {
-      #(p.Exp(e.Vacant), [
-        p.RecordValue(new, [], [], p.Overwrite(e.Vacant)),
-        ..zoom
-      ])
-    }
-    p.Exp(e.Record(fields, None)) -> fn(new) {
-      #(p.Exp(e.Vacant), [p.OverwriteTail(list.reverse(fields)), ..zoom])
-    }
-    p.Exp(item) -> fn(new) {
-      #(p.Exp(e.Vacant), [p.RecordValue(new, [], [], p.Overwrite(item)), ..zoom])
-    }
+    p.Exp(e.Vacant) | p.Exp(e.Record([], None)) ->
+      Ok(fn(new) {
+        #(p.Exp(e.Vacant), [
+          p.RecordValue(new, [], [], p.Overwrite(e.Vacant)),
+          ..zoom
+        ])
+      })
+    p.Exp(e.Record(fields, None)) ->
+      Ok(fn(new) {
+        #(p.Exp(e.Vacant), [p.OverwriteTail(list.reverse(fields)), ..zoom])
+      })
+    p.Exp(item) ->
+      Ok(fn(new) {
+        #(p.Exp(e.Vacant), [
+          p.RecordValue(new, [], [], p.Overwrite(item)),
+          ..zoom
+        ])
+      })
+
+    _ -> Error(Nil)
   }
 }
 
 pub fn tag(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant) -> fn(new) { #(p.Exp(e.Tag(new)), zoom) }
-    p.Exp(inner) -> fn(new) {
-      #(p.Exp(e.Tag(new)), [p.CallFn([inner]), ..zoom])
-    }
+    p.Exp(e.Vacant) -> Ok(fn(new) { #(p.Exp(e.Tag(new)), zoom) })
+    p.Exp(inner) ->
+      Ok(fn(new) { #(p.Exp(e.Tag(new)), [p.CallFn([inner]), ..zoom]) })
+    _ -> Error(Nil)
   }
 }
 
 pub fn match(zip) {
   let #(focus, zoom) = zip
-  let new = e.Function([e.Bind("_")], e.Vacant)
-  let focus = case focus {
-    p.Exp(exp) -> p.Match(exp, "Ok", new, [], [], None)
+  let new_branch = e.Function([e.Bind("_")], e.Vacant)
+  case focus {
+    p.Exp(exp) ->
+      Ok(fn(new) { #(p.Match(exp, new, new_branch, [], [], None), zoom) })
     p.Match(top, label, branch, pre, post, otherwise) -> {
-      let post = [#(label, branch), ..post]
-      p.Match(top, "New", new, pre, post, otherwise)
+      Ok(fn(new) {
+        let post = [#(label, branch), ..post]
+        #(p.Match(top, new, new_branch, pre, post, otherwise), zoom)
+      })
     }
+    _ -> Error(Nil)
   }
-  #(focus, zoom)
 }
 
 pub fn open_match(zip) {
   let #(focus, zoom) = zip
   let new = e.Function([e.Bind("_")], e.Vacant)
   case focus {
-    p.Exp(e.Case(top, matches, None)) -> #(p.Exp(new), [
-      p.CaseTail(top, matches),
-      ..zoom
-    ])
-    p.Match(top, label, branch, pre, post, otherwise) -> {
+    p.Exp(e.Case(top, matches, None)) ->
+      Ok(#(p.Exp(new), [p.CaseTail(top, matches), ..zoom]))
+    p.Match(top, label, branch, pre, post, None) -> {
       let matches = listx.gather_around(pre, #(label, branch), post)
-      #(p.Exp(new), [p.CaseTail(top, matches), ..zoom])
+      Ok(#(p.Exp(new), [p.CaseTail(top, matches), ..zoom]))
     }
+    _ -> Error(Nil)
   }
 }
 
 pub fn perform(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant) -> fn(new) { #(p.Exp(e.Perform(new)), zoom) }
-    p.Exp(inner) -> fn(new) {
-      #(p.Exp(e.Perform(new)), [p.CallFn([inner]), ..zoom])
-    }
+    p.Exp(e.Vacant) -> Ok(fn(new) { #(p.Exp(e.Perform(new)), zoom) })
+    p.Exp(inner) ->
+      Ok(fn(new) { #(p.Exp(e.Perform(new)), [p.CallFn([inner]), ..zoom]) })
+    _ -> Error(Nil)
   }
 }
 
 pub fn builtin(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Builtin(content)) -> #(content, fn(content) {
-      #(p.Exp(e.Builtin(content)), zoom)
-    })
-    p.Exp(_) -> #("", fn(content) { #(p.Exp(e.Builtin(content)), zoom) })
+    p.Exp(e.Builtin(content)) ->
+      Ok(#(content, fn(content) { #(p.Exp(e.Builtin(content)), zoom) }))
+    p.Exp(_) -> Ok(#("", fn(content) { #(p.Exp(e.Builtin(content)), zoom) }))
+    _ -> Error(Nil)
   }
 }
