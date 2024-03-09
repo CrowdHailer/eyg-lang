@@ -224,7 +224,7 @@ pub fn handle(state, message) {
   let State(mode: mode, zip: zip) = state
   case message {
     KeyDown(k) -> {
-      let state = case mode, k {
+      case mode, k {
         Navigate, " " -> {
           update_focus()
           State(..state, mode: Pallet("", actions(), 0))
@@ -239,11 +239,13 @@ pub fn handle(state, message) {
         }
         Navigate, "ArrowUp" -> {
           scroll_to()
-          State(navigation.move_up(zip), mode)
+          let assert Ok(zip) = navigation.move_up(zip)
+          State(zip, mode)
         }
         Navigate, "ArrowDown" -> {
           scroll_to()
-          State(navigation.move_down(zip), mode)
+          let assert Ok(zip) = navigation.move_down(zip)
+          State(zip, mode)
         }
         Navigate, "ArrowLeft" -> {
           scroll_to()

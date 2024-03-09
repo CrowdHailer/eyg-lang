@@ -2,6 +2,7 @@ import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
+import gleam/result.{try}
 import morph/editable as e
 import morph/projection as p
 
@@ -9,29 +10,30 @@ pub fn move_up(zip) {
   case zip {
     #(p.Exp(then), [p.BlockTail(assigns), ..rest]) -> {
       let assert [#(pattern, last), ..pre] = list.reverse(assigns)
-      #(p.Assign(p.AssignStatement(pattern), last, pre, [], then), rest)
+      Ok(#(p.Assign(p.AssignStatement(pattern), last, pre, [], then), rest))
     }
     #(
       p.Assign(p.AssignStatement(label), value, [#(l, v), ..pre], post, then),
       rest,
-    ) -> #(
-      p.Assign(p.AssignStatement(l), v, pre, [#(label, value), ..post], then),
-      rest,
-    )
+    ) ->
+      Ok(#(
+        p.Assign(p.AssignStatement(l), v, pre, [#(label, value), ..post], then),
+        rest,
+      ))
     #(p.Match(top, label, branch, [new, ..pre], post, otherwise), rest) -> {
-      #(
+      Ok(#(
         p.Match(top, new.0, new.1, pre, [#(label, branch), ..post], otherwise),
         rest,
-      )
+      ))
     }
     #(p.Exp(otherwise), [p.CaseTail(top, [_, ..] as matches), ..rest]) -> {
+      // TODO revese in CaseTail
       let assert [#(label, branch), ..pre] = list.reverse(matches)
-      #(p.Match(top, label, branch, pre, [], Some(otherwise)), rest)
+      Ok(#(p.Match(top, label, branch, pre, [], Some(otherwise)), rest))
     }
     _ -> {
-      case p.step(zip) {
-        Ok(zip) -> move_up(zip)
-      }
+      use zip <- try(p.step(zip))
+      move_up(zip)
     }
   }
 }
@@ -42,28 +44,26 @@ pub fn move_down(zip) {
       let p = p.assigned_pattern(detail)
       let pre = [#(p, value), ..pre]
 
-      #(p.Assign(p.AssignStatement(new.0), new.1, pre, post, then), rest)
+      Ok(#(p.Assign(p.AssignStatement(new.0), new.1, pre, post, then), rest))
     }
     #(p.Assign(detail, value, pre, [], then), rest) -> {
       let p = p.assigned_pattern(detail)
       let assigns = listx.gather_around(pre, #(p, value), [])
-      #(p.Exp(then), [p.BlockTail(assigns), ..rest])
+      Ok(#(p.Exp(then), [p.BlockTail(assigns), ..rest]))
     }
     #(p.Match(top, label, branch, pre, [new, ..post], otherwise), rest) -> {
-      #(
+      Ok(#(
         p.Match(top, new.0, new.1, [#(label, branch), ..pre], post, otherwise),
         rest,
-      )
+      ))
     }
     #(p.Match(top, label, branch, pre, [], Some(otherwise)), rest) -> {
       let matches = list.reverse([#(label, branch), ..pre])
-      #(p.Exp(otherwise), [p.CaseTail(top, matches), ..rest])
+      Ok(#(p.Exp(otherwise), [p.CaseTail(top, matches), ..rest]))
     }
-
     _ -> {
-      case p.step(zip) {
-        Ok(zip) -> move_down(zip)
-      }
+      use zip <- try(p.step(zip))
+      move_down(zip)
     }
   }
 }
