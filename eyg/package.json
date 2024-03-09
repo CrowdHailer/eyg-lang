@@ -5,6 +5,8 @@
     "build:atelier": "npx rollup -f iife -i ./build/dev/javascript/eyg/atelier.js -o build/bundle/atelier.js",
     "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",
     "build:easel": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js",
+    "build:notepad": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/notepad.js -o build/bundle/notepad.js",
+    "start:notepad": "npm run build:notepad && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/notepad/index.html build/bundle/notepad.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
     "build:resume": "npx rollup -f iife -i ./build/dev/javascript/eyg/resume.js -o build/bundle/resume.js",
     "build:magpie:app": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_app.js -o build/bundle/app.js",
     "build:magpie:worker": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_worker.js -o build/bundle/worker.js",
