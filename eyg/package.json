@@ -14,6 +14,8 @@
     "start:magpie": "gleam build && npm run build:magpie && rm -rf sirv && mkdir sirv && cp build/bundle/app.js build/bundle/worker.js src/magpie/index.html sirv && npx sirv sirv --host 0.0.0.0 --port 5000",
     "build:datalog": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/datalog.js -o build/bundle/datalog.js",
     "start:datalog": "npm run build:datalog && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/datalog/index.html build/bundle/datalog.js src/datalog/examples sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
+    "build:examine": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/examine.js -o build/bundle/examine.js",
+    "start:examine": "npm run build:examine && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/examine/index.html build/bundle/examine.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
     "build:dashboard": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/dashboard.js -o build/bundle/dashboard.js",
     "start:dashboard": "npm run build:dashboard && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/dashboard/index.html src/dashboard/long-beep.m4a build/bundle/dashboard.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080"
   },
