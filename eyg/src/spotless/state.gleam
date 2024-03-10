@@ -25,6 +25,7 @@ import drafting/bindings
 import eyg/runtime/cast
 import harness/ffi/core
 import harness/effect as impl
+import spotless/repl/loader
 import spotless/file_system as fs
 
 pub type Executing {
@@ -42,6 +43,7 @@ pub type State {
 }
 
 pub fn init(_) {
+  loader.load("")
   let current = d.new(bindings.default(), e.Vacant)
   #(State([], current, Ready), effect.none())
 }
@@ -51,7 +53,7 @@ pub type Message {
   Complete(Result(v.Value(Nil, Nil), String))
 }
 
-// TODO move somewhere
+// TODO move somewhere REPL probably
 pub fn handlers() {
   dict.new()
   |> dict.insert("Alert", impl.window_alert().2)

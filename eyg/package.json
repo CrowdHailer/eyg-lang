@@ -12,7 +12,7 @@
     "build:drafting": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/drafting.js -o build/bundle/drafting.js",
     "start:drafting": "npm run build:drafting && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/drafting/index.html build/bundle/drafting.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
     "build:spotless": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/spotless.js -o build/bundle/spotless.js",
-    "start:spotless": "npm run build:spotless && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/spotless/index.html build/bundle/spotless.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
+    "start:spotless": "npm run build:spotless && rm -rf sirv && mkdir sirv && cp -r saved/saved.json ../website/public/layout.css ../website/public/neo.css  src/spotless/index.html build/bundle/spotless.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
     "build:resume": "npx rollup -f iife -i ./build/dev/javascript/eyg/resume.js -o build/bundle/resume.js",
     "build:magpie:app": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_app.js -o build/bundle/app.js",
     "build:magpie:worker": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_worker.js -o build/bundle/worker.js",
