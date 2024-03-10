@@ -53,7 +53,21 @@ pub fn render(app) {
               [text("running")],
             ),
           ]
-          _ -> []
+          _ -> [
+            h.div(
+              [
+                a.class(
+                  "bg-red-700 text-white border-black mx-auto max-w-2xl border w-full rounded",
+                ),
+              ],
+              [
+                h.div([], []),
+                ..list.map(state.type_errors(current.projection), fn(e) {
+                  h.div([], [text(e)])
+                })
+              ],
+            ),
+          ]
         }
       d.SelectAction(search, suggestions, index) ->
         overlay([

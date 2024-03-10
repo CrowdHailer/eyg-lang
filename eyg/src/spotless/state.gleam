@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/dynamic
 import gleam/int
 import gleam/io
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
@@ -27,6 +28,9 @@ import eyg/runtime/interpreter/state
 import harness/ffi/core
 import harness/effect as impl
 import spotless/file_system as fs
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/isomorphic as t
+import eyg/analysis/type_/binding/debug as tdebug
 
 pub type Executing {
   Running
@@ -99,6 +103,22 @@ pub fn handlers() {
     let assert Ok(popup) = window.open(url, "_blank", features)
     Ok(v.unit)
   })
+}
+
+pub fn type_errors(projection) {
+  let editable = projection.rebuild(projection)
+  let source = e.to_expression(editable)
+  let #(tree, _bindings) = infer.infer(source, t.Empty, 0, infer.new_state())
+  let #(_, types) = a.strip_annotation(tree)
+  list.filter_map(types, fn(r) {
+    let #(r, _, _, _) = r
+    case r {
+      Ok(_) -> Error(Nil)
+      Error(reason) -> Ok(reason)
+    }
+  })
+  |> list.map(tdebug.render_reason)
+  |> io.debug
 }
 
 pub fn update(state, message) {

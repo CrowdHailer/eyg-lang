@@ -306,6 +306,9 @@ pub fn render_break(break, inner) {
       }
       render_record(listx.gather_around(pre, inner, post), original)
     }
+    t.SelectValue(label) ->
+      inner
+      |> frame.append_spans([text("."), text(label)])
     t.OverwriteTail(fields) -> {
       let fields = list.map(list.reverse(fields), render_field)
       render_record(fields, Some(inner))

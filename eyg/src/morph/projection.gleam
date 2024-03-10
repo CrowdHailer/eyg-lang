@@ -119,6 +119,10 @@ pub fn focus_at(ast, path, acc) {
         _, _ -> panic as "invalid record"
       }
     }
+    e.Select(from, label), [0, ..rest] -> {
+      let acc = [SelectValue(label), ..acc]
+      focus_at(from, rest, acc)
+    }
     e.Case(top, matches, otherwise), [0, ..rest] -> {
       let acc = [CaseTop(matches, otherwise), ..acc]
       focus_at(top, rest, acc)
@@ -301,7 +305,7 @@ pub type Break {
     post: List(#(String, e.Expression)),
     for: WithLabel,
   )
-  // SelectValue
+  SelectValue(label: String)
   OverwriteTail(fields: List(#(String, e.Expression)))
   CaseTop(
     branches: List(#(String, e.Expression)),
@@ -397,6 +401,7 @@ fn unbreak(exp, break) {
       e.Record(listx.gather_around(pre, #(label, exp), post), None)
     RecordValue(label, pre, post, Overwrite(original)) ->
       e.Record(listx.gather_around(pre, #(label, exp), post), Some(original))
+    SelectValue(label) -> e.Select(exp, label)
     OverwriteTail(fields) -> e.Record(list.reverse(fields), Some(exp))
     CaseTop(matches, otherwise) -> e.Case(exp, matches, otherwise)
     CaseMatch(top, label, pre, post, otherwise) -> {
