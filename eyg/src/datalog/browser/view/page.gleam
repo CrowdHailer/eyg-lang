@@ -23,6 +23,7 @@ import plinth/browser/window
 import facilities/google/event as g_event
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
+import euclidean/square
 import datalog/ast
 import datalog/browser/app/model.{Model}
 import datalog/browser/view/source
@@ -214,7 +215,8 @@ fn google_oauth(model, index) {
         window.outer_height(window.self()),
       )
       let frame = #(600, 700)
-      let #(#(offset_x, offset_y), #(inner_x, inner_y)) = center(frame, space)
+      let #(#(offset_x, offset_y), #(inner_x, inner_y)) =
+        square.center(frame, space)
       let features =
         string.concat([
           "popup",
@@ -339,19 +341,6 @@ fn accu_weather(model, index) {
     }),
   )
   // Ok(Nil)
-}
-
-fn center(inner, outer) {
-  let #(inner_x, inner_y) = inner
-  let #(outer_x, outer_y) = outer
-
-  let inner_x = int.min(inner_x, outer_x)
-  let inner_y = int.min(inner_y, outer_y)
-
-  let offset_x = { outer_x - inner_x } / 2
-  let offset_y = { outer_y - inner_y } / 2
-
-  #(#(offset_x, offset_y), #(inner_x, inner_y))
 }
 
 fn monitor_auth(popup, wait) {

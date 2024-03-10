@@ -1,13 +1,16 @@
 import gleam/dict
 import gleam/dynamic
+import gleam/int
 import gleam/io
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
 import gleam/javascript/array
 import gleam/javascript/promise
+import plinth/browser/window
 import plinth/browser/file_system
 import plinth/browser/file
+import euclidean/square
 import lustre/effect
 import eygir/decode
 import eygir/annotated as a
@@ -19,6 +22,7 @@ import eyg/runtime/break as fail
 import harness/stdlib
 import drafting/session as d
 import drafting/bindings
+import eyg/runtime/cast
 import harness/ffi/core
 import harness/effect as impl
 import spotless/file_system as fs
@@ -63,6 +67,31 @@ pub fn handlers() {
       })
 
     Ok(v.Promise(p))
+  })
+  |> dict.insert("Open", fn(url) {
+    use url <- try(cast.as_string(url))
+    let space = #(
+      window.outer_width(window.self()),
+      window.outer_height(window.self()),
+    )
+    let frame = #(600, 700)
+    let #(#(offset_x, offset_y), #(inner_x, inner_y)) =
+      square.center(frame, space)
+    let features =
+      string.concat([
+        "popup",
+        ",width=",
+        int.to_string(inner_x),
+        ",height=",
+        int.to_string(inner_y),
+        ",left=",
+        int.to_string(offset_x),
+        ",top=",
+        int.to_string(offset_y),
+      ])
+
+    let assert Ok(popup) = window.open(url, "_blank", features)
+    Ok(v.unit)
   })
 }
 
