@@ -98,6 +98,11 @@ pub fn record(projection) {
   |> Ok
 }
 
+pub fn select(projection) {
+  use rebuild <- try(transformation.select(projection))
+  Ok(#(projection, session.EditString("", rebuild)))
+}
+
 pub fn overwrite(projection) {
   use rebuild <- try(transformation.overwrite(projection))
   Ok(#(projection, session.EditString("", rebuild)))

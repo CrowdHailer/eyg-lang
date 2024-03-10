@@ -11,7 +11,7 @@ import eyg/runtime/value as v
 import spotless/state
 
 pub fn render(app) {
-  let state.State(previous, current, error) = app
+  let state.State(previous, env, current, error) = app
   // containter for relative positioning
   h.div([a.class("")], [
     h.div(

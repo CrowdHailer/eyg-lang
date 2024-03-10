@@ -292,6 +292,21 @@ pub fn record(zip) {
   }
 }
 
+pub fn select(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    p.Exp(e.Vacant) ->
+      Ok(fn(new) {
+        #(
+          p.Exp(e.Function([e.Bind("$")], e.Select(e.Variable("$"), new))),
+          zoom,
+        )
+      })
+    p.Exp(inner) -> Ok(fn(new) { #(p.Exp(e.Select(inner, new)), zoom) })
+    _ -> Error(Nil)
+  }
+}
+
 pub fn overwrite(zip) {
   let #(focus, zoom) = zip
   case focus {

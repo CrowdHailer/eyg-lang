@@ -20,6 +20,7 @@ pub fn default() {
     Binding("create string", action.string, Some("\"")),
     Binding("create list", action.list, Some("l")),
     Binding("create record", action.record, Some("r")),
+    Binding("get field", action.select, Some("g")),
     Binding("create overwrite", action.overwrite, Some("o")),
     Binding("create tag", action.tag, Some("t")),
     Binding("create match", action.match, Some("m")),

@@ -23,9 +23,9 @@ import harness/stdlib
 import drafting/session as d
 import drafting/bindings
 import eyg/runtime/cast
+import eyg/runtime/interpreter/state
 import harness/ffi/core
 import harness/effect as impl
-import spotless/repl/loader
 import spotless/file_system as fs
 
 pub type Executing {
@@ -37,15 +37,17 @@ pub type Executing {
 pub type State {
   State(
     previous: List(#(v.Value(Nil, Nil), e.Expression)),
+    env: state.Env(Nil),
     current: d.Session,
     executing: Executing,
   )
 }
 
-pub fn init(_) {
-  loader.load("")
+pub fn init(initial) {
+  // k will exit the program
+  let #(_, env, k) = initial
   let current = d.new(bindings.default(), e.Vacant)
-  #(State([], current, Ready), effect.none())
+  #(State([], env, current, Ready), effect.none())
 }
 
 pub type Message {
@@ -59,6 +61,8 @@ pub fn handlers() {
   |> dict.insert("Alert", impl.window_alert().2)
   |> dict.insert("Await", impl.await().2)
   |> dict.insert("File_Read", fs.file_read)
+  |> dict.insert("Choose", impl.choose().2)
+  |> dict.insert("HTTP", impl.http().2)
   |> dict.insert("Load", fn(_) {
     let p =
       promise.map(do_load(), fn(r) {
@@ -98,7 +102,7 @@ pub fn handlers() {
 }
 
 pub fn update(state, message) {
-  let State(previous, current, executing) = state
+  let State(previous, env, current, executing) = state
   case message, executing {
     Drafting(d.KeyDown("Enter")), Ready -> {
       case current {
@@ -111,7 +115,7 @@ pub fn update(state, message) {
               let source = e.to_expression(editable)
               let source = a.add_annotation(source, Nil)
               promise.map(
-                r.await(r.execute(source, stdlib.env(), handlers())),
+                r.await(r.execute(source, env, handlers())),
                 fn(result) {
                   let result = case result {
                     Ok(value) -> {
@@ -135,10 +139,13 @@ pub fn update(state, message) {
     }
     Drafting(m), Ready | Drafting(m), Failed(_) -> {
       case d.handle(current, m) {
-        Ok(current) -> #(State(previous, current, Ready), effect.none())
+        Ok(current) -> #(
+          State(..state, current: current, executing: Ready),
+          effect.none(),
+        )
         Error(Nil) -> {
           io.debug(#(current, m))
-          #(State(previous, current, Ready), effect.none())
+          #(State(..state, current: current, executing: Ready), effect.none())
         }
       }
     }
@@ -149,12 +156,12 @@ pub fn update(state, message) {
           let editable = projection.rebuild(current)
           let previous = [#(value, editable), ..previous]
           #(
-            State(previous, d.new(bindings.default(), e.Vacant), Ready),
+            State(previous, env, d.new(bindings.default(), e.Vacant), Ready),
             effect.none(),
           )
         }
         Error(reason) -> {
-          #(State(previous, current, Failed(reason)), effect.none())
+          #(State(previous, env, current, Failed(reason)), effect.none())
         }
       }
     }
