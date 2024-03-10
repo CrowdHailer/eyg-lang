@@ -62,7 +62,7 @@ pub fn render(app) {
               ],
               [
                 h.div([], []),
-                ..list.map(state.type_errors(current.projection), fn(e) {
+                ..list.map(state.type_errors(current.projection, env), fn(e) {
                   h.div([], [text(e)])
                 })
               ],

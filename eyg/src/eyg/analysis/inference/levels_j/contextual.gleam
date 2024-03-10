@@ -90,7 +90,7 @@ fn eff_tail(eff) {
   }
 }
 
-fn do_infer(source, env, eff, level, bindings) {
+pub fn do_infer(source, env, eff, level, bindings) {
   case source {
     e.Variable(x) ->
       case list.key_find(env, x) {

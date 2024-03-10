@@ -24,12 +24,14 @@ import harness/stdlib
 import drafting/session as d
 import drafting/bindings
 import eyg/runtime/cast
+import eyg/runtime/capture
 import eyg/runtime/interpreter/state
 import harness/ffi/core
 import harness/effect as impl
 import spotless/file_system as fs
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/isomorphic as t
+import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug as tdebug
 
 pub type Executing {
@@ -105,10 +107,43 @@ pub fn handlers() {
   })
 }
 
-pub fn type_errors(projection) {
+fn value_to_type(value) {
+  // case value {
+  //   v.Closure(x,)
+  //   v.Binary(_) -> t.Binary
+  //   v.Integer(_) -> t.Integer
+  //   v.Str(_) -> t.String
+  //   v.LinkedList([]) -> t.List(t.Var(0))
+  //   v.LinkedList([item, ..]) -> t.List(value_to_type(item))
+  //   v.Record(_) -> panic as "type record"
+  //   v.Tagged(label, value) ->
+  //     t.Union(t.RowExtend(label, value_to_type(value), t.Var(0)))
+  //   v.Partial(_,_) -> panic as "type partial"
+  //   v.Promise(_) -> panic as "do promises need to be specific type"
+  // }
+  // let #(#(_, #(_, t, _, _)), bindings) =
+  //   capture.capture(value)
+  //   |> infer.infer(t.Empty, 0, infer.new_state())
+  // binding.gen(t, 0, bindings)
+  t.Var(#(True, 0))
+}
+// TODO add a small initial script BUT i want std lib etc
+// Vars together for environment
+
+fn env_to_type(env: state.Env(Nil)) -> List(#(String, binding.Poly)) {
+  env.scope
+  |> list.map(fn(pair) {
+    let #(var, value) = pair
+    #(var, value_to_type(value))
+  })
+}
+
+pub fn type_errors(projection, env) {
+  let env = env_to_type(env)
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
-  let #(tree, _bindings) = infer.infer(source, t.Empty, 0, infer.new_state())
+  let #(_bindings, _, _, tree) =
+    infer.do_infer(source, env, t.Empty, 0, infer.new_state())
   let #(_, types) = a.strip_annotation(tree)
   list.filter_map(types, fn(r) {
     let #(r, _, _, _) = r
@@ -118,7 +153,6 @@ pub fn type_errors(projection) {
     }
   })
   |> list.map(tdebug.render_reason)
-  |> io.debug
 }
 
 pub fn update(state, message) {
