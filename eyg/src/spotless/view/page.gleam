@@ -33,7 +33,7 @@ pub fn render(app) {
     h.div([], case current.mode {
       d.Navigate ->
         case error {
-          Some(reason) -> [
+          state.Failed(reason) -> [
             h.div(
               [
                 a.class(
@@ -43,11 +43,21 @@ pub fn render(app) {
               [text(reason)],
             ),
           ]
-          None -> []
+          state.Running -> [
+            h.div(
+              [
+                a.class(
+                  "bg-green-700 text-white border-black mx-auto max-w-2xl border w-full rounded",
+                ),
+              ],
+              [text("running")],
+            ),
+          ]
+          _ -> []
         }
-      d.SelectAction(search, actions, index) ->
+      d.SelectAction(search, suggestions, index) ->
         overlay([
-          page.pallet(search, todo, index)
+          page.pallet(search, suggestions, index)
           |> element.map(state.Drafting),
         ])
       d.EditString(value, _rebuild) ->
@@ -56,13 +66,6 @@ pub fn render(app) {
           |> element.map(state.Drafting),
         ])
     }),
-    h.div(
-      [
-        a.class("mx-auto max-w-2xl w-full text-right"),
-        event.on_click(state.LoadSource),
-      ],
-      [h.button([], [text("load source")])],
-    ),
   ])
 }
 

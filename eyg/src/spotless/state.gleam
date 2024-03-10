@@ -2,6 +2,8 @@ import gleam/dict
 import gleam/dynamic
 import gleam/io
 import gleam/option.{type Option, None, Some}
+import gleam/result.{try}
+import gleam/string
 import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/browser/file_system
@@ -16,85 +18,131 @@ import eyg/runtime/interpreter/runner as r
 import eyg/runtime/break as fail
 import harness/stdlib
 import drafting/session as d
+import drafting/bindings
+import harness/ffi/core
+import harness/effect as impl
+import spotless/file_system as fs
+
+pub type Executing {
+  Running
+  Failed(String)
+  Ready
+}
 
 pub type State {
   State(
     previous: List(#(v.Value(Nil, Nil), e.Expression)),
     current: d.Session,
-    error: Option(String),
+    executing: Executing,
   )
 }
 
 pub fn init(_) {
-  let current = d.new([], e.Vacant)
-  #(State([], current, None), effect.none())
+  let current = d.new(bindings.default(), e.Vacant)
+  #(State([], current, Ready), effect.none())
 }
 
 pub type Message {
   Drafting(d.Message)
-  LoadSource
-  SourceLoaded(e.Expression)
+  Complete(Result(v.Value(Nil, Nil), String))
+}
+
+// TODO move somewhere
+pub fn handlers() {
+  dict.new()
+  |> dict.insert("Alert", impl.window_alert().2)
+  |> dict.insert("Await", impl.await().2)
+  |> dict.insert("File_Read", fs.file_read)
+  |> dict.insert("Load", fn(_) {
+    let p =
+      promise.map(do_load(), fn(r) {
+        case r {
+          Ok(exp) -> v.ok(v.LinkedList(core.expression_to_language(exp)))
+          Error(reason) -> v.error(v.Str(reason))
+        }
+      })
+
+    Ok(v.Promise(p))
+  })
 }
 
 pub fn update(state, message) {
-  let State(previous, current, _error) = state
-  case message {
-    Drafting(d.KeyDown("Enter")) -> {
+  let State(previous, current, executing) = state
+  case message, executing {
+    Drafting(d.KeyDown("Enter")), Ready -> {
       case current {
         d.Session(_, zip, d.Navigate) -> {
-          let editable = projection.rebuild(zip)
-          io.debug(editable)
-          let source = e.to_expression(editable)
-          io.debug(source)
-          let source = a.add_annotation(source, Nil)
-          let result = r.execute(source, stdlib.env(), dict.new())
-          case result {
-            Ok(value) -> {
-              let value = dynamic.unsafe_coerce(dynamic.from(value))
-              let previous = [#(value, editable), ..previous]
-              #(State(previous, d.new([], e.Vacant), None), effect.none())
-            }
-            Error(#(reason, _, _, _)) -> {
-              #(
-                State(previous, current, Some(fail.reason_to_string(reason))),
-                effect.none(),
+          let state = State(..state, executing: Running)
+          #(
+            state,
+            effect.from(fn(d) {
+              let editable = projection.rebuild(zip)
+              let source = e.to_expression(editable)
+              let source = a.add_annotation(source, Nil)
+              promise.map(
+                r.await(r.execute(source, stdlib.env(), handlers())),
+                fn(result) {
+                  let result = case result {
+                    Ok(value) -> {
+                      let value = dynamic.unsafe_coerce(dynamic.from(value))
+                      Ok(value)
+                    }
+                    Error(#(reason, _, _, _)) -> {
+                      Error(fail.reason_to_string(reason))
+                    }
+                  }
+                  d(Complete(result))
+                },
               )
-            }
-          }
+
+              Nil
+            }),
+          )
         }
         _ -> #(state, effect.none())
       }
     }
-    Drafting(m) -> {
-      let assert Ok(current) = d.handle(current, m)
-      #(State(previous, current, None), effect.none())
+    Drafting(m), Ready | Drafting(m), Failed(_) -> {
+      case d.handle(current, m) {
+        Ok(current) -> #(State(previous, current, Ready), effect.none())
+        Error(Nil) -> {
+          io.debug(#(current, m))
+          #(State(previous, current, Ready), effect.none())
+        }
+      }
     }
-    LoadSource -> {
-      #(
-        state,
-        effect.from(fn(d) {
-          promise.try_await(file_system.show_open_file_picker(), fn(
-            file_handles,
-          ) {
-            let assert [file_handle] = array.to_list(file_handles)
-            use file <- promise.try_await(file_system.get_file(file_handle))
-            use text <- promise.map(file.text(file))
-            let assert Ok(source) = decode.from_json(text)
-            let source = a.add_annotation(source, Nil)
-            let source = e.from_annotated(source)
-            io.debug("done")
-            d(SourceLoaded(source))
-            Ok(Nil)
-          })
-
-          Nil
-        }),
-      )
+    Complete(result), Running -> {
+      case result {
+        Ok(value) -> {
+          let current = current.projection
+          let editable = projection.rebuild(current)
+          let previous = [#(value, editable), ..previous]
+          #(
+            State(previous, d.new(bindings.default(), e.Vacant), Ready),
+            effect.none(),
+          )
+        }
+        Error(reason) -> {
+          #(State(previous, current, Failed(reason)), effect.none())
+        }
+      }
     }
-    SourceLoaded(source) -> {
-      let current = d.new([], source)
-      #(State(state.previous, current, None), effect.none())
-    }
+    _, _ -> #(state, effect.none())
   }
 }
+
 //       Navigate, "Enter" ->
+
+fn do_load() {
+  use file_handles <- promise.try_await(file_system.show_open_file_picker())
+  let assert [file_handle] = array.to_list(file_handles)
+  use file <- promise.try_await(file_system.get_file(file_handle))
+  use text <- promise.map(file.text(file))
+  use source <- try(
+    decode.from_json(text)
+    |> result.map_error(fn(e) { string.inspect(e) }),
+  )
+  let source = a.add_annotation(source, Nil)
+  Ok(source)
+  // Ok(e.from_annotated(source))
+}

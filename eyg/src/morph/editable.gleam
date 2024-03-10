@@ -129,8 +129,9 @@ fn gather_destructure(node, var) -> #(Pattern, _) {
 fn do_gather_destructure(node, var, acc) {
   let #(exp, _meta) = node
   case exp {
-    a.Let(x, #(a.Apply(#(a.Select(l), _), #(a.Variable(v), _)), _), then) if v == var ->
-      do_gather_destructure(then, var, [#(l, x), ..acc])
+    a.Let(x, #(a.Apply(#(a.Select(l), _), #(a.Variable(v), _)), _), then)
+      if v == var
+    -> do_gather_destructure(then, var, [#(l, x), ..acc])
     _ -> #(list.reverse(acc), node)
   }
 }

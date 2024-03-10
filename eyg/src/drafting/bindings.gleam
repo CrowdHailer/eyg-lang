@@ -23,6 +23,7 @@ pub fn default() {
     Binding("create overwrite", action.overwrite, Some("o")),
     Binding("create tag", action.tag, Some("t")),
     Binding("create match", action.match, Some("m")),
+    Binding("create perform", action.perform, Some("p")),
     Binding("create builtin", action.builtin, Some("j")),
     Binding("extend", action.extend, Some(",")),
     Binding("spread list", action.spread_list, Some(".")),

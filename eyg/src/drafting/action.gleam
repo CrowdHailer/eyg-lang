@@ -113,6 +113,11 @@ pub fn match(projection) {
   Ok(#(projection, session.EditString("", rebuild)))
 }
 
+pub fn perform(projection) {
+  use rebuild <- try(transformation.perform(projection))
+  Ok(#(projection, session.EditString("", rebuild)))
+}
+
 pub fn builtin(projection) {
   use #(value, rebuild) <- try(transformation.builtin(projection))
   Ok(#(projection, session.EditString(value, rebuild)))

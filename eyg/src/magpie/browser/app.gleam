@@ -583,17 +583,19 @@ fn render_query(mode, connection, db) {
         |> list.append(case mode {
           // appended to show plus button inline but potentinaly the div of new values should not be inside
           // the div for the row of values
-          ChooseVariable(x) if x == i -> [
+          ChooseVariable(x)
+            if x == i
+          -> [
             el.div(
               [],
               list.map(
-                where_vars(where)
-                |> list.filter(fn(w) { !list.contains(find, w) }),
-                fn(v) {
-                  el.button([event.on_click(SelectVariable(v))], [text(v)])
-                },
-              )
-              |> list.intersperse(text(" ")),
+                  where_vars(where)
+                    |> list.filter(fn(w) { !list.contains(find, w) }),
+                  fn(v) {
+                    el.button([event.on_click(SelectVariable(v))], [text(v)])
+                  },
+                )
+                |> list.intersperse(text(" ")),
             ),
           ]
 

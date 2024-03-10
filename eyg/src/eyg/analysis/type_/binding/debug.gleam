@@ -44,7 +44,7 @@ pub fn render_type(typ) {
       string.concat([
         "{",
         render_row(row)
-        |> string.join(""),
+          |> string.join(""),
         "}",
       ])
     }
@@ -88,7 +88,7 @@ pub fn render_effects(effects) {
         "<",
         string.join(
           collect_effect(tail, [render_effect(label, lift, resume)])
-          |> list.reverse,
+            |> list.reverse,
           ", ",
         ),
         ">",
