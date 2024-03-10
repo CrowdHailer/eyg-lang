@@ -127,6 +127,7 @@ fn value_to_type(value) {
   // binding.gen(t, 0, bindings)
   t.Var(#(True, 0))
 }
+
 // TODO add a small initial script BUT i want std lib etc
 // Vars together for environment
 
@@ -142,17 +143,26 @@ pub fn type_errors(projection, env) {
   let env = env_to_type(env)
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
+  let eff =
+    list.fold(dict.keys(handlers()), t.Empty, fn(acc, k) {
+      t.EffectExtend(k, #(t.Var(0), t.Var(1)), acc)
+    })
   let #(_bindings, _, _, tree) =
-    infer.do_infer(source, env, t.Empty, 0, infer.new_state())
+    infer.do_infer(source, env, eff, 0, infer.new_state())
   let #(_, types) = a.strip_annotation(tree)
-  list.filter_map(types, fn(r) {
-    let #(r, _, _, _) = r
+  let #(_, paths) = a.strip_annotation(e.to_annotated(editable, []))
+  let pairs = list.zip(paths, types)
+  list.filter_map(pairs, fn(r) {
+    let #(rev, #(r, _, _, _)) = r
     case r {
       Ok(_) -> Error(Nil)
-      Error(reason) -> Ok(reason)
+      Error(reason) -> Ok(#(list.reverse(rev), reason))
     }
   })
-  |> list.map(tdebug.render_reason)
+  |> list.map(fn(pair) {
+    let #(path, reason) = pair
+    string.concat([string.inspect(path), " ", tdebug.render_reason(reason)])
+  })
 }
 
 pub fn update(state, message) {
@@ -166,17 +176,22 @@ pub fn update(state, message) {
             state,
             effect.from(fn(d) {
               let editable = projection.rebuild(zip)
-              let source = e.to_expression(editable)
-              let source = a.add_annotation(source, Nil)
+              let source = e.to_annotated(editable, [])
+              // let source = a.add_annotation(source, Nil)
               promise.map(
-                r.await(r.execute(source, env, handlers())),
+                r.await(r.execute(
+                  source,
+                  dynamic.unsafe_coerce(dynamic.from(env)),
+                  handlers(),
+                )),
                 fn(result) {
                   let result = case result {
                     Ok(value) -> {
                       let value = dynamic.unsafe_coerce(dynamic.from(value))
                       Ok(value)
                     }
-                    Error(#(reason, _, _, _)) -> {
+                    Error(#(reason, m, _, _)) -> {
+                      io.debug(m)
                       Error(fail.reason_to_string(reason))
                     }
                   }

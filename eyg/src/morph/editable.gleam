@@ -286,3 +286,126 @@ pub fn to_expression(source) {
     Builtin(identifier) -> e.Builtin(identifier)
   }
 }
+
+fn pattern_to_annotated(p, exp, rev) {
+  case p {
+    Bind(label) -> #(label, exp)
+    Destructure(ds) -> {
+      let exp =
+        list.fold_right(ds, exp, fn(acc, d) {
+          let #(label, var) = d
+          #(
+            a.Let(
+              var,
+              #(a.Apply(#(a.Select(label), rev), #(a.Variable("$"), rev)), rev),
+              acc,
+            ),
+            rev,
+          )
+        })
+      #("$", exp)
+    }
+  }
+}
+
+pub fn to_annotated(source, rev) {
+  case source {
+    Variable(x) -> #(a.Variable(x), rev)
+    Call(f, args) ->
+      list.index_fold(args, to_annotated(f, [0, ..rev]), fn(acc, arg, i) {
+        let arg = to_annotated(arg, [i + 1, ..rev])
+        #(a.Apply(acc, arg), rev)
+      })
+    Function(args, body) -> {
+      let len = list.length(args)
+      let body = to_annotated(body, [len, ..rev])
+
+      let assert #(0, exp) =
+        list.fold_right(args, #(len, body), fn(acc, arg) {
+          let #(i, acc) = acc
+          // start on body index
+          let i = i - 1
+          let #(var, body) = pattern_to_annotated(arg, acc, [i, ..rev])
+          #(i, #(a.Lambda(var, body), rev))
+        })
+      exp
+    }
+    Block(assigns, then) -> {
+      let len = list.length(assigns)
+      let assert #(0, exp) =
+        list.fold_right(
+          assigns,
+          #(len, to_annotated(then, [len, ..rev])),
+          fn(acc, assign) {
+            let #(i, acc) = acc
+            let i = i - 1
+            let #(pattern, value) = assign
+            let #(var, acc) = pattern_to_annotated(pattern, acc, [i, ..rev])
+            #(
+              i,
+              #(a.Let(var, to_annotated(value, [i, ..rev]), acc), [i, ..rev]),
+            )
+          },
+        )
+      exp
+    }
+    List(items, tail) -> {
+      // let tail =
+      //   tail
+      //   |> option.map(to_annotated)
+      //   |> option.unwrap(a.Tail)
+      // list.fold_right(items, tail, fn(acc, item) {
+      //   let item = to_annotated(item)
+      //   a.Apply(a.Apply(a.Cons, item), acc)
+      // })
+      todo
+    }
+
+    Record(fields, None) -> {
+      // list.fold_right(fields, a.Empty, fn(acc, field) {
+      //   let #(label, value) = field
+      //   let value = to_annotated(value)
+      //   a.Apply(a.Apply(a.Extend(label), value), acc)
+      // })
+      todo
+    }
+    Record(fields, Some(original)) -> {
+      // list.fold_right(fields, to_annotated(original), fn(acc, field) {
+      //   let #(label, value) = field
+      //   let value = to_annotated(value)
+      //   a.Apply(a.Apply(a.Overwrite(label), value), acc)
+      // })
+      todo
+    }
+    Select(from, label) -> {
+      // a.Apply(a.Select(label), to_annotated(from))
+      todo
+    }
+
+    Case(top, matches, otherwise) -> {
+      // let otherwise =
+      //   otherwise
+      //   |> option.map(to_annotated)
+      //   |> option.unwrap(a.NoCases)
+      // let matches =
+      //   list.fold_right(matches, otherwise, fn(acc, match) {
+      //     let #(label, value) = match
+      //     let value = to_annotated(value)
+      //     a.Apply(a.Apply(a.Case(label), value), acc)
+      //   })
+      // let top = to_annotated(top)
+      // a.Apply(matches, top)
+      todo
+    }
+    Vacant -> #(a.Vacant("TODO"), rev)
+    Integer(value) -> #(a.Integer(value), rev)
+    Binary(value) -> #(a.Binary(value), rev)
+    String(value) -> #(a.Str(value), rev)
+
+    Tag(label) -> #(a.Tag(label), rev)
+    Perform(label) -> #(a.Perform(label), rev)
+    Deep(label) -> #(a.Handle(label), rev)
+    Shallow(label) -> #(a.Shallow(label), rev)
+    Builtin(identifier) -> #(a.Builtin(identifier), rev)
+  }
+}
