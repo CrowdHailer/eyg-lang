@@ -11,6 +11,7 @@ import harness/stdlib
 pub type Mode {
   Navigate
   SelectAction(search: String, suggestions: List(Binding), index: Int)
+  SelectVariable(search: String, index: Int, rebuild: fn(String) -> Projection)
   SelectBuiltin(
     search: String,
     suggestions: List(String),
@@ -57,7 +58,7 @@ pub fn handle_key(bindings, key, projection) {
   Ok(Session(bindings, projection, mode))
 }
 
-pub fn handle(session, message) {
+pub fn handle(session, message, get_vars) {
   let Session(bindings, projection, mode) = session
   utilities.update_focus()
   utilities.scroll_to()
@@ -86,12 +87,14 @@ pub fn handle(session, message) {
       Ok(Session(bindings, projection, mode))
     }
 
+    // suggestions from previous are not used maybe don't store
+    // but how does the index stay in sync
+    // Note if no suggest cleave can't exist
     SelectBuiltin(_, suggestions, index, rebuild), UpdateInput(value) -> {
       let suggestions =
         stdlib.env().builtins
         |> dict.keys()
         |> list.filter(string.contains(_, value))
-      // io.
 
       let mode = SelectBuiltin(value, suggestions, 0, rebuild)
       Ok(Session(..session, mode: mode))
@@ -110,6 +113,34 @@ pub fn handle(session, message) {
     SelectBuiltin(_, suggestions, index, rebuild), DoIt -> {
       let assert Ok(builtin) = list.at(suggestions, index)
       let projection = rebuild(builtin)
+      Ok(Session(bindings, projection, Navigate))
+    }
+
+    SelectVariable(_, index, rebuild), UpdateInput(value) -> {
+      let mode = SelectVariable(value, 0, rebuild)
+      Ok(Session(..session, mode: mode))
+    }
+    SelectVariable(search, index, rebuild), KeyDown("ArrowUp") -> {
+      let mode = SelectVariable(search, index - 1, rebuild)
+      Ok(Session(..session, mode: mode))
+    }
+    SelectVariable(search, index, rebuild), KeyDown("ArrowDown") -> {
+      let mode = SelectVariable(search, index + 1, rebuild)
+
+      Ok(Session(..session, mode: mode))
+    }
+    SelectVariable(_, _, _), KeyDown(_) -> Ok(session)
+    SelectVariable(value, index, rebuild), DoIt -> {
+      // let assert Ok(builtin) = list.at(suggestions, index)
+      // let projection = rebuild(builtin)
+      // Ok(Session(bindings, projection, Navigate))
+
+// TODO what is the best way to pass suggestions around
+      let vars = get_vars()
+      let vars = list.filter(vars, string.contains(_, value))
+      let index = index % list.length(vars)
+      let assert Ok(variable) = list.at(vars, index)
+      let projection = rebuild(variable)
       Ok(Session(bindings, projection, Navigate))
     }
 

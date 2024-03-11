@@ -12,6 +12,6 @@ pub fn init(_) {
 }
 
 pub fn update(state, message) {
-  let assert Ok(session) = session.handle(state, message)
+  let assert Ok(session) = session.handle(state, message, fn() { [] })
   #(session, effect.none())
 }

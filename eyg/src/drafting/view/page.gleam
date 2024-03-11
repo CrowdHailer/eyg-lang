@@ -19,6 +19,7 @@ pub fn render(app) {
       session.EditString(value, _rebuild) -> overlay([string_input(value)])
       session.SelectBuiltin(value, suggestions, index, _) ->
         overlay([select_builtin(value, suggestions, index)])
+      session.SelectVariable(_, _, _) -> todo
     }),
     h.div(
       [

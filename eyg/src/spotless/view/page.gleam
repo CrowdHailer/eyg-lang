@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/string
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
@@ -82,6 +83,16 @@ pub fn render(app) {
       d.SelectBuiltin(value, suggestions, index, _) ->
         overlay([
           page.select_builtin(value, suggestions, index)
+          |> element.map(state.Drafting),
+        ])
+      d.SelectVariable(value, index, _) ->
+        overlay([
+          {
+            let vars = state.vars_from_env(env)
+            let vars = list.filter(vars, string.contains(_, value))
+            let index = index % list.length(vars)
+            page.select_builtin(value, vars, index)
+          }
           |> element.map(state.Drafting),
         ])
     }),

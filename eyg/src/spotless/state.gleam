@@ -139,6 +139,14 @@ fn env_to_type(env: state.Env(Nil)) -> List(#(String, binding.Poly)) {
   })
 }
 
+pub fn vars_from_env(env: state.Env(Nil)) {
+  env.scope
+  |> list.map(fn(pair) {
+    let #(var, value) = pair
+    var
+  })
+}
+
 pub fn type_errors(projection, env) {
   let env = env_to_type(env)
   let editable = projection.rebuild(projection)
@@ -207,7 +215,7 @@ pub fn update(state, message) {
       }
     }
     Drafting(m), Ready | Drafting(m), Failed(_) -> {
-      case d.handle(current, m) {
+      case d.handle(current, m, fn() { vars_from_env(env) }) {
         Ok(current) -> #(
           State(..state, current: current, executing: Ready),
           effect.none(),

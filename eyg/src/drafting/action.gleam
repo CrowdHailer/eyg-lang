@@ -51,7 +51,7 @@ pub fn edit(projection) {
 
 pub fn variable(projection) {
   use rebuild <- try(transformation.variable(projection))
-  Ok(#(projection, session.EditString("", rebuild)))
+  Ok(#(projection, session.SelectVariable("", 0, rebuild)))
 }
 
 pub fn function(projection) {
