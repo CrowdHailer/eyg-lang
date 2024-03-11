@@ -17,6 +17,8 @@ pub fn render(app) {
       session.SelectAction(search, actions, index) ->
         overlay([pallet(search, actions, index)])
       session.EditString(value, _rebuild) -> overlay([string_input(value)])
+      session.SelectBuiltin(value, suggestions, index, _) ->
+        overlay([select_builtin(value, suggestions, index)])
     }),
     h.div(
       [
@@ -83,6 +85,45 @@ pub fn pallet(search, actions, index) {
   ])
 }
 
+pub fn select_builtin(search, suggestions, index) {
+  h.form([event.on_submit(session.DoIt)], [
+    h.div([a.class("w-full p-2")], []),
+    h.input([
+      a.class(
+        "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
+      ),
+      a.id("focus-input"),
+      a.value(dynamic.from(search)),
+      // a.autofocus(True),
+      a.attribute("autocomplete", "off"),
+      a.attribute("autofocus", "true"),
+      event.on_keydown(session.KeyDown),
+      event.on_input(session.UpdateInput),
+    ]),
+    h.hr([a.class("mx-40 my-3 border-green-700")]),
+    ..list.index_map(suggestions, fn(name, i) {
+      h.div(
+        [a.class("px-4 py-2 flex"), a.classes([#("bg-gray-800", i == index)])],
+        // event.on_click(state.Do(apply)),
+        [h.span([], [text(name)]), h.span([a.class("flex-grow")], [])],
+      )
+    })
+  ])
+  // h.span([], case shortkey {
+  //   Some(k) -> [
+  //     h.span(
+  //       [
+  //         a.class(
+  //           "border rounded w-5 leading-snug inline-block font-mono text-center",
+  //         ),
+  //       ],
+  //       [text(k)],
+  //     ),
+  //   ]
+  //   None -> []
+  // }),
+}
+
 pub fn string_input(value) {
   h.form([event.on_submit(session.DoIt)], [
     h.div([a.class("w-full p-2")], []),
@@ -92,24 +133,12 @@ pub fn string_input(value) {
       ),
       a.id("focus-input"),
       a.value(dynamic.from(value)),
-      // a.autofocus(True),
       a.attribute("autofocus", "true"),
       event.on_keydown(session.KeyDown),
       event.on_input(session.UpdateInput),
     ]),
     h.hr([a.class("mx-40 my-3 border-green-700")]),
   ])
-  // ..list.index_map(actions, fn(action, i) {
-  //   let #(name, apply) = action
-  //   h.div(
-  //     [
-  //       a.class("px-4 py-2"),
-  //       a.classes([#("bg-gray-800", i == index)]),
-  //       event.on_click(state.Do(apply)),
-  //     ],
-  //     [text(name)],
-  //   )
-  // })
 }
 
 fn overlay(content) {

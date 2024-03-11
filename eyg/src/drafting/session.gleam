@@ -1,12 +1,22 @@
+import gleam/dict
+import gleam/int
 import gleam/list
 import gleam/option.{type Option, Some}
 import gleam/result.{try}
+import gleam/string
 import morph/projection.{type Projection}
 import drafting/view/utilities
+import harness/stdlib
 
 pub type Mode {
   Navigate
   SelectAction(search: String, suggestions: List(Binding), index: Int)
+  SelectBuiltin(
+    search: String,
+    suggestions: List(String),
+    index: Int,
+    rebuild: fn(String) -> Projection,
+  )
   EditString(String, fn(String) -> Projection)
 }
 
@@ -63,19 +73,47 @@ pub fn handle(session, message) {
       Ok(Session(..session, mode: move_selection(search, actions, index, 1)))
     // TODO select action enter
     _, KeyDown("Escape") -> Ok(Session(..session, mode: Navigate))
-    _, KeyDown(_) -> Ok(session)
+    SelectAction(_, _, _), KeyDown(_) -> Ok(session)
 
     Navigate, UpdateInput(_) -> panic as "this state should never arrise"
     SelectAction(_, suggestions, index), UpdateInput(value) ->
       Ok(Session(..session, mode: SelectAction(value, suggestions, index)))
     EditString(_, rebuild), UpdateInput(value) ->
       Ok(Session(..session, mode: EditString(value, rebuild)))
-
     SelectAction(_, actions, index), DoIt -> {
       let assert Ok(Binding(_, action, _)) = list.at(actions, index)
       use #(projection, mode) <- try(action(projection))
       Ok(Session(bindings, projection, mode))
     }
+
+    SelectBuiltin(_, suggestions, index, rebuild), UpdateInput(value) -> {
+      let suggestions =
+        stdlib.env().builtins
+        |> dict.keys()
+        |> list.filter(string.contains(_, value))
+      // io.
+
+      let mode = SelectBuiltin(value, suggestions, 0, rebuild)
+      Ok(Session(..session, mode: mode))
+    }
+    SelectBuiltin(search, suggestions, index, rebuild), KeyDown("ArrowUp") -> {
+      let index = int.clamp(index - 1, 0, list.length(suggestions))
+      let mode = SelectBuiltin(search, suggestions, index, rebuild)
+      Ok(Session(..session, mode: mode))
+    }
+    SelectBuiltin(search, suggestions, index, rebuild), KeyDown("ArrowDown") -> {
+      let index = int.clamp(index + 1, 0, list.length(suggestions))
+      let mode = SelectBuiltin(search, suggestions, index, rebuild)
+      Ok(Session(..session, mode: mode))
+    }
+    SelectBuiltin(_, _, _, _), KeyDown(_) -> Ok(session)
+    SelectBuiltin(_, suggestions, index, rebuild), DoIt -> {
+      let assert Ok(builtin) = list.at(suggestions, index)
+      let projection = rebuild(builtin)
+      Ok(Session(bindings, projection, Navigate))
+    }
+
+    EditString(value, rebuild), KeyDown(_) -> Ok(session)
     EditString(value, rebuild), DoIt ->
       Ok(Session(bindings, rebuild(value), Navigate))
     Navigate, DoIt -> panic as "nothing to do in navigate mode"

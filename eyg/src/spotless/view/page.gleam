@@ -79,6 +79,11 @@ pub fn render(app) {
           page.string_input(value)
           |> element.map(state.Drafting),
         ])
+      d.SelectBuiltin(value, suggestions, index, _) ->
+        overlay([
+          page.select_builtin(value, suggestions, index)
+          |> element.map(state.Drafting),
+        ])
     }),
   ])
 }

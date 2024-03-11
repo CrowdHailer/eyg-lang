@@ -123,9 +123,10 @@ pub fn perform(projection) {
   Ok(#(projection, session.EditString("", rebuild)))
 }
 
+// transformation does not say anything about Builtins but we know that it must be a builtin we are looking for
 pub fn builtin(projection) {
   use #(value, rebuild) <- try(transformation.builtin(projection))
-  Ok(#(projection, session.EditString(value, rebuild)))
+  Ok(#(projection, session.SelectBuiltin(value, [], 0, rebuild)))
 }
 
 pub fn extend(projection) {
