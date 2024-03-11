@@ -248,6 +248,7 @@ pub fn text(scope) {
       use #(content, build) <- try(case exp {
         e.Variable(x) -> Ok(#(x, e.Variable))
         e.String(content) -> Ok(#(content, e.String))
+        e.Select(inner, label) -> Ok(#(label, e.Select(inner, _)))
         e.Tag(content) -> Ok(#(content, e.Tag))
         e.Perform(label) -> Ok(#(label, e.Perform))
         e.Builtin(identifier) -> Ok(#(identifier, e.Builtin))

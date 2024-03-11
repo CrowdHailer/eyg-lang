@@ -150,6 +150,9 @@ pub fn move_right(zip) {
       p.Exp(new),
       [p.OverwriteTail([#(l, exp), ..pre]), ..rest],
     )
+    #(p.Exp(inner), [p.SelectValue(label), ..rest]) -> {
+      #(p.Exp(e.Select(inner, label)), rest)
+    }
     #(p.Exp(top), [p.CaseTop([#(label, branch), ..post], otherwise), ..rest]) -> {
       #(p.Match(top, label, branch, [], post, otherwise), rest)
     }

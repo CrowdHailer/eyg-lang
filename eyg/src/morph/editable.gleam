@@ -350,17 +350,21 @@ pub fn to_annotated(source, rev) {
       exp
     }
     List(items, tail) -> {
-      // let tail =
-      //   tail
-      //   |> option.map(to_annotated)
-      //   |> option.unwrap(a.Tail)
-      // list.fold_right(items, tail, fn(acc, item) {
-      //   let item = to_annotated(item)
-      //   a.Apply(a.Apply(a.Cons, item), acc)
-      // })
-      todo
-    }
+      let len = list.length(items)
+      let tail =
+        tail
+        |> option.map(to_annotated(_, [len, ..rev]))
+        |> option.unwrap(#(a.Tail, [len, ..rev]))
+      let assert #(0, exp) =
+        list.fold_right(items, #(len, tail), fn(acc, item) {
+          let #(i, acc) = acc
+          let i = i - 1
 
+          let item = to_annotated(item, [i, ..rev])
+          #(i, #(a.Apply(#(a.Apply(#(a.Cons, rev), item), rev), acc), rev))
+        })
+      exp
+    }
     Record(fields, None) -> {
       // list.fold_right(fields, a.Empty, fn(acc, field) {
       //   let #(label, value) = field
@@ -378,8 +382,10 @@ pub fn to_annotated(source, rev) {
       todo
     }
     Select(from, label) -> {
-      // a.Apply(a.Select(label), to_annotated(from))
-      todo
+      #(
+        a.Apply(#(a.Select(label), [0, ..rev]), to_annotated(from, [1, ..rev])),
+        rev,
+      )
     }
 
     Case(top, matches, otherwise) -> {

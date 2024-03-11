@@ -135,7 +135,7 @@ pub fn handle(session, message, get_vars) {
       // let projection = rebuild(builtin)
       // Ok(Session(bindings, projection, Navigate))
 
-// TODO what is the best way to pass suggestions around
+      // TODO what is the best way to pass suggestions around
       let vars = get_vars()
       let vars = list.filter(vars, string.contains(_, value))
       let index = index % list.length(vars)
