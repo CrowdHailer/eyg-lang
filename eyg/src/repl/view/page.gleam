@@ -113,7 +113,14 @@ fn render_history(history) {
 
 fn execute_statement(state) {
   let State(state, src, bindings, _reason, history) = state
-  let assert Ok(#(term, _)) = reader.parse(src)
+  let term = case reader.parse(src) {
+    Ok(#(term, _)) -> term
+    other -> {
+      io.debug(other)
+      panic as "failed to read statement"
+    }
+  }
+
   case runner.read_live(term, state) {
     Ok(#(value, state)) -> {
       let #(output, bindings) = case value {
@@ -148,8 +155,8 @@ pub fn render_value(value) {
       string.concat([
         "[",
         list.map(items, render_value)
-        |> list.intersperse(", ")
-        |> string.concat,
+          |> list.intersperse(", ")
+          |> string.concat,
         "]",
       ])
     v.R(constructor, []) -> constructor
@@ -173,12 +180,12 @@ pub fn render_value(value) {
         "fn ",
         "(",
         list.map(args, fn(p: glance.FunctionParameter) {
-          option.unwrap(p.label, case p.name {
-            glance.Named(name) | glance.Discarded(name) -> name
+            option.unwrap(p.label, case p.name {
+              glance.Named(name) | glance.Discarded(name) -> name
+            })
           })
-        })
-        |> list.intersperse(", ")
-        |> string.concat(),
+          |> list.intersperse(", ")
+          |> string.concat(),
         ")",
       ])
     item -> string.inspect(item)
