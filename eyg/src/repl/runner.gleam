@@ -69,6 +69,7 @@ pub fn read(declaration, state) {
         Error(reason) -> Error(reason)
       }
     }
+    reader.Import(_, _, _) -> panic as "import not supported"
   }
 }
 

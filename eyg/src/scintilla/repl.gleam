@@ -48,6 +48,7 @@ pub fn declare(declaration, state) {
         }
       }
     }
+    _ -> panic as "unsupported in repl"
   }
 }
 

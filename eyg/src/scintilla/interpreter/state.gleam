@@ -176,7 +176,7 @@ pub fn assign_pattern(env, pattern, value) {
             g.Discarded(_) -> Ok(env)
             g.Named(name) -> Ok(dict.insert(env, name, v.S(rest)))
           }
-        Error(Nil) -> Error(r.FailedAssignment(pattern, value))
+        _ -> Error(r.FailedAssignment(pattern, value))
       }
     g.PatternConcatenate(_, _), unexpected ->
       Error(r.IncorrectTerm("String", unexpected))
@@ -210,7 +210,8 @@ pub fn assign_pattern(env, pattern, value) {
           case list.strict_zip(args, fields) {
             Ok(pairs) ->
               list.try_fold(pairs, env, fn(env, pair) {
-                let #(g.Field(None, p), g.Field(None, value)) = pair
+                // Don't support named pattern matching yet
+                let assert #(g.Field(None, p), g.Field(None, value)) = pair
                 assign_pattern(env, p, value)
               })
             Error(_) ->
@@ -230,6 +231,7 @@ pub fn assign_pattern(env, pattern, value) {
       use env <- try(assign_pattern(env, pattern, value))
       Ok(dict.insert(env, name, value))
     }
+    _, _ -> panic as "not all patterns are handled yet"
   }
 }
 
@@ -252,7 +254,8 @@ pub fn apply(value, env, k, ks) {
       use env <- try(assign_pattern(env, pattern, value))
       case ks {
         [Continue(statements), ..ks] -> push_statements(statements, env, ks)
-        [] -> Error(r.Finished(env))
+        // Assign must be followed by more statements
+        _ -> Error(r.Finished(env))
       }
     }
     Args([]) -> {
@@ -276,12 +279,12 @@ pub fn apply(value, env, k, ks) {
     }
     CaptureArgs([first, ..before], after) -> {
       let ks = [BuildBefore(value, before, [], after), ..ks]
-      let g.Field(None, first) = first
+      let assert g.Field(None, first) = first
       Ok(#(E(first), env, ks))
     }
     CaptureArgs([], [first, ..after]) -> {
       let ks = [BuildAfter(value, [], after, []), ..ks]
-      let g.Field(None, first) = first
+      let assert g.Field(None, first) = first
       Ok(#(E(first), env, ks))
     }
     CaptureArgs([], []) -> {
@@ -291,7 +294,7 @@ pub fn apply(value, env, k, ks) {
     BuildBefore(f, [first, ..expressions], values, after) -> {
       let values = [value, ..values]
       let ks = [BuildBefore(f, expressions, values, after), ..ks]
-      let g.Field(None, first) = first
+      let assert g.Field(None, first) = first
       Ok(#(E(first), env, ks))
     }
     BuildBefore(f, [], values, after) -> {
@@ -303,7 +306,7 @@ pub fn apply(value, env, k, ks) {
         }
         [first, ..expressions] -> {
           let ks = [BuildAfter(f, values, expressions, []), ..ks]
-          let g.Field(None, first) = first
+          let assert g.Field(None, first) = first
           Ok(#(E(first), env, ks))
         }
       }
@@ -311,7 +314,7 @@ pub fn apply(value, env, k, ks) {
     BuildAfter(f, before, [first, ..expressions], values) -> {
       let values = [value, ..values]
       let ks = [BuildAfter(f, before, expressions, values), ..ks]
-      let g.Field(None, first) = first
+      let assert g.Field(None, first) = first
       Ok(#(E(first), env, ks))
     }
     BuildAfter(f, before, [], values) -> {
@@ -358,6 +361,7 @@ pub fn apply(value, env, k, ks) {
       use original <- try(case value {
         // TODO module match
         v.R(c, fields) if c == constructor -> Ok(fields)
+        _ -> Error(r.IncorrectTerm("Record", value))
       })
       case updates {
         [#(label, exp), ..updates] -> {
@@ -454,10 +458,8 @@ pub fn access_module(module: g.Module, field) {
             #(name, v.Constructor(name, labels))
           })
         })
-      // |> io.debug()
-      case list.key_find(constructors, field) {
-        Ok(value) -> Ok(value)
-      }
+      list.key_find(constructors, field)
+      |> result.replace_error(r.MissingField(field))
     }
   }
 }

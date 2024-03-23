@@ -6,9 +6,7 @@ import gleam/result
 import gleam/javascript/array.{type Array}
 import gleeunit/should
 
-// TODO needs to be top level or bundled with source when building
-// @external(javascript, "/opt/app/eyg/src/movies.mjs", "movies")
-@external(javascript, "/Users/petersaxton/src/github.com/crowdhailer/eyg-lang/eyg/src/movies.mjs", "movies")
+@external(javascript, "./movies.mjs", "movies")
 fn do_movies() -> Array(#(Int, String, Dynamic))
 
 pub type Value {
