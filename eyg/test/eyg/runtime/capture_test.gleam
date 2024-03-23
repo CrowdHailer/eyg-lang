@@ -1,5 +1,6 @@
 import gleam/dict
 import eygir/expression as e
+import eygir/annotated as a
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eyg/runtime/break
@@ -10,6 +11,7 @@ import gleeunit/should
 
 fn round_trip(term) {
   capture.capture(term)
+  |> a.add_annotation(Nil)
   |> r.execute(env.empty(), dict.new())
 }
 
@@ -33,7 +35,8 @@ pub fn literal_test() {
   check_term(v.Tagged("Outer", v.Tagged("Inner", v.Integer(0))))
 }
 
-pub fn run(source, env, args, extrinsic) {
+fn run(source, env, args, extrinsic) {
+  let source = a.add_annotation(source, Nil)
   case r.execute(source, env, extrinsic) {
     // env not needed in resume but it is in the original execute call, for builtins
     Ok(f) -> r.resume(f, args, env, extrinsic)
@@ -44,7 +47,7 @@ pub fn run(source, env, args, extrinsic) {
 pub fn simple_fn_test() {
   let exp = e.Lambda("_", e.Str("hello"))
 
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("hello")))
@@ -63,7 +66,7 @@ pub fn nested_fn_test() {
       ),
     )
 
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let captured = capture.capture(term)
 
   let e = env.empty()
@@ -74,7 +77,7 @@ pub fn nested_fn_test() {
 pub fn single_let_capture_test() {
   let exp = e.Let("a", e.Str("external"), e.Lambda("_", e.Variable("a")))
 
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("external")))
@@ -84,7 +87,7 @@ pub fn single_let_capture_test() {
 pub fn duplicate_capture_test() {
   let func = e.Lambda("_", e.Let("_", e.Variable("std"), e.Variable("std")))
   let exp = e.Let("std", e.Str("Standard"), func)
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> should.equal(exp)
 }
@@ -100,7 +103,7 @@ pub fn ordered_capture_test() {
         e.Lambda("_", e.Let("inner", e.Variable("a"), e.Variable("b"))),
       ),
     )
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> should.equal(exp)
 }
@@ -112,7 +115,7 @@ pub fn ordered_fn_capture_test() {
       e.Str("A"),
       e.Let("b", e.Lambda("_", e.Variable("a")), e.Lambda("_", e.Variable("b"))),
     )
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> should.equal(exp)
 }
@@ -125,7 +128,7 @@ pub fn capture_shadowed_variable_test() {
       e.Let("a", e.Str("second"), e.Lambda("_", e.Variable("a"))),
     )
 
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("second")))
@@ -142,7 +145,7 @@ pub fn only_needed_values_captured_test() {
         e.Let("c", e.Str("yes"), e.Lambda("_", e.Variable("c"))),
       ),
     )
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> should.equal(e.Let("c", e.Str("yes"), e.Lambda("_", e.Variable("c"))))
 }
@@ -166,7 +169,7 @@ pub fn double_catch_test() {
         ),
       ),
     )
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> should.equal(e.Let(
     "std",
@@ -192,7 +195,7 @@ pub fn fn_in_env_test() {
         e.Lambda("_", e.Apply(e.Variable("a"), e.Empty)),
       ),
     )
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("value")))
@@ -201,7 +204,7 @@ pub fn fn_in_env_test() {
 pub fn tagged_test() {
   let exp = e.Tag("Ok")
   let env = env.empty()
-  let assert Ok(term) = r.execute(exp, env, dict.new())
+  let assert Ok(term) = run(exp, env, [], dict.new())
 
   let arg = v.Str("later")
   capture.capture(term)
@@ -216,7 +219,7 @@ pub fn case_test() {
       e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Str("bad"))), e.NoCases),
     )
 
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let next = capture.capture(term)
 
   let arg = v.Tagged("Ok", v.unit)
@@ -233,10 +236,10 @@ pub fn case_test() {
 pub fn partial_case_test() {
   let exp = e.Apply(e.Case("Ok"), e.Lambda("_", e.Str("good")))
 
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let rest =
     e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Str("bad"))), e.NoCases)
-  let assert Ok(rest) = r.execute(rest, env.empty(), dict.new())
+  let assert Ok(rest) = run(rest, env.empty(), [], dict.new())
 
   let next = capture.capture(term)
 
@@ -259,18 +262,18 @@ pub fn handler_test() {
         e.Lambda("_k", e.Apply(e.Tag("Error"), e.Variable("value"))),
       ),
     )
-  let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let next = capture.capture(term)
 
   let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Str("some string")))
-  let assert Ok(exec) = r.execute(exec, env.empty(), dict.new())
+  let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
 
   next
   |> run(env.empty(), [exec], dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("some string"))))
 
   let exec = e.Lambda("_", e.Apply(e.Perform("Abort"), e.Str("failure")))
-  let assert Ok(exec) = r.execute(exec, env.empty(), dict.new())
+  let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
 
   next
   |> run(env.empty(), [exec], dict.new())
@@ -306,7 +309,7 @@ pub fn handler_test() {
 pub fn builtin_arity1_test() {
   let env = stdlib.env()
   let exp = e.Builtin("list_pop")
-  let assert Ok(term) = r.execute(exp, env, dict.new())
+  let assert Ok(term) = run(exp, env, [], dict.new())
   let next = capture.capture(term)
 
   let split =
@@ -330,7 +333,7 @@ pub fn builtin_arity1_test() {
         e.Apply(e.Apply(e.Cons, e.Integer(2)), e.Tail),
       ),
     )
-  r.execute(exp, stdlib.env(), dict.new())
+  run(exp, stdlib.env(), [], dict.new())
   |> should.equal(Ok(split))
 }
 
@@ -342,21 +345,21 @@ pub fn builtin_arity3_test() {
       e.Apply(e.Apply(e.Cons, e.Integer(2)), e.Tail),
     )
   let exp = e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Integer(0))
-  let assert Ok(term) = r.execute(exp, env, dict.new())
+  let assert Ok(term) = run(exp, env, [], dict.new())
   let next = capture.capture(term)
 
   let ret = run(next, env, [v.Str("not a function")], dict.new())
-  let assert Error(#(break.NotAFunction(v.Str("not a function")), [], _, _)) =
+  let assert Error(#(break.NotAFunction(v.Str("not a function")), Nil, _, _)) =
     ret
 
   let reduce_exp = e.Lambda("el", e.Lambda("acc", e.Variable("el")))
-  let assert Ok(reduce) = r.execute(reduce_exp, env, dict.new())
+  let assert Ok(reduce) = run(reduce_exp, env, [], dict.new())
   next
   |> run(env, [reduce], dict.new())
   |> should.equal(Ok(v.Integer(2)))
 
   // same as complete eval
   let exp = e.Apply(exp, reduce_exp)
-  r.execute(exp, env, dict.new())
+  run(exp, env, [], dict.new())
   |> should.equal(Ok(v.Integer(2)))
 }

@@ -1,6 +1,6 @@
-FROM rust:1.74.1 AS build
+FROM rust:1.76.0 AS build
 
-ENV SHA="v0.34.1"
+ENV SHA="v1.0.0"
 RUN set -xe \
         && curl -fSL -o gleam-src.tar.gz "https://github.com/gleam-lang/gleam/archive/${SHA}.tar.gz" \
         && mkdir -p /usr/src/gleam-src \
@@ -13,16 +13,7 @@ RUN set -xe \
 WORKDIR /opt/app
 # RUN cargo install watchexec-cli
 
-# FROM elixir:1.12.2
-FROM node:20.5.1 AS gleam
-
-COPY --from=build /usr/local/cargo/bin/gleam /bin
-# COPY --from=build /usr/local/cargo/bin/watchexec /bin
-RUN gleam --version
-
-CMD ["gleam"]
-
-FROM node:20.5.1
+FROM node:21.7.0
 
 COPY --from=build /usr/local/cargo/bin/gleam /bin
 # COPY --from=build /usr/local/cargo/bin/watchexec /bin

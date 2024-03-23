@@ -12,6 +12,7 @@ import gleam/http
 import gleam/http/request
 import gleam/http/response
 import gleam/fetch
+import eygir/annotated as a
 import eygir/expression as e
 import eygir/encode
 import eygir/decode
@@ -25,17 +26,19 @@ import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/jm/env as tenv
 import easel/print
-import easel/zipper
+import easel/expression/zipper
 import atelier/view/type_
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
 import plinth/browser/file_system
 import plinth/browser/file
-// import plinth/browser/blob
-import old_plinth/browser/window as old_window
+import plinth/browser/selection
+import plinth/browser/range
 import old_plinth/browser/document
 import platforms/browser
+import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/isomorphic as tj
 
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup
@@ -75,13 +78,13 @@ pub type Embed {
   Embed(
     mode: Mode,
     yanked: Option(e.Expression),
-    env: #(state.Env, t.Substitutions, Int, tenv.Env),
+    env: #(state.Env(Nil), t.Substitutions, Int, tenv.Env),
     source: e.Expression,
     history: History,
     auto_infer: Bool,
     inferred: Option(tree.State),
     // not actually used but I think useful for clearing run value
-    returned: Option(state.Return),
+    returned: Option(state.Return(Nil)),
     rendered: #(List(print.Rendered), dict.Dict(String, Int)),
     focus: Option(List(Int)),
   )
@@ -124,13 +127,17 @@ pub fn handle_click(root, event) {
         // let #(Ok(v.Closure(_, source, _e2, rev)), env) =
         //   r.resumable(source, stdlib.env(), None)
         // let assert Ok(tenv) = dict.get(envs, rev)
+        io.debug("inferring")
+        j.infer(source, tj.Empty, 0, j.new_state())
+        io.debug("inferred")
+
         let env = stdlib.env()
         let sub = dict.new()
         let next = 0
         let tenv = dict.new()
         let cache = #(env, sub, next, tenv)
-        let inferred =
-          Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
+        let inferred = None
+        //   Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
         let rendered = print.print(source, Some([]), False, inferred)
         let assert Ok(start) = dict.get(rendered.1, print.path_to_string([]))
@@ -193,8 +200,8 @@ pub fn start_easel_at(root, start, state) {
     "selectionchange",
     fn(_event) {
       let _ = {
-        use selection <- result.then(old_window.get_selection())
-        use range <- result.then(old_window.get_range_at(selection, 0))
+        use selection <- result.then(selection.get_selection())
+        use range <- result.then(selection.get_range_at(selection, 0))
         let start = start_index(range)
         let end = end_index(range)
         javascript.update_reference(ref, fn(state) {
@@ -300,11 +307,12 @@ pub fn fullscreen(root) {
   Nil
 }
 
+// These iterate through spans so needs some thought to change
 @external(javascript, "../easel_ffi.js", "startIndex")
-fn start_index(a: old_window.Range) -> Int
+fn start_index(a: range.Range) -> Int
 
 @external(javascript, "../easel_ffi.js", "endIndex")
-fn end_index(a: old_window.Range) -> Int
+fn end_index(a: range.Range) -> Int
 
 fn render_page(root, start, state) {
   case document.query_selector(root, "pre") {
@@ -355,9 +363,10 @@ pub fn snippet(root) {
 
       let #(#(sub, next, _types), envs) =
         tree.infer(source, t.Var(-1), t.Var(-2))
-      let assert Ok(v.Closure(_, source, _e2, rev)) =
-        r.execute(source, stdlib.env(), dict.new())
-      let assert Ok(tenv) = dict.get(envs, rev)
+      let assert Ok(v.Closure(_, source, _e2)) =
+        execute(source, stdlib.env(), dict.new())
+      let assert Ok(tenv) = dict.get(envs, [])
+      let source = a.drop_annotation(source)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
@@ -388,6 +397,11 @@ pub fn snippet(root) {
   }
 }
 
+fn execute(source, env, handlers) {
+  let source = a.add_annotation(source, Nil)
+  r.execute(source, env, handlers)
+}
+
 // remove once we use snippet everywhere
 pub fn init(json) {
   io.debug("init easil")
@@ -396,18 +410,18 @@ pub fn init(json) {
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 
   let #(env, source, sub, next, tenv) = case
-    r.execute(source, stdlib.env(), dict.new())
+    execute(source, stdlib.env(), dict.new())
   {
-    Ok(v.Closure(_, source, env, rev)) -> {
-      let tenv = case dict.get(envs, rev) {
+    Ok(v.Closure(_, source, env)) -> {
+      let tenv = case dict.get(envs, []) {
         Ok(tenv) -> tenv
         Error(Nil) -> {
-          io.debug(#("no env foud at rev", rev))
+          io.debug(#("no env foud at rev", []))
           dict.new()
         }
       }
 
-      #(stdlib.env(), source, sub, next, tenv)
+      #(stdlib.env(), a.drop_annotation(source), sub, next, tenv)
     }
     _ -> #(env, source, dict.new(), 0, dict.new())
   }
@@ -735,8 +749,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                       #(
                         e.Integer(value),
                         [],
-                        cut_start
-                        + string.length(data),
+                        cut_start + string.length(data),
                         True,
                       )
                     }
@@ -869,8 +882,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   focus: Some(path),
                   rendered: rendered,
                 ),
-                start
-                + offset,
+                start + offset,
                 [],
               )
             }
@@ -900,7 +912,7 @@ fn run(state: Embed) {
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)
-  let ret = r.execute(source, env, handlers)
+  let ret = execute(source, env, handlers)
   case ret {
     // Only render promises if we are in Async return.
     // returning a promise as a value should be rendered as a promise value
@@ -1238,8 +1250,7 @@ pub fn insert_paragraph(index, state: Embed) {
       rendered: rendered,
       focus: Some(path),
     ),
-    start
-    + offset,
+    start + offset,
   )
 }
 

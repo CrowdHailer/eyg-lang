@@ -10,6 +10,7 @@ import gleam/javascript/array.{type Array}
 import gleam/javascript/promise.{type Promise}
 import plinth/javascript/console
 import eygir/expression as e
+import eygir/annotated as e2
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
@@ -48,7 +49,8 @@ pub fn serve() {
         })
       })
     let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
-    Ok(v.Closure("_", body, [], []))
+    let body = e2.add_annotation(body, Nil)
+    Ok(v.Closure("_", body, []))
   })
 }
 

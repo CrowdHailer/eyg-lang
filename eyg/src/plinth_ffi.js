@@ -57,24 +57,6 @@ export function getTargetRange(event) {
   return event.getTargetRanges()[0];
 }
 
-// -------- window/selection --------
-
-export function getSelection() {
-  const selection = window.getSelection();
-  if (!selection) {
-    return new Error();
-  }
-  return new Ok(selection);
-}
-
-export function getRangeAt(selection, index) {
-  const range = selection.getRangeAt(0);
-  if (!range) {
-    return new Error();
-  }
-  return new Ok(range);
-}
-
 // -------- document --------
 
 export function querySelector(el, query) {

@@ -32,7 +32,7 @@ fn do_compare(left, right, rev, env, k) {
     Eq -> v.Tagged("Eq", v.unit)
     Gt -> v.Tagged("Gt", v.unit)
   }
-  Ok(#(state.V(return), rev, env, k))
+  Ok(#(state.V(return), env, k))
 }
 
 pub fn add() {
@@ -44,7 +44,7 @@ pub fn add() {
 fn do_add(left, right, rev, env, k) {
   use left <- result.then(cast.as_integer(left))
   use right <- result.then(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left + right)), rev, env, k))
+  Ok(#(state.V(v.Integer(left + right)), env, k))
 }
 
 pub fn subtract() {
@@ -56,7 +56,7 @@ pub fn subtract() {
 fn do_subtract(left, right, rev, env, k) {
   use left <- result.then(cast.as_integer(left))
   use right <- result.then(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left - right)), rev, env, k))
+  Ok(#(state.V(v.Integer(left - right)), env, k))
 }
 
 pub fn multiply() {
@@ -68,7 +68,7 @@ pub fn multiply() {
 fn do_multiply(left, right, rev, env, k) {
   use left <- result.then(cast.as_integer(left))
   use right <- result.then(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left * right)), rev, env, k))
+  Ok(#(state.V(v.Integer(left * right)), env, k))
 }
 
 pub fn divide() {
@@ -84,7 +84,7 @@ fn do_divide(left, right, rev, env, k) {
     0 -> v.error(v.unit)
     _ -> v.ok(v.Integer(left / right))
   }
-  Ok(#(state.V(value), rev, env, k))
+  Ok(#(state.V(value), env, k))
 }
 
 pub fn absolute() {
@@ -94,7 +94,7 @@ pub fn absolute() {
 
 fn do_absolute(x, rev, env, k) {
   use x <- result.then(cast.as_integer(x))
-  Ok(#(state.V(v.Integer(int.absolute_value(x))), rev, env, k))
+  Ok(#(state.V(v.Integer(int.absolute_value(x))), env, k))
 }
 
 pub fn parse() {
@@ -108,7 +108,7 @@ fn do_parse(raw, rev, env, k) {
     Ok(i) -> v.ok(v.Integer(i))
     Error(Nil) -> v.error(v.unit)
   }
-  Ok(#(state.V(value), rev, env, k))
+  Ok(#(state.V(value), env, k))
 }
 
 pub fn to_string() {
@@ -118,5 +118,5 @@ pub fn to_string() {
 
 fn do_to_string(x, rev, env, k) {
   use x <- result.then(cast.as_integer(x))
-  Ok(#(state.V(v.Str(int.to_string(x))), rev, env, k))
+  Ok(#(state.V(v.Str(int.to_string(x))), env, k))
 }

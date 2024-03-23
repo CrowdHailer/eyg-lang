@@ -14,8 +14,8 @@ pub fn print_bit_string(value) {
 
 fn bit_string_to_integers(value, acc) {
   case value {
-    <<>> -> list.reverse(acc)
     <<byte, rest:bytes>> -> bit_string_to_integers(rest, [byte, ..acc])
+    _ -> list.reverse(acc)
   }
 }
 
@@ -72,6 +72,26 @@ pub fn list(items) {
 pub fn do_list(reversed, acc) {
   case reversed {
     [item, ..rest] -> do_list(rest, Apply(Apply(Cons, item), acc))
+    [] -> acc
+  }
+}
+
+pub fn record(items) {
+  do_record(list.reverse(items), Empty)
+}
+
+pub fn do_record(reversed, acc) {
+  case reversed {
+    [#(label, value), ..rest] ->
+      do_record(rest, Apply(Apply(Extend(label), value), acc))
+    [] -> acc
+  }
+}
+
+pub fn do_overwrite(reversed, acc) {
+  case reversed {
+    [#(label, value), ..rest] ->
+      do_overwrite(rest, Apply(Apply(Overwrite(label), value), acc))
     [] -> acc
   }
 }

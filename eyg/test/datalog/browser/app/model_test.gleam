@@ -12,7 +12,7 @@ pub fn reference_source_in_query_test() {
     model.Query(query, Ok(dict.new())),
   ]
   let assert [source, query_section] = model.run_queries(sections)
-  let model.Query(_, data) = query_section
+  let assert model.Query(_, data) = query_section
   let assert Ok(data) = data
   dict.size(data)
   |> should.equal(2)

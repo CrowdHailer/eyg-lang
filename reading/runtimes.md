@@ -9,6 +9,7 @@ So why is bash etc good for scripting? because the language is design with os pr
 Rich history
 - Tables https://www.nushell.sh/
 - Functional https://github.com/topshell-language/topshell
+es shell makes a big deal of introducing lexical scoping and weird functions `@` denotes functions
 - es shell https://stuff.mit.edu/afs/sipb/user/yandros/doc/es-usenix-winter93.html
 - eshell https://www.gnu.org/software/emacs/manual/html_mono/eshell.html
 

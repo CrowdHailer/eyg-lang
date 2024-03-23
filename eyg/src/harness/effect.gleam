@@ -13,6 +13,7 @@ import gleam/javascript/promise.{try_await}
 import gleam/json
 import simplifile
 import eyg/analysis/typ as t
+import eygir/annotated as e
 import plinth/browser/window
 import gleam/javascript/promisex
 import eyg/runtime/value as v
@@ -20,6 +21,7 @@ import eyg/runtime/break
 import eyg/runtime/cast
 import eygir/decode
 import harness/ffi/core
+import old_plinth/browser/document
 
 pub fn init() {
   #(t.Closed, dict.new())
@@ -171,7 +173,14 @@ pub fn read_source() {
     case simplifile.read(file) {
       Ok(json) ->
         case decode.from_json(json) {
-          Ok(exp) -> Ok(v.ok(v.LinkedList(core.expression_to_language(exp))))
+          Ok(exp) ->
+            Ok(
+              v.ok(
+                v.LinkedList(
+                  core.expression_to_language(e.add_annotation(exp, Nil)),
+                ),
+              ),
+            )
           Error(_) -> Ok(v.error(v.unit))
         }
       Error(_) -> Ok(v.error(v.unit))
