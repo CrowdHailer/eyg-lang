@@ -7,19 +7,22 @@ pub fn frame(frame) {
     frame.Inline(text) -> frame.Inline([spans(text)])
     frame.Multiline(pre, inner, post) -> {
       frame.Multiline(
-        [h.span([a.class("border-green-600 border-2")], pre)],
+        [h.span([a.class("border-indigo-600 border-b rounded")], pre)],
         [
           h.div(
-            [a.class("border-green-600 border-2"), a.id("highlighted")],
+            [a.class("border-indigo-600 border-b rounded"), a.id("highlighted")],
             inner,
           ),
         ],
-        [h.span([a.class("border-green-600 border-2")], post)],
+        [h.span([a.class("border-indigo-600 border-b rounded")], post)],
       )
     }
   }
 }
 
 pub fn spans(spans) {
-  h.span([a.class("border-green-600 border-2"), a.id("highlighted")], spans)
+  h.span(
+    [a.class("border-indigo-600 border-b rounded"), a.id("highlighted")],
+    spans,
+  )
 }
