@@ -365,21 +365,24 @@ pub fn to_annotated(source, rev) {
         })
       exp
     }
-    Record(fields, None) -> {
-      // list.fold_right(fields, a.Empty, fn(acc, field) {
-      //   let #(label, value) = field
-      //   let value = to_annotated(value)
-      //   a.Apply(a.Apply(a.Extend(label), value), acc)
-      // })
-      todo
-    }
-    Record(fields, Some(original)) -> {
-      // list.fold_right(fields, to_annotated(original), fn(acc, field) {
-      //   let #(label, value) = field
-      //   let value = to_annotated(value)
-      //   a.Apply(a.Apply(a.Overwrite(label), value), acc)
-      // })
-      todo
+    Record(fields, rest) -> {
+      let len = list.length(fields)
+      let #(build, rest) = case rest {
+        None -> #(a.Extend, #(a.Empty, rev))
+        Some(original) -> #(a.Overwrite, to_annotated(original, [len, ..rev]))
+      }
+      let assert #(0, exp) =
+        list.fold_right(fields, #(len, rest), fn(acc, field) {
+          let #(i, acc) = acc
+          let i = i - 1
+          let #(label, value) = field
+          let value = to_annotated(value, [i, ..rev])
+          #(i, #(
+            a.Apply(#(a.Apply(#(build(label), rev), value), rev), acc),
+            rev,
+          ))
+        })
+      exp
     }
     Select(from, label) -> {
       #(
