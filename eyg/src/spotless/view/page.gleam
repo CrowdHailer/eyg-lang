@@ -1,6 +1,8 @@
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import gleam/stringx
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/element.{text}
@@ -54,7 +56,17 @@ pub fn render(app) {
                       h.div([], []),
                       ..list.map(
                         state.type_errors(current.projection, env),
-                        fn(e) { h.div([a.class("px-3")], [text(e)]) },
+                        fn(e) {
+                          let #(path, reason) = e
+                          let path = list.reverse(path)
+                          h.div([a.class("px-3")], [
+                            h.a([event.on_click(state.JumpTo(path))], [
+                              text(path_to_string(path)),
+                            ]),
+                            text(" "),
+                            text(reason),
+                          ])
+                        },
                       )
                     ]),
                   ]
@@ -102,4 +114,10 @@ fn overlay(content) {
       content,
     ),
   ]
+}
+
+fn path_to_string(path) {
+  list.map(path, int.to_string)
+  |> string.join(",")
+  |> stringx.wrap("[", "]")
 }

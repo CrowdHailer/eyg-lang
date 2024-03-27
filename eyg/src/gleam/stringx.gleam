@@ -21,3 +21,7 @@ pub fn fold_graphmemes(a: String, b: a, c: fn(a, String) -> a) -> a
 
 @external(javascript, "../plinth_ffi.js", "foldGraphmemes")
 pub fn index_fold_graphmemes(a: String, b: a, c: fn(a, String, Int) -> a) -> a
+
+pub fn wrap(content, pre, post) {
+  string.concat([pre, content, post])
+}

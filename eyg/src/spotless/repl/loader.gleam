@@ -1,6 +1,4 @@
 import gleam/dict
-import gleam/io
-import gleam/uri
 import gleam/javascript/promise
 import gleam/http/request
 import gleam/fetch

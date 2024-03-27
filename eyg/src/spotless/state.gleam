@@ -59,6 +59,7 @@ pub fn init(initial) {
 pub type Message {
   Drafting(d.Message)
   Complete(Result(v.Value(Nil, Nil), String))
+  JumpTo(List(Int))
 }
 
 // TODO move somewhere REPL probably
@@ -151,10 +152,13 @@ pub fn type_errors(projection, env) {
   let env = env_to_type(env)
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
-  let eff =
-    list.fold(dict.keys(handlers()), t.Empty, fn(acc, k) {
-      t.EffectExtend(k, #(t.Var(0), t.Var(1)), acc)
-    })
+  // TODO handlers to type, need to not clash with each other
+  // let eff =
+  //   list.fold(dict.keys(handlers()), t.Empty, fn(acc, k) {
+  //     t.EffectExtend(k, #(t.Var(-1), t.Var(-2)), acc)
+  //   })
+  // TODO new_state from inference
+  let eff = t.Empty
   let #(_bindings, _, _, tree) =
     infer.do_infer(source, env, eff, 0, infer.new_state())
   let #(_, types) = a.strip_annotation(tree)
@@ -169,7 +173,7 @@ pub fn type_errors(projection, env) {
   })
   |> list.map(fn(pair) {
     let #(path, reason) = pair
-    string.concat([string.inspect(path), " ", tdebug.render_reason(reason)])
+    #(path, tdebug.render_reason(reason))
   })
 }
 
@@ -241,6 +245,14 @@ pub fn update(state, message) {
           #(State(previous, env, current, Failed(reason)), effect.none())
         }
       }
+    }
+    JumpTo(path), _ -> {
+      let editable = projection.rebuild(current.projection)
+      let projection = projection.focus_at(editable, path, [])
+      let session =
+        d.Session(..current, projection: projection, mode: d.Navigate)
+      let state = State(..state, current: session)
+      #(state, effect.none())
     }
     _, _ -> #(state, effect.none())
   }

@@ -343,7 +343,7 @@ pub fn to_annotated(source, rev) {
             let #(var, acc) = pattern_to_annotated(pattern, acc, [i, ..rev])
             #(
               i,
-              #(a.Let(var, to_annotated(value, [i, ..rev]), acc), [i, ..rev]),
+              #(a.Let(var, to_annotated(value, [i, 1, ..rev]), acc), [i, ..rev]),
             )
           },
         )
