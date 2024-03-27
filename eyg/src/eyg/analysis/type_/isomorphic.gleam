@@ -15,3 +15,5 @@ pub type Type(var) {
   RowExtend(String, Type(var), Type(var))
   EffectExtend(String, #(Type(var), Type(var)), Type(var))
 }
+
+pub const unit = Record(Empty)

@@ -62,7 +62,15 @@ pub type Message {
   JumpTo(List(Int))
 }
 
-// TODO move somewhere REPL probably
+// TODO move somewhere, a directory called REPL might be a good place to group these capabilities
+pub fn handler_type() {
+  [
+    t.EffectExtend("Alert", #(t.String, t.unit), _),
+    t.EffectExtend("Load", #(t.unit, t.unit), _),
+  ]
+  |> list.fold(t.Empty, fn(acc, extender) { extender(acc) })
+}
+
 pub fn handlers() {
   dict.new()
   |> dict.insert("Alert", impl.window_alert().2)
@@ -152,13 +160,7 @@ pub fn type_errors(projection, env) {
   let env = env_to_type(env)
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
-  // TODO handlers to type, need to not clash with each other
-  // let eff =
-  //   list.fold(dict.keys(handlers()), t.Empty, fn(acc, k) {
-  //     t.EffectExtend(k, #(t.Var(-1), t.Var(-2)), acc)
-  //   })
-  // TODO new_state from inference
-  let eff = t.Empty
+  let eff = handler_type()
   let #(_bindings, _, _, tree) =
     infer.do_infer(source, env, eff, 0, infer.new_state())
   let #(_, types) = a.strip_annotation(tree)
