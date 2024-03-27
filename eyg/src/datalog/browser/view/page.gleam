@@ -116,7 +116,7 @@ fn subsection(index, mode) {
           [
             input([
               class("border"),
-              attribute.value(dynamic.from(raw)),
+              attribute.value(raw),
               on_input(fn(new) {
                 model.Wrap(fn(state) {
                   let Model(sections, mode) = state

@@ -1,4 +1,3 @@
-import gleam/dynamic
 import gleam/list
 import gleam/option.{None, Some}
 import lustre/attribute as a
@@ -51,7 +50,7 @@ pub fn pallet(search, actions, index) {
         "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
       ),
       a.id("focus-input"),
-      a.value(dynamic.from(search)),
+      a.value(search),
       // a.autofocus(True),
       a.attribute("autocomplete", "off"),
       a.attribute("autofocus", "true"),
@@ -94,7 +93,7 @@ pub fn select_builtin(search, suggestions, index) {
         "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
       ),
       a.id("focus-input"),
-      a.value(dynamic.from(search)),
+      a.value(search),
       // a.autofocus(True),
       a.attribute("autocomplete", "off"),
       a.attribute("autofocus", "true"),
@@ -133,7 +132,7 @@ pub fn string_input(value) {
         "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
       ),
       a.id("focus-input"),
-      a.value(dynamic.from(value)),
+      a.value(value),
       a.attribute("autofocus", "true"),
       event.on_keydown(session.KeyDown),
       event.on_input(session.UpdateInput),

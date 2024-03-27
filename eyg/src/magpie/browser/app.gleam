@@ -25,7 +25,9 @@ pub fn run() {
     lustre.application(init, update, render)
     |> lustre.start("#app", Nil)
 
-  window.add_event_listener("hashchange", fn(_) { dispatch(HashChange) })
+  window.add_event_listener("hashchange", fn(_) {
+    dispatch(lustre.dispatch(HashChange))
+  })
 }
 
 pub type MatchSelection {
@@ -391,7 +393,7 @@ fn render_edit(mode, db: serialize.DBView) {
                       el.input([
                         class("border my-2"),
                         event.on_input(fn(value) { InputChange(value) }),
-                        attribute.value(dynamic.from(var)),
+                        attribute.value(var),
                       ]),
                     ]
                     ConstString(value) -> {
@@ -412,7 +414,7 @@ fn render_edit(mode, db: serialize.DBView) {
                         el.input([
                           class("border my-2"),
                           event.on_input(fn(value) { InputChange(value) }),
-                          attribute.value(dynamic.from(value)),
+                          attribute.value(value),
                         ]),
                         el.ul(
                           [class("border-l-4 border-blue-800 bg-blue-200")],
@@ -460,12 +462,10 @@ fn render_edit(mode, db: serialize.DBView) {
                       el.input([
                         class("border my-2"),
                         event.on_input(fn(value) { InputChange(value) }),
-                        attribute.value(
-                          dynamic.from(case value {
-                            Some(value) -> int.to_string(value)
-                            None -> ""
-                          }),
-                        ),
+                        attribute.value(case value {
+                          Some(value) -> int.to_string(value)
+                          None -> ""
+                        }),
                         attribute.type_("number"),
                       ]),
                     ]
@@ -473,7 +473,7 @@ fn render_edit(mode, db: serialize.DBView) {
                       el.input([
                         class("border my-2"),
                         event.on_click(CheckChange(!value)),
-                        attribute.value(dynamic.from("true")),
+                        attribute.value("true"),
                         attribute.checked(value),
                         attribute.type_("checkbox"),
                       ]),

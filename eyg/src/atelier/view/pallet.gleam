@@ -1,5 +1,6 @@
 // command pallet
 import gleam/io
+import gleam/int
 import gleam/dynamic
 import gleam/list
 import gleam/dict
@@ -32,7 +33,7 @@ fn render_label(value) {
       class("border w-full"),
       attribute.autofocus(True),
       event.on_input(fn(v) { app.Change(v) }),
-      attribute.value(dynamic.from(value)),
+      attribute.value(value),
     ]),
   ]
 }
@@ -69,7 +70,7 @@ fn render_variable(value, _inferred, _state: app.WorkSpace) {
       class("border w-full"),
       attribute.autofocus(True),
       event.on_input(fn(v) { app.Change(v) }),
-      attribute.value(dynamic.from(value)),
+      attribute.value(value),
     ]),
   ]
 }
@@ -81,7 +82,7 @@ fn render_number(number) {
       attribute.type_("number"),
       attribute.autofocus(True),
       event.on_input(fn(v) { app.Change(v) }),
-      attribute.value(dynamic.from(number)),
+      attribute.value(int.to_string(number)),
     ]),
   ]
 }
@@ -101,14 +102,17 @@ fn render_text(value) {
       ],
       [text("Done")],
     ),
-    textarea([
-      attribute.rows(10),
-      classes([#("w-full", True)]),
-      attribute.autofocus(True),
-      // on_change internally
-      event.on_input(fn(v) { app.Change(v) }),
-      attribute.value(dynamic.from(value)),
-    ]),
+    textarea(
+      [
+        attribute.rows(10),
+        classes([#("w-full", True)]),
+        attribute.autofocus(True),
+        // on_change internally
+        event.on_input(fn(v) { app.Change(v) }),
+      ],
+      // attribute.value(value),
+      value,
+    ),
   ]
 }
 

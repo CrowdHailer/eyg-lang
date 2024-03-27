@@ -77,15 +77,17 @@ pub fn render(i, constraints, r, output) {
           let rows = int.to_string(lines)
           [
             div([class("p-2 bg-yellow-100 shadow cursor-pointer")], [
-              textarea([
-                class("w-full bg-transparent p-2"),
-                value(dynamic.from(content)),
-                attribute.attribute("rows", rows),
-                attribute.attribute("autofocus", "true"),
-                // attribute.autofocus(True),
-                on_input(handle_edit(_)),
-                on_blur(commit_changes()),
-              ]),
+              textarea(
+                [
+                  class("w-full bg-transparent p-2"),
+                  attribute.attribute("rows", rows),
+                  attribute.attribute("autofocus", "true"),
+                  // attribute.autofocus(True),
+                  on_input(handle_edit(_)),
+                  on_blur(commit_changes()),
+                ],
+                content,
+              ),
               ..case r {
                 Ok(Nil) -> []
                 Error(parser.TokenError(got)) -> [
