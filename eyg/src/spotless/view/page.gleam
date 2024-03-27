@@ -24,6 +24,7 @@ pub fn render(app) {
         ])
       })
       |> list.append([
+        // h.div([TODO can have a help at the bottom], [text("spotless")]),
         h.div(
           [
             a.class(

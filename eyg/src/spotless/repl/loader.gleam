@@ -13,8 +13,7 @@ import eyg/runtime/cast
 import eyg/runtime/break
 import eyg/runtime/value as v
 
-pub fn load() {
-  let assert Ok(src) = uri.parse("http://localhost:8080/saved.json")
+pub fn load(src) {
   let assert Ok(req) = request.from_uri(src)
   use response <- promise.try_await(fetch.send(req))
   use response <- promise.map_try(fetch.read_text_body(response))
@@ -27,7 +26,10 @@ pub fn load() {
         r.resume(exec, [v.unit], stdlib.env(), handlers())
       Ok(#(prompt, env, k))
     }
-    Error(_) -> Error(panic as "failed to start")
+    Error(reason) -> {
+      console.log(reason)
+      Error(panic as "failed to start")
+    }
   }
 }
 
