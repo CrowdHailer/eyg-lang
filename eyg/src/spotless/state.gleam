@@ -64,12 +64,16 @@ pub type Message {
 
 // TODO move somewhere, a directory called REPL might be a good place to group these capabilities
 pub fn handler_type() {
-  [
-    t.EffectExtend("Alert", #(t.String, t.unit), _),
-    t.EffectExtend("Load", #(t.unit, t.unit), _),
-  ]
-  // t.EffectExtend("Delay", #(t.Integer, t.Promise(t.unit)), _),
-  |> list.fold(t.Empty, fn(acc, extender) { extender(acc) })
+  let state = infer.new_state()
+  let eff = t.Empty
+  let eff = t.EffectExtend("Alert", #(t.String, t.unit), eff)
+  let eff = t.EffectExtend("Load", #(t.unit, t.unit), eff)
+  let eff = t.EffectExtend("Delay", #(t.Integer, t.Promise(t.unit)), eff)
+  io.debug(state)
+  let level = 0
+  let #(var, state) = binding.mono(level, state)
+  let eff = t.EffectExtend("Await", #(t.Promise(var), var), eff)
+  #(eff, state)
 }
 
 pub fn handlers() {
@@ -162,9 +166,8 @@ pub fn type_errors(projection, env) {
   let env = env_to_type(env)
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
-  let eff = handler_type()
-  let #(_bindings, _, _, tree) =
-    infer.do_infer(source, env, eff, 0, infer.new_state())
+  let #(eff, state) = handler_type()
+  let #(_bindings, _, _, tree) = infer.do_infer(source, env, eff, 0, state)
   let #(_, types) = a.strip_annotation(tree)
   let #(_, paths) = a.strip_annotation(e.to_annotated(editable, []))
   let pairs = list.zip(paths, types)

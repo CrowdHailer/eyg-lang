@@ -40,6 +40,7 @@ pub fn render_type(typ) {
       ])
     // Rows can be rendered as any mismatch in errors
     t.EffectExtend(_, _, _) -> string.concat(["<", render_effects(typ), ">"])
+    t.Promise(inner) -> string.concat(["Promise(", render_type(inner), ")"])
     row -> {
       string.concat([
         "{",
@@ -75,7 +76,7 @@ fn render_row(r) -> List(String) {
       let field = string.concat([label, ": ", render_type(value)])
       [field, ..render_row(tail)]
     }
-    _ -> ["not a valid row"]
+    _ -> ["not a valid row", string.inspect(r)]
   }
 }
 

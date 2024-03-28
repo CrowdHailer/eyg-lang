@@ -101,6 +101,7 @@ fn occurs_and_levels(i, level, type_, bindings) {
       use bindings <- try(occurs_and_levels(i, level, rest, bindings))
       Ok(bindings)
     }
+    t.Promise(inner) -> occurs_and_levels(i, level, inner, bindings)
   }
 }
 

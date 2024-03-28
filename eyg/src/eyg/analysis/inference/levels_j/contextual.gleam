@@ -51,6 +51,7 @@ fn ftv(type_) {
     t.RowExtend(_, field, tail) -> set.union(ftv(field), ftv(tail))
     t.EffectExtend(_, #(lift, reply), tail) ->
       set.union(ftv(lift), set.union(ftv(reply), ftv(tail)))
+    t.Promise(inner) -> ftv(inner)
   }
 }
 

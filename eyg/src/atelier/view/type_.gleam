@@ -71,7 +71,7 @@ fn render_row(r) -> List(String) {
       let field = string.concat([label, ": ", render_type(value)])
       [field, ..render_row(tail)]
     }
-    _ -> ["not a valid row"]
+    _ -> ["not a valid row", string.inspect(r)]
   }
 }
 
