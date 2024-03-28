@@ -193,6 +193,16 @@ pub fn string(zip) {
   }
 }
 
+pub fn integer(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    p.Exp(e.Integer(content)) ->
+      Ok(#(content, fn(content) { #(p.Exp(e.Integer(content)), zoom) }))
+    p.Exp(_) -> Ok(#(0, fn(content) { #(p.Exp(e.Integer(content)), zoom) }))
+    _ -> Error(Nil)
+  }
+}
+
 // This is create_list
 pub fn list(zip) {
   let #(focus, zoom) = zip

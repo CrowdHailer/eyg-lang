@@ -68,6 +68,7 @@ pub fn handler_type() {
     t.EffectExtend("Alert", #(t.String, t.unit), _),
     t.EffectExtend("Load", #(t.unit, t.unit), _),
   ]
+  // t.EffectExtend("Delay", #(t.Integer, t.Promise(t.unit)), _),
   |> list.fold(t.Empty, fn(acc, extender) { extender(acc) })
 }
 
@@ -75,6 +76,7 @@ pub fn handlers() {
   dict.new()
   |> dict.insert("Alert", impl.window_alert().2)
   |> dict.insert("Await", impl.await().2)
+  |> dict.insert("Delay", impl.wait().2)
   |> dict.insert("File_Read", fs.file_read)
   |> dict.insert("Choose", impl.choose().2)
   |> dict.insert("HTTP", impl.http().2)
@@ -184,6 +186,7 @@ pub fn update(state, message) {
   case message, executing {
     Drafting(d.KeyDown("Enter")), Ready -> {
       case current {
+        // matches navigate
         d.Session(_, zip, d.Navigate) -> {
           let state = State(..state, executing: Running)
           #(

@@ -81,6 +81,11 @@ pub fn string(projection) {
   Ok(#(projection, session.EditString(value, rebuild)))
 }
 
+pub fn integer(projection) {
+  use #(value, rebuild) <- try(transformation.integer(projection))
+  Ok(#(projection, session.EditInteger(value, rebuild)))
+}
+
 pub fn list(projection) {
   use projection <- try(transformation.list(projection))
   Ok(#(projection, session.Navigate))

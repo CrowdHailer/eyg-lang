@@ -18,6 +18,7 @@ pub type Mode {
     index: Int,
     rebuild: fn(String) -> Projection,
   )
+  EditInteger(Int, fn(Int) -> Projection)
   EditString(String, fn(String) -> Projection)
 }
 
@@ -147,6 +148,16 @@ pub fn handle(session, message, get_vars) {
     EditString(value, rebuild), KeyDown(_) -> Ok(session)
     EditString(value, rebuild), DoIt ->
       Ok(Session(bindings, rebuild(value), Navigate))
+    EditInteger(value, rebuild), KeyDown(_) -> Ok(session)
+    EditInteger(_, rebuild), UpdateInput(value) -> {
+      let assert Ok(value) = int.parse(value)
+      Ok(Session(..session, mode: EditInteger(value, rebuild)))
+    }
+    EditInteger(value, rebuild), DoIt ->
+      Ok(Session(bindings, rebuild(value), Navigate))
+    EditInteger(value, rebuild), _ ->
+      panic as "why would there be an int update"
+
     Navigate, DoIt -> panic as "nothing to do in navigate mode"
   }
 }

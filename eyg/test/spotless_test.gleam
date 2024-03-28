@@ -7,9 +7,9 @@ import spotless/state
 import eyg/runtime/interpreter/state as other_state
 import gleeunit/should
 
+// Copy effect
 // TODO why is inference called contextual
 // TODO check that all effects are type checked
-// TODO type checking needs to go to the right place
 // Can I gather all the definitions of effects together -> is capabilities a better name
 
 pub fn error_test() {

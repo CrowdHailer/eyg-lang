@@ -21,8 +21,8 @@ pub fn render(app) {
     list.map(list.reverse(previous), fn(p) {
         let #(value, prog) = p
         h.div([a.class("w-full max-w-3xl mt-2 bg-white shadow-xl rounded")], [
-          h.div([a.class("py-1 px-3")], render.top(prog)),
-          h.div([a.class("py-1 px-3")], [text(v.debug(value))]),
+          h.div([a.class("px-3")], render.top(prog)),
+          h.div([a.class("px-3")], [text(v.debug(value))]),
         ])
       })
       |> list.append([
@@ -34,7 +34,7 @@ pub fn render(app) {
             ),
           ],
           [
-            h.div([a.class("py-1 px-3")], [
+            h.div([a.class("px-3")], [
               page.surface(current.projection)
               |> element.map(state.Drafting),
             ]),
@@ -81,6 +81,12 @@ pub fn render(app) {
                   page.string_input(value)
                   |> element.map(state.Drafting),
                 ])
+              d.EditInteger(value, _rebuild) ->
+                overlay([
+                  page.integer_input(value)
+                  |> element.map(state.Drafting),
+                ])
+
               d.SelectBuiltin(value, suggestions, index, _) ->
                 overlay([
                   page.select_builtin(value, suggestions, index)

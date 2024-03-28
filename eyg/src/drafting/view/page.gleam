@@ -1,3 +1,4 @@
+import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import lustre/attribute as a
@@ -16,6 +17,7 @@ pub fn render(app) {
       session.SelectAction(search, actions, index) ->
         overlay([pallet(search, actions, index)])
       session.EditString(value, _rebuild) -> overlay([string_input(value)])
+      session.EditInteger(value, _rebuild) -> overlay([integer_input(value)])
       session.SelectBuiltin(value, suggestions, index, _) ->
         overlay([select_builtin(value, suggestions, index)])
       session.SelectVariable(_, _, _) -> todo
@@ -133,6 +135,24 @@ pub fn string_input(value) {
       ),
       a.id("focus-input"),
       a.value(value),
+      a.attribute("autofocus", "true"),
+      event.on_keydown(session.KeyDown),
+      event.on_input(session.UpdateInput),
+    ]),
+    h.hr([a.class("mx-40 my-3 border-green-700")]),
+  ])
+}
+
+pub fn integer_input(value) {
+  h.form([event.on_submit(session.DoIt)], [
+    h.div([a.class("w-full p-2")], []),
+    h.input([
+      a.class(
+        "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
+      ),
+      a.id("focus-input"),
+      a.type_("number"),
+      a.value(int.to_string(value)),
       a.attribute("autofocus", "true"),
       event.on_keydown(session.KeyDown),
       event.on_input(session.UpdateInput),

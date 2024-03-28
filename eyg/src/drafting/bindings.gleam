@@ -23,6 +23,7 @@ pub fn default() {
     Binding("get field", action.select, Some("g")),
     Binding("create overwrite", action.overwrite, Some("o")),
     Binding("create tag", action.tag, Some("t")),
+    Binding("create integer", action.integer, Some("n")),
     Binding("create match", action.match, Some("m")),
     Binding("create perform", action.perform, Some("p")),
     Binding("create builtin", action.builtin, Some("j")),
