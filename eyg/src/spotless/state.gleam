@@ -181,6 +181,14 @@ pub fn type_errors(projection, env) {
   })
 }
 
+pub fn fail_message(reason) {
+  case reason {
+    d.NoKeyBinding(key) ->
+      string.concat(["No action bound for key '", key, "'"])
+    d.ActionFailed -> "Action not possible at this position"
+  }
+}
+
 pub fn update(state, message) {
   let State(previous, env, current, executing) = state
   case message, executing {
@@ -229,9 +237,12 @@ pub fn update(state, message) {
           State(..state, current: current, executing: Ready),
           effect.none(),
         )
-        Error(Nil) -> {
-          io.debug(#(current, m))
-          #(State(..state, current: current, executing: Ready), effect.none())
+        Error(reason) -> {
+          let message = fail_message(reason)
+          #(
+            State(..state, current: current, executing: Failed(message)),
+            effect.none(),
+          )
         }
       }
     }

@@ -1,4 +1,5 @@
 import gleam/dict
+import gleam/io
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, Some}
@@ -54,9 +55,19 @@ pub fn handle_key(bindings, key, projection) {
         _ -> Error(Nil)
       }
     })
+    |> result.replace_error(NoKeyBinding(key))
   use action <- try(result)
-  use #(projection, mode) <- try(action(projection))
+  use #(projection, mode) <- try(
+    action(projection)
+    |> result.replace_error(ActionFailed),
+  )
+
   Ok(Session(bindings, projection, mode))
+}
+
+pub type Fail {
+  NoKeyBinding(key: String)
+  ActionFailed
 }
 
 pub fn handle(session, message, get_vars) {
@@ -84,7 +95,10 @@ pub fn handle(session, message, get_vars) {
       Ok(Session(..session, mode: EditString(value, rebuild)))
     SelectAction(_, actions, index), DoIt -> {
       let assert Ok(Binding(_, action, _)) = list.at(actions, index)
-      use #(projection, mode) <- try(action(projection))
+      use #(projection, mode) <- try(
+        action(projection)
+        |> result.replace_error(ActionFailed),
+      )
       Ok(Session(bindings, projection, mode))
     }
 

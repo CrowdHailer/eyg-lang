@@ -8,6 +8,8 @@ import eyg/runtime/interpreter/state as other_state
 import gleeunit/should
 
 // Copy effect
+// Need Promise type
+//
 // TODO why is inference called contextual
 // TODO check that all effects are type checked
 // Can I gather all the definitions of effects together -> is capabilities a better name
