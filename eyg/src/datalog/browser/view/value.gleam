@@ -1,8 +1,8 @@
+import datalog/ast
 import gleam/int
 import lustre/attribute.{class}
 import lustre/element.{text}
 import lustre/element/html.{span}
-import datalog/ast
 
 pub fn render(value) {
   case value {

@@ -1,10 +1,10 @@
+import eygir/expression as e
 import gleam/bit_array
-import gleam/result
 import gleam/dynamic.{
   DecodeError, any, decode1, decode2, decode3, field, int, string,
 }
 import gleam/json
-import eygir/expression as e
+import gleam/result
 
 fn label() {
   any([field("label", string), field("l", string)])

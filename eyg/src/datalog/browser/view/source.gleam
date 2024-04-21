@@ -1,10 +1,13 @@
+import datalog/ast
+import datalog/browser/app/model.{Model, Source}
+import datalog/browser/view/value
 import gleam/dynamic
-import gleam/io
 import gleam/int
-import gleam/list
-import gleam/listx
+import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
+import gleam/list
+import gleam/listx
 import lustre/attribute.{class, readonly, value}
 import lustre/effect
 import lustre/element.{text}
@@ -12,9 +15,6 @@ import lustre/element/html.{
   br, div, input, span, table, tbody, td, th, thead, tr,
 }
 import lustre/event.{on_click, on_input}
-import datalog/browser/app/model.{Model, Source}
-import datalog/ast
-import datalog/browser/view/value
 
 // import magpie/sources/yaml
 

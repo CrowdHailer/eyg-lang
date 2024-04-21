@@ -4,11 +4,11 @@
 // in tail is still relevant
 // don't need to wrap expression with a
 // BUT still might
-import gleam/io
+import eygir/expression as e
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/string
-import eygir/expression as e
 
 // can't wrap program in `()` because js assumes expression and breaks with let
 // but also cant wrap in `{}` because in brackets is assuemd to be object

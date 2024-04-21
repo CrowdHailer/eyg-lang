@@ -1,9 +1,9 @@
-import gleam/io
 import gleam/dynamic.{type Dynamic}
+import gleam/io
+import gleam/javascript/array.{type Array}
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/javascript/array.{type Array}
 import gleeunit/should
 
 @external(javascript, "./movies.mjs", "movies")

@@ -1,6 +1,6 @@
-import eygir/annotated as e
 import eyg/parse/lexer
 import eyg/parse/parser
+import eygir/annotated as e
 import gleeunit/should
 
 pub fn literal_test() {

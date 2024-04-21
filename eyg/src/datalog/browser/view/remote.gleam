@@ -1,11 +1,11 @@
+import datalog/browser/view/value
 import gleam/dynamic
+import gleam/http/request
 import gleam/list
 import gleam/uri
-import gleam/http/request
 import lustre/attribute.{class, readonly, value}
 import lustre/element.{text}
 import lustre/element/html.{div, input, p, span, table, tbody, td, tr}
-import datalog/browser/view/value
 
 pub fn render(req, relation, data) {
   let source = uri.to_string(request.to_uri(req))

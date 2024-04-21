@@ -1,25 +1,25 @@
+import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/isomorphic as t
+import eyg/compile
+import eyg/parse/lexer
+import eyg/parse/parser
+import eyg/runtime/cast
+import eyg/runtime/interpreter/live
+import eyg/runtime/value as v
+import eygir/annotated
 import gleam/bit_array
 import gleam/dict
 import gleam/io
+import gleam/javascript as js
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import gleam/option.{type Option, None, Some}
-import gleam/javascript as js
+import harness/effect as impl
 import lustre/effect
 import plinth/browser/document
 import plinth/browser/element
-import eygir/annotated
-import eyg/parse/lexer
-import eyg/parse/parser
-import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/type_/binding
-import eyg/analysis/inference/levels_j/contextual as j
-import eyg/compile
-import eyg/runtime/value as v
-import eyg/runtime/interpreter/live
-import harness/effect as impl
-import eyg/runtime/cast
 
 pub type View {
   Inference

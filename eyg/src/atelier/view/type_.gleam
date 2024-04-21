@@ -1,9 +1,9 @@
 // for flat types
+import eyg/analysis/jm/error
+import eyg/analysis/jm/type_ as t
 import gleam/int
 import gleam/list
 import gleam/string
-import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/error
 
 pub fn render_failure(reason, _t1, _t2) {
   case reason {

@@ -1,6 +1,6 @@
-import magpie/query
-import magpie/browser/hash
 import gleeunit/should
+import magpie/browser/hash
+import magpie/query
 
 pub fn round_trip(query) {
   hash.encode(query)

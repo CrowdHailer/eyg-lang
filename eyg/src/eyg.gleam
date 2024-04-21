@@ -1,18 +1,18 @@
-import gleam/io
-import gleam/list
-import plinth/node/process
-import simplifile
+import eyg/analysis/inference/levels_j/contextual as infer
+import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/isomorphic as t
 import eygir/annotated
-import eygir/decode
 import eygir/annotated as e
-import platforms/shell
+import eygir/decode
+import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
-import plinth/javascript/console
-import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/type_/binding/debug
-import eyg/analysis/inference/levels_j/contextual as infer
+import gleam/list
 import magpie/magpie
+import platforms/shell
+import plinth/javascript/console
+import plinth/node/process
+import simplifile
 
 // zero arity
 pub fn main() {

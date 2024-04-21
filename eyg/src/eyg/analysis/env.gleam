@@ -1,6 +1,6 @@
+import eyg/analysis/scheme.{type Scheme}
 import gleam/dict.{type Dict}
 import gleam/set
-import eyg/analysis/scheme.{type Scheme}
 
 type TypeEnv =
   Dict(String, Scheme)

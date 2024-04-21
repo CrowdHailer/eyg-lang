@@ -1,5 +1,5 @@
-import gleam/io
 import gleam/dynamic
+import gleam/io
 import gleam/option.{type Option}
 
 pub type Event {

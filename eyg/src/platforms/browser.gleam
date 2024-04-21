@@ -1,24 +1,24 @@
-import gleam/dict
-import gleam/io
-import gleam/list
-import gleam/result
-import eygir/decode
-import plinth/javascript/global
-import plinth/browser/window
-import old_plinth/browser/document
+import eyg/analysis/typ as t
+import eyg/runtime/break
+import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eyg/runtime/break
-import eyg/analysis/typ as t
-import harness/effect
-import harness/stdlib
+import eygir/annotated as e
+import eygir/decode
+import gleam/dict
+import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/javascript/promisex
+import gleam/list
+import gleam/result
+import harness/effect
+import harness/stdlib
+import old_plinth/browser/document
+import plinth/browser/window
 import plinth/javascript/console
-import eyg/runtime/cast
-import eygir/annotated as e
+import plinth/javascript/global
 
 fn handlers() {
   effect.init()

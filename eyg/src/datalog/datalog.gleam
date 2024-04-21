@@ -1,6 +1,6 @@
+import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/list
-import gleam/dict.{type Dict}
 import gleam/result
 
 // ast

@@ -2,22 +2,23 @@ import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/io
 import gleam/list
+
 // nullable fn for casting option
+import eyg/analysis/typ as t
+import eyg/runtime/break
+import eyg/runtime/cast
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/value as v
+import eygir/annotated as e2
+import eygir/expression as e
+import gleam/javascript/array.{type Array}
+import gleam/javascript/promise.{type Promise}
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
-import gleam/javascript/array.{type Array}
-import gleam/javascript/promise.{type Promise}
-import plinth/javascript/console
-import eygir/expression as e
-import eygir/annotated as e2
-import eyg/analysis/typ as t
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/value as v
-import eyg/runtime/break
-import eyg/runtime/cast
 import harness/effect
 import harness/stdlib
+import plinth/javascript/console
 
 pub fn serve() {
   #(t.Str, t.unit, fn(lift) {

@@ -1,6 +1,6 @@
+import eyg/analysis/jm/type_ as t
 import gleam/dict
 import gleam/set
-import eyg/analysis/jm/type_ as t
 
 pub type Scheme =
   #(List(Int), t.Type)

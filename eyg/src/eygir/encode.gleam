@@ -1,6 +1,6 @@
+import eygir/expression as e
 import gleam/bit_array
 import gleam/json.{int, object, string}
-import eygir/expression as e
 
 fn node(name, attributes) {
   object([#("0", string(name)), ..attributes])

@@ -1,12 +1,12 @@
-import gleam/dict
+import eyg/analysis/inference
 import eyg/analysis/typ as t
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
-import eyg/analysis/inference
-import eygir/expression as e
 import eygir/annotated as e2
-import harness/stdlib
+import eygir/expression as e
+import gleam/dict
 import gleeunit/should
+import harness/stdlib
 
 pub fn add_test() {
   let key = "int_add"

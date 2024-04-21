@@ -1,9 +1,9 @@
-import gleam/dict
-import eygir/expression as e
-import eyg/analysis/jm/error
-import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/infer.{builtins, extend, generalise, instantiate, mono}
 import eyg/analysis/jm/env
+import eyg/analysis/jm/error
+import eyg/analysis/jm/infer.{builtins, extend, generalise, instantiate, mono}
+import eyg/analysis/jm/type_ as t
+import eygir/expression as e
+import gleam/dict
 
 pub type State =
   #(

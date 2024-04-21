@@ -1,10 +1,10 @@
+import eyg/analysis/typ as t
+import eyg/runtime/cast
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
 import gleam/int
 import gleam/order.{Eq, Gt, Lt}
 import gleam/result
-import eyg/analysis/typ as t
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
-import eyg/runtime/cast
 
 pub fn compare() {
   let type_ =

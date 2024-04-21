@@ -1,9 +1,9 @@
-import gleam/io
+import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/isomorphic as t
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/string
-import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/type_/binding/error
 
 pub fn render_type(typ) {
   case typ {

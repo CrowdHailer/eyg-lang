@@ -1,9 +1,9 @@
+import eyg/compile
+import eyg/parse
 import gleam/dynamic
 import gleam/json
-import eyg/parse
-import eyg/compile
-import plinth/browser/window
 import gleeunit/should
+import plinth/browser/window
 
 fn test_compilation(source, js, evaled) {
   let generated =

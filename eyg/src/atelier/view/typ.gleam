@@ -1,10 +1,10 @@
+import eyg/analysis/substitutions as sub
+import eyg/analysis/typ as t
+import eyg/analysis/unification
 import gleam/int
 import gleam/list
 import gleam/set
 import gleam/string
-import eyg/analysis/typ as t
-import eyg/analysis/unification
-import eyg/analysis/substitutions as sub
 
 // Do we have a general need for type debug functionality
 pub fn render(type_info) {

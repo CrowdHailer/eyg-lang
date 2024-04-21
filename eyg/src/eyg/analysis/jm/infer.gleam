@@ -1,10 +1,10 @@
-import gleam/list
-import gleam/dict
-import gleam/set
+import eyg/analysis/jm/env
 import eyg/analysis/jm/error
 import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/env
 import eyg/analysis/jm/unify
+import gleam/dict
+import gleam/list
+import gleam/set
 
 pub fn mono(type_) {
   #([], type_)

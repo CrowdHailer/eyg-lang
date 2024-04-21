@@ -1,9 +1,9 @@
-import eyg/analysis/type_/isomorphic as t
 import eyg/analysis/inference/levels_j/contextual as j
-import eygir/annotated as a
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/isomorphic as t
 import eyg/compile/ir
 import eyg/compile/js
+import eygir/annotated as a
 
 pub fn to_js(program) {
   program

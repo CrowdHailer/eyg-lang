@@ -1,14 +1,14 @@
-import gleam/dict
-import gleam/javascript/promise
-import gleeunit/should
-import eygir/expression as e
-import eygir/annotated as e2
+import eyg/runtime/break
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eyg/runtime/break
-import harness/ffi/env
+import eygir/annotated as e2
+import eygir/expression as e
+import gleam/dict
+import gleam/javascript/promise
+import gleeunit/should
 import harness/effect
+import harness/ffi/env
 import harness/stdlib
 import platforms/browser
 

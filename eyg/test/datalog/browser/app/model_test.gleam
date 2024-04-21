@@ -1,7 +1,7 @@
-import gleam/dict
 import datalog/ast
 import datalog/ast/builder.{rule, s, v, y}
 import datalog/browser/app/model
+import gleam/dict
 import gleeunit/should
 
 pub fn reference_source_in_query_test() {

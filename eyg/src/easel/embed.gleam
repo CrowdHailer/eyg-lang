@@ -1,44 +1,44 @@
+import atelier/view/type_
+import easel/expression/zipper
+import easel/print
+import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/jm/env as tenv
+import eyg/analysis/jm/tree
+import eyg/analysis/jm/type_ as t
+import eyg/analysis/type_/isomorphic as tj
+import eyg/runtime/break
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import eygir/annotated as a
+import eygir/decode
+import eygir/encode
+import eygir/expression as e
 import gleam/bit_array
-import gleam/io
-import gleam/int
-import gleam/list
 import gleam/dict
+import gleam/fetch
+import gleam/http
+import gleam/http/request
+import gleam/http/response
+import gleam/int
+import gleam/io
+import gleam/javascript
+import gleam/javascript/array
+import gleam/javascript/promise
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regex
 import gleam/result
 import gleam/string
 import gleam/stringx
-import gleam/http
-import gleam/http/request
-import gleam/http/response
-import gleam/fetch
-import eygir/annotated as a
-import eygir/expression as e
-import eygir/encode
-import eygir/decode
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
-import eyg/runtime/break
-import harness/stdlib
 import harness/effect
-import eyg/analysis/jm/tree
-import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/env as tenv
-import easel/print
-import easel/expression/zipper
-import atelier/view/type_
-import gleam/javascript
-import gleam/javascript/array
-import gleam/javascript/promise
-import plinth/browser/file_system
-import plinth/browser/file
-import plinth/browser/selection
-import plinth/browser/range
+import harness/stdlib
 import old_plinth/browser/document
 import platforms/browser
-import eyg/analysis/inference/levels_j/contextual as j
-import eyg/analysis/type_/isomorphic as tj
+import plinth/browser/file
+import plinth/browser/file_system
+import plinth/browser/range
+import plinth/browser/selection
 
 // TODO remove last run information when moving cursor
 // TODO have a program in the editor at startup

@@ -1,8 +1,8 @@
-import gleam/io
-import gleam/dict
 import datalog/ast
-import datalog/evaluation/naive
 import datalog/ast/builder.{fact, i, n, rule, v, y}
+import datalog/evaluation/naive
+import gleam/dict
+import gleam/io
 import gleeunit/should
 
 fn run(program) {

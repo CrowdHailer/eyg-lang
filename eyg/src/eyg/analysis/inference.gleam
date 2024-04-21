@@ -1,16 +1,16 @@
-import gleam/io
-import gleam/list
+import eyg/analysis/env
+import eyg/analysis/scheme.{type Scheme, Scheme}
+import eyg/analysis/substitutions as sub
+import eyg/analysis/typ as t
+import eyg/analysis/unification.{fresh, generalise, instantiate}
+import eygir/expression as e
 import gleam/dict.{type Dict}
 import gleam/dictx
+import gleam/io
+import gleam/javascript
+import gleam/list
 import gleam/result
 import gleam/string
-import eygir/expression as e
-import eyg/analysis/typ as t
-import eyg/analysis/substitutions as sub
-import eyg/analysis/scheme.{type Scheme, Scheme}
-import eyg/analysis/env
-import eyg/analysis/unification.{fresh, generalise, instantiate}
-import gleam/javascript
 import harness/stdlib
 
 pub type Infered {

@@ -1,6 +1,6 @@
+import eygir/expression as e
 import gleam/dynamic
 import gleam/list
-import eygir/expression as e
 
 pub type Node(m) =
   #(Expression(m), m)

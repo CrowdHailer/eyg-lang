@@ -1,19 +1,20 @@
 import gleam/result
+
 // this can define state and UI maybe UI should be separate
-import gleam/io
-import gleam/int
-import gleam/list
-import gleam/option.{type Option, None, Some}
-import gleam/string
+import easel/expression/zipper
+import eyg/analysis/jm/tree
+import eyg/analysis/jm/type_ as t
+import eygir/encode
+import eygir/expression as e
 import gleam/fetch
 import gleam/http
 import gleam/http/request
+import gleam/int
+import gleam/io
+import gleam/list
+import gleam/option.{type Option, None, Some}
+import gleam/string
 import lustre/effect as cmd
-import easel/expression/zipper
-import eygir/expression as e
-import eygir/encode
-import eyg/analysis/jm/tree
-import eyg/analysis/jm/type_ as t
 
 pub type WorkSpace {
   WorkSpace(
@@ -116,8 +117,8 @@ pub fn select_node(state, path) {
 // call click_node and then switch by state
 // clicking a variable could use it in place
 pub fn keypress(key, state: WorkSpace) {
+  // save in this state only because q is a normal letter needed when entering text
   let r = case state.mode, key {
-    // save in this state only because q is a normal letter needed when entering text
     Navigate(_act), "q" -> save(state)
     Navigate(act), "w" -> call_with(act, state)
     Navigate(act), "e" -> Ok(assign_to(act, state))

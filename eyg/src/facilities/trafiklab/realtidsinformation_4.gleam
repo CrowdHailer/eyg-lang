@@ -1,10 +1,10 @@
 import gleam/dynamic
-import gleam/int
-import gleam/result
+import gleam/fetch
 import gleam/http
 import gleam/http/request
+import gleam/int
 import gleam/javascript/promise
-import gleam/fetch
+import gleam/result
 
 pub type Failure {
   FetchFailure(fetch.FetchError)

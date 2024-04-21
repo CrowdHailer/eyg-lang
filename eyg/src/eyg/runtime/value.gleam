@@ -1,9 +1,9 @@
+import eygir/annotated as a
+import eygir/expression as e
 import gleam/int
+import gleam/javascript/promise.{type Promise as JSPromise}
 import gleam/list
 import gleam/string
-import gleam/javascript/promise.{type Promise as JSPromise}
-import eygir/expression as e
-import eygir/annotated as a
 
 pub type Value(m, context) {
   Binary(value: BitArray)

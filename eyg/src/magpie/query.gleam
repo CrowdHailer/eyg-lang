@@ -1,8 +1,9 @@
+import gleam/dict
 import gleam/io
 import gleam/list
-import gleam/dict
 import gleam/result
 import gleam/string
+
 // probably the query shouldn't depend on store details
 import magpie/store/in_memory.{type Triple, B, I, L, S}
 

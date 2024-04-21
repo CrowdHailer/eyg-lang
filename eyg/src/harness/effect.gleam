@@ -1,27 +1,27 @@
-import gleam/io
-import gleam/dynamic
-import gleam/int
-import gleam/list
+import eyg/analysis/typ as t
+import eyg/runtime/break
+import eyg/runtime/cast
+import eyg/runtime/value as v
+import eygir/annotated as e
+import eygir/decode
 import gleam/dict
-import gleam/result
-import gleam/string
+import gleam/dynamic
 import gleam/fetch
 import gleam/http
 import gleam/http/request
+import gleam/int
+import gleam/io
 import gleam/javascript/array.{type Array}
 import gleam/javascript/promise.{try_await}
-import gleam/json
-import simplifile
-import eyg/analysis/typ as t
-import eygir/annotated as e
-import plinth/browser/window
 import gleam/javascript/promisex
-import eyg/runtime/value as v
-import eyg/runtime/break
-import eyg/runtime/cast
-import eygir/decode
+import gleam/json
+import gleam/list
+import gleam/result
+import gleam/string
 import harness/ffi/core
 import old_plinth/browser/document
+import plinth/browser/window
+import simplifile
 
 pub fn init() {
   #(t.Closed, dict.new())

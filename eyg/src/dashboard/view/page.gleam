@@ -1,23 +1,23 @@
-import gleam/io
+import dashboard/state.{State, Wrap}
+import facilities/accu_weather/daily_forecast.{DailyForecast}
 import gleam/float
 import gleam/int
+import gleam/io
+import gleam/javascript/promise
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/javascript/promise
-import plinth/javascript/date
-import plinth/javascript/global
+import lustre/attribute.{class, id}
+import lustre/effect
+import lustre/element.{text}
+import lustre/element/html.{button, div, form, hr, iframe, input, p, span}
+import lustre/event.{on_click}
+import plinth/browser/audio
 import plinth/browser/document
 import plinth/browser/element as dom_element
 import plinth/browser/window
+import plinth/javascript/date
+import plinth/javascript/global
 import plinth/javascript/storage
-import plinth/browser/audio
-import lustre/attribute.{class, id}
-import lustre/element.{text}
-import lustre/element/html.{button, div, form, hr, iframe, input, p, span}
-import lustre/effect
-import lustre/event.{on_click}
-import facilities/accu_weather/daily_forecast.{DailyForecast}
-import dashboard/state.{State, Wrap}
 
 fn coerce_time(d) {
   let hours = date.hours(d)

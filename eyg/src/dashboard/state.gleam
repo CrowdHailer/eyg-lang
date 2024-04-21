@@ -1,14 +1,14 @@
-import gleam/io
-import gleam/list
-import gleam/option.{type Option, None}
-import lustre/effect
-import gleam/javascript/promisex
-import plinth/javascript/global
-import plinth/javascript/date.{type Date}
-import plinth/javascript/storage
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
 import facilities/trafiklab/realtidsinformation_4 as rt4
+import gleam/io
+import gleam/javascript/promisex
+import gleam/list
+import gleam/option.{type Option, None}
+import lustre/effect
+import plinth/javascript/date.{type Date}
+import plinth/javascript/global
+import plinth/javascript/storage
 
 pub type State {
   State(

@@ -1,6 +1,6 @@
+import eyg/analysis/jm/scheme
 import gleam/dict
 import gleam/set
-import eyg/analysis/jm/scheme
 
 pub type Env =
   dict.Dict(String, scheme.Scheme)

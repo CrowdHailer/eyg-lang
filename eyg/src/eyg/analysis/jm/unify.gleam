@@ -1,8 +1,8 @@
+import eyg/analysis/jm/error
+import eyg/analysis/jm/type_ as t
 import gleam/dict
 import gleam/result
 import gleam/set
-import eyg/analysis/jm/type_ as t
-import eyg/analysis/jm/error
 
 pub fn unify(t1, t2, s, next) {
   do_unify([#(t1, t2)], s, next)
@@ -50,7 +50,8 @@ fn do_unify(constraints, s, next) {
           let s = s1
           do_unify([#(value1, value2), #(tail1, tail2), ..rest], s, next)
         }
-        t.EffectExtend(label1, #(lift1, reply1), tail1), t.EffectExtend(_, _, _) as row2 -> {
+        t.EffectExtend(label1, #(lift1, reply1), tail1),
+          t.EffectExtend(_, _, _) as row2 -> {
           use #(lift2, reply2, tail2, s, next) <- result.then(rewrite_effect(
             label1,
             row2,

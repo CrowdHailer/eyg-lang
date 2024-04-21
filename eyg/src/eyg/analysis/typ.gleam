@@ -1,6 +1,6 @@
+import gleam/javascript
 import gleam/set
 import gleam/setx
-import gleam/javascript
 
 // This separation of kinds could be opened as a PR to the F-sharp project
 

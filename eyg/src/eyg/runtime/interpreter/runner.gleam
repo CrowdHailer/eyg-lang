@@ -1,8 +1,8 @@
-import gleam/list
-import gleam/javascript/promise
-import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import gleam/javascript/promise
+import gleam/list
 
 // loop and eval go to runner as you'd build a new one
 pub fn execute(exp, env, h) {

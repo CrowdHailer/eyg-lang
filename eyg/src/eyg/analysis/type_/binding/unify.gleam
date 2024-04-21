@@ -1,9 +1,9 @@
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/isomorphic as t
 import gleam/dict
 import gleam/int
 import gleam/result.{try}
-import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/type_/binding
-import eyg/analysis/type_/binding/error
 
 pub fn unify(t1, t2, level, bindings) {
   case t1, find(t1, bindings), t2, find(t2, bindings) {

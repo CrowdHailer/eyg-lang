@@ -1,6 +1,6 @@
-import lustre
-import examine/view/page
 import examine/state
+import examine/view/page
+import lustre
 
 // run depends on page and page depends on state so need separate file for state/model
 pub fn run() {

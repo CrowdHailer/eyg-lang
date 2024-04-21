@@ -1,14 +1,14 @@
-import gleam/io
 import gleam/int
-import gleam/list
-import gleam/string
+import gleam/io
 import gleam/javascript/array.{type Array}
 import gleam/javascript/promise
-import plinth/node/fs
+import gleam/list
+import gleam/string
+import magpie/sources/movies
 import magpie/sources/yaml
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/store/json
-import magpie/sources/movies
+import plinth/node/fs
 
 // glob is using an external dependency so will not be part of plinth
 @external(javascript, "../magpie_ffi.mjs", "sync")

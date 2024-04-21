@@ -1,14 +1,14 @@
-import gleam/dict
-import eyg/analysis/typ as t
 import eyg/analysis/inference
+import eyg/analysis/typ as t
+import eyg/runtime/capture
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
-import eyg/runtime/capture
-import eygir/expression as e
 import eygir/annotated as e2
-import harness/stdlib
-import harness/ffi/core.{expression_to_language}
+import eygir/expression as e
+import gleam/dict
 import gleeunit/should
+import harness/ffi/core.{expression_to_language}
+import harness/stdlib
 
 pub fn unequal_test() {
   let prog = e.Apply(e.Apply(e.Builtin("equal"), e.Integer(1)), e.Integer(2))

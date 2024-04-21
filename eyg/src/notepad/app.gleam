@@ -1,6 +1,6 @@
 import lustre
-import notepad/view/page
 import notepad/state
+import notepad/view/page
 
 // run depends on page and page depends on state so need separate file for state/model
 pub fn run() {

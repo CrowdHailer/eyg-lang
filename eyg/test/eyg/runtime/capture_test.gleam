@@ -1,13 +1,13 @@
-import gleam/dict
-import eygir/expression as e
-import eygir/annotated as a
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/capture
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/value as v
+import eygir/annotated as a
+import eygir/expression as e
+import gleam/dict
+import gleeunit/should
 import harness/ffi/env
 import harness/stdlib
-import gleeunit/should
 
 fn round_trip(term) {
   capture.capture(term)

@@ -1,8 +1,8 @@
 import gleam/dict
-import magpie/query.{Constant, Variable, i, s, v}
-import magpie/store/in_memory.{I, S}
-import magpie/sources/movies.{movies}
 import gleeunit/should
+import magpie/query.{Constant, Variable, i, s, v}
+import magpie/sources/movies.{movies}
+import magpie/store/in_memory.{I, S}
 
 // part of mapx on cleanup branch
 fn singleton(key, value) {

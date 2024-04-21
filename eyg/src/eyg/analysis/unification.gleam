@@ -1,12 +1,12 @@
-import gleam/list
-import gleam/dict
-import gleam/set
-import gleam/result
-import eyg/analysis/typ as t
-import eyg/analysis/substitutions as sub
-import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/env
+import eyg/analysis/scheme.{Scheme}
+import eyg/analysis/substitutions as sub
+import eyg/analysis/typ as t
+import gleam/dict
 import gleam/javascript
+import gleam/list
+import gleam/result
+import gleam/set
 
 // Normal
 pub fn fresh(ref) {

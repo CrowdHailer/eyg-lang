@@ -1,6 +1,6 @@
+import gleeunit/should
 import magpie/store/in_memory.{B, I, L, S}
 import magpie/store/json
-import gleeunit/should
 
 pub fn function_name_test() -> Nil {
   let triples = [

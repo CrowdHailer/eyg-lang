@@ -1,9 +1,9 @@
-import gleam/io
+import datalog/ast
 import gleam/dict.{type Dict}
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import datalog/ast
 
 pub type DB =
   Dict(String, List(List(ast.Value)))

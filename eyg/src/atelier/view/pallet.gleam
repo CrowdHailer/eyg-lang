@@ -1,17 +1,17 @@
 // command pallet
-import gleam/io
-import gleam/dynamic
-import gleam/list
-import gleam/dict
-import gleam/string
-import gleam/option.{None, Some}
-import lustre/element/html.{div, input, span, textarea}
-import lustre/element.{text}
-import lustre/event.{on_click}
-import lustre/attribute.{class, classes}
-import eyg/analysis/jm/type_ as t
 import atelier/app.{SelectNode}
 import atelier/view/type_
+import eyg/analysis/jm/type_ as t
+import gleam/dict
+import gleam/dynamic
+import gleam/io
+import gleam/list
+import gleam/option.{None, Some}
+import gleam/string
+import lustre/attribute.{class, classes}
+import lustre/element.{text}
+import lustre/element/html.{div, input, span, textarea}
+import lustre/event.{on_click}
 
 // import atelier/inventory
 

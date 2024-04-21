@@ -1,6 +1,6 @@
+import eygir/expression as e
 import gleam/list
 import gleam/result
-import eygir/expression as e
 
 pub type Zipper =
   #(e.Expression, fn(e.Expression) -> e.Expression)

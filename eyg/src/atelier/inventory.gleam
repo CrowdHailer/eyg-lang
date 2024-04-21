@@ -1,10 +1,10 @@
-import gleam/result
-import gleam/list
-import gleam/dict
-import gleam/string
-import eygir/expression as e
-import eyg/analysis/typ as t
 import eyg/analysis/scheme.{Scheme}
+import eyg/analysis/typ as t
+import eygir/expression as e
+import gleam/dict
+import gleam/list
+import gleam/result
+import gleam/string
 
 // Names could be explorer rover scout librarian cataloge
 // inventory catalog roster haystack

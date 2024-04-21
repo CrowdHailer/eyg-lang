@@ -1,10 +1,10 @@
-import gleam/list
+import datalog/browser/app/model
+import datalog/browser/view/page
 import gleam/javascript/promise
+import gleam/list
 import lustre
 import lustre/effect
 import plinth/browser/window
-import datalog/browser/app/model
-import datalog/browser/view/page
 
 pub fn run() {
   case window.get_hash() {

@@ -1,6 +1,6 @@
+import eygir/annotated as e
 import gleam/list
 import gleam/result
-import eygir/annotated as e
 
 pub type Zipper(m) =
   #(e.Node(m), fn(e.Node(m)) -> e.Node(m))

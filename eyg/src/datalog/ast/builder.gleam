@@ -1,5 +1,5 @@
-import gleam/list
 import datalog/ast
+import gleam/list
 
 pub fn fact(relation, values) {
   let terms = list.map(values, fn(v) { v })

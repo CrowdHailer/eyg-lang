@@ -1,6 +1,13 @@
-import gleam/io
+import examine/state.{
+  Compilation, Highlight, Inference, Input, Interpret, Switch,
+}
+import eyg/analysis/type_/binding/debug
+import eyg/runtime/break
+import eyg/runtime/value as v
+import eygir/tree
 import gleam/dynamic
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -8,13 +15,6 @@ import lustre/attribute.{class, classes, id, value}
 import lustre/element.{text}
 import lustre/element/html.{div, p, pre, span, textarea}
 import lustre/event.{on_click, on_input}
-import eygir/tree
-import eyg/runtime/value as v
-import eyg/runtime/break
-import eyg/analysis/type_/binding/debug
-import examine/state.{
-  Compilation, Highlight, Inference, Input, Interpret, Switch,
-}
 
 pub fn render(s: state.State) {
   div([class("vstack wrap")], [

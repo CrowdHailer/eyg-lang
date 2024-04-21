@@ -1,7 +1,7 @@
+import eyg/parse/token as t
 import gleam/bit_array
 import gleam/list
 import gleam/string
-import eyg/parse/token as t
 
 pub fn lex(raw) {
   loop(raw, 0, [])

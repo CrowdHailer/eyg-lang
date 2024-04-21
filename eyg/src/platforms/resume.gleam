@@ -1,20 +1,20 @@
+import eyg/runtime/cast
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/value as v
+import eygir/annotated as e
+import eygir/decode
 import gleam/dict
-import gleam/list
-import gleam/javascript/map
-import gleam/result
-import gleam/string
 import gleam/javascript
 import gleam/javascript/array
+import gleam/javascript/map
+import gleam/list
+import gleam/result
+import gleam/string
+import harness/stdlib
 import plinth/browser/document
 import plinth/browser/element
 import plinth/browser/event
 import plinth/javascript/console
-import eygir/decode
-import eygir/annotated as e
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/value as v
-import eyg/runtime/cast
-import harness/stdlib
 
 fn handle_click(event, states) {
   use target <- result.then(element.closest(

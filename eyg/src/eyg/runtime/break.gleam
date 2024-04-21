@@ -1,5 +1,5 @@
-import gleam/string
 import eyg/runtime/value.{type Value}
+import gleam/string
 
 pub type Reason(m, c) {
   NotAFunction(Value(m, c))

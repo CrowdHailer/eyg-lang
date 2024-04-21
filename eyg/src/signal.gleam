@@ -1,16 +1,16 @@
 // Slow due to a lot of calls to list.map
-import gleam/io
+import eygir/decode
+import eygir/expression as e
 import gleam/int
-import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/io
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
-import plinth/javascript/console
-import old_plinth/browser/document
 import gleam/javascript/promisex
-import eygir/expression as e
-import eygir/decode
+import gleam/list
+import gleam/option.{type Option, None, Some}
+import old_plinth/browser/document
+import plinth/javascript/console
 
 pub type Signal(a) =
   fn() -> a

@@ -1,33 +1,33 @@
-import gleam/io
-import gleam/dynamic
+import datalog/ast
+import datalog/browser/app/model.{Model}
+import datalog/browser/view/query
+import datalog/browser/view/remote
+import datalog/browser/view/source
+import facilities/accu_weather/client as accu_weather
+import facilities/accu_weather/daily_forecast
+import facilities/google/event as g_event
 import gleam/dict
+import gleam/dynamic
+import gleam/fetch
 import gleam/float
+import gleam/http/request
 import gleam/int
+import gleam/io
+import gleam/javascript/promise
+import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string
 import gleam/uri.{Uri}
-import gleam/http/request
-import gleam/fetch
-import gleam/javascript/promise
-import gleam/javascript/promisex
-import lustre/element.{text}
 import lustre/attribute.{class}
 import lustre/effect
+import lustre/element.{text}
 import lustre/element/html.{button, div, form, input, p}
 import lustre/event.{on_click, on_input}
-import plinth/javascript/storage
 import plinth/browser/window
-import facilities/google/event as g_event
-import facilities/accu_weather/client as accu_weather
-import facilities/accu_weather/daily_forecast
-import datalog/ast
-import datalog/browser/app/model.{Model}
-import datalog/browser/view/source
-import datalog/browser/view/query
-import datalog/browser/view/remote
+import plinth/javascript/storage
 
 pub fn render(model) -> element.Element(model.Wrap) {
   let Model(sections, mode) = model

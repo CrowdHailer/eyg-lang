@@ -1,6 +1,6 @@
-import gleam/list
-import gleam/dict.{type Dict}
 import eyg/analysis/typ as t
+import gleam/dict.{type Dict}
+import gleam/list
 
 pub type Substitutions {
   Substitutions(

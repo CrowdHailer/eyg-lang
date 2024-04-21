@@ -1,11 +1,11 @@
+import eyg/analysis/typ as t
+import eyg/runtime/cast
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
 import gleam/bit_array
 import gleam/list
 import gleam/result
 import gleam/string
-import eyg/analysis/typ as t
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
-import eyg/runtime/cast
 
 pub fn append() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.Str))

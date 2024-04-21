@@ -1,6 +1,6 @@
-import gleeunit/should
-import eygir/expression as e
 import atelier/app
+import eygir/expression as e
+import gleeunit/should
 
 pub fn call_test() {
   let source = e.Let("x", e.Str("initial"), e.Variable("x"))

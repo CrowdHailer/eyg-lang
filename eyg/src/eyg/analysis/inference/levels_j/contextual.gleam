@@ -1,12 +1,12 @@
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/binding/unify
+import eyg/analysis/type_/isomorphic as t
+import eygir/annotated as a
+import eygir/expression as e
 import gleam/dict
 import gleam/list
 import gleam/set
-import eygir/expression as e
-import eygir/annotated as a
-import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/type_/binding
-import eyg/analysis/type_/binding/unify
-import eyg/analysis/type_/binding/error
 
 pub fn new_state() {
   dict.new()

@@ -1,9 +1,9 @@
-import gleam/result
-import lustre
-import lustre/effect as cmd
 import atelier/app
 import atelier/view/root
 import eygir/decode
+import gleam/result
+import lustre
+import lustre/effect as cmd
 
 // render -> app
 // main -> render

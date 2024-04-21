@@ -1,9 +1,9 @@
-import gleam/io
-import gleam/int
-import gleam/list
-import gleam/string
 import eyg/analysis/type_/isomorphic as t
 import eygir/annotated as a
+import gleam/int
+import gleam/io
+import gleam/list
+import gleam/string
 
 // Needs unique variables
 pub fn unnest(node) {

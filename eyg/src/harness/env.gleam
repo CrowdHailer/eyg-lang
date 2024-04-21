@@ -1,7 +1,7 @@
+import eyg/analysis/scheme.{Scheme}
+import eyg/analysis/typ as t
 import gleam/dict
 import gleam/set
-import eyg/analysis/typ as t
-import eyg/analysis/scheme.{Scheme}
 
 pub fn init() {
   #(dict.new(), dict.new())

@@ -1,7 +1,13 @@
-import gleam/io
+import datalog/ast
+import datalog/ast/parser
+import datalog/browser/app/model.{Model, Wrap}
+import datalog/browser/view/source
+import datalog/browser/view/value
+import datalog/evaluation/naive
 import gleam/dict
 import gleam/dynamic
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
@@ -11,12 +17,6 @@ import lustre/effect
 import lustre/element.{text}
 import lustre/element/html.{br, div, span, textarea}
 import lustre/event.{on_blur, on_click, on_input}
-import datalog/evaluation/naive
-import datalog/ast
-import datalog/ast/parser
-import datalog/browser/app/model.{Model, Wrap}
-import datalog/browser/view/value
-import datalog/browser/view/source
 
 fn edit_query(index) {
   Wrap(fn(model) {

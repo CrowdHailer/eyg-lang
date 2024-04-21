@@ -1,5 +1,5 @@
-import magpie/sources/yaml
 import gleeunit/should
+import magpie/sources/yaml
 import magpie/store/in_memory.{B, I, L, S}
 
 pub fn loading_strings_test() {

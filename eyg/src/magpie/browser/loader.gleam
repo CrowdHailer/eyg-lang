@@ -1,6 +1,6 @@
 import gleam/dynamic.{type Dynamic}
-import magpie/store/json
 import magpie/store/in_memory
+import magpie/store/json
 
 @external(javascript, "../db.mjs", "data")
 fn raw_db() -> Dynamic

@@ -1,5 +1,5 @@
-import gleam/string
 import datalog/datalog.{Constant as C, fresh, not, return, return2, transform}
+import gleam/string
 import gleeunit/should
 
 // rules facts/rules https://flix.dev/paper/oopsla2020a.pdf

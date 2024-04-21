@@ -1,14 +1,15 @@
 // up to 91% of time is joining lists
+import eyg/analysis/jm/tree
+import eyg/analysis/jm/type_ as t
+import eygir/expression as e
+import gleam/dict
 import gleam/int
 import gleam/list
-import gleam/dict
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
 import gleam/stringx
-import eygir/expression as e
-import eyg/analysis/jm/tree
-import eyg/analysis/jm/type_ as t
+
 // reuse aterlier type
 import atelier/view/type_
 import easel/location.{type Location, Location}

@@ -1,3 +1,11 @@
+import eyg/analysis/typ as t
+import eyg/runtime/capture
+import eyg/runtime/cast
+import eyg/runtime/interpreter/runner as r
+import eyg/runtime/interpreter/state
+import eyg/runtime/value as v
+import eygir/annotated as e
+import eygir/encode
 import gleam/bit_array
 import gleam/dict
 import gleam/io
@@ -5,21 +13,13 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
 import gleam/string as gleam_string
-import plinth/browser/window
-import plinth/javascript/global
-import plinth/javascript/console
-import eygir/annotated as e
-import eyg/analysis/typ as t
-import eygir/encode
-import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
-import eyg/runtime/capture
-import eyg/runtime/cast
 import harness/env.{extend, init}
 import harness/ffi/integer
 import harness/ffi/linked_list
 import harness/ffi/string
+import plinth/browser/window
+import plinth/javascript/console
+import plinth/javascript/global
 
 pub fn equal() {
   let type_ =

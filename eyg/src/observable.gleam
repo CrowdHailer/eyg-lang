@@ -1,11 +1,11 @@
 import gleam/io
-import gleam/list
-import gleam/option.{type Option, None, Some}
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
-import old_plinth/browser/document
 import gleam/javascript/promisex
+import gleam/list
+import gleam/option.{type Option, None, Some}
+import old_plinth/browser/document
 
 // I think these are observable not signals because subscription rather than get in a call
 

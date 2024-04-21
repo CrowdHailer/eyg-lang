@@ -1,10 +1,11 @@
+import eyg/analysis/env
+import eyg/analysis/inference.{infer, type_of}
+import eyg/analysis/typ.{ftv} as t
+import eygir/expression as e
 import gleam/dict
 import gleam/set
 import gleam/setx
-import eygir/expression as e
-import eyg/analysis/typ.{ftv} as t
-import eyg/analysis/env
-import eyg/analysis/inference.{infer, type_of}
+
 // top level analysis
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/unification

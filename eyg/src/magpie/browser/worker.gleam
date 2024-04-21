@@ -1,12 +1,12 @@
-import gleam/dynamic
-import gleam/list
 import gleam/dict
-import gleam_community/codec
+import gleam/dynamic
 import gleam/json
-import plinth/browser/worker.{type Worker}
-import magpie/query
+import gleam/list
+import gleam_community/codec
 import magpie/browser/loader
 import magpie/browser/serialize
+import magpie/query
+import plinth/browser/worker.{type Worker}
 
 pub fn run(self: Worker) {
   let db = loader.db()

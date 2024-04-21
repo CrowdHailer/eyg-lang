@@ -1,7 +1,7 @@
 import gleam/dynamic
 import lustre/attribute as a
-import lustre/element/html as h
 import lustre/element.{text}
+import lustre/element/html as h
 import lustre/event
 import notepad/state
 import notepad/view/helpers

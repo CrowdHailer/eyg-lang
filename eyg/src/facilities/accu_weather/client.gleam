@@ -1,11 +1,11 @@
+import facilities/accu_weather/daily_forecast
 import gleam/dynamic
-import gleam/result
-import gleam/string
+import gleam/fetch
 import gleam/http
 import gleam/http/request
 import gleam/javascript/promise
-import gleam/fetch
-import facilities/accu_weather/daily_forecast
+import gleam/result
+import gleam/string
 
 pub type Failure {
   FetchFailure(fetch.FetchError)

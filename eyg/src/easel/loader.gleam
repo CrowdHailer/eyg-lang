@@ -1,22 +1,22 @@
-import gleam/io
-import gleam/int
-import gleam/list
-import gleam/dict
-import gleam/result
-import gleam/string
-import gleam/javascript/array
-import gleam/javascript
-import old_plinth/browser/document
 import easel/embed
-import eygir/decode
-import eygir/annotated as e
+import eyg/analysis/jm/type_ as t
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
+import eygir/annotated as e
+import eygir/decode
+import gleam/dict
+import gleam/int
+import gleam/io
+import gleam/javascript
+import gleam/javascript/array
+import gleam/list
+import gleam/result
+import gleam/string
 import harness/stdlib
+import old_plinth/browser/document
 import plinth/javascript/console
-import eyg/analysis/jm/type_ as t
 
 pub fn run() {
   let containers = document.query_selector_all("[data-ready]")

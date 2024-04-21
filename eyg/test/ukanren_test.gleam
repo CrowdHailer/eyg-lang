@@ -1,5 +1,5 @@
-import gleam/list
 import gleam/dict.{type Dict}
+import gleam/list
 
 type Value {
   I(Int)

@@ -1,5 +1,5 @@
-import gleam/dict
 import eyg/analysis/type_/isomorphic as t
+import gleam/dict
 
 pub type Binding {
   Bound(Mono)

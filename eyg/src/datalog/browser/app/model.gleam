@@ -1,18 +1,18 @@
-import gleam/io
+import datalog/ast
+import datalog/ast/builder.{fact, i, n, rule, s, v, y}
+import datalog/ast/parser
+import datalog/evaluation/naive
 import gleam/dict
+import gleam/fetch
+import gleam/http/request.{type Request}
+import gleam/io
+import gleam/javascript/promise
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None}
 import gleam/string
 import gleam/uri
-import gleam/fetch
-import gleam/http/request.{type Request}
-import gleam/javascript/promise
 import lustre/effect
-import datalog/ast
-import datalog/ast/parser
-import datalog/ast/builder.{fact, i, n, rule, s, v, y}
-import datalog/evaluation/naive
 
 pub type Wrap {
   Wrap(fn(Model) -> #(Model, effect.Effect(Wrap)))

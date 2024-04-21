@@ -1,17 +1,17 @@
-import gleam/int
-import gleam/list
-import gleam/dict
-import gleam/option.{None, Some}
-import gleam/string
-import eyg/analysis/jm/type_ as t
-import lustre/element/html.{pre, span}
-import lustre/element.{text}
-import lustre/event.{on_click}
-import lustre/attribute.{class, classes, style}
-import eygir/expression as e
 import atelier/app.{SelectNode}
 import atelier/view/type_
 import easel/location.{type Location, Location, child, focused, open}
+import eyg/analysis/jm/type_ as t
+import eygir/expression as e
+import gleam/dict
+import gleam/int
+import gleam/list
+import gleam/option.{None, Some}
+import gleam/string
+import lustre/attribute.{class, classes, style}
+import lustre/element.{text}
+import lustre/element/html.{pre, span}
+import lustre/event.{on_click}
 
 pub fn render(source, selection, inferred) {
   let loc = Location([], Some(selection), False)

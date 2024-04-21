@@ -1,7 +1,7 @@
-import magpie/query.{i, s, v}
-import magpie/store/in_memory.{I, S}
-import magpie/sources/movies.{movies}
 import gleeunit/should
+import magpie/query.{i, s, v}
+import magpie/sources/movies.{movies}
+import magpie/store/in_memory.{I, S}
 
 pub fn when_was_alien_released_test() {
   query.run(

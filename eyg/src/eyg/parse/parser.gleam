@@ -1,11 +1,11 @@
+import eyg/parse/token as t
+import eygir/annotated as e
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import gleam/string
-import eygir/annotated as e
-import eyg/parse/token as t
-import gleam/io
 
 pub type Reason {
   UnexpectEnd

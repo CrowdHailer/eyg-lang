@@ -1,13 +1,13 @@
-import gleam/list
+import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/isomorphic as t
 import eyg/parse/lexer
 import eyg/parse/parser
 import eygir/annotated
+import gleam/list
 import gleeunit/should
-import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/type_/binding
-import eyg/analysis/type_/binding/error
-import eyg/analysis/inference/levels_j/contextual as j
-import eyg/analysis/type_/binding/debug
 
 fn parse(src) {
   src

@@ -1,10 +1,10 @@
+import eyg/runtime/value as v
+import eygir/annotated as a
+import eygir/expression as e
 import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
-import eygir/expression as e
-import eygir/annotated as a
-import eyg/runtime/value as v
 
 pub fn capture(term) {
   // env is reversed with first needed deepest

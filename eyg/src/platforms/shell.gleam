@@ -1,24 +1,24 @@
-import gleam/dict
-import gleam/dynamic
-import gleam/io
-import gleam/int
-import gleam/list
-import gleam/result
-import gleam/string
-import gleam/javascript/array.{type Array}
-import gleam/javascript/promise
+import eyg/runtime/break
+import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eyg/runtime/break
-import eyg/runtime/cast
-import harness/stdlib
-import plinth/javascript/console
-import gleam/json
 import eygir/annotated as e
+import gleam/dict
+import gleam/dynamic
+import gleam/int
+import gleam/io
+import gleam/javascript/array.{type Array}
+import gleam/javascript/promise
+import gleam/json
+import gleam/list
+import gleam/result
+import gleam/string
 import harness/effect
 import harness/ffi/core
 import harness/impl/http
+import harness/stdlib
+import plinth/javascript/console
 
 pub type Interface
 

@@ -1,11 +1,12 @@
-import gleam/list
 import gleam/dict.{type Dict}
+import gleam/list
 import gleam/result
+
 // import eygir/expression as e
-import eygir/annotated as e
-import eyg/runtime/value as v
 import eyg/runtime/break
 import eyg/runtime/cast
+import eyg/runtime/value as v
+import eygir/annotated as e
 
 pub type Context(m) =
   #(List(#(Kontinue(m), m)), Env(m))

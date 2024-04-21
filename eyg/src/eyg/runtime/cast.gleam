@@ -1,7 +1,7 @@
+import eyg/runtime/break
+import eyg/runtime/value as v
 import gleam/list
 import gleam/result
-import eyg/runtime/value as v
-import eyg/runtime/break
 
 pub fn any(term) {
   Ok(term)

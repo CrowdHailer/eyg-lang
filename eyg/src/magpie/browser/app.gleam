@@ -1,24 +1,24 @@
 import gleam/dynamic
 import gleam/int
 import gleam/io
+import gleam/json
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/string
-import gleam/json
 import gleam_community/codec
 import lustre
+import lustre/attribute.{class}
 import lustre/effect as cmd
 import lustre/element.{text}
 import lustre/element/html as el
 import lustre/event
-import lustre/attribute.{class}
-import plinth/browser/worker.{type Worker}
-import plinth/browser/window
-import magpie/store/in_memory.{B, I, L, S}
-import magpie/query.{v}
 import magpie/browser/hash
 import magpie/browser/serialize
+import magpie/query.{v}
+import magpie/store/in_memory.{B, I, L, S}
+import plinth/browser/window
+import plinth/browser/worker.{type Worker}
 
 pub fn run() {
   let assert Ok(dispatch) =
@@ -589,12 +589,12 @@ fn render_query(mode, connection, db) {
             el.div(
               [],
               list.map(
-                  where_vars(where)
-                    |> list.filter(fn(w) { !list.contains(find, w) }),
-                  fn(v) {
-                    el.button([event.on_click(SelectVariable(v))], [text(v)])
-                  },
-                )
+                where_vars(where)
+                  |> list.filter(fn(w) { !list.contains(find, w) }),
+                fn(v) {
+                  el.button([event.on_click(SelectVariable(v))], [text(v)])
+                },
+              )
                 |> list.intersperse(text(" ")),
             ),
           ]

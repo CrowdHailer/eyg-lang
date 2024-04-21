@@ -1,9 +1,9 @@
-import gleam/io
+import datalog/ast
 import gleam/int
+import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
-import datalog/ast
 
 pub fn parse(raw) {
   use tokens <- result.then(do_tokenise([], raw))

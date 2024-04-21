@@ -1,6 +1,6 @@
-import gleam/set
-import eyg/analysis/typ as t
 import eyg/analysis/substitutions as sub
+import eyg/analysis/typ as t
+import gleam/set
 
 pub type Scheme {
   Scheme(forall: List(t.Variable), type_: t.Term)
