@@ -31,7 +31,7 @@ pub fn render(index, relation, headings, values) {
         input([
           class("w-full m-0 bg-gray-800 text-white"),
           readonly(True),
-          value(dynamic.from(relation)),
+          value(relation),
         ]),
       ]),
       display(headings, values),
@@ -41,7 +41,7 @@ pub fn render(index, relation, headings, values) {
   //   [class("cusor bg-purple-300"), on_click(model.Wrap(add_row(_, index)))],
   //   [text("add row")],
   // ),
-  // css 
+  // css
   // on drop look at file extension
   // input([
   //   attribute.attribute("type", "file"),

@@ -26,6 +26,7 @@ import lustre/effect
 import lustre/element.{text}
 import lustre/element/html.{button, div, form, input, p}
 import lustre/event.{on_click, on_input}
+import platforms/browser/windows
 import plinth/browser/window
 import plinth/javascript/storage
 
@@ -115,7 +116,7 @@ fn subsection(index, mode) {
           [
             input([
               class("border"),
-              attribute.value(dynamic.from(raw)),
+              attribute.value(raw),
               on_input(fn(new) {
                 model.Wrap(fn(state) {
                   let Model(sections, mode) = state
@@ -209,31 +210,12 @@ fn google_oauth(model, index) {
   #(
     Model(..model, mode: mode),
     effect.from(fn(d) {
-      let space = #(
-        window.outer_width(window.self()),
-        window.outer_height(window.self()),
-      )
       let frame = #(600, 700)
-      let #(#(offset_x, offset_y), #(inner_x, inner_y)) = center(frame, space)
-      let features =
-        string.concat([
-          "popup",
-          ",width=",
-          int.to_string(inner_x),
-          ",height=",
-          int.to_string(inner_y),
-          ",left=",
-          int.to_string(offset_x),
-          ",top=",
-          int.to_string(offset_y),
-        ])
 
       let assert Ok(popup) =
-        window.open(
+        windows.open(
           "https://accounts.google.com/o/oauth2/auth?client_id=419853920596-v2vh33r5h796q8fjvdu5f4ve16t91rkd.apps.googleusercontent.com&response_type=token&redirect_uri=http://localhost:8080&state=123&scope=https://www.googleapis.com/auth/calendar.events.readonly",
-          //  https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly
-          "_blank",
-          features,
+          frame,
         )
 
       use token <- promisex.aside(monitor_auth(popup, 500))
@@ -341,22 +323,9 @@ fn accu_weather(model, index) {
   // Ok(Nil)
 }
 
-fn center(inner, outer) {
-  let #(inner_x, inner_y) = inner
-  let #(outer_x, outer_y) = outer
-
-  let inner_x = int.min(inner_x, outer_x)
-  let inner_y = int.min(inner_y, outer_y)
-
-  let offset_x = { outer_x - inner_x } / 2
-  let offset_y = { outer_y - inner_y } / 2
-
-  #(#(offset_x, offset_y), #(inner_x, inner_y))
-}
-
 fn monitor_auth(popup, wait) {
   use Nil <- promise.await(promisex.wait(wait))
-  let location = window.location_of(popup)
+  let assert Ok(location) = window.location_of(popup)
   case uri.parse(location) {
     Ok(Uri(fragment: Some(fragment), ..)) -> {
       let assert Ok(parts) = uri.parse_query(fragment)

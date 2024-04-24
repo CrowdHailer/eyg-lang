@@ -9,9 +9,10 @@ gleam = ">= 0.32.0"
 gleam_stdlib = "~> 0.20"
 gleam_javascript = "~> 0.8"
 gleam_bitwise = "~> 1.2"
-lustre = "~> 3.0"
-gleam_json = "~> 0.5"
-gleam_fetch = "~> 0.1"
+lustre = "~> 4.0"
+gleam_json = "~> 1.0"
+# gleam_fetch = "~> 0.1"
+gleam_fetch = { path = "../../fetch" }
 # plinth = "~> 0.1.6"
 plinth = {path= "../../plinth"}
 simplifile = "~> 1.0"

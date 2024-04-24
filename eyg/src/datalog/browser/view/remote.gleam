@@ -30,7 +30,7 @@ pub fn render(req, relation, data) {
         input([
           class("w-full m-0 bg-gray-800 text-white"),
           readonly(True),
-          value(dynamic.from(source)),
+          value(source),
         ]),
       ]),
       display(list.take(data, 10)),

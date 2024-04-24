@@ -76,20 +76,22 @@ fn render_inference(s) {
             div([class(cl)], [span([], [text(" ")])])
           }),
         ),
-        textarea([
-          id("source"),
-          class(
-            "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
-          ),
-          // event.on("select", fn(e) {
-          //   let e = dynamic.unsafe_coerce(e)
-          //   io.debug(evt.target(e))
-          //   todo as "select"
-          // }),
-          // Ok(Select(e))
-          value(dynamic.from(state.source(s))),
-          on_input(Input),
-        ]),
+        textarea(
+          [
+            id("source"),
+            class(
+              "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
+            ),
+            // event.on("select", fn(e) {
+            //   let e = dynamic.unsafe_coerce(e)
+            //   io.debug(evt.target(e))
+            //   todo as "select"
+            // }),
+            // Ok(Select(e))
+            on_input(Input),
+          ],
+          state.source(s),
+        ),
       ]),
     ]),
     div([class("cover")], [
@@ -168,14 +170,16 @@ fn render_interpretation(s) {
     div([class("expand cover bg-blue-100")], [
       div([class("relative h-full bg-white rounded")], [
         div([class("absolute left-0 right-0 p-2")], []),
-        textarea([
-          id("source"),
-          class(
-            "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
-          ),
-          value(dynamic.from(state.source(s))),
-          on_input(Input),
-        ]),
+        textarea(
+          [
+            id("source"),
+            class(
+              "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
+            ),
+            on_input(Input),
+          ],
+          state.source(s),
+        ),
       ]),
     ]),
     div([class("cover expand")], [
@@ -226,14 +230,16 @@ fn render_compilation(s) {
     div([class("expand cover bg-blue-100")], [
       div([class("relative h-full bg-white rounded")], [
         div([class("absolute left-0 right-0 p-2")], []),
-        textarea([
-          id("source"),
-          class(
-            "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
-          ),
-          value(dynamic.from(state.source(s))),
-          on_input(Input),
-        ]),
+        textarea(
+          [
+            id("source"),
+            class(
+              "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
+            ),
+            on_input(Input),
+          ],
+          state.source(s),
+        ),
       ]),
     ]),
     div([class("cover expand")], [

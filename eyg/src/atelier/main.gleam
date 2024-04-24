@@ -21,7 +21,7 @@ pub fn main(source) {
     |> lustre.start("#app", Nil),
   )
 
-  listen_keypress(fn(key) { dispatch(app.Keypress(key)) })
+  listen_keypress(fn(key) { dispatch(lustre.dispatch(app.Keypress(key))) })
   Ok(Nil)
 }
 

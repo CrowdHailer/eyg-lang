@@ -23,13 +23,15 @@ fn note(content, on_input) {
       ],
       [text(content)],
     ),
-    h.textarea([
-      // position relative needed for stacking on top of absolutly positioned element
-      a.class("w-full bg-transparent text-transparent relative outline-none"),
-      a.style([#("caret-color", "black")]),
-      a.attribute("rows", helpers.line_count(content)),
-      a.value(dynamic.from(content)),
-      event.on_input(on_input),
-    ]),
+    h.textarea(
+      [
+        // position relative needed for stacking on top of absolutly positioned element
+        a.class("w-full bg-transparent text-transparent relative outline-none"),
+        a.style([#("caret-color", "black")]),
+        a.attribute("rows", helpers.line_count(content)),
+        event.on_input(on_input),
+      ],
+      content,
+    ),
   ])
 }
