@@ -52,6 +52,7 @@ pub fn unify(t1, t2, level, bindings) {
       use bindings <- try(unify(reply1, reply2, level, bindings))
       unify(r1, r2, level, bindings)
     }
+    t.Promise(t1), _, t.Promise(t2), _ -> unify(t1, t2, level, bindings)
     _, _, _, _ -> Error(error.TypeMismatch(t1, t2))
   }
 }
@@ -101,6 +102,7 @@ fn occurs_and_levels(i, level, type_, bindings) {
       use bindings <- try(occurs_and_levels(i, level, rest, bindings))
       Ok(bindings)
     }
+    t.Promise(inner) -> occurs_and_levels(i, level, inner, bindings)
   }
 }
 

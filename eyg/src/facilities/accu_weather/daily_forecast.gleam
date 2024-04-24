@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/option.{type Option}
 
 pub type DailyForecast {
   DailyForecast(

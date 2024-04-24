@@ -51,6 +51,7 @@ fn ftv(type_) {
     t.RowExtend(_, field, tail) -> set.union(ftv(field), ftv(tail))
     t.EffectExtend(_, #(lift, reply), tail) ->
       set.union(ftv(lift), set.union(ftv(reply), ftv(tail)))
+    t.Promise(inner) -> ftv(inner)
   }
 }
 
@@ -90,7 +91,7 @@ fn eff_tail(eff) {
   }
 }
 
-fn do_infer(source, env, eff, level, bindings) {
+pub fn do_infer(source, env, eff, level, bindings) {
   case source {
     e.Variable(x) ->
       case list.key_find(env, x) {
@@ -219,9 +220,14 @@ fn do_infer(source, env, eff, level, bindings) {
     e.Builtin(identifier) ->
       case builtin(identifier) {
         Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(identifier))
-        Error(reason) -> {
+        Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          let meta = #(Error(reason), type_, t.Empty, env)
+          let meta = #(
+            Error(error.MissingVariable(identifier)),
+            type_,
+            t.Empty,
+            env,
+          )
           #(bindings, type_, eff, #(a.Builtin(identifier), meta))
         }
       }
@@ -313,91 +319,97 @@ pub fn handle(label) {
   t.Fun(handler, t.Empty, t.Fun(exec, tail, return))
 }
 
-const unit = t.Record(t.Empty)
-
-fn rows(rows) {
-  list.fold(list.reverse(rows), t.Empty, fn(tail, row) {
-    let #(label, value) = row
-    t.RowExtend(label, value, tail)
-  })
-}
-
-fn record(fields) {
-  t.Record(rows(fields))
-}
-
-fn union(fields) {
-  t.Union(rows(fields))
-}
-
-const boolean = t.Union(
-  t.RowExtend("True", unit, t.RowExtend("False", unit, t.Empty)),
-)
-
-fn result(value, reason) {
-  t.Union(t.RowExtend("Ok", value, t.RowExtend("Error", reason, t.Empty)))
-}
-
 // equal fn should be open in fn that takes boolean and other union
 fn builtin(name) {
-  case name {
-    "equal" -> Ok(pure2(q(0), q(0), boolean))
-    "debug" -> Ok(pure1(q(0), t.String))
+  list.key_find(builtins(), name)
+}
+
+pub fn builtins() {
+  [
+    #("equal", pure2(q(0), q(0), t.boolean)),
+    #("debug", pure1(q(0), t.String)),
     // if the passed in constructor raises an effect then fix does too
-    "fix" -> Ok(t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0)))
-    "eval" ->
-      Ok(t.Fun(q(0), t.EffectExtend("Eval", #(unit, unit), t.Empty), q(1)))
-    "serialize" -> Ok(pure1(q(0), t.String))
-    "capture" -> Ok(pure1(q(0), q(1)))
-    "encode_uri" -> Ok(pure1(t.String, t.String))
-    "decode_uri_component" -> Ok(pure1(t.String, t.String))
-    "base64_encode" -> Ok(pure1(t.Binary, t.String))
-
-    "binary_from_integers" -> Ok(pure1(t.List(t.Integer), t.Binary))
-
-    "int_compare" -> {
-      let return = union([#("Lt", unit), #("Eq", unit), #("Gt", unit)])
-      Ok(pure2(t.Integer, t.Integer, return))
-    }
-    "int_add" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
-    "int_subtract" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
-    "int_multiply" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
+    #("fix", t.Fun(t.Fun(q(0), q(1), q(0)), q(1), q(0))),
+    #(
+      "eval",
+      t.Fun(q(0), t.EffectExtend("Eval", #(t.unit, t.unit), t.Empty), q(1)),
+    ),
+    #("serialize", pure1(q(0), t.String)),
+    #(
+      "capture",
+      pure1(
+        q(0),
+        t.List(
+          t.union([
+            #("Variable", t.String),
+            #("Lambda", t.String),
+            #("Apply", t.unit),
+            #("Let", t.String),
+            #("Binary", t.Binary),
+            #("Integer", t.Integer),
+            #("String", t.String),
+            #("Tail", t.unit),
+            #("Cons", t.unit),
+            #("Vacant", t.String),
+            #("Empty", t.unit),
+            #("Extend", t.String),
+            #("Select", t.String),
+            #("Overwrite", t.String),
+            #("Tag", t.String),
+            #("Case", t.String),
+            #("NoCases", t.unit),
+            #("Perform", t.String),
+            #("Handle", t.String),
+            #("Shallow", t.String),
+            #("Builtin", t.String),
+          ]),
+        ),
+      ),
+    ),
+    #("encode_uri", pure1(t.String, t.String)),
+    #("decode_uri_component", pure1(t.String, t.String)),
+    #("base64_encode", pure1(t.Binary, t.String)),
+    #("binary_from_integers", pure1(t.List(t.Integer), t.Binary)),
+    #("int_compare", {
+      let return = t.union([#("Lt", t.unit), #("Eq", t.unit), #("Gt", t.unit)])
+      pure2(t.Integer, t.Integer, return)
+    }),
+    #("int_add", pure2(t.Integer, t.Integer, t.Integer)),
+    #("int_subtract", pure2(t.Integer, t.Integer, t.Integer)),
+    #("int_multiply", pure2(t.Integer, t.Integer, t.Integer)),
     // TODO Error or effect
-    "int_divide" -> Ok(pure2(t.Integer, t.Integer, t.Integer))
-    "int_negate" -> Ok(pure1(t.Integer, t.Integer))
-    "int_absolute" -> Ok(pure1(t.Integer, t.Integer))
-    "int_parse" -> Ok(pure1(t.String, result(t.Integer, unit)))
-    "int_to_string" -> Ok(pure1(t.Integer, t.String))
-
-    "string_append" -> Ok(pure2(t.String, t.String, t.String))
-    "string_replace" -> Ok(pure3(t.String, t.String, t.String, t.String))
-    "string_split" -> {
-      let return = record([#("head", t.String), #("tail", t.List(t.String))])
-      Ok(pure2(t.String, t.String, return))
-    }
-    "string_split_once" -> {
-      let return = record([#("head", t.String), #("tail", t.String)])
-      Ok(pure2(t.String, t.String, result(return, unit)))
-    }
-    "string_uppercase" -> Ok(pure1(t.String, t.String))
-    "string_lowercase" -> Ok(pure1(t.String, t.String))
-    "string_starts_with" -> Ok(pure2(t.String, t.String, boolean))
-    "string_ends_with" -> Ok(pure2(t.String, t.String, boolean))
-    "string_length" -> Ok(pure1(t.String, t.Integer))
-    "pop_grapheme" -> {
-      let return = record([#("head", t.String), #("tail", t.String)])
-      Ok(pure1(t.String, result(return, unit)))
-    }
-    "string_to_binary" -> Ok(pure1(t.String, t.Binary))
-
-    "list_pop" -> {
-      let return = record([#("head", q(0)), #("tail", t.List(q(0)))])
-      Ok(pure1(t.List(q(0)), result(return, unit)))
-    }
-    "list_fold" -> {
+    #("int_divide", pure2(t.Integer, t.Integer, t.Integer)),
+    #("int_negate", pure1(t.Integer, t.Integer)),
+    #("int_absolute", pure1(t.Integer, t.Integer)),
+    #("int_parse", pure1(t.String, t.result(t.Integer, t.unit))),
+    #("int_to_string", pure1(t.Integer, t.String)),
+    #("string_append", pure2(t.String, t.String, t.String)),
+    #("string_replace", pure3(t.String, t.String, t.String, t.String)),
+    #("string_split", {
+      let return = t.record([#("head", t.String), #("tail", t.List(t.String))])
+      pure2(t.String, t.String, return)
+    }),
+    #("string_split_once", {
+      let return = t.record([#("head", t.String), #("tail", t.String)])
+      pure2(t.String, t.String, t.result(return, t.unit))
+    }),
+    #("string_uppercase", pure1(t.String, t.String)),
+    #("string_lowercase", pure1(t.String, t.String)),
+    #("string_starts_with", pure2(t.String, t.String, t.boolean)),
+    #("string_ends_with", pure2(t.String, t.String, t.boolean)),
+    #("string_length", pure1(t.String, t.Integer)),
+    #("pop_grapheme", {
+      let return = t.record([#("head", t.String), #("tail", t.String)])
+      pure1(t.String, t.result(return, t.unit))
+    }),
+    #("string_to_binary", pure1(t.String, t.Binary)),
+    #("list_pop", {
+      let return = t.record([#("head", q(0)), #("tail", t.List(q(0)))])
+      pure1(t.List(q(0)), t.result(return, t.unit))
+    }),
+    #("list_fold", {
       let reducer = t.Fun(q(0), q(2), t.Fun(q(1), q(2), q(1)))
-      Ok(pure2(t.List(q(0)), q(1), t.Fun(reducer, q(2), q(1))))
-    }
-    _ -> Error(error.MissingVariable(name))
-  }
+      pure2(t.List(q(0)), q(1), t.Fun(reducer, q(2), q(1)))
+    }),
+  ]
 }

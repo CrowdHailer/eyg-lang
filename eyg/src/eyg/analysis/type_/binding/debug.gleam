@@ -9,6 +9,7 @@ pub fn render_type(typ) {
   case typ {
     t.Var(i) -> int.to_string(i)
     t.Integer -> "Integer"
+    t.Binary -> "Binary"
     t.String -> "String"
     t.List(el) -> string.concat(["List(", render_type(el), ")"])
     t.Fun(from, effects, to) ->
@@ -40,6 +41,7 @@ pub fn render_type(typ) {
       ])
     // Rows can be rendered as any mismatch in errors
     t.EffectExtend(_, _, _) -> string.concat(["<", render_effects(typ), ">"])
+    t.Promise(inner) -> string.concat(["Promise(", render_type(inner), ")"])
     row -> {
       string.concat([
         "{",
@@ -75,7 +77,7 @@ fn render_row(r) -> List(String) {
       let field = string.concat([label, ": ", render_type(value)])
       [field, ..render_row(tail)]
     }
-    _ -> ["not a valid row"]
+    _ -> ["not a valid row", string.inspect(r)]
   }
 }
 
