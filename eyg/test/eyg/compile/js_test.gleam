@@ -86,7 +86,7 @@ pub fn iife_test() {
   test_compilation("(x) -> { x }(2)", "((x$1) => {\n  return x$1;\n})(2)", 2)
   test_compilation(
     "(x, y) -> { y }(2, 7)",
-    // TODO fn literal for multiarity fns
+    // literals dont need curl and return for body useful for multiarity fns
     "((x$2) => {\n  return ((y$3) => {\n  return y$3;\n});\n})(2)(7)",
     7,
   )

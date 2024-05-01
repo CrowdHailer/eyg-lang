@@ -54,7 +54,7 @@ fn print_value(value) {
     B(False) -> "False"
     B(True) -> "True"
     I(i) -> int.to_string(i)
-    L(_l) -> "[TODO]"
+    L(_l) -> "[Not done lists]"
     S(s) -> string.concat(["\"", s, "\""])
   }
 }

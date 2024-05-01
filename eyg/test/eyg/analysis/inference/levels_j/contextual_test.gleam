@@ -84,7 +84,7 @@ pub fn literal_test() {
   "\"hello\""
   |> calc(t.Empty)
   |> should.equal([ok("String", "<>")])
-  // TODO binary needs parsing
+  // binary needs parsing to test
 }
 
 pub fn simple_function_test() {
