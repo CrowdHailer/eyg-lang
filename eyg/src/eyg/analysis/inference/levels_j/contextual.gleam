@@ -335,37 +335,8 @@ pub fn builtins() {
       t.Fun(q(0), t.EffectExtend("Eval", #(t.unit, t.unit), t.Empty), q(1)),
     ),
     #("serialize", pure1(q(0), t.String)),
-    #(
-      "capture",
-      pure1(
-        q(0),
-        t.List(
-          t.union([
-            #("Variable", t.String),
-            #("Lambda", t.String),
-            #("Apply", t.unit),
-            #("Let", t.String),
-            #("Binary", t.Binary),
-            #("Integer", t.Integer),
-            #("String", t.String),
-            #("Tail", t.unit),
-            #("Cons", t.unit),
-            #("Vacant", t.String),
-            #("Empty", t.unit),
-            #("Extend", t.String),
-            #("Select", t.String),
-            #("Overwrite", t.String),
-            #("Tag", t.String),
-            #("Case", t.String),
-            #("NoCases", t.unit),
-            #("Perform", t.String),
-            #("Handle", t.String),
-            #("Shallow", t.String),
-            #("Builtin", t.String),
-          ]),
-        ),
-      ),
-    ),
+    #("capture", pure1(q(0), t.ast())),
+    #("to_javascript", pure1(q(0), t.String)),
     #("encode_uri", pure1(t.String, t.String)),
     #("decode_uri_component", pure1(t.String, t.String)),
     #("base64_encode", pure1(t.Binary, t.String)),
@@ -408,8 +379,12 @@ pub fn builtins() {
       pure1(t.List(q(0)), t.result(return, t.unit))
     }),
     #("list_fold", {
-      let reducer = t.Fun(q(0), q(2), t.Fun(q(1), q(2), q(1)))
-      pure2(t.List(q(0)), q(1), t.Fun(reducer, q(2), q(1)))
+      let el = q(0)
+      let acc = q(1)
+      // eff only thrown by reduce when last argument given
+      let eff = q(2)
+      let reducer = t.Fun(el, eff, t.Fun(acc, eff, acc))
+      pure2(t.List(el), acc, t.Fun(reducer, eff, acc))
     }),
   ]
 }

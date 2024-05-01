@@ -113,6 +113,7 @@ pub fn lib() {
   |> extend("fixed", fixed())
   |> extend("serialize", serialize())
   |> extend("capture", capture())
+  |> extend("to_javascript", to_javascript())
   |> extend("encode_uri", encode_uri())
   |> extend("decode_uri_component", decode_uri_component())
   |> extend("base64_encode", base64_encode())
@@ -180,7 +181,7 @@ pub fn do_serialize(term, rev, env, k) {
 }
 
 pub fn capture() {
-  // TODO need enum type
+  // need enum type
   let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
 
   #(type_, state.Arity1(do_capture))
@@ -191,6 +192,21 @@ pub fn do_capture(term, rev, env, k) {
   // wasteful but ideally capture will return annotated in the future
   let exp = e.add_annotation(exp, Nil)
   Ok(#(state.V(v.LinkedList(expression_to_language(exp))), env, k))
+}
+
+pub fn to_javascript() {
+  // need enum type
+  let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
+
+  #(type_, state.Arity1(do_to_javascript))
+}
+
+import eyg/compile
+
+pub fn do_to_javascript(term, meta, env, k) {
+  let exp = capture.capture(term)
+  let exp = e.add_annotation(exp, Nil)
+  Ok(#(state.V(v.Str(compile.to_js(exp))), env, k))
 }
 
 // block needs squashing with row on the front

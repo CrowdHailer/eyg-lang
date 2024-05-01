@@ -32,6 +32,13 @@ pub fn map_at(items, i, f) {
   Ok(list.flatten([pre, [f(item)], post]))
 }
 
+pub fn keys(pairs) {
+  list.map(pairs, fn(pair) {
+    let #(key, _value) = pair
+    key
+  })
+}
+
 pub fn value_map(l, f) {
   list.map(l, fn(field) {
     let #(k, v) = field
@@ -45,6 +52,11 @@ pub fn move(a, b) {
     [i, ..a] -> move(a, [i, ..b])
   }
 }
+
+// TODO move to cleave
+
+pub type Cleave(a) =
+  #(List(a), a, List(a))
 
 pub fn split_around(items, at) {
   do_split_around(items, at, [])
@@ -61,4 +73,12 @@ fn do_split_around(items, left, acc) {
 
 pub fn gather_around(pre, item, post) {
   move(pre, [item, ..post])
+}
+
+pub fn map_cleave(cleave, f) {
+  let #(pre, value, post) = cleave
+  let pre = list.map(pre, f)
+  let value = f(value)
+  let post = list.map(post, f)
+  #(pre, value, post)
 }

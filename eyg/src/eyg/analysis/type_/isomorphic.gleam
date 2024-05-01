@@ -47,3 +47,31 @@ pub fn result(value, reason) {
 pub const file = Record(
   RowExtend("name", String, RowExtend("content", Binary, Empty)),
 )
+
+pub fn ast() {
+  List(
+    union([
+      #("Variable", String),
+      #("Lambda", String),
+      #("Apply", unit),
+      #("Let", String),
+      #("Binary", Binary),
+      #("Integer", Integer),
+      #("String", String),
+      #("Tail", unit),
+      #("Cons", unit),
+      #("Vacant", String),
+      #("Empty", unit),
+      #("Extend", String),
+      #("Select", String),
+      #("Overwrite", String),
+      #("Tag", String),
+      #("Case", String),
+      #("NoCases", unit),
+      #("Perform", String),
+      #("Handle", String),
+      #("Shallow", String),
+      #("Builtin", String),
+    ]),
+  )
+}

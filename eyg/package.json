@@ -1,12 +1,19 @@
 {
   "type": "module",
   "scripts": {
+    "test:eff": "node eff_test.js",
     "prebuild:atelier": "gleam build",
     "build:atelier": "npx rollup -f iife -i ./build/dev/javascript/eyg/atelier.js -o build/bundle/atelier.js",
     "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",
-    "build:easel": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js",
+    "build:easel": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js",
+    "start:easel": "npm run build:easel && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  ../website/public/editor/index.html build/bundle/easel.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
     "build:notepad": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/notepad.js -o build/bundle/notepad.js",
     "start:notepad": "npm run build:notepad && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/notepad/index.html build/bundle/notepad.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
+    "build:drafting": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/drafting.js -o build/bundle/drafting.js",
+    "start:drafting": "npm run build:drafting && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/drafting/index.html build/bundle/drafting.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
+    "build:spotless": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/spotless.js -o build/bundle/spotless.js",
+    "start:spotless": "npm run build:spotless && rm -rf sirv && mkdir sirv && cp -r saved/saved.json saved/prompt.json ../website/public/layout.css ../website/public/neo.css src/spotless/vendor src/spotless/index.html build/bundle/spotless.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
+    "spotless:backend": "node src/spotless/backend.mjs",
     "build:resume": "npx rollup -f iife -i ./build/dev/javascript/eyg/resume.js -o build/bundle/resume.js",
     "build:magpie:app": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_app.js -o build/bundle/app.js",
     "build:magpie:worker": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_worker.js -o build/bundle/worker.js",
@@ -17,14 +24,15 @@
     "build:examine": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/examine.js -o build/bundle/examine.js",
     "start:examine": "npm run build:examine && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/examine/index.html build/bundle/examine.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
     "build:dashboard": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/dashboard.js -o build/bundle/dashboard.js",
-    "start:dashboard": "npm run build:dashboard && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/dashboard/index.html src/dashboard/long-beep.m4a build/bundle/dashboard.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080"
+    "start:dashboard": "npm run build:dashboard && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/dashboard/index.html src/dashboard/long-beep.m4a build/bundle/dashboard.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
+    "build:local_dev": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/local_dev.js -o build/bundle/local_dev.js",
+    "start:local_dev": "npm run build:local_dev && rm -rf sirv && mkdir sirv && cp -r src/local_dev/index.html build/bundle/local_dev.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080"
   },
   "dependencies": {
+    "@zip.js/zip.js": "^2.7.41",
     "adm-zip": "^0.5.10",
-    "cors": "^2.8.5",
     "cozo-lib-wasm": "^0.7.5",
     "cozo-node": "^0.7.5",
-    "express": "^4.18.2",
     "glob": "^8.1.0",
     "js-yaml": "^4.1.0",
     "open": "^9.1.0",
@@ -32,6 +40,9 @@
   },
   "devDependencies": {
     "@rollup/plugin-json": "^6.0.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
     "rollup": "^3.10.0"
   }
 }

@@ -1,0 +1,133 @@
+import gleam/list
+import gleam/listx
+import gleam/string
+import lustre/attribute as a
+import lustre/element.{text}
+import lustre/element/html as h
+import lustre/event
+
+// All editing of labels is handled by a picker,
+// in some cases there are no suggestions
+// in some cases any label in the program can be suggested
+pub type Picker {
+  Typing(value: String, suggestions: List(#(String, String)))
+  Scrolling(
+    filtered: listx.Cleave(#(String, String)),
+    suggestions: List(#(String, String)),
+  )
+}
+
+pub fn new(value, suggestions) {
+  Typing(value, suggestions)
+}
+
+pub type Message {
+  Updated(picker: Picker)
+  Decided(value: String)
+  Dismissed
+}
+
+pub fn render(picker, dispatch) {
+  let #(filter, suggestions, index) = case picker {
+    Typing(value, suggestions) -> {
+      let filtered =
+        list.filter(suggestions, fn(suggestion) {
+          let #(name, _item) = suggestion
+          string.contains(name, value)
+        })
+      #(value, filtered, -1)
+    }
+    Scrolling(cleave, _suggestions) -> {
+      let index = list.length(cleave.0)
+      let filtered = listx.gather_around(cleave.0, cleave.1, cleave.2)
+      #({ cleave.1 }.0, filtered, index)
+    }
+  }
+  h.form([event.on_submit(on_submit(picker, dispatch))], [
+    h.div([a.class("w-full p-2")], []),
+    h.input([
+      a.class(
+        "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
+      ),
+      a.id("focus-input"),
+      a.value(filter),
+      a.attribute("autocomplete", "off"),
+      a.attribute("autofocus", "true"),
+      event.on_keydown(on_keydown(_, picker, dispatch)),
+      event.on_input(on_input(_, picker, dispatch)),
+    ]),
+    h.hr([a.class("mx-40 my-3 border-green-700")]),
+    ..list.index_map(suggestions, fn(line, i) {
+      let #(name, detail) = line
+      h.div(
+        [
+          a.class("px-4 py-2 flex"),
+          a.classes([#("bg-gray-800 text-white", i == index)]),
+        ],
+        // event.on_click(Do(apply)),
+        [
+          h.span([a.class("flex-grow")], [text(name)]),
+          h.span([a.class("pl-2 whitespace-nowrap overflow-hidden")], [
+            text(detail),
+          ]),
+        ],
+      )
+    })
+  ])
+}
+
+fn on_submit(picker, dispatch) {
+  let value = case picker {
+    Typing(value, _) -> value
+    Scrolling(#(_, #(value, _), _), _) -> value
+  }
+  dispatch(Decided(value))
+}
+
+fn on_keydown(key, picker, dispatch) {
+  case picker, key {
+    _, "Escape" -> Dismissed
+
+    Typing(value, suggestions), " " -> {
+      let picker = case filter_suggestions(suggestions, value) {
+        [] -> Typing(value, suggestions)
+        [next, ..post] -> Scrolling(#([], next, post), suggestions)
+      }
+      Updated(picker)
+    }
+    Typing(value, suggestions), "ArrowDown" -> {
+      let picker = case filter_suggestions(suggestions, value) {
+        [] -> Typing(value, suggestions)
+        [next, ..post] -> Scrolling(#([], next, post), suggestions)
+      }
+      Updated(picker)
+    }
+
+    Scrolling(#(pre, current, [next, ..post]), suggestions), "ArrowDown" -> {
+      let picker = Scrolling(#([current, ..pre], next, post), suggestions)
+      Updated(picker)
+    }
+    Scrolling(#([next, ..pre], current, post), suggestions), "ArrowUp" -> {
+      let picker = Scrolling(#(pre, next, [current, ..post]), suggestions)
+      Updated(picker)
+    }
+    _, _ -> Updated(picker)
+  }
+  |> dispatch
+}
+
+fn filter_suggestions(suggestions, filter) {
+  list.filter(suggestions, fn(suggestion) {
+    let #(name, _item) = suggestion
+    string.contains(name, filter)
+  })
+}
+
+fn on_input(new, picker, dispatch) {
+  let picker = case picker {
+    Typing(_old, suggestions) -> Typing(new, suggestions)
+    Scrolling(_cleave, suggestions) -> Typing(new, suggestions)
+  }
+  Updated(picker)
+  |> dispatch
+}

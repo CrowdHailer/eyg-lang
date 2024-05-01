@@ -22,6 +22,7 @@ import plinth/javascript/console
 
 pub type Interface
 
+// TODO readlines bindings in readlines project or in plinth as part of node
 @external(javascript, "../plinth_readlines_ffi.js", "createInterface")
 pub fn create_interface(
   completer: fn(String) -> #(Array(String), String),

@@ -1,9 +1,11 @@
 import express from "express";
+import cors from 'cors';
 
 const servers = [];
 
 export function serve(port, handler) {
   const app = express();
+  app.use(cors())
   app.use(express.raw({ type: "*/*", limit: "1mb" }));
   app.use(async (req, res) => {
     toResponse(await handler(toRequest(req)), res);

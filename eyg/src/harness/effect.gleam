@@ -16,6 +16,7 @@ import gleam/javascript/promise.{try_await}
 import gleam/javascript/promisex
 import gleam/json
 import gleam/list
+import gleam/option.{Some}
 import gleam/result
 import gleam/string
 import harness/ffi/core
@@ -75,7 +76,7 @@ pub fn http() {
     use host <- result.then(cast.field("host", cast.as_string, request))
     use _port <- result.then(cast.field("port", cast.any, request))
     use path <- result.then(cast.field("path", cast.as_string, request))
-    use _query <- result.then(cast.field("query", cast.any, request))
+    use query <- result.then(cast.field("query", cast.as_string, request))
     use headers <- result.then(cast.field("headers", cast.as_list, request))
     let assert Ok(headers) =
       list.try_map(headers, fn(h) {
@@ -88,6 +89,8 @@ pub fn http() {
     // TODO fix binary or string
     let assert v.Str(body) = body
 
+    // Query is passed in as string to handle the case where you dont use a=b&.. convention
+    // io.debug(query)
     let request =
       request.new()
       |> request.set_method(method)
@@ -97,6 +100,8 @@ pub fn http() {
       // need set query string
       // |> request.set_query(query)
       |> request.set_body(body)
+    let request = request.Request(..request, query: Some(query))
+    io.debug(request)
 
     let request =
       list.fold(headers, request, fn(req, h) {

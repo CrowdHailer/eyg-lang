@@ -11,6 +11,8 @@ import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
 import eygir/annotated as e2
 import eygir/expression as e
+import gleam/http
+import gleam/http/request
 import gleam/javascript/array.{type Array}
 import gleam/javascript/promise.{type Promise}
 import gleam/option.{type Option, None, Some}
@@ -103,6 +105,31 @@ type RawRequest =
 type RawResponse =
   #(Int, Array(#(String, String)), BitArray)
 
+pub fn to_gleam_request(raw: RawRequest) {
+  let #(method, protocol, host, path, query, headers, body) = raw
+  let method = case string.uppercase(method) {
+    "GET" -> http.Get
+    "POST" -> http.Post
+    "HEAD" -> http.Head
+    "PUT" -> http.Put
+    "DELETE" -> http.Delete
+    "TRACE" -> http.Trace
+    "CONNECT" -> http.Connect
+    "OPTIONS" -> http.Options
+    "PATCH" -> http.Patch
+    other -> http.Other(other)
+  }
+  let scheme = case protocol {
+    "http" -> http.Http
+    "https" -> http.Https
+    _ -> panic as string.concat(["unexpect protocol in request: ", protocol])
+  }
+  let assert Ok(query) = dynamic.optional(dynamic.string)(query)
+  let headers = array.to_list(headers)
+
+  request.Request(method, headers, body, scheme, host, Some(2), path, query)
+}
+
 fn to_request(raw: RawRequest) {
   let #(method, protocol, host, path, query, headers, body) = raw
   let method = case string.uppercase(method) {
@@ -181,7 +208,10 @@ fn from_response(response) {
 }
 
 @external(javascript, "../../express_ffi.mjs", "serve")
-fn do_serve(port: Int, handler: fn(RawRequest) -> Promise(RawResponse)) -> Int
+pub fn do_serve(
+  port: Int,
+  handler: fn(RawRequest) -> Promise(RawResponse),
+) -> Int
 
 @external(javascript, "../../express_ffi.mjs", "stopServer")
 fn do_stop(id: Int) -> Nil
