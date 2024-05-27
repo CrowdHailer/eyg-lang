@@ -6,7 +6,7 @@ packages = [
   { name = "gleam_bitwise", version = "1.3.1", build_tools = ["gleam"], requirements = [], otp_app = "gleam_bitwise", source = "hex", outer_checksum = "B36E1D3188D7F594C7FD4F43D0D2CE17561DE896202017548578B16FE1FE9EFC" },
   { name = "gleam_community_codec", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], source = "local", path = "../../codec" },
   { name = "gleam_erlang", version = "0.25.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_erlang", source = "hex", outer_checksum = "054D571A7092D2A9727B3E5D183B7507DAB0DA41556EC9133606F09C15497373" },
-  { name = "gleam_fetch", version = "0.4.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], source = "local", path = "../../fetch" },
+  { name = "gleam_fetch", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "gleam_fetch", source = "hex", outer_checksum = "67334E129C3E49B97E89277B13DB34D1B501D99E6A57F883070C8EA162EC8761" },
   { name = "gleam_http", version = "3.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_http", source = "hex", outer_checksum = "8C07DF9DF8CC7F054C650839A51C30A7D3C26482AC241C899C1CEA86B22DBE51" },
   { name = "gleam_javascript", version = "0.8.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_javascript", source = "hex", outer_checksum = "14D5B7E1A70681E0776BF0A0357F575B822167960C844D3D3FA114D3A75F05A8" },
   { name = "gleam_json", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "thoas"], otp_app = "gleam_json", source = "hex", outer_checksum = "8B197DD5D578EA6AC2C0D4BDC634C71A5BCA8E7DB5F47091C263ECB411A60DF3" },
@@ -22,7 +22,7 @@ packages = [
 [requirements]
 gleam_bitwise = { version = "~> 1.2" }
 gleam_community_codec = { path = "../../codec" }
-gleam_fetch = { path = "../../fetch" }
+gleam_fetch = { version = "~> 1.0" }
 gleam_http = { version = "~> 3.5" }
 gleam_javascript = { version = "~> 0.8" }
 gleam_json = { version = "~> 1.0" }
