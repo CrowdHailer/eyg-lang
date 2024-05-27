@@ -73,10 +73,7 @@ fn display(now, forecasts, buses, timer) {
   div([id("root"), class("hstack bg-yellow-200")], [
     case timer {
       None ->
-        div([class("expand text-2xl")], [
-          div([class("")], [
-            button([on_click(Wrap(start_timer(5000)))], [text("5 seconds")]),
-          ]),
+        div([class("expand text-3xl leading-normal")], [
           div([class("")], [
             button([on_click(Wrap(start_timer(60_000)))], [text("1 minute")]),
           ]),
