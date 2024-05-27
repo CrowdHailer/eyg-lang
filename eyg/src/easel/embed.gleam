@@ -26,6 +26,7 @@ import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/list
+import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/regex
 import gleam/result
@@ -581,13 +582,13 @@ pub fn insert_text(state: Embed, data, start, end) {
     }
     Insert -> {
       let assert Ok(#(_ch, path, cut_start, _style, _err)) =
-        list.at(rendered, start)
-      let assert Ok(#(_ch, _, cut_end, _style, _err)) = list.at(rendered, end)
+        listx.at(rendered, start)
+      let assert Ok(#(_ch, _, cut_end, _style, _err)) = listx.at(rendered, end)
       let is_letters = is_var(data) || is_tag(data) || is_num(data)
       let #(path, cut_start) = case cut_start < 0 && is_letters {
         True -> {
           let assert Ok(#(_ch, path, cut_start, _style, _err)) =
-            list.at(rendered, start - 1)
+            listx.at(rendered, start - 1)
           #(path, cut_start + 1)
         }
         False -> #(path, cut_start)
@@ -599,7 +600,7 @@ pub fn insert_text(state: Embed, data, start, end) {
       let #(p2, cut_end) = case cut_end < 0 {
         True -> {
           let assert Ok(#(_ch, path, cut_end, _style, _err)) =
-            list.at(rendered, end - 1)
+            listx.at(rendered, end - 1)
           #(path, cut_end + 1)
         }
         False -> #(path, cut_end)
@@ -947,7 +948,7 @@ fn term_to_string(term) {
 
 pub fn undo(state: Embed, start) {
   let assert Ok(#(_ch, current_path, _cut_start, _style, _err)) =
-    list.at(state.rendered.0, start)
+    listx.at(state.rendered.0, start)
   case state.history.1 {
     [] -> #(Embed(..state, mode: Command("no undo available")), start, [])
     [edit, ..backwards] -> {
@@ -979,7 +980,7 @@ pub fn undo(state: Embed, start) {
 
 pub fn redo(state: Embed, start) {
   let assert Ok(#(_ch, current_path, _cut_start, _style, _err)) =
-    list.at(state.rendered.0, start)
+    listx.at(state.rendered.0, start)
   case state.history.0 {
     [] -> #(Embed(..state, mode: Command("no redo available")), start, [])
     [edit, ..forward] -> {
@@ -1211,7 +1212,7 @@ pub fn nocases(state: Embed, start, end) {
 
 pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(#(_ch, path, offset, _style, _err)) =
-    list.at(state.rendered.0, index)
+    listx.at(state.rendered.0, index)
   let source = state.source
   let assert Ok(#(target, rezip)) = zipper.at(source, path)
 
@@ -1262,10 +1263,10 @@ pub fn html(embed: Embed) {
 
 // reuse single focus with error
 pub fn update_selection(state: Embed, start, end) {
-  case list.at(state.rendered.0, start) {
+  case listx.at(state.rendered.0, start) {
     Error(Nil) -> Embed(..state, focus: None)
     Ok(#(_ch, path, _cut_start, _style, _err)) -> {
-      case list.at(state.rendered.0, end) {
+      case listx.at(state.rendered.0, end) {
         Error(Nil) -> Embed(..state, focus: None)
         Ok(#(_ch, p2, _cut_end, _style, _err)) ->
           case path != p2 {
@@ -1380,10 +1381,10 @@ pub fn escape(state) {
 }
 
 fn single_focus(state: Embed, start, end, cb) {
-  case list.at(state.rendered.0, start) {
+  case listx.at(state.rendered.0, start) {
     Error(Nil) -> #(state, start, [])
     Ok(#(_ch, path, _cut_start, _style, _err)) -> {
-      case list.at(state.rendered.0, end) {
+      case listx.at(state.rendered.0, end) {
         Error(Nil) -> #(state, start, [])
         Ok(#(_ch, p2, _cut_end, _style, _err)) ->
           case path != p2 {

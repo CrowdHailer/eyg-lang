@@ -208,8 +208,8 @@ pub fn update(state: App, action) {
     }
     EditMatch(i, j, k) -> {
       let assert App(db, queries, _) = state
-      let assert Ok(#(#(_find, where), _cache)) = list.at(queries, i)
-      let assert Ok(pattern) = list.at(where, j)
+      let assert Ok(#(#(_find, where), _cache)) = listx.at(queries, i)
+      let assert Ok(pattern) = listx.at(where, j)
 
       let match = case k {
         0 -> pattern.0

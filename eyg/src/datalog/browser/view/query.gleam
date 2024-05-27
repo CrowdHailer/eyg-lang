@@ -20,7 +20,7 @@ import lustre/event.{on_blur, on_click, on_input}
 
 fn edit_query(index) {
   Wrap(fn(model) {
-    let assert Ok(model.Query(constraints, _)) = list.at(model.sections, index)
+    let assert Ok(model.Query(constraints, _)) = listx.at(model.sections, index)
     let content = list.map(constraints, constraint_text)
     let content =
       list.intersperse(content, "\r")

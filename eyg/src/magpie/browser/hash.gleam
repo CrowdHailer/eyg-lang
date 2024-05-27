@@ -1,5 +1,6 @@
 import gleam/int
 import gleam/list
+import gleam/listx
 import gleam/result
 import gleam/string
 import magpie/query
@@ -85,7 +86,7 @@ fn do_decode_where(parts, matches, vars) {
         Ok(i) -> Ok(i)
         Error(Nil) -> Error("could parse ref as int")
       })
-      use var <- result.then(case list.at(vars, i) {
+      use var <- result.then(case listx.at(vars, i) {
         Ok(v) -> Ok(v)
         Error(Nil) -> Error("could not find var")
       })
@@ -147,7 +148,7 @@ fn decode_one(str) {
   )
   use find <- result.then(
     list.try_map(find, fn(i) {
-      case list.at(vars, i) {
+      case listx.at(vars, i) {
         Ok(v) -> Ok(v)
         Error(Nil) -> Error("no variable for index")
       }

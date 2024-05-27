@@ -13,6 +13,17 @@ pub fn filter_errors(l) {
   do_filter_errors(l, [])
 }
 
+// TODO remove
+pub fn at(in list: List(a), get index: Int) -> Result(a, Nil) {
+  case index >= 0 {
+    True ->
+      list
+      |> list.drop(index)
+      |> list.first
+    False -> Error(Nil)
+  }
+}
+
 pub fn insert_at(list, position, new) {
   let pre = list.take(list, position)
   let post = list.drop(list, position)
@@ -26,7 +37,7 @@ pub fn delete_at(items, i) {
 }
 
 pub fn map_at(items, i, f) {
-  use item <- result.then(list.at(items, i))
+  use item <- result.then(at(items, i))
   let pre = list.take(items, i)
   let post = list.drop(items, i + 1)
   Ok(list.flatten([pre, [f(item)], post]))

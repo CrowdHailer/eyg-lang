@@ -12,6 +12,7 @@ import gleam/io
 import gleam/javascript
 import gleam/javascript/array
 import gleam/list
+import gleam/listx
 import gleam/result
 import gleam/string
 import harness/stdlib
@@ -83,7 +84,7 @@ fn applet(root) {
         document.add_event_listener(root, "click", fn(event) {
           case nearest_click_handler(event) {
             Ok(id) -> {
-              case list.at(list.reverse(javascript.dereference(actions)), id) {
+              case listx.at(list.reverse(javascript.dereference(actions)), id) {
                 Ok(code) -> {
                   // handle effects
                   let current = javascript.dereference(state)
