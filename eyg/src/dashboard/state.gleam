@@ -65,17 +65,14 @@ pub fn update(state, msg) {
 // tasks
 
 fn watch_time(dispatch) {
-  global.set_timeout(
-    fn(_) {
-      dispatch(
-        Wrap(fn(state) {
-          let state = State(..state, now: date.now())
-          #(state, effect.from(watch_time))
-        }),
-      )
-    },
-    1000,
-  )
+  global.set_timeout(1000, fn() {
+    dispatch(
+      Wrap(fn(state) {
+        let state = State(..state, now: date.now())
+        #(state, effect.from(watch_time))
+      }),
+    )
+  })
 }
 
 fn fetch_departures(dispatch) {
@@ -106,7 +103,7 @@ fn fetch_departures(dispatch) {
       #(
         state,
         effect.from(fn(dispatch) {
-          global.set_timeout(fn(_) { fetch_departures(dispatch) }, 60_000)
+          global.set_timeout(60_000, fn() { fetch_departures(dispatch) })
         }),
       )
     }),
