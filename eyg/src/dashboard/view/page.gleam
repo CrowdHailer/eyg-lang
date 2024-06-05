@@ -187,6 +187,7 @@ fn start_timer(milliseconds) {
           global.set_timeout(100, fn() {
             d(Wrap(start_timer(milliseconds - 100)))
           })
+          Nil
         }),
       )
     }

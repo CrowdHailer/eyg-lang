@@ -73,6 +73,7 @@ fn watch_time(dispatch) {
       }),
     )
   })
+  Nil
 }
 
 fn fetch_departures(dispatch) {
@@ -104,6 +105,7 @@ fn fetch_departures(dispatch) {
         state,
         effect.from(fn(dispatch) {
           global.set_timeout(60_000, fn() { fetch_departures(dispatch) })
+          Nil
         }),
       )
     }),
