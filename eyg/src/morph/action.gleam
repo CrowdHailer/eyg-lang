@@ -80,7 +80,8 @@ pub fn make_record(projection, context) {
       }
     #(p.Label(_, _, _, _, _), _), _
     | #(p.Match(_, _, _, _, _, _), _), _
-    | #(p.Select(_, _), _), _ -> Error(Nil)
+    | #(p.Select(_, _), _), _
+    -> Error(Nil)
   }
 }
 

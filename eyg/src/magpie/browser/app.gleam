@@ -583,9 +583,7 @@ fn render_query(mode, connection, db) {
         |> list.append(case mode {
           // appended to show plus button inline but potentinaly the div of new values should not be inside
           // the div for the row of values
-          ChooseVariable(x)
-            if x == i
-          -> [
+          ChooseVariable(x) if x == i -> [
             el.div(
               [],
               list.map(

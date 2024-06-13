@@ -32,15 +32,11 @@ pub fn delete(zip) {
 
     p.Exp(x), _ if x != vacant -> #(p.Exp(e.Vacant("")), zoom)
     p.Assign(p.AssignStatement(_), _, pre, [#(pattern, value), ..post], then),
-      zoom -> #(
-      p.Assign(p.AssignStatement(pattern), value, pre, post, then),
-      zoom,
-    )
+      zoom
+    -> #(p.Assign(p.AssignStatement(pattern), value, pre, post, then), zoom)
     p.Assign(p.AssignStatement(_), _, [#(pattern, value), ..pre], [], then),
-      zoom -> #(
-      p.Assign(p.AssignStatement(pattern), value, pre, [], then),
-      zoom,
-    )
+      zoom
+    -> #(p.Assign(p.AssignStatement(pattern), value, pre, [], then), zoom)
     p.Assign(p.AssignStatement(_), _, [], [], then), zoom -> #(
       p.Exp(then),
       zoom,
@@ -54,15 +50,11 @@ pub fn delete(zip) {
       zoom,
     )
     p.FnParam(p.AssignField(_, _, pre_p, [#(l, x), ..post_p]), pre, post, body),
-      _ -> #(
-      p.FnParam(p.AssignField(l, x, pre_p, post_p), pre, post, body),
-      zoom,
-    )
+      _
+    -> #(p.FnParam(p.AssignField(l, x, pre_p, post_p), pre, post, body), zoom)
     p.FnParam(p.AssignBind(_, _, pre_p, [#(l, x), ..post_p]), pre, post, body),
-      _ -> #(
-      p.FnParam(p.AssignBind(l, x, pre_p, post_p), pre, post, body),
-      zoom,
-    )
+      _
+    -> #(p.FnParam(p.AssignBind(l, x, pre_p, post_p), pre, post, body), zoom)
     p.FnParam(p.AssignField(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ -> #(
       p.FnParam(p.AssignField(l, x, pre_p, []), pre, post, body),
       zoom,

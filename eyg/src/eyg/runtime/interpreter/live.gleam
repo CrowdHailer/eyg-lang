@@ -18,7 +18,11 @@ pub fn loop(next, acc) {
         | // Doesn't work with !list_fold more investigation needed
           // | s.V(v), s.Stack(s.CallWith(v.Closure(x, #(_body, meta), _), _), _, ..)
           s.V(v),
-          s.Stack(s.Assign(x, _, _), meta, ..)
+          s.Stack(
+            s.Assign(x, _, _),
+            meta,
+            ..,
+          )
         -> {
           let #(start, _) = meta
           //   +1 is a hack for my current span intersection logic

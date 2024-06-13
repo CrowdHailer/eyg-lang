@@ -51,7 +51,8 @@ fn do_unify(constraints, s, next) {
           do_unify([#(value1, value2), #(tail1, tail2), ..rest], s, next)
         }
         t.EffectExtend(label1, #(lift1, reply1), tail1),
-          t.EffectExtend(_, _, _) as row2 -> {
+          t.EffectExtend(_, _, _) as row2
+        -> {
           use #(lift2, reply2, tail2, s, next) <- result.then(rewrite_effect(
             label1,
             row2,

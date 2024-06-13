@@ -11,7 +11,8 @@ pub fn unify(t1, t2, level, bindings) {
     _, _, _, Ok(binding.Bound(t2)) -> unify(t1, t2, level, bindings)
     t.Var(i), _, t.Var(j), _ if i == j -> Ok(bindings)
     t.Var(i), Ok(binding.Unbound(level)), other, _
-    | other, _, t.Var(i), Ok(binding.Unbound(level)) -> {
+    | other, _, t.Var(i), Ok(binding.Unbound(level))
+    -> {
       use bindings <- try(occurs_and_levels(i, level, other, bindings))
       Ok(dict.insert(bindings, i, binding.Bound(other)))
     }
@@ -30,7 +31,8 @@ pub fn unify(t1, t2, level, bindings) {
       unify(rows1, rows2, level, bindings)
     t.Union(rows1), _, t.Union(rows2), _ -> unify(rows1, rows2, level, bindings)
     t.RowExtend(l1, field1, rest1), _, other, _
-    | other, _, t.RowExtend(l1, field1, rest1), _ -> {
+    | other, _, t.RowExtend(l1, field1, rest1), _
+    -> {
       use #(field2, rest2, bindings) <- try(rewrite_row(
         l1,
         other,
@@ -41,7 +43,8 @@ pub fn unify(t1, t2, level, bindings) {
       unify(rest1, rest2, level, bindings)
     }
     t.EffectExtend(l1, #(lift1, reply1), r1), _, other, _
-    | other, _, t.EffectExtend(l1, #(lift1, reply1), r1), _ -> {
+    | other, _, t.EffectExtend(l1, #(lift1, reply1), r1), _
+    -> {
       use #(#(lift2, reply2), r2, bindings) <- try(rewrite_effect(
         l1,
         other,
