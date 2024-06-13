@@ -17,6 +17,7 @@ plinth = {path= "../../plinth"}
 simplifile = "~> 1.0"
 gleam_http = "~> 3.5"
 gleam_community_codec = {path= "../../codec"}
+midas = ">= 0.4.2 and < 1.0.0"
 
 
 [dev-dependencies]
