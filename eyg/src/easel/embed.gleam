@@ -16,6 +16,7 @@ import eygir/encode
 import eygir/expression as e
 import gleam/bit_array
 import gleam/dict
+import gleam/dynamic
 import gleam/fetch
 import gleam/http
 import gleam/http/request
@@ -34,8 +35,10 @@ import gleam/string
 import gleam/stringx
 import harness/effect
 import harness/stdlib
-import old_plinth/browser/document
 import platforms/browser
+import plinth/browser/document
+import plinth/browser/element
+import plinth/browser/event
 import plinth/browser/file
 import plinth/browser/file_system
 import plinth/browser/range
@@ -98,11 +101,12 @@ fn do_infer(source, cache) {
 }
 
 fn nearest_click_handler(event) {
-  let target = document.target(event)
-  case document.closest(target, "[data-click]") {
+  let target = event.target(event)
+  let target = dynamic.unsafe_coerce(target)
+  case element.closest(target, "[data-click]") {
     Ok(element) -> {
       // Because the closest element is chosen to have data-click this get must return ok
-      let assert Ok(handle) = document.dataset_get(element, "click")
+      let assert Ok(handle) = element.dataset_get(element, "click")
       Ok(handle)
     }
     Error(Nil) -> Error(Nil)
@@ -173,16 +177,16 @@ pub fn handle_click(root, event) {
 pub fn start_easel_at(root, start, state) {
   render_page(root, start, state)
   let ref = javascript.make_reference(state)
-  case document.query_selector(root, "pre") {
+  case document.query_selector("pre") {
     Ok(pre) -> {
-      document.add_event_listener(pre, "blur", fn(_) {
+      element.add_event_listener(pre, "blur", fn(_) {
         io.debug("blurred")
         javascript.update_reference(ref, fn(state) {
           // updating the contenteditable node messes with cursor placing
           let state = blur(state)
-          document.set_html(pre, html(state))
-          let pallet_el = document.next_element_sibling(pre)
-          document.set_html(pallet_el, pallet(state))
+          element.set_inner_html(pre, html(state))
+          let assert Ok(pallet_el) = element.next_element_sibling(pre)
+          element.set_inner_html(pallet_el, pallet(state))
           state
         })
 
@@ -197,7 +201,6 @@ pub fn start_easel_at(root, start, state) {
   }
   document.add_event_listener(
     // event can have phantom type which is the internal event type
-    document.document(),
     "selectionchange",
     fn(_event) {
       let _ = {
@@ -239,8 +242,8 @@ pub fn start_easel_at(root, start, state) {
       Nil
     },
   )
-  document.add_event_listener(root, "beforeinput", fn(event) {
-    document.prevent_default(event)
+  document.add_event_listener("beforeinput", fn(event) {
+    event.prevent_default(event)
     handle_input(
       event,
       fn(data, start, end) {
@@ -275,14 +278,14 @@ pub fn start_easel_at(root, start, state) {
       },
     )
   })
-  document.add_event_listener(root, "keydown", fn(event) {
+  document.add_event_listener("keydown", fn(event) {
     case
-      case document.key(event) {
+      case event.key(event) {
         "Escape" -> {
           javascript.update_reference(ref, fn(s) {
             let s = escape(s)
-            case document.query_selector(root, "pre + *") {
-              Ok(pallet_el) -> document.set_html(pallet_el, pallet(s))
+            case document.query_selector("pre + *") {
+              Ok(pallet_el) -> element.set_inner_html(pallet_el, pallet(s))
               Error(Nil) -> Nil
             }
             s
@@ -292,16 +295,16 @@ pub fn start_easel_at(root, start, state) {
         _ -> Error(Nil)
       }
     {
-      Ok(Nil) -> document.prevent_default(event)
+      Ok(Nil) -> event.prevent_default(event)
       Error(Nil) -> Nil
     }
   })
 }
 
 pub fn fullscreen(root) {
-  document.add_event_listener(root, "click", handle_click(root, _))
+  document.add_event_listener("click", handle_click(root, _))
 
-  document.set_html(
+  element.set_inner_html(
     root,
     "<div  class=\"cover expand vstack pointer\"><div class=\"cover text-center cursor-pointer\" data-click=\"load\">click to load</div><div class=\"cover text-center cursor-pointer hidden\" data-click=\"new\">start new</div></div>",
   )
@@ -316,12 +319,12 @@ fn start_index(a: range.Range) -> Int
 fn end_index(a: range.Range) -> Int
 
 fn render_page(root, start, state) {
-  case document.query_selector(root, "pre") {
+  case document.query_selector("pre") {
     Ok(pre) -> {
       // updating the contenteditable node messes with cursor placing
-      document.set_html(pre, html(state))
-      let pallet_el = document.next_element_sibling(pre)
-      document.set_html(pallet_el, pallet(state))
+      element.set_inner_html(pre, html(state))
+      let assert Ok(pallet_el) = element.next_element_sibling(pre)
+      element.set_inner_html(pallet_el, pallet(state))
     }
 
     Error(Nil) -> {
@@ -334,32 +337,32 @@ fn render_page(root, start, state) {
           pallet(state),
           "</div>",
         ])
-      document.set_html(root, content)
+      element.set_inner_html(root, content)
     }
   }
 
-  let assert Ok(pre) = document.query_selector(root, "pre")
+  let assert Ok(pre) = document.query_selector("pre")
   place_cursor(pre, start)
 }
 
 @external(javascript, "../easel_ffi.js", "handleInput")
 pub fn handle_input(
-  a: document.Event,
+  a: event.Event,
   insert_text insert_text: fn(String, Int, Int) -> Nil,
   insert_paragraph insert_paragraph: fn(Int) -> Nil,
 ) -> Nil
 
 // relies on a flat list of spans
 @external(javascript, "../easel_ffi.js", "placeCursor")
-pub fn place_cursor(a: document.Element, b: Int) -> Nil
+pub fn place_cursor(a: element.Element, b: Int) -> Nil
 
 pub fn snippet(root) {
   // TODO remove init and resume because they need to call out to the server
   // TODO make a components lib in webside
   io.debug("start snippet")
-  case document.query_selector(root, "script[type=\"application/eygir\"]") {
+  case document.query_selector("script[type=\"application/eygir\"]") {
     Ok(script) -> {
-      let assert Ok(source) = decode.from_json(document.inner_text(script))
+      let assert Ok(source) = decode.from_json(element.inner_text(script))
       // always infer at the start
 
       let #(#(sub, next, _types), envs) =
@@ -387,7 +390,7 @@ pub fn snippet(root) {
           rendered: rendered,
           focus: None,
         )
-      document.set_html(root, "")
+      element.set_inner_html(root, "")
       start_easel_at(root, start, state)
       Nil
     }

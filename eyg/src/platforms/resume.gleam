@@ -4,6 +4,7 @@ import eyg/runtime/value as v
 import eygir/annotated as e
 import eygir/decode
 import gleam/dict
+import gleam/dynamic
 import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/map
@@ -18,7 +19,7 @@ import plinth/javascript/console
 
 fn handle_click(event, states) {
   use target <- result.then(element.closest(
-    event.target(event),
+    dynamic.unsafe_coerce(event.target(event)),
     "*[on\\:click]",
   ))
   use container <- result.then(element.closest(target, "[r\\:container]"))

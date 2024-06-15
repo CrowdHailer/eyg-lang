@@ -1,4 +1,3 @@
-import { Ok, Error } from "./gleam.mjs";
 
 export function addEventListener(el, type, listener) {
   el.addEventListener(type, listener);
@@ -42,98 +41,9 @@ export function onChange(f) {
   };
 }
 
-export function target(event) {
-  return event.target;
-}
-export function preventDefault(event) {
-  return event.preventDefault();
-}
-
-export function eventKey(event) {
-  return event.key;
-}
-
-export function getTargetRange(event) {
-  return event.getTargetRanges()[0];
-}
-
-// -------- document --------
-
-export function querySelector(el, query) {
-  let found = el.querySelector(query);
-  if (!found) {
-    return new Error();
-  }
-  return new Ok(found);
-}
-// could use array from in Gleam code but don't want to return dynamic to represent elementList
-// directly typing array of elements is cleanest
-export function querySelectorAll(query) {
-  return Array.from(document.querySelectorAll(query));
-}
-
-export function doc() {
-  return document;
-}
-
-export function closest(element, query) {
-  let r = element.closest(query);
-  if (r) {
-    return new Ok(r);
-  }
-  return new Error();
-}
-
-export function nextElementSibling(el) {
-  return el.nextElementSibling;
-}
-
-export function createElement(tag) {
-  return document.createElement(tag);
-}
-
-export function setAttribute(element, name, value) {
-  element.setAttribute(name, value);
-}
-
-export function append(parent, child) {
-  parent.append(child);
-}
-
-export function insertAfter(e, text) {
-  e.insertAdjacentHTML("afterend", text);
-}
-
-export function insertElementAfter(target, element) {
-  target.insertAdjacentElement("afterend", element);
-}
-
-export function innerText(e) {
-  return e.innerText;
-}
-export function setInnerText(e, text) {
-  e.innerText = text;
-}
-export function setInnerHTML(e, content) {
-  e.innerHTML = content;
-}
-
-export function remove(e) {
-  e.remove();
-}
 
 // -------- element properties --------
 
-export function dataset(el) {
-  return el.dataset;
-}
-
-export function datasetGet(el, key) {
-  if (key in el.dataset) {
-    return new Ok(el.dataset[key]);
-  }
-  return new Error(undefined);
-}
 
 export function array_graphmemes(string) {
   return [...string];

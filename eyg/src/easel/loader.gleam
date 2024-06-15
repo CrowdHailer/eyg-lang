@@ -7,6 +7,7 @@ import eyg/runtime/value as v
 import eygir/annotated as e
 import eygir/decode
 import gleam/dict
+import gleam/dynamic
 import gleam/int
 import gleam/io
 import gleam/javascript
@@ -16,7 +17,9 @@ import gleam/listx
 import gleam/result
 import gleam/string
 import harness/stdlib
-import old_plinth/browser/document
+import plinth/browser/document
+import plinth/browser/element
+import plinth/browser/event
 import plinth/javascript/console
 
 pub fn run() {
@@ -28,7 +31,7 @@ pub fn run() {
 }
 
 fn start(container) {
-  let assert Ok(program) = document.dataset_get(container, "ready")
+  let assert Ok(program) = element.dataset_get(container, "ready")
   case program {
     "editor" -> embed.fullscreen(container)
     "snippet" -> embed.snippet(container)
@@ -41,11 +44,11 @@ fn start(container) {
 }
 
 fn applet(root) {
-  case document.query_selector(root, "script[type=\"application/eygir\"]") {
+  case document.query_selector("script[type=\"application/eygir\"]") {
     Ok(script) -> {
       console.log(script)
       let assert Ok(source) =
-        decode.from_json(string.replace(document.inner_text(script), "\\/", "/"))
+        decode.from_json(string.replace(element.inner_text(script), "\\/", "/"))
       {
         let env = stdlib.env()
         let rev = []
@@ -73,7 +76,7 @@ fn applet(root) {
           let current = javascript.dereference(state)
           let result = r.resume(func, [current], env, handlers)
           let _ = case result {
-            Ok(v.Str(page)) -> document.set_html(root, page)
+            Ok(v.Str(page)) -> element.set_inner_html(root, page)
             _ -> {
               io.debug(#("unexpected", result))
               panic("nope")
@@ -81,7 +84,7 @@ fn applet(root) {
           }
         }
 
-        document.add_event_listener(root, "click", fn(event) {
+        document.add_event_listener("click", fn(event) {
           case nearest_click_handler(event) {
             Ok(id) -> {
               case listx.at(list.reverse(javascript.dereference(actions)), id) {
@@ -119,11 +122,12 @@ fn applet(root) {
 }
 
 fn nearest_click_handler(event) {
-  let target = document.target(event)
-  case document.closest(target, "[data-click]") {
+  let target = event.target(event)
+  let target = dynamic.unsafe_coerce(target)
+  case element.closest(target, "[data-click]") {
     Ok(element) -> {
       // Because the closest element is chosen to have data-click this get must return ok
-      let assert Ok(handle) = document.dataset_get(element, "click")
+      let assert Ok(handle) = element.dataset_get(element, "click")
       case int.parse(handle) {
         Ok(id) -> Ok(id)
         Error(Nil) -> {

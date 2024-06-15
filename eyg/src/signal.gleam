@@ -9,7 +9,9 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import old_plinth/browser/document
+import old_plinth/browser/document as old_document
+import plinth/browser/document
+import plinth/browser/element
 import plinth/javascript/console
 
 pub type Signal(a) =
@@ -46,7 +48,7 @@ fn text(signal) {
   let text = document.create_element("span")
   let current = signal()
   let value = javascript.make_reference(current)
-  let do_update = document.set_text(text, _)
+  let do_update = element.set_inner_text(text, _)
   let update = fn() {
     let latest = signal()
     case latest == javascript.dereference(value) {
@@ -65,7 +67,7 @@ fn el(tag, attributes, children) {
   let element = document.create_element(tag)
   let attr_updates = list.map(attributes, fn(a) { a(element) })
   let #(children, children_updates) = list.unzip(children)
-  list.map(children, document.append(element, _))
+  list.map(children, element.append_child(element, _))
 
   let update = fn() {
     list.map(attr_updates, fn(u) { u() })
@@ -82,7 +84,7 @@ fn attribute(key, signal) {
   fn(element) {
     let current = signal()
     let value = javascript.make_reference(current)
-    let do_update = document.set_attribute(element, key, _)
+    let do_update = element.set_attribute(element, key, _)
     let update = fn() {
       let latest = signal()
       case latest == javascript.dereference(value) {
@@ -120,10 +122,10 @@ fn match(create) {
     case javascript.dereference(try_update_ref)() {
       Ok(Nil) -> Nil
       Error(Nil) -> {
-        list.map(javascript.dereference(elements_ref), document.remove)
+        list.map(javascript.dereference(elements_ref), element.remove)
         let #(elements, try_update) = create()
         list.fold(elements, pin, fn(acc, new) {
-          document.insert_element_after(acc, new)
+          element.insert_adjacent_element(acc, element.AfterEnd, new)
           new
         })
         javascript.set_reference(elements_ref, elements)
@@ -458,11 +460,11 @@ pub fn run() {
   let assert [target, ..] =
     array.to_list(document.query_selector_all("[data-easel=\"large\"]"))
 
-  document.on_click(fn(event) {
+  old_document.on_click(fn(event) {
     console.log(event)
     update_state(fn(s) { State(..s, active: !s.active) })
   })
-  list.map(elements, document.append(target, _))
+  list.map(elements, element.append_child(target, _))
 
   use _ <- promise.await(promisex.wait(1000))
   update_state(fn(s) {

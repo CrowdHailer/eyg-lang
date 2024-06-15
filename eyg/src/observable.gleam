@@ -5,7 +5,9 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import old_plinth/browser/document
+import old_plinth/browser/document as old_document
+import plinth/browser/document
+import plinth/browser/element
 
 // I think these are observable not signals because subscription rather than get in a call
 
@@ -69,7 +71,7 @@ pub fn component(create) {
 
 fn el(tag, children) {
   let element = document.create_element(tag)
-  list.map(children, document.append(element, _))
+  list.map(children, element.append_child(element, _))
   element
 }
 
@@ -79,15 +81,15 @@ fn p(children) {
 
 pub fn text(o: Observable(String)) {
   let text = document.create_element("span")
-  document.set_text(text, o.0)
-  o.1(document.set_text(text, _))
+  element.set_inner_text(text, o.0)
+  o.1(element.set_inner_text(text, _))
   text
 }
 
 pub fn option(
   observable: Observable(Option(a)),
-  some some: fn(Observable(a)) -> List(document.Element),
-  none none: List(document.Element),
+  some some: fn(Observable(a)) -> List(element.Element),
+  none none: List(element.Element),
 ) {
   // svelte uses empty text node for pin, so it doesn't effect element order for styling
   let pin = document.create_element("span")
@@ -132,10 +134,10 @@ pub fn option(
     case javascript.dereference(try_update_ref)(new) {
       Ok(Nil) -> Nil
       Error(Nil) -> {
-        list.map(javascript.dereference(elements_ref), document.remove)
+        list.map(javascript.dereference(elements_ref), element.remove)
         let #(elements, try_update) = create(new)
         list.fold(elements, pin, fn(acc, new) {
-          document.insert_element_after(acc, new)
+          element.insert_adjacent_element(acc, element.AfterEnd, new)
           new
         })
         javascript.set_reference(elements_ref, elements)
@@ -171,7 +173,7 @@ pub fn run() {
     })
   let #(elements, update) =
     page(State(greeting: "hello", active: False, session: None))
-  list.map(elements, document.append(target, _))
+  list.map(elements, element.append_child(target, _))
   // console.log(array.from_list(elements))
   use _ <- promise.await(promisex.wait(1000))
   update(State(greeting: "hello!", active: True, session: Some("foooo")))

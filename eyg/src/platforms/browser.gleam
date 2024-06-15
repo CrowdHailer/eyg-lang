@@ -15,7 +15,9 @@ import gleam/list
 import gleam/result
 import harness/effect
 import harness/stdlib
-import old_plinth/browser/document
+import old_plinth/browser/document as old_document
+import plinth/browser/document
+import plinth/browser/element
 import plinth/browser/window
 import plinth/javascript/console
 import plinth/javascript/global
@@ -66,14 +68,10 @@ pub fn do_run(raw) -> Nil {
 }
 
 pub fn run() {
-  let found =
-    document.query_selector(
-      document.document(),
-      "script[type=\"application/eygir.json\"]",
-    )
+  let found = document.query_selector("script[type=\"application/eygir.json\"]")
   case found {
     Ok(el) -> {
-      do_run(document.inner_text(el))
+      do_run(element.inner_text(el))
     }
     Error(Nil) -> old_run()
   }
@@ -81,14 +79,9 @@ pub fn run() {
 
 // used in layout.page -> used in dashboard
 fn old_run() {
-  case
-    document.query_selector(
-      document.document(),
-      "script[type=\"application/eygir\"]",
-    )
-  {
+  case document.query_selector("script[type=\"application/eygir\"]") {
     Ok(el) ->
-      case decode.from_json(global.decode_uri(document.inner_text(el))) {
+      case decode.from_json(global.decode_uri(element.inner_text(el))) {
         Ok(f) -> {
           let env = stdlib.env()
           let f = e.add_annotation(f, Nil)
@@ -116,10 +109,11 @@ fn old_run() {
         document.query_selector_all("script[type=\"editor/eygir\"]")
         |> array.to_list()
       list.map(elements, fn(el) {
-        case decode.from_json(global.decode_uri(document.inner_text(el))) {
+        case decode.from_json(global.decode_uri(element.inner_text(el))) {
           Ok(c) -> {
             io.debug(c)
-            document.insert_after(el, "<p>Nice</p>")
+            let assert Ok(_) =
+              element.insert_adjacent_html(el, element.AfterEnd, "<p>Nice</p>")
             Nil
           }
           Error(reason) -> {
@@ -136,8 +130,8 @@ fn old_run() {
 fn render() {
   #(t.Str, t.unit, fn(page) {
     let assert v.Str(page) = page
-    case document.query_selector(document.document(), "#app") {
-      Ok(element) -> document.set_html(element, page)
+    case document.query_selector("#app") {
+      Ok(element) -> element.set_inner_html(element, page)
       _ ->
         panic as "could not render as no app element found, the reference to the app element should exist from start time and not be checked on every render"
     }
@@ -213,7 +207,7 @@ fn on_click() {
     let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
-    document.on_click(fn(arg) {
+    old_document.on_click(fn(arg) {
       let arg = global.decode_uri(arg)
       let assert Ok(arg) = decode.from_json(arg)
 
@@ -229,7 +223,7 @@ fn on_keydown() {
     let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
-    document.on_keydown(fn(k) {
+    old_document.on_keydown(fn(k) {
       let _ = r.resume(handle, [v.Str(k)], env, extrinsic)
       Nil
     })
@@ -242,7 +236,7 @@ fn on_change() {
     let env = stdlib.env()
     let #(_, extrinsic) = handlers()
 
-    document.on_change(fn(k) {
+    old_document.on_change(fn(k) {
       let _ = r.resume(handle, [v.Str(k)], env, extrinsic)
       Nil
     })
