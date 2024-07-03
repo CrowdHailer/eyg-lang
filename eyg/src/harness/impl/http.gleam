@@ -40,15 +40,22 @@ pub fn serve() {
             |> effect.extend("LoadDB", effect.load_db())
             |> effect.extend("QueryDB", effect.query_db())
           }.1
-        promise.map(r.await(r.resume(handler, [req], env, extrinsic)), fn(resp) {
-          case resp {
-            Ok(resp) -> from_response(resp)
-            Error(#(reason, _path, _env, _k)) -> {
-              io.debug(break.reason_to_string(reason))
-              #(500, array.from_list([]), bit_array.from_string("Server error"))
+        promise.map(
+          r.await(r.resume(handler, [#(req, Nil)], env, extrinsic)),
+          fn(resp) {
+            case resp {
+              Ok(resp) -> from_response(resp)
+              Error(#(reason, _path, _env, _k)) -> {
+                io.debug(break.reason_to_string(reason))
+                #(
+                  500,
+                  array.from_list([]),
+                  bit_array.from_string("Server error"),
+                )
+              }
             }
-          }
-        })
+          },
+        )
       })
     let body = e.Apply(e.Perform("StopServer"), e.Integer(id))
     let body = e2.add_annotation(body, Nil)
@@ -82,7 +89,7 @@ pub fn receive() {
             |> effect.extend("Await", effect.await())
             |> effect.extend("Wait", effect.wait())
           }.1
-        let assert Ok(reply) = r.resume(handler, [req], env, extrinsic)
+        let assert Ok(reply) = r.resume(handler, [#(req, Nil)], env, extrinsic)
         let assert Ok(resp) = cast.field("response", cast.any, reply)
         let assert Ok(data) = cast.field("data", cast.as_tagged, reply)
 

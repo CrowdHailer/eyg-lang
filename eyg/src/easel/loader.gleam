@@ -74,7 +74,7 @@ fn applet(root) {
         let state = javascript.make_reference(arg)
         let render = fn() {
           let current = javascript.dereference(state)
-          let result = r.resume(func, [current], env, handlers)
+          let result = r.resume(func, [#(current, Nil)], env, handlers)
           let _ = case result {
             Ok(v.Str(page)) -> element.set_inner_html(root, page)
             _ -> {
@@ -93,7 +93,7 @@ fn applet(root) {
                   let current = javascript.dereference(state)
                   // io.debug(javascript.dereference(actions))
                   let assert Ok(next) =
-                    r.resume(code, [current], env, dict.new())
+                    r.resume(code, [#(current, Nil)], env, dict.new())
                   javascript.set_reference(state, next)
                   javascript.set_reference(actions, [])
                   render()

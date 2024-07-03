@@ -11,8 +11,9 @@ pub fn execute(exp, env, h) {
 
 pub fn resume(f, args, env, h) {
   let k =
-    list.fold_right(args, state.Empty(h), fn(k, a) {
-      state.Stack(state.CallWith(a, env), Nil, k)
+    list.fold_right(args, state.Empty(h), fn(k, arg) {
+      let #(value, meta) = arg
+      state.Stack(state.CallWith(value, env), meta, k)
     })
   loop(state.step(state.V(f), env, k))
 }

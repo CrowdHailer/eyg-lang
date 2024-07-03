@@ -26,7 +26,7 @@ fn handle_click(event, states) {
   use key <- result.then(element.get_attribute(target, "on:click"))
   use #(action, env) <- result.then(map.get(states, container))
   // TODO get attribute and multiple sources
-  let answer = r.resume(action, [v.Str(key)], env, dict.new())
+  let answer = r.resume(action, [#(v.Str(key), Nil)], env, dict.new())
   // console.log(answer)
   let assert Ok(term) = answer
   // console.log(v.debug(term))

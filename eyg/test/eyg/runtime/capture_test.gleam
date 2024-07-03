@@ -5,6 +5,7 @@ import eyg/runtime/value as v
 import eygir/annotated as a
 import eygir/expression as e
 import gleam/dict
+import gleam/list
 import gleeunit/should
 import harness/ffi/env
 import harness/stdlib
@@ -37,6 +38,7 @@ pub fn literal_test() {
 
 fn run(source, env, args, extrinsic) {
   let source = a.add_annotation(source, Nil)
+  let args = list.map(args, fn(v) { #(v, Nil) })
   case r.execute(source, env, extrinsic) {
     // env not needed in resume but it is in the original execute call, for builtins
     Ok(f) -> r.resume(f, args, env, extrinsic)
