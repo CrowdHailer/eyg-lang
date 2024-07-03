@@ -374,6 +374,30 @@ pub fn builtins() {
       pure1(t.String, t.result(return, t.unit))
     }),
     #("string_to_binary", pure1(t.String, t.Binary)),
+    #("binary_to_string", pure1(t.Binary, t.result(t.String, t.unit))),
+    #("pop_prefix", {
+      let eff = q(0)
+      let return = q(1)
+      let yes = t.Fun(t.String, eff, return)
+      let no = t.Fun(t.unit, eff, return)
+      t.Fun(
+        t.String,
+        t.Empty,
+        t.Fun(t.String, t.Empty, t.Fun(yes, t.Empty, t.Fun(no, eff, return))),
+      )
+    }),
+    #("uncons", {
+      let el = q(0)
+      let eff = q(1)
+      let return = q(2)
+      let empty = t.Fun(t.unit, eff, return)
+      let nonempty = t.Fun(el, eff, t.Fun(t.List(el), eff, return))
+      t.Fun(
+        t.List(el),
+        t.Empty,
+        t.Fun(empty, t.Empty, t.Fun(nonempty, eff, return)),
+      )
+    }),
     #("list_pop", {
       let return = t.record([#("head", q(0)), #("tail", t.List(q(0)))])
       pure1(t.List(q(0)), t.result(return, t.unit))

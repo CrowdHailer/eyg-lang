@@ -78,3 +78,20 @@ pub fn do_fold(elements, state, f, meta, env, k) {
     }
   }
 }
+
+pub fn uncons() {
+  let type_ = t.unit
+  #(type_, state.Arity3(do_uncons))
+}
+
+fn do_uncons(list, empty, nonempty, meta, env, k) {
+  use elements <- result.then(cast.as_list(list))
+
+  case elements {
+    [] -> state.call(empty, v.unit, meta, env, k)
+    [head, ..tail] -> {
+      let k = state.Stack(state.CallWith(v.LinkedList(tail), env), meta, k)
+      state.call(nonempty, head, meta, env, k)
+    }
+  }
+}

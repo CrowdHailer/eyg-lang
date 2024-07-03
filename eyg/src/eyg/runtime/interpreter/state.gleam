@@ -39,6 +39,9 @@ pub type Builtin(m) {
   Arity1(fn(Value(m), m, Env(m), Stack(m)) -> Return(m))
   Arity2(fn(Value(m), Value(m), m, Env(m), Stack(m)) -> Return(m))
   Arity3(fn(Value(m), Value(m), Value(m), m, Env(m), Stack(m)) -> Return(m))
+  Arity4(
+    fn(Value(m), Value(m), Value(m), Value(m), m, Env(m), Stack(m)) -> Return(m),
+  )
 }
 
 pub type Stack(m) {
@@ -195,6 +198,7 @@ fn call_builtin(key, applied, meta, env: Env(m), kont) {
         Arity1(impl), [x] -> impl(x, meta, env, kont)
         Arity2(impl), [x, y] -> impl(x, y, meta, env, kont)
         Arity3(impl), [x, y, z] -> impl(x, y, z, meta, env, kont)
+        Arity4(impl), [x, y, z, a] -> impl(x, y, z, a, meta, env, kont)
         _, _args -> Ok(#(V(v.Partial(v.Builtin(key), applied)), env, kont))
       }
     Error(Nil) -> Error(break.UndefinedVariable(key))

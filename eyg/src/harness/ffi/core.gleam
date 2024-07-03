@@ -1,4 +1,5 @@
 import eyg/analysis/typ as t
+import eyg/compile
 import eyg/runtime/capture
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
@@ -140,7 +141,10 @@ pub fn lib() {
   |> extend("string_length", string.length())
   |> extend("pop_grapheme", string.pop_grapheme())
   |> extend("string_to_binary", string.to_binary())
+  |> extend("binary_to_string", string.from_binary())
+  |> extend("pop_prefix", string.pop_prefix())
   // list
+  |> extend("uncons", linked_list.uncons())
   |> extend("list_pop", linked_list.pop())
   |> extend("list_fold", linked_list.fold())
   |> extend("eval", eval())
@@ -200,8 +204,6 @@ pub fn to_javascript() {
 
   #(type_, state.Arity1(do_to_javascript))
 }
-
-import eyg/compile
 
 pub fn do_to_javascript(term, meta, env, k) {
   let exp = capture.capture(term)

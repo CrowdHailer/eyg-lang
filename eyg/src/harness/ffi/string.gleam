@@ -3,6 +3,7 @@ import eyg/runtime/cast
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import gleam/bit_array
+import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
@@ -152,8 +153,37 @@ pub fn to_binary() {
   #(type_, state.Arity1(do_to_binary))
 }
 
-pub fn do_to_binary(in, rev, env, k) {
+pub fn do_to_binary(in, _meta, env, k) {
   use in <- result.then(cast.as_string(in))
 
   Ok(#(state.V(v.Binary(bit_array.from_string(in))), env, k))
+}
+
+pub fn from_binary() {
+  let type_ = t.Fun(t.Binary, t.Open(0), t.result(t.Str, t.unit))
+  #(type_, state.Arity1(do_from_binary))
+}
+
+pub fn do_from_binary(in, _meta, env, k) {
+  use in <- result.then(cast.as_binary(in))
+  let value = case bit_array.to_string(in) {
+    Ok(bytes) -> v.ok(v.Str(bytes))
+    Error(Nil) -> v.error(v.unit)
+  }
+  Ok(#(state.V(value), env, k))
+}
+
+pub fn pop_prefix() {
+  let type_ = t.Str
+  #(type_, state.Arity4(do_pop_prefix))
+}
+
+pub fn do_pop_prefix(in, prefix, yes, no, meta, env, k) {
+  use in <- result.then(cast.as_string(in))
+  use prefix <- result.then(cast.as_string(prefix))
+
+  case string.split_once(in, prefix) {
+    Ok(#("", post)) -> state.call(yes, v.Str(post), meta, env, k)
+    _ -> state.call(no, v.unit, meta, env, k)
+  }
 }
