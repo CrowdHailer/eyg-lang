@@ -46,7 +46,7 @@ pub fn string_test() {
   |> should.equal([
     #(t.String(""), 0),
     #(t.String("hello"), 3),
-    #(t.String("\\\\"), 11),
+    #(t.String("\\"), 11),
   ])
 }
 

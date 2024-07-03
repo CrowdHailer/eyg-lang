@@ -1,7 +1,7 @@
 import eyg/parse/token as t
-import gleam/bit_array
 import gleam/list
 import gleam/string
+import gleam/stringx
 
 pub fn lex(raw) {
   loop(raw, 0, [])
@@ -50,7 +50,7 @@ fn pop(raw, start) {
     "shallow" <> rest -> done(t.Shallow, 7, rest)
     "handle" <> rest -> done(t.Handle, 6, rest)
 
-    "\"" <> rest -> string("", rest, done)
+    "\"" <> rest -> string("", 1, rest, done)
 
     "1" <> rest -> integer("1", rest, done)
     "2" <> rest -> integer("2", rest, done)
@@ -63,63 +63,116 @@ fn pop(raw, start) {
     "9" <> rest -> integer("9", rest, done)
     "0" <> rest -> integer("0", rest, done)
     _ -> {
-      case string.pop_grapheme(raw) {
-        Ok(#(g, rest)) ->
-          case is_lower_grapheme(g) || g == "_" {
-            True -> name(g, rest, done)
-            False ->
-              case is_upper_grapheme(g) {
-                True -> uppername(g, rest, done)
-                False -> done(t.UnexpectedGrapheme(g), byte_size(g), rest)
-              }
-          }
-        Error(Nil) -> Error(Nil)
+      let next_byte = stringx.byte_slice_range(raw, 0, 1)
+      let rest = stringx.byte_slice_from(raw, 1)
+      case next_byte {
+        "_"
+        | "a"
+        | "b"
+        | "c"
+        | "d"
+        | "e"
+        | "f"
+        | "g"
+        | "h"
+        | "i"
+        | "j"
+        | "k"
+        | "l"
+        | "m"
+        | "n"
+        | "o"
+        | "p"
+        | "q"
+        | "r"
+        | "s"
+        | "t"
+        | "u"
+        | "v"
+        | "w"
+        | "x"
+        | "y"
+        | "z" -> name(next_byte, rest, done)
+        "A"
+        | "B"
+        | "C"
+        | "D"
+        | "E"
+        | "F"
+        | "G"
+        | "H"
+        | "I"
+        | "J"
+        | "K"
+        | "L"
+        | "M"
+        | "N"
+        | "O"
+        | "P"
+        | "Q"
+        | "R"
+        | "S"
+        | "T"
+        | "U"
+        | "V"
+        | "W"
+        | "X"
+        | "Y"
+        | "Z" -> uppername(next_byte, rest, done)
+        "" -> Error(Nil)
+        _ -> done(t.UnexpectedGrapheme(raw), string.byte_size(raw), "")
       }
     }
   }
 }
 
-fn string(buffer, rest, done) {
+fn string(buffer, length, rest, done) {
   case rest {
-    "\"" <> rest -> done(t.String(buffer), byte_size(buffer) + 2, rest)
+    "\"" <> rest -> done(t.String(buffer), length + 1, rest)
     "\\" <> rest ->
-      case string.pop_grapheme(rest) {
-        Ok(#(g, rest)) -> string(buffer <> "\\" <> g, rest, done)
-        Error(Nil) -> string(buffer <> "\\", rest, done)
+      case rest {
+        "\"" <> rest -> string(buffer <> "\"", length + 2, rest, done)
+        "\\" <> rest -> string(buffer <> "\\", length + 2, rest, done)
+        "t" <> rest -> string(buffer <> "\t", length + 2, rest, done)
+        "r" <> rest -> string(buffer <> "\r", length + 2, rest, done)
+        "n" <> rest -> string(buffer <> "\n", length + 2, rest, done)
+        "" -> done(t.UnterminatedString(buffer <> "\\"), length, "")
+        _ -> todo as "invalid escape"
       }
-    _ ->
-      case string.pop_grapheme(rest) {
-        Ok(#(g, rest)) -> string(buffer <> g, rest, done)
-        Error(Nil) ->
-          done(t.UnterminatedString(buffer), byte_size(buffer) + 1, "")
-      }
+    "" -> done(t.UnterminatedString(buffer), length, "")
+    _ -> {
+      let next_byte = stringx.byte_slice_range(rest, 0, 1)
+      let rest = stringx.byte_slice_from(rest, 1)
+      string(buffer <> next_byte, length + 1, rest, done)
+    }
   }
 }
 
 fn name(buffer, raw, done) {
-  case string.pop_grapheme(raw) {
-    Ok(#(g, rest)) ->
-      case is_lower_grapheme(g) || is_digit_grapheme(g) || g == "_" {
-        True -> name(buffer <> g, rest, done)
-        False -> done(t.Name(buffer), byte_size(buffer), raw)
-      }
-    Error(Nil) -> done(t.Name(buffer), byte_size(buffer), raw)
+  let next_byte = stringx.byte_slice_range(raw, 0, 1)
+  let rest = stringx.byte_slice_from(raw, 1)
+  case
+    is_lower_grapheme(next_byte)
+    || is_digit_grapheme(next_byte)
+    || next_byte == "_"
+  {
+    True -> name(buffer <> next_byte, rest, done)
+    False -> done(t.Name(buffer), string.byte_size(buffer), raw)
   }
 }
 
 fn uppername(buffer, raw, done) {
-  case string.pop_grapheme(raw) {
-    Ok(#(g, rest)) ->
-      case
-        is_upper_grapheme(g)
-        || is_lower_grapheme(g)
-        || is_digit_grapheme(g)
-        || g == "_"
-      {
-        True -> uppername(buffer <> g, rest, done)
-        False -> done(t.Uppername(buffer), byte_size(buffer), raw)
-      }
-    Error(Nil) -> done(t.Uppername(buffer), byte_size(buffer), raw)
+  let next_byte = stringx.byte_slice_range(raw, 0, 1)
+  let rest = stringx.byte_slice_from(raw, 1)
+
+  case
+    is_upper_grapheme(next_byte)
+    || is_lower_grapheme(next_byte)
+    || is_digit_grapheme(next_byte)
+    || next_byte == "_"
+  {
+    True -> uppername(buffer <> next_byte, rest, done)
+    False -> done(t.Uppername(buffer), string.byte_size(buffer), raw)
   }
 }
 
@@ -135,12 +188,8 @@ fn integer(buffer, rest, done) {
     "8" <> rest -> integer(buffer <> "8", rest, done)
     "9" <> rest -> integer(buffer <> "9", rest, done)
     "0" <> rest -> integer(buffer <> "0", rest, done)
-    _ -> done(t.Integer(buffer), byte_size(buffer), rest)
+    _ -> done(t.Integer(buffer), string.byte_size(buffer), rest)
   }
-}
-
-fn byte_size(string: String) -> Int {
-  bit_array.byte_size(<<string:utf8>>)
 }
 
 fn is_lower_grapheme(grapheme) {
