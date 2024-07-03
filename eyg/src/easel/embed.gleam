@@ -912,7 +912,6 @@ fn run(state: Embed) {
     dict.new()
     |> dict.insert("Alert", handler)
     |> dict.insert("Choose", effect.choose().2)
-    |> dict.insert("HTTP", effect.http().2)
     |> dict.insert("Await", effect.await().2)
     |> dict.insert("Async", browser.async().2)
     |> dict.insert("Log", effect.debug_logger().2)

@@ -10,6 +10,7 @@ import gleam/javascript/promise
 import gleam/result.{try}
 import gleam/string
 import harness/effect as impl
+import harness/fetch
 import harness/ffi/core
 import plinth/browser/clipboard
 import plinth/browser/file
@@ -103,7 +104,7 @@ pub fn handlers() {
   |> dict.insert("Delay", impl.wait().2)
   |> dict.insert("File_Read", fs.file_read)
   |> dict.insert("Choose", impl.choose().2)
-  |> dict.insert("HTTP", impl.http().2)
+  |> dict.insert("Fetch", fetch.handle)
   |> dict.insert("Netlify.Sites", netlify.get_sites)
   |> dict.insert("Netlify.Deploy", netlify.deploy_site)
   |> dict.insert("DNSimple.Domains", dnsimple.list_domains)

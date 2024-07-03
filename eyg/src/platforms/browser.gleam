@@ -26,7 +26,6 @@ fn handlers() {
   effect.init()
   |> effect.extend("Log", effect.debug_logger())
   |> effect.extend("Alert", effect.window_alert())
-  |> effect.extend("HTTP", effect.http())
   |> effect.extend("Render", render())
   |> effect.extend("Wait", effect.wait())
   |> effect.extend("Await", effect.await())

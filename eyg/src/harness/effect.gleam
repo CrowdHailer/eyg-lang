@@ -6,21 +6,15 @@ import eygir/annotated as e
 import eygir/decode
 import gleam/dict
 import gleam/dynamic
-import gleam/fetch
-import gleam/http
-import gleam/http/request
 import gleam/int
 import gleam/io
 import gleam/javascript/array.{type Array}
-import gleam/javascript/promise.{try_await}
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/json
 import gleam/list
-import gleam/option.{Some}
 import gleam/result
-import gleam/string
 import harness/ffi/core
-import old_plinth/browser/document
 import plinth/browser/window
 import simplifile
 
@@ -60,86 +54,6 @@ pub fn choose() {
       _ -> panic as "integer outside expected range"
     }
     Ok(value)
-  })
-}
-
-pub fn http() {
-  #(t.Str, t.unit, fn(request) {
-    use method <- result.then(cast.field("method", cast.any, request))
-    let assert v.Tagged(method, _) = method
-    let method = case string.uppercase(method) {
-      "GET" -> http.Get
-      "POST" -> http.Post
-      _ -> panic as string.concat(["unknown method: ", method])
-    }
-    use _scheme <- result.then(cast.field("scheme", cast.any, request))
-    use host <- result.then(cast.field("host", cast.as_string, request))
-    use _port <- result.then(cast.field("port", cast.any, request))
-    use path <- result.then(cast.field("path", cast.as_string, request))
-    use query <- result.then(cast.field("query", cast.as_string, request))
-    use headers <- result.then(cast.field("headers", cast.as_list, request))
-    let assert Ok(headers) =
-      list.try_map(headers, fn(h) {
-        use k <- result.try(cast.field("key", cast.as_string, h))
-        use value <- result.try(cast.field("value", cast.as_string, h))
-        Ok(#(k, value))
-      })
-
-    use body <- result.then(cast.field("body", cast.any, request))
-    // TODO fix binary or string
-    let assert v.Str(body) = body
-
-    // Query is passed in as string to handle the case where you dont use a=b&.. convention
-    // io.debug(query)
-    let request =
-      request.new()
-      |> request.set_method(method)
-      |> request.set_host(host)
-      |> request.set_path(path)
-      // TODO decide on option typing for query
-      // need set query string
-      // |> request.set_query(query)
-      |> request.set_body(body)
-    let request = request.Request(..request, query: Some(query))
-    io.debug(request)
-
-    let request =
-      list.fold(headers, request, fn(req, h) {
-        let #(k, v) = h
-        request.set_header(req, k, v)
-      })
-
-    let promise =
-      try_await(fetch.send(request), fn(response) {
-        fetch.read_text_body(response)
-      })
-      |> promise.map(fn(response) {
-        case response {
-          Ok(response) -> {
-            let resp =
-              v.ok(
-                v.Record([
-                  #("status", v.Integer(response.status)),
-                  #(
-                    "headers",
-                    v.LinkedList(
-                      list.map(response.headers, fn(h) {
-                        let #(k, v) = h
-                        v.Record([#("key", v.Str(k)), #("value", v.Str(v))])
-                      }),
-                    ),
-                  ),
-                  #("body", v.Str(response.body)),
-                ]),
-              )
-            resp
-          }
-
-          Error(_) -> v.error(v.Str("bad response"))
-        }
-      })
-
-    Ok(v.Promise(promise))
   })
 }
 

@@ -34,7 +34,6 @@ pub fn serve() {
           {
             effect.init()
             |> effect.extend("Log", effect.debug_logger())
-            |> effect.extend("HTTP", effect.http())
             |> effect.extend("File_Write", effect.file_write())
             |> effect.extend("Await", effect.await())
             |> effect.extend("Wait", effect.wait())
@@ -80,7 +79,6 @@ pub fn receive() {
           {
             effect.init()
             |> effect.extend("Log", effect.debug_logger())
-            |> effect.extend("HTTP", effect.http())
             |> effect.extend("Await", effect.await())
             |> effect.extend("Wait", effect.wait())
           }.1
