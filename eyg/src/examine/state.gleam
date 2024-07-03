@@ -2,8 +2,7 @@ import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic as t
 import eyg/compile
-import eyg/parse/lexer
-import eyg/parse/parser
+import eyg/parse
 import eyg/runtime/cast
 import eyg/runtime/interpreter/live
 import eyg/runtime/value as v
@@ -33,12 +32,6 @@ pub type State {
 
 pub fn source(state: State) {
   state.source
-}
-
-fn parse(src) {
-  src
-  |> lexer.lex()
-  |> parser.parse()
 }
 
 pub fn lines(source) {
@@ -137,8 +130,8 @@ pub fn highlights(state, spans, acc) {
 }
 
 pub fn information(state) {
-  case parse(source(state)) {
-    Ok(tree) -> {
+  case parse.from_string(source(state)) {
+    Ok(#(tree, _rest)) -> {
       let #(tree, spans) = annotated.strip_annotation(tree)
       let #(exp, bindings) = j.infer(tree, t.Empty, 0, j.new_state())
       let acc = annotated.strip_annotation(exp).1
@@ -169,8 +162,8 @@ pub fn interpret(state) {
         Ok(v.unit)
       }),
     ])
-  case parse(source(state)) {
-    Ok(tree) -> {
+  case parse.from_string(source(state)) {
+    Ok(#(tree, _rest)) -> {
       let #(r, assignments) = live.execute(tree, h)
       let lines = list.map(lines(source(state)), fn(x) { #(x, []) })
       let output =
@@ -189,8 +182,8 @@ pub fn interpret(state) {
 }
 
 pub fn compile(state) {
-  case parse(source(state)) {
-    Ok(tree) -> {
+  case parse.from_string(source(state)) {
+    Ok(#(tree, _rest)) -> {
       Ok(compile.to_js(tree))
     }
     Error(reason) -> Error(reason)

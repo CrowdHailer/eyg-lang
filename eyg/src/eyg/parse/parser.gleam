@@ -1,7 +1,6 @@
 import eyg/parse/token as t
 import eygir/annotated as e
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
@@ -10,17 +9,6 @@ import gleam/string
 pub type Reason {
   UnexpectEnd
   UnexpectedToken(token: t.Token, position: Int)
-}
-
-pub fn parse(tokens) {
-  case expression(tokens) {
-    Ok(#(e, [])) -> Ok(e)
-    Ok(#(_, leftover)) -> {
-      io.debug(leftover)
-      panic
-    }
-    Error(reason) -> Error(reason)
-  }
 }
 
 pub type Span =
