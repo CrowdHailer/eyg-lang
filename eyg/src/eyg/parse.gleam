@@ -1,6 +1,8 @@
 import eyg/parse/lexer
 import eyg/parse/parser
 import eyg/parse/token
+import eygir/annotated as e
+import gleam/option.{None, Some}
 import gleam/result
 
 pub fn from_string(src) {
@@ -15,5 +17,26 @@ pub fn all_from_string(src) {
   case remaining {
     [] -> Ok(source)
     [#(token, at), ..] -> Error(parser.UnexpectedToken(token, at))
+  }
+}
+
+pub fn block_from_string(src) {
+  let parsed =
+    src
+    |> lexer.lex()
+    |> token.drop_whitespace()
+    |> parser.block()
+  case parsed {
+    Ok(#(exp, left)) -> Ok(#(do_gather(exp, []), left))
+    Error(reason) -> Error(reason)
+  }
+}
+
+fn do_gather(exp, acc) {
+  let #(exp, span) = exp
+  case exp {
+    e.Let(label, value, then) -> do_gather(then, [#(label, value, span), ..acc])
+    e.Vacant(_) -> #(acc, None)
+    _ -> #(acc, Some(#(exp, span)))
   }
 }

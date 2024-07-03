@@ -94,6 +94,50 @@ pub fn destructured(matches: List(Match), term: #(e.Expression(_), Span)) {
   })
 }
 
+pub fn block(tokens) {
+  use #(#(token, start), rest) <- try(pop(tokens))
+  case token {
+    t.Let -> {
+      use #(pattern, rest) <- try(one_pattern(rest))
+      use rest <- try(case rest {
+        [#(t.Equal, _), ..rest] -> Ok(rest)
+        _ -> fail(rest)
+      })
+      use #(value, rest) <- try(expression(rest))
+      case block(rest) {
+        Ok(#(then, rest)) -> {
+          let #(_, #(_start, end)) = then
+          let span = #(start, end)
+          let exp = case pattern {
+            Assign(label) -> #(e.Let(label, value, then), span)
+            Destructure(matches) -> #(
+              e.Let("$", value, destructured(matches, then)),
+              span,
+            )
+          }
+          Ok(#(exp, rest))
+        }
+        Error(UnexpectEnd) -> {
+          let span = #(start, start)
+          let then = #(e.Vacant("__Block__"), #(0, 0))
+          let exp = case pattern {
+            Assign(label) -> #(e.Let(label, value, then), span)
+            Destructure(matches) -> #(
+              e.Let("$", value, destructured(matches, then)),
+              span,
+            )
+          }
+          Ok(#(exp, rest))
+        }
+        Error(other) -> Error(other)
+      }
+    }
+    _ -> {
+      expression(tokens)
+    }
+  }
+}
+
 pub fn expression(tokens) {
   use #(#(token, start), rest) <- try(pop(tokens))
 
