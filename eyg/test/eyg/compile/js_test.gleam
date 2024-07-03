@@ -2,6 +2,7 @@ import eyg/compile
 import eyg/parse
 import gleam/dynamic
 import gleam/json
+import gleam/pair
 import gleeunit/should
 import plinth/browser/window
 
@@ -10,6 +11,7 @@ fn test_compilation(source, js, evaled) {
     source
     |> parse.from_string()
     |> should.be_ok()
+    |> pair.first
     |> compile.to_js()
   generated
   |> should.equal(js)
@@ -24,6 +26,7 @@ fn test_eval(source, evaled) {
     source
     |> parse.from_string()
     |> should.be_ok()
+    |> pair.first
     |> compile.to_js()
   generated
   |> window.eval()

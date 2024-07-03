@@ -1,6 +1,7 @@
 import eyg/parse
 import gleam/io
 import gleam/option.{None}
+import gleam/pair
 import gleeunit/should
 import morph/editable as e
 import morph/projection as p
@@ -12,6 +13,7 @@ pub fn from_string(source) {
   source
   |> parse.from_string()
   |> should.be_ok()
+  |> pair.first()
   // |> io.debug
   |> e.from_annotated()
 }

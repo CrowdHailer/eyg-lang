@@ -3,27 +3,27 @@ import eyg/parse/token as t
 import gleeunit/should
 
 pub fn grouping_test() {
-  "( )"
+  "()"
   |> lexer.lex
-  |> should.equal([#(t.LeftParen, 0), #(t.RightParen, 2)])
-  "{ }"
+  |> should.equal([#(t.LeftParen, 0), #(t.RightParen, 1)])
+  "{}"
   |> lexer.lex
-  |> should.equal([#(t.LeftBrace, 0), #(t.RightBrace, 2)])
-  "[ ]"
+  |> should.equal([#(t.LeftBrace, 0), #(t.RightBrace, 1)])
+  "[]"
   |> lexer.lex
-  |> should.equal([#(t.LeftSquare, 0), #(t.RightSquare, 2)])
+  |> should.equal([#(t.LeftSquare, 0), #(t.RightSquare, 1)])
 }
 
 pub fn punctuation_test() {
-  "= -> , . : !"
+  "=->,.:!"
   |> lexer.lex
   |> should.equal([
     #(t.Equal, 0),
-    #(t.RightArrow, 2),
-    #(t.Comma, 5),
-    #(t.Dot, 7),
-    #(t.Colon, 9),
-    #(t.Bang, 11),
+    #(t.RightArrow, 1),
+    #(t.Comma, 3),
+    #(t.Dot, 4),
+    #(t.Colon, 5),
+    #(t.Bang, 6),
   ])
 }
 
@@ -32,21 +32,26 @@ pub fn keyword_test() {
   |> lexer.lex
   |> should.equal([
     #(t.Let, 0),
+    #(t.Whitespace(" "), 3),
     #(t.Match, 4),
+    #(t.Whitespace(" "), 9),
     #(t.Perform, 10),
+    #(t.Whitespace(" "), 17),
     #(t.Deep, 18),
+    #(t.Whitespace(" "), 22),
     #(t.Shallow, 23),
+    #(t.Whitespace(" "), 30),
     #(t.Handle, 31),
   ])
 }
 
 pub fn string_test() {
-  "\"\" \"hello\" \"\\\\\""
+  "\"\"\"hello\"\"\\\\\""
   |> lexer.lex
   |> should.equal([
     #(t.String(""), 0),
-    #(t.String("hello"), 3),
-    #(t.String("\\"), 11),
+    #(t.String("hello"), 2),
+    #(t.String("\\"), 9),
   ])
 }
 
@@ -55,8 +60,11 @@ pub fn number_test() {
   |> lexer.lex
   |> should.equal([
     #(t.Integer("1"), 0),
+    #(t.Whitespace(" "), 1),
     #(t.Integer("01"), 2),
+    #(t.Whitespace(" "), 4),
     #(t.Integer("1000"), 5),
+    #(t.Whitespace(" "), 9),
     #(t.Minus, 10),
     #(t.Integer("5"), 11),
   ])
@@ -65,7 +73,13 @@ pub fn number_test() {
 pub fn name_test() {
   "alice x1 _"
   |> lexer.lex
-  |> should.equal([#(t.Name("alice"), 0), #(t.Name("x1"), 6), #(t.Name("_"), 9)])
+  |> should.equal([
+    #(t.Name("alice"), 0),
+    #(t.Whitespace(" "), 5),
+    #(t.Name("x1"), 6),
+    #(t.Whitespace(" "), 8),
+    #(t.Name("_"), 9),
+  ])
 }
 
 pub fn uppername_test() {
@@ -73,7 +87,9 @@ pub fn uppername_test() {
   |> lexer.lex
   |> should.equal([
     #(t.Uppername("Ok"), 0),
+    #(t.Whitespace(" "), 2),
     #(t.Uppername("MyThing"), 3),
+    #(t.Whitespace(" "), 10),
     #(t.Uppername("A1"), 11),
   ])
 }

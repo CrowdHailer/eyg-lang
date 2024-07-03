@@ -1,46 +1,48 @@
-import eyg/parse/lexer
-import eyg/parse/parser
+import eyg/parse
 import eygir/annotated as e
 import gleeunit/should
 
 pub fn literal_test() {
   "x"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Variable("x"), #(0, 1)))
 
   "12"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Integer(12), #(0, 2)))
 
   "\"hello\""
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Str("hello"), #(0, 7)))
+
+  "\"\\\"\""
+  |> parse.all_from_string()
+  |> should.be_ok()
+  |> should.equal(#(e.Str("\""), #(0, 3)))
+  // "<<>>"
+  // |> parse.all_from_string()
+  // |> should.be_ok()
+  // |> should.equal(#(e.Str("hello"), #(0, 7)))
 }
 
 pub fn negative_integer_test() {
   "-100"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Integer(-100), #(0, 4)))
 }
 
 pub fn lambda_test() {
   "(x) -> { 5 }"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Lambda("x", #(e.Integer(5), #(9, 10))), #(0, 12)))
 
   "(x, y) -> { 5 }"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(e.Lambda("x", #(e.Lambda("y", #(e.Integer(5), #(12, 13))), #(0, 15))), #(
@@ -53,8 +55,7 @@ pub fn lambda_test() {
 pub fn fn_pattern_test() {
   // Need both brackets if allowing multiple args
   "({x: a, y: b}) -> { 5 }"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -92,15 +93,13 @@ pub fn fn_pattern_test() {
 
 pub fn apply_test() {
   "a(1)"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(e.Apply(#(e.Variable("a"), #(0, 1)), #(e.Integer(1), #(2, 3))), #(0, 4)),
   )
   "a(10)(20)"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -116,8 +115,7 @@ pub fn apply_test() {
   )
 
   "x(y(3))"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -135,8 +133,7 @@ pub fn apply_test() {
 
 pub fn multiple_apply_test() {
   "a(x, y)"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -155,8 +152,7 @@ pub fn multiple_apply_test() {
 pub fn let_test() -> Nil {
   "let x = 5
    x"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(e.Let("x", #(e.Integer(5), #(8, 9)), #(e.Variable("x"), #(13, 14))), #(
@@ -167,8 +163,7 @@ pub fn let_test() -> Nil {
 
   "let x = 5
    x.foo"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -188,8 +183,7 @@ pub fn let_test() -> Nil {
     let y = 3
     y
    x"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -208,8 +202,7 @@ pub fn let_test() -> Nil {
   "let x = 5
    let y = 1
    x"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -229,8 +222,7 @@ pub fn let_test() -> Nil {
 pub fn let_record_test() -> Nil {
   "let {x: a, y: _} = rec
    a"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -268,8 +260,7 @@ pub fn let_record_test() -> Nil {
 
   "let {x, y} = rec
    a"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -307,8 +298,7 @@ pub fn let_record_test() -> Nil {
 
   "let {} = rec
    a"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -320,14 +310,12 @@ pub fn let_record_test() -> Nil {
 
 pub fn list_test() {
   "[]"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Tail, #(0, 2)))
 
   "[1, 2]"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -346,8 +334,7 @@ pub fn list_test() {
   )
 
   "[[11]]"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -375,8 +362,7 @@ pub fn list_test() {
   )
 
   "[a(7), 8]"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -406,8 +392,7 @@ pub fn list_test() {
 
 pub fn list_spread_test() {
   "[1, ..x]"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -419,8 +404,7 @@ pub fn list_spread_test() {
     ),
   )
   "[1, ..x(5)]"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -438,14 +422,12 @@ pub fn list_spread_test() {
 
 pub fn record_test() {
   "{}"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Empty, #(0, 2)))
 
   "{a: 5, b: {}}"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -467,8 +449,7 @@ pub fn record_test() {
   )
 
   "{foo: x(2)}"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -492,8 +473,7 @@ pub fn record_test() {
 
 pub fn record_sugar_test() {
   "{a, b}"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -520,8 +500,7 @@ pub fn record_sugar_test() {
 
 pub fn overwrite_test() -> Nil {
   "{a: 5, ..x}"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -536,16 +515,14 @@ pub fn overwrite_test() -> Nil {
     ),
   )
   "{..x}"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Variable("x"), #(3, 4)))
 }
 
 pub fn overwrite_sugar_test() -> Nil {
   "{a, ..x}"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -563,16 +540,14 @@ pub fn overwrite_sugar_test() -> Nil {
 
 pub fn field_access_test() {
   "a.foo"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(e.Apply(#(e.Select("foo"), #(1, 5)), #(e.Variable("a"), #(0, 1))), #(0, 5)),
   )
 
   "b(x).foo"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -588,8 +563,7 @@ pub fn field_access_test() {
   )
 
   "a.foo(2)"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -607,8 +581,7 @@ pub fn field_access_test() {
 
 pub fn tagged_test() {
   "Ok(2)"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(e.Apply(#(e.Tag("Ok"), #(0, 2)), #(e.Integer(2), #(3, 4))), #(0, 5)),
@@ -617,14 +590,12 @@ pub fn tagged_test() {
 
 pub fn match_test() {
   "match { }"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.NoCases, #(0, 9)))
 
   "match x { }"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(e.Apply(#(e.NoCases, #(8, 11)), #(e.Variable("x"), #(6, 7))), #(0, 11)),
@@ -633,8 +604,7 @@ pub fn match_test() {
       Ok x
       Error(y) -> { y }
     }"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -667,8 +637,7 @@ pub fn open_match_test() {
     Ok(a) -> { a }
     | (x) -> { 0 }
   }"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(
@@ -695,14 +664,12 @@ pub fn open_match_test() {
 
 pub fn perform_test() {
   "perform Log"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(#(e.Perform("Log"), #(0, 11)))
 
   "perform Log(\"stop\")"
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
     #(e.Apply(#(e.Perform("Log"), #(0, 11)), #(e.Str("stop"), #(12, 18))), #(

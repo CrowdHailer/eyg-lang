@@ -3,16 +3,14 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
-import eyg/parse/lexer
-import eyg/parse/parser
+import eyg/parse
 import eygir/annotated
 import gleam/list
 import gleeunit/should
 
 fn parse(src) {
   src
-  |> lexer.lex()
-  |> parser.parse()
+  |> parse.all_from_string()
   |> should.be_ok()
   |> annotated.drop_annotation()
 }
