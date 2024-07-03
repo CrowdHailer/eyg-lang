@@ -1,10 +1,9 @@
-import gleam/dynamic
+import eyg/text/text
 import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
 import lustre/event
 import notepad/state
-import notepad/view/helpers
 
 pub fn render(state: state.State) {
   h.div([a.class("vstack bg-orange-3 max-w-2xl")], [
@@ -28,7 +27,7 @@ fn note(content, on_input) {
         // position relative needed for stacking on top of absolutly positioned element
         a.class("w-full bg-transparent text-transparent relative outline-none"),
         a.style([#("caret-color", "black")]),
-        a.attribute("rows", helpers.line_count(content)),
+        a.rows(text.line_count(content)),
         event.on_input(on_input),
       ],
       content,
