@@ -418,7 +418,7 @@ pub fn print_keyword(keyword, loc, acc, err) {
   let Location(path: path, ..) = loc
   // list.fold(
   //   string.to_graphemes(keyword),
-  stringx.fold_graphmemes(keyword, acc, fn(acc, ch) {
+  stringx.fold_graphemes(keyword, acc, fn(acc, ch) {
     [#(ch, path, -1, Keyword, err), ..acc]
   })
 }
@@ -431,7 +431,7 @@ pub fn print_with_offset(content, loc, style, err, acc, info, _analysis) {
     _ -> #(content, style)
   }
   let acc =
-    stringx.index_fold_graphmemes(
+    stringx.index_fold_graphemes(
       // list.index_fold(
       //   string.to_graphemes(content),
       content,
