@@ -1,6 +1,13 @@
 import gleam/list
 import gleam/result
 
+pub fn key_reject(in, rejected) {
+  list.filter(in, fn(keyword) {
+    let #(key, _value) = keyword
+    key != rejected
+  })
+}
+
 fn do_filter_errors(l, acc) {
   case l {
     [] -> list.reverse(acc)
@@ -92,4 +99,20 @@ pub fn map_cleave(cleave, f) {
   let value = f(value)
   let post = list.map(post, f)
   #(pre, value, post)
+}
+
+fn do_iterate(remaining, func, previous, state, acc) {
+  case remaining {
+    [] -> list.reverse(acc)
+    [item, ..remaining] -> {
+      let #(element, state) = func(previous, item, remaining, state)
+      let acc = [element, ..acc]
+      do_iterate(remaining, func, [item, ..previous], state, acc)
+    }
+  }
+}
+
+// kinda interesting
+fn iterate(items, initial, func) {
+  do_iterate(items, func, [], initial, [])
 }
