@@ -3,6 +3,7 @@ import eygir/expression as e
 import gleam/int
 import gleam/javascript/promise.{type Promise as JSPromise}
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/string
 
 pub type Value(m, context) {
@@ -91,4 +92,17 @@ pub fn ok(value) {
 
 pub fn error(reason) {
   Tagged("Error", reason)
+}
+
+pub fn some(value) {
+  Tagged("Some", value)
+}
+
+pub const none = Tagged("None", unit)
+
+pub fn option(option, cast) {
+  case option {
+    Some(value) -> some(cast(value))
+    None -> none
+  }
 }
