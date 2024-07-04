@@ -1,6 +1,8 @@
 import eygir/expression as e
 import gleam/dynamic
+import gleam/io
 import gleam/list
+import gleam/listx
 
 pub type Node(m) =
   #(Expression(m), m)
@@ -33,6 +35,7 @@ pub type Expression(m) {
   Shallow(label: String)
 
   Builtin(identifier: String)
+  Reference(identifier: String)
 }
 
 pub fn strip_annotation(in) {
@@ -85,20 +88,21 @@ fn do_strip_annotation(in, acc) {
     Shallow(label) -> #(e.Shallow(label), acc)
 
     Builtin(identifier) -> #(e.Builtin(identifier), acc)
+    Reference(identifier) -> #(e.Reference(identifier), acc)
   }
 }
 
 pub fn add_annotation(exp, meta) {
   case exp {
     e.Variable(label) -> #(Variable(label), meta)
-    e.Lambda(label, body) -> #(Lambda(label, add_annotation(body, meta)), Nil)
+    e.Lambda(label, body) -> #(Lambda(label, add_annotation(body, meta)), meta)
     e.Apply(func, arg) -> #(
-      Apply(add_annotation(func, meta), add_annotation(arg, Nil)),
-      Nil,
+      Apply(add_annotation(func, meta), add_annotation(arg, meta)),
+      meta,
     )
     e.Let(label, value, body) -> #(
       Let(label, add_annotation(value, meta), add_annotation(body, meta)),
-      Nil,
+      meta,
     )
 
     e.Binary(value) -> #(Binary(value), meta)
@@ -123,6 +127,7 @@ pub fn add_annotation(exp, meta) {
     e.Shallow(label) -> #(Shallow(label), meta)
 
     e.Builtin(identifier) -> #(Builtin(identifier), meta)
+    e.Reference(identifier) -> #(Reference(identifier), meta)
   }
 }
 
@@ -150,4 +155,94 @@ pub fn map_annotation(
       #(dynamic.unsafe_coerce(dynamic.from(primitive)), f(meta))
     }
   }
+}
+
+pub fn list_builtins(exp) {
+  do_list_builtins(exp, [])
+}
+
+// do later node first in Let/Call statements so no need to reverse
+fn do_list_builtins(exp, found) {
+  let #(exp, _meta) = exp
+  case exp {
+    Builtin(identifier) ->
+      case list.contains(found, identifier) {
+        True -> found
+        False -> [identifier, ..found]
+      }
+    Let(_label, value, then) -> {
+      let found = do_list_builtins(then, found)
+      do_list_builtins(value, found)
+    }
+    Lambda(_label, body) -> do_list_builtins(body, found)
+    Apply(func, arg) -> {
+      let found = do_list_builtins(arg, found)
+      do_list_builtins(func, found)
+    }
+    _ -> found
+  }
+}
+
+pub fn free_variables(exp) {
+  do_free_variables(exp, [], [])
+}
+
+fn do_free_variables(exp, found, ignore) {
+  let #(exp, _meta) = exp
+  case exp {
+    Variable(var) ->
+      case list.contains(found, var) || list.contains(ignore, var) {
+        True -> found
+        False -> [var, ..found]
+      }
+    Let(var, value, then) -> {
+      let found = do_free_variables(then, found, ignore)
+      let ignore = case list.contains(ignore, var) {
+        True -> ignore
+        False -> [var, ..ignore]
+      }
+      do_free_variables(value, found, ignore)
+    }
+    Lambda(var, body) -> {
+      let ignore = case list.contains(ignore, var) {
+        True -> ignore
+        False -> [var, ..ignore]
+      }
+      do_free_variables(body, found, ignore)
+    }
+    Apply(func, arg) -> {
+      let found = do_free_variables(arg, found, ignore)
+      do_free_variables(func, found, ignore)
+    }
+    _ -> found
+  }
+}
+
+pub fn substitute_for_references(exp, subs) {
+  let #(exp, meta) = exp
+  let exp = case exp {
+    Variable(var) ->
+      case list.key_find(subs, var) {
+        Ok(ref) -> Reference(ref)
+        Error(Nil) -> exp
+      }
+    Let(var, value, then) -> {
+      let value = substitute_for_references(value, subs)
+      let subs = listx.key_reject(subs, var)
+      let then = substitute_for_references(then, subs)
+      Let(var, value, then)
+    }
+    Lambda(var, body) -> {
+      let subs = listx.key_reject(subs, var)
+      let body = substitute_for_references(body, subs)
+      Lambda(var, body)
+    }
+    Apply(func, arg) -> {
+      let func = substitute_for_references(func, subs)
+      let arg = substitute_for_references(arg, subs)
+      Apply(func, arg)
+    }
+    _ -> exp
+  }
+  #(exp, meta)
 }

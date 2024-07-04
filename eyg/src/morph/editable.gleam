@@ -26,6 +26,7 @@ pub type Expression {
   Deep(String)
   Shallow(String)
   Builtin(String)
+  Reference(String)
 }
 
 pub fn from_annotated(node) {
@@ -105,7 +106,8 @@ pub fn from_annotated(node) {
     a.Handle(label) -> Deep(label)
     a.Shallow(label) -> Shallow(label)
 
-    a.Builtin(label) -> Builtin(label)
+    a.Builtin(identifier) -> Builtin(identifier)
+    a.Reference(identifier) -> Reference(identifier)
   }
 }
 
@@ -451,5 +453,6 @@ pub fn to_annotated(source, rev) {
     Deep(label) -> #(a.Handle(label), rev)
     Shallow(label) -> #(a.Shallow(label), rev)
     Builtin(identifier) -> #(a.Builtin(identifier), rev)
+    Reference(identifier) -> #(a.Reference(identifier), rev)
   }
 }

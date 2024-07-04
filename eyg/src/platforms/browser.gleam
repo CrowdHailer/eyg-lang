@@ -49,7 +49,8 @@ fn handlers() {
 pub fn do_run(raw) -> Nil {
   case decode.from_json(global.decode_uri(raw)) {
     Ok(continuation) -> {
-      let env = state.Env(scope: [], builtins: stdlib.lib().1)
+      let env =
+        state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
       let continuation = e.add_annotation(continuation, Nil)
       let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
       promise.map(

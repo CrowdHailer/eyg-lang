@@ -57,6 +57,7 @@ pub type Expression {
   Shallow(label: String)
 
   Builtin(identifier: String)
+  Reference(identifier: String)
 }
 
 pub const unit = Empty

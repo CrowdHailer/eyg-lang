@@ -155,7 +155,8 @@ pub fn do_eval(source, rev, env, k) {
   case language_to_expression(source) {
     Ok(expression) -> {
       // must be value otherwise/effect continuations need sorting
-      let result = r.execute(expression, state.Env([], lib().1), dict.new())
+      let result =
+        r.execute(expression, state.Env([], dict.new(), lib().1), dict.new())
       let value = case result {
         Ok(value) -> v.ok(value)
         _ -> {
@@ -208,7 +209,7 @@ pub fn to_javascript() {
 pub fn do_to_javascript(term, meta, env, k) {
   let exp = capture.capture(term)
   let exp = e.add_annotation(exp, Nil)
-  Ok(#(state.V(v.Str(compile.to_js(exp))), env, k))
+  Ok(#(state.V(v.Str(compile.to_js(exp, dict.new()))), env, k))
 }
 
 // block needs squashing with row on the front
@@ -321,6 +322,7 @@ pub fn expression_to_language(exp) {
     e.Handle(label) -> [v.Tagged("Handle", v.Str(label))]
     e.Shallow(label) -> [v.Tagged("Shallow", v.Str(label))]
     e.Builtin(identifier) -> [v.Tagged("Builtin", v.Str(identifier))]
+    e.Reference(identifier) -> [v.Tagged("Reference", v.Str(identifier))]
   }
 }
 

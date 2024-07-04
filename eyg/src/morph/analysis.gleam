@@ -43,13 +43,17 @@ pub fn within_environment(runtime_env) {
   Context(bindings, scope, infer.builtins())
 }
 
+pub fn empty_environment() {
+  Context(dict.new(), [], infer.builtins())
+}
+
 // use capture because we want efficient ability to get to continuations
 fn value_to_type(value, bindings) {
   case value {
     v.Closure(_, _, _) -> {
       let #(#(_, #(_, type_, _, _)), bindings) =
         capture.capture(value)
-        |> infer.infer(t.Empty, 0, bindings)
+        |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
     v.Binary(_) -> #(t.Binary, bindings)
@@ -91,7 +95,7 @@ fn value_to_type(value, bindings) {
       // let #(var, bindings) = binding.poly(level, bindings)
       let #(#(_, #(_, type_, _, _)), bindings) =
         capture.capture(value)
-        |> infer.infer(t.Empty, 0, bindings)
+        |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
     v.Promise(_) -> panic as "do promises need to be specific type"
@@ -126,7 +130,7 @@ pub fn analyse(projection, context) -> Analysis {
   let source = e.to_expression(editable)
   let #(eff, bindings) = capabilities.handler_type(bindings)
   let #(bindings, _top_type, _top_eff, tree) =
-    infer.do_infer(source, scope, eff, 0, bindings)
+    infer.do_infer(source, scope, eff, dict.new(), 0, bindings)
   let #(_, types) = a.strip_annotation(tree)
   let #(_, paths) = a.strip_annotation(e.to_annotated(editable, []))
   #(bindings, list.zip(paths, types))

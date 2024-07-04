@@ -205,6 +205,10 @@ pub fn expression(exp) {
       frame.Inline([
         h.span([a.class("text-orange-3")], [text("!"), text(identifier)]),
       ])
+    e.Reference(identifier) ->
+      frame.Inline([
+        h.span([a.class("text-orange-3")], [text("!"), text(identifier)]),
+      ])
   }
 }
 

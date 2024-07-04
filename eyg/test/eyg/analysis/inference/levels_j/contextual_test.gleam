@@ -5,6 +5,7 @@ import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/parse
 import eygir/annotated
+import gleam/dict
 import gleam/list
 import gleeunit/should
 
@@ -49,7 +50,7 @@ fn do_render(results) {
 fn calc(source, eff) {
   source
   |> parse
-  |> j.infer(eff, 0, j.new_state())
+  |> j.infer(eff, dict.new(), 0, j.new_state())
   |> do_resolve()
   |> drop_env()
   |> do_render()
@@ -58,7 +59,7 @@ fn calc(source, eff) {
 fn do_calc(source, eff, state) {
   source
   |> parse
-  |> j.infer(eff, 0, state)
+  |> j.infer(eff, dict.new(), 0, state)
   |> do_resolve()
   |> drop_env()
   |> do_render()

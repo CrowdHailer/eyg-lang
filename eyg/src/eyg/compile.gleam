@@ -5,9 +5,9 @@ import eyg/compile/ir
 import eyg/compile/js
 import eygir/annotated as a
 
-pub fn to_js(program) {
+pub fn to_js(program, refs) {
   program
-  |> infer_effects()
+  |> infer_effects(refs)
   |> ir.alpha
   |> ir.k()
   |> ir.unnest
@@ -16,11 +16,11 @@ pub fn to_js(program) {
   |> js.render()
 }
 
-fn infer_effects(program) {
+fn infer_effects(program, refs) {
   let #(exp, bindings) =
     program
     |> a.drop_annotation()
-    |> j.infer(t.Empty, 0, j.new_state())
+    |> j.infer(t.Empty, refs, 0, j.new_state())
 
   a.map_annotation(exp, fn(types) {
     let #(_, _, effect, _) = types

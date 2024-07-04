@@ -47,6 +47,7 @@ pub fn encode(exp) {
     // hs -> handler shallow
     e.Shallow(x) -> node("hs", [label(x)])
     e.Builtin(x) -> node("b", [label(x)])
+    e.Reference(x) -> node("#", [label(x)])
   }
 }
 
