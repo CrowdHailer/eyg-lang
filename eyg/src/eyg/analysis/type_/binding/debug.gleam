@@ -57,6 +57,7 @@ pub fn render_reason(reason) {
   case reason {
     error.MissingVariable(label) ->
       string.concat(["missing variable '", label, "'"])
+    error.MissingReference(label) -> "missing reference #" <> label
     error.MissingRow(label) -> string.concat(["missing row '", label, "'"])
     error.TypeMismatch(expected, given) ->
       string.concat([

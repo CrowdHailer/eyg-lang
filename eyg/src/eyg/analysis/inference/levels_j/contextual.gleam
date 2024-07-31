@@ -92,6 +92,9 @@ fn eff_tail(eff) {
   }
 }
 
+pub type Env =
+  List(#(String, binding.Poly))
+
 pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
   case source {
     e.Variable(x) ->
@@ -218,32 +221,22 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
     // TODO actual inference
     e.Shallow(label) ->
       prim(handle(label), env, eff, level, bindings, a.Shallow(label))
-    e.Builtin(identifier) ->
-      case builtin(identifier) {
-        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(identifier))
+    e.Builtin(id) ->
+      case builtin(id) {
+        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(id))
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          let meta = #(
-            Error(error.MissingVariable(identifier)),
-            type_,
-            t.Empty,
-            env,
-          )
-          #(bindings, type_, eff, #(a.Builtin(identifier), meta))
+          let meta = #(Error(error.MissingVariable(id)), type_, t.Empty, env)
+          #(bindings, type_, eff, #(a.Builtin(id), meta))
         }
       }
-    e.Reference(identifier) ->
-      case dict.get(refs, identifier) {
-        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(identifier))
+    e.Reference(id) ->
+      case dict.get(refs, id) {
+        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Reference(id))
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          let meta = #(
-            Error(error.MissingVariable("#" <> identifier)),
-            type_,
-            t.Empty,
-            env,
-          )
-          #(bindings, type_, eff, #(a.Builtin(identifier), meta))
+          let meta = #(Error(error.MissingReference(id)), type_, t.Empty, env)
+          #(bindings, type_, eff, #(a.Reference(id), meta))
         }
       }
   }
