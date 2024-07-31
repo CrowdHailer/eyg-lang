@@ -3,6 +3,7 @@ import gleam/string
 
 pub type Reason(m, c) {
   NotAFunction(Value(m, c))
+  UndefinedReference(String)
   UndefinedVariable(String)
   Vacant(comment: String)
   NoMatch(term: Value(m, c))
@@ -13,7 +14,8 @@ pub type Reason(m, c) {
 
 pub fn reason_to_string(reason) {
   case reason {
-    UndefinedVariable(var) -> string.append("variable undefined: ", var)
+    UndefinedVariable(var) -> "variable undefined: " <> var
+    UndefinedReference(id) -> "reference undefined: #" <> id
     IncorrectTerm(expected, got) ->
       string.concat([
         "unexpected term, expected: ",
@@ -21,15 +23,13 @@ pub fn reason_to_string(reason) {
         " got: ",
         value.debug(got),
       ])
-    MissingField(field) -> string.concat(["missing record field: ", field])
-    NoMatch(term) ->
-      string.concat(["no cases matched for: ", value.debug(term)])
-    NotAFunction(term) ->
-      string.concat(["function expected got: ", value.debug(term)])
+    MissingField(field) -> "missing record field: " <> field
+    NoMatch(term) -> "no cases matched for: " <> value.debug(term)
+    NotAFunction(term) -> "function expected got: " <> value.debug(term)
     UnhandledEffect("Abort", reason) ->
-      string.concat(["Aborted with reason: ", value.debug(reason)])
+      "Aborted with reason: " <> value.debug(reason)
     UnhandledEffect(effect, lift) ->
-      string.concat(["unhandled effect ", effect, "(", value.debug(lift), ")"])
-    Vacant(note) -> string.concat(["tried to run a todo: ", note])
+      "unhandled effect " <> effect <> "(" <> value.debug(lift) <> ")"
+    Vacant(note) -> "tried to run a todo: " <> note
   }
 }

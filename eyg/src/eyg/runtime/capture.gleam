@@ -9,7 +9,6 @@ import gleam/string
 pub fn capture(term) {
   // env is reversed with first needed deepest
   let #(exp, env) = do_capture(term, [])
-  exp
   list.fold(env, exp, fn(then, definition) {
     let #(var, value) = definition
     e.Let(var, value, then)
@@ -100,7 +99,7 @@ fn do_capture(term, env) {
     }
     v.Partial(switch, applied) -> capture_defunc(switch, applied, env)
     v.Promise(_) ->
-      panic("not capturing promise, yet. Can be done making serialize async")
+      panic as "not capturing promise, yet. Can be done making serialize async"
   }
 }
 
@@ -116,7 +115,7 @@ fn capture_defunc(switch, args, env) {
     v.Perform(label) -> e.Perform(label)
     v.Handle(label) -> e.Handle(label)
     v.Resume(_) -> {
-      panic("not idea how to capture the func here, is it even possible")
+      panic as "not idea how to capture the func here, is it even possible"
     }
     v.Shallow(label) -> e.Shallow(label)
     v.Builtin(identifier) -> e.Builtin(identifier)

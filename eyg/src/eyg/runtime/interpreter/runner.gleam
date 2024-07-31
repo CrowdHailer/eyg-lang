@@ -29,7 +29,7 @@ pub fn loop(next) {
 // To eval code that may be async needs to return a promise of a result
 pub fn await(ret) {
   case ret {
-    Error(#(break.UnhandledEffect("Await", v.Promise(p)), meta, env, k)) -> {
+    Error(#(break.UnhandledEffect("Await", v.Promise(p)), _meta, env, k)) -> {
       use return <- promise.await(p)
       await(loop(state.step(state.V(return), env, k)))
     }

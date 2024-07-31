@@ -22,9 +22,12 @@ pub type Control(m) {
   V(Value(m))
 }
 
+pub type Debug(m) =
+  #(Reason(m), m, Env(m), Stack(m))
+
 pub type Next(m) {
   Loop(Control(m), Env(m), Stack(m))
-  Break(Result(Value(m), #(Reason(m), m, Env(m), Stack(m))))
+  Break(Result(Value(m), Debug(m)))
 }
 
 // Env and Stack(m) also rely on each other
@@ -116,7 +119,7 @@ pub fn eval(exp, env: Env(m), k) {
     e.Reference(ref) ->
       case dict.get(env.references, ref) {
         Ok(v) -> value(v)
-        Error(Nil) -> Error(break.UndefinedVariable("#" <> ref))
+        Error(Nil) -> Error(break.UndefinedReference(ref))
       }
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, k) })
