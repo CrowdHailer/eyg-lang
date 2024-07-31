@@ -15,7 +15,6 @@ import gleam/list
 import gleam/result
 import gleam/string
 import harness/effect
-import harness/fetch
 import harness/ffi/core
 import harness/impl/http
 import harness/stdlib
@@ -122,7 +121,7 @@ fn read(rl, parser, env, k, prompt) {
               let assert v.Str(prompt) = lift
               #(env, prompt)
             }
-            Error(#(reason, rev, _env, _k)) -> {
+            Error(#(reason, _rev, _env, _k)) -> {
               console.log(
                 string.concat(["!! ", break.reason_to_string(reason), " at: "]),
               )

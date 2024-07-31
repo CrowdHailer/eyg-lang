@@ -16,7 +16,7 @@ packages = [
   { name = "gleeunit", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "72CDC3D3F719478F26C4E2C5FED3E657AC81EC14A47D2D2DEBB8693CA3220C3B" },
   { name = "lustre", version = "4.2.6", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib"], otp_app = "lustre", source = "hex", outer_checksum = "9ABD71D63F4B8F362CB824DED2C4CA64895DEFACD8F22B0FF055BF15241B1AE2" },
   { name = "midas", version = "0.4.2", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "5F57A50A9B9612EF4E965D32445CD16F35EB35C08ABEDEE06DF7A785566229BB" },
-  { name = "plinth", version = "0.4.5", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "D0C8D885C08B76F1C17EBF40D0C145D244D0AD928275E9B19313C03E5156491B" },
+  { name = "plinth", version = "0.4.10", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "01561989B292CEF20C864B42E9A32FD15F3F3E46E7B0A2142727A3C556B16EF3" },
   { name = "simplifile", version = "1.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "1D5DFA3A2F9319EC85825F6ED88B8E449F381B0D55A62F5E61424E748E7DDEB0" },
   { name = "snag", version = "0.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "54D32E16E33655346AA3E66CBA7E191DE0A8793D2C05284E3EFB90AD2CE92BCC" },
   { name = "thoas", version = "1.2.1", build_tools = ["rebar3"], requirements = [], otp_app = "thoas", source = "hex", outer_checksum = "E38697EDFFD6E91BD12CEA41B155115282630075C2A727E7A6B2947F5408B86A" },
@@ -33,5 +33,5 @@ gleam_stdlib = { version = "~> 0.20" }
 gleeunit = { version = "~> 1.0" }
 lustre = { version = "~> 4.0" }
 midas = { version = ">= 0.4.2 and < 1.0.0" }
-plinth = { version = ">= 0.4.5 and < 1.0.0" }
+plinth = { version = ">= 0.4.9 and < 1.0.0" }
 simplifile = { version = "~> 1.0" }

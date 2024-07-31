@@ -96,7 +96,7 @@ pub fn receive() {
         let data = case data {
           #("Some", value) -> Some(value)
           #("None", _) -> None
-          _ -> panic("unexpected data return")
+          _ -> panic as "unexpected data return"
         }
         #(from_response(resp), data)
       })
