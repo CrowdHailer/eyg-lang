@@ -1,20 +1,15 @@
 import eyg/parse
-import gleam/io
 import gleam/option.{None}
 import gleam/pair
 import gleeunit/should
 import morph/editable as e
 import morph/projection as p
 
-// a children function that is then indexed is inefficient.
-// testing each index in turn only work if the list tail is not called 0
-
 pub fn from_string(source) {
   source
   |> parse.from_string()
   |> should.be_ok()
   |> pair.first()
-  // |> io.debug
   |> e.from_annotated()
 }
 
@@ -33,6 +28,7 @@ pub fn let_test() {
       x
     b"
     |> from_string()
+    |> e.open_all
 
   let scope = p.focus_at(source, [1, 1, 0, 1])
   scope.0

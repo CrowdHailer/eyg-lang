@@ -1,4 +1,5 @@
 import eygir/annotated as a
+import eygir/expression as e
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -27,6 +28,66 @@ pub type Expression {
   Shallow(String)
   Builtin(String)
   Reference(String)
+}
+
+pub type Assignments =
+  List(#(Pattern, Expression))
+
+pub fn open_assignments(assignments) {
+  list.map(assignments, fn(a) {
+    let #(pattern, value) = a
+    #(pattern, open_all(value))
+  })
+}
+
+pub fn open_all(source) {
+  case source {
+    Block(assignments, then, _) -> {
+      let assignments = open_assignments(assignments)
+      let then = open_all(then)
+      Block(assignments, then, True)
+    }
+    Call(func, args) -> {
+      let func = open_all(func)
+      let args = list.map(args, open_all)
+      Call(func, args)
+    }
+    Function(patterns, body) -> {
+      Function(patterns, open_all(body))
+    }
+    List(elements, tail) -> {
+      let elements = list.map(elements, open_all)
+      let tail = option.map(tail, open_all)
+      List(elements, tail)
+    }
+    Record(fields, overwrite) -> {
+      let fields =
+        list.map(fields, fn(a) {
+          let #(label, value) = a
+          #(label, open_all(value))
+        })
+      let overwrite = option.map(overwrite, open_all)
+      Record(fields, overwrite)
+    }
+    Select(from, label) -> {
+      Select(open_all(from), label)
+    }
+    Case(value, matches, otherwise) -> {
+      let value = open_all(value)
+      let matches =
+        list.map(matches, fn(a) {
+          let #(label, value) = a
+          #(label, open_all(value))
+        })
+      let otherwise = option.map(otherwise, open_all)
+      Case(value, matches, otherwise)
+    }
+    _ -> source
+  }
+}
+
+pub fn from_expression(exp) {
+  from_annotated(a.add_annotation(exp, Nil))
 }
 
 pub fn from_annotated(node) {
@@ -198,7 +259,7 @@ fn gather_otherwise(node, acc) {
   }
 }
 
-fn gather_assignments(node, acc, open) {
+pub fn gather_assignments(node, acc, open) {
   let #(exp, _meta) = node
   case exp {
     a.Let(x, value, then) -> {
