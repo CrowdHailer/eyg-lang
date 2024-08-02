@@ -492,7 +492,7 @@ pub fn to_annotated(source, rev) {
           let #(i, acc) = acc
           let i = i - 1
           let #(label, branch) = match
-          let branch = to_annotated(branch, [i, ..rev])
+          let branch = to_annotated(branch, [0, i, ..rev])
           let acc = #(
             a.Apply(#(a.Apply(#(a.Case(label), rev), branch), rev), acc),
             rev,
