@@ -23,6 +23,14 @@ fn is_inline(m) {
   }
 }
 
+pub fn line_height(frame) {
+  case frame {
+    Inline(_) -> 1
+    Multiline(_, inner, _) -> list.length(inner)
+    Statements(inner) -> list.length(inner)
+  }
+}
+
 pub fn all_inline(ms) {
   list.try_map(ms, is_inline)
 }
@@ -42,6 +50,19 @@ pub fn append_spans(m, new) {
     Multiline(pre, inner, post) -> Multiline(pre, inner, list.append(post, new))
     Statements(inner) ->
       append_spans(Multiline([text("{")], inner, [text("}")]), new)
+  }
+}
+
+pub fn join(a, b) {
+  case a, b {
+    Inline(spans), b -> prepend_spans(spans, b)
+    a, Inline(spans) -> append_spans(a, spans)
+    Multiline(pre, inner_a, span_a), Multiline(span_b, inner_b, post) -> {
+      let middle = h.div([], list.append(span_a, span_b))
+      let inner = list.flatten([inner_a, [middle], inner_b])
+      Multiline(pre, inner, post)
+    }
+    _, _ -> todo as "shouldn't join statements"
   }
 }
 

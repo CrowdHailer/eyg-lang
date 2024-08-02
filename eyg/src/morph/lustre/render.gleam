@@ -21,6 +21,11 @@ pub fn assign(p, value) {
   do_let(pattern(p), expression(value))
 }
 
+pub fn assigns(a) {
+  list.map(a, assign_pair)
+  |> frame.to_fat_lines()
+}
+
 // ignore tail vacant will need for spotless history
 pub fn statements(code) {
   case code {
@@ -116,11 +121,19 @@ fn render_args_rev(last, rest) {
 }
 
 pub fn render_call(f, args) {
-  let assert frame.Inline(fspans) = f
-  args
-  |> frame.prepend_spans([text("(")], _)
-  |> frame.prepend_spans(fspans, _)
-  |> frame.append_spans([text(")")])
+  let args =
+    args
+    |> frame.prepend_spans([text("(")], _)
+    |> frame.append_spans([text(")")])
+
+  case f {
+    frame.Inline(fspans) -> frame.prepend_spans(fspans, args)
+    frame.Statements(inner) -> {
+      let f = frame.Multiline([text("{")], inner, [text("}")])
+      frame.join(f, args)
+    }
+    frame.Multiline(_, _, _) -> frame.join(f, args)
+  }
 }
 
 pub fn expression(exp) {
@@ -207,7 +220,7 @@ pub fn expression(exp) {
       ])
     e.Reference(identifier) ->
       frame.Inline([
-        h.span([a.class("text-orange-3")], [text("!"), text(identifier)]),
+        h.span([a.class("text-gray-800")], [text("#"), text(identifier)]),
       ])
   }
 }
@@ -388,11 +401,10 @@ pub fn projection(zip, is_expression) -> element.Element(a) {
     t.Exp(e.Vacant(_)) ->
       highlight.frame(
         frame.Inline([
+          // made as an input for copy paste
           h.input([
             a.placeholder("Vacant"),
-            a.class(
-              "placeholder-red-700 w-14 border-indigo-600 border-b rounded outline-none",
-            ),
+            a.class("placeholder-red-700 w-14 outline-none bg-transparent"),
             a.id("highlighted"),
             a.style([#("caret-color", "transparent")]),
             // TODO does the paste event bubble
