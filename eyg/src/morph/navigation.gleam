@@ -313,7 +313,10 @@ pub fn zoom_previous(exp, zoom) {
           case list.reverse(matches) {
             [#(label, branch), ..pre] ->
               do_last(
-                #(p.Exp(branch), [p.CaseMatch(top, label, pre, [], Some(exp))]),
+                #(p.Exp(branch), [
+                  p.CaseMatch(top, label, pre, [], Some(exp)),
+                  ..rest
+                ]),
               )
             [] -> #(p.Exp(top), [p.CaseTop([], Some(exp))])
           }
