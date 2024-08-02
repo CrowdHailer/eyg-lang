@@ -1,5 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/list
+import gleam/listx
 import gleam/result
 
 // import eygir/expression as e
@@ -155,15 +156,17 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
         }
         v.Extend(label), [value] -> {
           use fields <- result.then(cast.as_record(arg))
-          Ok(#(V(v.Record([#(label, value), ..fields])), env, k))
+          let fields = listx.key_sort([#(label, value), ..fields])
+          Ok(#(V(v.Record(fields)), env, k))
         }
         v.Overwrite(label), [value] -> {
           use fields <- result.then(cast.as_record(arg))
-          use #(_, fields) <- result.then(
+          use #(_, _) <- result.then(
             list.key_pop(fields, label)
             |> result.replace_error(break.MissingField(label)),
           )
-          Ok(#(V(v.Record([#(label, value), ..fields])), env, k))
+          let fields = list.key_set(fields, label, value)
+          Ok(#(V(v.Record(fields)), env, k))
         }
         v.Select(label), [] -> {
           use fields <- result.then(cast.as_record(arg))

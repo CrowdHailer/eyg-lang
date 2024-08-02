@@ -289,7 +289,7 @@ pub fn handle_resume_test() {
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
-    Ok(v.Record([#("value", v.Integer(100)), #("log", v.Str("my message"))])),
+    Ok(v.Record([#("log", v.Str("my message")), #("value", v.Integer(100))])),
   )
 
   let source =
@@ -298,7 +298,7 @@ pub fn handle_resume_test() {
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
-    Ok(v.Record([#("value", v.Integer(100)), #("log", v.Str("my message"))])),
+    Ok(v.Record([#("log", v.Str("my message")), #("value", v.Integer(100))])),
   )
 }
 
