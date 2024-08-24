@@ -466,9 +466,9 @@ pub fn to_annotated(source, rev) {
           let #(i, acc) = acc
           let i = i - 2
           let #(label, value) = field
-          let value = to_annotated(value, [i, ..rev])
+          let value = to_annotated(value, [i + 1, ..rev])
           #(i, #(
-            a.Apply(#(a.Apply(#(build(label), rev), value), rev), acc),
+            a.Apply(#(a.Apply(#(build(label), [i, ..rev]), value), rev), acc),
             rev,
           ))
         })

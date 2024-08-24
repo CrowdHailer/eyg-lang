@@ -182,7 +182,7 @@ pub fn zoom_next(exp, zoom) {
           do_first(#(p.Exp(next), zoom))
         }
         p.ListItem(pre, [], Some(tail)) -> {
-          let zoom = [p.ListTail(list.reverse([exp, ..pre]))]
+          let zoom = [p.ListTail(list.reverse([exp, ..pre])), ..rest]
           do_first(#(p.Exp(tail), zoom))
         }
         p.ListItem(pre, [], None) -> {

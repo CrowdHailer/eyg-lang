@@ -372,7 +372,11 @@ fn render_break(break, inner, is_expression) {
       let top = expression(top)
       let pre = list.map(pre, render_branch)
       let post = list.map(post, render_branch)
-      let branch = frame.prepend_spans([text(label), text(" ")], inner)
+      let branch =
+        frame.prepend_spans(
+          [h.span([a.class("text-blue-700")], [text(label), text(" ")])],
+          inner,
+        )
       let otherwise = option.map(otherwise, expression)
 
       render_case(top, listx.gather_around(pre, branch, post), otherwise)
@@ -514,7 +518,13 @@ pub fn projection(zip, is_expression) -> element.Element(a) {
     t.Match(top, label, value, pre, post, otherwise) -> {
       let value = expression(value)
       let branch =
-        frame.prepend_spans([highlight.spans([text(label)]), text(" ")], value)
+        frame.prepend_spans(
+          [
+            highlight.spans([h.span([a.class("text-blue-700")], [text(label)])]),
+            text(" "),
+          ],
+          value,
+        )
       let pre = list.map(pre, render_branch)
       let post = list.map(post, render_branch)
       render_case(
