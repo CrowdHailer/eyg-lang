@@ -36,7 +36,7 @@ fn do_unify(ts, level, bindings) -> Result(dict.Dict(Int, binding.Binding), _) {
         t.Var(i), Ok(binding.Unbound(level)), other, _
         | other, _, t.Var(i), Ok(binding.Unbound(level))
         -> {
-          case occurs_and_levels(i, level, other, bindings, Ok) {
+          case do_occurs_and_levels(i, level, [other], bindings) {
             Ok(bindings) -> {
               let bindings = dict.insert(bindings, i, binding.Bound(other))
               do_unify(ts, level, bindings)
@@ -95,45 +95,47 @@ fn find(type_, bindings) {
   }
 }
 
-fn occurs_and_levels(i, level, type_, bindings, k) {
-  case type_ {
-    t.Var(j) if i == j -> Error(error.Recursive)
-    t.Var(j) -> {
-      let assert Ok(binding) = dict.get(bindings, j)
-      case binding {
-        binding.Unbound(l) -> {
-          let l = int.min(l, level)
-          let bindings = dict.insert(bindings, j, binding.Unbound(l))
-          k(bindings)
+fn do_occurs_and_levels(i, level, types, bindings) {
+  case types {
+    [] -> Ok(bindings)
+    [type_, ..types] ->
+      case type_ {
+        t.Var(j) if i == j -> Error(error.Recursive)
+        t.Var(j) -> {
+          let assert Ok(binding) = dict.get(bindings, j)
+          case binding {
+            binding.Unbound(l) -> {
+              let l = int.min(l, level)
+              let bindings = dict.insert(bindings, j, binding.Unbound(l))
+              do_occurs_and_levels(i, level, types, bindings)
+            }
+            binding.Bound(type_) ->
+              do_occurs_and_levels(i, level, [type_, ..types], bindings)
+          }
         }
-        binding.Bound(type_) -> occurs_and_levels(i, level, type_, bindings, k)
+        t.Fun(arg, eff, ret) -> {
+          let types = [arg, eff, ret, ..types]
+          do_occurs_and_levels(i, level, types, bindings)
+        }
+        t.Integer -> do_occurs_and_levels(i, level, types, bindings)
+        t.Binary -> do_occurs_and_levels(i, level, types, bindings)
+        t.String -> do_occurs_and_levels(i, level, types, bindings)
+        t.List(el) -> do_occurs_and_levels(i, level, [el, ..types], bindings)
+        t.Record(row) ->
+          do_occurs_and_levels(i, level, [row, ..types], bindings)
+        t.Union(row) -> do_occurs_and_levels(i, level, [row, ..types], bindings)
+        t.Empty -> do_occurs_and_levels(i, level, types, bindings)
+        t.RowExtend(_, field, rest) -> {
+          let types = [field, rest, ..types]
+          do_occurs_and_levels(i, level, types, bindings)
+        }
+        t.EffectExtend(_, #(lift, reply), rest) -> {
+          let types = [lift, reply, rest, ..types]
+          do_occurs_and_levels(i, level, types, bindings)
+        }
+        t.Promise(inner) ->
+          do_occurs_and_levels(i, level, [inner, ..types], bindings)
       }
-    }
-    t.Fun(arg, eff, ret) -> {
-      use bindings <- occurs_and_levels(i, level, arg, bindings)
-      use bindings <- occurs_and_levels(i, level, eff, bindings)
-      use bindings <- occurs_and_levels(i, level, ret, bindings)
-      k(bindings)
-    }
-    t.Integer -> k(bindings)
-    t.Binary -> k(bindings)
-    t.String -> k(bindings)
-    t.List(el) -> occurs_and_levels(i, level, el, bindings, k)
-    t.Record(row) -> occurs_and_levels(i, level, row, bindings, k)
-    t.Union(row) -> occurs_and_levels(i, level, row, bindings, k)
-    t.Empty -> k(bindings)
-    t.RowExtend(_, field, rest) -> {
-      use bindings <- occurs_and_levels(i, level, field, bindings)
-      use bindings <- occurs_and_levels(i, level, rest, bindings)
-      k(bindings)
-    }
-    t.EffectExtend(_, #(lift, reply), rest) -> {
-      use bindings <- occurs_and_levels(i, level, lift, bindings)
-      use bindings <- occurs_and_levels(i, level, reply, bindings)
-      use bindings <- occurs_and_levels(i, level, rest, bindings)
-      k(bindings)
-    }
-    t.Promise(inner) -> occurs_and_levels(i, level, inner, bindings, k)
   }
 }
 
