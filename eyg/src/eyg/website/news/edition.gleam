@@ -127,10 +127,11 @@ fn footer(edition_url) {
 }
 
 pub fn render(post, index) {
-  let Edition(date, _, raw) = post
+  let Edition(date, title, raw) = post
   let document = jot.parse(raw)
   let jot.Document(content, references) = document
-  let sections = list.map(content, block)
+  let sections =
+    list.map([jot.Heading(dict.new(), 1, [jot.Text(title)]), ..content], block)
   let edition_url = "https://eyg.run/news/editions/" <> int.to_string(index)
   h.div(
     [
@@ -157,7 +158,14 @@ fn p(children) {
 
 fn h1(children) {
   h.h1(
-    [a.style([#("margin-top", "20px"), #("margin-bottom", "20px")])],
+    [
+      a.style([
+        #("margin-top", "20px"),
+        #("margin-bottom", "20px"),
+        #("line-height", "1"),
+        #("font-size", "1.75rem"),
+      ]),
+    ],
     children,
   )
 }
