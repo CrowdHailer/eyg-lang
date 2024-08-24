@@ -16,14 +16,19 @@ import harness/impl/browser/file/list as fs_list
 import harness/impl/browser/file/read as fs_read
 import harness/impl/browser/geolocation
 import harness/impl/browser/now
-import harness/impl/browser/open
+import harness/impl/browser/visit
+import harness/impl/spotless/gmail/list_messages as gmail_list_messages
+import harness/impl/spotless/gmail/send as gmail_send
+import harness/impl/spotless/google
+import harness/impl/spotless/netlify
+import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
+import harness/impl/spotless/netlify/list_sites as netlify_list_sites
+import harness/impl/spotless/vimeo/my_videos as vimeo_my_videos
 import plinth/browser/clipboard
 import plinth/browser/file
 import plinth/browser/file_system
 import spotless/repl/capabilities/dnsimple
 import spotless/repl/capabilities/google/calendar
-import spotless/repl/capabilities/google/gmail
-import spotless/repl/capabilities/netlify
 import spotless/repl/capabilities/zip
 
 pub fn handler_type(bindings) {
@@ -42,7 +47,8 @@ pub fn handler_type(bindings) {
 
   let #(var, bindings) = binding.mono(level, bindings)
   let eff = t.EffectExtend("Await", #(t.Promise(var), var), eff)
-  let eff = t.EffectExtend(open.l, #(t.String, t.unit), eff)
+  let #(l, #(lift, reply)) = visit.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
   let eff =
     t.EffectExtend(
       "Copy",
@@ -59,21 +65,23 @@ pub fn handler_type(bindings) {
 
   let eff = t.EffectExtend("Choose", #(t.unit, t.boolean), eff)
 
-  let site =
-    t.record([
-      #("id", t.String),
-      #("name", t.String),
-      #("state", t.String),
-      #("url", t.String),
-    ])
-  let eff =
-    t.EffectExtend(
-      "Netlify.Sites",
-      #(t.unit, t.Promise(t.result(t.List(site), t.String))),
-      eff,
-    )
-  let deploy = t.record([#("site", t.String), #("files", t.List(t.file))])
-  let eff = t.EffectExtend("Netlify.Deploy", #(deploy, t.Promise(t.unit)), eff)
+  let #(l, #(lift, reply)) = google.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
+
+  let #(l, #(lift, reply)) = gmail_send.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
+
+  let #(l, #(lift, reply)) = gmail_list_messages.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
+
+  let #(l, #(lift, reply)) = netlify_list_sites.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
+
+  let #(l, #(lift, reply)) = netlify_deploy_site.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
+
+  let #(l, #(lift, reply)) = vimeo_my_videos.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
 
   let domain = t.record([#("id", t.String), #("name", t.String)])
   let eff =
@@ -117,12 +125,15 @@ pub fn handlers() {
   |> dict.insert(fs_list.l, fs_list.handle)
   |> dict.insert("Choose", impl.choose().2)
   |> dict.insert(fetch.l, fetch.handle)
-  |> dict.insert("Netlify.Sites", netlify.get_sites)
-  |> dict.insert("Netlify.Deploy", netlify.deploy_site)
+  |> dict.insert(netlify_list_sites.l, netlify_list_sites.impl(netlify.local, _))
+  // |> dict.insert("Netlify.Deploy", netlify.deploy_site)
   |> dict.insert("DNSimple.Domains", dnsimple.list_domains)
   |> dict.insert(geolocation.l, geolocation.handle)
   |> dict.insert("Google.Calendar.Events", calendar.list_events)
-  |> dict.insert("Google.Gmail.Messages", gmail.list_messages)
+  |> dict.insert(gmail_list_messages.l, gmail_list_messages.impl(
+    google.local,
+    _,
+  ))
   |> dict.insert("Load", fn(_) {
     let p =
       promise.map(do_load(), fn(r) {
@@ -134,7 +145,7 @@ pub fn handlers() {
 
     Ok(v.Promise(p))
   })
-  |> dict.insert(open.l, open.impl)
+  |> dict.insert(visit.l, visit.impl)
   |> dict.insert("Copy", do_copy)
   |> dict.insert("Paste", do_paste)
   |> dict.insert("Download", do_download)
