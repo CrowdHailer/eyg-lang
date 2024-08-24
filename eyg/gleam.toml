@@ -12,12 +12,15 @@ gleam_bitwise = "~> 1.2"
 lustre = "~> 4.0"
 gleam_json = ">= 1.0.0 and < 3.0.0"
 gleam_fetch = "~> 1.0"
-plinth = ">= 0.4.5 and < 1.0.0"
+plinth = ">= 0.4.9 and < 1.0.0"
 # plinth = {path= "../../plinth"}
 simplifile = "~> 1.0"
 gleam_http = "~> 3.5"
 gleam_community_codec = {path= "../../codec"}
-midas = ">= 0.4.2 and < 1.0.0"
+# midas = ">= 0.4.4 and < 1.0.0"
+midas = {path= "../../midas"}
+snag = ">= 0.3.0 and < 1.0.0"
+jot = ">= 1.0.1 and < 2.0.0"
 
 
 [dev-dependencies]
