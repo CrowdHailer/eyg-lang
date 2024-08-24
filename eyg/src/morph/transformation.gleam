@@ -17,8 +17,23 @@ const vacant = e.Vacant("")
 pub fn delete(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    p.Exp(e.Vacant("")), [p.ListItem(pre, [next, ..post], tail), ..zoom] -> {
+    p.Exp(e.Vacant(_)), [p.ListItem(pre, [next, ..post], tail), ..zoom] -> {
       #(p.Exp(next), [p.ListItem(pre, post, tail), ..zoom])
+    }
+    p.Exp(e.Vacant(_)), [p.ListItem([next, ..pre], [], tail), ..zoom] -> {
+      #(p.Exp(next), [p.ListItem(pre, [], tail), ..zoom])
+    }
+    p.Exp(e.Vacant(_)), [p.ListItem([], [], Some(tail)), ..zoom] -> {
+      #(p.Exp(tail), zoom)
+    }
+    p.Exp(e.Vacant(_)), [p.ListItem([], [], None), ..zoom] -> {
+      #(p.Exp(e.List([], None)), zoom)
+    }
+    p.Exp(e.Vacant(_)), [p.ListTail(elements), ..zoom] -> {
+      case list.reverse(elements) {
+        [exp, ..pre] -> #(p.Exp(exp), [p.ListItem(pre, [], None), ..zoom])
+        [] -> #(p.Exp(e.List([], None)), zoom)
+      }
     }
     p.Exp(e.Vacant("")), [p.CallArg(f, pre, [next, ..post]), ..zoom] -> {
       #(p.Exp(next), [p.CallArg(f, pre, post), ..zoom])
@@ -165,7 +180,7 @@ pub fn function(source) {
         #(p.Exp(body), [p.Body(args), ..rest])
       })
     #(p.Exp(body), zoom) ->
-      Ok(fn(new) { #(p.Exp(e.Function([e.Bind(new)], body)), zoom) })
+      Ok(fn(new) { #(p.Exp(body), [p.Body([e.Bind(new)]), ..zoom]) })
     _ -> Error(Nil)
   }
 }
@@ -230,8 +245,8 @@ pub fn integer(zip) {
 pub fn list(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant("")) -> Ok(#(p.Exp(e.List([], None)), zoom))
-    p.Exp(item) -> Ok(#(p.Exp(e.List([item], None)), zoom))
+    // p.Exp(e.Vacant("")) -> Ok(#(p.Exp(e.List([], None)), zoom))
+    p.Exp(item) -> Ok(#(p.Exp(item), [p.ListItem([], [], None), ..zoom]))
     _ -> Error(Nil)
   }
 }
@@ -277,12 +292,10 @@ pub fn extend(zip) {
 pub fn spread_list(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    p.Exp(e.List(items, None)), _ ->
-      Ok(#(p.Exp(e.Vacant("")), [p.ListTail(items), ..zoom]))
-    p.Exp(exp), [p.ListItem(pre, [], None), ..rest] ->
-      Ok(
-        #(p.Exp(e.Vacant("")), [p.ListTail(list.reverse([exp, ..pre])), ..rest]),
-      )
+    p.Exp(exp), [p.ListItem(pre, post, None), ..rest] -> {
+      let elements = listx.gather_around(pre, exp, post)
+      Ok(#(p.Exp(e.Vacant("")), [p.ListTail(elements), ..rest]))
+    }
     _, _ -> Error(Nil)
   }
 }

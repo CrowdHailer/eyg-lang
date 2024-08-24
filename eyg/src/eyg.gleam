@@ -4,6 +4,7 @@ import eyg/analysis/type_/isomorphic as t
 import eygir/annotated
 import eygir/annotated as e
 import eygir/decode
+import gleam/dict
 import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
@@ -36,7 +37,8 @@ pub fn do_main(args) {
   case args {
     ["exec", ..] -> shell.run(e.add_annotation(source, Nil))
     ["infer"] -> {
-      let #(exp, bindings) = infer.infer(source, t.Empty, 0, infer.new_state())
+      let #(exp, bindings) =
+        infer.infer(source, t.Empty, dict.new(), 0, infer.new_state())
       let acc = annotated.strip_annotation(exp).1
       let errors =
         list.filter_map(acc, fn(row) {

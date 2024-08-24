@@ -73,5 +73,9 @@ fn do_print(source) {
     e.Shallow(label) -> #(string.concat(["shallow(", label, ")"]), [])
 
     e.Builtin(identifier) -> #(string.concat(["builtin(", identifier, ")"]), [])
+    e.Reference(identifier) -> #(
+      string.concat(["reference(", identifier, ")"]),
+      [],
+    )
   }
 }

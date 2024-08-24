@@ -1,3 +1,4 @@
+import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
 import gleam/http
@@ -5,6 +6,20 @@ import gleam/http/request.{Request}
 import gleam/http/response.{Response}
 import gleam/list
 import gleam/result.{try}
+
+pub fn method() {
+  t.union([
+    #("CONNECT", t.unit),
+    #("DELETE", t.unit),
+    #("GET", t.unit),
+    #("HEAD", t.unit),
+    #("OPTIONS", t.unit),
+    #("PATCH", t.unit),
+    #("POST", t.unit),
+    #("PUT", t.unit),
+    #("TRACE", t.unit),
+  ])
+}
 
 pub fn method_to_gleam(value) {
   cast.as_varient(value, [
@@ -20,11 +35,19 @@ pub fn method_to_gleam(value) {
   ])
 }
 
+pub fn scheme() {
+  t.union([#("HTTP", t.unit), #("HTTPS", t.unit)])
+}
+
 pub fn scheme_to_gleam(value) {
   cast.as_varient(value, [
     #("HTTP", cast.as_unit(_, http.Http)),
     #("HTTPS", cast.as_unit(_, http.Https)),
   ])
+}
+
+pub fn headers() {
+  t.List(t.record([#("key", t.String), #("value", t.String)]))
 }
 
 pub fn headers_to_gleam(value) {
@@ -33,6 +56,19 @@ pub fn headers_to_gleam(value) {
     use value <- result.try(cast.field("value", cast.as_string, h))
     Ok(#(k, value))
   })
+}
+
+pub fn request() {
+  t.record([
+    #("method", method()),
+    #("scheme", scheme()),
+    #("host", t.String),
+    #("port", t.option(t.Integer)),
+    #("path", t.String),
+    #("query", t.option(t.String)),
+    #("headers", headers()),
+    #("body", t.Binary),
+  ])
 }
 
 pub fn request_to_gleam(request) {
@@ -73,6 +109,14 @@ pub fn headers_to_eyg(headers) {
       v.Record([#("key", v.Str(k)), #("value", v.Str(v))])
     }),
   )
+}
+
+pub fn response() {
+  t.record([
+    #("status", t.Integer),
+    #("headers", headers()),
+    #("body", t.Binary),
+  ])
 }
 
 pub fn response_to_eyg(response) {

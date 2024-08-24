@@ -53,7 +53,8 @@ fn handlers() {
 }
 
 pub fn run(source) {
-  let env = state.Env(scope: [], builtins: stdlib.lib().1)
+  let env =
+    state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
   let assert Ok(parser) = r.execute(source, env, handlers().1)
   let assert Ok(lisp) = cast.field("lisp", cast.any, parser)
   let assert Ok(parser) = cast.field("prompt", cast.any, lisp)
@@ -120,7 +121,7 @@ fn read(rl, parser, env, k, prompt) {
               let assert v.Str(prompt) = lift
               #(env, prompt)
             }
-            Error(#(reason, rev, _env, _k)) -> {
+            Error(#(reason, _rev, _env, _k)) -> {
               console.log(
                 string.concat(["!! ", break.reason_to_string(reason), " at: "]),
               )

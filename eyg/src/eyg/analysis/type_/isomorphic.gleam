@@ -44,6 +44,10 @@ pub fn result(value, reason) {
   Union(RowExtend("Ok", value, RowExtend("Error", reason, Empty)))
 }
 
+pub fn option(value) {
+  Union(RowExtend("Some", value, RowExtend("None", unit, Empty)))
+}
+
 pub const file = Record(
   RowExtend("name", String, RowExtend("content", Binary, Empty)),
 )

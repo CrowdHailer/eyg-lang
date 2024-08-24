@@ -83,6 +83,7 @@ fn do_last(projection) {
         e.Deep(_) -> projection
         e.Shallow(_) -> projection
         e.Builtin(_) -> projection
+        e.Reference(_) -> projection
       }
     p.Assign(p.AssignStatement(p), value, pre, post, tail) -> #(
       p.Assign(p.AssignPattern(p), value, pre, post, tail),
@@ -181,7 +182,7 @@ pub fn zoom_next(exp, zoom) {
           do_first(#(p.Exp(next), zoom))
         }
         p.ListItem(pre, [], Some(tail)) -> {
-          let zoom = [p.ListTail([exp, ..pre])]
+          let zoom = [p.ListTail(list.reverse([exp, ..pre]))]
           do_first(#(p.Exp(tail), zoom))
         }
         p.ListItem(pre, [], None) -> {
@@ -312,7 +313,10 @@ pub fn zoom_previous(exp, zoom) {
           case list.reverse(matches) {
             [#(label, branch), ..pre] ->
               do_last(
-                #(p.Exp(branch), [p.CaseMatch(top, label, pre, [], Some(exp))]),
+                #(p.Exp(branch), [
+                  p.CaseMatch(top, label, pre, [], Some(exp)),
+                  ..rest
+                ]),
               )
             [] -> #(p.Exp(top), [p.CaseTop([], Some(exp))])
           }
@@ -592,7 +596,7 @@ pub fn move_right(zip) {
       [p.ListItem([exp, ..pre], post, tail), ..rest],
     )
     #(p.Exp(exp), [p.ListItem(pre, [], Some(next)), ..rest]) -> #(p.Exp(next), [
-      p.ListTail(list.reverse([exp, ..pre])),
+      p.ListTail([exp, ..pre]),
       ..rest
     ])
     #(p.Label(l, v, pre, post, for), rest) -> {
@@ -716,8 +720,7 @@ pub fn move_left(zip) {
 }
 
 pub fn increase(zip) {
-  let assert Ok(zip) = p.step(zip)
-  zip
+  p.step(zip)
 }
 
 pub fn decrease(zip) {

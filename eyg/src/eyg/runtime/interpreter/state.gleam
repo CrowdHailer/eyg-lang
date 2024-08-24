@@ -1,5 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/list
+import gleam/listx
 import gleam/result
 
 // import eygir/expression as e
@@ -22,14 +23,21 @@ pub type Control(m) {
   V(Value(m))
 }
 
+pub type Debug(m) =
+  #(Reason(m), m, Env(m), Stack(m))
+
 pub type Next(m) {
   Loop(Control(m), Env(m), Stack(m))
-  Break(Result(Value(m), #(Reason(m), m, Env(m), Stack(m))))
+  Break(Result(Value(m), Debug(m)))
 }
 
 // Env and Stack(m) also rely on each other
 pub type Env(m) {
-  Env(scope: List(#(String, Value(m))), builtins: dict.Dict(String, Builtin(m)))
+  Env(
+    scope: List(#(String, Value(m))),
+    references: dict.Dict(String, Value(m)),
+    builtins: dict.Dict(String, Builtin(m)),
+  )
 }
 
 pub type Return(m) =
@@ -109,6 +117,11 @@ pub fn eval(exp, env: Env(m), k) {
     e.Handle(label) -> value(v.Partial(v.Handle(label), []))
     e.Shallow(label) -> value(v.Partial(v.Shallow(label), []))
     e.Builtin(identifier) -> value(v.Partial(v.Builtin(identifier), []))
+    e.Reference(ref) ->
+      case dict.get(env.references, ref) {
+        Ok(v) -> value(v)
+        Error(Nil) -> Error(break.UndefinedReference(ref))
+      }
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, k) })
 }
@@ -143,15 +156,17 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
         }
         v.Extend(label), [value] -> {
           use fields <- result.then(cast.as_record(arg))
-          Ok(#(V(v.Record([#(label, value), ..fields])), env, k))
+          let fields = listx.key_sort([#(label, value), ..fields])
+          Ok(#(V(v.Record(fields)), env, k))
         }
         v.Overwrite(label), [value] -> {
           use fields <- result.then(cast.as_record(arg))
-          use #(_, fields) <- result.then(
+          use #(_, _) <- result.then(
             list.key_pop(fields, label)
             |> result.replace_error(break.MissingField(label)),
           )
-          Ok(#(V(v.Record([#(label, value), ..fields])), env, k))
+          let fields = list.key_set(fields, label, value)
+          Ok(#(V(v.Record(fields)), env, k))
         }
         v.Select(label), [] -> {
           use fields <- result.then(cast.as_record(arg))

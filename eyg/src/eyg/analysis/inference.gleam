@@ -223,6 +223,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
             dict.new(),
           )
       }
+    e.Reference(_) -> panic as "not supported in this inference"
   }
   |> compose(Infered(
     sub.none(),

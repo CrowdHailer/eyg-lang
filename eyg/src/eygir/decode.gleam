@@ -65,6 +65,7 @@ pub fn decoder(x) {
     "h" | "handle" -> decode1(e.Handle, label())
     "hs" | "shallow" -> decode1(e.Shallow, label())
     "b" | "builtin" -> decode1(e.Builtin, label())
+    "#" -> decode1(e.Reference, label())
 
     incorrect -> fn(_) { Error([DecodeError("node", incorrect, ["0"])]) }
   }(x)

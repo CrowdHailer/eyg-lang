@@ -268,6 +268,15 @@ pub fn expression(tokens) {
         }
         _ -> fail(rest)
       }
+    t.Hash ->
+      case rest {
+        [#(t.Name(label), end), ..rest] -> {
+          let span = #(start, end + string.length(label))
+          Ok(#(#(e.Reference(label), span), rest))
+        }
+        _ -> fail(rest)
+      }
+
     _ -> Error(UnexpectedToken(token, start))
   })
 

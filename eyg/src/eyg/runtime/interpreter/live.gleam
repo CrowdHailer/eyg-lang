@@ -1,6 +1,5 @@
 import eyg/runtime/interpreter/state as s
 import eyg/runtime/value as v
-import gleam/dict
 import gleam/dynamic
 import gleam/list
 import harness/stdlib

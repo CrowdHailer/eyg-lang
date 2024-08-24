@@ -12,8 +12,9 @@ pub fn new_state() {
   dict.new()
 }
 
-pub fn infer(source, eff, level, bindings) {
-  let #(bindings, _type, _eff, acc) = do_infer(source, [], eff, level, bindings)
+pub fn infer(source, eff, refs, level, bindings) {
+  let #(bindings, _type, _eff, acc) =
+    do_infer(source, [], eff, refs, level, bindings)
   #(acc, bindings)
 }
 
@@ -91,7 +92,10 @@ fn eff_tail(eff) {
   }
 }
 
-pub fn do_infer(source, env, eff, level, bindings) {
+pub type Env =
+  List(#(String, binding.Poly))
+
+pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
   case source {
     e.Variable(x) ->
       case list.key_find(env, x) {
@@ -115,7 +119,7 @@ pub fn do_infer(source, env, eff, level, bindings) {
       let #(type_eff, bindings) = binding.mono(level, bindings)
 
       let #(bindings, type_r, type_eff, inner) =
-        do_infer(body, [#(x, scheme_x), ..env], type_eff, level, bindings)
+        do_infer(body, [#(x, scheme_x), ..env], type_eff, refs, level, bindings)
 
       let type_ = t.Fun(type_x, type_eff, type_r)
       let level = level - 1
@@ -128,9 +132,9 @@ pub fn do_infer(source, env, eff, level, bindings) {
       // not the effect of applying them
       let level = level + 1
       let #(bindings, ty_fun, eff, fun) =
-        do_infer(fun, env, eff, level, bindings)
+        do_infer(fun, env, eff, refs, level, bindings)
       let #(bindings, ty_arg, eff, arg) =
-        do_infer(arg, env, eff, level, bindings)
+        do_infer(arg, env, eff, refs, level, bindings)
 
       let #(ty_ret, bindings) = binding.mono(level, bindings)
       let #(test_eff, bindings) = binding.mono(level, bindings)
@@ -180,13 +184,13 @@ pub fn do_infer(source, env, eff, level, bindings) {
     e.Let(label, value, then) -> {
       let level = level + 1
       let #(bindings, ty_value, eff, value) =
-        do_infer(value, env, eff, level, bindings)
+        do_infer(value, env, eff, refs, level, bindings)
       let level = level - 1
       let sch_value =
         binding.gen(close(ty_value, level, bindings), level, bindings)
 
       let #(bindings, ty_then, eff, then) =
-        do_infer(then, [#(label, sch_value), ..env], eff, level, bindings)
+        do_infer(then, [#(label, sch_value), ..env], eff, refs, level, bindings)
       let meta = #(Ok(Nil), ty_then, t.Empty, env)
       #(bindings, ty_then, eff, #(a.Let(label, value, then), meta))
     }
@@ -217,18 +221,22 @@ pub fn do_infer(source, env, eff, level, bindings) {
     // TODO actual inference
     e.Shallow(label) ->
       prim(handle(label), env, eff, level, bindings, a.Shallow(label))
-    e.Builtin(identifier) ->
-      case builtin(identifier) {
-        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(identifier))
+    e.Builtin(id) ->
+      case builtin(id) {
+        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(id))
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
-          let meta = #(
-            Error(error.MissingVariable(identifier)),
-            type_,
-            t.Empty,
-            env,
-          )
-          #(bindings, type_, eff, #(a.Builtin(identifier), meta))
+          let meta = #(Error(error.MissingVariable(id)), type_, t.Empty, env)
+          #(bindings, type_, eff, #(a.Builtin(id), meta))
+        }
+      }
+    e.Reference(id) ->
+      case dict.get(refs, id) {
+        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Reference(id))
+        Error(Nil) -> {
+          let #(type_, bindings) = binding.mono(level, bindings)
+          let meta = #(Error(error.MissingReference(id)), type_, t.Empty, env)
+          #(bindings, type_, eff, #(a.Reference(id), meta))
         }
       }
   }
@@ -254,7 +262,7 @@ fn pure3(arg1, arg2, arg3, ret) {
 }
 
 // q for quantified
-fn q(i) {
+pub fn q(i) {
   t.Var(#(True, i))
 }
 

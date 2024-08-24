@@ -16,7 +16,7 @@ pub fn variable_test() {
   let source =
     e.Variable("x")
     |> e2.add_annotation(Nil)
-  let env = state.Env([#("x", v.Str("assigned"))], dict.new())
+  let env = state.Env([#("x", v.Str("assigned"))], dict.new(), dict.new())
   r.execute(source, env, dict.new())
   |> should.equal(Ok(v.Str("assigned")))
 }
@@ -28,7 +28,7 @@ pub fn function_test() {
     |> e2.add_annotation(Nil)
 
   let scope = [#("foo", v.Str("assigned"))]
-  let env = state.Env(scope, dict.new())
+  let env = state.Env(scope, dict.new(), dict.new())
   r.execute(source, env, dict.new())
   |> should.equal(
     Ok(v.Closure(
@@ -289,7 +289,7 @@ pub fn handle_resume_test() {
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
-    Ok(v.Record([#("value", v.Integer(100)), #("log", v.Str("my message"))])),
+    Ok(v.Record([#("log", v.Str("my message")), #("value", v.Integer(100))])),
   )
 
   let source =
@@ -298,7 +298,7 @@ pub fn handle_resume_test() {
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
-    Ok(v.Record([#("value", v.Integer(100)), #("log", v.Str("my message"))])),
+    Ok(v.Record([#("log", v.Str("my message")), #("value", v.Integer(100))])),
   )
 }
 

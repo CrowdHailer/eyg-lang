@@ -133,7 +133,7 @@ pub fn handle_click(root, event) {
         //   r.resumable(source, stdlib.env(), None)
         // let assert Ok(tenv) = dict.get(envs, rev)
         io.debug("inferring")
-        j.infer(source, tj.Empty, 0, j.new_state())
+        j.infer(source, tj.Empty, dict.new(), 0, j.new_state())
         io.debug("inferred")
 
         let env = stdlib.env()
@@ -1323,6 +1323,7 @@ fn to_html(sections) {
       print.Label -> ["text-blue-3"]
       print.Effect -> ["text-yellow-4"]
       print.Builtin -> ["italic underline"]
+      print.Reference -> ["italic underline"]
     }
     let class =
       case err {

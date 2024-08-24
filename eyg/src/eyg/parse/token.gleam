@@ -22,6 +22,7 @@ pub type Token {
   Minus
   Bang
   Bar
+  Hash
 
   LeftParen
   RightParen
@@ -67,6 +68,7 @@ pub fn to_string(token) {
     Minus -> "-"
     Bang -> "!"
     Bar -> "|"
+    Hash -> "#"
 
     LeftParen -> "("
     RightParen -> ")"

@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/option.{None, Some}
 import gleeunit/should
 import morph/editable as e
@@ -7,6 +6,89 @@ import morph/projection as p
 fn should_equal(given, expected) {
   should.equal(given, expected)
   given
+}
+
+pub fn block_test() {
+  let first = #(e.Bind("i"), e.Integer(10))
+  let second = #(e.Destructure([#("foo", "y")]), e.Record([], None))
+  let source = e.Block([first, second], e.Vacant(""), False)
+
+  let path = [0]
+  p.focus_at(source, path)
+  |> should_equal(
+    #(
+      p.Assign(
+        p.AssignStatement(e.Bind("i")),
+        e.Integer(10),
+        [],
+        [second],
+        e.Vacant(""),
+      ),
+      [],
+    ),
+  )
+  |> p.path
+  |> should_equal(path)
+
+  let path = [0, 0]
+  p.focus_at(source, path)
+  |> should_equal(
+    #(
+      p.Assign(
+        p.AssignPattern(e.Bind("i")),
+        e.Integer(10),
+        [],
+        [second],
+        e.Vacant(""),
+      ),
+      [],
+    ),
+  )
+  |> p.path
+  |> should_equal(path)
+
+  let path = [0, 1]
+  p.focus_at(source, path)
+  |> should_equal(
+    #(p.Exp(e.Integer(10)), [
+      p.BlockValue(e.Bind("i"), [], [second], e.Vacant("")),
+    ]),
+  )
+  |> p.path
+  |> should_equal(path)
+
+  let path = [1, 0, 0]
+  p.focus_at(source, path)
+  |> should_equal(
+    #(
+      p.Assign(
+        p.AssignField("foo", "y", [], []),
+        e.Record([], None),
+        [first],
+        [],
+        e.Vacant(""),
+      ),
+      [],
+    ),
+  )
+  |> p.path
+  |> should_equal(path)
+  let path = [1, 0, 1]
+  p.focus_at(source, path)
+  |> should_equal(
+    #(
+      p.Assign(
+        p.AssignBind("foo", "y", [], []),
+        e.Record([], None),
+        [first],
+        [],
+        e.Vacant(""),
+      ),
+      [],
+    ),
+  )
+  |> p.path
+  |> should_equal(path)
 }
 
 pub fn function_test() {
@@ -54,7 +136,6 @@ pub fn function_test() {
   )
   |> p.path
   |> should_equal(path)
-  // todo as "do we want this to be enumerated across or not"
 }
 
 pub fn function_destructure_test() {
@@ -126,7 +207,6 @@ pub fn nested_function_test() {
 
   source
   |> e.to_annotated([])
-  |> io.debug
 }
 
 pub fn function_body_test() {
@@ -135,8 +215,6 @@ pub fn function_body_test() {
       [e.Bind("x")],
       e.Block([#(e.Bind("s"), e.String("first"))], e.Variable("s"), True),
     )
-
-  // arg already covered in tests
 
   let path = [1]
   p.focus_at(source, path)
@@ -193,7 +271,6 @@ pub fn list_test() {
   |> should_equal(path)
 }
 
-// path to in spotless to get the type information
 pub fn record_test() {
   let source = e.Record([#("foo", e.Integer(1)), #("bar", e.Integer(2))], None)
 
@@ -232,24 +309,6 @@ pub fn record_test() {
   )
   |> p.path
   |> should_equal(path)
-  // let annotated =
-  //   e.to_annotated(source, [])
-  //   |> should_equal(
-  //     #(
-  //       a.Apply(
-  //         #(a.Apply(#(a.Extend("foo"), [0]), #(a.Integer(1), [1])), [0]),
-  //         #(
-  //           a.Apply(
-  //             #(a.Apply(#(a.Extend("foo"), [2]), #(a.Integer(2), [4])), [2]),
-  //             #(a.Empty, []),
-  //           ),
-  //           [2],
-  //         ),
-  //       ),
-  //       [0],
-  //     ),
-  //   )
-  // io.debug(annotated)
 }
 
 pub fn select_test() {
@@ -293,6 +352,41 @@ pub fn overwrite_test() {
   p.focus_at(source, path)
   |> should_equal(
     #(p.Exp(e.Variable("x")), [p.OverwriteTail([#("foo", e.Integer(1))])]),
+  )
+  |> p.path
+  |> should_equal(path)
+}
+
+pub fn match_test() {
+  let source =
+    e.Case(e.Variable("result"), [#("Ok", e.Integer(1))], Some(e.Variable("x")))
+
+  let path = [1]
+  p.do_focus_at(source, path, [])
+  |> should.be_ok()
+  |> should_equal(
+    #(
+      p.Match(
+        e.Variable("result"),
+        "Ok",
+        e.Integer(1),
+        [],
+        [],
+        Some(e.Variable("x")),
+      ),
+      [],
+    ),
+  )
+  |> p.path
+  |> should_equal(path)
+
+  let path = [1, 0]
+  p.do_focus_at(source, path, [])
+  |> should.be_ok()
+  |> should_equal(
+    #(p.Exp(e.Integer(1)), [
+      p.CaseMatch(e.Variable("result"), "Ok", [], [], Some(e.Variable("x"))),
+    ]),
   )
   |> p.path
   |> should_equal(path)

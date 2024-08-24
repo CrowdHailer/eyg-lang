@@ -97,7 +97,9 @@ fn primitive(exp, next) {
     | e.Apply(_, _)
     | e.Lambda(_, _)
     | e.Let(_, _, _)
-    | e.Builtin(_) -> panic("not a literal")
+    | e.Builtin(_) -> panic as "not a literal"
+
+    e.Reference(_) -> panic as "not implemented in this type checker"
 
     e.Binary(_) -> #(t.Binary, next)
     e.Str(_) -> #(t.String, next)

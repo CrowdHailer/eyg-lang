@@ -24,6 +24,7 @@ pub type Style {
   Label
   Effect
   Builtin
+  Reference
 }
 
 pub type Rendered =
@@ -272,6 +273,8 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     }
     e.Builtin(value) ->
       print_with_offset(value, loc, Builtin, err, acc, info, analysis)
+    e.Reference(value) ->
+      print_with_offset(value, loc, Reference, err, acc, info, analysis)
   }
 }
 

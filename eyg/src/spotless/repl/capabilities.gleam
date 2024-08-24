@@ -12,16 +12,18 @@ import gleam/string
 import harness/effect as impl
 import harness/fetch
 import harness/ffi/core
+import harness/impl/browser/file/list as fs_list
+import harness/impl/browser/file/read as fs_read
+import harness/impl/browser/geolocation
+import harness/impl/browser/now
+import harness/impl/browser/open
 import plinth/browser/clipboard
 import plinth/browser/file
 import plinth/browser/file_system
-import plinth/javascript/date
-import spotless/file_system as fs
 import spotless/repl/capabilities/dnsimple
 import spotless/repl/capabilities/google/calendar
 import spotless/repl/capabilities/google/gmail
 import spotless/repl/capabilities/netlify
-import spotless/repl/capabilities/open
 import spotless/repl/capabilities/zip
 
 pub fn handler_type(bindings) {
@@ -29,15 +31,18 @@ pub fn handler_type(bindings) {
   let level = 0
 
   let #(var, bindings) = binding.mono(level, bindings)
-  let eff = t.EffectExtend("Abort", #(var, t.unit), eff)
+  let #(any, bindings) = binding.mono(level, bindings)
+  let eff = t.EffectExtend("Abort", #(var, any), eff)
   let eff = t.EffectExtend("Alert", #(t.String, t.unit), eff)
-  let eff = t.EffectExtend("Now", #(t.unit, t.String), eff)
+  let eff = t.EffectExtend(now.l, #(t.unit, t.String), eff)
+  let eff = t.EffectExtend("Fetch", #(fetch.lift(), fetch.lower()), eff)
+
   let eff = t.EffectExtend("Load", #(t.unit, t.result(t.ast(), t.String)), eff)
-  let eff = t.EffectExtend("Delay", #(t.Integer, t.Promise(t.unit)), eff)
+  let eff = t.EffectExtend("Wait", #(t.Integer, t.Promise(t.unit)), eff)
 
   let #(var, bindings) = binding.mono(level, bindings)
   let eff = t.EffectExtend("Await", #(t.Promise(var), var), eff)
-  let eff = t.EffectExtend("Open", #(t.String, t.unit), eff)
+  let eff = t.EffectExtend(open.l, #(t.String, t.unit), eff)
   let eff =
     t.EffectExtend(
       "Copy",
@@ -62,7 +67,11 @@ pub fn handler_type(bindings) {
       #("url", t.String),
     ])
   let eff =
-    t.EffectExtend("Netlify.Sites", #(t.unit, t.Promise(t.List(site))), eff)
+    t.EffectExtend(
+      "Netlify.Sites",
+      #(t.unit, t.Promise(t.result(t.List(site), t.String))),
+      eff,
+    )
   let deploy = t.record([#("site", t.String), #("files", t.List(t.file))])
   let eff = t.EffectExtend("Netlify.Deploy", #(deploy, t.Promise(t.unit)), eff)
 
@@ -74,6 +83,8 @@ pub fn handler_type(bindings) {
       eff,
     )
   let event = t.record([#("summary", t.String), #("start", t.String)])
+  let eff =
+    t.EffectExtend(geolocation.l, #(geolocation.lift, geolocation.lower()), eff)
   let eff =
     t.EffectExtend(
       "Google.Calendar.Events",
@@ -88,6 +99,9 @@ pub fn handler_type(bindings) {
       eff,
     )
 
+  let eff = t.EffectExtend(fs_read.l, #(fs_read.lift, fs_read.lower()), eff)
+  let eff = t.EffectExtend(fs_list.l, #(fs_list.lift, fs_list.lower()), eff)
+
   let eff = t.EffectExtend("Zip", #(t.List(t.file), t.Promise(t.Binary)), eff)
 
   #(eff, bindings)
@@ -97,17 +111,16 @@ pub fn handlers() {
   dict.new()
   |> dict.insert("Alert", impl.window_alert().2)
   |> dict.insert("Await", impl.await().2)
-  |> dict.insert("Now", fn(_) {
-    let now = date.now()
-    Ok(v.Str(date.to_iso_string(now)))
-  })
-  |> dict.insert("Delay", impl.wait().2)
-  |> dict.insert("File_Read", fs.file_read)
+  |> dict.insert(now.l, now.impl)
+  |> dict.insert("Wait", impl.wait().2)
+  |> dict.insert(fs_read.l, fs_read.handle)
+  |> dict.insert(fs_list.l, fs_list.handle)
   |> dict.insert("Choose", impl.choose().2)
-  |> dict.insert("Fetch", fetch.handle)
+  |> dict.insert(fetch.l, fetch.handle)
   |> dict.insert("Netlify.Sites", netlify.get_sites)
   |> dict.insert("Netlify.Deploy", netlify.deploy_site)
   |> dict.insert("DNSimple.Domains", dnsimple.list_domains)
+  |> dict.insert(geolocation.l, geolocation.handle)
   |> dict.insert("Google.Calendar.Events", calendar.list_events)
   |> dict.insert("Google.Gmail.Messages", gmail.list_messages)
   |> dict.insert("Load", fn(_) {
@@ -121,7 +134,7 @@ pub fn handlers() {
 
     Ok(v.Promise(p))
   })
-  |> dict.insert("Open", open.impl)
+  |> dict.insert(open.l, open.impl)
   |> dict.insert("Copy", do_copy)
   |> dict.insert("Paste", do_paste)
   |> dict.insert("Download", do_download)

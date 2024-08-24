@@ -5,13 +5,16 @@ import gleam/option.{type Option, None, Some}
 import gleam/result.{try}
 import morph/editable as e
 
-// No reverseing needed, builds from inside
+// record goes through field and bind at same level assign uses path approach
+// No reverseing needed of final accumutator,
+// The zoom list builds from the bottom of the tree and at each step the accumulator is 
+// everything within the tree
 pub fn path_to_zoom(zoom, acc) {
   case zoom {
     [] -> acc
     [z, ..rest] -> {
       let acc = case z {
-        BlockValue(pre: pre, ..) -> [list.length(pre), ..acc]
+        BlockValue(pre: pre, ..) -> [list.length(pre), 1, ..acc]
         BlockTail(assigns) -> [list.length(assigns), ..acc]
         Body(args) -> [list.length(args), ..acc]
         CallFn(_) -> [0, ..acc]
@@ -23,7 +26,7 @@ pub fn path_to_zoom(zoom, acc) {
         SelectValue(..) -> [0, ..acc]
         OverwriteTail(fields: fields) -> [list.length(fields) + 1, ..acc]
         CaseTop(_branches, _otherwise) -> [0, ..acc]
-        CaseMatch(pre: pre, ..) -> [list.length(pre) + 1, ..acc]
+        CaseMatch(pre: pre, ..) -> [list.length(pre) + 1, 0, ..acc]
         CaseTail(branches: branches, ..) -> [list.length(branches) + 1, ..acc]
       }
       path_to_zoom(rest, acc)
@@ -31,21 +34,41 @@ pub fn path_to_zoom(zoom, acc) {
   }
 }
 
+// when adding the top layer the path needs to be appended to the end
 pub fn path(projection) {
   let #(focus, zoom) = projection
-  let tail = list.reverse(path_to_zoom(zoom, []))
+  let rev = list.reverse(path_to_zoom(zoom, []))
   case focus {
-    Exp(_) -> tail
-    FnParam(AssignPattern(_), pre, _post, _body) -> [list.length(pre), ..tail]
+    Exp(_) -> rev
+    FnParam(AssignStatement(_), _pre, _post, _body) ->
+      panic as "fnparams dont have a statement focus"
+    FnParam(AssignPattern(_), pre, _post, _body) -> [list.length(pre), ..rev]
     FnParam(AssignField(_, _, ppre, _), pre, _post, _body) -> {
-      [list.length(ppre) * 2, list.length(pre), ..tail]
+      [list.length(ppre) * 2, list.length(pre), ..rev]
     }
     FnParam(AssignBind(_, _, ppre, _), pre, _post, _body) -> {
-      [list.length(ppre) * 2 + 1, list.length(pre), ..tail]
+      [list.length(ppre) * 2 + 1, list.length(pre), ..rev]
     }
-    Label(_label, _value, pre, _post, _for) -> [list.length(pre) * 2, ..tail]
-    Select(_label, _value) -> [1, ..tail]
-    _ -> todo as "need to finish pah"
+    Label(_label, _value, pre, _post, _for) -> [list.length(pre) * 2, ..rev]
+    Select(_label, _value) -> [1, ..rev]
+    Assign(AssignStatement(_), _value, pre, _post, _then) -> [
+      list.length(pre),
+      ..rev
+    ]
+    Assign(AssignPattern(_), _value, pre, _post, _then) -> [
+      0,
+      list.length(pre),
+      ..rev
+    ]
+    Assign(AssignField(_, _, ppre, _), _value, pre, _post, _then) -> {
+      [list.length(ppre) * 2, 0, list.length(pre), ..rev]
+    }
+    Assign(AssignBind(_, _, ppre, _), _value, pre, _post, _then) -> {
+      [list.length(ppre) * 2 + 1, 0, list.length(pre), ..rev]
+    }
+    Match(_top, _label, _branch, pre, _post, _otherwise) -> {
+      [list.length(pre) + 1, ..rev]
+    }
   }
   |> list.reverse
 }
@@ -55,51 +78,50 @@ pub fn focus_at(ast, path) {
   projection
 }
 
+pub fn focus_in_block(assigns, then, path, acc) {
+  let assert [i, ..rest] = path
+  case i == list.length(assigns) {
+    True -> do_focus_at(then, rest, [BlockTail(assigns), ..acc])
+    False -> {
+      let assert Ok(#(pre, #(pattern, value), post)) =
+        listx.split_around(assigns, i)
+      case rest {
+        [] ->
+          Ok(#(Assign(AssignStatement(pattern), value, pre, post, then), acc))
+        [0] ->
+          Ok(#(Assign(AssignPattern(pattern), value, pre, post, then), acc))
+        [0, i] -> {
+          case pattern {
+            e.Destructure(fields) -> {
+              let assert Ok(detail) = {
+                let assert Ok(#(pre, #(label, var), post)) =
+                  listx.split_around(fields, i / 2)
+
+                case i % 2 {
+                  0 -> Ok(AssignField(label, var, pre, post))
+                  1 -> Ok(AssignBind(label, var, pre, post))
+                  _ -> Error("impossible result")
+                }
+              }
+              Ok(#(Assign(detail, value, pre, post, then), acc))
+            }
+            _ -> Error("bad pattern path")
+          }
+        }
+        [1, ..rest] ->
+          do_focus_at(value, rest, [BlockValue(pattern, pre, post, then), ..acc])
+        _ -> Error("bad sub in block")
+      }
+    }
+  }
+}
+
 // TODO make private but need a step in function for naviagtion
 pub fn do_focus_at(ast, path, acc) {
   case ast, path {
     exp, [] -> Ok(#(Exp(exp), acc))
-    e.Block(assigns, then, _), [i, ..rest] -> {
-      case i == list.length(assigns) {
-        True -> do_focus_at(then, rest, [BlockTail(assigns), ..acc])
-        False -> {
-          let assert Ok(#(pre, #(pattern, value), post)) =
-            listx.split_around(assigns, i)
-          case rest {
-            [] ->
-              Ok(#(
-                Assign(AssignStatement(pattern), value, pre, post, then),
-                acc,
-              ))
-            [0] ->
-              Ok(#(Assign(AssignPattern(pattern), value, pre, post, then), acc))
-            [0, i] -> {
-              case pattern {
-                e.Destructure(fields) -> {
-                  let assert Ok(detail) = {
-                    let assert Ok(#(pre, #(label, var), post)) =
-                      listx.split_around(fields, i / 2)
-
-                    case i % 2 {
-                      0 -> Ok(AssignField(label, var, pre, post))
-                      1 -> Ok(AssignBind(label, var, pre, post))
-                      _ -> Error("impossible result")
-                    }
-                  }
-                  Ok(#(Assign(detail, value, pre, post, then), acc))
-                }
-                _ -> Error("bad pattern path")
-              }
-            }
-            [1, ..rest] ->
-              do_focus_at(value, rest, [
-                BlockValue(pattern, pre, post, then),
-                ..acc
-              ])
-            _ -> Error("bad sub in block")
-          }
-        }
-      }
+    e.Block(assigns, then, _), _ -> {
+      focus_in_block(assigns, then, path, acc)
     }
     e.Function(params, body), [i, ..rest] -> {
       case i == list.length(params) {
@@ -199,6 +221,7 @@ pub fn do_focus_at(ast, path, acc) {
                 CaseMatch(top, label, pre, post, otherwise),
                 ..acc
               ])
+            [] -> Ok(#(Match(top, label, branch, pre, post, otherwise), acc))
             _ -> Error("bad branch")
           }
         }
@@ -462,5 +485,12 @@ fn unbreak(exp, break) {
       e.Case(top, branches, otherwise)
     }
     CaseTail(top, branches) -> e.Case(top, branches, Some(exp))
+  }
+}
+
+pub fn blank(projection) {
+  case projection {
+    #(Exp(e.Vacant(_)), []) -> True
+    _ -> False
   }
 }

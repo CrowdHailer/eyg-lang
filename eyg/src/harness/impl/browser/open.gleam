@@ -3,6 +3,8 @@ import eyg/runtime/value as v
 import gleam/result.{try}
 import platforms/browser/windows
 
+pub const l = "Open"
+
 pub fn impl(url) {
   use url <- try(cast.as_string(url))
   let frame = #(600, 700)

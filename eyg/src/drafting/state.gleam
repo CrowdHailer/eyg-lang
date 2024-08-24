@@ -271,7 +271,10 @@ fn insert_perform(source, context) {
 }
 
 fn increase(source) {
-  #(navigation.increase(source), Command(None))
+  case navigation.increase(source) {
+    Ok(source) -> #(source, Command(None))
+    Error(Nil) -> #(source, Command(Some(ActionFailed("increase selection"))))
+  }
 }
 
 fn insert_string(source) {

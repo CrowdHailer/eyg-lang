@@ -7,7 +7,14 @@ import gleam/io
 import gleam/result.{try}
 
 pub fn unify(t1, t2, level, bindings) {
-  do_unify([#(t1, t2)], level, bindings)
+  case do_unify([#(t1, t2)], level, bindings) {
+    Error(error.TypeMismatch(t.Var(x), t.Var(y))) ->
+      Error(error.TypeMismatch(
+        binding.resolve(t1, bindings),
+        binding.resolve(t2, bindings),
+      ))
+    result -> result
+  }
 }
 
 // https://github.com/7sharp9/write-you-an-inference-in-fsharp/blob/master/HMPure-Rowpolymorphism/HMPureRowpolymorphism.fs

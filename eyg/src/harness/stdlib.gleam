@@ -1,4 +1,5 @@
 import eyg/runtime/interpreter/state
+import gleam/dict
 import harness/ffi/core
 
 pub fn lib() {
@@ -8,5 +9,5 @@ pub fn lib() {
 }
 
 pub fn env() {
-  state.Env([], lib().1)
+  state.Env([], dict.new(), lib().1)
 }

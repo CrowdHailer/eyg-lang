@@ -1,11 +1,31 @@
 import gleam/list
 import gleam/result
+import gleam/string
+
+pub fn key_sort(in) {
+  list.sort(in, fn(a, b) {
+    let #(key_a, _) = a
+    let #(key_b, _) = b
+
+    string.compare(key_a, key_b)
+  })
+}
 
 pub fn key_reject(in, rejected) {
   list.filter(in, fn(keyword) {
     let #(key, _value) = keyword
     key != rejected
   })
+}
+
+pub fn key_unique(list: List(#(a, b))) -> List(#(a, b)) {
+  case list {
+    [] -> []
+    [#(k, v), ..rest] -> [
+      #(k, v),
+      ..key_unique(list.filter(rest, fn(y) { y.0 != k }))
+    ]
+  }
 }
 
 fn do_filter_errors(l, acc) {

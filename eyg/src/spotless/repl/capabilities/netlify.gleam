@@ -23,7 +23,8 @@ const auth_path = "/authorize"
 
 const client_id = "cQmYKaFm-2VasrJeeyobXXz5G58Fxy2zQ6DRMPANWow"
 
-const redirect_uri = "http://localhost:8080"
+//  document how this is the same as for gleamtours
+const redirect_uri = "http://localhost:8080/auth/netlify"
 
 fn auth_url(state) {
   let query = [
@@ -103,15 +104,17 @@ pub fn get_sites(_) {
                     Ok(sites) -> {
                       io.debug(sites)
                       let value =
-                        v.LinkedList(
-                          list.map(sites, fn(site: Site) {
-                            v.Record([
-                              #("id", v.Str(site.id)),
-                              #("state", v.Str(site.state)),
-                              #("name", v.Str(site.name)),
-                              #("url", v.Str(site.url)),
-                            ])
-                          }),
+                        v.ok(
+                          v.LinkedList(
+                            list.map(sites, fn(site: Site) {
+                              v.Record([
+                                #("id", v.Str(site.id)),
+                                #("state", v.Str(site.state)),
+                                #("name", v.Str(site.name)),
+                                #("url", v.Str(site.url)),
+                              ])
+                            }),
+                          ),
                         )
 
                       promise.resolve(value)
