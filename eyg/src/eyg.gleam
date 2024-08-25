@@ -45,7 +45,7 @@ pub fn do_main(args) {
           let #(result, _, _, _) = row
           case result {
             Ok(_) -> Error(Nil)
-            Error(reason) -> Ok(io.println(debug.render_reason(reason)))
+            Error(reason) -> Ok(io.println(debug.reason(reason)))
           }
         })
       io.debug(#(list.length(errors), list.length(acc)))

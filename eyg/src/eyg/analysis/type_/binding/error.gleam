@@ -7,6 +7,7 @@ pub type Reason {
   TypeMismatch(binding.Mono, binding.Mono)
   MissingRow(String)
   Recursive
+  SameTail(binding.Mono, binding.Mono)
 }
 
 // only looks through errors internal replacements are already in the cache

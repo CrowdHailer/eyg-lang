@@ -5,40 +5,28 @@ import gleam/io
 import gleam/list
 import gleam/string
 
+pub fn mono(type_) {
+  render_type(type_)
+}
+
+pub fn reason(r) {
+  render_reason(r)
+}
+
+pub fn effect(e) {
+  render_effects(e)
+}
+
 pub fn render_type(typ) {
   case typ {
     t.Var(i) -> int.to_string(i)
     t.Integer -> "Integer"
     t.Binary -> "Binary"
     t.String -> "String"
-    t.List(el) -> string.concat(["List(", render_type(el), ")"])
-    t.Fun(from, effects, to) ->
-      string.concat([
-        "(",
-        render_type(from),
-        ") -> ",
-        render_effects(effects),
-        " ",
-        render_type(to),
-      ])
-    t.Union(row) ->
-      string.concat([
-        "[",
-        string.concat(
-          render_row(row)
-          |> list.intersperse(" | "),
-        ),
-        "]",
-      ])
-    t.Record(row) ->
-      string.concat([
-        "{",
-        string.concat(
-          render_row(row)
-          |> list.intersperse(", "),
-        ),
-        "}",
-      ])
+    t.List(el) -> "List(" <> render_type(el) <> ")"
+    t.Fun(from, eff, to) -> render_function(to, [#(from, eff)])
+    t.Union(row) -> string.join(render_row(row), " | ")
+    t.Record(row) -> "{" <> string.join(render_row(row), ", ") <> "}"
     // Rows can be rendered as any mismatch in errors
     t.EffectExtend(_, _, _) -> string.concat(["<", render_effects(typ), ">"])
     t.Promise(inner) -> string.concat(["Promise(", render_type(inner), ")"])
@@ -49,6 +37,28 @@ pub fn render_type(typ) {
           |> string.join(""),
         "}",
       ])
+    }
+  }
+}
+
+fn render_function(to, acc) {
+  case to {
+    t.Fun(from, eff, to) -> render_function(to, [#(from, eff), ..acc])
+    _ -> {
+      let args = list.reverse(acc)
+      let rendered =
+        list.map(args, fn(arg) {
+          let #(arg, eff) = arg
+          let arg = render_type(arg)
+          case eff {
+            t.Empty -> arg
+            _ -> arg <> " <" <> render_effects(eff) <> ">"
+          }
+        })
+      let rendered =
+        list.intersperse(rendered, ", ")
+        |> string.concat
+      "(" <> rendered <> ") -> " <> render_type(to)
     }
   }
 }
@@ -67,6 +77,13 @@ pub fn render_reason(reason) {
         render_type(expected),
       ])
     error.Recursive -> "Recursive"
+    error.SameTail(expected, given) ->
+      string.concat([
+        "same tail given: ",
+        render_type(given),
+        " expected: ",
+        render_type(expected),
+      ])
   }
 }
 
@@ -84,24 +101,27 @@ fn render_row(r) -> List(String) {
 
 pub fn render_effects(effects) {
   case effects {
-    t.Var(i) -> string.concat(["<..", int.to_string(i), ">"])
-    t.Empty -> "<>"
+    t.Var(i) -> ".." <> int.to_string(i)
+    t.Empty -> ""
     t.EffectExtend(label, #(lift, resume), tail) ->
-      string.concat([
-        "<",
-        string.join(
-          collect_effect(tail, [render_effect(label, lift, resume)])
-            |> list.reverse,
-          ", ",
-        ),
-        ">",
-      ])
+      string.join(
+        collect_effect(tail, [render_effect(label, lift, resume)])
+          |> list.reverse,
+        ", ",
+      )
     _ -> "not a valid effect"
   }
 }
 
 fn render_effect(label, lift, resume) {
-  string.concat([label, "(", render_type(lift), ", ", render_type(resume), ")"])
+  string.concat([
+    label,
+    "(↑",
+    render_type(lift),
+    " ↓",
+    render_type(resume),
+    ")",
+  ])
 }
 
 fn collect_effect(eff, acc) {

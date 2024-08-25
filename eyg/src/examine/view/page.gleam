@@ -130,11 +130,11 @@ fn render_inference(s) {
           case fail {
             Ok(Nil) ->
               div([classes([#("bg-green-200", i == focused)])], [
-                span([], [text(debug.render_type(type_))]),
+                span([], [text(debug.mono(type_))]),
               ])
             Error(reason) ->
               div([class("bg-red-300")], [
-                span([], [text(debug.render_reason(reason))]),
+                span([], [text(debug.reason(reason))]),
               ])
           }
         }),
@@ -153,7 +153,7 @@ fn render_inference(s) {
           div([classes([#("bg-green-200", i == focused)])], [
             // span([], [text(debug.render_type(type_))]),
             // span([], [text(" ")]),
-            span([], [text(debug.render_effects(effect))]),
+            span([], [text(debug.effect(effect))]),
           ])
         }),
       ),
