@@ -1,14 +1,13 @@
-import drafting/state as buffer
 import drafting/view/picker
 import drafting/view/utilities
 import eyg/runtime/break as fail
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
+import eyg/shell/buffer
 import gleam/dynamic
 import gleam/io
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/option.{type Option, None, Some}
 import lustre/effect
 import morph/analysis
@@ -51,20 +50,18 @@ pub type Next {
 }
 
 pub type Message {
-  KeyDown(String)
   Buffer(buffer.Message)
   Loaded(projection.Projection)
-  UpdatePicker(picker.Message)
   Complete(Result(Next, String))
   Interrupt
-  JumpTo(List(Int))
+  CopiedToClipboard(Result(Nil, String))
 }
 
 pub fn update(state, message) {
   utilities.update_focus()
   let State(previous, env, context, current, executing) = state
   case message, executing {
-    KeyDown("Enter"), Editing(buffer.Command(_)) -> {
+    Buffer(buffer.KeyDown("Enter")), Editing(buffer.Command(_)) -> {
       let state = State(..state, executing: Running)
       #(
         state,
@@ -107,39 +104,41 @@ pub fn update(state, message) {
         }),
       )
     }
-    KeyDown("q"), Editing(buffer.Command(_)) -> {
-      let task = fn(d) {
-        use result <- promisex.aside(buffer.copy(current))
-        case result {
-          Ok(Nil) -> Nil
-          Error(reason) -> {
-            io.debug(reason)
-            Nil
-          }
+    Buffer(buffer.KeyDown("ArrowUp")), Editing(buffer.Command(_)) -> {
+      case state.previous, projection.blank(state.current) {
+        [#(_, expression), ..], True -> {
+          let state =
+            State(..state, current: projection.focus_at(expression, []))
+          #(state, effect.none())
         }
+        _, _ -> #(state, effect.none())
       }
-      #(state, effect.from(task))
+    }
+    Buffer(buffer.KeyDown("q")), Editing(buffer.Command(_)) -> {
+      todo as "copy doesn't exist in buffer, this shouldn't as no effects"
+      // #(state, effect.from(buffer.copy(current, CopiedToClipboard)))
     }
 
-    KeyDown("Q"), Editing(buffer.Command(_)) -> {
-      let task = fn(d) {
-        use result <- promisex.aside(buffer.paste(current))
-        case result {
-          Ok(current) -> d(Loaded(current))
-          Error(reason) -> todo as "failed to paste"
-        }
-      }
-      #(state, effect.from(task))
+    Buffer(buffer.KeyDown("Q")), Editing(buffer.Command(_)) -> {
+      // let task = fn(d) {
+      //   use result <- promisex.aside(buffer.paste(current))
+      //   case result {
+      //     Ok(current) -> d(Loaded(current))
+      //     Error(reason) -> todo as "failed to paste"
+      //   }
+      // }
+      #(state, effect.from(todo))
     }
     // TODO remove separate Buffer have key focus only on item
-    KeyDown(key), Failed(_) | Buffer(buffer.KeyDown(key)), Failed(_) -> {
+    Buffer(buffer.KeyDown(key)), Failed(_) -> {
       let #(source, mode) =
-        buffer.handle_keydown(key, context, current, buffer.Command(None))
+        buffer.handle_keydown(key, context, current, buffer.Command(None), [])
       let state = State(..state, current: source, executing: Editing(mode))
       #(state, effect.none())
     }
-    KeyDown(key), Editing(mode) | Buffer(buffer.KeyDown(key)), Editing(mode) -> {
-      let #(source, mode) = buffer.handle_keydown(key, context, current, mode)
+    Buffer(buffer.KeyDown(key)), Editing(mode) -> {
+      let #(source, mode) =
+        buffer.handle_keydown(key, context, current, mode, [])
       let state = State(..state, current: source, executing: Editing(mode))
       #(state, effect.none())
     }
@@ -197,17 +196,6 @@ pub fn update(state, message) {
         }
       }
     }
-    JumpTo(path), _ -> {
-      let editable = projection.rebuild(current)
-      let source = projection.focus_at(editable, path)
-      let state =
-        State(
-          ..state,
-          current: source,
-          executing: Editing(buffer.Command(None)),
-        )
-      #(state, effect.none())
-    }
     Interrupt, _ -> {
       // TODO needs a way to reach into the promise that is running
       let state = State(..state, executing: Editing(buffer.Command(None)))
@@ -217,18 +205,24 @@ pub fn update(state, message) {
       let state = State(..state, current: new)
       #(state, effect.none())
     }
-    UpdatePicker(picker.Updated(picker)), Editing(buffer.Pick(_, rebuild)) -> {
+    Buffer(buffer.UpdatePicker(picker.Updated(picker))),
+      Editing(buffer.Pick(_, rebuild))
+    -> {
       let mode = buffer.Pick(picker, rebuild)
       let state = State(..state, executing: Editing(mode))
       #(state, effect.none())
     }
-    UpdatePicker(picker.Decided(value)), Editing(buffer.Pick(_, rebuild)) -> {
+    Buffer(buffer.UpdatePicker(picker.Decided(value))),
+      Editing(buffer.Pick(_, rebuild))
+    -> {
       let mode = buffer.Command(None)
       let state =
         State(..state, current: rebuild(value), executing: Editing(mode))
       #(state, effect.none())
     }
-    UpdatePicker(picker.Dismissed), Editing(buffer.Pick(_, _rebuild)) -> {
+    Buffer(buffer.UpdatePicker(picker.Dismissed)),
+      Editing(buffer.Pick(_, _rebuild))
+    -> {
       let mode = buffer.Command(None)
       let state = State(..state, executing: Editing(mode))
       #(state, effect.none())
@@ -238,4 +232,118 @@ pub fn update(state, message) {
       #(state, effect.none())
     }
   }
+}
+
+pub fn weather_example() {
+  let source =
+    e.Block(
+      [
+        #(
+          e.Bind("location"),
+          e.Case(
+            e.Call(e.Perform("Await"), [
+              e.Call(e.Perform("Geo"), [e.Record([], None)]),
+            ]),
+            [
+              #("Ok", e.Function([e.Bind("location")], e.Variable("location"))),
+              #(
+                "Error",
+                e.Function(
+                  [e.Bind("_")],
+                  e.Call(e.Perform("Abort"), [
+                    e.String("failed to get location"),
+                  ]),
+                ),
+              ),
+            ],
+            None,
+          ),
+        ),
+        #(e.Bind("_"), e.Call(e.Perform("Alert"), [e.String("my location")])),
+      ],
+      e.Vacant("s"),
+      True,
+    )
+
+  projection.focus_at(source, [0, 1])
+}
+
+pub fn netliy_sites_example() {
+  let source =
+    e.Block(
+      [
+        #(
+          e.Bind("sites"),
+          e.Case(
+            e.Call(e.Perform("Await"), [
+              e.Call(e.Perform("Netlify.Sites"), [e.Record([], None)]),
+            ]),
+            [
+              #("Ok", e.Function([e.Bind("sites")], e.Variable("sites"))),
+              #(
+                "Error",
+                e.Function(
+                  [e.Bind("_")],
+                  e.Call(e.Perform("Abort"), [e.String("failed to get sites")]),
+                ),
+              ),
+            ],
+            None,
+          ),
+        ),
+      ],
+      e.Call(e.Select(e.Select(e.Variable("std"), "list"), "map"), [
+        e.Variable("sites"),
+        e.Function(
+          [e.Destructure([#("name", "name"), #("url", "url")])],
+          e.Record(
+            [#("name", e.Variable("name")), #("url", e.Variable("url"))],
+            None,
+          ),
+        ),
+      ]),
+      True,
+    )
+
+  projection.focus_at(source, [1])
+}
+
+pub fn wordcount_example() {
+  let source =
+    e.Block(
+      [
+        #(
+          e.Bind("content"),
+          e.Case(
+            e.Call(e.Perform("Await"), [
+              e.Call(e.Perform("Netlify.Sites"), [e.Record([], None)]),
+            ]),
+            [
+              #("Ok", e.Function([e.Bind("sites")], e.Variable("sites"))),
+              #(
+                "Error",
+                e.Function(
+                  [e.Bind("_")],
+                  e.Call(e.Perform("Abort"), [e.String("failed to get sites")]),
+                ),
+              ),
+            ],
+            None,
+          ),
+        ),
+      ],
+      e.Call(e.Select(e.Select(e.Variable("std"), "list"), "map"), [
+        e.Variable("sites"),
+        e.Function(
+          [e.Destructure([#("name", "name"), #("url", "url")])],
+          e.Record(
+            [#("name", e.Variable("name")), #("url", e.Variable("url"))],
+            None,
+          ),
+        ),
+      ]),
+      True,
+    )
+
+  projection.focus_at(source, [1])
 }

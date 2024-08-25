@@ -1,6 +1,6 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
-import eyg/analysis/type_/binding/debug as tdebug
+import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/capture
@@ -8,8 +8,10 @@ import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eygir/annotated as a
 import gleam/dict.{type Dict}
+import gleam/int
 import gleam/io
 import gleam/list
+import gleam/string
 import morph/editable as e
 import morph/projection
 import spotless/repl/capabilities
@@ -18,6 +20,7 @@ pub type Context {
   Context(
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
+    references: Dict(String, binding.Poly),
     builtins: List(#(String, binding.Poly)),
   )
 }
@@ -40,11 +43,13 @@ pub type Analysis =
 
 pub fn within_environment(runtime_env) {
   let #(bindings, scope) = env_to_tenv(runtime_env)
-  Context(bindings, scope, infer.builtins())
+  io.debug("need referencesss")
+  Context(bindings, scope, dict.new(), infer.builtins())
 }
 
 pub fn empty_environment() {
-  Context(dict.new(), [], infer.builtins())
+  io.debug("need referencesss")
+  Context(dict.new(), [], dict.new(), infer.builtins())
 }
 
 // use capture because we want efficient ability to get to continuations
@@ -128,20 +133,36 @@ pub fn analyse(projection, context) -> Analysis {
   let Context(bindings, scope, ..) = context
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
+  // TODO these needs to depend better on eff but is blocked by proper reuse of the analysis work
   let #(eff, bindings) = capabilities.handler_type(bindings)
   let #(bindings, _top_type, _top_eff, tree) =
-    infer.do_infer(source, scope, eff, dict.new(), 0, bindings)
+    infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let #(_, types) = a.strip_annotation(tree)
   let #(_, paths) = a.strip_annotation(e.to_annotated(editable, []))
   #(bindings, list.zip(paths, types))
 }
 
-pub fn env_at(projection, root_env, at) {
+pub fn print(analysis) {
+  let #(bindings, pairs) = analysis
+  list.map(pairs, fn(pair) {
+    let #(rev, #(result, type_, _eff, _scope)) = pair
+    let path = list.reverse(rev)
+    let path = "[" <> string.join(list.map(path, int.to_string), ",") <> "]"
+    let t = case result {
+      Ok(Nil) -> debug.mono(binding.resolve(type_, bindings))
+      Error(reason) -> debug.reason(reason)
+    }
+    path <> " " <> t
+  })
+  |> list.map(io.println)
+}
+
+pub fn env_at(projection, root_env, path) {
   let #(bindings, pairs) = analyse(projection, root_env)
-  case list.key_find(pairs, at) {
+  case list.key_find(pairs, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
-      io.debug(#("didn't find env", at))
+      io.debug(#("didn't find env", path))
       let Context(bindings, tenv, ..) = root_env
       tenv
     }
@@ -149,9 +170,18 @@ pub fn env_at(projection, root_env, at) {
 }
 
 pub fn type_at(projection, root_env) {
-  let #(bindings, pairs) = analyse(projection, root_env)
-  let path = projection.path_to_zoom(projection.1, [])
-  case list.key_find(pairs, path) {
+  let analysis = analyse(projection, root_env)
+  do_type_at(analysis, projection)
+}
+
+pub fn do_type_at(analysis, projection: #(_, _)) {
+  let #(bindings, pairs) = analysis
+  let path = projection.path(projection)
+  // tests to remove this
+  // io.debug(path)
+  // io.debug(pairs |> list.map(fn(x: #(_, #(_, _, _, _))) { #(x.0, { x.1 }.1) }))
+  // TODO a shared info at would be a useful utility to ensure path reversing done correctly
+  case list.key_find(pairs, list.reverse(path)) {
     Ok(#(_result, type_, _eff, _env)) -> Ok(binding.resolve(type_, bindings))
     Error(Nil) -> {
       io.debug(#("didn't find type", path))
@@ -195,37 +225,6 @@ fn rows(t, acc) {
   }
 }
 
-// TODO effects are not put into the tree either that needs to be done or we walk up the tree
-pub fn effect_at(_projection, context) {
-  let Context(bindings, _, _) = context
-  // let path = projection.path_to_zoom(projection.1, [])
-  // io.debug(pairs)
-  // case list.key_find(pairs, path) {
-  //   Ok(#(_result, _type, eff, _env)) -> Ok(binding.resolve(eff, bindings))
-  //   Error(Nil) -> {
-  //     io.debug(#("didn't find type", path))
-  //     Error(Nil)
-  //   }
-  // }
-  let #(eff, _bindings) = capabilities.handler_type(bindings)
-  Ok(eff)
-}
-
-pub fn effect_fields(projection, root_env) {
-  case effect_at(projection, root_env) {
-    Ok(eff_type) -> effects(eff_type, [])
-    eff -> []
-  }
-}
-
-fn effects(t, acc) {
-  case t {
-    t.EffectExtend(label, types, rest) ->
-      effects(rest, [#(label, types), ..acc])
-    _ -> list.reverse(acc)
-  }
-}
-
 pub fn type_errors(analysis) {
   let #(_bindings, pairs) = analysis
   list.filter_map(pairs, fn(r) {
@@ -237,6 +236,6 @@ pub fn type_errors(analysis) {
   })
   |> list.map(fn(pair) {
     let #(path, reason) = pair
-    #(path, tdebug.render_reason(reason))
+    #(path, reason)
   })
 }

@@ -35,19 +35,27 @@ pub fn render(picker, dispatch) {
           let #(name, _item) = suggestion
           string.contains(name, value)
         })
+        |> list.take(11)
       #(value, filtered, -1)
     }
+    // I think better scrolling would need to take into account up or down direction
     Scrolling(cleave, _suggestions) -> {
       let index = list.length(cleave.0)
-      let filtered = listx.gather_around(cleave.0, cleave.1, cleave.2)
-      #({ cleave.1 }.0, filtered, index)
+      let pre = list.take(cleave.0, 5)
+      let filtered =
+        listx.gather_around(
+          pre,
+          cleave.1,
+          list.take(cleave.2, 10 - list.length(pre)),
+        )
+      #({ cleave.1 }.0, filtered, index - list.length(list.drop(cleave.0, 5)))
     }
   }
   h.form([event.on_submit(on_submit(picker, dispatch))], [
-    h.div([a.class("w-full p-2")], []),
+    // h.div([a.class("w-full p-2")], []),
     h.input([
       a.class(
-        "block w-full bg-transparent border-l-8 border-green-700 focus:border-green-300 px-2 py-2 outline-none",
+        "block w-full bg-transparent border-l-8 border-gray-700 focus:border-gray-300 p-1 outline-none",
       ),
       a.id("focus-input"),
       a.value(filter),
@@ -56,20 +64,19 @@ pub fn render(picker, dispatch) {
       event.on_keydown(on_keydown(_, picker, dispatch)),
       event.on_input(on_input(_, picker, dispatch)),
     ]),
-    h.hr([a.class("mx-40 my-3 border-green-700")]),
+    h.hr([a.class("mx-40 my-1 border-gray-700")]),
+    // event.on_click(Do(apply)),
     ..list.index_map(suggestions, fn(line, i) {
       let #(name, detail) = line
       h.div(
         [
-          a.class("px-4 py-2 flex"),
+          a.class("px-3 py-1 flex"),
           a.classes([#("bg-gray-800 text-white", i == index)]),
         ],
-        // event.on_click(Do(apply)),
         [
-          h.span([a.class("flex-grow")], [text(name)]),
-          h.span([a.class("pl-2 whitespace-nowrap overflow-hidden")], [
-            text(detail),
-          ]),
+          h.span([a.class("font-bold")], [text(name)]),
+          h.span([a.class("flex-grow")], [text(": ")]),
+          h.span([a.class("pl-2 whitespace-nowrap truncate")], [text(detail)]),
         ],
       )
     })
