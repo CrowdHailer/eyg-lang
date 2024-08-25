@@ -159,7 +159,7 @@ fn rewrite_row(required, type_, level, bindings, check) {
         // catch infinite loop
         t.Var(j) if i == j -> {
           io.debug("same tails")
-          Error(error.TypeMismatch(t.Var(i), t.Var(j)))
+          Error(error.SameTail(t.Var(i), t.Var(j)))
         }
         _ -> {
           // Not sure why this is different to effects

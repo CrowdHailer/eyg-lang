@@ -3,6 +3,7 @@ import gleam/dynamic
 import gleam/io
 import gleam/list
 import gleam/listx
+import gleam/option.{None}
 
 pub type Node(m) =
   #(Expression(m), m)
@@ -183,6 +184,32 @@ fn do_list_builtins(exp, found) {
   }
 }
 
+pub fn list_references(exp) {
+  do_list_references(exp, [])
+}
+
+// do later node first in Let/Call statements so no need to reverse
+fn do_list_references(exp, found) {
+  let #(exp, _meta) = exp
+  case exp {
+    Reference(identifier) ->
+      case list.contains(found, identifier) {
+        True -> found
+        False -> [identifier, ..found]
+      }
+    Let(_label, value, then) -> {
+      let found = do_list_references(then, found)
+      do_list_references(value, found)
+    }
+    Lambda(_label, body) -> do_list_references(body, found)
+    Apply(func, arg) -> {
+      let found = do_list_references(arg, found)
+      do_list_references(func, found)
+    }
+    _ -> found
+  }
+}
+
 pub fn free_variables(exp) {
   do_free_variables(exp, [], [])
 }
@@ -245,4 +272,41 @@ pub fn substitute_for_references(exp, subs) {
     _ -> exp
   }
   #(exp, meta)
+}
+
+pub fn from_block(assigns, tail) {
+  list.fold(assigns, tail, fn(acc, assign) {
+    let #(label, value, meta) = assign
+    #(Let(label, value, acc), meta)
+  })
+}
+
+pub fn do_gather_snippets(node, comments, assigns, acc) {
+  let #(exp, meta) = node
+  case exp, assigns {
+    // if assigns is empty keep adding comments
+    Let("_", #(Str(comment), _), then), [] ->
+      do_gather_snippets(then, [comment, ..comments], assigns, acc)
+    // if assignes is not empty start new block
+    Let("_", #(Str(new), _), then), a -> {
+      let comments = list.reverse(comments)
+      let assigns = list.reverse(assigns)
+      // comments are context
+      let acc = [#(comments, assigns), ..acc]
+      do_gather_snippets(then, [new], [], acc)
+    }
+    Let(label, value, then), _ -> {
+      let assigns = [#(label, value, meta), ..assigns]
+      do_gather_snippets(then, comments, assigns, acc)
+    }
+    tail, _ -> {
+      io.debug(tail)
+      [#(comments, assigns), ..acc]
+    }
+  }
+}
+
+// returnes reversed assignments
+pub fn gather_snippets(source) {
+  do_gather_snippets(source, [], [], [])
 }

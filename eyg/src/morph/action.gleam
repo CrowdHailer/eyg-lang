@@ -1,4 +1,5 @@
 import gleam/list
+import gleam/listx
 import gleam/option.{None, Some}
 import gleam/result.{try}
 import morph/analysis
@@ -13,7 +14,12 @@ pub fn insert_variable(source, context) {
     _ -> Error(Nil)
   })
 
-  let vars = analysis.scope_vars(source, context)
+  let vars =
+    analysis.scope_vars(source, context)
+    |> listx.key_unique
+    |> listx.key_reject("_")
+    |> listx.key_reject("$")
+
   let rebuild = fn(var) { #(p.Exp(e.Variable(var)), zoom) }
   Ok(#(filter, vars, rebuild))
 }
@@ -169,6 +175,18 @@ pub fn make_case(projection, context) {
         }),
       )
     }
+    #(p.Match(top, label, branch, pre, post, otherwise), zoom), _ -> {
+      Ok(
+        Choose("", [], fn(new) {
+          let zoom = [
+            p.Body([e.Bind("_")]),
+            p.CaseMatch(top, new, [#(label, branch), ..pre], post, otherwise),
+            ..zoom
+          ]
+          #(p.Exp(e.Vacant("")), zoom)
+        }),
+      )
+    }
     _, _ -> Error(Nil)
   }
 }
@@ -198,13 +216,32 @@ pub fn make_open_case(projection, context) {
   }
 }
 
-pub fn perform(source, context) {
-  let effects = analysis.effect_fields(source, context)
+pub fn perform(source) {
   let #(focus, zoom) = source
   case focus {
     p.Exp(lift) -> {
       let rebuild = fn(label) {
         let zoom = [p.CallArg(e.Perform(label), [], []), ..zoom]
+        #(p.Exp(lift), zoom)
+      }
+      Ok(#("", rebuild))
+    }
+    _ -> Error(Nil)
+  }
+}
+
+pub fn handle(source, _context) {
+  // TODO should be the type from the function in the arg
+  let effects = []
+  let #(focus, zoom) = source
+  case focus {
+    p.Exp(lift) -> {
+      let rebuild = fn(label) {
+        let zoom = [
+          p.Body([e.Bind("value"), e.Bind("resume")]),
+          p.CallArg(e.Deep(label), [], [e.Function([e.Bind("_")], e.Vacant(""))]),
+          ..zoom
+        ]
         #(p.Exp(lift), zoom)
       }
       Ok(#("", effects, rebuild))
@@ -221,6 +258,19 @@ pub fn insert_builtin(projection, context: analysis.Context) {
         _ -> ""
       }
       Ok(#(filter, context.builtins, fn(id) { #(p.Exp(e.Builtin(id)), zoom) }))
+    }
+    _ -> Error(Nil)
+  }
+}
+
+pub fn insert_reference(projection) {
+  case projection {
+    #(p.Exp(exp), zoom) -> {
+      let current = case exp {
+        e.Reference(id) -> id
+        _ -> ""
+      }
+      Ok(#(current, fn(id) { #(p.Exp(e.Reference(id)), zoom) }))
     }
     _ -> Error(Nil)
   }

@@ -1,51 +1,76 @@
-import drafting/state as buffer
 import drafting/view/page
 import drafting/view/picker
 import eyg/analysis/type_/binding/debug
-import gleam/int
+import eyg/analysis/type_/binding/error
+import eyg/shell/buffer
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import gleam/stringx
 import lustre/attribute as a
-import lustre/element.{text}
+import lustre/element.{none, text}
 import lustre/element/html as h
 import lustre/event
 import morph/analysis
 import morph/lustre/render
+import morph/projection as p
 import plinth/javascript/console
 import spotless/state
 import spotless/view/output
 
-pub fn render(app) {
-  let state.State(previous, _env, context, current, executing) = app
+pub fn do_render(
+  previous,
+  context,
+  current,
+  executing,
+  examples,
+  // These message arguments not needed if we have better components but interrupt currently is mixed in with buffer messages
+  buffer_message: fn(buffer.Message) -> a,
+  interrupt_message: fn() -> a,
+  load_message: fn(p.Projection) -> a,
+) -> element.Element(a) {
   // containter for relative positioning
-  h.div(
-    [a.class("vstack bg-gray-100 font-mono")],
-    list.map(list.reverse(previous), fn(p) {
-      let #(value, prog) = p
-      h.div([a.class("w-full max-w-3xl mt-2 bg-white shadow-xl rounded")], [
-        h.div([a.class("px-3")], render.statements(prog)),
-        h.div([a.class("px-3 border-t")], case value {
-          Some(value) -> [output.render(value)]
-          None -> []
-        }),
-      ])
-    })
+  h.div([a.class("hstack bg-gray-100 font-mono p-6 gap-6")], [
+    h.div([a.class("vstack flex-grow max-w-4xl")], [
+      h.header([], [
+        h.h1([a.class("text-2xl")], [text("EYG shell")]),
+        h.h1([a.class("font-bold")], [text("automate anything")]),
+      ]),
+      ..list.map(list.reverse(previous), fn(p) {
+        let #(value, prog) = p
+        h.div(
+          [a.class("w-full max-w-4xl mt-2 py-1 bg-white shadow-xl rounded")],
+          [
+            h.div(
+              [a.class("px-3 whitespace-nowrap overflow-auto")],
+              render.statements(prog),
+            ),
+            case value {
+              Some(value) ->
+                h.div([a.class("mx-3 pt-1 border-t max-h-60 overflow-auto")], [
+                  output.render(value),
+                ])
+              None -> none()
+            },
+          ],
+        )
+      })
       |> list.append([
         h.div(
           [
             a.class(
-              "w-full max-w-3xl mt-2 bg-white shadow-xl rounded overflow-hidden",
+              "w-full max-w-4xl mt-2 bg-white shadow-xl rounded overflow-hidden",
             ),
           ],
           [
             // Cant paste to input label
             h.div(
               [
-                a.class("px-3 outline-none"),
+                a.class(
+                  "px-3 py-1 outline-none whitespace-nowrap overflow-auto",
+                ),
                 a.attribute("tabindex", "0"),
-                event.on_keydown(state.KeyDown),
+                event.on_keydown(buffer.KeyDown),
                 // content editable has cursor moving separatly to highlighted and focused node
                 // a.attribute("contenteditable", ""),
                 event.on("paste", fn(event) {
@@ -60,7 +85,8 @@ pub fn render(app) {
                 a.id("code"),
               ],
               [render.projection(current, False)],
-            ),
+            )
+              |> element.map(buffer_message),
             ..case executing {
               state.Editing(buffer.Command(None)) -> [
                 h.div([a.class("w-full orange-gradient text-white")], [
@@ -69,15 +95,21 @@ pub fn render(app) {
                     analysis.type_errors(analysis.analyse(current, context)),
                     fn(e) {
                       let #(path, reason) = e
-                      // analysis reverses the paths to correct order
-                      // let path = list.reverse(path)
-                      h.div([a.class("px-3")], [
-                        h.a([event.on_click(state.JumpTo(path))], [
-                          text(page.path_to_string(path)),
-                        ]),
-                        text(" "),
-                        text(reason),
-                      ])
+                      case reason {
+                        error.SameTail(_, _) -> {
+                          io.debug("error i still dont understand")
+                          element.none()
+                        }
+                        _ ->
+                          h.div([a.class("px-3")], [
+                            h.a([event.on_click(buffer.JumpTo(path))], [
+                              text(page.path_to_string(path)),
+                            ]),
+                            text(" "),
+                            text(debug.reason(reason)),
+                          ])
+                          |> element.map(buffer_message)
+                      }
                     },
                   )
                 ]),
@@ -85,19 +117,22 @@ pub fn render(app) {
               state.Editing(buffer.EditInteger(value, _)) ->
                 overlay([
                   page.integer_input(value)
-                  |> element.map(state.Buffer),
+                  |> element.map(buffer_message),
                 ])
               state.Editing(buffer.EditText(value, _)) ->
                 overlay([
                   page.string_input(value)
-                  |> element.map(state.Buffer),
+                  |> element.map(buffer_message),
                 ])
               state.Editing(buffer.Pick(picker, _)) ->
-                overlay([picker.render(picker, state.UpdatePicker)])
+                overlay([
+                  picker.render(picker, buffer.UpdatePicker)
+                  |> element.map(buffer_message),
+                ])
               state.Running -> [
                 h.div([a.class("w-full green-gradient px-3 flex")], [
                   h.span([a.class("flex-grow")], [text("running ...")]),
-                  h.button([event.on_click(state.Interrupt)], [
+                  h.button([event.on_click(interrupt_message())], [
                     text("Interrupt"),
                   ]),
                 ]),
@@ -115,13 +150,52 @@ pub fn render(app) {
             }
           ],
         ),
-        h.div([a.class("truncate max-w-3xl w-full text-right px-3")], [
-          text(case analysis.type_at(current, context) {
-            Ok(t) -> debug.render_type(t)
-            Error(_) -> "no type info"
-          }),
-        ]),
-      ]),
+        case p.blank(current) {
+          True ->
+            h.div([a.class("max-w-4xl w-full px-3 mt-2")], [
+              h.div([a.class("font-bold")], [text("Try:")]),
+              h.ul(
+                [a.class("leading-snug list-disc list-inside text-gray-500")],
+                list.map(examples, fn(example) {
+                  let #(source, description) = example
+                  h.li([a.class(""), event.on_click(load_message(source))], [
+                    text(description),
+                  ])
+                }),
+              ),
+            ])
+          False ->
+            h.div([a.class("truncate max-w-4xl w-full text-right px-3")], [
+              text(case analysis.type_at(current, context) {
+                Ok(t) -> debug.mono(t)
+                Error(_) -> "no type info"
+              }),
+            ])
+        },
+      ])
+    ]),
+    h.div([a.class("border bg-white rounded p-2 shadow-xl")], [
+      h.h1([a.class("text-xl font-bold")], [text("commands")]),
+      page.key_references(),
+    ]),
+  ])
+}
+
+pub fn render(app) {
+  let state.State(previous, _env, context, current, executing) = app
+  do_render(
+    previous,
+    context,
+    current,
+    executing,
+    [
+      #(state.weather_example(), "get the weather at your location"),
+      #(state.netliy_sites_example(), "list all of my sites on Netlify"),
+      #(state.wordcount_example(), "count all the words in a file"),
+    ],
+    state.Buffer,
+    fn() { state.Interrupt },
+    state.Loaded,
   )
 }
 
