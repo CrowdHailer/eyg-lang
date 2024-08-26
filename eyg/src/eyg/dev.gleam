@@ -167,7 +167,6 @@ fn build_intro(preview) {
   // let seed = list.map()
 
   // needs to use the cli or CI for functions
-  use uploader <- t.do(t.read("src/intro/edge-functions/uploader.ts"))
 
   t.done(
     [
@@ -176,7 +175,6 @@ fn build_intro(preview) {
       #("/packages/index.html", index),
       #("/packages/index.js", <<script:utf8>>),
       #("/packages/index.css", style),
-      #("/edge-functions/uploader.ts", uploader),
       // 
       #("/guide/" <> "intro" <> "/index.html", index),
       #("/references/" <> std_hash <> ".json", stdlib),

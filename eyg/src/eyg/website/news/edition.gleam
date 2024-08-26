@@ -127,9 +127,9 @@ fn footer(edition_url) {
 }
 
 pub fn render(post, index) {
-  let Edition(date, title, raw) = post
+  let Edition(_date, title, raw) = post
   let document = jot.parse(raw)
-  let jot.Document(content, references) = document
+  let jot.Document(content, _references) = document
   let sections =
     list.map([jot.Heading(dict.new(), 1, [jot.Text(title)]), ..content], block)
   let edition_url = "https://eyg.run/news/editions/" <> int.to_string(index)
@@ -193,7 +193,7 @@ fn block(container) {
     jot.Heading(_attributes, _level, _content) ->
       panic as "only h1,h2,h3 are supported"
 
-    jot.Codeblock(attributes, language, content) ->
+    jot.Codeblock(_attributes, _language, content) ->
       h.pre(
         [
           a.style([
@@ -244,7 +244,7 @@ fn inline(content) {
             a.style([#("text-decoration", "underline")]),
             {
               let assert jot.Url(url) = destination
-              a.src(url)
+              a.href(url)
             },
           ],
           inline(content),

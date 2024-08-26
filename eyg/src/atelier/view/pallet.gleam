@@ -3,7 +3,6 @@ import atelier/app.{SelectNode}
 import atelier/view/type_
 import eyg/analysis/jm/type_ as t
 import gleam/dict
-import gleam/dynamic
 import gleam/int
 import gleam/io
 import gleam/list
