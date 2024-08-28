@@ -5,7 +5,6 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import old_plinth/browser/document as old_document
 import plinth/browser/document
 import plinth/browser/element
 
