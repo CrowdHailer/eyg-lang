@@ -16,7 +16,7 @@ const replace_string = "!CONTENT!"
 
 pub fn build() {
   use layout <- t.do(t.read("layout2.css"))
-  let layout = #("/assets/layout.css", layout)
+  let layout = #(utils.layout_path, layout)
   use pea <- t.do(t.read("src/eyg/website/news/pea.webp"))
   let pea = #("/assets/pea.webp", pea)
   use brocolli <- t.do(t.read("src/eyg/website/news/brocolli.webp"))
@@ -67,14 +67,7 @@ fn web_editions(editions, layout) {
           ]),
           utils.css(layout),
           h.link([a.rel("shortcut icon"), a.href("/assets/pea.webp")]),
-          h.script(
-            [
-              a.attribute("defer", ""),
-              a.attribute("data-domain", "eyg.run"),
-              a.src("https://plausible.io/js/script.js"),
-            ],
-            "",
-          ),
+          utils.plausible("eyg.run"),
         ]),
         h.body(
           [

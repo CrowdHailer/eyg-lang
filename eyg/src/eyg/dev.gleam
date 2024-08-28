@@ -1,6 +1,7 @@
 import eyg/package
 import eyg/sync/cid
 import eyg/sync/sync
+import eyg/website/home
 import eyg/website/news
 import eygir/decode
 import eygir/encode
@@ -196,6 +197,9 @@ pub fn preview(args) {
     }
     ["news"] -> {
       news.build()
+    }
+    ["home"] -> {
+      home.build()
     }
     _ -> {
       use drafting <- t.do(build_drafting())
