@@ -1,3 +1,5 @@
+import drafting/state
+import drafting/view/page
 import eyg/website/utils
 import eygir/decode
 import eygir/encode
@@ -6,6 +8,8 @@ import gleam/bit_array
 import gleam/io
 import gleam/javascript/array
 import gleam/list
+import gleam/string
+import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
@@ -68,21 +72,47 @@ fn start_editor(target) {
     |> decode.from_json
   case source {
     Ok(source) -> {
-      render.expression(editable.from_expression(source))
-      |> frame.to_fat_line
-      |> element.to_string()
-      // |> plinth_element.set_inner_text(target, _)
-      |> plinth_element.insert_adjacent_html(target, plinth_element.AfterEnd, _)
+      let assert Ok(element) =
+        render.expression(editable.from_expression(source))
+        |> frame.to_fat_line
+        |> element.to_string()
+        |> string.append("<div id=\"a\">foii</div>")
+        // |> plinth_element.set_inner_text(target, _)
+        |> plinth_element.insert_adjacent_html(
+          target,
+          plinth_element.AfterEnd,
+          _,
+        )
       // todo as "I need a ref to start the app"
+      io.debug(element)
+      let app = lustre.application(state.init, state.update, page.render)
+      lustre.start(app, "#a", Nil)
     }
-    Error(_) ->
+    Error(_) -> {
       plinth_element.insert_adjacent_html(
         target,
         plinth_element.AfterEnd,
         "bad content",
       )
+      todo
+    }
   }
 }
+
+fn update(state, mesasge) {
+  state
+}
+
+fn render(state) {
+  element.text("hello lustre")
+}
+
+// @external(javascript, "../../../../lustre/client-runtime.ffi.mjs", "start")
+// fn start(
+//   _app: lustre.App(flags, model, msg),
+//   _element: plinth_element.Element,
+//   _flags: flags,
+// ) -> Result(fn(lustre.Action(msg, lustre.ClientSpa)) -> Nil, lustre.Error)
 
 pub fn example(source) {
   h.script(
