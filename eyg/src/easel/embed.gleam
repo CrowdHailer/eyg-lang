@@ -17,6 +17,7 @@ import eygir/expression as e
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/fetch
 import gleam/http
 import gleam/http/request
@@ -102,7 +103,7 @@ fn do_infer(source, cache) {
 
 fn nearest_click_handler(event) {
   let target = event.target(event)
-  let target = dynamic.unsafe_coerce(target)
+  let target = dynamicx.unsafe_coerce(target)
   case element.closest(target, "[data-click]") {
     Ok(element) -> {
       // Because the closest element is chosen to have data-click this get must return ok

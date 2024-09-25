@@ -1,5 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
+import gleam/dynamicx
 import gleam/list
 import gleam/result
 
@@ -76,7 +77,7 @@ pub fn not(rule, k) {
 pub fn transform(term: Term(a), f: fn(a) -> b, k) {
   fn(state: State) {
     case walk(dynamify(term), state.substitutions) {
-      Constant(x) -> k(Constant(f(dynamic.unsafe_coerce(x))))(state)
+      Constant(x) -> k(Constant(f(dynamicx.unsafe_coerce(x))))(state)
       _ -> panic("should have resolved")
     }
   }
@@ -85,11 +86,11 @@ pub fn transform(term: Term(a), f: fn(a) -> b, k) {
 fn resolve(term: Term(a), state: State) -> Result(a, Nil) {
   case
     walk(
-      dynamic.unsafe_coerce(dynamic.from(term)),
-      dynamic.unsafe_coerce(dynamic.from(state.substitutions)),
+      dynamicx.unsafe_coerce(dynamic.from(term)),
+      dynamicx.unsafe_coerce(dynamic.from(state.substitutions)),
     )
   {
-    Constant(value) -> Ok(dynamic.unsafe_coerce(value))
+    Constant(value) -> Ok(dynamicx.unsafe_coerce(value))
     Variable(_) -> Error(Nil)
   }
 }

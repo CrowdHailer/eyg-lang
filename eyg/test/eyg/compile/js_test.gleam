@@ -2,6 +2,7 @@ import eyg/compile
 import eyg/parse
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/json
 import gleam/pair
 import gleeunit/should
@@ -301,7 +302,7 @@ int_add(1)(2)",
       "Ok",
       json.object([
         #("head", json.int(1)),
-        #("tail", dynamic.unsafe_coerce(dynamic.from(#(2, #(3, #()))))),
+        #("tail", dynamicx.unsafe_coerce(dynamic.from(#(2, #(3, #()))))),
       ]),
     ),
   )

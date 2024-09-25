@@ -1,5 +1,6 @@
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/json
 import gleam/list
 import gleam_community/codec
@@ -34,7 +35,7 @@ pub fn run(self: Worker) {
   )
 
   worker.on_message(self, fn(data) {
-    let data = dynamic.unsafe_coerce(dynamic.from(data))
+    let data = dynamicx.unsafe_coerce(dynamic.from(data))
     case codec.decode_string(data, serialize.query()) {
       Ok(serialize.Query(from, patterns)) -> {
         let result = query.run(from, patterns, db)

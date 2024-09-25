@@ -12,6 +12,7 @@ import eygir/annotated as a
 import eygir/expression as e
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
@@ -92,7 +93,7 @@ fn execute(exp, env, values) {
     istate.Env(
       ..stdlib.env()
       |> dynamic.from()
-      |> dynamic.unsafe_coerce(),
+      |> dynamicx.unsafe_coerce(),
       references: values,
       scope: env,
     )

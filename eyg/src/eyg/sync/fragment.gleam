@@ -7,6 +7,7 @@ import eyg/runtime/value as v
 import eygir/annotated as a
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/list
 import harness/stdlib
 
@@ -54,7 +55,7 @@ pub fn empty_env(references) -> istate.Env(Path) {
   istate.Env(
     ..stdlib.env()
     |> dynamic.from()
-    |> dynamic.unsafe_coerce(),
+    |> dynamicx.unsafe_coerce(),
     references: references,
   )
 }

@@ -83,7 +83,7 @@ fn render_inference(s) {
               "absolute left-0 right-0 p-2 h-full bg-transparent text-mono m-0",
             ),
             // event.on("select", fn(e) {
-            //   let e = dynamic.unsafe_coerce(e)
+            //   let e = dynamicx.unsafe_coerce(e)
             //   io.debug(evt.target(e))
             //   todo as "select"
             // }),

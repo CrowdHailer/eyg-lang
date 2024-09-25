@@ -7,6 +7,7 @@ import eyg/sync/sync
 import eygir/annotated
 import eygir/decode
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/int
 import gleam/io
 import gleam/javascript/array
@@ -40,7 +41,7 @@ fn handle_drop(event) {
   event.prevent_default(event)
   event.stop_propagation(event)
   let files =
-    drag.data_transfer(dynamic.unsafe_coerce(event))
+    drag.data_transfer(dynamicx.unsafe_coerce(event))
     |> drag.files
     |> array.to_list()
   case files {

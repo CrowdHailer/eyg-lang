@@ -12,6 +12,7 @@ import eyg/text/highlight
 import eyg/text/text
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/int
 import gleam/io
 import gleam/list
@@ -521,9 +522,9 @@ fn text_input(code, on_update, error_spans) {
           }),
           e.on("scroll", fn(event) {
             let target =
-              event.target(dynamic.unsafe_coerce(dynamic.from(event)))
+              event.target(dynamicx.unsafe_coerce(dynamic.from(event)))
             window.request_animation_frame(fn(_) {
-              let target = dynamic.unsafe_coerce(target)
+              let target = dynamicx.unsafe_coerce(target)
               let scroll_top = element.scroll_top(target)
               let scroll_left = element.scroll_left(target)
               let assert Ok(pre) = document.query_selector("#" <> pre_id)

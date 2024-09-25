@@ -5,6 +5,7 @@ import eyg/shell/state
 import eyg/sync/sync
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
@@ -60,7 +61,7 @@ pub fn render(state) {
       builtins: j.builtins(),
     )
   page.do_render(
-    dynamic.unsafe_coerce(dynamic.from(previous)),
+    dynamicx.unsafe_coerce(dynamic.from(previous)),
     context,
     state.buffer.0,
     executing,

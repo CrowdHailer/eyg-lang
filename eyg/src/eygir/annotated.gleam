@@ -1,5 +1,6 @@
 import eygir/expression as e
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/io
 import gleam/list
 import gleam/listx
@@ -153,7 +154,7 @@ pub fn map_annotation(
       #(Let(label, value, then), f(meta))
     }
     primitive -> {
-      #(dynamic.unsafe_coerce(dynamic.from(primitive)), f(meta))
+      #(dynamicx.unsafe_coerce(dynamic.from(primitive)), f(meta))
     }
   }
 }

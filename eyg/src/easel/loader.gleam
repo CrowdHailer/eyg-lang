@@ -8,6 +8,7 @@ import eygir/annotated as e
 import eygir/decode
 import gleam/dict
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/int
 import gleam/io
 import gleam/javascript
@@ -123,7 +124,7 @@ fn applet(root) {
 
 fn nearest_click_handler(event) {
   let target = event.target(event)
-  let target = dynamic.unsafe_coerce(target)
+  let target = dynamicx.unsafe_coerce(target)
   case element.closest(target, "[data-click]") {
     Ok(element) -> {
       // Because the closest element is chosen to have data-click this get must return ok

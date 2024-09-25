@@ -1,11 +1,12 @@
 import eyg/runtime/interpreter/state as s
 import eyg/runtime/value as v
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/list
 import harness/stdlib
 
 pub fn execute(exp, h) {
-  let env = dynamic.unsafe_coerce(dynamic.from(stdlib.env()))
+  let env = dynamicx.unsafe_coerce(dynamic.from(stdlib.env()))
   loop(s.step(s.E(exp), env, s.Empty(h)), [])
 }
 

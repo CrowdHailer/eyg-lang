@@ -51,7 +51,7 @@ fn populate(db, facts) {
     [ast.Atom(relation, terms), ..rest] -> {
       use values <- result.then(list.try_map(terms, is_literal))
       let db =
-        dict.update(db, relation, fn(found) {
+        dict.upsert(db, relation, fn(found) {
           let previous = case found {
             None -> []
             Some(x) -> x
@@ -138,7 +138,7 @@ fn apply_rule(rule, db) {
 }
 
 fn push_rows(db, r, rows) {
-  dict.update(db, r, fn(previous) {
+  dict.upsert(db, r, fn(previous) {
     let previous = case previous {
       Some(p) -> p
       None -> []
@@ -191,7 +191,7 @@ pub fn step(initial, rules) {
   //         case values {
   //           Ok(values) ->
   //             Ok(
-  //               dict.update(db, head.relation, fn(previous) {
+  //               dict.upsert(db, head.relation, fn(previous) {
   //                 let previous = case previous {
   //                   None -> []
   //                   Some(x) -> x

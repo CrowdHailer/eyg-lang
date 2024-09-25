@@ -31,7 +31,7 @@ fn push(current, t) {
 
 fn index(triples, by) {
   list.fold(triples, dict.new(), fn(acc, t: Triple) {
-    dict.update(acc, by(t), push(_, t))
+    dict.upsert(acc, by(t), push(_, t))
   })
 }
 

@@ -6,8 +6,8 @@ description = "Abstract Syntax Tree tools"
 gleam = ">= 0.32.0"
 
 [dependencies]
-gleam_stdlib = "~> 0.20"
-gleam_javascript = "~> 0.8"
+gleam_stdlib = ">= 0.40.0 and < 1.0.0"
+gleam_javascript = ">= 0.11.0 and < 0.12.0"
 gleam_bitwise = "~> 1.2"
 lustre = "~> 4.0"
 gleam_json = ">= 1.0.0 and < 3.0.0"
@@ -17,8 +17,8 @@ plinth = ">= 0.4.9 and < 1.0.0"
 simplifile = "~> 1.0"
 gleam_http = "~> 3.5"
 gleam_community_codec = {path= "../../codec"}
-# midas = ">= 0.4.4 and < 1.0.0"
-midas = {path= "../../midas"}
+midas = ">= 0.4.7 and < 1.0.0"
+# midas = {path= "../../midas"}
 snag = ">= 0.3.0 and < 1.0.0"
 jot = ">= 1.0.1 and < 2.0.0"
 

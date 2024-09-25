@@ -6,6 +6,7 @@ import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eyg/shell/buffer
 import gleam/dynamic
+import gleam/dynamicx
 import gleam/io
 import gleam/javascript/promise
 import gleam/option.{type Option, None, Some}
@@ -80,17 +81,17 @@ pub fn update(state, message) {
           promise.map(
             r.await(r.execute(
               source,
-              dynamic.unsafe_coerce(dynamic.from(env)),
+              dynamicx.unsafe_coerce(dynamic.from(env)),
               capabilities.handlers(),
             )),
             fn(result) {
               let result = case result {
                 Ok(value) -> {
-                  let value = dynamic.unsafe_coerce(dynamic.from(value))
+                  let value = dynamicx.unsafe_coerce(dynamic.from(value))
                   Ok(Value(value))
                 }
                 Error(#(fail.UnhandledEffect("Prompt", prompt), _, env, k)) ->
-                  Ok(Env(dynamic.unsafe_coerce(dynamic.from(env))))
+                  Ok(Env(dynamicx.unsafe_coerce(dynamic.from(env))))
                 Error(#(reason, m, _, _)) -> {
                   io.debug(m)
                   Error(fail.reason_to_string(reason))
