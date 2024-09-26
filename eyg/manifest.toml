@@ -17,8 +17,9 @@ packages = [
   { name = "javascript_mutable_reference", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "javascript_mutable_reference", source = "hex", outer_checksum = "3EE953EE7FE4FAFD17C16F24184F4C832FE260D761753F28F20D4AC1DA080F03" },
   { name = "jot", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "jot", source = "hex", outer_checksum = "3FF0DFCF96716131FB78DEC8FBC0316BEF896E28119E0980F3EC185548CD5AF1" },
   { name = "lustre", version = "4.4.4", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib"], otp_app = "lustre", source = "hex", outer_checksum = "35A8597B3054AFAF734A54979B7C92D8AB43273B843717F854CF5A05CF2BC00E" },
-  { name = "midas", version = "0.4.7", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "B0B547EA5139E63B79B3CE3246098F9EA1162E2B96A7D4938E3EB8736FF3AE9E" },
-  { name = "midas_browser", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth"], source = "local", path = "../../mono-2024/midas_browser" },
+  { name = "midas", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "9998A1A75E545B3E4590B7CAD9EA0C3462CD7D5347B8DC2DFBADB5C42A42BD5A" },
+  { name = "midas_browser", version = "0.1.1", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth"], source = "local", path = "../../mono-2024/midas_browser" },
+  { name = "midas_sdk", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], source = "local", path = "../../mono-2024/midas_sdk" },
   { name = "plinth", version = "0.4.14", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "1954376A2E19735B251F73B33C5D119AEB838BD589475884710B224E402F1546" },
   { name = "simplifile", version = "1.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "1D5DFA3A2F9319EC85825F6ED88B8E449F381B0D55A62F5E61424E748E7DDEB0" },
   { name = "snag", version = "0.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "54D32E16E33655346AA3E66CBA7E191DE0A8793D2C05284E3EFB90AD2CE92BCC" },
@@ -32,13 +33,14 @@ gleam_fetch = { version = "~> 1.0" }
 gleam_http = { version = "~> 3.5" }
 gleam_javascript = { version = ">= 0.12.0 and < 1.0.0" }
 gleam_json = { version = ">= 1.0.0 and < 3.0.0" }
-gleam_stdlib = { version = ">= 0.40.0 and < 1.0.0" }
+gleam_stdlib = { version = ">= 0.34.0 and < 1.0.0" }
 gleeunit = { version = "~> 1.0" }
 javascript_mutable_reference = { version = ">= 1.0.0 and < 2.0.0" }
 jot = { version = ">= 1.0.1 and < 2.0.0" }
 lustre = { version = "~> 4.0" }
-midas = { version = ">= 0.4.7 and < 1.0.0" }
+midas = { version = ">= 1.0.0 and < 2.0.0" }
 midas_browser = { path = "../../mono-2024/midas_browser" }
+midas_sdk = { path = "../../mono-2024/midas_sdk" }
 plinth = { version = ">= 0.4.9 and < 1.0.0" }
 simplifile = { version = "~> 1.0" }
 snag = { version = ">= 0.3.0 and < 1.0.0" }
