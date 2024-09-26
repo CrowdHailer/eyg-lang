@@ -1,9 +1,9 @@
 // erlang doesn't have good yaml libs but using it would get me a shell to try it in.
 import gleam/dynamic.{type Dynamic}
-import gleam/javascript
 import gleam/javascript/array.{type Array}
 import gleam/list
 import gleam/result
+import javascript/mutable_reference as ref
 import magpie/store/in_memory.{type Triple, B, I, L, S}
 import plinth/node/fs
 
@@ -18,7 +18,7 @@ pub fn entries(object) {
 }
 
 pub fn read_files(files) {
-  let ref = javascript.make_reference(0)
+  let ref = ref.new(0)
   let assert Ok(read) =
     list.try_map(files, fn(f) {
       use source <- result.then(
@@ -33,14 +33,14 @@ pub fn read_files(files) {
 }
 
 pub fn read_string(raw) {
-  let ref = javascript.make_reference(0)
+  let ref = ref.new(0)
   use triples <- result.then(parse(raw, ref))
   Ok(in_memory.create_db(triples))
 }
 
 // maybe all public api's should be on lists,relations everywhere.
 pub fn parse_one(raw) {
-  let ref = javascript.make_reference(0)
+  let ref = ref.new(0)
 
   parse(raw, ref)
 }
@@ -51,7 +51,7 @@ fn parse(raw, ref) {
 }
 
 fn fresh(ref) {
-  javascript.update_reference(ref, fn(x) { x + 1 })
+  ref.update(ref, fn(x) { x + 1 })
 }
 
 fn cast(raw: Dynamic, ref) -> Result(List(Triple), _) {

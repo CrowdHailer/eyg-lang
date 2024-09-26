@@ -1,11 +1,9 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
-import gleam/io
 import gleam/javascript/promise
-import gleam/list
 import gleam/result
-import midas/browserx
+import midas/browser
 import midas/sdk/google
 import midas/sdk/google/gmail
 import midas/task
@@ -55,7 +53,7 @@ pub fn do(app, to, message) {
     use email <- task.do(google.userinfo(token))
     gmail.send(token, email, to, message)
   }
-  browserx.run(task)
+  browser.run(task)
 }
 
 fn result_to_eyg(result) {

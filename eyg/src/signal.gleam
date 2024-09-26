@@ -3,12 +3,12 @@ import eygir/decode
 import eygir/expression as e
 import gleam/int
 import gleam/io
-import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import javascript/mutable_reference as ref
 import old_plinth/browser/document as old_document
 import plinth/browser/document
 import plinth/browser/element
@@ -18,8 +18,8 @@ pub type Signal(a) =
   fn() -> a
 
 fn make(value) {
-  let ref = javascript.make_reference(value)
-  #(fn() { javascript.dereference(ref) }, javascript.set_reference(ref, _))
+  let ref = ref.new(value)
+  #(fn() { ref.get(ref) }, ref.set(ref, _))
 }
 
 // don't bother with map, just dot access is ok
@@ -47,14 +47,14 @@ fn component(create) {
 fn text(signal) {
   let text = document.create_element("span")
   let current = signal()
-  let value = javascript.make_reference(current)
+  let value = ref.new(current)
   let do_update = element.set_inner_text(text, _)
   let update = fn() {
     let latest = signal()
-    case latest == javascript.dereference(value) {
+    case latest == ref.get(value) {
       True -> Nil
       False -> {
-        javascript.set_reference(value, latest)
+        ref.set(value, latest)
         do_update(latest)
       }
     }
@@ -83,14 +83,14 @@ fn el(tag, attributes, children) {
 fn attribute(key, signal) {
   fn(element) {
     let current = signal()
-    let value = javascript.make_reference(current)
+    let value = ref.new(current)
     let do_update = element.set_attribute(element, key, _)
     let update = fn() {
       let latest = signal()
-      case latest == javascript.dereference(value) {
+      case latest == ref.get(value) {
         True -> Nil
         False -> {
-          javascript.set_reference(value, latest)
+          ref.set(value, latest)
           do_update(latest)
         }
       }
@@ -116,20 +116,20 @@ fn match(create) {
   let pin = document.create_element("span")
   let #(elements, try_update) = create()
 
-  let elements_ref = javascript.make_reference(elements)
-  let try_update_ref = javascript.make_reference(try_update)
+  let elements_ref = ref.new(elements)
+  let try_update_ref = ref.new(try_update)
   let update = fn() {
-    case javascript.dereference(try_update_ref)() {
+    case ref.get(try_update_ref)() {
       Ok(Nil) -> Nil
       Error(Nil) -> {
-        list.map(javascript.dereference(elements_ref), element.remove)
+        list.map(ref.get(elements_ref), element.remove)
         let #(elements, try_update) = create()
         list.fold(elements, pin, fn(acc, new) {
           element.insert_adjacent_element(acc, element.AfterEnd, new)
           new
         })
-        javascript.set_reference(elements_ref, elements)
-        javascript.set_reference(try_update_ref, try_update)
+        ref.set(elements_ref, elements)
+        ref.set(try_update_ref, try_update)
         Nil
       }
     }

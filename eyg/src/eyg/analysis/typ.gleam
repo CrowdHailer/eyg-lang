@@ -1,6 +1,6 @@
-import gleam/javascript
 import gleam/set
 import gleam/setx
+import javascript/mutable_reference as ref
 
 // This separation of kinds could be opened as a PR to the F-sharp project
 
@@ -159,5 +159,5 @@ pub fn handle(label, ref) {
 
 // copied from unification to not get circular ref
 pub fn fresh(ref) {
-  javascript.update_reference(ref, fn(x) { x + 1 })
+  ref.update(ref, fn(x) { x + 1 })
 }

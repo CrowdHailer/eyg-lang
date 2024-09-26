@@ -1,10 +1,10 @@
 import gleam/io
-import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import javascript/mutable_reference as ref
 import plinth/browser/document
 import plinth/browser/element
 
@@ -14,23 +14,21 @@ pub type Observable(a) =
   #(a, fn(fn(a) -> Nil) -> Nil)
 
 pub fn make(initial: a) -> #(Observable(a), fn(a) -> Nil) {
-  let value = javascript.make_reference(initial)
-  let observers = javascript.make_reference([])
+  let value = ref.new(initial)
+  let observers = ref.new([])
 
   let observable = #(initial, fn(sub) {
-    javascript.update_reference(observers, list.prepend(_, sub))
+    ref.update(observers, list.prepend(_, sub))
     Nil
   })
   // bit weird that we don't update the value in tuple but we can't
   // observable only used to build subscriptions
   let set = fn(new) {
-    case new == javascript.dereference(value) {
+    case new == ref.get(value) {
       True -> Nil
       False -> {
-        javascript.set_reference(value, new)
-        list.map(javascript.dereference(observers), fn(observer) {
-          observer(new)
-        })
+        ref.set(value, new)
+        list.map(ref.get(observers), fn(observer) { observer(new) })
         Nil
       }
     }
@@ -42,11 +40,11 @@ pub fn make(initial: a) -> #(Observable(a), fn(a) -> Nil) {
 pub fn map(observable: Observable(a), m: fn(a) -> b) -> Observable(b) {
   let #(outer, observe) = observable
   let initial = m(outer)
-  let value = javascript.make_reference(initial)
+  let value = ref.new(initial)
   let observe = fn(observer) {
     observe(fn(outer) {
       let new = m(outer)
-      case new == javascript.dereference(value) {
+      case new == ref.get(value) {
         True -> Nil
         False -> observer(new)
       }
@@ -125,22 +123,22 @@ pub fn option(
     }
   }
   let #(elements, try_update) = create(observable.0)
-  let elements_ref = javascript.make_reference(elements)
-  let try_update_ref = javascript.make_reference(try_update)
+  let elements_ref = ref.new(elements)
+  let try_update_ref = ref.new(try_update)
 
   observable.1(fn(new) {
     io.debug(#("nnnp", new))
-    case javascript.dereference(try_update_ref)(new) {
+    case ref.get(try_update_ref)(new) {
       Ok(Nil) -> Nil
       Error(Nil) -> {
-        list.map(javascript.dereference(elements_ref), element.remove)
+        list.map(ref.get(elements_ref), element.remove)
         let #(elements, try_update) = create(new)
         list.fold(elements, pin, fn(acc, new) {
           element.insert_adjacent_element(acc, element.AfterEnd, new)
           new
         })
-        javascript.set_reference(elements_ref, elements)
-        javascript.set_reference(try_update_ref, try_update)
+        ref.set(elements_ref, elements)
+        ref.set(try_update_ref, try_update)
         Nil
       }
     }

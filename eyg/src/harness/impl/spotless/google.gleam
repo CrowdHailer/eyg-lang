@@ -4,7 +4,7 @@ import eyg/runtime/value as v
 import gleam/io
 import gleam/javascript/promise
 import gleam/result
-import midas/browserx
+import midas/browser
 import midas/sdk/google
 import snag
 
@@ -40,7 +40,7 @@ const scopes = [
 ]
 
 pub fn do(app) {
-  browserx.run(google.authenticate(app, scopes))
+  browser.run(google.authenticate(app, scopes))
 }
 
 fn result_to_eyg(result) {

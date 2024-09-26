@@ -4,7 +4,7 @@ import eyg/runtime/value as v
 import gleam/io
 import gleam/javascript/promise
 import gleam/result
-import midas/browserx
+import midas/browser
 import midas/sdk/netlify
 import snag
 
@@ -34,7 +34,7 @@ pub fn impl(app, lift) {
 }
 
 pub fn do(app) {
-  browserx.run(netlify.authenticate(app))
+  browser.run(netlify.authenticate(app))
 }
 
 fn result_to_eyg(result) {

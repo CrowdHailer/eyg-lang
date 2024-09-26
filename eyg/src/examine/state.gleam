@@ -15,6 +15,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import harness/effect as impl
+import javascript/mutable_reference as ref
 import lustre/effect
 import plinth/browser/document
 import plinth/browser/element
@@ -122,14 +123,14 @@ pub fn information(state) {
 }
 
 pub fn interpret(state) {
-  let ref = js.make_reference("")
+  let ref = ref.new("")
   let h =
     dict.from_list([
       #("Log", impl.debug_logger().2),
       #("Choose", impl.choose().2),
       #("Render", fn(v) {
         use content <- result.then(cast.as_string(v))
-        js.set_reference(ref, content)
+        ref.set(ref, content)
         Ok(v.unit)
       }),
     ])
@@ -146,7 +147,7 @@ pub fn interpret(state) {
         Error(#(reason, span, _env, _stack)) ->
           apply_span(output, span, Error(reason), [])
       }
-      Ok(#(output, js.dereference(ref)))
+      Ok(#(output, ref.get(ref)))
     }
     Error(reason) -> Error(reason)
   }

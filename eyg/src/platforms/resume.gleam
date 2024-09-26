@@ -4,15 +4,14 @@ import eyg/runtime/value as v
 import eygir/annotated as e
 import eygir/decode
 import gleam/dict
-import gleam/dynamic
 import gleam/dynamicx
-import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/map
 import gleam/list
 import gleam/result
 import gleam/string
 import harness/stdlib
+import javascript/mutable_reference as ref
 import plinth/browser/document
 import plinth/browser/element
 import plinth/browser/event
@@ -71,11 +70,11 @@ pub fn run() {
   states
   |> console.log
 
-  let ref = javascript.make_reference(states)
+  let ref = ref.new(states)
   document.add_event_listener("click", fn(event) {
-    let states = javascript.dereference(ref)
+    let states = ref.get(ref)
     let assert Ok(states) = handle_click(event, states)
-    javascript.set_reference(ref, states)
+    ref.set(ref, states)
     Nil
   })
   // case  {
@@ -88,7 +87,7 @@ pub fn run() {
   //     let env = stdlib.env()
   //     let rev = []
   //     let assert #(action, env) = r.resumable(source, env, None)
-  //     let ref = javascript.make_reference(action)
+  //     let ref = ref.new(action)
 
   //     document.add_event_listener(
   //       "click",
@@ -98,7 +97,7 @@ pub fn run() {
   //             case element.closest(target, "[r\\:container]") {
   //               Ok(container) -> {
   //                 let k = Some(state.Stack(r.CallWith(v.Str("0"), [], env), None))
-  //                 let c = javascript.dereference(ref)
+  //                 let c = ref.get(ref)
   //                 let #(answer, _) = r.loop_till(state.V(c), rev, env, k)
   //                 // console.log(answer)
   //                 let assert Ok(term) = answer
@@ -109,7 +108,7 @@ pub fn run() {
   //                     let assert Ok(v.Str(content)) =
   //                       r.field(return, "content")
   //                     let assert Ok(action) = r.field(return, "action")
-  //                     javascript.set_reference(ref, Ok(action))
+  //                     ref.set(ref, Ok(action))
   //                     element.set_inner_html(container, content)
   //                   }
   //                   _ -> {

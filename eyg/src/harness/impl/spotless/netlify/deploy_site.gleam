@@ -3,7 +3,7 @@ import eyg/runtime/cast
 import eyg/runtime/value as v
 import gleam/javascript/promise
 import gleam/result
-import midas/browserx
+import midas/browser
 import midas/sdk/netlify
 import midas/task
 import snag
@@ -51,7 +51,7 @@ pub fn do(app, site_id, files) {
     use token <- task.do(netlify.authenticate(app))
     netlify.deploy_site(token, site_id, files)
   }
-  browserx.run(task)
+  browser.run(task)
 }
 
 fn result_to_eyg(result) {

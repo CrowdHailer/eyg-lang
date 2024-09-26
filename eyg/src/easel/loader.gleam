@@ -7,17 +7,16 @@ import eyg/runtime/value as v
 import eygir/annotated as e
 import eygir/decode
 import gleam/dict
-import gleam/dynamic
 import gleam/dynamicx
 import gleam/int
 import gleam/io
-import gleam/javascript
 import gleam/javascript/array
 import gleam/list
 import gleam/listx
 import gleam/result
 import gleam/string
 import harness/stdlib
+import javascript/mutable_reference as ref
 import plinth/browser/document
 import plinth/browser/element
 import plinth/browser/event
@@ -61,20 +60,20 @@ fn applet(root) {
         // run func arg can be a thing
         // weird return wrapping for cast
         // stdlib only builtins used
-        let actions = javascript.make_reference([])
+        let actions = ref.new([])
         let handlers =
           dict.new()
           |> dict.insert("Update", fn(action) {
-            let saved = javascript.dereference(actions)
+            let saved = ref.get(actions)
             let id = int.to_string(list.length(saved))
             let saved = [action, ..saved]
-            javascript.set_reference(actions, saved)
+            ref.set(actions, saved)
             Ok(v.Str(id))
           })
           |> dict.insert("Log", console_log().2)
-        let state = javascript.make_reference(arg)
+        let state = ref.new(arg)
         let render = fn() {
-          let current = javascript.dereference(state)
+          let current = ref.get(state)
           let result = r.resume(func, [#(current, Nil)], env, handlers)
           let _ = case result {
             Ok(v.Str(page)) -> element.set_inner_html(root, page)
@@ -88,15 +87,15 @@ fn applet(root) {
         document.add_event_listener("click", fn(event) {
           case nearest_click_handler(event) {
             Ok(id) -> {
-              case listx.at(list.reverse(javascript.dereference(actions)), id) {
+              case listx.at(list.reverse(ref.get(actions)), id) {
                 Ok(code) -> {
                   // handle effects
-                  let current = javascript.dereference(state)
-                  // io.debug(javascript.dereference(actions))
+                  let current = ref.get(state)
+                  // io.debug(ref.get(actions))
                   let assert Ok(next) =
                     r.resume(code, [#(current, Nil)], env, dict.new())
-                  javascript.set_reference(state, next)
-                  javascript.set_reference(actions, [])
+                  ref.set(state, next)
+                  ref.set(actions, [])
                   render()
                   Nil
                 }

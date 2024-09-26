@@ -16,7 +16,6 @@ import eygir/encode
 import eygir/expression as e
 import gleam/bit_array
 import gleam/dict
-import gleam/dynamic
 import gleam/dynamicx
 import gleam/fetch
 import gleam/http
@@ -24,7 +23,6 @@ import gleam/http/request
 import gleam/http/response
 import gleam/int
 import gleam/io
-import gleam/javascript
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/list
@@ -36,6 +34,7 @@ import gleam/string
 import gleam/stringx
 import harness/effect
 import harness/stdlib
+import javascript/mutable_reference as ref
 import platforms/browser
 import plinth/browser/document
 import plinth/browser/element
@@ -177,12 +176,12 @@ pub fn handle_click(root, event) {
 
 pub fn start_easel_at(root, start, state) {
   render_page(root, start, state)
-  let ref = javascript.make_reference(state)
+  let ref = ref.new(state)
   case document.query_selector("pre") {
     Ok(pre) -> {
       element.add_event_listener(pre, "blur", fn(_) {
         io.debug("blurred")
-        javascript.update_reference(ref, fn(state) {
+        ref.update(ref, fn(state) {
           // updating the contenteditable node messes with cursor placing
           let state = blur(state)
           element.set_inner_html(pre, html(state))
@@ -209,7 +208,7 @@ pub fn start_easel_at(root, start, state) {
         use range <- result.then(selection.get_range_at(selection, 0))
         let start = start_index(range)
         let end = end_index(range)
-        javascript.update_reference(ref, fn(state) {
+        ref.update(ref, fn(state) {
           let state = update_selection(state, start, end)
           let rendered =
             print.print(
@@ -248,14 +247,14 @@ pub fn start_easel_at(root, start, state) {
     handle_input(
       event,
       fn(data, start, end) {
-        javascript.update_reference(ref, fn(state) {
+        ref.update(ref, fn(state) {
           // pass in updeate ref
           let #(state, start, actions) = insert_text(state, data, start, end)
           render_page(root, start, state)
           io.debug(actions)
           list.map(actions, fn(updater) {
             promise.map(updater, fn(updater) {
-              javascript.update_reference(ref, fn(state) {
+              ref.update(ref, fn(state) {
                 let state = updater(state)
                 io.debug("lots of update")
                 render_page(root, start, state)
@@ -268,7 +267,7 @@ pub fn start_easel_at(root, start, state) {
         Nil
       },
       fn(start) {
-        javascript.update_reference(ref, fn(state) {
+        ref.update(ref, fn(state) {
           let #(state, start) = insert_paragraph(start, state)
           render_page(root, start, state)
           state
@@ -283,7 +282,7 @@ pub fn start_easel_at(root, start, state) {
     case
       case event.key(event) {
         "Escape" -> {
-          javascript.update_reference(ref, fn(s) {
+          ref.update(ref, fn(s) {
             let s = escape(s)
             case document.query_selector("pre + *") {
               Ok(pallet_el) -> element.set_inner_html(pallet_el, pallet(s))

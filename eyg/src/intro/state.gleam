@@ -33,7 +33,7 @@ import harness/impl/browser/now
 import harness/impl/browser/visit
 import intro/content
 import lustre/effect
-import midas/browserx
+import midas/browser as m_browser
 import morph/analysis
 import morph/editable
 import morph/projection
@@ -209,7 +209,7 @@ fn sync(state: State, dispatch) {
       let #(group, name) = package
       let task = packages.fetch_remote(origin, group, name)
 
-      promise.map(browserx.run(task), fn(result) {
+      promise.map(m_browser.run(task), fn(result) {
         dispatch(LoadedPackage(package, result))
       })
       Nil

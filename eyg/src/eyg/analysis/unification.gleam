@@ -3,14 +3,14 @@ import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/substitutions as sub
 import eyg/analysis/typ as t
 import gleam/dict
-import gleam/javascript
 import gleam/list
 import gleam/result
 import gleam/set
+import javascript/mutable_reference as ref
 
 // Normal
 pub fn fresh(ref) {
-  javascript.update_reference(ref, fn(x) { x + 1 })
+  ref.update(ref, fn(x) { x + 1 })
 }
 
 pub fn generalise(env, typ) {

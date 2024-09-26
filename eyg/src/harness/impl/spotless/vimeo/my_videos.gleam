@@ -5,7 +5,7 @@ import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/result
-import midas/browserx
+import midas/browser
 import midas/sdk/vimeo
 import midas/task
 import snag
@@ -46,7 +46,7 @@ pub fn do(app) {
     use token <- task.do(vimeo.authenticate(app, []))
     vimeo.my_videos(token)
   }
-  browserx.run(task)
+  browser.run(task)
 }
 
 fn result_to_eyg(result) {

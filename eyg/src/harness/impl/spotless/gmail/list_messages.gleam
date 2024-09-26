@@ -4,7 +4,7 @@ import eyg/runtime/value as v
 import gleam/javascript/promise
 import gleam/list
 import gleam/result
-import midas/browserx
+import midas/browser
 import midas/sdk/google
 import midas/sdk/google/gmail
 import midas/task
@@ -55,7 +55,7 @@ pub fn do(app) {
     use user_id <- task.do(google.userinfo(token))
     gmail.list_messages(token, user_id)
   }
-  browserx.run(task)
+  browser.run(task)
 }
 
 fn result_to_eyg(result) {

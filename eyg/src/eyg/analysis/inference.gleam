@@ -7,11 +7,11 @@ import eygir/expression as e
 import gleam/dict.{type Dict}
 import gleam/dictx
 import gleam/io
-import gleam/javascript
 import gleam/list
 import gleam/result
 import gleam/string
 import harness/stdlib
+import javascript/mutable_reference as ref
 
 pub type Infered {
   // result could be separate map of errors
@@ -109,7 +109,7 @@ fn unify(t1, t2, ref, path) {
 // don't make too pretty here
 
 pub fn infer(env, exp, typ, eff) {
-  do_infer(env, exp, typ, eff, javascript.make_reference(0), [])
+  do_infer(env, exp, typ, eff, ref.new(0), [])
 }
 
 fn do_infer(env, exp, typ, eff, ref, path) {

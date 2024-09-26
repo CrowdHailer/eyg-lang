@@ -4,7 +4,7 @@ import gleam/javascript/promise
 import gleam/list
 import gleam/option.{Some}
 import gleam/uri
-import midas/browserx
+import midas/browser
 import plinth/browser/window
 
 pub fn get_origin() {
@@ -18,7 +18,7 @@ pub fn do_sync(tasks, message) {
   fn(d) {
     list.map(tasks, fn(t) {
       let #(ref, t) = t
-      use result <- promise.map(browserx.run(t))
+      use result <- promise.map(browser.run(t))
       d(message(ref, result))
     })
     Nil
