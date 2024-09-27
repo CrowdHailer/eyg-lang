@@ -13,18 +13,15 @@ lustre = "~> 4.0"
 gleam_json = ">= 1.0.0 and < 3.0.0"
 gleam_fetch = "~> 1.0"
 plinth = ">= 0.4.9 and < 1.0.0"
-# plinth = {path= "../../plinth"}
 simplifile = "~> 1.0"
 gleam_http = "~> 3.5"
 gleam_community_codec = {path= "../../codec"}
 midas = ">= 1.0.0 and < 2.0.0"
-# midas = {path= "../../midas"}
-midas_sdk = {path= "../../mono-2024/midas_sdk"}
-midas_browser = {path= "../../mono-2024/midas_browser"}
 snag = ">= 0.3.0 and < 1.0.0"
 jot = ">= 1.0.1 and < 2.0.0"
 javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
-
+midas_sdk = ">= 0.1.0 and < 1.0.0"
+midas_browser = ">= 0.1.1 and < 1.0.0"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"
