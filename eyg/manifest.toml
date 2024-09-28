@@ -5,7 +5,7 @@ packages = [
   { name = "conversation", version = "1.4.3", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "conversation", source = "hex", outer_checksum = "908B46F60444442785A495197D482558AD8B849C3714A38FAA1940358CC8CCCD" },
   { name = "filepath", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "EFB6FF65C98B2A16378ABC3EE2B14124168C0CE5201553DE652E2644DCFDB594" },
   { name = "gleam_bitwise", version = "1.3.1", build_tools = ["gleam"], requirements = [], otp_app = "gleam_bitwise", source = "hex", outer_checksum = "B36E1D3188D7F594C7FD4F43D0D2CE17561DE896202017548578B16FE1FE9EFC" },
-  { name = "gleam_community_codec", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], source = "local", path = "../../../codec" },
+  { name = "gleam_community_codec", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], source = "local", path = "../../codec" },
   { name = "gleam_erlang", version = "0.26.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_erlang", source = "hex", outer_checksum = "3DF72F95F4716883FA51396FB0C550ED3D55195B541568CAF09745984FD37AD1" },
   { name = "gleam_fetch", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "gleam_fetch", source = "hex", outer_checksum = "4AE60B21A9A664137A79B1BEB93F751CB27F1DDED4086CA00C0260F5FFACBD80" },
   { name = "gleam_http", version = "3.7.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_http", source = "hex", outer_checksum = "EA66440C2269F7CED0F6845E5BD0DB68095775D627FA709A841CA78A398D6D56" },
@@ -16,7 +16,7 @@ packages = [
   { name = "gleeunit", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "F7A7228925D3EE7D0813C922E062BFD6D7E9310F0BEE585D3A42F3307E3CFD13" },
   { name = "javascript_mutable_reference", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "javascript_mutable_reference", source = "hex", outer_checksum = "3EE953EE7FE4FAFD17C16F24184F4C832FE260D761753F28F20D4AC1DA080F03" },
   { name = "jot", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "jot", source = "hex", outer_checksum = "3FF0DFCF96716131FB78DEC8FBC0316BEF896E28119E0980F3EC185548CD5AF1" },
-  { name = "lustre", version = "4.4.4", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib"], otp_app = "lustre", source = "hex", outer_checksum = "35A8597B3054AFAF734A54979B7C92D8AB43273B843717F854CF5A05CF2BC00E" },
+  { name = "lustre", version = "4.5.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib"], otp_app = "lustre", source = "hex", outer_checksum = "15C0597E97FBC4D095B6DDFAB849740EB9062828D55A071990A957C6564ADEF3" },
   { name = "midas", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "9998A1A75E545B3E4590B7CAD9EA0C3462CD7D5347B8DC2DFBADB5C42A42BD5A" },
   { name = "midas_browser", version = "0.1.1", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth"], otp_app = "midas_browser", source = "hex", outer_checksum = "E432C8A5982A6D93F38C421E6B2027DBAC21279EEECC8941F16B1C5F12470841" },
   { name = "midas_sdk", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "B276EEBB929AC37F146A239D33ABB2ED59492128F2A84A3556C318A788C7AC3B" },
@@ -28,7 +28,7 @@ packages = [
 
 [requirements]
 gleam_bitwise = { version = "~> 1.2" }
-gleam_community_codec = { path = "../../../codec" }
+gleam_community_codec = { path = "../../codec" }
 gleam_fetch = { version = "~> 1.0" }
 gleam_http = { version = "~> 3.5" }
 gleam_javascript = { version = ">= 0.12.0 and < 1.0.0" }
