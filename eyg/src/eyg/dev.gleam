@@ -14,39 +14,147 @@ import gleam/listx
 import gleam/option.{None}
 import gleam/string
 import intro/content
+import lustre/attribute as a
+import lustre/element
+import lustre/element/html as h
 import midas/task as t
 
-// import intro/content
+const tailwind_2_2_11 = "https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
+
+fn doc(title, domain, head, body) {
+  h.html([a.attribute("lang", "en")], [
+    h.head([], list.append(common_head_tags(title, domain), head)),
+    h.body([], body),
+  ])
+}
+
+fn common_head_tags(title, domain) {
+  [
+    h.meta([a.attribute("charset", "UTF-8")]),
+    h.meta([
+      a.attribute("http-equiv", "X-UA-Compatible"),
+      a.attribute("content", "IE=edge"),
+    ]),
+    h.meta([a.attribute("viewport", "width=device-width, initial-scale=1.0")]),
+    h.title([], title),
+    h.script(
+      [
+        a.attribute("defer", ""),
+        a.attribute("data-domain", domain),
+        a.src("https://plausible.io/js/script.js"),
+      ],
+      "",
+    ),
+  ]
+}
+
+fn stylesheet(reference) {
+  h.link([a.rel("stylesheet"), a.href(reference)])
+}
+
+fn empty_lustre() {
+  h.div([a.id("app")], [])
+}
+
+fn app_script(src) {
+  h.script([a.attribute("defer", ""), a.attribute("async", ""), a.src(src)], "")
+}
+
+fn drafting_page() {
+  doc(
+    "Eyg - drafting",
+    "eyg.run",
+    [
+      stylesheet(tailwind_2_2_11),
+      stylesheet("/layout.css"),
+      stylesheet("/neo.css"),
+      app_script("/drafting.js"),
+    ],
+    [h.div([], [empty_lustre()])],
+  )
+  |> element.to_document_string()
+  |> bit_array.from_string()
+}
 
 fn build_drafting() {
   use script <- t.do(t.bundle("drafting/app", "run"))
   let files = [#("/drafting.js", <<script:utf8>>)]
-  use index <- t.do(t.read("src/drafting/index.html"))
-  t.done([#("/drafting/index.html", index), ..files])
+  t.done([#("/drafting/index.html", drafting_page()), ..files])
+}
+
+fn examine_page() {
+  doc(
+    "Eyg - examiner",
+    "eyg.run",
+    [
+      stylesheet(tailwind_2_2_11),
+      stylesheet("/layout.css"),
+      stylesheet("/neo.css"),
+      app_script("/examine.js"),
+    ],
+    [h.div([], [empty_lustre()])],
+  )
+  |> element.to_document_string()
+  |> bit_array.from_string()
 }
 
 fn build_examine() {
   use script <- t.do(t.bundle("examine/app", "run"))
   let files = [#("/examine.js", <<script:utf8>>)]
-  use index <- t.do(t.read("src/examine/index.html"))
-  t.done([#("/examine/index.html", index), ..files])
+  t.done([#("/examine/index.html", examine_page()), ..files])
+}
+
+fn spotless_page() {
+  doc(
+    "Spotless",
+    "eyg.run",
+    [
+      stylesheet(tailwind_2_2_11),
+      stylesheet("/packages/index.css"),
+      stylesheet("/neo.css"),
+      h.script([a.src("/vendor/zip.js")], ""),
+      app_script("/spotless.js"),
+    ],
+    [h.div([], [empty_lustre()])],
+  )
+  |> element.to_document_string()
+  |> bit_array.from_string()
 }
 
 fn build_spotless() {
   use script <- t.do(t.bundle("spotless/app", "run"))
   let files = [#("/spotless.js", <<script:utf8>>)]
-  use index <- t.do(t.read("src/spotless/index.html"))
   use prompt <- t.do(t.read("saved/prompt.json"))
 
-  t.done([#("/terminal/index.html", index), #("/prompt.json", prompt), ..files])
+  t.done([
+    #("/terminal/index.html", spotless_page()),
+    #("/prompt.json", prompt),
+    ..files
+  ])
+}
+
+fn shell_page() {
+  doc(
+    "Eyg - shell",
+    "eyg.run",
+    [
+      stylesheet(tailwind_2_2_11),
+      stylesheet("/packages/index.css"),
+      stylesheet("/neo.css"),
+      h.script([a.src("/vendor/zip.min.js")], ""),
+      app_script("/shell/index.js"),
+    ],
+    [h.div([], [empty_lustre()])],
+  )
+  |> element.to_document_string()
+  |> bit_array.from_string()
 }
 
 fn build_shell() {
   use script <- t.do(t.bundle("eyg/shell/app", "run"))
   let files = [#("/shell/index.js", <<script:utf8>>)]
-  use index <- t.do(t.read("src/eyg/shell/index.html"))
 
-  t.done([#("/shell/index.html", index), ..files])
+  t.done([#("/shell/index.html", shell_page()), ..files])
 }
 
 const redirects = "
@@ -69,13 +177,28 @@ fn cache_to_references_files(cache) {
   })
 }
 
+fn package_page() {
+  doc(
+    "Eyg - shell",
+    "eyg.run",
+    [
+      stylesheet(tailwind_2_2_11),
+      stylesheet("/packages/index.css"),
+      stylesheet("/neo.css"),
+      app_script("/packages/index.js"),
+    ],
+    [h.div([], [empty_lustre()])],
+  )
+  |> element.to_document_string()
+  |> bit_array.from_string()
+}
+
 // TODO remove an make remotes optional in sync
 const origin = sync.Origin(http.Https, "", None)
 
 fn build_intro(preview) {
   use script <- t.do(t.bundle("intro/intro", "run"))
 
-  use index <- t.do(t.read("src/intro/index.html"))
   use zip_src <- t.do(t.read("vendor/zip.min.js"))
   use style <- t.do(t.read("layout2.css"))
   // TODO remove stdlib soon should be caught be seed
@@ -96,7 +219,7 @@ fn build_intro(preview) {
         package.load_guide_from_content(content, sync.init(origin))
       let references = cache_to_references_files(cache)
 
-      let page = #("/packages/eyg/" <> name <> "/index.html", index)
+      let page = #("/packages/eyg/" <> name <> "/index.html", package_page())
       case preview {
         True -> [page, ..references]
         False -> references
@@ -150,7 +273,7 @@ fn build_intro(preview) {
         let package = #("/packages/" <> group <> "/" <> file, bytes)
         let page = #(
           "/packages/" <> group <> "/" <> name <> "/index.html",
-          index,
+          package_page(),
         )
         let files = case preview {
           True -> {
@@ -172,11 +295,11 @@ fn build_intro(preview) {
     [
       #("/_redirects", <<redirects:utf8>>),
       #("/vendor/zip.min.js", zip_src),
-      #("/packages/index.html", index),
+      #("/packages/index.html", package_page()),
       #("/packages/index.js", <<script:utf8>>),
       #("/packages/index.css", style),
       // 
-      #("/guide/" <> "intro" <> "/index.html", index),
+      #("/guide/" <> "intro" <> "/index.html", package_page()),
       #("/references/" <> std_hash <> ".json", stdlib),
     ]
     |> list.append(packages)
