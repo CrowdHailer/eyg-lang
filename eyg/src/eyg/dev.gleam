@@ -19,9 +19,9 @@ import lustre/element
 import lustre/element/html as h
 import midas/task as t
 
-const tailwind_2_2_11 = "https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
+pub const tailwind_2_2_11 = "https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
 
-fn doc(title, domain, head, body) {
+pub fn doc(title, domain, head, body) {
   h.html([a.attribute("lang", "en")], [
     h.head([], list.append(common_head_tags(title, domain), head)),
     h.body([], body),
@@ -48,15 +48,15 @@ fn common_head_tags(title, domain) {
   ]
 }
 
-fn stylesheet(reference) {
+pub fn stylesheet(reference) {
   h.link([a.rel("stylesheet"), a.href(reference)])
 }
 
-fn empty_lustre() {
+pub fn empty_lustre() {
   h.div([a.id("app")], [])
 }
 
-fn app_script(src) {
+pub fn app_script(src) {
   h.script([a.attribute("defer", ""), a.attribute("async", ""), a.src(src)], "")
 }
 
