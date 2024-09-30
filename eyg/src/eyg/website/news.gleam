@@ -1,6 +1,5 @@
 import eyg/website/news/archive
 import eyg/website/news/edition.{Edition}
-import eyg/website/utils
 import gleam/bit_array
 import gleam/int
 import gleam/list
@@ -10,13 +9,13 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import midas/task as t
+import mysig
+import mysig/layout
 import snag
 
 const replace_string = "!CONTENT!"
 
 pub fn build() {
-  use layout <- t.do(t.read("layout2.css"))
-  let layout = #("/assets/layout.css", layout)
   use pea <- t.do(t.read("src/eyg/website/news/pea.webp"))
   let pea = #("/assets/pea.webp", pea)
   use brocolli <- t.do(t.read("src/eyg/website/news/brocolli.webp"))
@@ -32,17 +31,20 @@ pub fn build() {
     element.to_string(edition.render(latest, list.length(archive.published)))
   let template = string.replace(template, replace_string, content)
 
-  t.done([
-    #("/news/_email.html", <<template:utf8>>),
-    layout,
-    pea,
-    brocolli,
-    ..web_editions(archive.published, layout)
-  ])
+  let bundle = mysig.new_bundle("/assets")
+  t.done(
+    [
+      #("/news/_email.html", <<template:utf8>>),
+      pea,
+      brocolli,
+      ..web_editions(archive.published, bundle)
+    ]
+    |> list.append(mysig.to_files(bundle)),
+  )
 }
 
 // archive is a reverse order stack of editions
-fn web_editions(editions, layout) {
+fn web_editions(editions, bundle) {
   list.index_map(list.reverse(editions), fn(edition, index) {
     let index = index + 1
     let Edition(title: title, ..) = edition
@@ -65,7 +67,7 @@ fn web_editions(editions, layout) {
               "Updates from the development of the EYG language and editor.",
             ),
           ]),
-          utils.css(layout),
+          mysig.resource(layout.css, bundle),
           h.link([a.rel("shortcut icon"), a.href("/assets/pea.webp")]),
           h.script(
             [
