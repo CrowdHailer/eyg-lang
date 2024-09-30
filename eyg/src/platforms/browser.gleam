@@ -10,7 +10,6 @@ import gleam/dict
 import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/result
 import harness/effect
@@ -147,7 +146,7 @@ pub fn async() {
       |> effect.extend("Await", effect.await())
     // always needs to be executed later so make wrapped as promise from the start
     let promise =
-      promisex.wait(0)
+      promise.wait(0)
       |> promise.await(fn(_: Nil) {
         r.await(r.resume(exec, [#(v.unit, Nil)], env, extrinsic))
       })

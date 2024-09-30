@@ -10,7 +10,6 @@ import gleam/int
 import gleam/io
 import gleam/javascript/array.{type Array}
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/json
 import gleam/list
 import gleam/result
@@ -80,7 +79,7 @@ pub fn await() {
 pub fn wait() {
   #(t.Integer, t.unit, fn(milliseconds) {
     use milliseconds <- result.then(cast.as_integer(milliseconds))
-    let p = promisex.wait(milliseconds)
+    let p = promise.wait(milliseconds)
     Ok(v.Promise(promise.map(p, fn(_) { v.unit })))
   })
 }

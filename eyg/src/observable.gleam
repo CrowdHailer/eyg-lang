@@ -1,7 +1,6 @@
 import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import javascript/mutable_reference as ref
@@ -172,11 +171,11 @@ pub fn run() {
     page(State(greeting: "hello", active: False, session: None))
   list.map(elements, element.append_child(target, _))
   // console.log(array.from_list(elements))
-  use _ <- promise.await(promisex.wait(1000))
+  use _ <- promise.await(promise.wait(1000))
   update(State(greeting: "hello!", active: True, session: Some("foooo")))
-  use _ <- promise.await(promisex.wait(1000))
+  use _ <- promise.await(promise.wait(1000))
   update(State(greeting: "hello!", active: True, session: Some("bar")))
-  use _ <- promise.await(promisex.wait(1000))
+  use _ <- promise.await(promise.wait(1000))
   update(State(greeting: "done", active: True, session: Some("bar")))
 
   // console.log(array.from_list(elements))

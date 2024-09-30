@@ -1,6 +1,5 @@
 import gleam/int
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -44,7 +43,7 @@ pub fn do_auth() {
 }
 
 fn monitor_auth(popup, wait) {
-  use Nil <- promise.await(promisex.wait(wait))
+  use Nil <- promise.await(promise.wait(wait))
   // TODO can error on cross origin object
   case window.location_of(popup) {
     Ok(location) ->

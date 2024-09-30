@@ -5,7 +5,6 @@ import gleam/int
 import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import javascript/mutable_reference as ref
@@ -397,7 +396,7 @@ pub fn app(json) {
   let page = component(fn(exp) { projection(exp) })
   let #(signal, _set) = make(source)
   let #(elements, update) = page(signal())
-  promise.map(promisex.wait(2000), fn(_) {
+  promise.map(promise.wait(2000), fn(_) {
     let assert e.Let(label, _std, rest) = source
     let exp = e.Let(label, e.Vacant(""), rest)
     update(exp)
@@ -466,7 +465,7 @@ pub fn run() {
   })
   list.map(elements, element.append_child(target, _))
 
-  use _ <- promise.await(promisex.wait(1000))
+  use _ <- promise.await(promise.wait(1000))
   update_state(fn(s) {
     State(
       ..s,
@@ -474,9 +473,9 @@ pub fn run() {
       source: e.Lambda("x", e.Lambda("y", e.Variable("y"))),
     )
   })
-  use _ <- promise.await(promisex.wait(1000))
+  use _ <- promise.await(promise.wait(1000))
   update_state(fn(s) { State(..s, session: Some("bar")) })
-  use _ <- promise.await(promisex.wait(1000))
+  use _ <- promise.await(promise.wait(1000))
   update_state(fn(s) {
     State(
       ..s,

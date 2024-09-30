@@ -20,7 +20,6 @@ import gleam/dict
 import gleam/http/request.{type Request}
 import gleam/io
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -576,7 +575,7 @@ pub fn do_handle_next(result: Result(Value, #(_, _, Env(Path), _)), effects) {
                   Runner(Suspended(Timer(duration), env, k), effects)
                 // r.loop(istate.step(
                 //   istate.V(v.Promise(
-                //     promisex.wait(duration) |> promise.map(fn(_) { v.unit }),
+                //     promise.wait(duration) |> promise.map(fn(_) { v.unit }),
                 //   )),
                 //   env,
                 //   k,
