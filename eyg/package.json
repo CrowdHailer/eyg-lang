@@ -7,10 +7,6 @@
     "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",
     "build:easel": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js",
     "start:easel": "npm run build:easel && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  ../website/public/editor/index.html build/bundle/easel.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
-    "build:drafting": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/drafting.js -o build/bundle/drafting.js",
-    "start:drafting": "npm run build:drafting && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/drafting/index.html build/bundle/drafting.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
-    "build:spotless": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/spotless.js -o build/bundle/spotless.js",
-    "start:spotless": "npm run build:spotless && rm -rf sirv && mkdir sirv && cp -r saved/saved.json saved/prompt.json ../website/public/layout.css ../website/public/neo.css src/spotless/vendor src/spotless/index.html build/bundle/spotless.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
     "spotless:backend": "node src/spotless/backend.mjs",
     "build:resume": "npx rollup -f iife -i ./build/dev/javascript/eyg/resume.js -o build/bundle/resume.js",
     "build:magpie:app": "npx rollup -f iife -i ./build/dev/javascript/eyg/magpie_app.js -o build/bundle/app.js",
@@ -18,9 +14,7 @@
     "build:magpie": "npm run build:magpie:worker && npm run build:magpie:app",
     "start:magpie": "gleam build && npm run build:magpie && rm -rf sirv && mkdir sirv && cp build/bundle/app.js build/bundle/worker.js src/magpie/index.html sirv && npx sirv sirv --host 0.0.0.0 --port 5000",
     "build:datalog": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/datalog.js -o build/bundle/datalog.js",
-    "start:datalog": "npm run build:datalog && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/datalog/index.html build/bundle/datalog.js src/datalog/examples sirv && npx sirv sirv --host 0.0.0.0 --port 8080",
-    "build:examine": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/examine.js -o build/bundle/examine.js",
-    "start:examine": "npm run build:examine && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/examine/index.html build/bundle/examine.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080"
+    "start:datalog": "npm run build:datalog && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  src/datalog/index.html build/bundle/datalog.js src/datalog/examples sirv && npx sirv sirv --host 0.0.0.0 --port 8080"
   },
   "dependencies": {
     "@zip.js/zip.js": "^2.7.41",

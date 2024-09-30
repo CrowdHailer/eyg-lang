@@ -78,7 +78,7 @@ pub fn transform(term: Term(a), f: fn(a) -> b, k) {
   fn(state: State) {
     case walk(dynamify(term), state.substitutions) {
       Constant(x) -> k(Constant(f(dynamicx.unsafe_coerce(x))))(state)
-      _ -> panic("should have resolved")
+      _ -> panic as "should have resolved"
     }
   }
 }
