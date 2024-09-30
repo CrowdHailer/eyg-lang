@@ -3,8 +3,6 @@ import datalog/browser/app/model.{Model}
 import datalog/browser/view/query
 import datalog/browser/view/remote
 import datalog/browser/view/source
-import facilities/accu_weather/client as accu_weather
-import facilities/accu_weather/daily_forecast
 import gleam/dict
 import gleam/float
 import gleam/http/request
@@ -22,6 +20,8 @@ import lustre/element.{text}
 import lustre/element/html.{button, div, form, input, p}
 import lustre/event.{on_click, on_input}
 import midas/browser
+import midas/sdk/accu_weather/forecast
+import midas/sdk/accu_weather/location
 import midas/sdk/google
 import midas/sdk/google/calendar
 import midas/task as t
@@ -278,14 +278,14 @@ fn accu_weather(model, index) {
         Ok(key) -> key
       }
 
-      let task = accu_weather.five_day_forecast(key, accu_weather.stockholm_key)
-      use data <- promisex.aside(task)
+      let task = forecast.five_day_forecast(key, location.stockholm)
+      use data <- promisex.aside(browser.run(task))
       use data <- result.map(data)
       d(
         model.Wrap(fn(state) {
           let Model(sections, mode) = state
           let events =
-            list.map(data, fn(daily: daily_forecast.DailyForecast) {
+            list.map(data, fn(daily: forecast.DailyForecast) {
               [
                 ast.S(daily.date),
                 ast.I(float.round(daily.minimum_temperature)),
