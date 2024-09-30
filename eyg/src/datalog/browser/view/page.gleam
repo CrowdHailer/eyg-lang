@@ -275,7 +275,7 @@ fn calendar_events(token) {
         todo
       })
     }
-    _ -> panic("bad resp from events")
+    _ -> panic as "bad resp from events"
   }
 }
 
@@ -286,7 +286,7 @@ fn accu_weather(model, index) {
       io.debug("weather")
       let assert Ok(s) = storage.local()
       let key = case storage.get_item(s, "ACCU_WEATHER_KEY") {
-        Error(Nil) -> panic("no key")
+        Error(Nil) -> panic as "no key"
         Ok(key) -> key
       }
 

@@ -48,7 +48,7 @@ pub fn initial() {
           let assert Ok(request) =
             request.from_uri({
               let assert Ok(source) =
-                uri.parse("http://localhost:5010/examples/movies.csv")
+                uri.parse("http://localhost:8080/examples/movies.csv")
               source
             })
           request

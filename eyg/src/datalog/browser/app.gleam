@@ -8,7 +8,7 @@ import plinth/browser/window
 
 pub fn run() {
   case window.get_hash() {
-    Ok(value) -> {
+    Ok(_value) -> {
       Nil
     }
     Error(_) -> {
@@ -35,7 +35,7 @@ fn init(_) {
                       #(state, effect.none())
                     }),
                   )
-                Error(_) -> todo("what went wrong")
+                Error(_) -> panic as "what went wrong"
               }
             })
             Nil

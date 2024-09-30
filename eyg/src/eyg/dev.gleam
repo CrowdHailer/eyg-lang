@@ -310,6 +310,33 @@ fn build_intro(preview) {
   )
 }
 
+fn datalog_page() {
+  doc(
+    "Datalog notebook",
+    "eyg.run",
+    [
+      stylesheet(tailwind_2_2_11),
+      stylesheet("/layout.css"),
+      stylesheet("/neo.css"),
+      app_script("/datalog/index.js"),
+    ],
+    [h.div([], [empty_lustre()])],
+  )
+  |> element.to_document_string()
+  |> bit_array.from_string()
+}
+
+fn build_datalog() {
+  use script <- t.do(t.bundle("datalog/browser/app", "run"))
+  use movies <- t.do(t.read("src/datalog/examples/movies.csv"))
+  let files = [
+    #("/datalog/index.js", <<script:utf8>>),
+    #("/examples/movies.csv", movies),
+  ]
+
+  t.done([#("/datalog/index.html", datalog_page()), ..files])
+}
+
 pub fn preview(args) {
   case args {
     ["intro"] -> {
@@ -327,9 +354,10 @@ pub fn preview(args) {
       use shell <- t.do(build_shell())
       use intro <- t.do(build_intro(True))
       use news <- t.do(news.build())
+      use datalog <- t.do(build_datalog())
 
       let files =
-        list.flatten([drafting, examine, spotless, shell, intro, news])
+        list.flatten([drafting, examine, spotless, shell, intro, news, datalog])
       t.done(files)
     }
   }
