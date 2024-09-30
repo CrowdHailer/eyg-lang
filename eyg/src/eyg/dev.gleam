@@ -102,56 +102,51 @@ fn examine_page(bundle) {
 }
 
 fn spotless_page(bundle) {
-  doc(
-    "Spotless",
-    "eyg.run",
-    [
-      stylesheet(tailwind_2_2_11),
-      stylesheet("/packages/index.css"),
-      mysig.resource(neo.css, bundle),
-      h.script([a.src("/vendor/zip.js")], ""),
-      app_script("/spotless.js"),
-    ],
-    [h.div([], [empty_lustre()])],
-  )
-  |> element.to_document_string()
-  |> bit_array.from_string()
+  use script <- t.do(t.bundle("spotless/app", "run"))
+  let content =
+    doc(
+      "Spotless",
+      "eyg.run",
+      [
+        stylesheet(tailwind_2_2_11),
+        mysig.resource(layout.css, bundle),
+        mysig.resource(neo.css, bundle),
+        h.script([a.src("/vendor/zip.js")], ""),
+        mysig.resource(mysig.js("examine", script), bundle),
+      ],
+      [h.div([], [empty_lustre()])],
+    )
+    |> element.to_document_string()
+    |> bit_array.from_string()
+  t.done(#("/terminal/index.html", content))
 }
 
 fn build_spotless(bundle) {
-  use script <- t.do(t.bundle("spotless/app", "run"))
-  let files = [#("/spotless.js", <<script:utf8>>)]
+  use page <- t.do(spotless_page(bundle))
   use prompt <- t.do(t.read("saved/prompt.json"))
 
-  t.done([
-    #("/terminal/index.html", spotless_page(bundle)),
-    #("/prompt.json", prompt),
-    ..files
-  ])
+  t.done([page, #("/prompt.json", prompt)])
 }
 
 fn shell_page(bundle) {
-  doc(
-    "Eyg - shell",
-    "eyg.run",
-    [
-      stylesheet(tailwind_2_2_11),
-      stylesheet("/packages/index.css"),
-      mysig.resource(neo.css, bundle),
-      h.script([a.src("/vendor/zip.min.js")], ""),
-      app_script("/shell/index.js"),
-    ],
-    [h.div([], [empty_lustre()])],
-  )
-  |> element.to_document_string()
-  |> bit_array.from_string()
-}
-
-fn build_shell(bundle) {
   use script <- t.do(t.bundle("eyg/shell/app", "run"))
-  let files = [#("/shell/index.js", <<script:utf8>>)]
 
-  t.done([#("/shell/index.html", shell_page(bundle)), ..files])
+  let content =
+    doc(
+      "Eyg - shell",
+      "eyg.run",
+      [
+        stylesheet(tailwind_2_2_11),
+        mysig.resource(layout.css, bundle),
+        mysig.resource(neo.css, bundle),
+        h.script([a.src("/vendor/zip.min.js")], ""),
+        mysig.resource(mysig.js("shell", script), bundle),
+      ],
+      [h.div([], [empty_lustre()])],
+    )
+    |> element.to_document_string()
+    |> bit_array.from_string()
+  t.done(#("/shell/index.html", content))
 }
 
 const redirects = "
@@ -174,15 +169,15 @@ fn cache_to_references_files(cache) {
   })
 }
 
-fn package_page(bundle) {
+fn package_page(script_asset, bundle) {
   doc(
     "Eyg - shell",
     "eyg.run",
     [
       stylesheet(tailwind_2_2_11),
-      stylesheet("/packages/index.css"),
+      mysig.resource(layout.css, bundle),
       mysig.resource(neo.css, bundle),
-      app_script("/packages/index.js"),
+      mysig.resource(script_asset, bundle),
     ],
     [h.div([], [empty_lustre()])],
   )
@@ -195,9 +190,8 @@ const origin = sync.Origin(http.Https, "", None)
 
 fn build_intro(preview, bundle) {
   use script <- t.do(t.bundle("intro/intro", "run"))
-
+  let package_asset = mysig.js("package", script)
   use zip_src <- t.do(t.read("vendor/zip.min.js"))
-  use style <- t.do(t.read("layout2.css"))
   // TODO remove stdlib soon should be caught be seed
   use stdlib <- t.do(t.read("seed/eyg/std.json"))
 
@@ -218,7 +212,7 @@ fn build_intro(preview, bundle) {
 
       let page = #(
         "/packages/eyg/" <> name <> "/index.html",
-        package_page(bundle),
+        package_page(package_asset, bundle),
       )
       case preview {
         True -> [page, ..references]
@@ -273,7 +267,7 @@ fn build_intro(preview, bundle) {
         let package = #("/packages/" <> group <> "/" <> file, bytes)
         let page = #(
           "/packages/" <> group <> "/" <> name <> "/index.html",
-          package_page(bundle),
+          package_page(package_asset, bundle),
         )
         let files = case preview {
           True -> {
@@ -295,11 +289,12 @@ fn build_intro(preview, bundle) {
     [
       #("/_redirects", <<redirects:utf8>>),
       #("/vendor/zip.min.js", zip_src),
-      #("/packages/index.html", package_page(bundle)),
-      #("/packages/index.js", <<script:utf8>>),
-      #("/packages/index.css", style),
+      #("/packages/index.html", package_page(package_asset, bundle)),
       // 
-      #("/guide/" <> "intro" <> "/index.html", package_page(bundle)),
+      #(
+        "/guide/" <> "intro" <> "/index.html",
+        package_page(package_asset, bundle),
+      ),
       #("/references/" <> std_hash <> ".json", stdlib),
     ]
     |> list.append(packages)
@@ -311,6 +306,7 @@ fn build_intro(preview, bundle) {
 }
 
 fn datalog_page(bundle) {
+  use script <- t.do(t.bundle("datalog/browser/app", "run"))
   doc(
     "Datalog notebook",
     "eyg.run",
@@ -318,40 +314,31 @@ fn datalog_page(bundle) {
       stylesheet(tailwind_2_2_11),
       mysig.resource(layout.css, bundle),
       mysig.resource(neo.css, bundle),
-      app_script("/datalog/index.js"),
+      mysig.resource(mysig.js("datalog", script), bundle),
     ],
     [h.div([], [empty_lustre()])],
   )
   |> element.to_document_string()
   |> bit_array.from_string()
+  |> t.done()
 }
 
 fn build_datalog(bundle) {
-  use script <- t.do(t.bundle("datalog/browser/app", "run"))
+  use page <- t.do(datalog_page(bundle))
   use movies <- t.do(t.read("src/datalog/examples/movies.csv"))
-  let files = [
-    #("/datalog/index.js", <<script:utf8>>),
-    #("/examples/movies.csv", movies),
-  ]
+  let files = [#("/examples/movies.csv", movies)]
 
-  t.done([#("/datalog/index.html", datalog_page(bundle)), ..files])
+  t.done([#("/datalog/index.html", page), ..files])
 }
 
 pub fn preview(args) {
   case args {
-    // ["intro"] -> {
-    //   use files <- t.do(build_intro(True, bundle))
-    //   t.done(files)
-    // }
-    ["news"] -> {
-      news.build()
-    }
     _ -> {
       let bundle = mysig.new_bundle("/assets")
       use drafting <- t.do(drafting_page(bundle))
       use examine <- t.do(examine_page(bundle))
       use spotless <- t.do(build_spotless(bundle))
-      use shell <- t.do(build_shell(bundle))
+      use shell <- t.do(shell_page(bundle))
       use intro <- t.do(build_intro(True, bundle))
       use news <- t.do(news.build())
       use datalog <- t.do(build_datalog(bundle))
@@ -361,7 +348,7 @@ pub fn preview(args) {
           [drafting],
           [examine],
           spotless,
-          shell,
+          [shell],
           intro,
           news,
           datalog,
