@@ -5,13 +5,9 @@ import datalog/browser/view/remote
 import datalog/browser/view/source
 import facilities/accu_weather/client as accu_weather
 import facilities/accu_weather/daily_forecast
-import facilities/google/event as g_event
 import gleam/dict
-import gleam/dynamic
-import gleam/fetch
 import gleam/float
 import gleam/http/request
-import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -19,15 +15,16 @@ import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
 import gleam/result
-import gleam/string
-import gleam/uri.{Uri}
+import gleam/uri
 import lustre/attribute.{class}
 import lustre/effect
 import lustre/element.{text}
 import lustre/element/html.{button, div, form, input, p}
 import lustre/event.{on_click, on_input}
-import platforms/browser/windows
-import plinth/browser/window
+import midas/browser
+import midas/sdk/google
+import midas/sdk/google/calendar
+import midas/task as t
 import plinth/javascript/storage
 
 pub fn render(model) -> element.Element(model.Wrap) {
@@ -210,73 +207,64 @@ fn google_oauth(model, index) {
   #(
     Model(..model, mode: mode),
     effect.from(fn(d) {
-      let frame = #(600, 700)
-
-      let assert Ok(popup) =
-        windows.open(
-          "https://accounts.google.com/o/oauth2/auth?client_id=419853920596-v2vh33r5h796q8fjvdu5f4ve16t91rkd.apps.googleusercontent.com&response_type=token&redirect_uri=http://localhost:8080&state=123&scope=https://www.googleapis.com/auth/calendar.events.readonly",
-          frame,
-        )
-
-      use token <- promisex.aside(monitor_auth(popup, 500))
-      use events <- promise.map_try(calendar_events(token))
-      d(
-        model.Wrap(fn(state) {
-          let Model(sections, mode) = state
-          let events =
-            list.map(events, fn(e) {
-              let g_event.Event(summary, location, start, end) = e
-              [
-                ast.S(summary),
-                ast.S(option.unwrap(location, "")),
-                ast.S(case start {
-                  g_event.Date(s) -> s
-                  g_event.Datetime(s) -> s
-                }),
-                ast.S(case end {
-                  g_event.Date(s) -> s
-                  g_event.Datetime(s) -> s
-                }),
-              ]
-            })
-
-          let headings = ["sumamry", "location", "start", "end"]
-          let sections =
-            listx.insert_at(sections, index, [
-              model.Source("Calendar", headings, events),
-            ])
-          #(Model(sections, mode), effect.none())
+      use events <- promisex.aside(
+        browser.run({
+          let app =
+            google.App(
+              "419853920596-v2vh33r5h796q8fjvdu5f4ve16t91rkd.apps.googleusercontent.com",
+              "http://localhost:8080",
+            )
+          use token <- t.do(
+            google.authenticate(app, [
+              "https://www.googleapis.com/auth/calendar.events.readonly",
+            ]),
+          )
+          calendar_events(token)
         }),
       )
-      Ok(Nil)
+      case events {
+        Ok(events) -> {
+          d(
+            model.Wrap(fn(state) {
+              let Model(sections, mode) = state
+              let events =
+                list.map(events, fn(e) {
+                  let calendar.Event(summary, location, start, end) = e
+                  [
+                    ast.S(summary),
+                    ast.S(option.unwrap(location, "")),
+                    ast.S(case start {
+                      calendar.Date(s) -> s
+                      calendar.Datetime(s) -> s
+                    }),
+                    ast.S(case end {
+                      calendar.Date(s) -> s
+                      calendar.Datetime(s) -> s
+                    }),
+                  ]
+                })
+
+              let headings = ["sumamry", "location", "start", "end"]
+              let sections =
+                listx.insert_at(sections, index, [
+                  model.Source("Calendar", headings, events),
+                ])
+              #(Model(sections, mode), effect.none())
+            }),
+          )
+          Ok(Nil)
+        }
+        Error(reason) -> {
+          io.debug(reason)
+          Ok(Nil)
+        }
+      }
     }),
   )
 }
 
 fn calendar_events(token) {
-  let r =
-    request.new()
-    |> request.set_host("www.googleapis.com")
-    |> request.set_path(
-      string.concat([
-        "/calendar/v3/calendars/", "peterhsaxton@gmail.com", "/events",
-      ]),
-    )
-    |> request.set_query([#("timeMin", "2024-01-01T00:00:00Z")])
-    |> request.prepend_header("Authorization", string.append("Bearer ", token))
-  use resp <- promise.try_await(fetch.send(r))
-  case resp.status {
-    200 -> {
-      use resp <- promise.map_try(fetch.read_json_body(resp))
-      dynamic.field("items", dynamic.list(g_event.decode_event))(resp.body)
-      |> result.map_error(fn(err) {
-        io.debug(err)
-        io.debug(resp.body)
-        todo
-      })
-    }
-    _ -> panic as "bad resp from events"
-  }
+  calendar.list_events(token, "peterhsaxton@gmail.com", "2024-10-01T00:00:00Z")
 }
 
 fn accu_weather(model, index) {
@@ -321,18 +309,4 @@ fn accu_weather(model, index) {
     }),
   )
   // Ok(Nil)
-}
-
-fn monitor_auth(popup, wait) {
-  use Nil <- promise.await(promisex.wait(wait))
-  let assert Ok(location) = window.location_of(popup)
-  case uri.parse(location) {
-    Ok(Uri(fragment: Some(fragment), ..)) -> {
-      let assert Ok(parts) = uri.parse_query(fragment)
-      let assert Ok(access_token) = list.key_find(parts, "access_token")
-      window.close(popup)
-      promise.resolve(access_token)
-    }
-    _ -> monitor_auth(popup, wait)
-  }
 }
