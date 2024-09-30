@@ -18,6 +18,9 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import midas/task as t
+import mysig
+import mysig/layout
+import mysig/neo
 
 pub const tailwind_2_2_11 = "https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
 
@@ -60,58 +63,52 @@ pub fn app_script(src) {
   h.script([a.attribute("defer", ""), a.attribute("async", ""), a.src(src)], "")
 }
 
-fn drafting_page() {
-  doc(
-    "Eyg - drafting",
-    "eyg.run",
-    [
-      stylesheet(tailwind_2_2_11),
-      stylesheet("/layout.css"),
-      stylesheet("/neo.css"),
-      app_script("/drafting.js"),
-    ],
-    [h.div([], [empty_lustre()])],
-  )
-  |> element.to_document_string()
-  |> bit_array.from_string()
-}
-
-fn build_drafting() {
+fn drafting_page(bundle) {
   use script <- t.do(t.bundle("drafting/app", "run"))
-  let files = [#("/drafting.js", <<script:utf8>>)]
-  t.done([#("/drafting/index.html", drafting_page()), ..files])
+  let content =
+    doc(
+      "Eyg - drafting",
+      "eyg.run",
+      [
+        stylesheet(tailwind_2_2_11),
+        mysig.resource(layout.css, bundle),
+        mysig.resource(neo.css, bundle),
+        mysig.resource(mysig.js("drafting", script), bundle),
+      ],
+      [h.div([], [empty_lustre()])],
+    )
+    |> element.to_document_string()
+    |> bit_array.from_string()
+  t.done(#("/drafting/index.html", content))
 }
 
-fn examine_page() {
-  doc(
-    "Eyg - examiner",
-    "eyg.run",
-    [
-      stylesheet(tailwind_2_2_11),
-      stylesheet("/layout.css"),
-      stylesheet("/neo.css"),
-      app_script("/examine.js"),
-    ],
-    [h.div([], [empty_lustre()])],
-  )
-  |> element.to_document_string()
-  |> bit_array.from_string()
-}
-
-fn build_examine() {
+fn examine_page(bundle) {
   use script <- t.do(t.bundle("examine/app", "run"))
-  let files = [#("/examine.js", <<script:utf8>>)]
-  t.done([#("/examine/index.html", examine_page()), ..files])
+  let content =
+    doc(
+      "Eyg - examiner",
+      "eyg.run",
+      [
+        stylesheet(tailwind_2_2_11),
+        mysig.resource(layout.css, bundle),
+        mysig.resource(neo.css, bundle),
+        mysig.resource(mysig.js("examine", script), bundle),
+      ],
+      [h.div([], [empty_lustre()])],
+    )
+    |> element.to_document_string()
+    |> bit_array.from_string()
+  t.done(#("/examine/index.html", content))
 }
 
-fn spotless_page() {
+fn spotless_page(bundle) {
   doc(
     "Spotless",
     "eyg.run",
     [
       stylesheet(tailwind_2_2_11),
       stylesheet("/packages/index.css"),
-      stylesheet("/neo.css"),
+      mysig.resource(neo.css, bundle),
       h.script([a.src("/vendor/zip.js")], ""),
       app_script("/spotless.js"),
     ],
@@ -121,26 +118,26 @@ fn spotless_page() {
   |> bit_array.from_string()
 }
 
-fn build_spotless() {
+fn build_spotless(bundle) {
   use script <- t.do(t.bundle("spotless/app", "run"))
   let files = [#("/spotless.js", <<script:utf8>>)]
   use prompt <- t.do(t.read("saved/prompt.json"))
 
   t.done([
-    #("/terminal/index.html", spotless_page()),
+    #("/terminal/index.html", spotless_page(bundle)),
     #("/prompt.json", prompt),
     ..files
   ])
 }
 
-fn shell_page() {
+fn shell_page(bundle) {
   doc(
     "Eyg - shell",
     "eyg.run",
     [
       stylesheet(tailwind_2_2_11),
       stylesheet("/packages/index.css"),
-      stylesheet("/neo.css"),
+      mysig.resource(neo.css, bundle),
       h.script([a.src("/vendor/zip.min.js")], ""),
       app_script("/shell/index.js"),
     ],
@@ -150,11 +147,11 @@ fn shell_page() {
   |> bit_array.from_string()
 }
 
-fn build_shell() {
+fn build_shell(bundle) {
   use script <- t.do(t.bundle("eyg/shell/app", "run"))
   let files = [#("/shell/index.js", <<script:utf8>>)]
 
-  t.done([#("/shell/index.html", shell_page()), ..files])
+  t.done([#("/shell/index.html", shell_page(bundle)), ..files])
 }
 
 const redirects = "
@@ -177,14 +174,14 @@ fn cache_to_references_files(cache) {
   })
 }
 
-fn package_page() {
+fn package_page(bundle) {
   doc(
     "Eyg - shell",
     "eyg.run",
     [
       stylesheet(tailwind_2_2_11),
       stylesheet("/packages/index.css"),
-      stylesheet("/neo.css"),
+      mysig.resource(neo.css, bundle),
       app_script("/packages/index.js"),
     ],
     [h.div([], [empty_lustre()])],
@@ -196,7 +193,7 @@ fn package_page() {
 // TODO remove an make remotes optional in sync
 const origin = sync.Origin(http.Https, "", None)
 
-fn build_intro(preview) {
+fn build_intro(preview, bundle) {
   use script <- t.do(t.bundle("intro/intro", "run"))
 
   use zip_src <- t.do(t.read("vendor/zip.min.js"))
@@ -219,7 +216,10 @@ fn build_intro(preview) {
         package.load_guide_from_content(content, sync.init(origin))
       let references = cache_to_references_files(cache)
 
-      let page = #("/packages/eyg/" <> name <> "/index.html", package_page())
+      let page = #(
+        "/packages/eyg/" <> name <> "/index.html",
+        package_page(bundle),
+      )
       case preview {
         True -> [page, ..references]
         False -> references
@@ -273,7 +273,7 @@ fn build_intro(preview) {
         let package = #("/packages/" <> group <> "/" <> file, bytes)
         let page = #(
           "/packages/" <> group <> "/" <> name <> "/index.html",
-          package_page(),
+          package_page(bundle),
         )
         let files = case preview {
           True -> {
@@ -295,11 +295,11 @@ fn build_intro(preview) {
     [
       #("/_redirects", <<redirects:utf8>>),
       #("/vendor/zip.min.js", zip_src),
-      #("/packages/index.html", package_page()),
+      #("/packages/index.html", package_page(bundle)),
       #("/packages/index.js", <<script:utf8>>),
       #("/packages/index.css", style),
       // 
-      #("/guide/" <> "intro" <> "/index.html", package_page()),
+      #("/guide/" <> "intro" <> "/index.html", package_page(bundle)),
       #("/references/" <> std_hash <> ".json", stdlib),
     ]
     |> list.append(packages)
@@ -310,14 +310,14 @@ fn build_intro(preview) {
   )
 }
 
-fn datalog_page() {
+fn datalog_page(bundle) {
   doc(
     "Datalog notebook",
     "eyg.run",
     [
       stylesheet(tailwind_2_2_11),
-      stylesheet("/layout.css"),
-      stylesheet("/neo.css"),
+      mysig.resource(layout.css, bundle),
+      mysig.resource(neo.css, bundle),
       app_script("/datalog/index.js"),
     ],
     [h.div([], [empty_lustre()])],
@@ -326,7 +326,7 @@ fn datalog_page() {
   |> bit_array.from_string()
 }
 
-fn build_datalog() {
+fn build_datalog(bundle) {
   use script <- t.do(t.bundle("datalog/browser/app", "run"))
   use movies <- t.do(t.read("src/datalog/examples/movies.csv"))
   let files = [
@@ -334,30 +334,39 @@ fn build_datalog() {
     #("/examples/movies.csv", movies),
   ]
 
-  t.done([#("/datalog/index.html", datalog_page()), ..files])
+  t.done([#("/datalog/index.html", datalog_page(bundle)), ..files])
 }
 
 pub fn preview(args) {
   case args {
-    ["intro"] -> {
-      use files <- t.do(build_intro(True))
-
-      t.done(files)
-    }
+    // ["intro"] -> {
+    //   use files <- t.do(build_intro(True, bundle))
+    //   t.done(files)
+    // }
     ["news"] -> {
       news.build()
     }
     _ -> {
-      use drafting <- t.do(build_drafting())
-      use examine <- t.do(build_examine())
-      use spotless <- t.do(build_spotless())
-      use shell <- t.do(build_shell())
-      use intro <- t.do(build_intro(True))
+      let bundle = mysig.new_bundle("/assets")
+      use drafting <- t.do(drafting_page(bundle))
+      use examine <- t.do(examine_page(bundle))
+      use spotless <- t.do(build_spotless(bundle))
+      use shell <- t.do(build_shell(bundle))
+      use intro <- t.do(build_intro(True, bundle))
       use news <- t.do(news.build())
-      use datalog <- t.do(build_datalog())
+      use datalog <- t.do(build_datalog(bundle))
 
       let files =
-        list.flatten([drafting, examine, spotless, shell, intro, news, datalog])
+        list.flatten([
+          [drafting],
+          [examine],
+          spotless,
+          shell,
+          intro,
+          news,
+          datalog,
+          mysig.to_files(bundle),
+        ])
       t.done(files)
     }
   }
