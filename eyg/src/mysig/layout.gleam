@@ -1,11 +1,13 @@
-/* https://css-tricks.com/box-sizing/#aa-universal-box-sizing-with-inheritance */
+import mysig
+
+pub const css = mysig.Asset("layout", <<css_:utf8>>, mysig.Css)
+
+// https://css-tricks.com/box-sizing/#aa-universal-box-sizing-with-inheritance
+const css_ = "
 html {
   box-sizing: border-box;
 }
-
-*,
-*:before,
-*:after {
+*, *:before, *:after {
   box-sizing: inherit;
 }
 
@@ -17,8 +19,7 @@ html {
   justify-content: center;
 }
 
-body>.vstack,
-body.vstack {
+body > .vstack, body.vstack {
   min-height: 100vh;
 }
 
@@ -49,3 +50,4 @@ body>.hstack {
 .hstack>*.cover {
   align-self: stretch;
 }
+"

@@ -1,7 +1,7 @@
 import eygir/encode
 
 @external(javascript, "../../browser_ffi.mjs", "hashCode")
-fn hash_code(str: String) -> String
+pub fn hash_code(str: String) -> String
 
 pub fn for_expression(expression) {
   //   let expression = annotated.drop_annotation(expression)
