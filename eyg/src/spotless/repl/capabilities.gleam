@@ -17,6 +17,8 @@ import harness/impl/browser/file/read as fs_read
 import harness/impl/browser/geolocation
 import harness/impl/browser/now
 import harness/impl/browser/visit
+import harness/impl/spotless/dnsimple
+import harness/impl/spotless/dnsimple/list_domains as dnsimple_list_domains
 import harness/impl/spotless/gmail/list_messages as gmail_list_messages
 import harness/impl/spotless/gmail/send as gmail_send
 import harness/impl/spotless/google
@@ -27,7 +29,6 @@ import harness/impl/spotless/vimeo/my_videos as vimeo_my_videos
 import plinth/browser/clipboard
 import plinth/browser/file
 import plinth/browser/file_system
-import spotless/repl/capabilities/dnsimple
 import spotless/repl/capabilities/google/calendar
 import spotless/repl/capabilities/zip
 
@@ -83,13 +84,9 @@ pub fn handler_type(bindings) {
   let #(l, #(lift, reply)) = vimeo_my_videos.type_()
   let eff = t.EffectExtend(l, #(lift, reply), eff)
 
-  let domain = t.record([#("id", t.String), #("name", t.String)])
-  let eff =
-    t.EffectExtend(
-      "DNSimple.Domains",
-      #(t.unit, t.Promise(t.result(t.List(domain), t.String))),
-      eff,
-    )
+  let #(l, #(lift, reply)) = dnsimple_list_domains.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
+
   let event = t.record([#("summary", t.String), #("start", t.String)])
   let eff =
     t.EffectExtend(geolocation.l, #(geolocation.lift, geolocation.lower()), eff)
@@ -127,7 +124,10 @@ pub fn handlers() {
   |> dict.insert(fetch.l, fetch.handle)
   |> dict.insert(netlify_list_sites.l, netlify_list_sites.impl(netlify.local, _))
   // |> dict.insert("Netlify.Deploy", netlify.deploy_site)
-  |> dict.insert("DNSimple.Domains", dnsimple.list_domains)
+  |> dict.insert(dnsimple_list_domains.l, dnsimple_list_domains.impl(
+    dnsimple.local,
+    _,
+  ))
   |> dict.insert(geolocation.l, geolocation.handle)
   |> dict.insert("Google.Calendar.Events", calendar.list_events)
   |> dict.insert(gmail_list_messages.l, gmail_list_messages.impl(

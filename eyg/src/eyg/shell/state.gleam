@@ -24,6 +24,8 @@ import harness/impl/browser/file/read as fs_read
 import harness/impl/browser/geolocation as geo
 import harness/impl/browser/now
 import harness/impl/browser/visit
+import harness/impl/spotless/dnsimple
+import harness/impl/spotless/dnsimple/list_domains as dnsimple_list_domains
 import harness/impl/spotless/gmail/list_messages as gmail_list_messages
 import harness/impl/spotless/gmail/send as gmail_send
 import harness/impl/spotless/google
@@ -115,6 +117,14 @@ pub type Message {
 // TODO this is the spotless section
 fn effects() {
   [
+    #(
+      dnsimple_list_domains.l,
+      #(
+        dnsimple_list_domains.lift(),
+        dnsimple_list_domains.reply(),
+        dnsimple_list_domains.blocking(dnsimple.local, _),
+      ),
+    ),
     #(now.l, #(now.lift, now.reply, now.blocking)),
     #(fetch.l, #(fetch.lift(), fetch.lower(), fetch.blocking)),
     #(fs_list.l, #(fs_list.lift, fs_list.lower(), fs_list.blocking)),

@@ -20,7 +20,8 @@ midas = ">= 1.0.0 and < 2.0.0"
 snag = ">= 0.3.0 and < 1.0.0"
 jot = ">= 1.0.1 and < 2.0.0"
 javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
-midas_sdk = ">= 0.1.2 and < 1.0.0"
+# midas_sdk = ">= 0.1.2 and < 1.0.0"
+midas_sdk = { path = "../../midas_sdk"}
 midas_browser = ">= 0.1.1 and < 1.0.0"
 
 [dev-dependencies]
