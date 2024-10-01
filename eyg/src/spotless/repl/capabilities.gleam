@@ -22,6 +22,7 @@ import harness/impl/spotless/dnsimple/list_domains as dnsimple_list_domains
 import harness/impl/spotless/gmail/list_messages as gmail_list_messages
 import harness/impl/spotless/gmail/send as gmail_send
 import harness/impl/spotless/google
+import harness/impl/spotless/google_calendar/list_events as gcal_list_events
 import harness/impl/spotless/netlify
 import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
 import harness/impl/spotless/netlify/list_sites as netlify_list_sites
@@ -29,7 +30,6 @@ import harness/impl/spotless/vimeo/my_videos as vimeo_my_videos
 import plinth/browser/clipboard
 import plinth/browser/file
 import plinth/browser/file_system
-import spotless/repl/capabilities/google/calendar
 import spotless/repl/capabilities/zip
 
 pub fn handler_type(bindings) {
@@ -87,15 +87,12 @@ pub fn handler_type(bindings) {
   let #(l, #(lift, reply)) = dnsimple_list_domains.type_()
   let eff = t.EffectExtend(l, #(lift, reply), eff)
 
-  let event = t.record([#("summary", t.String), #("start", t.String)])
   let eff =
     t.EffectExtend(geolocation.l, #(geolocation.lift, geolocation.lower()), eff)
-  let eff =
-    t.EffectExtend(
-      "Google.Calendar.Events",
-      #(t.String, t.Promise(t.result(t.List(event), t.String))),
-      eff,
-    )
+
+  let #(l, #(lift, reply)) = gcal_list_events.type_()
+  let eff = t.EffectExtend(l, #(lift, reply), eff)
+
   let message = t.record([#("summary", t.String), #("start", t.String)])
   let eff =
     t.EffectExtend(
@@ -129,7 +126,7 @@ pub fn handlers() {
     _,
   ))
   |> dict.insert(geolocation.l, geolocation.handle)
-  |> dict.insert("Google.Calendar.Events", calendar.list_events)
+  |> dict.insert(gcal_list_events.l, gcal_list_events.impl(google.local, _))
   |> dict.insert(gmail_list_messages.l, gmail_list_messages.impl(
     google.local,
     _,

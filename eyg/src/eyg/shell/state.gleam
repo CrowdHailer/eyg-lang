@@ -29,6 +29,7 @@ import harness/impl/spotless/dnsimple/list_domains as dnsimple_list_domains
 import harness/impl/spotless/gmail/list_messages as gmail_list_messages
 import harness/impl/spotless/gmail/send as gmail_send
 import harness/impl/spotless/google
+import harness/impl/spotless/google_calendar/list_events as gcal_list_events
 import harness/impl/spotless/netlify
 import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
 import harness/impl/spotless/netlify/list_sites as netlify_list_sites
@@ -137,6 +138,14 @@ fn effects() {
         google.local,
         _,
       )),
+    ),
+    #(
+      gcal_list_events.l,
+      #(
+        gcal_list_events.lift(),
+        gcal_list_events.reply(),
+        gcal_list_events.blocking(google.local, _),
+      ),
     ),
     #(
       gmail_list_messages.l,
