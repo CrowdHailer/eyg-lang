@@ -5,6 +5,8 @@ import javascript/mutable_reference as ref
 import lustre/attribute as a
 import lustre/element/html as h
 
+pub const tailwind_2_2_11 = "https://unpkg.com/tailwindcss@2.2.11/dist/tailwind.min.css"
+
 pub type MediaType {
   Js
   Css

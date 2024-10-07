@@ -66,6 +66,13 @@ pub type Run {
   Run(suspended: Suspended, effects: List(#(String, #(Value, Value))))
 }
 
+// can't be reused as would need to be a result of a run but I want to keep the effects once complete,
+// documenation state comes up with new run
+// pub fn run_start(source, env, hashed_values) {
+//   let expression = editable.to_annotated(p.rebuild(source), [])
+//   execute(expression, env, hashed_values)
+// }
+
 pub type Shell {
   Shell(
     situation: Situation,

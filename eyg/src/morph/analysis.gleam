@@ -14,7 +14,6 @@ import gleam/list
 import gleam/string
 import morph/editable as e
 import morph/projection
-import spotless/repl/capabilities
 
 pub type Context {
   Context(
@@ -134,7 +133,9 @@ pub fn analyse(projection, context) -> Analysis {
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
   // TODO these needs to depend better on eff but is blocked by proper reuse of the analysis work
-  let #(eff, bindings) = capabilities.handler_type(bindings)
+  // capabilities pulls in a bunch of node dependencies by reaching into the spotless effects module
+  // let #(eff, bindings) = capabilities.handler_type(bindings)
+  let eff = t.Empty
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let #(_, types) = a.strip_annotation(tree)
