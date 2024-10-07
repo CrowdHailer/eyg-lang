@@ -12,10 +12,12 @@ import gleam/string
 import harness/effect as impl
 import harness/fetch
 import harness/ffi/core
+import harness/impl/browser/copy
 import harness/impl/browser/file/list as fs_list
 import harness/impl/browser/file/read as fs_read
 import harness/impl/browser/geolocation
 import harness/impl/browser/now
+import harness/impl/browser/paste
 import harness/impl/browser/visit
 import harness/impl/spotless/dnsimple
 import harness/impl/spotless/dnsimple/list_domains as dnsimple_list_domains
@@ -27,7 +29,6 @@ import harness/impl/spotless/netlify
 import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
 import harness/impl/spotless/netlify/list_sites as netlify_list_sites
 import harness/impl/spotless/vimeo/my_videos as vimeo_my_videos
-import plinth/browser/clipboard
 import plinth/browser/file
 import plinth/browser/file_system
 import spotless/repl/capabilities/zip
@@ -143,8 +144,8 @@ pub fn handlers() {
     Ok(v.Promise(p))
   })
   |> dict.insert(visit.l, visit.impl)
-  |> dict.insert("Copy", do_copy)
-  |> dict.insert("Paste", do_paste)
+  |> dict.insert(copy.l, copy.non_blocking)
+  |> dict.insert(paste.l, paste.non_blocking)
   |> dict.insert("Download", do_download)
   |> dict.insert("Zip", zip.do)
 }
@@ -161,33 +162,6 @@ fn do_load() {
   let source = a.add_annotation(source, Nil)
   Ok(source)
   // Ok(e.from_annotated(source))
-}
-
-fn do_copy(clip_text) {
-  use clip_text <- try(cast.as_string(clip_text))
-  Ok(
-    v.Promise(
-      promise.map(clipboard.write_text(clip_text), fn(result) {
-        case result {
-          Ok(Nil) -> v.ok(v.unit)
-          Error(reason) -> v.error(v.Str(reason))
-        }
-      }),
-    ),
-  )
-}
-
-fn do_paste(_) {
-  Ok(
-    v.Promise(
-      promise.map(clipboard.read_text(), fn(result) {
-        case result {
-          Ok(clip_text) -> v.ok(v.Str(clip_text))
-          Error(reason) -> v.error(v.Str(reason))
-        }
-      }),
-    ),
-  )
 }
 
 // file is name and content 

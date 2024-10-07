@@ -337,12 +337,12 @@ pub fn preview(args) {
     ["home"] -> {
       let bundle = mysig.new_bundle("/assets")
       use documentation <- t.do(documentation.page(bundle))
-      // use home <- t.do(home.page(bundle))
+      use home <- t.do(home.page(bundle))
 
       t.done([
-        #("/home/index.html", root_page("", home_page(), bundle)),
+        // #("/home/index.html", root_page("", home_page(), bundle)),
         #("/documentation/index.html", documentation),
-        // #("/index.html", home),
+        #("/index.html", home),
         ..mysig.to_files(bundle)
       ])
     }
