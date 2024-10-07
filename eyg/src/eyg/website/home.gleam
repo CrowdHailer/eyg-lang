@@ -17,6 +17,10 @@ pub fn client() {
   Nil
 }
 
+fn h2(header) {
+  h.h2([a.class("text-2xl")], [element.text(header)])
+}
+
 fn p(text) {
   h.p([], [element.text(text)])
 }
@@ -26,10 +30,14 @@ pub fn snippet(state, i) {
   |> element.map(state.SnippetMessage(i, _))
 }
 
+fn section(title, content) {
+  h.div([a.class("mx-auto max-w-3xl my-12")], [h2(title), ..content])
+}
+
 fn render(state) {
   h.div([a.class("yellow-gradient")], [
     components.header(),
-    h.div([a.class("mx-auto max-w-2xl")], [
+    section("Closure serialisation", [
       snippet(state, 0),
       p("hello"),
       p(
@@ -39,5 +47,6 @@ fn render(state) {
       p("Download is an even better effect in the browser"),
       p("There are hashes that allow reproducable everything"),
     ]),
+    section("Effects", [snippet(state, 1)]),
   ])
 }

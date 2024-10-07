@@ -1,3 +1,4 @@
+import eyg/shell/examples
 import eyg/website/components/snippet
 import gleam/dict.{type Dict}
 import gleam/io
@@ -9,6 +10,7 @@ import harness/impl/browser/paste
 import harness/impl/browser/prompt
 import lustre/effect
 import morph/editable as e
+import morph/projection
 
 pub type State {
   State(active: Active, snippets: Dict(Int, snippet.Snippet))
@@ -110,7 +112,16 @@ pub fn init(_) {
   #(
     State(
       Nothing,
-      dict.from_list([#(0, snippet.init(closure_serialization, effects()))]),
+      dict.from_list([
+        #(0, snippet.init(closure_serialization, effects())),
+        #(
+          1,
+          snippet.init(
+            projection.rebuild(examples.catfact_fetch().0),
+            effects(),
+          ),
+        ),
+      ]),
     ),
     effect.none(),
   )
