@@ -123,6 +123,8 @@ fn do_render(exp) {
     e.Perform(label) -> string.concat(["perform (\"", label, "\")"])
     e.Handle(label) -> string.concat(["handle (\"", label, "\")"])
     e.Builtin(identifier) -> identifier
+    e.Vacant(message) ->
+      "throw " <> string.concat(["\"", escape_html(message), "\""])
     _ -> {
       io.debug(exp)
       panic as "unsupported compilation expression"
@@ -206,8 +208,13 @@ let bind = (m, then) => {
 
 let perform = (label) => (value) => new Eff(label, value, (x) => x);
 
-let extrinsic = { Ask: (x) => 10, Log: (x) => console.log(x) };
-let run = (m) => {
+let extrinsic = {
+  Alert: (message) => window.alert(message), 
+  Ask: (x) => 10, 
+  Log: (x) => console.log(x) 
+};
+let run = (exec) => {
+  let m = exec()
   while (m instanceof Eff) {
     m = m.k(extrinsic[m.label](m.value));
   }

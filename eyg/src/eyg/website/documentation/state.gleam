@@ -2,6 +2,7 @@ import eyg/website/components/snippet
 import gleam/option.{None, Some}
 import harness/impl/browser/alert
 import harness/impl/browser/copy
+import harness/impl/browser/download
 import harness/impl/browser/paste
 import lustre/effect
 import morph/editable as e
@@ -124,6 +125,7 @@ pub fn effects() {
   [
     #(alert.l, #(alert.lift, alert.reply, alert.blocking)),
     #(copy.l, #(copy.lift, copy.reply(), copy.blocking)),
+    #(download.l, #(download.lift, download.reply(), download.blocking)),
     #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),
   ]
 }

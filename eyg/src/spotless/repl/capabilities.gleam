@@ -13,6 +13,7 @@ import harness/effect as impl
 import harness/fetch
 import harness/ffi/core
 import harness/impl/browser/copy
+import harness/impl/browser/download
 import harness/impl/browser/file/list as fs_list
 import harness/impl/browser/file/read as fs_read
 import harness/impl/browser/geolocation
@@ -146,7 +147,7 @@ pub fn handlers() {
   |> dict.insert(visit.l, visit.impl)
   |> dict.insert(copy.l, copy.non_blocking)
   |> dict.insert(paste.l, paste.non_blocking)
-  |> dict.insert("Download", do_download)
+  |> dict.insert(download.l, download.non_blocking)
   |> dict.insert("Zip", zip.do)
 }
 
@@ -163,16 +164,3 @@ fn do_load() {
   Ok(source)
   // Ok(e.from_annotated(source))
 }
-
-// file is name and content 
-fn do_download(file) {
-  use name <- try(cast.field("name", cast.as_string, file))
-  use content <- try(cast.field("content", cast.as_binary, file))
-
-  let file = file.new(content, name)
-  download_file(file)
-  Ok(v.unit)
-}
-
-@external(javascript, "../../browser_ffi.js", "downloadFile")
-fn download_file(file: file.File) -> Nil
