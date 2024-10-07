@@ -1,5 +1,6 @@
 import drafting/view/utilities
 import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/isomorphic
 import eyg/runtime/break
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
@@ -116,7 +117,11 @@ pub fn update(state, message) {
           let state =
             State(
               ..state,
-              analysis: Some(analysis.analyse(state.buffer.0, context)),
+              analysis: Some(analysis.analyse(
+                state.buffer.0,
+                context,
+                isomorphic.Empty,
+              )),
             )
           #(state, effect.none())
         }

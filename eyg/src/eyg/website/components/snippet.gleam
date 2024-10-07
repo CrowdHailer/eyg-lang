@@ -1,12 +1,15 @@
 import drafting/view/page as d_view
 import drafting/view/picker
 import eyg/analysis/type_/binding
+import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/break
 import eyg/runtime/interpreter/runner
 import eyg/runtime/value
 import eyg/shell/buffer
 import eyg/website/run
 import gleam/javascript/promise
+import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
 import lustre/attribute as a
@@ -172,10 +175,34 @@ pub fn finish_editing(state: Snippet) {
 
 pub fn render(state: Snippet) {
   h.div([a.class("bg-white neo-shadow font-mono mt-4 mb-6")], case state {
-    Editing(#(proj, mode), run, _effects) ->
+    Editing(#(proj, mode), run, effects) ->
       case mode {
         buffer.Command(_) -> {
-          [render_projection(proj, True), render_run(run.status)]
+          let eff =
+            effect_types(effects)
+            |> list.fold(t.Empty, fn(acc, new) {
+              let #(label, #(lift, reply)) = new
+              t.EffectExtend(label, #(lift, reply), acc)
+            })
+          let a = analysis.analyse(proj, analysis.empty_environment(), eff)
+          let errors = analysis.type_errors(a)
+          [
+            render_projection(proj, True),
+            case errors {
+              [] -> render_run(run.status)
+              _ ->
+                h.div(
+                  [a.class("border-2 border-orange-3 px-2")],
+                  list.map(errors, fn(error) {
+                    let #(path, reason) = error
+                    h.div(
+                      [event.on_click(MessageFromBuffer(buffer.JumpTo(path)))],
+                      [element.text(debug.reason(reason))],
+                    )
+                  }),
+                )
+            },
+          ]
         }
         buffer.Pick(picker, _rebuild) -> [
           render_projection(proj, False),

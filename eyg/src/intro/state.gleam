@@ -1,3 +1,4 @@
+import eyg/analysis/type_/isomorphic
 import drafting/view/picker
 import drafting/view/utilities
 import eyg/analysis/inference/levels_j/contextual as j
@@ -321,7 +322,8 @@ pub fn context_from_scope(scope, cache: sync.Sync) {
 // TODO this needs to not go to previous variables
 pub fn analyse(projection, scope, cache: sync.Sync) {
   let context = context_from_scope(scope, cache)
-  analysis.analyse(projection, context)
+  // TODO real effect
+  analysis.analyse(projection, context,isomorphic.Empty)
 }
 
 pub fn analysis_env_after(before, cache: sync.Sync) {

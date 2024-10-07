@@ -2,6 +2,7 @@ import drafting/view/page
 import drafting/view/picker
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
+import eyg/analysis/type_/isomorphic
 import eyg/shell/buffer
 import gleam/io
 import gleam/list
@@ -92,7 +93,11 @@ pub fn do_render(
                 h.div([a.class("w-full orange-gradient text-white")], [
                   h.div([], []),
                   ..list.map(
-                    analysis.type_errors(analysis.analyse(current, context)),
+                    analysis.type_errors(analysis.analyse(
+                      current,
+                      context,
+                      isomorphic.Empty,
+                    )),
                     fn(e) {
                       let #(path, reason) = e
                       case reason {

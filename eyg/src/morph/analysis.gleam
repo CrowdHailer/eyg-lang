@@ -128,14 +128,10 @@ pub fn scope_vars(projection, root_env) {
   env_at(projection, root_env, projection.path_to_zoom(projection.1, []))
 }
 
-pub fn analyse(projection, context) -> Analysis {
+pub fn analyse(projection, context, eff) -> Analysis {
   let Context(bindings, scope, ..) = context
   let editable = projection.rebuild(projection)
   let source = e.to_expression(editable)
-  // TODO these needs to depend better on eff but is blocked by proper reuse of the analysis work
-  // capabilities pulls in a bunch of node dependencies by reaching into the spotless effects module
-  // let #(eff, bindings) = capabilities.handler_type(bindings)
-  let eff = t.Empty
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let #(_, types) = a.strip_annotation(tree)
@@ -159,7 +155,8 @@ pub fn print(analysis) {
 }
 
 pub fn env_at(projection, root_env, path) {
-  let #(bindings, pairs) = analyse(projection, root_env)
+  // TODO remove empty eff
+  let #(bindings, pairs) = analyse(projection, root_env, t.Empty)
   case list.key_find(pairs, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
@@ -171,7 +168,8 @@ pub fn env_at(projection, root_env, path) {
 }
 
 pub fn type_at(projection, root_env) {
-  let analysis = analyse(projection, root_env)
+  // TODO remove empty eff
+  let analysis = analyse(projection, root_env, t.Empty)
   do_type_at(analysis, projection)
 }
 

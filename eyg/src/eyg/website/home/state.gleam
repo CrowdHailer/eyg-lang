@@ -65,7 +65,7 @@ const closure_serialization = e.Block(
         e.Call(e.Perform("Prompt"), [e.String("What is your name?")]),
         [
           #("Ok", e.Function([e.Bind("value")], e.Variable("value"))),
-          #("Ok", e.Function([e.Bind("_")], e.String("Alice"))),
+          #("Error", e.Function([e.Bind("_")], e.String("Alice"))),
         ],
         None,
       ),
