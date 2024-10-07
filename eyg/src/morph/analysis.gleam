@@ -124,8 +124,8 @@ fn env_to_tenv(env: state.Env(Nil)) {
   })
 }
 
-pub fn scope_vars(projection, root_env) {
-  env_at(projection, root_env, projection.path_to_zoom(projection.1, []))
+pub fn scope_vars(projection, root_env, eff) {
+  env_at(projection, root_env, eff, projection.path_to_zoom(projection.1, []))
 }
 
 pub fn analyse(projection, context, eff) -> Analysis {
@@ -154,9 +154,8 @@ pub fn print(analysis) {
   |> list.map(io.println)
 }
 
-pub fn env_at(projection, root_env, path) {
-  // TODO remove empty eff
-  let #(bindings, pairs) = analyse(projection, root_env, t.Empty)
+pub fn env_at(projection, root_env, eff, path) {
+  let #(bindings, pairs) = analyse(projection, root_env, eff)
   case list.key_find(pairs, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
@@ -167,9 +166,9 @@ pub fn env_at(projection, root_env, path) {
   }
 }
 
-pub fn type_at(projection, root_env) {
+pub fn type_at(projection, root_env, eff) {
   // TODO remove empty eff
-  let analysis = analyse(projection, root_env, t.Empty)
+  let analysis = analyse(projection, root_env, eff)
   do_type_at(analysis, projection)
 }
 
@@ -196,22 +195,22 @@ fn do_count_args(type_, acc) {
   }
 }
 
-pub fn count_args(projection, root_env) {
-  case type_at(projection, root_env) {
+pub fn count_args(projection, root_env, eff) {
+  case type_at(projection, root_env, eff) {
     Ok(t.Fun(_, _, return)) -> Ok(do_count_args(return, 1))
     _ -> Error(Nil)
   }
 }
 
-pub fn type_fields(projection, root_env) {
-  case type_at(projection, root_env) {
+pub fn type_fields(projection, root_env, eff) {
+  case type_at(projection, root_env, eff) {
     Ok(t.Record(row_type)) -> rows(row_type, [])
     _ -> []
   }
 }
 
-pub fn type_variants(projection, root_env) {
-  case type_at(projection, root_env) {
+pub fn type_variants(projection, root_env, eff) {
+  case type_at(projection, root_env, eff) {
     Ok(t.Union(row_type)) -> rows(row_type, [])
     _ -> []
   }

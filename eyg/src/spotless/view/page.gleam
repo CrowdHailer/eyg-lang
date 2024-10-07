@@ -171,7 +171,7 @@ pub fn do_render(
             ])
           False ->
             h.div([a.class("truncate max-w-4xl w-full text-right px-3")], [
-              text(case analysis.type_at(current, context) {
+              text(case analysis.type_at(current, context, isomorphic.Empty) {
                 Ok(t) -> debug.mono(t)
                 Error(_) -> "no type info"
               }),

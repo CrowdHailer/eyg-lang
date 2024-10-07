@@ -1,6 +1,7 @@
 import drafting/view/picker
 import eyg/analysis/type_/binding as t
 import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/isomorphic
 import eygir/annotated as a
 import eygir/encode
 import gleam/dict
@@ -114,6 +115,12 @@ pub fn handle_keydown(key, context, source, mode, effects) {
 }
 
 pub fn handle_command(key, source, context, effects) {
+  let eff =
+    effects
+    |> list.fold(isomorphic.Empty, fn(acc, new) {
+      let #(label, #(lift, reply)) = new
+      isomorphic.EffectExtend(label, #(lift, reply), acc)
+    })
   case key {
     "ArrowRight" -> #(navigation.next(source), Command(None))
     "ArrowLeft" -> #(navigation.previous(source), Command(None))
@@ -133,18 +140,18 @@ pub fn handle_command(key, source, context, effects) {
     "w" -> call_with(source)
     "E" -> assign_above(source)
     "e" -> assign_to(source)
-    "r" -> insert_record(source, context)
-    "t" -> insert_tag(source, context)
+    "r" -> insert_record(source, context, eff)
+    "t" -> insert_tag(source, context, eff)
     "y" -> extend_before(source, context)
     // "u" ->
     "i" -> insert_mode(source)
-    "o" -> overwrite_record(source, context)
+    "o" -> overwrite_record(source, context, eff)
     "p" -> insert_perform(source, effects)
     "a" -> increase(source)
     "s" -> insert_string(source)
     "d" -> delete(source)
     "f" -> insert_function(source)
-    "g" -> select_field(source, context)
+    "g" -> select_field(source, context, eff)
     "h" -> insert_handle(source, context)
     "j" -> insert_builtin(source, context)
     "k" -> toggle_open(source)
@@ -152,12 +159,12 @@ pub fn handle_command(key, source, context, effects) {
     "#" -> insert_reference(source)
     // "z" ->
     // "x" ->
-    "c" -> call_function(source, context)
-    "v" -> insert_variable(source, context)
+    "c" -> call_function(source, context, eff)
+    "v" -> insert_variable(source, context, eff)
     "b" -> insert_binary(source)
     "n" -> insert_integer(source)
-    "m" -> insert_case(source, context)
-    "M" -> insert_open_case(source, context)
+    "m" -> insert_case(source, context, eff)
+    "M" -> insert_open_case(source, context, eff)
     "." -> spread_list(source)
     _ -> {
       let mode = Command(Some(NoKeyBinding(key)))
@@ -260,8 +267,8 @@ fn assign_above(source) {
   }
 }
 
-fn insert_record(source, context) {
-  case action.make_record(source, context) {
+fn insert_record(source, context, eff) {
+  case action.make_record(source, context, eff) {
     Ok(action.Updated(source)) -> #(source, Command(None))
     Ok(action.Choose(value, hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
@@ -271,8 +278,8 @@ fn insert_record(source, context) {
   }
 }
 
-fn overwrite_record(source, context) {
-  case action.overwrite_record(source, context) {
+fn overwrite_record(source, context, eff) {
+  case action.overwrite_record(source, context, eff) {
     Ok(#(hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
       #(source, Pick(picker.new("", hints), rebuild))
@@ -281,8 +288,8 @@ fn overwrite_record(source, context) {
   }
 }
 
-fn insert_tag(source, context) {
-  case action.make_tagged(source, context) {
+fn insert_tag(source, context, eff) {
+  case action.make_tagged(source, context, eff) {
     Ok(action.Updated(source)) -> #(source, Command(None))
     Ok(action.Choose(value, hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
@@ -352,8 +359,8 @@ fn insert_function(source) {
   }
 }
 
-fn select_field(source, context) {
-  case action.select_field(source, context) {
+fn select_field(source, context, eff) {
+  case action.select_field(source, context, eff) {
     Ok(#(hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
       #(source, Pick(picker.new("", hints), rebuild))
@@ -398,15 +405,15 @@ fn insert_reference(source) {
   }
 }
 
-fn call_function(source, context) {
-  case action.call_function(source, context) {
+fn call_function(source, context, eff) {
+  case action.call_function(source, context, eff) {
     Ok(source) -> #(source, Command(None))
     Error(Nil) -> #(source, Command(Some(ActionFailed("call function"))))
   }
 }
 
-fn insert_variable(source, context) {
-  case action.insert_variable(source, context) {
+fn insert_variable(source, context, eff) {
+  case action.insert_variable(source, context, eff) {
     Ok(#(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
       #(source, Pick(picker.new(filter, hints), rebuild))
@@ -429,8 +436,8 @@ fn insert_integer(source) {
   }
 }
 
-fn insert_case(source, context) {
-  case action.make_case(source, context) {
+fn insert_case(source, context, eff) {
+  case action.make_case(source, context, eff) {
     Ok(action.Updated(source)) -> #(source, Command(None))
     Ok(action.Choose(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
@@ -440,8 +447,8 @@ fn insert_case(source, context) {
   }
 }
 
-fn insert_open_case(source, context) {
-  case action.make_open_case(source, context) {
+fn insert_open_case(source, context, eff) {
+  case action.make_open_case(source, context, eff) {
     Ok(#(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
       #(source, Pick(picker.new(filter, hints), rebuild))
@@ -464,13 +471,13 @@ pub fn references(buffer) {
   a.list_references(e.to_annotated(p.rebuild(projection), []))
 }
 
-pub fn final_scope(proj, context) {
+pub fn final_scope(proj, context, eff) {
   let path = case p.rebuild(proj) {
     e.Block(assigns, _, _) -> [list.length(assigns)]
     _ -> []
   }
   // This analysis should work on editable
-  analysis.env_at(proj, context, path)
+  analysis.env_at(proj, context, eff, path)
   |> listx.key_reject("_")
   |> listx.key_reject("$")
 }

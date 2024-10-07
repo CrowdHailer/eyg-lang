@@ -1,5 +1,6 @@
 import drafting/view/utilities
 import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/isomorphic
 import eyg/runtime/break
 import eyg/runtime/interpreter/block as r
 import eyg/runtime/interpreter/state as istate
@@ -199,6 +200,12 @@ fn effect_types() {
 
 pub fn update(state, message) {
   let effects = effect_types()
+  // let eff =
+  //   effects
+  //   |> list.fold(isomorphic.Empty, fn(acc, new) {
+  //     let #(label, #(lift, reply)) = new
+  //     isomorphic.EffectExtend(label, #(lift, reply), acc)
+  //   })
 
   case message {
     Synced(ref, result) -> {
@@ -224,7 +231,7 @@ pub fn update(state, message) {
               references: sync.types(cache),
               builtins: j.builtins(),
             )
-          let tenv = b.final_scope(proj, context)
+          let tenv = b.final_scope(proj, context, isomorphic.Empty)
 
           Some(#(env, tenv))
         }
@@ -333,7 +340,13 @@ fn handle_execution(result, effects, scope, state) {
           references: sync.types(cache),
           builtins: j.builtins(),
         )
-      let tenv = b.final_scope(source, context)
+      // let eff =
+      //   effects
+      //   |> list.fold(isomorphic.Empty, fn(acc, new) {
+      //     let #(label, #(lift, reply)) = new
+      //     isomorphic.EffectExtend(label, #(lift, reply), acc)
+      //   })
+      let tenv = b.final_scope(source, context, isomorphic.Empty)
       let scope = Some(#(env, tenv))
       let run = None
       let buffer = b.empty()
