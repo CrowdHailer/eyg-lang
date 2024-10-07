@@ -1,13 +1,7 @@
-import drafting/view/page as d_view
-import drafting/view/picker
-import eyg/runtime/break
-import eyg/runtime/value
-import eyg/shell/buffer
 import eyg/website/components
 import eyg/website/components/snippet
 import eyg/website/documentation/state
 import eyg/website/page
-import eyg/website/run
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -15,8 +9,6 @@ import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import lustre/event
-import morph/lustre/render
 
 pub fn client() {
   let app = lustre.application(state.init, state.update, render)

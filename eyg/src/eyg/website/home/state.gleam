@@ -6,6 +6,7 @@ import harness/impl/browser/alert
 import harness/impl/browser/copy
 import harness/impl/browser/download
 import harness/impl/browser/paste
+import harness/impl/browser/prompt
 import lustre/effect
 import morph/editable as e
 
@@ -25,6 +26,7 @@ fn effects() {
     #(copy.l, #(copy.lift, copy.reply(), copy.blocking)),
     #(download.l, #(download.lift, download.reply(), download.blocking)),
     #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),
+    #(prompt.l, #(prompt.lift, prompt.reply(), prompt.blocking)),
   ]
 }
 
@@ -56,28 +58,47 @@ const closure_serialization = e.Block(
       ),
     ),
     #(
+      e.Bind("name"),
+      e.Case(
+        e.Call(e.Perform("Prompt"), [e.String("What is your name?")]),
+        [
+          #("Ok", e.Function([e.Bind("value")], e.Variable("value"))),
+          #("Ok", e.Function([e.Bind("_")], e.String("Alice"))),
+        ],
+        None,
+      ),
+    ),
+    #(
       e.Bind("client"),
       e.Function(
         [e.Bind("_")],
         e.Block(
-          [#(e.Bind("_"), e.Call(e.Perform("Log"), [e.String("Go")]))],
-          e.Call(e.Perform("Alert"), [e.String("Hello")]),
+          [
+            #(
+              e.Bind("message"),
+              e.Call(
+                e.Builtin("string_append"),
+                [e.String("Hello, "), e.Variable("name")],
+              ),
+            ),
+            // perform can't be last effect
+            #(e.Bind("_"), e.Call(e.Perform("Alert"), [e.Variable("message")])),
+          ],
+          e.Record([], None),
           True,
         ),
       ),
     ), #(e.Bind("page"), e.Call(e.Variable("script"), [e.Variable("client")])),
+    #(
+      e.Bind("page"),
+      e.Call(e.Builtin("string_to_binary"), [e.Variable("page")]),
+    ),
   ],
   e.Call(
     e.Perform("Download"),
     [
       e.Record(
-        [
-          #("name", e.String("index.html")),
-          #(
-            "content",
-            e.Call(e.Builtin("string_to_binary"), [e.Variable("page")]),
-          ),
-        ],
+        [#("name", e.String("index.html")), #("content", e.Variable("page"))],
         None,
       ),
     ],
