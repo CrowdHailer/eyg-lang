@@ -41,7 +41,7 @@ fn run(source, env, args, extrinsic) {
   let args = list.map(args, fn(v) { #(v, Nil) })
   case r.execute(source, env, extrinsic) {
     // env not needed in resume but it is in the original execute call, for builtins
-    Ok(f) -> r.resume(f, args, env, extrinsic)
+    Ok(f) -> r.call(f, args, env, extrinsic)
     Error(reason) -> Error(reason)
   }
 }

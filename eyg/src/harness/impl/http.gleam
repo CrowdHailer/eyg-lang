@@ -41,7 +41,7 @@ pub fn serve() {
             |> effect.extend("QueryDB", effect.query_db())
           }.1
         promise.map(
-          r.await(r.resume(handler, [#(req, Nil)], env, extrinsic)),
+          r.await(r.call(handler, [#(req, Nil)], env, extrinsic)),
           fn(resp) {
             case resp {
               Ok(resp) -> from_response(resp)
@@ -89,7 +89,7 @@ pub fn receive() {
             |> effect.extend("Await", effect.await())
             |> effect.extend("Wait", effect.wait())
           }.1
-        let assert Ok(reply) = r.resume(handler, [#(req, Nil)], env, extrinsic)
+        let assert Ok(reply) = r.call(handler, [#(req, Nil)], env, extrinsic)
         let assert Ok(resp) = cast.field("response", cast.any, reply)
         let assert Ok(data) = cast.field("data", cast.as_tagged, reply)
 

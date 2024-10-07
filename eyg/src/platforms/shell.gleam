@@ -62,7 +62,7 @@ pub fn run(source) {
     fn(raw) {
       let k = dict.new()
       let args = [#(v.Str(prompt), Nil), #(v.Str(raw), Nil)]
-      let assert Ok(v.Tagged(tag, value)) = r.resume(parser, args, env, k)
+      let assert Ok(v.Tagged(tag, value)) = r.call(parser, args, env, k)
       case tag {
         "Ok" ->
           result.replace_error(
@@ -80,7 +80,7 @@ pub fn run(source) {
   let assert Ok(prog) = r.execute(source, env, handlers().1)
   let assert Ok(exec) = cast.field("exec", cast.any, prog)
   let assert Error(#(break.UnhandledEffect("Prompt", prompt), _rev, env, k)) =
-    r.resume(exec, [#(v.unit, Nil)], env, handlers().1)
+    r.call(exec, [#(v.unit, Nil)], env, handlers().1)
 
   let assert v.Str(prompt) = prompt
 

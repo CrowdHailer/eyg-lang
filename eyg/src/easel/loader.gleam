@@ -74,7 +74,7 @@ fn applet(root) {
         let state = ref.new(arg)
         let render = fn() {
           let current = ref.get(state)
-          let result = r.resume(func, [#(current, Nil)], env, handlers)
+          let result = r.call(func, [#(current, Nil)], env, handlers)
           let _ = case result {
             Ok(v.Str(page)) -> element.set_inner_html(root, page)
             _ -> {
@@ -93,7 +93,7 @@ fn applet(root) {
                   let current = ref.get(state)
                   // io.debug(ref.get(actions))
                   let assert Ok(next) =
-                    r.resume(code, [#(current, Nil)], env, dict.new())
+                    r.call(code, [#(current, Nil)], env, dict.new())
                   ref.set(state, next)
                   ref.set(actions, [])
                   render()

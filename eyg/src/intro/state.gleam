@@ -481,12 +481,7 @@ pub fn update(state, message) {
       let assert Ok(func) = dict.get(values, reference)
       let #(run, effect) =
         handle_next(
-          r.resume(
-            func,
-            [#(v.unit, [])],
-            fragment.empty_env(values),
-            dict.new(),
-          ),
+          r.call(func, [#(v.unit, [])], fragment.empty_env(values), dict.new()),
           [],
         )
       let state = State(..state, running: Some(#(reference, run)))

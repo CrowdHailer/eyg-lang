@@ -53,7 +53,7 @@ pub fn do_run(raw) -> Nil {
       let continuation = e.add_annotation(continuation, Nil)
       let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
       promise.map(
-        r.await(r.resume(continuation, [#(v.unit, Nil)], env, handlers().1)),
+        r.await(r.call(continuation, [#(v.unit, Nil)], env, handlers().1)),
         io.debug,
       )
       // todo as "real"
@@ -85,7 +85,7 @@ fn old_run() {
           let env = stdlib.env()
           let f = e.add_annotation(f, Nil)
           let assert Ok(f) = r.execute(f, env, handlers().1)
-          let ret = r.resume(f, [#(v.unit, Nil)], env, handlers().1)
+          let ret = r.call(f, [#(v.unit, Nil)], env, handlers().1)
           case ret {
             Ok(_) -> Nil
             err -> {
@@ -148,7 +148,7 @@ pub fn async() {
     let promise =
       promise.wait(0)
       |> promise.await(fn(_: Nil) {
-        r.await(r.resume(exec, [#(v.unit, Nil)], env, extrinsic))
+        r.await(r.call(exec, [#(v.unit, Nil)], env, extrinsic))
       })
       |> promise.map(fn(result) {
         case result {
@@ -181,7 +181,7 @@ fn listen() {
     let #(_, extrinsic) = handlers()
 
     window.add_event_listener(event, fn(_) {
-      let ret = r.resume(handle, [#(v.unit, Nil)], env, extrinsic)
+      let ret = r.call(handle, [#(v.unit, Nil)], env, extrinsic)
       io.debug(ret)
       Nil
     })
@@ -223,7 +223,7 @@ fn on_keydown() {
     let #(_, extrinsic) = handlers()
 
     old_document.on_keydown(fn(k) {
-      let _ = r.resume(handle, [#(v.Str(k), Nil)], env, extrinsic)
+      let _ = r.call(handle, [#(v.Str(k), Nil)], env, extrinsic)
       Nil
     })
     Ok(v.unit)
@@ -236,7 +236,7 @@ fn on_change() {
     let #(_, extrinsic) = handlers()
 
     old_document.on_change(fn(k) {
-      let _ = r.resume(handle, [#(v.Str(k), Nil)], env, extrinsic)
+      let _ = r.call(handle, [#(v.Str(k), Nil)], env, extrinsic)
       Nil
     })
     Ok(v.unit)
@@ -246,7 +246,7 @@ fn on_change() {
 fn do_handle(arg, handle, builtins, extrinsic) {
   let assert Ok(arg) = r.execute(arg, stdlib.env(), dict.new())
   // pass as general term to program arg or fn
-  let ret = r.resume(handle, [#(arg, Nil)], builtins, extrinsic)
+  let ret = r.call(handle, [#(arg, Nil)], builtins, extrinsic)
   case ret {
     Ok(_) -> Nil
     _ -> {

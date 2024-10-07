@@ -126,7 +126,7 @@ pub fn update(state, message) {
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
-      let status = case runner.real_resume(reply, env, k) {
+      let status = case runner.resume(reply, env, k) {
         Ok(value) -> run.Done(value)
         Error(debug) -> run.handle_extrinsic_effects(debug, effects)
       }

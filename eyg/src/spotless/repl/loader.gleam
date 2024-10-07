@@ -21,7 +21,7 @@ pub fn load(src) {
     Ok(prog) -> {
       let assert Ok(exec) = cast.field("exec", cast.any, prog)
       let assert Error(#(break.UnhandledEffect("Prompt", prompt), Nil, env, k)) =
-        r.resume(exec, [#(v.unit, Nil)], stdlib.env(), handlers())
+        r.call(exec, [#(v.unit, Nil)], stdlib.env(), handlers())
       Ok(#(prompt, env, k))
     }
     Error(reason) -> {

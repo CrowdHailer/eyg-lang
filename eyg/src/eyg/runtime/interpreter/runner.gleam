@@ -9,11 +9,11 @@ pub fn execute(exp, env, h) {
   loop(state.step(state.E(exp), env, state.Empty(h)))
 }
 
-pub fn real_resume(value,env,k) {
+pub fn resume(value, env, k) {
   loop(state.step(state.V(value), env, k))
 }
 
-pub fn resume(f, args, env, h) {
+pub fn call(f, args, env, h) {
   let k =
     list.fold_right(args, state.Empty(h), fn(k, arg) {
       let #(value, meta) = arg
