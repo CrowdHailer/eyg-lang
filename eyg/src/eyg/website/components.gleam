@@ -3,12 +3,12 @@ import lustre/element
 import lustre/element/html as h
 
 fn header_button(text) {
-  h.span([a.class("p-2")], [element.text(text)])
+  h.span([a.class("p-1 border-b border-black")], [element.text(text)])
 }
 
 pub fn header() {
-  h.header([a.class("hstack gap-8")], [
-    h.span([a.class("font-bold")], [element.text("EYG")]),
+  h.header([a.class("hstack gap-8 p-2 bg-black text-yellow-2")], [
+    h.span([a.class("font-bold text-4xl")], [element.text("EYG")]),
     header_button("Features"),
     header_button("Documentation"),
     header_button("News"),

@@ -31,12 +31,48 @@ pub fn snippet(state, i) {
 }
 
 fn section(title, content) {
-  h.div([a.class("mx-auto max-w-3xl my-12")], [h2(title), ..content])
+  page_area([
+    h.div([a.class("mx-auto w-full max-w-3xl my-12")], [h2(title), ..content]),
+  ])
+}
+
+fn page_area(content) {
+  h.div([a.style([#("min-height", "100vh")]), a.class("vstack")], content)
 }
 
 fn render(s) {
   h.div([a.class("yellow-gradient")], [
-    components.header(),
+    page_area([
+      components.header(),
+      h.div([a.class("expand hstack")], [
+        h.div([a.class("m-2")], [
+          h.p([a.class("max-w-lg")], [
+            element.text(
+              "The stable foundation for building software that runs forever",
+            ),
+          ]),
+          h.p([], [
+            h.span([a.class("font-bold")], [element.text("Predictable:")]),
+            element.text(
+              " programs are deterministic, depenendencies are immutable",
+            ),
+          ]),
+          h.p([], [
+            h.span([a.class("font-bold")], [element.text("Useful:")]),
+            element.text(
+              " run anywhere, managed effects allow programs to declare runtime requirements",
+            ),
+          ]),
+          h.p([], [
+            h.span([a.class("font-bold")], [element.text("Confident:")]),
+            element.text(
+              " A sound structural type system guarantees programs never crash.",
+            ),
+          ]),
+        ]),
+        h.p([a.class("m-12 text-8xl")], [element.text("EYG")]),
+      ]),
+    ]),
     section("Closure serialisation", [
       snippet(s, state.closure_serialization_key),
       p("hello"),
@@ -47,7 +83,7 @@ fn render(s) {
       p("Download is an even better effect in the browser"),
       p("There are hashes that allow reproducable everything"),
     ]),
-    // section("Effects", [snippet(s, state.fetch_key)]),
+    section("Effects", [snippet(s, state.fetch_key)]),
     section("Immutable references", [snippet(s, state.hash_key)]),
   ])
 }

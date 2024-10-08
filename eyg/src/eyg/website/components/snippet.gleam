@@ -291,7 +291,7 @@ fn render_projection(proj, autofocus) {
 fn render_run(run) {
   case run {
     run.Done(value) ->
-      h.pre([a.class("border-2 border-green-3 px-2")], [
+      h.pre([a.class("border-2 border-green-3 px-2 overflow-auto")], [
         element.text(value.debug(value)),
       ])
     run.Handling(label, _meta, _env, _stack, _blocking) ->

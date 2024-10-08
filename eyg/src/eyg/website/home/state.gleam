@@ -1,4 +1,4 @@
-import eyg/shell/examples
+// import eyg/shell/examples
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
@@ -6,6 +6,8 @@ import eygir/expression
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
+import harness/fetch
+import harness/impl/browser/abort
 import harness/impl/browser/alert
 import harness/impl/browser/copy
 import harness/impl/browser/download
@@ -32,9 +34,11 @@ pub type Active {
 
 fn effects() {
   [
+    #(abort.l, #(abort.lift, abort.reply, abort.blocking)),
     #(alert.l, #(alert.lift, alert.reply, alert.blocking)),
     #(copy.l, #(copy.lift, copy.reply(), copy.blocking)),
     #(download.l, #(download.lift, download.reply(), download.blocking)),
+    #(fetch.l, #(fetch.lift(), fetch.lower(), fetch.blocking)),
     #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),
     #(prompt.l, #(prompt.lift, prompt.reply(), prompt.blocking)),
   ]
@@ -120,6 +124,71 @@ const closure_serialization = e.Block(
 
 pub const fetch_key = "fetch"
 
+const catfact = e.Block(
+  [
+    #(e.Bind("http"), e.Reference("he6fd05f0")),
+    // #(e.Bind("json"), e.Reference("hbe004c96")),
+    #(
+      e.Bind("expect"),
+      e.Function(
+        [e.Bind("result"), e.Bind("reason")],
+        e.Case(
+          e.Variable("result"),
+          [
+            #("Ok", e.Function([e.Bind("value")], e.Variable("value"))),
+            #(
+              "Error",
+              e.Function(
+                [e.Bind("_")],
+                // e.Call(e.Perform("Abort"), [e.Variable("reason")]),
+                e.Vacant(""),
+              ),
+            ),
+          ],
+          None,
+        ),
+      ),
+    ),
+    #(
+      e.Bind("request"),
+      e.Call(
+        e.Select(e.Variable("http"), "get"),
+        [
+          e.String("catfact.ninja"), e.String("/fact"),
+          e.Call(e.Tag("None"), [e.Record([], None)]),
+        ],
+      ),
+    ),
+    // #(
+    //   e.Bind("decoder"),
+    //   e.Call(
+    //     e.Select(e.Variable("json"), "object"),
+    //     [
+    //       e.Call(
+    //         e.Select(e.Variable("json"), "field"),
+    //         [
+    //           e.String("fact"), e.Select(e.Variable("json"), "string"),
+    //           e.Select(e.Variable("json"), "done"),
+    //         ],
+    //       ), e.Function([e.Bind("x")], e.Variable("x")),
+    //     ],
+    //   ),
+    // ),
+    #(
+      e.Destructure([#("body", "body")]),
+      e.Call(
+        e.Variable("expect"),
+        [
+          e.Call(e.Perform("Fetch"), [e.Variable("request")]),
+          e.String("Failed to fetch"),
+        ],
+      ),
+    ),
+  ],
+  e.Call(e.Builtin("binary_to_string"), [e.Variable("body")]),
+  True,
+)
+
 pub const hash_key = "hash"
 
 pub fn init(_) {
@@ -129,14 +198,7 @@ pub fn init(_) {
       closure_serialization_key,
       snippet.init(closure_serialization, effects(), cache),
     ),
-    #(
-      fetch_key,
-      snippet.init(
-        projection.rebuild(examples.catfact_fetch().0),
-        effects(),
-        cache,
-      ),
-    ),
+    #(fetch_key, snippet.init(catfact, effects(), cache)),
     #(hash_key, snippet.init(e.Reference("he1727f8f"), effects(), cache)),
   ]
   let references =
