@@ -154,6 +154,12 @@ const externals_example = e.Block(
   False,
 )
 
+const capture_example = e.Block(
+  [],
+  e.Call(e.Builtin("capture"), [e.Function([e.Bind("x")], e.Variable("x"))]),
+  False,
+)
+
 pub type State {
   State(
     active: Active,
@@ -167,6 +173,7 @@ pub type State {
     externals_example: snippet.Snippet,
     functions_example: snippet.Snippet,
     fix_example: snippet.Snippet,
+    capture_example: snippet.Snippet,
   )
 }
 
@@ -187,6 +194,7 @@ pub type Example {
   Externals
   Functions
   Fix
+  Capture
 }
 
 pub fn get_example(state: State, identifier) {
@@ -201,6 +209,7 @@ pub fn get_example(state: State, identifier) {
     Externals -> state.externals_example
     Functions -> state.functions_example
     Fix -> state.fix_example
+    Capture -> state.capture_example
   }
 }
 
@@ -216,6 +225,7 @@ pub fn set_example(state: State, identifier, new) {
     Externals -> State(..state, externals_example: new)
     Functions -> State(..state, functions_example: new)
     Fix -> State(..state, fix_example: new)
+    Capture -> State(..state, capture_example: new)
   }
 }
 
@@ -243,6 +253,7 @@ pub fn init(_) {
       snippet.init(externals_example, effects(), cache),
       snippet.init(functions_example, effects(), cache),
       snippet.init(fix_example, effects(), cache),
+      snippet.init(capture_example, effects(), cache),
     ),
     effect.none(),
   )

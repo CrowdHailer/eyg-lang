@@ -51,21 +51,30 @@ fn note(content) {
   )
 }
 
-fn chapter(title, content, comment) {
-  h.div([a.class("hstack gap-6")], [
-    h.div([a.class("expand")], [h2(title), ..content]),
-    case comment {
-      Some(comment) -> note(comment)
-      None ->
-        h.div(
-          [
-            a.class(""),
-            a.style([#("flex", "0 0 200px"), #("overflow", "hidden")]),
-          ],
-          [],
-        )
-    },
-  ])
+fn chapter(index, title, content, comment) {
+  h.div(
+    [
+      a.class("vstack outline-none"),
+      a.style([#("min-height", "100vh")]),
+      a.attribute("tabindex", index),
+    ],
+    [
+      h.div([a.class("hstack gap-6")], [
+        h.div([a.class("expand")], [h2(title), ..content]),
+        case comment {
+          Some(comment) -> note(comment)
+          None ->
+            h.div(
+              [
+                a.class(""),
+                a.style([#("flex", "0 0 200px"), #("overflow", "hidden")]),
+              ],
+              [],
+            )
+        },
+      ]),
+    ],
+  )
 }
 
 fn chapter_link(title) {
@@ -109,6 +118,7 @@ fn render(state) {
       h.div([a.class("expand max-w-4xl")], [
         h1("EYG documentation"),
         chapter(
+          "1",
           "Introduction",
           [
             p(
@@ -127,12 +137,13 @@ fn render(state) {
           ]),
         ),
         chapter(
+          "2",
           "Numbers",
           [
             example(state, state.Numbers),
             p("Numbers are a positive or negative whole number, of any size."),
             p(
-              "Several builtins function are available for working with number values, they include math operations add, subtract etc and functions for parsing and serializing numerical values.",
+              "Several builtin functions are available for working with number values, they include math operations add, subtract etc and functions for parsing and serializing numerical values.",
             ),
           ],
           Some([
@@ -142,14 +153,15 @@ fn render(state) {
           ]),
         ),
         chapter(
+          "3",
           "Text",
           [
             example(state, state.Text),
             p(
-              "Text segment of any length made up of charachters, whitespace and special charachters",
+              "Text segment of any length made up of characters, whitespace and special characters",
             ),
             p(
-              "Several builtins function are available for working with text values such as append, split, uppercase and lowercase.",
+              "Several builtin functions are available for working with text values such as append, split, uppercase and lowercase.",
             ),
           ],
           Some([
@@ -159,16 +171,17 @@ fn render(state) {
           ]),
         ),
         chapter(
+          "4",
           "Lists",
           [
             example(state, state.Lists),
             p(
-              "List are an ordered collection of value.
+              "Lists are an ordered collection of value.
           All the values in a list must be of the same type, for example only Numbers or only Text.
           If you need to keep more than one type in the list jump ahead to look at Unions.",
             ),
             p(
-              "For working with lists there are builtins to add an remove items from the front of the list, as well as processing all the items in the list",
+              "For working with lists there are builtins to add and remove items from the front of the list, as well as processing all the items in the list",
             ),
             // p("List are implemented as linked lists, this means it is faster to add and remove items from the front of the list.")
           ],
@@ -181,6 +194,7 @@ fn render(state) {
           ]),
         ),
         chapter(
+          "5",
           "Records",
           [
             example(state, state.Records),
@@ -189,17 +203,17 @@ fn render(state) {
               Different names can store values of different types.",
             ),
             p(
-              "When passing records to functions any unused values are ignored.
-            Here the greet function accepts any record with a name field,
-            we can pass the alice or bob record to this function, the extra height field on bob will be ignored.",
+              "When passing records to functions any unused values are ignored.",
             ),
+            // Here the greet function accepts any record with a name field,
+            // we can pass the alice or bob record to this function, the extra height field on bob will be ignored.",
             example(state, state.Overwrite),
             p(
-              "New records can be created with a set of their fields overwritten.",
+              "New records can be created with a subset of their fields overwritten.",
             ),
           ],
           Some([
-            element.text("Record can be created or added to by pressing "),
+            element.text("Records can be created or added to by pressing "),
             components.keycap("r"),
             element.text(". To select a field from a record press "),
             components.keycap("g"),
@@ -208,22 +222,23 @@ fn render(state) {
           ]),
         ),
         chapter(
+          "6",
           "Unions",
           [
             example(state, state.Unions),
             p(
-              "Unions are used when a value is on of a selection of possibilities.
+              "Unions are used when a value is one of a selection of possibilities.
             For example when parsing a number from some text, the result might be ok and we have a number or there is no number and so we have a value representing the error.",
             ),
             p(
               "Each possibility in the union is a tagged value, from int_parse values can be tagged Ok or Error.",
             ),
             p(
-              "Case statements are used to match on each of the tagds that are in the union.",
+              "Case statements are used to match on each of the tags that are in the union.",
             ),
             example(state, state.OpenCase),
             p(
-              "Case statements can be open, in which case they have a final fallback that is called if none of the previous ones match the tag of the value.",
+              "Case statements can be open and if so, they have a final fallback that is called if none of the previous ones match the tag of the value.",
             ),
           ],
           Some([
@@ -237,17 +252,21 @@ fn render(state) {
           ]),
         ),
         chapter(
+          "7",
           "Functions",
           [
             example(state, state.Functions),
             p(
-              "Functions allow you to create resuable behaviour in your application",
+              "Functions allow you to create reusable behaviour in your application.",
             ),
             p(
               "All functions, including builtins, can be called with only some of the arguments and will return a function that accepts the remaining arguments.",
             ),
             p("All functions can be passed to other functions"),
             example(state, state.Fix),
+            p(
+              "fix is a fixpoint operator, use it to write recursive functions.",
+            ),
           ],
           Some([
             element.text("press"),
@@ -255,8 +274,8 @@ fn render(state) {
             element.text("to insert text or edit existing text"),
           ]),
         ),
-        chapter("External", [example(state, state.Externals)], None),
-        // overwriting fields in a record
+        // chapter("External", [example(state, state.Externals)], None),
+        chapter("8", "Capture", [example(state, state.Capture)], None),
       ]),
     ]),
   ])

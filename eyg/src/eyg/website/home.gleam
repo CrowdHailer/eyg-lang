@@ -48,13 +48,13 @@ fn render(s) {
         h.div([a.class("m-2")], [
           h.p([a.class("max-w-lg")], [
             element.text(
-              "The stable foundation for building software that runs forever",
+              "The stable foundation for building software that runs forever.",
             ),
           ]),
           h.p([], [
             h.span([a.class("font-bold")], [element.text("Predictable:")]),
             element.text(
-              " programs are deterministic, depenendencies are immutable",
+              " programs are deterministic, dependencies are immutable",
             ),
           ]),
           h.p([], [
@@ -66,7 +66,7 @@ fn render(s) {
           h.p([], [
             h.span([a.class("font-bold")], [element.text("Confident:")]),
             element.text(
-              " A sound structural type system guarantees programs never crash.",
+              " A sound structural type system guarantees programs never crash",
             ),
           ]),
         ]),
@@ -76,7 +76,7 @@ fn render(s) {
     section("Closure serialisation", [
       snippet(s, state.closure_serialization_key),
       p(
-        "Closure serialisation allows programs functions to be effeciently transformed back into source code and sent to other machines",
+        "Closure serialisation allows functions to be efficiently transformed back into source code and sent to other machines.",
       ),
       // p("hello"),
     // p(
@@ -89,10 +89,10 @@ fn render(s) {
     section("Immutable references", [
       snippet(s, state.fetch_key),
       p(
-        "All declarations can be uniquly hashed and referenced from other code.",
+        "All declarations can be uniquely hashed and referenced from other code.",
       ),
       p(
-        "Once a dependency is fixed it can never change because changing the hash would update your programs hash.",
+        "Once a dependency is fixed it can never change because changing the hash would update your program's hash.",
       ),
     ]),
     // section("Immutable references", [snippet(s, state.hash_key)]),
