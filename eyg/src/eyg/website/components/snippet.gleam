@@ -7,7 +7,9 @@ import eyg/runtime/break
 import eyg/runtime/interpreter/runner
 import eyg/runtime/value
 import eyg/shell/buffer
+import eyg/sync/sync
 import eyg/website/run
+import eygir/annotated
 import gleam/javascript/promise
 import gleam/list
 import gleam/listx
@@ -31,12 +33,27 @@ type EffectSpec =
   #(binding.Mono, binding.Mono, ExternalBlocking)
 
 pub type Snippet {
-  Editing(buffer.Buffer, run.Run, List(#(String, EffectSpec)))
-  Normal(editable.Expression, run.Run, List(#(String, EffectSpec)))
+  Editing(buffer.Buffer, run.Run, List(#(String, EffectSpec)), sync.Sync)
+  Normal(editable.Expression, run.Run, List(#(String, EffectSpec)), sync.Sync)
 }
 
-pub fn init(src, effects) {
-  Normal(src, run.start(src, effects), effects)
+pub fn init(src, effects, cache) {
+  Normal(src, run.start(src, effects, cache), effects, cache)
+}
+
+pub fn set_references(state: Snippet, cache) {
+  case state {
+    Editing(buf, run, eff, _cache) -> Editing(buf, run, eff, cache)
+    Normal(src, run, eff, _cache) -> Normal(src, run, eff, cache)
+  }
+}
+
+pub fn references(state: Snippet) {
+  case state {
+    Normal(src, _, _, _) ->
+      editable.to_annotated(src, []) |> annotated.list_references()
+    Editing(buffer, _, _, _) -> buffer.references(buffer)
+  }
 }
 
 pub type Message {
@@ -54,32 +71,32 @@ pub fn update(state, message) {
   case message {
     UserFocusedOnCode ->
       case state {
-        Editing(_, _, _) -> #(state, None)
-        Normal(src, run, effects) -> {
+        Editing(_, _, _, _) -> #(state, None)
+        Normal(src, run, effects, references) -> {
           let src = editable.open_all(src)
           let proj = projection.focus_at(src, [])
           let buffer = buffer.from(proj)
-          #(Editing(buffer, run, effects), None)
+          #(Editing(buffer, run, effects, references), None)
         }
       }
     MessageFromBuffer(message) ->
       case state {
-        Normal(_, _, _) -> panic as "should never happen here"
-        Editing(buffer, run, effects) -> {
+        Normal(_, _, _, _) -> panic as "should never happen here"
+        Editing(buffer, run, effects, cache) -> {
           let buffer =
             buffer.update(
               buffer,
               message,
-              analysis.empty_environment(),
+              analysis.with_references(sync.types(cache)),
               effect_types(effects),
             )
           let run = case buffer.1 {
             buffer.Command(_) ->
-              run.start(projection.rebuild(buffer.0), effects)
+              run.start(projection.rebuild(buffer.0), effects, cache)
             _ -> run
           }
           #(
-            Editing(buffer, run, effects),
+            Editing(buffer, run, effects, cache),
             Some(fn(_) {
               window.request_animation_frame(fn(_) {
                 case document.query_selector("[autofocus]") {
@@ -93,16 +110,21 @@ pub fn update(state, message) {
         }
       }
     UserClickRunEffects -> {
-      let #(src, run.Run(status, effect_log), effects) = case state {
-        Normal(src, run, effects) -> #(src, run, effects)
-        Editing(#(p, _), run, effects) -> #(projection.rebuild(p), run, effects)
+      let #(src, run.Run(status, effect_log), effects, cache) = case state {
+        Normal(src, run, effects, cache) -> #(src, run, effects, cache)
+        Editing(#(p, _), run, effects, cache) -> #(
+          projection.rebuild(p),
+          run,
+          effects,
+          cache,
+        )
       }
       case status {
         run.Handling(_label, lift, env, k, blocking) -> {
           case blocking(lift) {
             Ok(promise) -> {
               let run = run.Run(status, effect_log)
-              let state = Normal(src, run, effects)
+              let state = Normal(src, run, effects, cache)
 
               #(
                 state,
@@ -116,7 +138,7 @@ pub fn update(state, message) {
             }
             Error(reason) -> {
               let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Normal(src, run, effects)
+              let state = Normal(src, run, effects, cache)
               #(state, None)
             }
           }
@@ -125,7 +147,7 @@ pub fn update(state, message) {
       }
     }
     RuntimeRepliedFromExternalEffect(reply) -> {
-      let assert Normal(src, run, effects) = state
+      let assert Normal(src, run, effects, cache) = state
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
@@ -134,7 +156,7 @@ pub fn update(state, message) {
         Error(debug) -> run.handle_extrinsic_effects(debug, effects)
       }
       let run = run.Run(status, effect_log)
-      let state = Normal(src, run, effects)
+      let state = Normal(src, run, effects, cache)
       case status {
         run.Done(_) | run.Failed(_) -> #(state, None)
 
@@ -142,7 +164,7 @@ pub fn update(state, message) {
           case blocking(lift) {
             Ok(promise) -> {
               let run = run.Run(status, effect_log)
-              let state = Normal(src, run, effects)
+              let state = Normal(src, run, effects, cache)
 
               #(
                 state,
@@ -156,7 +178,7 @@ pub fn update(state, message) {
             }
             Error(reason) -> {
               let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Normal(src, run, effects)
+              let state = Normal(src, run, effects, cache)
               #(state, None)
             }
           }
@@ -167,15 +189,15 @@ pub fn update(state, message) {
 
 pub fn finish_editing(state: Snippet) {
   case state {
-    Editing(#(proj, _mode), _run, effects) ->
-      init(projection.rebuild(proj), effects)
+    Editing(#(proj, _mode), _run, effects, cache) ->
+      init(projection.rebuild(proj), effects, cache)
     _ -> state
   }
 }
 
 pub fn render(state: Snippet) {
   h.div([a.class("bg-white neo-shadow font-mono mt-4 mb-6")], case state {
-    Editing(#(proj, mode), run, effects) ->
+    Editing(#(proj, mode), run, effects, cache) ->
       case mode {
         buffer.Command(_) -> {
           let eff =
@@ -184,7 +206,12 @@ pub fn render(state: Snippet) {
               let #(label, #(lift, reply)) = new
               t.EffectExtend(label, #(lift, reply), acc)
             })
-          let a = analysis.analyse(proj, analysis.empty_environment(), eff)
+          let a =
+            analysis.analyse(
+              proj,
+              analysis.with_references(sync.types(cache)),
+              eff,
+            )
           let errors = analysis.type_errors(a)
           [
             render_projection(proj, True),
@@ -220,7 +247,7 @@ pub fn render(state: Snippet) {
         ]
       }
 
-    Normal(src, run, _effects) -> [
+    Normal(src, run, _effects, _) -> [
       h.div(
         [
           a.class(

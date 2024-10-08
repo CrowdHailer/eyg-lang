@@ -1,7 +1,10 @@
 import eyg/shell/examples
+import eyg/sync/browser
+import eyg/sync/sync
 import eyg/website/components/snippet
+import eygir/expression
 import gleam/dict.{type Dict}
-import gleam/io
+import gleam/list
 import gleam/option.{None, Some}
 import harness/impl/browser/alert
 import harness/impl/browser/copy
@@ -11,14 +14,19 @@ import harness/impl/browser/prompt
 import lustre/effect
 import morph/editable as e
 import morph/projection
+import snag
 
 pub type State {
-  State(active: Active, snippets: Dict(Int, snippet.Snippet))
+  State(
+    cache: sync.Sync,
+    active: Active,
+    snippets: Dict(String, snippet.Snippet),
+  )
 }
 
 pub type Active {
-  Editing(Int)
-  Running(Int)
+  Editing(String)
+  Running(String)
   Nothing
 }
 
@@ -31,6 +39,8 @@ fn effects() {
     #(prompt.l, #(prompt.lift, prompt.reply(), prompt.blocking)),
   ]
 }
+
+pub const closure_serialization_key = "closure_serialization"
 
 const closure_serialization = e.Block(
   [
@@ -108,26 +118,38 @@ const closure_serialization = e.Block(
   True,
 )
 
+pub const fetch_key = "fetch"
+
+pub const hash_key = "hash"
+
 pub fn init(_) {
-  #(
-    State(
-      Nothing,
-      dict.from_list([
-        #(0, snippet.init(closure_serialization, effects())),
-        #(
-          1,
-          snippet.init(
-            projection.rebuild(examples.catfact_fetch().0),
-            effects(),
-          ),
-        ),
-      ]),
+  let cache = sync.init(browser.get_origin())
+  let snippets = [
+    #(
+      closure_serialization_key,
+      snippet.init(closure_serialization, effects(), cache),
     ),
-    effect.none(),
-  )
+    #(
+      fetch_key,
+      snippet.init(
+        projection.rebuild(examples.catfact_fetch().0),
+        effects(),
+        cache,
+      ),
+    ),
+    #(hash_key, snippet.init(e.Reference("he1727f8f"), effects(), cache)),
+  ]
+  let references =
+    list.flat_map(snippets, fn(snippet) {
+      let #(_, snippet) = snippet
+      snippet.references(snippet)
+    })
+  let #(cache, tasks) = sync.fetch_missing(cache, references)
+  let state = State(cache, Nothing, dict.from_list(snippets))
+  #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
-pub fn get_snippet(state: State, id: Int) {
+pub fn get_snippet(state: State, id) {
   let assert Ok(snippet) = dict.get(state.snippets, id)
   snippet
 }
@@ -137,7 +159,11 @@ pub fn set_snippet(state: State, id, snippet) {
 }
 
 pub type Message {
-  SnippetMessage(Int, snippet.Message)
+  SnippetMessage(String, snippet.Message)
+  SyncMessage(
+    reference: String,
+    value: Result(expression.Expression, snag.Snag),
+  )
 }
 
 pub fn update(state: State, message) {
@@ -164,6 +190,18 @@ pub fn update(state: State, message) {
             f(d)
           })
       })
+    }
+    SyncMessage(ref, result) -> {
+      let cache = sync.task_finish(state.cache, ref, result)
+      let #(cache, tasks) = sync.fetch_missing(cache, [ref])
+      let snippets =
+        dict.map_values(state.snippets, fn(_, v) {
+          snippet.set_references(v, cache)
+        })
+      #(
+        State(..state, snippets: snippets, cache: cache),
+        effect.from(browser.do_sync(tasks, SyncMessage)),
+      )
     }
   }
 }

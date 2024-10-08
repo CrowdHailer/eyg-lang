@@ -130,9 +130,9 @@ fn render(state) {
           "Numbers",
           [
             example(state, state.Numbers),
-            p("Numbers represent all positive or negative whole numbers."),
+            p("Numbers are a positive or negative whole number, of any size."),
             p(
-              "Builtins function are available for working with number values, they include math operations add, subtract etc and functions for parsing and serializing numerical values.",
+              "Several builtins function are available for working with number values, they include math operations add, subtract etc and functions for parsing and serializing numerical values.",
             ),
           ],
           Some([
@@ -143,19 +143,18 @@ fn render(state) {
         ),
         chapter(
           "Text",
-          [example(state, state.Text), p("passages of words and whitespace")],
+          [
+            example(state, state.Text),
+            p(
+              "Text segment of any length made up of charachters, whitespace and special charachters",
+            ),
+            p(
+              "Several builtins function are available for working with text values such as append, split, uppercase and lowercase.",
+            ),
+          ],
           Some([
             element.text("press"),
             components.keycap("s"),
-            element.text("to insert text or edit existing text"),
-          ]),
-        ),
-        chapter(
-          "Functions",
-          [example(state, state.Functions), p("resuable behaviour")],
-          Some([
-            element.text("press"),
-            components.keycap("f"),
             element.text("to insert text or edit existing text"),
           ]),
         ),
@@ -168,11 +167,17 @@ fn render(state) {
           All the values in a list must be of the same type, for example only Numbers or only Text.
           If you need to keep more than one type in the list jump ahead to look at Unions.",
             ),
+            p(
+              "For working with lists there are builtins to add an remove items from the front of the list, as well as processing all the items in the list",
+            ),
+            // p("List are implemented as linked lists, this means it is faster to add and remove items from the front of the list.")
           ],
           Some([
             element.text("press"),
-            components.keycap("f"),
-            element.text("to insert text or edit existing text"),
+            components.keycap("l"),
+            element.text("to create a new list and "),
+            components.keycap("y"),
+            element.text(" to add items to a list."),
           ]),
         ),
         chapter(
@@ -180,8 +185,7 @@ fn render(state) {
           [
             example(state, state.Records),
             p(
-              "Records are used to gather related values.
-              Each value in the record has a name.
+              "Records gather related values with each value having a name in the record.
               Different names can store values of different types.",
             ),
             p(
@@ -189,12 +193,18 @@ fn render(state) {
             Here the greet function accepts any record with a name field,
             we can pass the alice or bob record to this function, the extra height field on bob will be ignored.",
             ),
+            example(state, state.Overwrite),
+            p(
+              "New records can be created with a set of their fields overwritten.",
+            ),
           ],
           Some([
             element.text("Record can be created or added to by pressing "),
             components.keycap("r"),
             element.text(". To select a field from a record press "),
             components.keycap("g"),
+            element.text(". To overwrite fields in a record use "),
+            components.keycap("o"),
           ]),
         ),
         chapter(
@@ -205,11 +215,44 @@ fn render(state) {
               "Unions are used when a value is on of a selection of possibilities.
             For example when parsing a number from some text, the result might be ok and we have a number or there is no number and so we have a value representing the error.",
             ),
+            p(
+              "Each possibility in the union is a tagged value, from int_parse values can be tagged Ok or Error.",
+            ),
+            p(
+              "Case statements are used to match on each of the tagds that are in the union.",
+            ),
+            example(state, state.OpenCase),
+            p(
+              "Case statements can be open, in which case they have a final fallback that is called if none of the previous ones match the tag of the value.",
+            ),
           ],
           Some([
-            element.text("Create a union by pressing "),
+            element.text("Create a tagged value by pressing "),
             components.keycap("t"),
+            element.text(". Complete case statements are created with "),
+            components.keycap("m"),
+            element.text(". Open case statements are created with "),
+            components.keycap("M"),
             element.text("."),
+          ]),
+        ),
+        chapter(
+          "Functions",
+          [
+            example(state, state.Functions),
+            p(
+              "Functions allow you to create resuable behaviour in your application",
+            ),
+            p(
+              "All functions, including builtins, can be called with only some of the arguments and will return a function that accepts the remaining arguments.",
+            ),
+            p("All functions can be passed to other functions"),
+            example(state, state.Fix),
+          ],
+          Some([
+            element.text("press"),
+            components.keycap("f"),
+            element.text("to insert text or edit existing text"),
           ]),
         ),
         chapter("External", [example(state, state.Externals)], None),

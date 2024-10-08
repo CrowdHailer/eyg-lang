@@ -211,6 +211,7 @@ pub fn update(state, message) {
     Synced(ref, result) -> {
       let Shell(cache: cache, scope: scope, ..) = state
       let cache = sync.task_finish(cache, ref, result)
+
       let #(cache, tasks) = sync.fetch_missing(cache, [ref])
 
       let scope = case sync.missing(cache, [scratch_ref]) {

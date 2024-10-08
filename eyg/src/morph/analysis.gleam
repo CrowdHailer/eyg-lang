@@ -15,11 +15,14 @@ import gleam/string
 import morph/editable as e
 import morph/projection
 
+pub type References =
+  Dict(String, binding.Poly)
+
 pub type Context {
   Context(
     bindings: Dict(Int, binding.Binding),
     scope: List(#(String, binding.Poly)),
-    references: Dict(String, binding.Poly),
+    references: References,
     builtins: List(#(String, binding.Poly)),
   )
 }
@@ -44,6 +47,10 @@ pub fn within_environment(runtime_env) {
   let #(bindings, scope) = env_to_tenv(runtime_env)
   io.debug("need referencesss")
   Context(bindings, scope, dict.new(), infer.builtins())
+}
+
+pub fn with_references(refs) {
+  Context(dict.new(), [], refs, infer.builtins())
 }
 
 pub fn empty_environment() {

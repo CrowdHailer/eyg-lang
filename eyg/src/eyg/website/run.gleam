@@ -2,8 +2,11 @@ import eyg/runtime/break
 import eyg/runtime/interpreter/runner
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
+import eyg/sync/sync
 import eygir/annotated
 import gleam/dict
+import gleam/dynamic
+import gleam/dynamicx
 import gleam/javascript/promise
 import gleam/list
 import harness/stdlib
@@ -34,12 +37,18 @@ pub type Status {
   Failed(istate.Debug(Meta))
 }
 
-pub fn start(editable, effects) {
+pub fn start(editable, effects, cache) {
   let return =
     runner.execute(
       editable.to_expression(editable)
         |> annotated.add_annotation(Nil),
-      stdlib.env(),
+      stdlib.env_and_ref(
+        sync.values(cache)
+        // TODO move all unsafe into stdlib
+        |> dynamic.from()
+        |> dynamicx.unsafe_coerce(),
+      ),
+      // effects
       dict.new(),
     )
   let status = case return {

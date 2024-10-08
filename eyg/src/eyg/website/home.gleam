@@ -34,11 +34,11 @@ fn section(title, content) {
   h.div([a.class("mx-auto max-w-3xl my-12")], [h2(title), ..content])
 }
 
-fn render(state) {
+fn render(s) {
   h.div([a.class("yellow-gradient")], [
     components.header(),
     section("Closure serialisation", [
-      snippet(state, 0),
+      snippet(s, state.closure_serialization_key),
       p("hello"),
       p(
         "EYG has controlled effects this means any program can be inspected to see what it needs from the environment it runs in.
@@ -47,6 +47,7 @@ fn render(state) {
       p("Download is an even better effect in the browser"),
       p("There are hashes that allow reproducable everything"),
     ]),
-    section("Effects", [snippet(state, 1)]),
+    // section("Effects", [snippet(s, state.fetch_key)]),
+    section("Immutable references", [snippet(s, state.hash_key)]),
   ])
 }

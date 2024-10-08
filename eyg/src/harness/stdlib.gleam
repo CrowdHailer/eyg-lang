@@ -11,3 +11,7 @@ pub fn lib() {
 pub fn env() {
   state.Env([], dict.new(), lib().1)
 }
+
+pub fn env_and_ref(refs) {
+  state.Env([], refs, lib().1)
+}
