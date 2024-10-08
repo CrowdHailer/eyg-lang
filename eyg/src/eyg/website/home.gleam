@@ -75,15 +75,26 @@ fn render(s) {
     ]),
     section("Closure serialisation", [
       snippet(s, state.closure_serialization_key),
-      p("hello"),
       p(
-        "EYG has controlled effects this means any program can be inspected to see what it needs from the environment it runs in.
-      For example these snippets have an alert effect",
+        "Closure serialisation allows programs functions to be effeciently transformed back into source code and sent to other machines",
       ),
-      p("Download is an even better effect in the browser"),
-      p("There are hashes that allow reproducable everything"),
+      // p("hello"),
+    // p(
+    //   "EYG has controlled effects this means any program can be inspected to see what it needs from the environment it runs in.
+    // For example these snippets have an alert effect",
+    // ),
+    // p("Download is an even better effect in the browser"),
+    // p("There are hashes that allow reproducable everything"),
     ]),
-    section("Effects", [snippet(s, state.fetch_key)]),
-    section("Immutable references", [snippet(s, state.hash_key)]),
+    section("Immutable references", [
+      snippet(s, state.fetch_key),
+      p(
+        "All declarations can be uniquly hashed and referenced from other code.",
+      ),
+      p(
+        "Once a dependency is fixed it can never change because changing the hash would update your programs hash.",
+      ),
+    ]),
+    // section("Immutable references", [snippet(s, state.hash_key)]),
   ])
 }
