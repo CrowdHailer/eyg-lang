@@ -1,6 +1,7 @@
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
+import gleam/dict.{type Dict}
 import gleam/option.{None, Some}
 import harness/impl/browser/alert
 import harness/impl/browser/copy
@@ -9,11 +10,15 @@ import harness/impl/browser/paste
 import lustre/effect
 import morph/editable as e
 
+pub const int_key = "int"
+
 const int_example = e.Block(
   [#(e.Bind("x"), e.Integer(5)), #(e.Bind("y"), e.Integer(7))],
   e.Call(e.Builtin("int_add"), [e.Variable("x"), e.Variable("y")]),
   False,
 )
+
+pub const text_key = "text"
 
 const text_example = e.Block(
   [
@@ -26,6 +31,8 @@ const text_example = e.Block(
   ),
   False,
 )
+
+pub const lists_key = "lists"
 
 const lists_example = e.Block(
   [
@@ -43,6 +50,8 @@ const lists_example = e.Block(
   False,
 )
 
+pub const records_key = "records"
+
 const records_example = e.Block(
   [
     #(e.Bind("alice"), e.Record([#("name", e.String("Alice"))], None)),
@@ -55,6 +64,8 @@ const records_example = e.Block(
   False,
 )
 
+pub const overwrite_key = "overwrite"
+
 const overwrite_example = e.Block(
   [
     #(
@@ -65,6 +76,8 @@ const overwrite_example = e.Block(
   e.Record([#("height", e.Integer(100))], Some(e.Variable("bob"))),
   False,
 )
+
+pub const unions_key = "unions"
 
 const unions_example = e.Block(
   [],
@@ -79,6 +92,8 @@ const unions_example = e.Block(
   False,
 )
 
+pub const open_case_key = "open_case"
+
 const open_case_example = e.Block(
   [],
   e.Case(
@@ -88,6 +103,8 @@ const open_case_example = e.Block(
   ),
   False,
 )
+
+pub const functions_key = "functions"
 
 const functions_example = e.Block(
   [
@@ -103,6 +120,8 @@ const functions_example = e.Block(
   e.Call(e.Variable("inc2"), [e.Integer(5)]),
   False,
 )
+
+pub const fix_key = "fix"
 
 const fix_example = e.Block(
   [
@@ -148,11 +167,15 @@ const fix_example = e.Block(
   False,
 )
 
+pub const externals_key = "externals"
+
 const externals_example = e.Block(
   [],
   e.Call(e.Perform("Alert"), [e.String("What's up?")]),
   False,
 )
+
+pub const capture_key = "capture"
 
 const capture_example = e.Block(
   [],
@@ -161,72 +184,22 @@ const capture_example = e.Block(
 )
 
 pub type State {
-  State(
-    active: Active,
-    int_example: snippet.Snippet,
-    text_example: snippet.Snippet,
-    lists_example: snippet.Snippet,
-    records_example: snippet.Snippet,
-    overwrite_example: snippet.Snippet,
-    unions_example: snippet.Snippet,
-    open_case_example: snippet.Snippet,
-    externals_example: snippet.Snippet,
-    functions_example: snippet.Snippet,
-    fix_example: snippet.Snippet,
-    capture_example: snippet.Snippet,
-  )
+  State(active: Active, snippets: Dict(String, snippet.Snippet))
 }
 
 pub type Active {
-  Editing(Example)
-  Running(Example)
+  Editing(String)
+  Running(String)
   Nothing
 }
 
-pub type Example {
-  Numbers
-  Text
-  Lists
-  Records
-  Overwrite
-  Unions
-  OpenCase
-  Externals
-  Functions
-  Fix
-  Capture
+pub fn get_example(state: State, id) {
+  let assert Ok(snippet) = dict.get(state.snippets, id)
+  snippet
 }
 
-pub fn get_example(state: State, identifier) {
-  case identifier {
-    Numbers -> state.int_example
-    Text -> state.text_example
-    Lists -> state.lists_example
-    Records -> state.records_example
-    Overwrite -> state.overwrite_example
-    Unions -> state.unions_example
-    OpenCase -> state.open_case_example
-    Externals -> state.externals_example
-    Functions -> state.functions_example
-    Fix -> state.fix_example
-    Capture -> state.capture_example
-  }
-}
-
-pub fn set_example(state: State, identifier, new) {
-  case identifier {
-    Numbers -> State(..state, int_example: new)
-    Text -> State(..state, text_example: new)
-    Lists -> State(..state, lists_example: new)
-    Records -> State(..state, records_example: new)
-    Overwrite -> State(..state, overwrite_example: new)
-    Unions -> State(..state, unions_example: new)
-    OpenCase -> State(..state, open_case_example: new)
-    Externals -> State(..state, externals_example: new)
-    Functions -> State(..state, functions_example: new)
-    Fix -> State(..state, fix_example: new)
-    Capture -> State(..state, capture_example: new)
-  }
+pub fn set_example(state: State, id, snippet) {
+  State(..state, snippets: dict.insert(state.snippets, id, snippet))
 }
 
 pub fn effects() {
@@ -240,27 +213,24 @@ pub fn effects() {
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
-  #(
-    State(
-      Nothing,
-      snippet.init(int_example, effects(), cache),
-      snippet.init(text_example, effects(), cache),
-      snippet.init(lists_example, effects(), cache),
-      snippet.init(records_example, effects(), cache),
-      snippet.init(overwrite_example, effects(), cache),
-      snippet.init(unions_example, effects(), cache),
-      snippet.init(open_case_example, effects(), cache),
-      snippet.init(externals_example, effects(), cache),
-      snippet.init(functions_example, effects(), cache),
-      snippet.init(fix_example, effects(), cache),
-      snippet.init(capture_example, effects(), cache),
-    ),
-    effect.none(),
-  )
+  let snippets = [
+    #(int_key, snippet.init(int_example, effects(), cache)),
+    #(text_key, snippet.init(text_example, effects(), cache)),
+    #(lists_key, snippet.init(lists_example, effects(), cache)),
+    #(records_key, snippet.init(records_example, effects(), cache)),
+    #(overwrite_key, snippet.init(overwrite_example, effects(), cache)),
+    #(unions_key, snippet.init(unions_example, effects(), cache)),
+    #(open_case_key, snippet.init(open_case_example, effects(), cache)),
+    #(externals_key, snippet.init(externals_example, effects(), cache)),
+    #(functions_key, snippet.init(functions_example, effects(), cache)),
+    #(fix_key, snippet.init(fix_example, effects(), cache)),
+    #(capture_key, snippet.init(capture_example, effects(), cache)),
+  ]
+  #(State(Nothing, dict.from_list(snippets)), effect.none())
 }
 
 pub type Message {
-  SnippetMessage(Example, snippet.Message)
+  SnippetMessage(String, snippet.Message)
 }
 
 pub fn update(state: State, message) {

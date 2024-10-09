@@ -55,8 +55,8 @@ fn chapter(index, title, content, comment) {
   h.div(
     [
       a.class("vstack outline-none"),
-      a.style([#("min-height", "100vh")]),
-      a.attribute("tabindex", index),
+      // make this optional or not have at all
+    //  a.style([#("min-height", "100vh")])
     ],
     [
       h.div([a.class("hstack gap-6")], [
@@ -140,7 +140,7 @@ fn render(state) {
           "2",
           "Numbers",
           [
-            example(state, state.Numbers),
+            example(state, state.int_key),
             p("Numbers are a positive or negative whole number, of any size."),
             p(
               "Several builtin functions are available for working with number values, they include math operations add, subtract etc and functions for parsing and serializing numerical values.",
@@ -156,7 +156,7 @@ fn render(state) {
           "3",
           "Text",
           [
-            example(state, state.Text),
+            example(state, state.text_key),
             p(
               "Text segment of any length made up of characters, whitespace and special characters",
             ),
@@ -174,7 +174,7 @@ fn render(state) {
           "4",
           "Lists",
           [
-            example(state, state.Lists),
+            example(state, state.lists_key),
             p(
               "Lists are an ordered collection of value.
           All the values in a list must be of the same type, for example only Numbers or only Text.
@@ -197,7 +197,7 @@ fn render(state) {
           "5",
           "Records",
           [
-            example(state, state.Records),
+            example(state, state.records_key),
             p(
               "Records gather related values with each value having a name in the record.
               Different names can store values of different types.",
@@ -207,7 +207,7 @@ fn render(state) {
             ),
             // Here the greet function accepts any record with a name field,
             // we can pass the alice or bob record to this function, the extra height field on bob will be ignored.",
-            example(state, state.Overwrite),
+            example(state, state.overwrite_key),
             p(
               "New records can be created with a subset of their fields overwritten.",
             ),
@@ -225,7 +225,7 @@ fn render(state) {
           "6",
           "Unions",
           [
-            example(state, state.Unions),
+            example(state, state.unions_key),
             p(
               "Unions are used when a value is one of a selection of possibilities.
             For example when parsing a number from some text, the result might be ok and we have a number or there is no number and so we have a value representing the error.",
@@ -236,7 +236,7 @@ fn render(state) {
             p(
               "Case statements are used to match on each of the tags that are in the union.",
             ),
-            example(state, state.OpenCase),
+            example(state, state.open_case_key),
             p(
               "Case statements can be open and if so, they have a final fallback that is called if none of the previous ones match the tag of the value.",
             ),
@@ -255,7 +255,7 @@ fn render(state) {
           "7",
           "Functions",
           [
-            example(state, state.Functions),
+            example(state, state.functions_key),
             p(
               "Functions allow you to create reusable behaviour in your application.",
             ),
@@ -263,7 +263,7 @@ fn render(state) {
               "All functions, including builtins, can be called with only some of the arguments and will return a function that accepts the remaining arguments.",
             ),
             p("All functions can be passed to other functions"),
-            example(state, state.Fix),
+            example(state, state.fix_key),
             p(
               "fix is a fixpoint operator, use it to write recursive functions.",
             ),
@@ -275,7 +275,7 @@ fn render(state) {
           ]),
         ),
         // chapter("External", [example(state, state.Externals)], None),
-        chapter("8", "Capture", [example(state, state.Capture)], None),
+        chapter("8", "Capture", [example(state, state.capture_key)], None),
       ]),
     ]),
   ])

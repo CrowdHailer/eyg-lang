@@ -15,7 +15,6 @@ import harness/impl/browser/paste
 import harness/impl/browser/prompt
 import lustre/effect
 import morph/editable as e
-import morph/projection
 import snag
 
 pub type State {
@@ -211,6 +210,7 @@ pub fn init(_) {
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
+// Dont abstact as is useful because it uses the specific page State
 pub fn get_snippet(state: State, id) {
   let assert Ok(snippet) = dict.get(state.snippets, id)
   snippet
