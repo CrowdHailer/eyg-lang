@@ -51,7 +51,7 @@ fn note(content) {
   )
 }
 
-fn chapter(index, title, content, comment) {
+fn chapter(_index, title, content, comment) {
   h.div(
     [
       a.class("vstack outline-none"),
@@ -274,8 +274,69 @@ fn render(state) {
             element.text("to insert text or edit existing text"),
           ]),
         ),
+        chapter(
+          "8",
+          "Perfoming effects",
+          [
+            example(state, state.prompt_key),
+            p(
+              "A useful program must eventally interact with the world outside the computer.
+            Running the example above will prompt the user for there name.
+            A program uses perform to create an effect.",
+            ),
+            p(
+              "The Prompt effect sends information to the outside world, i.e. the text \"what is your name message\".
+              It also receives data from the outside world, i.e. the response to the question or and Error if no response is given.",
+              //   "Just as imporant is a responding to effects.
+            // Programs without effects (called pure) will always return the same answer.
+            // This next example introduces some non-determinism with the Choose effect.",
+            ),
+            p(
+              "Some effects only send out information, such as a Log effect, in which case the return value will be an empty record.
+            Some effects only pull information from the outside world, such as a Random effect, such effects are called with an empty record",
+            ),
+          ],
+          Some([
+            element.text("press"),
+            components.keycap("p"),
+            element.text("to insert perform to trigger an effect"),
+          ]),
+        ),
+        chapter(
+          "9",
+          "Handling effects",
+          [
+            example(state, state.handle_key),
+            p(
+              "Handlers are a mechanism to intercept effects performed within a function.
+              In this example, running the code will show that the inner function performs two alerts, without us having to dismiss the two alerts manually.",
+            ),
+            p(
+              "When testing functions it is useful to control the effects they perform.",
+            ),
+          ],
+          Some([
+            element.text("press"),
+            components.keycap("h"),
+            element.text("to insert to handle an effect"),
+          ]),
+        ),
+        chapter(
+          "10",
+          "Multiple resumptions",
+          [
+            example(state, state.multiple_resume_key),
+            p(
+              "Handlers give the ability to resume code multiple times.
+              In this example the function resumes the remaining code with both True and False values.
+              The final output is the set of all possible output that the exec function could produce.",
+            ),
+          ],
+          None,
+        ),
+        // Abort and flow control
         // chapter("External", [example(state, state.Externals)], None),
-        chapter("8", "Capture", [example(state, state.capture_key)], None),
+        chapter("11", "Capture", [example(state, state.capture_key)], None),
       ]),
     ]),
   ])

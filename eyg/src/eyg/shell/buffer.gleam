@@ -7,6 +7,7 @@ import eygir/encode
 import gleam/dict
 import gleam/int
 import gleam/io
+import gleam/javascript/promise
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -17,6 +18,7 @@ import morph/editable as e
 import morph/navigation
 import morph/projection as p
 import morph/transformation
+import plinth/browser/clipboard
 
 fn render_effect(eff) {
   let #(lift, reply) = eff
@@ -137,6 +139,7 @@ pub fn handle_command(key, source, context, effects) {
     // space is fine for seek because the command pallat is for beginners
     " " -> #(search_vacant(source), Command(None))
 
+    "Q" -> copy_escaped(source)
     "w" -> call_with(source)
     "E" -> assign_above(source)
     "e" -> assign_to(source)
@@ -514,4 +517,22 @@ pub fn all_escaped(buffer) {
   all_to_json(buffer)
   |> string.replace("\\", "\\\\")
   |> string.replace("\"", "\\\"")
+}
+
+pub fn copy_escaped(proj) {
+  case proj {
+    #(p.Exp(expression), _) -> {
+      clipboard.write_text(
+        encode.to_json(e.to_expression(expression))
+        |> string.replace("\\", "\\\\")
+        |> string.replace("\"", "\\\""),
+      )
+      // TODO better copy error
+      |> promise.map(io.debug)
+      #(proj, Command(None))
+    }
+    _ -> {
+      #(proj, Command(Some(ActionFailed("copy"))))
+    }
+  }
 }
