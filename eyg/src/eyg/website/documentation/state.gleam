@@ -3,11 +3,13 @@ import eyg/sync/sync
 import eyg/website/components/snippet
 import eygir/decode
 import gleam/dict.{type Dict}
+import gleam/list
 import gleam/option.{None, Some}
 import harness/impl/browser/alert
 import harness/impl/browser/copy
 import harness/impl/browser/download
 import harness/impl/browser/paste
+import harness/impl/browser/prompt
 import lustre/effect
 import morph/editable as e
 
@@ -168,6 +170,10 @@ const fix_example = e.Block(
   False,
 )
 
+pub const builtins_key = "externals"
+
+const builtins_example = "{\"0\":\"l\",\"l\":\"total\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_multiply\"},\"a\":{\"0\":\"i\",\"v\":90}},\"a\":{\"0\":\"i\",\"v\":3}},\"t\":{\"0\":\"l\",\"l\":\"total\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"total\"}},\"t\":{\"0\":\"l\",\"l\":\"notice\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"The total is: \"}},\"a\":{\"0\":\"v\",\"l\":\"total\"}},\"t\":{\"0\":\"v\",\"l\":\"notice\"}}}}"
+
 pub const externals_key = "externals"
 
 const externals_example = e.Block(
@@ -194,14 +200,14 @@ pub const multiple_resume_example = "{\"0\":\"l\",\"l\":\"capture\",\"v\":{\"0\"
 
 pub const capture_key = "capture"
 
-const capture_example = e.Block(
-  [],
-  e.Call(e.Builtin("capture"), [e.Function([e.Bind("x")], e.Variable("x"))]),
-  False,
-)
+const capture_example = "{\"0\":\"l\",\"l\":\"greeting\",\"v\":{\"0\":\"s\",\"v\":\"hey\"},\"t\":{\"0\":\"l\",\"l\":\"ignored\",\"v\":{\"0\":\"s\",\"v\":\"this string doesn't get transpiled\"},\"t\":{\"0\":\"l\",\"l\":\"func\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"to_javascript\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"v\",\"l\":\"greeting\"}},\"a\":{\"0\":\"s\",\"v\":\"Alice\"}}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"v\",\"l\":\"func\"}},\"a\":{\"0\":\"s\",\"v\":\"()\"}}}}}"
 
 pub type State {
-  State(active: Active, snippets: Dict(String, snippet.Snippet))
+  State(
+    cache: sync.Sync,
+    active: Active,
+    snippets: Dict(String, snippet.Snippet),
+  )
 }
 
 pub type Active {
@@ -225,6 +231,7 @@ pub fn effects() {
     #(copy.l, #(copy.lift, copy.reply(), copy.blocking)),
     #(download.l, #(download.lift, download.reply(), download.blocking)),
     #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),
+    #(prompt.l, #(prompt.lift, prompt.reply(), prompt.blocking)),
   ]
 }
 
@@ -249,16 +256,33 @@ pub fn init(_) {
     #(externals_key, snippet.init(externals_example, effects(), cache)),
     #(functions_key, snippet.init(functions_example, effects(), cache)),
     #(fix_key, snippet.init(fix_example, effects(), cache)),
+    #(builtins_key, init_example(builtins_example, cache)),
     #(prompt_key, snippet.init(prompt_example, effects(), cache)),
     #(handle_key, init_example(handle_example, cache)),
     #(multiple_resume_key, init_example(multiple_resume_example, cache)),
-    #(capture_key, snippet.init(capture_example, effects(), cache)),
+    #(capture_key, init_example(capture_example, cache)),
   ]
-  #(State(Nothing, dict.from_list(snippets)), effect.none())
+  let state = State(cache, Nothing, dict.from_list(snippets))
+  let #(state, tasks) = fetch_missing(state)
+  #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
+}
+
+fn fetch_missing(state) {
+  let State(snippets: snippets, ..) = state
+  let refs =
+    dict.fold(snippets, [], fn(acc, _key, snippet) {
+      snippet.references(snippet)
+      |> list.append(acc)
+      |> list.unique
+    })
+  let #(cache, tasks) = sync.fetch_missing(state.cache, refs)
+  let state = State(..state, cache: cache)
+  #(state, tasks)
 }
 
 pub type Message {
   SnippetMessage(String, snippet.Message)
+  SyncMessage(sync.Message)
 }
 
 pub fn update(state: State, message) {
@@ -277,14 +301,31 @@ pub fn update(state: State, message) {
       let #(snippet, eff) = snippet.update(snippet, message)
       let state = set_example(state, identifier, snippet)
       let state = State(..state, active: Editing(identifier))
+      let #(state, tasks) = fetch_missing(state)
+      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
       #(state, case eff {
-        None -> effect.none()
+        None -> sync_effect
         Some(f) ->
-          effect.from(fn(d) {
-            let d = fn(m) { d(SnippetMessage(identifier, m)) }
-            f(d)
-          })
+          effect.batch([
+            sync_effect,
+            effect.from(fn(d) {
+              let d = fn(m) { d(SnippetMessage(identifier, m)) }
+              f(d)
+            }),
+          ])
       })
+    }
+    SyncMessage(message) -> {
+      let State(cache: cache, ..) = state
+      let cache = sync.task_finish(cache, message)
+      let snippets =
+        dict.map_values(state.snippets, fn(_, v) {
+          snippet.set_references(v, cache)
+        })
+      let state = State(..state, cache: cache, snippets: snippets)
+      let #(state, tasks) = fetch_missing(state)
+      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      #(state, sync_effect)
     }
   }
 }

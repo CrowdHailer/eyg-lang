@@ -10,7 +10,6 @@ import eyg/shell/situation.{type Situation}
 import eyg/sync/browser
 import eyg/sync/sync
 import eygir/annotated as a
-import eygir/expression as e
 import gleam/dict
 import gleam/dynamic
 import gleam/dynamicx
@@ -42,7 +41,6 @@ import morph/analysis
 import morph/editable
 import morph/projection as p
 import plinth/browser/clipboard
-import snag.{type Snag}
 
 type Path =
   List(Int)
@@ -116,7 +114,7 @@ pub type ExecutorMessage {
 }
 
 pub type Message {
-  Synced(reference: String, value: Result(e.Expression, Snag))
+  Synced(sync.Message)
   Selected(p.Projection)
   Buffer(b.Message)
   Executor(ExecutorMessage)
@@ -208,11 +206,10 @@ pub fn update(state, message) {
   //   })
 
   case message {
-    Synced(ref, result) -> {
+    Synced(message) -> {
       let Shell(cache: cache, scope: scope, ..) = state
-      let cache = sync.task_finish(cache, ref, result)
-
-      let #(cache, tasks) = sync.fetch_missing(cache, [ref])
+      let cache = sync.task_finish(cache, message)
+      let #(cache, tasks) = sync.fetch_all_missing(cache)
 
       let scope = case sync.missing(cache, [scratch_ref]) {
         [] -> {
@@ -273,7 +270,6 @@ pub fn update(state, message) {
           case mode, p.blank(source), sync.missing(cache, references), scope {
             b.Command(Some(b.NoKeyBinding("Enter"))), False, [], Some(scope) -> {
               let #(env, _tenv) = scope
-              let buffer = #(source, b.Command(None))
               let expression = editable.to_annotated(p.rebuild(source), [])
               execute(expression, env, sync.values(cache))
               |> handle_execution([], scope, state)

@@ -1,8 +1,6 @@
-// import eyg/shell/examples
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
-import eygir/expression
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
@@ -15,7 +13,6 @@ import harness/impl/browser/paste
 import harness/impl/browser/prompt
 import lustre/effect
 import morph/editable as e
-import snag
 
 pub type State {
   State(
@@ -222,10 +219,7 @@ pub fn set_snippet(state: State, id, snippet) {
 
 pub type Message {
   SnippetMessage(String, snippet.Message)
-  SyncMessage(
-    reference: String,
-    value: Result(expression.Expression, snag.Snag),
-  )
+  SyncMessage(sync.Message)
 }
 
 pub fn update(state: State, message) {
@@ -253,9 +247,9 @@ pub fn update(state: State, message) {
           })
       })
     }
-    SyncMessage(ref, result) -> {
-      let cache = sync.task_finish(state.cache, ref, result)
-      let #(cache, tasks) = sync.fetch_missing(cache, [ref])
+    SyncMessage(message) -> {
+      let cache = sync.task_finish(state.cache, message)
+      let #(cache, tasks) = sync.fetch_all_missing(cache)
       let snippets =
         dict.map_values(state.snippets, fn(_, v) {
           snippet.set_references(v, cache)

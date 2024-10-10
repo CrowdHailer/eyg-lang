@@ -50,6 +50,13 @@ pub type Sync {
   )
 }
 
+pub type Message {
+  HashSourceFetched(
+    reference: String,
+    value: Result(expression.Expression, snag.Snag),
+  )
+}
+
 pub fn init(origin) {
   Sync(origin, dict.new(), [], dict.new())
 }
@@ -189,8 +196,9 @@ fn compute(source, loaded) {
   }
 }
 
-pub fn task_finish(sync, ref, result) {
+pub fn task_finish(sync, message) {
   let Sync(tasks: tasks, ..) = sync
+  let HashSourceFetched(ref, result) = message
   case result, dict.get(tasks, ref) {
     Ok(expression), _ -> {
       let tasks = dict.delete(tasks, ref)

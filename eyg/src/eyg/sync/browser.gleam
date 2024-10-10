@@ -19,7 +19,7 @@ pub fn do_sync(tasks, message) {
     list.map(tasks, fn(t) {
       let #(ref, t) = t
       use result <- promise.map(browser.run(t))
-      d(message(ref, result))
+      d(message(sync.HashSourceFetched(ref, result)))
     })
     Nil
   }

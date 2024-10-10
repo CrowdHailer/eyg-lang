@@ -60,7 +60,7 @@ fn chapter(_index, title, content, comment) {
     ],
     [
       h.div([a.class("hstack gap-6")], [
-        h.div([a.class("expand")], [h2(title), ..content]),
+        h.div([a.class("expand max-w-2xl")], [h2(title), ..content]),
         case comment {
           Some(comment) -> note(comment)
           None ->
@@ -115,7 +115,7 @@ fn render(state) {
           section_content("Effects", ["Perform", "Handle", "External"]),
         ]),
       ]),
-      h.div([a.class("expand max-w-4xl")], [
+      h.div([a.class("expand")], [
         h1("EYG documentation"),
         chapter(
           "1",
@@ -276,6 +276,39 @@ fn render(state) {
         ),
         chapter(
           "8",
+          "Builtins",
+          [
+            example(state, state.builtins_key),
+            p(
+              "Builtins are the base functions that your program is built up from.",
+            ),
+            p(
+              "There are builtins to work with all the different values in the EYG language.
+              We have seen several of them so far are we introduced each type of value, i.e. int_add and string_append.",
+            ),
+            p(
+              "Builtins are called like any other function.
+            Also like functions they can be passed only some of their arguments and will return a function that can be called later with the remaing arguments.",
+            ),
+          ],
+          Some([
+            element.text("press"),
+            components.keycap("j"),
+            element.text("to insert one of the available builtins."),
+          ]),
+        ),
+        chapter(
+          "9",
+          "References",
+          [example(state, state.builtins_key), p("References are great")],
+          Some([
+            element.text("press"),
+            components.keycap("#"),
+            element.text("to insert one of the available builtins."),
+          ]),
+        ),
+        chapter(
+          "8",
           "Perfoming effects",
           [
             example(state, state.prompt_key),
@@ -336,7 +369,25 @@ fn render(state) {
         ),
         // Abort and flow control
         // chapter("External", [example(state, state.Externals)], None),
-        chapter("11", "Capture", [example(state, state.capture_key)], None),
+        chapter(
+          "11",
+          "Closure serialization",
+          [
+            example(state, state.capture_key),
+            p(
+              "In EYG any value can be captured, and transformed to EYG source code.
+              This includes functions and their environments and effect handlers applicable at that time.",
+            ),
+            p(
+              "Note, only the required environment is captured. In this example the variable ignore is not part of the bundle.",
+            ),
+            p(
+              "Closure capture and serialization allows EYG programs to extend over multiple machines.
+              Source code can be sent to another interpreter or transpiled using the builtin to_javascript.",
+            ),
+          ],
+          None,
+        ),
       ]),
     ]),
   ])

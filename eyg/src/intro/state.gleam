@@ -1,7 +1,7 @@
-import eyg/analysis/type_/isomorphic
 import drafting/view/picker
 import drafting/view/utilities
 import eyg/analysis/inference/levels_j/contextual as j
+import eyg/analysis/type_/isomorphic
 import eyg/document/section
 import eyg/package
 import eyg/runtime/break
@@ -266,7 +266,7 @@ pub fn update_executor(run, message) {
 }
 
 pub type Message {
-  Synced(reference: String, value: Result(expression.Expression, Snag))
+  Synced(sync.Message)
   EditCode(index: Int, content: String)
   KeyDown(String)
   UpdateSuspend(For)
@@ -323,7 +323,7 @@ pub fn context_from_scope(scope, cache: sync.Sync) {
 pub fn analyse(projection, scope, cache: sync.Sync) {
   let context = context_from_scope(scope, cache)
   // TODO real effect
-  analysis.analyse(projection, context,isomorphic.Empty)
+  analysis.analyse(projection, context, isomorphic.Empty)
 }
 
 pub fn analysis_env_after(before, cache: sync.Sync) {
@@ -371,9 +371,10 @@ pub fn buffer_update(buffer, message, context) {
 pub fn update(state, message) {
   let State(cache: cache, ..) = state
   case message {
-    Synced(ref, result) -> {
-      let cache = sync.task_finish(cache, ref, result)
+    Synced(message) -> {
+      let cache = sync.task_finish(cache, message)
       let #(cache, tasks) = sync.fetch_all_missing(cache)
+      let state = State(..state, cache: cache)
       #(state, effect.from(browser.do_sync(tasks, Synced)))
     }
     EditCode(index, new) -> {

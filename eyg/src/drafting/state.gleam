@@ -10,7 +10,6 @@ import eyg/sync/browser
 import eyg/sync/fragment
 import eyg/sync/sync
 import eygir/decode
-import eygir/expression
 import gleam/dict
 import gleam/dictx
 import gleam/io
@@ -25,7 +24,6 @@ import morph/editable as e
 import morph/projection as p
 import plinth/browser/clipboard
 import plinth/javascript/console
-import snag.{type Snag}
 
 pub type State {
   State(
@@ -45,7 +43,7 @@ pub fn init(_) {
 }
 
 pub type Message {
-  Synced(reference: String, value: Result(expression.Expression, Snag))
+  Synced(sync.Message)
   Buffer(buffer.Message)
   Loading(Promise(Result(e.Expression, String)))
   Loaded(Result(p.Projection, String))
@@ -85,9 +83,9 @@ pub fn paste(buffer, then) {
 
 pub fn update(state, message) {
   case message {
-    Synced(ref, result) -> {
+    Synced(message) -> {
       let State(cache: cache, buffer: buffer, ..) = state
-      let cache = sync.task_finish(cache, ref, result)
+      let cache = sync.task_finish(cache, message)
       let references = buffer.references(buffer)
       let #(cache, tasks) = sync.fetch_missing(cache, references)
       let state = State(..state, cache: cache, buffer: buffer)
