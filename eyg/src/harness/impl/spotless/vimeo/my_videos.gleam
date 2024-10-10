@@ -1,7 +1,6 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
-import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/result

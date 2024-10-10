@@ -86,6 +86,10 @@ fn render(s) {
     // p("Download is an even better effect in the browser"),
     // p("There are hashes that allow reproducable everything"),
     ]),
+    section("run everywhere", [
+      snippet(s, state.twitter_key),
+      p("Integrate into services"),
+    ]),
     section("Immutable references", [
       snippet(s, state.fetch_key),
       p(

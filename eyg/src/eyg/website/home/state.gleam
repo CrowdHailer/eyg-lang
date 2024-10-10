@@ -1,6 +1,7 @@
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
+import eygir/decode
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
@@ -11,6 +12,8 @@ import harness/impl/browser/copy
 import harness/impl/browser/download
 import harness/impl/browser/paste
 import harness/impl/browser/prompt
+import harness/impl/spotless/twitter
+import harness/impl/spotless/twitter/tweet
 import lustre/effect
 import morph/editable as e
 
@@ -37,6 +40,15 @@ fn effects() {
     #(fetch.l, #(fetch.lift(), fetch.lower(), fetch.blocking)),
     #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),
     #(prompt.l, #(prompt.lift, prompt.reply(), prompt.blocking)),
+    // TODO make an app
+    #(
+      tweet.l,
+      #(tweet.lift(), tweet.reply(), tweet.blocking(
+        twitter.client_id,
+        twitter.redirect_uri,
+        _,
+      )),
+    ),
   ]
 }
 
@@ -187,6 +199,18 @@ const catfact = e.Block(
 
 pub const hash_key = "hash"
 
+pub const twitter_key = "twitter"
+
+pub const twitter_example = "{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Twitter.Tweet\"},\"a\":{\"0\":\"s\",\"v\":\"I've just finished the EYG introduction\"}}"
+
+fn init_example(json, cache) {
+  let assert Ok(source) = decode.from_json(json)
+  let source =
+    e.from_expression(source)
+    |> e.open_all
+  snippet.init(source, effects(), cache)
+}
+
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
@@ -196,6 +220,7 @@ pub fn init(_) {
     ),
     #(fetch_key, snippet.init(catfact, effects(), cache)),
     #(hash_key, snippet.init(e.Reference("he1727f8f"), effects(), cache)),
+    #(twitter_key, init_example(twitter_example, cache)),
   ]
   let references =
     list.flat_map(snippets, fn(snippet) {
