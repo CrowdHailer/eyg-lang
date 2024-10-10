@@ -170,9 +170,13 @@ const fix_example = e.Block(
   False,
 )
 
-pub const builtins_key = "externals"
+pub const builtins_key = "builtins"
 
 const builtins_example = "{\"0\":\"l\",\"l\":\"total\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_multiply\"},\"a\":{\"0\":\"i\",\"v\":90}},\"a\":{\"0\":\"i\",\"v\":3}},\"t\":{\"0\":\"l\",\"l\":\"total\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"total\"}},\"t\":{\"0\":\"l\",\"l\":\"notice\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"The total is: \"}},\"a\":{\"0\":\"v\",\"l\":\"total\"}},\"t\":{\"0\":\"v\",\"l\":\"notice\"}}}}"
+
+pub const references_key = "references"
+
+const references_example = "{\"0\":\"l\",\"l\":\"std\",\"v\":{\"0\":\"#\",\"l\":\"he4b05da\"},\"t\":{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"#\",\"l\":\"he6fd05f0\"},\"t\":{\"0\":\"l\",\"l\":\"json\",\"v\":{\"0\":\"#\",\"l\":\"hbe004c96\"},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"contains\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"list\"},\"a\":{\"0\":\"v\",\"l\":\"std\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"c\"},\"a\":{\"0\":\"i\",\"v\":1}},\"a\":{\"0\":\"ta\"}}},\"a\":{\"0\":\"i\",\"v\":0}}}}}"
 
 pub const externals_key = "externals"
 
@@ -257,6 +261,7 @@ pub fn init(_) {
     #(functions_key, snippet.init(functions_example, effects(), cache)),
     #(fix_key, snippet.init(fix_example, effects(), cache)),
     #(builtins_key, init_example(builtins_example, cache)),
+    #(references_key, init_example(references_example, cache)),
     #(prompt_key, snippet.init(prompt_example, effects(), cache)),
     #(handle_key, init_example(handle_example, cache)),
     #(multiple_resume_key, init_example(multiple_resume_example, cache)),

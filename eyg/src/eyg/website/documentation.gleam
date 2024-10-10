@@ -300,11 +300,26 @@ fn render(state) {
         chapter(
           "9",
           "References",
-          [example(state, state.builtins_key), p("References are great")],
+          [
+            example(state, state.references_key),
+            p(
+              "Every fragment of EYG program has a unique reference.
+          Once you have a reference to a program that reference is guaranteed to always point to the same fragment.",
+            ),
+            p(
+              "These fragments are how larger programs in EYG. A reference can be at any point in a place of a value.",
+            ),
+            p(
+              "The three refererences in this example are available in the web playgrounds.",
+            ),
+            p(
+              "Work is underway to add more support for finding and authoring references.",
+            ),
+          ],
           Some([
             element.text("press"),
             components.keycap("#"),
-            element.text("to insert one of the available builtins."),
+            element.text("to insert a reference."),
           ]),
         ),
         chapter(

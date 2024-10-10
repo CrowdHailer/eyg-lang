@@ -43,8 +43,10 @@ pub fn init(src, effects, cache) {
 
 pub fn set_references(state: Snippet, cache) {
   case state {
-    Editing(buf, run, eff, _cache) -> Editing(buf, run, eff, cache)
-    Normal(src, run, eff, _cache) -> Normal(src, run, eff, cache)
+    Editing(buf, run, eff, _cache) ->
+      Editing(buf, run.start(projection.rebuild(buf.0), eff, cache), eff, cache)
+    Normal(src, run, eff, _cache) ->
+      Normal(src, run.start(src, eff, cache), eff, cache)
   }
 }
 
