@@ -10,7 +10,11 @@ import eyg/shell/buffer
 import eyg/sync/sync
 import eyg/website/run
 import eygir/annotated
+import eygir/decode
+import eygir/encode
+import gleam/io
 import gleam/javascript/promise
+import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
@@ -22,6 +26,7 @@ import morph/analysis
 import morph/editable
 import morph/lustre/render
 import morph/projection
+import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/element as dom_element
 import plinth/browser/window
@@ -63,6 +68,7 @@ pub type Message {
   UserClickRunEffects
   MessageFromBuffer(buffer.Message)
   RuntimeRepliedFromExternalEffect(run.Value)
+  ClipboardReadCompleted(Result(String, String))
 }
 
 fn effect_types(effects: List(#(String, EffectSpec))) {
@@ -93,22 +99,47 @@ pub fn update(state, message) {
               effect_types(effects),
             )
           let run = case buffer.1 {
-            buffer.Command(_) ->
+            buffer.Command(None) ->
               run.start(projection.rebuild(buffer.0), effects, cache)
             _ -> run
           }
-          #(
-            Editing(buffer, run, effects, cache),
-            Some(fn(_) {
-              window.request_animation_frame(fn(_) {
-                case document.query_selector("[autofocus]") {
-                  Ok(el) -> dom_element.focus(el)
-                  Error(Nil) -> Nil
+          let eff = case buffer.1 {
+            buffer.Command(Some(buffer.NoKeyBinding("y"))) -> {
+              case buffer.0 {
+                #(projection.Exp(expression), _) -> {
+                  Some(fn(d) {
+                    clipboard.write_text(
+                      encode.to_json(editable.to_expression(expression)),
+                    )
+                    // TODO better copy error
+                    |> promise.map(io.debug)
+                    Nil
+                  })
                 }
+                _ -> {
+                  todo as "need to wire up faiing copy"
+                  // #(proj, Command(Some(ActionFailed("copy"))))
+                }
+              }
+            }
+            buffer.Command(Some(buffer.NoKeyBinding("Y"))) ->
+              Some(fn(d) {
+                use return <- promisex.aside(clipboard.read_text())
+                d(ClipboardReadCompleted(return))
               })
-              Nil
-            }),
-          )
+
+            _ ->
+              Some(fn(_) {
+                window.request_animation_frame(fn(_) {
+                  case document.query_selector("[autofocus]") {
+                    Ok(el) -> dom_element.focus(el)
+                    Error(Nil) -> Nil
+                  }
+                })
+                Nil
+              })
+          }
+          #(Editing(buffer, run, effects, cache), eff)
         }
       }
     UserClickRunEffects -> {
@@ -184,6 +215,27 @@ pub fn update(state, message) {
               #(state, None)
             }
           }
+      }
+    }
+    ClipboardReadCompleted(return) -> {
+      case return {
+        Ok(text) ->
+          case decode.from_json(text) {
+            Ok(expression) -> {
+              let assert Editing(#(proj, mode), _run, effects, cache) = state
+              let assert #(projection.Exp(_), zoom) = proj
+              let proj = #(
+                projection.Exp(editable.from_expression(expression)),
+                zoom,
+              )
+              let run = run.start(projection.rebuild(proj), effects, cache)
+              let state = Editing(#(proj, mode), run, effects, cache)
+              #(state, None)
+            }
+            Error(_) -> todo
+          }
+
+        Error(reason) -> panic as reason
       }
     }
   }

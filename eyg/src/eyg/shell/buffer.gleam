@@ -145,7 +145,8 @@ pub fn handle_command(key, source, context, effects) {
     "e" -> assign_to(source)
     "r" -> insert_record(source, context, eff)
     "t" -> insert_tag(source, context, eff)
-    "y" -> extend_before(source, context)
+    // "y" -> copy(source)
+    // "Y" -> paste(source)
     // "u" ->
     "i" -> insert_mode(source)
     "o" -> overwrite_record(source, context, eff)
@@ -168,6 +169,7 @@ pub fn handle_command(key, source, context, effects) {
     "n" -> insert_integer(source)
     "m" -> insert_case(source, context, eff)
     "M" -> insert_open_case(source, context, eff)
+    "," -> extend_before(source, context)
     "." -> spread_list(source)
     _ -> {
       let mode = Command(Some(NoKeyBinding(key)))
