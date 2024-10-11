@@ -107,14 +107,16 @@ pub fn update(state, message) {
             buffer.Command(Some(buffer.NoKeyBinding("y"))) -> {
               case buffer.0 {
                 #(projection.Exp(expression), _) -> {
-                  Some(fn(d) {
-                    clipboard.write_text(
-                      encode.to_json(editable.to_expression(expression)),
-                    )
-                    // TODO better copy error
-                    |> promise.map(io.debug)
-                    Nil
-                  })
+                  let eff =
+                    Some(fn(d) {
+                      clipboard.write_text(
+                        encode.to_json(editable.to_expression(expression)),
+                      )
+                      // TODO better copy error
+                      |> promise.map(io.debug)
+                      Nil
+                    })
+                  #(Editing(buffer, run, effects, cache), eff)
                 }
                 _ -> {
                   todo as "need to wire up faiing copy"
@@ -122,63 +124,35 @@ pub fn update(state, message) {
                 }
               }
             }
-            buffer.Command(Some(buffer.NoKeyBinding("Y"))) ->
-              Some(fn(d) {
-                use return <- promisex.aside(clipboard.read_text())
-                d(ClipboardReadCompleted(return))
-              })
-
-            _ ->
-              Some(fn(_) {
-                window.request_animation_frame(fn(_) {
-                  case document.query_selector("[autofocus]") {
-                    Ok(el) -> dom_element.focus(el)
-                    Error(Nil) -> Nil
-                  }
-                })
-                Nil
-              })
-          }
-          #(Editing(buffer, run, effects, cache), eff)
-        }
-      }
-    UserClickRunEffects -> {
-      let #(src, run.Run(status, effect_log), effects, cache) = case state {
-        Normal(src, run, effects, cache) -> #(src, run, effects, cache)
-        Editing(#(p, _), run, effects, cache) -> #(
-          projection.rebuild(p),
-          run,
-          effects,
-          cache,
-        )
-      }
-      case status {
-        run.Handling(_label, lift, env, k, blocking) -> {
-          case blocking(lift) {
-            Ok(promise) -> {
-              let run = run.Run(status, effect_log)
-              let state = Normal(src, run, effects, cache)
-
-              #(
-                state,
+            buffer.Command(Some(buffer.NoKeyBinding("Y"))) -> {
+              let eff =
                 Some(fn(d) {
-                  promise.map(promise, fn(value) {
-                    d(RuntimeRepliedFromExternalEffect(value))
+                  use return <- promisex.aside(clipboard.read_text())
+                  d(ClipboardReadCompleted(return))
+                })
+              #(Editing(buffer, run, effects, cache), eff)
+            }
+            buffer.Command(Some(buffer.NoKeyBinding("Enter"))) -> {
+              run_effects(Editing(buffer, run, effects, cache))
+            }
+
+            _ -> {
+              let eff =
+                Some(fn(_) {
+                  window.request_animation_frame(fn(_) {
+                    case document.query_selector("[autofocus]") {
+                      Ok(el) -> dom_element.focus(el)
+                      Error(Nil) -> Nil
+                    }
                   })
                   Nil
-                }),
-              )
-            }
-            Error(reason) -> {
-              let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Normal(src, run, effects, cache)
-              #(state, None)
+                })
+              #(Editing(buffer, run, effects, cache), eff)
             }
           }
         }
-        _ -> #(state, None)
       }
-    }
+    UserClickRunEffects -> run_effects(state)
     RuntimeRepliedFromExternalEffect(reply) -> {
       let assert Normal(src, run, effects, cache) = state
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
@@ -238,6 +212,44 @@ pub fn update(state, message) {
         Error(reason) -> panic as reason
       }
     }
+  }
+}
+
+fn run_effects(state) {
+  let #(src, run.Run(status, effect_log), effects, cache) = case state {
+    Normal(src, run, effects, cache) -> #(src, run, effects, cache)
+    Editing(#(p, _), run, effects, cache) -> #(
+      projection.rebuild(p),
+      run,
+      effects,
+      cache,
+    )
+  }
+  case status {
+    run.Handling(_label, lift, env, k, blocking) -> {
+      case blocking(lift) {
+        Ok(promise) -> {
+          let run = run.Run(status, effect_log)
+          let state = Normal(src, run, effects, cache)
+
+          #(
+            state,
+            Some(fn(d) {
+              promise.map(promise, fn(value) {
+                d(RuntimeRepliedFromExternalEffect(value))
+              })
+              Nil
+            }),
+          )
+        }
+        Error(reason) -> {
+          let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
+          let state = Normal(src, run, effects, cache)
+          #(state, None)
+        }
+      }
+    }
+    _ -> #(state, None)
   }
 }
 
