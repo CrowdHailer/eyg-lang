@@ -2,16 +2,17 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 
-fn header_button(text) {
-  h.span([a.class("p-1 border-b border-black")], [element.text(text)])
+fn header_button(target, text) {
+  h.a([a.class("p-1 border-b border-black"), a.href(target)], [
+    element.text(text),
+  ])
 }
 
 pub fn header() {
   h.header([a.class("hstack gap-8 p-2 bg-black text-yellow-2")], [
-    h.span([a.class("font-bold text-4xl")], [element.text("EYG")]),
-    header_button("Features"),
-    header_button("Documentation"),
-    header_button("News"),
+    h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
+    header_button("/documentation", "Documentation"),
+    header_button("/news", "News"),
   ])
 }
 

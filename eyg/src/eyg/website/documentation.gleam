@@ -52,29 +52,32 @@ fn note(content) {
 }
 
 fn chapter(_index, title, content, comment) {
+  // h.div(
+  //   [
+  //     a.class("vstack outline-none"),
+  //     // make this optional or not have at all
+  //   //  a.style([#("min-height", "100vh")])
+  //   ],
+  //   [
   h.div(
+    [a.class("grid gap-6"), a.style([#("grid-template-columns", "1fr 200px")])],
     [
-      a.class("vstack outline-none"),
-      // make this optional or not have at all
-    //  a.style([#("min-height", "100vh")])
-    ],
-    [
-      h.div([a.class("hstack gap-6")], [
-        h.div([a.class("expand max-w-2xl")], [h2(title), ..content]),
-        case comment {
-          Some(comment) -> note(comment)
-          None ->
-            h.div(
-              [
-                a.class(""),
-                a.style([#("flex", "0 0 200px"), #("overflow", "hidden")]),
-              ],
-              [],
-            )
-        },
-      ]),
+      h.div([a.class("expand max-w-3xl")], [h2(title), ..content]),
+      case comment {
+        Some(comment) -> note(comment)
+        None ->
+          h.div(
+            [
+              a.class(""),
+              a.style([#("flex", "0 0 200px"), #("overflow", "hidden")]),
+            ],
+            [],
+          )
+      },
     ],
   )
+  //   ],
+  // )
 }
 
 fn chapter_link(title) {
@@ -103,19 +106,25 @@ fn render(state) {
   h.div([a.class("yellow-gradient")], [
     components.header(),
     h.div([a.class("hstack px-4 gap-10 mx-auto")], [
-      h.div([a.class("cover")], [
-        h.aside([a.class("w-72 bg-white neo-shadow")], [
-          section_content("Language basics", [
-            "Numbers", "Text", "Functions", "Lists", "Records", "Unions",
+      h.div(
+        [
+          a.class("py-12 top-0 sticky"),
+          a.style([#("align-self", "flex-start")]),
+        ],
+        [
+          h.aside([a.class("w-72 bg-white neo-shadow")], [
+            section_content("Language basics", [
+              "Numbers", "Text", "Functions", "Lists", "Records", "Unions",
+            ]),
+            section_content("Type checking", [
+              "Incorrect types", "Extensible Records",
+            ]),
+            section_content("Editor features", ["Copy paste", "Saving"]),
+            section_content("Effects", ["Perform", "Handle", "External"]),
           ]),
-          section_content("Type checking", [
-            "Incorrect types", "Extensible Records",
-          ]),
-          section_content("Editor features", ["Copy paste", "Saving"]),
-          section_content("Effects", ["Perform", "Handle", "External"]),
-        ]),
-      ]),
-      h.div([a.class("expand")], [
+        ],
+      ),
+      h.div([a.class("")], [
         h1("EYG documentation"),
         chapter(
           "1",
