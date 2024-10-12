@@ -201,8 +201,10 @@ fn render(state) {
             element.text("press"),
             components.keycap("l"),
             element.text("to create a new list and "),
-            components.keycap("y"),
-            element.text(" to add items to a list."),
+            components.keycap(","),
+            element.text(" to add items to a list and"),
+            components.keycap("."),
+            element.text(" to extend a list."),
           ]),
         ),
         chapter(
