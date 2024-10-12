@@ -262,71 +262,74 @@ pub fn finish_editing(state: Snippet) {
 }
 
 pub fn render(state: Snippet) {
-  h.div([a.class("bg-white neo-shadow font-mono mt-4 mb-6")], case state {
-    Editing(#(proj, mode), run, effects, cache) ->
-      case mode {
-        buffer.Command(_) -> {
-          let eff =
-            effect_types(effects)
-            |> list.fold(t.Empty, fn(acc, new) {
-              let #(label, #(lift, reply)) = new
-              t.EffectExtend(label, #(lift, reply), acc)
-            })
-          let a =
-            analysis.analyse(
-              proj,
-              analysis.with_references(sync.types(cache)),
-              eff,
-            )
-          let errors = analysis.type_errors(a)
-          [
-            render_projection(proj, True),
-            case errors {
-              [] -> render_run(run.status)
-              _ ->
-                h.div(
-                  [a.class("border-2 border-orange-3 px-2")],
-                  list.map(errors, fn(error) {
-                    let #(path, reason) = error
-                    h.div(
-                      [event.on_click(MessageFromBuffer(buffer.JumpTo(path)))],
-                      [element.text(debug.reason(reason))],
-                    )
-                  }),
-                )
-            },
+  h.div(
+    [a.class("bg-white neo-shadow font-mono mt-2 mb-6 border border-black")],
+    case state {
+      Editing(#(proj, mode), run, effects, cache) ->
+        case mode {
+          buffer.Command(_) -> {
+            let eff =
+              effect_types(effects)
+              |> list.fold(t.Empty, fn(acc, new) {
+                let #(label, #(lift, reply)) = new
+                t.EffectExtend(label, #(lift, reply), acc)
+              })
+            let a =
+              analysis.analyse(
+                proj,
+                analysis.with_references(sync.types(cache)),
+                eff,
+              )
+            let errors = analysis.type_errors(a)
+            [
+              render_projection(proj, True),
+              case errors {
+                [] -> render_run(run.status)
+                _ ->
+                  h.div(
+                    [a.class("border-2 border-orange-3 px-2")],
+                    list.map(errors, fn(error) {
+                      let #(path, reason) = error
+                      h.div(
+                        [event.on_click(MessageFromBuffer(buffer.JumpTo(path)))],
+                        [element.text(debug.reason(reason))],
+                      )
+                    }),
+                  )
+              },
+            ]
+          }
+          buffer.Pick(picker, _rebuild) -> [
+            render_projection(proj, False),
+            pallet(picker.render(picker, buffer.UpdatePicker)),
+          ]
+
+          buffer.EditText(value, _rebuild) -> [
+            render_projection(proj, False),
+            pallet(d_view.string_input(value)),
+          ]
+
+          buffer.EditInteger(value, _rebuild) -> [
+            render_projection(proj, False),
+            pallet(d_view.integer_input(value)),
           ]
         }
-        buffer.Pick(picker, _rebuild) -> [
-          render_projection(proj, False),
-          pallet(picker.render(picker, buffer.UpdatePicker)),
-        ]
 
-        buffer.EditText(value, _rebuild) -> [
-          render_projection(proj, False),
-          pallet(d_view.string_input(value)),
-        ]
-
-        buffer.EditInteger(value, _rebuild) -> [
-          render_projection(proj, False),
-          pallet(d_view.integer_input(value)),
-        ]
-      }
-
-    Normal(src, run, _effects, _) -> [
-      h.div(
-        [
-          a.class(
-            "border-l-4 py-1 px-2 border-white outline-none focus:border-black",
-          ),
-          a.attribute("tabindex", "0"),
-          event.on_focus(UserFocusedOnCode),
-        ],
-        render.statements(src),
-      ),
-      render_run(run.status),
-    ]
-  })
+      Normal(src, run, _effects, _) -> [
+        h.div(
+          [
+            a.class(
+              "border-l-4 py-1 px-2 border-white outline-none focus:border-black",
+            ),
+            a.attribute("tabindex", "0"),
+            event.on_focus(UserFocusedOnCode),
+          ],
+          render.statements(src),
+        ),
+        render_run(run.status),
+      ]
+    },
+  )
 }
 
 fn pallet(items) {

@@ -28,7 +28,7 @@ fn title_to_id(text) {
 }
 
 fn h2(text) {
-  h.h2([a.class("text-xl my-4 font-bold"), a.id(title_to_id(text))], [
+  h.h2([a.class("text-xl mt-8 mb-4 font-bold"), a.id(title_to_id(text))], [
     element.text(text),
   ])
 }
@@ -40,7 +40,7 @@ fn p(text) {
 fn note(content) {
   h.div(
     [
-      a.class("sticky mt-8 top-4 p-2 shadow-md bg-white bg-opacity-40"),
+      a.class("sticky mt-2 top-4 p-2 shadow-md bg-yellow-1"),
       a.style([
         #("align-self", "start"),
         #("flex", "0 0 200px"),
@@ -52,32 +52,36 @@ fn note(content) {
 }
 
 fn chapter(_index, title, content, comment) {
-  // h.div(
-  //   [
-  //     a.class("vstack outline-none"),
-  //     // make this optional or not have at all
-  //   //  a.style([#("min-height", "100vh")])
-  //   ],
-  //   [
   h.div(
-    [a.class("grid gap-6"), a.style([#("grid-template-columns", "1fr 200px")])],
     [
-      h.div([a.class("expand max-w-3xl")], [h2(title), ..content]),
-      case comment {
-        Some(comment) -> note(comment)
-        None ->
-          h.div(
-            [
-              a.class(""),
-              a.style([#("flex", "0 0 200px"), #("overflow", "hidden")]),
-            ],
-            [],
-          )
-      },
+      //     a.class("vstack outline-none"),
+    //     // make this optional or not have at all
+    //   //  a.style([#("min-height", "100vh")])
+    ],
+    [
+      h2(title),
+      h.div(
+        [
+          a.class("grid gap-6"),
+          a.style([#("grid-template-columns", "1fr 200px")]),
+        ],
+        [
+          h.div([a.class("expand max-w-3xl")], content),
+          case comment {
+            Some(comment) -> note(comment)
+            None ->
+              h.div(
+                [
+                  a.class(""),
+                  a.style([#("flex", "0 0 200px"), #("overflow", "hidden")]),
+                ],
+                [],
+              )
+          },
+        ],
+      ),
     ],
   )
-  //   ],
-  // )
 }
 
 fn chapter_link(title) {
@@ -85,7 +89,7 @@ fn chapter_link(title) {
     h.a(
       [
         a.class(
-          "border-l-4 border-r-4 border-white focus:border-black hover:border-black outline-none inline-block px-2 w-full",
+          "border-l-4 border-transparent focus:border-black hover:border-black outline-none inline-block px-2 w-full",
         ),
         a.href("#" <> title_to_id(title)),
       ],
@@ -103,7 +107,7 @@ fn section_content(title, chapters) {
 
 // simpleter documentation
 fn render(state) {
-  h.div([a.class("yellow-gradient")], [
+  h.div([a.class("")], [
     components.header(),
     h.div([a.class("hstack px-4 gap-10 mx-auto")], [
       h.div(
@@ -112,7 +116,7 @@ fn render(state) {
           a.style([#("align-self", "flex-start")]),
         ],
         [
-          h.aside([a.class("w-72 bg-white neo-shadow")], [
+          h.aside([a.class("w-72 p-6 bg-green-100 rounded-2xl")], [
             section_content("Language basics", [
               "Numbers", "Text", "Functions", "Lists", "Records", "Unions",
             ]),
@@ -124,8 +128,7 @@ fn render(state) {
           ]),
         ],
       ),
-      h.div([a.class("")], [
-        h1("EYG documentation"),
+      h.div([a.class("py-12")], [
         chapter(
           "1",
           "Introduction",
@@ -412,6 +415,7 @@ fn render(state) {
           ],
           None,
         ),
+        h.div([a.style([#("height", "30vh")])], []),
       ]),
     ]),
   ])

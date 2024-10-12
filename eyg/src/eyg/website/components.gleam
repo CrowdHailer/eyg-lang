@@ -3,17 +3,18 @@ import lustre/element
 import lustre/element/html as h
 
 fn header_button(target, text) {
-  h.a([a.class("p-1 border-b border-black"), a.href(target)], [
-    element.text(text),
-  ])
+  h.a([a.class("p-1 text-gray-700"), a.href(target)], [element.text(text)])
 }
 
 pub fn header() {
-  h.header([a.class("hstack gap-8 p-2 bg-black text-yellow-2")], [
-    h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
-    header_button("/documentation", "Documentation"),
-    header_button("/news", "News"),
-  ])
+  h.header(
+    [a.class("hstack gap-8 p-2 fixed bottom-0 border-t-2 bg-white z-10")],
+    [
+      h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
+      header_button("/documentation", "Documentation"),
+      header_button("/news", "News"),
+    ],
+  )
 }
 
 pub fn card(children) {
