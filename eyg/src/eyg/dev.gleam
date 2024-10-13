@@ -366,6 +366,7 @@ pub fn build(bundle) {
   ])
 }
 
+// Remember to only add mysig at the top level
 pub fn preview(args) {
   case args {
     ["home"] -> {
@@ -386,6 +387,7 @@ pub fn preview(args) {
       use spotless <- t.do(build_spotless(bundle))
       use shell <- t.do(shell_page(bundle))
       use intro <- t.do(build_intro(True, bundle))
+      // Note news puts pea image into assets without hashing
       use news <- t.do(news.build())
       use datalog <- t.do(build_datalog(bundle))
 
@@ -401,6 +403,7 @@ pub fn preview(args) {
           datalog,
           mysig.to_files(bundle),
         ])
+      io.debug(listx.keys(files))
       t.done(files)
     }
   }
