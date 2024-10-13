@@ -345,7 +345,7 @@ fn render_projection(proj, autofocus) {
   h.div(
     [
       a.class(
-        "border-l-4 py-1 px-2 border-white outline-none focus:border-black",
+        "border py-1 px-2 border-transparent outline-none focus:border-black",
       ),
       ..case autofocus {
         True -> [

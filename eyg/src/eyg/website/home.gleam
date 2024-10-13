@@ -75,7 +75,7 @@ fn feature(title, description, last, item, reverse) {
       //   [element.text("find out more")],
       // ),
       ]),
-      h.div([a.style([#("flex", "0 1 60%")])], item),
+      h.div([a.class("overflow-hidden"), a.style([#("flex", "0 1 60%")])], item),
     ],
   )
 }
@@ -227,7 +227,28 @@ fn render(s) {
         "Never miss a bracket or semi-colon again.",
       ],
       action("Watch the full guide", "#", Confident),
-      [h.div([a.class("cover bg-red-100")], [element.text("Video")])],
+      [
+        h.div([a.class("cover")], [
+          h.div([a.attribute("style", "padding:75% 0 0 0;position:relative;")], [
+            h.iframe([
+              a.attribute("title", "New Recording - 10/13/2024, 8:14:28 PM"),
+              a.attribute(
+                "style",
+                "position:absolute;top:0;left:0;width:100%;height:100%;",
+              ),
+              a.attribute(
+                "allow",
+                "autoplay; fullscreen; picture-in-picture; clipboard-write",
+              ),
+              a.attribute("frameborder", "0"),
+              a.src(
+                "https://player.vimeo.com/video/1019199789?h=3ee4fc598d&badge=0&autopause=0&player_id=0&app_id=58479",
+              ),
+            ]),
+          ]),
+          h.script([a.src("https://player.vimeo.com/api/player.js")], ""),
+        ]),
+      ],
       True,
     ),
     feature(
@@ -249,8 +270,8 @@ fn render(s) {
       "Run anywhere",
       [
         "EYG programs are all independent of the machine they run on.
-        There is no difference for Mac or Windows or standard access to ",
-        "Any runtime can make an effect available, For example this tweet effect",
+        Any interaction with the world outside your program is accomplished via an Effect.",
+        "A runtime can make an effect available. For example all snippets on the EYG have access to this Tweet effect",
       ],
       action(
         "Read more about the effects",
@@ -263,9 +284,9 @@ fn render(s) {
     feature(
       "Manage side effects",
       [
-        "Any interaction with the world outside your program is accomplished via an Effect.",
-        "The effects that any piece of a program might need can be deduced ahead of running it.",
-        "Testing is always the same",
+        "All interactions to the world outside a program are managed as effects.",
+        "Any effect can be intercepted using a handler. This allows the response from the outside world to be replaced.",
+        "Handling effects is great for testing, if all effects are handled then your program is deterministic. No more flakey tests.",
       ],
       action(
         "Read the effects documentation.",
@@ -296,6 +317,7 @@ fn render(s) {
       "Cross boundaries",
       [
         "Closure serialisation allows functions to be efficiently transformed back into source code and sent to other machines.",
+        "Build client and server as a single strongly typed program. Even extend type guarantees over your build scripts.",
       ],
       action(
         "Read the reference documentation.",
