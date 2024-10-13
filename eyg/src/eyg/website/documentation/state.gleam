@@ -186,13 +186,9 @@ const externals_example = e.Block(
   False,
 )
 
-pub const prompt_key = "alert"
+pub const perform_key = "perform"
 
-const prompt_example = e.Block(
-  [#(e.Bind("message"), e.String("Hello, World!"))],
-  e.Call(e.Perform("Prompt"), [e.Variable("message")]),
-  False,
-)
+const perform_example = "{\"0\":\"l\",\"l\":\"question\",\"v\":{\"0\":\"s\",\"v\":\"Hello, What is your name?\"},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"name\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Alert\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"hello,\"}},\"a\":{\"0\":\"v\",\"l\":\"name\"}}}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Alert\"},\"a\":{\"0\":\"s\",\"v\":\"I didn't catch your name.\"}}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Prompt\"},\"a\":{\"0\":\"v\",\"l\":\"question\"}}}}"
 
 pub const handle_key = "handle"
 
@@ -262,7 +258,7 @@ pub fn init(_) {
     #(fix_key, snippet.init(fix_example, effects(), cache)),
     #(builtins_key, init_example(builtins_example, cache)),
     #(references_key, init_example(references_example, cache)),
-    #(prompt_key, snippet.init(prompt_example, effects(), cache)),
+    #(perform_key, init_example(perform_example, cache)),
     #(handle_key, init_example(handle_example, cache)),
     #(multiple_resume_key, init_example(multiple_resume_example, cache)),
     #(capture_key, init_example(capture_example, cache)),

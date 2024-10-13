@@ -116,15 +116,16 @@ fn render(state) {
           a.style([#("align-self", "flex-start")]),
         ],
         [
-          h.aside([a.class("w-72 p-6 bg-green-100 rounded-2xl")], [
+          h.aside([a.class("w-72 p-6 pb-8 bg-green-100 rounded-2xl")], [
             section_content("Language basics", [
-              "Numbers", "Text", "Functions", "Lists", "Records", "Unions",
+              "Numbers", "Text", "Lists", "Records", "Unions", "Functions",
+              "Builtins", "References",
             ]),
-            section_content("Type checking", [
-              "Incorrect types", "Extensible Records",
+            section_content("Advanced features", [
+              "Perform Effect", "Handle Effect", "Multiple resumptions",
+              "Closure serialization",
             ]),
-            section_content("Editor features", ["Copy paste", "Saving"]),
-            section_content("Effects", ["Perform", "Handle", "External"]),
+            section_content("Editor features", ["Copy paste", "Next vacant"]),
           ]),
         ],
       ),
@@ -138,8 +139,10 @@ fn render(state) {
             ),
             p(
               "EYG uses a structured editor to modify programs
-             This editor helps reduce the mistakes you can make, however it can take some getting used to.
-             The side bar explains what key to press in the editor",
+             This editor helps reduce the mistakes you can make, however it can take some getting used to.",
+            ),
+            p(
+              "The side bar explains what keys to use in the editor for each section of the documentation.",
             ),
           ],
           Some([
@@ -338,9 +341,9 @@ fn render(state) {
         ),
         chapter(
           "8",
-          "Perfoming effects",
+          "Perform effect",
           [
-            example(state, state.prompt_key),
+            example(state, state.perform_key),
             p(
               "A useful program must eventally interact with the world outside the computer.
             Running the example above will prompt the user for there name.
@@ -366,7 +369,7 @@ fn render(state) {
         ),
         chapter(
           "9",
-          "Handling effects",
+          "Handle effect",
           [
             example(state, state.handle_key),
             p(
@@ -413,6 +416,34 @@ fn render(state) {
             p(
               "Closure capture and serialization allows EYG programs to extend over multiple machines.
               Source code can be sent to another interpreter or transpiled using the builtin to_javascript.",
+            ),
+          ],
+          None,
+        ),
+        chapter(
+          "12",
+          "Copy paste",
+          [
+            p(
+              "Any expression can be copied to the clip board or pasted from it. Press 'y' to copy and 'Y' to paste",
+            ),
+            p("To increase the code selection press 'a'"),
+            p(
+              "Most EYG development is done by copy and pasting code from the editor to your own library of snippets.
+            These snippets can be stored in Notion, Google Drive or on your local file system.",
+            ),
+          ],
+          None,
+        ),
+        chapter(
+          "12",
+          "Next vacant",
+          [
+            p(
+              "A vacant expression is one that has not been written yet. You will see them labelled as 'Vacant' in the editor.",
+            ),
+            p(
+              "Press 'Space' and jump to the next missing part of your program.",
             ),
           ],
           None,

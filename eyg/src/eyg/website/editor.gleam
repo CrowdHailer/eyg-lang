@@ -73,7 +73,7 @@ pub fn update(state: State, message) {
 pub fn render(state: State) {
   h.div([a.class("flex flex-col h-screen")], [
     h.div([a.class("w-full py-2 px-6 text-xl text-gray-500")], [
-      h.span([a.class("font-bold")], [element.text("EYG")]),
+      h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
       h.span([a.class("")], [element.text(" - Editor")]),
     ]),
     h.div(

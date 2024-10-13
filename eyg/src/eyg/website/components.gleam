@@ -11,8 +11,9 @@ pub fn header() {
     [a.class("hstack gap-8 p-2 fixed bottom-0 border-t-2 bg-white z-10")],
     [
       h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
+      header_button("/editor", "Editor"),
       header_button("/documentation", "Documentation"),
-      header_button("/news", "News"),
+      // header_button("/news", "News"),
     ],
   )
 }
