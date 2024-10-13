@@ -430,5 +430,5 @@ fn example(state: state.State, identifier) {
 }
 
 pub fn page(bundle) {
-  page.app("eyg/website/documentation", "client", bundle)
+  page.app(Some("documentation"), "eyg/website/documentation", "client", bundle)
 }

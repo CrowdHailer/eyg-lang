@@ -275,7 +275,8 @@ fn key_binding(binding) {
 
 pub fn bindings() {
   [
-    #("?", "show/hide help"),
+    // TODO add a show hide in the editor functionality
+    // #("?", "show/hide help"),
     #("SPACE", "jump to next vacant"),
     #("w", "call a function with this term"),
     #("E", "insert an assignment before this term"),
@@ -305,6 +306,7 @@ pub fn bindings() {
     #("n", "create a number"),
     #("m", "create a match statement"),
     #("M", "insert_open_case"),
+    #(",", "add element in a list"),
     #(".", "open a list for extension"),
   ]
 }

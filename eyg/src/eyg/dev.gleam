@@ -2,6 +2,7 @@ import eyg/package
 import eyg/sync/cid
 import eyg/sync/sync
 import eyg/website/documentation
+import eyg/website/editor
 import eyg/website/home
 import eyg/website/news
 import eygir/annotated
@@ -361,12 +362,14 @@ pub fn preview(args) {
       // use #(std_ref,std_dep) <- t.do(dependency("eyg","std"))
       // io.debug(std_ref)
       use home <- t.do(home.page(bundle))
+      use editor <- t.do(editor.page(bundle))
       use intro <- t.do(build_intro(True, bundle))
 
       t.done(
         [
           // #("/home/index.html", root_page("", home_page(), bundle)),
           #("/documentation/index.html", documentation),
+          #("/editor/index.html", editor),
           #("/index.html", home),
           // std_dep
           ..intro
