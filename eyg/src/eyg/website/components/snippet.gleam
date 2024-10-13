@@ -103,12 +103,12 @@ pub fn update(state, message) {
               run.start(projection.rebuild(buffer.0), effects, cache)
             _ -> run
           }
-          let eff = case buffer.1 {
+          case buffer.1 {
             buffer.Command(Some(buffer.NoKeyBinding("y"))) -> {
               case buffer.0 {
                 #(projection.Exp(expression), _) -> {
                   let eff =
-                    Some(fn(d) {
+                    Some(fn(_d) {
                       clipboard.write_text(
                         encode.to_json(editable.to_expression(expression)),
                       )
@@ -206,7 +206,7 @@ pub fn update(state, message) {
               let state = Editing(#(proj, mode), run, effects, cache)
               #(state, None)
             }
-            Error(_) -> todo
+            Error(_) -> todo as "failed to paste"
           }
 
         Error(reason) -> panic as reason

@@ -227,28 +227,7 @@ fn render(s) {
         "Never miss a bracket or semi-colon again.",
       ],
       action("Watch the full guide", "#", Confident),
-      [
-        h.div([a.class("cover")], [
-          h.div([a.attribute("style", "padding:75% 0 0 0;position:relative;")], [
-            h.iframe([
-              a.attribute("title", "New Recording - 10/13/2024, 8:14:28 PM"),
-              a.attribute(
-                "style",
-                "position:absolute;top:0;left:0;width:100%;height:100%;",
-              ),
-              a.attribute(
-                "allow",
-                "autoplay; fullscreen; picture-in-picture; clipboard-write",
-              ),
-              a.attribute("frameborder", "0"),
-              a.src(
-                "https://player.vimeo.com/video/1019199789?h=3ee4fc598d&badge=0&autopause=0&player_id=0&app_id=58479",
-              ),
-            ]),
-          ]),
-          h.script([a.src("https://player.vimeo.com/api/player.js")], ""),
-        ]),
-      ],
+      [h.div([a.class("cover")], components.vimeo_intro())],
       True,
     ),
     feature(

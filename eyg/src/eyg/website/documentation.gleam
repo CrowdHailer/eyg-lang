@@ -144,6 +144,7 @@ fn render(state) {
             p(
               "The side bar explains what keys to use in the editor for each section of the documentation.",
             ),
+            ..components.vimeo_intro()
           ],
           Some([
             element.text("moving in editors is done using the arrow keys. Use "),
