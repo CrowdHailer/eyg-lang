@@ -9,6 +9,8 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 
+const signup = "mailing-signup"
+
 pub fn page(bundle) {
   page.app(None, "eyg/website/home", "client", bundle)
 }
@@ -96,11 +98,12 @@ fn merit_colour(merit) {
   }
 }
 
-fn action(text, merit) {
-  h.div(
+fn action(text, href, merit) {
+  h.a(
     [
+      a.href(href),
       a.class(
-        "py-2 px-6 rounded-xl bg-"
+        "inline-block py-2 px-6 rounded-xl bg-"
         <> merit_colour(merit)
         <> " inline-block my-4 text-xl font-bold",
       ),
@@ -223,7 +226,7 @@ fn render(s) {
         "Edit your programs directly. Instead of carefully adjusting text the EYG editor allows you to confidently make structural changes to your program.",
         "Never miss a bracket or semi-colon again.",
       ],
-      action("Watch the full guide", Confident),
+      action("Watch the full guide", "#", Confident),
       [h.div([a.class("cover bg-red-100")], [element.text("Video")])],
       True,
     ),
@@ -249,7 +252,11 @@ fn render(s) {
         There is no difference for Mac or Windows or standard access to ",
         "Any runtime can make an effect available, For example this tweet effect",
       ],
-      action("Read more about the effects", Useful),
+      action(
+        "Read more about the effects",
+        "/documentation#perform-effect",
+        Useful,
+      ),
       [snippet(s, state.twitter_key)],
       True,
     ),
@@ -260,7 +267,11 @@ fn render(s) {
         "The effects that any piece of a program might need can be deduced ahead of running it.",
         "Testing is always the same",
       ],
-      action("Read the effects documentation.", Predictable),
+      action(
+        "Read the effects documentation.",
+        "/documentation#handle-effect",
+        Confident,
+      ),
       [
         snippet(s, state.predictable_effects_key),
         caption("Click above to run and edit."),
@@ -273,7 +284,11 @@ fn render(s) {
         "Every program, script or function has unique reference.",
         "In EYG all packages and dependencies are fetched by reference, ensuring the same code is fetched everytime.",
       ],
-      action("Read the reference documentation.", Predictable),
+      action(
+        "Read the reference documentation.",
+        "/documentation#references",
+        Predictable,
+      ),
       [snippet(s, state.fetch_key)],
       True,
     ),
@@ -282,9 +297,10 @@ fn render(s) {
       [
         "Closure serialisation allows functions to be efficiently transformed back into source code and sent to other machines.",
       ],
-      h.div(
-        [a.class("py-2 px-6 rounded-xl bg-pink-100 inline-block my-4 text-xl")],
-        [element.text("find out more")],
+      action(
+        "Read the reference documentation.",
+        "/documentation#closure-serialization",
+        Useful,
       ),
       [snippet(s, state.closure_serialization_key)],
       False,
@@ -295,43 +311,40 @@ fn render(s) {
         "Use EYG's structural type system to validate that updates will work ahead of time",
         "More information coming soon.",
       ],
-      h.div(
-        [a.class("py-2 px-6 rounded-xl bg-pink-100 inline-block my-4 text-xl")],
-        [element.text("find out more")],
-      ),
-      [
-        // snippet(s, state.)
-      ],
+      action("Stay up to date join the mailing list.", "#" <> signup, Confident),
+      [],
       True,
     ),
     feature(
       "Iterate fast with a shell",
-      ["Coming soon."],
-      h.div(
-        [a.class("py-2 px-6 rounded-xl bg-pink-100 inline-block my-4 text-xl")],
-        [element.text("find out more")],
-      ),
       [
-        // snippet(s, state.)
+        "EYG already has a prototyped strongly typed shell environment.",
+        "We need to get it we ready and bring it to you.",
       ],
+      action("Stay up to date join the mailing list.", "#" <> signup, Useful),
+      [],
       False,
     ),
     feature(
-      "Runtimes",
-      ["Coming soon."],
-      h.div(
-        [a.class("py-2 px-6 rounded-xl bg-pink-100 inline-block my-4 text-xl")],
-        [element.text("find out more")],
-      ),
+      "An ecosystem of runtimes",
       [
-        // snippet(s, state.)
+        "EYG is built to support multiple runtimes. You have already seen this with closure serialisation",
+        "In the future EYG will be available in many more places, e.g. arduino, CLI's and IPaaS.",
       ],
+      action("Stay up to date join the mailing list.", "#" <> signup, Confident),
+      [],
       True,
     ),
     h.div([a.class("bg-green-100 vstack h-1/2")], [
-      h.div([a.class("max-w-3xl mx-auto hstack")], [
+      h.div([a.class("max-w-3xl mx-auto hstack gap-6")], [
+        h.div([a.class("font-bold")], [
+          element.text("Want to stay up to date?"),
+          h.br([]),
+          element.text("Join our mailing list."),
+        ]),
         h.script(
           [
+            a.id(signup),
             a.attribute("data-form", "b3a478b8-39e2-11ef-97b9-955caf3f5f36"),
             a.src(
               "https://eocampaign1.com/form/b3a478b8-39e2-11ef-97b9-955caf3f5f36.js",
@@ -341,35 +354,6 @@ fn render(s) {
           "",
         ),
       ]),
-      // h.div([], [element.text("github")]),
-    // h.div([a.class("expand")], [element.text("newsletter")]),
     ]),
-    // section("Closure serialisation", [
-  //   snippet(s, state.closure_serialization_key),
-  //   p(
-  //     "Closure serialisation allows functions to be efficiently transformed back into source code and sent to other machines.",
-  //   ),
-  //   // p("hello"),
-  // // p(
-  // //   "EYG has controlled effects this means any program can be inspected to see what it needs from the environment it runs in.
-  // // For example these snippets have an alert effect",
-  // // ),
-  // // p("Download is an even better effect in the browser"),
-  // // p("There are hashes that allow reproducable everything"),
-  // ]),
-  // section("run everywhere", [
-  //   snippet(s, state.),
-  //   p("Integrate into services"),
-  // ]),
-  // section("Immutable references", [
-  //   snippet(s, state.),
-  //   p(
-  //     "All declarations can be uniquely hashed and referenced from other code.",
-  //   ),
-  //   p(
-  //     "Once a dependency is fixed it can never change because changing the hash would update your program's hash.",
-  //   ),
-  // ]),
-  // section("Immutable references", [snippet(s, state.hash_key)]),
   ])
 }
