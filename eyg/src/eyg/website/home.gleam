@@ -255,9 +255,9 @@ fn render(s) {
       "Never crash",
       [
         "Guarantee that a program will never crash by checking it ahead of time.
-        EYG can check that you program is sound without the need to add any type annotations.",
-        "EYG's type system builds upon a proven mathmatical foundation by using row typing.",
-        // "Row types ensure consistency in your programs use of Records, Unions and effects.",
+        EYG can check that your program is sound without the need to add any type annotations.",
+        "EYG's type system builds upon a proven mathematical foundation by using row typing.",
+        // "Row types ensure consistency in your program's use of Records, Unions and Effects.",
       ],
       element.none(),
       [
@@ -270,8 +270,8 @@ fn render(s) {
       "Run anywhere",
       [
         "EYG programs are all independent of the machine they run on.
-        Any interaction with the world outside your program is accomplished via an Effect.",
-        "A runtime can make an effect available. For example all snippets on the EYG have access to this Tweet effect",
+        Any interaction with the world outside your program is accomplished via an effect.",
+        "A runtime can make an effect available. For example all snippets on this EYG homepage have access to this Tweet effect",
       ],
       action(
         "Read more about the effects",
@@ -286,7 +286,7 @@ fn render(s) {
       [
         "All interactions to the world outside a program are managed as effects.",
         "Any effect can be intercepted using a handler. This allows the response from the outside world to be replaced.",
-        "Handling effects is great for testing, if all effects are handled then your program is deterministic. No more flakey tests.",
+        "Handling effects is great for testing; if all effects are handled then your program is deterministic. No more flakey tests.",
       ],
       action(
         "Read the effects documentation.",
@@ -302,7 +302,7 @@ fn render(s) {
     feature(
       "Immutable references",
       [
-        "Every program, script or function has unique reference.",
+        "Every program, script or function has a unique reference.",
         "In EYG all packages and dependencies are fetched by reference, ensuring the same code is fetched everytime.",
       ],
       action(
@@ -341,7 +341,7 @@ fn render(s) {
       "Iterate fast with a shell",
       [
         "EYG already has a prototyped strongly typed shell environment.",
-        "We need to get it we ready and bring it to you.",
+        "We need to get it ready and bring it to you.",
       ],
       action("Stay up to date join the mailing list.", "#" <> signup, Useful),
       [],
