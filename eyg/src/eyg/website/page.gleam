@@ -1,5 +1,6 @@
 import gleam/bit_array
 import gleam/list
+import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
@@ -8,18 +9,22 @@ import mysig
 import mysig/layout
 import mysig/neo
 
-pub fn app(module, func, bundle) {
+pub fn app(title, module, func, bundle) {
   use script <- t.do(t.bundle(module, func))
   t.done(layout(
-    "app",
+    title,
     [empty_lustre(), mysig.resource(mysig.js("page", script), bundle)],
     bundle,
   ))
 }
 
-fn layout(name, body, bundle) {
+fn layout(title, body, bundle) {
+  let title = case title {
+    None -> "EYG"
+    Some(title) -> "EYG - " <> title
+  }
   doc(
-    "EYG - " <> name,
+    title,
     "eyg.run",
     [
       stylesheet(mysig.tailwind_2_2_11),

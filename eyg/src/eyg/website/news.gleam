@@ -32,15 +32,12 @@ pub fn build() {
   let template = string.replace(template, replace_string, content)
 
   let bundle = mysig.new_bundle("/assets")
-  t.done(
-    [
-      #("/news/_email.html", <<template:utf8>>),
-      pea,
-      brocolli,
-      ..web_editions(archive.published, bundle)
-    ]
-    |> list.append(mysig.to_files(bundle)),
-  )
+  t.done([
+    #("/news/_email.html", <<template:utf8>>),
+    pea,
+    brocolli,
+    ..web_editions(archive.published, bundle)
+  ])
 }
 
 // archive is a reverse order stack of editions

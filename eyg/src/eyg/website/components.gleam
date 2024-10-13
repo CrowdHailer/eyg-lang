@@ -3,17 +3,18 @@ import lustre/element
 import lustre/element/html as h
 
 fn header_button(target, text) {
-  h.a([a.class("p-1 border-b border-black"), a.href(target)], [
-    element.text(text),
-  ])
+  h.a([a.class("p-1 text-gray-700"), a.href(target)], [element.text(text)])
 }
 
 pub fn header() {
-  h.header([a.class("hstack gap-8 p-2 bg-black text-yellow-2")], [
-    h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
-    header_button("/documentation", "Documentation"),
-    header_button("/news", "News"),
-  ])
+  h.header(
+    [a.class("hstack gap-8 p-2 fixed bottom-0 border-t-2 bg-white z-10")],
+    [
+      h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
+      header_button("/editor", "Editor"),
+      header_button("/documentation", "Documentation"),
+    ],
+  )
 }
 
 pub fn card(children) {
@@ -43,4 +44,27 @@ pub fn keycap(letter) {
     ],
     [element.text(letter)],
   )
+}
+
+pub fn vimeo_intro() {
+  [
+    h.div([a.attribute("style", "padding:75% 0 0 0;position:relative;")], [
+      h.iframe([
+        a.attribute("title", "New Recording - 10/13/2024, 8:14:28 PM"),
+        a.attribute(
+          "style",
+          "position:absolute;top:0;left:0;width:100%;height:100%;",
+        ),
+        a.attribute(
+          "allow",
+          "autoplay; fullscreen; picture-in-picture; clipboard-write",
+        ),
+        a.attribute("frameborder", "0"),
+        a.src(
+          "https://player.vimeo.com/video/1019199789?h=3ee4fc598d&badge=0&autopause=0&player_id=0&app_id=58479",
+        ),
+      ]),
+    ]),
+    h.script([a.src("https://player.vimeo.com/api/player.js")], ""),
+  ]
 }

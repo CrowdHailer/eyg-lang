@@ -2,9 +2,9 @@ import eyg/package
 import eyg/sync/cid
 import eyg/sync/sync
 import eyg/website/documentation
+import eyg/website/editor
 import eyg/website/home
 import eyg/website/news
-import eygir/annotated
 import eygir/decode
 import eygir/encode
 import eygir/expression
@@ -353,39 +353,47 @@ pub fn dependency(group, name) {
   // todo
 }
 
+pub fn build(bundle) {
+  use documentation <- t.do(documentation.page(bundle))
+  use home <- t.do(home.page(bundle))
+  use editor <- t.do(editor.page(bundle))
+
+  // relies on intro
+  t.done([
+    #("/documentation/index.html", documentation),
+    #("/editor/index.html", editor),
+    #("/index.html", home),
+  ])
+}
+
+// Remember to only add mysig at the top level
 pub fn preview(args) {
   case args {
     ["home"] -> {
       let bundle = mysig.new_bundle("/assets")
-      use documentation <- t.do(documentation.page(bundle))
-      // use #(std_ref,std_dep) <- t.do(dependency("eyg","std"))
-      // io.debug(std_ref)
-      use home <- t.do(home.page(bundle))
+      use v1_site <- t.do(build(bundle))
       use intro <- t.do(build_intro(True, bundle))
 
       t.done(
-        [
-          // #("/home/index.html", root_page("", home_page(), bundle)),
-          #("/documentation/index.html", documentation),
-          #("/index.html", home),
-          // std_dep
-          ..intro
-        ]
-        |> list.append(mysig.to_files(bundle)),
+        [v1_site, intro, mysig.to_files(bundle)]
+        |> list.flatten(),
       )
     }
     _ -> {
       let bundle = mysig.new_bundle("/assets")
+      use v1_site <- t.do(build(bundle))
       use drafting <- t.do(drafting_page(bundle))
       use examine <- t.do(examine_page(bundle))
       use spotless <- t.do(build_spotless(bundle))
       use shell <- t.do(shell_page(bundle))
       use intro <- t.do(build_intro(True, bundle))
+      // Note news puts pea image into assets without hashing
       use news <- t.do(news.build())
       use datalog <- t.do(build_datalog(bundle))
 
       let files =
         list.flatten([
+          v1_site,
           [drafting],
           [examine],
           spotless,
@@ -395,37 +403,8 @@ pub fn preview(args) {
           datalog,
           mysig.to_files(bundle),
         ])
+      io.debug(listx.keys(files))
       t.done(files)
     }
   }
 }
-// can't move easil page without updating bundle process
-// fn easil_page(bundle) {
-//   let content =
-//     [
-//       h.html([], [
-//         h.head([], []),
-//         h.body([a.class("green-gradient")], [
-//           h.div(
-//             [
-//               a.class(
-//                 "flex flex-col max-h-screen min-h-screen max-w-5xl mx-auto p-2",
-//               ),
-//             ],
-//             [
-//               h.div(
-//                 [
-//                   a.attribute("data-ready", "editor"),
-//                   a.class(
-//                     "flex-1 vstack wrap bg-white neo-shadow border-black border-2 mb-2 mr-2 rounded-xl overflow-hidden",
-//                   ),
-//                 ],
-//                 [],
-//               ),
-//             ],
-//           ),
-//         ]),
-//       ]),
-//     ]
-//     |> root_page("easil", _, bundle)
-// }

@@ -103,12 +103,12 @@ pub fn update(state, message) {
               run.start(projection.rebuild(buffer.0), effects, cache)
             _ -> run
           }
-          let eff = case buffer.1 {
+          case buffer.1 {
             buffer.Command(Some(buffer.NoKeyBinding("y"))) -> {
               case buffer.0 {
                 #(projection.Exp(expression), _) -> {
                   let eff =
-                    Some(fn(d) {
+                    Some(fn(_d) {
                       clipboard.write_text(
                         encode.to_json(editable.to_expression(expression)),
                       )
@@ -206,7 +206,7 @@ pub fn update(state, message) {
               let state = Editing(#(proj, mode), run, effects, cache)
               #(state, None)
             }
-            Error(_) -> todo
+            Error(_) -> todo as "failed to paste"
           }
 
         Error(reason) -> panic as reason
@@ -262,7 +262,14 @@ pub fn finish_editing(state: Snippet) {
 }
 
 pub fn render(state: Snippet) {
-  h.div([a.class("bg-white neo-shadow font-mono mt-4 mb-6")], case state {
+  h.div(
+    [a.class("bg-white neo-shadow font-mono mt-2 mb-6 border border-black")],
+    bare_render(state),
+  )
+}
+
+pub fn bare_render(state) {
+  case state {
     Editing(#(proj, mode), run, effects, cache) ->
       case mode {
         buffer.Command(_) -> {
@@ -326,7 +333,7 @@ pub fn render(state: Snippet) {
       ),
       render_run(run.status),
     ]
-  })
+  }
 }
 
 fn pallet(items) {
@@ -338,7 +345,7 @@ fn render_projection(proj, autofocus) {
   h.div(
     [
       a.class(
-        "border-l-4 py-1 px-2 border-white outline-none focus:border-black",
+        "border py-1 px-2 border-transparent outline-none focus:border-black",
       ),
       ..case autofocus {
         True -> [
