@@ -324,6 +324,8 @@ pub fn text(scope) {
         e.Select(inner, label) -> Ok(#(label, e.Select(inner, _)))
         e.Tag(content) -> Ok(#(content, e.Tag))
         e.Perform(label) -> Ok(#(label, e.Perform))
+        e.Shallow(label) -> Ok(#(label, e.Shallow))
+        e.Deep(label) -> Ok(#(label, e.Deep))
         e.Builtin(identifier) -> Ok(#(identifier, e.Builtin))
         _ -> Error(Nil)
       })
