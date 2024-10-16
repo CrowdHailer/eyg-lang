@@ -49,10 +49,10 @@ pub fn init(src, effects, cache) {
   Normal(src, run.start(src, effects, cache), effects, cache)
 }
 
-pub fn source(state)  {
+pub fn source(state) {
   case state {
-    Editing(buf,_,_,_) -> projection.rebuild(buf.0)
-    Normal(exp,_,_,_) -> exp
+    Editing(buf, _, _, _) -> projection.rebuild(buf.0)
+    Normal(exp, _, _, _) -> exp
   }
 }
 
@@ -388,13 +388,14 @@ fn render_projection(proj, autofocus) {
             let key = pevent.key(event)
             let shift = pevent.shift_key(event)
             let ctrl = pevent.ctrl_key(event)
+            let alt = pevent.alt_key(event)
             case key {
               "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
               k if shift -> {
                 pevent.prevent_default(event)
                 Ok(MessageFromBuffer(buffer.KeyDown(string.uppercase(k))))
               }
-              _ if ctrl -> Error([])
+              _ if ctrl || alt -> Error([])
               k -> {
                 pevent.prevent_default(event)
                 Ok(MessageFromBuffer(buffer.KeyDown(k)))
