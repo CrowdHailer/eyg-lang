@@ -322,7 +322,11 @@ pub fn string_input(value) {
 }
 
 pub fn integer_input(value) {
-  input(int.to_string(value), "number")
+  let raw = case value {
+    0 -> ""
+    _ -> int.to_string(value)
+  }
+  input(raw, "number")
 }
 
 fn input(value, type_) {

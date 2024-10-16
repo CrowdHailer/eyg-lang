@@ -131,6 +131,13 @@ pub type Outcome(help) {
 pub fn make_tagged(projection, context, eff) {
   let variants = analysis.type_variants(projection, context, eff)
   case projection, variants {
+    #(p.Exp(e.Tag(label)), [p.CallFn(args), ..zoom]), variants ->
+      Ok(
+        Choose(label, variants, fn(label) {
+          let zoom = [p.CallFn(args), ..zoom]
+          #(p.Exp(e.Tag(label)), zoom)
+        }),
+      )
     #(p.Exp(inner), zoom), variants -> {
       Ok(
         Choose("", variants, fn(label) {

@@ -347,7 +347,7 @@ fn render_page(root, start, state) {
 
 @external(javascript, "../easel_ffi.js", "handleInput")
 pub fn handle_input(
-  a: event.Event,
+  a: event.Event(t),
   insert_text insert_text: fn(String, Int, Int) -> Nil,
   insert_paragraph insert_paragraph: fn(Int) -> Nil,
 ) -> Nil

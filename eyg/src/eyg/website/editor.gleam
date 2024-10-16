@@ -4,6 +4,7 @@ import eyg/sync/sync
 import eyg/website/components
 import eyg/website/components/snippet
 import eyg/website/page
+import eygir/tree
 import gleam/list
 import gleam/option.{None, Some}
 import lustre
@@ -76,14 +77,25 @@ pub fn render(state: State) {
       h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
       h.span([a.class("")], [element.text(" - Editor")]),
     ]),
-    h.div(
-      [
-        a.class(
-          "flex-grow flex flex-col justify-center w-full max-w-3xl font-mono px-6",
+    h.div([a.class("grid grid-cols-2 h-full")], [
+      h.div(
+        [
+          a.class(
+            "flex-grow flex flex-col justify-center w-full max-w-3xl font-mono px-6",
+          ),
+        ],
+        [snippet.render_editor(state.source)],
+      ),
+      h.div([a.class("leading-none p-4 text-gray-500")], [
+        h.pre(
+          [],
+          list.map(
+            tree.lines(editable.to_expression(snippet.source(state.source))),
+            fn(x) { h.div([], [h.pre([], [element.text(x)])]) },
+          ),
         ),
-      ],
-      snippet.bare_render(state.source),
-    ),
+      ]),
+    ]),
     h.div(
       [
         a.class(

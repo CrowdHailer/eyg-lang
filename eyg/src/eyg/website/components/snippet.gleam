@@ -18,6 +18,7 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
+import gleam/string
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
@@ -29,7 +30,9 @@ import morph/projection
 import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/element as dom_element
+import plinth/browser/event as pevent
 import plinth/browser/window
+import plinth/javascript/console
 
 type ExternalBlocking =
   fn(run.Value) -> Result(promise.Promise(run.Value), run.Reason)
@@ -44,6 +47,13 @@ pub type Snippet {
 
 pub fn init(src, effects, cache) {
   Normal(src, run.start(src, effects, cache), effects, cache)
+}
+
+pub fn source(state)  {
+  case state {
+    Editing(buf,_,_,_) -> projection.rebuild(buf.0)
+    Normal(exp,_,_,_) -> exp
+  }
 }
 
 pub fn set_references(state: Snippet, cache) {
@@ -141,7 +151,11 @@ pub fn update(state, message) {
                 Some(fn(_) {
                   window.request_animation_frame(fn(_) {
                     case document.query_selector("[autofocus]") {
-                      Ok(el) -> dom_element.focus(el)
+                      Ok(el) -> {
+                        dom_element.focus(el)
+                        // This can only be done when we move to a new focus
+                        // dom_element.set_selection_range(el, 0, -1)
+                      }
                       Error(Nil) -> Nil
                     }
                   })
@@ -263,7 +277,28 @@ pub fn finish_editing(state: Snippet) {
 
 pub fn render(state: Snippet) {
   h.div(
-    [a.class("bg-white neo-shadow font-mono mt-2 mb-6 border border-black")],
+    [
+      a.class(
+        "bg-white neo-shadow font-mono mt-2 mb-6 border border-black flex flex-col",
+      ),
+      // a.style([#("min-height", "18ch")]),
+    ],
+    bare_render(state),
+  )
+}
+
+pub fn render_editor(state: Snippet) {
+  h.div(
+    [
+      a.class(
+        "bg-white neo-shadow font-mono mt-2 mb-6 border border-black flex flex-col",
+      ),
+      a.style([
+        #("min-height", "15em"),
+        #("height", "100%"),
+        #("max-height", "95%"),
+      ]),
+    ],
     bare_render(state),
   )
 }
@@ -323,9 +358,7 @@ pub fn bare_render(state) {
     Normal(src, run, _effects, _) -> [
       h.div(
         [
-          a.class(
-            "border-l-4 py-1 px-2 border-white outline-none focus:border-black",
-          ),
+          a.class("p-2 outline-none my-auto"),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
@@ -344,15 +377,30 @@ fn pallet(items) {
 fn render_projection(proj, autofocus) {
   h.div(
     [
-      a.class(
-        "border py-1 px-2 border-transparent outline-none focus:border-black",
-      ),
+      a.class("p-2 outline-none my-auto"),
       ..case autofocus {
         True -> [
           a.attribute("tabindex", "0"),
           a.attribute("autofocus", "true"),
           // a.autofocus(True),
-          event.on_keydown(fn(key) { MessageFromBuffer(buffer.KeyDown(key)) }),
+          event.on("keydown", fn(event) {
+            let assert Ok(event) = pevent.cast_keyboard_event(event)
+            let key = pevent.key(event)
+            let shift = pevent.shift_key(event)
+            let ctrl = pevent.ctrl_key(event)
+            case key {
+              "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
+              k if shift -> {
+                pevent.prevent_default(event)
+                Ok(MessageFromBuffer(buffer.KeyDown(string.uppercase(k))))
+              }
+              _ if ctrl -> Error([])
+              k -> {
+                pevent.prevent_default(event)
+                Ok(MessageFromBuffer(buffer.KeyDown(k)))
+              }
+            }
+          }),
         ]
         False -> []
       }
