@@ -51,7 +51,8 @@ fn proxy(task) {
   case task {
     task.Fetch(request, resume) -> {
       let request =
-        via_proxy(request, http.Http, "localhost:8080", None, "/proxy/twitter")
+        via_proxy(request, http.Https, "eyg.run", None, "/proxy/twitter")
+        |> request.prepend_header("accept", "application/json")
       io.debug(request)
       task.Fetch(request, fn(x) { proxy(resume(x)) })
     }

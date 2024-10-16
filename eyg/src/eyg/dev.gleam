@@ -152,6 +152,7 @@ fn shell_page(bundle) {
 
 const redirects = "
 /packages/* /packages/index.html 200
+/proxy/twitter/* https://twitter.com/:splat 200
 "
 
 fn ref_file(ref, exp) {
