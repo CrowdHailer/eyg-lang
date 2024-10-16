@@ -56,6 +56,16 @@ pub fn source(state) {
   }
 }
 
+// This uses some none because otherwise it feels back to front. I.e. should I return OK if there is
+// a key error
+pub fn key_error(state) {
+  case state {
+    Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k)))), _, _, _) ->
+      Some(k)
+    _ -> None
+  }
+}
+
 pub fn set_references(state: Snippet, cache) {
   case state {
     Editing(buf, run, eff, _cache) ->

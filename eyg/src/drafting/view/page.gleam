@@ -275,15 +275,15 @@ fn key_binding(binding) {
 
 pub fn bindings() {
   [
-    // TODO add a show hide in the editor functionality
-    // #("?", "show/hide help"),
+    #("?", "show/hide help"),
     #("SPACE", "jump to next vacant"),
     #("w", "call a function with this term"),
     #("E", "insert an assignment before this term"),
     #("e", "assign this term"),
     #("r", "create a record"),
     #("t", "create a tagged term"),
-    // #("y", "extend_before"),
+    #("y", "copy"),
+    #("Y", "paste"),
     // "u" ->
     #("i", "edit this term"),
     #("o", "overwrite record fields"),
@@ -294,7 +294,7 @@ pub fn bindings() {
     #("f", "wrap in a function"),
     #("g", "select a field"),
     #("h", "create an effect handler"),
-    #("j", "insert_builtin"),
+    #("j", "insert a builtin function"),
     #("k", "collapse/uncollapse code section"),
     #("l", "create a list"),
     #("#", "insert a reference"),
@@ -304,8 +304,8 @@ pub fn bindings() {
     #("v", "create a variable"),
     #("b", "create a array of bytes"),
     #("n", "create a number"),
-    #("m", "create a match statement"),
-    #("M", "insert_open_case"),
+    #("m", "create a match expression"),
+    #("M", "insert an open match expression"),
     #(",", "add element in a list"),
     #(".", "open a list for extension"),
   ]

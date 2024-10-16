@@ -12,8 +12,7 @@ gleam_bitwise = "~> 1.2"
 lustre = "~> 4.0"
 gleam_json = ">= 1.0.0 and < 3.0.0"
 gleam_fetch = "~> 1.0"
-# plinth = ">= 0.4.15 and < 1.0.0"
-plinth = {path = "../../../plinth"}
+plinth = ">= 0.5.0 and < 1.0.0"
 simplifile = "~> 1.0"
 gleam_http = "~> 3.5"
 gleam_community_codec = {path= "../../codec"}
