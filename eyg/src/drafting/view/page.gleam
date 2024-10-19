@@ -1,68 +1,46 @@
-import drafting/state
-import drafting/view/picker
-import eyg/analysis/type_/binding/debug
-import eyg/analysis/type_/binding/error
 import eyg/shell/buffer
-import eyg/sync/sync
-import eygir/annotated
-import eygir/decode
-import gleam/dynamic
-import gleam/dynamicx
 import gleam/int
-import gleam/io
-import gleam/javascript/array
-import gleam/javascript/promise
 import gleam/list
-import gleam/option.{None, Some}
-import gleam/result
 import gleam/string
-import gleam/stringx
 import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
 import lustre/event
-import morph/analysis
-import morph/editable
-import morph/lustre/render
-import morph/projection as p
-import plinth/browser/drag
-import plinth/browser/file
-import plinth/javascript/console
 
-fn handle_dragover(event) {
-  event.prevent_default(event)
-  event.stop_propagation(event)
-  Error([])
-}
+// fn handle_dragover(event) {
+//   event.prevent_default(event)
+//   event.stop_propagation(event)
+//   Error([])
+// }
 
 // needs to handle dragover otherwise browser will open file
 // https://stackoverflow.com/questions/43180248/firefox-ondrop-event-datatransfer-is-null-after-update-to-version-52
-fn handle_drop(event) {
-  event.prevent_default(event)
-  event.stop_propagation(event)
-  let files =
-    drag.data_transfer(dynamicx.unsafe_coerce(event))
-    |> drag.files
-    |> array.to_list()
-  case files {
-    [file] -> {
-      let work =
-        promise.map(file.text(file), fn(content) {
-          let assert Ok(source) = decode.from_json(content)
-          //  going via annotated is inefficient
-          let source = annotated.add_annotation(source, Nil)
-          let source = editable.from_annotated(source)
-          Ok(source)
-        })
+// fn handle_drop(event) {
+//   event.prevent_default(event)
+//   event.stop_propagation(event)
+//   let files =
+//     drag.data_transfer(dynamicx.unsafe_coerce(event))
+//     |> drag.files
+//     |> array.to_list()
+//   case files {
+//     [file] -> {
+//       let work =
+//         promise.map(file.text(file), fn(content) {
+//           let assert Ok(source) = decode.from_json(content)
+//           //  going via annotated is inefficient
+//           let source = annotated.add_annotation(source, Nil)
+//           let source = editable.from_annotated(source)
+//           Ok(source)
+//         })
 
-      Ok(state.Loading(work))
-    }
-    _ -> {
-      console.log(#(event, files))
-      Error([])
-    }
-  }
-}
+//       Ok(state.Loading(work))
+//     }
+//     _ -> {
+//       console.log(#(event, files))
+//       Error([])
+//     }
+//   }
+// }
 
 pub fn fail_message(reason) {
   case reason {
@@ -71,193 +49,6 @@ pub fn fail_message(reason) {
     buffer.ActionFailed(action) ->
       string.concat(["Action ", action, " not possible at this position"])
   }
-}
-
-pub fn render(app) {
-  let state.State(cache, buffer, analysis, failure, show_help, _auto_analyse) =
-    app
-
-  // containter for relative positioning
-  h.div([a.class("font-mono min-h-screen flex flex-col")], [
-    case cache.pending {
-      [] -> h.div([], [])
-      [#(k, _)] -> h.div([a.class("bg-gray-300")], [text("loading #"), text(k)])
-      [#(k, _), ..rest] ->
-        h.div([a.class("bg-gray-300")], [
-          text("loading #"),
-          text(k),
-          text(" and "),
-          text(int.to_string(list.length(rest))),
-          text(" others."),
-        ])
-    },
-    h.div(
-      [
-        a.class("flex justify-center flex-1"),
-        a.style([#("align-items", "center")]),
-        event.on("dragover", handle_dragover),
-        event.on("drop", handle_drop),
-      ],
-      [
-        h.div(
-          [
-            a.class("w-full max-w-3xl relative flex flex-col justify-center"),
-            a.style([#("align-self", "stretch")]),
-          ],
-          [
-            h.div([], case buffer.1 {
-              buffer.Command(_) -> []
-              buffer.Pick(picker, _rebuild) ->
-                overlay([picker.render(picker, buffer.UpdatePicker)])
-              buffer.EditText(value, _rebuild) ->
-                overlay([input(value, "text")])
-              buffer.EditInteger(value, _rebuild) ->
-                overlay([input(int.to_string(value), "number")])
-            }),
-            h.div(
-              [
-                a.class("outline-none whitespace-nowrap"),
-                a.attribute("tabindex", "0"),
-                event.on("keydown", fn(event) {
-                  event.prevent_default(event)
-                  dynamic.field("key", dynamic.string)(event)
-                  |> result.map(buffer.KeyDown)
-                }),
-                a.id("code"),
-              ],
-              [render.projection(buffer.0, True)],
-            ),
-            case failure, buffer.1 {
-              Error(reason), _ ->
-                h.div(
-                  [a.class("w-full my-4 border p-1 rounded border-red-500")],
-                  [text(reason)],
-                )
-              _, buffer.Command(Some(failure)) ->
-                h.div(
-                  [a.class("w-full my-4 border p-1 rounded border-red-500")],
-                  [text(fail_message(failure))],
-                )
-
-              _, buffer.Command(None) -> {
-                case analysis {
-                  None ->
-                    case p.blank(buffer.0) {
-                      True ->
-                        h.div(
-                          [a.class("w-full my-4 bg-gray-200 py-1 px-2 rounded")],
-                          [
-                            h.div([a.class("border rounded ")], [
-                              h.h4([a.class("text-2xl my-4 text-center")], [
-                                text("EYG structural editor"),
-                              ]),
-                              h.p([], [
-                                text(
-                                  "Start editing EYG programs faster. Don't type text instead directly modify the program.",
-                                ),
-                              ]),
-                              h.p([], [
-                                text(
-                                  "Click on the space above to start coding or drag in a source file to start editing",
-                                ),
-                              ]),
-                            ]),
-                          ],
-                        )
-                      False ->
-                        h.div([a.class("w-full my-4 bg-gray-200 p-1 rounded")], [
-                          h.div([a.class("border rounded")], [
-                            text("Press Enter to type check"),
-                          ]),
-                        ])
-                    }
-                  Some(analysis) ->
-                    case analysis.type_errors(analysis) {
-                      [] ->
-                        h.div([a.class("w-full my-4 bg-gray-200 p-1 rounded")], [
-                          h.div([], [
-                            case analysis.do_type_at(analysis, buffer.0) {
-                              Ok(t) -> text(debug.mono(t))
-                              _ -> element.none()
-                            },
-                          ]),
-                        ])
-                      errors ->
-                        h.div([], [
-                          h.div([], [
-                            case analysis.do_type_at(analysis, buffer.0) {
-                              Ok(t) -> text(debug.mono(t))
-                              _ -> element.none()
-                            },
-                          ]),
-                          ..list.map(errors, fn(e) {
-                            let #(path, reason) = e
-                            // analysis reverses the paths to correct order
-                            // let path = list.reverse(path)
-                            case reason {
-                              error.SameTail(_, _) -> {
-                                io.debug(
-                                  "this error I dont understand shouldnt occur",
-                                )
-                                element.none()
-                              }
-                              _ ->
-                                h.div(
-                                  [
-                                    a.class(
-                                      "w-full my-4 orange-gradient p-1 rounded",
-                                    ),
-                                  ],
-                                  [
-                                    h.div([a.class("px-3")], [
-                                      h.a(
-                                        [event.on_click(buffer.JumpTo(path))],
-                                        [text(path_to_string(path))],
-                                      ),
-                                      text(" "),
-                                      text(debug.reason(reason)),
-                                    ]),
-                                  ],
-                                )
-                            }
-                          })
-                        ])
-                    }
-                }
-              }
-              _, _ -> element.none()
-            },
-          ],
-        )
-          |> element.map(state.Buffer),
-        h.div(
-          [
-            a.class(
-              "w-full max-w-md sticky top-0 flex flex-col justify-center p-2",
-            ),
-            a.style([#("align-self", "stretch")]),
-          ],
-          [
-            case show_help {
-              True ->
-                h.div(
-                  [
-                    a.class(
-                      "border border-blue-800 bg-white rounded p-2 shadow-xl",
-                    ),
-                  ],
-                  [
-                    h.h1([a.class("text-xl font-bold")], [text("commands")]),
-                    key_references(),
-                  ],
-                )
-              False -> element.none()
-            },
-          ],
-        ),
-      ],
-    ),
-  ])
 }
 
 pub fn key_references() {
@@ -309,12 +100,6 @@ pub fn bindings() {
     #(",", "add element in a list"),
     #(".", "open a list for extension"),
   ]
-}
-
-pub fn path_to_string(path) {
-  list.map(path, int.to_string)
-  |> string.join(",")
-  |> stringx.wrap("[", "]")
 }
 
 pub fn string_input(value) {

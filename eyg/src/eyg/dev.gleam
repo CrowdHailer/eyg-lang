@@ -64,25 +64,6 @@ pub fn app_script(src) {
   h.script([a.attribute("defer", ""), a.attribute("async", ""), a.src(src)], "")
 }
 
-fn drafting_page(bundle) {
-  use script <- t.do(t.bundle("drafting/app", "run"))
-  let content =
-    doc(
-      "Eyg - drafting",
-      "eyg.run",
-      [
-        stylesheet(mysig.tailwind_2_2_11),
-        mysig.resource(layout.css, bundle),
-        mysig.resource(neo.css, bundle),
-        mysig.resource(mysig.js("drafting", script), bundle),
-      ],
-      [h.div([], [empty_lustre()])],
-    )
-    |> element.to_document_string()
-    |> bit_array.from_string()
-  t.done(#("/drafting/index.html", content))
-}
-
 fn examine_page(bundle) {
   use script <- t.do(t.bundle("examine/app", "run"))
   let content =
@@ -100,26 +81,6 @@ fn examine_page(bundle) {
     |> element.to_document_string()
     |> bit_array.from_string()
   t.done(#("/examine/index.html", content))
-}
-
-fn spotless_page(bundle) {
-  use script <- t.do(t.bundle("spotless/app", "run"))
-  let content =
-    doc(
-      "Spotless",
-      "eyg.run",
-      [
-        stylesheet(mysig.tailwind_2_2_11),
-        mysig.resource(layout.css, bundle),
-        mysig.resource(neo.css, bundle),
-        h.script([a.src("/vendor/zip.js")], ""),
-        mysig.resource(mysig.js("examine", script), bundle),
-      ],
-      [h.div([], [empty_lustre()])],
-    )
-    |> element.to_document_string()
-    |> bit_array.from_string()
-  t.done(#("/terminal/index.html", content))
 }
 
 fn shell_page(bundle) {
@@ -375,7 +336,6 @@ pub fn preview(args) {
     _ -> {
       let bundle = mysig.new_bundle("/assets")
       use v1_site <- t.do(build(bundle))
-      use drafting <- t.do(drafting_page(bundle))
       use examine <- t.do(examine_page(bundle))
       use shell <- t.do(shell_page(bundle))
       use intro <- t.do(build_intro(True, bundle))
@@ -386,7 +346,6 @@ pub fn preview(args) {
       let files =
         list.flatten([
           v1_site,
-          [drafting],
           [examine],
           [shell],
           intro,
