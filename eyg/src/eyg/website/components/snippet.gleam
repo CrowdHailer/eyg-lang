@@ -1,5 +1,3 @@
-import drafting/view/page as d_view
-import drafting/view/picker
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -7,7 +5,6 @@ import eyg/runtime/break
 import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
-import eyg/shell/buffer
 import eyg/sync/sync
 import eyg/website/components/output
 import eyg/website/run
@@ -26,8 +23,11 @@ import lustre/element
 import lustre/element/html as h
 import lustre/event
 import morph/analysis
+import morph/buffer
 import morph/editable
 import morph/lustre/render
+import morph/pallet
+import morph/picker
 import morph/projection
 import plinth/browser/clipboard
 import plinth/browser/document
@@ -440,12 +440,12 @@ pub fn bare_render(state) {
 
         buffer.EditText(value, _rebuild) -> [
           render_projection(proj, False),
-          pallet(d_view.string_input(value)),
+          pallet(pallet.string_input(value)),
         ]
 
         buffer.EditInteger(value, _rebuild) -> [
           render_projection(proj, False),
-          pallet(d_view.integer_input(value)),
+          pallet(pallet.integer_input(value)),
         ]
       }
 

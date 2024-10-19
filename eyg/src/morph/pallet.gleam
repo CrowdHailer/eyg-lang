@@ -1,11 +1,10 @@
-import eyg/shell/buffer
 import gleam/int
 import gleam/list
-import gleam/string
 import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
 import lustre/event
+import morph/buffer
 
 // fn handle_dragover(event) {
 //   event.prevent_default(event)
@@ -41,15 +40,6 @@ import lustre/event
 //     }
 //   }
 // }
-
-pub fn fail_message(reason) {
-  case reason {
-    buffer.NoKeyBinding(key) ->
-      string.concat(["No action bound for key '", key, "'"])
-    buffer.ActionFailed(action) ->
-      string.concat(["Action ", action, " not possible at this position"])
-  }
-}
 
 pub fn key_references() {
   h.div([], list.map(bindings(), key_binding))

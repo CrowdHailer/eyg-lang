@@ -1,4 +1,3 @@
-import drafting/view/page as drafting
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
@@ -13,6 +12,7 @@ import lustre/effect
 import lustre/element
 import lustre/element/html as h
 import morph/editable
+import morph/pallet
 
 pub fn page(bundle) {
   page.app(Some("editor"), "eyg/website/editor", "client", bundle)
@@ -122,7 +122,7 @@ pub fn render(state: State) {
           ],
           [
             h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [
-              drafting.key_references(),
+              pallet.key_references(),
             ]),
           ],
         )

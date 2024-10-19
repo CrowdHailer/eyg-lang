@@ -1,12 +1,9 @@
-import drafting/view/page
-import drafting/view/picker
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/document/section
 import eyg/package
 import eyg/parse/lexer
 import eyg/runtime/value as v
-import eyg/shell/buffer
 import eyg/sync/sync
 import eyg/text/highlight
 import eyg/text/text
@@ -27,8 +24,11 @@ import lustre/element.{fragment, map as element_map, none, text} as _
 import lustre/element/html as h
 import lustre/event as e
 import morph/analysis
+import morph/buffer
 import morph/lustre/frame
 import morph/lustre/render
+import morph/pallet
+import morph/picker
 import plinth/browser/document
 import plinth/browser/element
 import plinth/browser/event
@@ -156,15 +156,15 @@ fn sections(document, references) {
                   buffer.Command(None) -> render_errors(errors)
                   buffer.Command(Some(failure)) ->
                     h.div([a.class("px-2 py-1 -mt-1")], [
-                      text(page.fail_message(failure)),
+                      text(fail_message(failure)),
                     ])
                   buffer.EditInteger(i, _rebuild) ->
                     h.div([a.class("px-2 py-1 -mt-1")], [
-                      page.integer_input(i) |> element_map(state.Buffer),
+                      pallet.integer_input(i) |> element_map(state.Buffer),
                     ])
                   buffer.EditText(text, _rebuild) ->
                     h.div([a.class("px-2 py-1 -mt-1")], [
-                      page.string_input(text) |> element_map(state.Buffer),
+                      pallet.string_input(text) |> element_map(state.Buffer),
                     ])
                   buffer.Pick(picker, _) ->
                     h.div([a.class("px-2 py-1 -mt-1")], [
@@ -181,6 +181,15 @@ fn sections(document, references) {
     }
   }
   list.append(before, focus_and_after)
+}
+
+fn fail_message(reason) {
+  case reason {
+    buffer.NoKeyBinding(key) ->
+      string.concat(["No action bound for key '", key, "'"])
+    buffer.ActionFailed(action) ->
+      string.concat(["Action ", action, " not possible at this position"])
+  }
 }
 
 fn render_errors(errors) {

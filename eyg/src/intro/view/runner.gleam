@@ -1,5 +1,4 @@
 // TODO rename as sidebar
-import drafting/view/page
 import eyg/runtime/break
 import eyg/runtime/value as v
 import gleam/http/request
@@ -12,6 +11,7 @@ import lustre/attribute as a
 import lustre/element.{none, text}
 import lustre/element/html as h
 import lustre/event as e
+import morph/pallet
 
 pub fn runner(state) {
   let state.State(running: runner, document: guide, ..) = state
@@ -88,7 +88,7 @@ pub fn runner(state) {
         [
           h.div([a.class("p-2 font-mono vstack")], [
             h.h1([a.class("text-xl font-bold cover")], [text("commands")]),
-            h.div([a.class("cover")], [page.key_references()]),
+            h.div([a.class("cover")], [pallet.key_references()]),
           ]),
         ],
       )

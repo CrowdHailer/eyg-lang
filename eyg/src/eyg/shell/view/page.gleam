@@ -1,4 +1,3 @@
-import drafting/view/page as drafting
 import eyg/shell/state
 import eyg/website/components/output
 import eyg/website/components/snippet
@@ -10,6 +9,7 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import morph/lustre/render
+import morph/pallet
 
 pub fn render(state) {
   let state.Shell(
@@ -49,7 +49,7 @@ pub fn render(state) {
         case display_help {
           True ->
             h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [
-              drafting.key_references(),
+              pallet.key_references(),
             ])
 
           False -> element.none()

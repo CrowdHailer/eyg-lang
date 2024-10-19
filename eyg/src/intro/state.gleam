@@ -1,4 +1,3 @@
-import drafting/view/picker
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/isomorphic
 import eyg/document/section
@@ -8,7 +7,6 @@ import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state.{type Env, type Stack} as istate
 import eyg/runtime/value as v
-import eyg/shell/buffer
 import eyg/sync/browser
 import eyg/sync/fragment
 import eyg/sync/packages
@@ -34,7 +32,9 @@ import intro/content
 import lustre/effect
 import midas/browser as m_browser
 import morph/analysis
+import morph/buffer
 import morph/editable
+import morph/picker
 import morph/projection
 
 // import plinth/browser/geolocation
