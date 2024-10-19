@@ -122,13 +122,6 @@ fn spotless_page(bundle) {
   t.done(#("/terminal/index.html", content))
 }
 
-fn build_spotless(bundle) {
-  use page <- t.do(spotless_page(bundle))
-  use prompt <- t.do(t.read("saved/prompt.json"))
-
-  t.done([page, #("/prompt.json", prompt)])
-}
-
 fn shell_page(bundle) {
   use script <- t.do(t.bundle("eyg/shell/app", "run"))
 
@@ -384,7 +377,6 @@ pub fn preview(args) {
       use v1_site <- t.do(build(bundle))
       use drafting <- t.do(drafting_page(bundle))
       use examine <- t.do(examine_page(bundle))
-      use spotless <- t.do(build_spotless(bundle))
       use shell <- t.do(shell_page(bundle))
       use intro <- t.do(build_intro(True, bundle))
       // Note news puts pea image into assets without hashing
@@ -396,7 +388,6 @@ pub fn preview(args) {
           v1_site,
           [drafting],
           [examine],
-          spotless,
           [shell],
           intro,
           news,

@@ -1,12 +1,15 @@
 import drafting/view/page as drafting
 import eyg/shell/state
+import eyg/website/components/output
 import eyg/website/components/snippet
 import gleam/dynamic
 import gleam/dynamicx
+import gleam/list
+import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import spotless/view/page as spotpage
+import morph/lustre/render
 
 pub fn render(state) {
   let state.Shell(
@@ -37,9 +40,7 @@ pub fn render(state) {
           ],
           [
             element.fragment(
-              spotpage.render_previous(
-                dynamicx.unsafe_coerce(dynamic.from(previous)),
-              ),
+              render_previous(dynamicx.unsafe_coerce(dynamic.from(previous))),
             ),
             snippet.render_sticky(snippet)
               |> element.map(state.SnippetMessage),
@@ -56,4 +57,23 @@ pub fn render(state) {
       ],
     ),
   ])
+}
+
+fn render_previous(previous) {
+  list.map(list.reverse(previous), fn(p) {
+    let #(value, prog) = p
+    h.div([a.class("w-full max-w-4xl mt-2 py-1 bg-white shadow-xl rounded")], [
+      h.div(
+        [a.class("px-3 whitespace-nowrap overflow-auto")],
+        render.statements(prog),
+      ),
+      case value {
+        Some(value) ->
+          h.div([a.class("mx-3 pt-1 border-t max-h-60 overflow-auto")], [
+            output.render(value),
+          ])
+        None -> element.none()
+      },
+    ])
+  })
 }
