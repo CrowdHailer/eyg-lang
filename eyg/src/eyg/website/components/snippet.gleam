@@ -310,6 +310,17 @@ pub fn render(state: Snippet) {
   )
 }
 
+pub fn render_sticky(state: Snippet) {
+  h.div(
+    [
+      a.class(
+        "bg-white neo-shadow font-mono mt-2 sticky bottom-6 mb-6 border border-black flex flex-col",
+      ),
+    ],
+    bare_render(state),
+  )
+}
+
 pub fn render_editor(state: Snippet) {
   h.div(
     [
