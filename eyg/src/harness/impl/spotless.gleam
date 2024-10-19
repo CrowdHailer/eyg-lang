@@ -7,6 +7,8 @@ import harness/impl/spotless/google_calendar/list_events as gcal_list_events
 import harness/impl/spotless/netlify
 import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
 import harness/impl/spotless/netlify/list_sites as netlify_list_sites
+import harness/impl/spotless/twitter
+import harness/impl/spotless/twitter/tweet
 import harness/impl/spotless/vimeo
 import harness/impl/spotless/vimeo/my_videos as vimeo_my_videos
 
@@ -70,6 +72,14 @@ pub fn effects() {
         netlify_deploy_site.reply(),
         netlify_deploy_site.blocking(netlify.local, _),
       ),
+    ),
+    #(
+      tweet.l,
+      #(tweet.lift(), tweet.reply(), tweet.blocking(
+        twitter.client_id,
+        twitter.redirect_uri,
+        _,
+      )),
     ),
   ]
 }

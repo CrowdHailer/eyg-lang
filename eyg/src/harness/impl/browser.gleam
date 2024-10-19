@@ -27,11 +27,3 @@ pub fn effects() {
     #(visit.l, #(visit.lift, visit.reply(), visit.blocking)),
   ]
 }
-//  #(
-//       tweet.l,
-//       #(tweet.lift(), tweet.reply(), tweet.blocking(
-//         twitter.client_id,
-//         twitter.redirect_uri,
-//         _,
-//       )),
-//     ),

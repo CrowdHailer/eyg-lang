@@ -41,8 +41,6 @@ pub type Status {
 
 // effects are not a map of functions we don't use that for stateful running
 pub fn start(editable, scope, effects, cache) {
-  // TODO remove empty scope
-  // let scope = []
   let return =
     block.execute(
       editable.to_expression(editable)
