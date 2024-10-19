@@ -1,20 +1,11 @@
 import drafting/view/page as drafting
-import eyg/analysis/inference/levels_j/contextual as j
-import eyg/shell/examples
 import eyg/shell/state
-import eyg/sync/sync
 import eyg/website/components/snippet
-import gleam/dict
 import gleam/dynamic
 import gleam/dynamicx
-import gleam/int
-import gleam/list
-import gleam/option.{None, Some}
-import gleam/string
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import morph/analysis
 import spotless/view/page as spotpage
 
 pub fn render(state) {
