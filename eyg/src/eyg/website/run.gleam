@@ -40,15 +40,18 @@ pub type Status {
 }
 
 pub fn start(editable, effects, cache) {
+  // TODO remove empty scope
+  let scope = []
   let return =
     block.execute(
       editable.to_expression(editable)
         |> annotated.add_annotation(Nil),
-      stdlib.env_and_ref(
+      stdlib.new_env(
+        scope,
         sync.values(cache)
-        // TODO move all unsafe into stdlib
-        |> dynamic.from()
-        |> dynamicx.unsafe_coerce(),
+          // TODO move all unsafe into stdlib
+          |> dynamic.from()
+          |> dynamicx.unsafe_coerce(),
       ),
       // effects
       dict.new(),

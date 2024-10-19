@@ -21,7 +21,7 @@ type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 type Scope =
-  #(List(#(String, Value)), j.Env)
+  List(#(String, Value))
 
 pub type Shell {
   Shell(
@@ -29,7 +29,7 @@ pub type Shell {
     cache: sync.Sync,
     previous: List(#(Option(Value), editable.Expression)),
     display_help: Bool,
-    scope: Option(Scope),
+    scope: Scope,
     source: snippet.Snippet,
   )
 }
@@ -47,7 +47,7 @@ pub fn init(_) {
 
   let situation = situation.init()
   let snippet = new_snippet(cache)
-  let state = Shell(situation, cache, [], True, None, snippet)
+  let state = Shell(situation, cache, [], True, [], snippet)
 
   #(state, effect.none())
 }
@@ -77,10 +77,10 @@ pub fn update(state: Shell, message) {
       #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
     }
     SnippetMessage(message) -> {
-      let #(snippet, eff) = snippet.update(state.source, message)
+      let #(sn, eff) = snippet.update(state.source, message)
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       let state = Shell(..state, cache: cache)
-      case snippet.key_error(snippet) {
+      case snippet.key_error(sn) {
         Some("?") -> {
           let state = Shell(..state, display_help: !state.display_help)
           #(state, effect.none())
@@ -97,15 +97,13 @@ pub fn update(state: Shell, message) {
         //             }
         //           }
         Some("Enter") -> {
-          let run = snippet.run(snippet)
+          let run = snippet.run(sn)
           let run.Run(status, effects) = run
           case status {
-            run.Done(value, _value) -> {
+            run.Done(value, scope) -> {
+              io.debug(listx.keys(scope))
               io.debug("add effects")
-              let previous = [
-                #(value, snippet.source(snippet)),
-                ..state.previous
-              ]
+              let previous = [#(value, snippet.source(sn)), ..state.previous]
               let source = new_snippet(state.cache)
               let state = Shell(..state, source: source, previous: previous)
               #(state, effect.none())
@@ -114,7 +112,7 @@ pub fn update(state: Shell, message) {
           }
         }
         _ -> {
-          let state = Shell(..state, source: snippet)
+          let state = Shell(..state, source: sn)
           #(state, case eff {
             None -> {
               effect.from(browser.do_sync(tasks, SyncMessage))

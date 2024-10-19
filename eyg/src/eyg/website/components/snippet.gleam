@@ -40,53 +40,60 @@ type ExternalBlocking =
 type EffectSpec =
   #(binding.Mono, binding.Mono, ExternalBlocking)
 
+pub type Status {
+  Idle(editable.Expression)
+  Editing(buffer.Buffer)
+}
+
 pub type Snippet {
-  Editing(buffer.Buffer, run.Run, List(#(String, EffectSpec)), sync.Sync)
-  Normal(editable.Expression, run.Run, List(#(String, EffectSpec)), sync.Sync)
+  Snippet(
+    status: Status,
+    run: run.Run,
+    effects: List(#(String, EffectSpec)),
+    cache: sync.Sync,
+  )
 }
 
 pub fn init(src, effects, cache) {
-  Normal(src, run.start(src, effects, cache), effects, cache)
+  Snippet(Idle(src), run.start(src, effects, cache), effects, cache)
 }
 
 pub fn run(state) {
-  case state {
-    Editing(_, run, _, _) -> run
-    Normal(_, run, _, _) -> run
-  }
+  let Snippet(run: run, ..) = state
+  run
 }
 
 pub fn source(state) {
-  case state {
-    Editing(buf, _, _, _) -> projection.rebuild(buf.0)
-    Normal(exp, _, _, _) -> exp
+  let Snippet(status: status, ..) = state
+
+  case status {
+    Editing(buf) -> projection.rebuild(buf.0)
+    Idle(exp) -> exp
   }
 }
 
 // This uses some none because otherwise it feels back to front. I.e. should I return OK if there is
 // a key error
 pub fn key_error(state) {
-  case state {
-    Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k)))), _, _, _) ->
-      Some(k)
+  let Snippet(status: status, ..) = state
+
+  case status {
+    Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k))))) -> Some(k)
     _ -> None
   }
 }
 
-pub fn set_references(state: Snippet, cache) {
-  case state {
-    Editing(buf, run, eff, _cache) ->
-      Editing(buf, run.start(projection.rebuild(buf.0), eff, cache), eff, cache)
-    Normal(src, run, eff, _cache) ->
-      Normal(src, run.start(src, eff, cache), eff, cache)
-  }
+pub fn set_references(state, cache) {
+  let run = run.start(source(state), state.effects, cache)
+  Snippet(..state, run: run, cache: cache)
 }
 
-pub fn references(state: Snippet) {
-  case state {
-    Normal(src, _, _, _) ->
-      editable.to_annotated(src, []) |> annotated.list_references()
-    Editing(buffer, _, _, _) -> buffer.references(buffer)
+pub fn references(state) {
+  let Snippet(status: status, ..) = state
+
+  case status {
+    Idle(src) -> editable.to_annotated(src, []) |> annotated.list_references()
+    Editing(buffer) -> buffer.references(buffer)
   }
 }
 
@@ -103,21 +110,23 @@ fn effect_types(effects: List(#(String, EffectSpec))) {
 }
 
 pub fn update(state, message) {
+  let Snippet(status: status, run: run, effects: effects, cache: cache) = state
   case message {
     UserFocusedOnCode ->
-      case state {
-        Editing(_, _, _, _) -> #(state, None)
-        Normal(src, run, effects, references) -> {
+      case status {
+        Editing(_) -> #(state, None)
+        Idle(src) -> {
           let src = editable.open_all(src)
           let proj = projection.focus_at(src, [])
           let buffer = buffer.from(proj)
-          #(Editing(buffer, run, effects, references), None)
+          let status = Editing(buffer)
+          #(Snippet(..state, status: status), None)
         }
       }
     MessageFromBuffer(message) ->
-      case state {
-        Normal(_, _, _, _) -> panic as "should never happen here"
-        Editing(buffer, run, effects, cache) -> {
+      case status {
+        Idle(_) -> panic as "should never happen here"
+        Editing(buffer) -> {
           let buffer =
             buffer.update(
               buffer,
@@ -143,7 +152,8 @@ pub fn update(state, message) {
                       |> promise.map(io.debug)
                       Nil
                     })
-                  #(Editing(buffer, run, effects, cache), eff)
+                  let status = Editing(buffer)
+                  #(Snippet(status, run, effects, cache), eff)
                 }
                 _ -> {
                   todo as "need to wire up faiing copy"
@@ -157,15 +167,20 @@ pub fn update(state, message) {
                   use return <- promisex.aside(clipboard.read_text())
                   d(ClipboardReadCompleted(return))
                 })
-              #(Editing(buffer, run, effects, cache), eff)
+              let status = Editing(buffer)
+              #(Snippet(status, run, effects, cache), eff)
             }
             buffer.Command(Some(buffer.NoKeyBinding("Enter"))) -> {
               case run.status {
                 run.Done(_, _) | run.Failed(_) -> #(
-                  Editing(buffer, run, effects, cache),
+                  Snippet(Editing(buffer), run, effects, cache),
                   None,
                 )
-                _ -> run_effects(Editing(buffer, run, effects, cache))
+                _ -> {
+                  let status = Editing(buffer)
+                  let state = Snippet(status, run, effects, cache)
+                  run_effects(state)
+                }
               }
             }
 
@@ -184,14 +199,14 @@ pub fn update(state, message) {
                   })
                   Nil
                 })
-              #(Editing(buffer, run, effects, cache), eff)
+              #(Snippet(Editing(buffer), run, effects, cache), eff)
             }
           }
         }
       }
     UserClickRunEffects -> run_effects(state)
     RuntimeRepliedFromExternalEffect(reply) -> {
-      let assert Normal(src, run, effects, cache) = state
+      let assert Snippet(Idle(src), run, effects, cache) = state
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
@@ -200,7 +215,7 @@ pub fn update(state, message) {
         Error(debug) -> run.handle_extrinsic_effects(debug, effects)
       }
       let run = run.Run(status, effect_log)
-      let state = Normal(src, run, effects, cache)
+      let state = Snippet(Idle(src), run, effects, cache)
       case status {
         run.Done(_, _) | run.Failed(_) -> #(state, None)
 
@@ -208,7 +223,7 @@ pub fn update(state, message) {
           case blocking(lift) {
             Ok(promise) -> {
               let run = run.Run(status, effect_log)
-              let state = Normal(src, run, effects, cache)
+              let state = Snippet(Idle(src), run, effects, cache)
 
               #(
                 state,
@@ -222,7 +237,7 @@ pub fn update(state, message) {
             }
             Error(reason) -> {
               let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Normal(src, run, effects, cache)
+              let state = Snippet(Idle(src), run, effects, cache)
               #(state, None)
             }
           }
@@ -233,14 +248,15 @@ pub fn update(state, message) {
         Ok(text) ->
           case decode.from_json(text) {
             Ok(expression) -> {
-              let assert Editing(#(proj, mode), _run, effects, cache) = state
+              let assert Snippet(Editing(#(proj, mode)), _run, effects, cache) =
+                state
               let assert #(projection.Exp(_), zoom) = proj
               let proj = #(
                 projection.Exp(editable.from_expression(expression)),
                 zoom,
               )
               let run = run.start(projection.rebuild(proj), effects, cache)
-              let state = Editing(#(proj, mode), run, effects, cache)
+              let state = Snippet(Editing(#(proj, mode)), run, effects, cache)
               #(state, None)
             }
             Error(_) -> todo as "failed to paste"
@@ -253,21 +269,15 @@ pub fn update(state, message) {
 }
 
 fn run_effects(state) {
-  let #(src, run.Run(status, effect_log), effects, cache) = case state {
-    Normal(src, run, effects, cache) -> #(src, run, effects, cache)
-    Editing(#(p, _), run, effects, cache) -> #(
-      projection.rebuild(p),
-      run,
-      effects,
-      cache,
-    )
-  }
+  let Snippet(status: _status, run: run, effects: effects, cache: cache) = state
+  let run.Run(status, effect_log) = run
+  let src = source(state)
   case status {
     run.Handling(_label, lift, env, k, blocking) -> {
       case blocking(lift) {
         Ok(promise) -> {
           let run = run.Run(status, effect_log)
-          let state = Normal(src, run, effects, cache)
+          let state = Snippet(Idle(src), run, effects, cache)
 
           #(
             state,
@@ -281,7 +291,7 @@ fn run_effects(state) {
         }
         Error(reason) -> {
           let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-          let state = Normal(src, run, effects, cache)
+          let state = Snippet(Idle(src), run, effects, cache)
           #(state, None)
         }
       }
@@ -291,9 +301,9 @@ fn run_effects(state) {
 }
 
 pub fn finish_editing(state: Snippet) {
-  case state {
-    Editing(#(proj, _mode), _run, effects, cache) ->
-      init(projection.rebuild(proj), effects, cache)
+  let Snippet(status: status, effects: effects, cache: cache, ..) = state
+  case status {
+    Editing(#(proj, _mode)) -> init(projection.rebuild(proj), effects, cache)
     _ -> state
   }
 }
@@ -338,8 +348,9 @@ pub fn render_editor(state: Snippet) {
 }
 
 pub fn bare_render(state) {
-  case state {
-    Editing(#(proj, mode), run, effects, cache) ->
+  let Snippet(status, run, effects, cache) = state
+  case status {
+    Editing(#(proj, mode)) ->
       case mode {
         buffer.Command(e) -> {
           let eff =
@@ -400,7 +411,7 @@ pub fn bare_render(state) {
         ]
       }
 
-    Normal(src, run, _effects, _) -> [
+    Idle(src) -> [
       h.div(
         [
           a.class("p-2 outline-none my-auto"),
