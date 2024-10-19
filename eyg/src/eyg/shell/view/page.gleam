@@ -1,73 +1,79 @@
-import eyg/analysis/inference/levels_j/contextual as j
-import eyg/runtime/break
-import eyg/shell/examples
 import eyg/shell/state
-import eyg/sync/sync
-import gleam/dict
+import eyg/website/components/output
+import eyg/website/components/snippet
 import gleam/dynamic
 import gleam/dynamicx
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
-import lustre/element.{text}
+import lustre/attribute as a
+import lustre/element
 import lustre/element/html as h
-import morph/analysis
-import spotless/state as old_state
-import spotless/view/page
+import morph/lustre/render
+import morph/pallet
 
 pub fn render(state) {
   let state.Shell(
     situation: _,
-    cache: cache,
+    cache: _cache,
+    display_help: display_help,
     previous: previous,
-    scope: scope,
-    buffer: buffer,
-    runner: running,
+    scope: _scope,
+    source: snippet,
   ) = state
-  h.div([], [
-    text("Yo"),
-    h.div([], [
-      case scope {
-        None -> text("Not ready")
-        Some(_) -> text("scope is ready")
-      },
+
+  h.div([a.class("flex flex-col h-screen")], [
+    h.div([a.class("w-full fixed py-2 px-6 text-xl text-gray-500")], [
+      h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
+      h.span([a.class("")], [element.text(" - Editor")]),
     ]),
-    h.input([]),
     h.div(
-      [],
-      // TODO real ref lookup
-      list.map(sync.missing(cache, []), fn(h) { h.div([], [text(h)]) }),
+      [
+        a.class("hstack flex-1 h-screen overflow-hidden"),
+        // a.style([#("height", "100%")])
+      ],
+      [
+        h.div(
+          [
+            a.class(
+              "flex-grow flex flex-col justify-center w-full max-w-3xl font-mono px-6 max-h-full overflow-scroll",
+            ),
+          ],
+          [
+            element.fragment(
+              render_previous(dynamicx.unsafe_coerce(dynamic.from(previous))),
+            ),
+            snippet.render_sticky(snippet)
+              |> element.map(state.SnippetMessage),
+          ],
+        ),
+        case display_help {
+          True ->
+            h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [
+              pallet.key_references(),
+            ])
+
+          False -> element.none()
+        },
+      ],
     ),
   ])
-  let executing = case running {
-    Some(state.Run(state.Failed(debug), _effects)) ->
-      old_state.Failed(break.reason_to_string(debug.0))
-    Some(state.Run(_, effects)) -> {
-      io.debug(effects)
-      old_state.Running
-    }
-    None -> old_state.Editing(buffer.1)
-  }
-  let tenv = case scope {
-    Some(#(_env, tenv)) -> tenv
-    None -> []
-  }
-  let context =
-    analysis.Context(
-      // bindings are empty as long as everything is properly poly
-      bindings: dict.new(),
-      scope: tenv,
-      references: sync.types(cache),
-      builtins: j.builtins(),
-    )
-  page.do_render(
-    dynamicx.unsafe_coerce(dynamic.from(previous)),
-    context,
-    state.buffer.0,
-    executing,
-    examples.examples(),
-    state.Buffer,
-    fn() { state.Interrupt },
-    state.Selected,
-  )
+}
+
+fn render_previous(previous) {
+  list.map(list.reverse(previous), fn(p) {
+    let #(value, prog) = p
+    h.div([a.class("w-full max-w-4xl mt-2 py-1 bg-white shadow-xl rounded")], [
+      h.div(
+        [a.class("px-3 whitespace-nowrap overflow-auto")],
+        render.statements(prog),
+      ),
+      case value {
+        Some(value) ->
+          h.div([a.class("mx-3 pt-1 border-t max-h-60 overflow-auto")], [
+            output.render(value),
+          ])
+        None -> element.none()
+      },
+    ])
+  })
 }

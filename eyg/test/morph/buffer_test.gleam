@@ -1,10 +1,10 @@
-import drafting/view/picker
-import eyg/shell/buffer
 import gleam/io
 import gleam/listx
 import gleam/option.{Some}
 import gleeunit/should
 import morph/analysis
+import morph/buffer
+import morph/picker
 
 fn update(state, message) {
   let context = analysis.empty_environment()

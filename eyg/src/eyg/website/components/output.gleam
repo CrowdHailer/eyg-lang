@@ -1,3 +1,4 @@
+// This could move closer to morph and other views but only if it stays generic enough
 import eyg/runtime/value as v
 import gleam/list
 import lustre/attribute as a
@@ -21,7 +22,7 @@ pub fn render(value) {
   }
 }
 
-pub fn render_value(value) {
+fn render_value(value) {
   text(v.debug(value))
 }
 

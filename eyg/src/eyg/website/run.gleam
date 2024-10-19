@@ -1,4 +1,5 @@
 import eyg/runtime/break
+import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/runner
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
@@ -9,6 +10,7 @@ import gleam/dynamic
 import gleam/dynamicx
 import gleam/javascript/promise
 import gleam/list
+import gleam/option
 import harness/stdlib
 import morph/editable
 
@@ -26,7 +28,7 @@ pub type Reason =
   break.Reason(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
 
 pub type Status {
-  Done(Value)
+  Done(option.Option(Value), List(#(String, Value)))
   Handling(
     label: String,
     lift: Value,
@@ -37,35 +39,28 @@ pub type Status {
   Failed(istate.Debug(Meta))
 }
 
-pub fn start(editable, effects, cache) {
+// effects are not a map of functions we don't use that for stateful running
+pub fn start(editable, scope, effects, cache) {
   let return =
-    runner.execute(
+    block.execute(
       editable.to_expression(editable)
         |> annotated.add_annotation(Nil),
-      stdlib.env_and_ref(
+      stdlib.new_env(
+        scope,
         sync.values(cache)
-        // TODO move all unsafe into stdlib
-        |> dynamic.from()
-        |> dynamicx.unsafe_coerce(),
+          // TODO move all unsafe into stdlib
+          |> dynamic.from()
+          |> dynamicx.unsafe_coerce(),
       ),
       // effects
       dict.new(),
     )
   let status = case return {
-    Ok(value) -> Done(value)
+    Ok(#(value, env)) -> Done(value, env)
     Error(debug) -> handle_extrinsic_effects(debug, effects)
   }
   Run(status, [])
 }
-
-// pub fn do(label, lift, env, k, blocking) {
-//   case blocking(lift) {
-//     Error(reason) -> Failed(#(reason, Nil, env, k))
-//     Ok(promise) -> promise.map(promise, fn(value){
-//    todo   
-//     })
-//   }
-// }
 
 pub fn handle_extrinsic_effects(debug, effects) {
   let #(reason, _meta, env, k) = debug

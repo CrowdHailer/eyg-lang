@@ -1,4 +1,3 @@
-import drafting/view/picker
 import eyg/analysis/type_/binding as t
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic
@@ -16,6 +15,7 @@ import morph/action
 import morph/analysis
 import morph/editable as e
 import morph/navigation
+import morph/picker
 import morph/projection as p
 import morph/transformation
 import plinth/browser/clipboard

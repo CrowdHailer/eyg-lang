@@ -5,15 +5,7 @@ import eygir/decode
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
-import harness/fetch
-import harness/impl/browser/abort
-import harness/impl/browser/alert
-import harness/impl/browser/copy
-import harness/impl/browser/download
-import harness/impl/browser/paste
-import harness/impl/browser/prompt
-import harness/impl/spotless/twitter
-import harness/impl/spotless/twitter/tweet
+import harness/impl/browser as harness
 import lustre/effect
 import morph/editable as e
 
@@ -29,27 +21,6 @@ pub type Active {
   Editing(String)
   Running(String)
   Nothing
-}
-
-fn effects() {
-  [
-    #(abort.l, #(abort.lift, abort.reply, abort.blocking)),
-    #(alert.l, #(alert.lift, alert.reply, alert.blocking)),
-    #(copy.l, #(copy.lift, copy.reply(), copy.blocking)),
-    #(download.l, #(download.lift, download.reply(), download.blocking)),
-    #(fetch.l, #(fetch.lift(), fetch.lower(), fetch.blocking)),
-    #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),
-    #(prompt.l, #(prompt.lift, prompt.reply(), prompt.blocking)),
-    // TODO make an app
-    #(
-      tweet.l,
-      #(tweet.lift(), tweet.reply(), tweet.blocking(
-        twitter.client_id,
-        twitter.redirect_uri,
-        _,
-      )),
-    ),
-  ]
 }
 
 pub const closure_serialization_key = "closure_serialization"
@@ -214,7 +185,7 @@ fn init_example(json, cache) {
   let source =
     e.from_expression(source)
     |> e.open_all
-  snippet.init(source, effects(), cache)
+  snippet.init(source,[], harness.effects(), cache)
 }
 
 pub fn init(_) {
@@ -222,9 +193,9 @@ pub fn init(_) {
   let snippets = [
     #(
       closure_serialization_key,
-      snippet.init(closure_serialization, effects(), cache),
+      snippet.init(closure_serialization, [],harness.effects(), cache),
     ),
-    #(fetch_key, snippet.init(catfact, effects(), cache)),
+    #(fetch_key, snippet.init(catfact, [],harness.effects(), cache)),
     #(twitter_key, init_example(twitter_example, cache)),
     #(type_check_key, init_example(type_check_example, cache)),
     #(predictable_effects_key, init_example(predictable_effects_example, cache)),

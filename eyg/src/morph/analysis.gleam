@@ -43,10 +43,9 @@ pub type Analysis =
     ),
   )
 
-pub fn within_environment(runtime_env) {
+pub fn within_environment(runtime_env, refs) {
   let #(bindings, scope) = env_to_tenv(runtime_env)
-  io.debug("need referencesss")
-  Context(bindings, scope, dict.new(), infer.builtins())
+  Context(bindings, scope, refs, infer.builtins())
 }
 
 pub fn with_references(refs) {
@@ -121,10 +120,10 @@ fn value_to_type(value, bindings) {
 // TODO add a small initial script BUT i want std lib etc
 // Vars together for environment
 
-fn env_to_tenv(env: state.Env(Nil)) {
+fn env_to_tenv(scope) {
   let bindings = infer.new_state()
 
-  list.map_fold(env.scope, bindings, fn(bindings, pair) {
+  list.map_fold(scope, bindings, fn(bindings, pair) {
     let #(var, value) = pair
     let #(type_, bindings) = value_to_type(value, bindings)
     #(bindings, #(var, type_))

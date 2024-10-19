@@ -1,13 +1,12 @@
-import drafting/view/page as d_view
-import drafting/view/picker
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/break
-import eyg/runtime/interpreter/runner
-import eyg/runtime/value
-import eyg/shell/buffer
+import eyg/runtime/interpreter/block
+import eyg/runtime/interpreter/state as istate
+import eyg/runtime/value as v
 import eyg/sync/sync
+import eyg/website/components/output
 import eyg/website/run
 import eygir/annotated
 import eygir/decode
@@ -24,15 +23,17 @@ import lustre/element
 import lustre/element/html as h
 import lustre/event
 import morph/analysis
+import morph/buffer
 import morph/editable
 import morph/lustre/render
+import morph/pallet
+import morph/picker
 import morph/projection
 import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/element as dom_element
 import plinth/browser/event as pevent
 import plinth/browser/window
-import plinth/javascript/console
 
 type ExternalBlocking =
   fn(run.Value) -> Result(promise.Promise(run.Value), run.Reason)
@@ -40,46 +41,76 @@ type ExternalBlocking =
 type EffectSpec =
   #(binding.Mono, binding.Mono, ExternalBlocking)
 
-pub type Snippet {
-  Editing(buffer.Buffer, run.Run, List(#(String, EffectSpec)), sync.Sync)
-  Normal(editable.Expression, run.Run, List(#(String, EffectSpec)), sync.Sync)
+pub type Status {
+  Idle(editable.Expression)
+  Editing(buffer.Buffer)
 }
 
-pub fn init(src, effects, cache) {
-  Normal(src, run.start(src, effects, cache), effects, cache)
+type Path =
+  Nil
+
+type Value =
+  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
+
+type Scope =
+  List(#(String, Value))
+
+pub type Snippet {
+  Snippet(
+    status: Status,
+    run: run.Run,
+    scope: Scope,
+    effects: List(#(String, EffectSpec)),
+    cache: sync.Sync,
+  )
+}
+
+pub fn init(src, scope, effects, cache) {
+  Snippet(
+    Idle(src),
+    run.start(src, scope, effects, cache),
+    scope,
+    effects,
+    cache,
+  )
+}
+
+pub fn run(state) {
+  let Snippet(run: run, ..) = state
+  run
 }
 
 pub fn source(state) {
-  case state {
-    Editing(buf, _, _, _) -> projection.rebuild(buf.0)
-    Normal(exp, _, _, _) -> exp
+  let Snippet(status: status, ..) = state
+
+  case status {
+    Editing(buf) -> projection.rebuild(buf.0)
+    Idle(exp) -> exp
   }
 }
 
 // This uses some none because otherwise it feels back to front. I.e. should I return OK if there is
 // a key error
 pub fn key_error(state) {
-  case state {
-    Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k)))), _, _, _) ->
-      Some(k)
+  let Snippet(status: status, ..) = state
+
+  case status {
+    Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k))))) -> Some(k)
     _ -> None
   }
 }
 
-pub fn set_references(state: Snippet, cache) {
-  case state {
-    Editing(buf, run, eff, _cache) ->
-      Editing(buf, run.start(projection.rebuild(buf.0), eff, cache), eff, cache)
-    Normal(src, run, eff, _cache) ->
-      Normal(src, run.start(src, eff, cache), eff, cache)
-  }
+pub fn set_references(state, cache) {
+  let run = run.start(source(state), state.scope, state.effects, cache)
+  Snippet(..state, run: run, cache: cache)
 }
 
-pub fn references(state: Snippet) {
-  case state {
-    Normal(src, _, _, _) ->
-      editable.to_annotated(src, []) |> annotated.list_references()
-    Editing(buffer, _, _, _) -> buffer.references(buffer)
+pub fn references(state) {
+  let Snippet(status: status, ..) = state
+
+  case status {
+    Idle(src) -> editable.to_annotated(src, []) |> annotated.list_references()
+    Editing(buffer) -> buffer.references(buffer)
   }
 }
 
@@ -96,31 +127,39 @@ fn effect_types(effects: List(#(String, EffectSpec))) {
 }
 
 pub fn update(state, message) {
+  let Snippet(
+    status: status,
+    run: run,
+    scope: scope,
+    effects: effects,
+    cache: cache,
+  ) = state
   case message {
     UserFocusedOnCode ->
-      case state {
-        Editing(_, _, _, _) -> #(state, None)
-        Normal(src, run, effects, references) -> {
+      case status {
+        Editing(_) -> #(state, None)
+        Idle(src) -> {
           let src = editable.open_all(src)
           let proj = projection.focus_at(src, [])
           let buffer = buffer.from(proj)
-          #(Editing(buffer, run, effects, references), None)
+          let status = Editing(buffer)
+          #(Snippet(..state, status: status), None)
         }
       }
     MessageFromBuffer(message) ->
-      case state {
-        Normal(_, _, _, _) -> panic as "should never happen here"
-        Editing(buffer, run, effects, cache) -> {
+      case status {
+        Idle(_) -> panic as "should never happen here"
+        Editing(buffer) -> {
           let buffer =
             buffer.update(
               buffer,
               message,
-              analysis.with_references(sync.types(cache)),
+              analysis.within_environment(scope, sync.types(cache)),
               effect_types(effects),
             )
           let run = case buffer.1 {
             buffer.Command(None) ->
-              run.start(projection.rebuild(buffer.0), effects, cache)
+              run.start(projection.rebuild(buffer.0), scope, effects, cache)
             _ -> run
           }
           case buffer.1 {
@@ -136,7 +175,8 @@ pub fn update(state, message) {
                       |> promise.map(io.debug)
                       Nil
                     })
-                  #(Editing(buffer, run, effects, cache), eff)
+                  let status = Editing(buffer)
+                  #(Snippet(status, run, scope, effects, cache), eff)
                 }
                 _ -> {
                   todo as "need to wire up faiing copy"
@@ -150,10 +190,21 @@ pub fn update(state, message) {
                   use return <- promisex.aside(clipboard.read_text())
                   d(ClipboardReadCompleted(return))
                 })
-              #(Editing(buffer, run, effects, cache), eff)
+              let status = Editing(buffer)
+              #(Snippet(status, run, scope, effects, cache), eff)
             }
             buffer.Command(Some(buffer.NoKeyBinding("Enter"))) -> {
-              run_effects(Editing(buffer, run, effects, cache))
+              case run.status {
+                run.Done(_, _) | run.Failed(_) -> #(
+                  Snippet(Editing(buffer), run, scope, effects, cache),
+                  None,
+                )
+                _ -> {
+                  let status = Editing(buffer)
+                  let state = Snippet(status, run, scope, effects, cache)
+                  run_effects(state)
+                }
+              }
             }
 
             _ -> {
@@ -171,31 +222,31 @@ pub fn update(state, message) {
                   })
                   Nil
                 })
-              #(Editing(buffer, run, effects, cache), eff)
+              #(Snippet(Editing(buffer), run, scope, effects, cache), eff)
             }
           }
         }
       }
     UserClickRunEffects -> run_effects(state)
     RuntimeRepliedFromExternalEffect(reply) -> {
-      let assert Normal(src, run, effects, cache) = state
+      let assert Snippet(Idle(src), run, scope, effects, cache) = state
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
-      let status = case runner.resume(reply, env, k) {
-        Ok(value) -> run.Done(value)
+      let status = case block.resume(reply, env, k) {
+        Ok(#(value, env)) -> run.Done(value, env)
         Error(debug) -> run.handle_extrinsic_effects(debug, effects)
       }
       let run = run.Run(status, effect_log)
-      let state = Normal(src, run, effects, cache)
+      let state = Snippet(Idle(src), run, scope, effects, cache)
       case status {
-        run.Done(_) | run.Failed(_) -> #(state, None)
+        run.Done(_, _) | run.Failed(_) -> #(state, None)
 
         run.Handling(_label, lift, env, k, blocking) ->
           case blocking(lift) {
             Ok(promise) -> {
               let run = run.Run(status, effect_log)
-              let state = Normal(src, run, effects, cache)
+              let state = Snippet(Idle(src), run, scope, effects, cache)
 
               #(
                 state,
@@ -209,7 +260,7 @@ pub fn update(state, message) {
             }
             Error(reason) -> {
               let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Normal(src, run, effects, cache)
+              let state = Snippet(Idle(src), run, scope, effects, cache)
               #(state, None)
             }
           }
@@ -220,14 +271,22 @@ pub fn update(state, message) {
         Ok(text) ->
           case decode.from_json(text) {
             Ok(expression) -> {
-              let assert Editing(#(proj, mode), _run, effects, cache) = state
+              let assert Snippet(
+                Editing(#(proj, mode)),
+                _run,
+                scope,
+                effects,
+                cache,
+              ) = state
               let assert #(projection.Exp(_), zoom) = proj
               let proj = #(
                 projection.Exp(editable.from_expression(expression)),
                 zoom,
               )
-              let run = run.start(projection.rebuild(proj), effects, cache)
-              let state = Editing(#(proj, mode), run, effects, cache)
+              let run =
+                run.start(projection.rebuild(proj), scope, effects, cache)
+              let state =
+                Snippet(Editing(#(proj, mode)), run, scope, effects, cache)
               #(state, None)
             }
             Error(_) -> todo as "failed to paste"
@@ -240,21 +299,21 @@ pub fn update(state, message) {
 }
 
 fn run_effects(state) {
-  let #(src, run.Run(status, effect_log), effects, cache) = case state {
-    Normal(src, run, effects, cache) -> #(src, run, effects, cache)
-    Editing(#(p, _), run, effects, cache) -> #(
-      projection.rebuild(p),
-      run,
-      effects,
-      cache,
-    )
-  }
+  let Snippet(
+    status: _status,
+    run: run,
+    scope: scope,
+    effects: effects,
+    cache: cache,
+  ) = state
+  let run.Run(status, effect_log) = run
+  let src = source(state)
   case status {
     run.Handling(_label, lift, env, k, blocking) -> {
       case blocking(lift) {
         Ok(promise) -> {
           let run = run.Run(status, effect_log)
-          let state = Normal(src, run, effects, cache)
+          let state = Snippet(Idle(src), run, scope, effects, cache)
 
           #(
             state,
@@ -268,7 +327,7 @@ fn run_effects(state) {
         }
         Error(reason) -> {
           let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-          let state = Normal(src, run, effects, cache)
+          let state = Snippet(Idle(src), run, scope, effects, cache)
           #(state, None)
         }
       }
@@ -278,9 +337,11 @@ fn run_effects(state) {
 }
 
 pub fn finish_editing(state: Snippet) {
-  case state {
-    Editing(#(proj, _mode), _run, effects, cache) ->
-      init(projection.rebuild(proj), effects, cache)
+  let Snippet(status: status, scope: scope, effects: effects, cache: cache, ..) =
+    state
+  case status {
+    Editing(#(proj, _mode)) ->
+      init(projection.rebuild(proj), scope, effects, cache)
     _ -> state
   }
 }
@@ -292,6 +353,17 @@ pub fn render(state: Snippet) {
         "bg-white neo-shadow font-mono mt-2 mb-6 border border-black flex flex-col",
       ),
       // a.style([#("min-height", "18ch")]),
+    ],
+    bare_render(state),
+  )
+}
+
+pub fn render_sticky(state: Snippet) {
+  h.div(
+    [
+      a.class(
+        "bg-white neo-shadow font-mono mt-2 sticky bottom-6 mb-6 border border-black flex flex-col",
+      ),
     ],
     bare_render(state),
   )
@@ -314,10 +386,11 @@ pub fn render_editor(state: Snippet) {
 }
 
 pub fn bare_render(state) {
-  case state {
-    Editing(#(proj, mode), run, effects, cache) ->
+  let Snippet(status, run, scope, effects, cache) = state
+  case status {
+    Editing(#(proj, mode)) ->
       case mode {
-        buffer.Command(_) -> {
+        buffer.Command(e) -> {
           let eff =
             effect_types(effects)
             |> list.fold(t.Empty, fn(acc, new) {
@@ -327,25 +400,36 @@ pub fn bare_render(state) {
           let a =
             analysis.analyse(
               proj,
-              analysis.with_references(sync.types(cache)),
+              analysis.within_environment(scope, sync.types(cache)),
               eff,
             )
           let errors = analysis.type_errors(a)
           [
             render_projection(proj, True),
-            case errors {
-              [] -> render_run(run.status)
-              _ ->
-                h.div(
-                  [a.class("border-2 border-orange-3 px-2")],
-                  list.map(errors, fn(error) {
-                    let #(path, reason) = error
+            case e {
+              Some(failure) ->
+                h.div([a.class("border-2 border-orange-4 px-2")], [
+                  element.text(fail_message(failure)),
+                ])
+              None ->
+                case errors {
+                  [] -> render_run(run.status)
+                  _ ->
                     h.div(
-                      [event.on_click(MessageFromBuffer(buffer.JumpTo(path)))],
-                      [element.text(debug.reason(reason))],
+                      [a.class("border-2 border-orange-3 px-2")],
+                      list.map(errors, fn(error) {
+                        let #(path, reason) = error
+                        h.div(
+                          [
+                            event.on_click(
+                              MessageFromBuffer(buffer.JumpTo(path)),
+                            ),
+                          ],
+                          [element.text(debug.reason(reason))],
+                        )
+                      }),
                     )
-                  }),
-                )
+                }
             },
           ]
         }
@@ -356,16 +440,16 @@ pub fn bare_render(state) {
 
         buffer.EditText(value, _rebuild) -> [
           render_projection(proj, False),
-          pallet(d_view.string_input(value)),
+          pallet(pallet.string_input(value)),
         ]
 
         buffer.EditInteger(value, _rebuild) -> [
           render_projection(proj, False),
-          pallet(d_view.integer_input(value)),
+          pallet(pallet.integer_input(value)),
         ]
       }
 
-    Normal(src, run, _effects, _) -> [
+    Idle(src) -> [
       h.div(
         [
           a.class("p-2 outline-none my-auto"),
@@ -422,9 +506,13 @@ fn render_projection(proj, autofocus) {
 
 fn render_run(run) {
   case run {
-    run.Done(value) ->
+    run.Done(value, _) ->
       h.pre([a.class("border-2 border-green-3 px-2 overflow-auto")], [
-        element.text(value.debug(value)),
+        case value {
+          Some(value) -> output.render(value)
+          None -> element.text("no value")
+        },
+        // element.text(value.debug(value)),
       ])
     run.Handling(label, _meta, _env, _stack, _blocking) ->
       h.pre(
@@ -442,5 +530,14 @@ fn render_run(run) {
       h.pre([a.class("border-2 border-orange-3 px-2")], [
         element.text(break.reason_to_string(reason)),
       ])
+  }
+}
+
+pub fn fail_message(reason) {
+  case reason {
+    buffer.NoKeyBinding(key) ->
+      string.concat(["No action bound for key '", key, "'"])
+    buffer.ActionFailed(action) ->
+      string.concat(["Action ", action, " not possible at this position"])
   }
 }

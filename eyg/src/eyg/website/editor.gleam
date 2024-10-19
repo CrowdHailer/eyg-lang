@@ -1,13 +1,9 @@
-import drafting/view/page as drafting
-import eyg/shell/buffer
 import eyg/sync/browser
 import eyg/sync/sync
-import eyg/website/components
 import eyg/website/components/snippet
 import eyg/website/page
 import eygir/decode
 import eygir/tree
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import lustre
@@ -16,6 +12,7 @@ import lustre/effect
 import lustre/element
 import lustre/element/html as h
 import morph/editable
+import morph/pallet
 
 pub fn page(bundle) {
   page.app(Some("editor"), "eyg/website/editor", "client", bundle)
@@ -39,7 +36,7 @@ pub fn init(_) {
   let source =
     editable.from_expression(source)
     |> editable.open_all
-  let snippet = snippet.init(source, [], cache)
+  let snippet = snippet.init(source, [], [], cache)
   let references = snippet.references(snippet)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
   let state = State(cache, snippet, True)
@@ -125,7 +122,7 @@ pub fn render(state: State) {
           ],
           [
             h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [
-              drafting.key_references(),
+              pallet.key_references(),
             ]),
           ],
         )

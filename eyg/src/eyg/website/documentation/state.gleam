@@ -5,12 +5,7 @@ import eygir/decode
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option.{None, Some}
-import harness/impl/browser/alert
-import harness/impl/browser/copy
-import harness/impl/browser/download
-import harness/impl/browser/flip
-import harness/impl/browser/paste
-import harness/impl/browser/prompt
+import harness/impl/browser as harness
 import lustre/effect
 import morph/editable as e
 
@@ -226,38 +221,39 @@ pub fn set_example(state: State, id, snippet) {
   State(..state, snippets: dict.insert(state.snippets, id, snippet))
 }
 
-pub fn effects() {
-  [
-    #(alert.l, #(alert.lift, alert.reply, alert.blocking)),
-    #(copy.l, #(copy.lift, copy.reply(), copy.blocking)),
-    #(download.l, #(download.lift, download.reply(), download.blocking)),
-    #(flip.l, #(flip.lift, flip.reply(), flip.blocking)),
-    #(paste.l, #(paste.lift, paste.reply(), paste.blocking)),
-    #(prompt.l, #(prompt.lift, prompt.reply(), prompt.blocking)),
-  ]
-}
-
 fn init_example(json, cache) {
   let assert Ok(source) = decode.from_json(json)
   let source =
     e.from_expression(source)
     |> e.open_all
-  snippet.init(source, effects(), cache)
+  snippet.init(source, [], harness.effects(), cache)
 }
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
-    #(int_key, snippet.init(int_example, effects(), cache)),
-    #(text_key, snippet.init(text_example, effects(), cache)),
-    #(lists_key, snippet.init(lists_example, effects(), cache)),
-    #(records_key, snippet.init(records_example, effects(), cache)),
-    #(overwrite_key, snippet.init(overwrite_example, effects(), cache)),
-    #(unions_key, snippet.init(unions_example, effects(), cache)),
-    #(open_case_key, snippet.init(open_case_example, effects(), cache)),
-    #(externals_key, snippet.init(externals_example, effects(), cache)),
-    #(functions_key, snippet.init(functions_example, effects(), cache)),
-    #(fix_key, snippet.init(fix_example, effects(), cache)),
+    #(int_key, snippet.init(int_example, [], harness.effects(), cache)),
+    #(text_key, snippet.init(text_example, [], harness.effects(), cache)),
+    #(lists_key, snippet.init(lists_example, [], harness.effects(), cache)),
+    #(records_key, snippet.init(records_example, [], harness.effects(), cache)),
+    #(
+      overwrite_key,
+      snippet.init(overwrite_example, [], harness.effects(), cache),
+    ),
+    #(unions_key, snippet.init(unions_example, [], harness.effects(), cache)),
+    #(
+      open_case_key,
+      snippet.init(open_case_example, [], harness.effects(), cache),
+    ),
+    #(
+      externals_key,
+      snippet.init(externals_example, [], harness.effects(), cache),
+    ),
+    #(
+      functions_key,
+      snippet.init(functions_example, [], harness.effects(), cache),
+    ),
+    #(fix_key, snippet.init(fix_example, [], harness.effects(), cache)),
     #(builtins_key, init_example(builtins_example, cache)),
     #(references_key, init_example(references_example, cache)),
     #(perform_key, init_example(perform_example, cache)),
