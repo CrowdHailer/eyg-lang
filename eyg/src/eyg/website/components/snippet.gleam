@@ -5,7 +5,6 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/break
 import eyg/runtime/interpreter/block
-import eyg/runtime/interpreter/runner
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
 import eyg/shell/buffer
@@ -155,7 +154,7 @@ pub fn update(state, message) {
             buffer.update(
               buffer,
               message,
-              analysis.with_references(sync.types(cache)),
+              analysis.within_environment(scope, sync.types(cache)),
               effect_types(effects),
             )
           let run = case buffer.1 {
@@ -401,7 +400,7 @@ pub fn bare_render(state) {
           let a =
             analysis.analyse(
               proj,
-              analysis.with_references(sync.types(cache)),
+              analysis.within_environment(scope, sync.types(cache)),
               eff,
             )
           let errors = analysis.type_errors(a)

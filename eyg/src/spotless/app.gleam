@@ -15,6 +15,6 @@ pub fn run() {
   let assert Ok(#(prompt, env, k)) = r
 
   let app = lustre.application(state.init, state.update, page.render)
-  let assert Ok(_) = lustre.start(app, "#app", #(prompt, env, k))
+  // let assert Ok(_) = lustre.start(app, "#app", #(prompt, env, k))
   Nil
 }

@@ -5,6 +5,7 @@ import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eyg/shell/buffer
+import gleam/dict
 import gleam/dynamic
 import gleam/dynamicx
 import gleam/io
@@ -37,8 +38,9 @@ pub type State {
 pub fn init(initial) {
   // running k will exit the program and can be used for cleanup
   let #(_, env, _k) = initial
-  let context = analysis.within_environment(env)
+  let context = analysis.within_environment(env, dict.new())
   let source = projection.focus_at(e.Vacant(""), [])
+  let env = todo as "removing spotless"
   #(
     State([], env, context, source, Editing(buffer.Command(None))),
     effect.none(),
@@ -176,7 +178,9 @@ pub fn update(state, message) {
         Ok(Env(env)) -> {
           let editable = projection.rebuild(current)
           let previous = [#(None, editable), ..previous]
-          let context = analysis.within_environment(env)
+          let env = todo as "also removing"
+          let context = analysis.within_environment(env, dict.new())
+          let env = todo as "also removing"
 
           #(
             State(
