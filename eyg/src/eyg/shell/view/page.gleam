@@ -21,6 +21,7 @@ pub fn render(state) {
   let state.Shell(
     situation: _,
     cache: cache,
+    display_help: display_help,
     previous: previous,
     scope: scope,
     source: snippet,
@@ -53,7 +54,7 @@ pub fn render(state) {
               |> element.map(state.SnippetMessage),
           ],
         ),
-        case True {
+        case display_help {
           True ->
             h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [
               drafting.key_references(),

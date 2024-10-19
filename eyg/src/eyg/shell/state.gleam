@@ -27,7 +27,6 @@ import lustre/effect
 import morph/analysis
 import morph/editable
 import morph/projection as p
-import plinth/browser/clipboard
 
 type Path =
   Nil
@@ -38,18 +37,12 @@ type Value =
 type Scope =
   #(List(#(String, Value)), j.Env)
 
-// can't be reused as would need to be a result of a run but I want to keep the effects once complete,
-// documenation state comes up with new run
-// pub fn run_start(source, env, hashed_values) {
-//   let expression = editable.to_annotated(p.rebuild(source), [])
-//   execute(expression, env, hashed_values)
-// }
-
 pub type Shell {
   Shell(
     situation: Situation,
     cache: sync.Sync,
     previous: List(#(Option(Value), editable.Expression)),
+    display_help: Bool,
     scope: Option(Scope),
     source: snippet.Snippet,
   )
@@ -64,21 +57,18 @@ fn new_snippet(cache) {
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
-  let #(cache, tasks) = sync.fetch_missing(cache, [scratch_ref])
+  // let #(cache, tasks) = sync.fetch_missing(cache, [scratch_ref])
 
   let situation = situation.init()
   let snippet = new_snippet(cache)
-  let state = Shell(situation, cache, [], None, snippet)
+  let state = Shell(situation, cache, [], True, None, snippet)
 
-  #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
+  #(state, effect.none())
 }
 
 pub type Message {
   SyncMessage(sync.Message)
   SnippetMessage(snippet.Message)
-  // Selected(p.Projection)
-  // Buffer(b.Message)
-  // Executor(ExecutorMessage)
   // Interrupt
 }
 
@@ -94,46 +84,22 @@ pub fn update(state: Shell, message) {
   let effects = effect_types()
   case message {
     SyncMessage(message) -> {
-      todo as "sync messgae"
-      //     let Shell(cache: cache, scope: scope, ..) = state
-      //     let cache = sync.task_finish(cache, message)
-      //     let #(cache, tasks) = sync.fetch_all_missing(cache)
-
-      //     let scope = case sync.missing(cache, [scratch_ref]) {
-      //       [] -> {
-      //         let assert Ok(sync.Computed(expression: exp, ..)) =
-      //           sync.value(cache, scratch_ref)
-      //         let scratch = exp |> a.add_annotation([])
-      //         let assert Ok(#(_value, env)) =
-      //           execute(scratch, [], sync.values(cache))
-
-      //         let proj = p.focus_at(editable.from_expression(exp), [])
-
-      //         let context =
-      //           analysis.Context(
-      //             // bindings are empty as long as everything is properly poly
-      //             bindings: dict.new(),
-      //             scope: [],
-      //             references: sync.types(cache),
-      //             builtins: j.builtins(),
-      //           )
-      //         let tenv = b.final_scope(proj, context, isomorphic.Empty)
-
-      //         Some(#(env, tenv))
-      //       }
-      //       _ -> scope
-      //     }
-
-      //     let state = Shell(..state, scope: scope, cache: cache)
-      //     #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
+      let cache = sync.task_finish(state.cache, message)
+      let #(cache, tasks) = sync.fetch_all_missing(cache)
+      let snippet = snippet.set_references(state.source, cache)
+      let state = Shell(..state, source: snippet, cache: cache)
+      #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
     }
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
-      let state = Shell(..state, source: snippet, cache: cache)
+      let state = Shell(..state, cache: cache)
       case snippet.key_error(snippet) {
+        Some("?") -> {
+          let state = Shell(..state, display_help: !state.display_help)
+          #(state, effect.none())
+        }
         Some("Enter") -> {
-          // let state = Shell(..state, display_help: !state.display_help)
           let run = snippet.run(snippet)
           let run.Run(status, effects) = run
           case status {
@@ -151,6 +117,7 @@ pub fn update(state: Shell, message) {
           }
         }
         _ -> {
+          let state = Shell(..state, source: snippet)
           #(state, case eff {
             None -> {
               effect.from(browser.do_sync(tasks, SyncMessage))
@@ -206,13 +173,6 @@ pub fn update(state: Shell, message) {
     //                 #(state, effect.none())
     //               }
     //             }
-    //           }
-    //           b.Command(Some(b.NoKeyBinding("Q"))), _, _, _ -> {
-    //             clipboard.write_text(b.all_escaped(buffer))
-    //             // can send a message saying copied
-    //             |> promise.map(io.debug)
-    //             let buffer = #(source, b.Command(None))
-    //             #(Shell(..state, buffer: buffer), effect.none())
     //           }
     //           _, _, _missing, _ -> {
     //             let #(cache, tasks) = sync.fetch_missing(cache, references)
