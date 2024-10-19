@@ -39,7 +39,7 @@ pub fn init(_) {
   let source =
     editable.from_expression(source)
     |> editable.open_all
-  let snippet = snippet.init(source, [], cache)
+  let snippet = snippet.init(source, [],[], cache)
   let references = snippet.references(snippet)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
   let state = State(cache, snippet, True)

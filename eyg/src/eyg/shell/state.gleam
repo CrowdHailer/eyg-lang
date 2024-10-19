@@ -14,22 +14,13 @@ import harness/impl/spotless
 import lustre/effect
 import morph/editable
 
-type Path =
-  Nil
-
-type Value =
-  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
-
-type Scope =
-  List(#(String, Value))
-
 pub type Shell {
   Shell(
     situation: Situation,
     cache: sync.Sync,
-    previous: List(#(Option(Value), editable.Expression)),
+    previous: List(#(Option(snippet.Value), editable.Expression)),
     display_help: Bool,
-    scope: Scope,
+    scope: snippet.Scope,
     source: snippet.Snippet,
   )
 }
@@ -37,8 +28,8 @@ pub type Shell {
 // Done is a signal we can work with here. Remove the runner.
 const scratch_ref = "heae72a60"
 
-fn new_snippet(cache) {
-  snippet.init(editable.Vacant(""), harness.effects(), cache)
+fn new_snippet(scope, cache) {
+  snippet.init(editable.Vacant(""), scope, harness.effects(), cache)
 }
 
 pub fn init(_) {
@@ -46,7 +37,7 @@ pub fn init(_) {
   // let #(cache, tasks) = sync.fetch_missing(cache, [scratch_ref])
 
   let situation = situation.init()
-  let snippet = new_snippet(cache)
+  let snippet = new_snippet([], cache)
   let state = Shell(situation, cache, [], True, [], snippet)
 
   #(state, effect.none())
@@ -101,10 +92,9 @@ pub fn update(state: Shell, message) {
           let run.Run(status, effects) = run
           case status {
             run.Done(value, scope) -> {
-              io.debug(listx.keys(scope))
               io.debug("add effects")
               let previous = [#(value, snippet.source(sn)), ..state.previous]
-              let source = new_snippet(state.cache)
+              let source = new_snippet(scope, state.cache)
               let state = Shell(..state, source: source, previous: previous)
               #(state, effect.none())
             }

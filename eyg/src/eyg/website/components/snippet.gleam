@@ -6,6 +6,8 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/break
 import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/runner
+import eyg/runtime/interpreter/state as istate
+import eyg/runtime/value as v
 import eyg/shell/buffer
 import eyg/sync/sync
 import eyg/website/components/output
@@ -45,17 +47,33 @@ pub type Status {
   Editing(buffer.Buffer)
 }
 
+type Path =
+  Nil
+
+type Value =
+  v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
+
+type Scope =
+  List(#(String, Value))
+
 pub type Snippet {
   Snippet(
     status: Status,
     run: run.Run,
+    scope: Scope,
     effects: List(#(String, EffectSpec)),
     cache: sync.Sync,
   )
 }
 
-pub fn init(src, effects, cache) {
-  Snippet(Idle(src), run.start(src, effects, cache), effects, cache)
+pub fn init(src, scope, effects, cache) {
+  Snippet(
+    Idle(src),
+    run.start(src, scope, effects, cache),
+    scope,
+    effects,
+    cache,
+  )
 }
 
 pub fn run(state) {
@@ -84,7 +102,7 @@ pub fn key_error(state) {
 }
 
 pub fn set_references(state, cache) {
-  let run = run.start(source(state), state.effects, cache)
+  let run = run.start(source(state), state.scope, state.effects, cache)
   Snippet(..state, run: run, cache: cache)
 }
 
@@ -110,7 +128,13 @@ fn effect_types(effects: List(#(String, EffectSpec))) {
 }
 
 pub fn update(state, message) {
-  let Snippet(status: status, run: run, effects: effects, cache: cache) = state
+  let Snippet(
+    status: status,
+    run: run,
+    scope: scope,
+    effects: effects,
+    cache: cache,
+  ) = state
   case message {
     UserFocusedOnCode ->
       case status {
@@ -136,7 +160,7 @@ pub fn update(state, message) {
             )
           let run = case buffer.1 {
             buffer.Command(None) ->
-              run.start(projection.rebuild(buffer.0), effects, cache)
+              run.start(projection.rebuild(buffer.0), scope, effects, cache)
             _ -> run
           }
           case buffer.1 {
@@ -153,7 +177,7 @@ pub fn update(state, message) {
                       Nil
                     })
                   let status = Editing(buffer)
-                  #(Snippet(status, run, effects, cache), eff)
+                  #(Snippet(status, run, scope, effects, cache), eff)
                 }
                 _ -> {
                   todo as "need to wire up faiing copy"
@@ -168,17 +192,17 @@ pub fn update(state, message) {
                   d(ClipboardReadCompleted(return))
                 })
               let status = Editing(buffer)
-              #(Snippet(status, run, effects, cache), eff)
+              #(Snippet(status, run, scope, effects, cache), eff)
             }
             buffer.Command(Some(buffer.NoKeyBinding("Enter"))) -> {
               case run.status {
                 run.Done(_, _) | run.Failed(_) -> #(
-                  Snippet(Editing(buffer), run, effects, cache),
+                  Snippet(Editing(buffer), run, scope, effects, cache),
                   None,
                 )
                 _ -> {
                   let status = Editing(buffer)
-                  let state = Snippet(status, run, effects, cache)
+                  let state = Snippet(status, run, scope, effects, cache)
                   run_effects(state)
                 }
               }
@@ -199,14 +223,14 @@ pub fn update(state, message) {
                   })
                   Nil
                 })
-              #(Snippet(Editing(buffer), run, effects, cache), eff)
+              #(Snippet(Editing(buffer), run, scope, effects, cache), eff)
             }
           }
         }
       }
     UserClickRunEffects -> run_effects(state)
     RuntimeRepliedFromExternalEffect(reply) -> {
-      let assert Snippet(Idle(src), run, effects, cache) = state
+      let assert Snippet(Idle(src), run, scope, effects, cache) = state
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
@@ -215,7 +239,7 @@ pub fn update(state, message) {
         Error(debug) -> run.handle_extrinsic_effects(debug, effects)
       }
       let run = run.Run(status, effect_log)
-      let state = Snippet(Idle(src), run, effects, cache)
+      let state = Snippet(Idle(src), run, scope, effects, cache)
       case status {
         run.Done(_, _) | run.Failed(_) -> #(state, None)
 
@@ -223,7 +247,7 @@ pub fn update(state, message) {
           case blocking(lift) {
             Ok(promise) -> {
               let run = run.Run(status, effect_log)
-              let state = Snippet(Idle(src), run, effects, cache)
+              let state = Snippet(Idle(src), run, scope, effects, cache)
 
               #(
                 state,
@@ -237,7 +261,7 @@ pub fn update(state, message) {
             }
             Error(reason) -> {
               let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Snippet(Idle(src), run, effects, cache)
+              let state = Snippet(Idle(src), run, scope, effects, cache)
               #(state, None)
             }
           }
@@ -248,15 +272,22 @@ pub fn update(state, message) {
         Ok(text) ->
           case decode.from_json(text) {
             Ok(expression) -> {
-              let assert Snippet(Editing(#(proj, mode)), _run, effects, cache) =
-                state
+              let assert Snippet(
+                Editing(#(proj, mode)),
+                _run,
+                scope,
+                effects,
+                cache,
+              ) = state
               let assert #(projection.Exp(_), zoom) = proj
               let proj = #(
                 projection.Exp(editable.from_expression(expression)),
                 zoom,
               )
-              let run = run.start(projection.rebuild(proj), effects, cache)
-              let state = Snippet(Editing(#(proj, mode)), run, effects, cache)
+              let run =
+                run.start(projection.rebuild(proj), scope, effects, cache)
+              let state =
+                Snippet(Editing(#(proj, mode)), run, scope, effects, cache)
               #(state, None)
             }
             Error(_) -> todo as "failed to paste"
@@ -269,7 +300,13 @@ pub fn update(state, message) {
 }
 
 fn run_effects(state) {
-  let Snippet(status: _status, run: run, effects: effects, cache: cache) = state
+  let Snippet(
+    status: _status,
+    run: run,
+    scope: scope,
+    effects: effects,
+    cache: cache,
+  ) = state
   let run.Run(status, effect_log) = run
   let src = source(state)
   case status {
@@ -277,7 +314,7 @@ fn run_effects(state) {
       case blocking(lift) {
         Ok(promise) -> {
           let run = run.Run(status, effect_log)
-          let state = Snippet(Idle(src), run, effects, cache)
+          let state = Snippet(Idle(src), run, scope, effects, cache)
 
           #(
             state,
@@ -291,7 +328,7 @@ fn run_effects(state) {
         }
         Error(reason) -> {
           let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-          let state = Snippet(Idle(src), run, effects, cache)
+          let state = Snippet(Idle(src), run, scope, effects, cache)
           #(state, None)
         }
       }
@@ -301,9 +338,11 @@ fn run_effects(state) {
 }
 
 pub fn finish_editing(state: Snippet) {
-  let Snippet(status: status, effects: effects, cache: cache, ..) = state
+  let Snippet(status: status, scope: scope, effects: effects, cache: cache, ..) =
+    state
   case status {
-    Editing(#(proj, _mode)) -> init(projection.rebuild(proj), effects, cache)
+    Editing(#(proj, _mode)) ->
+      init(projection.rebuild(proj), scope, effects, cache)
     _ -> state
   }
 }
@@ -348,7 +387,7 @@ pub fn render_editor(state: Snippet) {
 }
 
 pub fn bare_render(state) {
-  let Snippet(status, run, effects, cache) = state
+  let Snippet(status, run, scope, effects, cache) = state
   case status {
     Editing(#(proj, mode)) ->
       case mode {

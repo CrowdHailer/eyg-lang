@@ -39,9 +39,10 @@ pub type Status {
   Failed(istate.Debug(Meta))
 }
 
-pub fn start(editable, effects, cache) {
+// effects are not a map of functions we don't use that for stateful running
+pub fn start(editable, scope, effects, cache) {
   // TODO remove empty scope
-  let scope = []
+  // let scope = []
   let return =
     block.execute(
       editable.to_expression(editable)
@@ -62,15 +63,6 @@ pub fn start(editable, effects, cache) {
   }
   Run(status, [])
 }
-
-// pub fn do(label, lift, env, k, blocking) {
-//   case blocking(lift) {
-//     Error(reason) -> Failed(#(reason, Nil, env, k))
-//     Ok(promise) -> promise.map(promise, fn(value){
-//    todo   
-//     })
-//   }
-// }
 
 pub fn handle_extrinsic_effects(debug, effects) {
   let #(reason, _meta, env, k) = debug

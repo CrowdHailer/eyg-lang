@@ -226,22 +226,34 @@ fn init_example(json, cache) {
   let source =
     e.from_expression(source)
     |> e.open_all
-  snippet.init(source, harness.effects(), cache)
+  snippet.init(source, [], harness.effects(), cache)
 }
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
-    #(int_key, snippet.init(int_example, harness.effects(), cache)),
-    #(text_key, snippet.init(text_example, harness.effects(), cache)),
-    #(lists_key, snippet.init(lists_example, harness.effects(), cache)),
-    #(records_key, snippet.init(records_example, harness.effects(), cache)),
-    #(overwrite_key, snippet.init(overwrite_example, harness.effects(), cache)),
-    #(unions_key, snippet.init(unions_example, harness.effects(), cache)),
-    #(open_case_key, snippet.init(open_case_example, harness.effects(), cache)),
-    #(externals_key, snippet.init(externals_example, harness.effects(), cache)),
-    #(functions_key, snippet.init(functions_example, harness.effects(), cache)),
-    #(fix_key, snippet.init(fix_example, harness.effects(), cache)),
+    #(int_key, snippet.init(int_example, [], harness.effects(), cache)),
+    #(text_key, snippet.init(text_example, [], harness.effects(), cache)),
+    #(lists_key, snippet.init(lists_example, [], harness.effects(), cache)),
+    #(records_key, snippet.init(records_example, [], harness.effects(), cache)),
+    #(
+      overwrite_key,
+      snippet.init(overwrite_example, [], harness.effects(), cache),
+    ),
+    #(unions_key, snippet.init(unions_example, [], harness.effects(), cache)),
+    #(
+      open_case_key,
+      snippet.init(open_case_example, [], harness.effects(), cache),
+    ),
+    #(
+      externals_key,
+      snippet.init(externals_example, [], harness.effects(), cache),
+    ),
+    #(
+      functions_key,
+      snippet.init(functions_example, [], harness.effects(), cache),
+    ),
+    #(fix_key, snippet.init(fix_example, [], harness.effects(), cache)),
     #(builtins_key, init_example(builtins_example, cache)),
     #(references_key, init_example(references_example, cache)),
     #(perform_key, init_example(perform_example, cache)),

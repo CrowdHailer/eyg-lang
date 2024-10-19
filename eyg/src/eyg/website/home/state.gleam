@@ -185,7 +185,7 @@ fn init_example(json, cache) {
   let source =
     e.from_expression(source)
     |> e.open_all
-  snippet.init(source, harness.effects(), cache)
+  snippet.init(source,[], harness.effects(), cache)
 }
 
 pub fn init(_) {
@@ -193,9 +193,9 @@ pub fn init(_) {
   let snippets = [
     #(
       closure_serialization_key,
-      snippet.init(closure_serialization, harness.effects(), cache),
+      snippet.init(closure_serialization, [],harness.effects(), cache),
     ),
-    #(fetch_key, snippet.init(catfact, harness.effects(), cache)),
+    #(fetch_key, snippet.init(catfact, [],harness.effects(), cache)),
     #(twitter_key, init_example(twitter_example, cache)),
     #(type_check_key, init_example(type_check_example, cache)),
     #(predictable_effects_key, init_example(predictable_effects_example, cache)),
