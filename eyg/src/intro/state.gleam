@@ -1,5 +1,4 @@
 import drafting/view/picker
-import drafting/view/utilities
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/isomorphic
 import eyg/document/section
@@ -39,9 +38,25 @@ import morph/editable
 import morph/projection
 
 // import plinth/browser/geolocation
+import plinth/browser/document
+import plinth/browser/element
 import plinth/browser/window
 import plinth/javascript/global
 import snag.{type Snag}
+
+pub fn update_focus() {
+  window.request_animation_frame(fn(_) {
+    case document.query_selector("#focus-input") {
+      Ok(el) -> {
+        element.focus(el)
+      }
+      _ -> {
+        let assert Ok(el) = document.query_selector("#code")
+        element.focus(el)
+      }
+    }
+  })
+}
 
 // circular dependency on content potential if init calls content and content needs sections
 // init should take some value
@@ -396,7 +411,7 @@ pub fn update(state, message) {
           let focus = Working(Focus(..focus, buffer: buffer))
           let document = Guide(before, focus)
           let state = State(..state, document: document)
-          utilities.update_focus()
+          update_focus()
           #(state, effect.none())
         }
         _ -> {
@@ -415,7 +430,7 @@ pub fn update(state, message) {
 
           let document = Guide(before, focus)
           let state = State(..state, document: document)
-          utilities.update_focus()
+          update_focus()
           #(state, effect.none())
         }
         Complete(_, _) -> #(state, effect.none())

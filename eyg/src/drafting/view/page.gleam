@@ -131,22 +131,3 @@ fn input(value, type_) {
     // h.hr([a.class("mx-40 my-1 border-gray-700")]),
   ])
 }
-
-fn overlay(content) {
-  [
-    h.div(
-      [
-        a.class(
-          "absolute top-0 bottom-0 right-0 left-0 flex flex-col justify-center",
-        ),
-        a.style([#("align-items", "center")]),
-      ],
-      [
-        h.div(
-          [a.class("bg-white border-blue-800 border shadow-xl rounded w-full")],
-          content,
-        ),
-      ],
-    ),
-  ]
-}
