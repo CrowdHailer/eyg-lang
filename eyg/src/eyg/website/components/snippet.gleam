@@ -157,14 +157,15 @@ pub fn update(state, message) {
               analysis.within_environment(scope, sync.types(cache)),
               effect_types(effects),
             )
-          let run = case buffer.1 {
+          let #(proj, mode) = buffer
+          let run = case mode {
             buffer.Command(None) ->
-              run.start(projection.rebuild(buffer.0), scope, effects, cache)
+              run.start(projection.rebuild(proj), scope, effects, cache)
             _ -> run
           }
-          case buffer.1 {
+          case mode {
             buffer.Command(Some(buffer.NoKeyBinding("y"))) -> {
-              case buffer.0 {
+              case proj {
                 #(projection.Exp(expression), _) -> {
                   let eff =
                     Some(fn(_d) {
@@ -175,12 +176,16 @@ pub fn update(state, message) {
                       |> promise.map(io.debug)
                       Nil
                     })
+                  let mode = buffer.Command(None)
+                  let buffer = #(proj, mode)
                   let status = Editing(buffer)
                   #(Snippet(status, run, scope, effects, cache), eff)
                 }
                 _ -> {
-                  todo as "need to wire up faiing copy"
-                  // #(proj, Command(Some(ActionFailed("copy"))))
+                  let mode = buffer.Command(Some(buffer.ActionFailed("copy")))
+                  let buffer = #(proj, mode)
+                  let status = Editing(buffer)
+                  #(Snippet(status, run, scope, effects, cache), None)
                 }
               }
             }
@@ -267,17 +272,11 @@ pub fn update(state, message) {
       }
     }
     ClipboardReadCompleted(return) -> {
+      let assert Editing(#(proj, mode)) = status
       case return {
         Ok(text) ->
           case decode.from_json(text) {
             Ok(expression) -> {
-              let assert Snippet(
-                Editing(#(proj, mode)),
-                _run,
-                scope,
-                effects,
-                cache,
-              ) = state
               let assert #(projection.Exp(_), zoom) = proj
               let proj = #(
                 projection.Exp(editable.from_expression(expression)),
@@ -289,7 +288,12 @@ pub fn update(state, message) {
                 Snippet(Editing(#(proj, mode)), run, scope, effects, cache)
               #(state, None)
             }
-            Error(_) -> todo as "failed to paste"
+            Error(_) -> {
+              let mode = buffer.Command(Some(buffer.ActionFailed("paste")))
+              let buffer = #(proj, mode)
+              let status = Editing(buffer)
+              #(Snippet(status, run, scope, effects, cache), None)
+            }
           }
 
         Error(reason) -> panic as reason
