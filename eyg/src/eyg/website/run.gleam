@@ -1,4 +1,5 @@
 import eyg/runtime/break
+import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/runner
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
@@ -9,6 +10,7 @@ import gleam/dynamic
 import gleam/dynamicx
 import gleam/javascript/promise
 import gleam/list
+import gleam/option
 import harness/stdlib
 import morph/editable
 
@@ -26,7 +28,7 @@ pub type Reason =
   break.Reason(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
 
 pub type Status {
-  Done(Value)
+  Done(option.Option(Value), List(#(String, Value)))
   Handling(
     label: String,
     lift: Value,
@@ -39,7 +41,7 @@ pub type Status {
 
 pub fn start(editable, effects, cache) {
   let return =
-    runner.execute(
+    block.execute(
       editable.to_expression(editable)
         |> annotated.add_annotation(Nil),
       stdlib.env_and_ref(
@@ -52,7 +54,7 @@ pub fn start(editable, effects, cache) {
       dict.new(),
     )
   let status = case return {
-    Ok(value) -> Done(value)
+    Ok(#(value, env)) -> Done(value, env)
     Error(debug) -> handle_extrinsic_effects(debug, effects)
   }
   Run(status, [])

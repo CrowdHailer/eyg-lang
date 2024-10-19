@@ -4,6 +4,7 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic
 import eyg/shell/buffer
+import eyg/website/components/output
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
@@ -17,7 +18,25 @@ import morph/lustre/render
 import morph/projection as p
 import plinth/javascript/console
 import spotless/state
-import spotless/view/output
+
+pub fn render_previous(previous) {
+  list.map(list.reverse(previous), fn(p) {
+    let #(value, prog) = p
+    h.div([a.class("w-full max-w-4xl mt-2 py-1 bg-white shadow-xl rounded")], [
+      h.div(
+        [a.class("px-3 whitespace-nowrap overflow-auto")],
+        render.statements(prog),
+      ),
+      case value {
+        Some(value) ->
+          h.div([a.class("mx-3 pt-1 border-t max-h-60 overflow-auto")], [
+            output.render(value),
+          ])
+        None -> none()
+      },
+    ])
+  })
+}
 
 pub fn do_render(
   previous,
@@ -37,25 +56,7 @@ pub fn do_render(
         h.h1([a.class("text-2xl")], [text("EYG shell")]),
         h.h1([a.class("font-bold")], [text("automate anything")]),
       ]),
-      ..list.map(list.reverse(previous), fn(p) {
-        let #(value, prog) = p
-        h.div(
-          [a.class("w-full max-w-4xl mt-2 py-1 bg-white shadow-xl rounded")],
-          [
-            h.div(
-              [a.class("px-3 whitespace-nowrap overflow-auto")],
-              render.statements(prog),
-            ),
-            case value {
-              Some(value) ->
-                h.div([a.class("mx-3 pt-1 border-t max-h-60 overflow-auto")], [
-                  output.render(value),
-                ])
-              None -> none()
-            },
-          ],
-        )
-      })
+      ..render_previous(previous)
       |> list.append([
         h.div(
           [

@@ -4,10 +4,11 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/break
+import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/runner
-import eyg/runtime/value
 import eyg/shell/buffer
 import eyg/sync/sync
+import eyg/website/components/output
 import eyg/website/run
 import eygir/annotated
 import eygir/decode
@@ -32,7 +33,6 @@ import plinth/browser/document
 import plinth/browser/element as dom_element
 import plinth/browser/event as pevent
 import plinth/browser/window
-import plinth/javascript/console
 
 type ExternalBlocking =
   fn(run.Value) -> Result(promise.Promise(run.Value), run.Reason)
@@ -47,6 +47,13 @@ pub type Snippet {
 
 pub fn init(src, effects, cache) {
   Normal(src, run.start(src, effects, cache), effects, cache)
+}
+
+pub fn run(state) {
+  case state {
+    Editing(_, run, _, _) -> run
+    Normal(_, run, _, _) -> run
+  }
 }
 
 pub fn source(state) {
@@ -153,7 +160,13 @@ pub fn update(state, message) {
               #(Editing(buffer, run, effects, cache), eff)
             }
             buffer.Command(Some(buffer.NoKeyBinding("Enter"))) -> {
-              run_effects(Editing(buffer, run, effects, cache))
+              case run.status {
+                run.Done(_, _) | run.Failed(_) -> #(
+                  Editing(buffer, run, effects, cache),
+                  None,
+                )
+                _ -> run_effects(Editing(buffer, run, effects, cache))
+              }
             }
 
             _ -> {
@@ -182,14 +195,14 @@ pub fn update(state, message) {
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
-      let status = case runner.resume(reply, env, k) {
-        Ok(value) -> run.Done(value)
+      let status = case block.resume(reply, env, k) {
+        Ok(#(value, env)) -> run.Done(value, env)
         Error(debug) -> run.handle_extrinsic_effects(debug, effects)
       }
       let run = run.Run(status, effect_log)
       let state = Normal(src, run, effects, cache)
       case status {
-        run.Done(_) | run.Failed(_) -> #(state, None)
+        run.Done(_, _) | run.Failed(_) -> #(state, None)
 
         run.Handling(_label, lift, env, k, blocking) ->
           case blocking(lift) {
@@ -317,7 +330,7 @@ pub fn bare_render(state) {
   case state {
     Editing(#(proj, mode), run, effects, cache) ->
       case mode {
-        buffer.Command(_) -> {
+        buffer.Command(e) -> {
           let eff =
             effect_types(effects)
             |> list.fold(t.Empty, fn(acc, new) {
@@ -333,19 +346,30 @@ pub fn bare_render(state) {
           let errors = analysis.type_errors(a)
           [
             render_projection(proj, True),
-            case errors {
-              [] -> render_run(run.status)
-              _ ->
-                h.div(
-                  [a.class("border-2 border-orange-3 px-2")],
-                  list.map(errors, fn(error) {
-                    let #(path, reason) = error
+            case e {
+              Some(failure) ->
+                h.div([a.class("border-2 border-orange-4 px-2")], [
+                  element.text(fail_message(failure)),
+                ])
+              None ->
+                case errors {
+                  [] -> render_run(run.status)
+                  _ ->
                     h.div(
-                      [event.on_click(MessageFromBuffer(buffer.JumpTo(path)))],
-                      [element.text(debug.reason(reason))],
+                      [a.class("border-2 border-orange-3 px-2")],
+                      list.map(errors, fn(error) {
+                        let #(path, reason) = error
+                        h.div(
+                          [
+                            event.on_click(
+                              MessageFromBuffer(buffer.JumpTo(path)),
+                            ),
+                          ],
+                          [element.text(debug.reason(reason))],
+                        )
+                      }),
                     )
-                  }),
-                )
+                }
             },
           ]
         }
@@ -422,9 +446,13 @@ fn render_projection(proj, autofocus) {
 
 fn render_run(run) {
   case run {
-    run.Done(value) ->
+    run.Done(value, _) ->
       h.pre([a.class("border-2 border-green-3 px-2 overflow-auto")], [
-        element.text(value.debug(value)),
+        case value {
+          Some(value) -> output.render(value)
+          None -> element.text("no value")
+        },
+        // element.text(value.debug(value)),
       ])
     run.Handling(label, _meta, _env, _stack, _blocking) ->
       h.pre(
@@ -442,5 +470,14 @@ fn render_run(run) {
       h.pre([a.class("border-2 border-orange-3 px-2")], [
         element.text(break.reason_to_string(reason)),
       ])
+  }
+}
+
+pub fn fail_message(reason) {
+  case reason {
+    buffer.NoKeyBinding(key) ->
+      string.concat(["No action bound for key '", key, "'"])
+    buffer.ActionFailed(action) ->
+      string.concat(["Action ", action, " not possible at this position"])
   }
 }
