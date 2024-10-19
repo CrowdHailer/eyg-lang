@@ -1,13 +1,10 @@
-import eyg/analysis/inference/levels_j/contextual as j
-import eyg/runtime/interpreter/state as istate
-import eyg/runtime/value as v
 import eyg/shell/situation.{type Situation}
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
 import eyg/website/run
 import gleam/io
-import gleam/listx
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import harness/impl/browser as harness
 import harness/impl/spotless
@@ -25,16 +22,12 @@ pub type Shell {
   )
 }
 
-// Done is a signal we can work with here. Remove the runner.
-const scratch_ref = "heae72a60"
-
 fn new_snippet(scope, cache) {
-  snippet.init(editable.Vacant(""), scope, harness.effects(), cache)
+  snippet.init(editable.Vacant(""), scope, effects(), cache)
 }
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
-  // let #(cache, tasks) = sync.fetch_missing(cache, [scratch_ref])
 
   let situation = situation.init()
   let snippet = new_snippet([], cache)
@@ -50,15 +43,10 @@ pub type Message {
 }
 
 pub fn effects() {
-  spotless.effects()
-}
-
-fn effect_types() {
-  listx.value_map(effects(), fn(details) { #(details.0, details.1) })
+  list.append(harness.effects(), spotless.effects())
 }
 
 pub fn update(state: Shell, message) {
-  let effects = effect_types()
   case message {
     SyncMessage(message) -> {
       let cache = sync.task_finish(state.cache, message)
@@ -89,7 +77,7 @@ pub fn update(state: Shell, message) {
         //           }
         Some("Enter") -> {
           let run = snippet.run(sn)
-          let run.Run(status, effects) = run
+          let run.Run(status, _effects) = run
           case status {
             run.Done(value, scope) -> {
               io.debug("add effects")

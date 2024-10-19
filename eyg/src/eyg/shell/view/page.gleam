@@ -14,10 +14,10 @@ import morph/lustre/render
 pub fn render(state) {
   let state.Shell(
     situation: _,
-    cache: cache,
+    cache: _cache,
     display_help: display_help,
     previous: previous,
-    scope: scope,
+    scope: _scope,
     source: snippet,
   ) = state
 
