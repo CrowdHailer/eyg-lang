@@ -133,15 +133,20 @@ pub fn scope_vars(projection, root_env, eff) {
   env_at(projection, root_env, eff, projection.path_to_zoom(projection.1, []))
 }
 
-pub fn analyse(projection, context, eff) -> Analysis {
+pub fn do_analyse(editable, context, eff) -> Analysis {
   let Context(bindings, scope, ..) = context
-  let editable = projection.rebuild(projection)
+
   let source = e.to_expression(editable)
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let #(_, types) = a.strip_annotation(tree)
   let #(_, paths) = a.strip_annotation(e.to_annotated(editable, []))
   #(bindings, list.zip(paths, types))
+}
+
+pub fn analyse(projection, context, eff) -> Analysis {
+  let editable = projection.rebuild(projection)
+  do_analyse(editable, context, eff)
 }
 
 pub fn print(analysis) {

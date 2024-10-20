@@ -395,23 +395,23 @@ pub fn render_editor(state: Snippet) {
 
 pub fn bare_render(state) {
   let Snippet(status, run, scope, effects, cache) = state
+  let eff =
+    effect_types(effects)
+    |> list.fold(t.Empty, fn(acc, new) {
+      let #(label, #(lift, reply)) = new
+      t.EffectExtend(label, #(lift, reply), acc)
+    })
+  let a =
+    analysis.do_analyse(
+      source(state),
+      analysis.within_environment(scope, sync.types(cache)),
+      eff,
+    )
+  let errors = analysis.type_errors(a)
   case status {
     Editing(#(proj, mode)) ->
       case mode {
         buffer.Command(e) -> {
-          let eff =
-            effect_types(effects)
-            |> list.fold(t.Empty, fn(acc, new) {
-              let #(label, #(lift, reply)) = new
-              t.EffectExtend(label, #(lift, reply), acc)
-            })
-          let a =
-            analysis.analyse(
-              proj,
-              analysis.within_environment(scope, sync.types(cache)),
-              eff,
-            )
-          let errors = analysis.type_errors(a)
           [
             render_projection(proj, True),
             case e {
@@ -419,25 +419,7 @@ pub fn bare_render(state) {
                 h.div([a.class("border-2 border-orange-4 px-2")], [
                   element.text(fail_message(failure)),
                 ])
-              None ->
-                case errors {
-                  [] -> render_run(run.status)
-                  _ ->
-                    h.div(
-                      [a.class("border-2 border-orange-3 px-2")],
-                      list.map(errors, fn(error) {
-                        let #(path, reason) = error
-                        h.div(
-                          [
-                            event.on_click(
-                              MessageFromBuffer(buffer.JumpTo(path)),
-                            ),
-                          ],
-                          [element.text(debug.reason(reason))],
-                        )
-                      }),
-                    )
-                }
+              None -> render_current(errors, run)
             },
           ]
         }
@@ -466,8 +448,24 @@ pub fn bare_render(state) {
         ],
         render.statements(src),
       ),
-      render_run(run.status),
+      render_current(errors, run),
     ]
+  }
+}
+
+fn render_current(errors, run: run.Run) {
+  case errors {
+    [] -> render_run(run.status)
+    _ ->
+      h.div(
+        [a.class("border-2 border-orange-3 px-2")],
+        list.map(errors, fn(error) {
+          let #(path, reason) = error
+          h.div([event.on_click(MessageFromBuffer(buffer.JumpTo(path)))], [
+            element.text(debug.reason(reason)),
+          ])
+        }),
+      )
   }
 }
 
