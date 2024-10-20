@@ -198,7 +198,12 @@ pub fn update(state, message) {
           analysis.within_environment(scope, sync.types(cache)),
           effect_types(effects),
         )
-      let source = #(proj, projection.rebuild(proj), None)
+      let editable = projection.rebuild(proj)
+      let source = #(proj, editable, None)
+      let run = case mode {
+        buffer.Command(None) -> run.start(editable, scope, effects, cache)
+        _ -> run
+      }
       let eff = case mode {
         buffer.Command(_) -> None
         _ ->
@@ -216,7 +221,8 @@ pub fn update(state, message) {
             Nil
           })
       }
-      let state = Snippet(..state, status: Editing(mode), source: source)
+      let state =
+        Snippet(..state, status: Editing(mode), source: source, run: run)
       #(state, eff)
     }
     MessageFromBuffer(buffer.JumpTo(path)), _ -> {
@@ -228,32 +234,41 @@ pub fn update(state, message) {
     }
     MessageFromInput(message), Editing(buffer.EditText(value, rebuild)) -> {
       let result = input.update_text(value, message)
-      let #(source, mode) = case result {
-        input.Continue(value) -> #(source, buffer.EditText(value, rebuild))
+      let #(source, run, mode) = case result {
+        input.Continue(value) -> #(source, run, buffer.EditText(value, rebuild))
         input.Confirmed(value) -> {
           let proj = rebuild(value)
           let editable = projection.rebuild(proj)
           let source = #(proj, editable, None)
-          #(source, buffer.Command(None))
+          let run = run.start(editable, scope, effects, cache)
+          #(source, run, buffer.Command(None))
         }
-        input.Cancelled -> #(source, buffer.Command(None))
+        input.Cancelled -> #(source, run, buffer.Command(None))
       }
-      let state = Snippet(..state, status: Editing(mode), source: source)
+      let state =
+        Snippet(..state, status: Editing(mode), source: source, run: run)
       #(state, focus_away_from_input(mode))
     }
     MessageFromInput(message), Editing(buffer.EditInteger(value, rebuild)) -> {
       let result = input.update_number(value, message)
-      let #(source, mode) = case result {
-        input.Continue(value) -> #(source, buffer.EditInteger(value, rebuild))
+      let #(source, run, mode) = case result {
+        input.Continue(value) -> #(
+          source,
+          run,
+          buffer.EditInteger(value, rebuild),
+        )
         input.Confirmed(value) -> {
           let proj = rebuild(value)
           let editable = projection.rebuild(proj)
           let source = #(proj, editable, None)
-          #(source, buffer.Command(None))
+          let run = run.start(editable, scope, effects, cache)
+
+          #(source, run, buffer.Command(None))
         }
-        input.Cancelled -> #(source, buffer.Command(None))
+        input.Cancelled -> #(source, run, buffer.Command(None))
       }
-      let state = Snippet(..state, status: Editing(mode), source: source)
+      let state =
+        Snippet(..state, status: Editing(mode), source: source, run: run)
       #(state, focus_away_from_input(mode))
     }
     MessageFromInput(_), _ -> panic as "shouldn't reach input message"
@@ -266,8 +281,10 @@ pub fn update(state, message) {
       let proj = rebuild(value)
       let editable = projection.rebuild(proj)
       let source = #(proj, editable, None)
+      let run = run.start(editable, scope, effects, cache)
       let mode = buffer.Command(None)
-      let state = Snippet(..state, status: Editing(mode), source: source)
+      let state =
+        Snippet(..state, status: Editing(mode), run: run, source: source)
       #(state, focus_away_from_input(mode))
     }
     MessageFromPicker(picker.Dismissed), Editing(buffer.Pick(_, _rebuild)) -> {
@@ -347,25 +364,6 @@ pub fn update(state, message) {
       io.debug(#(status, message))
       todo as "update snuippet"
     }
-    // MessageFromBuffer(message) ->
-    //   case status {
-    //     Idle(_) -> panic as "should never happen here"
-    //     Editing(buffer) -> {
-    //       let buffer =
-    //         buffer.update(
-    //           buffer,
-    //           message,
-    //           analysis.within_environment(scope, sync.types(cache)),
-    //           effect_types(effects),
-    //         )
-    //       let #(proj, mode) = buffer
-    //       let run = case mode {
-    //         buffer.Command(None) ->
-    //           run.start(projection.rebuild(proj), scope, effects, cache)
-    //         _ -> run
-    //       }
-    //     }
-    //   }
   }
 }
 
