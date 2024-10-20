@@ -33,8 +33,8 @@ pub fn render_poly(poly) {
 
 pub type Message {
   KeyDown(String)
-  UpdateInput(input.Message)
-  UpdatePicker(picker.Message)
+  // UpdateInput(input.Message)
+  // UpdatePicker(picker.Message)
   JumpTo(List(Int))
 }
 
@@ -60,58 +60,6 @@ pub fn empty() -> Buffer {
 pub fn from(projection) -> Buffer {
   let mode = Command(None)
   #(projection, mode)
-}
-
-pub fn update(buffer, message, context, effects) {
-  let #(source, mode) = buffer
-  case mode, message {
-    Command(_), KeyDown(key) ->
-      handle_keydown(key, context, source, mode, effects)
-    Command(_), JumpTo(path) -> {
-      let editable = p.rebuild(source)
-      let source = p.focus_at(editable, path)
-      #(source, Command(None))
-    }
-    Command(_), _ -> panic as "command should only have keydown"
-    EditText(value, rebuild), UpdateInput(message) -> {
-      let result = input.update_text(value, message)
-      case result {
-        input.Continue(value) -> #(source, EditText(value, rebuild))
-        input.Confirmed(value) -> #(rebuild(value), Command(None))
-        input.Cancelled -> #(source, Command(None))
-      }
-    }
-    EditText(_, _), _ -> buffer
-    EditInteger(value, rebuild), UpdateInput(message) -> {
-      let result = input.update_number(value, message)
-      case result {
-        input.Continue(value) -> #(source, EditInteger(value, rebuild))
-        input.Confirmed(value) -> #(rebuild(value), Command(None))
-        input.Cancelled -> #(source, Command(None))
-      }
-    }
-    EditInteger(_, _), _ -> buffer
-    Pick(_picker, rebuild), UpdatePicker(picker.Updated(picker)) -> {
-      #(source, Pick(picker, rebuild))
-    }
-    Pick(_picker, rebuild), UpdatePicker(picker.Decided(value)) -> {
-      #(rebuild(value), Command(None))
-    }
-    Pick(_picker, _rebuild), UpdatePicker(picker.Dismissed) -> {
-      #(source, Command(None))
-    }
-    Pick(_, _), _ -> panic as "Shouldnt'"
-  }
-}
-
-pub fn handle_keydown(key, context, source, mode, effects) {
-  case mode, key {
-    _, "Escape" -> #(source, Command(None))
-
-    Command(_failure), _any -> handle_command(key, source, context, effects)
-
-    _, _ -> #(source, mode)
-  }
 }
 
 pub fn handle_command(key, source, context, effects) {

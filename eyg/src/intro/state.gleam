@@ -376,9 +376,9 @@ pub fn buffer_update(buffer, message, context) {
     //   let mode = buffer.handle_input(mode, new)
     //   #(proj, mode)
     // }
-    buffer.KeyDown(key) -> {
-      buffer.handle_keydown(key, context, proj, mode, [])
-    }
+    // buffer.KeyDown(key) -> {
+    //   buffer.handle_keydown(key, context, proj, mode, [])
+    // }
     _ -> todo as "i dont think this should happen"
   }
 }

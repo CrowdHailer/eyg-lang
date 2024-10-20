@@ -16,7 +16,7 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/string
 import lustre/attribute as a
 import lustre/element
@@ -42,9 +42,16 @@ type ExternalBlocking =
 type EffectSpec =
   #(binding.Mono, binding.Mono, ExternalBlocking)
 
+// pub type Mode {
+//   Command
+//   Pick(picker: picker.Picker, rebuild: fn(String) -> projection.Projection)
+//   EditText(String, fn(String) -> projection.Projection)
+//   EditInteger(Int, fn(Int) -> projection.Projection)
+// }
+
 pub type Status {
-  Idle(editable.Expression)
-  Editing(buffer.Buffer)
+  Idle
+  Editing(buffer.Mode)
 }
 
 type Path =
@@ -59,6 +66,11 @@ type Scope =
 pub type Snippet {
   Snippet(
     status: Status,
+    source: #(
+      projection.Projection,
+      editable.Expression,
+      Option(analysis.Analysis),
+    ),
     run: run.Run,
     scope: Scope,
     effects: List(#(String, EffectSpec)),
@@ -67,8 +79,11 @@ pub type Snippet {
 }
 
 pub fn init(src, scope, effects, cache) {
+  let src = editable.open_all(src)
+  let proj = navigation.first(src)
   Snippet(
-    Idle(src),
+    Idle,
+    #(proj, src, None),
     run.start(src, scope, effects, cache),
     scope,
     effects,
@@ -82,23 +97,20 @@ pub fn run(state) {
 }
 
 pub fn source(state) {
-  let Snippet(status: status, ..) = state
-
-  case status {
-    Editing(buf) -> projection.rebuild(buf.0)
-    Idle(exp) -> exp
-  }
+  let Snippet(source: #(_, source, _), ..) = state
+  source
 }
 
 // This uses some none because otherwise it feels back to front. I.e. should I return OK if there is
 // a key error
 pub fn key_error(state) {
-  let Snippet(status: status, ..) = state
+  // let Snippet(status: status, ..) = state
 
-  case status {
-    Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k))))) -> Some(k)
-    _ -> None
-  }
+  // case status {
+  //   Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k))))) -> Some(k)
+  //   _ -> None
+  // }
+  todo as "dont need anymore"
 }
 
 pub fn set_references(state, cache) {
@@ -107,18 +119,15 @@ pub fn set_references(state, cache) {
 }
 
 pub fn references(state) {
-  let Snippet(status: status, ..) = state
-
-  case status {
-    Idle(src) -> editable.to_annotated(src, []) |> annotated.list_references()
-    Editing(buffer) -> buffer.references(buffer)
-  }
+  editable.to_annotated(source(state), []) |> annotated.list_references()
 }
 
 pub type Message {
   UserFocusedOnCode
   UserClickRunEffects
   MessageFromBuffer(buffer.Message)
+  MessageFromInput(input.Message)
+  MessageFromPicker(picker.Message)
   RuntimeRepliedFromExternalEffect(run.Value)
   ClipboardReadCompleted(Result(String, String))
 }
@@ -130,117 +139,145 @@ fn effect_types(effects: List(#(String, EffectSpec))) {
 pub fn update(state, message) {
   let Snippet(
     status: status,
+    source: #(proj, editable, analysis) as source,
     run: run,
     scope: scope,
     effects: effects,
     cache: cache,
   ) = state
-  case message {
-    UserFocusedOnCode ->
-      case status {
-        Editing(_) -> {
-          io.debug("focusssing")
+  case message, status {
+    UserFocusedOnCode, Idle -> #(
+      Snippet(..state, status: Editing(buffer.Command(None))),
+      None,
+    )
+    // Throw away input or pick state
+    UserFocusedOnCode, Editing(_) -> #(
+      Snippet(..state, status: Editing(buffer.Command(None))),
+      None,
+    )
+    MessageFromBuffer(buffer.KeyDown("y")), Editing(buffer.Command(_)) -> {
+      case proj {
+        #(projection.Exp(expression), _) -> {
+          let eff =
+            Some(fn(_d) {
+              clipboard.write_text(
+                encode.to_json(editable.to_expression(expression)),
+              )
+              // TODO better copy error
+              |> promise.map(io.debug)
+              Nil
+            })
+          #(state, eff)
+        }
+        _ -> {
+          let status = buffer.Command(Some(buffer.ActionFailed("copy")))
+          let state = Snippet(..state, status: Editing(status))
           #(state, None)
         }
-        Idle(src) -> {
-          let src = editable.open_all(src)
-          let proj = navigation.first(src)
-          let buffer = buffer.from(proj)
-          let status = Editing(buffer)
-          #(Snippet(..state, status: status), None)
-        }
       }
-    MessageFromBuffer(buffer.KeyDown("?")) -> todo
+    }
+    MessageFromBuffer(buffer.KeyDown("Y")), Editing(buffer.Command(_)) -> {
+      let eff =
+        Some(fn(d) {
+          use return <- promisex.aside(clipboard.read_text())
+          d(ClipboardReadCompleted(return))
+        })
+      #(state, eff)
+    }
 
-    MessageFromBuffer(message) ->
-      case status {
-        Idle(_) -> panic as "should never happen here"
-        Editing(buffer) -> {
-          let buffer =
-            buffer.update(
-              buffer,
-              message,
-              analysis.within_environment(scope, sync.types(cache)),
-              effect_types(effects),
-            )
-          let #(proj, mode) = buffer
-          let run = case mode {
-            buffer.Command(None) ->
-              run.start(projection.rebuild(proj), scope, effects, cache)
-            _ -> run
-          }
-          case mode {
-            buffer.Command(Some(buffer.NoKeyBinding("y"))) -> {
-              case proj {
-                #(projection.Exp(expression), _) -> {
-                  let eff =
-                    Some(fn(_d) {
-                      clipboard.write_text(
-                        encode.to_json(editable.to_expression(expression)),
-                      )
-                      // TODO better copy error
-                      |> promise.map(io.debug)
-                      Nil
-                    })
-                  let mode = buffer.Command(None)
-                  let buffer = #(proj, mode)
-                  let status = Editing(buffer)
-                  #(Snippet(status, run, scope, effects, cache), eff)
-                }
-                _ -> {
-                  let mode = buffer.Command(Some(buffer.ActionFailed("copy")))
-                  let buffer = #(proj, mode)
-                  let status = Editing(buffer)
-                  #(Snippet(status, run, scope, effects, cache), None)
-                }
-              }
-            }
-            buffer.Command(Some(buffer.NoKeyBinding("Y"))) -> {
-              let eff =
-                Some(fn(d) {
-                  use return <- promisex.aside(clipboard.read_text())
-                  d(ClipboardReadCompleted(return))
-                })
-              let status = Editing(buffer)
-              #(Snippet(status, run, scope, effects, cache), eff)
-            }
-            buffer.Command(Some(buffer.NoKeyBinding("Enter"))) -> {
-              case run.status {
-                run.Done(_, _) | run.Failed(_) -> #(
-                  Snippet(Editing(buffer), run, scope, effects, cache),
-                  None,
-                )
-                _ -> {
-                  let status = Editing(buffer)
-                  let state = Snippet(status, run, scope, effects, cache)
-                  run_effects(state)
-                }
-              }
-            }
-
-            _ -> {
-              let eff =
-                Some(fn(_) {
-                  window.request_animation_frame(fn(_) {
-                    case document.query_selector("[autofocus]") {
-                      Ok(el) -> {
-                        dom_element.focus(el)
-                        // This can only be done when we move to a new focus
-                        // dom_element.set_selection_range(el, 0, -1)
-                      }
-                      Error(Nil) -> Nil
-                    }
-                  })
-                  Nil
-                })
-              #(Snippet(Editing(buffer), run, scope, effects, cache), eff)
-            }
-          }
-        }
+    MessageFromBuffer(buffer.KeyDown("Enter")), Editing(buffer.Command(_)) -> {
+      case run.status {
+        run.Done(_, _) | run.Failed(_) -> #(state, None)
+        _ -> run_effects(state)
       }
-    UserClickRunEffects -> run_effects(state)
-    RuntimeRepliedFromExternalEffect(reply) -> {
-      let assert Snippet(Idle(src), run, scope, effects, cache) = state
+    }
+    MessageFromBuffer(buffer.KeyDown(key)), Editing(buffer.Command(_)) -> {
+      let #(proj, mode) =
+        buffer.handle_command(
+          key,
+          proj,
+          analysis.within_environment(scope, sync.types(cache)),
+          effect_types(effects),
+        )
+      let source = #(proj, projection.rebuild(proj), None)
+      let eff = case mode {
+        buffer.Command(_) -> None
+        _ ->
+          Some(fn(_) {
+            window.request_animation_frame(fn(_) {
+              case document.query_selector("[autofocus]") {
+                Ok(el) -> {
+                  dom_element.focus(el)
+                  // This can only be done when we move to a new focus
+                  dom_element.set_selection_range(el, 0, -1)
+                }
+                Error(Nil) -> Nil
+              }
+            })
+            Nil
+          })
+      }
+      let state = Snippet(..state, status: Editing(mode), source: source)
+      #(state, eff)
+    }
+    MessageFromBuffer(buffer.JumpTo(path)), _ -> {
+      let proj = projection.focus_at(editable, path)
+      let source = #(proj, editable, analysis)
+      let state =
+        Snippet(..state, status: Editing(buffer.Command(None)), source: source)
+      #(state, None)
+    }
+    MessageFromInput(message), Editing(buffer.EditText(value, rebuild)) -> {
+      let result = input.update_text(value, message)
+      let #(source, mode) = case result {
+        input.Continue(value) -> #(source, buffer.EditText(value, rebuild))
+        input.Confirmed(value) -> {
+          let proj = rebuild(value)
+          let editable = projection.rebuild(proj)
+          let source = #(proj, editable, None)
+          #(source, buffer.Command(None))
+        }
+        input.Cancelled -> #(source, buffer.Command(None))
+      }
+      let state = Snippet(..state, status: Editing(mode), source: source)
+      #(state, None)
+    }
+    MessageFromInput(message), Editing(buffer.EditInteger(value, rebuild)) -> {
+      let result = input.update_number(value, message)
+      let #(source, mode) = case result {
+        input.Continue(value) -> #(source, buffer.EditInteger(value, rebuild))
+        input.Confirmed(value) -> {
+          let proj = rebuild(value)
+          let editable = projection.rebuild(proj)
+          let source = #(proj, editable, None)
+          #(source, buffer.Command(None))
+        }
+        input.Cancelled -> #(source, buffer.Command(None))
+      }
+      let state = Snippet(..state, status: Editing(mode), source: source)
+      #(state, None)
+    }
+    MessageFromInput(_), _ -> panic as "shouldn't reach input message"
+    MessageFromPicker(picker.Updated(picker)), Editing(buffer.Pick(_, rebuild)) -> {
+      let state =
+        Snippet(..state, status: Editing(buffer.Pick(picker, rebuild)))
+      #(state, None)
+    }
+    MessageFromPicker(picker.Decided(value)), Editing(buffer.Pick(_, rebuild)) -> {
+      let proj = rebuild(value)
+      let editable = projection.rebuild(proj)
+      let source = #(proj, editable, None)
+      let state =
+        Snippet(..state, status: Editing(buffer.Command(None)), source: source)
+      #(state, None)
+    }
+    MessageFromPicker(picker.Dismissed), Editing(buffer.Pick(_, _rebuild)) -> {
+      let state = Snippet(..state, status: Editing(buffer.Command(None)))
+      #(state, None)
+    }
+    MessageFromPicker(_), _ -> panic as "shouldn't reach picker message"
+    UserClickRunEffects, _ -> run_effects(state)
+    RuntimeRepliedFromExternalEffect(reply), Editing(buffer.Command(_)) -> {
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
@@ -249,7 +286,7 @@ pub fn update(state, message) {
         Error(debug) -> run.handle_extrinsic_effects(debug, effects)
       }
       let run = run.Run(status, effect_log)
-      let state = Snippet(Idle(src), run, scope, effects, cache)
+      let state = Snippet(..state, run: run)
       case status {
         run.Done(_, _) | run.Failed(_) -> #(state, None)
 
@@ -257,7 +294,7 @@ pub fn update(state, message) {
           case blocking(lift) {
             Ok(promise) -> {
               let run = run.Run(status, effect_log)
-              let state = Snippet(Idle(src), run, scope, effects, cache)
+              let state = Snippet(..state, run: run)
 
               #(
                 state,
@@ -271,14 +308,16 @@ pub fn update(state, message) {
             }
             Error(reason) -> {
               let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Snippet(Idle(src), run, scope, effects, cache)
+              let state = Snippet(..state, run: run)
+
               #(state, None)
             }
           }
       }
     }
-    ClipboardReadCompleted(return) -> {
-      let assert Editing(#(proj, mode)) = status
+
+    ClipboardReadCompleted(return), _ -> {
+      let assert Editing(buffer.Command(_)) = status
       case return {
         Ok(text) ->
           case decode.from_json(text) {
@@ -288,42 +327,77 @@ pub fn update(state, message) {
                 projection.Exp(editable.from_expression(expression)),
                 zoom,
               )
-              let run =
-                run.start(projection.rebuild(proj), scope, effects, cache)
-              let state =
-                Snippet(Editing(#(proj, mode)), run, scope, effects, cache)
+              let editable = projection.rebuild(proj)
+              let source = #(proj, editable, None)
+              let run = run.start(editable, scope, effects, cache)
+              let state = Snippet(..state, run: run, source: source)
               #(state, None)
             }
             Error(_) -> {
               let mode = buffer.Command(Some(buffer.ActionFailed("paste")))
-              let buffer = #(proj, mode)
-              let status = Editing(buffer)
-              #(Snippet(status, run, scope, effects, cache), None)
+              let status = Editing(mode)
+              let state = Snippet(..state, status: status)
+              #(state, None)
             }
           }
 
         Error(reason) -> panic as reason
       }
     }
+    _, _ -> {
+      io.debug(#(status, message))
+      todo as "update snuippet"
+    }
+    // MessageFromBuffer(message) ->
+    //   case status {
+    //     Idle(_) -> panic as "should never happen here"
+    //     Editing(buffer) -> {
+    //       let buffer =
+    //         buffer.update(
+    //           buffer,
+    //           message,
+    //           analysis.within_environment(scope, sync.types(cache)),
+    //           effect_types(effects),
+    //         )
+    //       let #(proj, mode) = buffer
+    //       let run = case mode {
+    //         buffer.Command(None) ->
+    //           run.start(projection.rebuild(proj), scope, effects, cache)
+    //         _ -> run
+    //       }
+    //       case mode {
+    //         _ -> {
+    //           let eff =
+    //             Some(fn(_) {
+    //               window.request_animation_frame(fn(_) {
+    //                 case document.query_selector("[autofocus]") {
+    //                   Ok(el) -> {
+    //                     dom_element.focus(el)
+    //                     // This can only be done when we move to a new focus
+    //                     dom_element.set_selection_range(el, 0, -1)
+    //                   }
+    //                   Error(Nil) -> Nil
+    //                 }
+    //               })
+    //               Nil
+    //             })
+    //           #(Snippet(Editing(buffer), run, scope, effects, cache), eff)
+    //         }
+    //       }
+    //     }
+    //   }
   }
 }
 
 fn run_effects(state) {
-  let Snippet(
-    status: _status,
-    run: run,
-    scope: scope,
-    effects: effects,
-    cache: cache,
-  ) = state
+  let Snippet(run: run, ..) = state
   let run.Run(status, effect_log) = run
-  let src = source(state)
   case status {
     run.Handling(_label, lift, env, k, blocking) -> {
       case blocking(lift) {
         Ok(promise) -> {
           let run = run.Run(status, effect_log)
-          let state = Snippet(Idle(src), run, scope, effects, cache)
+          let state = Snippet(..state, run: run)
 
           #(
             state,
@@ -337,7 +411,7 @@ fn run_effects(state) {
         }
         Error(reason) -> {
           let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-          let state = Snippet(Idle(src), run, scope, effects, cache)
+          let state = Snippet(..state, run: run)
           #(state, None)
         }
       }
@@ -346,14 +420,8 @@ fn run_effects(state) {
   }
 }
 
-pub fn finish_editing(state: Snippet) {
-  let Snippet(status: status, scope: scope, effects: effects, cache: cache, ..) =
-    state
-  case status {
-    Editing(#(proj, _mode)) ->
-      init(projection.rebuild(proj), scope, effects, cache)
-    _ -> state
-  }
+pub fn finish_editing(state) {
+  Snippet(..state, status: Idle)
 }
 
 pub fn render(state: Snippet) {
@@ -396,7 +464,7 @@ pub fn render_editor(state: Snippet) {
 }
 
 pub fn bare_render(state) {
-  let Snippet(status, run, scope, effects, cache) = state
+  let Snippet(status, source, run, scope, effects, cache) = state
   let eff =
     effect_types(effects)
     |> list.fold(t.Empty, fn(acc, new) {
@@ -405,13 +473,14 @@ pub fn bare_render(state) {
     })
   let a =
     analysis.do_analyse(
-      source(state),
+      source.1,
       analysis.within_environment(scope, sync.types(cache)),
       eff,
     )
+  let proj = source.0
   let errors = analysis.type_errors(a)
   case status {
-    Editing(#(proj, mode)) ->
+    Editing(mode) ->
       case mode {
         buffer.Command(e) -> {
           [
@@ -428,33 +497,30 @@ pub fn bare_render(state) {
         buffer.Pick(picker, _rebuild) -> [
           render_projection(proj, False),
           picker.render(picker)
-            |> element.map(buffer.UpdatePicker)
-            |> element.map(MessageFromBuffer),
+            |> element.map(MessageFromPicker),
         ]
 
         buffer.EditText(value, _rebuild) -> [
           render_projection(proj, False),
           input.render_text(value)
-            |> element.map(buffer.UpdateInput)
-            |> element.map(MessageFromBuffer),
+            |> element.map(MessageFromInput),
         ]
 
         buffer.EditInteger(value, _rebuild) -> [
           render_projection(proj, False),
           input.render_number(value)
-            |> element.map(buffer.UpdateInput)
-            |> element.map(MessageFromBuffer),
+            |> element.map(MessageFromInput),
         ]
       }
 
-    Idle(src) -> [
+    Idle -> [
       h.div(
         [
           a.class("p-2 outline-none my-auto"),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(src),
+        render.statements(source.1),
       ),
       render_current(errors, run),
     ]
