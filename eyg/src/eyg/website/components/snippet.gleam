@@ -225,6 +225,8 @@ pub fn update(state, message) {
         Snippet(..state, status: Editing(mode), source: source, run: run)
       #(state, eff)
     }
+    MessageFromBuffer(buffer.KeyDown(_)), _ ->
+      panic as "should never get a buffer message"
     MessageFromBuffer(buffer.JumpTo(path)), _ -> {
       let proj = projection.focus_at(editable, path)
       let source = #(proj, editable, analysis)
@@ -331,7 +333,8 @@ pub fn update(state, message) {
           }
       }
     }
-
+    RuntimeRepliedFromExternalEffect(_), _ ->
+      panic as "should never get a runtime message"
     ClipboardReadCompleted(return), _ -> {
       let assert Editing(buffer.Command(_)) = status
       case return {
@@ -359,10 +362,6 @@ pub fn update(state, message) {
 
         Error(reason) -> panic as reason
       }
-    }
-    _, _ -> {
-      io.debug(#(status, message))
-      todo as "update snuippet"
     }
   }
 }
