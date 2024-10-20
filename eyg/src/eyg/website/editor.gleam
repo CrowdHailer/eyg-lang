@@ -50,8 +50,6 @@ pub type Message {
 
 pub fn update(state: State, message) {
   case message {
-    // This is sent even when editing string
-    // SnippetMessage(snippet.MessageFromBuffer(buffer.KeyDown("?"))) -> todo
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       case snippet.key_error(snippet) {

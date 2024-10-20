@@ -25,9 +25,9 @@ import lustre/event
 import morph/analysis
 import morph/buffer
 import morph/editable
+import morph/input
 import morph/lustre/render
 import morph/navigation
-import morph/pallet
 import morph/picker
 import morph/projection
 import plinth/browser/clipboard
@@ -150,6 +150,8 @@ pub fn update(state, message) {
           #(Snippet(..state, status: status), None)
         }
       }
+    MessageFromBuffer(buffer.KeyDown("?")) -> todo
+
     MessageFromBuffer(message) ->
       case status {
         Idle(_) -> panic as "should never happen here"
@@ -425,17 +427,23 @@ pub fn bare_render(state) {
         }
         buffer.Pick(picker, _rebuild) -> [
           render_projection(proj, False),
-          pallet(picker.render(picker) |> element.map(buffer.UpdatePicker)),
+          picker.render(picker)
+            |> element.map(buffer.UpdatePicker)
+            |> element.map(MessageFromBuffer),
         ]
 
         buffer.EditText(value, _rebuild) -> [
           render_projection(proj, False),
-          pallet(pallet.string_input(value)),
+          input.render_text(value)
+            |> element.map(buffer.UpdateInput)
+            |> element.map(MessageFromBuffer),
         ]
 
         buffer.EditInteger(value, _rebuild) -> [
           render_projection(proj, False),
-          pallet(pallet.integer_input(value)),
+          input.render_number(value)
+            |> element.map(buffer.UpdateInput)
+            |> element.map(MessageFromBuffer),
         ]
       }
 
@@ -467,11 +475,6 @@ fn render_current(errors, run: run.Run) {
         }),
       )
   }
-}
-
-fn pallet(items) {
-  items
-  |> element.map(MessageFromBuffer)
 }
 
 fn render_projection(proj, autofocus) {
@@ -547,3 +550,37 @@ pub fn fail_message(reason) {
       string.concat(["Action ", action, " not possible at this position"])
   }
 }
+// fn handle_dragover(event) {
+//   event.prevent_default(event)
+//   event.stop_propagation(event)
+//   Error([])
+// }
+
+// needs to handle dragover otherwise browser will open file
+// https://stackoverflow.com/questions/43180248/firefox-ondrop-event-datatransfer-is-null-after-update-to-version-52
+// fn handle_drop(event) {
+//   event.prevent_default(event)
+//   event.stop_propagation(event)
+//   let files =
+//     drag.data_transfer(dynamicx.unsafe_coerce(event))
+//     |> drag.files
+//     |> array.to_list()
+//   case files {
+//     [file] -> {
+//       let work =
+//         promise.map(file.text(file), fn(content) {
+//           let assert Ok(source) = decode.from_json(content)
+//           //  going via annotated is inefficient
+//           let source = annotated.add_annotation(source, Nil)
+//           let source = editable.from_annotated(source)
+//           Ok(source)
+//         })
+
+//       Ok(state.Loading(work))
+//     }
+//     _ -> {
+//       console.log(#(event, files))
+//       Error([])
+//     }
+//   }
+// }

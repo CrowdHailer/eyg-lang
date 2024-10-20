@@ -367,15 +367,15 @@ pub fn analysis_env_after(before, cache: sync.Sync) {
 pub fn buffer_update(buffer, message, context) {
   let #(proj, mode) = buffer
   case message {
-    buffer.Submit ->
-      case buffer.handle_submit(mode) {
-        Ok(buffer) -> buffer
-        Error(Nil) -> #(proj, mode)
-      }
-    buffer.UpdateInput(new) -> {
-      let mode = buffer.handle_input(mode, new)
-      #(proj, mode)
-    }
+    // buffer.Submit ->
+    //   case buffer.handle_submit(mode) {
+    //     Ok(buffer) -> buffer
+    //     Error(Nil) -> #(proj, mode)
+    //   }
+    // buffer.UpdateInput(new) -> {
+    //   let mode = buffer.handle_input(mode, new)
+    //   #(proj, mode)
+    // }
     buffer.KeyDown(key) -> {
       buffer.handle_keydown(key, context, proj, mode, [])
     }

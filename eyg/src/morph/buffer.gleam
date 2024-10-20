@@ -14,6 +14,7 @@ import gleam/string
 import morph/action
 import morph/analysis
 import morph/editable as e
+import morph/input
 import morph/navigation
 import morph/picker
 import morph/projection as p
@@ -32,8 +33,7 @@ pub fn render_poly(poly) {
 
 pub type Message {
   KeyDown(String)
-  UpdateInput(String)
-  Submit
+  UpdateInput(input.Message)
   UpdatePicker(picker.Message)
   JumpTo(List(Int))
 }
@@ -73,26 +73,24 @@ pub fn update(buffer, message, context, effects) {
       #(source, Command(None))
     }
     Command(_), _ -> panic as "command should only have keydown"
-    EditText(_, _), KeyDown(_key) -> buffer
-    EditText(_, rebuild), UpdateInput(new) -> #(source, EditText(new, rebuild))
-    EditText(value, rebuild), Submit -> {
-      let mode = Command(None)
-      #(rebuild(value), mode)
-    }
-    EditText(_, _), _ -> panic as "Shouldnt'"
-    EditInteger(_, _), KeyDown(_key) -> buffer
-    EditInteger(old, rebuild), UpdateInput(new) -> {
-      let mode = case int.parse(new) {
-        Ok(new) -> EditInteger(new, rebuild)
-        Error(Nil) -> EditInteger(old, rebuild)
+    EditText(value, rebuild), UpdateInput(message) -> {
+      let result = input.update_text(value, message)
+      case result {
+        input.Continue(value) -> #(source, EditText(value, rebuild))
+        input.Confirmed(value) -> #(rebuild(value), Command(None))
+        input.Cancelled -> #(source, Command(None))
       }
-      #(source, mode)
     }
-    EditInteger(value, rebuild), Submit -> {
-      let mode = Command(None)
-      #(rebuild(value), mode)
+    EditText(_, _), _ -> buffer
+    EditInteger(value, rebuild), UpdateInput(message) -> {
+      let result = input.update_number(value, message)
+      case result {
+        input.Continue(value) -> #(source, EditInteger(value, rebuild))
+        input.Confirmed(value) -> #(rebuild(value), Command(None))
+        input.Cancelled -> #(source, Command(None))
+      }
     }
-    EditInteger(_, _), _ -> panic as "Shouldnt'"
+    EditInteger(_, _), _ -> buffer
     Pick(_picker, rebuild), UpdatePicker(picker.Updated(picker)) -> {
       #(source, Pick(picker, rebuild))
     }
