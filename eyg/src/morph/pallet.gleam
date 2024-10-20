@@ -106,18 +106,15 @@ pub fn integer_input(value) {
 
 fn input(value, type_) {
   h.form([event.on_submit(buffer.Submit)], [
-    // h.div([a.class("w-full p-2")], []),
     h.input([
       a.class(
         "block w-full bg-transparent border-l-8 border-gray-700 focus:border-gray-300 p-1 outline-none",
       ),
-      a.id("focus-input"),
       a.value(value),
       a.type_(type_),
       a.attribute("autofocus", "true"),
       event.on_keydown(buffer.KeyDown),
       event.on_input(buffer.UpdateInput),
     ]),
-    // h.hr([a.class("mx-40 my-1 border-gray-700")]),
   ])
 }

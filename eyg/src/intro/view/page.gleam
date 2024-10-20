@@ -20,7 +20,7 @@ import intro/state
 import intro/view/background
 import intro/view/runner
 import lustre/attribute as a
-import lustre/element.{fragment, map as element_map, none, text} as _
+import lustre/element.{fragment, map as element_map, none, text} as lelement
 import lustre/element/html as h
 import lustre/event as e
 import morph/analysis
@@ -168,7 +168,7 @@ fn sections(document, references) {
                     ])
                   buffer.Pick(picker, _) ->
                     h.div([a.class("px-2 py-1 -mt-1")], [
-                      picker.render(picker, state.UpdatePicker),
+                      picker.render(picker) |> lelement.map(state.UpdatePicker),
                     ])
                 },
               ],

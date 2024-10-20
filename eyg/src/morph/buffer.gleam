@@ -200,8 +200,6 @@ pub fn handle_input(mode, new) {
 }
 
 pub fn handle_submit(mode) {
-  io.debug("remove22")
-
   case mode {
     Command(_message) -> {
       io.debug("submit shouldn't happen in command mode")

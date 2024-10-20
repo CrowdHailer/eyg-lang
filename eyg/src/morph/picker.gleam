@@ -27,7 +27,7 @@ pub type Message {
   Dismissed
 }
 
-pub fn render(picker, dispatch) {
+pub fn render(picker) {
   let #(filter, suggestions, index) = case picker {
     Typing(value, suggestions) -> {
       let filtered =
@@ -48,10 +48,10 @@ pub fn render(picker, dispatch) {
           cleave.1,
           list.take(cleave.2, 10 - list.length(pre)),
         )
-      #({ cleave.1 }.0, filtered, index - list.length(list.drop(cleave.0, 5)))
+      #(cleave.1.0, filtered, index - list.length(list.drop(cleave.0, 5)))
     }
   }
-  h.form([event.on_submit(on_submit(picker, dispatch))], [
+  h.form([event.on_submit(on_submit(picker))], [
     // h.div([a.class("w-full p-2")], []),
     h.input([
       a.class(
@@ -61,8 +61,8 @@ pub fn render(picker, dispatch) {
       a.value(filter),
       a.attribute("autocomplete", "off"),
       a.attribute("autofocus", "true"),
-      event.on_keydown(on_keydown(_, picker, dispatch)),
-      event.on_input(on_input(_, picker, dispatch)),
+      event.on_keydown(on_keydown(_, picker)),
+      event.on_input(on_input(_, picker)),
     ]),
     h.hr([a.class("mx-40 my-1 border-gray-700")]),
     // event.on_click(Do(apply)),
@@ -83,15 +83,15 @@ pub fn render(picker, dispatch) {
   ])
 }
 
-fn on_submit(picker, dispatch) {
+fn on_submit(picker) {
   let value = case picker {
     Typing(value, _) -> value
     Scrolling(#(_, #(value, _), _), _) -> value
   }
-  dispatch(Decided(value))
+  Decided(value)
 }
 
-fn on_keydown(key, picker, dispatch) {
+fn on_keydown(key, picker) {
   case picker, key {
     _, "Escape" -> Dismissed
 
@@ -120,7 +120,6 @@ fn on_keydown(key, picker, dispatch) {
     }
     _, _ -> Updated(picker)
   }
-  |> dispatch
 }
 
 fn filter_suggestions(suggestions, filter) {
@@ -130,11 +129,10 @@ fn filter_suggestions(suggestions, filter) {
   })
 }
 
-fn on_input(new, picker, dispatch) {
+fn on_input(new, picker) {
   let picker = case picker {
     Typing(_old, suggestions) -> Typing(new, suggestions)
     Scrolling(_cleave, suggestions) -> Typing(new, suggestions)
   }
   Updated(picker)
-  |> dispatch
 }

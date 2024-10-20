@@ -138,7 +138,10 @@ pub fn update(state, message) {
   case message {
     UserFocusedOnCode ->
       case status {
-        Editing(_) -> #(state, None)
+        Editing(_) -> {
+          io.debug("focusssing")
+          #(state, None)
+        }
         Idle(src) -> {
           let src = editable.open_all(src)
           let proj = navigation.first(src)
@@ -440,7 +443,7 @@ pub fn bare_render(state) {
         }
         buffer.Pick(picker, _rebuild) -> [
           render_projection(proj, False),
-          pallet(picker.render(picker, buffer.UpdatePicker)),
+          pallet(picker.render(picker) |> element.map(buffer.UpdatePicker)),
         ]
 
         buffer.EditText(value, _rebuild) -> [
