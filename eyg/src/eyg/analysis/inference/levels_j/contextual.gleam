@@ -344,7 +344,7 @@ pub fn builtins() {
     ),
     #("serialize", pure1(q(0), t.String)),
     #("capture", pure1(q(0), t.ast())),
-    #("to_javascript", pure1(q(0), t.String)),
+    #("to_javascript", pure2(q(0), q(1), t.String)),
     #("encode_uri", pure1(t.String, t.String)),
     #("decode_uri_component", pure1(t.String, t.String)),
     #("base64_encode", pure1(t.Binary, t.String)),

@@ -1,3 +1,4 @@
+import eyg/analysis/type_/isomorphic
 import eygir/annotated as a
 import gleam/io
 import gleam/listx
@@ -12,7 +13,7 @@ import morph/projection as p
 pub fn scope_vars_test() {
   let context = analysis.empty_environment()
   let source = #(p.Exp(e.Vacant("")), [p.Body([e.Bind("x")])])
-  analysis.scope_vars(source, context)
+  analysis.scope_vars(source, context, isomorphic.Empty)
   |> shouldx.contain1()
   |> pair.first
   |> should.equal("x")
@@ -38,7 +39,7 @@ pub fn nested_let_test() {
     ),
   ])
 
-  analysis.scope_vars(source, context)
+  analysis.scope_vars(source, context, isomorphic.Empty)
   |> listx.keys
   |> should.equal(["inner", "b2", "b1"])
 }

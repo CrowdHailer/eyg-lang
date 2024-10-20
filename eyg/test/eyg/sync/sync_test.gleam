@@ -108,7 +108,8 @@ pub fn load_fails_test() {
     |> expect_abort()
     |> should.be_ok()
 
-  let state = sync.task_finish(state, ref, Error(reason))
+  let state =
+    sync.task_finish(state, sync.HashSourceFetched(ref, Error(reason)))
   sync.missing(state, [ref])
   |> should.equal([ref])
 

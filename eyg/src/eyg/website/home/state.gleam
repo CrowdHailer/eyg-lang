@@ -25,81 +25,7 @@ pub type Active {
 
 pub const closure_serialization_key = "closure_serialization"
 
-const closure_serialization = e.Block(
-  [
-    #(
-      e.Bind("script"),
-      e.Function(
-        [e.Bind("closure")],
-        e.Block(
-          [
-            #(
-              e.Bind("js"),
-              e.Call(e.Builtin("to_javascript"), [e.Variable("closure")]),
-            ),
-          ],
-          e.Call(
-            e.Builtin("string_append"),
-            [
-              e.String("<script>"),
-              e.Call(
-                e.Builtin("string_append"),
-                [e.Variable("js"), e.String("</script>")],
-              ),
-            ],
-          ),
-          True,
-        ),
-      ),
-    ),
-    #(
-      e.Bind("name"),
-      e.Case(
-        e.Call(e.Perform("Prompt"), [e.String("What is your name?")]),
-        [
-          #("Ok", e.Function([e.Bind("value")], e.Variable("value"))),
-          #("Error", e.Function([e.Bind("_")], e.String("Alice"))),
-        ],
-        None,
-      ),
-    ),
-    #(
-      e.Bind("client"),
-      e.Function(
-        [e.Bind("_")],
-        e.Block(
-          [
-            #(
-              e.Bind("message"),
-              e.Call(
-                e.Builtin("string_append"),
-                [e.String("Hello, "), e.Variable("name")],
-              ),
-            ),
-            // perform can't be last effect
-            #(e.Bind("_"), e.Call(e.Perform("Alert"), [e.Variable("message")])),
-          ],
-          e.Record([], None),
-          True,
-        ),
-      ),
-    ), #(e.Bind("page"), e.Call(e.Variable("script"), [e.Variable("client")])),
-    #(
-      e.Bind("page"),
-      e.Call(e.Builtin("string_to_binary"), [e.Variable("page")]),
-    ),
-  ],
-  e.Call(
-    e.Perform("Download"),
-    [
-      e.Record(
-        [#("name", e.String("index.html")), #("content", e.Variable("page"))],
-        None,
-      ),
-    ],
-  ),
-  True,
-)
+const closure_serialization = "{\"0\":\"l\",\"l\":\"script\",\"v\":{\"0\":\"f\",\"l\":\"closure\",\"b\":{\"0\":\"l\",\"l\":\"js\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"to_javascript\"},\"a\":{\"0\":\"v\",\"l\":\"closure\"}},\"a\":{\"0\":\"u\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"<script>\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"v\",\"l\":\"js\"}},\"a\":{\"0\":\"s\",\"v\":\"</script>\"}}}}},\"t\":{\"0\":\"l\",\"l\":\"name\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"v\",\"l\":\"value\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Alice\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Prompt\"},\"a\":{\"0\":\"s\",\"v\":\"What is your name?\"}}},\"t\":{\"0\":\"l\",\"l\":\"client\",\"v\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"l\",\"l\":\"message\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"Hello, \"}},\"a\":{\"0\":\"v\",\"l\":\"name\"}},\"t\":{\"0\":\"l\",\"l\":\"_\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Alert\"},\"a\":{\"0\":\"v\",\"l\":\"message\"}},\"t\":{\"0\":\"u\"}}}},\"t\":{\"0\":\"l\",\"l\":\"page\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"script\"},\"a\":{\"0\":\"v\",\"l\":\"client\"}},\"t\":{\"0\":\"l\",\"l\":\"page\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_to_binary\"},\"a\":{\"0\":\"v\",\"l\":\"page\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Download\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"name\"},\"a\":{\"0\":\"s\",\"v\":\"index.html\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"content\"},\"a\":{\"0\":\"v\",\"l\":\"page\"}},\"a\":{\"0\":\"u\"}}}}}}}}}"
 
 pub const fetch_key = "fetch"
 
@@ -185,17 +111,14 @@ fn init_example(json, cache) {
   let source =
     e.from_expression(source)
     |> e.open_all
-  snippet.init(source,[], harness.effects(), cache)
+  snippet.init(source, [], harness.effects(), cache)
 }
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
-    #(
-      closure_serialization_key,
-      snippet.init(closure_serialization, [],harness.effects(), cache),
-    ),
-    #(fetch_key, snippet.init(catfact, [],harness.effects(), cache)),
+    #(closure_serialization_key, init_example(closure_serialization, cache)),
+    #(fetch_key, snippet.init(catfact, [], harness.effects(), cache)),
     #(twitter_key, init_example(twitter_example, cache)),
     #(type_check_key, init_example(type_check_example, cache)),
     #(predictable_effects_key, init_example(predictable_effects_example, cache)),

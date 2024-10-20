@@ -214,7 +214,7 @@ let extrinsic = {
   Log: (x) => console.log(x) 
 };
 let run = (exec) => {
-  let m = exec()
+  let m = exec
   while (m instanceof Eff) {
     m = m.k(extrinsic[m.label](m.value));
   }

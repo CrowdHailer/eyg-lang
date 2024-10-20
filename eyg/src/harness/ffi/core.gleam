@@ -203,12 +203,16 @@ pub fn to_javascript() {
   // need enum type
   let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
 
-  #(type_, state.Arity1(do_to_javascript))
+  #(type_, state.Arity2(do_to_javascript))
 }
 
-pub fn do_to_javascript(term, meta, env, k) {
-  let exp = capture.capture(term)
-  let exp = e.add_annotation(exp, Nil)
+pub fn do_to_javascript(func, arg, meta, env, k) {
+  let func = capture.capture(func)
+  let func = e.add_annotation(func, Nil)
+  let arg = capture.capture(arg)
+  let arg = e.add_annotation(arg, Nil)
+  let exp = #(e.Apply(func, arg), Nil)
+
   Ok(#(state.V(v.Str(compile.to_js(exp, dict.new()))), env, k))
 }
 
