@@ -10,7 +10,6 @@ import eyg/text/text
 import eygir/annotated
 import gleam/dict
 import gleam/io
-import gleam/javascript as js
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -109,7 +108,7 @@ pub fn information(state) {
       let acc = annotated.strip_annotation(exp).1
       let acc =
         list.map(acc, fn(node) {
-          let #(error, typed, effect, env) = node
+          let #(error, typed, effect, _env) = node
           let typed = binding.resolve(typed, bindings)
 
           let effect = binding.resolve(effect, bindings)

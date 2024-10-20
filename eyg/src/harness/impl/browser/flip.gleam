@@ -4,7 +4,6 @@ import eyg/runtime/value as v
 import gleam/int
 import gleam/javascript/promise
 import gleam/result
-import plinth/browser/window
 
 pub const l = "Flip"
 

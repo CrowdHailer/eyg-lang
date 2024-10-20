@@ -1,6 +1,5 @@
 import eyg/runtime/break
 import eyg/runtime/interpreter/block
-import eyg/runtime/interpreter/runner
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
 import eyg/sync/sync

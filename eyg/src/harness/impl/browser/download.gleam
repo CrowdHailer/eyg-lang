@@ -3,7 +3,6 @@ import eyg/runtime/cast
 import eyg/runtime/value as v
 import gleam/javascript/promise
 import gleam/result
-import plinth/browser/clipboard
 import plinth/browser/file
 
 pub const l = "Download"

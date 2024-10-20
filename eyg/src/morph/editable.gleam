@@ -1,5 +1,4 @@
 import eygir/annotated as a
-import eygir/expression as e
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}

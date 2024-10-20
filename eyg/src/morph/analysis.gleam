@@ -4,7 +4,6 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/capture
-import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eygir/annotated as a
 import gleam/dict.{type Dict}

@@ -297,6 +297,7 @@ fn render(s) {
       [
         "Closure serialisation allows functions to be efficiently transformed back into source code and sent to other machines.",
         "Build client and server as a single strongly typed program. Even extend type guarantees over your build scripts.",
+        "Other languages have the possiblity of closure serialisation, but EYG's runtime is designed to make them efficient.",
       ],
       action(
         "Read the reference documentation.",
@@ -331,6 +332,7 @@ fn render(s) {
       [
         "EYG is built to support multiple runtimes. You have already seen this with closure serialisation",
         "In the future EYG will be available in many more places, e.g. arduino, CLI's and IPaaS.",
+        "EYG makes this easy by having a carefully designed minimal AST.",
       ],
       action("Stay up to date join the mailing list.", "#" <> signup, Confident),
       [],
