@@ -26,6 +26,7 @@ import morph/analysis
 import morph/buffer
 import morph/editable
 import morph/lustre/render
+import morph/navigation
 import morph/pallet
 import morph/picker
 import morph/projection
@@ -140,7 +141,7 @@ pub fn update(state, message) {
         Editing(_) -> #(state, None)
         Idle(src) -> {
           let src = editable.open_all(src)
-          let proj = projection.focus_at(src, [])
+          let proj = navigation.first(src)
           let buffer = buffer.from(proj)
           let status = Editing(buffer)
           #(Snippet(..state, status: status), None)

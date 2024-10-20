@@ -149,6 +149,10 @@ fn pattern_last(pattern) {
   }
 }
 
+pub fn first(exp) {
+  zoom_next(exp, [])
+}
+
 pub fn zoom_next(exp, zoom) {
   case zoom {
     [] -> do_first(#(p.Exp(exp), []))
