@@ -32,8 +32,6 @@ pub fn render_poly(poly) {
 
 pub type Message {
   KeyDown(String)
-  // UpdateInput(input.Message)
-  // UpdatePicker(picker.Message)
   JumpTo(List(Int))
 }
 
@@ -84,6 +82,7 @@ pub fn handle_command(key, source, context, effects) {
     // space is fine for seek because the command pallat is for beginners
     " " -> #(search_vacant(source), Command(None))
 
+    // Needed for my examples while Gleam doesn't have file embedding
     "Q" -> copy_escaped(source)
     "w" -> call_with(source)
     "E" -> assign_above(source)
@@ -119,49 +118,6 @@ pub fn handle_command(key, source, context, effects) {
     _ -> {
       let mode = Command(Some(NoKeyBinding(key)))
       #(source, mode)
-    }
-  }
-}
-
-pub fn handle_input(mode, new) {
-  io.debug("remove")
-  case mode {
-    Command(message) -> {
-      io.debug("input update shouldn't happen in command mode")
-      Command(message)
-    }
-    Pick(picker, rebuild) -> {
-      io.debug("input update shouldn't happen in command mode")
-      Pick(picker, rebuild)
-    }
-
-    EditText(_old, rebuild) -> EditText(new, rebuild)
-    EditInteger(old, rebuild) ->
-      case int.parse(new) {
-        Ok(new) -> EditInteger(new, rebuild)
-        Error(Nil) -> EditInteger(old, rebuild)
-      }
-  }
-}
-
-pub fn handle_submit(mode) {
-  case mode {
-    Command(_message) -> {
-      io.debug("submit shouldn't happen in command mode")
-      Error(Nil)
-    }
-    Pick(_picker, _rebuild) -> {
-      io.debug("submit shouldn't happen in command mode")
-      Error(Nil)
-    }
-
-    EditText(value, rebuild) -> {
-      let mode = Command(None)
-      Ok(#(rebuild(value), mode))
-    }
-    EditInteger(value, rebuild) -> {
-      let mode = Command(None)
-      Ok(#(rebuild(value), mode))
     }
   }
 }

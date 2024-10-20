@@ -213,6 +213,7 @@ pub fn update(state, message) {
                 Ok(el) -> {
                   dom_element.focus(el)
                   // This can only be done when we move to a new focus
+                  // error is something specifically to do with numbers
                   dom_element.set_selection_range(el, 0, -1)
                 }
                 Error(Nil) -> Nil
