@@ -12,7 +12,7 @@ import lustre/effect
 import lustre/element
 import lustre/element/html as h
 import morph/editable
-import morph/pallet
+import morph/lustre/components/key
 
 pub fn page(bundle) {
   page.app(Some("editor"), "eyg/website/editor", "client", bundle)
@@ -120,11 +120,7 @@ pub fn render(state: State) {
               "bottom-0 fixed flex flex-col justify-around mr-10 right-0 top-0",
             ),
           ],
-          [
-            h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [
-              pallet.key_references(),
-            ]),
-          ],
+          [h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [key.render()])],
         )
       False -> element.none()
     },

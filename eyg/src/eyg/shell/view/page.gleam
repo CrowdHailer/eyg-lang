@@ -8,8 +8,8 @@ import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import morph/lustre/components/key
 import morph/lustre/render
-import morph/pallet
 
 pub fn render(state) {
   let state.Shell(
@@ -48,9 +48,7 @@ pub fn render(state) {
         ),
         case display_help {
           True ->
-            h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [
-              pallet.key_references(),
-            ])
+            h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [key.render()])
 
           False -> element.none()
         },

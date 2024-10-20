@@ -4,14 +4,14 @@ import eyg/runtime/value as v
 import gleam/http/request
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{Some}
 import gleam/uri
 import intro/state
 import lustre/attribute as a
 import lustre/element.{none, text}
 import lustre/element/html as h
 import lustre/event as e
-import morph/pallet
+import morph/lustre/components/key
 
 pub fn runner(state) {
   let state.State(running: runner, document: guide, ..) = state
@@ -36,7 +36,7 @@ pub fn runner(state) {
               h.div([a.class("bg-red-300 p-10")], [
                 text(break.reason_to_string(reason)),
               ])
-            state.Suspended(state.TextInput(question, value), env, k) ->
+            state.Suspended(state.TextInput(question, value), _env, _k) ->
               h.div([a.class("border-4 border-green-500 px-6 py-2")], [
                 h.div([], [text(question)]),
                 h.form(
@@ -88,7 +88,7 @@ pub fn runner(state) {
         [
           h.div([a.class("p-2 font-mono vstack")], [
             h.h1([a.class("text-xl font-bold cover")], [text("commands")]),
-            h.div([a.class("cover")], [pallet.key_references()]),
+            h.div([a.class("cover")], [key.render()]),
           ]),
         ],
       )
