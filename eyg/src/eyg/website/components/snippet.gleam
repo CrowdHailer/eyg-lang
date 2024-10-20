@@ -104,13 +104,12 @@ pub fn source(state) {
 // This uses some none because otherwise it feels back to front. I.e. should I return OK if there is
 // a key error
 pub fn key_error(state) {
-  // let Snippet(status: status, ..) = state
+  let Snippet(status: status, ..) = state
 
-  // case status {
-  //   Editing(#(_, buffer.Command(Some(buffer.NoKeyBinding(k))))) -> Some(k)
-  //   _ -> None
-  // }
-  todo as "dont need anymore"
+  case status {
+    Editing(buffer.Command(Some(buffer.NoKeyBinding(k)))) -> Some(k)
+    _ -> None
+  }
 }
 
 pub fn set_references(state, cache) {
@@ -240,7 +239,7 @@ pub fn update(state, message) {
         input.Cancelled -> #(source, buffer.Command(None))
       }
       let state = Snippet(..state, status: Editing(mode), source: source)
-      #(state, None)
+      #(state, focus_away_from_input(mode))
     }
     MessageFromInput(message), Editing(buffer.EditInteger(value, rebuild)) -> {
       let result = input.update_number(value, message)
@@ -255,7 +254,7 @@ pub fn update(state, message) {
         input.Cancelled -> #(source, buffer.Command(None))
       }
       let state = Snippet(..state, status: Editing(mode), source: source)
-      #(state, None)
+      #(state, focus_away_from_input(mode))
     }
     MessageFromInput(_), _ -> panic as "shouldn't reach input message"
     MessageFromPicker(picker.Updated(picker)), Editing(buffer.Pick(_, rebuild)) -> {
@@ -267,9 +266,9 @@ pub fn update(state, message) {
       let proj = rebuild(value)
       let editable = projection.rebuild(proj)
       let source = #(proj, editable, None)
-      let state =
-        Snippet(..state, status: Editing(buffer.Command(None)), source: source)
-      #(state, None)
+      let mode = buffer.Command(None)
+      let state = Snippet(..state, status: Editing(mode), source: source)
+      #(state, focus_away_from_input(mode))
     }
     MessageFromPicker(picker.Dismissed), Editing(buffer.Pick(_, _rebuild)) -> {
       let state = Snippet(..state, status: Editing(buffer.Command(None)))
@@ -365,27 +364,26 @@ pub fn update(state, message) {
     //           run.start(projection.rebuild(proj), scope, effects, cache)
     //         _ -> run
     //       }
-    //       case mode {
-    //         _ -> {
-    //           let eff =
-    //             Some(fn(_) {
-    //               window.request_animation_frame(fn(_) {
-    //                 case document.query_selector("[autofocus]") {
-    //                   Ok(el) -> {
-    //                     dom_element.focus(el)
-    //                     // This can only be done when we move to a new focus
-    //                     dom_element.set_selection_range(el, 0, -1)
-    //                   }
-    //                   Error(Nil) -> Nil
-    //                 }
-    //               })
-    //               Nil
-    //             })
-    //           #(Snippet(Editing(buffer), run, scope, effects, cache), eff)
-    //         }
-    //       }
     //     }
     //   }
+  }
+}
+
+fn focus_away_from_input(mode) {
+  case mode {
+    buffer.Command(_) ->
+      Some(fn(_) {
+        window.request_animation_frame(fn(_) {
+          case document.query_selector("[autofocus]") {
+            Ok(el) -> {
+              dom_element.focus(el)
+            }
+            Error(Nil) -> Nil
+          }
+        })
+        Nil
+      })
+    _ -> None
   }
 }
 
