@@ -112,6 +112,15 @@ pub fn key_error(state) {
   }
 }
 
+pub fn action_error(state) {
+  let Snippet(status: status, ..) = state
+
+  case status {
+    Editing(buffer.Command(err)) -> err
+    _ -> None
+  }
+}
+
 pub fn set_references(state, cache) {
   let run = run.start(source(state), state.scope, state.effects, cache)
   Snippet(..state, run: run, cache: cache)
@@ -186,7 +195,12 @@ pub fn update(state, message) {
 
     MessageFromBuffer(buffer.KeyDown("Enter")), Editing(buffer.Command(_)) -> {
       case run.status {
-        run.Done(_, _) | run.Failed(_) -> #(state, None)
+        run.Done(_, _) | run.Failed(_) -> {
+          let status =
+            Editing(buffer.Command(Some(buffer.ActionFailed("Execute"))))
+          let state = Snippet(..state, status: status)
+          #(state, None)
+        }
         _ -> run_effects(state)
       }
     }
