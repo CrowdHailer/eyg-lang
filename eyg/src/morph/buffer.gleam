@@ -4,7 +4,6 @@ import eyg/analysis/type_/isomorphic
 import eygir/annotated as a
 import eygir/encode
 import gleam/dict
-import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
@@ -32,9 +31,6 @@ pub fn render_poly(poly) {
 
 pub type Message {
   KeyDown(String)
-  UpdateInput(String)
-  Submit
-  UpdatePicker(picker.Message)
   JumpTo(List(Int))
 }
 
@@ -62,60 +58,6 @@ pub fn from(projection) -> Buffer {
   #(projection, mode)
 }
 
-pub fn update(buffer, message, context, effects) {
-  let #(source, mode) = buffer
-  case mode, message {
-    Command(_), KeyDown(key) ->
-      handle_keydown(key, context, source, mode, effects)
-    Command(_), JumpTo(path) -> {
-      let editable = p.rebuild(source)
-      let source = p.focus_at(editable, path)
-      #(source, Command(None))
-    }
-    Command(_), _ -> panic as "command should only have keydown"
-    EditText(_, _), KeyDown(_key) -> buffer
-    EditText(_, rebuild), UpdateInput(new) -> #(source, EditText(new, rebuild))
-    EditText(value, rebuild), Submit -> {
-      let mode = Command(None)
-      #(rebuild(value), mode)
-    }
-    EditText(_, _), _ -> panic as "Shouldnt'"
-    EditInteger(_, _), KeyDown(_key) -> buffer
-    EditInteger(old, rebuild), UpdateInput(new) -> {
-      let mode = case int.parse(new) {
-        Ok(new) -> EditInteger(new, rebuild)
-        Error(Nil) -> EditInteger(old, rebuild)
-      }
-      #(source, mode)
-    }
-    EditInteger(value, rebuild), Submit -> {
-      let mode = Command(None)
-      #(rebuild(value), mode)
-    }
-    EditInteger(_, _), _ -> panic as "Shouldnt'"
-    Pick(_picker, rebuild), UpdatePicker(picker.Updated(picker)) -> {
-      #(source, Pick(picker, rebuild))
-    }
-    Pick(_picker, rebuild), UpdatePicker(picker.Decided(value)) -> {
-      #(rebuild(value), Command(None))
-    }
-    Pick(_picker, _rebuild), UpdatePicker(picker.Dismissed) -> {
-      #(source, Command(None))
-    }
-    Pick(_, _), _ -> panic as "Shouldnt'"
-  }
-}
-
-pub fn handle_keydown(key, context, source, mode, effects) {
-  case mode, key {
-    _, "Escape" -> #(source, Command(None))
-
-    Command(_failure), _any -> handle_command(key, source, context, effects)
-
-    _, _ -> #(source, mode)
-  }
-}
-
 pub fn handle_command(key, source, context, effects) {
   let eff =
     effects
@@ -139,6 +81,7 @@ pub fn handle_command(key, source, context, effects) {
     // space is fine for seek because the command pallat is for beginners
     " " -> #(search_vacant(source), Command(None))
 
+    // Needed for my examples while Gleam doesn't have file embedding
     "Q" -> copy_escaped(source)
     "w" -> call_with(source)
     "E" -> assign_above(source)
@@ -174,49 +117,6 @@ pub fn handle_command(key, source, context, effects) {
     _ -> {
       let mode = Command(Some(NoKeyBinding(key)))
       #(source, mode)
-    }
-  }
-}
-
-pub fn handle_input(mode, new) {
-  io.debug("remove")
-  case mode {
-    Command(message) -> {
-      io.debug("input update shouldn't happen in command mode")
-      Command(message)
-    }
-    Pick(picker, rebuild) -> {
-      io.debug("input update shouldn't happen in command mode")
-      Pick(picker, rebuild)
-    }
-
-    EditText(_old, rebuild) -> EditText(new, rebuild)
-    EditInteger(old, rebuild) ->
-      case int.parse(new) {
-        Ok(new) -> EditInteger(new, rebuild)
-        Error(Nil) -> EditInteger(old, rebuild)
-      }
-  }
-}
-
-pub fn handle_submit(mode) {
-  case mode {
-    Command(_message) -> {
-      io.debug("submit shouldn't happen in command mode")
-      Error(Nil)
-    }
-    Pick(_picker, _rebuild) -> {
-      io.debug("submit shouldn't happen in command mode")
-      Error(Nil)
-    }
-
-    EditText(value, rebuild) -> {
-      let mode = Command(None)
-      Ok(#(rebuild(value), mode))
-    }
-    EditInteger(value, rebuild) -> {
-      let mode = Command(None)
-      Ok(#(rebuild(value), mode))
     }
   }
 }

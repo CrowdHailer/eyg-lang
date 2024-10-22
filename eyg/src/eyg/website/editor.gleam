@@ -11,6 +11,7 @@ import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
+import morph/buffer
 import morph/editable
 import morph/lustre/components/key
 
@@ -50,12 +51,10 @@ pub type Message {
 
 pub fn update(state: State, message) {
   case message {
-    // This is sent even when editing string
-    // SnippetMessage(snippet.MessageFromBuffer(buffer.KeyDown("?"))) -> todo
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
-      case snippet.key_error(snippet) {
-        Some("?") -> {
+      case snippet.action_error(snippet) {
+        Some(buffer.NoKeyBinding("?")) -> {
           let state = State(..state, display_help: !state.display_help)
           #(state, effect.none())
         }

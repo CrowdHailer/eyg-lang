@@ -27,7 +27,6 @@ import morph/analysis
 import morph/buffer
 import morph/lustre/frame
 import morph/lustre/render
-import morph/pallet
 import morph/picker
 import plinth/browser/document
 import plinth/browser/element
@@ -152,25 +151,26 @@ fn sections(document, references) {
                     h.div([a.class("px-2 py-1 -mt-1")], [text(debug.mono(t))])
                   Error(Nil) -> none()
                 },
-                case mode {
-                  buffer.Command(None) -> render_errors(errors)
-                  buffer.Command(Some(failure)) ->
-                    h.div([a.class("px-2 py-1 -mt-1")], [
-                      text(fail_message(failure)),
-                    ])
-                  buffer.EditInteger(i, _rebuild) ->
-                    h.div([a.class("px-2 py-1 -mt-1")], [
-                      pallet.integer_input(i) |> element_map(state.Buffer),
-                    ])
-                  buffer.EditText(text, _rebuild) ->
-                    h.div([a.class("px-2 py-1 -mt-1")], [
-                      pallet.string_input(text) |> element_map(state.Buffer),
-                    ])
-                  buffer.Pick(picker, _) ->
-                    h.div([a.class("px-2 py-1 -mt-1")], [
-                      picker.render(picker) |> lelement.map(state.UpdatePicker),
-                    ])
-                },
+                text("show pallet again"),
+                // case mode {
+              //   buffer.Command(None) -> render_errors(errors)
+              //   buffer.Command(Some(failure)) ->
+              //     h.div([a.class("px-2 py-1 -mt-1")], [
+              //       text(fail_message(failure)),
+              //     ])
+              //   buffer.EditInteger(i, _rebuild) ->
+              //     h.div([a.class("px-2 py-1 -mt-1")], [
+              //       pallet.integer_input(i) |> element_map(state.Buffer),
+              //     ])
+              //   buffer.EditText(text, _rebuild) ->
+              //     h.div([a.class("px-2 py-1 -mt-1")], [
+              //       pallet.string_input(text) |> element_map(state.Buffer),
+              //     ])
+              //   buffer.Pick(picker, _) ->
+              //     h.div([a.class("px-2 py-1 -mt-1")], [
+              //       picker.render(picker) |> lelement.map(state.UpdatePicker),
+              //     ])
+              // },
               ],
             ),
             h.div([a.class("p-2")], []),

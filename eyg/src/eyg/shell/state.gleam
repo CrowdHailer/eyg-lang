@@ -9,6 +9,7 @@ import gleam/option.{type Option, None, Some}
 import harness/impl/browser as harness
 import harness/impl/spotless
 import lustre/effect
+import morph/buffer
 import morph/editable
 
 pub type Shell {
@@ -57,10 +58,11 @@ pub fn update(state: Shell, message) {
     }
     SnippetMessage(message) -> {
       let #(sn, eff) = snippet.update(state.source, message)
-      let #(cache, tasks) = sync.fetch_all_missing(state.cache)
+      let refs = snippet.references(sn)
+      let #(cache, tasks) = sync.fetch_missing(state.cache, refs)
       let state = Shell(..state, cache: cache)
-      case snippet.key_error(sn) {
-        Some("?") -> {
+      case snippet.action_error(sn) {
+        Some(buffer.NoKeyBinding("?")) -> {
           let state = Shell(..state, display_help: !state.display_help)
           #(state, effect.none())
         }
@@ -75,7 +77,7 @@ pub fn update(state: Shell, message) {
         //               }
         //             }
         //           }
-        Some("Enter") -> {
+        Some(buffer.ActionFailed("Execute")) -> {
           let run = snippet.run(sn)
           let run.Run(status, _effects) = run
           case status {
@@ -96,10 +98,13 @@ pub fn update(state: Shell, message) {
               effect.from(browser.do_sync(tasks, SyncMessage))
             }
             Some(f) ->
-              effect.from(fn(d) {
-                let d = fn(m) { d(SnippetMessage(m)) }
-                f(d)
-              })
+              effect.batch([
+                effect.from(browser.do_sync(tasks, SyncMessage)),
+                effect.from(fn(d) {
+                  let d = fn(m) { d(SnippetMessage(m)) }
+                  f(d)
+                }),
+              ])
           })
         }
       }
