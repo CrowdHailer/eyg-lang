@@ -166,7 +166,23 @@ fn update_source(proj, state) {
 fn change_mode(state, mode) {
   let status = Editing(mode)
   let state = Snippet(..state, status: status)
-  #(state, None)
+  #(
+    state,
+    Some(fn(_) {
+      window.request_animation_frame(fn(_) {
+        case document.query_selector("[autofocus]") {
+          Ok(el) -> {
+            dom_element.focus(el)
+            // This can only be done when we move to a new focus
+            // error is something specifically to do with numbers
+            dom_element.set_selection_range(el, 0, -1)
+          }
+          Error(Nil) -> Nil
+        }
+      })
+      Nil
+    }),
+  )
 }
 
 fn show_error(state, error) {
@@ -178,7 +194,7 @@ fn show_error(state, error) {
 pub fn update(state, message) {
   let Snippet(
     status: status,
-    source: #(proj, editable, analysis) as source,
+    source: #(proj, editable, _) as source,
     run: run,
     scope: scope,
     effects: effects,
@@ -224,7 +240,8 @@ pub fn update(state, message) {
         "k" -> toggle_open(state)
         "l" -> insert_list(state)
         "#" -> insert_reference(state)
-        // "z" ->
+        "z" -> undo(state)
+        "Z" -> redo(state)
         // "x" ->
         "c" -> call_function(state)
         "v" -> insert_variable(state)
@@ -726,11 +743,41 @@ fn insert_open_case(state) {
 }
 
 fn spread_list(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(source: #(proj, _, _), ..) = state
 
   case transformation.spread_list(proj) {
     Ok(new) -> update_source(new, state)
     Error(Nil) -> show_error(state, ActionFailed("create match"))
+  }
+}
+
+fn undo(state) {
+  let Snippet(source: #(proj, _, _), history: history, ..) = state
+  case history.undo {
+    [] -> show_error(state, ActionFailed("undo"))
+    [saved, ..rest] -> {
+      let source = #(saved, p.rebuild(saved), None)
+      let history = History(undo: rest, redo: [proj, ..history.redo])
+      let status = Editing(Command(None))
+      let state =
+        Snippet(..state, status: status, source: source, history: history)
+      #(state, None)
+    }
+  }
+}
+
+fn redo(state) {
+  let Snippet(source: #(proj, _, _), history: history, ..) = state
+  case history.redo {
+    [] -> show_error(state, ActionFailed("redo"))
+    [saved, ..rest] -> {
+      let source = #(saved, p.rebuild(saved), None)
+      let history = History(undo: [proj, ..history.undo], redo: rest)
+      let status = Editing(Command(None))
+      let state =
+        Snippet(..state, status: status, source: source, history: history)
+      #(state, None)
+    }
   }
 }
 
@@ -746,7 +793,7 @@ pub fn copy_escaped(state) {
       )
       // TODO better copy error
       |> promise.map(io.debug)
-      change_mode(state, Command(None))
+      #(state, None)
     }
     _ -> show_error(state, ActionFailed("copy"))
   }
