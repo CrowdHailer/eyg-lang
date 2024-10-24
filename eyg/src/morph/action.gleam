@@ -283,14 +283,14 @@ pub fn handle(source, _context) {
   }
 }
 
-pub fn insert_builtin(projection, context: analysis.Context) {
+pub fn insert_builtin(projection, builtins) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let filter = case exp {
         e.Builtin(id) -> id
         _ -> ""
       }
-      Ok(#(filter, context.builtins, fn(id) { #(p.Exp(e.Builtin(id)), zoom) }))
+      Ok(#(filter, builtins, fn(id) { #(p.Exp(e.Builtin(id)), zoom) }))
     }
     _ -> Error(Nil)
   }

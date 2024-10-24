@@ -1,3 +1,4 @@
+import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
@@ -585,13 +586,7 @@ fn insert_mode(state) {
 
 fn insert_perform(state) {
   let Snippet(source: #(proj, _, _), effects: effects, ..) = state
-  // TODO fix hints
-  let hints = []
-  // effects
-  // |> list.fold(t.Empty, fn(acc, new) {
-  //   let #(label, #(lift, reply)) = new
-  //   t.EffectExtend(label, #(lift, reply), acc)
-  // })
+  let hints = effect_types(effects)
   case action.perform(proj) {
     Ok(#(filter, rebuild)) -> {
       let hints = listx.value_map(hints, render_effect)
@@ -662,9 +657,9 @@ fn insert_handle(state) {
 }
 
 fn insert_builtin(state) {
-  let Snippet(source: #(proj, _, analysis), ..) = state
+  let Snippet(source: #(proj, _, _), ..) = state
 
-  case action.insert_builtin(proj, todo) {
+  case action.insert_builtin(proj, contextual.builtins()) {
     Ok(#(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
