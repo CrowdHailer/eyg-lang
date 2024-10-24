@@ -2,14 +2,12 @@ import eyg/shell/situation.{type Situation}
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
-import eyg/website/run
-import gleam/io
+import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import harness/impl/browser as harness
 import harness/impl/spotless
 import lustre/effect
-import morph/buffer
 import morph/editable
 
 pub type Shell {
@@ -24,7 +22,7 @@ pub type Shell {
 }
 
 fn new_snippet(scope, cache) {
-  snippet.init(editable.Vacant(""), scope, effects(), cache)
+  snippet.active(editable.Vacant(""), scope, effects(), cache)
 }
 
 pub fn init(_) {
@@ -40,11 +38,35 @@ pub fn init(_) {
 pub type Message {
   SyncMessage(sync.Message)
   SnippetMessage(snippet.Message)
-  // Interrupt
 }
 
 pub fn effects() {
   list.append(harness.effects(), spotless.effects())
+}
+
+fn dispatch_to_snippet(state, current, promise) {
+  let refs = snippet.references(current)
+  let Shell(cache: cache, ..) = state
+  let #(cache, tasks) = sync.fetch_missing(cache, refs)
+  let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+
+  let state = Shell(..state, cache: cache, source: current)
+
+  let snippet_effect =
+    effect.from(fn(d) {
+      promisex.aside(promise, fn(message) { d(SnippetMessage(message)) })
+    })
+  #(state, effect.batch([snippet_effect, sync_effect]))
+}
+
+fn dispatch_nothing(state, current, _promise) {
+  let refs = snippet.references(current)
+  let Shell(cache: cache, ..) = state
+  let #(cache, tasks) = sync.fetch_missing(cache, refs)
+  let eff = effect.from(browser.do_sync(tasks, SyncMessage))
+
+  let state = Shell(..state, cache: cache, source: current)
+  #(state, eff)
 }
 
 pub fn update(state: Shell, message) {
@@ -57,55 +79,45 @@ pub fn update(state: Shell, message) {
       #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
     }
     SnippetMessage(message) -> {
-      let #(sn, eff) = snippet.update(state.source, message)
-      let refs = snippet.references(sn)
-      let #(cache, tasks) = sync.fetch_missing(state.cache, refs)
-      let state = Shell(..state, cache: cache)
-      case snippet.action_error(sn) {
-        Some(buffer.NoKeyBinding("?")) -> {
+      let #(current, eff) = snippet.update(state.source, message)
+      case eff {
+        snippet.Nothing -> dispatch_nothing(state, current, Nil)
+        snippet.AwaitRunningEffect(p) ->
+          dispatch_to_snippet(state, current, snippet.await_running_effect(p))
+        snippet.FocusOnCode ->
+          dispatch_nothing(state, current, snippet.focus_on_buffer())
+        snippet.FocusOnInput ->
+          dispatch_nothing(state, current, snippet.focus_on_input())
+        snippet.ToggleHelp -> {
           let state = Shell(..state, display_help: !state.display_help)
           #(state, effect.none())
         }
-        // Some("ArrowUp")
-        //           b.Command(Some(b.ActionFailed("move up"))), True, [], _ -> {
-        //             case state.previous {
-        //               [] -> #(state, effect.none())
-        //               [#(_value, expression), ..] -> {
-        //                 let buffer = b.from(p.focus_at(expression, []))
-        //                 let state = Shell(..state, buffer: buffer)
-        //                 #(state, effect.none())
-        //               }
-        //             }
-        //           }
-        Some(buffer.ActionFailed("Execute")) -> {
-          let run = snippet.run(sn)
-          let run.Run(status, _effects) = run
-          case status {
-            run.Done(value, scope) -> {
-              io.debug("add effects")
-              let previous = [#(value, snippet.source(sn)), ..state.previous]
-              let source = new_snippet(scope, state.cache)
-              let state = Shell(..state, source: source, previous: previous)
-              #(state, effect.none())
+        snippet.MoveAbove -> {
+          case state.previous {
+            [] -> #(state, effect.none())
+            [#(_value, exp), ..] -> {
+              let current =
+                snippet.active(exp, state.scope, effects(), state.cache)
+              #(Shell(..state, source: current), effect.none())
             }
-            _ -> #(state, effect.none())
           }
         }
-        _ -> {
-          let state = Shell(..state, source: sn)
-          #(state, case eff {
-            None -> {
-              effect.from(browser.do_sync(tasks, SyncMessage))
-            }
-            Some(f) ->
-              effect.batch([
-                effect.from(browser.do_sync(tasks, SyncMessage)),
-                effect.from(fn(d) {
-                  let d = fn(m) { d(SnippetMessage(m)) }
-                  f(d)
-                }),
-              ])
-          })
+        snippet.MoveBelow -> #(state, effect.none())
+        snippet.ReadFromClipboard ->
+          dispatch_to_snippet(state, current, snippet.read_from_clipboard())
+        snippet.WriteToClipboard(text) ->
+          dispatch_to_snippet(state, current, snippet.write_to_clipboard(text))
+        snippet.Conclude(value, scope) -> {
+          let previous = [#(value, snippet.source(current)), ..state.previous]
+          let source = new_snippet(scope, state.cache)
+          let state = Shell(..state, source: source, previous: previous)
+          #(
+            state,
+            effect.from(fn(_d) {
+              snippet.focus_on_buffer()
+              Nil
+            }),
+          )
         }
       }
     }

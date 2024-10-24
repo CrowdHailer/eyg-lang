@@ -6,8 +6,7 @@ import morph/analysis
 import morph/editable as e
 import morph/projection as p
 
-// TODO pass in analysis
-pub fn insert_variable(source, context, eff) {
+pub fn insert_variable(source, analysis) {
   let #(focus, zoom) = source
   use filter <- try(case focus {
     p.Exp(e.Variable(var)) -> Ok(var)
@@ -15,20 +14,26 @@ pub fn insert_variable(source, context, eff) {
     _ -> Error(Nil)
   })
 
-  let vars =
-    analysis.scope_vars(source, context, eff)
-    |> listx.key_unique
-    |> listx.key_reject("_")
-    |> listx.key_reject("$")
+  let vars = case analysis {
+    Some(analysis) ->
+      analysis.scope_vars(source, analysis)
+      |> listx.key_unique
+      |> listx.key_reject("_")
+      |> listx.key_reject("$")
+    None -> []
+  }
 
   let rebuild = fn(var) { #(p.Exp(e.Variable(var)), zoom) }
   Ok(#(filter, vars, rebuild))
 }
 
-pub fn call_function(source, context, eff) {
-  let args =
-    analysis.count_args(source, context, eff)
-    |> result.unwrap(1)
+pub fn call_function(source, analysis) {
+  let args = case analysis {
+    Some(analysis) ->
+      analysis.count_args(source, analysis)
+      |> result.unwrap(1)
+    None -> 1
+  }
   case source {
     #(p.Exp(e.Call(func, args)), zoom) -> {
       let zoom = [p.CallArg(func, list.reverse(args), []), ..zoom]
@@ -43,8 +48,11 @@ pub fn call_function(source, context, eff) {
   }
 }
 
-pub fn make_record(projection, context, eff) {
-  let fields = analysis.type_fields(projection, context, eff)
+pub fn make_record(projection, analysis) {
+  let fields = case analysis {
+    Some(analysis) -> analysis.type_fields(projection, analysis)
+    None -> []
+  }
   case projection, fields {
     #(p.Exp(_), zoom), [#(first, _type), ..rest] -> {
       let rest =
@@ -92,10 +100,13 @@ pub fn make_record(projection, context, eff) {
   }
 }
 
-pub fn overwrite_record(source, context, eff) {
-  case source {
+pub fn overwrite_record(projection, analysis) {
+  case projection {
     #(p.Exp(exp), zoom) -> {
-      let fields = analysis.type_fields(source, context, eff)
+      let fields = case analysis {
+        Some(analysis) -> analysis.type_fields(projection, analysis)
+        None -> []
+      }
       Ok(
         #(fields, fn(label) {
           #(p.Exp(e.Vacant("")), [
@@ -109,8 +120,11 @@ pub fn overwrite_record(source, context, eff) {
   }
 }
 
-pub fn select_field(projection, context, eff) {
-  let fields = analysis.type_fields(projection, context, eff)
+pub fn select_field(projection, analysis) {
+  let fields = case analysis {
+    Some(analysis) -> analysis.type_fields(projection, analysis)
+    None -> []
+  }
   case projection, fields {
     #(p.Exp(inner), zoom), fields -> {
       Ok(#(fields, fn(label) { #(p.Exp(e.Select(inner, label)), zoom) }))
@@ -128,8 +142,11 @@ pub type Outcome(help) {
   Updated(projection: p.Projection)
 }
 
-pub fn make_tagged(projection, context, eff) {
-  let variants = analysis.type_variants(projection, context, eff)
+pub fn make_tagged(projection, analysis) {
+  let variants = case analysis {
+    Some(analysis) -> analysis.type_variants(projection, analysis)
+    None -> []
+  }
   case projection, variants {
     #(p.Exp(e.Tag(label)), [p.CallFn(args), ..zoom]), variants ->
       Ok(
@@ -151,9 +168,13 @@ pub fn make_tagged(projection, context, eff) {
   }
 }
 
-pub fn make_case(projection, context, edd) {
-  let fields = analysis.type_variants(projection, context, edd)
-  case projection, fields {
+pub fn make_case(projection, analysis) {
+  let variants = case analysis {
+    Some(analysis) -> analysis.type_variants(projection, analysis)
+    None -> []
+  }
+
+  case projection, variants {
     #(p.Exp(top), zoom), [#(first, _type), ..rest] -> {
       let rest =
         list.map(rest, fn(match) {
@@ -199,12 +220,16 @@ pub fn make_case(projection, context, edd) {
   }
 }
 
-pub fn make_open_case(projection, context, eff) {
-  let fields = analysis.type_variants(projection, context, eff)
+pub fn make_open_case(projection, analysis) {
+  let variants = case analysis {
+    Some(analysis) -> analysis.type_variants(projection, analysis)
+    None -> []
+  }
+
   case projection {
     #(p.Exp(top), zoom) -> {
       Ok(
-        #("", fields, fn(label) {
+        #("", variants, fn(label) {
           let zoom = [
             p.Body([e.Bind("_")]),
             p.CaseMatch(
@@ -258,14 +283,14 @@ pub fn handle(source, _context) {
   }
 }
 
-pub fn insert_builtin(projection, context: analysis.Context) {
+pub fn insert_builtin(projection, builtins) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let filter = case exp {
         e.Builtin(id) -> id
         _ -> ""
       }
-      Ok(#(filter, context.builtins, fn(id) { #(p.Exp(e.Builtin(id)), zoom) }))
+      Ok(#(filter, builtins, fn(id) { #(p.Exp(e.Builtin(id)), zoom) }))
     }
     _ -> Error(Nil)
   }
