@@ -234,28 +234,13 @@ pub fn update(state, message) {
         "M" -> insert_open_case(state)
         "," -> extend_before(state)
         "." -> spread_list(state)
+        "Enter" -> execute(state)
         _ -> show_error(state, NoKeyBinding(key))
       }
     }
-
-    // UserPressedCommandKey("Enter"), Editing(Command(_)) -> {
-    //   case run.status {
-    //     run.Done(_, _) | run.Failed(_) -> {
-    //       let status = Editing(Command(Some(ActionFailed("Execute"))))
-    //       let state = Snippet(..state, status: status)
-    //       #(state, None)
-    //     }
-    //     _ -> run_effects(state)
-    //   }
-    // }
     UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
-    UserClickedPath(path), _ -> {
-      let proj = p.focus_at(editable, path)
-      let source = #(proj, editable, analysis)
-      let state =
-        Snippet(..state, status: Editing(Command(None)), source: source)
-      #(state, None)
-    }
+    UserClickedPath(path), _ ->
+      navigate_source(p.focus_at(editable, path), state)
     MessageFromInput(message), Editing(EditText(value, rebuild)) -> {
       let result = input.update_text(value, message)
       let #(source, run, mode) = case result {
@@ -606,7 +591,7 @@ fn delete(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
   // TODO error in case where you can delete no more other wise we fill up history
-  update_source(proj, state)
+  update_source(transformation.delete(proj), state)
 }
 
 fn insert_function(state) {
@@ -780,6 +765,14 @@ fn focus_away_from_input(mode) {
         Nil
       })
     _ -> None
+  }
+}
+
+fn execute(state) {
+  let Snippet(run: run, ..) = state
+  case run.status {
+    run.Done(_, _) | run.Failed(_) -> show_error(state, ActionFailed("Execute"))
+    _ -> run_effects(state)
   }
 }
 
