@@ -51,11 +51,6 @@ pub fn with_references(refs) {
   Context(dict.new(), [], refs, infer.builtins())
 }
 
-pub fn empty_environment() {
-  io.debug("need referencesss")
-  Context(dict.new(), [], dict.new(), infer.builtins())
-}
-
 // use capture because we want efficient ability to get to continuations
 fn value_to_type(value, bindings) {
   case value {
@@ -129,8 +124,8 @@ fn env_to_tenv(scope) {
   })
 }
 
-pub fn scope_vars(projection, root_env, eff) {
-  env_at(projection, root_env, eff, projection.path_to_zoom(projection.1, []))
+pub fn scope_vars(projection: projection.Projection, analysis) {
+  env_at(analysis, projection.path_to_zoom(projection.1, []))
 }
 
 pub fn do_analyse(editable, context, eff) -> Analysis {
@@ -164,14 +159,15 @@ pub fn print(analysis) {
   |> list.map(io.println)
 }
 
-pub fn env_at(projection, root_env, eff, path) {
-  let #(bindings, pairs) = analyse(projection, root_env, eff)
+fn env_at(analysis, path) {
+  let #(_bindings, pairs) = analysis
   case list.key_find(pairs, list.reverse(path)) {
     Ok(#(_result, _type, _eff, env)) -> env
     Error(Nil) -> {
       io.debug(#("didn't find env", path))
-      let Context(bindings, tenv, ..) = root_env
-      tenv
+      // let Context(bindings, tenv, ..) = root_env
+      // tenv
+      []
     }
   }
 }
@@ -205,22 +201,22 @@ fn do_count_args(type_, acc) {
   }
 }
 
-pub fn count_args(projection, root_env, eff) {
-  case type_at(projection, root_env, eff) {
+pub fn count_args(projection, analysis) {
+  case do_type_at(analysis, projection) {
     Ok(t.Fun(_, _, return)) -> Ok(do_count_args(return, 1))
     _ -> Error(Nil)
   }
 }
 
-pub fn type_fields(projection, root_env, eff) {
-  case type_at(projection, root_env, eff) {
+pub fn type_fields(projection, analysis) {
+  case do_type_at(analysis, projection) {
     Ok(t.Record(row_type)) -> rows(row_type, [])
     _ -> []
   }
 }
 
-pub fn type_variants(projection, root_env, eff) {
-  case type_at(projection, root_env, eff) {
+pub fn type_variants(projection, analysis) {
+  case do_type_at(analysis, projection) {
     Ok(t.Union(row_type)) -> rows(row_type, [])
     _ -> []
   }

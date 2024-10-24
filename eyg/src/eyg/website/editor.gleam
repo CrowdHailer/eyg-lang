@@ -11,7 +11,6 @@ import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
-import morph/buffer
 import morph/editable
 import morph/lustre/components/key
 
@@ -54,10 +53,10 @@ pub fn update(state: State, message) {
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       case snippet.action_error(snippet) {
-        Some(buffer.NoKeyBinding("?")) -> {
-          let state = State(..state, display_help: !state.display_help)
-          #(state, effect.none())
-        }
+        // Some(buffer.NoKeyBinding("?")) -> {
+        //   let state = State(..state, display_help: !state.display_help)
+        //   #(state, effect.none())
+        // }
         _ -> {
           let #(cache, tasks) = sync.fetch_all_missing(state.cache)
           let state = State(..state, source: snippet, cache: cache)

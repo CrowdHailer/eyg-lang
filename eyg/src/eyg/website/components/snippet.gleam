@@ -11,6 +11,7 @@ import eyg/website/run
 import eygir/annotated
 import eygir/decode
 import eygir/encode
+import gleam/dict
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -22,14 +23,15 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
+import morph/action
 import morph/analysis
-import morph/buffer
-import morph/editable
+import morph/editable as e
 import morph/input
 import morph/lustre/render
 import morph/navigation
 import morph/picker
-import morph/projection
+import morph/projection as p
+import morph/transformation
 import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/element as dom_element
@@ -44,7 +46,7 @@ type EffectSpec =
 
 pub type Status {
   Idle
-  Editing(buffer.Mode)
+  Editing(Mode)
 }
 
 type Path =
@@ -56,14 +58,27 @@ type Value =
 type Scope =
   List(#(String, Value))
 
+pub type History {
+  History(undo: List(p.Projection), redo: List(p.Projection))
+}
+
+pub type Failure {
+  NoKeyBinding(key: String)
+  ActionFailed(action: String)
+}
+
+pub type Mode {
+  Command(failure: Option(Failure))
+  Pick(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
+  EditText(String, fn(String) -> p.Projection)
+  EditInteger(Int, fn(Int) -> p.Projection)
+}
+
 pub type Snippet {
   Snippet(
     status: Status,
-    source: #(
-      projection.Projection,
-      editable.Expression,
-      Option(analysis.Analysis),
-    ),
+    source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
+    history: History,
     run: run.Run,
     scope: Scope,
     effects: List(#(String, EffectSpec)),
@@ -72,11 +87,12 @@ pub type Snippet {
 }
 
 pub fn init(src, scope, effects, cache) {
-  let src = editable.open_all(src)
+  let src = e.open_all(src)
   let proj = navigation.first(src)
   Snippet(
     Idle,
     #(proj, src, None),
+    History([], []),
     run.start(src, scope, effects, cache),
     scope,
     effects,
@@ -94,11 +110,12 @@ pub fn source(state) {
   source
 }
 
+// TODO remove
 pub fn action_error(state) {
   let Snippet(status: status, ..) = state
 
   case status {
-    Editing(buffer.Command(err)) -> err
+    Editing(Command(err)) -> err
     _ -> None
   }
 }
@@ -109,13 +126,14 @@ pub fn set_references(state, cache) {
 }
 
 pub fn references(state) {
-  editable.to_annotated(source(state), []) |> annotated.list_references()
+  e.to_annotated(source(state), []) |> annotated.list_references()
 }
 
 pub type Message {
   UserFocusedOnCode
   UserClickRunEffects
-  MessageFromBuffer(buffer.Message)
+  UserPressedCommandKey(String)
+  UserClickedPath(List(Int))
   MessageFromInput(input.Message)
   MessageFromPicker(picker.Message)
   RuntimeRepliedFromExternalEffect(run.Value)
@@ -126,6 +144,37 @@ fn effect_types(effects: List(#(String, EffectSpec))) {
   listx.value_map(effects, fn(details) { #(details.0, details.1) })
 }
 
+fn navigate_source(proj, state) {
+  let Snippet(source: #(_, editable, analysis), ..) = state
+  let source = #(proj, editable, analysis)
+  let status = Editing(Command(None))
+  let state = Snippet(..state, status: status, source: source)
+  #(state, None)
+}
+
+fn update_source(proj, state) {
+  let Snippet(source: #(old, _, _), history: history, ..) = state
+  let source = #(proj, p.rebuild(proj), None)
+  let History(undo: undo, ..) = history
+  let undo = [old, ..undo]
+  let history = History(undo: undo, redo: [])
+  let status = Editing(Command(None))
+  let state = Snippet(..state, status: status, source: source, history: history)
+  #(state, None)
+}
+
+fn change_mode(state, mode) {
+  let status = Editing(mode)
+  let state = Snippet(..state, status: status)
+  #(state, None)
+}
+
+fn show_error(state, error) {
+  let status = Editing(Command(Some(error)))
+  let state = Snippet(..state, status: status)
+  #(state, None)
+}
+
 pub fn update(state, message) {
   let Snippet(
     status: status,
@@ -134,165 +183,201 @@ pub fn update(state, message) {
     scope: scope,
     effects: effects,
     cache: cache,
+    ..,
   ) = state
   case message, status {
     UserFocusedOnCode, Idle -> #(
-      Snippet(..state, status: Editing(buffer.Command(None))),
+      Snippet(..state, status: Editing(Command(None))),
       None,
     )
-    // Throw away input or pick state
     UserFocusedOnCode, Editing(_) -> #(
-      Snippet(..state, status: Editing(buffer.Command(None))),
+      Snippet(..state, status: Editing(Command(None))),
       None,
     )
-    MessageFromBuffer(buffer.KeyDown("y")), Editing(buffer.Command(_)) -> {
-      case proj {
-        #(projection.Exp(expression), _) -> {
-          let eff =
-            Some(fn(_d) {
-              clipboard.write_text(
-                encode.to_json(editable.to_expression(expression)),
-              )
-              // TODO better copy error
-              |> promise.map(io.debug)
-              Nil
-            })
-          #(state, eff)
-        }
-        _ -> {
-          let status = buffer.Command(Some(buffer.ActionFailed("copy")))
-          let state = Snippet(..state, status: Editing(status))
-          #(state, None)
-        }
+    UserPressedCommandKey(key), Editing(Command(_)) -> {
+      case key {
+        "ArrowRight" -> move_right(state)
+        "ArrowLeft" -> move_left(state)
+        "ArrowUp" -> move_up(state)
+        "ArrowDown" -> move_down(state)
+        " " -> search_vacant(state)
+        // Needed for my examples while Gleam doesn't have file embedding
+        "Q" -> copy_escaped(state)
+        "w" -> call_with(state)
+        "E" -> assign_above(state)
+        "e" -> assign_to(state)
+        "r" -> insert_record(state)
+        "t" -> insert_tag(state)
+        // "y" -> copy(state)
+        // "Y" -> paste(state)
+        // "u" ->
+        "i" -> insert_mode(state)
+        "o" -> overwrite_record(state)
+        "p" -> insert_perform(state)
+        "a" -> increase(state)
+        "s" -> insert_string(state)
+        "d" -> delete(state)
+        "f" -> insert_function(state)
+        "g" -> select_field(state)
+        "h" -> insert_handle(state)
+        "j" -> insert_builtin(state)
+        "k" -> toggle_open(state)
+        "l" -> insert_list(state)
+        "#" -> insert_reference(state)
+        // "z" ->
+        // "x" ->
+        "c" -> call_function(state)
+        "v" -> insert_variable(state)
+        "b" -> insert_binary(state)
+        "n" -> insert_integer(state)
+        "m" -> insert_case(state)
+        "M" -> insert_open_case(state)
+        "," -> extend_before(state)
+        "." -> spread_list(state)
+        _ -> show_error(state, NoKeyBinding(key))
       }
-    }
-    MessageFromBuffer(buffer.KeyDown("Y")), Editing(buffer.Command(_)) -> {
-      let eff =
-        Some(fn(d) {
-          use return <- promisex.aside(clipboard.read_text())
-          d(ClipboardReadCompleted(return))
-        })
-      #(state, eff)
     }
 
-    MessageFromBuffer(buffer.KeyDown("Enter")), Editing(buffer.Command(_)) -> {
-      case run.status {
-        run.Done(_, _) | run.Failed(_) -> {
-          let status =
-            Editing(buffer.Command(Some(buffer.ActionFailed("Execute"))))
-          let state = Snippet(..state, status: status)
-          #(state, None)
-        }
-        _ -> run_effects(state)
-      }
-    }
-    MessageFromBuffer(buffer.KeyDown(key)), Editing(buffer.Command(_)) -> {
-      let #(proj, mode) =
-        buffer.handle_command(
-          key,
-          proj,
-          analysis.within_environment(scope, sync.types(cache)),
-          effect_types(effects),
-        )
-      let editable = projection.rebuild(proj)
-      let source = #(proj, editable, None)
-      let run = case mode {
-        buffer.Command(None) -> run.start(editable, scope, effects, cache)
-        _ -> run
-      }
-      let eff = case mode {
-        buffer.Command(_) -> None
-        _ ->
-          Some(fn(_) {
-            window.request_animation_frame(fn(_) {
-              case document.query_selector("[autofocus]") {
-                Ok(el) -> {
-                  dom_element.focus(el)
-                  // This can only be done when we move to a new focus
-                  // error is something specifically to do with numbers
-                  dom_element.set_selection_range(el, 0, -1)
-                }
-                Error(Nil) -> Nil
-              }
-            })
-            Nil
-          })
-      }
-      let state =
-        Snippet(..state, status: Editing(mode), source: source, run: run)
-      #(state, eff)
-    }
-    MessageFromBuffer(buffer.KeyDown(_)), _ ->
-      panic as "should never get a buffer message"
-    MessageFromBuffer(buffer.JumpTo(path)), _ -> {
-      let proj = projection.focus_at(editable, path)
+    // UserPressedCommandKey("y"), Editing(Command(_)) -> {
+    //   case proj {
+    //     #(p.Exp(expression), _) -> {
+    //       let eff =
+    //         Some(fn(_d) {
+    //           clipboard.write_text(
+    //             encode.to_json(e.to_expression(expression)),
+    //           )
+    //           // TODO better copy error
+    //           |> promise.map(io.debug)
+    //           Nil
+    //         })
+    //       #(state, eff)
+    //     }
+    //     _ -> {
+    //       let status = Command(Some(ActionFailed("copy")))
+    //       let state = Snippet(..state, status: Editing(status))
+    //       #(state, None)
+    //     }
+    //   }
+    // }
+    // UserPressedCommandKey("Y"), Editing(Command(_)) -> {
+    //   let eff =
+    //     Some(fn(d) {
+    //       use return <- promisex.aside(clipboard.read_text())
+    //       d(ClipboardReadCompleted(return))
+    //     })
+    //   #(state, eff)
+    // }
+    // UserPressedCommandKey("Enter"), Editing(Command(_)) -> {
+    //   case run.status {
+    //     run.Done(_, _) | run.Failed(_) -> {
+    //       let status = Editing(Command(Some(ActionFailed("Execute"))))
+    //       let state = Snippet(..state, status: status)
+    //       #(state, None)
+    //     }
+    //     _ -> run_effects(state)
+    //   }
+    // }
+    // UserPressedCommandKey(key), Editing(Command(_)) -> {
+    //   let #(proj, mode) =
+    //     buffer.handle_command(
+    //       key,
+    //       proj,
+    //       analysis.within_environment(scope, sync.types(cache)),
+    //       effect_types(effects),
+    //     )
+    //   let editable = p.rebuild(proj)
+    //   let source = #(proj, editable, None)
+    //   let run = case mode {
+    //     Command(None) -> run.start(editable, scope, effects, cache)
+    //     _ -> run
+    //   }
+    //   let eff = case mode {
+    //     Command(_) -> None
+    //     _ ->
+    //       Some(fn(_) {
+    //         window.request_animation_frame(fn(_) {
+    //           case document.query_selector("[autofocus]") {
+    //             Ok(el) -> {
+    //               dom_element.focus(el)
+    //               // This can only be done when we move to a new focus
+    //               // error is something specifically to do with numbers
+    //               dom_element.set_selection_range(el, 0, -1)
+    //             }
+    //             Error(Nil) -> Nil
+    //           }
+    //         })
+    //         Nil
+    //       })
+    //   }
+    //   let state =
+    //     Snippet(..state, status: Editing(mode), source: source, run: run)
+    //   #(state, eff)
+    // }
+    UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
+    UserClickedPath(path), _ -> {
+      let proj = p.focus_at(editable, path)
       let source = #(proj, editable, analysis)
       let state =
-        Snippet(..state, status: Editing(buffer.Command(None)), source: source)
+        Snippet(..state, status: Editing(Command(None)), source: source)
       #(state, None)
     }
-    MessageFromInput(message), Editing(buffer.EditText(value, rebuild)) -> {
+    MessageFromInput(message), Editing(EditText(value, rebuild)) -> {
       let result = input.update_text(value, message)
       let #(source, run, mode) = case result {
-        input.Continue(value) -> #(source, run, buffer.EditText(value, rebuild))
+        input.Continue(value) -> #(source, run, EditText(value, rebuild))
         input.Confirmed(value) -> {
           let proj = rebuild(value)
-          let editable = projection.rebuild(proj)
+          let editable = p.rebuild(proj)
           let source = #(proj, editable, None)
           let run = run.start(editable, scope, effects, cache)
-          #(source, run, buffer.Command(None))
+          #(source, run, Command(None))
         }
-        input.Cancelled -> #(source, run, buffer.Command(None))
+        input.Cancelled -> #(source, run, Command(None))
       }
       let state =
         Snippet(..state, status: Editing(mode), source: source, run: run)
       #(state, focus_away_from_input(mode))
     }
-    MessageFromInput(message), Editing(buffer.EditInteger(value, rebuild)) -> {
+    MessageFromInput(message), Editing(EditInteger(value, rebuild)) -> {
       let result = input.update_number(value, message)
       let #(source, run, mode) = case result {
-        input.Continue(value) -> #(
-          source,
-          run,
-          buffer.EditInteger(value, rebuild),
-        )
+        input.Continue(value) -> #(source, run, EditInteger(value, rebuild))
         input.Confirmed(value) -> {
           let proj = rebuild(value)
-          let editable = projection.rebuild(proj)
+          let editable = p.rebuild(proj)
           let source = #(proj, editable, None)
           let run = run.start(editable, scope, effects, cache)
 
-          #(source, run, buffer.Command(None))
+          #(source, run, Command(None))
         }
-        input.Cancelled -> #(source, run, buffer.Command(None))
+        input.Cancelled -> #(source, run, Command(None))
       }
       let state =
         Snippet(..state, status: Editing(mode), source: source, run: run)
       #(state, focus_away_from_input(mode))
     }
     MessageFromInput(_), _ -> panic as "shouldn't reach input message"
-    MessageFromPicker(picker.Updated(picker)), Editing(buffer.Pick(_, rebuild)) -> {
-      let state =
-        Snippet(..state, status: Editing(buffer.Pick(picker, rebuild)))
+    MessageFromPicker(picker.Updated(picker)), Editing(Pick(_, rebuild)) -> {
+      let state = Snippet(..state, status: Editing(Pick(picker, rebuild)))
       #(state, None)
     }
-    MessageFromPicker(picker.Decided(value)), Editing(buffer.Pick(_, rebuild)) -> {
+    MessageFromPicker(picker.Decided(value)), Editing(Pick(_, rebuild)) -> {
       let proj = rebuild(value)
-      let editable = projection.rebuild(proj)
+      let editable = p.rebuild(proj)
       let source = #(proj, editable, None)
       let run = run.start(editable, scope, effects, cache)
-      let mode = buffer.Command(None)
+      let mode = Command(None)
       let state =
         Snippet(..state, status: Editing(mode), run: run, source: source)
       #(state, focus_away_from_input(mode))
     }
-    MessageFromPicker(picker.Dismissed), Editing(buffer.Pick(_, _rebuild)) -> {
-      let state = Snippet(..state, status: Editing(buffer.Command(None)))
+    MessageFromPicker(picker.Dismissed), Editing(Pick(_, _rebuild)) -> {
+      let state = Snippet(..state, status: Editing(Command(None)))
       #(state, None)
     }
     MessageFromPicker(_), _ -> panic as "shouldn't reach picker message"
     UserClickRunEffects, _ -> run_effects(state)
-    RuntimeRepliedFromExternalEffect(reply), Editing(buffer.Command(_)) -> {
+    RuntimeRepliedFromExternalEffect(reply), Editing(Command(_)) -> {
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
@@ -333,24 +418,21 @@ pub fn update(state, message) {
     RuntimeRepliedFromExternalEffect(_), _ ->
       panic as "should never get a runtime message"
     ClipboardReadCompleted(return), _ -> {
-      let assert Editing(buffer.Command(_)) = status
+      let assert Editing(Command(_)) = status
       case return {
         Ok(text) ->
           case decode.from_json(text) {
             Ok(expression) -> {
-              let assert #(projection.Exp(_), zoom) = proj
-              let proj = #(
-                projection.Exp(editable.from_expression(expression)),
-                zoom,
-              )
-              let editable = projection.rebuild(proj)
+              let assert #(p.Exp(_), zoom) = proj
+              let proj = #(p.Exp(e.from_expression(expression)), zoom)
+              let editable = p.rebuild(proj)
               let source = #(proj, editable, None)
               let run = run.start(editable, scope, effects, cache)
               let state = Snippet(..state, run: run, source: source)
               #(state, None)
             }
             Error(_) -> {
-              let mode = buffer.Command(Some(buffer.ActionFailed("paste")))
+              let mode = Command(Some(ActionFailed("paste")))
               let status = Editing(mode)
               let state = Snippet(..state, status: status)
               #(state, None)
@@ -363,9 +445,370 @@ pub fn update(state, message) {
   }
 }
 
+fn move_right(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+  navigate_source(navigation.next(proj), state)
+}
+
+fn move_left(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+  navigate_source(navigation.previous(proj), state)
+}
+
+fn move_up(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case navigation.move_up(proj) {
+    Ok(new) -> navigate_source(navigation.next(new), state)
+    Error(Nil) -> show_error(state, ActionFailed("move up"))
+  }
+}
+
+fn move_down(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case navigation.move_down(proj) {
+    Ok(new) -> navigate_source(navigation.next(new), state)
+    Error(Nil) -> show_error(state, ActionFailed("move down"))
+  }
+}
+
+fn search_vacant(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+  let new = do_search_vacant(proj)
+  navigate_source(new, state)
+}
+
+fn do_search_vacant(proj) {
+  let next = navigation.next(proj)
+  case next {
+    #(p.Exp(e.Vacant("")), _zoom) -> next
+    // If at the top break, can search again to loop around
+    #(p.Exp(_), []) -> next
+    _ -> do_search_vacant(next)
+  }
+}
+
+fn toggle_open(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  let #(focus, zoom) = proj
+  let focus = case focus {
+    p.Exp(e.Block(assigns, then, open)) -> p.Exp(e.Block(assigns, then, !open))
+    p.Assign(label, e.Block(assigns, inner, open), pre, post, final) ->
+      p.Assign(label, e.Block(assigns, inner, !open), pre, post, final)
+    _ -> focus
+  }
+  let proj = #(focus, zoom)
+  navigate_source(proj, state)
+}
+
+fn call_with(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+  case transformation.call_with(proj) {
+    Ok(new) -> update_source(new, state)
+    Error(Nil) -> show_error(state, ActionFailed("call as argument"))
+  }
+}
+
+fn assign_to(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.assign(proj) {
+    Ok(rebuild) -> {
+      let rebuild = fn(new) { rebuild(e.Bind(new)) }
+      change_mode(state, Pick(picker.new("", []), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("assign to"))
+  }
+}
+
+fn assign_above(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.assign_before(proj) {
+    Ok(rebuild) -> {
+      let rebuild = fn(new) { rebuild(e.Bind(new)) }
+      change_mode(state, Pick(picker.new("", []), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("assign above"))
+  }
+}
+
+fn insert_record(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+  case action.make_record(proj, analysis) {
+    Ok(action.Updated(proj)) -> update_source(proj, state)
+    Ok(action.Choose(value, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, debug.mono)
+      change_mode(state, Pick(picker.new(value, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("create record"))
+  }
+}
+
+fn overwrite_record(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.overwrite_record(proj, analysis) {
+    Ok(#(hints, rebuild)) -> {
+      let hints = listx.value_map(hints, debug.mono)
+      change_mode(state, Pick(picker.new("", hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("create record"))
+  }
+}
+
+fn insert_tag(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.make_tagged(proj, analysis) {
+    Ok(action.Updated(new)) -> update_source(new, state)
+    Ok(action.Choose(value, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, debug.mono)
+      change_mode(state, Pick(picker.new(value, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("tag expression"))
+  }
+}
+
+fn extend_before(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.extend_before(proj, analysis) {
+    Ok(action.Updated(new)) -> update_source(new, state)
+    Ok(action.Choose(filter, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, render_poly)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("extend"))
+  }
+}
+
+fn insert_mode(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case proj {
+    #(p.Exp(e.String(value)), zoom) ->
+      change_mode(
+        state,
+        EditText(value, fn(value) { #(p.Exp(e.String(value)), zoom) }),
+      )
+    _ ->
+      case p.text(proj) {
+        Ok(#(value, rebuild)) ->
+          change_mode(state, Pick(picker.new(value, []), rebuild))
+        Error(Nil) -> show_error(state, ActionFailed("edit"))
+      }
+  }
+}
+
+fn insert_perform(state) {
+  let Snippet(source: #(proj, _, _), effects: effects, ..) = state
+  // TODO fix hints
+  let hints = []
+  // effects
+  // |> list.fold(t.Empty, fn(acc, new) {
+  //   let #(label, #(lift, reply)) = new
+  //   t.EffectExtend(label, #(lift, reply), acc)
+  // })
+  case action.perform(proj) {
+    Ok(#(filter, rebuild)) -> {
+      let hints = listx.value_map(hints, render_effect)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("perform"))
+  }
+}
+
+fn increase(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case navigation.increase(proj) {
+    Ok(new) -> navigate_source(new, state)
+    Error(Nil) -> show_error(state, ActionFailed("increase selection"))
+  }
+}
+
+fn insert_string(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.string(proj) {
+    Ok(#(value, rebuild)) -> change_mode(state, EditText(value, rebuild))
+    Error(Nil) -> show_error(state, ActionFailed("create text"))
+  }
+}
+
+fn delete(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  // TODO error in case where you can delete no more other wise we fill up history
+  update_source(proj, state)
+}
+
+fn insert_function(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.function(proj) {
+    Ok(rebuild) -> change_mode(state, Pick(picker.new("", []), rebuild))
+    Error(Nil) -> show_error(state, ActionFailed("create function"))
+  }
+}
+
+fn select_field(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.select_field(proj, analysis) {
+    Ok(#(hints, rebuild)) -> {
+      let hints = listx.value_map(hints, debug.mono)
+      change_mode(state, Pick(picker.new("", hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("select field"))
+  }
+}
+
+fn insert_handle(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.handle(proj, analysis) {
+    Ok(#(filter, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, render_effect)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("perform"))
+  }
+}
+
+fn insert_builtin(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.insert_builtin(proj, todo) {
+    Ok(#(filter, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, render_poly)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("insert builtin"))
+  }
+}
+
+fn insert_list(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.list(proj) {
+    Ok(new) -> update_source(new, state)
+    Error(Nil) -> show_error(state, ActionFailed("create list"))
+  }
+}
+
+fn insert_reference(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case action.insert_reference(proj) {
+    Ok(#(filter, rebuild)) -> {
+      change_mode(state, Pick(picker.new(filter, []), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("insert reference"))
+  }
+}
+
+fn call_function(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.call_function(proj, analysis) {
+    Ok(new) -> update_source(new, state)
+    Error(Nil) -> show_error(state, ActionFailed("call function"))
+  }
+}
+
+fn insert_variable(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.insert_variable(proj, analysis) {
+    Ok(#(filter, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, render_poly)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("create binary"))
+  }
+}
+
+fn insert_binary(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.binary(proj) {
+    Ok(#(value, rebuild)) -> update_source(rebuild(value), state)
+    Error(Nil) -> show_error(state, ActionFailed("create binary"))
+  }
+}
+
+fn insert_integer(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.integer(proj) {
+    Ok(#(value, rebuild)) -> change_mode(state, EditInteger(value, rebuild))
+    Error(Nil) -> show_error(state, ActionFailed("create number"))
+  }
+}
+
+fn insert_case(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.make_case(proj, analysis) {
+    Ok(action.Updated(new)) -> update_source(new, state)
+    Ok(action.Choose(filter, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, render_poly)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("create match"))
+  }
+}
+
+fn insert_open_case(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.make_open_case(proj, analysis) {
+    Ok(#(filter, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, debug.mono)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("create match"))
+  }
+}
+
+fn spread_list(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case transformation.spread_list(proj) {
+    Ok(new) -> update_source(new, state)
+    Error(Nil) -> show_error(state, ActionFailed("create match"))
+  }
+}
+
+// pub fn references(buffer) {
+//   let #(projection, _mode) = buffer
+//   a.list_references(e.to_annotated(p.rebuild(projection), []))
+// }
+pub fn copy_escaped(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case proj {
+    #(p.Exp(expression), _) -> {
+      clipboard.write_text(
+        encode.to_json(e.to_expression(expression))
+        |> string.replace("\\", "\\\\")
+        |> string.replace("\"", "\\\""),
+      )
+      // TODO better copy error
+      |> promise.map(io.debug)
+      change_mode(state, Command(None))
+    }
+    _ -> show_error(state, ActionFailed("copy"))
+  }
+}
+
 fn focus_away_from_input(mode) {
   case mode {
-    buffer.Command(_) ->
+    Command(_) ->
       Some(fn(_) {
         window.request_animation_frame(fn(_) {
           case document.query_selector("[autofocus]") {
@@ -456,7 +899,7 @@ pub fn render_editor(state: Snippet) {
 }
 
 pub fn bare_render(state) {
-  let Snippet(status, source, run, scope, effects, cache) = state
+  let Snippet(status, source, _history, run, scope, effects, cache) = state
   let eff =
     effect_types(effects)
     |> list.fold(t.Empty, fn(acc, new) {
@@ -474,7 +917,7 @@ pub fn bare_render(state) {
   case status {
     Editing(mode) ->
       case mode {
-        buffer.Command(e) -> {
+        Command(e) -> {
           [
             render_projection(proj, True),
             case e {
@@ -486,19 +929,19 @@ pub fn bare_render(state) {
             },
           ]
         }
-        buffer.Pick(picker, _rebuild) -> [
+        Pick(picker, _rebuild) -> [
           render_projection(proj, False),
           picker.render(picker)
             |> element.map(MessageFromPicker),
         ]
 
-        buffer.EditText(value, _rebuild) -> [
+        EditText(value, _rebuild) -> [
           render_projection(proj, False),
           input.render_text(value)
             |> element.map(MessageFromInput),
         ]
 
-        buffer.EditInteger(value, _rebuild) -> [
+        EditInteger(value, _rebuild) -> [
           render_projection(proj, False),
           input.render_number(value)
             |> element.map(MessageFromInput),
@@ -527,7 +970,7 @@ fn render_current(errors, run: run.Run) {
         [a.class("border-2 border-orange-3 px-2")],
         list.map(errors, fn(error) {
           let #(path, reason) = error
-          h.div([event.on_click(MessageFromBuffer(buffer.JumpTo(path)))], [
+          h.div([event.on_click(UserClickedPath(path))], [
             element.text(debug.reason(reason)),
           ])
         }),
@@ -554,12 +997,12 @@ fn render_projection(proj, autofocus) {
               "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
               k if shift -> {
                 pevent.prevent_default(event)
-                Ok(MessageFromBuffer(buffer.KeyDown(string.uppercase(k))))
+                Ok(UserPressedCommandKey(string.uppercase(k)))
               }
               _ if ctrl || alt -> Error([])
               k -> {
                 pevent.prevent_default(event)
-                Ok(MessageFromBuffer(buffer.KeyDown(k)))
+                Ok(UserPressedCommandKey(k))
               }
             }
           }),
@@ -608,12 +1051,12 @@ fn render_run(run) {
 
 pub fn fail_message(reason) {
   case reason {
-    buffer.NoKeyBinding(key) ->
-      string.concat(["No action bound for key '", key, "'"])
-    buffer.ActionFailed(action) ->
+    NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
+    ActionFailed(action) ->
       string.concat(["Action ", action, " not possible at this position"])
   }
 }
+
 // fn handle_dragover(event) {
 //   event.prevent_default(event)
 //   event.stop_propagation(event)
@@ -636,7 +1079,7 @@ pub fn fail_message(reason) {
 //           let assert Ok(source) = decode.from_json(content)
 //           //  going via annotated is inefficient
 //           let source = annotated.add_annotation(source, Nil)
-//           let source = editable.from_annotated(source)
+//           let source = e.from_annotated(source)
 //           Ok(source)
 //         })
 
@@ -648,3 +1091,12 @@ pub fn fail_message(reason) {
 //     }
 //   }
 // }
+fn render_effect(eff) {
+  let #(lift, reply) = eff
+  string.concat([debug.mono(lift), " : ", debug.mono(reply)])
+}
+
+pub fn render_poly(poly) {
+  let #(type_, _) = binding.instantiate(poly, 0, dict.new())
+  debug.mono(type_)
+}
