@@ -12,9 +12,7 @@ import eygir/annotated
 import eygir/decode
 import eygir/encode
 import gleam/dict
-import gleam/io
 import gleam/javascript/promise
-import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
@@ -100,6 +98,20 @@ pub fn init(src, scope, effects, cache) {
   )
 }
 
+pub fn active(src, scope, effects, cache) {
+  let src = e.open_all(src)
+  let proj = navigation.first(src)
+  Snippet(
+    Editing(Command(None)),
+    #(proj, src, None),
+    History([], []),
+    run.start(src, scope, effects, cache),
+    scope,
+    effects,
+    cache,
+  )
+}
+
 pub fn run(state) {
   let Snippet(run: run, ..) = state
   run
@@ -108,16 +120,6 @@ pub fn run(state) {
 pub fn source(state) {
   let Snippet(source: #(_, source, _), ..) = state
   source
-}
-
-// TODO remove
-pub fn action_error(state) {
-  let Snippet(status: status, ..) = state
-
-  case status {
-    Editing(Command(err)) -> err
-    _ -> None
-  }
 }
 
 pub fn set_references(state, cache) {
@@ -138,6 +140,58 @@ pub type Message {
   MessageFromPicker(picker.Message)
   RuntimeRepliedFromExternalEffect(run.Value)
   ClipboardReadCompleted(Result(String, String))
+  ClipboardWriteCompleted(Result(Nil, String))
+}
+
+pub type Effect {
+  Nothing
+  FocusOnCode
+  FocusOnInput
+  ToggleHelp
+  MoveAbove
+  MoveBelow
+  WriteToClipboard(String)
+  ReadFromClipboard
+  AwaitRunningEffect(promise.Promise(Value))
+  Conclude(Option(Value), Scope)
+}
+
+pub fn focus_on_buffer() {
+  window.request_animation_frame(fn(_) {
+    case document.query_selector("[autofocus]") {
+      Ok(el) -> dom_element.focus(el)
+      Error(Nil) -> Nil
+    }
+  })
+  Nil
+}
+
+pub fn focus_on_input() {
+  window.request_animation_frame(fn(_) {
+    case document.query_selector("[autofocus]") {
+      Ok(el) -> {
+        dom_element.focus(el)
+        // This can only be done when we move to a new focus
+        // error is something specifically to do with numbers
+        dom_element.set_selection_range(el, 0, -1)
+      }
+      Error(Nil) -> Nil
+    }
+  })
+  Nil
+}
+
+pub fn write_to_clipboard(text) {
+  promise.map(clipboard.write_text(text), ClipboardWriteCompleted)
+}
+
+pub fn read_from_clipboard() {
+  promise.map(clipboard.read_text(), ClipboardReadCompleted)
+  // TODO make busy
+}
+
+pub fn await_running_effect(promise) {
+  promise.map(promise, RuntimeRepliedFromExternalEffect)
 }
 
 fn effect_types(effects: List(#(String, EffectSpec))) {
@@ -149,7 +203,7 @@ fn navigate_source(proj, state) {
   let source = #(proj, editable, analysis)
   let status = Editing(Command(None))
   let state = Snippet(..state, status: status, source: source)
-  #(state, None)
+  #(state, Nothing)
 }
 
 fn update_source(proj, state) {
@@ -165,59 +219,33 @@ fn update_source(proj, state) {
 }
 
 fn update_source_from_buffer(proj, state) {
-  #(update_source(proj, state), None)
+  #(update_source(proj, state), Nothing)
 }
 
 fn update_source_from_pallet(proj, state) {
-  #(update_source(proj, state), Some(focus_on_buffer))
-}
-
-fn focus_on_buffer(_) {
-  window.request_animation_frame(fn(_) {
-    case document.query_selector("[autofocus]") {
-      Ok(el) -> dom_element.focus(el)
-      Error(Nil) -> Nil
-    }
-  })
-  Nil
+  #(update_source(proj, state), FocusOnCode)
 }
 
 fn return_to_buffer(state) {
   let state = Snippet(..state, status: Editing(Command(None)))
-  #(state, Some(focus_on_buffer))
+  #(state, FocusOnCode)
 }
 
 fn change_mode(state, mode) {
   let status = Editing(mode)
   let state = Snippet(..state, status: status)
-  #(
-    state,
-    Some(fn(_) {
-      window.request_animation_frame(fn(_) {
-        case document.query_selector("[autofocus]") {
-          Ok(el) -> {
-            dom_element.focus(el)
-            // This can only be done when we move to a new focus
-            // error is something specifically to do with numbers
-            dom_element.set_selection_range(el, 0, -1)
-          }
-          Error(Nil) -> Nil
-        }
-      })
-      Nil
-    }),
-  )
+  #(state, FocusOnInput)
 }
 
 fn keep_editing(state, mode) {
   let state = Snippet(..state, status: Editing(mode))
-  #(state, None)
+  #(state, Nothing)
 }
 
 fn show_error(state, error) {
   let status = Editing(Command(Some(error)))
   let state = Snippet(..state, status: status)
-  #(state, None)
+  #(state, Nothing)
 }
 
 pub fn update(state, message) {
@@ -231,11 +259,11 @@ pub fn update(state, message) {
   case message, status {
     UserFocusedOnCode, Idle -> #(
       Snippet(..state, status: Editing(Command(None))),
-      None,
+      Nothing,
     )
     UserFocusedOnCode, Editing(_) -> #(
       Snippet(..state, status: Editing(Command(None))),
-      None,
+      Nothing,
     )
     UserPressedCommandKey(key), Editing(Command(_)) -> {
       case key {
@@ -278,6 +306,7 @@ pub fn update(state, message) {
         "M" -> insert_open_case(state)
         "," -> extend_before(state)
         "." -> spread_list(state)
+        "?" -> #(state, ToggleHelp)
         "Enter" -> execute(state)
         _ -> show_error(state, NoKeyBinding(key))
       }
@@ -320,29 +349,19 @@ pub fn update(state, message) {
       let run = run.Run(status, effect_log)
       let state = Snippet(..state, run: run)
       case status {
-        run.Done(_, _) | run.Failed(_) -> #(state, None)
+        run.Done(_, _) | run.Failed(_) -> #(state, Nothing)
 
         run.Handling(_label, lift, env, k, blocking) ->
           case blocking(lift) {
             Ok(promise) -> {
               let run = run.Run(status, effect_log)
               let state = Snippet(..state, run: run)
-
-              #(
-                state,
-                Some(fn(d) {
-                  promise.map(promise, fn(value) {
-                    d(RuntimeRepliedFromExternalEffect(value))
-                  })
-                  Nil
-                }),
-              )
+              #(state, AwaitRunningEffect(promise))
             }
             Error(reason) -> {
               let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
               let state = Snippet(..state, run: run)
-
-              #(state, None)
+              #(state, Nothing)
             }
           }
       }
@@ -361,10 +380,14 @@ pub fn update(state, message) {
             }
             Error(_) -> show_error(state, ActionFailed("paste"))
           }
-
-        Error(reason) -> panic as reason
+        Error(_) -> show_error(state, ActionFailed("paste"))
       }
     }
+    ClipboardWriteCompleted(return), _ ->
+      case return {
+        Ok(Nil) -> #(state, Nothing)
+        Error(_) -> show_error(state, ActionFailed("paste"))
+      }
   }
 }
 
@@ -401,27 +424,15 @@ fn copy(state) {
 
   case proj {
     #(p.Exp(expression), _) -> {
-      let eff =
-        Some(fn(_d) {
-          clipboard.write_text(encode.to_json(e.to_expression(expression)))
-          // TODO better copy error
-          |> promise.map(io.debug)
-          Nil
-        })
-      #(state, eff)
+      let text = encode.to_json(e.to_expression(expression))
+      #(state, WriteToClipboard(text))
     }
     _ -> show_error(state, ActionFailed("copy"))
   }
 }
 
 fn paste(state) {
-  let eff =
-    Some(fn(d) {
-      use return <- promisex.aside(clipboard.read_text())
-      d(ClipboardReadCompleted(return))
-    })
-  // TODO make busy
-  #(state, eff)
+  #(state, ReadFromClipboard)
 }
 
 fn search_vacant(state) {
@@ -747,7 +758,7 @@ fn undo(state) {
       let status = Editing(Command(None))
       let state =
         Snippet(..state, status: status, source: source, history: history)
-      #(state, None)
+      #(state, Nothing)
     }
   }
 }
@@ -762,7 +773,7 @@ fn redo(state) {
       let status = Editing(Command(None))
       let state =
         Snippet(..state, status: status, source: source, history: history)
-      #(state, None)
+      #(state, Nothing)
     }
   }
 }
@@ -772,14 +783,11 @@ pub fn copy_escaped(state) {
 
   case proj {
     #(p.Exp(expression), _) -> {
-      clipboard.write_text(
+      let text =
         encode.to_json(e.to_expression(expression))
         |> string.replace("\\", "\\\\")
-        |> string.replace("\"", "\\\""),
-      )
-      // TODO better copy error
-      |> promise.map(io.debug)
-      #(state, None)
+        |> string.replace("\"", "\\\"")
+      #(state, WriteToClipboard(text))
     }
     _ -> show_error(state, ActionFailed("copy"))
   }
@@ -788,7 +796,8 @@ pub fn copy_escaped(state) {
 fn execute(state) {
   let Snippet(run: run, ..) = state
   case run.status {
-    run.Done(_, _) | run.Failed(_) -> show_error(state, ActionFailed("Execute"))
+    run.Done(value, env) -> #(state, Conclude(value, env))
+    run.Failed(_) -> show_error(state, ActionFailed("Execute"))
     _ -> run_effects(state)
   }
 }
@@ -802,25 +811,16 @@ fn run_effects(state) {
         Ok(promise) -> {
           let run = run.Run(status, effect_log)
           let state = Snippet(..state, run: run)
-
-          #(
-            state,
-            Some(fn(d) {
-              promise.map(promise, fn(value) {
-                d(RuntimeRepliedFromExternalEffect(value))
-              })
-              Nil
-            }),
-          )
+          #(state, AwaitRunningEffect(promise))
         }
         Error(reason) -> {
           let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
           let state = Snippet(..state, run: run)
-          #(state, None)
+          #(state, Nothing)
         }
       }
     }
-    _ -> #(state, None)
+    _ -> #(state, Nothing)
   }
 }
 

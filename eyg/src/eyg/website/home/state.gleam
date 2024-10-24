@@ -3,8 +3,9 @@ import eyg/sync/sync
 import eyg/website/components/snippet
 import eygir/decode
 import gleam/dict.{type Dict}
+import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{None}
 import harness/impl/browser as harness
 import lustre/effect
 import morph/editable as e
@@ -114,6 +115,13 @@ fn init_example(json, cache) {
   snippet.init(source, [], harness.effects(), cache)
 }
 
+fn all_references(snippets) {
+  list.flat_map(snippets, fn(snippet) {
+    let #(_, snippet) = snippet
+    snippet.references(snippet)
+  })
+}
+
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
@@ -123,11 +131,7 @@ pub fn init(_) {
     #(type_check_key, init_example(type_check_example, cache)),
     #(predictable_effects_key, init_example(predictable_effects_example, cache)),
   ]
-  let references =
-    list.flat_map(snippets, fn(snippet) {
-      let #(_, snippet) = snippet
-      snippet.references(snippet)
-    })
+  let references = all_references(snippets)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
   let state = State(cache, Nothing, dict.from_list(snippets))
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
@@ -148,6 +152,16 @@ pub type Message {
   SyncMessage(sync.Message)
 }
 
+fn dispatch_to_snippet(id, promise) {
+  effect.from(fn(d) {
+    promisex.aside(promise, fn(message) { d(SnippetMessage(id, message)) })
+  })
+}
+
+fn dispatch_nothing(_promise) {
+  effect.none()
+}
+
 pub fn update(state: State, message) {
   case message {
     SnippetMessage(id, message) -> {
@@ -162,16 +176,28 @@ pub fn update(state: State, message) {
       }
       let snippet = get_snippet(state, id)
       let #(snippet, eff) = snippet.update(snippet, message)
+      let snippet_effect = case eff {
+        snippet.Nothing -> effect.none()
+        snippet.AwaitRunningEffect(p) ->
+          dispatch_to_snippet(id, snippet.await_running_effect(p))
+        snippet.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
+        snippet.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
+        snippet.ToggleHelp -> effect.none()
+        snippet.MoveAbove -> effect.none()
+        snippet.MoveBelow -> effect.none()
+        snippet.ReadFromClipboard ->
+          dispatch_to_snippet(id, snippet.read_from_clipboard())
+        snippet.WriteToClipboard(text) ->
+          dispatch_to_snippet(id, snippet.write_to_clipboard(text))
+        snippet.Conclude(_, _) -> effect.none()
+      }
       let state = set_snippet(state, id, snippet)
-      let state = State(..state, active: Editing(id))
-      #(state, case eff {
-        None -> effect.none()
-        Some(f) ->
-          effect.from(fn(d) {
-            let d = fn(m) { d(SnippetMessage(id, m)) }
-            f(d)
-          })
-      })
+      let references = all_references(state.snippets |> dict.to_list)
+      let #(cache, tasks) = sync.fetch_missing(state.cache, references)
+
+      let state = State(..state, active: Editing(id), cache: cache)
+      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      #(state, effect.batch([snippet_effect, sync_effect]))
     }
     SyncMessage(message) -> {
       let cache = sync.task_finish(state.cache, message)

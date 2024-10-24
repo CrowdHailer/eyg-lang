@@ -3,6 +3,7 @@ import eyg/sync/sync
 import eyg/website/components/snippet
 import eygir/decode
 import gleam/dict.{type Dict}
+import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import harness/impl/browser as harness
@@ -284,6 +285,16 @@ pub type Message {
   SyncMessage(sync.Message)
 }
 
+fn dispatch_to_snippet(id, promise) {
+  effect.from(fn(d) {
+    promisex.aside(promise, fn(message) { d(SnippetMessage(id, message)) })
+  })
+}
+
+fn dispatch_nothing(_promise) {
+  effect.none()
+}
+
 pub fn update(state: State, message) {
   case message {
     SnippetMessage(identifier, message) -> {
@@ -298,21 +309,26 @@ pub fn update(state: State, message) {
       }
       let snippet = get_example(state, identifier)
       let #(snippet, eff) = snippet.update(snippet, message)
+      let snippet_effect = case eff {
+        snippet.Nothing -> effect.none()
+        snippet.AwaitRunningEffect(p) ->
+          dispatch_to_snippet(identifier, snippet.await_running_effect(p))
+        snippet.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
+        snippet.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
+        snippet.ToggleHelp -> effect.none()
+        snippet.MoveAbove -> effect.none()
+        snippet.MoveBelow -> effect.none()
+        snippet.ReadFromClipboard ->
+          dispatch_to_snippet(identifier, snippet.read_from_clipboard())
+        snippet.WriteToClipboard(text) ->
+          dispatch_to_snippet(identifier, snippet.write_to_clipboard(text))
+        snippet.Conclude(_, _) -> effect.none()
+      }
       let state = set_example(state, identifier, snippet)
       let state = State(..state, active: Editing(identifier))
       let #(state, tasks) = fetch_missing(state)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      #(state, case eff {
-        None -> sync_effect
-        Some(f) ->
-          effect.batch([
-            sync_effect,
-            effect.from(fn(d) {
-              let d = fn(m) { d(SnippetMessage(identifier, m)) }
-              f(d)
-            }),
-          ])
-      })
+      #(state, effect.batch([snippet_effect, sync_effect]))
     }
     SyncMessage(message) -> {
       let State(cache: cache, ..) = state
