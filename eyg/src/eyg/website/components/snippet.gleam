@@ -590,8 +590,10 @@ fn insert_string(state) {
 fn delete(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
-  // TODO error in case where you can delete no more other wise we fill up history
-  update_source(transformation.delete(proj), state)
+  case transformation.delete(proj) {
+    Ok(new) -> update_source(new, state)
+    Error(Nil) -> show_error(state, ActionFailed("delete"))
+  }
 }
 
 fn insert_function(state) {

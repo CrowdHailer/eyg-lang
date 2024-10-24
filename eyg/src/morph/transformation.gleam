@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
@@ -17,95 +16,63 @@ const vacant = e.Vacant("")
 pub fn delete(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    p.Exp(e.Vacant(_)), [p.ListItem(pre, [next, ..post], tail), ..zoom] -> {
-      #(p.Exp(next), [p.ListItem(pre, post, tail), ..zoom])
-    }
-    p.Exp(e.Vacant(_)), [p.ListItem([next, ..pre], [], tail), ..zoom] -> {
-      #(p.Exp(next), [p.ListItem(pre, [], tail), ..zoom])
-    }
-    p.Exp(e.Vacant(_)), [p.ListItem([], [], Some(tail)), ..zoom] -> {
-      #(p.Exp(tail), zoom)
-    }
-    p.Exp(e.Vacant(_)), [p.ListItem([], [], None), ..zoom] -> {
-      #(p.Exp(e.List([], None)), zoom)
-    }
-    p.Exp(e.Vacant(_)), [p.ListTail(elements), ..zoom] -> {
+    p.Exp(e.Vacant(_)), [p.ListItem(pre, [next, ..post], tail), ..zoom] ->
+      Ok(#(p.Exp(next), [p.ListItem(pre, post, tail), ..zoom]))
+    p.Exp(e.Vacant(_)), [p.ListItem([next, ..pre], [], tail), ..zoom] ->
+      Ok(#(p.Exp(next), [p.ListItem(pre, [], tail), ..zoom]))
+    p.Exp(e.Vacant(_)), [p.ListItem([], [], Some(tail)), ..zoom] ->
+      Ok(#(p.Exp(tail), zoom))
+    p.Exp(e.Vacant(_)), [p.ListItem([], [], None), ..zoom] ->
+      Ok(#(p.Exp(e.List([], None)), zoom))
+    p.Exp(e.Vacant(_)), [p.ListTail(elements), ..zoom] ->
       case list.reverse(elements) {
-        [exp, ..pre] -> #(p.Exp(exp), [p.ListItem(pre, [], None), ..zoom])
-        [] -> #(p.Exp(e.List([], None)), zoom)
+        [exp, ..pre] -> Ok(#(p.Exp(exp), [p.ListItem(pre, [], None), ..zoom]))
+        [] -> Ok(#(p.Exp(e.List([], None)), zoom))
       }
-    }
-    p.Exp(e.Vacant("")), [p.CallArg(f, pre, [next, ..post]), ..zoom] -> {
-      #(p.Exp(next), [p.CallArg(f, pre, post), ..zoom])
-    }
-    p.Exp(e.Vacant("")), [p.CallArg(f, [next, ..pre], []), ..zoom] -> {
-      #(p.Exp(next), [p.CallArg(f, pre, []), ..zoom])
-    }
-    p.Exp(e.Vacant("")), [p.CallArg(f, [], []), ..zoom] -> {
-      #(p.Exp(e.Call(f, [e.Vacant("")])), zoom)
-    }
+    p.Exp(e.Vacant("")), [p.CallArg(f, pre, [next, ..post]), ..zoom] ->
+      Ok(#(p.Exp(next), [p.CallArg(f, pre, post), ..zoom]))
 
-    p.Exp(x), _ if x != vacant -> #(p.Exp(e.Vacant("")), zoom)
+    p.Exp(e.Vacant("")), [p.CallArg(f, [next, ..pre], []), ..zoom] ->
+      Ok(#(p.Exp(next), [p.CallArg(f, pre, []), ..zoom]))
+
+    p.Exp(e.Vacant("")), [p.CallArg(f, [], []), ..zoom] ->
+      Ok(#(p.Exp(e.Call(f, [e.Vacant("")])), zoom))
+    p.Exp(x), _ if x != vacant -> Ok(#(p.Exp(e.Vacant("")), zoom))
     p.Assign(p.AssignStatement(_), _, pre, [#(pattern, value), ..post], then),
       zoom
-    -> #(p.Assign(p.AssignStatement(pattern), value, pre, post, then), zoom)
+    -> Ok(#(p.Assign(p.AssignStatement(pattern), value, pre, post, then), zoom))
     p.Assign(p.AssignStatement(_), _, [#(pattern, value), ..pre], [], then),
       zoom
-    -> #(p.Assign(p.AssignStatement(pattern), value, pre, [], then), zoom)
-    p.Assign(p.AssignStatement(_), _, [], [], then), zoom -> #(
-      p.Exp(then),
-      zoom,
-    )
-    p.FnParam(p.AssignPattern(_), pre, [pattern, ..post], body), _ -> #(
-      p.FnParam(p.AssignPattern(pattern), pre, post, body),
-      zoom,
-    )
-    p.FnParam(p.AssignPattern(_), [pattern, ..pre], [], body), _ -> #(
-      p.FnParam(p.AssignPattern(pattern), pre, [], body),
-      zoom,
-    )
+    -> Ok(#(p.Assign(p.AssignStatement(pattern), value, pre, [], then), zoom))
+    p.Assign(p.AssignStatement(_), _, [], [], then), zoom ->
+      Ok(#(p.Exp(then), zoom))
+    p.FnParam(p.AssignPattern(_), pre, [pattern, ..post], body), _ ->
+      Ok(#(p.FnParam(p.AssignPattern(pattern), pre, post, body), zoom))
+    p.FnParam(p.AssignPattern(_), [pattern, ..pre], [], body), _ ->
+      Ok(#(p.FnParam(p.AssignPattern(pattern), pre, [], body), zoom))
     p.FnParam(p.AssignField(_, _, pre_p, [#(l, x), ..post_p]), pre, post, body),
       _
-    -> #(p.FnParam(p.AssignField(l, x, pre_p, post_p), pre, post, body), zoom)
+    ->
+      Ok(#(p.FnParam(p.AssignField(l, x, pre_p, post_p), pre, post, body), zoom))
     p.FnParam(p.AssignBind(_, _, pre_p, [#(l, x), ..post_p]), pre, post, body),
       _
-    -> #(p.FnParam(p.AssignBind(l, x, pre_p, post_p), pre, post, body), zoom)
-    p.FnParam(p.AssignField(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ -> #(
-      p.FnParam(p.AssignField(l, x, pre_p, []), pre, post, body),
-      zoom,
-    )
-    p.FnParam(p.AssignBind(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ -> #(
-      p.FnParam(p.AssignBind(l, x, pre_p, []), pre, post, body),
-      zoom,
-    )
-    p.Label(_, _, pre, [#(l, v), ..post], for), _ -> #(
-      p.Label(l, v, pre, post, for),
-      zoom,
-    )
-    p.Label(_, _, [#(l, v), ..pre], [], for), _ -> #(
-      p.Label(l, v, pre, [], for),
-      zoom,
-    )
-    p.Label(_, _, [], [], p.Record), _ -> #(p.Exp(e.Record([], None)), zoom)
-    p.Match(top, _, _, pre, [#(label, branch), ..post], otherwise), zoom -> #(
-      p.Match(top, label, branch, pre, post, otherwise),
-      zoom,
-    )
-    p.Match(top, _, _, [#(label, branch), ..pre], [], otherwise), zoom -> #(
-      p.Match(top, label, branch, pre, [], otherwise),
-      zoom,
-    )
-
-    // if no left/right then step
-    _, _ -> {
-      io.debug(zip)
-      case p.step(zip) {
-        Ok(zip) -> zip
-        Error(Nil) -> zip
-      }
-    }
+    ->
+      Ok(#(p.FnParam(p.AssignBind(l, x, pre_p, post_p), pre, post, body), zoom))
+    p.FnParam(p.AssignField(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ ->
+      Ok(#(p.FnParam(p.AssignField(l, x, pre_p, []), pre, post, body), zoom))
+    p.FnParam(p.AssignBind(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ ->
+      Ok(#(p.FnParam(p.AssignBind(l, x, pre_p, []), pre, post, body), zoom))
+    p.Label(_, _, pre, [#(l, v), ..post], for), _ ->
+      Ok(#(p.Label(l, v, pre, post, for), zoom))
+    p.Label(_, _, [#(l, v), ..pre], [], for), _ ->
+      Ok(#(p.Label(l, v, pre, [], for), zoom))
+    p.Label(_, _, [], [], p.Record), _ -> Ok(#(p.Exp(e.Record([], None)), zoom))
+    p.Match(top, _, _, pre, [#(label, branch), ..post], otherwise), zoom ->
+      Ok(#(p.Match(top, label, branch, pre, post, otherwise), zoom))
+    p.Match(top, _, _, [#(label, branch), ..pre], [], otherwise), zoom ->
+      Ok(#(p.Match(top, label, branch, pre, [], otherwise), zoom))
+    _, _ -> p.step(zip)
   }
-  // p.Assign(p.AssignField(_l,_v, pre,[next,..post]),value,)
 }
 
 pub fn assign(zip) {
