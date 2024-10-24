@@ -406,7 +406,7 @@ fn move_up(state) {
 
   case navigation.move_up(proj) {
     Ok(new) -> navigate_source(navigation.next(new), state)
-    Error(Nil) -> show_error(state, ActionFailed("move up"))
+    Error(Nil) -> #(state, MoveAbove)
   }
 }
 
@@ -415,7 +415,7 @@ fn move_down(state) {
 
   case navigation.move_down(proj) {
     Ok(new) -> navigate_source(navigation.next(new), state)
-    Error(Nil) -> show_error(state, ActionFailed("move down"))
+    Error(Nil) -> #(state, MoveBelow)
   }
 }
 
