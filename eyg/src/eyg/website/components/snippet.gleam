@@ -154,13 +154,37 @@ fn navigate_source(proj, state) {
 
 fn update_source(proj, state) {
   let Snippet(source: #(old, _, _), history: history, ..) = state
-  let source = #(proj, p.rebuild(proj), None)
+  let editable = p.rebuild(proj)
+  let source = #(proj, editable, None)
   let History(undo: undo, ..) = history
   let undo = [old, ..undo]
   let history = History(undo: undo, redo: [])
   let status = Editing(Command(None))
-  let state = Snippet(..state, status: status, source: source, history: history)
-  #(state, None)
+  let run = run.start(editable, state.scope, state.effects, state.cache)
+  Snippet(..state, status: status, source: source, history: history, run: run)
+}
+
+fn update_source_from_buffer(proj, state) {
+  #(update_source(proj, state), None)
+}
+
+fn update_source_from_pallet(proj, state) {
+  #(update_source(proj, state), Some(focus_on_buffer))
+}
+
+fn focus_on_buffer(_) {
+  window.request_animation_frame(fn(_) {
+    case document.query_selector("[autofocus]") {
+      Ok(el) -> dom_element.focus(el)
+      Error(Nil) -> Nil
+    }
+  })
+  Nil
+}
+
+fn return_to_buffer(state) {
+  let state = Snippet(..state, status: Editing(Command(None)))
+  #(state, Some(focus_on_buffer))
 }
 
 fn change_mode(state, mode) {
@@ -185,6 +209,11 @@ fn change_mode(state, mode) {
   )
 }
 
+fn keep_editing(state, mode) {
+  let state = Snippet(..state, status: Editing(mode))
+  #(state, None)
+}
+
 fn show_error(state, error) {
   let status = Editing(Command(Some(error)))
   let state = Snippet(..state, status: status)
@@ -194,7 +223,7 @@ fn show_error(state, error) {
 pub fn update(state, message) {
   let Snippet(
     status: status,
-    source: #(proj, editable, _) as source,
+    source: #(proj, editable, _),
     run: run,
     scope: scope,
     effects: effects,
@@ -258,60 +287,28 @@ pub fn update(state, message) {
     UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
     UserClickedPath(path), _ ->
       navigate_source(p.focus_at(editable, path), state)
-    MessageFromInput(message), Editing(EditText(value, rebuild)) -> {
-      let result = input.update_text(value, message)
-      let #(source, run, mode) = case result {
-        input.Continue(value) -> #(source, run, EditText(value, rebuild))
-        input.Confirmed(value) -> {
-          let proj = rebuild(value)
-          let editable = p.rebuild(proj)
-          let source = #(proj, editable, None)
-          let run = run.start(editable, scope, effects, cache)
-          #(source, run, Command(None))
-        }
-        input.Cancelled -> #(source, run, Command(None))
+    MessageFromInput(message), Editing(EditText(value, rebuild)) ->
+      case input.update_text(value, message) {
+        input.Continue(value) -> keep_editing(state, EditText(value, rebuild))
+        input.Confirmed(value) ->
+          update_source_from_pallet(rebuild(value), state)
+        input.Cancelled -> return_to_buffer(state)
       }
-      let state =
-        Snippet(..state, status: Editing(mode), source: source, run: run)
-      #(state, focus_away_from_input(mode))
-    }
-    MessageFromInput(message), Editing(EditInteger(value, rebuild)) -> {
-      let result = input.update_number(value, message)
-      let #(source, run, mode) = case result {
-        input.Continue(value) -> #(source, run, EditInteger(value, rebuild))
-        input.Confirmed(value) -> {
-          let proj = rebuild(value)
-          let editable = p.rebuild(proj)
-          let source = #(proj, editable, None)
-          let run = run.start(editable, scope, effects, cache)
-
-          #(source, run, Command(None))
-        }
-        input.Cancelled -> #(source, run, Command(None))
+    MessageFromInput(message), Editing(EditInteger(value, rebuild)) ->
+      case input.update_number(value, message) {
+        input.Continue(value) ->
+          keep_editing(state, EditInteger(value, rebuild))
+        input.Confirmed(value) ->
+          update_source_from_pallet(rebuild(value), state)
+        input.Cancelled -> return_to_buffer(state)
       }
-      let state =
-        Snippet(..state, status: Editing(mode), source: source, run: run)
-      #(state, focus_away_from_input(mode))
-    }
     MessageFromInput(_), _ -> panic as "shouldn't reach input message"
-    MessageFromPicker(picker.Updated(picker)), Editing(Pick(_, rebuild)) -> {
-      let state = Snippet(..state, status: Editing(Pick(picker, rebuild)))
-      #(state, None)
-    }
-    MessageFromPicker(picker.Decided(value)), Editing(Pick(_, rebuild)) -> {
-      let proj = rebuild(value)
-      let editable = p.rebuild(proj)
-      let source = #(proj, editable, None)
-      let run = run.start(editable, scope, effects, cache)
-      let mode = Command(None)
-      let state =
-        Snippet(..state, status: Editing(mode), run: run, source: source)
-      #(state, focus_away_from_input(mode))
-    }
-    MessageFromPicker(picker.Dismissed), Editing(Pick(_, _rebuild)) -> {
-      let state = Snippet(..state, status: Editing(Command(None)))
-      #(state, None)
-    }
+    MessageFromPicker(picker.Updated(picker)), Editing(Pick(_, rebuild)) ->
+      keep_editing(state, Pick(picker, rebuild))
+    MessageFromPicker(picker.Decided(value)), Editing(Pick(_, rebuild)) ->
+      update_source_from_pallet(rebuild(value), state)
+    MessageFromPicker(picker.Dismissed), Editing(Pick(_, _rebuild)) ->
+      return_to_buffer(state)
     MessageFromPicker(_), _ -> panic as "shouldn't reach picker message"
     UserClickRunEffects, _ -> run_effects(state)
     RuntimeRepliedFromExternalEffect(reply), Editing(Command(_)) -> {
@@ -471,7 +468,7 @@ fn toggle_open(state) {
 fn call_with(state) {
   let Snippet(source: #(proj, _, _), ..) = state
   case transformation.call_with(proj) {
-    Ok(new) -> update_source(new, state)
+    Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> show_error(state, ActionFailed("call as argument"))
   }
 }
@@ -503,7 +500,7 @@ fn assign_above(state) {
 fn insert_record(state) {
   let Snippet(source: #(proj, _, analysis), ..) = state
   case action.make_record(proj, analysis) {
-    Ok(action.Updated(proj)) -> update_source(proj, state)
+    Ok(action.Updated(proj)) -> update_source_from_buffer(proj, state)
     Ok(action.Choose(value, hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(value, hints), rebuild))
@@ -528,7 +525,7 @@ fn insert_tag(state) {
   let Snippet(source: #(proj, _, analysis), ..) = state
 
   case action.make_tagged(proj, analysis) {
-    Ok(action.Updated(new)) -> update_source(new, state)
+    Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
     Ok(action.Choose(value, hints, rebuild)) -> {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(value, hints), rebuild))
@@ -541,7 +538,7 @@ fn extend_before(state) {
   let Snippet(source: #(proj, _, analysis), ..) = state
 
   case action.extend_before(proj, analysis) {
-    Ok(action.Updated(new)) -> update_source(new, state)
+    Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
     Ok(action.Choose(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
@@ -608,7 +605,7 @@ fn delete(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
   case transformation.delete(proj) {
-    Ok(new) -> update_source(new, state)
+    Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> show_error(state, ActionFailed("delete"))
   }
 }
@@ -662,7 +659,7 @@ fn insert_list(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
   case transformation.list(proj) {
-    Ok(new) -> update_source(new, state)
+    Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> show_error(state, ActionFailed("create list"))
   }
 }
@@ -682,7 +679,7 @@ fn call_function(state) {
   let Snippet(source: #(proj, _, analysis), ..) = state
 
   case action.call_function(proj, analysis) {
-    Ok(new) -> update_source(new, state)
+    Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> show_error(state, ActionFailed("call function"))
   }
 }
@@ -703,7 +700,7 @@ fn insert_binary(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
   case transformation.binary(proj) {
-    Ok(#(value, rebuild)) -> update_source(rebuild(value), state)
+    Ok(#(value, rebuild)) -> update_source_from_buffer(rebuild(value), state)
     Error(Nil) -> show_error(state, ActionFailed("create binary"))
   }
 }
@@ -721,7 +718,7 @@ fn insert_case(state) {
   let Snippet(source: #(proj, _, analysis), ..) = state
 
   case action.make_case(proj, analysis) {
-    Ok(action.Updated(new)) -> update_source(new, state)
+    Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
     Ok(action.Choose(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
@@ -746,7 +743,7 @@ fn spread_list(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
   case transformation.spread_list(proj) {
-    Ok(new) -> update_source(new, state)
+    Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> show_error(state, ActionFailed("create match"))
   }
 }
