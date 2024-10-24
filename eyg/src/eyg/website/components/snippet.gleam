@@ -208,8 +208,8 @@ pub fn update(state, message) {
         "e" -> assign_to(state)
         "r" -> insert_record(state)
         "t" -> insert_tag(state)
-        // "y" -> copy(state)
-        // "Y" -> paste(state)
+        "y" -> copy(state)
+        "Y" -> paste(state)
         // "u" ->
         "i" -> insert_mode(state)
         "o" -> overwrite_record(state)
@@ -238,35 +238,6 @@ pub fn update(state, message) {
       }
     }
 
-    // UserPressedCommandKey("y"), Editing(Command(_)) -> {
-    //   case proj {
-    //     #(p.Exp(expression), _) -> {
-    //       let eff =
-    //         Some(fn(_d) {
-    //           clipboard.write_text(
-    //             encode.to_json(e.to_expression(expression)),
-    //           )
-    //           // TODO better copy error
-    //           |> promise.map(io.debug)
-    //           Nil
-    //         })
-    //       #(state, eff)
-    //     }
-    //     _ -> {
-    //       let status = Command(Some(ActionFailed("copy")))
-    //       let state = Snippet(..state, status: Editing(status))
-    //       #(state, None)
-    //     }
-    //   }
-    // }
-    // UserPressedCommandKey("Y"), Editing(Command(_)) -> {
-    //   let eff =
-    //     Some(fn(d) {
-    //       use return <- promisex.aside(clipboard.read_text())
-    //       d(ClipboardReadCompleted(return))
-    //     })
-    //   #(state, eff)
-    // }
     // UserPressedCommandKey("Enter"), Editing(Command(_)) -> {
     //   case run.status {
     //     run.Done(_, _) | run.Failed(_) -> {
@@ -276,42 +247,6 @@ pub fn update(state, message) {
     //     }
     //     _ -> run_effects(state)
     //   }
-    // }
-    // UserPressedCommandKey(key), Editing(Command(_)) -> {
-    //   let #(proj, mode) =
-    //     buffer.handle_command(
-    //       key,
-    //       proj,
-    //       analysis.within_environment(scope, sync.types(cache)),
-    //       effect_types(effects),
-    //     )
-    //   let editable = p.rebuild(proj)
-    //   let source = #(proj, editable, None)
-    //   let run = case mode {
-    //     Command(None) -> run.start(editable, scope, effects, cache)
-    //     _ -> run
-    //   }
-    //   let eff = case mode {
-    //     Command(_) -> None
-    //     _ ->
-    //       Some(fn(_) {
-    //         window.request_animation_frame(fn(_) {
-    //           case document.query_selector("[autofocus]") {
-    //             Ok(el) -> {
-    //               dom_element.focus(el)
-    //               // This can only be done when we move to a new focus
-    //               // error is something specifically to do with numbers
-    //               dom_element.set_selection_range(el, 0, -1)
-    //             }
-    //             Error(Nil) -> Nil
-    //           }
-    //         })
-    //         Nil
-    //       })
-    //   }
-    //   let state =
-    //     Snippet(..state, status: Editing(mode), source: source, run: run)
-    //   #(state, eff)
     // }
     UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
     UserClickedPath(path), _ -> {
@@ -471,6 +406,34 @@ fn move_down(state) {
     Ok(new) -> navigate_source(navigation.next(new), state)
     Error(Nil) -> show_error(state, ActionFailed("move down"))
   }
+}
+
+fn copy(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case proj {
+    #(p.Exp(expression), _) -> {
+      let eff =
+        Some(fn(_d) {
+          clipboard.write_text(encode.to_json(e.to_expression(expression)))
+          // TODO better copy error
+          |> promise.map(io.debug)
+          Nil
+        })
+      #(state, eff)
+    }
+    _ -> show_error(state, ActionFailed("copy"))
+  }
+}
+
+fn paste(state) {
+  let eff =
+    Some(fn(d) {
+      use return <- promisex.aside(clipboard.read_text())
+      d(ClipboardReadCompleted(return))
+    })
+  // TODO make busy
+  #(state, eff)
 }
 
 fn search_vacant(state) {
@@ -784,10 +747,6 @@ fn spread_list(state) {
   }
 }
 
-// pub fn references(buffer) {
-//   let #(projection, _mode) = buffer
-//   a.list_references(e.to_annotated(p.rebuild(projection), []))
-// }
 pub fn copy_escaped(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
