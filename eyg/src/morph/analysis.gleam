@@ -172,12 +172,6 @@ fn env_at(analysis, path) {
   }
 }
 
-pub fn type_at(projection, root_env, eff) {
-  // TODO remove empty eff
-  let analysis = analyse(projection, root_env, eff)
-  do_type_at(analysis, projection)
-}
-
 pub fn do_type_at(analysis, projection: #(_, _)) {
   let #(bindings, pairs) = analysis
   let path = projection.path(projection)

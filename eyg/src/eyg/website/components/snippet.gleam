@@ -225,9 +225,7 @@ pub fn update(state, message) {
     status: status,
     source: #(proj, editable, _),
     run: run,
-    scope: scope,
     effects: effects,
-    cache: cache,
     ..,
   ) = state
   case message, status {
@@ -359,18 +357,9 @@ pub fn update(state, message) {
             Ok(expression) -> {
               let assert #(p.Exp(_), zoom) = proj
               let proj = #(p.Exp(e.from_expression(expression)), zoom)
-              let editable = p.rebuild(proj)
-              let source = #(proj, editable, None)
-              let run = run.start(editable, scope, effects, cache)
-              let state = Snippet(..state, run: run, source: source)
-              #(state, None)
+              update_source_from_buffer(proj, state)
             }
-            Error(_) -> {
-              let mode = Command(Some(ActionFailed("paste")))
-              let status = Editing(mode)
-              let state = Snippet(..state, status: status)
-              #(state, None)
-            }
+            Error(_) -> show_error(state, ActionFailed("paste"))
           }
 
         Error(reason) -> panic as reason
@@ -793,24 +782,6 @@ pub fn copy_escaped(state) {
       #(state, None)
     }
     _ -> show_error(state, ActionFailed("copy"))
-  }
-}
-
-fn focus_away_from_input(mode) {
-  case mode {
-    Command(_) ->
-      Some(fn(_) {
-        window.request_animation_frame(fn(_) {
-          case document.query_selector("[autofocus]") {
-            Ok(el) -> {
-              dom_element.focus(el)
-            }
-            Error(Nil) -> Nil
-          }
-        })
-        Nil
-      })
-    _ -> None
   }
 }
 

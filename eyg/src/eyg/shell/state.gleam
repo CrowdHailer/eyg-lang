@@ -60,35 +60,35 @@ pub fn update(state: Shell, message) {
       let #(cache, tasks) = sync.fetch_missing(state.cache, refs)
       let state = Shell(..state, cache: cache)
       case snippet.action_error(sn) {
-        // Some(buffer.NoKeyBinding("?")) -> {
-        //   let state = Shell(..state, display_help: !state.display_help)
-        //   #(state, effect.none())
-        // }
-        // // Some("ArrowUp")
-        // //           b.Command(Some(b.ActionFailed("move up"))), True, [], _ -> {
-        // //             case state.previous {
-        // //               [] -> #(state, effect.none())
-        // //               [#(_value, expression), ..] -> {
-        // //                 let buffer = b.from(p.focus_at(expression, []))
-        // //                 let state = Shell(..state, buffer: buffer)
-        // //                 #(state, effect.none())
-        // //               }
-        // //             }
-        // //           }
-        // Some(buffer.ActionFailed("Execute")) -> {
-        //   let run = snippet.run(sn)
-        //   let run.Run(status, _effects) = run
-        //   case status {
-        //     run.Done(value, scope) -> {
-        //       io.debug("add effects")
-        //       let previous = [#(value, snippet.source(sn)), ..state.previous]
-        //       let source = new_snippet(scope, state.cache)
-        //       let state = Shell(..state, source: source, previous: previous)
-        //       #(state, effect.none())
-        //     }
-        //     _ -> #(state, effect.none())
-        //   }
-        // }
+        Some(snippet.NoKeyBinding("?")) -> {
+          let state = Shell(..state, display_help: !state.display_help)
+          #(state, effect.none())
+        }
+        // Some("ArrowUp")
+        //           b.Command(Some(b.ActionFailed("move up"))), True, [], _ -> {
+        //             case state.previous {
+        //               [] -> #(state, effect.none())
+        //               [#(_value, expression), ..] -> {
+        //                 let buffer = b.from(p.focus_at(expression, []))
+        //                 let state = Shell(..state, buffer: buffer)
+        //                 #(state, effect.none())
+        //               }
+        //             }
+        //           }
+        Some(snippet.ActionFailed("Execute")) -> {
+          let run = snippet.run(sn)
+          let run.Run(status, _effects) = run
+          case status {
+            run.Done(value, scope) -> {
+              // io.debug("add effects")
+              let previous = [#(value, snippet.source(sn)), ..state.previous]
+              let source = new_snippet(scope, state.cache)
+              let state = Shell(..state, source: source, previous: previous)
+              #(state, effect.none())
+            }
+            _ -> #(state, effect.none())
+          }
+        }
         _ -> {
           let state = Shell(..state, source: sn)
           #(state, case eff {
