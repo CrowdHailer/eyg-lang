@@ -84,32 +84,53 @@ pub type Snippet {
   )
 }
 
-pub fn init(src, scope, effects, cache) {
-  let src = e.open_all(src)
-  let proj = navigation.first(src)
+pub fn init(editable, scope, effects, cache) {
+  let editable = e.open_all(editable)
+  let proj = navigation.first(editable)
   Snippet(
     Idle,
-    #(proj, src, None),
+    new_source(proj, editable, scope, effects, cache),
     History([], []),
-    run.start(src, scope, effects, cache),
+    run.start(editable, scope, effects, cache),
     scope,
     effects,
     cache,
   )
 }
 
-pub fn active(src, scope, effects, cache) {
-  let src = e.open_all(src)
-  let proj = navigation.first(src)
+pub fn active(editable, scope, effects, cache) {
+  let editable = e.open_all(editable)
+  let proj = navigation.first(editable)
+
   Snippet(
     Editing(Command(None)),
-    #(proj, src, None),
+    new_source(proj, editable, scope, effects, cache),
     History([], []),
-    run.start(src, scope, effects, cache),
+    run.start(editable, scope, effects, cache),
     scope,
     effects,
     cache,
   )
+}
+
+fn new_source(proj, editable, scope, effects, cache) {
+  let eff =
+    effect_types(effects)
+    |> list.fold(t.Empty, fn(acc, new) {
+      let #(label, #(lift, reply)) = new
+      t.EffectExtend(label, #(lift, reply), acc)
+    })
+  let analysis =
+    analysis.do_analyse(
+      editable,
+      analysis.within_environment(scope, sync.types(cache)),
+      eff,
+    )
+  #(proj, editable, Some(analysis))
+}
+
+fn effect_types(effects: List(#(String, EffectSpec))) {
+  listx.value_map(effects, fn(details) { #(details.0, details.1) })
 }
 
 pub fn run(state) {
@@ -194,10 +215,6 @@ pub fn await_running_effect(promise) {
   promise.map(promise, RuntimeRepliedFromExternalEffect)
 }
 
-fn effect_types(effects: List(#(String, EffectSpec))) {
-  listx.value_map(effects, fn(details) { #(details.0, details.1) })
-}
-
 fn navigate_source(proj, state) {
   let Snippet(source: #(_, editable, analysis), ..) = state
   let source = #(proj, editable, analysis)
@@ -209,7 +226,8 @@ fn navigate_source(proj, state) {
 fn update_source(proj, state) {
   let Snippet(source: #(old, _, _), history: history, ..) = state
   let editable = p.rebuild(proj)
-  let source = #(proj, editable, None)
+  let source =
+    new_source(proj, editable, state.scope, state.effects, state.cache)
   let History(undo: undo, ..) = history
   let undo = [old, ..undo]
   let history = History(undo: undo, redo: [])
@@ -753,7 +771,14 @@ fn undo(state) {
   case history.undo {
     [] -> show_error(state, ActionFailed("undo"))
     [saved, ..rest] -> {
-      let source = #(saved, p.rebuild(saved), None)
+      let source =
+        new_source(
+          saved,
+          p.rebuild(saved),
+          state.scope,
+          state.effects,
+          state.cache,
+        )
       let history = History(undo: rest, redo: [proj, ..history.redo])
       let status = Editing(Command(None))
       let state =
@@ -768,7 +793,14 @@ fn redo(state) {
   case history.redo {
     [] -> show_error(state, ActionFailed("redo"))
     [saved, ..rest] -> {
-      let source = #(saved, p.rebuild(saved), None)
+      let source =
+        new_source(
+          saved,
+          p.rebuild(saved),
+          state.scope,
+          state.effects,
+          state.cache,
+        )
       let history = History(undo: [proj, ..history.undo], redo: rest)
       let status = Editing(Command(None))
       let state =
@@ -868,21 +900,13 @@ pub fn render_editor(state: Snippet) {
 }
 
 pub fn bare_render(state) {
-  let Snippet(status, source, _history, run, scope, effects, cache) = state
-  let eff =
-    effect_types(effects)
-    |> list.fold(t.Empty, fn(acc, new) {
-      let #(label, #(lift, reply)) = new
-      t.EffectExtend(label, #(lift, reply), acc)
-    })
-  let a =
-    analysis.do_analyse(
-      source.1,
-      analysis.within_environment(scope, sync.types(cache)),
-      eff,
-    )
-  let proj = source.0
-  let errors = analysis.type_errors(a)
+  let Snippet(status: status, source: source, run: run, ..) = state
+  let #(proj, _, analysis) = source
+  let errors = case analysis {
+    Some(analysis) -> analysis.type_errors(analysis)
+    None -> []
+  }
+
   case status {
     Editing(mode) ->
       case mode {
