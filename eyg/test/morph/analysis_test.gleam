@@ -1,6 +1,5 @@
 import eyg/analysis/type_/isomorphic
-import eygir/annotated as a
-import gleam/io
+import gleam/dict
 import gleam/listx
 import gleam/option.{None}
 import gleam/pair
@@ -11,9 +10,10 @@ import morph/editable as e
 import morph/projection as p
 
 pub fn scope_vars_test() {
-  let context = analysis.empty_environment()
+  let context = analysis.with_references(dict.new())
   let source = #(p.Exp(e.Vacant("")), [p.Body([e.Bind("x")])])
-  analysis.scope_vars(source, context, isomorphic.Empty)
+  let a = analysis.analyse(source, context, isomorphic.Empty)
+  analysis.scope_vars(source, a)
   |> shouldx.contain1()
   |> pair.first
   |> should.equal("x")
@@ -28,7 +28,7 @@ pub fn nested_let_test() {
   // }
   // let after = {}
   // ???
-  let context = analysis.empty_environment()
+  let context = analysis.with_references(dict.new())
   let source = #(p.Exp(e.Vacant("")), [
     p.BlockTail([#(e.Bind("inner"), e.Integer(10))]),
     p.BlockValue(
@@ -39,7 +39,8 @@ pub fn nested_let_test() {
     ),
   ])
 
-  analysis.scope_vars(source, context, isomorphic.Empty)
+  let a = analysis.analyse(source, context, isomorphic.Empty)
+  analysis.scope_vars(source, a)
   |> listx.keys
   |> should.equal(["inner", "b2", "b1"])
 }
@@ -89,10 +90,10 @@ pub fn nested_let_test() {
 //   // |> should.equal(#(a.Apply))
 //   todo
 //   let proj = p.focus_at(source, [1, 0])
-//   analysis.scope_vars(proj, analysis.empty_environment())
+//   analysis.scope_vars(proj, analysis.with_references(dict.new()))
 //   |> io.debug
 //   io.debug(p.path(proj))
-//   analysis.analyse(proj, analysis.empty_environment())
+//   analysis.analyse(proj, analysis.with_references(dict.new()))
 //   |> analysis.print
 //   todo
 // }
