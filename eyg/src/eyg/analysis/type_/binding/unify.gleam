@@ -155,20 +155,25 @@ fn rewrite_row(required, type_, level, bindings, check) {
       Ok(#(field, rest, bindings))
     }
     t.Var(i) -> {
-      case check {
-        // catch infinite loop
-        t.Var(j) if i == j -> {
-          io.debug("same tails")
-          Error(error.SameTail(t.Var(i), t.Var(j)))
-        }
-        _ -> {
-          // Not sure why this is different to effects
-          let #(field, bindings) = binding.mono(level, bindings)
-          let #(rest, bindings) = binding.mono(level, bindings)
+      case dict.get(bindings, i) {
+        Ok(binding.Bound(type_)) ->
+          rewrite_row(required, type_, level, bindings, check)
+        _ ->
+          case check {
+            // catch infinite loop
+            t.Var(j) if i == j -> {
+              io.debug("same tails")
+              Error(error.SameTail(t.Var(i), t.Var(j)))
+            }
+            _ -> {
+              // Not sure why this is different to effects
+              let #(field, bindings) = binding.mono(level, bindings)
+              let #(rest, bindings) = binding.mono(level, bindings)
 
-          let type_ = t.RowExtend(required, field, rest)
-          Ok(#(field, rest, dict.insert(bindings, i, binding.Bound(type_))))
-        }
+              let type_ = t.RowExtend(required, field, rest)
+              Ok(#(field, rest, dict.insert(bindings, i, binding.Bound(type_))))
+            }
+          }
       }
     }
     _ -> panic as "bad row"
@@ -190,33 +195,38 @@ fn rewrite_effect(required, type_, level, bindings, check: t.Type(_)) {
       let rest = t.EffectExtend(l, other_eff, new_tail)
       Ok(#(eff, rest, bindings))
     }
-    t.Var(i) -> {
-      case check {
-        // catch infinite loop
-        t.Var(j) if i == j -> {
-          io.debug("same tails")
-          Error(error.TypeMismatch(t.Var(i), t.Var(j)))
-        }
+    t.Var(i) ->
+      case dict.get(bindings, i) {
+        Ok(binding.Bound(type_)) ->
+          rewrite_effect(required, type_, level, bindings, check)
         _ -> {
-          let #(lift, bindings) = binding.mono(level, bindings)
-          let #(reply, bindings) = binding.mono(level, bindings)
-
-          // Might get bound during tail rewrite
-          let assert Ok(binding) = dict.get(bindings, i)
-          case binding {
-            binding.Unbound(level) -> {
-              let #(rest, bindings) = binding.mono(level, bindings)
-
-              let type_ = t.EffectExtend(required, #(lift, reply), rest)
-              let bindings = dict.insert(bindings, i, binding.Bound(type_))
-              Ok(#(#(lift, reply), rest, bindings))
+          case check {
+            // catch infinite loop
+            t.Var(j) if i == j -> {
+              io.debug("same tails")
+              Error(error.TypeMismatch(t.Var(i), t.Var(j)))
             }
-            binding.Bound(type_) ->
-              rewrite_effect(required, type_, level, bindings, check)
+            _ -> {
+              let #(lift, bindings) = binding.mono(level, bindings)
+              let #(reply, bindings) = binding.mono(level, bindings)
+
+              // Might get bound during tail rewrite
+              let assert Ok(binding) = dict.get(bindings, i)
+              case binding {
+                binding.Unbound(level) -> {
+                  let #(rest, bindings) = binding.mono(level, bindings)
+
+                  let type_ = t.EffectExtend(required, #(lift, reply), rest)
+                  let bindings = dict.insert(bindings, i, binding.Bound(type_))
+                  Ok(#(#(lift, reply), rest, bindings))
+                }
+                binding.Bound(type_) ->
+                  rewrite_effect(required, type_, level, bindings, check)
+              }
+            }
           }
         }
       }
-    }
     // _ -> Error(error.TypeMismatch(EffectExtend(required, type_, t.Empty), type_))
     _ -> panic as "bad effect"
   }
