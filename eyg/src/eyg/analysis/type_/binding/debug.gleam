@@ -65,26 +65,26 @@ fn render_function(to, acc) {
 
 pub fn render_reason(reason) {
   case reason {
-    error.MissingVariable(label) ->
-      string.concat(["missing variable '", label, "'"])
+    error.Todo(message) -> "code incomplete: " <> message
+    error.MissingVariable(label) -> "missing variable '" <> label <> "'"
     error.MissingReference(label) -> "missing reference #" <> label
-    error.MissingRow(label) -> string.concat(["missing row '", label, "'"])
+    error.MissingRow(label) -> "missing row '" <> label <> "'"
     error.TypeMismatch(expected, given) ->
-      string.concat([
-        "type missmatch given: ",
-        render_type(given),
-        " expected: ",
-        render_type(expected),
-      ])
+      "type missmatch given: "
+      <> render_type(given)
+      <> " expected: "
+      <> render_type(expected)
     error.Recursive -> "Recursive"
     error.SameTail(expected, given) ->
-      string.concat([
-        "same tail given: ",
-        render_type(given),
-        " expected: ",
-        render_type(expected),
-      ])
+      "same tail given: "
+      <> render_type(given)
+      <> " expected: "
+      <> render_type(expected)
   }
+}
+
+pub fn pretty_reason(reason) {
+  render_reason(reason)
 }
 
 fn render_row(r) -> List(String) {

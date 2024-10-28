@@ -194,8 +194,11 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       let meta = #(Ok(Nil), ty_then, t.Empty, env)
       #(bindings, ty_then, eff, #(a.Let(label, value, then), meta))
     }
-    e.Vacant(comment) ->
-      prim(q(0), env, eff, level, bindings, a.Vacant(comment))
+    e.Vacant(comment) -> {
+      let #(type_, bindings) = binding.mono(level, bindings)
+      let meta = #(Error(error.Todo(comment)), type_, t.Empty, env)
+      #(bindings, type_, eff, #(a.Vacant(comment), meta))
+    }
     e.Integer(value) ->
       prim(t.Integer, env, eff, level, bindings, a.Integer(value))
     e.Binary(value) ->
