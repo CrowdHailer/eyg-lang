@@ -9,6 +9,8 @@ import eygir/annotated as e
 import eygir/encode
 import gleam/bit_array
 import gleam/dict
+import gleam/dynamic
+import gleam/dynamicx
 import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
@@ -103,10 +105,11 @@ pub fn fixed() {
 pub fn eval() {
   let type_ = t.Fun(t.Unbound(-1), t.Open(-2), t.Unbound(-3))
 
-  #(type_, state.Arity1(do_eval))
+  // Needed because what's the meta type we put when evalling
+  #(type_, state.Arity1(do_eval |> dynamic.from() |> dynamicx.unsafe_coerce()))
 }
 
-pub fn lib() {
+pub fn lib() -> #(_, dict.Dict(String, state.Builtin(a))) {
   init()
   |> extend("equal", equal())
   |> extend("debug", debug())

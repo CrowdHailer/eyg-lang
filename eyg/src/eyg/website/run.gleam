@@ -18,7 +18,7 @@ pub type Run {
 }
 
 pub type Meta =
-  Nil
+  List(Int)
 
 pub type Value =
   v.Value(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
@@ -43,14 +43,8 @@ pub fn start(editable, scope, effects, cache) {
   let return =
     block.execute(
       editable.to_expression(editable)
-        |> annotated.add_annotation(Nil),
-      stdlib.new_env(
-        scope,
-        sync.values(cache)
-          // TODO move all unsafe into stdlib
-          |> dynamic.from()
-          |> dynamicx.unsafe_coerce(),
-      ),
+        |> annotated.add_annotation([]),
+      stdlib.new_env(scope, sync.values(cache)),
       // effects
       dict.new(),
     )

@@ -2,7 +2,6 @@ import eyg/analysis/typ as t
 import eyg/runtime/break
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eygir/annotated as e
 import eygir/decode
@@ -48,8 +47,7 @@ fn handlers() {
 pub fn do_run(raw) -> Nil {
   case decode.from_json(global.decode_uri(raw)) {
     Ok(continuation) -> {
-      let env =
-        state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
+      let env = stdlib.new_env([], dict.new())
       let continuation = e.add_annotation(continuation, Nil)
       let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
       promise.map(

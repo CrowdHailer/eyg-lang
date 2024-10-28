@@ -1,7 +1,6 @@
 import eyg/runtime/break
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import eygir/annotated as e
 import gleam/dict
@@ -53,8 +52,7 @@ fn handlers() {
 }
 
 pub fn run(source) {
-  let env =
-    state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
+  let env = stdlib.new_env([], dict.new())
   let assert Ok(parser) = r.execute(source, env, handlers().1)
   let assert Ok(lisp) = cast.field("lisp", cast.any, parser)
   let assert Ok(parser) = cast.field("prompt", cast.any, lisp)

@@ -50,7 +50,7 @@ pub type Status {
 }
 
 type Path =
-  Nil
+  List(Int)
 
 type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
@@ -381,7 +381,7 @@ pub fn update(state, message) {
               #(state, AwaitRunningEffect(promise))
             }
             Error(reason) -> {
-              let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
+              let run = run.Run(run.Failed(#(reason, [], env, k)), effect_log)
               let state = Snippet(..state, run: run)
               #(state, Nothing)
             }
@@ -846,7 +846,7 @@ fn run_effects(state) {
           #(state, AwaitRunningEffect(promise))
         }
         Error(reason) -> {
-          let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
+          let run = run.Run(run.Failed(#(reason, [], env, k)), effect_log)
           let state = Snippet(..state, run: run)
           #(state, Nothing)
         }

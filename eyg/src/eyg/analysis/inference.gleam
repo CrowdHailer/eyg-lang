@@ -10,7 +10,7 @@ import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
-import harness/stdlib
+import harness/ffi/core
 import javascript/mutable_reference as ref
 
 pub type Infered {
@@ -206,7 +206,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     e.Shallow(label) -> unify(typ, t.handle(label, ref), ref, path)
 
     e.Builtin(identifier) ->
-      case dict.get(stdlib.lib().0, identifier) {
+      case dict.get(core.lib().0, identifier) {
         Ok(scheme) -> unify(typ, instantiate(scheme, ref), ref, path)
         Error(Nil) ->
           Infered(

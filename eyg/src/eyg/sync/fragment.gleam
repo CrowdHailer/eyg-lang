@@ -6,8 +6,6 @@ import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
 import eygir/annotated as a
 import gleam/dict
-import gleam/dynamic
-import gleam/dynamicx
 import gleam/list
 import harness/stdlib
 
@@ -17,7 +15,7 @@ pub type Scope =
 type Path =
   List(Int)
 
-type Value =
+pub type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 pub fn infer(contained, types) {
@@ -51,11 +49,6 @@ pub fn eval(contained, values) {
   r.execute(contained, env, handlers)
 }
 
-pub fn empty_env(references) -> istate.Env(Path) {
-  istate.Env(
-    ..stdlib.env()
-    |> dynamic.from()
-    |> dynamicx.unsafe_coerce(),
-    references: references,
-  )
+pub fn empty_env(references) {
+  stdlib.new_env([], references)
 }
