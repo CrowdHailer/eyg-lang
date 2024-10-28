@@ -13,6 +13,7 @@ import eygir/annotated
 import eygir/decode
 import eygir/encode
 import gleam/dict
+import gleam/io
 import gleam/javascript/promise
 import gleam/list
 import gleam/listx
@@ -357,7 +358,9 @@ pub fn update(state, message) {
       return_to_buffer(state)
     MessageFromPicker(_), _ -> panic as "shouldn't reach picker message"
     UserClickRunEffects, _ -> run_effects(state)
-    RuntimeRepliedFromExternalEffect(reply), Editing(Command(_)) -> {
+    RuntimeRepliedFromExternalEffect(reply), Editing(Command(_))
+    | RuntimeRepliedFromExternalEffect(reply), Idle
+    -> {
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
 
       let effect_log = [#(label, #(lift, reply)), ..effect_log]
@@ -385,8 +388,10 @@ pub fn update(state, message) {
           }
       }
     }
-    RuntimeRepliedFromExternalEffect(_), _ ->
-      panic as "should never get a runtime message"
+    RuntimeRepliedFromExternalEffect(_), Editing(mode) -> {
+      io.debug(mode)
+      panic as "Should never be editing while running effects"
+    }
     ClipboardReadCompleted(return), _ -> {
       let assert Editing(Command(_)) = status
       case return {
