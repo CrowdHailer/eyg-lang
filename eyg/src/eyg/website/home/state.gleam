@@ -7,6 +7,7 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None}
 import harness/impl/browser as harness
+import harness/impl/spotless
 import lustre/effect
 import morph/editable as e
 
@@ -112,7 +113,11 @@ fn init_example(json, cache) {
   let source =
     e.from_expression(source)
     |> e.open_all
-  snippet.init(source, [], harness.effects(), cache)
+  snippet.init(source, [], effects(), cache)
+}
+
+fn effects() {
+  list.append(harness.effects(), spotless.effects())
 }
 
 fn all_references(snippets) {
@@ -126,7 +131,7 @@ pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
     #(closure_serialization_key, init_example(closure_serialization, cache)),
-    #(fetch_key, snippet.init(catfact, [], harness.effects(), cache)),
+    #(fetch_key, snippet.init(catfact, [], effects(), cache)),
     #(twitter_key, init_example(twitter_example, cache)),
     #(type_check_key, init_example(type_check_example, cache)),
     #(predictable_effects_key, init_example(predictable_effects_example, cache)),
