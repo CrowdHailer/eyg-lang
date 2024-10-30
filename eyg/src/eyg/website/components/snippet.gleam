@@ -988,6 +988,18 @@ fn render_projection(proj, autofocus) {
             let alt = pevent.alt_key(event)
             case key {
               "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
+              "F1"
+              | "F2"
+              | "F3"
+              | "F4"
+              | "F5"
+              | "F6"
+              | "F7"
+              | "F8"
+              | "F9"
+              | "F10"
+              | "F11"
+              | "F12" -> Error([])
               k if shift -> {
                 pevent.prevent_default(event)
                 Ok(UserPressedCommandKey(string.uppercase(k)))
