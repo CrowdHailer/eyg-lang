@@ -1,5 +1,6 @@
 import eyg/website/components
 import eyg/website/components/snippet
+import eyg/website/config
 import eyg/website/home/state
 import eyg/website/page
 import gleam/list
@@ -17,7 +18,7 @@ pub fn page(bundle) {
 
 pub fn client() {
   let app = lustre.application(state.init, state.update, render)
-  let assert Ok(_) = lustre.start(app, "#app", Nil)
+  let assert Ok(_) = lustre.start(app, "#app", config.load())
   Nil
 }
 

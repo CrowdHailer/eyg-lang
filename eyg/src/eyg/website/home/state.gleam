@@ -108,16 +108,16 @@ pub const twitter_key = "twitter"
 
 pub const twitter_example = "{\"0\":\"l\",\"l\":\"message\",\"v\":{\"0\":\"s\",\"v\":\"I've just finished the EYG introduction\"},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Tweeted successfully\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Failed to send tweet.\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Twitter.Tweet\"},\"a\":{\"0\":\"v\",\"l\":\"message\"}}}}"
 
-fn init_example(json, cache) {
+fn init_example(json, cache, config) {
   let assert Ok(source) = decode.from_json(json)
   let source =
     e.from_expression(source)
     |> e.open_all
-  snippet.init(source, [], effects(), cache)
+  snippet.init(source, [], effects(config), cache)
 }
 
-fn effects() {
-  list.append(harness.effects(), spotless.effects())
+fn effects(config) {
+  list.append(harness.effects(), spotless.effects(config))
 }
 
 fn all_references(snippets) {
@@ -127,14 +127,20 @@ fn all_references(snippets) {
   })
 }
 
-pub fn init(_) {
+pub fn init(config) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
-    #(closure_serialization_key, init_example(closure_serialization, cache)),
-    #(fetch_key, snippet.init(catfact, [], effects(), cache)),
-    #(twitter_key, init_example(twitter_example, cache)),
-    #(type_check_key, init_example(type_check_example, cache)),
-    #(predictable_effects_key, init_example(predictable_effects_example, cache)),
+    #(
+      closure_serialization_key,
+      init_example(closure_serialization, cache, config),
+    ),
+    #(fetch_key, snippet.init(catfact, [], effects(config), cache)),
+    #(twitter_key, init_example(twitter_example, cache, config)),
+    #(type_check_key, init_example(type_check_example, cache, config)),
+    #(
+      predictable_effects_key,
+      init_example(predictable_effects_example, cache, config),
+    ),
   ]
   let references = all_references(snippets)
   let #(cache, tasks) = sync.fetch_missing(cache, references)

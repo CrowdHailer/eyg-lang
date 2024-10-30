@@ -22,6 +22,11 @@ pub const local = netlify.App(
   "http://localhost:8080/auth/netlify",
 )
 
+pub const eyg_website = netlify.App(
+  "XIBttaoKjHFp_kjsDJYN2Y44dqNA9N9skt6yeTCEfYQ",
+  "https://eyg.run/auth/netlify",
+)
+
 pub fn blocking(app, lift) {
   use Nil <- result.map(cast.as_unit(lift, Nil))
   promise.map(do(app), result_to_eyg)

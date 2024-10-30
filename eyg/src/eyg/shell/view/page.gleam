@@ -13,6 +13,7 @@ import morph/lustre/render
 
 pub fn render(state) {
   let state.Shell(
+    config: _,
     situation: _,
     cache: _cache,
     display_help: display_help,

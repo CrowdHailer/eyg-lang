@@ -12,6 +12,7 @@ import morph/editable
 
 pub type Shell {
   Shell(
+    config: spotless.Config,
     situation: Situation,
     cache: sync.Sync,
     previous: List(#(Option(snippet.Value), editable.Expression)),
@@ -21,16 +22,16 @@ pub type Shell {
   )
 }
 
-fn new_snippet(scope, cache) {
-  snippet.active(editable.Vacant(""), scope, effects(), cache)
+fn new_snippet(scope, cache, config) {
+  snippet.active(editable.Vacant(""), scope, effects(config), cache)
 }
 
-pub fn init(_) {
+pub fn init(config) {
   let cache = sync.init(browser.get_origin())
 
   let situation = situation.init()
-  let snippet = new_snippet([], cache)
-  let state = Shell(situation, cache, [], True, [], snippet)
+  let snippet = new_snippet([], cache, config)
+  let state = Shell(config, situation, cache, [], True, [], snippet)
 
   #(state, effect.none())
 }
@@ -40,8 +41,8 @@ pub type Message {
   SnippetMessage(snippet.Message)
 }
 
-pub fn effects() {
-  list.append(harness.effects(), spotless.effects())
+pub fn effects(config) {
+  list.append(harness.effects(), spotless.effects(config))
 }
 
 fn dispatch_to_snippet(state, current, promise) {
@@ -97,7 +98,12 @@ pub fn update(state: Shell, message) {
             [] -> #(state, effect.none())
             [#(_value, exp), ..] -> {
               let current =
-                snippet.active(exp, state.scope, effects(), state.cache)
+                snippet.active(
+                  exp,
+                  state.scope,
+                  effects(state.config),
+                  state.cache,
+                )
               #(Shell(..state, source: current), effect.none())
             }
           }
@@ -109,7 +115,7 @@ pub fn update(state: Shell, message) {
           dispatch_to_snippet(state, current, snippet.write_to_clipboard(text))
         snippet.Conclude(value, scope) -> {
           let previous = [#(value, snippet.source(current)), ..state.previous]
-          let source = new_snippet(scope, state.cache)
+          let source = new_snippet(scope, state.cache, state.config)
           let state = Shell(..state, source: source, previous: previous)
           #(
             state,

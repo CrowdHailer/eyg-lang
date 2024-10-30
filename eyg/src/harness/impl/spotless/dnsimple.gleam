@@ -5,3 +5,9 @@ pub const local = dnsimple.App(
   "hidden",
   "http://localhost:8080/",
 )
+
+pub const eyg_website = dnsimple.App(
+  "3b211050009f7553",
+  "hidden",
+  "https://eyg.run/auth/dnsimple",
+)
