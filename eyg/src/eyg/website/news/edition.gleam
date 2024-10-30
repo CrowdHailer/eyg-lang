@@ -192,7 +192,7 @@ fn block(container) {
     jot.Heading(_attributes, 3, content) -> h3(inline(content))
     jot.Heading(_attributes, _level, _content) ->
       panic as "only h1,h2,h3 are supported"
-
+    jot.ThematicBreak -> panic as "thematic break not supported"
     jot.Codeblock(_attributes, _language, content) ->
       h.pre(
         [

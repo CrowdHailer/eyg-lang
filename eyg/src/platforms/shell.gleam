@@ -49,7 +49,6 @@ fn handlers() {
   |> effect.extend("Read_Source", effect.read_source())
   |> effect.extend("LoadDB", effect.load_db())
   |> effect.extend("QueryDB", effect.query_db())
-  |> effect.extend("Zip", effect.zip())
 }
 
 pub fn run(source) {

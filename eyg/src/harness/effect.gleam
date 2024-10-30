@@ -8,7 +8,6 @@ import gleam/dict
 import gleam/dynamic
 import gleam/int
 import gleam/io
-import gleam/javascript/array.{type Array}
 import gleam/javascript/promise
 import gleam/json
 import gleam/list
@@ -186,37 +185,3 @@ pub fn query_db() {
     Ok(v.Promise(p))
   })
 }
-
-// adm-zip is dependency free
-// jszip use packo a port of zlib with other compression
-pub fn zip() {
-  #(
-    t.LinkedList(
-      t.Record(t.Extend(
-        "name",
-        t.Str,
-        t.Extend("content", t.Binary, t.Open(-1)),
-      )),
-    ),
-    t.unit,
-    fn(query) {
-      use items <- result.then(cast.as_list(query))
-      let assert Ok(items) =
-        list.try_map(items, fn(value) {
-          use name <- result.then(cast.field("name", cast.as_string, value))
-          use content <- result.then(cast.field(
-            "content",
-            cast.as_binary,
-            value,
-          ))
-          Ok(#(name, content))
-        })
-
-      let zipped = do_zip(array.from_list(items))
-      Ok(v.Str(zipped))
-    },
-  )
-}
-
-@external(javascript, "../zip_ffi.js", "zip")
-fn do_zip(items: Array(#(String, BitArray))) -> String

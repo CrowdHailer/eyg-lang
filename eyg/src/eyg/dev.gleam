@@ -94,7 +94,6 @@ fn shell_page(bundle) {
         stylesheet(mysig.tailwind_2_2_11),
         mysig.resource(layout.css, bundle),
         mysig.resource(neo.css, bundle),
-        h.script([a.src("/vendor/zip.min.js")], ""),
         mysig.resource(mysig.js("shell", script), bundle),
       ],
       [h.div([], [empty_lustre()])],
@@ -146,7 +145,6 @@ const origin = sync.Origin(http.Https, "", None)
 fn build_intro(preview, bundle) {
   use script <- t.do(t.bundle("intro/intro", "run"))
   let package_asset = mysig.js("package", script)
-  use zip_src <- t.do(t.read("vendor/zip.min.js"))
   // TODO remove stdlib soon should be caught be seed
   use stdlib <- t.do(t.read("seed/eyg/std.json"))
 
@@ -243,7 +241,6 @@ fn build_intro(preview, bundle) {
   t.done(
     [
       #("/_redirects", <<redirects:utf8>>),
-      #("/vendor/zip.min.js", zip_src),
       #("/packages/index.html", package_page(package_asset, bundle)),
       // 
       #(

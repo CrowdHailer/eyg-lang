@@ -15,7 +15,7 @@ packages = [
   { name = "gleam_stdlib", version = "0.40.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "86606B75A600BBD05E539EB59FABC6E307EEEA7B1E5865AFB6D980A93BCB2181" },
   { name = "gleeunit", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "F7A7228925D3EE7D0813C922E062BFD6D7E9310F0BEE585D3A42F3307E3CFD13" },
   { name = "javascript_mutable_reference", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "javascript_mutable_reference", source = "hex", outer_checksum = "3EE953EE7FE4FAFD17C16F24184F4C832FE260D761753F28F20D4AC1DA080F03" },
-  { name = "jot", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "jot", source = "hex", outer_checksum = "3FF0DFCF96716131FB78DEC8FBC0316BEF896E28119E0980F3EC185548CD5AF1" },
+  { name = "jot", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "jot", source = "hex", outer_checksum = "F3F87E452FAF1BBAD600C71969E6E239903BD19B5B64350B6A78F4C898DE675E" },
   { name = "lustre", version = "4.5.1", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib"], otp_app = "lustre", source = "hex", outer_checksum = "B592DA442F6577143CAFA35D4506DB2018DAEED9C707A921E33559E09F001DF1" },
   { name = "midas", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "9998A1A75E545B3E4590B7CAD9EA0C3462CD7D5347B8DC2DFBADB5C42A42BD5A" },
   { name = "midas_browser", version = "0.1.1", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth"], otp_app = "midas_browser", source = "hex", outer_checksum = "E432C8A5982A6D93F38C421E6B2027DBAC21279EEECC8941F16B1C5F12470841" },
@@ -36,7 +36,7 @@ gleam_json = { version = ">= 1.0.0 and < 3.0.0" }
 gleam_stdlib = { version = ">= 0.34.0 and < 1.0.0" }
 gleeunit = { version = "~> 1.0" }
 javascript_mutable_reference = { version = ">= 1.0.0 and < 2.0.0" }
-jot = { version = ">= 1.0.1 and < 2.0.0" }
+jot = { version = ">= 1.1.0 and < 2.0.0" }
 lustre = { version = "~> 4.0" }
 midas = { version = ">= 1.0.0 and < 2.0.0" }
 midas_browser = { version = ">= 0.1.1 and < 1.0.0" }
