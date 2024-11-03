@@ -13,7 +13,7 @@ import midas/sdk/dnsimple
 import midas/sdk/netlify
 
 pub type Config {
-  Config(dnsimple: dnsimple.App, netlify: netlify.App)
+  Config(dnsimple: dnsimple.App, netlify: netlify.App, twitter_local: Bool)
 }
 
 pub fn effects(config: Config) {
@@ -78,6 +78,7 @@ pub fn effects(config: Config) {
       #(tweet.lift(), tweet.reply(), tweet.blocking(
         twitter.client_id,
         twitter.redirect_uri,
+        config.twitter_local,
         _,
       )),
     ),

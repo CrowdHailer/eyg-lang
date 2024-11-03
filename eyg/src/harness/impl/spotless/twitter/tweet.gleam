@@ -2,13 +2,12 @@ import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
 import gleam/http
-import gleam/http/request.{Request}
+import gleam/int
 import gleam/io
 import gleam/javascript/promise
-import gleam/option.{None, Some}
+import gleam/option.{None}
 import gleam/result
-import gleam/string
-import gleam/uri
+import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/twitter
 import midas/task
@@ -35,9 +34,9 @@ pub fn type_() {
   #(l, #(lift(), reply()))
 }
 
-pub fn blocking(client_id, redirect_uri, lift) {
+pub fn blocking(client_id, redirect_uri, local, lift) {
   use content <- result.try(cast.as_string(lift))
-  Ok(promise.map(do(client_id, redirect_uri, content), result_to_eyg))
+  Ok(promise.map(do(client_id, redirect_uri, local, content), result_to_eyg))
 }
 
 // pub fn impl(app, lift) {
@@ -47,57 +46,22 @@ pub fn blocking(client_id, redirect_uri, lift) {
 
 const scopes = ["tweet.read", "tweet.write", "users.read"]
 
-fn proxy(task) {
-  case task {
-    task.Fetch(request, resume) -> {
-      let request =
-        via_proxy(request, http.Http, "localhost:8080", None, "/proxy/twitter")
-      io.debug(request)
-      task.Fetch(request, fn(x) { proxy(resume(x)) })
-    }
-    task.Abort(_) | task.Done(_) -> task
-    task.Bundle(f, m, resume) -> task.Bundle(f, m, fn(x) { proxy(resume(x)) })
-    task.Follow(lift, resume) -> task.Follow(lift, fn(x) { proxy(resume(x)) })
-    task.List(lift, resume) -> task.List(lift, fn(x) { proxy(resume(x)) })
-    task.Log(lift, resume) -> task.Log(lift, fn(x) { proxy(resume(x)) })
-    task.Read(lift, resume) -> task.Read(lift, fn(x) { proxy(resume(x)) })
-    task.Write(a, b, resume) -> task.Write(a, b, fn(x) { proxy(resume(x)) })
-    task.Zip(lift, resume) -> task.Zip(lift, fn(x) { proxy(resume(x)) })
+fn authenticate(client_id, redirect_uri, local, scopes) {
+  let state = int.to_string(int.random(1_000_000_000))
+  let state = case local {
+    True -> "LOCAL" <> state
+    False -> state
   }
+  let challenge = int.to_string(int.random(1_000_000_000))
+  twitter.do_authenticate(client_id, redirect_uri, scopes, state, challenge)
 }
 
-fn via_proxy(original, scheme, host, port, prefix) {
-  let Request(method, headers, body, _scheme, _host, _port, path, query) =
-    original
-  Request(method, headers, body, scheme, host, port, prefix <> path, query)
-}
-
-pub fn url_to_proxy_request(url, scheme, host, path) {
-  let source = case url {
-    "https://" <> source -> source
-    "http://" <> source -> source
-    source -> source
-  }
-  let uri =
-    uri.Uri(
-      Some(scheme),
-      None,
-      Some(host),
-      None,
-      string.append(path, source),
-      None,
-      None,
-    )
-  let assert Ok(request) = request.from_uri(uri)
-  request
-}
-
-pub fn do(client_id, redirect_uri, content) {
+pub fn do(client_id, redirect_uri, local, content) {
   let task = {
-    use token <- task.do(twitter.authenticate(client_id, redirect_uri, scopes))
+    use token <- task.do(authenticate(client_id, redirect_uri, local, scopes))
     twitter.create_tweet(token, content)
   }
-  let task = proxy(task)
+  let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/twitter")
   browser.run(task)
 }
 

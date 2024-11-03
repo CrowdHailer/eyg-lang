@@ -1,8 +1,11 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/http
 import gleam/javascript/promise
+import gleam/option.{None}
 import gleam/result
+import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/netlify
 import midas/task
@@ -51,6 +54,7 @@ pub fn do(app, site_id, files) {
     use token <- task.do(netlify.authenticate(app))
     netlify.deploy_site(token, site_id, files)
   }
+  let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
   browser.run(task)
 }
 
