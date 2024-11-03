@@ -249,7 +249,15 @@ fn inline(content) {
           ],
           inline(content),
         )
-      jot.Image(_content, _destination) -> panic as "image not supported yet"
+      jot.Image(_content, destination) ->
+        h.img([
+          {
+            let assert jot.Url(url) = destination
+            a.src(url)
+          },
+          a.style([#("max-width", "100%")]),
+          // a.alt(content),
+        ])
       jot.Emphasis(content) -> h.em([], inline(content))
       jot.Strong(content) -> h.strong([], inline(content))
       jot.Code(content) ->
