@@ -9,11 +9,10 @@ import harness/impl/spotless/twitter
 import harness/impl/spotless/twitter/tweet
 import harness/impl/spotless/vimeo
 import harness/impl/spotless/vimeo/my_videos as vimeo_my_videos
-import midas/sdk/dnsimple
 import midas/sdk/netlify
 
 pub type Config {
-  Config(dnsimple: dnsimple.App, netlify: netlify.App, twitter_local: Bool)
+  Config(dnsimple_local: Bool, netlify: netlify.App, twitter_local: Bool)
 }
 
 pub fn effects(config: Config) {
@@ -23,7 +22,7 @@ pub fn effects(config: Config) {
       #(
         dnsimple_list_domains.lift(),
         dnsimple_list_domains.reply(),
-        dnsimple_list_domains.blocking(config.dnsimple, _),
+        dnsimple_list_domains.blocking(config.dnsimple_local, _),
       ),
     ),
     #(google.l, #(google.lift, google.reply, google.blocking(google.local, _))),

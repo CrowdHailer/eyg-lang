@@ -19,7 +19,7 @@ packages = [
   { name = "lustre", version = "4.5.1", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_json", "gleam_otp", "gleam_stdlib"], otp_app = "lustre", source = "hex", outer_checksum = "B592DA442F6577143CAFA35D4506DB2018DAEED9C707A921E33559E09F001DF1" },
   { name = "midas", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "snag"], otp_app = "midas", source = "hex", outer_checksum = "9998A1A75E545B3E4590B7CAD9EA0C3462CD7D5347B8DC2DFBADB5C42A42BD5A" },
   { name = "midas_browser", version = "0.1.1", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth"], otp_app = "midas_browser", source = "hex", outer_checksum = "E432C8A5982A6D93F38C421E6B2027DBAC21279EEECC8941F16B1C5F12470841" },
-  { name = "midas_sdk", version = "0.1.4", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "F22493FE3B3A2AD3EBD997EFAE9607EAF9F3CFCAE6D109ECCEB804515E2980B6" },
+  { name = "midas_sdk", version = "0.1.5", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "436B931C9F8126C88234FC1F7159E819A329FE71DAB11B3727DDF44FA149087D" },
   { name = "plinth", version = "0.5.0", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "9B0ECC110316F55432DC544847B7F4E98B73D3F598CB3EE844570FB1EFB3F8BE" },
   { name = "simplifile", version = "1.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "1D5DFA3A2F9319EC85825F6ED88B8E449F381B0D55A62F5E61424E748E7DDEB0" },
   { name = "snag", version = "0.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "54D32E16E33655346AA3E66CBA7E191DE0A8793D2C05284E3EFB90AD2CE92BCC" },
@@ -40,7 +40,7 @@ jot = { version = ">= 1.1.0 and < 2.0.0" }
 lustre = { version = "~> 4.0" }
 midas = { version = ">= 1.0.0 and < 2.0.0" }
 midas_browser = { version = ">= 0.1.1 and < 1.0.0" }
-midas_sdk = { version = ">= 0.1.4 and < 1.0.0" }
+midas_sdk = { version = ">= 0.1.5 and < 1.0.0" }
 plinth = { version = ">= 0.5.0 and < 1.0.0" }
 simplifile = { version = "~> 1.0" }
 snag = { version = ">= 0.3.0 and < 1.0.0" }

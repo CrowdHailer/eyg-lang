@@ -106,6 +106,7 @@ fn shell_page(bundle) {
 const redirects = "
 /packages/* /packages/index.html 200
 /auth/* https://eyg-backend.fly.dev/auth/:splat 200
+/api/dnsimple/* https://eyg-backend.fly.dev/dnsimple/:splat 200
 /api/twitter/* https://eyg-backend.fly.dev/twitter/:splat 200
 /api/netlify/* https://eyg-backend.fly.dev/netlify/:splat 200
 "

@@ -1,9 +1,13 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/http
 import gleam/javascript/promise
 import gleam/list
+import gleam/option.{None}
 import gleam/result
+import harness/impl/spotless/dnsimple/auth
+import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/dnsimple
 import midas/task
@@ -33,11 +37,12 @@ pub fn impl(app, lift) {
   v.Promise(p)
 }
 
-pub fn do(app) {
+pub fn do(local) {
   let task = {
-    use #(token, account_id) <- task.do(dnsimple.authenticate(app))
+    use #(token, account_id) <- task.do(auth.authenticate(local))
     dnsimple.list_domains(token, account_id)
   }
+  let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/dnsimple")
   browser.run(task)
 }
 
