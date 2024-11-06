@@ -3,9 +3,11 @@ import eyg/runtime/cast
 import eyg/runtime/value as v
 import gleam/javascript/promise
 import gleam/list
+import gleam/option
 import gleam/result
 import midas/browser
 import midas/sdk/netlify
+import midas/sdk/netlify/gen
 import midas/task
 import snag
 
@@ -57,11 +59,11 @@ fn result_to_eyg(result) {
 }
 
 fn site_to_eyg(site) {
-  let netlify.Site(id: id, state: state, name: name, url: url) = site
+  let gen.Site(id: id, state: state, name: name, url: url, ..) = site
   v.Record([
-    #("id", v.Str(id)),
-    #("state", v.Str(state)),
-    #("name", v.Str(name)),
-    #("url", v.Str(url)),
+    #("id", v.Str(option.unwrap(id, ""))),
+    #("state", v.Str(option.unwrap(state, ""))),
+    #("name", v.Str(option.unwrap(name, ""))),
+    #("url", v.Str(option.unwrap(url, ""))),
   ])
 }
