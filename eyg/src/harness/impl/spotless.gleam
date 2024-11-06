@@ -3,6 +3,7 @@ import harness/impl/spotless/gmail/list_messages as gmail_list_messages
 import harness/impl/spotless/gmail/send as gmail_send
 import harness/impl/spotless/google
 import harness/impl/spotless/google_calendar/list_events as gcal_list_events
+import harness/impl/spotless/netlify/create_site as netlify_create_site
 import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
 import harness/impl/spotless/netlify/list_sites as netlify_list_sites
 import harness/impl/spotless/twitter
@@ -62,6 +63,14 @@ pub fn effects(config: Config) {
         netlify_list_sites.lift,
         netlify_list_sites.reply(),
         netlify_list_sites.blocking(config.netlify, _),
+      ),
+    ),
+    #(
+      netlify_create_site.l,
+      #(
+        netlify_create_site.lift(),
+        netlify_create_site.reply(),
+        netlify_create_site.blocking(config.netlify, _),
       ),
     ),
     #(

@@ -1,50 +1,52 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/http
 import gleam/javascript/promise
-import gleam/list
-import gleam/option
+import gleam/option.{None}
 import gleam/result
 import harness/impl/spotless/netlify/site
+import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/netlify
-import midas/sdk/netlify/gen
 import midas/task
 import snag
 
-pub const l = "Netlify.ListSites"
+pub const l = "Netlify.CreateSite"
 
-pub const lift = t.unit
+pub fn lift() {
+  t.record([])
+}
 
 pub fn reply() {
-  t.result(t.List(site.t()), t.String)
+  t.result(site.t(), t.String)
 }
 
 pub fn type_() {
-  #(l, #(lift, reply()))
+  #(l, #(lift(), reply()))
 }
 
 pub fn blocking(app, lift) {
-  use Nil <- result.map(cast.as_unit(lift, Nil))
-  promise.map(do(app), result_to_eyg)
+  Ok(promise.map(do(app), result_to_eyg))
 }
 
-pub fn impl(app, lift) {
-  use p <- result.map(blocking(app, lift))
-  v.Promise(p)
-}
+// pub fn impl(app, lift) {
+//   use p <- result.map(blocking(app, lift))
+//   v.Promise(p)
+// }
 
 pub fn do(app) {
   let task = {
     use token <- task.do(netlify.authenticate(app))
-    netlify.list_sites(token)
+    netlify.create_site(token)
   }
+  let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
   browser.run(task)
 }
 
 fn result_to_eyg(result) {
   case result {
-    Ok(videos) -> v.ok(v.LinkedList(list.map(videos, site.to_eyg)))
+    Ok(site) -> v.ok(site.to_eyg(site))
     Error(reason) -> v.error(v.Str(snag.line_print(reason)))
   }
 }
