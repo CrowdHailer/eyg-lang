@@ -10,7 +10,7 @@ packages = [
   { name = "gleam_community_codec", version = "0.1.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], source = "local", path = "../../codec" },
   { name = "gleam_community_colour", version = "1.4.1", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], otp_app = "gleam_community_colour", source = "hex", outer_checksum = "386CB9B01B33371538672EEA8A6375A0A0ADEF41F17C86DDCB81C92AD00DA610" },
   { name = "gleam_erlang", version = "0.30.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_erlang", source = "hex", outer_checksum = "760618870AE4A497B10C73548E6E44F43B76292A54F0207B3771CBB599C675B4" },
-  { name = "gleam_fetch", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "gleam_fetch", source = "hex", outer_checksum = "4AE60B21A9A664137A79B1BEB93F751CB27F1DDED4086CA00C0260F5FFACBD80" },
+  { name = "gleam_fetch", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "gleam_fetch", source = "hex", outer_checksum = "2FCFC0A85A6D5A83076889EEDD02D6779C02FEF6FDE0263C4D3B46D0785EAB7A" },
   { name = "gleam_http", version = "3.7.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_http", source = "hex", outer_checksum = "EA66440C2269F7CED0F6845E5BD0DB68095775D627FA709A841CA78A398D6D56" },
   { name = "gleam_javascript", version = "0.13.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_javascript", source = "hex", outer_checksum = "F98328FCF573DA6F3A35D7F6CB3F9FF19FD5224CCBA9151FCBEAA0B983AF2F58" },
   { name = "gleam_json", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib", "thoas"], otp_app = "gleam_json", source = "hex", outer_checksum = "9063D14D25406326C0255BDA0021541E797D8A7A12573D849462CAFED459F6EB" },
@@ -29,7 +29,7 @@ packages = [
   { name = "midas_browser", version = "0.1.2", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth"], otp_app = "midas_browser", source = "hex", outer_checksum = "3750B2C86DEDF26FB5F826F139578A6EE64603BC02320D11E0E3148119CAC7F5" },
   { name = "midas_node", version = "1.2.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_package_interface", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "midas", "plinth", "shellout", "simplifile", "snag"], otp_app = "midas_node", source = "hex", outer_checksum = "6C42BE6073C74BFA542422D12CB4A66C9DE39193915D7504D6049AED9457ECAF" },
   { name = "midas_sdk", version = "0.3.1", build_tools = ["gleam"], requirements = ["decode", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "DCE4BBEDDF575013E3719C53920325A876ABCD5F02E3D16BFD3A51346E835BCA" },
-  { name = "mysig", version = "0.1.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_stdlib", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "snag"], source = "local", path = "../../../mysig" },
+  { name = "mysig", version = "0.1.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_stdlib", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "snag"], source = "local", path = "../../mysig" },
   { name = "oas", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "oas", source = "hex", outer_checksum = "0DE0BD7449F519EF75FC0BE873C73BD9FBF265B9A085A6EA6A4EB84DE3F2F8DC" },
   { name = "plinth", version = "0.5.1", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "076D792629D0EF917FC47AD054A9AA35F4B33729DAC06726717B1A60BFBE8E11" },
   { name = "shellout", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "E2FCD18957F0E9F67E1F497FC9FF57393392F8A9BAEAEA4779541DE7A68DD7E0" },
@@ -54,7 +54,7 @@ lustre = { version = "~> 4.0" }
 midas = { version = ">= 1.0.0 and < 2.0.0" }
 midas_browser = { version = ">= 0.1.1 and < 1.0.0" }
 midas_sdk = { version = ">= 0.2.0 and < 1.0.0" }
-mysig = { path = "../../../mysig" }
+mysig = { path = "../../mysig" }
 oas = { version = ">= 1.0.1 and < 2.0.0" }
 plinth = { version = ">= 0.5.0 and < 1.0.0" }
 simplifile = { version = "~> 1.0" }
