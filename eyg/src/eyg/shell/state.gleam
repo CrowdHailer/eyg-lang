@@ -1,14 +1,24 @@
+import eyg/analysis/type_/isomorphic as t
+import eyg/runtime/cast
 import eyg/shell/situation.{type Situation}
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
+import gleam/dict
+import gleam/io
 import gleam/javascript/promisex
+import gleam/json
 import gleam/list
 import gleam/option.{type Option}
 import harness/impl/browser as harness
 import harness/impl/spotless
+import harness/impl/spotless/netlify/openapi as netlify_spec
+import justin
 import lustre/effect
 import morph/editable
+import oas
+import plinth/browser/document
+import plinth/browser/element
 
 pub type Shell {
   Shell(
@@ -22,15 +32,26 @@ pub type Shell {
   )
 }
 
-fn new_snippet(scope, cache, config) {
-  snippet.active(editable.Vacant(""), scope, effects(config), cache)
+fn new_snippet(scope, cache, config, eff) {
+  snippet.active(
+    editable.Vacant(""),
+    scope,
+    effects(config) |> list.append(eff),
+    cache,
+  )
 }
 
-pub fn init(config) {
+pub fn init(config: spotless.Config) {
   let cache = sync.init(browser.get_origin())
 
+  let assert Ok(spec) = document.get_element_by_id("netlify.openapi.json")
+  let spec = element.inner_text(spec)
+  let assert Ok(spec) = json.decode(spec, oas.decoder)
+  let eff = netlify_spec.effects_from_oas(spec, config.netlify)
+
   let situation = situation.init()
-  let snippet = new_snippet([], cache, config)
+  let snippet = new_snippet([], cache, config, eff)
+
   let state = Shell(config, situation, cache, [], True, [], snippet)
 
   #(state, effect.none())
@@ -115,7 +136,8 @@ pub fn update(state: Shell, message) {
           dispatch_to_snippet(state, current, snippet.write_to_clipboard(text))
         snippet.Conclude(value, scope) -> {
           let previous = [#(value, snippet.source(current)), ..state.previous]
-          let source = new_snippet(scope, state.cache, state.config)
+          // TODO eff
+          let source = new_snippet(scope, state.cache, state.config, [])
           let state = Shell(..state, source: source, previous: previous)
           #(
             state,

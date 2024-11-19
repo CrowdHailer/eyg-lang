@@ -57,30 +57,30 @@ pub fn effects(config: Config) {
         _,
       )),
     ),
-    #(
-      netlify_list_sites.l,
-      #(
-        netlify_list_sites.lift,
-        netlify_list_sites.reply(),
-        netlify_list_sites.blocking(config.netlify, _),
-      ),
-    ),
-    #(
-      netlify_create_site.l,
-      #(
-        netlify_create_site.lift(),
-        netlify_create_site.reply(),
-        netlify_create_site.blocking(config.netlify, _),
-      ),
-    ),
-    #(
-      netlify_deploy_site.l,
-      #(
-        netlify_deploy_site.lift(),
-        netlify_deploy_site.reply(),
-        netlify_deploy_site.blocking(config.netlify, _),
-      ),
-    ),
+    // #(
+    //   netlify_list_sites.l,
+    //   #(
+    //     netlify_list_sites.lift,
+    //     netlify_list_sites.reply(),
+    //     netlify_list_sites.blocking(config.netlify, _),
+    //   ),
+    // ),
+    // #(
+    //   netlify_create_site.l,
+    //   #(
+    //     netlify_create_site.lift(),
+    //     netlify_create_site.reply(),
+    //     netlify_create_site.blocking(config.netlify, _),
+    //   ),
+    // ),
+    // #(
+    //   netlify_deploy_site.l,
+    //   #(
+    //     netlify_deploy_site.lift(),
+    //     netlify_deploy_site.reply(),
+    //     netlify_deploy_site.blocking(config.netlify, _),
+    //   ),
+    // ),
     #(
       tweet.l,
       #(tweet.lift(), tweet.reply(), tweet.blocking(

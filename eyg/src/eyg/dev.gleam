@@ -82,6 +82,8 @@ fn examine_page(bundle) {
 }
 
 fn shell_page(bundle) {
+  use spec <- t.do(t.read("../../midas_sdk/priv/netlify.openapi.json"))
+  let assert Ok(spec) = bit_array.to_string(spec)
   use script <- t.do(t.bundle("eyg/shell/app", "run"))
   use script <- t.do(asset.resource(asset.js("shell", script), bundle))
   use layout <- t.do(asset.resource(layout.css, bundle))
@@ -92,7 +94,13 @@ fn shell_page(bundle) {
       "Eyg - shell",
       "eyg.run",
       [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
-      [h.div([], [empty_lustre()])],
+      [
+        h.div([], [empty_lustre()]),
+        h.script(
+          [a.type_("application/json"), a.id("netlify.openapi.json")],
+          spec,
+        ),
+      ],
     )
     |> element.to_document_string()
     |> bit_array.from_string()
