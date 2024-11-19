@@ -9,7 +9,7 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import midas/task as t
-import mysig
+import mysig/asset
 import mysig/layout
 import snag
 
@@ -31,17 +31,19 @@ pub fn build() {
     element.to_string(edition.render(latest, list.length(archive.published)))
   let template = string.replace(template, replace_string, content)
 
-  let bundle = mysig.new_bundle("/assets")
+  let bundle = asset.new_bundle("/assets")
+  use layout <- t.do(asset.resource(layout.css, bundle))
+
   t.done([
     #("/news/_email.html", <<template:utf8>>),
     pea,
     brocolli,
-    ..web_editions(archive.published, bundle)
+    ..web_editions(archive.published, bundle, layout)
   ])
 }
 
 // archive is a reverse order stack of editions
-fn web_editions(editions, bundle) {
+fn web_editions(editions, bundle, layout) {
   list.index_map(list.reverse(editions), fn(edition, index) {
     let index = index + 1
     let Edition(title: title, ..) = edition
@@ -64,7 +66,7 @@ fn web_editions(editions, bundle) {
               "Updates from the development of the EYG language and editor.",
             ),
           ]),
-          mysig.resource(layout.css, bundle),
+          layout,
           h.link([a.rel("shortcut icon"), a.href("/assets/pea.webp")]),
           h.script(
             [

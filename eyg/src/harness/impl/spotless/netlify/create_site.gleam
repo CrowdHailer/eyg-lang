@@ -9,6 +9,7 @@ import harness/impl/spotless/netlify/site
 import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/netlify
+import midas/sdk/netlify/schema
 import midas/task
 import snag
 
@@ -38,7 +39,8 @@ pub fn blocking(app, lift) {
 pub fn do(app) {
   let task = {
     use token <- task.do(netlify.authenticate(app))
-    netlify.create_site(token)
+    let site = schema.site_setup
+    netlify.create_site(token, site, None)
   }
   let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/netlify")
   browser.run(task)

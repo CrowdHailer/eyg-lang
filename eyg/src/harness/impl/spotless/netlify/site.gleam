@@ -1,7 +1,7 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/value as v
 import gleam/option
-import midas/sdk/netlify/gen
+import midas/sdk/netlify/schema
 
 pub fn t() {
   t.record([
@@ -13,7 +13,7 @@ pub fn t() {
 }
 
 pub fn to_eyg(site) {
-  let gen.Site(id: id, state: state, name: name, url: url, ..) = site
+  let schema.Site(id: id, state: state, name: name, url: url, ..) = site
   v.Record([
     #("id", v.Str(option.unwrap(id, ""))),
     #("state", v.Str(option.unwrap(state, ""))),

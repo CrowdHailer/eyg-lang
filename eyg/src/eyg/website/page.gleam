@@ -5,17 +5,14 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import midas/task as t
-import mysig
+import mysig/asset
 import mysig/layout
 import mysig/neo
 
 pub fn app(title, module, func, bundle) {
   use script <- t.do(t.bundle(module, func))
-  t.done(layout(
-    title,
-    [empty_lustre(), mysig.resource(mysig.js("page", script), bundle)],
-    bundle,
-  ))
+  use script <- t.do(asset.resource(asset.js("page", script), bundle))
+  layout(title, [empty_lustre(), script], bundle)
 }
 
 fn layout(title, body, bundle) {
@@ -23,18 +20,12 @@ fn layout(title, body, bundle) {
     None -> "EYG"
     Some(title) -> "EYG - " <> title
   }
-  doc(
-    title,
-    "eyg.run",
-    [
-      stylesheet(mysig.tailwind_2_2_11),
-      mysig.resource(layout.css, bundle),
-      mysig.resource(neo.css, bundle),
-    ],
-    body,
-  )
+  use layout <- t.do(asset.resource(layout.css, bundle))
+  use neo <- t.do(asset.resource(neo.css, bundle))
+  doc(title, "eyg.run", [stylesheet(asset.tailwind_2_2_11), layout, neo], body)
   |> element.to_document_string()
   |> bit_array.from_string()
+  |> t.done()
 }
 
 pub fn doc(title, domain, head, body) {

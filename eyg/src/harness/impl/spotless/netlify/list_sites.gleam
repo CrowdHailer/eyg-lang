@@ -3,12 +3,11 @@ import eyg/runtime/cast
 import eyg/runtime/value as v
 import gleam/javascript/promise
 import gleam/list
-import gleam/option
+import gleam/option.{None}
 import gleam/result
 import harness/impl/spotless/netlify/site
 import midas/browser
 import midas/sdk/netlify
-import midas/sdk/netlify/gen
 import midas/task
 import snag
 
@@ -37,7 +36,7 @@ pub fn impl(app, lift) {
 pub fn do(app) {
   let task = {
     use token <- task.do(netlify.authenticate(app))
-    netlify.list_sites(token)
+    netlify.list_sites(token, None, None, None, None)
   }
   browser.run(task)
 }

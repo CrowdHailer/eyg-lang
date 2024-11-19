@@ -22,6 +22,7 @@ javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
 midas_browser = ">= 0.1.1 and < 1.0.0"
 jot = ">= 1.1.0 and < 2.0.0"
 midas_sdk = ">= 0.2.0 and < 1.0.0"
+mysig = {path = "../../../mysig"}
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

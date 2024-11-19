@@ -21,7 +21,7 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import midas/task as t
-import mysig
+import mysig/asset
 import mysig/layout
 import mysig/neo
 
@@ -66,16 +66,14 @@ pub fn app_script(src) {
 
 fn examine_page(bundle) {
   use script <- t.do(t.bundle("examine/app", "run"))
+  use script <- t.do(asset.resource(asset.js("examine", script), bundle))
+  use layout <- t.do(asset.resource(layout.css, bundle))
+  use neo <- t.do(asset.resource(neo.css, bundle))
   let content =
     doc(
       "Eyg - examiner",
       "eyg.run",
-      [
-        stylesheet(mysig.tailwind_2_2_11),
-        mysig.resource(layout.css, bundle),
-        mysig.resource(neo.css, bundle),
-        mysig.resource(mysig.js("examine", script), bundle),
-      ],
+      [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
       [h.div([], [empty_lustre()])],
     )
     |> element.to_document_string()
@@ -85,17 +83,15 @@ fn examine_page(bundle) {
 
 fn shell_page(bundle) {
   use script <- t.do(t.bundle("eyg/shell/app", "run"))
+  use script <- t.do(asset.resource(asset.js("shell", script), bundle))
+  use layout <- t.do(asset.resource(layout.css, bundle))
+  use neo <- t.do(asset.resource(neo.css, bundle))
 
   let content =
     doc(
       "Eyg - shell",
       "eyg.run",
-      [
-        stylesheet(mysig.tailwind_2_2_11),
-        mysig.resource(layout.css, bundle),
-        mysig.resource(neo.css, bundle),
-        mysig.resource(mysig.js("shell", script), bundle),
-      ],
+      [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
       [h.div([], [empty_lustre()])],
     )
     |> element.to_document_string()
@@ -128,19 +124,18 @@ fn cache_to_references_files(cache) {
 }
 
 fn package_page(script_asset, bundle) {
+  use script <- t.do(asset.resource(script_asset, bundle))
+  use layout <- t.do(asset.resource(layout.css, bundle))
+  use neo <- t.do(asset.resource(neo.css, bundle))
   doc(
     "Eyg - shell",
     "eyg.run",
-    [
-      stylesheet(mysig.tailwind_2_2_11),
-      mysig.resource(layout.css, bundle),
-      mysig.resource(neo.css, bundle),
-      mysig.resource(script_asset, bundle),
-    ],
+    [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
     [h.div([], [empty_lustre()])],
   )
   |> element.to_document_string()
   |> bit_array.from_string()
+  |> t.done()
 }
 
 // TODO remove an make remotes optional in sync
@@ -148,7 +143,7 @@ const origin = sync.Origin(http.Https, "", None)
 
 fn build_intro(preview, bundle) {
   use script <- t.do(t.bundle("intro/intro", "run"))
-  let package_asset = mysig.js("package", script)
+  let package_asset = asset.js("package", script)
   // TODO remove stdlib soon should be caught be seed
   use stdlib <- t.do(t.read("seed/eyg/std.json"))
 
@@ -160,22 +155,23 @@ fn build_intro(preview, bundle) {
   let std_hash = cid.for_expression(expression)
   use Nil <- t.do(t.log(std_hash))
 
-  let content =
-    list.flat_map(content.pages(), fn(page) {
+  use content <- t.do(
+    t.each(content.pages(), fn(page) {
       let #(name, content) = page
       let #(cache, _before, _public, _ref) =
         package.load_guide_from_content(content, sync.init(origin))
       let references = cache_to_references_files(cache)
 
-      let page = #(
-        "/packages/eyg/" <> name <> "/index.html",
-        package_page(package_asset, bundle),
-      )
+      use page <- t.do(package_page(package_asset, bundle))
+      let page = #("/packages/eyg/" <> name <> "/index.html", page)
       case preview {
         True -> [page, ..references]
         False -> references
       }
-    })
+      |> t.done()
+    }),
+  )
+  let content = list.flatten(content)
 
   use groups <- t.do(t.list("seed"))
   use packages <- t.do(
@@ -222,9 +218,10 @@ fn build_intro(preview, bundle) {
           }
         }
         let package = #("/packages/" <> group <> "/" <> file, bytes)
+        use page <- t.do(package_page(package_asset, bundle))
         let page = #(
           "/packages/" <> group <> "/" <> name <> "/index.html",
-          package_page(package_asset, bundle),
+          page,
         )
         let files = case preview {
           True -> {
@@ -242,15 +239,12 @@ fn build_intro(preview, bundle) {
 
   // needs to use the cli or CI for functions
 
+  use pak_page <- t.do(package_page(package_asset, bundle))
   t.done(
     [
       #("/_redirects", <<redirects:utf8>>),
-      #("/packages/index.html", package_page(package_asset, bundle)),
-      // 
-      #(
-        "/guide/" <> "intro" <> "/index.html",
-        package_page(package_asset, bundle),
-      ),
+      #("/packages/index.html", pak_page),
+      #("/guide/" <> "intro" <> "/index.html", pak_page),
       #("/references/" <> std_hash <> ".json", stdlib),
     ]
     |> list.append(packages)
@@ -263,15 +257,13 @@ fn build_intro(preview, bundle) {
 
 fn datalog_page(bundle) {
   use script <- t.do(t.bundle("datalog/browser/app", "run"))
+  use script <- t.do(asset.resource(asset.js("datalog", script), bundle))
+  use layout <- t.do(asset.resource(layout.css, bundle))
+  use neo <- t.do(asset.resource(neo.css, bundle))
   doc(
     "Datalog notebook",
     "eyg.run",
-    [
-      stylesheet(mysig.tailwind_2_2_11),
-      mysig.resource(layout.css, bundle),
-      mysig.resource(neo.css, bundle),
-      mysig.resource(mysig.js("datalog", script), bundle),
-    ],
+    [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
     [h.div([], [empty_lustre()])],
   )
   |> element.to_document_string()
@@ -308,7 +300,7 @@ pub fn dependency(group, name) {
   // todo
 }
 
-pub fn build(bundle) {
+pub fn build(bundle) -> t.Effect(List(#(String, BitArray))) {
   use documentation <- t.do(documentation.page(bundle))
   use home <- t.do(home.page(bundle))
   use editor <- t.do(editor.page(bundle))
@@ -325,34 +317,36 @@ pub fn build(bundle) {
 pub fn preview(args) {
   case args {
     ["home"] -> {
-      let bundle = mysig.new_bundle("/assets")
+      let bundle = asset.new_bundle("/assets")
       use v1_site <- t.do(build(bundle))
       use intro <- t.do(build_intro(True, bundle))
 
       t.done(
-        [v1_site, intro, mysig.to_files(bundle)]
+        [v1_site, intro, asset.to_files(bundle)]
         |> list.flatten(),
       )
     }
     _ -> {
-      let bundle = mysig.new_bundle("/assets")
+      let bundle = asset.new_bundle("/assets")
       use v1_site <- t.do(build(bundle))
-      use examine <- t.do(examine_page(bundle))
+      // use examine <- t.do(examine_page(bundle))
       use shell <- t.do(shell_page(bundle))
-      use intro <- t.do(build_intro(True, bundle))
+      // use intro <- t.do(build_intro(True, bundle))
       // Note news puts pea image into assets without hashing
       use news <- t.do(news.build())
-      use datalog <- t.do(build_datalog(bundle))
+      // use datalog <- t.do(build_datalog(bundle))
 
       let files =
         list.flatten([
           v1_site,
-          [examine],
+          // Need moving so that project name and top module name match.
+          // midas assumes that this is the case when looking for the module
+          // [examine],
+          // intro,
+          // datalog,
           [shell],
-          intro,
           news,
-          datalog,
-          mysig.to_files(bundle),
+          asset.to_files(bundle),
         ])
       io.debug(listx.keys(files))
       t.done(files)

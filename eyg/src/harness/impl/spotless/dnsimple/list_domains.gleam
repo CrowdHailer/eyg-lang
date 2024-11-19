@@ -4,12 +4,13 @@ import eyg/runtime/value as v
 import gleam/http
 import gleam/javascript/promise
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleam/result
 import harness/impl/spotless/dnsimple/auth
 import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/dnsimple
+import midas/sdk/dnsimple/schema
 import midas/task
 import snag
 
@@ -40,7 +41,8 @@ pub fn impl(app, lift) {
 pub fn do(local) {
   let task = {
     use #(token, account_id) <- task.do(auth.authenticate(local))
-    dnsimple.list_domains(token, account_id)
+    // dnsimple.list_domains(token, account_id, None, None, None)
+    todo as "need dynamic in opanispec"
   }
   let task = proxy.proxy(task, http.Https, "eyg.run", None, "/api/dnsimple")
   browser.run(task)
@@ -54,6 +56,9 @@ fn result_to_eyg(result) {
 }
 
 fn domain_to_eyg(message) {
-  let dnsimple.Domain(id, name) = message
+  let schema.Domain(id: id, name: name, ..) = message
+  let assert Some(id) = id
+  let assert Some(name) = name
+
   v.Record([#("id", v.Integer(id)), #("name", v.Str(name))])
 }

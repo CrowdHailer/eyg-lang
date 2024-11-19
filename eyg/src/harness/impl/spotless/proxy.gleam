@@ -12,12 +12,16 @@ pub fn proxy(task, scheme, host, port, prefix) {
       task.Bundle(f, m, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
     task.Follow(lift, resume) ->
       task.Follow(lift, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
+    task.Hash(a, b, resume) ->
+      task.Hash(a, b, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
     task.List(lift, resume) ->
       task.List(lift, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
     task.Log(lift, resume) ->
       task.Log(lift, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
     task.Read(lift, resume) ->
       task.Read(lift, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
+    task.Serve(p, h, resume) ->
+      task.Serve(p, h, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
     task.Write(a, b, resume) ->
       task.Write(a, b, fn(x) { proxy(resume(x), scheme, host, port, prefix) })
     task.Zip(lift, resume) ->
