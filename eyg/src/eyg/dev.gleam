@@ -113,6 +113,7 @@ const redirects = "
 /api/dnsimple/* https://eyg-backend.fly.dev/dnsimple/:splat 200
 /api/twitter/* https://eyg-backend.fly.dev/twitter/:splat 200
 /api/netlify/* https://eyg-backend.fly.dev/netlify/:splat 200
+/api/github/* https://eyg-backend.fly.dev/github/:splat 200
 "
 
 fn ref_file(ref, exp) {
@@ -250,7 +251,6 @@ fn build_intro(preview, bundle) {
   use pak_page <- t.do(package_page(package_asset, bundle))
   t.done(
     [
-      #("/_redirects", <<redirects:utf8>>),
       #("/packages/index.html", pak_page),
       #("/guide/" <> "intro" <> "/index.html", pak_page),
       #("/references/" <> std_hash <> ".json", stdlib),
@@ -355,6 +355,7 @@ pub fn preview(args) {
           [shell],
           news,
           asset.to_files(bundle),
+          [#("/_redirects", <<redirects:utf8>>)],
         ])
       io.debug(listx.keys(files))
       t.done(files)
