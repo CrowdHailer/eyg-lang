@@ -22,39 +22,9 @@ import lustre/element
 import lustre/element/html as h
 import midas/task as t
 import mysig/asset
+import mysig/html
 import mysig/layout
 import mysig/neo
-
-pub fn doc(title, domain, head, body) {
-  h.html([a.attribute("lang", "en")], [
-    h.head([], list.append(common_head_tags(title, domain), head)),
-    h.body([], body),
-  ])
-}
-
-fn common_head_tags(title, domain) {
-  [
-    h.meta([a.attribute("charset", "UTF-8")]),
-    h.meta([
-      a.attribute("http-equiv", "X-UA-Compatible"),
-      a.attribute("content", "IE=edge"),
-    ]),
-    h.meta([a.attribute("viewport", "width=device-width, initial-scale=1.0")]),
-    h.title([], title),
-    h.script(
-      [
-        a.attribute("defer", ""),
-        a.attribute("data-domain", domain),
-        a.src("https://plausible.io/js/script.js"),
-      ],
-      "",
-    ),
-  ]
-}
-
-pub fn stylesheet(reference) {
-  h.link([a.rel("stylesheet"), a.href(reference)])
-}
 
 pub fn empty_lustre() {
   h.div([a.id("app")], [])
@@ -69,13 +39,15 @@ fn examine_page(bundle) {
   use script <- t.do(asset.resource(asset.js("examine", script), bundle))
   use layout <- t.do(asset.resource(layout.css, bundle))
   use neo <- t.do(asset.resource(neo.css, bundle))
+  let head = [
+    html.stylesheet(asset.tailwind_2_2_11),
+    layout,
+    neo,
+    script,
+    html.plausible("eyg.run"),
+  ]
   let content =
-    doc(
-      "Eyg - examiner",
-      "eyg.run",
-      [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
-      [h.div([], [empty_lustre()])],
-    )
+    html.doc("Eyg - examiner", head, [h.div([], [empty_lustre()])])
     |> element.to_document_string()
     |> bit_array.from_string()
   t.done(#("/examine/index.html", content))
@@ -90,10 +62,15 @@ fn shell_page(bundle) {
   use neo <- t.do(asset.resource(neo.css, bundle))
 
   let content =
-    doc(
+    html.doc(
       "Eyg - shell",
-      "eyg.run",
-      [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
+      [
+        html.stylesheet(asset.tailwind_2_2_11),
+        layout,
+        neo,
+        script,
+        html.plausible("eyg.run"),
+      ],
       [
         h.div([], [empty_lustre()]),
         h.script(
@@ -136,10 +113,15 @@ fn package_page(script_asset, bundle) {
   use script <- t.do(asset.resource(script_asset, bundle))
   use layout <- t.do(asset.resource(layout.css, bundle))
   use neo <- t.do(asset.resource(neo.css, bundle))
-  doc(
+  html.doc(
     "Eyg - shell",
-    "eyg.run",
-    [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
+    [
+      html.stylesheet(asset.tailwind_2_2_11),
+      layout,
+      neo,
+      script,
+      html.plausible("eyg.run"),
+    ],
     [h.div([], [empty_lustre()])],
   )
   |> element.to_document_string()
@@ -268,10 +250,15 @@ fn datalog_page(bundle) {
   use script <- t.do(asset.resource(asset.js("datalog", script), bundle))
   use layout <- t.do(asset.resource(layout.css, bundle))
   use neo <- t.do(asset.resource(neo.css, bundle))
-  doc(
+  html.doc(
     "Datalog notebook",
-    "eyg.run",
-    [stylesheet(asset.tailwind_2_2_11), layout, neo, script],
+    [
+      html.stylesheet(asset.tailwind_2_2_11),
+      layout,
+      neo,
+      script,
+      html.plausible("eyg.run"),
+    ],
     [h.div([], [empty_lustre()])],
   )
   |> element.to_document_string()
