@@ -3,7 +3,7 @@ tool = "gleam"
 version = "0.1.0"
 target = "javascript"
 description = "Abstract Syntax Tree tools"
-gleam = ">= 0.32.0"
+gleam = ">= 1.5.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 1.0.0"
@@ -25,6 +25,8 @@ midas_sdk = ">= 0.2.0 and < 1.0.0"
 mysig = {path = "../../mysig"}
 oas = ">= 1.0.1 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
+glen_node = ">= 0.0.2 and < 1.0.0"
+glen = ">= 2.2.1 and < 3.0.0"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

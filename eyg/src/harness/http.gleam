@@ -35,6 +35,21 @@ pub fn method_to_gleam(value) {
   ])
 }
 
+pub fn method_to_eyg(method) {
+  case method {
+    http.Get -> v.Tagged("GET", v.unit)
+    http.Post -> v.Tagged("POST", v.unit)
+    http.Head -> v.Tagged("HEAD", v.unit)
+    http.Put -> v.Tagged("PUT", v.unit)
+    http.Delete -> v.Tagged("DELETE", v.unit)
+    http.Trace -> v.Tagged("TRACE", v.unit)
+    http.Connect -> v.Tagged("CONNECT", v.unit)
+    http.Options -> v.Tagged("OPTIONS", v.unit)
+    http.Patch -> v.Tagged("PATCH", v.unit)
+    http.Other(other) -> v.Tagged("OTHER", v.Str(other))
+  }
+}
+
 pub fn scheme() {
   t.union([#("HTTP", t.unit), #("HTTPS", t.unit)])
 }
@@ -44,6 +59,13 @@ pub fn scheme_to_gleam(value) {
     #("HTTP", cast.as_unit(_, http.Http)),
     #("HTTPS", cast.as_unit(_, http.Https)),
   ])
+}
+
+pub fn scheme_to_eyg(scheme) {
+  case scheme {
+    http.Http -> v.Tagged("HTTP", v.unit)
+    http.Https -> v.Tagged("HTTPS", v.unit)
+  }
 }
 
 pub fn headers() {
@@ -102,6 +124,29 @@ pub fn request_to_gleam(request) {
   ))
 }
 
+pub fn request_to_eyg(request) {
+  let Request(
+    method: method,
+    scheme: scheme,
+    host: host,
+    port: port,
+    path: path,
+    query: query,
+    headers: headers,
+    body: body,
+  ) = request
+  v.Record([
+    #("method", method_to_eyg(method)),
+    #("scheme", scheme_to_eyg(scheme)),
+    #("host", v.Str(host)),
+    #("port", v.option(port, v.Integer)),
+    #("path", v.Str(path)),
+    #("query", v.option(query, v.Str)),
+    #("headers", headers_to_eyg(headers)),
+    #("body", v.Binary(body)),
+  ])
+}
+
 pub fn headers_to_eyg(headers) {
   v.LinkedList(
     list.map(headers, fn(h) {
@@ -117,6 +162,13 @@ pub fn response() {
     #("headers", headers()),
     #("body", t.Binary),
   ])
+}
+
+pub fn response_to_gleam(response) {
+  use status <- try(cast.field("status", cast.as_integer, response))
+  use headers <- try(cast.field("headers", headers_to_gleam, response))
+  use body <- try(cast.field("body", cast.as_binary, response))
+  Ok(Response(status: status, headers: headers, body: body))
 }
 
 pub fn response_to_eyg(response) {

@@ -47,6 +47,8 @@ gleam_javascript = { version = ">= 0.13.0 and < 1.0.0" }
 gleam_json = { version = ">= 1.0.0 and < 3.0.0" }
 gleam_stdlib = { version = ">= 0.34.0 and < 1.0.0" }
 gleeunit = { version = "~> 1.0" }
+glen = { version = ">= 2.2.1 and < 3.0.0" }
+glen_node = { version = ">= 0.0.2 and < 1.0.0" }
 javascript_mutable_reference = { version = ">= 1.0.0 and < 2.0.0" }
 jot = { version = ">= 1.1.0 and < 2.0.0" }
 justin = { version = ">= 1.0.1 and < 2.0.0" }
