@@ -55,7 +55,7 @@ fn schema_to_type(schema, schemas) {
         })
       t.record(fields)
     }
-    oas.AllOf(_) | oas.AnyOf(_) | oas.OneOf(_) ->
+    oas.AllOf(_) | oas.AnyOf(_) | oas.OneOf(_) | oas.Null ->
       panic as "don't handle all of yet"
   }
 }
@@ -235,6 +235,7 @@ fn schema_decoder(
       )
       Ok(v.Record(fields))
     }
-    oas.AllOf(_) | oas.AnyOf(_) | oas.OneOf(_) -> panic as "don't handle Allof"
+    oas.AllOf(_) | oas.AnyOf(_) | oas.OneOf(_) | oas.Null ->
+      panic as "don't handle Allof"
   }
 }
