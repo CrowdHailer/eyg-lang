@@ -8,7 +8,7 @@ import gleam/dict
 import gleam/dynamic
 import gleam/int
 import gleam/io
-import gleam/javascript/array.{type Array}
+import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/json
 import gleam/list
@@ -19,21 +19,7 @@ import harness/ffi/core
 import harness/impl/http
 import harness/stdlib
 import plinth/javascript/console
-
-pub type Interface
-
-// TODO readlines bindings in readlines project or in plinth as part of node
-@external(javascript, "../plinth_readlines_ffi.js", "createInterface")
-pub fn create_interface(
-  completer: fn(String) -> #(Array(String), String),
-  history: Array(String),
-) -> Interface
-
-@external(javascript, "../plinth_readlines_ffi.js", "question")
-pub fn question(interface: Interface, prompt: String) -> promise.Promise(String)
-
-@external(javascript, "../plinth_readlines_ffi.js", "close")
-pub fn close(interface: Interface) -> promise.Promise(String)
+import plinth/node/readlines
 
 fn handlers() {
   effect.init()
@@ -84,7 +70,7 @@ pub fn run(source) {
   let assert v.Str(prompt) = prompt
 
   let rl =
-    create_interface(
+    readlines.create_interface(
       fn(_) { #(array.from_list([]), "") },
       array.from_list([
         "(.test (source {}) {})",
@@ -97,12 +83,12 @@ pub fn run(source) {
       ]),
     )
   use status <- promise.await(read(rl, parser, env, k, prompt))
-  close(rl)
+  readlines.close(rl)
   promise.resolve(status)
 }
 
 fn read(rl, parser, env, k, prompt) {
-  use answer <- promise.await(question(rl, prompt))
+  use answer <- promise.await(readlines.question(rl, prompt))
   case parser(prompt)(answer) {
     Ok(term) -> {
       let assert v.LinkedList(cmd) = term

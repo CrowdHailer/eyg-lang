@@ -31,7 +31,7 @@ packages = [
   { name = "midas_sdk", version = "0.3.1", build_tools = ["gleam"], requirements = ["decode", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "DCE4BBEDDF575013E3719C53920325A876ABCD5F02E3D16BFD3A51346E835BCA" },
   { name = "mysig", version = "0.1.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_stdlib", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "snag"], source = "local", path = "../../mysig" },
   { name = "oas", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "oas", source = "hex", outer_checksum = "0DE0BD7449F519EF75FC0BE873C73BD9FBF265B9A085A6EA6A4EB84DE3F2F8DC" },
-  { name = "plinth", version = "0.5.1", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "076D792629D0EF917FC47AD054A9AA35F4B33729DAC06726717B1A60BFBE8E11" },
+  { name = "plinth", version = "0.5.2", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "6F346577D02879D5D516C61EC7C41CD09642528072BA04E1DBD36B9415A82517" },
   { name = "shellout", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "E2FCD18957F0E9F67E1F497FC9FF57393392F8A9BAEAEA4779541DE7A68DD7E0" },
   { name = "simplifile", version = "1.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "1D5DFA3A2F9319EC85825F6ED88B8E449F381B0D55A62F5E61424E748E7DDEB0" },
   { name = "snag", version = "0.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "54D32E16E33655346AA3E66CBA7E191DE0A8793D2C05284E3EFB90AD2CE92BCC" },
@@ -56,6 +56,6 @@ midas_browser = { version = ">= 0.1.1 and < 1.0.0" }
 midas_sdk = { version = ">= 0.2.0 and < 1.0.0" }
 mysig = { path = "../../mysig" }
 oas = { version = ">= 1.0.1 and < 2.0.0" }
-plinth = { version = ">= 0.5.0 and < 1.0.0" }
+plinth = { version = ">= 0.5.2 and < 1.0.0" }
 simplifile = { version = "~> 1.0" }
 snag = { version = ">= 0.3.0 and < 1.0.0" }
