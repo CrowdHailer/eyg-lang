@@ -26,7 +26,11 @@ pub const boolean = Union(
 )
 
 pub fn rows(rows) {
-  list.fold(list.reverse(rows), Empty, fn(tail, row) {
+  do_rows(rows, Empty)
+}
+
+pub fn do_rows(rows, tail) {
+  list.fold(list.reverse(rows), tail, fn(tail, row) {
     let #(label, value) = row
     RowExtend(label, value, tail)
   })

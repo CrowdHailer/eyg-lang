@@ -958,17 +958,20 @@ pub fn bare_render(state) {
 fn render_current(errors, run: run.Run) {
   case errors {
     [] -> render_run(run.status)
-    _ ->
-      h.div(
-        [a.class("border-2 border-orange-3 px-2")],
-        list.map(errors, fn(error) {
-          let #(path, reason) = error
-          h.div([event.on_click(UserClickedPath(path))], [
-            element.text(debug.reason(reason)),
-          ])
-        }),
-      )
+    _ -> render_errors(errors)
   }
+}
+
+pub fn render_errors(errors) {
+  h.div(
+    [a.class("border-2 border-orange-3 px-2")],
+    list.map(errors, fn(error) {
+      let #(path, reason) = error
+      h.div([event.on_click(UserClickedPath(path))], [
+        element.text(debug.reason(reason)),
+      ])
+    }),
+  )
 }
 
 fn render_projection(proj, autofocus) {

@@ -5,6 +5,28 @@ import eyg/analysis/type_/isomorphic as t
 import gleam/dict
 import gleeunit/should
 
+// pub fn field_type_mismatch_test() {
+//   let b = dict.new()
+//   let want = t.record([#("height", t.Integer)])
+//   let got = t.record([#("height", t.String)])
+//   unify(want, got, 1, b)
+//   |> should.be_error
+//   |> debug.pretty_reason
+//   |> should.equal("")
+// }
+
+// pub fn mismatched_open_rows_test() {
+//   let b = dict.new()
+//   let #(tail, b) = binding.mono(1, b)
+//   let want =
+//     t.Record(t.do_rows([#("age", t.String), #("height", t.Integer)], tail))
+//   let got = t.Record(t.do_rows([#("age", t.String)], t.Empty))
+//   unify(want, got, 1, b)
+//   |> should.be_error
+//   |> debug.pretty_reason
+//   |> should.equal("")
+// }
+
 pub fn binding_types_in_tail_position_get_resolved_test() {
   let b = [
     #(0, binding.Bound(t.Integer)),

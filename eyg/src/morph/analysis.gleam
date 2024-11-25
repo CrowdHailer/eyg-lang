@@ -52,7 +52,7 @@ pub fn with_references(refs) {
 }
 
 // use capture because we want efficient ability to get to continuations
-fn value_to_type(value, bindings) {
+pub fn value_to_type(value, bindings) {
   case value {
     v.Closure(_, _, _) -> {
       let #(#(_, #(_, type_, _, _)), bindings) =

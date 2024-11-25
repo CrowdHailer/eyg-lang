@@ -1,9 +1,22 @@
 import eyg/runtime/interpreter/state
-import gleam/dict
+import eyg/runtime/value as v
+import gleam/dict.{type Dict}
+import gleam/dynamic
+import gleam/dynamicx
 import harness/ffi/core
 
-pub fn new_env(scope, references) {
-  state.Env(scope: scope, references: references, builtins: core.lib().1)
+pub type Value(meta) =
+  v.Value(meta, #(List(#(state.Kontinue(meta), meta)), state.Env(meta)))
+
+pub fn new_env(
+  scope: List(#(String, Value(a))),
+  references: Dict(String, Value(a)),
+) {
+  let builtins =
+    core.lib().1
+    |> dynamic.from
+    |> dynamicx.unsafe_coerce
+  state.Env(scope: scope, references: references, builtins: builtins)
 }
 
 pub fn lib() {

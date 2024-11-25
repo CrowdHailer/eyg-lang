@@ -1,5 +1,6 @@
 import eyg/runtime/interpreter/state
 import eygir/annotated as a
+import gleam/list
 import gleam/option.{None, Some}
 
 fn loop(next, env) {
@@ -16,6 +17,15 @@ fn loop(next, env) {
 
 pub fn execute(exp, env, h) {
   loop(state.step(state.E(exp), env, state.Empty(h)), env.scope)
+}
+
+pub fn call(f, args, env, h) {
+  let k =
+    list.fold_right(args, state.Empty(h), fn(k, arg) {
+      let #(value, meta) = arg
+      state.Stack(state.CallWith(value, env), meta, k)
+    })
+  loop(state.step(state.V(f), env, k), env.scope)
 }
 
 pub fn resume(value, env, k) {

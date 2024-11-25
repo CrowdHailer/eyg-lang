@@ -40,7 +40,7 @@ fn open(type_, level, bindings) {
   }
 }
 
-fn ftv(type_) {
+pub fn ftv(type_) {
   case type_ {
     t.Var(x) -> set.from_list([x])
     t.Fun(arg, eff, ret) -> set.union(ftv(arg), set.union(ftv(eff), ftv(ret)))

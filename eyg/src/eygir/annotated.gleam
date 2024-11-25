@@ -211,6 +211,28 @@ fn do_list_references(exp, found) {
   }
 }
 
+// currently unused as moved to analysis
+pub fn list_vacant(exp) {
+  do_list_vacant(exp, [])
+}
+
+pub fn do_list_vacant(exp, found) {
+  let #(exp, meta) = exp
+  case exp {
+    Vacant(comment) -> [#(meta, comment), ..found]
+    Let(_label, value, then) -> {
+      let found = do_list_vacant(then, found)
+      do_list_vacant(value, found)
+    }
+    Lambda(_label, body) -> do_list_vacant(body, found)
+    Apply(func, arg) -> {
+      let found = do_list_vacant(arg, found)
+      do_list_vacant(func, found)
+    }
+    _ -> found
+  }
+}
+
 pub fn free_variables(exp) {
   do_free_variables(exp, [], [])
 }

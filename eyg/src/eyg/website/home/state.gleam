@@ -1,21 +1,47 @@
+import eyg/analysis/type_/binding
+import eyg/analysis/type_/isomorphic as t
+import eyg/runtime/interpreter/runner
+import eyg/runtime/interpreter/state as istate
+import eyg/runtime/value
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
+import eyg/website/reload
 import eygir/decode
 import gleam/dict.{type Dict}
+import gleam/dynamic
+import gleam/dynamicx
+import gleam/io
 import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import harness/impl/browser as harness
 import harness/impl/spotless
+import harness/stdlib
 import lustre/effect
+import morph/analysis
 import morph/editable as e
+
+pub type Meta =
+  List(Int)
+
+pub type Value =
+  value.Value(Meta, #(List(#(istate.Kontinue(Meta), Meta)), istate.Env(Meta)))
+
+pub type Example {
+  Example(
+    value: Value,
+    // Need to be all generalised
+    state_type: binding.Poly,
+  )
+}
 
 pub type State {
   State(
     cache: sync.Sync,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
+    example: Example,
   )
 }
 
@@ -61,7 +87,8 @@ const catfact = e.Block(
       e.Call(
         e.Select(e.Variable("http"), "get"),
         [
-          e.String("catfact.ninja"), e.String("/fact"),
+          e.String("catfact.ninja"),
+          e.String("/fact"),
           e.Call(e.Tag("None"), [e.Record([], None)]),
         ],
       ),
@@ -108,6 +135,16 @@ pub const twitter_key = "twitter"
 
 pub const twitter_example = "{\"0\":\"l\",\"l\":\"message\",\"v\":{\"0\":\"s\",\"v\":\"I've just finished the EYG introduction\"},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Tweeted successfully\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"s\",\"v\":\"Failed to send tweet.\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Twitter.Tweet\"},\"a\":{\"0\":\"v\",\"l\":\"message\"}}}}"
 
+pub const hot_reload_key = "hot_reload"
+
+pub const hot_reload_example = "{\"0\":\"l\",\"l\":\"initial\",\"v\":{\"0\":\"i\",\"v\":10},\"t\":{\"0\":\"l\",\"l\":\"handle\",\"v\":{\"0\":\"f\",\"l\":\"state\",\"b\":{\"0\":\"f\",\"l\":\"message\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_add\"},\"a\":{\"0\":\"v\",\"l\":\"state\"}},\"a\":{\"0\":\"i\",\"v\":1}}}},\"t\":{\"0\":\"l\",\"l\":\"render\",\"v\":{\"0\":\"f\",\"l\":\"count\",\"b\":{\"0\":\"l\",\"l\":\"count\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"int_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"count\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"string_append\"},\"a\":{\"0\":\"s\",\"v\":\"the total is \"}},\"a\":{\"0\":\"v\",\"l\":\"count\"}}}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"render\"},\"a\":{\"0\":\"v\",\"l\":\"render\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"handle\"},\"a\":{\"0\":\"v\",\"l\":\"handle\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"e\",\"l\":\"init\"},\"a\":{\"0\":\"v\",\"l\":\"initial\"}},\"a\":{\"0\":\"u\"}}}}}}}"
+
+fn decode_source(json) {
+  let assert Ok(source) = decode.from_json(json)
+  e.from_expression(source)
+  |> e.open_all
+}
+
 fn init_example(json, cache, config) {
   let assert Ok(source) = decode.from_json(json)
   let source =
@@ -118,6 +155,11 @@ fn init_example(json, cache, config) {
 
 fn effects(config) {
   list.append(harness.effects(), spotless.effects(config))
+}
+
+fn init_reload_example(json, cache) {
+  let source = decode_source(json)
+  snippet.init(source, [], [], cache)
 }
 
 fn all_references(snippets) {
@@ -141,10 +183,12 @@ pub fn init(config) {
       predictable_effects_key,
       init_example(predictable_effects_example, cache, config),
     ),
+    #(hot_reload_key, init_reload_example(hot_reload_example, cache)),
   ]
   let references = all_references(snippets)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
-  let state = State(cache, Nothing, dict.from_list(snippets))
+  let example = Example(value.Integer(0), t.Integer)
+  let state = State(cache, Nothing, dict.from_list(snippets), example)
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
@@ -161,6 +205,7 @@ pub fn set_snippet(state: State, id, snippet) {
 pub type Message {
   SnippetMessage(String, snippet.Message)
   SyncMessage(sync.Message)
+  ClickExample
 }
 
 fn dispatch_to_snippet(id, promise) {
@@ -222,5 +267,81 @@ pub fn update(state: State, message) {
         effect.from(browser.do_sync(tasks, SyncMessage)),
       )
     }
+    ClickExample -> {
+      let Example(value, type_) = state.example
+      let s = get_snippet(state, hot_reload_key)
+      let source = snippet.source(s)
+
+      // TODO real refs
+      let check = reload.check_against_state(source, type_, dict.new())
+
+      case check {
+        Ok(#(_, False)) -> {
+          let env = stdlib.new_env([], dict.new())
+          let h = dict.new()
+
+          let assert Ok(source) =
+            runner.execute(source |> e.to_annotated([]), env, h)
+          let source = #(source, [])
+
+          // TODO remove by fixing everything to be paths
+          let value = dynamicx.unsafe_coerce(dynamic.from(value))
+
+          let select = value.Partial(value.Select("handle"), [])
+          let args = [source, #(value, []), #(value.unit, [])]
+          let assert Ok(new_value) = runner.call(select, args, env, h)
+          let example = Example(new_value, type_)
+          let state = State(..state, example: example)
+          #(state, effect.none())
+        }
+        Ok(#(_, True)) -> {
+          let env = stdlib.new_env([], dict.new())
+          let h = dict.new()
+
+          let assert Ok(source) =
+            runner.execute(source |> e.to_annotated([]), env, h)
+          let source = #(source, [])
+
+          // TODO remove by fixing everything to be paths
+          let value = dynamicx.unsafe_coerce(dynamic.from(value))
+
+          let select = value.Partial(value.Select("migrate"), [])
+          let args = [source, #(value, [])]
+          let assert Ok(new_value) = runner.call(select, args, env, h)
+          let #(new_type, b) = analysis.value_to_type(new_value, dict.new())
+          let example = Example(new_value, new_type)
+          let state = State(..state, example: example)
+          #(state, effect.none())
+        }
+        Error(_) -> #(state, effect.none())
+      }
+    }
+  }
+}
+
+// run code in reload example to render page
+pub fn render(state: State) {
+  let Example(value, type_) = state.example
+  let s = get_snippet(state, hot_reload_key)
+  let source = snippet.source(s)
+
+  let check = reload.check_against_state(source, type_, sync.types(state.cache))
+
+  case check {
+    Ok(#(_, False)) -> {
+      let env = stdlib.new_env([], dict.new())
+      let h = dict.new()
+
+      let assert Ok(source) =
+        runner.execute(source |> e.to_annotated([]), env, h)
+      let source = #(source, [])
+
+      let select = value.Partial(value.Select("render"), [])
+      let args = [source, #(value, [])]
+      let assert Ok(value.Str(page)) = runner.call(select, args, env, h)
+      Ok(#(page, False))
+    }
+    Ok(#(_, True)) -> Ok(#("", True))
+    Error(reason) -> Error(reason)
   }
 }

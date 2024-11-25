@@ -1,14 +1,22 @@
+import datalog/browser/view/value
+import eyg/analysis/type_/binding/debug
+import eyg/runtime/value as v
 import eyg/website/components
 import eyg/website/components/snippet
 import eyg/website/config
 import eyg/website/home/state
 import eyg/website/page
+import eyg/website/run
+import gleam/dict
+import gleam/io
 import gleam/list
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import lustre/event
+import morph/analysis
 
 const signup = "mailing-signup"
 
@@ -312,10 +320,57 @@ fn render(s) {
       "Hot code reloading",
       [
         "Use EYG's structural type system to validate that updates will work ahead of time",
-        "More information coming soon.",
+        "In this example you can increment the counter by clicking the rendered app.
+        If you change the code the behaviour will update immediatly if safe.
+        If the code changes modify the type then you will be asked for a migrate function.",
       ],
       action("Stay up to date join the mailing list.", "#" <> signup, Confident),
-      [],
+      {
+        let snippet = state.get_snippet(s, state.hot_reload_key)
+        [
+          snippet.render(snippet)
+            |> element.map(state.SnippetMessage(state.hot_reload_key, _)),
+          h.p([], [element.text("App state")]),
+          h.div([a.class("border-2 p-2")], [
+            element.text(v.debug(s.example.value)),
+          ]),
+          h.p([], [element.text("Rendered app, click to send message")]),
+          h.div([a.class("border-2 p-2")], [
+            case state.render(s) {
+              Ok(#(page, False)) ->
+                h.div(
+                  [
+                    a.attribute("dangerous-unescaped-html", page),
+                    event.on_click(state.ClickExample),
+                  ],
+                  [],
+                )
+              Ok(#(_, True)) ->
+                h.div([event.on_click(state.ClickExample)], [
+                  element.text("click to upgrade"),
+                ])
+              Error(errors) ->
+                // snippet shows these
+                h.div(
+                  [a.class("border-2 border-orange-3 px-2")],
+                  list.map(errors, fn(error) {
+                    let #(path, reason) = error
+                    h.div(
+                      [
+                        event.on_click(state.SnippetMessage(
+                          state.hot_reload_key,
+                          snippet.UserClickedPath(path),
+                        )),
+                      ],
+                      [element.text(reason)],
+                    )
+                  }),
+                )
+              // element.none()
+            },
+          ]),
+        ]
+      },
       True,
     ),
     feature(
