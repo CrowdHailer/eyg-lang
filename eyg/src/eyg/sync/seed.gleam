@@ -1,17 +1,37 @@
-import eyg/sync/cid
+import eyg/sync/sync
+import eyg/topological as topo
+import eygir/annotated
 import filepath
-import gleam/bit_array
-import gleam/io
 import gleam/list
+import gleam/listx
+import gleam/pair
+import gleam/result
 import midas/task as t
 
 pub fn from_dir(root_dir) {
   use libs <- t.do(read_seeds(root_dir))
-  list.map(libs, fn(lib) {
-    let #(_org, _name, bytes) = lib
-    let assert Ok(content) = bit_array.to_string(bytes)
-    let cid = "h" <> cid.hash_code(content)
-    let path = filepath.join("/references", cid <> ".json")
+  use libs <- t.try(
+    list.try_map(libs, fn(lib) {
+      let #(org, name, bytes) = lib
+      use source <- result.try(sync.decode_bytes(bytes))
+      let references =
+        annotated.add_annotation(source, Nil)
+        |> annotated.list_references
+      let key = "@" <> org <> "." <> name
+      // io.debug(key)
+      // io.debug(references)
+
+      // let assert Ok(content) = bit_array.to_string(bytes)
+      // let cid = "h" <> cid.hash_code(content)
+      let path = filepath.join("/references/", key <> ".json")
+      #(key, #(references, #(path, bytes)))
+      |> Ok
+    }),
+  )
+  let graph = listx.value_map(libs, pair.first)
+  use ordered <- t.try(topo.sort(graph) |> result.map_error(topo.to_snag))
+  list.map(ordered, fn(key) {
+    let assert Ok(#(_, #(path, bytes))) = list.key_find(libs, key)
     #(path, bytes)
   })
   |> t.done()
@@ -23,11 +43,12 @@ fn read_seeds(root_dir) {
     t.sequential(
       list.map(orgs, fn(org) {
         let org_dir = filepath.join(root_dir, org)
-        use libs <- t.do(t.list(org_dir))
+        use files <- t.do(t.list(org_dir))
         t.sequential(
-          list.map(libs, fn(lib) {
-            use bytes <- t.do(t.read(filepath.join(org_dir, lib)))
-            t.done(#(org, lib, bytes))
+          list.map(files, fn(file) {
+            use bytes <- t.do(t.read(filepath.join(org_dir, file)))
+            let name = filepath.strip_extension(file)
+            t.done(#(org, name, bytes))
           }),
         )
       }),
@@ -37,39 +58,4 @@ fn read_seeds(root_dir) {
   |> list.flatten()
   |> list.unique()
   |> t.done()
-}
-
-pub fn topo(graph) {
-  // For each node if it's not already in the results do a depth first search
-  list.try_fold(graph, [], fn(output, el) {
-    let #(node, children) = el
-    case list.contains(output, node) {
-      True -> Ok(output)
-      False -> dfs(node, children, [], graph, output)
-    }
-  })
-}
-
-fn dfs(node, children, path, graph, output) {
-  let #(path, check) = list.split_while(path, fn(x) { x != node })
-  case check {
-    [] -> {
-      let path = [node, ..path]
-      let result =
-        list.try_fold(children, output, fn(output, child) {
-          case list.contains(output, child) {
-            True -> Ok(output)
-            False -> {
-              let assert Ok(children) = list.key_find(graph, child)
-              dfs(child, children, path, graph, output)
-            }
-          }
-        })
-      case result {
-        Ok(output) -> Ok([node, ..output])
-        Error(reason) -> Error(reason)
-      }
-    }
-    _ -> Error([node, ..list.reverse(path)] |> list.append([node]))
-  }
 }

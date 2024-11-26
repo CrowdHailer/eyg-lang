@@ -29,37 +29,5 @@ pub fn load_seeds_test() {
 
   let files = should.be_ok(t.expect_done(r(reply)))
   files
-  |> should.equal([
-    #("/references/h6ba9641e.json", <<"{\"0\":\"i\",\"v\":12}">>),
-  ])
-}
-
-pub fn no_children_test() {
-  [#("A", []), #("B", [])]
-  |> seed.topo
-  |> should.equal(Ok(["B", "A"]))
-}
-
-pub fn self_cycle_test() {
-  [#("A", ["A"])]
-  |> seed.topo
-  |> should.equal(Error(["A", "A"]))
-}
-
-pub fn single_child_test() {
-  [#("A", ["B"]), #("B", [])]
-  |> seed.topo
-  |> should.equal(Ok(["A", "B"]))
-}
-
-pub fn many_child_test() {
-  [#("A", ["B", "C"]), #("B", ["C"]), #("C", ["D"]), #("D", [])]
-  |> seed.topo
-  |> should.equal(Ok(["A", "B", "C", "D"]))
-}
-
-pub fn long_cycle_test() {
-  [#("A", ["B", "C"]), #("B", ["C"]), #("C", ["D"]), #("D", ["A"])]
-  |> seed.topo
-  |> should.equal(Error(["A", "B", "C", "D", "A"]))
+  |> should.equal([#("/references/@bar.a.json", <<"{\"0\":\"i\",\"v\":12}">>)])
 }
