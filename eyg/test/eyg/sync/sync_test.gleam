@@ -3,6 +3,7 @@ import eyg/sync/sync
 import eygir/encode
 import eygir/expression as e
 import gleam/http
+import gleam/http/request
 import gleam/http/response
 import gleam/io
 import gleam/option.{None}
@@ -15,27 +16,6 @@ const origin = sync.Origin(http.Https, "eyg.test", None)
 const just_number = e.Integer(101)
 
 const just_string = e.Str("hello")
-
-fn expect_fetch(task) {
-  case task {
-    task.Fetch(request, resume) -> Ok(#(request, resume))
-    other -> Error(other)
-  }
-}
-
-fn expect_done(task) {
-  case task {
-    task.Done(value) -> Ok(value)
-    other -> Error(other)
-  }
-}
-
-fn expect_abort(task) {
-  case task {
-    task.Abort(reason) -> Ok(reason)
-    other -> Error(other)
-  }
-}
 
 pub fn load_references_test() {
   let state = sync.init(origin)
@@ -51,10 +31,14 @@ pub fn load_references_test() {
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   shouldx.be_empty(tasks)
 
-  let #(_request, resume) = should.be_ok(expect_fetch(task))
+  let #(request, resume) = should.be_ok(task.expect_fetch(task))
+  request.host
+  |> should.equal("eyg.test")
+  request.path
+  |> should.equal("/references/" <> ref <> ".json")
 
   resume(Ok(response.Response(200, [], <<encode.to_json(just_number):utf8>>)))
-  |> expect_done()
+  |> task.expect_done()
   |> should.be_ok()
   |> should.equal(just_number)
 
@@ -101,11 +85,11 @@ pub fn load_fails_test() {
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   let #(_ref, task) = shouldx.contain1(tasks)
 
-  let #(request, resume) = should.be_ok(expect_fetch(task))
+  let #(request, resume) = should.be_ok(task.expect_fetch(task))
 
   let reason =
     resume(Ok(response.Response(404, [], <<>>)))
-    |> expect_abort()
+    |> task.expect_abort()
     |> should.be_ok()
 
   let state =
@@ -116,7 +100,7 @@ pub fn load_fails_test() {
   let #(_state, tasks) = sync.fetch_missing(state, [ref])
   let #(_ref, task) = shouldx.contain1(tasks)
 
-  let #(retry, _resume) = should.be_ok(expect_fetch(task))
+  let #(retry, _resume) = should.be_ok(task.expect_fetch(task))
   retry
   |> should.equal(request)
 }
