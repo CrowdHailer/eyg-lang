@@ -1,5 +1,6 @@
 import eyg/package
 import eyg/sync/cid
+import eyg/sync/seed
 import eyg/sync/sync
 import eyg/website/documentation
 import eyg/website/editor
@@ -274,27 +275,6 @@ fn build_datalog(bundle) {
   t.done([#("/datalog/index.html", page), ..files])
 }
 
-// This is not needed as intro is working
-pub fn dep_file(expression) {
-  let content = encode.to_json(expression)
-  let bytes = <<content:utf8>>
-  let cid = "h" <> cid.hash_code(content)
-  #(cid, bytes)
-}
-
-// ordered graph of seedpages
-pub fn dependency(group, name) {
-  let file = name <> ".json"
-  use bytes <- t.do(t.read("seed/" <> group <> "/" <> file))
-  use src <- t.try(sync.decode_bytes(bytes))
-  let #(ref, bytes) = dep_file(src)
-  let path = "/references/" <> ref <> ".json"
-  let file = #(path, bytes)
-  // annotated.list_references(src)
-  t.done(#(ref, file))
-  // todo
-}
-
 pub fn build(bundle) -> t.Effect(List(#(String, BitArray))) {
   use documentation <- t.do(documentation.page(bundle))
   use home <- t.do(home.page(bundle))
@@ -324,6 +304,7 @@ pub fn preview(args) {
     _ -> {
       let bundle = asset.new_bundle("/assets")
       use v1_site <- t.do(build(bundle))
+      use seeds <- t.do(seed.from_dir("seed"))
       // use examine <- t.do(examine_page(bundle))
       use shell <- t.do(shell_page(bundle))
       // use intro <- t.do(build_intro(True, bundle))
@@ -340,6 +321,7 @@ pub fn preview(args) {
           // intro,
           // datalog,
           [shell],
+          seeds,
           news,
           asset.to_files(bundle),
           [#("/_redirects", <<redirects:utf8>>)],

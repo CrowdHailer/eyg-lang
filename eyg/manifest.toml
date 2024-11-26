@@ -39,6 +39,7 @@ packages = [
 ]
 
 [requirements]
+filepath = { version = ">= 1.1.0 and < 2.0.0" }
 gleam_bitwise = { version = "~> 1.2" }
 gleam_community_codec = { path = "../../codec" }
 gleam_fetch = { version = "~> 1.0" }
