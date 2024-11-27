@@ -60,6 +60,7 @@ pub type CurrentProject {
   CurrentProject(
     dirty: Bool,
     module_name: String,
+    edited_name: String,
     snippet: snippet.Snippet,
     other_modules: List(Module),
   )
@@ -68,6 +69,7 @@ pub type CurrentProject {
 pub type State {
   State(
     project_name: String,
+    edited_name: String,
     project_content: RemoteData(CurrentProject),
     other_projects: RemoteData(List(Project)),
     cache: sync.Sync,
@@ -90,8 +92,11 @@ fn await_or(p, map, k) {
   }
 }
 
-fn do_load() {
-  let assert Ok(storage) = storage.get()
+fn get_projects_dir() {
+  use storage <- await_or(promise.resolve(storage.get()), fn(_) {
+    snag.new("unable to access the navigator.storage")
+    |> snag.layer("accessing storage in browser")
+  })
   use root <- await_or(storage.get_directory(storage), fn(r) {
     r
     |> snag.new
@@ -102,6 +107,11 @@ fn do_load() {
     |> snag.new
     |> snag.layer("reading root file in OPFS")
   })
+  promise.resolve(Ok(dir))
+}
+
+fn do_load() {
+  use dir <- promise.try_await(get_projects_dir())
   use #(projects, _) <- await_or(fs.all_entries(dir), fn(r) {
     r
     |> snag.new
@@ -126,6 +136,24 @@ fn load_workspace(d) {
   Nil
 }
 
+// TODO move to workspace
+fn do_rename(old, new) {
+  use dir <- promise.try_await(get_projects_dir())
+  use dir <- await_or(fs.get_directory_handle(dir, new, True), fn(r) {
+    r
+    |> snag.new
+    |> snag.layer("creating project dir")
+  })
+  promise.resolve(Ok(dir))
+}
+
+fn rename_project(old, new) {
+  fn(d) {
+    promise.map(do_rename(old, new), fn(result) { io.debug(result) })
+    Nil
+  }
+}
+
 pub fn init(_) {
   // let query or me
   // active project is blank go for ready
@@ -142,10 +170,12 @@ pub fn init(_) {
   let state =
     State(
       project_name: "",
+      edited_name: "",
       project_content: remote_data.Success(
         CurrentProject(
           dirty: True,
           module_name: "main",
+          edited_name: "main",
           snippet: snippet,
           other_modules: [],
         ),
@@ -163,6 +193,9 @@ pub fn init(_) {
 
 pub type Message {
   LoadedProjects(Result(List(Result(Project, Snag)), Snag))
+  UserEditedModuleName(String)
+  UserBlurredModuleName
+  UserSelectedProject(String)
   SnippetMessage(snippet.Message)
   SyncMessage(sync.Message)
 }
@@ -197,13 +230,34 @@ pub fn update(state: State, message) {
           #(state, effect.none())
         }
       }
-
-    // {
-    //   case list.key_find(projects, "me") {
-    //     Ok(die) -> todo
-    //     Error(Nil) -> todo as "dirty"
-    //   }
-    // }
+    UserEditedModuleName(new) -> {
+      let state = State(..state, edited_name: new)
+      #(state, effect.none())
+    }
+    UserBlurredModuleName -> {
+      #(
+        state,
+        effect.from(rename_project(state.project_name, state.edited_name)),
+      )
+    }
+    UserSelectedProject(new) -> {
+      let assert remote_data.Success(others) = state.other_projects
+      let old = state.project_name
+      case new {
+        "" -> todo
+        n if n == old -> #(state, effect.none())
+        "+" -> todo
+        _ -> {
+          case list.key_find(others, new) {
+            Ok(value) -> {
+              io.debug(value)
+              todo
+            }
+            Error(Nil) -> panic as "it shouldn't be possible to select this"
+          }
+        }
+      }
+    }
     SnippetMessage(message) -> {
       let assert remote_data.Success(project) = state.project_content
       let #(snippet, eff) = snippet.update(project.snippet, message)
@@ -274,6 +328,30 @@ fn modal() {
   ])
 }
 
+fn project_selector(others) {
+  let others = case others {
+    remote_data.Success(others) ->
+      list.map(others, fn(other) {
+        let #(name, _modules) = other
+        #(name, name, False)
+      })
+    remote_data.Loading -> []
+    remote_data.Failure(snag) -> []
+    remote_data.NotAsked -> panic as "we always ask"
+  }
+  let projects =
+    // TODO shouldn't be here if has a choice
+    list.append(others, [#("", "", True), #("+", "create new project", False)])
+
+  h.select(
+    [event.on_input(UserSelectedProject)],
+    list.map(projects, fn(p) {
+      let #(key, name, selected) = p
+      h.option([a.value(key), a.selected(selected)], name)
+    }),
+  )
+}
+
 pub fn render(state: State) {
   h.div([a.class("flex flex-col h-screen")], case state.project_content {
     remote_data.Success(CurrentProject(snippet: s, ..)) -> [
@@ -282,16 +360,16 @@ pub fn render(state: State) {
         h.span([a.class("")], [element.text(" - Editor")]),
       ]),
       h.div([a.class("w-full py-2 px-4 bg-gray-500")], [
-        h.select(
-          [
-            event.on_input(fn(x) {
-              io.debug(x)
-              // Error([])
-              todo
-            }),
-          ],
-          [h.option([a.value("foo")], "me"), h.option([a.value("eyg")], "eyg")],
-        ),
+        h.input([
+          a.value(state.edited_name),
+          event.on_input(UserEditedModuleName),
+          event.on_blur(UserBlurredModuleName),
+        ]),
+        case state.project_name {
+          "" -> element.text("give it a name to save")
+          _ -> element.none()
+        },
+        project_selector(state.other_projects),
         h.span([], [element.text("unpublished")]),
       ]),
       h.div([a.class("grid grid-cols-2 h-full")], [
@@ -312,7 +390,8 @@ pub fn render(state: State) {
             ),
           ),
         ]),
-      ]),
+      ])
+        |> element.map(SnippetMessage),
       case state.display_help {
         True ->
           h.div(
@@ -328,5 +407,4 @@ pub fn render(state: State) {
     ]
     _ -> [modal()]
   })
-  |> element.map(SnippetMessage)
 }
