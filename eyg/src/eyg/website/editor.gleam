@@ -3,6 +3,7 @@ import eyg/sync/sync
 import eyg/website/components/snippet
 import eyg/website/page
 import eygir/decode
+import eygir/expression
 import eygir/tree
 import gleam/io
 import gleam/javascript/array
@@ -10,6 +11,7 @@ import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{Some}
+import gleam/result
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -20,6 +22,8 @@ import morph/editable
 import morph/lustre/components/key
 import plinth/browser/file_system as fs
 import plinth/browser/storage
+import remote_data
+import snag.{type Snag}
 
 pub fn page(bundle) {
   page.app(Some("editor"), "eyg/website/editor", "client", bundle)
@@ -31,37 +35,101 @@ pub fn client() {
   Nil
 }
 
-pub type State {
-  State(cache: sync.Sync, source: snippet.Snippet, display_help: Bool)
+// When I visit the editor page with no project name it should load immediatly
+// active: String
+// dirty: Bool
+// Ready(String,snippet,List(String,Module))
+// othermodules: Loaded([])
+// other_projects: Loading
+
+// When I visit the editor with a key
+// active: String
+// 
+// project = List(#(String, List(Module)))
+
+pub type Module =
+  #(String, expression.Expression)
+
+pub type Project =
+  #(String, List(Module))
+
+pub type RemoteData(t) =
+  remote_data.RemoteData(t, snag.Snag)
+
+pub type CurrentProject {
+  CurrentProject(
+    dirty: Bool,
+    module_name: String,
+    snippet: snippet.Snippet,
+    other_modules: List(Module),
+  )
 }
 
+pub type State {
+  State(
+    project_name: String,
+    project_content: RemoteData(CurrentProject),
+    other_projects: RemoteData(List(Project)),
+    cache: sync.Sync,
+    // source: snippet.Snippet,
+    display_help: Bool,
+  )
+}
+
+// not ordered if using for active
+// pub type NonEmpty(t) = #(t,List(t))
+
+// TODO remove this just start with vacant
 const blank = "{\"0\":\"z\",\"c\":\"\"}"
 
-fn load_local() {
-  let assert Ok(storage) = storage.get()
-  use root <- promise.await(storage.get_directory(storage))
-  io.debug(root)
-  let assert Ok(root) = root
-  use dir <- promise.await(fs.get_directory_handle(root, "projects", True))
-  let assert Ok(dir) =
-    dir
-    |> io.debug
-  io.debug(fs.name(dir))
-  use result <- promise.await(fs.all_entries(dir))
-  let assert Ok(#(projects, _)) = result
-  let projects = array.to_list(projects)
-  io.debug(projects |> list.map(fn(x) { #(fs.name(x), x) }))
-  use dir <- promise.await(fs.remove_entry(dir, "mooble", True))
-  let assert Ok(dir) =
-    dir
-    |> io.debug
+fn await_or(p, map, k) {
+  use result <- promise.await(p)
+  case result {
+    Ok(value) -> k(value)
+    Error(reason) -> promise.resolve(Error(map(reason)))
+  }
+}
 
-  promise.resolve(Nil)
+fn do_load() {
+  let assert Ok(storage) = storage.get()
+  use root <- await_or(storage.get_directory(storage), fn(r) {
+    r
+    |> snag.new
+    |> snag.layer("accessing storage in browser")
+  })
+  use dir <- await_or(fs.get_directory_handle(root, "projects", True), fn(r) {
+    r
+    |> snag.new
+    |> snag.layer("reading root file in OPFS")
+  })
+  use #(projects, _) <- await_or(fs.all_entries(dir), fn(r) {
+    r
+    |> snag.new
+    |> snag.layer("reading directories in projects")
+  })
+  let projects = array.to_list(projects)
+  use projects <- promise.await(
+    promisex.sequential(projects, fn(dir) {
+      let project = fs.name(dir)
+      use modules <- await_or(promise.resolve(Ok([])), snag.layer(
+        _,
+        "accessing storage in browser",
+      ))
+      promise.resolve(Ok(#(project, modules)))
+    }),
+  )
+  promise.resolve(Ok(projects))
+}
+
+fn load_workspace(d) {
+  promise.map(do_load(), fn(result) { d(LoadedProjects(result)) })
+  Nil
 }
 
 pub fn init(_) {
-  load_local()
-
+  // let query or me
+  // active project is blank go for ready
+  let active_project = "me"
   let cache = sync.init(browser.get_origin())
   let assert Ok(source) = decode.from_json(blank)
   let source =
@@ -69,12 +137,32 @@ pub fn init(_) {
     |> editable.open_all
   let snippet = snippet.init(source, [], [], cache)
   let references = snippet.references(snippet)
-  let #(cache, tasks) = sync.fetch_missing(cache, references)
-  let state = State(cache, snippet, True)
-  #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
+  // let #(cache, tasks) = sync.fetch_missing(cache, references)
+
+  let state =
+    State(
+      project_name: "",
+      project_content: remote_data.Success(
+        CurrentProject(
+          dirty: True,
+          module_name: "main",
+          snippet: snippet,
+          other_modules: [],
+        ),
+      ),
+      other_projects: remote_data.Loading,
+      cache: cache,
+      display_help: False,
+    )
+  #(
+    state,
+    // effect.from(browser.do_sync(tasks, SyncMessage))
+    effect.from(load_workspace),
+  )
 }
 
 pub type Message {
+  LoadedProjects(Result(List(Result(Project, Snag)), Snag))
   SnippetMessage(snippet.Message)
   SyncMessage(sync.Message)
 }
@@ -89,10 +177,36 @@ fn dispatch_nothing(_promise) {
   effect.none()
 }
 
+// put all projects in memory as that's best way to lookup "/" workspace references
 pub fn update(state: State, message) {
   case message {
+    LoadedProjects(response) ->
+      case response {
+        Ok(projects) -> {
+          let #(projects, _) = result.partition(projects)
+          // TODO log errors
+          let state =
+            State(..state, other_projects: remote_data.Success(projects))
+          // TODO load if waiting
+          #(state, effect.none())
+        }
+        Error(reason) -> {
+          let state =
+            State(..state, other_projects: remote_data.Failure(reason))
+          // TODO load if waiting
+          #(state, effect.none())
+        }
+      }
+
+    // {
+    //   case list.key_find(projects, "me") {
+    //     Ok(die) -> todo
+    //     Error(Nil) -> todo as "dirty"
+    //   }
+    // }
     SnippetMessage(message) -> {
-      let #(snippet, eff) = snippet.update(state.source, message)
+      let assert remote_data.Success(project) = state.project_content
+      let #(snippet, eff) = snippet.update(project.snippet, message)
       let State(display_help: display_help, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
@@ -123,72 +237,96 @@ pub fn update(state: State, message) {
       }
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      let project = CurrentProject(..project, dirty: True, snippet: snippet)
       let state =
-        State(source: snippet, cache: cache, display_help: display_help)
+        State(
+          ..state,
+          project_content: remote_data.Success(project),
+          cache: cache,
+        )
       #(state, effect.batch([snippet_effect, sync_effect]))
     }
     SyncMessage(message) -> {
       let cache = sync.task_finish(state.cache, message)
       let #(cache, tasks) = sync.fetch_all_missing(cache)
-      let snippet = snippet.set_references(state.source, cache)
-      #(
-        State(..state, source: snippet, cache: cache),
-        effect.from(browser.do_sync(tasks, SyncMessage)),
-      )
+      todo as "sync message"
+      // let snippet = snippet.set_references(state.source, cache)
+      // #(
+      //   State(..state, source: snippet, cache: cache),
+      //   effect.from(browser.do_sync(tasks, SyncMessage)),
+      // )
     }
   }
 }
 
-pub fn render(state: State) {
-  h.div([a.class("flex flex-col h-screen")], [
-    h.div([a.class("w-full py-2 px-6 text-xl text-gray-500")], [
-      h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
-      h.span([a.class("")], [element.text(" - Editor")]),
-    ]),
-    h.div([a.class("w-full py-2 px-4 bg-gray-500")], [
-      h.select(
-        [
-          event.on_input(fn(x) {
-            io.debug(x)
-            // Error([])
-            todo
-          }),
-        ],
-        [h.option([a.value("foo")], "me"), h.option([a.value("eyg")], "eyg")],
-      ),
-      h.span([], [element.text("unpublished")]),
-    ]),
-    h.div([a.class("grid grid-cols-2 h-full")], [
+fn modal() {
+  h.div([a.class("fixed inset-0 bg-gray-100 vstack")], [
+    h.div([a.class("w-full vstack")], [
       h.div(
         [
           a.class(
-            "flex-grow flex flex-col justify-center w-full max-w-3xl font-mono px-6",
+            "w-full max-w-sm bg-white p-6 neo-shadow border-2 border-black",
           ),
         ],
-        [snippet.render_editor(state.source)],
+        [element.text("Preparing ...")],
       ),
-      h.div([a.class("leading-none p-4 text-gray-500")], [
-        h.pre(
-          [],
-          list.map(
-            tree.lines(editable.to_expression(snippet.source(state.source))),
-            fn(x) { h.div([], [h.pre([], [element.text(x)])]) },
-          ),
-        ),
-      ]),
     ]),
-    case state.display_help {
-      True ->
+  ])
+}
+
+pub fn render(state: State) {
+  h.div([a.class("flex flex-col h-screen")], case state.project_content {
+    remote_data.Success(CurrentProject(snippet: s, ..)) -> [
+      h.div([a.class("w-full py-2 px-6 text-xl text-gray-500")], [
+        h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
+        h.span([a.class("")], [element.text(" - Editor")]),
+      ]),
+      h.div([a.class("w-full py-2 px-4 bg-gray-500")], [
+        h.select(
+          [
+            event.on_input(fn(x) {
+              io.debug(x)
+              // Error([])
+              todo
+            }),
+          ],
+          [h.option([a.value("foo")], "me"), h.option([a.value("eyg")], "eyg")],
+        ),
+        h.span([], [element.text("unpublished")]),
+      ]),
+      h.div([a.class("grid grid-cols-2 h-full")], [
         h.div(
           [
             a.class(
-              "bottom-0 fixed flex flex-col justify-around mr-10 right-0 top-0",
+              "flex-grow flex flex-col justify-center w-full max-w-3xl font-mono px-6",
             ),
           ],
-          [h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [key.render()])],
-        )
-      False -> element.none()
-    },
-  ])
+          [snippet.render_editor(s)],
+        ),
+        h.div([a.class("leading-none p-4 text-gray-500")], [
+          h.pre(
+            [],
+            list.map(
+              tree.lines(editable.to_expression(snippet.source(s))),
+              fn(x) { h.div([], [h.pre([], [element.text(x)])]) },
+            ),
+          ),
+        ]),
+      ]),
+      case state.display_help {
+        True ->
+          h.div(
+            [
+              a.class(
+                "bottom-0 fixed flex flex-col justify-around mr-10 right-0 top-0",
+              ),
+            ],
+            [h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [key.render()])],
+          )
+        False -> element.none()
+      },
+    ]
+    _ -> [modal()]
+  })
   |> element.map(SnippetMessage)
 }
