@@ -1,4 +1,5 @@
 import eyg/analysis/type_/isomorphic as t
+import eyg/jazz
 import eyg/runtime/cast
 import eyg/shell/situation.{type Situation}
 import eyg/sync/browser
@@ -42,6 +43,9 @@ fn new_snippet(scope, cache, config, eff) {
 }
 
 pub fn init(config: spotless.Config) {
+  jazz.create()
+  io.debug("foo")
+
   let cache = sync.init(browser.get_origin())
 
   let assert Ok(spec) = document.get_element_by_id("netlify.openapi.json")

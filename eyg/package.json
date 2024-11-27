@@ -20,6 +20,7 @@
     "cozo-lib-wasm": "^0.7.5",
     "cozo-node": "^0.7.5",
     "glob": "^8.1.0",
+    "jazz-browser": "^0.8.32",
     "js-yaml": "^4.1.0",
     "open": "^9.1.0",
     "sirv-cli": "^2.0.2"
