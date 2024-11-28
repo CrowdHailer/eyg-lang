@@ -26,7 +26,7 @@ pub fn handle(lift) {
 
 pub fn do(name) {
   use dir <- promise.try_await(file_system.show_directory_picker())
-  use file <- promise.try_await(file_system.get_file_handle(dir, name))
+  use file <- promise.try_await(file_system.get_file_handle(dir, name, True))
   use file <- promise.try_await(file_system.get_file(file))
   use text <- promise.map(file.bytes(file))
   Ok(text)
