@@ -27,6 +27,7 @@
   "devDependencies": {
     "@rollup/plugin-json": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "chokidar": "^4.0.1",
     "cors": "^2.8.5",
     "express": "^4.19.2",
     "rollup": "^3.10.0"

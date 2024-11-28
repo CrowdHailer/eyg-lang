@@ -3,6 +3,7 @@ import eyg/sync/sync
 import eyg/website/components/snippet
 import eyg/website/page
 import eygir/decode
+import eygir/expression
 import eygir/tree
 import gleam/javascript/promisex
 import gleam/list
@@ -29,18 +30,13 @@ pub type State {
   State(cache: sync.Sync, source: snippet.Snippet, display_help: Bool)
 }
 
-const blank = "{\"0\":\"l\",\"l\":\"std\",\"v\":{\"0\":\"#\",\"l\":\"he4b05da\"},\"t\":{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"#\",\"l\":\"he6fd05f0\"},\"t\":{\"0\":\"l\",\"l\":\"json\",\"v\":{\"0\":\"#\",\"l\":\"hbe004c96\"},\"t\":{\"0\":\"z\",\"c\":\"\"}}}}"
-
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
-  let assert Ok(source) = decode.from_json(blank)
-  let source =
-    editable.from_expression(source)
-    |> editable.open_all
+  let source = editable.from_expression(expression.Vacant(""))
   let snippet = snippet.init(source, [], [], cache)
   let references = snippet.references(snippet)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
-  let state = State(cache, snippet, True)
+  let state = State(cache, snippet, False)
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 

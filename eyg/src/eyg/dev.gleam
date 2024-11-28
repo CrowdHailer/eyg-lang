@@ -12,19 +12,24 @@ import eygir/expression
 import gleam/bit_array
 import gleam/dict
 import gleam/http
+import gleam/http/request
+import gleam/http/response
 import gleam/io
+import gleam/javascript/promise
 import gleam/list
 import gleam/listx
-import gleam/option.{None}
+import gleam/option.{None, Some}
 import gleam/string
 import intro/content
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import midas/node
 import midas/task as t
 import mysig/asset
 import mysig/html
 import mysig/layout
+import mysig/local
 import mysig/neo
 
 pub fn empty_lustre() {
@@ -286,6 +291,35 @@ pub fn build(bundle) -> t.Effect(List(#(String, BitArray))) {
     #("/editor/index.html", editor),
     #("/index.html", home),
   ])
+}
+
+pub fn develop() {
+  let bundle = asset.new_bundle("/assets")
+  use editor <- t.do(editor.page(bundle))
+  let pages = [#("/editor/index.html", editor), ..asset.to_files(bundle)]
+
+  // task for handler as it does hashing
+  // This code is not reloaded
+  use static <- t.do(local.handler(pages))
+  let handler = fn(req) {
+    case request.path_segments(req) {
+      // can write to file in promise as long as async
+      ["publish"] -> {
+        let task = {
+          use Nil <- t.do(t.write("priv/db.json", <<"{}">>))
+          t.log("written")
+        }
+        promise.map(node.run(task, ""), io.debug)
+        response.new(201)
+        |> response.set_body(<<>>)
+      }
+      _ -> static(req)
+    }
+  }
+
+  use Nil <- t.do(t.serve(Some(8080), handler))
+  use Nil <- t.do(t.log("serving on 8080"))
+  t.done(Nil)
 }
 
 // Remember to only add mysig at the top level
