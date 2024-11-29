@@ -8,6 +8,8 @@ import eygir/tree
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{Some}
+import gleroglero/outline
+import gleroglero/solid
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -107,41 +109,75 @@ pub fn update(state: State, message) {
 
 pub fn render(state: State) {
   h.div([a.class("flex flex-col h-screen")], [
-    h.div([a.class("w-full py-2 px-6 text-xl text-gray-500")], [
-      h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
-      h.span([a.class("")], [element.text(" - Editor")]),
-    ]),
-    h.div([a.class("grid grid-cols-2 h-full")], [
+    tools(),
+    // modal(),
+    header(),
+    h.div([a.class("hstack h-full gap-1 p-1 bg-gray-800")], [
       h.div(
         [
           a.class(
-            "flex-grow flex flex-col justify-center w-full max-w-3xl font-mono px-6",
+            "cover flex-grow flex flex-col justify-center w-full max-w-3xl font-mono bg-white",
           ),
         ],
-        [snippet.render_editor(state.source)],
-      ),
-      h.div([a.class("leading-none p-4 text-gray-500")], [
-        h.pre(
-          [],
-          list.map(
-            tree.lines(editable.to_expression(snippet.source(state.source))),
-            fn(x) { h.div([], [h.pre([], [element.text(x)])]) },
-          ),
-        ),
+        snippet.bare_render(state.source),
+      )
+        |> element.map(SnippetMessage),
+      h.div([a.class("cover flex-grow w-full max-w-2xl p-6 bg-white")], [
+        h.h2([a.class("texl-lg font-bold")], [element.text("ready ...")]),
+        h.div([a.class("text-gray-700")], [
+          element.text("Run and test your code. "),
+          h.a([a.class("border-b border-indigo-700")], [element.text("help.")]),
+        ]),
       ]),
     ]),
-    case state.display_help {
-      True ->
-        h.div(
-          [
-            a.class(
-              "bottom-0 fixed flex flex-col justify-around mr-10 right-0 top-0",
-            ),
-          ],
-          [h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [key.render()])],
-        )
-      False -> element.none()
-    },
   ])
-  |> element.map(SnippetMessage)
+}
+
+fn icon() {
+  h.img([a.class("w-12"), a.src("https://eyg.run/assets/pea.webp")])
+}
+
+fn tools() {
+  h.div(
+    [a.class("fixed bottom-6 right-6 w-12 p-2 border border-black neo-shadow")],
+    [h.span([a.class("")], [outline.wrench_screwdriver()])],
+  )
+}
+
+fn modal() {
+  h.div([a.class("fixed inset-0 bg-gray-100 bg-opacity-40 vstack")], [
+    h.div([a.class("w-full vstack")], [
+      h.div(
+        [a.class("w-full max-w-sm bg-white neo-shadow border-2 border-black")],
+        [
+          h.div([a.class("expand px-4 py-4 h-40")], [
+            element.text("Preparing ..."),
+          ]),
+          h.div([a.class("bg-gray-100 px-4 py-1")], [element.text("Ok")]),
+        ],
+      ),
+    ]),
+  ])
+}
+
+fn header() {
+  h.header([a.class("w-full py-4 px-6 text-xl bg-gray-800 text-white hstack")], [
+    h.span([a.class("expand")], [
+      // h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
+      // h.span([a.class("")], [element.text(" - ")]),
+      h.span([], [element.text("untitled")]),
+      h.span([a.class("")], [element.text(" ")]),
+      // h.button([a.class("border border-white")], [element.text("Save")]),
+      h.button([a.class("border-b-2 border-purple-700 px-1 mx-1")], [
+        element.text("Save"),
+      ]),
+      h.button([a.class("border-b-2 border-purple-700 px-1 mx-1")], [
+        element.text("New"),
+      ]),
+    ]),
+    h.span([a.class("p-1 border-b-2 border-purple-700 flex gap-2")], [
+      h.span([], [element.text("publish")]),
+      h.span([a.class("w-6 h-6")], [solid.arrow_top_right_on_square()]),
+    ]),
+  ])
 }
