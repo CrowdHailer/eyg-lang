@@ -10,6 +10,7 @@ import gleam/http/response
 import gleam/int
 import gleam/json
 import gleam_community/codec
+import midas/task as t
 
 // add to request
 pub fn append_path(request, path) {
@@ -26,7 +27,21 @@ pub fn set_json(request, content) {
   set_body(request, "application/json", <<json.to_string(content):utf8>>)
 }
 
+pub fn base_request(api_host) {
+  request.new()
+  |> request.set_host(api_host)
+  // |> request.prepend_header("Authorization", string.append("Bearer ", token))
+  |> request.set_body(<<>>)
+}
+
 const json_content = "application/json"
+
+pub fn publish(base, series, next, source) {
+  let request = publish_request(base, series, next, source)
+  use response <- t.do(t.fetch(request))
+  use response <- t.try(publish_response(response))
+  t.done(response)
+}
 
 pub fn publish_request(base, series, next_release, source) {
   let payload = json.object([#("source", encode.encode(source))])

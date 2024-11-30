@@ -1,3 +1,4 @@
+import eyg/hub/archive/client
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
@@ -6,9 +7,10 @@ import eygir/decode
 import eygir/expression
 import eygir/tree
 import gleam/dict.{type Dict}
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{type Option, None, Some}
 import gleroglero/outline
 import lustre
 import lustre/attribute as a
@@ -16,8 +18,12 @@ import lustre/effect
 import lustre/element
 import lustre/element/html as h
 import lustre/event
+import midas/browser as midas_runner
+import midas/task as t
 import morph/editable
 import morph/lustre/components/key
+import morph/projection
+import snag.{type Snag, Snag}
 
 pub fn page(bundle) {
   page.app(Some("editor"), "eyg/website/editor", "client", bundle)
@@ -31,16 +37,24 @@ pub fn client() {
 
 pub type Status {
   Available
+  Working(String)
   SelectNewProject
+  PublishProject
   Failed(String, List(String))
+}
+
+pub type Remote {
+  Remote(series: String, latest: Option(Int))
 }
 
 pub type State {
   State(
     status: Status,
+    credentials: String,
     cache: sync.Sync,
     source: snippet.Snippet,
-    other_projects: Dict(String, expression.Expression),
+    remote: Option(Remote),
+    other_projects: Dict(String, #(expression.Expression, Option(Remote))),
     display_help: Bool,
   )
 }
@@ -53,15 +67,23 @@ pub fn init(_) {
   let #(cache, tasks) = sync.fetch_missing(cache, references)
   let others =
     dict.from_list([
-      #("json", expression.Integer(100)),
-      #("foo", expression.Str("foo")),
+      #("json", #(expression.Integer(100), Some(Remote("jsony", Some(2))))),
+      #("foo", #(expression.Str("foo"), None)),
     ])
-  let state = State(Available, cache, snippet, others, False)
+  let credentials = "SHA256:iKCaPnUxIMbKgs.."
+  let state = State(Available, credentials, cache, snippet, None, others, False)
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
 pub type Message {
   UserClickedNew
+  UserClickedPublish
+  UserClickedCancel
+  UserClickedDismiss
+  UserConfirmedNewRemote(String)
+  UserConfirmedPublish
+  RemotePublishedPackage(series: String, version: Int)
+  TaskFailed(Snag)
   ProjectLoaded(name: String, source: expression.Expression)
   SnippetMessage(snippet.Message)
   SyncMessage(sync.Message)
@@ -83,10 +105,35 @@ pub fn update(state: State, message) {
       let state = State(..state, status: SelectNewProject)
       #(state, effect.none())
     }
+    UserClickedPublish -> {
+      let state = State(..state, status: PublishProject)
+      #(state, effect.none())
+    }
+    UserClickedCancel | UserClickedDismiss -> {
+      let state = State(..state, status: Available)
+      #(state, effect.none())
+    }
+    UserConfirmedNewRemote(remote) -> {
+      let state = State(..state, remote: Some(Remote(remote, None)))
+      #(state, effect.none())
+    }
+    UserConfirmedPublish -> {
+      let state = State(..state, status: Working("publishing"))
+      #(state, effect.from(publish(state)))
+    }
     ProjectLoaded(name, source) -> {
       let source = editable.from_expression(source)
       let snippet = snippet.init(source, [], [], state.cache)
       let state = State(..state, status: Available, source: snippet)
+      #(state, effect.none())
+    }
+    TaskFailed(Snag(issue, causes)) -> {
+      let state = State(..state, status: Failed(issue, causes))
+      #(state, effect.none())
+    }
+    RemotePublishedPackage(series, version) -> {
+      let remote = Remote(series, Some(version))
+      let state = State(..state, status: Available, remote: Some(remote))
       #(state, effect.none())
     }
     SnippetMessage(message) -> {
@@ -142,6 +189,34 @@ pub fn update(state: State, message) {
   }
 }
 
+fn publish(state) {
+  fn(d) {
+    promise.map(midas_runner.run(do_publish(state)), fn(result) {
+      case result {
+        Ok(message) -> d(message)
+        Error(reason) -> d(TaskFailed(reason))
+      }
+    })
+    Nil
+  }
+}
+
+fn do_publish(state: State) {
+  let assert Some(Remote(series, latest)) = state.remote
+  let next = case latest {
+    Some(x) -> x + 1
+    None -> 0
+  }
+  let source =
+    projection.rebuild(state.source.source.0)
+    |> editable.to_expression
+  use Nil <- t.do(
+    client.base_request("http://localhost:8080")
+    |> client.publish(series, next, source),
+  )
+  t.done(RemotePublishedPackage(series, next))
+}
+
 fn icon_button(icon, text, attributes) {
   h.button(
     [
@@ -159,33 +234,10 @@ pub fn render(state: State) {
     tools(),
     case state.status {
       Available -> element.none()
-      SelectNewProject ->
-        modal(
-          [
-            h.div([a.class("hstack mb-2 gap-4")], [
-              icon_button(outline.cursor_arrow_rays(), "Blank", [
-                event.on_click(ProjectLoaded("", expression.Vacant(""))),
-              ]),
-              icon_button(outline.sparkles(), "Example", []),
-              h.span([a.class("expand")], []),
-            ]),
-            h.h3([a.class("text-lg font-bold")], [element.text("Recent")]),
-            h.ul(
-              [a.class("list-inside list-disc")],
-              list.map(dict.to_list(state.other_projects), fn(other) {
-                let #(name, code) = other
-                h.li([event.on_click(ProjectLoaded(name, code))], [
-                  element.text(name),
-                ])
-              }),
-            ),
-          ],
-          [],
-          Primary,
-        )
-      Failed(title, reasons) -> {
-        failure(title, reasons)
-      }
+      Working(message) -> show_working(message)
+      SelectNewProject -> select_project(state)
+      PublishProject -> publish_project(state)
+      Failed(title, reasons) -> failure(title, reasons)
     },
     header(),
     h.div([a.class("hstack h-full gap-1 p-1 bg-gray-800")], [
@@ -220,6 +272,63 @@ fn tools() {
   )
 }
 
+fn show_working(message) {
+  modal([p(message)], [], Neutral)
+}
+
+fn select_project(state: State) {
+  modal(
+    [
+      h.div([a.class("hstack mb-2 gap-4")], [
+        icon_button(outline.cursor_arrow_rays(), "Blank", [
+          event.on_click(ProjectLoaded("", expression.Vacant(""))),
+        ]),
+        icon_button(outline.sparkles(), "Example", []),
+        h.span([a.class("expand")], []),
+      ]),
+      h.h3([a.class("text-lg font-bold")], [element.text("Recent")]),
+      h.ul(
+        [a.class("list-inside list-disc")],
+        list.map(dict.to_list(state.other_projects), fn(other) {
+          let #(name, #(code, remote)) = other
+          h.li([event.on_click(ProjectLoaded(name, code))], [element.text(name)])
+        }),
+      ),
+    ],
+    [],
+    Primary,
+  )
+}
+
+fn publish_project(state: State) {
+  let #(content, action) = case state.remote {
+    None -> #(
+      [p(""), p("This project is published under #1232323")],
+      UserConfirmedNewRemote("1232323"),
+    )
+    Some(Remote(series, latest)) -> #(
+      [
+        h.h3([], [element.text("key: sdafdfsdf")]),
+        p("project remote is @" <> series),
+        p("This will be the 99th release"),
+        p("check the changes to existing version"),
+      ],
+      UserConfirmedPublish,
+    )
+  }
+  modal(
+    content,
+    [
+      h.span([a.class("expand")], []),
+      h.span([a.class("mx-2"), event.on_click(UserClickedCancel)], [
+        element.text("Cancel"),
+      ]),
+      icon_button(outline.bolt(), "Confirm", [event.on_click(action)]),
+    ],
+    Primary,
+  )
+}
+
 fn p(content) {
   h.p([], [element.text(content)])
 }
@@ -231,20 +340,23 @@ fn li(content) {
 fn failure(title, reasons) {
   modal(
     [h.h3([a.class("text-lg")], [element.text(title)]), ..list.map(reasons, p)],
-    [element.text("Ok")],
+    [
+      h.span([a.class("expand")], []),
+      h.span([event.on_click(UserClickedDismiss)], [element.text("Dismiss")]),
+    ],
     Failure,
   )
 }
 
 type Emphasis {
-  None
+  Neutral
   Primary
   Failure
 }
 
 fn emphasis_background(emphasis) {
   case emphasis {
-    None -> "bg-gray-100"
+    Neutral -> "bg-gray-100"
     Primary -> "bg-blue-200"
     Failure -> "bg-red-200"
   }
@@ -258,7 +370,7 @@ fn modal(content, footer, emphasis) {
         [
           h.div([a.class("expand px-4 py-4 h-40")], content),
           h.div(
-            [a.class("px-4 py-1 " <> emphasis_background(emphasis))],
+            [a.class("px-4 py-1 hstack " <> emphasis_background(emphasis))],
             footer,
           ),
         ],
@@ -286,9 +398,15 @@ fn header() {
         [element.text("New")],
       ),
     ]),
-    h.span([a.class("p-1 border-b-2 border-purple-700 flex gap-2")], [
-      h.span([], [element.text("publish")]),
-      h.span([a.class("w-6 h-6")], [outline.arrow_top_right_on_square()]),
-    ]),
+    h.span(
+      [
+        a.class("p-1 border-b-2 border-purple-700 flex gap-2"),
+        event.on_click(UserClickedPublish),
+      ],
+      [
+        h.span([], [element.text("publish")]),
+        h.span([a.class("w-6 h-6")], [outline.arrow_top_right_on_square()]),
+      ],
+    ),
   ])
 }
