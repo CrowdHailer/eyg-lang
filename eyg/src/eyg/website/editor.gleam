@@ -5,16 +5,17 @@ import eyg/website/page
 import eygir/decode
 import eygir/expression
 import eygir/tree
+import gleam/dict.{type Dict}
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{Some}
 import gleroglero/outline
-import gleroglero/solid
 import lustre
 import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
+import lustre/event
 import morph/editable
 import morph/lustre/components/key
 
@@ -28,8 +29,20 @@ pub fn client() {
   Nil
 }
 
+pub type Status {
+  Available
+  SelectNewProject
+  Failed(String, List(String))
+}
+
 pub type State {
-  State(cache: sync.Sync, source: snippet.Snippet, display_help: Bool)
+  State(
+    status: Status,
+    cache: sync.Sync,
+    source: snippet.Snippet,
+    other_projects: Dict(String, expression.Expression),
+    display_help: Bool,
+  )
 }
 
 pub fn init(_) {
@@ -38,11 +51,18 @@ pub fn init(_) {
   let snippet = snippet.init(source, [], [], cache)
   let references = snippet.references(snippet)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
-  let state = State(cache, snippet, False)
+  let others =
+    dict.from_list([
+      #("json", expression.Integer(100)),
+      #("foo", expression.Str("foo")),
+    ])
+  let state = State(Available, cache, snippet, others, False)
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
 pub type Message {
+  UserClickedNew
+  ProjectLoaded(name: String, source: expression.Expression)
   SnippetMessage(snippet.Message)
   SyncMessage(sync.Message)
 }
@@ -59,6 +79,16 @@ fn dispatch_nothing(_promise) {
 
 pub fn update(state: State, message) {
   case message {
+    UserClickedNew -> {
+      let state = State(..state, status: SelectNewProject)
+      #(state, effect.none())
+    }
+    ProjectLoaded(name, source) -> {
+      let source = editable.from_expression(source)
+      let snippet = snippet.init(source, [], [], state.cache)
+      let state = State(..state, status: Available, source: snippet)
+      #(state, effect.none())
+    }
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       let State(display_help: display_help, ..) = state
@@ -92,7 +122,12 @@ pub fn update(state: State, message) {
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
       let state =
-        State(source: snippet, cache: cache, display_help: display_help)
+        State(
+          ..state,
+          source: snippet,
+          cache: cache,
+          display_help: display_help,
+        )
       #(state, effect.batch([snippet_effect, sync_effect]))
     }
     SyncMessage(message) -> {
@@ -107,10 +142,51 @@ pub fn update(state: State, message) {
   }
 }
 
+fn icon_button(icon, text, attributes) {
+  h.button(
+    [
+      a.class(
+        "flex items-center px-2 py-1 border border-black font-medium hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-300",
+      ),
+      ..attributes
+    ],
+    [h.div([a.class("h-5 w-5 mr-2")], [icon]), element.text(text)],
+  )
+}
+
 pub fn render(state: State) {
   h.div([a.class("flex flex-col h-screen")], [
     tools(),
-    // modal(),
+    case state.status {
+      Available -> element.none()
+      SelectNewProject ->
+        modal(
+          [
+            h.div([a.class("hstack mb-2 gap-4")], [
+              icon_button(outline.cursor_arrow_rays(), "Blank", [
+                event.on_click(ProjectLoaded("", expression.Vacant(""))),
+              ]),
+              icon_button(outline.sparkles(), "Example", []),
+              h.span([a.class("expand")], []),
+            ]),
+            h.h3([a.class("text-lg font-bold")], [element.text("Recent")]),
+            h.ul(
+              [a.class("list-inside list-disc")],
+              list.map(dict.to_list(state.other_projects), fn(other) {
+                let #(name, code) = other
+                h.li([event.on_click(ProjectLoaded(name, code))], [
+                  element.text(name),
+                ])
+              }),
+            ),
+          ],
+          [],
+          Primary,
+        )
+      Failed(title, reasons) -> {
+        failure(title, reasons)
+      }
+    },
     header(),
     h.div([a.class("hstack h-full gap-1 p-1 bg-gray-800")], [
       h.div(
@@ -144,16 +220,47 @@ fn tools() {
   )
 }
 
-fn modal() {
+fn p(content) {
+  h.p([], [element.text(content)])
+}
+
+fn li(content) {
+  h.li([], [element.text(content)])
+}
+
+fn failure(title, reasons) {
+  modal(
+    [h.h3([a.class("text-lg")], [element.text(title)]), ..list.map(reasons, p)],
+    [element.text("Ok")],
+    Failure,
+  )
+}
+
+type Emphasis {
+  None
+  Primary
+  Failure
+}
+
+fn emphasis_background(emphasis) {
+  case emphasis {
+    None -> "bg-gray-100"
+    Primary -> "bg-blue-200"
+    Failure -> "bg-red-200"
+  }
+}
+
+fn modal(content, footer, emphasis) {
   h.div([a.class("fixed inset-0 bg-gray-100 bg-opacity-40 vstack")], [
     h.div([a.class("w-full vstack")], [
       h.div(
         [a.class("w-full max-w-sm bg-white neo-shadow border-2 border-black")],
         [
-          h.div([a.class("expand px-4 py-4 h-40")], [
-            element.text("Preparing ..."),
-          ]),
-          h.div([a.class("bg-gray-100 px-4 py-1")], [element.text("Ok")]),
+          h.div([a.class("expand px-4 py-4 h-40")], content),
+          h.div(
+            [a.class("px-4 py-1 " <> emphasis_background(emphasis))],
+            footer,
+          ),
         ],
       ),
     ]),
@@ -171,13 +278,17 @@ fn header() {
       h.button([a.class("border-b-2 border-purple-700 px-1 mx-1")], [
         element.text("Save"),
       ]),
-      h.button([a.class("border-b-2 border-purple-700 px-1 mx-1")], [
-        element.text("New"),
-      ]),
+      h.button(
+        [
+          a.class("border-b-2 border-purple-700 px-1 mx-1"),
+          event.on_click(UserClickedNew),
+        ],
+        [element.text("New")],
+      ),
     ]),
     h.span([a.class("p-1 border-b-2 border-purple-700 flex gap-2")], [
       h.span([], [element.text("publish")]),
-      h.span([a.class("w-6 h-6")], [solid.arrow_top_right_on_square()]),
+      h.span([a.class("w-6 h-6")], [outline.arrow_top_right_on_square()]),
     ]),
   ])
 }
