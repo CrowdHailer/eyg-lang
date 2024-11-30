@@ -12,18 +12,16 @@ import javascript/mutable_reference as ref
 // ResultServerError
 // server in memory /state
 
-pub fn handle(request, state) {
+pub fn do_handle(request, archive) {
   let segments = request.path_segments(request)
   case request.method, segments {
     http.Post, [series, next] -> {
       let decoder = dynamic.field("source", decode.decoder)
       let assert Ok(next) = int.parse(next)
       let assert Ok(source) = json.decode_bits(request.body, decoder)
-      let archive = ref.get(state)
       case archive.publish(archive, series, next, source, Nil) {
         Ok(archive) -> {
-          ref.set(state, archive)
-          response.new(201)
+          #(response.new(201) |> response.set_body(<<>>), archive)
         }
         Error(_) -> todo as "error"
       }
@@ -33,4 +31,11 @@ pub fn handle(request, state) {
       todo as "not supported"
     }
   }
+}
+
+pub fn handle(request, state) {
+  let archive = ref.get(state)
+  let #(response, archive) = do_handle(request, archive)
+  ref.set(state, archive)
+  response
 }
