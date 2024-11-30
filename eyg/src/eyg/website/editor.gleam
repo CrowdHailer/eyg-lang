@@ -7,6 +7,7 @@ import eygir/decode
 import eygir/expression
 import eygir/tree
 import gleam/dict.{type Dict}
+import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
@@ -23,6 +24,7 @@ import midas/task as t
 import morph/editable
 import morph/lustre/components/key
 import morph/projection
+import plinth/browser/credentials
 import snag.{type Snag, Snag}
 
 pub fn page(bundle) {
@@ -43,6 +45,10 @@ pub type Status {
   Failed(String, List(String))
 }
 
+pub type Credential {
+  Credential(String)
+}
+
 pub type Remote {
   Remote(series: String, latest: Option(Int))
 }
@@ -50,7 +56,7 @@ pub type Remote {
 pub type State {
   State(
     status: Status,
-    credentials: String,
+    credentials: Option(Credential),
     cache: sync.Sync,
     source: snippet.Snippet,
     remote: Option(Remote),
@@ -70,8 +76,8 @@ pub fn init(_) {
       #("json", #(expression.Integer(100), Some(Remote("jsony", Some(2))))),
       #("foo", #(expression.Str("foo"), None)),
     ])
-  let credentials = "SHA256:iKCaPnUxIMbKgs.."
-  let state = State(Available, credentials, cache, snippet, None, others, False)
+  // let credentials = Credential("SHA256:iKCaPnUxIMbKgs..")
+  let state = State(Available, None, cache, snippet, None, others, False)
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
@@ -80,6 +86,7 @@ pub type Message {
   UserClickedPublish
   UserClickedCancel
   UserClickedDismiss
+  UserConfirmedNewCredential(String)
   UserConfirmedNewRemote(String)
   UserConfirmedPublish
   RemotePublishedPackage(series: String, version: Int)
@@ -115,6 +122,25 @@ pub fn update(state: State, message) {
     }
     UserConfirmedNewRemote(remote) -> {
       let state = State(..state, remote: Some(Remote(remote, None)))
+      #(state, effect.none())
+    }
+    UserConfirmedNewCredential(id) -> {
+      let state = State(..state, credentials: Some(Credential(id)))
+      let assert Ok(c) = credentials.from_navigator()
+      io.debug(c)
+      {
+        use r <- promise.await(
+          credentials.create_public_key(
+            c,
+            <<0, 1, 2>>,
+            credentials.ES256,
+            "Eyg",
+            <<1, 2, 11, 22>>,
+          ),
+        )
+        io.debug(r)
+        todo as "right"
+      }
       #(state, effect.none())
     }
     UserConfirmedPublish -> {
@@ -301,20 +327,30 @@ fn select_project(state: State) {
 }
 
 fn publish_project(state: State) {
-  let #(content, action) = case state.remote {
+  let #(content, action) = case state.credentials {
     None -> #(
-      [p(""), p("This project is published under #1232323")],
-      UserConfirmedNewRemote("1232323"),
-    )
-    Some(Remote(series, latest)) -> #(
       [
-        h.h3([], [element.text("key: sdafdfsdf")]),
-        p("project remote is @" <> series),
-        p("This will be the 99th release"),
-        p("check the changes to existing version"),
+        p("lets create a key"),
+        icon_button(outline.finger_print(), "create new", []),
       ],
-      UserConfirmedPublish,
+      UserConfirmedNewCredential("sos"),
     )
+    Some(_) ->
+      case state.remote {
+        None -> #(
+          [p(""), p("This project is published under #1232323")],
+          UserConfirmedNewRemote("1232323"),
+        )
+        Some(Remote(series, latest)) -> #(
+          [
+            h.h3([], [element.text("key: sdafdfsdf")]),
+            p("project remote is @" <> series),
+            p("This will be the 99th release"),
+            p("check the changes to existing version"),
+          ],
+          UserConfirmedPublish,
+        )
+      }
   }
   modal(
     content,
