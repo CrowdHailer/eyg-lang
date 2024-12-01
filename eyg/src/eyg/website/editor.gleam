@@ -6,6 +6,7 @@ import eyg/website/page
 import eygir/decode
 import eygir/expression
 import eygir/tree
+import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/io
 import gleam/javascript/promise
@@ -25,6 +26,7 @@ import morph/editable
 import morph/lustre/components/key
 import morph/projection
 import plinth/browser/credentials
+import plinth/javascript/console
 import snag.{type Snag, Snag}
 
 pub fn page(bundle) {
@@ -129,16 +131,35 @@ pub fn update(state: State, message) {
       let assert Ok(c) = credentials.from_navigator()
       io.debug(c)
       {
-        use r <- promise.await(
-          credentials.create_public_key(
-            c,
+        let options =
+          credentials.public_key_creation_options(
             <<0, 1, 2>>,
             credentials.ES256,
-            "Eyg",
+            "EYG",
             <<1, 2, 11, 22>>,
-          ),
-        )
-        io.debug(r)
+            "peters account",
+            "Pete",
+          )
+        use r <- promise.await(credentials.create_public_key(c, options))
+        case r {
+          Ok(credentials.PublicKeyCredential(
+            attachment,
+            id,
+            raw_id,
+            response,
+            type_,
+          )) -> {
+            io.debug(attachment)
+            io.debug(id)
+            io.debug(raw_id)
+            io.debug(bit_array.base64_url_decode(id))
+            io.debug(response)
+            todo
+          }
+          Error(reason) -> console.log(reason)
+        }
+        // use r2 <- promise.await(credentials.get_public_key(c, <<2, 2>>))
+        // console.log(r2)
         todo as "right"
       }
       #(state, effect.none())
