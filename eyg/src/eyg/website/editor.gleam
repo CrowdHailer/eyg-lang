@@ -17,6 +17,7 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleroglero/outline
+import harness/impl/browser as harness
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -64,7 +65,11 @@ pub type Remote {
 }
 
 pub type ShellEntry {
-  Executed(Option(snippet.Value), editable.Expression)
+  Executed(
+    Option(snippet.Value),
+    List(#(String, #(snippet.Value, snippet.Value))),
+    editable.Expression,
+  )
   Reloaded
 }
 
@@ -112,27 +117,10 @@ pub fn init(_) {
     ])
   let credentials = Some(Credential("SHA256:iKCaPnUxIMbKgs.."))
   let shell =
-    Shell(
-      [
-        // reverse order
-        Reloaded,
-        Executed(
-          Some(value.Integer(4)),
-          editable.from_expression(expression.Apply(
-            expression.Apply(
-              expression.Builtin("int_add"),
-              expression.Integer(2),
-            ),
-            expression.Integer(2),
-          )),
-        ),
-      ],
-      [#("x", value.Integer(4))],
-      {
-        let source = editable.from_expression(expression.Vacant(""))
-        snippet.init(source, [], [], cache)
-      },
-    )
+    Shell([], [], {
+      let source = editable.from_expression(expression.Vacant(""))
+      snippet.init(source, [], harness.effects(), cache)
+    })
   let state =
     State(
       Available,
@@ -173,6 +161,12 @@ pub type Message {
 fn dispatch_to_snippet(promise) {
   effect.from(fn(d) {
     promisex.aside(promise, fn(message) { d(SnippetMessage(message)) })
+  })
+}
+
+fn dispatch_to_shell(promise) {
+  effect.from(fn(d) {
+    promisex.aside(promise, fn(message) { d(ShellMessage(message)) })
   })
 }
 
@@ -304,7 +298,7 @@ pub fn update(state: State, message) {
           display_help,
           dispatch_to_snippet(snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _) -> #(display_help, effect.none())
+        snippet.Conclude(_, _, _) -> #(display_help, effect.none())
       }
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
@@ -320,44 +314,75 @@ pub fn update(state: State, message) {
     // TODO I think we need to remove run from snippet and handle top level effects and types better
     // but top level types are checks of functions
     ShellMessage(message) -> {
-      let #(snippet, eff) = snippet.update(state.shell.source, message)
-      let State(display_help: display_help, ..) = state
-      let #(display_help, snippet_effect) = case eff {
-        snippet.Nothing -> #(display_help, effect.none())
+      let shell = state.shell
+      let #(source, eff) = snippet.update(shell.source, message)
+      let #(shell, snippet_effect) = case eff {
+        snippet.Nothing -> #(Shell(..shell, source: source), effect.none())
         snippet.AwaitRunningEffect(p) -> #(
-          display_help,
-          dispatch_to_snippet(snippet.await_running_effect(p)),
+          Shell(..shell, source: source),
+          dispatch_to_shell(snippet.await_running_effect(p)),
         )
         snippet.FocusOnCode -> #(
-          display_help,
+          Shell(..shell, source: source),
           dispatch_nothing(snippet.focus_on_buffer()),
         )
         snippet.FocusOnInput -> #(
-          display_help,
+          Shell(..shell, source: source),
           dispatch_nothing(snippet.focus_on_input()),
         )
-        snippet.ToggleHelp -> #(!display_help, effect.none())
-        snippet.MoveAbove -> #(display_help, effect.none())
-        snippet.MoveBelow -> #(display_help, effect.none())
+        snippet.ToggleHelp -> #(Shell(..shell, source: source), effect.none())
+        snippet.MoveAbove -> {
+          case shell.previous {
+            [] -> todo
+            [Executed(_value, effects, exp), ..] -> {
+              let current =
+                snippet.active(
+                  exp,
+                  shell.scope,
+                  [],
+                  // effects(state.config),
+                  state.cache,
+                )
+              #(Shell(..shell, source: current), effect.none())
+            }
+            [Reloaded, Executed(_value, effects, exp), ..] -> {
+              let current =
+                snippet.active(
+                  exp,
+                  shell.scope,
+                  [],
+                  // effects(state.config),
+                  state.cache,
+                )
+              #(Shell(..shell, source: current), effect.none())
+            }
+            _ -> todo
+          }
+        }
+        snippet.MoveBelow -> #(Shell(..shell, source: source), effect.none())
         snippet.ReadFromClipboard -> #(
-          display_help,
-          dispatch_to_snippet(snippet.read_from_clipboard()),
+          Shell(..shell, source: source),
+          dispatch_to_shell(snippet.read_from_clipboard()),
         )
         snippet.WriteToClipboard(text) -> #(
-          display_help,
-          dispatch_to_snippet(snippet.write_to_clipboard(text)),
+          Shell(..shell, source: source),
+          dispatch_to_shell(snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _) -> #(display_help, effect.none())
+        snippet.Conclude(value, effects, scope) -> {
+          let previous = [
+            Executed(value, effects, snippet.source(shell.source)),
+            ..shell.previous
+          ]
+          // TODO eff
+          let source =
+            snippet.active(editable.Vacant(""), scope, [], state.cache)
+          let shell = Shell(..shell, source: source, previous: previous)
+          #(shell, effect.none())
+        }
       }
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      let state =
-        State(
-          ..state,
-          shell: Shell(..state.shell, source: snippet),
-          cache: cache,
-          display_help: display_help,
-        )
+      let state = State(..state, shell: shell, cache: cache)
       #(state, effect.batch([snippet_effect, sync_effect]))
     }
     SyncMessage(message) -> {
@@ -452,11 +477,21 @@ pub fn render(state: State) {
           [a.class("cover font-mono bg-gray-100")],
           list.map(list.reverse(state.shell.previous), fn(p) {
             case p {
-              Executed(value, prog) ->
+              Executed(value, effects, prog) ->
                 h.div([a.class("w-full max-w-4xl")], [
                   h.div(
                     [a.class("px-2 whitespace-nowrap overflow-auto")],
                     render.statements(prog),
+                  ),
+                  h.div(
+                    [a.class("px-2 bg-gray-200")],
+                    list.map(effects, fn(eff) {
+                      h.div([], [
+                        element.text(eff.0),
+                        output.render(eff.1.0),
+                        output.render(eff.1.1),
+                      ])
+                    }),
                   ),
                   case value {
                     Some(value) ->

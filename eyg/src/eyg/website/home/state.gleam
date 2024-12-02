@@ -245,7 +245,7 @@ pub fn update(state: State, message) {
           dispatch_to_snippet(id, snippet.read_from_clipboard())
         snippet.WriteToClipboard(text) ->
           dispatch_to_snippet(id, snippet.write_to_clipboard(text))
-        snippet.Conclude(_, _) -> effect.none()
+        snippet.Conclude(_, _, _) -> effect.none()
       }
       let state = set_snippet(state, id, snippet)
       let references = all_references(state.snippets |> dict.to_list)

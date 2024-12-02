@@ -176,7 +176,7 @@ pub type Effect {
   WriteToClipboard(String)
   ReadFromClipboard
   AwaitRunningEffect(promise.Promise(Value))
-  Conclude(Option(Value), Scope)
+  Conclude(Option(Value), List(#(String, #(Value, Value))), Scope)
 }
 
 pub fn focus_on_buffer() {
@@ -828,7 +828,7 @@ pub fn copy_escaped(state) {
 fn execute(state) {
   let Snippet(run: run, ..) = state
   case run.status {
-    run.Done(value, env) -> #(state, Conclude(value, env))
+    run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
     run.Failed(_) -> show_error(state, ActionFailed("Execute"))
     _ -> run_effects(state)
   }

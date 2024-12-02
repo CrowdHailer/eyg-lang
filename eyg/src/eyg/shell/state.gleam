@@ -129,7 +129,7 @@ pub fn update(state: Shell, message) {
           dispatch_to_snippet(state, current, snippet.read_from_clipboard())
         snippet.WriteToClipboard(text) ->
           dispatch_to_snippet(state, current, snippet.write_to_clipboard(text))
-        snippet.Conclude(value, scope) -> {
+        snippet.Conclude(value, effects, scope) -> {
           let previous = [#(value, snippet.source(current)), ..state.previous]
           // TODO eff
           let source = new_snippet(scope, state.cache, state.config, [])
