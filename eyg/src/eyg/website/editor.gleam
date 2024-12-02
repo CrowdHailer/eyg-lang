@@ -1,6 +1,8 @@
 import eyg/hub/archive/client
+import eyg/runtime/value
 import eyg/sync/browser
 import eyg/sync/sync
+import eyg/website/components/output
 import eyg/website/components/snippet
 import eyg/website/page
 import eygir/decode
@@ -8,6 +10,7 @@ import eygir/expression
 import eygir/tree
 import gleam/bit_array
 import gleam/dict.{type Dict}
+import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
@@ -22,12 +25,17 @@ import lustre/element/html as h
 import lustre/event
 import midas/browser as midas_runner
 import midas/task as t
+import morph/analysis
 import morph/editable
 import morph/lustre/components/key
+import morph/lustre/render
 import morph/projection
 import plinth/browser/credentials
+import plinth/browser/crypto/subtle
 import plinth/javascript/console
 import snag.{type Snag, Snag}
+
+// Using separate shell because other shell has openapi experiments
 
 pub fn page(bundle) {
   page.app(Some("editor"), "eyg/website/editor", "client", bundle)
@@ -55,14 +63,38 @@ pub type Remote {
   Remote(series: String, latest: Option(Int))
 }
 
+pub type ShellEntry {
+  Executed(Option(snippet.Value), editable.Expression)
+  Reloaded
+}
+
+pub type Shell {
+  Shell(
+    // config: spotless.Config,
+    // situation: Situation,
+    // cache: sync.Sync,
+    previous: List(ShellEntry),
+    // display_help: Bool,
+    scope: snippet.Scope,
+    source: snippet.Snippet,
+  )
+}
+
 pub type State {
   State(
+    // editor state
     status: Status,
     credentials: Option(Credential),
+    // global cache
     cache: sync.Sync,
+    // name of project in workspace
+    name: String,
     source: snippet.Snippet,
     remote: Option(Remote),
+    shell: Shell,
+    // other saved projects
     other_projects: Dict(String, #(expression.Expression, Option(Remote))),
+    // also global
     display_help: Bool,
   )
 }
@@ -78,13 +110,42 @@ pub fn init(_) {
       #("json", #(expression.Integer(100), Some(Remote("jsony", Some(2))))),
       #("foo", #(expression.Str("foo"), None)),
     ])
-  // let credentials = Credential("SHA256:iKCaPnUxIMbKgs..")
-  let state = State(Available, None, cache, snippet, None, others, False)
+  let credentials = Some(Credential("SHA256:iKCaPnUxIMbKgs.."))
+  let shell =
+    Shell(
+      [
+        // reverse order
+        Reloaded,
+        Executed(
+          Some(value.Integer(4)),
+          editable.from_expression(expression.Integer(4)),
+        ),
+      ],
+      [#("x", value.Integer(4))],
+      {
+        let source = editable.from_expression(expression.Vacant(""))
+        snippet.init(source, [], [], cache)
+      },
+    )
+  let state =
+    State(
+      Available,
+      credentials,
+      cache,
+      "",
+      snippet,
+      None,
+      shell,
+      others,
+      False,
+    )
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
 pub type Message {
   UserClickedNew
+  UserInputForName(String)
+  UserClickedSave
   UserClickedPublish
   UserClickedCancel
   UserClickedDismiss
@@ -93,8 +154,13 @@ pub type Message {
   UserConfirmedPublish
   RemotePublishedPackage(series: String, version: Int)
   TaskFailed(Snag)
-  ProjectLoaded(name: String, source: expression.Expression)
+  ProjectLoaded(
+    name: String,
+    source: expression.Expression,
+    remote: Option(Remote),
+  )
   SnippetMessage(snippet.Message)
+  ShellMessage(snippet.Message)
   SyncMessage(sync.Message)
 }
 
@@ -112,6 +178,20 @@ pub fn update(state: State, message) {
   case message {
     UserClickedNew -> {
       let state = State(..state, status: SelectNewProject)
+      #(state, effect.none())
+    }
+    UserInputForName(new) -> {
+      let state = State(..state, name: new)
+      #(state, effect.none())
+    }
+    UserClickedSave -> {
+      let state = case state.name {
+        "" -> State(..state, status: Failed("No name", []))
+        _ -> {
+          // TODO as go to disk, not publish to the backend, although maybe with JAZZ
+          state
+        }
+      }
       #(state, effect.none())
     }
     UserClickedPublish -> {
@@ -168,10 +248,17 @@ pub fn update(state: State, message) {
       let state = State(..state, status: Working("publishing"))
       #(state, effect.from(publish(state)))
     }
-    ProjectLoaded(name, source) -> {
+    ProjectLoaded(name, source, remote) -> {
       let source = editable.from_expression(source)
       let snippet = snippet.init(source, [], [], state.cache)
-      let state = State(..state, status: Available, source: snippet)
+      let state =
+        State(
+          ..state,
+          status: Available,
+          name: name,
+          source: snippet,
+          remote: remote,
+        )
       #(state, effect.none())
     }
     TaskFailed(Snag(issue, causes)) -> {
@@ -223,6 +310,11 @@ pub fn update(state: State, message) {
           display_help: display_help,
         )
       #(state, effect.batch([snippet_effect, sync_effect]))
+    }
+    // TODO I think we need to remove run from snippet and handle top level effects and types better
+    // but top level types are checks of functions
+    ShellMessage(message) -> {
+      #(state, effect.none())
     }
     SyncMessage(message) -> {
       let cache = sync.task_finish(state.cache, message)
@@ -286,7 +378,7 @@ pub fn render(state: State) {
       PublishProject -> publish_project(state)
       Failed(title, reasons) -> failure(title, reasons)
     },
-    header(),
+    header(state),
     h.div([a.class("hstack h-full gap-1 p-1 bg-gray-800")], [
       h.div(
         [
@@ -298,6 +390,31 @@ pub fn render(state: State) {
       )
         |> element.map(SnippetMessage),
       h.div([a.class("cover flex-grow w-full max-w-2xl p-6 bg-white")], [
+        h.div(
+          [],
+          list.map(list.reverse(state.shell.previous), fn(p) {
+            case p {
+              Executed(value, prog) ->
+                h.div([a.class("w-full max-w-4xl mt-2 py-1")], [
+                  h.div(
+                    [a.class("px-3 whitespace-nowrap overflow-auto")],
+                    render.statements(prog),
+                  ),
+                  case value {
+                    Some(value) ->
+                      h.div(
+                        [a.class("mx-3 pt-1 border-t max-h-60 overflow-auto")],
+                        [output.render(value)],
+                      )
+                    None -> element.none()
+                  },
+                ])
+              Reloaded -> h.div([], [h.hr([a.class("bg-gray-500 h-1 my-2")])])
+            }
+          }),
+        ),
+        h.div([], snippet.bare_render(state.shell.source))
+          |> element.map(ShellMessage),
         h.h2([a.class("texl-lg font-bold")], [element.text("ready ...")]),
         h.div([a.class("text-gray-700")], [
           element.text("Run and test your code. "),
@@ -328,7 +445,7 @@ fn select_project(state: State) {
     [
       h.div([a.class("hstack mb-2 gap-4")], [
         icon_button(outline.cursor_arrow_rays(), "Blank", [
-          event.on_click(ProjectLoaded("", expression.Vacant(""))),
+          event.on_click(ProjectLoaded("", expression.Vacant(""), None)),
         ]),
         icon_button(outline.sparkles(), "Example", []),
         h.span([a.class("expand")], []),
@@ -338,7 +455,9 @@ fn select_project(state: State) {
         [a.class("list-inside list-disc")],
         list.map(dict.to_list(state.other_projects), fn(other) {
           let #(name, #(code, remote)) = other
-          h.li([event.on_click(ProjectLoaded(name, code))], [element.text(name)])
+          h.li([event.on_click(ProjectLoaded(name, code, remote))], [
+            element.text(name),
+          ])
         }),
       ),
     ],
@@ -347,32 +466,7 @@ fn select_project(state: State) {
   )
 }
 
-fn publish_project(state: State) {
-  let #(content, action) = case state.credentials {
-    None -> #(
-      [
-        p("lets create a key"),
-        icon_button(outline.finger_print(), "create new", []),
-      ],
-      UserConfirmedNewCredential("sos"),
-    )
-    Some(_) ->
-      case state.remote {
-        None -> #(
-          [p(""), p("This project is published under #1232323")],
-          UserConfirmedNewRemote("1232323"),
-        )
-        Some(Remote(series, latest)) -> #(
-          [
-            h.h3([], [element.text("key: sdafdfsdf")]),
-            p("project remote is @" <> series),
-            p("This will be the 99th release"),
-            p("check the changes to existing version"),
-          ],
-          UserConfirmedPublish,
-        )
-      }
-  }
+fn confirm_modal(content, action) {
   modal(
     content,
     [
@@ -384,6 +478,65 @@ fn publish_project(state: State) {
     ],
     Primary,
   )
+}
+
+fn publish_project(state: State) {
+  case state.credentials {
+    None ->
+      confirm_modal(
+        [
+          p("lets create a key"),
+          icon_button(outline.finger_print(), "create new", []),
+        ],
+        UserConfirmedNewCredential("sos"),
+      )
+    Some(Credential(key)) -> {
+      let #(_proj, exp, analysis) = state.source.source
+      // snippet always does analysis
+      let assert Some(analysis) = analysis
+      case analysis.type_errors(analysis) {
+        [] ->
+          case state.remote {
+            None -> {
+              // Needs promise to create the new id
+              // let project_id =
+              //   subtle.digest(subtle.SHA1, bit_array.from_string(key))
+              //   |> promise.map(fn(x) {
+              //     let assert Ok(x) = x
+              //     bit_array.base16_encode(x) |> io.debug
+              //   })
+              let project_id = "497389DB387427E504E21BF5737340A29B07F790"
+              confirm_modal(
+                [p(""), p("This project is published under #" <> project_id)],
+                UserConfirmedNewRemote(project_id),
+              )
+            }
+            Some(Remote(series, latest)) ->
+              confirm_modal(
+                [
+                  h.h3([], [element.text("key: "), element.text(key)]),
+                  p("project remote is @" <> series),
+                  p(
+                    "This will be the "
+                    <> {
+                      let next =
+                        case latest {
+                          Some(x) -> x + 1
+                          None -> 0
+                        }
+                        |> int.to_string
+                    }
+                    <> "th release",
+                  ),
+                  p("check the changes to existing version"),
+                ],
+                UserConfirmedPublish,
+              )
+          }
+        _ -> failure("Can't publish project with errors", [])
+      }
+    }
+  }
 }
 
 fn p(content) {
@@ -436,17 +589,31 @@ fn modal(content, footer, emphasis) {
   ])
 }
 
-fn header() {
+fn header(state: State) {
   h.header([a.class("w-full py-4 px-6 text-xl bg-gray-800 text-white hstack")], [
     h.span([a.class("expand")], [
       // h.a([a.href("/"), a.class("font-bold")], [element.text("EYG")]),
       // h.span([a.class("")], [element.text(" - ")]),
-      h.span([], [element.text("untitled")]),
+      // case state.name {
+      //   "" -> h.span([], [
+      //     element.text("untitled")])
+      //   name -> h.span([], [element.text(name)])
+      // },
+      h.input([
+        a.class("bg-gray-600"),
+        a.value(state.name),
+        a.placeholder("untitled"),
+        event.on_input(UserInputForName),
+      ]),
       h.span([a.class("")], [element.text(" ")]),
       // h.button([a.class("border border-white")], [element.text("Save")]),
-      h.button([a.class("border-b-2 border-purple-700 px-1 mx-1")], [
-        element.text("Save"),
-      ]),
+      h.button(
+        [
+          a.class("border-b-2 border-purple-700 px-1 mx-1"),
+          event.on_click(UserClickedSave),
+        ],
+        [element.text("Save")],
+      ),
       h.button(
         [
           a.class("border-b-2 border-purple-700 px-1 mx-1"),
@@ -455,6 +622,10 @@ fn header() {
         [element.text("New")],
       ),
     ]),
+    case state.remote {
+      Some(Remote(hash, version)) -> short_hash(hash)
+      None -> element.none()
+    },
     h.span(
       [
         a.class("p-1 border-b-2 border-purple-700 flex gap-2"),
@@ -466,4 +637,8 @@ fn header() {
       ],
     ),
   ])
+}
+
+fn short_hash(hash) {
+  h.span([], [element.text(hash)])
 }

@@ -1,11 +1,7 @@
-import eyg/analysis/type_/isomorphic as t
-import eyg/runtime/cast
 import eyg/shell/situation.{type Situation}
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/components/snippet
-import gleam/dict
-import gleam/io
 import gleam/javascript/promisex
 import gleam/json
 import gleam/list
@@ -13,7 +9,6 @@ import gleam/option.{type Option}
 import harness/impl/browser as harness
 import harness/impl/spotless
 import harness/impl/spotless/netlify/openapi as netlify_spec
-import justin
 import lustre/effect
 import morph/editable
 import oas
