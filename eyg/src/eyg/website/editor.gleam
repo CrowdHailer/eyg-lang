@@ -118,7 +118,13 @@ pub fn init(_) {
         Reloaded,
         Executed(
           Some(value.Integer(4)),
-          editable.from_expression(expression.Integer(4)),
+          editable.from_expression(expression.Apply(
+            expression.Apply(
+              expression.Builtin("int_add"),
+              expression.Integer(2),
+            ),
+            expression.Integer(2),
+          )),
         ),
       ],
       [#("x", value.Integer(4))],
@@ -370,7 +376,7 @@ fn icon_button(icon, text, attributes) {
 
 pub fn render(state: State) {
   h.div([a.class("flex flex-col h-screen")], [
-    tools(),
+    // tools(),
     case state.status {
       Available -> element.none()
       Working(message) -> show_working(message)
@@ -389,37 +395,57 @@ pub fn render(state: State) {
         snippet.bare_render(state.source),
       )
         |> element.map(SnippetMessage),
-      h.div([a.class("cover flex-grow w-full max-w-2xl p-6 bg-white")], [
+      h.div([a.class("cover vstack w-full max-w-2xl bg-white")], [
+        h.div([a.class("expand vstack"), a.style([#("min-height", "0")])], case
+          list.length(state.shell.previous)
+        {
+          0 -> [
+            h.h2([a.class("texl-lg font-bold")], [element.text("The console")]),
+            h.div([a.class("text-gray-700")], [
+              element.text("Run and test your code here. "),
+              h.a([a.class("border-b border-indigo-700")], [
+                element.text("help."),
+              ]),
+            ]),
+          ]
+          _ -> []
+        }),
         h.div(
-          [],
+          [a.class("cover font-mono")],
           list.map(list.reverse(state.shell.previous), fn(p) {
             case p {
               Executed(value, prog) ->
-                h.div([a.class("w-full max-w-4xl mt-2 py-1")], [
+                h.div([a.class("w-full max-w-4xl")], [
                   h.div(
-                    [a.class("px-3 whitespace-nowrap overflow-auto")],
+                    [a.class("px-2 whitespace-nowrap overflow-auto")],
                     render.statements(prog),
                   ),
                   case value {
                     Some(value) ->
                       h.div(
-                        [a.class("mx-3 pt-1 border-t max-h-60 overflow-auto")],
+                        [a.class("px-2 bg-gray-100 max-h-60 overflow-auto")],
                         [output.render(value)],
                       )
                     None -> element.none()
                   },
                 ])
-              Reloaded -> h.div([], [h.hr([a.class("bg-gray-500 h-1 my-2")])])
+              Reloaded ->
+                h.div(
+                  [
+                    a.class(
+                      "separator mx-12 mt-1 border-blue-400 text-blue-400",
+                    ),
+                  ],
+                  [element.text("Reloaded")],
+                )
             }
           }),
         ),
-        h.div([], snippet.bare_render(state.shell.source))
+        h.div(
+          [a.class("cover font-mono")],
+          snippet.bare_render(state.shell.source),
+        )
           |> element.map(ShellMessage),
-        h.h2([a.class("texl-lg font-bold")], [element.text("ready ...")]),
-        h.div([a.class("text-gray-700")], [
-          element.text("Run and test your code. "),
-          h.a([a.class("border-b border-indigo-700")], [element.text("help.")]),
-        ]),
       ]),
     ]),
   ])
