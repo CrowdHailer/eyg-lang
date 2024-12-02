@@ -2,10 +2,12 @@ import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/http/response
 import gleam/io
+import gleam/javascript/promise
 import gleam/json
 import gleam/result
 import gleam/string
 import plinth/browser/credentials
+import plinth/browser/crypto/subtle
 
 const recording = credentials.PublicKeyCredential(
   "cross-platform",
@@ -94,7 +96,12 @@ fn attestation_object_decoder(raw) {
 fn assert_equal(given, expected) {
   case given == expected {
     True -> Ok(Nil)
-    False -> Error(given <> " did not match expected value of " <> expected)
+    False ->
+      Error(
+        string.inspect(given)
+        <> " did not match expected value of "
+        <> string.inspect(expected),
+      )
   }
 }
 
@@ -114,22 +121,13 @@ fn verify(credentials) {
     Ok(x) if x == raw_id -> Ok(Nil)
     _ -> Error("id and raw don't match")
   })
-  use Nil <- result.try(case type_ {
-    "public-key" -> Ok(Nil)
-    _ -> Error("type needs to be public-key")
-  })
+  use Nil <- result.try(assert_equal(type_, "public-key"))
   use ClientData(challenge, cross, origin, type_) <- result.try(
     json.decode_bits(client_data_json, client_data_decoder)
     |> result.map_error(string.inspect),
   )
-  use Nil <- result.try(case type_ {
-    WebAuthnCreate -> Ok(Nil)
-    _ -> Error("type needs to be create")
-  })
-  use Nil <- result.try(case challenge {
-    <<0, 1, 2>> -> Ok(Nil)
-    _ -> Error("challenge is not correct")
-  })
+  use Nil <- result.try(assert_equal(type_, WebAuthnCreate))
+  use Nil <- result.try(assert_equal(challenge, <<0, 1, 2>>))
   use Nil <- result.try(assert_equal(origin, "http://localhost:8080"))
   use AttestationObject(fmt, data) <- result.try(
     attestation_object
@@ -148,18 +146,31 @@ fn verify(credentials) {
       rest:bytes,
     >> -> {
       io.debug(rp_id_hash)
+      promise.map(
+        subtle.digest(subtle.SHA256, bit_array.from_string("localhost")),
+        io.debug,
+      )
+      // |> io.debug
       // io.debug(credentials_length)
-      io.debug(rest)
-      io.debug("======================")
-      bit_array.slice(rest, credentials_length, bit_array.byte_size(rest))
-      |> io.debug
-      // let assert <<id:size(credentials_length), public:bytes>> = rest
-      // io.debug(id)
+      // io.debug(#(rest, credentials_length, bit_array.byte_size(rest)))
+      // io.debug("======================")
+      use credentials_id <- result.try(
+        bit_array.slice(rest, 0, credentials_length)
+        |> result.replace_error("failed to extract credentials_id"),
+      )
+      use credentials_public_key <- result.try(
+        bit_array.slice(
+          rest,
+          credentials_length,
+          bit_array.byte_size(rest) - credentials_length,
+        )
+        |> result.replace_error("failed to extract credentials_public_key"),
+      )
+      use Nil <- result.try(assert_equal(credentials_id, raw_id))
+      Ok(Nil)
     }
     _ -> todo as "no match"
   }
-  // io.debug(data)
-  Ok(Nil)
 }
 
 pub fn verify_test() {
