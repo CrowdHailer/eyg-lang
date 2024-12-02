@@ -320,7 +320,45 @@ pub fn update(state: State, message) {
     // TODO I think we need to remove run from snippet and handle top level effects and types better
     // but top level types are checks of functions
     ShellMessage(message) -> {
-      #(state, effect.none())
+      let #(snippet, eff) = snippet.update(state.shell.source, message)
+      let State(display_help: display_help, ..) = state
+      let #(display_help, snippet_effect) = case eff {
+        snippet.Nothing -> #(display_help, effect.none())
+        snippet.AwaitRunningEffect(p) -> #(
+          display_help,
+          dispatch_to_snippet(snippet.await_running_effect(p)),
+        )
+        snippet.FocusOnCode -> #(
+          display_help,
+          dispatch_nothing(snippet.focus_on_buffer()),
+        )
+        snippet.FocusOnInput -> #(
+          display_help,
+          dispatch_nothing(snippet.focus_on_input()),
+        )
+        snippet.ToggleHelp -> #(!display_help, effect.none())
+        snippet.MoveAbove -> #(display_help, effect.none())
+        snippet.MoveBelow -> #(display_help, effect.none())
+        snippet.ReadFromClipboard -> #(
+          display_help,
+          dispatch_to_snippet(snippet.read_from_clipboard()),
+        )
+        snippet.WriteToClipboard(text) -> #(
+          display_help,
+          dispatch_to_snippet(snippet.write_to_clipboard(text)),
+        )
+        snippet.Conclude(_, _) -> #(display_help, effect.none())
+      }
+      let #(cache, tasks) = sync.fetch_all_missing(state.cache)
+      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      let state =
+        State(
+          ..state,
+          shell: Shell(..state.shell, source: snippet),
+          cache: cache,
+          display_help: display_help,
+        )
+      #(state, effect.batch([snippet_effect, sync_effect]))
     }
     SyncMessage(message) -> {
       let cache = sync.task_finish(state.cache, message)
@@ -411,7 +449,7 @@ pub fn render(state: State) {
           _ -> []
         }),
         h.div(
-          [a.class("cover font-mono")],
+          [a.class("cover font-mono bg-gray-100")],
           list.map(list.reverse(state.shell.previous), fn(p) {
             case p {
               Executed(value, prog) ->
@@ -423,7 +461,7 @@ pub fn render(state: State) {
                   case value {
                     Some(value) ->
                       h.div(
-                        [a.class("px-2 bg-gray-100 max-h-60 overflow-auto")],
+                        [a.class("px-2 bg-gray-200 max-h-60 overflow-auto")],
                         [output.render(value)],
                       )
                     None -> element.none()
