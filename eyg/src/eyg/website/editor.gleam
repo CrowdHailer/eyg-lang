@@ -14,6 +14,7 @@ import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/javascript/promisex
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleroglero/outline
@@ -32,6 +33,7 @@ import morph/lustre/components/key
 import morph/lustre/render
 import morph/projection
 import plinth/browser/credentials
+import plinth/browser/credentials/public_key
 import plinth/browser/crypto/subtle
 import plinth/javascript/console
 import snag.{type Snag, Snag}
@@ -115,7 +117,8 @@ pub fn init(_) {
       #("json", #(expression.Integer(100), Some(Remote("jsony", Some(2))))),
       #("foo", #(expression.Str("foo"), None)),
     ])
-  let credentials = Some(Credential("SHA256:iKCaPnUxIMbKgs.."))
+  // let credentials = Some(Credential("SHA256:iKCaPnUxIMbKgs.."))
+  let credentials = None
   let shell =
     Shell([], [], {
       let source = editable.from_expression(expression.Vacant(""))
@@ -212,34 +215,33 @@ pub fn update(state: State, message) {
       io.debug(c)
       {
         let options =
-          credentials.public_key_creation_options(
-            <<0, 1, 2>>,
-            credentials.ES256,
+          public_key.creation(
+            <<"used in attestation">>,
+            public_key.ES256,
             "EYG",
-            <<1, 2, 11, 22>>,
-            "peters account",
-            "Pete",
+            <<"test">>,
+            "this is a test account",
+            "Test",
           )
-        use r <- promise.await(credentials.create_public_key(c, options))
+        use r <- promise.await(public_key.create(c, options))
         case r {
-          Ok(credentials.PublicKeyCredential(
-            attachment,
-            id,
-            raw_id,
-            response,
-            type_,
-          )) -> {
-            io.debug(attachment)
-            io.debug(id)
-            io.debug(raw_id)
-            io.debug(bit_array.base64_url_decode(id))
-            io.debug(response)
-            todo
+          Ok(creds) -> {
+            console.log(creds)
+            io.debug(json.to_string(public_key.to_json(creds)))
+            Nil
           }
           Error(reason) -> console.log(reason)
         }
-        // use r2 <- promise.await(credentials.get_public_key(c, <<2, 2>>))
-        // console.log(r2)
+        let options = public_key.request(<<"my first commit">>)
+        use r2 <- promise.await(public_key.get(c, options))
+        case r2 {
+          Ok(creds) -> {
+            console.log(creds)
+            io.debug(json.to_string(public_key.to_json(creds)))
+            Nil
+          }
+          Error(reason) -> console.log(reason)
+        }
         todo as "right"
       }
       #(state, effect.none())

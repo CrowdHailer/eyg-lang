@@ -6,48 +6,103 @@ import gleam/javascript/promise
 import gleam/json
 import gleam/result
 import gleam/string
+import gleeunit/should
 import plinth/browser/credentials
+import plinth/browser/credentials/public_key
 import plinth/browser/crypto/subtle
 
-const recording = credentials.PublicKeyCredential(
-  "cross-platform",
-  "Id8gys2-vHRr5GNrcK0JbQ",
-  <<33, 223, 32, 202, 205, 190, 188, 116, 107, 228, 99, 107, 112, 173, 9, 109>>,
-  credentials.AuthenticatorAttestationResponse(
-    attestation_object: <<
-      163, 99, 102, 109, 116, 100, 110, 111, 110, 101, 103, 97, 116, 116, 83,
-      116, 109, 116, 160, 104, 97, 117, 116, 104, 68, 97, 116, 97, 88, 148, 73,
-      150, 13, 229, 136, 14, 140, 104, 116, 52, 23, 15, 100, 118, 96, 91, 143,
-      228, 174, 185, 162, 134, 50, 199, 153, 92, 243, 186, 131, 29, 151, 99, 93,
-      0, 0, 0, 0, 234, 155, 141, 102, 77, 1, 29, 33, 60, 228, 182, 180, 140, 181,
-      117, 212, 0, 16, 33, 223, 32, 202, 205, 190, 188, 116, 107, 228, 99, 107,
-      112, 173, 9, 109, 165, 1, 2, 3, 38, 32, 1, 33, 88, 32, 190, 106, 58, 76,
-      197, 112, 254, 33, 233, 100, 43, 125, 205, 227, 122, 55, 60, 159, 41, 186,
-      236, 129, 231, 102, 51, 100, 104, 232, 90, 128, 164, 104, 34, 88, 32, 224,
-      86, 31, 9, 71, 46, 144, 24, 104, 221, 198, 5, 174, 44, 60, 36, 177, 163,
-      28, 77, 59, 206, 198, 178, 73, 222, 222, 197, 63, 41, 241, 145,
-    >>,
-    client_data_json: <<
-      123, 34, 116, 121, 112, 101, 34, 58, 34, 119, 101, 98, 97, 117, 116, 104,
-      110, 46, 99, 114, 101, 97, 116, 101, 34, 44, 34, 99, 104, 97, 108, 108,
-      101, 110, 103, 101, 34, 58, 34, 65, 65, 69, 67, 34, 44, 34, 111, 114, 105,
-      103, 105, 110, 34, 58, 34, 104, 116, 116, 112, 58, 47, 47, 108, 111, 99,
-      97, 108, 104, 111, 115, 116, 58, 56, 48, 56, 48, 34, 44, 34, 99, 114, 111,
-      115, 115, 79, 114, 105, 103, 105, 110, 34, 58, 102, 97, 108, 115, 101, 125,
-    >>,
-  ),
-  type_: "public-key",
-)
+const create_credentials = "{\"authenticatorAttachment\":\"cross-platform\",\"clientExtensionResults\":{},\"id\":\"6Dl8NoapOzxuvFFx8LpO0A\",\"rawId\":\"6Dl8NoapOzxuvFFx8LpO0A\",\"response\":{\"attestationObject\":\"o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YViUSZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NdAAAAAOqbjWZNAR0hPOS2tIy1ddQAEOg5fDaGqTs8brxRcfC6TtClAQIDJiABIVggsGbipYhVHO6j0xErAoDMxtKdyBDhwaP5_ohxSFSteHYiWCAR1aKgOd3Olw1k7pUbJqmU6Ga7XxBSbCEVQTBdy4AQXQ\",\"authenticatorData\":\"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NdAAAAAOqbjWZNAR0hPOS2tIy1ddQAEOg5fDaGqTs8brxRcfC6TtClAQIDJiABIVggsGbipYhVHO6j0xErAoDMxtKdyBDhwaP5_ohxSFSteHYiWCAR1aKgOd3Olw1k7pUbJqmU6Ga7XxBSbCEVQTBdy4AQXQ\",\"clientDataJSON\":\"eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiZFhObFpDQnBiaUJoZEhSbGMzUmhkR2x2YmciLCJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJjcm9zc09yaWdpbiI6ZmFsc2UsIm90aGVyX2tleXNfY2FuX2JlX2FkZGVkX2hlcmUiOiJkbyBub3QgY29tcGFyZSBjbGllbnREYXRhSlNPTiBhZ2FpbnN0IGEgdGVtcGxhdGUuIFNlZSBodHRwczovL2dvby5nbC95YWJQZXgifQ\",\"publicKey\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsGbipYhVHO6j0xErAoDMxtKdyBDhwaP5_ohxSFSteHYR1aKgOd3Olw1k7pUbJqmU6Ga7XxBSbCEVQTBdy4AQXQ\",\"publicKeyAlgorithm\":-7,\"transports\":[\"hybrid\",\"internal\"]},\"type\":\"public-key\"}"
+
+const get_credentials = "{\"authenticatorAttachment\":\"cross-platform\",\"clientExtensionResults\":{},\"id\":\"6Dl8NoapOzxuvFFx8LpO0A\",\"rawId\":\"6Dl8NoapOzxuvFFx8LpO0A\",\"response\":{\"authenticatorData\":\"SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA\",\"clientDataJSON\":\"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYlhrZ1ptbHljM1FnWTI5dGJXbDAiLCJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJjcm9zc09yaWdpbiI6ZmFsc2V9\",\"signature\":\"MEQCHxn-UJOAx0tiaIExqcToMg8aIKXvWMygf4EhDQ31bsMCIQDkP9tgFMEmFaXEoif4IEQBRCvI4NrDC-sUfliGZg2tlw\",\"userHandle\":\"dGVzdA\"},\"type\":\"public-key\"}"
 
 @external(javascript, "../cbor_ffi.mjs", "decode")
 fn decode_cbor(input: BitArray) -> Dynamic
 
-type WebAuthn {
+pub type Credential(response) {
+  Credential(
+    authenticator_attachment: public_key.AuthenticatorAttachement,
+    id: String,
+    raw_id: BitArray,
+    response: response,
+  )
+}
+
+pub fn credential_decoder(raw, response_decoder) {
+  dynamic.decode4(
+    Credential,
+    dynamic.field("authenticatorAttachment", authenticator_attachment_decoder),
+    dynamic.field("id", dynamic.string),
+    dynamic.field("rawId", base64),
+    dynamic.field("response", response_decoder),
+  )(raw)
+}
+
+fn authenticator_attachment_decoder(raw) {
+  use str <- result.try(dynamic.string(raw))
+  case str {
+    "platform" -> Ok(public_key.Platform)
+    "cross-platform" -> Ok(public_key.CrossPlatform)
+    _ ->
+      Error([
+        dynamic.DecodeError("authenticator attachment type", "not valid", []),
+      ])
+  }
+}
+
+pub type AuthenticatorAttestationResponse {
+  AuthenticatorAttestationResponse(
+    attestation_object: AttestationObject,
+    client_data_json: ClientData,
+  )
+}
+
+pub fn attestation_decoder(raw) {
+  dynamic.decode2(
+    AuthenticatorAttestationResponse,
+    dynamic.field("attestationObject", fn(raw) {
+      use bytes <- result.try(base64(raw))
+      //   attestation_object
+      decode_cbor(bytes)
+      |> attestation_object_decoder
+    }),
+    dynamic.field("clientDataJSON", fn(raw) {
+      use bytes <- result.try(base64(raw))
+      //   attestation_object
+      case json.decode_bits(bytes, client_data_decoder) {
+        Ok(value) -> Ok(value)
+        Error(reason) ->
+          Error([dynamic.DecodeError("validJSON", string.inspect(reason), [])])
+      }
+      // |> attestation_object_decoder
+    }),
+  )(raw)
+}
+
+pub type AuthenticatorAssertionResponse {
+  AuthenticatorAssertionResponse(
+    client_data_json: BitArray,
+    authenticator_data: BitArray,
+    signature: BitArray,
+    user_handle: BitArray,
+  )
+}
+
+fn assertion_response_decoder(raw) {
+  dynamic.decode4(
+    AuthenticatorAssertionResponse,
+    dynamic.field("clientDataJSON", base64),
+    dynamic.field("authenticatorData", base64),
+    dynamic.field("signature", base64),
+    dynamic.field("userHandle", base64),
+  )(raw)
+}
+
+pub type WebAuthn {
   WebAuthnCreate
   WebAuthnGet
 }
 
-type ClientData {
+pub type ClientData {
   ClientData(
     challenge: BitArray,
     cross_origin: Bool,
@@ -71,7 +126,7 @@ fn webauthn_type(raw) {
   }
 }
 
-fn client_data_decoder(raw) {
+fn client_data_decoder(raw) -> Result(_, List(dynamic.DecodeError)) {
   dynamic.decode4(
     ClientData,
     dynamic.field("challenge", base64),
@@ -81,7 +136,7 @@ fn client_data_decoder(raw) {
   )(raw)
 }
 
-type AttestationObject {
+pub type AttestationObject {
   AttestationObject(fmt: String, data: BitArray)
 }
 
@@ -105,36 +160,56 @@ fn assert_equal(given, expected) {
   }
 }
 
-fn verify(credentials) {
-  let credentials.PublicKeyCredential(
+pub type AuthenticatorData {
+  AuthenticatorData(
+    relaying_party_id_hash: BitArray,
+    flags: Int,
+    sign_count: BitArray,
+  )
+}
+
+fn parse_authenticator_data(data) {
+  case data {
+    <<rp_id_hash:32-bytes, flags, sign_count:4-bytes, rest:bytes>> -> {
+      Ok(#(AuthenticatorData(rp_id_hash, flags, sign_count), rest))
+    }
+    _ -> todo as "no match"
+  }
+}
+
+pub type PublicKey {
+  PublicKey(id: BitArray, key: BitArray)
+}
+
+pub fn verify_registration(json, expected_challenge) {
+  let assert Ok(credentials) =
+    json.decode(json, credential_decoder(_, attestation_decoder))
+  let Credential(
     authenticator_attachment,
     id,
     raw_id,
-    credentials.AuthenticatorAttestationResponse(
-      attestation_object,
-      client_data_json,
-    ),
-    type_,
+    AuthenticatorAttestationResponse(attestation_object, client_data),
   ) = credentials
-
   use Nil <- result.try(case bit_array.base64_url_decode(id) {
     Ok(x) if x == raw_id -> Ok(Nil)
     _ -> Error("id and raw don't match")
   })
-  use Nil <- result.try(assert_equal(type_, "public-key"))
-  use ClientData(challenge, cross, origin, type_) <- result.try(
-    json.decode_bits(client_data_json, client_data_decoder)
-    |> result.map_error(string.inspect),
-  )
+  // use Nil <- result.try(assert_equal(type_, "public-key"))
+  // use ClientData(challenge, cross, origin, type_) <- result.try(
+  //   json.decode_bits(client_data_json, client_data_decoder)
+  //   |> result.map_error(string.inspect),
+  // )
+  let ClientData(challenge, cross, origin, type_) = client_data
   use Nil <- result.try(assert_equal(type_, WebAuthnCreate))
-  use Nil <- result.try(assert_equal(challenge, <<0, 1, 2>>))
+  use Nil <- result.try(assert_equal(challenge, expected_challenge))
   use Nil <- result.try(assert_equal(origin, "http://localhost:8080"))
-  use AttestationObject(fmt, data) <- result.try(
-    attestation_object
-    |> decode_cbor
-    |> attestation_object_decoder
-    |> result.map_error(string.inspect),
-  )
+  // use AttestationObject(fmt, data) <- result.try(
+  //   attestation_object
+  //   |> decode_cbor
+  //   |> attestation_object_decoder
+  //   |> result.map_error(string.inspect),
+  // )
+  let AttestationObject(fmt, data) = attestation_object
   case data {
     <<
       rp_id_hash:32-bytes,
@@ -145,11 +220,12 @@ fn verify(credentials) {
       credentials_length:16,
       rest:bytes,
     >> -> {
-      io.debug(rp_id_hash)
-      promise.map(
-        subtle.digest(subtle.SHA256, bit_array.from_string("localhost")),
-        io.debug,
-      )
+      io.debug(#("flags", flags))
+      // io.debug(rp_id_hash)
+      // promise.map(
+      //   subtle.digest(subtle.SHA256, bit_array.from_string("localhost")),
+      //   io.debug,
+      // )
       // |> io.debug
       // io.debug(credentials_length)
       // io.debug(#(rest, credentials_length, bit_array.byte_size(rest)))
@@ -158,6 +234,7 @@ fn verify(credentials) {
         bit_array.slice(rest, 0, credentials_length)
         |> result.replace_error("failed to extract credentials_id"),
       )
+      // io.debug(rest)
       use credentials_public_key <- result.try(
         bit_array.slice(
           rest,
@@ -167,14 +244,53 @@ fn verify(credentials) {
         |> result.replace_error("failed to extract credentials_public_key"),
       )
       use Nil <- result.try(assert_equal(credentials_id, raw_id))
-      Ok(Nil)
+      Ok(PublicKey(credentials_id, credentials_public_key))
     }
     _ -> todo as "no match"
   }
 }
 
-pub fn verify_test() {
-  verify(recording)
+pub fn authentication_test() {
+  let PublicKey(id, key) =
+    verify_registration(create_credentials, <<"used in attestation">>)
+    |> should.be_ok
+  io.debug(#("id from reg", id))
+  use r <- promise.map(verify_assertion(get_credentials, key))
+  r
   |> io.debug
-  todo
+}
+
+fn verify_assertion(json, cose_key) {
+  // needs to be binary for signature data
+  let assert Ok(credentials) =
+    json.decode(json, credential_decoder(_, assertion_response_decoder))
+  // |> io.debug
+  let Credential(authenticator_attachment, id, raw_id, response) = credentials
+  io.debug(#(
+    "id from auth",
+    id,
+    raw_id,
+    bit_array.base64_url_encode(raw_id, False),
+  ))
+  // io.debug(cose_key)
+  cose_key
+  // |> bit_array.slice(10, bit_array.byte_size(cose_key) - 10)
+  // |> should.be_ok
+  |> io.debug
+  |> decode_cbor()
+  |> io.debug
+  let AuthenticatorAssertionResponse(
+    client_data,
+    authenticator_data,
+    signature,
+    user_id,
+  ) = response
+
+  subtle.verify(<<>>, cose_key, signature, <<
+    authenticator_data:bits,
+    client_data:bits,
+  >>)
+  // io.debug(parse_authenticator_data(authenticator_data))
+  // io.debug("GOOD")
+  // #(id, raw_id)
 }
