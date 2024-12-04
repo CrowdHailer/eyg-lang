@@ -228,6 +228,11 @@ pub fn update(state: State, message) {
           Ok(creds) -> {
             console.log(creds)
             io.debug(json.to_string(public_key.to_json(creds)))
+            console.log(public_key.get_public_key(creds))
+            console.log(public_key.get_public_key_algorithm(creds))
+            console.log(public_key.get_authenticator_data(creds))
+            console.log(public_key.get_transports(creds))
+
             Nil
           }
           Error(reason) -> console.log(reason)
@@ -238,6 +243,7 @@ pub fn update(state: State, message) {
           Ok(creds) -> {
             console.log(creds)
             io.debug(json.to_string(public_key.to_json(creds)))
+
             Nil
           }
           Error(reason) -> console.log(reason)

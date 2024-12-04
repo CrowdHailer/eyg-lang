@@ -16,8 +16,10 @@
   },
   "dependencies": {
     "@levischuck/tiny-cbor": "^0.2.2",
+    "@simplewebauthn/server": "^12.0.0",
     "@zip.js/zip.js": "^2.7.41",
     "adm-zip": "^0.5.10",
+    "cbor": "^10.0.3",
     "cbor-sync": "^1.0.4",
     "cozo-lib-wasm": "^0.7.5",
     "cozo-node": "^0.7.5",

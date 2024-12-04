@@ -2,7 +2,8 @@ import gleam/bit_array
 import gleam/dynamic.{type Dynamic}
 import gleam/http/response
 import gleam/io
-import gleam/javascript/promise
+import gleam/javascript/map.{type Map}
+import gleam/javascript/promise.{type Promise}
 import gleam/json
 import gleam/result
 import gleam/string
@@ -17,6 +18,15 @@ const get_credentials = "{\"authenticatorAttachment\":\"cross-platform\",\"clien
 
 @external(javascript, "../cbor_ffi.mjs", "decode")
 fn decode_cbor(input: BitArray) -> Dynamic
+
+@external(javascript, "../cbor_ffi.mjs", "decodeOther")
+fn decode_cbor_other(input: BitArray) -> Map(Int, Dynamic)
+
+@external(javascript, "../cbor_ffi.mjs", "justAttest")
+fn just_attest(input: String) -> Promise(#(Bool, Dynamic))
+
+@external(javascript, "../cbor_ffi.mjs", "justAssert")
+fn just_assert(input: String, key: BitArray) -> Promise(#(Bool, Dynamic))
 
 pub type Credential(response) {
   Credential(
@@ -251,13 +261,21 @@ pub fn verify_registration(json, expected_challenge) {
 }
 
 pub fn authentication_test() {
-  let PublicKey(id, key) =
-    verify_registration(create_credentials, <<"used in attestation">>)
-    |> should.be_ok
-  io.debug(#("id from reg", id))
-  use r <- promise.map(verify_assertion(get_credentials, key))
-  r
-  |> io.debug
+  use #(verified, info) <- promise.map(just_attest(create_credentials))
+  verified
+  |> should.equal(True)
+  let assert Ok(pk) =
+    dynamic.field("credential", dynamic.field("publicKey", dynamic.bit_array))(
+      info,
+    )
+  just_assert(get_credentials, pk)
+  // let PublicKey(id, key) =
+  //   verify_registration(create_credentials, <<"used in attestation">>)
+  //   |> should.be_ok
+  // io.debug(#("id from reg", id))
+  // use r <- promise.map(verify_assertion(get_credentials, key))
+  // r
+  // |> io.debug
 }
 
 fn verify_assertion(json, cose_key) {
@@ -273,22 +291,50 @@ fn verify_assertion(json, cose_key) {
     bit_array.base64_url_encode(raw_id, False),
   ))
   // io.debug(cose_key)
-  cose_key
-  // |> bit_array.slice(10, bit_array.byte_size(cose_key) - 10)
-  // |> should.be_ok
-  |> io.debug
-  |> decode_cbor()
-  |> io.debug
+  io.debug("KEY DECOG")
+  let m =
+    cose_key
+    // |> bit_array.slice(10, bit_array.byte_size(cose_key) - 10)
+    // |> should.be_ok
+    |> decode_cbor_other()
+
+  let ec2 = dynamic.from(2)
+  let ecdsa = dynamic.from(-7)
+
+  let key = case map.get(m, 1), map.get(m, 3) {
+    Ok(kty), Ok(alg) if kty == ec2 && alg == ecdsa -> {
+      let assert Ok(crv) = map.get(m, -1)
+      let assert Ok(1) = dynamic.int(crv)
+      let assert Ok(x) = map.get(m, -2)
+      let assert Ok(x) = dynamic.bit_array(x)
+      let assert Ok(y) = map.get(m, -3)
+      let assert Ok(y) = dynamic.bit_array(y)
+      io.debug(#(x, y))
+      json.object([
+        #("kty", json.string("EC")),
+        #("crv", json.string("P-256")),
+        #("x", json.string(bit_array.base64_url_encode(x, False))),
+        #("y", json.string(bit_array.base64_url_encode(y, False))),
+        #("ext", json.bool(True)),
+      ])
+    }
+    _, _ -> panic as "unhandled"
+  }
+
   let AuthenticatorAssertionResponse(
     client_data,
     authenticator_data,
     signature,
     user_id,
   ) = response
-
-  subtle.verify(<<>>, cose_key, signature, <<
+  use client_data_hash <- promise.await(subtle.digest(
+    subtle.SHA256,
+    client_data,
+  ))
+  let assert Ok(client_data_hash) = client_data_hash
+  subtle.verify(<<>>, key, signature, <<
     authenticator_data:bits,
-    client_data:bits,
+    client_data_hash:bits,
   >>)
   // io.debug(parse_authenticator_data(authenticator_data))
   // io.debug("GOOD")
