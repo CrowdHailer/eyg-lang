@@ -85,7 +85,7 @@ pub fn update(state: State, message) {
           display_help,
           dispatch_to_snippet(snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _) -> #(display_help, effect.none())
+        snippet.Conclude(_, _, _) -> #(display_help, effect.none())
       }
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))

@@ -322,7 +322,7 @@ pub fn update(state: State, message) {
           dispatch_to_snippet(identifier, snippet.read_from_clipboard())
         snippet.WriteToClipboard(text) ->
           dispatch_to_snippet(identifier, snippet.write_to_clipboard(text))
-        snippet.Conclude(_, _) -> effect.none()
+        snippet.Conclude(_, _, _) -> effect.none()
       }
       let state = set_example(state, identifier, snippet)
       let state = State(..state, active: Editing(identifier))
