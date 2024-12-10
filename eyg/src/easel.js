@@ -1,4 +1,3 @@
-// Main atelier uses rollup from bundle file to bundle file
 // other apps use run.js which runs a whole program but assumes it gets the window
 // easel is going to be run only in a given element, probably should look like qwik continuations
 // lots of work on resumable

@@ -2,8 +2,6 @@
   "type": "module",
   "scripts": {
     "test:eff": "node eff_test.js",
-    "prebuild:atelier": "gleam build",
-    "build:atelier": "npx rollup -f iife -i ./build/dev/javascript/eyg/atelier.js -o build/bundle/atelier.js",
     "build:run": "npx rollup -c rollup.config.js -f iife -i ./build/dev/javascript/eyg/run.js -o build/bundle/run.js",
     "build:easel": "gleam format && gleam build && npx rollup -f iife -i ./build/dev/javascript/eyg/easel.js -o build/bundle/easel.js",
     "start:easel": "npm run build:easel && rm -rf sirv && mkdir sirv && cp -r ../website/public/layout.css ../website/public/neo.css  ../website/public/editor/index.html build/bundle/easel.js sirv && npx sirv sirv --host 0.0.0.0 --port 8080",

@@ -58,6 +58,7 @@ justin = { version = ">= 1.0.1 and < 2.0.0" }
 lustre = { version = "~> 4.0" }
 midas = { version = ">= 1.0.0 and < 2.0.0" }
 midas_browser = { version = ">= 0.1.1 and < 1.0.0" }
+midas_node = { version = ">= 1.2.0 and < 2.0.0" }
 midas_sdk = { version = ">= 0.2.0 and < 1.0.0" }
 mysig = { path = "../../mysig" }
 oas = { version = ">= 1.0.1 and < 2.0.0" }

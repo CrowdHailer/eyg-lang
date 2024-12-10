@@ -1,22 +1,21 @@
 // command pallet
-import atelier/app.{SelectNode}
-import atelier/view/type_
 import eyg/analysis/jm/type_ as t
+import eyg/editor/v1/app.{SelectNode}
+import eyg/editor/v1/view/type_
 import gleam/dict
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre/attribute.{class, classes}
 import lustre/element.{text}
-import lustre/element/html.{div, input, span, textarea}
+import lustre/element/html.{div, input, span, textarea} as h
 import lustre/event.{on_click}
 
-// import atelier/inventory
-
 pub fn render(state: app.WorkSpace, inferred) {
-  div([class("cover bg-gray-100")], case state.mode {
+  h.form([class("cover bg-gray-100"), event.on_submit(app.Keypress("Enter"))], case
+    state.mode
+  {
     app.WriteLabel(value, _) -> render_label(value)
     app.WriteTerm(value, _) -> render_variable(value, inferred, state)
     app.WriteNumber(number, _) -> render_number(number)
@@ -26,7 +25,6 @@ pub fn render(state: app.WorkSpace, inferred) {
 }
 
 fn render_label(value) {
-  io.debug(#("input", value))
   [
     input([
       class("border w-full"),
@@ -88,7 +86,6 @@ fn render_number(number) {
 
 // Do text areas have change event
 fn render_text(value) {
-  io.debug(#("textarea", value))
   [
     div(
       [
