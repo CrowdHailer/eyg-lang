@@ -1,3 +1,4 @@
+import eyg/editor/v1
 import eyg/package
 import eyg/sync/cid
 import eyg/sync/seed
@@ -295,7 +296,11 @@ pub fn build(bundle) -> t.Effect(List(#(String, BitArray))) {
 
 pub fn develop() {
   let bundle = asset.new_bundle("/assets")
-  use editor <- t.do(editor.page(bundle))
+  // TODO bring closer togeher
+  use editor <- t.do(case False {
+    True -> editor.page(bundle)
+    False -> v1.page(bundle)
+  })
   let pages = [#("/editor/index.html", editor), ..asset.to_files(bundle)]
 
   // task for handler as it does hashing

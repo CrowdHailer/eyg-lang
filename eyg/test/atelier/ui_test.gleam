@@ -1,4 +1,4 @@
-import atelier/app
+import eyg/editor/v1/app
 import eygir/expression as e
 import gleeunit/should
 

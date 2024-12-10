@@ -1,22 +1,60 @@
-import atelier/app.{SelectNode}
-import atelier/view/type_
 import easel/location.{type Location, Location, child, focused, open}
 import eyg/analysis/jm/type_ as t
+import eyg/editor/v1/app.{SelectNode}
+import eyg/editor/v1/view/type_
 import eygir/expression as e
 import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import lustre/attribute.{class, classes, style}
+import lustre/attribute.{class, classes, style} as a
 import lustre/element.{text}
 import lustre/element/html.{pre, span}
 import lustre/event.{on_click}
+import plinth/browser/event as pevent
 
 pub fn render(source, selection, inferred) {
   let loc = Location([], Some(selection), False)
   pre(
-    [style([#("cursor", "pointer")]), class("w-full max-w-6xl")],
+    [
+      a.attribute("tabindex", "0"),
+      a.attribute("autofocus", "true"),
+      // a.autofocus(True),
+      event.on("keydown", fn(event) {
+        let assert Ok(event) = pevent.cast_keyboard_event(event)
+        let key = pevent.key(event)
+        let shift = pevent.shift_key(event)
+        let ctrl = pevent.ctrl_key(event)
+        let alt = pevent.alt_key(event)
+        case key {
+          "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
+          "F1"
+          | "F2"
+          | "F3"
+          | "F4"
+          | "F5"
+          | "F6"
+          | "F7"
+          | "F8"
+          | "F9"
+          | "F10"
+          | "F11"
+          | "F12" -> Error([])
+          k if shift -> {
+            pevent.prevent_default(event)
+            Ok(app.Keypress(string.uppercase(k)))
+          }
+          _ if ctrl || alt -> Error([])
+          k -> {
+            pevent.prevent_default(event)
+            Ok(app.Keypress(k))
+          }
+        }
+      }),
+      style([#("cursor", "pointer")]),
+      class("w-full max-w-6xl"),
+    ],
     do_render(source, "\n", loc, inferred),
   )
 }

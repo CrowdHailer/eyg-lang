@@ -1,4 +1,3 @@
-import atelier/view/type_
 import easel/expression/zipper
 import easel/print
 import eyg/analysis/inference/levels_j/contextual as j
@@ -6,6 +5,7 @@ import eyg/analysis/jm/env as tenv
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/type_/isomorphic as tj
+import eyg/editor/v1/view/type_
 import eyg/runtime/break
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state

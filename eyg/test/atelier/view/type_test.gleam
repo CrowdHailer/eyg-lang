@@ -1,5 +1,5 @@
-import atelier/view/typ
 import eyg/analysis/typ as t
+import eyg/editor/v1/view/typ
 import gleeunit/should
 
 pub fn shrink_test() -> Nil {

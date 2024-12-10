@@ -11,8 +11,8 @@ import gleam/string
 import gleam/stringx
 
 // reuse aterlier type
-import atelier/view/type_
 import easel/location.{type Location, Location}
+import eyg/editor/v1/view/type_
 
 pub type Style {
   Default

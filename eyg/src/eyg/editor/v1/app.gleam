@@ -4,13 +4,8 @@ import gleam/result
 import easel/expression/zipper
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
-import eygir/encode
 import eygir/expression as e
-import gleam/fetch
-import gleam/http
-import gleam/http/request
 import gleam/int
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -119,7 +114,6 @@ pub fn select_node(state, path) {
 pub fn keypress(key, state: WorkSpace) {
   // save in this state only because q is a normal letter needed when entering text
   let r = case state.mode, key {
-    Navigate(_act), "q" -> save(state)
     Navigate(act), "w" -> call_with(act, state)
     Navigate(act), "e" -> Ok(assign_to(act, state))
     Navigate(act), "r" -> record(act, state)
@@ -186,23 +180,6 @@ pub fn keypress(key, state: WorkSpace) {
     // }),
     Error(message) -> #(WorkSpace(..state, error: Some(message)), cmd.none())
   }
-}
-
-// could move to a atelier/client.{save}
-fn save(state: WorkSpace) {
-  let request =
-    request.new()
-    |> request.set_method(http.Post)
-    // Note needs scheme and host setting wont use fetch defaults of being able to have just a path
-    |> request.set_scheme(http.Http)
-    |> request.set_host("localhost:5000")
-    |> request.set_path("/save")
-    |> request.prepend_header("content-type", "application/json")
-    |> request.set_body(encode.to_json(state.source))
-
-  fetch.send(request)
-  |> io.debug
-  Ok(state)
 }
 
 fn call_with(zipper: zipper.Zipper, state) {
