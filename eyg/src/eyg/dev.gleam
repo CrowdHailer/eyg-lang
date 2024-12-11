@@ -294,14 +294,24 @@ pub fn build(bundle) -> t.Effect(List(#(String, BitArray))) {
   ])
 }
 
-pub fn develop() {
+pub fn develop(args) {
   let bundle = asset.new_bundle("/assets")
-  // TODO bring closer togeher
-  use editor <- t.do(case False {
-    True -> editor.page(bundle)
-    False -> v1.page(bundle)
+  use pages <- t.do(case args {
+    ["home"] -> {
+      use home <- t.do(home.page(bundle))
+      t.done([#("/index.html", home)])
+    }
+    _ -> {
+      // TODO bring closer togeher
+      use editor <- t.do(case False {
+        True -> editor.page(bundle)
+        False -> v1.page(bundle)
+      })
+      [#("/editor/index.html", editor)]
+      |> t.done()
+    }
   })
-  let pages = [#("/editor/index.html", editor), ..asset.to_files(bundle)]
+  let pages = list.append(pages, asset.to_files(bundle))
 
   // task for handler as it does hashing
   // This code is not reloaded

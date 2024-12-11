@@ -1,22 +1,16 @@
-import datalog/browser/view/value
-import eyg/analysis/type_/binding/debug
 import eyg/runtime/value as v
 import eyg/website/components
 import eyg/website/components/snippet
 import eyg/website/config
 import eyg/website/home/state
 import eyg/website/page
-import eyg/website/run
-import gleam/dict
-import gleam/io
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{None}
 import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
-import morph/analysis
 
 const signup = "mailing-signup"
 
@@ -30,23 +24,9 @@ pub fn client() {
   Nil
 }
 
-fn h2(header) {
-  h.h2([a.class("text-2xl")], [element.text(header)])
-}
-
-fn p(text) {
-  h.p([], [element.text(text)])
-}
-
 pub fn snippet(state, i) {
   snippet.render(state.get_snippet(state, i))
   |> element.map(state.SnippetMessage(i, _))
-}
-
-fn section(title, content) {
-  page_area([
-    h.div([a.class("mx-auto w-full max-w-3xl my-12")], [h2(title), ..content]),
-  ])
 }
 
 fn page_area(content) {

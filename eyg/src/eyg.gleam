@@ -1,6 +1,7 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
+import eyg/dev
 import eygir/annotated
 import eygir/annotated as e
 import eygir/decode
@@ -10,12 +11,11 @@ import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/list
 import magpie/magpie
+import midas/node
 import platforms/shell
 import plinth/javascript/console
 import plinth/node/process
 import simplifile
-import eyg/dev
-import midas/node
 import snag
 
 // zero arity
@@ -38,12 +38,16 @@ pub fn do_main(args) {
   // recipe is an app, service worker makes js necessay, query string params are also only interesting if rendered with JS
 
   case args {
-    ["develop",..args] -> promise.map(node.watch(dev.develop(), ".", fn(result) {
-        case result {
-          Ok(Nil) -> Nil
-          Error(reason) -> io.println(snag.pretty_print(reason))
-        }
-      }),fn(_){0})
+    ["develop", ..args] ->
+      promise.map(
+        node.watch(dev.develop(args), ".", fn(result) {
+          case result {
+            Ok(Nil) -> Nil
+            Error(reason) -> io.println(snag.pretty_print(reason))
+          }
+        }),
+        fn(_) { 0 },
+      )
     ["exec", ..] -> shell.run(e.add_annotation(source, Nil))
     ["infer"] -> {
       let #(exp, bindings) =
