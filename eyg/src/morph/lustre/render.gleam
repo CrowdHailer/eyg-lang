@@ -3,6 +3,7 @@ import gleam/io
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
+import gleam/string
 import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
@@ -219,9 +220,18 @@ pub fn expression(exp) {
         h.span([a.class("text-orange-3")], [text("!"), text(identifier)]),
       ])
     e.Reference(identifier) ->
-      frame.Inline([
-        h.span([a.class("text-gray-800")], [text("#"), text(identifier)]),
-      ])
+      case identifier {
+        "@" <> rest -> {
+          let assert [name, v, ..] = string.split(rest, ":")
+          frame.Inline([
+            h.span([a.class("text-purple-800"), a.title("version = " <> v)], [
+              text("@" <> name),
+            ]),
+          ])
+        }
+        _ ->
+          frame.Inline([h.span([a.class("text-gray-800")], [text(identifier)])])
+      }
   }
 }
 
