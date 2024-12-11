@@ -691,10 +691,7 @@ fn insert_reference(state) {
 
   let index =
     sync.package_index(cache)
-    |> list.map(fn(package) {
-      let #(name, latest) = package
-      #("@" <> name <> ":" <> int.to_string(latest), "")
-    })
+    |> listx.value_map(render_poly)
 
   case action.insert_reference(proj) {
     Ok(#(filter, rebuild)) -> {

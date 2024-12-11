@@ -347,13 +347,19 @@ pub fn load(sync, dump: dump.Dump) {
 }
 
 pub fn package_index(sync) {
-  let Sync(registry: registry, packages: packages, ..) = sync
+  let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
   dict.to_list(registry)
   |> list.filter_map(fn(entry) {
     let #(name, package_id) = entry
     use package <- result.try(dict.get(packages, package_id))
+
     case dict.size(package) {
-      x if x > 0 -> Ok(#(name, x - 1))
+      x if x > 0 -> {
+        let latest = x - 1
+        let assert Ok(hash_ref) = dict.get(package, latest)
+        let assert Ok(Computed(type_: type_, ..)) = dict.get(loaded, hash_ref)
+        Ok(#(named_ref(name, x - 1), type_))
+      }
       _ -> Error(Nil)
     }
   })
