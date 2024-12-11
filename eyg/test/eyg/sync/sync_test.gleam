@@ -2,16 +2,12 @@ import eyg/sync/cid
 import eyg/sync/sync
 import eygir/encode
 import eygir/expression as e
-import gleam/http
-import gleam/http/request
 import gleam/http/response
-import gleam/io
-import gleam/option.{None}
 import gleeunit/should
 import gleeunit/shouldx
 import midas/task
 
-const origin = sync.Origin(http.Https, "eyg.test", None)
+const origin = sync.test_origin
 
 const just_number = e.Integer(101)
 
@@ -104,6 +100,7 @@ pub fn load_fails_test() {
   retry
   |> should.equal(request)
 }
+
 // pub fn load_aborting_expression_test() {
 //   todo
 // }
@@ -115,3 +112,8 @@ pub fn load_fails_test() {
 // pub fn load_returns_incorrect_content() {
 //   todo
 // }
+
+pub fn look_up_value_by_name_test() {
+  let state = sync.init(origin)
+  todo
+}

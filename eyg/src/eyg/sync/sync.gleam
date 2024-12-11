@@ -1,6 +1,7 @@
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/runtime/break
+import eyg/sync/dump
 import eyg/sync/fragment
 import eygir/annotated
 import eygir/decode
@@ -21,6 +22,8 @@ import snag
 pub type Origin {
   Origin(scheme: Scheme, host: String, port: Option(Int))
 }
+
+pub const test_origin = Origin(http.Https, "eyg.test", None)
 
 pub type Source =
   annotated.Node(List(Int))
@@ -46,7 +49,10 @@ pub type Sync {
     origin: Origin,
     tasks: Dict(String, Run),
     pending: Pending,
+    // loaded is blobs
     loaded: Dict(String, Computed),
+    registry: Dict(String, String),
+    packages: Dict(String, Dict(Int, String)),
   )
 }
 
@@ -57,8 +63,10 @@ pub type Message {
   )
 }
 
+// fromdump
+// Could rename as set_remote
 pub fn init(origin) {
-  Sync(origin, dict.new(), [], dict.new())
+  Sync(origin, dict.new(), [], dict.new(), dict.new(), dict.new())
 }
 
 pub fn missing(sync, refs) {
@@ -79,23 +87,24 @@ pub fn missing(sync, refs) {
 }
 
 pub fn fetch_missing(sync, refs) {
-  let Sync(origin, running, pending, loaded) = sync
+  let Sync(origin: origin, tasks: running, ..) = sync
   let missing = missing(sync, refs)
 
+  // these are midas tasks
   let #(tasks, running) = do_fetch_missing(missing, origin, running)
-  let sync = Sync(origin, running, pending, loaded)
+  let sync = Sync(..sync, origin: origin, tasks: running)
   #(sync, tasks)
 }
 
 pub fn fetch_all_missing(sync) {
-  let Sync(origin, running, pending, loaded) = sync
+  let Sync(origin: origin, tasks: running, pending: pending, ..) = sync
   let missing =
     list.flat_map(pending, fn(pending) {
       let #(_ref, #(deps, _source)) = pending
       deps
     })
   let #(tasks, running) = do_fetch_missing(missing, origin, running)
-  let sync = Sync(origin, running, pending, loaded)
+  let sync = Sync(..sync, origin: origin, tasks: running)
   #(sync, tasks)
 }
 
@@ -123,6 +132,30 @@ pub fn values(sync) {
   values_from_loaded(loaded)
 }
 
+pub fn named_values(sync) {
+  let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
+  list.flat_map(dict.to_list(registry), fn(entry) {
+    let #(name, package_id) = entry
+    case dict.get(packages, package_id) {
+      Error(Nil) -> []
+      Ok(releases) -> {
+        list.filter_map(dict.to_list(releases), fn(release) {
+          let #(version, hash_ref) = release
+          use Computed(value: value, ..) <- result.try(dict.get(
+            loaded,
+            hash_ref,
+          ))
+          use value <- result.try(
+            value
+            |> result.replace_error(Nil),
+          )
+          Ok(#(named_ref(name, version), value))
+        })
+      }
+    }
+  })
+}
+
 fn values_from_loaded(loaded) {
   dict.to_list(loaded)
   |> list.filter_map(fn(pair) {
@@ -141,6 +174,30 @@ pub fn types(sync) {
   dict.map_values(loaded, fn(_ref, computed) {
     let Computed(type_: type_, ..) = computed
     type_
+  })
+}
+
+fn named_ref(name, version) {
+  "@" <> name <> ":" <> int.to_string(version)
+}
+
+pub fn named_types(sync) {
+  let Sync(registry: registry, packages: packages, loaded: loaded, ..) = sync
+  list.flat_map(dict.to_list(registry), fn(entry) {
+    let #(name, package_id) = entry
+    case dict.get(packages, package_id) {
+      Error(Nil) -> []
+      Ok(releases) -> {
+        list.filter_map(dict.to_list(releases), fn(release) {
+          let #(version, hash_ref) = release
+          use Computed(type_: type_, ..) <- result.try(dict.get(
+            loaded,
+            hash_ref,
+          ))
+          Ok(#(named_ref(name, version), type_))
+        })
+      }
+    }
   })
 }
 
@@ -213,18 +270,18 @@ pub fn task_finish(sync, message) {
 }
 
 pub fn install(sync, ref, expression) {
-  let Sync(origin, running, pending, loaded) = sync
+  let Sync(loaded: loaded, pending: pending, ..) = sync
   let source = annotated.add_annotation(expression, [])
 
   case compute(source, loaded) {
     Ok(computed) -> {
       let loaded = dict.insert(loaded, ref, computed)
       let #(pending, loaded) = do_resolve(pending, loaded)
-      Sync(origin, running, pending, loaded)
+      Sync(..sync, pending: pending, loaded: loaded)
     }
     Error(return) -> {
       let pending = [#(ref, return), ..pending]
-      Sync(origin, running, pending, loaded)
+      Sync(..sync, pending: pending, loaded: loaded)
     }
   }
 }
@@ -259,6 +316,7 @@ pub fn send_fetch_request(request) {
 }
 
 // This probably belongs in remote or storage layer
+// TODO make private when removed from intro/package
 pub fn decode_bytes(bytes) {
   use body <- result.try(
     bit_array.to_string(bytes)
@@ -270,4 +328,33 @@ pub fn decode_bytes(bytes) {
     |> result.replace_error(snag.new("Unable to decode source code.")),
   )
   Ok(source)
+}
+
+pub fn load(sync, dump: dump.Dump) {
+  // let Dump(registry,packages, _raw) = dump
+  let Sync(registry: registry, packages: packages, ..) = sync
+  let registry = dict.merge(registry, dump.registry)
+  let packages = dict.merge(packages, dump.packages)
+  // Can work out value of blobs eagerly and stick them in the map.
+  // use the checksum as lookup key
+  let loaded =
+    dict.map_values(dump.fragments, fn(_key, expression) {
+      let expression = annotated.add_annotation(expression, [])
+      let assert Ok(computed) = compute(expression, sync.loaded)
+      computed
+    })
+  Sync(..sync, registry: registry, packages: packages, loaded: loaded)
+}
+
+pub fn package_index(sync) {
+  let Sync(registry: registry, packages: packages, ..) = sync
+  dict.to_list(registry)
+  |> list.filter_map(fn(entry) {
+    let #(name, package_id) = entry
+    use package <- result.try(dict.get(packages, package_id))
+    case dict.size(package) {
+      x if x > 0 -> Ok(#(name, x - 1))
+      _ -> Error(Nil)
+    }
+  })
 }

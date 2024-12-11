@@ -4,10 +4,12 @@ import eyg/runtime/interpreter/runner
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value
 import eyg/sync/browser
+import eyg/sync/dump
 import eyg/sync/sync
 import eyg/website/components/snippet
 import eyg/website/reload
 import eygir/decode
+import eygir/expression
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
@@ -55,7 +57,9 @@ const closure_serialization = "{\"0\":\"l\",\"l\":\"script\",\"v\":{\"0\":\"f\",
 
 pub const fetch_key = "fetch"
 
-const fetch_example = "{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"#\",\"l\":\"he6fd05f0\"},\"t\":{\"0\":\"l\",\"l\":\"expect\",\"v\":{\"0\":\"f\",\"l\":\"result\",\"b\":{\"0\":\"f\",\"l\":\"reason\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"v\",\"l\":\"value\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"z\",\"c\":\"\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"v\",\"l\":\"result\"}}}},\"t\":{\"0\":\"l\",\"l\":\"request\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"get\"},\"a\":{\"0\":\"v\",\"l\":\"http\"}},\"a\":{\"0\":\"s\",\"v\":\"catfact.ninja\"}},\"a\":{\"0\":\"s\",\"v\":\"/fact\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"None\"},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"l\",\"l\":\"$\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"expect\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Fetch\"},\"a\":{\"0\":\"v\",\"l\":\"request\"}}},\"a\":{\"0\":\"s\",\"v\":\"Failed to fetch\"}},\"t\":{\"0\":\"l\",\"l\":\"body\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"body\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"binary_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"body\"}}}}}}}"
+// const fetch_example = "{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"#\",\"l\":\"he6fd05f0\"},\"t\":{\"0\":\"l\",\"l\":\"expect\",\"v\":{\"0\":\"f\",\"l\":\"result\",\"b\":{\"0\":\"f\",\"l\":\"reason\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"v\",\"l\":\"value\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"z\",\"c\":\"\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"v\",\"l\":\"result\"}}}},\"t\":{\"0\":\"l\",\"l\":\"request\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"get\"},\"a\":{\"0\":\"v\",\"l\":\"http\"}},\"a\":{\"0\":\"s\",\"v\":\"catfact.ninja\"}},\"a\":{\"0\":\"s\",\"v\":\"/fact\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"None\"},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"l\",\"l\":\"$\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"expect\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Fetch\"},\"a\":{\"0\":\"v\",\"l\":\"request\"}}},\"a\":{\"0\":\"s\",\"v\":\"Failed to fetch\"}},\"t\":{\"0\":\"l\",\"l\":\"body\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"body\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"binary_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"body\"}}}}}}}"
+// TODO needs real reference
+const fetch_example = "{\"0\":\"z\",\"c\":\"\"}"
 
 pub const predictable_effects_key = "predictable_effects"
 
@@ -105,6 +109,15 @@ fn all_references(snippets) {
 
 pub fn init(config) {
   let cache = sync.init(browser.get_origin())
+  let cache =
+    sync.load(
+      cache,
+      dump.Dump(
+        dict.from_list([#("standard", "abcxyz")]),
+        dict.from_list([#("abcxyz", dict.from_list([#(0, "hhh")]))]),
+        dict.from_list([#("hhh", expression.Str("Done"))]),
+      ),
+    )
   let snippets = [
     #(
       closure_serialization_key,

@@ -13,6 +13,7 @@ import eygir/annotated
 import eygir/decode
 import eygir/encode
 import gleam/dict
+import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
@@ -125,7 +126,10 @@ fn new_source(proj, editable, scope, effects, cache) {
   let analysis =
     analysis.do_analyse(
       editable,
-      analysis.within_environment(scope, sync.types(cache)),
+      analysis.within_environment(
+        scope,
+        sync.named_types(cache) |> dict.from_list(),
+      ),
       eff,
     )
   #(proj, editable, Some(analysis))
@@ -683,11 +687,18 @@ fn insert_list(state) {
 }
 
 fn insert_reference(state) {
-  let Snippet(source: #(proj, _, _), ..) = state
+  let Snippet(source: #(proj, _, _), cache: cache, ..) = state
+
+  let index =
+    sync.package_index(cache)
+    |> list.map(fn(package) {
+      let #(name, latest) = package
+      #("@" <> name <> ":" <> int.to_string(latest), "")
+    })
 
   case action.insert_reference(proj) {
     Ok(#(filter, rebuild)) -> {
-      change_mode(state, Pick(picker.new(filter, []), rebuild))
+      change_mode(state, Pick(picker.new(filter, index), rebuild))
     }
     Error(Nil) -> show_error(state, ActionFailed("insert reference"))
   }

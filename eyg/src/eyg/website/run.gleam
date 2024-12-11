@@ -46,7 +46,8 @@ pub fn start(editable, scope, effects, cache) {
         |> annotated.add_annotation(Nil),
       stdlib.new_env(
         scope,
-        sync.values(cache)
+        sync.named_values(cache)
+          |> dict.from_list
           // TODO move all unsafe into stdlib
           |> dynamic.from()
           |> dynamicx.unsafe_coerce(),
