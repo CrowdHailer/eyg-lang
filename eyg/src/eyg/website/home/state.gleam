@@ -11,10 +11,8 @@ import eygir/decode
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
-import gleam/io
 import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{None, Some}
 import harness/impl/browser as harness
 import harness/impl/spotless
 import harness/stdlib
@@ -57,71 +55,7 @@ const closure_serialization = "{\"0\":\"l\",\"l\":\"script\",\"v\":{\"0\":\"f\",
 
 pub const fetch_key = "fetch"
 
-const catfact = e.Block(
-  [
-    #(e.Bind("http"), e.Reference("he6fd05f0")),
-    // #(e.Bind("json"), e.Reference("hbe004c96")),
-    #(
-      e.Bind("expect"),
-      e.Function(
-        [e.Bind("result"), e.Bind("reason")],
-        e.Case(
-          e.Variable("result"),
-          [
-            #("Ok", e.Function([e.Bind("value")], e.Variable("value"))),
-            #(
-              "Error",
-              e.Function(
-                [e.Bind("_")],
-                // e.Call(e.Perform("Abort"), [e.Variable("reason")]),
-                e.Vacant(""),
-              ),
-            ),
-          ],
-          None,
-        ),
-      ),
-    ),
-    #(
-      e.Bind("request"),
-      e.Call(
-        e.Select(e.Variable("http"), "get"),
-        [
-          e.String("catfact.ninja"),
-          e.String("/fact"),
-          e.Call(e.Tag("None"), [e.Record([], None)]),
-        ],
-      ),
-    ),
-    // #(
-    //   e.Bind("decoder"),
-    //   e.Call(
-    //     e.Select(e.Variable("json"), "object"),
-    //     [
-    //       e.Call(
-    //         e.Select(e.Variable("json"), "field"),
-    //         [
-    //           e.String("fact"), e.Select(e.Variable("json"), "string"),
-    //           e.Select(e.Variable("json"), "done"),
-    //         ],
-    //       ), e.Function([e.Bind("x")], e.Variable("x")),
-    //     ],
-    //   ),
-    // ),
-    #(
-      e.Destructure([#("body", "body")]),
-      e.Call(
-        e.Variable("expect"),
-        [
-          e.Call(e.Perform("Fetch"), [e.Variable("request")]),
-          e.String("Failed to fetch"),
-        ],
-      ),
-    ),
-  ],
-  e.Call(e.Builtin("binary_to_string"), [e.Variable("body")]),
-  True,
-)
+const fetch_example = "{\"0\":\"l\",\"l\":\"http\",\"v\":{\"0\":\"#\",\"l\":\"he6fd05f0\"},\"t\":{\"0\":\"l\",\"l\":\"expect\",\"v\":{\"0\":\"f\",\"l\":\"result\",\"b\":{\"0\":\"f\",\"l\":\"reason\",\"b\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Ok\"},\"a\":{\"0\":\"f\",\"l\":\"value\",\"b\":{\"0\":\"v\",\"l\":\"value\"}}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"m\",\"l\":\"Error\"},\"a\":{\"0\":\"f\",\"l\":\"_\",\"b\":{\"0\":\"z\",\"c\":\"\"}}},\"a\":{\"0\":\"n\"}}},\"a\":{\"0\":\"v\",\"l\":\"result\"}}}},\"t\":{\"0\":\"l\",\"l\":\"request\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"get\"},\"a\":{\"0\":\"v\",\"l\":\"http\"}},\"a\":{\"0\":\"s\",\"v\":\"catfact.ninja\"}},\"a\":{\"0\":\"s\",\"v\":\"/fact\"}},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"t\",\"l\":\"None\"},\"a\":{\"0\":\"u\"}}},\"t\":{\"0\":\"l\",\"l\":\"$\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"a\",\"f\":{\"0\":\"v\",\"l\":\"expect\"},\"a\":{\"0\":\"a\",\"f\":{\"0\":\"p\",\"l\":\"Fetch\"},\"a\":{\"0\":\"v\",\"l\":\"request\"}}},\"a\":{\"0\":\"s\",\"v\":\"Failed to fetch\"}},\"t\":{\"0\":\"l\",\"l\":\"body\",\"v\":{\"0\":\"a\",\"f\":{\"0\":\"g\",\"l\":\"body\"},\"a\":{\"0\":\"v\",\"l\":\"$\"}},\"t\":{\"0\":\"a\",\"f\":{\"0\":\"b\",\"l\":\"binary_to_string\"},\"a\":{\"0\":\"v\",\"l\":\"body\"}}}}}}}"
 
 pub const predictable_effects_key = "predictable_effects"
 
@@ -176,7 +110,7 @@ pub fn init(config) {
       closure_serialization_key,
       init_example(closure_serialization, cache, config),
     ),
-    #(fetch_key, snippet.init(catfact, [], effects(config), cache)),
+    #(fetch_key, init_example(fetch_example, cache, config)),
     #(twitter_key, init_example(twitter_example, cache, config)),
     #(type_check_key, init_example(type_check_example, cache, config)),
     #(
@@ -308,7 +242,7 @@ pub fn update(state: State, message) {
           let select = value.Partial(value.Select("migrate"), [])
           let args = [source, #(value, [])]
           let assert Ok(new_value) = runner.call(select, args, env, h)
-          let #(new_type, b) = analysis.value_to_type(new_value, dict.new())
+          let #(new_type, _b) = analysis.value_to_type(new_value, dict.new())
           let example = Example(new_value, new_type)
           let state = State(..state, example: example)
           #(state, effect.none())
