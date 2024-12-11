@@ -4,12 +4,10 @@ import eyg/runtime/interpreter/runner
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value
 import eyg/sync/browser
-import eyg/sync/dump
 import eyg/sync/sync
 import eyg/website/components/snippet
 import eyg/website/reload
 import eygir/decode
-import eygir/expression
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
@@ -109,15 +107,6 @@ fn all_references(snippets) {
 
 pub fn init(config) {
   let cache = sync.init(browser.get_origin())
-  let cache =
-    sync.load(
-      cache,
-      dump.Dump(
-        dict.from_list([#("standard", "abcxyz")]),
-        dict.from_list([#("abcxyz", dict.from_list([#(0, "hhh")]))]),
-        dict.from_list([#("hhh", expression.Str("Done"))]),
-      ),
-    )
   let snippets = [
     #(
       closure_serialization_key,
@@ -132,11 +121,15 @@ pub fn init(config) {
     ),
     #(hot_reload_key, init_reload_example(hot_reload_example, cache)),
   ]
-  let references = all_references(snippets)
-  let #(cache, tasks) = sync.fetch_missing(cache, references)
+  // let references = all_references(snippets)
+  // let #(cache, tasks) = sync.fetch_missing(cache, references)
   let example = Example(value.Integer(0), t.Integer)
   let state = State(cache, Nothing, dict.from_list(snippets), example)
-  #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
+  #(
+    state,
+    effect.from(browser.do_load(SyncMessage)),
+    // effect.from(browser.do_sync(tasks, SyncMessage))
+  )
 }
 
 // Dont abstact as is useful because it uses the specific page State

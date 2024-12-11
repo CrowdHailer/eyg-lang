@@ -100,7 +100,6 @@ pub fn load_fails_test() {
   retry
   |> should.equal(request)
 }
-
 // pub fn load_aborting_expression_test() {
 //   todo
 // }
@@ -112,8 +111,3 @@ pub fn load_fails_test() {
 // pub fn load_returns_incorrect_content() {
 //   todo
 // }
-
-pub fn look_up_value_by_name_test() {
-  let state = sync.init(origin)
-  todo
-}

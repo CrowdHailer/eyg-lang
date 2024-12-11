@@ -61,6 +61,7 @@ pub type Message {
     reference: String,
     value: Result(expression.Expression, snag.Snag),
   )
+  DumpDownLoaded(Result(dump.Dump, snag.Snag))
 }
 
 // fromdump
@@ -255,16 +256,24 @@ fn compute(source, loaded) {
 
 pub fn task_finish(sync, message) {
   let Sync(tasks: tasks, ..) = sync
-  let HashSourceFetched(ref, result) = message
-  case result, dict.get(tasks, ref) {
-    Ok(expression), _ -> {
-      let tasks = dict.delete(tasks, ref)
-      let sync = Sync(..sync, tasks: tasks)
-      install(sync, ref, expression)
-    }
-    Error(reason), _ -> {
-      let tasks = dict.insert(tasks, ref, Failed(reason))
-      Sync(..sync, tasks: tasks)
+  case message {
+    HashSourceFetched(ref, result) ->
+      case result, dict.get(tasks, ref) {
+        Ok(expression), _ -> {
+          let tasks = dict.delete(tasks, ref)
+          let sync = Sync(..sync, tasks: tasks)
+          install(sync, ref, expression)
+        }
+        Error(reason), _ -> {
+          let tasks = dict.insert(tasks, ref, Failed(reason))
+          Sync(..sync, tasks: tasks)
+        }
+      }
+    DumpDownLoaded(dump) -> {
+      case dump {
+        Ok(dump) -> load(sync, dump)
+        Error(reason) -> panic as "failed to load resources"
+      }
     }
   }
 }
@@ -337,6 +346,7 @@ pub fn load(sync, dump: dump.Dump) {
   let packages = dict.merge(packages, dump.packages)
   // Can work out value of blobs eagerly and stick them in the map.
   // use the checksum as lookup key
+  // TODO do topological ordering
   let loaded =
     dict.map_values(dump.fragments, fn(_key, expression) {
       let expression = annotated.add_annotation(expression, [])
