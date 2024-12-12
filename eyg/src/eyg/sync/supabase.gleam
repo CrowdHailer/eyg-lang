@@ -1,6 +1,8 @@
 import eygir/decode
 import eygir/expression as e
+import gleam/bit_array
 import gleam/dynamic
+import gleam/http
 import gleam/http/request
 import gleam/http/response
 import gleam/io
@@ -18,6 +20,8 @@ fn base() {
   request.new()
   |> request.set_host(api_host)
   |> request.prepend_header("apikey", anon)
+  // Authorization header needed for auth endpoint
+  |> request.prepend_header("Authorization", "Bearer " <> anon)
   |> request.set_body(<<>>)
 }
 
@@ -98,4 +102,44 @@ fn registration_decoder(raw) {
     dynamic.field("name", dynamic.string),
     dynamic.field("package_id", dynamic.string),
   )(raw)
+}
+
+// invite needs admin
+pub fn invite(email_address) {
+  let request =
+    base()
+    |> request.set_method(http.Post)
+    |> request.set_path("/auth/v1/invite")
+    |> request.set_body(<<
+      json.to_string(json.object([#("email", json.string(email_address))])):utf8,
+    >>)
+  io.debug(request)
+  use response <- t.do(t.fetch(request))
+  io.debug(bit_array.to_string(response.body))
+  io.debug(response)
+
+  use data <- t.try(decode(response, Ok))
+  t.done(data)
+}
+
+pub fn sign_in_with_otp(email_address) {
+  let request =
+    base()
+    |> request.set_method(http.Post)
+    |> request.set_path("/auth/v1/otp")
+    |> request.set_body(<<
+      json.to_string(
+        json.object([
+          #("email", json.string(email_address)),
+          #("create_user", json.bool(True)),
+        ]),
+      ):utf8,
+    >>)
+  io.debug(request)
+  use response <- t.do(t.fetch(request))
+  io.debug(bit_array.to_string(response.body))
+  io.debug(response)
+
+  use data <- t.try(decode(response, Ok))
+  t.done(data)
 }

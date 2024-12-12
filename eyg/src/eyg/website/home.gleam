@@ -1,9 +1,11 @@
 import eyg/runtime/value as v
 import eyg/website/components
+import eyg/website/components/auth_panel
 import eyg/website/components/snippet
 import eyg/website/config
 import eyg/website/home/state
 import eyg/website/page
+import gleam/javascript/promise
 import gleam/list
 import gleam/option.{None}
 import lustre
@@ -11,6 +13,7 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
+import midas/browser
 
 const signup = "mailing-signup"
 
@@ -101,10 +104,14 @@ fn action(text, href, merit) {
   )
 }
 
+import eyg/sync/supabase
+import gleam/io
+
 fn render(s) {
   h.div([a.class("")], [
+    auth_panel.render() |> element.map(state.AuthMessage),
     page_area([
-      // components.header(),
+      components.header(state.AuthMessage),
       h.div([a.class("expand hstack")], [
         h.div([a.class("m-2")], [
           h.p([a.class("text-4xl font-bold")], [element.text("EYG")]),
@@ -114,6 +121,24 @@ fn render(s) {
             ),
           ]),
           h.div([a.class("flex gap-2 mt-4")], [
+            h.button(
+              [
+                event.on("click", fn(_) {
+                  io.debug("clickin")
+                  promise.map(
+                    browser.run(supabase.sign_in_with_otp(
+                      "peterhsaxton@gmail.com",
+                    )),
+                    io.debug,
+                  )
+                  Error([])
+                }),
+                a.class(
+                  "inline-block py-2 px-3 rounded-xl text-white font-bold bg-gray-900 border-2 border-gray-900",
+                ),
+              ],
+              [element.text("Sign in")],
+            ),
             h.a(
               [
                 a.href("/editor"),

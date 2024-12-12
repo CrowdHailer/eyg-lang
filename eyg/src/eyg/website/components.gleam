@@ -1,20 +1,30 @@
+import eyg/website/components/auth_panel
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import lustre/event
 
-fn header_button(target, text) {
-  h.a([a.class("p-1 text-gray-700"), a.href(target)], [element.text(text)])
+const secondary_button_classes = "py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
+
+fn header_link(target, text) {
+  h.a([a.class(secondary_button_classes), a.href(target)], [element.text(text)])
 }
 
-pub fn header() {
-  h.header(
-    [a.class("hstack gap-8 p-2 fixed bottom-0 border-t-2 bg-white z-10")],
-    [
-      h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
-      header_button("/editor", "Editor"),
-      header_button("/documentation", "Documentation"),
-    ],
-  )
+fn header_button(event, text) {
+  h.button([a.class(secondary_button_classes), event.on_click(event)], [
+    element.text(text),
+  ])
+}
+
+pub fn header(authenticate) {
+  h.header([a.class("hstack gap-8 p-2 sticky top-0 border-b-2 bg-white")], [
+    h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
+    h.div([a.class("expand hstack gap-2")], [
+      header_link("/editor", "Editor"),
+      header_link("/documentation", "Documentation"),
+    ]),
+    header_button(authenticate(auth_panel.UserClickedAuthenticate), "Sign in"),
+  ])
 }
 
 pub fn card(children) {
