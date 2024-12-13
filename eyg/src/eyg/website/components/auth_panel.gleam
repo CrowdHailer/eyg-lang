@@ -12,6 +12,7 @@ import lustre/event
 import midas/browser
 import plinth/javascript/storage
 import snag.{type Snag}
+import supa/auth
 
 pub type State {
   State(
@@ -20,7 +21,7 @@ pub type State {
     email_address: String,
     code: String,
     error: Option(Snag),
-    session: Option(#(supabase.Session, supabase.User)),
+    session: Option(#(auth.Session, auth.User)),
   )
 }
 
@@ -35,9 +36,7 @@ pub fn init(_) {
 }
 
 pub type Message {
-  TaskToLoadSessionCompleted(
-    Result(Option(#(supabase.Session, supabase.User)), Snag),
-  )
+  TaskToLoadSessionCompleted(Result(Option(#(auth.Session, auth.User)), Snag))
   UserClickedCreateAccount
   UserClickedSignIn
   UserInputedEmailAddress(String)
@@ -45,7 +44,7 @@ pub type Message {
   TaskToSendCodeCompleted(Result(Nil, Snag))
   UserInputedCode(String)
   UserClickedVerifyCode
-  TaskToVerifyCodeCompleted(Result(#(supabase.Session, supabase.User), Snag))
+  TaskToVerifyCodeCompleted(Result(#(auth.Session, auth.User), Snag))
   TaskToSaveSessionCompleted(Result(Nil, Snag))
   UserClickedSignOut
   TaskToDeleteSessionCompleted(Result(Nil, Snag))
@@ -56,7 +55,7 @@ pub type Task {
   LoadSession
   SendCode(email_address: String)
   VerifyCode(email_address: String, code: String)
-  SaveSession(supabase.Session, supabase.User)
+  SaveSession(auth.Session, auth.User)
   DeleteSession
 }
 
@@ -67,12 +66,16 @@ pub fn dispatch(cmd, wrapper, store: Store) {
         LoadSession -> promise.map(store.load(), TaskToLoadSessionCompleted)
         SendCode(email_address) ->
           promise.map(
-            browser.run(supabase.sign_in_with_otp(email_address)),
+            browser.run(auth.sign_in_with_otp(
+              supabase.client,
+              email_address,
+              True,
+            )),
             fn(result) { TaskToSendCodeCompleted(result) },
           )
         VerifyCode(email_address, code) ->
           promise.map(
-            browser.run(supabase.verify_otp(email_address, code)),
+            browser.run(auth.verify_otp(supabase.client, email_address, code)),
             fn(result) { TaskToVerifyCodeCompleted(result) },
           )
         SaveSession(a, b) ->
@@ -91,9 +94,8 @@ pub fn dispatch(cmd, wrapper, store: Store) {
 
 pub type Store {
   Store(
-    load: fn() ->
-      Promise(Result(Option(#(supabase.Session, supabase.User)), Snag)),
-    save: fn(supabase.Session, supabase.User) -> Promise(Result(Nil, Snag)),
+    load: fn() -> Promise(Result(Option(#(auth.Session, auth.User)), Snag)),
+    save: fn(auth.Session, auth.User) -> Promise(Result(Nil, Snag)),
     delete: fn() -> Promise(Result(Nil, Snag)),
   )
 }
@@ -112,7 +114,7 @@ pub fn local_storage(key) {
     fn() {
       case storage.get_item(local, key) {
         Ok(value) ->
-          case json.decode(value, supabase.verify_decoder) {
+          case json.decode(value, auth.verify_decoder) {
             Ok(value) -> Ok(Some(value))
             Error(reason) -> Error(snag.new(string.inspect(reason)))
           }
@@ -121,7 +123,7 @@ pub fn local_storage(key) {
       |> promise.resolve()
     },
     fn(session, user) {
-      let data = json.to_string(supabase.verify_to_json(session, user))
+      let data = json.to_string(auth.verify_to_json(session, user))
       case storage.set_item(local, key, data) {
         Ok(Nil) -> Ok(Nil)
         Error(Nil) -> Error(snag.new("failed to save session"))

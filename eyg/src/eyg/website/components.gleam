@@ -1,10 +1,10 @@
-import eyg/sync/supabase
 import eyg/website/components/auth_panel
 import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
+import supa/auth
 
 const secondary_button_classes = "py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
 
@@ -48,7 +48,7 @@ pub fn header(authenticate, session) {
           ),
         ])
       Some(#(_session, user)) -> {
-        let supabase.User(email:, ..) = user
+        let auth.User(email:, ..) = user
         h.div([a.class("flex gap-2"), a.style([#("align-items", "center")])], [
           h.span([], [element.text(email)]),
           action_button(authenticate(auth_panel.UserClickedSignOut), "Sign out"),
