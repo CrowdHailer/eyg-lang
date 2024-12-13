@@ -1,5 +1,6 @@
 import eyg/sync/browser
 import eyg/sync/sync
+import eyg/website/components/auth_panel
 import eyg/website/components/snippet
 import eygir/decode
 import gleam/dict.{type Dict}
@@ -201,6 +202,7 @@ const capture_example = "{\"0\":\"l\",\"l\":\"greeting\",\"v\":{\"0\":\"s\",\"v\
 
 pub type State {
   State(
+    auth: auth_panel.State,
     cache: sync.Sync,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
@@ -262,9 +264,9 @@ pub fn init(_) {
     #(multiple_resume_key, init_example(multiple_resume_example, cache)),
     #(capture_key, init_example(capture_example, cache)),
   ]
-  let state = State(cache, Nothing, dict.from_list(snippets))
-  let #(state, tasks) = fetch_missing(state)
-  #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
+  let #(auth, task) = auth_panel.init(Nil)
+  let state = State(auth, cache, Nothing, dict.from_list(snippets))
+  #(state, auth_panel.dispatch(task, AuthMessage))
 }
 
 fn fetch_missing(state) {
@@ -283,6 +285,7 @@ fn fetch_missing(state) {
 pub type Message {
   SnippetMessage(String, snippet.Message)
   SyncMessage(sync.Message)
+  AuthMessage(auth_panel.Message)
 }
 
 fn dispatch_to_snippet(id, promise) {
@@ -297,6 +300,11 @@ fn dispatch_nothing(_promise) {
 
 pub fn update(state: State, message) {
   case message {
+    AuthMessage(message) -> {
+      let #(auth, task) = auth_panel.update(state.auth, message)
+      let state = State(..state, auth: auth)
+      #(state, auth_panel.dispatch(task, AuthMessage))
+    }
     SnippetMessage(identifier, message) -> {
       let state = case state.active {
         Editing(current) if current != identifier -> {

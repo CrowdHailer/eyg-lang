@@ -108,7 +108,7 @@ fn section_content(title, chapters) {
 // simpleter documentation
 fn render(state) {
   h.div([a.class("")], [
-    components.header(),
+    components.header(state.AuthMessage, None),
     h.div([a.class("hstack px-4 gap-10 mx-auto")], [
       h.div(
         [

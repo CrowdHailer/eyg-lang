@@ -5,6 +5,7 @@ import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value
 import eyg/sync/browser
 import eyg/sync/sync
+import eyg/website/components/auth_panel
 import eyg/website/components/snippet
 import eyg/website/reload
 import eygir/decode
@@ -36,6 +37,7 @@ pub type Example {
 
 pub type State {
   State(
+    auth: auth_panel.State,
     cache: sync.Sync,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
@@ -121,14 +123,15 @@ pub fn init(config) {
     ),
     #(hot_reload_key, init_reload_example(hot_reload_example, cache)),
   ]
-  // let references = all_references(snippets)
-  // let #(cache, tasks) = sync.fetch_missing(cache, references)
   let example = Example(value.Integer(0), t.Integer)
-  let state = State(cache, Nothing, dict.from_list(snippets), example)
+  let #(auth, task) = auth_panel.init(Nil)
+  let state = State(auth, cache, Nothing, dict.from_list(snippets), example)
   #(
     state,
-    effect.from(browser.do_load(SyncMessage)),
-    // effect.from(browser.do_sync(tasks, SyncMessage))
+    effect.batch([
+      auth_panel.dispatch(task, AuthMessage),
+      effect.from(browser.do_load(SyncMessage)),
+    ]),
   )
 }
 
@@ -143,6 +146,7 @@ pub fn set_snippet(state: State, id, snippet) {
 }
 
 pub type Message {
+  AuthMessage(auth_panel.Message)
   SnippetMessage(String, snippet.Message)
   SyncMessage(sync.Message)
   ClickExample
@@ -160,6 +164,11 @@ fn dispatch_nothing(_promise) {
 
 pub fn update(state: State, message) {
   case message {
+    AuthMessage(message) -> {
+      let #(auth, cmd) = auth_panel.update(state.auth, message)
+      let state = State(..state, auth: auth)
+      #(state, auth_panel.dispatch(cmd, AuthMessage))
+    }
     SnippetMessage(id, message) -> {
       let state = case state.active {
         Editing(current) if current != id -> {

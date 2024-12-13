@@ -1,5 +1,6 @@
 import eyg/runtime/value as v
 import eyg/website/components
+import eyg/website/components/auth_panel
 import eyg/website/components/snippet
 import eyg/website/config
 import eyg/website/home/state
@@ -101,10 +102,14 @@ fn action(text, href, merit) {
   )
 }
 
-fn render(s) {
+fn render(s: state.State) {
   h.div([a.class("")], [
+    case s.auth.active {
+      True -> auth_panel.render(s.auth) |> element.map(state.AuthMessage)
+      False -> element.none()
+    },
+    components.header(state.AuthMessage, s.auth.session),
     page_area([
-      // components.header(),
       h.div([a.class("expand hstack")], [
         h.div([a.class("m-2")], [
           h.p([a.class("text-4xl font-bold")], [element.text("EYG")]),

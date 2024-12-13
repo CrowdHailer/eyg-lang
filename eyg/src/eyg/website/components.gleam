@@ -1,20 +1,61 @@
+import eyg/sync/supabase
+import eyg/website/components/auth_panel
+import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import lustre/event
 
-fn header_button(target, text) {
-  h.a([a.class("p-1 text-gray-700"), a.href(target)], [element.text(text)])
+const secondary_button_classes = "py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
+
+fn header_link(target, text) {
+  h.a([a.class(secondary_button_classes), a.href(target)], [element.text(text)])
 }
 
-pub fn header() {
-  h.header(
-    [a.class("hstack gap-8 p-2 fixed bottom-0 border-t-2 bg-white z-10")],
+fn header_button(event, text) {
+  h.button([a.class(secondary_button_classes), event.on_click(event)], [
+    element.text(text),
+  ])
+}
+
+fn action_button(event, text) {
+  h.button(
     [
-      h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
-      header_button("/editor", "Editor"),
-      header_button("/documentation", "Documentation"),
+      a.class(
+        "inline-block py-2 px-3 rounded-xl text-white font-bold bg-gray-900 border-2 border-gray-900 whitespace-nowrap",
+      ),
+      event.on_click(event),
     ],
+    [element.text(text)],
   )
+}
+
+pub fn header(authenticate, session) {
+  // z index needed to go over vimeo video embeds
+  h.header([a.class("hstack gap-8 p-2 sticky top-0 border-b-2 bg-white z-20")], [
+    h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
+    h.div([a.class("expand hstack gap-2")], [
+      header_link("/editor", "Editor"),
+      header_link("/documentation", "Documentation"),
+    ]),
+    case session {
+      None ->
+        h.div([a.class("flex gap-2")], [
+          header_button(authenticate(auth_panel.UserClickedSignIn), "Sign in"),
+          action_button(
+            authenticate(auth_panel.UserClickedCreateAccount),
+            "Get Started",
+          ),
+        ])
+      Some(#(_session, user)) -> {
+        let supabase.User(email:, ..) = user
+        h.div([a.class("flex gap-2"), a.style([#("align-items", "center")])], [
+          h.span([], [element.text(email)]),
+          action_button(authenticate(auth_panel.UserClickedSignOut), "Sign out"),
+        ])
+      }
+    },
+  ])
 }
 
 pub fn card(children) {
