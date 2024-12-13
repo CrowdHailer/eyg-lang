@@ -126,10 +126,12 @@ pub fn init(config) {
   let example = Example(value.Integer(0), t.Integer)
   let #(auth, task) = auth_panel.init(Nil)
   let state = State(auth, cache, Nothing, dict.from_list(snippets), example)
+  let assert Ok(storage) = auth_panel.local_storage("session")
+
   #(
     state,
     effect.batch([
-      auth_panel.dispatch(task, AuthMessage),
+      auth_panel.dispatch(task, AuthMessage, storage),
       effect.from(browser.do_load(SyncMessage)),
     ]),
   )
@@ -167,7 +169,9 @@ pub fn update(state: State, message) {
     AuthMessage(message) -> {
       let #(auth, cmd) = auth_panel.update(state.auth, message)
       let state = State(..state, auth: auth)
-      #(state, auth_panel.dispatch(cmd, AuthMessage))
+      let assert Ok(storage) = auth_panel.local_storage("session")
+
+      #(state, auth_panel.dispatch(cmd, AuthMessage, storage))
     }
     SnippetMessage(id, message) -> {
       let state = case state.active {

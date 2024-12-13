@@ -1,12 +1,16 @@
 import eyg/sync/supabase
-import gleam/javascript/promise
+import gleam/javascript/promise.{type Promise}
+import gleam/json
 import gleam/option.{type Option, None, Some}
+import gleam/result
+import gleam/string
 import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
 import lustre/event
 import midas/browser
+import plinth/javascript/storage
 import snag.{type Snag}
 
 pub type State {
@@ -56,11 +60,11 @@ pub type Task {
   DeleteSession
 }
 
-pub fn dispatch(cmd, wrapper) {
+pub fn dispatch(cmd, wrapper, store: Store) {
   case cmd {
     Some(cmd) -> {
       let work = case cmd {
-        LoadSession -> promise.resolve(TaskToLoadSessionCompleted(Ok(None)))
+        LoadSession -> promise.map(store.load(), TaskToLoadSessionCompleted)
         SendCode(email_address) ->
           promise.map(
             browser.run(supabase.sign_in_with_otp(email_address)),
@@ -71,9 +75,10 @@ pub fn dispatch(cmd, wrapper) {
             browser.run(supabase.verify_otp(email_address, code)),
             fn(result) { TaskToVerifyCodeCompleted(result) },
           )
-        SaveSession(_, _) ->
-          promise.resolve(TaskToSaveSessionCompleted(Ok(Nil)))
-        DeleteSession -> promise.resolve(TaskToDeleteSessionCompleted(Ok(Nil)))
+        SaveSession(a, b) ->
+          promise.map(store.save(a, b), TaskToSaveSessionCompleted)
+        DeleteSession ->
+          promise.map(store.delete(), TaskToDeleteSessionCompleted)
       }
       effect.from(fn(d) {
         promise.map(work, fn(msg) { d(wrapper(msg)) })
@@ -82,6 +87,52 @@ pub fn dispatch(cmd, wrapper) {
     }
     None -> effect.none()
   }
+}
+
+pub type Store {
+  Store(
+    load: fn() ->
+      Promise(Result(Option(#(supabase.Session, supabase.User)), Snag)),
+    save: fn(supabase.Session, supabase.User) -> Promise(Result(Nil, Snag)),
+    delete: fn() -> Promise(Result(Nil, Snag)),
+  )
+}
+
+pub fn in_memory_store() {
+  Store(
+    fn() { promise.resolve(Ok(None)) },
+    fn(_, _) { promise.resolve(Ok(Nil)) },
+    fn() { promise.resolve(Ok(Nil)) },
+  )
+}
+
+pub fn local_storage(key) {
+  use local <- result.map(storage.local())
+  Store(
+    fn() {
+      case storage.get_item(local, key) {
+        Ok(value) ->
+          case json.decode(value, supabase.verify_decoder) {
+            Ok(value) -> Ok(Some(value))
+            Error(reason) -> Error(snag.new(string.inspect(reason)))
+          }
+        Error(Nil) -> Ok(None)
+      }
+      |> promise.resolve()
+    },
+    fn(session, user) {
+      let data = json.to_string(supabase.verify_to_json(session, user))
+      case storage.set_item(local, key, data) {
+        Ok(Nil) -> Ok(Nil)
+        Error(Nil) -> Error(snag.new("failed to save session"))
+      }
+      |> promise.resolve()
+    },
+    fn() {
+      Ok(storage.remove_item(local, key))
+      |> promise.resolve()
+    },
+  )
 }
 
 pub fn update(state, message) {

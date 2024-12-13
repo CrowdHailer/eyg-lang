@@ -156,12 +156,33 @@ pub fn verify_otp(email_address, token) {
   decode_response(response, verify_decoder)
 }
 
-fn verify_decoder(raw) {
+pub fn verify_decoder(raw) {
   dynamic.decode2(
     pair.new,
     session_decoder,
     dynamic.field("user", user_decoder),
   )(raw)
+}
+
+// useful for storage
+pub fn verify_to_json(session, user) {
+  let User(created_at, email, id) = user
+  let user =
+    json.object([
+      #("created_at", json.string(created_at)),
+      #("email", json.string(email)),
+      #("id", json.string(id)),
+    ])
+  let Session(access_token, expires_at, expires_in, refresh_token, token_type) =
+    session
+  json.object([
+    #("access_token", json.string(access_token)),
+    #("expires_at", json.int(expires_at)),
+    #("expires_in", json.int(expires_in)),
+    #("refresh_token", json.string(refresh_token)),
+    #("token_type", json.string(token_type)),
+    #("user", user),
+  ])
 }
 
 pub type Session {

@@ -266,7 +266,8 @@ pub fn init(_) {
   ]
   let #(auth, task) = auth_panel.init(Nil)
   let state = State(auth, cache, Nothing, dict.from_list(snippets))
-  #(state, auth_panel.dispatch(task, AuthMessage))
+  let assert Ok(storage) = auth_panel.local_storage("session")
+  #(state, auth_panel.dispatch(task, AuthMessage, storage))
 }
 
 fn fetch_missing(state) {
@@ -303,7 +304,8 @@ pub fn update(state: State, message) {
     AuthMessage(message) -> {
       let #(auth, task) = auth_panel.update(state.auth, message)
       let state = State(..state, auth: auth)
-      #(state, auth_panel.dispatch(task, AuthMessage))
+      let assert Ok(storage) = auth_panel.local_storage("session")
+      #(state, auth_panel.dispatch(task, AuthMessage, storage))
     }
     SnippetMessage(identifier, message) -> {
       let state = case state.active {
