@@ -114,14 +114,7 @@ pub fn render_effects(effects) {
 }
 
 fn render_effect(label, lift, resume) {
-  string.concat([
-    label,
-    "(↑",
-    render_type(lift),
-    " ↓",
-    render_type(resume),
-    ")",
-  ])
+  string.concat([label, "(↑", render_type(lift), " ↓", render_type(resume), ")"])
 }
 
 fn collect_effect(eff, acc) {

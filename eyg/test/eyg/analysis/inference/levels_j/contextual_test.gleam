@@ -366,11 +366,7 @@ pub fn perform_unifys_with_env_test() {
   "perform Log(5)"
   |> calc(t.EffectExtend("Log", #(t.String, t.Record(t.Empty)), t.Empty))
   |> should.equal([
-    #(
-      Error(error.TypeMismatch(t.Integer, t.String)),
-      "1",
-      "Log(↑Integer ↓1)",
-    ),
+    #(Error(error.TypeMismatch(t.Integer, t.String)), "1", "Log(↑Integer ↓1)"),
     #(Ok(Nil), "(Integer <Log(↑Integer ↓1)>) -> 1", ""),
     #(Ok(Nil), "Integer", ""),
   ])

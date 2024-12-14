@@ -82,7 +82,7 @@ pub fn destructured(matches: List(Match), term: #(e.Expression(_), Span)) {
       None -> #(fspan, #(field, fspan))
     }
     let aspan = #(fspan.0, cspan.1)
-    let lspan = #(fspan.0, { term.1 }.1)
+    let lspan = #(fspan.0, term.1.1)
     #(
       e.Let(
         var,

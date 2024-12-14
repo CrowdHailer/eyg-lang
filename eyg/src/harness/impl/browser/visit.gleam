@@ -3,7 +3,7 @@ import eyg/runtime/cast
 import eyg/runtime/value as v
 import gleam/javascript/promise
 import gleam/result.{try}
-import platforms/browser/windows
+import midas/browser
 
 pub const l = "Visit"
 
@@ -20,7 +20,7 @@ pub fn type_() {
 pub fn impl(url) {
   use url <- try(cast.as_string(url))
   let frame = #(600, 700)
-  let reply = case windows.open(url, frame) {
+  let reply = case browser.open(url, frame) {
     Ok(_popup) -> v.ok(v.unit)
     Error(reason) -> v.error(v.Str(reason))
   }
