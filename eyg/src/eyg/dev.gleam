@@ -7,6 +7,7 @@ import eyg/website/documentation
 import eyg/website/editor
 import eyg/website/home
 import eyg/website/news
+import eyg/website/social
 import eygir/decode
 import eygir/encode
 import eygir/expression
@@ -33,10 +34,6 @@ import mysig/layout
 import mysig/local
 import mysig/neo
 
-pub fn empty_lustre() {
-  h.div([a.id("app")], [])
-}
-
 pub fn app_script(src) {
   h.script([a.attribute("defer", ""), a.attribute("async", ""), a.src(src)], "")
 }
@@ -54,7 +51,7 @@ fn examine_page(bundle) {
     html.plausible("eyg.run"),
   ]
   let content =
-    html.doc("Eyg - examiner", head, [h.div([], [empty_lustre()])])
+    html.doc(head, [h.div([], [html.empty_lustre()])])
     |> element.to_document_string()
     |> bit_array.from_string()
   t.done(#("/examine/index.html", content))
@@ -70,7 +67,6 @@ fn shell_page(bundle) {
 
   let content =
     html.doc(
-      "Eyg - shell",
       [
         html.stylesheet(asset.tailwind_2_2_11),
         layout,
@@ -79,7 +75,7 @@ fn shell_page(bundle) {
         html.plausible("eyg.run"),
       ],
       [
-        h.div([], [empty_lustre()]),
+        h.div([], [html.empty_lustre()]),
         h.script(
           [a.type_("application/json"), a.id("netlify.openapi.json")],
           spec,
@@ -121,7 +117,6 @@ fn package_page(script_asset, bundle) {
   use layout <- t.do(asset.resource(layout.css, bundle))
   use neo <- t.do(asset.resource(neo.css, bundle))
   html.doc(
-    "Eyg - shell",
     [
       html.stylesheet(asset.tailwind_2_2_11),
       layout,
@@ -129,7 +124,7 @@ fn package_page(script_asset, bundle) {
       script,
       html.plausible("eyg.run"),
     ],
-    [h.div([], [empty_lustre()])],
+    [h.div([], [html.empty_lustre()])],
   )
   |> element.to_document_string()
   |> bit_array.from_string()
@@ -258,7 +253,6 @@ fn datalog_page(bundle) {
   use layout <- t.do(asset.resource(layout.css, bundle))
   use neo <- t.do(asset.resource(neo.css, bundle))
   html.doc(
-    "Datalog notebook",
     [
       html.stylesheet(asset.tailwind_2_2_11),
       layout,
@@ -266,7 +260,7 @@ fn datalog_page(bundle) {
       script,
       html.plausible("eyg.run"),
     ],
-    [h.div([], [empty_lustre()])],
+    [h.div([], [html.empty_lustre()])],
   )
   |> element.to_document_string()
   |> bit_array.from_string()
@@ -300,6 +294,9 @@ pub fn develop(args) {
     ["home"] -> {
       use home <- t.do(home.page(bundle))
       t.done([#("/index.html", home)])
+    }
+    ["social"] -> {
+      t.done([#("/index.html", social.render())])
     }
     _ -> {
       // TODO bring closer togeher
@@ -360,6 +357,7 @@ pub fn preview(args) {
       // Note news puts pea image into assets without hashing
       use news <- t.do(news.build())
       // use datalog <- t.do(build_datalog(bundle))
+      use share <- t.do(t.read("/share.png"))
 
       let files =
         list.flatten([
@@ -373,7 +371,7 @@ pub fn preview(args) {
           seeds,
           news,
           asset.to_files(bundle),
-          [#("/_redirects", <<redirects:utf8>>)],
+          [#("/_redirects", <<redirects:utf8>>), #("/share.png", share)],
         ])
       io.debug(listx.keys(files))
       t.done(files)
