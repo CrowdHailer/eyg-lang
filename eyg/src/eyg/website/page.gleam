@@ -61,6 +61,5 @@ fn layout(title, body, bundle) {
     body,
   )
   |> element.to_document_string()
-  |> bit_array.from_string()
   |> t.done()
 }

@@ -16,7 +16,6 @@ plinth = ">= 0.5.2 and < 1.0.0"
 simplifile = "~> 1.0"
 gleam_community_codec = {path= "../../codec"}
 midas = ">= 1.0.0 and < 2.0.0"
-snag = ">= 0.3.0 and < 1.0.0"
 javascript_mutable_reference = ">= 1.0.0 and < 2.0.0"
 midas_browser = ">= 0.1.1 and < 1.0.0"
 jot = ">= 1.1.0 and < 2.0.0"

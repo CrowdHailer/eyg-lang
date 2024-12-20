@@ -3,11 +3,6 @@ import eyg/package
 import eyg/sync/cid
 import eyg/sync/seed
 import eyg/sync/sync
-import eyg/website/documentation
-import eyg/website/editor
-import eyg/website/home
-import eyg/website/news
-import eyg/website/social
 import eygir/decode
 import eygir/encode
 import eygir/expression
@@ -275,36 +270,11 @@ fn build_datalog(bundle) {
   t.done([#("/datalog/index.html", page), ..files])
 }
 
-pub fn build(bundle) -> t.Effect(List(#(String, BitArray))) {
-  use documentation <- t.do(documentation.page(bundle))
-  use home <- t.do(home.page(bundle))
-  use editor <- t.do(editor.page(bundle))
-
-  // relies on intro
-  t.done([
-    #("/documentation/index.html", documentation),
-    #("/editor/index.html", editor),
-    #("/index.html", home),
-  ])
-}
-
 pub fn develop(args) {
   let bundle = asset.new_bundle("/assets")
   use pages <- t.do(case args {
-    ["home"] -> {
-      use home <- t.do(home.page(bundle))
-      t.done([#("/index.html", home)])
-    }
-    ["social"] -> {
-      t.done([#("/index.html", social.render())])
-    }
     _ -> {
-      // TODO bring closer togeher
-      use editor <- t.do(case False {
-        True -> editor.page(bundle)
-        False -> v1.page(bundle)
-      })
-      [#("/editor/index.html", editor)]
+      []
       |> t.done()
     }
   })
@@ -339,29 +309,26 @@ pub fn preview(args) {
   case args {
     ["home"] -> {
       let bundle = asset.new_bundle("/assets")
-      use v1_site <- t.do(build(bundle))
       use intro <- t.do(build_intro(True, bundle))
 
       t.done(
-        [v1_site, intro, asset.to_files(bundle)]
+        [intro, asset.to_files(bundle)]
         |> list.flatten(),
       )
     }
     _ -> {
       let bundle = asset.new_bundle("/assets")
-      use v1_site <- t.do(build(bundle))
       use seeds <- t.do(seed.from_dir("seed"))
       // use examine <- t.do(examine_page(bundle))
       use shell <- t.do(shell_page(bundle))
       // use intro <- t.do(build_intro(True, bundle))
       // Note news puts pea image into assets without hashing
-      use news <- t.do(news.build())
+      // use news <- t.do(news.build())
       // use datalog <- t.do(build_datalog(bundle))
       use share <- t.do(t.read("/share.png"))
 
       let files =
         list.flatten([
-          v1_site,
           // Need moving so that project name and top module name match.
           // midas assumes that this is the case when looking for the module
           // [examine],
@@ -369,7 +336,7 @@ pub fn preview(args) {
           // datalog,
           [shell],
           seeds,
-          news,
+          // news,
           asset.to_files(bundle),
           [#("/_redirects", <<redirects:utf8>>), #("/share.png", share)],
         ])
