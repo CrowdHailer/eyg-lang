@@ -38,16 +38,16 @@ pub fn do_main(args) {
   // recipe is an app, service worker makes js necessay, query string params are also only interesting if rendered with JS
 
   case args {
-    ["develop", ..args] ->
-      promise.map(
-        node.watch(dev.develop(args), ".", fn(result) {
-          case result {
-            Ok(Nil) -> Nil
-            Error(reason) -> io.println(snag.pretty_print(reason))
-          }
-        }),
-        fn(_) { 0 },
-      )
+    // ["develop", ..args] ->
+    //   promise.map(
+    //     node.watch(dev.develop(args), ".", fn(result) {
+    //       case result {
+    //         Ok(Nil) -> Nil
+    //         Error(reason) -> io.println(snag.pretty_print(reason))
+    //       }
+    //     }),
+    //     fn(_) { 0 },
+    //   )
     ["exec", ..] -> shell.run(e.add_annotation(source, Nil))
     ["infer"] -> {
       let #(exp, bindings) =

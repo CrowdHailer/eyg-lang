@@ -1,6 +1,8 @@
 import mysig/asset
 
-pub const css = asset.Asset("layout", <<css_:utf8>>, asset.Css)
+pub fn css() {
+  asset.css("layout", css_)
+}
 
 // https://css-tricks.com/box-sizing/#aa-universal-box-sizing-with-inheritance
 const css_ = "

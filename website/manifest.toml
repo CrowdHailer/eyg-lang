@@ -45,6 +45,7 @@ gleam_javascript = { version = ">= 0.13.0 and < 1.0.0" }
 gleam_json = { version = ">= 2.1.0 and < 3.0.0" }
 gleam_stdlib = { version = ">= 0.34.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
+jot = { version = ">= 1.1.0 and < 2.0.0" }
 lustre = { version = ">= 4.6.3 and < 5.0.0" }
 midas = { version = ">= 1.4.1 and < 2.0.0" }
 midas_browser = { version = ">= 0.1.2 and < 1.0.0" }

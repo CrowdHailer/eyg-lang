@@ -8,6 +8,7 @@ import lustre/element
 import lustre/element/html as h
 import midas/task as t
 import mysig/asset
+import mysig/html
 import mysig/layout
 import mysig/route
 import snag
@@ -18,22 +19,28 @@ const replace_string = "!CONTENT!"
 
 pub fn route(bundle) {
   use pea <- t.do(t.read("/src/website/images/pea.webp"))
-  let pea = asset.webp("pea", pea)
+  use pea <- t.do(asset.webp("pea", pea))
   use template <- t.do(t.read("/src/website/routes/news/edition/email.html"))
   use template <- t.try(
     bit_array.to_string(template)
     |> result.replace_error(snag.new("not a utf8 string")),
   )
   let assert [latest, ..] = archive.published
+  let pea_src = asset.path(pea, bundle)
   let content =
-    element.to_string(edition.render(latest, list.length(archive.published)))
+    element.to_string(edition.render(
+      latest,
+      list.length(archive.published),
+      pea_src,
+    ))
   let template = string.replace(template, replace_string, content)
 
-  use layout <- t.do(asset.resource(layout.css, bundle))
+  use layout <- t.do(layout.css())
+  let layout = asset.resource(layout, bundle)
 
   let items = [
     #("_email.html", route.Route(index: route.Page(template), items: [])),
-    ..web_editions(archive.published, bundle, layout)
+    ..web_editions(archive.published, pea, bundle, layout)
   ]
   // use pea 
   route.Route(index: route.Page("Nope or put in a Some"), items: items)
@@ -41,11 +48,12 @@ pub fn route(bundle) {
 }
 
 // archive is a reverse order stack of editions
-fn web_editions(editions, bundle, layout) {
+fn web_editions(editions, pea, bundle, layout) {
+  let pea_src = asset.path(pea, bundle)
   list.index_map(list.reverse(editions), fn(edition, index) {
     let index = index + 1
     let Edition(title: title, ..) = edition
-    let edition = edition.render(edition, index)
+    let edition = edition.render(edition, index, pea_src)
 
     let path = "/editions/" <> int.to_string(index)
     let page =
@@ -65,15 +73,8 @@ fn web_editions(editions, bundle, layout) {
             ),
           ]),
           layout,
-          h.link([a.rel("shortcut icon"), a.href("/assets/pea.webp")]),
-          h.script(
-            [
-              a.attribute("defer", ""),
-              a.attribute("data-domain", "eyg.run"),
-              a.src("https://plausible.io/js/script.js"),
-            ],
-            "",
-          ),
+          h.link([a.rel("shortcut icon"), a.href(pea_src)]),
+          html.plausible("eyg.run"),
         ]),
         h.body(
           [

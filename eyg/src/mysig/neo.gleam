@@ -1,6 +1,8 @@
 import mysig/asset
 
-pub const css = asset.Asset("neo", <<css_:utf8>>, asset.Css)
+pub fn css() {
+  asset.css("neo", css_)
+}
 
 const css_ = ":root {
     --neo-blue-1: #daf5f0;

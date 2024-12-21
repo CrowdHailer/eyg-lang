@@ -12,8 +12,8 @@ import mysig/preview
 
 pub fn app(title, module, func, bundle) {
   use script <- t.do(t.bundle(module, func))
-  use script <- t.do(asset.resource(asset.js("page", script), bundle))
-  layout(title, [html.empty_lustre(), script], bundle)
+  use script <- t.do(asset.js("page", script))
+  layout(title, [html.empty_lustre(), asset.resource(script, bundle)], bundle)
 }
 
 fn layout(title, body, bundle) {
@@ -21,14 +21,14 @@ fn layout(title, body, bundle) {
     None -> "EYG"
     Some(title) -> "EYG - " <> title
   }
-  use layout <- t.do(asset.resource(layout.css, bundle))
-  use neo <- t.do(asset.resource(neo.css, bundle))
+  use layout <- t.do(layout.css())
+  use neo <- t.do(neo.css())
   html.doc(
     list.flatten([
       [
         html.stylesheet(asset.tailwind_2_2_11),
-        layout,
-        neo,
+        asset.resource(layout, bundle),
+        asset.resource(neo, bundle),
         html.plausible("eyg.run"),
       ],
       preview.homepage(
