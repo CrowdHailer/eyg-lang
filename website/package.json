@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@zip.js/zip.js": "^2.7.54",
+    "chokidar": "^4.0.3",
+    "rollup": "^4.28.1"
+  }
+}
