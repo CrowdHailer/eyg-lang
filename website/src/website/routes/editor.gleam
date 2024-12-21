@@ -1,11 +1,9 @@
 import eyg/sync/browser
 import eyg/sync/sync
-import eyg/website/page
 import eygir/expression
 import eygir/tree
 import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{Some}
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -14,16 +12,45 @@ import lustre/element/html as h
 import midas/task as t
 import morph/editable
 import morph/lustre/components/key
+import mysig/asset
+import mysig/html
+import mysig/layout
+import mysig/neo
 import mysig/route
 import website/components/snippet
+import website/routes/common
+
+pub fn app(module, func, bundle) {
+  use script <- t.do(t.bundle(module, func))
+  use script <- t.do(asset.js("page", script))
+  layout([html.empty_lustre(), asset.resource(script, bundle)], bundle)
+}
+
+fn layout(body, bundle) {
+  use layout <- t.do(layout.css())
+  use neo <- t.do(neo.css())
+  html.doc(
+    list.flatten([
+      [
+        html.stylesheet(asset.tailwind_2_2_11),
+        asset.resource(layout, bundle),
+        asset.resource(neo, bundle),
+        html.plausible("eyg.run"),
+      ],
+      common.page_meta(
+        "/",
+        "EYG",
+        "EYG is a programming language for predictable, useful and most of all confident development.",
+      ),
+    ]),
+    body,
+  )
+  |> element.to_document_string()
+  |> t.done()
+}
 
 pub fn page(bundle) {
-  use content <- t.do(page.app(
-    Some("editor"),
-    "website/routes/editor",
-    "client",
-    bundle,
-  ))
+  use content <- t.do(app("website/routes/editor", "client", bundle))
   t.done(route.Page(content))
 }
 

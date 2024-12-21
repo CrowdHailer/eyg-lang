@@ -18,21 +18,18 @@ import mysig/route
 import website/components
 import website/components/auth_panel
 import website/components/snippet
+import website/routes/common
 import website/routes/home/state
 
 const signup = "mailing-signup"
 
-pub fn app(title, module, func, bundle) {
+pub fn app(module, func, bundle) {
   use script <- t.do(t.bundle(module, func))
   use script <- t.do(asset.js("page", script))
-  layout(title, [html.empty_lustre(), asset.resource(script, bundle)], bundle)
+  layout([html.empty_lustre(), asset.resource(script, bundle)], bundle)
 }
 
-fn layout(title, body, bundle) {
-  let title = case title {
-    None -> "EYG"
-    Some(title) -> "EYG - " <> title
-  }
+fn layout(body, bundle) {
   use layout <- t.do(layout.css())
   use neo <- t.do(neo.css())
   html.doc(
@@ -43,31 +40,10 @@ fn layout(title, body, bundle) {
         asset.resource(neo, bundle),
         html.plausible("eyg.run"),
       ],
-      preview.homepage(
-        title: title,
-        description: "EYG is a programming language for predictable, useful and most of all confident development.",
-        canonical: uri.Uri(
-          Some("https"),
-          None,
-          Some("eyg.run"),
-          None,
-          "/",
-          None,
-          None,
-        ),
-      ),
-      preview.optimum_image(
-        uri.Uri(
-          Some("https"),
-          None,
-          Some("eyg.run"),
-          None,
-          "/share.png",
-          None,
-          None,
-        ),
-        preview.png,
-        "Penelopea the mascot for the EYG programming language.",
+      common.page_meta(
+        "/",
+        "EYG",
+        "EYG is a programming language for predictable, useful and most of all confident development.",
       ),
     ]),
     body,
@@ -77,10 +53,11 @@ fn layout(title, body, bundle) {
 }
 
 pub fn page(bundle) {
-  use content <- t.do(app(None, "website/routes/home", "client", bundle))
+  use content <- t.do(app("website/routes/home", "client", bundle))
   t.done(route.Page(content))
 }
 
+// client has to be a top level function for bundling
 pub fn client() {
   let app = lustre.application(state.init, state.update, render)
   let assert Ok(_) = lustre.start(app, "#app", config.load())

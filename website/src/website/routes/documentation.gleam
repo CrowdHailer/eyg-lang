@@ -1,4 +1,3 @@
-import eyg/website/page
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -7,10 +6,49 @@ import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import midas/task as t
+import mysig/asset
+import mysig/html
+import mysig/layout
+import mysig/neo
 import mysig/route
 import website/components
 import website/components/snippet
+import website/routes/common
 import website/routes/documentation/state
+
+pub fn app(module, func, bundle) {
+  use script <- t.do(t.bundle(module, func))
+  use script <- t.do(asset.js("page", script))
+  layout([html.empty_lustre(), asset.resource(script, bundle)], bundle)
+}
+
+fn layout(body, bundle) {
+  use layout <- t.do(layout.css())
+  use neo <- t.do(neo.css())
+  html.doc(
+    list.flatten([
+      [
+        html.stylesheet(asset.tailwind_2_2_11),
+        asset.resource(layout, bundle),
+        asset.resource(neo, bundle),
+        html.plausible("eyg.run"),
+      ],
+      common.page_meta(
+        "/",
+        "EYG",
+        "EYG is a programming language for predictable, useful and most of all confident development.",
+      ),
+    ]),
+    body,
+  )
+  |> element.to_document_string()
+  |> t.done()
+}
+
+pub fn page(bundle) {
+  use content <- t.do(app("website/routes/documentation", "client", bundle))
+  t.done(route.Page(content))
+}
 
 pub fn client() {
   let app = lustre.application(state.init, state.update, render)
@@ -457,14 +495,4 @@ fn example(state: state.State, identifier) {
   let snippet = state.get_example(state, identifier)
   snippet.render(snippet)
   |> element.map(state.SnippetMessage(identifier, _))
-}
-
-pub fn page(bundle) {
-  use content <- t.do(page.app(
-    Some("documentation"),
-    "website/routes/documentation",
-    "client",
-    bundle,
-  ))
-  t.done(route.Page(content))
 }
