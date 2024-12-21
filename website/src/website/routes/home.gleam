@@ -1,8 +1,5 @@
 import eyg/runtime/value as v
-import eyg/website/config
 import gleam/list
-import gleam/option.{None, Some}
-import gleam/uri
 import lustre
 import lustre/attribute as a
 import lustre/element
@@ -13,16 +10,18 @@ import mysig/asset
 import mysig/html
 import mysig/layout
 import mysig/neo
-import mysig/preview
 import mysig/route
 import website/components
 import website/components/auth_panel
 import website/components/snippet
+import website/config
 import website/routes/common
 import website/routes/home/state
 
 const signup = "mailing-signup"
 
+// TODO this can return just some code id needs to match in client and empty_lustre
+// without layout it can move to common
 pub fn app(module, func, bundle) {
   use script <- t.do(t.bundle(module, func))
   use script <- t.do(asset.js("page", script))
