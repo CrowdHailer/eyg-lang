@@ -13,21 +13,15 @@ import morph/editable
 import morph/lustre/components/key
 import mysig/asset
 import mysig/html
-import mysig/layout
-import mysig/neo
-import mysig/route
 import website/components/snippet
 import website/routes/common
 
-pub fn app(module, func, bundle) {
+pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
-  layout(
-    [html.empty_lustre(), h.script([a.src(asset.src(script))], "")],
-    bundle,
-  )
+  layout([html.empty_lustre(), h.script([a.src(asset.src(script))], "")])
 }
 
-fn layout(body, bundle) {
+fn layout(body) {
   use layout <- asset.do(asset.load("src/website/routes/layout.css"))
   use neo <- asset.do(asset.load("src/website/routes/neo.css"))
   html.doc(
@@ -46,13 +40,12 @@ fn layout(body, bundle) {
     ]),
     body,
   )
-  |> element.to_document_string()
   |> asset.done()
 }
 
-pub fn page(bundle) {
-  use content <- asset.do(app("website/routes/editor", "client", bundle))
-  asset.done(route.Page(content))
+pub fn page() {
+  use content <- asset.do(app("website/routes/editor", "client"))
+  asset.done(content)
 }
 
 pub fn client() {
