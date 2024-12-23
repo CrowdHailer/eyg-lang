@@ -9,7 +9,6 @@ import lustre/attribute as a
 import lustre/effect
 import lustre/element
 import lustre/element/html as h
-import midas/task as t
 import morph/editable
 import morph/lustre/components/key
 import mysig/asset
@@ -21,20 +20,22 @@ import website/components/snippet
 import website/routes/common
 
 pub fn app(module, func, bundle) {
-  use script <- t.do(t.bundle(module, func))
-  use script <- t.do(asset.js("page", script))
-  layout([html.empty_lustre(), asset.resource(script, bundle)], bundle)
+  use script <- asset.do(asset.bundle(module, func))
+  layout(
+    [html.empty_lustre(), h.script([a.src(asset.src(script))], "")],
+    bundle,
+  )
 }
 
 fn layout(body, bundle) {
-  use layout <- t.do(layout.css())
-  use neo <- t.do(neo.css())
+  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use neo <- asset.do(asset.load("src/website/routes/neo.css"))
   html.doc(
     list.flatten([
       [
-        html.stylesheet(asset.tailwind_2_2_11),
-        asset.resource(layout, bundle),
-        asset.resource(neo, bundle),
+        html.stylesheet(html.tailwind_2_2_11),
+        html.stylesheet(asset.src(layout)),
+        html.stylesheet(asset.src(neo)),
         html.plausible("eyg.run"),
       ],
       common.page_meta(
@@ -46,12 +47,12 @@ fn layout(body, bundle) {
     body,
   )
   |> element.to_document_string()
-  |> t.done()
+  |> asset.done()
 }
 
 pub fn page(bundle) {
-  use content <- t.do(app("website/routes/editor", "client", bundle))
-  t.done(route.Page(content))
+  use content <- asset.do(app("website/routes/editor", "client", bundle))
+  asset.done(route.Page(content))
 }
 
 pub fn client() {

@@ -10,8 +10,10 @@ import eygir/decode
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
+import gleam/http
 import gleam/javascript/promisex
 import gleam/list
+import gleam/option.{None}
 import harness/impl/browser as harness
 import harness/impl/spotless
 import harness/stdlib
@@ -108,7 +110,10 @@ fn all_references(snippets) {
 }
 
 pub fn init(config) {
-  let cache = sync.init(browser.get_origin())
+  let origin = sync.Origin(http.Https, "eyg.test", None)
+  // this crashes because not window we need to fix that
+  // browser.get_origin()
+  let cache = sync.init(origin)
   let snippets = [
     #(
       closure_serialization_key,
@@ -126,7 +131,9 @@ pub fn init(config) {
   let example = Example(value.Integer(0), t.Integer)
   let #(auth, task) = auth_panel.init(Nil)
   let state = State(auth, cache, Nothing, dict.from_list(snippets), example)
-  let assert Ok(storage) = auth_panel.local_storage("session")
+  // let assert Ok(storage) = auth_panel.local_storage("session")
+  // TODO fix dependend on environment
+  let storage = auth_panel.in_memory_store()
 
   #(
     state,

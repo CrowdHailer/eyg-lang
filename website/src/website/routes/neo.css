@@ -1,10 +1,4 @@
-import mysig/asset
-
-pub fn css() {
-  asset.load("src/mysig/neo.css")
-}
-
-const css_ = ":root {
+:root {
     --neo-blue-1: #daf5f0;
     --neo-blue-2: #a7dbd8;
     --neo-blue-3: #87ceeb;
@@ -333,7 +327,52 @@ const css_ = ":root {
   }
 
   body {
-    font-family: \"Franklin Gothic Medium\", \"Arial Narrow\", Arial, sans-serif;
+    font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
   }
 
-"
+  /* h2 {
+    display: inline-block;
+    font-weight: bold;
+    font-size: 1.5em;
+    position: relative;
+    margin: 16px 0;
+    z-index: 1;
+  }
+
+  h2::after {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 0 4px;
+    transform: translateX(-14px);
+    border-radius: 3px;
+    content: "";
+    display: block;
+    height: 50%;
+    width: 100%;
+    background: var(--neo-green-4);
+    z-index: -1;
+  }
+
+  h3.blocked {
+    display: inline-block;
+    font-size: 1.2em;
+    position: relative;
+    margin: 10px 0;
+    z-index: 1;
+  }
+
+  h3.blocked::after {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 0 4px;
+    transform: translateX(-14px);
+    border-radius: 3px;
+    content: "";
+    display: block;
+    height: 50%;
+    width: 100%;
+    background: var(--neo-green-4);
+    z-index: -1;
+  } */

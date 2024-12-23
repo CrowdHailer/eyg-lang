@@ -1,7 +1,7 @@
 import mysig/asset
 
 pub fn css() {
-  asset.css("layout", css_)
+  asset.load("src/mysig/layout.css")
 }
 
 // https://css-tricks.com/box-sizing/#aa-universal-box-sizing-with-inheritance
