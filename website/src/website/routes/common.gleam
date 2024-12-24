@@ -14,7 +14,6 @@ pub fn page_meta(path path, title title, description description) {
       site: "The EYG homepage",
       title: title,
       description: description,
-      // "EYG is a programming language for predictable, useful and most of all confident development.",
       canonical: full_path(path),
     ),
     preview.optimum_image(
