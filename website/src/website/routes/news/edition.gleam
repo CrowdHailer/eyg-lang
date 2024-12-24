@@ -38,6 +38,7 @@ fn header(issue_url, number, pea_src) {
           h.tr([], [
             h.td([a.style([#("vertical-align", "text-bottom")])], [
               h.img([
+                a.alt("Penelopea, EYG's mascot"),
                 a.src(pea_src),
                 a.width(80),
                 a.height(64),

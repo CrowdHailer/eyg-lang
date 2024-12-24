@@ -273,7 +273,11 @@ pub fn render(state) {
   modal([
     h.div([a.class("p-6")], [
       h.div([a.class("hstack")], [
-        h.img([a.class("w-8"), a.src("https://eyg.run/assets/pea.webp")]),
+        h.img([
+          a.class("w-8"),
+          a.src("https://eyg.run/assets/pea.webp"),
+          a.alt("Penelopea, EYG's mascot"),
+        ]),
         h.span([a.class("expand text-lg text-gray-800")], [element.text("EYG")]),
       ]),
       ..case state.status {

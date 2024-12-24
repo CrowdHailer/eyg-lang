@@ -35,7 +35,7 @@ pub fn render() {
         [
           h.img([
             a.src("https://eyg.run/assets/pea.webp"),
-            a.alt("Lucy the star, Gleam's mascot"),
+            a.alt("Penelopea, EYG's mascot"),
             a.style([#("max-width", "460px")]),
           ]),
           h.div([], [
@@ -50,7 +50,6 @@ pub fn render() {
                   ]),
                 ],
                 [
-                  // element.text("in Gleam"),
                   h.span([], [element.text("Predictable")]),
                   h.span([], [element.text("Useful")]),
                   h.span([], [element.text("Confident")]),
@@ -60,10 +59,6 @@ pub fn render() {
           ]),
         ],
       ),
-      //   h.img([
-      //     a.style([#("width", "100%"), #("margin-bottom", "-1px")]),
-      //     a.src("https://gleam.run/images/waves.svg"),
-      //   ]),
       h.div(
         [a.style([#("height", "90px"), #("background", "rgb(209,250,229)")])],
         [],

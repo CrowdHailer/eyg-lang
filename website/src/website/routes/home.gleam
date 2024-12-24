@@ -104,7 +104,8 @@ fn page_area(content) {
 fn feature(title, description, last, item, reverse) {
   h.div(
     [
-      a.class("mx-auto w-full max-w-6xl my-28 px-8 gap-12 hstack"),
+      a.class("mx-auto w-full max-w-6xl my-28 px-1 md:px-8 gap-12 md:flex"),
+      a.style([#("align-items", "center")]),
       a.classes([#("flex-row-reverse", reverse)]),
     ],
     [
@@ -218,11 +219,12 @@ fn view() {
           //   ),
           // ]),
           ]),
-          h.p([a.class("-mr-24 text-8xl")], [
+          h.p([a.class("")], [
             // element.text("EYG"),
             h.img([
               a.class("w-full max-w-xl"),
               a.src(asset.src(penelopea)),
+              a.alt("Penelopea, EYG's mascot"),
               // a.style([
             //   #("width", "500px"),
             //   #("height", "500px"),
@@ -234,59 +236,70 @@ fn view() {
           ]),
         ]),
       ]),
-      h.div([a.class("hstack mx-auto gap-10")], [
-        h.p(
-          [
-            a.class(
-              "w-56 h-56 p-6 flex flex-col py-12 rounded-lg bg-green-100 neo-2xl",
-            ),
-          ],
-          [
-            h.div([a.class(" text-xl font-bold")], [
-              element.text("Predictable:"),
-            ]),
-            element.text(
-              " programs are deterministic, dependencies are immutable",
-            ),
-          ],
-        ),
-        h.p(
-          [
-            a.class(
-              "w-56 h-56 p-6 flex flex-col py-12 rounded-lg bg-pink-100 neo-2xl",
-            ),
-          ],
-          [
-            h.div([a.class(" text-xl font-bold")], [element.text("Useful:")]),
-            element.text(
-              " run anywhere, managed effects allow programs to declare runtime requirements",
-            ),
-          ],
-        ),
-        h.p(
-          [
-            a.class(
-              "w-56 h-56 p-6 flex flex-col py-12 rounded-lg bg-red-100 neo-2xl",
-            ),
-          ],
-          [
-            h.div([a.class(" text-xl font-bold")], [element.text("Confident:")]),
-            element.text(
-              " A sound structural type system guarantees programs never crash",
-            ),
-          ],
-        ),
-      ]),
-      feature(
-        "Edit with confidence",
+      h.div(
+        [a.class("grid grid-cols-3 max-w-2xl gap-1 md:gap-6 px-1 mx-auto")],
         [
-          "Edit your programs directly. Instead of carefully adjusting text the EYG editor allows you to confidently make structural changes to your program.",
-          "Never miss a bracket or semi-colon again.",
+          h.div(
+            [
+              a.class(
+                "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-green-100 neo-2xl",
+              ),
+            ],
+            [
+              h.div([a.class(" text-xl font-bold")], [
+                element.text("Predictable:"),
+              ]),
+              h.p([], [
+                element.text(
+                  " programs are deterministic, dependencies are immutable",
+                ),
+              ]),
+            ],
+          ),
+          h.div(
+            [
+              a.class(
+                "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-pink-100 neo-2xl",
+              ),
+            ],
+            [
+              h.div([a.class(" text-xl font-bold")], [element.text("Useful:")]),
+              h.p([], [
+                element.text(
+                  " run anywhere, managed effects allow programs to declare runtime requirements",
+                ),
+              ]),
+            ],
+          ),
+          h.div(
+            [
+              a.class(
+                "p-2 md:p-6 flex flex-col py-4 md:py-12 rounded-lg bg-red-100 neo-2xl",
+              ),
+            ],
+            [
+              h.div([a.class(" text-xl font-bold")], [
+                element.text("Confident:"),
+              ]),
+              h.p([], [
+                element.text(
+                  " A sound structural type system guarantees programs never crash",
+                ),
+              ]),
+            ],
+          ),
         ],
-        action("Watch the full guide", "#", Confident),
-        [h.div([a.class("cover")], components.vimeo_intro())],
-        True,
       ),
+      // feature(
+      //   "Edit with confidence",
+      //   [
+      //     "Edit your programs directly. Instead of carefully adjusting text the EYG editor allows you to confidently make structural changes to your program.",
+      //     "Never miss a bracket or semi-colon again.",
+      //   ],
+      //   action("Watch the full guide", "#", Confident),
+      //   [h.div([a.class("cover")], components.vimeo_intro())],
+      //   True,
+      // ),
       feature(
         "Never crash",
         [
@@ -451,7 +464,7 @@ fn view() {
         True,
       ),
       h.div([a.class("bg-green-100 vstack h-1/2")], [
-        h.div([a.class("max-w-3xl mx-auto hstack gap-6")], [
+        h.div([a.class("max-w-3xl mx-auto hstack px-1 md:gap-6")], [
           h.div([a.class("font-bold")], [
             element.text("Want to stay up to date?"),
             h.br([]),
