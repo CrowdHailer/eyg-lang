@@ -92,7 +92,7 @@ fn chapter(_index, title, content, comment) {
       h2(title),
       h.div(
         [
-          a.class("grid gap-6"),
+          a.class("md:grid gap-6"),
           a.style([#("grid-template-columns", "1fr 200px")]),
         ],
         [
@@ -139,10 +139,10 @@ fn section_content(title, chapters) {
 fn render(state) {
   h.div([a.class("")], [
     components.header(state.AuthMessage, None),
-    h.div([a.class("hstack px-4 gap-10 mx-auto")], [
+    h.div([a.class("lg:flex px-1 md:px-4 gap-10 mx-auto")], [
       h.div(
         [
-          a.class("py-12 top-0 sticky"),
+          a.class("hidden py-12 top-0 lg:block sticky"),
           a.style([#("align-self", "flex-start")]),
         ],
         [
@@ -159,7 +159,7 @@ fn render(state) {
           ]),
         ],
       ),
-      h.div([a.class("py-12")], [
+      h.div([a.class("lg:py-12")], [
         chapter(
           "1",
           "Introduction",
@@ -480,6 +480,7 @@ fn render(state) {
           None,
         ),
         h.div([a.style([#("height", "30vh")])], []),
+        components.footer(),
       ]),
     ]),
   ])

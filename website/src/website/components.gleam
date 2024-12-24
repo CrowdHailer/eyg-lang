@@ -39,35 +39,59 @@ pub fn header(authenticate, session) {
       ),
     ],
     [
-      h.a([a.class("hidden sm:block font-bold text-4xl"), a.href("/")], [
-        element.text("EYG"),
-      ]),
+      h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
       h.div([a.class("expand hstack gap-2")], [
         header_link("/editor", "Editor"),
         header_link("/documentation", "Documentation"),
       ]),
-      case session {
-        None ->
-          h.div([a.class("flex px-2 gap-2")], [
-            header_button(authenticate(auth_panel.UserClickedSignIn), "Sign in"),
-            action_button(
-              authenticate(auth_panel.UserClickedCreateAccount),
-              "Get Started",
-            ),
-          ])
-        Some(#(_session, user)) -> {
-          let auth.User(email:, ..) = user
-          h.div([a.class("flex gap-2"), a.style([#("align-items", "center")])], [
-            h.span([], [element.text(email)]),
-            action_button(
-              authenticate(auth_panel.UserClickedSignOut),
-              "Sign out",
-            ),
-          ])
-        }
-      },
+      // TODO reinstate hen something worthwhile happens
+    // case session {
+    //   None ->
+    //     h.div([a.class("flex px-2 gap-2")], [
+    //       header_button(authenticate(auth_panel.UserClickedSignIn), "Sign in"),
+    //       action_button(
+    //         authenticate(auth_panel.UserClickedCreateAccount),
+    //         "Get Started",
+    //       ),
+    //     ])
+    //   Some(#(_session, user)) -> {
+    //     let auth.User(email:, ..) = user
+    //     h.div([a.class("flex gap-2"), a.style([#("align-items", "center")])], [
+    //       h.span([], [element.text(email)]),
+    //       action_button(
+    //         authenticate(auth_panel.UserClickedSignOut),
+    //         "Sign out",
+    //       ),
+    //     ])
+    //   }
+    // },
     ],
   )
+}
+
+pub const signup = "mailing-signup"
+
+pub fn footer() {
+  h.div([a.class("bg-green-100")], [
+    h.div([a.class("max-w-3xl mx-auto hstack px-1 md:gap-6")], [
+      h.div([a.class("font-bold")], [
+        element.text("Want to stay up to date?"),
+        h.br([]),
+        element.text("Join our mailing list."),
+      ]),
+      h.script(
+        [
+          a.id(signup),
+          a.attribute("data-form", "b3a478b8-39e2-11ef-97b9-955caf3f5f36"),
+          a.src(
+            "https://eocampaign1.com/form/b3a478b8-39e2-11ef-97b9-955caf3f5f36.js",
+          ),
+          a.attribute("async", ""),
+        ],
+        "",
+      ),
+    ]),
+  ])
 }
 
 pub fn card(children) {

@@ -21,8 +21,6 @@ import website/config
 import website/routes/common
 import website/routes/home/state
 
-const signup = "mailing-signup"
-
 // TODO this can return just some code id needs to match in client and empty_lustre
 // without layout it can move to common
 pub fn app(module, func) {
@@ -387,7 +385,7 @@ fn view() {
         ],
         action(
           "Stay up to date join the mailing list.",
-          "#" <> signup,
+          "#" <> components.signup,
           Confident,
         ),
         {
@@ -444,7 +442,11 @@ fn view() {
           "EYG already has a prototyped strongly typed shell environment.",
           "We need to get it ready and bring it to you.",
         ],
-        action("Stay up to date join the mailing list.", "#" <> signup, Useful),
+        action(
+          "Stay up to date join the mailing list.",
+          "#" <> components.signup,
+          Useful,
+        ),
         [],
         False,
       ),
@@ -457,32 +459,13 @@ fn view() {
         ],
         action(
           "Stay up to date join the mailing list.",
-          "#" <> signup,
+          "#" <> components.signup,
           Confident,
         ),
         [],
         True,
       ),
-      h.div([a.class("bg-green-100 vstack h-1/2")], [
-        h.div([a.class("max-w-3xl mx-auto hstack px-1 md:gap-6")], [
-          h.div([a.class("font-bold")], [
-            element.text("Want to stay up to date?"),
-            h.br([]),
-            element.text("Join our mailing list."),
-          ]),
-          h.script(
-            [
-              a.id(signup),
-              a.attribute("data-form", "b3a478b8-39e2-11ef-97b9-955caf3f5f36"),
-              a.src(
-                "https://eocampaign1.com/form/b3a478b8-39e2-11ef-97b9-955caf3f5f36.js",
-              ),
-              a.attribute("async", ""),
-            ],
-            "",
-          ),
-        ]),
-      ]),
+      components.footer(),
     ])
   }
   |> asset.done()
