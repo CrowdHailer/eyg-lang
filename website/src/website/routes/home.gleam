@@ -1,5 +1,9 @@
 import eyg/runtime/value as v
+import eyg/sync/browser
+import eyg/sync/sync
+import gleam/http
 import gleam/list
+import gleam/option.{None}
 import harness/impl/spotless.{Config}
 import harness/impl/spotless/netlify
 import lustre
@@ -26,7 +30,12 @@ pub fn app(module, func) {
   use ssr <- asset.do(view())
   let config =
     Config(dnsimple_local: True, netlify: netlify.local, twitter_local: True)
-  let #(state, _eff) = state.init(config)
+  let #(state, _eff) =
+    state.init(#(
+      config,
+      sync.Origin(http.Https, "eyg.test", None),
+      auth_panel.in_memory_store(),
+    ))
 
   layout([
     h.div([a.id("app")], [ssr(state)]),
@@ -66,7 +75,12 @@ pub fn page() {
 pub fn client() {
   let assert Ok(render) = client.load_manifest(view())
   let app = lustre.application(state.init, state.update, render)
-  let assert Ok(_) = lustre.start(app, "#app", config.load())
+  let assert Ok(_) =
+    lustre.start(app, "#app", #(
+      config.load(),
+      browser.get_origin(),
+      auth_panel.in_memory_store(),
+    ))
   Nil
 }
 

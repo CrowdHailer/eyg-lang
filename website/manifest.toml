@@ -41,6 +41,7 @@ packages = [
 
 [requirements]
 eyg = { path = "../eyg" }
+gleam_http = { version = ">= 3.7.2 and < 4.0.0" }
 gleam_javascript = { version = ">= 0.13.0 and < 1.0.0" }
 gleam_json = { version = ">= 2.1.0 and < 3.0.0" }
 gleam_stdlib = { version = ">= 0.34.0 and < 2.0.0" }
