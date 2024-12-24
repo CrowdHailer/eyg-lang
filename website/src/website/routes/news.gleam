@@ -1,44 +1,16 @@
-import gleam/bit_array
 import gleam/int
 import gleam/list
-import gleam/result
-import gleam/string
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import mysig/asset
 import mysig/html
 import mysig/route
-import snag
 import website/routes/news/archive
 import website/routes/news/edition.{Edition}
 
-const replace_string = "!CONTENT!"
-
 pub fn route() {
-  // use template <- asset.do(asset.read(
-  //   "/src/website/routes/news/edition/email.html",
-  // ))
-  // use template <- asset.try(
-  //   bit_array.to_string(template)
-  //   |> result.replace_error(snag.new("not a utf8 string")),
-  // )
-  // let assert [latest, ..] = archive.published
-  // let content =
-  //   element.to_string(edition.render(
-  //     latest,
-  //     list.length(archive.published),
-  //     pea_src,
-  //   ))
-  // let template = string.replace(template, replace_string, content)
-
-  let items =
-    // Not good to have email in page we should make that separately
-    // [
-    // #("_email.html", route.Route(index: route.Page(template), items: [])),
-    // ]
-    web_editions(archive.published)
-  // use pea 
+  let items = web_editions(archive.published)
   route.Route(index: asset.done(element.text("no page here")), items: [
     #(
       "editions",
