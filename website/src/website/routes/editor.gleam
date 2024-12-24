@@ -1,13 +1,9 @@
 import eyg/sync/browser
 import eyg/sync/sync
-import eyg/website/components/snippet
-import eyg/website/page
-import eygir/decode
 import eygir/expression
 import eygir/tree
 import gleam/javascript/promisex
 import gleam/list
-import gleam/option.{Some}
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -15,9 +11,41 @@ import lustre/element
 import lustre/element/html as h
 import morph/editable
 import morph/lustre/components/key
+import mysig/asset
+import mysig/html
+import website/components/snippet
+import website/routes/common
 
-pub fn page(bundle) {
-  page.app(Some("editor"), "eyg/website/editor", "client", bundle)
+pub fn app(module, func) {
+  use script <- asset.do(asset.bundle(module, func))
+  layout([html.empty_lustre(), h.script([a.src(asset.src(script))], "")])
+}
+
+fn layout(body) {
+  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use neo <- asset.do(asset.load("src/website/routes/neo.css"))
+  html.doc(
+    list.flatten([
+      [
+        html.stylesheet(html.tailwind_2_2_11),
+        html.stylesheet(asset.src(layout)),
+        html.stylesheet(asset.src(neo)),
+        html.plausible("eyg.run"),
+      ],
+      common.page_meta(
+        "/",
+        "EYG",
+        "EYG is a programming language for predictable, useful and most of all confident development.",
+      ),
+    ]),
+    body,
+  )
+  |> asset.done()
+}
+
+pub fn page() {
+  use content <- asset.do(app("website/routes/editor", "client"))
+  asset.done(content)
 }
 
 pub fn client() {

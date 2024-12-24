@@ -1,5 +1,4 @@
 import gleam/bit_array
-import gleam/option.{Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h

@@ -7,13 +7,11 @@ import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
 import eyg/sync/sync
-import eyg/website/components/output
 import eyg/website/run
 import eygir/annotated
 import eygir/decode
 import eygir/encode
 import gleam/dict
-import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
@@ -38,6 +36,7 @@ import plinth/browser/document
 import plinth/browser/element as dom_element
 import plinth/browser/event as pevent
 import plinth/browser/window
+import website/components/output
 
 type ExternalBlocking =
   fn(run.Value) -> Result(promise.Promise(run.Value), run.Reason)

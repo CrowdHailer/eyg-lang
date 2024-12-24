@@ -1,7 +1,5 @@
 import eyg/sync/browser
 import eyg/sync/sync
-import eyg/website/components/auth_panel
-import eyg/website/components/snippet
 import eygir/decode
 import gleam/dict.{type Dict}
 import gleam/javascript/promisex
@@ -10,6 +8,8 @@ import gleam/option.{None, Some}
 import harness/impl/browser as harness
 import lustre/effect
 import morph/editable as e
+import website/components/auth_panel
+import website/components/snippet
 
 pub const int_key = "int"
 

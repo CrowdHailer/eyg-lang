@@ -1,10 +1,10 @@
-import eyg/website/components/auth_panel
 import gleam/option.{None, Some}
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
 import lustre/event
 import supa/auth
+import website/components/auth_panel
 
 const secondary_button_classes = "py-2 px-3 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
 

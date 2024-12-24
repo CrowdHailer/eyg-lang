@@ -2,8 +2,9 @@ import gleam/bit_array
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/uri
+import lustre/attribute as a
 import lustre/element
-import midas/task as t
+import lustre/element/html as h
 import mysig/asset
 import mysig/html
 import mysig/layout
@@ -11,9 +12,12 @@ import mysig/neo
 import mysig/preview
 
 pub fn app(title, module, func, bundle) {
-  use script <- t.do(t.bundle(module, func))
-  use script <- t.do(asset.resource(asset.js("page", script), bundle))
-  layout(title, [html.empty_lustre(), script], bundle)
+  use client <- asset.do(asset.bundle(module, func))
+  layout(
+    title,
+    [html.empty_lustre(), h.script([a.src(asset.src(client))], "")],
+    bundle,
+  )
 }
 
 fn layout(title, body, bundle) {
@@ -21,14 +25,14 @@ fn layout(title, body, bundle) {
     None -> "EYG"
     Some(title) -> "EYG - " <> title
   }
-  use layout <- t.do(asset.resource(layout.css, bundle))
-  use neo <- t.do(asset.resource(neo.css, bundle))
+  use layout <- asset.do(layout.css())
+  use neo <- asset.do(neo.css())
   html.doc(
     list.flatten([
       [
-        html.stylesheet(asset.tailwind_2_2_11),
-        layout,
-        neo,
+        html.stylesheet(html.tailwind_2_2_11),
+        html.stylesheet(asset.src(layout)),
+        html.stylesheet(asset.src(neo)),
         html.plausible("eyg.run"),
       ],
       preview.homepage(
@@ -61,6 +65,5 @@ fn layout(title, body, bundle) {
     body,
   )
   |> element.to_document_string()
-  |> bit_array.from_string()
-  |> t.done()
+  |> asset.done()
 }

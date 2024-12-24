@@ -5,8 +5,6 @@ import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value
 import eyg/sync/browser
 import eyg/sync/sync
-import eyg/website/components/auth_panel
-import eyg/website/components/snippet
 import eyg/website/reload
 import eygir/decode
 import gleam/dict.{type Dict}
@@ -20,6 +18,8 @@ import harness/stdlib
 import lustre/effect
 import morph/analysis
 import morph/editable as e
+import website/components/auth_panel
+import website/components/snippet
 
 pub type Meta =
   List(Int)
@@ -108,7 +108,8 @@ fn all_references(snippets) {
 }
 
 pub fn init(config) {
-  let cache = sync.init(browser.get_origin())
+  let #(config, origin, storage) = config
+  let cache = sync.init(origin)
   let snippets = [
     #(
       closure_serialization_key,
@@ -126,7 +127,6 @@ pub fn init(config) {
   let example = Example(value.Integer(0), t.Integer)
   let #(auth, task) = auth_panel.init(Nil)
   let state = State(auth, cache, Nothing, dict.from_list(snippets), example)
-  let assert Ok(storage) = auth_panel.local_storage("session")
 
   #(
     state,

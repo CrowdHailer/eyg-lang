@@ -1,4 +1,4 @@
-import eyg/website/news/edition.{Edition}
+import website/routes/news/edition.{Edition}
 
 pub const published = [
   Edition(

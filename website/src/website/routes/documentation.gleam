@@ -1,7 +1,3 @@
-import eyg/website/components
-import eyg/website/components/snippet
-import eyg/website/documentation/state
-import eyg/website/page
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -9,15 +5,49 @@ import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import mysig/asset
+import mysig/html
+import website/components
+import website/components/snippet
+import website/routes/common
+import website/routes/documentation/state
+
+pub fn app(module, func) {
+  use script <- asset.do(asset.bundle(module, func))
+  layout([html.empty_lustre(), h.script([a.src(asset.src(script))], "")])
+}
+
+fn layout(body) {
+  use layout <- asset.do(asset.load("src/website/routes/layout.css"))
+  use neo <- asset.do(asset.load("src/website/routes/neo.css"))
+  html.doc(
+    list.flatten([
+      [
+        html.stylesheet(html.tailwind_2_2_11),
+        html.stylesheet(asset.src(layout)),
+        html.stylesheet(asset.src(neo)),
+        html.plausible("eyg.run"),
+      ],
+      common.page_meta(
+        "/",
+        "EYG",
+        "EYG is a programming language for predictable, useful and most of all confident development.",
+      ),
+    ]),
+    body,
+  )
+  |> asset.done()
+}
+
+pub fn page() {
+  use content <- asset.do(app("website/routes/documentation", "client"))
+  asset.done(content)
+}
 
 pub fn client() {
   let app = lustre.application(state.init, state.update, render)
   let assert Ok(_) = lustre.start(app, "#app", Nil)
   Nil
-}
-
-fn h1(text) {
-  h.h1([a.class("text-2xl underline font-bold mt-8 mb-4")], [element.text(text)])
 }
 
 // doc h2
@@ -459,8 +489,4 @@ fn example(state: state.State, identifier) {
   let snippet = state.get_example(state, identifier)
   snippet.render(snippet)
   |> element.map(state.SnippetMessage(identifier, _))
-}
-
-pub fn page(bundle) {
-  page.app(Some("documentation"), "eyg/website/documentation", "client", bundle)
 }

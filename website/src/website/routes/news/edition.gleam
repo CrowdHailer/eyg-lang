@@ -24,7 +24,7 @@ fn main(sections) {
   h.div([a.style([#("padding", "1.5rem 1.5rem 0rem 1.5rem")])], sections)
 }
 
-fn header(issue_url, number) {
+fn header(issue_url, number, pea_src) {
   h.div([a.style([#("padding", ".5rem 1.5rem"), #("background", mint_green)])], [
     h.table(
       [
@@ -38,7 +38,7 @@ fn header(issue_url, number) {
           h.tr([], [
             h.td([a.style([#("vertical-align", "text-bottom")])], [
               h.img([
-                a.src("https://eyg.run/assets/pea.webp"),
+                a.src(pea_src),
                 a.width(80),
                 a.height(64),
                 a.style([
@@ -126,7 +126,7 @@ fn footer(edition_url) {
   ])
 }
 
-pub fn render(post, index) {
+pub fn render(post, index, pea_src) {
   let Edition(_date, title, raw) = post
   let document = jot.parse(raw)
   let jot.Document(content, _references) = document
@@ -145,7 +145,7 @@ pub fn render(post, index) {
         #("line-height", "1.5"),
       ]),
     ],
-    [header(edition_url, index), main(sections), footer(edition_url)],
+    [header(edition_url, index, pea_src), main(sections), footer(edition_url)],
   )
 }
 
