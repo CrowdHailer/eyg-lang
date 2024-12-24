@@ -1,13 +1,16 @@
-import gleam/dict
 import gleam/io
 import gleam/javascript/array
 import gleam/javascript/promise
 import gleam/list
 import gleam/string
+import midas/node
+import midas/sdk/netlify
+import midas/task as t
 import mysig/build
 import mysig/dev
 import mysig/route.{Route}
 import plinth/node/process
+import snag
 import website/routes/documentation
 import website/routes/editor
 import website/routes/home
@@ -18,31 +21,41 @@ pub fn main() {
 }
 
 fn do_main(args) {
-  case args {
+  use result <- promise.map(case args {
     [] as args | ["develop", ..args] -> develop(args)
-    ["build"] -> build(args)
+    ["deploy"] -> deploy(args)
     _ -> {
-      io.println("no runner for: " <> args |> string.join(" "))
-      process.exit(1)
-      promise.resolve(1)
+      promise.resolve(snag.error("no runner for: " <> args |> string.join(" ")))
     }
+  })
+  case result {
+    Ok(Nil) -> Nil
+    Error(reason) -> io.println(snag.pretty_print(reason))
   }
 }
 
-fn build(_args) {
-  use result <- promise.await(build.to_files(routes()))
-  case result {
-    Ok(files) -> {
-      io.debug(dict.keys(dict.from_list(files)))
-      todo
-    }
-    Error(reason) -> promise.resolve(1)
+// doesn't have client secret
+pub const netlify_local_app = netlify.App(
+  "cQmYKaFm-2VasrJeeyobXXz5G58Fxy2zQ6DRMPANWow",
+  "http://localhost:8080/auth/netlify",
+)
+
+const site_id = "eae24b5b-4854-4973-8a9f-8fb3b1c423c0"
+
+fn deploy(_args) {
+  use files <- promise.try_await(build.to_files(routes()))
+  let task = {
+    use token <- t.do(netlify.authenticate(netlify_local_app))
+    use _ <- t.do(netlify.deploy_site(token, site_id, files))
+    use _ <- t.do(t.log("Deployed"))
+    t.done(Nil)
   }
+  node.run(task, ".")
 }
 
 fn develop(_args) {
   dev.serve(routes())
-  promise.resolve(0)
+  promise.resolve(Ok(Nil))
 }
 
 fn routes() {

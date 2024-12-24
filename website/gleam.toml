@@ -27,6 +27,7 @@ lustre = ">= 4.6.3 and < 5.0.0"
 midas_browser = ">= 0.1.2 and < 1.0.0"
 supa = ">= 1.0.1 and < 2.0.0"
 jot = ">= 1.1.0 and < 2.0.0"
+midas_sdk = ">= 0.4.2 and < 1.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
