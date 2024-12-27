@@ -255,76 +255,87 @@ pub fn update(state: State, message) {
 }
 
 pub fn render(state: State) {
-  h.div([a.class("flex flex-col h-screen")], [
+  h.div([a.class("flex flex-col h-screen  blue-gradient")], [
     components.header(fn(_) { todo as "wire auth" }, None),
-    h.div([a.class("grid grid-cols-2 h-full")], [
+    h.div([a.class("grid grid-cols-2 gap-6 p-6 h-full")], [
       h.div(
-        [a.class("flex-grow flex flex-col justify-center w-full  font-mono ")],
+        [
+          a.class(
+            "flex-grow flex flex-col justify-center w-full rounded-xl border-2 border-black bg-white overflow-hidden neo-shadow font-mono ",
+          ),
+        ],
         snippet.bare_render(state.source),
       )
         |> element.map(SnippetMessage),
-      h.div([a.class("cover vstack w-full bg-white")], [
-        h.div([a.class("expand vstack"), a.style([#("min-height", "0")])], case
-          list.length(state.shell.previous)
-        {
-          0 -> [
-            h.h2([a.class("texl-lg font-bold")], [element.text("The console")]),
-            h.div([a.class("text-gray-700")], [
-              element.text("Run and test your code here. "),
-              h.a([a.class("border-b border-indigo-700")], [
-                element.text("help."),
+      h.div(
+        [
+          a.class(
+            "cover vstack w-full rounded-xl border-2 border-black bg-white overflow-hidden neo-shadow",
+          ),
+        ],
+        [
+          h.div([a.class("expand vstack"), a.style([#("min-height", "0")])], case
+            list.length(state.shell.previous)
+          {
+            0 -> [
+              h.h2([a.class("texl-lg font-bold")], [element.text("The console")]),
+              h.div([a.class("text-gray-700")], [
+                element.text("Run and test your code here. "),
+                h.a([a.class("border-b border-indigo-700")], [
+                  element.text("help."),
+                ]),
               ]),
-            ]),
-          ]
-          _ -> []
-        }),
-        h.div(
-          [a.class("cover font-mono bg-gray-100")],
-          list.map(list.reverse(state.shell.previous), fn(p) {
-            case p {
-              Executed(value, effects, prog) ->
-                h.div([a.class("w-full max-w-4xl")], [
-                  h.div(
-                    [a.class("px-2 whitespace-nowrap overflow-auto")],
-                    render.statements(prog),
-                  ),
-                  h.div(
-                    [a.class("px-2 bg-gray-200")],
-                    list.map(effects, fn(eff) {
-                      h.div([], [
-                        element.text(eff.0),
-                        output.render(eff.1.0),
-                        output.render(eff.1.1),
-                      ])
-                    }),
-                  ),
-                  case value {
-                    Some(value) ->
-                      h.div(
-                        [a.class("px-2 bg-gray-200 max-h-60 overflow-auto")],
-                        [output.render(value)],
-                      )
-                    None -> element.none()
-                  },
-                ])
-              Reloaded ->
-                h.div(
-                  [
-                    a.class(
-                      "separator mx-12 mt-1 border-blue-400 text-blue-400",
-                    ),
-                  ],
-                  [element.text("Reloaded")],
-                )
-            }
+            ]
+            _ -> []
           }),
-        ),
-        h.div(
-          [a.class("cover font-mono")],
-          snippet.bare_render(state.shell.source),
-        )
-          |> element.map(ShellMessage),
-      ]),
+          h.div(
+            [a.class("cover font-mono bg-gray-100")],
+            list.map(list.reverse(state.shell.previous), fn(p) {
+              case p {
+                Executed(value, effects, prog) ->
+                  h.div([a.class("w-full max-w-4xl")], [
+                    h.div(
+                      [a.class("px-2 whitespace-nowrap overflow-auto")],
+                      render.statements(prog),
+                    ),
+                    h.div(
+                      [a.class("px-2 bg-gray-200")],
+                      list.map(effects, fn(eff) {
+                        h.div([], [
+                          element.text(eff.0),
+                          output.render(eff.1.0),
+                          output.render(eff.1.1),
+                        ])
+                      }),
+                    ),
+                    case value {
+                      Some(value) ->
+                        h.div(
+                          [a.class("px-2 bg-gray-200 max-h-60 overflow-auto")],
+                          [output.render(value)],
+                        )
+                      None -> element.none()
+                    },
+                  ])
+                Reloaded ->
+                  h.div(
+                    [
+                      a.class(
+                        "separator mx-12 mt-1 border-blue-400 text-blue-400",
+                      ),
+                    ],
+                    [element.text("Reloaded")],
+                  )
+              }
+            }),
+          ),
+          h.div(
+            [a.class("cover font-mono")],
+            snippet.bare_render(state.shell.source),
+          )
+            |> element.map(ShellMessage),
+        ],
+      ),
     ]),
     case state.display_help {
       True ->
