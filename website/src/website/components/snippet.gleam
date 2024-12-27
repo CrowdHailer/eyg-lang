@@ -919,7 +919,7 @@ pub fn bare_render(state) {
       case mode {
         Command(e) -> {
           [
-            render_projection(proj, True),
+            actual_render_projection(proj, True),
             case e {
               Some(failure) ->
                 h.div([a.class("border-2 border-orange-4 px-2")], [
@@ -930,19 +930,19 @@ pub fn bare_render(state) {
           ]
         }
         Pick(picker, _rebuild) -> [
-          render_projection(proj, False),
+          actual_render_projection(proj, False),
           picker.render(picker)
             |> element.map(MessageFromPicker),
         ]
 
         EditText(value, _rebuild) -> [
-          render_projection(proj, False),
+          actual_render_projection(proj, False),
           input.render_text(value)
             |> element.map(MessageFromInput),
         ]
 
         EditInteger(value, _rebuild) -> [
-          render_projection(proj, False),
+          actual_render_projection(proj, False),
           input.render_number(value)
             |> element.map(MessageFromInput),
         ]
@@ -981,7 +981,54 @@ pub fn render_errors(errors) {
   )
 }
 
-fn render_projection(proj, autofocus) {
+pub fn render_pallet(state) {
+  let Snippet(status: status, ..) = state
+  case status {
+    Editing(mode) ->
+      case mode {
+        Command(_errors) -> []
+
+        Pick(picker, _rebuild) -> [
+          picker.render(picker)
+          |> element.map(MessageFromPicker),
+        ]
+
+        EditText(value, _rebuild) -> [
+          input.render_text(value)
+          |> element.map(MessageFromInput),
+        ]
+
+        EditInteger(value, _rebuild) -> [
+          input.render_number(value)
+          |> element.map(MessageFromInput),
+        ]
+      }
+
+    Idle -> []
+  }
+}
+
+pub fn render_just_projection(state, autofocus) {
+  let Snippet(status: status, source: source, ..) = state
+  let #(proj, _, _analysis) = source
+  case status {
+    Editing(_mode) -> {
+      io.debug("rendering projecto")
+      actual_render_projection(proj, autofocus)
+    }
+    Idle ->
+      h.div(
+        [
+          a.class("p-2 outline-none my-auto"),
+          a.attribute("tabindex", "0"),
+          event.on_focus(UserFocusedOnCode),
+        ],
+        render.statements(source.1),
+      )
+  }
+}
+
+fn actual_render_projection(proj, autofocus) {
   h.div(
     [
       a.class("p-2 outline-none my-auto"),
@@ -991,6 +1038,7 @@ fn render_projection(proj, autofocus) {
           a.attribute("autofocus", "true"),
           // a.autofocus(True),
           event.on("keydown", fn(event) {
+            io.debug("keydown")
             let assert Ok(event) = pevent.cast_keyboard_event(event)
             let key = pevent.key(event)
             let shift = pevent.shift_key(event)

@@ -190,7 +190,7 @@ pub fn update(state: State, message) {
         snippet.MoveAbove -> {
           case shell.previous {
             [] -> todo
-            [Executed(_value, effects, exp), ..] -> {
+            [Executed(_value, _effects, exp), ..] -> {
               let current =
                 snippet.active(
                   exp,
@@ -201,7 +201,7 @@ pub fn update(state: State, message) {
                 )
               #(Shell(..shell, source: current), effect.none())
             }
-            [Reloaded, Executed(_value, effects, exp), ..] -> {
+            [Reloaded, Executed(_value, _effects, exp), ..] -> {
               let current =
                 snippet.active(
                   exp,
@@ -254,8 +254,39 @@ pub fn update(state: State, message) {
   }
 }
 
+fn modal(content) {
+  element.fragment([
+    h.div(
+      [
+        a.class("fixed inset-0 bg-gray-100 bg-opacity-40 vstack z-10"),
+        // event.on_click(Cancel),
+      ],
+      [],
+    ),
+    h.div(
+      [
+        a.class(
+          "-translate-x-1/2 -translate-y-1/2 fixed left-1/2 max-w-md top-1/2 transform translate-x-1/2 w-full z-20",
+        ),
+      ],
+      [
+        h.div(
+          [a.class("w-full max-w-md bg-white neo-shadow border-2 border-black")],
+          content,
+        ),
+      ],
+    ),
+  ])
+}
+
 pub fn render(state: State) {
   h.div([a.class("flex flex-col h-screen  blue-gradient")], [
+    case snippet.render_pallet(state.shell.source) {
+      [] -> element.none()
+      something ->
+        modal(something)
+        |> element.map(ShellMessage)
+    },
     components.header(fn(_) { todo as "wire auth" }, None),
     h.div([a.class("grid grid-cols-2 gap-6 p-6 h-full")], [
       h.div(
@@ -329,10 +360,9 @@ pub fn render(state: State) {
               }
             }),
           ),
-          h.div(
-            [a.class("cover font-mono")],
-            snippet.bare_render(state.shell.source),
-          )
+          h.div([a.class("cover font-mono")], [
+            snippet.render_just_projection(state.shell.source, True),
+          ])
             |> element.map(ShellMessage),
         ],
       ),
