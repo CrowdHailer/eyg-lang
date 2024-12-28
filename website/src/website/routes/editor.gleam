@@ -310,10 +310,10 @@ pub fn render(state: State) {
     // components.header(fn(_) { todo as "wire auth" }, None),
     h.div(
       [
-        a.class("mx-auto grid gap-1 md:gap-2 p-2 md:p-6 h-full"),
+        a.class("md:mx-auto grid gap-1 md:gap-2 p-2 md:p-6 h-full"),
         case state.display_help {
           False ->
-            a.style([#("grid-template-columns", "2.5rem minmax(400px, 720px)")])
+            a.style([#("grid-template-columns", "2.5rem minmax(0px, 720px)")])
           True ->
             a.style([#("grid-template-columns", "10rem minmax(400px, 720px)")])
         },
@@ -346,6 +346,7 @@ pub fn render(state: State) {
           ]),
           ..list.map(
             [
+              #(outline.equals(), "assign", "e"),
               #(outline.bolt_slash(), "handle effect", "h"),
               #(outline.bolt(), "perform effect", "p"),
               #(element.text("x"), "use variable", "v"),
@@ -353,7 +354,9 @@ pub fn render(state: State) {
               #(element.text("14"), "insert number", "n"),
               #(outline.language(), "insert text", "s"),
               #(outline.tag(), "tag value", "t"),
+              #(outline.table_cells(), "new record", "r"),
               #(outline.arrows_pointing_out(), "expand", "a"),
+              #(outline.trash(), "delete", "d"),
             ],
             fn(entry) {
               let #(i, text, k) = entry
@@ -368,19 +371,26 @@ pub fn render(state: State) {
           )
         ]),
         h.div(
-          [a.class("cover vstack w-full rounded-lg overflow-hidden bg-white")],
+          [
+            a.class(
+              "cover vstack w-full rounded-lg overflow-hidden bg-gray-100",
+            ),
+          ],
           [
             h.div([a.class("expand vstack"), a.style([#("min-height", "0")])], case
               list.length(state.shell.previous)
             {
               0 -> [
-                h.h2([a.class("texl-lg font-bold")], [
-                  element.text("The console"),
-                ]),
-                h.div([a.class("text-gray-700")], [
-                  element.text("Run and test your code here. "),
-                  h.a([a.class("border-b border-indigo-700")], [
-                    element.text("help."),
+                h.div([a.class("px-2 text-gray-700 cover")], [
+                  h.h2([a.class("texl-lg font-bold")], [
+                    element.text("The console"),
+                  ]),
+                  h.p([], [element.text("Run and test your code here. ")]),
+                  h.button([a.class("underline"), event.on_click(ToggleHelp)], [
+                    case state.display_help {
+                      True -> element.text("Hide help.")
+                      False -> element.text("Show help.")
+                    },
                   ]),
                 ]),
               ]
@@ -391,30 +401,34 @@ pub fn render(state: State) {
               list.map(list.reverse(state.shell.previous), fn(p) {
                 case p {
                   Executed(value, effects, prog) ->
-                    h.div([a.class("w-full max-w-4xl")], [
-                      h.div(
-                        [a.class("px-2 whitespace-nowrap overflow-auto")],
-                        render.statements(prog),
-                      ),
-                      h.div(
-                        [a.class("px-2 bg-gray-200")],
-                        list.map(effects, fn(eff) {
-                          h.div([], [
-                            element.text(eff.0),
-                            output.render(eff.1.0),
-                            output.render(eff.1.1),
-                          ])
-                        }),
-                      ),
-                      case value {
-                        Some(value) ->
-                          h.div(
-                            [a.class("px-2 bg-gray-200 max-h-60 overflow-auto")],
-                            [output.render(value)],
-                          )
-                        None -> element.none()
-                      },
-                    ])
+                    h.div(
+                      [a.class("mx-2 border-t border-gray-600 border-dashed")],
+                      [
+                        h.div(
+                          [a.class("whitespace-nowrap overflow-auto")],
+                          render.statements(prog),
+                        ),
+                        h.div(
+                          [a.class("")],
+                          list.map(effects, fn(eff) {
+                            h.div([a.class("flex gap-1")], [
+                              h.span([a.class("text-blue-700")], [
+                                element.text(eff.0),
+                              ]),
+                              output.render(eff.1.0),
+                              output.render(eff.1.1),
+                            ])
+                          }),
+                        ),
+                        case value {
+                          Some(value) ->
+                            h.div([a.class(" max-h-60 overflow-auto")], [
+                              output.render(value),
+                            ])
+                          None -> element.none()
+                        },
+                      ],
+                    )
                   Reloaded ->
                     h.div(
                       [
@@ -427,9 +441,13 @@ pub fn render(state: State) {
                 }
               }),
             ),
-            h.div([a.class("cover font-mono")], [
-              snippet.render_just_projection(state.shell.source, True),
-            ])
+            h.div(
+              [
+                a.class("cover font-mono bg-white"),
+                a.style([#("min-height", "5rem")]),
+              ],
+              [snippet.render_just_projection(state.shell.source, True)],
+            )
               |> element.map(ShellMessage),
           ],
         ),

@@ -558,25 +558,26 @@ pub fn projection_frame(zip, is_expression) {
   let rev = t.path_to_zoom(zoom, [])
   let rev = list.reverse(rev)
   case focus {
-    t.Exp(e.Vacant(_)) ->
-      highlight.frame(
-        frame.Inline([
-          // made as an input for copy paste
-          h.input([
-            exp_key(rev),
-            a.placeholder("Vacant"),
-            a.class("placeholder-red-700 w-14 outline-none bg-transparent"),
-            a.id("highlighted"),
-            a.style([#("caret-color", "transparent")]),
-            // TODO does the paste event bubble
-            // if works we need a paste with path location
-            event.on("keydown", fn(event) {
-              event.prevent_default(event)
-              Error([])
-            }),
-          ]),
-        ]),
-      )
+    // Doesnt work for copy paste
+    // t.Exp(e.Vacant(_)) ->
+    //   highlight.frame(
+    //     frame.Inline([
+    //       // made as an input for copy paste
+    //       h.input([
+    //         exp_key(rev),
+    //         a.placeholder("Vacant"),
+    //         a.class("placeholder-red-700 w-14 outline-none bg-transparent"),
+    //         a.id("highlighted"),
+    //         a.style([#("caret-color", "transparent")]),
+    //         // TODO does the paste event bubble
+    //         // if works we need a paste with path location
+    //         event.on("keydown", fn(event) {
+    //           event.prevent_default(event)
+    //           Error([])
+    //         }),
+    //       ]),
+    //     ]),
+    //   )
     t.Exp(exp) -> highlight.frame(expression(exp, rev))
     t.Assign(detail, value, pre, post, then) -> {
       let self = list.length(pre)
