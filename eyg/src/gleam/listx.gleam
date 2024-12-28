@@ -70,6 +70,14 @@ pub fn map_at(items, i, f) {
   Ok(list.flatten([pre, [f(item)], post]))
 }
 
+pub fn starts_with(list, prefix) {
+  case list, prefix {
+    [a, ..list], [b, ..prefix] if a == b -> starts_with(list, prefix)
+    _, [] -> True
+    _, _ -> False
+  }
+}
+
 pub fn keys(pairs) {
   list.map(pairs, fn(pair) {
     let #(key, _value) = pair

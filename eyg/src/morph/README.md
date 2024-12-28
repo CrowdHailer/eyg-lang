@@ -36,4 +36,12 @@ The tree could be enhanced with meta data or we need to map to a plain AST conce
 
 ## Morph/Lustre
 
-Render `Editable` code and 
+Render `Editable` code and `Projection`s into HTML using Lustre elements.
+
+## Paths
+
+Each node in the Editable tree can be found by a path to it.
+The path is a list of integers where each integer identifies the child of a node to step to to continue the path.
+
+## Projections
+

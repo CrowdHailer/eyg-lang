@@ -12,6 +12,8 @@ import eygir/annotated
 import eygir/decode
 import eygir/encode
 import gleam/dict
+import gleam/dynamicx
+import gleam/int
 import gleam/io
 import gleam/javascript/promise
 import gleam/list
@@ -36,6 +38,7 @@ import plinth/browser/document
 import plinth/browser/element as dom_element
 import plinth/browser/event as pevent
 import plinth/browser/window
+import plinth/javascript/console
 import website/components/output
 
 type ExternalBlocking =
@@ -337,6 +340,11 @@ pub fn update(state, message) {
     UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
     UserClickedPath(path), _ ->
       navigate_source(p.focus_at(editable, path), state)
+    // This is unhelpful as hard if big blocks are selected
+    // case listx.starts_with(path, p.path(proj)) && p.path(proj) != [] {
+    //   True -> increase(state)
+    //   False -> navigate_source(p.focus_at(editable, path), state)
+    // }
     MessageFromInput(message), Editing(EditText(value, rebuild)) ->
       case input.update_text(value, message) {
         input.Continue(value) -> keep_editing(state, EditText(value, rebuild))
@@ -1013,7 +1021,6 @@ pub fn render_just_projection(state, autofocus) {
   let #(proj, _, _analysis) = source
   case status {
     Editing(_mode) -> {
-      io.debug("rendering projecto")
       actual_render_projection(proj, autofocus)
     }
     Idle ->
@@ -1037,8 +1044,30 @@ fn actual_render_projection(proj, autofocus) {
           a.attribute("tabindex", "0"),
           a.attribute("autofocus", "true"),
           // a.autofocus(True),
+          event.on("click", fn(event) {
+            let assert Ok(e) = pevent.cast_event(event)
+            let target = pevent.target(e)
+            let rev =
+              target
+              |> dynamicx.unsafe_coerce
+              |> dom_element.dataset_get("rev")
+            case rev {
+              Ok(rev) -> {
+                let assert Ok(rev) = case rev {
+                  "" -> Ok([])
+                  _ ->
+                    string.split(rev, ",")
+                    |> list.try_map(int.parse)
+                }
+                Ok(UserClickedPath(list.reverse(rev)))
+              }
+              Error(_) -> {
+                console.log(target)
+                Error([])
+              }
+            }
+          }),
           event.on("keydown", fn(event) {
-            io.debug("keydown")
             let assert Ok(event) = pevent.cast_keyboard_event(event)
             let key = pevent.key(event)
             let shift = pevent.shift_key(event)
