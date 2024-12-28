@@ -72,6 +72,7 @@ pub fn render(picker) {
         [
           a.class("px-3 py-1 flex"),
           a.classes([#("bg-gray-800 text-white", i == index)]),
+          event.on_click(Decided(name)),
         ],
         [
           h.span([a.class("font-bold")], [text(name)]),
