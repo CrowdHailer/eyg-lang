@@ -1,6 +1,7 @@
 import eyg/sync/browser
 import eyg/sync/sync
 import eygir/expression
+import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -15,6 +16,7 @@ import lustre/event
 import morph/editable
 import morph/lustre/components/key
 import morph/lustre/render
+import morph/picker
 import mysig/asset
 import mysig/html
 import website/components
@@ -163,7 +165,10 @@ pub fn update(state: State, message) {
           display_help,
           dispatch_to_snippet(snippet.write_to_clipboard(text)),
         )
-        snippet.Conclude(_, _, _) -> #(display_help, effect.none())
+        snippet.Conclude(_, _, _) -> {
+          io.debug("conclude")
+          #(display_help, effect.none())
+        }
       }
       let #(cache, tasks) = sync.fetch_all_missing(state.cache)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
@@ -266,7 +271,7 @@ fn modal(content) {
     h.div(
       [
         a.class("fixed inset-0 bg-gray-100 bg-opacity-40 vstack z-10"),
-        // event.on_click(Cancel),
+        event.on_click(snippet.MessageFromPicker(picker.Dismissed)),
       ],
       [],
     ),
@@ -288,7 +293,7 @@ fn modal(content) {
 
 fn icon(image, text, display_help) {
   h.span([a.class("flex"), a.style([#("align-items", "center")])], [
-    h.span([a.class("inline-block w-5 text-center text-xl ")], [image]),
+    h.span([a.class("inline-block w-6 text-center text-xl")], [image]),
     case display_help {
       True ->
         h.span([a.class("ml-2 border-l border-opacity-25 pl-2")], [
@@ -301,21 +306,25 @@ fn icon(image, text, display_help) {
 
 pub fn render(state: State) {
   h.div([a.class("flex flex-col h-screen bg-gray-900 overflow-hidden")], [
-    case snippet.render_pallet(state.shell.source) {
-      [] -> element.none()
-      something ->
-        modal(something)
-        |> element.map(ShellMessage)
-    },
+    // case snippet.render_pallet(state.shell.source) {
+    //   [] -> element.none()
+    //   something ->
+    //     modal(something)
+    //     |> element.map(ShellMessage)
+    // },
     // components.header(fn(_) { todo as "wire auth" }, None),
     h.div(
       [
         a.class("md:mx-auto grid gap-1 md:gap-2 p-2 md:p-6 h-full"),
         case state.display_help {
           False ->
-            a.style([#("grid-template-columns", "2.5rem minmax(0px, 720px)")])
+            a.style([
+              #("grid-template-columns", "max-content minmax(0px, 720px)"),
+            ])
           True ->
-            a.style([#("grid-template-columns", "10rem minmax(400px, 720px)")])
+            a.style([
+              #("grid-template-columns", "max-content minmax(400px, 720px)"),
+            ])
         },
       ],
       [
@@ -351,10 +360,14 @@ pub fn render(state: State) {
               #(outline.bolt(), "perform effect", "p"),
               #(element.text("x"), "use variable", "v"),
               #(outline.variable(), "insert function", "f"),
+              #(element.text("()"), "call function", "c"),
               #(element.text("14"), "insert number", "n"),
               #(outline.language(), "insert text", "s"),
+              #(element.text("[]"), "new list", "l"),
+              #(element.text("{}"), "new record", "r"),
               #(outline.tag(), "tag value", "t"),
-              #(outline.table_cells(), "new record", "r"),
+              #(outline.arrows_right_left(), "match", "m"),
+              #(outline.cog(), "builtins", "j"),
               #(outline.arrows_pointing_out(), "expand", "a"),
               #(outline.trash(), "delete", "d"),
             ],
@@ -373,10 +386,16 @@ pub fn render(state: State) {
         h.div(
           [
             a.class(
-              "cover vstack w-full rounded-lg overflow-hidden bg-gray-100",
+              "relative cover vstack w-full rounded-lg overflow-hidden bg-gray-100",
             ),
           ],
           [
+            case snippet.render_pallet(state.shell.source) {
+              [] -> element.none()
+              something ->
+                modal(something)
+                |> element.map(ShellMessage)
+            },
             h.div([a.class("expand vstack"), a.style([#("min-height", "0")])], case
               list.length(state.shell.previous)
             {
@@ -441,6 +460,19 @@ pub fn render(state: State) {
                 }
               }),
             ),
+            // snippet.render_current([], state.shell.source.run)
+            //   |> element.map(ShellMessage),
+            h.div([a.class("w-full text-right px-2")], [
+              h.button(
+                [
+                  a.class("inline-block w-6 text-center text-xl"),
+                  event.on_click(
+                    ShellMessage(snippet.UserPressedCommandKey("Enter")),
+                  ),
+                ],
+                [outline.play_circle()],
+              ),
+            ]),
             h.div(
               [
                 a.class("cover font-mono bg-white"),

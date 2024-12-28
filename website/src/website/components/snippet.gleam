@@ -987,7 +987,7 @@ pub fn bare_render(state) {
   }
 }
 
-fn render_current(errors, run: run.Run) {
+pub fn render_current(errors, run: run.Run) {
   case errors {
     [] -> render_run(run.status)
     _ -> render_errors(errors)
