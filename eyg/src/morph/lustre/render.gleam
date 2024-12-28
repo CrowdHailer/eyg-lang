@@ -528,7 +528,7 @@ fn render_break(break, inner, rev, is_expression) {
   }
 }
 
-fn push_render(frame, zoom, is_expression) {
+pub fn push_render(frame, zoom, is_expression) {
   case zoom {
     [] -> frame
     [break, ..rest] -> {
@@ -545,11 +545,19 @@ fn push_render(frame, zoom, is_expression) {
 }
 
 pub fn projection(zip, is_expression) -> element.Element(a) {
-  let #(focus, zoom) = zip
+  let #(_focus, zoom) = zip
   // This is NOT reversed because zoom works from inside out
+  let frame = projection_frame(zip, is_expression)
+  push_render(frame, zoom, is_expression)
+  |> frame.to_fat_line
+  // TO fat line is very similar to top function
+}
+
+pub fn projection_frame(zip, is_expression) {
+  let #(focus, zoom) = zip
   let rev = t.path_to_zoom(zoom, [])
   let rev = list.reverse(rev)
-  let frame = case focus {
+  case focus {
     t.Exp(e.Vacant(_)) ->
       highlight.frame(
         frame.Inline([
@@ -729,9 +737,6 @@ pub fn projection(zip, is_expression) -> element.Element(a) {
       )
     }
   }
-  push_render(frame, zoom, is_expression)
-  |> frame.to_fat_line
-  // TO fat line is very similar to top function
 }
 
 fn do_assign(kv, rev) {

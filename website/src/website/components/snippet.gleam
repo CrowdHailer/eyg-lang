@@ -28,6 +28,7 @@ import morph/action
 import morph/analysis
 import morph/editable as e
 import morph/input
+import morph/lustre/frame
 import morph/lustre/render
 import morph/navigation
 import morph/picker
@@ -81,6 +82,7 @@ pub type Snippet {
   Snippet(
     status: Status,
     source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
+    using_mouse: Bool,
     history: History,
     run: run.Run,
     scope: Scope,
@@ -95,6 +97,7 @@ pub fn init(editable, scope, effects, cache) {
   Snippet(
     Idle,
     new_source(proj, editable, scope, effects, cache),
+    False,
     History([], []),
     run.start(editable, scope, effects, cache),
     scope,
@@ -110,6 +113,7 @@ pub fn active(editable, scope, effects, cache) {
   Snippet(
     Editing(Command(None)),
     new_source(proj, editable, scope, effects, cache),
+    False,
     History([], []),
     run.start(editable, scope, effects, cache),
     scope,
@@ -165,6 +169,7 @@ pub type Message {
   UserClickRunEffects
   UserPressedCommandKey(String)
   UserClickedPath(List(Int))
+  UserClickedCode(List(Int))
   MessageFromInput(input.Message)
   MessageFromPicker(picker.Message)
   RuntimeRepliedFromExternalEffect(run.Value)
@@ -292,6 +297,7 @@ pub fn update(state, message) {
       Nothing,
     )
     UserPressedCommandKey(key), Editing(Command(_)) -> {
+      let state = Snippet(..state, using_mouse: False)
       case key {
         "ArrowRight" -> move_right(state)
         "ArrowLeft" -> move_left(state)
@@ -313,7 +319,7 @@ pub fn update(state, message) {
         "p" -> insert_perform(state)
         "a" -> increase(state)
         "s" -> insert_string(state)
-        "d" -> delete(state)
+        "d" | "Delete" -> delete(state)
         "f" -> insert_function(state)
         "g" -> select_field(state)
         "h" -> insert_handle(state)
@@ -345,6 +351,11 @@ pub fn update(state, message) {
     //   True -> increase(state)
     //   False -> navigate_source(p.focus_at(editable, path), state)
     // }
+    UserClickedCode(path), _ ->
+      navigate_source(
+        p.focus_at(editable, path),
+        Snippet(..state, using_mouse: True),
+      )
     MessageFromInput(message), Editing(EditText(value, rebuild)) ->
       case input.update_text(value, message) {
         input.Continue(value) -> keep_editing(state, EditText(value, rebuild))
@@ -915,7 +926,13 @@ pub fn render_editor(state: Snippet) {
 }
 
 pub fn bare_render(state) {
-  let Snippet(status: status, source: source, run: run, ..) = state
+  let Snippet(
+    status: status,
+    source: source,
+    run: run,
+    using_mouse: using_mouse,
+    ..,
+  ) = state
   let #(proj, _, analysis) = source
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
@@ -927,7 +944,7 @@ pub fn bare_render(state) {
       case mode {
         Command(e) -> {
           [
-            actual_render_projection(proj, True),
+            actual_render_projection(proj, True, using_mouse),
             case e {
               Some(failure) ->
                 h.div([a.class("border-2 border-orange-4 px-2")], [
@@ -938,19 +955,19 @@ pub fn bare_render(state) {
           ]
         }
         Pick(picker, _rebuild) -> [
-          actual_render_projection(proj, False),
+          actual_render_projection(proj, False, using_mouse),
           picker.render(picker)
             |> element.map(MessageFromPicker),
         ]
 
         EditText(value, _rebuild) -> [
-          actual_render_projection(proj, False),
+          actual_render_projection(proj, False, using_mouse),
           input.render_text(value)
             |> element.map(MessageFromInput),
         ]
 
         EditInteger(value, _rebuild) -> [
-          actual_render_projection(proj, False),
+          actual_render_projection(proj, False, using_mouse),
           input.render_number(value)
             |> element.map(MessageFromInput),
         ]
@@ -1017,11 +1034,12 @@ pub fn render_pallet(state) {
 }
 
 pub fn render_just_projection(state, autofocus) {
-  let Snippet(status: status, source: source, ..) = state
+  let Snippet(status: status, source: source, using_mouse: using_mouse, ..) =
+    state
   let #(proj, _, _analysis) = source
   case status {
     Editing(_mode) -> {
-      actual_render_projection(proj, autofocus)
+      actual_render_projection(proj, autofocus, using_mouse)
     }
     Idle ->
       h.div(
@@ -1035,7 +1053,7 @@ pub fn render_just_projection(state, autofocus) {
   }
 }
 
-fn actual_render_projection(proj, autofocus) {
+fn actual_render_projection(proj, autofocus, using_mouse) {
   h.div(
     [
       a.class("p-2 outline-none my-auto"),
@@ -1059,7 +1077,7 @@ fn actual_render_projection(proj, autofocus) {
                     string.split(rev, ",")
                     |> list.try_map(int.parse)
                 }
-                Ok(UserClickedPath(list.reverse(rev)))
+                Ok(UserClickedCode(list.reverse(rev)))
               }
               Error(_) -> {
                 console.log(target)
@@ -1102,8 +1120,17 @@ fn actual_render_projection(proj, autofocus) {
         False -> []
       }
     ],
-    [render.projection(proj, False)],
+    [render_projection(proj, using_mouse)],
   )
+}
+
+fn render_projection(proj, _using_mouse) {
+  let #(_focus, zoom) = proj
+  let is_expression = False
+  // This is NOT reversed because zoom works from inside out
+  let frame = render.projection_frame(proj, is_expression)
+  render.push_render(frame, zoom, is_expression)
+  |> frame.to_fat_line
 }
 
 fn render_run(run) {

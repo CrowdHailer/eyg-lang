@@ -38,6 +38,12 @@ The tree could be enhanced with meta data or we need to map to a plain AST conce
 
 Render `Editable` code and `Projection`s into HTML using Lustre elements.
 
+The projections are built into a set of nested frames,
+indicating in the printed output is single line or multiline.
+This abstraction might match the formatting libraries that already exist and is so using one of them might be a good idea.
+
+Rendering something at the focus of a projection can be done by using the `projection_frame` function
+
 ## Paths
 
 Each node in the Editable tree can be found by a path to it.
