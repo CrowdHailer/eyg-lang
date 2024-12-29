@@ -314,7 +314,7 @@ fn icon(image, text, display_help, active) {
 }
 
 pub fn render(state: State) {
-  h.div([a.class("flex flex-col h-screen bg-gray-900 overflow-hidden")], [
+  h.div([a.class("h-screen bg-gray-900 overflow-hidden")], [
     // case snippet.render_pallet(state.shell.source) {
     //   [] -> element.none()
     //   something ->
@@ -324,7 +324,7 @@ pub fn render(state: State) {
     // components.header(fn(_) { todo as "wire auth" }, None),
     h.div(
       [
-        a.class("md:mx-auto grid gap-1 md:gap-2 p-2 md:p-6 h-full"),
+        a.class("md:mx-auto grid gap-1 flex justify-center md:gap-2 h-full"),
         case state.display_help {
           False ->
             a.style([
@@ -348,108 +348,125 @@ pub fn render(state: State) {
         //   |> element.map(SnippetMessage),
         render_menu(state),
         h.div(
+          [a.class("cover flex flex-col pr-2 py-2 md:py-6  overflow-hidden")],
           [
-            a.class(
-              "relative cover vstack w-full rounded-lg overflow-hidden bg-gray-100",
-            ),
-          ],
-          [
-            case snippet.render_pallet(state.shell.source) {
-              [] -> element.none()
-              something ->
-                modal(something)
-                |> element.map(ShellMessage)
-            },
-            h.div([a.class("expand vstack"), a.style([#("min-height", "0")])], case
-              list.length(state.shell.previous)
-            {
-              0 -> [
-                h.div([a.class("px-2 text-gray-700 cover")], [
-                  h.h2([a.class("texl-lg font-bold")], [
-                    element.text("The console"),
-                  ]),
-                  h.p([], [element.text("Run and test your code here. ")]),
-                  h.button([a.class("underline"), event.on_click(ToggleHelp)], [
-                    case state.display_help {
-                      True -> element.text("Hide help.")
-                      False -> element.text("Show help.")
-                    },
-                  ]),
-                ]),
-              ]
-              _ -> []
-            }),
-            h.div(
-              [a.class("cover font-mono bg-gray-100")],
-              list.map(list.reverse(state.shell.previous), fn(p) {
-                case p {
-                  Executed(value, effects, prog) ->
-                    h.div(
-                      [a.class("mx-2 border-t border-gray-600 border-dashed")],
-                      [
-                        h.div(
-                          [a.class("whitespace-nowrap overflow-auto")],
-                          render.statements(prog),
-                        ),
-                        h.div(
-                          [a.class("")],
-                          list.map(effects, fn(eff) {
-                            h.div([a.class("flex gap-1")], [
-                              h.span([a.class("text-blue-700")], [
-                                element.text(eff.0),
-                              ]),
-                              output.render(eff.1.0),
-                              output.render(eff.1.1),
-                            ])
-                          }),
-                        ),
-                        case value {
-                          Some(value) ->
-                            h.div([a.class(" max-h-60 overflow-auto")], [
-                              output.render(value),
-                            ])
-                          None -> element.none()
-                        },
-                      ],
-                    )
-                  Reloaded ->
-                    h.div(
-                      [
-                        a.class(
-                          "separator mx-12 mt-1 border-blue-400 text-blue-400",
-                        ),
-                      ],
-                      [element.text("Reloaded")],
-                    )
-                }
-              }),
-            ),
-            // snippet.render_current([], state.shell.source.run)
-            //   |> element.map(ShellMessage),
-
-            render_errors(state.shell.source),
             h.div(
               [
-                a.class("cover font-mono bg-white grid"),
-                a.style([
-                  #("min-height", "5rem"),
-                  #("grid-template-columns", "1fr max-content"),
-                ]),
-              ],
-              [
-                snippet.render_just_projection(state.shell.source, True),
-                h.button(
-                  [
-                    a.class(
-                      "inline-block w-12 bg-green-200 text-center text-xl",
-                    ),
-                    event.on_click(snippet.UserPressedCommandKey("Enter")),
-                  ],
-                  [outline.play_circle()],
+                a.class(
+                  "cover flex-1 vstack rounded-lg overflow-hidden bg-gray-100",
                 ),
               ],
-            )
-              |> element.map(ShellMessage),
+              [
+                case snippet.render_pallet(state.shell.source) {
+                  [] -> element.none()
+                  something ->
+                    modal(something)
+                    |> element.map(ShellMessage)
+                },
+                h.div(
+                  [a.class("expand vstack"), a.style([#("min-height", "0")])],
+                  case list.length(state.shell.previous) {
+                    0 -> [
+                      h.div([a.class("px-2 text-gray-700 cover")], [
+                        h.h2([a.class("texl-lg font-bold")], [
+                          element.text("The console"),
+                        ]),
+                        h.p([], [element.text("Run and test your code here. ")]),
+                        h.button(
+                          [a.class("underline"), event.on_click(ToggleHelp)],
+                          [
+                            case state.display_help {
+                              True -> element.text("Hide help.")
+                              False -> element.text("Show help.")
+                            },
+                          ],
+                        ),
+                      ]),
+                    ]
+                    _ -> []
+                  },
+                ),
+                h.div(
+                  [a.class("cover font-mono bg-gray-100 overflow-auto")],
+                  list.map(list.reverse(state.shell.previous), fn(p) {
+                    case p {
+                      Executed(value, effects, prog) ->
+                        h.div(
+                          [
+                            a.class(
+                              "mx-2 border-t border-gray-600 border-dashed",
+                            ),
+                          ],
+                          [
+                            h.div(
+                              [a.class("whitespace-nowrap overflow-auto")],
+                              render.statements(prog),
+                            ),
+                            h.div(
+                              [a.class("")],
+                              list.map(effects, fn(eff) {
+                                h.div([a.class("flex gap-1")], [
+                                  h.span([a.class("text-blue-700")], [
+                                    element.text(eff.0),
+                                  ]),
+                                  output.render(eff.1.0),
+                                  output.render(eff.1.1),
+                                ])
+                              }),
+                            ),
+                            case value {
+                              Some(value) ->
+                                h.div([a.class(" max-h-60 overflow-auto")], [
+                                  output.render(value),
+                                ])
+                              None -> element.none()
+                            },
+                          ],
+                        )
+                      Reloaded ->
+                        h.div(
+                          [
+                            a.class(
+                              "separator mx-12 mt-1 border-blue-400 text-blue-400",
+                            ),
+                          ],
+                          [element.text("Reloaded")],
+                        )
+                    }
+                  }),
+                ),
+                // snippet.render_current([], state.shell.source.run)
+                //   |> element.map(ShellMessage),
+
+                render_errors(state.shell.source),
+                h.div(
+                  [
+                    a.class(
+                      "cover border-t border-black font-mono bg-white grid",
+                    ),
+                    a.style([
+                      #("min-height", "5rem"),
+                      #("grid-template-columns", "minmax(0px, 1fr) max-content"),
+                    ]),
+                  ],
+                  [
+                    h.div([], [
+                      snippet.render_just_projection(state.shell.source, True),
+                    ]),
+                    h.button(
+                      [
+                        a.class(
+                          "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+                        ),
+                        event.on_click(snippet.UserPressedCommandKey("Enter")),
+                      ],
+                      [outline.play_circle()],
+                    ),
+                  ],
+                )
+                  |> element.map(ShellMessage),
+              ],
+            ),
           ],
         ),
       ],
@@ -650,81 +667,95 @@ pub fn render_menu(state: State) {
 }
 
 fn one_col_menu(state: State, options) {
-  h.div([a.class("flex flex-col justify-end text-gray-200")], [
-    h.div([a.class("flex-grow")], [
-      h.button(
-        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
-        [
-          icon(
-            outline.question_mark_circle(),
-            "hide help",
-            state.display_help,
-            False,
-          ),
-        ],
+  h.div(
+    [
+      a.class(
+        "flex flex-col flex-wrap max-h-screen pl-2 py-2 md:py-6 justify-end text-gray-200",
       ),
-    ]),
-    ..list.map(options, fn(entry) {
-      let #(i, text, k) = entry
-      h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
-        icon(i, text, state.display_help, False),
-      ])
-    })
-  ])
+    ],
+    [
+      h.div([a.class("flex-grow")], [
+        h.button(
+          [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+          [
+            icon(
+              outline.question_mark_circle(),
+              "hide help",
+              state.display_help,
+              False,
+            ),
+          ],
+        ),
+      ]),
+      ..list.map(options, fn(entry) {
+        let #(i, text, k) = entry
+        h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
+          icon(i, text, state.display_help, False),
+        ])
+      })
+    ],
+  )
 }
 
 fn two_col_menu(state: State, top, active, sub) {
-  h.div([a.class("flex flex-col justify-end text-gray-200")], [
-    h.div([a.class("")], [
-      h.button(
-        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+  h.div(
+    [
+      a.class(
+        "flex flex-col flex-wrap max-h-screen pl-2 py-2 md:py-6 justify-end text-gray-200",
+      ),
+    ],
+    [
+      h.div([a.class("")], [
+        h.button(
+          [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+          [
+            icon(
+              outline.question_mark_circle(),
+              "hide help",
+              state.display_help,
+              False,
+            ),
+          ],
+        ),
+      ]),
+      h.div(
         [
-          icon(
-            outline.question_mark_circle(),
-            "hide help",
-            state.display_help,
-            False,
+          a.class("grid flex-grow"),
+          a.style([#("grid-template-columns", "max-content max-content")]),
+        ],
+        [
+          h.div(
+            [a.class("flex flex-col justify-end text-gray-200 py-2")],
+            list.map(top, fn(entry) {
+              let #(i, text, k) = entry
+              h.button(
+                [
+                  a.class("hover:bg-yellow-600 px-2 py-1 rounded-l-lg"),
+                  a.classes([#("bg-yellow-600", text == active)]),
+                  event.on_click(k),
+                ],
+                [icon(i, text, False, False)],
+              )
+            }),
+          ),
+          h.div(
+            [
+              a.class(
+                "flex flex-col justify-end text-gray-200 bg-yellow-600 rounded-lg py-2",
+              ),
+            ],
+            list.map(sub, fn(entry) {
+              let #(i, text, k) = entry
+              h.button(
+                [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
+                [icon(i, text, state.display_help, False)],
+              )
+            }),
           ),
         ],
       ),
-    ]),
-    h.div(
-      [
-        a.class("grid flex-grow"),
-        a.style([#("grid-template-columns", "max-content max-content")]),
-      ],
-      [
-        h.div(
-          [a.class("flex flex-col justify-end text-gray-200 py-2")],
-          list.map(top, fn(entry) {
-            let #(i, text, k) = entry
-            h.button(
-              [
-                a.class("hover:bg-yellow-600 px-2 py-1 rounded-l-lg"),
-                a.classes([#("bg-yellow-600", text == active)]),
-                event.on_click(k),
-              ],
-              [icon(i, text, False, False)],
-            )
-          }),
-        ),
-        h.div(
-          [
-            a.class(
-              "flex flex-col justify-end text-gray-200 bg-yellow-600 rounded-lg py-2",
-            ),
-          ],
-          list.map(sub, fn(entry) {
-            let #(i, text, k) = entry
-            h.button(
-              [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
-              [icon(i, text, state.display_help, False)],
-            )
-          }),
-        ),
-      ],
-    ),
-  ])
+    ],
+  )
 }
 
 fn render_errors(snippet: snippet.Snippet) {
@@ -734,9 +765,13 @@ fn render_errors(snippet: snippet.Snippet) {
     None -> []
   }
 
-  case errors {
-    [] -> element.none()
-    _ ->
+  case snippet.status, errors {
+    snippet.Editing(snippet.Command(None)), [] -> element.none()
+    snippet.Editing(snippet.Command(Some(failure))), _ ->
+      h.div([a.class("cover bg-red-300 px-2")], [
+        element.text(snippet.fail_message(failure)),
+      ])
+    _, _ ->
       h.div(
         [a.class("cover bg-red-300 px-2")],
         list.map(errors, fn(error) {

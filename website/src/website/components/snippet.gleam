@@ -1055,7 +1055,7 @@ pub fn render_just_projection(state, autofocus) {
     Idle ->
       h.div(
         [
-          a.class("p-2 outline-none my-auto"),
+          a.class("p-2 outline-none my-auto whitespace-nowrap overflow-auto"),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
