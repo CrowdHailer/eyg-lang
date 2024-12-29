@@ -89,6 +89,7 @@ pub type State {
     cache: sync.Sync,
     source: snippet.Snippet,
     shell: Shell,
+    open_submenu: Bool,
     display_help: Bool,
   )
 }
@@ -105,12 +106,13 @@ pub fn init(_) {
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
     })
-  let state = State(cache, snippet, shell, False)
+  let state = State(cache, snippet, shell, False, False)
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
 pub type Message {
   ToggleHelp
+  OpenSubmenu
   SnippetMessage(snippet.Message)
   ShellMessage(snippet.Message)
   SyncMessage(sync.Message)
@@ -136,6 +138,10 @@ pub fn update(state: State, message) {
   case message {
     ToggleHelp -> #(
       State(..state, display_help: !state.display_help),
+      effect.none(),
+    )
+    OpenSubmenu -> #(
+      State(..state, open_submenu: !state.open_submenu),
       effect.none(),
     )
     SnippetMessage(message) -> {
@@ -183,6 +189,7 @@ pub fn update(state: State, message) {
       #(state, effect.batch([snippet_effect, sync_effect]))
     }
     ShellMessage(message) -> {
+      let state = State(..state, open_submenu: False)
       let shell = state.shell
       let #(source, eff) = snippet.update(shell.source, message)
       let #(shell, snippet_effect) = case eff {
@@ -291,8 +298,8 @@ fn modal(content) {
   ])
 }
 
-fn icon(image, text, display_help) {
-  h.span([a.class("flex"), a.style([#("align-items", "center")])], [
+fn icon(image, text, display_help, active) {
+  h.span([a.class("flex rounded"), a.style([#("align-items", "center")])], [
     h.span([a.class("inline-block w-6 text-center text-xl")], [image]),
     case display_help {
       True ->
@@ -456,76 +463,148 @@ pub fn render(state: State) {
 }
 
 pub fn render_menu(state: State) {
+  let cmd = fn(x) { ShellMessage(snippet.UserPressedCommandKey(x)) }
   let State(shell: shell, ..) = state
   let snippet.Snippet(status: status, source: source, ..) = shell.source
   let options = case status {
-    snippet.Idle -> []
+    snippet.Idle -> one_col_menu(state, [])
     snippet.Editing(snippet.Command(_)) -> {
       let #(#(focus, zoom), _, _) = source
-      case focus {
+      let top = case focus {
         // create
         p.Exp(e.Vacant(_)) -> [
-          #(outline.equals(), "assign", "e"),
-          #(outline.bolt_slash(), "handle effect", "h"),
-          #(outline.bolt(), "perform effect", "p"),
-          #(element.text("x"), "use variable", "v"),
-          #(outline.variable(), "insert function", "f"),
-          #(element.text("14"), "insert number", "n"),
-          #(outline.language(), "insert text", "s"),
-          #(element.text("[]"), "new list", "l"),
-          #(element.text("{}"), "new record", "r"),
-          // #(outline.cog(), "builtins", "j"),
-          #(outline.arrows_pointing_out(), "expand", "a"),
+          #(outline.equals(), "assign", cmd("e")),
+          #(element.text("x"), "use variable", cmd("v")),
+          #(outline.variable(), "insert function", cmd("f")),
+          #(element.text("14"), "insert number", cmd("n")),
+          #(outline.language(), "insert text", cmd("s")),
+          #(element.text("[]"), "new list", cmd("l")),
+          #(element.text("{}"), "new record", cmd("r")),
+          #(outline.arrows_pointing_out(), "expand", cmd("a")),
+          #(outline.squares_plus(), "more", OpenSubmenu),
         ]
         p.Exp(e.Variable(_)) -> [
-          #(outline.pencil_square(), "edit", "i"),
-          #(element.text("..]"), "spread list", "."),
-          #(element.text("..}"), "overwrite field", "o"),
-          #(element.text(".x"), "select field", "g"),
-          #(element.text("()"), "call function", "c"),
-          #(outline.tag(), "tag value", "t"),
-          #(outline.arrows_right_left(), "match", "m"),
-          #(outline.trash(), "delete", "d"),
+          #(outline.pencil_square(), "edit", cmd("i")),
+          #(element.text("..]"), "spread list", cmd(".")),
+          #(element.text("..}"), "overwrite field", cmd("o")),
+          #(element.text(".x"), "select field", cmd("g")),
+          #(element.text("()"), "call function", cmd("c")),
+          #(outline.tag(), "tag value", cmd("t")),
+          #(outline.arrows_right_left(), "match", cmd("m")),
+          #(outline.trash(), "delete", cmd("d")),
         ]
         p.Exp(e.Record(_, _)) -> [
-          #(element.text(".."), "toggle spread", "TOGGLE SPREAD"),
-          #(outline.tag(), "tag value", "t"),
-          #(outline.trash(), "delete", "d"),
+          #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD")),
+          #(outline.tag(), "tag value", cmd("t")),
+          #(outline.trash(), "delete", cmd("d")),
         ]
         p.Exp(e.List(_, _)) -> [
-          #(element.text(".."), "toggle spread", "TOGGLE SPREAD"),
-          #(outline.tag(), "tag value", "t"),
-          #(outline.trash(), "delete", "d"),
+          #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD")),
+          #(outline.tag(), "tag value", cmd("t")),
+          #(outline.trash(), "delete", cmd("d")),
         ]
         p.Assign(_, _, _, _, _) -> [
-          #(outline.pencil_square(), "edit", "i"),
-          #(outline.document_arrow_up(), "assign above", "E"),
+          #(outline.pencil_square(), "edit", cmd("i")),
+          #(outline.document_arrow_up(), "assign above", cmd("E")),
         ]
         p.Select(_, _) -> [
-          #(outline.pencil_square(), "edit", "i"),
-          #(outline.trash(), "delete", "d"),
+          #(outline.pencil_square(), "edit", cmd("i")),
+          #(outline.trash(), "delete", cmd("d")),
         ]
         _ -> []
       }
+
+      case state.open_submenu {
+        True ->
+          two_col_menu(state, top, "more", [
+            #(outline.bolt_slash(), "handle effect", cmd("h")),
+            #(outline.bolt(), "perform effect", cmd("p")),
+            #(outline.cog(), "builtins", cmd("j")),
+          ])
+
+        False -> one_col_menu(state, top)
+      }
     }
-    snippet.Editing(_) -> []
+    snippet.Editing(_) ->
+      []
+      |> one_col_menu(state, _)
   }
+}
+
+fn one_col_menu(state: State, options) {
   h.div([a.class("flex flex-col justify-end text-gray-200")], [
     h.div([a.class("flex-grow")], [
       h.button(
         [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
-        [icon(outline.question_mark_circle(), "hide help", state.display_help)],
+        [
+          icon(
+            outline.question_mark_circle(),
+            "hide help",
+            state.display_help,
+            False,
+          ),
+        ],
       ),
     ]),
     ..list.map(options, fn(entry) {
       let #(i, text, k) = entry
-      h.button(
-        [
-          a.class("hover:bg-gray-800 px-2 py-1"),
-          event.on_click(ShellMessage(snippet.UserPressedCommandKey(k))),
-        ],
-        [icon(i, text, state.display_help)],
-      )
+      h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
+        icon(i, text, state.display_help, False),
+      ])
     })
+  ])
+}
+
+fn two_col_menu(state: State, top, active, sub) {
+  h.div([a.class("flex flex-col justify-end text-gray-200")], [
+    h.div([a.class("")], [
+      h.button(
+        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+        [
+          icon(
+            outline.question_mark_circle(),
+            "hide help",
+            state.display_help,
+            False,
+          ),
+        ],
+      ),
+    ]),
+    h.div(
+      [
+        a.class("grid flex-grow"),
+        a.style([#("grid-template-columns", "max-content max-content")]),
+      ],
+      [
+        h.div(
+          [a.class("flex flex-col justify-end text-gray-200 py-2")],
+          list.map(top, fn(entry) {
+            let #(i, text, k) = entry
+            h.button(
+              [
+                a.class("hover:bg-yellow-600 px-2 py-1 rounded-l-lg"),
+                a.classes([#("bg-yellow-600", text == active)]),
+                event.on_click(k),
+              ],
+              [icon(i, text, False, False)],
+            )
+          }),
+        ),
+        h.div(
+          [
+            a.class(
+              "flex flex-col justify-end text-gray-200 bg-yellow-600 rounded-lg py-2",
+            ),
+          ],
+          list.map(sub, fn(entry) {
+            let #(i, text, k) = entry
+            h.button(
+              [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
+              [icon(i, text, state.display_help, False)],
+            )
+          }),
+        ),
+      ],
+    ),
   ])
 }
