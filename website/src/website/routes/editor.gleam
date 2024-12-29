@@ -462,56 +462,167 @@ pub fn render(state: State) {
   ])
 }
 
+fn cmd(x) {
+  ShellMessage(snippet.UserPressedCommandKey(x))
+}
+
+fn assign() {
+  #(outline.equals(), "assign", cmd("e"))
+}
+
+fn assign_before() {
+  #(outline.document_arrow_up(), "assign above", cmd("E"))
+}
+
+fn use_variable() {
+  #(element.text("x"), "use variable", cmd("v"))
+}
+
+fn insert_function() {
+  #(outline.variable(), "insert function", cmd("f"))
+}
+
+fn insert_number() {
+  #(element.text("14"), "insert number", cmd("n"))
+}
+
+fn insert_text() {
+  #(outline.language(), "insert text", cmd("s"))
+}
+
+fn new_list() {
+  #(element.text("[]"), "new list", cmd("l"))
+}
+
+fn new_record() {
+  #(element.text("{}"), "new record", cmd("r"))
+}
+
+fn expand() {
+  #(outline.arrows_pointing_out(), "expand", cmd("a"))
+}
+
+fn more() {
+  #(outline.squares_plus(), "more", OpenSubmenu)
+}
+
+fn edit() {
+  #(outline.pencil_square(), "edit", cmd("i"))
+}
+
+fn spread_list() {
+  #(element.text("..]"), "spread list", cmd("."))
+}
+
+fn overwrite_field() {
+  #(element.text("..}"), "overwrite field", cmd("o"))
+}
+
+fn select_field() {
+  #(element.text(".x"), "select field", cmd("g"))
+}
+
+fn call_function() {
+  #(element.text("(_)"), "call function", cmd("c"))
+}
+
+fn call_with() {
+  #(element.text("_()"), "call as argument", cmd("w"))
+}
+
+fn tag_value() {
+  #(outline.tag(), "tag value", cmd("t"))
+}
+
+fn match() {
+  #(outline.arrows_right_left(), "match", cmd("m"))
+}
+
+fn toggle_spread() {
+  #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD"))
+}
+
+fn delete() {
+  #(outline.trash(), "delete", cmd("d"))
+}
+
+// The submenu is probably not part of the editor... yet
 pub fn render_menu(state: State) {
-  let cmd = fn(x) { ShellMessage(snippet.UserPressedCommandKey(x)) }
   let State(shell: shell, ..) = state
   let snippet.Snippet(status: status, source: source, ..) = shell.source
-  let options = case status {
+  case status {
     snippet.Idle -> one_col_menu(state, [])
     snippet.Editing(snippet.Command(_)) -> {
       let #(#(focus, zoom), _, _) = source
       let top = case focus {
         // create
-        p.Exp(e.Vacant(_)) -> [
-          #(outline.equals(), "assign", cmd("e")),
-          #(element.text("x"), "use variable", cmd("v")),
-          #(outline.variable(), "insert function", cmd("f")),
-          #(element.text("14"), "insert number", cmd("n")),
-          #(outline.language(), "insert text", cmd("s")),
-          #(element.text("[]"), "new list", cmd("l")),
-          #(element.text("{}"), "new record", cmd("r")),
-          #(outline.arrows_pointing_out(), "expand", cmd("a")),
-          #(outline.squares_plus(), "more", OpenSubmenu),
-        ]
-        p.Exp(e.Variable(_)) -> [
-          #(outline.pencil_square(), "edit", cmd("i")),
-          #(element.text("..]"), "spread list", cmd(".")),
-          #(element.text("..}"), "overwrite field", cmd("o")),
-          #(element.text(".x"), "select field", cmd("g")),
-          #(element.text("()"), "call function", cmd("c")),
-          #(outline.tag(), "tag value", cmd("t")),
-          #(outline.arrows_right_left(), "match", cmd("m")),
-          #(outline.trash(), "delete", cmd("d")),
-        ]
-        p.Exp(e.Record(_, _)) -> [
-          #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD")),
-          #(outline.tag(), "tag value", cmd("t")),
-          #(outline.trash(), "delete", cmd("d")),
-        ]
-        p.Exp(e.List(_, _)) -> [
-          #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD")),
-          #(outline.tag(), "tag value", cmd("t")),
-          #(outline.trash(), "delete", cmd("d")),
-        ]
-        p.Assign(_, _, _, _, _) -> [
-          #(outline.pencil_square(), "edit", cmd("i")),
-          #(outline.document_arrow_up(), "assign above", cmd("E")),
-        ]
-        p.Select(_, _) -> [
-          #(outline.pencil_square(), "edit", cmd("i")),
-          #(outline.trash(), "delete", cmd("d")),
-        ]
-        _ -> []
+        p.Exp(exp) ->
+          case exp {
+            e.Variable(_) | e.Reference(_) -> [
+              edit(),
+              spread_list(),
+              overwrite_field(),
+              select_field(),
+              tag_value(),
+              match(),
+              call_function(),
+              call_with(),
+            ]
+            e.Call(_, _) -> [
+              new_list(),
+              new_record(),
+              call_function(),
+              call_with(),
+            ]
+            e.Function(_, _) -> [
+              new_list(),
+              new_record(),
+              insert_function(),
+              call_with(),
+            ]
+            e.Block(_, _, _) -> []
+            e.Vacant(_) -> [
+              use_variable(),
+              insert_function(),
+              insert_number(),
+              insert_text(),
+              new_list(),
+              new_record(),
+              expand(),
+              more(),
+            ]
+            e.Integer(_)
+            | e.Binary(_)
+            | e.String(_)
+            | e.Perform(_)
+            | e.Deep(_)
+            | e.Shallow(_) -> [edit(), new_list(), new_record(), call_with()]
+            e.Builtin(_) -> [
+              edit(),
+              new_list(),
+              new_record(),
+              call_function(),
+              call_with(),
+            ]
+            e.List(_, _) | e.Record(_, _) -> [
+              toggle_spread(),
+              new_list(),
+              new_record(),
+              call_with(),
+            ]
+            e.Select(_, _) -> [edit(), new_list(), new_record(), call_with()]
+            e.Tag(_) -> [edit(), new_list(), new_record(), call_with()]
+            // match open match
+            e.Case(_, _, _) -> [new_list(), new_record(), call_with()]
+          }
+          |> list.append([assign()], _)
+          |> list.append([delete()])
+
+        p.Assign(_, _, _, _, _) -> [edit(), assign_before()]
+        p.Select(_, _) -> [edit(), delete()]
+        p.FnParam(_, _, _, _) -> [edit(), delete()]
+        p.Label(_, _, _, _, _) -> [edit(), delete()]
+        p.Match(_, _, _, _, _, _) -> [edit(), delete()]
       }
 
       case state.open_submenu {
