@@ -1,3 +1,4 @@
+import eyg/analysis/type_/binding/debug
 import eyg/sync/browser
 import eyg/sync/sync
 import eygir/expression
@@ -13,6 +14,7 @@ import lustre/effect
 import lustre/element
 import lustre/element/html as h
 import lustre/event
+import morph/analysis
 import morph/editable as e
 import morph/lustre/components/key
 import morph/lustre/render
@@ -424,23 +426,28 @@ pub fn render(state: State) {
             ),
             // snippet.render_current([], state.shell.source.run)
             //   |> element.map(ShellMessage),
-            h.div([a.class("w-full text-right px-2")], [
-              h.button(
-                [
-                  a.class("inline-block w-6 text-center text-xl"),
-                  event.on_click(
-                    ShellMessage(snippet.UserPressedCommandKey("Enter")),
-                  ),
-                ],
-                [outline.play_circle()],
-              ),
-            ]),
+
+            render_errors(state.shell.source),
             h.div(
               [
-                a.class("cover font-mono bg-white"),
-                a.style([#("min-height", "5rem")]),
+                a.class("cover font-mono bg-white grid"),
+                a.style([
+                  #("min-height", "5rem"),
+                  #("grid-template-columns", "1fr max-content"),
+                ]),
               ],
-              [snippet.render_just_projection(state.shell.source, True)],
+              [
+                snippet.render_just_projection(state.shell.source, True),
+                h.button(
+                  [
+                    a.class(
+                      "inline-block w-12 bg-green-200 text-center text-xl",
+                    ),
+                    event.on_click(snippet.UserPressedCommandKey("Enter")),
+                  ],
+                  [outline.play_circle()],
+                ),
+              ],
             )
               |> element.map(ShellMessage),
           ],
@@ -718,4 +725,26 @@ fn two_col_menu(state: State, top, active, sub) {
       ],
     ),
   ])
+}
+
+fn render_errors(snippet: snippet.Snippet) {
+  let #(proj, _, analysis) = snippet.source
+  let errors = case analysis {
+    Some(analysis) -> analysis.type_errors(analysis)
+    None -> []
+  }
+
+  case errors {
+    [] -> element.none()
+    _ ->
+      h.div(
+        [a.class("cover bg-red-300 px-2")],
+        list.map(errors, fn(error) {
+          let #(path, reason) = error
+          h.div([event.on_click(ShellMessage(snippet.UserClickedPath(path)))], [
+            element.text(debug.reason(reason)),
+          ])
+        }),
+      )
+  }
 }
