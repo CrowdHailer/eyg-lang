@@ -267,6 +267,25 @@ pub fn spread_list(zip) {
   }
 }
 
+pub fn toggle_spread(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    p.Exp(e.List(items, Some(_rest))) -> {
+      Ok(#(p.Exp(e.List(items, None)), zoom))
+    }
+    p.Exp(e.List(items, None)) -> {
+      Ok(#(p.Exp(e.List(items, Some(e.Vacant("")))), zoom))
+    }
+    p.Exp(e.Record(fields, Some(_rest))) -> {
+      Ok(#(p.Exp(e.Record(fields, None)), zoom))
+    }
+    p.Exp(e.Record(fields, None)) -> {
+      Ok(#(p.Exp(e.Record(fields, Some(e.Vacant("")))), zoom))
+    }
+    _ -> Error(Nil)
+  }
+}
+
 pub fn record(zip) {
   let #(focus, zoom) = zip
   case focus {

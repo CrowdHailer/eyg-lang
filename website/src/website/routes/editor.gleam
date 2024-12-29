@@ -13,10 +13,11 @@ import lustre/effect
 import lustre/element
 import lustre/element/html as h
 import lustre/event
-import morph/editable
+import morph/editable as e
 import morph/lustre/components/key
 import morph/lustre/render
 import morph/picker
+import morph/projection as p
 import mysig/asset
 import mysig/html
 import website/components
@@ -66,7 +67,7 @@ pub type ShellEntry {
   Executed(
     Option(snippet.Value),
     List(#(String, #(snippet.Value, snippet.Value))),
-    editable.Expression,
+    e.Expression,
   )
   Reloaded
 }
@@ -94,13 +95,13 @@ pub type State {
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
-  let source = editable.from_expression(expression.Vacant(""))
+  let source = e.from_expression(expression.Vacant(""))
   let snippet = snippet.init(source, [], [], cache)
   let references = snippet.references(snippet)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
   let shell =
     Shell([], [], {
-      let source = editable.from_expression(expression.Vacant(""))
+      let source = e.from_expression(expression.Vacant(""))
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
     })
@@ -242,8 +243,7 @@ pub fn update(state: State, message) {
             ..shell.previous
           ]
           // TODO eff
-          let source =
-            snippet.active(editable.Vacant(""), scope, [], state.cache)
+          let source = snippet.active(e.Vacant(""), scope, [], state.cache)
           let shell = Shell(..shell, source: source, previous: previous)
           #(shell, effect.none())
         }
@@ -337,52 +337,7 @@ pub fn render(state: State) {
         //   snippet.bare_render(state.source),
         // )
         //   |> element.map(SnippetMessage),
-        h.div([a.class("flex flex-col justify-end text-gray-200")], [
-          h.div([a.class("flex-grow")], [
-            h.button(
-              [
-                a.class("hover:bg-gray-800 px-2 py-1"),
-                event.on_click(ToggleHelp),
-              ],
-              [
-                icon(
-                  outline.question_mark_circle(),
-                  "hide help",
-                  state.display_help,
-                ),
-              ],
-            ),
-          ]),
-          ..list.map(
-            [
-              #(outline.equals(), "assign", "e"),
-              #(outline.bolt_slash(), "handle effect", "h"),
-              #(outline.bolt(), "perform effect", "p"),
-              #(element.text("x"), "use variable", "v"),
-              #(outline.variable(), "insert function", "f"),
-              #(element.text("()"), "call function", "c"),
-              #(element.text("14"), "insert number", "n"),
-              #(outline.language(), "insert text", "s"),
-              #(element.text("[]"), "new list", "l"),
-              #(element.text("{}"), "new record", "r"),
-              #(outline.tag(), "tag value", "t"),
-              #(outline.arrows_right_left(), "match", "m"),
-              #(outline.cog(), "builtins", "j"),
-              #(outline.arrows_pointing_out(), "expand", "a"),
-              #(outline.trash(), "delete", "d"),
-            ],
-            fn(entry) {
-              let #(i, text, k) = entry
-              h.button(
-                [
-                  a.class("hover:bg-gray-800 px-2 py-1"),
-                  event.on_click(ShellMessage(snippet.UserPressedCommandKey(k))),
-                ],
-                [icon(i, text, state.display_help)],
-              )
-            },
-          )
-        ]),
+        render_menu(state),
         h.div(
           [
             a.class(
@@ -497,5 +452,80 @@ pub fn render(state: State) {
   //     )
   //   False -> element.none()
   // },
+  ])
+}
+
+pub fn render_menu(state: State) {
+  let State(shell: shell, ..) = state
+  let snippet.Snippet(status: status, source: source, ..) = shell.source
+  let options = case status {
+    snippet.Idle -> []
+    snippet.Editing(snippet.Command(_)) -> {
+      let #(#(focus, zoom), _, _) = source
+      case focus {
+        // create
+        p.Exp(e.Vacant(_)) -> [
+          #(outline.equals(), "assign", "e"),
+          #(outline.bolt_slash(), "handle effect", "h"),
+          #(outline.bolt(), "perform effect", "p"),
+          #(element.text("x"), "use variable", "v"),
+          #(outline.variable(), "insert function", "f"),
+          #(element.text("14"), "insert number", "n"),
+          #(outline.language(), "insert text", "s"),
+          #(element.text("[]"), "new list", "l"),
+          #(element.text("{}"), "new record", "r"),
+          // #(outline.cog(), "builtins", "j"),
+          #(outline.arrows_pointing_out(), "expand", "a"),
+        ]
+        p.Exp(e.Variable(_)) -> [
+          #(outline.pencil_square(), "edit", "i"),
+          #(element.text("..]"), "spread list", "."),
+          #(element.text("..}"), "overwrite field", "o"),
+          #(element.text(".x"), "select field", "g"),
+          #(element.text("()"), "call function", "c"),
+          #(outline.tag(), "tag value", "t"),
+          #(outline.arrows_right_left(), "match", "m"),
+          #(outline.trash(), "delete", "d"),
+        ]
+        p.Exp(e.Record(_, _)) -> [
+          #(element.text(".."), "toggle spread", "TOGGLE SPREAD"),
+          #(outline.tag(), "tag value", "t"),
+          #(outline.trash(), "delete", "d"),
+        ]
+        p.Exp(e.List(_, _)) -> [
+          #(element.text(".."), "toggle spread", "TOGGLE SPREAD"),
+          #(outline.tag(), "tag value", "t"),
+          #(outline.trash(), "delete", "d"),
+        ]
+        p.Assign(_, _, _, _, _) -> [
+          #(outline.pencil_square(), "edit", "i"),
+          #(outline.document_arrow_up(), "assign above", "E"),
+        ]
+        p.Select(_, _) -> [
+          #(outline.pencil_square(), "edit", "i"),
+          #(outline.trash(), "delete", "d"),
+        ]
+        _ -> []
+      }
+    }
+    snippet.Editing(_) -> []
+  }
+  h.div([a.class("flex flex-col justify-end text-gray-200")], [
+    h.div([a.class("flex-grow")], [
+      h.button(
+        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+        [icon(outline.question_mark_circle(), "hide help", state.display_help)],
+      ),
+    ]),
+    ..list.map(options, fn(entry) {
+      let #(i, text, k) = entry
+      h.button(
+        [
+          a.class("hover:bg-gray-800 px-2 py-1"),
+          event.on_click(ShellMessage(snippet.UserPressedCommandKey(k))),
+        ],
+        [icon(i, text, state.display_help)],
+      )
+    })
   ])
 }
