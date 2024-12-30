@@ -81,6 +81,7 @@ pub type Mode {
 pub type Snippet {
   Snippet(
     status: Status,
+    expanding: Option(List(Int)),
     source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
     using_mouse: Bool,
     history: History,
@@ -96,6 +97,7 @@ pub fn init(editable, scope, effects, cache) {
   let proj = navigation.first(editable)
   Snippet(
     Idle,
+    None,
     new_source(proj, editable, scope, effects, cache),
     False,
     History([], []),
@@ -112,6 +114,7 @@ pub fn active(editable, scope, effects, cache) {
 
   Snippet(
     Editing(Command(None)),
+    None,
     new_source(proj, editable, scope, effects, cache),
     False,
     History([], []),
@@ -349,16 +352,24 @@ pub fn update(state, message) {
     UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
     UserClickedPath(path), _ ->
       navigate_source(p.focus_at(editable, path), state)
+
     // This is unhelpful as hard if big blocks are selected
     // case listx.starts_with(path, p.path(proj)) && p.path(proj) != [] {
-    //   True -> increase(state)
-    //   False -> navigate_source(p.focus_at(editable, path), state)
-    // }
     UserClickedCode(path), _ ->
-      navigate_source(
-        p.focus_at(editable, path),
-        Snippet(..state, using_mouse: True),
-      )
+      case
+        // listx.starts_with(path, p.path(proj))
+        Some(path) == state.expanding && p.path(proj) != []
+      {
+        True -> increase(state)
+        False -> {
+          let state = Snippet(..state, expanding: Some(path))
+          navigate_source(
+            p.focus_at(editable, path),
+            Snippet(..state, using_mouse: True),
+          )
+        }
+      }
+
     MessageFromInput(message), Editing(EditText(value, rebuild)) ->
       case input.update_text(value, message) {
         input.Continue(value) -> keep_editing(state, EditText(value, rebuild))
