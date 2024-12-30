@@ -286,6 +286,26 @@ pub fn toggle_spread(zip) {
   }
 }
 
+pub fn toggle_otherwise(zip) {
+  let #(focus, zoom) = zip
+  case focus {
+    p.Exp(e.Case(top, branches, Some(_rest))) -> {
+      Ok(#(p.Exp(e.Case(top, branches, None)), zoom))
+    }
+    p.Exp(e.Case(top, branches, None)) -> {
+      Ok(#(
+        p.Exp(e.Case(
+          top,
+          branches,
+          Some(e.Function([e.Bind("_")], e.Vacant(""))),
+        )),
+        zoom,
+      ))
+    }
+    _ -> Error(Nil)
+  }
+}
+
 pub fn record(zip) {
   let #(focus, zoom) = zip
   case focus {

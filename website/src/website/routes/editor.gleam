@@ -93,12 +93,18 @@ pub type Shell {
   )
 }
 
+pub type Submenu {
+  Closed
+  Collection
+  More
+}
+
 pub type State {
   State(
     cache: sync.Sync,
     source: snippet.Snippet,
     shell: Shell,
-    open_submenu: Bool,
+    submenu: Submenu,
     display_help: Bool,
   )
 }
@@ -115,13 +121,13 @@ pub fn init(_) {
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
     })
-  let state = State(cache, snippet, shell, False, False)
+  let state = State(cache, snippet, shell, Closed, False)
   #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
 }
 
 pub type Message {
   ToggleHelp
-  OpenSubmenu
+  ChangeSubmenu(Submenu)
   SnippetMessage(snippet.Message)
   ShellMessage(snippet.Message)
   SyncMessage(sync.Message)
@@ -149,10 +155,13 @@ pub fn update(state: State, message) {
       State(..state, display_help: !state.display_help),
       effect.none(),
     )
-    OpenSubmenu -> #(
-      State(..state, open_submenu: !state.open_submenu),
-      effect.none(),
-    )
+    ChangeSubmenu(submenu) -> {
+      let submenu = case submenu == state.submenu {
+        False -> submenu
+        True -> Closed
+      }
+      #(State(..state, submenu: submenu), effect.none())
+    }
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       let State(display_help: display_help, ..) = state
@@ -198,7 +207,7 @@ pub fn update(state: State, message) {
       #(state, effect.batch([snippet_effect, sync_effect]))
     }
     ShellMessage(message) -> {
-      let state = State(..state, open_submenu: False)
+      let state = State(..state, submenu: Closed)
       let shell = state.shell
       let #(source, eff) = snippet.update(shell.source, message)
       let #(shell, snippet_effect) = case eff {
@@ -309,7 +318,8 @@ fn modal(content) {
 
 fn icon(image, text, display_help, active) {
   h.span([a.class("flex rounded"), a.style([#("align-items", "center")])], [
-    h.span([a.class("inline-block w-6 text-center text-xl")], [image]),
+    // h-7 matches text height
+    h.span([a.class("inline-block w-6 h-7 text-center text-xl")], [image]),
     case display_help {
       True ->
         h.span([a.class("ml-2 border-l border-opacity-25 pl-2")], [
@@ -329,8 +339,9 @@ fn container(menu, page, open) {
   }
   h.div(
     [
+      // h-screen allows the address bar to hide
       a.class(
-        "h-full overflow-hidden grid justify-center p-1 md:p-4 gap-1 md:gap-4 bg-gray-900",
+        "h-screen overflow-hidden grid justify-center p-1 md:p-4 gap-1 md:gap-2 bg-gray-900",
       ),
       a.style([
         #("grid-template-columns", case open {
@@ -479,7 +490,7 @@ fn assign_before() {
 }
 
 fn use_variable() {
-  #(element.text("x"), "use variable", cmd("v"))
+  #(element.text("var"), "use variable", cmd("v"))
 }
 
 fn insert_function() {
@@ -491,7 +502,7 @@ fn insert_number() {
 }
 
 fn insert_text() {
-  #(outline.language(), "insert text", cmd("s"))
+  #(outline.italic(), "insert text", cmd("s"))
 }
 
 fn new_list() {
@@ -507,7 +518,7 @@ fn expand() {
 }
 
 fn more() {
-  #(outline.squares_plus(), "more", OpenSubmenu)
+  #(outline.ellipsis_horizontal_circle(), "more", ChangeSubmenu(More))
 }
 
 fn edit() {
@@ -546,6 +557,18 @@ fn toggle_spread() {
   #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD"))
 }
 
+fn toggle_otherwise() {
+  #(element.text("_/"), "toggle otherwise", cmd("TOGGLE OTHERWISE"))
+}
+
+fn collection() {
+  #(outline.arrow_down_on_square(), "wrap", ChangeSubmenu(Collection))
+}
+
+fn undo() {
+  #(outline.arrow_uturn_left(), "undo", cmd("z"))
+}
+
 fn delete() {
   #(outline.trash(), "delete", cmd("d"))
 }
@@ -564,80 +587,69 @@ pub fn render_menu(state: State) {
           case exp {
             e.Variable(_) | e.Reference(_) -> [
               edit(),
-              spread_list(),
-              overwrite_field(),
               select_field(),
-              tag_value(),
-              match(),
               call_function(),
               call_with(),
             ]
-            e.Call(_, _) -> [
-              new_list(),
-              new_record(),
-              call_function(),
-              call_with(),
-            ]
-            e.Function(_, _) -> [
-              new_list(),
-              new_record(),
-              insert_function(),
-              call_with(),
-            ]
+            e.Call(_, _) -> [call_function(), call_with()]
+            e.Function(_, _) -> [insert_function(), call_with()]
             e.Block(_, _, _) -> []
-            e.Vacant(_) -> [
-              use_variable(),
-              insert_function(),
-              insert_number(),
-              insert_text(),
-              new_list(),
-              new_record(),
-              expand(),
-              more(),
-            ]
+            e.Vacant(_) -> [use_variable(), insert_number(), insert_text()]
             e.Integer(_)
             | e.Binary(_)
             | e.String(_)
             | e.Perform(_)
             | e.Deep(_)
-            | e.Shallow(_) -> [edit(), new_list(), new_record(), call_with()]
-            e.Builtin(_) -> [
-              edit(),
-              new_list(),
-              new_record(),
-              call_function(),
-              call_with(),
-            ]
-            e.List(_, _) | e.Record(_, _) -> [
-              toggle_spread(),
-              new_list(),
-              new_record(),
-              call_with(),
-            ]
-            e.Select(_, _) -> [edit(), new_list(), new_record(), call_with()]
-            e.Tag(_) -> [edit(), new_list(), new_record(), call_with()]
+            | e.Shallow(_) -> [edit(), call_with()]
+            e.Builtin(_) -> [edit(), call_function(), call_with()]
+            e.List(_, _) | e.Record(_, _) -> [toggle_spread(), call_with()]
+            e.Select(_, _) -> [edit(), call_with()]
+            e.Tag(_) -> [edit(), call_with()]
             // match open match
-            e.Case(_, _, _) -> [new_list(), new_record(), call_with()]
+            e.Case(_, _, _) -> [toggle_otherwise(), call_with()]
           }
           |> list.append([assign()], _)
-          |> list.append([delete()])
+          |> list.append([collection(), more(), undo(), delete()])
 
-        p.Assign(_, _, _, _, _) -> [edit(), assign_before()]
-        p.Select(_, _) -> [edit(), delete()]
-        p.FnParam(_, _, _, _) -> [edit(), delete()]
-        p.Label(_, _, _, _, _) -> [edit(), delete()]
-        p.Match(_, _, _, _, _, _) -> [edit(), delete()]
+        p.Assign(_, _, _, _, _) -> [edit(), assign_before(), undo(), delete()]
+        p.Select(_, _) -> [edit(), undo(), delete()]
+        p.FnParam(_, _, _, _) -> [edit(), undo(), delete()]
+        p.Label(_, _, _, _, _) -> [edit(), undo(), delete()]
+        p.Match(_, _, _, _, _, _) -> [edit(), undo(), delete()]
       }
 
-      case state.open_submenu {
-        True ->
-          two_col_menu(state, top, "more", [
-            #(outline.bolt_slash(), "handle effect", cmd("h")),
-            #(outline.bolt(), "perform effect", cmd("p")),
-            #(outline.cog(), "builtins", cmd("j")),
+      case state.submenu {
+        Collection ->
+          two_col_menu(state, top, "wrap", [
+            new_list(),
+            new_record(),
+            tag_value(),
+            insert_function(),
           ])
 
-        False -> one_col_menu(state, top)
+        More ->
+          two_col_menu(
+            state,
+            top,
+            "more",
+            case focus {
+              // Show all destructure options in extra
+              p.Exp(e.Variable(_)) -> [
+                spread_list(),
+                overwrite_field(),
+                match(),
+              ]
+              _ -> []
+            }
+              |> list.append([
+                // expand(),
+                #(outline.bolt_slash(), "handle effect", cmd("h")),
+                #(outline.bolt(), "perform effect", cmd("p")),
+                #(outline.cog(), "builtins", cmd("j")),
+              ]),
+          )
+
+        Closed -> one_col_menu(state, top)
       }
     }
     snippet.Editing(_) ->
@@ -683,7 +695,7 @@ fn two_col_menu(state: State, top, active, sub) {
     help_menu_button(state),
     h.div(
       [
-        a.class("grid flex-grow overflow-y-auto"),
+        a.class("grid overflow-y-auto"),
         a.style([#("grid-template-columns", "max-content max-content")]),
       ],
       [

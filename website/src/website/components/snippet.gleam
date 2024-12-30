@@ -339,6 +339,7 @@ pub fn update(state, message) {
         "," -> extend_before(state)
         "." -> spread_list(state)
         "TOGGLE SPREAD" -> toggle_spread(state)
+        "TOGGLE OTHERWISE" -> toggle_otherwise(state)
 
         "?" -> #(state, ToggleHelp)
         "Enter" -> execute(state)
@@ -790,7 +791,7 @@ fn spread_list(state) {
 
   case transformation.spread_list(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("create match"))
+    Error(Nil) -> show_error(state, ActionFailed("spread list"))
   }
 }
 
@@ -798,6 +799,15 @@ fn toggle_spread(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
   case transformation.toggle_spread(proj) {
+    Ok(new) -> update_source_from_buffer(new, state)
+    Error(Nil) -> show_error(state, ActionFailed("toggle spread"))
+  }
+}
+
+fn toggle_otherwise(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case transformation.toggle_otherwise(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
     Error(Nil) -> show_error(state, ActionFailed("create match"))
   }
