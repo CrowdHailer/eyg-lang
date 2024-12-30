@@ -29,7 +29,13 @@ import website/routes/common
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))
-  layout([html.empty_lustre(), h.script([a.src(asset.src(script))], "")])
+  layout([
+    h.div(
+      [a.id("app"), a.style([#("position", "absolute"), #("inset", "0")])],
+      [],
+    ),
+    h.script([a.src(asset.src(script))], ""),
+  ])
 }
 
 fn layout(body) {
@@ -42,6 +48,7 @@ fn layout(body) {
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
         html.plausible("eyg.run"),
+        h.style([], "html { height: 100%; }\nbody { min-height: 100%; }\n"),
       ],
       common.page_meta(
         "/",
@@ -313,177 +320,154 @@ fn icon(image, text, display_help, active) {
   ])
 }
 
+// https://stackoverflow.com/questions/17555682/height-100-or-min-height-100-for-html-and-body-elements
+// needed on html and body
+fn container(menu, page, open) {
+  let min = case open {
+    False -> "0"
+    True -> "400px"
+  }
+  h.div(
+    [
+      a.class(
+        "h-full overflow-hidden grid justify-center p-1 md:p-4 gap-1 md:gap-4 bg-gray-900",
+      ),
+      a.style([
+        #("grid-template-columns", case open {
+          True -> "max-content minmax(0px, max-content)"
+          False -> "max-content minmax(0px, 1fr)"
+        }),
+      ]),
+    ],
+    [
+      h.div(
+        [
+          a.class(
+            "overflow-hidden flex flex-col flex-wrap justify-end text-white",
+          ),
+        ],
+        menu,
+      ),
+      h.div(
+        [
+          a.class("overflow-auto bg-white flex flex-col rounded"),
+          a.style([#("min-width", min), #("max-width", "720px")]),
+        ],
+        page,
+      ),
+    ],
+  )
+  // h.div([a.class("h-full w-full bg-gray-900 text-white overflow-hidden")], [
+  //   // case snippet.render_pallet(state.shell.source) {
+  //   //   [] -> element.none()
+  //   //   something ->
+  //   //     modal(something)
+  //   //     |> element.map(ShellMessage)
+  //   // },
+  //   // components.header(fn(_) { todo as "wire auth" }, None),
+  //   h.div(
+  //     [
+  //       a.class("md:mx-auto grid gap-1 flex justify-center md:gap-2 h-full"),
+  //     ],
+  //     [menu, page],
+  //   ),
+  // ])
+}
+
 pub fn render(state: State) {
-  h.div([a.class("h-screen bg-gray-900 overflow-hidden")], [
-    // case snippet.render_pallet(state.shell.source) {
-    //   [] -> element.none()
-    //   something ->
-    //     modal(something)
-    //     |> element.map(ShellMessage)
-    // },
-    // components.header(fn(_) { todo as "wire auth" }, None),
-    h.div(
-      [
-        a.class("md:mx-auto grid gap-1 flex justify-center md:gap-2 h-full"),
-        case state.display_help {
-          False ->
-            a.style([
-              #("grid-template-columns", "max-content minmax(0px, 720px)"),
-            ])
-          True ->
-            a.style([
-              #("grid-template-columns", "max-content minmax(400px, 720px)"),
-            ])
-        },
-      ],
-      [
-        // h.div(
-        //   [
-        //     a.class(
-        //       "flex-grow flex flex-col justify-center w-full rounded-xl border-2 border-black bg-white overflow-hidden neo-shadow font-mono ",
-        //     ),
-        //   ],
-        //   snippet.bare_render(state.source),
-        // )
-        //   |> element.map(SnippetMessage),
-        render_menu(state),
-        h.div(
-          [a.class("cover flex flex-col pr-2 py-2 md:py-6  overflow-hidden")],
-          [
-            h.div(
-              [
-                a.class(
-                  "cover flex-1 vstack rounded-lg overflow-hidden bg-gray-100",
-                ),
-              ],
-              [
-                case snippet.render_pallet(state.shell.source) {
-                  [] -> element.none()
-                  something ->
-                    modal(something)
-                    |> element.map(ShellMessage)
+  let show = state.display_help
+  container(
+    render_menu(state),
+    [
+      case snippet.render_pallet(state.shell.source) {
+        [] -> element.none()
+        something ->
+          modal(something)
+          |> element.map(ShellMessage)
+      },
+      h.div(
+        [a.class("expand vstack flex-grow"), a.style([#("min-height", "0")])],
+        case list.length(state.shell.previous) {
+          0 -> [
+            h.div([a.class("px-2 text-gray-700 cover")], [
+              h.h2([a.class("texl-lg font-bold")], [element.text("The console")]),
+              h.p([], [element.text("Run and test your code here. ")]),
+              h.button([a.class("underline"), event.on_click(ToggleHelp)], [
+                case state.display_help {
+                  True -> element.text("Hide help.")
+                  False -> element.text("Show help.")
                 },
+              ]),
+            ]),
+          ]
+          _ -> []
+        },
+      ),
+      h.div(
+        [a.class("expand cover font-mono bg-gray-100 overflow-auto")],
+        list.map(list.reverse(state.shell.previous), fn(p) {
+          case p {
+            Executed(value, effects, prog) ->
+              h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
                 h.div(
-                  [a.class("expand vstack"), a.style([#("min-height", "0")])],
-                  case list.length(state.shell.previous) {
-                    0 -> [
-                      h.div([a.class("px-2 text-gray-700 cover")], [
-                        h.h2([a.class("texl-lg font-bold")], [
-                          element.text("The console"),
-                        ]),
-                        h.p([], [element.text("Run and test your code here. ")]),
-                        h.button(
-                          [a.class("underline"), event.on_click(ToggleHelp)],
-                          [
-                            case state.display_help {
-                              True -> element.text("Hide help.")
-                              False -> element.text("Show help.")
-                            },
-                          ],
-                        ),
-                      ]),
-                    ]
-                    _ -> []
-                  },
+                  [a.class("whitespace-nowrap overflow-auto")],
+                  render.statements(prog),
                 ),
                 h.div(
-                  [a.class("cover font-mono bg-gray-100 overflow-auto")],
-                  list.map(list.reverse(state.shell.previous), fn(p) {
-                    case p {
-                      Executed(value, effects, prog) ->
-                        h.div(
-                          [
-                            a.class(
-                              "mx-2 border-t border-gray-600 border-dashed",
-                            ),
-                          ],
-                          [
-                            h.div(
-                              [a.class("whitespace-nowrap overflow-auto")],
-                              render.statements(prog),
-                            ),
-                            h.div(
-                              [a.class("")],
-                              list.map(effects, fn(eff) {
-                                h.div([a.class("flex gap-1")], [
-                                  h.span([a.class("text-blue-700")], [
-                                    element.text(eff.0),
-                                  ]),
-                                  output.render(eff.1.0),
-                                  output.render(eff.1.1),
-                                ])
-                              }),
-                            ),
-                            case value {
-                              Some(value) ->
-                                h.div([a.class(" max-h-60 overflow-auto")], [
-                                  output.render(value),
-                                ])
-                              None -> element.none()
-                            },
-                          ],
-                        )
-                      Reloaded ->
-                        h.div(
-                          [
-                            a.class(
-                              "separator mx-12 mt-1 border-blue-400 text-blue-400",
-                            ),
-                          ],
-                          [element.text("Reloaded")],
-                        )
-                    }
+                  [a.class("")],
+                  list.map(effects, fn(eff) {
+                    h.div([a.class("flex gap-1")], [
+                      h.span([a.class("text-blue-700")], [element.text(eff.0)]),
+                      output.render(eff.1.0),
+                      output.render(eff.1.1),
+                    ])
                   }),
                 ),
-                // snippet.render_current([], state.shell.source.run)
-                //   |> element.map(ShellMessage),
+                case value {
+                  Some(value) ->
+                    h.div([a.class(" max-h-60 overflow-auto")], [
+                      output.render(value),
+                    ])
+                  None -> element.none()
+                },
+              ])
+            Reloaded ->
+              h.div(
+                [a.class("separator mx-12 mt-1 border-blue-400 text-blue-400")],
+                [element.text("Reloaded")],
+              )
+          }
+        }),
+      ),
+      // snippet.render_current([], state.shell.source.run)
+      //   |> element.map(ShellMessage),
 
-                render_errors(state.shell.source),
-                h.div(
-                  [
-                    a.class(
-                      "cover border-t border-black font-mono bg-white grid",
-                    ),
-                    a.style([
-                      #("min-height", "5rem"),
-                      #("grid-template-columns", "minmax(0px, 1fr) max-content"),
-                    ]),
-                  ],
-                  [
-                    h.div([], [
-                      snippet.render_just_projection(state.shell.source, True),
-                    ]),
-                    h.button(
-                      [
-                        a.class(
-                          "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
-                        ),
-                        event.on_click(snippet.UserPressedCommandKey("Enter")),
-                      ],
-                      [outline.play_circle()],
-                    ),
-                  ],
-                )
-                  |> element.map(ShellMessage),
-              ],
-            ),
-          ],
-        ),
-      ],
-    ),
-    // case state.display_help {
-  //   True ->
-  //     h.div(
-  //       [
-  //         a.class(
-  //           "bottom-0 fixed flex flex-col justify-around mr-10 right-0 top-0",
-  //         ),
-  //       ],
-  //       [h.div([a.class("bg-indigo-100 p-4 rounded-2xl")], [key.render()])],
-  //     )
-  //   False -> element.none()
-  // },
-  ])
+      render_errors(state.shell.source),
+      h.div(
+        [
+          a.class("cover border-t border-black font-mono bg-white grid"),
+          a.style([
+            #("min-height", "5rem"),
+            #("grid-template-columns", "minmax(0px, 1fr) max-content"),
+          ]),
+        ],
+        [
+          h.div([], [snippet.render_just_projection(state.shell.source, True)]),
+          h.button(
+            [
+              a.class(
+                "inline-block w-8 md:w-12 bg-green-200 text-center text-xl",
+              ),
+              event.on_click(snippet.UserPressedCommandKey("Enter")),
+            ],
+            [outline.play_circle()],
+          ),
+        ],
+      )
+        |> element.map(ShellMessage),
+    ],
+    show,
+  )
 }
 
 fn cmd(x) {
@@ -667,95 +651,81 @@ pub fn render_menu(state: State) {
 }
 
 fn one_col_menu(state: State, options) {
-  h.div(
-    [
-      a.class(
-        "flex flex-col flex-wrap max-h-screen pl-2 py-2 md:py-6 justify-end text-gray-200",
+  [
+    h.div([a.class("flex-grow")], [
+      h.button(
+        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+        [
+          icon(
+            outline.question_mark_circle(),
+            "hide help",
+            state.display_help,
+            False,
+          ),
+        ],
       ),
-    ],
-    [
-      h.div([a.class("flex-grow")], [
-        h.button(
-          [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
-          [
-            icon(
-              outline.question_mark_circle(),
-              "hide help",
-              state.display_help,
-              False,
-            ),
-          ],
-        ),
-      ]),
-      ..list.map(options, fn(entry) {
-        let #(i, text, k) = entry
-        h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
-          icon(i, text, state.display_help, False),
-        ])
-      })
-    ],
-  )
+    ]),
+    ..list.map(options, fn(entry) {
+      let #(i, text, k) = entry
+      h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
+        icon(i, text, state.display_help, False),
+      ])
+    })
+  ]
 }
 
 fn two_col_menu(state: State, top, active, sub) {
-  h.div(
-    [
-      a.class(
-        "flex flex-col flex-wrap max-h-screen pl-2 py-2 md:py-6 justify-end text-gray-200",
+  [
+    h.div([a.class("")], [
+      h.button(
+        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+        [
+          icon(
+            outline.question_mark_circle(),
+            "hide help",
+            state.display_help,
+            False,
+          ),
+        ],
       ),
-    ],
-    [
-      h.div([a.class("")], [
-        h.button(
-          [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+    ]),
+    h.div(
+      [
+        a.class("grid flex-grow"),
+        a.style([#("grid-template-columns", "max-content max-content")]),
+      ],
+      [
+        h.div(
+          [a.class("flex flex-col justify-end text-gray-200 py-2")],
+          list.map(top, fn(entry) {
+            let #(i, text, k) = entry
+            h.button(
+              [
+                a.class("hover:bg-yellow-600 px-2 py-1 rounded-l-lg"),
+                a.classes([#("bg-yellow-600", text == active)]),
+                event.on_click(k),
+              ],
+              [icon(i, text, False, False)],
+            )
+          }),
+        ),
+        h.div(
           [
-            icon(
-              outline.question_mark_circle(),
-              "hide help",
-              state.display_help,
-              False,
+            a.class(
+              "flex flex-col justify-end text-gray-200 bg-yellow-600 rounded-lg py-2",
             ),
           ],
+          list.map(sub, fn(entry) {
+            let #(i, text, k) = entry
+            h.button(
+              [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
+              [icon(i, text, state.display_help, False)],
+            )
+          }),
         ),
-      ]),
-      h.div(
-        [
-          a.class("grid flex-grow"),
-          a.style([#("grid-template-columns", "max-content max-content")]),
-        ],
-        [
-          h.div(
-            [a.class("flex flex-col justify-end text-gray-200 py-2")],
-            list.map(top, fn(entry) {
-              let #(i, text, k) = entry
-              h.button(
-                [
-                  a.class("hover:bg-yellow-600 px-2 py-1 rounded-l-lg"),
-                  a.classes([#("bg-yellow-600", text == active)]),
-                  event.on_click(k),
-                ],
-                [icon(i, text, False, False)],
-              )
-            }),
-          ),
-          h.div(
-            [
-              a.class(
-                "flex flex-col justify-end text-gray-200 bg-yellow-600 rounded-lg py-2",
-              ),
-            ],
-            list.map(sub, fn(entry) {
-              let #(i, text, k) = entry
-              h.button(
-                [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
-                [icon(i, text, state.display_help, False)],
-              )
-            }),
-          ),
-        ],
-      ),
-    ],
-  )
+      ],
+    ),
+  ]
 }
 
 fn render_errors(snippet: snippet.Snippet) {
