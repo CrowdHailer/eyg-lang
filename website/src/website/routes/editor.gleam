@@ -334,24 +334,20 @@ fn container(menu, page, open) {
       ),
       a.style([
         #("grid-template-columns", case open {
-          True -> "max-content minmax(0px, max-content)"
-          False -> "max-content minmax(0px, 1fr)"
+          True -> "max-content minmax(0px, 720px)"
+          False -> "max-content minmax(0px, 720px)"
         }),
       ]),
     ],
     [
       h.div(
-        [
-          a.class(
-            "overflow-hidden flex flex-col flex-wrap justify-end text-white",
-          ),
-        ],
+        [a.class("overflow-hidden flex flex-col justify-end text-white")],
         menu,
       ),
       h.div(
         [
           a.class("overflow-auto bg-white flex flex-col rounded"),
-          a.style([#("min-width", min), #("max-width", "720px")]),
+          a.style([#("min-width", min)]),
         ],
         page,
       ),
@@ -650,48 +646,44 @@ pub fn render_menu(state: State) {
   }
 }
 
+fn help_menu_button(state: State) {
+  h.div([a.class("flex-grow")], [
+    h.button(
+      [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
+      [
+        icon(
+          outline.question_mark_circle(),
+          "hide help",
+          state.display_help,
+          False,
+        ),
+      ],
+    ),
+  ])
+}
+
 fn one_col_menu(state: State, options) {
   [
-    h.div([a.class("flex-grow")], [
-      h.button(
-        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
-        [
-          icon(
-            outline.question_mark_circle(),
-            "hide help",
-            state.display_help,
-            False,
-          ),
-        ],
-      ),
-    ]),
-    ..list.map(options, fn(entry) {
-      let #(i, text, k) = entry
-      h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
-        icon(i, text, state.display_help, False),
-      ])
-    })
+    help_menu_button(state),
+    // same as grid below
+    h.div(
+      [a.class("flex flex-col justify-end py-2 overflow-y-auto")],
+      list.map(options, fn(entry) {
+        let #(i, text, k) = entry
+        h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
+          icon(i, text, state.display_help, False),
+        ])
+      }),
+    ),
   ]
 }
 
 fn two_col_menu(state: State, top, active, sub) {
   [
-    h.div([a.class("")], [
-      h.button(
-        [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
-        [
-          icon(
-            outline.question_mark_circle(),
-            "hide help",
-            state.display_help,
-            False,
-          ),
-        ],
-      ),
-    ]),
+    help_menu_button(state),
     h.div(
       [
-        a.class("grid flex-grow"),
+        a.class("grid flex-grow overflow-y-auto"),
         a.style([#("grid-template-columns", "max-content max-content")]),
       ],
       [
