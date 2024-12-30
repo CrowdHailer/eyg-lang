@@ -2,6 +2,7 @@ import eyg/analysis/type_/binding/debug
 import eyg/sync/browser
 import eyg/sync/sync
 import eygir/expression
+import gleam/int
 import gleam/io
 import gleam/javascript/promisex
 import gleam/list
@@ -16,6 +17,7 @@ import lustre/element/html as h
 import lustre/event
 import morph/analysis
 import morph/editable as e
+import morph/input
 import morph/lustre/components/key
 import morph/lustre/render
 import morph/picker
@@ -230,24 +232,12 @@ pub fn update(state: State, message) {
             [] -> todo
             [Executed(_value, _effects, exp), ..] -> {
               let current =
-                snippet.active(
-                  exp,
-                  shell.scope,
-                  [],
-                  // effects(state.config),
-                  state.cache,
-                )
+                snippet.active(exp, shell.scope, harness.effects(), state.cache)
               #(Shell(..shell, source: current), effect.none())
             }
             [Reloaded, Executed(_value, _effects, exp), ..] -> {
               let current =
-                snippet.active(
-                  exp,
-                  shell.scope,
-                  [],
-                  // effects(state.config),
-                  state.cache,
-                )
+                snippet.active(exp, shell.scope, harness.effects(), state.cache)
               #(Shell(..shell, source: current), effect.none())
             }
             _ -> todo
@@ -267,8 +257,8 @@ pub fn update(state: State, message) {
             Executed(value, effects, snippet.source(shell.source)),
             ..shell.previous
           ]
-          // TODO eff
-          let source = snippet.active(e.Vacant(""), scope, [], state.cache)
+          let source =
+            snippet.active(e.Vacant(""), scope, harness.effects(), state.cache)
           let shell = Shell(..shell, source: source, previous: previous)
           #(shell, effect.none())
         }
@@ -291,27 +281,24 @@ pub fn update(state: State, message) {
   }
 }
 
-fn modal(content) {
+fn not_a_modal(content, dismiss: a) {
   element.fragment([
     h.div(
       [
-        a.class("fixed inset-0 bg-gray-100 bg-opacity-40 vstack z-10"),
-        event.on_click(snippet.MessageFromPicker(picker.Dismissed)),
+        a.class("absolute inset-0 bg-gray-100 bg-opacity-70 vstack z-10"),
+        a.style([#("backdrop-filter", "blur(4px)")]),
+        event.on_click(dismiss),
       ],
       [],
     ),
     h.div(
       [
         a.class(
-          "-translate-x-1/2 -translate-y-1/2 fixed left-1/2 max-w-md top-1/2 transform translate-x-1/2 w-full z-20",
+          // "-translate-x-1/2 -translate-y-1/2 absolute left-1/2 top-1/2 transform translate-x-1/2 w-full z-20",
+          "absolute inset-0 flex flex-col justify-center z-20",
         ),
       ],
-      [
-        h.div(
-          [a.class("w-full max-w-md bg-white neo-shadow border-2 border-black")],
-          content,
-        ),
-      ],
+      content,
     ),
   ])
 }
@@ -357,28 +344,106 @@ fn container(menu, page, open) {
       ),
       h.div(
         [
-          a.class("overflow-auto bg-white flex flex-col rounded"),
+          a.class("overflow-auto bg-white relative flex flex-col rounded"),
           a.style([#("min-width", min)]),
         ],
         page,
       ),
     ],
   )
-  // h.div([a.class("h-full w-full bg-gray-900 text-white overflow-hidden")], [
-  //   // case snippet.render_pallet(state.shell.source) {
-  //   //   [] -> element.none()
-  //   //   something ->
-  //   //     modal(something)
-  //   //     |> element.map(ShellMessage)
-  //   // },
-  //   // components.header(fn(_) { todo as "wire auth" }, None),
-  //   h.div(
-  //     [
-  //       a.class("md:mx-auto grid gap-1 flex justify-center md:gap-2 h-full"),
-  //     ],
-  //     [menu, page],
-  //   ),
-  // ])
+}
+
+fn render_pallet(state: snippet.Snippet) {
+  let snippet.Snippet(status: status, ..) = state
+  case status {
+    snippet.Editing(mode) ->
+      case mode {
+        snippet.Command(_errors) -> element.none()
+
+        snippet.Pick(picker, _rebuild) ->
+          [
+            h.div([a.class("flex-grow m-2")], [
+              h.div([a.class("font-bold")], [element.text("Select from:")]),
+              picker.render(picker),
+              h.div([a.class("flex gap-2 my-2 justify-end")], [
+                h.button(
+                  [
+                    a.class(
+                      "py-1 px-2 bg-gray-200 rounded border border-black ",
+                    ),
+                    event.on_click(picker.Dismissed),
+                  ],
+                  [element.text("Cancel")],
+                ),
+                h.button(
+                  [
+                    a.class(
+                      "py-1 px-2 bg-gray-300 rounded border border-black ",
+                    ),
+                    event.on_click(picker.Decided(picker.current(picker))),
+                  ],
+                  [element.text("Submit")],
+                ),
+              ]),
+            ]),
+          ]
+          |> not_a_modal(picker.Dismissed)
+          |> element.map(snippet.MessageFromPicker)
+
+        snippet.EditText(value, _rebuild) ->
+          render_text(value)
+          |> list.wrap
+          |> not_a_modal(input.KeyDown("Escape"))
+          |> element.map(snippet.MessageFromInput)
+
+        snippet.EditInteger(value, _rebuild) ->
+          render_number(value)
+          |> list.wrap()
+          |> not_a_modal(input.KeyDown("Escape"))
+          |> element.map(snippet.MessageFromInput)
+      }
+
+    snippet.Idle -> element.none()
+  }
+}
+
+fn render_text(value) {
+  render_user_input(value, "text", "Enter text:")
+}
+
+fn render_number(value) {
+  let raw = case value {
+    0 -> ""
+    _ -> int.to_string(value)
+  }
+  render_user_input(raw, "number", "Enter number:")
+}
+
+fn render_user_input(raw, type_, message) {
+  h.div([a.class("flex-grow m-2")], [
+    h.div([a.class("font-bold")], [element.text(message)]),
+    input.styled_input(
+      raw,
+      type_,
+      "w-full outline-none border border-black rounded my-1 p-1",
+    ),
+    h.div([a.class("flex gap-2 my-2 justify-end")], [
+      h.button(
+        [
+          a.class("py-1 px-2 bg-gray-200 rounded border border-black "),
+          event.on_click(input.KeyDown("Escape")),
+        ],
+        [element.text("Cancel")],
+      ),
+      h.button(
+        [
+          a.class("py-1 px-2 bg-gray-300 rounded border border-black "),
+          event.on_click(input.Submit),
+        ],
+        [element.text("Submit")],
+      ),
+    ]),
+  ])
 }
 
 pub fn render(state: State) {
@@ -386,12 +451,7 @@ pub fn render(state: State) {
   container(
     render_menu(state),
     [
-      case snippet.render_pallet(state.shell.source) {
-        [] -> element.none()
-        something ->
-          modal(something)
-          |> element.map(ShellMessage)
-      },
+      render_pallet(state.shell.source) |> element.map(ShellMessage),
       h.div(
         [a.class("expand vstack flex-grow"), a.style([#("min-height", "0")])],
         case list.length(state.shell.previous) {

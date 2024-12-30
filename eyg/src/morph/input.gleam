@@ -15,12 +15,10 @@ pub fn render_number(value) {
   input(raw, "number")
 }
 
-fn input(value, type_) {
+pub fn styled_input(value, type_, class) {
   h.form([event.on_submit(Submit)], [
     h.input([
-      a.class(
-        "block w-full bg-transparent border-l-8 border-gray-700 focus:border-gray-300 p-1 outline-none",
-      ),
+      a.class(class),
       a.value(value),
       a.type_(type_),
       a.attribute("autofocus", "true"),
@@ -30,6 +28,12 @@ fn input(value, type_) {
       event.on_input(UpdateInput),
     ]),
   ])
+}
+
+fn input(value, type_) {
+  let class =
+    "block w-full bg-transparent border-l-8 border-gray-700 focus:border-gray-300 p-1 outline-none"
+  styled_input(value, type_, class)
 }
 
 pub type Message {

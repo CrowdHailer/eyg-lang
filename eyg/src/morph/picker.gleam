@@ -85,11 +85,14 @@ pub fn render(picker) {
 }
 
 fn on_submit(picker) {
-  let value = case picker {
+  Decided(current(picker))
+}
+
+pub fn current(picker) {
+  case picker {
     Typing(value, _) -> value
     Scrolling(#(_, #(value, _), _), _) -> value
   }
-  Decided(value)
 }
 
 fn on_keydown(key, picker) {
