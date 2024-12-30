@@ -204,9 +204,13 @@ pub fn make_case(projection, analysis) {
         }),
       )
     }
-    #(p.Match(top, label, branch, pre, post, otherwise), zoom), _ -> {
+    #(p.Match(top, label, branch, pre, post, otherwise), zoom), varients -> {
+      // analysis needs to be fetched from the top path
+      let used = list.flatten([listx.keys(pre), [label], listx.keys(post)])
+      let others = list.filter(varients, fn(v) { !list.contains(used, v.0) })
+
       Ok(
-        Choose("", [], fn(new) {
+        Choose("", others, fn(new) {
           let zoom = [
             p.Body([e.Bind("_")]),
             p.CaseMatch(top, new, [#(label, branch), ..pre], post, otherwise),

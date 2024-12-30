@@ -613,6 +613,10 @@ fn match() {
   #(outline.arrows_right_left(), "match", cmd("m"))
 }
 
+fn branch_after() {
+  #(outline.document_arrow_down(), "branch after", cmd("m"))
+}
+
 fn toggle_spread() {
   #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD"))
 }
@@ -681,7 +685,13 @@ pub fn render_menu(state: State) {
         p.Select(_, _) -> [edit(), undo(), expand(), delete()]
         p.FnParam(_, _, _, _) -> [edit(), undo(), expand(), delete()]
         p.Label(_, _, _, _, _) -> [edit(), undo(), expand(), delete()]
-        p.Match(_, _, _, _, _, _) -> [edit(), undo(), expand(), delete()]
+        p.Match(_, _, _, _, _, _) -> [
+          edit(),
+          branch_after(),
+          undo(),
+          expand(),
+          delete(),
+        ]
       }
 
       case state.submenu {

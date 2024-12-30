@@ -767,7 +767,7 @@ fn insert_case(state) {
   case action.make_case(proj, analysis) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
     Ok(action.Choose(filter, hints, rebuild)) -> {
-      let hints = listx.value_map(hints, render_poly)
+      let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
     Error(Nil) -> show_error(state, ActionFailed("create match"))
