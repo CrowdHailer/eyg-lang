@@ -609,13 +609,19 @@ pub fn render_menu(state: State) {
             e.Case(_, _, _) -> [toggle_otherwise(), call_with()]
           }
           |> list.append([assign()], _)
-          |> list.append([collection(), more(), undo(), delete()])
+          |> list.append([collection(), more(), undo(), expand(), delete()])
 
-        p.Assign(_, _, _, _, _) -> [edit(), assign_before(), undo(), delete()]
-        p.Select(_, _) -> [edit(), undo(), delete()]
-        p.FnParam(_, _, _, _) -> [edit(), undo(), delete()]
-        p.Label(_, _, _, _, _) -> [edit(), undo(), delete()]
-        p.Match(_, _, _, _, _, _) -> [edit(), undo(), delete()]
+        p.Assign(_, _, _, _, _) -> [
+          edit(),
+          assign_before(),
+          undo(),
+          expand(),
+          delete(),
+        ]
+        p.Select(_, _) -> [edit(), undo(), expand(), delete()]
+        p.FnParam(_, _, _, _) -> [edit(), undo(), expand(), delete()]
+        p.Label(_, _, _, _, _) -> [edit(), undo(), expand(), delete()]
+        p.Match(_, _, _, _, _, _) -> [edit(), undo(), expand(), delete()]
       }
 
       case state.submenu {
@@ -634,7 +640,7 @@ pub fn render_menu(state: State) {
             "more",
             case focus {
               // Show all destructure options in extra
-              p.Exp(e.Variable(_)) -> [
+              p.Exp(e.Variable(_)) | p.Exp(e.Call(_, _)) -> [
                 spread_list(),
                 overwrite_field(),
                 match(),
