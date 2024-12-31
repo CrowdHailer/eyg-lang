@@ -338,6 +338,13 @@ pub fn extend_before(source, _context) {
       }
       Ok(Choose("", [], rebuild))
     }
+    #(p.FnParam(p.AssignPattern(e.Bind(_) as pattern), pre, post, body), zoom) -> {
+      let post = [pattern, ..post]
+      let rebuild = fn(label) {
+        #(p.FnParam(p.AssignPattern(e.Bind(label)), pre, post, body), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
     #(p.FnParam(pattern, pre, post, body), zoom) -> {
       use rebuild <- try(extend_pattern_before(pattern))
       let rebuild = fn(label) {

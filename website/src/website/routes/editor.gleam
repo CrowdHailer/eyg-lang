@@ -617,6 +617,10 @@ fn branch_after() {
   #(outline.document_arrow_down(), "branch after", cmd("m"))
 }
 
+fn item_before() {
+  #(outline.arrow_turn_left_down(), "item before", cmd(","))
+}
+
 fn toggle_spread() {
   #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD"))
 }
@@ -673,18 +677,57 @@ pub fn render_menu(state: State) {
             e.Case(_, _, _) -> [toggle_otherwise(), call_with()]
           }
           |> list.append([assign()], _)
-          |> list.append([collection(), more(), undo(), expand(), delete()])
+          |> list.append(case zoom {
+            [p.ListItem(_, _, _), ..] -> [
+              item_before(),
+              collection(),
+              more(),
+              undo(),
+              expand(),
+              delete(),
+            ]
+            _ -> [collection(), more(), undo(), expand(), delete()]
+          })
 
-        p.Assign(_, _, _, _, _) -> [
+        p.Assign(pattern, _, _, _, _) -> [
           edit(),
-          assign_before(),
+          case pattern {
+            p.AssignPattern(e.Bind(_)) -> new_record()
+            p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) ->
+              item_before()
+            _ -> assign_before()
+          },
           undo(),
           expand(),
           delete(),
         ]
         p.Select(_, _) -> [edit(), undo(), expand(), delete()]
-        p.FnParam(_, _, _, _) -> [edit(), undo(), expand(), delete()]
-        p.Label(_, _, _, _, _) -> [edit(), undo(), expand(), delete()]
+        p.FnParam(pattern, _, _, _) -> {
+          let common = [undo(), expand(), delete()]
+          case pattern {
+            p.AssignPattern(e.Bind(_)) -> [
+              edit(),
+              item_before(),
+              new_record(),
+              ..common
+            ]
+            p.AssignPattern(e.Destructure(_)) -> [item_before(), ..common]
+
+            p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) -> [
+              edit(),
+              item_before(),
+              ..common
+            ]
+            p.AssignStatement(_) -> [edit(), ..common]
+          }
+        }
+        p.Label(_, _, _, _, _) -> [
+          edit(),
+          item_before(),
+          undo(),
+          expand(),
+          delete(),
+        ]
         p.Match(_, _, _, _, _, _) -> [
           edit(),
           branch_after(),
