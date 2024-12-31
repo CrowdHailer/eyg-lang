@@ -621,6 +621,10 @@ fn item_before() {
   #(outline.arrow_turn_left_down(), "item before", cmd(","))
 }
 
+fn item_after() {
+  #(outline.arrow_turn_right_down(), "item after", cmd("EXTEND AFTER"))
+}
+
 fn toggle_spread() {
   #(element.text(".."), "toggle spread", cmd("TOGGLE SPREAD"))
 }
@@ -680,6 +684,7 @@ pub fn render_menu(state: State) {
           |> list.append(case zoom {
             [p.ListItem(_, _, _), ..] -> [
               item_before(),
+              item_after(),
               collection(),
               more(),
               undo(),
@@ -689,18 +694,19 @@ pub fn render_menu(state: State) {
             _ -> [collection(), more(), undo(), expand(), delete()]
           })
 
-        p.Assign(pattern, _, _, _, _) -> [
-          edit(),
-          case pattern {
-            p.AssignPattern(e.Bind(_)) -> new_record()
-            p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) ->
-              item_before()
-            _ -> assign_before()
-          },
-          undo(),
-          expand(),
-          delete(),
-        ]
+        p.Assign(pattern, _, _, _, _) ->
+          list.flatten([
+            [edit()],
+            case pattern {
+              p.AssignPattern(e.Bind(_)) -> [new_record()]
+              p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) -> [
+                item_before(),
+                item_after(),
+              ]
+              _ -> [assign_before()]
+            },
+            [undo(), expand(), delete()],
+          ])
         p.Select(_, _) -> [edit(), undo(), expand(), delete()]
         p.FnParam(pattern, _, _, _) -> {
           let common = [undo(), expand(), delete()]
@@ -708,14 +714,20 @@ pub fn render_menu(state: State) {
             p.AssignPattern(e.Bind(_)) -> [
               edit(),
               item_before(),
+              item_after(),
               new_record(),
               ..common
             ]
-            p.AssignPattern(e.Destructure(_)) -> [item_before(), ..common]
+            p.AssignPattern(e.Destructure(_)) -> [
+              item_before(),
+              item_after(),
+              ..common
+            ]
 
             p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) -> [
               edit(),
               item_before(),
+              item_after(),
               ..common
             ]
             p.AssignStatement(_) -> [edit(), ..common]
@@ -724,6 +736,7 @@ pub fn render_menu(state: State) {
         p.Label(_, _, _, _, _) -> [
           edit(),
           item_before(),
+          item_after(),
           undo(),
           expand(),
           delete(),

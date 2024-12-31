@@ -365,3 +365,52 @@ fn extend_pattern_before(pattern) {
     _ -> Error(Nil)
   }
 }
+
+pub fn extend_after(source, _context) {
+  case source {
+    #(p.Exp(item), [p.ListItem(pre, post, tail), ..rest]) -> {
+      let zoom = [p.ListItem([item, ..pre], post, tail), ..rest]
+      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+    }
+    #(p.Label(label, value, pre, post, for), zoom) -> {
+      let pre = [#(label, value), ..pre]
+      let rebuild = fn(label) {
+        let zoom = [p.RecordValue(label, pre, post, for), ..zoom]
+        #(p.Exp(e.Vacant("")), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+    #(p.Assign(pattern, value, pre, post, then), zoom) -> {
+      use rebuild <- try(extend_pattern_after(pattern))
+      let rebuild = fn(label) {
+        #(p.Assign(rebuild(label), value, pre, post, then), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+    #(p.FnParam(p.AssignPattern(e.Bind(_) as pattern), pre, post, body), zoom) -> {
+      let pre = [pattern, ..pre]
+      let rebuild = fn(label) {
+        #(p.FnParam(p.AssignPattern(e.Bind(label)), pre, post, body), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+    #(p.FnParam(pattern, pre, post, body), zoom) -> {
+      use rebuild <- try(extend_pattern_after(pattern))
+      let rebuild = fn(label) {
+        #(p.FnParam(rebuild(label), pre, post, body), zoom)
+      }
+      Ok(Choose("", [], rebuild))
+    }
+
+    _ -> Error(Nil)
+  }
+}
+
+fn extend_pattern_after(pattern) {
+  case pattern {
+    p.AssignBind(field, var, pre, post) | p.AssignField(field, var, pre, post) -> {
+      Ok(fn(label) { p.AssignBind(label, label, [#(field, var), ..pre], post) })
+    }
+    _ -> Error(Nil)
+  }
+}

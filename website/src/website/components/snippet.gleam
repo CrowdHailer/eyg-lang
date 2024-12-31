@@ -340,6 +340,7 @@ pub fn update(state, message) {
         "m" -> insert_case(state)
         "M" -> insert_open_case(state)
         "," -> extend_before(state)
+        "EXTEND AFTER" -> extend_after(state)
         "." -> spread_list(state)
         "TOGGLE SPREAD" -> toggle_spread(state)
         "TOGGLE OTHERWISE" -> toggle_otherwise(state)
@@ -598,6 +599,19 @@ fn extend_before(state) {
   let Snippet(source: #(proj, _, analysis), ..) = state
 
   case action.extend_before(proj, analysis) {
+    Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
+    Ok(action.Choose(filter, hints, rebuild)) -> {
+      let hints = listx.value_map(hints, render_poly)
+      change_mode(state, Pick(picker.new(filter, hints), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("extend"))
+  }
+}
+
+fn extend_after(state) {
+  let Snippet(source: #(proj, _, analysis), ..) = state
+
+  case action.extend_after(proj, analysis) {
     Ok(action.Updated(new)) -> update_source_from_buffer(new, state)
     Ok(action.Choose(filter, hints, rebuild)) -> {
       let hints = listx.value_map(hints, render_poly)
