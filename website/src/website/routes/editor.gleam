@@ -1,4 +1,5 @@
 import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/binding/error
 import eyg/sync/browser
 import eyg/sync/sync
 import eygir/expression
@@ -383,29 +384,36 @@ fn render_pallet(state: snippet.Snippet) {
 
         snippet.Pick(picker, _rebuild) ->
           [
-            h.div([a.class("flex-grow m-2")], [
+            h.div([a.class("flex-grow p-2 pb-12 h-full overflow-y-auto")], [
               h.div([a.class("font-bold")], [element.text("Label:")]),
               picker.render(picker),
-              h.div([a.class("flex gap-2 my-2 justify-end")], [
-                h.button(
-                  [
-                    a.class(
-                      "py-1 px-2 bg-gray-200 rounded border border-black ",
-                    ),
-                    event.on_click(picker.Dismissed),
-                  ],
-                  [element.text("Cancel")],
-                ),
-                h.button(
-                  [
-                    a.class(
-                      "py-1 px-2 bg-gray-300 rounded border border-black ",
-                    ),
-                    event.on_click(picker.Decided(picker.current(picker))),
-                  ],
-                  [element.text("Submit")],
-                ),
-              ]),
+              h.div(
+                [
+                  a.class(
+                    "absolute bottom-0 right-4 flex gap-2 my-2 justify-end",
+                  ),
+                ],
+                [
+                  h.button(
+                    [
+                      a.class(
+                        "py-1 px-2 bg-gray-200 rounded border border-black ",
+                      ),
+                      event.on_click(picker.Dismissed),
+                    ],
+                    [element.text("Cancel")],
+                  ),
+                  h.button(
+                    [
+                      a.class(
+                        "py-1 px-2 bg-gray-300 rounded border border-black ",
+                      ),
+                      event.on_click(picker.Decided(picker.current(picker))),
+                    ],
+                    [element.text("Submit")],
+                  ),
+                ],
+              ),
             ]),
           ]
           |> not_a_modal(picker.Dismissed)
@@ -473,10 +481,10 @@ pub fn render(state: State) {
     render_menu(state),
     [
       render_pallet(state.shell.source) |> element.map(ShellMessage),
-      h.div([a.class("absolute top-0 right-0")], [
+      h.div([a.class("absolute top-0")], [
         // element.text("to"),
-        fullscreen_menu_button(state),
         help_menu_button(state),
+        fullscreen_menu_button(state),
       ]),
       h.div(
         [a.class("expand vstack flex-grow"), a.style([#("min-height", "0")])],
@@ -845,7 +853,7 @@ fn help_menu_button(state: State) {
 fn fullscreen_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
-    [icon(outline.tv(), "go fullscreen", state.display_help, False)],
+    [icon(outline.tv(), "fullscreen", state.display_help, False)],
   )
 }
 
@@ -934,9 +942,15 @@ fn render_errors(snippet: snippet.Snippet) {
         [a.class("cover bg-red-300 px-2")],
         list.map(errors, fn(error) {
           let #(path, reason) = error
-          h.div([event.on_click(ShellMessage(snippet.UserClickedPath(path)))], [
-            element.text(debug.reason(reason)),
-          ])
+          case path, reason {
+            // Vacant node at root or end of block are ignored.
+            [], error.Todo(_) | [_], error.Todo(_) -> element.none()
+            _, _ ->
+              h.div(
+                [event.on_click(ShellMessage(snippet.UserClickedPath(path)))],
+                [element.text(debug.reason(reason))],
+              )
+          }
         }),
       )
   }

@@ -35,7 +35,8 @@ pub fn render(picker) {
           let #(name, _item) = suggestion
           string.contains(name, value)
         })
-        |> list.take(11)
+      // TODO make size configurable, show all if never scrolling i.e. never clicked
+      // |> list.take(11)
       #(value, filtered, -1)
     }
     // I think better scrolling would need to take into account up or down direction
@@ -51,6 +52,10 @@ pub fn render(picker) {
       #(cleave.1.0, filtered, index - list.length(list.drop(cleave.0, 5)))
     }
   }
+  do_render(picker, filter, suggestions, index)
+}
+
+fn do_render(picker, filter, suggestions, index) {
   h.form([event.on_submit(on_submit(picker))], [
     // h.div([a.class("w-full p-2")], []),
     h.input([
