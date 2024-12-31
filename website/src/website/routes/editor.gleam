@@ -351,8 +351,8 @@ fn container(menu, page, open) {
       ),
       a.style([
         #("grid-template-columns", case open {
-          True -> "max-content minmax(0px, 720px)"
-          False -> "max-content minmax(0px, 720px)"
+          True -> "max-content minmax(0px, 920px)"
+          False -> "max-content minmax(0px, 920px)"
         }),
       ]),
     ],
@@ -363,7 +363,9 @@ fn container(menu, page, open) {
       ),
       h.div(
         [
-          a.class("overflow-auto bg-white relative flex flex-col rounded"),
+          a.class(
+            "overflow-auto bg-white relative flex flex-col rounded font-mono",
+          ),
           a.style([#("min-width", min)]),
         ],
         page,
