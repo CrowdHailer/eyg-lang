@@ -155,6 +155,10 @@ fn exp_key(rev) {
   a.attribute("data-rev", string.join(list.map(rev, int.to_string), ","))
 }
 
+fn continue_space(rev) {
+  frame.Inline([h.span([a.class("text-gray-700"), exp_key(rev)], [text("...")])])
+}
+
 pub fn expression(exp, rev) {
   case exp {
     e.Block(_, _, False) -> frame.Inline([text("{ ... }")])
@@ -473,9 +477,10 @@ fn render_break(break, inner, rev, is_expression) {
       let assign = do_let([self, ..rev], pattern(p, [0, self, ..rev]), inner)
       let assignments = listx.gather_around(pre, assign, post)
       let len = self + 1 + list.length(post)
-      case is_expression, then {
-        False, e.Vacant(_) -> assignments
-        _, _ -> list.append(assignments, [expression(then, [len, ..rev])])
+      case is_expression, rev, then {
+        False, [], e.Vacant(_) ->
+          list.append(assignments, [continue_space([len, ..rev])])
+        _, _, _ -> list.append(assignments, [expression(then, [len, ..rev])])
       }
       |> frame.to_fat_lines()
       |> frame.Statements
@@ -630,9 +635,10 @@ pub fn projection_frame(zip, is_expression) {
       let len = list.length(pre) + list.length(post) + 1
 
       let assignments = listx.gather_around(pre, assign, post)
-      case is_expression, then {
-        False, e.Vacant(_) -> assignments
-        _, _ -> list.append(assignments, [expression(then, [len, ..rev])])
+      case is_expression, rev, then {
+        False, [], e.Vacant(_) ->
+          list.append(assignments, [continue_space([len, ..rev])])
+        _, _, _ -> list.append(assignments, [expression(then, [len, ..rev])])
       }
       |> frame.to_fat_lines
       |> frame.Statements
