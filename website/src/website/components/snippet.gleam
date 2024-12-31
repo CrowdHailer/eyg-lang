@@ -357,18 +357,24 @@ pub fn update(state, message) {
     // This is unhelpful as hard if big blocks are selected
     // case listx.starts_with(path, p.path(proj)) && p.path(proj) != [] {
     UserClickedCode(path), _ ->
-      case
-        // listx.starts_with(path, p.path(proj))
-        Some(path) == state.expanding && p.path(proj) != []
-      {
-        True -> increase(state)
-        False -> {
-          let state = Snippet(..state, expanding: Some(path))
-          navigate_source(
-            p.focus_at(editable, path),
-            Snippet(..state, using_mouse: True),
-          )
-        }
+      case proj, p.path(proj) == path {
+        #(p.Assign(p.AssignStatement(_), _, _, _, _), _), True ->
+          toggle_open(state)
+        _, _ ->
+          case
+            // listx.starts_with(path, p.path(proj))
+            // path expanding real just means it was the last thing clicked
+            Some(path) == state.expanding && p.path(proj) != []
+          {
+            True -> increase(state)
+            False -> {
+              let state = Snippet(..state, expanding: Some(path))
+              navigate_source(
+                p.focus_at(editable, path),
+                Snippet(..state, using_mouse: True),
+              )
+            }
+          }
       }
 
     MessageFromInput(message), Editing(EditText(value, rebuild)) ->
