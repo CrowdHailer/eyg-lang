@@ -384,7 +384,7 @@ fn render_pallet(state: snippet.Snippet) {
         snippet.Pick(picker, _rebuild) ->
           [
             h.div([a.class("flex-grow m-2")], [
-              h.div([a.class("font-bold")], [element.text("Select from:")]),
+              h.div([a.class("font-bold")], [element.text("Label:")]),
               picker.render(picker),
               h.div([a.class("flex gap-2 my-2 justify-end")], [
                 h.button(
@@ -660,7 +660,7 @@ fn toggle_otherwise() {
 }
 
 fn collection() {
-  #(outline.arrow_down_on_square(), "wrap", ChangeSubmenu(Collection))
+  #(outline.arrow_down_on_square_stack(), "wrap", ChangeSubmenu(Collection))
 }
 
 fn undo() {
@@ -720,17 +720,11 @@ pub fn render_menu(state: State) {
           }
           |> list.append([assign()], _)
           |> list.append(case zoom {
-            [p.ListItem(_, _, _), ..] -> [
-              item_before(),
-              item_after(),
-              collection(),
-              more(),
-              undo(),
-              expand(),
-              delete(),
-            ]
-            _ -> [collection(), more(), undo(), expand(), delete()]
+            [p.ListItem(_, _, _), ..] -> [item_before(), item_after()]
+            [p.BlockTail(_), ..] | [] -> [assign_before()]
+            _ -> []
           })
+          |> list.append([collection(), more(), undo(), expand(), delete()])
 
         p.Assign(pattern, _, _, _, _) ->
           list.flatten([
