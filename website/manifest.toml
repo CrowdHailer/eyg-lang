@@ -33,7 +33,7 @@ packages = [
   { name = "midas_sdk", version = "0.4.2", build_tools = ["gleam"], requirements = ["decode", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "577426F85F26FB0DE0CEEDAED3DDABA53B212846427457A5F9F6268C555F7787" },
   { name = "mysig", version = "0.3.1", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "simplifile", "snag"], source = "local", path = "../../mysig" },
   { name = "oas", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "oas", source = "hex", outer_checksum = "80D7AA24A1D5F9C1BF21F219DD7CA9A6B96FE28BE5FBC147B57537083CD24562" },
-  { name = "plinth", version = "0.5.5", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "246CDDC6281A237DCCA71FD67C5AEA6246D4278784DD4DF016488A9C9F4CF31E" },
+  { name = "plinth", version = "0.5.6", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "7A9BEAB98F4BC6859803D5ABCD0F3B4C3578A747F12BF32F9E234F8325F5F0E0" },
   { name = "shellout", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "E2FCD18957F0E9F67E1F497FC9FF57393392F8A9BAEAEA4779541DE7A68DD7E0" },
   { name = "simplifile", version = "1.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "1D5DFA3A2F9319EC85825F6ED88B8E449F381B0D55A62F5E61424E748E7DDEB0" },
   { name = "snag", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "snag", source = "hex", outer_checksum = "7E9F06390040EB5FAB392CE642771484136F2EC103A92AE11BA898C8167E6E17" },
@@ -55,6 +55,6 @@ midas_browser = { version = ">= 0.1.2 and < 1.0.0" }
 midas_node = { version = ">= 1.2.2 and < 2.0.0" }
 midas_sdk = { version = ">= 0.4.2 and < 1.0.0" }
 mysig = { version = ">= 0.3.1 and < 1.0.0" }
-plinth = { version = ">= 0.5.5 and < 1.0.0" }
+plinth = { version = ">= 0.5.6 and < 1.0.0" }
 snag = { version = ">= 1.1.0 and < 2.0.0" }
 supa = { version = ">= 1.0.1 and < 2.0.0" }

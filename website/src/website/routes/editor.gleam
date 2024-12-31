@@ -24,6 +24,9 @@ import morph/picker
 import morph/projection as p
 import mysig/asset
 import mysig/html
+import plinth/browser/document
+import plinth/browser/element as pelement
+import plinth/browser/window
 import website/components
 import website/components/output
 import website/components/snippet
@@ -129,6 +132,7 @@ pub fn init(_) {
 
 pub type Message {
   ToggleHelp
+  ToggleFullscreen
   ChangeSubmenu(Submenu)
   SnippetMessage(snippet.Message)
   ShellMessage(snippet.Message)
@@ -156,6 +160,21 @@ pub fn update(state: State, message) {
     ToggleHelp -> #(
       State(..state, display_help: !state.display_help),
       effect.none(),
+    )
+    ToggleFullscreen -> #(
+      state,
+      effect.from(fn(_d) {
+        let w = window.self()
+        let doc = window.document(w)
+        case document.fullscreen_element(doc) {
+          Ok(_) -> document.exit_fullscreen(doc)
+          Error(Nil) -> {
+            let assert Ok(el) = document.get_element_by_id("app")
+            pelement.request_fullscreen(el)
+          }
+        }
+        Nil
+      }),
     )
     ChangeSubmenu(submenu) -> {
       let submenu = case submenu == state.submenu {
@@ -328,7 +347,7 @@ fn container(menu, page, open) {
     [
       // h-screen allows the address bar to hide
       a.class(
-        "h-screen overflow-hidden grid justify-center p-1 md:p-4 gap-1 md:gap-2 bg-gray-900",
+        "h-full overflow-hidden grid justify-center p-1 md:p-4 gap-1 md:gap-2 bg-gray-900",
       ),
       a.style([
         #("grid-template-columns", case open {
@@ -452,6 +471,11 @@ pub fn render(state: State) {
     render_menu(state),
     [
       render_pallet(state.shell.source) |> element.map(ShellMessage),
+      h.div([a.class("absolute top-0 right-0")], [
+        // element.text("to"),
+        fullscreen_menu_button(state),
+        help_menu_button(state),
+      ]),
       h.div(
         [a.class("expand vstack flex-grow"), a.style([#("min-height", "0")])],
         case list.length(state.shell.previous) {
@@ -806,24 +830,32 @@ pub fn render_menu(state: State) {
 }
 
 fn help_menu_button(state: State) {
-  h.div([a.class("flex-grow")], [
-    h.button(
-      [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(ToggleHelp)],
-      [
-        icon(
-          outline.question_mark_circle(),
-          "hide help",
-          state.display_help,
-          False,
-        ),
-      ],
-    ),
-  ])
+  // h.div([a.class("flex-grow")], [
+  h.button(
+    [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleHelp)],
+    [
+      icon(
+        outline.question_mark_circle(),
+        "hide help",
+        state.display_help,
+        False,
+      ),
+    ],
+  )
+  //   ,
+  // ])
+}
+
+fn fullscreen_menu_button(state: State) {
+  h.button(
+    [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
+    [icon(outline.tv(), "go fullscreen", state.display_help, False)],
+  )
 }
 
 fn one_col_menu(state: State, options) {
   [
-    help_menu_button(state),
+    // help_menu_button(state),
     // same as grid below
     h.div(
       [
@@ -848,10 +880,10 @@ fn one_col_menu(state: State, options) {
 
 fn two_col_menu(state: State, top, active, sub) {
   [
-    help_menu_button(state),
+    // help_menu_button(state),
     h.div(
       [
-        a.class("grid overflow-y-auto"),
+        a.class("grid overflow-y-auto overflow-x-hidden"),
         a.style([#("grid-template-columns", "max-content max-content")]),
       ],
       [
