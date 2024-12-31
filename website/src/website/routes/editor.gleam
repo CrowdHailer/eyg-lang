@@ -641,8 +641,20 @@ fn undo() {
   #(outline.arrow_uturn_left(), "undo", cmd("z"))
 }
 
+fn redo() {
+  #(outline.arrow_uturn_right(), "redo", cmd("Z"))
+}
+
 fn delete() {
   #(outline.trash(), "delete", cmd("d"))
+}
+
+fn copy() {
+  #(outline.clipboard(), "copy", cmd("y"))
+}
+
+fn paste() {
+  #(outline.clipboard_document(), "paste", cmd("Y"))
 }
 
 // The submenu is probably not part of the editor... yet
@@ -752,18 +764,10 @@ pub fn render_menu(state: State) {
 
       case state.submenu {
         Collection ->
-          two_col_menu(state, top, "wrap", [
-            new_list(),
-            new_record(),
-            tag_value(),
-            insert_function(),
-          ])
-
-        More ->
           two_col_menu(
             state,
             top,
-            "more",
+            "wrap",
             case focus {
               // Show all destructure options in extra
               p.Exp(e.Variable(_)) | p.Exp(e.Call(_, _)) -> [
@@ -774,12 +778,23 @@ pub fn render_menu(state: State) {
               _ -> []
             }
               |> list.append([
-                // expand(),
-                #(outline.bolt_slash(), "handle effect", cmd("h")),
-                #(outline.bolt(), "perform effect", cmd("p")),
-                #(outline.cog(), "builtins", cmd("j")),
+                new_list(),
+                new_record(),
+                tag_value(),
+                insert_function(),
               ]),
           )
+
+        More ->
+          two_col_menu(state, top, "more", [
+            // expand(),
+            redo(),
+            copy(),
+            paste(),
+            #(outline.bolt_slash(), "handle effect", cmd("h")),
+            #(outline.bolt(), "perform effect", cmd("p")),
+            #(outline.cog(), "builtins", cmd("j")),
+          ])
 
         Closed -> one_col_menu(state, top)
       }
