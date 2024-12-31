@@ -826,13 +826,22 @@ fn one_col_menu(state: State, options) {
     help_menu_button(state),
     // same as grid below
     h.div(
-      [a.class("flex flex-col justify-end py-2 overflow-y-auto")],
-      list.map(options, fn(entry) {
-        let #(i, text, k) = entry
-        h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
-          icon(i, text, state.display_help, False),
-        ])
-      }),
+      [
+        a.class("grid overflow-y-auto"),
+        a.style([#("grid-template-columns", "max-content max-content")]),
+      ],
+      [
+        h.div(
+          [a.class("flex flex-col justify-end text-gray-200 py-2")],
+          list.map(options, fn(entry) {
+            let #(i, text, k) = entry
+            h.button(
+              [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)],
+              [icon(i, text, state.display_help, False)],
+            )
+          }),
+        ),
+      ],
     ),
   ]
 }
