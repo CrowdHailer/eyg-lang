@@ -6,6 +6,7 @@ import lustre/element/html as h
 import mysig/asset
 import mysig/html
 import mysig/route
+import website/routes/common
 import website/routes/news/archive
 import website/routes/news/edition.{Edition}
 
@@ -30,54 +31,67 @@ fn web_editions(editions) {
       let edition = edition.render(edition, index, asset.src(pea))
 
       let page =
-        h.html([], [
-          h.head([], [
-            h.meta([a.attribute("charset", "UTF-8")]),
-            h.meta([
-              a.name("viewport"),
-              a.attribute("content", "width=device-width, initial-scale=1.0"),
-            ]),
-            h.title([], "EYG news: " <> title),
-            h.meta([
-              a.name("description"),
-              a.attribute(
-                "content",
-                "Updates from the development of the EYG language and editor.",
+        html.doc(
+          list.flatten([
+            [
+              html.stylesheet(asset.src(layout)),
+              h.style(
+                [],
+                "
+              #container {
+                padding: 0px;
+              }
+              #container > div {
+                padding: 4px;
+              }
+              @media (min-width: 640px) {
+                #container {
+                  padding: 12px
+                }
+                #container > div {
+                  padding: 12px;
+                  border-radius: 12px;
+                }
+              }",
               ),
-            ]),
-            html.stylesheet(asset.src(layout)),
-            h.link([a.rel("shortcut icon"), a.href(asset.src(pea))]),
-            html.plausible("eyg.run"),
+              h.meta([a.name("twitter:card"), a.content("summary_large_image")]),
+              html.plausible("eyg.run"),
+            ],
+            common.page_meta(
+              "/news/editions/" <> int.to_string(index),
+              "EYG news: " <> title,
+              "Updates from the development of the EYG language and structural editor.",
+            ),
           ]),
-          h.body(
-            [
-              a.class("vstack"),
-              a.style([
-                // #("margin", "12px auto"),
-                // #("max-width", "660px"),
-                #("background", edition.charcoal),
-                // #("padding", "12px"),
-                #("border-radius", "12px"),
-              ]),
-            ],
-            [
-              // inline_subscribe(),
-              h.div(
-                [
-                  a.style([
-                    #("margin", "12px auto"),
-                    #("max-width", "660px"),
-                    #("background", "white"),
-                    #("padding", "12px"),
-                    #("border-radius", "12px"),
-                  ]),
-                ],
-                [edition],
-              ),
-              inline_subscribe(),
-            ],
-          ),
-        ])
+          [
+            h.div(
+              [
+                a.id("container"),
+                a.style([
+                  // #("margin", "12px auto"),
+                  // #("max-width", "660px"),
+                  #("background", edition.charcoal),
+                  // #("padding", "12px"),
+                // #("border-radius", "12px"),
+                ]),
+              ],
+              [
+                // inline_subscribe(),
+                h.div(
+                  [
+                    a.style([
+                      #("margin", "0 auto"),
+                      #("max-width", "660px"),
+                      #("background", "white"),
+                    ]),
+                  ],
+                  [edition],
+                ),
+                inline_subscribe(),
+              ],
+            ),
+          ],
+        )
       asset.done(element.to_document_string(page))
     }
 

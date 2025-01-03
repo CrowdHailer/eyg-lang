@@ -5,6 +5,11 @@ html {
   box-sizing: inherit;
 }
 
+body {
+  margin: 0;
+  padding: 0;
+}
+
 .vstack {
   display: flex;
   flex-direction: column;

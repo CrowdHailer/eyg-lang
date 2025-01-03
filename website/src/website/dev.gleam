@@ -13,6 +13,7 @@ import mysig/build
 import mysig/dev
 import mysig/route.{Route}
 import plinth/node/process
+import simplifile
 import snag
 import website/routes/documentation
 import website/routes/editor
@@ -65,7 +66,9 @@ fn develop(_args) {
 }
 
 fn routes() {
+  let assert Ok(share) = simplifile.read_bits("src/website/share.png")
   Route(index: route.Page(home.page()), items: [
+    #("share.png", Route(route.Static(share), [])),
     #(
       "documentation",
       Route(index: route.Page(documentation.page()), items: []),

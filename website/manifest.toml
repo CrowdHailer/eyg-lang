@@ -56,5 +56,6 @@ midas_node = { version = ">= 1.2.2 and < 2.0.0" }
 midas_sdk = { version = ">= 0.4.2 and < 1.0.0" }
 mysig = { version = ">= 0.3.1 and < 1.0.0" }
 plinth = { version = ">= 0.5.6 and < 1.0.0" }
+simplifile = { version = ">= 1.7.0 and < 2.0.0" }
 snag = { version = ">= 1.1.0 and < 2.0.0" }
 supa = { version = ">= 1.0.1 and < 2.0.0" }
