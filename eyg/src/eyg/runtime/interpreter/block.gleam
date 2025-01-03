@@ -3,13 +3,22 @@ import eygir/annotated as a
 import gleam/list
 import gleam/option.{None, Some}
 
+// env is top env only updated by assigns
 fn loop(next, env) {
   case next {
-    state.Loop(state.E(#(a.Vacant(_), _)), e, state.Empty(_)) ->
-      Ok(#(None, e.scope))
-    state.Loop(state.E(#(_, _)) as c, e, state.Empty(_) as k) ->
-      loop(state.step(c, e, k), e.scope)
-    state.Loop(c, e, k) -> loop(state.step(c, e, k), env)
+    state.Loop(c, e, k) -> {
+      // update top env
+      let env = case c, k {
+        state.V(value),
+          state.Stack(state.Assign(label, _then, env), _, state.Empty(_))
+        -> [#(label, value), ..env.scope]
+        _, _ -> env
+      }
+      case c {
+        state.E(#(a.Vacant(_), _)) -> Ok(#(None, env))
+        _ -> loop(state.step(c, e, k), env)
+      }
+    }
     state.Break(Ok(result)) -> Ok(#(Some(result), env))
     state.Break(Error(reason)) -> Error(reason)
   }

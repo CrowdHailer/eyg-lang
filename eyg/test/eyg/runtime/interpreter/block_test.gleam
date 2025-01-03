@@ -1,6 +1,6 @@
 import eyg/runtime/interpreter/block as r
+import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eyg/sync/fragment
 import eygir/annotated as a
 import eygir/expression as e
 import gleam/dict
@@ -9,7 +9,9 @@ import gleeunit/shouldx
 
 fn execute(assigns, then) {
   let h = dict.new()
-  let env = fragment.empty_env(dict.new())
+  // let env = fragment.empty_env(dict.new())
+  // empty env makes easier debuging. printing all builtins was ugly
+  let env = state.Env([], dict.new(), dict.new())
 
   e.block_to_expression(assigns, then)
   |> a.add_annotation([])
@@ -55,4 +57,18 @@ pub fn shadowed_variable_test() {
 
   env
   |> should.equal([#("s", v.Integer(value: 22)), #("s", v.Integer(value: 21))])
+}
+
+pub fn fn_arg_contained_test() {
+  let assigns = []
+  let then = e.Apply(e.Lambda("a", e.Integer(1)), e.Str("inner"))
+  let #(value, env) =
+    execute(assigns, then)
+    |> should.be_ok()
+  value
+  |> should.be_some()
+  |> should.equal(v.Integer(1))
+
+  env
+  |> should.equal([])
 }

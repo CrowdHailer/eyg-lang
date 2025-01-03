@@ -60,6 +60,15 @@ pub fn function_application_test() {
   |> should.equal(Ok(v.Integer(0)))
 }
 
+pub fn function_variable_contain_test() {
+  let source =
+    e.Apply(e.Lambda("x", e.Str("body")), e.Variable("x"))
+    |> e2.add_annotation(Nil)
+
+  r.execute(source, env.empty(), dict.new())
+  |> should.be_error()
+}
+
 pub fn builtin_application_test() {
   let source =
     e.Apply(e.Builtin("string_uppercase"), e.Str("hello"))
