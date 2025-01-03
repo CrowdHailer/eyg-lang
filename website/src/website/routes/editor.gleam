@@ -367,7 +367,7 @@ fn container(menu, page, open) {
           a.class(
             "overflow-auto bg-white relative flex flex-col rounded font-mono",
           ),
-          a.style([#("min-width", min)]),
+          a.style([#("min-width", min), #("overscroll-behavior-y", "contain")]),
         ],
         page,
       ),
@@ -481,13 +481,15 @@ pub fn render(state: State) {
     render_menu(state),
     [
       render_pallet(state.shell.source) |> element.map(ShellMessage),
-      h.div([a.class("absolute top-0")], [
-        // element.text("to"),
+      h.div([a.class("absolute top-0 w-full bg-white")], [
         help_menu_button(state),
         fullscreen_menu_button(state),
       ]),
       h.div(
-        [a.class("expand vstack flex-grow"), a.style([#("min-height", "0")])],
+        [
+          a.class("expand vstack flex-grow pt-10"),
+          a.style([#("min-height", "0")]),
+        ],
         case list.length(state.shell.previous) {
           0 -> [
             h.div([a.class("px-2 text-gray-700 cover")], [
@@ -696,7 +698,7 @@ pub fn render_menu(state: State) {
   let State(shell: shell, ..) = state
   let snippet.Snippet(status: status, source: source, ..) = shell.source
   case status {
-    snippet.Idle -> one_col_menu(state, [])
+    snippet.Idle -> one_col_menu(state, [delete()])
     snippet.Editing(snippet.Command(_)) -> {
       let #(#(focus, zoom), _, _) = source
       let top = case focus {
@@ -834,7 +836,6 @@ pub fn render_menu(state: State) {
 }
 
 fn help_menu_button(state: State) {
-  // h.div([a.class("flex-grow")], [
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleHelp)],
     [
@@ -846,8 +847,6 @@ fn help_menu_button(state: State) {
       ),
     ],
   )
-  //   ,
-  // ])
 }
 
 fn fullscreen_menu_button(state: State) {
