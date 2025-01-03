@@ -65,9 +65,12 @@ fn develop(_args) {
 }
 
 fn routes() {
-  Route(index: home.page(), items: [
-    #("documentation", Route(index: documentation.page(), items: [])),
-    #("editor", Route(index: editor.page(), items: [])),
+  Route(index: route.Page(home.page()), items: [
+    #(
+      "documentation",
+      Route(index: route.Page(documentation.page()), items: []),
+    ),
+    #("editor", Route(index: route.Page(editor.page()), items: [])),
     #("news", news.route()),
   ])
 }

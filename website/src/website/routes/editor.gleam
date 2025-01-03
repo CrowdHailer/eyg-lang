@@ -69,7 +69,7 @@ fn layout(body) {
 
 pub fn page() {
   use content <- asset.do(app("website/routes/editor", "client"))
-  asset.done(content)
+  asset.done(element.to_document_string(content))
 }
 
 pub fn client() {

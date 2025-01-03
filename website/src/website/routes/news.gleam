@@ -11,10 +11,10 @@ import website/routes/news/edition.{Edition}
 
 pub fn route() {
   let items = web_editions(archive.published)
-  route.Route(index: asset.done(element.text("no page here")), items: [
+  route.Route(index: route.Page(asset.done("no page here")), items: [
     #(
       "editions",
-      route.Route(index: asset.done(element.text("no page here")), items: items),
+      route.Route(index: route.Page(asset.done("no page here")), items: items),
     ),
   ])
 }
@@ -78,10 +78,10 @@ fn web_editions(editions) {
             ],
           ),
         ])
-      asset.done(page)
+      asset.done(element.to_document_string(page))
     }
 
-    #(int.to_string(index), route.Route(index: page, items: []))
+    #(int.to_string(index), route.Route(index: route.Page(page), items: []))
   })
 }
 
