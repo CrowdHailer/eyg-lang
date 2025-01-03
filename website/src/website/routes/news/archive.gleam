@@ -2,6 +2,59 @@ import website/routes/news/edition.{Edition}
 
 pub const published = [
   Edition(
+    "2025-01-06",
+    "",
+    "
+  A hearty welcome to 2025.
+  With the new year, it's time for some reflection.
+
+  Of the [many motivations](https://x.com/CrowdHailer/status/1825475202848805122) for starting EYG,
+  the one I relate to most is making software useful to more people.
+  Not quite the same as making software *more* useful to *some* people, which is where many projects focus.
+
+  My belief is that software fragility has a disproportionate/egregious impact on preventing people solving their own problems with code.
+
+  ## Fragile software
+
+  Today's software is fragile. It decays over time due to outdated dependencies or environmental changes like new hardware or operating systems.
+  The fact software decays is a problem in many places. 
+  For example, does an important business process perform the same after upgrades?
+  Is a scientific result recomputable at another place and time?
+
+  Fragility reduces confidence when creating software.
+  
+  - Churn limits the useable lifetime of any software created
+  - Vendor lock in increases due to the increased risk of changing the environment around your software.
+  - Creating software is left to professionals who can comit time to it's maintainance and manage complexity and risk.
+
+  ## Addressing fragility
+
+  Several features reduce the fragility of software written in EYG.
+
+  - *Managed Effects* mediate interaction with the outside world containing the effect of environmental changes
+
+  - *Hash based references* make dependencies immutable. Fine grained references, down to single expressions,
+    mean no need to upgrade a whole library if the functions you use haven't changed.
+
+  - *Machine independence* in the core program structure makes it easy to port to new architectures and situation.
+
+  - *Sound type checking* over time and space, an ornate way of saying that the types can be checked over multiple machines and multiple releases.
+
+  Reducing fragility and increasing confidence is the task for 2025.
+  In a future edition I will apply this mission statement to a more concrete roadmap for EYG.
+  But for now.
+
+  ## In other news.
+
+  - *Type safe code reloading*. I finally created a demonstration of EYG type checking the upgrade to an app.
+    In this case the app is a simple counter and I show the type checker validating my changes to the running system.
+
+  - *The evolution of a structural code editor*. A post specifically about the editor and its evolution.
+
+  - *EYG on Software Unscripted*. Earlier in the year I had an interesting conversation with Richard on his podcast about EYG.
+  ",
+  ),
+  Edition(
     "2024-11-03",
     "New website and first EYG talks",
     "
