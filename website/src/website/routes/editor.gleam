@@ -730,7 +730,10 @@ pub fn render_menu(state: State) {
           }
           |> list.append([assign()], _)
           |> list.append(case zoom {
-            [p.ListItem(_, _, _), ..] -> [item_before(), item_after()]
+            [p.ListItem(_, _, _), ..] | [p.CallArg(_, _, _), ..] -> [
+              item_before(),
+              item_after(),
+            ]
             [p.BlockTail(_), ..] | [] -> [assign_before()]
             _ -> []
           })

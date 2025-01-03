@@ -319,6 +319,10 @@ pub fn extend_before(source, _context) {
       let zoom = [p.ListItem(pre, [item, ..post], tail), ..rest]
       Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
     }
+    #(p.Exp(item), [p.CallArg(func, pre, post), ..rest]) -> {
+      let zoom = [p.CallArg(func, pre, [item, ..post]), ..rest]
+      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+    }
     #(p.Exp(tail), [p.ListTail(pre), ..rest]) -> {
       let zoom = [p.ListItem(pre, [], Some(tail)), ..rest]
       Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
@@ -370,6 +374,10 @@ pub fn extend_after(source, _context) {
   case source {
     #(p.Exp(item), [p.ListItem(pre, post, tail), ..rest]) -> {
       let zoom = [p.ListItem([item, ..pre], post, tail), ..rest]
+      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+    }
+    #(p.Exp(item), [p.CallArg(func, pre, post), ..rest]) -> {
+      let zoom = [p.CallArg(func, [item, ..pre], post), ..rest]
       Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
     }
     #(p.Label(label, value, pre, post, for), zoom) -> {
