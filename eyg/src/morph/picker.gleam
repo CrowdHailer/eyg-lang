@@ -66,6 +66,7 @@ fn do_render(picker, filter, suggestions, index) {
       a.value(filter),
       a.attribute("autocomplete", "off"),
       a.attribute("autofocus", "true"),
+      a.required(True),
       event.on_keydown(on_keydown(_, picker)),
       event.on_input(on_input(_, picker)),
     ]),
