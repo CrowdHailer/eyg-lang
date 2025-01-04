@@ -72,3 +72,10 @@ pub fn fn_arg_contained_test() {
   env
   |> should.equal([])
 }
+
+pub fn vacant_assignment_fail_test() {
+  let assigns = [#("x", e.Vacant(""))]
+  let then = e.Vacant("")
+  execute(assigns, then)
+  |> should.be_error()
+}

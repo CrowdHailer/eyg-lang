@@ -133,6 +133,7 @@ pub type Message {
   ToggleFullscreen
   ChangeSubmenu(Submenu)
   SnippetMessage(snippet.Message)
+  UserClickedPrevious(e.Expression)
   ShellMessage(snippet.Message)
   SyncMessage(sync.Message)
 }
@@ -224,6 +225,14 @@ pub fn update(state: State, message) {
           display_help: display_help,
         )
       #(state, effect.batch([snippet_effect, sync_effect]))
+    }
+    UserClickedPrevious(exp) -> {
+      let shell = state.shell
+      let current =
+        snippet.active(exp, shell.scope, harness.effects(), state.cache)
+      let shell = Shell(..shell, source: current)
+      let state = State(..state, shell: shell)
+      #(state, effect.none())
     }
     ShellMessage(message) -> {
       let state = State(..state, submenu: Closed)
@@ -508,10 +517,19 @@ pub fn render(state: State) {
           case p {
             Executed(value, effects, prog) ->
               h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
-                h.div(
-                  [a.class("whitespace-nowrap overflow-auto")],
-                  render.statements(prog),
-                ),
+                h.div([a.class("relative pr-8")], [
+                  h.div(
+                    [a.class("flex-grow whitespace-nowrap overflow-auto")],
+                    render.statements(prog),
+                  ),
+                  h.button(
+                    [
+                      a.class("absolute top-0 right-0 w-6"),
+                      event.on_click(UserClickedPrevious(prog)),
+                    ],
+                    [outline.arrow_path()],
+                  ),
+                ]),
                 h.div(
                   [a.class("")],
                   list.map(effects, fn(eff) {

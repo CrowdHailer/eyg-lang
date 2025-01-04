@@ -8,15 +8,13 @@ fn loop(next, env) {
   case next {
     state.Loop(c, e, k) -> {
       // update top env
-      let env = case c, k {
-        state.V(value),
-          state.Stack(state.Assign(label, _then, env), _, state.Empty(_))
-        -> [#(label, value), ..env.scope]
-        _, _ -> env
-      }
-      case c {
-        state.E(#(a.Vacant(_), _)) -> Ok(#(None, env))
-        _ -> loop(state.step(c, e, k), env)
+      case c, k {
+        state.V(v), state.Stack(state.Assign(l, _then, env), _, state.Empty(_)) -> {
+          let env = [#(l, v), ..env.scope]
+          loop(state.step(c, e, k), env)
+        }
+        state.E(#(a.Vacant(_), _)), state.Empty(_) -> Ok(#(None, env))
+        _, _ -> loop(state.step(c, e, k), env)
       }
     }
     state.Break(Ok(result)) -> Ok(#(Some(result), env))
