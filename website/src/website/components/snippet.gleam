@@ -526,14 +526,7 @@ fn do_search_vacant(proj) {
 fn toggle_open(state) {
   let Snippet(source: #(proj, _, _), ..) = state
 
-  let #(focus, zoom) = proj
-  let focus = case focus {
-    p.Exp(e.Block(assigns, then, open)) -> p.Exp(e.Block(assigns, then, !open))
-    p.Assign(label, e.Block(assigns, inner, open), pre, post, final) ->
-      p.Assign(label, e.Block(assigns, inner, !open), pre, post, final)
-    _ -> focus
-  }
-  let proj = #(focus, zoom)
+  let proj = navigation.toggle_open(proj)
   navigate_source(proj, state)
 }
 

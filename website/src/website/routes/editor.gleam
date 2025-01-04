@@ -7,6 +7,7 @@ import gleam/int
 import gleam/io
 import gleam/javascript/promisex
 import gleam/list
+import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleroglero/outline
 import harness/impl/browser as harness
@@ -27,7 +28,9 @@ import mysig/html
 import plinth/browser/document
 import plinth/browser/element as pelement
 import plinth/browser/window
+import plinth/javascript/console
 import website/components/output
+import website/components/readonly
 import website/components/snippet
 import website/routes/common
 
@@ -80,7 +83,7 @@ pub type ShellEntry {
   Executed(
     Option(snippet.Value),
     List(#(String, #(snippet.Value, snippet.Value))),
-    e.Expression,
+    readonly.Readonly,
   )
 }
 
@@ -135,12 +138,19 @@ pub type Message {
   SnippetMessage(snippet.Message)
   UserClickedPrevious(e.Expression)
   ShellMessage(snippet.Message)
+  PreviouseMessage(readonly.Message, Int)
   SyncMessage(sync.Message)
 }
 
 fn dispatch_to_snippet(promise) {
   effect.from(fn(d) {
     promisex.aside(promise, fn(message) { d(SnippetMessage(message)) })
+  })
+}
+
+fn dispatch_to_previous(promise, i) {
+  effect.from(fn(d) {
+    promisex.aside(promise, fn(message) { d(PreviouseMessage(message, i)) })
   })
 }
 
@@ -152,6 +162,22 @@ fn dispatch_to_shell(promise) {
 
 fn dispatch_nothing(_promise) {
   effect.none()
+}
+
+fn close_many_previous(shell_entries) {
+  list.map(shell_entries, fn(e) {
+    let Executed(a, b, r) = e
+    let r = readonly.Readonly(..r, status: readonly.Idle)
+    Executed(a, b, r)
+  })
+}
+
+fn close_all_previous(state: State) {
+  let shell = state.shell
+  let previous = close_many_previous(shell.previous)
+
+  let shell = Shell(..shell, previous: previous)
+  State(..state, shell: shell)
 }
 
 pub fn update(state: State, message) {
@@ -235,6 +261,7 @@ pub fn update(state: State, message) {
       #(state, effect.none())
     }
     ShellMessage(message) -> {
+      let state = close_all_previous(state)
       let state = State(..state, submenu: Closed)
       let shell = state.shell
       let #(source, eff) = snippet.update(shell.source, message)
@@ -261,9 +288,14 @@ pub fn update(state: State, message) {
               let source = snippet.fail(source, "load previous")
               #(Shell(..shell, source: source), effect.none())
             }
-            [Executed(_value, _effects, exp), ..] -> {
+            [Executed(_value, _effects, readonly), ..] -> {
               let current =
-                snippet.active(exp, shell.scope, harness.effects(), state.cache)
+                snippet.active(
+                  readonly.source,
+                  shell.scope,
+                  harness.effects(),
+                  state.cache,
+                )
               #(Shell(..shell, source: current), effect.none())
             }
           }
@@ -279,7 +311,7 @@ pub fn update(state: State, message) {
         )
         snippet.Conclude(value, effects, scope) -> {
           let previous = [
-            Executed(value, effects, snippet.source(shell.source)),
+            Executed(value, effects, readonly.new(snippet.source(shell.source))),
             ..shell.previous
           ]
           let source =
@@ -293,7 +325,29 @@ pub fn update(state: State, message) {
       let state = State(..state, shell: shell, cache: cache)
       #(state, effect.batch([snippet_effect, sync_effect]))
     }
-
+    PreviouseMessage(m, i) -> {
+      let shell = state.shell
+      let assert Ok(#(pre, executed, post)) =
+        listx.split_around(shell.previous, i)
+      let pre = close_many_previous(pre)
+      let post = close_many_previous(post)
+      let Executed(a, b, r) = executed
+      let #(r, action) = readonly.update(r, m)
+      let previous = listx.gather_around(pre, Executed(a, b, r), post)
+      let effect = case action {
+        readonly.Nothing -> effect.none()
+        readonly.Fail(message) -> {
+          console.warn(message)
+          effect.none()
+        }
+        readonly.MoveAbove -> effect.none()
+        readonly.MoveBelow -> effect.none()
+        readonly.WriteToClipboard(text) ->
+          dispatch_to_previous(readonly.write_to_clipboard(text), i)
+      }
+      let shell = Shell(..shell, previous: previous)
+      #(State(..state, shell: shell), effect)
+    }
     SyncMessage(message) -> {
       let cache = sync.task_finish(state.cache, message)
       let #(cache, tasks) = sync.fetch_all_missing(cache)
@@ -511,21 +565,22 @@ pub fn render(state: State) {
           _ -> []
         },
       ),
-      h.div(
-        [a.class("expand cover font-mono bg-gray-100 overflow-auto")],
-        list.map(list.reverse(state.shell.previous), fn(p) {
+      h.div([a.class("expand cover font-mono bg-gray-100 overflow-auto")], {
+        let count = list.length(state.shell.previous) - 1
+        list.index_map(list.reverse(state.shell.previous), fn(p, i) {
+          let i = count - i
           case p {
-            Executed(value, effects, prog) ->
+            Executed(value, effects, readonly) ->
               h.div([a.class("mx-2 border-t border-gray-600 border-dashed")], [
                 h.div([a.class("relative pr-8")], [
-                  h.div(
-                    [a.class("flex-grow whitespace-nowrap overflow-auto")],
-                    render.statements(prog),
-                  ),
+                  h.div([a.class("flex-grow whitespace-nowrap overflow-auto")], [
+                    readonly.render(readonly)
+                    |> element.map(PreviouseMessage(_, i)),
+                  ]),
                   h.button(
                     [
                       a.class("absolute top-0 right-0 w-6"),
-                      event.on_click(UserClickedPrevious(prog)),
+                      event.on_click(UserClickedPrevious(readonly.source)),
                     ],
                     [outline.arrow_path()],
                   ),
@@ -549,8 +604,8 @@ pub fn render(state: State) {
                 },
               ])
           }
-        }),
-      ),
+        })
+      }),
       // snippet.render_current([], state.shell.source.run)
       //   |> element.map(ShellMessage),
 

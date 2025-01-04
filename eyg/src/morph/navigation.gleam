@@ -756,3 +756,14 @@ fn decrease_assign(detail) {
     _ -> panic as "can't decrease into assign"
   }
 }
+
+pub fn toggle_open(proj) {
+  let #(focus, zoom) = proj
+  let focus = case focus {
+    p.Exp(e.Block(assigns, then, open)) -> p.Exp(e.Block(assigns, then, !open))
+    p.Assign(label, e.Block(assigns, inner, open), pre, post, final) ->
+      p.Assign(label, e.Block(assigns, inner, !open), pre, post, final)
+    _ -> focus
+  }
+  #(focus, zoom)
+}
