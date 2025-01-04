@@ -396,8 +396,14 @@ pub fn render_branch(field, rev) {
   )
 }
 
+pub type RenderKind {
+  Statements
+  Expression
+  ReadonlyStatements
+}
+
 // rev passed in here is rest of rev
-fn render_break(break, inner, rev, is_expression) {
+fn render_break(break, inner, rev, kind) {
   case break {
     t.CallFn(args) -> render_call(inner, render_args(args, rev))
     t.CallArg(f, pre, post) -> {
@@ -477,9 +483,10 @@ fn render_break(break, inner, rev, is_expression) {
       let assign = do_let([self, ..rev], pattern(p, [0, self, ..rev]), inner)
       let assignments = listx.gather_around(pre, assign, post)
       let len = self + 1 + list.length(post)
-      case is_expression, rev, then {
-        False, [], e.Vacant(_) ->
+      case kind, rev, then {
+        Statements, [], e.Vacant(_) ->
           list.append(assignments, [continue_space([len, ..rev])])
+        ReadonlyStatements, [], e.Vacant(_) -> assignments
         _, _, _ -> list.append(assignments, [expression(then, [len, ..rev])])
       }
       |> frame.to_fat_lines()
@@ -549,16 +556,16 @@ pub fn push_render(frame, zoom, is_expression) {
   }
 }
 
-pub fn projection(zip, is_expression) -> element.Element(a) {
+pub fn projection(zip, kind) -> element.Element(a) {
   let #(_focus, zoom) = zip
   // This is NOT reversed because zoom works from inside out
-  let frame = projection_frame(zip, is_expression)
-  push_render(frame, zoom, is_expression)
+  let frame = projection_frame(zip, kind)
+  push_render(frame, zoom, kind)
   |> frame.to_fat_line
   // TO fat line is very similar to top function
 }
 
-pub fn projection_frame(zip, is_expression) {
+pub fn projection_frame(zip, kind) {
   let #(focus, zoom) = zip
   let rev = t.path_to_zoom(zoom, [])
   let rev = list.reverse(rev)
@@ -635,9 +642,10 @@ pub fn projection_frame(zip, is_expression) {
       let len = list.length(pre) + list.length(post) + 1
 
       let assignments = listx.gather_around(pre, assign, post)
-      case is_expression, rev, then {
-        False, [], e.Vacant(_) ->
+      case kind, rev, then {
+        Statements, [], e.Vacant(_) ->
           list.append(assignments, [continue_space([len, ..rev])])
+        ReadonlyStatements, [], e.Vacant(_) -> assignments
         _, _, _ -> list.append(assignments, [expression(then, [len, ..rev])])
       }
       |> frame.to_fat_lines

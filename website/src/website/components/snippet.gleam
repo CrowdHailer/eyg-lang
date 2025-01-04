@@ -1176,10 +1176,9 @@ fn actual_render_projection(proj, autofocus, using_mouse) {
 
 fn render_projection(proj, _using_mouse) {
   let #(_focus, zoom) = proj
-  let is_expression = False
   // This is NOT reversed because zoom works from inside out
-  let frame = render.projection_frame(proj, is_expression)
-  render.push_render(frame, zoom, is_expression)
+  let frame = render.projection_frame(proj, render.Statements)
+  render.push_render(frame, zoom, render.Statements)
   |> frame.to_fat_line
 }
 

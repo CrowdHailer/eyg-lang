@@ -162,12 +162,11 @@ pub fn render(state) {
   case status {
     Selecting -> {
       let #(_focus, zoom) = projection
-      let is_expression = False
 
       //   actual_render_projection(proj, autofocus, using_mouse)
-      let frame = render.projection_frame(projection, is_expression)
+      let frame = render.projection_frame(projection, render.ReadonlyStatements)
       let projection_rendered =
-        render.push_render(frame, zoom, is_expression)
+        render.push_render(frame, zoom, render.ReadonlyStatements)
         |> frame.to_fat_line
       h.div(
         [
