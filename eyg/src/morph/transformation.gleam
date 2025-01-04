@@ -78,10 +78,24 @@ pub fn delete(zip) {
 pub fn assign(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
+    p.Exp(e.Vacant(_)), [p.BlockTail(assigns), ..zoom] ->
+      Ok(fn(pattern) {
+        let zoom = [
+          p.BlockValue(pattern, list.reverse(assigns), [], e.Vacant("")),
+          ..zoom
+        ]
+        #(p.Exp(e.Vacant("")), zoom)
+      })
+
     p.Exp(value), [p.BlockTail(assigns), ..zoom] ->
       Ok(fn(pattern) {
         let assigns = list.append(assigns, [#(pattern, value)])
         let zoom = [p.BlockTail(assigns), ..zoom]
+        #(p.Exp(e.Vacant("")), zoom)
+      })
+    p.Exp(e.Vacant(_) as value), _ ->
+      Ok(fn(pattern) {
+        let zoom = [p.BlockValue(pattern, [], [], value), ..zoom]
         #(p.Exp(e.Vacant("")), zoom)
       })
     p.Exp(value), _ ->
