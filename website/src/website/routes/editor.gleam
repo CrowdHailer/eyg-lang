@@ -20,7 +20,6 @@ import lustre/event
 import morph/analysis
 import morph/editable as e
 import morph/input
-import morph/lustre/render
 import morph/picker
 import morph/projection as p
 import mysig/asset
@@ -94,7 +93,8 @@ pub type Shell {
     // cache: sync.Sync,
     previous: List(ShellEntry),
     // display_help: Bool,
-    scope: snippet.Scope,
+    // scope is on snippet
+    // scope: snippet.Scope,
     source: snippet.Snippet,
   )
 }
@@ -122,7 +122,7 @@ pub fn init(_) {
   let references = snippet.references(snippet)
   let #(cache, tasks) = sync.fetch_missing(cache, references)
   let shell =
-    Shell([], [], {
+    Shell([], {
       let source = e.from_expression(expression.Vacant(""))
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
@@ -237,7 +237,6 @@ pub fn update(state: State, message) {
           dispatch_to_snippet(snippet.write_to_clipboard(text)),
         )
         snippet.Conclude(_, _, _) -> {
-          io.debug("conclude")
           #(display_help, effect.none())
         }
       }
@@ -254,8 +253,8 @@ pub fn update(state: State, message) {
     }
     UserClickedPrevious(exp) -> {
       let shell = state.shell
-      let current =
-        snippet.active(exp, shell.scope, harness.effects(), state.cache)
+      let scope = shell.source.scope
+      let current = snippet.active(exp, scope, harness.effects(), state.cache)
       let shell = Shell(..shell, source: current)
       let state = State(..state, shell: shell)
       #(state, effect.none())
@@ -289,10 +288,11 @@ pub fn update(state: State, message) {
               #(Shell(..shell, source: source), effect.none())
             }
             [Executed(_value, _effects, readonly), ..] -> {
+              let scope = shell.source.scope
               let current =
                 snippet.active(
                   readonly.source,
-                  shell.scope,
+                  scope,
                   harness.effects(),
                   state.cache,
                 )
