@@ -82,7 +82,6 @@ pub type ShellEntry {
     List(#(String, #(snippet.Value, snippet.Value))),
     e.Expression,
   )
-  Reloaded
 }
 
 pub type Shell {
@@ -249,20 +248,15 @@ pub fn update(state: State, message) {
           case shell.previous {
             // TODO handle errors from lower layers i.e the snippet
             // remove Reloaded as that not used
-            [] -> panic as "there is no previous"
+            [] -> {
+              let source = snippet.fail(source, "load previous")
+              #(Shell(..shell, source: source), effect.none())
+            }
             [Executed(_value, _effects, exp), ..] -> {
               let current =
                 snippet.active(exp, shell.scope, harness.effects(), state.cache)
               #(Shell(..shell, source: current), effect.none())
             }
-            [Reloaded, Executed(_value, _effects, exp), ..] -> {
-              let current =
-                snippet.active(exp, shell.scope, harness.effects(), state.cache)
-              #(Shell(..shell, source: current), effect.none())
-            }
-            // TODO handle errors from lower layers i.e the snippet
-            // remove Reloaded as that not used
-            _ -> panic as "there is no previous"
           }
         }
         snippet.MoveBelow -> #(Shell(..shell, source: source), effect.none())
@@ -536,11 +530,6 @@ pub fn render(state: State) {
                   None -> element.none()
                 },
               ])
-            Reloaded ->
-              h.div(
-                [a.class("separator mx-12 mt-1 border-blue-400 text-blue-400")],
-                [element.text("Reloaded")],
-              )
           }
         }),
       ),

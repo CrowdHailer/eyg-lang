@@ -78,6 +78,10 @@ pub type Mode {
   EditInteger(Int, fn(Int) -> p.Projection)
 }
 
+pub fn fail(state, fail) {
+  Snippet(..state, status: Editing(Command(Some(ActionFailed(fail)))))
+}
+
 pub type Snippet {
   Snippet(
     status: Status,
