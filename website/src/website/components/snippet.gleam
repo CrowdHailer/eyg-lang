@@ -414,7 +414,8 @@ pub fn update(state, message) {
       let run = run.Run(status, effect_log)
       let state = Snippet(..state, run: run)
       case status {
-        run.Done(_, _) | run.Failed(_) -> #(state, Nothing)
+        run.Failed(_) -> #(state, Nothing)
+        run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
 
         run.Handling(_label, lift, env, k, blocking) ->
           case blocking(lift) {
