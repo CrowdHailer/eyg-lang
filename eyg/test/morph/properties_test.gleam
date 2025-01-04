@@ -42,7 +42,7 @@ pub fn editable_property_test() {
     let path = list.reverse(rev)
     let p = projection.focus_at(src, path)
     has_attr(idle, rev)
-    render.projection(p, True)
+    render.projection(p, render.Expression)
     |> element.to_readable_string
     |> has_all(revs)
   })

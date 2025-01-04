@@ -3,15 +3,18 @@ import eygir/annotated as a
 import gleam/list
 import gleam/option.{None, Some}
 
+const special = "!!special!!"
+
 // env is top env only updated by assigns
 fn loop(next, env) {
   case next {
     state.Loop(c, e, k) -> {
       // update top env
       case c, k {
-        state.V(v), state.Stack(state.Assign(l, _then, env), _, state.Empty(_)) -> {
-          let env = [#(l, v), ..env.scope]
-          loop(state.step(c, e, k), env)
+        state.V(v), state.Stack(state.Assign(l, _then, env), _, state.Empty(_))
+          if l == special
+        -> {
+          loop(state.step(c, e, k), env.scope)
         }
         state.E(#(a.Vacant(_), _)), state.Empty(_) -> Ok(#(None, env))
         _, _ -> loop(state.step(c, e, k), env)
@@ -22,7 +25,21 @@ fn loop(next, env) {
   }
 }
 
+pub fn inject(exp, acc) {
+  case exp {
+    #(a.Let(l, v, t), m) -> inject(t, [#(l, m, v), ..acc])
+    _ -> {
+      let acc = [#(special, Nil, #(a.Empty, Nil)), ..acc]
+      list.fold(acc, exp, fn(exp, assign) {
+        let #(l, m, v) = assign
+        #(a.Let(l, v, exp), m)
+      })
+    }
+  }
+}
+
 pub fn execute(exp, env, h) {
+  let exp = inject(exp, [])
   loop(state.step(state.E(exp), env, state.Empty(h)), env.scope)
 }
 

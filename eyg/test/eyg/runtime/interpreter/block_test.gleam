@@ -14,7 +14,7 @@ fn execute(assigns, then) {
   let env = state.Env([], dict.new(), dict.new())
 
   e.block_to_expression(assigns, then)
-  |> a.add_annotation([])
+  |> a.add_annotation(Nil)
   |> r.execute(env, h)
 }
 
@@ -78,4 +78,22 @@ pub fn vacant_assignment_fail_test() {
   let then = e.Vacant("")
   execute(assigns, then)
   |> should.be_error()
+}
+
+pub fn assign_in_fn_contained_test() {
+  let assigns = []
+  let then =
+    e.Apply(
+      e.Lambda("i", e.Let("j", e.Integer(1), e.Variable("i"))),
+      e.Str("inner"),
+    )
+  let #(value, env) =
+    execute(assigns, then)
+    |> should.be_ok()
+  value
+  |> should.be_some()
+  |> should.equal(v.Str("inner"))
+
+  env
+  |> should.equal([])
 }
