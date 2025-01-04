@@ -19,7 +19,6 @@ import lustre/event
 import morph/analysis
 import morph/editable as e
 import morph/input
-import morph/lustre/components/key
 import morph/lustre/render
 import morph/picker
 import morph/projection as p
@@ -28,7 +27,6 @@ import mysig/html
 import plinth/browser/document
 import plinth/browser/element as pelement
 import plinth/browser/window
-import website/components
 import website/components/output
 import website/components/snippet
 import website/routes/common
@@ -249,7 +247,9 @@ pub fn update(state: State, message) {
         snippet.ToggleHelp -> #(Shell(..shell, source: source), effect.none())
         snippet.MoveAbove -> {
           case shell.previous {
-            [] -> todo
+            // TODO handle errors from lower layers i.e the snippet
+            // remove Reloaded as that not used
+            [] -> panic as "there is no previous"
             [Executed(_value, _effects, exp), ..] -> {
               let current =
                 snippet.active(exp, shell.scope, harness.effects(), state.cache)
@@ -260,7 +260,9 @@ pub fn update(state: State, message) {
                 snippet.active(exp, shell.scope, harness.effects(), state.cache)
               #(Shell(..shell, source: current), effect.none())
             }
-            _ -> todo
+            // TODO handle errors from lower layers i.e the snippet
+            // remove Reloaded as that not used
+            _ -> panic as "there is no previous"
           }
         }
         snippet.MoveBelow -> #(Shell(..shell, source: source), effect.none())
@@ -323,7 +325,7 @@ fn not_a_modal(content, dismiss: a) {
   ])
 }
 
-fn icon(image, text, display_help, active) {
+fn icon(image, text, display_help) {
   h.span([a.class("flex rounded"), a.style([#("align-items", "center")])], [
     // h-7 matches text height
     h.span([a.class("inline-block w-6 h-7 text-center text-xl")], [image]),
@@ -841,21 +843,14 @@ pub fn render_menu(state: State) {
 fn help_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleHelp)],
-    [
-      icon(
-        outline.question_mark_circle(),
-        "hide help",
-        state.display_help,
-        False,
-      ),
-    ],
+    [icon(outline.question_mark_circle(), "hide help", state.display_help)],
   )
 }
 
 fn fullscreen_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
-    [icon(outline.tv(), "fullscreen", state.display_help, False)],
+    [icon(outline.tv(), "fullscreen", state.display_help)],
   )
 }
 
@@ -875,7 +870,7 @@ fn one_col_menu(state: State, options) {
             let #(i, text, k) = entry
             h.button(
               [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)],
-              [icon(i, text, state.display_help, False)],
+              [icon(i, text, state.display_help)],
             )
           }),
         ),
@@ -903,7 +898,7 @@ fn two_col_menu(state: State, top, active, sub) {
                 a.classes([#("bg-yellow-600", text == active)]),
                 event.on_click(k),
               ],
-              [icon(i, text, False, False)],
+              [icon(i, text, False)],
             )
           }),
         ),
@@ -917,7 +912,7 @@ fn two_col_menu(state: State, top, active, sub) {
             let #(i, text, k) = entry
             h.button(
               [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
-              [icon(i, text, state.display_help, False)],
+              [icon(i, text, state.display_help)],
             )
           }),
         ),
@@ -927,7 +922,7 @@ fn two_col_menu(state: State, top, active, sub) {
 }
 
 fn render_errors(snippet: snippet.Snippet) {
-  let #(proj, _, analysis) = snippet.source
+  let #(_proj, _, analysis) = snippet.source
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
