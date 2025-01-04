@@ -35,7 +35,7 @@ pub fn header(authenticate, session) {
   h.header(
     [
       a.class(
-        "mx-auto w-full max-w-6xl hstack py-2 px-1 md:px-8 sticky top-0 border-b-2 z-20",
+        "mx-auto w-full max-w-6xl hstack py-2 px-1 md:px-8 sticky top-0 border-b-2 z-20 bg-white",
       ),
     ],
     [
