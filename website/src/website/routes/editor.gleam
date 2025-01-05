@@ -118,9 +118,8 @@ pub type State {
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let source = e.from_expression(expression.Vacant(""))
+  // snippet has no effects, they run in the shell
   let snippet = snippet.init(source, [], [], cache)
-  let references = snippet.references(snippet)
-  let #(cache, tasks) = sync.fetch_missing(cache, references)
   let shell =
     Shell([], {
       let source = e.from_expression(expression.Vacant(""))
@@ -128,7 +127,7 @@ pub fn init(_) {
       snippet.init(source, [], harness.effects(), cache)
     })
   let state = State(cache, snippet, shell, Closed, False)
-  #(state, effect.from(browser.do_sync(tasks, SyncMessage)))
+  #(state, effect.from(browser.do_load(SyncMessage)))
 }
 
 pub type Message {
@@ -352,8 +351,10 @@ pub fn update(state: State, message) {
       let cache = sync.task_finish(state.cache, message)
       let #(cache, tasks) = sync.fetch_all_missing(cache)
       let snippet = snippet.set_references(state.source, cache)
+      let shell_source = snippet.set_references(state.shell.source, cache)
+      let shell = Shell(..state.shell, source: shell_source)
       #(
-        State(..state, source: snippet, cache: cache),
+        State(..state, source: snippet, shell: shell, cache: cache),
         effect.from(browser.do_sync(tasks, SyncMessage)),
       )
     }
@@ -888,6 +889,7 @@ pub fn render_menu(state: State) {
             redo(),
             copy(),
             paste(),
+            #(outline.at_symbol(), "reference", cmd("#")),
             #(outline.bolt_slash(), "handle effect", cmd("h")),
             #(outline.bolt(), "perform effect", cmd("p")),
             #(outline.cog(), "builtins", cmd("j")),

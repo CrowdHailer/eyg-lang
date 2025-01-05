@@ -44,7 +44,7 @@ pub fn do_load(message) {
     let releases =
       list.group(releases, fn(release) { release.package_id })
       |> dict.map_values(fn(_, releases) {
-        list.map(releases, fn(release) { #(release.version, release.hash) })
+        list.map(releases, fn(release) { #(release.version, release) })
         |> dict.from_list
       })
 

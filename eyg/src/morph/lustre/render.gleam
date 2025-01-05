@@ -279,11 +279,7 @@ pub fn expression(exp, rev) {
           let assert [name, v, ..] = string.split(rest, ":")
           frame.Inline([
             h.span(
-              [
-                a.class("text-purple-800"),
-                exp_key(rev),
-                a.title("version = " <> v),
-              ],
+              [a.class("font-bold"), exp_key(rev), a.title("version = " <> v)],
               [text("@" <> name)],
             ),
           ])

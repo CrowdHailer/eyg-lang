@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding/error
 import eyg/runtime/break
 import eyg/sync/dump
 import eyg/sync/fragment
+import eyg/sync/supabase
 import eygir/annotated
 import eygir/decode
 import eygir/expression
@@ -52,7 +53,7 @@ pub type Sync {
     // loaded is blobs
     loaded: Dict(String, Computed),
     registry: Dict(String, String),
-    packages: Dict(String, Dict(Int, String)),
+    packages: Dict(String, Dict(Int, supabase.Release)),
   )
 }
 
@@ -88,6 +89,7 @@ pub fn missing(sync, refs) {
 }
 
 pub fn fetch_missing(sync, refs) {
+  io.debug("this should be replaced with loading initial state")
   let Sync(origin: origin, tasks: running, ..) = sync
   let missing = missing(sync, refs)
 
@@ -141,7 +143,7 @@ pub fn named_values(sync) {
       Error(Nil) -> []
       Ok(releases) -> {
         list.filter_map(dict.to_list(releases), fn(release) {
-          let #(version, hash_ref) = release
+          let #(version, supabase.Release(hash: hash_ref, ..)) = release
           use Computed(value: value, ..) <- result.try(dict.get(
             loaded,
             hash_ref,
@@ -190,7 +192,7 @@ pub fn named_types(sync) {
       Error(Nil) -> []
       Ok(releases) -> {
         list.filter_map(dict.to_list(releases), fn(release) {
-          let #(version, hash_ref) = release
+          let #(version, supabase.Release(hash: hash_ref, ..)) = release
           use Computed(type_: type_, ..) <- result.try(dict.get(
             loaded,
             hash_ref,
@@ -365,10 +367,12 @@ pub fn package_index(sync) {
 
     case dict.size(package) {
       x if x > 0 -> {
-        let latest = x - 1
-        let assert Ok(hash_ref) = dict.get(package, latest)
+        // We start on version 1
+        let latest = x
+        let assert Ok(supabase.Release(hash: hash_ref, ..)) =
+          dict.get(package, latest)
         let assert Ok(Computed(type_: type_, ..)) = dict.get(loaded, hash_ref)
-        Ok(#(named_ref(name, x - 1), type_))
+        Ok(#(named_ref(name, x), type_))
       }
       _ -> Error(Nil)
     }
