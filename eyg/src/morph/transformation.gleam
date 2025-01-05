@@ -196,8 +196,7 @@ pub fn binary(zip) {
   case focus {
     p.Exp(e.Binary(content)) ->
       Ok(#(content, fn(content) { #(p.Exp(e.Binary(content)), zoom) }))
-    p.Exp(_) ->
-      Ok(#(<<1, 10, 100>>, fn(content) { #(p.Exp(e.Binary(content)), zoom) }))
+    p.Exp(_) -> Ok(#(<<>>, fn(content) { #(p.Exp(e.Binary(content)), zoom) }))
     _ -> Error(Nil)
   }
 }

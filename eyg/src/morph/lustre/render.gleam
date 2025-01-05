@@ -200,10 +200,10 @@ pub fn expression(exp, rev) {
           text(int.to_string(v)),
         ]),
       ])
-    e.Binary(_) ->
+    e.Binary(bytes) ->
       frame.Inline([
-        h.span([a.class("text-orange-2"), exp_key(rev)], [
-          text("binary is still to be rendered"),
+        h.span([a.class("text-green-4"), exp_key(rev)], [
+          text(string.inspect(bytes)),
         ]),
       ])
 

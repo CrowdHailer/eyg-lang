@@ -892,6 +892,13 @@ pub fn render_menu(state: State) {
             #(outline.at_symbol(), "reference", cmd("#")),
             #(outline.bolt_slash(), "handle effect", cmd("h")),
             #(outline.bolt(), "perform effect", cmd("p")),
+            #(
+              h.span([a.style([#("font-size", "0.8rem")])], [
+                element.text("1101"),
+              ]),
+              "binary",
+              cmd("b"),
+            ),
             #(outline.cog(), "builtins", cmd("j")),
           ])
 

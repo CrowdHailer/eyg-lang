@@ -1106,7 +1106,7 @@ pub fn string(state: Embed, start, end) {
 pub fn binary(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Binary(<<1, 10, 100>>), Insert, [])
+  #(e.Binary(<<>>), Insert, [])
 }
 
 // shift d for delete line
