@@ -2,6 +2,70 @@ import website/routes/news/edition.{Edition}
 
 pub const published = [
   Edition(
+    "2025-01-06",
+    "Code reloading, structured editor and some reflections",
+    "
+  A hearty welcome to 2025.
+
+  With the new year, it's time for some updates and some reflection.
+
+  ## [*Type safe code reloading*](https://vimeo.com/1033086983)
+
+  In this demonstration I build and modify a simple counter application while the EYG type checker validates my changes can be applied to the running system.
+
+  I'm excited by this capability, though it's a little tricky to explain.
+  Best is to check out [the demo](https://vimeo.com/1033086983).
+
+  ## [*The evolution of a structural code editor*](https://crowdhailer.me/2025-01-02/the-evolution-of-a-structural-code-editor/)
+
+  Since the very beginning a structured editor has existed for EYG.
+  The structured editor is probably the most controversial direction for EYG.
+  (A syntax and parser also exists but for now I continue to focus on the editor).
+
+  To give some more context I wrote a [post](https://crowdhailer.me/2025-01-02/the-evolution-of-a-structural-code-editor/) about the editor and its evolution.
+
+  ## Reflections on fragile software
+
+  Of the [many motivations](https://x.com/CrowdHailer/status/1825475202848805122) for starting EYG,
+  the one I relate to most is making software useful to more people.
+  Not quite the same as making software *more* useful to *some* people, which is where many projects focus.
+
+  There is much that can be improved to help more people with software. 
+  However it is my belief that software fragility has a disproportionate impact on preventing people solving their own problems with code.
+
+  Today's software is fragile. It decays over time due to outdated dependencies or environmental changes like new hardware or operating systems.
+  The fact software decays is a problem in many places. 
+  For example, does an important business process perform in the same way after upgrades?
+  Is a scientific result recomputable at another place and time?
+
+  Fragility reduces confidence when creating software.
+
+  - Churn limits the useable lifetime of any software created
+
+  - Vendor lock-in increases due to the increased risk of changing the environment around your software.
+
+  - Creating software is left to professionals who can commit time to it's maintainance and manage complexity and risk.
+
+  ### Addressing fragility
+
+  Several features of EYG reduce the fragility of software written with it.
+
+  - *Managed Effects* mediate interaction with the outside world containing the effect of environmental changes.
+
+  - *Hash based references* make dependencies immutable. Fine grained references, down to single expressions,
+    mean there is no need to upgrade a whole library if the functions you use haven't changed.
+
+  - *Machine independence* in the core program structure makes it easy to port to new architectures and situations.
+
+  - *Type checking over time and space*, an extravagant way of saying that the types can be checked over multiple machines and multiple releases.
+
+  Reducing fragility and increasing confidence is the task for 2025.
+  In a future edition I will apply this mission statement to a more concrete roadmap for EYG.
+
+  That's all to kick off the year. Please do let me know what you make of the [new editor](https://eyg.run/editor/).
+  ",
+  ),
+  Edition(
     "2024-11-03",
     "New website and first EYG talks",
     "
