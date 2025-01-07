@@ -46,6 +46,65 @@ pub fn delete(zip) {
     -> Ok(#(p.Assign(p.AssignStatement(pattern), value, pre, [], then), zoom))
     p.Assign(p.AssignStatement(_), _, [], [], then), zoom ->
       Ok(#(p.Exp(then), zoom))
+    p.Assign(
+      p.AssignField(_, _, pre_p, [#(l, x), ..post_p]),
+      value,
+      pre,
+      post,
+      then,
+    ),
+      _
+    ->
+      Ok(#(
+        p.Assign(p.AssignField(l, x, pre_p, post_p), value, pre, post, then),
+        zoom,
+      ))
+    p.Assign(
+      p.AssignBind(_, _, pre_p, [#(l, x), ..post_p]),
+      value,
+      pre,
+      post,
+      then,
+    ),
+      _
+    ->
+      Ok(#(
+        p.Assign(p.AssignBind(l, x, pre_p, post_p), value, pre, post, then),
+        zoom,
+      ))
+    p.Assign(
+      p.AssignField(_, _, [#(l, x), ..pre_p], []),
+      value,
+      pre,
+      post,
+      then,
+    ),
+      _
+    ->
+      Ok(#(
+        p.Assign(p.AssignField(l, x, pre_p, []), value, pre, post, then),
+        zoom,
+      ))
+    p.Assign(p.AssignBind(_, _, [#(l, x), ..pre_p], []), value, pre, post, then),
+      _
+    ->
+      Ok(#(
+        p.Assign(p.AssignBind(l, x, pre_p, []), value, pre, post, then),
+        zoom,
+      ))
+    p.Assign(p.AssignField(_, _, [], []), value, pre, post, then), _ ->
+      Ok(#(
+        p.Assign(p.AssignPattern(e.Destructure([])), value, pre, post, then),
+        zoom,
+      ))
+    p.Assign(p.AssignBind(_, _, [], []), value, pre, post, then), _ ->
+      Ok(#(
+        p.Assign(p.AssignPattern(e.Destructure([])), value, pre, post, then),
+        zoom,
+      ))
+    p.Assign(p.AssignPattern(e.Destructure([])), value, pre, post, then), _ ->
+      Ok(#(p.Assign(p.AssignPattern(e.Bind("_")), value, pre, post, then), zoom))
+
     p.FnParam(p.AssignPattern(_), pre, [pattern, ..post], body), _ ->
       Ok(#(p.FnParam(p.AssignPattern(pattern), pre, post, body), zoom))
     p.FnParam(p.AssignPattern(_), [pattern, ..pre], [], body), _ ->
@@ -62,6 +121,12 @@ pub fn delete(zip) {
       Ok(#(p.FnParam(p.AssignField(l, x, pre_p, []), pre, post, body), zoom))
     p.FnParam(p.AssignBind(_, _, [#(l, x), ..pre_p], []), pre, post, body), _ ->
       Ok(#(p.FnParam(p.AssignBind(l, x, pre_p, []), pre, post, body), zoom))
+    p.FnParam(p.AssignField(_, _, [], []), pre, post, body), _ ->
+      Ok(#(p.FnParam(p.AssignPattern(e.Destructure([])), pre, post, body), zoom))
+    p.FnParam(p.AssignBind(_, _, [], []), pre, post, body), _ ->
+      Ok(#(p.FnParam(p.AssignPattern(e.Destructure([])), pre, post, body), zoom))
+    p.FnParam(p.AssignPattern(e.Destructure([])), pre, post, body), _ ->
+      Ok(#(p.FnParam(p.AssignPattern(e.Bind("_")), pre, post, body), zoom))
     p.Label(_, _, pre, [#(l, v), ..post], for), _ ->
       Ok(#(p.Label(l, v, pre, post, for), zoom))
     p.Label(_, _, [#(l, v), ..pre], [], for), _ ->

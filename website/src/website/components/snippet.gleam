@@ -768,7 +768,7 @@ fn insert_variable(state) {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("create binary"))
+    Error(Nil) -> show_error(state, ActionFailed("insert variable"))
   }
 }
 
