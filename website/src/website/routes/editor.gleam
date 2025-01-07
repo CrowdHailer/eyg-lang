@@ -776,7 +776,7 @@ pub fn render_menu(state: State) {
               call_function(),
               call_with(),
             ]
-            e.Call(_, _) -> [call_function(), call_with()]
+            e.Call(_, _) -> [select_field(), call_function(), call_with()]
             e.Function(_, _) -> [insert_function(), call_with()]
             e.Block(_, _, _) -> []
             e.Vacant(_) -> [use_variable(), insert_number(), insert_text()]
@@ -788,7 +788,7 @@ pub fn render_menu(state: State) {
             | e.Shallow(_) -> [edit(), call_with()]
             e.Builtin(_) -> [edit(), call_function(), call_with()]
             e.List(_, _) | e.Record(_, _) -> [toggle_spread(), call_with()]
-            e.Select(_, _) -> [edit(), call_with()]
+            e.Select(_, _) -> [select_field(), call_function(), call_with()]
             e.Tag(_) -> [edit(), call_with()]
             // match open match
             e.Case(_, _, _) -> [toggle_otherwise(), call_with()]
