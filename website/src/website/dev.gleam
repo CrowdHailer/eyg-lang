@@ -67,8 +67,12 @@ fn develop(_args) {
 
 fn routes() {
   let assert Ok(share) = simplifile.read_bits("src/website/share.png")
+  let assert Ok(pea) = simplifile.read_bits("src/website/images/pea.webp")
+
   Route(index: route.Page(home.page()), items: [
     #("share.png", Route(route.Static(share), [])),
+    // Keep for old emails
+    #("pea.webp", Route(route.Static(pea), [])),
     #(
       "documentation",
       Route(index: route.Page(documentation.page()), items: []),
