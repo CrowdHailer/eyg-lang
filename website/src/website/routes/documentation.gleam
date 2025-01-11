@@ -488,6 +488,10 @@ fn render(state) {
 
 fn example(state: state.State, identifier) {
   let snippet = state.get_example(state, identifier)
-  snippet.render(snippet)
+  let failure = case state.active {
+    state.Editing(key, failure) if identifier == key -> failure
+    _ -> None
+  }
+  snippet.render_embedded(snippet, failure)
   |> element.map(state.SnippetMessage(identifier, _))
 }

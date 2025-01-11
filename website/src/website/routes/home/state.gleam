@@ -10,8 +10,10 @@ import eygir/decode
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
+import gleam/io
 import gleam/javascript/promisex
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import harness/impl/browser as harness
 import harness/impl/spotless
 import harness/stdlib
@@ -46,7 +48,7 @@ pub type State {
 }
 
 pub type Active {
-  Editing(String)
+  Editing(String, Option(snippet.Failure))
   Running(String)
   Nothing
 }
@@ -175,7 +177,7 @@ pub fn update(state: State, message) {
     }
     SnippetMessage(id, message) -> {
       let state = case state.active {
-        Editing(current) if current != id -> {
+        Editing(current, _) if current != id -> {
           let snippet = get_snippet(state, current)
           let snippet = snippet.finish_editing(snippet)
           set_snippet(state, current, snippet)
@@ -185,26 +187,39 @@ pub fn update(state: State, message) {
       }
       let snippet = get_snippet(state, id)
       let #(snippet, eff) = snippet.update(snippet, message)
-      let snippet_effect = case eff {
-        snippet.Nothing -> effect.none()
-        snippet.AwaitRunningEffect(p) ->
-          dispatch_to_snippet(id, snippet.await_running_effect(p))
-        snippet.FocusOnCode -> dispatch_nothing(snippet.focus_on_buffer())
-        snippet.FocusOnInput -> dispatch_nothing(snippet.focus_on_input())
-        snippet.ToggleHelp -> effect.none()
-        snippet.MoveAbove -> effect.none()
-        snippet.MoveBelow -> effect.none()
-        snippet.ReadFromClipboard ->
-          dispatch_to_snippet(id, snippet.read_from_clipboard())
-        snippet.WriteToClipboard(text) ->
-          dispatch_to_snippet(id, snippet.write_to_clipboard(text))
-        snippet.Conclude(_, _, _) -> effect.none()
+      let #(failure, snippet_effect) = case eff {
+        snippet.Nothing -> #(None, effect.none())
+        snippet.Failed(failure) -> #(Some(failure), effect.none())
+        snippet.AwaitRunningEffect(p) -> #(
+          None,
+          dispatch_to_snippet(id, snippet.await_running_effect(p)),
+        )
+        snippet.FocusOnCode -> #(
+          None,
+          dispatch_nothing(snippet.focus_on_buffer()),
+        )
+        snippet.FocusOnInput -> #(
+          None,
+          dispatch_nothing(snippet.focus_on_input()),
+        )
+        snippet.ToggleHelp -> #(None, effect.none())
+        snippet.MoveAbove -> #(None, effect.none())
+        snippet.MoveBelow -> #(None, effect.none())
+        snippet.ReadFromClipboard -> #(
+          None,
+          dispatch_to_snippet(id, snippet.read_from_clipboard()),
+        )
+        snippet.WriteToClipboard(text) -> #(
+          None,
+          dispatch_to_snippet(id, snippet.write_to_clipboard(text)),
+        )
+        snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       let state = set_snippet(state, id, snippet)
       let references = all_references(state.snippets |> dict.to_list)
       let #(cache, tasks) = sync.fetch_missing(state.cache, references)
 
-      let state = State(..state, active: Editing(id), cache: cache)
+      let state = State(..state, active: Editing(id, failure), cache: cache)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
       #(state, effect.batch([snippet_effect, sync_effect]))
     }

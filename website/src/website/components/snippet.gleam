@@ -69,17 +69,14 @@ pub type History {
 pub type Failure {
   NoKeyBinding(key: String)
   ActionFailed(action: String)
+  RunFailed(istate.Debug(run.Meta))
 }
 
 pub type Mode {
-  Command(failure: Option(Failure))
+  Command
   Pick(picker: picker.Picker, rebuild: fn(String) -> p.Projection)
   EditText(String, fn(String) -> p.Projection)
   EditInteger(Int, fn(Int) -> p.Projection)
-}
-
-pub fn fail(state, fail) {
-  Snippet(..state, status: Editing(Command(Some(ActionFailed(fail)))))
 }
 
 pub type Snippet {
@@ -117,7 +114,7 @@ pub fn active(editable, scope, effects, cache) {
   let proj = navigation.first(editable)
 
   Snippet(
-    Editing(Command(None)),
+    Editing(Command),
     None,
     new_source(proj, editable, scope, effects, cache),
     False,
@@ -186,6 +183,7 @@ pub type Message {
 
 pub type Effect {
   Nothing
+  Failed(Failure)
   FocusOnCode
   FocusOnInput
   ToggleHelp
@@ -238,7 +236,7 @@ pub fn await_running_effect(promise) {
 fn navigate_source(proj, state) {
   let Snippet(source: #(_, editable, analysis), ..) = state
   let source = #(proj, editable, analysis)
-  let status = Editing(Command(None))
+  let status = Editing(Command)
   let state = Snippet(..state, status: status, source: source)
   #(state, Nothing)
 }
@@ -251,7 +249,7 @@ fn update_source(proj, state) {
   let History(undo: undo, ..) = history
   let undo = [old, ..undo]
   let history = History(undo: undo, redo: [])
-  let status = Editing(Command(None))
+  let status = Editing(Command)
   let run = run.start(editable, state.scope, state.effects, state.cache)
   Snippet(..state, status: status, source: source, history: history, run: run)
 }
@@ -265,7 +263,7 @@ fn update_source_from_pallet(proj, state) {
 }
 
 fn return_to_buffer(state) {
-  let state = Snippet(..state, status: Editing(Command(None)))
+  let state = Snippet(..state, status: Editing(Command))
   #(state, FocusOnCode)
 }
 
@@ -280,10 +278,8 @@ fn keep_editing(state, mode) {
   #(state, Nothing)
 }
 
-fn show_error(state, error) {
-  let status = Editing(Command(Some(error)))
-  let state = Snippet(..state, status: status)
-  #(state, Nothing)
+fn action_failed(state, error) {
+  #(state, Failed(ActionFailed(error)))
 }
 
 pub fn update(state, message) {
@@ -296,14 +292,14 @@ pub fn update(state, message) {
   ) = state
   case message, status {
     UserFocusedOnCode, Idle -> #(
-      Snippet(..state, status: Editing(Command(None))),
+      Snippet(..state, status: Editing(Command)),
       Nothing,
     )
     UserFocusedOnCode, Editing(_) -> #(
-      Snippet(..state, status: Editing(Command(None))),
+      Snippet(..state, status: Editing(Command)),
       Nothing,
     )
-    UserPressedCommandKey(key), Editing(Command(_)) -> {
+    UserPressedCommandKey(key), Editing(Command) -> {
       let state = Snippet(..state, using_mouse: False)
       case key {
         "ArrowRight" -> move_right(state)
@@ -352,7 +348,7 @@ pub fn update(state, message) {
 
         "?" -> #(state, ToggleHelp)
         "Enter" -> execute(state)
-        _ -> show_error(state, NoKeyBinding(key))
+        _ -> #(state, Failed(NoKeyBinding(key)))
       }
     }
     UserPressedCommandKey(_), _ -> panic as "should never get a buffer message"
@@ -406,7 +402,7 @@ pub fn update(state, message) {
       return_to_buffer(state)
     MessageFromPicker(_), _ -> panic as "shouldn't reach picker message"
     UserClickRunEffects, _ -> run_effects(state)
-    RuntimeRepliedFromExternalEffect(reply), Editing(Command(_))
+    RuntimeRepliedFromExternalEffect(reply), Editing(Command)
     | RuntimeRepliedFromExternalEffect(reply), Idle
     -> {
       let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
@@ -442,7 +438,7 @@ pub fn update(state, message) {
       panic as "Should never be editing while running effects"
     }
     ClipboardReadCompleted(return), _ -> {
-      let assert Editing(Command(_)) = status
+      let assert Editing(Command) = status
       case return {
         Ok(text) ->
           case decode.from_json(text) {
@@ -451,15 +447,15 @@ pub fn update(state, message) {
               let proj = #(p.Exp(e.from_expression(expression)), zoom)
               update_source_from_buffer(proj, state)
             }
-            Error(_) -> show_error(state, ActionFailed("paste"))
+            Error(_) -> action_failed(state, "paste")
           }
-        Error(_) -> show_error(state, ActionFailed("paste"))
+        Error(_) -> action_failed(state, "paste")
       }
     }
     ClipboardWriteCompleted(return), _ ->
       case return {
         Ok(Nil) -> #(state, Nothing)
-        Error(_) -> show_error(state, ActionFailed("paste"))
+        Error(_) -> action_failed(state, "paste")
       }
   }
 }
@@ -500,7 +496,7 @@ fn copy(state) {
       let text = encode.to_json(e.to_expression(expression))
       #(state, WriteToClipboard(text))
     }
-    _ -> show_error(state, ActionFailed("copy"))
+    _ -> action_failed(state, "copy")
   }
 }
 
@@ -535,7 +531,7 @@ fn call_with(state) {
   let Snippet(source: #(proj, _, _), ..) = state
   case transformation.call_with(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("call as argument"))
+    Error(Nil) -> action_failed(state, "call as argument")
   }
 }
 
@@ -547,7 +543,7 @@ fn assign_to(state) {
       let rebuild = fn(new) { rebuild(e.Bind(new)) }
       change_mode(state, Pick(picker.new("", []), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("assign to"))
+    Error(Nil) -> action_failed(state, "assign to")
   }
 }
 
@@ -559,7 +555,7 @@ fn assign_above(state) {
       let rebuild = fn(new) { rebuild(e.Bind(new)) }
       change_mode(state, Pick(picker.new("", []), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("assign above"))
+    Error(Nil) -> action_failed(state, "assign above")
   }
 }
 
@@ -571,7 +567,7 @@ fn insert_record(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(value, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("create record"))
+    Error(Nil) -> action_failed(state, "create record")
   }
 }
 
@@ -583,7 +579,7 @@ fn overwrite_record(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new("", hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("create record"))
+    Error(Nil) -> action_failed(state, "create record")
   }
 }
 
@@ -596,7 +592,7 @@ fn insert_tag(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(value, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("tag expression"))
+    Error(Nil) -> action_failed(state, "tag expression")
   }
 }
 
@@ -609,7 +605,7 @@ fn extend_before(state) {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("extend"))
+    Error(Nil) -> action_failed(state, "extend")
   }
 }
 
@@ -622,7 +618,7 @@ fn extend_after(state) {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("extend"))
+    Error(Nil) -> action_failed(state, "extend")
   }
 }
 
@@ -639,7 +635,7 @@ fn insert_mode(state) {
       case p.text(proj) {
         Ok(#(value, rebuild)) ->
           change_mode(state, Pick(picker.new(value, []), rebuild))
-        Error(Nil) -> show_error(state, ActionFailed("edit"))
+        Error(Nil) -> action_failed(state, "edit")
       }
   }
 }
@@ -652,7 +648,7 @@ fn insert_perform(state) {
       let hints = listx.value_map(hints, render_effect)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("perform"))
+    Error(Nil) -> action_failed(state, "perform")
   }
 }
 
@@ -661,7 +657,7 @@ fn increase(state) {
 
   case navigation.increase(proj) {
     Ok(new) -> navigate_source(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("increase selection"))
+    Error(Nil) -> action_failed(state, "increase selection")
   }
 }
 
@@ -670,7 +666,7 @@ fn insert_string(state) {
 
   case transformation.string(proj) {
     Ok(#(value, rebuild)) -> change_mode(state, EditText(value, rebuild))
-    Error(Nil) -> show_error(state, ActionFailed("create text"))
+    Error(Nil) -> action_failed(state, "create text")
   }
 }
 
@@ -679,7 +675,7 @@ fn delete(state) {
 
   case transformation.delete(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("delete"))
+    Error(Nil) -> action_failed(state, "delete")
   }
 }
 
@@ -688,7 +684,7 @@ fn insert_function(state) {
 
   case transformation.function(proj) {
     Ok(rebuild) -> change_mode(state, Pick(picker.new("", []), rebuild))
-    Error(Nil) -> show_error(state, ActionFailed("create function"))
+    Error(Nil) -> action_failed(state, "create function")
   }
 }
 
@@ -700,7 +696,7 @@ fn select_field(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new("", hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("select field"))
+    Error(Nil) -> action_failed(state, "select field")
   }
 }
 
@@ -712,7 +708,7 @@ fn insert_handle(state) {
       let hints = listx.value_map(hints, render_effect)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("perform"))
+    Error(Nil) -> action_failed(state, "perform")
   }
 }
 
@@ -724,7 +720,7 @@ fn insert_builtin(state) {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("insert builtin"))
+    Error(Nil) -> action_failed(state, "insert builtin")
   }
 }
 
@@ -733,7 +729,7 @@ fn insert_list(state) {
 
   case transformation.list(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("create list"))
+    Error(Nil) -> action_failed(state, "create list")
   }
 }
 
@@ -748,7 +744,7 @@ fn insert_named_reference(state) {
     Ok(#(filter, rebuild)) -> {
       change_mode(state, Pick(picker.new(filter, index), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("insert reference"))
+    Error(Nil) -> action_failed(state, "insert reference")
   }
 }
 
@@ -759,7 +755,7 @@ fn insert_reference(state) {
     Ok(#(filter, rebuild)) -> {
       change_mode(state, Pick(picker.new(filter, []), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("insert named reference"))
+    Error(Nil) -> action_failed(state, "insert named reference")
   }
 }
 
@@ -768,7 +764,7 @@ fn call_function(state) {
 
   case action.call_function(proj, analysis) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("call function"))
+    Error(Nil) -> action_failed(state, "call function")
   }
 }
 
@@ -780,7 +776,7 @@ fn insert_variable(state) {
       let hints = listx.value_map(hints, render_poly)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("insert variable"))
+    Error(Nil) -> action_failed(state, "insert variable")
   }
 }
 
@@ -789,7 +785,7 @@ fn insert_binary(state) {
 
   case transformation.binary(proj) {
     Ok(#(value, rebuild)) -> update_source_from_buffer(rebuild(value), state)
-    Error(Nil) -> show_error(state, ActionFailed("create binary"))
+    Error(Nil) -> action_failed(state, "create binary")
   }
 }
 
@@ -798,7 +794,7 @@ fn insert_integer(state) {
 
   case transformation.integer(proj) {
     Ok(#(value, rebuild)) -> change_mode(state, EditInteger(value, rebuild))
-    Error(Nil) -> show_error(state, ActionFailed("create number"))
+    Error(Nil) -> action_failed(state, "create number")
   }
 }
 
@@ -811,7 +807,7 @@ fn insert_case(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("create match"))
+    Error(Nil) -> action_failed(state, "create match")
   }
 }
 
@@ -823,7 +819,7 @@ fn insert_open_case(state) {
       let hints = listx.value_map(hints, debug.mono)
       change_mode(state, Pick(picker.new(filter, hints), rebuild))
     }
-    Error(Nil) -> show_error(state, ActionFailed("create match"))
+    Error(Nil) -> action_failed(state, "create match")
   }
 }
 
@@ -832,7 +828,7 @@ fn spread_list(state) {
 
   case transformation.spread_list(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("spread list"))
+    Error(Nil) -> action_failed(state, "spread list")
   }
 }
 
@@ -841,7 +837,7 @@ fn toggle_spread(state) {
 
   case transformation.toggle_spread(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("toggle spread"))
+    Error(Nil) -> action_failed(state, "toggle spread")
   }
 }
 
@@ -850,14 +846,14 @@ fn toggle_otherwise(state) {
 
   case transformation.toggle_otherwise(proj) {
     Ok(new) -> update_source_from_buffer(new, state)
-    Error(Nil) -> show_error(state, ActionFailed("create match"))
+    Error(Nil) -> action_failed(state, "create match")
   }
 }
 
 fn undo(state) {
   let Snippet(source: #(proj, _, _), history: history, ..) = state
   case history.undo {
-    [] -> show_error(state, ActionFailed("undo"))
+    [] -> action_failed(state, "undo")
     [saved, ..rest] -> {
       let source =
         new_source(
@@ -868,7 +864,7 @@ fn undo(state) {
           state.cache,
         )
       let history = History(undo: rest, redo: [proj, ..history.redo])
-      let status = Editing(Command(None))
+      let status = Editing(Command)
       let state =
         Snippet(..state, status: status, source: source, history: history)
       #(state, Nothing)
@@ -879,7 +875,7 @@ fn undo(state) {
 fn redo(state) {
   let Snippet(source: #(proj, _, _), history: history, ..) = state
   case history.redo {
-    [] -> show_error(state, ActionFailed("redo"))
+    [] -> action_failed(state, "redo")
     [saved, ..rest] -> {
       let source =
         new_source(
@@ -890,7 +886,7 @@ fn redo(state) {
           state.cache,
         )
       let history = History(undo: [proj, ..history.undo], redo: rest)
-      let status = Editing(Command(None))
+      let status = Editing(Command)
       let state =
         Snippet(..state, status: status, source: source, history: history)
       #(state, Nothing)
@@ -909,7 +905,7 @@ pub fn copy_escaped(state) {
         |> string.replace("\"", "\\\"")
       #(state, WriteToClipboard(text))
     }
-    _ -> show_error(state, ActionFailed("copy"))
+    _ -> action_failed(state, "copy")
   }
 }
 
@@ -917,9 +913,8 @@ fn execute(state) {
   let Snippet(run: run, ..) = state
   case run.status {
     run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
-    run.Failed(#(reason, _, _, _)) -> {
-      io.debug(reason)
-      show_error(state, ActionFailed("Execute"))
+    run.Failed(debug) -> {
+      #(state, Failed(RunFailed(debug)))
     }
     _ -> run_effects(state)
   }
@@ -951,46 +946,18 @@ pub fn finish_editing(state) {
   Snippet(..state, status: Idle)
 }
 
-pub fn render(state: Snippet) {
+pub fn render_embedded(state: Snippet, failure) {
   h.div(
     [
       a.class(
         "bg-white neo-shadow font-mono mt-2 mb-6 border border-black flex flex-col",
       ),
-      // a.style([#("min-height", "18ch")]),
     ],
-    bare_render(state),
+    bare_render(state, failure),
   )
 }
 
-pub fn render_sticky(state: Snippet) {
-  h.div(
-    [
-      a.class(
-        "bg-white neo-shadow font-mono mt-2 sticky bottom-6 mb-6 border border-black flex flex-col",
-      ),
-    ],
-    bare_render(state),
-  )
-}
-
-pub fn render_editor(state: Snippet) {
-  h.div(
-    [
-      a.class(
-        "bg-white neo-shadow font-mono mt-2 mb-6 border border-black flex flex-col",
-      ),
-      a.style([
-        #("min-height", "15em"),
-        #("height", "100%"),
-        #("max-height", "95%"),
-      ]),
-    ],
-    bare_render(state),
-  )
-}
-
-pub fn bare_render(state) {
+fn bare_render(state, failure) {
   let Snippet(
     status: status,
     source: source,
@@ -1007,18 +974,16 @@ pub fn bare_render(state) {
   case status {
     Editing(mode) ->
       case mode {
-        Command(e) -> {
-          [
-            actual_render_projection(proj, True, using_mouse),
-            case e {
-              Some(failure) ->
-                h.div([a.class("border-2 border-orange-4 px-2")], [
-                  element.text(fail_message(failure)),
-                ])
-              None -> render_current(errors, run)
-            },
-          ]
-        }
+        Command -> [
+          actual_render_projection(proj, True, using_mouse),
+          case failure {
+            Some(failure) ->
+              h.div([a.class("border-2 border-orange-4 px-2")], [
+                element.text(fail_message(failure)),
+              ])
+            None -> render_current(errors, run)
+          },
+        ]
         Pick(picker, _rebuild) -> [
           actual_render_projection(proj, False, using_mouse),
           picker.render(picker)
@@ -1052,6 +1017,7 @@ pub fn bare_render(state) {
   }
 }
 
+// TODO remove
 pub fn render_current(errors, run: run.Run) {
   case errors {
     [] -> render_run(run.status)
@@ -1076,7 +1042,7 @@ pub fn render_pallet(state) {
   case status {
     Editing(mode) ->
       case mode {
-        Command(_errors) -> []
+        Command -> []
 
         Pick(picker, _rebuild) -> [
           picker.render(picker)
@@ -1237,6 +1203,7 @@ pub fn fail_message(reason) {
     NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
     ActionFailed(action) ->
       string.concat(["Action ", action, " not possible at this position"])
+    RunFailed(#(reason, _, _, _)) -> break.reason_to_string(reason)
   }
 }
 

@@ -4,7 +4,6 @@ import eyg/sync/browser
 import eyg/sync/sync
 import eygir/expression
 import gleam/int
-import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
@@ -86,11 +85,17 @@ pub type ShellEntry {
   )
 }
 
+pub type ShellFailure {
+  SnippetFailure(snippet.Failure)
+  NoMoreHistory
+}
+
 pub type Shell {
   Shell(
     // config: spotless.Config,
     // situation: Situation,
     // cache: sync.Sync,
+    failure: Option(ShellFailure),
     previous: List(ShellEntry),
     // display_help: Bool,
     // scope is on snippet
@@ -121,7 +126,7 @@ pub fn init(_) {
   // snippet has no effects, they run in the shell
   let snippet = snippet.init(source, [], [], cache)
   let shell =
-    Shell([], {
+    Shell(None, [], {
       let source = e.from_expression(expression.Vacant(""))
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
@@ -212,6 +217,9 @@ pub fn update(state: State, message) {
       let State(display_help: display_help, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
+        snippet.Failed(failure) -> {
+          todo as "put on some state"
+        }
         snippet.AwaitRunningEffect(p) -> #(
           display_help,
           dispatch_to_snippet(snippet.await_running_effect(p)),
@@ -265,6 +273,11 @@ pub fn update(state: State, message) {
       let #(source, eff) = snippet.update(shell.source, message)
       let #(shell, snippet_effect) = case eff {
         snippet.Nothing -> #(Shell(..shell, source: source), effect.none())
+        snippet.Failed(failure) -> #(
+          Shell(..shell, failure: Some(SnippetFailure(failure))),
+          effect.none(),
+        )
+
         snippet.AwaitRunningEffect(p) -> #(
           Shell(..shell, source: source),
           dispatch_to_shell(snippet.await_running_effect(p)),
@@ -280,12 +293,7 @@ pub fn update(state: State, message) {
         snippet.ToggleHelp -> #(Shell(..shell, source: source), effect.none())
         snippet.MoveAbove -> {
           case shell.previous {
-            // TODO handle errors from lower layers i.e the snippet
-            // remove Reloaded as that not used
-            [] -> {
-              let source = snippet.fail(source, "load previous")
-              #(Shell(..shell, source: source), effect.none())
-            }
+            [] -> #(Shell(..shell, failure: Some(NoMoreHistory)), effect.none())
             [Executed(_value, _effects, readonly), ..] -> {
               let scope = shell.source.scope
               let current =
@@ -440,7 +448,7 @@ fn render_pallet(state: snippet.Snippet) {
   case status {
     snippet.Editing(mode) ->
       case mode {
-        snippet.Command(_errors) -> element.none()
+        snippet.Command -> element.none()
 
         snippet.Pick(picker, _rebuild) ->
           [
@@ -610,7 +618,7 @@ pub fn render(state: State) {
       // snippet.render_current([], state.shell.source.run)
       //   |> element.map(ShellMessage),
 
-      render_errors(state.shell.source),
+      render_errors(state.shell.failure, state.shell.source),
       h.div(
         [
           a.class("cover border-t border-black font-mono bg-white grid"),
@@ -764,7 +772,7 @@ pub fn render_menu(state: State) {
   let snippet.Snippet(status: status, source: source, ..) = shell.source
   case status {
     snippet.Idle -> one_col_menu(state, [delete()])
-    snippet.Editing(snippet.Command(_)) -> {
+    snippet.Editing(snippet.Command) -> {
       let #(#(focus, zoom), _, _) = source
       let top = case focus {
         // create
@@ -889,7 +897,7 @@ pub fn render_menu(state: State) {
             redo(),
             copy(),
             paste(),
-            #(outline.at_symbol(), "reference", cmd("#")),
+            #(outline.at_symbol(), "reference", cmd("@")),
             #(outline.bolt_slash(), "handle effect", cmd("h")),
             #(outline.bolt(), "perform effect", cmd("p")),
             #(
@@ -992,18 +1000,22 @@ fn two_col_menu(state: State, top, active, sub) {
   ]
 }
 
-fn render_errors(snippet: snippet.Snippet) {
+fn render_errors(failure, snippet: snippet.Snippet) {
   let #(_proj, _, analysis) = snippet.source
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
   }
 
-  case snippet.status, errors {
-    snippet.Editing(snippet.Command(None)), [] -> element.none()
-    snippet.Editing(snippet.Command(Some(failure))), _ ->
+  case failure, errors {
+    None, [] -> element.none()
+    Some(SnippetFailure(failure)), _ ->
       h.div([a.class("cover bg-red-300 px-2")], [
         element.text(snippet.fail_message(failure)),
+      ])
+    Some(NoMoreHistory), _ ->
+      h.div([a.class("cover bg-red-300 px-2")], [
+        element.text("No previous code to select"),
       ])
     _, _ ->
       h.div(

@@ -60,7 +60,6 @@ fn layout(body) {
     ]),
     body,
   )
-  // |> element.to_document_string()
   |> asset.done()
 }
 
@@ -82,8 +81,12 @@ pub fn client() {
   Nil
 }
 
-pub fn snippet(state, i) {
-  snippet.render(state.get_snippet(state, i))
+pub fn snippet(state: state.State, i) {
+  let failure = case state.active {
+    state.Editing(key, failure) if i == key -> failure
+    _ -> None
+  }
+  snippet.render_embedded(state.get_snippet(state, i), failure)
   |> element.map(state.SnippetMessage(i, _))
 }
 
@@ -113,15 +116,6 @@ fn feature(title, description, last, item, reverse) {
           h.div([a.class("my-2 text-lg")], [element.text(d)])
         })
         |> list.append([last])
-        // h.div([a.class("my-2 text-lg")], [
-      //   element.text(
-      //     "The effects that any piece of a program might need can be deduced ahead of running it.",
-      //   ),
-      // ]),
-      // h.div(
-      //   [a.class("py-2 px-6 rounded-xl bg-green-100 inline-block my-4 text-xl")],
-      //   [element.text("find out more")],
-      // ),
       ]),
       h.div([a.class("overflow-hidden"), a.style([#("flex", "0 1 60%")])], item),
     ],
@@ -198,24 +192,6 @@ fn view() {
                 [element.text("Documentation")],
               ),
             ]),
-            // h.p([], [
-          //   h.span([a.class("font-bold")], [element.text("Predictable:")]),
-          //   element.text(
-          //     " programs are deterministic, dependencies are immutable",
-          //   ),
-          // ]),
-          // h.p([], [
-          //   h.span([a.class("font-bold")], [element.text("Useful:")]),
-          //   element.text(
-          //     " run anywhere, managed effects allow programs to declare runtime requirements",
-          //   ),
-          // ]),
-          // h.p([], [
-          //   h.span([a.class("font-bold")], [element.text("Confident:")]),
-          //   element.text(
-          //     " A sound structural type system guarantees programs never crash",
-          //   ),
-          // ]),
           ]),
           h.p([a.class("")], [
             // element.text("EYG"),
@@ -391,7 +367,7 @@ fn view() {
         {
           let snippet = state.get_snippet(s, state.hot_reload_key)
           [
-            snippet.render(snippet)
+            snippet.render_embedded(snippet, None)
               |> element.map(state.SnippetMessage(state.hot_reload_key, _)),
             h.p([], [element.text("App state")]),
             h.div([a.class("border-2 p-2")], [
