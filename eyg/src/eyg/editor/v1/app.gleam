@@ -282,6 +282,8 @@ fn insert(zipper: zipper.Zipper, state) {
     e.Builtin(_) -> Error("no insert option for builtin, use stdlib references")
     e.Reference(_) ->
       Error("no insert option for reference, use stdlib references")
+    e.NamedReference(_, _) ->
+      Error("no insert option for reference, use stdlib references")
   })
 
   Ok(WorkSpace(..state, mode: mode))

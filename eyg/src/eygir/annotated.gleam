@@ -38,6 +38,7 @@ pub type Expression(m) {
 
   Builtin(identifier: String)
   Reference(identifier: String)
+  NamedReference(package: String, release: Int)
 }
 
 pub fn strip_annotation(in) {
@@ -91,6 +92,10 @@ fn do_strip_annotation(in, acc) {
 
     Builtin(identifier) -> #(e.Builtin(identifier), acc)
     Reference(identifier) -> #(e.Reference(identifier), acc)
+    NamedReference(package, release) -> #(
+      e.NamedReference(package, release),
+      acc,
+    )
   }
 }
 
@@ -130,6 +135,10 @@ pub fn add_annotation(exp, meta) {
 
     e.Builtin(identifier) -> #(Builtin(identifier), meta)
     e.Reference(identifier) -> #(Reference(identifier), meta)
+    e.NamedReference(package, release) -> #(
+      NamedReference(package, release),
+      meta,
+    )
   }
 }
 

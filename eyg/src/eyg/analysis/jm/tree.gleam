@@ -100,6 +100,7 @@ fn primitive(exp, next) {
     | e.Builtin(_) -> panic as "not a literal"
 
     e.Reference(_) -> panic as "not implemented in this type checker"
+    e.NamedReference(_, _) -> panic as "not implemented in this type checker"
 
     e.Binary(_) -> #(t.Binary, next)
     e.Str(_) -> #(t.String, next)

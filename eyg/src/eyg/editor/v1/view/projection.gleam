@@ -121,6 +121,9 @@ pub fn do_render(exp, br, loc, inferred) {
     e.Shallow(label) -> [shallow(label, loc, inferred)]
     e.Builtin(id) -> [builtin(id, loc, inferred)]
     e.Reference(id) -> [builtin(id, loc, inferred)]
+    e.NamedReference(package, release) -> [
+      builtin("@" <> package <> ":" <> int.to_string(release), loc, inferred),
+    ]
   }
 }
 

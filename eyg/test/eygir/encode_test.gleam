@@ -37,4 +37,5 @@ pub fn expression_test() {
   check_encoding(e.Shallow("log"))
   check_encoding(e.Builtin("int_add"))
   check_encoding(e.Reference("h1234"))
+  check_encoding(e.NamedReference("welcome", 1))
 }

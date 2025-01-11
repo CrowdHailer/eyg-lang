@@ -26,6 +26,7 @@ pub type Expression {
   Deep(String)
   Shallow(String)
   Builtin(String)
+  NamedReference(package: String, release: Int)
   Reference(String)
 }
 
@@ -168,6 +169,7 @@ pub fn from_annotated(node) {
 
     a.Builtin(identifier) -> Builtin(identifier)
     a.Reference(identifier) -> Reference(identifier)
+    a.NamedReference(package, release) -> NamedReference(package, release)
   }
 }
 
@@ -514,5 +516,9 @@ pub fn to_annotated(source, rev) {
     Shallow(label) -> #(a.Shallow(label), rev)
     Builtin(identifier) -> #(a.Builtin(identifier), rev)
     Reference(identifier) -> #(a.Reference(identifier), rev)
+    NamedReference(package, release) -> #(
+      a.NamedReference(package, release),
+      rev,
+    )
   }
 }

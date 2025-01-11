@@ -275,6 +275,10 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       print_with_offset(value, loc, Builtin, err, acc, info, analysis)
     e.Reference(value) ->
       print_with_offset(value, loc, Reference, err, acc, info, analysis)
+    e.NamedReference(package, release) -> {
+      let value = "@" <> package <> ":" <> int.to_string(release)
+      print_with_offset(value, loc, Reference, err, acc, info, analysis)
+    }
   }
 }
 

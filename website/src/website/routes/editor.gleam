@@ -770,7 +770,7 @@ pub fn render_menu(state: State) {
         // create
         p.Exp(exp) ->
           case exp {
-            e.Variable(_) | e.Reference(_) -> [
+            e.Variable(_) | e.Reference(_) | e.NamedReference(_, _) -> [
               edit(),
               select_field(),
               call_function(),

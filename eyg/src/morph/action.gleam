@@ -1,7 +1,9 @@
+import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/option.{None, Some}
 import gleam/result.{try}
+import gleam/string
 import morph/analysis
 import morph/editable as e
 import morph/projection as p
@@ -295,6 +297,32 @@ pub fn insert_builtin(projection, builtins) {
         _ -> ""
       }
       Ok(#(filter, builtins, fn(id) { #(p.Exp(e.Builtin(id)), zoom) }))
+    }
+    _ -> Error(Nil)
+  }
+}
+
+pub fn insert_named_reference(projection) {
+  case projection {
+    #(p.Exp(exp), zoom) -> {
+      let current = case exp {
+        e.NamedReference(package, release) ->
+          package <> ":" <> int.to_string(release)
+        _ -> ""
+      }
+      Ok(
+        #(current, fn(id) {
+          let #(package, release) = case string.split_once(id, ":") {
+            Ok(#(package, release)) ->
+              case int.parse(release) {
+                Ok(release) -> #(package, release)
+                Error(Nil) -> #(package, 1)
+              }
+            Error(Nil) -> #(id, 1)
+          }
+          #(p.Exp(e.NamedReference(package, release)), zoom)
+        }),
+      )
     }
     _ -> Error(Nil)
   }

@@ -1,4 +1,5 @@
 import gleam/dict.{type Dict}
+import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/result
@@ -122,6 +123,13 @@ pub fn eval(exp, env: Env(m), k) {
         Ok(v) -> value(v)
         Error(Nil) -> Error(break.UndefinedReference(ref))
       }
+    e.NamedReference(package, release) -> {
+      let ref = "@" <> package <> ":" <> int.to_string(release)
+      case dict.get(env.references, ref) {
+        Ok(v) -> value(v)
+        Error(Nil) -> Error(break.UndefinedReference(ref))
+      }
+    }
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, k) })
 }

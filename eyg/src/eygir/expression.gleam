@@ -58,6 +58,7 @@ pub type Expression {
 
   Builtin(identifier: String)
   Reference(identifier: String)
+  NamedReference(package: String, release: Int)
 }
 
 pub const unit = Empty

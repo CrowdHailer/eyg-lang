@@ -5,6 +5,7 @@ import eyg/analysis/type_/isomorphic as t
 import eygir/annotated as a
 import eygir/expression as e
 import gleam/dict
+import gleam/int
 import gleam/list
 import gleam/set
 
@@ -233,15 +234,22 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
           #(bindings, type_, eff, #(a.Builtin(id), meta))
         }
       }
-    e.Reference(id) ->
-      case dict.get(refs, id) {
-        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Reference(id))
-        Error(Nil) -> {
-          let #(type_, bindings) = binding.mono(level, bindings)
-          let meta = #(Error(error.MissingReference(id)), type_, t.Empty, env)
-          #(bindings, type_, eff, #(a.Reference(id), meta))
-        }
-      }
+    e.Reference(id) -> lookup_ref(refs, id, env, eff, level, bindings)
+    e.NamedReference(package, release) -> {
+      let id = "@" <> package <> ":" <> int.to_string(release)
+      lookup_ref(refs, id, env, eff, level, bindings)
+    }
+  }
+}
+
+fn lookup_ref(refs, id, env, eff, level, bindings) {
+  case dict.get(refs, id) {
+    Ok(poly) -> prim(poly, env, eff, level, bindings, a.Reference(id))
+    Error(Nil) -> {
+      let #(type_, bindings) = binding.mono(level, bindings)
+      let meta = #(Error(error.MissingReference(id)), type_, t.Empty, env)
+      #(bindings, type_, eff, #(a.Reference(id), meta))
+    }
   }
 }
 

@@ -77,5 +77,9 @@ fn do_print(source) {
       string.concat(["reference(", identifier, ")"]),
       [],
     )
+    e.NamedReference(package, release) -> #(
+      string.concat(["reference(", package, ", ", int.to_string(release), ")"]),
+      [],
+    )
   }
 }

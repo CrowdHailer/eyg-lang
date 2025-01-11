@@ -333,6 +333,7 @@ pub fn update(state, message) {
         "j" -> insert_builtin(state)
         "k" -> toggle_open(state)
         "l" -> insert_list(state)
+        "@" -> insert_named_reference(state)
         "#" -> insert_reference(state)
         "z" -> undo(state)
         "Z" -> redo(state)
@@ -736,18 +737,29 @@ fn insert_list(state) {
   }
 }
 
-fn insert_reference(state) {
+fn insert_named_reference(state) {
   let Snippet(source: #(proj, _, _), cache: cache, ..) = state
 
   let index =
     sync.package_index(cache)
     |> listx.value_map(render_poly)
 
-  case action.insert_reference(proj) {
+  case action.insert_named_reference(proj) {
     Ok(#(filter, rebuild)) -> {
       change_mode(state, Pick(picker.new(filter, index), rebuild))
     }
     Error(Nil) -> show_error(state, ActionFailed("insert reference"))
+  }
+}
+
+fn insert_reference(state) {
+  let Snippet(source: #(proj, _, _), ..) = state
+
+  case action.insert_reference(proj) {
+    Ok(#(filter, rebuild)) -> {
+      change_mode(state, Pick(picker.new(filter, []), rebuild))
+    }
+    Error(Nil) -> show_error(state, ActionFailed("insert named reference"))
   }
 }
 
@@ -905,7 +917,10 @@ fn execute(state) {
   let Snippet(run: run, ..) = state
   case run.status {
     run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
-    run.Failed(_) -> show_error(state, ActionFailed("Execute"))
+    run.Failed(#(reason, _, _, _)) -> {
+      io.debug(reason)
+      show_error(state, ActionFailed("Execute"))
+    }
     _ -> run_effects(state)
   }
 }
@@ -1106,7 +1121,7 @@ pub fn render_just_projection(state, autofocus) {
 fn actual_render_projection(proj, autofocus, using_mouse) {
   h.div(
     [
-      a.class("p-2 outline-none my-auto"),
+      a.class("p-2 outline-none my-auto whitespace-nowrap overflow-auto"),
       ..case autofocus {
         True -> [
           a.attribute("tabindex", "0"),

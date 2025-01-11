@@ -48,6 +48,7 @@ pub fn encode(exp) {
     e.Shallow(x) -> node("hs", [label(x)])
     e.Builtin(x) -> node("b", [label(x)])
     e.Reference(x) -> node("#", [label(x)])
+    e.NamedReference(p, r) -> node("@", [#("p", string(p)), #("r", int(r))])
   }
 }
 

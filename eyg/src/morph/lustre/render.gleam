@@ -106,14 +106,14 @@ pub fn join_patterns(ps) {
   |> list.append([text("(")], _)
 }
 
-pub fn render_args(args, rev) {
+fn render_args(args, rev) {
   // 0 is the call
   let args = list.index_map(args, fn(a, i) { expression(a, [i + 1, ..rev]) })
   let assert [last, ..rest] = list.reverse(args)
   render_args_rev(last, rest)
 }
 
-pub fn render_args_e(args) {
+fn render_args_e(args) {
   let assert [last, ..rest] = list.reverse(args)
   render_args_rev(last, rest)
 }
@@ -274,21 +274,20 @@ pub fn expression(exp, rev) {
         ]),
       ])
     e.Reference(identifier) ->
-      case identifier {
-        "@" <> rest -> {
-          let assert [name, v, ..] = string.split(rest, ":")
-          frame.Inline([
-            h.span(
-              [a.class("font-bold"), exp_key(rev), a.title("version = " <> v)],
-              [text("@" <> name)],
-            ),
-          ])
-        }
-        _ ->
-          frame.Inline([
-            h.span([a.class("text-gray-800"), exp_key(rev)], [text(identifier)]),
-          ])
-      }
+      frame.Inline([
+        h.span([a.class("text-gray-800"), exp_key(rev)], [text(identifier)]),
+      ])
+    e.NamedReference(package, release) ->
+      frame.Inline([
+        h.span(
+          [
+            a.class("font-bold"),
+            exp_key(rev),
+            a.title("release = " <> int.to_string(release)),
+          ],
+          [text("@" <> package <> ":" <> int.to_string(release))],
+        ),
+      ])
   }
 }
 

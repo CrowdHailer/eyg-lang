@@ -372,7 +372,7 @@ pub fn package_index(sync) {
         let assert Ok(supabase.Release(hash: hash_ref, ..)) =
           dict.get(package, latest)
         let assert Ok(Computed(type_: type_, ..)) = dict.get(loaded, hash_ref)
-        Ok(#(named_ref(name, x), type_))
+        Ok(#(name <> ":" <> int.to_string(latest), type_))
       }
       _ -> Error(Nil)
     }
