@@ -270,6 +270,10 @@ pub fn update(state: State, message) {
       let state = close_all_previous(state)
       let state = State(..state, submenu: Closed)
       let shell = state.shell
+      case snippet.user_message(message) {
+        True -> Shell(..shell, failure: None)
+        False -> shell
+      }
       let #(source, eff) = snippet.update(shell.source, message)
       let #(shell, snippet_effect) = case eff {
         snippet.Nothing -> #(Shell(..shell, source: source), effect.none())

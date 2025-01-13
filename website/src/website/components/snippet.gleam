@@ -181,6 +181,15 @@ pub type Message {
   ClipboardWriteCompleted(Result(Nil, String))
 }
 
+pub fn user_message(message) {
+  case message {
+    RuntimeRepliedFromExternalEffect(_)
+    | ClipboardReadCompleted(_)
+    | ClipboardWriteCompleted(_) -> False
+    _ -> True
+  }
+}
+
 pub type Effect {
   Nothing
   Failed(Failure)
@@ -975,7 +984,7 @@ fn bare_render(state, failure) {
     Editing(mode) ->
       case mode {
         Command -> [
-          actual_render_projection(proj, True, using_mouse),
+          actual_render_projection(proj, True, using_mouse, errors),
           case failure {
             Some(failure) ->
               h.div([a.class("border-2 border-orange-4 px-2")], [
@@ -985,19 +994,19 @@ fn bare_render(state, failure) {
           },
         ]
         Pick(picker, _rebuild) -> [
-          actual_render_projection(proj, False, using_mouse),
+          actual_render_projection(proj, False, using_mouse, errors),
           picker.render(picker)
             |> element.map(MessageFromPicker),
         ]
 
         EditText(value, _rebuild) -> [
-          actual_render_projection(proj, False, using_mouse),
+          actual_render_projection(proj, False, using_mouse, errors),
           input.render_text(value)
             |> element.map(MessageFromInput),
         ]
 
         EditInteger(value, _rebuild) -> [
-          actual_render_projection(proj, False, using_mouse),
+          actual_render_projection(proj, False, using_mouse, errors),
           input.render_number(value)
             |> element.map(MessageFromInput),
         ]
@@ -1010,7 +1019,7 @@ fn bare_render(state, failure) {
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(source.1),
+        render.statements(source.1, errors),
       ),
       render_current(errors, run),
     ]
@@ -1067,10 +1076,14 @@ pub fn render_pallet(state) {
 pub fn render_just_projection(state, autofocus) {
   let Snippet(status: status, source: source, using_mouse: using_mouse, ..) =
     state
-  let #(proj, _, _analysis) = source
+  let #(proj, _, analysis) = source
+  let errors = case analysis {
+    Some(analysis) -> analysis.type_errors(analysis)
+    None -> []
+  }
   case status {
     Editing(_mode) -> {
-      actual_render_projection(proj, autofocus, using_mouse)
+      actual_render_projection(proj, autofocus, using_mouse, errors)
     }
     Idle ->
       h.div(
@@ -1079,12 +1092,12 @@ pub fn render_just_projection(state, autofocus) {
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(source.1),
+        render.statements(source.1, errors),
       )
   }
 }
 
-fn actual_render_projection(proj, autofocus, using_mouse) {
+fn actual_render_projection(proj, autofocus, using_mouse, errors) {
   h.div(
     [
       a.class("p-2 outline-none my-auto whitespace-nowrap overflow-auto"),
@@ -1151,15 +1164,15 @@ fn actual_render_projection(proj, autofocus, using_mouse) {
         False -> []
       }
     ],
-    [render_projection(proj, using_mouse)],
+    [render_projection(proj, using_mouse, errors)],
   )
 }
 
-fn render_projection(proj, _using_mouse) {
+fn render_projection(proj, _using_mouse, errors) {
   let #(_focus, zoom) = proj
   // This is NOT reversed because zoom works from inside out
-  let frame = render.projection_frame(proj, render.Statements)
-  render.push_render(frame, zoom, render.Statements)
+  let frame = render.projection_frame(proj, render.Statements, errors)
+  render.push_render(frame, zoom, render.Statements, errors)
   |> frame.to_fat_line
 }
 

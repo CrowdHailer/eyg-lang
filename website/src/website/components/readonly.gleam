@@ -159,14 +159,17 @@ pub fn render(state) {
   let Readonly(status: status, projection: projection, source: source, ..) =
     state
 
+  // There is no analysis on readonly so no errors It might be useful to have them but I also want to get rid of readonly so it's closer to regular projection
+  let errors = []
   case status {
     Selecting -> {
       let #(_focus, zoom) = projection
 
       //   actual_render_projection(proj, autofocus, using_mouse)
-      let frame = render.projection_frame(projection, render.ReadonlyStatements)
+      let frame =
+        render.projection_frame(projection, render.ReadonlyStatements, errors)
       let projection_rendered =
-        render.push_render(frame, zoom, render.ReadonlyStatements)
+        render.push_render(frame, zoom, render.ReadonlyStatements, errors)
         |> frame.to_fat_line
       h.div(
         [
@@ -238,7 +241,7 @@ pub fn render(state) {
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
-        render.statements(source),
+        render.statements(source, errors),
       )
   }
 }

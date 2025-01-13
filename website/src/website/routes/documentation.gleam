@@ -1,3 +1,4 @@
+import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -5,6 +6,7 @@ import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
+import morph/analysis
 import mysig/asset
 import mysig/html
 import website/components
