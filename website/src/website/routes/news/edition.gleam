@@ -185,7 +185,7 @@ fn h3(children) {
   )
 }
 
-fn block(container) {
+pub fn block(container) {
   case container {
     jot.Paragraph(_attributes, content) -> p(inline(content))
     jot.Heading(_attributes, 1, content) -> h1(inline(content))

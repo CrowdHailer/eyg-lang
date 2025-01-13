@@ -9,10 +9,11 @@ import mysig/route
 import website/routes/common
 import website/routes/news/archive
 import website/routes/news/edition.{Edition}
+import website/routes/news/roadmap
 
 pub fn route() {
   let items = web_editions(archive.published)
-  route.Route(index: route.Page(asset.done("no page here")), items: [
+  route.Route(index: route.Page(roadmap.page()), items: [
     #(
       "editions",
       route.Route(index: route.Page(asset.done("no page here")), items: items),
