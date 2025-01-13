@@ -70,7 +70,7 @@ fn p(text) {
 fn note(content) {
   h.div(
     [
-      a.class("sticky mt-2 top-4 p-2 shadow-md bg-yellow-1"),
+      a.class("sticky mt-2 top-12 p-2 shadow-md bg-yellow-1"),
       a.style([
         #("align-self", "start"),
         #("flex", "0 0 200px"),
@@ -159,7 +159,7 @@ fn render(state) {
           ]),
         ],
       ),
-      h.div([a.class("lg:py-12")], [
+      h.div([a.class("py-12")], [
         chapter(
           "1",
           "Introduction",

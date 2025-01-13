@@ -6,7 +6,7 @@ import lustre/event
 import supa/auth
 import website/components/auth_panel
 
-const secondary_button_classes = "py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
+const secondary_button_classes = "p-1 text-gray-700 hover:bg-gray-100 rounded-lg font-bold whitespace-nowrap"
 
 fn header_link(target, text) {
   h.a([a.class(secondary_button_classes), a.href(target)], [element.text(text)])
@@ -32,39 +32,42 @@ fn action_button(event, text) {
 
 pub fn header(authenticate, session) {
   // z index needed to go over vimeo video embeds
-  h.header(
+  h.div(
     [
       a.class(
-        "mx-auto w-full max-w-6xl hstack py-2 px-1 md:px-8 sticky top-0 border-b-2 z-20 bg-white",
+        "fixed top-0 right-0 left-0 z-20 bg-white bg-opacity-80 border-b border-white",
       ),
+      a.style([#("backdrop-filter", "blur(6px)")]),
     ],
     [
-      h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
-      h.div([a.class("expand hstack gap-2")], [
-        header_link("/editor", "Editor"),
-        header_link("/documentation", "Documentation"),
+      h.header([a.class("mx-auto w-full max-w-7xl hstack py-1 px-1 md:px-8")], [
+        h.a([a.class("font-bold text-4xl"), a.href("/")], [element.text("EYG")]),
+        h.div([a.class("expand hstack gap-2")], [
+          header_link("/editor", "Editor"),
+          header_link("/documentation", "Documentation"),
+        ]),
+        // TODO reinstate hen something worthwhile happens
+      // case session {
+      //   None ->
+      //     h.div([a.class("flex px-2 gap-2")], [
+      //       header_button(authenticate(auth_panel.UserClickedSignIn), "Sign in"),
+      //       action_button(
+      //         authenticate(auth_panel.UserClickedCreateAccount),
+      //         "Get Started",
+      //       ),
+      //     ])
+      //   Some(#(_session, user)) -> {
+      //     let auth.User(email:, ..) = user
+      //     h.div([a.class("flex gap-2"), a.style([#("align-items", "center")])], [
+      //       h.span([], [element.text(email)]),
+      //       action_button(
+      //         authenticate(auth_panel.UserClickedSignOut),
+      //         "Sign out",
+      //       ),
+      //     ])
+      //   }
+      // },
       ]),
-      // TODO reinstate hen something worthwhile happens
-    // case session {
-    //   None ->
-    //     h.div([a.class("flex px-2 gap-2")], [
-    //       header_button(authenticate(auth_panel.UserClickedSignIn), "Sign in"),
-    //       action_button(
-    //         authenticate(auth_panel.UserClickedCreateAccount),
-    //         "Get Started",
-    //       ),
-    //     ])
-    //   Some(#(_session, user)) -> {
-    //     let auth.User(email:, ..) = user
-    //     h.div([a.class("flex gap-2"), a.style([#("align-items", "center")])], [
-    //       h.span([], [element.text(email)]),
-    //       action_button(
-    //         authenticate(auth_panel.UserClickedSignOut),
-    //         "Sign out",
-    //       ),
-    //     ])
-    //   }
-    // },
     ],
   )
 }
