@@ -1,4 +1,3 @@
-import gleam/io
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
@@ -6,7 +5,6 @@ import lustre
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
-import morph/analysis
 import mysig/asset
 import mysig/html
 import website/components
@@ -349,22 +347,32 @@ fn render(state) {
         ),
         chapter(
           "9",
-          "References",
+          "Named references",
           [
             example(state, state.references_key),
             p(
-              "Every fragment of EYG program has a unique reference.
-          Once you have a reference to a program that reference is guaranteed to always point to the same fragment.",
+              "Rely on packages directly in your program with immutable references. No need for any package manifest or lockfile.",
             ),
             p(
-              "These fragments are how larger programs in EYG. A reference can be at any point in a place of a value.",
+              "The std package has functionality for lists, numbers and strings with more being added.",
             ),
             p(
-              "The three refererences in this example are available in the web playgrounds.",
+              "Name registration is currently a concierge driven process, i.e. you will need to contact us directly for one.
+            This process will be opened up once we have commited to a 1.0 format for the EYG storage format.",
             ),
-            p(
-              "Work is underway to add more support for finding and authoring references.",
-            ),
+            //   p(
+          //     "Every fragment of EYG program has a unique reference.
+          // Once you have a reference to a program that reference is guaranteed to always point to the same fragment.",
+          //   ),
+          //   p(
+          //     "These fragments are how larger programs in EYG. A reference can be at any point in a place of a value.",
+          //   ),
+          //   p(
+          //     "The three refererences in this example are available in the web playgrounds.",
+          //   ),
+          //   p(
+          //     "Work is underway to add more support for finding and authoring references.",
+          //   ),
           ],
           Some([
             element.text("press"),

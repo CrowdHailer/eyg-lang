@@ -161,7 +161,9 @@ pub fn source(state) {
 
 pub fn set_references(state, cache) {
   let run = run.start(source(state), state.scope, state.effects, cache)
-  Snippet(..state, run: run, cache: cache)
+  let source = state.source
+  let source = new_source(source.0, source.1, state.scope, state.effects, cache)
+  Snippet(..state, source: source, run: run, cache: cache)
 }
 
 pub fn references(state) {

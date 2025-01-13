@@ -4,7 +4,7 @@
 packages = [
   { name = "conversation", version = "1.4.3", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_javascript", "gleam_stdlib"], otp_app = "conversation", source = "hex", outer_checksum = "908B46F60444442785A495197D482558AD8B849C3714A38FAA1940358CC8CCCD" },
   { name = "decode", version = "0.5.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "decode", source = "hex", outer_checksum = "05E14DC95A550BA51B8774485B04894B87A898C588B9B1C920104B110AED218B" },
-  { name = "eyg", version = "0.1.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_bitwise", "gleam_community_codec", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "jot", "justin", "lustre", "midas", "midas_browser", "midas_node", "midas_sdk", "mysig", "oas", "plinth", "simplifile", "supa"], source = "local", path = "../eyg" },
+  { name = "eyg", version = "0.1.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_bitwise", "gleam_community_codec", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "jot", "justin", "lustre", "midas", "midas_browser", "midas_node", "midas_sdk", "mysig", "oas", "plinth", "simplifile", "snag", "supa"], source = "local", path = "../eyg" },
   { name = "filepath", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "67A6D15FB39EEB69DD31F8C145BB5A421790581BD6AA14B33D64D5A55DBD6587" },
   { name = "gleam_bitwise", version = "1.3.1", build_tools = ["gleam"], requirements = [], otp_app = "gleam_bitwise", source = "hex", outer_checksum = "B36E1D3188D7F594C7FD4F43D0D2CE17561DE896202017548578B16FE1FE9EFC" },
   { name = "gleam_community_ansi", version = "1.4.1", build_tools = ["gleam"], requirements = ["gleam_community_colour", "gleam_stdlib"], otp_app = "gleam_community_ansi", source = "hex", outer_checksum = "4CD513FC62523053E62ED7BAC2F36136EC17D6A8942728250A9A00A15E340E4B" },
@@ -31,7 +31,7 @@ packages = [
   { name = "midas_browser", version = "0.1.2", build_tools = ["gleam"], requirements = ["gleam_fetch", "gleam_javascript", "gleam_stdlib", "midas", "plinth"], otp_app = "midas_browser", source = "hex", outer_checksum = "3750B2C86DEDF26FB5F826F139578A6EE64603BC02320D11E0E3148119CAC7F5" },
   { name = "midas_node", version = "1.2.3", build_tools = ["gleam"], requirements = ["filepath", "gleam_fetch", "gleam_http", "gleam_javascript", "gleam_json", "gleam_package_interface", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "midas", "plinth", "shellout", "simplifile", "snag"], otp_app = "midas_node", source = "hex", outer_checksum = "33768C6223F40CAA5AB4FEF69A36E8D781C66891631022629F8905EA85D93B28" },
   { name = "midas_sdk", version = "0.4.2", build_tools = ["gleam"], requirements = ["decode", "gleam_http", "gleam_json", "gleam_stdlib", "midas", "snag"], otp_app = "midas_sdk", source = "hex", outer_checksum = "577426F85F26FB0DE0CEEDAED3DDABA53B212846427457A5F9F6268C555F7787" },
-  { name = "mysig", version = "0.4.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "simplifile", "snag"], otp_app = "mysig", source = "hex", outer_checksum = "301A04FB1DF35CC225E957299DCF01ACFD00B182F73BB70C953EA9AD64F7BBFE" },
+  { name = "mysig", version = "0.4.1", build_tools = ["gleam"], requirements = ["filepath", "gleam_http", "gleam_javascript", "gleam_json", "gleam_stdlib", "glen", "glen_node", "javascript_mutable_reference", "lustre", "marceau", "midas", "midas_node", "plinth", "simplifile", "snag"], otp_app = "mysig", source = "hex", outer_checksum = "7F20C433E0FCF2F3E4EC3ECD1913F3E42D04911E767A66CDD7EBCA7DFCF884D8" },
   { name = "oas", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_http", "gleam_stdlib"], otp_app = "oas", source = "hex", outer_checksum = "80D7AA24A1D5F9C1BF21F219DD7CA9A6B96FE28BE5FBC147B57537083CD24562" },
   { name = "plinth", version = "0.5.6", build_tools = ["gleam"], requirements = ["conversation", "gleam_javascript", "gleam_json", "gleam_stdlib"], otp_app = "plinth", source = "hex", outer_checksum = "7A9BEAB98F4BC6859803D5ABCD0F3B4C3578A747F12BF32F9E234F8325F5F0E0" },
   { name = "shellout", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "E2FCD18957F0E9F67E1F497FC9FF57393392F8A9BAEAEA4779541DE7A68DD7E0" },
@@ -54,7 +54,7 @@ midas = { version = ">= 1.4.1 and < 2.0.0" }
 midas_browser = { version = ">= 0.1.2 and < 1.0.0" }
 midas_node = { version = ">= 1.2.2 and < 2.0.0" }
 midas_sdk = { version = ">= 0.4.2 and < 1.0.0" }
-mysig = { version = ">= 0.3.1 and < 1.0.0" }
+mysig = { version = ">= 0.4.1 and < 1.0.0" }
 plinth = { version = ">= 0.5.6 and < 1.0.0" }
 simplifile = { version = ">= 1.7.0 and < 2.0.0" }
 snag = { version = ">= 1.1.0 and < 2.0.0" }
