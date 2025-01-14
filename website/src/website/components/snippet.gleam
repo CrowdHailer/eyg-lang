@@ -1042,7 +1042,7 @@ pub fn render_errors(errors) {
     list.map(errors, fn(error) {
       let #(path, reason) = error
       h.div([event.on_click(UserClickedPath(path))], [
-        element.text(debug.reason(reason)),
+        debug.reason_to_html(reason),
       ])
     }),
   )

@@ -632,7 +632,10 @@ pub fn render(state: State) {
           ]),
         ],
         [
-          h.div([], [snippet.render_just_projection(state.shell.source, True)]),
+          h.div(
+            [a.style([#("max-height", "65vh"), #("overflow-y", "scroll")])],
+            [snippet.render_just_projection(state.shell.source, True)],
+          ),
           h.button(
             [
               a.class(
@@ -1014,16 +1017,27 @@ fn render_errors(failure, snippet: snippet.Snippet) {
   case failure, errors {
     None, [] -> element.none()
     Some(SnippetFailure(failure)), _ ->
-      h.div([a.class("cover bg-red-300 px-2")], [
-        element.text(snippet.fail_message(failure)),
-      ])
+      h.div(
+        [
+          a.class("cover bg-red-300 px-2"),
+          a.style([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+        ],
+        [element.text(snippet.fail_message(failure))],
+      )
     Some(NoMoreHistory), _ ->
-      h.div([a.class("cover bg-red-300 px-2")], [
-        element.text("No previous code to select"),
-      ])
+      h.div(
+        [
+          a.class("cover bg-red-300 px-2"),
+          a.style([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+        ],
+        [element.text("No previous code to select")],
+      )
     _, _ ->
       h.div(
-        [a.class("cover bg-red-300 px-2")],
+        [
+          a.class("cover bg-red-300 px-2"),
+          a.style([#("max-height", "25vh"), #("overflow-y", "scroll")]),
+        ],
         list.map(errors, fn(error) {
           let #(path, reason) = error
           case path, reason {
