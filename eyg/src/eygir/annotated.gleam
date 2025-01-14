@@ -220,6 +220,32 @@ fn do_list_references(exp, found) {
   }
 }
 
+pub fn list_named_references(exp) {
+  do_list_named_references(exp, [])
+}
+
+// do later node first in Let/Call statements so no need to reverse
+fn do_list_named_references(exp, found) {
+  let #(exp, _meta) = exp
+  case exp {
+    NamedReference(package, release) ->
+      case list.contains(found, #(package, release)) {
+        True -> found
+        False -> [#(package, release), ..found]
+      }
+    Let(_label, value, then) -> {
+      let found = do_list_named_references(then, found)
+      do_list_named_references(value, found)
+    }
+    Lambda(_label, body) -> do_list_named_references(body, found)
+    Apply(func, arg) -> {
+      let found = do_list_named_references(arg, found)
+      do_list_named_references(func, found)
+    }
+    _ -> found
+  }
+}
+
 // currently unused as moved to analysis
 pub fn list_vacant(exp) {
   do_list_vacant(exp, [])

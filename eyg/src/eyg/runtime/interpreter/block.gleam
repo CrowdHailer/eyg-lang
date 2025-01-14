@@ -11,7 +11,7 @@ fn loop(next, env) {
     state.Loop(c, e, k) -> {
       // update top env
       case c, k {
-        state.V(v), state.Stack(state.Assign(l, _then, env), _, state.Empty(_))
+        state.V(_v), state.Stack(state.Assign(l, _then, env), _, state.Empty(_))
           if l == special
         -> {
           loop(state.step(c, e, k), env.scope)

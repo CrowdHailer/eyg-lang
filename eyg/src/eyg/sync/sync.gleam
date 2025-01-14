@@ -349,15 +349,41 @@ pub fn load(sync, dump: dump.Dump) {
   let packages = dict.merge(packages, dump.packages)
   // Can work out value of blobs eagerly and stick them in the map.
   // use the checksum as lookup key
-  // TODO do topological ordering
   let loaded =
     list.fold(
       dump.fragments,
       sync.loaded,
       fn(loaded, fragment: supabase.Fragment) {
-        io.debug(fragment.created_at)
+        // List all references and then put them in the loaded map
+        // This is bluring things a bit
         let expression = annotated.add_annotation(fragment.code, [])
-        case compute(expression, loaded) {
+        let named =
+          annotated.list_named_references(expression)
+          |> list.map(fn(ref) {
+            let #(name, release) = ref
+            case dict.get(registry, name) {
+              Ok(package_id) ->
+                case dict.get(packages, package_id) {
+                  Ok(releases) ->
+                    case dict.get(releases, release) {
+                      Ok(release) ->
+                        case dict.get(loaded, release.hash) {
+                          Ok(computed) -> #(
+                            "@" <> name <> ":" <> int.to_string(release.version),
+                            computed,
+                          )
+                          Error(Nil) -> panic as "computed should be done"
+                        }
+                      Error(Nil) -> panic as "release should be in history"
+                    }
+                  Error(Nil) ->
+                    panic as { "package should be in history " <> name }
+                }
+              Error(Nil) -> panic as { "name should be in registry " <> name }
+            }
+          })
+          |> dict.from_list
+        case compute(expression, dict.merge(loaded, named)) {
           Ok(computed) -> dict.insert(loaded, fragment.hash, computed)
           Error(reason) -> {
             io.debug(reason)

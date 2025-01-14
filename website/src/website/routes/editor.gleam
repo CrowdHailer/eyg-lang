@@ -1,5 +1,6 @@
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
+import eyg/shell/examples
 import eyg/sync/browser
 import eyg/sync/sync
 import eygir/expression
@@ -563,16 +564,30 @@ pub fn render(state: State) {
           a.style([#("min-height", "0")]),
         ],
         case list.length(state.shell.previous) {
-          0 -> [
+          x if x < 4 -> [
             h.div([a.class("px-2 text-gray-700 cover")], [
-              h.h2([a.class("texl-lg font-bold")], [element.text("The console")]),
-              h.p([], [element.text("Run and test your code here. ")]),
-              h.button([a.class("underline"), event.on_click(ToggleHelp)], [
-                case state.display_help {
-                  True -> element.text("Hide help.")
-                  False -> element.text("Show help.")
-                },
-              ]),
+              h.h2([a.class("texl-lg font-bold")], [element.text("The shell")]),
+              // h.p([], [element.text("Run and test your code here. ")]),
+            // h.button([a.class("underline"), event.on_click(ToggleHelp)], [
+            //   case state.display_help {
+            //     True -> element.text("Hide help.")
+            //     False -> element.text("Show help.")
+            //   },
+            // ]),
+            ]),
+            h.div([a.class("px-2 text-gray-700 cover")], [
+              h.p([], [element.text("examples:")]),
+              h.ul(
+                [a.class("list-inside list-disc")],
+                list.map(examples.examples(), fn(e) {
+                  let #(source, message) = e
+                  h.li([], [
+                    h.button([event.on_click(UserClickedPrevious(source))], [
+                      element.text(message),
+                    ]),
+                  ])
+                }),
+              ),
             ]),
           ]
           _ -> []
@@ -598,19 +613,20 @@ pub fn render(state: State) {
                     [outline.arrow_path()],
                   ),
                 ]),
-                h.div(
-                  [a.class("")],
-                  list.map(effects, fn(eff) {
-                    h.div([a.class("flex gap-1")], [
-                      h.span([a.class("text-blue-700")], [element.text(eff.0)]),
-                      output.render(eff.1.0),
-                      output.render(eff.1.1),
-                    ])
-                  }),
-                ),
+                h.div([a.class("text-blue-700")], [
+                  h.span([a.class("font-bold")], [element.text("effects ")]),
+                  ..list.map(effects, fn(eff) {
+                    h.span([], [element.text(eff.0), element.text(" ")])
+                    // h.div([a.class("flex gap-1")], [
+                    //   output.render(eff.1.0),
+                    //   output.render(eff.1.1),
+                    // ])
+                  })
+                ]),
                 case value {
                   Some(value) ->
                     h.div([a.class(" max-h-60 overflow-auto")], [
+                      h.span([a.class("font-bold")], [element.text("> ")]),
                       output.render(value),
                     ])
                   None -> element.none()
