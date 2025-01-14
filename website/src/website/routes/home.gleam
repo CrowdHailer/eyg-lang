@@ -323,10 +323,15 @@ fn view() {
         False,
       ),
       feature(
-        "Immutable references",
+        // "Immutable references",
+        // [
+        //   "Every program, script or function has a unique reference.",
+        //   "In EYG all packages and dependencies are fetched by reference, ensuring the same code is fetched everytime.",
+        // ],
+        "Named references",
         [
-          "Every program, script or function has a unique reference.",
-          "In EYG all packages and dependencies are fetched by reference, ensuring the same code is fetched everytime.",
+          "Use an ecosystem of helpful packages to work faster. Share code with anyone using your unique handle.",
+          "Signing up for account names is in closed beta for now. Get in touch to find out more",
         ],
         action(
           "Read the reference documentation.",
