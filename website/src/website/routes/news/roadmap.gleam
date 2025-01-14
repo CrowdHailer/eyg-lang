@@ -151,6 +151,15 @@ fn content() {
       Implementing property tests for these expectation would help handle the large number of edge cases.",
       None,
     ),
+    Feature(
+      "Polymorphic effects",
+      "Allow effects to be generalized in the same context
+    
+      This will make effects like Abort more ergonomic.
+      In the case of Abort the lifted type must be consistent but because the effect never resumes the reply type can be generalised.
+      This enhancement would make effects functionally equivalent to builtins allowing us to simplify implementation by removing builtins",
+      None,
+    ),
   ]
 }
 
