@@ -298,7 +298,7 @@ pub fn install(sync, ref, expression) {
   }
 }
 
-pub fn fetch_via_http(origin, ref) {
+fn fetch_via_http(origin, ref) {
   let Origin(scheme, host, port) = origin
   let request =
     request.Request(
