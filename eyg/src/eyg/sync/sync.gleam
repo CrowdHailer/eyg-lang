@@ -17,6 +17,7 @@ import gleam/list
 import gleam/option.{type Option, None}
 import gleam/result
 import midas/task as t
+import plinth/javascript/console
 import snag
 
 // Enum type describing all possible remotes
@@ -350,11 +351,22 @@ pub fn load(sync, dump: dump.Dump) {
   // use the checksum as lookup key
   // TODO do topological ordering
   let loaded =
-    dict.map_values(dump.fragments, fn(_key, expression) {
-      let expression = annotated.add_annotation(expression, [])
-      let assert Ok(computed) = compute(expression, sync.loaded)
-      computed
-    })
+    list.fold(
+      dump.fragments,
+      sync.loaded,
+      fn(loaded, fragment: supabase.Fragment) {
+        io.debug(fragment.created_at)
+        let expression = annotated.add_annotation(fragment.code, [])
+        case compute(expression, loaded) {
+          Ok(computed) -> dict.insert(loaded, fragment.hash, computed)
+          Error(reason) -> {
+            io.debug(reason)
+            loaded
+          }
+        }
+      },
+    )
+
   Sync(..sync, registry: registry, packages: packages, loaded: loaded)
 }
 
@@ -369,10 +381,31 @@ pub fn package_index(sync) {
       x if x > 0 -> {
         // We start on version 1
         let latest = x
-        let assert Ok(supabase.Release(hash: hash_ref, ..)) =
-          dict.get(package, latest)
-        let assert Ok(Computed(type_: type_, ..)) = dict.get(loaded, hash_ref)
-        Ok(#(name <> ":" <> int.to_string(latest), type_))
+        case dict.get(package, latest) {
+          Ok(supabase.Release(hash: hash_ref, ..)) ->
+            case dict.get(loaded, hash_ref) {
+              Ok(Computed(type_: type_, ..)) ->
+                Ok(#(name <> ":" <> int.to_string(latest), type_))
+              Error(Nil) -> {
+                console.warn(
+                  "failed to load package ref "
+                  <> name
+                  <> ":"
+                  <> int.to_string(latest),
+                )
+                Error(Nil)
+              }
+            }
+          Error(Nil) -> {
+            console.warn(
+              "failed get latest for package ref "
+              <> name
+              <> ":"
+              <> int.to_string(latest),
+            )
+            Error(Nil)
+          }
+        }
       }
       _ -> Error(Nil)
     }

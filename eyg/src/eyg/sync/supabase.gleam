@@ -46,13 +46,14 @@ pub fn get_fragments() {
 }
 
 pub type Fragment {
-  Fragment(hash: String, code: e.Expression)
+  Fragment(hash: String, created_at: String, code: e.Expression)
 }
 
 fn fragment_decoder(raw) {
-  dynamic.decode2(
+  dynamic.decode3(
     Fragment,
     dynamic.field("hash", dynamic.string),
+    dynamic.field("created_at", dynamic.string),
     dynamic.field("code", decode.decoder),
   )(raw)
 }

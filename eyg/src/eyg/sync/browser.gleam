@@ -49,10 +49,6 @@ pub fn do_load(message) {
       })
 
     use fragments <- t.do(supabase.get_fragments())
-    let fragments =
-      dict.from_list(
-        list.map(fragments, fn(fragment) { #(fragment.hash, fragment.code) }),
-      )
 
     t.done(dump.Dump(registrations, releases, fragments))
   }
