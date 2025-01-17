@@ -169,7 +169,7 @@ fn view() {
             h.p([a.class("text-4xl font-bold")], [element.text("EYG")]),
             h.p([a.class("max-w-lg text-2xl")], [
               element.text(
-                "The stable foundation for software that runs forever.",
+                "A programming language for predictable, useful and confident development.",
               ),
             ]),
             h.div([a.class("flex gap-2 mt-4")], [
