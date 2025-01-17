@@ -65,11 +65,21 @@ fn develop(_args) {
   promise.resolve(Ok(Nil))
 }
 
+const redirects = "
+/packages/* /packages/index.html 200
+/auth/* https://eyg-backend.fly.dev/auth/:splat 200
+/api/dnsimple/* https://eyg-backend.fly.dev/dnsimple/:splat 200
+/api/twitter/* https://eyg-backend.fly.dev/twitter/:splat 200
+/api/netlify/* https://eyg-backend.fly.dev/netlify/:splat 200
+/api/github/* https://eyg-backend.fly.dev/github/:splat 200
+"
+
 fn routes() {
   let assert Ok(share) = simplifile.read_bits("src/website/share.png")
   let assert Ok(pea) = simplifile.read_bits("src/website/images/pea.webp")
 
   Route(index: route.Page(home.page()), items: [
+    #("_redirects", Route(route.Static(<<redirects:utf8>>), [])),
     #("share.png", Route(route.Static(share), [])),
     // Keep for old emails
     #("pea.webp", Route(route.Static(pea), [])),
