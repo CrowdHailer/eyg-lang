@@ -11,6 +11,28 @@ import morph/lustre/frame
 import morph/lustre/highlight
 import morph/projection as t
 
+pub const mild = "text-gray-700"
+
+pub const variable = "text-gray-700"
+
+pub const vacant = "text-red-700"
+
+pub const binary = "text-green-4"
+
+pub const integer = "text-purple-2"
+
+pub const string = "text-green-4"
+
+pub const tag = "text-blue-700"
+
+pub const effect = "text-blue-900"
+
+pub const keyword = "text-gray-700"
+
+pub const builtin = "text-orange-3"
+
+pub const reference = "font-bold"
+
 pub fn do_let(rev, pattern, value) {
   let assignment =
     list.flatten([
@@ -156,7 +178,7 @@ fn exp_key(rev) {
 }
 
 fn continue_space(rev) {
-  frame.Inline([h.span([a.class("text-gray-700"), exp_key(rev)], [text("...")])])
+  frame.Inline([h.span([a.class(mild), exp_key(rev)], [text("...")])])
 }
 
 pub fn expression(exp, rev, errors) {
@@ -189,27 +211,21 @@ pub fn expression(exp, rev, errors) {
       )
     }
     e.Vacant(_) ->
-      frame.Inline([
-        h.span([a.class("text-red-700"), exp_key(rev)], [text("Vacant")]),
-      ])
+      frame.Inline([h.span([a.class(vacant), exp_key(rev)], [text("Vacant")])])
     e.Variable(x) ->
-      frame.Inline([h.span([a.class("text-gray-700"), exp_key(rev)], [text(x)])])
+      frame.Inline([h.span([a.class(variable), exp_key(rev)], [text(x)])])
     e.Integer(v) ->
       frame.Inline([
-        h.span([a.class("text-purple-2"), exp_key(rev)], [
-          text(int.to_string(v)),
-        ]),
+        h.span([a.class(integer), exp_key(rev)], [text(int.to_string(v))]),
       ])
     e.Binary(bytes) ->
       frame.Inline([
-        h.span([a.class("text-green-4"), exp_key(rev)], [
-          text(string.inspect(bytes)),
-        ]),
+        h.span([a.class(binary), exp_key(rev)], [text(string.inspect(bytes))]),
       ])
 
     e.String(v) ->
       frame.Inline([
-        h.span([a.class("text-green-4"), exp_key(rev)], [
+        h.span([a.class(string), exp_key(rev)], [
           text("\""),
           text(v),
           text("\""),
@@ -241,9 +257,7 @@ pub fn expression(exp, rev, errors) {
         h.span([exp_key([1, ..rev])], [text(label)]),
       ])
     e.Tag(label) ->
-      frame.Inline([
-        h.span([a.class("text-blue-900"), exp_key(rev)], [text(label)]),
-      ])
+      frame.Inline([h.span([a.class(tag), exp_key(rev)], [text(label)])])
     e.Case(top, matches, otherwise) -> {
       let top = expression(top, [0, ..rev], errors)
       let matches =
@@ -260,36 +274,33 @@ pub fn expression(exp, rev, errors) {
     }
     e.Perform(label) ->
       frame.Inline([
-        h.span([a.class("text-gray-700")], [text("perform ")]),
-        h.span([a.class("text-blue-900"), exp_key(rev)], [text(label)]),
+        h.span([a.class(keyword)], [text("perform ")]),
+        h.span([a.class(effect), exp_key(rev)], [text(label)]),
       ])
     e.Deep(label) ->
       frame.Inline([
-        h.span([a.class("text-gray-700")], [text("handle ")]),
-        h.span([a.class("text-blue-900"), exp_key(rev)], [text(label)]),
+        h.span([a.class(keyword)], [text("handle ")]),
+        h.span([a.class(effect), exp_key(rev)], [text(label)]),
       ])
     e.Shallow(label) ->
       frame.Inline([
-        h.span([a.class("text-gray-700")], [text("shallow ")]),
-        h.span([a.class("text-blue-900"), exp_key(rev)], [text(label)]),
+        h.span([a.class(keyword)], [text("shallow ")]),
+        h.span([a.class(effect), exp_key(rev)], [text(label)]),
       ])
 
     e.Builtin(identifier) ->
       frame.Inline([
-        h.span([a.class("text-orange-3"), exp_key(rev)], [
-          text("!"),
-          text(identifier),
-        ]),
+        h.span([a.class(builtin), exp_key(rev)], [text("!"), text(identifier)]),
       ])
     e.Reference(identifier) ->
       frame.Inline([
-        h.span([a.class("text-gray-800"), exp_key(rev)], [text(identifier)]),
+        h.span([a.class(reference), exp_key(rev)], [text(identifier)]),
       ])
     e.NamedReference(package, release) ->
       frame.Inline([
         h.span(
           [
-            a.class("font-bold"),
+            a.class(reference),
             exp_key(rev),
             a.title("release = " <> int.to_string(release)),
           ],
@@ -399,7 +410,7 @@ pub fn render_branch(field, rev, errors) {
   let #(label, value) = field
   let value = expression(value, [0, ..rev], errors)
   frame.prepend_spans(
-    [h.span([a.class("text-blue-700"), exp_key(rev)], [text(label), text(" ")])],
+    [h.span([a.class(tag), exp_key(rev)], [text(label), text(" ")])],
     value,
   )
 }
@@ -541,7 +552,7 @@ fn render_break(break, inner, rev, kind, errors) {
       let branch =
         frame.prepend_spans(
           [
-            h.span([a.class("text-blue-700"), exp_key([self, ..rev])], [
+            h.span([a.class(tag), exp_key([self, ..rev])], [
               text(label),
               text(" "),
             ]),
@@ -814,7 +825,7 @@ pub fn projection_frame(zip, kind, errors) {
         frame.prepend_spans(
           [
             highlight.spans(
-              [h.span([a.class("text-blue-700")], [text(label)])],
+              [h.span([a.class(tag)], [text(label)])],
               highlight.focus(),
             ),
             text(" "),
