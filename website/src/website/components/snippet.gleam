@@ -42,6 +42,23 @@ import plinth/browser/window
 import plinth/javascript/console
 import website/components/output
 
+const embed_area_styles = [
+  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
+  #(
+    "font-family",
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+  ), #("background-color", "rgb(255, 255, 255)"), #("--tw-border-opacity", "1"),
+  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
+  #("flex-direction", "column"), #("display", "flex"),
+  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
+]
+
+const code_area_styles = [
+  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
+  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
+  #("margin-top", "auto"), #("margin-bottom", "auto"),
+]
+
 type ExternalBlocking =
   fn(run.Value) -> Result(promise.Promise(run.Value), run.Reason)
 
@@ -958,14 +975,7 @@ pub fn finish_editing(state) {
 }
 
 pub fn render_embedded(state: Snippet, failure) {
-  h.div(
-    [
-      a.class(
-        "bg-white neo-shadow font-mono mt-2 mb-6 border border-black flex flex-col",
-      ),
-    ],
-    bare_render(state, failure),
-  )
+  h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
 fn bare_render(state, failure) {
@@ -1017,7 +1027,7 @@ fn bare_render(state, failure) {
     Idle -> [
       h.div(
         [
-          a.class("p-2 outline-none my-auto"),
+          a.style(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
@@ -1090,7 +1100,7 @@ pub fn render_just_projection(state, autofocus) {
     Idle ->
       h.div(
         [
-          a.class("p-2 outline-none my-auto whitespace-nowrap overflow-auto"),
+          a.style(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
@@ -1102,7 +1112,7 @@ pub fn render_just_projection(state, autofocus) {
 fn actual_render_projection(proj, autofocus, using_mouse, errors) {
   h.div(
     [
-      a.class("p-2 outline-none my-auto whitespace-nowrap overflow-auto"),
+      a.style(code_area_styles),
       ..case autofocus {
         True -> [
           a.attribute("tabindex", "0"),
