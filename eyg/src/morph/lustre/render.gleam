@@ -622,7 +622,7 @@ pub fn projection_frame(zip, kind, errors) {
     //     ]),
     //   )
     t.Exp(exp) ->
-      highlight.frame(expression(exp, rev, errors), [a.class(highlight.focus)])
+      highlight.frame(expression(exp, rev, errors), highlight.focus())
     t.Assign(detail, value, pre, post, then) -> {
       let self = list.length(pre)
       let pre =
@@ -637,14 +637,13 @@ pub fn projection_frame(zip, kind, errors) {
       let assign = case detail {
         // get rid of assign statement then do_let goes on the outside
         t.AssignStatement(p) ->
-          highlight.frame(assign(p, value, [self, ..rev], errors), [
-            a.class(highlight.focus),
-          ])
+          highlight.frame(
+            assign(p, value, [self, ..rev], errors),
+            highlight.focus(),
+          )
         t.AssignPattern(p) -> {
           let p = [
-            highlight.spans(pattern(p, [0, self, ..rev]), [
-              a.class(highlight.focus),
-            ]),
+            highlight.spans(pattern(p, [0, self, ..rev]), highlight.focus()),
           ]
           do_let([self, ..rev], p, expression(value, [1, self, ..rev], errors))
         }
@@ -653,9 +652,10 @@ pub fn projection_frame(zip, kind, errors) {
           let rev = [0, self, ..rev]
           let self = list.length(pre) * 2
           let spans = [
-            highlight.spans([h.span([exp_key([self, ..rev])], [text(label)])], [
-              a.class(highlight.focus),
-            ]),
+            highlight.spans(
+              [h.span([exp_key([self, ..rev])], [text(label)])],
+              highlight.focus(),
+            ),
             h.span([], [text(": ")]),
             h.span([exp_key([self + 1, ..rev])], [text(var)]),
           ]
@@ -677,9 +677,10 @@ pub fn projection_frame(zip, kind, errors) {
           let spans = [
             h.span([exp_key([self, ..rev])], [text(label)]),
             h.span([], [text(": ")]),
-            highlight.spans([h.span([exp_key(rev)], [text(var)])], [
-              a.class(highlight.focus),
-            ]),
+            highlight.spans(
+              [h.span([exp_key(rev)], [text(var)])],
+              highlight.focus(),
+            ),
           ]
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
@@ -717,19 +718,20 @@ pub fn projection_frame(zip, kind, errors) {
         list.index_map(post, fn(p, i) { pattern(p, [self + 1 + i, ..rev]) })
       let pattern = case detail {
         t.AssignStatement(p) -> [
-          highlight.spans(pattern(p, [self, ..rev]), [a.class(highlight.focus)]),
+          highlight.spans(pattern(p, [self, ..rev]), highlight.focus()),
         ]
         t.AssignPattern(p) -> [
-          highlight.spans(pattern(p, [self, ..rev]), [a.class(highlight.focus)]),
+          highlight.spans(pattern(p, [self, ..rev]), highlight.focus()),
         ]
 
         t.AssignField(label, var, pre, post) -> {
           let rev = [self, ..rev]
           let self = list.length(pre) * 2
           let spans = [
-            highlight.spans([h.span([exp_key([self, ..rev])], [text(label)])], [
-              a.class(highlight.focus),
-            ]),
+            highlight.spans(
+              [h.span([exp_key([self, ..rev])], [text(label)])],
+              highlight.focus(),
+            ),
             h.span([], [text(": ")]),
             h.span([exp_key([self + 1, ..rev])], [text(var)]),
           ]
@@ -745,9 +747,10 @@ pub fn projection_frame(zip, kind, errors) {
           let spans = [
             h.span([exp_key([self, ..rev])], [text(label)]),
             h.span([], [text(": ")]),
-            highlight.spans([h.span([exp_key(rev)], [text(var)])], [
-              a.class(highlight.focus),
-            ]),
+            highlight.spans(
+              [h.span([exp_key(rev)], [text(var)])],
+              highlight.focus(),
+            ),
           ]
           let pre =
             list.index_map(pre, fn(f, i) { do_field(f, self - 2 - 2 * i, rev) })
@@ -764,7 +767,7 @@ pub fn projection_frame(zip, kind, errors) {
       let self = list.length(pre) * 2
       let len = self + { list.length(post) + 1 } * 2
       let value = expression(value, [self + 1, ..rev], errors)
-      let label = highlight.spans([text(label)], [a.class(highlight.focus)])
+      let label = highlight.spans([text(label)], highlight.focus())
       let field = frame.prepend_spans([label, text(": ")], value)
 
       let pre =
@@ -793,9 +796,10 @@ pub fn projection_frame(zip, kind, errors) {
       let frame =
         from
         |> frame.append_spans([
-          highlight.spans([text("."), h.span([exp_key(rev)], [text(label)])], [
-            a.class(highlight.focus),
-          ]),
+          highlight.spans(
+            [text("."), h.span([exp_key(rev)], [text(label)])],
+            highlight.focus(),
+          ),
         ])
       case list.key_find(errors, list.reverse(rev)) {
         Ok(_) -> highlight.frame(frame, highlight.error())
@@ -811,7 +815,7 @@ pub fn projection_frame(zip, kind, errors) {
           [
             highlight.spans(
               [h.span([a.class("text-blue-700")], [text(label)])],
-              [a.class(highlight.focus)],
+              highlight.focus(),
             ),
             text(" "),
           ],

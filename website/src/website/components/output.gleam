@@ -17,7 +17,7 @@ pub fn render(value) {
         }
       }
     }
-    v.Str(string) -> h.pre([], [text(string)])
+    v.Str(string) -> h.pre([a.style([#("margin", "0")])], [text(string)])
     _ -> render_value(value)
   }
 }
