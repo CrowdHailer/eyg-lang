@@ -11,27 +11,31 @@ import morph/lustre/frame
 import morph/lustre/highlight
 import morph/projection as t
 
-pub const mild = "text-gray-700"
+// Prism tokens https://prismjs.com/tokens.html
 
-pub const variable = "text-gray-700"
+pub const collapsed = "token comment"
 
-pub const vacant = "text-red-700"
+pub const variable = "token punctuation"
 
-pub const binary = "text-green-4"
+pub const vacant = "token important"
 
-pub const integer = "text-purple-2"
+// normally rendered the same as string
+pub const binary = "token char"
 
-pub const string = "text-green-4"
+pub const integer = "token number"
 
-pub const tag = "text-blue-700"
+pub const string = "token string"
 
-pub const effect = "text-blue-900"
+pub const tag = "token class-name"
 
-pub const keyword = "text-gray-700"
+// This is effect name
+pub const effect = "token class-name"
 
-pub const builtin = "text-orange-3"
+pub const keyword = "token keyword"
 
-pub const reference = "font-bold"
+pub const builtin = "token builtin"
+
+pub const reference = "token symbol"
 
 pub fn do_let(rev, pattern, value) {
   let assignment =
@@ -178,7 +182,7 @@ fn exp_key(rev) {
 }
 
 fn continue_space(rev) {
-  frame.Inline([h.span([a.class(mild), exp_key(rev)], [text("...")])])
+  frame.Inline([h.span([a.class(collapsed), exp_key(rev)], [text("...")])])
 }
 
 pub fn expression(exp, rev, errors) {

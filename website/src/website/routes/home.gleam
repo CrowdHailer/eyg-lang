@@ -50,6 +50,9 @@ fn layout(body) {
         html.stylesheet(html.tailwind_2_2_11),
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
+        html.stylesheet(
+          "https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/themes/prism.min.css",
+        ),
         html.plausible("eyg.run"),
       ],
       common.page_meta(
