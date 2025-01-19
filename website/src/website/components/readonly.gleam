@@ -221,11 +221,13 @@ pub fn render(state) {
               | "F12" -> Error([])
               k if shift -> {
                 pevent.prevent_default(event)
+                pevent.stop_propagation(event)
                 Ok(UserPressedCommandKey(string.uppercase(k)))
               }
               _ if ctrl || alt -> Error([])
               k -> {
                 pevent.prevent_default(event)
+                pevent.stop_propagation(event)
                 Ok(UserPressedCommandKey(k))
               }
             }
