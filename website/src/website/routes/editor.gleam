@@ -136,10 +136,15 @@ pub fn init(_) {
   #(state, effect.from(browser.do_load(SyncMessage)))
 }
 
+pub type MenuMessage {
+  ChangeSubmenu(Submenu)
+  ActionClicked(String)
+}
+
 pub type Message {
   ToggleHelp
   ToggleFullscreen
-  ChangeSubmenu(Submenu)
+  MenuMessage(MenuMessage)
   SnippetMessage(snippet.Message)
   UserClickedPrevious(e.Expression)
   ShellMessage(snippet.Message)
@@ -206,13 +211,15 @@ pub fn update(state: State, message) {
         Nil
       }),
     )
-    ChangeSubmenu(submenu) -> {
+    MenuMessage(ChangeSubmenu(submenu)) -> {
       let submenu = case submenu == state.submenu {
         False -> submenu
         True -> Closed
       }
       #(State(..state, submenu: submenu), effect.none())
     }
+    MenuMessage(ActionClicked(key)) ->
+      update(state, ShellMessage(snippet.UserPressedCommandKey(key)))
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       let State(display_help: display_help, ..) = state
@@ -396,7 +403,7 @@ fn not_a_modal(content, dismiss: a) {
   ])
 }
 
-fn icon(image, text, display_help) {
+pub fn icon(image, text, display_help) {
   h.span([a.class("flex rounded"), a.style([#("align-items", "center")])], [
     // h-7 matches text height
     h.span([a.class("inline-block w-6 h-7 text-center text-xl")], [image]),
@@ -551,7 +558,8 @@ fn render_user_input(raw, type_, message) {
 pub fn render(state: State) {
   let show = state.display_help
   container(
-    render_menu(state),
+    render_menu_from_state(state)
+      |> list.map(fn(e) { element.map(e, MenuMessage) }),
     [
       render_pallet(state.shell.source) |> element.map(ShellMessage),
       h.div([a.class("absolute top-0 w-full bg-white")], [
@@ -670,7 +678,7 @@ pub fn render(state: State) {
 }
 
 fn cmd(x) {
-  ShellMessage(snippet.UserPressedCommandKey(x))
+  ActionClicked(x)
 }
 
 fn assign() {
@@ -789,157 +797,169 @@ fn paste() {
   #(outline.clipboard_document(), "paste", cmd("Y"))
 }
 
-// The submenu is probably not part of the editor... yet
-pub fn render_menu(state: State) {
-  let State(shell: shell, ..) = state
-  let snippet.Snippet(status: status, source: source, ..) = shell.source
-  case status {
-    snippet.Idle -> one_col_menu(state, [delete()])
-    snippet.Editing(snippet.Command) -> {
-      let #(#(focus, zoom), _, _) = source
-      let top = case focus {
-        // create
-        p.Exp(exp) ->
-          case exp {
-            e.Variable(_) | e.Reference(_) | e.NamedReference(_, _) -> [
-              edit(),
-              select_field(),
-              call_function(),
-              call_with(),
-            ]
-            e.Call(_, _) -> [select_field(), call_function(), call_with()]
-            e.Function(_, _) -> [insert_function(), call_with()]
-            e.Block(_, _, _) -> []
-            e.Vacant(_) -> [use_variable(), insert_number(), insert_text()]
-            e.Integer(_)
-            | e.Binary(_)
-            | e.String(_)
-            | e.Perform(_)
-            | e.Deep(_)
-            | e.Shallow(_) -> [edit(), call_with()]
-            e.Builtin(_) -> [edit(), call_function(), call_with()]
-            e.List(_, _) | e.Record(_, _) -> [toggle_spread(), call_with()]
-            e.Select(_, _) -> [select_field(), call_function(), call_with()]
-            e.Tag(_) -> [edit(), call_with()]
-            // match open match
-            e.Case(_, _, _) -> [toggle_otherwise(), call_with()]
-          }
-          |> list.append([assign()], _)
-          |> list.append(case zoom {
-            [p.ListItem(_, _, _), ..] | [p.CallArg(_, _, _), ..] -> [
-              item_before(),
-              item_after(),
-            ]
-            [p.BlockTail(_), ..] | [] -> [assign_before()]
-            _ -> []
-          })
-          |> list.append([collection(), more(), undo(), expand(), delete()])
+pub type Action(e) {
+  Action(icon: element.Element(e), text: String, action: Message)
+}
 
-        p.Assign(pattern, _, _, _, _) ->
-          list.flatten([
-            [edit()],
-            case pattern {
-              p.AssignPattern(e.Bind(_)) -> [new_record()]
-              p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) -> [
-                item_before(),
-                item_after(),
-              ]
-              _ -> [assign_before()]
-            },
-            [undo(), expand(), delete()],
-          ])
-        p.Select(_, _) -> [edit(), undo(), expand(), delete()]
-        p.FnParam(pattern, _, _, _) -> {
-          let common = [undo(), expand(), delete()]
-          case pattern {
-            p.AssignPattern(e.Bind(_)) -> [
-              edit(),
-              item_before(),
-              item_after(),
-              new_record(),
-              ..common
-            ]
-            p.AssignPattern(e.Destructure(_)) -> [
-              item_before(),
-              item_after(),
-              ..common
-            ]
+fn top_content(projection) {
+  let #(focus, zoom) = projection
+  case focus {
+    // create
+    p.Exp(exp) ->
+      case exp {
+        e.Variable(_) | e.Reference(_) | e.NamedReference(_, _) -> [
+          edit(),
+          select_field(),
+          call_function(),
+          call_with(),
+        ]
+        e.Call(_, _) -> [select_field(), call_function(), call_with()]
+        e.Function(_, _) -> [insert_function(), call_with()]
+        e.Block(_, _, _) -> []
+        e.Vacant(_) -> [use_variable(), insert_number(), insert_text()]
+        e.Integer(_)
+        | e.Binary(_)
+        | e.String(_)
+        | e.Perform(_)
+        | e.Deep(_)
+        | e.Shallow(_) -> [edit(), call_with()]
+        e.Builtin(_) -> [edit(), call_function(), call_with()]
+        e.List(_, _) | e.Record(_, _) -> [toggle_spread(), call_with()]
+        e.Select(_, _) -> [select_field(), call_function(), call_with()]
+        e.Tag(_) -> [edit(), call_with()]
+        // match open match
+        e.Case(_, _, _) -> [toggle_otherwise(), call_with()]
+      }
+      |> list.append([assign()], _)
+      |> list.append(case zoom {
+        [p.ListItem(_, _, _), ..] | [p.CallArg(_, _, _), ..] -> [
+          item_before(),
+          item_after(),
+        ]
+        [p.BlockTail(_), ..] | [] -> [assign_before()]
+        _ -> []
+      })
+      |> list.append([collection(), more(), undo(), expand(), delete()])
 
-            p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) -> [
-              edit(),
-              item_before(),
-              item_after(),
-              ..common
-            ]
-            p.AssignStatement(_) -> [edit(), ..common]
-          }
-        }
-        p.Label(_, _, _, _, _) -> [
+    p.Assign(pattern, _, _, _, _) ->
+      list.flatten([
+        [edit()],
+        case pattern {
+          p.AssignPattern(e.Bind(_)) -> [new_record()]
+          p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) -> [
+            item_before(),
+            item_after(),
+          ]
+          _ -> [assign_before()]
+        },
+        [undo(), expand(), delete()],
+      ])
+    p.Select(_, _) -> [edit(), undo(), expand(), delete()]
+    p.FnParam(pattern, _, _, _) -> {
+      let common = [undo(), expand(), delete()]
+      case pattern {
+        p.AssignPattern(e.Bind(_)) -> [
           edit(),
           item_before(),
           item_after(),
-          undo(),
-          expand(),
-          delete(),
+          new_record(),
+          ..common
         ]
-        p.Match(_, _, _, _, _, _) -> [
+        p.AssignPattern(e.Destructure(_)) -> [
+          item_before(),
+          item_after(),
+          ..common
+        ]
+
+        p.AssignBind(_, _, _, _) | p.AssignField(_, _, _, _) -> [
           edit(),
-          branch_after(),
-          undo(),
-          expand(),
-          delete(),
+          item_before(),
+          item_after(),
+          ..common
         ]
-      }
-
-      case state.submenu {
-        Collection ->
-          two_col_menu(
-            state,
-            top,
-            "wrap",
-            case focus {
-              // Show all destructure options in extra
-              p.Exp(e.Variable(_)) | p.Exp(e.Call(_, _)) -> [
-                spread_list(),
-                overwrite_field(),
-                match(),
-              ]
-              _ -> []
-            }
-              |> list.append([
-                new_list(),
-                new_record(),
-                tag_value(),
-                insert_function(),
-              ]),
-          )
-
-        More ->
-          two_col_menu(state, top, "more", [
-            // expand(),
-            redo(),
-            copy(),
-            paste(),
-            #(outline.at_symbol(), "reference", cmd("@")),
-            #(outline.bolt_slash(), "handle effect", cmd("h")),
-            #(outline.bolt(), "perform effect", cmd("p")),
-            #(
-              h.span([a.style([#("font-size", "0.8rem")])], [
-                element.text("1101"),
-              ]),
-              "binary",
-              cmd("b"),
-            ),
-            #(outline.cog(), "builtins", cmd("j")),
-          ])
-
-        Closed -> one_col_menu(state, top)
+        p.AssignStatement(_) -> [edit(), ..common]
       }
     }
-    snippet.Editing(_) ->
-      []
-      |> one_col_menu(state, _)
+    p.Label(_, _, _, _, _) -> [
+      edit(),
+      item_before(),
+      item_after(),
+      undo(),
+      expand(),
+      delete(),
+    ]
+    p.Match(_, _, _, _, _, _) -> [
+      edit(),
+      branch_after(),
+      undo(),
+      expand(),
+      delete(),
+    ]
   }
+}
+
+pub fn submenu_more() {
+  [
+    // expand(),
+    redo(),
+    copy(),
+    paste(),
+    #(outline.at_symbol(), "reference", cmd("@")),
+    #(outline.bolt_slash(), "handle effect", cmd("h")),
+    #(outline.bolt(), "perform effect", cmd("p")),
+    #(
+      h.span([a.style([#("font-size", "0.8rem")])], [element.text("1101")]),
+      "binary",
+      cmd("b"),
+    ),
+    #(outline.cog(), "builtins", cmd("j")),
+  ]
+}
+
+pub fn submenu_wrap(projection) {
+  let #(focus, _zoom) = projection
+  case focus {
+    // Show all destructure options in extra
+    p.Exp(e.Variable(_)) | p.Exp(e.Call(_, _)) -> [
+      spread_list(),
+      overwrite_field(),
+      match(),
+    ]
+    _ -> []
+  }
+  |> list.append([new_list(), new_record(), tag_value(), insert_function()])
+}
+
+pub fn menu_content(status, projection, submenu) {
+  case status {
+    snippet.Idle -> #([delete()], None)
+    snippet.Editing(snippet.Command) -> {
+      let subcontent = case submenu {
+        Collection -> Some(#("wrap", submenu_wrap(projection)))
+        More -> Some(#("more", submenu_more()))
+        Closed -> None
+      }
+      #(top_content(projection), subcontent)
+    }
+    snippet.Editing(_) -> #([], None)
+  }
+}
+
+pub fn render_menu(status, projection, submenu, display_help) {
+  let #(projection, _, _) = projection
+
+  let #(top, subcontent) = menu_content(status, projection, submenu)
+  case subcontent {
+    None -> one_col_menu(display_help, top)
+    Some(#(key, more)) -> two_col_menu(display_help, top, key, more)
+  }
+}
+
+// The submenu is probably not part of the editor... yet
+fn render_menu_from_state(state: State) {
+  let State(shell: shell, ..) = state
+  let snippet.Snippet(status: status, source: source, ..) = shell.source
+  render_menu(status, source, state.submenu, state.display_help)
 }
 
 fn help_menu_button(state: State) {
@@ -956,7 +976,7 @@ fn fullscreen_menu_button(state: State) {
   )
 }
 
-fn one_col_menu(state: State, options) {
+fn one_col_menu(display_help, options) {
   [
     // help_menu_button(state),
     // same as grid below
@@ -972,7 +992,7 @@ fn one_col_menu(state: State, options) {
             let #(i, text, k) = entry
             h.button(
               [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)],
-              [icon(i, text, state.display_help)],
+              [icon(i, text, display_help)],
             )
           }),
         ),
@@ -981,7 +1001,7 @@ fn one_col_menu(state: State, options) {
   ]
 }
 
-fn two_col_menu(state: State, top, active, sub) {
+fn two_col_menu(display_help, top, active, sub) {
   [
     // help_menu_button(state),
     h.div(
@@ -1014,7 +1034,7 @@ fn two_col_menu(state: State, top, active, sub) {
             let #(i, text, k) = entry
             h.button(
               [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
-              [icon(i, text, state.display_help)],
+              [icon(i, text, display_help)],
             )
           }),
         ),
