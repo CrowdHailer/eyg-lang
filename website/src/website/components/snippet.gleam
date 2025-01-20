@@ -29,6 +29,7 @@ import morph/analysis
 import morph/editable as e
 import morph/input
 import morph/lustre/frame
+import morph/lustre/highlight
 import morph/lustre/render
 import morph/navigation
 import morph/picker
@@ -1206,11 +1207,19 @@ fn actual_render_projection(proj, autofocus, using_mouse, errors) {
 }
 
 fn render_projection(proj, _using_mouse, errors) {
-  let #(_focus, zoom) = proj
-  // This is NOT reversed because zoom works from inside out
-  let frame = render.projection_frame(proj, render.Statements, errors)
-  render.push_render(frame, zoom, render.Statements, errors)
-  |> frame.to_fat_line
+  let #(focus, zoom) = proj
+  case focus, zoom {
+    p.Exp(e), [] ->
+      frame.Statements(render.statements(e, errors))
+      |> highlight.frame(highlight.focus())
+      |> frame.to_fat_line
+    _, _ -> {
+      // This is NOT reversed because zoom works from inside out
+      let frame = render.projection_frame(proj, render.Statements, errors)
+      render.push_render(frame, zoom, render.Statements, errors)
+      |> frame.to_fat_line
+    }
+  }
 }
 
 fn render_run(run) {
