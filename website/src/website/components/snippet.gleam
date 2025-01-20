@@ -1000,7 +1000,7 @@ pub fn render_embedded(state: Snippet, failure) {
   h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
-fn bare_render(state, failure) {
+pub fn bare_render(state, failure) {
   let Snippet(
     status: status,
     source: source,
@@ -1045,8 +1045,9 @@ fn bare_render(state, failure) {
       }
 
     Idle -> [
-      h.div(
+      h.pre(
         [
+          a.class("language-eyg"),
           a.style(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
@@ -1118,8 +1119,9 @@ pub fn render_just_projection(state, autofocus) {
       actual_render_projection(proj, autofocus, using_mouse, errors)
     }
     Idle ->
-      h.div(
+      h.pre(
         [
+          a.class("language-eyg"),
           a.style(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
@@ -1130,8 +1132,9 @@ pub fn render_just_projection(state, autofocus) {
 }
 
 fn actual_render_projection(proj, autofocus, using_mouse, errors) {
-  h.div(
+  h.pre(
     [
+      a.class("language-eyg"),
       a.style(code_area_styles),
       ..case autofocus {
         True -> [

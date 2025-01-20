@@ -12,6 +12,7 @@ import gleam/string
 import harness/impl/browser as harness
 import lustre
 import lustre/effect
+import lustre/element/html as h
 import midas/browser
 import morph/editable as e
 import plinth/browser/document
@@ -95,7 +96,7 @@ fn update(snippet, message) {
 
 fn render(state) {
   let snippet = state
-  snippet.render_embedded(snippet, None)
+  h.div([], snippet.bare_render(snippet, None))
 }
 
 fn effects() {
