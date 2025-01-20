@@ -9,6 +9,7 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
+import harness/impl/browser as harness
 import lustre
 import lustre/effect
 import midas/browser
@@ -99,5 +100,5 @@ fn render(state) {
 
 fn effects() {
   // TODO make website effects but login will require crowdhailer.me to work for tweet effect
-  []
+  harness.effects()
 }
