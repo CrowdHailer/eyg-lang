@@ -1,14 +1,17 @@
+import eyg/sync/browser as remote
 import eyg/sync/sync
 import eygir/decode
 import gleam/int
 import gleam/io
 import gleam/javascript/array
+import gleam/javascript/promise
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import lustre
 import lustre/effect
+import midas/browser
 import morph/editable as e
 import plinth/browser/document
 import plinth/browser/element
@@ -17,6 +20,11 @@ import website/components/snippet
 
 pub fn run() {
   let scripts = document.query_selector_all("[type='application/json+eyg']")
+  let cache = sync.init(sync.test_origin)
+  use result <- promise.map(browser.run(remote.load_task()))
+  let assert Ok(dump) = result
+  let cache = sync.load(cache, dump)
+
   list.index_map(array.to_list(scripts), fn(script, i) {
     console.log(script)
     let id = "eyg" <> int.to_string(i)
@@ -34,12 +42,12 @@ pub fn run() {
     let assert Ok(source) = decode.from_json(json)
     // ORIGIN is not used when pulling from supabase
     let app = lustre.application(init, update, render)
-    let assert Ok(_) = lustre.start(app, "#" <> id, source)
+    let assert Ok(_) = lustre.start(app, "#" <> id, #(source, cache))
   })
 }
 
-fn init(source) {
-  let cache = sync.init(sync.test_origin)
+fn init(config) {
+  let #(source, cache) = config
   let source =
     e.from_expression(source)
     |> e.open_all
