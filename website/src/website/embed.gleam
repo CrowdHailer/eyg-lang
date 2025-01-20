@@ -133,7 +133,7 @@ fn render(state) {
   h.div([a.class("eyg-embed"), a.style([#("position", "relative")])], [
     // TODO show error
     // TODO fix rendering of input and picker to not use tailwind
-    render_menu(snippet, menu, True) |> lelement.map(MenuMessage),
+    render_menu(snippet, menu, False) |> lelement.map(MenuMessage),
     ..snippet.bare_render(snippet, None)
     |> list.map(fn(e) { lelement.map(e, SnippetMessage) })
   ])
@@ -174,9 +174,7 @@ fn render_menu(snippet, submenu, display_help) {
         ],
         list.map(top, fn(entry) {
           let #(i, text, k) = entry
-          h.button([a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)], [
-            editor.icon(i, text, display_help),
-          ])
+          editor.button(k, [editor.icon(i, text, display_help)])
         }),
       ),
       case subcontent {
@@ -195,10 +193,7 @@ fn render_menu(snippet, submenu, display_help) {
             ],
             list.map(subitems, fn(entry) {
               let #(i, text, k) = entry
-              h.button(
-                [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)],
-                [editor.icon(i, text, display_help)],
-              )
+              editor.button(k, [editor.icon(i, text, display_help)])
             }),
           )
       },

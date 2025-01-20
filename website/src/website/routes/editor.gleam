@@ -404,17 +404,37 @@ fn not_a_modal(content, dismiss: a) {
 }
 
 pub fn icon(image, text, display_help) {
-  h.span([a.class("flex rounded"), a.style([#("align-items", "center")])], [
-    // h-7 matches text height
-    h.span([a.class("inline-block w-6 h-7 text-center text-xl")], [image]),
-    case display_help {
-      True ->
-        h.span([a.class("ml-2 border-l border-opacity-25 pl-2")], [
-          element.text(text),
-        ])
-      False -> element.none()
-    },
-  ])
+  h.span(
+    [
+      a.style([
+        #("align-items", "center"),
+        #("border-radius", ".25rem"),
+        #("display", "flex"),
+      ]),
+    ],
+    [
+      h.span(
+        [
+          a.style([
+            #("font-size", "1.25rem"),
+            #("line-height", "1.75rem"),
+            #("text-align", "center"),
+            #("width", "1.5rem"),
+            #("height", "1.75rem"),
+            #("display", "inline-block"),
+          ]),
+        ],
+        [image],
+      ),
+      case display_help {
+        True ->
+          h.span([a.class("ml-2 border-l border-opacity-25 pl-2")], [
+            element.text(text),
+          ])
+        False -> element.none()
+      },
+    ],
+  )
 }
 
 // https://stackoverflow.com/questions/17555682/height-100-or-min-height-100-for-html-and-body-elements
@@ -990,10 +1010,7 @@ fn one_col_menu(display_help, options) {
           [a.class("flex flex-col justify-end text-gray-200 py-2")],
           list.map(options, fn(entry) {
             let #(i, text, k) = entry
-            h.button(
-              [a.class("hover:bg-gray-800 px-2 py-1"), event.on_click(k)],
-              [icon(i, text, display_help)],
-            )
+            button(k, [icon(i, text, display_help)])
           }),
         ),
       ],
@@ -1001,9 +1018,29 @@ fn one_col_menu(display_help, options) {
   ]
 }
 
+pub fn button(action, content) {
+  h.button(
+    [
+      a.class("morph button"),
+      a.style([
+        // #("background", "none"),
+        #("outline", "none"),
+        #("border", "none"),
+        #("padding-left", ".5rem"),
+        #("padding-right", ".5rem"),
+        #("padding-top", ".25rem"),
+        #("padding-bottom", ".25rem"),
+        #("cursor", "pointer"),
+        // TODO hover color
+      ]),
+      event.on_click(action),
+    ],
+    content,
+  )
+}
+
 fn two_col_menu(display_help, top, active, sub) {
   [
-    // help_menu_button(state),
     h.div(
       [
         a.class("grid overflow-y-auto overflow-x-hidden"),
