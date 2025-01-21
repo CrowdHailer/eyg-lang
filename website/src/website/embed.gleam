@@ -15,6 +15,7 @@ import lustre/attribute as a
 import lustre/effect
 import lustre/element as lelement
 import lustre/element/html as h
+import lustre/event
 import midas/browser
 import morph/editable as e
 import plinth/browser/document
@@ -138,6 +139,11 @@ fn render(state) {
         #("padding", "0"),
         #("overflow", "initial"),
       ]),
+      // This is needed to stop the component interfering with remark slides
+      event.on("keypress", fn(event) {
+        event.stop_propagation(event)
+        Error([])
+      }),
     ],
     [
       // TODO show error

@@ -5,6 +5,7 @@ import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
 import lustre/event
+import morph/utils
 
 // All editing of labels is handled by a picker,
 // in some cases there are no suggestions
@@ -90,7 +91,7 @@ fn do_render(picker, filter, suggestions, index) {
         a.attribute("autocomplete", "off"),
         a.attribute("autofocus", "true"),
         a.required(True),
-        event.on_keydown(on_keydown(_, picker)),
+        utils.on_hotkey(on_keydown(_, picker)),
         event.on_input(on_input(_, picker)),
       ]),
       h.hr([

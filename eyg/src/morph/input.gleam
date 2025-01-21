@@ -2,6 +2,7 @@ import gleam/int
 import lustre/attribute as a
 import lustre/element/html as h
 import lustre/event
+import morph/utils
 
 pub fn render_text(value) {
   input(value, "text")
@@ -27,7 +28,7 @@ pub fn styled_input(value, type_, class, styles) {
       // a.required(required),
       // Id like to listen to the reset event but it doesn't seem to get fired from any keyboard interaction.
       // I've tested with listening to reset on input and form. and including a reset button explicitly.
-      event.on_keydown(KeyDown),
+      utils.on_hotkey(KeyDown),
       event.on_input(UpdateInput),
     ]),
   ])
