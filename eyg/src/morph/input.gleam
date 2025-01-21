@@ -15,10 +15,11 @@ pub fn render_number(value) {
   input(raw, "number")
 }
 
-pub fn styled_input(value, type_, class) {
+pub fn styled_input(value, type_, class, styles) {
   h.form([event.on_submit(Submit)], [
     h.input([
       a.class(class),
+      a.style(styles),
       a.value(value),
       a.type_(type_),
       a.attribute("autofocus", "true"),
@@ -33,9 +34,24 @@ pub fn styled_input(value, type_, class) {
 }
 
 fn input(value, type_) {
-  let class =
-    "block w-full bg-transparent border-l-8 border-gray-700 focus:border-gray-300 p-1 outline-none"
-  styled_input(value, type_, class)
+  let styles = [
+    #("line-height", "inherit"),
+    #("color", "inherit"),
+    #("font-family", "inherit"),
+    #("font-size", "100%"),
+    #("margin", "0"),
+    #("outline", "2px solid transparent"),
+    #("outline-offset", "2px"),
+    #("padding", ".25rem"),
+    #("background-color", "transparent"),
+    #("border-style", "solid"),
+    #("border-color", "rgb(55, 65, 81)"),
+    #("border-width", "0"),
+    #("border-left-width", "8px"),
+    #("width", "100%"),
+    #("display", "block"),
+  ]
+  styled_input(value, type_, "", styles)
 }
 
 pub type Message {

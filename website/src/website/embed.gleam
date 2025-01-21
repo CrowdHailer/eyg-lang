@@ -15,7 +15,6 @@ import lustre/attribute as a
 import lustre/effect
 import lustre/element as lelement
 import lustre/element/html as h
-import lustre/event
 import midas/browser
 import morph/editable as e
 import plinth/browser/document
@@ -130,13 +129,23 @@ fn update(state, message) {
 fn render(state) {
   let State(menu, snippet) = state
 
-  h.div([a.class("eyg-embed"), a.style([#("position", "relative")])], [
-    // TODO show error
-    // TODO fix rendering of input and picker to not use tailwind
-    render_menu(snippet, menu, False) |> lelement.map(MenuMessage),
-    ..snippet.bare_render(snippet, None)
-    |> list.map(fn(e) { lelement.map(e, SnippetMessage) })
-  ])
+  h.pre(
+    [
+      a.class("eyg-embed language-eyg"),
+      a.style([
+        #("position", "relative"),
+        #("margin", "0"),
+        #("padding", "0"),
+        #("overflow", "initial"),
+      ]),
+    ],
+    [
+      // TODO show error
+      render_menu(snippet, menu, False) |> lelement.map(MenuMessage),
+      ..snippet.bare_render(snippet, None)
+      |> list.map(fn(e) { lelement.map(e, SnippetMessage) })
+    ],
+  )
 }
 
 fn effects() {
@@ -180,7 +189,7 @@ fn render_menu(snippet, submenu, display_help) {
       case subcontent {
         None -> lelement.none()
         // TODO reuse column rendering fn
-        Some(#(key, subitems)) ->
+        Some(#(_key, subitems)) ->
           h.div(
             [
               a.style([

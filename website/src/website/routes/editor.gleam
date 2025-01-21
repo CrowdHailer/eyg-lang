@@ -555,6 +555,7 @@ fn render_user_input(raw, type_, message) {
       raw,
       type_,
       "w-full outline-none border border-black rounded my-1 p-1",
+      [],
     ),
     h.div([a.class("flex gap-2 my-2 justify-end")], [
       h.button(
