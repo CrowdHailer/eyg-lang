@@ -10,6 +10,10 @@ import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
 import harness/impl/browser as harness
+import harness/impl/spotless/netlify
+import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
+import harness/impl/spotless/twitter
+import harness/impl/spotless/twitter/tweet
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -157,6 +161,25 @@ fn render(state) {
 fn effects() {
   // TODO make website effects but login will require crowdhailer.me to work for tweet effect
   harness.effects()
+  |> list.append([
+    #(
+      netlify_deploy_site.l,
+      #(
+        netlify_deploy_site.lift(),
+        netlify_deploy_site.reply(),
+        netlify_deploy_site.blocking(netlify.local, _),
+      ),
+    ),
+    #(
+      tweet.l,
+      #(tweet.lift(), tweet.reply(), tweet.blocking(
+        twitter.client_id,
+        twitter.redirect_uri,
+        True,
+        _,
+      )),
+    ),
+  ])
 }
 
 fn render_menu(snippet, submenu, display_help) {
