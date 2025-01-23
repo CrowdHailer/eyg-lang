@@ -53,6 +53,7 @@ fn layout(body) {
         html.stylesheet(html.tailwind_2_2_11),
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
+        common.prism_style(),
         html.plausible("eyg.run"),
         h.style([], "html { height: 100%; }\nbody { min-height: 100%; }\n"),
       ],

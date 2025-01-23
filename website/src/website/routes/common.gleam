@@ -1,6 +1,7 @@
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/uri.{Uri}
+import mysig/html
 import mysig/preview
 
 // These are all parts of the layout, I prefer composing helpers than having a single layout to call
@@ -21,5 +22,11 @@ pub fn page_meta(path path, title title, description description) {
       preview.png,
       "Penelopea the mascot for the EYG programming language.",
     ),
+  )
+}
+
+pub fn prism_style() {
+  html.stylesheet(
+    "https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/themes/prism.min.css",
   )
 }
