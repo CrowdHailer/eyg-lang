@@ -31,6 +31,7 @@ fn do_main(args) {
     [] as args | ["develop", ..args] -> develop(args)
     ["deploy"] -> deploy(args)
     ["email"] -> email()
+    ["embed"] -> embed()
 
     _ ->
       promise.resolve(snag.error("no runner for: " <> args |> string.join(" ")))
@@ -112,5 +113,15 @@ fn email() {
     t.write("email.html", <<output:utf8>>)
   }
 
+  node.run(task, ".")
+}
+
+fn embed() {
+  let task = {
+    use bundle <- t.do(t.bundle("website/embed", "run"))
+    t.write("../../../me/2025-01-24/eyg-predictable-and-useful/embed.js", <<
+      bundle:utf8,
+    >>)
+  }
   node.run(task, ".")
 }
