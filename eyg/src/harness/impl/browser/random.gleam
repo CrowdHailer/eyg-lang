@@ -5,12 +5,12 @@ import gleam/int
 import gleam/javascript/promise
 import gleam/result
 
-pub const l = "Flip"
+pub const l = "Random"
 
 pub const lift = t.unit
 
 pub fn reply() {
-  t.boolean
+  t.Integer
 }
 
 pub fn type_() {
@@ -19,7 +19,7 @@ pub fn type_() {
 
 pub fn impl(lift) {
   use Nil <- result.try(cast.as_unit(lift, Nil))
-  Ok(boolean_to_eyg(do(Nil)))
+  Ok(v.Integer(do(Nil)))
 }
 
 pub fn blocking(lift) {
@@ -28,16 +28,5 @@ pub fn blocking(lift) {
 }
 
 pub fn do(_: Nil) {
-  case int.random(2) {
-    0 -> False
-    1 -> True
-    _ -> panic as "integer outside expected range"
-  }
-}
-
-fn boolean_to_eyg(result) {
-  case result {
-    True -> v.true
-    False -> v.false
-  }
+  int.random(100)
 }
