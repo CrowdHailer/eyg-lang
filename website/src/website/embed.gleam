@@ -159,7 +159,6 @@ fn render(state) {
 }
 
 fn effects() {
-  // TODO make website effects but login will require crowdhailer.me to work for tweet effect
   harness.effects()
   |> list.append([
     #(
@@ -200,41 +199,29 @@ fn render_menu(snippet, submenu, display_help) {
       ]),
     ],
     [
-      h.div(
-        [
-          a.style([
-            #("padding-top", ".5rem"),
-            #("padding-bottom", ".5rem"),
-            #("justify-content", "flex-end"),
-            #("flex-direction", "column"),
-            #("display", "flex"),
-          ]),
-        ],
-        list.map(top, fn(entry) {
-          let #(i, text, k) = entry
-          editor.button(k, [editor.icon(i, text, display_help)])
-        }),
-      ),
+      render_column(top, display_help),
       case subcontent {
         None -> lelement.none()
-        // TODO reuse column rendering fn
-        Some(#(_key, subitems)) ->
-          h.div(
-            [
-              a.style([
-                #("padding-top", ".5rem"),
-                #("padding-bottom", ".5rem"),
-                #("justify-content", "flex-end"),
-                #("flex-direction", "column"),
-                #("display", "flex"),
-              ]),
-            ],
-            list.map(subitems, fn(entry) {
-              let #(i, text, k) = entry
-              editor.button(k, [editor.icon(i, text, display_help)])
-            }),
-          )
+        Some(#(_key, subitems)) -> render_column(subitems, display_help)
       },
     ],
+  )
+}
+
+fn render_column(items, display_help) {
+  h.div(
+    [
+      a.style([
+        #("padding-top", ".5rem"),
+        #("padding-bottom", ".5rem"),
+        #("justify-content", "flex-end"),
+        #("flex-direction", "column"),
+        #("display", "flex"),
+      ]),
+    ],
+    list.map(items, fn(entry) {
+      let #(i, text, k) = entry
+      editor.button(k, [editor.icon(i, text, display_help)])
+    }),
   )
 }
