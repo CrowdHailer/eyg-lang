@@ -13,6 +13,7 @@ import morph/lustre/frame
 import morph/lustre/render
 import morph/navigation
 import morph/projection as p
+import morph/utils
 import plinth/browser/clipboard
 import plinth/browser/element as dom_element
 import plinth/browser/event as pevent
@@ -199,37 +200,7 @@ pub fn render(state) {
               }
             }
           }),
-          event.on("keydown", fn(event) {
-            let assert Ok(event) = pevent.cast_keyboard_event(event)
-            let key = pevent.key(event)
-            let shift = pevent.shift_key(event)
-            let ctrl = pevent.ctrl_key(event)
-            let alt = pevent.alt_key(event)
-            case key {
-              "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
-              "F1"
-              | "F2"
-              | "F3"
-              | "F4"
-              | "F5"
-              | "F6"
-              | "F7"
-              | "F8"
-              | "F9"
-              | "F10"
-              | "F11"
-              | "F12" -> Error([])
-              k if shift -> {
-                pevent.prevent_default(event)
-                Ok(UserPressedCommandKey(string.uppercase(k)))
-              }
-              _ if ctrl || alt -> Error([])
-              k -> {
-                pevent.prevent_default(event)
-                Ok(UserPressedCommandKey(k))
-              }
-            }
-          }),
+          utils.on_hotkey(UserPressedCommandKey),
         ],
         [projection_rendered],
       )

@@ -29,11 +29,13 @@ import morph/analysis
 import morph/editable as e
 import morph/input
 import morph/lustre/frame
+import morph/lustre/highlight
 import morph/lustre/render
 import morph/navigation
 import morph/picker
 import morph/projection as p
 import morph/transformation
+import morph/utils
 import plinth/browser/clipboard
 import plinth/browser/document
 import plinth/browser/element as dom_element
@@ -41,6 +43,45 @@ import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/console
 import website/components/output
+
+const neo_blue_3 = "#87ceeb"
+
+const neo_green_3 = "#90ee90"
+
+const neo_orange_4 = "#ff6b6b"
+
+const embed_area_styles = [
+  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
+  #(
+    "font-family",
+    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+  ), #("background-color", "rgb(255, 255, 255)"),
+  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
+  #("flex-direction", "column"), #("display", "flex"),
+  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
+]
+
+const code_area_styles = [
+  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
+  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
+  #("margin-top", "auto"), #("margin-bottom", "auto"),
+]
+
+fn footer_area(color, contents) {
+  h.div(
+    [
+      a.style([
+        #("border-color", color),
+        #("padding-left", ".5rem"),
+        #("padding-right", ".5rem"),
+        #("border-style", "solid"),
+        #("border-width", "2px"),
+        #("overflow", "auto"),
+      ]),
+    ],
+    contents,
+  )
+}
 
 type ExternalBlocking =
   fn(run.Value) -> Result(promise.Promise(run.Value), run.Reason)
@@ -958,17 +999,10 @@ pub fn finish_editing(state) {
 }
 
 pub fn render_embedded(state: Snippet, failure) {
-  h.div(
-    [
-      a.class(
-        "bg-white neo-shadow font-mono mt-2 mb-6 border border-black flex flex-col",
-      ),
-    ],
-    bare_render(state, failure),
-  )
+  h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
 
-fn bare_render(state, failure) {
+pub fn bare_render(state, failure) {
   let Snippet(
     status: status,
     source: source,
@@ -989,9 +1023,7 @@ fn bare_render(state, failure) {
           actual_render_projection(proj, True, using_mouse, errors),
           case failure {
             Some(failure) ->
-              h.div([a.class("border-2 border-orange-4 px-2")], [
-                element.text(fail_message(failure)),
-              ])
+              footer_area(neo_orange_4, [element.text(fail_message(failure))])
             None -> render_current(errors, run)
           },
         ]
@@ -1015,9 +1047,10 @@ fn bare_render(state, failure) {
       }
 
     Idle -> [
-      h.div(
+      h.pre(
         [
-          a.class("p-2 outline-none my-auto"),
+          a.class("language-eyg"),
+          a.style(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
@@ -1037,8 +1070,8 @@ pub fn render_current(errors, run: run.Run) {
 }
 
 pub fn render_errors(errors) {
-  h.div(
-    [a.class("border-2 border-orange-3 px-2")],
+  footer_area(
+    neo_orange_4,
     list.map(errors, fn(error) {
       let #(path, reason) = error
       h.div([event.on_click(UserClickedPath(path))], [
@@ -1088,9 +1121,10 @@ pub fn render_just_projection(state, autofocus) {
       actual_render_projection(proj, autofocus, using_mouse, errors)
     }
     Idle ->
-      h.div(
+      h.pre(
         [
-          a.class("p-2 outline-none my-auto whitespace-nowrap overflow-auto"),
+          a.class("language-eyg"),
+          a.style(code_area_styles),
           a.attribute("tabindex", "0"),
           event.on_focus(UserFocusedOnCode),
         ],
@@ -1100,9 +1134,10 @@ pub fn render_just_projection(state, autofocus) {
 }
 
 fn actual_render_projection(proj, autofocus, using_mouse, errors) {
-  h.div(
+  h.pre(
     [
-      a.class("p-2 outline-none my-auto whitespace-nowrap overflow-auto"),
+      a.class("language-eyg"),
+      a.style(code_area_styles),
       ..case autofocus {
         True -> [
           a.attribute("tabindex", "0"),
@@ -1131,37 +1166,7 @@ fn actual_render_projection(proj, autofocus, using_mouse, errors) {
               }
             }
           }),
-          event.on("keydown", fn(event) {
-            let assert Ok(event) = pevent.cast_keyboard_event(event)
-            let key = pevent.key(event)
-            let shift = pevent.shift_key(event)
-            let ctrl = pevent.ctrl_key(event)
-            let alt = pevent.alt_key(event)
-            case key {
-              "Alt" | "Ctrl" | "Shift" | "Tab" -> Error([])
-              "F1"
-              | "F2"
-              | "F3"
-              | "F4"
-              | "F5"
-              | "F6"
-              | "F7"
-              | "F8"
-              | "F9"
-              | "F10"
-              | "F11"
-              | "F12" -> Error([])
-              k if shift -> {
-                pevent.prevent_default(event)
-                Ok(UserPressedCommandKey(string.uppercase(k)))
-              }
-              _ if ctrl || alt -> Error([])
-              k -> {
-                pevent.prevent_default(event)
-                Ok(UserPressedCommandKey(k))
-              }
-            }
-          }),
+          utils.on_hotkey(UserPressedCommandKey),
         ]
         False -> []
       }
@@ -1171,45 +1176,40 @@ fn actual_render_projection(proj, autofocus, using_mouse, errors) {
 }
 
 fn render_projection(proj, _using_mouse, errors) {
-  let #(_focus, zoom) = proj
-  // This is NOT reversed because zoom works from inside out
-  let frame = render.projection_frame(proj, render.Statements, errors)
-  render.push_render(frame, zoom, render.Statements, errors)
-  |> frame.to_fat_line
+  let #(focus, zoom) = proj
+  case focus, zoom {
+    p.Exp(e), [] ->
+      frame.Statements(render.statements(e, errors))
+      |> highlight.frame(highlight.focus())
+      |> frame.to_fat_line
+    _, _ -> {
+      // This is NOT reversed because zoom works from inside out
+      let frame = render.projection_frame(proj, render.Statements, errors)
+      render.push_render(frame, zoom, render.Statements, errors)
+      |> frame.to_fat_line
+    }
+  }
 }
 
 fn render_run(run) {
   case run {
     run.Done(value, _) ->
-      h.pre(
-        [
-          a.class("border-2 border-green-3 px-2 overflow-auto"),
-          a.style([#("max-height", "30vh")]),
-        ],
-        [
-          case value {
-            Some(value) -> output.render(value)
-            None -> element.none()
-          },
-          // element.text(value.debug(value)),
-        ],
-      )
+      footer_area(neo_green_3, [
+        case value {
+          Some(value) -> output.render(value)
+          None -> element.none()
+        },
+      ])
     run.Handling(label, _meta, _env, _stack, _blocking) ->
-      h.pre(
-        [
-          a.class("border-2 border-blue-3 px-2"),
-          event.on_click(UserClickRunEffects),
-        ],
-        [
+      footer_area(neo_blue_3, [
+        h.span([event.on_click(UserClickRunEffects)], [
           element.text("Will run "),
           element.text(label),
           element.text(" effect. click to continue."),
-        ],
-      )
-    run.Failed(#(reason, _, _, _)) ->
-      h.pre([a.class("border-2 border-orange-3 px-2")], [
-        element.text(break.reason_to_string(reason)),
+        ]),
       ])
+    run.Failed(#(reason, _, _, _)) ->
+      footer_area(neo_orange_4, [element.text(break.reason_to_string(reason))])
   }
 }
 

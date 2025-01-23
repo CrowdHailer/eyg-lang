@@ -5,6 +5,7 @@ import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
 import lustre/event
+import morph/utils
 
 // All editing of labels is handled by a picker,
 // in some cases there are no suggestions
@@ -56,38 +57,93 @@ pub fn render(picker) {
 }
 
 fn do_render(picker, filter, suggestions, index) {
-  h.form([event.on_submit(on_submit(picker))], [
-    // h.div([a.class("w-full p-2")], []),
-    h.input([
-      a.class(
-        "block w-full bg-transparent border-l-8 border-gray-700 focus:border-gray-300 p-1 outline-none",
-      ),
-      a.id("focus-input"),
-      a.value(filter),
-      a.attribute("autocomplete", "off"),
-      a.attribute("autofocus", "true"),
-      a.required(True),
-      event.on_keydown(on_keydown(_, picker)),
-      event.on_input(on_input(_, picker)),
-    ]),
-    h.hr([a.class("mx-40 my-1 border-gray-700")]),
-    // event.on_click(Do(apply)),
-    ..list.index_map(suggestions, fn(line, i) {
-      let #(name, detail) = line
-      h.div(
-        [
-          a.class("px-3 py-1 flex"),
-          a.classes([#("bg-gray-800 text-white", i == index)]),
-          event.on_click(Decided(name)),
-        ],
-        [
-          h.span([a.class("font-bold")], [text(name)]),
-          h.span([a.class("flex-grow")], [text(": ")]),
-          h.span([a.class("pl-2 whitespace-nowrap truncate")], [text(detail)]),
-        ],
-      )
-    })
-  ])
+  h.form(
+    [
+      a.style([
+        #(
+          "font-family",
+          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+        ),
+      ]),
+      event.on_submit(on_submit(picker)),
+    ],
+    [
+      h.input([
+        a.style([
+          #("line-height", "inherit"),
+          #("color", "inherit"),
+          #("font-family", "inherit"),
+          #("font-size", "100%"),
+          #("margin", "0"),
+          #("outline", "2px solid transparent"),
+          #("outline-offset", "2px"),
+          #("padding", ".25rem"),
+          #("background-color", "transparent"),
+          #("border-style", "solid"),
+          #("border-color", "rgb(55, 65, 81)"),
+          #("border-width", "0"),
+          #("border-left-width", "8px"),
+          #("width", "100%"),
+          #("display", "block"),
+        ]),
+        a.id("focus-input"),
+        a.value(filter),
+        a.attribute("autocomplete", "off"),
+        a.attribute("autofocus", "true"),
+        a.required(True),
+        utils.on_hotkey(on_keydown(_, picker)),
+        event.on_input(on_input(_, picker)),
+      ]),
+      h.hr([
+        a.style([
+          #("border-color", "rgb(55, 65, 81)"),
+          #("margin-top", ".25rem"),
+          #("margin-bottom", ".25rem"),
+          #("margin-left", "10rem"),
+          #("margin-right", "10rem"),
+          #("border-top-width", "1px"),
+        ]),
+      ]),
+      // event.on_click(Do(apply)),
+      ..list.index_map(suggestions, fn(line, i) {
+        let #(name, detail) = line
+        h.div(
+          [
+            a.style([
+              #("padding-top", ".25rem"),
+              #("padding-bottom", ".25rem"),
+              #("padding-left", ".75rem"),
+              #("padding-right", ".75rem"),
+              #("display", "flex"),
+              ..case i == index {
+                False -> []
+                True -> [
+                  #("background-color", "rgb(31, 41, 55)"),
+                  #("color", "rgb(255, 255, 255)"),
+                ]
+              }
+            ]),
+            event.on_click(Decided(name)),
+          ],
+          [
+            h.span([a.style([#("font-weight", "700")])], [text(name)]),
+            h.span([a.style([#("flex-grow", "1")])], [text(": ")]),
+            h.span(
+              [
+                a.style([
+                  #("padding-left", ".5rem"),
+                  #("overflow", "hidden"),
+                  #("text-overflow", "ellipsis"),
+                  #("white-space", "nowrap"),
+                ]),
+              ],
+              [text(detail)],
+            ),
+          ],
+        )
+      })
+    ],
+  )
 }
 
 fn on_submit(picker) {

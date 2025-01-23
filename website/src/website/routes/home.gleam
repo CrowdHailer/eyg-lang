@@ -50,6 +50,7 @@ fn layout(body) {
         html.stylesheet(html.tailwind_2_2_11),
         html.stylesheet(asset.src(layout)),
         html.stylesheet(asset.src(neo)),
+        common.prism_style(),
         html.plausible("eyg.run"),
       ],
       common.page_meta(
