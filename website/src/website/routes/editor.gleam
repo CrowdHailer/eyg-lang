@@ -30,7 +30,6 @@ import plinth/javascript/console
 import website/components/output
 import website/components/readonly
 import website/components/snippet
-import website/components/snippet/menu
 import website/routes/common
 
 pub fn app(module, func) {
@@ -111,7 +110,6 @@ pub type State {
     cache: sync.Sync,
     source: snippet.Snippet,
     shell: Shell,
-    submenu: menu.State,
     display_help: Bool,
   )
 }
@@ -127,14 +125,13 @@ pub fn init(_) {
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
     })
-  let state = State(cache, snippet, shell, menu.init(), False)
+  let state = State(cache, snippet, shell, False)
   #(state, effect.from(browser.do_load(SyncMessage)))
 }
 
 pub type Message {
   ToggleHelp
   ToggleFullscreen
-  MenuMessage(menu.Message)
   SnippetMessage(snippet.Message)
   UserClickedPrevious(e.Expression)
   ShellMessage(snippet.Message)
@@ -201,22 +198,14 @@ pub fn update(state: State, message) {
         Nil
       }),
     )
-    MenuMessage(message) -> {
-      let #(submenu, action) = menu.update(state.submenu, message)
-      let state = State(..state, submenu: submenu)
-      case action {
-        None -> #(state, effect.none())
-        Some(key) ->
-          update(state, ShellMessage(snippet.UserPressedCommandKey(key)))
-      }
-    }
+
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(state.source, message)
       let State(display_help: display_help, ..) = state
       let #(display_help, snippet_effect) = case eff {
         snippet.Nothing -> #(display_help, effect.none())
-        snippet.Failed(failure) -> {
-          todo as "put on some state"
+        snippet.Failed(_failure) -> {
+          panic as "put on some state"
         }
         snippet.AwaitRunningEffect(p) -> #(
           display_help,
@@ -266,7 +255,6 @@ pub fn update(state: State, message) {
     }
     ShellMessage(message) -> {
       let state = close_all_previous(state)
-      let state = State(..state, submenu: menu.close(state.submenu))
       let shell = state.shell
       case snippet.user_message(message) {
         True -> Shell(..shell, failure: None)
@@ -391,40 +379,6 @@ fn not_a_modal(content, dismiss: a) {
       content,
     ),
   ])
-}
-
-pub fn icon(image, text, display_help) {
-  h.span(
-    [
-      a.style([
-        #("align-items", "center"),
-        #("border-radius", ".25rem"),
-        #("display", "flex"),
-      ]),
-    ],
-    [
-      h.span(
-        [
-          a.style([
-            #("font-size", "1.25rem"),
-            #("line-height", "1.75rem"),
-            #("text-align", "center"),
-            #("width", "1.5rem"),
-            #("height", "1.75rem"),
-            #("display", "inline-block"),
-          ]),
-        ],
-        [image],
-      ),
-      case display_help {
-        True ->
-          h.span([a.class("ml-2 border-l border-opacity-25 pl-2")], [
-            element.text(text),
-          ])
-        False -> element.none()
-      },
-    ],
-  )
 }
 
 // https://stackoverflow.com/questions/17555682/height-100-or-min-height-100-for-html-and-body-elements
@@ -570,7 +524,9 @@ pub fn render(state: State) {
   let show = state.display_help
   container(
     render_menu_from_state(state)
-      |> list.map(fn(e) { element.map(e, MenuMessage) }),
+      |> list.map(fn(e) {
+        element.map(e, snippet.MessageFromMenu) |> element.map(ShellMessage)
+      }),
     [
       render_pallet(state.shell.source) |> element.map(ShellMessage),
       h.div([a.class("absolute top-0 w-full bg-white")], [
@@ -691,7 +647,7 @@ pub fn render(state: State) {
 pub fn render_menu(status, projection, submenu, display_help) {
   let #(projection, _, _) = projection
 
-  let #(top, subcontent) = menu.content(status, projection, submenu)
+  let #(top, subcontent) = snippet.menu_content(status, projection, submenu)
   case subcontent {
     None -> one_col_menu(display_help, top)
     Some(#(key, more)) -> two_col_menu(display_help, top, key, more)
@@ -701,21 +657,28 @@ pub fn render_menu(status, projection, submenu, display_help) {
 // The submenu is probably not part of the editor... yet
 fn render_menu_from_state(state: State) {
   let State(shell: shell, ..) = state
-  let snippet.Snippet(status: status, source: source, ..) = shell.source
-  render_menu(status, source, state.submenu, state.display_help)
+  let snippet.Snippet(status: status, source: source, menu: menu, ..) =
+    shell.source
+  render_menu(status, source, menu, state.display_help)
 }
 
 fn help_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleHelp)],
-    [icon(outline.question_mark_circle(), "hide help", state.display_help)],
+    [
+      snippet.icon(
+        outline.question_mark_circle(),
+        "hide help",
+        state.display_help,
+      ),
+    ],
   )
 }
 
 fn fullscreen_menu_button(state: State) {
   h.button(
     [a.class("hover:bg-gray-200 px-2 py-1"), event.on_click(ToggleFullscreen)],
-    [icon(outline.tv(), "fullscreen", state.display_help)],
+    [snippet.icon(outline.tv(), "fullscreen", state.display_help)],
   )
 }
 
@@ -733,33 +696,12 @@ fn one_col_menu(display_help, options) {
           [a.class("flex flex-col justify-end text-gray-200 py-2")],
           list.map(options, fn(entry) {
             let #(i, text, k) = entry
-            button(k, [icon(i, text, display_help)])
+            snippet.button(k, [snippet.icon(i, text, display_help)])
           }),
         ),
       ],
     ),
   ]
-}
-
-pub fn button(action, content) {
-  h.button(
-    [
-      a.class("morph button"),
-      a.style([
-        // #("background", "none"),
-        #("outline", "none"),
-        #("border", "none"),
-        #("padding-left", ".5rem"),
-        #("padding-right", ".5rem"),
-        #("padding-top", ".25rem"),
-        #("padding-bottom", ".25rem"),
-        #("cursor", "pointer"),
-        // TODO hover color
-      ]),
-      event.on_click(action),
-    ],
-    content,
-  )
 }
 
 fn two_col_menu(display_help, top, active, sub) {
@@ -780,7 +722,7 @@ fn two_col_menu(display_help, top, active, sub) {
                 a.classes([#("bg-yellow-600", text == active)]),
                 event.on_click(k),
               ],
-              [icon(i, text, False)],
+              [snippet.icon(i, text, False)],
             )
           }),
         ),
@@ -794,7 +736,7 @@ fn two_col_menu(display_help, top, active, sub) {
             let #(i, text, k) = entry
             h.button(
               [a.class("hover:bg-yellow-500 px-2 py-1"), event.on_click(k)],
-              [icon(i, text, display_help)],
+              [snippet.icon(i, text, display_help)],
             )
           }),
         ),

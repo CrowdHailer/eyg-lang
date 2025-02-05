@@ -503,6 +503,6 @@ fn example(state: state.State, identifier) {
     state.Editing(key, failure) if identifier == key -> failure
     _ -> None
   }
-  snippet.render_embedded(snippet, failure)
+  snippet.render_embedded_with_top_menu(snippet, failure)
   |> element.map(state.SnippetMessage(identifier, _))
 }

@@ -20,6 +20,7 @@ import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleam/string
+import gleroglero/outline
 import lustre/attribute as a
 import lustre/element
 import lustre/element/html as h
@@ -43,6 +44,7 @@ import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/console
 import website/components/output
+import website/components/snippet/menu
 
 const neo_blue_3 = "#87ceeb"
 
@@ -125,6 +127,7 @@ pub type Snippet {
     status: Status,
     expanding: Option(List(Int)),
     source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
+    menu: menu.State,
     history: History,
     run: run.Run,
     scope: Scope,
@@ -140,6 +143,7 @@ pub fn init(editable, scope, effects, cache) {
     Idle,
     None,
     new_source(proj, editable, scope, effects, cache),
+    menu.init(),
     History([], []),
     run.start(editable, scope, effects, cache),
     scope,
@@ -156,6 +160,7 @@ pub fn active(editable, scope, effects, cache) {
     Editing(Command),
     None,
     new_source(proj, editable, scope, effects, cache),
+    menu.init(),
     History([], []),
     run.start(editable, scope, effects, cache),
     scope,
@@ -216,6 +221,7 @@ pub type Message {
   UserClickedCode(List(Int))
   MessageFromInput(input.Message)
   MessageFromPicker(picker.Message)
+  MessageFromMenu(menu.Message)
   RuntimeRepliedFromExternalEffect(run.Value)
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
@@ -405,7 +411,8 @@ pub fn update(state, message) {
 
     // This is unhelpful as hard if big blocks are selected
     // case listx.starts_with(path, p.path(proj)) && p.path(proj) != [] {
-    UserClickedCode(path), _ ->
+    UserClickedCode(path), _ -> {
+      let state = Snippet(..state, status: Editing(Command))
       case proj, p.path(proj) == path {
         #(p.Assign(p.AssignStatement(_), _, _, _, _), _), True ->
           toggle_open(state)
@@ -422,6 +429,7 @@ pub fn update(state, message) {
             }
           }
       }
+    }
 
     MessageFromInput(message), Editing(EditText(value, rebuild)) ->
       case input.update_text(value, message) {
@@ -446,6 +454,15 @@ pub fn update(state, message) {
     MessageFromPicker(picker.Dismissed), Editing(Pick(_, _rebuild)) ->
       return_to_buffer(state)
     MessageFromPicker(_), _ -> panic as "shouldn't reach picker message"
+
+    MessageFromMenu(message), _ -> {
+      let #(menu, action) = menu.update(state.menu, message)
+      let state = Snippet(..state, menu: menu)
+      case action {
+        None -> #(state, Nothing)
+        Some(key) -> update(state, UserPressedCommandKey(key))
+      }
+    }
     UserClickRunEffects, _ -> run_effects(state)
     RuntimeRepliedFromExternalEffect(reply), Editing(Command)
     | RuntimeRepliedFromExternalEffect(reply), Idle
@@ -1154,7 +1171,31 @@ fn actual_render_projection(proj, autofocus, errors) {
           }),
           utils.on_hotkey(UserPressedCommandKey),
         ]
-        False -> []
+        False -> [
+          event.on("click", fn(event) {
+            let assert Ok(e) = pevent.cast_event(event)
+            let target = pevent.target(e)
+            let rev =
+              target
+              |> dynamicx.unsafe_coerce
+              |> dom_element.dataset_get("rev")
+            case rev {
+              Ok(rev) -> {
+                let assert Ok(rev) = case rev {
+                  "" -> Ok([])
+                  _ ->
+                    string.split(rev, ",")
+                    |> list.try_map(int.parse)
+                }
+                Ok(UserClickedCode(list.reverse(rev)))
+              }
+              Error(_) -> {
+                console.log(target)
+                Error([])
+              }
+            }
+          }),
+        ]
       }
     ],
     [render_projection(proj, errors)],
@@ -1250,4 +1291,214 @@ fn render_effect(eff) {
 pub fn render_poly(poly) {
   let #(type_, _) = binding.instantiate(poly, 0, dict.new())
   debug.mono(type_)
+}
+
+pub fn menu_content(status, projection, submenu) {
+  case status {
+    Idle -> #([menu.delete()], None)
+    Editing(Command) -> {
+      let subcontent = case submenu {
+        menu.Collection -> Some(#("wrap", menu.submenu_wrap(projection)))
+        menu.More -> Some(#("more", menu.submenu_more()))
+        menu.Closed -> None
+      }
+      #(menu.top_content(projection), subcontent)
+    }
+    Editing(_) -> #([], None)
+  }
+}
+
+pub fn render_embedded_with_top_menu(snippet, failure) {
+  let display_help = True
+  let Snippet(status: status, source: source, menu: menu, ..) = snippet
+  let #(top, subcontent) = menu_content(status, source.0, menu)
+
+  h.pre(
+    [
+      a.class("language-eyg"),
+      a.style([
+        #("position", "relative"),
+        #("margin", "0"),
+        #("padding", "0"),
+        #("overflow", "initial"),
+        ..embed_area_styles
+      ]),
+      // This is needed to stop the component interfering with remark slides
+      event.on("keypress", fn(event) {
+        event.stop_propagation(event)
+        Error([])
+      }),
+    ],
+    bare_render(snippet, failure)
+      |> list.append(case status {
+        Idle -> []
+        _ -> [
+          case subcontent {
+            Some(#(_key, subitems)) ->
+              h.div(
+                [
+                  a.style([
+                    // #("padding-top", ".5rem"),
+                    // #("padding-bottom", ".5rem"),
+                    #("justify-content", "flex-end"),
+                    #("flex-direction", "column"),
+                    #("display", "flex"),
+                  ]),
+                ],
+                list.map(
+                  [
+                    #(outline.chevron_left(), "Back", menu.Toggle(menu.Closed)),
+                    ..subitems
+                  ],
+                  fn(entry) {
+                    let #(i, text, k) = entry
+                    button(k, [icon(i, text, display_help)])
+                  },
+                ),
+              )
+              |> element.map(MessageFromMenu)
+            None ->
+              h.div(
+                [
+                  a.style([
+                    // #("padding-top", ".5rem"),
+                    // #("padding-bottom", ".5rem"),
+                    #("justify-content", "flex-end"),
+                    #("flex-direction", "column"),
+                    #("display", "flex"),
+                  ]),
+                ],
+                list.map(top, fn(entry) {
+                  let #(i, text, k) = entry
+                  button(k, [icon(i, text, display_help)])
+                }),
+              )
+              |> element.map(MessageFromMenu)
+          },
+        ]
+      }),
+  )
+}
+
+pub fn render_embedded_with_menu(snippet, failure) {
+  h.pre(
+    [
+      a.class("eyg-embed language-eyg"),
+      a.style([
+        #("position", "relative"),
+        #("margin", "0"),
+        #("padding", "0"),
+        #("overflow", "initial"),
+      ]),
+      // This is needed to stop the component interfering with remark slides
+      event.on("keypress", fn(event) {
+        event.stop_propagation(event)
+        Error([])
+      }),
+    ],
+    [
+      render_menu(snippet, False) |> element.map(MessageFromMenu),
+      ..bare_render(snippet, failure)
+    ],
+  )
+}
+
+fn render_menu(snippet, display_help) {
+  let Snippet(status: status, source: source, menu: menu, ..) = snippet
+  let #(top, subcontent) = menu_content(status, source.0, menu)
+  h.div(
+    [
+      a.class("eyg-menu-container"),
+      a.style([
+        #("position", "absolute"),
+        #("left", "0"),
+        #("top", "50%"),
+        #("transform", "translate(calc(-100% - 10px), -50%)"),
+        #("grid-template-columns", "max-content max-content"),
+        #("overflow-x", "hidden"),
+        #("overflow-y", "auto"),
+        #("display", "grid"),
+      ]),
+    ],
+    [
+      render_column(top, display_help),
+      case subcontent {
+        None -> element.none()
+        Some(#(_key, subitems)) -> render_column(subitems, display_help)
+      },
+    ],
+  )
+}
+
+fn render_column(items, display_help) {
+  h.div(
+    [
+      a.style([
+        #("padding-top", ".5rem"),
+        #("padding-bottom", ".5rem"),
+        #("justify-content", "flex-end"),
+        #("flex-direction", "column"),
+        #("display", "flex"),
+      ]),
+    ],
+    list.map(items, fn(entry) {
+      let #(i, text, k) = entry
+      button(k, [icon(i, text, display_help)])
+    }),
+  )
+}
+
+pub fn button(action, content) {
+  h.button(
+    [
+      a.class("morph button"),
+      a.style([
+        // #("background", "none"),
+        #("outline", "none"),
+        #("border", "none"),
+        #("padding-left", ".5rem"),
+        #("padding-right", ".5rem"),
+        #("padding-top", ".25rem"),
+        #("padding-bottom", ".25rem"),
+        #("cursor", "pointer"),
+        // TODO hover color
+      ]),
+      event.on_click(action),
+    ],
+    content,
+  )
+}
+
+pub fn icon(image, text, display_help) {
+  h.span(
+    [
+      a.style([
+        #("align-items", "center"),
+        #("border-radius", ".25rem"),
+        #("display", "flex"),
+      ]),
+    ],
+    [
+      h.span(
+        [
+          a.style([
+            #("font-size", "1.25rem"),
+            #("line-height", "1.75rem"),
+            #("text-align", "center"),
+            #("width", "1.5rem"),
+            #("height", "1.75rem"),
+            #("display", "inline-block"),
+          ]),
+        ],
+        [image],
+      ),
+      case display_help {
+        True ->
+          h.span([a.class("ml-2 border-l border-opacity-25 pl-2")], [
+            element.text(text),
+          ])
+        False -> element.none()
+      },
+    ],
+  )
 }

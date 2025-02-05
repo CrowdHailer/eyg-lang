@@ -6,7 +6,6 @@ import lustre/element
 import lustre/element/html as h
 import morph/editable as e
 import morph/projection as p
-import website/components/snippet
 
 // type Action(e) {
 //   Action(icon: element.Element(e), text: String, action: Message)
@@ -152,7 +151,7 @@ fn redo() {
   #(outline.arrow_uturn_right(), "redo", cmd("Z"))
 }
 
-fn delete() {
+pub fn delete() {
   #(outline.trash(), "delete", cmd("d"))
 }
 
@@ -164,7 +163,7 @@ fn paste() {
   #(outline.clipboard_document(), "paste", cmd("Y"))
 }
 
-fn top_content(projection) {
+pub fn top_content(projection) {
   let #(focus, zoom) = projection
   case focus {
     // create
@@ -291,19 +290,4 @@ pub fn submenu_wrap(projection) {
     _ -> []
   }
   |> list.append([new_list(), new_record(), tag_value(), insert_function()])
-}
-
-pub fn content(status, projection, submenu) {
-  case status {
-    snippet.Idle -> #([delete()], None)
-    snippet.Editing(snippet.Command) -> {
-      let subcontent = case submenu {
-        Collection -> Some(#("wrap", submenu_wrap(projection)))
-        More -> Some(#("more", submenu_more()))
-        Closed -> None
-      }
-      #(top_content(projection), subcontent)
-    }
-    snippet.Editing(_) -> #([], None)
-  }
 }

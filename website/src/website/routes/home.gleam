@@ -87,7 +87,7 @@ pub fn snippet(state: state.State, i) {
     state.Editing(key, failure) if i == key -> failure
     _ -> None
   }
-  snippet.render_embedded(state.get_snippet(state, i), failure)
+  snippet.render_embedded_with_top_menu(state.get_snippet(state, i), failure)
   |> element.map(state.SnippetMessage(i, _))
 }
 
@@ -118,7 +118,7 @@ fn feature(title, description, last, item, reverse) {
         })
         |> list.append([last])
       ]),
-      h.div([a.class("overflow-hidden"), a.style([#("flex", "0 1 60%")])], item),
+      h.div([a.class(""), a.style([#("flex", "0 1 60%")])], item),
     ],
   )
 }
