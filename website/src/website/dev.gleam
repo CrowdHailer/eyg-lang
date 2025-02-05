@@ -119,9 +119,7 @@ fn email() {
 fn embed() {
   let task = {
     use bundle <- t.do(t.bundle("website/embed", "run"))
-    t.write("../../../me/2025-01-24/eyg-predictable-and-useful/embed.js", <<
-      bundle:utf8,
-    >>)
+    t.write("embed.js", <<bundle:utf8>>)
   }
   node.run(task, ".")
 }

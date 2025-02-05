@@ -26,6 +26,7 @@ import plinth/browser/document
 import plinth/browser/element
 import plinth/javascript/console
 import website/components/snippet
+import website/components/snippet/menu
 import website/routes/editor
 
 pub fn run() {
@@ -54,7 +55,7 @@ pub fn run() {
 }
 
 pub type State {
-  State(menu: editor.Submenu, code: snippet.Snippet)
+  State(menu: menu.State, code: snippet.Snippet)
 }
 
 fn init(config) {
@@ -63,7 +64,7 @@ fn init(config) {
     e.from_expression(source)
     |> e.open_all
   let snippet = snippet.init(source, [], effects(), cache)
-  let state = State(editor.Closed, snippet)
+  let state = State(menu.init(), snippet)
   #(state, effect.none())
 }
 
@@ -78,23 +79,23 @@ fn dispatch_nothing(_promise) {
 }
 
 pub type Message {
-  MenuMessage(editor.MenuMessage)
+  MenuMessage(menu.Message)
   SnippetMessage(snippet.Message)
 }
 
 fn update(state, message) {
   let State(menu, snippet) = state
   case message {
-    MenuMessage(editor.ActionClicked(k)) ->
-      update(state, SnippetMessage(snippet.UserPressedCommandKey(k)))
-
-    MenuMessage(editor.ChangeSubmenu(new)) -> {
-      let submenu = case new == menu {
-        False -> new
-        True -> editor.Closed
+    MenuMessage(message) -> {
+      let #(menu, action) = menu.update(menu, message)
+      let state = State(..state, menu: menu)
+      case action {
+        None -> #(state, effect.none())
+        Some(key) ->
+          update(state, SnippetMessage(snippet.UserPressedCommandKey(key)))
       }
-      #(State(..state, menu: submenu), effect.none())
     }
+
     SnippetMessage(message) -> {
       let #(snippet, eff) = snippet.update(snippet, message)
       let #(failure, snippet_effect) = case eff {
@@ -126,7 +127,7 @@ fn update(state, message) {
         snippet.Conclude(_, _, _) -> #(None, effect.none())
       }
       io.debug(failure)
-      #(State(editor.Closed, snippet), snippet_effect)
+      #(State(menu.close(menu), snippet), snippet_effect)
     }
   }
 }
@@ -183,7 +184,7 @@ fn effects() {
 
 fn render_menu(snippet, submenu, display_help) {
   let snippet.Snippet(status: status, source: source, ..) = snippet
-  let #(top, subcontent) = editor.menu_content(status, source.0, submenu)
+  let #(top, subcontent) = menu.content(status, source.0, submenu)
   h.div(
     [
       a.class("eyg-menu-container"),
