@@ -125,7 +125,6 @@ pub type Snippet {
     status: Status,
     expanding: Option(List(Int)),
     source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
-    using_mouse: Bool,
     history: History,
     run: run.Run,
     scope: Scope,
@@ -141,7 +140,6 @@ pub fn init(editable, scope, effects, cache) {
     Idle,
     None,
     new_source(proj, editable, scope, effects, cache),
-    False,
     History([], []),
     run.start(editable, scope, effects, cache),
     scope,
@@ -158,7 +156,6 @@ pub fn active(editable, scope, effects, cache) {
     Editing(Command),
     None,
     new_source(proj, editable, scope, effects, cache),
-    False,
     History([], []),
     run.start(editable, scope, effects, cache),
     scope,
@@ -352,7 +349,6 @@ pub fn update(state, message) {
       Nothing,
     )
     UserPressedCommandKey(key), Editing(Command) -> {
-      let state = Snippet(..state, using_mouse: False)
       case key {
         "ArrowRight" -> move_right(state)
         "ArrowLeft" -> move_left(state)
@@ -422,10 +418,7 @@ pub fn update(state, message) {
             True -> increase(state)
             False -> {
               let state = Snippet(..state, expanding: Some(path))
-              navigate_source(
-                p.focus_at(editable, path),
-                Snippet(..state, using_mouse: True),
-              )
+              navigate_source(p.focus_at(editable, path), state)
             }
           }
       }
@@ -1003,13 +996,7 @@ pub fn render_embedded(state: Snippet, failure) {
 }
 
 pub fn bare_render(state, failure) {
-  let Snippet(
-    status: status,
-    source: source,
-    run: run,
-    using_mouse: using_mouse,
-    ..,
-  ) = state
+  let Snippet(status: status, source: source, run: run, ..) = state
   let #(proj, _, analysis) = source
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
@@ -1020,7 +1007,7 @@ pub fn bare_render(state, failure) {
     Editing(mode) ->
       case mode {
         Command -> [
-          actual_render_projection(proj, True, using_mouse, errors),
+          actual_render_projection(proj, True, errors),
           case failure {
             Some(failure) ->
               footer_area(neo_orange_4, [element.text(fail_message(failure))])
@@ -1028,19 +1015,19 @@ pub fn bare_render(state, failure) {
           },
         ]
         Pick(picker, _rebuild) -> [
-          actual_render_projection(proj, False, using_mouse, errors),
+          actual_render_projection(proj, False, errors),
           picker.render(picker)
             |> element.map(MessageFromPicker),
         ]
 
         EditText(value, _rebuild) -> [
-          actual_render_projection(proj, False, using_mouse, errors),
+          actual_render_projection(proj, False, errors),
           input.render_text(value)
             |> element.map(MessageFromInput),
         ]
 
         EditInteger(value, _rebuild) -> [
-          actual_render_projection(proj, False, using_mouse, errors),
+          actual_render_projection(proj, False, errors),
           input.render_number(value)
             |> element.map(MessageFromInput),
         ]
@@ -1109,8 +1096,7 @@ pub fn render_pallet(state) {
 }
 
 pub fn render_just_projection(state, autofocus) {
-  let Snippet(status: status, source: source, using_mouse: using_mouse, ..) =
-    state
+  let Snippet(status: status, source: source, ..) = state
   let #(proj, _, analysis) = source
   let errors = case analysis {
     Some(analysis) -> analysis.type_errors(analysis)
@@ -1118,7 +1104,7 @@ pub fn render_just_projection(state, autofocus) {
   }
   case status {
     Editing(_mode) -> {
-      actual_render_projection(proj, autofocus, using_mouse, errors)
+      actual_render_projection(proj, autofocus, errors)
     }
     Idle ->
       h.pre(
@@ -1133,7 +1119,7 @@ pub fn render_just_projection(state, autofocus) {
   }
 }
 
-fn actual_render_projection(proj, autofocus, using_mouse, errors) {
+fn actual_render_projection(proj, autofocus, errors) {
   h.pre(
     [
       a.class("language-eyg"),
@@ -1171,11 +1157,11 @@ fn actual_render_projection(proj, autofocus, using_mouse, errors) {
         False -> []
       }
     ],
-    [render_projection(proj, using_mouse, errors)],
+    [render_projection(proj, errors)],
   )
 }
 
-fn render_projection(proj, _using_mouse, errors) {
+fn render_projection(proj, errors) {
   let #(focus, zoom) = proj
   case focus, zoom {
     p.Exp(e), [] ->

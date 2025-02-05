@@ -166,7 +166,7 @@ pub fn render(state) {
     Selecting -> {
       let #(_focus, zoom) = projection
 
-      //   actual_render_projection(proj, autofocus, using_mouse)
+      //   actual_render_projection(proj, autofocus)
       let frame =
         render.projection_frame(projection, render.ReadonlyStatements, errors)
       let projection_rendered =
