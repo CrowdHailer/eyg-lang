@@ -58,7 +58,7 @@ fn title_to_id(text) {
   |> string.replace(" ", "-")
 }
 
-fn h2(text) {
+pub fn h2(text) {
   h.h2([a.class("text-xl mt-8 mb-4 font-bold"), a.id(title_to_id(text))], [
     element.text(text),
   ])

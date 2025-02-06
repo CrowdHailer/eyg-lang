@@ -234,7 +234,7 @@ pub fn block(container) {
   }
 }
 
-fn inline(content) {
+pub fn inline(content) {
   list.map(content, fn(item) {
     case item {
       jot.Linebreak -> h.br([])
