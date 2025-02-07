@@ -38,7 +38,7 @@ fn layout(body) {
 }
 
 fn p(content) {
-  h.p([a.class("mx-auto w-full max-w-3xl my-2")], edition.inline(content))
+  h.p([a.class("mx-auto w-full max-w-3xl my-2 px-1")], edition.inline(content))
 }
 
 fn escape_id(text) {
@@ -53,7 +53,7 @@ fn body() {
     h.div(
       [a.class("bg-gradient-to-bl from-green-100 pt-14 pb-1 to-green-200")],
       [
-        h.h1([a.class("mx-auto w-full max-w-3xl text-3xl my-4")], [
+        h.h1([a.class("mx-auto w-full max-w-3xl text-3xl my-4 px-1")], [
           element.text("Roadmap"),
         ]),
         p([
@@ -79,7 +79,7 @@ fn body() {
             [
               h.h2(
                 [
-                  a.class("mt-6 mb-2 flex items-center gap-2 relative"),
+                  a.class("mt-6 px-1 mb-2 flex items-center gap-2 relative"),
                   a.id(escape_id(id)),
                 ],
                 [
@@ -113,7 +113,9 @@ fn body() {
 }
 
 fn badge(class, message) {
-  h.span([a.class("p-1 rounded text-sm " <> class)], [element.text(message)])
+  h.span([a.class("p-1 rounded whitespace-nowrap text-sm " <> class)], [
+    element.text(message),
+  ])
 }
 
 fn project_commit_link(hash, content) {
