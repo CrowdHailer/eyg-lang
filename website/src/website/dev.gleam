@@ -21,6 +21,7 @@ import website/routes/home
 import website/routes/news
 import website/routes/news/archive
 import website/routes/news/edition
+import website/routes/roadmap
 
 pub fn main() {
   do_main(list.drop(array.to_list(process.argv()), 2))
@@ -90,6 +91,7 @@ fn routes() {
     ),
     #("editor", Route(index: route.Page(editor.page()), items: [])),
     #("news", news.route()),
+    #("roadmap", Route(index: route.Page(roadmap.page()), items: [])),
   ])
 }
 

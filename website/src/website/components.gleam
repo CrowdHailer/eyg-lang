@@ -45,6 +45,7 @@ pub fn header(authenticate, session) {
         h.div([a.class("expand hstack gap-2")], [
           header_link("/editor", "Editor"),
           header_link("/documentation", "Documentation"),
+          header_link("/roadmap", "Roadmap"),
         ]),
         // TODO reinstate hen something worthwhile happens
       // case session {

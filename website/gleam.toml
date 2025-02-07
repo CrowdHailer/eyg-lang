@@ -20,6 +20,7 @@ mysig = ">= 0.4.1 and < 1.0.0"
 gleam_http = ">= 3.7.2 and < 4.0.0"
 gleroglero = ">= 1.1.0 and < 2.0.0"
 simplifile = ">= 1.7.0 and < 2.0.0"
+gleam_time = ">= 1.0.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

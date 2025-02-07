@@ -18,6 +18,7 @@ packages = [
   { name = "gleam_otp", version = "0.16.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib"], otp_app = "gleam_otp", source = "hex", outer_checksum = "FA0EB761339749B4E82D63016C6A18C4E6662DA05BAB6F1346F9AF2E679E301A" },
   { name = "gleam_package_interface", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], otp_app = "gleam_package_interface", source = "hex", outer_checksum = "80D8B1842ACC6CF50E53FF1B220FF57E2B3A60FAF19DD885EC683CDED64C2C52" },
   { name = "gleam_stdlib", version = "0.49.0", build_tools = ["gleam"], requirements = [], otp_app = "gleam_stdlib", source = "hex", outer_checksum = "A7DB09F15738198A87255425FBCE049B4B84C77CC522786DC923DABA73911F13" },
+  { name = "gleam_time", version = "1.0.0-rc2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_time", source = "hex", outer_checksum = "359B03FE6C839BDF22217D4462F716ABCC7F066E7F1917952E8BD26B38A7DDEA" },
   { name = "gleeunit", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "F7A7228925D3EE7D0813C922E062BFD6D7E9310F0BEE585D3A42F3307E3CFD13" },
   { name = "glen", version = "2.2.1", build_tools = ["gleam"], requirements = ["conversation", "filepath", "gleam_community_ansi", "gleam_http", "gleam_javascript", "gleam_stdlib", "marceau"], otp_app = "glen", source = "hex", outer_checksum = "836E324CD4604E19C04469156F3CAD71A5E26619582D2257DC6CD7B8D97D174E" },
   { name = "glen_node", version = "0.0.2", build_tools = ["gleam"], requirements = ["gleam_javascript", "glen"], otp_app = "glen_node", source = "hex", outer_checksum = "D2157D1E38B0963945E55F99E8C3F95FDA494DD1D3DF8DBF3A3744C4E501EA80" },
@@ -46,6 +47,7 @@ gleam_http = { version = ">= 3.7.2 and < 4.0.0" }
 gleam_javascript = { version = ">= 0.13.0 and < 1.0.0" }
 gleam_json = { version = ">= 2.1.0 and < 3.0.0" }
 gleam_stdlib = { version = ">= 0.34.0 and < 2.0.0" }
+gleam_time = { version = ">= 1.0.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 gleroglero = { version = ">= 1.1.0 and < 2.0.0" }
 jot = { version = ">= 1.1.0 and < 2.0.0" }
