@@ -17,7 +17,7 @@ pub type Scope =
 type Path =
   List(Int)
 
-type Value =
+pub type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 pub fn infer(contained, types) {

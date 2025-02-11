@@ -4,7 +4,6 @@ import gleam/dynamicx
 import gleam/io
 import gleam/list
 import gleam/listx
-import gleam/option.{None}
 
 pub type Node(m) =
   #(Expression(m), m)
@@ -346,7 +345,7 @@ pub fn do_gather_snippets(node, comments, assigns, acc) {
     Let("_", #(Str(comment), _), then), [] ->
       do_gather_snippets(then, [comment, ..comments], assigns, acc)
     // if assignes is not empty start new block
-    Let("_", #(Str(new), _), then), a -> {
+    Let("_", #(Str(new), _), then), _ -> {
       let comments = list.reverse(comments)
       let assigns = list.reverse(assigns)
       // comments are context

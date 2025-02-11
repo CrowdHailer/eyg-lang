@@ -201,7 +201,7 @@ fn print_rows_and_headers(headers, rows) -> Nil {
       let row =
         list.map(row, fn(part) {
           let #(#(_, size), value) = part
-          string.pad_right(value, size, " ")
+          string.pad_end(value, size, " ")
           |> string.slice(0, size)
         })
         |> string.join(" | ")
@@ -210,7 +210,7 @@ fn print_rows_and_headers(headers, rows) -> Nil {
   let headers =
     list.map(headers, fn(h) {
       let #(k, size) = h
-      string.pad_right(k, size, " ")
+      string.pad_end(k, size, " ")
     })
     |> string.join(" | ")
   let headers = string.concat(["| ", headers, " |"])

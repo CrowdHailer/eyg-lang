@@ -28,7 +28,7 @@ import gleam/javascript/promise
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
-import gleam/regex
+import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/stringx
@@ -449,18 +449,18 @@ pub fn init(json) {
 
 // can take position
 fn is_var(value) {
-  let assert Ok(re) = regex.from_string("^[a-z_]$")
+  let assert Ok(re) = regexp.from_string("^[a-z_]$")
   case value {
     "" -> True
-    _ -> regex.check(re, value)
+    _ -> regexp.check(re, value)
   }
 }
 
 fn is_tag(value) {
-  let assert Ok(re) = regex.from_string("^[A-Za-z]$")
+  let assert Ok(re) = regexp.from_string("^[A-Za-z]$")
   case value {
     "" -> True
-    _ -> regex.check(re, value)
+    _ -> regexp.check(re, value)
   }
 }
 
