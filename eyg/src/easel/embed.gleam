@@ -501,7 +501,9 @@ pub fn insert_text(state: Embed, data, start, end) {
                 ))
                 io.debug(writable)
                 let content =
-                  bit_array.from_string(encode.to_json(state.source))
+                  bit_array.from_string(encode.to_json(
+                    state.source |> a.add_annotation(Nil),
+                  ))
                 // let blob = blob.new(content, "application/json")
                 use _ <- promise.await(file_system.write(writable, content))
                 use _ <- promise.await(file_system.close(writable))
@@ -517,7 +519,7 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start, [])
         }
         "q" -> {
-          let dump = encode.to_json(state.source)
+          let dump = encode.to_json(state.source |> a.add_annotation(Nil))
           // io.print(dump)
           let request =
             request.new()

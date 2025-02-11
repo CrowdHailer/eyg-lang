@@ -11,8 +11,7 @@ import harness/ffi/env
 import harness/stdlib
 
 fn round_trip(term) {
-  capture.capture(term)
-  |> a.add_annotation(Nil)
+  capture.capture(term, Nil)
   |> r.execute(env.empty(), dict.new())
 }
 
@@ -37,7 +36,6 @@ pub fn literal_test() {
 }
 
 fn run(source, env, args, extrinsic) {
-  let source = a.add_annotation(source, Nil)
   let args = list.map(args, fn(v) { #(v, Nil) })
   case r.execute(source, env, extrinsic) {
     // env not needed in resume but it is in the original execute call, for builtins
@@ -47,10 +45,12 @@ fn run(source, env, args, extrinsic) {
 }
 
 pub fn simple_fn_test() {
-  let exp = e.Lambda("_", e.Str("hello"))
+  let exp =
+    e.Lambda("_", e.Str("hello"))
+    |> a.add_annotation(Nil)
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("hello")))
 }
@@ -67,9 +67,10 @@ pub fn nested_fn_test() {
         ),
       ),
     )
+    |> a.add_annotation(Nil)
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  let captured = capture.capture(term)
+  let captured = capture.capture(term, Nil)
 
   let e = env.empty()
   run(captured, e, [v.Str("A"), v.Str("B")], dict.new())
@@ -77,10 +78,12 @@ pub fn nested_fn_test() {
 }
 
 pub fn single_let_capture_test() {
-  let exp = e.Let("a", e.Str("external"), e.Lambda("_", e.Variable("a")))
+  let exp =
+    e.Let("a", e.Str("external"), e.Lambda("_", e.Variable("a")))
+    |> a.add_annotation(Nil)
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("external")))
 }
@@ -88,9 +91,12 @@ pub fn single_let_capture_test() {
 // This test makes sure a given env value is captured only once
 pub fn duplicate_capture_test() {
   let func = e.Lambda("_", e.Let("_", e.Variable("std"), e.Variable("std")))
-  let exp = e.Let("std", e.Str("Standard"), func)
+  let exp =
+    e.Let("std", e.Str("Standard"), func)
+    |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> should.equal(exp)
 }
 
@@ -105,8 +111,10 @@ pub fn ordered_capture_test() {
         e.Lambda("_", e.Let("inner", e.Variable("a"), e.Variable("b"))),
       ),
     )
+    |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> should.equal(exp)
 }
 
@@ -117,8 +125,10 @@ pub fn ordered_fn_capture_test() {
       e.Str("A"),
       e.Let("b", e.Lambda("_", e.Variable("a")), e.Lambda("_", e.Variable("b"))),
     )
+    |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> should.equal(exp)
 }
 
@@ -129,9 +139,10 @@ pub fn capture_shadowed_variable_test() {
       e.Str("first"),
       e.Let("a", e.Str("second"), e.Lambda("_", e.Variable("a"))),
     )
+    |> a.add_annotation(Nil)
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("second")))
 }
@@ -147,9 +158,14 @@ pub fn only_needed_values_captured_test() {
         e.Let("c", e.Str("yes"), e.Lambda("_", e.Variable("c"))),
       ),
     )
+    |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
-  |> should.equal(e.Let("c", e.Str("yes"), e.Lambda("_", e.Variable("c"))))
+  capture.capture(term, Nil)
+  |> should.equal(
+    e.Let("c", e.Str("yes"), e.Lambda("_", e.Variable("c")))
+    |> a.add_annotation(Nil),
+  )
 }
 
 pub fn double_catch_test() {
@@ -171,19 +187,27 @@ pub fn double_catch_test() {
         ),
       ),
     )
+    |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
-  |> should.equal(e.Let(
-    "std",
-    e.Str("Standard"),
+  capture.capture(term, Nil)
+  |> should.equal(
     e.Let(
-      "f0",
-      e.Lambda("_", e.Variable("std")),
-      // Always inlineing functions can make output quite large, although much smaller without environment.
-      // A possible solution is to always lambda lift if assuming function are large parts of AST
-      e.list([e.Lambda("_", e.Variable("f0")), e.Lambda("_", e.Variable("std"))]),
-    ),
-  ))
+      "std",
+      e.Str("Standard"),
+      e.Let(
+        "f0",
+        e.Lambda("_", e.Variable("std")),
+        // Always inlineing functions can make output quite large, although much smaller without environment.
+        // A possible solution is to always lambda lift if assuming function are large parts of AST
+        e.list([
+          e.Lambda("_", e.Variable("f0")),
+          e.Lambda("_", e.Variable("std")),
+        ]),
+      ),
+    )
+    |> a.add_annotation(Nil),
+  )
 }
 
 pub fn fn_in_env_test() {
@@ -197,19 +221,22 @@ pub fn fn_in_env_test() {
         e.Lambda("_", e.Apply(e.Variable("a"), e.Empty)),
       ),
     )
+    |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
   |> should.equal(Ok(v.Str("value")))
 }
 
 pub fn tagged_test() {
-  let exp = e.Tag("Ok")
+  let exp = e.Tag("Ok") |> a.add_annotation(Nil)
+
   let env = env.empty()
   let assert Ok(term) = run(exp, env, [], dict.new())
 
   let arg = v.Str("later")
-  capture.capture(term)
+  capture.capture(term, Nil)
   |> run(env.empty(), [arg], dict.new())
   |> should.equal(Ok(v.Tagged("Ok", arg)))
 }
@@ -220,9 +247,10 @@ pub fn case_test() {
       e.Apply(e.Case("Ok"), e.Lambda("_", e.Str("good"))),
       e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Str("bad"))), e.NoCases),
     )
+    |> a.add_annotation(Nil)
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  let next = capture.capture(term)
+  let next = capture.capture(term, Nil)
 
   let arg = v.Tagged("Ok", v.unit)
   next
@@ -236,14 +264,18 @@ pub fn case_test() {
 }
 
 pub fn partial_case_test() {
-  let exp = e.Apply(e.Case("Ok"), e.Lambda("_", e.Str("good")))
+  let exp =
+    e.Apply(e.Case("Ok"), e.Lambda("_", e.Str("good")))
+    |> a.add_annotation(Nil)
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let rest =
     e.Apply(e.Apply(e.Case("Error"), e.Lambda("_", e.Str("bad"))), e.NoCases)
+    |> a.add_annotation(Nil)
+
   let assert Ok(rest) = run(rest, env.empty(), [], dict.new())
 
-  let next = capture.capture(term)
+  let next = capture.capture(term, Nil)
 
   let arg = v.Tagged("Ok", v.unit)
   let e = env.empty()
@@ -264,17 +296,25 @@ pub fn handler_test() {
         e.Lambda("_k", e.Apply(e.Tag("Error"), e.Variable("value"))),
       ),
     )
-  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
-  let next = capture.capture(term)
+    |> a.add_annotation(Nil)
 
-  let exec = e.Lambda("_", e.Apply(e.Tag("Ok"), e.Str("some string")))
+  let assert Ok(term) = run(exp, env.empty(), [], dict.new())
+  let next = capture.capture(term, Nil)
+
+  let exec =
+    e.Lambda("_", e.Apply(e.Tag("Ok"), e.Str("some string")))
+    |> a.add_annotation(Nil)
+
   let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
 
   next
   |> run(env.empty(), [exec], dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("some string"))))
 
-  let exec = e.Lambda("_", e.Apply(e.Perform("Abort"), e.Str("failure")))
+  let exec =
+    e.Lambda("_", e.Apply(e.Perform("Abort"), e.Str("failure")))
+    |> a.add_annotation(Nil)
+
   let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
 
   next
@@ -301,7 +341,7 @@ pub fn handler_test() {
 //     )
 //   let exp = e.Apply(e.Apply(e.Handle("Log"), handler), exec)
 //   let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
-//   let next = capture.capture(term)
+//   let next = capture.capture(term,Nil)
 
 //   next
 //   |> r.execute(env.empty(), r.eval_call(_, v.Str("fooo"), [], env.empty(), dict.new()))
@@ -310,9 +350,10 @@ pub fn handler_test() {
 
 pub fn builtin_arity1_test() {
   let env = stdlib.env()
-  let exp = e.Builtin("list_pop")
+  let exp = e.Builtin("list_pop") |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env, [], dict.new())
-  let next = capture.capture(term)
+  let next = capture.capture(term, Nil)
 
   let split =
     v.Tagged(
@@ -329,12 +370,14 @@ pub fn builtin_arity1_test() {
   // same as complete eval
   let exp =
     e.Apply(
-      exp,
+      exp |> a.drop_annotation,
       e.Apply(
         e.Apply(e.Cons, e.Integer(1)),
         e.Apply(e.Apply(e.Cons, e.Integer(2)), e.Tail),
       ),
     )
+    |> a.add_annotation(Nil)
+
   run(exp, stdlib.env(), [], dict.new())
   |> should.equal(Ok(split))
 }
@@ -346,22 +389,30 @@ pub fn builtin_arity3_test() {
       e.Apply(e.Cons, e.Integer(1)),
       e.Apply(e.Apply(e.Cons, e.Integer(2)), e.Tail),
     )
-  let exp = e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Integer(0))
+  let exp =
+    e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Integer(0))
+    |> a.add_annotation(Nil)
+
   let assert Ok(term) = run(exp, env, [], dict.new())
-  let next = capture.capture(term)
+  let next = capture.capture(term, Nil)
 
   let ret = run(next, env, [v.Str("not a function")], dict.new())
   let assert Error(#(break.NotAFunction(v.Str("not a function")), Nil, _, _)) =
     ret
 
-  let reduce_exp = e.Lambda("el", e.Lambda("acc", e.Variable("el")))
+  let reduce_exp =
+    e.Lambda("el", e.Lambda("acc", e.Variable("el"))) |> a.add_annotation(Nil)
+
   let assert Ok(reduce) = run(reduce_exp, env, [], dict.new())
   next
   |> run(env, [reduce], dict.new())
   |> should.equal(Ok(v.Integer(2)))
 
   // same as complete eval
-  let exp = e.Apply(exp, reduce_exp)
+  let exp =
+    e.Apply(exp |> a.drop_annotation, reduce_exp |> a.drop_annotation)
+    |> a.add_annotation(Nil)
+
   run(exp, env, [], dict.new())
   |> should.equal(Ok(v.Integer(2)))
 }

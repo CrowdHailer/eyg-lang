@@ -56,7 +56,8 @@ pub fn value_to_type(value, bindings) {
   case value {
     v.Closure(_, _, _) -> {
       let #(#(_, #(_, type_, _, _)), bindings) =
-        capture.capture(value)
+        capture.capture(value, Nil)
+        |> a.drop_annotation
         |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
@@ -98,7 +99,8 @@ pub fn value_to_type(value, bindings) {
       // let #(var, bindings) = binding.poly(level, bindings)
       // let #(var, bindings) = binding.poly(level, bindings)
       let #(#(_, #(_, type_, _, _)), bindings) =
-        capture.capture(value)
+        capture.capture(value, Nil)
+        |> a.drop_annotation
         |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }

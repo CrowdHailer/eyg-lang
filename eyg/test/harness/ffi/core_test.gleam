@@ -160,12 +160,12 @@ pub fn eval_test() {
   let value = e.Str("foo")
   let value = e2.add_annotation(value, Nil)
 
-  let prog =
+  let p =
     value
     |> expression_to_language()
     |> v.LinkedList()
-    |> capture.capture()
-    |> e.Apply(e.Builtin("eval"), _)
+    |> capture.capture(Nil)
+  let prog = #(e2.Apply(#(e2.Builtin("eval"), Nil), p), Nil)
   // This is old style inference not JM
   // let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
@@ -175,7 +175,6 @@ pub fn eval_test() {
   // inference.type_of(sub, [])
   // |> should.equal(Ok(t.boolean))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("foo"))))
 }

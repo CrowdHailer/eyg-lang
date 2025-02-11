@@ -1,4 +1,4 @@
-import eygir/expression as e
+import eygir/annotated as e
 import gleam/bit_array
 import gleam/json.{int, object, string}
 
@@ -14,7 +14,8 @@ fn bytes(b) {
   string(bit_array.base64_encode(b, True))
 }
 
-pub fn encode(exp) {
+pub fn encode(tree) {
+  let #(exp, _meta) = tree
   case exp {
     e.Variable(x) -> node("v", [label(x)])
     // function

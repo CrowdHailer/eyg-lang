@@ -1,5 +1,6 @@
 import eyg/sync/cid
 import eyg/sync/sync
+import eygir/annotated as a
 import eygir/encode
 import eygir/expression as e
 import gleam/http/response
@@ -15,7 +16,7 @@ const just_string = e.Str("hello")
 
 pub fn load_references_test() {
   let state = sync.init(origin)
-  let ref = cid.for_expression(just_number)
+  let ref = cid.for_expression(just_number |> a.add_annotation(Nil))
 
   sync.missing(state, [ref])
   |> shouldx.contain1
@@ -33,7 +34,13 @@ pub fn load_references_test() {
   request.path
   |> should.equal("/references/" <> ref <> ".json")
 
-  resume(Ok(response.Response(200, [], <<encode.to_json(just_number):utf8>>)))
+  resume(
+    Ok(
+      response.Response(200, [], <<
+        encode.to_json(just_number |> a.add_annotation(Nil)):utf8,
+      >>),
+    ),
+  )
   |> task.expect_done()
   |> should.be_ok()
   |> should.equal(just_number)
@@ -45,11 +52,11 @@ pub fn load_references_test() {
 
 pub fn load_nested_references_test() {
   let state = sync.init(origin)
-  let ref_i = cid.for_expression(just_number)
-  let ref_s = cid.for_expression(just_string)
+  let ref_i = cid.for_expression(just_number |> a.add_annotation(Nil))
+  let ref_s = cid.for_expression(just_string |> a.add_annotation(Nil))
 
   let source = e.Let("i", e.Reference(ref_i), e.Reference(ref_s))
-  let ref = cid.for_expression(source)
+  let ref = cid.for_expression(source |> a.add_annotation(Nil))
 
   let state = sync.install(state, ref, source)
   sync.missing(state, [ref])
@@ -76,7 +83,7 @@ pub fn load_nested_references_test() {
 
 pub fn load_fails_test() {
   let state = sync.init(origin)
-  let ref = cid.for_expression(just_number)
+  let ref = cid.for_expression(just_number |> a.add_annotation(Nil))
 
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   let #(_ref, task) = shouldx.contain1(tasks)

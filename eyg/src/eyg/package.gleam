@@ -63,7 +63,7 @@ fn do_load_snippet(
 
       let #(stripped, paths) = a.strip_annotation(contained)
 
-      let ref = cid.for_expression(stripped)
+      let ref = cid.for_expression(contained)
       let refs = [ref, ..refs]
 
       let cache = sync.install(cache, ref, stripped)
@@ -86,7 +86,7 @@ fn do_load_snippet(
             )
             let #(stripped, _paths) = a.strip_annotation(contained)
 
-            let ref = cid.for_expression(stripped)
+            let ref = cid.for_expression(contained)
             io.debug(#(field, ref))
             let cache = sync.install(cache, ref, stripped)
 
@@ -153,7 +153,7 @@ pub fn build_guide(cache: sync.Sync, before) {
   let exports = exports(public)
   let public = listx.keys(public)
 
-  let ref = cid.for_expression(exports)
+  let ref = cid.for_expression(exports |> a.add_annotation(Nil))
   let cache = sync.install(cache, ref, exports)
   #(cache, before, public, ref)
 }

@@ -1,3 +1,4 @@
+import eygir/annotated as a
 import eygir/decode
 import eygir/encode.{to_json}
 import eygir/expression as e
@@ -6,6 +7,7 @@ import gleeunit/should
 
 fn round_trip(exp) {
   exp
+  |> a.add_annotation(Nil)
   |> to_json
   |> decode.from_json
 }
