@@ -53,20 +53,29 @@ const neo_green_3 = "#90ee90"
 const neo_orange_4 = "#ff6b6b"
 
 const embed_area_styles = [
-  #("box-shadow", "6px 6px black"), #("border-style", "solid"),
+  #("box-shadow", "6px 6px black"),
+  #("border-style", "solid"),
   #(
     "font-family",
     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-  ), #("background-color", "rgb(255, 255, 255)"),
-  #("border-color", "rgb(0, 0, 0)"), #("border-width", "1px"),
-  #("flex-direction", "column"), #("display", "flex"),
-  #("margin-bottom", "1.5rem"), #("margin-top", ".5rem"),
+  ),
+  #("background-color", "rgb(255, 255, 255)"),
+  #("border-color", "rgb(0, 0, 0)"),
+  #("border-width", "1px"),
+  #("flex-direction", "column"),
+  #("display", "flex"),
+  #("margin-bottom", "1.5rem"),
+  #("margin-top", ".5rem"),
 ]
 
 const code_area_styles = [
-  #("outline", "2px solid transparent"), #("outline-offset", "2px"),
-  #("padding", ".5rem"), #("white-space", "nowrap"), #("overflow", "auto"),
-  #("margin-top", "auto"), #("margin-bottom", "auto"),
+  #("outline", "2px solid transparent"),
+  #("outline-offset", "2px"),
+  #("padding", ".5rem"),
+  #("white-space", "nowrap"),
+  #("overflow", "auto"),
+  #("margin-top", "auto"),
+  #("margin-bottom", "auto"),
 ]
 
 fn footer_area(color, contents) {
@@ -99,7 +108,7 @@ pub type Status {
 type Path =
   Nil
 
-type Value =
+pub type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 type Scope =
@@ -575,7 +584,7 @@ fn search_vacant(state) {
 fn do_search_vacant(proj) {
   let next = navigation.next(proj)
   case next {
-    #(p.Exp(e.Vacant("")), _zoom) -> next
+    #(p.Exp(e.Vacant), _zoom) -> next
     // If at the top break, can search again to loop around
     #(p.Exp(_), []) -> next
     _ -> do_search_vacant(next)

@@ -116,12 +116,12 @@ pub type State {
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
-  let source = e.from_expression(expression.Vacant(""))
+  let source = e.from_expression(expression.Vacant)
   // snippet has no effects, they run in the shell
   let snippet = snippet.init(source, [], [], cache)
   let shell =
     Shell(None, [], {
-      let source = e.from_expression(expression.Vacant(""))
+      let source = e.from_expression(expression.Vacant)
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
     })
@@ -312,7 +312,7 @@ pub fn update(state: State, message) {
             ..shell.previous
           ]
           let source =
-            snippet.active(e.Vacant(""), scope, harness.effects(), state.cache)
+            snippet.active(e.Vacant, scope, harness.effects(), state.cache)
           let shell = Shell(..shell, source: source, previous: previous)
           #(shell, effect.none())
         }
@@ -780,7 +780,7 @@ fn render_errors(failure, snippet: snippet.Snippet) {
           let #(path, reason) = error
           case path, reason {
             // Vacant node at root or end of block are ignored.
-            [], error.Todo(_) | [_], error.Todo(_) -> element.none()
+            [], error.Todo | [_], error.Todo -> element.none()
             _, _ ->
               h.div(
                 [event.on_click(ShellMessage(snippet.UserClickedPath(path)))],

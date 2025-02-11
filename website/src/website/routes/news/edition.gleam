@@ -130,7 +130,7 @@ fn footer(edition_url) {
 pub fn render(post, index, pea_src) {
   let Edition(_date, title, raw) = post
   let document = jot.parse(raw)
-  let jot.Document(content, _references) = document
+  let jot.Document(content, _references, _footnotes) = document
   let sections =
     list.map([jot.Heading(dict.new(), 1, [jot.Text(title)]), ..content], block)
   let edition_url = "https://eyg.run/news/editions/" <> int.to_string(index)
@@ -277,6 +277,7 @@ pub fn inline(content) {
           ],
           [e.text(content)],
         )
+      jot.Footnote(_) -> todo
     }
   })
 }

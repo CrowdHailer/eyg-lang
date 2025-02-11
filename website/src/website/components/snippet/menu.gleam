@@ -178,13 +178,11 @@ pub fn top_content(projection) {
         e.Call(_, _) -> [select_field(), call_function(), call_with()]
         e.Function(_, _) -> [insert_function(), call_with()]
         e.Block(_, _, _) -> []
-        e.Vacant(_) -> [use_variable(), insert_number(), insert_text()]
-        e.Integer(_)
-        | e.Binary(_)
-        | e.String(_)
-        | e.Perform(_)
-        | e.Deep(_)
-        | e.Shallow(_) -> [edit(), call_with()]
+        e.Vacant -> [use_variable(), insert_number(), insert_text()]
+        e.Integer(_) | e.Binary(_) | e.String(_) | e.Perform(_) | e.Deep(_) -> [
+          edit(),
+          call_with(),
+        ]
         e.Builtin(_) -> [edit(), call_function(), call_with()]
         e.List(_, _) | e.Record(_, _) -> [toggle_spread(), call_with()]
         e.Select(_, _) -> [select_field(), call_function(), call_with()]
