@@ -131,7 +131,7 @@ pub fn scope_vars(projection: projection.Projection, analysis) {
 pub fn do_analyse(editable, context, eff) -> Analysis {
   let Context(bindings, scope, ..) = context
 
-  let source = e.to_expression(editable)
+  let source = e.to_annotated(editable, [])
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
   let #(_, types) = a.strip_annotation(tree)

@@ -5,7 +5,6 @@ import eyg/runtime/value as v
 import eyg/sync/cid
 import eyg/sync/sync
 import eygir/annotated as a
-import eygir/expression as e
 import gleam/io
 import gleam/list
 import gleam/listx
@@ -61,12 +60,10 @@ fn do_load_snippet(
         |> editable.to_annotated([1, index])
         |> a.substitute_for_references(scope)
 
-      let #(stripped, paths) = a.strip_annotation(contained)
-
       let ref = cid.for_expression(contained)
       let refs = [ref, ..refs]
 
-      let cache = sync.install(cache, ref, stripped)
+      let cache = sync.install(cache, ref, contained)
       let executed = case sync.value(cache, ref) {
         Ok(sync.Computed(value: executed, ..)) -> executed
         Error(Nil) -> Error("Something bad happend executing value")
@@ -81,14 +78,13 @@ fn do_load_snippet(
             let #(cache, scope) = acc
             let #(field, bind) = pair
             let contained = #(
-              a.Apply(#(a.Select(field), Nil), #(a.Reference(ref), Nil)),
-              Nil,
+              a.Apply(#(a.Select(field), []), #(a.Reference(ref), [])),
+              [],
             )
-            let #(stripped, _paths) = a.strip_annotation(contained)
 
             let ref = cid.for_expression(contained)
             io.debug(#(field, ref))
-            let cache = sync.install(cache, ref, stripped)
+            let cache = sync.install(cache, ref, contained)
 
             let scope = [#(bind, ref), ..scope]
             #(cache, scope)
@@ -150,10 +146,10 @@ pub fn load_guide_from_content(content, cache) {
 
 pub fn build_guide(cache: sync.Sync, before) {
   let public = public_fields(before)
-  let exports = exports(public)
+  let exports = exports(public, [])
   let public = listx.keys(public)
 
-  let ref = cid.for_expression(exports |> a.add_annotation(Nil))
+  let ref = cid.for_expression(exports)
   let cache = sync.install(cache, ref, exports)
   #(cache, before, public, ref)
 }
@@ -174,10 +170,16 @@ pub fn do_eval_sections(content, before, scope: Scope, cache) {
 }
 
 // expects reversed
-fn exports(public) {
-  list.fold(public, e.Empty, fn(rest, field) {
+fn exports(public, meta) {
+  list.fold(public, #(a.Empty, meta), fn(rest, field) {
     let #(label, ref) = field
-    e.Apply(e.Apply(e.Extend(label), e.Reference(ref)), rest)
+    #(
+      a.Apply(
+        #(a.Apply(#(a.Extend(label), meta), #(a.Reference(ref), meta)), meta),
+        rest,
+      ),
+      meta,
+    )
   })
 }
 

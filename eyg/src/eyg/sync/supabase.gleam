@@ -1,6 +1,5 @@
 import eygir/annotated as a
 import eygir/decode
-import eygir/expression as e
 import gleam/dynamic
 import gleam/http
 import gleam/http/request

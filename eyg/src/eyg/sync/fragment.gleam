@@ -21,10 +21,10 @@ pub type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 pub fn infer(contained, types) {
-  let #(stripped, meta) = a.strip_annotation(contained)
+  let #(_, meta) = a.strip_annotation(contained)
 
   let #(bindings, _, _, typed) =
-    stripped
+    contained
     |> j.do_infer([], isomorphic.Empty, types, 0, j.new_state())
 
   let #(_, type_info) = typed
@@ -51,7 +51,7 @@ pub fn eval(contained, values) {
   r.execute(contained, env, handlers)
 }
 
-pub fn empty_env(references) -> istate.Env(Path) {
+pub fn empty_env(references) -> istate.Env(_) {
   istate.Env(
     ..stdlib.env()
     |> dynamic.from()

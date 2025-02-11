@@ -45,7 +45,7 @@ pub fn load_references_test() {
   |> should.be_ok()
   |> should.equal(just_number |> a.add_annotation(Nil))
 
-  let state = sync.install(state, ref, just_number)
+  let state = sync.install(state, ref, just_number |> a.add_annotation([]))
   sync.missing(state, [ref])
   |> shouldx.be_empty()
 }
@@ -58,21 +58,21 @@ pub fn load_nested_references_test() {
   let source = e.Let("i", e.Reference(ref_i), e.Reference(ref_s))
   let ref = cid.for_expression(source |> a.add_annotation(Nil))
 
-  let state = sync.install(state, ref, source)
+  let state = sync.install(state, ref, source |> a.add_annotation([]))
   sync.missing(state, [ref])
   |> should.equal([ref_i, ref_s])
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   tasks
   |> shouldx.contain2()
 
-  let state = sync.install(state, ref_i, just_number)
+  let state = sync.install(state, ref_i, just_number |> a.add_annotation([]))
   sync.missing(state, [ref])
   |> should.equal([ref_s])
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   tasks
   |> shouldx.be_empty()
 
-  let state = sync.install(state, ref_s, just_string)
+  let state = sync.install(state, ref_s, just_string |> a.add_annotation([]))
   sync.missing(state, [ref])
   |> should.equal([])
 
