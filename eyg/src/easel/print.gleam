@@ -162,7 +162,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     }
     e.Variable(label) ->
       print_with_offset(label, loc, Default, err, acc, info, analysis)
-    e.Vacant(_) -> {
+    e.Vacant -> {
       let content = case analysis {
         Some(#(sub, _next, types)) ->
           case dict.get(types, list.reverse(loc.path)) {

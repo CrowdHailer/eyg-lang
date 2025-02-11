@@ -2,7 +2,7 @@ import eyg/analysis/type_/binding
 import gleam/list
 
 pub type Reason {
-  Todo(String)
+  Todo
   MissingVariable(String)
   MissingReference(String)
   TypeMismatch(binding.Mono, binding.Mono)

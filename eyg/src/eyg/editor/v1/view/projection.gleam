@@ -92,7 +92,7 @@ pub fn do_render(exp, br, loc, inferred) {
         [text("cons")],
       ),
     ]
-    e.Vacant(comment) -> [vacant(comment, loc, inferred)]
+    e.Vacant -> [vacant(loc, inferred)]
     e.Empty -> [
       span(
         [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
@@ -438,7 +438,7 @@ fn integer(value, loc, inferred) {
   |> span([text(int.to_string(value))])
 }
 
-fn vacant(comment, loc, inferred) {
+fn vacant(loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
   let content = case inferred {
@@ -455,11 +455,7 @@ fn vacant(comment, loc, inferred) {
           }
         Error(Nil) -> "invalid selection"
       }
-    None ->
-      case comment {
-        "" -> "todo"
-        comment -> comment
-      }
+    None -> "todo"
   }
   [click(loc), classes([#("text-red-500", True), ..highlight(target, alert)])]
   |> span([text(content)])

@@ -60,7 +60,7 @@ pub fn assigns(a, rev, errors) {
 pub fn statements(code, errors) {
   let rev = []
   case code {
-    e.Block(assigns, e.Vacant(_), _) ->
+    e.Block(assigns, e.Vacant, _) ->
       list.index_map(assigns, fn(a, i) { assign_pair(a, [i, ..rev], errors) })
     e.Block(assigns, tail, _) -> block_content(assigns, tail, rev, errors)
     exp -> [expression(exp, rev, errors)]
@@ -214,7 +214,7 @@ pub fn expression(exp, rev, errors) {
         rev,
       )
     }
-    e.Vacant(_) ->
+    e.Vacant ->
       frame.Inline([h.span([a.class(vacant), exp_key(rev)], [text("Vacant")])])
     e.Variable(x) ->
       frame.Inline([h.span([a.class(variable), exp_key(rev)], [text(x)])])
@@ -313,7 +313,7 @@ pub fn expression(exp, rev, errors) {
       ])
   }
   case list.key_find(errors, list.reverse(rev)), exp {
-    _, e.Vacant(_) -> frame
+    _, e.Vacant -> frame
     Ok(_), _ -> highlight.frame(frame, highlight.error())
     Error(_), _ -> frame
   }
@@ -514,9 +514,9 @@ fn render_break(break, inner, rev, kind, errors) {
       let assignments = listx.gather_around(pre, assign, post)
       let len = self + 1 + list.length(post)
       case kind, rev, then {
-        Statements, [], e.Vacant(_) ->
+        Statements, [], e.Vacant ->
           list.append(assignments, [continue_space([len, ..rev])])
-        ReadonlyStatements, [], e.Vacant(_) -> assignments
+        ReadonlyStatements, [], e.Vacant -> assignments
         _, _, _ ->
           list.append(assignments, [expression(then, [len, ..rev], errors)])
       }
@@ -617,7 +617,7 @@ pub fn projection_frame(zip, kind, errors) {
 
   case focus {
     // Doesnt work for copy paste
-    // t.Exp(e.Vacant(_)) ->
+    // t.Exp(e.Vacant) ->
     //   highlight.frame(
     //     frame.Inline([
     //       // made as an input for copy paste
@@ -711,9 +711,9 @@ pub fn projection_frame(zip, kind, errors) {
       let assignments = listx.gather_around(pre, assign, post)
       let frame =
         case kind, rev, then {
-          Statements, [], e.Vacant(_) ->
+          Statements, [], e.Vacant ->
             list.append(assignments, [continue_space([len, ..rev])])
-          ReadonlyStatements, [], e.Vacant(_) -> assignments
+          ReadonlyStatements, [], e.Vacant -> assignments
           _, _, _ ->
             list.append(assignments, [expression(then, [len, ..rev], errors)])
         }

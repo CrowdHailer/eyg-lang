@@ -31,7 +31,7 @@ pub fn encode(exp) {
     e.Tail -> node("ta", [])
     e.Cons -> node("c", [])
     // zero
-    e.Vacant(comment) -> node("z", [#("c", string(comment))])
+    e.Vacant -> node("z", [])
     // unit
     e.Empty -> node("u", [])
     e.Extend(x) -> node("e", [label(x)])

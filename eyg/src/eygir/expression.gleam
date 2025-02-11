@@ -38,7 +38,7 @@ pub type Expression {
   // super simple fn application
   Cons
 
-  Vacant(comment: String)
+  Vacant
 
   // Row
   Empty

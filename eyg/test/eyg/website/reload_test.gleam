@@ -6,12 +6,12 @@ import gleeunit/should
 import morph/editable as e
 
 pub fn source_with_vacant_doesnt_check_test() {
-  let source = e.Vacant("my message")
+  let source = e.Vacant
   let current_state = t.Integer
   let refs = dict.new()
   reload.check_against_state(source, current_state, refs)
   |> should.be_error()
-  |> should.equal([#([], "code incomplete: my message")])
+  |> should.equal([#([], "code incomplete")])
 }
 
 pub fn program_with_inconsistent_types_test() {

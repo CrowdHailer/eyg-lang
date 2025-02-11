@@ -36,7 +36,7 @@ fn do_gather(exp, acc) {
   let #(exp, span) = exp
   case exp {
     e.Let(label, value, then) -> do_gather(then, [#(label, value, span), ..acc])
-    e.Vacant(_) -> #(acc, None)
+    e.Vacant -> #(acc, None)
     _ -> #(acc, Some(#(exp, span)))
   }
 }

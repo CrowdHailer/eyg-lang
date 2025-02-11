@@ -48,7 +48,7 @@ pub fn value_from_env_test() {
 
 pub fn shadowed_variable_test() {
   let assigns = [#("s", e.Integer(21)), #("s", e.Integer(22))]
-  let then = e.Vacant("")
+  let then = e.Vacant
   let #(value, env) =
     execute(assigns, then)
     |> should.be_ok()
@@ -74,8 +74,8 @@ pub fn fn_arg_contained_test() {
 }
 
 pub fn vacant_assignment_fail_test() {
-  let assigns = [#("x", e.Vacant(""))]
-  let then = e.Vacant("")
+  let assigns = [#("x", e.Vacant)]
+  let then = e.Vacant
   execute(assigns, then)
   |> should.be_error()
 }

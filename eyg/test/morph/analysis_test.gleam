@@ -11,7 +11,7 @@ import morph/projection as p
 
 pub fn scope_vars_test() {
   let context = analysis.with_references(dict.new())
-  let source = #(p.Exp(e.Vacant("")), [p.Body([e.Bind("x")])])
+  let source = #(p.Exp(e.Vacant), [p.Body([e.Bind("x")])])
   let a = analysis.analyse(source, context, isomorphic.Empty)
   analysis.scope_vars(source, a)
   |> shouldx.contain1()
@@ -29,13 +29,13 @@ pub fn nested_let_test() {
   // let after = {}
   // ???
   let context = analysis.with_references(dict.new())
-  let source = #(p.Exp(e.Vacant("")), [
+  let source = #(p.Exp(e.Vacant), [
     p.BlockTail([#(e.Bind("inner"), e.Integer(10))]),
     p.BlockValue(
       e.Bind("outer"),
       [#(e.Bind("b2"), e.String("")), #(e.Bind("b1"), e.String(""))],
       [#(e.Bind("after"), e.Record([], None))],
-      e.Vacant(""),
+      e.Vacant,
     ),
   ])
 
@@ -81,7 +81,7 @@ pub fn nested_let_test() {
 //     e.Case(
 //       e.Call(e.Tag("Ok"), [e.String("Yo")]),
 //       [
-//         #("Ok", e.Vacant("")),
+//         #("Ok", e.Vacant),
 //         #("Error", e.Function([e.Bind("reason")], e.Integer(3))),
 //       ],
 //       None,

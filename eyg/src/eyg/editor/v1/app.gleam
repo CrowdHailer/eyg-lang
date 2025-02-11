@@ -183,7 +183,7 @@ pub fn keypress(key, state: WorkSpace) {
 }
 
 fn call_with(zipper: zipper.Zipper, state) {
-  let source = zipper.1(e.Apply(e.Vacant(""), zipper.0))
+  let source = zipper.1(e.Apply(e.Vacant, zipper.0))
   update_source(state, source)
 }
 
@@ -192,21 +192,21 @@ fn call_with(zipper: zipper.Zipper, state) {
 // moving something to a module might just have to be copy paste
 fn assign_to(zipper: zipper.Zipper, state) {
   let commit = case zipper.0 {
-    e.Let(_, _, _) -> fn(text) { zipper.1(e.Let(text, e.Vacant(""), zipper.0)) }
+    e.Let(_, _, _) -> fn(text) { zipper.1(e.Let(text, e.Vacant, zipper.0)) }
     // normally I want to add something above
-    exp -> fn(text) { zipper.1(e.Let(text, e.Vacant(""), exp)) }
+    exp -> fn(text) { zipper.1(e.Let(text, e.Vacant, exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
 }
 
 fn record(zipper: zipper.Zipper, state) {
   case zipper.0 {
-    e.Vacant(_comment) ->
+    e.Vacant ->
       zipper.1(e.Empty)
       |> update_source(state, _)
     e.Empty as exp | e.Apply(e.Apply(e.Extend(_), _), _) as exp -> {
       let commit = fn(text) {
-        zipper.1(e.Apply(e.Apply(e.Extend(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Extend(text), e.Vacant), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -221,7 +221,7 @@ fn record(zipper: zipper.Zipper, state) {
 
 fn tag(zipper: zipper.Zipper, state) {
   let commit = case zipper.0 {
-    e.Vacant(_comment) -> fn(text) { zipper.1(e.Tag(text)) }
+    e.Vacant -> fn(text) { zipper.1(e.Tag(text)) }
     exp -> fn(text) { zipper.1(e.Apply(e.Tag(text), exp)) }
   }
   WorkSpace(..state, mode: WriteLabel("", commit))
@@ -268,7 +268,7 @@ fn insert(zipper: zipper.Zipper, state) {
     e.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { zipper.1(e.Integer(new)) }))
     e.Tail | e.Cons -> Error("there is no insert for lists")
-    e.Vacant(comment) -> Ok(write(comment, e.Vacant))
+    e.Vacant -> Error("vacant no insert")
     e.Empty -> Error("empty record no insert")
     e.Extend(label) -> Ok(write(label, e.Extend))
     e.Select(label) -> Ok(write(label, e.Select))
@@ -293,14 +293,14 @@ fn overwrite(zipper: zipper.Zipper, state) {
   case zipper.0 {
     e.Apply(e.Apply(e.Overwrite(_), _), _) as exp -> {
       let commit = fn(text) {
-        zipper.1(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Overwrite(text), e.Vacant), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
     exp -> {
       let commit = fn(text) {
         // This is the same as above
-        zipper.1(e.Apply(e.Apply(e.Overwrite(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Overwrite(text), e.Vacant), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -328,7 +328,7 @@ fn delete(zipper: zipper.Zipper, state) {
   // we can instead bump up the path
   let source = case zipper.0 {
     e.Let(_label, _, then) -> zipper.1(then)
-    _ -> zipper.1(e.Vacant(""))
+    _ -> zipper.1(e.Vacant)
   }
   update_source(state, source)
 }
@@ -358,7 +358,7 @@ fn handle(zipper: zipper.Zipper, state) {
     e.Let(_label, _value, _then) -> Error("can't handle on let")
     exp -> {
       let commit = fn(text) {
-        zipper.1(e.Apply(e.Apply(e.Handle(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Handle(text), e.Vacant), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -370,7 +370,7 @@ fn shallow(zipper: zipper.Zipper, state) {
     e.Let(_label, _value, _then) -> Error("can't shallow on let")
     exp -> {
       let commit = fn(text) {
-        zipper.1(e.Apply(e.Apply(e.Shallow(text), e.Vacant("")), exp))
+        zipper.1(e.Apply(e.Apply(e.Shallow(text), e.Vacant), exp))
       }
       Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
     }
@@ -432,9 +432,9 @@ fn redo(state: WorkSpace) {
 
 fn list(zipper: zipper.Zipper, state) {
   let new = case zipper.0 {
-    e.Vacant(_comment) -> e.Tail
+    e.Vacant -> e.Tail
     e.Tail | e.Apply(e.Apply(e.Cons, _), _) ->
-      e.Apply(e.Apply(e.Cons, e.Vacant("")), zipper.0)
+      e.Apply(e.Apply(e.Cons, e.Vacant), zipper.0)
     _ -> e.Apply(e.Apply(e.Cons, zipper.0), e.Tail)
   }
   let source = zipper.1(new)
@@ -442,7 +442,7 @@ fn list(zipper: zipper.Zipper, state) {
 }
 
 fn call(zipper: zipper.Zipper, state) {
-  let source = zipper.1(e.Apply(zipper.0, e.Vacant("")))
+  let source = zipper.1(e.Apply(zipper.0, e.Vacant))
   update_source(state, source)
 }
 
@@ -483,9 +483,7 @@ fn match(zipper: zipper.Zipper, state) {
     //   zipper.1(e.Let(label, e.Str(text), then))
     // }
     // Match on original value should maybe be the arg? but I like promoting first class everything
-    exp -> fn(text) {
-      zipper.1(e.Apply(e.Apply(e.Case(text), e.Vacant("")), exp))
-    }
+    exp -> fn(text) { zipper.1(e.Apply(e.Apply(e.Case(text), e.Vacant), exp)) }
   }
   Ok(WorkSpace(..state, mode: WriteLabel("", commit)))
 }

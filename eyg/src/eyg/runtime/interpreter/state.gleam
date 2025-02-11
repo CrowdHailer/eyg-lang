@@ -106,7 +106,7 @@ pub fn eval(exp, env: Env(m), k) {
     e.Str(data) -> value(v.Str(data))
     e.Tail -> value(v.LinkedList([]))
     e.Cons -> value(v.Partial(v.Cons, []))
-    e.Vacant(comment) -> Error(break.Vacant(comment))
+    e.Vacant -> Error(break.Vacant)
     e.Select(label) -> value(v.Partial(v.Select(label), []))
     e.Tag(label) -> value(v.Partial(v.Tag(label), []))
     e.Perform(label) -> value(v.Partial(v.Perform(label), []))

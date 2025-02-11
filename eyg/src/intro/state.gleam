@@ -131,7 +131,7 @@
 
 //       // TODO buffer from assigns
 //       let assert Ok(proj) =
-//         projection.focus_in_block(snippet, editable.Vacant(""), [0], [])
+//         projection.focus_in_block(snippet, editable.Vacant, [0], [])
 //       let mode = buffer.Command(None)
 //       let buffer = #(proj, mode)
 
@@ -213,7 +213,7 @@
 //     //   io.println(
 //     //     editable.to_expression(editable.Block(
 //     //       assigns,
-//     //       editable.Vacant(""),
+//     //       editable.Vacant,
 //     //       True,
 //     //     ))
 //     //     |> encode.to_json,

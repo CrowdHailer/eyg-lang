@@ -11,33 +11,33 @@ pub type MaybeString {
 }
 
 // for guard
-const vacant = e.Vacant("")
+const vacant = e.Vacant
 
 pub fn delete(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    p.Exp(e.Vacant(_)), [p.ListItem(pre, [next, ..post], tail), ..zoom] ->
+    p.Exp(e.Vacant), [p.ListItem(pre, [next, ..post], tail), ..zoom] ->
       Ok(#(p.Exp(next), [p.ListItem(pre, post, tail), ..zoom]))
-    p.Exp(e.Vacant(_)), [p.ListItem([next, ..pre], [], tail), ..zoom] ->
+    p.Exp(e.Vacant), [p.ListItem([next, ..pre], [], tail), ..zoom] ->
       Ok(#(p.Exp(next), [p.ListItem(pre, [], tail), ..zoom]))
-    p.Exp(e.Vacant(_)), [p.ListItem([], [], Some(tail)), ..zoom] ->
+    p.Exp(e.Vacant), [p.ListItem([], [], Some(tail)), ..zoom] ->
       Ok(#(p.Exp(tail), zoom))
-    p.Exp(e.Vacant(_)), [p.ListItem([], [], None), ..zoom] ->
+    p.Exp(e.Vacant), [p.ListItem([], [], None), ..zoom] ->
       Ok(#(p.Exp(e.List([], None)), zoom))
-    p.Exp(e.Vacant(_)), [p.ListTail(elements), ..zoom] ->
+    p.Exp(e.Vacant), [p.ListTail(elements), ..zoom] ->
       case list.reverse(elements) {
         [exp, ..pre] -> Ok(#(p.Exp(exp), [p.ListItem(pre, [], None), ..zoom]))
         [] -> Ok(#(p.Exp(e.List([], None)), zoom))
       }
-    p.Exp(e.Vacant("")), [p.CallArg(f, pre, [next, ..post]), ..zoom] ->
+    p.Exp(e.Vacant), [p.CallArg(f, pre, [next, ..post]), ..zoom] ->
       Ok(#(p.Exp(next), [p.CallArg(f, pre, post), ..zoom]))
 
-    p.Exp(e.Vacant("")), [p.CallArg(f, [next, ..pre], []), ..zoom] ->
+    p.Exp(e.Vacant), [p.CallArg(f, [next, ..pre], []), ..zoom] ->
       Ok(#(p.Exp(next), [p.CallArg(f, pre, []), ..zoom]))
 
-    p.Exp(e.Vacant("")), [p.CallArg(f, [], []), ..zoom] ->
-      Ok(#(p.Exp(e.Call(f, [e.Vacant("")])), zoom))
-    p.Exp(x), _ if x != vacant -> Ok(#(p.Exp(e.Vacant("")), zoom))
+    p.Exp(e.Vacant), [p.CallArg(f, [], []), ..zoom] ->
+      Ok(#(p.Exp(e.Call(f, [e.Vacant])), zoom))
+    p.Exp(x), _ if x != vacant -> Ok(#(p.Exp(e.Vacant), zoom))
     p.Assign(p.AssignStatement(_), _, pre, [#(pattern, value), ..post], then),
       zoom
     -> Ok(#(p.Assign(p.AssignStatement(pattern), value, pre, post, then), zoom))
@@ -143,30 +143,30 @@ pub fn delete(zip) {
 pub fn assign(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
-    p.Exp(e.Vacant(_)), [p.BlockTail(assigns), ..zoom] ->
+    p.Exp(e.Vacant), [p.BlockTail(assigns), ..zoom] ->
       Ok(fn(pattern) {
         let zoom = [
-          p.BlockValue(pattern, list.reverse(assigns), [], e.Vacant("")),
+          p.BlockValue(pattern, list.reverse(assigns), [], e.Vacant),
           ..zoom
         ]
-        #(p.Exp(e.Vacant("")), zoom)
+        #(p.Exp(e.Vacant), zoom)
       })
 
     p.Exp(value), [p.BlockTail(assigns), ..zoom] ->
       Ok(fn(pattern) {
         let assigns = list.append(assigns, [#(pattern, value)])
         let zoom = [p.BlockTail(assigns), ..zoom]
-        #(p.Exp(e.Vacant("")), zoom)
+        #(p.Exp(e.Vacant), zoom)
       })
-    p.Exp(e.Vacant(_) as value), _ ->
+    p.Exp(e.Vacant as value), _ ->
       Ok(fn(pattern) {
         let zoom = [p.BlockValue(pattern, [], [], value), ..zoom]
-        #(p.Exp(e.Vacant("")), zoom)
+        #(p.Exp(e.Vacant), zoom)
       })
     p.Exp(value), _ ->
       Ok(fn(pattern) {
         let zoom = [p.BlockTail([#(pattern, value)]), ..zoom]
-        #(p.Exp(e.Vacant("")), zoom)
+        #(p.Exp(e.Vacant), zoom)
       })
     _, _ -> Error(Nil)
   }
@@ -176,26 +176,26 @@ pub fn assign_before(zip) {
   case zip {
     // #(p.Exp(x), [p.ListItem(pre, post, tail), ..rest]) -> {
     //   let zoom = [p.ListItem(pre, [x, ..post], tail), ..rest]
-    //   Ok(NoString(#(p.Exp(e.Vacant("")), zoom)))
+    //   Ok(NoString(#(p.Exp(e.Vacant), zoom)))
     // }
     #(p.Assign(p.AssignStatement(pattern), value, pre, post, then), rest) -> {
       let post = [#(pattern, value), ..post]
       let build = fn(new) {
         let details = p.AssignStatement(new)
-        #(p.Assign(details, e.Vacant(""), pre, post, then), rest)
+        #(p.Assign(details, e.Vacant, pre, post, then), rest)
       }
       Ok(build)
     }
     #(p.Exp(then), [p.BlockTail(lets), ..rest]) -> {
       let build = fn(new) {
         let details = p.AssignStatement(new)
-        #(p.Assign(details, e.Vacant(""), lets, [], then), rest)
+        #(p.Assign(details, e.Vacant, lets, [], then), rest)
       }
       Ok(build)
     }
     #(p.Exp(then), []) -> {
       let build = fn(new) {
-        #(p.Exp(e.Vacant("")), [p.BlockValue(new, [], [], then)])
+        #(p.Exp(e.Vacant), [p.BlockValue(new, [], [], then)])
       }
       Ok(build)
     }
@@ -234,13 +234,12 @@ pub fn function(source) {
 pub fn call(zip) {
   case zip {
     #(p.Exp(e.Call(f, args)), rest) ->
-      Ok(#(p.Exp(e.Vacant("")), [p.CallArg(f, list.reverse(args), []), ..rest]))
+      Ok(#(p.Exp(e.Vacant), [p.CallArg(f, list.reverse(args), []), ..rest]))
 
     #(p.Exp(f), [p.CallFn(args), ..rest]) ->
-      Ok(#(p.Exp(e.Vacant("")), [p.CallArg(f, [], args), ..rest]))
+      Ok(#(p.Exp(e.Vacant), [p.CallArg(f, [], args), ..rest]))
 
-    #(p.Exp(f), rest) ->
-      Ok(#(p.Exp(e.Vacant("")), [p.CallArg(f, [], []), ..rest]))
+    #(p.Exp(f), rest) -> Ok(#(p.Exp(e.Vacant), [p.CallArg(f, [], []), ..rest]))
     _ -> Error(Nil)
   }
 }
@@ -248,10 +247,10 @@ pub fn call(zip) {
 pub fn call_with(zip) {
   case zip {
     // #(p.Exp(e.Call(f, args)), rest) ->
-    //   Ok(#(p.Exp(e.Vacant("")), [p.CallArg(f, list.reverse(args), []), ..rest]))
+    //   Ok(#(p.Exp(e.Vacant), [p.CallArg(f, list.reverse(args), []), ..rest]))
     // #(p.Exp(f), [p.CallFn(args), ..rest]) ->
-    //   Ok(#(p.Exp(e.Vacant("")), [p.CallArg(f, [], args), ..rest]))
-    #(p.Exp(arg), rest) -> Ok(#(p.Exp(e.Vacant("")), [p.CallFn([arg]), ..rest]))
+    //   Ok(#(p.Exp(e.Vacant), [p.CallArg(f, [], args), ..rest]))
+    #(p.Exp(arg), rest) -> Ok(#(p.Exp(e.Vacant), [p.CallFn([arg]), ..rest]))
     _ -> Error(Nil)
   }
 }
@@ -290,7 +289,7 @@ pub fn integer(zip) {
 pub fn list(zip) {
   let #(focus, zoom) = zip
   case focus {
-    // p.Exp(e.Vacant("")) -> Ok(#(p.Exp(e.List([], None)), zoom))
+    // p.Exp(e.Vacant) -> Ok(#(p.Exp(e.List([], None)), zoom))
     p.Exp(item) -> Ok(#(p.Exp(item), [p.ListItem([], [], None), ..zoom]))
     _ -> Error(Nil)
   }
@@ -301,14 +300,12 @@ pub fn extend(zip) {
   let #(focus, zoom) = zip
   case focus, zoom {
     p.Exp(e.List(items, tail)), _ ->
-      Ok(
-        NoString(#(p.Exp(e.Vacant("")), [p.ListItem([], items, tail), ..zoom])),
-      )
+      Ok(NoString(#(p.Exp(e.Vacant), [p.ListItem([], items, tail), ..zoom])))
 
     p.Exp(exp), [p.ListItem(pre, post, tail), ..rest] ->
       Ok(
         NoString(
-          #(p.Exp(e.Vacant("")), [p.ListItem([exp, ..pre], post, tail), ..rest]),
+          #(p.Exp(e.Vacant), [p.ListItem([exp, ..pre], post, tail), ..rest]),
         ),
       )
     p.Exp(e.Record(fields, original)), _ ->
@@ -318,7 +315,7 @@ pub fn extend(zip) {
             Some(original) -> p.Overwrite(original)
             None -> p.Record
           }
-          #(p.Exp(e.Vacant("")), [p.RecordValue(new, [], fields, for), ..zoom])
+          #(p.Exp(e.Vacant), [p.RecordValue(new, [], fields, for), ..zoom])
         }),
       )
     p.FnParam(p.AssignPattern(e.Destructure(fields)), pre, post, body), _ ->
@@ -339,7 +336,7 @@ pub fn spread_list(zip) {
   case focus, zoom {
     p.Exp(exp), [p.ListItem(pre, post, None), ..rest] -> {
       let elements = listx.gather_around(pre, exp, post)
-      Ok(#(p.Exp(e.Vacant("")), [p.ListTail(elements), ..rest]))
+      Ok(#(p.Exp(e.Vacant), [p.ListTail(elements), ..rest]))
     }
     _, _ -> Error(Nil)
   }
@@ -352,13 +349,13 @@ pub fn toggle_spread(zip) {
       Ok(#(p.Exp(e.List(items, None)), zoom))
     }
     p.Exp(e.List(items, None)) -> {
-      Ok(#(p.Exp(e.List(items, Some(e.Vacant("")))), zoom))
+      Ok(#(p.Exp(e.List(items, Some(e.Vacant))), zoom))
     }
     p.Exp(e.Record(fields, Some(_rest))) -> {
       Ok(#(p.Exp(e.Record(fields, None)), zoom))
     }
     p.Exp(e.Record(fields, None)) -> {
-      Ok(#(p.Exp(e.Record(fields, Some(e.Vacant("")))), zoom))
+      Ok(#(p.Exp(e.Record(fields, Some(e.Vacant))), zoom))
     }
     _ -> Error(Nil)
   }
@@ -372,11 +369,7 @@ pub fn toggle_otherwise(zip) {
     }
     p.Exp(e.Case(top, branches, None)) -> {
       Ok(#(
-        p.Exp(e.Case(
-          top,
-          branches,
-          Some(e.Function([e.Bind("_")], e.Vacant(""))),
-        )),
+        p.Exp(e.Case(top, branches, Some(e.Function([e.Bind("_")], e.Vacant)))),
         zoom,
       ))
     }
@@ -387,11 +380,11 @@ pub fn toggle_otherwise(zip) {
 pub fn record(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant("")) -> Ok(NoString(#(p.Exp(e.Record([], None)), zoom)))
+    p.Exp(e.Vacant) -> Ok(NoString(#(p.Exp(e.Record([], None)), zoom)))
     p.Exp(e.Record([], None)) ->
       Ok(
         NeedString(fn(new) {
-          #(p.Exp(e.Record([#(new, e.Vacant(""))], None)), zoom)
+          #(p.Exp(e.Record([#(new, e.Vacant)], None)), zoom)
         }),
       )
     p.Exp(item) ->
@@ -424,7 +417,7 @@ pub fn record(zip) {
 pub fn select(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant("")) ->
+    p.Exp(e.Vacant) ->
       Ok(fn(new) {
         #(
           p.Exp(e.Function([e.Bind("$")], e.Select(e.Variable("$"), new))),
@@ -439,20 +432,20 @@ pub fn select(zip) {
 pub fn overwrite(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant("")) | p.Exp(e.Record([], None)) ->
+    p.Exp(e.Vacant) | p.Exp(e.Record([], None)) ->
       Ok(fn(new) {
-        #(p.Exp(e.Vacant("")), [
-          p.RecordValue(new, [], [], p.Overwrite(e.Vacant(""))),
+        #(p.Exp(e.Vacant), [
+          p.RecordValue(new, [], [], p.Overwrite(e.Vacant)),
           ..zoom
         ])
       })
     p.Exp(e.Record(fields, None)) ->
       Ok(fn(new) {
-        #(p.Exp(e.Vacant("")), [p.OverwriteTail(list.reverse(fields)), ..zoom])
+        #(p.Exp(e.Vacant), [p.OverwriteTail(list.reverse(fields)), ..zoom])
       })
     p.Exp(item) ->
       Ok(fn(new) {
-        #(p.Exp(e.Vacant("")), [
+        #(p.Exp(e.Vacant), [
           p.RecordValue(new, [], [], p.Overwrite(item)),
           ..zoom
         ])
@@ -465,7 +458,7 @@ pub fn overwrite(zip) {
 pub fn tag(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant("")) -> Ok(fn(new) { #(p.Exp(e.Tag(new)), zoom) })
+    p.Exp(e.Vacant) -> Ok(fn(new) { #(p.Exp(e.Tag(new)), zoom) })
     p.Exp(inner) ->
       Ok(fn(new) { #(p.Exp(e.Tag(new)), [p.CallFn([inner]), ..zoom]) })
     _ -> Error(Nil)
@@ -474,7 +467,7 @@ pub fn tag(zip) {
 
 pub fn match(zip) {
   let #(focus, zoom) = zip
-  let new_branch = e.Function([e.Bind("_")], e.Vacant(""))
+  let new_branch = e.Function([e.Bind("_")], e.Vacant)
   case focus {
     p.Exp(exp) ->
       Ok(fn(new) { #(p.Match(exp, new, new_branch, [], [], None), zoom) })
@@ -490,7 +483,7 @@ pub fn match(zip) {
 
 pub fn open_match(zip) {
   let #(focus, zoom) = zip
-  let new = e.Function([e.Bind("_")], e.Vacant(""))
+  let new = e.Function([e.Bind("_")], e.Vacant)
   case focus {
     p.Exp(e.Case(top, matches, None)) ->
       Ok(#(p.Exp(new), [p.CaseTail(top, matches), ..zoom]))
@@ -505,7 +498,7 @@ pub fn open_match(zip) {
 pub fn perform(zip) {
   let #(focus, zoom) = zip
   case focus {
-    p.Exp(e.Vacant("")) -> Ok(fn(new) { #(p.Exp(e.Perform(new)), zoom) })
+    p.Exp(e.Vacant) -> Ok(fn(new) { #(p.Exp(e.Perform(new)), zoom) })
     p.Exp(inner) ->
       Ok(fn(new) { #(p.Exp(e.Perform(new)), [p.CallFn([inner]), ..zoom]) })
     _ -> Error(Nil)

@@ -123,8 +123,7 @@ fn do_render(exp) {
     e.Perform(label) -> string.concat(["perform (\"", label, "\")"])
     e.Handle(label) -> string.concat(["handle (\"", label, "\")"])
     e.Builtin(identifier) -> identifier
-    e.Vacant(message) ->
-      "throw " <> string.concat(["\"", escape_html(message), "\""])
+    e.Vacant -> "throw TODO"
     _ -> {
       io.debug(exp)
       panic as "unsupported compilation expression"

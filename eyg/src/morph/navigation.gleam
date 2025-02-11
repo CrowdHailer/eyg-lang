@@ -44,7 +44,7 @@ fn do_last(projection) {
         }
         e.Function(params, body) ->
           do_last(#(p.Exp(body), [p.Body(params), ..zoom]))
-        e.Vacant(_) -> projection
+        e.Vacant -> projection
         e.Integer(_) -> projection
         e.Binary(_) -> projection
         e.String(_) -> projection

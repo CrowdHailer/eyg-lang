@@ -39,12 +39,12 @@ pub fn call_function(source, analysis) {
   case source {
     #(p.Exp(e.Call(func, args)), zoom) -> {
       let zoom = [p.CallArg(func, list.reverse(args), []), ..zoom]
-      Ok(#(p.Exp(e.Vacant("")), zoom))
+      Ok(#(p.Exp(e.Vacant), zoom))
     }
     #(p.Exp(f), zoom) -> {
-      let post = list.repeat(e.Vacant(""), args - 1)
+      let post = list.repeat(e.Vacant, args - 1)
       let zoom = [p.CallArg(f, [], post), ..zoom]
-      Ok(#(p.Exp(e.Vacant("")), zoom))
+      Ok(#(p.Exp(e.Vacant), zoom))
     }
     _ -> Error(Nil)
   }
@@ -60,12 +60,12 @@ pub fn make_record(projection, analysis) {
       let rest =
         list.map(rest, fn(field) {
           let #(label, _type) = field
-          #(label, e.Vacant(""))
+          #(label, e.Vacant)
         })
       let zoom = [p.RecordValue(first, [], rest, p.Record), ..zoom]
-      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+      Ok(Updated(#(p.Exp(e.Vacant), zoom)))
     }
-    #(p.Exp(e.Vacant("")), zoom), _ -> {
+    #(p.Exp(e.Vacant), zoom), _ -> {
       let new = e.Record([], None)
       Ok(Updated(#(p.Exp(new), zoom)))
     }
@@ -111,7 +111,7 @@ pub fn overwrite_record(projection, analysis) {
       }
       Ok(
         #(fields, fn(label) {
-          #(p.Exp(e.Vacant("")), [
+          #(p.Exp(e.Vacant), [
             p.RecordValue(label, [], [], p.Overwrite(exp)),
             ..zoom
           ])
@@ -181,9 +181,9 @@ pub fn make_case(projection, analysis) {
       let rest =
         list.map(rest, fn(match) {
           let #(label, _type) = match
-          #(label, e.Function([e.Bind("_")], e.Vacant("")))
+          #(label, e.Function([e.Bind("_")], e.Vacant))
         })
-      let focus = p.Exp(e.Vacant(""))
+      let focus = p.Exp(e.Vacant)
       Ok(
         Updated(
           #(focus, [
@@ -202,7 +202,7 @@ pub fn make_case(projection, analysis) {
             p.CaseMatch(top, label, [], [], None),
             ..zoom
           ]
-          #(p.Exp(e.Vacant("")), zoom)
+          #(p.Exp(e.Vacant), zoom)
         }),
       )
     }
@@ -218,7 +218,7 @@ pub fn make_case(projection, analysis) {
             p.CaseMatch(top, new, [#(label, branch), ..pre], post, otherwise),
             ..zoom
           ]
-          #(p.Exp(e.Vacant("")), zoom)
+          #(p.Exp(e.Vacant), zoom)
         }),
       )
     }
@@ -243,11 +243,11 @@ pub fn make_open_case(projection, analysis) {
               label,
               [],
               [],
-              Some(e.Function([e.Bind("_")], e.Vacant(""))),
+              Some(e.Function([e.Bind("_")], e.Vacant)),
             ),
             ..zoom
           ]
-          #(p.Exp(e.Vacant("")), zoom)
+          #(p.Exp(e.Vacant), zoom)
         }),
       )
     }
@@ -278,7 +278,7 @@ pub fn handle(source, _context) {
       let rebuild = fn(label) {
         let zoom = [
           p.Body([e.Bind("value"), e.Bind("resume")]),
-          p.CallArg(e.Deep(label), [], [e.Function([e.Bind("_")], e.Vacant(""))]),
+          p.CallArg(e.Deep(label), [], [e.Function([e.Bind("_")], e.Vacant)]),
           ..zoom
         ]
         #(p.Exp(lift), zoom)
@@ -345,21 +345,21 @@ pub fn extend_before(source, _context) {
   case source {
     #(p.Exp(item), [p.ListItem(pre, post, tail), ..rest]) -> {
       let zoom = [p.ListItem(pre, [item, ..post], tail), ..rest]
-      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+      Ok(Updated(#(p.Exp(e.Vacant), zoom)))
     }
     #(p.Exp(item), [p.CallArg(func, pre, post), ..rest]) -> {
       let zoom = [p.CallArg(func, pre, [item, ..post]), ..rest]
-      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+      Ok(Updated(#(p.Exp(e.Vacant), zoom)))
     }
     #(p.Exp(tail), [p.ListTail(pre), ..rest]) -> {
       let zoom = [p.ListItem(pre, [], Some(tail)), ..rest]
-      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+      Ok(Updated(#(p.Exp(e.Vacant), zoom)))
     }
     #(p.Label(label, value, pre, post, for), zoom) -> {
       let post = [#(label, value), ..post]
       let rebuild = fn(label) {
         let zoom = [p.RecordValue(label, pre, post, for), ..zoom]
-        #(p.Exp(e.Vacant("")), zoom)
+        #(p.Exp(e.Vacant), zoom)
       }
       Ok(Choose("", [], rebuild))
     }
@@ -402,17 +402,17 @@ pub fn extend_after(source, _context) {
   case source {
     #(p.Exp(item), [p.ListItem(pre, post, tail), ..rest]) -> {
       let zoom = [p.ListItem([item, ..pre], post, tail), ..rest]
-      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+      Ok(Updated(#(p.Exp(e.Vacant), zoom)))
     }
     #(p.Exp(item), [p.CallArg(func, pre, post), ..rest]) -> {
       let zoom = [p.CallArg(func, [item, ..pre], post), ..rest]
-      Ok(Updated(#(p.Exp(e.Vacant("")), zoom)))
+      Ok(Updated(#(p.Exp(e.Vacant), zoom)))
     }
     #(p.Label(label, value, pre, post, for), zoom) -> {
       let pre = [#(label, value), ..pre]
       let rebuild = fn(label) {
         let zoom = [p.RecordValue(label, pre, post, for), ..zoom]
-        #(p.Exp(e.Vacant("")), zoom)
+        #(p.Exp(e.Vacant), zoom)
       }
       Ok(Choose("", [], rebuild))
     }

@@ -131,7 +131,7 @@ pub fn sections_from_content(content) {
     let #(comments, code) = c
     let assert Ok(#(#(source, _then), _)) = parse.block_from_string(code)
     let source =
-      list.fold(source, #(a.Vacant(""), #(0, 0)), fn(acc, assign) {
+      list.fold(source, #(a.Vacant, #(0, 0)), fn(acc, assign) {
         let #(label, value, meta) = assign
         #(a.Let(label, value, acc), meta)
       })

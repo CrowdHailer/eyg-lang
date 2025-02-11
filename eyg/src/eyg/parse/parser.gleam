@@ -119,7 +119,7 @@ pub fn block(tokens) {
         }
         Error(UnexpectEnd) -> {
           let span = #(start, start)
-          let then = #(e.Vacant("__Block__"), #(0, 0))
+          let then = #(e.Vacant, #(0, 0))
           let exp = case pattern {
             Assign(label) -> #(e.Let(label, value, then), span)
             Destructure(matches) -> #(

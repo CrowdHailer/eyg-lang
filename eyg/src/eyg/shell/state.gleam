@@ -29,7 +29,7 @@
 
 // fn new_snippet(scope, cache, config, eff) {
 //   snippet.active(
-//     editable.Vacant(""),
+//     editable.Vacant,
 //     scope,
 //     effects(config) |> list.append(eff),
 //     cache,

@@ -491,7 +491,7 @@ fn unbreak(exp, break) {
 
 pub fn blank(projection) {
   case projection {
-    #(Exp(e.Vacant(_)), []) -> True
+    #(Exp(e.Vacant), []) -> True
     _ -> False
   }
 }

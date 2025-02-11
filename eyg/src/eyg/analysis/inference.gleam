@@ -180,7 +180,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     e.Integer(_) -> unify(typ, t.Integer, ref, path)
     e.Tail -> unify(typ, t.tail(ref), ref, path)
     e.Cons -> unify(typ, t.cons(ref), ref, path)
-    e.Vacant(_comment) ->
+    e.Vacant ->
       Infered(
         sub.none(),
         dictx.singleton(list.reverse(path), Ok(typ)),

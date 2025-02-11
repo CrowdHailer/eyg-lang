@@ -5,7 +5,7 @@ pub type Reason(m, c) {
   NotAFunction(Value(m, c))
   UndefinedReference(String)
   UndefinedVariable(String)
-  Vacant(comment: String)
+  Vacant
   NoMatch(term: Value(m, c))
   UnhandledEffect(String, Value(m, c))
   IncorrectTerm(expected: String, got: Value(m, c))
@@ -30,6 +30,6 @@ pub fn reason_to_string(reason) {
       "Aborted with reason: " <> value.debug(reason)
     UnhandledEffect(effect, lift) ->
       "unhandled effect " <> effect <> "(" <> value.debug(lift) <> ")"
-    Vacant(note) -> "tried to run a todo: " <> note
+    Vacant -> "tried to run a todo"
   }
 }

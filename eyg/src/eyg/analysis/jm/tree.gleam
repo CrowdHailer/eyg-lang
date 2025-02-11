@@ -108,7 +108,7 @@ fn primitive(exp, next) {
 
     e.Tail -> t.tail(next)
     e.Cons -> t.cons(next)
-    e.Vacant(_comment) -> t.fresh(next)
+    e.Vacant -> t.fresh(next)
 
     // Record
     e.Empty -> t.empty(next)

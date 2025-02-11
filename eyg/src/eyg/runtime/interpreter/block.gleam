@@ -16,7 +16,7 @@ fn loop(next, env) {
         -> {
           loop(state.step(c, e, k), env.scope)
         }
-        state.E(#(a.Vacant(_), _)), state.Empty(_) -> Ok(#(None, env))
+        state.E(#(a.Vacant, _)), state.Empty(_) -> Ok(#(None, env))
         _, _ -> loop(state.step(c, e, k), env)
       }
     }

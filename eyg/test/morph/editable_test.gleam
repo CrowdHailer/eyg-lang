@@ -84,7 +84,7 @@ pub fn bare_select_test() {
 
 pub fn unbound_case_test() {
   let source =
-    e.Apply(e.Apply(e.Case("Ok"), e.Vacant("")), e.Lambda("x", e.Variable("x")))
+    e.Apply(e.Apply(e.Case("Ok"), e.Vacant), e.Lambda("x", e.Variable("x")))
   source
   |> a.add_annotation(Nil)
   |> et.from_annotated

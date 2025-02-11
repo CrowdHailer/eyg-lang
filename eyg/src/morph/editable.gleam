@@ -13,7 +13,7 @@ pub type Expression {
   Block(List(#(Pattern, Expression)), Expression, open: Bool)
   Call(Expression, List(Expression))
   Function(List(Pattern), Expression)
-  Vacant(comment: String)
+  Vacant
   Integer(Int)
   Binary(BitArray)
   String(String)
@@ -156,7 +156,7 @@ pub fn from_annotated(node) {
       // gather_arguments(func, [from_annotated(arg)])
     }
 
-    a.Vacant(comment) -> Vacant(comment)
+    a.Vacant -> Vacant
     a.Variable(var) -> Variable(var)
     a.Integer(value) -> Integer(value)
     a.Binary(value) -> Binary(value)
@@ -361,7 +361,7 @@ pub fn to_expression(source) {
   //     let top = to_expression(top)
   //     e.Apply(matches, top)
   //   }
-  //   Vacant(comment) -> e.Vacant(comment)
+  //   Vacant -> e.Vacant
   //   Integer(value) -> e.Integer(value)
   //   Binary(value) -> e.Binary(value)
   //   String(value) -> e.Str(value)
@@ -505,7 +505,7 @@ pub fn to_annotated(source, rev) {
       let exp = a.Apply(matches, top)
       #(exp, rev)
     }
-    Vacant(comment) -> #(a.Vacant(comment), rev)
+    Vacant -> #(a.Vacant, rev)
     Integer(value) -> #(a.Integer(value), rev)
     Binary(value) -> #(a.Binary(value), rev)
     String(value) -> #(a.Str(value), rev)

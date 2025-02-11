@@ -18,6 +18,6 @@ pub fn client() {
 }
 
 fn init(_) {
-  let state = app.init(expression.Vacant(""))
+  let state = app.init(expression.Vacant)
   #(state, effect.none())
 }

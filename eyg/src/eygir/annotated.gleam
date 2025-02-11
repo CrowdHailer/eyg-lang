@@ -21,7 +21,7 @@ pub type Expression(m) {
   Tail
   Cons
 
-  Vacant(comment: String)
+  Vacant
 
   Empty
   Extend(label: String)
@@ -75,7 +75,7 @@ fn do_strip_annotation(in, acc) {
     Tail -> #(e.Tail, acc)
     Cons -> #(e.Cons, acc)
 
-    Vacant(comment) -> #(e.Vacant(comment), acc)
+    Vacant -> #(e.Vacant, acc)
 
     Empty -> #(e.Empty, acc)
     Extend(label) -> #(e.Extend(label), acc)
@@ -118,7 +118,7 @@ pub fn add_annotation(exp, meta) {
     e.Tail -> #(Tail, meta)
     e.Cons -> #(Cons, meta)
 
-    e.Vacant(comment) -> #(Vacant(comment), meta)
+    e.Vacant -> #(Vacant, meta)
 
     e.Empty -> #(Empty, meta)
     e.Extend(label) -> #(Extend(label), meta)
@@ -253,7 +253,7 @@ pub fn list_vacant(exp) {
 pub fn do_list_vacant(exp, found) {
   let #(exp, meta) = exp
   case exp {
-    Vacant(comment) -> [#(meta, comment), ..found]
+    Vacant -> [#(meta, "todo"), ..found]
     Let(_label, value, then) -> {
       let found = do_list_vacant(then, found)
       do_list_vacant(value, found)

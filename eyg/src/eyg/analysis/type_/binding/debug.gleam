@@ -72,7 +72,7 @@ fn render_function(to, acc) {
 
 pub fn render_reason(reason) {
   case reason {
-    error.Todo(message) -> "code incomplete: " <> message
+    error.Todo -> "code incomplete"
     error.MissingVariable(label) -> "missing variable '" <> label <> "'"
     error.MissingReference(label) -> "missing reference #" <> label
     error.MissingRow(label) -> "missing row '" <> label <> "'"

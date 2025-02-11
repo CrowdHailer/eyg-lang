@@ -312,7 +312,7 @@ pub fn expression_to_language(exp) {
     e.Tail -> [v.Tagged("Tail", v.unit)]
     e.Cons -> [v.Tagged("Cons", v.unit)]
 
-    e.Vacant(comment) -> [v.Tagged("Vacant", v.Str(comment))]
+    e.Vacant -> [v.Tagged("Vacant", v.unit)]
 
     e.Empty -> [v.Tagged("Empty", v.unit)]
     e.Extend(label) -> [v.Tagged("Extend", v.Str(label))]
@@ -406,7 +406,7 @@ fn step(node, stack) {
     v.Tagged("Tail", v.Record([])) -> #(Some(e.Tail), stack)
     v.Tagged("Cons", v.Record([])) -> #(Some(e.Cons), stack)
 
-    v.Tagged("Vacant", v.Str(comment)) -> #(Some(e.Vacant(comment)), stack)
+    v.Tagged("Vacant", v.Record([])) -> #(Some(e.Vacant), stack)
 
     v.Tagged("Empty", v.Record([])) -> #(Some(e.Empty), stack)
     v.Tagged("Extend", v.Str(label)) -> #(Some(e.Extend(label)), stack)
@@ -458,7 +458,7 @@ fn do_language_to_expression(term, k) {
     [v.Tagged("Tail", v.Record([])), ..rest] -> k(e.Tail, rest)
     [v.Tagged("Cons", v.Record([])), ..rest] -> k(e.Cons, rest)
 
-    [v.Tagged("Vacant", v.Str(comment)), ..rest] -> k(e.Vacant(comment), rest)
+    [v.Tagged("Vacant", v.Record([])), ..rest] -> k(e.Vacant, rest)
 
     [v.Tagged("Empty", v.Record([])), ..rest] -> k(e.Empty, rest)
     [v.Tagged("Extend", v.Str(label)), ..rest] -> k(e.Extend(label), rest)

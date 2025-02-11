@@ -11,7 +11,7 @@ fn should_equal(given, expected) {
 pub fn block_test() {
   let first = #(e.Bind("i"), e.Integer(10))
   let second = #(e.Destructure([#("foo", "y")]), e.Record([], None))
-  let source = e.Block([first, second], e.Vacant(""), False)
+  let source = e.Block([first, second], e.Vacant, False)
 
   let path = [0]
   p.focus_at(source, path)
@@ -22,7 +22,7 @@ pub fn block_test() {
         e.Integer(10),
         [],
         [second],
-        e.Vacant(""),
+        e.Vacant,
       ),
       [],
     ),
@@ -39,7 +39,7 @@ pub fn block_test() {
         e.Integer(10),
         [],
         [second],
-        e.Vacant(""),
+        e.Vacant,
       ),
       [],
     ),
@@ -50,9 +50,7 @@ pub fn block_test() {
   let path = [0, 1]
   p.focus_at(source, path)
   |> should_equal(
-    #(p.Exp(e.Integer(10)), [
-      p.BlockValue(e.Bind("i"), [], [second], e.Vacant("")),
-    ]),
+    #(p.Exp(e.Integer(10)), [p.BlockValue(e.Bind("i"), [], [second], e.Vacant)]),
   )
   |> p.path
   |> should_equal(path)
@@ -66,7 +64,7 @@ pub fn block_test() {
         e.Record([], None),
         [first],
         [],
-        e.Vacant(""),
+        e.Vacant,
       ),
       [],
     ),
@@ -82,7 +80,7 @@ pub fn block_test() {
         e.Record([], None),
         [first],
         [],
-        e.Vacant(""),
+        e.Vacant,
       ),
       [],
     ),

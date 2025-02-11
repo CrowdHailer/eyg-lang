@@ -398,7 +398,7 @@ pub fn app(json) {
   let #(elements, update) = page(signal())
   promise.map(promise.wait(2000), fn(_) {
     let assert e.Let(label, _std, rest) = source
-    let exp = e.Let(label, e.Vacant(""), rest)
+    let exp = e.Let(label, e.Vacant, rest)
     update(exp)
   })
   #(array.from_list(elements), update)
