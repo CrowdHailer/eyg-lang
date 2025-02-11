@@ -39,6 +39,94 @@ pub type Expression(m) {
   NamedReference(package: String, release: Int)
 }
 
+pub fn variable(label) {
+  #(Variable(label), Nil)
+}
+
+pub fn lambda(label, body) {
+  #(Lambda(label, body), Nil)
+}
+
+pub fn apply(func, argument) {
+  #(Apply(func, argument), Nil)
+}
+
+pub fn let_(label, value, then) {
+  #(Let(label, value, then), Nil)
+}
+
+pub fn binary(value) {
+  #(Binary(value), Nil)
+}
+
+pub fn integer(value) {
+  #(Integer(value), Nil)
+}
+
+pub fn string(value) {
+  #(Str(value), Nil)
+}
+
+pub fn tail() {
+  #(Tail, Nil)
+}
+
+pub fn cons() {
+  #(Cons, Nil)
+}
+
+pub fn vacant() {
+  #(Vacant, Nil)
+}
+
+pub fn empty() {
+  #(Empty, Nil)
+}
+
+pub fn extend(label) {
+  #(Extend(label), Nil)
+}
+
+pub fn select(label) {
+  #(Select(label), Nil)
+}
+
+pub fn overwrite(label) {
+  #(Overwrite(label), Nil)
+}
+
+pub fn tag(label) {
+  #(Tag(label), Nil)
+}
+
+pub fn case_(label) {
+  #(Case(label), Nil)
+}
+
+pub fn nocases() {
+  #(NoCases, Nil)
+}
+
+pub fn perform(label) {
+  #(Perform(label), Nil)
+}
+
+pub fn handle(label) {
+  #(Handle(label), Nil)
+}
+
+pub fn builtin(identifier) {
+  #(Builtin(identifier), Nil)
+}
+
+pub fn reference(identifier) {
+  #(Reference(identifier), Nil)
+}
+
+pub fn namedreference(package, release) {
+  #(NamedReference(package, release), Nil)
+}
+
 pub fn strip_annotation(in) {
   let #(exp, acc) = do_strip_annotation(in, [])
   #(exp, list.reverse(acc))
