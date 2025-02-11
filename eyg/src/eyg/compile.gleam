@@ -12,7 +12,7 @@ pub fn to_js(program, refs) {
   |> ir.k()
   |> ir.unnest
   |> monadic()
-  |> a.drop_annotation()
+  |> a.map_annotation(fn(_) { Nil })
   |> js.render()
 }
 
@@ -27,7 +27,7 @@ fn infer_effects(program, refs) {
   })
 }
 
-fn monadic(node) {
+fn monadic(node: a.Node(t.Type(Int))) -> a.Node(t.Type(Int)) {
   let #(exp, meta) = node
   case exp {
     a.Let(x, #(value, eff), then) ->
