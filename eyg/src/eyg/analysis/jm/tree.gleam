@@ -2,6 +2,7 @@ import eyg/analysis/jm/env
 import eyg/analysis/jm/error
 import eyg/analysis/jm/infer.{builtins, extend, generalise, instantiate, mono}
 import eyg/analysis/jm/type_ as t
+import eygir/annotated
 import eygir/expression as e
 import gleam/dict
 
@@ -34,6 +35,7 @@ pub fn infer_env(exp, type_, eff, env, sub, next) {
   let path = []
   let acc = #(sub, next, types)
   let envs = dict.new()
+  let exp = exp |> annotated.drop_annotation
   loop(step(acc, env, envs, exp, path, type_, eff, Done))
 }
 

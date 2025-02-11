@@ -1,4 +1,5 @@
 // Slow due to a lot of calls to list.map
+import eygir/annotated
 import eygir/decode
 import eygir/expression as e
 import gleam/int
@@ -392,6 +393,7 @@ fn projection(exp) {
 // app is the stateful bit.
 pub fn app(json) {
   let assert Ok(source) = decode.decode(json)
+  let source = source |> annotated.drop_annotation
   // component is actually context
   let page = component(fn(exp) { projection(exp) })
   let #(signal, _set) = make(source)

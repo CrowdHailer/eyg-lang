@@ -14,6 +14,7 @@ pub fn new_state() {
 }
 
 pub fn infer(source, eff, refs, level, bindings) {
+  let source = source |> a.drop_annotation
   let #(bindings, _type, _eff, acc) =
     do_infer(source, [], eff, refs, level, bindings)
   #(acc, bindings)

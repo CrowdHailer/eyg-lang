@@ -29,7 +29,7 @@ fn gather_sections(from, comments, assigns, sections) {
 }
 
 pub fn from_expression(expression) {
-  case editable.from_expression(expression) {
+  case editable.from_annotated(expression) {
     editable.Block(assigns, then, _open) -> {
       let assigns = editable.open_assignments(assigns)
       #(gather_sections(assigns, [], [], []), then)

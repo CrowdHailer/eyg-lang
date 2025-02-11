@@ -13,7 +13,6 @@ fn parse(src) {
   src
   |> parse.all_from_string()
   |> should.be_ok()
-  |> annotated.drop_annotation()
 }
 
 fn do_resolve(return) {

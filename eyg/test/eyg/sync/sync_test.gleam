@@ -43,7 +43,7 @@ pub fn load_references_test() {
   )
   |> task.expect_done()
   |> should.be_ok()
-  |> should.equal(just_number)
+  |> should.equal(just_number |> a.add_annotation(Nil))
 
   let state = sync.install(state, ref, just_number)
   sync.missing(state, [ref])

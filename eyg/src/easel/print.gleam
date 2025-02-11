@@ -1,6 +1,7 @@
 // up to 91% of time is joining lists
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
+import eygir/annotated
 import eygir/expression as e
 import gleam/dict
 import gleam/int
@@ -31,6 +32,7 @@ pub type Rendered =
   #(String, List(Int), Int, Style, Bool)
 
 pub fn print(source, selection, always, analysis: Option(tree.State)) {
+  let source = source |> annotated.drop_annotation
   let loc = Location([], selection, always)
   let #(acc, info) = do_print(source, loc, "\n", [], dict.new(), analysis)
   #(list.reverse(acc), info)

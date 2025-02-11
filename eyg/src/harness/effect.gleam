@@ -90,14 +90,7 @@ pub fn read_source() {
     case simplifile.read(file) {
       Ok(json) ->
         case decode.from_json(json) {
-          Ok(exp) ->
-            Ok(
-              v.ok(
-                v.LinkedList(
-                  core.expression_to_language(e.add_annotation(exp, Nil)),
-                ),
-              ),
-            )
+          Ok(exp) -> Ok(v.ok(v.LinkedList(core.expression_to_language(exp))))
           Error(_) -> Ok(v.error(v.unit))
         }
       Error(_) -> Ok(v.error(v.unit))

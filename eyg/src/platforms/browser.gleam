@@ -4,7 +4,6 @@ import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eygir/annotated as e
 import eygir/decode
 import gleam/dict
 import gleam/io
@@ -50,7 +49,6 @@ pub fn do_run(raw) -> Nil {
     Ok(continuation) -> {
       let env =
         state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
-      let continuation = e.add_annotation(continuation, Nil)
       let assert Ok(continuation) = r.execute(continuation, env, handlers().1)
       promise.map(
         r.await(r.call(continuation, [#(v.unit, Nil)], env, handlers().1)),
@@ -83,7 +81,6 @@ fn old_run() {
       case decode.from_json(global.decode_uri(element.inner_text(el))) {
         Ok(f) -> {
           let env = stdlib.env()
-          let f = e.add_annotation(f, Nil)
           let assert Ok(f) = r.execute(f, env, handlers().1)
           let ret = r.call(f, [#(v.unit, Nil)], env, handlers().1)
           case ret {
@@ -156,7 +153,7 @@ pub fn async() {
           Error(#(reason, _path, _env, _k)) -> {
             // has all the path and env in cant' debug
             console.log(break.reason_to_string(reason))
-            panic("this shouldn't fail")
+            panic as "this shouldn't fail"
           }
         }
       })
@@ -210,7 +207,6 @@ fn on_click() {
       let arg = global.decode_uri(arg)
       let assert Ok(arg) = decode.from_json(arg)
 
-      let arg = e.add_annotation(arg, Nil)
       do_handle(arg, handle, env, extrinsic)
     })
     Ok(v.unit)

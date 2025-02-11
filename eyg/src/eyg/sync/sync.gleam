@@ -356,7 +356,11 @@ pub fn load(sync, dump: dump.Dump) {
       fn(loaded, fragment: supabase.Fragment) {
         // List all references and then put them in the loaded map
         // This is bluring things a bit
-        let expression = annotated.add_annotation(fragment.code, [])
+        let expression =
+          annotated.add_annotation(
+            fragment.code |> annotated.drop_annotation(),
+            [],
+          )
         let named =
           annotated.list_named_references(expression)
           |> list.map(fn(ref) {

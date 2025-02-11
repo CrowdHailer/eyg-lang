@@ -102,7 +102,7 @@ pub fn highlights(state, spans, acc) {
 pub fn information(state) {
   case parse.from_string(source(state)) {
     Ok(#(tree, _rest)) -> {
-      let #(tree, spans) = annotated.strip_annotation(tree)
+      let #(_tree, spans) = annotated.strip_annotation(tree)
       let #(exp, bindings) =
         j.infer(tree, t.Empty, dict.new(), 0, j.new_state())
       let acc = annotated.strip_annotation(exp).1

@@ -73,7 +73,7 @@ pub type Path =
   List(Int)
 
 pub type Edit =
-  #(e.Expression, Path, Bool)
+  #(a.Node(Nil), Path, Bool)
 
 pub type History =
   #(List(Edit), List(Edit))
@@ -83,7 +83,7 @@ pub type Embed {
     mode: Mode,
     yanked: Option(e.Expression),
     env: #(state.Env(Nil), t.Substitutions, Int, tenv.Env),
-    source: e.Expression,
+    source: a.Node(Nil),
     history: History,
     auto_infer: Bool,
     inferred: Option(tree.State),
@@ -370,7 +370,6 @@ pub fn snippet(root) {
       let assert Ok(v.Closure(_, source, _e2)) =
         execute(source, stdlib.env(), dict.new())
       let assert Ok(tenv) = dict.get(envs, [])
-      let source = a.drop_annotation(source)
       let inferred =
         Some(tree.infer_env(source, t.Var(-3), t.Var(-4), tenv, sub, next).0)
 
@@ -402,7 +401,6 @@ pub fn snippet(root) {
 }
 
 fn execute(source, env, handlers) {
-  let source = a.add_annotation(source, Nil)
   r.execute(source, env, handlers)
 }
 
@@ -425,7 +423,7 @@ pub fn init(json) {
         }
       }
 
-      #(stdlib.env(), a.drop_annotation(source), sub, next, tenv)
+      #(stdlib.env(), source, sub, next, tenv)
     }
     _ -> #(env, source, dict.new(), 0, dict.new())
   }
@@ -501,9 +499,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                 ))
                 io.debug(writable)
                 let content =
-                  bit_array.from_string(encode.to_json(
-                    state.source |> a.add_annotation(Nil),
-                  ))
+                  bit_array.from_string(encode.to_json(state.source))
                 // let blob = blob.new(content, "application/json")
                 use _ <- promise.await(file_system.write(writable, content))
                 use _ <- promise.await(file_system.close(writable))
@@ -519,7 +515,7 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start, [])
         }
         "q" -> {
-          let dump = encode.to_json(state.source |> a.add_annotation(Nil))
+          let dump = encode.to_json(state.source)
           // io.print(dump)
           let request =
             request.new()
@@ -615,7 +611,8 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start, [])
         }
         _ -> {
-          let assert Ok(#(target, rezip)) = zipper.at(state.source, path)
+          let assert Ok(#(target, rezip)) =
+            zipper.at(state.source |> a.drop_annotation, path)
           io.debug(target)
           // always the same path
           let #(new, sub, offset, text_only) = case target {
@@ -850,7 +847,7 @@ pub fn insert_text(state: Embed, data, start, end) {
           case target == new {
             True -> #(state, start, [])
             False -> {
-              let new = rezip(new)
+              let new = rezip(new) |> a.add_annotation(Nil)
               let backwards = case state.history.1 {
                 [#(original, p, True), ..rest] if p == path && text_only -> {
                   [#(original, path, True), ..rest]
@@ -1063,7 +1060,7 @@ pub fn tag(state: Embed, start, end) {
 fn copy(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
 
-  case zipper.at(state.source, path) {
+  case zipper.at(state.source |> a.drop_annotation, path) {
     Error(Nil) -> panic("how did this happen need path back")
     Ok(#(target, _rezip)) -> {
       #(Embed(..state, yanked: Some(target)), start, [])
@@ -1203,7 +1200,7 @@ pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(#(_ch, path, offset, _style, _err)) =
     listx.at(state.rendered.0, index)
   let source = state.source
-  let assert Ok(#(target, rezip)) = zipper.at(source, path)
+  let assert Ok(#(target, rezip)) = zipper.at(source |> a.drop_annotation, path)
 
   let #(new, sub, offset) = case target {
     e.Str(content) -> {
@@ -1216,7 +1213,7 @@ pub fn insert_paragraph(index, state: Embed) {
     }
     node -> #(e.Let("", node, e.Vacant), [1], 0)
   }
-  let new = rezip(new)
+  let new = rezip(new) |> a.add_annotation(Nil)
   let history = #([], [#(source, path, False), ..state.history.1])
 
   let inferred = case
@@ -1390,11 +1387,13 @@ fn single_focus(state: Embed, start, end, cb) {
 
 fn update_at(state: Embed, path, cb) {
   let source = state.source
-  case zipper.at(source, path) {
+  case zipper.at(source |> a.drop_annotation, path) {
     Error(Nil) -> panic("how did this happen need path back")
     Ok(#(target, rezip)) -> {
       let #(updated, mode, sub_path) = cb(target)
-      let new = rezip(updated)
+      let new =
+        rezip(updated)
+        |> a.add_annotation(Nil)
       let history = #([], [#(source, path, False), ..state.history.1])
       let inferred = case state.auto_infer {
         True -> Some(do_infer(new, state.env))

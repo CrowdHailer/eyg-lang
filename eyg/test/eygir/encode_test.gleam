@@ -2,17 +2,18 @@ import eygir/annotated as a
 import eygir/decode
 import eygir/encode.{to_json}
 import eygir/expression as e
-import gleam/json
 import gleeunit/should
 
 fn round_trip(exp) {
   exp
-  |> a.add_annotation(Nil)
   |> to_json
   |> decode.from_json
 }
 
 fn check_encoding(exp) {
+  let exp =
+    exp
+    |> a.add_annotation(Nil)
   round_trip(exp)
   |> should.equal(Ok(exp))
 }

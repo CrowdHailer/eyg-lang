@@ -19,7 +19,6 @@ pub fn to_js(program, refs) {
 fn infer_effects(program, refs) {
   let #(exp, bindings) =
     program
-    |> a.drop_annotation()
     |> j.infer(t.Empty, refs, 0, j.new_state())
 
   a.map_annotation(exp, fn(types) {

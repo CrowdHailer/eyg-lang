@@ -1,3 +1,4 @@
+import eygir/annotated
 import eygir/expression as e
 import gleam/int
 import gleam/list
@@ -5,6 +6,9 @@ import gleam/string
 
 // this is recursive the tree in eyg is linear what the readability vs efficiency differenct
 pub fn lines(source) {
+  let source =
+    source
+    |> annotated.drop_annotation()
   let #(first, rest) = do_print(source)
   [first, ..rest]
 }

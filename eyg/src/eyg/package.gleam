@@ -116,7 +116,7 @@ pub fn load_guide_from_bytes(bytes, cache) {
   Ok(load_guide_from_expression(source, cache))
 }
 
-pub fn load_guide_from_expression(source: e.Expression, cache) {
+pub fn load_guide_from_expression(source, cache) {
   let #(sections, _) = section.from_expression(source)
   load_guide(sections, cache)
 }

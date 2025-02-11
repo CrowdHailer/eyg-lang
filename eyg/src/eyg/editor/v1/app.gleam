@@ -1,3 +1,4 @@
+import eygir/annotated
 import gleam/result
 
 // this can define state and UI maybe UI should be separate
@@ -46,7 +47,7 @@ pub fn init(source) {
   let assert Ok(act) = prepare(source, [])
   let mode = Navigate(act)
   // Have inference work once for showing elements but need to also background this
-  let types = do_infer(source)
+  let types = do_infer(source |> annotated.add_annotation(Nil))
   WorkSpace([], source, Some(types), mode, None, None, #([], []))
 }
 
@@ -483,7 +484,7 @@ fn infer(state: WorkSpace) {
     // already inferred
     Some(_) -> state
     None -> {
-      let inferred = do_infer(state.source)
+      let inferred = do_infer(state.source |> annotated.add_annotation(Nil))
       let state = WorkSpace(..state, inferred: Some(inferred))
       state
     }

@@ -34,7 +34,7 @@ pub fn do_main(args) {
   // recipe is an app, service worker makes js necessay, query string params are also only interesting if rendered with JS
 
   case args {
-    ["exec", ..] -> shell.run(e.add_annotation(source, Nil))
+    ["exec", ..] -> shell.run(source)
     ["infer"] -> {
       let #(exp, _bindings) =
         infer.infer(source, t.Empty, dict.new(), 0, infer.new_state())
