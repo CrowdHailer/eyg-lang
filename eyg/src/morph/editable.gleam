@@ -24,7 +24,6 @@ pub type Expression {
   Case(Expression, List(#(String, Expression)), Option(Expression))
   Perform(String)
   Deep(String)
-  Shallow(String)
   Builtin(String)
   NamedReference(package: String, release: Int)
   Reference(String)
@@ -165,7 +164,6 @@ pub fn from_annotated(node) {
     a.Tag(label) -> Tag(label)
     a.Perform(label) -> Perform(label)
     a.Handle(label) -> Deep(label)
-    a.Shallow(label) -> Shallow(label)
 
     a.Builtin(identifier) -> Builtin(identifier)
     a.Reference(identifier) -> Reference(identifier)
@@ -369,7 +367,6 @@ pub fn to_expression(source) {
   //   Tag(label) -> e.Tag(label)
   //   Perform(label) -> e.Perform(label)
   //   Deep(label) -> e.Handle(label)
-  //   Shallow(label) -> e.Shallow(label)
   //   Builtin(identifier) -> e.Builtin(identifier)
   // }
 }
@@ -513,7 +510,6 @@ pub fn to_annotated(source, rev) {
     Tag(label) -> #(a.Tag(label), rev)
     Perform(label) -> #(a.Perform(label), rev)
     Deep(label) -> #(a.Handle(label), rev)
-    Shallow(label) -> #(a.Shallow(label), rev)
     Builtin(identifier) -> #(a.Builtin(identifier), rev)
     Reference(identifier) -> #(a.Reference(identifier), rev)
     NamedReference(package, release) -> #(

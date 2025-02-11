@@ -245,14 +245,6 @@ pub fn handler_no_effect_test() {
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("mystring"))))
-
-  // shallow
-  let source =
-    e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
-    |> e2.add_annotation(Nil)
-
-  r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Tagged("Ok", v.Str("mystring"))))
 }
 
 pub fn handle_early_return_effect_test() {
@@ -261,13 +253,6 @@ pub fn handle_early_return_effect_test() {
   let exec = e.Lambda("_", e.Apply(e.Perform("Throw"), e.Str("Bad thing")))
   let source =
     e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
-    |> e2.add_annotation(Nil)
-
-  r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Tagged("Error", v.Str("Bad thing"))))
-
-  let source =
-    e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
     |> e2.add_annotation(Nil)
 
   r.execute(source, env.empty(), dict.new())
@@ -300,15 +285,6 @@ pub fn handle_resume_test() {
   |> should.equal(
     Ok(v.Record([#("log", v.Str("my message")), #("value", v.Integer(100))])),
   )
-
-  let source =
-    e.Apply(e.Apply(e.Shallow("Log"), handler), exec)
-    |> e2.add_annotation(Nil)
-
-  r.execute(source, env.empty(), dict.new())
-  |> should.equal(
-    Ok(v.Record([#("log", v.Str("my message")), #("value", v.Integer(100))])),
-  )
 }
 
 pub fn ignore_other_effect_test() {
@@ -324,20 +300,6 @@ pub fn ignore_other_effect_test() {
     )
   let source =
     e.Apply(e.Apply(e.Handle("Throw"), handler), exec)
-    |> e2.add_annotation(Nil)
-
-  let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
-    r.execute(source, env.empty(), dict.new())
-  lifted
-  |> should.equal(v.unit)
-  // calling k should fall throu
-  // Should test wrapping binary here to check K works properly
-  r.loop(state.step(state.V(v.Str("reply")), env, k))
-  |> should.equal(Ok(v.Record([#("foo", v.Str("reply"))])))
-
-  // SHALLOW
-  let source =
-    e.Apply(e.Apply(e.Shallow("Throw"), handler), exec)
     |> e2.add_annotation(Nil)
 
   let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
@@ -471,52 +433,11 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
     r.execute(source, env.empty(), dict.new())
   r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.unit))
-
-  let handler =
-    e.Apply(e.Shallow("Log"), e.Lambda("lift", e.Lambda("k", e.Str("Caught"))))
-  let source =
-    e.Let(
-      "_",
-      e.Apply(handler, e.Lambda("_", e.Str("Original"))),
-      e.Apply(e.Perform("Log"), e.Str("outer")),
-    )
-    |> e2.add_annotation(Nil)
-
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("outer")), Nil, env, k)) =
-    r.execute(source, env.empty(), dict.new())
-  r.loop(state.step(state.V(v.unit), env, k))
-  |> should.equal(Ok(v.unit))
 }
 
 pub fn handler_is_applied_after_other_effects_test() {
   let handler =
     e.Apply(e.Handle("Fail"), e.Lambda("lift", e.Lambda("k", e.Integer(-1))))
-  let exec =
-    e.Lambda(
-      "_",
-      e.Let(
-        "_",
-        e.Apply(e.Perform("Log"), e.Str("my log")),
-        e.Let(
-          "_",
-          e.Apply(e.Perform("Fail"), e.Str("some error")),
-          e.Str("done"),
-        ),
-      ),
-    )
-
-  let source =
-    e.Apply(handler, exec)
-    |> e2.add_annotation(Nil)
-
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("my log")), Nil, env, k)) =
-    r.execute(source, env.empty(), dict.new())
-
-  r.loop(state.step(state.V(v.unit), env, k))
-  |> should.equal(Ok(v.Integer(-1)))
-
-  let handler =
-    e.Apply(e.Shallow("Fail"), e.Lambda("lift", e.Lambda("k", e.Integer(-1))))
   let exec =
     e.Lambda(
       "_",

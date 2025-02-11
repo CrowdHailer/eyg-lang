@@ -252,14 +252,6 @@ pub fn expression(tokens) {
         }
         _ -> fail(rest)
       }
-    t.Shallow ->
-      case rest {
-        [#(t.Uppername(label), end), ..rest] -> {
-          let span = #(start, end + string.length(label))
-          Ok(#(#(e.Shallow(label), span), rest))
-        }
-        _ -> fail(rest)
-      }
     t.Bang ->
       case rest {
         [#(t.Name(label), end), ..rest] -> {

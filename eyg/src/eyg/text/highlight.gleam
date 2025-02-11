@@ -26,7 +26,6 @@ fn classify(token) {
     t.Match -> KeyWord
     t.Perform -> KeyWord
     t.Deep -> KeyWord
-    t.Shallow -> KeyWord
     t.Handle -> KeyWord
 
     t.Equal -> Punctuation
@@ -58,7 +57,6 @@ fn do_highlight(tokens, class, buffer, acc) {
     [] -> push(class, buffer, acc)
     [t.Perform as k, t.Whitespace(w), t.Uppername(l), ..tokens]
     | [t.Deep as k, t.Whitespace(w), t.Uppername(l), ..tokens]
-    | [t.Shallow as k, t.Whitespace(w), t.Uppername(l), ..tokens]
     | [t.Handle as k, t.Whitespace(w), t.Uppername(l), ..tokens] -> {
       let acc = [
         #(Effect, l),

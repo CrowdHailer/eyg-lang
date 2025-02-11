@@ -26,7 +26,6 @@ pub type Expression {
   Let(label: String, definition: Expression, body: Expression)
 
   // Primitive
-  // TODO encode/decode
   Binary(value: BitArray)
   Integer(value: Int)
   Str(value: String)
@@ -53,8 +52,6 @@ pub type Expression {
   // do/act/effect(effect is a verb and noun)
   Perform(label: String)
   Handle(label: String)
-  // Experiment in stateful Effects
-  Shallow(label: String)
 
   Builtin(identifier: String)
   Reference(identifier: String)

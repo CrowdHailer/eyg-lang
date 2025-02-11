@@ -62,7 +62,6 @@ pub fn decoder(x) {
     "n" | "nocases" -> fn(_) { Ok(e.NoCases) }
     "p" | "perform" -> decode1(e.Perform, label())
     "h" | "handle" -> decode1(e.Handle, label())
-    "hs" | "shallow" -> decode1(e.Shallow, label())
     "b" | "builtin" -> decode1(e.Builtin, label())
     "#" -> decode1(e.Reference, label())
     "@" -> decode2(e.NamedReference, field("p", string), field("r", int))

@@ -69,8 +69,6 @@ fn do_print(source) {
     // do/act/effect(effect is a verb and noun)
     e.Perform(label) -> #(string.concat(["perform(", label, ")"]), [])
     e.Handle(label) -> #(string.concat(["handle(", label, ")"]), [])
-    // Experiment in stateful Effects
-    e.Shallow(label) -> #(string.concat(["shallow(", label, ")"]), [])
 
     e.Builtin(identifier) -> #(string.concat(["builtin(", identifier, ")"]), [])
     e.Reference(identifier) -> #(

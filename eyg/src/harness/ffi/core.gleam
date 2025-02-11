@@ -324,7 +324,6 @@ pub fn expression_to_language(exp) {
 
     e.Perform(label) -> [v.Tagged("Perform", v.Str(label))]
     e.Handle(label) -> [v.Tagged("Handle", v.Str(label))]
-    e.Shallow(label) -> [v.Tagged("Shallow", v.Str(label))]
     e.Builtin(identifier) -> [v.Tagged("Builtin", v.Str(identifier))]
     e.Reference(identifier) -> [v.Tagged("Reference", v.Str(identifier))]
     e.NamedReference(package, release) -> [
@@ -418,7 +417,6 @@ fn step(node, stack) {
 
     v.Tagged("Perform", v.Str(label)) -> #(Some(e.Perform(label)), stack)
     v.Tagged("Handle", v.Str(label)) -> #(Some(e.Handle(label)), stack)
-    v.Tagged("Shallow", v.Str(label)) -> #(Some(e.Shallow(label)), stack)
     v.Tagged("Builtin", v.Str(identifier)) -> #(
       Some(e.Builtin(identifier)),
       stack,
@@ -470,7 +468,6 @@ fn do_language_to_expression(term, k) {
 
     [v.Tagged("Perform", v.Str(label)), ..rest] -> k(e.Perform(label), rest)
     [v.Tagged("Handle", v.Str(label)), ..rest] -> k(e.Handle(label), rest)
-    [v.Tagged("Shallow", v.Str(label)), ..rest] -> k(e.Shallow(label), rest)
     [v.Tagged("Builtin", v.Str(identifier)), ..rest] ->
       k(e.Builtin(identifier), rest)
     remaining -> {

@@ -78,7 +78,6 @@ pub fn ast() {
       #("NoCases", unit),
       #("Perform", String),
       #("Handle", String),
-      #("Shallow", String),
       #("Builtin", String),
     ]),
   )

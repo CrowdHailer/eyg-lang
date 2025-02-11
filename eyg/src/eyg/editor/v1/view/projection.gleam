@@ -118,7 +118,6 @@ pub fn do_render(exp, br, loc, inferred) {
     ]
     e.Perform(label) -> [perform(label, loc, inferred)]
     e.Handle(label) -> [handle(label, loc, inferred)]
-    e.Shallow(label) -> [shallow(label, loc, inferred)]
     e.Builtin(id) -> [builtin(id, loc, inferred)]
     e.Reference(id) -> [builtin(id, loc, inferred)]
     e.NamedReference(package, release) -> [
@@ -515,12 +514,4 @@ fn handle(label, loc, inferred) {
 
   [click(loc), classes(highlight(target, alert))]
   |> span([span([class("text-gray-400")], [text("handle ")]), text(label)])
-}
-
-fn shallow(label, loc, inferred) {
-  let target = focused(loc)
-  let alert = error(loc, inferred)
-
-  [click(loc), classes(highlight(target, alert))]
-  |> span([span([class("text-gray-400")], [text("shallow ")]), text(label)])
 }

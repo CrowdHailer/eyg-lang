@@ -39,7 +39,6 @@ pub type Switch(context) {
   // env needs terms/value and values need terms/env
   // reversed has no reference to extrinsic, might be different context
   Resume(context)
-  Shallow(String)
   Builtin(String)
 }
 

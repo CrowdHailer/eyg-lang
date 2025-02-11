@@ -33,7 +33,6 @@ pub type Expression(m) {
 
   Perform(label: String)
   Handle(label: String)
-  Shallow(label: String)
 
   Builtin(identifier: String)
   Reference(identifier: String)
@@ -87,7 +86,6 @@ fn do_strip_annotation(in, acc) {
 
     Perform(label) -> #(e.Perform(label), acc)
     Handle(label) -> #(e.Handle(label), acc)
-    Shallow(label) -> #(e.Shallow(label), acc)
 
     Builtin(identifier) -> #(e.Builtin(identifier), acc)
     Reference(identifier) -> #(e.Reference(identifier), acc)
@@ -130,7 +128,6 @@ pub fn add_annotation(exp, meta) {
 
     e.Perform(label) -> #(Perform(label), meta)
     e.Handle(label) -> #(Handle(label), meta)
-    e.Shallow(label) -> #(Shallow(label), meta)
 
     e.Builtin(identifier) -> #(Builtin(identifier), meta)
     e.Reference(identifier) -> #(Reference(identifier), meta)

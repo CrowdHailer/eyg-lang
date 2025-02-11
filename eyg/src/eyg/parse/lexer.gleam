@@ -50,7 +50,6 @@ fn pop(raw, start) {
     "match" <> rest -> done(t.Match, 5, rest)
     "perform" <> rest -> done(t.Perform, 7, rest)
     "deep" <> rest -> done(t.Deep, 4, rest)
-    "shallow" <> rest -> done(t.Shallow, 7, rest)
     "handle" <> rest -> done(t.Handle, 6, rest)
 
     "\"" <> rest -> string("", 1, rest, done)

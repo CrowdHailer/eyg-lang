@@ -222,9 +222,6 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       prim(perform(label), env, eff, level, bindings, a.Perform(label))
     e.Handle(label) ->
       prim(handle(label), env, eff, level, bindings, a.Handle(label))
-    // TODO actual inference
-    e.Shallow(label) ->
-      prim(handle(label), env, eff, level, bindings, a.Shallow(label))
     e.Builtin(id) ->
       case builtin(id) {
         Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(id))

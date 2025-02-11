@@ -559,7 +559,6 @@ pub fn insert_text(state: Embed, data, start, end) {
         "f" -> insert_function(state, start, end)
         "g" -> select(state, start, end)
         "h" -> handle(state, start, end)
-        "H" -> shallow(state, start, end)
         "j" -> builtin(state, start, end)
         "z" -> undo(state, start)
         "Z" -> redo(state, start)
@@ -836,10 +835,6 @@ pub fn insert_text(state: Embed, data, start, end) {
             e.Handle(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
               #(e.Handle(label), [], offset, True)
-            }
-            e.Shallow(label) -> {
-              let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Shallow(label), [], offset, True)
             }
             e.Builtin(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
@@ -1140,15 +1135,6 @@ pub fn handle(state: Embed, start, end) {
   case target {
     e.Vacant -> #(e.Handle(""), Insert, [])
     _ -> #(e.Apply(e.Handle(""), target), Insert, [0])
-  }
-}
-
-pub fn shallow(state: Embed, start, end) {
-  use path <- single_focus(state, start, end)
-  use target <- update_at(state, path)
-  case target {
-    e.Vacant -> #(e.Shallow(""), Insert, [])
-    _ -> #(e.Apply(e.Shallow(""), target), Insert, [0])
   }
 }
 

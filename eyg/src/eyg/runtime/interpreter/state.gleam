@@ -116,7 +116,6 @@ pub fn eval(exp, env: Env(m), k) {
     e.Case(label) -> value(v.Partial(v.Match(label), []))
     e.NoCases -> value(v.Partial(v.NoCases, []))
     e.Handle(label) -> value(v.Partial(v.Handle(label), []))
-    e.Shallow(label) -> value(v.Partial(v.Shallow(label), []))
     e.Builtin(identifier) -> value(v.Partial(v.Builtin(identifier), []))
     e.Reference(ref) ->
       case dict.get(env.references, ref) {
@@ -155,7 +154,7 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
       Ok(#(E(body), env, k))
     }
     // builtin needs to return result for the case statement
-    // Resume/Shallow/Deep need access to k nothing needs access to env but extension might change that
+    // Resume/Deep need access to k nothing needs access to env but extension might change that
     v.Partial(switch, applied) ->
       case switch, applied {
         v.Cons, [item] -> {
@@ -196,8 +195,6 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
         v.Perform(label), [] -> perform(label, arg, env, k)
         v.Handle(label), [handler] -> deep(label, handler, arg, meta, env, k)
         v.Resume(#(popped, env)), [] -> Ok(#(V(arg), env, move(popped, k)))
-        v.Shallow(label), [handler] ->
-          shallow(label, handler, arg, meta, env, k)
         v.Builtin(key), applied ->
           call_builtin(key, list.append(applied, [arg]), meta, env, k)
 
@@ -239,6 +236,7 @@ fn move(delimited, acc) {
 
 fn do_perform(label, arg, i_env, k, acc) {
   case k {
+    // shallow is always false
     Stack(Delimit(l, h, e, shallow), meta, rest) if l == label -> {
       let acc = case shallow {
         True -> acc

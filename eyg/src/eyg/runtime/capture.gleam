@@ -117,7 +117,6 @@ fn capture_defunc(switch, args, env) {
     v.Resume(_) -> {
       panic as "not idea how to capture the func here, is it even possible"
     }
-    v.Shallow(label) -> e.Shallow(label)
     v.Builtin(identifier) -> e.Builtin(identifier)
   }
 

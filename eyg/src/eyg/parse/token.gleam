@@ -10,7 +10,6 @@ pub type Token {
   Match
   Perform
   Deep
-  Shallow
   Handle
   // Having keyword token instead of using name prevents keywords used as names
   Equal
@@ -56,7 +55,6 @@ pub fn to_string(token) {
     Match -> "match"
     Perform -> "perform"
     Deep -> "deep"
-    Shallow -> "shallow"
     Handle -> "handle"
     // Having keyword token instead of using name prevents keywords used as names
     Equal -> "="

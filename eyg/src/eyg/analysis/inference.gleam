@@ -202,8 +202,6 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     e.Perform(label) -> unify(typ, t.perform(label, ref), ref, path)
 
     e.Handle(label) -> unify(typ, t.handle(label, ref), ref, path)
-    // TODO proper typing
-    e.Shallow(label) -> unify(typ, t.handle(label, ref), ref, path)
 
     e.Builtin(identifier) ->
       case dict.get(stdlib.lib().0, identifier) {
