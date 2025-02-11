@@ -409,7 +409,7 @@ fn execute(source, env, handlers) {
 // remove once we use snippet everywhere
 pub fn init(json) {
   io.debug("init easil")
-  let assert Ok(source) = decode.decoder(json)
+  let assert Ok(source) = decode.decode(json)
   let env = stdlib.env()
   let #(#(sub, next, _types), envs) = tree.infer(source, t.Var(-1), t.Var(-2))
 

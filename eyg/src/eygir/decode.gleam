@@ -1,75 +1,92 @@
 import eygir/expression as e
 import gleam/bit_array
-import gleam/dynamic.{
-  DecodeError, any, decode1, decode2, decode3, field, int, string,
-}
+import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/result
 
-fn label() {
-  any([field("label", string), field("l", string)])
+fn label_decoder(for) {
+  use label <- decode.field("l", decode.string)
+  decode.success(for(label))
 }
 
-fn base_encoded(value) {
-  use encoded <- result.then(string(value))
-  result.map_error(bit_array.base64_decode(encoded), fn(_) {
-    [dynamic.DecodeError("base64 encoded", encoded, [""])]
+pub fn decoder() {
+  use switch <- decode.field("0", decode.string)
+  case switch {
+    "v" -> label_decoder(e.Variable)
+    "f" -> {
+      use label <- decode.field("l", decode.string)
+      use body <- decode.field("b", decoder())
+      decode.success(e.Lambda(label, body))
+    }
+    "a" -> {
+      use function <- decode.field("f", decoder())
+      use argument <- decode.field("a", decoder())
+      decode.success(e.Apply(function, argument))
+    }
+    "l" -> {
+      use label <- decode.field("l", decode.string)
+      use value <- decode.field("v", decoder())
+      use then <- decode.field("t", decoder())
+      decode.success(e.Let(label, value, then))
+    }
+
+    "x" -> {
+      use encoded <- decode.field("v", decode.string)
+      case bit_array.base64_decode(encoded) {
+        Ok(bytes) -> decode.success(e.Binary(bytes))
+        Error(Nil) -> decode.failure(e.Vacant, "base64")
+      }
+    }
+    "i" -> {
+      use value <- decode.field("v", decode.int)
+      decode.success(e.Integer(value))
+    }
+    "s" -> {
+      use value <- decode.field("v", decode.string)
+      decode.success(e.Str(value))
+    }
+    "ta" -> decode.success(e.Tail)
+    "c" -> decode.success(e.Cons)
+    "z" -> decode.success(e.Vacant)
+    "u" -> decode.success(e.Empty)
+    "e" -> label_decoder(e.Extend)
+    "g" -> label_decoder(e.Select)
+    "o" -> label_decoder(e.Overwrite)
+    "t" -> label_decoder(e.Tag)
+    "m" -> label_decoder(e.Case)
+    "n" -> decode.success(e.NoCases)
+    "p" -> label_decoder(e.Perform)
+    "h" -> label_decoder(e.Handle)
+    "b" -> label_decoder(e.Builtin)
+    "#" -> label_decoder(e.Reference)
+    "@" -> {
+      use package <- decode.field("p", decode.string)
+      use release <- decode.field("r", decode.int)
+      decode.success(e.NamedReference(package, release))
+    }
+    _ -> {
+      // io.debug(switch)
+      decode.failure(e.Vacant, "valid node key")
+    }
+  }
+}
+
+pub fn decode(json) {
+  decode.run(json, decoder())
+}
+
+pub fn decode_dynamic_error(json) {
+  decode(json)
+  |> result.map_error(fn(errors) {
+    list.map(errors, fn(error) {
+      let decode.DecodeError(expected, found, path) = error
+      dynamic.DecodeError(expected, found, path)
+    })
   })
 }
 
-pub fn decoder(x) {
-  use node <- result.then(any([field("node", string), field("0", string)])(x))
-  case node {
-    "v" | "variable" -> decode1(e.Variable, label())
-    "f" | "function" ->
-      decode2(
-        e.Lambda,
-        label(),
-        any([field("body", decoder), field("b", decoder)]),
-      )
-    "a" | "call" ->
-      decode2(
-        e.Apply,
-        any([field("function", decoder), field("f", decoder)]),
-        any([field("arg", decoder), field("a", decoder)]),
-      )
-    "l" | "let" ->
-      decode3(
-        e.Let,
-        label(),
-        any([field("value", decoder), field("v", decoder)]),
-        any([field("then", decoder), field("t", decoder)]),
-      )
-    "x" ->
-      decode1(
-        e.Binary,
-        any([field("value", base_encoded), field("v", base_encoded)]),
-      )
-
-    "i" | "integer" ->
-      decode1(e.Integer, any([field("value", int), field("v", int)]))
-    "s" | "binary" ->
-      decode1(e.Str, any([field("value", string), field("v", string)]))
-    "ta" | "tail" -> fn(_) { Ok(e.Tail) }
-    "c" | "cons" -> fn(_) { Ok(e.Cons) }
-    "z" | "vacant" -> fn(_) { Ok(e.Vacant) }
-    "u" | "empty" -> fn(_) { Ok(e.Empty) }
-    "e" | "extend" -> decode1(e.Extend, label())
-    "g" | "select" -> decode1(e.Select, label())
-    "o" | "overwrite" -> decode1(e.Overwrite, label())
-    "t" | "tag" -> decode1(e.Tag, label())
-    "m" | "case" -> decode1(e.Case, label())
-    "n" | "nocases" -> fn(_) { Ok(e.NoCases) }
-    "p" | "perform" -> decode1(e.Perform, label())
-    "h" | "handle" -> decode1(e.Handle, label())
-    "b" | "builtin" -> decode1(e.Builtin, label())
-    "#" -> decode1(e.Reference, label())
-    "@" -> decode2(e.NamedReference, field("p", string), field("r", int))
-
-    incorrect -> fn(_) { Error([DecodeError("node", incorrect, ["0"])]) }
-  }(x)
-}
-
 pub fn from_json(raw) {
-  json.decode(raw, decoder)
+  json.parse(raw, decoder())
 }

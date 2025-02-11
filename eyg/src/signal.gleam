@@ -391,7 +391,7 @@ fn projection(exp) {
 
 // app is the stateful bit.
 pub fn app(json) {
-  let assert Ok(source) = decode.decoder(json)
+  let assert Ok(source) = decode.decode(json)
   // component is actually context
   let page = component(fn(exp) { projection(exp) })
   let #(signal, _set) = make(source)

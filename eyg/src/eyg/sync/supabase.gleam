@@ -54,7 +54,7 @@ fn fragment_decoder(raw) {
     Fragment,
     dynamic.field("hash", dynamic.string),
     dynamic.field("created_at", dynamic.string),
-    dynamic.field("code", decode.decoder),
+    dynamic.field("code", decode.decode_dynamic_error),
   )(raw)
 }
 

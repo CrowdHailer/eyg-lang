@@ -7,7 +7,7 @@ import gleeunit/should
 fn round_trip(exp) {
   exp
   |> to_json
-  |> json.decode(decode.decoder)
+  |> decode.from_json
 }
 
 fn check_encoding(exp) {
