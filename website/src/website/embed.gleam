@@ -55,7 +55,7 @@ pub fn run() {
 fn init(config) {
   let #(source, cache) = config
   let source =
-    e.from_expression(source)
+    e.from_annotated(source)
     |> e.open_all
   let snippet = snippet.init(source, [], effects(), cache)
   #(snippet, effect.none())

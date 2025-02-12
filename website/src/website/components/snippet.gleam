@@ -191,6 +191,7 @@ fn new_source(proj, editable, scope, effects, cache) {
       analysis.within_environment(
         scope,
         sync.named_types(cache) |> dict.from_list(),
+        Nil,
       ),
       eff,
     )
@@ -515,7 +516,7 @@ pub fn update(state, message) {
           case decode.from_json(text) {
             Ok(expression) -> {
               let assert #(p.Exp(_), zoom) = proj
-              let proj = #(p.Exp(e.from_expression(expression)), zoom)
+              let proj = #(p.Exp(e.from_annotated(expression)), zoom)
               update_source_from_buffer(proj, state)
             }
             Error(_) -> action_failed(state, "paste")
@@ -564,7 +565,7 @@ fn copy(state) {
 
   case proj {
     #(p.Exp(expression), _) -> {
-      let text = encode.to_json(e.to_expression(expression))
+      let text = encode.to_json(e.to_annotated(expression, []))
       #(state, WriteToClipboard(text))
     }
     _ -> action_failed(state, "copy")
@@ -971,7 +972,7 @@ pub fn copy_escaped(state) {
   case proj {
     #(p.Exp(expression), _) -> {
       let text =
-        encode.to_json(e.to_expression(expression))
+        encode.to_json(e.to_annotated(expression, []))
         |> string.replace("\\", "\\\\")
         |> string.replace("\"", "\\\"")
       #(state, WriteToClipboard(text))
