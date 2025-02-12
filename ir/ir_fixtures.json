@@ -1,0 +1,168 @@
+[
+  {
+    "name": "variable",
+    "source": {
+      "0": "v",
+      "l": "foo"
+    }
+  },
+  {
+    "name": "function",
+    "source": {
+      "0": "f",
+      "l": "x",
+      "b": {
+        "0": "v",
+        "l": "x"
+      }
+    }
+  },
+  {
+    "name": "apply",
+    "source": {
+      "0": "a",
+      "f": {
+        "0": "f",
+        "l": "x",
+        "b": {
+          "0": "v",
+          "l": "x"
+        }
+      },
+      "a": {
+        "0": "s",
+        "v": "foo"
+      }
+    }
+  },
+  {
+    "name": "let",
+    "source": {
+      "0": "l",
+      "l": "x",
+      "v": {
+        "0": "s",
+        "v": "hi"
+      },
+      "t": {
+        "0": "v",
+        "l": "x"
+      }
+    }
+  },
+  {
+    "name": "binary",
+    "source": {
+      "0": "x",
+      "v": "AQ=="
+    }
+  },
+  {
+    "name": "integer",
+    "source": {
+      "0": "i",
+      "v": 5
+    }
+  },
+  {
+    "name": "string",
+    "source": {
+      "0": "s",
+      "v": "hello"
+    }
+  },
+  {
+    "name": "empty list",
+    "source": {
+      "0": "ta"
+    }
+  },
+  {
+    "name": "list cons",
+    "source": {
+      "0": "c"
+    }
+  },
+  {
+    "name": "vacant",
+    "source": {
+      "0": "z"
+    }
+  },
+  {
+    "name": "empty record",
+    "source": {
+      "0": "u"
+    }
+  },
+  {
+    "name": "extend record",
+    "source": {
+      "0": "e",
+      "l": "foo"
+    }
+  },
+  {
+    "name": "select field",
+    "source": {
+      "0": "g",
+      "l": "foo"
+    }
+  },
+  {
+    "name": "tag",
+    "source": {
+      "0": "t",
+      "l": "foo"
+    }
+  },
+  {
+    "name": "match",
+    "source": {
+      "0": "m",
+      "l": "foo"
+    }
+  },
+  {
+    "name": "no match",
+    "source": {
+      "0": "n"
+    }
+  },
+  {
+    "name": "perform effect",
+    "source": {
+      "0": "p",
+      "l": "foo"
+    }
+  },
+  {
+    "name": "handle effect",
+    "source": {
+      "0": "h",
+      "l": "Abord"
+    }
+  },
+  {
+    "name": "add integer builtin",
+    "source": {
+      "0": "b",
+      "l": "int_add"
+    }
+  },
+  {
+    "name": "cid reference",
+    "source": {
+      "0": "#",
+      "l": "h1234"
+    }
+  },
+  {
+    "name": "release",
+    "source": {
+      "0": "@",
+      "p": "welcome",
+      "r": 1
+    }
+  }
+]
