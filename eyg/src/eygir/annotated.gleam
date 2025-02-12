@@ -127,6 +127,29 @@ pub fn namedreference(package, release) {
   #(NamedReference(package, release), Nil)
 }
 
+pub fn unit() {
+  empty()
+}
+
+pub fn true() {
+  apply(tag("True"), unit())
+}
+
+pub fn false() {
+  apply(tag("False"), unit())
+}
+
+pub fn list(items) {
+  do_list(list.reverse(items), tail())
+}
+
+pub fn do_list(reversed, acc) {
+  case reversed {
+    [item, ..rest] -> do_list(rest, apply(apply(cons(), item), acc))
+    [] -> acc
+  }
+}
+
 pub fn strip_annotation(in) {
   let #(exp, acc) = do_strip_annotation(in, [])
   #(exp, list.reverse(acc))

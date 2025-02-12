@@ -79,25 +79,3 @@ pub fn do_overwrite(reversed, acc) {
 pub fn tagged(tag, value) {
   Apply(Tag(tag), value)
 }
-
-fn do_exp_to_block(exp, acc) {
-  case exp {
-    Let(label, value, then) -> do_exp_to_block(then, [#(label, value), ..acc])
-    _ -> #(list.reverse(acc), exp)
-  }
-}
-
-pub fn expression_to_block(exp) {
-  do_exp_to_block(exp, [])
-}
-
-fn do_block_to_exp(reversed, then) {
-  case reversed {
-    [] -> then
-    [#(label, value), ..rest] -> do_block_to_exp(rest, Let(label, value, then))
-  }
-}
-
-pub fn block_to_expression(assigns, then) {
-  do_block_to_exp(list.reverse(assigns), then)
-}

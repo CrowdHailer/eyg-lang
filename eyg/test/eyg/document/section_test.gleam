@@ -24,7 +24,7 @@ pub fn separate_on_comment_test() {
     todo
     ",
     )
-  let #(s, rest) = section.from_expression(source)
+  let #(s, _rest) = section.from_expression(source)
   let #(first, second) = shouldx.contain2(s)
   first
   |> should.equal(
