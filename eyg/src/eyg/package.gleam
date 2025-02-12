@@ -131,9 +131,7 @@ pub fn sections_from_content(content) {
         let #(label, value, meta) = assign
         #(a.Let(label, value, acc), meta)
       })
-    // todo block to editable
-    let source = a.drop_annotation(source)
-    let assert editable.Block(assigns, _, _) = editable.from_expression(source)
+    let assert editable.Block(assigns, _, _) = editable.from_annotated(source)
 
     section.Section(comments, assigns)
   })

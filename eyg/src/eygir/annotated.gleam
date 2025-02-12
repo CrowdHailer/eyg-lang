@@ -1,4 +1,3 @@
-import eygir/expression as e
 import gleam/dynamic
 import gleam/dynamicx
 import gleam/io
@@ -150,102 +149,50 @@ pub fn do_list(reversed, acc) {
   }
 }
 
-pub fn strip_annotation(in) {
-  let #(exp, acc) = do_strip_annotation(in, [])
-  #(exp, list.reverse(acc))
+pub fn get_annotation(in) {
+  let acc = do_get_annotation(in, [])
+  list.reverse(acc)
 }
 
-pub fn drop_annotation(in) {
-  strip_annotation(in).0
-}
-
-fn do_strip_annotation(in, acc) {
+fn do_get_annotation(in, acc) -> List(_) {
   let #(exp, meta) = in
   let acc = [meta, ..acc]
   case exp {
-    Variable(x) -> #(e.Variable(x), acc)
-    Lambda(label, body) -> {
-      let #(exp, acc) = do_strip_annotation(body, acc)
-      #(e.Lambda(label, exp), acc)
-    }
+    Variable(_label) -> acc
+    Lambda(_label, body) -> do_get_annotation(body, acc)
     Apply(func, arg) -> {
-      let #(func, acc) = do_strip_annotation(func, acc)
-      let #(arg, acc) = do_strip_annotation(arg, acc)
-      #(e.Apply(func, arg), acc)
+      let acc = do_get_annotation(func, acc)
+      let acc = do_get_annotation(arg, acc)
+      acc
     }
-    Let(label, value, then) -> {
-      let #(value, acc) = do_strip_annotation(value, acc)
-      let #(then, acc) = do_strip_annotation(then, acc)
-      #(e.Let(label, value, then), acc)
+    Let(_label, value, then) -> {
+      let acc = do_get_annotation(value, acc)
+      let acc = do_get_annotation(then, acc)
+      acc
     }
-    Binary(value) -> #(e.Binary(value), acc)
-    Integer(value) -> #(e.Integer(value), acc)
-    Str(value) -> #(e.Str(value), acc)
+    Binary(_value) -> acc
+    Integer(_value) -> acc
+    Str(_value) -> acc
 
-    Tail -> #(e.Tail, acc)
-    Cons -> #(e.Cons, acc)
+    Tail -> acc
+    Cons -> acc
 
-    Vacant -> #(e.Vacant, acc)
+    Vacant -> acc
 
-    Empty -> #(e.Empty, acc)
-    Extend(label) -> #(e.Extend(label), acc)
-    Select(label) -> #(e.Select(label), acc)
-    Overwrite(label) -> #(e.Overwrite(label), acc)
-    Tag(label) -> #(e.Tag(label), acc)
-    Case(label) -> #(e.Case(label), acc)
-    NoCases -> #(e.NoCases, acc)
+    Empty -> acc
+    Extend(_label) -> acc
+    Select(_label) -> acc
+    Overwrite(_label) -> acc
+    Tag(_label) -> acc
+    Case(_label) -> acc
+    NoCases -> acc
 
-    Perform(label) -> #(e.Perform(label), acc)
-    Handle(label) -> #(e.Handle(label), acc)
+    Perform(_label) -> acc
+    Handle(_label) -> acc
 
-    Builtin(identifier) -> #(e.Builtin(identifier), acc)
-    Reference(identifier) -> #(e.Reference(identifier), acc)
-    NamedReference(package, release) -> #(
-      e.NamedReference(package, release),
-      acc,
-    )
-  }
-}
-
-pub fn add_annotation(exp, meta) {
-  case exp {
-    e.Variable(label) -> #(Variable(label), meta)
-    e.Lambda(label, body) -> #(Lambda(label, add_annotation(body, meta)), meta)
-    e.Apply(func, arg) -> #(
-      Apply(add_annotation(func, meta), add_annotation(arg, meta)),
-      meta,
-    )
-    e.Let(label, value, body) -> #(
-      Let(label, add_annotation(value, meta), add_annotation(body, meta)),
-      meta,
-    )
-
-    e.Binary(value) -> #(Binary(value), meta)
-    e.Integer(value) -> #(Integer(value), meta)
-    e.Str(value) -> #(Str(value), meta)
-
-    e.Tail -> #(Tail, meta)
-    e.Cons -> #(Cons, meta)
-
-    e.Vacant -> #(Vacant, meta)
-
-    e.Empty -> #(Empty, meta)
-    e.Extend(label) -> #(Extend(label), meta)
-    e.Select(label) -> #(Select(label), meta)
-    e.Overwrite(label) -> #(Overwrite(label), meta)
-    e.Tag(label) -> #(Tag(label), meta)
-    e.Case(label) -> #(Case(label), meta)
-    e.NoCases -> #(NoCases, meta)
-
-    e.Perform(label) -> #(Perform(label), meta)
-    e.Handle(label) -> #(Handle(label), meta)
-
-    e.Builtin(identifier) -> #(Builtin(identifier), meta)
-    e.Reference(identifier) -> #(Reference(identifier), meta)
-    e.NamedReference(package, release) -> #(
-      NamedReference(package, release),
-      meta,
-    )
+    Builtin(_identifier) -> acc
+    Reference(_identifier) -> acc
+    NamedReference(_package, _release) -> acc
   }
 }
 

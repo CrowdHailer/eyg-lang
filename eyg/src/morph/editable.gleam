@@ -85,10 +85,6 @@ pub fn open_all(source) {
   }
 }
 
-pub fn from_expression(exp) {
-  from_annotated(a.add_annotation(exp, Nil))
-}
-
 pub fn from_annotated(node) {
   let #(exp, _meta) = node
   case exp {
@@ -278,97 +274,6 @@ fn gather_arguments(func, args) {
     // don't reverse args as gathers from the outside in
     _ -> Call(from_annotated(func), args)
   }
-}
-
-// fn pattern_to_expression(p, exp) {
-//   case p {
-//     Bind(label) -> #(label, exp)
-//     Destructure(ds) -> {
-//       let exp =
-//         list.fold_right(ds, exp, fn(acc, d) {
-//           let #(label, var) = d
-//           e.Let(var, e.Apply(e.Select(label), e.Variable("$")), acc)
-//         })
-//       #("$", exp)
-//     }
-//   }
-// }
-
-pub fn to_expression(source) {
-  to_annotated(source, [])
-  |> a.drop_annotation
-  // case source {
-  //   Variable(x) -> e.Variable(x)
-  //   Call(f, args) ->
-  //     list.fold(args, to_expression(f), fn(acc, arg) {
-  //       let arg = to_expression(arg)
-  //       e.Apply(acc, arg)
-  //     })
-  //   Function(args, body) -> {
-  //     let body = to_expression(body)
-  //     list.fold_right(args, body, fn(acc, arg) {
-  //       let #(var, body) = pattern_to_expression(arg, acc)
-  //       e.Lambda(var, body)
-  //     })
-  //   }
-  //   Block(assigns, then) -> {
-  //     list.fold_right(assigns, to_expression(then), fn(acc, assign) {
-  //       let #(pattern, value) = assign
-  //       let #(var, acc) = pattern_to_expression(pattern, acc)
-  //       e.Let(var, to_expression(value), acc)
-  //     })
-  //   }
-  //   List(items, tail) -> {
-  //     let tail =
-  //       tail
-  //       |> option.map(to_expression)
-  //       |> option.unwrap(e.Tail)
-  //     list.fold_right(items, tail, fn(acc, item) {
-  //       let item = to_expression(item)
-  //       e.Apply(e.Apply(e.Cons, item), acc)
-  //     })
-  //   }
-
-  //   Record(fields, None) -> {
-  //     list.fold_right(fields, e.Empty, fn(acc, field) {
-  //       let #(label, value) = field
-  //       let value = to_expression(value)
-  //       e.Apply(e.Apply(e.Extend(label), value), acc)
-  //     })
-  //   }
-  //   Record(fields, Some(original)) -> {
-  //     list.fold_right(fields, to_expression(original), fn(acc, field) {
-  //       let #(label, value) = field
-  //       let value = to_expression(value)
-  //       e.Apply(e.Apply(e.Overwrite(label), value), acc)
-  //     })
-  //   }
-  //   Select(from, label) -> e.Apply(e.Select(label), to_expression(from))
-
-  //   Case(top, matches, otherwise) -> {
-  //     let otherwise =
-  //       otherwise
-  //       |> option.map(to_expression)
-  //       |> option.unwrap(e.NoCases)
-  //     let matches =
-  //       list.fold_right(matches, otherwise, fn(acc, match) {
-  //         let #(label, value) = match
-  //         let value = to_expression(value)
-  //         e.Apply(e.Apply(e.Case(label), value), acc)
-  //       })
-  //     let top = to_expression(top)
-  //     e.Apply(matches, top)
-  //   }
-  //   Vacant -> e.Vacant
-  //   Integer(value) -> e.Integer(value)
-  //   Binary(value) -> e.Binary(value)
-  //   String(value) -> e.Str(value)
-
-  //   Tag(label) -> e.Tag(label)
-  //   Perform(label) -> e.Perform(label)
-  //   Deep(label) -> e.Handle(label)
-  //   Builtin(identifier) -> e.Builtin(identifier)
-  // }
 }
 
 fn pattern_to_annotated(p, exp, rev) {

@@ -134,8 +134,8 @@ pub fn do_analyse(editable, context, eff) -> Analysis {
   let source = e.to_annotated(editable, [])
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
-  let #(_, types) = a.strip_annotation(tree)
-  let #(_, paths) = a.strip_annotation(e.to_annotated(editable, []))
+  let types = a.get_annotation(tree)
+  let paths = a.get_annotation(e.to_annotated(editable, []))
   #(bindings, list.zip(paths, types))
 }
 

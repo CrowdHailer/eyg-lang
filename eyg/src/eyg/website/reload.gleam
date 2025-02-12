@@ -43,8 +43,8 @@ pub fn check_against_state(editable, old_state, refs) {
       b,
     )
 
-  let #(_, paths) = annotated.strip_annotation(with_paths)
-  let #(_, info) = annotated.strip_annotation(tree)
+  let paths = annotated.get_annotation(with_paths)
+  let info = annotated.get_annotation(tree)
   let assert Ok(info) = list.strict_zip(paths, info)
   let type_errors =
     list.filter_map(info, fn(info) {

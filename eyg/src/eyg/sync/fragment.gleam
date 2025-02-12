@@ -21,7 +21,7 @@ pub type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 pub fn infer(contained, types) {
-  let #(_, meta) = a.strip_annotation(contained)
+  let meta = a.get_annotation(contained)
 
   let #(bindings, _, _, typed) =
     contained
@@ -31,7 +31,7 @@ pub fn infer(contained, types) {
   let #(_res, typevar, _eff, _env) = type_info
   let top_type = binding.gen(typevar, -1, bindings)
 
-  let #(_, info) = a.strip_annotation(typed)
+  let info = a.get_annotation(typed)
   let assert Ok(info) = list.strict_zip(meta, info)
   let new_errors =
     info

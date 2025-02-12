@@ -2,7 +2,6 @@ import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eygir/annotated
-import eygir/annotated as e
 import eygir/decode
 import gleam/dict
 import gleam/io
@@ -38,7 +37,7 @@ pub fn do_main(args) {
     ["infer"] -> {
       let #(exp, _bindings) =
         infer.infer(source, t.Empty, dict.new(), 0, infer.new_state())
-      let acc = annotated.strip_annotation(exp).1
+      let acc = annotated.get_annotation(exp)
       let errors =
         list.filter_map(acc, fn(row) {
           let #(result, _, _, _) = row
