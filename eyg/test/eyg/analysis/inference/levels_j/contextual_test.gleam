@@ -13,12 +13,11 @@ fn parse(src) {
   src
   |> parse.all_from_string()
   |> should.be_ok()
-  |> annotated.drop_annotation()
 }
 
 fn do_resolve(return) {
   let #(acc, bindings) = return
-  let acc = annotated.strip_annotation(acc).1
+  let acc = annotated.get_annotation(acc)
   let #(_, acc) =
     list.map_fold(acc, bindings, fn(bindings, node) {
       let #(error, typed, effect, env) = node

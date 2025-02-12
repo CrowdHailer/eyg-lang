@@ -3,15 +3,14 @@ import eyg/analysis/typ as t
 import eyg/runtime/capture
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
-import eygir/annotated as e2
-import eygir/expression as e
+import eygir/annotated as a
 import gleam/dict
 import gleeunit/should
 import harness/ffi/core.{expression_to_language}
 import harness/stdlib
 
 pub fn unequal_test() {
-  let prog = e.Apply(e.Apply(e.Builtin("equal"), e.Integer(1)), e.Integer(2))
+  let prog = a.apply(a.apply(a.builtin("equal"), a.integer(1)), a.integer(2))
   let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
@@ -20,13 +19,13 @@ pub fn unequal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.false))
 }
 
 pub fn equal_test() {
-  let prog = e.Apply(e.Apply(e.Builtin("equal"), e.Str("foo")), e.Str("foo"))
+  let prog =
+    a.apply(a.apply(a.builtin("equal"), a.string("foo")), a.string("foo"))
   let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
@@ -35,7 +34,6 @@ pub fn equal_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.boolean))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.true))
 }
@@ -43,10 +41,10 @@ pub fn equal_test() {
 // also tests generalization of builtins
 pub fn debug_test() {
   let prog =
-    e.Let(
+    a.let_(
       "_",
-      e.Apply(e.Builtin("debug"), e.Integer(10)),
-      e.Apply(e.Builtin("debug"), e.Str("foo")),
+      a.apply(a.builtin("debug"), a.integer(10)),
+      a.apply(a.builtin("debug"), a.string("foo")),
     )
   let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
@@ -56,14 +54,13 @@ pub fn debug_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   // value is serialized as binary, hence the quotes
   |> should.equal(Ok(v.Str("\"foo\"")))
 }
 
 pub fn simple_fix_test() {
-  let prog = e.Apply(e.Builtin("fix"), e.Lambda("_", e.Str("foo")))
+  let prog = a.apply(a.builtin("fix"), a.lambda("_", a.string("foo")))
   let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
@@ -71,22 +68,21 @@ pub fn simple_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Str))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Str("foo")))
 }
 
 pub fn no_recursive_fix_test() {
   let prog =
-    e.Let(
+    a.let_(
       "fix",
-      e.Builtin("fix"),
-      e.Apply(
-        e.Apply(
-          e.Variable("fix"),
-          e.Lambda("_", e.Lambda("x", e.Variable("x"))),
+      a.builtin("fix"),
+      a.apply(
+        a.apply(
+          a.variable("fix"),
+          a.lambda("_", a.lambda("x", a.variable("x"))),
         ),
-        e.Integer(1),
+        a.integer(1),
       ),
     )
   let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
@@ -96,54 +92,53 @@ pub fn no_recursive_fix_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(1)))
 }
 
 pub fn recursive_sum_test() {
   let list =
-    e.Apply(
-      e.Apply(e.Cons, e.Integer(1)),
-      e.Apply(e.Apply(e.Cons, e.Integer(3)), e.Tail),
+    a.apply(
+      a.apply(a.cons(), a.integer(1)),
+      a.apply(a.apply(a.cons(), a.integer(3)), a.tail()),
     )
 
   let switch =
-    e.Apply(
-      e.Apply(
-        e.Case("Ok"),
-        e.Lambda(
+    a.apply(
+      a.apply(
+        a.case_("Ok"),
+        a.lambda(
           "split",
-          e.Apply(
-            e.Apply(
-              e.Variable("self"),
-              e.Apply(
-                e.Apply(e.Builtin("int_add"), e.Variable("total")),
-                e.Apply(e.Select("head"), e.Variable("split")),
+          a.apply(
+            a.apply(
+              a.variable("self"),
+              a.apply(
+                a.apply(a.builtin("int_add"), a.variable("total")),
+                a.apply(a.select("head"), a.variable("split")),
               ),
             ),
-            e.Apply(e.Select("tail"), e.Variable("split")),
+            a.apply(a.select("tail"), a.variable("split")),
           ),
         ),
       ),
-      e.Apply(
-        e.Apply(e.Case("Error"), e.Lambda("_", e.Variable("total"))),
-        e.NoCases,
+      a.apply(
+        a.apply(a.case_("Error"), a.lambda("_", a.variable("total"))),
+        a.nocases(),
       ),
     )
   let sum =
-    e.Lambda(
+    a.lambda(
       "self",
-      e.Lambda(
+      a.lambda(
         "total",
-        e.Lambda(
+        a.lambda(
           "items",
-          e.Apply(switch, e.Apply(e.Builtin("list_pop"), e.Variable("items"))),
+          a.apply(switch, a.apply(a.builtin("list_pop"), a.variable("items"))),
         ),
       ),
     )
   let prog =
-    e.Apply(e.Apply(e.Apply(e.Builtin("fix"), sum), e.Integer(0)), list)
+    a.apply(a.apply(a.apply(a.builtin("fix"), sum), a.integer(0)), list)
   let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
@@ -151,21 +146,19 @@ pub fn recursive_sum_test() {
   inference.type_of(sub, [])
   |> should.equal(Ok(t.Integer))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Integer(4)))
 }
 
 pub fn eval_test() {
-  let value = e.Str("foo")
-  let value = e2.add_annotation(value, Nil)
+  let value = a.string("foo")
 
-  let prog =
+  let p =
     value
     |> expression_to_language()
     |> v.LinkedList()
-    |> capture.capture()
-    |> e.Apply(e.Builtin("eval"), _)
+    |> capture.capture(Nil)
+  let prog = a.apply(a.builtin("eval"), p)
   // This is old style inference not JM
   // let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
@@ -175,16 +168,13 @@ pub fn eval_test() {
   // inference.type_of(sub, [])
   // |> should.equal(Ok(t.boolean))
 
-  let prog = e2.add_annotation(prog, Nil)
   r.execute(prog, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.Str("foo"))))
 }
 
 pub fn language_to_expression_test() {
-  e.Apply(e.Variable("x"), e.Integer(1))
-  |> e2.add_annotation(Nil)
+  a.apply(a.variable("x"), a.integer(1))
   |> core.expression_to_language()
   |> core.language_to_expression()
   |> should.be_ok
-  |> should.equal(e2.add_annotation(e.Apply(e.Variable("x"), e.Integer(1)), Nil))
 }

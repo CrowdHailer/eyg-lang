@@ -42,8 +42,8 @@ pub type Analysis =
     ),
   )
 
-pub fn within_environment(runtime_env, refs) {
-  let #(bindings, scope) = env_to_tenv(runtime_env)
+pub fn within_environment(runtime_env, refs, meta) {
+  let #(bindings, scope) = env_to_tenv(runtime_env, meta)
   Context(bindings, scope, refs, infer.builtins())
 }
 
@@ -52,11 +52,11 @@ pub fn with_references(refs) {
 }
 
 // use capture because we want efficient ability to get to continuations
-pub fn value_to_type(value, bindings) {
+pub fn value_to_type(value, bindings, meta: t) {
   case value {
     v.Closure(_, _, _) -> {
       let #(#(_, #(_, type_, _, _)), bindings) =
-        capture.capture(value)
+        capture.capture(value, meta)
         |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
@@ -69,14 +69,14 @@ pub fn value_to_type(value, bindings) {
       #(t.List(var), bindings)
     }
     v.LinkedList([item, ..]) -> {
-      let #(item_type, bindings) = value_to_type(item, bindings)
+      let #(item_type, bindings) = value_to_type(item, bindings, meta)
       #(t.List(item_type), bindings)
     }
     v.Record(fields) -> {
       let #(bindings, fields) =
         list.map_fold(fields, bindings, fn(bindings, field) {
           let #(label, value) = field
-          let #(type_, bindings) = value_to_type(value, bindings)
+          let #(type_, bindings) = value_to_type(value, bindings, meta)
           #(bindings, #(label, type_))
         })
       let rows =
@@ -87,7 +87,7 @@ pub fn value_to_type(value, bindings) {
       #(t.Record(rows), bindings)
     }
     v.Tagged(label, value) -> {
-      let #(type_, bindings) = value_to_type(value, bindings)
+      let #(type_, bindings) = value_to_type(value, bindings, meta)
       let level = 0
       let #(var, bindings) = binding.poly(level, bindings)
 
@@ -98,7 +98,7 @@ pub fn value_to_type(value, bindings) {
       // let #(var, bindings) = binding.poly(level, bindings)
       // let #(var, bindings) = binding.poly(level, bindings)
       let #(#(_, #(_, type_, _, _)), bindings) =
-        capture.capture(value)
+        capture.capture(value, meta)
         |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
@@ -114,12 +114,12 @@ pub fn value_to_type(value, bindings) {
 // TODO add a small initial script BUT i want std lib etc
 // Vars together for environment
 
-fn env_to_tenv(scope) {
+fn env_to_tenv(scope, meta) {
   let bindings = infer.new_state()
 
   list.map_fold(scope, bindings, fn(bindings, pair) {
     let #(var, value) = pair
-    let #(type_, bindings) = value_to_type(value, bindings)
+    let #(type_, bindings) = value_to_type(value, bindings, meta)
     #(bindings, #(var, type_))
   })
 }
@@ -131,11 +131,11 @@ pub fn scope_vars(projection: projection.Projection, analysis) {
 pub fn do_analyse(editable, context, eff) -> Analysis {
   let Context(bindings, scope, ..) = context
 
-  let source = e.to_expression(editable)
+  let source = e.to_annotated(editable, [])
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
-  let #(_, types) = a.strip_annotation(tree)
-  let #(_, paths) = a.strip_annotation(e.to_annotated(editable, []))
+  let types = a.get_annotation(tree)
+  let paths = a.get_annotation(e.to_annotated(editable, []))
   #(bindings, list.zip(paths, types))
 }
 

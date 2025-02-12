@@ -1,5 +1,4 @@
 import eygir/annotated as a
-import eygir/expression as e
 import gleam/int
 import gleam/javascript/promise.{type Promise as JSPromise}
 import gleam/list
@@ -42,10 +41,25 @@ pub type Switch(context) {
   Builtin(String)
 }
 
+pub fn print_bit_string(value) {
+  bit_string_to_integers(value, [])
+  |> list.map(int.to_string)
+  |> string.join(" ")
+  |> string.append(">")
+  |> string.append("<", _)
+}
+
+fn bit_string_to_integers(value, acc) {
+  case value {
+    <<byte, rest:bytes>> -> bit_string_to_integers(rest, [byte, ..acc])
+    _ -> list.reverse(acc)
+  }
+}
+
 // This might not give in runtime core, more runtime presentation
 pub fn debug(term) {
   case term {
-    Binary(value) -> e.print_bit_string(value)
+    Binary(value) -> print_bit_string(value)
     Integer(value) -> int.to_string(value)
     Str(value) -> string.concat(["\"", value, "\""])
     LinkedList(items) ->

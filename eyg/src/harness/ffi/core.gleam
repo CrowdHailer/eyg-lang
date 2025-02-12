@@ -18,7 +18,6 @@ import harness/env.{extend, init}
 import harness/ffi/integer
 import harness/ffi/linked_list
 import harness/ffi/string
-import plinth/browser/window
 import plinth/javascript/console
 import plinth/javascript/global
 
@@ -181,7 +180,7 @@ pub fn serialize() {
 }
 
 pub fn do_serialize(term, rev, env, k) {
-  let exp = capture.capture(term)
+  let exp = capture.capture(term, rev)
   Ok(#(state.V(v.Str(encode.to_json(exp))), env, k))
 }
 
@@ -193,9 +192,8 @@ pub fn capture() {
 }
 
 pub fn do_capture(term, rev, env, k) {
-  let exp = capture.capture(term)
+  let exp = capture.capture(term, rev)
   // wasteful but ideally capture will return annotated in the future
-  let exp = e.add_annotation(exp, Nil)
   Ok(#(state.V(v.LinkedList(expression_to_language(exp))), env, k))
 }
 
@@ -207,11 +205,9 @@ pub fn to_javascript() {
 }
 
 pub fn do_to_javascript(func, arg, meta, env, k) {
-  let func = capture.capture(func)
-  let func = e.add_annotation(func, Nil)
-  let arg = capture.capture(arg)
-  let arg = e.add_annotation(arg, Nil)
-  let exp = #(e.Apply(func, arg), Nil)
+  let func = capture.capture(func, meta)
+  let arg = capture.capture(arg, meta)
+  let exp = #(e.Apply(func, arg), meta)
 
   Ok(#(state.V(v.Str(compile.to_js(exp, dict.new()))), env, k))
 }

@@ -2,7 +2,8 @@ import easel/location.{type Location, Location, child, focused, open}
 import eyg/analysis/jm/type_ as t
 import eyg/editor/v1/app.{SelectNode}
 import eyg/editor/v1/view/type_
-import eygir/expression as e
+import eyg/runtime/value
+import eygir/annotated as ann
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -63,23 +64,23 @@ fn click(loc: Location) {
   on_click(SelectNode(loc.path))
 }
 
-pub fn do_render(exp, br, loc, inferred) {
-  case exp {
-    e.Variable(var) -> [variable(var, loc, inferred)]
-    e.Lambda(param, body) -> [lambda(param, body, br, loc, inferred)]
-    e.Apply(func, arg) -> call(func, arg, br, loc, inferred)
-    e.Let(label, value, then) ->
+pub fn do_render(exp: ann.Node(_), br, loc, inferred) {
+  case exp.0 {
+    ann.Variable(var) -> [variable(var, loc, inferred)]
+    ann.Lambda(param, body) -> [lambda(param, body, br, loc, inferred)]
+    ann.Apply(func, arg) -> call(func, arg, br, loc, inferred)
+    ann.Let(label, value, then) ->
       assigment(label, value, then, br, loc, inferred)
-    e.Binary(value) -> [binary(value, loc, inferred)]
-    e.Str(value) -> [string(value, loc, inferred)]
-    e.Integer(value) -> [integer(value, loc, inferred)]
-    e.Tail -> [
+    ann.Binary(value) -> [binary(value, loc, inferred)]
+    ann.Str(value) -> [string(value, loc, inferred)]
+    ann.Integer(value) -> [integer(value, loc, inferred)]
+    ann.Tail -> [
       span(
         [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
         [text("[]")],
       ),
     ]
-    e.Cons -> [
+    ann.Cons -> [
       // maybe gray but probably better rendering in apply
       span(
         [
@@ -92,19 +93,19 @@ pub fn do_render(exp, br, loc, inferred) {
         [text("cons")],
       ),
     ]
-    e.Vacant -> [vacant(loc, inferred)]
-    e.Empty -> [
+    ann.Vacant -> [vacant(loc, inferred)]
+    ann.Empty -> [
       span(
         [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
         [text("{}")],
       ),
     ]
-    e.Extend(label) -> [extend(label, loc, inferred)]
-    e.Select(label) -> [select(label, loc, inferred)]
-    e.Overwrite(label) -> [overwrite(label, loc, inferred)]
-    e.Tag(label) -> [tag(label, loc, inferred)]
-    e.Case(label) -> [match(label, br, loc, inferred)]
-    e.NoCases -> [
+    ann.Extend(label) -> [extend(label, loc, inferred)]
+    ann.Select(label) -> [select(label, loc, inferred)]
+    ann.Overwrite(label) -> [overwrite(label, loc, inferred)]
+    ann.Tag(label) -> [tag(label, loc, inferred)]
+    ann.Case(label) -> [match(label, br, loc, inferred)]
+    ann.NoCases -> [
       span(
         [
           click(loc),
@@ -116,19 +117,19 @@ pub fn do_render(exp, br, loc, inferred) {
         [text("nocases")],
       ),
     ]
-    e.Perform(label) -> [perform(label, loc, inferred)]
-    e.Handle(label) -> [handle(label, loc, inferred)]
-    e.Builtin(id) -> [builtin(id, loc, inferred)]
-    e.Reference(id) -> [builtin(id, loc, inferred)]
-    e.NamedReference(package, release) -> [
+    ann.Perform(label) -> [perform(label, loc, inferred)]
+    ann.Handle(label) -> [handle(label, loc, inferred)]
+    ann.Builtin(id) -> [builtin(id, loc, inferred)]
+    ann.Reference(id) -> [builtin(id, loc, inferred)]
+    ann.NamedReference(package, release) -> [
       builtin("@" <> package <> ":" <> int.to_string(release), loc, inferred),
     ]
   }
 }
 
-fn render_block(exp, br, loc, inferred) {
-  case exp {
-    e.Let(_, _, _) ->
+fn render_block(exp: ann.Node(_), br, loc, inferred) {
+  case exp.0 {
+    ann.Let(_, _, _) ->
       case open(loc) {
         True -> {
           let br_inner = string.append(br, "  ")
@@ -187,8 +188,8 @@ fn lambda(param, body, br, loc, inferred) {
 
 fn render_branch(
   label,
-  then,
-  otherwise,
+  then: ann.Node(_),
+  otherwise: ann.Node(_),
   br,
   loc_branch,
   loc_otherwise,
@@ -212,14 +213,14 @@ fn render_branch(
       [classes(highlight(focused(loc_branch), error(loc_branch, inferred)))],
       [match, text(" "), ..branch],
     ),
-    ..case otherwise {
-      e.NoCases -> [
+    ..case otherwise.0 {
+      ann.NoCases -> [
         text(br),
         span([class("text-gray-400"), click(loc_otherwise)], [
           text("-- closed --"),
         ]),
       ]
-      e.Apply(e.Apply(e.Case(label), then), otherwise) ->
+      ann.Apply(#(ann.Apply(#(ann.Case(label), _), then), _), otherwise) ->
         render_branch(
           label,
           then,
@@ -238,13 +239,13 @@ fn render_branch(
 // call with binary is error
 // apply to just a case could leave it as ++
 // nocases should be rendered alone as empty match
-fn call(func, arg, br, loc, inferred) {
+fn call(func: ann.Node(_), arg: ann.Node(_), br, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
 
   // not target but any selected
-  let inner = case func, arg {
-    e.Apply(e.Case(label), then), arg -> {
+  let inner = case func.0, arg.0 {
+    ann.Apply(#(ann.Case(label), _), then), _ -> {
       let loc_branch = child(loc, 0)
       let loc_otherwise = child(loc, 1)
       case open(loc_branch) || open(loc_otherwise) {
@@ -276,7 +277,7 @@ fn call(func, arg, br, loc, inferred) {
         ]
       }
     }
-    e.Apply(e.Extend(label), element), arg ->
+    ann.Apply(#(ann.Extend(label), _), element), _ ->
       list.flatten([
         [
           text("{"),
@@ -300,7 +301,7 @@ fn call(func, arg, br, loc, inferred) {
         render_block(arg, br, child(loc, 1), inferred),
         [text("}")],
       ])
-    e.Apply(e.Cons, element), arg -> {
+    ann.Apply(#(ann.Cons, _), element), _ -> {
       let root = #(child(child(loc, 0), 1), element)
       let #(elements, tail) = gather_list(arg, child(loc, 1), [root])
 
@@ -350,12 +351,12 @@ fn call(func, arg, br, loc, inferred) {
     //   render_block(arg, br, child(loc, 1), inferred),
     //   [text("]")],
     // ])
-    e.Select(_), arg ->
+    ann.Select(_), _ ->
       list.flatten([
         render_block(arg, br, child(loc, 1), inferred),
         render_block(func, br, child(loc, 0), inferred),
       ])
-    _, arg ->
+    _, _ ->
       // arg becomes then
       list.flatten([
         render_block(func, br, child(loc, 0), inferred),
@@ -369,14 +370,15 @@ fn call(func, arg, br, loc, inferred) {
 }
 
 fn gather_list(tail, loc, acc) {
-  case tail {
-    e.Apply(e.Apply(e.Cons, element), tail) ->
+  let #(exp, _meta) = tail
+  case exp {
+    ann.Apply(#(ann.Apply(#(ann.Cons, _), element), _), tail) ->
       gather_list(tail, child(loc, 1), [
         #(child(child(loc, 0), 1), element),
         ..acc
       ])
-    e.Tail -> #(acc, None)
-    other -> #(acc, Some(#(other, loc)))
+    ann.Tail -> #(acc, None)
+    _ -> #(acc, Some(#(tail, loc)))
   }
 }
 
@@ -410,7 +412,7 @@ fn error(loc: Location, inferred) {
 fn binary(value, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
-  let content = e.print_bit_string(value)
+  let content = value.print_bit_string(value)
   [click(loc), classes([#("text-green-500", True), ..highlight(target, alert)])]
   |> span([text(content)])
 }

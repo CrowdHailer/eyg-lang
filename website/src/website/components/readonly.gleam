@@ -149,7 +149,7 @@ fn copy(state) {
 
   case projection {
     #(p.Exp(expression), _) -> {
-      let text = encode.to_json(e.to_expression(expression))
+      let text = encode.to_json(e.to_annotated(expression, []))
       #(state, WriteToClipboard(text))
     }
     _ -> #(state, Fail("can only copy expressions"))

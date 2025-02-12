@@ -1,14 +1,12 @@
+import eyg/runtime/break
+import eyg/runtime/cast
+import eyg/runtime/value as v
+import eygir/annotated as e
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/listx
 import gleam/result
-
-// import eygir/expression as e
-import eyg/runtime/break
-import eyg/runtime/cast
-import eyg/runtime/value as v
-import eygir/annotated as e
 
 pub type Context(m) =
   #(List(#(Kontinue(m), m)), Env(m))
@@ -273,9 +271,8 @@ pub fn deep(label, handle, exec, meta, env, k) {
   let k = Stack(Delimit(label, handle, env, False), meta, k)
   call(exec, v.unit, meta, env, k)
 }
-
 // somewhere this needs outer k
-fn shallow(label, handle, exec, meta, env, k) {
-  let k = Stack(Delimit(label, handle, env, True), meta, k)
-  call(exec, v.unit, meta, env, k)
-}
+// fn shallow(label, handle, exec, meta, env, k) {
+//   let k = Stack(Delimit(label, handle, env, True), meta, k)
+//   call(exec, v.unit, meta, env, k)
+// }

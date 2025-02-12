@@ -3,7 +3,7 @@ import eyg/analysis/type_/binding/error
 import eyg/shell/examples
 import eyg/sync/browser
 import eyg/sync/sync
-import eygir/expression
+import eygir/annotated
 import gleam/int
 import gleam/javascript/promisex
 import gleam/list
@@ -116,12 +116,12 @@ pub type State {
 
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
-  let source = e.from_expression(expression.Vacant)
+  let source = e.from_annotated(annotated.vacant())
   // snippet has no effects, they run in the shell
   let snippet = snippet.init(source, [], [], cache)
   let shell =
     Shell(None, [], {
-      let source = e.from_expression(expression.Vacant)
+      let source = e.from_annotated(annotated.vacant())
       // TODO update hardness to spotless
       snippet.init(source, [], harness.effects(), cache)
     })

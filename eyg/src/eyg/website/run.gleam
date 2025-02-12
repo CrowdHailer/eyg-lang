@@ -42,8 +42,7 @@ pub type Status {
 pub fn start(editable, scope, effects, cache) {
   let return =
     block.execute(
-      editable.to_expression(editable)
-        |> annotated.add_annotation(Nil),
+      editable.to_annotated(editable, []) |> annotated.clear_annotation,
       stdlib.new_env(
         scope,
         sync.named_values(cache)

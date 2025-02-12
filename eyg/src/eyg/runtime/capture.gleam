@@ -1,43 +1,48 @@
 import eyg/runtime/value as v
 import eygir/annotated as a
-import eygir/expression as e
 import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
 
-pub fn capture(term) {
+pub fn capture(term, meta) {
   // env is reversed with first needed deepest
-  let #(exp, env) = do_capture(term, [])
+  let #(exp, env) = do_capture(term, [], meta)
   list.fold(env, exp, fn(then, definition) {
     let #(var, value) = definition
-    e.Let(var, value, then)
+    #(a.Let(var, value, then), meta)
   })
 }
 
-fn do_capture(term, env) {
+fn do_capture(term, env, meta) {
   case term {
-    v.Binary(value) -> #(e.Binary(value), env)
-    v.Integer(value) -> #(e.Integer(value), env)
-    v.Str(value) -> #(e.Str(value), env)
+    v.Binary(value) -> #(#(a.Binary(value), meta), env)
+    v.Integer(value) -> #(#(a.Integer(value), meta), env)
+    v.Str(value) -> #(#(a.Str(value), meta), env)
     v.LinkedList(items) ->
-      list.fold_right(items, #(e.Tail, env), fn(state, item) {
+      list.fold_right(items, #(#(a.Tail, meta), env), fn(state, item) {
         let #(tail, env) = state
-        let #(item, env) = do_capture(item, env)
-        let exp = e.Apply(e.Apply(e.Cons, item), tail)
+        let #(item, env) = do_capture(item, env, meta)
+        let exp = #(
+          a.Apply(#(a.Apply(#(a.Cons, meta), item), meta), tail),
+          meta,
+        )
         #(exp, env)
       })
     v.Record(fields) ->
-      list.fold_right(fields, #(e.Empty, env), fn(state, pair) {
+      list.fold_right(fields, #(#(a.Empty, meta), env), fn(state, pair) {
         let #(label, item) = pair
         let #(record, env) = state
-        let #(item, env) = do_capture(item, env)
-        let exp = e.Apply(e.Apply(e.Extend(label), item), record)
+        let #(item, env) = do_capture(item, env, meta)
+        let exp = #(
+          a.Apply(#(a.Apply(#(a.Extend(label), meta), item), meta), record),
+          meta,
+        )
         #(exp, env)
       })
     v.Tagged(label, value) -> {
-      let #(value, env) = do_capture(value, env)
-      let exp = e.Apply(e.Tag(label), value)
+      let #(value, env) = do_capture(value, env, meta)
+      let exp = #(a.Apply(#(a.Tag(label), meta), value), meta)
       #(exp, env)
     }
     // universal code from before
@@ -46,7 +51,6 @@ fn do_capture(term, env) {
     // https://github.com/midas-framework/project_wisdom/pull/57/files#diff-d576d15df2bd35cb961bc2edd513c97027ef52ce19daf5d303f45bd11b327604
     v.Closure(arg, body, captured) -> {
       // Note captured list has variables multiple times and we need to find first only
-      let body = a.drop_annotation(body)
       let captured =
         list.filter_map(vars_used(body, [arg]), fn(var) {
           use term <- result.then(list.key_find(captured, var))
@@ -60,8 +64,8 @@ fn do_capture(term, env) {
           // could special rule std by passing in as an argument
           //
           let #(exp, env) = case var {
-            // "std" -> #(e.Str("I AM STD"), env)
-            _ -> do_capture(term, env)
+            // "std" -> #(a.Str("I AM STD"), env)
+            _ -> do_capture(term, env, meta)
           }
           case list.key_find(env, var) {
             Ok(old) if old == exp -> #(env, wrapped)
@@ -89,41 +93,41 @@ fn do_capture(term, env) {
           }
         })
 
-      let exp = e.Lambda(arg, body)
+      let exp = #(a.Lambda(arg, body), meta)
       let exp =
         list.fold(wrapped, exp, fn(exp, pair) {
           let #(scoped_var, var) = pair
-          e.Let(var, e.Variable(scoped_var), exp)
+          #(a.Let(var, #(a.Variable(scoped_var), meta), exp), meta)
         })
       #(exp, env)
     }
-    v.Partial(switch, applied) -> capture_defunc(switch, applied, env)
+    v.Partial(switch, applied) -> capture_defunc(switch, applied, env, meta)
     v.Promise(_) ->
       panic as "not capturing promise, yet. Can be done making serialize async"
   }
 }
 
-fn capture_defunc(switch, args, env) {
+fn capture_defunc(switch, args, env, meta) {
   let exp = case switch {
-    v.Cons -> e.Cons
-    v.Extend(label) -> e.Extend(label)
-    v.Overwrite(label) -> e.Overwrite(label)
-    v.Select(label) -> e.Select(label)
-    v.Tag(label) -> e.Tag(label)
-    v.Match(label) -> e.Case(label)
-    v.NoCases -> e.NoCases
-    v.Perform(label) -> e.Perform(label)
-    v.Handle(label) -> e.Handle(label)
+    v.Cons -> a.Cons
+    v.Extend(label) -> a.Extend(label)
+    v.Overwrite(label) -> a.Overwrite(label)
+    v.Select(label) -> a.Select(label)
+    v.Tag(label) -> a.Tag(label)
+    v.Match(label) -> a.Case(label)
+    v.NoCases -> a.NoCases
+    v.Perform(label) -> a.Perform(label)
+    v.Handle(label) -> a.Handle(label)
     v.Resume(_) -> {
       panic as "not idea how to capture the func here, is it even possible"
     }
-    v.Builtin(identifier) -> e.Builtin(identifier)
+    v.Builtin(identifier) -> a.Builtin(identifier)
   }
-
+  let exp = #(exp, meta)
   list.fold(args, #(exp, env), fn(state, arg) {
     let #(exp, env) = state
-    let #(arg, env) = do_capture(arg, env)
-    let exp = e.Apply(exp, arg)
+    let #(arg, env) = do_capture(arg, env, meta)
+    let exp = #(a.Apply(exp, arg), meta)
     #(exp, env)
   })
 }
@@ -133,20 +137,21 @@ fn vars_used(exp, env) {
 }
 
 // env is the environment at this in a walk through the tree so these should not be added
-fn do_vars_used(exp, env, found) {
+fn do_vars_used(tree, env, found) {
+  let #(exp, _meta) = tree
   case exp {
-    e.Variable(v) ->
+    a.Variable(v) ->
       case !list.contains(env, v) && !list.contains(found, v) {
         True -> [v, ..found]
         False -> found
       }
-    e.Lambda(param, body) -> do_vars_used(body, [param, ..env], found)
-    e.Apply(func, arg) -> {
+    a.Lambda(param, body) -> do_vars_used(body, [param, ..env], found)
+    a.Apply(func, arg) -> {
       let found = do_vars_used(func, env, found)
       do_vars_used(arg, env, found)
     }
     // in recursive label also overwritten in value
-    e.Let(label, value, then) -> {
+    a.Let(label, value, then) -> {
       let found = do_vars_used(value, env, found)
       do_vars_used(then, [label, ..env], found)
     }

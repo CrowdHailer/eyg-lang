@@ -2,7 +2,7 @@ import eyg/analysis/jm/env
 import eyg/analysis/jm/error
 import eyg/analysis/jm/infer.{builtins, extend, generalise, instantiate, mono}
 import eyg/analysis/jm/type_ as t
-import eygir/expression as e
+import eygir/annotated as a
 import gleam/dict
 
 pub type State =
@@ -42,9 +42,10 @@ pub fn infer(exp, type_, eff) {
 }
 
 fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
+  let #(exp, _meta) = exp
   case exp {
-    e.Variable(x) -> fetch(acc, rev, env, x, type_, envs, k)
-    e.Apply(e1, e2) -> {
+    a.Variable(x) -> fetch(acc, rev, env, x, type_, envs, k)
+    a.Apply(e1, e2) -> {
       // can't error
       let #(sub, next, types) = acc
       let types = dict.insert(types, rev, Ok(type_))
@@ -55,7 +56,7 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
       use acc, envs <- step(acc, env, envs, e2, [1, ..rev], arg, eff)
       Cont(acc, envs, k)
     }
-    e.Lambda(x, e1) -> {
+    a.Lambda(x, e1) -> {
       let #(sub, next, types) = acc
       let #(arg, next) = t.fresh(next)
       let #(eff, next) = t.fresh(next)
@@ -69,7 +70,7 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
       use acc, envs <- step(acc, env, envs, e1, [0, ..rev], ret, eff)
       Cont(acc, envs, k)
     }
-    e.Let(x, e1, e2) -> {
+    a.Let(x, e1, e2) -> {
       // can't error
       let #(sub, next, types) = acc
       let types = dict.insert(types, rev, Ok(type_))
@@ -81,7 +82,7 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
       use acc, envs <- step(acc, env, envs, e2, [1, ..rev], type_, eff)
       Cont(acc, envs, k)
     }
-    e.Builtin(x) -> fetch(acc, rev, builtins(), x, type_, envs, k)
+    a.Builtin(x) -> fetch(acc, rev, builtins(), x, type_, envs, k)
     literal -> {
       let #(sub, next, types) = acc
       let #(found, next) = primitive(literal, next)
@@ -93,37 +94,37 @@ fn step(acc, env, envs, exp, rev, type_, eff, k) -> Run {
 
 fn primitive(exp, next) {
   case exp {
-    e.Variable(_)
-    | e.Apply(_, _)
-    | e.Lambda(_, _)
-    | e.Let(_, _, _)
-    | e.Builtin(_) -> panic as "not a literal"
+    a.Variable(_)
+    | a.Apply(_, _)
+    | a.Lambda(_, _)
+    | a.Let(_, _, _)
+    | a.Builtin(_) -> panic as "not a literal"
 
-    e.Reference(_) -> panic as "not implemented in this type checker"
-    e.NamedReference(_, _) -> panic as "not implemented in this type checker"
+    a.Reference(_) -> panic as "not implemented in this type checker"
+    a.NamedReference(_, _) -> panic as "not implemented in this type checker"
 
-    e.Binary(_) -> #(t.Binary, next)
-    e.Str(_) -> #(t.String, next)
-    e.Integer(_) -> #(t.Integer, next)
+    a.Binary(_) -> #(t.Binary, next)
+    a.Str(_) -> #(t.String, next)
+    a.Integer(_) -> #(t.Integer, next)
 
-    e.Tail -> t.tail(next)
-    e.Cons -> t.cons(next)
-    e.Vacant -> t.fresh(next)
+    a.Tail -> t.tail(next)
+    a.Cons -> t.cons(next)
+    a.Vacant -> t.fresh(next)
 
     // Record
-    e.Empty -> t.empty(next)
-    e.Extend(label) -> t.extend(label, next)
-    e.Overwrite(label) -> t.overwrite(label, next)
-    e.Select(label) -> t.select(label, next)
+    a.Empty -> t.empty(next)
+    a.Extend(label) -> t.extend(label, next)
+    a.Overwrite(label) -> t.overwrite(label, next)
+    a.Select(label) -> t.select(label, next)
 
     // Union
-    e.Tag(label) -> t.tag(label, next)
-    e.Case(label) -> t.case_(label, next)
-    e.NoCases -> t.nocases(next)
+    a.Tag(label) -> t.tag(label, next)
+    a.Case(label) -> t.case_(label, next)
+    a.NoCases -> t.nocases(next)
 
     // Effect
-    e.Perform(label) -> t.perform(label, next)
-    e.Handle(label) -> t.handle(label, next)
+    a.Perform(label) -> t.perform(label, next)
+    a.Handle(label) -> t.handle(label, next)
   }
 }
 

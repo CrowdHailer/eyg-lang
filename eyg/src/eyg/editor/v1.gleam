@@ -2,7 +2,7 @@
 import eyg/editor/v1/app
 import eyg/editor/v1/view/root
 import eyg/website/page
-import eygir/expression
+import eygir/annotated
 import gleam/option.{Some}
 import lustre
 import lustre/effect
@@ -18,6 +18,6 @@ pub fn client() {
 }
 
 fn init(_) {
-  let state = app.init(expression.Vacant)
+  let state = app.init(annotated.vacant())
   #(state, effect.none())
 }

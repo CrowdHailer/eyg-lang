@@ -4,9 +4,8 @@ import eyg/runtime/break
 import eyg/sync/dump
 import eyg/sync/fragment
 import eyg/sync/supabase
-import eygir/annotated
+import eygir/annotated as a
 import eygir/decode
-import eygir/expression
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/http.{type Scheme}
@@ -27,19 +26,16 @@ pub type Origin {
 
 pub const test_origin = Origin(http.Https, "eyg.test", None)
 
-pub type Source =
-  annotated.Node(List(Int))
-
 pub type Computed {
   Computed(
-    expression: expression.Expression,
+    expression: a.Node(Nil),
     type_: binding.Poly,
     value: Result(fragment.Value, String),
   )
 }
 
-pub type Pending =
-  List(#(String, #(List(String), Source)))
+pub type Pending(m) =
+  List(#(String, #(List(String), a.Node(m))))
 
 pub type Run {
   Ongoing
@@ -50,7 +46,7 @@ pub type Sync {
   Sync(
     origin: Origin,
     tasks: Dict(String, Run),
-    pending: Pending,
+    pending: Pending(List(Int)),
     // loaded is blobs
     loaded: Dict(String, Computed),
     registry: Dict(String, String),
@@ -59,10 +55,7 @@ pub type Sync {
 }
 
 pub type Message {
-  HashSourceFetched(
-    reference: String,
-    value: Result(expression.Expression, snag.Snag),
-  )
+  HashSourceFetched(reference: String, value: Result(a.Node(Nil), snag.Snag))
   DumpDownLoaded(Result(dump.Dump, snag.Snag))
 }
 
@@ -205,7 +198,7 @@ pub fn named_types(sync) {
   })
 }
 
-pub fn do_resolve(pending: Pending, loaded) -> #(Pending, _) {
+pub fn do_resolve(pending, loaded) {
   let #(computed, pending) =
     result.partition(
       list.map(pending, fn(p) {
@@ -251,7 +244,7 @@ fn compute(source, loaded) {
         [] -> []
         _ -> io.debug(errors)
       }
-      Ok(Computed(annotated.drop_annotation(source), top_type, executed))
+      Ok(Computed(a.clear_annotation(source), top_type, executed))
     }
     missing -> Error(#(missing, source))
   }
@@ -265,7 +258,7 @@ pub fn task_finish(sync, message) {
         Ok(expression), _ -> {
           let tasks = dict.delete(tasks, ref)
           let sync = Sync(..sync, tasks: tasks)
-          install(sync, ref, expression)
+          install(sync, ref, expression |> a.map_annotation(fn(_) { [] }))
         }
         Error(reason), _ -> {
           let tasks = dict.insert(tasks, ref, Failed(reason))
@@ -275,15 +268,14 @@ pub fn task_finish(sync, message) {
     DumpDownLoaded(dump) -> {
       case dump {
         Ok(dump) -> load(sync, dump)
-        Error(reason) -> panic as "failed to load resources"
+        Error(_reason) -> panic as "failed to load resources"
       }
     }
   }
 }
 
-pub fn install(sync, ref, expression) {
+pub fn install(sync, ref, source) {
   let Sync(loaded: loaded, pending: pending, ..) = sync
-  let source = annotated.add_annotation(expression, [])
 
   case compute(source, loaded) {
     Ok(computed) -> {
@@ -356,9 +348,9 @@ pub fn load(sync, dump: dump.Dump) {
       fn(loaded, fragment: supabase.Fragment) {
         // List all references and then put them in the loaded map
         // This is bluring things a bit
-        let expression = annotated.add_annotation(fragment.code, [])
+        let expression = a.map_annotation(fragment.code, fn(_) { [] })
         let named =
-          annotated.list_named_references(expression)
+          a.list_named_references(expression)
           |> list.map(fn(ref) {
             let #(name, release) = ref
             case dict.get(registry, name) {

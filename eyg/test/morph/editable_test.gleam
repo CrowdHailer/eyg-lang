@@ -1,5 +1,4 @@
 import eygir/annotated as a
-import eygir/expression as e
 import gleeunit/should
 import morph/editable as et
 
@@ -9,40 +8,39 @@ fn should_equal(given, expected) {
 }
 
 pub fn call_test() {
-  let source = e.Apply(e.Apply(e.Variable("f"), e.Integer(1)), e.Integer(2))
+  let source = a.apply(a.apply(a.variable("f"), a.integer(1)), a.integer(2))
   source
-  |> a.add_annotation(Nil)
   |> et.from_annotated
   |> should_equal(et.Call(et.Variable("f"), [et.Integer(1), et.Integer(2)]))
-  |> et.to_expression
+  |> et.to_annotated([])
+  |> a.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn destructure_test() {
   let source =
-    e.Lambda(
+    a.lambda(
       "$",
-      e.Let("a", e.Apply(e.Select("foo"), e.Variable("$")), e.Variable("a")),
+      a.let_("a", a.apply(a.select("foo"), a.variable("$")), a.variable("a")),
     )
   source
-  |> a.add_annotation(Nil)
   |> et.from_annotated
   |> should_equal(et.Function(
     [et.Destructure([#("foo", "a")])],
     et.Variable("a"),
   ))
-  |> et.to_expression
+  |> et.to_annotated([])
+  |> a.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn dont_destructure_used_test() {
   let source =
-    e.Lambda(
+    a.lambda(
       "x",
-      e.Let("a", e.Apply(e.Select("foo"), e.Variable("x")), e.Variable("x")),
+      a.let_("a", a.apply(a.select("foo"), a.variable("x")), a.variable("x")),
     )
   source
-  |> a.add_annotation(Nil)
   |> et.from_annotated
   |> should_equal(et.Function(
     [et.Bind("x")],
@@ -52,45 +50,46 @@ pub fn dont_destructure_used_test() {
       False,
     ),
   ))
-  |> et.to_expression
+  |> et.to_annotated([])
+  |> a.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn call_select_test() {
   let source =
-    e.Apply(e.Apply(e.Select("to_string"), e.Variable("integer")), e.Integer(5))
+    a.apply(a.apply(a.select("to_string"), a.variable("integer")), a.integer(5))
   source
-  |> a.add_annotation(Nil)
   |> et.from_annotated
   |> should_equal(
     et.Call(et.Select(et.Variable("integer"), "to_string"), [et.Integer(5)]),
   )
-  |> et.to_expression
+  |> et.to_annotated([])
+  |> a.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn bare_select_test() {
-  let source = e.Select("foo")
+  let source = a.select("foo")
   source
-  |> a.add_annotation(Nil)
   |> et.from_annotated
   |> should_equal(et.Function(
     [et.Bind("$")],
     et.Select(et.Variable("$"), "foo"),
   ))
-  |> et.to_expression
+  |> et.to_annotated([])
+  |> a.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn unbound_case_test() {
   let source =
-    e.Apply(e.Apply(e.Case("Ok"), e.Vacant), e.Lambda("x", e.Variable("x")))
+    a.apply(a.apply(a.case_("Ok"), a.vacant()), a.lambda("x", a.variable("x")))
   source
-  |> a.add_annotation(Nil)
   |> et.from_annotated
   // |> should_equal(
   //   et.Call(et.Select(et.Variable("integer"), "to_string"), [et.Integer(5)]),
   // )
-  |> et.to_expression
+  |> et.to_annotated([])
+  |> a.clear_annotation()
   |> should_equal(source)
 }

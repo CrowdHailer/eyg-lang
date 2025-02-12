@@ -1,7 +1,5 @@
 import eyg/document/section.{Section}
 import eyg/parse
-import eygir/annotated
-import gleam/io
 import gleam/pair
 import gleeunit/should
 import gleeunit/shouldx
@@ -12,7 +10,6 @@ fn ast(source) {
   |> parse.from_string()
   |> should.be_ok()
   |> pair.first()
-  |> annotated.drop_annotation
 }
 
 pub fn separate_on_comment_test() {
@@ -27,7 +24,7 @@ pub fn separate_on_comment_test() {
     todo
     ",
     )
-  let #(s, rest) = section.from_expression(source)
+  let #(s, _rest) = section.from_expression(source)
   let #(first, second) = shouldx.contain2(s)
   first
   |> should.equal(

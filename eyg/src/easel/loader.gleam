@@ -53,7 +53,6 @@ fn applet(root) {
         let env = stdlib.env()
         let rev = []
         let k = dict.new()
-        let source = e.add_annotation(source, Nil)
         let assert Ok(term) = r.execute(source, env, k)
         use func <- result.then(cast.field("func", cast.any, term))
         use arg <- result.then(cast.field("arg", cast.any, term))

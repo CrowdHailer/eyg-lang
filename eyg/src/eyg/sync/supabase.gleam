@@ -1,5 +1,5 @@
+import eygir/annotated as a
 import eygir/decode
-import eygir/expression as e
 import gleam/dynamic
 import gleam/http
 import gleam/http/request
@@ -46,7 +46,7 @@ pub fn get_fragments() {
 }
 
 pub type Fragment {
-  Fragment(hash: String, created_at: String, code: e.Expression)
+  Fragment(hash: String, created_at: String, code: a.Node(Nil))
 }
 
 fn fragment_decoder(raw) {

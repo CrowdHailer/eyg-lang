@@ -3,7 +3,6 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
-import eyg/analysis/unification
 import eygir/annotated
 import gleam/io
 import gleam/list
@@ -28,7 +27,7 @@ pub fn check_against_state(editable, old_state, refs) {
   let b = infer.new_state()
   let #(old_state, b) = binding.instantiate(old_state, 1, b)
   let with_paths = editable.to_annotated(editable, [])
-  let source = editable.to_expression(editable)
+  let source = editable.to_annotated(editable, [])
   let level = 1
   // do infer allows returning top got value, which i don't need?
   let #(tree, b) =
@@ -44,8 +43,8 @@ pub fn check_against_state(editable, old_state, refs) {
       b,
     )
 
-  let #(_, paths) = annotated.strip_annotation(with_paths)
-  let #(_, info) = annotated.strip_annotation(tree)
+  let paths = annotated.get_annotation(with_paths)
+  let info = annotated.get_annotation(tree)
   let assert Ok(info) = list.strict_zip(paths, info)
   let type_errors =
     list.filter_map(info, fn(info) {

@@ -79,14 +79,14 @@ pub const hot_reload_example = "{\"0\":\"l\",\"l\":\"initial\",\"v\":{\"0\":\"i\
 
 fn decode_source(json) {
   let assert Ok(source) = decode.from_json(json)
-  e.from_expression(source)
+  e.from_annotated(source)
   |> e.open_all
 }
 
 fn init_example(json, cache, config) {
   let assert Ok(source) = decode.from_json(json)
   let source =
-    e.from_expression(source)
+    e.from_annotated(source)
     |> e.open_all
   snippet.init(source, [], effects(config), cache)
 }
@@ -274,7 +274,8 @@ pub fn update(state: State, message) {
           let select = value.Partial(value.Select("migrate"), [])
           let args = [source, #(value, [])]
           let assert Ok(new_value) = runner.call(select, args, env, h)
-          let #(new_type, _b) = analysis.value_to_type(new_value, dict.new())
+          let #(new_type, _b) =
+            analysis.value_to_type(new_value, dict.new(), [])
           let example = Example(new_value, new_type)
           let state = State(..state, example: example)
           #(state, effect.none())

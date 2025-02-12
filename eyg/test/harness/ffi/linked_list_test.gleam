@@ -1,34 +1,32 @@
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
-import eygir/annotated as e2
-import eygir/expression as e
+import eygir/annotated as a
 import gleam/dict
 import gleeunit/should
 import harness/stdlib
 
 pub fn fold_test() {
   let list =
-    e.Apply(
-      e.Apply(e.Cons, e.Str("fizz")),
-      e.Apply(e.Apply(e.Cons, e.Str("buzz")), e.Tail),
+    a.apply(
+      a.apply(a.cons(), a.string("fizz")),
+      a.apply(a.apply(a.cons(), a.string("buzz")), a.tail()),
     )
   let reducer =
-    e.Lambda(
+    a.lambda(
       "element",
-      e.Lambda(
+      a.lambda(
         "state",
-        e.Apply(
-          e.Apply(e.Builtin("string_append"), e.Variable("state")),
-          e.Variable("element"),
+        a.apply(
+          a.apply(a.builtin("string_append"), a.variable("state")),
+          a.variable("element"),
         ),
       ),
     )
   let source =
-    e.Apply(
-      e.Apply(e.Apply(e.Builtin("list_fold"), list), e.Str("initial")),
+    a.apply(
+      a.apply(a.apply(a.builtin("list_fold"), list), a.string("initial")),
       reducer,
     )
-  let source = e2.add_annotation(source, Nil)
 
   r.execute(source, stdlib.env(), dict.new())
   |> should.equal(Ok(v.Str("initialfizzbuzz")))

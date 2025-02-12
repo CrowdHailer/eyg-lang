@@ -1,7 +1,6 @@
 // import eyg/analysis/type_/isomorphic as t
 // import eyg/package
 // import eyg/sync/references
-// import eygir/expression
 // import gleam/dict
 // import gleam/io
 // import gleeunit/should

@@ -1,7 +1,7 @@
 import eyg/sync/cid
 import eyg/sync/sync
+import eygir/annotated as a
 import eygir/encode
-import eygir/expression as e
 import gleam/http/response
 import gleeunit/should
 import gleeunit/shouldx
@@ -9,13 +9,9 @@ import midas/task
 
 const origin = sync.test_origin
 
-const just_number = e.Integer(101)
-
-const just_string = e.Str("hello")
-
 pub fn load_references_test() {
   let state = sync.init(origin)
-  let ref = cid.for_expression(just_number)
+  let ref = cid.for_expression(a.integer(101))
 
   sync.missing(state, [ref])
   |> shouldx.contain1
@@ -33,39 +29,48 @@ pub fn load_references_test() {
   request.path
   |> should.equal("/references/" <> ref <> ".json")
 
-  resume(Ok(response.Response(200, [], <<encode.to_json(just_number):utf8>>)))
+  resume(
+    Ok(response.Response(200, [], <<encode.to_json(a.integer(101)):utf8>>)),
+  )
   |> task.expect_done()
   |> should.be_ok()
-  |> should.equal(just_number)
+  |> should.equal(a.integer(101))
 
-  let state = sync.install(state, ref, just_number)
+  let state =
+    sync.install(state, ref, a.integer(101) |> a.map_annotation(fn(_) { [] }))
   sync.missing(state, [ref])
   |> shouldx.be_empty()
 }
 
 pub fn load_nested_references_test() {
   let state = sync.init(origin)
-  let ref_i = cid.for_expression(just_number)
-  let ref_s = cid.for_expression(just_string)
+  let ref_i = cid.for_expression(a.integer(101))
+  let ref_s = cid.for_expression(a.string("hello"))
 
-  let source = e.Let("i", e.Reference(ref_i), e.Reference(ref_s))
+  let source = a.let_("i", a.reference(ref_i), a.reference(ref_s))
   let ref = cid.for_expression(source)
 
-  let state = sync.install(state, ref, source)
+  let state = sync.install(state, ref, source |> a.map_annotation(fn(_) { [] }))
   sync.missing(state, [ref])
   |> should.equal([ref_i, ref_s])
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   tasks
   |> shouldx.contain2()
 
-  let state = sync.install(state, ref_i, just_number)
+  let state =
+    sync.install(state, ref_i, a.integer(101) |> a.map_annotation(fn(_) { [] }))
   sync.missing(state, [ref])
   |> should.equal([ref_s])
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   tasks
   |> shouldx.be_empty()
 
-  let state = sync.install(state, ref_s, just_string)
+  let state =
+    sync.install(
+      state,
+      ref_s,
+      a.string("hello") |> a.map_annotation(fn(_) { [] }),
+    )
   sync.missing(state, [ref])
   |> should.equal([])
 
@@ -76,7 +81,7 @@ pub fn load_nested_references_test() {
 
 pub fn load_fails_test() {
   let state = sync.init(origin)
-  let ref = cid.for_expression(just_number)
+  let ref = cid.for_expression(a.integer(101))
 
   let #(state, tasks) = sync.fetch_missing(state, [ref])
   let #(_ref, task) = shouldx.contain1(tasks)
