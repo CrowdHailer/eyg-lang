@@ -156,11 +156,11 @@ pub fn query_db() {
                     },
                     fn(raw) {
                       use value <- result.map(dynamic.string(raw))
-                      v.Str(value)
+                      v.String(value)
                     },
                     fn(raw) {
                       use value <- result.map(dynamic.list(dynamic.string)(raw))
-                      v.LinkedList(list.map(value, v.Str))
+                      v.LinkedList(list.map(value, v.String))
                     },
                   ]),
                 ),

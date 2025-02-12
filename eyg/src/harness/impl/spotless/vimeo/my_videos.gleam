@@ -51,14 +51,14 @@ pub fn do(app) {
 fn result_to_eyg(result) {
   case result {
     Ok(videos) -> v.ok(v.LinkedList(list.map(videos, video_to_eyg)))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }
 
 fn video_to_eyg(video) {
   let vimeo.Video(name: name, duration: duration, plays: plays, ..) = video
   v.Record([
-    #("name", v.Str(name)),
+    #("name", v.String(name)),
     #("duration", v.Integer(duration)),
     #("plays", v.Integer(plays)),
   ])

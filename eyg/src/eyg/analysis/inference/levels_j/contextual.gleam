@@ -205,7 +205,8 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       prim(t.Integer, env, eff, level, bindings, a.Integer(value))
     a.Binary(value) ->
       prim(t.Binary, env, eff, level, bindings, a.Binary(value))
-    a.Str(value) -> prim(t.String, env, eff, level, bindings, a.Str(value))
+    a.String(value) ->
+      prim(t.String, env, eff, level, bindings, a.String(value))
     a.Tail -> prim(t.List(q(0)), env, eff, level, bindings, a.Tail)
     a.Cons -> prim(cons(), env, eff, level, bindings, a.Cons)
     a.Empty -> prim(t.Record(t.Empty), env, eff, level, bindings, a.Empty)

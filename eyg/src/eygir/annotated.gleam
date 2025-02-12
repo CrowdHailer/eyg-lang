@@ -15,7 +15,7 @@ pub type Expression(m) {
 
   Binary(value: BitArray)
   Integer(value: Int)
-  Str(value: String)
+  String(value: String)
 
   Tail
   Cons
@@ -63,7 +63,7 @@ pub fn integer(value) {
 }
 
 pub fn string(value) {
-  #(Str(value), Nil)
+  #(String(value), Nil)
 }
 
 pub fn tail() {
@@ -172,7 +172,7 @@ fn do_get_annotation(in, acc) -> List(_) {
     }
     Binary(_value) -> acc
     Integer(_value) -> acc
-    Str(_value) -> acc
+    String(_value) -> acc
 
     Tail -> acc
     Cons -> acc
@@ -401,10 +401,10 @@ pub fn do_gather_snippets(node, comments, assigns, acc) {
   let #(exp, meta) = node
   case exp, assigns {
     // if assigns is empty keep adding comments
-    Let("_", #(Str(comment), _), then), [] ->
+    Let("_", #(String(comment), _), then), [] ->
       do_gather_snippets(then, [comment, ..comments], assigns, acc)
     // if assignes is not empty start new block
-    Let("_", #(Str(new), _), then), _ -> {
+    Let("_", #(String(new), _), then), _ -> {
       let comments = list.reverse(comments)
       let assigns = list.reverse(assigns)
       // comments are context

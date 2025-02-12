@@ -17,7 +17,7 @@ pub fn as_integer(value) {
 
 pub fn as_string(value) {
   case value {
-    v.Str(value) -> Ok(value)
+    v.String(value) -> Ok(value)
     _ -> Error(break.IncorrectTerm("String", value))
   }
 }

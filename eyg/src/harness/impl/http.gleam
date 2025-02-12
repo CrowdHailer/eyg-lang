@@ -71,7 +71,7 @@ pub fn serve() {
       })
     case result {
       Ok(_) -> v.ok(v.unit)
-      Error(reason) -> v.error(v.Str(reason))
+      Error(reason) -> v.error(v.String(reason))
     }
     |> Ok
   })

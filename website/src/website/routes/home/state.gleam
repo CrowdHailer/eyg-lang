@@ -305,7 +305,7 @@ pub fn render(state: State) {
 
       let select = value.Partial(value.Select("render"), [])
       let args = [source, #(value, [])]
-      let assert Ok(value.Str(page)) = runner.call(select, args, env, h)
+      let assert Ok(value.String(page)) = runner.call(select, args, env, h)
       Ok(#(page, False))
     }
     Ok(#(_, True)) -> Ok(#("", True))

@@ -104,7 +104,7 @@ fn primitive(exp, next) {
     a.NamedReference(_, _) -> panic as "not implemented in this type checker"
 
     a.Binary(_) -> #(t.Binary, next)
-    a.Str(_) -> #(t.String, next)
+    a.String(_) -> #(t.String, next)
     a.Integer(_) -> #(t.Integer, next)
 
     a.Tail -> t.tail(next)

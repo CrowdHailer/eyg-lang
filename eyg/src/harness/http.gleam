@@ -46,7 +46,7 @@ pub fn method_to_eyg(method) {
     http.Connect -> v.Tagged("CONNECT", v.unit)
     http.Options -> v.Tagged("OPTIONS", v.unit)
     http.Patch -> v.Tagged("PATCH", v.unit)
-    http.Other(other) -> v.Tagged("OTHER", v.Str(other))
+    http.Other(other) -> v.Tagged("OTHER", v.String(other))
   }
 }
 
@@ -138,10 +138,10 @@ pub fn request_to_eyg(request) {
   v.Record([
     #("method", method_to_eyg(method)),
     #("scheme", scheme_to_eyg(scheme)),
-    #("host", v.Str(host)),
+    #("host", v.String(host)),
     #("port", v.option(port, v.Integer)),
-    #("path", v.Str(path)),
-    #("query", v.option(query, v.Str)),
+    #("path", v.String(path)),
+    #("query", v.option(query, v.String)),
     #("headers", headers_to_eyg(headers)),
     #("body", v.Binary(body)),
   ])
@@ -151,7 +151,7 @@ pub fn headers_to_eyg(headers) {
   v.LinkedList(
     list.map(headers, fn(h) {
       let #(k, v) = h
-      v.Record([#("key", v.Str(k)), #("value", v.Str(v))])
+      v.Record([#("key", v.String(k)), #("value", v.String(v))])
     }),
   )
 }

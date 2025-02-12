@@ -155,7 +155,7 @@ pub fn from_annotated(node) {
     a.Variable(var) -> Variable(var)
     a.Integer(value) -> Integer(value)
     a.Binary(value) -> Binary(value)
-    a.Str(value) -> String(value)
+    a.String(value) -> String(value)
 
     a.Tag(label) -> Tag(label)
     a.Perform(label) -> Perform(label)
@@ -410,7 +410,7 @@ pub fn to_annotated(source, rev) {
     Vacant -> #(a.Vacant, rev)
     Integer(value) -> #(a.Integer(value), rev)
     Binary(value) -> #(a.Binary(value), rev)
-    String(value) -> #(a.Str(value), rev)
+    String(value) -> #(a.String(value), rev)
 
     Tag(label) -> #(a.Tag(label), rev)
     Perform(label) -> #(a.Perform(label), rev)

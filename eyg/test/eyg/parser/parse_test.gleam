@@ -16,16 +16,16 @@ pub fn literal_test() {
   "\"hello\""
   |> parse.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(e.Str("hello"), #(0, 7)))
+  |> should.equal(#(e.String("hello"), #(0, 7)))
 
   "\"\\\"\""
   |> parse.all_from_string()
   |> should.be_ok()
-  |> should.equal(#(e.Str("\""), #(0, 3)))
+  |> should.equal(#(e.String("\""), #(0, 3)))
   // "<<>>"
   // |> parse.all_from_string()
   // |> should.be_ok()
-  // |> should.equal(#(e.Str("hello"), #(0, 7)))
+  // |> should.equal(#(e.String("hello"), #(0, 7)))
 }
 
 pub fn negative_integer_test() {
@@ -672,7 +672,7 @@ pub fn perform_test() {
   |> parse.all_from_string()
   |> should.be_ok()
   |> should.equal(
-    #(e.Apply(#(e.Perform("Log"), #(0, 11)), #(e.Str("stop"), #(12, 18))), #(
+    #(e.Apply(#(e.Perform("Log"), #(0, 11)), #(e.String("stop"), #(12, 18))), #(
       0,
       19,
     )),

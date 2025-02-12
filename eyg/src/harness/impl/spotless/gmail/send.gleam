@@ -59,15 +59,15 @@ pub fn do(app, to, message) {
 fn result_to_eyg(result) {
   case result {
     Ok(message) -> v.ok(message_to_eyg(message))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }
 
 fn message_to_eyg(message) {
   let gmail.Message(id, thread_id) = message
   v.Record([
-    #("id", v.Str(id)),
-    #("thread_id", v.Str(thread_id)),
-    // #("label_ids", v.LinkedList(list.map(label_ids, v.Str))),
+    #("id", v.String(id)),
+    #("thread_id", v.String(thread_id)),
+    // #("label_ids", v.LinkedList(list.map(label_ids, v.String))),
   ])
 }

@@ -177,7 +177,7 @@ fn do_infer(env, exp, typ, eff, ref, path) {
     }
     // Primitive
     a.Binary(_) -> unify(typ, t.Binary, ref, path)
-    a.Str(_) -> unify(typ, t.Str, ref, path)
+    a.String(_) -> unify(typ, t.Str, ref, path)
     a.Integer(_) -> unify(typ, t.Integer, ref, path)
     a.Tail -> unify(typ, t.tail(ref), ref, path)
     a.Cons -> unify(typ, t.cons(ref), ref, path)

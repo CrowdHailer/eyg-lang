@@ -21,14 +21,14 @@ fn check_term(term) {
 
 pub fn literal_test() {
   check_term(v.Integer(0))
-  check_term(v.Str("hello"))
+  check_term(v.String("hello"))
   check_term(v.LinkedList([]))
   check_term(v.LinkedList([v.Integer(1), v.Integer(2)]))
   check_term(v.unit)
   check_term(
     v.Record([
-      #("foo", v.Str("hey")),
-      #("nested", v.Record([#("bar", v.Str("inner"))])),
+      #("foo", v.String("hey")),
+      #("nested", v.Record([#("bar", v.String("inner"))])),
     ]),
   )
   check_term(v.Tagged("Outer", v.Tagged("Inner", v.Integer(0))))
@@ -49,7 +49,7 @@ pub fn simple_fn_test() {
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
-  |> should.equal(Ok(v.Str("hello")))
+  |> should.equal(Ok(v.String("hello")))
 }
 
 pub fn nested_fn_test() {
@@ -69,8 +69,8 @@ pub fn nested_fn_test() {
   let captured = capture.capture(term, Nil)
 
   let e = env.empty()
-  run(captured, e, [v.Str("A"), v.Str("B")], dict.new())
-  |> should.equal(Ok(v.LinkedList([v.Str("A"), v.Str("B")])))
+  run(captured, e, [v.String("A"), v.String("B")], dict.new())
+  |> should.equal(Ok(v.LinkedList([v.String("A"), v.String("B")])))
 }
 
 pub fn single_let_capture_test() {
@@ -79,7 +79,7 @@ pub fn single_let_capture_test() {
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
-  |> should.equal(Ok(v.Str("external")))
+  |> should.equal(Ok(v.String("external")))
 }
 
 // This test makes sure a given env value is captured only once
@@ -137,7 +137,7 @@ pub fn capture_shadowed_variable_test() {
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
-  |> should.equal(Ok(v.Str("second")))
+  |> should.equal(Ok(v.String("second")))
 }
 
 pub fn only_needed_values_captured_test() {
@@ -207,7 +207,7 @@ pub fn fn_in_env_test() {
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
   |> run(env.empty(), [v.unit], dict.new())
-  |> should.equal(Ok(v.Str("value")))
+  |> should.equal(Ok(v.String("value")))
 }
 
 pub fn tagged_test() {
@@ -215,7 +215,7 @@ pub fn tagged_test() {
   let env = env.empty()
   let assert Ok(term) = run(exp, env, [], dict.new())
 
-  let arg = v.Str("later")
+  let arg = v.String("later")
   capture.capture(term, Nil)
   |> run(env.empty(), [arg], dict.new())
   |> should.equal(Ok(v.Tagged("Ok", arg)))
@@ -237,12 +237,12 @@ pub fn case_test() {
   let arg = v.Tagged("Ok", v.unit)
   next
   |> run(env.empty(), [arg], dict.new())
-  |> should.equal(Ok(v.Str("good")))
+  |> should.equal(Ok(v.String("good")))
 
   let arg = v.Tagged("Error", v.unit)
   next
   |> run(env.empty(), [arg], dict.new())
-  |> should.equal(Ok(v.Str("bad")))
+  |> should.equal(Ok(v.String("bad")))
 }
 
 pub fn partial_case_test() {
@@ -262,11 +262,11 @@ pub fn partial_case_test() {
   let arg = v.Tagged("Ok", v.unit)
   let e = env.empty()
   run(next, e, [rest, arg], dict.new())
-  |> should.equal(Ok(v.Str("good")))
+  |> should.equal(Ok(v.String("good")))
 
   let arg = v.Tagged("Error", v.unit)
   run(next, e, [rest, arg], dict.new())
-  |> should.equal(Ok(v.Str("bad")))
+  |> should.equal(Ok(v.String("bad")))
 }
 
 pub fn handler_test() {
@@ -288,7 +288,7 @@ pub fn handler_test() {
 
   next
   |> run(env.empty(), [exec], dict.new())
-  |> should.equal(Ok(v.Tagged("Ok", v.Str("some string"))))
+  |> should.equal(Ok(v.Tagged("Ok", v.String("some string"))))
 
   let exec = a.lambda("_", a.apply(a.perform("Abort"), a.string("failure")))
 
@@ -296,7 +296,7 @@ pub fn handler_test() {
 
   next
   |> run(env.empty(), [exec], dict.new())
-  |> should.equal(Ok(v.Tagged("Error", v.Str("failure"))))
+  |> should.equal(Ok(v.Tagged("Error", v.String("failure"))))
 }
 
 // pub fn capture_resume_test() {
@@ -321,7 +321,7 @@ pub fn handler_test() {
 //   let next = capture.capture(term,Nil)
 
 //   next
-//   |> r.execute(env.empty(), r.eval_call(_, v.Str("fooo"), [], env.empty(), dict.new()))
+//   |> r.execute(env.empty(), r.eval_call(_, v.String("fooo"), [], env.empty(), dict.new()))
 //   // This should return a effect of subsequent logs, I don't know how to do this
 // }
 
@@ -369,8 +369,8 @@ pub fn builtin_arity3_test() {
   let assert Ok(term) = run(exp, env, [], dict.new())
   let next = capture.capture(term, Nil)
 
-  let ret = run(next, env, [v.Str("not a function")], dict.new())
-  let assert Error(#(break.NotAFunction(v.Str("not a function")), Nil, _, _)) =
+  let ret = run(next, env, [v.String("not a function")], dict.new())
+  let assert Error(#(break.NotAFunction(v.String("not a function")), Nil, _, _)) =
     ret
 
   let reduce_exp = a.lambda("el", a.lambda("acc", a.variable("el")))

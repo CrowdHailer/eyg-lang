@@ -56,7 +56,7 @@ pub fn debug_test() {
 
   r.execute(prog, stdlib.env(), dict.new())
   // value is serialized as binary, hence the quotes
-  |> should.equal(Ok(v.Str("\"foo\"")))
+  |> should.equal(Ok(v.String("\"foo\"")))
 }
 
 pub fn simple_fix_test() {
@@ -69,7 +69,7 @@ pub fn simple_fix_test() {
   |> should.equal(Ok(t.Str))
 
   r.execute(prog, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.Str("foo")))
+  |> should.equal(Ok(v.String("foo")))
 }
 
 pub fn no_recursive_fix_test() {
@@ -169,7 +169,7 @@ pub fn eval_test() {
   // |> should.equal(Ok(t.boolean))
 
   r.execute(prog, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.Tagged("Ok", v.Str("foo"))))
+  |> should.equal(Ok(v.Tagged("Ok", v.String("foo"))))
 }
 
 pub fn language_to_expression_test() {

@@ -44,6 +44,6 @@ pub fn do(app) {
 fn result_to_eyg(result) {
   case result {
     Ok(videos) -> v.ok(v.LinkedList(list.map(videos, site.to_eyg)))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }

@@ -62,14 +62,14 @@ pub fn do(app, start_time) {
 fn result_to_eyg(result) {
   case result {
     Ok(events) -> v.ok(v.LinkedList(list.map(events, event_to_eyg)))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }
 
 fn event_to_eyg(message) {
   let calendar.Event(start: start, summary: summary, ..) = message
   v.Record([
-    #("start", v.Str(string.inspect(start))),
-    #("summary", v.Str(summary)),
+    #("start", v.String(string.inspect(start))),
+    #("summary", v.String(summary)),
   ])
 }

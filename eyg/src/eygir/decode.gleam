@@ -45,7 +45,7 @@ pub fn decoder(meta) {
     }
     "s" -> {
       use value <- decode.field("v", decode.string)
-      decode.success(#(e.Str(value), meta))
+      decode.success(#(e.String(value), meta))
     }
     "ta" -> decode.success(#(e.Tail, meta))
     "c" -> decode.success(#(e.Cons, meta))

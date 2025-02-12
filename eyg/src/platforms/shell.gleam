@@ -46,7 +46,7 @@ pub fn run(source) {
   let parser = fn(prompt) {
     fn(raw) {
       let k = dict.new()
-      let args = [#(v.Str(prompt), Nil), #(v.Str(raw), Nil)]
+      let args = [#(v.String(prompt), Nil), #(v.String(raw), Nil)]
       let assert Ok(v.Tagged(tag, value)) = r.call(parser, args, env, k)
       case tag {
         "Ok" ->
@@ -67,7 +67,7 @@ pub fn run(source) {
   let assert Error(#(break.UnhandledEffect("Prompt", prompt), _rev, env, k)) =
     r.call(exec, [#(v.unit, Nil)], env, handlers().1)
 
-  let assert v.Str(prompt) = prompt
+  let assert v.String(prompt) = prompt
 
   let rl =
     readlines.create_interface(
@@ -103,7 +103,7 @@ fn read(rl, parser, env, k, prompt) {
               #(env, prompt)
             }
             Error(#(break.UnhandledEffect("Prompt", lift), _rev, env, _k)) -> {
-              let assert v.Str(prompt) = lift
+              let assert v.String(prompt) = lift
               #(env, prompt)
             }
             Error(#(reason, _rev, _env, _k)) -> {
@@ -161,7 +161,7 @@ fn print(value) {
       let rows = list.reverse(rows_rev)
       print_rows_and_headers(headers, rows)
     }
-    v.Str("{\"headers\":[" <> _ as encoded) -> {
+    v.String("{\"headers\":[" <> _ as encoded) -> {
       let decoder =
         dynamic.decode2(
           fn(a, b) { #(a, b) },

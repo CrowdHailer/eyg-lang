@@ -17,7 +17,7 @@ pub fn type_() {
 
 pub fn impl(lift) {
   use Nil <- result.try(cast.as_unit(lift, Nil))
-  Ok(v.Str(do()))
+  Ok(v.String(do()))
 }
 
 pub fn blocking(lift) {

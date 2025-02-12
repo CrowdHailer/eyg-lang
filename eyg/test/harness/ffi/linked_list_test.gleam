@@ -29,5 +29,5 @@ pub fn fold_test() {
     )
 
   r.execute(source, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.Str("initialfizzbuzz")))
+  |> should.equal(Ok(v.String("initialfizzbuzz")))
 }

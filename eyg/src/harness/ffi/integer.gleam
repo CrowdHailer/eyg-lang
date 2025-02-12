@@ -118,5 +118,5 @@ pub fn to_string() {
 
 fn do_to_string(x, rev, env, k) {
   use x <- result.then(cast.as_integer(x))
-  Ok(#(state.V(v.Str(int.to_string(x))), env, k))
+  Ok(#(state.V(v.String(int.to_string(x))), env, k))
 }

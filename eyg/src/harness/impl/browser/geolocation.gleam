@@ -76,6 +76,6 @@ pub fn position_to_eyg(position) {
 pub fn result_to_eyg(result) {
   case result {
     Ok(position) -> v.ok(position_to_eyg(position))
-    Error(reason) -> v.error(v.Str(reason))
+    Error(reason) -> v.error(v.String(reason))
   }
 }

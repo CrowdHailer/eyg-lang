@@ -183,7 +183,7 @@ pub fn effects_from_oas(spec, app) {
       promise.map(browser.run(task), fn(res) {
         case res {
           Ok(v) -> v.ok(v)
-          Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+          Error(reason) -> v.error(v.String(snag.line_print(reason)))
         }
       })
       |> Ok
@@ -209,7 +209,7 @@ fn schema_decoder(
     }
     oas.Integer -> result.map(dynamic.int(raw), v.Integer)
     oas.Number -> result.map(dynamic.float(raw), fn(_) { v.Integer(99) })
-    oas.String -> result.map(dynamic.string(raw), v.Str)
+    oas.String -> result.map(dynamic.string(raw), v.String)
     oas.Array(element) -> {
       let element = oas.fetch_schema(element, schemas)
       use elements <- result.try(

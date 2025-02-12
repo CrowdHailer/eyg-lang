@@ -11,5 +11,5 @@ pub fn string_append_test() {
     a.apply(a.apply(a.builtin(key), a.string("fizz")), a.string("buzz"))
 
   r.execute(source, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.Str("fizzbuzz")))
+  |> should.equal(Ok(v.String("fizzbuzz")))
 }

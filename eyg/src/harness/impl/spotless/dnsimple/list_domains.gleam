@@ -51,7 +51,7 @@ pub fn do(local) {
 fn result_to_eyg(result) {
   case result {
     Ok(domains) -> v.ok(v.LinkedList(list.map(domains, domain_to_eyg)))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }
 
@@ -60,5 +60,5 @@ fn domain_to_eyg(message) {
   let assert Some(id) = id
   let assert Some(name) = name
 
-  v.Record([#("id", v.Integer(id)), #("name", v.Str(name))])
+  v.Record([#("id", v.Integer(id)), #("name", v.String(name))])
 }

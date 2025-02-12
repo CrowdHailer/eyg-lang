@@ -28,7 +28,7 @@ pub fn encode(tree) {
     e.Binary(b) -> node("x", [#("v", bytes(b))])
     e.Integer(i) -> node("i", [#("v", int(i))])
     // string
-    e.Str(s) -> node("s", [#("v", string(s))])
+    e.String(s) -> node("s", [#("v", string(s))])
     e.Tail -> node("ta", [])
     e.Cons -> node("c", [])
     // zero

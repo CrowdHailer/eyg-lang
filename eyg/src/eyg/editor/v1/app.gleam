@@ -262,7 +262,7 @@ fn insert(zipper: zipper.Zipper(Nil), state) {
     a.Let(var, body, then) -> Ok(write(var, a.let_(_, body, then)))
 
     a.Binary(_value) -> Error("no insert option for binary")
-    a.Str(value) -> Ok(WriteText(value, fn(new) { zipper.1(a.string(new)) }))
+    a.String(value) -> Ok(WriteText(value, fn(new) { zipper.1(a.string(new)) }))
     a.Integer(value) ->
       Ok(WriteNumber(value, fn(new) { zipper.1(a.integer(new)) }))
     a.Tail | a.Cons -> Error("there is no insert for lists")
@@ -474,7 +474,7 @@ fn number(zipper: zipper.Zipper(Nil), state) {
 fn match(zipper: zipper.Zipper(Nil), state) {
   let commit = case zipper.0 {
     // e.Let(label, value, then) -> fn(text) {
-    //   zipper.1(e.Let(label, e.Str(text), then))
+    //   zipper.1(e.Let(label, e.String(text), then))
     // }
     // Match on original value should maybe be the arg? but I like promoting first class everything
     exp -> fn(text) {

@@ -15,9 +15,9 @@ pub fn t() {
 pub fn to_eyg(site) {
   let schema.Site(id: id, state: state, name: name, url: url, ..) = site
   v.Record([
-    #("id", v.Str(option.unwrap(id, ""))),
-    #("state", v.Str(option.unwrap(state, ""))),
-    #("name", v.Str(option.unwrap(name, ""))),
-    #("url", v.Str(option.unwrap(url, ""))),
+    #("id", v.String(option.unwrap(id, ""))),
+    #("state", v.String(option.unwrap(state, ""))),
+    #("name", v.String(option.unwrap(name, ""))),
+    #("url", v.String(option.unwrap(url, ""))),
   ])
 }

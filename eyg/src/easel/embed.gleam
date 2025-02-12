@@ -732,7 +732,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                   }
                 }
               }
-            a.Str(value) -> {
+            a.String(value) -> {
               let value = stringx.replace_at(value, cut_start, cut_end, data)
               #(a.string(value), [], cut_start + string.length(data), True)
             }
@@ -1210,7 +1210,7 @@ pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(#(target, rezip)) = zipper.at(source, path)
 
   let #(new, sub, offset) = case target.0 {
-    a.Str(content) -> {
+    a.String(content) -> {
       // needs end for large enter, needs to be insert mode only
       let #(content, offset) = replace_at(content, offset, offset, "\n")
       #(a.string(content), [], offset)

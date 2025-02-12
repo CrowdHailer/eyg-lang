@@ -121,7 +121,7 @@ fn do_render(source) {
     }
     a.Integer(value) -> int.to_string(value)
     a.Binary(_) -> "binary_not_supported"
-    a.Str(content) -> string.concat(["\"", escape_html(content), "\""])
+    a.String(content) -> string.concat(["\"", escape_html(content), "\""])
     a.Perform(label) -> string.concat(["perform (\"", label, "\")"])
     a.Handle(label) -> string.concat(["handle (\"", label, "\")"])
     a.Builtin(identifier) -> identifier

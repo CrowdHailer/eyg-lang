@@ -72,7 +72,7 @@ pub fn do_render(exp: ann.Node(_), br, loc, inferred) {
     ann.Let(label, value, then) ->
       assigment(label, value, then, br, loc, inferred)
     ann.Binary(value) -> [binary(value, loc, inferred)]
-    ann.Str(value) -> [string(value, loc, inferred)]
+    ann.String(value) -> [string(value, loc, inferred)]
     ann.Integer(value) -> [integer(value, loc, inferred)]
     ann.Tail -> [
       span(

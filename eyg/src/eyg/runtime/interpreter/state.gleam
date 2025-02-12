@@ -101,7 +101,7 @@ pub fn eval(exp, env: Env(m), k) {
 
     e.Binary(data) -> value(v.Binary(data))
     e.Integer(data) -> value(v.Integer(data))
-    e.Str(data) -> value(v.Str(data))
+    e.String(data) -> value(v.String(data))
     e.Tail -> value(v.LinkedList([]))
     e.Cons -> value(v.Partial(v.Cons, []))
     e.Vacant -> Error(break.Vacant)

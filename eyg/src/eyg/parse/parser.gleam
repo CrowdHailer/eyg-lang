@@ -208,7 +208,7 @@ pub fn expression(tokens) {
     }
     t.String(value) -> {
       let span = #(start, start + string.length(value) + 2)
-      Ok(#(#(e.Str(value), span), rest))
+      Ok(#(#(e.String(value), span), rest))
     }
     t.LeftSquare -> do_list(rest, start, [])
     t.LeftBrace -> do_record(rest, start, [])

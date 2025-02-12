@@ -67,7 +67,7 @@ fn applet(root) {
             let id = int.to_string(list.length(saved))
             let saved = [action, ..saved]
             ref.set(actions, saved)
-            Ok(v.Str(id))
+            Ok(v.String(id))
           })
           |> dict.insert("Log", console_log().2)
         let state = ref.new(arg)
@@ -75,7 +75,7 @@ fn applet(root) {
           let current = ref.get(state)
           let result = r.call(func, [#(current, Nil)], env, handlers)
           let _ = case result {
-            Ok(v.Str(page)) -> element.set_inner_html(root, page)
+            Ok(v.String(page)) -> element.set_inner_html(root, page)
             _ -> {
               io.debug(#("unexpected", result))
               panic("nope")

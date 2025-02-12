@@ -324,12 +324,12 @@
 //       }
 //       #(elements, try_update)
 //     }
-//     e.Str(value) -> {
+//     e.String(value) -> {
 //       let #(get, set) = make(value)
 //       let #(elements, update) = fragment(binary(get))
 //       let try_update = fn() {
 //         case exp() {
-//           e.Str(new) -> {
+//           e.String(new) -> {
 //             set(new)
 //             Ok(update())
 //           }
@@ -343,7 +343,7 @@
 //       let #(elements, _update) = fragment([text(static("unknown"))])
 //       let try_update = fn() {
 //         case exp() {
-//           // e.Str(new) -> {
+//           // e.String(new) -> {
 //           //   set(new)
 //           //   Ok(update())
 //           // }

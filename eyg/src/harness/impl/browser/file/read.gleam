@@ -35,7 +35,7 @@ pub fn do(name) {
 pub fn result_to_eyg(result) {
   case result {
     Ok(data) -> v.ok(v.Binary(data))
-    Error(reason) -> v.error(v.Str(reason))
+    Error(reason) -> v.error(v.String(reason))
   }
 }
 

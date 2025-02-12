@@ -49,6 +49,6 @@ pub fn do(app) {
 fn result_to_eyg(result) {
   case result {
     Ok(site) -> v.ok(site.to_eyg(site))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }

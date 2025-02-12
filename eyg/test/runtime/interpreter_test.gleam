@@ -14,16 +14,16 @@ import platforms/browser
 pub fn variable_test() {
   let source = a.variable("x")
 
-  let env = state.Env([#("x", v.Str("assigned"))], dict.new(), dict.new())
+  let env = state.Env([#("x", v.String("assigned"))], dict.new(), dict.new())
   r.execute(source, env, dict.new())
-  |> should.equal(Ok(v.Str("assigned")))
+  |> should.equal(Ok(v.String("assigned")))
 }
 
 pub fn function_test() {
   let body = a.variable("x")
   let source = a.lambda("x", body)
 
-  let scope = [#("foo", v.Str("assigned"))]
+  let scope = [#("foo", v.String("assigned"))]
   let env = state.Env(scope, dict.new(), dict.new())
   r.execute(source, env, dict.new())
   |> should.equal(Ok(v.Closure("x", body, scope)))
@@ -33,7 +33,7 @@ pub fn function_application_test() {
   let source = a.apply(a.lambda("x", a.string("body")), a.integer(0))
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Str("body")))
+  |> should.equal(Ok(v.String("body")))
 
   let source =
     a.let_(
@@ -57,7 +57,7 @@ pub fn builtin_application_test() {
   let source = a.apply(a.builtin("string_uppercase"), a.string("hello"))
 
   r.execute(source, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.Str("HELLO")))
+  |> should.equal(Ok(v.String("HELLO")))
 }
 
 // primitive
@@ -65,7 +65,7 @@ pub fn create_a_binary_test() {
   let source = a.string("hello")
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Str("hello")))
+  |> should.equal(Ok(v.String("hello")))
 }
 
 pub fn create_an_integer_test() {
@@ -88,7 +88,7 @@ pub fn record_creation_test() {
     )
 
   r.execute(a.apply(a.select("foo"), source), env.empty(), dict.new())
-  |> should.equal(Ok(v.Str("FOO")))
+  |> should.equal(Ok(v.String("FOO")))
   r.execute(a.apply(a.select("bar"), source), env.empty(), dict.new())
   |> should.equal(Ok(v.Integer(0)))
 }
@@ -106,12 +106,12 @@ pub fn case_test() {
   let source = a.apply(switch, a.apply(a.tag("Some"), a.string("foo")))
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Str("foo")))
+  |> should.equal(Ok(v.String("foo")))
 
   let source = a.apply(switch, a.apply(a.tag("None"), a.empty()))
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Str("else")))
+  |> should.equal(Ok(v.String("else")))
 }
 
 pub fn rasing_effect_test() {
@@ -127,9 +127,9 @@ pub fn rasing_effect_test() {
   lifted
   |> should.equal(v.Integer(1))
   let assert Error(#(break.UnhandledEffect("Bar", lifted), Nil, env, k)) =
-    r.loop(state.step(state.V(v.Str("reply")), env, k))
+    r.loop(state.step(state.V(v.String("reply")), env, k))
   lifted
-  |> should.equal(v.Str("reply"))
+  |> should.equal(v.String("reply"))
   let assert Ok(term) = r.loop(state.step(state.V(v.unit), env, k))
   term
   |> should.equal(v.unit)
@@ -145,14 +145,14 @@ pub fn effect_in_case_test() {
   let source = a.apply(switch, a.apply(a.tag("Ok"), a.string("foo")))
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Str("foo")))
+  |> should.equal(Ok(v.String("foo")))
 
   let source = a.apply(switch, a.apply(a.tag("Error"), a.string("nope")))
 
   let assert Error(#(break.UnhandledEffect("Raise", lifted), _rev, _env, _k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
-  |> should.equal(v.Str("nope"))
+  |> should.equal(v.String("nope"))
 }
 
 pub fn effect_in_builtin_test() {
@@ -185,13 +185,13 @@ pub fn effect_in_builtin_test() {
   let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.execute(source, stdlib.env(), dict.new())
   lifted
-  |> should.equal(v.Str("fizz"))
+  |> should.equal(v.String("fizz"))
   let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.loop(state.step(state.V(v.unit), env, k))
   lifted
-  |> should.equal(v.Str("buzz"))
+  |> should.equal(v.String("buzz"))
   r.loop(state.step(state.V(v.unit), env, k))
-  |> should.equal(Ok(v.Str("initialfizzbuzz")))
+  |> should.equal(Ok(v.String("initialfizzbuzz")))
 }
 
 pub fn handler_no_effect_test() {
@@ -201,7 +201,7 @@ pub fn handler_no_effect_test() {
   let source = a.apply(a.apply(a.handle("Throw"), handler), exec)
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Tagged("Ok", v.Str("mystring"))))
+  |> should.equal(Ok(v.Tagged("Ok", v.String("mystring"))))
 }
 
 pub fn handle_early_return_effect_test() {
@@ -211,7 +211,7 @@ pub fn handle_early_return_effect_test() {
   let source = a.apply(a.apply(a.handle("Throw"), handler), exec)
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.Tagged("Error", v.Str("Bad thing"))))
+  |> should.equal(Ok(v.Tagged("Error", v.String("Bad thing"))))
 }
 
 pub fn handle_resume_test() {
@@ -240,7 +240,7 @@ pub fn handle_resume_test() {
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
-    Ok(v.Record([#("log", v.Str("my message")), #("value", v.Integer(100))])),
+    Ok(v.Record([#("log", v.String("my message")), #("value", v.Integer(100))])),
   )
 }
 
@@ -263,8 +263,8 @@ pub fn ignore_other_effect_test() {
   |> should.equal(v.unit)
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
-  r.loop(state.step(state.V(v.Str("reply")), env, k))
-  |> should.equal(Ok(v.Record([#("foo", v.Str("reply"))])))
+  r.loop(state.step(state.V(v.String("reply")), env, k))
+  |> should.equal(Ok(v.Record([#("foo", v.String("reply"))])))
 }
 
 pub fn multiple_effects_test() {
@@ -283,12 +283,14 @@ pub fn multiple_effects_test() {
   |> should.equal(v.unit)
 
   let assert Error(#(break.UnhandledEffect("Choose", lifted), Nil, env, k)) =
-    r.loop(state.step(state.V(v.Str("True")), env, k))
+    r.loop(state.step(state.V(v.String("True")), env, k))
   lifted
   |> should.equal(v.unit)
 
-  r.loop(state.step(state.V(v.Str("False")), env, k))
-  |> should.equal(Ok(v.Record([#("a", v.Str("True")), #("b", v.Str("False"))])))
+  r.loop(state.step(state.V(v.String("False")), env, k))
+  |> should.equal(
+    Ok(v.Record([#("a", v.String("True")), #("b", v.String("False"))])),
+  )
 }
 
 pub fn multiple_resumptions_test() {
@@ -383,8 +385,12 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
       a.apply(a.perform("Log"), a.string("outer")),
     )
 
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("outer")), Nil, env, k)) =
-    r.execute(source, env.empty(), dict.new())
+  let assert Error(#(
+    break.UnhandledEffect("Log", v.String("outer")),
+    Nil,
+    env,
+    k,
+  )) = r.execute(source, env.empty(), dict.new())
   r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.unit))
 }
@@ -408,8 +414,12 @@ pub fn handler_is_applied_after_other_effects_test() {
 
   let source = a.apply(handler, exec)
 
-  let assert Error(#(break.UnhandledEffect("Log", v.Str("my log")), Nil, env, k)) =
-    r.execute(source, env.empty(), dict.new())
+  let assert Error(#(
+    break.UnhandledEffect("Log", v.String("my log")),
+    Nil,
+    env,
+    k,
+  )) = r.execute(source, env.empty(), dict.new())
 
   r.loop(state.step(state.V(v.unit), env, k))
   |> should.equal(Ok(v.Integer(-1)))
@@ -430,5 +440,5 @@ pub fn async_test() {
   let assert Ok(v.Promise(p)) = r.execute(source, stdlib.env(), handlers().1)
   use value <- promise.map(p)
   value
-  |> should.equal(v.Str("later"))
+  |> should.equal(v.String("later"))
 }

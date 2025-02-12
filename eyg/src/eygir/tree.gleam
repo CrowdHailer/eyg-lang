@@ -54,7 +54,7 @@ fn do_print(source) {
 
     a.Vacant -> #("vacant", [])
     a.Integer(value) -> #(int.to_string(value), [])
-    a.Str(content) -> #(string.concat(["\"", content, "\""]), [])
+    a.String(content) -> #(string.concat(["\"", content, "\""]), [])
     a.Binary(content) -> #(string.inspect(content), [])
     a.Tail -> #("tail", [])
     a.Cons -> #("cons", [])

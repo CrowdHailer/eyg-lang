@@ -22,7 +22,7 @@ pub fn impl(url) {
   let frame = #(600, 700)
   let reply = case browser.open(url, frame) {
     Ok(_popup) -> v.ok(v.unit)
-    Error(reason) -> v.error(v.Str(reason))
+    Error(reason) -> v.error(v.String(reason))
   }
   Ok(reply)
 }

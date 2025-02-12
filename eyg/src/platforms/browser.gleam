@@ -125,7 +125,7 @@ fn old_run() {
 
 fn render() {
   #(t.Str, t.unit, fn(page) {
-    let assert v.Str(page) = page
+    let assert v.String(page) = page
     case document.query_selector("#app") {
       Ok(element) -> element.set_inner_html(element, page)
       _ ->
@@ -189,7 +189,7 @@ fn listen() {
 fn location_search() {
   #(t.unit, t.unit, fn(_) {
     let value = case window.get_search() {
-      Ok(str) -> v.ok(v.Str(str))
+      Ok(str) -> v.ok(v.String(str))
       Error(_) -> v.error(v.unit)
     }
     Ok(value)
@@ -219,7 +219,7 @@ fn on_keydown() {
     let #(_, extrinsic) = handlers()
 
     old_document.on_keydown(fn(k) {
-      let _ = r.call(handle, [#(v.Str(k), Nil)], env, extrinsic)
+      let _ = r.call(handle, [#(v.String(k), Nil)], env, extrinsic)
       Nil
     })
     Ok(v.unit)
@@ -232,7 +232,7 @@ fn on_change() {
     let #(_, extrinsic) = handlers()
 
     old_document.on_change(fn(k) {
-      let _ = r.call(handle, [#(v.Str(k), Nil)], env, extrinsic)
+      let _ = r.call(handle, [#(v.String(k), Nil)], env, extrinsic)
       Nil
     })
     Ok(v.unit)

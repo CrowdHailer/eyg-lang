@@ -16,7 +16,7 @@ pub fn append() {
 pub fn do_append(left, right, rev, env, k) {
   use left <- result.then(cast.as_string(left))
   use right <- result.then(cast.as_string(right))
-  Ok(#(state.V(v.Str(string.append(left, right))), env, k))
+  Ok(#(state.V(v.String(string.append(left, right))), env, k))
 }
 
 pub fn split() {
@@ -29,9 +29,13 @@ pub fn do_split(s, pattern, rev, env, k) {
   use s <- result.then(cast.as_string(s))
   use pattern <- result.then(cast.as_string(pattern))
   let assert [first, ..parts] = string.split(s, pattern)
-  let parts = v.LinkedList(list.map(parts, v.Str))
+  let parts = v.LinkedList(list.map(parts, v.String))
 
-  Ok(#(state.V(v.Record([#("head", v.Str(first)), #("tail", parts)])), env, k))
+  Ok(#(
+    state.V(v.Record([#("head", v.String(first)), #("tail", parts)])),
+    env,
+    k,
+  ))
 }
 
 pub fn split_once() {
@@ -45,7 +49,7 @@ pub fn do_split_once(s, pattern, rev, env, k) {
   use pattern <- result.then(cast.as_string(pattern))
   let value = case string.split_once(s, pattern) {
     Ok(#(pre, post)) ->
-      v.ok(v.Record([#("pre", v.Str(pre)), #("post", v.Str(post))]))
+      v.ok(v.Record([#("pre", v.String(pre)), #("post", v.String(post))]))
     Error(Nil) -> v.error(v.unit)
   }
   Ok(#(state.V(value), env, k))
@@ -58,7 +62,7 @@ pub fn uppercase() {
 
 pub fn do_uppercase(value, rev, env, k) {
   use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.Str(string.uppercase(value))), env, k))
+  Ok(#(state.V(v.String(string.uppercase(value))), env, k))
 }
 
 pub fn lowercase() {
@@ -68,7 +72,7 @@ pub fn lowercase() {
 
 pub fn do_lowercase(value, rev, env, k) {
   use value <- result.then(cast.as_string(value))
-  Ok(#(state.V(v.Str(string.lowercase(value))), env, k))
+  Ok(#(state.V(v.String(string.lowercase(value))), env, k))
 }
 
 pub fn starts_with() {
@@ -81,7 +85,7 @@ pub fn do_starts_with(value, prefix, rev, env, k) {
   use value <- result.then(cast.as_string(value))
   use prefix <- result.then(cast.as_string(prefix))
   let ret = case string.split_once(value, prefix) {
-    Ok(#("", post)) -> v.ok(v.Str(post))
+    Ok(#("", post)) -> v.ok(v.String(post))
     _ -> v.error(v.unit)
   }
   Ok(#(state.V(ret), env, k))
@@ -97,7 +101,7 @@ pub fn do_ends_with(value, suffix, rev, env, k) {
   use value <- result.then(cast.as_string(value))
   use suffix <- result.then(cast.as_string(suffix))
   let ret = case string.split_once(value, suffix) {
-    Ok(#(pre, "")) -> v.ok(v.Str(pre))
+    Ok(#(pre, "")) -> v.ok(v.String(pre))
     _ -> v.error(v.unit)
   }
   Ok(#(state.V(ret), env, k))
@@ -125,7 +129,7 @@ fn do_pop_grapheme(term, rev, env, k) {
   let return = case string.pop_grapheme(string) {
     Error(Nil) -> v.error(v.unit)
     Ok(#(head, tail)) ->
-      v.ok(v.Record([#("head", v.Str(head)), #("tail", v.Str(tail))]))
+      v.ok(v.Record([#("head", v.String(head)), #("tail", v.String(tail))]))
   }
   Ok(#(state.V(return), env, k))
 }
@@ -145,7 +149,7 @@ pub fn do_replace(in, from, to, rev, env, k) {
   use from <- result.then(cast.as_string(from))
   use to <- result.then(cast.as_string(to))
 
-  Ok(#(state.V(v.Str(string.replace(in, from, to))), env, k))
+  Ok(#(state.V(v.String(string.replace(in, from, to))), env, k))
 }
 
 pub fn to_binary() {
@@ -167,7 +171,7 @@ pub fn from_binary() {
 pub fn do_from_binary(in, _meta, env, k) {
   use in <- result.then(cast.as_binary(in))
   let value = case bit_array.to_string(in) {
-    Ok(bytes) -> v.ok(v.Str(bytes))
+    Ok(bytes) -> v.ok(v.String(bytes))
     Error(Nil) -> v.error(v.unit)
   }
   Ok(#(state.V(value), env, k))
@@ -183,7 +187,7 @@ pub fn do_pop_prefix(in, prefix, yes, no, meta, env, k) {
   use prefix <- result.then(cast.as_string(prefix))
 
   case string.split_once(in, prefix) {
-    Ok(#("", post)) -> state.call(yes, v.Str(post), meta, env, k)
+    Ok(#("", post)) -> state.call(yes, v.String(post), meta, env, k)
     _ -> state.call(no, v.unit, meta, env, k)
   }
 }

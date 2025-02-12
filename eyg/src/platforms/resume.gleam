@@ -26,7 +26,7 @@ fn handle_click(event, states) {
   use key <- result.then(element.get_attribute(target, "on:click"))
   use #(action, env) <- result.then(map.get(states, container))
   // TODO get attribute and multiple sources
-  let answer = r.call(action, [#(v.Str(key), Nil)], env, dict.new())
+  let answer = r.call(action, [#(v.String(key), Nil)], env, dict.new())
   // console.log(answer)
   let assert Ok(term) = answer
   // console.log(v.debug(term))
@@ -95,7 +95,7 @@ pub fn run() {
   //           Ok(target) ->
   //             case element.closest(target, "[r\\:container]") {
   //               Ok(container) -> {
-  //                 let k = Some(state.Stack(r.CallWith(v.Str("0"), [], env), None))
+  //                 let k = Some(state.Stack(r.CallWith(v.String("0"), [], env), None))
   //                 let c = ref.get(ref)
   //                 let #(answer, _) = r.loop_till(state.V(c), rev, env, k)
   //                 // console.log(answer)
@@ -104,7 +104,7 @@ pub fn run() {
   //                 case term {
   //                   v.Tagged("Ok", return) -> {
   //                     // console.log(v.debug(return))
-  //                     let assert Ok(v.Str(content)) =
+  //                     let assert Ok(v.String(content)) =
   //                       r.field(return, "content")
   //                     let assert Ok(action) = r.field(return, "action")
   //                     ref.set(ref, Ok(action))
@@ -153,13 +153,13 @@ pub fn run() {
   //                 // env needs builtins
   //                 let env = stdlib.env()
   //                 let rev = []
-  //                 let k = Some(state.Stack(r.CallWith(v.Str("0"), [], env), None))
+  //                 let k = Some(state.Stack(r.CallWith(v.String("0"), [], env), None))
   //                 let answer = r.execute(source, env, k)
   //                 // console.log(answer)
   //                 let assert Ok(term) = answer
   //                 // console.log(v.debug(term))
   //                 case term {
-  //                   v.Tagged("Ok", v.Str(content)) ->
+  //                   v.Tagged("Ok", v.String(content)) ->
   //                     element.set_inner_html(container, content)
   //                   _ -> {
   //                     console.log("bad stuff")

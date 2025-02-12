@@ -60,7 +60,7 @@ pub fn do(app, site_id, files) {
 
 fn result_to_eyg(result) {
   case result {
-    Ok(status) -> v.ok(v.Str(status))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Ok(status) -> v.ok(v.String(status))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }

@@ -41,7 +41,7 @@ pub fn debug() {
 }
 
 fn do_debug(term, rev, env, k) {
-  Ok(#(state.V(v.Str(v.debug(term))), env, k))
+  Ok(#(state.V(v.String(v.debug(term))), env, k))
 }
 
 pub fn fix() {
@@ -181,7 +181,7 @@ pub fn serialize() {
 
 pub fn do_serialize(term, rev, env, k) {
   let exp = capture.capture(term, rev)
-  Ok(#(state.V(v.Str(encode.to_json(exp))), env, k))
+  Ok(#(state.V(v.String(encode.to_json(exp))), env, k))
 }
 
 pub fn capture() {
@@ -209,7 +209,7 @@ pub fn do_to_javascript(func, arg, meta, env, k) {
   let arg = capture.capture(arg, meta)
   let exp = #(e.Apply(func, arg), meta)
 
-  Ok(#(state.V(v.Str(compile.to_js(exp, dict.new()))), env, k))
+  Ok(#(state.V(v.String(compile.to_js(exp, dict.new()))), env, k))
 }
 
 // block needs squashing with row on the front
@@ -275,9 +275,9 @@ pub fn do_to_javascript(func, arg, meta, env, k) {
 pub fn expression_to_language(exp) {
   let #(exp, _meta) = exp
   case exp {
-    e.Variable(label) -> [v.Tagged("Variable", v.Str(label))]
+    e.Variable(label) -> [v.Tagged("Variable", v.String(label))]
     e.Lambda(label, body) -> {
-      let head = v.Tagged("Lambda", v.Str(label))
+      let head = v.Tagged("Lambda", v.String(label))
       let rest = expression_to_language(body)
       [head, ..rest]
     }
@@ -291,7 +291,7 @@ pub fn expression_to_language(exp) {
       [head, ..rest]
     }
     e.Let(label, definition, body) -> {
-      let head = v.Tagged("Let", v.Str(label))
+      let head = v.Tagged("Let", v.String(label))
       [
         head,
         ..list.append(
@@ -303,7 +303,7 @@ pub fn expression_to_language(exp) {
 
     e.Binary(value) -> [v.Tagged("Binary", v.Binary(value))]
     e.Integer(value) -> [v.Tagged("Integer", v.Integer(value))]
-    e.Str(value) -> [v.Tagged("String", v.Str(value))]
+    e.String(value) -> [v.Tagged("String", v.String(value))]
 
     e.Tail -> [v.Tagged("Tail", v.unit)]
     e.Cons -> [v.Tagged("Cons", v.unit)]
@@ -311,22 +311,22 @@ pub fn expression_to_language(exp) {
     e.Vacant -> [v.Tagged("Vacant", v.unit)]
 
     e.Empty -> [v.Tagged("Empty", v.unit)]
-    e.Extend(label) -> [v.Tagged("Extend", v.Str(label))]
-    e.Select(label) -> [v.Tagged("Select", v.Str(label))]
-    e.Overwrite(label) -> [v.Tagged("Overwrite", v.Str(label))]
-    e.Tag(label) -> [v.Tagged("Tag", v.Str(label))]
-    e.Case(label) -> [v.Tagged("Case", v.Str(label))]
+    e.Extend(label) -> [v.Tagged("Extend", v.String(label))]
+    e.Select(label) -> [v.Tagged("Select", v.String(label))]
+    e.Overwrite(label) -> [v.Tagged("Overwrite", v.String(label))]
+    e.Tag(label) -> [v.Tagged("Tag", v.String(label))]
+    e.Case(label) -> [v.Tagged("Case", v.String(label))]
     e.NoCases -> [v.Tagged("NoCases", v.unit)]
 
-    e.Perform(label) -> [v.Tagged("Perform", v.Str(label))]
-    e.Handle(label) -> [v.Tagged("Handle", v.Str(label))]
-    e.Builtin(identifier) -> [v.Tagged("Builtin", v.Str(identifier))]
-    e.Reference(identifier) -> [v.Tagged("Reference", v.Str(identifier))]
+    e.Perform(label) -> [v.Tagged("Perform", v.String(label))]
+    e.Handle(label) -> [v.Tagged("Handle", v.String(label))]
+    e.Builtin(identifier) -> [v.Tagged("Builtin", v.String(identifier))]
+    e.Reference(identifier) -> [v.Tagged("Reference", v.String(identifier))]
     e.NamedReference(package, release) -> [
       v.Tagged(
         "NamedReference",
         v.Record([
-          #("package", v.Str(package)),
+          #("package", v.String(package)),
           #("release", v.Integer(release)),
         ]),
       ),
@@ -377,10 +377,10 @@ type NativeStack(m) {
 
 fn step(node, stack) {
   case node {
-    v.Tagged("Variable", v.Str(label)) -> {
+    v.Tagged("Variable", v.String(label)) -> {
       #(Some(e.Variable(label)), stack)
     }
-    v.Tagged("Lambda", v.Str(label)) -> {
+    v.Tagged("Lambda", v.String(label)) -> {
       #(None, [DoBody(label), ..stack])
     }
 
@@ -389,13 +389,13 @@ fn step(node, stack) {
       // use arg, rest <- do_language_to_expression(rest)
       #(None, [DoFunc, ..stack])
     }
-    v.Tagged("Let", v.Str(label)) -> {
+    v.Tagged("Let", v.String(label)) -> {
       // use then, rest <- do_language_to_expression(rest)
       #(None, [DoValue(label), ..stack])
     }
 
     v.Tagged("Integer", v.Integer(value)) -> #(Some(e.Integer(value)), stack)
-    v.Tagged("String", v.Str(value)) -> #(Some(e.Str(value)), stack)
+    v.Tagged("String", v.String(value)) -> #(Some(e.String(value)), stack)
     v.Tagged("Binary", v.Binary(value)) -> #(Some(e.Binary(value)), stack)
 
     v.Tagged("Tail", v.Record([])) -> #(Some(e.Tail), stack)
@@ -404,16 +404,16 @@ fn step(node, stack) {
     v.Tagged("Vacant", v.Record([])) -> #(Some(e.Vacant), stack)
 
     v.Tagged("Empty", v.Record([])) -> #(Some(e.Empty), stack)
-    v.Tagged("Extend", v.Str(label)) -> #(Some(e.Extend(label)), stack)
-    v.Tagged("Select", v.Str(label)) -> #(Some(e.Select(label)), stack)
-    v.Tagged("Overwrite", v.Str(label)) -> #(Some(e.Overwrite(label)), stack)
-    v.Tagged("Tag", v.Str(label)) -> #(Some(e.Tag(label)), stack)
-    v.Tagged("Case", v.Str(label)) -> #(Some(e.Case(label)), stack)
+    v.Tagged("Extend", v.String(label)) -> #(Some(e.Extend(label)), stack)
+    v.Tagged("Select", v.String(label)) -> #(Some(e.Select(label)), stack)
+    v.Tagged("Overwrite", v.String(label)) -> #(Some(e.Overwrite(label)), stack)
+    v.Tagged("Tag", v.String(label)) -> #(Some(e.Tag(label)), stack)
+    v.Tagged("Case", v.String(label)) -> #(Some(e.Case(label)), stack)
     v.Tagged("NoCases", v.Record([])) -> #(Some(e.NoCases), stack)
 
-    v.Tagged("Perform", v.Str(label)) -> #(Some(e.Perform(label)), stack)
-    v.Tagged("Handle", v.Str(label)) -> #(Some(e.Handle(label)), stack)
-    v.Tagged("Builtin", v.Str(identifier)) -> #(
+    v.Tagged("Perform", v.String(label)) -> #(Some(e.Perform(label)), stack)
+    v.Tagged("Handle", v.String(label)) -> #(Some(e.Handle(label)), stack)
+    v.Tagged("Builtin", v.String(identifier)) -> #(
       Some(e.Builtin(identifier)),
       stack,
     )
@@ -427,10 +427,10 @@ fn step(node, stack) {
 
 fn do_language_to_expression(term, k) {
   case term {
-    [v.Tagged("Variable", v.Str(label)), ..rest] -> {
+    [v.Tagged("Variable", v.String(label)), ..rest] -> {
       k(e.Variable(label), rest)
     }
-    [v.Tagged("Lambda", v.Str(label)), ..rest] -> {
+    [v.Tagged("Lambda", v.String(label)), ..rest] -> {
       use body, rest <- do_language_to_expression(rest)
       k(e.Lambda(label, #(body, Nil)), rest)
     }
@@ -439,14 +439,14 @@ fn do_language_to_expression(term, k) {
       use arg, rest <- do_language_to_expression(rest)
       k(e.Apply(#(func, Nil), #(arg, Nil)), rest)
     }
-    [v.Tagged("Let", v.Str(label)), ..rest] -> {
+    [v.Tagged("Let", v.String(label)), ..rest] -> {
       use value, rest <- do_language_to_expression(rest)
       use then, rest <- do_language_to_expression(rest)
       k(e.Let(label, #(value, Nil), #(then, Nil)), rest)
     }
 
     [v.Tagged("Integer", v.Integer(value)), ..rest] -> k(e.Integer(value), rest)
-    [v.Tagged("String", v.Str(value)), ..rest] -> k(e.Str(value), rest)
+    [v.Tagged("String", v.String(value)), ..rest] -> k(e.String(value), rest)
     [v.Tagged("Binary", v.Binary(value)), ..rest] -> k(e.Binary(value), rest)
 
     [v.Tagged("Tail", v.Record([])), ..rest] -> k(e.Tail, rest)
@@ -455,16 +455,17 @@ fn do_language_to_expression(term, k) {
     [v.Tagged("Vacant", v.Record([])), ..rest] -> k(e.Vacant, rest)
 
     [v.Tagged("Empty", v.Record([])), ..rest] -> k(e.Empty, rest)
-    [v.Tagged("Extend", v.Str(label)), ..rest] -> k(e.Extend(label), rest)
-    [v.Tagged("Select", v.Str(label)), ..rest] -> k(e.Select(label), rest)
-    [v.Tagged("Overwrite", v.Str(label)), ..rest] -> k(e.Overwrite(label), rest)
-    [v.Tagged("Tag", v.Str(label)), ..rest] -> k(e.Tag(label), rest)
-    [v.Tagged("Case", v.Str(label)), ..rest] -> k(e.Case(label), rest)
+    [v.Tagged("Extend", v.String(label)), ..rest] -> k(e.Extend(label), rest)
+    [v.Tagged("Select", v.String(label)), ..rest] -> k(e.Select(label), rest)
+    [v.Tagged("Overwrite", v.String(label)), ..rest] ->
+      k(e.Overwrite(label), rest)
+    [v.Tagged("Tag", v.String(label)), ..rest] -> k(e.Tag(label), rest)
+    [v.Tagged("Case", v.String(label)), ..rest] -> k(e.Case(label), rest)
     [v.Tagged("NoCases", v.Record([])), ..rest] -> k(e.NoCases, rest)
 
-    [v.Tagged("Perform", v.Str(label)), ..rest] -> k(e.Perform(label), rest)
-    [v.Tagged("Handle", v.Str(label)), ..rest] -> k(e.Handle(label), rest)
-    [v.Tagged("Builtin", v.Str(identifier)), ..rest] ->
+    [v.Tagged("Perform", v.String(label)), ..rest] -> k(e.Perform(label), rest)
+    [v.Tagged("Handle", v.String(label)), ..rest] -> k(e.Handle(label), rest)
+    [v.Tagged("Builtin", v.String(identifier)), ..rest] ->
       k(e.Builtin(identifier), rest)
     remaining -> {
       io.debug(#("remaining values", remaining, k))
@@ -480,7 +481,7 @@ pub fn decode_uri_component() {
 
 pub fn do_decode_uri_component(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(state.V(v.Str(global.decode_uri_component(unencoded))), env, k))
+  Ok(#(state.V(v.String(global.decode_uri_component(unencoded))), env, k))
 }
 
 pub fn encode_uri() {
@@ -490,7 +491,7 @@ pub fn encode_uri() {
 
 pub fn do_encode_uri(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
-  Ok(#(state.V(v.Str(global.encode_uri(unencoded))), env, k))
+  Ok(#(state.V(v.String(global.encode_uri(unencoded))), env, k))
 }
 
 pub fn base64_encode() {
@@ -501,7 +502,7 @@ pub fn base64_encode() {
 pub fn do_base64_encode(term, rev, env, k) {
   use unencoded <- result.then(cast.as_string(term))
   let value =
-    v.Str(gleam_string.replace(
+    v.String(gleam_string.replace(
       bit_array.base64_encode(bit_array.from_string(unencoded), True),
       "\r\n",
       "",

@@ -203,7 +203,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
         info,
         analysis,
       )
-    a.Str(value) -> {
+    a.String(value) -> {
       let acc = [#("\"", loc.path, -1, String, err), ..acc]
       // Maybe I don't need to append " if looking left
       // Dont escape html here as messes up index's when looking up element

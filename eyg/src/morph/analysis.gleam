@@ -62,7 +62,7 @@ pub fn value_to_type(value, bindings, meta: t) {
     }
     v.Binary(_) -> #(t.Binary, bindings)
     v.Integer(_) -> #(t.Integer, bindings)
-    v.Str(_) -> #(t.String, bindings)
+    v.String(_) -> #(t.String, bindings)
     v.LinkedList([]) -> {
       let level = 0
       let #(var, bindings) = binding.poly(level, bindings)

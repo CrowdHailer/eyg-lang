@@ -18,7 +18,7 @@ fn do_capture(term, env, meta) {
   case term {
     v.Binary(value) -> #(#(a.Binary(value), meta), env)
     v.Integer(value) -> #(#(a.Integer(value), meta), env)
-    v.Str(value) -> #(#(a.Str(value), meta), env)
+    v.String(value) -> #(#(a.String(value), meta), env)
     v.LinkedList(items) ->
       list.fold_right(items, #(#(a.Tail, meta), env), fn(state, item) {
         let #(tail, env) = state
@@ -64,7 +64,7 @@ fn do_capture(term, env, meta) {
           // could special rule std by passing in as an argument
           //
           let #(exp, env) = case var {
-            // "std" -> #(a.Str("I AM STD"), env)
+            // "std" -> #(a.String("I AM STD"), env)
             _ -> do_capture(term, env, meta)
           }
           case list.key_find(env, var) {

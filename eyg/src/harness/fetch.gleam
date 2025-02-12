@@ -34,7 +34,7 @@ pub fn do(request) {
 pub fn result_to_eyg(result) {
   case result {
     Ok(response) -> v.ok(http.response_to_eyg(response))
-    Error(reason) -> v.error(v.Str(string.inspect(reason)))
+    Error(reason) -> v.error(v.String(string.inspect(reason)))
   }
 }
 

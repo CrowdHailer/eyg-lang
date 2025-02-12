@@ -43,7 +43,7 @@ pub fn do(app) {
 
 fn result_to_eyg(result) {
   case result {
-    Ok(token) -> v.ok(v.Str(token))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Ok(token) -> v.ok(v.String(token))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }

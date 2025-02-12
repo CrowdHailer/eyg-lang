@@ -68,7 +68,7 @@ pub fn do(client_id, redirect_uri, local, content) {
 fn result_to_eyg(result) {
   case result {
     Ok(response) -> v.ok(response_to_eyg(response))
-    Error(reason) -> v.error(v.Str(snag.line_print(reason)))
+    Error(reason) -> v.error(v.String(snag.line_print(reason)))
   }
 }
 

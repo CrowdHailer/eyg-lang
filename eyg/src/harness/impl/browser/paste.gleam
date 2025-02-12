@@ -33,7 +33,7 @@ pub fn do() {
 
 pub fn result_to_eyg(result) {
   case result {
-    Ok(value) -> v.ok(v.Str(value))
-    Error(reason) -> v.error(v.Str(reason))
+    Ok(value) -> v.ok(v.String(value))
+    Error(reason) -> v.error(v.String(reason))
   }
 }

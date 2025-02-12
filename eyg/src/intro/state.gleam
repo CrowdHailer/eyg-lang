@@ -552,7 +552,7 @@
 // fn reply_value(effect) -> Value {
 //   case effect {
 //     Geolocation(result) -> geolocation.result_to_eyg(result)
-//     Asked(_question, answer) -> v.Str(answer)
+//     Asked(_question, answer) -> v.String(answer)
 //     Waited(_duration) -> v.unit
 //     Awaited(value) -> value
 //     Log(_) -> panic as "log can be dealt with synchronously"

@@ -8,7 +8,7 @@ import gleam/string
 pub type Value(m, context) {
   Binary(value: BitArray)
   Integer(value: Int)
-  Str(value: String)
+  String(value: String)
   LinkedList(elements: List(Value(m, context)))
   Record(fields: List(#(String, Value(m, context))))
   Tagged(label: String, value: Value(m, context))
@@ -61,7 +61,7 @@ pub fn debug(term) {
   case term {
     Binary(value) -> print_bit_string(value)
     Integer(value) -> int.to_string(value)
-    Str(value) -> string.concat(["\"", value, "\""])
+    String(value) -> string.concat(["\"", value, "\""])
     LinkedList(items) ->
       list.map(items, debug)
       |> list.intersperse(", ")
