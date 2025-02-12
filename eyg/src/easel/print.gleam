@@ -186,7 +186,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     // TODO fix this acc needs to look like string
     e.Binary(value) ->
       print_with_offset(
-        e.print_bit_string(value),
+        print_bit_string(value),
         loc,
         Integer,
         err,
@@ -277,6 +277,21 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       let value = "@" <> package <> ":" <> int.to_string(release)
       print_with_offset(value, loc, Reference, err, acc, info, analysis)
     }
+  }
+}
+
+pub fn print_bit_string(value) {
+  bit_string_to_integers(value, [])
+  |> list.map(int.to_string)
+  |> string.join(" ")
+  |> string.append(">")
+  |> string.append("<", _)
+}
+
+fn bit_string_to_integers(value, acc) {
+  case value {
+    <<byte, rest:bytes>> -> bit_string_to_integers(rest, [byte, ..acc])
+    _ -> list.reverse(acc)
   }
 }
 

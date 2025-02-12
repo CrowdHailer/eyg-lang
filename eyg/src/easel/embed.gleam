@@ -13,7 +13,6 @@ import eyg/runtime/value as v
 import eygir/annotated as a
 import eygir/decode
 import eygir/encode
-import eygir/expression as e
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
@@ -81,7 +80,7 @@ pub type History =
 pub type Embed {
   Embed(
     mode: Mode,
-    yanked: Option(e.Expression),
+    yanked: Option(a.Node(Nil)),
     env: #(state.Env(Nil), t.Substitutions, Int, tenv.Env),
     source: a.Node(Nil),
     history: History,
@@ -611,30 +610,29 @@ pub fn insert_text(state: Embed, data, start, end) {
           #(state, start, [])
         }
         _ -> {
-          let assert Ok(#(target, rezip)) =
-            zipper.at(state.source |> a.drop_annotation, path)
+          let assert Ok(#(target, rezip)) = zipper.at(state.source, path)
           io.debug(target)
           // always the same path
-          let #(new, sub, offset, text_only) = case target {
-            e.Lambda(param, body) -> {
+          let #(new, sub, offset, text_only) = case target.0 {
+            a.Lambda(param, body) -> {
               let #(param, offset) = replace_at(param, cut_start, cut_end, data)
-              #(e.Lambda(param, body), [], offset, True)
+              #(a.lambda(param, body), [], offset, True)
             }
-            e.Apply(e.Apply(e.Cons, _), _) -> {
-              let new = e.Apply(e.Apply(e.Cons, e.Vacant), target)
+            a.Apply(#(a.Apply(#(a.Cons, _), _), _), _) -> {
+              let new = a.apply(a.apply(a.cons(), a.vacant()), target)
               #(new, [0, 1], 0, False)
             }
-            e.Apply(e.Apply(e.Extend(label), value), rest) -> {
+            a.Apply(#(a.Apply(#(a.Extend(label), _), value), _), rest) -> {
               case data, cut_start <= 0 {
                 ",", True -> {
-                  let new = e.Apply(e.Apply(e.Extend(""), e.Vacant), target)
+                  let new = a.apply(a.apply(a.extend(""), a.vacant()), target)
                   #(new, [], 0, True)
                 }
                 _, _ -> {
                   let #(label, offset) =
                     replace_at(label, cut_start, cut_end, data)
                   #(
-                    e.Apply(e.Apply(e.Extend(label), value), rest),
+                    a.apply(a.apply(a.extend(label), value), rest),
                     [],
                     offset,
                     True,
@@ -642,17 +640,18 @@ pub fn insert_text(state: Embed, data, start, end) {
                 }
               }
             }
-            e.Apply(e.Apply(e.Overwrite(label), value), rest) -> {
+            a.Apply(#(a.Apply(#(a.Overwrite(label), _), value), _), rest) -> {
               case data, cut_start <= 0 {
                 ",", True -> {
-                  let new = e.Apply(e.Apply(e.Overwrite(""), e.Vacant), target)
+                  let new =
+                    a.apply(a.apply(a.overwrite(""), a.vacant()), target)
                   #(new, [], 0, True)
                 }
                 _, _ -> {
                   let #(label, offset) =
                     replace_at(label, cut_start, cut_end, data)
                   #(
-                    e.Apply(e.Apply(e.Overwrite(label), value), rest),
+                    a.apply(a.apply(a.overwrite(label), value), rest),
                     [],
                     offset,
                     True,
@@ -660,25 +659,25 @@ pub fn insert_text(state: Embed, data, start, end) {
                 }
               }
             }
-            e.Let(label, value, then) -> {
+            a.Let(label, value, then) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Let(label, value, then), [], offset, True)
+              #(a.let_(label, value, then), [], offset, True)
             }
-            e.Variable(label) -> {
+            a.Variable(label) -> {
               case is_var(data) || is_num(data) && cut_start > 0 {
                 True -> {
                   let #(label, offset) =
                     replace_at(label, cut_start, cut_end, data)
                   let #(new, text_only) = case label {
-                    "" -> #(e.Vacant, False)
-                    _ -> #(e.Variable(label), True)
+                    "" -> #(a.vacant(), False)
+                    _ -> #(a.variable(label), True)
                   }
                   #(new, [], offset, text_only)
                 }
                 False ->
                   case data {
                     "{" -> #(
-                      e.Apply(e.Apply(e.Overwrite(""), e.Vacant), target),
+                      a.apply(a.apply(a.overwrite(""), a.vacant()), target),
                       [],
                       0,
                       False,
@@ -688,25 +687,25 @@ pub fn insert_text(state: Embed, data, start, end) {
               }
             }
 
-            e.Vacant ->
+            a.Vacant ->
               case data {
-                "\"" -> #(e.Str(""), [], 0, False)
-                "[" -> #(e.Tail, [], 0, False)
-                "{" -> #(e.Empty, [], 0, False)
+                "\"" -> #(a.string(""), [], 0, False)
+                "[" -> #(a.tail(), [], 0, False)
+                "{" -> #(a.empty(), [], 0, False)
                 // TODO need to add path to step in
-                "(" -> #(e.Apply(e.Vacant, e.Vacant), [], 0, False)
-                "=" -> #(e.Let("", e.Vacant, e.Vacant), [], 0, False)
+                "(" -> #(a.apply(a.vacant(), a.vacant()), [], 0, False)
+                "=" -> #(a.let_("", a.vacant(), a.vacant()), [], 0, False)
                 "|" -> #(
-                  e.Apply(e.Apply(e.Case(""), e.Vacant), e.Vacant),
+                  a.apply(a.apply(a.case_(""), a.vacant()), a.vacant()),
                   [],
                   0,
                   False,
                 )
-                "^" -> #(e.Perform(""), [], 0, False)
+                "^" -> #(a.perform(""), [], 0, False)
                 _ -> {
                   case int.parse(data) {
                     Ok(number) -> #(
-                      e.Integer(number),
+                      a.integer(number),
                       [],
                       string.length(data),
                       False,
@@ -714,7 +713,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                     Error(Nil) ->
                       case is_var(data) {
                         True -> #(
-                          e.Variable(data),
+                          a.variable(data),
                           [],
                           string.length(data),
                           False,
@@ -722,7 +721,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                         False ->
                           case is_tag(data) {
                             True -> #(
-                              e.Tag(data),
+                              a.tag(data),
                               [],
                               string.length(data),
                               False,
@@ -733,13 +732,13 @@ pub fn insert_text(state: Embed, data, start, end) {
                   }
                 }
               }
-            e.Str(value) -> {
+            a.Str(value) -> {
               let value = stringx.replace_at(value, cut_start, cut_end, data)
-              #(e.Str(value), [], cut_start + string.length(data), True)
+              #(a.string(value), [], cut_start + string.length(data), True)
             }
-            e.Integer(value) -> {
+            a.Integer(value) -> {
               case data == "-" && cut_start == 0 {
-                True -> #(e.Integer(0 - value), [], 1, True)
+                True -> #(a.integer(0 - value), [], 1, True)
                 False ->
                   case int.parse(data) {
                     Ok(_) -> {
@@ -748,7 +747,7 @@ pub fn insert_text(state: Embed, data, start, end) {
                         |> stringx.replace_at(cut_start, cut_end, data)
                         |> int.parse()
                       #(
-                        e.Integer(value),
+                        a.integer(value),
                         [],
                         cut_start + string.length(data),
                         True,
@@ -758,10 +757,10 @@ pub fn insert_text(state: Embed, data, start, end) {
                   }
               }
             }
-            e.Tail -> {
+            a.Tail -> {
               case data {
                 "," -> #(
-                  e.Apply(e.Apply(e.Cons, e.Vacant), e.Vacant),
+                  a.apply(a.apply(a.cons(), a.vacant()), a.vacant()),
                   [0, 1],
                   cut_start,
                   False,
@@ -769,10 +768,10 @@ pub fn insert_text(state: Embed, data, start, end) {
                 _ -> #(target, [], cut_start, True)
               }
             }
-            e.Empty -> {
+            a.Empty -> {
               case data {
                 "," -> #(
-                  e.Apply(e.Apply(e.Extend(""), e.Vacant), e.Vacant),
+                  a.apply(a.apply(a.extend(""), a.vacant()), a.vacant()),
                   [0, 1],
                   cut_start,
                   False,
@@ -780,35 +779,35 @@ pub fn insert_text(state: Embed, data, start, end) {
                 _ -> #(target, [], cut_start, True)
               }
             }
-            e.Extend(label) -> {
+            a.Extend(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Extend(label), [], offset, True)
+              #(a.extend(label), [], offset, True)
             }
-            e.Select(label) -> {
+            a.Select(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Select(label), [], offset, True)
+              #(a.select(label), [], offset, True)
             }
-            e.Overwrite(label) -> {
+            a.Overwrite(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Overwrite(label), [], offset, True)
+              #(a.overwrite(label), [], offset, True)
             }
-            e.Tag(label) -> {
+            a.Tag(label) -> {
               case is_tag(data) {
                 True -> {
                   let #(label, offset) =
                     replace_at(label, cut_start, cut_end, data)
-                  #(e.Tag(label), [], offset, True)
+                  #(a.tag(label), [], offset, True)
                 }
                 False -> #(target, [], cut_start, False)
               }
             }
-            e.Apply(e.Apply(e.Case(label), value), rest) -> {
+            a.Apply(#(a.Apply(#(a.Case(label), _), value), _), rest) -> {
               case is_tag(data) {
                 True -> {
                   let #(label, offset) =
                     replace_at(label, cut_start, cut_end, data)
                   #(
-                    e.Apply(e.Apply(e.Case(label), value), rest),
+                    a.apply(a.apply(a.case_(label), value), rest),
                     [],
                     offset,
                     True,
@@ -817,37 +816,37 @@ pub fn insert_text(state: Embed, data, start, end) {
                 False -> #(target, [], cut_start, False)
               }
             }
-            e.Case(label) -> {
+            a.Case(label) -> {
               case is_tag(data) {
                 True -> {
                   let #(label, offset) =
                     replace_at(label, cut_start, cut_end, data)
-                  #(e.Case(label), [], offset, True)
+                  #(a.case_(label), [], offset, True)
                 }
                 False -> #(target, [], cut_start, False)
               }
             }
-            e.Perform(label) -> {
+            a.Perform(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Perform(label), [], offset, True)
+              #(a.perform(label), [], offset, True)
             }
-            e.Handle(label) -> {
+            a.Handle(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Handle(label), [], offset, True)
+              #(a.handle(label), [], offset, True)
             }
-            e.Builtin(label) -> {
+            a.Builtin(label) -> {
               let #(label, offset) = replace_at(label, cut_start, cut_end, data)
-              #(e.Builtin(label), [], offset, True)
+              #(a.builtin(label), [], offset, True)
             }
-            node -> {
-              io.debug(#("nothing", node))
-              #(node, [], cut_start, False)
+            _ -> {
+              io.debug(#("nothing", target.0))
+              #(target, [], cut_start, False)
             }
           }
           case target == new {
             True -> #(state, start, [])
             False -> {
-              let new = rezip(new) |> a.add_annotation(Nil)
+              let new = rezip(new)
               let backwards = case state.history.1 {
                 [#(original, p, True), ..rest] if p == path && text_only -> {
                   [#(original, path, True), ..rest]
@@ -1007,9 +1006,9 @@ pub fn redo(state: Embed, start) {
 pub fn builtin(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  case target {
-    e.Vacant -> #(e.Builtin(""), Insert, [])
-    _ -> #(e.Apply(e.Builtin(""), target), Insert, [0])
+  case target.0 {
+    a.Vacant -> #(a.builtin(""), Insert, [])
+    _ -> #(a.apply(a.builtin(""), target), Insert, [0])
   }
 }
 
@@ -1018,34 +1017,34 @@ pub fn builtin(state: Embed, start, end) {
 pub fn call_with(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Vacant, target), state.mode, [0])
+  #(a.apply(a.vacant(), target), state.mode, [0])
 }
 
 pub fn assign_to(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Let("", target, e.Vacant), Insert, [])
+  #(a.let_("", target, a.vacant()), Insert, [])
 }
 
 pub fn assign_before(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Let("", e.Vacant, target), Insert, [])
+  #(a.let_("", a.vacant(), target), Insert, [])
 }
 
 pub fn extend(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  case target {
-    e.Vacant -> #(e.Empty, state.mode, [])
-    _ -> #(e.Apply(e.Apply(e.Extend(""), e.Vacant), target), Insert, [])
+  case target.0 {
+    a.Vacant -> #(a.empty(), state.mode, [])
+    _ -> #(a.apply(a.apply(a.extend(""), a.vacant()), target), Insert, [])
   }
 }
 
 pub fn extender(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Extend(""), state.mode, [])
+  #(a.extend(""), state.mode, [])
 }
 
 pub fn tag(state: Embed, start, end) {
@@ -1053,14 +1052,14 @@ pub fn tag(state: Embed, start, end) {
   use target <- update_at(state, path)
   case target {
     // e.Vacant -> #(e.Empty, state.mode, [])
-    _ -> #(e.Apply(e.Tag(""), target), Insert, [0])
+    _ -> #(a.apply(a.tag(""), target), Insert, [0])
   }
 }
 
 fn copy(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
 
-  case zipper.at(state.source |> a.drop_annotation, path) {
+  case zipper.at(state.source, path) {
     Error(Nil) -> panic("how did this happen need path back")
     Ok(#(target, _rezip)) -> {
       #(Embed(..state, yanked: Some(target)), start, [])
@@ -1078,62 +1077,70 @@ fn paste(state: Embed, start, end) {
 pub fn overwrite(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Apply(e.Overwrite(""), e.Vacant), target), Insert, [])
+  #(a.apply(a.apply(a.overwrite(""), a.vacant()), target), Insert, [])
 }
 
 pub fn perform(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  case target {
-    e.Vacant -> #(e.Perform(""), Insert, [])
-    _ -> #(e.Apply(e.Perform(""), target), Insert, [0])
+  case target.0 {
+    a.Vacant -> #(a.perform(""), Insert, [])
+    _ -> #(a.apply(a.perform(""), target), Insert, [0])
   }
 }
 
 pub fn string(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Str(""), Insert, [])
+  #(a.string(""), Insert, [])
 }
 
 pub fn binary(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Binary(<<>>), Insert, [])
+  #(a.binary(<<>>), Insert, [])
 }
 
 // shift d for delete line
 pub fn delete(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  case target {
-    e.Let(_, _, then) -> #(then, state.mode, [])
-    e.Apply(e.Apply(e.Cons, _), rest) -> #(rest, state.mode, [])
-    e.Apply(e.Apply(e.Extend(_), _), rest) -> #(rest, state.mode, [])
-    e.Apply(e.Apply(e.Overwrite(_), _), rest) -> #(rest, state.mode, [])
-    e.Apply(e.Apply(e.Case(_), _), then) -> #(then, state.mode, [])
-    _ -> #(e.Vacant, state.mode, [])
+  case target.0 {
+    a.Let(_, _, then) -> #(then, state.mode, [])
+    a.Apply(#(a.Apply(#(a.Cons, _), _), _), rest) -> #(rest, state.mode, [])
+    a.Apply(#(a.Apply(#(a.Extend(_), _), _), _), rest) -> #(
+      rest,
+      state.mode,
+      [],
+    )
+    a.Apply(#(a.Apply(#(a.Overwrite(_), _), _), _), rest) -> #(
+      rest,
+      state.mode,
+      [],
+    )
+    a.Apply(#(a.Apply(#(a.Case(_), _), _), _), then) -> #(then, state.mode, [])
+    _ -> #(a.vacant(), state.mode, [])
   }
 }
 
 pub fn insert_function(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Lambda("", target), Insert, [])
+  #(a.lambda("", target), Insert, [])
 }
 
 pub fn select(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Select(""), target), Insert, [0])
+  #(a.apply(a.select(""), target), Insert, [0])
 }
 
 pub fn handle(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  case target {
-    e.Vacant -> #(e.Handle(""), Insert, [])
-    _ -> #(e.Apply(e.Handle(""), target), Insert, [0])
+  case target.0 {
+    a.Vacant -> #(a.handle(""), Insert, [])
+    _ -> #(a.apply(a.handle(""), target), Insert, [0])
   }
 }
 
@@ -1141,9 +1148,9 @@ pub fn list_element(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
   // without this vacant case how do you make an empty list
-  let new = case target {
-    e.Vacant -> e.Tail
-    _ -> e.Apply(e.Apply(e.Cons, target), e.Tail)
+  let new = case target.0 {
+    a.Vacant -> a.tail()
+    _ -> a.apply(a.apply(a.cons(), target), a.tail())
   }
   #(new, state.mode, [])
 }
@@ -1152,9 +1159,9 @@ pub fn extend_list(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
   // without this vacant case how do you make an empty list
-  let new = case target {
-    e.Apply(e.Apply(e.Cons, _), _) | e.Tail ->
-      e.Apply(e.Apply(e.Cons, e.Vacant), target)
+  let new = case target.0 {
+    a.Apply(#(a.Apply(#(a.Cons, _), _), _), _) | a.Tail ->
+      a.apply(a.apply(a.cons(), a.vacant()), target)
     _ -> target
   }
   #(new, state.mode, [])
@@ -1164,9 +1171,9 @@ pub fn spread_list(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
   // without this vacant case how do you make an empty list
-  let new = case target {
-    e.Apply(e.Apply(e.Cons, item), e.Tail) -> item
-    e.Tail -> e.Vacant
+  let new = case target.0 {
+    a.Apply(#(a.Apply(#(a.Cons, _), item), _), #(a.Tail, _)) -> item
+    a.Tail -> a.vacant()
     _ -> target
   }
   #(new, state.mode, [])
@@ -1175,45 +1182,45 @@ pub fn spread_list(state: Embed, start, end) {
 pub fn call(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(target, e.Vacant), state.mode, [1])
+  #(a.apply(target, a.vacant()), state.mode, [1])
 }
 
 pub fn number(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.Integer(0), Insert, [])
+  #(a.integer(0), Insert, [])
 }
 
 pub fn match(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use target <- update_at(state, path)
-  #(e.Apply(e.Apply(e.Case(""), e.Vacant), target), Insert, [])
+  #(a.apply(a.apply(a.case_(""), a.vacant()), target), Insert, [])
 }
 
 pub fn nocases(state: Embed, start, end) {
   use path <- single_focus(state, start, end)
   use _target <- update_at(state, path)
-  #(e.NoCases, state.mode, [])
+  #(a.nocases(), state.mode, [])
 }
 
 pub fn insert_paragraph(index, state: Embed) {
   let assert Ok(#(_ch, path, offset, _style, _err)) =
     listx.at(state.rendered.0, index)
   let source = state.source
-  let assert Ok(#(target, rezip)) = zipper.at(source |> a.drop_annotation, path)
+  let assert Ok(#(target, rezip)) = zipper.at(source, path)
 
-  let #(new, sub, offset) = case target {
-    e.Str(content) -> {
+  let #(new, sub, offset) = case target.0 {
+    a.Str(content) -> {
       // needs end for large enter, needs to be insert mode only
       let #(content, offset) = replace_at(content, offset, offset, "\n")
-      #(e.Str(content), [], offset)
+      #(a.string(content), [], offset)
     }
-    e.Let(label, value, then) -> {
-      #(e.Let(label, value, e.Let("", e.Vacant, then)), [1], 0)
+    a.Let(label, value, then) -> {
+      #(a.let_(label, value, a.let_("", a.vacant(), then)), [1], 0)
     }
-    node -> #(e.Let("", node, e.Vacant), [1], 0)
+    _ -> #(a.let_("", target, a.vacant()), [1], 0)
   }
-  let new = rezip(new) |> a.add_annotation(Nil)
+  let new = rezip(new)
   let history = #([], [#(source, path, False), ..state.history.1])
 
   let inferred = case
@@ -1387,13 +1394,11 @@ fn single_focus(state: Embed, start, end, cb) {
 
 fn update_at(state: Embed, path, cb) {
   let source = state.source
-  case zipper.at(source |> a.drop_annotation, path) {
+  case zipper.at(source, path) {
     Error(Nil) -> panic("how did this happen need path back")
     Ok(#(target, rezip)) -> {
       let #(updated, mode, sub_path) = cb(target)
-      let new =
-        rezip(updated)
-        |> a.add_annotation(Nil)
+      let new = rezip(updated)
       let history = #([], [#(source, path, False), ..state.history.1])
       let inferred = case state.auto_infer {
         True -> Some(do_infer(new, state.env))
