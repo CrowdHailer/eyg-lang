@@ -13,7 +13,6 @@
 // import eyg/sync/sync
 // import eygir/annotated.{type Node}
 // import eygir/encode
-// import eygir/expression
 // import gleam/dict
 // import gleam/http/request.{type Request}
 // import gleam/io

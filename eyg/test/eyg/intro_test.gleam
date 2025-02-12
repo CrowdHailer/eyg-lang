@@ -3,7 +3,6 @@
 // import eyg/runtime/value as v
 // import eyg/sync/references.{Store}
 // import eygir/annotated
-// import eygir/expression as e
 // import gleam/dict
 // import gleam/string
 // import gleeunit/should

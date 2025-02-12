@@ -252,6 +252,10 @@ pub fn map_annotation(
   }
 }
 
+pub fn clear_annotation(source) {
+  map_annotation(source, fn(_) { Nil })
+}
+
 pub fn list_builtins(exp) {
   do_list_builtins(exp, [])
 }

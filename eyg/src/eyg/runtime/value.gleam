@@ -1,5 +1,4 @@
 import eygir/annotated as a
-import eygir/expression as e
 import gleam/int
 import gleam/javascript/promise.{type Promise as JSPromise}
 import gleam/list

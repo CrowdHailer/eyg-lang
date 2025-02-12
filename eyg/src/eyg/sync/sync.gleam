@@ -6,7 +6,6 @@ import eyg/sync/fragment
 import eyg/sync/supabase
 import eygir/annotated as a
 import eygir/decode
-import eygir/expression
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/http.{type Scheme}
@@ -29,7 +28,7 @@ pub const test_origin = Origin(http.Https, "eyg.test", None)
 
 pub type Computed {
   Computed(
-    expression: expression.Expression,
+    expression: a.Node(Nil),
     type_: binding.Poly,
     value: Result(fragment.Value, String),
   )
@@ -245,7 +244,7 @@ fn compute(source, loaded) {
         [] -> []
         _ -> io.debug(errors)
       }
-      Ok(Computed(a.drop_annotation(source), top_type, executed))
+      Ok(Computed(a.clear_annotation(source), top_type, executed))
     }
     missing -> Error(#(missing, source))
   }
@@ -269,7 +268,7 @@ pub fn task_finish(sync, message) {
     DumpDownLoaded(dump) -> {
       case dump {
         Ok(dump) -> load(sync, dump)
-        Error(reason) -> panic as "failed to load resources"
+        Error(_reason) -> panic as "failed to load resources"
       }
     }
   }
