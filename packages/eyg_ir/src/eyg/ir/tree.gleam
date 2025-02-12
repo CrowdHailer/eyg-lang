@@ -37,7 +37,7 @@ pub type Expression(m) {
 
   Builtin(identifier: String)
   Reference(identifier: String)
-  NamedReference(package: String, release: Int)
+  Release(package: String, release: Int, identifier: String)
 }
 
 pub fn variable(label) {
@@ -124,8 +124,8 @@ pub fn reference(identifier) {
   #(Reference(identifier), Nil)
 }
 
-pub fn namedreference(package, release) {
-  #(NamedReference(package, release), Nil)
+pub fn release(package, release, identifier) {
+  #(Release(package, release, identifier), Nil)
 }
 
 pub fn unit() {
@@ -194,7 +194,7 @@ fn do_get_annotation(in, acc) -> List(_) {
 
     Builtin(_identifier) -> acc
     Reference(_identifier) -> acc
-    NamedReference(_package, _release) -> acc
+    Release(_package, _release, _identifier) -> acc
   }
 }
 
@@ -289,10 +289,10 @@ pub fn list_named_references(exp) {
 fn do_list_named_references(exp, found) {
   let #(exp, _meta) = exp
   case exp {
-    NamedReference(package, release) ->
-      case list.contains(found, #(package, release)) {
+    Release(package, release, identifier) ->
+      case list.contains(found, #(package, release, identifier)) {
         True -> found
-        False -> [#(package, release), ..found]
+        False -> [#(package, release, identifier), ..found]
       }
     Let(_label, value, then) -> {
       let found = do_list_named_references(then, found)

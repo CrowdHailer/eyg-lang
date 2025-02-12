@@ -7,10 +7,22 @@ import gleam/json
 import gleam/json as j
 import gleam/list
 import gleam/result
+import multiformats/cid
 
 fn label_decoder(for, meta) {
   use label <- decode.field("l", decode.string)
   decode.success(#(for(label), meta))
+}
+
+const vacant_cid = "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
+
+fn cid_decoder() {
+  decode.new_primitive_decoder("CID", fn(raw) {
+    case cid.decode(raw) {
+      Ok(cid) -> Ok(cid.to_string(cid))
+      Error(Nil) -> Error(vacant_cid)
+    }
+  })
 }
 
 pub fn decoder(meta) {
@@ -34,11 +46,8 @@ pub fn decoder(meta) {
       decode.success(#(ir.Let(label, value, then), meta))
     }
     "x" -> {
-      use encoded <- decode.field("v", decode.string)
-      case bit_array.base64_decode(encoded) {
-        Ok(bytes) -> decode.success(#(ir.Binary(bytes), meta))
-        Error(Nil) -> decode.failure(#(ir.Vacant, meta), "base64")
-      }
+      use bytes <- decode.field("v", decode.bit_array)
+      decode.success(#(ir.Binary(bytes), meta))
     }
     "i" -> {
       use value <- decode.field("v", decode.int)
@@ -61,11 +70,15 @@ pub fn decoder(meta) {
     "p" -> label_decoder(ir.Perform, meta)
     "h" -> label_decoder(ir.Handle, meta)
     "b" -> label_decoder(ir.Builtin, meta)
-    "#" -> label_decoder(ir.Reference, meta)
+    "#" -> {
+      use cid <- decode.field("l", cid_decoder())
+      decode.success(#(ir.Reference(cid), meta))
+    }
     "@" -> {
       use package <- decode.field("p", decode.string)
       use release <- decode.field("r", decode.int)
-      decode.success(#(ir.NamedReference(package, release), meta))
+      use cid <- decode.field("l", cid_decoder())
+      decode.success(#(ir.Release(package, release, cid), meta))
     }
     _ -> {
       // io.debug(switch)
@@ -116,7 +129,7 @@ pub fn to_data_model(tree) {
       [label(x), #("v", to_data_model(value)), #("t", to_data_model(then))]
       |> node("l", _)
     // b already taken when adding binary
-    ir.Binary(b) -> node("x", [#("v", bytes(b))])
+    ir.Binary(b) -> node("x", [#("v", codec.encode_binary(b))])
     ir.Integer(i) -> node("i", [#("v", j.int(i))])
     // string
     ir.String(s) -> node("s", [#("v", j.string(s))])
@@ -138,8 +151,7 @@ pub fn to_data_model(tree) {
     ir.Handle(x) -> node("h", [label(x)])
     ir.Builtin(x) -> node("b", [label(x)])
     ir.Reference(x) -> node("#", [label(x)])
-    ir.NamedReference(p, r) ->
-      node("@", [#("p", j.string(p)), #("r", j.int(r))])
+    ir.Release(p, r, _) -> node("@", [#("p", j.string(p)), #("r", j.int(r))])
   }
 }
 

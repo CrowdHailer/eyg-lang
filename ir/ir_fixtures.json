@@ -4,7 +4,8 @@
     "source": {
       "0": "v",
       "l": "foo"
-    }
+    },
+    "cid": "baguqeera22cbouedtv3bzhajvp66ib6ichytfrid6osjpskyzthoivta6yyq"
   },
   {
     "name": "function",
@@ -15,7 +16,8 @@
         "0": "v",
         "l": "x"
       }
-    }
+    },
+    "cid": "baguqeeraup4cqhkgfpykg5bluntkz5q7vs5nmdhru2wlrtylf3bgqvpeog2q"
   },
   {
     "name": "apply",
@@ -33,7 +35,8 @@
         "0": "s",
         "v": "foo"
       }
-    }
+    },
+    "cid": "baguqeerah3rk6276thsyqacdce6o346jwset5vxsdrwwrek7n745vl5i2bma"
   },
   {
     "name": "let",
@@ -48,121 +51,148 @@
         "0": "v",
         "l": "x"
       }
-    }
+    },
+    "cid": "baguqeeraijyrkjvaioixrfdxtpbuhq6h2oqfu33jtuioehjghlqye27uoziq"
   },
   {
     "name": "binary",
     "source": {
       "0": "x",
-      "v": "AQ=="
-    }
+      "v": {
+        "/": {
+          "bytes": "AQ=="
+        }
+      }
+    },
+    "cid": "baguqeerafry6hj46fxe4njs36ggzi7zkfmsh4irwfrrz7tk457ryfwqppeia"
   },
   {
     "name": "integer",
     "source": {
       "0": "i",
       "v": 5
-    }
+    },
+    "cid": "baguqeerarngaoud7zuapuyu76f2ztzibg6f5kbxczaarackirhdkmtnq7saq"
   },
   {
     "name": "string",
     "source": {
       "0": "s",
       "v": "hello"
-    }
+    },
+    "cid": "baguqeerazz2zcfcldrht5jkx7z46m42wrz2ewxducbc7o3ctro4c4b42fc5a"
   },
   {
     "name": "empty list",
     "source": {
       "0": "ta"
-    }
+    },
+    "cid": "baguqeeraepl2tpg63nooz3jkhcxyo7ggmdkv4lgmbjld42khss433652g42q"
   },
   {
     "name": "list cons",
     "source": {
       "0": "c"
-    }
+    },
+    "cid": "baguqeeraqyvjt4lhfr66jw66yhg37xaj7tvdde5pifx7eqdq2a4zgzpffwaq"
   },
   {
     "name": "vacant",
     "source": {
       "0": "z"
-    }
+    },
+    "cid": "baguqeerar6vyjqns54f63oywkgsjsnrcnuiixwgrik2iovsp7mdr6wplmsma"
   },
   {
     "name": "empty record",
     "source": {
       "0": "u"
-    }
+    },
+    "cid": "baguqeeras3so3inbxzinxawcwdul4rcfxyl774j6iiw2irfwbfg3n7lllzha"
   },
   {
     "name": "extend record",
     "source": {
       "0": "e",
       "l": "foo"
-    }
+    },
+    "cid": "baguqeeralpquzg2jrl767sebzopf6gc4atnxiav32phvdgglepcplr2zddja"
   },
   {
     "name": "select field",
     "source": {
       "0": "g",
       "l": "foo"
-    }
+    },
+    "cid": "baguqeera2amzyhxn2req4k4l3ay3wsox754uaw3znrbnzwvspuhsx4ihdz6q"
   },
   {
     "name": "tag",
     "source": {
       "0": "t",
-      "l": "foo"
-    }
+      "l": "Ok"
+    },
+    "cid": "baguqeeraftfuexw5iet7kpzoihoxbktbkjsv7lfxlj7i5vk7wifapwxtzxwq"
   },
   {
     "name": "match",
     "source": {
       "0": "m",
-      "l": "foo"
-    }
+      "l": "Ok"
+    },
+    "cid": "baguqeerasphggab3tp6jera7ra4ezkdysfdtyfkkgbi6772jqgcj44kffjhq"
   },
   {
     "name": "no match",
     "source": {
       "0": "n"
-    }
+    },
+    "cid": "baguqeeraow22kpx47ceeucmvqajbr6sitdflijbmlx7lflbeduu2jiuaiwba"
   },
   {
     "name": "perform effect",
     "source": {
       "0": "p",
-      "l": "foo"
-    }
+      "l": "Log"
+    },
+    "cid": "baguqeerafhccbmtkfya4h75rk3ayhxf2545fyqiqlsi7646ovhimzqdwvz3a"
   },
   {
     "name": "handle effect",
     "source": {
       "0": "h",
-      "l": "Abord"
-    }
+      "l": "Abort"
+    },
+    "cid": "baguqeera5sahowe6a7xgdocvybfg23hckdizgoql3akvvo3qaswbjviqcvzq"
   },
   {
     "name": "add integer builtin",
     "source": {
       "0": "b",
       "l": "int_add"
-    }
+    },
+    "cid": "baguqeerapq53j5vkozo4fjvc7gk7vvfo4b7o5qcinmvtxjepuhuwnridemfa"
   },
   {
     "name": "cid reference",
     "source": {
       "0": "#",
-      "l": "h1234"
-    }
+      "l": {
+        "/": "baguqeeraqyvjt4lhfr66jw66yhg37xaj7tvdde5pifx7eqdq2a4zgzpffwaq"
+      }
+    },
+    "cid": "baguqeerarwjwobsdf6jhcw67em7wpoxdqike6qkogjucusvzxdg6w74nzkyq"
   },
   {
     "name": "release",
     "source": {
       "0": "@",
       "p": "welcome",
-      "r": 1
-    }
+      "r": 1,
+      "l": {
+        "/": "baguqeeraqyvjt4lhfr66jw66yhg37xaj7tvdde5pifx7eqdq2a4zgzpffwaq"
+      }
+    },
+    "cid": "baguqeeraod4ny72obs3ii2tdbct3ybrg2kx7uaknapdj5sgvoqry7h4re42a"
   }
 ]
