@@ -150,8 +150,14 @@ pub fn to_data_model(tree) {
     ir.Perform(x) -> node("p", [label(x)])
     ir.Handle(x) -> node("h", [label(x)])
     ir.Builtin(x) -> node("b", [label(x)])
-    ir.Reference(x) -> node("#", [label(x)])
-    ir.Release(p, r, _) -> node("@", [#("p", j.string(p)), #("r", j.int(r))])
+    ir.Reference(identifier) ->
+      node("#", [#("l", codec.encode_cid(identifier))])
+    ir.Release(p, r, i) ->
+      node("@", [
+        #("p", j.string(p)),
+        #("r", j.int(r)),
+        #("l", codec.encode_cid(i)),
+      ])
   }
 }
 

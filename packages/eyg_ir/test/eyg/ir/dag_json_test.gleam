@@ -1,10 +1,8 @@
 import dag_json
 import eyg/ir/cid
 import eyg/ir/dag_json as codec
-import eyg/ir/tree as ir
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
-import gleam/io
 import gleam/list
 import gleeunit/should
 import simplifile
