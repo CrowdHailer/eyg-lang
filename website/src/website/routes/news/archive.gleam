@@ -2,6 +2,23 @@ import website/routes/news/edition.{Edition}
 
 pub const published = [
   Edition(
+    "2025-02-13",
+    "A roadmap to 1.0 and explaining effects",
+    "
+  Writing a roadmap 
+
+  The [last newsletter]() discussed how fragile modern software development was and how EYG improves the situation.
+  Features such as effects, content addressed dependencies and a simple source structure all reduce fragility.
+
+  However to see the benefits EYG has to commit to backwards compata
+
+  I spoke at functional conf 2025 image link to my page
+  the slides are available
+
+  Effects are also really important and so here's a blog post that should better explain them
+  ",
+  ),
+  Edition(
     "2025-01-06",
     "Code reloading, structured editor and some reflections",
     "
