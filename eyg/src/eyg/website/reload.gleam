@@ -3,7 +3,7 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
-import eygir/annotated
+import eyg/ir/tree as ir
 import gleam/io
 import gleam/list
 import gleam/set
@@ -43,8 +43,8 @@ pub fn check_against_state(editable, old_state, refs) {
       b,
     )
 
-  let paths = annotated.get_annotation(with_paths)
-  let info = annotated.get_annotation(tree)
+  let paths = ir.get_annotation(with_paths)
+  let info = ir.get_annotation(tree)
   let assert Ok(info) = list.strict_zip(paths, info)
   let type_errors =
     list.filter_map(info, fn(info) {

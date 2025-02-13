@@ -1,10 +1,9 @@
 import eyg/analysis/type_/binding/error
 import eyg/document/section
+import eyg/ir/tree as ir
 import eyg/parse
 import eyg/runtime/value as v
-import eyg/sync/cid
 import eyg/sync/sync
-import eygir/annotated as a
 import gleam/io
 import gleam/list
 import gleam/listx
@@ -55,12 +54,13 @@ fn do_load_snippet(
 
       // self contained = no free variables
       // editable.to_annotated has the path information as the metadata
-      let contained =
+      let contained: ir.Node(_) =
         source
         |> editable.to_annotated([1, index])
-        |> a.substitute_for_references(scope)
+        // |> ir.substitute_for_references(scope)
+        |> todo
 
-      let ref = cid.for_expression(contained)
+      let ref = todo
       let refs = [ref, ..refs]
 
       let cache = sync.install(cache, ref, contained)
@@ -78,11 +78,11 @@ fn do_load_snippet(
             let #(cache, scope) = acc
             let #(field, bind) = pair
             let contained = #(
-              a.Apply(#(a.Select(field), []), #(a.Reference(ref), [])),
+              ir.Apply(#(ir.Select(field), []), #(ir.Reference(ref), [])),
               [],
             )
 
-            let ref = cid.for_expression(contained)
+            let ref = todo
             io.debug(#(field, ref))
             let cache = sync.install(cache, ref, contained)
 
@@ -127,9 +127,9 @@ pub fn sections_from_content(content) {
     let #(comments, code) = c
     let assert Ok(#(#(source, _then), _)) = parse.block_from_string(code)
     let source =
-      list.fold(source, #(a.Vacant, #(0, 0)), fn(acc, assign) {
+      list.fold(source, #(ir.Vacant, #(0, 0)), fn(acc, assign) {
         let #(label, value, meta) = assign
-        #(a.Let(label, value, acc), meta)
+        #(ir.Let(label, value, acc), meta)
       })
     let assert editable.Block(assigns, _, _) = editable.from_annotated(source)
 
@@ -147,7 +147,7 @@ pub fn build_guide(cache: sync.Sync, before) {
   let exports = exports(public, [])
   let public = listx.keys(public)
 
-  let ref = cid.for_expression(exports)
+  let ref = todo
   let cache = sync.install(cache, ref, exports)
   #(cache, before, public, ref)
 }
@@ -169,11 +169,11 @@ pub fn do_eval_sections(content, before, scope: Scope, cache) {
 
 // expects reversed
 fn exports(public, meta) {
-  list.fold(public, #(a.Empty, meta), fn(rest, field) {
+  list.fold(public, #(ir.Empty, meta), fn(rest, field) {
     let #(label, ref) = field
     #(
-      a.Apply(
-        #(a.Apply(#(a.Extend(label), meta), #(a.Reference(ref), meta)), meta),
+      ir.Apply(
+        #(ir.Apply(#(ir.Extend(label), meta), #(ir.Reference(ref), meta)), meta),
         rest,
       ),
       meta,

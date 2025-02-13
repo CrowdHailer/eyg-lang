@@ -1,9 +1,9 @@
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eygir/annotated as e
 import gleam/dict
 import gleam/dynamic
 import gleam/int
@@ -93,7 +93,7 @@ fn read(rl, parser, env, k, prompt) {
     Ok(term) -> {
       let assert v.LinkedList(cmd) = term
       let assert Ok(code) = core.language_to_expression(cmd)
-      case code == #(e.Empty, Nil) {
+      case code == ir.empty() {
         True -> promise.resolve(0)
         False -> {
           use ret <- promise.await(r.await(r.execute(code, env, handlers().1)))

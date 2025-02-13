@@ -1,7 +1,7 @@
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/runtime/cast
 import eyg/runtime/value as v
-import eygir/annotated as e
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
@@ -18,7 +18,7 @@ pub type Reason(m) =
   break.Reason(m, Context(m))
 
 pub type Control(m) {
-  E(#(e.Expression(m), m))
+  E(#(ir.Expression(m), m))
   V(Value(m))
 }
 
@@ -57,9 +57,9 @@ pub type Stack(m) {
 }
 
 pub type Kontinue(m) {
-  Arg(e.Node(m), Env(m))
+  Arg(ir.Node(m), Env(m))
   Apply(Value(m), Env(m))
-  Assign(String, e.Node(m), Env(m))
+  Assign(String, ir.Node(m), Env(m))
   CallWith(Value(m), Env(m))
   Delimit(String, Value(m), Env(m), Bool)
 }
@@ -86,41 +86,43 @@ pub fn eval(exp, env: Env(m), k) {
   let #(exp, meta) = exp
   let value = fn(value) { Ok(#(V(value), env, k)) }
   case exp {
-    e.Lambda(param, body) -> Ok(#(V(v.Closure(param, body, env.scope)), env, k))
+    ir.Lambda(param, body) ->
+      Ok(#(V(v.Closure(param, body, env.scope)), env, k))
 
-    e.Apply(f, arg) -> Ok(#(E(f), env, Stack(Arg(arg, env), meta, k)))
+    ir.Apply(f, arg) -> Ok(#(E(f), env, Stack(Arg(arg, env), meta, k)))
 
-    e.Variable(x) ->
+    ir.Variable(x) ->
       case list.key_find(env.scope, x) {
         Ok(term) -> Ok(#(V(term), env, k))
         Error(Nil) -> Error(break.UndefinedVariable(x))
       }
 
-    e.Let(var, value, then) ->
+    ir.Let(var, value, then) ->
       Ok(#(E(value), env, Stack(Assign(var, then, env), meta, k)))
 
-    e.Binary(data) -> value(v.Binary(data))
-    e.Integer(data) -> value(v.Integer(data))
-    e.String(data) -> value(v.String(data))
-    e.Tail -> value(v.LinkedList([]))
-    e.Cons -> value(v.Partial(v.Cons, []))
-    e.Vacant -> Error(break.Vacant)
-    e.Select(label) -> value(v.Partial(v.Select(label), []))
-    e.Tag(label) -> value(v.Partial(v.Tag(label), []))
-    e.Perform(label) -> value(v.Partial(v.Perform(label), []))
-    e.Empty -> value(v.unit)
-    e.Extend(label) -> value(v.Partial(v.Extend(label), []))
-    e.Overwrite(label) -> value(v.Partial(v.Overwrite(label), []))
-    e.Case(label) -> value(v.Partial(v.Match(label), []))
-    e.NoCases -> value(v.Partial(v.NoCases, []))
-    e.Handle(label) -> value(v.Partial(v.Handle(label), []))
-    e.Builtin(identifier) -> value(v.Partial(v.Builtin(identifier), []))
-    e.Reference(ref) ->
+    ir.Binary(data) -> value(v.Binary(data))
+    ir.Integer(data) -> value(v.Integer(data))
+    ir.String(data) -> value(v.String(data))
+    ir.Tail -> value(v.LinkedList([]))
+    ir.Cons -> value(v.Partial(v.Cons, []))
+    ir.Vacant -> Error(break.Vacant)
+    ir.Select(label) -> value(v.Partial(v.Select(label), []))
+    ir.Tag(label) -> value(v.Partial(v.Tag(label), []))
+    ir.Perform(label) -> value(v.Partial(v.Perform(label), []))
+    ir.Empty -> value(v.unit)
+    ir.Extend(label) -> value(v.Partial(v.Extend(label), []))
+    ir.Overwrite(label) -> value(v.Partial(v.Overwrite(label), []))
+    ir.Case(label) -> value(v.Partial(v.Match(label), []))
+    ir.NoCases -> value(v.Partial(v.NoCases, []))
+    ir.Handle(label) -> value(v.Partial(v.Handle(label), []))
+    ir.Builtin(identifier) -> value(v.Partial(v.Builtin(identifier), []))
+    ir.Reference(ref) ->
       case dict.get(env.references, ref) {
         Ok(v) -> value(v)
         Error(Nil) -> Error(break.UndefinedReference(ref))
       }
-    e.NamedReference(package, release) -> {
+    ir.Release(package, release, _id) -> {
+      // TODO use cid
       let ref = "@" <> package <> ":" <> int.to_string(release)
       case dict.get(env.references, ref) {
         Ok(v) -> value(v)

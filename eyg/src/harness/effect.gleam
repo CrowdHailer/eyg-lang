@@ -1,9 +1,8 @@
 import eyg/analysis/typ as t
+import eyg/ir/dag_json
 import eyg/runtime/break
 import eyg/runtime/cast
 import eyg/runtime/value as v
-import eygir/annotated as e
-import eygir/decode
 import gleam/dict
 import gleam/dynamic
 import gleam/int
@@ -87,9 +86,9 @@ pub fn wait() {
 pub fn read_source() {
   #(t.Str, t.result(t.Str, t.unit), fn(file) {
     use file <- result.then(cast.as_string(file))
-    case simplifile.read(file) {
+    case simplifile.read_bits(file) {
       Ok(json) ->
-        case decode.from_json(json) {
+        case dag_json.from_block(json) {
           Ok(exp) -> Ok(v.ok(v.LinkedList(core.expression_to_language(exp))))
           Error(_) -> Ok(v.error(v.unit))
         }

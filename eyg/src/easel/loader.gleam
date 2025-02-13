@@ -1,11 +1,11 @@
 import easel/embed
 import eyg/analysis/jm/type_ as t
+import eyg/ir/dag_json
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eygir/annotated as e
-import eygir/decode
+import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
 import gleam/int
@@ -48,7 +48,13 @@ fn applet(root) {
     Ok(script) -> {
       console.log(script)
       let assert Ok(source) =
-        decode.from_json(string.replace(element.inner_text(script), "\\/", "/"))
+        dag_json.from_block(
+          bit_array.from_string(string.replace(
+            element.inner_text(script),
+            "\\/",
+            "/",
+          )),
+        )
       {
         let env = stdlib.env()
         let rev = []

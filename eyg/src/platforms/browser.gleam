@@ -1,10 +1,11 @@
 import eyg/analysis/typ as t
+import eyg/ir/dag_json
 import eyg/runtime/break
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eygir/decode
+import gleam/bit_array
 import gleam/dict
 import gleam/io
 import gleam/javascript/array
@@ -45,7 +46,7 @@ fn handlers() {
 // capturing things is too large
 
 pub fn do_run(raw) -> Nil {
-  case decode.from_json(global.decode_uri(raw)) {
+  case dag_json.from_block(bit_array.from_string(global.decode_uri(raw))) {
     Ok(continuation) -> {
       let env =
         state.Env(scope: [], references: dict.new(), builtins: stdlib.lib().1)
@@ -78,7 +79,11 @@ pub fn run() {
 fn old_run() {
   case document.query_selector("script[type=\"application/eygir\"]") {
     Ok(el) ->
-      case decode.from_json(global.decode_uri(element.inner_text(el))) {
+      case
+        dag_json.from_block(
+          bit_array.from_string(global.decode_uri(element.inner_text(el))),
+        )
+      {
         Ok(f) -> {
           let env = stdlib.env()
           let assert Ok(f) = r.execute(f, env, handlers().1)
@@ -105,7 +110,11 @@ fn old_run() {
         document.query_selector_all("script[type=\"editor/eygir\"]")
         |> array.to_list()
       list.map(elements, fn(el) {
-        case decode.from_json(global.decode_uri(element.inner_text(el))) {
+        case
+          dag_json.from_block(
+            bit_array.from_string(global.decode_uri(element.inner_text(el))),
+          )
+        {
           Ok(c) -> {
             io.debug(c)
             let assert Ok(_) =
@@ -205,7 +214,7 @@ fn on_click() {
 
     old_document.on_click(fn(arg) {
       let arg = global.decode_uri(arg)
-      let assert Ok(arg) = decode.from_json(arg)
+      let assert Ok(arg) = dag_json.from_block(bit_array.from_string(arg))
 
       do_handle(arg, handle, env, extrinsic)
     })

@@ -306,7 +306,7 @@ pub fn insert_named_reference(projection) {
   case projection {
     #(p.Exp(exp), zoom) -> {
       let current = case exp {
-        e.NamedReference(package, release) ->
+        e.Release(package, release, _id) ->
           package <> ":" <> int.to_string(release)
         _ -> ""
       }
@@ -320,7 +320,7 @@ pub fn insert_named_reference(projection) {
               }
             Error(Nil) -> #(id, 1)
           }
-          #(p.Exp(e.NamedReference(package, release)), zoom)
+          #(p.Exp(e.Release(package, release, "TODO lookup")), zoom)
         }),
       )
     }

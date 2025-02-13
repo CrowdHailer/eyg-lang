@@ -88,6 +88,13 @@ pub fn decode(json) {
   decode.run(json, decoder(Nil))
 }
 
+pub fn from_block(data) {
+  case codec.decode(data) {
+    Ok(json) -> decode(json)
+    Error(_) -> Error([])
+  }
+}
+
 pub fn decode_dynamic_error(json) {
   decode(json)
   |> result.map_error(fn(errors) {

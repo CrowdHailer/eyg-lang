@@ -204,6 +204,7 @@ pub fn map_annotation(
 ) -> #(Expression(b), b) {
   let #(exp, meta) = in
   case exp {
+    Variable(label) -> #(Variable(label), f(meta))
     Lambda(label, body) -> {
       let body = map_annotation(body, f)
       #(Lambda(label, body), f(meta))
@@ -218,10 +219,32 @@ pub fn map_annotation(
       let then = map_annotation(then, f)
       #(Let(label, value, then), f(meta))
     }
-    primitive -> {
-      todo as "proper"
-      //   #(dynamicx.unsafe_coerce(dynamic.from(primitive)), f(meta))
-    }
+    Binary(value) -> #(Binary(value), f(meta))
+    Integer(value) -> #(Integer(value), f(meta))
+    String(value) -> #(String(value), f(meta))
+
+    Tail -> #(Tail, f(meta))
+    Cons -> #(Cons, f(meta))
+
+    Vacant -> #(Vacant, f(meta))
+
+    Empty -> #(Empty, f(meta))
+    Extend(label) -> #(Extend(label), f(meta))
+    Select(label) -> #(Select(label), f(meta))
+    Overwrite(label) -> #(Overwrite(label), f(meta))
+    Tag(label) -> #(Tag(label), f(meta))
+    Case(label) -> #(Case(label), f(meta))
+    NoCases -> #(NoCases, f(meta))
+
+    Perform(label) -> #(Perform(label), f(meta))
+    Handle(label) -> #(Handle(label), f(meta))
+
+    Builtin(identifier) -> #(Builtin(identifier), f(meta))
+    Reference(identifier) -> #(Reference(identifier), f(meta))
+    Release(package, release, identifier) -> #(
+      Release(package, release, identifier),
+      f(meta),
+    )
   }
 }
 

@@ -1,8 +1,8 @@
 // previously called atelier
 import eyg/editor/v1/app
 import eyg/editor/v1/view/root
+import eyg/ir/tree as ir
 import eyg/website/page
-import eygir/annotated
 import gleam/option.{Some}
 import lustre
 import lustre/effect
@@ -18,6 +18,6 @@ pub fn client() {
 }
 
 fn init(_) {
-  let state = app.init(annotated.vacant())
+  let state = app.init(ir.vacant())
   #(state, effect.none())
 }

@@ -1,6 +1,6 @@
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/typ as t
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/list
 import gleam/result
@@ -22,12 +22,12 @@ fn variables(environment) {
     case string.starts_with(key, "ffi_") {
       True -> []
       False -> [
-        #(key, a.variable(key)),
+        #(key, ir.variable(key)),
         ..get_fields_from_type(type_)
         |> list.map(
-          list.fold(_, #(key, a.variable(key)), fn(acc, key) {
+          list.fold(_, #(key, ir.variable(key)), fn(acc, key) {
             let #(path, term) = acc
-            #(string.concat([path, ".", key]), a.apply(a.select(key), term))
+            #(string.concat([path, ".", key]), ir.apply(ir.select(key), term))
           }),
         )
       ]

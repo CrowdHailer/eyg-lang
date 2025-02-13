@@ -1,5 +1,5 @@
-import eygir/annotated as a
-import eygir/decode
+import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/dynamic
 import gleam/http
 import gleam/http/request
@@ -46,7 +46,7 @@ pub fn get_fragments() {
 }
 
 pub type Fragment {
-  Fragment(hash: String, created_at: String, code: a.Node(Nil))
+  Fragment(hash: String, created_at: String, code: ir.Node(Nil))
 }
 
 fn fragment_decoder(raw) {
@@ -54,7 +54,7 @@ fn fragment_decoder(raw) {
     Fragment,
     dynamic.field("hash", dynamic.string),
     dynamic.field("created_at", dynamic.string),
-    dynamic.field("code", decode.decode_dynamic_error),
+    dynamic.field("code", dag_json.decode_dynamic_error),
   )(raw)
 }
 

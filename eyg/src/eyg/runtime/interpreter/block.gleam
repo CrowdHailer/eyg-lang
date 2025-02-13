@@ -1,5 +1,5 @@
+import eyg/ir/tree as ir
 import eyg/runtime/interpreter/state
-import eygir/annotated as a
 import gleam/list
 import gleam/option.{None, Some}
 
@@ -16,7 +16,7 @@ fn loop(next, env) {
         -> {
           loop(state.step(c, e, k), env.scope)
         }
-        state.E(#(a.Vacant, _)), state.Empty(_) -> Ok(#(None, env))
+        state.E(#(ir.Vacant, _)), state.Empty(_) -> Ok(#(None, env))
         _, _ -> loop(state.step(c, e, k), env)
       }
     }
@@ -27,12 +27,12 @@ fn loop(next, env) {
 
 pub fn inject(exp, acc) {
   case exp {
-    #(a.Let(l, v, t), m) -> inject(t, [#(l, m, v), ..acc])
+    #(ir.Let(l, v, t), m) -> inject(t, [#(l, m, v), ..acc])
     _ -> {
-      let acc = [#(special, Nil, #(a.Empty, Nil)), ..acc]
+      let acc = [#(special, Nil, #(ir.Empty, Nil)), ..acc]
       list.fold(acc, exp, fn(exp, assign) {
         let #(l, m, v) = assign
-        #(a.Let(l, v, exp), m)
+        #(ir.Let(l, v, exp), m)
       })
     }
   }

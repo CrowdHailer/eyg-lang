@@ -1,5 +1,5 @@
+import eyg/ir/tree as ir
 import eyg/parse/token as t
-import eygir/annotated as e
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -73,7 +73,7 @@ pub fn do_patterns(tokens, acc) {
   }
 }
 
-pub fn destructured(matches: List(Match), term: #(e.Expression(_), Span)) {
+pub fn destructured(matches: List(Match), term: #(ir.Expression(_), Span)) {
   list.fold(matches, term, fn(acc, pair) {
     let #(field, assign) = pair
     let #(field, fspan) = field
@@ -84,9 +84,12 @@ pub fn destructured(matches: List(Match), term: #(e.Expression(_), Span)) {
     let aspan = #(fspan.0, cspan.1)
     let lspan = #(fspan.0, term.1.1)
     #(
-      e.Let(
+      ir.Let(
         var,
-        #(e.Apply(#(e.Select(field), fspan), #(e.Variable("$"), cspan)), aspan),
+        #(
+          ir.Apply(#(ir.Select(field), fspan), #(ir.Variable("$"), cspan)),
+          aspan,
+        ),
         acc,
       ),
       lspan,
@@ -109,9 +112,9 @@ pub fn block(tokens) {
           let #(_, #(_start, end)) = then
           let span = #(start, end)
           let exp = case pattern {
-            Assign(label) -> #(e.Let(label, value, then), span)
+            Assign(label) -> #(ir.Let(label, value, then), span)
             Destructure(matches) -> #(
-              e.Let("$", value, destructured(matches, then)),
+              ir.Let("$", value, destructured(matches, then)),
               span,
             )
           }
@@ -119,11 +122,11 @@ pub fn block(tokens) {
         }
         Error(UnexpectEnd) -> {
           let span = #(start, start)
-          let then = #(e.Vacant, #(0, 0))
+          let then = #(ir.Vacant, #(0, 0))
           let exp = case pattern {
-            Assign(label) -> #(e.Let(label, value, then), span)
+            Assign(label) -> #(ir.Let(label, value, then), span)
             Destructure(matches) -> #(
-              e.Let("$", value, destructured(matches, then)),
+              ir.Let("$", value, destructured(matches, then)),
               span,
             )
           }
@@ -144,7 +147,7 @@ pub fn expression(tokens) {
   use #(exp, rest) <- try(case token {
     t.Name(label) -> {
       let span = #(start, start + string.length(label))
-      Ok(#(#(e.Variable(label), span), rest))
+      Ok(#(#(ir.Variable(label), span), rest))
     }
     t.Let -> {
       use #(pattern, rest) <- try(one_pattern(rest))
@@ -157,9 +160,9 @@ pub fn expression(tokens) {
       let #(_, #(_start, end)) = then
       let span = #(start, end)
       let exp = case pattern {
-        Assign(label) -> #(e.Let(label, value, then), span)
+        Assign(label) -> #(ir.Let(label, value, then), span)
         Destructure(matches) -> #(
-          e.Let("$", value, destructured(matches, then)),
+          ir.Let("$", value, destructured(matches, then)),
           span,
         )
       }
@@ -180,9 +183,9 @@ pub fn expression(tokens) {
       let exp =
         list.fold(patterns_reversed, body, fn(body, pattern) {
           case pattern {
-            Assign(label) -> #(e.Lambda(label, body), span)
+            Assign(label) -> #(ir.Lambda(label, body), span)
             Destructure(matches) -> #(
-              e.Lambda("$", destructured(matches, body)),
+              ir.Lambda("$", destructured(matches, body)),
               span,
             )
           }
@@ -193,7 +196,7 @@ pub fn expression(tokens) {
     t.Integer(raw) -> {
       let assert Ok(value) = int.parse(raw)
       let span = #(start, start + string.length(raw))
-      Ok(#(#(e.Integer(value), span), rest))
+      Ok(#(#(ir.Integer(value), span), rest))
     }
     t.Minus -> {
       use #(#(next, from), rest) <- try(pop(rest))
@@ -201,21 +204,21 @@ pub fn expression(tokens) {
         t.Integer(raw) -> {
           let assert Ok(value) = int.parse(raw)
           let span = #(start, from + string.length(raw))
-          Ok(#(#(e.Integer(-1 * value), span), rest))
+          Ok(#(#(ir.Integer(-1 * value), span), rest))
         }
         _ -> Error(UnexpectedToken(token, start))
       }
     }
     t.String(value) -> {
       let span = #(start, start + string.length(value) + 2)
-      Ok(#(#(e.String(value), span), rest))
+      Ok(#(#(ir.String(value), span), rest))
     }
     t.LeftSquare -> do_list(rest, start, [])
     t.LeftBrace -> do_record(rest, start, [])
     t.Uppername(label) -> {
       let span = #(start, start + string.length(label))
 
-      Ok(#(#(e.Tag(label), span), rest))
+      Ok(#(#(ir.Tag(label), span), rest))
     }
     t.Match -> {
       case rest {
@@ -229,7 +232,7 @@ pub fn expression(tokens) {
             [#(t.LeftBrace, inner), ..rest] -> {
               use #(exp, end, rest) <- try(clauses(rest, inner))
               let span = #(start, end)
-              Ok(#(#(e.Apply(exp, subject), span), rest))
+              Ok(#(#(ir.Apply(exp, subject), span), rest))
             }
             _ -> fail(rest)
           }
@@ -240,7 +243,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Uppername(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-          Ok(#(#(e.Perform(label), span), rest))
+          Ok(#(#(ir.Perform(label), span), rest))
         }
         _ -> fail(rest)
       }
@@ -248,7 +251,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Uppername(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-          Ok(#(#(e.Handle(label), span), rest))
+          Ok(#(#(ir.Handle(label), span), rest))
         }
         _ -> fail(rest)
       }
@@ -256,7 +259,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-          Ok(#(#(e.Builtin(label), span), rest))
+          Ok(#(#(ir.Builtin(label), span), rest))
         }
         _ -> fail(rest)
       }
@@ -264,7 +267,7 @@ pub fn expression(tokens) {
       case rest {
         [#(t.Name(label), end), ..rest] -> {
           let span = #(start, end + string.length(label))
-          Ok(#(#(e.Reference(label), span), rest))
+          Ok(#(#(ir.Reference(label), span), rest))
         }
         _ -> fail(rest)
       }
@@ -285,16 +288,16 @@ fn after_expression(exp, rest) {
         list.fold(args, exp, fn(acc, arg) {
           let #(_, #(start, _)) = acc
           let #(_, #(_, end)) = arg
-          #(e.Apply(acc, arg), #(start, end + 1))
+          #(ir.Apply(acc, arg), #(start, end + 1))
         })
       after_expression(exp, rest)
     }
     [#(t.Dot, dot_at), #(t.Name(label), name_at), ..rest] -> {
       let end = name_at + string.length(label)
-      let select = #(e.Select(label), #(dot_at, end))
+      let select = #(ir.Select(label), #(dot_at, end))
       let #(_value, #(start, _)) = exp
       let span = #(start, end)
-      after_expression(#(e.Apply(select, exp), span), rest)
+      after_expression(#(ir.Apply(select, exp), span), rest)
     }
     _ -> Ok(#(exp, rest))
   }
@@ -325,7 +328,7 @@ fn do_list(tokens, start, acc) {
     [] -> Error(UnexpectEnd)
     [#(t.RightSquare, end), ..rest] -> {
       let span = #(start, end + 1)
-      Ok(#(build_list(acc, #(e.Tail, span)), rest))
+      Ok(#(build_list(acc, #(ir.Tail, span)), rest))
     }
     _ -> {
       use #(item, rest) <- try(expression(tokens))
@@ -343,7 +346,7 @@ fn do_list(tokens, start, acc) {
 
         [#(t.RightSquare, start), ..rest] -> {
           let span = #(start, start + 1)
-          Ok(#(build_list(acc, #(e.Tail, span)), rest))
+          Ok(#(build_list(acc, #(ir.Tail, span)), rest))
         }
         [#(t, start), ..] -> Error(UnexpectedToken(t, start))
         [] -> Error(UnexpectEnd)
@@ -361,8 +364,8 @@ pub fn build_list(reversed, acc) {
       build_list(
         rest,
         #(
-          e.Apply(
-            #(e.Apply(#(e.Cons, #(from, from + 1)), item), #(from, b)),
+          ir.Apply(
+            #(ir.Apply(#(ir.Cons, #(from, from + 1)), item), #(from, b)),
             acc,
           ),
           #(from, c),
@@ -376,7 +379,7 @@ pub fn build_list(reversed, acc) {
 fn do_record(rest, start, acc) {
   use #(#(token, kstart), rest) <- try(pop(rest))
   case token {
-    t.RightBrace -> Ok(#(#(e.Empty, #(start, kstart + 1)), rest))
+    t.RightBrace -> Ok(#(#(ir.Empty, #(start, kstart + 1)), rest))
     t.Name(label) -> {
       use #(#(token, next), rest) <- try(pop(rest))
       case token {
@@ -391,7 +394,7 @@ fn do_record(rest, start, acc) {
 
             [#(t.RightBrace, start), ..rest] -> {
               let span = #(start, start + 1)
-              Ok(#(build_record(acc, #(e.Empty, span)), rest))
+              Ok(#(build_record(acc, #(ir.Empty, span)), rest))
             }
             _ -> fail(rest)
           }
@@ -402,7 +405,7 @@ fn do_record(rest, start, acc) {
               // kstart is the label starting position
               #(start, kstart + string.length(label)),
               label,
-              #(e.Variable(label), #(kstart, kstart + string.length(label))),
+              #(ir.Variable(label), #(kstart, kstart + string.length(label))),
             ),
             ..acc
           ]
@@ -413,13 +416,13 @@ fn do_record(rest, start, acc) {
             #(
               #(start, kstart + string.length(label)),
               label,
-              #(e.Variable(label), #(kstart, kstart + string.length(label))),
+              #(ir.Variable(label), #(kstart, kstart + string.length(label))),
             ),
             ..acc
           ]
           let span = #(next, next + 1)
 
-          Ok(#(build_record(acc, #(e.Empty, span)), rest))
+          Ok(#(build_record(acc, #(ir.Empty, span)), rest))
         }
         _ -> Error(UnexpectedToken(token, start))
       }
@@ -447,10 +450,10 @@ pub fn build_record(reversed, acc) {
 
       build_record(
         rest,
-        #(e.Apply(#(e.Apply(#(e.Extend(label), span), item), #(a, b)), acc), #(
-          a,
-          c,
-        )),
+        #(
+          ir.Apply(#(ir.Apply(#(ir.Extend(label), span), item), #(a, b)), acc),
+          #(a, c),
+        ),
       )
     }
     [] -> acc
@@ -467,7 +470,10 @@ pub fn build_overwrite(reversed, acc) {
       build_overwrite(
         rest,
         #(
-          e.Apply(#(e.Apply(#(e.Overwrite(label), span), item), #(a, b)), acc),
+          ir.Apply(
+            #(ir.Apply(#(ir.Overwrite(label), span), item), #(a, b)),
+            acc,
+          ),
           #(a, c),
         ),
       )
@@ -482,11 +488,11 @@ fn clauses(tokens, start) {
   let exp =
     list.fold(clauses, tail, fn(exp, clause) {
       let #(start, label, cspan, branch) = clause
-      let case_ = #(e.Case(label), cspan)
+      let case_ = #(ir.Case(label), cspan)
       let #(_, #(_, branch_end)) = branch
-      let inner = #(e.Apply(case_, branch), #(cspan.0, branch_end))
+      let inner = #(ir.Apply(case_, branch), #(cspan.0, branch_end))
       let #(_, #(_, final)) = tail
-      #(e.Apply(inner, exp), #(start, final))
+      #(ir.Apply(inner, exp), #(start, final))
     })
   Ok(#(exp, end, rest))
 }
@@ -494,7 +500,7 @@ fn clauses(tokens, start) {
 fn do_clauses(tokens, start, acc) {
   use #(#(token, clause), rest) <- try(pop(tokens))
   case token {
-    t.RightBrace -> Ok(#(acc, #(e.NoCases, #(start, clause + 1)), rest))
+    t.RightBrace -> Ok(#(acc, #(ir.NoCases, #(start, clause + 1)), rest))
     t.Uppername(label) -> {
       use #(branch, rest) <- try(expression(rest))
       let acc = [

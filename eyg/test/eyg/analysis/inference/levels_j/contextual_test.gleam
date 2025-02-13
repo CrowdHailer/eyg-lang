@@ -3,8 +3,8 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import eyg/ir/tree as ir
 import eyg/parse
-import eygir/annotated
 import gleam/dict
 import gleam/list
 import gleeunit/should
@@ -17,7 +17,7 @@ fn parse(src) {
 
 fn do_resolve(return) {
   let #(acc, bindings) = return
-  let acc = annotated.get_annotation(acc)
+  let acc = ir.get_annotation(acc)
   let #(_, acc) =
     list.map_fold(acc, bindings, fn(bindings, node) {
       let #(error, typed, effect, env) = node

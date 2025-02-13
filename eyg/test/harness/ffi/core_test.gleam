@@ -1,16 +1,17 @@
 import eyg/analysis/inference
 import eyg/analysis/typ as t
+import eyg/ir/tree as ir
 import eyg/runtime/capture
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
-import eygir/annotated as a
 import gleam/dict
 import gleeunit/should
 import harness/ffi/core.{expression_to_language}
 import harness/stdlib
 
 pub fn unequal_test() {
-  let prog = a.apply(a.apply(a.builtin("equal"), a.integer(1)), a.integer(2))
+  let prog =
+    ir.apply(ir.apply(ir.builtin("equal"), ir.integer(1)), ir.integer(2))
   let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
@@ -25,7 +26,7 @@ pub fn unequal_test() {
 
 pub fn equal_test() {
   let prog =
-    a.apply(a.apply(a.builtin("equal"), a.string("foo")), a.string("foo"))
+    ir.apply(ir.apply(ir.builtin("equal"), ir.string("foo")), ir.string("foo"))
   let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
   inference.sound(sub)
@@ -41,10 +42,10 @@ pub fn equal_test() {
 // also tests generalization of builtins
 pub fn debug_test() {
   let prog =
-    a.let_(
+    ir.let_(
       "_",
-      a.apply(a.builtin("debug"), a.integer(10)),
-      a.apply(a.builtin("debug"), a.string("foo")),
+      ir.apply(ir.builtin("debug"), ir.integer(10)),
+      ir.apply(ir.builtin("debug"), ir.string("foo")),
     )
   let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
@@ -60,7 +61,7 @@ pub fn debug_test() {
 }
 
 pub fn simple_fix_test() {
-  let prog = a.apply(a.builtin("fix"), a.lambda("_", a.string("foo")))
+  let prog = ir.apply(ir.builtin("fix"), ir.lambda("_", ir.string("foo")))
   let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
@@ -74,15 +75,15 @@ pub fn simple_fix_test() {
 
 pub fn no_recursive_fix_test() {
   let prog =
-    a.let_(
+    ir.let_(
       "fix",
-      a.builtin("fix"),
-      a.apply(
-        a.apply(
-          a.variable("fix"),
-          a.lambda("_", a.lambda("x", a.variable("x"))),
+      ir.builtin("fix"),
+      ir.apply(
+        ir.apply(
+          ir.variable("fix"),
+          ir.lambda("_", ir.lambda("x", ir.variable("x"))),
         ),
-        a.integer(1),
+        ir.integer(1),
       ),
     )
   let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
@@ -98,47 +99,50 @@ pub fn no_recursive_fix_test() {
 
 pub fn recursive_sum_test() {
   let list =
-    a.apply(
-      a.apply(a.cons(), a.integer(1)),
-      a.apply(a.apply(a.cons(), a.integer(3)), a.tail()),
+    ir.apply(
+      ir.apply(ir.cons(), ir.integer(1)),
+      ir.apply(ir.apply(ir.cons(), ir.integer(3)), ir.tail()),
     )
 
   let switch =
-    a.apply(
-      a.apply(
-        a.case_("Ok"),
-        a.lambda(
+    ir.apply(
+      ir.apply(
+        ir.case_("Ok"),
+        ir.lambda(
           "split",
-          a.apply(
-            a.apply(
-              a.variable("self"),
-              a.apply(
-                a.apply(a.builtin("int_add"), a.variable("total")),
-                a.apply(a.select("head"), a.variable("split")),
+          ir.apply(
+            ir.apply(
+              ir.variable("self"),
+              ir.apply(
+                ir.apply(ir.builtin("int_add"), ir.variable("total")),
+                ir.apply(ir.select("head"), ir.variable("split")),
               ),
             ),
-            a.apply(a.select("tail"), a.variable("split")),
+            ir.apply(ir.select("tail"), ir.variable("split")),
           ),
         ),
       ),
-      a.apply(
-        a.apply(a.case_("Error"), a.lambda("_", a.variable("total"))),
-        a.nocases(),
+      ir.apply(
+        ir.apply(ir.case_("Error"), ir.lambda("_", ir.variable("total"))),
+        ir.nocases(),
       ),
     )
   let sum =
-    a.lambda(
+    ir.lambda(
       "self",
-      a.lambda(
+      ir.lambda(
         "total",
-        a.lambda(
+        ir.lambda(
           "items",
-          a.apply(switch, a.apply(a.builtin("list_pop"), a.variable("items"))),
+          ir.apply(
+            switch,
+            ir.apply(ir.builtin("list_pop"), ir.variable("items")),
+          ),
         ),
       ),
     )
   let prog =
-    a.apply(a.apply(a.apply(a.builtin("fix"), sum), a.integer(0)), list)
+    ir.apply(ir.apply(ir.apply(ir.builtin("fix"), sum), ir.integer(0)), list)
   let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
 
   inference.sound(sub)
@@ -151,14 +155,14 @@ pub fn recursive_sum_test() {
 }
 
 pub fn eval_test() {
-  let value = a.string("foo")
+  let value = ir.string("foo")
 
   let p =
     value
     |> expression_to_language()
     |> v.LinkedList()
     |> capture.capture(Nil)
-  let prog = a.apply(a.builtin("eval"), p)
+  let prog = ir.apply(ir.builtin("eval"), p)
   // This is old style inference not JM
   // let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
 
@@ -173,7 +177,7 @@ pub fn eval_test() {
 }
 
 pub fn language_to_expression_test() {
-  a.apply(a.variable("x"), a.integer(1))
+  ir.apply(ir.variable("x"), ir.integer(1))
   |> core.expression_to_language()
   |> core.language_to_expression()
   |> should.be_ok
