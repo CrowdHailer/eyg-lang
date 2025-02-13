@@ -15,9 +15,8 @@ target = "javascript"
 
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-gleam_json = ">= 2.3.0 and < 3.0.0"
-dag_json = {path = "../../../../dag_json"}
-multiformats = {path = "../../../../multiformats"}
+dag_json = ">= 1.1.0 and < 2.0.0"
+multiformats = ">= 1.1.0 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

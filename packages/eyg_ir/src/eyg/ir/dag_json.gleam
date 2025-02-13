@@ -78,7 +78,6 @@ pub fn decoder(meta) {
       decode.success(#(ir.Release(package, release, cid), meta))
     }
     _ -> {
-      // io.debug(switch)
       decode.failure(#(ir.Vacant, meta), "valid node key")
     }
   }
