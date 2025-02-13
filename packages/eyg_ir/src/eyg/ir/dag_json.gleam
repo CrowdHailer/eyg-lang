@@ -1,10 +1,7 @@
 import dag_json as codec
 import eyg/ir/tree as ir
-import gleam/bit_array
 import gleam/dynamic
 import gleam/dynamic/decode
-import gleam/json
-import gleam/json as j
 import gleam/list
 import gleam/result
 import multiformats/cid
@@ -101,20 +98,12 @@ pub fn decode_dynamic_error(json) {
   })
 }
 
-pub fn from_json(raw) {
-  json.parse(raw, decoder(Nil))
-}
-
 fn node(name, attributes) {
-  j.object([#("0", j.string(name)), ..attributes])
+  codec.object([#("0", codec.string(name)), ..attributes])
 }
 
 fn label(value) {
-  #("l", j.string(value))
-}
-
-fn bytes(b) {
-  j.string(bit_array.base64_encode(b, False))
+  #("l", codec.string(value))
 }
 
 pub fn to_data_model(tree) {
@@ -129,10 +118,10 @@ pub fn to_data_model(tree) {
       [label(x), #("v", to_data_model(value)), #("t", to_data_model(then))]
       |> node("l", _)
     // b already taken when adding binary
-    ir.Binary(b) -> node("x", [#("v", codec.encode_binary(b))])
-    ir.Integer(i) -> node("i", [#("v", j.int(i))])
+    ir.Binary(b) -> node("x", [#("v", codec.binary(b))])
+    ir.Integer(i) -> node("i", [#("v", codec.int(i))])
     // string
-    ir.String(s) -> node("s", [#("v", j.string(s))])
+    ir.String(s) -> node("s", [#("v", codec.string(s))])
     ir.Tail -> node("ta", [])
     ir.Cons -> node("c", [])
     // zero
@@ -150,13 +139,12 @@ pub fn to_data_model(tree) {
     ir.Perform(x) -> node("p", [label(x)])
     ir.Handle(x) -> node("h", [label(x)])
     ir.Builtin(x) -> node("b", [label(x)])
-    ir.Reference(identifier) ->
-      node("#", [#("l", codec.encode_cid(identifier))])
+    ir.Reference(identifier) -> node("#", [#("l", codec.cid(identifier))])
     ir.Release(p, r, i) ->
       node("@", [
-        #("p", j.string(p)),
-        #("r", j.int(r)),
-        #("l", codec.encode_cid(i)),
+        #("p", codec.string(p)),
+        #("r", codec.int(r)),
+        #("l", codec.cid(i)),
       ])
   }
 }
