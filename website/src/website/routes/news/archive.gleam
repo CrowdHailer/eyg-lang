@@ -2,6 +2,49 @@ import website/routes/news/edition.{Edition}
 
 pub const published = [
   Edition(
+    "2025-02-13",
+    "A roadmap, explaining effects and language design philosophy",
+    "
+  This update introduces the EYG roadmap, a blog post to explain effects and a talk discussing predictability and usability of language features.
+
+  ## Writing a [roadmap](https://eyg.run/roadmap/)
+
+  I have a lot of plans for EYG and up to now they have all lived in my head.
+  Now you can check out what is being worked on on the [roadmap](https://eyg.run/roadmap/).
+
+  Top priority is stabilising and documenting things where experimentation is finished.
+  First will be specifying the datastructure under the language and committing to non breaking changes.
+  People have already started building on the EYG Intermediate Representation (EYG IR).
+  Documenting and stabilising will make their lives much easier.
+  
+  The EYG project contains many experiments, some successful (closure serialisation is great), as well as some less successful (signals don't need to be built into the language).
+
+  As part of stabilising and documentation efforts I will also clean out the repository and remove some experiments.
+
+  If you have any comments or questions you can reply to this email.
+
+  ## [Explaining effects](https://crowdhailer.me/2025-02-14/algebraic-effects-are-a-functional-approach-to-manage-side-effects/)
+
+  The [last newsletter](https://eyg.run/news/editions/3/) discussed how fragile modern software development was and how EYG improves the situation.
+  Algebraic effects are a key component of reducing fragility.
+
+  Effects are simple but abstract which means it can take some time to understand them.
+  I wrote a [blog post](https://crowdhailer.me/2025-02-14/algebraic-effects-are-a-functional-approach-to-manage-side-effects/) to explain how I think about effects and how they ensure purity in programs.
+
+  There will be follow up posts on how to type effects as well as the topic of effect handlers.
+
+  ## Talking at [functional conf 2025](https://functionalconf.com/)
+
+  Last month I gave a talk \"Eat your Greens - A philosophy for language design.\"
+
+  First is a discussion about how language features can be predictable, useful or hopefully both.
+  
+  Then I dive into specific EYG features; effects, closure serialisation and a statically typed REPL.
+
+  The [slides](https://crowdhailer.me/2025-01-24/eat-your-greens-a-philosophy-for-language-design/slides.html) and [video](https://www.youtube.com/watch?v=bzUXK5VBbXc) are available.
+  ",
+  ),
+  Edition(
     "2025-01-06",
     "Code reloading, structured editor and some reflections",
     "
