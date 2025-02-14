@@ -1,4 +1,4 @@
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/int
 import gleam/javascript/promise.{type Promise as JSPromise}
 import gleam/list
@@ -14,7 +14,7 @@ pub type Value(m, context) {
   Tagged(label: String, value: Value(m, context))
   Closure(
     param: String,
-    body: a.Node(m),
+    body: ir.Node(m),
     env: List(#(String, Value(m, context))),
   )
   // meta is in closure to extract types in env from type env

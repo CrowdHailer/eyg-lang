@@ -2,7 +2,7 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/binding/unify
 import eyg/analysis/type_/isomorphic as t
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -99,21 +99,21 @@ pub type Env =
 pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
   let #(exp, _meta) = source
   case exp {
-    a.Variable(x) ->
+    ir.Variable(x) ->
       case list.key_find(env, x) {
         Ok(scheme) -> {
           let #(type_, bindings) = binding.instantiate(scheme, level, bindings)
           let #(type_, bindings) = open(type_, level, bindings)
           let meta = #(Ok(Nil), type_, t.Empty, env)
-          #(bindings, type_, eff, #(a.Variable(x), meta))
+          #(bindings, type_, eff, #(ir.Variable(x), meta))
         }
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
           let meta = #(Error(error.MissingVariable(x)), type_, t.Empty, env)
-          #(bindings, type_, eff, #(a.Variable(x), meta))
+          #(bindings, type_, eff, #(ir.Variable(x), meta))
         }
       }
-    a.Lambda(x, body) -> {
+    ir.Lambda(x, body) -> {
       let #(type_x, bindings) = binding.mono(level, bindings)
       let assert t.Var(i) = type_x
       let scheme_x = t.Var(#(False, i))
@@ -127,9 +127,9 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       let level = level - 1
       let record = close(type_, level, bindings)
       let meta = #(Ok(Nil), record, t.Empty, env)
-      #(bindings, type_, eff, #(a.Lambda(x, inner), meta))
+      #(bindings, type_, eff, #(ir.Lambda(x, inner), meta))
     }
-    a.Apply(fun, arg) -> {
+    ir.Apply(fun, arg) -> {
       // Effects are passed to inner infer because they are effect for creating evaluatin the func and arg,
       // not the effect of applying them
       let level = level + 1
@@ -181,9 +181,9 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       let meta = #(result, record, raised, env)
 
       // This returns the raised effect even if error
-      #(bindings, ty_ret, eff, #(a.Apply(fun, arg), meta))
+      #(bindings, ty_ret, eff, #(ir.Apply(fun, arg), meta))
     }
-    a.Let(label, value, then) -> {
+    ir.Let(label, value, then) -> {
       let level = level + 1
       let #(bindings, ty_value, eff, value) =
         do_infer(value, env, eff, refs, level, bindings)
@@ -194,47 +194,48 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
       let #(bindings, ty_then, eff, then) =
         do_infer(then, [#(label, sch_value), ..env], eff, refs, level, bindings)
       let meta = #(Ok(Nil), ty_then, t.Empty, env)
-      #(bindings, ty_then, eff, #(a.Let(label, value, then), meta))
+      #(bindings, ty_then, eff, #(ir.Let(label, value, then), meta))
     }
-    a.Vacant -> {
+    ir.Vacant -> {
       let #(type_, bindings) = binding.mono(level, bindings)
       let meta = #(Error(error.Todo), type_, t.Empty, env)
-      #(bindings, type_, eff, #(a.Vacant, meta))
+      #(bindings, type_, eff, #(ir.Vacant, meta))
     }
-    a.Integer(value) ->
-      prim(t.Integer, env, eff, level, bindings, a.Integer(value))
-    a.Binary(value) ->
-      prim(t.Binary, env, eff, level, bindings, a.Binary(value))
-    a.String(value) ->
-      prim(t.String, env, eff, level, bindings, a.String(value))
-    a.Tail -> prim(t.List(q(0)), env, eff, level, bindings, a.Tail)
-    a.Cons -> prim(cons(), env, eff, level, bindings, a.Cons)
-    a.Empty -> prim(t.Record(t.Empty), env, eff, level, bindings, a.Empty)
-    a.Extend(label) ->
-      prim(extend(label), env, eff, level, bindings, a.Extend(label))
-    a.Overwrite(label) ->
-      prim(overwrite(label), env, eff, level, bindings, a.Overwrite(label))
-    a.Select(label) ->
-      prim(select(label), env, eff, level, bindings, a.Select(label))
-    a.Tag(label) -> prim(tag(label), env, eff, level, bindings, a.Tag(label))
-    a.Case(label) ->
-      prim(case_(label), env, eff, level, bindings, a.Case(label))
-    a.NoCases -> prim(nocases(), env, eff, level, bindings, a.NoCases)
-    a.Perform(label) ->
-      prim(perform(label), env, eff, level, bindings, a.Perform(label))
-    a.Handle(label) ->
-      prim(handle(label), env, eff, level, bindings, a.Handle(label))
-    a.Builtin(id) ->
+    ir.Integer(value) ->
+      prim(t.Integer, env, eff, level, bindings, ir.Integer(value))
+    ir.Binary(value) ->
+      prim(t.Binary, env, eff, level, bindings, ir.Binary(value))
+    ir.String(value) ->
+      prim(t.String, env, eff, level, bindings, ir.String(value))
+    ir.Tail -> prim(t.List(q(0)), env, eff, level, bindings, ir.Tail)
+    ir.Cons -> prim(cons(), env, eff, level, bindings, ir.Cons)
+    ir.Empty -> prim(t.Record(t.Empty), env, eff, level, bindings, ir.Empty)
+    ir.Extend(label) ->
+      prim(extend(label), env, eff, level, bindings, ir.Extend(label))
+    ir.Overwrite(label) ->
+      prim(overwrite(label), env, eff, level, bindings, ir.Overwrite(label))
+    ir.Select(label) ->
+      prim(select(label), env, eff, level, bindings, ir.Select(label))
+    ir.Tag(label) -> prim(tag(label), env, eff, level, bindings, ir.Tag(label))
+    ir.Case(label) ->
+      prim(case_(label), env, eff, level, bindings, ir.Case(label))
+    ir.NoCases -> prim(nocases(), env, eff, level, bindings, ir.NoCases)
+    ir.Perform(label) ->
+      prim(perform(label), env, eff, level, bindings, ir.Perform(label))
+    ir.Handle(label) ->
+      prim(handle(label), env, eff, level, bindings, ir.Handle(label))
+    ir.Builtin(id) ->
       case builtin(id) {
-        Ok(poly) -> prim(poly, env, eff, level, bindings, a.Builtin(id))
+        Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Builtin(id))
         Error(Nil) -> {
           let #(type_, bindings) = binding.mono(level, bindings)
           let meta = #(Error(error.MissingVariable(id)), type_, t.Empty, env)
-          #(bindings, type_, eff, #(a.Builtin(id), meta))
+          #(bindings, type_, eff, #(ir.Builtin(id), meta))
         }
       }
-    a.Reference(id) -> lookup_ref(refs, id, env, eff, level, bindings)
-    a.NamedReference(package, release) -> {
+    ir.Reference(id) -> lookup_ref(refs, id, env, eff, level, bindings)
+    ir.Release(package, release, _id) -> {
+      // TODO real id
       let id = "@" <> package <> ":" <> int.to_string(release)
       lookup_ref(refs, id, env, eff, level, bindings)
     }
@@ -243,11 +244,11 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
 
 fn lookup_ref(refs, id, env, eff, level, bindings) {
   case dict.get(refs, id) {
-    Ok(poly) -> prim(poly, env, eff, level, bindings, a.Reference(id))
+    Ok(poly) -> prim(poly, env, eff, level, bindings, ir.Reference(id))
     Error(Nil) -> {
       let #(type_, bindings) = binding.mono(level, bindings)
       let meta = #(Error(error.MissingReference(id)), type_, t.Empty, env)
-      #(bindings, type_, eff, #(a.Reference(id), meta))
+      #(bindings, type_, eff, #(ir.Reference(id), meta))
     }
   }
 }

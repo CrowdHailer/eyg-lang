@@ -1,5 +1,6 @@
-import eygir/annotated as a
-import eygir/decode
+import dag_json as dag_json_lib
+import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import gleam/dynamic
 import gleam/http
 import gleam/http/request
@@ -29,8 +30,13 @@ fn base() {
 fn decode(response: response.Response(_), decoder) {
   case response.status {
     200 ->
-      json.decode_bits(response.body, decoder)
-      |> result.map_error(fn(reason) { snag.new(string.inspect(reason)) })
+      case dag_json_lib.decode(response.body) {
+        Ok(dyn) ->
+          dyn
+          |> decoder()
+          |> result.map_error(fn(reason) { snag.new(string.inspect(reason)) })
+        Error(reason) -> snag.error(string.inspect(reason))
+      }
     _ -> panic
   }
 }
@@ -46,7 +52,7 @@ pub fn get_fragments() {
 }
 
 pub type Fragment {
-  Fragment(hash: String, created_at: String, code: a.Node(Nil))
+  Fragment(hash: String, created_at: String, code: ir.Node(Nil))
 }
 
 fn fragment_decoder(raw) {
@@ -54,7 +60,7 @@ fn fragment_decoder(raw) {
     Fragment,
     dynamic.field("hash", dynamic.string),
     dynamic.field("created_at", dynamic.string),
-    dynamic.field("code", decode.decode_dynamic_error),
+    dynamic.field("code", dag_json.decode_dynamic_error),
   )(raw)
 }
 

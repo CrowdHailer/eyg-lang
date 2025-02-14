@@ -3,7 +3,7 @@ import eyg/analysis/inference.{infer, type_of}
 import eyg/analysis/scheme.{Scheme}
 import eyg/analysis/typ.{ftv} as t
 import eyg/analysis/unification
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/set
 import gleam/setx
@@ -56,7 +56,7 @@ pub fn free_type_variables_test() {
 
 // Primitive
 pub fn binary_test() {
-  let exp = a.string("hi")
+  let exp = ir.string("hi")
   let env = env.empty()
 
   // exact type
@@ -78,7 +78,7 @@ pub fn binary_test() {
 }
 
 pub fn integer_test() {
-  let exp = a.integer(1)
+  let exp = ir.integer(1)
   let env = env.empty()
 
   // exact type
@@ -100,7 +100,7 @@ pub fn integer_test() {
 }
 
 pub fn empty_list_test() {
-  let exp = a.tail()
+  let exp = ir.tail()
   let env = env.empty()
 
   // exact type
@@ -130,7 +130,7 @@ pub fn empty_list_test() {
 }
 
 pub fn primitive_list_test() {
-  let exp = a.apply(a.apply(a.cons(), a.integer(0)), a.tail())
+  let exp = ir.apply(ir.apply(ir.cons(), ir.integer(0)), ir.tail())
   let env = env.empty()
 
   let typ = t.LinkedList(t.Str)
@@ -150,7 +150,7 @@ pub fn primitive_list_test() {
 
 // Variables
 pub fn variables_test() {
-  let exp = a.let_("x", a.string("hi"), a.variable("x"))
+  let exp = ir.let_("x", ir.string("hi"), ir.variable("x"))
   let env = env.empty()
   let typ = t.Str
   let eff = t.Closed
@@ -166,7 +166,7 @@ pub fn variables_test() {
 
 // Functions
 pub fn function_test() {
-  let exp = a.lambda("x", a.string("hi"))
+  let exp = ir.lambda("x", ir.string("hi"))
   let env = env.empty()
   let typ = t.Fun(t.Integer, t.Closed, t.Str)
   let eff = t.Closed
@@ -179,7 +179,7 @@ pub fn function_test() {
 }
 
 pub fn pure_function_test() {
-  let exp = a.lambda("x", a.variable("x"))
+  let exp = ir.lambda("x", ir.variable("x"))
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Closed
@@ -192,8 +192,8 @@ pub fn pure_function_test() {
 }
 
 pub fn pure_function_call_test() {
-  let func = a.lambda("x", a.variable("x"))
-  let exp = a.apply(func, a.string("hi"))
+  let func = ir.lambda("x", ir.variable("x"))
+  let exp = ir.apply(func, ir.string("hi"))
   let env = env.empty()
   let typ = t.Str
   let eff = t.Closed
@@ -218,7 +218,7 @@ fn field(row: t.Row(a), label) {
 // Records
 
 pub fn select_test() {
-  let exp = a.select("foo")
+  let exp = ir.select("foo")
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Closed
@@ -229,7 +229,7 @@ pub fn select_test() {
   should.equal(a, b)
   should.equal(l, "foo")
 
-  let exp = a.apply(exp, a.variable("x"))
+  let exp = ir.apply(exp, ir.variable("x"))
   let env = env.empty()
   let x = Scheme([], t.Record(t.Extend("foo", t.Str, t.Closed)))
   let env = dict.insert(env, "x", x)
@@ -241,10 +241,10 @@ pub fn select_test() {
 
 pub fn combine_select_test() {
   let exp =
-    a.let_(
+    ir.let_(
       "_",
-      a.apply(a.select("foo"), a.variable("x")),
-      a.apply(a.select("bar"), a.variable("x")),
+      ir.apply(ir.select("foo"), ir.variable("x")),
+      ir.apply(ir.select("bar"), ir.variable("x")),
     )
   let env = env.empty()
   let x = Scheme([], t.Unbound(-2))
@@ -264,7 +264,7 @@ pub fn combine_select_test() {
 
 // Unions
 pub fn tag_test() {
-  let exp = a.tag("foo")
+  let exp = ir.tag("foo")
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Closed
@@ -275,7 +275,7 @@ pub fn tag_test() {
   should.equal(a, b)
   should.equal(l, "foo")
 
-  let exp = a.apply(exp, a.string("hi"))
+  let exp = ir.apply(exp, ir.string("hi"))
   let sub = infer(env, exp, typ, eff)
   let assert t.Union(t.Extend(l, a, t.Open(_))) = resolve(sub, typ)
   should.equal(a, t.Str)
@@ -285,7 +285,7 @@ pub fn tag_test() {
 // Test raising effects in branches are matched
 
 pub fn single_effect_test() {
-  let exp = a.perform("Log")
+  let exp = ir.perform("Log")
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Open(-2)
@@ -300,7 +300,7 @@ pub fn single_effect_test() {
   should.equal(cont, ret)
 
   // test effects are raised when called
-  let exp = a.apply(exp, a.string("hi"))
+  let exp = ir.apply(exp, ir.string("hi"))
   let typ = t.Integer
   let sub = infer(env, exp, typ, eff)
   let assert Ok(#(t.Str, t.Integer)) =
@@ -309,7 +309,8 @@ pub fn single_effect_test() {
 }
 
 pub fn collect_effects_test() {
-  let exp = a.apply(a.perform("Log"), a.apply(a.perform("Ask"), a.string("hi")))
+  let exp =
+    ir.apply(ir.perform("Log"), ir.apply(ir.perform("Ask"), ir.string("hi")))
   let env = env.empty()
   let typ = t.Unbound(-1)
   let eff = t.Open(-2)
@@ -325,9 +326,9 @@ pub fn collect_effects_test() {
 
 pub fn anony_test() {
   let exp =
-    a.apply(
-      a.lambda("f", a.apply(a.variable("f"), a.string("hi"))),
-      a.lambda("_", a.integer(1)),
+    ir.apply(
+      ir.lambda("f", ir.apply(ir.variable("f"), ir.string("hi"))),
+      ir.lambda("_", ir.integer(1)),
     )
 
   let env = env.empty()
@@ -340,20 +341,20 @@ pub fn anony_test() {
 // Checks that a function is correctly generalized over it's effect type
 pub fn instantiation_of_effect_test() {
   let source =
-    a.let_(
+    ir.let_(
       "f",
-      a.lambda("x", a.variable("x")),
-      a.let_(
+      ir.lambda("x", ir.variable("x")),
+      ir.let_(
         "do",
-        a.lambda(
+        ir.lambda(
           "x",
-          a.let_(
+          ir.let_(
             "_",
-            a.apply(a.perform("Log"), a.string("my log")),
-            a.apply(a.variable("f"), a.integer(0)),
+            ir.apply(ir.perform("Log"), ir.string("my log")),
+            ir.apply(ir.variable("f"), ir.integer(0)),
           ),
         ),
-        a.apply(a.variable("f"), a.empty()),
+        ir.apply(ir.variable("f"), ir.empty()),
       ),
     )
   let env = env.empty()

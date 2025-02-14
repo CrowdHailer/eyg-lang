@@ -294,7 +294,7 @@ pub fn expression(exp, rev, errors) {
       frame.Inline([
         h.span([a.class(reference), exp_key(rev)], [text(identifier)]),
       ])
-    e.NamedReference(package, release) ->
+    e.Release(package, release, _) ->
       frame.Inline([
         h.span(
           [

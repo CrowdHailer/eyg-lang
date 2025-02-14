@@ -1,12 +1,11 @@
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
+import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/sync/dump
 import eyg/sync/fragment
 import eyg/sync/supabase
-import eygir/annotated as a
-import eygir/decode
-import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/http.{type Scheme}
 import gleam/http/request
@@ -28,14 +27,14 @@ pub const test_origin = Origin(http.Https, "eyg.test", None)
 
 pub type Computed {
   Computed(
-    expression: a.Node(Nil),
+    expression: ir.Node(Nil),
     type_: binding.Poly,
     value: Result(fragment.Value, String),
   )
 }
 
 pub type Pending(m) =
-  List(#(String, #(List(String), a.Node(m))))
+  List(#(String, #(List(String), ir.Node(m))))
 
 pub type Run {
   Ongoing
@@ -55,7 +54,7 @@ pub type Sync {
 }
 
 pub type Message {
-  HashSourceFetched(reference: String, value: Result(a.Node(Nil), snag.Snag))
+  HashSourceFetched(reference: String, value: Result(ir.Node(Nil), snag.Snag))
   DumpDownLoaded(Result(dump.Dump, snag.Snag))
 }
 
@@ -244,7 +243,7 @@ fn compute(source, loaded) {
         [] -> []
         _ -> io.debug(errors)
       }
-      Ok(Computed(a.clear_annotation(source), top_type, executed))
+      Ok(Computed(ir.clear_annotation(source), top_type, executed))
     }
     missing -> Error(#(missing, source))
   }
@@ -258,7 +257,7 @@ pub fn task_finish(sync, message) {
         Ok(expression), _ -> {
           let tasks = dict.delete(tasks, ref)
           let sync = Sync(..sync, tasks: tasks)
-          install(sync, ref, expression |> a.map_annotation(fn(_) { [] }))
+          install(sync, ref, expression |> ir.map_annotation(fn(_) { [] }))
         }
         Error(reason), _ -> {
           let tasks = dict.insert(tasks, ref, Failed(reason))
@@ -322,16 +321,8 @@ pub fn send_fetch_request(request) {
 // This probably belongs in remote or storage layer
 // TODO make private when removed from intro/package
 pub fn decode_bytes(bytes) {
-  use body <- result.try(
-    bit_array.to_string(bytes)
-    |> result.replace_error(snag.new("Not utf8 formatted.")),
-  )
-
-  use source <- result.try(
-    decode.from_json(body)
-    |> result.replace_error(snag.new("Unable to decode source code.")),
-  )
-  Ok(source)
+  dag_json.from_block(bytes)
+  |> result.replace_error(snag.new("Unable to decode source code."))
 }
 
 pub fn load(sync, dump: dump.Dump) {
@@ -348,11 +339,11 @@ pub fn load(sync, dump: dump.Dump) {
       fn(loaded, fragment: supabase.Fragment) {
         // List all references and then put them in the loaded map
         // This is bluring things a bit
-        let expression = a.map_annotation(fragment.code, fn(_) { [] })
+        let expression = ir.map_annotation(fragment.code, fn(_) { [] })
         let named =
-          a.list_named_references(expression)
+          ir.list_named_references(expression)
           |> list.map(fn(ref) {
-            let #(name, release) = ref
+            let #(name, release, _) = ref
             case dict.get(registry, name) {
               Ok(package_id) ->
                 case dict.get(packages, package_id) {

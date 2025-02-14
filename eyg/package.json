@@ -13,6 +13,7 @@
     "start:magpie": "gleam build && npm run build:magpie && rm -rf sirv && mkdir sirv && cp build/bundle/app.js build/bundle/worker.js src/magpie/index.html sirv && npx sirv sirv --host 0.0.0.0 --port 5000"
   },
   "dependencies": {
+    "@ipld/dag-json": "^10.2.3",
     "@zip.js/zip.js": "^2.7.41",
     "adm-zip": "^0.5.10",
     "cozo-lib-wasm": "^0.7.5",

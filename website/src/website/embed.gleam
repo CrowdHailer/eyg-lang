@@ -1,6 +1,7 @@
+import eyg/ir/dag_json
 import eyg/sync/browser as remote
 import eyg/sync/sync
-import eygir/decode
+import gleam/bit_array
 import gleam/int
 import gleam/io
 import gleam/javascript/array
@@ -41,7 +42,7 @@ pub fn run() {
       "<div id=\"" <> id <> "\"></div>",
     )
     let json = string.replace(json, "&quot;", "\"")
-    let assert Ok(source) = decode.from_json(json)
+    let assert Ok(source) = dag_json.from_block(bit_array.from_string(json))
     // ORIGIN is not used when pulling from supabase
     let app =
       lustre.application(init, update, snippet.render_embedded_with_menu(

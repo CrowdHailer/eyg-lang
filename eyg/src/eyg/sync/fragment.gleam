@@ -1,10 +1,10 @@
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic
+import eyg/ir/tree as ir
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
-import eygir/annotated as a
 import gleam/dict
 import gleam/dynamic
 import gleam/dynamicx
@@ -21,7 +21,7 @@ pub type Value =
   v.Value(Path, #(List(#(istate.Kontinue(Path), Path)), istate.Env(Path)))
 
 pub fn infer(contained, types) {
-  let meta = a.get_annotation(contained)
+  let meta = ir.get_annotation(contained)
 
   let #(bindings, _, _, typed) =
     contained
@@ -31,7 +31,7 @@ pub fn infer(contained, types) {
   let #(_res, typevar, _eff, _env) = type_info
   let top_type = binding.gen(typevar, -1, bindings)
 
-  let info = a.get_annotation(typed)
+  let info = ir.get_annotation(typed)
   let assert Ok(info) = list.strict_zip(meta, info)
   let new_errors =
     info

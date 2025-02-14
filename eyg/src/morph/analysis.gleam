@@ -3,9 +3,9 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import eyg/ir/tree as ir
 import eyg/runtime/capture
 import eyg/runtime/value as v
-import eygir/annotated as a
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
@@ -134,8 +134,8 @@ pub fn do_analyse(editable, context, eff) -> Analysis {
   let source = e.to_annotated(editable, [])
   let #(bindings, _top_type, _top_eff, tree) =
     infer.do_infer(source, scope, eff, context.references, 0, bindings)
-  let types = a.get_annotation(tree)
-  let paths = a.get_annotation(e.to_annotated(editable, []))
+  let types = ir.get_annotation(tree)
+  let paths = ir.get_annotation(e.to_annotated(editable, []))
   #(bindings, list.zip(paths, types))
 }
 

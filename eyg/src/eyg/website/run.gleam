@@ -1,9 +1,9 @@
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
 import eyg/sync/sync
-import eygir/annotated
 import gleam/dict
 import gleam/dynamic
 import gleam/dynamicx
@@ -42,7 +42,7 @@ pub type Status {
 pub fn start(editable, scope, effects, cache) {
   let return =
     block.execute(
-      editable.to_annotated(editable, []) |> annotated.clear_annotation,
+      editable.to_annotated(editable, []) |> ir.clear_annotation,
       stdlib.new_env(
         scope,
         sync.named_values(cache)

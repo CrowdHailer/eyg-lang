@@ -1,4 +1,4 @@
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -25,8 +25,8 @@ pub type Expression {
   Perform(String)
   Deep(String)
   Builtin(String)
-  NamedReference(package: String, release: Int)
   Reference(String)
+  Release(package: String, release: Int, identifer: String)
 }
 
 pub type Assignments =
@@ -88,39 +88,40 @@ pub fn open_all(source) {
 pub fn from_annotated(node) {
   let #(exp, _meta) = node
   case exp {
-    a.Lambda(x, body) -> {
+    ir.Lambda(x, body) -> {
       let #(pattern, rest) = gather_destructure(body, x)
       gather_parameters(rest, [pattern])
     }
-    a.Let(_x, _value, _then) -> gather_assignments(node, [], False)
-    a.Apply(#(a.Apply(#(a.Cons, _), value), _), rest) ->
+    ir.Let(_x, _value, _then) -> gather_assignments(node, [], False)
+    ir.Apply(#(ir.Apply(#(ir.Cons, _), value), _), rest) ->
       gather_cons(rest, [from_annotated(value)])
-    a.Tail -> List([], None)
-    a.Cons -> {
+    ir.Tail -> List([], None)
+    ir.Cons -> {
       io.debug("bare cons")
       panic
     }
 
-    a.Apply(#(a.Apply(#(a.Extend(l), _), value), _), rest) ->
+    ir.Apply(#(ir.Apply(#(ir.Extend(l), _), value), _), rest) ->
       gather_extends(rest, [#(l, from_annotated(value))])
-    a.Empty -> Record([], None)
-    a.Extend(_) -> {
+    ir.Empty -> Record([], None)
+    ir.Extend(_) -> {
       io.debug("bare extend")
       panic
     }
 
-    a.Apply(#(a.Apply(#(a.Overwrite(l), _), value), _), rest) ->
+    ir.Apply(#(ir.Apply(#(ir.Overwrite(l), _), value), _), rest) ->
       gather_overwrite(rest, [#(l, from_annotated(value))])
-    a.Overwrite(_) -> {
+    ir.Overwrite(_) -> {
       io.debug("bare overwrite")
       panic
     }
 
-    a.Apply(#(a.Select(label), _), from) -> Select(from_annotated(from), label)
-    a.Select(label) -> Function([Bind("$")], Select(Variable("$"), label))
+    ir.Apply(#(ir.Select(label), _), from) ->
+      Select(from_annotated(from), label)
+    ir.Select(label) -> Function([Bind("$")], Select(Variable("$"), label))
 
-    a.Apply(
-      #(a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise), _),
+    ir.Apply(
+      #(ir.Apply(#(ir.Apply(#(ir.Case(l), _), branch), _), otherwise), _),
       value,
     ) -> {
       let value = from_annotated(value)
@@ -128,21 +129,21 @@ pub fn from_annotated(node) {
         gather_otherwise(otherwise, [#(l, from_annotated(branch))])
       Case(value, matches, otherwise)
     }
-    a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise) -> {
+    ir.Apply(#(ir.Apply(#(ir.Case(l), _), branch), _), otherwise) -> {
       let #(matches, otherwise) =
         gather_otherwise(otherwise, [#(l, from_annotated(branch))])
       Function([Bind("$")], Case(Variable("$"), matches, otherwise))
     }
-    a.Case(_) -> {
+    ir.Case(_) -> {
       io.debug("bare case")
       Variable("CASE!!")
     }
-    a.NoCases -> {
+    ir.NoCases -> {
       io.debug("bare nocases")
       Variable("NOCASE!!")
     }
 
-    a.Apply(func, arg) -> {
+    ir.Apply(func, arg) -> {
       let arg = from_annotated(arg)
       case from_annotated(func) {
         Call(func, args) -> Call(func, list.append(args, [arg]))
@@ -151,26 +152,26 @@ pub fn from_annotated(node) {
       // gather_arguments(func, [from_annotated(arg)])
     }
 
-    a.Vacant -> Vacant
-    a.Variable(var) -> Variable(var)
-    a.Integer(value) -> Integer(value)
-    a.Binary(value) -> Binary(value)
-    a.String(value) -> String(value)
+    ir.Vacant -> Vacant
+    ir.Variable(var) -> Variable(var)
+    ir.Integer(value) -> Integer(value)
+    ir.Binary(value) -> Binary(value)
+    ir.String(value) -> String(value)
 
-    a.Tag(label) -> Tag(label)
-    a.Perform(label) -> Perform(label)
-    a.Handle(label) -> Deep(label)
+    ir.Tag(label) -> Tag(label)
+    ir.Perform(label) -> Perform(label)
+    ir.Handle(label) -> Deep(label)
 
-    a.Builtin(identifier) -> Builtin(identifier)
-    a.Reference(identifier) -> Reference(identifier)
-    a.NamedReference(package, release) -> NamedReference(package, release)
+    ir.Builtin(identifier) -> Builtin(identifier)
+    ir.Reference(identifier) -> Reference(identifier)
+    ir.Release(package, release, id) -> Release(package, release, id)
   }
 }
 
 fn gather_parameters(node, acc) {
   let #(exp, _meta) = node
   case exp {
-    a.Lambda(x, body) -> {
+    ir.Lambda(x, body) -> {
       let #(pattern, rest) = gather_destructure(body, x)
       gather_parameters(rest, [pattern, ..acc])
     }
@@ -194,12 +195,12 @@ fn gather_destructure(node, var) -> #(Pattern, _) {
 fn is_free(x, source) {
   let #(exp, _) = source
   case exp {
-    a.Variable(var) -> x == var
-    a.Lambda(param, _body) if param == x -> False
-    a.Lambda(_param, body) -> is_free(x, body)
-    a.Apply(func, arg) -> is_free(x, func) || is_free(x, arg)
-    a.Let(var, value, _then) if var == x -> is_free(x, value)
-    a.Let(_var, value, then) -> is_free(x, value) || is_free(x, then)
+    ir.Variable(var) -> x == var
+    ir.Lambda(param, _body) if param == x -> False
+    ir.Lambda(_param, body) -> is_free(x, body)
+    ir.Apply(func, arg) -> is_free(x, func) || is_free(x, arg)
+    ir.Let(var, value, _then) if var == x -> is_free(x, value)
+    ir.Let(_var, value, then) -> is_free(x, value) || is_free(x, then)
     _ -> False
   }
 }
@@ -207,7 +208,7 @@ fn is_free(x, source) {
 fn do_gather_destructure(node, var, acc) {
   let #(exp, _meta) = node
   case exp {
-    a.Let(x, #(a.Apply(#(a.Select(l), _), #(a.Variable(v), _)), _), then)
+    ir.Let(x, #(ir.Apply(#(ir.Select(l), _), #(ir.Variable(v), _)), _), then)
       if v == var
     -> do_gather_destructure(then, var, [#(l, x), ..acc])
     _ -> #(list.reverse(acc), node)
@@ -217,9 +218,9 @@ fn do_gather_destructure(node, var, acc) {
 fn gather_cons(node, acc) {
   let #(exp, _meta) = node
   case exp {
-    a.Apply(#(a.Apply(#(a.Cons, _), value), _), rest) ->
+    ir.Apply(#(ir.Apply(#(ir.Cons, _), value), _), rest) ->
       gather_cons(rest, [from_annotated(value), ..acc])
-    a.Tail -> List(list.reverse(acc), None)
+    ir.Tail -> List(list.reverse(acc), None)
     _ -> List(list.reverse(acc), Some(from_annotated(node)))
   }
 }
@@ -227,9 +228,9 @@ fn gather_cons(node, acc) {
 fn gather_extends(node, acc) {
   let #(exp, _meta) = node
   case exp {
-    a.Apply(#(a.Apply(#(a.Extend(l), _), value), _), rest) ->
+    ir.Apply(#(ir.Apply(#(ir.Extend(l), _), value), _), rest) ->
       gather_extends(rest, [#(l, from_annotated(value)), ..acc])
-    a.Empty -> Record(list.reverse(acc), None)
+    ir.Empty -> Record(list.reverse(acc), None)
     // _ -> panic as "bad extend"
     _ -> Record(list.reverse(acc), Some(Variable("Record extend")))
   }
@@ -238,7 +239,7 @@ fn gather_extends(node, acc) {
 fn gather_overwrite(node, acc) {
   let #(exp, _meta) = node
   case exp {
-    a.Apply(#(a.Apply(#(a.Overwrite(l), _), value), _), rest) ->
+    ir.Apply(#(ir.Apply(#(ir.Overwrite(l), _), value), _), rest) ->
       gather_overwrite(rest, [#(l, from_annotated(value)), ..acc])
     _ -> Record(list.reverse(acc), Some(from_annotated(node)))
   }
@@ -247,9 +248,9 @@ fn gather_overwrite(node, acc) {
 fn gather_otherwise(node, acc) {
   let #(exp, _meta) = node
   case exp {
-    a.Apply(#(a.Apply(#(a.Case(l), _), branch), _), otherwise) ->
+    ir.Apply(#(ir.Apply(#(ir.Case(l), _), branch), _), otherwise) ->
       gather_otherwise(otherwise, [#(l, from_annotated(branch)), ..acc])
-    a.NoCases -> #(list.reverse(acc), None)
+    ir.NoCases -> #(list.reverse(acc), None)
     _otherwise -> #(list.reverse(acc), Some(from_annotated(node)))
   }
 }
@@ -257,7 +258,7 @@ fn gather_otherwise(node, acc) {
 pub fn gather_assignments(node, acc, open) {
   let #(exp, _meta) = node
   case exp {
-    a.Let(x, value, then) -> {
+    ir.Let(x, value, then) -> {
       let #(p, then) = gather_destructure(then, x)
       gather_assignments(then, [#(p, from_annotated(value)), ..acc], open)
     }
@@ -269,7 +270,7 @@ pub fn gather_assignments(node, acc, open) {
 
 fn gather_arguments(func, args) {
   case func {
-    #(a.Apply(func, arg), _) ->
+    #(ir.Apply(func, arg), _) ->
       gather_arguments(func, [from_annotated(arg), ..args])
     // don't reverse args as gathers from the outside in
     _ -> Call(from_annotated(func), args)
@@ -284,9 +285,12 @@ fn pattern_to_annotated(p, exp, rev) {
         list.fold_right(ds, exp, fn(acc, d) {
           let #(label, var) = d
           #(
-            a.Let(
+            ir.Let(
               var,
-              #(a.Apply(#(a.Select(label), rev), #(a.Variable("$"), rev)), rev),
+              #(
+                ir.Apply(#(ir.Select(label), rev), #(ir.Variable("$"), rev)),
+                rev,
+              ),
               acc,
             ),
             rev,
@@ -299,17 +303,17 @@ fn pattern_to_annotated(p, exp, rev) {
 
 pub fn to_annotated(source, rev) {
   case source {
-    Variable(x) -> #(a.Variable(x), rev)
+    Variable(x) -> #(ir.Variable(x), rev)
     Call(f, args) ->
       list.index_fold(args, to_annotated(f, [0, ..rev]), fn(acc, arg, i) {
         let arg = to_annotated(arg, [i + 1, ..rev])
-        #(a.Apply(acc, arg), rev)
+        #(ir.Apply(acc, arg), rev)
       })
     Function(args, body) -> {
       let len = list.length(args)
       let body = to_annotated(body, [len, ..rev])
       case args, body {
-        [Bind("$")], #(a.Apply(inner, #(a.Variable("$"), _)), _) -> inner
+        [Bind("$")], #(ir.Apply(inner, #(ir.Variable("$"), _)), _) -> inner
         _, _ -> {
           let assert #(0, exp) =
             list.fold_right(args, #(len, body), fn(acc, arg) {
@@ -317,7 +321,7 @@ pub fn to_annotated(source, rev) {
               // start on body index
               let i = i - 1
               let #(var, body) = pattern_to_annotated(arg, acc, [i, ..rev])
-              #(i, #(a.Lambda(var, body), rev))
+              #(i, #(ir.Lambda(var, body), rev))
             })
           exp
         }
@@ -336,7 +340,7 @@ pub fn to_annotated(source, rev) {
             let #(var, acc) = pattern_to_annotated(pattern, acc, [i, ..rev])
             #(
               i,
-              #(a.Let(var, to_annotated(value, [1, i, ..rev]), acc), [i, ..rev]),
+              #(ir.Let(var, to_annotated(value, [1, i, ..rev]), acc), [i, ..rev]),
             )
           },
         )
@@ -347,22 +351,22 @@ pub fn to_annotated(source, rev) {
       let tail =
         tail
         |> option.map(to_annotated(_, [len, ..rev]))
-        |> option.unwrap(#(a.Tail, [len, ..rev]))
+        |> option.unwrap(#(ir.Tail, [len, ..rev]))
       let assert #(0, exp) =
         list.fold_right(items, #(len, tail), fn(acc, item) {
           let #(i, acc) = acc
           let i = i - 1
 
           let item = to_annotated(item, [i, ..rev])
-          #(i, #(a.Apply(#(a.Apply(#(a.Cons, rev), item), rev), acc), rev))
+          #(i, #(ir.Apply(#(ir.Apply(#(ir.Cons, rev), item), rev), acc), rev))
         })
       exp
     }
     Record(fields, rest) -> {
       let len = list.length(fields) * 2
       let #(build, rest) = case rest {
-        None -> #(a.Extend, #(a.Empty, rev))
-        Some(original) -> #(a.Overwrite, to_annotated(original, [len, ..rev]))
+        None -> #(ir.Extend, #(ir.Empty, rev))
+        Some(original) -> #(ir.Overwrite, to_annotated(original, [len, ..rev]))
       }
       let assert #(0, exp) =
         list.fold_right(fields, #(len, rest), fn(acc, field) {
@@ -371,7 +375,7 @@ pub fn to_annotated(source, rev) {
           let #(label, value) = field
           let value = to_annotated(value, [i + 1, ..rev])
           #(i, #(
-            a.Apply(#(a.Apply(#(build(label), [i, ..rev]), value), rev), acc),
+            ir.Apply(#(ir.Apply(#(build(label), [i, ..rev]), value), rev), acc),
             rev,
           ))
         })
@@ -379,7 +383,10 @@ pub fn to_annotated(source, rev) {
     }
     Select(from, label) -> {
       #(
-        a.Apply(#(a.Select(label), [0, ..rev]), to_annotated(from, [1, ..rev])),
+        ir.Apply(
+          #(ir.Select(label), [0, ..rev]),
+          to_annotated(from, [1, ..rev]),
+        ),
         rev,
       )
     }
@@ -388,7 +395,7 @@ pub fn to_annotated(source, rev) {
       let len = list.length(matches)
       let otherwise = case otherwise {
         Some(otherwise) -> to_annotated(otherwise, [len + 1, ..rev])
-        None -> #(a.NoCases, [len + 1, ..rev])
+        None -> #(ir.NoCases, [len + 1, ..rev])
       }
       let assert #(1, matches) =
         list.fold_right(matches, #(len + 1, otherwise), fn(acc, match) {
@@ -397,29 +404,26 @@ pub fn to_annotated(source, rev) {
           let #(label, branch) = match
           let branch = to_annotated(branch, [0, i, ..rev])
           let acc = #(
-            a.Apply(#(a.Apply(#(a.Case(label), rev), branch), rev), acc),
+            ir.Apply(#(ir.Apply(#(ir.Case(label), rev), branch), rev), acc),
             rev,
           )
           #(i, acc)
         })
       let top = to_annotated(top, [0, ..rev])
 
-      let exp = a.Apply(matches, top)
+      let exp = ir.Apply(matches, top)
       #(exp, rev)
     }
-    Vacant -> #(a.Vacant, rev)
-    Integer(value) -> #(a.Integer(value), rev)
-    Binary(value) -> #(a.Binary(value), rev)
-    String(value) -> #(a.String(value), rev)
+    Vacant -> #(ir.Vacant, rev)
+    Integer(value) -> #(ir.Integer(value), rev)
+    Binary(value) -> #(ir.Binary(value), rev)
+    String(value) -> #(ir.String(value), rev)
 
-    Tag(label) -> #(a.Tag(label), rev)
-    Perform(label) -> #(a.Perform(label), rev)
-    Deep(label) -> #(a.Handle(label), rev)
-    Builtin(identifier) -> #(a.Builtin(identifier), rev)
-    Reference(identifier) -> #(a.Reference(identifier), rev)
-    NamedReference(package, release) -> #(
-      a.NamedReference(package, release),
-      rev,
-    )
+    Tag(label) -> #(ir.Tag(label), rev)
+    Perform(label) -> #(ir.Perform(label), rev)
+    Deep(label) -> #(ir.Handle(label), rev)
+    Builtin(identifier) -> #(ir.Builtin(identifier), rev)
+    Reference(identifier) -> #(ir.Reference(identifier), rev)
+    Release(package, release, id) -> #(ir.Release(package, release, id), rev)
   }
 }

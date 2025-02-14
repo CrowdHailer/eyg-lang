@@ -1,4 +1,4 @@
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleeunit/should
 import morph/editable as et
 
@@ -8,20 +8,25 @@ fn should_equal(given, expected) {
 }
 
 pub fn call_test() {
-  let source = a.apply(a.apply(a.variable("f"), a.integer(1)), a.integer(2))
+  let source =
+    ir.apply(ir.apply(ir.variable("f"), ir.integer(1)), ir.integer(2))
   source
   |> et.from_annotated
   |> should_equal(et.Call(et.Variable("f"), [et.Integer(1), et.Integer(2)]))
   |> et.to_annotated([])
-  |> a.clear_annotation()
+  |> ir.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn destructure_test() {
   let source =
-    a.lambda(
+    ir.lambda(
       "$",
-      a.let_("a", a.apply(a.select("foo"), a.variable("$")), a.variable("a")),
+      ir.let_(
+        "a",
+        ir.apply(ir.select("foo"), ir.variable("$")),
+        ir.variable("a"),
+      ),
     )
   source
   |> et.from_annotated
@@ -30,15 +35,19 @@ pub fn destructure_test() {
     et.Variable("a"),
   ))
   |> et.to_annotated([])
-  |> a.clear_annotation()
+  |> ir.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn dont_destructure_used_test() {
   let source =
-    a.lambda(
+    ir.lambda(
       "x",
-      a.let_("a", a.apply(a.select("foo"), a.variable("x")), a.variable("x")),
+      ir.let_(
+        "a",
+        ir.apply(ir.select("foo"), ir.variable("x")),
+        ir.variable("x"),
+      ),
     )
   source
   |> et.from_annotated
@@ -51,25 +60,28 @@ pub fn dont_destructure_used_test() {
     ),
   ))
   |> et.to_annotated([])
-  |> a.clear_annotation()
+  |> ir.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn call_select_test() {
   let source =
-    a.apply(a.apply(a.select("to_string"), a.variable("integer")), a.integer(5))
+    ir.apply(
+      ir.apply(ir.select("to_string"), ir.variable("integer")),
+      ir.integer(5),
+    )
   source
   |> et.from_annotated
   |> should_equal(
     et.Call(et.Select(et.Variable("integer"), "to_string"), [et.Integer(5)]),
   )
   |> et.to_annotated([])
-  |> a.clear_annotation()
+  |> ir.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn bare_select_test() {
-  let source = a.select("foo")
+  let source = ir.select("foo")
   source
   |> et.from_annotated
   |> should_equal(et.Function(
@@ -77,19 +89,22 @@ pub fn bare_select_test() {
     et.Select(et.Variable("$"), "foo"),
   ))
   |> et.to_annotated([])
-  |> a.clear_annotation()
+  |> ir.clear_annotation()
   |> should_equal(source)
 }
 
 pub fn unbound_case_test() {
   let source =
-    a.apply(a.apply(a.case_("Ok"), a.vacant()), a.lambda("x", a.variable("x")))
+    ir.apply(
+      ir.apply(ir.case_("Ok"), ir.vacant()),
+      ir.lambda("x", ir.variable("x")),
+    )
   source
   |> et.from_annotated
   // |> should_equal(
   //   et.Call(et.Select(et.Variable("integer"), "to_string"), [et.Integer(5)]),
   // )
   |> et.to_annotated([])
-  |> a.clear_annotation()
+  |> ir.clear_annotation()
   |> should_equal(source)
 }

@@ -1,4 +1,5 @@
-import eygir/encode
+import eyg/ir/dag_json
+import gleam/bit_array
 import gleam/dynamicx
 import gleam/int
 import gleam/javascript/promise
@@ -149,7 +150,10 @@ fn copy(state) {
 
   case projection {
     #(p.Exp(expression), _) -> {
-      let text = encode.to_json(e.to_annotated(expression, []))
+      let assert Ok(text) =
+        e.to_annotated(expression, [])
+        |> dag_json.to_block()
+        |> bit_array.to_string()
       #(state, WriteToClipboard(text))
     }
     _ -> #(state, Fail("can only copy expressions"))

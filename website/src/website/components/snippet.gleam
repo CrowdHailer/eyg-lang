@@ -2,15 +2,15 @@ import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
+import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/runtime/interpreter/block
 import eyg/runtime/interpreter/state as istate
 import eyg/runtime/value as v
 import eyg/sync/sync
 import eyg/website/run
-import eygir/annotated
-import eygir/decode
-import eygir/encode
+import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
 import gleam/int
@@ -220,7 +220,7 @@ pub fn set_references(state, cache) {
 }
 
 pub fn references(state) {
-  e.to_annotated(source(state), []) |> annotated.list_references()
+  e.to_annotated(source(state), []) |> ir.list_references()
 }
 
 pub type Message {
@@ -513,7 +513,7 @@ pub fn update(state, message) {
       let assert Editing(Command) = status
       case return {
         Ok(text) ->
-          case decode.from_json(text) {
+          case dag_json.from_block(bit_array.from_string(text)) {
             Ok(expression) -> {
               let assert #(p.Exp(_), zoom) = proj
               let proj = #(p.Exp(e.from_annotated(expression)), zoom)
@@ -565,7 +565,10 @@ fn copy(state) {
 
   case proj {
     #(p.Exp(expression), _) -> {
-      let text = encode.to_json(e.to_annotated(expression, []))
+      let assert Ok(text) =
+        e.to_annotated(expression, [])
+        |> dag_json.to_block
+        |> bit_array.to_string
       #(state, WriteToClipboard(text))
     }
     _ -> action_failed(state, "copy")
@@ -971,8 +974,12 @@ pub fn copy_escaped(state) {
 
   case proj {
     #(p.Exp(expression), _) -> {
+      let assert Ok(text) =
+        e.to_annotated(expression, [])
+        |> dag_json.to_block
+        |> bit_array.to_string
       let text =
-        encode.to_json(e.to_annotated(expression, []))
+        text
         |> string.replace("\\", "\\\\")
         |> string.replace("\"", "\\\"")
       #(state, WriteToClipboard(text))

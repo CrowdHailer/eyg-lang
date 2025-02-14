@@ -20,6 +20,7 @@ gleam_http = ">= 3.7.2 and < 4.0.0"
 gleroglero = ">= 1.1.0 and < 2.0.0"
 simplifile = ">= 1.7.0 and < 2.0.0"
 gleam_time = ">= 0.0.0 and < 2.0.0"
+eyg_ir = {path= "../packages/eyg_ir"}
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

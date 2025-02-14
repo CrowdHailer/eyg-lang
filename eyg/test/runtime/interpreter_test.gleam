@@ -1,8 +1,8 @@
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eygir/annotated as a
 import gleam/dict
 import gleam/javascript/promise
 import gleeunit/should
@@ -12,7 +12,7 @@ import harness/stdlib
 import platforms/browser
 
 pub fn variable_test() {
-  let source = a.variable("x")
+  let source = ir.variable("x")
 
   let env = state.Env([#("x", v.String("assigned"))], dict.new(), dict.new())
   r.execute(source, env, dict.new())
@@ -20,8 +20,8 @@ pub fn variable_test() {
 }
 
 pub fn function_test() {
-  let body = a.variable("x")
-  let source = a.lambda("x", body)
+  let body = ir.variable("x")
+  let source = ir.lambda("x", body)
 
   let scope = [#("foo", v.String("assigned"))]
   let env = state.Env(scope, dict.new(), dict.new())
@@ -30,16 +30,16 @@ pub fn function_test() {
 }
 
 pub fn function_application_test() {
-  let source = a.apply(a.lambda("x", a.string("body")), a.integer(0))
+  let source = ir.apply(ir.lambda("x", ir.string("body")), ir.integer(0))
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.String("body")))
 
   let source =
-    a.let_(
+    ir.let_(
       "id",
-      a.lambda("x", a.variable("x")),
-      a.apply(a.variable("id"), a.integer(0)),
+      ir.lambda("x", ir.variable("x")),
+      ir.apply(ir.variable("id"), ir.integer(0)),
     )
 
   r.execute(source, env.empty(), dict.new())
@@ -47,14 +47,14 @@ pub fn function_application_test() {
 }
 
 pub fn function_variable_contain_test() {
-  let source = a.apply(a.lambda("x", a.string("body")), a.variable("x"))
+  let source = ir.apply(ir.lambda("x", ir.string("body")), ir.variable("x"))
 
   r.execute(source, env.empty(), dict.new())
   |> should.be_error()
 }
 
 pub fn builtin_application_test() {
-  let source = a.apply(a.builtin("string_uppercase"), a.string("hello"))
+  let source = ir.apply(ir.builtin("string_uppercase"), ir.string("hello"))
 
   r.execute(source, stdlib.env(), dict.new())
   |> should.equal(Ok(v.String("HELLO")))
@@ -62,53 +62,53 @@ pub fn builtin_application_test() {
 
 // primitive
 pub fn create_a_binary_test() {
-  let source = a.string("hello")
+  let source = ir.string("hello")
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.String("hello")))
 }
 
 pub fn create_an_integer_test() {
-  let source = a.integer(5)
+  let source = ir.integer(5)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Integer(5)))
 }
 
 pub fn record_creation_test() {
-  let source = a.empty()
+  let source = ir.empty()
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.unit))
 
   let source =
-    a.apply(
-      a.apply(a.extend("foo"), a.string("FOO")),
-      a.apply(a.apply(a.extend("bar"), a.integer(0)), a.empty()),
+    ir.apply(
+      ir.apply(ir.extend("foo"), ir.string("FOO")),
+      ir.apply(ir.apply(ir.extend("bar"), ir.integer(0)), ir.empty()),
     )
 
-  r.execute(a.apply(a.select("foo"), source), env.empty(), dict.new())
+  r.execute(ir.apply(ir.select("foo"), source), env.empty(), dict.new())
   |> should.equal(Ok(v.String("FOO")))
-  r.execute(a.apply(a.select("bar"), source), env.empty(), dict.new())
+  r.execute(ir.apply(ir.select("bar"), source), env.empty(), dict.new())
   |> should.equal(Ok(v.Integer(0)))
 }
 
 pub fn case_test() {
   let switch =
-    a.apply(
-      a.apply(a.case_("Some"), a.lambda("x", a.variable("x"))),
-      a.apply(
-        a.apply(a.case_("None"), a.lambda("_", a.string("else"))),
-        a.nocases(),
+    ir.apply(
+      ir.apply(ir.case_("Some"), ir.lambda("x", ir.variable("x"))),
+      ir.apply(
+        ir.apply(ir.case_("None"), ir.lambda("_", ir.string("else"))),
+        ir.nocases(),
       ),
     )
 
-  let source = a.apply(switch, a.apply(a.tag("Some"), a.string("foo")))
+  let source = ir.apply(switch, ir.apply(ir.tag("Some"), ir.string("foo")))
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.String("foo")))
 
-  let source = a.apply(switch, a.apply(a.tag("None"), a.empty()))
+  let source = ir.apply(switch, ir.apply(ir.tag("None"), ir.empty()))
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.String("else")))
@@ -116,10 +116,10 @@ pub fn case_test() {
 
 pub fn rasing_effect_test() {
   let source =
-    a.let_(
+    ir.let_(
       "a",
-      a.apply(a.perform("Foo"), a.integer(1)),
-      a.apply(a.perform("Bar"), a.variable("a")),
+      ir.apply(ir.perform("Foo"), ir.integer(1)),
+      ir.apply(ir.perform("Bar"), ir.variable("a")),
     )
 
   let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
@@ -137,17 +137,17 @@ pub fn rasing_effect_test() {
 
 pub fn effect_in_case_test() {
   let switch =
-    a.apply(
-      a.apply(a.case_("Ok"), a.lambda("x", a.variable("x"))),
-      a.apply(a.apply(a.case_("Error"), a.perform("Raise")), a.nocases()),
+    ir.apply(
+      ir.apply(ir.case_("Ok"), ir.lambda("x", ir.variable("x"))),
+      ir.apply(ir.apply(ir.case_("Error"), ir.perform("Raise")), ir.nocases()),
     )
 
-  let source = a.apply(switch, a.apply(a.tag("Ok"), a.string("foo")))
+  let source = ir.apply(switch, ir.apply(ir.tag("Ok"), ir.string("foo")))
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.String("foo")))
 
-  let source = a.apply(switch, a.apply(a.tag("Error"), a.string("nope")))
+  let source = ir.apply(switch, ir.apply(ir.tag("Error"), ir.string("nope")))
 
   let assert Error(#(break.UnhandledEffect("Raise", lifted), _rev, _env, _k)) =
     r.execute(source, env.empty(), dict.new())
@@ -157,28 +157,28 @@ pub fn effect_in_case_test() {
 
 pub fn effect_in_builtin_test() {
   let list =
-    a.apply(
-      a.apply(a.cons(), a.string("fizz")),
-      a.apply(a.apply(a.cons(), a.string("buzz")), a.tail()),
+    ir.apply(
+      ir.apply(ir.cons(), ir.string("fizz")),
+      ir.apply(ir.apply(ir.cons(), ir.string("buzz")), ir.tail()),
     )
   let reducer =
-    a.lambda(
+    ir.lambda(
       "element",
-      a.lambda(
+      ir.lambda(
         "state",
-        a.let_(
+        ir.let_(
           "reply",
-          a.apply(a.perform("Foo"), a.variable("element")),
-          a.apply(
-            a.apply(a.builtin("string_append"), a.variable("state")),
-            a.variable("element"),
+          ir.apply(ir.perform("Foo"), ir.variable("element")),
+          ir.apply(
+            ir.apply(ir.builtin("string_append"), ir.variable("state")),
+            ir.variable("element"),
           ),
         ),
       ),
     )
   let source =
-    a.apply(
-      a.apply(a.apply(a.builtin("list_fold"), list), a.string("initial")),
+    ir.apply(
+      ir.apply(ir.apply(ir.builtin("list_fold"), list), ir.string("initial")),
       reducer,
     )
 
@@ -196,9 +196,9 @@ pub fn effect_in_builtin_test() {
 
 pub fn handler_no_effect_test() {
   let handler =
-    a.lambda("x", a.lambda("k", a.apply(a.tag("Error"), a.variable("x"))))
-  let exec = a.lambda("_", a.apply(a.tag("Ok"), a.string("mystring")))
-  let source = a.apply(a.apply(a.handle("Throw"), handler), exec)
+    ir.lambda("x", ir.lambda("k", ir.apply(ir.tag("Error"), ir.variable("x"))))
+  let exec = ir.lambda("_", ir.apply(ir.tag("Ok"), ir.string("mystring")))
+  let source = ir.apply(ir.apply(ir.handle("Throw"), handler), exec)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.String("mystring"))))
@@ -206,9 +206,10 @@ pub fn handler_no_effect_test() {
 
 pub fn handle_early_return_effect_test() {
   let handler =
-    a.lambda("x", a.lambda("k", a.apply(a.tag("Error"), a.variable("x"))))
-  let exec = a.lambda("_", a.apply(a.perform("Throw"), a.string("Bad thing")))
-  let source = a.apply(a.apply(a.handle("Throw"), handler), exec)
+    ir.lambda("x", ir.lambda("k", ir.apply(ir.tag("Error"), ir.variable("x"))))
+  let exec =
+    ir.lambda("_", ir.apply(ir.perform("Throw"), ir.string("Bad thing")))
+  let source = ir.apply(ir.apply(ir.handle("Throw"), handler), exec)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(Ok(v.Tagged("Error", v.String("Bad thing"))))
@@ -216,27 +217,27 @@ pub fn handle_early_return_effect_test() {
 
 pub fn handle_resume_test() {
   let handler =
-    a.lambda(
+    ir.lambda(
       "x",
-      a.lambda(
+      ir.lambda(
         "k",
-        a.apply(
-          a.apply(a.extend("value"), a.apply(a.variable("k"), a.empty())),
-          a.apply(a.apply(a.extend("log"), a.variable("x")), a.empty()),
+        ir.apply(
+          ir.apply(ir.extend("value"), ir.apply(ir.variable("k"), ir.empty())),
+          ir.apply(ir.apply(ir.extend("log"), ir.variable("x")), ir.empty()),
         ),
       ),
     )
 
   let exec =
-    a.lambda(
+    ir.lambda(
       "_",
-      a.let_(
+      ir.let_(
         "_",
-        a.apply(a.perform("Log"), a.string("my message")),
-        a.integer(100),
+        ir.apply(ir.perform("Log"), ir.string("my message")),
+        ir.integer(100),
       ),
     )
-  let source = a.apply(a.apply(a.handle("Log"), handler), exec)
+  let source = ir.apply(ir.apply(ir.handle("Log"), handler), exec)
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
@@ -246,16 +247,16 @@ pub fn handle_resume_test() {
 
 pub fn ignore_other_effect_test() {
   let handler =
-    a.lambda("x", a.lambda("k", a.apply(a.tag("Error"), a.variable("x"))))
+    ir.lambda("x", ir.lambda("k", ir.apply(ir.tag("Error"), ir.variable("x"))))
   let exec =
-    a.lambda(
+    ir.lambda(
       "_",
-      a.apply(
-        a.apply(a.extend("foo"), a.apply(a.perform("Foo"), a.empty())),
-        a.empty(),
+      ir.apply(
+        ir.apply(ir.extend("foo"), ir.apply(ir.perform("Foo"), ir.empty())),
+        ir.empty(),
       ),
     )
-  let source = a.apply(a.apply(a.handle("Throw"), handler), exec)
+  let source = ir.apply(ir.apply(ir.handle("Throw"), handler), exec)
 
   let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
@@ -269,11 +270,11 @@ pub fn ignore_other_effect_test() {
 
 pub fn multiple_effects_test() {
   let source =
-    a.apply(
-      a.apply(a.extend("a"), a.apply(a.perform("Choose"), a.unit())),
-      a.apply(
-        a.apply(a.extend("b"), a.apply(a.perform("Choose"), a.unit())),
-        a.empty(),
+    ir.apply(
+      ir.apply(ir.extend("a"), ir.apply(ir.perform("Choose"), ir.unit())),
+      ir.apply(
+        ir.apply(ir.extend("b"), ir.apply(ir.perform("Choose"), ir.unit())),
+        ir.empty(),
       ),
     )
 
@@ -295,34 +296,37 @@ pub fn multiple_effects_test() {
 
 pub fn multiple_resumptions_test() {
   let raise =
-    a.lambda(
+    ir.lambda(
       "_",
-      a.apply(
-        a.apply(a.extend("a"), a.apply(a.perform("Choose"), a.unit())),
-        a.apply(
-          a.apply(a.extend("b"), a.apply(a.perform("Choose"), a.unit())),
-          a.empty(),
+      ir.apply(
+        ir.apply(ir.extend("a"), ir.apply(ir.perform("Choose"), ir.unit())),
+        ir.apply(
+          ir.apply(ir.extend("b"), ir.apply(ir.perform("Choose"), ir.unit())),
+          ir.empty(),
         ),
       ),
     )
   let handle =
-    a.apply(
-      a.handle("Choose"),
-      a.lambda(
+    ir.apply(
+      ir.handle("Choose"),
+      ir.lambda(
         "_",
-        a.lambda(
+        ir.lambda(
           "k",
-          a.apply(
-            a.apply(a.extend("first"), a.apply(a.variable("k"), a.true())),
-            a.apply(
-              a.apply(a.extend("second"), a.apply(a.variable("k"), a.false())),
-              a.empty(),
+          ir.apply(
+            ir.apply(ir.extend("first"), ir.apply(ir.variable("k"), ir.true())),
+            ir.apply(
+              ir.apply(
+                ir.extend("second"),
+                ir.apply(ir.variable("k"), ir.false()),
+              ),
+              ir.empty(),
             ),
           ),
         ),
       ),
     )
-  let source = a.apply(handle, raise)
+  let source = ir.apply(handle, raise)
 
   r.execute(source, env.empty(), dict.new())
   // Not sure this is the correct value but it checks regressions
@@ -374,15 +378,15 @@ pub fn multiple_resumptions_test() {
 
 pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
   let handler =
-    a.apply(
-      a.handle("Log"),
-      a.lambda("lift", a.lambda("k", a.string("Caught"))),
+    ir.apply(
+      ir.handle("Log"),
+      ir.lambda("lift", ir.lambda("k", ir.string("Caught"))),
     )
   let source =
-    a.let_(
+    ir.let_(
       "_",
-      a.apply(handler, a.lambda("_", a.string("Original"))),
-      a.apply(a.perform("Log"), a.string("outer")),
+      ir.apply(handler, ir.lambda("_", ir.string("Original"))),
+      ir.apply(ir.perform("Log"), ir.string("outer")),
     )
 
   let assert Error(#(
@@ -397,22 +401,25 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
 
 pub fn handler_is_applied_after_other_effects_test() {
   let handler =
-    a.apply(a.handle("Fail"), a.lambda("lift", a.lambda("k", a.integer(-1))))
+    ir.apply(
+      ir.handle("Fail"),
+      ir.lambda("lift", ir.lambda("k", ir.integer(-1))),
+    )
   let exec =
-    a.lambda(
+    ir.lambda(
       "_",
-      a.let_(
+      ir.let_(
         "_",
-        a.apply(a.perform("Log"), a.string("my log")),
-        a.let_(
+        ir.apply(ir.perform("Log"), ir.string("my log")),
+        ir.let_(
           "_",
-          a.apply(a.perform("Fail"), a.string("some error")),
-          a.string("done"),
+          ir.apply(ir.perform("Fail"), ir.string("some error")),
+          ir.string("done"),
         ),
       ),
     )
 
-  let source = a.apply(handler, exec)
+  let source = ir.apply(handler, exec)
 
   let assert Error(#(
     break.UnhandledEffect("Log", v.String("my log")),
@@ -434,8 +441,11 @@ fn handlers() {
 
 pub fn async_test() {
   let f =
-    a.lambda("_", a.apply(a.perform("Async"), a.lambda("_", a.string("later"))))
-  let source = a.apply(f, a.unit())
+    ir.lambda(
+      "_",
+      ir.apply(ir.perform("Async"), ir.lambda("_", ir.string("later"))),
+    )
+  let source = ir.apply(f, ir.unit())
 
   let assert Ok(v.Promise(p)) = r.execute(source, stdlib.env(), handlers().1)
   use value <- promise.map(p)

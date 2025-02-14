@@ -2,8 +2,8 @@ import easel/location.{type Location, Location, child, focused, open}
 import eyg/analysis/jm/type_ as t
 import eyg/editor/v1/app.{SelectNode}
 import eyg/editor/v1/view/type_
+import eyg/ir/tree as ir
 import eyg/runtime/value
-import eygir/annotated as ann
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -64,23 +64,23 @@ fn click(loc: Location) {
   on_click(SelectNode(loc.path))
 }
 
-pub fn do_render(exp: ann.Node(_), br, loc, inferred) {
+pub fn do_render(exp: ir.Node(_), br, loc, inferred) {
   case exp.0 {
-    ann.Variable(var) -> [variable(var, loc, inferred)]
-    ann.Lambda(param, body) -> [lambda(param, body, br, loc, inferred)]
-    ann.Apply(func, arg) -> call(func, arg, br, loc, inferred)
-    ann.Let(label, value, then) ->
+    ir.Variable(var) -> [variable(var, loc, inferred)]
+    ir.Lambda(param, body) -> [lambda(param, body, br, loc, inferred)]
+    ir.Apply(func, arg) -> call(func, arg, br, loc, inferred)
+    ir.Let(label, value, then) ->
       assigment(label, value, then, br, loc, inferred)
-    ann.Binary(value) -> [binary(value, loc, inferred)]
-    ann.String(value) -> [string(value, loc, inferred)]
-    ann.Integer(value) -> [integer(value, loc, inferred)]
-    ann.Tail -> [
+    ir.Binary(value) -> [binary(value, loc, inferred)]
+    ir.String(value) -> [string(value, loc, inferred)]
+    ir.Integer(value) -> [integer(value, loc, inferred)]
+    ir.Tail -> [
       span(
         [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
         [text("[]")],
       ),
     ]
-    ann.Cons -> [
+    ir.Cons -> [
       // maybe gray but probably better rendering in apply
       span(
         [
@@ -93,19 +93,19 @@ pub fn do_render(exp: ann.Node(_), br, loc, inferred) {
         [text("cons")],
       ),
     ]
-    ann.Vacant -> [vacant(loc, inferred)]
-    ann.Empty -> [
+    ir.Vacant -> [vacant(loc, inferred)]
+    ir.Empty -> [
       span(
         [click(loc), classes(highlight(focused(loc), error(loc, inferred)))],
         [text("{}")],
       ),
     ]
-    ann.Extend(label) -> [extend(label, loc, inferred)]
-    ann.Select(label) -> [select(label, loc, inferred)]
-    ann.Overwrite(label) -> [overwrite(label, loc, inferred)]
-    ann.Tag(label) -> [tag(label, loc, inferred)]
-    ann.Case(label) -> [match(label, br, loc, inferred)]
-    ann.NoCases -> [
+    ir.Extend(label) -> [extend(label, loc, inferred)]
+    ir.Select(label) -> [select(label, loc, inferred)]
+    ir.Overwrite(label) -> [overwrite(label, loc, inferred)]
+    ir.Tag(label) -> [tag(label, loc, inferred)]
+    ir.Case(label) -> [match(label, br, loc, inferred)]
+    ir.NoCases -> [
       span(
         [
           click(loc),
@@ -117,19 +117,20 @@ pub fn do_render(exp: ann.Node(_), br, loc, inferred) {
         [text("nocases")],
       ),
     ]
-    ann.Perform(label) -> [perform(label, loc, inferred)]
-    ann.Handle(label) -> [handle(label, loc, inferred)]
-    ann.Builtin(id) -> [builtin(id, loc, inferred)]
-    ann.Reference(id) -> [builtin(id, loc, inferred)]
-    ann.NamedReference(package, release) -> [
+    ir.Perform(label) -> [perform(label, loc, inferred)]
+    ir.Handle(label) -> [handle(label, loc, inferred)]
+    ir.Builtin(id) -> [builtin(id, loc, inferred)]
+    ir.Reference(id) -> [builtin(id, loc, inferred)]
+    ir.Release(package, release, _id) -> [
+      // TODO use id
       builtin("@" <> package <> ":" <> int.to_string(release), loc, inferred),
     ]
   }
 }
 
-fn render_block(exp: ann.Node(_), br, loc, inferred) {
+fn render_block(exp: ir.Node(_), br, loc, inferred) {
   case exp.0 {
-    ann.Let(_, _, _) ->
+    ir.Let(_, _, _) ->
       case open(loc) {
         True -> {
           let br_inner = string.append(br, "  ")
@@ -188,8 +189,8 @@ fn lambda(param, body, br, loc, inferred) {
 
 fn render_branch(
   label,
-  then: ann.Node(_),
-  otherwise: ann.Node(_),
+  then: ir.Node(_),
+  otherwise: ir.Node(_),
   br,
   loc_branch,
   loc_otherwise,
@@ -214,13 +215,13 @@ fn render_branch(
       [match, text(" "), ..branch],
     ),
     ..case otherwise.0 {
-      ann.NoCases -> [
+      ir.NoCases -> [
         text(br),
         span([class("text-gray-400"), click(loc_otherwise)], [
           text("-- closed --"),
         ]),
       ]
-      ann.Apply(#(ann.Apply(#(ann.Case(label), _), then), _), otherwise) ->
+      ir.Apply(#(ir.Apply(#(ir.Case(label), _), then), _), otherwise) ->
         render_branch(
           label,
           then,
@@ -239,13 +240,13 @@ fn render_branch(
 // call with binary is error
 // apply to just a case could leave it as ++
 // nocases should be rendered alone as empty match
-fn call(func: ann.Node(_), arg: ann.Node(_), br, loc, inferred) {
+fn call(func: ir.Node(_), arg: ir.Node(_), br, loc, inferred) {
   let target = focused(loc)
   let alert = error(loc, inferred)
 
   // not target but any selected
   let inner = case func.0, arg.0 {
-    ann.Apply(#(ann.Case(label), _), then), _ -> {
+    ir.Apply(#(ir.Case(label), _), then), _ -> {
       let loc_branch = child(loc, 0)
       let loc_otherwise = child(loc, 1)
       case open(loc_branch) || open(loc_otherwise) {
@@ -277,7 +278,7 @@ fn call(func: ann.Node(_), arg: ann.Node(_), br, loc, inferred) {
         ]
       }
     }
-    ann.Apply(#(ann.Extend(label), _), element), _ ->
+    ir.Apply(#(ir.Extend(label), _), element), _ ->
       list.flatten([
         [
           text("{"),
@@ -301,7 +302,7 @@ fn call(func: ann.Node(_), arg: ann.Node(_), br, loc, inferred) {
         render_block(arg, br, child(loc, 1), inferred),
         [text("}")],
       ])
-    ann.Apply(#(ann.Cons, _), element), _ -> {
+    ir.Apply(#(ir.Cons, _), element), _ -> {
       let root = #(child(child(loc, 0), 1), element)
       let #(elements, tail) = gather_list(arg, child(loc, 1), [root])
 
@@ -351,7 +352,7 @@ fn call(func: ann.Node(_), arg: ann.Node(_), br, loc, inferred) {
     //   render_block(arg, br, child(loc, 1), inferred),
     //   [text("]")],
     // ])
-    ann.Select(_), _ ->
+    ir.Select(_), _ ->
       list.flatten([
         render_block(arg, br, child(loc, 1), inferred),
         render_block(func, br, child(loc, 0), inferred),
@@ -372,12 +373,12 @@ fn call(func: ann.Node(_), arg: ann.Node(_), br, loc, inferred) {
 fn gather_list(tail, loc, acc) {
   let #(exp, _meta) = tail
   case exp {
-    ann.Apply(#(ann.Apply(#(ann.Cons, _), element), _), tail) ->
+    ir.Apply(#(ir.Apply(#(ir.Cons, _), element), _), tail) ->
       gather_list(tail, child(loc, 1), [
         #(child(child(loc, 0), 1), element),
         ..acc
       ])
-    ann.Tail -> #(acc, None)
+    ir.Tail -> #(acc, None)
     _ -> #(acc, Some(#(tail, loc)))
   }
 }

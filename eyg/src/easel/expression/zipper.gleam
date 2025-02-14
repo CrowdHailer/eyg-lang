@@ -1,9 +1,9 @@
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/list
 import gleam/result
 
 pub type Zipper(m) =
-  #(a.Node(m), fn(a.Node(m)) -> a.Node(m))
+  #(ir.Node(m), fn(ir.Node(m)) -> ir.Node(m))
 
 pub fn at(expression, path) -> Result(Zipper(_), Nil) {
   do_zipper(expression, path, [])
@@ -27,14 +27,14 @@ fn do_zipper(expression, path, acc) {
 fn child(expression, index) {
   let #(expression, meta) = expression
   case expression, index {
-    a.Lambda(param, body), 0 ->
-      Ok(#(body, fn(x) { #(a.Lambda(param, x), meta) }))
-    a.Apply(func, arg), 0 -> Ok(#(func, fn(x) { #(a.Apply(x, arg), meta) }))
-    a.Apply(func, arg), 1 -> Ok(#(arg, fn(x) { #(a.Apply(func, x), meta) }))
-    a.Let(label, value, then), 0 ->
-      Ok(#(value, fn(x) { #(a.Let(label, x, then), meta) }))
-    a.Let(label, value, then), 1 ->
-      Ok(#(then, fn(x) { #(a.Let(label, value, x), meta) }))
+    ir.Lambda(param, body), 0 ->
+      Ok(#(body, fn(x) { #(ir.Lambda(param, x), meta) }))
+    ir.Apply(func, arg), 0 -> Ok(#(func, fn(x) { #(ir.Apply(x, arg), meta) }))
+    ir.Apply(func, arg), 1 -> Ok(#(arg, fn(x) { #(ir.Apply(func, x), meta) }))
+    ir.Let(label, value, then), 0 ->
+      Ok(#(value, fn(x) { #(ir.Let(label, x, then), meta) }))
+    ir.Let(label, value, then), 1 ->
+      Ok(#(then, fn(x) { #(ir.Let(label, value, x), meta) }))
     _, _ -> Error(Nil)
   }
   // This is one of the things that would be harder with overwrite having children

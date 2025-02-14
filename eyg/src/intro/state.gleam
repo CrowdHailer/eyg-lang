@@ -11,7 +11,6 @@
 // import eyg/sync/fragment
 // import eyg/sync/packages
 // import eyg/sync/sync
-// import eygir/annotated.{type Node}
 // import eygir/encode
 // import gleam/dict
 // import gleam/http/request.{type Request}

@@ -2,12 +2,12 @@ import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic as t
 import eyg/compile
+import eyg/ir/tree as ir
 import eyg/parse
 import eyg/runtime/cast
 import eyg/runtime/interpreter/live
 import eyg/runtime/value as v
 import eyg/text/text
-import eygir/annotated
 import gleam/dict
 import gleam/io
 import gleam/list
@@ -102,10 +102,10 @@ pub fn highlights(state, spans, acc) {
 pub fn information(state) {
   case parse.from_string(source(state)) {
     Ok(#(tree, _rest)) -> {
-      let spans = annotated.get_annotation(tree)
+      let spans = ir.get_annotation(tree)
       let #(exp, bindings) =
         j.infer(tree, t.Empty, dict.new(), 0, j.new_state())
-      let acc = annotated.get_annotation(exp)
+      let acc = ir.get_annotation(exp)
       let acc =
         list.map(acc, fn(node) {
           let #(error, typed, effect, _env) = node

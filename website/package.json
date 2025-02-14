@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@ipld/dag-json": "^10.2.3",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@zip.js/zip.js": "^2.7.54",
     "chokidar": "^4.0.3",

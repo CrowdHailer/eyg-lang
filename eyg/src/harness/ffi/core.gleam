@@ -1,12 +1,12 @@
 import eyg/analysis/typ as t
 import eyg/compile
+import eyg/ir/dag_json
+import eyg/ir/tree as ir
 import eyg/runtime/capture
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
-import eygir/annotated as e
-import eygir/encode
 import gleam/bit_array
 import gleam/dict
 import gleam/io
@@ -181,7 +181,8 @@ pub fn serialize() {
 
 pub fn do_serialize(term, rev, env, k) {
   let exp = capture.capture(term, rev)
-  Ok(#(state.V(v.String(encode.to_json(exp))), env, k))
+  let assert Ok(src) = bit_array.to_string(dag_json.to_block(exp))
+  Ok(#(state.V(v.String(src)), env, k))
 }
 
 pub fn capture() {
@@ -207,7 +208,7 @@ pub fn to_javascript() {
 pub fn do_to_javascript(func, arg, meta, env, k) {
   let func = capture.capture(func, meta)
   let arg = capture.capture(arg, meta)
-  let exp = #(e.Apply(func, arg), meta)
+  let exp = #(ir.Apply(func, arg), meta)
 
   Ok(#(state.V(v.String(compile.to_js(exp, dict.new()))), env, k))
 }
@@ -275,13 +276,13 @@ pub fn do_to_javascript(func, arg, meta, env, k) {
 pub fn expression_to_language(exp) {
   let #(exp, _meta) = exp
   case exp {
-    e.Variable(label) -> [v.Tagged("Variable", v.String(label))]
-    e.Lambda(label, body) -> {
+    ir.Variable(label) -> [v.Tagged("Variable", v.String(label))]
+    ir.Lambda(label, body) -> {
       let head = v.Tagged("Lambda", v.String(label))
       let rest = expression_to_language(body)
       [head, ..rest]
     }
-    e.Apply(func, argument) -> {
+    ir.Apply(func, argument) -> {
       let head = v.Tagged("Apply", v.unit)
       let rest =
         list.append(
@@ -290,7 +291,7 @@ pub fn expression_to_language(exp) {
         )
       [head, ..rest]
     }
-    e.Let(label, definition, body) -> {
+    ir.Let(label, definition, body) -> {
       let head = v.Tagged("Let", v.String(label))
       [
         head,
@@ -301,33 +302,34 @@ pub fn expression_to_language(exp) {
       ]
     }
 
-    e.Binary(value) -> [v.Tagged("Binary", v.Binary(value))]
-    e.Integer(value) -> [v.Tagged("Integer", v.Integer(value))]
-    e.String(value) -> [v.Tagged("String", v.String(value))]
+    ir.Binary(value) -> [v.Tagged("Binary", v.Binary(value))]
+    ir.Integer(value) -> [v.Tagged("Integer", v.Integer(value))]
+    ir.String(value) -> [v.Tagged("String", v.String(value))]
 
-    e.Tail -> [v.Tagged("Tail", v.unit)]
-    e.Cons -> [v.Tagged("Cons", v.unit)]
+    ir.Tail -> [v.Tagged("Tail", v.unit)]
+    ir.Cons -> [v.Tagged("Cons", v.unit)]
 
-    e.Vacant -> [v.Tagged("Vacant", v.unit)]
+    ir.Vacant -> [v.Tagged("Vacant", v.unit)]
 
-    e.Empty -> [v.Tagged("Empty", v.unit)]
-    e.Extend(label) -> [v.Tagged("Extend", v.String(label))]
-    e.Select(label) -> [v.Tagged("Select", v.String(label))]
-    e.Overwrite(label) -> [v.Tagged("Overwrite", v.String(label))]
-    e.Tag(label) -> [v.Tagged("Tag", v.String(label))]
-    e.Case(label) -> [v.Tagged("Case", v.String(label))]
-    e.NoCases -> [v.Tagged("NoCases", v.unit)]
+    ir.Empty -> [v.Tagged("Empty", v.unit)]
+    ir.Extend(label) -> [v.Tagged("Extend", v.String(label))]
+    ir.Select(label) -> [v.Tagged("Select", v.String(label))]
+    ir.Overwrite(label) -> [v.Tagged("Overwrite", v.String(label))]
+    ir.Tag(label) -> [v.Tagged("Tag", v.String(label))]
+    ir.Case(label) -> [v.Tagged("Case", v.String(label))]
+    ir.NoCases -> [v.Tagged("NoCases", v.unit)]
 
-    e.Perform(label) -> [v.Tagged("Perform", v.String(label))]
-    e.Handle(label) -> [v.Tagged("Handle", v.String(label))]
-    e.Builtin(identifier) -> [v.Tagged("Builtin", v.String(identifier))]
-    e.Reference(identifier) -> [v.Tagged("Reference", v.String(identifier))]
-    e.NamedReference(package, release) -> [
+    ir.Perform(label) -> [v.Tagged("Perform", v.String(label))]
+    ir.Handle(label) -> [v.Tagged("Handle", v.String(label))]
+    ir.Builtin(identifier) -> [v.Tagged("Builtin", v.String(identifier))]
+    ir.Reference(identifier) -> [v.Tagged("Reference", v.String(identifier))]
+    ir.Release(package, release, identifier) -> [
       v.Tagged(
-        "NamedReference",
+        "Release",
         v.Record([
           #("package", v.String(package)),
           #("release", v.Integer(release)),
+          #("identifier", v.String(identifier)),
         ]),
       ),
     ]
@@ -358,27 +360,27 @@ fn stack_language_to_expression(source, stack) {
 fn apply(exp, stack) {
   case stack {
     [] -> Ok(exp)
-    [DoBody(label), ..stack] -> apply(#(e.Lambda(label, exp), Nil), stack)
+    [DoBody(label), ..stack] -> apply(#(ir.Lambda(label, exp), Nil), stack)
     [DoFunc, ..stack] -> Error([DoArg(exp), ..stack])
-    [DoArg(func), ..stack] -> apply(#(e.Apply(func, exp), Nil), stack)
+    [DoArg(func), ..stack] -> apply(#(ir.Apply(func, exp), Nil), stack)
     [DoValue(label), ..stack] -> Error([DoThen(label, exp), ..stack])
     [DoThen(label, value), ..stack] ->
-      apply(#(e.Let(label, value, exp), Nil), stack)
+      apply(#(ir.Let(label, value, exp), Nil), stack)
   }
 }
 
 type NativeStack(m) {
   DoBody(String)
   DoFunc
-  DoArg(e.Node(m))
+  DoArg(ir.Node(m))
   DoValue(String)
-  DoThen(String, e.Node(m))
+  DoThen(String, ir.Node(m))
 }
 
 fn step(node, stack) {
   case node {
     v.Tagged("Variable", v.String(label)) -> {
-      #(Some(e.Variable(label)), stack)
+      #(Some(ir.Variable(label)), stack)
     }
     v.Tagged("Lambda", v.String(label)) -> {
       #(None, [DoBody(label), ..stack])
@@ -394,27 +396,30 @@ fn step(node, stack) {
       #(None, [DoValue(label), ..stack])
     }
 
-    v.Tagged("Integer", v.Integer(value)) -> #(Some(e.Integer(value)), stack)
-    v.Tagged("String", v.String(value)) -> #(Some(e.String(value)), stack)
-    v.Tagged("Binary", v.Binary(value)) -> #(Some(e.Binary(value)), stack)
+    v.Tagged("Integer", v.Integer(value)) -> #(Some(ir.Integer(value)), stack)
+    v.Tagged("String", v.String(value)) -> #(Some(ir.String(value)), stack)
+    v.Tagged("Binary", v.Binary(value)) -> #(Some(ir.Binary(value)), stack)
 
-    v.Tagged("Tail", v.Record([])) -> #(Some(e.Tail), stack)
-    v.Tagged("Cons", v.Record([])) -> #(Some(e.Cons), stack)
+    v.Tagged("Tail", v.Record([])) -> #(Some(ir.Tail), stack)
+    v.Tagged("Cons", v.Record([])) -> #(Some(ir.Cons), stack)
 
-    v.Tagged("Vacant", v.Record([])) -> #(Some(e.Vacant), stack)
+    v.Tagged("Vacant", v.Record([])) -> #(Some(ir.Vacant), stack)
 
-    v.Tagged("Empty", v.Record([])) -> #(Some(e.Empty), stack)
-    v.Tagged("Extend", v.String(label)) -> #(Some(e.Extend(label)), stack)
-    v.Tagged("Select", v.String(label)) -> #(Some(e.Select(label)), stack)
-    v.Tagged("Overwrite", v.String(label)) -> #(Some(e.Overwrite(label)), stack)
-    v.Tagged("Tag", v.String(label)) -> #(Some(e.Tag(label)), stack)
-    v.Tagged("Case", v.String(label)) -> #(Some(e.Case(label)), stack)
-    v.Tagged("NoCases", v.Record([])) -> #(Some(e.NoCases), stack)
+    v.Tagged("Empty", v.Record([])) -> #(Some(ir.Empty), stack)
+    v.Tagged("Extend", v.String(label)) -> #(Some(ir.Extend(label)), stack)
+    v.Tagged("Select", v.String(label)) -> #(Some(ir.Select(label)), stack)
+    v.Tagged("Overwrite", v.String(label)) -> #(
+      Some(ir.Overwrite(label)),
+      stack,
+    )
+    v.Tagged("Tag", v.String(label)) -> #(Some(ir.Tag(label)), stack)
+    v.Tagged("Case", v.String(label)) -> #(Some(ir.Case(label)), stack)
+    v.Tagged("NoCases", v.Record([])) -> #(Some(ir.NoCases), stack)
 
-    v.Tagged("Perform", v.String(label)) -> #(Some(e.Perform(label)), stack)
-    v.Tagged("Handle", v.String(label)) -> #(Some(e.Handle(label)), stack)
+    v.Tagged("Perform", v.String(label)) -> #(Some(ir.Perform(label)), stack)
+    v.Tagged("Handle", v.String(label)) -> #(Some(ir.Handle(label)), stack)
     v.Tagged("Builtin", v.String(identifier)) -> #(
-      Some(e.Builtin(identifier)),
+      Some(ir.Builtin(identifier)),
       stack,
     )
     remaining -> {
@@ -428,45 +433,46 @@ fn step(node, stack) {
 fn do_language_to_expression(term, k) {
   case term {
     [v.Tagged("Variable", v.String(label)), ..rest] -> {
-      k(e.Variable(label), rest)
+      k(ir.Variable(label), rest)
     }
     [v.Tagged("Lambda", v.String(label)), ..rest] -> {
       use body, rest <- do_language_to_expression(rest)
-      k(e.Lambda(label, #(body, Nil)), rest)
+      k(ir.Lambda(label, #(body, Nil)), rest)
     }
     [v.Tagged("Apply", v.Record([])), ..rest] -> {
       use func, rest <- do_language_to_expression(rest)
       use arg, rest <- do_language_to_expression(rest)
-      k(e.Apply(#(func, Nil), #(arg, Nil)), rest)
+      k(ir.Apply(#(func, Nil), #(arg, Nil)), rest)
     }
     [v.Tagged("Let", v.String(label)), ..rest] -> {
       use value, rest <- do_language_to_expression(rest)
       use then, rest <- do_language_to_expression(rest)
-      k(e.Let(label, #(value, Nil), #(then, Nil)), rest)
+      k(ir.Let(label, #(value, Nil), #(then, Nil)), rest)
     }
 
-    [v.Tagged("Integer", v.Integer(value)), ..rest] -> k(e.Integer(value), rest)
-    [v.Tagged("String", v.String(value)), ..rest] -> k(e.String(value), rest)
-    [v.Tagged("Binary", v.Binary(value)), ..rest] -> k(e.Binary(value), rest)
+    [v.Tagged("Integer", v.Integer(value)), ..rest] ->
+      k(ir.Integer(value), rest)
+    [v.Tagged("String", v.String(value)), ..rest] -> k(ir.String(value), rest)
+    [v.Tagged("Binary", v.Binary(value)), ..rest] -> k(ir.Binary(value), rest)
 
-    [v.Tagged("Tail", v.Record([])), ..rest] -> k(e.Tail, rest)
-    [v.Tagged("Cons", v.Record([])), ..rest] -> k(e.Cons, rest)
+    [v.Tagged("Tail", v.Record([])), ..rest] -> k(ir.Tail, rest)
+    [v.Tagged("Cons", v.Record([])), ..rest] -> k(ir.Cons, rest)
 
-    [v.Tagged("Vacant", v.Record([])), ..rest] -> k(e.Vacant, rest)
+    [v.Tagged("Vacant", v.Record([])), ..rest] -> k(ir.Vacant, rest)
 
-    [v.Tagged("Empty", v.Record([])), ..rest] -> k(e.Empty, rest)
-    [v.Tagged("Extend", v.String(label)), ..rest] -> k(e.Extend(label), rest)
-    [v.Tagged("Select", v.String(label)), ..rest] -> k(e.Select(label), rest)
+    [v.Tagged("Empty", v.Record([])), ..rest] -> k(ir.Empty, rest)
+    [v.Tagged("Extend", v.String(label)), ..rest] -> k(ir.Extend(label), rest)
+    [v.Tagged("Select", v.String(label)), ..rest] -> k(ir.Select(label), rest)
     [v.Tagged("Overwrite", v.String(label)), ..rest] ->
-      k(e.Overwrite(label), rest)
-    [v.Tagged("Tag", v.String(label)), ..rest] -> k(e.Tag(label), rest)
-    [v.Tagged("Case", v.String(label)), ..rest] -> k(e.Case(label), rest)
-    [v.Tagged("NoCases", v.Record([])), ..rest] -> k(e.NoCases, rest)
+      k(ir.Overwrite(label), rest)
+    [v.Tagged("Tag", v.String(label)), ..rest] -> k(ir.Tag(label), rest)
+    [v.Tagged("Case", v.String(label)), ..rest] -> k(ir.Case(label), rest)
+    [v.Tagged("NoCases", v.Record([])), ..rest] -> k(ir.NoCases, rest)
 
-    [v.Tagged("Perform", v.String(label)), ..rest] -> k(e.Perform(label), rest)
-    [v.Tagged("Handle", v.String(label)), ..rest] -> k(e.Handle(label), rest)
+    [v.Tagged("Perform", v.String(label)), ..rest] -> k(ir.Perform(label), rest)
+    [v.Tagged("Handle", v.String(label)), ..rest] -> k(ir.Handle(label), rest)
     [v.Tagged("Builtin", v.String(identifier)), ..rest] ->
-      k(e.Builtin(identifier), rest)
+      k(ir.Builtin(identifier), rest)
     remaining -> {
       io.debug(#("remaining values", remaining, k))
       Error("error debuggin expressions")

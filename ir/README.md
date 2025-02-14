@@ -17,7 +17,9 @@ IR's are recursive structures, where a node has child nodes is indicated with th
 `label` represent variables, record fields, union variants builtin identifiers and effect identifiers.
 The only requirement on label string is that they are nonempty and contain no whitespace charachacters.
 
-`bytes` are base64 encoded.
+The IR structure is a valid [dag-json](https://ipld.io/docs/codecs/known/dag-json/) structure.
+Bytes are encoded according to the DAG JSON Spec. 
+References are encoded as Content IDentifiers (CIDs).
 
 ```js
 // variable
@@ -63,6 +65,8 @@ The only requirement on label string is that they are nonempty and contain no wh
 {"0": "hs", "l": label}
 // builtin(label)
 {"0": "b", "l": label}
-// reference(label)
-{"0": "#", "l": label}
+// reference(identifier)
+{"0": "#", "l": cid}
+// release(project,release,identifer)
+{"0": "#", "p": string, "r": integer, "l": cid}
 ```

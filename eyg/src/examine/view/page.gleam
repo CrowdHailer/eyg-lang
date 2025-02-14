@@ -2,6 +2,7 @@ import examine/state.{
   Compilation, Highlight, Inference, Input, Interpret, Switch,
 }
 import eyg/analysis/type_/binding/debug
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/runtime/value as v
 import eygir/tree

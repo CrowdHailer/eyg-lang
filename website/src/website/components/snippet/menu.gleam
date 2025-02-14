@@ -169,7 +169,7 @@ pub fn top_content(projection) {
     // create
     p.Exp(exp) ->
       case exp {
-        e.Variable(_) | e.Reference(_) | e.NamedReference(_, _) -> [
+        e.Variable(_) | e.Reference(_) | e.Release(_, _, _) -> [
           edit(),
           select_field(),
           call_function(),

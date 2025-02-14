@@ -1,7 +1,7 @@
 // up to 91% of time is joining lists
 import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -58,13 +58,13 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
   let err = is_error(loc.path, analysis)
   let #(exp, _) = source
   case exp {
-    a.Lambda(param, body) -> {
+    ir.Lambda(param, body) -> {
       let #(acc, info) =
         print_with_offset(param, loc, Default, err, acc, info, analysis)
       let acc = print_keyword(" -> ", loc, acc, err)
       print_block(body, location.child(loc, 0), br, acc, info, analysis)
     }
-    a.Apply(#(a.Select(label), _), from) -> {
+    ir.Apply(#(ir.Select(label), _), from) -> {
       let #(acc, info) =
         print_block(from, location.child(loc, 1), br, acc, info, analysis)
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
@@ -79,7 +79,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
         analysis,
       )
     }
-    a.Apply(#(a.Apply(#(a.Cons, _), item), _), tail) -> {
+    ir.Apply(#(ir.Apply(#(ir.Cons, _), item), _), tail) -> {
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("[", loc, acc, err)
       let #(acc, info) =
@@ -95,8 +95,8 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
     }
     // It works using both here because a record should always end in empty
     // and overwrite always a variable
-    a.Apply(#(a.Apply(#(a.Extend(label), _), item), _), tail)
-    | a.Apply(#(a.Apply(#(a.Overwrite(label), _), item), _), tail) -> {
+    ir.Apply(#(ir.Apply(#(ir.Extend(label), _), item), _), tail)
+    | ir.Apply(#(ir.Apply(#(ir.Overwrite(label), _), item), _), tail) -> {
       // let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("{", loc, acc, err)
       let #(acc, info) =
@@ -113,7 +113,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
         )
       print_extend(tail, location.child(loc, 1), br, acc, info, analysis)
     }
-    a.Apply(#(a.Apply(#(a.Case(label), _), item), _), tail) -> {
+    ir.Apply(#(ir.Apply(#(ir.Case(label), _), item), _), tail) -> {
       let acc = print_keyword("match {", loc, acc, err)
       let br_inner = string.append(br, "  ")
       let acc = print_keyword(br_inner, loc, acc, err)
@@ -139,7 +139,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
         analysis,
       )
     }
-    a.Apply(func, arg) -> {
+    ir.Apply(func, arg) -> {
       let #(acc, info) =
         print_block(func, location.child(loc, 0), br, acc, info, analysis)
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
@@ -151,7 +151,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       let acc = print_keyword(")", loc, acc, err)
       #(acc, info)
     }
-    a.Let(label, value, then) -> {
+    ir.Let(label, value, then) -> {
       let acc = print_keyword("let ", loc, acc, err)
       let #(acc, info) =
         print_with_offset(label, loc, Default, err, acc, info, analysis)
@@ -161,9 +161,9 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       let acc = print_keyword(br, loc, acc, err)
       do_print(then, location.child(loc, 1), br, acc, info, analysis)
     }
-    a.Variable(label) ->
+    ir.Variable(label) ->
       print_with_offset(label, loc, Default, err, acc, info, analysis)
-    a.Vacant -> {
+    ir.Vacant -> {
       let content = case analysis {
         Some(#(sub, _next, types)) ->
           case dict.get(types, list.reverse(loc.path)) {
@@ -183,7 +183,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
       print_with_offset(content, loc, Hole, err, acc, info, analysis)
     }
     // TODO fix this acc needs to look like string
-    a.Binary(value) ->
+    ir.Binary(value) ->
       print_with_offset(
         print_bit_string(value),
         loc,
@@ -193,7 +193,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
         info,
         analysis,
       )
-    a.Integer(value) ->
+    ir.Integer(value) ->
       print_with_offset(
         int.to_string(value),
         loc,
@@ -203,7 +203,7 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
         info,
         analysis,
       )
-    a.String(value) -> {
+    ir.String(value) -> {
       let acc = [#("\"", loc.path, -1, String, err), ..acc]
       // Maybe I don't need to append " if looking left
       // Dont escape html here as messes up index's when looking up element
@@ -217,62 +217,63 @@ fn do_print(source, loc: Location, br, acc, info, analysis) {
         analysis,
       )
     }
-    a.Tail -> {
+    ir.Tail -> {
       let info =
         dict.insert(info, path_to_string(loc.path), list.length(acc) + 1)
       let acc = print_keyword("[]", loc, acc, err)
       #(acc, info)
     }
-    a.Cons -> {
+    ir.Cons -> {
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("cons", loc, acc, err)
       #(acc, info)
     }
-    a.Empty -> {
+    ir.Empty -> {
       let info =
         dict.insert(info, path_to_string(loc.path), list.length(acc) + 1)
       let acc = print_keyword("{}", loc, acc, err)
       #(acc, info)
     }
-    a.Extend(label) -> {
+    ir.Extend(label) -> {
       let acc = [#("+", loc.path, -1, Label, err), ..acc]
       print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
-    a.Select(label) -> {
+    ir.Select(label) -> {
       let acc = [#(".", loc.path, -1, Label, err), ..acc]
       print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
-    a.Overwrite(label) -> {
+    ir.Overwrite(label) -> {
       let acc = [#("=", loc.path, -1, Label, err), ..acc]
       print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
-    a.Tag(label) -> {
+    ir.Tag(label) -> {
       // The idea was marking something as a tag
       // let acc = [#("=", loc.path, -1, Label), ..acc]
       print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
-    a.Case(label) -> {
+    ir.Case(label) -> {
       let acc = [#("|", loc.path, -1, Label, err), ..acc]
       print_with_offset(label, loc, Label, err, acc, info, analysis)
     }
-    a.NoCases -> {
+    ir.NoCases -> {
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("----", loc, acc, err)
       #(acc, info)
     }
-    a.Perform(label) -> {
+    ir.Perform(label) -> {
       let acc = print_keyword("perform ", loc, acc, err)
       print_with_offset(label, loc, Effect, err, acc, info, analysis)
     }
-    a.Handle(label) -> {
+    ir.Handle(label) -> {
       let acc = print_keyword("handle ", loc, acc, err)
       print_with_offset(label, loc, Effect, err, acc, info, analysis)
     }
-    a.Builtin(value) ->
+    ir.Builtin(value) ->
       print_with_offset(value, loc, Builtin, err, acc, info, analysis)
-    a.Reference(value) ->
+    ir.Reference(value) ->
       print_with_offset(value, loc, Reference, err, acc, info, analysis)
-    a.NamedReference(package, release) -> {
+    ir.Release(package, release, _id) -> {
+      // TODO real id
       let value = "@" <> package <> ":" <> int.to_string(release)
       print_with_offset(value, loc, Reference, err, acc, info, analysis)
     }
@@ -298,7 +299,7 @@ fn print_block(source, loc: Location, br, acc, info, analysis) {
   let err = is_error(loc.path, analysis)
   let #(exp, _meta) = source
   case exp {
-    a.Let(_, _, _) -> {
+    ir.Let(_, _, _) -> {
       case location.open(loc) {
         True -> {
           let br_inner = string.append(br, "  ")
@@ -325,12 +326,12 @@ fn print_tail(source, loc, br, acc, info, analysis) {
   let #(exp, _meta) = source
 
   case exp {
-    a.Tail -> {
+    ir.Tail -> {
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("]", loc, acc, err)
       #(acc, info)
     }
-    a.Apply(#(a.Apply(#(a.Cons, _), item), _), tail) -> {
+    ir.Apply(#(ir.Apply(#(ir.Cons, _), item), _), tail) -> {
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(", ", loc, acc, err)
       let #(acc, info) =
@@ -358,13 +359,13 @@ fn print_extend(source, loc, br, acc, info, analysis) {
   let err = is_error(loc.path, analysis)
   let #(exp, _meta) = source
   case exp {
-    a.Empty -> {
+    ir.Empty -> {
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword("}", loc, acc, err)
       #(acc, info)
     }
-    a.Apply(#(a.Apply(#(a.Extend(label), _), item), _), tail)
-    | a.Apply(#(a.Apply(#(a.Overwrite(label), _), item), _), tail) -> {
+    ir.Apply(#(ir.Apply(#(ir.Extend(label), _), item), _), tail)
+    | ir.Apply(#(ir.Apply(#(ir.Overwrite(label), _), item), _), tail) -> {
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let acc = print_keyword(", ", loc, acc, err)
       let #(acc, info) =
@@ -395,14 +396,14 @@ fn print_match(source, loc, br, br_inner, acc, info, analysis) {
   let err = is_error(loc.path, analysis)
   let #(exp, _meta) = source
   case exp {
-    a.NoCases -> {
+    ir.NoCases -> {
       let acc = print_keyword(br, loc, acc, err)
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
 
       let acc = print_keyword("}", loc, acc, err)
       #(acc, info)
     }
-    a.Apply(#(a.Apply(#(a.Case(label), _), item), _), tail) -> {
+    ir.Apply(#(ir.Apply(#(ir.Case(label), _), item), _), tail) -> {
       let acc = print_keyword(br_inner, loc, acc, err)
       let info = dict.insert(info, path_to_string(loc.path), list.length(acc))
       let #(acc, info) =

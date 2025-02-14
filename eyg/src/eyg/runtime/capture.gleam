@@ -1,5 +1,5 @@
+import eyg/ir/tree as ir
 import eyg/runtime/value as v
-import eygir/annotated as a
 import gleam/int
 import gleam/list
 import gleam/result
@@ -10,39 +10,39 @@ pub fn capture(term, meta) {
   let #(exp, env) = do_capture(term, [], meta)
   list.fold(env, exp, fn(then, definition) {
     let #(var, value) = definition
-    #(a.Let(var, value, then), meta)
+    #(ir.Let(var, value, then), meta)
   })
 }
 
 fn do_capture(term, env, meta) {
   case term {
-    v.Binary(value) -> #(#(a.Binary(value), meta), env)
-    v.Integer(value) -> #(#(a.Integer(value), meta), env)
-    v.String(value) -> #(#(a.String(value), meta), env)
+    v.Binary(value) -> #(#(ir.Binary(value), meta), env)
+    v.Integer(value) -> #(#(ir.Integer(value), meta), env)
+    v.String(value) -> #(#(ir.String(value), meta), env)
     v.LinkedList(items) ->
-      list.fold_right(items, #(#(a.Tail, meta), env), fn(state, item) {
+      list.fold_right(items, #(#(ir.Tail, meta), env), fn(state, item) {
         let #(tail, env) = state
         let #(item, env) = do_capture(item, env, meta)
         let exp = #(
-          a.Apply(#(a.Apply(#(a.Cons, meta), item), meta), tail),
+          ir.Apply(#(ir.Apply(#(ir.Cons, meta), item), meta), tail),
           meta,
         )
         #(exp, env)
       })
     v.Record(fields) ->
-      list.fold_right(fields, #(#(a.Empty, meta), env), fn(state, pair) {
+      list.fold_right(fields, #(#(ir.Empty, meta), env), fn(state, pair) {
         let #(label, item) = pair
         let #(record, env) = state
         let #(item, env) = do_capture(item, env, meta)
         let exp = #(
-          a.Apply(#(a.Apply(#(a.Extend(label), meta), item), meta), record),
+          ir.Apply(#(ir.Apply(#(ir.Extend(label), meta), item), meta), record),
           meta,
         )
         #(exp, env)
       })
     v.Tagged(label, value) -> {
       let #(value, env) = do_capture(value, env, meta)
-      let exp = #(a.Apply(#(a.Tag(label), meta), value), meta)
+      let exp = #(ir.Apply(#(ir.Tag(label), meta), value), meta)
       #(exp, env)
     }
     // universal code from before
@@ -64,7 +64,7 @@ fn do_capture(term, env, meta) {
           // could special rule std by passing in as an argument
           //
           let #(exp, env) = case var {
-            // "std" -> #(a.String("I AM STD"), env)
+            // "std" -> #(ir.String("I AM STD"), env)
             _ -> do_capture(term, env, meta)
           }
           case list.key_find(env, var) {
@@ -93,11 +93,11 @@ fn do_capture(term, env, meta) {
           }
         })
 
-      let exp = #(a.Lambda(arg, body), meta)
+      let exp = #(ir.Lambda(arg, body), meta)
       let exp =
         list.fold(wrapped, exp, fn(exp, pair) {
           let #(scoped_var, var) = pair
-          #(a.Let(var, #(a.Variable(scoped_var), meta), exp), meta)
+          #(ir.Let(var, #(ir.Variable(scoped_var), meta), exp), meta)
         })
       #(exp, env)
     }
@@ -109,25 +109,25 @@ fn do_capture(term, env, meta) {
 
 fn capture_defunc(switch, args, env, meta) {
   let exp = case switch {
-    v.Cons -> a.Cons
-    v.Extend(label) -> a.Extend(label)
-    v.Overwrite(label) -> a.Overwrite(label)
-    v.Select(label) -> a.Select(label)
-    v.Tag(label) -> a.Tag(label)
-    v.Match(label) -> a.Case(label)
-    v.NoCases -> a.NoCases
-    v.Perform(label) -> a.Perform(label)
-    v.Handle(label) -> a.Handle(label)
+    v.Cons -> ir.Cons
+    v.Extend(label) -> ir.Extend(label)
+    v.Overwrite(label) -> ir.Overwrite(label)
+    v.Select(label) -> ir.Select(label)
+    v.Tag(label) -> ir.Tag(label)
+    v.Match(label) -> ir.Case(label)
+    v.NoCases -> ir.NoCases
+    v.Perform(label) -> ir.Perform(label)
+    v.Handle(label) -> ir.Handle(label)
     v.Resume(_) -> {
       panic as "not idea how to capture the func here, is it even possible"
     }
-    v.Builtin(identifier) -> a.Builtin(identifier)
+    v.Builtin(identifier) -> ir.Builtin(identifier)
   }
   let exp = #(exp, meta)
   list.fold(args, #(exp, env), fn(state, arg) {
     let #(exp, env) = state
     let #(arg, env) = do_capture(arg, env, meta)
-    let exp = #(a.Apply(exp, arg), meta)
+    let exp = #(ir.Apply(exp, arg), meta)
     #(exp, env)
   })
 }
@@ -140,18 +140,18 @@ fn vars_used(exp, env) {
 fn do_vars_used(tree, env, found) {
   let #(exp, _meta) = tree
   case exp {
-    a.Variable(v) ->
+    ir.Variable(v) ->
       case !list.contains(env, v) && !list.contains(found, v) {
         True -> [v, ..found]
         False -> found
       }
-    a.Lambda(param, body) -> do_vars_used(body, [param, ..env], found)
-    a.Apply(func, arg) -> {
+    ir.Lambda(param, body) -> do_vars_used(body, [param, ..env], found)
+    ir.Apply(func, arg) -> {
       let found = do_vars_used(func, env, found)
       do_vars_used(arg, env, found)
     }
     // in recursive label also overwritten in value
-    a.Let(label, value, then) -> {
+    ir.Let(label, value, then) -> {
       let found = do_vars_used(value, env, found)
       do_vars_used(then, [label, ..env], found)
     }

@@ -1,10 +1,4 @@
-// in lang2 PR
-// type not used
-// scope is about unique variables fixed with ir
-// in tail is still relevant
-// don't need to wrap expression with a
-// BUT still might
-import eygir/annotated as a
+import eyg/ir/tree as ir
 import gleam/int
 import gleam/io
 import gleam/list
@@ -12,15 +6,15 @@ import gleam/string
 
 // can't wrap program in `()` because js assumes expression and breaks with let
 // but also cant wrap in `{}` because in brackets is assuemd to be object
-fn assign_to(source: a.Node(Nil), label) {
+fn assign_to(source: ir.Node(Nil), label) {
   let #(exp, _meta) = source
   case exp {
-    a.Let(x, v, t) -> a.let_(x, v, assign_to(t, label))
-    _ -> a.let_(label, source, a.apply(a.builtin("run"), a.variable(label)))
+    ir.Let(x, v, t) -> ir.let_(x, v, assign_to(t, label))
+    _ -> ir.let_(label, source, ir.apply(ir.builtin("run"), ir.variable(label)))
   }
 }
 
-pub fn render(exp: a.Node(Nil)) {
+pub fn render(exp: ir.Node(Nil)) {
   let used = builtins_used(exp, [])
 
   let program = case list.contains(used, "bind") {
@@ -37,19 +31,19 @@ pub fn render(exp: a.Node(Nil)) {
 fn builtins_used(source, acc) {
   let #(exp, _meta) = source
   case exp {
-    a.Apply(func, arg) ->
+    ir.Apply(func, arg) ->
       acc
       |> builtins_used(func, _)
       |> builtins_used(arg, _)
-    a.Let(_, value, then) ->
+    ir.Let(_, value, then) ->
       acc
       |> builtins_used(value, _)
       |> builtins_used(then, _)
-    a.Lambda(_, body) ->
+    ir.Lambda(_, body) ->
       acc
       |> builtins_used(body, _)
-    a.Handle(_label) -> ["handle", ..acc]
-    a.Builtin(i) ->
+    ir.Handle(_label) -> ["handle", ..acc]
+    ir.Builtin(i) ->
       case list.contains(acc, i) {
         True -> acc
         False -> [i, ..acc]
@@ -61,12 +55,12 @@ fn builtins_used(source, acc) {
 fn do_render(source) {
   let #(exp, _meta) = source
   case exp {
-    a.Apply(#(a.Apply(#(a.Cons, _), value), _), tail) -> {
+    ir.Apply(#(ir.Apply(#(ir.Cons, _), value), _), tail) -> {
       let #(items, tail) = gather_items(tail, [value])
       render_list(list.reverse(items), do_render(tail))
     }
-    a.Tail -> "[]"
-    a.Apply(#(a.Apply(#(a.Extend(label), _), value), _), rest) -> {
+    ir.Tail -> "[]"
+    ir.Apply(#(ir.Apply(#(ir.Extend(label), _), value), _), rest) -> {
       // Do string in render_fields
       let #(fields, tail) = gather_extends(rest, [#(label, value)])
       let fields =
@@ -77,11 +71,11 @@ fn do_render(source) {
         |> string.concat
       case tail.0 {
         // Wrap in brackets because sometimes the thing is treated as a block
-        a.Empty -> string.concat(["({", fields, "})"])
+        ir.Empty -> string.concat(["({", fields, "})"])
         _ -> panic as "improper record"
       }
     }
-    a.Apply(#(a.Apply(#(a.Overwrite(label), _), value), _), rest) -> {
+    ir.Apply(#(ir.Apply(#(ir.Overwrite(label), _), value), _), rest) -> {
       // Do string in render_fields
       let #(fields, tail) = gather_overwrites(rest, [#(label, value)])
       let fields =
@@ -93,10 +87,10 @@ fn do_render(source) {
       // Wrap in brackets because sometimes the thing is treated as a block
       string.concat(["({...", do_render(tail), ", ", fields, "})"])
     }
-    a.Empty -> "({})"
-    a.Apply(#(a.Select(label), _), from) ->
+    ir.Empty -> "({})"
+    ir.Apply(#(ir.Select(label), _), from) ->
       string.concat([do_render(from), ".", label])
-    a.Apply(#(a.Tag(label), _), value) ->
+    ir.Apply(#(ir.Tag(label), _), value) ->
       string.concat(["{$T: \"", label, "\", $V: ", do_render(value), "}"])
     // Not needed call works fine
     // e.Apply(e.Apply(e.Apply(e.Case(label), branch), otherwise), value) -> {
@@ -104,28 +98,28 @@ fn do_render(source) {
     //   ["(function($) { switch ($.$T) {\n", branches, "}})(", do_render(value), ")"]
     //   |> string.concat()
     // }
-    a.Apply(#(a.Apply(#(a.Case(label), _), branch), _), otherwise) -> {
+    ir.Apply(#(ir.Apply(#(ir.Case(label), _), branch), _), otherwise) -> {
       let branches = render_branches(label, branch, otherwise, "")
       ["(function($) { switch ($.$T) {\n", branches, "}})"]
       |> string.concat()
     }
-    a.Apply(#(a.Apply(#(a.Builtin("bind"), _), value), _), then) ->
+    ir.Apply(#(ir.Apply(#(ir.Builtin("bind"), _), value), _), then) ->
       string.concat(["bind(", do_render(value), ", ", do_render(then), ")"])
-    a.Apply(f, a) -> string.concat([do_render(f), "(", do_render(a), ")"])
-    a.Variable(x) -> x
-    a.Lambda(x, body) -> {
+    ir.Apply(f, a) -> string.concat([do_render(f), "(", do_render(a), ")"])
+    ir.Variable(x) -> x
+    ir.Lambda(x, body) -> {
       string.concat(["((", x, ") => {\n", render_body(body), ";\n})"])
     }
-    a.Let(x, value, then) -> {
+    ir.Let(x, value, then) -> {
       string.concat(["let ", x, " = ", do_render(value), ";\n", do_render(then)])
     }
-    a.Integer(value) -> int.to_string(value)
-    a.Binary(_) -> "binary_not_supported"
-    a.String(content) -> string.concat(["\"", escape_html(content), "\""])
-    a.Perform(label) -> string.concat(["perform (\"", label, "\")"])
-    a.Handle(label) -> string.concat(["handle (\"", label, "\")"])
-    a.Builtin(identifier) -> identifier
-    a.Vacant -> "throw TODO"
+    ir.Integer(value) -> int.to_string(value)
+    ir.Binary(_) -> "binary_not_supported"
+    ir.String(content) -> string.concat(["\"", escape_html(content), "\""])
+    ir.Perform(label) -> string.concat(["perform (\"", label, "\")"])
+    ir.Handle(label) -> string.concat(["handle (\"", label, "\")"])
+    ir.Builtin(identifier) -> identifier
+    ir.Vacant -> "throw TODO"
     _ -> {
       io.debug(exp)
       panic as "unsupported compilation expression"
@@ -145,7 +139,7 @@ fn escape_html(content) {
 fn render_body(source) {
   let #(body, _) = source
   case body {
-    a.Let(x, v, t) ->
+    ir.Let(x, v, t) ->
       string.concat(["  let ", x, " = ", do_render(v), ";\n", render_body(t)])
     _other -> string.concat(["  return ", do_render(source)])
   }
@@ -162,7 +156,7 @@ fn render_list(items, acc) {
 fn gather_items(source, acc) {
   let #(tail, _) = source
   case tail {
-    a.Apply(#(a.Apply(#(a.Cons, _), value), _), tail) ->
+    ir.Apply(#(ir.Apply(#(ir.Cons, _), value), _), tail) ->
       gather_items(tail, [value, ..acc])
     _ -> #(list.reverse(acc), source)
   }
@@ -171,7 +165,7 @@ fn gather_items(source, acc) {
 fn gather_extends(source, acc) {
   let #(tail, _) = source
   case tail {
-    a.Apply(#(a.Apply(#(a.Extend(label), _), value), _), tail) ->
+    ir.Apply(#(ir.Apply(#(ir.Extend(label), _), value), _), tail) ->
       gather_extends(tail, [#(label, value), ..acc])
     _ -> #(list.reverse(acc), source)
   }
@@ -181,7 +175,7 @@ fn gather_overwrites(source, acc) {
   let #(tail, _) = source
 
   case tail {
-    a.Apply(#(a.Apply(#(a.Overwrite(label), _), value), _), tail) ->
+    ir.Apply(#(ir.Apply(#(ir.Overwrite(label), _), value), _), tail) ->
       gather_overwrites(tail, [#(label, value), ..acc])
     _ -> #(list.reverse(acc), source)
   }
@@ -192,9 +186,9 @@ fn render_branches(label, branch, otherwise, acc: String) {
     string.concat([acc, "case '", label, "': ", render_body(branch), "($.$V)\n"])
   let #(exp, _meta) = otherwise
   case exp {
-    a.Apply(#(a.Apply(#(a.Case(label), _), branch), _), otherwise) ->
+    ir.Apply(#(ir.Apply(#(ir.Case(label), _), branch), _), otherwise) ->
       render_branches(label, branch, otherwise, acc)
-    a.NoCases -> acc
+    ir.NoCases -> acc
     _ -> string.concat([acc, "default: ", render_body(otherwise), "($)"])
   }
 }

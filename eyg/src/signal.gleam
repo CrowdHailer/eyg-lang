@@ -1,5 +1,4 @@
 // // Slow due to a lot of calls to list.map
-// import eygir/annotated as a
 // import eygir/decode
 // import gleam/int
 // import gleam/io

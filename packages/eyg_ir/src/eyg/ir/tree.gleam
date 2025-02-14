@@ -1,8 +1,10 @@
-import gleam/dynamic
-import gleam/dynamicx
+// import gleam/dynamic
+
+// import gleam/dynamicx
 import gleam/io
 import gleam/list
-import gleam/listx
+
+// import gleam/listx
 
 pub type Node(m) =
   #(Expression(m), m)
@@ -35,7 +37,7 @@ pub type Expression(m) {
 
   Builtin(identifier: String)
   Reference(identifier: String)
-  NamedReference(package: String, release: Int)
+  Release(package: String, release: Int, identifier: String)
 }
 
 pub fn variable(label) {
@@ -122,8 +124,8 @@ pub fn reference(identifier) {
   #(Reference(identifier), Nil)
 }
 
-pub fn namedreference(package, release) {
-  #(NamedReference(package, release), Nil)
+pub fn release(package, release, identifier) {
+  #(Release(package, release, identifier), Nil)
 }
 
 pub fn unit() {
@@ -192,7 +194,7 @@ fn do_get_annotation(in, acc) -> List(_) {
 
     Builtin(_identifier) -> acc
     Reference(_identifier) -> acc
-    NamedReference(_package, _release) -> acc
+    Release(_package, _release, _identifier) -> acc
   }
 }
 
@@ -202,6 +204,7 @@ pub fn map_annotation(
 ) -> #(Expression(b), b) {
   let #(exp, meta) = in
   case exp {
+    Variable(label) -> #(Variable(label), f(meta))
     Lambda(label, body) -> {
       let body = map_annotation(body, f)
       #(Lambda(label, body), f(meta))
@@ -216,9 +219,32 @@ pub fn map_annotation(
       let then = map_annotation(then, f)
       #(Let(label, value, then), f(meta))
     }
-    primitive -> {
-      #(dynamicx.unsafe_coerce(dynamic.from(primitive)), f(meta))
-    }
+    Binary(value) -> #(Binary(value), f(meta))
+    Integer(value) -> #(Integer(value), f(meta))
+    String(value) -> #(String(value), f(meta))
+
+    Tail -> #(Tail, f(meta))
+    Cons -> #(Cons, f(meta))
+
+    Vacant -> #(Vacant, f(meta))
+
+    Empty -> #(Empty, f(meta))
+    Extend(label) -> #(Extend(label), f(meta))
+    Select(label) -> #(Select(label), f(meta))
+    Overwrite(label) -> #(Overwrite(label), f(meta))
+    Tag(label) -> #(Tag(label), f(meta))
+    Case(label) -> #(Case(label), f(meta))
+    NoCases -> #(NoCases, f(meta))
+
+    Perform(label) -> #(Perform(label), f(meta))
+    Handle(label) -> #(Handle(label), f(meta))
+
+    Builtin(identifier) -> #(Builtin(identifier), f(meta))
+    Reference(identifier) -> #(Reference(identifier), f(meta))
+    Release(package, release, identifier) -> #(
+      Release(package, release, identifier),
+      f(meta),
+    )
   }
 }
 
@@ -286,10 +312,10 @@ pub fn list_named_references(exp) {
 fn do_list_named_references(exp, found) {
   let #(exp, _meta) = exp
   case exp {
-    NamedReference(package, release) ->
-      case list.contains(found, #(package, release)) {
+    Release(package, release, identifier) ->
+      case list.contains(found, #(package, release, identifier)) {
         True -> found
-        False -> [#(package, release), ..found]
+        False -> [#(package, release, identifier), ..found]
       }
     Let(_label, value, then) -> {
       let found = do_list_named_references(then, found)
@@ -361,34 +387,34 @@ fn do_free_variables(exp, found, ignore) {
   }
 }
 
-pub fn substitute_for_references(exp, subs) {
-  let #(exp, meta) = exp
-  let exp = case exp {
-    Variable(var) ->
-      case list.key_find(subs, var) {
-        Ok(ref) -> Reference(ref)
-        Error(Nil) -> exp
-      }
-    Let(var, value, then) -> {
-      let value = substitute_for_references(value, subs)
-      let subs = listx.key_reject(subs, var)
-      let then = substitute_for_references(then, subs)
-      Let(var, value, then)
-    }
-    Lambda(var, body) -> {
-      let subs = listx.key_reject(subs, var)
-      let body = substitute_for_references(body, subs)
-      Lambda(var, body)
-    }
-    Apply(func, arg) -> {
-      let func = substitute_for_references(func, subs)
-      let arg = substitute_for_references(arg, subs)
-      Apply(func, arg)
-    }
-    _ -> exp
-  }
-  #(exp, meta)
-}
+// pub fn substitute_for_references(exp, subs) {
+//   let #(exp, meta) = exp
+//   let exp = case exp {
+//     Variable(var) ->
+//       case list.key_find(subs, var) {
+//         Ok(ref) -> Reference(ref)
+//         Error(Nil) -> exp
+//       }
+//     Let(var, value, then) -> {
+//       let value = substitute_for_references(value, subs)
+//       let subs = listx.key_reject(subs, var)
+//       let then = substitute_for_references(then, subs)
+//       Let(var, value, then)
+//     }
+//     Lambda(var, body) -> {
+//       let subs = listx.key_reject(subs, var)
+//       let body = substitute_for_references(body, subs)
+//       Lambda(var, body)
+//     }
+//     Apply(func, arg) -> {
+//       let func = substitute_for_references(func, subs)
+//       let arg = substitute_for_references(arg, subs)
+//       Apply(func, arg)
+//     }
+//     _ -> exp
+//   }
+//   #(exp, meta)
+// }
 
 pub fn from_block(assigns, tail) {
   list.fold(assigns, tail, fn(acc, assign) {

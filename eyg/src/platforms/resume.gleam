@@ -1,8 +1,8 @@
+import eyg/ir/dag_json
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
-import eygir/annotated as e
-import eygir/decode
+import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
 import gleam/javascript/array
@@ -54,7 +54,13 @@ pub fn run() {
     list.filter_map(scripts, fn(script) {
       use container <- result.then(element.closest(script, "[r\\:container]"))
       use source <- result.then(
-        decode.from_json(string.replace(element.inner_text(script), "\\/", "/"))
+        dag_json.from_block(
+          bit_array.from_string(string.replace(
+            element.inner_text(script),
+            "\\/",
+            "/",
+          )),
+        )
         |> result.map_error(fn(_) { Nil }),
       )
       let env = stdlib.env()

@@ -1,8 +1,8 @@
+import eyg/ir/tree as ir
 import eyg/runtime/break
 import eyg/runtime/capture
 import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as v
-import eygir/annotated as a
 import gleam/dict
 import gleam/list
 import gleeunit/should
@@ -44,7 +44,7 @@ fn run(source, env, args, extrinsic) {
 }
 
 pub fn simple_fn_test() {
-  let exp = a.lambda("_", a.string("hello"))
+  let exp = ir.lambda("_", ir.string("hello"))
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
@@ -54,13 +54,13 @@ pub fn simple_fn_test() {
 
 pub fn nested_fn_test() {
   let exp =
-    a.lambda(
+    ir.lambda(
       "a",
-      a.lambda(
+      ir.lambda(
         "b",
-        a.apply(
-          a.apply(a.cons(), a.variable("a")),
-          a.apply(a.apply(a.cons(), a.variable("b")), a.tail()),
+        ir.apply(
+          ir.apply(ir.cons(), ir.variable("a")),
+          ir.apply(ir.apply(ir.cons(), ir.variable("b")), ir.tail()),
         ),
       ),
     )
@@ -74,7 +74,8 @@ pub fn nested_fn_test() {
 }
 
 pub fn single_let_capture_test() {
-  let exp = a.let_("a", a.string("external"), a.lambda("_", a.variable("a")))
+  let exp =
+    ir.let_("a", ir.string("external"), ir.lambda("_", ir.variable("a")))
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
@@ -84,8 +85,9 @@ pub fn single_let_capture_test() {
 
 // This test makes sure a given env value is captured only once
 pub fn duplicate_capture_test() {
-  let func = a.lambda("_", a.let_("_", a.variable("std"), a.variable("std")))
-  let exp = a.let_("std", a.string("Standard"), func)
+  let func =
+    ir.lambda("_", ir.let_("_", ir.variable("std"), ir.variable("std")))
+  let exp = ir.let_("std", ir.string("Standard"), func)
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
@@ -94,13 +96,13 @@ pub fn duplicate_capture_test() {
 
 pub fn ordered_capture_test() {
   let exp =
-    a.let_(
+    ir.let_(
       "a",
-      a.string("A"),
-      a.let_(
+      ir.string("A"),
+      ir.let_(
         "b",
-        a.string("B"),
-        a.lambda("_", a.let_("inner", a.variable("a"), a.variable("b"))),
+        ir.string("B"),
+        ir.lambda("_", ir.let_("inner", ir.variable("a"), ir.variable("b"))),
       ),
     )
 
@@ -111,13 +113,13 @@ pub fn ordered_capture_test() {
 
 pub fn ordered_fn_capture_test() {
   let exp =
-    a.let_(
+    ir.let_(
       "a",
-      a.string("A"),
-      a.let_(
+      ir.string("A"),
+      ir.let_(
         "b",
-        a.lambda("_", a.variable("a")),
-        a.lambda("_", a.variable("b")),
+        ir.lambda("_", ir.variable("a")),
+        ir.lambda("_", ir.variable("b")),
       ),
     )
 
@@ -128,10 +130,10 @@ pub fn ordered_fn_capture_test() {
 
 pub fn capture_shadowed_variable_test() {
   let exp =
-    a.let_(
+    ir.let_(
       "a",
-      a.string("first"),
-      a.let_("a", a.string("second"), a.lambda("_", a.variable("a"))),
+      ir.string("first"),
+      ir.let_("a", ir.string("second"), ir.lambda("_", ir.variable("a"))),
     )
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
@@ -142,36 +144,40 @@ pub fn capture_shadowed_variable_test() {
 
 pub fn only_needed_values_captured_test() {
   let exp =
-    a.let_(
+    ir.let_(
       "a",
-      a.string("ignore"),
-      a.let_(
+      ir.string("ignore"),
+      ir.let_(
         "b",
-        a.lambda("_", a.variable("a")),
-        a.let_("c", a.string("yes"), a.lambda("_", a.variable("c"))),
+        ir.lambda("_", ir.variable("a")),
+        ir.let_("c", ir.string("yes"), ir.lambda("_", ir.variable("c"))),
       ),
     )
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
-  |> should.equal(a.let_("c", a.string("yes"), a.lambda("_", a.variable("c"))))
+  |> should.equal(ir.let_(
+    "c",
+    ir.string("yes"),
+    ir.lambda("_", ir.variable("c")),
+  ))
 }
 
 pub fn double_catch_test() {
   let exp =
-    a.let_(
+    ir.let_(
       "std",
-      a.string("Standard"),
-      a.let_(
+      ir.string("Standard"),
+      ir.let_(
         "f0",
-        a.lambda("_", a.variable("std")),
-        a.let_(
+        ir.lambda("_", ir.variable("std")),
+        ir.let_(
           "f1",
-          a.lambda("_", a.variable("f0")),
-          a.let_(
+          ir.lambda("_", ir.variable("f0")),
+          ir.let_(
             "f2",
-            a.lambda("_", a.variable("std")),
-            a.list([a.variable("f1"), a.variable("f2")]),
+            ir.lambda("_", ir.variable("std")),
+            ir.list([ir.variable("f1"), ir.variable("f2")]),
           ),
         ),
       ),
@@ -179,28 +185,31 @@ pub fn double_catch_test() {
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
-  |> should.equal(a.let_(
+  |> should.equal(ir.let_(
     "std",
-    a.string("Standard"),
-    a.let_(
+    ir.string("Standard"),
+    ir.let_(
       "f0",
-      a.lambda("_", a.variable("std")),
+      ir.lambda("_", ir.variable("std")),
       // Always inlineing functions can make output quite large, although much smaller without environment.
       // A possible solution is to always lambda lift if assuming function are large parts of AST
-      a.list([a.lambda("_", a.variable("f0")), a.lambda("_", a.variable("std"))]),
+      ir.list([
+        ir.lambda("_", ir.variable("f0")),
+        ir.lambda("_", ir.variable("std")),
+      ]),
     ),
   ))
 }
 
 pub fn fn_in_env_test() {
   let exp =
-    a.let_(
+    ir.let_(
       "a",
-      a.string("value"),
-      a.let_(
+      ir.string("value"),
+      ir.let_(
         "a",
-        a.lambda("_", a.variable("a")),
-        a.lambda("_", a.apply(a.variable("a"), a.empty())),
+        ir.lambda("_", ir.variable("a")),
+        ir.lambda("_", ir.apply(ir.variable("a"), ir.empty())),
       ),
     )
 
@@ -211,7 +220,7 @@ pub fn fn_in_env_test() {
 }
 
 pub fn tagged_test() {
-  let exp = a.tag("Ok")
+  let exp = ir.tag("Ok")
   let env = env.empty()
   let assert Ok(term) = run(exp, env, [], dict.new())
 
@@ -223,11 +232,11 @@ pub fn tagged_test() {
 
 pub fn case_test() {
   let exp =
-    a.apply(
-      a.apply(a.case_("Ok"), a.lambda("_", a.string("good"))),
-      a.apply(
-        a.apply(a.case_("Error"), a.lambda("_", a.string("bad"))),
-        a.nocases(),
+    ir.apply(
+      ir.apply(ir.case_("Ok"), ir.lambda("_", ir.string("good"))),
+      ir.apply(
+        ir.apply(ir.case_("Error"), ir.lambda("_", ir.string("bad"))),
+        ir.nocases(),
       ),
     )
 
@@ -246,13 +255,13 @@ pub fn case_test() {
 }
 
 pub fn partial_case_test() {
-  let exp = a.apply(a.case_("Ok"), a.lambda("_", a.string("good")))
+  let exp = ir.apply(ir.case_("Ok"), ir.lambda("_", ir.string("good")))
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let rest =
-    a.apply(
-      a.apply(a.case_("Error"), a.lambda("_", a.string("bad"))),
-      a.nocases(),
+    ir.apply(
+      ir.apply(ir.case_("Error"), ir.lambda("_", ir.string("bad"))),
+      ir.nocases(),
     )
 
   let assert Ok(rest) = run(rest, env.empty(), [], dict.new())
@@ -271,18 +280,18 @@ pub fn partial_case_test() {
 
 pub fn handler_test() {
   let exp =
-    a.apply(
-      a.handle("Abort"),
-      a.lambda(
+    ir.apply(
+      ir.handle("Abort"),
+      ir.lambda(
         "value",
-        a.lambda("_k", a.apply(a.tag("Error"), a.variable("value"))),
+        ir.lambda("_k", ir.apply(ir.tag("Error"), ir.variable("value"))),
       ),
     )
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let next = capture.capture(term, Nil)
 
-  let exec = a.lambda("_", a.apply(a.tag("Ok"), a.string("some string")))
+  let exec = ir.lambda("_", ir.apply(ir.tag("Ok"), ir.string("some string")))
 
   let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
 
@@ -290,7 +299,7 @@ pub fn handler_test() {
   |> run(env.empty(), [exec], dict.new())
   |> should.equal(Ok(v.Tagged("Ok", v.String("some string"))))
 
-  let exec = a.lambda("_", a.apply(a.perform("Abort"), a.string("failure")))
+  let exec = ir.lambda("_", ir.apply(ir.perform("Abort"), ir.string("failure")))
 
   let assert Ok(exec) = run(exec, env.empty(), [], dict.new())
 
@@ -301,22 +310,22 @@ pub fn handler_test() {
 
 // pub fn capture_resume_test() {
 //   let handler =
-//     a.lambda(
+//     ir.lambda(
 //       "message",
-//       // a.lambda("k", a.apply(a.tag("Stopped"), a.variable("k"))),
-//       a.lambda("k", a.variable("k")),
+//       // ir.lambda("k", ir.apply(ir.tag("Stopped"), ir.variable("k"))),
+//       ir.lambda("k", ir.variable("k")),
 //     )
 
 //   let exec =
-//     a.lambda(
+//     ir.lambda(
 //       "_",
-//       a.let_(
+//       ir.let_(
 //         "_",
-//         a.apply(a.perform("Log"), a.string("first")),
-//         a.let_("_", a.apply(a.perform("Log"), a.string("second")), a.integer(0)),
+//         ir.apply(ir.perform("Log"), ir.string("first")),
+//         ir.let_("_", ir.apply(ir.perform("Log"), ir.string("second")), ir.integer(0)),
 //       ),
 //     )
-//   let exp = a.apply(a.apply(a.handle("Log"), handler), exec)
+//   let exp = ir.apply(ir.apply(ir.handle("Log"), handler), exec)
 //   let assert Ok(term) = r.execute(exp, env.empty(), dict.new())
 //   let next = capture.capture(term,Nil)
 
@@ -327,7 +336,7 @@ pub fn handler_test() {
 
 pub fn builtin_arity1_test() {
   let env = stdlib.env()
-  let exp = a.builtin("list_pop")
+  let exp = ir.builtin("list_pop")
   let assert Ok(term) = run(exp, env, [], dict.new())
   let next = capture.capture(term, Nil)
 
@@ -345,11 +354,11 @@ pub fn builtin_arity1_test() {
 
   // same as complete eval
   let exp =
-    a.apply(
+    ir.apply(
       exp,
-      a.apply(
-        a.apply(a.cons(), a.integer(1)),
-        a.apply(a.apply(a.cons(), a.integer(2)), a.tail()),
+      ir.apply(
+        ir.apply(ir.cons(), ir.integer(1)),
+        ir.apply(ir.apply(ir.cons(), ir.integer(2)), ir.tail()),
       ),
     )
 
@@ -360,11 +369,11 @@ pub fn builtin_arity1_test() {
 pub fn builtin_arity3_test() {
   let env = stdlib.env()
   let list =
-    a.apply(
-      a.apply(a.cons(), a.integer(1)),
-      a.apply(a.apply(a.cons(), a.integer(2)), a.tail()),
+    ir.apply(
+      ir.apply(ir.cons(), ir.integer(1)),
+      ir.apply(ir.apply(ir.cons(), ir.integer(2)), ir.tail()),
     )
-  let exp = a.apply(a.apply(a.builtin("list_fold"), list), a.integer(0))
+  let exp = ir.apply(ir.apply(ir.builtin("list_fold"), list), ir.integer(0))
 
   let assert Ok(term) = run(exp, env, [], dict.new())
   let next = capture.capture(term, Nil)
@@ -373,14 +382,14 @@ pub fn builtin_arity3_test() {
   let assert Error(#(break.NotAFunction(v.String("not a function")), Nil, _, _)) =
     ret
 
-  let reduce_exp = a.lambda("el", a.lambda("acc", a.variable("el")))
+  let reduce_exp = ir.lambda("el", ir.lambda("acc", ir.variable("el")))
   let assert Ok(reduce) = run(reduce_exp, env, [], dict.new())
   next
   |> run(env, [reduce], dict.new())
   |> should.equal(Ok(v.Integer(2)))
 
   // same as complete eval
-  let exp = a.apply(exp, reduce_exp)
+  let exp = ir.apply(exp, reduce_exp)
 
   run(exp, env, [], dict.new())
   |> should.equal(Ok(v.Integer(2)))

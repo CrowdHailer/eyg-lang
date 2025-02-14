@@ -1,7 +1,7 @@
+import eyg/ir/tree as ir
 import eyg/parse/lexer
 import eyg/parse/parser
 import eyg/parse/token
-import eygir/annotated as e
 import gleam/option.{None, Some}
 import gleam/result
 
@@ -35,8 +35,9 @@ pub fn block_from_string(src) {
 fn do_gather(exp, acc) {
   let #(exp, span) = exp
   case exp {
-    e.Let(label, value, then) -> do_gather(then, [#(label, value, span), ..acc])
-    e.Vacant -> #(acc, None)
+    ir.Let(label, value, then) ->
+      do_gather(then, [#(label, value, span), ..acc])
+    ir.Vacant -> #(acc, None)
     _ -> #(acc, Some(#(exp, span)))
   }
 }
