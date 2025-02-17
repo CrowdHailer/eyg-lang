@@ -130,7 +130,7 @@ pub fn interpret(state) {
       #("Render", fn(v) {
         use content <- result.then(cast.as_string(v))
         ref.set(ref, content)
-        Ok(v.unit)
+        Ok(v.unit())
       }),
     ])
   case parse.from_string(source(state)) {

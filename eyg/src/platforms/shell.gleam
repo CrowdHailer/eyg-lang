@@ -65,7 +65,7 @@ pub fn run(source) {
   let assert Ok(prog) = r.execute(source, env, handlers().1)
   let assert Ok(exec) = cast.field("exec", cast.any, prog)
   let assert Error(#(break.UnhandledEffect("Prompt", prompt), _rev, env, k)) =
-    r.call(exec, [#(v.unit, Nil)], env, handlers().1)
+    r.call(exec, [#(v.unit(), Nil)], env, handlers().1)
 
   let assert v.String(prompt) = prompt
 
@@ -135,7 +135,7 @@ fn print(value) {
   case value {
     v.LinkedList([v.Record(fields), ..] as records) -> {
       let headers =
-        list.map(fields, fn(field) {
+        list.map(dict.to_list(fields), fn(field) {
           let #(key, _value) = field
           #(key, string.length(key))
         })

@@ -29,8 +29,8 @@ pub fn equal() {
 
 fn do_equal(left, right, rev, env, k) {
   let value = case left == right {
-    True -> v.true
-    False -> v.false
+    True -> v.true()
+    False -> v.false()
   }
   Ok(#(state.V(value), env, k))
 }
@@ -162,13 +162,13 @@ pub fn do_eval(source, rev, env, k) {
           console.log("failed to run expression")
           console.log(expression)
           console.log(result)
-          v.error(v.unit)
+          v.error(v.unit())
         }
       }
       // console.log(value)
       Ok(#(state.V(value), env, k))
     }
-    Error(_) -> Ok(#(state.V(v.error(v.unit)), env, k))
+    Error(_) -> Ok(#(state.V(v.error(v.unit())), env, k))
   }
 }
 
@@ -283,7 +283,7 @@ pub fn expression_to_language(exp) {
       [head, ..rest]
     }
     ir.Apply(func, argument) -> {
-      let head = v.Tagged("Apply", v.unit)
+      let head = v.Tagged("Apply", v.unit())
       let rest =
         list.append(
           expression_to_language(func),
@@ -306,18 +306,18 @@ pub fn expression_to_language(exp) {
     ir.Integer(value) -> [v.Tagged("Integer", v.Integer(value))]
     ir.String(value) -> [v.Tagged("String", v.String(value))]
 
-    ir.Tail -> [v.Tagged("Tail", v.unit)]
-    ir.Cons -> [v.Tagged("Cons", v.unit)]
+    ir.Tail -> [v.Tagged("Tail", v.unit())]
+    ir.Cons -> [v.Tagged("Cons", v.unit())]
 
-    ir.Vacant -> [v.Tagged("Vacant", v.unit)]
+    ir.Vacant -> [v.Tagged("Vacant", v.unit())]
 
-    ir.Empty -> [v.Tagged("Empty", v.unit)]
+    ir.Empty -> [v.Tagged("Empty", v.unit())]
     ir.Extend(label) -> [v.Tagged("Extend", v.String(label))]
     ir.Select(label) -> [v.Tagged("Select", v.String(label))]
     ir.Overwrite(label) -> [v.Tagged("Overwrite", v.String(label))]
     ir.Tag(label) -> [v.Tagged("Tag", v.String(label))]
     ir.Case(label) -> [v.Tagged("Case", v.String(label))]
-    ir.NoCases -> [v.Tagged("NoCases", v.unit)]
+    ir.NoCases -> [v.Tagged("NoCases", v.unit())]
 
     ir.Perform(label) -> [v.Tagged("Perform", v.String(label))]
     ir.Handle(label) -> [v.Tagged("Handle", v.String(label))]
@@ -326,11 +326,13 @@ pub fn expression_to_language(exp) {
     ir.Release(package, release, identifier) -> [
       v.Tagged(
         "Release",
-        v.Record([
-          #("package", v.String(package)),
-          #("release", v.Integer(release)),
-          #("identifier", v.String(identifier)),
-        ]),
+        v.Record(
+          dict.from_list([
+            #("package", v.String(package)),
+            #("release", v.Integer(release)),
+            #("identifier", v.String(identifier)),
+          ]),
+        ),
       ),
     ]
   }
@@ -387,7 +389,7 @@ fn step(node, stack) {
     }
 
     // TODO can we pattern match on constants
-    v.Tagged("Apply", v.Record([])) -> {
+    v.Tagged("Apply", v.Record(_)) -> {
       // use arg, rest <- do_language_to_expression(rest)
       #(None, [DoFunc, ..stack])
     }
@@ -400,12 +402,12 @@ fn step(node, stack) {
     v.Tagged("String", v.String(value)) -> #(Some(ir.String(value)), stack)
     v.Tagged("Binary", v.Binary(value)) -> #(Some(ir.Binary(value)), stack)
 
-    v.Tagged("Tail", v.Record([])) -> #(Some(ir.Tail), stack)
-    v.Tagged("Cons", v.Record([])) -> #(Some(ir.Cons), stack)
+    v.Tagged("Tail", v.Record(_)) -> #(Some(ir.Tail), stack)
+    v.Tagged("Cons", v.Record(_)) -> #(Some(ir.Cons), stack)
 
-    v.Tagged("Vacant", v.Record([])) -> #(Some(ir.Vacant), stack)
+    v.Tagged("Vacant", v.Record(_)) -> #(Some(ir.Vacant), stack)
 
-    v.Tagged("Empty", v.Record([])) -> #(Some(ir.Empty), stack)
+    v.Tagged("Empty", v.Record(_)) -> #(Some(ir.Empty), stack)
     v.Tagged("Extend", v.String(label)) -> #(Some(ir.Extend(label)), stack)
     v.Tagged("Select", v.String(label)) -> #(Some(ir.Select(label)), stack)
     v.Tagged("Overwrite", v.String(label)) -> #(
@@ -414,7 +416,7 @@ fn step(node, stack) {
     )
     v.Tagged("Tag", v.String(label)) -> #(Some(ir.Tag(label)), stack)
     v.Tagged("Case", v.String(label)) -> #(Some(ir.Case(label)), stack)
-    v.Tagged("NoCases", v.Record([])) -> #(Some(ir.NoCases), stack)
+    v.Tagged("NoCases", v.Record(_)) -> #(Some(ir.NoCases), stack)
 
     v.Tagged("Perform", v.String(label)) -> #(Some(ir.Perform(label)), stack)
     v.Tagged("Handle", v.String(label)) -> #(Some(ir.Handle(label)), stack)
@@ -439,7 +441,7 @@ fn do_language_to_expression(term, k) {
       use body, rest <- do_language_to_expression(rest)
       k(ir.Lambda(label, #(body, Nil)), rest)
     }
-    [v.Tagged("Apply", v.Record([])), ..rest] -> {
+    [v.Tagged("Apply", v.Record(_)), ..rest] -> {
       use func, rest <- do_language_to_expression(rest)
       use arg, rest <- do_language_to_expression(rest)
       k(ir.Apply(#(func, Nil), #(arg, Nil)), rest)
@@ -455,19 +457,19 @@ fn do_language_to_expression(term, k) {
     [v.Tagged("String", v.String(value)), ..rest] -> k(ir.String(value), rest)
     [v.Tagged("Binary", v.Binary(value)), ..rest] -> k(ir.Binary(value), rest)
 
-    [v.Tagged("Tail", v.Record([])), ..rest] -> k(ir.Tail, rest)
-    [v.Tagged("Cons", v.Record([])), ..rest] -> k(ir.Cons, rest)
+    [v.Tagged("Tail", v.Record(_)), ..rest] -> k(ir.Tail, rest)
+    [v.Tagged("Cons", v.Record(_)), ..rest] -> k(ir.Cons, rest)
 
-    [v.Tagged("Vacant", v.Record([])), ..rest] -> k(ir.Vacant, rest)
+    [v.Tagged("Vacant", v.Record(_)), ..rest] -> k(ir.Vacant, rest)
 
-    [v.Tagged("Empty", v.Record([])), ..rest] -> k(ir.Empty, rest)
+    [v.Tagged("Empty", v.Record(_)), ..rest] -> k(ir.Empty, rest)
     [v.Tagged("Extend", v.String(label)), ..rest] -> k(ir.Extend(label), rest)
     [v.Tagged("Select", v.String(label)), ..rest] -> k(ir.Select(label), rest)
     [v.Tagged("Overwrite", v.String(label)), ..rest] ->
       k(ir.Overwrite(label), rest)
     [v.Tagged("Tag", v.String(label)), ..rest] -> k(ir.Tag(label), rest)
     [v.Tagged("Case", v.String(label)), ..rest] -> k(ir.Case(label), rest)
-    [v.Tagged("NoCases", v.Record([])), ..rest] -> k(ir.NoCases, rest)
+    [v.Tagged("NoCases", v.Record(_)), ..rest] -> k(ir.NoCases, rest)
 
     [v.Tagged("Perform", v.String(label)), ..rest] -> k(ir.Perform(label), rest)
     [v.Tagged("Handle", v.String(label)), ..rest] -> k(ir.Handle(label), rest)

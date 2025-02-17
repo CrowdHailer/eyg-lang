@@ -28,9 +28,9 @@ fn do_compare(left, right, rev, env, k) {
   use left <- result.then(cast.as_integer(left))
   use right <- result.then(cast.as_integer(right))
   let return = case int.compare(left, right) {
-    Lt -> v.Tagged("Lt", v.unit)
-    Eq -> v.Tagged("Eq", v.unit)
-    Gt -> v.Tagged("Gt", v.unit)
+    Lt -> v.Tagged("Lt", v.unit())
+    Eq -> v.Tagged("Eq", v.unit())
+    Gt -> v.Tagged("Gt", v.unit())
   }
   Ok(#(state.V(return), env, k))
 }
@@ -81,7 +81,7 @@ fn do_divide(left, right, rev, env, k) {
   use left <- result.then(cast.as_integer(left))
   use right <- result.then(cast.as_integer(right))
   let value = case right {
-    0 -> v.error(v.unit)
+    0 -> v.error(v.unit())
     _ -> v.ok(v.Integer(left / right))
   }
   Ok(#(state.V(value), env, k))
@@ -106,7 +106,7 @@ fn do_parse(raw, rev, env, k) {
   use raw <- result.then(cast.as_string(raw))
   let value = case int.parse(raw) {
     Ok(i) -> v.ok(v.Integer(i))
-    Error(Nil) -> v.error(v.unit)
+    Error(Nil) -> v.error(v.unit())
   }
   Ok(#(state.V(value), env, k))
 }

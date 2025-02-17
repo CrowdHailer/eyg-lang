@@ -31,7 +31,7 @@ pub fn debug_logger() {
   #(t.Str, t.unit, fn(message) {
     io.print(v.debug(message))
     io.print("\n")
-    Ok(v.unit)
+    Ok(v.unit())
   })
 }
 
@@ -39,15 +39,15 @@ pub fn window_alert() {
   #(t.Str, t.unit, fn(message) {
     use message <- result.then(cast.as_string(message))
     window.alert(message)
-    Ok(v.unit)
+    Ok(v.unit())
   })
 }
 
 pub fn choose() {
   #(t.unit, t.boolean, fn(_) {
     let value = case int.random(2) {
-      0 -> v.false
-      1 -> v.true
+      0 -> v.false()
+      1 -> v.true()
       _ -> panic as "integer outside expected range"
     }
     Ok(value)
@@ -59,7 +59,7 @@ pub fn open() {
     use target <- result.then(cast.as_string(target))
     let p = open_browser(target)
     io.debug(target)
-    Ok(v.Promise(promise.map(p, fn(_terminate) { v.unit })))
+    Ok(v.Promise(promise.map(p, fn(_terminate) { v.unit() })))
   })
 }
 
@@ -78,7 +78,7 @@ pub fn wait() {
   #(t.Integer, t.unit, fn(milliseconds) {
     use milliseconds <- result.then(cast.as_integer(milliseconds))
     let p = promise.wait(milliseconds)
-    Ok(v.Promise(promise.map(p, fn(_) { v.unit })))
+    Ok(v.Promise(promise.map(p, fn(_) { v.unit() })))
   })
 }
 
@@ -90,9 +90,9 @@ pub fn read_source() {
       Ok(json) ->
         case dag_json.from_block(json) {
           Ok(exp) -> Ok(v.ok(v.LinkedList(core.expression_to_language(exp))))
-          Error(_) -> Ok(v.error(v.unit))
+          Error(_) -> Ok(v.error(v.unit()))
         }
-      Error(_) -> Ok(v.error(v.unit))
+      Error(_) -> Ok(v.error(v.unit()))
     }
   })
 }
@@ -104,7 +104,7 @@ pub fn file_read() {
       Ok(content) -> Ok(v.ok(v.Binary(content)))
       Error(reason) -> {
         io.debug(#("failed to read", file, reason))
-        Ok(v.error(v.unit))
+        Ok(v.error(v.unit()))
       }
     }
   })
@@ -115,7 +115,7 @@ pub fn file_write() {
     use file <- result.then(cast.field("file", cast.as_string, request))
     use content <- result.then(cast.field("content", cast.as_string, request))
     let assert Ok(_) = simplifile.write(content, file)
-    Ok(v.unit)
+    Ok(v.unit())
   })
 }
 
@@ -129,7 +129,7 @@ pub fn load_db() {
   #(t.Str, t.unit, fn(triples) {
     use triples <- result.then(cast.as_string(triples))
     let p = load(triples)
-    Ok(v.Promise(promise.map(p, fn(_) { v.unit })))
+    Ok(v.Promise(promise.map(p, fn(_) { v.unit() })))
   })
 }
 
@@ -169,7 +169,8 @@ pub fn query_db() {
         let assert Ok(#(headers, rows)) = json.decode(raw, decoder)
         list.map(rows, fn(row) {
           let assert Ok(fields) = list.strict_zip(headers, row)
-          v.Record(fields)
+          todo
+          // v.Record(fields)
         })
         |> v.LinkedList
       })

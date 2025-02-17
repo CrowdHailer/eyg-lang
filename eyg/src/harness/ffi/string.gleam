@@ -3,6 +3,7 @@ import eyg/runtime/cast
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import gleam/bit_array
+import gleam/dict
 import gleam/io
 import gleam/list
 import gleam/result
@@ -32,7 +33,9 @@ pub fn do_split(s, pattern, rev, env, k) {
   let parts = v.LinkedList(list.map(parts, v.String))
 
   Ok(#(
-    state.V(v.Record([#("head", v.String(first)), #("tail", parts)])),
+    state.V(
+      v.Record(dict.from_list([#("head", v.String(first)), #("tail", parts)])),
+    ),
     env,
     k,
   ))
@@ -49,8 +52,12 @@ pub fn do_split_once(s, pattern, rev, env, k) {
   use pattern <- result.then(cast.as_string(pattern))
   let value = case string.split_once(s, pattern) {
     Ok(#(pre, post)) ->
-      v.ok(v.Record([#("pre", v.String(pre)), #("post", v.String(post))]))
-    Error(Nil) -> v.error(v.unit)
+      v.ok(
+        v.Record(
+          dict.from_list([#("pre", v.String(pre)), #("post", v.String(post))]),
+        ),
+      )
+    Error(Nil) -> v.error(v.unit())
   }
   Ok(#(state.V(value), env, k))
 }
@@ -86,7 +93,7 @@ pub fn do_starts_with(value, prefix, rev, env, k) {
   use prefix <- result.then(cast.as_string(prefix))
   let ret = case string.split_once(value, prefix) {
     Ok(#("", post)) -> v.ok(v.String(post))
-    _ -> v.error(v.unit)
+    _ -> v.error(v.unit())
   }
   Ok(#(state.V(ret), env, k))
 }
@@ -102,7 +109,7 @@ pub fn do_ends_with(value, suffix, rev, env, k) {
   use suffix <- result.then(cast.as_string(suffix))
   let ret = case string.split_once(value, suffix) {
     Ok(#(pre, "")) -> v.ok(v.String(pre))
-    _ -> v.error(v.unit)
+    _ -> v.error(v.unit())
   }
   Ok(#(state.V(ret), env, k))
 }
@@ -127,9 +134,13 @@ pub fn pop_grapheme() {
 fn do_pop_grapheme(term, rev, env, k) {
   use string <- result.then(cast.as_string(term))
   let return = case string.pop_grapheme(string) {
-    Error(Nil) -> v.error(v.unit)
+    Error(Nil) -> v.error(v.unit())
     Ok(#(head, tail)) ->
-      v.ok(v.Record([#("head", v.String(head)), #("tail", v.String(tail))]))
+      v.ok(
+        v.Record(
+          dict.from_list([#("head", v.String(head)), #("tail", v.String(tail))]),
+        ),
+      )
   }
   Ok(#(state.V(return), env, k))
 }
@@ -172,7 +183,7 @@ pub fn do_from_binary(in, _meta, env, k) {
   use in <- result.then(cast.as_binary(in))
   let value = case bit_array.to_string(in) {
     Ok(bytes) -> v.ok(v.String(bytes))
-    Error(Nil) -> v.error(v.unit)
+    Error(Nil) -> v.error(v.unit())
   }
   Ok(#(state.V(value), env, k))
 }
@@ -188,6 +199,6 @@ pub fn do_pop_prefix(in, prefix, yes, no, meta, env, k) {
 
   case string.split_once(in, prefix) {
     Ok(#("", post)) -> state.call(yes, v.String(post), meta, env, k)
-    _ -> state.call(no, v.unit, meta, env, k)
+    _ -> state.call(no, v.unit(), meta, env, k)
   }
 }

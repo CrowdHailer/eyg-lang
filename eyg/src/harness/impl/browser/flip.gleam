@@ -37,7 +37,7 @@ pub fn do(_: Nil) {
 
 fn boolean_to_eyg(result) {
   case result {
-    True -> v.true
-    False -> v.false
+    True -> v.true()
+    False -> v.false()
   }
 }

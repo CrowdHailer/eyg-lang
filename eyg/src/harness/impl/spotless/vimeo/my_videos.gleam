@@ -1,6 +1,7 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/javascript/promise
 import gleam/list
 import gleam/result
@@ -57,9 +58,11 @@ fn result_to_eyg(result) {
 
 fn video_to_eyg(video) {
   let vimeo.Video(name: name, duration: duration, plays: plays, ..) = video
-  v.Record([
-    #("name", v.String(name)),
-    #("duration", v.Integer(duration)),
-    #("plays", v.Integer(plays)),
-  ])
+  v.Record(
+    dict.from_list([
+      #("name", v.String(name)),
+      #("duration", v.Integer(duration)),
+      #("plays", v.Integer(plays)),
+    ]),
+  )
 }

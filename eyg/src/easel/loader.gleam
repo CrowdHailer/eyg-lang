@@ -149,6 +149,6 @@ pub fn console_log() {
   #(t.String, t.unit, fn(message) {
     use message <- result.then(cast.as_string(message))
     console.log(message)
-    Ok(v.unit)
+    Ok(v.unit())
   })
 }

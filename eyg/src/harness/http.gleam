@@ -1,6 +1,7 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/http
 import gleam/http/request.{Request}
 import gleam/http/response.{Response}
@@ -37,15 +38,15 @@ pub fn method_to_gleam(value) {
 
 pub fn method_to_eyg(method) {
   case method {
-    http.Get -> v.Tagged("GET", v.unit)
-    http.Post -> v.Tagged("POST", v.unit)
-    http.Head -> v.Tagged("HEAD", v.unit)
-    http.Put -> v.Tagged("PUT", v.unit)
-    http.Delete -> v.Tagged("DELETE", v.unit)
-    http.Trace -> v.Tagged("TRACE", v.unit)
-    http.Connect -> v.Tagged("CONNECT", v.unit)
-    http.Options -> v.Tagged("OPTIONS", v.unit)
-    http.Patch -> v.Tagged("PATCH", v.unit)
+    http.Get -> v.Tagged("GET", v.unit())
+    http.Post -> v.Tagged("POST", v.unit())
+    http.Head -> v.Tagged("HEAD", v.unit())
+    http.Put -> v.Tagged("PUT", v.unit())
+    http.Delete -> v.Tagged("DELETE", v.unit())
+    http.Trace -> v.Tagged("TRACE", v.unit())
+    http.Connect -> v.Tagged("CONNECT", v.unit())
+    http.Options -> v.Tagged("OPTIONS", v.unit())
+    http.Patch -> v.Tagged("PATCH", v.unit())
     http.Other(other) -> v.Tagged("OTHER", v.String(other))
   }
 }
@@ -63,8 +64,8 @@ pub fn scheme_to_gleam(value) {
 
 pub fn scheme_to_eyg(scheme) {
   case scheme {
-    http.Http -> v.Tagged("HTTP", v.unit)
-    http.Https -> v.Tagged("HTTPS", v.unit)
+    http.Http -> v.Tagged("HTTP", v.unit())
+    http.Https -> v.Tagged("HTTPS", v.unit())
   }
 }
 
@@ -135,23 +136,25 @@ pub fn request_to_eyg(request) {
     headers: headers,
     body: body,
   ) = request
-  v.Record([
-    #("method", method_to_eyg(method)),
-    #("scheme", scheme_to_eyg(scheme)),
-    #("host", v.String(host)),
-    #("port", v.option(port, v.Integer)),
-    #("path", v.String(path)),
-    #("query", v.option(query, v.String)),
-    #("headers", headers_to_eyg(headers)),
-    #("body", v.Binary(body)),
-  ])
+  v.Record(
+    dict.from_list([
+      #("method", method_to_eyg(method)),
+      #("scheme", scheme_to_eyg(scheme)),
+      #("host", v.String(host)),
+      #("port", v.option(port, v.Integer)),
+      #("path", v.String(path)),
+      #("query", v.option(query, v.String)),
+      #("headers", headers_to_eyg(headers)),
+      #("body", v.Binary(body)),
+    ]),
+  )
 }
 
 pub fn headers_to_eyg(headers) {
   v.LinkedList(
     list.map(headers, fn(h) {
       let #(k, v) = h
-      v.Record([#("key", v.String(k)), #("value", v.String(v))])
+      v.Record(dict.from_list([#("key", v.String(k)), #("value", v.String(v))]))
     }),
   )
 }
@@ -173,9 +176,11 @@ pub fn response_to_gleam(response) {
 
 pub fn response_to_eyg(response) {
   let Response(status, headers, body) = response
-  v.Record([
-    #("status", v.Integer(status)),
-    #("headers", headers_to_eyg(headers)),
-    #("body", v.Binary(body)),
-  ])
+  v.Record(
+    dict.from_list([
+      #("status", v.Integer(status)),
+      #("headers", headers_to_eyg(headers)),
+      #("body", v.Binary(body)),
+    ]),
+  )
 }

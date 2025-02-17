@@ -497,7 +497,7 @@
 //       let assert Ok(func) = dict.get(values, reference)
 //       let #(run, effect) =
 //         handle_next(
-//           r.call(func, [#(v.unit, [])], fragment.empty_env(values), dict.new()),
+//           r.call(func, [#(v.unit(), [])], fragment.empty_env(values), dict.new()),
 //           [],
 //         )
 //       let state = State(..state, running: Some(#(reference, run)))
@@ -575,7 +575,7 @@
 //               case cast.as_string(lift) {
 //                 Ok(message) -> {
 //                   let effects = [Log(message), ..effects]
-//                   r.loop(istate.step(istate.V(v.unit), env, k))
+//                   r.loop(istate.step(istate.V(v.unit()), env, k))
 //                   |> do_handle_next(effects)
 //                 }
 //                 Error(reason) -> Runner(Abort(#(reason, meta, env, k)), effects)
@@ -586,7 +586,7 @@
 //                   Runner(Suspended(Timer(duration), env, k), effects)
 //                 // r.loop(istate.step(
 //                 //   istate.V(v.Promise(
-//                 //     promise.wait(duration) |> promise.map(fn(_) { v.unit }),
+//                 //     promise.wait(duration) |> promise.map(fn(_) { v.unit() }),
 //                 //   )),
 //                 //   env,
 //                 //   k,

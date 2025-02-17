@@ -1,4 +1,5 @@
 import eyg/ir/tree as ir
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/javascript/promise.{type Promise as JSPromise}
 import gleam/list
@@ -10,7 +11,7 @@ pub type Value(m, context) {
   Integer(value: Int)
   String(value: String)
   LinkedList(elements: List(Value(m, context)))
-  Record(fields: List(#(String, Value(m, context))))
+  Record(fields: Dict(String, Value(m, context)))
   Tagged(label: String, value: Value(m, context))
   Closure(
     param: String,
@@ -70,6 +71,7 @@ pub fn debug(term) {
       |> string.concat
     Record(fields) ->
       fields
+      |> dict.to_list
       |> list.map(field_to_string)
       |> list.intersperse(", ")
       |> list.prepend("{")
@@ -93,11 +95,18 @@ fn field_to_string(field) {
   string.concat([k, ": ", debug(v)])
 }
 
-pub const unit = Record([])
+// pub const unit = Record(dict.new())
+pub fn unit() {
+  Record(dict.new())
+}
 
-pub const true = Tagged("True", unit)
+pub fn true() {
+  Tagged("True", unit())
+}
 
-pub const false = Tagged("False", unit)
+pub fn false() {
+  Tagged("False", unit())
+}
 
 pub fn ok(value) {
   Tagged("Ok", value)
@@ -111,11 +120,13 @@ pub fn some(value) {
   Tagged("Some", value)
 }
 
-pub const none = Tagged("None", unit)
+pub fn none() {
+  Tagged("None", unit())
+}
 
 pub fn option(option, cast) {
   case option {
     Some(value) -> some(cast(value))
-    None -> none
+    None -> none()
   }
 }

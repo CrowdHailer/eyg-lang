@@ -21,7 +21,7 @@ pub fn impl(url) {
   use url <- try(cast.as_string(url))
   let frame = #(600, 700)
   let reply = case browser.open(url, frame) {
-    Ok(_popup) -> v.ok(v.unit)
+    Ok(_popup) -> v.ok(v.unit())
     Error(reason) -> v.error(v.String(reason))
   }
   Ok(reply)

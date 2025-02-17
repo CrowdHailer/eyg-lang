@@ -1,6 +1,7 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/javascript/promise
 import gleam/list
 import gleam/result
@@ -68,8 +69,10 @@ fn result_to_eyg(result) {
 
 fn event_to_eyg(message) {
   let calendar.Event(start: start, summary: summary, ..) = message
-  v.Record([
-    #("start", v.String(string.inspect(start))),
-    #("summary", v.String(summary)),
-  ])
+  v.Record(
+    dict.from_list([
+      #("start", v.String(string.inspect(start))),
+      #("summary", v.String(summary)),
+    ]),
+  )
 }

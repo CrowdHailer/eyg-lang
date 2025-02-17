@@ -24,12 +24,14 @@ pub fn literal_test() {
   check_term(v.String("hello"))
   check_term(v.LinkedList([]))
   check_term(v.LinkedList([v.Integer(1), v.Integer(2)]))
-  check_term(v.unit)
+  check_term(v.unit())
   check_term(
-    v.Record([
-      #("foo", v.String("hey")),
-      #("nested", v.Record([#("bar", v.String("inner"))])),
-    ]),
+    v.Record(
+      dict.from_list([
+        #("foo", v.String("hey")),
+        #("nested", v.Record(dict.from_list([#("bar", v.String("inner"))]))),
+      ]),
+    ),
   )
   check_term(v.Tagged("Outer", v.Tagged("Inner", v.Integer(0))))
 }
@@ -48,7 +50,7 @@ pub fn simple_fn_test() {
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit], dict.new())
+  |> run(env.empty(), [v.unit()], dict.new())
   |> should.equal(Ok(v.String("hello")))
 }
 
@@ -79,7 +81,7 @@ pub fn single_let_capture_test() {
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit], dict.new())
+  |> run(env.empty(), [v.unit()], dict.new())
   |> should.equal(Ok(v.String("external")))
 }
 
@@ -138,7 +140,7 @@ pub fn capture_shadowed_variable_test() {
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit], dict.new())
+  |> run(env.empty(), [v.unit()], dict.new())
   |> should.equal(Ok(v.String("second")))
 }
 
@@ -215,7 +217,7 @@ pub fn fn_in_env_test() {
 
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   capture.capture(term, Nil)
-  |> run(env.empty(), [v.unit], dict.new())
+  |> run(env.empty(), [v.unit()], dict.new())
   |> should.equal(Ok(v.String("value")))
 }
 
@@ -243,12 +245,12 @@ pub fn case_test() {
   let assert Ok(term) = run(exp, env.empty(), [], dict.new())
   let next = capture.capture(term, Nil)
 
-  let arg = v.Tagged("Ok", v.unit)
+  let arg = v.Tagged("Ok", v.unit())
   next
   |> run(env.empty(), [arg], dict.new())
   |> should.equal(Ok(v.String("good")))
 
-  let arg = v.Tagged("Error", v.unit)
+  let arg = v.Tagged("Error", v.unit())
   next
   |> run(env.empty(), [arg], dict.new())
   |> should.equal(Ok(v.String("bad")))
@@ -268,12 +270,12 @@ pub fn partial_case_test() {
 
   let next = capture.capture(term, Nil)
 
-  let arg = v.Tagged("Ok", v.unit)
+  let arg = v.Tagged("Ok", v.unit())
   let e = env.empty()
   run(next, e, [rest, arg], dict.new())
   |> should.equal(Ok(v.String("good")))
 
-  let arg = v.Tagged("Error", v.unit)
+  let arg = v.Tagged("Error", v.unit())
   run(next, e, [rest, arg], dict.new())
   |> should.equal(Ok(v.String("bad")))
 }
@@ -343,10 +345,12 @@ pub fn builtin_arity1_test() {
   let split =
     v.Tagged(
       "Ok",
-      v.Record([
-        #("head", v.Integer(1)),
-        #("tail", v.LinkedList([v.Integer(2)])),
-      ]),
+      v.Record(
+        dict.from_list([
+          #("head", v.Integer(1)),
+          #("tail", v.LinkedList([v.Integer(2)])),
+        ]),
+      ),
     )
   next
   |> run(env, [v.LinkedList([v.Integer(1), v.Integer(2)])], dict.new())

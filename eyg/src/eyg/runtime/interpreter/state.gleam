@@ -5,7 +5,6 @@ import eyg/runtime/value as v
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
-import gleam/listx
 import gleam/result
 
 pub type Context(m) =
@@ -109,7 +108,7 @@ pub fn eval(exp, env: Env(m), k) {
     ir.Select(label) -> value(v.Partial(v.Select(label), []))
     ir.Tag(label) -> value(v.Partial(v.Tag(label), []))
     ir.Perform(label) -> value(v.Partial(v.Perform(label), []))
-    ir.Empty -> value(v.unit)
+    ir.Empty -> value(v.unit())
     ir.Extend(label) -> value(v.Partial(v.Extend(label), []))
     ir.Overwrite(label) -> value(v.Partial(v.Overwrite(label), []))
     ir.Case(label) -> value(v.Partial(v.Match(label), []))
@@ -163,22 +162,22 @@ pub fn call(f, arg, meta, env: Env(m), k: Stack(m)) {
         }
         v.Extend(label), [value] -> {
           use fields <- result.then(cast.as_record(arg))
-          let fields = listx.key_sort([#(label, value), ..fields])
+          let fields = dict.insert(fields, label, value)
           Ok(#(V(v.Record(fields)), env, k))
         }
         v.Overwrite(label), [value] -> {
           use fields <- result.then(cast.as_record(arg))
-          use #(_, _) <- result.then(
-            list.key_pop(fields, label)
+          use _ <- result.then(
+            dict.get(fields, label)
             |> result.replace_error(break.MissingField(label)),
           )
-          let fields = list.key_set(fields, label, value)
+          let fields = dict.insert(fields, label, value)
           Ok(#(V(v.Record(fields)), env, k))
         }
         v.Select(label), [] -> {
           use fields <- result.then(cast.as_record(arg))
           use value <- result.then(
-            list.key_find(fields, label)
+            dict.get(fields, label)
             |> result.replace_error(break.MissingField(label)),
           )
           Ok(#(V(value), env, k))
@@ -271,10 +270,10 @@ pub fn perform(label, arg, i_env, k: Stack(m)) {
 // rename handle and move the handle for runner with handles out
 pub fn deep(label, handle, exec, meta, env, k) {
   let k = Stack(Delimit(label, handle, env, False), meta, k)
-  call(exec, v.unit, meta, env, k)
+  call(exec, v.unit(), meta, env, k)
 }
 // somewhere this needs outer k
 // fn shallow(label, handle, exec, meta, env, k) {
 //   let k = Stack(Delimit(label, handle, env, True), meta, k)
-//   call(exec, v.unit, meta, env, k)
+//   call(exec, v.unit(), meta, env, k)
 // }

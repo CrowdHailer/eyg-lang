@@ -18,7 +18,7 @@ pub fn type_() {
 pub fn impl(lift) {
   use message <- result.try(cast.as_string(lift))
   let Nil = do(message)
-  Ok(v.unit)
+  Ok(v.unit())
 }
 
 pub fn blocking(lift) {

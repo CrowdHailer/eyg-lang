@@ -2,6 +2,7 @@ import eyg/analysis/typ as t
 import eyg/runtime/cast
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/result
 
 pub fn pop() {
@@ -19,9 +20,13 @@ pub fn pop() {
 fn do_pop(term, meta, env, k) {
   use elements <- result.then(cast.as_list(term))
   let return = case elements {
-    [] -> v.error(v.unit)
+    [] -> v.error(v.unit())
     [head, ..tail] ->
-      v.ok(v.Record([#("head", head), #("tail", v.LinkedList(tail))]))
+      v.ok(
+        v.Record(
+          dict.from_list([#("head", head), #("tail", v.LinkedList(tail))]),
+        ),
+      )
   }
   Ok(#(state.V(return), env, k))
 }
@@ -88,7 +93,7 @@ fn do_uncons(list, empty, nonempty, meta, env, k) {
   use elements <- result.then(cast.as_list(list))
 
   case elements {
-    [] -> state.call(empty, v.unit, meta, env, k)
+    [] -> state.call(empty, v.unit(), meta, env, k)
     [head, ..tail] -> {
       let k = state.Stack(state.CallWith(v.LinkedList(tail), env), meta, k)
       state.call(nonempty, head, meta, env, k)

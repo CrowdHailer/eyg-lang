@@ -73,6 +73,7 @@ pub fn value_to_type(value, bindings, meta: t) {
       #(t.List(item_type), bindings)
     }
     v.Record(fields) -> {
+      let fields = dict.to_list(fields)
       let #(bindings, fields) =
         list.map_fold(fields, bindings, fn(bindings, field) {
           let #(label, value) = field

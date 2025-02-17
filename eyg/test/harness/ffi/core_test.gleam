@@ -21,7 +21,7 @@ pub fn unequal_test() {
   |> should.equal(Ok(t.boolean))
 
   r.execute(prog, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.false))
+  |> should.equal(Ok(v.false()))
 }
 
 pub fn equal_test() {
@@ -36,7 +36,7 @@ pub fn equal_test() {
   |> should.equal(Ok(t.boolean))
 
   r.execute(prog, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.true))
+  |> should.equal(Ok(v.true()))
 }
 
 // also tests generalization of builtins

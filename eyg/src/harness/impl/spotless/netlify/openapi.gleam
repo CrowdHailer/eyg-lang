@@ -202,8 +202,8 @@ fn schema_decoder(
     oas.Boolean -> {
       use b <- result.try(dynamic.bool(raw))
       case b {
-        True -> v.true
-        False -> v.false
+        True -> v.true()
+        False -> v.false()
       }
       |> Ok
     }
@@ -233,7 +233,7 @@ fn schema_decoder(
           Ok(#(key, value))
         }),
       )
-      Ok(v.Record(fields))
+      Ok(v.Record(dict.from_list(fields)))
     }
     oas.AllOf(_) | oas.AnyOf(_) | oas.OneOf(_) | oas.Null ->
       panic as "don't handle Allof"

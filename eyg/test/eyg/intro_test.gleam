@@ -26,7 +26,7 @@
 //   should.equal(type_x, t.Integer)
 
 //   let value_y = should.be_ok(dict.get(values, ref_y))
-//   should.equal(value_y, v.unit)
+//   should.equal(value_y, v.unit())
 //   let type_y = should.be_ok(dict.get(types, ref_y))
 //   should.equal(type_y, t.unit)
 // }

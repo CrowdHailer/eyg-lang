@@ -70,7 +70,7 @@ pub fn serve() {
         response.set_body(response, glen.Bits(response.body))
       })
     case result {
-      Ok(_) -> v.ok(v.unit)
+      Ok(_) -> v.ok(v.unit())
       Error(reason) -> v.error(v.String(reason))
     }
     |> Ok

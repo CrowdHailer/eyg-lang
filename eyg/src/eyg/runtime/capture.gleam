@@ -1,5 +1,6 @@
 import eyg/ir/tree as ir
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/result
@@ -30,16 +31,20 @@ fn do_capture(term, env, meta) {
         #(exp, env)
       })
     v.Record(fields) ->
-      list.fold_right(fields, #(#(ir.Empty, meta), env), fn(state, pair) {
-        let #(label, item) = pair
-        let #(record, env) = state
-        let #(item, env) = do_capture(item, env, meta)
-        let exp = #(
-          ir.Apply(#(ir.Apply(#(ir.Extend(label), meta), item), meta), record),
-          meta,
-        )
-        #(exp, env)
-      })
+      list.fold_right(
+        dict.to_list(fields),
+        #(#(ir.Empty, meta), env),
+        fn(state, pair) {
+          let #(label, item) = pair
+          let #(record, env) = state
+          let #(item, env) = do_capture(item, env, meta)
+          let exp = #(
+            ir.Apply(#(ir.Apply(#(ir.Extend(label), meta), item), meta), record),
+            meta,
+          )
+          #(exp, env)
+        },
+      )
     v.Tagged(label, value) -> {
       let #(value, env) = do_capture(value, env, meta)
       let exp = #(ir.Apply(#(ir.Tag(label), meta), value), meta)

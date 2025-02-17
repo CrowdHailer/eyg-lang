@@ -1,6 +1,7 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/http
 import gleam/javascript/promise
 import gleam/list
@@ -60,5 +61,5 @@ fn domain_to_eyg(message) {
   let assert Some(id) = id
   let assert Some(name) = name
 
-  v.Record([#("id", v.Integer(id)), #("name", v.String(name))])
+  v.Record(dict.from_list([#("id", v.Integer(id)), #("name", v.String(name))]))
 }

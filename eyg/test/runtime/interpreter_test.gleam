@@ -79,7 +79,7 @@ pub fn record_creation_test() {
   let source = ir.empty()
 
   r.execute(source, env.empty(), dict.new())
-  |> should.equal(Ok(v.unit))
+  |> should.equal(Ok(v.unit()))
 
   let source =
     ir.apply(
@@ -130,9 +130,9 @@ pub fn rasing_effect_test() {
     r.loop(state.step(state.V(v.String("reply")), env, k))
   lifted
   |> should.equal(v.String("reply"))
-  let assert Ok(term) = r.loop(state.step(state.V(v.unit), env, k))
+  let assert Ok(term) = r.loop(state.step(state.V(v.unit()), env, k))
   term
-  |> should.equal(v.unit)
+  |> should.equal(v.unit())
 }
 
 pub fn effect_in_case_test() {
@@ -187,10 +187,10 @@ pub fn effect_in_builtin_test() {
   lifted
   |> should.equal(v.String("fizz"))
   let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
-    r.loop(state.step(state.V(v.unit), env, k))
+    r.loop(state.step(state.V(v.unit()), env, k))
   lifted
   |> should.equal(v.String("buzz"))
-  r.loop(state.step(state.V(v.unit), env, k))
+  r.loop(state.step(state.V(v.unit()), env, k))
   |> should.equal(Ok(v.String("initialfizzbuzz")))
 }
 
@@ -241,7 +241,14 @@ pub fn handle_resume_test() {
 
   r.execute(source, env.empty(), dict.new())
   |> should.equal(
-    Ok(v.Record([#("log", v.String("my message")), #("value", v.Integer(100))])),
+    Ok(
+      v.Record(
+        dict.from_list([
+          #("log", v.String("my message")),
+          #("value", v.Integer(100)),
+        ]),
+      ),
+    ),
   )
 }
 
@@ -261,11 +268,11 @@ pub fn ignore_other_effect_test() {
   let assert Error(#(break.UnhandledEffect("Foo", lifted), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
-  |> should.equal(v.unit)
+  |> should.equal(v.unit())
   // calling k should fall throu
   // Should test wrapping binary here to check K works properly
   r.loop(state.step(state.V(v.String("reply")), env, k))
-  |> should.equal(Ok(v.Record([#("foo", v.String("reply"))])))
+  |> should.equal(Ok(v.Record(dict.from_list([#("foo", v.String("reply"))]))))
 }
 
 pub fn multiple_effects_test() {
@@ -281,16 +288,20 @@ pub fn multiple_effects_test() {
   let assert Error(#(break.UnhandledEffect("Choose", lifted), Nil, env, k)) =
     r.execute(source, env.empty(), dict.new())
   lifted
-  |> should.equal(v.unit)
+  |> should.equal(v.unit())
 
   let assert Error(#(break.UnhandledEffect("Choose", lifted), Nil, env, k)) =
     r.loop(state.step(state.V(v.String("True")), env, k))
   lifted
-  |> should.equal(v.unit)
+  |> should.equal(v.unit())
 
   r.loop(state.step(state.V(v.String("False")), env, k))
   |> should.equal(
-    Ok(v.Record([#("a", v.String("True")), #("b", v.String("False"))])),
+    Ok(
+      v.Record(
+        dict.from_list([#("a", v.String("True")), #("b", v.String("False"))]),
+      ),
+    ),
   )
 }
 
@@ -332,46 +343,60 @@ pub fn multiple_resumptions_test() {
   // Not sure this is the correct value but it checks regressions
   |> should.equal(
     Ok(
-      v.Record(fields: [
-        #(
-          "first",
-          v.Record([
-            #(
-              "first",
-              v.Record([
-                #("a", v.Tagged("True", v.unit)),
-                #("b", v.Tagged("True", v.unit)),
+      v.Record(
+        fields: dict.from_list([
+          #(
+            "first",
+            v.Record(
+              dict.from_list([
+                #(
+                  "first",
+                  v.Record(
+                    dict.from_list([
+                      #("a", v.Tagged("True", v.unit())),
+                      #("b", v.Tagged("True", v.unit())),
+                    ]),
+                  ),
+                ),
+                #(
+                  "second",
+                  v.Record(
+                    dict.from_list([
+                      #("a", v.Tagged("True", v.unit())),
+                      #("b", v.Tagged("False", v.unit())),
+                    ]),
+                  ),
+                ),
               ]),
             ),
-            #(
-              "second",
-              v.Record([
-                #("a", v.Tagged("True", v.unit)),
-                #("b", v.Tagged("False", v.unit)),
+          ),
+          #(
+            "second",
+            v.Record(
+              dict.from_list([
+                #(
+                  "first",
+                  v.Record(
+                    dict.from_list([
+                      #("a", v.Tagged("False", v.unit())),
+                      #("b", v.Tagged("True", v.unit())),
+                    ]),
+                  ),
+                ),
+                #(
+                  "second",
+                  v.Record(
+                    dict.from_list([
+                      #("a", v.Tagged("False", v.unit())),
+                      #("b", v.Tagged("False", v.unit())),
+                    ]),
+                  ),
+                ),
               ]),
             ),
-          ]),
-        ),
-        #(
-          "second",
-          v.Record([
-            #(
-              "first",
-              v.Record([
-                #("a", v.Tagged("False", v.unit)),
-                #("b", v.Tagged("True", v.unit)),
-              ]),
-            ),
-            #(
-              "second",
-              v.Record([
-                #("a", v.Tagged("False", v.unit)),
-                #("b", v.Tagged("False", v.unit)),
-              ]),
-            ),
-          ]),
-        ),
-      ]),
+          ),
+        ]),
+      ),
     ),
   )
 }
@@ -395,8 +420,8 @@ pub fn handler_doesnt_continue_to_effect_then_in_let_test() {
     env,
     k,
   )) = r.execute(source, env.empty(), dict.new())
-  r.loop(state.step(state.V(v.unit), env, k))
-  |> should.equal(Ok(v.unit))
+  r.loop(state.step(state.V(v.unit()), env, k))
+  |> should.equal(Ok(v.unit()))
 }
 
 pub fn handler_is_applied_after_other_effects_test() {
@@ -428,7 +453,7 @@ pub fn handler_is_applied_after_other_effects_test() {
     k,
   )) = r.execute(source, env.empty(), dict.new())
 
-  r.loop(state.step(state.V(v.unit), env, k))
+  r.loop(state.step(state.V(v.unit()), env, k))
   |> should.equal(Ok(v.Integer(-1)))
 }
 

@@ -1,5 +1,6 @@
 import eyg/runtime/break
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result.{try}
@@ -52,15 +53,15 @@ pub fn as_record(value) {
 
 pub fn as_unit(value, is) {
   use fields <- try(as_record(value))
-  case fields {
-    [] -> Ok(is)
+  case dict.size(fields) {
+    0 -> Ok(is)
     _ -> Error(break.MissingField("actually to many fields"))
   }
 }
 
 pub fn field(key, inner, value) {
   use fields <- try(as_record(value))
-  case list.key_find(fields, key) {
+  case dict.get(fields, key) {
     Ok(value) -> inner(value)
     Error(Nil) -> Error(break.MissingField(key))
   }

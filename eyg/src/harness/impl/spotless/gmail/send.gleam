@@ -1,6 +1,7 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/javascript/promise
 import gleam/result
 import midas/browser
@@ -65,9 +66,11 @@ fn result_to_eyg(result) {
 
 fn message_to_eyg(message) {
   let gmail.Message(id, thread_id) = message
-  v.Record([
-    #("id", v.String(id)),
-    #("thread_id", v.String(thread_id)),
-    // #("label_ids", v.LinkedList(list.map(label_ids, v.String))),
-  ])
+  v.Record(
+    dict.from_list([
+      #("id", v.String(id)),
+      #("thread_id", v.String(thread_id)),
+      // #("label_ids", v.LinkedList(list.map(label_ids, v.String))),
+    ]),
+  )
 }

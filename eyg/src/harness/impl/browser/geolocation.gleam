@@ -1,6 +1,7 @@
 import eyg/analysis/type_/isomorphic as t
 import eyg/runtime/cast
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/float
 import gleam/javascript/promise
 import gleam/result
@@ -58,19 +59,21 @@ pub fn position_to_eyg(position) {
     speed: speed,
     timestamp: timestamp,
   ) = position
-  v.Record([
-    #("latitude", v.Integer(float.truncate(latitude))),
-    #("longitude", v.Integer(float.truncate(longitude))),
-    #("altitude", v.option(altitude, fn(x) { v.Integer(float.truncate(x)) })),
-    #("accuracy", v.Integer(float.truncate(accuracy))),
-    #(
-      "altitude_accuracy",
-      v.option(altitude_accuracy, fn(x) { v.Integer(float.truncate(x)) }),
-    ),
-    #("heading", v.option(heading, fn(x) { v.Integer(float.truncate(x)) })),
-    #("speed", v.option(speed, fn(x) { v.Integer(float.truncate(x)) })),
-    #("timestamp", v.Integer(float.truncate(timestamp))),
-  ])
+  v.Record(
+    dict.from_list([
+      #("latitude", v.Integer(float.truncate(latitude))),
+      #("longitude", v.Integer(float.truncate(longitude))),
+      #("altitude", v.option(altitude, fn(x) { v.Integer(float.truncate(x)) })),
+      #("accuracy", v.Integer(float.truncate(accuracy))),
+      #(
+        "altitude_accuracy",
+        v.option(altitude_accuracy, fn(x) { v.Integer(float.truncate(x)) }),
+      ),
+      #("heading", v.option(heading, fn(x) { v.Integer(float.truncate(x)) })),
+      #("speed", v.option(speed, fn(x) { v.Integer(float.truncate(x)) })),
+      #("timestamp", v.Integer(float.truncate(timestamp))),
+    ]),
+  )
 }
 
 pub fn result_to_eyg(result) {
