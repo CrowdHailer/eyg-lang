@@ -254,7 +254,7 @@ pub fn update(state: State, message) {
           let value = dynamicx.unsafe_coerce(dynamic.from(value))
 
           let select = value.Partial(value.Select("handle"), [])
-          let args = [source, #(value, []), #(value.unit, [])]
+          let args = [source, #(value, []), #(value.unit(), [])]
           let assert Ok(new_value) = runner.call(select, args, env, h)
           let example = Example(new_value, type_)
           let state = State(..state, example: example)

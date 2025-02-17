@@ -1,5 +1,6 @@
 // This could move closer to morph and other views but only if it stays generic enough
 import eyg/runtime/value as v
+import gleam/dict
 import gleam/list
 import lustre/attribute as a
 import lustre/element.{text}
@@ -52,7 +53,7 @@ fn all_fields(items) {
   list.fold(items, [], fn(acc, item) {
     case item {
       v.Record(fields) ->
-        list.fold(fields, acc, fn(acc, field) {
+        list.fold(dict.to_list(fields), acc, fn(acc, field) {
           let #(key, _) = field
           case list.contains(acc, key) {
             True -> acc
@@ -69,7 +70,7 @@ fn row_content(headers, value) {
   case value {
     v.Record(fields) -> {
       list.map(headers, fn(header) {
-        case list.key_find(fields, header) {
+        case dict.get(fields, header) {
           Ok(value) -> v.debug(value)
           Error(Nil) -> "-"
         }
