@@ -1,4 +1,4 @@
-name = "eyg_interpreter"
+name = "morph"
 version = "1.0.0"
 target = "javascript"
 
@@ -16,7 +16,11 @@ target = "javascript"
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 eyg_ir = {path = "../eyg_ir"}
-gleam_javascript = ">= 0.13.0 and < 2.0.0"
+eyg_interpreter = {path = "../gleam_interpreter"}
+eyg_analysis = {path = "../gleam_analysis"}
+gleamx = {path = "../gleamx"}
+plinth = {path = "../../../../plinth"}
+lustre = ">= 4.6.4 and < 5.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"

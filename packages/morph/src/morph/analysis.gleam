@@ -1,16 +1,20 @@
 import eyg/analysis/inference/levels_j/contextual as infer
 import eyg/analysis/type_/binding
-import eyg/analysis/type_/binding/debug
+
+// import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/capture
+
+// import eyg/runtime/capture
 import gleam/dict.{type Dict}
-import gleam/int
+
+// import gleam/int
 import gleam/io
 import gleam/list
-import gleam/string
+
+// import gleam/string
 import morph/editable as e
 import morph/projection
 
@@ -55,9 +59,9 @@ pub fn with_references(refs) {
 pub fn value_to_type(value, bindings, meta: t) {
   case value {
     v.Closure(_, _, _) -> {
-      let #(#(_, #(_, type_, _, _)), bindings) =
-        capture.capture(value, meta)
-        |> infer.infer(t.Empty, dict.new(), 0, bindings)
+      let #(#(_, #(_, type_, _, _)), bindings) = todo as "capture"
+      // capture.capture(value, meta)
+      // |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
     v.Binary(_) -> #(t.Binary, bindings)
@@ -98,9 +102,10 @@ pub fn value_to_type(value, bindings, meta: t) {
     v.Partial(v.Match(_), [_, _]) -> {
       // let #(var, bindings) = binding.poly(level, bindings)
       // let #(var, bindings) = binding.poly(level, bindings)
-      let #(#(_, #(_, type_, _, _)), bindings) =
-        capture.capture(value, meta)
-        |> infer.infer(t.Empty, dict.new(), 0, bindings)
+      let #(#(_, #(_, type_, _, _)), bindings) = todo as "capture"
+
+      // capture.capture(value, meta)
+      // |> infer.infer(t.Empty, dict.new(), 0, bindings)
       #(binding.gen(type_, -1, bindings), bindings)
     }
     v.Promise(_) -> panic as "do promises need to be specific type"
@@ -145,20 +150,20 @@ pub fn analyse(projection, context, eff) -> Analysis {
   do_analyse(editable, context, eff)
 }
 
-pub fn print(analysis) {
-  let #(bindings, pairs) = analysis
-  list.map(pairs, fn(pair) {
-    let #(rev, #(result, type_, _eff, _scope)) = pair
-    let path = list.reverse(rev)
-    let path = "[" <> string.join(list.map(path, int.to_string), ",") <> "]"
-    let t = case result {
-      Ok(Nil) -> debug.mono(binding.resolve(type_, bindings))
-      Error(reason) -> debug.reason(reason)
-    }
-    path <> " " <> t
-  })
-  |> list.map(io.println)
-}
+// pub fn print(analysis) {
+//   let #(bindings, pairs) = analysis
+//   list.map(pairs, fn(pair) {
+//     let #(rev, #(result, type_, _eff, _scope)) = pair
+//     let path = list.reverse(rev)
+//     let path = "[" <> string.join(list.map(path, int.to_string), ",") <> "]"
+//     let t = case result {
+//       Ok(Nil) -> debug.mono(binding.resolve(type_, bindings))
+//       Error(reason) -> debug.reason(reason)
+//     }
+//     path <> " " <> t
+//   })
+//   |> list.map(io.println)
+// }
 
 fn env_at(analysis, path) {
   let #(_bindings, pairs) = analysis

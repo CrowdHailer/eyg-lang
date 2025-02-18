@@ -128,19 +128,3 @@ pub fn map_cleave(cleave, f) {
   let post = list.map(post, f)
   #(pre, value, post)
 }
-
-fn do_iterate(remaining, func, previous, state, acc) {
-  case remaining {
-    [] -> list.reverse(acc)
-    [item, ..remaining] -> {
-      let #(element, state) = func(previous, item, remaining, state)
-      let acc = [element, ..acc]
-      do_iterate(remaining, func, [item, ..previous], state, acc)
-    }
-  }
-}
-
-// kinda interesting
-fn iterate(items, initial, func) {
-  do_iterate(items, func, [], initial, [])
-}

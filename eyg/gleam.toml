@@ -7,9 +7,9 @@ gleam = ">= 1.5.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 1.0.0"
-gleam_javascript = ">= 0.13.0 and < 1.0.0"
+gleam_javascript = ">= 0.13.0 and < 2.0.0"
 gleam_bitwise = "~> 1.2"
-lustre = "~> 4.0"
+lustre = ">= 4.6.4 and < 5.0.0"
 gleam_json = ">= 1.0.0 and < 3.0.0"
 gleam_fetch = "~> 1.0"
 plinth = ">= 0.5.2 and < 1.0.0"
@@ -34,6 +34,8 @@ gleam_regexp = ">= 1.1.0 and < 2.0.0"
 eyg_ir = {path= "../packages/eyg_ir"}
 eyg_interpreter = {path= "../packages/gleam_interpreter"}
 eyg_analysis = {path= "../packages/gleam_analysis"}
+gleamx = {path= "../packages/gleamx"}
+morph = {path= "../packages/morph"}
 dag_json = ">= 1.1.0 and < 2.0.0"
 
 [dev-dependencies]
