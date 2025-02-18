@@ -377,7 +377,7 @@ fn view() {
               |> element.map(state.SnippetMessage(state.hot_reload_key, _)),
             h.p([], [element.text("App state")]),
             h.div([a.class("border-2 p-2")], [
-              element.text(old_value.debug(s.example.value)),
+              element.text(todo as "old_value.debug(s.example.value)"),
             ]),
             h.p([], [element.text("Rendered app, click to send message")]),
             h.div([a.class("border-2 p-2")], [

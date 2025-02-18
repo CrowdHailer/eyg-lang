@@ -1253,7 +1253,9 @@ fn render_run(run) {
         ]),
       ])
     run.Failed(#(reason, _, _, _)) ->
-      footer_area(neo_orange_4, [element.text(break.reason_to_string(reason))])
+      footer_area(neo_orange_4, [
+        element.text(todo as "break.reason_to_string(reason)"),
+      ])
   }
 }
 
@@ -1262,7 +1264,7 @@ pub fn fail_message(reason) {
     NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
     ActionFailed(action) ->
       string.concat(["Action ", action, " not possible at this position"])
-    RunFailed(#(reason, _, _, _)) -> break.reason_to_string(reason)
+    RunFailed(#(reason, _, _, _)) -> todo as "break.reason_to_string(reason)"
   }
 }
 

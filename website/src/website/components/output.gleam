@@ -28,7 +28,7 @@ pub fn render(value) {
 }
 
 fn render_value(value) {
-  text(old_value.debug(value))
+  todo as "text(old_value.debug(value))"
 }
 
 pub fn table(headings, values) {
@@ -71,7 +71,7 @@ fn row_content(headers, value) {
     v.Record(fields) -> {
       list.map(headers, fn(header) {
         case dict.get(fields, header) {
-          Ok(value) -> old_value.debug(value)
+          Ok(value) -> todo as "old_value.debug(value)"
           Error(Nil) -> "-"
         }
       })
