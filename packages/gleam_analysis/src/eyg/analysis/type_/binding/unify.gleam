@@ -8,7 +8,7 @@ import gleam/result.{try}
 
 pub fn unify(t1, t2, level, bindings) {
   case do_unify([#(t1, t2)], level, bindings) {
-    Error(error.TypeMismatch(t.Var(x), t.Var(y))) ->
+    Error(error.TypeMismatch(t.Var(_x), t.Var(_y))) ->
       Error(error.TypeMismatch(
         binding.resolve(t1, bindings),
         binding.resolve(t2, bindings),
