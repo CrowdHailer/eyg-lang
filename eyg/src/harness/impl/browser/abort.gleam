@@ -1,5 +1,5 @@
 import eyg/analysis/type_/isomorphic as t
-import eyg/runtime/break
+import eyg/interpreter/break
 
 pub const l = "Abort"
 

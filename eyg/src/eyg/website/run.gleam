@@ -1,8 +1,8 @@
+import eyg/interpreter/break
+import eyg/interpreter/state as istate
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/break
 import eyg/runtime/interpreter/block
-import eyg/runtime/interpreter/state as istate
-import eyg/runtime/value as v
 import eyg/sync/sync
 import gleam/dict
 import gleam/dynamic

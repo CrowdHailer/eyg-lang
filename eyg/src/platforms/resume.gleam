@@ -1,7 +1,7 @@
+import eyg/interpreter/cast
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
-import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
@@ -29,10 +29,10 @@ fn handle_click(event, states) {
   let answer = r.call(action, [#(v.String(key), Nil)], env, dict.new())
   // console.log(answer)
   let assert Ok(term) = answer
-  // console.log(v.debug(term))
+  // console.log(old_value.debug(term))
   case term {
     v.Tagged("Ok", return) -> {
-      // console.log(v.debug(return))
+      // console.log(old_value.debug(return))
       let assert Ok(content) = cast.field("content", cast.as_string, return)
       let assert Ok(action) = cast.field("action", cast.any, return)
       element.set_inner_html(container, content)
@@ -106,10 +106,10 @@ pub fn run() {
   //                 let #(answer, _) = r.loop_till(state.V(c), rev, env, k)
   //                 // console.log(answer)
   //                 let assert Ok(term) = answer
-  //                 // console.log(v.debug(term))
+  //                 // console.log(old_value.debug(term))
   //                 case term {
   //                   v.Tagged("Ok", return) -> {
-  //                     // console.log(v.debug(return))
+  //                     // console.log(old_value.debug(return))
   //                     let assert Ok(v.String(content)) =
   //                       r.field(return, "content")
   //                     let assert Ok(action) = r.field(return, "action")
@@ -163,7 +163,7 @@ pub fn run() {
   //                 let answer = r.execute(source, env, k)
   //                 // console.log(answer)
   //                 let assert Ok(term) = answer
-  //                 // console.log(v.debug(term))
+  //                 // console.log(old_value.debug(term))
   //                 case term {
   //                   v.Tagged("Ok", v.String(content)) ->
   //                     element.set_inner_html(container, content)

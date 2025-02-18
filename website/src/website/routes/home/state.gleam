@@ -1,9 +1,9 @@
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/state as istate
+import eyg/interpreter/value
 import eyg/ir/dag_json
 import eyg/runtime/interpreter/runner
-import eyg/runtime/interpreter/state as istate
-import eyg/runtime/value
 import eyg/sync/browser
 import eyg/sync/sync
 import eyg/website/reload

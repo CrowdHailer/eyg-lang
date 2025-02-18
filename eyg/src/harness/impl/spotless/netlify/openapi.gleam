@@ -1,6 +1,6 @@
 import eyg/analysis/type_/isomorphic as t
-import eyg/runtime/cast
-import eyg/runtime/value as v
+import eyg/interpreter/cast
+import eyg/interpreter/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamic

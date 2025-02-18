@@ -1,5 +1,5 @@
-import eyg/runtime/break
-import eyg/runtime/value as v
+import eyg/interpreter/break
+import eyg/interpreter/value as v
 import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}

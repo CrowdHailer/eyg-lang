@@ -2,7 +2,7 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/runtime/break
+import eyg/runtime/break as old_break
 import eyg/sync/dump
 import eyg/sync/fragment
 import eyg/sync/supabase
@@ -236,7 +236,7 @@ fn compute(source, loaded) {
         Ok(value) -> Ok(value)
         Error(#(reason, _, _, _)) -> {
           io.debug(reason)
-          Error(break.reason_to_string(reason))
+          Error(old_break.reason_to_string(reason))
         }
       }
       case errors {

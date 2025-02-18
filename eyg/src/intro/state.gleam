@@ -2,11 +2,11 @@
 // import eyg/analysis/type_/isomorphic
 // import eyg/document/section
 // import eyg/package
-// import eyg/runtime/break
-// import eyg/runtime/cast
+// import eyg/interpreter/break
+// import eyg/interpreter/cast
 // import eyg/runtime/interpreter/runner as r
-// import eyg/runtime/interpreter/state.{type Env, type Stack} as istate
-// import eyg/runtime/value as v
+// import eyg/interpreter/state.{type Env, type Stack} as istate
+// import eyg/interpreter/value as v
 // import eyg/sync/browser
 // import eyg/sync/fragment
 // import eyg/sync/packages
@@ -611,7 +611,7 @@
 //             "Now" ->
 //               case now.impl(lift) {
 //                 Ok(reply) -> {
-//                   let effects = [Log("Now: " <> v.debug(reply)), ..effects]
+//                   let effects = [Log("Now: " <> old_value.debug(reply)), ..effects]
 //                   r.loop(istate.step(istate.V(reply), env, k))
 //                   |> do_handle_next(effects)
 //                 }
@@ -620,7 +620,7 @@
 //             "Open" ->
 //               case visit.impl(lift) {
 //                 Ok(reply) -> {
-//                   let effects = [Log("Open: " <> v.debug(reply)), ..effects]
+//                   let effects = [Log("Open: " <> old_value.debug(reply)), ..effects]
 //                   r.loop(istate.step(istate.V(reply), env, k))
 //                   |> do_handle_next(effects)
 //                 }

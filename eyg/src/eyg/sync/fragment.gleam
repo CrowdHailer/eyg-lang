@@ -1,10 +1,10 @@
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic
+import eyg/interpreter/state as istate
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state as istate
-import eyg/runtime/value as v
 import gleam/dict
 import gleam/dynamic
 import gleam/dynamicx

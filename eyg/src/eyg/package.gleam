@@ -1,8 +1,8 @@
 import eyg/analysis/type_/binding/error
 import eyg/document/section
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/parse
-import eyg/runtime/value as v
 import eyg/sync/sync
 import gleam/io
 import gleam/list

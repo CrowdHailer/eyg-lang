@@ -2,12 +2,12 @@ import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/break
+import eyg/interpreter/state as istate
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/runtime/break
 import eyg/runtime/interpreter/block
-import eyg/runtime/interpreter/state as istate
-import eyg/runtime/value as v
 import eyg/sync/sync
 import eyg/website/run
 import gleam/bit_array

@@ -1,8 +1,8 @@
+import eyg/interpreter/break
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/break
 import eyg/runtime/capture
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/value as v
 import gleam/dict
 import gleam/list
 import gleeunit/should

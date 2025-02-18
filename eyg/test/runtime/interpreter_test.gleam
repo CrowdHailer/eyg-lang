@@ -1,11 +1,11 @@
 import dag_json
+import eyg/interpreter/break
+import eyg/interpreter/builtin
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json as codec
 import eyg/ir/tree as ir
-import eyg/runtime/break
-import eyg/runtime/builtin
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/io

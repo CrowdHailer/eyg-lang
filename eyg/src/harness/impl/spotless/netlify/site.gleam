@@ -1,5 +1,5 @@
 import eyg/analysis/type_/isomorphic as t
-import eyg/runtime/value as v
+import eyg/interpreter/value as v
 import gleam/dict
 import gleam/option
 import midas/sdk/netlify/schema

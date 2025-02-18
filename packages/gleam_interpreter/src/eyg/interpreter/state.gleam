@@ -1,7 +1,7 @@
+import eyg/interpreter/break
+import eyg/interpreter/cast
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/break
-import eyg/runtime/cast
-import eyg/runtime/value as v
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list

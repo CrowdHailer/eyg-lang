@@ -1,13 +1,14 @@
 import eyg/analysis/typ as t
 import eyg/compile
+import eyg/interpreter/builtin
+import eyg/interpreter/cast
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/runtime/builtin
 import eyg/runtime/capture
-import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/runtime/value as old_value
 import gleam/bit_array
 import gleam/dict
 import gleam/io
@@ -34,7 +35,7 @@ pub fn debug() {
 }
 
 fn do_debug(term, rev, env, k) {
-  Ok(#(state.V(v.String(v.debug(term))), env, k))
+  Ok(#(state.V(v.String(old_value.debug(term))), env, k))
 }
 
 pub fn fix() {

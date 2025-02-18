@@ -1,10 +1,10 @@
 import easel/embed
 import eyg/analysis/jm/type_ as t
+import eyg/interpreter/cast
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
-import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx

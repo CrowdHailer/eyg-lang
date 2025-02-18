@@ -6,12 +6,14 @@ import eyg/analysis/jm/tree
 import eyg/analysis/jm/type_ as t
 import eyg/analysis/type_/isomorphic as tj
 import eyg/editor/v1/view/type_
+import eyg/interpreter/break
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/runtime/break
+import eyg/runtime/break as old_break
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/runtime/value as old_value
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
@@ -933,11 +935,11 @@ fn run(state: Embed) {
 }
 
 fn reason_to_string(reason) {
-  break.reason_to_string(reason)
+  old_break.reason_to_string(reason)
 }
 
 fn term_to_string(term) {
-  v.debug(term)
+  old_value.debug(term)
 }
 
 pub fn undo(state: Embed, start) {

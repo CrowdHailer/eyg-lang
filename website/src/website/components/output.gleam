@@ -1,5 +1,5 @@
 // This could move closer to morph and other views but only if it stays generic enough
-import eyg/runtime/value as v
+import eyg/interpreter/value as v
 import gleam/dict
 import gleam/list
 import lustre/attribute as a
@@ -28,7 +28,7 @@ pub fn render(value) {
 }
 
 fn render_value(value) {
-  text(v.debug(value))
+  text(old_value.debug(value))
 }
 
 pub fn table(headings, values) {
@@ -71,7 +71,7 @@ fn row_content(headers, value) {
     v.Record(fields) -> {
       list.map(headers, fn(header) {
         case dict.get(fields, header) {
-          Ok(value) -> v.debug(value)
+          Ok(value) -> old_value.debug(value)
           Error(Nil) -> "-"
         }
       })

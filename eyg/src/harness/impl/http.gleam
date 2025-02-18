@@ -1,8 +1,8 @@
 import eyg/analysis/typ as t
-import eyg/runtime/break
-import eyg/runtime/cast
+import eyg/interpreter/cast
+import eyg/interpreter/value as v
+import eyg/runtime/break as old_break
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/value as v
 import gleam/http/request
 import gleam/http/response
 import gleam/javascript/promise
@@ -49,7 +49,7 @@ pub fn serve() {
                     response.new(500)
                     |> response.set_body(<<
                       "server failure",
-                      break.reason_to_string(reason):utf8,
+                      old_break.reason_to_string(reason):utf8,
                     >>)
                   }
                 }
@@ -57,7 +57,7 @@ pub fn serve() {
                 response.new(500)
                 |> response.set_body(<<
                   "server failure",
-                  break.reason_to_string(reason):utf8,
+                  old_break.reason_to_string(reason):utf8,
                 >>)
               }
             }

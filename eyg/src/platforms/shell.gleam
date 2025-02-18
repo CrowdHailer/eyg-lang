@@ -1,9 +1,11 @@
+import eyg/interpreter/break
+import eyg/interpreter/cast
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/break
-import eyg/runtime/cast
+import eyg/runtime/break as old_break
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/runtime/value as old_value
 import gleam/dict
 import gleam/dynamic
 import gleam/int
@@ -55,7 +57,7 @@ pub fn run(source) {
             "no value field in parsed value",
           )
         "Error" -> {
-          Error(v.debug(value))
+          Error(old_value.debug(value))
         }
         _ -> panic as string.concat(["unexpected tag value: ", tag])
       }
@@ -108,7 +110,11 @@ fn read(rl, parser, env, k, prompt) {
             }
             Error(#(reason, _rev, _env, _k)) -> {
               console.log(
-                string.concat(["!! ", break.reason_to_string(reason), " at: "]),
+                string.concat([
+                  "!! ",
+                  old_break.reason_to_string(reason),
+                  " at: ",
+                ]),
               )
               // TODO add path
               // path_to_string(list.reverse(rev)),
@@ -147,7 +153,7 @@ fn print(value) {
             list.map_fold(headers, [], fn(acc, header) {
               let #(key, size) = header
               let assert Ok(value) = cast.field(key, cast.any, rec)
-              let value = v.debug(value)
+              let value = old_value.debug(value)
               let size = int.max(size, string.length(value))
               let size = int.min(20, size)
               let header = #(key, size)
@@ -190,7 +196,7 @@ fn print(value) {
       let rows = list.reverse(rows_rev)
       print_rows_and_headers(headers, rows)
     }
-    _ -> io.println(v.debug(value))
+    _ -> io.println(old_value.debug(value))
   }
 }
 

@@ -1,8 +1,8 @@
 import eyg/analysis/typ as t
-import eyg/runtime/builtin
-import eyg/runtime/cast
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/interpreter/builtin
+import eyg/interpreter/cast
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/list

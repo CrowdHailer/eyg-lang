@@ -1,5 +1,5 @@
+import eyg/interpreter/state
 import eyg/ir/tree as ir
-import eyg/runtime/interpreter/state
 import gleam/list
 import gleam/option.{None, Some}
 

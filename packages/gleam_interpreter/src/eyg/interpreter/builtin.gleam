@@ -1,6 +1,6 @@
-import eyg/runtime/cast
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/interpreter/cast
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import gleam/int
 import gleam/result.{try}
 import gleam/string

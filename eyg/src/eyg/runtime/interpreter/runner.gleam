@@ -1,6 +1,6 @@
-import eyg/runtime/break
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
+import eyg/interpreter/break
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import gleam/javascript/promise
 import gleam/list
 

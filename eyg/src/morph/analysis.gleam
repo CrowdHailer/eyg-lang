@@ -3,9 +3,9 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/runtime/capture
-import eyg/runtime/value as v
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io

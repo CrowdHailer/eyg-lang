@@ -1,6 +1,6 @@
 // // TODO rename as sidebar
-// import eyg/runtime/break
-// import eyg/runtime/value as v
+// import eyg/interpreter/break
+// import eyg/interpreter/value as v
 // import gleam/http/request
 // import gleam/int
 // import gleam/list
@@ -71,7 +71,7 @@
 //             state.Done(value) ->
 //               h.div([a.class("border-4 border-green-500 px-6 py-2")], [
 //                 h.div([], [text("Done")]),
-//                 h.div([], [text(v.debug(value))]),
+//                 h.div([], [text(old_value.debug(value))]),
 //               ])
 //             // _ -> text()
 //           },

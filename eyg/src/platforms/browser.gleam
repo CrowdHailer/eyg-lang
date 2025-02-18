@@ -1,10 +1,10 @@
 import eyg/analysis/typ as t
+import eyg/interpreter/cast
+import eyg/interpreter/state
+import eyg/interpreter/value as v
 import eyg/ir/dag_json
-import eyg/runtime/break
-import eyg/runtime/cast
+import eyg/runtime/break as old_break
 import eyg/runtime/interpreter/runner as r
-import eyg/runtime/interpreter/state
-import eyg/runtime/value as v
 import gleam/bit_array
 import gleam/dict
 import gleam/io
@@ -161,7 +161,7 @@ pub fn async() {
           Ok(term) -> term
           Error(#(reason, _path, _env, _k)) -> {
             // has all the path and env in cant' debug
-            console.log(break.reason_to_string(reason))
+            console.log(old_break.reason_to_string(reason))
             panic as "this shouldn't fail"
           }
         }

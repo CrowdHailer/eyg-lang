@@ -1,5 +1,5 @@
 import eyg/analysis/type_/isomorphic as t
-import eyg/runtime/value as v
+import eyg/interpreter/value as v
 import gleam/fetch
 import gleam/javascript/promise
 import gleam/result

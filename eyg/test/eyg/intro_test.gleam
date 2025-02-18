@@ -1,6 +1,6 @@
 // import eyg/analysis/type_/binding/error
 // import eyg/analysis/type_/isomorphic as t
-// import eyg/runtime/value as v
+// import eyg/interpreter/value as v
 // import eyg/sync/references.{Store}
 // import eygir/annotated
 // import gleam/dict

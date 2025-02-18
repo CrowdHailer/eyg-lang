@@ -32,6 +32,7 @@ mysig = ">= 0.4.0 and < 1.0.0"
 snag = ">= 1.1.0 and < 2.0.0"
 gleam_regexp = ">= 1.1.0 and < 2.0.0"
 eyg_ir = {path= "../packages/eyg_ir"}
+eyg_interpreter = {path= "../packages/gleam_interpreter"}
 dag_json = ">= 1.1.0 and < 2.0.0"
 
 [dev-dependencies]
