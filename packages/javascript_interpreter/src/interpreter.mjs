@@ -6,6 +6,7 @@ const APPLY = "a"
 const LET = "l"
 const VACANT = "z"
 
+const Binary = "x"
 const INT = "i"
 const STRING = "s"
 
@@ -46,6 +47,18 @@ class State {
     this.value = false, this.control = expression
   }
 
+  getVariable(env, label) {
+    let value = env.get(label)
+    if (value === undefined) this.break = { UndefinedVariable: label }
+    return value
+  }
+
+  builtin(identifier) {
+    let value = builtins[identifier]
+    if (value === undefined) this.break = {UndefinedBuiltin: identifier}
+    return value
+  }
+
   push(kont) {
     this.stack = this.stack.push(kont)
   }
@@ -58,7 +71,7 @@ class State {
     let expression = this.control
     switch (expression[0]) {
       case VAR:
-        this.setValue(getVariable(this.env, expression.l))
+        this.setValue(this.getVariable(this.env, expression.l))
         break;
       case LAMBDA:
         this.setValue(new Closure(expression, this.env))
@@ -72,7 +85,10 @@ class State {
         this.setExpression(expression.v)
         break;
       case VACANT:
-        this.break = new Error("not implemented");
+        this.break = { NotImplemented: "" };
+      case Binary:
+        this.setValue(expression.v)
+        break;
       case INT:
         this.setValue(expression.v)
         break;
@@ -111,7 +127,7 @@ class State {
         this.setValue(partial(expression, handle(expression.l)))
         break;
       case BUILTIN:
-        this.setValue(partial(expression, builtin(expression.l)))
+        this.setValue(partial(expression, this.builtin(expression.l)))
         break;
       default:
         this.break = new Error("unrecognised expression")
@@ -263,13 +279,6 @@ export function eval_(src) {
   return state
 }
 
-function getVariable(env, label) {
-  let value = env.get(label)
-  if (value === undefined) this.break = new Error("missing variable: " + label)
-  return value
-}
-
-
 function cons(item, tail) {
   this.setValue(tail.push(item))
 }
@@ -348,13 +357,17 @@ function handle(label) {
   }
 }
 
-const builtins = {
-  int_add(a, b) { this.setValue(a + b) },
-  int_subtract(a, b) { this.setValue(a - b) }
-}
+const True = new Tagged("True", empty)
+const False = new Tagged("False", empty)
 
-function builtin(identifier) {
-  let value = builtins[identifier]
-  if (value === undefined) this.break = new Error("unknown builtin: " + identifier)
-  return value
+const builtins = {
+  equal(a, b) {
+    let isEqual = a.equals ? a.equals(b) : a == b;
+    this.setValue(isEqual ? True : False)
+  },
+  int_add(a, b) { this.setValue(a + b) },
+  int_subtract(a, b) { this.setValue(a - b) },
+  int_multiply(a, b) { this.setValue(a * b) },
+  int_absolute(a) { this.setValue(Math.abs(a)) },
+  string_append(a, b) { this.setValue(a + b) },
 }

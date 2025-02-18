@@ -1,4 +1,5 @@
 import eyg/analysis/typ as t
+import eyg/runtime/builtin
 import eyg/runtime/cast
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
@@ -24,7 +25,7 @@ pub fn compare() {
   #(type_, state.Arity2(do_compare))
 }
 
-fn do_compare(left, right, rev, env, k) {
+fn do_compare(left, right, _meta, env, k) {
   use left <- result.then(cast.as_integer(left))
   use right <- result.then(cast.as_integer(right))
   let return = case int.compare(left, right) {
@@ -38,37 +39,19 @@ fn do_compare(left, right, rev, env, k) {
 pub fn add() {
   let type_ =
     t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(1), t.Integer))
-  #(type_, state.Arity2(do_add))
-}
-
-fn do_add(left, right, rev, env, k) {
-  use left <- result.then(cast.as_integer(left))
-  use right <- result.then(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left + right)), env, k))
+  #(type_, builtin.add)
 }
 
 pub fn subtract() {
   let type_ =
     t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(1), t.Integer))
-  #(type_, state.Arity2(do_subtract))
-}
-
-fn do_subtract(left, right, rev, env, k) {
-  use left <- result.then(cast.as_integer(left))
-  use right <- result.then(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left - right)), env, k))
+  #(type_, builtin.subtract)
 }
 
 pub fn multiply() {
   let type_ =
     t.Fun(t.Integer, t.Open(0), t.Fun(t.Integer, t.Open(1), t.Integer))
-  #(type_, state.Arity2(do_multiply))
-}
-
-fn do_multiply(left, right, rev, env, k) {
-  use left <- result.then(cast.as_integer(left))
-  use right <- result.then(cast.as_integer(right))
-  Ok(#(state.V(v.Integer(left * right)), env, k))
+  #(type_, builtin.multiply)
 }
 
 pub fn divide() {
@@ -77,7 +60,7 @@ pub fn divide() {
   #(type_, state.Arity2(do_divide))
 }
 
-fn do_divide(left, right, rev, env, k) {
+fn do_divide(left, right, _meta, env, k) {
   use left <- result.then(cast.as_integer(left))
   use right <- result.then(cast.as_integer(right))
   let value = case right {
@@ -89,12 +72,7 @@ fn do_divide(left, right, rev, env, k) {
 
 pub fn absolute() {
   let type_ = t.Fun(t.Integer, t.Open(0), t.Integer)
-  #(type_, state.Arity1(do_absolute))
-}
-
-fn do_absolute(x, rev, env, k) {
-  use x <- result.then(cast.as_integer(x))
-  Ok(#(state.V(v.Integer(int.absolute_value(x))), env, k))
+  #(type_, builtin.absolute)
 }
 
 pub fn parse() {
@@ -102,7 +80,7 @@ pub fn parse() {
   #(type_, state.Arity1(do_parse))
 }
 
-fn do_parse(raw, rev, env, k) {
+fn do_parse(raw, _meta, env, k) {
   use raw <- result.then(cast.as_string(raw))
   let value = case int.parse(raw) {
     Ok(i) -> v.ok(v.Integer(i))
@@ -116,7 +94,7 @@ pub fn to_string() {
   #(type_, state.Arity1(do_to_string))
 }
 
-fn do_to_string(x, rev, env, k) {
+fn do_to_string(x, _meta, env, k) {
   use x <- result.then(cast.as_integer(x))
   Ok(#(state.V(v.String(int.to_string(x))), env, k))
 }

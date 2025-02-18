@@ -54,3 +54,8 @@ Any extrinsic effects can be made available to EYG programs.
 They can be as specific as needed for different platforms.
 
 For example EYG could be embedded in a todo app with such effects as `CreateTask`, `MarkAsDone` etc.
+
+
+## Development
+
+Run tests with `node test.mjs`

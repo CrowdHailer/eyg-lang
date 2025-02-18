@@ -114,7 +114,11 @@ pub fn eval(exp, env: Env(m), k) {
     ir.Case(label) -> value(v.Partial(v.Match(label), []))
     ir.NoCases -> value(v.Partial(v.NoCases, []))
     ir.Handle(label) -> value(v.Partial(v.Handle(label), []))
-    ir.Builtin(identifier) -> value(v.Partial(v.Builtin(identifier), []))
+    ir.Builtin(identifier) ->
+      case dict.get(env.builtins, identifier) {
+        Ok(_) -> value(v.Partial(v.Builtin(identifier), []))
+        _ -> Error(break.UndefinedBuiltin(identifier))
+      }
     ir.Reference(ref) ->
       case dict.get(env.references, ref) {
         Ok(v) -> value(v)
@@ -220,7 +224,7 @@ fn call_builtin(key, applied, meta, env: Env(m), kont) {
         Arity4(impl), [x, y, z, a] -> impl(x, y, z, a, meta, env, kont)
         _, _args -> Ok(#(V(v.Partial(v.Builtin(key), applied)), env, kont))
       }
-    Error(Nil) -> Error(break.UndefinedVariable(key))
+    Error(Nil) -> Error(break.UndefinedBuiltin(key))
   }
 }
 

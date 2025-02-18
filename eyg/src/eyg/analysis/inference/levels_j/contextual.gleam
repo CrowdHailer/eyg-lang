@@ -370,7 +370,6 @@ pub fn builtins() {
     // TODO Error or effect
     #("int_divide", pure2(t.Integer, t.Integer, t.Integer)),
     #("int_negate", pure1(t.Integer, t.Integer)),
-    #("int_absolute", pure1(t.Integer, t.Integer)),
     #("int_parse", pure1(t.String, t.result(t.Integer, t.unit))),
     #("int_to_string", pure1(t.Integer, t.String)),
     #("string_append", pure2(t.String, t.String, t.String)),

@@ -9,57 +9,6 @@ import gleeunit/should
 import harness/ffi/core.{expression_to_language}
 import harness/stdlib
 
-pub fn unequal_test() {
-  let prog =
-    ir.apply(ir.apply(ir.builtin("equal"), ir.integer(1)), ir.integer(2))
-  let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
-
-  inference.sound(sub)
-  |> should.equal(Ok(Nil))
-
-  inference.type_of(sub, [])
-  |> should.equal(Ok(t.boolean))
-
-  r.execute(prog, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.false()))
-}
-
-pub fn equal_test() {
-  let prog =
-    ir.apply(ir.apply(ir.builtin("equal"), ir.string("foo")), ir.string("foo"))
-  let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
-
-  inference.sound(sub)
-  |> should.equal(Ok(Nil))
-
-  inference.type_of(sub, [])
-  |> should.equal(Ok(t.boolean))
-
-  r.execute(prog, stdlib.env(), dict.new())
-  |> should.equal(Ok(v.true()))
-}
-
-// also tests generalization of builtins
-pub fn debug_test() {
-  let prog =
-    ir.let_(
-      "_",
-      ir.apply(ir.builtin("debug"), ir.integer(10)),
-      ir.apply(ir.builtin("debug"), ir.string("foo")),
-    )
-  let sub = inference.infer(dict.new(), prog, t.Unbound(-1), t.Open(-2))
-
-  inference.sound(sub)
-  |> should.equal(Ok(Nil))
-
-  inference.type_of(sub, [])
-  |> should.equal(Ok(t.Str))
-
-  r.execute(prog, stdlib.env(), dict.new())
-  // value is serialized as binary, hence the quotes
-  |> should.equal(Ok(v.String("\"foo\"")))
-}
-
 pub fn simple_fix_test() {
   let prog = ir.apply(ir.builtin("fix"), ir.lambda("_", ir.string("foo")))
   let sub = inference.infer(dict.new(), prog, t.Unbound(-10), t.Closed)
@@ -73,6 +22,9 @@ pub fn simple_fix_test() {
   |> should.equal(Ok(v.String("foo")))
 }
 
+// factorial
+// Debug should be an effect because we don't want different behaviour for different implementations
+// {"0":"a","a":{"0":"i","v":6},"f":{"0":"a","a":{"0":"f","b":{"0":"f","b":{"0":"a","a":{"0":"a","a":{"0":"i","v":0},"f":{"0":"a","a":{"0":"v","l":"n"},"f":{"0":"b","l":"int_compare"}}},"f":{"0":"a","a":{"0":"f","b":{"0":"i","v":1},"l":"_"},"f":{"0":"a","a":{"0":"f","b":{"0":"a","a":{"0":"a","a":{"0":"a","a":{"0":"i","v":1},"f":{"0":"a","a":{"0":"v","l":"n"},"f":{"0":"b","l":"int_subtract"}}},"f":{"0":"v","l":"fact"}},"f":{"0":"a","a":{"0":"v","l":"n"},"f":{"0":"b","l":"int_multiply"}}},"l":"_"},"f":{"0":"m","l":"Gt"}}}},"l":"n"},"l":"fact"},"f":{"0":"b","l":"fix"}}}
 pub fn no_recursive_fix_test() {
   let prog =
     ir.let_(

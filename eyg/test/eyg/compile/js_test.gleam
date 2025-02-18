@@ -278,7 +278,6 @@ int_add(1)(2)",
   test_eval("!int_subtract(3, 2)", 1)
   test_eval("!int_multiply(3, 2)", 6)
   test_eval("!int_divide(7, 2)", 3)
-  test_eval("!int_absolute(-5)", 5)
   test_eval("!int_parse(\"0\")", tagged("Ok", json.int(0)))
   test_eval("!int_to_string(100)", "100")
   test_eval("!string_append(\"ab\")(\"cd\")", "abcd")

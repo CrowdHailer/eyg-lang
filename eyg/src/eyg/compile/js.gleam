@@ -237,7 +237,6 @@ let do_handle = (label, handler, m) => {
     "int_subtract" -> "let int_subtract = (x) => (y) => x - y"
     "int_multiply" -> "let int_multiply = (x) => (y) => x * y"
     "int_divide" -> "let int_divide = (x) => (y) => Math.trunc(x / y)"
-    "int_absolute" -> "let int_absolute = (x) => Math.abs(x)"
     "int_parse" ->
       "let int_parse = (x) => {
   const parsed = Number.parseInt(x, 10);

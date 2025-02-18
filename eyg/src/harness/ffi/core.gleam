@@ -2,6 +2,7 @@ import eyg/analysis/typ as t
 import eyg/compile
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
+import eyg/runtime/builtin
 import eyg/runtime/capture
 import eyg/runtime/cast
 import eyg/runtime/interpreter/runner as r
@@ -24,15 +25,7 @@ import plinth/javascript/global
 pub fn equal() {
   let type_ =
     t.Fun(t.Unbound(0), t.Open(1), t.Fun(t.Unbound(0), t.Open(2), t.boolean))
-  #(type_, state.Arity2(do_equal))
-}
-
-fn do_equal(left, right, rev, env, k) {
-  let value = case left == right {
-    True -> v.true()
-    False -> v.false()
-  }
-  Ok(#(state.V(value), env, k))
+  #(type_, builtin.equal)
 }
 
 pub fn debug() {
@@ -125,7 +118,6 @@ pub fn lib() {
   |> extend("int_subtract", integer.subtract())
   |> extend("int_multiply", integer.multiply())
   |> extend("int_divide", integer.divide())
-  |> extend("int_absolute", integer.absolute())
   |> extend("int_parse", integer.parse())
   |> extend("int_to_string", integer.to_string())
   // string

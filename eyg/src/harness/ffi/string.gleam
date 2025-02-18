@@ -1,23 +1,17 @@
 import eyg/analysis/typ as t
+import eyg/runtime/builtin
 import eyg/runtime/cast
 import eyg/runtime/interpreter/state
 import eyg/runtime/value as v
 import gleam/bit_array
 import gleam/dict
-import gleam/io
 import gleam/list
 import gleam/result
 import gleam/string
 
 pub fn append() {
   let type_ = t.Fun(t.Str, t.Open(0), t.Fun(t.Str, t.Open(1), t.Str))
-  #(type_, state.Arity2(do_append))
-}
-
-pub fn do_append(left, right, rev, env, k) {
-  use left <- result.then(cast.as_string(left))
-  use right <- result.then(cast.as_string(right))
-  Ok(#(state.V(v.String(string.append(left, right))), env, k))
+  #(type_, builtin.append)
 }
 
 pub fn split() {
@@ -26,7 +20,7 @@ pub fn split() {
   #(type_, state.Arity2(do_split))
 }
 
-pub fn do_split(s, pattern, rev, env, k) {
+pub fn do_split(s, pattern, _meta, env, k) {
   use s <- result.then(cast.as_string(s))
   use pattern <- result.then(cast.as_string(pattern))
   let assert [first, ..parts] = string.split(s, pattern)
@@ -47,7 +41,7 @@ pub fn split_once() {
   #(type_, state.Arity2(do_split_once))
 }
 
-pub fn do_split_once(s, pattern, rev, env, k) {
+pub fn do_split_once(s, pattern, _meta, env, k) {
   use s <- result.then(cast.as_string(s))
   use pattern <- result.then(cast.as_string(pattern))
   let value = case string.split_once(s, pattern) {
@@ -67,7 +61,7 @@ pub fn uppercase() {
   #(type_, state.Arity1(do_uppercase))
 }
 
-pub fn do_uppercase(value, rev, env, k) {
+pub fn do_uppercase(value, _meta, env, k) {
   use value <- result.then(cast.as_string(value))
   Ok(#(state.V(v.String(string.uppercase(value))), env, k))
 }
@@ -77,7 +71,7 @@ pub fn lowercase() {
   #(type_, state.Arity1(do_lowercase))
 }
 
-pub fn do_lowercase(value, rev, env, k) {
+pub fn do_lowercase(value, _meta, env, k) {
   use value <- result.then(cast.as_string(value))
   Ok(#(state.V(v.String(string.lowercase(value))), env, k))
 }
@@ -88,7 +82,7 @@ pub fn starts_with() {
   #(type_, state.Arity2(do_starts_with))
 }
 
-pub fn do_starts_with(value, prefix, rev, env, k) {
+pub fn do_starts_with(value, prefix, _meta, env, k) {
   use value <- result.then(cast.as_string(value))
   use prefix <- result.then(cast.as_string(prefix))
   let ret = case string.split_once(value, prefix) {
@@ -104,7 +98,7 @@ pub fn ends_with() {
   #(type_, state.Arity2(do_ends_with))
 }
 
-pub fn do_ends_with(value, suffix, rev, env, k) {
+pub fn do_ends_with(value, suffix, _meta, env, k) {
   use value <- result.then(cast.as_string(value))
   use suffix <- result.then(cast.as_string(suffix))
   let ret = case string.split_once(value, suffix) {
@@ -119,7 +113,7 @@ pub fn length() {
   #(type_, state.Arity1(do_length))
 }
 
-pub fn do_length(value, rev, env, k) {
+pub fn do_length(value, _meta, env, k) {
   use value <- result.then(cast.as_string(value))
   Ok(#(state.V(v.Integer(string.length(value))), env, k))
 }
@@ -131,7 +125,7 @@ pub fn pop_grapheme() {
   #(type_, state.Arity1(do_pop_grapheme))
 }
 
-fn do_pop_grapheme(term, rev, env, k) {
+fn do_pop_grapheme(term, _meta, env, k) {
   use string <- result.then(cast.as_string(term))
   let return = case string.pop_grapheme(string) {
     Error(Nil) -> v.error(v.unit())
@@ -155,7 +149,7 @@ pub fn replace() {
   #(type_, state.Arity3(do_replace))
 }
 
-pub fn do_replace(in, from, to, rev, env, k) {
+pub fn do_replace(in, from, to, _meta, env, k) {
   use in <- result.then(cast.as_string(in))
   use from <- result.then(cast.as_string(from))
   use to <- result.then(cast.as_string(to))

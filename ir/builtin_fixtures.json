@@ -1,0 +1,296 @@
+[
+  {
+    "name": "missing builtin",
+    "source": {
+      "0": "b",
+      "l": "not_a_real_builtin"
+    },
+    "break": {
+      "UndefinedBuiltin": "not_a_real_builtin"
+    }
+  },
+  {
+    "name": "equal values",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 19
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 19
+        },
+        "f": {
+          "0": "b",
+          "l": "equal"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "True",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "unequal values",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 19
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 99
+        },
+        "f": {
+          "0": "b",
+          "l": "equal"
+        }
+      }
+    },
+    "value": {
+      "tagged": {
+        "label": "False",
+        "value": {
+          "record": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "integer addition",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 9
+        },
+        "f": {
+          "0": "b",
+          "l": "int_add"
+        }
+      }
+    },
+    "value": {
+      "integer": 14
+    }
+  },
+  {
+    "name": "integer add zero",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "b",
+          "l": "int_add"
+        }
+      }
+    },
+    "value": {
+      "integer": 5
+    }
+  },
+  {
+    "name": "integer subtract",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 9
+        },
+        "f": {
+          "0": "b",
+          "l": "int_subtract"
+        }
+      }
+    },
+    "value": {
+      "integer": 4
+    }
+  },
+  {
+    "name": "integer subtract from zero",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 7
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "b",
+          "l": "int_subtract"
+        }
+      }
+    },
+    "value": {
+      "integer": -7
+    }
+  },
+  {
+    "name": "integer multiply",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 5
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 9
+        },
+        "f": {
+          "0": "b",
+          "l": "int_multiply"
+        }
+      }
+    },
+    "value": {
+      "integer": 45
+    }
+  },
+  {
+    "name": "integer multiple with zero",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 7
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "i",
+          "v": 0
+        },
+        "f": {
+          "0": "b",
+          "l": "int_multiply"
+        }
+      }
+    },
+    "value": {
+      "integer": 0
+    }
+  },
+  {
+    "name": "absolute value",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": -11
+      },
+      "f": {
+        "0": "b",
+        "l": "int_absolute"
+      }
+    },
+    "value": {
+      "integer": 11
+    }
+  },
+  {
+    "name": "absolute value no change",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "i",
+        "v": 13
+      },
+      "f": {
+        "0": "b",
+        "l": "int_absolute"
+      }
+    },
+    "value": {
+      "integer": 13
+    }
+  },
+  {
+    "name": "string append",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": "buzz"
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": "fizz"
+        },
+        "f": {
+          "0": "b",
+          "l": "string_append"
+        }
+      }
+    },
+    "value": {
+      "string": "fizzbuzz"
+    }
+  },
+  {
+    "name": "string append empty strings",
+    "source": {
+      "0": "a",
+      "a": {
+        "0": "s",
+        "v": ""
+      },
+      "f": {
+        "0": "a",
+        "a": {
+          "0": "s",
+          "v": ""
+        },
+        "f": {
+          "0": "b",
+          "l": "string_append"
+        }
+      }
+    },
+    "value": {
+      "string": ""
+    }
+  }
+]

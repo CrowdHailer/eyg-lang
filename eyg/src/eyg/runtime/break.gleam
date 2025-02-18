@@ -5,6 +5,7 @@ pub type Reason(m, c) {
   NotAFunction(Value(m, c))
   UndefinedReference(String)
   UndefinedVariable(String)
+  UndefinedBuiltin(String)
   Vacant
   NoMatch(term: Value(m, c))
   UnhandledEffect(String, Value(m, c))
@@ -15,6 +16,7 @@ pub type Reason(m, c) {
 pub fn reason_to_string(reason) {
   case reason {
     UndefinedVariable(var) -> "variable undefined: " <> var
+    UndefinedBuiltin(var) -> "variable builtin: " <> var
     UndefinedReference(id) -> "reference undefined: #" <> id
     IncorrectTerm(expected, got) ->
       string.concat([

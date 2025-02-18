@@ -128,7 +128,6 @@ pub fn builtins() {
   |> extend_b("int_subtract", subtract())
   |> extend_b("int_multiply", multiply())
   |> extend_b("int_divide", divide())
-  |> extend_b("int_absolute", absolute())
   // |> extend_b("int_parse", parse())
   |> extend_b("int_to_string", to_string())
   // string
@@ -195,10 +194,6 @@ pub fn multiply() {
 
 pub fn divide() {
   t.Fun(t.Integer, t.Var(0), t.Fun(t.Integer, t.Var(1), t.Integer))
-}
-
-pub fn absolute() {
-  t.Fun(t.Integer, t.Var(0), t.Integer)
 }
 
 // TODO parse
