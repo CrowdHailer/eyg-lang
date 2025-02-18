@@ -7,12 +7,10 @@ gleam = ">= 1.5.0"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 1.0.0"
-gleam_javascript = ">= 0.13.0 and < 2.0.0"
 gleam_bitwise = "~> 1.2"
 lustre = ">= 4.6.4 and < 5.0.0"
 gleam_json = ">= 1.0.0 and < 3.0.0"
 gleam_fetch = "~> 1.0"
-plinth = ">= 0.5.2 and < 1.0.0"
 simplifile = "~> 1.0"
 gleam_community_codec = {path= "../../codec"}
 midas = ">= 1.0.0 and < 2.0.0"
@@ -21,14 +19,17 @@ midas_browser = ">= 0.1.3 and < 1.0.0"
 midas_sdk = ">= 0.2.0 and < 1.0.0"
 oas = ">= 1.0.1 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
-glen_node = ">= 0.0.2 and < 1.0.0"
+# glen_node = ">= 0.0.2 and < 1.0.0"
+glen_node = {path= "../../glen_node"}
 # glen = ">= 2.2.1 and < 3.0.0"
 glen = {path= "../../../glen"}
 filepath = ">= 1.1.0 and < 2.0.0"
-midas_node = ">= 1.2.0 and < 2.0.0"
+# midas_node = ">= 1.2.0 and < 2.0.0"
+midas_node = {path = "../../midas_node"}
 gleam_http = ">= 3.7.2 and < 4.0.0"
 supa = ">= 1.0.0 and < 2.0.0"
-mysig = ">= 0.4.0 and < 1.0.0"
+# mysig = ">= 0.4.0 and < 1.0.0"
+mysig = {path = "../../mysig"}
 snag = ">= 1.1.0 and < 2.0.0"
 gleam_regexp = ">= 1.1.0 and < 2.0.0"
 eyg_ir = {path= "../packages/eyg_ir"}
@@ -37,6 +38,8 @@ eyg_analysis = {path= "../packages/gleam_analysis"}
 gleamx = {path= "../packages/gleamx"}
 morph = {path= "../packages/morph"}
 dag_json = ">= 1.1.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+plinth = ">= 0.5.8 and < 1.0.0"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

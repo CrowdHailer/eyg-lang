@@ -6,7 +6,8 @@ import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
 import gleam/javascript/array
-import gleam/javascript/map
+
+// import gleam/javascript/map
 import gleam/list
 import gleam/result
 import gleam/string
@@ -24,7 +25,7 @@ fn handle_click(event, states) {
   ))
   use container <- result.then(element.closest(target, "[r\\:container]"))
   use key <- result.then(element.get_attribute(target, "on:click"))
-  use #(action, env) <- result.then(map.get(states, container))
+  use #(action, env) <- result.then(todo as "map.get(states, container)")
   // TODO get attribute and multiple sources
   let answer = r.call(action, [#(v.String(key), Nil)], env, dict.new())
   // console.log(answer)
@@ -37,7 +38,7 @@ fn handle_click(event, states) {
       let assert Ok(action) = cast.field("action", cast.any, return)
       element.set_inner_html(container, content)
       // Need native map because js objects are deep equal true
-      Ok(map.set(states, container, #(action, env)))
+      Ok(todo as "map.set(states, container, #(action, env))")
     }
     _ -> {
       console.log("bad stuff")
@@ -68,9 +69,9 @@ pub fn run() {
       // TODO remove env, it doesn't matter call to call
       Ok(#(container, #(action, env)))
     })
-    |> list.fold(map.new(), fn(map, item) {
+    |> list.fold(todo as "map.new()", fn(map, item) {
       let #(key, value) = item
-      map.set(map, key, value)
+      todo as "map.set(map, key, value)"
     })
   states
   |> console.log
