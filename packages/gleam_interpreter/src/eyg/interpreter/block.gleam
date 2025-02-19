@@ -1,5 +1,7 @@
+import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/ir/tree as ir
+import gleam/dict
 import gleam/list
 import gleam/option.{None, Some}
 
@@ -54,4 +56,9 @@ pub fn call(f, args, env, h) {
 
 pub fn resume(value, env, k) {
   loop(state.step(state.V(value), env, k), env.scope)
+}
+
+// This definetly does need scope
+pub fn execute_next(exp, scope) {
+  execute(exp, expression.new_env(scope), dict.new())
 }

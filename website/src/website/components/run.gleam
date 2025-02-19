@@ -37,20 +37,9 @@ pub type Status {
 // effects are not a map of functions we don't use that for stateful running
 pub fn start(editable, scope, effects, cache) {
   let return =
-    block.execute(
-      editable.to_annotated(editable, []) |> ir.clear_annotation,
-      istate.Env(scope, dict.new(), dict.new()),
-      // stdlib.new_env(
-      //   scope,
-      //   sync.named_values(cache)
-      //     |> dict.from_list
-      //     // TODO move all unsafe into stdlib
-      //     |> dynamic.from()
-      //     |> dynamicx.unsafe_coerce(),
-      // ),
-      // effects
-      dict.new(),
-    )
+    editable.to_annotated(editable, [])
+    |> ir.clear_annotation
+    |> block.execute_next(scope)
   let status = case return {
     Ok(#(value, env)) -> Done(value, env)
     Error(debug) -> handle_extrinsic_effects(debug, effects)

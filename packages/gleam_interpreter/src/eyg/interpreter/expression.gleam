@@ -55,7 +55,7 @@ pub fn call_next(f, args) {
 }
 
 // This assumes only scope needs passing around
-fn new_env(scope) {
+pub fn new_env(scope) {
   state.Env(scope: scope, references: dict.new(), builtins: builtins())
 }
 
