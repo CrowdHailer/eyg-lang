@@ -10,6 +10,7 @@ import website/components/auth_panel
 import website/components/snippet
 import website/harness/browser as harness
 import website/sync/browser
+import website/sync/cache
 import website/sync/sync
 
 pub const int_key = "int"
@@ -236,6 +237,22 @@ fn init_example(json, cache) {
   snippet.init(source, [], harness.effects(), cache)
 }
 
+fn init_cache_example(source, cache) {
+  let snippet = todo
+  let task_count = -1
+  let running = todo as "not running"
+  // cant use history length could use hash dont want to resolve twice
+  let return = cache.run(source, cache)
+}
+
+fn run_update(state, message) {
+  case message {
+    Start -> {
+      let task_count = todo + 1
+    }
+  }
+}
+
 pub fn init(_) {
   let cache = sync.init(browser.get_origin())
   let snippets = [
@@ -293,8 +310,13 @@ fn fetch_missing(state) {
   #(state, tasks)
 }
 
+pub type RunMessage {
+  Start
+}
+
 pub type Message {
   SnippetMessage(String, snippet.Message)
+  RunMessage(String, RunMessage)
   SyncMessage(sync.Message)
   AuthMessage(auth_panel.Message)
 }
@@ -363,6 +385,9 @@ pub fn update(state: State, message) {
       let #(state, tasks) = fetch_missing(state)
       let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
       #(state, effect.batch([snippet_effect, sync_effect]))
+    }
+    RunMessage(identifier, message) -> {
+      todo
     }
     SyncMessage(message) -> {
       let State(cache: cache, ..) = state

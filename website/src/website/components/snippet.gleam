@@ -1006,8 +1006,9 @@ fn run_effects(state) {
     run.Handling(_label, lift, env, k, blocking) -> {
       case blocking(lift) {
         Ok(promise) -> {
-          let run = run.Run(status, effect_log)
-          let state = Snippet(..state, run: run)
+          // There's no change here
+          // let run = run.Run(status, effect_log)
+          // let state = Snippet(..state, run: run)
           #(state, AwaitRunningEffect(promise))
         }
         Error(reason) -> {

@@ -46,7 +46,7 @@ pub fn start(exp, scope) {
 // snippets are not installed in the cache
 
 // Need to handle effect and ref at the same time because they could be in any order
-pub fn act(return, cache) {
+pub fn run(return, cache) {
   let Cache(fragments: fragments) = cache
   case return {
     Error(#(reason, _meta, env, k)) ->
@@ -77,8 +77,9 @@ pub fn act(return, cache) {
 
 // snippet has run id or page
 
+// might belong on a run 
 pub fn run_blocking(return, cache, extrinsic) {
-  let return = act(return, cache)
+  let return = run(return, cache)
   case return {
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case list.key_find(extrinsic, label) {
@@ -138,7 +139,7 @@ pub fn install_fragment(cache, cid, bytes) {
 
 pub fn install_source(cache, cid, source) {
   let scope = []
-  let return = act(expression.execute_next(source, scope), cache)
+  let return = run(expression.execute_next(source, scope), cache)
   let fragment = Fragment(source, return)
   let fragments = dict.insert(cache.fragments, cid, fragment)
   case return {
@@ -175,4 +176,3 @@ pub fn resolve_references(fragments, remaining) {
     }
   }
 }
-// Fetch tasks are different promises
