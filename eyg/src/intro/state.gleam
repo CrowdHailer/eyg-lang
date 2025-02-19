@@ -4,7 +4,7 @@
 // import eyg/package
 // import eyg/interpreter/break
 // import eyg/interpreter/cast
-// import eyg/runtime/interpreter/runner as r
+// import eyg/interpreter/expression as r
 // import eyg/interpreter/state.{type Env, type Stack} as istate
 // import eyg/interpreter/value as v
 // import website/sync/browser

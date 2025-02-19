@@ -1,8 +1,8 @@
 import eyg/analysis/typ as t
 import eyg/interpreter/cast
+import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/runtime/break as old_break
-import eyg/runtime/interpreter/runner as r
 import gleam/http/request
 import gleam/http/response
 import gleam/javascript/promise

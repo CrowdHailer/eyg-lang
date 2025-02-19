@@ -1,10 +1,10 @@
 import eyg/interpreter/break
 import eyg/interpreter/cast
+import eyg/interpreter/expression as r
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
 import eyg/runtime/break as old_break
-import eyg/runtime/interpreter/runner as r
 import eyg/runtime/value as old_value
 import gleam/dict
 import gleam/dynamic

@@ -1,6 +1,6 @@
+import eyg/interpreter/expression as r
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/interpreter/runner as r
 import gleam/dict
 import gleeunit/should
 import harness/stdlib

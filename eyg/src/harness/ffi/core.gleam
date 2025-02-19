@@ -7,7 +7,7 @@ import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import eyg/runtime/capture
-import eyg/runtime/interpreter/runner as r
+import eyg/interpreter/expression as r
 import eyg/runtime/value as old_value
 import gleam/bit_array
 import gleam/dict
