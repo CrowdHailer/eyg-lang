@@ -5,6 +5,10 @@ import multiformats/hashes/sha256
 
 pub fn from_tree(source) {
   let bytes = dag_json.to_block(source)
+  from_block(bytes)
+}
+
+pub fn from_block(bytes) {
   let multihash = sha256.digest(bytes)
   cid.create_v1(codec.code(), multihash)
   |> cid.to_string

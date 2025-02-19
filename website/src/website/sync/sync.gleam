@@ -1,10 +1,8 @@
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/error
+import eyg/interpreter/expression as runner
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import website/components/simple_debug
-
-// import eyg/runtime/break as old_break
 import gleam/dict.{type Dict}
 import gleam/http.{type Scheme}
 import gleam/http/request
@@ -16,6 +14,7 @@ import gleam/result
 import midas/task as t
 import plinth/javascript/console
 import snag
+import website/components/simple_debug
 import website/sync/dump
 import website/sync/fragment
 import website/sync/supabase
@@ -224,6 +223,20 @@ pub fn do_resolve(pending, loaded) {
   }
 }
 
+// fn foo() {
+//   case todo {
+//     Lookup(Release) -> {
+//       // match release to index and find ref
+//       todo
+//     }
+//     Lookup(Reference) -> {
+//       // lookup reference
+//       todo
+//     }
+//   }
+//   todo
+// }
+
 fn compute(source, loaded) {
   let types =
     dict.map_values(loaded, fn(_ref, computed) {
@@ -231,10 +244,11 @@ fn compute(source, loaded) {
       type_
     })
   let values = values_from_loaded(loaded)
+  // TODO with references
   let #(top_type, errors) = fragment.infer(source, types)
   case error.missing_references(errors) {
     [] -> {
-      let executed = case fragment.eval(source, values) {
+      let executed = case runner.execute_next(source, []) {
         Ok(value) -> Ok(value)
         Error(#(reason, _, _, _)) -> {
           io.debug(reason)

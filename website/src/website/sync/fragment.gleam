@@ -1,11 +1,9 @@
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic
-import eyg/interpreter/expression as r
 import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import gleam/dict
 import gleam/list
 
 pub type Scope =
@@ -40,14 +38,4 @@ pub fn infer(contained, types) {
       }
     })
   #(top_type, new_errors)
-}
-
-pub fn eval(contained, values) {
-  let env = empty_env(values)
-  let handlers = dict.new()
-  r.execute(contained, env, handlers)
-}
-
-pub fn empty_env(references) -> istate.Env(_) {
-  istate.Env(scope: [], builtins: dict.new(), references: references)
 }
