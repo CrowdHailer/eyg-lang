@@ -5,6 +5,7 @@ import gleam/list
 import lustre/attribute as a
 import lustre/element.{text}
 import lustre/element/html as h
+import website/components/simple_debug
 
 pub fn render(value) {
   case value {
@@ -28,7 +29,7 @@ pub fn render(value) {
 }
 
 fn render_value(value) {
-  todo as "text(old_value.debug(value))"
+  text(simple_debug.value_to_string(value))
 }
 
 pub fn table(headings, values) {

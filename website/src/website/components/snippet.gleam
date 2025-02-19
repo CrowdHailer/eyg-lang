@@ -3,7 +3,6 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
-import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
@@ -43,6 +42,7 @@ import plinth/browser/window
 import plinth/javascript/console
 import website/components/output
 import website/components/run
+import website/components/simple_debug
 import website/components/snippet/menu
 import website/sync/sync
 
@@ -1258,7 +1258,7 @@ fn render_run(run) {
       ])
     run.Failed(#(reason, _, _, _)) ->
       footer_area(neo_orange_4, [
-        element.text(todo as "break.reason_to_string(reason)"),
+        element.text(simple_debug.reason_to_string(reason)),
       ])
   }
 }
@@ -1268,7 +1268,7 @@ pub fn fail_message(reason) {
     NoKeyBinding(key) -> string.concat(["No action bound for key '", key, "'"])
     ActionFailed(action) ->
       string.concat(["Action ", action, " not possible at this position"])
-    RunFailed(#(reason, _, _, _)) -> todo as "break.reason_to_string(reason)"
+    RunFailed(#(reason, _, _, _)) -> simple_debug.reason_to_string(reason)
   }
 }
 
