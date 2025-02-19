@@ -1,11 +1,7 @@
 import eyg/interpreter/value as v
-import eyg/sync/browser
-import eyg/sync/sync
 import gleam/http
 import gleam/list
 import gleam/option.{None}
-import harness/impl/spotless.{Config}
-import harness/impl/spotless/netlify
 import lustre
 import lustre/attribute as a
 import lustre/element
@@ -18,8 +14,12 @@ import website/components
 import website/components/auth_panel
 import website/components/snippet
 import website/config
+import website/harness/spotless.{Config}
+import website/harness/spotless/netlify
 import website/routes/common
 import website/routes/home/state
+import website/sync/browser
+import website/sync/sync
 
 // TODO this can return just some code id needs to match in client and empty_lustre
 // without layout it can move to common

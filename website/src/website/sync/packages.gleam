@@ -1,5 +1,5 @@
-import eyg/sync/sync
 import gleam/http/request
+import website/sync/sync
 
 // should be fetch from storage or remote but storage is only for self
 pub fn fetch_remote(origin, group, name) {

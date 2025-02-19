@@ -1,16 +1,16 @@
-import harness/impl/spotless/dnsimple/list_domains as dnsimple_list_domains
-import harness/impl/spotless/gmail/list_messages as gmail_list_messages
-import harness/impl/spotless/gmail/send as gmail_send
-import harness/impl/spotless/google
-import harness/impl/spotless/google_calendar/list_events as gcal_list_events
-import harness/impl/spotless/netlify/create_site as netlify_create_site
-import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
-import harness/impl/spotless/netlify/list_sites as netlify_list_sites
-import harness/impl/spotless/twitter
-import harness/impl/spotless/twitter/tweet
-import harness/impl/spotless/vimeo
-import harness/impl/spotless/vimeo/my_videos as vimeo_my_videos
 import midas/sdk/netlify
+import website/harness/spotless/dnsimple/list_domains as dnsimple_list_domains
+import website/harness/spotless/gmail/list_messages as gmail_list_messages
+import website/harness/spotless/gmail/send as gmail_send
+import website/harness/spotless/google
+import website/harness/spotless/google_calendar/list_events as gcal_list_events
+import website/harness/spotless/netlify/create_site as netlify_create_site
+import website/harness/spotless/netlify/deploy_site as netlify_deploy_site
+import website/harness/spotless/netlify/list_sites as netlify_list_sites
+import website/harness/spotless/twitter
+import website/harness/spotless/twitter/tweet
+import website/harness/spotless/vimeo
+import website/harness/spotless/vimeo/my_videos as vimeo_my_videos
 
 pub type Config {
   Config(dnsimple_local: Bool, netlify: netlify.App, twitter_local: Bool)

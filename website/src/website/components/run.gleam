@@ -1,16 +1,12 @@
+import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/interpreter/block
-import eyg/sync/sync
 import gleam/dict
-import gleam/dynamic
-import gleam/dynamicx
 import gleam/javascript/promise
 import gleam/list
 import gleam/option
-import harness/stdlib
 import morph/editable
 
 pub type Run {
@@ -43,14 +39,15 @@ pub fn start(editable, scope, effects, cache) {
   let return =
     block.execute(
       editable.to_annotated(editable, []) |> ir.clear_annotation,
-      stdlib.new_env(
-        scope,
-        sync.named_values(cache)
-          |> dict.from_list
-          // TODO move all unsafe into stdlib
-          |> dynamic.from()
-          |> dynamicx.unsafe_coerce(),
-      ),
+      istate.Env(scope, dict.new(), dict.new()),
+      // stdlib.new_env(
+      //   scope,
+      //   sync.named_values(cache)
+      //     |> dict.from_list
+      //     // TODO move all unsafe into stdlib
+      //     |> dynamic.from()
+      //     |> dynamicx.unsafe_coerce(),
+      // ),
       // effects
       dict.new(),
     )

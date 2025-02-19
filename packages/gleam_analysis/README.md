@@ -22,3 +22,8 @@ Further documentation can be found at <https://hexdocs.pm/eyg_analysis>.
 gleam run   # Run the project
 gleam test  # Run the tests
 ```
+
+## Dicussions
+
+- Should `debug` be part of this module?
+  Usefully printing large types requires more sophistication than converting to a single string representation.

@@ -1,15 +1,12 @@
 import eyg/analysis/inference/levels_j/contextual as j
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic
+import eyg/interpreter/expression as r
 import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/tree as ir
-import eyg/runtime/interpreter/runner as r
 import gleam/dict
-import gleam/dynamic
-import gleam/dynamicx
 import gleam/list
-import harness/stdlib
 
 pub type Scope =
   List(#(String, String))
@@ -52,10 +49,5 @@ pub fn eval(contained, values) {
 }
 
 pub fn empty_env(references) -> istate.Env(_) {
-  istate.Env(
-    ..stdlib.env()
-    |> dynamic.from()
-    |> dynamicx.unsafe_coerce(),
-    references: references,
-  )
+  istate.Env(scope: [], builtins: dict.new(), references: references)
 }

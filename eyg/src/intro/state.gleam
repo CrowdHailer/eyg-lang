@@ -7,10 +7,10 @@
 // import eyg/runtime/interpreter/runner as r
 // import eyg/interpreter/state.{type Env, type Stack} as istate
 // import eyg/interpreter/value as v
-// import eyg/sync/browser
-// import eyg/sync/fragment
-// import eyg/sync/packages
-// import eyg/sync/sync
+// import website/sync/browser
+// import website/sync/fragment
+// import website/sync/packages
+// import website/sync/sync
 // import eygir/encode
 // import gleam/dict
 // import gleam/http/request.{type Request}
@@ -23,9 +23,9 @@
 // import gleam/uri
 // import harness/fetch
 // import harness/http
-// import harness/impl/browser/geolocation
-// import harness/impl/browser/now
-// import harness/impl/browser/visit
+// import website/harness/browser/geolocation
+// import website/harness/browser/now
+// import website/harness/browser/visit
 // import intro/content
 // import lustre/effect
 // import midas/browser as m_browser

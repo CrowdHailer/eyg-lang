@@ -7,13 +7,13 @@ import gleam/javascript/promise
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/result
-import harness/impl/spotless/dnsimple/auth
-import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/dnsimple
 import midas/sdk/dnsimple/schema
 import midas/task
 import snag
+import website/harness/spotless/dnsimple/auth
+import website/harness/spotless/proxy
 
 pub const l = "DNSimple.ListDomains"
 

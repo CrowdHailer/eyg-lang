@@ -7,11 +7,11 @@ import gleam/io
 import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result
-import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/twitter
 import midas/task
 import snag
+import website/harness/spotless/proxy
 
 pub const l = "Twitter.Tweet"
 

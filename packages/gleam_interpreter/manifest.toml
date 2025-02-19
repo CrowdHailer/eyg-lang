@@ -13,6 +13,6 @@ packages = [
 
 [requirements]
 eyg_ir = { path = "../eyg_ir" }
-gleam_javascript = { version = ">= 1.0.0 and < 2.0.0" }
+gleam_javascript = { version = ">= 0.13.0 and < 2.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }

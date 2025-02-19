@@ -1,12 +1,9 @@
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/expression as runner
 import eyg/interpreter/state as istate
 import eyg/interpreter/value
 import eyg/ir/dag_json
-import eyg/runtime/interpreter/runner
-import eyg/sync/browser
-import eyg/sync/sync
-import eyg/website/reload
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
@@ -14,14 +11,16 @@ import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import harness/impl/browser as harness
-import harness/impl/spotless
-import harness/stdlib
 import lustre/effect
 import morph/analysis
 import morph/editable as e
 import website/components/auth_panel
+import website/components/reload
 import website/components/snippet
+import website/harness/browser as harness
+import website/harness/spotless
+import website/sync/browser
+import website/sync/sync
 
 pub type Meta =
   List(Int)
@@ -243,7 +242,7 @@ pub fn update(state: State, message) {
 
       case check {
         Ok(#(_, False)) -> {
-          let env = stdlib.new_env([], dict.new())
+          let env = todo as "stdlib.new_env([], dict.new())"
           let h = dict.new()
 
           let assert Ok(source) =
@@ -261,7 +260,7 @@ pub fn update(state: State, message) {
           #(state, effect.none())
         }
         Ok(#(_, True)) -> {
-          let env = stdlib.new_env([], dict.new())
+          let env = todo as "stdlib.new_env([], dict.new())"
           let h = dict.new()
 
           let assert Ok(source) =
@@ -296,7 +295,7 @@ pub fn render(state: State) {
 
   case check {
     Ok(#(_, False)) -> {
-      let env = stdlib.new_env([], dict.new())
+      let env = todo as "stdlib.new_env([], dict.new())"
       let h = dict.new()
 
       let assert Ok(source) =

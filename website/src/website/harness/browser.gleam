@@ -1,15 +1,15 @@
-import harness/fetch
-import harness/impl/browser/abort
-import harness/impl/browser/alert
-import harness/impl/browser/copy
-import harness/impl/browser/download
-import harness/impl/browser/flip
-import harness/impl/browser/geolocation as geo
-import harness/impl/browser/now
-import harness/impl/browser/paste
-import harness/impl/browser/prompt
-import harness/impl/browser/random
-import harness/impl/browser/visit
+import website/harness/browser/abort
+import website/harness/browser/alert
+import website/harness/browser/copy
+import website/harness/browser/download
+import website/harness/browser/fetch
+import website/harness/browser/flip
+import website/harness/browser/geolocation as geo
+import website/harness/browser/now
+import website/harness/browser/paste
+import website/harness/browser/prompt
+import website/harness/browser/random
+import website/harness/browser/visit
 
 pub fn effects() {
   [

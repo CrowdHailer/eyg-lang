@@ -1,6 +1,4 @@
 import eyg/ir/dag_json
-import eyg/sync/browser as remote
-import eyg/sync/sync
 import gleam/bit_array
 import gleam/int
 import gleam/io
@@ -10,11 +8,6 @@ import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string
-import harness/impl/browser as harness
-import harness/impl/spotless/netlify
-import harness/impl/spotless/netlify/deploy_site as netlify_deploy_site
-import harness/impl/spotless/twitter
-import harness/impl/spotless/twitter/tweet
 import lustre
 import lustre/effect
 import midas/browser
@@ -23,6 +16,13 @@ import plinth/browser/document
 import plinth/browser/element
 import plinth/javascript/console
 import website/components/snippet
+import website/harness/browser as harness
+import website/harness/spotless/netlify
+import website/harness/spotless/netlify/deploy_site as netlify_deploy_site
+import website/harness/spotless/twitter
+import website/harness/spotless/twitter/tweet
+import website/sync/browser as remote
+import website/sync/sync
 
 pub fn run() {
   let scripts = document.query_selector_all("[type='application/json+eyg']")

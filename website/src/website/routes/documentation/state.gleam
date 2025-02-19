@@ -1,16 +1,16 @@
 import eyg/ir/dag_json
-import eyg/sync/browser
-import eyg/sync/sync
 import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import harness/impl/browser as harness
 import lustre/effect
 import morph/editable as e
 import website/components/auth_panel
 import website/components/snippet
+import website/harness/browser as harness
+import website/sync/browser
+import website/sync/sync
 
 pub const int_key = "int"
 

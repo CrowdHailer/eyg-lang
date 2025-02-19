@@ -1,5 +1,5 @@
-// import eyg/sync/cid
-// import eyg/sync/sync
+// import website/sync/cid
+// import website/sync/sync
 // import eygir/annotated as a
 // import eygir/encode
 // import gleam/http/response

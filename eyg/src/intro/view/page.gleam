@@ -4,7 +4,7 @@
 // import eyg/package
 // import eyg/parse/lexer
 // import eyg/interpreter/value as v
-// import eyg/sync/sync
+// import website/sync/sync
 // import eyg/text/highlight
 // import eyg/text/text
 // import gleam/dict

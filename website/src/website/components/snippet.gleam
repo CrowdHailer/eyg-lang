@@ -2,14 +2,12 @@ import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
+import eyg/interpreter/block
 import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import eyg/runtime/interpreter/block
-import eyg/sync/sync
-import eyg/website/run
 import gleam/bit_array
 import gleam/dict
 import gleam/dynamicx
@@ -44,7 +42,9 @@ import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/console
 import website/components/output
+import website/components/run
 import website/components/snippet/menu
+import website/sync/sync
 
 const neo_blue_3 = "#87ceeb"
 
@@ -1095,11 +1095,15 @@ pub fn render_errors(errors) {
     neo_orange_4,
     list.map(errors, fn(error) {
       let #(path, reason) = error
-      h.div([event.on_click(UserClickedPath(path))], [
-        debug.reason_to_html(reason),
-      ])
+      h.div([event.on_click(UserClickedPath(path))], [reason_to_html(reason)])
     }),
   )
+}
+
+pub fn reason_to_html(r) {
+  h.span([a.style([#("white-space", "nowrap")])], [
+    element.text(debug.reason(r)),
+  ])
 }
 
 pub fn render_pallet(state) {

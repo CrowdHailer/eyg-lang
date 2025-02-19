@@ -1,16 +1,12 @@
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
-import eyg/shell/examples
-import eyg/sync/browser
-import eyg/sync/sync
 import gleam/int
 import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
 import gleam/option.{type Option, None, Some}
 import gleroglero/outline
-import harness/impl/browser as harness
 import lustre
 import lustre/attribute as a
 import lustre/effect
@@ -27,10 +23,14 @@ import plinth/browser/document
 import plinth/browser/element as pelement
 import plinth/browser/window
 import plinth/javascript/console
+import website/components/examples
 import website/components/output
 import website/components/readonly
 import website/components/snippet
+import website/harness/browser as harness
 import website/routes/common
+import website/sync/browser
+import website/sync/sync
 
 pub fn app(module, func) {
   use script <- asset.do(asset.bundle(module, func))

@@ -1,9 +1,9 @@
 import eyg/analysis/type_/isomorphic as t
-import eyg/website/reload
 import gleam/dict
 import gleam/option.{None}
 import gleeunit/should
 import morph/editable as e
+import website/components/reload
 
 pub fn source_with_vacant_doesnt_check_test() {
   let source = e.Vacant

@@ -1,6 +1,3 @@
-import eyg/sync/dump
-import eyg/sync/supabase
-import eyg/sync/sync
 import gleam/dict
 import gleam/http
 import gleam/io
@@ -11,6 +8,9 @@ import gleam/uri
 import midas/browser
 import midas/task as t
 import plinth/browser/window
+import website/sync/dump
+import website/sync/supabase
+import website/sync/sync
 
 pub fn get_origin() {
   let assert Ok(location) = uri.parse(window.location())

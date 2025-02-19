@@ -4,16 +4,9 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/string
-import lustre/attribute as a
-import lustre/element
-import lustre/element/html as h
 
 pub fn mono(type_) {
   render_type(type_)
-}
-
-pub fn reason_to_html(r) {
-  h.span([a.style([#("white-space", "nowrap")])], [element.text(reason(r))])
 }
 
 pub fn reason(r) {

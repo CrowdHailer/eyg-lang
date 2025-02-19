@@ -5,11 +5,11 @@ import gleam/http
 import gleam/javascript/promise
 import gleam/option.{None}
 import gleam/result
-import harness/impl/spotless/proxy
 import midas/browser
 import midas/sdk/netlify
 import midas/task
 import snag
+import website/harness/spotless/proxy
 
 pub const l = "Netlify.DeploySite"
 

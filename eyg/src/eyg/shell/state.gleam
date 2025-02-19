@@ -1,14 +1,14 @@
 // import eyg/shell/situation.{type Situation}
-// import eyg/sync/browser
-// import eyg/sync/sync
+// import website/sync/browser
+// import website/sync/sync
 // import eyg/website/components/snippet
 // import gleam/javascript/promisex
 // import gleam/json
 // import gleam/list
 // import gleam/option.{type Option}
-// import harness/impl/browser as harness
-// import harness/impl/spotless
-// import harness/impl/spotless/netlify/openapi as netlify_spec
+// import website/harness/browser as harness
+// import website/harness/spotless
+// import website/harness/spotless/netlify/openapi as netlify_spec
 // import lustre/effect
 // import morph/editable
 // import oas

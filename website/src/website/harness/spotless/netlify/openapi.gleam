@@ -12,13 +12,13 @@ import gleam/list
 import gleam/option.{None}
 import gleam/result
 import gleam/string
-import harness/impl/spotless/proxy
 import justin
 import midas/browser
 import midas/sdk/netlify
 import midas/task
 import oas
 import snag
+import website/harness/spotless/proxy
 
 fn param_to_type(name, required, spec) {
   let value = case spec {

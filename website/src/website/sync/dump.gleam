@@ -1,5 +1,5 @@
-import eyg/sync/supabase
 import gleam/dict.{type Dict}
+import website/sync/supabase
 
 pub type Dump {
   Dump(

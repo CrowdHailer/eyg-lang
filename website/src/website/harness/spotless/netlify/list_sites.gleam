@@ -5,11 +5,11 @@ import gleam/javascript/promise
 import gleam/list
 import gleam/option.{None}
 import gleam/result
-import harness/impl/spotless/netlify/site
 import midas/browser
 import midas/sdk/netlify
 import midas/task
 import snag
+import website/harness/spotless/netlify/site
 
 pub const l = "Netlify.ListSites"
 

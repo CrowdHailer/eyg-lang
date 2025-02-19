@@ -1,6 +1,6 @@
-import harness/impl/spotless.{Config}
-import harness/impl/spotless/netlify
 import plinth/browser/window
+import website/harness/spotless.{Config}
+import website/harness/spotless/netlify
 
 pub fn load() {
   case window.origin() {

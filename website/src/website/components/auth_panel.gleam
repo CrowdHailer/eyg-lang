@@ -1,4 +1,4 @@
-// import eyg/sync/supabase
+// import website/sync/supabase
 import gleam/javascript/promise.{type Promise}
 import gleam/json
 import gleam/option.{type Option, None, Some}

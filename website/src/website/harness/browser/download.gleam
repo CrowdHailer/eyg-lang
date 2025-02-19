@@ -41,5 +41,5 @@ pub fn result_to_eyg(result) {
   }
 }
 
-@external(javascript, "../../../browser_ffi.mjs", "downloadFile")
+@external(javascript, "../../../download_ffi.mjs", "downloadFile")
 fn download_file(file: file.File) -> Nil
