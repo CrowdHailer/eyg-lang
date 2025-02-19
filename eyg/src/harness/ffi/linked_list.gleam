@@ -1,4 +1,5 @@
 import eyg/analysis/typ as t
+import eyg/interpreter/builtin
 import eyg/interpreter/cast
 import eyg/interpreter/state
 import eyg/interpreter/value as v
@@ -50,38 +51,7 @@ pub fn fold() {
         ),
       ),
     )
-  #(type_, state.Arity3(fold_impl))
-}
-
-pub fn fold_impl(list, initial, func, meta, env, k) {
-  use elements <- result.then(cast.as_list(list))
-  do_fold(elements, initial, func, meta, env, k)
-}
-
-pub fn do_fold(elements, state, f, meta, env, k) {
-  case elements {
-    [] -> Ok(#(state.V(state), env, k))
-    [element, ..rest] -> {
-      state.call(
-        f,
-        element,
-        meta,
-        env,
-        state.Stack(
-          state.CallWith(state, env),
-          meta,
-          state.Stack(
-            state.Apply(
-              v.Partial(v.Builtin("list_fold"), [v.LinkedList(rest)]),
-              env,
-            ),
-            meta,
-            state.Stack(state.CallWith(f, env), meta, k),
-          ),
-        ),
-      )
-    }
-  }
+  #(type_, builtin.list_fold)
 }
 
 pub fn uncons() {

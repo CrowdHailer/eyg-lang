@@ -7,6 +7,7 @@ import gleam/javascript/promise
 import gleam/list
 
 // loop and eval go to runner as you'd build a new one
+@deprecated("callers should not pass in their own env or effects")
 pub fn execute(exp, env, h) {
   loop(state.step(state.E(exp), env, state.Empty(h)))
 }
@@ -68,4 +69,5 @@ fn builtins() {
   |> dict.insert("int_absolute", builtin.absolute)
   |> dict.insert("int_to_string", builtin.int_to_string)
   |> dict.insert("string_append", builtin.append)
+  |> dict.insert("list_fold", builtin.list_fold)
 }
