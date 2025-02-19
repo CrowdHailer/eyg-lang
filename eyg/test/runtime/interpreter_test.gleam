@@ -1,12 +1,10 @@
 import dag_json
 import eyg/interpreter/break
-import eyg/interpreter/builtin
 import eyg/interpreter/expression as r
 import eyg/interpreter/state
 import eyg/interpreter/value as v
 import eyg/ir/dag_json as codec
 import eyg/ir/tree as ir
-import gleam/dict
 import gleam/dynamic/decode
 import gleam/io
 import gleam/list
@@ -147,19 +145,6 @@ fn fixture_decoder() {
   })
 }
 
-fn execute(source) {
-  let builtins =
-    dict.new()
-    |> dict.insert("equal", builtin.equal)
-    |> dict.insert("int_add", builtin.add)
-    |> dict.insert("int_subtract", builtin.subtract)
-    |> dict.insert("int_multiply", builtin.multiply)
-    |> dict.insert("int_absolute", builtin.absolute)
-    |> dict.insert("string_append", builtin.append)
-
-  r.execute(source, state.Env([], dict.new(), builtins), dict.new())
-}
-
 fn check_evaluated(name, got, expected) {
   case got, expected {
     Ok(got), Ok(expected) -> should.equal(got, expected)
@@ -193,7 +178,7 @@ pub fn eval_fixtures_test() {
 
   list.map(fixtures, fn(fixture) {
     let Fixture(name, source, effects, expected) = fixture
-    let got = execute(source)
+    let got = r.execute_next(source, [])
     let final =
       list.fold(effects, got, fn(return, expected) {
         let Effect(label, value, reply) = expected

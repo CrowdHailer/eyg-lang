@@ -1,6 +1,8 @@
 import eyg/interpreter/break
+import eyg/interpreter/builtin
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import gleam/dict
 import gleam/javascript/promise
 import gleam/list
 
@@ -39,4 +41,30 @@ pub fn await(ret) {
     }
     other -> promise.resolve(other)
   }
+}
+
+// TODO remove old execute, should the interpreter make blocking and other execution methods available or are there too many options
+// TODO should it even accept scope?
+pub fn execute_next(exp, scope) {
+  execute(exp, new_env(scope), dict.new())
+}
+
+// f should have all the required env information
+pub fn call_next(f, args) {
+  call(f, args, new_env([]), dict.new())
+}
+
+// This assumes only scope needs passing around
+fn new_env(scope) {
+  state.Env(scope: scope, references: dict.new(), builtins: builtins())
+}
+
+fn builtins() {
+  dict.new()
+  |> dict.insert("equal", builtin.equal)
+  |> dict.insert("int_add", builtin.add)
+  |> dict.insert("int_subtract", builtin.subtract)
+  |> dict.insert("int_multiply", builtin.multiply)
+  |> dict.insert("int_absolute", builtin.absolute)
+  |> dict.insert("string_append", builtin.append)
 }

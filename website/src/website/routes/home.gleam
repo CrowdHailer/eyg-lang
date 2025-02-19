@@ -1,4 +1,3 @@
-import eyg/interpreter/value as v
 import gleam/http
 import gleam/list
 import gleam/option.{None}
@@ -12,6 +11,7 @@ import mysig/asset/client
 import mysig/html
 import website/components
 import website/components/auth_panel
+import website/components/simple_debug
 import website/components/snippet
 import website/config
 import website/harness/spotless.{Config}
@@ -377,7 +377,7 @@ fn view() {
               |> element.map(state.SnippetMessage(state.hot_reload_key, _)),
             h.p([], [element.text("App state")]),
             h.div([a.class("border-2 p-2")], [
-              element.text(todo as "old_value.debug(s.example.value)"),
+              element.text(simple_debug.value_to_string(s.example.value)),
             ]),
             h.p([], [element.text("Rendered app, click to send message")]),
             h.div([a.class("border-2 p-2")], [

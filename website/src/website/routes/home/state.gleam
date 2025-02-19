@@ -7,10 +7,10 @@ import eyg/ir/dag_json
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
-import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import lustre/effect
 import morph/analysis
 import morph/editable as e
@@ -242,11 +242,8 @@ pub fn update(state: State, message) {
 
       case check {
         Ok(#(_, False)) -> {
-          let env = todo as "stdlib.new_env([], dict.new())"
-          let h = dict.new()
-
           let assert Ok(source) =
-            runner.execute(source |> e.to_annotated([]), env, h)
+            runner.execute_next(source |> e.to_annotated([]), [])
           let source = #(source, [])
 
           // TODO remove by fixing everything to be paths
@@ -254,17 +251,14 @@ pub fn update(state: State, message) {
 
           let select = value.Partial(value.Select("handle"), [])
           let args = [source, #(value, []), #(value.unit(), [])]
-          let assert Ok(new_value) = runner.call(select, args, env, h)
+          let assert Ok(new_value) = runner.call_next(select, args)
           let example = Example(new_value, type_)
           let state = State(..state, example: example)
           #(state, effect.none())
         }
         Ok(#(_, True)) -> {
-          let env = todo as "stdlib.new_env([], dict.new())"
-          let h = dict.new()
-
           let assert Ok(source) =
-            runner.execute(source |> e.to_annotated([]), env, h)
+            runner.execute_next(source |> e.to_annotated([]), [])
           let source = #(source, [])
 
           // TODO remove by fixing everything to be paths
@@ -272,7 +266,7 @@ pub fn update(state: State, message) {
 
           let select = value.Partial(value.Select("migrate"), [])
           let args = [source, #(value, [])]
-          let assert Ok(new_value) = runner.call(select, args, env, h)
+          let assert Ok(new_value) = runner.call_next(select, args)
           let #(new_type, _b) =
             analysis.value_to_type(new_value, dict.new(), [])
           let example = Example(new_value, new_type)
@@ -295,7 +289,8 @@ pub fn render(state: State) {
 
   case check {
     Ok(#(_, False)) -> {
-      let env = todo as "stdlib.new_env([], dict.new())"
+      // TODO pass in a better env
+      let env = istate.Env([], dict.new(), dict.new())
       let h = dict.new()
 
       let assert Ok(source) =
@@ -304,7 +299,11 @@ pub fn render(state: State) {
 
       let select = value.Partial(value.Select("render"), [])
       let args = [source, #(value, [])]
-      let assert Ok(value.String(page)) = runner.call(select, args, env, h)
+      let page = case runner.call(select, args, env, h) {
+        Ok(value.String(page)) -> page
+        // TODO print actual value
+        other -> "something went wrong: " <> string.inspect(other)
+      }
       Ok(#(page, False))
     }
     Ok(#(_, True)) -> Ok(#("", True))
