@@ -1,11 +1,8 @@
-import eyg/ir/tree as ir
-import gleam/dict.{type Dict}
-import gleam/int
-import gleam/javascript/promise.{type Promise as JSPromise}
-import gleam/list
-import gleam/option.{None, Some}
-import gleam/string
 import eyg/interpreter/value as v
+import gleam/dict
+import gleam/int
+import gleam/list
+import gleam/string
 
 pub fn print_bit_string(value) {
   bit_string_to_integers(value, [])
@@ -59,4 +56,3 @@ fn field_to_string(field) {
   let #(k, v) = field
   string.concat([k, ": ", debug(v)])
 }
-

@@ -72,7 +72,7 @@ fn row_content(headers, value) {
     v.Record(fields) -> {
       list.map(headers, fn(header) {
         case dict.get(fields, header) {
-          Ok(value) -> todo as "old_value.debug(value)"
+          Ok(value) -> simple_debug.value_to_string(value)
           Error(Nil) -> "-"
         }
       })
