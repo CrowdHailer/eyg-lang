@@ -66,5 +66,6 @@ fn builtins() {
   |> dict.insert("int_subtract", builtin.subtract)
   |> dict.insert("int_multiply", builtin.multiply)
   |> dict.insert("int_absolute", builtin.absolute)
+  |> dict.insert("int_to_string", builtin.int_to_string)
   |> dict.insert("string_append", builtin.append)
 }

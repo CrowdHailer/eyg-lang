@@ -91,10 +91,5 @@ fn do_parse(raw, _meta, env, k) {
 
 pub fn to_string() {
   let type_ = t.Fun(t.Integer, t.Open(0), t.Str)
-  #(type_, state.Arity1(do_to_string))
-}
-
-fn do_to_string(x, _meta, env, k) {
-  use x <- result.then(cast.as_integer(x))
-  Ok(#(state.V(v.String(int.to_string(x))), env, k))
+  #(type_, builtin.int_to_string)
 }

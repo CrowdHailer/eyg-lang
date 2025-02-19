@@ -53,3 +53,10 @@ fn do_absolute(x, _meta, env, k) {
   use x <- result.then(cast.as_integer(x))
   Ok(#(state.V(v.Integer(int.absolute_value(x))), env, k))
 }
+
+pub const int_to_string = state.Arity1(do_to_string)
+
+fn do_to_string(x, _meta, env, k) {
+  use x <- result.then(cast.as_integer(x))
+  Ok(#(state.V(v.String(int.to_string(x))), env, k))
+}
