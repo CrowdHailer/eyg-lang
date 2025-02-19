@@ -7,35 +7,9 @@ import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
-
-pub fn fetch_sync() {
-  todo
-}
-
-// THe promise version needs a ref
-pub fn fetch_async() {
-  todo
-}
-
-// unknown at time or data
-// Error Unknown/UnknownFragMent/Avaiting
-// sync has to have the stateful run but it's pure and without scope
-pub fn fetch_registration() {
-  todo
-}
-
-// there is a sync run and that can be used by the editor 
-pub fn run_and_catch_promises() -> Nil {
-  case todo {
-    break.UnhandledEffect(label, value) -> todo
-    break.UndefinedReference(ref) -> todo
-    _ -> todo
-  }
-}
-
-// Needto separetlytype check all the refs even if they were not evaluated
-
-// The list of snippets all snippets currently use the block runner
+import gleam/javascript/promise
+import gleam/list
+import gleam/option.{None, Some}
 
 // render snippet takes cache as an argument to show loading or errored
 
@@ -51,10 +25,6 @@ pub fn run_and_catch_promises() -> Nil {
 
 // If message passing then each run would keep a cache
 // Solve with Sync API Yes/No/Pending
-
-// importantly the run state does not include a hash
-// run continue with cache
-// run continue with effect
 
 pub type Meta =
   Nil
@@ -73,13 +43,26 @@ pub fn start(exp, scope) {
   block.execute_next(exp, scope)
 }
 
+// snippets are not installed in the cache
+
 // Need to handle effect and ref at the same time because they could be in any order
 pub fn act(return, cache) {
+  let Cache(fragments: fragments) = cache
   case return {
     Error(#(reason, _meta, env, k)) ->
       case reason {
+        break.UndefinedRelease(package, release, cid) -> {
+          case todo as "fetch cid" {
+            Ok(c) if c == cid ->
+              case dict.get(fragments, cid) {
+                Ok(Fragment(value: Ok(value), ..)) ->
+                  expression.resume(value, env, k)
+                _ -> return
+              }
+            _ -> return
+          }
+        }
         break.UndefinedReference(cid) -> {
-          let Cache(fragments: fragments) = cache
           case dict.get(fragments, cid) {
             Ok(Fragment(value: Ok(value), ..)) ->
               expression.resume(value, env, k)
@@ -89,6 +72,33 @@ pub fn act(return, cache) {
         _ -> return
       }
     Ok(_) -> return
+  }
+}
+
+// snippet has run id or page
+
+pub fn run_blocking(return, cache, extrinsic) {
+  let return = act(return, cache)
+  case return {
+    Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
+      case list.key_find(extrinsic, label) {
+        Ok(#(_lift, _reply, blocking)) ->
+          case blocking(lift) {
+            Ok(p) -> #(
+              return,
+              Some(
+                promise.map(p, fn(reply) {
+                  // don't call run blocking recursivly because the cache might have updated
+                  expression.resume(reply, env, k)
+                }),
+              ),
+            )
+            Error(reason) -> #(Error(#(reason, meta, env, k)), None)
+          }
+        _ -> #(return, None)
+      }
+    }
+    _ -> #(return, None)
   }
 }
 
@@ -112,16 +122,12 @@ pub fn install_fragment(cache, cid, bytes) {
   case cid.from_block(bytes) {
     c if c == cid -> {
       case dag_json.from_block(bytes) {
+        // install source
         Ok(source) -> {
-          let scope = []
-          let return = act(expression.execute_next(source, scope), cache)
-          let fragment = Fragment(source, return)
-          let fragments = dict.insert(cache.fragments, cid, fragment)
-          case return {
-            Ok(value) ->
-              resolve_references(fragments, [#(cid, value)]) |> Cache |> Ok
-            Error(_) -> Ok(cache)
-          }
+          let cache = install_source(cache, cid, source)
+          let references = ir.list_references(source)
+          let new = list.filter(references, dict.has_key(cache.fragments, _))
+          Ok(#(cache, new))
         }
         Error(_) -> Error(Nil)
       }
@@ -130,7 +136,19 @@ pub fn install_fragment(cache, cid, bytes) {
   }
 }
 
-fn resolve_references(fragments, remaining) {
+pub fn install_source(cache, cid, source) {
+  let scope = []
+  let return = act(expression.execute_next(source, scope), cache)
+  let fragment = Fragment(source, return)
+  let fragments = dict.insert(cache.fragments, cid, fragment)
+  case return {
+    Ok(value) -> resolve_references(fragments, [#(cid, value)])
+    Error(_) -> fragments
+  }
+  |> Cache
+}
+
+pub fn resolve_references(fragments, remaining) {
   case remaining {
     [] -> fragments
     [#(cid, value), ..remaining] -> {
@@ -143,7 +161,7 @@ fn resolve_references(fragments, remaining) {
             Error(#(break.UndefinedReference(c), _, env, k)) if c == cid -> {
               let return = expression.resume(value, env, k)
               let fragment = Fragment(source, return)
-              let fragments = dict.insert(fragments, cid, fragment)
+              let fragments = dict.insert(fragments, key, fragment)
               let new = case return {
                 Ok(value) -> [#(key, value), ..new]
                 _ -> new

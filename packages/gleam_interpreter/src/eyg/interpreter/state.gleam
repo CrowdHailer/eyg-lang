@@ -124,14 +124,8 @@ pub fn eval(exp, env: Env(m), k) {
         Ok(v) -> value(v)
         Error(Nil) -> Error(break.UndefinedReference(ref))
       }
-    ir.Release(package, release, _id) -> {
-      // TODO use cid
-      let ref = "@" <> package <> ":" <> int.to_string(release)
-      case dict.get(env.references, ref) {
-        Ok(v) -> value(v)
-        Error(Nil) -> Error(break.UndefinedReference(ref))
-      }
-    }
+    ir.Release(package, release, cid) ->
+      Error(break.UndefinedRelease(package, release, cid))
   }
   |> result.map_error(fn(reason) { #(reason, meta, env, k) })
 }

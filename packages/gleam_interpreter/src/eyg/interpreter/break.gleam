@@ -2,9 +2,10 @@ import eyg/interpreter/value as v
 
 pub type Reason(m, c) {
   NotAFunction(v.Value(m, c))
-  UndefinedReference(String)
   UndefinedVariable(String)
   UndefinedBuiltin(String)
+  UndefinedReference(String)
+  UndefinedRelease(package: String, release: Int, cid: String)
   Vacant
   NoMatch(term: v.Value(m, c))
   UnhandledEffect(String, v.Value(m, c))

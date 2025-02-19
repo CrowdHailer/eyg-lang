@@ -1,5 +1,6 @@
 import eyg/interpreter/break
 import eyg/runtime/value as old_value
+import gleam/int
 import gleam/string
 
 pub fn reason_to_string(reason) {
@@ -7,6 +8,8 @@ pub fn reason_to_string(reason) {
     break.UndefinedVariable(var) -> "variable undefined: " <> var
     break.UndefinedBuiltin(var) -> "variable builtin: " <> var
     break.UndefinedReference(id) -> "reference undefined: #" <> id
+    break.UndefinedRelease(package, release, _cid) ->
+      "release undefined: @" <> package <> ":" <> int.to_string(release)
     break.IncorrectTerm(expected, got) ->
       string.concat([
         "unexpected term, expected: ",
