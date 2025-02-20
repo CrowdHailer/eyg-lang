@@ -6,6 +6,7 @@ Is archive a better name, or dependency or package. sync message is a good name
 ## Client is a browser client
 
 It contains retry logic for the cache
+This is the centerpoint for all coordination to pull down fragments. messages should go here
 
 ## Cache
 This is a local store for the package index and fragment store.
@@ -19,6 +20,8 @@ The cache may be used without making use of any of the view functions.
 The cache also has synchronous API's. It could be modelled as an actor and communicate only my lustre messages.
 However this would require each snippet to keep it's own cache of references that have been lookup up.
 There is no point that when there is already a cache.
+
+- The snippets can be considered message passing except a whole cache is cheaply transfered
 
 ### Index
 The index contains all publish packages releases and all name registrations.

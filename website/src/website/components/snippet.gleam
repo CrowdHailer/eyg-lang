@@ -1,6 +1,7 @@
 import eyg/analysis/inference/levels_j/contextual
 import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
+import eyg/analysis/type_/binding/error
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
 import eyg/interpreter/break
@@ -273,7 +274,9 @@ pub fn source(state) {
 
 pub fn set_references(state, cache) {
   // If evaluated changes then run should change in the same way
+  io.debug("mooooo")
   let evaluated = evaluate(source(state), state.scope, cache)
+  io.debug(evaluated)
   let run = case state.run {
     NotRunning -> state.run
     Running(return, effects) ->
@@ -1121,6 +1124,77 @@ pub fn finish_editing(state) {
   Snippet(..state, status: Idle)
 }
 
+// TODO note or error with context, be nice to jump to location of effect
+// value
+// runtime faile
+// type errors (Only this one is a list)
+// editor error 
+// will perform
+// 
+// Error level action
+pub type TypeError {
+  ReleaseInvalid
+  ReleaseCheckDoesntMatch(String)
+  ReleaseNotFetched(String)
+  ReleaseFragmentNotFetched(String)
+  FragmentInvalid
+  ReferenceNotFetched
+  Todo
+  MissingVariable(String)
+  TypeMismatch(binding.Mono, binding.Mono)
+  MissingRow(String)
+  Recursive
+  SameTail(binding.Mono, binding.Mono)
+}
+
+// Pass in if client is working
+pub fn type_errors(state) {
+  let Snippet(analysis:, cache:, ..) = state
+  let errors = case analysis {
+    Some(analysis) -> analysis.type_errors(analysis)
+    None -> []
+  }
+  list.map(errors, fn(error) {
+    let #(meta, error) = error
+    let error = case error {
+      error.UndefinedRelease(p, r, cid) ->
+        case cache.fetch_named_cid(cache, p, r) {
+          Ok(c) if c == cid ->
+            case cache.fetch_fragment(cache, cid) {
+              Ok(cache.Fragment(value:, ..)) ->
+                case value {
+                  Ok(_) ->
+                    panic as "if the fragment was there it would be resolved"
+                  Error(#(reason, _, _, _)) -> ReleaseInvalid
+                  // error info needs to be better 
+                }
+              Error(Nil) -> ReleaseFragmentNotFetched(p)
+            }
+          Ok(c) -> ReleaseCheckDoesntMatch(c)
+          // TODO client is still loading
+          Error(Nil) -> ReleaseNotFetched(p)
+        }
+      error.MissingReference(cid) ->
+        case cache.fetch_fragment(cache, cid) {
+          Ok(cache.Fragment(value:, ..)) ->
+            case value {
+              Ok(_) -> panic as "if the fragment was there it would be resolved"
+              Error(#(reason, _, _, _)) -> FragmentInvalid
+              // error info needs to be better 
+            }
+          Error(Nil) -> ReferenceNotFetched
+        }
+      error.Todo -> Todo
+      error.MissingVariable(var) -> MissingVariable(var)
+      error.TypeMismatch(a, b) -> TypeMismatch(a, b)
+      error.MissingRow(l) -> MissingRow(l)
+      error.Recursive -> Recursive
+      error.SameTail(a, b) -> SameTail(a, b)
+    }
+    #(meta, error)
+  })
+}
+
 pub fn render_embedded(state: Snippet, failure) {
   h.div([a.style(embed_area_styles)], bare_render(state, failure))
 }
@@ -1135,10 +1209,7 @@ pub fn bare_render(state, failure) {
     run: run,
     ..,
   ) = state
-  let errors = case analysis {
-    Some(analysis) -> analysis.type_errors(analysis)
-    None -> []
-  }
+  let errors = type_errors(state)
 
   case status {
     Editing(mode) ->
@@ -1196,11 +1267,37 @@ pub fn render_current(errors, run, evaluated) {
 pub fn render_errors(errors) {
   footer_area(
     neo_orange_4,
-    list.map(errors, fn(error) {
-      let #(path, reason) = error
-      h.div([event.on_click(UserClickedPath(path))], [reason_to_html(reason)])
-    }),
+    list.map(errors, render_structured_note_about_error),
+    // list.map(errors, fn(error) {
+  //   let #(path, reason) = error
+  //   h.div([event.on_click(UserClickedPath(path))], [reason_to_html(reason)])
+  // }),
   )
+}
+
+fn render_structured_note_about_error(error) {
+  let #(path, reason) = error
+  // TODO color, don't border all errors
+  let reason = case reason {
+    ReleaseInvalid -> "pretty"
+    ReleaseCheckDoesntMatch(_) -> "pretty"
+    ReleaseNotFetched(_) -> "pretty"
+    ReleaseFragmentNotFetched(_) -> "pretty"
+    FragmentInvalid -> "pretty"
+    ReferenceNotFetched -> "pretty"
+    Todo -> "pretty"
+    MissingVariable(_) -> "pretty"
+    TypeMismatch(_t, _t) -> "pretty"
+    MissingRow(_) -> "pretty"
+    Recursive -> "pretty"
+    SameTail(_t, _t) -> "pretty"
+  }
+  h.div([event.on_click(UserClickedPath(path))], [element.text(reason)])
+  // radio shows just one of the errors open at a time
+  h.details([], [
+    h.summary([], [element.text(reason)]),
+    h.div([], [element.text("MOOOOARE")]),
+  ])
 }
 
 pub fn reason_to_html(r) {

@@ -3,6 +3,7 @@ import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
+import gleam/io
 
 // import eyg/ir/cid
 import eyg/ir/dag_json
@@ -40,8 +41,9 @@ pub fn start(exp, scope) {
 // snippets are not installed in the cache
 
 // Need to handle effect and ref at the same time because they could be in any order
-fn fetch_named_cid(cache, package, release) {
+pub fn fetch_named_cid(cache, package, release) {
   let Cache(index: index, ..) = cache
+
   case dict.get(index.registry, package) {
     Ok(package_id) ->
       case dict.get(index.packages, package_id) {
@@ -56,6 +58,10 @@ fn fetch_named_cid(cache, package, release) {
   }
 }
 
+pub fn fetch_fragment(cache: Cache, cid) {
+  dict.get(cache.fragments, cid)
+}
+
 pub fn run(return, cache, resume) {
   let Cache(fragments: fragments, ..) = cache
   case return {
@@ -66,6 +72,10 @@ pub fn run(return, cache, resume) {
             Ok(c) if c == cid ->
               case dict.get(fragments, cid) {
                 Ok(Fragment(value: Ok(value), ..)) -> resume(value, env, k)
+                Ok(Fragment(value: Error(#(debug, _, _, _)), ..)) -> {
+                  io.debug(debug)
+                  return
+                }
                 _ -> return
               }
             _ -> return
