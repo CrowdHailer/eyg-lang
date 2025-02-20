@@ -68,6 +68,8 @@ pub fn render_reason(reason) {
     error.Todo -> "code incomplete"
     error.MissingVariable(label) -> "missing variable '" <> label <> "'"
     error.MissingReference(label) -> "missing reference #" <> label
+    error.UndefinedRelease(package, release, _cid) ->
+      "release undefined: @" <> package <> ":" <> int.to_string(release)
     error.MissingRow(label) -> "missing row '" <> label <> "'"
     error.TypeMismatch(expected, given) ->
       "type missmatch given: "

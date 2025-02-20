@@ -234,10 +234,16 @@ pub fn do_infer(source, env, eff, refs: dict.Dict(_, _), level, bindings) {
         }
       }
     ir.Reference(id) -> lookup_ref(refs, id, env, eff, level, bindings)
-    ir.Release(package, release, _id) -> {
-      // TODO real id
-      let id = "@" <> package <> ":" <> int.to_string(release)
-      lookup_ref(refs, id, env, eff, level, bindings)
+    ir.Release(package, release, id) -> {
+      // TODO real  type checking
+      let #(type_, bindings) = binding.mono(level, bindings)
+      let meta = #(
+        Error(error.UndefinedRelease(package, release, id)),
+        type_,
+        t.Empty,
+        env,
+      )
+      #(bindings, type_, eff, #(ir.Release(package, release, id), meta))
     }
   }
 }

@@ -15,7 +15,6 @@ import midas/task as t
 import plinth/javascript/console
 import snag
 import website/components/simple_debug
-import website/sync/dump
 import website/sync/fragment
 import website/sync/supabase
 
@@ -56,7 +55,7 @@ pub type Sync {
 
 pub type Message {
   HashSourceFetched(reference: String, value: Result(ir.Node(Nil), snag.Snag))
-  DumpDownLoaded(Result(dump.Dump, snag.Snag))
+  // DumpDownLoaded(Result(dump.Dump, snag.Snag))
 }
 
 // fromdump
@@ -270,27 +269,28 @@ fn compute(source, loaded) {
 }
 
 pub fn task_finish(sync, message) {
-  let Sync(tasks: tasks, ..) = sync
-  case message {
-    HashSourceFetched(ref, result) ->
-      case result, dict.get(tasks, ref) {
-        Ok(expression), _ -> {
-          let tasks = dict.delete(tasks, ref)
-          let sync = Sync(..sync, tasks: tasks)
-          install(sync, ref, expression |> ir.map_annotation(fn(_) { [] }))
-        }
-        Error(reason), _ -> {
-          let tasks = dict.insert(tasks, ref, Failed(reason))
-          Sync(..sync, tasks: tasks)
-        }
-      }
-    DumpDownLoaded(dump) -> {
-      case dump {
-        Ok(dump) -> load(sync, dump)
-        Error(_reason) -> panic as "failed to load resources"
-      }
-    }
-  }
+  todo as "remove"
+  // let Sync(tasks: tasks, ..) = sync
+  // case message {
+  //   HashSourceFetched(ref, result) ->
+  //     case result, dict.get(tasks, ref) {
+  //       Ok(expression), _ -> {
+  //         let tasks = dict.delete(tasks, ref)
+  //         let sync = Sync(..sync, tasks: tasks)
+  //         install(sync, ref, expression |> ir.map_annotation(fn(_) { [] }))
+  //       }
+  //       Error(reason), _ -> {
+  //         let tasks = dict.insert(tasks, ref, Failed(reason))
+  //         Sync(..sync, tasks: tasks)
+  //       }
+  //     }
+  //   DumpDownLoaded(dump) -> {
+  //     case dump {
+  //       Ok(dump) -> load(sync, dump)
+  //       Error(_reason) -> panic as "failed to load resources"
+  //     }
+  //   }
+  // }
 }
 
 pub fn install(sync, ref, source) {
@@ -345,7 +345,7 @@ pub fn decode_bytes(bytes) {
   |> result.replace_error(snag.new("Unable to decode source code."))
 }
 
-pub fn load(sync, dump: dump.Dump) {
+pub fn load(sync, dump) {
   todo as "remove"
   // let Dump(registry,packages, _raw) = dump
   // let Sync(registry: registry, packages: packages, ..) = sync

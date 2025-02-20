@@ -8,7 +8,6 @@ import gleam/uri
 import midas/browser
 import midas/task as t
 import plinth/browser/window
-import website/sync/dump
 import website/sync/supabase
 import website/sync/sync
 

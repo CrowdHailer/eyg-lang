@@ -5,6 +5,7 @@ pub type Reason {
   Todo
   MissingVariable(String)
   MissingReference(String)
+  UndefinedRelease(package: String, release: Int, cid: String)
   TypeMismatch(binding.Mono, binding.Mono)
   MissingRow(String)
   Recursive
