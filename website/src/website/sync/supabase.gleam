@@ -1,7 +1,7 @@
 import dag_json as dag_json_lib
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
-import gleam/dynamic
+import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
 import gleam/http/response
@@ -32,8 +32,7 @@ fn decode(response: response.Response(_), decoder) {
     200 ->
       case dag_json_lib.decode(response.body) {
         Ok(dyn) ->
-          dyn
-          |> decoder()
+          decode.run(dyn, decoder)
           |> result.map_error(fn(reason) { snag.new(string.inspect(reason)) })
         Error(reason) -> snag.error(string.inspect(reason))
       }
@@ -47,7 +46,7 @@ pub fn get_fragments() {
     |> request.set_path("/rest/v1/fragments")
     |> request.set_query([#("select", "*")])
   use response <- t.do(t.fetch(request))
-  use data <- t.try(decode(response, dynamic.list(fragment_decoder)))
+  use data <- t.try(decode(response, decode.list(fragment_decoder())))
   t.done(data)
 }
 
@@ -55,13 +54,11 @@ pub type Fragment {
   Fragment(hash: String, created_at: String, code: ir.Node(Nil))
 }
 
-fn fragment_decoder(raw) {
-  dynamic.decode3(
-    Fragment,
-    dynamic.field("hash", dynamic.string),
-    dynamic.field("created_at", dynamic.string),
-    dynamic.field("code", dag_json.decode_dynamic_error),
-  )(raw)
+fn fragment_decoder() {
+  use hash <- decode.field("hash", decode.string)
+  use created_at <- decode.field("created_at", decode.string)
+  use code <- decode.field("code", dag_json.decoder(Nil))
+  decode.success(Fragment(hash, created_at, code))
 }
 
 pub fn get_releases() {
@@ -70,7 +67,7 @@ pub fn get_releases() {
     |> request.set_path("/rest/v1/releases")
     |> request.set_query([#("select", "*")])
   use response <- t.do(t.fetch(request))
-  use data <- t.try(decode(response, dynamic.list(release_decoder)))
+  use data <- t.try(decode(response, decode.list(release_decoder())))
   t.done(data)
 }
 
@@ -78,14 +75,12 @@ pub type Release {
   Release(package_id: String, version: Int, created_at: String, hash: String)
 }
 
-fn release_decoder(raw) {
-  dynamic.decode4(
-    Release,
-    dynamic.field("package_id", dynamic.string),
-    dynamic.field("version", dynamic.int),
-    dynamic.field("created_at", dynamic.string),
-    dynamic.field("hash", dynamic.string),
-  )(raw)
+fn release_decoder() {
+  use package_id <- decode.field("package_id", decode.string)
+  use version <- decode.field("version", decode.int)
+  use created_at <- decode.field("created_at", decode.string)
+  use hash <- decode.field("hash", decode.string)
+  decode.success(Release(package_id, version, created_at, hash))
 }
 
 pub fn get_registrations() {
@@ -94,7 +89,7 @@ pub fn get_registrations() {
     |> request.set_path("/rest/v1/registrations")
     |> request.set_query([#("select", "*")])
   use response <- t.do(t.fetch(request))
-  use data <- t.try(decode(response, dynamic.list(registration_decoder)))
+  use data <- t.try(decode(response, decode.list(registration_decoder())))
   t.done(data)
 }
 
@@ -102,14 +97,12 @@ pub type Registration {
   Registration(id: Int, created_at: String, name: String, package_id: String)
 }
 
-fn registration_decoder(raw) {
-  dynamic.decode4(
-    Registration,
-    dynamic.field("id", dynamic.int),
-    dynamic.field("created_at", dynamic.string),
-    dynamic.field("name", dynamic.string),
-    dynamic.field("package_id", dynamic.string),
-  )(raw)
+fn registration_decoder() {
+  use id <- decode.field("id", decode.int)
+  use created_at <- decode.field("created_at", decode.string)
+  use name <- decode.field("name", decode.string)
+  use package_id <- decode.field("package_id", decode.string)
+  decode.success(Registration(id, created_at, name, package_id))
 }
 
 // invite needs admin
@@ -125,6 +118,6 @@ pub fn invite(email_address) {
   use response <- t.do(t.fetch(request))
   io.debug(response)
 
-  use data <- t.try(decode(response, Ok))
+  use data <- t.try(decode(response, todo))
   t.done(data)
 }
