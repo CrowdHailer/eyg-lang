@@ -286,6 +286,11 @@ pub fn list_references(exp) {
 fn do_list_references(exp, found) {
   let #(exp, _meta) = exp
   case exp {
+    Release(_, _, identifier) ->
+      case list.contains(found, identifier) {
+        True -> found
+        False -> [identifier, ..found]
+      }
     Reference(identifier) ->
       case list.contains(found, identifier) {
         True -> found

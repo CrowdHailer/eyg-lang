@@ -3,7 +3,8 @@ import eyg/interpreter/break
 import eyg/interpreter/expression
 import eyg/interpreter/state
 import eyg/interpreter/value as v
-import eyg/ir/cid
+
+// import eyg/ir/cid
 import eyg/ir/dag_json
 import eyg/ir/tree as ir
 import gleam/dict.{type Dict}
@@ -115,17 +116,24 @@ pub fn init() {
   Cache(index: index_init(), fragments: dict.new())
 }
 
+pub fn set_index(cache, index) {
+  // In the future this could merge or roll forward
+  Cache(..cache, index:)
+}
+
 pub fn install_fragment(cache, cid, bytes) {
-  case cid.from_block(bytes) {
+  // cid.from_block(bytes)
+  case cid {
     c if c == cid -> {
       case dag_json.from_block(bytes) {
         // install source
         Ok(source) -> {
           let cache = install_source(cache, cid, source)
           let references = ir.list_references(source)
-          let new = list.filter(references, dict.has_key(cache.fragments, _))
-          // This is new references to find, it would be different to keep new resolved references
-          Ok(#(cache, new))
+          let required =
+            list.filter(references, dict.has_key(cache.fragments, _))
+          // This is required references to find, it would be different to keep new resolved references
+          Ok(#(cache, required))
         }
         Error(_) -> Error(Nil)
       }

@@ -192,7 +192,6 @@ pub type Snippet {
 pub fn init(editable, scope, effects, cache) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
-  io.debug("Do reall anaalysis")
   Snippet(
     status: Idle,
     expanding: None,

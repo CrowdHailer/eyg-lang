@@ -30,7 +30,6 @@ import website/components/readonly
 import website/components/snippet
 import website/harness/browser as harness
 import website/routes/common
-import website/sync/browser
 import website/sync/cache
 import website/sync/sync
 
@@ -652,8 +651,6 @@ pub fn render(state: State) {
 }
 
 pub fn render_menu(status, projection, submenu, display_help) {
-  let #(projection, _, _) = projection
-
   let #(top, subcontent) = snippet.menu_content(status, projection, submenu)
   case subcontent {
     None -> one_col_menu(display_help, top)
@@ -664,9 +661,9 @@ pub fn render_menu(status, projection, submenu, display_help) {
 // The submenu is probably not part of the editor... yet
 fn render_menu_from_state(state: State) {
   let State(shell: shell, ..) = state
-  let snippet.Snippet(status: status, source: source, menu: menu, ..) =
+  let snippet.Snippet(status: status, projection: projection, menu: menu, ..) =
     shell.source
-  render_menu(status, source, menu, state.display_help)
+  render_menu(status, projection, menu, state.display_help)
 }
 
 fn help_menu_button(state: State) {
@@ -753,8 +750,7 @@ fn two_col_menu(display_help, top, active, sub) {
 }
 
 fn render_errors(failure, snippet: snippet.Snippet) {
-  let #(_proj, _, analysis) = snippet.source
-  let errors = case analysis {
+  let errors = case snippet.analysis {
     Some(analysis) -> analysis.type_errors(analysis)
     None -> []
   }

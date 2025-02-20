@@ -53,6 +53,21 @@ pub fn get_fragments() {
   t.done(data)
 }
 
+pub fn fetch_fragment(cid) {
+  let request =
+    base()
+    |> request.set_path("/rest/v1/fragments")
+    |> request.set_query([#("select", "*"), #("hash", "eq." <> cid)])
+  use response <- t.do(t.fetch(request))
+  use data <- t.try(decode(response, decode.list(fragment_decoder())))
+  case data {
+    [Fragment(hash: h, code:, ..) as f] if h == cid ->
+      // Ideally I'd download bytes but we trust supabase
+      t.done(dag_json.to_block(code))
+    _ -> t.abort(snag.new("no hash with cid"))
+  }
+}
+
 pub type Fragment {
   Fragment(hash: String, created_at: String, code: ir.Node(Nil))
 }
@@ -121,7 +136,7 @@ pub fn invite(email_address) {
   t.done(data)
 }
 
-pub fn load_task() {
+pub fn fetch_index() {
   use registrations <- t.do(get_registrations())
   let registrations =
     dict.from_list(
@@ -140,12 +155,3 @@ pub fn load_task() {
 
   t.done(cache.Index(registrations, releases))
 }
-// pub fn do_load(message) {
-//   fn(d) {
-//     {
-//       use result <- promise.map(browser.run(load_task()))
-//       d(message(sync.DumpDownLoaded(result)))
-//     }
-//     Nil
-//   }
-// }
