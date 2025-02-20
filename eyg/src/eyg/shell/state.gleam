@@ -99,7 +99,7 @@
 //       let #(current, eff) = snippet.update(state.source, message)
 //       case eff {
 //         snippet.Nothing -> dispatch_nothing(state, current, Nil)
-//         snippet.AwaitRunningEffect(p) ->
+//         snippet.RunEffect(p) ->
 //           dispatch_to_snippet(state, current, snippet.await_running_effect(p))
 //         snippet.FocusOnCode ->
 //           dispatch_nothing(state, current, snippet.focus_on_buffer())

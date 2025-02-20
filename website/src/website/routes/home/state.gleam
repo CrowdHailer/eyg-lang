@@ -7,6 +7,7 @@ import eyg/ir/dag_json
 import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamicx
+import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -20,6 +21,7 @@ import website/components/snippet
 import website/harness/browser as harness
 import website/harness/spotless
 import website/sync/browser
+import website/sync/cache
 import website/sync/sync
 
 pub type Meta =
@@ -39,7 +41,7 @@ pub type Example {
 pub type State {
   State(
     auth: auth_panel.State,
-    cache: sync.Sync,
+    cache: cache.Cache,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
     example: Example,
@@ -108,7 +110,7 @@ fn all_references(snippets) {
 
 pub fn init(config) {
   let #(config, origin, storage) = config
-  let cache = sync.init(origin)
+  let cache = cache.init()
   let snippets = [
     #(
       closure_serialization_key,
@@ -187,7 +189,7 @@ pub fn update(state: State, message) {
       let #(failure, snippet_effect) = case eff {
         snippet.Nothing -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           None,
           dispatch_to_snippet(id, snippet.await_running_effect(p)),
         )
@@ -214,23 +216,25 @@ pub fn update(state: State, message) {
       }
       let state = set_snippet(state, id, snippet)
       let references = all_references(state.snippets |> dict.to_list)
-      let #(cache, tasks) = sync.fetch_missing(state.cache, references)
+      // let #(cache, tasks) = sync.fetch_missing(state.cache, references)
 
-      let state = State(..state, active: Editing(id, failure), cache: cache)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      #(state, effect.batch([snippet_effect, sync_effect]))
+      let state = State(..state, active: Editing(id, failure))
+      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      io.debug("the cache fetching")
+      #(state, effect.batch([snippet_effect]))
     }
     SyncMessage(message) -> {
-      let cache = sync.task_finish(state.cache, message)
-      let #(cache, tasks) = sync.fetch_all_missing(cache)
-      let snippets =
-        dict.map_values(state.snippets, fn(_, v) {
-          snippet.set_references(v, cache)
-        })
-      #(
-        State(..state, snippets: snippets, cache: cache),
-        effect.from(browser.do_sync(tasks, SyncMessage)),
-      )
+      todo as "no sync messages"
+      // let cache = sync.task_finish(state.cache, message)
+      // let #(cache, tasks) = sync.fetch_all_missing(cache)
+      // let snippets =
+      //   dict.map_values(state.snippets, fn(_, v) {
+      //     snippet.set_references(v, cache)
+      //   })
+      // #(
+      //   State(..state, snippets: snippets, cache: cache),
+      //   effect.from(browser.do_sync(tasks, SyncMessage)),
+      // )
     }
     ClickExample -> {
       let Example(value, type_) = state.example
@@ -285,28 +289,29 @@ pub fn render(state: State) {
   let s = get_snippet(state, hot_reload_key)
   let source = snippet.source(s)
 
-  let check = reload.check_against_state(source, type_, sync.types(state.cache))
+  todo as "need the types"
+  // let check = reload.check_against_state(source, type_, sync.types(state.cache))
 
-  case check {
-    Ok(#(_, False)) -> {
-      // TODO pass in a better env
-      let env = istate.Env([], dict.new(), dict.new())
-      let h = dict.new()
+  // case check {
+  //   Ok(#(_, False)) -> {
+  //     // TODO pass in a better env
+  //     let env = istate.Env([], dict.new(), dict.new())
+  //     let h = dict.new()
 
-      let assert Ok(source) =
-        runner.execute(source |> e.to_annotated([]), env, h)
-      let source = #(source, [])
+  //     let assert Ok(source) =
+  //       runner.execute(source |> e.to_annotated([]), env, h)
+  //     let source = #(source, [])
 
-      let select = value.Partial(value.Select("render"), [])
-      let args = [source, #(value, [])]
-      let page = case runner.call(select, args, env, h) {
-        Ok(value.String(page)) -> page
-        // TODO print actual value
-        other -> "something went wrong: " <> string.inspect(other)
-      }
-      Ok(#(page, False))
-    }
-    Ok(#(_, True)) -> Ok(#("", True))
-    Error(reason) -> Error(reason)
-  }
+  //     let select = value.Partial(value.Select("render"), [])
+  //     let args = [source, #(value, [])]
+  //     let page = case runner.call(select, args, env, h) {
+  //       Ok(value.String(page)) -> page
+  //       // TODO print actual value
+  //       other -> "something went wrong: " <> string.inspect(other)
+  //     }
+  //     Ok(#(page, False))
+  //   }
+  //   Ok(#(_, True)) -> Ok(#("", True))
+  //   Error(reason) -> Error(reason)
+  // }
 }

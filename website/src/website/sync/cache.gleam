@@ -35,9 +35,9 @@ pub type Value =
 pub type Return =
   Result(Value, state.Debug(Nil))
 
-pub type Run {
-  Run(return: Return, effects: List(#(String, #(Value, Value))))
-}
+// pub type Run {
+//   Run(return: Return, effects: List(#(String, #(Value, Value))))
+// }
 
 pub fn start(exp, scope) {
   block.execute_next(exp, scope)
@@ -46,7 +46,7 @@ pub fn start(exp, scope) {
 // snippets are not installed in the cache
 
 // Need to handle effect and ref at the same time because they could be in any order
-pub fn run(return, cache) {
+pub fn run(return, cache, resume) {
   let Cache(fragments: fragments) = cache
   case return {
     Error(#(reason, _meta, env, k)) ->
@@ -55,8 +55,7 @@ pub fn run(return, cache) {
           case todo as "fetch cid" {
             Ok(c) if c == cid ->
               case dict.get(fragments, cid) {
-                Ok(Fragment(value: Ok(value), ..)) ->
-                  expression.resume(value, env, k)
+                Ok(Fragment(value: Ok(value), ..)) -> resume(value, env, k)
                 _ -> return
               }
             _ -> return
@@ -64,8 +63,7 @@ pub fn run(return, cache) {
         }
         break.UndefinedReference(cid) -> {
           case dict.get(fragments, cid) {
-            Ok(Fragment(value: Ok(value), ..)) ->
-              expression.resume(value, env, k)
+            Ok(Fragment(value: Ok(value), ..)) -> resume(value, env, k)
             _ -> return
           }
         }
@@ -78,8 +76,8 @@ pub fn run(return, cache) {
 // snippet has run id or page
 
 // might belong on a run 
-pub fn run_blocking(return, cache, extrinsic) {
-  let return = run(return, cache)
+pub fn run_blocking(return, cache, extrinsic, resume) {
+  let return = run(return, cache, resume)
   case return {
     Error(#(break.UnhandledEffect(label, lift), meta, env, k)) -> {
       case list.key_find(extrinsic, label) {
@@ -88,10 +86,12 @@ pub fn run_blocking(return, cache, extrinsic) {
             Ok(p) -> #(
               return,
               Some(
-                promise.map(p, fn(reply) {
-                  // don't call run blocking recursivly because the cache might have updated
-                  expression.resume(reply, env, k)
-                }),
+                p,
+                // promise.map(p, fn(reply) {
+              //   // don't call run blocking recursivly because the cache might have updated
+              //   // resume(reply, env, k)
+              //   reply
+              // }),
               ),
             )
             Error(reason) -> #(Error(#(reason, meta, env, k)), None)
@@ -128,6 +128,7 @@ pub fn install_fragment(cache, cid, bytes) {
           let cache = install_source(cache, cid, source)
           let references = ir.list_references(source)
           let new = list.filter(references, dict.has_key(cache.fragments, _))
+          // This is new references to find, it would be different to keep new resolved references
           Ok(#(cache, new))
         }
         Error(_) -> Error(Nil)
@@ -139,7 +140,8 @@ pub fn install_fragment(cache, cid, bytes) {
 
 pub fn install_source(cache, cid, source) {
   let scope = []
-  let return = run(expression.execute_next(source, scope), cache)
+  let return =
+    run(expression.execute_next(source, scope), cache, expression.resume)
   let fragment = Fragment(source, return)
   let fragments = dict.insert(cache.fragments, cid, fragment)
   case return {
@@ -175,4 +177,8 @@ pub fn resolve_references(fragments, remaining) {
       resolve_references(fragments, remaining)
     }
   }
+}
+
+pub fn package_index(cache) {
+  []
 }

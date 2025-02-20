@@ -3,6 +3,7 @@ import eyg/analysis/type_/binding
 import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/isomorphic as t
 import eyg/interpreter/block
+import eyg/interpreter/break
 import eyg/interpreter/state as istate
 import eyg/interpreter/value as v
 import eyg/ir/dag_json
@@ -41,10 +42,9 @@ import plinth/browser/event as pevent
 import plinth/browser/window
 import plinth/javascript/console
 import website/components/output
-import website/components/run
 import website/components/simple_debug
 import website/components/snippet/menu
-import website/sync/sync
+import website/sync/cache
 
 const neo_blue_3 = "#87ceeb"
 
@@ -95,7 +95,7 @@ fn footer_area(color, contents) {
 }
 
 type ExternalBlocking =
-  fn(run.Value) -> Result(promise.Promise(run.Value), run.Reason)
+  fn(Value) -> Result(promise.Promise(Value), istate.Reason(Path))
 
 type EffectSpec =
   #(binding.Mono, binding.Mono, ExternalBlocking)
@@ -114,6 +114,9 @@ pub type Value =
 type Scope =
   List(#(String, Value))
 
+type Return =
+  Result(#(Option(Value), Scope), istate.Debug(Path))
+
 pub type History {
   History(undo: List(p.Projection), redo: List(p.Projection))
 }
@@ -121,7 +124,7 @@ pub type History {
 pub type Failure {
   NoKeyBinding(key: String)
   ActionFailed(action: String)
-  RunFailed(istate.Debug(run.Meta))
+  RunFailed(istate.Debug(Path))
 }
 
 pub type Mode {
@@ -131,34 +134,78 @@ pub type Mode {
   EditInteger(Int, fn(Int) -> p.Projection)
 }
 
+pub type Run {
+  NotRunning
+  // if no type errors then unhandled effect is still running
+  Running(Return, List(RuntimeEffect))
+}
+
 pub type Snippet {
   Snippet(
+    // ------------------
+    // Editor state
     status: Status,
     expanding: Option(List(Int)),
-    source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
     menu: menu.State,
+    // edit history
     history: History,
-    run: run.Run,
+    source: #(p.Projection, e.Expression, Option(analysis.Analysis)),
+    // ------------------
+    // Context of code snippet
+    // scope before anything runs
     scope: Scope,
+    // spec of effects available at the top level
     effects: List(#(String, EffectSpec)),
-    cache: sync.Sync,
+    cache: cache.Cache,
+    // ------------------
+    // Computed values, relies on the cache, scope and effects
+    // this is the value from the expression not part of run at all
+    evaluated: Return,
+    // A snippet can have multiple runs, the task counter needs to be unique over all of them
+    // Could be task id and we have one central task runner
+    task_counter: Int,
+    run: Run,
   )
 }
+
+// Test that click to run starts even if still waiting for references
+// test resolving promise twice is ignored
+// test that cancelling
+
+// run.done(run, cache)
+// checks cache.valid_release -> Ok(True/False) or valid_reference -> Error(As of time) Valid/Invalid/Unknownn/Missing(as_of)
+// Shouldn't be able to construct with badly formatted cid
+
+// new source needs to change the run
+// set_cache on the running code don't need a global running
+// unhandled effect can be trigger for DB etc
+
+// calculator examples on snippet
+// all on homepage
 
 pub fn init(editable, scope, effects, cache) {
   let editable = e.open_all(editable)
   let proj = navigation.first(editable)
   Snippet(
-    Idle,
-    None,
-    new_source(proj, editable, scope, effects, cache),
-    menu.init(),
-    History([], []),
-    run.start(editable, scope, effects, cache),
-    scope,
-    effects,
-    cache,
+    status: Idle,
+    expanding: None,
+    menu: menu.init(),
+    history: History([], []),
+    source: new_source(proj, editable, scope, effects),
+    scope: scope,
+    effects: effects,
+    cache: cache,
+    evaluated: evaluate(editable, scope, cache),
+    task_counter: -1,
+    run: NotRunning,
   )
+}
+
+fn evaluate(editable, scope, cache) {
+  e.to_annotated(editable, [])
+  |> ir.clear_annotation
+  |> block.execute_next(scope)
+  |> cache.run(cache, block.resume)
 }
 
 pub fn active(editable, scope, effects, cache) {
@@ -167,18 +214,20 @@ pub fn active(editable, scope, effects, cache) {
 
   Snippet(
     Editing(Command),
-    None,
-    new_source(proj, editable, scope, effects, cache),
-    menu.init(),
-    History([], []),
-    run.start(editable, scope, effects, cache),
-    scope,
-    effects,
-    cache,
+    expanding: None,
+    menu: menu.init(),
+    history: History([], []),
+    source: new_source(proj, editable, scope, effects),
+    scope: scope,
+    effects: effects,
+    cache: cache,
+    evaluated: evaluate(editable, scope, cache),
+    task_counter: -1,
+    run: NotRunning,
   )
 }
 
-fn new_source(proj, editable, scope, effects, cache) {
+fn new_source(proj, editable, scope, effects) {
   let eff =
     effect_types(effects)
     |> list.fold(t.Empty, fn(acc, new) {
@@ -190,7 +239,8 @@ fn new_source(proj, editable, scope, effects, cache) {
       editable,
       analysis.within_environment(
         scope,
-        sync.named_types(cache) |> dict.from_list(),
+        // TODO real ref
+        dict.new(),
         Nil,
       ),
       eff,
@@ -213,10 +263,10 @@ pub fn source(state) {
 }
 
 pub fn set_references(state, cache) {
-  let run = run.start(source(state), state.scope, state.effects, cache)
+  let evaluated = evaluate(source(state), state.scope, cache)
   let source = state.source
-  let source = new_source(source.0, source.1, state.scope, state.effects, cache)
-  Snippet(..state, source: source, run: run, cache: cache)
+  let source = new_source(source.0, source.1, state.scope, state.effects)
+  Snippet(..state, source: source, evaluated: evaluated)
 }
 
 pub fn references(state) {
@@ -232,7 +282,7 @@ pub type Message {
   MessageFromInput(input.Message)
   MessageFromPicker(picker.Message)
   MessageFromMenu(menu.Message)
-  RuntimeRepliedFromExternalEffect(run.Value)
+  RuntimeRepliedFromExternalEffect(#(Int, Value))
   ClipboardReadCompleted(Result(String, String))
   ClipboardWriteCompleted(Result(Nil, String))
 }
@@ -246,6 +296,10 @@ pub fn user_message(message) {
   }
 }
 
+pub type RuntimeEffect {
+  RuntimeEffect(label: String, lift: Value, reply: Value)
+}
+
 pub type Effect {
   Nothing
   Failed(Failure)
@@ -256,8 +310,8 @@ pub type Effect {
   MoveBelow
   WriteToClipboard(String)
   ReadFromClipboard
-  AwaitRunningEffect(promise.Promise(Value))
-  Conclude(Option(Value), List(#(String, #(Value, Value))), Scope)
+  RunEffect(promise.Promise(#(Int, Value)))
+  Conclude(value: Option(Value), effects: List(RuntimeEffect), scope: Scope)
 }
 
 pub fn focus_on_buffer() {
@@ -309,14 +363,18 @@ fn navigate_source(proj, state) {
 fn update_source(proj, state) {
   let Snippet(source: #(old, _, _), history: history, ..) = state
   let editable = p.rebuild(proj)
-  let source =
-    new_source(proj, editable, state.scope, state.effects, state.cache)
+  let source = new_source(proj, editable, state.scope, state.effects)
   let History(undo: undo, ..) = history
   let undo = [old, ..undo]
   let history = History(undo: undo, redo: [])
   let status = Editing(Command)
-  let run = run.start(editable, state.scope, state.effects, state.cache)
-  Snippet(..state, status: status, source: source, history: history, run: run)
+  Snippet(
+    ..state,
+    status: status,
+    source: source,
+    history: history,
+    evaluated: evaluate(editable, state.scope, state.cache),
+  )
 }
 
 fn update_source_from_buffer(proj, state) {
@@ -411,7 +469,7 @@ pub fn update(state, message) {
         "TOGGLE OTHERWISE" -> toggle_otherwise(state)
 
         "?" -> #(state, ToggleHelp)
-        "Enter" -> execute(state)
+        "Enter" -> confirm(state)
         _ -> #(state, Failed(NoKeyBinding(key)))
       }
     }
@@ -474,41 +532,8 @@ pub fn update(state, message) {
       }
     }
     UserClickRunEffects, _ -> run_effects(state)
-    RuntimeRepliedFromExternalEffect(reply), Editing(Command)
-    | RuntimeRepliedFromExternalEffect(reply), Idle
-    -> {
-      let assert run.Run(run.Handling(label, lift, env, k, _), effect_log) = run
-
-      let effect_log = [#(label, #(lift, reply)), ..effect_log]
-      let status = case block.resume(reply, env, k) {
-        Ok(#(value, env)) -> run.Done(value, env)
-        Error(debug) -> run.handle_extrinsic_effects(debug, effects)
-      }
-      let run = run.Run(status, effect_log)
-      let state = Snippet(..state, run: run)
-      case status {
-        run.Failed(_) -> #(state, Nothing)
-        run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
-
-        run.Handling(_label, lift, env, k, blocking) ->
-          case blocking(lift) {
-            Ok(promise) -> {
-              let run = run.Run(status, effect_log)
-              let state = Snippet(..state, run: run)
-              #(state, AwaitRunningEffect(promise))
-            }
-            Error(reason) -> {
-              let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-              let state = Snippet(..state, run: run)
-              #(state, Nothing)
-            }
-          }
-      }
-    }
-    RuntimeRepliedFromExternalEffect(_), Editing(mode) -> {
-      io.debug(mode)
-      panic as "Should never be editing while running effects"
-    }
+    RuntimeRepliedFromExternalEffect(#(task_id, reply)), _ ->
+      run_handle_effect(state, task_id, reply)
     ClipboardReadCompleted(return), _ -> {
       let assert Editing(Command) = status
       case return {
@@ -530,6 +555,47 @@ pub fn update(state, message) {
         Error(_) -> action_failed(state, "paste")
       }
   }
+}
+
+fn run_handle_effect(state, task_id, value) {
+  let Snippet(task_counter: id, run: run, ..) = state
+  case run, id == task_id {
+    Running(
+      Error(#(break.UnhandledEffect(label, lift), _meta, env, k)),
+      effects,
+    ),
+      True
+    -> {
+      let effects = [RuntimeEffect(label, lift, value), ..effects]
+      let task_id = task_id + 1
+      let #(return, task) =
+        block.resume(value, env, k)
+        |> cache.run_blocking(state.cache, state.effects, block.resume)
+      let run = Running(return, effects)
+      let state = Snippet(..state, task_counter: task_id, run: run)
+      io.debug("might conclude")
+      #(state, Nothing)
+    }
+    _, _ -> #(state, Nothing)
+  }
+  // case status {
+  //   run.Failed(_) -> #(state, Nothing)
+  //   run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
+
+  //   run.Handling(_label, lift, env, k, blocking) ->
+  //     case blocking(lift) {
+  //       Ok(promise) -> {
+  //         let run = run.Run(status, effect_log)
+  //         let state = Snippet(..state, run: run)
+  //         #(state, RunEffect(promise))
+  //       }
+  //       Error(reason) -> {
+  //         let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
+  //         let state = Snippet(..state, run: run)
+  //         #(state, Nothing)
+  //       }
+  //     }
+  // }
 }
 
 fn move_right(state) {
@@ -812,7 +878,7 @@ fn insert_named_reference(state) {
   let Snippet(source: #(proj, _, _), cache: cache, ..) = state
 
   let index =
-    sync.package_index(cache)
+    cache.package_index(cache)
     |> listx.value_map(render_poly)
 
   case action.insert_named_reference(proj) {
@@ -931,13 +997,7 @@ fn undo(state) {
     [] -> action_failed(state, "undo")
     [saved, ..rest] -> {
       let source =
-        new_source(
-          saved,
-          p.rebuild(saved),
-          state.scope,
-          state.effects,
-          state.cache,
-        )
+        new_source(saved, p.rebuild(saved), state.scope, state.effects)
       let history = History(undo: rest, redo: [proj, ..history.redo])
       let status = Editing(Command)
       let state =
@@ -953,13 +1013,7 @@ fn redo(state) {
     [] -> action_failed(state, "redo")
     [saved, ..rest] -> {
       let source =
-        new_source(
-          saved,
-          p.rebuild(saved),
-          state.scope,
-          state.effects,
-          state.cache,
-        )
+        new_source(saved, p.rebuild(saved), state.scope, state.effects)
       let history = History(undo: [proj, ..history.undo], redo: rest)
       let status = Editing(Command)
       let state =
@@ -988,37 +1042,32 @@ pub fn copy_escaped(state) {
   }
 }
 
-fn execute(state) {
-  let Snippet(run: run, ..) = state
-  case run.status {
-    run.Done(value, env) -> #(state, Conclude(value, run.effects, env))
-    run.Failed(debug) -> {
-      #(state, Failed(RunFailed(debug)))
-    }
-    _ -> run_effects(state)
+fn confirm(state) {
+  let Snippet(run: run, evaluated: evaluated, ..) = state
+  case run, evaluated {
+    NotRunning, Ok(#(value, scope)) -> #(state, Conclude(value, [], scope))
+    Running(Ok(#(value, scope)), effects), _ -> #(
+      state,
+      Conclude(value, effects, scope),
+    )
+    NotRunning, _ -> run_effects(state)
+    _, _ -> #(state, Nothing)
   }
 }
 
 fn run_effects(state) {
-  let Snippet(run: run, ..) = state
-  let run.Run(status, effect_log) = run
-  case status {
-    run.Handling(_label, lift, env, k, blocking) -> {
-      case blocking(lift) {
-        Ok(promise) -> {
-          // There's no change here
-          // let run = run.Run(status, effect_log)
-          // let state = Snippet(..state, run: run)
-          #(state, AwaitRunningEffect(promise))
-        }
-        Error(reason) -> {
-          let run = run.Run(run.Failed(#(reason, Nil, env, k)), effect_log)
-          let state = Snippet(..state, run: run)
-          #(state, Nothing)
-        }
-      }
+  let Snippet(evaluated: evaluated, task_counter: task_counter, ..) = state
+  let task_counter = task_counter + 1
+  let #(return, task) =
+    cache.run_blocking(evaluated, state.cache, state.effects, block.resume)
+  let run = Running(return, [])
+  let state = Snippet(..state, run: run, task_counter: task_counter)
+  case task {
+    Some(p) -> {
+      let p = promise.map(p, fn(v) { #(task_counter, v) })
+      #(state, RunEffect(p))
     }
-    _ -> #(state, Nothing)
+    None -> #(state, Nothing)
   }
 }
 
@@ -1084,9 +1133,9 @@ pub fn bare_render(state, failure) {
 }
 
 // TODO remove
-pub fn render_current(errors, run: run.Run) {
+pub fn render_current(errors, run) {
   case errors {
-    [] -> render_run(run.status)
+    [] -> render_run(run)
     _ -> render_errors(errors)
   }
 }
@@ -1242,22 +1291,27 @@ fn render_projection(proj, errors) {
 
 fn render_run(run) {
   case run {
-    run.Done(value, _) ->
+    NotRunning -> footer_area(neo_green_3, [element.text("not running")])
+    //   footer_area(neo_blue_3, [
+    //     h.span([event.on_click(UserClickRunEffects)], [
+    //       element.text("Will run "),
+    //       element.text(label),
+    //       element.text(" effect. click to continue."),
+    //     ]),
+    //   ])
+    Running(Ok(#(value, _scope)), _effects) ->
+      // (value, _) ->
       footer_area(neo_green_3, [
         case value {
           Some(value) -> output.render(value)
           None -> element.none()
         },
       ])
-    run.Handling(label, _meta, _env, _stack, _blocking) ->
-      footer_area(neo_blue_3, [
-        h.span([event.on_click(UserClickRunEffects)], [
-          element.text("Will run "),
-          element.text(label),
-          element.text(" effect. click to continue."),
-        ]),
-      ])
-    run.Failed(#(reason, _, _, _)) ->
+    Running(Error(#(break.UnhandledEffect(_label, _), _, _, _)), _effects) ->
+      footer_area(neo_green_3, [element.text("running")])
+
+    // run.Handling(label, _meta, _env, _stack, _blocking) ->
+    Running(Error(#(reason, _, _, _)), _effects) ->
       footer_area(neo_orange_4, [
         element.text(simple_debug.reason_to_string(reason)),
       ])

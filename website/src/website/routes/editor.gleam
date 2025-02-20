@@ -2,6 +2,7 @@ import eyg/analysis/type_/binding/debug
 import eyg/analysis/type_/binding/error
 import eyg/ir/tree as ir
 import gleam/int
+import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/listx
@@ -30,6 +31,7 @@ import website/components/snippet
 import website/harness/browser as harness
 import website/routes/common
 import website/sync/browser
+import website/sync/cache
 import website/sync/sync
 
 pub fn app(module, func) {
@@ -81,7 +83,7 @@ pub fn client() {
 pub type ShellEntry {
   Executed(
     Option(snippet.Value),
-    List(#(String, #(snippet.Value, snippet.Value))),
+    List(snippet.RuntimeEffect),
     readonly.Readonly,
   )
 }
@@ -107,7 +109,7 @@ pub type Shell {
 
 pub type State {
   State(
-    cache: sync.Sync,
+    cache: cache.Cache,
     source: snippet.Snippet,
     shell: Shell,
     display_help: Bool,
@@ -115,7 +117,7 @@ pub type State {
 }
 
 pub fn init(_) {
-  let cache = sync.init(browser.get_origin())
+  let cache = cache.init()
   let source = e.from_annotated(ir.vacant())
   // snippet has no effects, they run in the shell
   let snippet = snippet.init(source, [], [], cache)
@@ -207,7 +209,7 @@ pub fn update(state: State, message) {
         snippet.Failed(_failure) -> {
           panic as "put on some state"
         }
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           display_help,
           dispatch_to_snippet(snippet.await_running_effect(p)),
         )
@@ -234,16 +236,17 @@ pub fn update(state: State, message) {
           #(display_help, effect.none())
         }
       }
-      let #(cache, tasks) = sync.fetch_all_missing(state.cache)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
+      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      io.debug("We need the sync effect")
       let state =
         State(
           ..state,
           source: snippet,
-          cache: cache,
+          // cache: cache,
           display_help: display_help,
         )
-      #(state, effect.batch([snippet_effect, sync_effect]))
+      #(state, effect.batch([snippet_effect]))
     }
     UserClickedPrevious(exp) -> {
       let shell = state.shell
@@ -268,7 +271,7 @@ pub fn update(state: State, message) {
           effect.none(),
         )
 
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           Shell(..shell, source: source),
           dispatch_to_shell(snippet.await_running_effect(p)),
         )
@@ -317,10 +320,11 @@ pub fn update(state: State, message) {
           #(shell, effect.none())
         }
       }
-      let #(cache, tasks) = sync.fetch_all_missing(state.cache)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      let state = State(..state, shell: shell, cache: cache)
-      #(state, effect.batch([snippet_effect, sync_effect]))
+      io.debug("Fetch the missing again")
+      // let #(cache, tasks) = sync.fetch_all_missing(state.cache)
+      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      let state = State(..state, shell: shell)
+      #(state, effect.batch([snippet_effect]))
     }
     PreviouseMessage(m, i) -> {
       let shell = state.shell
@@ -346,15 +350,16 @@ pub fn update(state: State, message) {
       #(State(..state, shell: shell), effect)
     }
     SyncMessage(message) -> {
-      let cache = sync.task_finish(state.cache, message)
-      let #(cache, tasks) = sync.fetch_all_missing(cache)
-      let snippet = snippet.set_references(state.source, cache)
-      let shell_source = snippet.set_references(state.shell.source, cache)
-      let shell = Shell(..state.shell, source: shell_source)
-      #(
-        State(..state, source: snippet, shell: shell, cache: cache),
-        effect.from(browser.do_sync(tasks, SyncMessage)),
-      )
+      todo as "there shouldn't be any sync messages"
+      // let cache = sync.task_finish(state.cache, message)
+      // let #(cache, tasks) = sync.fetch_all_missing(cache)
+      // let snippet = snippet.set_references(state.source, cache)
+      // let shell_source = snippet.set_references(state.shell.source, cache)
+      // let shell = Shell(..state.shell, source: shell_source)
+      // #(
+      //   State(..state, source: snippet, shell: shell, cache: cache),
+      //   effect.from(browser.do_sync(tasks, SyncMessage)),
+      // )
     }
   }
 }
@@ -591,7 +596,7 @@ pub fn render(state: State) {
                 h.div([a.class("text-blue-700")], [
                   h.span([a.class("font-bold")], [element.text("effects ")]),
                   ..list.map(effects, fn(eff) {
-                    h.span([], [element.text(eff.0), element.text(" ")])
+                    h.span([], [element.text(eff.label), element.text(" ")])
                     // h.div([a.class("flex gap-1")], [
                     //   output.render(eff.1.0),
                     //   output.render(eff.1.1),

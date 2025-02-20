@@ -1,6 +1,8 @@
+import eyg/interpreter/block
 import eyg/ir/dag_json
 import gleam/bit_array
 import gleam/dict.{type Dict}
+import gleam/io
 import gleam/javascript/promisex
 import gleam/list
 import gleam/option.{type Option, None, Some}
@@ -208,7 +210,7 @@ const capture_example = "{\"0\":\"l\",\"l\":\"greeting\",\"v\":{\"0\":\"s\",\"v\
 pub type State {
   State(
     auth: auth_panel.State,
-    cache: sync.Sync,
+    cache: cache.Cache,
     active: Active,
     snippets: Dict(String, snippet.Snippet),
   )
@@ -242,7 +244,7 @@ fn init_cache_example(source, cache) {
   let task_count = -1
   let running = todo as "not running"
   // cant use history length could use hash dont want to resolve twice
-  let return = cache.run(source, cache)
+  let return = cache.run(source, cache, block.resume)
 }
 
 fn run_update(state, message) {
@@ -254,7 +256,7 @@ fn run_update(state, message) {
 }
 
 pub fn init(_) {
-  let cache = sync.init(browser.get_origin())
+  let cache = cache.init()
   let snippets = [
     #(int_key, snippet.init(int_example, [], harness.effects(), cache)),
     #(text_key, snippet.init(text_example, [], harness.effects(), cache)),
@@ -305,9 +307,10 @@ fn fetch_missing(state) {
       |> list.append(acc)
       |> list.unique
     })
-  let #(cache, tasks) = sync.fetch_missing(state.cache, refs)
-  let state = State(..state, cache: cache)
-  #(state, tasks)
+  // let #(cache, tasks) = sync.fetch_missing(state.cache, refs)
+  // let state = State(..state, cache: cache)
+  io.debug("THis should all be removed")
+  #(state, [])
 }
 
 pub type RunMessage {
@@ -355,7 +358,7 @@ pub fn update(state: State, message) {
         snippet.Nothing -> #(None, effect.none())
         snippet.Failed(failure) -> #(Some(failure), effect.none())
 
-        snippet.AwaitRunningEffect(p) -> #(
+        snippet.RunEffect(p) -> #(
           None,
           dispatch_to_snippet(identifier, snippet.await_running_effect(p)),
         )
@@ -391,15 +394,16 @@ pub fn update(state: State, message) {
     }
     SyncMessage(message) -> {
       let State(cache: cache, ..) = state
-      let cache = sync.task_finish(cache, message)
-      let snippets =
-        dict.map_values(state.snippets, fn(_, v) {
-          snippet.set_references(v, cache)
-        })
-      let state = State(..state, cache: cache, snippets: snippets)
-      let #(state, tasks) = fetch_missing(state)
-      let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
-      #(state, sync_effect)
+      // let cache = sync.task_finish(cache, message)
+      // let snippets =
+      //   dict.map_values(state.snippets, fn(_, v) {
+      //     snippet.set_references(v, cache)
+      //   })
+      // let state = State(..state, cache: cache, snippets: snippets)
+      // let #(state, tasks) = fetch_missing(state)
+      // let sync_effect = effect.from(browser.do_sync(tasks, SyncMessage))
+      // #(state, sync_effect)
+      todo as "what do sync messages even mean"
     }
   }
 }

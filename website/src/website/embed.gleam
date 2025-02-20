@@ -21,15 +21,16 @@ import website/harness/spotless/netlify
 import website/harness/spotless/netlify/deploy_site as netlify_deploy_site
 import website/harness/spotless/twitter
 import website/harness/spotless/twitter/tweet
-import website/sync/browser as remote
-import website/sync/sync
+import website/sync/cache
 
 pub fn run() {
   let scripts = document.query_selector_all("[type='application/json+eyg']")
-  let cache = sync.init(sync.test_origin)
-  use result <- promise.map(browser.run(remote.load_task()))
-  let assert Ok(dump) = result
-  let cache = sync.load(cache, dump)
+  // let cache = sync.init(sync.test_origin)
+  // use result <- promise.map(browser.run(remote.load_task()))
+  // let assert Ok(dump) = result
+  // let cache = sync.load(cache, dump)
+  io.debug("load the original")
+  let cache = cache.init()
 
   list.index_map(array.to_list(scripts), fn(script, i) {
     console.log(script)
@@ -75,7 +76,7 @@ fn update(snippet, message) {
   let #(failure, snippet_effect) = case eff {
     snippet.Nothing -> #(None, effect.none())
     snippet.Failed(failure) -> #(Some(failure), effect.none())
-    snippet.AwaitRunningEffect(p) -> #(
+    snippet.RunEffect(p) -> #(
       None,
       dispatch_to_snippet(snippet.await_running_effect(p)),
     )
